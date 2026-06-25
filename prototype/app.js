@@ -752,6 +752,7 @@ createApp({
         sourceDesign: { ...source },
         styleSource: this.styleSource,
         styleSourceLabel: this.styleSourceLabel(),
+        n8nWebhookUrl: this.n8nWebhookUrl.trim(),
         companyPreset: this.styleSource === "company_default" ? this.selectedPreset.name : null,
         hasOverride: this.hasOverride(this.finalStyle, source),
         output: {
