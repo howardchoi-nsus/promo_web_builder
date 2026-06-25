@@ -1,0 +1,209 @@
+{
+  "name": "Design MD Concept Analyzer",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "design-md-concept-analyze",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a6b68716-8b57-4f32-984e-8394b4f0d001",
+      "name": "Analyze Design MD",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -760,
+        0
+      ],
+      "webhookId": "design-md-concept-analyze"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $json.body || $json;\nconst documentId = String(input.documentId || input.document_id || '').trim();\nconst brandName = String(input.brandName || input.brand_name || 'Unknown Brand').trim();\nconst sourceName = String(input.sourceName || input.source_name || '').trim();\nconst rawMarkdown = String(input.rawMarkdown || input.raw_markdown || '').trim();\nconst model = String(input.model || $env.DESIGN_MD_ANALYSIS_MODEL || 'gpt-4o-mini').trim();\n\nif (!documentId) throw new Error('documentId is required');\nif (!rawMarkdown) throw new Error('rawMarkdown is required');\n\nconst maxChars = Number($env.DESIGN_MD_ANALYSIS_MAX_CHARS || 90000);\nconst clippedMarkdown = rawMarkdown.length > maxChars\n  ? `${rawMarkdown.slice(0, maxChars)}\\n\\n[TRUNCATED: original markdown exceeded ${maxChars} characters]`\n  : rawMarkdown;\n\nreturn [{\n  json: {\n    documentId,\n    brandName,\n    sourceName,\n    rawMarkdown: clippedMarkdown,\n    rawMarkdownCharCount: rawMarkdown.length,\n    wasTruncated: rawMarkdown.length > maxChars,\n    model\n  }\n}];"
+      },
+      "id": "fd9d7318-f66e-49aa-91d4-f13a603e31f4",
+      "name": "Normalize Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -500,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const { documentId, brandName, sourceName, rawMarkdown, model, rawMarkdownCharCount, wasTruncated } = $json;\n\nconst system = 'You are a senior brand design systems analyst. Return valid JSON only.';\nconst user = `Analyze the provided design markdown and extract the brand's intended design concept for AI-generated promotional web pages.\n\nThe markdown is not only a token source. It defines the design philosophy, visual mood, layout rules, component behavior, depth model, effects, and do/don't rules.\n\nReturn valid JSON only. Do not include markdown fences. Do not include explanations outside JSON.\n\nInput:\n- brandName: ${brandName}\n- sourceName: ${sourceName}\n- rawMarkdownCharCount: ${rawMarkdownCharCount}\n- wasTruncated: ${wasTruncated}\n\nDesign Markdown:\n${rawMarkdown}\n\nRequired JSON schema:\n{\n  \"brandConcept\": \"Short description of the brand's core design concept.\",\n  \"visualMood\": \"Visual atmosphere and emotional tone.\",\n  \"layoutPhilosophy\": \"How page sections should be arranged and paced.\",\n  \"spacingRhythm\": \"Spacing density, whitespace usage, section rhythm.\",\n  \"depthAndEffects\": \"Elevation, shadow, blur, gradients, overlays, image depth, or no-depth rules.\",\n  \"shapeAndRadius\": \"Corner radius, geometry, image crop style, pill/rectangular preference.\",\n  \"componentStyle\": \"Button, card, nav, badge, form, CTA, footer style guidance.\",\n  \"motionOrEffects\": \"Animation or interactive effect guidance if present. If absent, say restrained/no explicit motion.\",\n  \"colorBehavior\": \"How colors should be used, including primary, accent, background, semantic, and restraint rules.\",\n  \"typographyBehavior\": \"How typography should feel and be used, including display/body contrast.\",\n  \"dos\": [\"Concrete rule that should be followed.\"],\n  \"donts\": [\"Concrete rule that should be avoided.\"],\n  \"generationGuidance\": [\"Instruction for an AI page generator.\"],\n  \"promoPageImplications\": {\n    \"hero\": \"How a promo hero should be designed for this MD.\",\n    \"contentSections\": \"How supporting content sections should look.\",\n    \"cta\": \"How CTAs should be styled and placed.\",\n    \"legal\": \"How legal/terms text should be handled.\",\n    \"desktopLayout\": \"Desktop-specific layout guidance for 1440px viewport.\"\n  },\n  \"confidence\": 0.0\n}\n\nRules:\n- Be faithful to the provided markdown.\n- Do not invent brand rules that are not supported by the markdown.\n- If information is missing, infer conservatively and mention the gap in generationGuidance.\n- Focus on what will help an AI generate a web page in the correct style.\n- Keep each string concise but specific.\n- confidence must be a number from 0 to 1.`;\n\nreturn [{\n  json: {\n    documentId,\n    brandName,\n    sourceName,\n    model,\n    llmRequest: {\n      model,\n      messages: [\n        { role: 'system', content: system },\n        { role: 'user', content: user }\n      ],\n      temperature: 0.2,\n      response_format: { type: 'json_object' }\n    }\n  }\n}];"
+      },
+      "id": "7ea70596-c2aa-4f8f-8ebf-3bc742d43786",
+      "name": "Build Concept Analysis Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.LLM_API_URL || 'https://api.openai.com/v1/chat/completions'}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.OPENAI_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.llmRequest) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "38fa2d47-19c1-4f80-af04-9137ef5be40f",
+      "name": "LLM Analyze Design Concept",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        20,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const normalize = $('Normalize Input').item.json;\nconst prompt = $('Build Concept Analysis Prompt').item.json;\nconst response = $json;\n\nconst content = response.choices?.[0]?.message?.content\n  || response.message?.content\n  || response.content\n  || response.text\n  || response.output_text\n  || '';\n\nif (!content) {\n  throw new Error('LLM response content is empty');\n}\n\nlet concept;\ntry {\n  concept = typeof content === 'string' ? JSON.parse(content.replace(/^```json\\s*/i, '').replace(/```$/i, '').trim()) : content;\n} catch (error) {\n  throw new Error(`Failed to parse LLM JSON: ${error.message}`);\n}\n\nconst required = [\n  'brandConcept',\n  'visualMood',\n  'layoutPhilosophy',\n  'depthAndEffects',\n  'componentStyle',\n  'dos',\n  'donts',\n  'generationGuidance',\n  'promoPageImplications',\n  'confidence'\n];\nconst missing = required.filter((key) => concept[key] === undefined || concept[key] === null || concept[key] === '');\nif (missing.length) {\n  throw new Error(`LLM concept JSON missing fields: ${missing.join(', ')}`);\n}\n\nconst confidence = Math.max(0, Math.min(1, Number(concept.confidence || 0)));\nconcept.confidence = confidence;\n\nconst implications = concept.promoPageImplications || {};\nconst guidanceLines = [\n  `Brand concept: ${concept.brandConcept}`,\n  `Visual mood: ${concept.visualMood}`,\n  `Layout philosophy: ${concept.layoutPhilosophy}`,\n  `Depth/effects: ${concept.depthAndEffects}`,\n  `Shape/radius: ${concept.shapeAndRadius || ''}`,\n  `Component style: ${concept.componentStyle}`,\n  `Color behavior: ${concept.colorBehavior || ''}`,\n  `Typography behavior: ${concept.typographyBehavior || ''}`,\n  `Hero: ${implications.hero || ''}`,\n  `Content sections: ${implications.contentSections || ''}`,\n  `CTA: ${implications.cta || ''}`,\n  `Legal: ${implications.legal || ''}`,\n  `Desktop layout: ${implications.desktopLayout || ''}`,\n  `Do: ${(concept.dos || []).join(' | ')}`,\n  `Don't: ${(concept.donts || []).join(' | ')}`,\n  `Generation guidance: ${(concept.generationGuidance || []).join(' | ')}`\n].filter((line) => !line.endsWith(': ')).join('\\n');\n\nreturn [{\n  json: {\n    documentId: normalize.documentId,\n    brandName: normalize.brandName,\n    sourceName: normalize.sourceName,\n    model: prompt.model,\n    designConceptSummary: concept.brandConcept,\n    designConceptJson: concept,\n    designPromptContext: guidanceLines,\n    confidence\n  }\n}];"
+      },
+      "id": "60619758-2f5f-433d-9da8-832803485ab6",
+      "name": "Parse LLM JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        280,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "update design_documents\nset\n  design_concept_summary = $1,\n  design_concept_json = $2::jsonb,\n  design_prompt_context = $3,\n  analyzed_at = now(),\n  analysis_model = $4,\n  updated_at = now()\nwhere id = $5::uuid;\n\ninsert into analysis_runs (document_id, model, status, input_tokens, output_tokens, error_message, completed_at)\nvalues ($5::uuid, $4, 'completed', null, null, null, now());",
+        "options": {
+          "queryReplacement": "={{[$json.designConceptSummary, JSON.stringify($json.designConceptJson), $json.designPromptContext, $json.model, $json.documentId]}}"
+        }
+      },
+      "id": "da11e564-5c49-4a0d-b31f-b79cc48bc623",
+      "name": "Update Neon Design Concept",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        540,
+        0
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "REPLACE_WITH_NEON_POSTGRES_CREDENTIAL_ID",
+          "name": "Neon Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {}
+      },
+      "id": "c5ba903b-4ef0-4b20-b718-6648e74e845f",
+      "name": "Respond Concept Result",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        800,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Analyze Design MD": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Input": {
+      "main": [
+        [
+          {
+            "node": "Build Concept Analysis Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Concept Analysis Prompt": {
+      "main": [
+        [
+          {
+            "node": "LLM Analyze Design Concept",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM Analyze Design Concept": {
+      "main": [
+        [
+          {
+            "node": "Parse LLM JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse LLM JSON": {
+      "main": [
+        [
+          {
+            "node": "Update Neon Design Concept",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Neon Design Concept": {
+      "main": [
+        [
+          {
+            "node": "Respond Concept Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2026-06-25T00:00:00.000Z",
+  "versionId": "design-md-concept-analyzer-v1"
+}
