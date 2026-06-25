@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Promo Builder Admin Prototype</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="app" class="app-shell">
+      <aside class="sidebar">
+        <div class="brand-mark">GG Promo Builder</div>
+        <nav class="nav-list" aria-label="Prototype navigation">
+          <a href="#section-a" class="active">A. MD Registry</a>
+          <a href="#section-b">B. Promo Builder</a>
+          <a href="#section-c">C. Results</a>
+          <a href="./generated.html">Generated Page</a>
+        </nav>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Vue Prototype / Dummy DB</p>
+            <h1>Design MD Registry + Promo Page Generator</h1>
+          </div>
+          <div class="status-pill">{{ status }}</div>
+        </header>
+
+        <section
+          class="abc-layout"
+          :style="abcGridStyle"
+          @pointermove="onResizeMove"
+          @pointerup="stopResize"
+          @pointercancel="stopResize"
+          @pointerleave="stopResize"
+        >
+          <section class="panel stack abc-panel" id="section-a">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">A Section</p>
+                <h2>A. Design MD Registry</h2>
+              </div>
+              <span>Source: Dummy DB</span>
+            </div>
+
+            <div class="subsection">
+              <div class="subsection-title">
+                <h3>A1. Registered MD List</h3>
+                <span>{{ designDocuments.length }} documents</span>
+              </div>
+
+              <div class="table-wrap">
+                <table class="data-table compact-table">
+                  <thead>
+                    <tr>
+                      <th>No</th>
+                      <th>Document</th>
+                      <th>Brand ID</th>
+                      <th>Updated</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="(doc, index) in designDocuments"
+                      :key="doc.id"
+                      :class="{ selected: doc.id === selectedDocumentId }"
+                    >
+                      <td>#{{ index + 1 }}</td>
+                      <td>
+                        <strong>{{ doc.brandName }}</strong>
+                        <span>{{ doc.id }}</span>
+                      </td>
+                      <td>{{ doc.brandId }}</td>
+                      <td>{{ doc.updatedAt }}</td>
+                      <td>
+                        <div class="card-actions">
+                          <button class="tiny-button primary" type="button" @click="selectDocument(doc.id)">Select</button>
+                          <button class="tiny-button" type="button" @click="openDetail(doc)">Detail</button>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="summary-box" v-if="selectedDocument">
+                <strong>Selected style summary</strong>
+                <div class="swatches">
+                  <span
+                    v-for="color in selectedDocument.summary.colors.slice(0, 6)"
+                    :key="color"
+                    class="swatch"
+                    :title="color"
+                    :style="{ background: color }"
+                  ></span>
+                </div>
+                <span>{{ selectedDocument.summary.fonts[0] }}</span>
+              </div>
+            </div>
+
+            <div class="subsection">
+              <div class="subsection-title">
+                <h3>A2. Add MD</h3>
+                <span>brand / text / md file</span>
+              </div>
+
+              <div class="split">
+                <label class="field">
+                  <span>Brand</span>
+                  <input v-model="newMd.brandName" type="text" @input="syncSlug" />
+                </label>
+                <label class="field">
+                  <span>Slug</span>
+                  <input v-model="newMd.slug" type="text" />
+                </label>
+              </div>
+
+              <label class="field">
+                <span>MD file</span>
+                <input type="file" accept=".md,text/markdown,text/plain" @change="onFileChange" />
+              </label>
+
+              <label class="field">
+                <span>MD text</span>
+                <textarea v-model="newMd.text" rows="8" spellcheck="false"></textarea>
+              </label>
+
+              <div class="action-row">
+                <button class="secondary-action" type="button" @click="loadSample">Sample</button>
+                <button class="primary-action" type="button" @click="registerMarkdown">Register MD</button>
+              </div>
+            </div>
+          </section>
+
+          <div class="resize-handle" role="separator" aria-orientation="vertical" title="Drag to resize" @pointerdown="startResize($event, 0)"></div>
+
+          <section class="panel stack abc-panel" id="section-b">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">B Section</p>
+                <h2>B. Promo Builder</h2>
+              </div>
+              <span>{{ selectedDocument ? selectedDocument.brandName : 'No MD selected' }}</span>
+            </div>
+
+            <div class="subsection">
+              <div class="subsection-title">
+                <h3>B1. Required Inputs</h3>
+                <span>promo content</span>
+              </div>
+
+              <div class="form-grid">
+                <label class="field">
+                  <span>Promo title</span>
+                  <input v-model="promo.title" type="text" />
+                </label>
+                <label class="field">
+                  <span>Template</span>
+                  <select v-model="promo.template">
+                    <option>Template 4</option>
+                    <option>Template 1</option>
+                    <option>Template 2</option>
+                    <option>Template 3</option>
+                    <option>Template 5</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Market / Region</span>
+                  <select v-model="promo.market">
+                    <option>Global</option>
+                    <option>Global - Latam</option>
+                    <option>Global - French</option>
+                    <option>Brazil</option>
+                    <option>Europe</option>
+                    <option>United Kingdom</option>
+                    <option>Germany</option>
+                    <option>Canada Ontario</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Lead text</span>
+                  <input v-model="promo.leadText" type="text" />
+                </label>
+                <label class="field">
+                  <span>CTA label</span>
+                  <input v-model="promo.ctaLabel" type="text" />
+                </label>
+                <label class="field">
+                  <span>CTA URL</span>
+                  <input v-model="promo.ctaUrl" type="url" />
+                </label>
+              </div>
+
+              <label class="field">
+                <span>Subline</span>
+                <textarea v-model="promo.subline" rows="2"></textarea>
+              </label>
+              <label class="field">
+                <span>Alpha / legal text</span>
+                <input v-model="promo.alphaText" type="text" />
+              </label>
+              <label class="field">
+                <span>Terms and Conditions</span>
+                <textarea v-model="promo.termsText" rows="4"></textarea>
+              </label>
+            </div>
+
+            <div class="subsection">
+              <div class="subsection-title">
+                <h3>B2. Color / Font Style</h3>
+                <span>source + override</span>
+              </div>
+
+              <div class="style-source-grid">
+                <label class="radio-card">
+                  <input v-model="styleSource" type="radio" value="company_default" />
+                  <strong>Company default</strong>
+                  <span>Preset table style source</span>
+                </label>
+                <label class="radio-card">
+                  <input v-model="styleSource" type="radio" value="design_md" :disabled="!selectedDocument" />
+                  <strong>Design MD attributes</strong>
+                  <span>Use selected MD color/font</span>
+                </label>
+              </div>
+
+              <label v-if="styleSource === 'company_default'" class="field">
+                <span>Company style preset</span>
+                <select v-model="selectedPresetId">
+                  <option v-for="preset in companyStylePresets" :key="preset.id" :value="preset.id">
+                    {{ preset.name }} / {{ preset.market }}
+                  </option>
+                </select>
+              </label>
+
+              <div class="source-summary">
+                <div class="summary-box">
+                  <strong>Source primary</strong>
+                  <span>{{ sourceStyle.primaryColor }}</span>
+                </div>
+                <div class="summary-box">
+                  <strong>Source CTA</strong>
+                  <span>{{ sourceStyle.ctaColor }}</span>
+                </div>
+                <div class="summary-box">
+                  <strong>Source heading</strong>
+                  <span>{{ sourceStyle.headingFont }}</span>
+                </div>
+              </div>
+
+              <div class="section-title">Selected color/font style override</div>
+              <div class="form-grid compact">
+                <label class="field">
+                  <span>Primary</span>
+                  <input v-model="override.primaryColor" type="color" />
+                </label>
+                <label class="field">
+                  <span>CTA</span>
+                  <input v-model="override.ctaColor" type="color" />
+                </label>
+                <label class="field">
+                  <span>Canvas</span>
+                  <input v-model="override.canvasColor" type="color" />
+                </label>
+                <label class="field">
+                  <span>Heading font</span>
+                  <select v-model="override.headingFont">
+                    <option value="Inter, Arial, sans-serif">Inter</option>
+                    <option value="Arial, Helvetica, sans-serif">Arial</option>
+                    <option value="'Arial Black', Arial, sans-serif">Arial Black</option>
+                    <option value="Georgia, serif">Georgia</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Body font</span>
+                  <select v-model="override.bodyFont">
+                    <option value="Inter, Arial, sans-serif">Inter</option>
+                    <option value="Arial, Helvetica, sans-serif">Arial</option>
+                    <option value="Verdana, Geneva, sans-serif">Verdana</option>
+                    <option value="Georgia, serif">Georgia</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Hero weight</span>
+                  <select v-model="override.titleWeight">
+                    <option>700</option>
+                    <option>800</option>
+                    <option>900</option>
+                  </select>
+                </label>
+              </div>
+
+              <div class="action-row">
+                <button class="secondary-action" type="button" @click="resetOverride">Reset to source</button>
+              </div>
+            </div>
+
+            <div class="subsection">
+              <div class="subsection-title">
+                <h3>B3. Generate Page</h3>
+                <span>save result + open page</span>
+              </div>
+              <div class="action-row align-right">
+                <button class="primary-action" type="button" @click="generatePage">Generate Page</button>
+              </div>
+            </div>
+          </section>
+
+          <div class="resize-handle" role="separator" aria-orientation="vertical" title="Drag to resize" @pointerdown="startResize($event, 1)"></div>
+
+          <section class="panel stack abc-panel" id="section-c">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">C Section</p>
+                <h2>C. Generated Pages / Result</h2>
+              </div>
+              <span>{{ generatedPages.length }} generated</span>
+            </div>
+
+            <div class="subsection">
+              <div class="subsection-title">
+                <h3>C1. Generated Page List</h3>
+                <span>no live preview</span>
+              </div>
+
+              <div class="table-wrap">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>No</th>
+                      <th>Promo</th>
+                      <th>Selected MD</th>
+                      <th>Style Source</th>
+                      <th>Template</th>
+                      <th>Market</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(page, index) in generatedPages" :key="page.id">
+                      <td>#{{ index + 1 }}</td>
+                      <td><strong>{{ page.title }}</strong><span>{{ page.createdAt }}</span></td>
+                      <td>{{ page.selectedMd }}</td>
+                      <td>{{ page.styleSourceLabel }}</td>
+                      <td>{{ page.template }}</td>
+                      <td>{{ page.market }}</td>
+                      <td>
+                        <button class="tiny-button primary" type="button" @click="openGenerated(page)">Open</button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="subsection">
+              <div class="subsection-title">
+                <h3>C2. Last Generated Result</h3>
+                <span>{{ lastGenerated ? lastGenerated.createdAt : 'not generated' }}</span>
+              </div>
+              <div class="result-card" v-if="lastGenerated">
+                <div><strong>Promo</strong><span>{{ lastGenerated.title }}</span></div>
+                <div><strong>MD</strong><span>{{ lastGenerated.selectedMd }}</span></div>
+                <div><strong>Style</strong><span>{{ lastGenerated.styleSourceLabel }}</span></div>
+                <div><strong>Override</strong><span>{{ lastGenerated.hasOverride ? 'Applied' : 'None' }}</span></div>
+                <button class="primary-action" type="button" @click="openGenerated(lastGenerated)">Open generated page</button>
+              </div>
+              <div v-else class="outline-item">
+                <strong>No generated page yet</strong>
+                <span>Run Generate Page in B3 to create a result.</span>
+              </div>
+            </div>
+          </section>
+        </section>
+      </main>
+
+      <dialog class="modal" ref="detailModal">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">MD Detail</p>
+            <h2>{{ detailDoc ? detailDoc.brandName : 'Design detail' }}</h2>
+          </div>
+          <button class="icon-button" type="button" aria-label="Close" @click="closeDetail">x</button>
+        </div>
+        <div v-if="detailDoc" class="modal-body">
+          <div class="summary-grid">
+            <div class="summary-box"><strong>document_id</strong><span>{{ detailDoc.id }}</span></div>
+            <div class="summary-box"><strong>brand_id</strong><span>{{ detailDoc.brandId }}</span></div>
+            <div class="summary-box"><strong>updated_at</strong><span>{{ detailDoc.updatedAt }}</span></div>
+            <div class="summary-box"><strong>tokens</strong><span>{{ detailDoc.summary.tokenCount }}</span></div>
+          </div>
+
+          <div class="tabs" role="tablist">
+            <button class="tab" :class="{ active: modalTab === 'outline' }" type="button" @click="modalTab = 'outline'">Outline</button>
+            <button class="tab" :class="{ active: modalTab === 'raw' }" type="button" @click="modalTab = 'raw'">Raw</button>
+          </div>
+
+          <div v-if="modalTab === 'outline'" class="md-outline">
+            <div
+              v-for="item in detailDoc.summary.headings"
+              :key="`${item.level}-${item.title}`"
+              class="outline-item"
+              :style="{ marginLeft: `${Math.max(0, item.level - 2) * 14}px` }"
+            >
+              <strong>{{ item.title }}</strong>
+              <span>{{ item.category }}{{ item.excerpt ? ` - ${item.excerpt.slice(0, 140)}` : '' }}</span>
+            </div>
+          </div>
+          <pre v-else class="raw-md">{{ detailDoc.markdown }}</pre>
+        </div>
+      </dialog>
+    </div>
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

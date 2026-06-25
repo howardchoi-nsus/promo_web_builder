@@ -1,0 +1,625 @@
+const sampleMarkdown = `---
+name: GGPoker-promo-design
+description: A high-contrast promo system with black casino surfaces, red CTA emphasis, compact step bars, and legal-first footer treatment.
+colors:
+  primary: "#d52b1e"
+  cta: "#e12d25"
+  canvas: "#f3f3f3"
+  ink: "#151515"
+typography:
+  heading: "Inter, Arial, sans-serif"
+  body: "Inter, Arial, sans-serif"
+---
+
+## Overview
+
+High contrast promotional landing pages that prioritize bonus clarity, quick CTA access, and market-specific responsible gaming compliance.
+
+## Colors
+
+### Brand & Accent
+
+- Primary red: #d52b1e
+- CTA red: #e12d25
+- Dark surface: #151515
+
+### Surface
+
+- Canvas: #f3f3f3
+- Content card: #ffffff
+
+## Typography
+
+### Font Family
+
+- Heading: Inter, Arial, sans-serif
+- Body: Inter, Arial, sans-serif
+
+## Layout
+
+Template 4 uses a fixed sequence of Header, Hero Banner, Step Bar, Content CTA, Image Text Row, Title and Description, and Footer.
+
+## Components
+
+Buttons are pill-shaped red CTAs. Step bars use a dark background with large red numbers.
+
+## Responsive Behavior
+
+Hero background and minimum height should be configurable separately for desktop and mobile.
+
+## Do's and Don'ts
+
+Do keep legal text visible. Do not hide responsible gaming badges or market-specific terms.`;
+
+const appleMarkdown = `---
+name: Apple-design-analysis
+description: Photography-first product presentation with minimal chrome, SF-style typography, and a single blue action color.
+colors:
+  primary: "#0066cc"
+  canvas: "#ffffff"
+  ink: "#1d1d1f"
+typography:
+  heading: "SF Pro Display, system-ui, sans-serif"
+  body: "SF Pro Text, system-ui, sans-serif"
+---
+
+## Overview
+
+A clean product-gallery design system with restrained UI and high emphasis on product imagery.
+
+## Colors
+
+- Action Blue: #0066cc
+- Ink: #1d1d1f
+- Canvas: #ffffff
+- Soft Surface: #f5f5f7
+
+## Typography
+
+- Heading: SF Pro Display, system-ui, sans-serif
+- Body: SF Pro Text, system-ui, sans-serif
+
+## Layout
+
+Wide, calm sections with strong product focus and large vertical rhythm.
+
+## Components
+
+Buttons are compact pills or text links, with minimal border and shadow use.`;
+
+const starbucksMarkdown = `# Design System Inspired by Starbucks
+
+## 1. Visual Theme & Atmosphere
+
+Warm retail flagship surfaces anchored by Starbucks green and cream canvas tones.
+
+## 2. Color Palette & Roles
+
+- Starbucks Green: #006241
+- Green Accent: #00754A
+- House Green: #1E3932
+- Cream: #f2f0eb
+- Gold: #cba258
+
+## 3. Typography Rules
+
+- Primary: SoDoSans, Helvetica Neue, Arial, sans-serif
+- Rewards serif moments: Georgia, serif
+
+## 4. Component Stylings
+
+Full-pill buttons, 12px cards, restrained shadows, and compliance-aware footer blocks.
+
+## 8. Responsive Behavior
+
+Mobile stacks content into vertical bands and keeps CTA targets large.`;
+
+const storageKeys = {
+  documents: "promoPrototype.documents.abc",
+  generatedPages: "promoPrototype.generatedPages.abc",
+  selectedDocumentId: "promoPrototype.selectedDocumentId.abc",
+  generatedPage: "promoPrototype.generatedPage",
+};
+
+const dummyCompanyStylePresets = [
+  {
+    id: "preset-001",
+    name: "GGPoker Global Default",
+    brandId: "brand-ggpoker",
+    market: "Global",
+    description: "Default red and black GGPoker promo style.",
+    isDefault: true,
+    colorTokens: {
+      primary: "#d52b1e",
+      cta: "#e12d25",
+      canvas: "#f3f3f3",
+      ink: "#151515",
+    },
+    typographyTokens: {
+      headingFont: "Inter, Arial, sans-serif",
+      bodyFont: "Inter, Arial, sans-serif",
+      heroTitleWeight: "800",
+    },
+  },
+  {
+    id: "preset-002",
+    name: "GGPoker Dark Promo",
+    brandId: "brand-ggpoker",
+    market: "Global",
+    description: "Darker high-contrast campaign style.",
+    isDefault: false,
+    colorTokens: {
+      primary: "#ff3b30",
+      cta: "#ff2d25",
+      canvas: "#111318",
+      ink: "#ffffff",
+    },
+    typographyTokens: {
+      headingFont: "'Arial Black', Arial, sans-serif",
+      bodyFont: "Arial, Helvetica, sans-serif",
+      heroTitleWeight: "900",
+    },
+  },
+  {
+    id: "preset-003",
+    name: "GGVegas Default",
+    brandId: "brand-ggvegas",
+    market: "Global",
+    description: "Casino-forward gold accent style.",
+    isDefault: false,
+    colorTokens: {
+      primary: "#c99700",
+      cta: "#f2b705",
+      canvas: "#f8f4e8",
+      ink: "#18130a",
+    },
+    typographyTokens: {
+      headingFont: "Georgia, serif",
+      bodyFont: "Inter, Arial, sans-serif",
+      heroTitleWeight: "800",
+    },
+  },
+  {
+    id: "preset-004",
+    name: "Brazil Compliance Style",
+    brandId: "brand-ggpoker",
+    market: "Brazil",
+    description: "Market-specific compliant style with calmer contrast.",
+    isDefault: false,
+    colorTokens: {
+      primary: "#007a33",
+      cta: "#d52b1e",
+      canvas: "#f4f7f1",
+      ink: "#1b1f1a",
+    },
+    typographyTokens: {
+      headingFont: "Inter, Arial, sans-serif",
+      bodyFont: "Verdana, Geneva, sans-serif",
+      heroTitleWeight: "700",
+    },
+  },
+];
+
+function loadJson(key, fallback) {
+  try {
+    return JSON.parse(localStorage.getItem(key)) || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveJson(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+function slugify(value) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function nowText() {
+  const date = new Date();
+  return date.toISOString().slice(0, 16).replace("T", " ");
+}
+
+function normalizeCategory(title) {
+  const raw = title.toLowerCase().replace(/^\d+\.\s*/, "");
+  if (raw.includes("color") || raw.includes("palette")) return "colors";
+  if (raw.includes("typography") || raw.includes("font")) return "typography";
+  if (raw.includes("layout") || raw.includes("spacing") || raw.includes("grid")) return "layout";
+  if (raw.includes("elevation") || raw.includes("depth") || raw.includes("shadow")) return "elevation";
+  if (raw.includes("shape") || raw.includes("radius") || raw.includes("geometry")) return "shapes";
+  if (raw.includes("component") || raw.includes("styling")) return "components";
+  if (raw.includes("responsive") || raw.includes("breakpoint")) return "responsive";
+  if (raw.includes("do's") || raw.includes("don't") || raw.includes("dos")) return "dos_donts";
+  if (raw.includes("gap")) return "known_gaps";
+  if (raw.includes("overview") || raw.includes("theme") || raw.includes("atmosphere")) return "overview";
+  return "other";
+}
+
+function parseMarkdown(md) {
+  const lines = md.split(/\r?\n/);
+  const headings = [];
+  let current = null;
+
+  for (const line of lines) {
+    const match = /^(#{1,4})\s+(.+)$/.exec(line);
+    if (match) {
+      current = {
+        level: match[1].length,
+        title: match[2].trim(),
+        category: normalizeCategory(match[2].trim()),
+        excerpt: "",
+      };
+      headings.push(current);
+    } else if (current && line.trim() && current.excerpt.length < 180) {
+      current.excerpt += `${line.trim()} `;
+    }
+  }
+
+  return headings;
+}
+
+function extractSummary(markdown) {
+  const headings = parseMarkdown(markdown);
+  const colors = Array.from(new Set(markdown.match(/#[0-9a-fA-F]{6}\b/g) || [])).slice(0, 8);
+  const fontMatches = Array.from(
+    new Set(
+      (markdown.match(/(?:fontFamily|font-family|Heading|Body|Primary):?\s*["'`]?([A-Za-z][A-Za-z0-9\s,-]*(?:sans-serif|serif|monospace|Arial|Inter|Helvetica|Georgia|system-ui))/gi) || [])
+        .map((item) => item.replace(/^(fontFamily|font-family|Heading|Body|Primary):?\s*/i, "").replace(/["'`]/g, "").trim())
+    )
+  ).slice(0, 4);
+  const categories = Array.from(new Set(headings.map((heading) => heading.category))).filter((item) => item !== "other");
+
+  return {
+    headings,
+    colors,
+    fonts: fontMatches.length ? fontMatches : ["Not detected"],
+    categories,
+    sectionCount: headings.filter((heading) => heading.level <= 2).length,
+    tokenCount: colors.length + fontMatches.length,
+  };
+}
+
+function createDoc({ id, brandId, brandName, slug, markdown, sourceName, status, updatedAt }) {
+  return {
+    id,
+    brandId,
+    brandName,
+    slug,
+    sourceName,
+    status,
+    updatedAt,
+    markdown,
+    summary: extractSummary(markdown),
+  };
+}
+
+function dummyDocuments() {
+  return [
+    createDoc({
+      id: "doc-001",
+      brandId: "brand-ggpoker",
+      brandName: "GGPoker",
+      slug: "ggpoker",
+      markdown: sampleMarkdown,
+      sourceName: "docs/design-md/ggpoker/DESIGN.md",
+      status: "seeded",
+      updatedAt: "2026-06-25 12:00",
+    }),
+    createDoc({
+      id: "doc-002",
+      brandId: "brand-apple",
+      brandName: "Apple",
+      slug: "apple",
+      markdown: appleMarkdown,
+      sourceName: "docs/design-md/apple/DESIGN.md",
+      status: "seeded",
+      updatedAt: "2026-06-25 12:05",
+    }),
+    createDoc({
+      id: "doc-003",
+      brandId: "brand-starbucks",
+      brandName: "Starbucks",
+      slug: "starbucks",
+      markdown: starbucksMarkdown,
+      sourceName: "docs/design-md/starbucks/DESIGN.md",
+      status: "seeded",
+      updatedAt: "2026-06-25 12:08",
+    }),
+  ];
+}
+
+function sourceFromDocument(doc) {
+  const primary = doc?.summary.colors[0] || "#d52b1e";
+  return {
+    primaryColor: primary,
+    ctaColor: doc?.summary.colors[1] || primary,
+    canvasColor: doc?.summary.colors[2] || "#f3f3f3",
+    headingFont: doc?.summary.fonts[0] || "Inter, Arial, sans-serif",
+    bodyFont: doc?.summary.fonts[1] || doc?.summary.fonts[0] || "Inter, Arial, sans-serif",
+    titleWeight: "800",
+  };
+}
+
+function sourceFromPreset(preset) {
+  return {
+    primaryColor: preset.colorTokens.primary,
+    ctaColor: preset.colorTokens.cta,
+    canvasColor: preset.colorTokens.canvas,
+    headingFont: preset.typographyTokens.headingFont,
+    bodyFont: preset.typographyTokens.bodyFont,
+    titleWeight: preset.typographyTokens.heroTitleWeight,
+  };
+}
+
+const { createApp } = Vue;
+
+createApp({
+  data() {
+    const docs = loadJson(storageKeys.documents, dummyDocuments());
+    const pages = loadJson(storageKeys.generatedPages, []);
+    return {
+      status: "Ready",
+      sectionWidths: [30, 30, 40],
+      resizeState: null,
+      designDocuments: docs,
+      companyStylePresets: dummyCompanyStylePresets,
+      selectedDocumentId: localStorage.getItem(storageKeys.selectedDocumentId) || docs[0]?.id || "",
+      selectedPresetId: "preset-001",
+      styleSource: "company_default",
+      detailDoc: null,
+      modalTab: "outline",
+      newMd: {
+        brandName: "GGPoker",
+        slug: "ggpoker",
+        text: sampleMarkdown,
+        sourceName: "text input",
+      },
+      promo: {
+        title: "Get $50 Free Play",
+        template: "Template 4",
+        market: "Global",
+        leadText: "Deposit $20",
+        ctaLabel: "Play Here",
+        ctaUrl: "https://widget.ggpoker.com",
+        subline: "All your favorites and more. There is something for everyone.",
+        alphaText: "18+ T&Cs Apply. Welcome Bonus promotion for new players only.",
+        termsText:
+          "Players must be aged 18+ to play. Welcome bonus is available to new players only. Each promotion's terms and conditions are subject to the site terms and conditions.",
+      },
+      override: {
+        primaryColor: "#d52b1e",
+        ctaColor: "#e12d25",
+        canvasColor: "#f3f3f3",
+        headingFont: "Inter, Arial, sans-serif",
+        bodyFont: "Inter, Arial, sans-serif",
+        titleWeight: "800",
+      },
+      generatedPages: pages,
+    };
+  },
+
+  computed: {
+    abcGridStyle() {
+      return {
+        gridTemplateColumns: `${this.sectionWidths[0]}fr 8px ${this.sectionWidths[1]}fr 8px ${this.sectionWidths[2]}fr`,
+      };
+    },
+
+    selectedDocument() {
+      return this.designDocuments.find((doc) => doc.id === this.selectedDocumentId) || null;
+    },
+
+    selectedPreset() {
+      return this.companyStylePresets.find((preset) => preset.id === this.selectedPresetId) || this.companyStylePresets[0];
+    },
+
+    sourceStyle() {
+      if (this.styleSource === "design_md" && this.selectedDocument) return sourceFromDocument(this.selectedDocument);
+      return sourceFromPreset(this.selectedPreset);
+    },
+
+    finalStyle() {
+      return { ...this.sourceStyle, ...this.override };
+    },
+
+    lastGenerated() {
+      return this.generatedPages[0] || null;
+    },
+  },
+
+  watch: {
+    styleSource() {
+      this.resetOverride();
+    },
+    selectedPresetId() {
+      if (this.styleSource === "company_default") this.resetOverride();
+    },
+    selectedDocumentId() {
+      if (this.styleSource === "design_md") this.resetOverride();
+    },
+  },
+
+  mounted() {
+    saveJson(storageKeys.documents, this.designDocuments);
+    this.resetOverride();
+  },
+
+  methods: {
+    syncSlug() {
+      this.newMd.slug = slugify(this.newMd.brandName);
+    },
+
+    startResize(event, handleIndex) {
+      const layout = event.currentTarget.closest(".abc-layout");
+      if (!layout) return;
+      event.currentTarget.setPointerCapture(event.pointerId);
+      this.resizeState = {
+        handleIndex,
+        startX: event.clientX,
+        startWidths: [...this.sectionWidths],
+        totalWidth: layout.getBoundingClientRect().width,
+      };
+      document.body.classList.add("is-resizing");
+    },
+
+    onResizeMove(event) {
+      if (!this.resizeState) return;
+      const deltaPercent = ((event.clientX - this.resizeState.startX) / this.resizeState.totalWidth) * 100;
+      const next = [...this.resizeState.startWidths];
+      const leftIndex = this.resizeState.handleIndex;
+      const rightIndex = leftIndex + 1;
+      const min = 18;
+
+      next[leftIndex] = this.resizeState.startWidths[leftIndex] + deltaPercent;
+      next[rightIndex] = this.resizeState.startWidths[rightIndex] - deltaPercent;
+
+      if (next[leftIndex] < min || next[rightIndex] < min) return;
+
+      this.sectionWidths = next;
+    },
+
+    stopResize() {
+      if (!this.resizeState) return;
+      this.resizeState = null;
+      document.body.classList.remove("is-resizing");
+    },
+
+    setStatus(message) {
+      this.status = message;
+    },
+
+    async onFileChange(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      if (!file.name.toLowerCase().endsWith(".md")) {
+        this.setStatus("Invalid file");
+        return;
+      }
+      this.newMd.text = await file.text();
+      this.newMd.sourceName = file.name;
+      this.setStatus("MD file loaded");
+    },
+
+    loadSample() {
+      this.newMd = {
+        brandName: "GGPoker",
+        slug: "ggpoker",
+        text: sampleMarkdown,
+        sourceName: "sample-design.md",
+      };
+      this.setStatus("Sample loaded");
+    },
+
+    registerMarkdown() {
+      const markdown = this.newMd.text.trim();
+      if (!markdown) {
+        this.setStatus("MD text is empty");
+        return;
+      }
+
+      const slug = this.newMd.slug.trim() || slugify(this.newMd.brandName);
+      const doc = createDoc({
+        id: `doc-${String(this.designDocuments.length + 1).padStart(3, "0")}`,
+        brandId: `brand-${slug}`,
+        brandName: this.newMd.brandName.trim() || "Untitled Brand",
+        slug,
+        markdown,
+        sourceName: this.newMd.sourceName,
+        status: "uploaded",
+        updatedAt: nowText(),
+      });
+
+      this.designDocuments.unshift(doc);
+      this.selectDocument(doc.id);
+      saveJson(storageKeys.documents, this.designDocuments);
+      this.setStatus("MD registered");
+    },
+
+    selectDocument(id) {
+      this.selectedDocumentId = id;
+      localStorage.setItem(storageKeys.selectedDocumentId, id);
+      if (this.styleSource === "design_md") this.resetOverride();
+      this.setStatus("MD selected");
+    },
+
+    openDetail(doc) {
+      this.detailDoc = doc;
+      this.modalTab = "outline";
+      this.$nextTick(() => this.$refs.detailModal.showModal());
+    },
+
+    closeDetail() {
+      this.$refs.detailModal.close();
+    },
+
+    resetOverride() {
+      this.override = { ...this.sourceStyle };
+    },
+
+    hasOverride(pageStyle, sourceStyle) {
+      return Object.keys(pageStyle).some((key) => pageStyle[key] !== sourceStyle[key]);
+    },
+
+    styleSourceLabel() {
+      if (this.styleSource === "design_md") return `Design MD / ${this.selectedDocument?.brandName || "None"}`;
+      return `Company Default / ${this.selectedPreset.name}`;
+    },
+
+    buildGeneratedPayload(pageId) {
+      const source = this.sourceStyle;
+      return {
+        id: pageId,
+        generatedAt: nowText(),
+        md: {
+          id: this.selectedDocument.id,
+          brand: this.selectedDocument.brandName,
+          slug: this.selectedDocument.slug,
+          summary: this.selectedDocument.summary,
+        },
+        promo: { ...this.promo },
+        design: { ...this.finalStyle },
+        styleSource: this.styleSource,
+        styleSourceLabel: this.styleSourceLabel(),
+        companyPreset: this.styleSource === "company_default" ? this.selectedPreset.name : null,
+        hasOverride: this.hasOverride(this.finalStyle, source),
+      };
+    },
+
+    generatePage() {
+      if (!this.selectedDocument) {
+        this.setStatus("Select an MD first");
+        return;
+      }
+
+      const pageId = `promo-${String(this.generatedPages.length + 1).padStart(3, "0")}`;
+      const payload = this.buildGeneratedPayload(pageId);
+      const listItem = {
+        id: pageId,
+        title: payload.promo.title,
+        selectedMd: payload.md.brand,
+        styleSourceLabel: payload.styleSourceLabel,
+        template: payload.promo.template,
+        market: payload.promo.market,
+        createdAt: payload.generatedAt,
+        status: "draft",
+        hasOverride: payload.hasOverride,
+        payload,
+      };
+
+      this.generatedPages.unshift(listItem);
+      saveJson(storageKeys.generatedPages, this.generatedPages);
+      saveJson(storageKeys.generatedPage, payload);
+      this.setStatus("Page generated");
+    },
+
+    openGenerated(page) {
+      saveJson(storageKeys.generatedPage, page.payload);
+      window.open("./generated.html", "_blank");
+    },
+  },
+}).mount("#app");
