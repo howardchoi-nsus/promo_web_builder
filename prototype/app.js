@@ -120,6 +120,7 @@ const storageKeys = {
   selectedDocumentId: "promoPrototype.selectedDocumentId.abc",
   generatedPage: "promoPrototype.generatedPage",
   n8nWebhookUrl: "promoPrototype.n8nWebhookUrl",
+  n8nAnalyzeWebhookUrl: "promoPrototype.n8nAnalyzeWebhookUrl",
 };
 
 const dummyCompanyStylePresets = [
@@ -286,6 +287,7 @@ function extractSummary(markdown) {
 }
 
 function createDoc({ id, brandId, brandName, slug, markdown, sourceName, status, updatedAt }) {
+  const summary = extractSummary(markdown);
   return {
     id,
     brandId,
@@ -295,7 +297,14 @@ function createDoc({ id, brandId, brandName, slug, markdown, sourceName, status,
     status,
     updatedAt,
     markdown,
-    summary: extractSummary(markdown),
+    designConcept: {
+      summary: "",
+      json: null,
+      promptContext: "",
+      analyzedAt: "",
+      analysisModel: "",
+    },
+    summary,
   };
 }
 
@@ -373,6 +382,7 @@ createApp({
       selectedPresetId: "preset-001",
       styleSource: "company_default",
       n8nWebhookUrl: localStorage.getItem(storageKeys.n8nWebhookUrl) || "",
+      n8nAnalyzeWebhookUrl: localStorage.getItem(storageKeys.n8nAnalyzeWebhookUrl) || "",
       detailDoc: null,
       modalTab: "outline",
       newMd: {
@@ -446,6 +456,9 @@ createApp({
     n8nWebhookUrl(value) {
       localStorage.setItem(storageKeys.n8nWebhookUrl, value.trim());
     },
+    n8nAnalyzeWebhookUrl(value) {
+      localStorage.setItem(storageKeys.n8nAnalyzeWebhookUrl, value.trim());
+    },
   },
 
   mounted() {
@@ -477,6 +490,63 @@ createApp({
         this.resetOverride();
         this.setStatus("Neon API unavailable. Using fallback dummy data");
       }
+    },
+
+    conceptValue(key) {
+      return this.selectedDocument?.designConcept?.json?.[key] || "";
+    },
+
+    conceptList(key) {
+      const value = this.selectedDocument?.designConcept?.json?.[key];
+      return Array.isArray(value) ? value : [];
+    },
+
+    async analyzeDocument(doc) {
+      if (!doc) {
+        this.setStatus("Select an MD first");
+        return;
+      }
+      if (!doc.markdown) {
+        this.setStatus("Raw markdown is empty");
+        return;
+      }
+      if (window.location.protocol === "file:" && !this.n8nAnalyzeWebhookUrl.trim()) {
+        this.setStatus("Set analyze webhook URL first");
+        return;
+      }
+
+      const useProxy = window.location.protocol !== "file:";
+      const requestUrl = useProxy ? "/api/analyze-design-md" : this.n8nAnalyzeWebhookUrl.trim();
+      const headers = {
+        "Content-Type": "application/json",
+      };
+      if (useProxy && this.n8nAnalyzeWebhookUrl.trim()) {
+        headers["x-n8n-analyze-webhook-url"] = this.n8nAnalyzeWebhookUrl.trim();
+      }
+
+      this.setStatus("Analyzing MD concept");
+      try {
+        const response = await fetch(requestUrl, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            documentId: doc.id,
+            brandName: doc.brandName,
+            sourceName: doc.sourceName,
+            rawMarkdown: doc.markdown,
+          }),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || payload.error || `Analyze ${response.status}`);
+        this.setStatus("MD concept analyzed");
+        if (useProxy) await this.loadDesignDocuments();
+      } catch (error) {
+        this.setStatus(`Analyze failed: ${error.message}`);
+      }
+    },
+
+    async analyzeSelectedDocument() {
+      await this.analyzeDocument(this.selectedDocument);
     },
 
     syncSlug() {
@@ -567,7 +637,7 @@ createApp({
       this.setStatus("Sample loaded");
     },
 
-    registerMarkdown() {
+    async registerMarkdown() {
       const markdown = this.newMd.text.trim();
       if (!markdown) {
         this.setStatus("MD text is empty");
@@ -575,6 +645,38 @@ createApp({
       }
 
       const slug = this.newMd.slug.trim() || slugify(this.newMd.brandName);
+      if (window.location.protocol !== "file:") {
+        this.setStatus("Saving MD to Neon");
+        try {
+          const response = await fetch("/api/register-design-md", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              brandName: this.newMd.brandName.trim() || "Untitled Brand",
+              slug,
+              rawMarkdown: markdown,
+              sourceName: this.newMd.sourceName,
+            }),
+          });
+          const payload = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(payload.message || payload.error || `Register ${response.status}`);
+          const doc = payload.document;
+          this.closeAddDesign();
+          this.setStatus("MD saved. Analyzing concept");
+          await this.loadDesignDocuments();
+          this.selectDocument(doc.id);
+          await this.analyzeDocument(doc);
+          await this.loadDesignDocuments();
+          this.setStatus("MD registered and analyzed");
+          return;
+        } catch (error) {
+          this.setStatus(`Register failed: ${error.message}`);
+          return;
+        }
+      }
+
       const doc = createDoc({
         id: `doc-${String(this.designDocuments.length + 1).padStart(3, "0")}`,
         brandId: `brand-${slug}`,
@@ -633,6 +735,9 @@ createApp({
           brand: this.selectedDocument.brandName,
           slug: this.selectedDocument.slug,
           summary: this.selectedDocument.summary,
+          designConcept: this.selectedDocument.designConcept,
+          designPromptContext: this.selectedDocument.designConcept?.promptContext || "",
+          markdown: this.selectedDocument.markdown,
         },
         promo: { ...this.promo },
         design: { ...this.finalStyle },

@@ -606,6 +606,33 @@ body.is-resizing {
   grid-template-columns: 1fr;
 }
 
+.concept-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.summary-box.large {
+  border-color: #cfd6e2;
+  background: #ffffff;
+}
+
+.summary-box ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.summary-box li {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.token-summary {
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
 .selected-style-summary {
   background: #ffffff;
 }

@@ -51,11 +51,16 @@ module.exports = async function handler(req, res) {
         b.slug as slug,
         d.original_filename,
         d.raw_markdown,
+        d.design_concept_summary,
+        d.design_concept_json,
+        d.design_prompt_context,
+        d.analyzed_at,
+        d.analysis_model,
         d.status,
         d.updated_at
       from design_documents d
       join brands b on b.id = d.brand_id
-      where d.source_type = 'markdown_seed'
+      where d.source_type in ('markdown_seed', 'markdown_upload')
       order by b.name asc
     `;
 
@@ -104,6 +109,13 @@ module.exports = async function handler(req, res) {
           status: doc.status,
           updatedAt: doc.updated_at ? new Date(doc.updated_at).toISOString().slice(0, 16).replace("T", " ") : "",
           markdown: doc.raw_markdown || "",
+          designConcept: {
+            summary: doc.design_concept_summary || "",
+            json: doc.design_concept_json || null,
+            promptContext: doc.design_prompt_context || "",
+            analyzedAt: doc.analyzed_at ? new Date(doc.analyzed_at).toISOString().slice(0, 16).replace("T", " ") : "",
+            analysisModel: doc.analysis_model || "",
+          },
           summary: {
             headings,
             colors: tokenSummary.colors,

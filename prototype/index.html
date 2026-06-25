@@ -102,10 +102,59 @@
             <div class="subsection selected-style-summary" v-if="selectedDocument">
               <div class="subsection-title">
                 <h3>Selected style summary</h3>
-                <span>{{ selectedDocument.brandName }}</span>
+                <div class="subsection-actions">
+                  <span>{{ selectedDocument.designConcept?.analyzedAt || 'Not analyzed yet' }}</span>
+                  <button class="tiny-button primary" type="button" @click="analyzeSelectedDocument">Analyze MD</button>
+                </div>
               </div>
 
-              <div class="source-summary">
+              <label class="field">
+                <span>n8n Analyze Webhook URL</span>
+                <input v-model="n8nAnalyzeWebhookUrl" type="url" placeholder="https://your-n8n-domain/webhook/design-md-concept-analyze" />
+              </label>
+
+              <div class="concept-summary-grid">
+                <div class="summary-box large">
+                  <strong>Design concept</strong>
+                  <span>{{ selectedDocument.designConcept?.summary || 'Not analyzed yet' }}</span>
+                </div>
+                <div class="summary-box">
+                  <strong>Visual mood</strong>
+                  <span>{{ conceptValue('visualMood') || 'Not analyzed yet' }}</span>
+                </div>
+                <div class="summary-box">
+                  <strong>Layout philosophy</strong>
+                  <span>{{ conceptValue('layoutPhilosophy') || 'Not analyzed yet' }}</span>
+                </div>
+                <div class="summary-box">
+                  <strong>Depth / effects</strong>
+                  <span>{{ conceptValue('depthAndEffects') || 'Not analyzed yet' }}</span>
+                </div>
+                <div class="summary-box">
+                  <strong>Shape / radius</strong>
+                  <span>{{ conceptValue('shapeAndRadius') || 'Not analyzed yet' }}</span>
+                </div>
+                <div class="summary-box">
+                  <strong>Component style</strong>
+                  <span>{{ conceptValue('componentStyle') || 'Not analyzed yet' }}</span>
+                </div>
+                <div class="summary-box">
+                  <strong>Do</strong>
+                  <ul v-if="conceptList('dos').length">
+                    <li v-for="item in conceptList('dos').slice(0, 3)" :key="item">{{ item }}</li>
+                  </ul>
+                  <span v-else>Not analyzed yet</span>
+                </div>
+                <div class="summary-box">
+                  <strong>Don't</strong>
+                  <ul v-if="conceptList('donts').length">
+                    <li v-for="item in conceptList('donts').slice(0, 3)" :key="item">{{ item }}</li>
+                  </ul>
+                  <span v-else>Not analyzed yet</span>
+                </div>
+              </div>
+
+              <div class="source-summary token-summary">
                 <div class="summary-box">
                   <strong>Colors</strong>
                   <div class="swatches">
@@ -127,6 +176,7 @@
                   <strong>Design style info</strong>
                   <span>{{ selectedDocument.summary.categories.slice(0, 5).join(', ') || 'No category summary' }}</span>
                   <span>{{ selectedDocument.summary.sectionCount }} sections / {{ selectedDocument.summary.tokenCount }} tokens</span>
+                  <span>{{ selectedDocument.designConcept?.analysisModel || 'No model' }}</span>
                 </div>
               </div>
             </div>

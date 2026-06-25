@@ -242,7 +242,12 @@ function main() {
 create extension if not exists pgcrypto;
 
 alter table design_documents
-  add column if not exists raw_markdown text;
+  add column if not exists raw_markdown text,
+  add column if not exists design_concept_summary text,
+  add column if not exists design_concept_json jsonb,
+  add column if not exists design_prompt_context text,
+  add column if not exists analyzed_at timestamptz,
+  add column if not exists analysis_model text;
 
 create unique index if not exists design_documents_brand_filename_uidx
   on design_documents (brand_id, original_filename);
@@ -282,7 +287,12 @@ ${chunk.map(buildSqlForDoc).join("\n")}
 create extension if not exists pgcrypto;
 
 alter table design_documents
-  add column if not exists raw_markdown text;
+  add column if not exists raw_markdown text,
+  add column if not exists design_concept_summary text,
+  add column if not exists design_concept_json jsonb,
+  add column if not exists design_prompt_context text,
+  add column if not exists analyzed_at timestamptz,
+  add column if not exists analysis_model text;
 
 create unique index if not exists design_documents_brand_filename_uidx
   on design_documents (brand_id, original_filename);
