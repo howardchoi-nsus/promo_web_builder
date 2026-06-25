@@ -20,7 +20,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const input = $json.body || $json;\nconst documentId = String(input.documentId || input.document_id || '').trim();\nconst brandName = String(input.brandName || input.brand_name || 'Unknown Brand').trim();\nconst sourceName = String(input.sourceName || input.source_name || '').trim();\nconst rawMarkdown = String(input.rawMarkdown || input.raw_markdown || '').trim();\nconst model = String(input.model || $env.DESIGN_MD_ANALYSIS_MODEL || 'gpt-4o-mini').trim();\n\nif (!documentId) throw new Error('documentId is required');\nif (!rawMarkdown) throw new Error('rawMarkdown is required');\n\nconst maxChars = Number($env.DESIGN_MD_ANALYSIS_MAX_CHARS || 90000);\nconst clippedMarkdown = rawMarkdown.length > maxChars\n  ? `${rawMarkdown.slice(0, maxChars)}\\n\\n[TRUNCATED: original markdown exceeded ${maxChars} characters]`\n  : rawMarkdown;\n\nreturn [{\n  json: {\n    documentId,\n    brandName,\n    sourceName,\n    rawMarkdown: clippedMarkdown,\n    rawMarkdownCharCount: rawMarkdown.length,\n    wasTruncated: rawMarkdown.length > maxChars,\n    model\n  }\n}];"
+        "jsCode": "const input = $json.body || $json;\nconst documentId = String(input.documentId || input.document_id || '').trim();\nconst brandName = String(input.brandName || input.brand_name || 'Unknown Brand').trim();\nconst sourceName = String(input.sourceName || input.source_name || '').trim();\nconst rawMarkdown = String(input.rawMarkdown || input.raw_markdown || '').trim();\nconst model = String(input.model || 'gpt-4o-mini').trim();\n\nif (!documentId) throw new Error('documentId is required');\nif (!rawMarkdown) throw new Error('rawMarkdown is required');\n\nconst maxChars = Number(input.maxChars || input.max_chars || 90000);\nconst clippedMarkdown = rawMarkdown.length > maxChars\n  ? `${rawMarkdown.slice(0, maxChars)}\\n\\n[TRUNCATED: original markdown exceeded ${maxChars} characters]`\n  : rawMarkdown;\n\nreturn [{\n  json: {\n    documentId,\n    brandName,\n    sourceName,\n    rawMarkdown: clippedMarkdown,\n    rawMarkdownCharCount: rawMarkdown.length,\n    wasTruncated: rawMarkdown.length > maxChars,\n    model\n  }\n}];"
       },
       "id": "fd9d7318-f66e-49aa-91d4-f13a603e31f4",
       "name": "Normalize Input",
@@ -47,13 +47,13 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{$env.LLM_API_URL || 'https://api.openai.com/v1/chat/completions'}}",
+        "url": "https://api.openai.com/v1/chat/completions",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "Authorization",
-              "value": "=Bearer {{$env.OPENAI_API_KEY}}"
+              "value": "Bearer REPLACE_WITH_OPENAI_API_KEY_OR_USE_CREDENTIAL"
             },
             {
               "name": "Content-Type",

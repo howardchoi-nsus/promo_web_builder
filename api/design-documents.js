@@ -1,4 +1,5 @@
 const { neon } = require("@neondatabase/serverless");
+const { getDatabaseUrl } = require("./_db");
 
 function groupTokens(tokens) {
   const byDocument = new Map();
@@ -35,7 +36,7 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  const databaseUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.POSTGRES_URL_NON_POOLING;
+  const databaseUrl = getDatabaseUrl();
   if (!databaseUrl) {
     res.status(500).json({ error: "DATABASE_URL is not configured" });
     return;
