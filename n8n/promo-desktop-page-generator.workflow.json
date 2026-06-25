@@ -1,0 +1,159 @@
+{
+  "name": "Promo Desktop Web Page Generator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "promo-page-generate",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "8f8a6f61-6d11-4fd4-80f7-b12cc99c0010",
+      "name": "Generate Promo Page",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -220,
+        -80
+      ],
+      "webhookId": "promo-page-generate"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body || $json; const id = body.id || `promo-${Date.now()}`; const promo = body.promo || {}; const md = body.md || {}; const design = body.design || {}; const summary = md.summary || {}; const safe = (value) => String(value ?? '').replace(/[&<>\\\"']/g, (ch) => ch === '&' ? '&amp;' : ch === '<' ? '&lt;' : ch === '>' ? '&gt;' : ch === '\\\"' ? '&quot;' : '&#39;'); const css = (value, fallback) => String(value || fallback).replace(/[<>]/g, ''); const primary = css(design.primaryColor, '#d52b1e'); const cta = css(design.ctaColor, primary); const canvas = css(design.canvasColor, '#f3f3f3'); const headingFont = css(design.headingFont, 'Pretendard, Arial, sans-serif'); const bodyFont = css(design.bodyFont, 'Pretendard, Arial, sans-serif'); const titleWeight = css(design.titleWeight, '800'); const categories = Array.isArray(summary.categories) ? summary.categories.slice(0, 5).join(', ') : ''; const colors = Array.isArray(summary.colors) ? summary.colors.slice(0, 6) : []; const swatches = colors.map((color) => `<span title='${safe(color)}' style='background:${css(color, primary)}'></span>`).join(''); const html = `<!doctype html><html lang='ko'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>${safe(promo.title || 'Promo Page')}</title><style>@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');:root{--primary:${primary};--cta:${cta};--canvas:${canvas};--ink:#151515;--heading:${headingFont};--body:${bodyFont};--title-weight:${titleWeight}}*{box-sizing:border-box}body{margin:0;background:var(--canvas);color:var(--ink);font-family:var(--body)}.page{max-width:1180px;margin:32px auto;border:1px solid #cfd6e2;border-radius:8px;overflow:hidden;background:#fff;box-shadow:0 18px 44px rgba(20,24,31,.16)}.top,.foot{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:64px;padding:0 32px;background:#111318;color:#fff}.hero{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(360px,.95fr);gap:32px;min-height:420px;padding:54px 56px;background:radial-gradient(circle at 82% 46%, color-mix(in srgb,var(--primary) 34%,transparent), transparent 32%),linear-gradient(135deg,#0d0e10 0%,#1a1d22 54%,#08090b 100%);color:#fff}.copy{display:grid;align-content:center;justify-items:start;gap:14px}.lead{margin:0;font-size:16px;font-weight:900;text-transform:uppercase}.title{margin:0;color:var(--primary);font-family:var(--heading);font-size:72px;font-weight:var(--title-weight);line-height:.98;text-transform:uppercase}.subline{max-width:620px;margin:0;font-size:20px;font-weight:800;line-height:1.38}.cta{display:inline-flex;align-items:center;justify-content:center;min-width:148px;min-height:46px;padding:0 24px;border-radius:999px;background:var(--cta);color:#fff;font-weight:900;text-decoration:none}.alpha{align-self:end;color:#b8bfca;font-size:12px}.art{position:relative;min-height:300px;border-radius:8px;background:radial-gradient(circle at 50% 60%,rgba(255,255,255,.22),transparent 36%),linear-gradient(145deg,rgba(255,255,255,.08),rgba(255,255,255,.01))}.chip{position:absolute;display:grid;place-items:center;width:112px;height:112px;border:8px solid #fff;border-radius:999px;background:var(--primary);color:#fff;font-weight:900;box-shadow:0 18px 28px rgba(0,0,0,.35)}.c1{left:12%;top:22%;transform:rotate(-10deg)}.c2{right:12%;top:18%;background:#fff;color:#111318;transform:rotate(8deg)}.c3{left:42%;bottom:12%;width:136px;height:136px;transform:rotate(6deg)}.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:#151515;color:#fff}.steps div{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;padding:24px;border-right:1px solid rgba(255,255,255,.12)}.steps b{grid-row:span 2;color:var(--primary);font-size:46px;line-height:.92}.steps span{color:#d0d5de;font-size:13px}.content,.terms,.style{padding:40px 56px;text-align:center}.content p,.terms p{max-width:800px;margin:0 auto;color:#475467;line-height:1.65}.games{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:24px}.games span{min-height:82px;display:grid;place-items:center;border:1px solid #dfe4ec;border-radius:8px;background:#fff;font-weight:800}.style{border-top:1px solid #dfe4ec;background:#fbfcfe;text-align:left}.swatches{display:flex;gap:6px;margin-top:10px}.swatches span{width:24px;height:24px;border-radius:999px;border:1px solid rgba(0,0,0,.15)}.terms{border-top:1px solid #dfe4ec;text-align:left}@media(max-width:900px){.page{margin:0;border-radius:0}.hero,.steps,.games{grid-template-columns:1fr}.hero{padding:36px 24px}.title{font-size:48px}.content,.terms,.style{padding:32px 24px}.top,.foot{padding:0 20px}}</style></head><body><article class='page'><header class='top'><strong>${safe(md.brand || 'PROMO')}</strong><div>${safe(promo.market)} | ${safe(promo.template)}</div></header><section class='hero'><div class='copy'><p class='lead'>${safe(promo.leadText)}</p><h1 class='title'>${safe(promo.title)}</h1><p class='subline'>${safe(promo.subline)}</p><a class='cta' href='${safe(promo.ctaUrl || '#')}'>${safe(promo.ctaLabel || 'Join Now')}</a><small class='alpha'>${safe(promo.alphaText)}</small></div><div class='art' aria-label='Promo visual'><div class='chip c1'>$50</div><div class='chip c2'>A K</div><div class='chip c3'>Spin</div></div></section><section class='steps'><div><b>1</b><strong>Register for free</strong><span>Sign up and download the app</span></div><div><b>2</b><strong>Claim welcome bonus</strong><span>Deposit and choose free bonus</span></div><div><b>3</b><strong>Start playing</strong><span>Enjoy poker classics and more</span></div></section><section class='content'><h2>Take a Look at ${safe(md.brand || 'Promo')}'s Most Popular Games</h2><p>This desktop promo page was generated from selected MD attributes, color/font overrides, and required promo inputs.</p><div class='games'><span>Tournaments</span><span>Hold'em</span><span>Omaha</span><span>Rush & Cash</span></div></section><section class='style'><h2>Applied Design Summary</h2><p><strong>Style source:</strong> ${safe(body.styleSourceLabel)}<br><strong>Categories:</strong> ${safe(categories)}<br><strong>Heading:</strong> ${safe(design.headingFont)}<br><strong>Body:</strong> ${safe(design.bodyFont)}</p><div class='swatches'>${swatches}</div></section><section class='terms'><h2>Terms and Conditions</h2><p>${safe(promo.termsText)}</p></section><footer class='foot'><strong>${safe(md.brand || 'PROMO')}</strong><span>Visa Mastercard 18+ BeGambleAware.org</span></footer></article></body></html>`; const staticData = $getWorkflowStaticData('global'); staticData.pages = staticData.pages || {}; staticData.pages[id] = { html, payload: body, createdAt: new Date().toISOString() }; const headers = $json.headers || {}; const proto = headers['x-forwarded-proto'] || 'https'; const host = headers['x-forwarded-host'] || headers.host || ''; const pageUrl = host ? `${proto}://${host}/webhook/promo-page-view/${encodeURIComponent(id)}` : `/webhook/promo-page-view/${encodeURIComponent(id)}`; return [{ json: { ok: true, id, pageUrl, payload: body } }];"
+      },
+      "id": "43705cc8-0efd-482c-9c45-cf0a558b0020",
+      "name": "Build and Store Desktop Page",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        60,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {}
+      },
+      "id": "446ed638-2515-42eb-a06d-117743adcc6a",
+      "name": "Return Page URL",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        340,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "promo-page-view/:id",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "559ad55c-d86e-48fa-819d-1f337cde2769",
+      "name": "View Promo Page",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -220,
+        180
+      ],
+      "webhookId": "promo-page-view"
+    },
+    {
+      "parameters": {
+        "jsCode": "const id = $json.params?.id || $json.query?.id || ''; const staticData = $getWorkflowStaticData('global'); const page = staticData.pages?.[id]; const html = page?.html || `<!doctype html><html><head><meta charset='utf-8'><title>Promo page not found</title></head><body style='font-family:Arial,sans-serif;padding:40px'><h1>Promo page not found</h1><p>No generated page was stored for id: ${id}</p></body></html>`; return [{ json: { html } }];"
+      },
+      "id": "f7c55884-c061-494e-a9d1-76da9c6766b8",
+      "name": "Read Stored Page",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        60,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{$json.html}}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "id": "be1b98ea-a059-4e0e-84f3-64544c784b4e",
+      "name": "Render HTML Page",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        340,
+        180
+      ]
+    }
+  ],
+  "connections": {
+    "Generate Promo Page": {
+      "main": [
+        [
+          {
+            "node": "Build and Store Desktop Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build and Store Desktop Page": {
+      "main": [
+        [
+          {
+            "node": "Return Page URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "View Promo Page": {
+      "main": [
+        [
+          {
+            "node": "Read Stored Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Stored Page": {
+      "main": [
+        [
+          {
+            "node": "Render HTML Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 2,
+  "updatedAt": "2026-06-25T00:00:00.000Z",
+  "versionId": "promo-desktop-page-generator-v1"
+}

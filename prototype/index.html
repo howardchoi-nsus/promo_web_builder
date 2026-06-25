@@ -291,8 +291,12 @@
             <div class="subsection">
               <div class="subsection-title">
                 <h3>B3. Generate Page</h3>
-                <span>save result + open page</span>
+                <span>n8n trigger + open page</span>
               </div>
+              <label class="field">
+                <span>n8n Webhook URL</span>
+                <input v-model="n8nWebhookUrl" type="url" placeholder="https://your-n8n-domain/webhook/promo-page-generate" />
+              </label>
               <div class="action-row align-right">
                 <button class="primary-action" type="button" @click="generatePage">Generate Page</button>
               </div>
@@ -326,6 +330,7 @@
                       <th>Style Source</th>
                       <th>Template</th>
                       <th>Market</th>
+                      <th>Status</th>
                       <th>Action</th>
                     </tr>
                   </thead>
@@ -337,6 +342,7 @@
                       <td>{{ page.styleSourceLabel }}</td>
                       <td>{{ page.template }}</td>
                       <td>{{ page.market }}</td>
+                      <td>{{ page.pageUrl ? 'Web URL' : page.status }}</td>
                       <td>
                         <button class="tiny-button primary" type="button" @click="openGenerated(page)">Open</button>
                       </td>

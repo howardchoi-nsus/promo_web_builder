@@ -119,6 +119,7 @@ const storageKeys = {
   generatedPages: "promoPrototype.generatedPages.abc",
   selectedDocumentId: "promoPrototype.selectedDocumentId.abc",
   generatedPage: "promoPrototype.generatedPage",
+  n8nWebhookUrl: "promoPrototype.n8nWebhookUrl",
 };
 
 const dummyCompanyStylePresets = [
@@ -371,6 +372,7 @@ createApp({
       selectedDocumentId: localStorage.getItem(storageKeys.selectedDocumentId) || "",
       selectedPresetId: "preset-001",
       styleSource: "company_default",
+      n8nWebhookUrl: localStorage.getItem(storageKeys.n8nWebhookUrl) || "",
       detailDoc: null,
       modalTab: "outline",
       newMd: {
@@ -440,6 +442,9 @@ createApp({
     },
     selectedDocumentId() {
       if (this.styleSource === "design_md") this.resetOverride();
+    },
+    n8nWebhookUrl(value) {
+      localStorage.setItem(storageKeys.n8nWebhookUrl, value.trim());
     },
   },
 
@@ -631,21 +636,83 @@ createApp({
         },
         promo: { ...this.promo },
         design: { ...this.finalStyle },
+        sourceDesign: { ...source },
         styleSource: this.styleSource,
         styleSourceLabel: this.styleSourceLabel(),
         companyPreset: this.styleSource === "company_default" ? this.selectedPreset.name : null,
         hasOverride: this.hasOverride(this.finalStyle, source),
+        output: {
+          format: "desktop_web_page",
+          viewport: {
+            width: 1440,
+            minWidth: 1180,
+          },
+        },
       };
     },
 
-    generatePage() {
+    validatePromoInputs() {
+      const required = [
+        ["title", "Promo title"],
+        ["template", "Template"],
+        ["market", "Market / Region"],
+        ["leadText", "Lead text"],
+        ["ctaLabel", "CTA label"],
+        ["ctaUrl", "CTA URL"],
+        ["subline", "Subline"],
+        ["termsText", "Terms and Conditions"],
+      ];
+      const missing = required.filter(([key]) => !String(this.promo[key] || "").trim()).map(([, label]) => label);
+      if (missing.length) {
+        this.setStatus(`Missing: ${missing.slice(0, 2).join(", ")}${missing.length > 2 ? "..." : ""}`);
+        return false;
+      }
+      return true;
+    },
+
+    async triggerN8n(payload) {
+      const url = this.n8nWebhookUrl.trim();
+      const useProxy = window.location.protocol !== "file:";
+      if (!url && !useProxy) return null;
+      const requestUrl = useProxy ? "/api/generate-promo-page" : url;
+
+      const headers = {
+        "Content-Type": "application/json",
+      };
+      if (useProxy) headers["x-n8n-webhook-url"] = url;
+
+      const response = await fetch(requestUrl, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+      });
+
+      const contentType = response.headers.get("content-type") || "";
+      const result = contentType.includes("application/json") ? await response.json() : { html: await response.text() };
+      if (!response.ok) throw new Error(result.message || result.error || `n8n ${response.status}`);
+      return result;
+    },
+
+    async generatePage() {
       if (!this.selectedDocument) {
         this.setStatus("Select an MD first");
         return;
       }
+      if (!this.validatePromoInputs()) return;
 
       const pageId = `promo-${String(this.generatedPages.length + 1).padStart(3, "0")}`;
       const payload = this.buildGeneratedPayload(pageId);
+      const willUseN8n = this.n8nWebhookUrl.trim() || window.location.protocol !== "file:";
+      this.setStatus(willUseN8n ? "Triggering n8n workflow" : "Page generated locally");
+
+      let n8nResult = null;
+      try {
+        n8nResult = await this.triggerN8n(payload);
+      } catch (error) {
+        this.setStatus(`n8n failed: ${error.message}`);
+        return;
+      }
+
       const listItem = {
         id: pageId,
         title: payload.promo.title,
@@ -654,18 +721,24 @@ createApp({
         template: payload.promo.template,
         market: payload.promo.market,
         createdAt: payload.generatedAt,
-        status: "draft",
+        status: n8nResult ? "n8n_generated" : "draft",
+        pageUrl: n8nResult?.pageUrl || n8nResult?.previewUrl || "",
         hasOverride: payload.hasOverride,
-        payload,
+        payload: n8nResult?.payload || payload,
       };
 
       this.generatedPages.unshift(listItem);
       saveJson(storageKeys.generatedPages, this.generatedPages);
-      saveJson(storageKeys.generatedPage, payload);
-      this.setStatus("Page generated");
+      saveJson(storageKeys.generatedPage, listItem.payload);
+      this.setStatus(n8nResult ? "n8n page generated" : "Page generated locally");
+      if (listItem.pageUrl) window.open(listItem.pageUrl, "_blank");
     },
 
     openGenerated(page) {
+      if (page.pageUrl) {
+        window.open(page.pageUrl, "_blank");
+        return;
+      }
       saveJson(storageKeys.generatedPage, page.payload);
       window.open("generated.html", "_blank");
     },
