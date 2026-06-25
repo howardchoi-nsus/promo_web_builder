@@ -1,0 +1,12 @@
+{
+  "name": "promo-web-builder",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "check": "node --check prototype/app.js && node --check prototype/generated.js"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^0.10.4"
+  },
+  "devDependencies": {}
+}

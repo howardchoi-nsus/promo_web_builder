@@ -1,4 +1,4 @@
-const sampleMarkdown = `---
+﻿const sampleMarkdown = `---
 name: GGPoker-promo-design
 description: A high-contrast promo system with black casino surfaces, red CTA emphasis, compact step bars, and legal-first footer treatment.
 colors:
@@ -7,8 +7,8 @@ colors:
   canvas: "#f3f3f3"
   ink: "#151515"
 typography:
-  heading: "Inter, Arial, sans-serif"
-  body: "Inter, Arial, sans-serif"
+  heading: "Pretendard, Arial, sans-serif"
+  body: "Pretendard, Arial, sans-serif"
 ---
 
 ## Overview
@@ -32,8 +32,8 @@ High contrast promotional landing pages that prioritize bonus clarity, quick CTA
 
 ### Font Family
 
-- Heading: Inter, Arial, sans-serif
-- Body: Inter, Arial, sans-serif
+- Heading: Pretendard, Arial, sans-serif
+- Body: Pretendard, Arial, sans-serif
 
 ## Layout
 
@@ -136,8 +136,8 @@ const dummyCompanyStylePresets = [
       ink: "#151515",
     },
     typographyTokens: {
-      headingFont: "Inter, Arial, sans-serif",
-      bodyFont: "Inter, Arial, sans-serif",
+      headingFont: "Pretendard, Arial, sans-serif",
+      bodyFont: "Pretendard, Arial, sans-serif",
       heroTitleWeight: "800",
     },
   },
@@ -156,7 +156,7 @@ const dummyCompanyStylePresets = [
     },
     typographyTokens: {
       headingFont: "'Arial Black', Arial, sans-serif",
-      bodyFont: "Arial, Helvetica, sans-serif",
+      bodyFont: "Pretendard, Arial, sans-serif",
       heroTitleWeight: "900",
     },
   },
@@ -175,7 +175,7 @@ const dummyCompanyStylePresets = [
     },
     typographyTokens: {
       headingFont: "Georgia, serif",
-      bodyFont: "Inter, Arial, sans-serif",
+      bodyFont: "Pretendard, Arial, sans-serif",
       heroTitleWeight: "800",
     },
   },
@@ -193,8 +193,8 @@ const dummyCompanyStylePresets = [
       ink: "#1b1f1a",
     },
     typographyTokens: {
-      headingFont: "Inter, Arial, sans-serif",
-      bodyFont: "Verdana, Geneva, sans-serif",
+      headingFont: "Pretendard, Arial, sans-serif",
+      bodyFont: "Pretendard, Arial, sans-serif",
       heroTitleWeight: "700",
     },
   },
@@ -268,7 +268,7 @@ function extractSummary(markdown) {
   const colors = Array.from(new Set(markdown.match(/#[0-9a-fA-F]{6}\b/g) || [])).slice(0, 8);
   const fontMatches = Array.from(
     new Set(
-      (markdown.match(/(?:fontFamily|font-family|Heading|Body|Primary):?\s*["'`]?([A-Za-z][A-Za-z0-9\s,-]*(?:sans-serif|serif|monospace|Arial|Inter|Helvetica|Georgia|system-ui))/gi) || [])
+      (markdown.match(/(?:fontFamily|font-family|Heading|Body|Primary):?\s*["'`]?([A-Za-z][A-Za-z0-9\s,-]*(?:Pretendard|sans-serif|serif|monospace|Arial|Inter|Helvetica|Georgia|system-ui))/gi) || [])
         .map((item) => item.replace(/^(fontFamily|font-family|Heading|Body|Primary):?\s*/i, "").replace(/["'`]/g, "").trim())
     )
   ).slice(0, 4);
@@ -277,7 +277,7 @@ function extractSummary(markdown) {
   return {
     headings,
     colors,
-    fonts: fontMatches.length ? fontMatches : ["Not detected"],
+    fonts: fontMatches.length ? fontMatches : ["Pretendard, Arial, sans-serif"],
     categories,
     sectionCount: headings.filter((heading) => heading.level <= 2).length,
     tokenCount: colors.length + fontMatches.length,
@@ -339,8 +339,8 @@ function sourceFromDocument(doc) {
     primaryColor: primary,
     ctaColor: doc?.summary.colors[1] || primary,
     canvasColor: doc?.summary.colors[2] || "#f3f3f3",
-    headingFont: doc?.summary.fonts[0] || "Inter, Arial, sans-serif",
-    bodyFont: doc?.summary.fonts[1] || doc?.summary.fonts[0] || "Inter, Arial, sans-serif",
+    headingFont: doc?.summary.fonts[0] || "Pretendard, Arial, sans-serif",
+    bodyFont: doc?.summary.fonts[1] || doc?.summary.fonts[0] || "Pretendard, Arial, sans-serif",
     titleWeight: "800",
   };
 }
@@ -360,15 +360,15 @@ const { createApp } = Vue;
 
 createApp({
   data() {
-    const docs = loadJson(storageKeys.documents, dummyDocuments());
     const pages = loadJson(storageKeys.generatedPages, []);
     return {
       status: "Ready",
       sectionWidths: [30, 30, 40],
       resizeState: null,
-      designDocuments: docs,
+      designDocuments: [],
+      mdListSource: "Loading",
       companyStylePresets: dummyCompanyStylePresets,
-      selectedDocumentId: localStorage.getItem(storageKeys.selectedDocumentId) || docs[0]?.id || "",
+      selectedDocumentId: localStorage.getItem(storageKeys.selectedDocumentId) || "",
       selectedPresetId: "preset-001",
       styleSource: "company_default",
       detailDoc: null,
@@ -395,8 +395,8 @@ createApp({
         primaryColor: "#d52b1e",
         ctaColor: "#e12d25",
         canvasColor: "#f3f3f3",
-        headingFont: "Inter, Arial, sans-serif",
-        bodyFont: "Inter, Arial, sans-serif",
+        headingFont: "Pretendard, Arial, sans-serif",
+        bodyFont: "Pretendard, Arial, sans-serif",
         titleWeight: "800",
       },
       generatedPages: pages,
@@ -445,11 +445,36 @@ createApp({
   },
 
   mounted() {
-    saveJson(storageKeys.documents, this.designDocuments);
+    this.loadDesignDocuments();
     this.resetOverride();
   },
 
   methods: {
+    async loadDesignDocuments() {
+      try {
+        const response = await fetch("/api/design-documents");
+        if (!response.ok) throw new Error(`API ${response.status}`);
+        const payload = await response.json();
+        this.designDocuments = payload.documents || [];
+        this.mdListSource = "Neon Postgres";
+        if (!this.selectedDocumentId || !this.selectedDocument) {
+          this.selectedDocumentId = this.designDocuments[0]?.id || "";
+        }
+        localStorage.setItem(storageKeys.selectedDocumentId, this.selectedDocumentId);
+        this.resetOverride();
+        this.setStatus(`Loaded ${this.designDocuments.length} MDs from Neon`);
+      } catch (error) {
+        this.designDocuments = dummyDocuments();
+        this.mdListSource = "Fallback dummy";
+        if (!this.selectedDocumentId || !this.selectedDocument) {
+          this.selectedDocumentId = this.designDocuments[0]?.id || "";
+        }
+        localStorage.setItem(storageKeys.selectedDocumentId, this.selectedDocumentId);
+        this.resetOverride();
+        this.setStatus("Neon API unavailable. Using fallback dummy data");
+      }
+    },
+
     syncSlug() {
       this.newMd.slug = slugify(this.newMd.brandName);
     },
@@ -623,3 +648,4 @@ createApp({
     },
   },
 }).mount("#app");
+
