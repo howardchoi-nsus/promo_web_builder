@@ -221,6 +221,32 @@ body.is-resizing {
   border-radius: 6px;
   background: #ffffff;
   color: var(--ink);
+  font-family: Pretendard, Arial, sans-serif;
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
+  color: #98a2b3;
+}
+
+.promo-required .field input,
+.promo-required .field select,
+.promo-required .field textarea {
+  font-family: Pretendard, Arial, sans-serif;
+}
+
+.promo-required .field input:placeholder-shown,
+.promo-required .field textarea:placeholder-shown,
+.promo-required .field select:invalid {
+  color: #98a2b3;
+}
+
+.promo-required .field select option {
+  color: var(--ink);
+}
+
+.promo-required .field select option[disabled] {
+  color: #98a2b3;
 }
 
 .field textarea {

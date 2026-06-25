@@ -380,16 +380,15 @@ createApp({
         sourceName: "text input",
       },
       promo: {
-        title: "Get $50 Free Play",
-        template: "Template 4",
-        market: "Global",
-        leadText: "Deposit $20",
-        ctaLabel: "Play Here",
-        ctaUrl: "https://widget.ggpoker.com",
-        subline: "All your favorites and more. There is something for everyone.",
-        alphaText: "18+ T&Cs Apply. Welcome Bonus promotion for new players only.",
-        termsText:
-          "Players must be aged 18+ to play. Welcome bonus is available to new players only. Each promotion's terms and conditions are subject to the site terms and conditions.",
+        title: "",
+        template: "",
+        market: "",
+        leadText: "",
+        ctaLabel: "",
+        ctaUrl: "",
+        subline: "",
+        alphaText: "",
+        termsText: "",
       },
       override: {
         primaryColor: "#d52b1e",
@@ -516,6 +515,21 @@ createApp({
 
     setStatus(message) {
       this.status = message;
+    },
+
+    clearPromoInputs() {
+      this.promo = {
+        title: "",
+        template: "",
+        market: "",
+        leadText: "",
+        ctaLabel: "",
+        ctaUrl: "",
+        subline: "",
+        alphaText: "",
+        termsText: "",
+      };
+      this.setStatus("Promo inputs cleared");
     },
 
     openAddDesign() {

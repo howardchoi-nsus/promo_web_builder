@@ -44,7 +44,7 @@
               <span>Source: {{ mdListSource }}</span>
             </div>
 
-            <div class="subsection">
+            <div class="subsection promo-required">
               <div class="subsection-title">
                 <h3>A1. Registered MD List</h3>
                 <div class="subsection-actions">
@@ -58,8 +58,7 @@
                   <thead>
                     <tr>
                       <th>No</th>
-                      <th>Document</th>
-                      <th>Brand ID</th>
+                      <th>Brand</th>
                       <th>Updated</th>
                       <th>Action</th>
                     </tr>
@@ -73,9 +72,8 @@
                       <td>#{{ index + 1 }}</td>
                       <td>
                         <strong>{{ doc.brandName }}</strong>
-                        <span>{{ doc.id }}</span>
+                        <span>{{ doc.slug }}</span>
                       </td>
-                      <td>{{ doc.brandId }}</td>
                       <td>{{ doc.updatedAt }}</td>
                       <td>
                         <div class="card-actions">
@@ -125,11 +123,12 @@
               <div class="form-grid">
                 <label class="field">
                   <span>Promo title</span>
-                  <input v-model="promo.title" type="text" />
+                  <input v-model="promo.title" type="text" placeholder="입력해 주세요" />
                 </label>
                 <label class="field">
                   <span>Template</span>
-                  <select v-model="promo.template">
+                  <select v-model="promo.template" required>
+                    <option disabled value="">선택해 주세요</option>
                     <option>Template 4</option>
                     <option>Template 1</option>
                     <option>Template 2</option>
@@ -139,7 +138,8 @@
                 </label>
                 <label class="field">
                   <span>Market / Region</span>
-                  <select v-model="promo.market">
+                  <select v-model="promo.market" required>
+                    <option disabled value="">선택해 주세요</option>
                     <option>Global</option>
                     <option>Global - Latam</option>
                     <option>Global - French</option>
@@ -152,30 +152,33 @@
                 </label>
                 <label class="field">
                   <span>Lead text</span>
-                  <input v-model="promo.leadText" type="text" />
+                  <input v-model="promo.leadText" type="text" placeholder="입력해 주세요" />
                 </label>
                 <label class="field">
                   <span>CTA label</span>
-                  <input v-model="promo.ctaLabel" type="text" />
+                  <input v-model="promo.ctaLabel" type="text" placeholder="입력해 주세요" />
                 </label>
                 <label class="field">
                   <span>CTA URL</span>
-                  <input v-model="promo.ctaUrl" type="url" />
+                  <input v-model="promo.ctaUrl" type="url" placeholder="입력해 주세요" />
                 </label>
               </div>
 
               <label class="field">
                 <span>Subline</span>
-                <textarea v-model="promo.subline" rows="2"></textarea>
+                <textarea v-model="promo.subline" rows="2" placeholder="입력해 주세요"></textarea>
               </label>
               <label class="field">
                 <span>Alpha / legal text</span>
-                <input v-model="promo.alphaText" type="text" />
+                <input v-model="promo.alphaText" type="text" placeholder="입력해 주세요" />
               </label>
               <label class="field">
                 <span>Terms and Conditions</span>
-                <textarea v-model="promo.termsText" rows="4"></textarea>
+                <textarea v-model="promo.termsText" rows="4" placeholder="입력해 주세요"></textarea>
               </label>
+              <div class="action-row align-right">
+                <button class="secondary-action" type="button" @click="clearPromoInputs">Clear</button>
+              </div>
             </div>
 
             <div class="subsection">
