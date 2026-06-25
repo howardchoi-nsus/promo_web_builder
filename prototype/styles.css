@@ -593,6 +593,19 @@ body.is-resizing {
   gap: 8px;
 }
 
+#section-b .form-grid {
+  grid-template-columns: 1fr;
+}
+
+#section-b .form-grid.compact,
+#section-b .style-source-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+#section-b .source-summary {
+  grid-template-columns: 1fr;
+}
+
 .selected-style-summary {
   background: #ffffff;
 }

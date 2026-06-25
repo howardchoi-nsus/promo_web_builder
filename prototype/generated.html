@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Generated Promo Page</title>
-    <link rel="stylesheet" href="/prototype/styles.css" />
+    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <div id="generatedApp" class="generated-shell">
@@ -13,7 +13,7 @@
           <p class="eyebrow">Generated Page</p>
           <h1>{{ payload ? payload.promo.title : 'Promo Page' }}</h1>
         </div>
-        <a href="/">Back to admin</a>
+        <a href="index.html">Back to admin</a>
       </header>
 
       <main>
@@ -22,8 +22,8 @@
             <h2>No generated page</h2>
             <span>Missing data</span>
           </div>
-          <p>관리 화면에서 MD를 선택하고 Generate Page를 눌러주세요.</p>
-          <a class="primary-action" style="display: inline-flex; align-items: center; text-decoration: none;" href="/">Go to admin</a>
+          <p>&#44288;&#47532; &#54868;&#47732;&#50640;&#49436; MD&#47484; &#49440;&#53469;&#54616;&#44256; Generate Page&#47484; &#45580;&#47084;&#51452;&#49464;&#50836;.</p>
+          <a class="primary-action" style="display: inline-flex; align-items: center; text-decoration: none;" href="index.html">Go to admin</a>
         </section>
 
         <article v-else class="promo-page">
@@ -78,6 +78,6 @@
     </div>
 
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-    <script src="/prototype/generated.js"></script>
+    <script src="generated.js"></script>
   </body>
 </html>
