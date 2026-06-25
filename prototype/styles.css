@@ -643,11 +643,6 @@ body.is-resizing {
   line-height: 1.45;
 }
 
-.token-summary {
-  padding-top: 8px;
-  border-top: 1px solid var(--line);
-}
-
 .selected-style-summary {
   background: #ffffff;
 }

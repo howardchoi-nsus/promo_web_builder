@@ -118,34 +118,19 @@
                 <span>{{ selectedDocument.designConcept?.summary || 'Not analyzed yet' }}</span>
                 <strong>Layout philosophy</strong>
                 <span>{{ conceptValue('layoutPhilosophy') || 'Not analyzed yet' }}</span>
+                <strong>Colors</strong>
+                <div class="swatches">
+                  <span
+                    v-for="color in selectedDocument.summary.colors.slice(0, 6)"
+                    :key="color"
+                    class="swatch"
+                    :title="color"
+                    :style="{ background: color }"
+                  ></span>
+                </div>
+                <span>{{ selectedDocument.summary.colors.slice(0, 3).join(' / ') || 'No color token' }}</span>
                 <div class="action-row align-right">
                   <button class="tiny-button" type="button" @click="openConceptDetail">Detail view</button>
-                </div>
-              </div>
-
-              <div class="source-summary token-summary">
-                <div class="summary-box">
-                  <strong>Colors</strong>
-                  <div class="swatches">
-                    <span
-                      v-for="color in selectedDocument.summary.colors.slice(0, 6)"
-                      :key="color"
-                      class="swatch"
-                      :title="color"
-                      :style="{ background: color }"
-                    ></span>
-                  </div>
-                  <span>{{ selectedDocument.summary.colors.slice(0, 3).join(' / ') || 'No color token' }}</span>
-                </div>
-                <div class="summary-box">
-                  <strong>Font style</strong>
-                  <span>{{ selectedDocument.summary.fonts.slice(0, 2).join(' / ') }}</span>
-                </div>
-                <div class="summary-box">
-                  <strong>Design style info</strong>
-                  <span>{{ selectedDocument.summary.categories.slice(0, 5).join(', ') || 'No category summary' }}</span>
-                  <span>{{ selectedDocument.summary.sectionCount }} sections / {{ selectedDocument.summary.tokenCount }} tokens</span>
-                  <span>{{ selectedDocument.designConcept?.analysisModel || 'No model' }}</span>
                 </div>
               </div>
             </div>
@@ -469,6 +454,10 @@
             <div class="summary-box">
               <strong>Typography behavior</strong>
               <span>{{ conceptValue('typographyBehavior') || 'Not analyzed yet' }}</span>
+            </div>
+            <div class="summary-box">
+              <strong>Font style</strong>
+              <span>{{ selectedDocument.summary.fonts.slice(0, 4).join(' / ') || 'No font token' }}</span>
             </div>
             <div class="summary-box">
               <strong>Do</strong>
