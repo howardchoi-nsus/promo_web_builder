@@ -518,6 +518,14 @@ createApp({
       this.status = message;
     },
 
+    openAddDesign() {
+      this.$nextTick(() => this.$refs.addDesignModal.showModal());
+    },
+
+    closeAddDesign() {
+      this.$refs.addDesignModal.close();
+    },
+
     async onFileChange(event) {
       const file = event.target.files[0];
       if (!file) return;
@@ -563,6 +571,7 @@ createApp({
       this.selectDocument(doc.id);
       saveJson(storageKeys.documents, this.designDocuments);
       this.setStatus("MD registered");
+      this.closeAddDesign();
     },
 
     selectDocument(id) {

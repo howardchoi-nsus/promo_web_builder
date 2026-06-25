@@ -444,6 +444,12 @@ body.is-resizing {
   gap: 12px;
 }
 
+.subsection-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .subsection-title h3 {
   font-size: 15px;
 }

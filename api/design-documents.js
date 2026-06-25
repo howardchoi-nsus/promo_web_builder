@@ -50,6 +50,7 @@ module.exports = async function handler(req, res) {
         b.name as brand_name,
         b.slug as slug,
         d.original_filename,
+        d.raw_markdown,
         d.status,
         d.updated_at
       from design_documents d
@@ -102,7 +103,7 @@ module.exports = async function handler(req, res) {
           sourceName: doc.original_filename,
           status: doc.status,
           updatedAt: doc.updated_at ? new Date(doc.updated_at).toISOString().slice(0, 16).replace("T", " ") : "",
-          markdown: "",
+          markdown: doc.raw_markdown || "",
           summary: {
             headings,
             colors: tokenSummary.colors,

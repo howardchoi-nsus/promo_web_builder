@@ -47,7 +47,10 @@
             <div class="subsection">
               <div class="subsection-title">
                 <h3>A1. Registered MD List</h3>
-                <span>{{ designDocuments.length }} documents</span>
+                <div class="subsection-actions">
+                  <span>{{ designDocuments.length }} documents</span>
+                  <button class="tiny-button primary" type="button" @click="openAddDesign">+ ADD Design</button>
+                </div>
               </div>
 
               <div class="table-wrap">
@@ -100,38 +103,6 @@
               </div>
             </div>
 
-            <div class="subsection">
-              <div class="subsection-title">
-                <h3>A2. Add MD</h3>
-                <span>brand / text / md file</span>
-              </div>
-
-              <div class="split">
-                <label class="field">
-                  <span>Brand</span>
-                  <input v-model="newMd.brandName" type="text" @input="syncSlug" />
-                </label>
-                <label class="field">
-                  <span>Slug</span>
-                  <input v-model="newMd.slug" type="text" />
-                </label>
-              </div>
-
-              <label class="field">
-                <span>MD file</span>
-                <input type="file" accept=".md,text/markdown,text/plain" @change="onFileChange" />
-              </label>
-
-              <label class="field">
-                <span>MD text</span>
-                <textarea v-model="newMd.text" rows="8" spellcheck="false"></textarea>
-              </label>
-
-              <div class="action-row">
-                <button class="secondary-action" type="button" @click="loadSample">Sample</button>
-                <button class="primary-action" type="button" @click="registerMarkdown">Register MD</button>
-              </div>
-            </div>
           </section>
 
           <div class="resize-handle" role="separator" aria-orientation="vertical" title="Drag to resize" @pointerdown="startResize($event, 0)"></div>
@@ -408,7 +379,44 @@
               <span>{{ item.category }}{{ item.excerpt ? ` - ${item.excerpt.slice(0, 140)}` : '' }}</span>
             </div>
           </div>
-          <pre v-else class="raw-md">{{ detailDoc.markdown }}</pre>
+          <pre v-else class="raw-md">{{ detailDoc.markdown || 'No raw markdown available.' }}</pre>
+        </div>
+      </dialog>
+
+      <dialog class="modal" ref="addDesignModal">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">A2. Add MD</p>
+            <h2>Add Design MD</h2>
+          </div>
+          <button class="icon-button" type="button" aria-label="Close" @click="closeAddDesign">x</button>
+        </div>
+        <div class="modal-body">
+          <div class="split">
+            <label class="field">
+              <span>Brand</span>
+              <input v-model="newMd.brandName" type="text" @input="syncSlug" />
+            </label>
+            <label class="field">
+              <span>Slug</span>
+              <input v-model="newMd.slug" type="text" />
+            </label>
+          </div>
+
+          <label class="field">
+            <span>MD file</span>
+            <input type="file" accept=".md,text/markdown,text/plain" @change="onFileChange" />
+          </label>
+
+          <label class="field">
+            <span>MD text</span>
+            <textarea v-model="newMd.text" rows="12" spellcheck="false"></textarea>
+          </label>
+
+          <div class="action-row align-right">
+            <button class="secondary-action" type="button" @click="loadSample">Sample</button>
+            <button class="primary-action" type="button" @click="registerMarkdown">Register MD</button>
+          </div>
         </div>
       </dialog>
     </div>
