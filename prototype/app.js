@@ -712,6 +712,14 @@ createApp({
       this.$refs.detailModal.close();
     },
 
+    openConceptDetail() {
+      this.$nextTick(() => this.$refs.conceptModal.showModal());
+    },
+
+    closeConceptDetail() {
+      this.$refs.conceptModal.close();
+    },
+
     resetOverride() {
       this.override = { ...this.sourceStyle };
     },

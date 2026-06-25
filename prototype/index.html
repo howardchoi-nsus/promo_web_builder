@@ -113,44 +113,13 @@
                 <input v-model="n8nAnalyzeWebhookUrl" type="url" placeholder="https://your-n8n-domain/webhook/design-md-concept-analyze" />
               </label>
 
-              <div class="concept-summary-grid">
-                <div class="summary-box large">
-                  <strong>Design concept</strong>
-                  <span>{{ selectedDocument.designConcept?.summary || 'Not analyzed yet' }}</span>
-                </div>
-                <div class="summary-box">
-                  <strong>Visual mood</strong>
-                  <span>{{ conceptValue('visualMood') || 'Not analyzed yet' }}</span>
-                </div>
-                <div class="summary-box">
-                  <strong>Layout philosophy</strong>
-                  <span>{{ conceptValue('layoutPhilosophy') || 'Not analyzed yet' }}</span>
-                </div>
-                <div class="summary-box">
-                  <strong>Depth / effects</strong>
-                  <span>{{ conceptValue('depthAndEffects') || 'Not analyzed yet' }}</span>
-                </div>
-                <div class="summary-box">
-                  <strong>Shape / radius</strong>
-                  <span>{{ conceptValue('shapeAndRadius') || 'Not analyzed yet' }}</span>
-                </div>
-                <div class="summary-box">
-                  <strong>Component style</strong>
-                  <span>{{ conceptValue('componentStyle') || 'Not analyzed yet' }}</span>
-                </div>
-                <div class="summary-box">
-                  <strong>Do</strong>
-                  <ul v-if="conceptList('dos').length">
-                    <li v-for="item in conceptList('dos').slice(0, 3)" :key="item">{{ item }}</li>
-                  </ul>
-                  <span v-else>Not analyzed yet</span>
-                </div>
-                <div class="summary-box">
-                  <strong>Don't</strong>
-                  <ul v-if="conceptList('donts').length">
-                    <li v-for="item in conceptList('donts').slice(0, 3)" :key="item">{{ item }}</li>
-                  </ul>
-                  <span v-else>Not analyzed yet</span>
+              <div class="summary-box concept-compact-card">
+                <strong>Design concept</strong>
+                <span>{{ selectedDocument.designConcept?.summary || 'Not analyzed yet' }}</span>
+                <strong>Layout philosophy</strong>
+                <span>{{ conceptValue('layoutPhilosophy') || 'Not analyzed yet' }}</span>
+                <div class="action-row align-right">
+                  <button class="tiny-button" type="button" @click="openConceptDetail">Detail view</button>
                 </div>
               </div>
 
@@ -456,6 +425,66 @@
             </div>
           </div>
           <pre v-else class="raw-md">{{ detailDoc.markdown || 'No raw markdown available.' }}</pre>
+        </div>
+      </dialog>
+
+      <dialog class="modal" ref="conceptModal">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Design Concept Detail</p>
+            <h2>{{ selectedDocument ? selectedDocument.brandName : 'Design concept' }}</h2>
+          </div>
+          <button class="icon-button" type="button" aria-label="Close" @click="closeConceptDetail">x</button>
+        </div>
+        <div v-if="selectedDocument" class="modal-body">
+          <div class="concept-summary-grid">
+            <div class="summary-box large">
+              <strong>Design concept</strong>
+              <span>{{ selectedDocument.designConcept?.summary || 'Not analyzed yet' }}</span>
+            </div>
+            <div class="summary-box">
+              <strong>Visual mood</strong>
+              <span>{{ conceptValue('visualMood') || 'Not analyzed yet' }}</span>
+            </div>
+            <div class="summary-box">
+              <strong>Layout philosophy</strong>
+              <span>{{ conceptValue('layoutPhilosophy') || 'Not analyzed yet' }}</span>
+            </div>
+            <div class="summary-box">
+              <strong>Depth / effects</strong>
+              <span>{{ conceptValue('depthAndEffects') || 'Not analyzed yet' }}</span>
+            </div>
+            <div class="summary-box">
+              <strong>Shape / radius</strong>
+              <span>{{ conceptValue('shapeAndRadius') || 'Not analyzed yet' }}</span>
+            </div>
+            <div class="summary-box">
+              <strong>Component style</strong>
+              <span>{{ conceptValue('componentStyle') || 'Not analyzed yet' }}</span>
+            </div>
+            <div class="summary-box">
+              <strong>Color behavior</strong>
+              <span>{{ conceptValue('colorBehavior') || 'Not analyzed yet' }}</span>
+            </div>
+            <div class="summary-box">
+              <strong>Typography behavior</strong>
+              <span>{{ conceptValue('typographyBehavior') || 'Not analyzed yet' }}</span>
+            </div>
+            <div class="summary-box">
+              <strong>Do</strong>
+              <ul v-if="conceptList('dos').length">
+                <li v-for="item in conceptList('dos')" :key="item">{{ item }}</li>
+              </ul>
+              <span v-else>Not analyzed yet</span>
+            </div>
+            <div class="summary-box">
+              <strong>Don't</strong>
+              <ul v-if="conceptList('donts').length">
+                <li v-for="item in conceptList('donts')" :key="item">{{ item }}</li>
+              </ul>
+              <span v-else>Not analyzed yet</span>
+            </div>
+          </div>
         </div>
       </dialog>
 

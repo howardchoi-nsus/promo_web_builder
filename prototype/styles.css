@@ -528,6 +528,12 @@ body.is-resizing {
   background: color-mix(in srgb, var(--primary) 8%, #ffffff);
 }
 
+.data-table tr.selected .tiny-button.primary {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #ffffff;
+}
+
 .data-table td strong {
   display: block;
   font-size: 13px;
@@ -615,6 +621,15 @@ body.is-resizing {
 .summary-box.large {
   border-color: #cfd6e2;
   background: #ffffff;
+}
+
+.concept-compact-card {
+  display: grid;
+  gap: 6px;
+}
+
+.concept-compact-card .action-row {
+  margin-top: 4px;
 }
 
 .summary-box ul {
