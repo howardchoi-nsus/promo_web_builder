@@ -222,6 +222,8 @@ body.is-resizing {
   background: #ffffff;
   color: var(--ink);
   font-family: Pretendard, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.35;
 }
 
 .field input::placeholder,
@@ -233,6 +235,7 @@ body.is-resizing {
 .promo-required .field select,
 .promo-required .field textarea {
   font-family: Pretendard, Arial, sans-serif;
+  font-size: 14px;
 }
 
 .promo-required .field input:placeholder-shown,
@@ -588,6 +591,14 @@ body.is-resizing {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
+}
+
+.selected-style-summary {
+  background: #ffffff;
+}
+
+.selected-style-summary .summary-box {
+  background: #fbfcfe;
 }
 
 .result-card {

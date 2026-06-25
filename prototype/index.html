@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Promo Builder Admin Prototype</title>
-    <link rel="stylesheet" href="/prototype/styles.css" />
+    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <div id="app" class="app-shell">
@@ -14,7 +14,7 @@
           <a href="#section-a" class="active">A. MD Registry</a>
           <a href="#section-b">B. Promo Builder</a>
           <a href="#section-c">C. Results</a>
-          <a href="/generated.html">Generated Page</a>
+          <a href="generated.html">Generated Page</a>
         </nav>
       </aside>
 
@@ -44,7 +44,7 @@
               <span>Source: {{ mdListSource }}</span>
             </div>
 
-            <div class="subsection promo-required">
+            <div class="subsection">
               <div class="subsection-title">
                 <h3>A1. Registered MD List</h3>
                 <div class="subsection-actions">
@@ -85,22 +85,7 @@
                   </tbody>
                 </table>
               </div>
-
-              <div class="summary-box" v-if="selectedDocument">
-                <strong>Selected style summary</strong>
-                <div class="swatches">
-                  <span
-                    v-for="color in selectedDocument.summary.colors.slice(0, 6)"
-                    :key="color"
-                    class="swatch"
-                    :title="color"
-                    :style="{ background: color }"
-                  ></span>
-                </div>
-                <span>{{ selectedDocument.summary.fonts[0] }}</span>
-              </div>
             </div>
-
           </section>
 
           <div class="resize-handle" role="separator" aria-orientation="vertical" title="Drag to resize" @pointerdown="startResize($event, 0)"></div>
@@ -114,7 +99,39 @@
               <span>{{ selectedDocument ? selectedDocument.brandName : 'No MD selected' }}</span>
             </div>
 
-            <div class="subsection">
+            <div class="subsection selected-style-summary" v-if="selectedDocument">
+              <div class="subsection-title">
+                <h3>Selected style summary</h3>
+                <span>{{ selectedDocument.brandName }}</span>
+              </div>
+
+              <div class="source-summary">
+                <div class="summary-box">
+                  <strong>Colors</strong>
+                  <div class="swatches">
+                    <span
+                      v-for="color in selectedDocument.summary.colors.slice(0, 6)"
+                      :key="color"
+                      class="swatch"
+                      :title="color"
+                      :style="{ background: color }"
+                    ></span>
+                  </div>
+                  <span>{{ selectedDocument.summary.colors.slice(0, 3).join(' / ') || 'No color token' }}</span>
+                </div>
+                <div class="summary-box">
+                  <strong>Font style</strong>
+                  <span>{{ selectedDocument.summary.fonts.slice(0, 2).join(' / ') }}</span>
+                </div>
+                <div class="summary-box">
+                  <strong>Design style info</strong>
+                  <span>{{ selectedDocument.summary.categories.slice(0, 5).join(', ') || 'No category summary' }}</span>
+                  <span>{{ selectedDocument.summary.sectionCount }} sections / {{ selectedDocument.summary.tokenCount }} tokens</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="subsection promo-required">
               <div class="subsection-title">
                 <h3>B1. Required Inputs</h3>
                 <span>promo content</span>
@@ -425,6 +442,6 @@
     </div>
 
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-    <script src="/prototype/app.js"></script>
+    <script src="app.js"></script>
   </body>
 </html>

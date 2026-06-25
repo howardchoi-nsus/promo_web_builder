@@ -667,7 +667,7 @@ createApp({
 
     openGenerated(page) {
       saveJson(storageKeys.generatedPage, page.payload);
-      window.open("/generated.html", "_blank");
+      window.open("generated.html", "_blank");
     },
   },
 }).mount("#app");
