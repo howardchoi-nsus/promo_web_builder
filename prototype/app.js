@@ -1163,6 +1163,7 @@ createApp({
         pageUrl: n8nResult?.designUrl || n8nResult?.imageUrl || n8nResult?.pageUrl || n8nResult?.previewUrl || "",
         layoutMapping: n8nResult?.layoutMapping || null,
         mdComplianceMap: n8nResult?.mdComplianceMap || null,
+        imagePrompt: n8nResult?.imagePrompt || "",
         hasOverride: payload.hasOverride,
         payload: n8nResult?.payload || payload,
       };
@@ -1188,4 +1189,3 @@ createApp({
     },
   },
 }).mount("#app");
-

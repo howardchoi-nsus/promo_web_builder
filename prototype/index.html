@@ -480,7 +480,7 @@
                       <td>{{ page.styleSourceLabel }}</td>
                       <td>{{ page.template }}</td>
                       <td>{{ page.market }}</td>
-                      <td>{{ page.pageUrl ? 'Design URL' : page.status }}</td>
+                      <td>{{ page.imageUrl ? 'Image URL' : page.pageUrl ? 'Design URL' : page.status }}</td>
                       <td>
                         <button class="tiny-button primary" type="button" @click="openGenerated(page)">Open</button>
                       </td>
@@ -500,6 +500,8 @@
                 <div><strong>MD</strong><span>{{ lastGenerated.selectedMd }}</span></div>
                 <div><strong>Style</strong><span>{{ lastGenerated.styleSourceLabel }}</span></div>
                 <div><strong>Override</strong><span>{{ lastGenerated.hasOverride ? 'Applied' : 'None' }}</span></div>
+                <div><strong>MD Compliance</strong><span>{{ lastGenerated.mdComplianceMap ? 'Included' : 'Pending' }}</span></div>
+                <div><strong>Output</strong><span>{{ lastGenerated.imageUrl ? 'UI design image' : lastGenerated.pageUrl ? 'Design URL' : 'Local payload preview' }}</span></div>
                 <button class="primary-action" type="button" @click="openGenerated(lastGenerated)">Open generated design</button>
               </div>
               <div v-else class="outline-item">
