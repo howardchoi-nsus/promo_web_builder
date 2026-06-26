@@ -377,6 +377,9 @@ createApp({
       resizeState: null,
       designDocuments: [],
       mdListSource: "Loading",
+      expandedStyleGroupSlug: "",
+      selectedStyleGroupSlug: "",
+      styleGroupSearch: "",
       companyStylePresets: dummyCompanyStylePresets,
       selectedDocumentId: localStorage.getItem(storageKeys.selectedDocumentId) || "",
       selectedPresetId: "preset-001",
@@ -423,6 +426,70 @@ createApp({
 
     selectedDocument() {
       return this.designDocuments.find((doc) => doc.id === this.selectedDocumentId) || null;
+    },
+
+    selectedDocumentGroupLabel() {
+      return this.groupInfoForDocument(this.selectedDocument).name;
+    },
+
+    selectedDocumentTags() {
+      return this.tagsForDocument(this.selectedDocument).slice(0, 6);
+    },
+
+    groupedDocuments() {
+      const search = this.styleGroupSearch.trim().toLowerCase();
+      const groups = new Map();
+
+      for (const doc of this.designDocuments) {
+        const groupInfo = this.groupInfoForDocument(doc);
+        const tags = this.tagsForDocument(doc);
+        const haystack = [
+          doc.brandName,
+          doc.slug,
+          groupInfo.name,
+          groupInfo.description,
+          ...tags,
+          doc.styleClassification?.layoutModel,
+          doc.styleClassification?.colorMode,
+          doc.styleClassification?.typographyTone,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+
+        if (search && !haystack.includes(search)) continue;
+
+        if (!groups.has(groupInfo.slug)) {
+          groups.set(groupInfo.slug, {
+            ...groupInfo,
+            documents: [],
+            tags: new Set(),
+            confidenceTotal: 0,
+            confidenceCount: 0,
+          });
+        }
+
+        const group = groups.get(groupInfo.slug);
+        group.documents.push(doc);
+        tags.forEach((tag) => group.tags.add(tag));
+        const confidence = Number(doc.styleClassification?.confidence);
+        if (Number.isFinite(confidence)) {
+          group.confidenceTotal += confidence;
+          group.confidenceCount += 1;
+        }
+      }
+
+      return Array.from(groups.values())
+        .map((group) => ({
+          ...group,
+          tags: Array.from(group.tags).slice(0, 6),
+          confidence: group.confidenceCount ? group.confidenceTotal / group.confidenceCount : null,
+        }))
+        .sort((a, b) => {
+          if (a.slug === "unclassified") return 1;
+          if (b.slug === "unclassified") return -1;
+          return a.name.localeCompare(b.name);
+        });
     },
 
     selectedPreset() {
@@ -499,6 +566,35 @@ createApp({
     conceptList(key) {
       const value = this.selectedDocument?.designConcept?.json?.[key];
       return Array.isArray(value) ? value : [];
+    },
+
+    groupInfoForDocument(doc) {
+      const fallback = {
+        slug: "unclassified",
+        name: "Unclassified",
+        description: "Needs design analysis or style classification",
+      };
+      const primary = doc?.styleClassification?.primaryGroup;
+      if (!primary || typeof primary !== "object") return fallback;
+      return {
+        slug: primary.slug || "unclassified",
+        name: primary.name || "Unclassified",
+        description: primary.description || fallback.description,
+      };
+    },
+
+    tagsForDocument(doc) {
+      const tags = doc?.styleClassification?.styleTags;
+      return Array.isArray(tags) ? tags.filter(Boolean) : [];
+    },
+
+    isGroupExpanded(group) {
+      return this.expandedStyleGroupSlug === group.slug || group.documents.some((doc) => doc.id === this.selectedDocumentId);
+    },
+
+    toggleStyleGroup(group) {
+      this.expandedStyleGroupSlug = this.isGroupExpanded(group) && this.expandedStyleGroupSlug === group.slug ? "" : group.slug;
+      this.selectedStyleGroupSlug = group.slug;
     },
 
     async analyzeDocument(doc) {
@@ -698,6 +794,9 @@ createApp({
     selectDocument(id) {
       this.selectedDocumentId = id;
       localStorage.setItem(storageKeys.selectedDocumentId, id);
+      const group = this.groupInfoForDocument(this.selectedDocument);
+      this.expandedStyleGroupSlug = group.slug;
+      this.selectedStyleGroupSlug = group.slug;
       if (this.styleSource === "design_md") this.resetOverride();
       this.setStatus("MD selected");
     },
@@ -744,6 +843,7 @@ createApp({
           slug: this.selectedDocument.slug,
           summary: this.selectedDocument.summary,
           designConcept: this.selectedDocument.designConcept,
+          styleClassification: this.selectedDocument.styleClassification,
           designPromptContext: this.selectedDocument.designConcept?.promptContext || "",
           markdown: this.selectedDocument.markdown,
         },
@@ -753,6 +853,9 @@ createApp({
         styleSource: this.styleSource,
         styleSourceLabel: this.styleSourceLabel(),
         n8nWebhookUrl: this.n8nWebhookUrl.trim(),
+        promptUrl: window.location.protocol !== "file:"
+          ? `${window.location.origin}/api/prompts/promo-page-generation`
+          : "",
         companyPreset: this.styleSource === "company_default" ? this.selectedPreset.name : null,
         hasOverride: this.hasOverride(this.finalStyle, source),
         output: {

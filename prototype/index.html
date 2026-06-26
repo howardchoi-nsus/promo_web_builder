@@ -46,44 +46,64 @@
 
             <div class="subsection">
               <div class="subsection-title">
-                <h3>A1. Registered MD List</h3>
+                <h3>A1. Design Style Groups</h3>
                 <div class="subsection-actions">
                   <span>{{ designDocuments.length }} documents</span>
                   <button class="tiny-button primary" type="button" @click="openAddDesign">+ ADD Design</button>
                 </div>
               </div>
 
-              <div class="table-wrap">
-                <table class="data-table compact-table">
-                  <thead>
-                    <tr>
-                      <th>No</th>
-                      <th>Brand</th>
-                      <th>Updated</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr
-                      v-for="(doc, index) in designDocuments"
+              <label class="field compact-field">
+                <span>Search style or brand</span>
+                <input v-model="styleGroupSearch" type="search" placeholder="Search group, brand, tag" />
+              </label>
+
+              <div class="style-group-list">
+                <article
+                  v-for="group in groupedDocuments"
+                  :key="group.slug"
+                  class="style-group-card"
+                  :class="{ selected: group.slug === selectedStyleGroupSlug }"
+                >
+                  <button class="style-group-header" type="button" @click="toggleStyleGroup(group)">
+                    <span class="group-caret">{{ isGroupExpanded(group) ? '▾' : '▸' }}</span>
+                    <span>
+                      <strong>{{ group.name }}</strong>
+                      <small>{{ group.description }}</small>
+                    </span>
+                    <span class="group-count">{{ group.documents.length }} MDs</span>
+                  </button>
+
+                  <div class="style-group-tags" v-if="group.tags.length || group.confidence !== null">
+                    <span v-for="tag in group.tags" :key="tag">{{ tag }}</span>
+                    <span v-if="group.confidence !== null">confidence {{ Math.round(group.confidence * 100) }}%</span>
+                  </div>
+
+                  <div class="style-doc-list" v-if="isGroupExpanded(group)">
+                    <div
+                      v-for="doc in group.documents"
                       :key="doc.id"
+                      class="style-doc-item"
                       :class="{ selected: doc.id === selectedDocumentId }"
                     >
-                      <td>#{{ index + 1 }}</td>
-                      <td>
+                      <div>
                         <strong>{{ doc.brandName }}</strong>
-                        <span>{{ doc.slug }}</span>
-                      </td>
-                      <td>{{ doc.updatedAt }}</td>
-                      <td>
-                        <div class="card-actions">
-                          <button class="tiny-button primary" type="button" @click="selectDocument(doc.id)">Select</button>
-                          <button class="tiny-button" type="button" @click="openDetail(doc)">Detail</button>
+                        <span>{{ doc.updatedAt || 'No update date' }}</span>
+                        <div class="style-doc-tags" v-if="tagsForDocument(doc).length">
+                          <span v-for="tag in tagsForDocument(doc).slice(0, 3)" :key="tag">{{ tag }}</span>
                         </div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+                      </div>
+                      <div class="card-actions">
+                        <button class="tiny-button primary" type="button" @click="selectDocument(doc.id)">Select</button>
+                        <button class="tiny-button" type="button" @click="openDetail(doc)">Detail</button>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+
+                <div class="empty-state" v-if="!groupedDocuments.length">
+                  No matching design style groups.
+                </div>
               </div>
             </div>
           </section>
@@ -114,6 +134,11 @@
               </label>
 
               <div class="summary-box concept-compact-card">
+                <strong>Selected group</strong>
+                <span>{{ selectedDocumentGroupLabel }}</span>
+                <div class="style-group-tags" v-if="selectedDocumentTags.length">
+                  <span v-for="tag in selectedDocumentTags" :key="tag">{{ tag }}</span>
+                </div>
                 <strong>Design concept</strong>
                 <span>{{ selectedDocument.designConcept?.summary || 'Not analyzed yet' }}</span>
                 <strong>Layout philosophy</strong>

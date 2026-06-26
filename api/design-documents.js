@@ -29,6 +29,17 @@ function groupSections(sections) {
   return byDocument;
 }
 
+function normalizeStyleClassification(value) {
+  if (!value || typeof value !== "object") return null;
+  const primaryGroup = value.primaryGroup || value.primary_group || null;
+  const styleTags = Array.isArray(value.styleTags) ? value.styleTags : Array.isArray(value.style_tags) ? value.style_tags : [];
+  return {
+    ...value,
+    primaryGroup,
+    styleTags,
+  };
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== "GET") {
     res.setHeader("Allow", "GET");
@@ -44,26 +55,53 @@ module.exports = async function handler(req, res) {
 
   try {
     const sql = neon(databaseUrl);
-    const documents = await sql`
-      select
-        d.id::text as id,
-        d.brand_id::text as brand_id,
-        b.name as brand_name,
-        b.slug as slug,
-        d.original_filename,
-        d.raw_markdown,
-        d.design_concept_summary,
-        d.design_concept_json,
-        d.design_prompt_context,
-        d.analyzed_at,
-        d.analysis_model,
-        d.status,
-        d.updated_at
-      from design_documents d
-      join brands b on b.id = d.brand_id
-      where d.source_type in ('markdown_seed', 'markdown_upload')
-      order by b.name asc
-    `;
+    let documents;
+    try {
+      documents = await sql`
+        select
+          d.id::text as id,
+          d.brand_id::text as brand_id,
+          b.name as brand_name,
+          b.slug as slug,
+          d.original_filename,
+          d.raw_markdown,
+          d.design_concept_summary,
+          d.design_concept_json,
+          d.design_prompt_context,
+          d.style_classification_json,
+          d.analyzed_at,
+          d.analysis_model,
+          d.status,
+          d.updated_at
+        from design_documents d
+        join brands b on b.id = d.brand_id
+        where d.source_type in ('markdown_seed', 'markdown_upload')
+        order by b.name asc
+      `;
+    } catch (error) {
+      if (!/style_classification_json/i.test(error.message || "")) throw error;
+      documents = await sql`
+        select
+          d.id::text as id,
+          d.brand_id::text as brand_id,
+          b.name as brand_name,
+          b.slug as slug,
+          d.original_filename,
+          d.raw_markdown,
+          d.design_concept_summary,
+          d.design_concept_json,
+          d.design_prompt_context,
+          null::jsonb as style_classification_json,
+          d.analyzed_at,
+          d.analysis_model,
+          d.status,
+          d.updated_at
+        from design_documents d
+        join brands b on b.id = d.brand_id
+        where d.source_type in ('markdown_seed', 'markdown_upload')
+        order by b.name asc
+      `;
+    }
 
     const documentIds = documents.map((doc) => doc.id);
     if (!documentIds.length) {
@@ -117,6 +155,7 @@ module.exports = async function handler(req, res) {
             analyzedAt: doc.analyzed_at ? new Date(doc.analyzed_at).toISOString().slice(0, 16).replace("T", " ") : "",
             analysisModel: doc.analysis_model || "",
           },
+          styleClassification: normalizeStyleClassification(doc.style_classification_json),
           summary: {
             headings,
             colors: tokenSummary.colors,
