@@ -14,7 +14,7 @@
           <a href="#section-a" class="active">A. MD Registry</a>
           <a href="#section-b">B. Promo Builder</a>
           <a href="#section-c">C. Results</a>
-          <a href="generated.html">Generated Page</a>
+          <a href="generated.html">Generated UI</a>
         </nav>
       </aside>
 
@@ -321,15 +321,15 @@
 
             <div class="subsection">
               <div class="subsection-title">
-                <h3>B3. Generate Page</h3>
-                <span>n8n trigger + open page</span>
+                <h3>B3. Generate UI Design</h3>
+                <span>n8n trigger + design image</span>
               </div>
               <label class="field">
                 <span>n8n Webhook URL</span>
-                <input v-model="n8nWebhookUrl" type="url" placeholder="https://your-n8n-domain/webhook/promo-page-generate" />
+                <input v-model="n8nWebhookUrl" type="url" placeholder="https://your-n8n-domain/webhook/promo-ui-design-generate" />
               </label>
               <div class="action-row align-right">
-                <button class="primary-action" type="button" @click="generatePage">Generate Page</button>
+                <button class="primary-action" type="button" @click="generateUiDesign">Generate UI Design</button>
               </div>
             </div>
           </section>
@@ -340,14 +340,14 @@
             <div class="panel-header">
               <div>
                 <p class="eyebrow">C Section</p>
-                <h2>C. Generated Pages / Result</h2>
+                <h2>C. Generated UI Designs / Result</h2>
               </div>
               <span>{{ generatedPages.length }} generated</span>
             </div>
 
             <div class="subsection">
               <div class="subsection-title">
-                <h3>C1. Generated Page List</h3>
+                <h3>C1. Generated UI Design List</h3>
                 <span>no live preview</span>
               </div>
 
@@ -373,7 +373,7 @@
                       <td>{{ page.styleSourceLabel }}</td>
                       <td>{{ page.template }}</td>
                       <td>{{ page.market }}</td>
-                      <td>{{ page.pageUrl ? 'Web URL' : page.status }}</td>
+                      <td>{{ page.pageUrl ? 'Design URL' : page.status }}</td>
                       <td>
                         <button class="tiny-button primary" type="button" @click="openGenerated(page)">Open</button>
                       </td>
@@ -385,7 +385,7 @@
 
             <div class="subsection">
               <div class="subsection-title">
-                <h3>C2. Last Generated Result</h3>
+                <h3>C2. Last Generated UI Design</h3>
                 <span>{{ lastGenerated ? lastGenerated.createdAt : 'not generated' }}</span>
               </div>
               <div class="result-card" v-if="lastGenerated">
@@ -393,11 +393,11 @@
                 <div><strong>MD</strong><span>{{ lastGenerated.selectedMd }}</span></div>
                 <div><strong>Style</strong><span>{{ lastGenerated.styleSourceLabel }}</span></div>
                 <div><strong>Override</strong><span>{{ lastGenerated.hasOverride ? 'Applied' : 'None' }}</span></div>
-                <button class="primary-action" type="button" @click="openGenerated(lastGenerated)">Open generated page</button>
+                <button class="primary-action" type="button" @click="openGenerated(lastGenerated)">Open generated design</button>
               </div>
               <div v-else class="outline-item">
-                <strong>No generated page yet</strong>
-                <span>Run Generate Page in B3 to create a result.</span>
+                <strong>No generated UI design yet</strong>
+                <span>Run Generate UI Design in B3 to create a result.</span>
               </div>
             </div>
           </section>

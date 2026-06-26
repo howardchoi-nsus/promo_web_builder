@@ -863,7 +863,8 @@ createApp({
         companyPreset: this.styleSource === "company_default" ? this.selectedPreset.name : null,
         hasOverride: this.hasOverride(this.finalStyle, source),
         output: {
-          format: "desktop_web_page",
+          format: "ui_design_image",
+          stage: "design_image_generation",
           viewport: {
             width: 1440,
             minWidth: 1180,
@@ -914,7 +915,7 @@ createApp({
       return result;
     },
 
-    async generatePage() {
+    async generateUiDesign() {
       if (!this.selectedDocument) {
         this.setStatus("Select an MD first");
         return;
@@ -924,7 +925,7 @@ createApp({
       const pageId = `promo-${String(this.generatedPages.length + 1).padStart(3, "0")}`;
       const payload = this.buildGeneratedPayload(pageId);
       const willUseN8n = this.n8nWebhookUrl.trim() || window.location.protocol !== "file:";
-      this.setStatus(willUseN8n ? "Triggering n8n workflow" : "Page generated locally");
+      this.setStatus(willUseN8n ? "Triggering UI design workflow" : "UI design generated locally");
 
       let n8nResult = null;
       try {
@@ -942,8 +943,8 @@ createApp({
         template: payload.promo.template,
         market: payload.promo.market,
         createdAt: payload.generatedAt,
-        status: n8nResult ? "n8n_generated" : "draft",
-        pageUrl: n8nResult?.pageUrl || n8nResult?.previewUrl || "",
+        status: n8nResult ? "n8n_ui_design_generated" : "draft",
+        pageUrl: n8nResult?.designUrl || n8nResult?.imageUrl || n8nResult?.pageUrl || n8nResult?.previewUrl || "",
         hasOverride: payload.hasOverride,
         payload: n8nResult?.payload || payload,
       };
@@ -951,8 +952,12 @@ createApp({
       this.generatedPages.unshift(listItem);
       saveJson(storageKeys.generatedPages, this.generatedPages);
       saveJson(storageKeys.generatedPage, listItem.payload);
-      this.setStatus(n8nResult ? "n8n page generated" : "Page generated locally");
+      this.setStatus(n8nResult ? "n8n UI design generated" : "UI design generated locally");
       if (listItem.pageUrl) window.open(listItem.pageUrl, "_blank");
+    },
+
+    generatePage() {
+      return this.generateUiDesign();
     },
 
     openGenerated(page) {
