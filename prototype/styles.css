@@ -199,7 +199,7 @@ h1 {
   align-content: start;
   align-items: start;
   min-height: 0;
-  padding-top: 14px;
+  padding-top: 8px;
   overflow: auto;
 }
 
@@ -244,6 +244,11 @@ body.is-resizing {
 .stack {
   display: grid;
   gap: 14px;
+}
+
+.abc-panel.stack {
+  display: flex;
+  gap: 0;
 }
 
 .panel-header,
