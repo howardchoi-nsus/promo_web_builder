@@ -203,6 +203,16 @@ h1 {
   overflow: auto;
 }
 
+#section-a .abc-panel-body,
+#section-c .abc-panel-body {
+  grid-auto-rows: minmax(0, auto);
+}
+
+#section-a .abc-panel-body > .subsection,
+#section-c .abc-panel-body > .subsection {
+  height: 100%;
+}
+
 .resize-handle {
   align-self: stretch;
   width: 8px;
