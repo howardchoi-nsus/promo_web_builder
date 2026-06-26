@@ -492,6 +492,14 @@ createApp({
         });
     },
 
+    selectedStyleGroup() {
+      return this.groupedDocuments.find((group) => group.slug === this.selectedStyleGroupSlug) || this.groupedDocuments[0] || null;
+    },
+
+    selectedStyleGroupDocuments() {
+      return this.selectedStyleGroup?.documents || [];
+    },
+
     selectedPreset() {
       return this.companyStylePresets.find((preset) => preset.id === this.selectedPresetId) || this.companyStylePresets[0];
     },
@@ -588,13 +596,9 @@ createApp({
       return Array.isArray(tags) ? tags.filter(Boolean) : [];
     },
 
-    isGroupExpanded(group) {
-      return this.expandedStyleGroupSlug === group.slug || group.documents.some((doc) => doc.id === this.selectedDocumentId);
-    },
-
-    toggleStyleGroup(group) {
-      this.expandedStyleGroupSlug = this.isGroupExpanded(group) && this.expandedStyleGroupSlug === group.slug ? "" : group.slug;
+    selectStyleGroup(group) {
       this.selectedStyleGroupSlug = group.slug;
+      this.expandedStyleGroupSlug = group.slug;
     },
 
     async analyzeDocument(doc) {
