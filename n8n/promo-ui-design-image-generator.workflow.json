@@ -1,0 +1,290 @@
+{
+  "name": "Promo UI Design Image Generator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "promo-ui-design-generate",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-generate-promo-ui-design",
+      "name": "Generate Promo UI Design",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 240],
+      "webhookId": "promo-ui-design-generate"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body || $json;\nconst id = String(body.id || ('promo-ui-' + Date.now())).trim();\nconst md = body.md || {};\nconst promo = body.promo || {};\nconst design = body.design || {};\nconst output = body.output || {};\nconst model = String(body.model || 'gpt-4o-mini').trim();\nconst imageModel = String(body.imageModel || body.image_model || 'gpt-image-1').trim();\nconst n8nWebhookUrl = String(body.n8nWebhookUrl || body.n8n_webhook_url || '').trim();\n\nconst requiredPromo = ['title', 'template', 'market', 'leadText', 'ctaLabel', 'ctaUrl', 'subline', 'termsText'];\nconst missingPromo = requiredPromo.filter((key) => !String(promo[key] || '').trim());\nif (missingPromo.length) throw new Error('Missing promo fields: ' + missingPromo.join(', '));\nif (!md.brand) throw new Error('md.brand is required');\nif (!md.designConcept && !md.designPromptContext) throw new Error('md.designConcept or md.designPromptContext is required');\n\nreturn [{\n  json: {\n    id,\n    model,\n    imageModel,\n    n8nWebhookUrl,\n    md,\n    promo,\n    design,\n    sourceDesign: body.sourceDesign || {},\n    styleSource: body.styleSource || '',\n    styleSourceLabel: body.styleSourceLabel || '',\n    companyPreset: body.companyPreset || null,\n    hasOverride: Boolean(body.hasOverride),\n    output: {\n      format: output.format || 'ui_design_image',\n      stage: output.stage || 'design_image_generation',\n      viewport: output.viewport || { width: 1440, minWidth: 1180 },\n      imageSize: output.imageSize || '1536x1024'\n    }\n  }\n}];"
+      },
+      "id": "normalize-payload",
+      "name": "Normalize Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 240]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $('Normalize Payload').item.json;\nconst concept = input.md.designConcept || {};\nconst conceptJson = concept.json || {};\nconst summary = input.md.summary || {};\nconst promptContext = input.md.designPromptContext || concept.promptContext || '';\n\nconst designBrief = {\n  objective: 'Create a desktop promotional UI design image, not production HTML.',\n  brand: input.md.brand,\n  promoTitle: input.promo.title,\n  market: input.promo.market,\n  template: input.promo.template,\n  selectedStyleSource: input.styleSourceLabel,\n  viewport: input.output.viewport,\n  requiredContent: {\n    promoTitle: input.promo.title,\n    leadText: input.promo.leadText,\n    ctaLabel: input.promo.ctaLabel,\n    ctaUrl: input.promo.ctaUrl,\n    subline: input.promo.subline,\n    alphaLegalText: input.promo.alphaText || '',\n    termsAndConditions: input.promo.termsText\n  },\n  designStyle: input.design,\n  mdConceptSummary: concept.summary || conceptJson.brandConcept || '',\n  mdPromptContext: promptContext,\n  mdConceptJson: conceptJson,\n  mdSummary: summary\n};\n\nconst layoutMapping = {\n  hero: ['promoTitle', 'leadText', 'ctaLabel'],\n  secondaryContent: ['subline'],\n  complianceFooter: ['alphaLegalText', 'termsAndConditions'],\n  note: 'Map every provided promo field visibly into the UI design. Use URL only as CTA metadata, not visible long text unless appropriate.'\n};\n\nconst mdComplianceKeys = [\n  'layoutPhilosophy',\n  'visualMood',\n  'componentStyle',\n  'depthAndEffects',\n  'shapeAndRadius',\n  'promoPageImplications'\n];\n\nconst system = 'You are a senior promotional UI art director. Return valid JSON only. Your job is to write a precise image-generation prompt for a desktop promotional web UI mockup. The selected MD is binding, not inspiration.';\nconst user = `Create an image-generation prompt for a desktop promotional web UI design.\\n\\nRules:\\n- Output JSON only.\\n- Do not generate HTML or CSS.\\n- The UI image must visibly place the promo input fields into a desktop web page composition.\\n- Follow the MD design concept, especially layout philosophy, visual mood, components, depth/effects, shape/radius.\\n- Color and font settings are constraints, but the design must not be color/font-only.\\n- Include a wireframe-aware layout mapping.\\n- Avoid unreadable tiny text; legal/terms can be shown as condensed footer blocks.\\n- The image should look like a polished desktop UI design mockup at ${input.output.imageSize}.\\n\\nReturn this JSON shape:\\n{\\n  \"imagePrompt\": \"single detailed prompt string\",\\n  \"negativePrompt\": \"things to avoid\",\\n  \"designBrief\": {},\\n  \"layoutMapping\": {},\\n  \"mdComplianceMap\": {\\n    \"layoutPhilosophy\": \"...\",\\n    \"visualMood\": \"...\",\\n    \"componentStyle\": \"...\",\\n    \"depthAndEffects\": \"...\",\\n    \"shapeAndRadius\": \"...\",\\n    \"promoPageImplications\": \"...\",\\n    \"notColorFontOnlyProof\": \"...\"\\n  }\\n}\\n\\nInput design brief:\\n${JSON.stringify(designBrief, null, 2)}\\n\\nSuggested field mapping:\\n${JSON.stringify(layoutMapping, null, 2)}\\n\\nRequired MD compliance keys:\\n${JSON.stringify(mdComplianceKeys)}`;\n\nreturn [{\n  json: {\n    ...input,\n    designBrief,\n    layoutMapping,\n    llmRequest: {\n      model: input.model,\n      messages: [\n        { role: 'system', content: system },\n        { role: 'user', content: user }\n      ],\n      temperature: 0.28,\n      response_format: { type: 'json_object' }\n    }\n  }\n}];"
+      },
+      "id": "build-ui-design-prompt",
+      "name": "Build UI Design Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [760, 240]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer REPLACE_WITH_OPENAI_API_KEY_OR_USE_CREDENTIAL"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.llmRequest) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "llm-generate-image-prompt",
+      "name": "LLM Generate Image Prompt",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1020, 240]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $('Build UI Design Prompt').item.json;\nconst response = $json;\nconst content = response.choices?.[0]?.message?.content || response.message?.content || response.content || response.text || response.output_text || '';\nif (!content) throw new Error('LLM image prompt response is empty');\n\nlet generated;\ntry {\n  const fence = String.fromCharCode(96, 96, 96);\n  generated = typeof content === 'string'\n    ? JSON.parse(content.replace(new RegExp('^' + fence + 'json\\\\s*', 'i'), '').replace(new RegExp(fence + '$', 'i'), '').trim())\n    : content;\n} catch (error) {\n  throw new Error('Failed to parse image prompt JSON: ' + error.message);\n}\n\nif (!String(generated.imagePrompt || '').trim()) throw new Error('imagePrompt is required');\nif (!generated.mdComplianceMap || typeof generated.mdComplianceMap !== 'object') throw new Error('mdComplianceMap is required');\nif (!generated.layoutMapping || typeof generated.layoutMapping !== 'object') throw new Error('layoutMapping is required');\n\nconst requiredCompliance = [\n  'layoutPhilosophy',\n  'visualMood',\n  'componentStyle',\n  'depthAndEffects',\n  'shapeAndRadius',\n  'promoPageImplications',\n  'notColorFontOnlyProof'\n];\nconst missingCompliance = requiredCompliance.filter((key) => !String(generated.mdComplianceMap[key] || '').trim());\nif (missingCompliance.length) throw new Error('mdComplianceMap missing fields: ' + missingCompliance.join(', '));\n\nconst proof = String(generated.mdComplianceMap.notColorFontOnlyProof || '').trim();\nif (proof.length < 40) throw new Error('mdComplianceMap.notColorFontOnlyProof is too weak');\n\nconst finalPrompt = [\n  generated.imagePrompt,\n  '',\n  'Hard requirements:',\n  '- Desktop promotional web UI mockup, 1440px-wide composition.',\n  '- Show a complete page design, not a cropped component.',\n  '- Include visible placements for promo title, lead text, CTA button, subline, and legal/terms footer.',\n  '- No code, no browser chrome, no editor UI, no Figma canvas UI.',\n  '- Make the layout reflect the selected MD design concept, not only colors and fonts.',\n  generated.negativePrompt ? 'Avoid: ' + generated.negativePrompt : ''\n].filter(Boolean).join('\\n');\n\nreturn [{\n  json: {\n    ...input,\n    imagePrompt: finalPrompt,\n    designBrief: generated.designBrief || input.designBrief,\n    layoutMapping: generated.layoutMapping,\n    mdComplianceMap: generated.mdComplianceMap\n  }\n}];"
+      },
+      "id": "parse-validate-image-prompt",
+      "name": "Parse Validate Image Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1280, 240]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/images/generations",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer REPLACE_WITH_OPENAI_API_KEY_OR_USE_CREDENTIAL"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: $json.imageModel, prompt: $json.imagePrompt, size: $json.output.imageSize || '1536x1024', n: 1 }) }}",
+        "options": {
+          "timeout": 180000
+        }
+      },
+      "id": "generate-ui-design-image",
+      "name": "Generate UI Design Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1540, 240]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $('Parse Validate Image Prompt').item.json;\nconst response = $json;\nconst imageUrlFromApi = response.data?.[0]?.url || response.output?.[0]?.url || '';\nconst b64 = response.data?.[0]?.b64_json || response.output?.[0]?.b64_json || response.image?.b64_json || '';\nif (!imageUrlFromApi && !b64) throw new Error('Image generation response must include url or b64_json');\n\nconst imageDataUrl = b64 ? 'data:image/png;base64,' + b64 : '';\nconst staticData = $getWorkflowStaticData('global');\nstaticData.designs = staticData.designs || {};\nstaticData.designs[input.id] = {\n  imageUrlFromApi,\n  imageDataUrl,\n  imagePrompt: input.imagePrompt,\n  designBrief: input.designBrief,\n  layoutMapping: input.layoutMapping,\n  mdComplianceMap: input.mdComplianceMap,\n  payload: input,\n  createdAt: new Date().toISOString()\n};\n\nconst queryPath = 'promo-ui-design-view?id=' + encodeURIComponent(input.id);\nconst sourceUrl = String(input.n8nWebhookUrl || '').trim();\nlet designUrl = '/webhook/' + queryPath;\nif (sourceUrl) {\n  designUrl = sourceUrl.replace(/promo-ui-design-generate(?:\\?.*)?$/, queryPath);\n} else {\n  const headers = $('Generate Promo UI Design').item.json.headers || {};\n  const proto = headers['x-forwarded-proto'] || 'https';\n  const host = headers['x-forwarded-host'] || headers.host || '';\n  if (host) designUrl = proto + '://' + host + '/webhook/' + queryPath;\n}\n\nreturn [{\n  json: {\n    ok: true,\n    id: input.id,\n    designUrl,\n    imageUrl: imageUrlFromApi || designUrl,\n    hasEmbeddedImage: Boolean(imageDataUrl),\n    designBrief: input.designBrief,\n    layoutMapping: input.layoutMapping,\n    mdComplianceMap: input.mdComplianceMap,\n    imagePrompt: input.imagePrompt,\n    payload: input\n  }\n}];"
+      },
+      "id": "store-ui-design-result",
+      "name": "Store UI Design Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1800, 240]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {}
+      },
+      "id": "return-ui-design-result",
+      "name": "Return UI Design Result",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2060, 240]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "promo-ui-design-view",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "view-ui-design",
+      "name": "View UI Design",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [1540, 520],
+      "webhookId": "promo-ui-design-view"
+    },
+    {
+      "parameters": {
+        "jsCode": "const id = $json.params?.id || $json.query?.id || '';\nconst staticData = $getWorkflowStaticData('global');\nconst design = staticData.designs?.[id];\nconst src = design?.imageDataUrl || design?.imageUrlFromApi || '';\nconst title = design?.payload?.promo?.title || 'Promo UI Design';\nconst html = src\n  ? `<!doctype html><html lang='ko'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>${title}</title><style>body{margin:0;background:#f6f8fc;font-family:Arial,sans-serif;color:#111827}.wrap{max-width:1540px;margin:0 auto;padding:24px}.bar{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:16px}.meta{color:#64748b;font-size:13px}.frame{border:1px solid #dfe6f2;background:white;border-radius:8px;overflow:hidden;box-shadow:0 14px 40px rgba(20,35,70,.08)}img{display:block;width:100%;height:auto}</style></head><body><main class='wrap'><div class='bar'><strong>${title}</strong><span class='meta'>${id}</span></div><div class='frame'><img src='${src}' alt='Generated promo UI design'></div></main></body></html>`\n  : `<!doctype html><html lang='ko'><head><meta charset='utf-8'><title>UI design not found</title></head><body style='font-family:Arial,sans-serif;padding:40px'><h1>UI design not found</h1><p>No generated UI design was stored for id: ${id}</p></body></html>`;\nreturn [{ json: { html } }];"
+      },
+      "id": "read-stored-ui-design",
+      "name": "Read Stored UI Design",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1800, 520]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{$json.html}}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "id": "render-ui-design-view",
+      "name": "Render UI Design View",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2060, 520]
+    }
+  ],
+  "connections": {
+    "Generate Promo UI Design": {
+      "main": [
+        [
+          {
+            "node": "Normalize Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Payload": {
+      "main": [
+        [
+          {
+            "node": "Build UI Design Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build UI Design Prompt": {
+      "main": [
+        [
+          {
+            "node": "LLM Generate Image Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM Generate Image Prompt": {
+      "main": [
+        [
+          {
+            "node": "Parse Validate Image Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Validate Image Prompt": {
+      "main": [
+        [
+          {
+            "node": "Generate UI Design Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate UI Design Image": {
+      "main": [
+        [
+          {
+            "node": "Store UI Design Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store UI Design Result": {
+      "main": [
+        [
+          {
+            "node": "Return UI Design Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "View UI Design": {
+      "main": [
+        [
+          {
+            "node": "Read Stored UI Design",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Stored UI Design": {
+      "main": [
+        [
+          {
+            "node": "Render UI Design View",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "versionId": "promo-ui-design-image-generator-v1",
+  "triggerCount": 0,
+  "tags": []
+}
