@@ -171,11 +171,14 @@ h1 {
 .abc-layout {
   grid-template-columns: 30fr 8px 30fr 8px 40fr;
   gap: 0;
+  align-items: stretch;
+  height: calc(100vh - 112px);
   min-height: calc(100vh - 112px);
 }
 
 .abc-panel {
   min-width: 0;
+  height: 100%;
   max-height: calc(100vh - 112px);
   overflow: auto;
 }
@@ -1348,10 +1351,12 @@ body.is-resizing {
 
   .abc-layout {
     gap: 16px;
+    height: auto;
     min-height: auto;
   }
 
   .abc-panel {
+    height: auto;
     max-height: none;
   }
 
