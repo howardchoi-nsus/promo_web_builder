@@ -208,9 +208,19 @@ h1 {
   grid-auto-rows: minmax(0, auto);
 }
 
+#section-a .abc-panel-body {
+  overflow: hidden;
+}
+
 #section-a .abc-panel-body > .subsection,
 #section-c .abc-panel-body > .subsection {
   height: 100%;
+}
+
+#section-a .abc-panel-body > .subsection {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .resize-handle {
@@ -722,7 +732,10 @@ body.is-resizing {
 }
 
 .concept-doc-list {
+  flex: 1 1 auto;
+  min-height: 0;
   margin-top: 10px;
+  overflow: auto;
   border: 1px solid var(--line);
   border-radius: var(--radius);
 }
