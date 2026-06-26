@@ -857,9 +857,6 @@ createApp({
         styleSource: this.styleSource,
         styleSourceLabel: this.styleSourceLabel(),
         n8nWebhookUrl: this.n8nWebhookUrl.trim(),
-        promptUrl: window.location.protocol !== "file:"
-          ? `${window.location.origin}/api/prompts/promo-page-generation`
-          : "",
         companyPreset: this.styleSource === "company_default" ? this.selectedPreset.name : null,
         hasOverride: this.hasOverride(this.finalStyle, source),
         output: {
@@ -869,6 +866,7 @@ createApp({
             width: 1440,
             minWidth: 1180,
           },
+          imageSize: "1536x1024",
         },
       };
     },
@@ -896,7 +894,7 @@ createApp({
       const url = this.n8nWebhookUrl.trim();
       const useProxy = window.location.protocol !== "file:";
       if (!url && !useProxy) return null;
-      const requestUrl = useProxy ? "/api/generate-promo-page" : url;
+      const requestUrl = useProxy ? "/api/generate-ui-design" : url;
 
       const headers = {
         "Content-Type": "application/json",
@@ -944,7 +942,11 @@ createApp({
         market: payload.promo.market,
         createdAt: payload.generatedAt,
         status: n8nResult ? "n8n_ui_design_generated" : "draft",
+        designUrl: n8nResult?.designUrl || "",
+        imageUrl: n8nResult?.imageUrl || "",
         pageUrl: n8nResult?.designUrl || n8nResult?.imageUrl || n8nResult?.pageUrl || n8nResult?.previewUrl || "",
+        layoutMapping: n8nResult?.layoutMapping || null,
+        mdComplianceMap: n8nResult?.mdComplianceMap || null,
         hasOverride: payload.hasOverride,
         payload: n8nResult?.payload || payload,
       };
