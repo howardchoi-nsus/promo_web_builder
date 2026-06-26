@@ -202,6 +202,131 @@ const dummyCompanyStylePresets = [
   },
 ];
 
+const temp4TemplateSchema = {
+  id: "temp4",
+  name: "Template 4",
+  sectionOrder: ["header", "heroBanner", "stepBar", "contentCta", "imageTextRow", "titleDescription", "footer"],
+  visualSections: ["heroBanner", "contentCta", "imageTextRow"],
+};
+
+function createEmptyTemp4Inputs() {
+  return {
+    header: {
+      logoText: "GGPoker",
+      badgeText: "Promotion",
+    },
+    heroBanner: {
+      leaderText: "",
+      title: "",
+      sublineText: "",
+      cta: { label: "", link: "", target: "_blank" },
+      alphaText: "",
+      visualMode: "auto",
+    },
+    stepBar: [
+      { title: "", description: "", link: "", target: "_blank" },
+      { title: "", description: "", link: "", target: "_blank" },
+      { title: "", description: "", link: "", target: "_blank" },
+    ],
+    contentCta: {
+      longText: "",
+      cta: { label: "", link: "", target: "_blank" },
+      visualMode: "auto",
+    },
+    imageTextRow: {
+      headerTitle: "",
+      headerDescription: "",
+      title: "",
+      description: "",
+      visualMode: "auto",
+    },
+    titleDescription: {
+      title: "Terms & Conditions",
+      contents: "",
+    },
+    footer: {
+      logoText: "GGPoker",
+      licenseBadges: "Visa, Mastercard, 18+, BeGambleAware",
+    },
+  };
+}
+
+function buildTemp4Draft({ promo, simpleBrief, selectedDocument, visualMode }) {
+  const brand = selectedDocument?.brandName || "GGPoker";
+  const title = promo.title.trim();
+  const offer = simpleBrief.mainOffer.trim();
+  const action = simpleBrief.targetAction.trim();
+  const audience = simpleBrief.audience.trim();
+  const tone = simpleBrief.campaignTone.trim();
+  const secondary = simpleBrief.secondaryMessage.trim();
+  const terms = promo.termsText.trim();
+  const cta = {
+    label: promo.ctaLabel.trim(),
+    link: promo.ctaUrl.trim(),
+    target: "_blank",
+  };
+
+  const offerText = offer || promo.leadText.trim() || title;
+  const actionText = action || "Join and follow the promo steps";
+  const audiencePrefix = audience ? `${audience} can ` : "";
+  const toneHint = tone ? ` Tone: ${tone}.` : "";
+
+  return {
+    header: {
+      logoText: brand,
+      badgeText: promo.market || "Global",
+    },
+    heroBanner: {
+      leaderText: offerText ? "Featured Promotion" : "",
+      title,
+      sublineText: offerText,
+      cta,
+      alphaText: promo.alphaText.trim() || terms,
+      visualMode,
+    },
+    stepBar: [
+      {
+        title: "Start",
+        description: audiencePrefix ? `${audiencePrefix}${actionText.toLowerCase()}.` : actionText,
+        link: cta.link,
+        target: cta.target,
+      },
+      {
+        title: "Claim",
+        description: offerText ? `Unlock the offer: ${offerText}` : "Follow the campaign requirements.",
+        link: cta.link,
+        target: cta.target,
+      },
+      {
+        title: "Play",
+        description: secondary || "Enjoy the promotion and check the final conditions before joining.",
+        link: cta.link,
+        target: cta.target,
+      },
+    ],
+    contentCta: {
+      longText: secondary || `${offerText}. ${actionText}.${toneHint}`,
+      cta,
+      visualMode,
+    },
+    imageTextRow: {
+      headerTitle: title ? `${title} details` : "Promotion details",
+      headerDescription: offerText,
+      title: actionText,
+      description: secondary || terms || "Review the promotion details and participate through the CTA.",
+      visualMode,
+    },
+    titleDescription: {
+      title: "Terms & Conditions",
+      contents: terms,
+    },
+    footer: {
+      logoText: brand,
+      licenseBadges: "Visa, Mastercard, 18+, BeGambleAware",
+    },
+  };
+}
+
 function loadJson(key, fallback) {
   try {
     return JSON.parse(localStorage.getItem(key)) || fallback;
@@ -384,6 +509,10 @@ createApp({
       selectedDocumentId: localStorage.getItem(storageKeys.selectedDocumentId) || "",
       selectedPresetId: "preset-001",
       styleSource: "company_default",
+      templateSchema: temp4TemplateSchema,
+      generationMode: "ai_agent",
+      inputMode: "simple",
+      globalVisualMode: "auto",
       n8nWebhookUrl: localStorage.getItem(storageKeys.n8nWebhookUrl) || "",
       n8nAnalyzeWebhookUrl: localStorage.getItem(storageKeys.n8nAnalyzeWebhookUrl) || "",
       detailDoc: null,
@@ -396,7 +525,7 @@ createApp({
       },
       promo: {
         title: "",
-        template: "",
+        template: "Template 4",
         market: "",
         leadText: "",
         ctaLabel: "",
@@ -405,6 +534,14 @@ createApp({
         alphaText: "",
         termsText: "",
       },
+      simpleBrief: {
+        mainOffer: "",
+        targetAction: "",
+        audience: "",
+        campaignTone: "",
+        secondaryMessage: "",
+      },
+      sectionInputs: createEmptyTemp4Inputs(),
       override: {
         primaryColor: "#d52b1e",
         ctaColor: "#e12d25",
@@ -515,6 +652,10 @@ createApp({
 
     lastGenerated() {
       return this.generatedPages[0] || null;
+    },
+
+    templateModeLabel() {
+      return `${this.templateSchema.name} / ${this.generationMode === "ai_agent" ? "AI Agent" : "Rule Base"} / ${this.inputMode}`;
     },
   },
 
@@ -695,7 +836,7 @@ createApp({
     clearPromoInputs() {
       this.promo = {
         title: "",
-        template: "",
+        template: "Template 4",
         market: "",
         leadText: "",
         ctaLabel: "",
@@ -704,6 +845,15 @@ createApp({
         alphaText: "",
         termsText: "",
       };
+      this.simpleBrief = {
+        mainOffer: "",
+        targetAction: "",
+        audience: "",
+        campaignTone: "",
+        secondaryMessage: "",
+      };
+      this.globalVisualMode = "auto";
+      this.sectionInputs = createEmptyTemp4Inputs();
       this.setStatus("Promo inputs cleared");
     },
 
@@ -836,8 +986,42 @@ createApp({
       return `Company Default / ${this.selectedPreset.name}`;
     },
 
+    refreshSectionDraft() {
+      this.sectionInputs = buildTemp4Draft({
+        promo: this.promo,
+        simpleBrief: this.simpleBrief,
+        selectedDocument: this.selectedDocument,
+        visualMode: this.globalVisualMode,
+      });
+      this.promo.leadText = this.simpleBrief.mainOffer || this.sectionInputs.heroBanner.sublineText;
+      this.promo.subline = this.simpleBrief.secondaryMessage || this.sectionInputs.contentCta.longText;
+      this.promo.template = "Template 4";
+      this.setStatus("Temp.4 section draft refreshed");
+    },
+
+    hasSectionDraft() {
+      const hasDraftTitle = String(this.sectionInputs.heroBanner.title || "").trim();
+      const hasDraftOffer = String(this.sectionInputs.contentCta.longText || "").trim();
+      return Boolean(hasDraftTitle || hasDraftOffer);
+    },
+
+    sectionInputsForPayload() {
+      if (!this.hasSectionDraft() && String(this.promo.title || "").trim()) {
+        this.refreshSectionDraft();
+      }
+      return JSON.parse(JSON.stringify(this.sectionInputs));
+    },
+
     buildGeneratedPayload(pageId) {
       const source = this.sourceStyle;
+      const sectionInputs = this.sectionInputsForPayload();
+      const promoCompat = {
+        ...this.promo,
+        template: "Template 4",
+        leadText: this.promo.leadText || sectionInputs.heroBanner.sublineText || this.simpleBrief.mainOffer,
+        subline: this.promo.subline || sectionInputs.contentCta.longText || this.simpleBrief.secondaryMessage,
+        alphaText: this.promo.alphaText || sectionInputs.heroBanner.alphaText,
+      };
       return {
         id: pageId,
         generatedAt: nowText(),
@@ -851,7 +1035,16 @@ createApp({
           designPromptContext: this.selectedDocument.designConcept?.promptContext || "",
           markdown: this.selectedDocument.markdown,
         },
-        promo: { ...this.promo },
+        promo: promoCompat,
+        template: {
+          id: this.templateSchema.id,
+          name: this.templateSchema.name,
+          generationMode: this.generationMode,
+          inputMode: this.inputMode,
+          sectionOrder: this.templateSchema.sectionOrder,
+        },
+        simpleBrief: { ...this.simpleBrief },
+        sectionInputs,
         design: { ...this.finalStyle },
         sourceDesign: { ...source },
         styleSource: this.styleSource,
@@ -872,6 +1065,29 @@ createApp({
     },
 
     validatePromoInputs() {
+      const required = [
+        ["title", "Promo title"],
+        ["market", "Market / Region"],
+        ["ctaLabel", "CTA label"],
+        ["ctaUrl", "CTA URL"],
+        ["termsText", "Terms and Conditions"],
+      ];
+      const missing = required.filter(([key]) => !String(this.promo[key] || "").trim()).map(([, label]) => label);
+      const simpleMissing = [
+        ["mainOffer", "Main offer / benefit"],
+        ["targetAction", "Target action"],
+      ]
+        .filter(([key]) => !String(this.simpleBrief[key] || "").trim())
+        .map(([, label]) => label);
+      const allMissing = [...missing, ...simpleMissing];
+      if (allMissing.length) {
+        this.setStatus(`Missing: ${allMissing.slice(0, 2).join(", ")}${allMissing.length > 2 ? "..." : ""}`);
+        return false;
+      }
+      return true;
+    },
+
+    validateLegacyPromoInputs() {
       const required = [
         ["title", "Promo title"],
         ["template", "Template"],

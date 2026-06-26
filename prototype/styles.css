@@ -893,6 +893,65 @@ body.is-resizing {
   margin-top: 4px;
 }
 
+.draft-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.draft-section {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #ffffff;
+}
+
+.draft-section summary {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 12px;
+  background: var(--surface-2);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.draft-section summary span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.draft-section[open] {
+  padding-bottom: 12px;
+}
+
+.draft-section[open] > .field,
+.draft-section[open] > .form-grid,
+.draft-section[open] > .step-draft-grid {
+  margin: 12px 12px 0;
+}
+
+.step-draft-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.step-draft-card {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.step-draft-card strong {
+  font-size: 12px;
+}
+
 .summary-box ul {
   margin: 6px 0 0;
   padding-left: 18px;

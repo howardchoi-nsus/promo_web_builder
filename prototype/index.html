@@ -164,24 +164,35 @@
 
             <div class="subsection promo-required">
               <div class="subsection-title">
-                <h3>B1. Required Inputs</h3>
-                <span>promo content</span>
+                <h3>B1. Template & Mode</h3>
+                <span>{{ templateModeLabel }}</span>
               </div>
 
-              <div class="form-grid">
-                <label class="field">
-                  <span>Promo title</span>
-                  <input v-model="promo.title" type="text" placeholder="&#51077;&#47141;&#54644; &#51452;&#49464;&#50836;" />
+              <div class="style-source-grid">
+                <label class="radio-card">
+                  <input v-model="generationMode" type="radio" value="ai_agent" />
+                  <strong>AI Agent</strong>
+                  <span>Temp.4 rule + AI section draft</span>
                 </label>
+                <label class="radio-card">
+                  <input v-model="generationMode" type="radio" value="rule_base" />
+                  <strong>Rule Base</strong>
+                  <span>Strict Temp.4 section order</span>
+                </label>
+              </div>
+
+              <div class="form-grid compact">
                 <label class="field">
                   <span>Template</span>
-                  <select v-model="promo.template" required>
-                    <option disabled value="">&#49440;&#53469;&#54644; &#51452;&#49464;&#50836;</option>
+                  <select v-model="promo.template" disabled>
                     <option>Template 4</option>
-                    <option>Template 1</option>
-                    <option>Template 2</option>
-                    <option>Template 3</option>
-                    <option>Template 5</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Input mode</span>
+                  <select v-model="inputMode">
+                    <option value="simple">Simple</option>
+                    <option value="advanced">Advanced</option>
                   </select>
                 </label>
                 <label class="field">
@@ -199,39 +210,130 @@
                   </select>
                 </label>
                 <label class="field">
-                  <span>Lead text</span>
-                  <input v-model="promo.leadText" type="text" placeholder="&#51077;&#47141;&#54644; &#51452;&#49464;&#50836;" />
+                  <span>Visual usage</span>
+                  <select v-model="globalVisualMode">
+                    <option value="auto">Auto</option>
+                    <option value="use_visual">Use visual</option>
+                    <option value="no_visual">No visual</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            <div class="subsection promo-required">
+              <div class="subsection-title">
+                <h3>B2. Simple Promo Brief</h3>
+                <span>AI expands this into Temp.4 sections</span>
+              </div>
+
+              <div class="form-grid">
+                <label class="field">
+                  <span>Promo title</span>
+                  <input v-model="promo.title" type="text" placeholder="입력해 주세요" />
+                </label>
+                <label class="field">
+                  <span>Main offer / benefit</span>
+                  <input v-model="simpleBrief.mainOffer" type="text" placeholder="예: New users get a deposit match and free tickets" />
+                </label>
+                <label class="field">
+                  <span>Target action</span>
+                  <input v-model="simpleBrief.targetAction" type="text" placeholder="예: Sign up and make your first deposit" />
                 </label>
                 <label class="field">
                   <span>CTA label</span>
-                  <input v-model="promo.ctaLabel" type="text" placeholder="&#51077;&#47141;&#54644; &#51452;&#49464;&#50836;" />
+                  <input v-model="promo.ctaLabel" type="text" placeholder="입력해 주세요" />
                 </label>
                 <label class="field">
                   <span>CTA URL</span>
-                  <input v-model="promo.ctaUrl" type="url" placeholder="&#51077;&#47141;&#54644; &#51452;&#49464;&#50836;" />
+                  <input v-model="promo.ctaUrl" type="url" placeholder="입력해 주세요" />
+                </label>
+                <label class="field">
+                  <span>Audience</span>
+                  <input v-model="simpleBrief.audience" type="text" placeholder="선택 입력" />
                 </label>
               </div>
 
               <label class="field">
-                <span>Subline</span>
-                <textarea v-model="promo.subline" rows="2" placeholder="&#51077;&#47141;&#54644; &#51452;&#49464;&#50836;"></textarea>
+                <span>Secondary message</span>
+                <textarea v-model="simpleBrief.secondaryMessage" rows="2" placeholder="선택 입력"></textarea>
               </label>
               <label class="field">
-                <span>Alpha / legal text</span>
-                <input v-model="promo.alphaText" type="text" placeholder="&#51077;&#47141;&#54644; &#51452;&#49464;&#50836;" />
+                <span>Campaign tone</span>
+                <input v-model="simpleBrief.campaignTone" type="text" placeholder="선택 입력: energetic, premium, calm, playful..." />
               </label>
               <label class="field">
                 <span>Terms and Conditions</span>
-                <textarea v-model="promo.termsText" rows="4" placeholder="&#51077;&#47141;&#54644; &#51452;&#49464;&#50836;"></textarea>
+                <textarea v-model="promo.termsText" rows="4" placeholder="입력해 주세요"></textarea>
               </label>
               <div class="action-row align-right">
                 <button class="secondary-action" type="button" @click="clearPromoInputs">Clear</button>
+                <button class="primary-action" type="button" @click="refreshSectionDraft">Generate Section Draft</button>
               </div>
             </div>
 
             <div class="subsection">
               <div class="subsection-title">
-                <h3>B2. Color / Font Style</h3>
+                <h3>B3. AI Section Draft</h3>
+                <span>Temp.4 output order</span>
+              </div>
+
+              <div class="draft-stack">
+                <details class="draft-section" open>
+                  <summary>Hero Banner <span>{{ sectionInputs.heroBanner.visualMode }}</span></summary>
+                  <label class="field"><span>Leader Text</span><input v-model="sectionInputs.heroBanner.leaderText" type="text" /></label>
+                  <label class="field"><span>Title</span><input v-model="sectionInputs.heroBanner.title" type="text" /></label>
+                  <label class="field"><span>Subline Text</span><textarea v-model="sectionInputs.heroBanner.sublineText" rows="2"></textarea></label>
+                  <div class="form-grid compact">
+                    <label class="field"><span>CTA label</span><input v-model="sectionInputs.heroBanner.cta.label" type="text" /></label>
+                    <label class="field"><span>CTA link</span><input v-model="sectionInputs.heroBanner.cta.link" type="url" /></label>
+                    <label class="field"><span>Target</span><select v-model="sectionInputs.heroBanner.cta.target"><option>_blank</option><option>_self</option></select></label>
+                    <label class="field"><span>Visual</span><select v-model="sectionInputs.heroBanner.visualMode"><option value="auto">Auto</option><option value="use_visual">Use visual</option><option value="no_visual">No visual</option></select></label>
+                  </div>
+                  <label class="field"><span>Alpha Text</span><input v-model="sectionInputs.heroBanner.alphaText" type="text" /></label>
+                </details>
+
+                <details class="draft-section">
+                  <summary>Step Bar <span>3 items</span></summary>
+                  <div class="step-draft-grid">
+                    <div class="step-draft-card" v-for="(step, index) in sectionInputs.stepBar" :key="index">
+                      <strong>Step {{ index + 1 }}</strong>
+                      <label class="field"><span>Title</span><input v-model="step.title" type="text" /></label>
+                      <label class="field"><span>Description</span><textarea v-model="step.description" rows="2"></textarea></label>
+                      <label class="field"><span>Link</span><input v-model="step.link" type="url" /></label>
+                    </div>
+                  </div>
+                </details>
+
+                <details class="draft-section">
+                  <summary>Content CTA <span>{{ sectionInputs.contentCta.visualMode }}</span></summary>
+                  <label class="field"><span>Long text</span><textarea v-model="sectionInputs.contentCta.longText" rows="3"></textarea></label>
+                  <div class="form-grid compact">
+                    <label class="field"><span>CTA label</span><input v-model="sectionInputs.contentCta.cta.label" type="text" /></label>
+                    <label class="field"><span>CTA link</span><input v-model="sectionInputs.contentCta.cta.link" type="url" /></label>
+                    <label class="field"><span>Visual</span><select v-model="sectionInputs.contentCta.visualMode"><option value="auto">Auto</option><option value="use_visual">Use visual</option><option value="no_visual">No visual</option></select></label>
+                  </div>
+                </details>
+
+                <details class="draft-section">
+                  <summary>Image Text Row <span>{{ sectionInputs.imageTextRow.visualMode }}</span></summary>
+                  <label class="field"><span>Header Title</span><input v-model="sectionInputs.imageTextRow.headerTitle" type="text" /></label>
+                  <label class="field"><span>Header Description</span><textarea v-model="sectionInputs.imageTextRow.headerDescription" rows="2"></textarea></label>
+                  <label class="field"><span>Title</span><input v-model="sectionInputs.imageTextRow.title" type="text" /></label>
+                  <label class="field"><span>Description</span><textarea v-model="sectionInputs.imageTextRow.description" rows="2"></textarea></label>
+                </details>
+
+                <details class="draft-section">
+                  <summary>Terms / Footer <span>legal</span></summary>
+                  <label class="field"><span>Terms title</span><input v-model="sectionInputs.titleDescription.title" type="text" /></label>
+                  <label class="field"><span>Contents</span><textarea v-model="sectionInputs.titleDescription.contents" rows="3"></textarea></label>
+                  <label class="field"><span>License badges</span><input v-model="sectionInputs.footer.licenseBadges" type="text" /></label>
+                </details>
+              </div>
+            </div>
+
+            <div class="subsection">
+              <div class="subsection-title">
+                <h3>B4. Color / Font Style</h3>
                 <span>source + override</span>
               </div>
 
@@ -321,7 +423,7 @@
 
             <div class="subsection">
               <div class="subsection-title">
-                <h3>B3. Generate UI Design</h3>
+                <h3>B5. Generate UI Design</h3>
                 <span>n8n trigger + design image</span>
               </div>
               <label class="field">
@@ -397,7 +499,7 @@
               </div>
               <div v-else class="outline-item">
                 <strong>No generated UI design yet</strong>
-                <span>Run Generate UI Design in B3 to create a result.</span>
+                <span>Run Generate UI Design in B5 to create a result.</span>
               </div>
             </div>
           </section>
