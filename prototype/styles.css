@@ -722,9 +722,7 @@ body.is-resizing {
 }
 
 .concept-doc-list {
-  max-height: 300px;
   margin-top: 10px;
-  overflow: auto;
   border: 1px solid var(--line);
   border-radius: var(--radius);
 }
