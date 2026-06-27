@@ -3,26 +3,26 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Promo Builder Admin Prototype</title>
-    <link rel="stylesheet" href="styles.css" />
+    <title>프로모션 UI 디자인 빌더</title>
+    <link rel="stylesheet" href="styles.css?v=ui-design-qa" />
   </head>
   <body>
     <div id="app" class="app-shell">
       <aside class="sidebar">
-        <div class="brand-mark">GG Promo Builder</div>
-        <nav class="nav-list" aria-label="Prototype navigation">
-          <a href="#section-a" class="active">A. MD Registry</a>
-          <a href="#section-b">B. Promo Builder</a>
-          <a href="#section-c">C. Results</a>
-          <a href="generated.html">Generated UI</a>
+        <div class="brand-mark">GG 프로모션 빌더</div>
+        <nav class="nav-list" aria-label="프로토타입 내비게이션">
+          <a href="#section-a" class="active">A. 디자인 MD</a>
+          <a href="#section-b">B. 프로모션 빌더</a>
+          <a href="#section-c">C. 결과</a>
+          <a href="generated.html">생성된 UI</a>
         </nav>
       </aside>
 
       <main class="workspace">
         <header class="topbar">
           <div>
-            <p class="eyebrow">Vue Prototype / Dummy DB</p>
-            <h1>Design MD Registry + Promo Page Generator</h1>
+            <p class="eyebrow">Vue 프로토타입 / 더미 DB</p>
+            <h1>디자인 MD 관리 + 프로모션 UI 디자인 생성기</h1>
           </div>
           <div class="status-pill">{{ status }}</div>
         </header>
@@ -38,25 +38,25 @@
           <section class="panel stack abc-panel" id="section-a">
             <div class="panel-header">
               <div>
-                <p class="eyebrow">A Section</p>
-                <h2>A. Design MD Registry</h2>
+                <p class="eyebrow">A 섹션</p>
+                <h2>A. 디자인 MD 관리</h2>
               </div>
-              <span>Source: {{ mdListSource }}</span>
+              <span>출처: {{ mdListSource }}</span>
             </div>
 
             <div class="abc-panel-body">
             <div class="subsection">
               <div class="subsection-title">
-                <h3>A1. Design Style Concept</h3>
+                <h3>A1. 디자인 스타일 콘셉트</h3>
                 <div class="subsection-actions">
-                  <span>{{ designDocuments.length }} documents</span>
-                  <button class="tiny-button primary" type="button" @click="openAddDesign">+ ADD Design</button>
+                  <span>{{ designDocuments.length }}개 문서</span>
+                  <button class="tiny-button primary" type="button" @click="openAddDesign">+ 디자인 추가</button>
                 </div>
               </div>
 
               <label class="field compact-field">
-                <span>Search style or brand</span>
-                <input v-model="styleGroupSearch" type="search" placeholder="Search group, brand, tag" />
+                <span>스타일 또는 브랜드 검색</span>
+                <input v-model="styleGroupSearch" type="search" placeholder="그룹, 브랜드, 태그 검색" />
               </label>
 
               <div class="style-concept-wrap">
@@ -69,7 +69,7 @@
                   @click="selectStyleGroup(group)"
                 >
                   <strong>{{ group.name }}</strong>
-                  <span>{{ group.documents.length }} MDs</span>
+                  <span>{{ group.documents.length }}개 MD</span>
                 </button>
               </div>
 
@@ -80,7 +80,7 @@
                 </div>
                 <div class="style-group-tags" v-if="selectedStyleGroup.tags.length || selectedStyleGroup.confidence !== null">
                   <span v-for="tag in selectedStyleGroup.tags" :key="tag">{{ tag }}</span>
-                  <span v-if="selectedStyleGroup.confidence !== null">confidence {{ Math.round(selectedStyleGroup.confidence * 100) }}%</span>
+                  <span v-if="selectedStyleGroup.confidence !== null">신뢰도 {{ Math.round(selectedStyleGroup.confidence * 100) }}%</span>
                 </div>
               </div>
 
@@ -93,62 +93,62 @@
                 >
                   <div>
                     <strong>{{ doc.brandName }}</strong>
-                    <span>{{ doc.updatedAt || 'No update date' }}</span>
+                    <span>{{ doc.updatedAt || '업데이트 일자 없음' }}</span>
                     <div class="style-doc-tags" v-if="tagsForDocument(doc).length">
                       <span v-for="tag in tagsForDocument(doc).slice(0, 3)" :key="tag">{{ tag }}</span>
                     </div>
                   </div>
                   <div class="card-actions">
-                    <button class="tiny-button primary" type="button" @click="selectDocument(doc.id)">Select</button>
-                    <button class="tiny-button" type="button" @click="openDetail(doc)">Detail</button>
+                    <button class="tiny-button primary" type="button" @click="selectDocument(doc.id)">선택</button>
+                    <button class="tiny-button" type="button" @click="openDetail(doc)">상세</button>
                   </div>
                 </div>
               </div>
 
               <div class="empty-state" v-if="!groupedDocuments.length">
-                No matching design style concepts.
+                일치하는 디자인 스타일 콘셉트가 없습니다.
               </div>
             </div>
             </div>
           </section>
 
-          <div class="resize-handle" role="separator" aria-orientation="vertical" title="Drag to resize" @pointerdown="startResize($event, 0)"></div>
+          <div class="resize-handle" role="separator" aria-orientation="vertical" title="드래그해서 너비 조정" @pointerdown="startResize($event, 0)"></div>
 
           <section class="panel stack abc-panel" id="section-b">
             <div class="panel-header">
               <div>
-                <p class="eyebrow">B Section</p>
-                <h2>B. Promo Builder</h2>
+                <p class="eyebrow">B 섹션</p>
+                <h2>B. 프로모션 빌더</h2>
               </div>
-              <span>{{ selectedDocument ? selectedDocument.brandName : 'No MD selected' }}</span>
+              <span>{{ selectedDocument ? selectedDocument.brandName : '선택된 MD 없음' }}</span>
             </div>
 
             <div class="abc-panel-body">
             <div class="subsection selected-style-summary" v-if="selectedDocument">
               <div class="subsection-title">
-                <h3>Selected style summary</h3>
+                <h3>선택한 스타일 요약</h3>
                 <div class="subsection-actions">
-                  <span>{{ selectedDocument.designConcept?.analyzedAt || 'Not analyzed yet' }}</span>
-                  <button class="tiny-button primary" type="button" @click="analyzeSelectedDocument">Analyze MD</button>
+                  <span>{{ selectedDocument.designConcept?.analyzedAt || '아직 분석 전' }}</span>
+                  <button class="tiny-button primary" type="button" @click="analyzeSelectedDocument">MD 분석</button>
                 </div>
               </div>
 
               <label class="field">
-                <span>n8n Analyze Webhook URL</span>
+                <span>n8n 분석 Webhook URL</span>
                 <input v-model="n8nAnalyzeWebhookUrl" type="url" placeholder="https://your-n8n-domain/webhook/design-md-concept-analyze" />
               </label>
 
               <div class="summary-box concept-compact-card">
-                <strong>Selected group</strong>
+                <strong>선택한 그룹</strong>
                 <span>{{ selectedDocumentGroupLabel }}</span>
                 <div class="style-group-tags" v-if="selectedDocumentTags.length">
                   <span v-for="tag in selectedDocumentTags" :key="tag">{{ tag }}</span>
                 </div>
-                <strong>Design concept</strong>
-                <span>{{ selectedDocument.designConcept?.summary || 'Not analyzed yet' }}</span>
-                <strong>Layout philosophy</strong>
-                <span>{{ conceptValue('layoutPhilosophy') || 'Not analyzed yet' }}</span>
-                <strong>Colors</strong>
+                <strong>디자인 콘셉트</strong>
+                <span>{{ selectedDocument.designConcept?.summary || '아직 분석 전' }}</span>
+                <strong>레이아웃 철학</strong>
+                <span>{{ conceptValue('layoutPhilosophy') || '아직 분석 전' }}</span>
+                <strong>색상</strong>
                 <div class="swatches">
                   <span
                     v-for="color in selectedDocument.summary.colors.slice(0, 6)"
@@ -158,48 +158,48 @@
                     :style="{ background: color }"
                   ></span>
                 </div>
-                <span>{{ selectedDocument.summary.colors.slice(0, 3).join(' / ') || 'No color token' }}</span>
+                <span>{{ selectedDocument.summary.colors.slice(0, 3).join(' / ') || '색상 토큰 없음' }}</span>
                 <div class="action-row align-right">
-                  <button class="tiny-button" type="button" @click="openConceptDetail">Detail view</button>
+                  <button class="tiny-button" type="button" @click="openConceptDetail">상세 보기</button>
                 </div>
               </div>
             </div>
 
             <div class="subsection promo-required">
               <div class="subsection-title">
-                <h3>B1. Template & Mode</h3>
+                <h3>B1. 템플릿 및 모드</h3>
                 <span>{{ templateModeLabel }}</span>
               </div>
 
               <div class="style-source-grid">
                 <label class="radio-card">
                   <input v-model="generationMode" type="radio" value="ai_agent" />
-                  <strong>AI Agent</strong>
-                  <span>Temp.4 rule + AI section draft</span>
+                  <strong>AI 에이전트</strong>
+                  <span>Temp.4 규칙 + AI 섹션 초안</span>
                 </label>
                 <label class="radio-card">
                   <input v-model="generationMode" type="radio" value="rule_base" />
-                  <strong>Rule Base</strong>
-                  <span>Strict Temp.4 section order</span>
+                  <strong>룰 기반</strong>
+                  <span>Temp.4 섹션 순서 고정</span>
                 </label>
               </div>
 
               <div class="form-grid compact">
                 <label class="field">
-                  <span>Template</span>
+                  <span>템플릿</span>
                   <select v-model="promo.template" disabled>
-                    <option>Template 4</option>
+                    <option value="Template 4">템플릿 4</option>
                   </select>
                 </label>
                 <label class="field">
-                  <span>Input mode</span>
+                  <span>입력 모드</span>
                   <select v-model="inputMode">
-                    <option value="simple">Simple</option>
-                    <option value="advanced">Advanced</option>
+                    <option value="simple">간편</option>
+                    <option value="advanced">고급</option>
                   </select>
                 </label>
                 <label class="field">
-                  <span>Market / Region</span>
+                  <span>마켓 / 지역</span>
                   <select v-model="promo.market" required>
                     <option disabled value="">&#49440;&#53469;&#54644; &#51452;&#49464;&#50836;</option>
                     <option>Global</option>
@@ -213,11 +213,11 @@
                   </select>
                 </label>
                 <label class="field">
-                  <span>Visual usage</span>
+                  <span>비주얼 사용</span>
                   <select v-model="globalVisualMode">
-                    <option value="auto">Auto</option>
-                    <option value="use_visual">Use visual</option>
-                    <option value="no_visual">No visual</option>
+                    <option value="auto">자동</option>
+                    <option value="use_visual">비주얼 사용</option>
+                    <option value="no_visual">비주얼 없음</option>
                   </select>
                 </label>
               </div>
@@ -225,25 +225,25 @@
 
             <div class="subsection promo-required">
               <div class="subsection-title">
-                <h3>B2. Simple Promo Brief</h3>
-                <span>AI expands this into Temp.4 sections</span>
+                <h3>B2. 간편 프로모션 브리프</h3>
+                <span>AI가 Temp.4 섹션으로 확장합니다</span>
               </div>
 
               <div class="form-grid">
                 <label class="field">
-                  <span>Promo title</span>
+                  <span>프로모션 제목</span>
                   <input v-model="promo.title" type="text" placeholder="입력해 주세요" />
                 </label>
                 <label class="field">
-                  <span>Main offer / benefit</span>
-                  <input v-model="simpleBrief.mainOffer" type="text" placeholder="예: New users get a deposit match and free tickets" />
+                  <span>주요 혜택</span>
+                  <input v-model="simpleBrief.mainOffer" type="text" placeholder="예: 신규 가입자에게 입금 매칭과 무료 티켓 제공" />
                 </label>
                 <label class="field">
-                  <span>Target action</span>
-                  <input v-model="simpleBrief.targetAction" type="text" placeholder="예: Sign up and make your first deposit" />
+                  <span>유도 행동</span>
+                  <input v-model="simpleBrief.targetAction" type="text" placeholder="예: 가입 후 첫 입금 진행" />
                 </label>
                 <label class="field">
-                  <span>CTA label</span>
+                  <span>CTA 문구</span>
                   <input v-model="promo.ctaLabel" type="text" placeholder="입력해 주세요" />
                 </label>
                 <label class="field">
@@ -251,110 +251,110 @@
                   <input v-model="promo.ctaUrl" type="url" placeholder="입력해 주세요" />
                 </label>
                 <label class="field">
-                  <span>Audience</span>
+                  <span>대상 고객</span>
                   <input v-model="simpleBrief.audience" type="text" placeholder="선택 입력" />
                 </label>
               </div>
 
               <label class="field">
-                <span>Secondary message</span>
+                <span>보조 메시지</span>
                 <textarea v-model="simpleBrief.secondaryMessage" rows="2" placeholder="선택 입력"></textarea>
               </label>
               <label class="field">
-                <span>Campaign tone</span>
-                <input v-model="simpleBrief.campaignTone" type="text" placeholder="선택 입력: energetic, premium, calm, playful..." />
+                <span>캠페인 톤</span>
+                <input v-model="simpleBrief.campaignTone" type="text" placeholder="선택 입력: 활기찬, 프리미엄, 차분한, playful 등" />
               </label>
               <label class="field">
-                <span>Terms and Conditions</span>
+                <span>이용약관</span>
                 <textarea v-model="promo.termsText" rows="4" placeholder="입력해 주세요"></textarea>
               </label>
               <div class="action-row align-right">
-                <button class="secondary-action" type="button" @click="clearPromoInputs">Clear</button>
-                <button class="primary-action" type="button" @click="refreshSectionDraft">Generate Section Draft</button>
+                <button class="secondary-action" type="button" @click="clearPromoInputs">초기화</button>
+                <button class="primary-action" type="button" @click="refreshSectionDraft">섹션 초안 생성</button>
               </div>
             </div>
 
             <div class="subsection">
               <div class="subsection-title">
-                <h3>B3. AI Section Draft</h3>
-                <span>Temp.4 output order</span>
+                <h3>B3. AI 섹션 초안</h3>
+                <span>Temp.4 출력 순서</span>
               </div>
 
               <div class="draft-stack">
                 <details class="draft-section" open>
-                  <summary>Hero Banner <span>{{ sectionInputs.heroBanner.visualMode }}</span></summary>
-                  <label class="field"><span>Leader Text</span><input v-model="sectionInputs.heroBanner.leaderText" type="text" /></label>
-                  <label class="field"><span>Title</span><input v-model="sectionInputs.heroBanner.title" type="text" /></label>
-                  <label class="field"><span>Subline Text</span><textarea v-model="sectionInputs.heroBanner.sublineText" rows="2"></textarea></label>
+                  <summary>히어로 배너 <span>{{ visualModeLabel(sectionInputs.heroBanner.visualMode) }}</span></summary>
+                  <label class="field"><span>리더 문구</span><input v-model="sectionInputs.heroBanner.leaderText" type="text" /></label>
+                  <label class="field"><span>제목</span><input v-model="sectionInputs.heroBanner.title" type="text" /></label>
+                  <label class="field"><span>보조 문구</span><textarea v-model="sectionInputs.heroBanner.sublineText" rows="2"></textarea></label>
                   <div class="form-grid compact">
-                    <label class="field"><span>CTA label</span><input v-model="sectionInputs.heroBanner.cta.label" type="text" /></label>
-                    <label class="field"><span>CTA link</span><input v-model="sectionInputs.heroBanner.cta.link" type="url" /></label>
-                    <label class="field"><span>Target</span><select v-model="sectionInputs.heroBanner.cta.target"><option>_blank</option><option>_self</option></select></label>
-                    <label class="field"><span>Visual</span><select v-model="sectionInputs.heroBanner.visualMode"><option value="auto">Auto</option><option value="use_visual">Use visual</option><option value="no_visual">No visual</option></select></label>
+                    <label class="field"><span>CTA 문구</span><input v-model="sectionInputs.heroBanner.cta.label" type="text" /></label>
+                    <label class="field"><span>CTA 링크</span><input v-model="sectionInputs.heroBanner.cta.link" type="url" /></label>
+                    <label class="field"><span>열기 방식</span><select v-model="sectionInputs.heroBanner.cta.target"><option>_blank</option><option>_self</option></select></label>
+                    <label class="field"><span>비주얼</span><select v-model="sectionInputs.heroBanner.visualMode"><option value="auto">자동</option><option value="use_visual">비주얼 사용</option><option value="no_visual">비주얼 없음</option></select></label>
                   </div>
-                  <label class="field"><span>Alpha Text</span><input v-model="sectionInputs.heroBanner.alphaText" type="text" /></label>
+                  <label class="field"><span>보조 고지 문구</span><input v-model="sectionInputs.heroBanner.alphaText" type="text" /></label>
                 </details>
 
                 <details class="draft-section">
-                  <summary>Step Bar <span>3 items</span></summary>
+                  <summary>스텝 바 <span>3개 항목</span></summary>
                   <div class="step-draft-grid">
                     <div class="step-draft-card" v-for="(step, index) in sectionInputs.stepBar" :key="index">
-                      <strong>Step {{ index + 1 }}</strong>
-                      <label class="field"><span>Title</span><input v-model="step.title" type="text" /></label>
-                      <label class="field"><span>Description</span><textarea v-model="step.description" rows="2"></textarea></label>
-                      <label class="field"><span>Link</span><input v-model="step.link" type="url" /></label>
+                      <strong>스텝 {{ index + 1 }}</strong>
+                      <label class="field"><span>제목</span><input v-model="step.title" type="text" /></label>
+                      <label class="field"><span>설명</span><textarea v-model="step.description" rows="2"></textarea></label>
+                      <label class="field"><span>링크</span><input v-model="step.link" type="url" /></label>
                     </div>
                   </div>
                 </details>
 
                 <details class="draft-section">
-                  <summary>Content CTA <span>{{ sectionInputs.contentCta.visualMode }}</span></summary>
-                  <label class="field"><span>Long text</span><textarea v-model="sectionInputs.contentCta.longText" rows="3"></textarea></label>
+                  <summary>콘텐츠 CTA <span>{{ visualModeLabel(sectionInputs.contentCta.visualMode) }}</span></summary>
+                  <label class="field"><span>본문 문구</span><textarea v-model="sectionInputs.contentCta.longText" rows="3"></textarea></label>
                   <div class="form-grid compact">
-                    <label class="field"><span>CTA label</span><input v-model="sectionInputs.contentCta.cta.label" type="text" /></label>
-                    <label class="field"><span>CTA link</span><input v-model="sectionInputs.contentCta.cta.link" type="url" /></label>
-                    <label class="field"><span>Visual</span><select v-model="sectionInputs.contentCta.visualMode"><option value="auto">Auto</option><option value="use_visual">Use visual</option><option value="no_visual">No visual</option></select></label>
+                    <label class="field"><span>CTA 문구</span><input v-model="sectionInputs.contentCta.cta.label" type="text" /></label>
+                    <label class="field"><span>CTA 링크</span><input v-model="sectionInputs.contentCta.cta.link" type="url" /></label>
+                    <label class="field"><span>비주얼</span><select v-model="sectionInputs.contentCta.visualMode"><option value="auto">자동</option><option value="use_visual">비주얼 사용</option><option value="no_visual">비주얼 없음</option></select></label>
                   </div>
                 </details>
 
                 <details class="draft-section">
-                  <summary>Image Text Row <span>{{ sectionInputs.imageTextRow.visualMode }}</span></summary>
-                  <label class="field"><span>Header Title</span><input v-model="sectionInputs.imageTextRow.headerTitle" type="text" /></label>
-                  <label class="field"><span>Header Description</span><textarea v-model="sectionInputs.imageTextRow.headerDescription" rows="2"></textarea></label>
-                  <label class="field"><span>Title</span><input v-model="sectionInputs.imageTextRow.title" type="text" /></label>
-                  <label class="field"><span>Description</span><textarea v-model="sectionInputs.imageTextRow.description" rows="2"></textarea></label>
+                  <summary>이미지 텍스트 영역 <span>{{ visualModeLabel(sectionInputs.imageTextRow.visualMode) }}</span></summary>
+                  <label class="field"><span>헤더 제목</span><input v-model="sectionInputs.imageTextRow.headerTitle" type="text" /></label>
+                  <label class="field"><span>헤더 설명</span><textarea v-model="sectionInputs.imageTextRow.headerDescription" rows="2"></textarea></label>
+                  <label class="field"><span>제목</span><input v-model="sectionInputs.imageTextRow.title" type="text" /></label>
+                  <label class="field"><span>설명</span><textarea v-model="sectionInputs.imageTextRow.description" rows="2"></textarea></label>
                 </details>
 
                 <details class="draft-section">
-                  <summary>Terms / Footer <span>legal</span></summary>
-                  <label class="field"><span>Terms title</span><input v-model="sectionInputs.titleDescription.title" type="text" /></label>
-                  <label class="field"><span>Contents</span><textarea v-model="sectionInputs.titleDescription.contents" rows="3"></textarea></label>
-                  <label class="field"><span>License badges</span><input v-model="sectionInputs.footer.licenseBadges" type="text" /></label>
+                  <summary>약관 / 푸터 <span>법적 고지</span></summary>
+                  <label class="field"><span>약관 제목</span><input v-model="sectionInputs.titleDescription.title" type="text" /></label>
+                  <label class="field"><span>내용</span><textarea v-model="sectionInputs.titleDescription.contents" rows="3"></textarea></label>
+                  <label class="field"><span>라이선스 배지</span><input v-model="sectionInputs.footer.licenseBadges" type="text" /></label>
                 </details>
               </div>
             </div>
 
             <div class="subsection">
               <div class="subsection-title">
-                <h3>B4. Color / Font Style</h3>
-                <span>source + override</span>
+                <h3>B4. 색상 / 폰트 스타일</h3>
+                <span>원본 + 재정의</span>
               </div>
 
               <div class="style-source-grid">
                 <label class="radio-card">
                   <input v-model="styleSource" type="radio" value="company_default" />
-                  <strong>Company default</strong>
-                  <span>Preset table style source</span>
+                  <strong>회사 기본값</strong>
+                  <span>프리셋 스타일 기준</span>
                 </label>
                 <label class="radio-card">
                   <input v-model="styleSource" type="radio" value="design_md" :disabled="!selectedDocument" />
-                  <strong>Design MD attributes</strong>
-                  <span>Use selected MD color/font</span>
+                  <strong>디자인 MD 속성</strong>
+                  <span>선택한 MD의 색상/폰트 사용</span>
                 </label>
               </div>
 
               <label v-if="styleSource === 'company_default'" class="field">
-                <span>Company style preset</span>
+                <span>회사 스타일 프리셋</span>
                 <select v-model="selectedPresetId">
                   <option v-for="preset in companyStylePresets" :key="preset.id" :value="preset.id">
                     {{ preset.name }} / {{ preset.market }}
@@ -364,23 +364,23 @@
 
               <div class="source-summary">
                 <div class="summary-box">
-                  <strong>Source primary</strong>
+                  <strong>원본 메인 색상</strong>
                   <span>{{ sourceStyle.primaryColor }}</span>
                 </div>
                 <div class="summary-box">
-                  <strong>Source CTA</strong>
+                  <strong>원본 CTA 색상</strong>
                   <span>{{ sourceStyle.ctaColor }}</span>
                 </div>
                 <div class="summary-box">
-                  <strong>Source heading</strong>
+                  <strong>원본 제목 폰트</strong>
                   <span>{{ sourceStyle.headingFont }}</span>
                 </div>
               </div>
 
-              <div class="section-title">Selected color/font style override</div>
+              <div class="section-title">선택 색상/폰트 재정의</div>
               <div class="form-grid compact">
                 <label class="field">
-                  <span>Primary</span>
+                  <span>메인 색상</span>
                   <input v-model="override.primaryColor" type="color" />
                 </label>
                 <label class="field">
@@ -388,11 +388,11 @@
                   <input v-model="override.ctaColor" type="color" />
                 </label>
                 <label class="field">
-                  <span>Canvas</span>
+                  <span>배경색</span>
                   <input v-model="override.canvasColor" type="color" />
                 </label>
                 <label class="field">
-                  <span>Heading font</span>
+                  <span>제목 폰트</span>
                   <select v-model="override.headingFont">
                     <option value="Pretendard, Arial, sans-serif">Pretendard</option>
                     <option value="Arial, Helvetica, sans-serif">Arial</option>
@@ -401,7 +401,7 @@
                   </select>
                 </label>
                 <label class="field">
-                  <span>Body font</span>
+                  <span>본문 폰트</span>
                   <select v-model="override.bodyFont">
                     <option value="Pretendard, Arial, sans-serif">Pretendard</option>
                     <option value="Arial, Helvetica, sans-serif">Arial</option>
@@ -410,7 +410,7 @@
                   </select>
                 </label>
                 <label class="field">
-                  <span>Hero weight</span>
+                  <span>히어로 굵기</span>
                   <select v-model="override.titleWeight">
                     <option>700</option>
                     <option>800</option>
@@ -420,42 +420,42 @@
               </div>
 
               <div class="action-row">
-                <button class="secondary-action" type="button" @click="resetOverride">Reset to source</button>
+                <button class="secondary-action" type="button" @click="resetOverride">원본으로 되돌리기</button>
               </div>
             </div>
 
             <div class="subsection">
               <div class="subsection-title">
-                <h3>B5. Generate UI Design</h3>
-                <span>n8n trigger + design image</span>
+                <h3>B5. UI 디자인 생성</h3>
+                <span>n8n 실행 + 디자인 이미지</span>
               </div>
               <label class="field">
                 <span>n8n Webhook URL</span>
                 <input v-model="n8nWebhookUrl" type="url" placeholder="https://your-n8n-domain/webhook/promo-ui-design-generate" />
               </label>
               <div class="action-row align-right">
-                <button class="primary-action" type="button" @click="generateUiDesign">Generate UI Design</button>
+                <button class="primary-action" type="button" @click="generateUiDesign">UI 디자인 생성</button>
               </div>
             </div>
             </div>
           </section>
 
-          <div class="resize-handle" role="separator" aria-orientation="vertical" title="Drag to resize" @pointerdown="startResize($event, 1)"></div>
+          <div class="resize-handle" role="separator" aria-orientation="vertical" title="드래그해서 너비 조정" @pointerdown="startResize($event, 1)"></div>
 
           <section class="panel stack abc-panel" id="section-c">
             <div class="panel-header">
               <div>
-                <p class="eyebrow">C Section</p>
-                <h2>C. Generated UI Designs / Result</h2>
+                <p class="eyebrow">C 섹션</p>
+                <h2>C. 생성된 UI 디자인 / 결과</h2>
               </div>
-              <span>{{ generatedPages.length }} generated</span>
+              <span>{{ generatedPages.length }}개 생성됨</span>
             </div>
 
             <div class="abc-panel-body">
             <div class="subsection">
               <div class="subsection-title">
-                <h3>C1. Generated UI Design List</h3>
-                <span>no live preview</span>
+                <h3>C1. 생성된 UI 디자인 목록</h3>
+                <span>실시간 미리보기 없음</span>
               </div>
 
               <div class="table-wrap">
@@ -463,13 +463,13 @@
                   <thead>
                     <tr>
                       <th>No</th>
-                      <th>Promo</th>
-                      <th>Selected MD</th>
-                      <th>Style Source</th>
-                      <th>Template</th>
-                      <th>Market</th>
-                      <th>Status</th>
-                      <th>Action</th>
+                      <th>프로모션</th>
+                      <th>선택 MD</th>
+                      <th>스타일 기준</th>
+                      <th>템플릿</th>
+                      <th>마켓</th>
+                      <th>상태</th>
+                      <th>동작</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -478,11 +478,11 @@
                       <td><strong>{{ page.title }}</strong><span>{{ page.createdAt }}</span></td>
                       <td>{{ page.selectedMd }}</td>
                       <td>{{ page.styleSourceLabel }}</td>
-                      <td>{{ page.template }}</td>
+                      <td>{{ templateLabel(page.template) }}</td>
                       <td>{{ page.market }}</td>
-                      <td>{{ page.imageUrl ? 'Image URL' : page.pageUrl ? 'Design URL' : page.status }}</td>
+                      <td>{{ page.imageUrl ? '이미지 URL' : page.pageUrl ? '디자인 URL' : statusLabel(page.status) }}</td>
                       <td>
-                        <button class="tiny-button primary" type="button" @click="openGenerated(page)">Open</button>
+                        <button class="tiny-button primary" type="button" @click="openGenerated(page)">열기</button>
                       </td>
                     </tr>
                   </tbody>
@@ -492,21 +492,21 @@
 
             <div class="subsection">
               <div class="subsection-title">
-                <h3>C2. Last Generated UI Design</h3>
-                <span>{{ lastGenerated ? lastGenerated.createdAt : 'not generated' }}</span>
+                <h3>C2. 최근 생성 UI 디자인</h3>
+                <span>{{ lastGenerated ? lastGenerated.createdAt : '아직 생성 전' }}</span>
               </div>
               <div class="result-card" v-if="lastGenerated">
-                <div><strong>Promo</strong><span>{{ lastGenerated.title }}</span></div>
+                <div><strong>프로모션</strong><span>{{ lastGenerated.title }}</span></div>
                 <div><strong>MD</strong><span>{{ lastGenerated.selectedMd }}</span></div>
-                <div><strong>Style</strong><span>{{ lastGenerated.styleSourceLabel }}</span></div>
-                <div><strong>Override</strong><span>{{ lastGenerated.hasOverride ? 'Applied' : 'None' }}</span></div>
-                <div><strong>MD Compliance</strong><span>{{ lastGenerated.mdComplianceMap ? 'Included' : 'Pending' }}</span></div>
-                <div><strong>Output</strong><span>{{ lastGenerated.imageUrl ? 'UI design image' : lastGenerated.pageUrl ? 'Design URL' : 'Local payload preview' }}</span></div>
-                <button class="primary-action" type="button" @click="openGenerated(lastGenerated)">Open generated design</button>
+                <div><strong>스타일</strong><span>{{ lastGenerated.styleSourceLabel }}</span></div>
+                <div><strong>재정의</strong><span>{{ lastGenerated.hasOverride ? '적용됨' : '없음' }}</span></div>
+                <div><strong>MD 준수 검토</strong><span>{{ lastGenerated.mdComplianceMap ? '포함됨' : '대기 중' }}</span></div>
+                <div><strong>산출물</strong><span>{{ lastGenerated.imageUrl ? 'UI 디자인 이미지' : lastGenerated.pageUrl ? '디자인 URL' : '로컬 payload 미리보기' }}</span></div>
+                <button class="primary-action" type="button" @click="openGenerated(lastGenerated)">생성된 디자인 열기</button>
               </div>
               <div v-else class="outline-item">
-                <strong>No generated UI design yet</strong>
-                <span>Run Generate UI Design in B5 to create a result.</span>
+                <strong>아직 생성된 UI 디자인이 없습니다</strong>
+                <span>B5에서 UI 디자인 생성을 실행해 주세요.</span>
               </div>
             </div>
             </div>
@@ -517,10 +517,10 @@
       <dialog class="modal" ref="detailModal">
         <div class="modal-header">
           <div>
-            <p class="eyebrow">MD Detail</p>
-            <h2>{{ detailDoc ? detailDoc.brandName : 'Design detail' }}</h2>
+            <p class="eyebrow">MD 상세</p>
+            <h2>{{ detailDoc ? detailDoc.brandName : '디자인 상세' }}</h2>
           </div>
-          <button class="icon-button" type="button" aria-label="Close" @click="closeDetail">x</button>
+          <button class="icon-button" type="button" aria-label="닫기" @click="closeDetail">x</button>
         </div>
         <div v-if="detailDoc" class="modal-body">
           <div class="summary-grid">
@@ -531,8 +531,8 @@
           </div>
 
           <div class="tabs" role="tablist">
-            <button class="tab" :class="{ active: modalTab === 'outline' }" type="button" @click="modalTab = 'outline'">Outline</button>
-            <button class="tab" :class="{ active: modalTab === 'raw' }" type="button" @click="modalTab = 'raw'">Raw</button>
+            <button class="tab" :class="{ active: modalTab === 'outline' }" type="button" @click="modalTab = 'outline'">개요</button>
+            <button class="tab" :class="{ active: modalTab === 'raw' }" type="button" @click="modalTab = 'raw'">원문</button>
           </div>
 
           <div v-if="modalTab === 'outline'" class="md-outline">
@@ -546,69 +546,69 @@
               <span>{{ item.category }}{{ item.excerpt ? ` - ${item.excerpt.slice(0, 140)}` : '' }}</span>
             </div>
           </div>
-          <pre v-else class="raw-md">{{ detailDoc.markdown || 'No raw markdown available.' }}</pre>
+          <pre v-else class="raw-md">{{ detailDoc.markdown || '원본 Markdown이 없습니다.' }}</pre>
         </div>
       </dialog>
 
       <dialog class="modal" ref="conceptModal">
         <div class="modal-header">
           <div>
-            <p class="eyebrow">Design Concept Detail</p>
-            <h2>{{ selectedDocument ? selectedDocument.brandName : 'Design concept' }}</h2>
+            <p class="eyebrow">디자인 콘셉트 상세</p>
+            <h2>{{ selectedDocument ? selectedDocument.brandName : '디자인 콘셉트' }}</h2>
           </div>
-          <button class="icon-button" type="button" aria-label="Close" @click="closeConceptDetail">x</button>
+          <button class="icon-button" type="button" aria-label="닫기" @click="closeConceptDetail">x</button>
         </div>
         <div v-if="selectedDocument" class="modal-body">
           <div class="concept-summary-grid">
             <div class="summary-box large">
-              <strong>Design concept</strong>
-              <span>{{ selectedDocument.designConcept?.summary || 'Not analyzed yet' }}</span>
+              <strong>디자인 콘셉트</strong>
+              <span>{{ selectedDocument.designConcept?.summary || '아직 분석 전' }}</span>
             </div>
             <div class="summary-box">
-              <strong>Visual mood</strong>
-              <span>{{ conceptValue('visualMood') || 'Not analyzed yet' }}</span>
+              <strong>비주얼 무드</strong>
+              <span>{{ conceptValue('visualMood') || '아직 분석 전' }}</span>
             </div>
             <div class="summary-box">
-              <strong>Layout philosophy</strong>
-              <span>{{ conceptValue('layoutPhilosophy') || 'Not analyzed yet' }}</span>
+              <strong>레이아웃 철학</strong>
+              <span>{{ conceptValue('layoutPhilosophy') || '아직 분석 전' }}</span>
             </div>
             <div class="summary-box">
-              <strong>Depth / effects</strong>
-              <span>{{ conceptValue('depthAndEffects') || 'Not analyzed yet' }}</span>
+              <strong>깊이감 / 효과</strong>
+              <span>{{ conceptValue('depthAndEffects') || '아직 분석 전' }}</span>
             </div>
             <div class="summary-box">
-              <strong>Shape / radius</strong>
-              <span>{{ conceptValue('shapeAndRadius') || 'Not analyzed yet' }}</span>
+              <strong>형태 / 라운드</strong>
+              <span>{{ conceptValue('shapeAndRadius') || '아직 분석 전' }}</span>
             </div>
             <div class="summary-box">
-              <strong>Component style</strong>
-              <span>{{ conceptValue('componentStyle') || 'Not analyzed yet' }}</span>
+              <strong>컴포넌트 스타일</strong>
+              <span>{{ conceptValue('componentStyle') || '아직 분석 전' }}</span>
             </div>
             <div class="summary-box">
-              <strong>Color behavior</strong>
-              <span>{{ conceptValue('colorBehavior') || 'Not analyzed yet' }}</span>
+              <strong>색상 사용 방식</strong>
+              <span>{{ conceptValue('colorBehavior') || '아직 분석 전' }}</span>
             </div>
             <div class="summary-box">
-              <strong>Typography behavior</strong>
-              <span>{{ conceptValue('typographyBehavior') || 'Not analyzed yet' }}</span>
+              <strong>타이포그래피 사용 방식</strong>
+              <span>{{ conceptValue('typographyBehavior') || '아직 분석 전' }}</span>
             </div>
             <div class="summary-box">
-              <strong>Font style</strong>
-              <span>{{ selectedDocument.summary.fonts.slice(0, 4).join(' / ') || 'No font token' }}</span>
+              <strong>폰트 스타일</strong>
+              <span>{{ selectedDocument.summary.fonts.slice(0, 4).join(' / ') || '폰트 토큰 없음' }}</span>
             </div>
             <div class="summary-box">
-              <strong>Do</strong>
+              <strong>권장</strong>
               <ul v-if="conceptList('dos').length">
                 <li v-for="item in conceptList('dos')" :key="item">{{ item }}</li>
               </ul>
-              <span v-else>Not analyzed yet</span>
+              <span v-else>아직 분석 전</span>
             </div>
             <div class="summary-box">
-              <strong>Don't</strong>
+              <strong>비권장</strong>
               <ul v-if="conceptList('donts').length">
                 <li v-for="item in conceptList('donts')" :key="item">{{ item }}</li>
               </ul>
-              <span v-else>Not analyzed yet</span>
+              <span v-else>아직 분석 전</span>
             </div>
           </div>
         </div>
@@ -617,42 +617,42 @@
       <dialog class="modal" ref="addDesignModal">
         <div class="modal-header">
           <div>
-            <p class="eyebrow">A2. Add MD</p>
-            <h2>Add Design MD</h2>
+            <p class="eyebrow">A2. MD 추가</p>
+            <h2>디자인 MD 추가</h2>
           </div>
-          <button class="icon-button" type="button" aria-label="Close" @click="closeAddDesign">x</button>
+          <button class="icon-button" type="button" aria-label="닫기" @click="closeAddDesign">x</button>
         </div>
         <div class="modal-body">
           <div class="split">
             <label class="field">
-              <span>Brand</span>
+              <span>브랜드</span>
               <input v-model="newMd.brandName" type="text" @input="syncSlug" />
             </label>
             <label class="field">
-              <span>Slug</span>
+              <span>슬러그</span>
               <input v-model="newMd.slug" type="text" />
             </label>
           </div>
 
           <label class="field">
-            <span>MD file</span>
+            <span>MD 파일</span>
             <input type="file" accept=".md,text/markdown,text/plain" @change="onFileChange" />
           </label>
 
           <label class="field">
-            <span>MD text</span>
+            <span>MD 본문</span>
             <textarea v-model="newMd.text" rows="12" spellcheck="false"></textarea>
           </label>
 
           <div class="action-row align-right">
-            <button class="secondary-action" type="button" @click="loadSample">Sample</button>
-            <button class="primary-action" type="button" @click="registerMarkdown">Register MD</button>
+            <button class="secondary-action" type="button" @click="loadSample">샘플 불러오기</button>
+            <button class="primary-action" type="button" @click="registerMarkdown">MD 등록</button>
           </div>
         </div>
       </dialog>
     </div>
 
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-    <script src="app.js"></script>
+    <script src="app.js?v=ui-design-qa"></script>
   </body>
 </html>

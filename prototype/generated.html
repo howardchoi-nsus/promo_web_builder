@@ -3,27 +3,27 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Generated UI Design</title>
+    <title>생성된 UI 디자인</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <div id="generatedApp" class="generated-shell">
       <header class="generated-toolbar">
         <div>
-          <p class="eyebrow">Generated UI Design</p>
-          <h1>{{ payload ? payload.promo.title : 'Promo UI Design' }}</h1>
+          <p class="eyebrow">생성된 UI 디자인</p>
+          <h1>{{ payload ? payload.promo.title : '프로모션 UI 디자인' }}</h1>
         </div>
-        <a href="index.html">Back to admin</a>
+        <a href="index.html">관리 화면으로 돌아가기</a>
       </header>
 
       <main>
         <section v-if="!payload" class="panel stack" style="max-width: 720px; margin: 28px auto;">
           <div class="panel-header">
-            <h2>No generated UI design</h2>
-            <span>Missing data</span>
+            <h2>생성된 UI 디자인이 없습니다</h2>
+            <span>데이터 없음</span>
           </div>
-          <p>관리 화면에서 Design MD와 Promo Brief를 입력한 뒤 Generate UI Design을 실행해 주세요.</p>
-          <a class="primary-action" style="display: inline-flex; align-items: center; text-decoration: none;" href="index.html">Go to admin</a>
+          <p>관리 화면에서 디자인 MD와 프로모션 브리프를 입력한 뒤 UI 디자인 생성을 실행해 주세요.</p>
+          <a class="primary-action" style="display: inline-flex; align-items: center; text-decoration: none;" href="index.html">관리 화면으로 이동</a>
         </section>
 
         <article v-else class="promo-page">
@@ -40,32 +40,32 @@
               <a class="hero-cta" :href="payload.promo.ctaUrl || '#'">{{ payload.promo.ctaLabel }}</a>
               <small class="hero-alpha">{{ payload.promo.alphaText }}</small>
             </div>
-            <div class="hero-art" aria-label="Promo visual">
+            <div class="hero-art" aria-label="프로모션 비주얼">
               <div class="chip chip-one">$50</div>
               <div class="chip chip-two">A K</div>
-              <div class="chip chip-three">Spin</div>
+              <div class="chip chip-three">스핀</div>
             </div>
           </section>
 
           <section class="steps">
-            <div><b>1</b><strong>Register for free</strong><span>Sign up and download the app</span></div>
-            <div><b>2</b><strong>Claim welcome bonus</strong><span>Deposit and choose free bonus</span></div>
-            <div><b>3</b><strong>Start playing</strong><span>Enjoy poker classics and more</span></div>
+            <div><b>1</b><strong>무료 가입</strong><span>가입 후 앱을 다운로드하세요</span></div>
+            <div><b>2</b><strong>웰컴 보너스 받기</strong><span>입금 후 보너스를 선택하세요</span></div>
+            <div><b>3</b><strong>플레이 시작</strong><span>포커 클래식과 다양한 게임을 즐기세요</span></div>
           </section>
 
           <section class="content-band">
-            <h3>Take a Look at {{ payload.md.brand }}'s Most Popular Games</h3>
-            <p>The generated page uses the selected MD's design summary plus the page-level color and font overrides configured in the admin screen.</p>
+            <h3>{{ payload.md.brand }}의 인기 게임 살펴보기</h3>
+            <p>선택한 디자인 MD 요약과 관리 화면에서 설정한 색상/폰트 재정의를 반영한 로컬 미리보기입니다.</p>
             <div class="game-grid">
-              <span>Tournaments</span>
-              <span>Hold'em</span>
+              <span>토너먼트</span>
+              <span>홀덤</span>
               <span>Omaha</span>
               <span>Rush & Cash</span>
             </div>
           </section>
 
           <section class="terms">
-            <h3>Terms and Conditions</h3>
+            <h3>이용약관</h3>
             <p>{{ payload.promo.termsText }}</p>
           </section>
 

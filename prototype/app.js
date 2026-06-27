@@ -126,10 +126,10 @@ const storageKeys = {
 const dummyCompanyStylePresets = [
   {
     id: "preset-001",
-    name: "GGPoker Global Default",
+    name: "GGPoker 글로벌 기본",
     brandId: "brand-ggpoker",
     market: "Global",
-    description: "Default red and black GGPoker promo style.",
+    description: "GGPoker 기본 레드/블랙 프로모션 스타일입니다.",
     isDefault: true,
     colorTokens: {
       primary: "#d52b1e",
@@ -145,10 +145,10 @@ const dummyCompanyStylePresets = [
   },
   {
     id: "preset-002",
-    name: "GGPoker Dark Promo",
+    name: "GGPoker 다크 프로모션",
     brandId: "brand-ggpoker",
     market: "Global",
-    description: "Darker high-contrast campaign style.",
+    description: "어두운 고대비 캠페인 스타일입니다.",
     isDefault: false,
     colorTokens: {
       primary: "#ff3b30",
@@ -164,10 +164,10 @@ const dummyCompanyStylePresets = [
   },
   {
     id: "preset-003",
-    name: "GGVegas Default",
+    name: "GGVegas 기본",
     brandId: "brand-ggvegas",
     market: "Global",
-    description: "Casino-forward gold accent style.",
+    description: "카지노 분위기의 골드 포인트 스타일입니다.",
     isDefault: false,
     colorTokens: {
       primary: "#c99700",
@@ -183,10 +183,10 @@ const dummyCompanyStylePresets = [
   },
   {
     id: "preset-004",
-    name: "Brazil Compliance Style",
+    name: "브라질 컴플라이언스 스타일",
     brandId: "brand-ggpoker",
     market: "Brazil",
-    description: "Market-specific compliant style with calmer contrast.",
+    description: "브라질 마켓 정책을 고려한 차분한 대비 스타일입니다.",
     isDefault: false,
     colorTokens: {
       primary: "#007a33",
@@ -213,7 +213,7 @@ function createEmptyTemp4Inputs() {
   return {
     header: {
       logoText: "GGPoker",
-      badgeText: "Promotion",
+      badgeText: "프로모션",
     },
     heroBanner: {
       leaderText: "",
@@ -241,7 +241,7 @@ function createEmptyTemp4Inputs() {
       visualMode: "auto",
     },
     titleDescription: {
-      title: "Terms & Conditions",
+      title: "이용약관",
       contents: "",
     },
     footer: {
@@ -267,7 +267,7 @@ function buildTemp4Draft({ promo, simpleBrief, selectedDocument, visualMode }) {
   };
 
   const offerText = offer || promo.leadText.trim() || title;
-  const actionText = action || "Join and follow the promo steps";
+  const actionText = action || "가입 후 프로모션 단계를 진행하세요";
   const audiencePrefix = audience ? `${audience} can ` : "";
   const toneHint = tone ? ` Tone: ${tone}.` : "";
 
@@ -277,7 +277,7 @@ function buildTemp4Draft({ promo, simpleBrief, selectedDocument, visualMode }) {
       badgeText: promo.market || "Global",
     },
     heroBanner: {
-      leaderText: offerText ? "Featured Promotion" : "",
+      leaderText: offerText ? "추천 프로모션" : "",
       title,
       sublineText: offerText,
       cta,
@@ -286,20 +286,20 @@ function buildTemp4Draft({ promo, simpleBrief, selectedDocument, visualMode }) {
     },
     stepBar: [
       {
-        title: "Start",
+        title: "시작",
         description: audiencePrefix ? `${audiencePrefix}${actionText.toLowerCase()}.` : actionText,
         link: cta.link,
         target: cta.target,
       },
       {
-        title: "Claim",
-        description: offerText ? `Unlock the offer: ${offerText}` : "Follow the campaign requirements.",
+        title: "혜택 받기",
+        description: offerText ? `혜택을 확인하세요: ${offerText}` : "캠페인 참여 조건을 확인하세요.",
         link: cta.link,
         target: cta.target,
       },
       {
-        title: "Play",
-        description: secondary || "Enjoy the promotion and check the final conditions before joining.",
+        title: "플레이",
+        description: secondary || "프로모션을 즐기기 전에 최종 조건을 확인하세요.",
         link: cta.link,
         target: cta.target,
       },
@@ -310,14 +310,14 @@ function buildTemp4Draft({ promo, simpleBrief, selectedDocument, visualMode }) {
       visualMode,
     },
     imageTextRow: {
-      headerTitle: title ? `${title} details` : "Promotion details",
+      headerTitle: title ? `${title} 상세` : "프로모션 상세",
       headerDescription: offerText,
       title: actionText,
-      description: secondary || terms || "Review the promotion details and participate through the CTA.",
+      description: secondary || terms || "프로모션 상세 내용을 확인한 뒤 CTA를 통해 참여하세요.",
       visualMode,
     },
     titleDescription: {
-      title: "Terms & Conditions",
+      title: "이용약관",
       contents: terms,
     },
     footer: {
@@ -497,11 +497,11 @@ createApp({
   data() {
     const pages = loadJson(storageKeys.generatedPages, []);
     return {
-      status: "Ready",
+      status: "준비 완료",
       sectionWidths: [30, 30, 40],
       resizeState: null,
       designDocuments: [],
-      mdListSource: "Loading",
+      mdListSource: "불러오는 중",
       expandedStyleGroupSlug: "",
       selectedStyleGroupSlug: "",
       styleGroupSearch: "",
@@ -655,7 +655,7 @@ createApp({
     },
 
     templateModeLabel() {
-      return `${this.templateSchema.name} / ${this.generationMode === "ai_agent" ? "AI Agent" : "Rule Base"} / ${this.inputMode}`;
+      return `${this.templateLabel(this.templateSchema.name)} / ${this.generationMode === "ai_agent" ? "AI 에이전트" : "룰 기반"} / ${this.inputMode === "advanced" ? "고급" : "간편"}`;
     },
   },
 
@@ -695,16 +695,16 @@ createApp({
         }
         localStorage.setItem(storageKeys.selectedDocumentId, this.selectedDocumentId);
         this.resetOverride();
-        this.setStatus(`Loaded ${this.designDocuments.length} MDs from Neon`);
+        this.setStatus(`Neon에서 MD ${this.designDocuments.length}개를 불러왔습니다`);
       } catch (error) {
         this.designDocuments = dummyDocuments();
-        this.mdListSource = "Fallback dummy";
+        this.mdListSource = "fallback 더미";
         if (!this.selectedDocumentId || !this.selectedDocument) {
           this.selectedDocumentId = this.designDocuments[0]?.id || "";
         }
         localStorage.setItem(storageKeys.selectedDocumentId, this.selectedDocumentId);
         this.resetOverride();
-        this.setStatus("Neon API unavailable. Using fallback dummy data");
+        this.setStatus("Neon API를 사용할 수 없어 더미 데이터를 사용합니다");
       }
     },
 
@@ -720,14 +720,14 @@ createApp({
     groupInfoForDocument(doc) {
       const fallback = {
         slug: "unclassified",
-        name: "Unclassified",
-        description: "Needs design analysis or style classification",
+        name: "미분류",
+        description: "디자인 분석 또는 스타일 분류가 필요합니다",
       };
       const primary = doc?.styleClassification?.primaryGroup;
       if (!primary || typeof primary !== "object") return fallback;
       return {
         slug: primary.slug || "unclassified",
-        name: primary.name || "Unclassified",
+        name: primary.name || "미분류",
         description: primary.description || fallback.description,
       };
     },
@@ -737,6 +737,28 @@ createApp({
       return Array.isArray(tags) ? tags.filter(Boolean) : [];
     },
 
+    visualModeLabel(value) {
+      const labels = {
+        auto: "자동",
+        use_visual: "비주얼 사용",
+        no_visual: "비주얼 없음",
+      };
+      return labels[value] || value || "자동";
+    },
+
+    templateLabel(value) {
+      if (value === "Template 4") return "템플릿 4";
+      return value || "";
+    },
+
+    statusLabel(value) {
+      const labels = {
+        n8n_ui_design_generated: "n8n 생성 완료",
+        draft: "초안",
+      };
+      return labels[value] || value || "";
+    },
+
     selectStyleGroup(group) {
       this.selectedStyleGroupSlug = group.slug;
       this.expandedStyleGroupSlug = group.slug;
@@ -744,15 +766,15 @@ createApp({
 
     async analyzeDocument(doc) {
       if (!doc) {
-        this.setStatus("Select an MD first");
+        this.setStatus("먼저 MD를 선택해 주세요");
         return;
       }
       if (!doc.markdown) {
-        this.setStatus("Raw markdown is empty");
+        this.setStatus("원본 Markdown이 비어 있습니다");
         return;
       }
       if (window.location.protocol === "file:" && !this.n8nAnalyzeWebhookUrl.trim()) {
-        this.setStatus("Set analyze webhook URL first");
+        this.setStatus("분석 Webhook URL을 먼저 입력해 주세요");
         return;
       }
 
@@ -765,7 +787,7 @@ createApp({
         headers["x-n8n-analyze-webhook-url"] = this.n8nAnalyzeWebhookUrl.trim();
       }
 
-      this.setStatus("Analyzing MD concept");
+      this.setStatus("MD 콘셉트를 분석 중입니다");
       try {
         const response = await fetch(requestUrl, {
           method: "POST",
@@ -779,10 +801,10 @@ createApp({
         });
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(payload.message || payload.error || `Analyze ${response.status}`);
-        this.setStatus("MD concept analyzed");
+        this.setStatus("MD 콘셉트 분석이 완료되었습니다");
         if (useProxy) await this.loadDesignDocuments();
       } catch (error) {
-        this.setStatus(`Analyze failed: ${error.message}`);
+        this.setStatus(`분석 실패: ${error.message}`);
       }
     },
 
@@ -854,7 +876,7 @@ createApp({
       };
       this.globalVisualMode = "auto";
       this.sectionInputs = createEmptyTemp4Inputs();
-      this.setStatus("Promo inputs cleared");
+      this.setStatus("프로모션 입력값을 초기화했습니다");
     },
 
     openAddDesign() {
@@ -869,12 +891,12 @@ createApp({
       const file = event.target.files[0];
       if (!file) return;
       if (!file.name.toLowerCase().endsWith(".md")) {
-        this.setStatus("Invalid file");
+        this.setStatus("지원하지 않는 파일입니다");
         return;
       }
       this.newMd.text = await file.text();
       this.newMd.sourceName = file.name;
-      this.setStatus("MD file loaded");
+      this.setStatus("MD 파일을 불러왔습니다");
     },
 
     loadSample() {
@@ -884,19 +906,19 @@ createApp({
         text: sampleMarkdown,
         sourceName: "sample-design.md",
       };
-      this.setStatus("Sample loaded");
+      this.setStatus("샘플을 불러왔습니다");
     },
 
     async registerMarkdown() {
       const markdown = this.newMd.text.trim();
       if (!markdown) {
-        this.setStatus("MD text is empty");
+        this.setStatus("MD 본문이 비어 있습니다");
         return;
       }
 
       const slug = this.newMd.slug.trim() || slugify(this.newMd.brandName);
       if (window.location.protocol !== "file:") {
-        this.setStatus("Saving MD to Neon");
+        this.setStatus("MD를 Neon에 저장 중입니다");
         try {
           const response = await fetch("/api/register-design-md", {
             method: "POST",
@@ -914,15 +936,15 @@ createApp({
           if (!response.ok) throw new Error(payload.message || payload.error || `Register ${response.status}`);
           const doc = payload.document;
           this.closeAddDesign();
-          this.setStatus("MD saved. Analyzing concept");
+          this.setStatus("MD 저장 완료. 콘셉트를 분석 중입니다");
           await this.loadDesignDocuments();
           this.selectDocument(doc.id);
           await this.analyzeDocument(doc);
           await this.loadDesignDocuments();
-          this.setStatus("MD registered and analyzed");
+          this.setStatus("MD 등록 및 분석이 완료되었습니다");
           return;
         } catch (error) {
-          this.setStatus(`Register failed: ${error.message}`);
+          this.setStatus(`등록 실패: ${error.message}`);
           return;
         }
       }
@@ -941,7 +963,7 @@ createApp({
       this.designDocuments.unshift(doc);
       this.selectDocument(doc.id);
       saveJson(storageKeys.documents, this.designDocuments);
-      this.setStatus("MD registered");
+      this.setStatus("MD가 등록되었습니다");
       this.closeAddDesign();
     },
 
@@ -952,7 +974,7 @@ createApp({
       this.expandedStyleGroupSlug = group.slug;
       this.selectedStyleGroupSlug = group.slug;
       if (this.styleSource === "design_md") this.resetOverride();
-      this.setStatus("MD selected");
+      this.setStatus("MD를 선택했습니다");
     },
 
     openDetail(doc) {
@@ -982,8 +1004,8 @@ createApp({
     },
 
     styleSourceLabel() {
-      if (this.styleSource === "design_md") return `Design MD / ${this.selectedDocument?.brandName || "None"}`;
-      return `Company Default / ${this.selectedPreset.name}`;
+      if (this.styleSource === "design_md") return `디자인 MD / ${this.selectedDocument?.brandName || "없음"}`;
+      return `회사 기본값 / ${this.selectedPreset.name}`;
     },
 
     refreshSectionDraft() {
@@ -996,7 +1018,7 @@ createApp({
       this.promo.leadText = this.simpleBrief.mainOffer || this.sectionInputs.heroBanner.sublineText;
       this.promo.subline = this.simpleBrief.secondaryMessage || this.sectionInputs.contentCta.longText;
       this.promo.template = "Template 4";
-      this.setStatus("Temp.4 section draft refreshed");
+      this.setStatus("Temp.4 섹션 초안을 갱신했습니다");
     },
 
     hasSectionDraft() {
@@ -1066,22 +1088,22 @@ createApp({
 
     validatePromoInputs() {
       const required = [
-        ["title", "Promo title"],
-        ["market", "Market / Region"],
-        ["ctaLabel", "CTA label"],
+        ["title", "프로모션 제목"],
+        ["market", "마켓 / 지역"],
+        ["ctaLabel", "CTA 문구"],
         ["ctaUrl", "CTA URL"],
-        ["termsText", "Terms and Conditions"],
+        ["termsText", "이용약관"],
       ];
       const missing = required.filter(([key]) => !String(this.promo[key] || "").trim()).map(([, label]) => label);
       const simpleMissing = [
-        ["mainOffer", "Main offer / benefit"],
-        ["targetAction", "Target action"],
+        ["mainOffer", "주요 혜택"],
+        ["targetAction", "유도 행동"],
       ]
         .filter(([key]) => !String(this.simpleBrief[key] || "").trim())
         .map(([, label]) => label);
       const allMissing = [...missing, ...simpleMissing];
       if (allMissing.length) {
-        this.setStatus(`Missing: ${allMissing.slice(0, 2).join(", ")}${allMissing.length > 2 ? "..." : ""}`);
+        this.setStatus(`필수 입력 누락: ${allMissing.slice(0, 2).join(", ")}${allMissing.length > 2 ? "..." : ""}`);
         return false;
       }
       return true;
@@ -1089,18 +1111,18 @@ createApp({
 
     validateLegacyPromoInputs() {
       const required = [
-        ["title", "Promo title"],
-        ["template", "Template"],
-        ["market", "Market / Region"],
-        ["leadText", "Lead text"],
-        ["ctaLabel", "CTA label"],
+        ["title", "프로모션 제목"],
+        ["template", "템플릿"],
+        ["market", "마켓 / 지역"],
+        ["leadText", "리드 문구"],
+        ["ctaLabel", "CTA 문구"],
         ["ctaUrl", "CTA URL"],
-        ["subline", "Subline"],
-        ["termsText", "Terms and Conditions"],
+        ["subline", "보조 문구"],
+        ["termsText", "이용약관"],
       ];
       const missing = required.filter(([key]) => !String(this.promo[key] || "").trim()).map(([, label]) => label);
       if (missing.length) {
-        this.setStatus(`Missing: ${missing.slice(0, 2).join(", ")}${missing.length > 2 ? "..." : ""}`);
+        this.setStatus(`필수 입력 누락: ${missing.slice(0, 2).join(", ")}${missing.length > 2 ? "..." : ""}`);
         return false;
       }
       return true;
@@ -1131,7 +1153,7 @@ createApp({
 
     async generateUiDesign() {
       if (!this.selectedDocument) {
-        this.setStatus("Select an MD first");
+        this.setStatus("먼저 MD를 선택해 주세요");
         return;
       }
       if (!this.validatePromoInputs()) return;
@@ -1139,13 +1161,13 @@ createApp({
       const pageId = `promo-${String(this.generatedPages.length + 1).padStart(3, "0")}`;
       const payload = this.buildGeneratedPayload(pageId);
       const willUseN8n = this.n8nWebhookUrl.trim() || window.location.protocol !== "file:";
-      this.setStatus(willUseN8n ? "Triggering UI design workflow" : "UI design generated locally");
+      this.setStatus(willUseN8n ? "UI 디자인 워크플로를 실행 중입니다" : "로컬에서 UI 디자인을 생성했습니다");
 
       let n8nResult = null;
       try {
         n8nResult = await this.triggerN8n(payload);
       } catch (error) {
-        this.setStatus(`n8n failed: ${error.message}`);
+        this.setStatus(`n8n 실행 실패: ${error.message}`);
         return;
       }
 
@@ -1171,7 +1193,7 @@ createApp({
       this.generatedPages.unshift(listItem);
       saveJson(storageKeys.generatedPages, this.generatedPages);
       saveJson(storageKeys.generatedPage, listItem.payload);
-      this.setStatus(n8nResult ? "n8n UI design generated" : "UI design generated locally");
+      this.setStatus(n8nResult ? "n8n UI 디자인 생성이 완료되었습니다" : "로컬 UI 디자인 생성이 완료되었습니다");
       if (listItem.pageUrl) window.open(listItem.pageUrl, "_blank");
     },
 
