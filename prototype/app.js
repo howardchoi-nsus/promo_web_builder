@@ -910,18 +910,18 @@ createApp({
         title: "GGPoker Welcome Bonus",
         template: "Template 4",
         market: "Global",
-        ctaLabel: "지금 참여하기",
+        ctaLabel: "Join Now",
         ctaUrl: "https://www.ggpoker.com/promotions/",
         termsText:
-          "본 프로모션은 GGPoker 이용 약관 및 각 지역 규정을 따릅니다. 보너스 지급 조건, 유효 기간, 참가 가능 지역은 변경될 수 있습니다. 만 18세 이상 책임감 있는 플레이어만 참여할 수 있습니다.",
+          "This promotion is subject to GGPoker terms and conditions and applicable local regulations. Bonus eligibility, validity period, and participating regions may vary. Available only to responsible players aged 18 or older.",
       };
       this.simpleBrief = {
-        mainOffer: "신규 플레이어에게 첫 입금 보너스와 토너먼트 티켓을 제공",
-        targetAction: "회원가입 후 첫 입금을 완료하고 웰컴 혜택 받기",
-        audience: "GGPoker를 처음 이용하는 신규 포커 플레이어",
-        campaignTone: "프리미엄, 신뢰감 있는, 에너지 있는 글로벌 포커 프로모션",
+        mainOffer: "Give new players a first deposit bonus and tournament tickets",
+        targetAction: "Sign up, make the first deposit, and claim the welcome rewards",
+        audience: "New poker players joining GGPoker for the first time",
+        campaignTone: "Premium, trustworthy, energetic global poker promotion",
         secondaryMessage:
-          "짧은 가입 절차 후 바로 테이블과 토너먼트에 참여할 수 있도록 명확한 혜택과 액션을 강조합니다.",
+          "Highlight a clear reward path that helps players register quickly and move straight into cash games and tournaments.",
       };
       this.inputMode = "simple";
       this.generationMode = "ai_agent";
