@@ -822,6 +822,7 @@ body.is-resizing {
 
 .style-doc-list {
   display: grid;
+  grid-auto-rows: 78px;
   gap: 1px;
   border-top: 1px solid var(--line);
   background: var(--line);
@@ -832,8 +833,12 @@ body.is-resizing {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
+  height: 78px;
+  min-height: 78px;
+  max-height: 78px;
   padding: 10px 12px;
   background: #ffffff;
+  overflow: hidden;
 }
 
 .style-doc-item.selected {
