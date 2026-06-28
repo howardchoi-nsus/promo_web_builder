@@ -226,7 +226,10 @@
             <div class="subsection promo-required">
               <div class="subsection-title">
                 <h3>B2. 프로모션 입력</h3>
-                <span>AI가 Temp.4 섹션으로 확장합니다</span>
+                <div class="subsection-actions">
+                  <span>AI가 Temp.4 섹션으로 확장합니다</span>
+                  <button class="tiny-button primary" type="button" @click="autoFillPromoInputs">자동등록</button>
+                </div>
               </div>
 
               <div class="form-grid">
@@ -502,6 +505,7 @@
                 <div><strong>재정의</strong><span>{{ lastGenerated.hasOverride ? '적용됨' : '없음' }}</span></div>
                 <div><strong>MD 준수 검토</strong><span>{{ lastGenerated.mdComplianceMap ? '포함됨' : '대기 중' }}</span></div>
                 <div><strong>산출물</strong><span>{{ lastGenerated.imageUrl ? 'UI 디자인 이미지' : lastGenerated.pageUrl ? '디자인 URL' : '로컬 payload 미리보기' }}</span></div>
+                <div v-if="lastGenerated.errorMessage"><strong>오류</strong><span>{{ lastGenerated.errorMessage }}</span></div>
                 <button class="primary-action" type="button" @click="openGenerated(lastGenerated)">생성된 디자인 열기</button>
               </div>
               <div v-else class="outline-item">

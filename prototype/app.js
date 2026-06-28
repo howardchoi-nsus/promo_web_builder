@@ -776,7 +776,9 @@ createApp({
 
     statusLabel(value) {
       const labels = {
+        n8n_ui_design_pending: "n8n 생성 중",
         n8n_ui_design_generated: "n8n 생성 완료",
+        n8n_failed: "n8n 실패",
         draft: "초안",
       };
       return labels[value] || value || "";
@@ -900,6 +902,32 @@ createApp({
       this.globalVisualMode = "auto";
       this.sectionInputs = createEmptyTemp4Inputs();
       this.setStatus("프로모션 입력값을 초기화했습니다");
+    },
+
+    autoFillPromoInputs() {
+      this.promo = {
+        ...this.promo,
+        title: "GGPoker Welcome Bonus",
+        template: "Template 4",
+        market: "Global",
+        ctaLabel: "지금 참여하기",
+        ctaUrl: "https://www.ggpoker.com/promotions/",
+        termsText:
+          "본 프로모션은 GGPoker 이용 약관 및 각 지역 규정을 따릅니다. 보너스 지급 조건, 유효 기간, 참가 가능 지역은 변경될 수 있습니다. 만 18세 이상 책임감 있는 플레이어만 참여할 수 있습니다.",
+      };
+      this.simpleBrief = {
+        mainOffer: "신규 플레이어에게 첫 입금 보너스와 토너먼트 티켓을 제공",
+        targetAction: "회원가입 후 첫 입금을 완료하고 웰컴 혜택 받기",
+        audience: "GGPoker를 처음 이용하는 신규 포커 플레이어",
+        campaignTone: "프리미엄, 신뢰감 있는, 에너지 있는 글로벌 포커 프로모션",
+        secondaryMessage:
+          "짧은 가입 절차 후 바로 테이블과 토너먼트에 참여할 수 있도록 명확한 혜택과 액션을 강조합니다.",
+      };
+      this.inputMode = "simple";
+      this.generationMode = "ai_agent";
+      this.globalVisualMode = "use_visual";
+      this.refreshSectionDraft();
+      this.setStatus("GGpoker 테스트 프로모션 입력값을 자동등록했습니다");
     },
 
     openAddDesign() {
@@ -1186,14 +1214,6 @@ createApp({
       const willUseN8n = this.n8nWebhookUrl.trim() || window.location.protocol !== "file:";
       this.setStatus(willUseN8n ? "UI 디자인 워크플로를 실행 중입니다" : "로컬에서 UI 디자인을 생성했습니다");
 
-      let n8nResult = null;
-      try {
-        n8nResult = await this.triggerN8n(payload);
-      } catch (error) {
-        this.setStatus(`n8n 실행 실패: ${error.message}`);
-        return;
-      }
-
       const listItem = {
         id: pageId,
         title: payload.promo.title,
@@ -1202,18 +1222,42 @@ createApp({
         template: payload.promo.template,
         market: payload.promo.market,
         createdAt: payload.generatedAt,
-        status: n8nResult ? "n8n_ui_design_generated" : "draft",
-        designUrl: n8nResult?.designUrl || "",
-        imageUrl: n8nResult?.imageUrl || "",
-        pageUrl: n8nResult?.designUrl || n8nResult?.imageUrl || n8nResult?.pageUrl || n8nResult?.previewUrl || "",
-        layoutMapping: n8nResult?.layoutMapping || null,
-        mdComplianceMap: n8nResult?.mdComplianceMap || null,
-        imagePrompt: n8nResult?.imagePrompt || "",
+        status: willUseN8n ? "n8n_ui_design_pending" : "draft",
+        designUrl: "",
+        imageUrl: "",
+        pageUrl: "",
+        layoutMapping: null,
+        mdComplianceMap: null,
+        imagePrompt: "",
+        errorMessage: "",
         hasOverride: payload.hasOverride,
-        payload: n8nResult?.payload || payload,
+        payload,
       };
 
       this.generatedPages.unshift(listItem);
+      saveJson(storageKeys.generatedPages, this.generatedPages);
+      saveJson(storageKeys.generatedPage, listItem.payload);
+
+      let n8nResult = null;
+      try {
+        n8nResult = await this.triggerN8n(payload);
+      } catch (error) {
+        listItem.status = "n8n_failed";
+        listItem.errorMessage = error.message;
+        saveJson(storageKeys.generatedPages, this.generatedPages);
+        this.setStatus(`n8n 실행 실패. 초안은 C섹션에 저장했습니다: ${error.message}`);
+        return;
+      }
+
+      listItem.status = n8nResult ? "n8n_ui_design_generated" : "draft";
+      listItem.designUrl = n8nResult?.designUrl || "";
+      listItem.imageUrl = n8nResult?.imageUrl || "";
+      listItem.pageUrl = n8nResult?.designUrl || n8nResult?.imageUrl || n8nResult?.pageUrl || n8nResult?.previewUrl || "";
+      listItem.layoutMapping = n8nResult?.layoutMapping || null;
+      listItem.mdComplianceMap = n8nResult?.mdComplianceMap || null;
+      listItem.imagePrompt = n8nResult?.imagePrompt || "";
+      listItem.payload = n8nResult?.payload || payload;
+
       saveJson(storageKeys.generatedPages, this.generatedPages);
       saveJson(storageKeys.generatedPage, listItem.payload);
       this.setStatus(n8nResult ? "n8n UI 디자인 생성이 완료되었습니다" : "로컬 UI 디자인 생성이 완료되었습니다");
