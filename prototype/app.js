@@ -566,7 +566,7 @@ createApp({
     },
 
     selectedDocumentGroupLabel() {
-      return this.groupInfoForDocument(this.selectedDocument).name;
+      return this.styleGroupName(this.groupInfoForDocument(this.selectedDocument));
     },
 
     selectedDocumentTags() {
@@ -735,6 +735,29 @@ createApp({
     tagsForDocument(doc) {
       const tags = doc?.styleClassification?.styleTags;
       return Array.isArray(tags) ? tags.filter(Boolean) : [];
+    },
+
+    styleGroupName(group) {
+      const name = group?.name || "";
+      const labels = {
+        Unclassified: "미분류",
+        "Editorial / Media": "에디토리얼 / 미디어",
+        "Product / SaaS": "프로덕트 / SaaS",
+        "Commerce / Finance": "커머스 / 금융",
+        "Luxury / Automotive": "럭셔리 / 오토모티브",
+        "Consumer / Lifestyle": "소비자 / 라이프스타일",
+        "AI / Developer Tools": "AI / 개발자 도구",
+        "Gaming / Entertainment": "게임 / 엔터테인먼트",
+      };
+      return labels[name] || name || "미분류";
+    },
+
+    styleGroupDescription(group) {
+      const description = group?.description || "";
+      const labels = {
+        "Needs design analysis or style classification": "디자인 분석 또는 스타일 분류가 필요합니다",
+      };
+      return labels[description] || description || "디자인 분석 또는 스타일 분류가 필요합니다";
     },
 
     visualModeLabel(value) {

@@ -68,15 +68,15 @@
                   type="button"
                   @click="selectStyleGroup(group)"
                 >
-                  <strong>{{ group.name }}</strong>
+                  <strong>{{ styleGroupName(group) }}</strong>
                   <span>{{ group.documents.length }}개 MD</span>
                 </button>
               </div>
 
               <div class="selected-concept-card" v-if="selectedStyleGroup">
                 <div>
-                  <strong>{{ selectedStyleGroup.name }}</strong>
-                  <p>{{ selectedStyleGroup.description }}</p>
+                  <strong>{{ styleGroupName(selectedStyleGroup) }}</strong>
+                  <p>{{ styleGroupDescription(selectedStyleGroup) }}</p>
                 </div>
                 <div class="style-group-tags" v-if="selectedStyleGroup.tags.length || selectedStyleGroup.confidence !== null">
                   <span v-for="tag in selectedStyleGroup.tags" :key="tag">{{ tag }}</span>
@@ -225,7 +225,7 @@
 
             <div class="subsection promo-required">
               <div class="subsection-title">
-                <h3>B2. 간편 프로모션 브리프</h3>
+                <h3>B2. 프로모션 입력</h3>
                 <span>AI가 Temp.4 섹션으로 확장합니다</span>
               </div>
 
