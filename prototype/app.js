@@ -1059,7 +1059,7 @@ createApp({
       return `회사 기본값 / ${this.selectedPreset.name}`;
     },
 
-    refreshSectionDraft() {
+    refreshSectionDraft(options = {}) {
       this.sectionInputs = buildTemp4Draft({
         promo: this.promo,
         simpleBrief: this.simpleBrief,
@@ -1069,7 +1069,7 @@ createApp({
       this.promo.leadText = this.simpleBrief.mainOffer || this.sectionInputs.heroBanner.sublineText;
       this.promo.subline = this.simpleBrief.secondaryMessage || this.sectionInputs.contentCta.longText;
       this.promo.template = "Template 4";
-      this.setStatus("Temp.4 섹션 초안을 갱신했습니다");
+      if (!options.silent) this.setStatus("Temp.4 섹션 초안을 갱신했습니다");
     },
 
     hasSectionDraft() {
@@ -1079,8 +1079,8 @@ createApp({
     },
 
     sectionInputsForPayload() {
-      if (!this.hasSectionDraft() && String(this.promo.title || "").trim()) {
-        this.refreshSectionDraft();
+      if (this.inputMode === "simple" || (!this.hasSectionDraft() && String(this.promo.title || "").trim())) {
+        this.refreshSectionDraft({ silent: true });
       }
       return JSON.parse(JSON.stringify(this.sectionInputs));
     },
