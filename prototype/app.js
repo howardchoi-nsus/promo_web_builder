@@ -352,6 +352,22 @@ function nowText() {
   return date.toISOString().slice(0, 16).replace("T", " ");
 }
 
+function toDesignViewUrl(url, id) {
+  const value = String(url || "").trim();
+  if (!value || !id || !/promo-ui-design-generate\/?(?:\?.*)?$/.test(value)) return value;
+  const queryPath = `promo-ui-design-view?id=${encodeURIComponent(id)}`;
+  const replaced = value.replace(/promo-ui-design-generate\/?(?:\?.*)?$/, queryPath);
+  if (replaced !== value) return replaced;
+  try {
+    const parsed = new URL(value);
+    parsed.pathname = parsed.pathname.replace(/\/$/, "").replace(/promo-ui-design-generate$/, "promo-ui-design-view");
+    parsed.search = `?id=${encodeURIComponent(id)}`;
+    return parsed.toString();
+  } catch {
+    return value;
+  }
+}
+
 function normalizeCategory(title) {
   const raw = title.toLowerCase().replace(/^\d+\.\s*/, "");
   if (raw.includes("color") || raw.includes("palette")) return "colors";
@@ -1250,9 +1266,9 @@ createApp({
       }
 
       listItem.status = n8nResult ? "n8n_ui_design_generated" : "draft";
-      listItem.designUrl = n8nResult?.designUrl || "";
+      listItem.designUrl = toDesignViewUrl(n8nResult?.designUrl || "", listItem.id);
       listItem.imageUrl = n8nResult?.imageUrl || "";
-      listItem.pageUrl = n8nResult?.designUrl || n8nResult?.imageUrl || n8nResult?.pageUrl || n8nResult?.previewUrl || "";
+      listItem.pageUrl = toDesignViewUrl(n8nResult?.designUrl || n8nResult?.pageUrl || n8nResult?.previewUrl || "", listItem.id) || n8nResult?.imageUrl || "";
       listItem.layoutMapping = n8nResult?.layoutMapping || null;
       listItem.mdComplianceMap = n8nResult?.mdComplianceMap || null;
       listItem.imagePrompt = n8nResult?.imagePrompt || "";
@@ -1269,8 +1285,9 @@ createApp({
     },
 
     openGenerated(page) {
-      if (page.pageUrl) {
-        window.open(page.pageUrl, "_blank");
+      const pageUrl = toDesignViewUrl(page.pageUrl || page.designUrl || "", page.id);
+      if (pageUrl) {
+        window.open(pageUrl, "_blank");
         return;
       }
       saveJson(storageKeys.generatedPage, page.payload);
