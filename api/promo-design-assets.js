@@ -81,8 +81,9 @@ async function saveAsset(req, res) {
 
   const { put } = await import("@vercel/blob");
   const storageKey = `promo-designs/${runKey}/${Date.now()}.${extensionForMime(imageInput.mimeType)}`;
+  const blobAccess = String(process.env.BLOB_ACCESS || "private").toLowerCase() === "public" ? "public" : "private";
   const blob = await put(storageKey, imageInput.bytes, {
-    access: "public",
+    access: blobAccess,
     contentType: imageInput.mimeType,
   });
 
@@ -193,20 +194,21 @@ async function saveAsset(req, res) {
       ${imageInput.sourceUrl || ""},
       ${imageInput.mimeType},
       ${imageInput.bytes.length},
-      ${JSON.stringify({ pathname: blob.pathname, uploadedAt: new Date().toISOString() })}::jsonb,
+      ${JSON.stringify({ access: blobAccess, pathname: blob.pathname, uploadedAt: new Date().toISOString() })}::jsonb,
       true
     )
     returning id::text
   `;
 
   const origin = getOrigin(req);
+  const imageProxyUrl = `${origin}/api/promo-design-image?id=${encodeURIComponent(runKey)}`;
   return res.status(200).json({
     ok: true,
     runId,
     assetId: assetRows[0].id,
     runKey,
     assetUrl: blob.url,
-    imageUrl: blob.url,
+    imageUrl: imageProxyUrl,
     designUrl: `${origin}/api/promo-design-view?id=${encodeURIComponent(runKey)}`,
   });
 }

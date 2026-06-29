@@ -30,8 +30,9 @@ module.exports = async function handler(req, res) {
 
     const row = rows[0];
     const title = escapeHtml(row?.promo_title || "Promo UI Design");
+    const imageUrl = `/api/promo-design-image?id=${encodeURIComponent(runKey)}`;
     const html = row?.asset_url
-      ? renderImagePage({ title, id: runKey, assetUrl: row.asset_url, brand: row.selected_md_name, createdAt: row.created_at })
+      ? renderImagePage({ title, id: runKey, imageUrl, brand: row.selected_md_name, createdAt: row.created_at })
       : renderNotFound(runKey);
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -42,7 +43,7 @@ module.exports = async function handler(req, res) {
   }
 };
 
-function renderImagePage({ title, id, assetUrl, brand, createdAt }) {
+function renderImagePage({ title, id, imageUrl, brand, createdAt }) {
   return `<!doctype html>
 <html lang="ko">
 <head>
@@ -64,7 +65,7 @@ function renderImagePage({ title, id, assetUrl, brand, createdAt }) {
       <strong>${title}</strong>
       <span class="meta">${escapeHtml(brand || "")} · ${escapeHtml(id)} · ${escapeHtml(String(createdAt || ""))}</span>
     </div>
-    <div class="frame"><img src="${escapeAttribute(assetUrl)}" alt="Generated promo UI design"></div>
+    <div class="frame"><img src="${escapeAttribute(imageUrl)}" alt="Generated promo UI design"></div>
   </main>
 </body>
 </html>`;
