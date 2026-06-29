@@ -8,23 +8,21 @@
   </head>
   <body>
     <div id="app" class="app-shell">
-      <aside class="sidebar">
-        <div class="brand-mark">GG 프로모션 빌더</div>
-        <nav class="nav-list" aria-label="프로토타입 내비게이션">
-          <a href="#section-a" class="active">A. 디자인 MD</a>
-          <a href="#section-b">B. 프로모션 빌더</a>
-          <a href="#section-c">C. 결과</a>
-          <a href="generated.html">생성된 UI</a>
-        </nav>
-      </aside>
-
       <main class="workspace">
         <header class="topbar">
           <div>
             <p class="eyebrow">Vue 프로토타입 / 더미 DB</p>
             <h1>디자인 MD 관리 + 프로모션 UI 디자인 생성기</h1>
           </div>
-          <div class="status-pill">{{ status }}</div>
+          <div class="topbar-actions">
+            <nav class="top-nav" aria-label="프로토타입 내비게이션">
+              <a href="#section-a">A. 디자인 MD</a>
+              <a href="#section-b">B. 프로모션 빌더</a>
+              <a href="#section-c">C. 결과</a>
+              <a href="generated.html">생성된 UI</a>
+            </nav>
+            <div class="status-pill">{{ status }}</div>
+          </div>
         </header>
 
         <section
@@ -165,7 +163,39 @@
               </div>
             </div>
 
-            <div class="subsection promo-required">
+            <div class="builder-start-card" v-if="selectedDocument">
+              <div>
+                <strong>{{ promoBuilderStarted ? '프로모션 생성 단계를 계속 진행합니다' : '선택한 스타일로 프로모션 생성을 시작합니다' }}</strong>
+                <span>{{ promoBuilderStarted ? '현재 Step ' + currentBuilderStep + '. ' + currentBuilderStepInfo.title : '기본 설정부터 UI 디자인 생성까지 모달에서 단계별로 진행합니다.' }}</span>
+              </div>
+              <button class="primary-action" type="button" @click="startPromoBuilder">{{ promoBuilderStarted ? '프로모션 빌더 열기' : '프로모션 생성 시작' }}</button>
+            </div>
+
+            <dialog class="modal builder-modal" ref="promoBuilderModal">
+              <div class="modal-header">
+                <div>
+                  <p class="eyebrow">B 섹션</p>
+                  <h2>B. 프로모션 빌더</h2>
+                </div>
+                <button class="icon-button" type="button" aria-label="닫기" @click="closePromoBuilder">x</button>
+              </div>
+              <div class="modal-body builder-modal-body">
+            <div class="builder-stepper" v-if="promoBuilderStarted">
+              <button
+                v-for="step in builderSteps"
+                :key="step.step"
+                class="builder-step"
+                :class="builderStepClass(step)"
+                type="button"
+                @click="goBuilderStep(step.step)"
+              >
+                <span>{{ step.step }}</span>
+                <strong>{{ step.title }}</strong>
+                <small>{{ step.summary }}</small>
+              </button>
+            </div>
+
+            <div class="subsection promo-required" v-if="promoBuilderStarted && currentBuilderStep === 1">
               <div class="subsection-title">
                 <h3>B1. 템플릿 및 모드</h3>
                 <span>{{ templateModeLabel }}</span>
@@ -223,7 +253,7 @@
               </div>
             </div>
 
-            <div class="subsection promo-required">
+            <div class="subsection promo-required" v-if="promoBuilderStarted && currentBuilderStep === 2">
               <div class="subsection-title">
                 <h3>B2. 프로모션 입력</h3>
                 <div class="subsection-actions">
@@ -273,11 +303,10 @@
               </label>
               <div class="action-row align-right">
                 <button class="secondary-action" type="button" @click="clearPromoInputs">초기화</button>
-                <button class="primary-action" type="button" @click="refreshSectionDraft">섹션 초안 생성</button>
               </div>
             </div>
 
-            <div class="subsection">
+            <div class="subsection" v-if="promoBuilderStarted && currentBuilderStep === 3">
               <div class="subsection-title">
                 <h3>B3. AI 섹션 초안</h3>
                 <span>Temp.4 출력 순서</span>
@@ -337,7 +366,7 @@
               </div>
             </div>
 
-            <div class="subsection">
+            <div class="subsection" v-if="promoBuilderStarted && currentBuilderStep === 4">
               <div class="subsection-title">
                 <h3>B4. 색상 / 폰트 스타일</h3>
                 <span>원본 + 재정의</span>
@@ -427,7 +456,7 @@
               </div>
             </div>
 
-            <div class="subsection">
+            <div class="subsection" v-if="promoBuilderStarted && currentBuilderStep === 5">
               <div class="subsection-title">
                 <h3>B5. UI 디자인 생성</h3>
                 <span>n8n 실행 + 디자인 이미지</span>
@@ -440,6 +469,17 @@
                 <button class="primary-action" type="button" @click="generateUiDesign">UI 디자인 생성</button>
               </div>
             </div>
+
+            <div class="builder-step-actions" v-if="promoBuilderStarted">
+              <button class="secondary-action" type="button" :disabled="currentBuilderStep === 1" @click="prevBuilderStep">이전</button>
+              <div>
+                <strong>Step {{ currentBuilderStep }} / {{ builderSteps.length }}</strong>
+                <span>{{ currentBuilderStepInfo.title }}</span>
+              </div>
+              <button class="primary-action" type="button" v-if="currentBuilderStep < builderSteps.length" @click="nextBuilderStep">다음</button>
+            </div>
+              </div>
+            </dialog>
             </div>
           </section>
 
@@ -458,7 +498,7 @@
             <div class="subsection">
               <div class="subsection-title">
                 <h3>C1. 생성된 UI 디자인 목록</h3>
-                <span>실시간 미리보기 없음</span>
+                <span>생성 이력 및 상태</span>
               </div>
 
               <div class="table-wrap">
@@ -483,7 +523,7 @@
                       <td>{{ page.styleSourceLabel }}</td>
                       <td>{{ templateLabel(page.template) }}</td>
                       <td>{{ page.market }}</td>
-                      <td>{{ page.imageUrl ? '이미지 URL' : page.pageUrl ? '디자인 URL' : statusLabel(page.status) }}</td>
+                      <td>{{ resultTypeLabel(page) }}</td>
                       <td>
                         <button class="tiny-button primary" type="button" @click="openGenerated(page)">열기</button>
                       </td>
@@ -495,18 +535,25 @@
 
             <div class="subsection">
               <div class="subsection-title">
-                <h3>C2. 최근 생성 UI 디자인</h3>
+                <h3>C2. 최근 생성 결과 요약</h3>
                 <span>{{ lastGenerated ? lastGenerated.createdAt : '아직 생성 전' }}</span>
               </div>
-              <div class="result-card" v-if="lastGenerated">
-                <div><strong>프로모션</strong><span>{{ lastGenerated.title }}</span></div>
-                <div><strong>MD</strong><span>{{ lastGenerated.selectedMd }}</span></div>
-                <div><strong>스타일</strong><span>{{ lastGenerated.styleSourceLabel }}</span></div>
-                <div><strong>재정의</strong><span>{{ lastGenerated.hasOverride ? '적용됨' : '없음' }}</span></div>
-                <div><strong>MD 준수 검토</strong><span>{{ lastGenerated.mdComplianceMap ? '포함됨' : '대기 중' }}</span></div>
-                <div><strong>산출물</strong><span>{{ lastGenerated.imageUrl ? 'UI 디자인 이미지' : lastGenerated.pageUrl ? '디자인 URL' : '로컬 payload 미리보기' }}</span></div>
-                <div v-if="lastGenerated.errorMessage"><strong>오류</strong><span>{{ lastGenerated.errorMessage }}</span></div>
-                <button class="primary-action" type="button" @click="openGenerated(lastGenerated)">생성된 디자인 열기</button>
+              <div class="recent-summary-card" v-if="lastGenerated">
+                <div class="recent-summary-grid">
+                  <div><strong>프로모션</strong><span>{{ lastGenerated.title }}</span></div>
+                  <div><strong>MD</strong><span>{{ lastGenerated.selectedMd }}</span></div>
+                  <div><strong>상태</strong><span>{{ resultTypeLabel(lastGenerated) }}</span></div>
+                  <div><strong>산출물</strong><span>{{ resultOutputLabel(lastGenerated) }}</span></div>
+                  <div><strong>생성 시간</strong><span>{{ lastGenerated.createdAt }}</span></div>
+                  <div><strong>MD 준수 검토</strong><span>{{ lastGenerated.mdComplianceMap ? '포함됨' : '대기 중' }}</span></div>
+                </div>
+                <div class="outline-item danger-state" v-if="lastGenerated.errorMessage">
+                  <strong>오류 사유</strong>
+                  <span>{{ lastGenerated.errorMessage }}</span>
+                </div>
+                <div class="action-row align-right">
+                  <button class="tiny-button primary" type="button" @click="openGenerated(lastGenerated)">새 창 열기</button>
+                </div>
               </div>
               <div v-else class="outline-item">
                 <strong>아직 생성된 UI 디자인이 없습니다</strong>

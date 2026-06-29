@@ -45,68 +45,7 @@ textarea {
 }
 
 .app-shell {
-  display: grid;
-  grid-template-columns: 232px minmax(0, 1fr);
   min-height: 100vh;
-}
-
-.sidebar {
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  padding: 22px 18px;
-  border-right: 1px solid var(--line);
-  background: #ffffff;
-  color: var(--ink);
-}
-
-.brand-mark {
-  position: relative;
-  padding: 0 8px 28px 52px;
-  font-family: var(--font-heading);
-  font-size: 16px;
-  font-weight: 900;
-  letter-spacing: 0;
-}
-
-.brand-mark::before {
-  content: "PB";
-  position: absolute;
-  left: 8px;
-  top: -4px;
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  border-radius: var(--radius);
-  background: var(--primary);
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: 950;
-}
-
-.nav-list {
-  display: grid;
-  gap: 6px;
-}
-
-.nav-list a {
-  display: block;
-  min-height: 36px;
-  padding: 10px 12px;
-  border: 1px solid transparent;
-  border-radius: var(--radius);
-  color: #334155;
-  text-decoration: none;
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.nav-list a.active,
-.nav-list a:hover {
-  border-color: var(--line);
-  background: var(--surface-2);
-  color: var(--ink);
 }
 
 .workspace {
@@ -125,6 +64,42 @@ textarea {
   border-radius: var(--radius);
   background: #ffffff;
   box-shadow: var(--shadow);
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  min-width: 0;
+}
+
+.top-nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.top-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #ffffff;
+  color: #334155;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.top-nav a:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-2);
+  color: var(--ink);
 }
 
 .eyebrow {
@@ -951,6 +926,111 @@ body.is-resizing {
   margin-top: 4px;
 }
 
+.builder-start-card,
+.builder-step-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #ffffff;
+}
+
+.builder-start-card strong,
+.builder-step-actions strong {
+  display: block;
+  font-size: 13px;
+}
+
+.builder-start-card span,
+.builder-step-actions span {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.builder-stepper {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  padding: 0 0 10px;
+  background: #ffffff;
+}
+
+.builder-step {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 8px;
+  align-items: center;
+  min-height: 58px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #ffffff;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+
+.builder-step span {
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: #eef2f7;
+  color: #475467;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.builder-step strong {
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+
+.builder-step small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.builder-step.active {
+  border-color: #9db3ef;
+  background: var(--accent-soft);
+}
+
+.builder-step.active span,
+.builder-step.done span {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.builder-step.done {
+  border-color: #c7d2fe;
+}
+
+.builder-step-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  margin-top: 4px;
+  box-shadow: 0 -12px 22px rgba(20, 35, 70, 0.06);
+}
+
+.builder-step-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .draft-stack {
   display: grid;
   gap: 10px;
@@ -1031,13 +1111,16 @@ body.is-resizing {
 
 .result-card {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
   gap: 10px;
-  align-items: center;
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: #ffffff;
+}
+
+.result-card {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  align-items: center;
 }
 
 .result-card div {
@@ -1045,14 +1128,42 @@ body.is-resizing {
   gap: 3px;
 }
 
-.result-card strong {
+.result-card strong,
+.recent-summary-grid strong {
   color: #344054;
   font-size: 12px;
 }
 
-.result-card span {
+.result-card span,
+.recent-summary-grid span {
   color: var(--muted);
   font-size: 12px;
+}
+
+.recent-summary-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #ffffff;
+}
+
+.recent-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.recent-summary-grid div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.danger-state {
+  border-color: #fecaca;
+  background: #fff5f5;
 }
 
 .modal {
@@ -1068,6 +1179,20 @@ body.is-resizing {
 
 .modal::backdrop {
   background: rgba(12, 16, 24, 0.5);
+}
+
+.builder-modal {
+  width: min(1120px, calc(100vw - 40px));
+  max-height: calc(100vh - 24px);
+}
+
+.builder-modal-body {
+  max-height: calc(100vh - 50px);
+  overflow: auto;
+  align-content: start;
+  padding-bottom: 18px;
+  scroll-padding-top: 76px;
+  scroll-padding-bottom: 82px;
 }
 
 .modal-body {
@@ -1380,13 +1505,19 @@ body.is-resizing {
 }
 
 @media (max-width: 980px) {
-  .app-shell {
-    grid-template-columns: 1fr;
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
-  .sidebar {
-    position: static;
-    height: auto;
+  .topbar-actions {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .top-nav {
+    justify-content: flex-start;
   }
 
   .grid-layout,
@@ -1398,6 +1529,10 @@ body.is-resizing {
   .style-source-grid,
   .source-summary,
   .result-card,
+  .recent-summary-grid,
+  .builder-start-card,
+  .builder-stepper,
+  .builder-step-actions,
   .hero,
   .steps,
   .game-grid {

@@ -368,6 +368,20 @@ function toDesignViewUrl(url, id) {
   }
 }
 
+function isDesignViewUrl(url) {
+  return /promo-ui-design-view|promo-ui-design-generate/.test(String(url || ""));
+}
+
+function isDirectImageUrl(url, page) {
+  const value = String(url || "").trim();
+  if (!value) return false;
+  if (value.startsWith("data:image/")) return true;
+  if (isDesignViewUrl(value)) return false;
+  const designUrl = String(page?.designUrl || page?.pageUrl || "").trim();
+  if (designUrl && value === designUrl) return false;
+  return true;
+}
+
 function normalizeCategory(title) {
   const raw = title.toLowerCase().replace(/^\d+\.\s*/, "");
   if (raw.includes("color") || raw.includes("palette")) return "colors";
@@ -529,6 +543,8 @@ createApp({
       generationMode: "ai_agent",
       inputMode: "simple",
       globalVisualMode: "auto",
+      promoBuilderStarted: false,
+      currentBuilderStep: 1,
       n8nWebhookUrl: localStorage.getItem(storageKeys.n8nWebhookUrl) || "",
       n8nAnalyzeWebhookUrl: localStorage.getItem(storageKeys.n8nAnalyzeWebhookUrl) || "",
       detailDoc: null,
@@ -673,6 +689,20 @@ createApp({
     templateModeLabel() {
       return `${this.templateLabel(this.templateSchema.name)} / ${this.generationMode === "ai_agent" ? "AI 에이전트" : "룰 기반"} / ${this.inputMode === "advanced" ? "고급" : "간편"}`;
     },
+
+    builderSteps() {
+      return [
+        { step: 1, title: "기본 설정", summary: "템플릿, 모드, 마켓" },
+        { step: 2, title: "프로모션 입력", summary: "혜택, CTA, 약관" },
+        { step: 3, title: "섹션 초안", summary: "Temp.4 구성 확인" },
+        { step: 4, title: "스타일 조정", summary: "색상, 폰트 재정의" },
+        { step: 5, title: "디자인 생성", summary: "n8n 실행" },
+      ];
+    },
+
+    currentBuilderStepInfo() {
+      return this.builderSteps.find((item) => item.step === this.currentBuilderStep) || this.builderSteps[0];
+    },
   },
 
   watch: {
@@ -798,6 +828,109 @@ createApp({
         draft: "초안",
       };
       return labels[value] || value || "";
+    },
+
+    startPromoBuilder() {
+      if (!this.selectedDocument) {
+        this.setStatus("먼저 디자인 MD를 선택해 주세요");
+        return;
+      }
+      this.promoBuilderStarted = true;
+      if (!this.currentBuilderStep) this.currentBuilderStep = 1;
+      this.$nextTick(() => {
+        if (!this.$refs.promoBuilderModal.open) this.$refs.promoBuilderModal.showModal();
+      });
+      this.setStatus("프로모션 생성 단계를 시작했습니다");
+    },
+
+    closePromoBuilder() {
+      this.$refs.promoBuilderModal.close();
+    },
+
+    builderStepClass(step) {
+      return {
+        active: step.step === this.currentBuilderStep,
+        done: step.step < this.currentBuilderStep,
+      };
+    },
+
+    validateBuilderStep(step = this.currentBuilderStep) {
+      if (step === 1 && !String(this.promo.market || "").trim()) {
+        this.setStatus("마켓 / 지역을 선택해 주세요");
+        return false;
+      }
+      if (step === 2) return this.validatePromoInputs();
+      if (step === 3 && !this.hasSectionDraft()) {
+        this.refreshSectionDraft({ silent: true });
+      }
+      return true;
+    },
+
+    validateBuilderStepsUntil(targetStep) {
+      for (let step = 1; step < targetStep; step += 1) {
+        if (!this.validateBuilderStep(step)) return false;
+      }
+      return true;
+    },
+
+    goBuilderStep(step) {
+      if (!this.promoBuilderStarted) return;
+      const nextStep = Math.max(1, Math.min(5, step));
+      if (nextStep > this.currentBuilderStep && !this.validateBuilderStepsUntil(nextStep)) return;
+      this.currentBuilderStep = nextStep;
+    },
+
+    nextBuilderStep() {
+      if (!this.validateBuilderStep(this.currentBuilderStep)) return;
+      this.currentBuilderStep = Math.min(5, this.currentBuilderStep + 1);
+    },
+
+    prevBuilderStep() {
+      this.currentBuilderStep = Math.max(1, this.currentBuilderStep - 1);
+    },
+
+    resultType(page) {
+      if (!page) return "empty";
+      if (page.status === "n8n_failed" || page.errorMessage) return "failed";
+      if (page.status === "n8n_ui_design_pending") return "pending";
+      if (isDirectImageUrl(page.imageUrl, page)) return "image";
+      if (page.designUrl || page.pageUrl || isDesignViewUrl(page.imageUrl)) return "view";
+      if (page.payload) return "draft";
+      return "empty";
+    },
+
+    resultTypeLabel(page) {
+      const labels = {
+        image: "이미지 생성 완료",
+        view: "디자인 보기 가능",
+        pending: "생성 중",
+        failed: "생성 실패",
+        draft: "로컬 초안",
+        empty: "대기",
+      };
+      return labels[this.resultType(page)] || "대기";
+    },
+
+    resultOutputLabel(page) {
+      const labels = {
+        image: "이미지 미리보기",
+        view: "결과 화면 미리보기",
+        pending: "생성 대기 중",
+        failed: "오류 확인 필요",
+        draft: "로컬 미리보기",
+        empty: "산출물 없음",
+      };
+      return labels[this.resultType(page)] || "산출물 없음";
+    },
+
+    previewImageUrl(page) {
+      return isDirectImageUrl(page?.imageUrl, page) ? page.imageUrl : "";
+    },
+
+    previewFrameUrl(page) {
+      if (!page) return "";
+      const url = toDesignViewUrl(page.designUrl || page.pageUrl || (isDesignViewUrl(page.imageUrl) ? page.imageUrl : ""), page.id);
+      return url || "";
     },
 
     selectStyleGroup(group) {
@@ -942,6 +1075,8 @@ createApp({
       this.inputMode = "simple";
       this.generationMode = "ai_agent";
       this.globalVisualMode = "use_visual";
+      this.promoBuilderStarted = true;
+      this.currentBuilderStep = 2;
       this.refreshSectionDraft();
       this.setStatus("GGpoker 테스트 프로모션 입력값을 자동등록했습니다");
     },
@@ -1247,6 +1382,7 @@ createApp({
         imagePrompt: "",
         errorMessage: "",
         hasOverride: payload.hasOverride,
+        resultType: willUseN8n ? "pending" : "draft",
         payload,
       };
 
@@ -1269,6 +1405,7 @@ createApp({
       listItem.designUrl = toDesignViewUrl(n8nResult?.designUrl || "", listItem.id);
       listItem.imageUrl = n8nResult?.imageUrl || "";
       listItem.pageUrl = toDesignViewUrl(n8nResult?.designUrl || n8nResult?.pageUrl || n8nResult?.previewUrl || "", listItem.id) || n8nResult?.imageUrl || "";
+      listItem.resultType = n8nResult?.resultType || this.resultType(listItem);
       listItem.layoutMapping = n8nResult?.layoutMapping || null;
       listItem.mdComplianceMap = n8nResult?.mdComplianceMap || null;
       listItem.imagePrompt = n8nResult?.imagePrompt || "";
@@ -1276,6 +1413,7 @@ createApp({
 
       saveJson(storageKeys.generatedPages, this.generatedPages);
       saveJson(storageKeys.generatedPage, listItem.payload);
+      this.currentBuilderStep = 5;
       this.setStatus(n8nResult ? "n8n UI 디자인 생성이 완료되었습니다" : "로컬 UI 디자인 생성이 완료되었습니다");
       if (listItem.pageUrl) window.open(listItem.pageUrl, "_blank");
     },
