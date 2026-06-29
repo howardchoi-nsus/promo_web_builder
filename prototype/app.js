@@ -836,8 +836,15 @@ createApp({
         return;
       }
       this.promoBuilderStarted = true;
-      this.currentBuilderStep = 1;
+      if (!this.currentBuilderStep) this.currentBuilderStep = 1;
+      this.$nextTick(() => {
+        if (!this.$refs.promoBuilderModal.open) this.$refs.promoBuilderModal.showModal();
+      });
       this.setStatus("프로모션 생성 단계를 시작했습니다");
+    },
+
+    closePromoBuilder() {
+      this.$refs.promoBuilderModal.close();
     },
 
     builderStepClass(step) {

@@ -1218,6 +1218,16 @@ img.design-preview-frame {
   background: rgba(12, 16, 24, 0.5);
 }
 
+.builder-modal {
+  width: min(1120px, calc(100vw - 40px));
+}
+
+.builder-modal-body {
+  max-height: calc(100vh - 150px);
+  overflow: auto;
+  align-content: start;
+}
+
 .modal-body {
   display: grid;
   gap: 14px;

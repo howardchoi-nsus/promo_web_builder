@@ -165,14 +165,23 @@
               </div>
             </div>
 
-            <div class="builder-start-card" v-if="selectedDocument && !promoBuilderStarted">
+            <div class="builder-start-card" v-if="selectedDocument">
               <div>
-                <strong>선택한 스타일로 프로모션 생성을 시작합니다</strong>
-                <span>기본 설정부터 UI 디자인 생성까지 단계별로 진행합니다.</span>
+                <strong>{{ promoBuilderStarted ? '프로모션 생성 단계를 계속 진행합니다' : '선택한 스타일로 프로모션 생성을 시작합니다' }}</strong>
+                <span>{{ promoBuilderStarted ? '현재 Step ' + currentBuilderStep + '. ' + currentBuilderStepInfo.title : '기본 설정부터 UI 디자인 생성까지 모달에서 단계별로 진행합니다.' }}</span>
               </div>
-              <button class="primary-action" type="button" @click="startPromoBuilder">프로모션 생성 시작</button>
+              <button class="primary-action" type="button" @click="startPromoBuilder">{{ promoBuilderStarted ? '프로모션 빌더 열기' : '프로모션 생성 시작' }}</button>
             </div>
 
+            <dialog class="modal builder-modal" ref="promoBuilderModal">
+              <div class="modal-header">
+                <div>
+                  <p class="eyebrow">B 섹션</p>
+                  <h2>B. 프로모션 빌더</h2>
+                </div>
+                <button class="icon-button" type="button" aria-label="닫기" @click="closePromoBuilder">x</button>
+              </div>
+              <div class="modal-body builder-modal-body">
             <div class="builder-stepper" v-if="promoBuilderStarted">
               <button
                 v-for="step in builderSteps"
@@ -472,6 +481,8 @@
               </div>
               <button class="primary-action" type="button" v-if="currentBuilderStep < builderSteps.length" @click="nextBuilderStep">다음</button>
             </div>
+              </div>
+            </dialog>
             </div>
           </section>
 
