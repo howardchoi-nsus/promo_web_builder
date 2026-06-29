@@ -4,11 +4,19 @@ const { getDatabaseUrl } = require("./_db");
 const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
 
 module.exports = async function handler(req, res) {
-  if (req.method === "GET") return getAsset(req, res);
-  if (req.method === "POST") return saveAsset(req, res);
+  try {
+    if (req.method === "GET") return await getAsset(req, res);
+    if (req.method === "POST") return await saveAsset(req, res);
 
-  res.setHeader("Allow", "GET, POST");
-  return res.status(405).json({ error: "Method not allowed" });
+    res.setHeader("Allow", "GET, POST");
+    return res.status(405).json({ error: "Method not allowed" });
+  } catch (error) {
+    return res.status(500).json({
+      error: "Promo design asset API failed",
+      message: error.message,
+      hint: hintForError(error),
+    });
+  }
 };
 
 async function getAsset(req, res) {
@@ -248,4 +256,18 @@ function getOrigin(req) {
   const proto = req.headers["x-forwarded-proto"] || "https";
   const host = req.headers["x-forwarded-host"] || req.headers.host || "promo-web-builder.vercel.app";
   return `${proto}://${host}`;
+}
+
+function hintForError(error) {
+  const message = String(error?.message || "");
+  if (/promo_design_runs|promo_design_assets|does not exist/i.test(message)) {
+    return "Apply db/migrations/004_promo_design_image_storage.sql to the target database.";
+  }
+  if (/BLOB_READ_WRITE_TOKEN|blob/i.test(message)) {
+    return "Check BLOB_READ_WRITE_TOKEN in Vercel environment variables.";
+  }
+  if (/DATABASE_URL|database/i.test(message)) {
+    return "Check DATABASE_URL or NEON_DATABASE_URL in Vercel environment variables.";
+  }
+  return "";
 }

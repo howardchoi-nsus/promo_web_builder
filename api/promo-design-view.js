@@ -2,39 +2,44 @@ const { neon } = require("@neondatabase/serverless");
 const { getDatabaseUrl } = require("./_db");
 
 module.exports = async function handler(req, res) {
-  if (req.method !== "GET") {
-    res.setHeader("Allow", "GET");
-    return res.status(405).send("Method not allowed");
+  try {
+    if (req.method !== "GET") {
+      res.setHeader("Allow", "GET");
+      return res.status(405).send("Method not allowed");
+    }
+
+    const runKey = String(req.query.id || req.query.runKey || "").trim();
+    if (!runKey) return res.status(400).send("Missing id");
+
+    const databaseUrl = getDatabaseUrl();
+    if (!databaseUrl) return res.status(500).send("DATABASE_URL is not configured");
+
+    const sql = neon(databaseUrl);
+    const rows = await sql`
+      select
+        r.run_key,
+        r.promo_title,
+        r.selected_md_name,
+        r.created_at,
+        a.asset_url
+      from promo_design_runs r
+      join promo_design_assets a on a.run_id = r.id and a.is_primary = true
+      where r.run_key = ${runKey}
+      limit 1
+    `;
+
+    const row = rows[0];
+    const title = escapeHtml(row?.promo_title || "Promo UI Design");
+    const html = row?.asset_url
+      ? renderImagePage({ title, id: runKey, assetUrl: row.asset_url, brand: row.selected_md_name, createdAt: row.created_at })
+      : renderNotFound(runKey);
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    return res.status(row?.asset_url ? 200 : 404).send(html);
+  } catch (error) {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    return res.status(500).send(renderError(error));
   }
-
-  const runKey = String(req.query.id || req.query.runKey || "").trim();
-  if (!runKey) return res.status(400).send("Missing id");
-
-  const databaseUrl = getDatabaseUrl();
-  if (!databaseUrl) return res.status(500).send("DATABASE_URL is not configured");
-
-  const sql = neon(databaseUrl);
-  const rows = await sql`
-    select
-      r.run_key,
-      r.promo_title,
-      r.selected_md_name,
-      r.created_at,
-      a.asset_url
-    from promo_design_runs r
-    join promo_design_assets a on a.run_id = r.id and a.is_primary = true
-    where r.run_key = ${runKey}
-    limit 1
-  `;
-
-  const row = rows[0];
-  const title = escapeHtml(row?.promo_title || "Promo UI Design");
-  const html = row?.asset_url
-    ? renderImagePage({ title, id: runKey, assetUrl: row.asset_url, brand: row.selected_md_name, createdAt: row.created_at })
-    : renderNotFound(runKey);
-
-  res.setHeader("Content-Type", "text/html; charset=utf-8");
-  return res.status(row?.asset_url ? 200 : 404).send(html);
 };
 
 function renderImagePage({ title, id, assetUrl, brand, createdAt }) {
@@ -79,4 +84,8 @@ function escapeHtml(value) {
 
 function escapeAttribute(value) {
   return escapeHtml(value).replace(/'/g, "&#39;");
+}
+
+function renderError(error) {
+  return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>UI design error</title></head><body style="font-family:Arial,sans-serif;padding:40px"><h1>UI design error</h1><p>${escapeHtml(error.message)}</p></body></html>`;
 }
