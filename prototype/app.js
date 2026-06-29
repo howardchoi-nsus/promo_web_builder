@@ -1332,14 +1332,13 @@ createApp({
 
     async triggerN8n(payload) {
       const url = this.n8nWebhookUrl.trim();
-      const useProxy = window.location.protocol !== "file:";
+      const useProxy = !url && window.location.protocol !== "file:";
       if (!url && !useProxy) return null;
       const requestUrl = useProxy ? "/api/generate-ui-design" : url;
 
       const headers = {
         "Content-Type": "application/json",
       };
-      if (useProxy) headers["x-n8n-webhook-url"] = url;
 
       const response = await fetch(requestUrl, {
         method: "POST",

@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 export default async function handler(req, res) {
   if (req.method !== "GET") {
@@ -8,8 +9,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const promptPath = path.join(process.cwd(), "prompts", "promo-ui-design-image-generation.md");
-    const prompt = await readFile(promptPath, "utf8");
+    const prompt = await readPromptFile();
     res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=300");
     return res.status(200).json({
       id: "promo-ui-design-image-generation",
@@ -22,4 +22,23 @@ export default async function handler(req, res) {
       message: error.message,
     });
   }
+}
+
+async function readPromptFile() {
+  const filename = "promo-ui-design-image-generation.md";
+  const candidates = [
+    path.join(process.cwd(), "prompts", filename),
+    path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "prompts", filename),
+  ];
+
+  let lastError;
+  for (const promptPath of candidates) {
+    try {
+      return await readFile(promptPath, "utf8");
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError;
 }
