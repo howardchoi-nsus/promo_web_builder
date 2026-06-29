@@ -951,6 +951,101 @@ body.is-resizing {
   margin-top: 4px;
 }
 
+.builder-start-card,
+.builder-step-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #ffffff;
+}
+
+.builder-start-card strong,
+.builder-step-actions strong {
+  display: block;
+  font-size: 13px;
+}
+
+.builder-start-card span,
+.builder-step-actions span {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.builder-stepper {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.builder-step {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 8px;
+  align-items: center;
+  min-height: 58px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #ffffff;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+
+.builder-step span {
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: #eef2f7;
+  color: #475467;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.builder-step strong {
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+
+.builder-step small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.builder-step.active {
+  border-color: #9db3ef;
+  background: var(--accent-soft);
+}
+
+.builder-step.active span,
+.builder-step.done span {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.builder-step.done {
+  border-color: #c7d2fe;
+}
+
+.builder-step-actions {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.builder-step-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .draft-stack {
   display: grid;
   gap: 10px;
@@ -1452,6 +1547,9 @@ img.design-preview-frame {
   .source-summary,
   .result-card,
   .preview-meta,
+  .builder-start-card,
+  .builder-stepper,
+  .builder-step-actions,
   .hero,
   .steps,
   .game-grid {
