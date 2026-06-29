@@ -978,9 +978,14 @@ body.is-resizing {
 }
 
 .builder-stepper {
+  position: sticky;
+  top: 0;
+  z-index: 4;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
+  padding: 0 0 10px;
+  background: #ffffff;
 }
 
 .builder-step {
@@ -1038,7 +1043,12 @@ body.is-resizing {
 }
 
 .builder-step-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 4;
   grid-template-columns: auto minmax(0, 1fr) auto;
+  margin-top: 4px;
+  box-shadow: 0 -12px 22px rgba(20, 35, 70, 0.06);
 }
 
 .builder-step-actions button:disabled {
@@ -1181,10 +1191,6 @@ body.is-resizing {
   object-fit: contain;
 }
 
-iframe.design-preview-frame {
-  height: 520px;
-}
-
 img.design-preview-frame,
 .design-preview-frame img {
   height: auto;
@@ -1201,6 +1207,10 @@ img.design-preview-frame {
 .danger-state {
   border-color: #fecaca;
   background: #fff5f5;
+}
+
+.preview-link-state .action-row {
+  margin-top: 8px;
 }
 
 .modal {
@@ -1220,12 +1230,16 @@ img.design-preview-frame {
 
 .builder-modal {
   width: min(1120px, calc(100vw - 40px));
+  max-height: calc(100vh - 24px);
 }
 
 .builder-modal-body {
-  max-height: calc(100vh - 150px);
+  max-height: calc(100vh - 50px);
   overflow: auto;
   align-content: start;
+  padding-bottom: 18px;
+  scroll-padding-top: 76px;
+  scroll-padding-bottom: 82px;
 }
 
 .modal-body {
