@@ -1109,8 +1109,7 @@ body.is-resizing {
   background: var(--surface-2);
 }
 
-.result-card,
-.preview-panel {
+.result-card {
   display: grid;
   gap: 10px;
   padding: 12px;
@@ -1130,62 +1129,41 @@ body.is-resizing {
 }
 
 .result-card strong,
-.preview-meta strong {
+.recent-summary-grid strong {
   color: #344054;
   font-size: 12px;
 }
 
 .result-card span,
-.preview-meta span {
+.recent-summary-grid span {
   color: var(--muted);
   font-size: 12px;
 }
 
-.preview-meta {
+.recent-summary-card {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
   gap: 10px;
-  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #ffffff;
 }
 
-.preview-meta div {
+.recent-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.recent-summary-grid div {
   display: grid;
   gap: 3px;
   min-width: 0;
 }
 
-.design-preview-frame {
-  display: block;
-  width: 100%;
-  min-height: 360px;
-  max-height: 620px;
-  overflow: auto;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: #ffffff;
-  object-fit: contain;
-}
-
-img.design-preview-frame,
-.design-preview-frame img {
-  height: auto;
-}
-
-.design-preview-frame img,
-img.design-preview-frame {
-  display: block;
-  max-width: 100%;
-  height: auto;
-  margin: 0 auto;
-}
-
 .danger-state {
   border-color: #fecaca;
   background: #fff5f5;
-}
-
-.preview-link-state .action-row {
-  margin-top: 8px;
 }
 
 .modal {
@@ -1551,7 +1529,7 @@ img.design-preview-frame {
   .style-source-grid,
   .source-summary,
   .result-card,
-  .preview-meta,
+  .recent-summary-grid,
   .builder-start-card,
   .builder-stepper,
   .builder-step-actions,

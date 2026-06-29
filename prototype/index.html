@@ -535,35 +535,24 @@
 
             <div class="subsection">
               <div class="subsection-title">
-                <h3>C2. 최근 생성 디자인 미리보기</h3>
+                <h3>C2. 최근 생성 결과 요약</h3>
                 <span>{{ lastGenerated ? lastGenerated.createdAt : '아직 생성 전' }}</span>
               </div>
-              <div class="preview-panel" v-if="lastGenerated">
-                <div class="preview-meta">
+              <div class="recent-summary-card" v-if="lastGenerated">
+                <div class="recent-summary-grid">
                   <div><strong>프로모션</strong><span>{{ lastGenerated.title }}</span></div>
                   <div><strong>MD</strong><span>{{ lastGenerated.selectedMd }}</span></div>
                   <div><strong>상태</strong><span>{{ resultTypeLabel(lastGenerated) }}</span></div>
                   <div><strong>산출물</strong><span>{{ resultOutputLabel(lastGenerated) }}</span></div>
-                  <button class="tiny-button primary" type="button" @click="openGenerated(lastGenerated)">새 창 열기</button>
+                  <div><strong>생성 시간</strong><span>{{ lastGenerated.createdAt }}</span></div>
+                  <div><strong>MD 준수 검토</strong><span>{{ lastGenerated.mdComplianceMap ? '포함됨' : '대기 중' }}</span></div>
                 </div>
-
-                <div class="design-preview-frame" v-if="previewImageUrl(lastGenerated)">
-                  <img :src="previewImageUrl(lastGenerated)" alt="최근 생성 UI 디자인" />
-                </div>
-                <div v-else-if="previewFrameUrl(lastGenerated)" class="outline-item preview-link-state">
-                  <strong>결과 화면은 새 창에서 확인할 수 있습니다</strong>
-                  <span>n8n 결과 페이지가 인라인 미리보기를 허용하지 않아 새 창으로 열어야 합니다.</span>
-                  <div class="action-row">
-                    <button class="tiny-button primary" type="button" @click="openGenerated(lastGenerated)">새 창 열기</button>
-                  </div>
-                </div>
-                <div v-else-if="lastGenerated.errorMessage" class="outline-item danger-state">
-                  <strong>생성 실패</strong>
+                <div class="outline-item danger-state" v-if="lastGenerated.errorMessage">
+                  <strong>오류 사유</strong>
                   <span>{{ lastGenerated.errorMessage }}</span>
                 </div>
-                <div v-else class="outline-item">
-                  <strong>미리보기 대기 중</strong>
-                  <span>생성 결과 URL이 없어서 로컬 payload 미리보기만 가능합니다.</span>
+                <div class="action-row align-right">
+                  <button class="tiny-button primary" type="button" @click="openGenerated(lastGenerated)">새 창 열기</button>
                 </div>
               </div>
               <div v-else class="outline-item">
