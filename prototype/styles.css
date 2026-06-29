@@ -1029,15 +1029,19 @@ body.is-resizing {
   background: var(--surface-2);
 }
 
-.result-card {
+.result-card,
+.preview-panel {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
   gap: 10px;
-  align-items: center;
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: #ffffff;
+}
+
+.result-card {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  align-items: center;
 }
 
 .result-card div {
@@ -1045,14 +1049,63 @@ body.is-resizing {
   gap: 3px;
 }
 
-.result-card strong {
+.result-card strong,
+.preview-meta strong {
   color: #344054;
   font-size: 12px;
 }
 
-.result-card span {
+.result-card span,
+.preview-meta span {
   color: var(--muted);
   font-size: 12px;
+}
+
+.preview-meta {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.preview-meta div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.design-preview-frame {
+  display: block;
+  width: 100%;
+  min-height: 360px;
+  max-height: 620px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #ffffff;
+  object-fit: contain;
+}
+
+iframe.design-preview-frame {
+  height: 520px;
+}
+
+img.design-preview-frame,
+.design-preview-frame img {
+  height: auto;
+}
+
+.design-preview-frame img,
+img.design-preview-frame {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+
+.danger-state {
+  border-color: #fecaca;
+  background: #fff5f5;
 }
 
 .modal {
@@ -1398,6 +1451,7 @@ body.is-resizing {
   .style-source-grid,
   .source-summary,
   .result-card,
+  .preview-meta,
   .hero,
   .steps,
   .game-grid {

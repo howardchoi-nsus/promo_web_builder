@@ -458,7 +458,7 @@
             <div class="subsection">
               <div class="subsection-title">
                 <h3>C1. 생성된 UI 디자인 목록</h3>
-                <span>실시간 미리보기 없음</span>
+                <span>생성 이력 및 상태</span>
               </div>
 
               <div class="table-wrap">
@@ -483,7 +483,7 @@
                       <td>{{ page.styleSourceLabel }}</td>
                       <td>{{ templateLabel(page.template) }}</td>
                       <td>{{ page.market }}</td>
-                      <td>{{ page.imageUrl ? '이미지 URL' : page.pageUrl ? '디자인 URL' : statusLabel(page.status) }}</td>
+                      <td>{{ resultTypeLabel(page) }}</td>
                       <td>
                         <button class="tiny-button primary" type="button" @click="openGenerated(page)">열기</button>
                       </td>
@@ -495,18 +495,35 @@
 
             <div class="subsection">
               <div class="subsection-title">
-                <h3>C2. 최근 생성 UI 디자인</h3>
+                <h3>C2. 최근 생성 디자인 미리보기</h3>
                 <span>{{ lastGenerated ? lastGenerated.createdAt : '아직 생성 전' }}</span>
               </div>
-              <div class="result-card" v-if="lastGenerated">
-                <div><strong>프로모션</strong><span>{{ lastGenerated.title }}</span></div>
-                <div><strong>MD</strong><span>{{ lastGenerated.selectedMd }}</span></div>
-                <div><strong>스타일</strong><span>{{ lastGenerated.styleSourceLabel }}</span></div>
-                <div><strong>재정의</strong><span>{{ lastGenerated.hasOverride ? '적용됨' : '없음' }}</span></div>
-                <div><strong>MD 준수 검토</strong><span>{{ lastGenerated.mdComplianceMap ? '포함됨' : '대기 중' }}</span></div>
-                <div><strong>산출물</strong><span>{{ lastGenerated.imageUrl ? 'UI 디자인 이미지' : lastGenerated.pageUrl ? '디자인 URL' : '로컬 payload 미리보기' }}</span></div>
-                <div v-if="lastGenerated.errorMessage"><strong>오류</strong><span>{{ lastGenerated.errorMessage }}</span></div>
-                <button class="primary-action" type="button" @click="openGenerated(lastGenerated)">생성된 디자인 열기</button>
+              <div class="preview-panel" v-if="lastGenerated">
+                <div class="preview-meta">
+                  <div><strong>프로모션</strong><span>{{ lastGenerated.title }}</span></div>
+                  <div><strong>MD</strong><span>{{ lastGenerated.selectedMd }}</span></div>
+                  <div><strong>상태</strong><span>{{ resultTypeLabel(lastGenerated) }}</span></div>
+                  <div><strong>산출물</strong><span>{{ resultOutputLabel(lastGenerated) }}</span></div>
+                  <button class="tiny-button primary" type="button" @click="openGenerated(lastGenerated)">새 창 열기</button>
+                </div>
+
+                <div class="design-preview-frame" v-if="previewImageUrl(lastGenerated)">
+                  <img :src="previewImageUrl(lastGenerated)" alt="최근 생성 UI 디자인" />
+                </div>
+                <iframe
+                  v-else-if="previewFrameUrl(lastGenerated)"
+                  class="design-preview-frame"
+                  :src="previewFrameUrl(lastGenerated)"
+                  title="최근 생성 UI 디자인 미리보기"
+                ></iframe>
+                <div v-else-if="lastGenerated.errorMessage" class="outline-item danger-state">
+                  <strong>생성 실패</strong>
+                  <span>{{ lastGenerated.errorMessage }}</span>
+                </div>
+                <div v-else class="outline-item">
+                  <strong>미리보기 대기 중</strong>
+                  <span>생성 결과 URL이 없어서 로컬 payload 미리보기만 가능합니다.</span>
+                </div>
               </div>
               <div v-else class="outline-item">
                 <strong>아직 생성된 UI 디자인이 없습니다</strong>

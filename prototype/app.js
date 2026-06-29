@@ -368,6 +368,20 @@ function toDesignViewUrl(url, id) {
   }
 }
 
+function isDesignViewUrl(url) {
+  return /promo-ui-design-view|promo-ui-design-generate/.test(String(url || ""));
+}
+
+function isDirectImageUrl(url, page) {
+  const value = String(url || "").trim();
+  if (!value) return false;
+  if (value.startsWith("data:image/")) return true;
+  if (isDesignViewUrl(value)) return false;
+  const designUrl = String(page?.designUrl || page?.pageUrl || "").trim();
+  if (designUrl && value === designUrl) return false;
+  return true;
+}
+
 function normalizeCategory(title) {
   const raw = title.toLowerCase().replace(/^\d+\.\s*/, "");
   if (raw.includes("color") || raw.includes("palette")) return "colors";
@@ -798,6 +812,50 @@ createApp({
         draft: "초안",
       };
       return labels[value] || value || "";
+    },
+
+    resultType(page) {
+      if (!page) return "empty";
+      if (page.status === "n8n_failed" || page.errorMessage) return "failed";
+      if (page.status === "n8n_ui_design_pending") return "pending";
+      if (isDirectImageUrl(page.imageUrl, page)) return "image";
+      if (page.designUrl || page.pageUrl || isDesignViewUrl(page.imageUrl)) return "view";
+      if (page.payload) return "draft";
+      return "empty";
+    },
+
+    resultTypeLabel(page) {
+      const labels = {
+        image: "이미지 생성 완료",
+        view: "디자인 보기 가능",
+        pending: "생성 중",
+        failed: "생성 실패",
+        draft: "로컬 초안",
+        empty: "대기",
+      };
+      return labels[this.resultType(page)] || "대기";
+    },
+
+    resultOutputLabel(page) {
+      const labels = {
+        image: "이미지 미리보기",
+        view: "결과 화면 미리보기",
+        pending: "생성 대기 중",
+        failed: "오류 확인 필요",
+        draft: "로컬 미리보기",
+        empty: "산출물 없음",
+      };
+      return labels[this.resultType(page)] || "산출물 없음";
+    },
+
+    previewImageUrl(page) {
+      return isDirectImageUrl(page?.imageUrl, page) ? page.imageUrl : "";
+    },
+
+    previewFrameUrl(page) {
+      if (!page) return "";
+      const url = toDesignViewUrl(page.designUrl || page.pageUrl || (isDesignViewUrl(page.imageUrl) ? page.imageUrl : ""), page.id);
+      return url || "";
     },
 
     selectStyleGroup(group) {
@@ -1247,6 +1305,7 @@ createApp({
         imagePrompt: "",
         errorMessage: "",
         hasOverride: payload.hasOverride,
+        resultType: willUseN8n ? "pending" : "draft",
         payload,
       };
 
@@ -1269,6 +1328,7 @@ createApp({
       listItem.designUrl = toDesignViewUrl(n8nResult?.designUrl || "", listItem.id);
       listItem.imageUrl = n8nResult?.imageUrl || "";
       listItem.pageUrl = toDesignViewUrl(n8nResult?.designUrl || n8nResult?.pageUrl || n8nResult?.previewUrl || "", listItem.id) || n8nResult?.imageUrl || "";
+      listItem.resultType = n8nResult?.resultType || this.resultType(listItem);
       listItem.layoutMapping = n8nResult?.layoutMapping || null;
       listItem.mdComplianceMap = n8nResult?.mdComplianceMap || null;
       listItem.imagePrompt = n8nResult?.imagePrompt || "";
