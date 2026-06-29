@@ -153,6 +153,40 @@
     },
     {
       "parameters": {
+        "method": "POST",
+        "url": "={{$json.assetApiUrl || 'https://promo-web-builder.vercel.app/api/promo-design-assets'}}",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ (() => { const imageUrl = String($json.imageUrl || ''); return JSON.stringify({ runKey: $json.id, imageUrl: imageUrl.startsWith('data:image/') ? '' : imageUrl, imageDataUrl: imageUrl.startsWith('data:image/') ? imageUrl : '', imagePrompt: $json.imagePrompt, designBrief: $json.designBrief, layoutMapping: $json.layoutMapping, mdComplianceMap: $json.mdComplianceMap, payload: $json.payload, resultType: $json.resultType, status: 'generated' }); })() }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "persist-ui-design-asset",
+      "name": "Persist UI Design Asset",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2320,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const original = $('Store UI Design Result').item.json;\nconst persisted = $json;\n\nreturn [{\n  json: {\n    ...original,\n    persisted: Boolean(persisted?.ok),\n    runId: persisted?.runId || '',\n    assetId: persisted?.assetId || '',\n    assetUrl: persisted?.assetUrl || '',\n    imageUrl: persisted?.imageUrl || persisted?.assetUrl || original.imageUrl || '',\n    designUrl: persisted?.designUrl || original.designUrl || '',\n    resultType: persisted?.assetUrl ? 'image' : original.resultType\n  }\n}];"
+      },
+      "id": "merge-persisted-ui-design-result",
+      "name": "Merge Persisted UI Design Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2580,
+        240
+      ]
+    },
+    {
+      "parameters": {
         "respondWith": "json",
         "responseBody": "={{$json}}",
         "options": {}
@@ -162,7 +196,7 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        2320,
+        2840,
         240
       ]
     },
@@ -292,7 +326,7 @@
       "main": [
         [
           {
-            "node": "Return UI Design Result",
+            "node": "Persist UI Design Asset",
             "type": "main",
             "index": 0
           }
@@ -326,6 +360,28 @@
         [
           {
             "node": "Build UI Design Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist UI Design Asset": {
+      "main": [
+        [
+          {
+            "node": "Merge Persisted UI Design Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Persisted UI Design Result": {
+      "main": [
+        [
+          {
+            "node": "Return UI Design Result",
             "type": "main",
             "index": 0
           }
