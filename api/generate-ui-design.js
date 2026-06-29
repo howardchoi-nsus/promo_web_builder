@@ -13,12 +13,21 @@ export default async function handler(req, res) {
   }
 
   try {
+    const body = req.body || {};
+    if (!body.promptUrl) {
+      const proto = req.headers["x-forwarded-proto"] || "https";
+      const host = req.headers["x-forwarded-host"] || req.headers.host;
+      if (host) {
+        body.promptUrl = `${proto}://${host}/api/prompts/promo-ui-design-image-generation`;
+      }
+    }
+
     const response = await fetch(webhookUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(req.body || {}),
+      body: JSON.stringify(body),
     });
 
     const contentType = response.headers.get("content-type") || "";
