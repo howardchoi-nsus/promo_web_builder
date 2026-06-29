@@ -45,68 +45,7 @@ textarea {
 }
 
 .app-shell {
-  display: grid;
-  grid-template-columns: 232px minmax(0, 1fr);
   min-height: 100vh;
-}
-
-.sidebar {
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  padding: 22px 18px;
-  border-right: 1px solid var(--line);
-  background: #ffffff;
-  color: var(--ink);
-}
-
-.brand-mark {
-  position: relative;
-  padding: 0 8px 28px 52px;
-  font-family: var(--font-heading);
-  font-size: 16px;
-  font-weight: 900;
-  letter-spacing: 0;
-}
-
-.brand-mark::before {
-  content: "PB";
-  position: absolute;
-  left: 8px;
-  top: -4px;
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  border-radius: var(--radius);
-  background: var(--primary);
-  color: #ffffff;
-  font-size: 12px;
-  font-weight: 950;
-}
-
-.nav-list {
-  display: grid;
-  gap: 6px;
-}
-
-.nav-list a {
-  display: block;
-  min-height: 36px;
-  padding: 10px 12px;
-  border: 1px solid transparent;
-  border-radius: var(--radius);
-  color: #334155;
-  text-decoration: none;
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.nav-list a.active,
-.nav-list a:hover {
-  border-color: var(--line);
-  background: var(--surface-2);
-  color: var(--ink);
 }
 
 .workspace {
@@ -125,6 +64,42 @@ textarea {
   border-radius: var(--radius);
   background: #ffffff;
   box-shadow: var(--shadow);
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  min-width: 0;
+}
+
+.top-nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.top-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #ffffff;
+  color: #334155;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.top-nav a:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-2);
+  color: var(--ink);
 }
 
 .eyebrow {
@@ -1552,13 +1527,19 @@ img.design-preview-frame {
 }
 
 @media (max-width: 980px) {
-  .app-shell {
-    grid-template-columns: 1fr;
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
-  .sidebar {
-    position: static;
-    height: auto;
+  .topbar-actions {
+    width: 100%;
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .top-nav {
+    justify-content: flex-start;
   }
 
   .grid-layout,

@@ -8,23 +8,21 @@
   </head>
   <body>
     <div id="app" class="app-shell">
-      <aside class="sidebar">
-        <div class="brand-mark">GG 프로모션 빌더</div>
-        <nav class="nav-list" aria-label="프로토타입 내비게이션">
-          <a href="#section-a" class="active">A. 디자인 MD</a>
-          <a href="#section-b">B. 프로모션 빌더</a>
-          <a href="#section-c">C. 결과</a>
-          <a href="generated.html">생성된 UI</a>
-        </nav>
-      </aside>
-
       <main class="workspace">
         <header class="topbar">
           <div>
             <p class="eyebrow">Vue 프로토타입 / 더미 DB</p>
             <h1>디자인 MD 관리 + 프로모션 UI 디자인 생성기</h1>
           </div>
-          <div class="status-pill">{{ status }}</div>
+          <div class="topbar-actions">
+            <nav class="top-nav" aria-label="프로토타입 내비게이션">
+              <a href="#section-a">A. 디자인 MD</a>
+              <a href="#section-b">B. 프로모션 빌더</a>
+              <a href="#section-c">C. 결과</a>
+              <a href="generated.html">생성된 UI</a>
+            </nav>
+            <div class="status-pill">{{ status }}</div>
+          </div>
         </header>
 
         <section
