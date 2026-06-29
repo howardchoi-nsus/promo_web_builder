@@ -1274,7 +1274,6 @@ createApp({
         styleSource: this.styleSource,
         styleSourceLabel: this.styleSourceLabel(),
         n8nWebhookUrl: this.n8nWebhookUrl.trim(),
-        promptUrl: `${window.location.origin}/api/prompts/promo-ui-design-image-generation`,
         companyPreset: this.styleSource === "company_default" ? this.selectedPreset.name : null,
         hasOverride: this.hasOverride(this.finalStyle, source),
         output: {
