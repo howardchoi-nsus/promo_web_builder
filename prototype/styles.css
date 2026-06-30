@@ -1191,14 +1191,18 @@ body.is-resizing {
 }
 
 .prompt-files-modal {
-  width: min(1320px, calc(100vw - 40px));
+  width: 70vw;
+  height: 70vh;
+  max-width: calc(100vw - 40px);
+  max-height: calc(100vh - 40px);
 }
 
 .prompt-md-compare {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
-  min-height: 520px;
+  min-height: 0;
+  height: calc(70vh - 180px);
 }
 
 .prompt-md-panel {
@@ -1231,7 +1235,7 @@ body.is-resizing {
 
 .prompt-md-panel pre {
   min-height: 0;
-  max-height: 560px;
+  max-height: none;
   margin: 0;
   padding: 12px;
   overflow: auto;
