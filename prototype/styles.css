@@ -1244,12 +1244,14 @@ body.is-resizing {
 }
 
 .builder-modal {
-  width: min(1120px, calc(100vw - 40px));
-  max-height: calc(100vh - 24px);
+  width: 70vw;
+  height: 70vh;
+  max-width: calc(100vw - 40px);
+  max-height: calc(100vh - 40px);
 }
 
 .builder-modal-body {
-  max-height: calc(100vh - 50px);
+  max-height: calc(70vh - 96px);
   overflow: auto;
   align-content: start;
   padding-bottom: 18px;
