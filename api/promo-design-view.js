@@ -23,8 +23,9 @@ module.exports = async function handler(req, res) {
         r.created_at,
         a.asset_url
       from promo_design_runs r
-      join promo_design_assets a on a.run_id = r.id and a.is_primary = true
+      join promo_design_assets a on a.run_id = r.id and a.asset_type = 'generated_image'
       where r.run_key = ${runKey}
+      order by a.is_primary desc, a.created_at desc
       limit 1
     `;
 
@@ -56,6 +57,7 @@ function renderImagePage({ title, id, imageUrl, brand, createdAt }) {
     .bar{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:16px}
     .meta{color:#64748b;font-size:13px}
     img{display:block;width:100%;height:auto;background:#fff}
+    .image-error{display:none;margin:24px 0;padding:16px;border:1px solid #fecaca;background:#fff1f2;color:#991b1b}
   </style>
 </head>
 <body>
@@ -64,7 +66,8 @@ function renderImagePage({ title, id, imageUrl, brand, createdAt }) {
       <strong>${title}</strong>
       <span class="meta">${escapeHtml(brand || "")} · ${escapeHtml(id)} · ${escapeHtml(String(createdAt || ""))}</span>
     </div>
-    <img src="${escapeAttribute(imageUrl)}" alt="Generated promo UI design">
+    <img src="${escapeAttribute(imageUrl)}" alt="Generated promo UI design" onerror="this.style.display='none';document.querySelector('.image-error').style.display='block';">
+    <div class="image-error">Generated image could not be loaded. Check the image asset or Blob access for this design.</div>
   </main>
 </body>
 </html>`;

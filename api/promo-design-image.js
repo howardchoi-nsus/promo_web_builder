@@ -18,8 +18,9 @@ module.exports = async function handler(req, res) {
     const rows = await sql`
       select a.asset_url, a.mime_type
       from promo_design_runs r
-      join promo_design_assets a on a.run_id = r.id and a.is_primary = true
+      join promo_design_assets a on a.run_id = r.id and a.asset_type = 'generated_image'
       where r.run_key = ${runKey}
+      order by a.is_primary desc, a.created_at desc
       limit 1
     `;
 
