@@ -17,7 +17,11 @@ NON-NEGOTIABLE DESIGN RULES:
 - Color and font settings are constraints, but the design must not be color/font-only.
 - Include a wireframe-aware layout mapping and an MD compliance check.
 - Avoid unreadable tiny text. Legal/terms can be shown as condensed footer blocks but must be visibly present.
-- The image should look like a polished desktop UI design mockup at {{imageSize}}.
+- Use a tall full-page canvas at {{imageSize}} so all Template 4 sections are visible from header through footer.
+- The image should look like a polished desktop UI design mockup of a 1440px-wide page scaled to fit the tall canvas.
+- Do not crop the bottom, do not end at the hero or middle sections, and do not omit Title and Description or Footer.
+- If vertical space is tight, reduce section heights, visual asset sizes, whitespace, and text density before removing content.
+- Every Template 4 section must be visible in one image: Header, Hero Banner, Step Bar, Content CTA, Image Text Row, Title and Description, Footer.
 
 Before writing imagePrompt, internally decide and reflect in the prompt:
 1. The dominant MD layout model and how Temp.4 sections should be arranged.

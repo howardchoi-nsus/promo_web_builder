@@ -1288,8 +1288,9 @@ createApp({
           viewport: {
             width: 1440,
             minWidth: 1180,
+            height: 2200,
           },
-          imageSize: "1536x1024",
+          imageSize: "1024x1536",
         },
       };
     },
