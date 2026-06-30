@@ -22,6 +22,7 @@ NON-NEGOTIABLE DESIGN RULES:
 - Do not crop the bottom, do not end at the hero or middle sections, and do not omit Title and Description or Footer.
 - If vertical space is tight, reduce section heights, visual asset sizes, whitespace, and text density before removing content.
 - Every Template 4 section must be visible in one image: Header, Hero Banner, Step Bar, Content CTA, Image Text Row, Title and Description, Footer.
+- Render all visible UI text in English only. If source content is Korean or another language, translate and adapt it into concise natural English.
 
 Before writing imagePrompt, internally decide and reflect in the prompt:
 1. The dominant MD layout model and how Temp.4 sections should be arranged.

@@ -55,8 +55,7 @@ function renderImagePage({ title, id, imageUrl, brand, createdAt }) {
     .wrap{max-width:1540px;margin:0 auto;padding:24px}
     .bar{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:16px}
     .meta{color:#64748b;font-size:13px}
-    .frame{border:1px solid #dfe6f2;background:white;border-radius:8px;overflow:hidden;box-shadow:0 14px 40px rgba(20,35,70,.08)}
-    img{display:block;width:100%;height:auto}
+    img{display:block;width:100%;height:auto;background:#fff}
   </style>
 </head>
 <body>
@@ -65,7 +64,6 @@ function renderImagePage({ title, id, imageUrl, brand, createdAt }) {
       <strong>${title}</strong>
       <span class="meta">${escapeHtml(brand || "")} · ${escapeHtml(id)} · ${escapeHtml(String(createdAt || ""))}</span>
     </div>
-    <div class="frame"><img src="${escapeAttribute(imageUrl)}" alt="Generated promo UI design"></div>
   </main>
 </body>
 </html>`;
