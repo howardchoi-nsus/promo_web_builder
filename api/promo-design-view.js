@@ -64,6 +64,7 @@ function renderImagePage({ title, id, imageUrl, brand, createdAt }) {
       <strong>${title}</strong>
       <span class="meta">${escapeHtml(brand || "")} · ${escapeHtml(id)} · ${escapeHtml(String(createdAt || ""))}</span>
     </div>
+    <img src="${escapeAttribute(imageUrl)}" alt="Generated promo UI design">
   </main>
 </body>
 </html>`;
