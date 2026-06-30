@@ -523,7 +523,10 @@
                       <td>{{ page.styleSourceLabel }}</td>
                       <td>{{ templateLabel(page.template) }}</td>
                       <td>{{ page.market }}</td>
-                      <td>{{ resultTypeLabel(page) }}</td>
+                      <td>
+                        {{ resultTypeLabel(page) }}
+                        <span class="table-subtext" v-if="page.promptGroupId">Group {{ page.promptGroupId }}</span>
+                      </td>
                       <td>
                         <button class="tiny-button primary" type="button" @click="openGenerated(page)">열기</button>
                       </td>
@@ -546,6 +549,9 @@
                   <div><strong>산출물</strong><span>{{ resultOutputLabel(lastGenerated) }}</span></div>
                   <div><strong>생성 시간</strong><span>{{ lastGenerated.createdAt }}</span></div>
                   <div><strong>MD 준수 검토</strong><span>{{ lastGenerated.mdComplianceMap ? '포함됨' : '대기 중' }}</span></div>
+                  <div><strong>그룹 ID</strong><span>{{ lastGenerated.promptGroupId || '대기 중' }}</span></div>
+                  <div><strong>디자인 프롬프트</strong><span>{{ lastGenerated.designPromptStorageKey || '대기 중' }}</span></div>
+                  <div><strong>B섹션 로그</strong><span>{{ lastGenerated.promoInputStorageKey || '대기 중' }}</span></div>
                 </div>
                 <div class="outline-item danger-state" v-if="lastGenerated.errorMessage">
                   <strong>오류 사유</strong>

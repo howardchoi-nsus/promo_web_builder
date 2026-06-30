@@ -24,13 +24,87 @@ async function getAsset(req, res) {
   if (!databaseUrl) return res.status(500).json({ error: "DATABASE_URL is not configured" });
 
   const runKey = String(req.query.runKey || req.query.id || "").trim();
-  if (!runKey) return res.status(400).json({ error: "runKey is required" });
+  const promptGroupId = String(req.query.promptGroupId || req.query.prompt_group_id || "").trim();
+  if (!runKey && !promptGroupId) return res.status(400).json({ error: "runKey or promptGroupId is required" });
 
   const sql = neon(databaseUrl);
+  if (promptGroupId) {
+    const rows = await sql`
+      select
+        r.id::text as run_id,
+        r.run_key,
+        r.prompt_group_id,
+        r.promo_title,
+        r.status,
+        r.result_type,
+        r.image_prompt,
+        r.layout_mapping,
+        r.md_compliance_map,
+        r.created_at,
+        a.id::text as asset_id,
+        a.asset_type,
+        a.asset_url,
+        a.thumbnail_url,
+        a.mime_type,
+        a.width,
+        a.height,
+        a.file_size,
+        a.storage_provider,
+        a.storage_key,
+        a.metadata,
+        a.is_primary,
+        a.created_at as asset_created_at
+      from promo_design_runs r
+      left join promo_design_assets a on a.run_id = r.id
+      where r.prompt_group_id = ${promptGroupId}
+         or a.prompt_group_id = ${promptGroupId}
+         or a.metadata->>'promptGroupId' = ${promptGroupId}
+      order by a.is_primary desc, a.created_at asc
+    `;
+
+    if (!rows.length) return res.status(404).json({ error: "Design asset group not found", promptGroupId });
+
+    const first = rows[0];
+    return res.status(200).json({
+      ok: true,
+      promptGroupId,
+      run: {
+        run_id: first.run_id,
+        run_key: first.run_key,
+        prompt_group_id: first.prompt_group_id,
+        promo_title: first.promo_title,
+        status: first.status,
+        result_type: first.result_type,
+        image_prompt: first.image_prompt,
+        layout_mapping: first.layout_mapping,
+        md_compliance_map: first.md_compliance_map,
+        created_at: first.created_at,
+      },
+      assets: rows
+        .filter((row) => row.asset_id)
+        .map((row) => ({
+          asset_id: row.asset_id,
+          asset_type: row.asset_type,
+          asset_url: row.asset_url,
+          thumbnail_url: row.thumbnail_url,
+          mime_type: row.mime_type,
+          width: row.width,
+          height: row.height,
+          file_size: row.file_size,
+          storage_provider: row.storage_provider,
+          storage_key: row.storage_key,
+          metadata: row.metadata,
+          is_primary: row.is_primary,
+          created_at: row.asset_created_at,
+        })),
+    });
+  }
+
   const rows = await sql`
     select
       r.id::text as run_id,
       r.run_key,
+      r.prompt_group_id,
       r.promo_title,
       r.status,
       r.result_type,
@@ -39,6 +113,7 @@ async function getAsset(req, res) {
       r.md_compliance_map,
       r.created_at,
       a.id::text as asset_id,
+      a.prompt_group_id as asset_prompt_group_id,
       a.asset_url,
       a.thumbnail_url,
       a.mime_type,
@@ -80,7 +155,8 @@ async function saveAsset(req, res) {
   }
 
   const { put } = await import("@vercel/blob");
-  const storageKey = `promo-designs/${runKey}/${Date.now()}.${extensionForMime(imageInput.mimeType)}`;
+  const generatedAt = new Date();
+  const storageKey = `promo-designs/${runKey}/${generatedAt.getTime()}.${extensionForMime(imageInput.mimeType)}`;
   const blobAccess = String(process.env.BLOB_ACCESS || "private").toLowerCase() === "public" ? "public" : "private";
   const blob = await put(storageKey, imageInput.bytes, {
     access: blobAccess,
@@ -91,6 +167,33 @@ async function saveAsset(req, res) {
   const promo = payload.promo || body.promo || {};
   const md = payload.md || body.md || {};
   const template = payload.template || body.template || {};
+  const fileStamp = formatTimestamp(generatedAt);
+  const promptGroupId = uniqueToken();
+  const designPromptMarkdown = buildDesignPromptMarkdown({
+    runKey,
+    promptGroupId,
+    generatedAt,
+    imagePrompt: body.imagePrompt || "",
+    designBrief: body.designBrief || {},
+    layoutMapping: body.layoutMapping || {},
+    mdComplianceMap: body.mdComplianceMap || {},
+    payload,
+  });
+  const promoInputMarkdown = buildPromoInputMarkdown({
+    runKey,
+    promptGroupId,
+    generatedAt,
+    payload,
+    promo,
+    md,
+    template,
+  });
+  const designPromptFileName = `design prompt -${promptGroupId}-${fileStamp}.md`;
+  const promoInputFileName = `promo input -${promptGroupId}-${fileStamp}.md`;
+  const designPromptKey = `data/Design/${designPromptFileName}`;
+  const promoInputKey = `data/Promo/${promoInputFileName}`;
+  const designPromptBlob = await uploadTextAsset(put, designPromptKey, designPromptMarkdown, blobAccess);
+  const promoInputBlob = await uploadTextAsset(put, promoInputKey, promoInputMarkdown, blobAccess);
 
   const sql = neon(databaseUrl);
   const runRows = await sql`
@@ -116,6 +219,7 @@ async function saveAsset(req, res) {
       image_prompt,
       layout_mapping,
       md_compliance_map,
+      prompt_group_id,
       updated_at
     )
     values (
@@ -140,6 +244,7 @@ async function saveAsset(req, res) {
       ${body.imagePrompt || ""},
       ${JSON.stringify(body.layoutMapping || {})}::jsonb,
       ${JSON.stringify(body.mdComplianceMap || {})}::jsonb,
+      ${promptGroupId},
       now()
     )
     on conflict (run_key) do update set
@@ -163,6 +268,7 @@ async function saveAsset(req, res) {
       image_prompt = excluded.image_prompt,
       layout_mapping = excluded.layout_mapping,
       md_compliance_map = excluded.md_compliance_map,
+      prompt_group_id = excluded.prompt_group_id,
       updated_at = now()
     returning id::text
   `;
@@ -181,6 +287,7 @@ async function saveAsset(req, res) {
       source_url,
       mime_type,
       file_size,
+      prompt_group_id,
       metadata,
       is_primary
     )
@@ -194,8 +301,73 @@ async function saveAsset(req, res) {
       ${imageInput.sourceUrl || ""},
       ${imageInput.mimeType},
       ${imageInput.bytes.length},
-      ${JSON.stringify({ access: blobAccess, pathname: blob.pathname, uploadedAt: new Date().toISOString() })}::jsonb,
+      ${promptGroupId},
+      ${JSON.stringify({ access: blobAccess, pathname: blob.pathname, promptGroupId, uploadedAt: generatedAt.toISOString() })}::jsonb,
       true
+    )
+    returning id::text
+  `;
+
+  const designPromptAssetRows = await sql`
+    insert into promo_design_assets (
+      run_id,
+      asset_type,
+      asset_url,
+      thumbnail_url,
+      storage_provider,
+      storage_key,
+      source_url,
+      mime_type,
+      file_size,
+      prompt_group_id,
+      metadata,
+      is_primary
+    )
+    values (
+      ${runId}::uuid,
+      'design_prompt_markdown',
+      ${designPromptBlob.url},
+      '',
+      'vercel_blob',
+      ${designPromptKey},
+      '',
+      'text/markdown; charset=utf-8',
+      ${textByteLength(designPromptMarkdown)},
+      ${promptGroupId},
+      ${JSON.stringify({ access: blobAccess, pathname: designPromptBlob.pathname, fileName: designPromptFileName, promptGroupId, uploadedAt: generatedAt.toISOString() })}::jsonb,
+      false
+    )
+    returning id::text
+  `;
+
+  const promoInputAssetRows = await sql`
+    insert into promo_design_assets (
+      run_id,
+      asset_type,
+      asset_url,
+      thumbnail_url,
+      storage_provider,
+      storage_key,
+      source_url,
+      mime_type,
+      file_size,
+      prompt_group_id,
+      metadata,
+      is_primary
+    )
+    values (
+      ${runId}::uuid,
+      'promo_input_markdown',
+      ${promoInputBlob.url},
+      '',
+      'vercel_blob',
+      ${promoInputKey},
+      '',
+      'text/markdown; charset=utf-8',
+      ${textByteLength(promoInputMarkdown)},
+      ${promptGroupId},
+      ${JSON.stringify({ access: blobAccess, pathname: promoInputBlob.pathname, fileName: promoInputFileName, promptGroupId, uploadedAt: generatedAt.toISOString() })}::jsonb,
+      false
     )
     returning id::text
   `;
@@ -207,10 +379,28 @@ async function saveAsset(req, res) {
     runId,
     assetId: assetRows[0].id,
     runKey,
+    promptGroupId,
     assetUrl: blob.url,
+    designPromptAssetId: designPromptAssetRows[0].id,
+    designPromptAssetUrl: designPromptBlob.url,
+    designPromptStorageKey: designPromptKey,
+    promoInputAssetId: promoInputAssetRows[0].id,
+    promoInputAssetUrl: promoInputBlob.url,
+    promoInputStorageKey: promoInputKey,
     imageUrl: imageProxyUrl,
     designUrl: `${origin}/api/promo-design-view?id=${encodeURIComponent(runKey)}`,
   });
+}
+
+async function uploadTextAsset(put, storageKey, markdown, access) {
+  return put(storageKey, Buffer.from(markdown, "utf8"), {
+    access,
+    contentType: "text/markdown; charset=utf-8",
+  });
+}
+
+function textByteLength(value) {
+  return Buffer.byteLength(String(value || ""), "utf8");
 }
 
 async function resolveImageInput(body) {
@@ -254,6 +444,137 @@ function extensionForMime(mimeType) {
   return "png";
 }
 
+function uniqueToken() {
+  const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    let value = "";
+    for (let index = 0; index < 5; index += 1) {
+      value += alphabet[Math.floor(Math.random() * alphabet.length)];
+    }
+    if (/[0-9]/.test(value) && /[A-Za-z]/.test(value)) return value;
+  }
+  return `A${Math.floor(1000 + Math.random() * 9000)}`;
+}
+
+function formatTimestamp(date) {
+  const pad = (value) => String(value).padStart(2, "0");
+  return [
+    String(date.getFullYear()).slice(-2),
+    pad(date.getMonth() + 1),
+    pad(date.getDate()),
+    pad(date.getHours()),
+    pad(date.getMinutes()),
+  ].join("");
+}
+
+function buildDesignPromptMarkdown({ runKey, promptGroupId, generatedAt, imagePrompt, designBrief, layoutMapping, mdComplianceMap, payload }) {
+  return [
+    "---",
+    `type: design_prompt`,
+    `runKey: ${escapeYaml(runKey)}`,
+    `promptGroupId: ${escapeYaml(promptGroupId)}`,
+    `generatedAt: ${generatedAt.toISOString()}`,
+    `promoTitle: ${escapeYaml(payload?.promo?.title || "")}`,
+    `selectedMd: ${escapeYaml(payload?.md?.brand || "")}`,
+    "---",
+    "",
+    "# Design Prompt",
+    "",
+    "## Image Prompt",
+    "",
+    imagePrompt || "_No image prompt was provided._",
+    "",
+    "## Design Brief",
+    "",
+    "```json",
+    JSON.stringify(designBrief || {}, null, 2),
+    "```",
+    "",
+    "## Layout Mapping",
+    "",
+    "```json",
+    JSON.stringify(layoutMapping || {}, null, 2),
+    "```",
+    "",
+    "## MD Compliance Map",
+    "",
+    "```json",
+    JSON.stringify(mdComplianceMap || {}, null, 2),
+    "```",
+    "",
+  ].join("\n");
+}
+
+function buildPromoInputMarkdown({ runKey, promptGroupId, generatedAt, payload, promo, md, template }) {
+  return [
+    "---",
+    `type: promo_input_log`,
+    `runKey: ${escapeYaml(runKey)}`,
+    `promptGroupId: ${escapeYaml(promptGroupId)}`,
+    `generatedAt: ${generatedAt.toISOString()}`,
+    `promoTitle: ${escapeYaml(promo?.title || "")}`,
+    `selectedMd: ${escapeYaml(md?.brand || "")}`,
+    "---",
+    "",
+    "# Promo Builder Input Log",
+    "",
+    "## Log Summary",
+    "",
+    `- Run Key: ${runKey}`,
+    `- Prompt Group ID: ${promptGroupId}`,
+    `- Generated At: ${generatedAt.toISOString()}`,
+    `- Promo Title: ${promo?.title || ""}`,
+    `- Selected Design MD: ${md?.brand || ""}`,
+    `- Template: ${template?.name || template?.id || ""}`,
+    "",
+    "## Selected Design MD",
+    "",
+    "```json",
+    JSON.stringify({
+      id: md?.id || "",
+      brand: md?.brand || "",
+      slug: md?.slug || "",
+      styleClassification: md?.styleClassification || null,
+    }, null, 2),
+    "```",
+    "",
+    "## Promo",
+    "",
+    "```json",
+    JSON.stringify(promo || {}, null, 2),
+    "```",
+    "",
+    "## Simple Brief",
+    "",
+    "```json",
+    JSON.stringify(payload?.simpleBrief || {}, null, 2),
+    "```",
+    "",
+    "## Section Inputs",
+    "",
+    "```json",
+    JSON.stringify(payload?.sectionInputs || {}, null, 2),
+    "```",
+    "",
+    "## Template",
+    "",
+    "```json",
+    JSON.stringify(template || {}, null, 2),
+    "```",
+    "",
+    "## Design Style",
+    "",
+    "```json",
+    JSON.stringify(payload?.design || {}, null, 2),
+    "```",
+    "",
+  ].join("\n");
+}
+
+function escapeYaml(value) {
+  return JSON.stringify(String(value || ""));
+}
+
 function getOrigin(req) {
   const proto = req.headers["x-forwarded-proto"] || "https";
   const host = req.headers["x-forwarded-host"] || req.headers.host || "promo-web-builder.vercel.app";
@@ -263,7 +584,10 @@ function getOrigin(req) {
 function hintForError(error) {
   const message = String(error?.message || "");
   if (/promo_design_runs|promo_design_assets|does not exist/i.test(message)) {
-    return "Apply db/migrations/004_promo_design_image_storage.sql to the target database.";
+    return "Apply db/migrations/004_promo_design_image_storage.sql and 005_promo_design_prompt_group_id.sql to the target database.";
+  }
+  if (/prompt_group_id/i.test(message)) {
+    return "Apply db/migrations/005_promo_design_prompt_group_id.sql to the target database.";
   }
   if (/BLOB_READ_WRITE_TOKEN|blob/i.test(message)) {
     return "Check BLOB_READ_WRITE_TOKEN in Vercel environment variables.";

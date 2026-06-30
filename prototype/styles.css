@@ -1138,6 +1138,15 @@ body.is-resizing {
 .recent-summary-grid span {
   color: var(--muted);
   font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.table-subtext {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 11px;
+  overflow-wrap: anywhere;
 }
 
 .recent-summary-card {

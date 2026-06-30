@@ -174,7 +174,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const original = $('Store UI Design Result').item.json;\nconst persisted = $json;\n\nreturn [{\n  json: {\n    ...original,\n    persisted: Boolean(persisted?.ok),\n    runId: persisted?.runId || '',\n    assetId: persisted?.assetId || '',\n    assetUrl: persisted?.assetUrl || '',\n    imageUrl: persisted?.imageUrl || persisted?.assetUrl || original.imageUrl || '',\n    designUrl: persisted?.designUrl || original.designUrl || '',\n    resultType: persisted?.assetUrl ? 'image' : original.resultType\n  }\n}];"
+        "jsCode": "const original = $('Store UI Design Result').item.json;\nconst persisted = $json;\n\nreturn [{\n  json: {\n    ...original,\n    persisted: Boolean(persisted?.ok),\n    runId: persisted?.runId || '',\n    assetId: persisted?.assetId || '',\n    assetUrl: persisted?.assetUrl || '',\n    promptGroupId: persisted?.promptGroupId || '',\n    designPromptAssetId: persisted?.designPromptAssetId || '',\n    designPromptAssetUrl: persisted?.designPromptAssetUrl || '',\n    designPromptStorageKey: persisted?.designPromptStorageKey || '',\n    promoInputAssetId: persisted?.promoInputAssetId || '',\n    promoInputAssetUrl: persisted?.promoInputAssetUrl || '',\n    promoInputStorageKey: persisted?.promoInputStorageKey || '',\n    imageUrl: persisted?.imageUrl || persisted?.assetUrl || original.imageUrl || '',\n    designUrl: persisted?.designUrl || original.designUrl || '',\n    resultType: persisted?.assetUrl ? 'image' : original.resultType\n  }\n}];"
       },
       "id": "merge-persisted-ui-design-result",
       "name": "Merge Persisted UI Design Result",

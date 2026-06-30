@@ -1379,6 +1379,9 @@ createApp({
         layoutMapping: null,
         mdComplianceMap: null,
         imagePrompt: "",
+        promptGroupId: "",
+        designPromptStorageKey: "",
+        promoInputStorageKey: "",
         errorMessage: "",
         hasOverride: payload.hasOverride,
         resultType: willUseN8n ? "pending" : "draft",
@@ -1408,6 +1411,9 @@ createApp({
       listItem.layoutMapping = n8nResult?.layoutMapping || null;
       listItem.mdComplianceMap = n8nResult?.mdComplianceMap || null;
       listItem.imagePrompt = n8nResult?.imagePrompt || "";
+      listItem.promptGroupId = n8nResult?.promptGroupId || "";
+      listItem.designPromptStorageKey = n8nResult?.designPromptStorageKey || "";
+      listItem.promoInputStorageKey = n8nResult?.promoInputStorageKey || "";
       listItem.payload = n8nResult?.payload || payload;
 
       saveJson(storageKeys.generatedPages, this.generatedPages);

@@ -1,0 +1,151 @@
+<mxfile host="app.diagrams.net" modified="2026-06-30T00:00:00.000Z" agent="Codex" version="24.7.17" type="device">
+  <diagram id="n8n-node-roles-design-brief-flow" name="n8n Node Roles">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="n8n 노드 역할과 designBrief 유입 관계" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=26;fontStyle=1;fontColor=#172033;" vertex="1" parent="1">
+          <mxGeometry x="410" y="30" width="980" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_content" value="주황: 프로모션 컨텐츠" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9F0;strokeColor=#E7A94B;fontSize=12;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="60" y="90" width="180" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_md" value="파랑: Design MD" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5FAFF;strokeColor=#4F8FD9;fontSize=12;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="250" y="90" width="160" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_n8n" value="보라: n8n 처리 노드" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F1ECFF;strokeColor=#8A6EDB;fontSize=12;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="420" y="90" width="180" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_llm" value="청록: LLM/이미지 생성" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF7F7;strokeColor=#4AA3A3;fontSize=12;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="610" y="90" width="180" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_storage" value="초록: 저장/API" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EFFFF4;strokeColor=#55A56A;fontSize=12;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="800" y="90" width="150" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="legend_risk" value="빨강: 검증 한계" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF0F0;strokeColor=#DD6B6B;fontSize=12;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="960" y="90" width="150" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="input_content" value="프로모션 빌더 입력&#xa;sectionInputs / simpleBrief / requiredContent&#xa;&#xa;역할: 실제 화면에 보여야 할 컨텐츠 계약" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF9F0;strokeColor=#E7A94B;fontSize=13;align=left;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="180" width="290" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="input_md" value="선택된 Design MD&#xa;mdConceptSummary / mdPromptContext / mdConceptJson / mdSummary&#xa;&#xa;역할: 레이아웃 철학, 무드, 컴포넌트 언어, dos/donts 근거" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5FAFF;strokeColor=#4F8FD9;fontSize=13;align=left;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="350" width="290" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="input_style" value="스타일 조정값&#xa;designStyle / sourceDesign&#xa;&#xa;역할: 색상, 폰트, 일부 시각 제약. MD 레이아웃 철학을 대체하지 않음" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F7F4FF;strokeColor=#8A6EDB;fontSize=13;align=left;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="60" y="540" width="290" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="webhook" value="Generate Promo UI Design&#xa;Webhook 진입점&#xa;&#xa;역할: 프론트에서 보낸 UI 디자인 생성 요청을 받음" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F1ECFF;strokeColor=#8A6EDB;fontSize=13;fontStyle=1;align=left;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="430" y="180" width="260" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="normalize" value="Normalize Payload&#xa;입력 정규화/필수값 검증&#xa;&#xa;역할: id, model, md, promo, template, simpleBrief, sectionInputs, design 값을 표준 구조로 정리" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F1ECFF;strokeColor=#8A6EDB;fontSize=13;fontStyle=1;align=left;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="430" y="340" width="260" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="load_prompt" value="Load UI Design Image Prompt&#xa;프롬프트 템플릿 로딩&#xa;&#xa;역할: 외부/내장 이미지 생성 프롬프트 템플릿을 준비" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF8E8;strokeColor=#E7A94B;fontSize=13;fontStyle=1;align=left;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="430" y="530" width="260" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="build_prompt" value="Build UI Design Prompt&#xa;designBrief 생성 + LLM 요청 구성&#xa;&#xa;역할: sectionInputs, simpleBrief, requiredContent, designStyle, MD 정보를 하나의 designBrief로 병합" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F1ECFF;strokeColor=#8A6EDB;fontSize=13;fontStyle=1;align=left;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="780" y="340" width="300" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="design_brief" value="designBrief&#xa;통합 설계 지시 데이터&#xa;&#xa;포함: sectionInputs, simpleBrief, requiredContent, designStyle, mdConceptSummary, mdPromptContext, mdConceptJson, mdSummary" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF7F7;strokeColor=#4AA3A3;fontSize=13;fontStyle=1;align=left;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="780" y="160" width="300" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="llm_generate" value="LLM Generate Image Prompt&#xa;이미지 프롬프트 생성&#xa;&#xa;역할: designBrief를 해석해 imagePrompt, layoutMapping, mdComplianceMap 초안을 생성" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF7F7;strokeColor=#4AA3A3;fontSize=13;fontStyle=1;align=left;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="180" width="290" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="parse_validate" value="Parse Validate Image Prompt&#xa;결과 파싱/검증&#xa;&#xa;역할: imagePrompt 필수 여부, layoutMapping 존재, mdComplianceMap 필수 키와 notColorFontOnlyProof 강도 검증" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF7F7;strokeColor=#4AA3A3;fontSize=13;fontStyle=1;align=left;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="360" width="290" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="generate_image" value="Generate UI Design Image&#xa;이미지 생성 API 호출&#xa;&#xa;역할: 검증된 imagePrompt를 이미지 생성 모델에 전달해 UI 디자인 이미지를 생성" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF7F7;strokeColor=#4AA3A3;fontSize=13;fontStyle=1;align=left;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="550" width="290" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="store_result" value="Store UI Design Result&#xa;n8n 결과 정리&#xa;&#xa;역할: imageUrl 또는 b64, imagePrompt, designBrief, layoutMapping, mdComplianceMap을 결과 payload로 구성" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F1ECFF;strokeColor=#8A6EDB;fontSize=13;fontStyle=1;align=left;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="720" width="290" height="145" as="geometry" />
+        </mxCell>
+        <mxCell id="persist_asset" value="Persist UI Design Asset&#xa;Vercel API 저장 호출&#xa;&#xa;역할: 생성 이미지와 메타데이터를 Blob + DB에 영속 저장" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EFFFF4;strokeColor=#55A56A;fontSize=13;fontStyle=1;align=left;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="1510" y="550" width="240" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="merge_result" value="Merge Persisted UI Design Result&#xa;저장 결과 병합&#xa;&#xa;역할: assetUrl, imageUrl, designUrl, runId, assetId를 n8n 응답에 합침" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EFFFF4;strokeColor=#55A56A;fontSize=13;fontStyle=1;align=left;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="1510" y="720" width="240" height="135" as="geometry" />
+        </mxCell>
+        <mxCell id="return_result" value="Return UI Design Result&#xa;프론트 응답 반환&#xa;&#xa;역할: 최종 imageUrl, designUrl, layoutMapping, mdComplianceMap, imagePrompt를 프론트에 반환" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EFFFF4;strokeColor=#55A56A;fontSize=13;fontStyle=1;align=left;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="1510" y="900" width="240" height="135" as="geometry" />
+        </mxCell>
+        <mxCell id="view_webhook" value="View UI Design&#xa;보기 Webhook" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F6F6F6;strokeColor=#8A8F98;fontSize=13;fontStyle=1;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="430" y="890" width="220" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="read_stored" value="Read Stored UI Design&#xa;n8n static data 조회" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F6F6F6;strokeColor=#8A8F98;fontSize=13;fontStyle=1;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="720" y="890" width="220" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="render_view" value="Render UI Design View&#xa;HTML 보기 화면 렌더" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F6F6F6;strokeColor=#8A8F98;fontSize=13;fontStyle=1;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="1010" y="890" width="220" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="view_note" value="현재 권장 보기 경로&#xa;n8n view webhook보다 Vercel API view 사용 권장&#xa;/api/promo-design-view?id={runKey}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF0F0;strokeColor=#DD6B6B;fontSize=13;fontStyle=1;align=left;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="430" y="1020" width="800" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="gap" value="현재 한계&#xa;반영 깊이 확인은 아직 약함. mdComplianceMap은 존재하지만 설명 기반이고, 컨텐츠별 contentCoverageMap이 아직 없음." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF0F0;strokeColor=#DD6B6B;fontSize=13;fontStyle=1;align=left;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="780" y="550" width="300" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="next" value="오늘 보강 대상&#xa;1. visibleContentChecklist&#xa;2. contentCoverageMap&#xa;3. MD 반영 근거 강화&#xa;4. C섹션 검증 UI" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EFFFF4;strokeColor=#55A56A;fontSize=13;fontStyle=1;align=left;spacing=12;" vertex="1" parent="1">
+          <mxGeometry x="780" y="720" width="300" height="145" as="geometry" />
+        </mxCell>
+        <mxCell id="e_content_webhook" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#E7A94B;endArrow=block;endFill=1;" edge="1" parent="1" source="input_content" target="webhook">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_md_webhook" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4F8FD9;endArrow=block;endFill=1;" edge="1" parent="1" source="input_md" target="webhook">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_style_webhook" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8A6EDB;endArrow=block;endFill=1;" edge="1" parent="1" source="input_style" target="webhook">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_webhook_normalize" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8A6EDB;endArrow=block;endFill=1;" edge="1" parent="1" source="webhook" target="normalize">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_normalize_load" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8A6EDB;endArrow=block;endFill=1;" edge="1" parent="1" source="normalize" target="load_prompt">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_normalize_build" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8A6EDB;endArrow=block;endFill=1;" edge="1" parent="1" source="normalize" target="build_prompt">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_load_build" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#E7A94B;endArrow=block;endFill=1;" edge="1" parent="1" source="load_prompt" target="build_prompt">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_build_brief" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4AA3A3;endArrow=block;endFill=1;" edge="1" parent="1" source="build_prompt" target="design_brief">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_brief_llm" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4AA3A3;endArrow=block;endFill=1;" edge="1" parent="1" source="design_brief" target="llm_generate">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_build_llm" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4AA3A3;endArrow=block;endFill=1;" edge="1" parent="1" source="build_prompt" target="llm_generate">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_llm_parse" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4AA3A3;endArrow=block;endFill=1;" edge="1" parent="1" source="llm_generate" target="parse_validate">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_parse_image" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4AA3A3;endArrow=block;endFill=1;" edge="1" parent="1" source="parse_validate" target="generate_image">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_image_store" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#4AA3A3;endArrow=block;endFill=1;" edge="1" parent="1" source="generate_image" target="store_result">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_store_persist" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#55A56A;endArrow=block;endFill=1;" edge="1" parent="1" source="store_result" target="persist_asset">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_persist_merge" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#55A56A;endArrow=block;endFill=1;" edge="1" parent="1" source="persist_asset" target="merge_result">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_merge_return" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#55A56A;endArrow=block;endFill=1;" edge="1" parent="1" source="merge_result" target="return_result">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_gap_next" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#55A56A;dashed=1;endArrow=block;endFill=1;" edge="1" parent="1" source="gap" target="next">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_view_read" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8A8F98;endArrow=block;endFill=1;" edge="1" parent="1" source="view_webhook" target="read_stored">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_read_render" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8A8F98;endArrow=block;endFill=1;" edge="1" parent="1" source="read_stored" target="render_view">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
