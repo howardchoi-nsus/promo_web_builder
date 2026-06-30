@@ -1387,6 +1387,10 @@ createApp({
       page.mdComplianceMap = run.md_compliance_map || page.mdComplianceMap || null;
       page.imagePrompt = run.image_prompt || page.imagePrompt || "";
       page.promptGroupId = run.prompt_group_id || imageAsset.asset_prompt_group_id || page.promptGroupId || "";
+      const markdownAssets = assets.filter((asset) => /_markdown$/.test(asset.asset_type || ""));
+      page.designPromptStorageKey = markdownAssets.find((asset) => asset.asset_type === "design_prompt_markdown")?.storage_key || page.designPromptStorageKey || "";
+      page.promoInputStorageKey = markdownAssets.find((asset) => asset.asset_type === "promo_input_markdown")?.storage_key || page.promoInputStorageKey || "";
+      page.integratedBriefStorageKey = markdownAssets.find((asset) => asset.asset_type === "integrated_design_brief_markdown")?.storage_key || page.integratedBriefStorageKey || "";
       page.errorMessage = "";
       return true;
     },
@@ -1435,6 +1439,7 @@ createApp({
         promptGroupId: "",
         designPromptStorageKey: "",
         promoInputStorageKey: "",
+        integratedBriefStorageKey: "",
         errorMessage: "",
         hasOverride: payload.hasOverride,
         resultType: willUseN8n ? "pending" : "draft",
@@ -1475,6 +1480,7 @@ createApp({
       listItem.promptGroupId = n8nResult?.promptGroupId || "";
       listItem.designPromptStorageKey = n8nResult?.designPromptStorageKey || "";
       listItem.promoInputStorageKey = n8nResult?.promoInputStorageKey || "";
+      listItem.integratedBriefStorageKey = n8nResult?.integratedBriefStorageKey || "";
       listItem.payload = n8nResult?.payload || payload;
       await this.refreshStoredDesignResult(listItem).catch(() => false);
 
@@ -1532,9 +1538,10 @@ createApp({
           this.fetchPromptMarkdown(page, "design_prompt_markdown"),
           this.fetchPromptMarkdown(page, "promo_input_markdown"),
         ]);
+        const integrated = await this.fetchPromptMarkdown(page, "integrated_design_brief_markdown").catch(() => null);
         this.promptModalDesignMarkdown = design.markdown || "";
-        this.promptModalIntegratedMarkdown = this.extractIntegratedDesignBrief(design.markdown || "");
         this.promptModalPromoMarkdown = promo.markdown || "";
+        this.promptModalIntegratedMarkdown = integrated?.markdown || this.extractIntegratedDesignBrief(design.markdown || "");
         this.setStatus("프롬프트 MD 파일을 불러왔습니다");
       } catch (error) {
         this.promptModalError = error.message;
