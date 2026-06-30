@@ -548,6 +548,11 @@ createApp({
       n8nWebhookUrl: localStorage.getItem(storageKeys.n8nWebhookUrl) || "",
       n8nAnalyzeWebhookUrl: localStorage.getItem(storageKeys.n8nAnalyzeWebhookUrl) || "",
       detailDoc: null,
+      promptModalPage: null,
+      promptModalLoading: false,
+      promptModalError: "",
+      promptModalDesignMarkdown: "",
+      promptModalPromoMarkdown: "",
       modalTab: "outline",
       newMd: {
         brandName: "GGPoker",
@@ -1435,6 +1440,58 @@ createApp({
       }
       saveJson(storageKeys.generatedPage, page.payload);
       window.open("generated.html", "_blank");
+    },
+
+    canOpenPromptFiles(page) {
+      return Boolean(page?.promptGroupId || page?.designPromptStorageKey || page?.promoInputStorageKey);
+    },
+
+    async openPromptFiles(page) {
+      if (!this.canOpenPromptFiles(page)) {
+        this.setStatus("저장된 프롬프트 MD 파일 정보가 없습니다");
+        return;
+      }
+
+      this.promptModalPage = page;
+      this.promptModalLoading = true;
+      this.promptModalError = "";
+      this.promptModalDesignMarkdown = "";
+      this.promptModalPromoMarkdown = "";
+      this.$nextTick(() => {
+        if (!this.$refs.promptFilesModal.open) this.$refs.promptFilesModal.showModal();
+      });
+
+      try {
+        const [design, promo] = await Promise.all([
+          this.fetchPromptMarkdown(page, "design_prompt_markdown"),
+          this.fetchPromptMarkdown(page, "promo_input_markdown"),
+        ]);
+        this.promptModalDesignMarkdown = design.markdown || "";
+        this.promptModalPromoMarkdown = promo.markdown || "";
+        this.setStatus("프롬프트 MD 파일을 불러왔습니다");
+      } catch (error) {
+        this.promptModalError = error.message;
+        this.setStatus(`프롬프트 MD 파일을 불러오지 못했습니다: ${error.message}`);
+      } finally {
+        this.promptModalLoading = false;
+      }
+    },
+
+    async fetchPromptMarkdown(page, type) {
+      const params = new URLSearchParams({ type });
+      if (page.promptGroupId) params.set("promptGroupId", page.promptGroupId);
+      else params.set("runKey", page.id);
+
+      const response = await fetch(`/api/promo-design-markdown?${params.toString()}`);
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.message || result.error || `Markdown ${response.status}`);
+      }
+      return result;
+    },
+
+    closePromptFilesModal() {
+      this.$refs.promptFilesModal.close();
     },
   },
 }).mount("#app");

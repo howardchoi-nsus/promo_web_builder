@@ -509,8 +509,6 @@
                       <th>프로모션</th>
                       <th>선택 MD</th>
                       <th>스타일 기준</th>
-                      <th>템플릿</th>
-                      <th>마켓</th>
                       <th>상태</th>
                       <th>동작</th>
                     </tr>
@@ -521,14 +519,13 @@
                       <td><strong>{{ page.title }}</strong><span>{{ page.createdAt }}</span></td>
                       <td>{{ page.selectedMd }}</td>
                       <td>{{ page.styleSourceLabel }}</td>
-                      <td>{{ templateLabel(page.template) }}</td>
-                      <td>{{ page.market }}</td>
                       <td>
                         {{ resultTypeLabel(page) }}
                         <span class="table-subtext" v-if="page.promptGroupId">Group {{ page.promptGroupId }}</span>
                       </td>
                       <td>
                         <button class="tiny-button primary" type="button" @click="openGenerated(page)">열기</button>
+                        <button class="tiny-button" type="button" :disabled="!canOpenPromptFiles(page)" @click="openPromptFiles(page)">MD 보기</button>
                       </td>
                     </tr>
                   </tbody>
@@ -558,6 +555,7 @@
                   <span>{{ lastGenerated.errorMessage }}</span>
                 </div>
                 <div class="action-row align-right">
+                  <button class="tiny-button" type="button" :disabled="!canOpenPromptFiles(lastGenerated)" @click="openPromptFiles(lastGenerated)">프롬프트 보기</button>
                   <button class="tiny-button primary" type="button" @click="openGenerated(lastGenerated)">새 창 열기</button>
                 </div>
               </div>
@@ -570,6 +568,47 @@
           </section>
         </section>
       </main>
+
+      <dialog class="modal prompt-files-modal" ref="promptFilesModal">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Prompt Files</p>
+            <h2>{{ promptModalPage ? promptModalPage.title : '생성 프롬프트 MD' }}</h2>
+          </div>
+          <button class="icon-button" type="button" aria-label="닫기" @click="closePromptFilesModal">x</button>
+        </div>
+        <div class="modal-body">
+          <div class="summary-grid" v-if="promptModalPage">
+            <div class="summary-box"><strong>Group ID</strong><span>{{ promptModalPage.promptGroupId || '없음' }}</span></div>
+            <div class="summary-box"><strong>Design Prompt</strong><span>{{ promptModalPage.designPromptStorageKey || '없음' }}</span></div>
+            <div class="summary-box"><strong>B Section Log</strong><span>{{ promptModalPage.promoInputStorageKey || '없음' }}</span></div>
+          </div>
+          <div class="outline-item danger-state" v-if="promptModalError">
+            <strong>불러오기 오류</strong>
+            <span>{{ promptModalError }}</span>
+          </div>
+          <div class="outline-item" v-if="promptModalLoading">
+            <strong>불러오는 중</strong>
+            <span>저장된 Markdown 파일을 읽고 있습니다.</span>
+          </div>
+          <div class="prompt-md-compare" v-else>
+            <section class="prompt-md-panel">
+              <div class="prompt-md-panel-header">
+                <strong>Design Prompt MD</strong>
+                <span>{{ promptModalPage ? promptModalPage.designPromptStorageKey : '' }}</span>
+              </div>
+              <pre>{{ promptModalDesignMarkdown || 'Design Prompt Markdown이 없습니다.' }}</pre>
+            </section>
+            <section class="prompt-md-panel">
+              <div class="prompt-md-panel-header">
+                <strong>B Section Input Log MD</strong>
+                <span>{{ promptModalPage ? promptModalPage.promoInputStorageKey : '' }}</span>
+              </div>
+              <pre>{{ promptModalPromoMarkdown || 'B섹션 입력 로그 Markdown이 없습니다.' }}</pre>
+            </section>
+          </div>
+        </div>
+      </dialog>
 
       <dialog class="modal" ref="detailModal">
         <div class="modal-header">
