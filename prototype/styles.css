@@ -1199,7 +1199,7 @@ body.is-resizing {
 
 .prompt-md-compare {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
   min-height: 0;
   height: calc(70vh - 180px);

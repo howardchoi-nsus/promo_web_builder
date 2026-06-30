@@ -552,6 +552,7 @@ createApp({
       promptModalLoading: false,
       promptModalError: "",
       promptModalDesignMarkdown: "",
+      promptModalIntegratedMarkdown: "",
       promptModalPromoMarkdown: "",
       modalTab: "outline",
       newMd: {
@@ -1456,6 +1457,7 @@ createApp({
       this.promptModalLoading = true;
       this.promptModalError = "";
       this.promptModalDesignMarkdown = "";
+      this.promptModalIntegratedMarkdown = "";
       this.promptModalPromoMarkdown = "";
       this.$nextTick(() => {
         if (!this.$refs.promptFilesModal.open) this.$refs.promptFilesModal.showModal();
@@ -1467,6 +1469,7 @@ createApp({
           this.fetchPromptMarkdown(page, "promo_input_markdown"),
         ]);
         this.promptModalDesignMarkdown = design.markdown || "";
+        this.promptModalIntegratedMarkdown = this.extractIntegratedDesignBrief(design.markdown || "");
         this.promptModalPromoMarkdown = promo.markdown || "";
         this.setStatus("프롬프트 MD 파일을 불러왔습니다");
       } catch (error) {
@@ -1488,6 +1491,18 @@ createApp({
         throw new Error(result.message || result.error || `Markdown ${response.status}`);
       }
       return result;
+    },
+
+    extractIntegratedDesignBrief(markdown) {
+      const source = String(markdown || "");
+      const sectionMatch = source.match(/## Integrated Design Brief\s*\n([\s\S]*?)(?=\n## Integrated Design Brief JSON|\n## Layout Mapping|\n## MD Compliance Map|\n## [^\n]+|$)/);
+      const extracted = sectionMatch?.[1]?.trim() || "";
+      if (extracted && !/^_No integrated design brief markdown/i.test(extracted)) return extracted;
+
+      const jsonMatch = source.match(/## Integrated Design Brief JSON\s*\n\s*```json\s*([\s\S]*?)```/);
+      if (jsonMatch?.[1]) return jsonMatch[1].trim();
+
+      return "";
     },
 
     closePromptFilesModal() {
