@@ -56,9 +56,17 @@ async function getAsset(req, res) {
         a.created_at as asset_created_at
       from promo_design_runs r
       left join promo_design_assets a on a.run_id = r.id
+        and (a.prompt_group_id = ${promptGroupId} or a.metadata->>'promptGroupId' = ${promptGroupId})
       where r.prompt_group_id = ${promptGroupId}
-         or a.prompt_group_id = ${promptGroupId}
-         or a.metadata->>'promptGroupId' = ${promptGroupId}
+         or exists (
+           select 1
+           from promo_design_assets matching_asset
+           where matching_asset.run_id = r.id
+             and (
+               matching_asset.prompt_group_id = ${promptGroupId}
+               or matching_asset.metadata->>'promptGroupId' = ${promptGroupId}
+             )
+         )
       order by a.is_primary desc, a.created_at asc
     `;
 
@@ -131,9 +139,50 @@ async function getAsset(req, res) {
 
   if (!rows.length) return res.status(404).json({ error: "Design asset not found", runKey });
 
+  const run = rows[0];
+  const assetRows = await sql`
+    select
+      a.id::text as asset_id,
+      a.asset_type,
+      a.asset_url,
+      a.thumbnail_url,
+      a.mime_type,
+      a.width,
+      a.height,
+      a.file_size,
+      a.storage_provider,
+      a.storage_key,
+      a.metadata,
+      a.is_primary,
+      a.created_at as asset_created_at
+    from promo_design_assets a
+    where a.run_id = ${run.run_id}::uuid
+      and (
+        a.asset_type = 'generated_image'
+        or a.prompt_group_id = ${run.prompt_group_id || ""}
+        or a.metadata->>'promptGroupId' = ${run.prompt_group_id || ""}
+      )
+    order by a.is_primary desc, a.created_at desc
+  `;
+
   return res.status(200).json({
     ok: true,
-    run: rows[0],
+    run,
+    assets: assetRows.map((row) => ({
+      asset_id: row.asset_id,
+      asset_type: row.asset_type,
+      asset_url: row.asset_url,
+      thumbnail_url: row.thumbnail_url,
+      mime_type: row.mime_type,
+      width: row.width,
+      height: row.height,
+      file_size: row.file_size,
+      storage_provider: row.storage_provider,
+      storage_key: row.storage_key,
+      metadata: row.metadata,
+      is_primary: row.is_primary,
+      created_at: row.asset_created_at,
+    })),
   });
 }
 
@@ -190,12 +239,18 @@ async function saveAsset(req, res) {
     md,
     template,
   });
+  const integratedDesignBriefMarkdown = String(body.integratedDesignBriefMarkdown || "").trim();
   const designPromptFileName = `design prompt -${promptGroupId}-${fileStamp}.md`;
   const promoInputFileName = `promo input -${promptGroupId}-${fileStamp}.md`;
+  const integratedBriefFileName = `integrated design brief -${promptGroupId}-${fileStamp}.md`;
   const designPromptKey = `data/Design/${designPromptFileName}`;
   const promoInputKey = `data/Promo/${promoInputFileName}`;
+  const integratedBriefKey = `data/Design/${integratedBriefFileName}`;
   const designPromptBlob = await uploadTextAsset(put, designPromptKey, designPromptMarkdown, blobAccess);
   const promoInputBlob = await uploadTextAsset(put, promoInputKey, promoInputMarkdown, blobAccess);
+  const integratedBriefBlob = integratedDesignBriefMarkdown
+    ? await uploadTextAsset(put, integratedBriefKey, integratedDesignBriefMarkdown, blobAccess)
+    : null;
 
   const sql = neon(databaseUrl);
   const runRows = await sql`
@@ -374,6 +429,40 @@ async function saveAsset(req, res) {
     returning id::text
   `;
 
+  const integratedBriefAssetRows = integratedBriefBlob
+    ? await sql`
+      insert into promo_design_assets (
+        run_id,
+        asset_type,
+        asset_url,
+        thumbnail_url,
+        storage_provider,
+        storage_key,
+        source_url,
+        mime_type,
+        file_size,
+        prompt_group_id,
+        metadata,
+        is_primary
+      )
+      values (
+        ${runId}::uuid,
+        'integrated_design_brief_markdown',
+        ${integratedBriefBlob.url},
+        '',
+        'vercel_blob',
+        ${integratedBriefKey},
+        '',
+        'text/markdown; charset=utf-8',
+        ${textByteLength(integratedDesignBriefMarkdown)},
+        ${promptGroupId},
+        ${JSON.stringify({ access: blobAccess, pathname: integratedBriefBlob.pathname, fileName: integratedBriefFileName, promptGroupId, uploadedAt: generatedAt.toISOString() })}::jsonb,
+        false
+      )
+      returning id::text
+    `
+    : [];
+
   const origin = getOrigin(req);
   const imageProxyUrl = `${origin}/api/promo-design-image?id=${encodeURIComponent(runKey)}`;
   return res.status(200).json({
@@ -389,6 +478,9 @@ async function saveAsset(req, res) {
     promoInputAssetId: promoInputAssetRows[0].id,
     promoInputAssetUrl: promoInputBlob.url,
     promoInputStorageKey: promoInputKey,
+    integratedBriefAssetId: integratedBriefAssetRows[0]?.id || "",
+    integratedBriefAssetUrl: integratedBriefBlob?.url || "",
+    integratedBriefStorageKey: integratedBriefBlob ? integratedBriefKey : "",
     imageUrl: imageProxyUrl,
     designUrl: `${origin}/api/promo-design-view?id=${encodeURIComponent(runKey)}`,
   });

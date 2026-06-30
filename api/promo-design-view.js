@@ -31,7 +31,7 @@ module.exports = async function handler(req, res) {
 
     const row = rows[0];
     const title = escapeHtml(row?.promo_title || "Promo UI Design");
-    const imageUrl = `/api/promo-design-image?id=${encodeURIComponent(runKey)}`;
+    const imageUrl = `${getOrigin(req)}/api/promo-design-image?id=${encodeURIComponent(runKey)}`;
     const html = row?.asset_url
       ? renderImagePage({ title, id: runKey, imageUrl, brand: row.selected_md_name, createdAt: row.created_at })
       : renderNotFound(runKey);
@@ -56,6 +56,7 @@ function renderImagePage({ title, id, imageUrl, brand, createdAt }) {
     .wrap{max-width:1540px;margin:0 auto;padding:24px}
     .bar{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:16px}
     .meta{color:#64748b;font-size:13px}
+    .meta a{color:#2563eb;text-decoration:none}
     img{display:block;width:100%;height:auto;background:#fff}
     .image-error{display:none;margin:24px 0;padding:16px;border:1px solid #fecaca;background:#fff1f2;color:#991b1b}
   </style>
@@ -64,7 +65,7 @@ function renderImagePage({ title, id, imageUrl, brand, createdAt }) {
   <main class="wrap">
     <div class="bar">
       <strong>${title}</strong>
-      <span class="meta">${escapeHtml(brand || "")} · ${escapeHtml(id)} · ${escapeHtml(String(createdAt || ""))}</span>
+      <span class="meta">${escapeHtml(brand || "")} · ${escapeHtml(id)} · ${escapeHtml(String(createdAt || ""))} · <a href="${escapeAttribute(imageUrl)}" target="_blank" rel="noreferrer">Open image</a></span>
     </div>
     <img src="${escapeAttribute(imageUrl)}" alt="Generated promo UI design" onerror="this.style.display='none';document.querySelector('.image-error').style.display='block';">
     <div class="image-error">Generated image could not be loaded. Check the image asset or Blob access for this design.</div>
@@ -91,4 +92,10 @@ function escapeAttribute(value) {
 
 function renderError(error) {
   return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>UI design error</title></head><body style="font-family:Arial,sans-serif;padding:40px"><h1>UI design error</h1><p>${escapeHtml(error.message)}</p></body></html>`;
+}
+
+function getOrigin(req) {
+  const proto = req.headers["x-forwarded-proto"] || "https";
+  const host = req.headers["x-forwarded-host"] || req.headers.host || "";
+  return host ? `${proto}://${host}` : "";
 }

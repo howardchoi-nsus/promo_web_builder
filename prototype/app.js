@@ -382,6 +382,14 @@ function isDirectImageUrl(url, page) {
   return true;
 }
 
+function designViewUrlForId(id) {
+  return id ? `/api/promo-design-view?id=${encodeURIComponent(id)}` : "";
+}
+
+function designImageUrlForId(id) {
+  return id ? `/api/promo-design-image?id=${encodeURIComponent(id)}` : "";
+}
+
 function normalizeCategory(title) {
   const raw = title.toLowerCase().replace(/^\d+\.\s*/, "");
   if (raw.includes("color") || raw.includes("palette")) return "colors";
@@ -1359,6 +1367,48 @@ createApp({
       return result;
     },
 
+    applyStoredDesignResult(page, result) {
+      const run = result?.run || {};
+      const assets = Array.isArray(result?.assets) ? result.assets : [];
+      const imageAsset = assets.find((asset) => asset.asset_type === "generated_image") || run;
+      const runKey = run.run_key || page.id;
+      if (!runKey || !imageAsset?.asset_url) return false;
+
+      page.id = runKey;
+      page.title = run.promo_title || page.title;
+      page.selectedMd = page.selectedMd || run.selected_md_name || "";
+      page.createdAt = run.created_at || page.createdAt;
+      page.status = "n8n_ui_design_generated";
+      page.designUrl = designViewUrlForId(runKey);
+      page.imageUrl = designImageUrlForId(runKey);
+      page.pageUrl = designViewUrlForId(runKey);
+      page.resultType = run.result_type || "image";
+      page.layoutMapping = run.layout_mapping || page.layoutMapping || null;
+      page.mdComplianceMap = run.md_compliance_map || page.mdComplianceMap || null;
+      page.imagePrompt = run.image_prompt || page.imagePrompt || "";
+      page.promptGroupId = run.prompt_group_id || imageAsset.asset_prompt_group_id || page.promptGroupId || "";
+      const markdownAssets = assets.filter((asset) => /_markdown$/.test(asset.asset_type || ""));
+      page.designPromptStorageKey = markdownAssets.find((asset) => asset.asset_type === "design_prompt_markdown")?.storage_key || page.designPromptStorageKey || "";
+      page.promoInputStorageKey = markdownAssets.find((asset) => asset.asset_type === "promo_input_markdown")?.storage_key || page.promoInputStorageKey || "";
+      page.integratedBriefStorageKey = markdownAssets.find((asset) => asset.asset_type === "integrated_design_brief_markdown")?.storage_key || page.integratedBriefStorageKey || "";
+      page.errorMessage = "";
+      return true;
+    },
+
+    async refreshStoredDesignResult(page) {
+      if (!page?.id || window.location.protocol === "file:") return false;
+
+      const response = await fetch(`/api/promo-design-assets?runKey=${encodeURIComponent(page.id)}`);
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) return false;
+      const updated = this.applyStoredDesignResult(page, result);
+      if (updated) {
+        saveJson(storageKeys.generatedPages, this.generatedPages);
+        saveJson(storageKeys.generatedPage, page.payload);
+      }
+      return updated;
+    },
+
     async generateUiDesign() {
       if (!this.selectedDocument) {
         this.setStatus("먼저 MD를 선택해 주세요");
@@ -1389,6 +1439,7 @@ createApp({
         promptGroupId: "",
         designPromptStorageKey: "",
         promoInputStorageKey: "",
+        integratedBriefStorageKey: "",
         errorMessage: "",
         hasOverride: payload.hasOverride,
         resultType: willUseN8n ? "pending" : "draft",
@@ -1403,6 +1454,14 @@ createApp({
       try {
         n8nResult = await this.triggerN8n(payload);
       } catch (error) {
+        const recovered = await this.refreshStoredDesignResult(listItem).catch(() => false);
+        if (recovered) {
+          this.currentBuilderStep = 5;
+          this.setStatus("n8n 응답은 지연됐지만 저장된 UI 디자인을 확인했습니다");
+          if (listItem.pageUrl) window.open(listItem.pageUrl, "_blank");
+          return;
+        }
+
         listItem.status = "n8n_failed";
         listItem.errorMessage = error.message;
         saveJson(storageKeys.generatedPages, this.generatedPages);
@@ -1411,9 +1470,9 @@ createApp({
       }
 
       listItem.status = n8nResult ? "n8n_ui_design_generated" : "draft";
-      listItem.designUrl = toDesignViewUrl(n8nResult?.designUrl || "", listItem.id);
+      listItem.designUrl = toDesignViewUrl(n8nResult?.designUrl || designViewUrlForId(listItem.id), listItem.id);
       listItem.imageUrl = n8nResult?.imageUrl || "";
-      listItem.pageUrl = toDesignViewUrl(n8nResult?.designUrl || n8nResult?.pageUrl || n8nResult?.previewUrl || "", listItem.id) || n8nResult?.imageUrl || "";
+      listItem.pageUrl = toDesignViewUrl(n8nResult?.designUrl || n8nResult?.pageUrl || n8nResult?.previewUrl || designViewUrlForId(listItem.id), listItem.id) || n8nResult?.imageUrl || "";
       listItem.resultType = n8nResult?.resultType || this.resultType(listItem);
       listItem.layoutMapping = n8nResult?.layoutMapping || null;
       listItem.mdComplianceMap = n8nResult?.mdComplianceMap || null;
@@ -1421,7 +1480,9 @@ createApp({
       listItem.promptGroupId = n8nResult?.promptGroupId || "";
       listItem.designPromptStorageKey = n8nResult?.designPromptStorageKey || "";
       listItem.promoInputStorageKey = n8nResult?.promoInputStorageKey || "";
+      listItem.integratedBriefStorageKey = n8nResult?.integratedBriefStorageKey || "";
       listItem.payload = n8nResult?.payload || payload;
+      await this.refreshStoredDesignResult(listItem).catch(() => false);
 
       saveJson(storageKeys.generatedPages, this.generatedPages);
       saveJson(storageKeys.generatedPage, listItem.payload);
@@ -1434,7 +1495,11 @@ createApp({
       return this.generateUiDesign();
     },
 
-    openGenerated(page) {
+    async openGenerated(page) {
+      if (page.status === "n8n_failed" || !page.pageUrl || !page.designUrl) {
+        await this.refreshStoredDesignResult(page).catch(() => false);
+      }
+
       const pageUrl = toDesignViewUrl(page.pageUrl || page.designUrl || "", page.id);
       if (pageUrl) {
         window.open(pageUrl, "_blank");
@@ -1445,13 +1510,17 @@ createApp({
     },
 
     canOpenPromptFiles(page) {
-      return Boolean(page?.promptGroupId || page?.designPromptStorageKey || page?.promoInputStorageKey);
+      return Boolean(page?.promptGroupId || page?.designPromptStorageKey || page?.promoInputStorageKey || page?.id);
     },
 
     async openPromptFiles(page) {
       if (!this.canOpenPromptFiles(page)) {
         this.setStatus("저장된 프롬프트 MD 파일 정보가 없습니다");
         return;
+      }
+
+      if (!page.promptGroupId) {
+        await this.refreshStoredDesignResult(page).catch(() => false);
       }
 
       this.promptModalPage = page;
@@ -1469,9 +1538,10 @@ createApp({
           this.fetchPromptMarkdown(page, "design_prompt_markdown"),
           this.fetchPromptMarkdown(page, "promo_input_markdown"),
         ]);
+        const integrated = await this.fetchPromptMarkdown(page, "integrated_design_brief_markdown").catch(() => null);
         this.promptModalDesignMarkdown = design.markdown || "";
-        this.promptModalIntegratedMarkdown = this.extractIntegratedDesignBrief(design.markdown || "");
         this.promptModalPromoMarkdown = promo.markdown || "";
+        this.promptModalIntegratedMarkdown = integrated?.markdown || this.extractIntegratedDesignBrief(design.markdown || "");
         this.setStatus("프롬프트 MD 파일을 불러왔습니다");
       } catch (error) {
         this.promptModalError = error.message;

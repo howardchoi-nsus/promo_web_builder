@@ -582,6 +582,7 @@
             <div class="summary-box"><strong>Group ID</strong><span>{{ promptModalPage.promptGroupId || '없음' }}</span></div>
             <div class="summary-box"><strong>Design Prompt</strong><span>{{ promptModalPage.designPromptStorageKey || '없음' }}</span></div>
             <div class="summary-box"><strong>B Section Log</strong><span>{{ promptModalPage.promoInputStorageKey || '없음' }}</span></div>
+            <div class="summary-box"><strong>Integrated Brief</strong><span>{{ promptModalPage.integratedBriefStorageKey || 'fallback 조회' }}</span></div>
           </div>
           <div class="outline-item danger-state" v-if="promptModalError">
             <strong>불러오기 오류</strong>
@@ -609,7 +610,7 @@
             <section class="prompt-md-panel">
               <div class="prompt-md-panel-header">
                 <strong>Integrated Design Brief MD</strong>
-                <span>Design MD + B Section Content</span>
+                <span>{{ promptModalPage ? (promptModalPage.integratedBriefStorageKey || 'Design Prompt fallback') : '' }}</span>
               </div>
               <pre>{{ promptModalIntegratedMarkdown || 'Integrated Design Brief Markdown이 없습니다.' }}</pre>
             </section>
