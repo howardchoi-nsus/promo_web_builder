@@ -59,6 +59,66 @@
     },
     {
       "parameters": {
+        "jsCode": "const input = $('Build UI Design Prompt').item.json;\n\nconst requiredSections = [\n  'Selected Design MD Interpretation',\n  'Promo Content Interpretation',\n  'Section Content Mapping',\n  'MD Rule To UI Decision Mapping',\n  'Visual Direction',\n  'Compliance Checklist',\n  'Final Image Prompt Inputs'\n];\n\nconst integrationPrompt = [\n  'Create an integrated design brief for generating a promotional web UI image.',\n  'Return valid JSON only. Do not include markdown fences or explanatory text outside JSON.',\n  '',\n  'The selected Design MD is binding. The B-section promo builder content is the primary visible content contract.',\n  'Your job is to explain exactly how the Design MD and promo content should be combined before image prompt generation.',\n  '',\n  'Return this JSON shape:',\n  '{',\n  '  \"integratedDesignBriefMarkdown\": \"markdown document string\",',\n  '  \"integratedDesignBrief\": {',\n  '    \"selectedDesignMdInterpretation\": {},',\n  '    \"promoContentInterpretation\": {},',\n  '    \"sectionContentMapping\": {},',\n  '    \"mdRuleToUiDecisionMapping\": {},',\n  '    \"visualDirection\": {},',\n  '    \"complianceChecklist\": [],',\n  '    \"finalImagePromptInputs\": {}',\n  '  }',\n  '}',\n  '',\n  'Markdown document requirements:',\n  '- Include exactly these H2 sections in this order: ' + requiredSections.join(', ') + '.',\n  '- In Section Content Mapping, map each Template 4 section to the exact sectionInputs fields it should use.',\n  '- In MD Rule To UI Decision Mapping, convert MD rules into concrete layout, component, spacing, depth/effect, and shape/radius decisions.',\n  '- In Final Image Prompt Inputs, summarize only the final facts the image-prompt LLM must obey.',\n  '- Do not invent promo copy when sectionInputs or promo fields provide it.',\n  '- Clearly state fallback usage if promo metadata is used because sectionInputs are missing.',\n  '',\n  'Input design brief JSON:',\n  JSON.stringify(input.designBrief || {}, null, 2),\n  '',\n  'Suggested layout mapping JSON:',\n  JSON.stringify(input.layoutMapping || {}, null, 2)\n].join('\\n');\n\nreturn [{\n  json: {\n    ...input,\n    integratedBriefRequest: {\n      model: input.model,\n      messages: [\n        { role: 'system', content: 'You are a senior UI design strategist. Return valid JSON only. Create a traceable integrated design brief before image prompt generation.' },\n        { role: 'user', content: integrationPrompt }\n      ],\n      temperature: 0.18,\n      response_format: { type: 'json_object' }\n    }\n  }\n}];"
+      },
+      "id": "build-integrated-design-brief-request",
+      "name": "Build Integrated Design Brief Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer REPLACE_WITH_OPENAI_API_KEY_OR_USE_CREDENTIAL"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.integratedBriefRequest) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "llm-generate-integrated-design-brief",
+      "name": "LLM Generate Integrated Design Brief",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1540,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $('Build Integrated Design Brief Request').item.json;\nconst response = $json;\nconst content = response.choices?.[0]?.message?.content || response.message?.content || response.content || response.text || response.output_text || '';\nif (!content) throw new Error('Integrated design brief response is empty');\n\nlet generated;\ntry {\n  const fence = String.fromCharCode(96, 96, 96);\n  generated = typeof content === 'string'\n    ? JSON.parse(content.replace(new RegExp('^' + fence + 'json\\\\s*', 'i'), '').replace(new RegExp(fence + '$', 'i'), '').trim())\n    : content;\n} catch (error) {\n  throw new Error('Failed to parse integrated design brief JSON: ' + error.message);\n}\n\nconst markdown = String(generated.integratedDesignBriefMarkdown || '').trim();\nconst brief = generated.integratedDesignBrief || {};\nif (!markdown) throw new Error('integratedDesignBriefMarkdown is required');\nif (!brief || typeof brief !== 'object') throw new Error('integratedDesignBrief is required');\n\nconst requiredHeadings = [\n  'Selected Design MD Interpretation',\n  'Promo Content Interpretation',\n  'Section Content Mapping',\n  'MD Rule To UI Decision Mapping',\n  'Visual Direction',\n  'Compliance Checklist',\n  'Final Image Prompt Inputs'\n];\nconst missingHeadings = requiredHeadings.filter((heading) => !markdown.includes(heading));\nif (missingHeadings.length) throw new Error('Integrated design brief missing sections: ' + missingHeadings.join(', '));\n\nconst imagePromptInstruction = [\n  'Use this integrated design brief as the primary source of interpretation before writing the final imagePrompt.',\n  'Integrated design brief markdown:',\n  markdown\n].join('\\n');\n\nconst llmRequest = {\n  ...input.llmRequest,\n  messages: [\n    input.llmRequest.messages[0],\n    {\n      role: 'user',\n      content: [input.llmRequest.messages[1].content, '', imagePromptInstruction].join('\\n\\n')\n    }\n  ]\n};\n\nreturn [{\n  json: {\n    ...input,\n    integratedDesignBriefMarkdown: markdown,\n    integratedDesignBrief: brief,\n    llmRequest\n  }\n}];"
+      },
+      "id": "parse-validate-integrated-design-brief",
+      "name": "Parse Validate Integrated Design Brief",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1660,
+        240
+      ]
+    },
+    {
+      "parameters": {
         "method": "POST",
         "url": "https://api.openai.com/v1/chat/completions",
         "sendHeaders": true,
@@ -87,20 +147,20 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1280,
+        1800,
         240
       ]
     },
     {
       "parameters": {
-        "jsCode": "const input = $('Build UI Design Prompt').item.json;\nconst response = $json;\nconst content = response.choices?.[0]?.message?.content || response.message?.content || response.content || response.text || response.output_text || '';\nif (!content) throw new Error('LLM image prompt response is empty');\n\nlet generated;\ntry {\n  const fence = String.fromCharCode(96, 96, 96);\n  generated = typeof content === 'string'\n    ? JSON.parse(content.replace(new RegExp('^' + fence + 'json\\\\s*', 'i'), '').replace(new RegExp(fence + '$', 'i'), '').trim())\n    : content;\n} catch (error) {\n  throw new Error('Failed to parse image prompt JSON: ' + error.message);\n}\n\nif (!String(generated.imagePrompt || '').trim()) throw new Error('imagePrompt is required');\nif (!generated.mdComplianceMap || typeof generated.mdComplianceMap !== 'object') throw new Error('mdComplianceMap is required');\nif (!generated.layoutMapping || typeof generated.layoutMapping !== 'object') throw new Error('layoutMapping is required');\n\nconst requiredCompliance = [\n  'layoutPhilosophy',\n  'visualMood',\n  'spacingRhythm',\n  'composition',\n  'componentStyle',\n  'depthAndEffects',\n  'shapeAndRadius',\n  'promoPageImplications',\n  'notColorFontOnlyProof'\n];\nconst missingCompliance = requiredCompliance.filter((key) => !String(generated.mdComplianceMap[key] || '').trim());\nif (missingCompliance.length) throw new Error('mdComplianceMap missing fields: ' + missingCompliance.join(', '));\n\nconst proof = String(generated.mdComplianceMap.notColorFontOnlyProof || '').trim();\nif (proof.length < 40) throw new Error('mdComplianceMap.notColorFontOnlyProof is too weak');\n\nconst finalPrompt = [\n  generated.imagePrompt,\n  '',\n  'Hard requirements:',\n  '- Desktop promotional web UI mockup, 1440px-wide composition.',\n  '- Show a complete page design, not a cropped component.',\n  '- Include visible placements for promo title, lead text, CTA button, subline, and legal/terms footer.',\n  '- No code, no browser chrome, no editor UI, no Figma canvas UI.',\n  '- Make the layout reflect the selected MD design concept, not only colors and fonts.',\n  '- Preserve Template 4 order: Header, Hero Banner, Step Bar, Content CTA, Image Text Row, Terms/Footer.',\n  '- Follow the MD layout philosophy, spacing rhythm, composition, component style, depth/effects, shape/radius, dos, and donts.',\n  generated.negativePrompt ? 'Avoid: ' + generated.negativePrompt : ''\n].filter(Boolean).join('\\n');\n\nreturn [{\n  json: {\n    ...input,\n    imagePrompt: finalPrompt,\n    designBrief: generated.designBrief || input.designBrief,\n    layoutMapping: generated.layoutMapping,\n    mdComplianceMap: generated.mdComplianceMap\n  }\n}];"
+        "jsCode": "const input = $('Parse Validate Integrated Design Brief').item.json;\nconst response = $json;\nconst content = response.choices?.[0]?.message?.content || response.message?.content || response.content || response.text || response.output_text || '';\nif (!content) throw new Error('LLM image prompt response is empty');\n\nlet generated;\ntry {\n  const fence = String.fromCharCode(96, 96, 96);\n  generated = typeof content === 'string'\n    ? JSON.parse(content.replace(new RegExp('^' + fence + 'json\\\\s*', 'i'), '').replace(new RegExp(fence + '$', 'i'), '').trim())\n    : content;\n} catch (error) {\n  throw new Error('Failed to parse image prompt JSON: ' + error.message);\n}\n\nif (!String(generated.imagePrompt || '').trim()) throw new Error('imagePrompt is required');\nif (!generated.mdComplianceMap || typeof generated.mdComplianceMap !== 'object') throw new Error('mdComplianceMap is required');\nif (!generated.layoutMapping || typeof generated.layoutMapping !== 'object') throw new Error('layoutMapping is required');\n\nconst requiredCompliance = [\n  'layoutPhilosophy',\n  'visualMood',\n  'spacingRhythm',\n  'composition',\n  'componentStyle',\n  'depthAndEffects',\n  'shapeAndRadius',\n  'promoPageImplications',\n  'notColorFontOnlyProof'\n];\nconst missingCompliance = requiredCompliance.filter((key) => !String(generated.mdComplianceMap[key] || '').trim());\nif (missingCompliance.length) throw new Error('mdComplianceMap missing fields: ' + missingCompliance.join(', '));\n\nconst proof = String(generated.mdComplianceMap.notColorFontOnlyProof || '').trim();\nif (proof.length < 40) throw new Error('mdComplianceMap.notColorFontOnlyProof is too weak');\n\nconst finalPrompt = [\n  generated.imagePrompt,\n  '',\n  'Hard requirements:',\n  '- Desktop promotional web UI mockup, 1440px-wide composition.',\n  '- Show a complete page design, not a cropped component.',\n  '- Include visible placements for promo title, lead text, CTA button, subline, and legal/terms footer.',\n  '- No code, no browser chrome, no editor UI, no Figma canvas UI.',\n  '- Make the layout reflect the selected MD design concept, not only colors and fonts.',\n  '- Preserve Template 4 order: Header, Hero Banner, Step Bar, Content CTA, Image Text Row, Terms/Footer.',\n  '- Follow the MD layout philosophy, spacing rhythm, composition, component style, depth/effects, shape/radius, dos, and donts.',\n  generated.negativePrompt ? 'Avoid: ' + generated.negativePrompt : ''\n].filter(Boolean).join('\\n');\n\nreturn [{\n  json: {\n    ...input,\n    imagePrompt: finalPrompt,\n    designBrief: generated.designBrief || input.designBrief,\n    layoutMapping: generated.layoutMapping,\n    mdComplianceMap: generated.mdComplianceMap\n  }\n}];"
       },
       "id": "parse-validate-image-prompt",
       "name": "Parse Validate Image Prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1540,
+        2060,
         240
       ]
     },
@@ -134,7 +194,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1800,
+        2320,
         240
       ]
     },
@@ -147,7 +207,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2060,
+        2580,
         240
       ]
     },
@@ -158,7 +218,7 @@
         "sendBody": true,
         "contentType": "json",
         "specifyBody": "json",
-        "jsonBody": "={{ (() => { const imageUrl = String($json.imageUrl || ''); return JSON.stringify({ runKey: $json.id, imageUrl: imageUrl.startsWith('data:image/') ? '' : imageUrl, imageDataUrl: imageUrl.startsWith('data:image/') ? imageUrl : '', imagePrompt: $json.imagePrompt, designBrief: $json.designBrief, layoutMapping: $json.layoutMapping, mdComplianceMap: $json.mdComplianceMap, payload: $json.payload, resultType: $json.resultType, status: 'generated' }); })() }}",
+        "jsonBody": "={{ (() => { const imageUrl = String($json.imageUrl || ''); return JSON.stringify({ runKey: $json.id, imageUrl: imageUrl.startsWith('data:image/') ? '' : imageUrl, imageDataUrl: imageUrl.startsWith('data:image/') ? imageUrl : '', imagePrompt: $json.imagePrompt, designBrief: $json.designBrief, integratedDesignBrief: $json.integratedDesignBrief, integratedDesignBriefMarkdown: $json.integratedDesignBriefMarkdown, layoutMapping: $json.layoutMapping, mdComplianceMap: $json.mdComplianceMap, payload: $json.payload, resultType: $json.resultType, status: 'generated' }); })() }}",
         "options": {
           "timeout": 120000
         }
@@ -168,7 +228,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2320,
+        2840,
         240
       ]
     },
@@ -181,7 +241,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2580,
+        3100,
         240
       ]
     },
@@ -196,7 +256,7 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        2840,
+        3360,
         240
       ]
     },
@@ -282,7 +342,7 @@
       "main": [
         [
           {
-            "node": "LLM Generate Image Prompt",
+            "node": "Build Integrated Design Brief Request",
             "type": "main",
             "index": 0
           }
@@ -382,6 +442,39 @@
         [
           {
             "node": "Return UI Design Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Integrated Design Brief Request": {
+      "main": [
+        [
+          {
+            "node": "LLM Generate Integrated Design Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM Generate Integrated Design Brief": {
+      "main": [
+        [
+          {
+            "node": "Parse Validate Integrated Design Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Validate Integrated Design Brief": {
+      "main": [
+        [
+          {
+            "node": "LLM Generate Image Prompt",
             "type": "main",
             "index": 0
           }

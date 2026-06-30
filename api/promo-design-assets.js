@@ -175,6 +175,8 @@ async function saveAsset(req, res) {
     generatedAt,
     imagePrompt: body.imagePrompt || "",
     designBrief: body.designBrief || {},
+    integratedDesignBrief: body.integratedDesignBrief || {},
+    integratedDesignBriefMarkdown: body.integratedDesignBriefMarkdown || "",
     layoutMapping: body.layoutMapping || {},
     mdComplianceMap: body.mdComplianceMap || {},
     payload,
@@ -467,7 +469,18 @@ function formatTimestamp(date) {
   ].join("");
 }
 
-function buildDesignPromptMarkdown({ runKey, promptGroupId, generatedAt, imagePrompt, designBrief, layoutMapping, mdComplianceMap, payload }) {
+function buildDesignPromptMarkdown({
+  runKey,
+  promptGroupId,
+  generatedAt,
+  imagePrompt,
+  designBrief,
+  integratedDesignBrief,
+  integratedDesignBriefMarkdown,
+  layoutMapping,
+  mdComplianceMap,
+  payload,
+}) {
   return [
     "---",
     `type: design_prompt`,
@@ -488,6 +501,16 @@ function buildDesignPromptMarkdown({ runKey, promptGroupId, generatedAt, imagePr
     "",
     "```json",
     JSON.stringify(designBrief || {}, null, 2),
+    "```",
+    "",
+    "## Integrated Design Brief",
+    "",
+    integratedDesignBriefMarkdown || "_No integrated design brief markdown was provided._",
+    "",
+    "## Integrated Design Brief JSON",
+    "",
+    "```json",
+    JSON.stringify(integratedDesignBrief || {}, null, 2),
     "```",
     "",
     "## Layout Mapping",
