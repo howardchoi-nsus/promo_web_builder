@@ -804,3 +804,8 @@ function hintForError(error) {
   }
   return "";
 }
+
+module.exports._test = {
+  buildDesignPromptMarkdown,
+  tokenValueToText,
+};

@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "check": "node --check prototype/app.js && node --check prototype/generated.js",
+    "test:design-prompt-md": "node scripts/test-design-prompt-md.js",
     "design-md:dry-run": "node scripts/import-design-md-docs.js",
     "design-md:import": "node scripts/import-design-md-docs.js --apply"
   },
