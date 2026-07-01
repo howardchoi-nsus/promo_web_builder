@@ -70,7 +70,9 @@ Rules:
 - B Section Input Log / sectionInputs controls visible content.
 - promo-ui-design-image-generation.md controls output format and Template 4 section order.
 - All visible UI copy must be English only.
-- Use a tall 1024x1536 full-page canvas representing a 1440px desktop page scaled down.
+- Treat 1024x1536 as the bitmap export size, not as a poster artboard or real web page proportion.
+- Represent a 1440px desktop Web UI page scaled into the bitmap.
+- The result must read as a web UI design mockup, not a poster, flyer, brochure, presentation slide, print ad, or key visual.
 - All seven Template 4 sections must be visible: Header, Hero Banner, Step Bar, Content CTA, Image Text Row, Title and Description, Footer.
 - The document must be self-contained enough for the next LLM to generate the Web UI image from this document alone.
 

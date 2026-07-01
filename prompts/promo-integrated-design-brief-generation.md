@@ -9,6 +9,8 @@ Return valid JSON only. Do not include markdown fences or explanations outside J
 - This is not a summary.
 - This document must be a complete design-generation request document.
 - A downstream image-generation LLM must be able to create the final Web UI design by reading only this integrated brief.
+- The brief must be usable by other LLMs or design agents, not only this n8n workflow.
+- The resulting design must read as a Web UI design mockup, not as a poster, flyer, brochure, presentation slide, editorial cover, print ad, or key visual.
 - Do not require the downstream step to re-read DESIGN.md, content.md, sectionInputs JSON, layoutMapping JSON, designBrief JSON, or promo-ui-design-image-generation.md.
 - Restate all adopted values, visible copy, design rules, section mappings, conflicts, and final imagePrompt inputs inside this document.
 
@@ -27,9 +29,10 @@ Return valid JSON only. Do not include markdown fences or explanations outside J
 
 ## Canvas And Full-Page Rule
 
-- The final image uses a tall 1024x1536 canvas.
-- It represents a 1440px desktop Web UI page scaled down to fit vertically.
+- The final bitmap may use a 1024x1536 export size, but that export size is not the page's real web proportion and must not be treated as a poster artboard.
+- It represents a 1440px desktop Web UI page scaled into the bitmap.
 - This is a full-page Web UI design mockup, not a cropped viewport screenshot.
+- It should look like a browserless screenshot or design mockup of a real scrollable webpage, not a print composition.
 - Header through Footer must be visible in one image.
 - Do not crop the bottom.
 - Do not merge Title and Description into Footer.
@@ -148,6 +151,7 @@ For each section include:
 ### Visual Direction must include bullets for
 
 - Canvas strategy
+- Web UI fidelity strategy
 - Vertical fit strategy
 - Hero strategy
 - Supporting visual strategy
@@ -163,6 +167,7 @@ For each section include:
 - `### Must Avoid`
 
 The Image Prompt Direction must be directly usable by an image-generation prompt LLM. It must include canvas size, page width, full-page requirement, all 7 sections, English-only copy, no bottom crop, and design system constraints.
+It must also include concrete anti-print guidance: avoid poster/flyer/brochure/presentation-slide composition, avoid single centered key visual layouts, and include visible web UI cues such as navigation, CTA components, section containers, grid rhythm, component hierarchy, and footer/legal structure.
 
 ### Negative Prompt
 
@@ -202,6 +207,7 @@ Must include at least 10 checklist items.
 - It must include a Negative Prompt.
 - It must include a Visual QA Checklist.
 - It must be self-contained enough that the next LLM can generate the Web UI design from this document alone.
+- It must include enough web UI fidelity guidance that another LLM or design agent can understand why the output should not look like print design.
 
 ## Input Metadata
 
