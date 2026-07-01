@@ -64,10 +64,10 @@
                   class="style-doc-item"
                   :class="{ selected: doc.id === selectedDocumentId }"
                 >
-                  <div>
+                  <div class="style-doc-row">
                     <strong>{{ doc.brandName }}</strong>
-                    <span>{{ doc.updatedAt || '업데이트 일자 없음' }}</span>
-                    <div class="style-doc-swatches" v-if="doc.summary?.colors?.length">
+                    <span class="row-separator">/</span>
+                    <div class="style-doc-swatches" v-if="doc.summary?.colors?.length" :aria-label="doc.summary.colors.slice(0, 4).join(', ')">
                       <span
                         v-for="color in doc.summary.colors.slice(0, 4)"
                         :key="`${doc.id}-${color}`"
@@ -76,13 +76,12 @@
                         :style="{ background: color }"
                       ></span>
                     </div>
-                    <div class="style-doc-meta">
-                      <span>{{ designTokenCategoryLabel(doc) }}</span>
-                      <span>{{ stylePopularityLabel(doc) }}</span>
-                    </div>
-                    <div class="style-doc-tags" v-if="tagsForDocument(doc).length">
-                      <span v-for="tag in tagsForDocument(doc).slice(0, 3)" :key="tag">{{ tag }}</span>
-                    </div>
+                    <span class="row-separator">/</span>
+                    <span class="style-doc-token-label">{{ designTokenCategoryLabel(doc) }}</span>
+                    <span class="row-separator">·</span>
+                    <span>{{ stylePopularityLabel(doc) }}</span>
+                    <span class="row-separator">/</span>
+                    <span>{{ documentDateLabel(doc) }}</span>
                   </div>
                   <div class="card-actions">
                     <button class="tiny-button primary" type="button" @click="selectDocument(doc.id)">선택</button>

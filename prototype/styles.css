@@ -788,26 +788,53 @@ body.is-resizing {
   line-height: 1.35;
 }
 
+.style-doc-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.style-doc-row strong {
+  flex: 0 1 auto;
+  min-width: 0;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.style-doc-row > span {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0;
+  flex: 0 0 auto;
+}
+
+.style-doc-token-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .style-doc-swatches {
   display: flex;
-  gap: 5px;
-  margin-top: 6px;
+  flex: 0 0 auto;
+  gap: 4px;
 }
 
-.style-doc-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px 8px;
-  margin-top: 5px;
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: 800;
-  line-height: 1.35;
+.style-doc-swatches .swatch {
+  width: 18px;
+  height: 18px;
 }
 
-.style-doc-meta span {
-  min-width: 0;
-  overflow-wrap: anywhere;
+.row-separator {
+  color: #94a3b8;
 }
 
 .group-caret,
@@ -847,7 +874,7 @@ body.is-resizing {
 
 .style-doc-list {
   display: grid;
-  grid-auto-rows: 112px;
+  grid-auto-rows: 58px;
   gap: 1px;
   border-top: 1px solid var(--line);
   background: var(--line);
@@ -858,9 +885,9 @@ body.is-resizing {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
-  height: 112px;
-  min-height: 112px;
-  max-height: 112px;
+  height: 58px;
+  min-height: 58px;
+  max-height: 58px;
   padding: 10px 12px;
   background: #ffffff;
   overflow: hidden;

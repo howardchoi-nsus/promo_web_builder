@@ -861,15 +861,23 @@ createApp({
     designTokenCategoryLabel(doc) {
       const rows = this.designDataCategoryRows(doc)
         .filter((row) => Number(String(row.value).replace(/,/g, "")) > 0)
-        .slice(0, 4)
         .map((row) => row.label);
-      return rows.length ? rows.join(" / ") : "토큰 unknown";
+      if (!rows.length) return "토큰 unknown";
+      const visibleRows = rows.slice(0, 3);
+      const remaining = rows.length - visibleRows.length;
+      return `${visibleRows.join(" / ")}${remaining > 0 ? ` +${remaining}` : ""}`;
     },
 
     stylePopularityLabel(doc) {
       const confidence = Number(doc?.styleClassification?.confidence);
-      if (Number.isFinite(confidence)) return `신뢰도 ${Math.round(confidence * 100)}%`;
-      return "신뢰도 unknown";
+      if (Number.isFinite(confidence)) return `인기 ${Math.round(confidence * 100)}%`;
+      return "인기 unknown";
+    },
+
+    documentDateLabel(doc) {
+      const value = doc?.updatedAt || doc?.createdAt || "";
+      const match = String(value).match(/\d{4}-\d{2}-\d{2}/);
+      return match ? match[0] : "날짜 unknown";
     },
 
     designSchemaClassification(doc) {
