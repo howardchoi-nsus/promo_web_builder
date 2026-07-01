@@ -130,7 +130,7 @@
 
                 <details
                   v-for="section in selectedDesignTokenSections"
-                  :key="section.key"
+                  :key="`${selectedDocumentId}-${section.key}`"
                   class="token-detail-section"
                   :open="section.open"
                 >

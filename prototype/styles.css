@@ -1064,6 +1064,11 @@ body.is-resizing {
   border-top: 1px solid var(--line);
 }
 
+.token-detail-section[open] .token-row-list,
+.token-detail-section[open] .empty-state.compact {
+  background: #f8fbff;
+}
+
 .token-row {
   display: grid;
   grid-template-columns: minmax(90px, 0.38fr) minmax(0, 1fr);

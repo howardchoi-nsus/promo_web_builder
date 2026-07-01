@@ -642,7 +642,7 @@ createApp({
       const doc = this.selectedDesignDataSource;
       return [
         { key: "color", label: "Colors", rows: this.normalizedTokenRows(doc, "color"), open: true },
-        { key: "typography", label: "Typography", rows: this.normalizedTokenRows(doc, "typography"), open: true },
+        { key: "typography", label: "Typography", rows: this.normalizedTokenRows(doc, "typography"), open: false },
         { key: "radius", label: "Radius", rows: this.normalizedTokenRows(doc, "radius"), open: false },
         { key: "spacing", label: "Spacing", rows: this.normalizedTokenRows(doc, "spacing"), open: false },
         { key: "elevation", label: "Elevation", rows: this.normalizedTokenRows(doc, "elevation"), open: false },
