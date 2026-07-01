@@ -1510,6 +1510,7 @@ createApp({
 
     buildGeneratedPayload(pageId) {
       const source = this.sourceStyle;
+      const designDoc = this.selectedDesignDataSource || this.selectedDocument;
       const sectionInputs = this.sectionInputsForPayload();
       const promoCompat = {
         ...this.promo,
@@ -1522,22 +1523,26 @@ createApp({
         id: pageId,
         generatedAt: nowText(),
         md: {
-          id: this.selectedDocument.id,
-          brand: this.selectedDocument.brandName,
-          slug: this.selectedDocument.slug,
-          summary: this.selectedDocument.summary,
-          designConcept: this.selectedDocument.designConcept,
-          styleClassification: this.selectedDocument.styleClassification,
-          designPromptContext: this.selectedDocument.designConcept?.promptContext || "",
+          id: designDoc.id,
+          brand: designDoc.brandName,
+          slug: designDoc.slug,
+          summary: designDoc.summary,
+          designConcept: designDoc.designConcept,
+          styleClassification: designDoc.styleClassification,
+          designPromptContext: designDoc.designConcept?.promptContext || "",
           designData: {
-            summary: this.selectedDocument.summary,
-            metadata: this.selectedDocument.metadata || [],
-            normalizedSchema: this.selectedDocument.normalizedSchema || this.selectedDocument.tokenSet?.normalizedSchema || null,
-            componentPatternCount: this.selectedDocument.summary?.componentPatternCount || 0,
-            layoutPatternCount: this.selectedDocument.summary?.layoutPatternCount || 0,
-            guidelineCount: this.selectedDocument.summary?.guidelineCount || 0,
-            extractionStatus: this.selectedDocument.extractionStatus || this.selectedDocument.status,
-            sourceHash: this.selectedDocument.sourceHash || "",
+            summary: designDoc.summary,
+            metadata: designDoc.metadata || designDoc.metadataItems || [],
+            normalizedSchema: designDoc.normalizedSchema || designDoc.tokenSet?.normalizedSchema || null,
+            tokenItems: designDoc.tokenItems || [],
+            componentPatterns: designDoc.componentPatterns || [],
+            layoutPatterns: designDoc.layoutPatterns || [],
+            guidelineItems: designDoc.guidelineItems || [],
+            componentPatternCount: designDoc.summary?.componentPatternCount || designDoc.componentPatterns?.length || 0,
+            layoutPatternCount: designDoc.summary?.layoutPatternCount || designDoc.layoutPatterns?.length || 0,
+            guidelineCount: designDoc.summary?.guidelineCount || designDoc.guidelineItems?.length || 0,
+            extractionStatus: designDoc.extractionStatus || designDoc.status,
+            sourceHash: designDoc.sourceHash || designDoc.tokenSet?.sourceHash || "",
           },
         },
         promo: promoCompat,
@@ -1683,6 +1688,7 @@ createApp({
         return;
       }
       if (!this.validatePromoInputs()) return;
+      await this.loadSelectedDesignDetail(this.selectedDocumentId);
 
       const pageId = `promo-${String(this.generatedPages.length + 1).padStart(3, "0")}`;
       const payload = this.buildGeneratedPayload(pageId);
