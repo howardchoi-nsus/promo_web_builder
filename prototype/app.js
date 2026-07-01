@@ -632,6 +632,31 @@ createApp({
       return this.tagsForDocument(this.selectedDocument).slice(0, 6);
     },
 
+    filteredDesignDocuments() {
+      const search = this.styleGroupSearch.trim().toLowerCase();
+      if (!search) return this.designDocuments;
+
+      return this.designDocuments.filter((doc) => {
+        const groupInfo = this.groupInfoForDocument(doc);
+        const tags = this.tagsForDocument(doc);
+        const haystack = [
+          doc.brandName,
+          doc.slug,
+          groupInfo.name,
+          groupInfo.description,
+          ...tags,
+          doc.styleClassification?.layoutModel,
+          doc.styleClassification?.colorMode,
+          doc.styleClassification?.typographyTone,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+
+        return haystack.includes(search);
+      });
+    },
+
     groupedDocuments() {
       const search = this.styleGroupSearch.trim().toLowerCase();
       const groups = new Map();

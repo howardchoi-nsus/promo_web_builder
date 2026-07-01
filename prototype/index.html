@@ -53,38 +53,13 @@
               </div>
 
               <label class="field compact-field">
-                <span>스타일 또는 브랜드 검색</span>
-                <input v-model="styleGroupSearch" type="search" placeholder="그룹, 브랜드, 태그 검색" />
+                <span>브랜드 또는 태그 검색</span>
+                <input v-model="styleGroupSearch" type="search" placeholder="브랜드, 슬러그, 태그 검색" />
               </label>
 
-              <div class="style-concept-wrap">
-                <button
-                  v-for="group in groupedDocuments"
-                  :key="group.slug"
-                  class="style-concept-button"
-                  :class="{ selected: selectedStyleGroup && group.slug === selectedStyleGroup.slug }"
-                  type="button"
-                  @click="selectStyleGroup(group)"
-                >
-                  <strong>{{ styleGroupName(group) }}</strong>
-                  <span>{{ group.documents.length }}개 MD</span>
-                </button>
-              </div>
-
-              <div class="selected-concept-card" v-if="selectedStyleGroup">
-                <div>
-                  <strong>{{ styleGroupName(selectedStyleGroup) }}</strong>
-                  <p>{{ styleGroupDescription(selectedStyleGroup) }}</p>
-                </div>
-                <div class="style-group-tags" v-if="selectedStyleGroup.tags.length || selectedStyleGroup.confidence !== null">
-                  <span v-for="tag in selectedStyleGroup.tags" :key="tag">{{ tag }}</span>
-                  <span v-if="selectedStyleGroup.confidence !== null">신뢰도 {{ Math.round(selectedStyleGroup.confidence * 100) }}%</span>
-                </div>
-              </div>
-
-              <div class="style-doc-list concept-doc-list" v-if="selectedStyleGroupDocuments.length">
+              <div class="style-doc-list concept-doc-list" v-if="filteredDesignDocuments.length">
                 <div
-                  v-for="doc in selectedStyleGroupDocuments"
+                  v-for="doc in filteredDesignDocuments"
                   :key="doc.id"
                   class="style-doc-item"
                   :class="{ selected: doc.id === selectedDocumentId }"
@@ -103,8 +78,8 @@
                 </div>
               </div>
 
-              <div class="empty-state" v-if="!groupedDocuments.length">
-                일치하는 디자인 스타일 콘셉트가 없습니다.
+              <div class="empty-state" v-if="!filteredDesignDocuments.length">
+                일치하는 디자인 MD가 없습니다.
               </div>
             </div>
             </div>
