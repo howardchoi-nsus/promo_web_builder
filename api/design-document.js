@@ -170,22 +170,43 @@ async function loadDocument(sql, id) {
   const doc = rows[0];
   if (!doc) return null;
 
-  const setRows = await sql`
-    select id::text as id, version, format, dtcg_json, source_hash, extraction_model, status, error_message, extracted_at
-    from design_token_sets
-    where document_id = ${id}::uuid and status = 'ready'
-    order by version desc
-    limit 1
-  `;
+  let setRows;
+  try {
+    setRows = await sql`
+      select id::text as id, version, format, dtcg_json, normalized_schema_json, source_hash, extraction_model, status, error_message, extracted_at
+      from design_token_sets
+      where document_id = ${id}::uuid and status = 'ready'
+      order by version desc
+      limit 1
+    `;
+  } catch (error) {
+    setRows = await sql`
+      select id::text as id, version, format, dtcg_json, '{}'::jsonb as normalized_schema_json, source_hash, extraction_model, status, error_message, extracted_at
+      from design_token_sets
+      where document_id = ${id}::uuid and status = 'ready'
+      order by version desc
+      limit 1
+    `;
+  }
   const tokenSet = setRows[0] || null;
-  const tokenItems = tokenSet
-    ? await sql`
-        select token_path, token_name, token_type, token_value, description, extensions, source_excerpt, confidence
-        from design_token_items
-        where token_set_id = ${tokenSet.id}::uuid
-        order by token_path asc
-      `
-    : [];
+  let tokenItems = [];
+  if (tokenSet) {
+    try {
+      tokenItems = await sql`
+          select token_path, token_name, token_type, token_value, description, alias_of, reference_path, extensions, source_excerpt, confidence
+          from design_token_items
+          where token_set_id = ${tokenSet.id}::uuid
+          order by token_path asc
+        `;
+    } catch (error) {
+      tokenItems = await sql`
+          select token_path, token_name, token_type, token_value, description, ''::text as alias_of, ''::text as reference_path, extensions, source_excerpt, confidence
+          from design_token_items
+          where token_set_id = ${tokenSet.id}::uuid
+          order by token_path asc
+        `;
+    }
+  }
   const metadataItems = tokenSet
     ? await sql`
         select category, key, value, source_excerpt, confidence
@@ -194,6 +215,35 @@ async function loadDocument(sql, id) {
         order by created_at asc
       `
     : [];
+  let componentPatterns = [];
+  let layoutPatterns = [];
+  let guidelineItems = [];
+  if (tokenSet) {
+    try {
+      componentPatterns = await sql`
+          select component_type, pattern_key, value_json, token_references, source_excerpt, confidence
+          from design_component_patterns
+          where token_set_id = ${tokenSet.id}::uuid
+          order by component_type asc, pattern_key asc
+        `;
+      layoutPatterns = await sql`
+          select layout_type, pattern_key, value_json, token_references, source_excerpt, confidence
+          from design_layout_patterns
+          where token_set_id = ${tokenSet.id}::uuid
+          order by layout_type asc, pattern_key asc
+        `;
+      guidelineItems = await sql`
+          select guideline_type, key, value, severity, applies_to, source_excerpt, confidence
+          from design_guideline_items
+          where token_set_id = ${tokenSet.id}::uuid
+          order by guideline_type asc, key asc
+        `;
+    } catch (error) {
+      componentPatterns = [];
+      layoutPatterns = [];
+      guidelineItems = [];
+    }
+  }
   const sections = await sql`
     select category, original_title, normalized_title, content_markdown, sort_order
     from design_sections
@@ -242,6 +292,9 @@ async function loadDocument(sql, id) {
       sectionCount: sections.length,
       tokenCount: tokenItems.length,
       metadataCount: metadataItems.length,
+      componentPatternCount: componentPatterns.length,
+      layoutPatternCount: layoutPatterns.length,
+      guidelineCount: guidelineItems.length,
     },
     tokenSet: tokenSet
       ? {
@@ -249,6 +302,7 @@ async function loadDocument(sql, id) {
           version: tokenSet.version,
           format: tokenSet.format,
           dtcgJson: tokenSet.dtcg_json || {},
+          normalizedSchema: tokenSet.normalized_schema_json || {},
           sourceHash: tokenSet.source_hash || "",
           extractionModel: tokenSet.extraction_model || "",
           status: tokenSet.status,
@@ -257,6 +311,9 @@ async function loadDocument(sql, id) {
       : null,
     tokenItems: tokenItems.map(normalizeTokenItem),
     metadataItems,
+    componentPatterns: componentPatterns.map(normalizeComponentPattern),
+    layoutPatterns: layoutPatterns.map(normalizeLayoutPattern),
+    guidelineItems: guidelineItems.map(normalizeGuidelineItem),
   };
 }
 
@@ -278,7 +335,43 @@ function normalizeTokenItem(item) {
     tokenType: item.token_type,
     tokenValue: item.token_value,
     description: item.description || "",
+    aliasOf: item.alias_of || "",
+    referencePath: item.reference_path || "",
     extensions: item.extensions || {},
+    sourceExcerpt: item.source_excerpt || "",
+    confidence: item.confidence === null || item.confidence === undefined ? null : Number(item.confidence),
+  };
+}
+
+function normalizeComponentPattern(item) {
+  return {
+    componentType: item.component_type,
+    patternKey: item.pattern_key,
+    valueJson: item.value_json || {},
+    tokenReferences: item.token_references || [],
+    sourceExcerpt: item.source_excerpt || "",
+    confidence: item.confidence === null || item.confidence === undefined ? null : Number(item.confidence),
+  };
+}
+
+function normalizeLayoutPattern(item) {
+  return {
+    layoutType: item.layout_type,
+    patternKey: item.pattern_key,
+    valueJson: item.value_json || {},
+    tokenReferences: item.token_references || [],
+    sourceExcerpt: item.source_excerpt || "",
+    confidence: item.confidence === null || item.confidence === undefined ? null : Number(item.confidence),
+  };
+}
+
+function normalizeGuidelineItem(item) {
+  return {
+    guidelineType: item.guideline_type,
+    key: item.key,
+    value: item.value,
+    severity: item.severity || "",
+    appliesTo: item.applies_to || "",
     sourceExcerpt: item.source_excerpt || "",
     confidence: item.confidence === null || item.confidence === undefined ? null : Number(item.confidence),
   };

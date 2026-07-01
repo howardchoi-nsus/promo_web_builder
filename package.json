@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "check": "node --check prototype/app.js && node --check prototype/generated.js"
+    "check": "node --check prototype/app.js && node --check prototype/generated.js",
+    "design-md:dry-run": "node scripts/import-design-md-docs.js",
+    "design-md:import": "node scripts/import-design-md-docs.js --apply"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",

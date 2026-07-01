@@ -1332,6 +1332,10 @@ createApp({
           designData: {
             summary: this.selectedDocument.summary,
             metadata: this.selectedDocument.metadata || [],
+            normalizedSchema: this.selectedDocument.normalizedSchema || this.selectedDocument.tokenSet?.normalizedSchema || null,
+            componentPatternCount: this.selectedDocument.summary?.componentPatternCount || 0,
+            layoutPatternCount: this.selectedDocument.summary?.layoutPatternCount || 0,
+            guidelineCount: this.selectedDocument.summary?.guidelineCount || 0,
             extractionStatus: this.selectedDocument.extractionStatus || this.selectedDocument.status,
             sourceHash: this.selectedDocument.sourceHash || "",
           },
