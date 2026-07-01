@@ -304,6 +304,7 @@ function extractDimensions(markdown, dtcgRoot, tokens) {
 
 function extractShadows(markdown, dtcgRoot, tokens) {
   const regex = /(-?\d+(?:\.\d+)?px)\s+(-?\d+(?:\.\d+)?px)\s+(\d+(?:\.\d+)?px)(?:\s+(-?\d+(?:\.\d+)?px))?\s+(rgba?\([^)]+\)|#[0-9a-fA-F]{3,8})/g;
+  const colorFirstRegex = /(rgba?\([^)]+\)|#[0-9a-fA-F]{3,8})\s+(-?\d+(?:\.\d+)?px)\s+(-?\d+(?:\.\d+)?px)\s+(\d+(?:\.\d+)?px)(?:\s+(-?\d+(?:\.\d+)?px))?/g;
   let count = 0;
   let match;
   while ((match = regex.exec(markdown))) {
@@ -320,6 +321,26 @@ function extractShadows(markdown, dtcgRoot, tokens) {
         blur: match[3],
         spread: match[4] || "0px",
         color: match[5],
+      },
+      "Detected shadow token from Design MD.",
+      excerptAround(markdown, match.index),
+      0.76
+    );
+  }
+  while ((match = colorFirstRegex.exec(markdown))) {
+    count += 1;
+    addToken(
+      tokens,
+      dtcgRoot,
+      "shadow",
+      `shadow-${count}`,
+      "shadow",
+      {
+        offsetX: match[2],
+        offsetY: match[3],
+        blur: match[4],
+        spread: match[5] || "0px",
+        color: match[1],
       },
       "Detected shadow token from Design MD.",
       excerptAround(markdown, match.index),
@@ -495,6 +516,70 @@ function known(value, confidence, source = "extracted") {
   return { value, confidence, source };
 }
 
+function asDimension(value, unit = "px") {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return UNKNOWN;
+  return { value: numeric, unit };
+}
+
+function colorLines(metadataItems) {
+  return metadataItems
+    .filter((item) => ["color", "philosophy", "guidance"].includes(item.category))
+    .flatMap((item) => String(`${item.value}\n${item.sourceExcerpt || ""}`).split(/\r?\n| - |\|/))
+    .map((line) => line.trim())
+    .filter((line) => /#[0-9a-fA-F]{3,8}\b/.test(line));
+}
+
+function findColorByKeywords(metadataItems, keywords, fallback = "") {
+  const normalizedKeywords = keywords.map((keyword) => keyword.toLowerCase());
+  for (const line of colorLines(metadataItems)) {
+    const lower = line.toLowerCase();
+    const keywordIndexes = normalizedKeywords
+      .map((keyword) => lower.indexOf(keyword))
+      .filter((index) => index >= 0);
+    if (!keywordIndexes.length) continue;
+    const matches = Array.from(line.matchAll(/#[0-9a-fA-F]{3,8}\b/g));
+    if (!matches.length) continue;
+    const nearest = matches
+      .map((match) => ({
+        value: match[0],
+        distance: Math.min(...keywordIndexes.map((index) => Math.abs((match.index || 0) - index))),
+      }))
+      .sort((a, b) => a.distance - b.distance)[0];
+    if (nearest?.value) return nearest.value;
+  }
+  return fallback || UNKNOWN;
+}
+
+function isDarkDesign(metadataItems) {
+  const text = metadataItems.map((item) => item.value).join("\n").toLowerCase();
+  return /near-black|dark theme|dark immersive|charcoal|don't use light backgrounds|do not use light backgrounds/.test(text);
+}
+
+function findTypographyValue(metadataItems, patterns) {
+  const text = metadataItems
+    .filter((item) => item.category === "typography")
+    .map((item) => `${item.value}\n${item.sourceExcerpt || ""}`)
+    .join("\n");
+  for (const pattern of patterns) {
+    const match = pattern.exec(text);
+    if (match?.[1]) return match[1].trim();
+  }
+  return UNKNOWN;
+}
+
+function findDimensionByPatterns(metadataItems, categories, patterns) {
+  const text = metadataItems
+    .filter((item) => categories.includes(item.category))
+    .map((item) => `${item.value}\n${item.sourceExcerpt || ""}`)
+    .join("\n");
+  for (const pattern of patterns) {
+    const match = pattern.exec(text);
+    if (match?.[1]) return asDimension(match[1], match[2] || "px");
+  }
+  return UNKNOWN;
+}
+
 function classifyDetailModels(markdown, tokenItems, metadataItems, base) {
   const text = `${markdown}\n${metadataItems.map((item) => item.value).join("\n")}`.toLowerCase();
   const colorCount = tokenItems.filter((item) => item.tokenType === "color").length;
@@ -518,13 +603,13 @@ function classifyDetailModels(markdown, tokenItems, metadataItems, base) {
 
   const depthModel = /flat|no shadow|no shadows|mostly flat/.test(text)
     ? "flat"
-    : /glass|blur|frosted/.test(text)
-      ? "glass"
-      : /shadow|elevation/.test(text) || shadowCount
-        ? "shadowed"
-        : /photography|media|image-led|cinematic/.test(text)
-          ? "media_led"
-          : UNKNOWN;
+    : /shadow|elevation|drop shadow|box-shadow/.test(text) || shadowCount
+      ? "shadowed"
+      : /glass|frosted|backdrop-filter/.test(text)
+        ? "glass"
+    : /photography|media|image-led|cinematic/.test(text)
+      ? "media_led"
+      : UNKNOWN;
 
   const maxRadius = radiusValues.length ? Math.max(...radiusValues) : 0;
   const shapeModel = /pill/.test(text) || maxRadius >= 30
@@ -564,16 +649,61 @@ function buildNormalizedSchema({ tokenItems, metadataItems, componentPatterns, l
   if (colors.find((value) => String(value).toLowerCase() === "#ffffff")) schema.tokens.color.background = known("#ffffff", 0.78);
   if (colors.find((value) => /#0{3,6}|#111|#17171c|#212121/i.test(String(value)))) schema.tokens.color.text = known(colors.find((value) => /#0{3,6}|#111|#17171c|#212121/i.test(String(value))), 0.72);
 
+  const semanticColors = {
+    primary: findColorByKeywords(metadataItems, ["spotify green", "primary brand accent", "brand accent", "cta", "active states"]),
+    accent: findColorByKeywords(metadataItems, ["spotify green", "accent", "cta", "play buttons"]),
+    background: findColorByKeywords(metadataItems, ["near black", "deepest background", "background surface", "page background"]),
+    surface: findColorByKeywords(metadataItems, ["dark surface", "dark card", "card surface", "elevated card", "containers"]),
+    text: findColorByKeywords(metadataItems, ["white", "primary text", "text-base"]),
+    mutedText: findColorByKeywords(metadataItems, ["silver", "secondary text", "muted labels", "inactive nav"]),
+    border: findColorByKeywords(metadataItems, ["border gray", "light border", "outlined button borders", "button borders"]),
+  };
+  for (const [key, value] of Object.entries(semanticColors)) {
+    if (value !== UNKNOWN) schema.tokens.color[key] = known(value, 0.9, "semantic");
+  }
+  if (isDarkDesign(metadataItems) && schema.tokens.color.background.value === "#ffffff") {
+    const darkBackground = semanticColors.background !== UNKNOWN ? semanticColors.background : colors.find((value) => ["#121212", "#181818", "#1f1f1f"].includes(String(value).toLowerCase()));
+    if (darkBackground) schema.tokens.color.background = known(darkBackground, 0.92, "semantic");
+  }
+
   const fonts = tokenItems.filter((item) => item.tokenType === "fontFamily").map((item) => item.tokenValue);
   if (fonts[0]) schema.tokens.typography.displayFont = known(fonts[0], 0.84);
   if (fonts[1]) schema.tokens.typography.bodyFont = known(fonts[1], 0.78);
   if (fonts.find((value) => /mono|code/i.test(String(value)))) schema.tokens.typography.monoFont = known(fonts.find((value) => /mono|code/i.test(String(value))), 0.78);
+
+  const displayFont = findTypographyValue(metadataItems, [
+    /\bTitle\*\*:\s*`([^`]+)`/i,
+    /\bTitle\s*:\s*`([^`]+)`/i,
+  ]);
+  const bodyFont = findTypographyValue(metadataItems, [
+    /\bUI\s*\/\s*Body\*\*:\s*`([^`]+)`/i,
+    /\bUI\s*\/\s*Body\s*:\s*`([^`]+)`/i,
+    /\bBody\*\*:\s*`([^`]+)`/i,
+  ]);
+  const titleWeight = findTypographyValue(metadataItems, [
+    /Section Title\s*\|\s*[^|]+\|\s*[^|]+\|\s*(\d{3})\s*\|/i,
+    /title[^.\n|]{0,80}\b(\d{3})\b/i,
+  ]);
+  if (displayFont !== UNKNOWN) schema.tokens.typography.displayFont = known(displayFont, 0.9, "semantic");
+  if (bodyFont !== UNKNOWN) schema.tokens.typography.bodyFont = known(bodyFont, 0.9, "semantic");
+  if (titleWeight !== UNKNOWN) schema.tokens.typography.titleWeight = known(titleWeight, 0.82, "semantic");
 
   schema.tokens.radius.small = known(firstTokenValue(tokenItems, "radius"), tokenItems.some((item) => item.tokenPath.startsWith("radius.")) ? 0.65 : 0);
   schema.tokens.spacing.base = known(firstTokenValue(tokenItems, "spacing"), tokenItems.some((item) => item.tokenPath.startsWith("spacing.")) ? 0.65 : 0);
   schema.tokens.elevation.cardShadow = known(firstTokenValue(tokenItems, "shadow"), tokenItems.some((item) => item.tokenPath.startsWith("shadow.")) ? 0.76 : 0);
   schema.tokens.elevation.depthModel = known(styleClassification.depthModel || UNKNOWN, styleClassification.depthModel === UNKNOWN ? 0 : 0.7);
   schema.tokens.breakpoint.desktop = known(firstTokenValue(tokenItems, "breakpoint"), tokenItems.some((item) => item.tokenPath.startsWith("breakpoint.")) ? 0.65 : 0);
+
+  const smallRadius = findDimensionByPatterns(metadataItems, ["radius", "component"], [/Subtle\s*\((\d+(?:\.\d+)?)(px)\)/i, /Minimal\s*\((\d+(?:\.\d+)?)(px)\)/i]);
+  const mediumRadius = findDimensionByPatterns(metadataItems, ["radius", "component"], [/Standard\s*\((\d+(?:\.\d+)?)(px)\)/i, /Comfortable\s*\((\d+(?:\.\d+)?)(px)\)/i, /card[^.\n]{0,80}Radius:\s*(\d+(?:\.\d+)?)(px)/i]);
+  const largeRadius = findDimensionByPatterns(metadataItems, ["radius", "component"], [/Large\s*\((\d+(?:\.\d+)?)(px)\)/i]);
+  const pillRadius = findDimensionByPatterns(metadataItems, ["radius", "component"], [/Full Pill\s*\((\d+(?:\.\d+)?)(px)\)/i, /Pill\s*\((\d+(?:\.\d+)?)(px)\)/i, /Radius:\s*(9999|500)(px)/i]);
+  const spacingBase = findDimensionByPatterns(metadataItems, ["spacing", "layout"], [/Base unit:\s*(\d+(?:\.\d+)?)(px)/i]);
+  if (smallRadius !== UNKNOWN) schema.tokens.radius.small = known(smallRadius, 0.86, "semantic");
+  if (mediumRadius !== UNKNOWN) schema.tokens.radius.medium = known(mediumRadius, 0.86, "semantic");
+  if (largeRadius !== UNKNOWN) schema.tokens.radius.large = known(largeRadius, 0.82, "semantic");
+  if (pillRadius !== UNKNOWN) schema.tokens.radius.pill = known(pillRadius, 0.9, "semantic");
+  if (spacingBase !== UNKNOWN) schema.tokens.spacing.base = known(spacingBase, 0.9, "semantic");
 
   for (const pattern of componentPatterns) {
     if (schema.components[pattern.componentType]) {
