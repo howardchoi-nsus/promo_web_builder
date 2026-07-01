@@ -21,6 +21,7 @@ module.exports = async function handler(req, res) {
         r.promo_title,
         r.selected_md_name,
         r.created_at,
+        a.created_at as committed_at,
         a.asset_url
       from promo_design_runs r
       join promo_design_assets a on a.run_id = r.id and a.asset_type = 'generated_image'
@@ -33,7 +34,7 @@ module.exports = async function handler(req, res) {
     const title = escapeHtml(row?.promo_title || "Promo UI Design");
     const imageUrl = `${getOrigin(req)}/api/promo-design-image?id=${encodeURIComponent(runKey)}`;
     const html = row?.asset_url
-      ? renderImagePage({ title, id: runKey, imageUrl, brand: row.selected_md_name, createdAt: row.created_at })
+      ? renderImagePage({ title, id: runKey, imageUrl, brand: row.selected_md_name, createdAt: row.created_at, committedAt: row.committed_at })
       : renderNotFound(runKey);
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
@@ -44,7 +45,8 @@ module.exports = async function handler(req, res) {
   }
 };
 
-function renderImagePage({ title, id, imageUrl, brand, createdAt }) {
+function renderImagePage({ title, id, imageUrl, brand, createdAt, committedAt }) {
+  const stamp = formatTimestampStamp(committedAt || createdAt);
   return `<!doctype html>
 <html lang="ko">
 <head>
@@ -55,6 +57,9 @@ function renderImagePage({ title, id, imageUrl, brand, createdAt }) {
     body{margin:0;background:#f6f8fc;font-family:Arial,sans-serif;color:#111827}
     .wrap{max-width:1540px;margin:0 auto;padding:24px}
     .bar{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:16px}
+    .title-row{display:flex;align-items:center;gap:8px;min-width:0}
+    .title-row strong{font-size:16px;line-height:1.2}
+    .stamp{display:inline-flex;align-items:center;min-height:20px;padding:2px 7px;border:1px solid #dbe3ef;border-radius:999px;background:#fff;color:#64748b;font-size:11px;font-weight:700;white-space:nowrap}
     .meta{color:#64748b;font-size:13px}
     .meta a{color:#2563eb;text-decoration:none}
     img{display:block;width:100%;height:auto;background:#fff}
@@ -64,7 +69,7 @@ function renderImagePage({ title, id, imageUrl, brand, createdAt }) {
 <body>
   <main class="wrap">
     <div class="bar">
-      <strong>${title}</strong>
+      <div class="title-row"><strong>${title}</strong>${stamp ? `<span class="stamp">${escapeHtml(stamp)}</span>` : ""}</div>
       <span class="meta">${escapeHtml(brand || "")} · ${escapeHtml(id)} · ${escapeHtml(String(createdAt || ""))} · <a href="${escapeAttribute(imageUrl)}" target="_blank" rel="noreferrer">Open image</a></span>
     </div>
     <img src="${escapeAttribute(imageUrl)}" alt="Generated promo UI design" onerror="this.style.display='none';document.querySelector('.image-error').style.display='block';">
@@ -88,6 +93,20 @@ function escapeHtml(value) {
 
 function escapeAttribute(value) {
   return escapeHtml(value).replace(/'/g, "&#39;");
+}
+
+function formatTimestampStamp(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value).slice(0, 16);
+  const pad = (part) => String(part).padStart(2, "0");
+  return [
+    String(date.getFullYear()).slice(-2),
+    pad(date.getMonth() + 1),
+    pad(date.getDate()),
+    pad(date.getHours()),
+    pad(date.getMinutes()),
+  ].join("");
 }
 
 function renderError(error) {

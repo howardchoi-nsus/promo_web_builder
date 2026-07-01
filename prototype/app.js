@@ -352,6 +352,20 @@ function nowText() {
   return date.toISOString().slice(0, 16).replace("T", " ");
 }
 
+function timestampStamp(value = new Date()) {
+  const normalized = typeof value === "string" ? value.replace(" ", "T") : value;
+  const date = normalized instanceof Date ? normalized : new Date(normalized);
+  if (Number.isNaN(date.getTime())) return String(value || "").replace(/\D/g, "").slice(2, 12);
+  const pad = (part) => String(part).padStart(2, "0");
+  return [
+    String(date.getFullYear()).slice(-2),
+    pad(date.getMonth() + 1),
+    pad(date.getDate()),
+    pad(date.getHours()),
+    pad(date.getMinutes()),
+  ].join("");
+}
+
 function toDesignViewUrl(url, id) {
   const value = String(url || "").trim();
   if (!value || !id || !/promo-ui-design-generate\/?(?:\?.*)?$/.test(value)) return value;
@@ -1378,6 +1392,8 @@ createApp({
       page.title = run.promo_title || page.title;
       page.selectedMd = page.selectedMd || run.selected_md_name || "";
       page.createdAt = run.created_at || page.createdAt;
+      page.committedAt = run.asset_created_at || imageAsset.created_at || page.committedAt || page.createdAt;
+      page.timestampStamp = timestampStamp(page.committedAt || page.createdAt);
       page.status = "n8n_ui_design_generated";
       page.designUrl = designViewUrlForId(runKey);
       page.imageUrl = designImageUrlForId(runKey);
@@ -1418,6 +1434,7 @@ createApp({
 
       const pageId = `promo-${String(this.generatedPages.length + 1).padStart(3, "0")}`;
       const payload = this.buildGeneratedPayload(pageId);
+      const initialStamp = timestampStamp(payload.generatedAt);
       const willUseN8n = this.n8nWebhookUrl.trim() || window.location.protocol !== "file:";
       this.setStatus(willUseN8n ? "UI 디자인 워크플로를 실행 중입니다" : "로컬에서 UI 디자인을 생성했습니다");
 
@@ -1429,6 +1446,8 @@ createApp({
         template: payload.promo.template,
         market: payload.promo.market,
         createdAt: payload.generatedAt,
+        committedAt: "",
+        timestampStamp: initialStamp,
         status: willUseN8n ? "n8n_ui_design_pending" : "draft",
         designUrl: "",
         imageUrl: "",
@@ -1481,6 +1500,8 @@ createApp({
       listItem.designPromptStorageKey = n8nResult?.designPromptStorageKey || "";
       listItem.promoInputStorageKey = n8nResult?.promoInputStorageKey || "";
       listItem.integratedBriefStorageKey = n8nResult?.integratedBriefStorageKey || "";
+      listItem.committedAt = n8nResult?.committedAt || listItem.committedAt;
+      listItem.timestampStamp = n8nResult?.timestampStamp || timestampStamp(listItem.committedAt || listItem.createdAt);
       listItem.payload = n8nResult?.payload || payload;
       await this.refreshStoredDesignResult(listItem).catch(() => false);
 
