@@ -62,7 +62,7 @@ function renderImagePage({ title, id, imageUrl, brand, createdAt, committedAt })
     .stamp{display:inline-flex;align-items:center;min-height:20px;padding:2px 7px;border:1px solid #dbe3ef;border-radius:999px;background:#fff;color:#64748b;font-size:11px;font-weight:700;white-space:nowrap}
     .meta{color:#64748b;font-size:13px}
     .meta a{color:#2563eb;text-decoration:none}
-    img{display:block;width:100%;height:auto;background:#fff}
+    img{display:block;width:auto;max-width:100%;height:auto;margin:0 auto;background:#fff}
     .image-error{display:none;margin:24px 0;padding:16px;border:1px solid #fecaca;background:#fff1f2;color:#991b1b}
   </style>
 </head>
