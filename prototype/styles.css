@@ -1127,8 +1127,8 @@ body.is-resizing {
   position: sticky;
   bottom: 0;
   z-index: 5;
-  padding-top: 10px;
-  background: linear-gradient(180deg, rgba(247, 250, 252, 0), var(--surface) 32%);
+  padding-top: 15px;
+  background: #ffffff;
 }
 
 .sticky-builder-action .primary-action {
