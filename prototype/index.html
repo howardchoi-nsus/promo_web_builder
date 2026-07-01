@@ -599,22 +599,31 @@
           <div class="prompt-md-compare" v-else>
             <section class="prompt-md-panel">
               <div class="prompt-md-panel-header">
-                <strong>Design Prompt MD</strong>
-                <span>{{ promptModalPage ? promptModalPage.designPromptStorageKey : '' }}</span>
+                <div>
+                  <strong>Design Prompt MD</strong>
+                  <span>{{ promptModalPage ? promptModalPage.designPromptStorageKey : '' }}</span>
+                </div>
+                <button class="tiny-button" type="button" :disabled="!promptModalDesignMarkdown" @click="downloadPromptMarkdown('design')">다운로드</button>
               </div>
               <pre>{{ promptModalDesignMarkdown || 'Design Prompt Markdown이 없습니다.' }}</pre>
             </section>
             <section class="prompt-md-panel">
               <div class="prompt-md-panel-header">
-                <strong>B Section Input Log MD</strong>
-                <span>{{ promptModalPage ? promptModalPage.promoInputStorageKey : '' }}</span>
+                <div>
+                  <strong>B Section Input Log MD</strong>
+                  <span>{{ promptModalPage ? promptModalPage.promoInputStorageKey : '' }}</span>
+                </div>
+                <button class="tiny-button" type="button" :disabled="!promptModalPromoMarkdown" @click="downloadPromptMarkdown('promo')">다운로드</button>
               </div>
               <pre>{{ promptModalPromoMarkdown || 'B섹션 입력 로그 Markdown이 없습니다.' }}</pre>
             </section>
             <section class="prompt-md-panel">
               <div class="prompt-md-panel-header">
-                <strong>Integrated Design Brief MD</strong>
-                <span>{{ promptModalPage ? (promptModalPage.integratedBriefStorageKey || 'Design Prompt fallback') : '' }}</span>
+                <div>
+                  <strong>Integrated Design Brief MD</strong>
+                  <span>{{ promptModalPage ? (promptModalPage.integratedBriefStorageKey || 'Design Prompt fallback') : '' }}</span>
+                </div>
+                <button class="tiny-button" type="button" :disabled="!promptModalIntegratedMarkdown" @click="downloadPromptMarkdown('integrated')">다운로드</button>
               </div>
               <pre>{{ promptModalIntegratedMarkdown || 'Integrated Design Brief Markdown이 없습니다.' }}</pre>
             </section>

@@ -1239,10 +1239,18 @@ body.is-resizing {
 
 .prompt-md-panel-header {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
   gap: 3px;
   padding: 10px 12px;
   border-bottom: 1px solid var(--line);
   background: #f8fafc;
+}
+
+.prompt-md-panel-header > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
 }
 
 .prompt-md-panel-header strong {

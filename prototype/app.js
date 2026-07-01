@@ -1597,6 +1597,54 @@ createApp({
       return "";
     },
 
+    downloadPromptMarkdown(type) {
+      const config = {
+        design: {
+          markdown: this.promptModalDesignMarkdown,
+          storageKey: this.promptModalPage?.designPromptStorageKey,
+          fallbackName: "design-prompt",
+        },
+        promo: {
+          markdown: this.promptModalPromoMarkdown,
+          storageKey: this.promptModalPage?.promoInputStorageKey,
+          fallbackName: "promo-input",
+        },
+        integrated: {
+          markdown: this.promptModalIntegratedMarkdown,
+          storageKey: this.promptModalPage?.integratedBriefStorageKey,
+          fallbackName: "integrated-design-brief",
+        },
+      }[type];
+
+      if (!config?.markdown) {
+        this.setStatus("다운로드할 Markdown 내용이 없습니다");
+        return;
+      }
+
+      const runKey = this.promptModalPage?.id || "promo";
+      const stamp = this.promptModalPage?.timestampStamp || timestampStamp(new Date());
+      const filename = this.markdownDownloadFilename(config.storageKey, `${config.fallbackName}-${runKey}-${stamp}.md`);
+      const blob = new Blob([config.markdown], { type: "text/markdown;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      this.setStatus(`${filename} 다운로드를 시작했습니다`);
+    },
+
+    markdownDownloadFilename(storageKey, fallbackName) {
+      const rawName = String(storageKey || "").split("/").pop() || fallbackName;
+      const filename = rawName.endsWith(".md") ? rawName : `${rawName}.md`;
+      return filename
+        .replace(/[<>:"/\\|?*\x00-\x1F]/g, "-")
+        .replace(/\s+/g, " ")
+        .trim();
+    },
+
     closePromptFilesModal() {
       this.$refs.promptFilesModal.close();
     },
