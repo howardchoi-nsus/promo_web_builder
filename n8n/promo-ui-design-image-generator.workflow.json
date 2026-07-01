@@ -33,32 +33,6 @@
     },
     {
       "parameters": {
-        "jsCode": "const input = $('Normalize Payload').item.json;\nconst promptUrl = String(input.promptUrl || 'https://promo-web-builder.vercel.app/api/prompts/promo-ui-design-image-generation').trim();\n\nreturn [{\n  json: {\n    id: 'promo-ui-design-image-generation',\n    version: '2026-06-29.embedded-fallback-v1',\n    prompt: \"# Promo UI Design Image Generation Prompt\\n\\nCreate an image-generation prompt for a desktop promotional web UI design.\\n\\nReturn valid JSON only. Do not include markdown fences. Do not include explanations outside JSON.\\n\\nNON-NEGOTIABLE DESIGN RULES:\\n- Do not generate HTML or CSS.\\n- Follow Template 4 order exactly: Header, Hero Banner, Step Bar, Content CTA, Image Text Row, Title and Description, Footer.\\n- Use sectionInputs as the primary source of visible content. Use promo only as fallback metadata.\\n- For visualMode auto, infer visuals from that section's own text.\\n- For visualMode use_visual, include a relevant visual.\\n- For visualMode no_visual, do not create an image area for that section.\\n- Follow the MD design concept as a binding specification: layout philosophy, visual mood, spacing rhythm, composition, components, depth/effects, shape/radius, promo page implications, dos, and donts.\\n- Do not create a generic SaaS landing page, casino template, or color/font reskin.\\n- Make the section composition and component language visibly derived from the MD.\\n- Color and font settings are constraints, but the design must not be color/font-only.\\n- Include a wireframe-aware layout mapping and an MD compliance check.\\n- Avoid unreadable tiny text. Legal/terms can be shown as condensed footer blocks but must be visibly present.\\n- Use a tall full-page canvas at {{imageSize}} so all Template 4 sections are visible from header through footer.\\n- The image should look like a polished desktop UI design mockup of a 1440px-wide page scaled to fit the tall canvas.\\n- Do not crop the bottom, do not end at the hero or middle sections, and do not omit Title and Description or Footer.\\n- If vertical space is tight, reduce section heights, visual asset sizes, whitespace, and text density before removing content.\\n- Every Template 4 section must be visible in one image: Header, Hero Banner, Step Bar, Content CTA, Image Text Row, Title and Description, Footer.\\n\\nBefore writing imagePrompt, internally decide and reflect in the prompt:\\n1. The dominant MD layout model and how Temp.4 sections should be arranged.\\n2. The hero composition and visual treatment that best matches the MD.\\n3. The spacing rhythm and information density.\\n4. The component language for CTAs, step bars, panels, badges, and legal/footer.\\n5. The depth/effects model: flat, bordered, layered, image-led, restrained, glossy, editorial, etc.\\n6. Which generic patterns and MD donts must be avoided.\\n\\nReturn this JSON shape:\\n{\\n  \\\"imagePrompt\\\": \\\"single detailed prompt string with explicit section-by-section layout, visual hierarchy, component style, depth/effects, shape/radius, color/font constraints, and visible promo content\\\",\\n  \\\"negativePrompt\\\": \\\"generic landing pages, weak MD compliance, color/font-only reskins, unreadable text, missing legal footer, wrong section order, browser chrome, editor UI, Figma canvas UI\\\",\\n  \\\"designBrief\\\": {},\\n  \\\"layoutMapping\\\": {},\\n  \\\"mdComplianceMap\\\": {\\n    \\\"layoutPhilosophy\\\": \\\"...\\\",\\n    \\\"visualMood\\\": \\\"...\\\",\\n    \\\"spacingRhythm\\\": \\\"...\\\",\\n    \\\"composition\\\": \\\"...\\\",\\n    \\\"componentStyle\\\": \\\"...\\\",\\n    \\\"depthAndEffects\\\": \\\"...\\\",\\n    \\\"shapeAndRadius\\\": \\\"...\\\",\\n    \\\"promoPageImplications\\\": \\\"...\\\",\\n    \\\"dosApplied\\\": [\\\"...\\\"],\\n    \\\"dontsAvoided\\\": [\\\"...\\\"],\\n    \\\"notColorFontOnlyProof\\\": \\\"...\\\"\\n  }\\n}\\n\\nInput design brief:\\n{{designBrief}}\\n\\nSuggested field mapping:\\n{{layoutMapping}}\\n\\nRequired MD compliance keys:\\n{{mdComplianceKeys}}\\n\",\n    source: 'embedded-fallback',\n    externalPromptUrl: promptUrl\n  }\n}];"
-      },
-      "id": "load-ui-design-image-prompt",
-      "name": "Load UI Design Image Prompt",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        760,
-        240
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const input = $('Normalize Payload').item.json;\nconst loadedPrompt = $json;\nconst concept = input.md.designConcept || {};\nconst conceptJson = concept.json || {};\nconst summary = input.md.summary || {};\nconst promptContext = input.md.designPromptContext || concept.promptContext || '';\n\nconst promptTemplate = String(\n  loadedPrompt.prompt ||\n  loadedPrompt.body?.prompt ||\n  loadedPrompt.data?.prompt ||\n  ''\n).trim();\n\nif (!promptTemplate) {\n  throw new Error('External UI design image prompt is empty');\n}\n\nconst designBrief = {\n  objective: 'Create a desktop promotional UI design image, not production HTML.',\n  brand: input.md.brand,\n  promoTitle: input.promo.title,\n  market: input.promo.market,\n  template: input.template,\n  simpleBrief: input.simpleBrief,\n  sectionInputs: input.sectionInputs,\n  selectedStyleSource: input.styleSourceLabel,\n  viewport: input.output.viewport,\n  requiredContent: {\n    promoTitle: input.promo.title,\n    leadText: input.promo.leadText,\n    ctaLabel: input.promo.ctaLabel,\n    ctaUrl: input.promo.ctaUrl,\n    subline: input.promo.subline,\n    alphaLegalText: input.promo.alphaText || '',\n    termsAndConditions: input.promo.termsText\n  },\n  designStyle: input.design,\n  mdConceptSummary: concept.summary || conceptJson.brandConcept || '',\n  mdPromptContext: promptContext,\n  mdConceptJson: conceptJson,\n  mdSummary: summary\n};\n\nconst layoutMapping = {\n  temp4Order: ['header', 'heroBanner', 'stepBar', 'contentCta', 'imageTextRow', 'titleDescription', 'footer'],\n  header: ['sectionInputs.header.logoText', 'sectionInputs.header.badgeText'],\n  hero: ['sectionInputs.heroBanner.leaderText', 'sectionInputs.heroBanner.title', 'sectionInputs.heroBanner.sublineText', 'sectionInputs.heroBanner.cta', 'sectionInputs.heroBanner.alphaText', 'sectionInputs.heroBanner.visualMode'],\n  stepBar: ['sectionInputs.stepBar[0].title/description/link', 'sectionInputs.stepBar[1].title/description/link', 'sectionInputs.stepBar[2].title/description/link'],\n  contentCta: ['sectionInputs.contentCta.longText', 'sectionInputs.contentCta.cta', 'sectionInputs.contentCta.visualMode'],\n  imageTextRow: ['sectionInputs.imageTextRow.headerTitle', 'sectionInputs.imageTextRow.headerDescription', 'sectionInputs.imageTextRow.title', 'sectionInputs.imageTextRow.description', 'sectionInputs.imageTextRow.visualMode'],\n  complianceFooter: ['sectionInputs.titleDescription.title', 'sectionInputs.titleDescription.contents', 'sectionInputs.footer.logoText', 'sectionInputs.footer.licenseBadges'],\n  note: 'Use sectionInputs as the primary content contract. VisualMode controls whether each section uses an inferred visual.'\n};\n\nconst mdComplianceKeys = [\n  'layoutPhilosophy',\n  'visualMood',\n  'spacingRhythm',\n  'composition',\n  'componentStyle',\n  'depthAndEffects',\n  'shapeAndRadius',\n  'promoPageImplications',\n  'dosApplied',\n  'dontsAvoided',\n  'notColorFontOnlyProof'\n];\n\nconst values = {\n  imageSize: input.output.imageSize || '1024x1536',\n  designBrief: JSON.stringify(designBrief, null, 2),\n  layoutMapping: JSON.stringify(layoutMapping, null, 2),\n  mdComplianceKeys: JSON.stringify(mdComplianceKeys)\n};\n\nconst render = (template, data) => template.replace(/{{\\s*([a-zA-Z0-9_]+)\\s*}}/g, (match, key) => (\n  Object.prototype.hasOwnProperty.call(data, key) ? String(data[key]) : match\n));\n\nconst system = 'You are a senior promotional UI art director. Return valid JSON only. Your job is to write a precise image-generation prompt for a desktop promotional web UI mockup. The selected MD is binding, not inspiration.';\nconst user = render(promptTemplate, values);\n\nreturn [{\n  json: {\n    ...input,\n    designBrief,\n    layoutMapping,\n    promptMeta: {\n      id: loadedPrompt.id || loadedPrompt.body?.id || 'external-promo-ui-design-image-generation',\n      version: loadedPrompt.version || loadedPrompt.body?.version || '',\n      url: input.promptUrl || 'https://promo-web-builder.vercel.app/api/prompts/promo-ui-design-image-generation'\n    },\n    llmRequest: {\n      model: input.model,\n      messages: [\n        { role: 'system', content: system },\n        { role: 'user', content: user }\n      ],\n      temperature: 0.22,\n      response_format: { type: 'json_object' }\n    }\n  }\n}];"
-      },
-      "id": "build-ui-design-prompt",
-      "name": "Build UI Design Prompt",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1020,
-        240
-      ]
-    },
-    {
-      "parameters": {
         "method": "POST",
         "url": "={{ (() => { const candidates = [$json.integratedBriefPromptUrl, $json.promptUrl, 'https://promo-web-builder.vercel.app/api/prompts/promo-integrated-design-brief-generation']; for (const value of candidates) { try { const parsed = new URL(String(value || '')); return parsed.origin + '/api/promo-design-markdown-preview'; } catch {} } return 'https://promo-web-builder.vercel.app/api/promo-design-markdown-preview'; })() }}",
         "sendHeaders": true,
@@ -99,7 +73,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1520,
+        1020,
         240
       ]
     },
@@ -112,7 +86,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1760,
+        1280,
         240
       ]
     },
@@ -377,17 +351,6 @@
       "main": [
         [
           {
-            "node": "Load UI Design Image Prompt",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Build UI Design Prompt": {
-      "main": [
-        [
-          {
             "node": "Build Source Markdown Preview",
             "type": "main",
             "index": 0
@@ -455,17 +418,6 @@
         [
           {
             "node": "Render UI Design View",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Load UI Design Image Prompt": {
-      "main": [
-        [
-          {
-            "node": "Build UI Design Prompt",
             "type": "main",
             "index": 0
           }
