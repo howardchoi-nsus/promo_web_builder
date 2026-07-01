@@ -1304,16 +1304,6 @@ createApp({
         n8nWebhookUrl: this.n8nWebhookUrl.trim(),
         companyPreset: this.styleSource === "company_default" ? this.selectedPreset.name : null,
         hasOverride: this.hasOverride(this.finalStyle, source),
-        output: {
-          format: "ui_design_image",
-          stage: "design_image_generation",
-          viewport: {
-            width: 1440,
-            minWidth: 1180,
-            height: 2200,
-          },
-          imageSize: "1024x1536",
-        },
       };
     },
 
