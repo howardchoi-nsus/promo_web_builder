@@ -67,13 +67,25 @@
                   <div>
                     <strong>{{ doc.brandName }}</strong>
                     <span>{{ doc.updatedAt || '업데이트 일자 없음' }}</span>
+                    <div class="style-doc-swatches" v-if="doc.summary?.colors?.length">
+                      <span
+                        v-for="color in doc.summary.colors.slice(0, 4)"
+                        :key="`${doc.id}-${color}`"
+                        class="swatch"
+                        :title="color"
+                        :style="{ background: color }"
+                      ></span>
+                    </div>
+                    <div class="style-doc-meta">
+                      <span>{{ designTokenCategoryLabel(doc) }}</span>
+                      <span>{{ stylePopularityLabel(doc) }}</span>
+                    </div>
                     <div class="style-doc-tags" v-if="tagsForDocument(doc).length">
                       <span v-for="tag in tagsForDocument(doc).slice(0, 3)" :key="tag">{{ tag }}</span>
                     </div>
                   </div>
                   <div class="card-actions">
                     <button class="tiny-button primary" type="button" @click="selectDocument(doc.id)">선택</button>
-                    <button class="tiny-button" type="button" @click="openDetail(doc)">상세</button>
                   </div>
                 </div>
               </div>
@@ -99,35 +111,43 @@
             <div class="abc-panel-body">
             <div class="subsection selected-style-summary" v-if="selectedDocument">
               <div class="subsection-title">
-                <h3>선택한 스타일 요약</h3>
+                <h3>선택된 디자인 토큰</h3>
                 <div class="subsection-actions">
                   <span>{{ selectedDocument.designConcept?.analyzedAt || '아직 분석 전' }}</span>
+                  <button class="tiny-button" type="button" @click="openSelectedDocumentSource">원문보기</button>
                 </div>
               </div>
 
-              <div class="summary-box concept-compact-card">
-                <strong>선택한 그룹</strong>
-                <span>{{ selectedDocumentGroupLabel }}</span>
-                <div class="style-group-tags" v-if="selectedDocumentTags.length">
-                  <span v-for="tag in selectedDocumentTags" :key="tag">{{ tag }}</span>
+              <div class="design-token-panel">
+                <div class="design-token-heading">
+                  <div>
+                    <strong>{{ selectedDocument.brandName }}</strong>
+                    <span>{{ designSchemaClassification(selectedDesignDataSource) }}</span>
+                  </div>
+                  <div class="style-group-tags" v-if="selectedDocumentTags.length">
+                    <span v-for="tag in selectedDocumentTags" :key="tag">{{ tag }}</span>
+                  </div>
                 </div>
-                <strong>디자인 콘셉트</strong>
-                <span>{{ selectedDocument.designConcept?.summary || '아직 분석 전' }}</span>
-                <strong>레이아웃 철학</strong>
-                <span>{{ conceptValue('layoutPhilosophy') || '아직 분석 전' }}</span>
-                <strong>색상</strong>
-                <div class="swatches">
-                  <span
-                    v-for="color in selectedDocument.summary.colors.slice(0, 6)"
-                    :key="color"
-                    class="swatch"
-                    :title="color"
-                    :style="{ background: color }"
-                  ></span>
-                </div>
-                <span>{{ selectedDocument.summary.colors.slice(0, 3).join(' / ') || '색상 토큰 없음' }}</span>
-                <div class="action-row align-right">
-                  <button class="tiny-button" type="button" @click="openConceptDetail">상세 보기</button>
+
+                <details
+                  v-for="section in selectedDesignTokenSections"
+                  :key="section.key"
+                  class="token-detail-section"
+                  :open="section.open"
+                >
+                  <summary>{{ section.label }} <span>{{ section.rows.length }}개</span></summary>
+                  <div class="token-row-list" v-if="section.rows.length">
+                    <div v-for="row in section.rows" :key="`${section.key}-${row.key}`" class="token-row">
+                      <strong>{{ row.key }}</strong>
+                      <span>{{ row.value }}</span>
+                    </div>
+                  </div>
+                  <div class="empty-state compact" v-else>표시할 토큰이 없습니다.</div>
+                </details>
+
+                <div class="outline-item">
+                  <strong>standard schema</strong>
+                  <span>{{ selectedDesignDataSource?.tokenSet?.normalizedSchema?.schemaVersion || selectedDesignDataSource?.normalizedSchema?.schemaVersion || 'unknown' }}</span>
                 </div>
               </div>
             </div>
@@ -137,6 +157,8 @@
                 <strong>{{ promoBuilderStarted ? '프로모션 생성 단계를 계속 진행합니다' : '선택한 스타일로 프로모션 생성을 시작합니다' }}</strong>
                 <span>{{ promoBuilderStarted ? '현재 Step ' + currentBuilderStep + '. ' + currentBuilderStepInfo.title : '기본 설정부터 UI 디자인 생성까지 모달에서 단계별로 진행합니다.' }}</span>
               </div>
+            </div>
+            <div class="sticky-builder-action" v-if="selectedDocument">
               <button class="primary-action" type="button" @click="startPromoBuilder">{{ promoBuilderStarted ? '프로모션 빌더 열기' : '프로모션 생성 시작' }}</button>
             </div>
 

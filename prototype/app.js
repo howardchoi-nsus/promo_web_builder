@@ -568,6 +568,7 @@ createApp({
       currentBuilderStep: 1,
       n8nWebhookUrl: localStorage.getItem(storageKeys.n8nWebhookUrl) || "",
       detailDoc: null,
+      selectedDesignDetail: null,
       promptModalPage: null,
       promptModalLoading: false,
       promptModalError: "",
@@ -630,6 +631,26 @@ createApp({
 
     selectedDocumentTags() {
       return this.tagsForDocument(this.selectedDocument).slice(0, 6);
+    },
+
+    selectedDesignDataSource() {
+      if (this.selectedDesignDetail?.id === this.selectedDocumentId) return this.selectedDesignDetail;
+      return this.selectedDocument;
+    },
+
+    selectedDesignTokenSections() {
+      const doc = this.selectedDesignDataSource;
+      return [
+        { key: "color", label: "Colors", rows: this.normalizedTokenRows(doc, "color"), open: true },
+        { key: "typography", label: "Typography", rows: this.normalizedTokenRows(doc, "typography"), open: true },
+        { key: "radius", label: "Radius", rows: this.normalizedTokenRows(doc, "radius"), open: false },
+        { key: "spacing", label: "Spacing", rows: this.normalizedTokenRows(doc, "spacing"), open: false },
+        { key: "elevation", label: "Elevation", rows: this.normalizedTokenRows(doc, "elevation"), open: false },
+        { key: "breakpoint", label: "Breakpoints", rows: this.normalizedTokenRows(doc, "breakpoint"), open: false },
+        { key: "component", label: "Components", rows: this.patternRows(doc, "component"), open: false },
+        { key: "layout", label: "Layouts", rows: this.patternRows(doc, "layout"), open: false },
+        { key: "guideline", label: "Guidelines", rows: this.guidelineRows(doc), open: false },
+      ];
     },
 
     filteredDesignDocuments() {
@@ -790,6 +811,7 @@ createApp({
         }
         localStorage.setItem(storageKeys.selectedDocumentId, this.selectedDocumentId);
         this.resetOverride();
+        this.loadSelectedDesignDetail(this.selectedDocumentId);
         this.setStatus(`Neon에서 MD ${this.designDocuments.length}개를 불러왔습니다`);
       } catch (error) {
         this.designDocuments = dummyDocuments();
@@ -799,6 +821,7 @@ createApp({
         }
         localStorage.setItem(storageKeys.selectedDocumentId, this.selectedDocumentId);
         this.resetOverride();
+        this.selectedDesignDetail = null;
         this.setStatus("Neon API를 사용할 수 없어 더미 데이터를 사용합니다");
       }
     },
@@ -814,22 +837,39 @@ createApp({
 
     designDataCategoryRows(doc) {
       const summary = doc?.summary || {};
+      const schema = doc?.tokenSet?.normalizedSchema || doc?.normalizedSchema || {};
       const tokenItems = Array.isArray(doc?.tokenItems) ? doc.tokenItems : [];
       const countByGroup = (group) => tokenItems.filter((item) => String(item.tokenPath || "").startsWith(`${group}.`)).length;
       const countByType = (type) => tokenItems.filter((item) => item.tokenType === type).length;
+      const countBySchema = (group) =>
+        Object.values(schema?.tokens?.[group] || {}).filter((token) => this.formatDesignTokenValue(token) !== "unknown").length;
       const rows = [
-        ["color", "Colors", countByGroup("color") || countByType("color")],
-        ["typography", "Typography", countByGroup("typography") || countByType("fontFamily")],
-        ["radius", "Radius", countByGroup("radius")],
-        ["spacing", "Spacing", countByGroup("spacing")],
-        ["dimension", "Layout / Size", countByGroup("dimension") + countByGroup("breakpoint")],
-        ["elevation", "Elevation", countByGroup("shadow") || countByType("shadow")],
+        ["color", "Colors", countBySchema("color") || countByGroup("color") || countByType("color")],
+        ["typography", "Typography", countBySchema("typography") || countByGroup("typography") || countByType("fontFamily")],
+        ["radius", "Radius", countBySchema("radius") || countByGroup("radius")],
+        ["spacing", "Spacing", countBySchema("spacing") || countByGroup("spacing")],
+        ["dimension", "Layout / Size", countBySchema("breakpoint") || countByGroup("dimension") + countByGroup("breakpoint")],
+        ["elevation", "Elevation", countBySchema("elevation") || countByGroup("shadow") || countByType("shadow")],
         ["component", "Components", summary.componentPatternCount || doc?.componentPatterns?.length || 0],
         ["layout", "Layouts", summary.layoutPatternCount || doc?.layoutPatterns?.length || 0],
         ["guideline", "Guidelines", summary.guidelineCount || doc?.guidelineItems?.length || 0],
         ["metadata", "Metadata", summary.metadataCount || doc?.metadataItems?.length || 0],
       ];
       return rows.map(([key, label, value]) => ({ key, label, value: Number(value || 0).toLocaleString() }));
+    },
+
+    designTokenCategoryLabel(doc) {
+      const rows = this.designDataCategoryRows(doc)
+        .filter((row) => Number(String(row.value).replace(/,/g, "")) > 0)
+        .slice(0, 4)
+        .map((row) => row.label);
+      return rows.length ? rows.join(" / ") : "토큰 unknown";
+    },
+
+    stylePopularityLabel(doc) {
+      const confidence = Number(doc?.styleClassification?.confidence);
+      if (Number.isFinite(confidence)) return `신뢰도 ${Math.round(confidence * 100)}%`;
+      return "신뢰도 unknown";
     },
 
     designSchemaClassification(doc) {
@@ -843,6 +883,81 @@ createApp({
         `shape: ${classification.shapeModel || "unknown"}`,
         `type: ${classification.typographyTone || "unknown"}`,
       ].join(" / ");
+    },
+
+    normalizedTokenRows(doc, groupKey) {
+      const schema = doc?.tokenSet?.normalizedSchema || doc?.normalizedSchema || {};
+      const group = schema?.tokens?.[groupKey] || {};
+      const typeAliases = {
+        color: ["color"],
+        typography: ["typography", "fontFamily", "fontSize", "fontWeight", "lineHeight"],
+        radius: ["radius", "borderRadius"],
+        spacing: ["spacing", "space"],
+        elevation: ["shadow", "elevation"],
+        breakpoint: ["breakpoint", "dimension"],
+      };
+      const rows = Object.entries(group)
+        .map(([key, token]) => ({
+          key,
+          value: this.formatDesignTokenValue(token),
+        }))
+        .filter((row) => row.value && row.value !== "unknown");
+
+      if (rows.length) return rows;
+
+      const tokenItems = Array.isArray(doc?.tokenItems) ? doc.tokenItems : [];
+      const aliases = typeAliases[groupKey] || [groupKey];
+      return tokenItems
+        .filter((item) => String(item.tokenPath || "").startsWith(`${groupKey}.`) || aliases.includes(item.tokenType))
+        .slice(0, 30)
+        .map((item) => ({
+          key: item.tokenPath || item.tokenType || "unknown",
+          value: this.formatDesignTokenValue(item.valueJson ?? item.rawValue ?? item.description),
+        }))
+        .filter((row) => row.value);
+    },
+
+    formatDesignTokenValue(value) {
+      if (value == null || value === "") return "unknown";
+      if (Array.isArray(value)) {
+        const items = value.map((item) => this.formatDesignTokenValue(item)).filter(Boolean);
+        return items.length ? items.slice(0, 4).join(", ") : "unknown";
+      }
+      if (typeof value !== "object") return String(value);
+
+      const direct = value.$value ?? value.value ?? value.summary ?? value.description ?? value.role ?? value.pattern ?? value.guideline;
+      const type = value.$type || value.type;
+      const confidence = value.confidence != null ? `confidence ${value.confidence}` : "";
+      const source = value.source ? `source ${value.source}` : "";
+      const parts = [direct, type, confidence, source].filter(Boolean).map((item) => {
+        if (typeof item === "object") return this.formatDesignTokenValue(item);
+        return String(item);
+      });
+      if (parts.length) return parts.join(" | ");
+
+      const entries = Object.entries(value)
+        .filter(([, entryValue]) => entryValue != null && entryValue !== "" && entryValue !== "unknown")
+        .slice(0, 4)
+        .map(([key, entryValue]) => `${key}: ${this.formatDesignTokenValue(entryValue)}`);
+      return entries.length ? entries.join(" | ") : "unknown";
+    },
+
+    patternRows(doc, kind) {
+      const items = kind === "component" ? doc?.componentPatterns : doc?.layoutPatterns;
+      return (Array.isArray(items) ? items : [])
+        .slice(0, 30)
+        .map((item) => ({
+          key: item.patternName || item.patternType || item.sectionName || "unknown",
+          value: this.formatDesignTokenValue(item.valueJson || item.description || item.sourceText),
+        }));
+    },
+
+    guidelineRows(doc) {
+      const items = Array.isArray(doc?.guidelineItems) ? doc.guidelineItems : [];
+      return items.slice(0, 30).map((item) => ({
+        key: item.guidelineType || item.severity || item.sourcePath || "guideline",
+        value: this.formatDesignTokenValue(item.valueJson || item.description || item.sourceText),
+      }));
     },
 
     designTokenGroupSummary(doc) {
@@ -1225,11 +1340,13 @@ createApp({
 
     selectDocument(id) {
       this.selectedDocumentId = id;
+      this.selectedDesignDetail = null;
       localStorage.setItem(storageKeys.selectedDocumentId, id);
       const group = this.groupInfoForDocument(this.selectedDocument);
       this.expandedStyleGroupSlug = group.slug;
       this.selectedStyleGroupSlug = group.slug;
       if (this.styleSource === "design_md") this.resetOverride();
+      this.loadSelectedDesignDetail(id);
       this.setStatus("MD를 선택했습니다");
     },
 
@@ -1242,19 +1359,47 @@ createApp({
       }
     },
 
+    async openSelectedDocumentSource() {
+      if (!this.selectedDocument) return;
+      this.detailDoc = this.selectedDesignDataSource || this.selectedDocument;
+      this.modalTab = "raw";
+      this.$nextTick(() => this.$refs.detailModal.showModal());
+
+      if (window.location.protocol === "file:") return;
+      const doc = await this.fetchDesignDocumentDetail(this.selectedDocument.id);
+      if (!doc || doc.id !== this.selectedDocumentId) return;
+      this.selectedDesignDetail = doc;
+      this.detailDoc = doc;
+      this.modalTab = "raw";
+    },
+
     closeDetail() {
       this.$refs.detailModal.close();
     },
 
-    async loadDesignDocumentDetail(id) {
+    async fetchDesignDocumentDetail(id) {
       try {
         const response = await fetch(`/api/design-document?id=${encodeURIComponent(id)}`);
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(payload.message || payload.error || `Detail ${response.status}`);
-        this.detailDoc = payload.document;
+        return payload.document;
       } catch (error) {
         this.setStatus(`MD 상세 로딩 실패: ${error.message}`);
+        return null;
       }
+    },
+
+    async loadDesignDocumentDetail(id) {
+      const doc = await this.fetchDesignDocumentDetail(id);
+      if (doc) this.detailDoc = doc;
+      return doc;
+    },
+
+    async loadSelectedDesignDetail(id) {
+      if (!id || window.location.protocol === "file:") return;
+      const doc = await this.fetchDesignDocumentDetail(id);
+      if (!doc || doc.id !== this.selectedDocumentId) return;
+      this.selectedDesignDetail = doc;
     },
 
     editDetailDocument() {
