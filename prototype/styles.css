@@ -483,6 +483,12 @@ body.is-resizing {
   color: #ffffff;
 }
 
+.tiny-button.danger {
+  border-color: #fecaca;
+  background: #fff1f2;
+  color: #b91c1c;
+}
+
 .summary-row,
 .summary-grid {
   display: grid;

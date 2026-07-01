@@ -8,8 +8,24 @@ function groupTokens(tokens) {
     if (!byDocument.has(key)) byDocument.set(key, { colors: [], fonts: [], tokenCount: 0 });
     const bucket = byDocument.get(key);
     bucket.tokenCount += 1;
-    if (token.token_type === "color" && bucket.colors.length < 8) bucket.colors.push(token.token_value);
-    if (token.token_type === "typography" && bucket.fonts.length < 4) bucket.fonts.push(token.token_value);
+    const value = normalizeTokenValue(token.token_value);
+    if (token.token_type === "color" && bucket.colors.length < 8) bucket.colors.push(value);
+    if ((token.token_type === "fontFamily" || token.token_type === "typography") && bucket.fonts.length < 4) bucket.fonts.push(value);
+  }
+  return byDocument;
+}
+
+function groupMetadata(items) {
+  const byDocument = new Map();
+  for (const item of items) {
+    const key = item.document_id;
+    if (!byDocument.has(key)) byDocument.set(key, []);
+    byDocument.get(key).push({
+      category: item.category,
+      key: item.key,
+      value: item.value,
+      confidence: item.confidence === null || item.confidence === undefined ? null : Number(item.confidence),
+    });
   }
   return byDocument;
 }
@@ -40,6 +56,14 @@ function normalizeStyleClassification(value) {
   };
 }
 
+function normalizeTokenValue(value) {
+  if (value && typeof value === "object") {
+    if (typeof value.value !== "undefined" && value.unit) return `${value.value}${value.unit}`;
+    return JSON.stringify(value);
+  }
+  return String(value || "");
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== "GET") {
     res.setHeader("Allow", "GET");
@@ -64,7 +88,6 @@ module.exports = async function handler(req, res) {
           b.name as brand_name,
           b.slug as slug,
           d.original_filename,
-          d.raw_markdown,
           d.design_concept_summary,
           d.design_concept_json,
           d.design_prompt_context,
@@ -72,10 +95,15 @@ module.exports = async function handler(req, res) {
           d.analyzed_at,
           d.analysis_model,
           d.status,
+          coalesce(d.extraction_status, d.status) as extraction_status,
+          d.extraction_error,
+          d.source_hash,
           d.updated_at
         from design_documents d
         join brands b on b.id = d.brand_id
         where d.source_type in ('markdown_seed', 'markdown_upload')
+          and coalesce(d.status, '') <> 'archived'
+          and d.archived_at is null
         order by b.name asc
       `;
     } catch (error) {
@@ -87,7 +115,6 @@ module.exports = async function handler(req, res) {
           b.name as brand_name,
           b.slug as slug,
           d.original_filename,
-          d.raw_markdown,
           d.design_concept_summary,
           d.design_concept_json,
           d.design_prompt_context,
@@ -95,10 +122,15 @@ module.exports = async function handler(req, res) {
           d.analyzed_at,
           d.analysis_model,
           d.status,
+          coalesce(d.extraction_status, d.status) as extraction_status,
+          d.extraction_error,
+          d.source_hash,
           d.updated_at
         from design_documents d
         join brands b on b.id = d.brand_id
         where d.source_type in ('markdown_seed', 'markdown_upload')
+          and coalesce(d.status, '') <> 'archived'
+          and d.archived_at is null
         order by b.name asc
       `;
     }
@@ -109,15 +141,63 @@ module.exports = async function handler(req, res) {
       return;
     }
 
-    const tokens = await sql`
-      select
-        document_id::text as document_id,
-        token_type,
-        token_value
-      from design_tokens
-      where document_id::text = any(${documentIds})
-      order by created_at asc
-    `;
+    let tokens = [];
+    try {
+      tokens = await sql`
+        with latest as (
+          select distinct on (document_id) id, document_id
+          from design_token_sets
+          where document_id::text = any(${documentIds})
+            and status = 'ready'
+          order by document_id, version desc
+        )
+        select
+          i.document_id::text as document_id,
+          i.token_type,
+          i.token_value
+        from design_token_items i
+        join latest l on l.id = i.token_set_id
+        order by i.created_at asc
+      `;
+    } catch (error) {
+      tokens = [];
+    }
+
+    if (!tokens.length) {
+      tokens = await sql`
+        select
+          document_id::text as document_id,
+          token_type,
+          token_value
+        from design_tokens
+        where document_id::text = any(${documentIds})
+        order by created_at asc
+      `;
+    }
+
+    let metadata = [];
+    try {
+      metadata = await sql`
+        with latest as (
+          select distinct on (document_id) id, document_id
+          from design_token_sets
+          where document_id::text = any(${documentIds})
+            and status = 'ready'
+          order by document_id, version desc
+        )
+        select
+          m.document_id::text as document_id,
+          m.category,
+          m.key,
+          m.value,
+          m.confidence
+        from design_metadata_items m
+        join latest l on l.id = m.token_set_id
+        order by m.created_at asc
+      `;
+    } catch (error) {
+      metadata = [];
+    }
 
     const sections = await sql`
       select
@@ -134,6 +214,7 @@ module.exports = async function handler(req, res) {
 
     const tokensByDocument = groupTokens(tokens);
     const sectionsByDocument = groupSections(sections);
+    const metadataByDocument = groupMetadata(metadata);
 
     res.status(200).json({
       documents: documents.map((doc) => {
@@ -146,8 +227,10 @@ module.exports = async function handler(req, res) {
           slug: doc.slug,
           sourceName: doc.original_filename,
           status: doc.status,
+          extractionStatus: doc.extraction_status || doc.status,
+          extractionError: doc.extraction_error || "",
+          sourceHash: doc.source_hash || "",
           updatedAt: doc.updated_at ? new Date(doc.updated_at).toISOString().slice(0, 16).replace("T", " ") : "",
-          markdown: doc.raw_markdown || "",
           designConcept: {
             summary: doc.design_concept_summary || "",
             json: doc.design_concept_json || null,
@@ -163,7 +246,9 @@ module.exports = async function handler(req, res) {
             categories: Array.from(new Set(headings.map((item) => item.category))).filter(Boolean),
             sectionCount: headings.length,
             tokenCount: tokenSummary.tokenCount,
+            metadataCount: (metadataByDocument.get(doc.id) || []).length,
           },
+          metadata: (metadataByDocument.get(doc.id) || []).slice(0, 12),
         };
       }),
     });

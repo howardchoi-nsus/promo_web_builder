@@ -127,14 +127,8 @@
                 <h3>선택한 스타일 요약</h3>
                 <div class="subsection-actions">
                   <span>{{ selectedDocument.designConcept?.analyzedAt || '아직 분석 전' }}</span>
-                  <button class="tiny-button primary" type="button" @click="analyzeSelectedDocument">MD 분석</button>
                 </div>
               </div>
-
-              <label class="field">
-                <span>n8n 분석 Webhook URL</span>
-                <input v-model="n8nAnalyzeWebhookUrl" type="url" placeholder="https://your-n8n-domain/webhook/design-md-concept-analyze" />
-              </label>
 
               <div class="summary-box concept-compact-card">
                 <strong>선택한 그룹</strong>
@@ -640,11 +634,17 @@
           <button class="icon-button" type="button" aria-label="닫기" @click="closeDetail">x</button>
         </div>
         <div v-if="detailDoc" class="modal-body">
+          <div class="action-row align-right">
+            <button class="tiny-button" type="button" @click="editDetailDocument">수정</button>
+            <button class="tiny-button" type="button" @click="reextractDetailDocument">재추출</button>
+            <button class="tiny-button danger" type="button" @click="archiveDetailDocument">보관</button>
+          </div>
           <div class="summary-grid">
             <div class="summary-box"><strong>document_id</strong><span>{{ detailDoc.id }}</span></div>
             <div class="summary-box"><strong>brand_id</strong><span>{{ detailDoc.brandId }}</span></div>
             <div class="summary-box"><strong>updated_at</strong><span>{{ detailDoc.updatedAt }}</span></div>
             <div class="summary-box"><strong>tokens</strong><span>{{ detailDoc.summary.tokenCount }}</span></div>
+            <div class="summary-box"><strong>status</strong><span>{{ detailDoc.extractionStatus || detailDoc.status }}</span></div>
           </div>
 
           <div class="tabs" role="tablist">
@@ -735,7 +735,7 @@
         <div class="modal-header">
           <div>
             <p class="eyebrow">A2. MD 추가</p>
-            <h2>디자인 MD 추가</h2>
+            <h2>{{ newMd.id ? '디자인 MD 수정' : '디자인 MD 추가' }}</h2>
           </div>
           <button class="icon-button" type="button" aria-label="닫기" @click="closeAddDesign">x</button>
         </div>
@@ -763,7 +763,7 @@
 
           <div class="action-row align-right">
             <button class="secondary-action" type="button" @click="loadSample">샘플 불러오기</button>
-            <button class="primary-action" type="button" @click="registerMarkdown">MD 등록</button>
+            <button class="primary-action" type="button" @click="registerMarkdown">{{ newMd.id ? 'MD 수정' : 'MD 등록' }}</button>
           </div>
         </div>
       </dialog>

@@ -120,7 +120,6 @@ const storageKeys = {
   selectedDocumentId: "promoPrototype.selectedDocumentId.abc",
   generatedPage: "promoPrototype.generatedPage",
   n8nWebhookUrl: "promoPrototype.n8nWebhookUrl",
-  n8nAnalyzeWebhookUrl: "promoPrototype.n8nAnalyzeWebhookUrl",
 };
 
 const dummyCompanyStylePresets = [
@@ -568,7 +567,6 @@ createApp({
       promoBuilderStarted: false,
       currentBuilderStep: 1,
       n8nWebhookUrl: localStorage.getItem(storageKeys.n8nWebhookUrl) || "",
-      n8nAnalyzeWebhookUrl: localStorage.getItem(storageKeys.n8nAnalyzeWebhookUrl) || "",
       detailDoc: null,
       promptModalPage: null,
       promptModalLoading: false,
@@ -578,6 +576,7 @@ createApp({
       promptModalPromoMarkdown: "",
       modalTab: "outline",
       newMd: {
+        id: "",
         brandName: "GGPoker",
         slug: "ggpoker",
         text: sampleMarkdown,
@@ -745,9 +744,6 @@ createApp({
     },
     n8nWebhookUrl(value) {
       localStorage.setItem(storageKeys.n8nWebhookUrl, value.trim());
-    },
-    n8nAnalyzeWebhookUrl(value) {
-      localStorage.setItem(storageKeys.n8nAnalyzeWebhookUrl, value.trim());
     },
   },
 
@@ -966,54 +962,6 @@ createApp({
       this.expandedStyleGroupSlug = group.slug;
     },
 
-    async analyzeDocument(doc) {
-      if (!doc) {
-        this.setStatus("먼저 MD를 선택해 주세요");
-        return;
-      }
-      if (!doc.markdown) {
-        this.setStatus("원본 Markdown이 비어 있습니다");
-        return;
-      }
-      if (window.location.protocol === "file:" && !this.n8nAnalyzeWebhookUrl.trim()) {
-        this.setStatus("분석 Webhook URL을 먼저 입력해 주세요");
-        return;
-      }
-
-      const useProxy = window.location.protocol !== "file:";
-      const requestUrl = useProxy ? "/api/analyze-design-md" : this.n8nAnalyzeWebhookUrl.trim();
-      const headers = {
-        "Content-Type": "application/json",
-      };
-      if (useProxy && this.n8nAnalyzeWebhookUrl.trim()) {
-        headers["x-n8n-analyze-webhook-url"] = this.n8nAnalyzeWebhookUrl.trim();
-      }
-
-      this.setStatus("MD 콘셉트를 분석 중입니다");
-      try {
-        const response = await fetch(requestUrl, {
-          method: "POST",
-          headers,
-          body: JSON.stringify({
-            documentId: doc.id,
-            brandName: doc.brandName,
-            sourceName: doc.sourceName,
-            rawMarkdown: doc.markdown,
-          }),
-        });
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(payload.message || payload.error || `Analyze ${response.status}`);
-        this.setStatus("MD 콘셉트 분석이 완료되었습니다");
-        if (useProxy) await this.loadDesignDocuments();
-      } catch (error) {
-        this.setStatus(`분석 실패: ${error.message}`);
-      }
-    },
-
-    async analyzeSelectedDocument() {
-      await this.analyzeDocument(this.selectedDocument);
-    },
-
     syncSlug() {
       this.newMd.slug = slugify(this.newMd.brandName);
     },
@@ -1110,6 +1058,13 @@ createApp({
     },
 
     openAddDesign() {
+      this.newMd = {
+        id: "",
+        brandName: "GGPoker",
+        slug: "ggpoker",
+        text: sampleMarkdown,
+        sourceName: "text input",
+      };
       this.$nextTick(() => this.$refs.addDesignModal.showModal());
     },
 
@@ -1131,6 +1086,7 @@ createApp({
 
     loadSample() {
       this.newMd = {
+        id: "",
         brandName: "GGPoker",
         slug: "ggpoker",
         text: sampleMarkdown,
@@ -1148,10 +1104,11 @@ createApp({
 
       const slug = this.newMd.slug.trim() || slugify(this.newMd.brandName);
       if (window.location.protocol !== "file:") {
-        this.setStatus("MD를 Neon에 저장 중입니다");
+        const isEdit = Boolean(this.newMd.id);
+        this.setStatus(isEdit ? "MD를 수정하고 데이터화 중입니다" : "MD를 Neon에 저장하고 데이터화 중입니다");
         try {
-          const response = await fetch("/api/register-design-md", {
-            method: "POST",
+          const response = await fetch(isEdit ? `/api/design-document?id=${encodeURIComponent(this.newMd.id)}` : "/api/register-design-md", {
+            method: isEdit ? "PATCH" : "POST",
             headers: {
               "Content-Type": "application/json",
             },
@@ -1166,12 +1123,9 @@ createApp({
           if (!response.ok) throw new Error(payload.message || payload.error || `Register ${response.status}`);
           const doc = payload.document;
           this.closeAddDesign();
-          this.setStatus("MD 저장 완료. 콘셉트를 분석 중입니다");
           await this.loadDesignDocuments();
           this.selectDocument(doc.id);
-          await this.analyzeDocument(doc);
-          await this.loadDesignDocuments();
-          this.setStatus("MD 등록 및 분석이 완료되었습니다");
+          this.setStatus(isEdit ? "MD 수정 및 데이터화가 완료되었습니다" : "MD 등록 및 데이터화가 완료되었습니다");
           return;
         } catch (error) {
           this.setStatus(`등록 실패: ${error.message}`);
@@ -1211,10 +1165,75 @@ createApp({
       this.detailDoc = doc;
       this.modalTab = "outline";
       this.$nextTick(() => this.$refs.detailModal.showModal());
+      if (window.location.protocol !== "file:") {
+        this.loadDesignDocumentDetail(doc.id);
+      }
     },
 
     closeDetail() {
       this.$refs.detailModal.close();
+    },
+
+    async loadDesignDocumentDetail(id) {
+      try {
+        const response = await fetch(`/api/design-document?id=${encodeURIComponent(id)}`);
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || payload.error || `Detail ${response.status}`);
+        this.detailDoc = payload.document;
+      } catch (error) {
+        this.setStatus(`MD 상세 로딩 실패: ${error.message}`);
+      }
+    },
+
+    editDetailDocument() {
+      if (!this.detailDoc) return;
+      this.newMd = {
+        id: this.detailDoc.id,
+        brandName: this.detailDoc.brandName,
+        slug: this.detailDoc.slug,
+        text: this.detailDoc.markdown || "",
+        sourceName: this.detailDoc.sourceName || "DESIGN.md",
+      };
+      this.closeDetail();
+      this.$nextTick(() => this.$refs.addDesignModal.showModal());
+    },
+
+    async reextractDetailDocument() {
+      if (!this.detailDoc || window.location.protocol === "file:") return;
+      this.setStatus("Design MD를 재추출 중입니다");
+      try {
+        const response = await fetch(`/api/design-document?id=${encodeURIComponent(this.detailDoc.id)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "extract" }),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || payload.error || `Extract ${response.status}`);
+        this.detailDoc = payload.document;
+        await this.loadDesignDocuments();
+        this.setStatus("Design MD 재추출이 완료되었습니다");
+      } catch (error) {
+        this.setStatus(`재추출 실패: ${error.message}`);
+      }
+    },
+
+    async archiveDetailDocument() {
+      if (!this.detailDoc || window.location.protocol === "file:") return;
+      if (!window.confirm(`${this.detailDoc.brandName} MD를 보관 처리할까요?`)) return;
+      this.setStatus("Design MD를 보관 처리 중입니다");
+      try {
+        const response = await fetch(`/api/design-document?id=${encodeURIComponent(this.detailDoc.id)}`, {
+          method: "DELETE",
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || payload.error || `Archive ${response.status}`);
+        this.closeDetail();
+        await this.loadDesignDocuments();
+        this.selectedDocumentId = this.designDocuments[0]?.id || "";
+        this.setStatus("Design MD를 보관 처리했습니다");
+      } catch (error) {
+        this.setStatus(`보관 실패: ${error.message}`);
+      }
     },
 
     openConceptDetail() {
@@ -1285,7 +1304,12 @@ createApp({
           designConcept: this.selectedDocument.designConcept,
           styleClassification: this.selectedDocument.styleClassification,
           designPromptContext: this.selectedDocument.designConcept?.promptContext || "",
-          markdown: this.selectedDocument.markdown,
+          designData: {
+            summary: this.selectedDocument.summary,
+            metadata: this.selectedDocument.metadata || [],
+            extractionStatus: this.selectedDocument.extractionStatus || this.selectedDocument.status,
+            sourceHash: this.selectedDocument.sourceHash || "",
+          },
         },
         promo: promoCompat,
         template: {
@@ -1308,6 +1332,15 @@ createApp({
     },
 
     validatePromoInputs() {
+      if (!this.selectedDocument) {
+        this.setStatus("먼저 디자인 MD를 선택해 주세요");
+        return false;
+      }
+      const extractionStatus = this.selectedDocument.extractionStatus || this.selectedDocument.status;
+      if (window.location.protocol !== "file:" && extractionStatus !== "ready") {
+        this.setStatus(`선택한 MD가 아직 생성 가능 상태가 아닙니다: ${extractionStatus || "unknown"}`);
+        return false;
+      }
       const required = [
         ["title", "프로모션 제목"],
         ["market", "마켓 / 지역"],

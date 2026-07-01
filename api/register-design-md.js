@@ -1,5 +1,6 @@
 const { neon } = require("@neondatabase/serverless");
 const { getDatabaseUrl } = require("./_db");
+const { extractDesignMdData, persistDesignMdData, markExtractionFailed } = require("./_design-md-data");
 
 function slugify(value) {
   return String(value || "")
@@ -57,13 +58,17 @@ module.exports = async function handler(req, res) {
           original_blob_url,
           status,
           raw_markdown,
+          extraction_status,
           updated_at
         )
-        select id, 'markdown_upload', ${filename}, null, 'uploaded', ${markdown}, now()
+        select id, 'markdown_upload', ${filename}, null, 'extracting', ${markdown}, 'extracting', now()
         from b
         on conflict (brand_id, original_filename) do update
-          set status = 'uploaded',
+          set status = 'extracting',
               raw_markdown = excluded.raw_markdown,
+              extraction_status = 'extracting',
+              extraction_error = null,
+              archived_at = null,
               updated_at = now()
         returning id, brand_id, original_filename, status, raw_markdown, updated_at
       )
@@ -81,16 +86,26 @@ module.exports = async function handler(req, res) {
     `;
 
     const doc = rows[0];
+    let extraction = null;
+    try {
+      const extracted = extractDesignMdData({ markdown, brandName: cleanBrandName, sourceName: filename });
+      extraction = await persistDesignMdData(sql, doc.id, extracted);
+    } catch (error) {
+      await markExtractionFailed(sql, doc.id, error);
+      throw error;
+    }
+
     res.status(200).json({
       ok: true,
+      extraction,
       document: {
         id: doc.id,
         brandId: doc.brand_id,
         brandName: doc.brand_name,
         slug: doc.slug,
         sourceName: doc.original_filename,
-        status: doc.status,
-        markdown: doc.raw_markdown,
+        status: "ready",
+        extractionStatus: "ready",
         updatedAt: doc.updated_at ? new Date(doc.updated_at).toISOString().slice(0, 16).replace("T", " ") : "",
       },
     });
