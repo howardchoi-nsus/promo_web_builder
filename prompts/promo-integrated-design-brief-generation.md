@@ -7,18 +7,19 @@ Return valid JSON only. Do not include markdown fences or explanations outside J
 ## Critical Purpose
 
 - This is not a summary.
-- This document must be a complete design-generation request document.
+- This document must be a complete design-generation execution specification.
+- The word "brief" means an execution brief/specification, not a short summary.
 - A downstream image-generation LLM must be able to create the final Web UI design by reading only this integrated brief.
 - The brief must be usable by other LLMs or design agents, not only this n8n workflow.
 - The resulting design must read as a Web UI design mockup, not as a poster, flyer, brochure, presentation slide, editorial cover, print ad, or key visual.
-- Do not require the downstream step to re-read DESIGN.md, content.md, sectionInputs JSON, layoutMapping JSON, designBrief JSON, or promo-ui-design-image-generation.md.
-- Restate all adopted values, visible copy, design rules, section mappings, conflicts, and final imagePrompt inputs inside this document.
+- Do not require the downstream step to re-read Design Prompt MD, Section Input Log MD, DESIGN.md, content.md, sectionInputs JSON, layoutMapping JSON, designBrief JSON, or promo-ui-design-image-generation.md.
+- Restate all adopted design tokens, visible copy, design rules, section mappings, conflicts, and final imagePrompt inputs inside this document.
 
 ## Source Priority Rules
 
-- DESIGN.md / selected Design MD controls style: colors, typography, spacing, radius, component language, layout philosophy, visual mood, depth/effects, dos, and donts.
-- B Section Input Log / sectionInputs controls visible content: copy, CTA text, links, legal text, section text, visualMode, footer labels.
-- promo-ui-design-image-generation.md controls output format, Template 4 section order, compliance map, negative prompt expectations, and image-generation constraints.
+- Design Prompt MD controls style: colors, typography, spacing, radius, component language, layout patterns, guidelines, qualitative classification, and token-derived constraints.
+- Section Input Log MD controls visible content: copy, CTA text, links, legal text, section text, visualMode, footer labels, promo metadata, and Template 4 input values.
+- Template 4 controls section order and required section coverage.
 - Promo metadata is fallback only when sectionInputs are missing.
 - If values conflict, do not silently discard either value. Document the conflict and explain the adopted value.
 
@@ -48,12 +49,14 @@ The `integratedDesignBriefMarkdown` must include exactly these sections in this 
 4. `## Resolved Conflicts`
 5. `## Non-Negotiable Rules`
 6. `## MD Compliance Map`
-7. `## Section Content Mapping`
-8. `## Design Style Basis`
-9. `## Visual Direction`
-10. `## Final Image Prompt Inputs`
-11. `## Negative Prompt`
-12. `## Visual QA Checklist`
+7. `## Design Token Application`
+8. `## Section Content Mapping`
+9. `## Token-to-Section Application`
+10. `## Design Style Basis`
+11. `## Visual Direction`
+12. `## Final Image Prompt Inputs`
+13. `## Negative Prompt`
+14. `## Visual QA Checklist`
 
 ### YAML frontmatter must include
 
@@ -78,6 +81,7 @@ The `integratedDesignBriefMarkdown` must include exactly these sections in this 
 - Design Style override rule
 - Structural conflict rule
 - Non-destructive integration rule
+- No-reference rule: never tell the downstream step to consult the source documents.
 
 ### Resolved Conflicts must be a markdown table with columns
 
@@ -118,6 +122,19 @@ Include conflicts for at least:
 - dontsAvoided
 - notColorFontOnlyProof
 
+### Design Token Application must include
+
+- Colors adopted from Design Prompt MD
+- Typography adopted from Design Prompt MD
+- Radius adopted from Design Prompt MD
+- Spacing adopted from Design Prompt MD
+- Elevation/depth adopted from Design Prompt MD
+- Breakpoints/page-width interpretation
+- Component patterns adopted from Design Prompt MD
+- Layout patterns adopted from Design Prompt MD
+- Guidelines adopted from Design Prompt MD
+- Unknown token handling
+
 ### Section Content Mapping must include one H3 for each Template 4 section
 
 - `### Header`
@@ -136,6 +153,19 @@ For each section include:
 - Vertical allocation/compression note
 - MD rule applied
 - Fallback behavior
+
+### Token-to-Section Application must include one H3 for each Template 4 section
+
+For each section explain exactly how selected design tokens affect:
+
+- Color usage
+- Typography hierarchy
+- Spacing and density
+- Radius/shape
+- Component style
+- Layout behavior
+- Visual treatment
+- Guidelines/donts applied
 
 ### Design Style Basis must include a JSON block with
 
@@ -203,6 +233,8 @@ Must include at least 10 checklist items.
 - It must include a Resolved Conflicts table.
 - It must include all seven Template 4 section H3 headings.
 - It must include at least one JSON block for MD Compliance Map.
+- It must include selected design token values directly; do not say to consult or refer to Design Prompt MD.
+- It must include Section Input Log visible copy directly; do not say to consult or refer to Section Input Log MD.
 - It must include a final Image Prompt Direction.
 - It must include a Negative Prompt.
 - It must include a Visual QA Checklist.
@@ -221,14 +253,10 @@ Must include at least 10 checklist items.
 - pageWidth: `{{pageWidth}}`
 - language: `English only`
 
-## Input Design Brief JSON
+## Input Design Prompt MD
 
-```json
-{{designBrief}}
-```
+{{designPromptMarkdown}}
 
-## Suggested Layout Mapping JSON
+## Input Section Input Log MD
 
-```json
-{{layoutMapping}}
-```
+{{sectionInputLogMarkdown}}
