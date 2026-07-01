@@ -1345,6 +1345,12 @@ body.is-resizing {
   gap: 8px;
 }
 
+.token-category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+}
+
 .outline-item {
   display: grid;
   gap: 4px;

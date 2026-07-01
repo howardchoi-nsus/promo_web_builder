@@ -628,14 +628,26 @@
           </div>
 
           <div v-if="modalTab === 'outline'" class="md-outline">
-            <div
-              v-for="item in detailDoc.summary.headings"
-              :key="`${item.level}-${item.title}`"
-              class="outline-item"
-              :style="{ marginLeft: `${Math.max(0, item.level - 2) * 14}px` }"
-            >
-              <strong>{{ item.title }}</strong>
-              <span>{{ item.category }}{{ item.excerpt ? ` - ${item.excerpt.slice(0, 140)}` : '' }}</span>
+            <div class="token-category-grid">
+              <div v-for="item in designDataCategoryRows(detailDoc)" :key="item.key" class="summary-box">
+                <strong>{{ item.label }}</strong>
+                <span>{{ item.value }}</span>
+              </div>
+            </div>
+
+            <div class="outline-item">
+              <strong>classification</strong>
+              <span>{{ designSchemaClassification(detailDoc) }}</span>
+            </div>
+
+            <div class="outline-item">
+              <strong>token groups</strong>
+              <span>{{ designTokenGroupSummary(detailDoc) }}</span>
+            </div>
+
+            <div class="outline-item">
+              <strong>standard schema</strong>
+              <span>{{ detailDoc.tokenSet?.normalizedSchema?.schemaVersion || detailDoc.normalizedSchema?.schemaVersion || 'unknown' }}</span>
             </div>
           </div>
           <pre v-else class="raw-md">{{ detailDoc.markdown || '원본 Markdown이 없습니다.' }}</pre>

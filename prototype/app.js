@@ -812,6 +812,53 @@ createApp({
       return Array.isArray(value) ? value : [];
     },
 
+    designDataCategoryRows(doc) {
+      const summary = doc?.summary || {};
+      const tokenItems = Array.isArray(doc?.tokenItems) ? doc.tokenItems : [];
+      const countByGroup = (group) => tokenItems.filter((item) => String(item.tokenPath || "").startsWith(`${group}.`)).length;
+      const countByType = (type) => tokenItems.filter((item) => item.tokenType === type).length;
+      const rows = [
+        ["color", "Colors", countByGroup("color") || countByType("color")],
+        ["typography", "Typography", countByGroup("typography") || countByType("fontFamily")],
+        ["radius", "Radius", countByGroup("radius")],
+        ["spacing", "Spacing", countByGroup("spacing")],
+        ["dimension", "Layout / Size", countByGroup("dimension") + countByGroup("breakpoint")],
+        ["elevation", "Elevation", countByGroup("shadow") || countByType("shadow")],
+        ["component", "Components", summary.componentPatternCount || doc?.componentPatterns?.length || 0],
+        ["layout", "Layouts", summary.layoutPatternCount || doc?.layoutPatterns?.length || 0],
+        ["guideline", "Guidelines", summary.guidelineCount || doc?.guidelineItems?.length || 0],
+        ["metadata", "Metadata", summary.metadataCount || doc?.metadataItems?.length || 0],
+      ];
+      return rows.map(([key, label, value]) => ({ key, label, value: Number(value || 0).toLocaleString() }));
+    },
+
+    designSchemaClassification(doc) {
+      const schema = doc?.tokenSet?.normalizedSchema || doc?.normalizedSchema || {};
+      const classification = schema.classification || doc?.styleClassification || {};
+      const group = classification.primaryGroup?.slug || classification.primaryGroup || doc?.styleClassification?.primaryGroup?.slug || "unknown";
+      return [
+        `group: ${group}`,
+        `color: ${classification.colorMode || "unknown"}`,
+        `depth: ${classification.depthModel || "unknown"}`,
+        `shape: ${classification.shapeModel || "unknown"}`,
+        `type: ${classification.typographyTone || "unknown"}`,
+      ].join(" / ");
+    },
+
+    designTokenGroupSummary(doc) {
+      const tokenItems = Array.isArray(doc?.tokenItems) ? doc.tokenItems : [];
+      if (!tokenItems.length) return "no token items";
+      const groups = tokenItems.reduce((acc, item) => {
+        const group = String(item.tokenPath || item.tokenType || "unknown").split(".")[0] || "unknown";
+        acc[group] = (acc[group] || 0) + 1;
+        return acc;
+      }, {});
+      return Object.entries(groups)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([key, value]) => `${key}: ${value}`)
+        .join(" / ");
+    },
+
     groupInfoForDocument(doc) {
       const fallback = {
         slug: "unclassified",
