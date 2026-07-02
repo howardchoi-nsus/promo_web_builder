@@ -122,6 +122,11 @@ const storageKeys = {
   n8nWebhookUrl: "promoPrototype.n8nWebhookUrl",
 };
 
+const generationModels = {
+  text: "gpt-4o-mini",
+  image: "gpt-image-1",
+};
+
 const dummyCompanyStylePresets = [
   {
     id: "preset-001",
@@ -1639,6 +1644,8 @@ createApp({
       };
       return {
         id: pageId,
+        model: generationModels.text,
+        imageModel: generationModels.image,
         generatedAt: nowText(),
         md: {
           id: designDoc.id,
