@@ -1395,6 +1395,11 @@ body.is-resizing {
   overflow-wrap: anywhere;
 }
 
+.danger-text {
+  color: #b42318;
+  font-weight: 800;
+}
+
 .recent-summary-card {
   display: grid;
   gap: 10px;

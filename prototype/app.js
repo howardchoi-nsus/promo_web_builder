@@ -408,6 +408,13 @@ function designImageUrlForId(id) {
   return id ? `/api/promo-design-image?id=${encodeURIComponent(id)}` : "";
 }
 
+function isInvalidGeneratedImageAsset(asset) {
+  if (!asset || asset.asset_type !== "generated_image") return false;
+  const fileSize = Number(asset.file_size || 0);
+  const mimeType = String(asset.mime_type || "").toLowerCase();
+  return fileSize > 0 && (fileSize < 1024 || !mimeType.startsWith("image/"));
+}
+
 function randomToken(length = 5) {
   const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
   const randomValues = new Uint8Array(length);
@@ -1245,6 +1252,8 @@ createApp({
       const runKey = run.run_key || fallback.id || "";
       const createdAt = run.created_at || fallback.createdAt || "";
       const committedAt = imageAsset.created_at || fallback.committedAt || createdAt;
+      const imageInvalid = isInvalidGeneratedImageAsset(imageAsset);
+      const imageFileSize = Number(imageAsset.file_size || 0);
 
       return {
         id: runKey,
@@ -1264,10 +1273,13 @@ createApp({
         mdComplianceMap: run.md_compliance_map || fallback.mdComplianceMap || null,
         imagePrompt: run.image_prompt || fallback.imagePrompt || "",
         promptGroupId: run.prompt_group_id || imageAsset.prompt_group_id || imageAsset.metadata?.promptGroupId || fallback.promptGroupId || "",
+        imageFileSize,
+        imageMimeType: imageAsset.mime_type || fallback.imageMimeType || "",
+        imageInvalid: imageInvalid || fallback.imageInvalid || false,
         designPromptStorageKey: markdownAssets.find((asset) => asset.asset_type === "design_prompt_markdown")?.storage_key || fallback.designPromptStorageKey || "",
         promoInputStorageKey: markdownAssets.find((asset) => asset.asset_type === "promo_input_markdown")?.storage_key || fallback.promoInputStorageKey || "",
         integratedBriefStorageKey: markdownAssets.find((asset) => asset.asset_type === "integrated_design_brief_markdown")?.storage_key || fallback.integratedBriefStorageKey || "",
-        errorMessage: run.error_message || fallback.errorMessage || "",
+        errorMessage: run.error_message || fallback.errorMessage || (imageInvalid ? "저장된 이미지 파일이 유효하지 않습니다. 다시 생성해 주세요." : ""),
         hasOverride: fallback.hasOverride || false,
         resultType: run.result_type || fallback.resultType || "image",
         payload: run.request_payload || fallback.payload || null,

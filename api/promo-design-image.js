@@ -46,8 +46,17 @@ module.exports = async function handler(req, res) {
     const contentType = response.headers.get("content-type") || row.mime_type || "image/png";
     const cacheControl = response.headers.get("cache-control") || "public, max-age=31536000, immutable";
     const buffer = Buffer.from(await response.arrayBuffer());
+    const detectedMimeType = detectImageMimeType(buffer);
+    if (!detectedMimeType) {
+      return res.status(422).send([
+        "Invalid stored image: blob content is not a valid PNG, JPEG, or WebP",
+        `bytes: ${buffer.length}`,
+        `storageKey: ${row.storage_key || ""}`,
+        `assetUrl: ${assetUrl}`,
+      ].join("\n"));
+    }
 
-    res.setHeader("Content-Type", contentType);
+    res.setHeader("Content-Type", detectedMimeType || contentType);
     res.setHeader("Cache-Control", cacheControl);
     return res.status(200).send(buffer);
   } catch (error) {
@@ -78,4 +87,30 @@ async function fetchFirstReadableImage(urls) {
 
 function uniqueValues(values) {
   return Array.from(new Set(values.map((value) => String(value || "").trim()).filter(Boolean)));
+}
+
+function detectImageMimeType(bytes) {
+  if (!Buffer.isBuffer(bytes) || bytes.length < 16) return "";
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
+  if (
+    bytes[0] === 0x89
+    && bytes[1] === 0x50
+    && bytes[2] === 0x4e
+    && bytes[3] === 0x47
+  ) {
+    return "image/png";
+  }
+  if (
+    bytes[0] === 0x52
+    && bytes[1] === 0x49
+    && bytes[2] === 0x46
+    && bytes[3] === 0x46
+    && bytes[8] === 0x57
+    && bytes[9] === 0x45
+    && bytes[10] === 0x42
+    && bytes[11] === 0x50
+  ) {
+    return "image/webp";
+  }
+  return "";
 }

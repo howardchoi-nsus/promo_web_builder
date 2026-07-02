@@ -109,7 +109,6 @@ const staticData = $getWorkflowStaticData('global');
 staticData.designs = staticData.designs || {};
 staticData.designs[input.id] = {
   imageUrlFromApi,
-  imageDataUrl,
   hasEmbeddedImage: Boolean(imageDataUrl),
   imageMimeType: mimeType,
   imageBytes,
@@ -191,6 +190,11 @@ if (imageNode?.parameters) {
   }
 }
 
+const persistNode = workflow.nodes.find((node) => node.name === 'Persist UI Design Asset');
+if (persistNode?.parameters?.url) {
+  persistNode.parameters.url = "={{$json.assetApiUrl || $json.payload?.assetApiUrl || 'https://promo-web-builder.vercel.app/api/promo-design-assets'}}";
+}
+
 let outputJson = JSON.stringify(workflow, null, 2);
 outputJson = outputJson.replace(
   /Bearer\s+sk-[A-Za-z0-9_-]{20,}/g,
@@ -201,5 +205,5 @@ outputJson = outputJson.replace(
   'REPLACE_WITH_OPENAI_API_KEY_OR_USE_CREDENTIAL'
 );
 
-fs.writeFileSync(outputPath, outputJson);
+fs.writeFileSync(outputPath, `${outputJson}\n`);
 console.log(outputPath);

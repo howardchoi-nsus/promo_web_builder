@@ -201,7 +201,18 @@ async function saveAsset(req, res) {
   const runKey = String(body.runKey || body.id || body.payload?.id || "").trim();
   if (!runKey) return res.status(400).json({ error: "runKey is required" });
 
-  const imageInput = await resolveImageInput(body);
+  let imageInput;
+  try {
+    imageInput = await resolveImageInput(body);
+  } catch (error) {
+    if (error instanceof InvalidImageInputError) {
+      return res.status(400).json({
+        error: "Invalid image data",
+        message: error.message,
+      });
+    }
+    throw error;
+  }
   if (!imageInput) {
     return res.status(400).json({ error: "imageUrl or imageDataUrl is required" });
   }
@@ -703,11 +714,12 @@ async function resolveImageInput(body) {
   const imageDataUrl = String(body.imageDataUrl || "").trim();
   if (imageDataUrl) {
     const match = /^data:([^;]+);base64,(.+)$/i.exec(imageDataUrl);
-    if (!match) throw new Error("Invalid imageDataUrl");
+    if (!match) throw new InvalidImageInputError("imageDataUrl must be a base64 data URL");
     const bytes = Buffer.from(match[2].replace(/\s/g, ""), "base64");
+    const mimeType = validateImageBytes(bytes, match[1]);
     return {
       bytes,
-      mimeType: detectImageMimeType(bytes, match[1] || "image/png"),
+      mimeType,
       sourceUrl: "",
     };
   }
@@ -715,9 +727,10 @@ async function resolveImageInput(body) {
   const rawBase64 = String(body.b64Json || body.b64_json || body.imageBase64 || "").trim();
   if (rawBase64) {
     const bytes = Buffer.from(rawBase64.replace(/\s/g, ""), "base64");
+    const mimeType = validateImageBytes(bytes, body.mimeType);
     return {
       bytes,
-      mimeType: detectImageMimeType(bytes, body.mimeType || "image/png"),
+      mimeType,
       sourceUrl: "",
     };
   }
@@ -729,11 +742,30 @@ async function resolveImageInput(body) {
   if (!response.ok) throw new Error(`Failed to fetch source image: ${response.status}`);
   const mimeType = response.headers.get("content-type") || "image/png";
   const bytes = Buffer.from(await response.arrayBuffer());
-  return { bytes, mimeType: detectImageMimeType(bytes, mimeType), sourceUrl: imageUrl };
+  return { bytes, mimeType: validateImageBytes(bytes, mimeType), sourceUrl: imageUrl };
 }
 
-function detectImageMimeType(bytes, fallback = "image/png") {
-  if (!Buffer.isBuffer(bytes) || bytes.length < 12) return fallback;
+class InvalidImageInputError extends Error {}
+
+function validateImageBytes(bytes, declaredMimeType = "") {
+  const mimeType = detectImageMimeType(bytes);
+  if (!mimeType) {
+    const byteLength = Buffer.isBuffer(bytes) ? bytes.length : 0;
+    throw new InvalidImageInputError(
+      `Image payload is not a valid PNG, JPEG, or WebP. bytes=${byteLength}`,
+    );
+  }
+
+  const declared = String(declaredMimeType || "").split(";")[0].trim().toLowerCase();
+  if (declared && declared.startsWith("image/") && !["image/png", "image/jpeg", "image/jpg", "image/webp"].includes(declared)) {
+    throw new InvalidImageInputError(`Unsupported image MIME type: ${declaredMimeType}`);
+  }
+
+  return mimeType;
+}
+
+function detectImageMimeType(bytes) {
+  if (!Buffer.isBuffer(bytes) || bytes.length < 16) return "";
   if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
   if (
     bytes[0] === 0x89
@@ -755,7 +787,7 @@ function detectImageMimeType(bytes, fallback = "image/png") {
   ) {
     return "image/webp";
   }
-  return fallback;
+  return "";
 }
 
 function parseBody(body) {

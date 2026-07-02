@@ -526,6 +526,9 @@
                       <td>
                         {{ resultTypeLabel(page) }}
                         <span class="table-subtext" v-if="page.promptGroupId">Group {{ page.promptGroupId }}</span>
+                        <span class="table-subtext danger-text" v-if="page.imageInvalid">
+                          이미지 손상 의심 · {{ page.imageFileSize }} bytes
+                        </span>
                       </td>
                       <td>
                         <button class="tiny-button primary" type="button" @click="openGenerated(page)">열기</button>
