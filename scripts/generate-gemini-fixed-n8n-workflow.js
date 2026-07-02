@@ -78,12 +78,14 @@ if (!b64) {
 }
 
 if (!b64 && currentItem.binary) {
-  const binaryImage = Object.values(currentItem.binary).find((item) =>
+  const binaryEntry = Object.entries(currentItem.binary).find(([, item]) =>
     String(item.mimeType || '').startsWith('image/')
   );
 
-  if (binaryImage?.data) {
-    b64 = binaryImage.data;
+  if (binaryEntry) {
+    const [binaryPropertyName, binaryImage] = binaryEntry;
+    const binaryBuffer = await this.helpers.getBinaryDataBuffer(0, binaryPropertyName);
+    b64 = binaryBuffer.toString('base64');
     mimeType = binaryImage.mimeType || mimeType;
   }
 }
@@ -189,5 +191,15 @@ if (imageNode?.parameters) {
   }
 }
 
-fs.writeFileSync(outputPath, JSON.stringify(workflow, null, 2));
+let outputJson = JSON.stringify(workflow, null, 2);
+outputJson = outputJson.replace(
+  /Bearer\s+sk-[A-Za-z0-9_-]{20,}/g,
+  'Bearer REPLACE_WITH_OPENAI_API_KEY_OR_USE_CREDENTIAL'
+);
+outputJson = outputJson.replace(
+  /sk-[A-Za-z0-9_-]{20,}/g,
+  'REPLACE_WITH_OPENAI_API_KEY_OR_USE_CREDENTIAL'
+);
+
+fs.writeFileSync(outputPath, outputJson);
 console.log(outputPath);
