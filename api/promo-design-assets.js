@@ -360,7 +360,7 @@ async function saveAsset(req, res) {
       ${imageInput.mimeType},
       ${imageInput.bytes.length},
       ${promptGroupId},
-      ${JSON.stringify({ access: blobAccess, pathname: blob.pathname, promptGroupId, uploadedAt: generatedAt.toISOString() })}::jsonb,
+      ${JSON.stringify({ access: blobAccess, pathname: blob.pathname, downloadUrl: blob.downloadUrl || "", promptGroupId, uploadedAt: generatedAt.toISOString() })}::jsonb,
       true
     )
     returning id::text
@@ -392,7 +392,7 @@ async function saveAsset(req, res) {
       'text/markdown; charset=utf-8',
       ${textByteLength(designPromptMarkdown)},
       ${promptGroupId},
-      ${JSON.stringify({ access: blobAccess, pathname: designPromptBlob.pathname, fileName: designPromptFileName, promptGroupId, uploadedAt: generatedAt.toISOString() })}::jsonb,
+      ${JSON.stringify({ access: blobAccess, pathname: designPromptBlob.pathname, downloadUrl: designPromptBlob.downloadUrl || "", fileName: designPromptFileName, promptGroupId, uploadedAt: generatedAt.toISOString() })}::jsonb,
       false
     )
     returning id::text
@@ -424,7 +424,7 @@ async function saveAsset(req, res) {
       'text/markdown; charset=utf-8',
       ${textByteLength(promoInputMarkdown)},
       ${promptGroupId},
-      ${JSON.stringify({ access: blobAccess, pathname: promoInputBlob.pathname, fileName: promoInputFileName, promptGroupId, uploadedAt: generatedAt.toISOString() })}::jsonb,
+      ${JSON.stringify({ access: blobAccess, pathname: promoInputBlob.pathname, downloadUrl: promoInputBlob.downloadUrl || "", fileName: promoInputFileName, promptGroupId, uploadedAt: generatedAt.toISOString() })}::jsonb,
       false
     )
     returning id::text
@@ -457,7 +457,7 @@ async function saveAsset(req, res) {
         'text/markdown; charset=utf-8',
         ${textByteLength(integratedDesignBriefMarkdown)},
         ${promptGroupId},
-        ${JSON.stringify({ access: blobAccess, pathname: integratedBriefBlob.pathname, fileName: integratedBriefFileName, promptGroupId, uploadedAt: generatedAt.toISOString() })}::jsonb,
+        ${JSON.stringify({ access: blobAccess, pathname: integratedBriefBlob.pathname, downloadUrl: integratedBriefBlob.downloadUrl || "", fileName: integratedBriefFileName, promptGroupId, uploadedAt: generatedAt.toISOString() })}::jsonb,
         false
       )
       returning id::text

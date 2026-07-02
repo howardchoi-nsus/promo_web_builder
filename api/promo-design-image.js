@@ -16,7 +16,7 @@ module.exports = async function handler(req, res) {
 
     const sql = neon(databaseUrl);
     const rows = await sql`
-      select a.asset_url, a.mime_type
+      select a.asset_url, a.mime_type, a.storage_key, a.metadata
       from promo_design_runs r
       join promo_design_assets a on a.run_id = r.id and a.asset_type = 'generated_image'
       where r.run_key = ${runKey}
@@ -24,20 +24,26 @@ module.exports = async function handler(req, res) {
       limit 1
     `;
 
-    const assetUrl = rows[0]?.asset_url;
+    const row = rows[0] || {};
+    const assetUrl = row.asset_url;
     if (!assetUrl) return res.status(404).send("Image not found");
 
-    const headers = {};
-    if (process.env.BLOB_READ_WRITE_TOKEN) {
-      headers.Authorization = `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`;
-    }
-
-    const response = await fetch(assetUrl, { headers });
+    const candidateUrls = uniqueValues([
+      assetUrl,
+      row.metadata?.downloadUrl,
+      row.metadata?.download_url,
+      row.metadata?.url,
+    ]);
+    const response = await fetchFirstReadableImage(candidateUrls);
     if (!response.ok) {
-      return res.status(response.status).send(`Failed to read blob image: ${response.status}`);
+      return res.status(response.status).send([
+        `Failed to read blob image: ${response.status}`,
+        `storageKey: ${row.storage_key || ""}`,
+        `assetUrl: ${assetUrl}`,
+      ].join("\n"));
     }
 
-    const contentType = response.headers.get("content-type") || rows[0].mime_type || "image/png";
+    const contentType = response.headers.get("content-type") || row.mime_type || "image/png";
     const cacheControl = response.headers.get("cache-control") || "public, max-age=31536000, immutable";
     const buffer = Buffer.from(await response.arrayBuffer());
 
@@ -48,3 +54,28 @@ module.exports = async function handler(req, res) {
     return res.status(500).send(error.message);
   }
 };
+
+async function fetchFirstReadableImage(urls) {
+  let lastResponse = null;
+  for (const url of urls) {
+    const authHeaders = {};
+    if (process.env.BLOB_READ_WRITE_TOKEN) {
+      authHeaders.Authorization = `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`;
+    }
+
+    const attempts = process.env.BLOB_READ_WRITE_TOKEN
+      ? [{ headers: authHeaders }, {}]
+      : [{}];
+
+    for (const options of attempts) {
+      const response = await fetch(url, options);
+      lastResponse = response;
+      if (response.ok) return response;
+    }
+  }
+  return lastResponse || { ok: false, status: 404, headers: new Map(), arrayBuffer: async () => new ArrayBuffer(0) };
+}
+
+function uniqueValues(values) {
+  return Array.from(new Set(values.map((value) => String(value || "").trim()).filter(Boolean)));
+}
