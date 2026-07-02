@@ -12,7 +12,16 @@
         <header class="topbar">
           <div>
             <p class="eyebrow">Vue 프로토타입 / 더미 DB</p>
-            <h1>디자인 MD 관리 + 프로모션 UI 디자인 생성기</h1>
+            <div class="title-row-with-tools">
+              <h1>디자인 MD 관리 + 프로모션 UI 디자인 생성기</h1>
+              <div class="handoff-picker">
+                <select v-model="selectedHandoffFile" :disabled="!handoffDocuments.length || handoffLoading" aria-label="handoff 문서 선택">
+                  <option value="" disabled>handoff 문서</option>
+                  <option v-for="doc in handoffDocuments" :key="doc.file" :value="doc.file">{{ doc.label }}</option>
+                </select>
+                <button class="tiny-button" type="button" :disabled="!selectedHandoffFile || handoffLoading" @click="openSelectedHandoff">보기</button>
+              </div>
+            </div>
           </div>
           <div class="topbar-actions">
             <nav class="top-nav" aria-label="프로토타입 내비게이션">
@@ -574,6 +583,27 @@
           </section>
         </section>
       </main>
+
+      <dialog class="modal handoff-modal" ref="handoffModal">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Handoff 문서</p>
+            <h2>{{ activeHandoffDocument ? activeHandoffDocument.file : 'handoff 문서' }}</h2>
+          </div>
+          <button class="icon-button" type="button" aria-label="닫기" @click="closeHandoff">x</button>
+        </div>
+        <div class="modal-body">
+          <div class="outline-item danger-state" v-if="handoffError">
+            <strong>문서 로딩 오류</strong>
+            <span>{{ handoffError }}</span>
+          </div>
+          <div class="outline-item" v-if="handoffLoading">
+            <strong>불러오는 중</strong>
+            <span>{{ selectedHandoffFile }}</span>
+          </div>
+          <pre class="raw-md handoff-md">{{ handoffMarkdown || '선택한 handoff 문서 내용이 없습니다.' }}</pre>
+        </div>
+      </dialog>
 
       <dialog class="modal prompt-files-modal" ref="promptFilesModal">
         <div class="modal-header">

@@ -580,6 +580,12 @@ createApp({
       resizeState: null,
       designDocuments: [],
       mdListSource: "불러오는 중",
+      handoffDocuments: [],
+      selectedHandoffFile: "",
+      handoffMarkdown: "",
+      handoffLoading: false,
+      handoffError: "",
+      activeHandoffDocument: null,
       expandedStyleGroupSlug: "",
       selectedStyleGroupSlug: "",
       styleGroupSearch: "",
@@ -827,10 +833,57 @@ createApp({
     localStorage.removeItem(storageKeys.n8nWebhookUrl);
     this.loadDesignDocuments();
     this.loadGeneratedPagesFromServer({ silent: true });
+    this.loadHandoffDocuments();
     this.resetOverride();
   },
 
   methods: {
+    async loadHandoffDocuments() {
+      if (window.location.protocol === "file:") return;
+      try {
+        const response = await fetch("/api/handoff-documents");
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || payload.error || `API ${response.status}`);
+        this.handoffDocuments = payload.documents || [];
+        if (!this.selectedHandoffFile && this.handoffDocuments.length) {
+          this.selectedHandoffFile = this.handoffDocuments[0].file;
+        }
+      } catch (error) {
+        this.handoffError = error.message;
+      }
+    },
+
+    async openSelectedHandoff() {
+      if (!this.selectedHandoffFile) {
+        this.setStatus("선택된 handoff 문서가 없습니다");
+        return;
+      }
+
+      this.handoffLoading = true;
+      this.handoffError = "";
+      this.handoffMarkdown = "";
+      this.activeHandoffDocument = this.handoffDocuments.find((item) => item.file === this.selectedHandoffFile) || null;
+      this.$nextTick(() => {
+        if (!this.$refs.handoffModal.open) this.$refs.handoffModal.showModal();
+      });
+
+      try {
+        const response = await fetch(`/api/handoff-documents?file=${encodeURIComponent(this.selectedHandoffFile)}`);
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.message || payload.error || `API ${response.status}`);
+        this.activeHandoffDocument = payload.document || this.activeHandoffDocument;
+        this.handoffMarkdown = payload.document?.markdown || "";
+      } catch (error) {
+        this.handoffError = error.message;
+      } finally {
+        this.handoffLoading = false;
+      }
+    },
+
+    closeHandoff() {
+      this.$refs.handoffModal.close();
+    },
+
     async loadDesignDocuments(options = {}) {
       try {
         const url = options.fresh ? `/api/design-documents?ts=${Date.now()}` : "/api/design-documents";

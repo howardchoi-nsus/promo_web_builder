@@ -124,6 +124,32 @@ h1 {
   font-weight: 950;
 }
 
+.title-row-with-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+}
+
+.handoff-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.handoff-picker select {
+  width: 150px;
+  min-height: 32px;
+  padding: 0 28px 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #ffffff;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .status-pill {
   min-width: 86px;
   padding: 8px 12px;
@@ -1417,6 +1443,25 @@ body.is-resizing {
   max-height: calc(100vh - 40px);
 }
 
+.handoff-modal {
+  width: min(920px, calc(100vw - 40px));
+}
+
+.handoff-md {
+  max-height: calc(100vh - 220px);
+  margin: 0;
+  padding: 14px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #f8fafc;
+  color: #1f2937;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
 .prompt-md-compare {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1816,6 +1861,10 @@ body.is-resizing {
     width: 100%;
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .handoff-picker select {
+    width: min(220px, 52vw);
   }
 
   .top-nav {
