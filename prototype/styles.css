@@ -1038,6 +1038,7 @@ body.is-resizing {
   border-radius: var(--radius);
   background: #ffffff;
   overflow: hidden;
+  interpolate-size: allow-keywords;
 }
 
 .token-detail-section summary {
@@ -1051,6 +1052,42 @@ body.is-resizing {
   color: #111827;
   font-size: 12px;
   font-weight: 900;
+  list-style: none;
+}
+
+.token-detail-section summary::-webkit-details-marker {
+  display: none;
+}
+
+.token-detail-section summary::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid #94a3b8;
+  border-bottom: 2px solid #94a3b8;
+  transform: rotate(45deg);
+  transition: transform 180ms ease, border-color 180ms ease;
+  flex: 0 0 auto;
+}
+
+.token-detail-section[open] summary::after {
+  border-color: var(--accent);
+  transform: rotate(225deg);
+}
+
+.token-detail-section::details-content {
+  block-size: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition:
+    block-size 220ms ease,
+    content-visibility 220ms ease allow-discrete,
+    opacity 160ms ease;
+}
+
+.token-detail-section[open]::details-content {
+  block-size: auto;
+  opacity: 1;
 }
 
 .token-detail-section summary span {

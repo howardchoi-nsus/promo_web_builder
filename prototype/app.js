@@ -581,8 +581,9 @@ createApp({
       inputMode: "simple",
       globalVisualMode: "auto",
       promoBuilderStarted: false,
+      promoBuilderSessionKey: 0,
       currentBuilderStep: 1,
-      n8nWebhookUrl: localStorage.getItem(storageKeys.n8nWebhookUrl) || "",
+      n8nWebhookUrl: "",
       detailDoc: null,
       selectedDesignDetail: null,
       promptModalPage: null,
@@ -807,14 +808,12 @@ createApp({
     selectedDocumentId() {
       if (this.styleSource === "design_md") this.resetOverride();
     },
-    n8nWebhookUrl(value) {
-      localStorage.setItem(storageKeys.n8nWebhookUrl, value.trim());
-    },
   },
 
   mounted() {
     localStorage.removeItem(storageKeys.generatedPages);
     localStorage.removeItem(storageKeys.generatedPage);
+    localStorage.removeItem(storageKeys.n8nWebhookUrl);
     this.loadDesignDocuments();
     this.resetOverride();
   },
@@ -1075,8 +1074,8 @@ createApp({
         this.setStatus("먼저 디자인 MD를 선택해 주세요");
         return;
       }
+      this.resetPromoBuilderState({ rerender: true });
       this.promoBuilderStarted = true;
-      if (!this.currentBuilderStep) this.currentBuilderStep = 1;
       this.$nextTick(() => {
         if (!this.$refs.promoBuilderModal.open) this.$refs.promoBuilderModal.showModal();
       });
@@ -1299,6 +1298,11 @@ createApp({
     },
 
     clearPromoInputs() {
+      this.resetPromoBuilderState();
+      this.setStatus("프로모션 입력값을 초기화했습니다");
+    },
+
+    resetPromoBuilderState(options = {}) {
       this.promo = {
         title: "",
         template: "Template 4",
@@ -1317,9 +1321,13 @@ createApp({
         campaignTone: "",
         secondaryMessage: "",
       };
+      this.inputMode = "simple";
+      this.generationMode = "ai_agent";
       this.globalVisualMode = "auto";
+      this.n8nWebhookUrl = "";
+      this.currentBuilderStep = 1;
       this.sectionInputs = createEmptyTemp4Inputs();
-      this.setStatus("프로모션 입력값을 초기화했습니다");
+      if (options.rerender) this.promoBuilderSessionKey += 1;
     },
 
     autoFillPromoInputs() {

@@ -159,7 +159,7 @@
               <button class="primary-action" type="button" @click="startPromoBuilder">{{ promoBuilderStarted ? '프로모션 빌더 열기' : '프로모션 정보 입력' }}</button>
             </div>
 
-            <dialog class="modal builder-modal" ref="promoBuilderModal">
+            <dialog class="modal builder-modal" ref="promoBuilderModal" :key="promoBuilderSessionKey" autocomplete="off">
               <div class="modal-header">
                 <div>
                   <p class="eyebrow">B 섹션</p>
@@ -211,14 +211,14 @@
                 </label>
                 <label class="field">
                   <span>입력 모드</span>
-                  <select v-model="inputMode">
+                  <select v-model="inputMode" autocomplete="off">
                     <option value="simple">간편</option>
                     <option value="advanced">고급</option>
                   </select>
                 </label>
                 <label class="field">
                   <span>마켓 / 지역</span>
-                  <select v-model="promo.market" required>
+                  <select v-model="promo.market" required autocomplete="off">
                     <option disabled value="">&#49440;&#53469;&#54644; &#51452;&#49464;&#50836;</option>
                     <option>Global</option>
                     <option>Global - Latam</option>
@@ -232,7 +232,7 @@
                 </label>
                 <label class="field">
                   <span>비주얼 사용</span>
-                  <select v-model="globalVisualMode">
+                  <select v-model="globalVisualMode" autocomplete="off">
                     <option value="auto">자동</option>
                     <option value="use_visual">비주얼 사용</option>
                     <option value="no_visual">비주얼 없음</option>
@@ -253,41 +253,41 @@
               <div class="form-grid">
                 <label class="field">
                   <span>프로모션 제목</span>
-                  <input v-model="promo.title" type="text" placeholder="입력해 주세요" />
+                  <input v-model="promo.title" type="text" placeholder="입력해 주세요" autocomplete="off" />
                 </label>
                 <label class="field">
                   <span>주요 혜택</span>
-                  <input v-model="simpleBrief.mainOffer" type="text" placeholder="예: 신규 가입자에게 입금 매칭과 무료 티켓 제공" />
+                  <input v-model="simpleBrief.mainOffer" type="text" placeholder="예: 신규 가입자에게 입금 매칭과 무료 티켓 제공" autocomplete="off" />
                 </label>
                 <label class="field">
                   <span>유도 행동</span>
-                  <input v-model="simpleBrief.targetAction" type="text" placeholder="예: 가입 후 첫 입금 진행" />
+                  <input v-model="simpleBrief.targetAction" type="text" placeholder="예: 가입 후 첫 입금 진행" autocomplete="off" />
                 </label>
                 <label class="field">
                   <span>CTA 문구</span>
-                  <input v-model="promo.ctaLabel" type="text" placeholder="입력해 주세요" />
+                  <input v-model="promo.ctaLabel" type="text" placeholder="입력해 주세요" autocomplete="off" />
                 </label>
                 <label class="field">
                   <span>CTA URL</span>
-                  <input v-model="promo.ctaUrl" type="url" placeholder="입력해 주세요" />
+                  <input v-model="promo.ctaUrl" type="url" placeholder="입력해 주세요" autocomplete="off" />
                 </label>
                 <label class="field">
                   <span>대상 고객</span>
-                  <input v-model="simpleBrief.audience" type="text" placeholder="선택 입력" />
+                  <input v-model="simpleBrief.audience" type="text" placeholder="선택 입력" autocomplete="off" />
                 </label>
               </div>
 
               <label class="field">
                 <span>보조 메시지</span>
-                <textarea v-model="simpleBrief.secondaryMessage" rows="2" placeholder="선택 입력"></textarea>
+                <textarea v-model="simpleBrief.secondaryMessage" rows="2" placeholder="선택 입력" autocomplete="off"></textarea>
               </label>
               <label class="field">
                 <span>캠페인 톤</span>
-                <input v-model="simpleBrief.campaignTone" type="text" placeholder="선택 입력: 활기찬, 프리미엄, 차분한, playful 등" />
+                <input v-model="simpleBrief.campaignTone" type="text" placeholder="선택 입력: 활기찬, 프리미엄, 차분한, playful 등" autocomplete="off" />
               </label>
               <label class="field">
                 <span>이용약관</span>
-                <textarea v-model="promo.termsText" rows="4" placeholder="입력해 주세요"></textarea>
+                <textarea v-model="promo.termsText" rows="4" placeholder="입력해 주세요" autocomplete="off"></textarea>
               </label>
               <div class="action-row align-right">
                 <button class="secondary-action" type="button" @click="clearPromoInputs">초기화</button>
@@ -451,7 +451,7 @@
               </div>
               <label class="field">
                 <span>n8n Webhook URL</span>
-                <input v-model="n8nWebhookUrl" type="url" placeholder="https://your-n8n-domain/webhook/promo-ui-design-generate" />
+                <input v-model="n8nWebhookUrl" type="url" placeholder="https://your-n8n-domain/webhook/promo-ui-design-generate" autocomplete="off" />
               </label>
               <div class="action-row align-right">
                 <button class="primary-action" type="button" @click="generateUiDesign">UI 디자인 생성</button>
