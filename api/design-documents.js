@@ -115,6 +115,7 @@ module.exports = async function handler(req, res) {
     res.status(500).json({ error: "DATABASE_URL is not configured" });
     return;
   }
+  res.setHeader("Cache-Control", "private, max-age=60, stale-while-revalidate=300");
 
   try {
     const sql = neon(databaseUrl);

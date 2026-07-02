@@ -629,6 +629,7 @@ createApp({
       generatedPages: [],
       generatedPagesLoading: false,
       generatedPagesError: "",
+      generatedPagesLoaded: false,
     };
   },
 
@@ -815,14 +816,14 @@ createApp({
     localStorage.removeItem(storageKeys.generatedPages);
     localStorage.removeItem(storageKeys.generatedPage);
     this.loadDesignDocuments();
-    window.setTimeout(() => this.loadGeneratedPagesFromServer({ silent: true }), 250);
     this.resetOverride();
   },
 
   methods: {
-    async loadDesignDocuments() {
+    async loadDesignDocuments(options = {}) {
       try {
-        const response = await fetch("/api/design-documents");
+        const url = options.fresh ? `/api/design-documents?ts=${Date.now()}` : "/api/design-documents";
+        const response = await fetch(url);
         if (!response.ok) throw new Error(`API ${response.status}`);
         const payload = await response.json();
         this.designDocuments = payload.documents || [];
@@ -1213,13 +1214,16 @@ createApp({
       if (window.location.protocol === "file:") {
         this.generatedPages = [];
         this.generatedPagesError = "";
+        this.generatedPagesLoaded = true;
         return;
       }
 
       this.generatedPagesLoading = true;
       this.generatedPagesError = "";
       try {
-        const response = await fetch("/api/promo-design-assets?limit=50");
+        const params = new URLSearchParams({ limit: "50" });
+        if (options.fresh) params.set("ts", String(Date.now()));
+        const response = await fetch(`/api/promo-design-assets?${params.toString()}`);
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `API ${response.status}`);
         const serverPages = (result.runs || [])
@@ -1231,13 +1235,19 @@ createApp({
           ...transientPages.filter((page) => !serverIds.has(page.id)),
           ...serverPages,
         ];
+        this.generatedPagesLoaded = true;
         if (!options.silent) this.setStatus(`서버에서 생성 결과 ${serverPages.length}개를 불러왔습니다`);
       } catch (error) {
         this.generatedPagesError = error.message;
+        this.generatedPagesLoaded = true;
         if (!options.silent) this.setStatus(`생성 결과 목록을 불러오지 못했습니다: ${error.message}`);
       } finally {
         this.generatedPagesLoading = false;
       }
+    },
+
+    refreshGeneratedPages() {
+      return this.loadGeneratedPagesFromServer({ fresh: true });
     },
 
     selectStyleGroup(group) {
@@ -1406,7 +1416,7 @@ createApp({
           if (!response.ok) throw new Error(payload.message || payload.error || `Register ${response.status}`);
           const doc = payload.document;
           this.closeAddDesign();
-          await this.loadDesignDocuments();
+          await this.loadDesignDocuments({ fresh: true });
           this.selectDocument(doc.id);
           this.setStatus(isEdit ? "MD 수정 및 데이터화가 완료되었습니다" : "MD 등록 및 데이터화가 완료되었습니다");
           return;
@@ -1523,7 +1533,7 @@ createApp({
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(payload.message || payload.error || `Extract ${response.status}`);
         this.detailDoc = payload.document;
-        await this.loadDesignDocuments();
+        await this.loadDesignDocuments({ fresh: true });
         this.setStatus("Design MD 재추출이 완료되었습니다");
       } catch (error) {
         this.setStatus(`재추출 실패: ${error.message}`);
@@ -1541,7 +1551,7 @@ createApp({
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(payload.message || payload.error || `Archive ${response.status}`);
         this.closeDetail();
-        await this.loadDesignDocuments();
+        await this.loadDesignDocuments({ fresh: true });
         this.selectedDocumentId = this.designDocuments[0]?.id || "";
         this.setStatus("Design MD를 보관 처리했습니다");
       } catch (error) {
@@ -1823,7 +1833,7 @@ createApp({
       listItem.timestampStamp = n8nResult?.timestampStamp || timestampStamp(listItem.committedAt || listItem.createdAt);
       listItem.payload = n8nResult?.payload || payload;
       await this.refreshStoredDesignResult(listItem).catch(() => false);
-      await this.loadGeneratedPagesFromServer({ silent: true });
+      await this.loadGeneratedPagesFromServer({ silent: true, fresh: true });
 
       this.currentBuilderStep = 5;
       this.setStatus(n8nResult ? "n8n UI 디자인 생성이 완료되었습니다" : "로컬 UI 디자인 생성이 완료되었습니다");

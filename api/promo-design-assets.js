@@ -493,72 +493,138 @@ async function listAssets(req, res, sql) {
   const limit = Math.max(1, Math.min(Number(req.query.limit || 50) || 50, 100));
   const resetAt = String(process.env.PROMO_DESIGN_RESULTS_RESET_AT || DEFAULT_RESULTS_RESET_AT).trim();
   const rows = await sql`
+    with selected_runs as (
+      select
+        r.id,
+        r.id::text as run_id,
+        r.run_key,
+        r.prompt_group_id,
+        r.promo_title,
+        r.market,
+        r.selected_md_id,
+        r.selected_md_name,
+        r.style_source,
+        r.style_source_label,
+        r.template_id,
+        r.template_name,
+        r.generation_mode,
+        r.input_mode,
+        r.status,
+        r.result_type,
+        case when r.md_compliance_map is not null and r.md_compliance_map <> '{}'::jsonb then true else false end as has_md_compliance_map,
+        r.error_message,
+        r.created_at,
+        r.updated_at,
+        a.id::text as asset_id,
+        a.asset_type,
+        a.asset_url,
+        a.thumbnail_url,
+        a.mime_type,
+        a.width,
+        a.height,
+        a.file_size,
+        a.storage_provider,
+        a.storage_key,
+        a.metadata,
+        a.is_primary,
+        a.created_at as asset_created_at
+      from promo_design_runs r
+      join promo_design_assets a on a.run_id = r.id
+        and a.asset_type = 'generated_image'
+        and a.is_primary = true
+      where r.created_at >= ${resetAt}::timestamptz
+      order by r.created_at desc
+      limit ${limit}
+    ),
+    latest_markdown_assets as (
+      select distinct on (a.run_id, a.asset_type)
+        a.run_id,
+        a.asset_type,
+        a.storage_key
+      from promo_design_assets a
+      join selected_runs sr on sr.id = a.run_id
+      where a.asset_type in (
+        'design_prompt_markdown',
+        'promo_input_markdown',
+        'integrated_design_brief_markdown'
+      )
+      order by a.run_id, a.asset_type, a.created_at desc
+    )
     select
-      r.id::text as run_id,
-      r.run_key,
-      r.prompt_group_id,
-      r.promo_title,
-      r.market,
-      r.selected_md_id,
-      r.selected_md_name,
-      r.style_source,
-      r.style_source_label,
-      r.template_id,
-      r.template_name,
-      r.generation_mode,
-      r.input_mode,
-      r.status,
-      r.result_type,
-      r.request_payload,
-      r.image_prompt,
-      r.layout_mapping,
-      r.md_compliance_map,
-      r.error_message,
-      r.created_at,
-      r.updated_at,
-      a.id::text as asset_id,
-      a.asset_type,
-      a.asset_url,
-      a.thumbnail_url,
-      a.mime_type,
-      a.width,
-      a.height,
-      a.file_size,
-      a.storage_provider,
-      a.storage_key,
-      a.metadata,
-      a.is_primary,
-      a.created_at as asset_created_at,
-      (
-        select dp.storage_key
-        from promo_design_assets dp
-        where dp.run_id = r.id and dp.asset_type = 'design_prompt_markdown'
-        order by dp.created_at desc
-        limit 1
-      ) as design_prompt_storage_key,
-      (
-        select pi.storage_key
-        from promo_design_assets pi
-        where pi.run_id = r.id and pi.asset_type = 'promo_input_markdown'
-        order by pi.created_at desc
-        limit 1
-      ) as promo_input_storage_key,
-      (
-        select ib.storage_key
-        from promo_design_assets ib
-        where ib.run_id = r.id and ib.asset_type = 'integrated_design_brief_markdown'
-        order by ib.created_at desc
-        limit 1
-      ) as integrated_brief_storage_key
-    from promo_design_runs r
-    join promo_design_assets a on a.run_id = r.id
-      and a.asset_type = 'generated_image'
-      and a.is_primary = true
-    where r.created_at >= ${resetAt}::timestamptz
-    order by r.created_at desc
-    limit ${limit}
+      sr.run_id,
+      sr.run_key,
+      sr.prompt_group_id,
+      sr.promo_title,
+      sr.market,
+      sr.selected_md_id,
+      sr.selected_md_name,
+      sr.style_source,
+      sr.style_source_label,
+      sr.template_id,
+      sr.template_name,
+      sr.generation_mode,
+      sr.input_mode,
+      sr.status,
+      sr.result_type,
+      sr.has_md_compliance_map,
+      sr.error_message,
+      sr.created_at,
+      sr.updated_at,
+      sr.asset_id,
+      sr.asset_type,
+      sr.asset_url,
+      sr.thumbnail_url,
+      sr.mime_type,
+      sr.width,
+      sr.height,
+      sr.file_size,
+      sr.storage_provider,
+      sr.storage_key,
+      sr.metadata,
+      sr.is_primary,
+      sr.asset_created_at,
+      max(lma.storage_key) filter (where lma.asset_type = 'design_prompt_markdown') as design_prompt_storage_key,
+      max(lma.storage_key) filter (where lma.asset_type = 'promo_input_markdown') as promo_input_storage_key,
+      max(lma.storage_key) filter (where lma.asset_type = 'integrated_design_brief_markdown') as integrated_brief_storage_key
+    from selected_runs sr
+    left join latest_markdown_assets lma on lma.run_id = sr.id
+    group by
+      sr.run_id,
+      sr.run_key,
+      sr.prompt_group_id,
+      sr.promo_title,
+      sr.market,
+      sr.selected_md_id,
+      sr.selected_md_name,
+      sr.style_source,
+      sr.style_source_label,
+      sr.template_id,
+      sr.template_name,
+      sr.generation_mode,
+      sr.input_mode,
+      sr.status,
+      sr.result_type,
+      sr.has_md_compliance_map,
+      sr.error_message,
+      sr.created_at,
+      sr.updated_at,
+      sr.asset_id,
+      sr.asset_type,
+      sr.asset_url,
+      sr.thumbnail_url,
+      sr.mime_type,
+      sr.width,
+      sr.height,
+      sr.file_size,
+      sr.storage_provider,
+      sr.storage_key,
+      sr.metadata,
+      sr.is_primary,
+      sr.asset_created_at
+    order by sr.created_at desc
   `;
 
+  res.setHeader("Cache-Control", "private, max-age=15, stale-while-revalidate=60");
   return res.status(200).json({
     ok: true,
     resetAt,
@@ -579,10 +645,10 @@ async function listAssets(req, res, sql) {
         input_mode: row.input_mode,
         status: row.status,
         result_type: row.result_type,
-        request_payload: row.request_payload,
-        image_prompt: row.image_prompt,
-        layout_mapping: row.layout_mapping,
-        md_compliance_map: row.md_compliance_map,
+        request_payload: null,
+        image_prompt: "",
+        layout_mapping: null,
+        md_compliance_map: row.has_md_compliance_map ? { present: true } : null,
         error_message: row.error_message,
         created_at: row.created_at,
         updated_at: row.updated_at,

@@ -479,7 +479,11 @@
                 <p class="eyebrow">C 섹션</p>
                 <h2>C. 생성된 UI 디자인 / 결과</h2>
               </div>
-              <span>{{ generatedPages.length }}개 생성됨</span>
+              <div class="subsection-actions">
+                <span v-if="generatedPagesLoading">불러오는 중</span>
+                <span v-else>{{ generatedPages.length }}개 생성됨</span>
+                <button class="tiny-button" type="button" :disabled="generatedPagesLoading" @click="refreshGeneratedPages">서버 목록 불러오기</button>
+              </div>
             </div>
 
             <div class="abc-panel-body">
@@ -521,6 +525,16 @@
                     </tr>
                   </tbody>
                 </table>
+              </div>
+              <div class="empty-state" v-if="!generatedPagesLoading && generatedPagesLoaded && !generatedPages.length">
+                서버에 표시할 생성 결과가 없습니다.
+              </div>
+              <div class="empty-state" v-if="!generatedPagesLoading && !generatedPagesLoaded">
+                서버 목록은 필요할 때 불러옵니다.
+              </div>
+              <div class="outline-item danger-state" v-if="generatedPagesError">
+                <strong>목록 로딩 오류</strong>
+                <span>{{ generatedPagesError }}</span>
               </div>
             </div>
 
