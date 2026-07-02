@@ -821,6 +821,7 @@ createApp({
     localStorage.removeItem(storageKeys.generatedPage);
     localStorage.removeItem(storageKeys.n8nWebhookUrl);
     this.loadDesignDocuments();
+    this.loadGeneratedPagesFromServer({ silent: true });
     this.resetOverride();
   },
 
