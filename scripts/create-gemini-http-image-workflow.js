@@ -19,13 +19,13 @@ imageNode.typeVersion = 4.2;
 delete imageNode.credentials;
 imageNode.parameters = {
   method: 'POST',
-  url: "={{ 'https://generativelanguage.googleapis.com/v1beta/' + ($json.imageModel || 'models/gemini-3.1-flash-image') + ':generateContent' }}",
+  url: 'https://generativelanguage.googleapis.com/v1beta/interactions',
   sendHeaders: true,
   headerParameters: {
     parameters: [
       {
         name: 'x-goog-api-key',
-        value: "={{$env.GEMINI_API_KEY || 'REPLACE_WITH_GEMINI_API_KEY'}}",
+        value: 'REPLACE_WITH_GEMINI_API_KEY',
       },
       {
         name: 'Content-Type',
@@ -36,7 +36,7 @@ imageNode.parameters = {
   sendBody: true,
   contentType: 'json',
   specifyBody: 'json',
-  jsonBody: "={{ JSON.stringify({ contents: [{ role: 'user', parts: [{ text: $json.imagePrompt }] }], generationConfig: { aspectRatio: $json.output?.aspectRatio || '3:4', numberOfImages: 1 } }) }}",
+  jsonBody: "={{ JSON.stringify({ model: String($json.imageModel || 'gemini-3.1-flash-image').replace(/^models\\//, ''), input: [{ type: 'text', text: $json.imagePrompt }], response_format: { type: 'image', mime_type: $json.output?.imageMimeType || 'image/png', aspect_ratio: $json.output?.aspectRatio || '2:3', image_size: $json.output?.imageSizeTier || '2K' } }) }}",
   options: {
     timeout: 300000,
   },
@@ -51,7 +51,7 @@ if (normalizeNode?.parameters?.jsCode) {
     )
     .replace(
       "imageSize: output.imageSize || '1024x1536'",
-      "imageSize: output.imageSize || '1024x1536',\n      aspectRatio: output.aspectRatio || output.aspect_ratio || '3:4'",
+      "imageSize: output.imageSize || '1024x1536',\n      aspectRatio: output.aspectRatio || output.aspect_ratio || '2:3',\n      imageSizeTier: output.imageSizeTier || output.image_size_tier || '2K',\n      imageMimeType: output.imageMimeType || output.image_mime_type || 'image/png'",
     );
 }
 
