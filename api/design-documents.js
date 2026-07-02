@@ -60,7 +60,7 @@ function groupSections(sections) {
       level: 2,
       title: section.original_title || section.normalized_title || section.category,
       category: section.category,
-      excerpt: (section.content_markdown || "").replace(/^#+\s+.+\n?/, "").trim().slice(0, 180),
+      excerpt: "",
     });
   }
   return byDocument;
@@ -80,9 +80,27 @@ function normalizeStyleClassification(value) {
 function normalizeTokenValue(value) {
   if (value && typeof value === "object") {
     if (typeof value.value !== "undefined" && value.unit) return `${value.value}${value.unit}`;
+    if (typeof value.$value !== "undefined") return normalizeTokenValue(value.$value);
+    if (typeof value.value !== "undefined") return normalizeTokenValue(value.value);
     return JSON.stringify(value);
   }
   return String(value || "");
+}
+
+function valuesFromTokenGroup(schema, groupKey, limit) {
+  const group = schema?.tokens?.[groupKey] || {};
+  return Object.values(group)
+    .map(normalizeTokenValue)
+    .filter((value) => value && value !== "unknown")
+    .slice(0, limit);
+}
+
+function countSchemaTokens(schema) {
+  const tokens = schema?.tokens || {};
+  return Object.values(tokens).reduce((total, group) => {
+    if (!group || typeof group !== "object" || Array.isArray(group)) return total;
+    return total + Object.keys(group).length;
+  }, 0);
 }
 
 module.exports = async function handler(req, res) {
@@ -110,8 +128,8 @@ module.exports = async function handler(req, res) {
           b.slug as slug,
           d.original_filename,
           d.design_concept_summary,
-          d.design_concept_json,
-          d.design_prompt_context,
+          null::jsonb as design_concept_json,
+          ''::text as design_prompt_context,
           d.style_classification_json,
           d.analyzed_at,
           d.analysis_model,
@@ -137,8 +155,8 @@ module.exports = async function handler(req, res) {
           b.slug as slug,
           d.original_filename,
           d.design_concept_summary,
-          d.design_concept_json,
-          d.design_prompt_context,
+          null::jsonb as design_concept_json,
+          ''::text as design_prompt_context,
           null::jsonb as style_classification_json,
           d.analyzed_at,
           d.analysis_model,
@@ -162,130 +180,101 @@ module.exports = async function handler(req, res) {
       return;
     }
 
-    let tokens = [];
-    let latestTokenSets = [];
-    try {
-      latestTokenSets = await sql`
-        select distinct on (document_id)
-          id::text as id,
-          document_id::text as document_id,
-          version,
-          normalized_schema_json
+    const latestTokenSetsPromise = sql`
+      select distinct on (document_id)
+        id::text as id,
+        document_id::text as document_id,
+        version,
+        normalized_schema_json
+      from design_token_sets
+      where document_id::text = any(${documentIds})
+        and status = 'ready'
+      order by document_id, version desc
+    `.catch(() => []);
+
+    const metadataCountsPromise = sql`
+      with latest as (
+        select distinct on (document_id) id, document_id
         from design_token_sets
         where document_id::text = any(${documentIds})
           and status = 'ready'
         order by document_id, version desc
-      `;
-      tokens = await sql`
-        with latest as (
-          select distinct on (document_id) id, document_id
-          from design_token_sets
-          where document_id::text = any(${documentIds})
-            and status = 'ready'
-          order by document_id, version desc
-        )
-        select
-          i.document_id::text as document_id,
-          i.token_type,
-          i.token_value
-        from design_token_items i
-        join latest l on l.id = i.token_set_id
-        order by i.created_at asc
-      `;
-    } catch (error) {
-      latestTokenSets = [];
-      tokens = [];
-    }
+      )
+      select
+        m.document_id::text as document_id,
+        count(*)::int as count
+      from design_metadata_items m
+      join latest l on l.id = m.token_set_id
+      group by m.document_id
+    `
+      .then((rows) => groupCounts(rows))
+      .catch(() => new Map());
 
-    if (!tokens.length) {
-      tokens = await sql`
-        select
-          document_id::text as document_id,
-          token_type,
-          token_value
-        from design_tokens
-        where document_id::text = any(${documentIds})
-        order by created_at asc
-      `;
-    }
-
-    let metadata = [];
-    try {
-      metadata = await sql`
-        with latest as (
-          select distinct on (document_id) id, document_id
-          from design_token_sets
-          where document_id::text = any(${documentIds})
-            and status = 'ready'
-          order by document_id, version desc
-        )
-        select
-          m.document_id::text as document_id,
-          m.category,
-          m.key,
-          m.value,
-          m.confidence
-        from design_metadata_items m
-        join latest l on l.id = m.token_set_id
-        order by m.created_at asc
-      `;
-    } catch (error) {
-      metadata = [];
-    }
-
-    const sections = await sql`
+    const sectionsPromise = sql`
       select
         document_id::text as document_id,
         category,
         original_title,
         normalized_title,
-        content_markdown,
         sort_order
       from design_sections
       where document_id::text = any(${documentIds})
       order by sort_order asc
-    `;
+    `.catch(() => []);
 
-    const tokensByDocument = groupTokens(tokens);
+    const componentCountsPromise = sql`
+      select document_id::text as document_id, count(*)::int as count
+      from design_component_patterns
+      where document_id::text = any(${documentIds})
+      group by document_id
+    `
+      .then((rows) => groupCounts(rows))
+      .catch(() => new Map());
+
+    const layoutCountsPromise = sql`
+      select document_id::text as document_id, count(*)::int as count
+      from design_layout_patterns
+      where document_id::text = any(${documentIds})
+      group by document_id
+    `
+      .then((rows) => groupCounts(rows))
+      .catch(() => new Map());
+
+    const guidelineCountsPromise = sql`
+      select document_id::text as document_id, count(*)::int as count
+      from design_guideline_items
+      where document_id::text = any(${documentIds})
+      group by document_id
+    `
+      .then((rows) => groupCounts(rows))
+      .catch(() => new Map());
+
+    const [
+      latestTokenSets,
+      metadataCounts,
+      sections,
+      componentCounts,
+      layoutCounts,
+      guidelineCounts,
+    ] = await Promise.all([
+      latestTokenSetsPromise,
+      metadataCountsPromise,
+      sectionsPromise,
+      componentCountsPromise,
+      layoutCountsPromise,
+      guidelineCountsPromise,
+    ]);
+
     const tokenSetsByDocument = groupTokenSets(latestTokenSets);
     const sectionsByDocument = groupSections(sections);
-    const metadataByDocument = groupMetadata(metadata);
-    let componentCounts = new Map();
-    let layoutCounts = new Map();
-    let guidelineCounts = new Map();
-    try {
-      const componentRows = await sql`
-        select document_id::text as document_id, count(*)::int as count
-        from design_component_patterns
-        where document_id::text = any(${documentIds})
-        group by document_id
-      `;
-      const layoutRows = await sql`
-        select document_id::text as document_id, count(*)::int as count
-        from design_layout_patterns
-        where document_id::text = any(${documentIds})
-        group by document_id
-      `;
-      const guidelineRows = await sql`
-        select document_id::text as document_id, count(*)::int as count
-        from design_guideline_items
-        where document_id::text = any(${documentIds})
-        group by document_id
-      `;
-      componentCounts = groupCounts(componentRows);
-      layoutCounts = groupCounts(layoutRows);
-      guidelineCounts = groupCounts(guidelineRows);
-    } catch (error) {
-      componentCounts = new Map();
-      layoutCounts = new Map();
-      guidelineCounts = new Map();
-    }
 
     res.status(200).json({
       documents: documents.map((doc) => {
-        const tokenSummary = tokensByDocument.get(doc.id) || { colors: [], fonts: [], tokenCount: 0 };
         const latestTokenSet = tokenSetsByDocument.get(doc.id) || null;
+        const schema = latestTokenSet?.normalizedSchema || {};
         const headings = sectionsByDocument.get(doc.id) || [];
+        const colors = valuesFromTokenGroup(schema, "color", 8);
+        const fonts = valuesFromTokenGroup(schema, "typography", 4);
         return {
           id: doc.id,
           brandId: doc.brand_id,
@@ -307,18 +296,18 @@ module.exports = async function handler(req, res) {
           styleClassification: normalizeStyleClassification(doc.style_classification_json),
           summary: {
             headings,
-            colors: tokenSummary.colors,
-            fonts: tokenSummary.fonts.length ? tokenSummary.fonts : ["Pretendard, Arial, sans-serif"],
+            colors,
+            fonts: fonts.length ? fonts : ["Pretendard, Arial, sans-serif"],
             categories: Array.from(new Set(headings.map((item) => item.category))).filter(Boolean),
             sectionCount: headings.length,
-            tokenCount: tokenSummary.tokenCount,
-            metadataCount: (metadataByDocument.get(doc.id) || []).length,
+            tokenCount: countSchemaTokens(schema),
+            metadataCount: metadataCounts.get(doc.id) || 0,
             componentPatternCount: componentCounts.get(doc.id) || 0,
             layoutPatternCount: layoutCounts.get(doc.id) || 0,
             guidelineCount: guidelineCounts.get(doc.id) || 0,
           },
           normalizedSchema: latestTokenSet?.normalizedSchema || null,
-          metadata: (metadataByDocument.get(doc.id) || []).slice(0, 12),
+          metadata: [],
         };
       }),
     });

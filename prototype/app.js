@@ -815,7 +815,7 @@ createApp({
     localStorage.removeItem(storageKeys.generatedPages);
     localStorage.removeItem(storageKeys.generatedPage);
     this.loadDesignDocuments();
-    this.loadGeneratedPagesFromServer();
+    window.setTimeout(() => this.loadGeneratedPagesFromServer({ silent: true }), 250);
     this.resetOverride();
   },
 
@@ -832,7 +832,6 @@ createApp({
         }
         localStorage.setItem(storageKeys.selectedDocumentId, this.selectedDocumentId);
         this.resetOverride();
-        this.loadSelectedDesignDetail(this.selectedDocumentId);
         this.setStatus(`Neon에서 MD ${this.designDocuments.length}개를 불러왔습니다`);
       } catch (error) {
         this.designDocuments = dummyDocuments();
@@ -1443,7 +1442,6 @@ createApp({
       this.expandedStyleGroupSlug = group.slug;
       this.selectedStyleGroupSlug = group.slug;
       if (this.styleSource === "design_md") this.resetOverride();
-      this.loadSelectedDesignDetail(id);
       this.setStatus("MD를 선택했습니다");
     },
 
@@ -1493,10 +1491,11 @@ createApp({
     },
 
     async loadSelectedDesignDetail(id) {
-      if (!id || window.location.protocol === "file:") return;
+      if (!id || window.location.protocol === "file:") return null;
       const doc = await this.fetchDesignDocumentDetail(id);
-      if (!doc || doc.id !== this.selectedDocumentId) return;
+      if (!doc || doc.id !== this.selectedDocumentId) return null;
       this.selectedDesignDetail = doc;
+      return doc;
     },
 
     editDetailDocument() {
