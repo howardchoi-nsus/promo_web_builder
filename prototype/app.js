@@ -403,6 +403,23 @@ function designImageUrlForId(id) {
   return id ? `/api/promo-design-image?id=${encodeURIComponent(id)}` : "";
 }
 
+function randomToken(length = 5) {
+  const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+  const randomValues = new Uint8Array(length);
+  if (window.crypto?.getRandomValues) {
+    window.crypto.getRandomValues(randomValues);
+  } else {
+    for (let index = 0; index < length; index += 1) {
+      randomValues[index] = Math.floor(Math.random() * 256);
+    }
+  }
+  return Array.from(randomValues, (value) => alphabet[value % alphabet.length]).join("");
+}
+
+function createRunKey() {
+  return `promo-${timestampStamp(new Date())}-${randomToken(5)}`;
+}
+
 function normalizeCategory(title) {
   const raw = title.toLowerCase().replace(/^\d+\.\s*/, "");
   if (raw.includes("color") || raw.includes("palette")) return "colors";
@@ -546,7 +563,6 @@ const { createApp } = Vue;
 
 createApp({
   data() {
-    const pages = loadJson(storageKeys.generatedPages, []);
     return {
       status: "준비 완료",
       sectionWidths: [30, 30, 40],
@@ -610,7 +626,9 @@ createApp({
         bodyFont: "Pretendard, Arial, sans-serif",
         titleWeight: "800",
       },
-      generatedPages: pages,
+      generatedPages: [],
+      generatedPagesLoading: false,
+      generatedPagesError: "",
     };
   },
 
@@ -794,7 +812,10 @@ createApp({
   },
 
   mounted() {
+    localStorage.removeItem(storageKeys.generatedPages);
+    localStorage.removeItem(storageKeys.generatedPage);
     this.loadDesignDocuments();
+    this.loadGeneratedPagesFromServer();
     this.resetOverride();
   },
 
@@ -1150,6 +1171,74 @@ createApp({
       if (!page) return "";
       const url = toDesignViewUrl(page.designUrl || page.pageUrl || (isDesignViewUrl(page.imageUrl) ? page.imageUrl : ""), page.id);
       return url || "";
+    },
+
+    storedResultToPage(result, fallback = {}) {
+      const run = result?.run || {};
+      const assets = Array.isArray(result?.assets) ? result.assets : [];
+      const imageAsset = assets.find((asset) => asset.asset_type === "generated_image") || {};
+      const markdownAssets = assets.filter((asset) => /_markdown$/.test(asset.asset_type || ""));
+      const runKey = run.run_key || fallback.id || "";
+      const createdAt = run.created_at || fallback.createdAt || "";
+      const committedAt = imageAsset.created_at || fallback.committedAt || createdAt;
+
+      return {
+        id: runKey,
+        title: run.promo_title || fallback.title || runKey,
+        selectedMd: run.selected_md_name || fallback.selectedMd || "",
+        styleSourceLabel: run.style_source_label || fallback.styleSourceLabel || "",
+        template: run.template_name || fallback.template || "",
+        market: run.market || fallback.market || "",
+        createdAt,
+        committedAt,
+        timestampStamp: timestampStamp(committedAt || createdAt),
+        status: run.status || fallback.status || "generated",
+        designUrl: designViewUrlForId(runKey),
+        imageUrl: designImageUrlForId(runKey),
+        pageUrl: designViewUrlForId(runKey),
+        layoutMapping: run.layout_mapping || fallback.layoutMapping || null,
+        mdComplianceMap: run.md_compliance_map || fallback.mdComplianceMap || null,
+        imagePrompt: run.image_prompt || fallback.imagePrompt || "",
+        promptGroupId: run.prompt_group_id || imageAsset.prompt_group_id || imageAsset.metadata?.promptGroupId || fallback.promptGroupId || "",
+        designPromptStorageKey: markdownAssets.find((asset) => asset.asset_type === "design_prompt_markdown")?.storage_key || fallback.designPromptStorageKey || "",
+        promoInputStorageKey: markdownAssets.find((asset) => asset.asset_type === "promo_input_markdown")?.storage_key || fallback.promoInputStorageKey || "",
+        integratedBriefStorageKey: markdownAssets.find((asset) => asset.asset_type === "integrated_design_brief_markdown")?.storage_key || fallback.integratedBriefStorageKey || "",
+        errorMessage: run.error_message || fallback.errorMessage || "",
+        hasOverride: fallback.hasOverride || false,
+        resultType: run.result_type || fallback.resultType || "image",
+        payload: run.request_payload || fallback.payload || null,
+      };
+    },
+
+    async loadGeneratedPagesFromServer(options = {}) {
+      if (window.location.protocol === "file:") {
+        this.generatedPages = [];
+        this.generatedPagesError = "";
+        return;
+      }
+
+      this.generatedPagesLoading = true;
+      this.generatedPagesError = "";
+      try {
+        const response = await fetch("/api/promo-design-assets?limit=50");
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `API ${response.status}`);
+        const serverPages = (result.runs || [])
+          .map((item) => this.storedResultToPage(item))
+          .filter((page) => page.id);
+        const transientPages = this.generatedPages.filter((page) => page.status === "n8n_ui_design_pending" || page.status === "n8n_failed");
+        const serverIds = new Set(serverPages.map((page) => page.id));
+        this.generatedPages = [
+          ...transientPages.filter((page) => !serverIds.has(page.id)),
+          ...serverPages,
+        ];
+        if (!options.silent) this.setStatus(`서버에서 생성 결과 ${serverPages.length}개를 불러왔습니다`);
+      } catch (error) {
+        this.generatedPagesError = error.message;
+        if (!options.silent) this.setStatus(`생성 결과 목록을 불러오지 못했습니다: ${error.message}`);
+      } finally {
+        this.generatedPagesLoading = false;
+      }
     },
 
     selectStyleGroup(group) {
@@ -1639,32 +1728,12 @@ createApp({
     },
 
     applyStoredDesignResult(page, result) {
-      const run = result?.run || {};
-      const assets = Array.isArray(result?.assets) ? result.assets : [];
-      const imageAsset = assets.find((asset) => asset.asset_type === "generated_image") || run;
-      const runKey = run.run_key || page.id;
-      if (!runKey || !imageAsset?.asset_url) return false;
-
-      page.id = runKey;
-      page.title = run.promo_title || page.title;
-      page.selectedMd = page.selectedMd || run.selected_md_name || "";
-      page.createdAt = run.created_at || page.createdAt;
-      page.committedAt = run.asset_created_at || imageAsset.created_at || page.committedAt || page.createdAt;
-      page.timestampStamp = timestampStamp(page.committedAt || page.createdAt);
-      page.status = "n8n_ui_design_generated";
-      page.designUrl = designViewUrlForId(runKey);
-      page.imageUrl = designImageUrlForId(runKey);
-      page.pageUrl = designViewUrlForId(runKey);
-      page.resultType = run.result_type || "image";
-      page.layoutMapping = run.layout_mapping || page.layoutMapping || null;
-      page.mdComplianceMap = run.md_compliance_map || page.mdComplianceMap || null;
-      page.imagePrompt = run.image_prompt || page.imagePrompt || "";
-      page.promptGroupId = run.prompt_group_id || imageAsset.asset_prompt_group_id || page.promptGroupId || "";
-      const markdownAssets = assets.filter((asset) => /_markdown$/.test(asset.asset_type || ""));
-      page.designPromptStorageKey = markdownAssets.find((asset) => asset.asset_type === "design_prompt_markdown")?.storage_key || page.designPromptStorageKey || "";
-      page.promoInputStorageKey = markdownAssets.find((asset) => asset.asset_type === "promo_input_markdown")?.storage_key || page.promoInputStorageKey || "";
-      page.integratedBriefStorageKey = markdownAssets.find((asset) => asset.asset_type === "integrated_design_brief_markdown")?.storage_key || page.integratedBriefStorageKey || "";
-      page.errorMessage = "";
+      const updatedPage = this.storedResultToPage(result, page);
+      if (!updatedPage.id) return false;
+      Object.assign(page, updatedPage, {
+        status: "n8n_ui_design_generated",
+        errorMessage: "",
+      });
       return true;
     },
 
@@ -1675,10 +1744,6 @@ createApp({
       const result = await response.json().catch(() => ({}));
       if (!response.ok) return false;
       const updated = this.applyStoredDesignResult(page, result);
-      if (updated) {
-        saveJson(storageKeys.generatedPages, this.generatedPages);
-        saveJson(storageKeys.generatedPage, page.payload);
-      }
       return updated;
     },
 
@@ -1690,7 +1755,7 @@ createApp({
       if (!this.validatePromoInputs()) return;
       await this.loadSelectedDesignDetail(this.selectedDocumentId);
 
-      const pageId = `promo-${String(this.generatedPages.length + 1).padStart(3, "0")}`;
+      const pageId = createRunKey();
       const payload = this.buildGeneratedPayload(pageId);
       const initialStamp = timestampStamp(payload.generatedAt);
       const willUseN8n = this.n8nWebhookUrl.trim() || window.location.protocol !== "file:";
@@ -1724,8 +1789,6 @@ createApp({
       };
 
       this.generatedPages.unshift(listItem);
-      saveJson(storageKeys.generatedPages, this.generatedPages);
-      saveJson(storageKeys.generatedPage, listItem.payload);
 
       let n8nResult = null;
       try {
@@ -1741,8 +1804,7 @@ createApp({
 
         listItem.status = "n8n_failed";
         listItem.errorMessage = error.message;
-        saveJson(storageKeys.generatedPages, this.generatedPages);
-        this.setStatus(`n8n 실행 실패. 초안은 C섹션에 저장했습니다: ${error.message}`);
+        this.setStatus(`n8n 실행 실패. 서버 저장 결과를 확인하지 못했습니다: ${error.message}`);
         return;
       }
 
@@ -1762,9 +1824,8 @@ createApp({
       listItem.timestampStamp = n8nResult?.timestampStamp || timestampStamp(listItem.committedAt || listItem.createdAt);
       listItem.payload = n8nResult?.payload || payload;
       await this.refreshStoredDesignResult(listItem).catch(() => false);
+      await this.loadGeneratedPagesFromServer({ silent: true });
 
-      saveJson(storageKeys.generatedPages, this.generatedPages);
-      saveJson(storageKeys.generatedPage, listItem.payload);
       this.currentBuilderStep = 5;
       this.setStatus(n8nResult ? "n8n UI 디자인 생성이 완료되었습니다" : "로컬 UI 디자인 생성이 완료되었습니다");
       if (listItem.pageUrl) window.open(listItem.pageUrl, "_blank");

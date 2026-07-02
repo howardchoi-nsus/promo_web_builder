@@ -7,6 +7,7 @@ const {
 } = require("./_promo-markdown-builders");
 
 const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
+const DEFAULT_RESULTS_RESET_AT = "2026-07-02T10:10:55+09:00";
 
 module.exports = async function handler(req, res) {
   try {
@@ -30,9 +31,10 @@ async function getAsset(req, res) {
 
   const runKey = String(req.query.runKey || req.query.id || "").trim();
   const promptGroupId = String(req.query.promptGroupId || req.query.prompt_group_id || "").trim();
-  if (!runKey && !promptGroupId) return res.status(400).json({ error: "runKey or promptGroupId is required" });
 
   const sql = neon(databaseUrl);
+  if (!runKey && !promptGroupId) return await listAssets(req, res, sql);
+
   if (promptGroupId) {
     const rows = await sql`
       select
@@ -484,6 +486,139 @@ async function saveAsset(req, res) {
     timestampStamp: fileStamp,
     imageUrl: imageProxyUrl,
     designUrl: `${origin}/api/promo-design-view?id=${encodeURIComponent(runKey)}`,
+  });
+}
+
+async function listAssets(req, res, sql) {
+  const limit = Math.max(1, Math.min(Number(req.query.limit || 50) || 50, 100));
+  const resetAt = String(process.env.PROMO_DESIGN_RESULTS_RESET_AT || DEFAULT_RESULTS_RESET_AT).trim();
+  const rows = await sql`
+    select
+      r.id::text as run_id,
+      r.run_key,
+      r.prompt_group_id,
+      r.promo_title,
+      r.market,
+      r.selected_md_id,
+      r.selected_md_name,
+      r.style_source,
+      r.style_source_label,
+      r.template_id,
+      r.template_name,
+      r.generation_mode,
+      r.input_mode,
+      r.status,
+      r.result_type,
+      r.request_payload,
+      r.image_prompt,
+      r.layout_mapping,
+      r.md_compliance_map,
+      r.error_message,
+      r.created_at,
+      r.updated_at,
+      a.id::text as asset_id,
+      a.asset_type,
+      a.asset_url,
+      a.thumbnail_url,
+      a.mime_type,
+      a.width,
+      a.height,
+      a.file_size,
+      a.storage_provider,
+      a.storage_key,
+      a.metadata,
+      a.is_primary,
+      a.created_at as asset_created_at,
+      (
+        select dp.storage_key
+        from promo_design_assets dp
+        where dp.run_id = r.id and dp.asset_type = 'design_prompt_markdown'
+        order by dp.created_at desc
+        limit 1
+      ) as design_prompt_storage_key,
+      (
+        select pi.storage_key
+        from promo_design_assets pi
+        where pi.run_id = r.id and pi.asset_type = 'promo_input_markdown'
+        order by pi.created_at desc
+        limit 1
+      ) as promo_input_storage_key,
+      (
+        select ib.storage_key
+        from promo_design_assets ib
+        where ib.run_id = r.id and ib.asset_type = 'integrated_design_brief_markdown'
+        order by ib.created_at desc
+        limit 1
+      ) as integrated_brief_storage_key
+    from promo_design_runs r
+    join promo_design_assets a on a.run_id = r.id
+      and a.asset_type = 'generated_image'
+      and a.is_primary = true
+    where r.created_at >= ${resetAt}::timestamptz
+    order by r.created_at desc
+    limit ${limit}
+  `;
+
+  return res.status(200).json({
+    ok: true,
+    resetAt,
+    runs: rows.map((row) => ({
+      run: {
+        run_id: row.run_id,
+        run_key: row.run_key,
+        prompt_group_id: row.prompt_group_id,
+        promo_title: row.promo_title,
+        market: row.market,
+        selected_md_id: row.selected_md_id,
+        selected_md_name: row.selected_md_name,
+        style_source: row.style_source,
+        style_source_label: row.style_source_label,
+        template_id: row.template_id,
+        template_name: row.template_name,
+        generation_mode: row.generation_mode,
+        input_mode: row.input_mode,
+        status: row.status,
+        result_type: row.result_type,
+        request_payload: row.request_payload,
+        image_prompt: row.image_prompt,
+        layout_mapping: row.layout_mapping,
+        md_compliance_map: row.md_compliance_map,
+        error_message: row.error_message,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+      },
+      assets: row.asset_id
+        ? [
+            {
+              asset_id: row.asset_id,
+              asset_type: row.asset_type,
+              asset_url: row.asset_url,
+              thumbnail_url: row.thumbnail_url,
+              mime_type: row.mime_type,
+              width: row.width,
+              height: row.height,
+              file_size: row.file_size,
+              storage_provider: row.storage_provider,
+              storage_key: row.storage_key,
+              metadata: row.metadata,
+              is_primary: row.is_primary,
+              created_at: row.asset_created_at,
+            },
+            {
+              asset_type: "design_prompt_markdown",
+              storage_key: row.design_prompt_storage_key,
+            },
+            {
+              asset_type: "promo_input_markdown",
+              storage_key: row.promo_input_storage_key,
+            },
+            {
+              asset_type: "integrated_design_brief_markdown",
+              storage_key: row.integrated_brief_storage_key,
+            },
+          ].filter((asset) => asset.asset_url || asset.storage_key)
+        : [],
+    })),
   });
 }
 
