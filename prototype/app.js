@@ -420,6 +420,12 @@ function createRunKey() {
   return `promo-${timestampStamp(new Date())}-${randomToken(5)}`;
 }
 
+function delay(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
 function normalizeCategory(title) {
   const raw = title.toLowerCase().replace(/^\d+\.\s*/, "");
   if (raw.includes("color") || raw.includes("palette")) return "colors";
@@ -1228,8 +1234,13 @@ createApp({
         const serverPages = (result.runs || [])
           .map((item) => this.storedResultToPage(item))
           .filter((page) => page.id);
-        const transientPages = this.generatedPages.filter((page) => page.status === "n8n_ui_design_pending" || page.status === "n8n_failed");
         const serverIds = new Set(serverPages.map((page) => page.id));
+        const preserveIds = new Set(options.preserveIds || []);
+        const transientPages = this.generatedPages.filter((page) => (
+          page.status === "n8n_ui_design_pending"
+          || page.status === "n8n_failed"
+          || (preserveIds.has(page.id) && !serverIds.has(page.id))
+        ));
         this.generatedPages = [
           ...transientPages.filter((page) => !serverIds.has(page.id)),
           ...serverPages,
@@ -1764,6 +1775,17 @@ createApp({
       return updated;
     },
 
+    async waitForStoredDesignResult(page, options = {}) {
+      const attempts = options.attempts || 4;
+      const delayMs = options.delayMs || 900;
+      for (let attempt = 0; attempt < attempts; attempt += 1) {
+        const updated = await this.refreshStoredDesignResult(page).catch(() => false);
+        if (updated) return true;
+        if (attempt < attempts - 1) await delay(delayMs);
+      }
+      return false;
+    },
+
     async generateUiDesign() {
       if (!this.selectedDocument) {
         this.setStatus("먼저 MD를 선택해 주세요");
@@ -1811,7 +1833,7 @@ createApp({
       try {
         n8nResult = await this.triggerN8n(payload);
       } catch (error) {
-        const recovered = await this.refreshStoredDesignResult(listItem).catch(() => false);
+        const recovered = await this.waitForStoredDesignResult(listItem, { attempts: 5, delayMs: 1200 }).catch(() => false);
         if (recovered) {
           this.currentBuilderStep = 5;
           this.setStatus("n8n 응답은 지연됐지만 저장된 UI 디자인을 확인했습니다");
@@ -1840,8 +1862,8 @@ createApp({
       listItem.committedAt = n8nResult?.committedAt || listItem.committedAt;
       listItem.timestampStamp = n8nResult?.timestampStamp || timestampStamp(listItem.committedAt || listItem.createdAt);
       listItem.payload = n8nResult?.payload || payload;
-      await this.refreshStoredDesignResult(listItem).catch(() => false);
-      await this.loadGeneratedPagesFromServer({ silent: true, fresh: true });
+      await this.waitForStoredDesignResult(listItem, { attempts: 5, delayMs: 900 }).catch(() => false);
+      await this.loadGeneratedPagesFromServer({ silent: true, fresh: true, preserveIds: [listItem.id] });
 
       this.currentBuilderStep = 5;
       this.setStatus(n8nResult ? "n8n UI 디자인 생성이 완료되었습니다" : "로컬 UI 디자인 생성이 완료되었습니다");

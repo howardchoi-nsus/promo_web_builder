@@ -204,7 +204,7 @@
         "sendBody": true,
         "contentType": "json",
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ model: $json.imageModel, prompt: $json.imagePrompt, size: $json.output.imageSize || '1024x1536', n: 1 }) }}",
+        "jsonBody": "={{ JSON.stringify({ model: $json.imageModel, prompt: $json.imagePrompt, size: $json.output.imageSize || '1024x1536', n: 1, output_format: $json.output.imageFormat || 'webp', quality: $json.output.imageQuality || 'medium' }) }}",
         "options": {
           "timeout": 180000
         }
@@ -234,7 +234,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "={{$json.assetApiUrl || 'https://promo-web-builder.vercel.app/api/promo-design-assets'}}",
+        "url": "={{$json.assetApiUrl || $json.payload?.assetApiUrl || 'https://promo-web-builder.vercel.app/api/promo-design-assets'}}",
         "sendBody": true,
         "contentType": "json",
         "specifyBody": "json",

@@ -6,7 +6,7 @@ const {
   formatTimestamp,
 } = require("./_promo-markdown-builders");
 
-const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 24 * 1024 * 1024;
 const DEFAULT_RESULTS_RESET_AT = "2026-07-02T10:10:55+09:00";
 
 module.exports = async function handler(req, res) {
@@ -704,9 +704,20 @@ async function resolveImageInput(body) {
   if (imageDataUrl) {
     const match = /^data:([^;]+);base64,(.+)$/i.exec(imageDataUrl);
     if (!match) throw new Error("Invalid imageDataUrl");
+    const bytes = Buffer.from(match[2].replace(/\s/g, ""), "base64");
     return {
-      bytes: Buffer.from(match[2], "base64"),
-      mimeType: match[1] || "image/png",
+      bytes,
+      mimeType: detectImageMimeType(bytes, match[1] || "image/png"),
+      sourceUrl: "",
+    };
+  }
+
+  const rawBase64 = String(body.b64Json || body.b64_json || body.imageBase64 || "").trim();
+  if (rawBase64) {
+    const bytes = Buffer.from(rawBase64.replace(/\s/g, ""), "base64");
+    return {
+      bytes,
+      mimeType: detectImageMimeType(bytes, body.mimeType || "image/png"),
       sourceUrl: "",
     };
   }
@@ -718,7 +729,33 @@ async function resolveImageInput(body) {
   if (!response.ok) throw new Error(`Failed to fetch source image: ${response.status}`);
   const mimeType = response.headers.get("content-type") || "image/png";
   const bytes = Buffer.from(await response.arrayBuffer());
-  return { bytes, mimeType, sourceUrl: imageUrl };
+  return { bytes, mimeType: detectImageMimeType(bytes, mimeType), sourceUrl: imageUrl };
+}
+
+function detectImageMimeType(bytes, fallback = "image/png") {
+  if (!Buffer.isBuffer(bytes) || bytes.length < 12) return fallback;
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
+  if (
+    bytes[0] === 0x89
+    && bytes[1] === 0x50
+    && bytes[2] === 0x4e
+    && bytes[3] === 0x47
+  ) {
+    return "image/png";
+  }
+  if (
+    bytes[0] === 0x52
+    && bytes[1] === 0x49
+    && bytes[2] === 0x46
+    && bytes[3] === 0x46
+    && bytes[8] === 0x57
+    && bytes[9] === 0x45
+    && bytes[10] === 0x42
+    && bytes[11] === 0x50
+  ) {
+    return "image/webp";
+  }
+  return fallback;
 }
 
 function parseBody(body) {
