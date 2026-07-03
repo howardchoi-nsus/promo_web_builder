@@ -120,6 +120,7 @@ const storageKeys = {
   selectedDocumentId: "promoPrototype.selectedDocumentId.abc",
   generatedPage: "promoPrototype.generatedPage",
   n8nWebhookUrl: "promoPrototype.n8nWebhookUrl",
+  themeMode: "promoPrototype.themeMode",
 };
 
 const generationModels = {
@@ -363,25 +364,63 @@ function orderedTemplateSections(schema) {
   return orderedIds.map((id) => byId.get(id)).filter(Boolean);
 }
 
-function buildTemplateRuntime(schema) {
+function createDefaultSectionConfig(schema) {
+  const sections = orderedTemplateSections(schema);
+  return {
+    orderedSections: sections.map((section) => section.sectionId || section.key),
+    sectionVisibility: Object.fromEntries(
+      sections.map((section) => [section.sectionId || section.key, section.defaultVisible !== false])
+    ),
+    itemVisibility: Object.fromEntries(
+      sections.map((section) => [
+        section.sectionId || section.key,
+        Object.fromEntries((section.items || []).map((item) => [item.itemId || item.key, item.defaultVisible !== false])),
+      ])
+    ),
+    imageGenerationMode: Object.fromEntries(
+      sections.map((section) => [
+        section.sectionId || section.key,
+        Object.fromEntries((section.items || []).map((item) => {
+          const itemId = item.itemId || item.key;
+          if (item.imageGenerationRequest || item.sendToImagePrompt) return [itemId, "generate"];
+          if (/logo|badge/i.test(itemId)) return [itemId, "brand_asset"];
+          return [itemId, "none"];
+        })),
+      ])
+    ),
+  };
+}
+
+function buildTemplateRuntime(schema, config = null) {
   const sections = templateSections(schema);
   const orderedSections = orderedTemplateSections(schema).map((section) => section.sectionId || section.key);
+  const configuredOrder = Array.isArray(config?.orderedSections) && config.orderedSections.length
+    ? config.orderedSections.filter((id) => sections.some((section) => (section.sectionId || section.key) === id))
+    : orderedSections;
   const sectionVisibility = Object.fromEntries(
-    sections.map((section) => [section.sectionId || section.key, section.defaultVisible !== false])
+    sections.map((section) => {
+      const sectionId = section.sectionId || section.key;
+      return [sectionId, config?.sectionVisibility?.[sectionId] ?? section.defaultVisible !== false];
+    })
   );
   const itemVisibility = Object.fromEntries(
     sections.map((section) => [
       section.sectionId || section.key,
-      Object.fromEntries((section.items || []).map((item) => [item.itemId || item.key, item.defaultVisible !== false])),
+      Object.fromEntries((section.items || []).map((item) => {
+        const sectionId = section.sectionId || section.key;
+        const itemId = item.itemId || item.key;
+        return [itemId, config?.itemVisibility?.[sectionId]?.[itemId] ?? item.defaultVisible !== false];
+      })),
     ])
   );
+  const imageGenerationMode = config?.imageGenerationMode || {};
 
   return {
     templateId: schema?.templateId || schema?.id,
     templateName: schema?.templateName || schema?.name,
     schemaVersion: schema?.version || "1.0.0",
-    orderedSections,
-    visibleSections: orderedSections.filter((sectionId) => sectionVisibility[sectionId] !== false),
+    orderedSections: configuredOrder,
+    visibleSections: configuredOrder.filter((sectionId) => sectionVisibility[sectionId] !== false),
     sectionVisibility,
     itemVisibility,
     fixedSections: sections
@@ -392,12 +431,20 @@ function buildTemplateRuntime(schema) {
       .map((section) => section.sectionId || section.key),
     imageGenerationTargets: sections.flatMap((section) =>
       (section.items || [])
-        .filter((item) => item.imageGenerationRequest || item.sendToImagePrompt)
+        .filter((item) => {
+          const sectionId = section.sectionId || section.key;
+          const itemId = item.itemId || item.key;
+          if (sectionVisibility[sectionId] === false || itemVisibility[sectionId]?.[itemId] === false) return false;
+          const configuredMode = imageGenerationMode?.[sectionId]?.[itemId];
+          if (configuredMode) return configuredMode === "generate";
+          return item.imageGenerationRequest || item.sendToImagePrompt;
+        })
         .map((item) => ({
           sectionId: section.sectionId || section.key,
           itemId: item.itemId || item.key,
           label: item.label,
           inputPath: item.inputPath,
+          mode: imageGenerationMode?.[section.sectionId || section.key]?.[item.itemId || item.key] || "generate",
         }))
     ),
     governance: schema?.governance || {},
@@ -850,9 +897,11 @@ createApp({
       styleGroupSearch: "",
       companyStylePresets: dummyCompanyStylePresets,
       selectedDocumentId: localStorage.getItem(storageKeys.selectedDocumentId) || "",
+      themeMode: localStorage.getItem(storageKeys.themeMode) || "light",
       selectedPresetId: "preset-001",
       styleSource: "design_md",
       templateSchema: temp4TemplateSchema,
+      sectionConfig: createDefaultSectionConfig(temp4TemplateSchema),
       designMode: "ai",
       generationMode: "ai_agent",
       inputMode: "simple",
@@ -860,7 +909,10 @@ createApp({
       promoBuilderStarted: false,
       promoBuilderSessionKey: 0,
       currentBuilderStep: 1,
-      n8nWebhookUrl: "",
+      n8nWebhookUrl: localStorage.getItem(storageKeys.n8nWebhookUrl) || "",
+      isGeneratingDesign: false,
+      generationStatusIndex: 0,
+      generationStatusTimer: null,
       detailDoc: null,
       selectedDesignDetail: null,
       promptModalPage: null,
@@ -1067,14 +1119,51 @@ createApp({
     builderSteps() {
       return [
         { step: 1, title: "디자인 모드 선택", summary: "AI 모드, 고급 모드, 마켓" },
-        { step: 2, title: "프로모션 입력", summary: "혜택, CTA, 약관" },
-        { step: 3, title: "섹션 초안", summary: "Temp.4 구성 확인" },
-        { step: 4, title: "디자인 생성", summary: "n8n 실행" },
+        { step: 2, title: "프로모션 입력 및 섹션 구성", summary: "혜택, CTA, 섹션/아이템" },
+        { step: 3, title: "디자인 생성", summary: "n8n 실행" },
       ];
     },
 
     currentBuilderStepInfo() {
       return this.builderSteps.find((item) => item.step === this.currentBuilderStep) || this.builderSteps[0];
+    },
+
+    generationStatusMessage() {
+      const messages = [
+        "디자인 브리프를 정리하고 있어요",
+        "프로모션 섹션을 조합하고 있어요",
+        "UI 디자인 이미지를 생성하고 있어요",
+        "결과를 저장하고 있어요",
+      ];
+      return messages[this.generationStatusIndex % messages.length];
+    },
+
+    sectionConfigSections() {
+      const sections = templateSections(this.templateSchema);
+      const byId = new Map(sections.map((section) => [section.sectionId || section.key, section]));
+      const orderedIds = Array.isArray(this.sectionConfig.orderedSections) && this.sectionConfig.orderedSections.length
+        ? this.sectionConfig.orderedSections
+        : sections.map((section) => section.sectionId || section.key);
+      return orderedIds
+        .map((sectionId) => byId.get(sectionId))
+        .filter(Boolean)
+        .map((section) => {
+          const sectionId = section.sectionId || section.key;
+          return {
+            ...section,
+            sectionId,
+            visible: this.sectionConfig.sectionVisibility?.[sectionId] !== false,
+            items: (section.items || []).map((item) => {
+              const itemId = item.itemId || item.key;
+              return {
+                ...item,
+                itemId,
+                visible: this.sectionConfig.itemVisibility?.[sectionId]?.[itemId] !== false,
+                imageGenerationMode: this.sectionConfig.imageGenerationMode?.[sectionId]?.[itemId] || "none",
+              };
+            }),
+          };
+        });
     },
   },
 
@@ -1105,12 +1194,15 @@ createApp({
         this.clearResolvedValidationErrors();
       },
     },
+    n8nWebhookUrl(value) {
+      localStorage.setItem(storageKeys.n8nWebhookUrl, String(value || "").trim());
+    },
   },
 
   mounted() {
     localStorage.removeItem(storageKeys.generatedPages);
     localStorage.removeItem(storageKeys.generatedPage);
-    localStorage.removeItem(storageKeys.n8nWebhookUrl);
+    this.applyThemeMode();
     this.loadDesignDocuments();
     this.loadGeneratedPagesFromServer({ silent: true });
     this.loadHandoffDocuments();
@@ -1118,6 +1210,17 @@ createApp({
   },
 
   methods: {
+    applyThemeMode() {
+      document.documentElement.setAttribute("data-theme", this.themeMode === "dark" ? "dark" : "light");
+      localStorage.setItem(storageKeys.themeMode, this.themeMode);
+    },
+
+    toggleThemeMode() {
+      this.themeMode = this.themeMode === "dark" ? "light" : "dark";
+      this.applyThemeMode();
+      this.setStatus(this.themeMode === "dark" ? "다크모드를 적용했습니다" : "라이트모드를 적용했습니다");
+    },
+
     async loadHandoffDocuments() {
       if (window.location.protocol === "file:") return;
       try {
@@ -1399,6 +1502,83 @@ createApp({
       return labels[value] || value || "자동";
     },
 
+    imageGenerationModeLabel(value) {
+      const labels = {
+        none: "없음",
+        generate: "AI 생성",
+        upload_or_reference: "참조/업로드",
+        brand_asset: "브랜드 자산",
+      };
+      return labels[value] || "없음";
+    },
+
+    sectionStatusLabel(section) {
+      if (section.fixedPosition === "top") return "상단 고정";
+      if (section.fixedPosition === "bottom") return "하단 고정";
+      return section.orderChangeAllowed === false ? "순서 고정" : "순서 변경 가능";
+    },
+
+    sectionRequiredLabel(section) {
+      if (section.sectionExposure === "required" || section.required) return "필수";
+      return "선택";
+    },
+
+    setSectionVisible(sectionId, visible) {
+      this.sectionConfig.sectionVisibility = {
+        ...this.sectionConfig.sectionVisibility,
+        [sectionId]: Boolean(visible),
+      };
+      if (visible) this.ensureRequiredItemsVisible(sectionId);
+    },
+
+    setItemVisible(sectionId, itemId, visible) {
+      const section = templateSections(this.templateSchema).find((item) => (item.sectionId || item.key) === sectionId);
+      const schemaItem = (section?.items || []).find((item) => (item.itemId || item.key) === itemId);
+      if (schemaItem?.required && this.sectionConfig.sectionVisibility?.[sectionId] !== false && !visible) {
+        this.setStatus("필수 아이템은 섹션 사용 중에는 숨길 수 없습니다");
+        return;
+      }
+      this.sectionConfig.itemVisibility = {
+        ...this.sectionConfig.itemVisibility,
+        [sectionId]: {
+          ...(this.sectionConfig.itemVisibility?.[sectionId] || {}),
+          [itemId]: Boolean(visible),
+        },
+      };
+    },
+
+    setImageGenerationMode(sectionId, itemId, mode) {
+      this.sectionConfig.imageGenerationMode = {
+        ...this.sectionConfig.imageGenerationMode,
+        [sectionId]: {
+          ...(this.sectionConfig.imageGenerationMode?.[sectionId] || {}),
+          [itemId]: mode,
+        },
+      };
+    },
+
+    ensureRequiredItemsVisible(sectionId) {
+      const section = templateSections(this.templateSchema).find((item) => (item.sectionId || item.key) === sectionId);
+      if (!section) return;
+      const requiredItems = Object.fromEntries(
+        (section.items || [])
+          .filter((item) => item.required)
+          .map((item) => [item.itemId || item.key, true])
+      );
+      this.sectionConfig.itemVisibility = {
+        ...this.sectionConfig.itemVisibility,
+        [sectionId]: {
+          ...(this.sectionConfig.itemVisibility?.[sectionId] || {}),
+          ...requiredItems,
+        },
+      };
+    },
+
+    resetSectionConfig() {
+      this.sectionConfig = createDefaultSectionConfig(this.templateSchema);
+      this.setStatus("섹션 구성을 기본값으로 되돌렸습니다");
+    },
+
     templateLabel(value) {
       if (value === "Template 4") return "템플릿 4";
       return value || "";
@@ -1445,8 +1625,13 @@ createApp({
         return false;
       }
       if (step === 1) this.validationErrors = {};
-      if (step === 2) return this.validatePromoInputs();
-      if (step === 3 && !this.hasSectionDraft()) {
+      if (step === 2) return this.validatePromoInputs() && this.validateSectionConfig();
+      if (step === 3 && !this.n8nWebhookUrlIsValid()) {
+        this.validationErrors = { n8nWebhookUrl: true };
+        this.setStatus("n8n Webhook URL을 입력해 주세요");
+        return false;
+      }
+      if (step === 2 && !this.hasSectionDraft()) {
         this.refreshSectionDraft({ silent: true });
       }
       return true;
@@ -1679,6 +1864,7 @@ createApp({
         targetAction: hasValue(this.simpleBrief, "targetAction"),
         audience: hasValue(this.simpleBrief, "audience"),
         campaignTone: hasValue(this.simpleBrief, "campaignTone"),
+        n8nWebhookUrl: this.n8nWebhookUrlIsValid(),
       };
       for (const [key, resolved] of Object.entries(checks)) {
         if (resolved) delete next[key];
@@ -1692,6 +1878,7 @@ createApp({
     },
 
     resetPromoBuilderState(options = {}) {
+      const existingWebhookUrl = this.n8nWebhookUrl;
       this.promo = {
         title: "",
         template: "AI Auto",
@@ -1717,9 +1904,11 @@ createApp({
       this.inputMode = "simple";
       this.generationMode = "ai_agent";
       this.globalVisualMode = "auto";
-      this.n8nWebhookUrl = "";
+      this.n8nWebhookUrl = existingWebhookUrl;
       this.currentBuilderStep = 1;
       this.sectionInputs = createEmptyTemp4Inputs();
+      this.sectionConfig = createDefaultSectionConfig(this.templateSchema);
+      this.stopGenerationMotion();
       if (options.rerender) this.promoBuilderSessionKey += 1;
     },
 
@@ -2001,7 +2190,7 @@ createApp({
       this.promo.leadText = this.simpleBrief.mainOffer || this.sectionInputs.heroBanner.sublineText;
       this.promo.subline = this.simpleBrief.secondaryMessage || this.sectionInputs.contentCta.longText;
       this.promo.template = this.designMode === "advanced" ? "default_temp" : "AI Auto";
-      if (!options.silent) this.setStatus("섹션 초안을 갱신했습니다");
+      if (!options.silent) this.setStatus("섹션 입력값을 갱신했습니다");
     },
 
     hasSectionDraft() {
@@ -2021,7 +2210,12 @@ createApp({
       const source = this.sourceStyle;
       const designDoc = this.selectedDesignDataSource || this.selectedDocument;
       const sectionInputs = this.sectionInputsForPayload();
-      const templateRuntime = buildTemplateRuntime(this.templateSchema);
+      const templateRuntime = buildTemplateRuntime(this.templateSchema, this.sectionConfig);
+      const sectionConfig = {
+        ...JSON.parse(JSON.stringify(this.sectionConfig)),
+        fixedSections: Object.fromEntries(templateRuntime.fixedSections.map((section) => [section.sectionId, section.fixedPosition])),
+        imageGenerationTargets: templateRuntime.imageGenerationTargets,
+      };
       const promoCompat = {
         ...this.promo,
         template: this.promo.template,
@@ -2067,6 +2261,7 @@ createApp({
         promo: promoCompat,
         promotionInput,
         marketVisualGuidance,
+        sectionConfig,
         template: {
           id: this.templateSchema.id,
           name: this.templateSchema.name,
@@ -2108,6 +2303,7 @@ createApp({
           marketVisualGuidance,
           simpleBrief: { ...this.simpleBrief },
           sectionInputs,
+          sectionConfig,
           templateRuntime,
         },
       };
@@ -2154,6 +2350,34 @@ createApp({
       return true;
     },
 
+    validateSectionConfig() {
+      const missing = [];
+      for (const section of this.sectionConfigSections) {
+        if (!section.visible) continue;
+        for (const item of section.items) {
+          if (item.required && item.visible === false) {
+            missing.push(`${section.name} / ${item.label}`);
+          }
+        }
+      }
+      if (missing.length) {
+        this.setStatus(`필수 섹션 아이템 누락: ${missing[0]}`);
+        return false;
+      }
+      return true;
+    },
+
+    n8nWebhookUrlIsValid() {
+      const value = String(this.n8nWebhookUrl || "").trim();
+      if (!value) return false;
+      try {
+        const url = new URL(value);
+        return url.protocol === "http:" || url.protocol === "https:";
+      } catch {
+        return false;
+      }
+    },
+
     validateLegacyPromoInputs() {
       const required = [
         ["title", "프로모션 제목"],
@@ -2175,13 +2399,16 @@ createApp({
 
     async triggerN8n(payload) {
       const url = this.n8nWebhookUrl.trim();
-      const useProxy = !url && window.location.protocol !== "file:";
-      if (!url && !useProxy) return null;
+      if (!this.n8nWebhookUrlIsValid()) {
+        throw new Error("n8n Webhook URL이 올바르지 않습니다");
+      }
+      const useProxy = window.location.protocol !== "file:";
       const requestUrl = useProxy ? "/api/generate-ui-design" : url;
 
       const headers = {
         "Content-Type": "application/json",
       };
+      if (useProxy) headers["x-n8n-webhook-url"] = url;
 
       const response = await fetch(requestUrl, {
         method: "POST",
@@ -2193,6 +2420,23 @@ createApp({
       const result = contentType.includes("application/json") ? await response.json() : { html: await response.text() };
       if (!response.ok) throw new Error(result.message || result.error || `n8n ${response.status}`);
       return result;
+    },
+
+    startGenerationMotion() {
+      this.stopGenerationMotion();
+      this.isGeneratingDesign = true;
+      this.generationStatusIndex = 0;
+      this.generationStatusTimer = window.setInterval(() => {
+        this.generationStatusIndex += 1;
+      }, 2600);
+    },
+
+    stopGenerationMotion() {
+      if (this.generationStatusTimer) {
+        window.clearInterval(this.generationStatusTimer);
+        this.generationStatusTimer = null;
+      }
+      this.isGeneratingDesign = false;
     },
 
     applyStoredDesignResult(page, result) {
@@ -2227,18 +2471,26 @@ createApp({
     },
 
     async generateUiDesign() {
+      if (this.isGeneratingDesign) return;
       if (!this.selectedDocument) {
         this.setStatus("먼저 MD를 선택해 주세요");
         return;
       }
       if (!this.validatePromoInputs()) return;
+      if (!this.validateSectionConfig()) return;
+      if (!this.n8nWebhookUrlIsValid()) {
+        this.validationErrors = { n8nWebhookUrl: true };
+        this.setStatus("n8n Webhook URL을 입력해 주세요");
+        return;
+      }
       await this.loadSelectedDesignDetail(this.selectedDocumentId);
 
       const pageId = createRunKey();
       const payload = this.buildGeneratedPayload(pageId);
       const initialStamp = timestampStamp(payload.generatedAt);
-      const willUseN8n = this.n8nWebhookUrl.trim() || window.location.protocol !== "file:";
+      const willUseN8n = true;
       this.setStatus(willUseN8n ? "UI 디자인 워크플로를 실행 중입니다" : "로컬에서 UI 디자인을 생성했습니다");
+      this.startGenerationMotion();
 
       const listItem = {
         id: pageId,
@@ -2277,6 +2529,7 @@ createApp({
         if (recovered) {
           this.currentBuilderStep = this.builderSteps.length;
           this.setStatus("n8n 응답은 지연됐지만 저장된 UI 디자인을 확인했습니다");
+          this.stopGenerationMotion();
           if (listItem.pageUrl) window.open(listItem.pageUrl, "_blank");
           return;
         }
@@ -2284,6 +2537,7 @@ createApp({
         listItem.status = "n8n_failed";
         listItem.errorMessage = error.message;
         this.setStatus(`n8n 실행 실패. 서버 저장 결과를 확인하지 못했습니다: ${error.message}`);
+        this.stopGenerationMotion();
         return;
       }
 
@@ -2307,6 +2561,7 @@ createApp({
 
       this.currentBuilderStep = this.builderSteps.length;
       this.setStatus(n8nResult ? "n8n UI 디자인 생성이 완료되었습니다" : "로컬 UI 디자인 생성이 완료되었습니다");
+      this.stopGenerationMotion();
       if (listItem.pageUrl) window.open(listItem.pageUrl, "_blank");
     },
 

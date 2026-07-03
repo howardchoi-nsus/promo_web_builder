@@ -11,7 +11,10 @@ NON-NEGOTIABLE DESIGN RULES:
 - Represent a 1440px desktop web page scaled into the bitmap, with clear web UI structure: navigation/header, content sections, CTA components, section containers, UI spacing rhythm, footer/legal area, and reusable component language.
 - The design should feel like a browserless screenshot or design mockup of an actual scrollable webpage, not a single centered print composition.
 - Follow the selected template schema's visible content sections in the provided order. Treat section names as internal structure labels, not visible copy.
+- If Section Config is provided, follow its orderedSections, sectionVisibility, itemVisibility, fixedSections, and imageGenerationTargets before falling back to the template schema.
 - Use sectionInputs as the primary source of visible content. Use promo only as fallback metadata.
+- Render only visible sections and visible items. Do not invent hidden items as visible UI copy.
+- Use imageGenerationTargets to decide which items should become generated visual assets, image areas, badges, or supporting imagery.
 - Use market / region primarily as subtle visual localization context for image generation, not as mandatory visible copy.
 - Do not render market / region as side labels, annotations, map graphics, flag-heavy decorations, or stereotyped cultural symbols.
 - For visualMode auto, infer visuals from that section's own text.

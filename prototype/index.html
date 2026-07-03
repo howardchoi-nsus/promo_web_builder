@@ -30,6 +30,10 @@
               <a href="#section-c">C. 결과</a>
               <a href="generated.html">생성된 UI</a>
             </nav>
+            <button class="theme-toggle" type="button" @click="toggleThemeMode" :aria-label="themeMode === 'dark' ? '라이트모드로 변경' : '다크모드로 변경'">
+              <span class="theme-dot"></span>
+              <strong>{{ themeMode === 'dark' ? 'Dark' : 'Light' }}</strong>
+            </button>
             <div class="status-pill">{{ status }}</div>
           </div>
         </header>
@@ -238,9 +242,9 @@
 
             <div class="subsection promo-required" v-if="promoBuilderStarted && currentBuilderStep === 2">
               <div class="subsection-title">
-                <h3>B2. 프로모션 입력</h3>
+                <h3>B2. 프로모션 입력 및 섹션 구성</h3>
                 <div class="subsection-actions">
-                  <span>AI가 Temp.4 섹션으로 확장합니다</span>
+                  <span>필수 입력 + 섹션/아이템 제어</span>
                   <button class="tiny-button primary" type="button" @click="autoFillPromoInputs">자동등록</button>
                 </div>
               </div>
@@ -322,73 +326,78 @@
                 <small class="field-error" v-if="fieldError('termsText')">{{ fieldError('termsText') }}</small>
               </label>
               <div class="action-row align-right">
+                <button class="secondary-action" type="button" @click="resetSectionConfig">섹션 기본값</button>
                 <button class="secondary-action" type="button" @click="clearPromoInputs">초기화</button>
               </div>
-            </div>
 
-            <div class="subsection" v-if="promoBuilderStarted && currentBuilderStep === 3">
-              <div class="subsection-title">
-                <h3>B3. AI 섹션 초안</h3>
-                <span>Temp.4 출력 순서</span>
-              </div>
-
-              <div class="draft-stack">
-                <details class="draft-section" open>
-                  <summary>히어로 배너 <span>{{ visualModeLabel(sectionInputs.heroBanner.visualMode) }}</span></summary>
-                  <label class="field"><span>리더 문구</span><input v-model="sectionInputs.heroBanner.leaderText" type="text" /></label>
-                  <label class="field"><span>제목</span><input v-model="sectionInputs.heroBanner.title" type="text" /></label>
-                  <label class="field"><span>보조 문구</span><textarea v-model="sectionInputs.heroBanner.sublineText" rows="2"></textarea></label>
-                  <div class="form-grid compact">
-                    <label class="field"><span>CTA 문구</span><input v-model="sectionInputs.heroBanner.cta.label" type="text" /></label>
-                    <label class="field"><span>CTA 링크</span><input v-model="sectionInputs.heroBanner.cta.link" type="url" /></label>
-                    <label class="field"><span>열기 방식</span><select v-model="sectionInputs.heroBanner.cta.target"><option>_blank</option><option>_self</option></select></label>
-                    <label class="field"><span>비주얼</span><select v-model="sectionInputs.heroBanner.visualMode"><option value="auto">자동</option><option value="use_visual">비주얼 사용</option><option value="no_visual">비주얼 없음</option></select></label>
+              <div class="section-config-panel">
+                <div class="section-config-heading">
+                  <div>
+                    <strong>섹션 / 아이템 구성</strong>
+                    <span>내부 섹션명은 편집용이며, 생성 이미지의 visible text로 전달하지 않습니다.</span>
                   </div>
-                  <label class="field"><span>보조 고지 문구</span><input v-model="sectionInputs.heroBanner.alphaText" type="text" /></label>
-                </details>
+                  <span>{{ sectionConfigSections.filter((section) => section.visible).length }}개 섹션 사용</span>
+                </div>
 
-                <details class="draft-section">
-                  <summary>스텝 바 <span>3개 항목</span></summary>
-                  <div class="step-draft-grid">
-                    <div class="step-draft-card" v-for="(step, index) in sectionInputs.stepBar" :key="index">
-                      <strong>스텝 {{ index + 1 }}</strong>
-                      <label class="field"><span>제목</span><input v-model="step.title" type="text" /></label>
-                      <label class="field"><span>설명</span><textarea v-model="step.description" rows="2"></textarea></label>
-                      <label class="field"><span>링크</span><input v-model="step.link" type="url" /></label>
+                <details
+                  v-for="section in sectionConfigSections"
+                  :key="section.sectionId"
+                  class="section-config-card"
+                  :open="section.required || section.sectionExposure === 'required'"
+                >
+                  <summary>
+                    <div>
+                      <strong>{{ section.name }}</strong>
+                      <span>{{ sectionStatusLabel(section) }} · {{ sectionRequiredLabel(section) }}</span>
+                    </div>
+                    <label class="switch-control" @click.stop>
+                      <input
+                        type="checkbox"
+                        :checked="section.visible"
+                        :disabled="section.fixedPosition === 'top' || section.fixedPosition === 'bottom'"
+                        @change="setSectionVisible(section.sectionId, $event.target.checked)"
+                      />
+                      <span>사용</span>
+                    </label>
+                  </summary>
+
+                  <div class="section-item-list">
+                    <div v-for="item in section.items" :key="item.itemId" class="section-item-row">
+                      <div>
+                        <strong>{{ item.label }}</strong>
+                        <span>{{ item.description || item.inputPath || '섹션 아이템' }}</span>
+                      </div>
+                      <label class="switch-control">
+                        <input
+                          type="checkbox"
+                          :checked="item.visible"
+                          :disabled="item.required && section.visible"
+                          @change="setItemVisible(section.sectionId, item.itemId, $event.target.checked)"
+                        />
+                        <span>{{ item.required ? '필수' : '선택' }}</span>
+                      </label>
+                      <label class="mini-select">
+                        <span>이미지</span>
+                        <select
+                          :value="item.imageGenerationMode"
+                          :disabled="!section.visible || !item.visible"
+                          @change="setImageGenerationMode(section.sectionId, item.itemId, $event.target.value)"
+                        >
+                          <option value="none">없음</option>
+                          <option value="generate">AI 생성</option>
+                          <option value="upload_or_reference">참조/업로드</option>
+                          <option value="brand_asset">브랜드 자산</option>
+                        </select>
+                      </label>
                     </div>
                   </div>
-                </details>
-
-                <details class="draft-section">
-                  <summary>콘텐츠 CTA <span>{{ visualModeLabel(sectionInputs.contentCta.visualMode) }}</span></summary>
-                  <label class="field"><span>본문 문구</span><textarea v-model="sectionInputs.contentCta.longText" rows="3"></textarea></label>
-                  <div class="form-grid compact">
-                    <label class="field"><span>CTA 문구</span><input v-model="sectionInputs.contentCta.cta.label" type="text" /></label>
-                    <label class="field"><span>CTA 링크</span><input v-model="sectionInputs.contentCta.cta.link" type="url" /></label>
-                    <label class="field"><span>비주얼</span><select v-model="sectionInputs.contentCta.visualMode"><option value="auto">자동</option><option value="use_visual">비주얼 사용</option><option value="no_visual">비주얼 없음</option></select></label>
-                  </div>
-                </details>
-
-                <details class="draft-section">
-                  <summary>이미지 텍스트 영역 <span>{{ visualModeLabel(sectionInputs.imageTextRow.visualMode) }}</span></summary>
-                  <label class="field"><span>헤더 제목</span><input v-model="sectionInputs.imageTextRow.headerTitle" type="text" /></label>
-                  <label class="field"><span>헤더 설명</span><textarea v-model="sectionInputs.imageTextRow.headerDescription" rows="2"></textarea></label>
-                  <label class="field"><span>제목</span><input v-model="sectionInputs.imageTextRow.title" type="text" /></label>
-                  <label class="field"><span>설명</span><textarea v-model="sectionInputs.imageTextRow.description" rows="2"></textarea></label>
-                </details>
-
-                <details class="draft-section">
-                  <summary>약관 / 푸터 <span>법적 고지</span></summary>
-                  <label class="field"><span>약관 제목</span><input v-model="sectionInputs.titleDescription.title" type="text" /></label>
-                  <label class="field"><span>내용</span><textarea v-model="sectionInputs.titleDescription.contents" rows="3"></textarea></label>
-                  <label class="field"><span>라이선스 배지</span><input v-model="sectionInputs.footer.licenseBadges" type="text" /></label>
                 </details>
               </div>
             </div>
 
             <div class="subsection" v-if="false">
               <div class="subsection-title">
-                <h3>B4. 색상 / 폰트 스타일</h3>
+                <h3>색상 / 폰트 스타일</h3>
                 <span>원본 + 재정의</span>
               </div>
 
@@ -476,17 +485,39 @@
               </div>
             </div>
 
-            <div class="subsection" v-if="promoBuilderStarted && currentBuilderStep === 4">
+            <div class="subsection" v-if="promoBuilderStarted && currentBuilderStep === 3">
               <div class="subsection-title">
-                <h3>B4. UI 디자인 생성</h3>
-                <span>n8n 실행 + 디자인 이미지</span>
+                <h3>B3. 디자인 생성</h3>
+                <span>POC n8n Webhook 실행</span>
               </div>
-              <label class="field">
+
+              <label class="field" :class="fieldClass('n8nWebhookUrl')">
                 <span>n8n Webhook URL</span>
                 <input v-model="n8nWebhookUrl" type="url" placeholder="https://your-n8n-domain/webhook/promo-ui-design-generate" autocomplete="off" />
+                <small class="field-error" v-if="fieldError('n8nWebhookUrl')">{{ fieldError('n8nWebhookUrl') }}</small>
               </label>
+
+              <div class="generation-console" :class="{ running: isGeneratingDesign }">
+                <div class="poker-loader" aria-hidden="true">
+                  <div class="poker-chip"></div>
+                  <div class="shuffle-cards">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                </div>
+                <div>
+                  <strong>{{ isGeneratingDesign ? '디자인 생성되고 있습니다' : '디자인 생성 준비 완료' }}</strong>
+                  <span>{{ isGeneratingDesign ? generationStatusMessage : 'Webhook URL을 확인한 뒤 디자인 생성을 실행해 주세요.' }}</span>
+                  <small>실제 진행률 대신 작업 중 상태를 표시합니다. 보통 1~2분 정도 걸릴 수 있어요.</small>
+                </div>
+              </div>
+
               <div class="action-row align-right">
-                <button class="primary-action" type="button" @click="generateUiDesign">UI 디자인 생성</button>
+                <button class="secondary-action" type="button" :disabled="isGeneratingDesign" @click="refreshGeneratedPages">결과 새로고침</button>
+                <button class="primary-action" type="button" :disabled="isGeneratingDesign || !n8nWebhookUrlIsValid()" @click="generateUiDesign">
+                  {{ isGeneratingDesign ? '생성 중...' : 'UI 디자인 생성' }}
+                </button>
               </div>
             </div>
 
@@ -602,7 +633,7 @@
               </div>
               <div v-else class="outline-item">
                 <strong>아직 생성된 UI 디자인이 없습니다</strong>
-                <span>B4에서 UI 디자인 생성을 실행해 주세요.</span>
+                <span>B3에서 UI 디자인 생성을 실행해 주세요.</span>
               </div>
             </div>
             </div>
