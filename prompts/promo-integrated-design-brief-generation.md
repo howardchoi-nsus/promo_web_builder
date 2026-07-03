@@ -39,7 +39,7 @@ Return valid JSON only. Do not include markdown fences or explanations outside J
 - Do not merge Title and Description into Footer.
 - If content is long, compress spacing, section height, visual size, and decoration before removing content.
 - Template section names such as Header, Hero Banner, Step Bar, Content CTA, Image Text Row, Title and Description, and Footer are internal planning labels only.
-- The final generated UI must not render template section names as visible labels, side annotations, guide text, wireframe labels, callouts, diagram legends, or QA checklist text.
+- The final generated UI must not render template section names as visible labels, side labels, side annotations, guide text, wireframe labels, callouts, diagram legends, or QA checklist text.
 
 ## Required Markdown Structure
 
