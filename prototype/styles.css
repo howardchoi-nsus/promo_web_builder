@@ -1467,7 +1467,7 @@ body.is-resizing {
 
 .section-item-row {
   display: grid;
-  grid-template-columns: minmax(120px, 0.9fr) auto minmax(180px, 1.2fr) minmax(130px, 170px);
+  grid-template-columns: 42px minmax(120px, 0.9fr) auto minmax(180px, 1.2fr);
   gap: 10px;
   align-items: center;
   padding: 10px 12px;
@@ -1532,33 +1532,112 @@ body.is-resizing {
   opacity: 0.55;
 }
 
+.ai-toggle,
+.ai-toggle-placeholder {
+  width: 36px;
+}
+
+.ai-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: start;
+  min-height: 28px;
+}
+
+.ai-toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ai-toggle span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 24px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.ai-toggle input:checked + span {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.ai-toggle input:disabled + span {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .section-item-input input,
 .section-item-input textarea {
   min-height: 32px;
   font-size: 12px;
 }
 
-.mini-select {
-  display: grid;
-  gap: 4px;
+.repeatable-set-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
 }
 
-.mini-select span {
+.repeatable-set-toolbar span {
   color: var(--muted);
-  font-size: 10px;
-  font-weight: 900;
+  font-size: 11px;
+  font-weight: 800;
 }
 
-.mini-select select {
-  width: 100%;
-  min-height: 32px;
-  padding: 0 8px;
+.repeatable-set-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--set-columns, 1), minmax(0, 1fr));
+  gap: 10px;
+  padding: 10px;
+}
+
+.repeatable-set-card {
+  min-width: 0;
+  overflow: hidden;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--panel);
-  color: var(--ink);
+}
+
+.repeatable-set-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 42px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+}
+
+.repeatable-set-heading strong {
   font-size: 12px;
-  font-weight: 800;
+}
+
+.repeat-item-row {
+  grid-template-columns: 42px minmax(90px, 0.7fr) auto minmax(130px, 1fr);
+  padding: 9px 10px;
+}
+
+@media (max-width: 1180px) {
+  .repeatable-set-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* B3 generation console: indeterminate poker motion replaces fake numeric progress. */

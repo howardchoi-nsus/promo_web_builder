@@ -300,10 +300,15 @@ const temp4TemplateSchema = {
       name: "Step Bar",
       defaultVisible: true,
       orderChangeAllowed: true,
+      repeatableSet: {
+        label: "Step Set",
+        addLabel: "Step Set 추가",
+        note: "Title, Description, CTA Button이 1개 세트입니다.",
+      },
       items: [
-        { itemId: "title", label: "Title", defaultVisible: true, inputPath: "stepBar.0.title", description: "제목" },
-        { itemId: "description", label: "Description", defaultVisible: true, inputPath: "stepBar.0.description", description: "설명" },
-        { itemId: "ctaButton", label: "CTA Button", defaultVisible: true, inputPath: "stepBar.0.ctaLabel", description: "버튼 텍스트" },
+        { itemId: "title", label: "Title", defaultVisible: true, inputKey: "title", description: "제목" },
+        { itemId: "description", label: "Description", defaultVisible: true, inputKey: "description", description: "설명" },
+        { itemId: "ctaButton", label: "CTA Button", defaultVisible: true, inputKey: "ctaLabel", description: "버튼 텍스트" },
       ],
     },
     {
@@ -323,10 +328,16 @@ const temp4TemplateSchema = {
       name: "Image Text Row",
       defaultVisible: true,
       orderChangeAllowed: true,
+      repeatableSet: {
+        label: "Image Text Set",
+        addLabel: "Image Text Set 추가",
+        maxPerRow: 3,
+        note: "Image, Title, Description이 1개 세트이며 1 row 최대 3개까지 배치합니다.",
+      },
       items: [
-        { itemId: "image", label: "Image", defaultVisible: true, inputPath: "imageTextRow.imageText", imageGenerationRequest: true, description: "이미지" },
-        { itemId: "title", label: "Title", defaultVisible: true, inputPath: "imageTextRow.title" },
-        { itemId: "description", label: "Description", defaultVisible: true, inputPath: "imageTextRow.description" },
+        { itemId: "image", label: "Image", defaultVisible: true, inputKey: "imageText", imageGenerationRequest: true, description: "이미지" },
+        { itemId: "title", label: "Title", defaultVisible: true, inputKey: "title", description: "제목" },
+        { itemId: "description", label: "Description", defaultVisible: true, inputKey: "description", description: "설명" },
       ],
     },
     {
@@ -435,6 +446,7 @@ function buildTemplateRuntime(schema, config = null) {
     imageGenerationTargets: sections.flatMap((section) =>
       (section.items || [])
         .filter((item) => {
+          if (section.repeatableSet) return false;
           const sectionId = section.sectionId || section.key;
           const itemId = item.itemId || item.key;
           if (sectionVisibility[sectionId] === false || itemVisibility[sectionId]?.[itemId] === false) return false;
@@ -539,14 +551,9 @@ function createEmptyTemp4Inputs() {
       cta: { label: "", link: "", target: "_blank" },
       visualMode: "auto",
     },
-    imageTextRow: {
-      headerTitle: "",
-      headerDescription: "",
-      imageText: "",
-      title: "",
-      description: "",
-      visualMode: "auto",
-    },
+    imageTextRow: [
+      { imageText: "", title: "", description: "", visualMode: "auto" },
+    ],
     titleDescription: {
       title: "이용약관",
       contents: "",
@@ -622,14 +629,14 @@ function buildTemp4Draft({ promo, simpleBrief, selectedDocument, visualMode }) {
       cta,
       visualMode,
     },
-    imageTextRow: {
-      headerTitle: title ? `${title} 상세` : "프로모션 상세",
-      headerDescription: offerText,
-      imageText: actionText,
-      title: actionText,
-      description: secondary || terms || "프로모션 상세 내용을 확인한 뒤 CTA를 통해 참여하세요.",
-      visualMode,
-    },
+    imageTextRow: [
+      {
+        imageText: actionText,
+        title: actionText,
+        description: secondary || terms || "프로모션 상세 내용을 확인한 뒤 CTA를 통해 참여하세요.",
+        visualMode,
+      },
+    ],
     titleDescription: {
       title: "이용약관",
       contents: terms,
@@ -1580,6 +1587,112 @@ createApp({
       };
     },
 
+    setImageGenerationChecked(sectionId, itemId, checked) {
+      this.setImageGenerationMode(sectionId, itemId, checked ? "generate" : "none");
+    },
+
+    repeatableSectionSets(sectionId) {
+      const value = this.sectionInputs?.[sectionId];
+      if (Array.isArray(value)) return value;
+      if (value && typeof value === "object") {
+        this.sectionInputs[sectionId] = [value];
+        return this.sectionInputs[sectionId];
+      }
+      this.sectionInputs[sectionId] = [this.defaultRepeatableSet(sectionId)];
+      return this.sectionInputs[sectionId];
+    },
+
+    defaultRepeatableSet(sectionId) {
+      if (sectionId === "stepBar") {
+        return { title: "", description: "", ctaLabel: "", link: "", target: "_blank" };
+      }
+      if (sectionId === "imageTextRow") {
+        return { imageText: "", title: "", description: "", visualMode: "auto" };
+      }
+      return {};
+    },
+
+    addRepeatableSet(sectionId) {
+      this.repeatableSectionSets(sectionId).push(this.defaultRepeatableSet(sectionId));
+      this.sectionInputsDirty = true;
+      this.setStatus("세트를 추가했습니다");
+    },
+
+    removeRepeatableSet(sectionId, setIndex) {
+      const sets = this.repeatableSectionSets(sectionId);
+      if (sets.length <= 1) {
+        this.setStatus("최소 1개 세트는 필요합니다");
+        return;
+      }
+      sets.splice(setIndex, 1);
+      this.sectionInputsDirty = true;
+      this.setStatus("세트를 삭제했습니다");
+    },
+
+    repeatItemKey(setIndex, itemId) {
+      return `${setIndex}.${itemId}`;
+    },
+
+    repeatItemVisible(sectionId, setIndex, item) {
+      const key = this.repeatItemKey(setIndex, item.itemId);
+      return this.sectionConfig.itemVisibility?.[sectionId]?.[key] ?? (item.defaultVisible !== false);
+    },
+
+    setRepeatItemVisible(sectionId, setIndex, itemId, visible) {
+      const key = this.repeatItemKey(setIndex, itemId);
+      this.sectionConfig.itemVisibility = {
+        ...this.sectionConfig.itemVisibility,
+        [sectionId]: {
+          ...(this.sectionConfig.itemVisibility?.[sectionId] || {}),
+          [key]: Boolean(visible),
+        },
+      };
+    },
+
+    repeatImageGenerationMode(sectionId, setIndex, item) {
+      if (!item.imageGenerationRequest) return "none";
+      const key = this.repeatItemKey(setIndex, item.itemId);
+      return this.sectionConfig.imageGenerationMode?.[sectionId]?.[key] || "generate";
+    },
+
+    setRepeatImageGenerationChecked(sectionId, setIndex, itemId, checked) {
+      const key = this.repeatItemKey(setIndex, itemId);
+      this.sectionConfig.imageGenerationMode = {
+        ...this.sectionConfig.imageGenerationMode,
+        [sectionId]: {
+          ...(this.sectionConfig.imageGenerationMode?.[sectionId] || {}),
+          [key]: checked ? "generate" : "none",
+        },
+      };
+    },
+
+    repeatItemInputPath(sectionId, setIndex, item) {
+      return `${sectionId}.${setIndex}.${item.inputKey || item.itemId}`;
+    },
+
+    repeatImageGenerationTargets(sectionInputs = this.sectionInputs) {
+      return this.sectionConfigSections.flatMap((section) => {
+        if (!section.repeatableSet || this.sectionConfig.sectionVisibility?.[section.sectionId] === false) return [];
+        const sets = Array.isArray(sectionInputs?.[section.sectionId]) ? sectionInputs[section.sectionId] : [];
+        return sets.flatMap((_, setIndex) =>
+          section.items
+            .filter((item) => {
+              if (!item.imageGenerationRequest) return false;
+              if (!this.repeatItemVisible(section.sectionId, setIndex, item)) return false;
+              return this.repeatImageGenerationMode(section.sectionId, setIndex, item) === "generate";
+            })
+            .map((item) => ({
+              sectionId: section.sectionId,
+              setIndex,
+              itemId: item.itemId,
+              label: item.label,
+              inputPath: this.repeatItemInputPath(section.sectionId, setIndex, item),
+              mode: "generate",
+            }))
+        );
+      });
+    },
+
     sectionInputValue(path) {
       const value = this.valueAtPath(this.sectionInputs, path);
       if (value == null) return "";
@@ -2234,7 +2347,7 @@ createApp({
       const visualModes = {
         heroBanner: this.sectionInputs?.heroBanner?.visualMode || "auto",
         contentCta: this.sectionInputs?.contentCta?.visualMode || "auto",
-        imageTextRow: this.sectionInputs?.imageTextRow?.visualMode || "auto",
+        imageTextRow: this.sectionInputs?.imageTextRow?.[0]?.visualMode || "auto",
       };
       this.sectionInputs = buildTemp4Draft({
         promo: this.promo,
@@ -2244,7 +2357,9 @@ createApp({
       });
       this.sectionInputs.heroBanner.visualMode = visualModes.heroBanner;
       this.sectionInputs.contentCta.visualMode = visualModes.contentCta;
-      this.sectionInputs.imageTextRow.visualMode = visualModes.imageTextRow;
+      if (Array.isArray(this.sectionInputs.imageTextRow) && this.sectionInputs.imageTextRow[0]) {
+        this.sectionInputs.imageTextRow[0].visualMode = visualModes.imageTextRow;
+      }
       this.promo.leadText = this.simpleBrief.mainOffer || this.sectionInputs.heroBanner.sublineText;
       this.promo.subline = this.simpleBrief.secondaryMessage || this.sectionInputs.contentCta.longText;
       this.promo.template = this.designMode === "advanced" ? "default_temp" : "AI Auto";
@@ -2271,17 +2386,41 @@ createApp({
       const designDoc = this.selectedDesignDataSource || this.selectedDocument;
       const sectionInputs = this.sectionInputsForPayload();
       const templateRuntime = buildTemplateRuntime(this.templateSchema, this.sectionConfig);
+      const repeatImageGenerationTargets = this.repeatImageGenerationTargets(sectionInputs);
+      const imageGenerationTargets = [
+        ...templateRuntime.imageGenerationTargets,
+        ...repeatImageGenerationTargets,
+      ];
       const sectionConfig = {
         ...JSON.parse(JSON.stringify(this.sectionConfig)),
         fixedSections: Object.fromEntries(templateRuntime.fixedSections.map((section) => [section.sectionId, section.fixedPosition])),
-        imageGenerationTargets: templateRuntime.imageGenerationTargets,
+        imageGenerationTargets,
+        repeatableSets: Object.fromEntries(
+          this.sectionConfigSections
+            .filter((section) => section.repeatableSet)
+            .map((section) => [section.sectionId, section.repeatableSet])
+        ),
       };
+      const fallbackCtaLabel = sectionInputs.heroBanner?.cta?.label
+        || sectionInputs.contentCta?.cta?.label
+        || sectionInputs.stepBar?.[0]?.ctaLabel
+        || "Learn More";
+      const fallbackCtaUrl = sectionInputs.heroBanner?.cta?.link
+        || sectionInputs.contentCta?.cta?.link
+        || sectionInputs.stepBar?.[0]?.link
+        || "#";
+      const fallbackTermsText = sectionInputs.titleDescription?.contents
+        || sectionInputs.footer?.content
+        || "Terms and conditions apply. Please play responsibly.";
       const promoCompat = {
         ...this.promo,
         template: this.promo.template,
         leadText: this.promo.leadText || sectionInputs.heroBanner.sublineText || this.simpleBrief.mainOffer,
         subline: this.promo.subline || sectionInputs.contentCta.longText || this.simpleBrief.secondaryMessage,
         alphaText: this.promo.alphaText || sectionInputs.heroBanner.alphaText,
+        ctaLabel: this.promo.ctaLabel || fallbackCtaLabel,
+        ctaUrl: this.promo.ctaUrl || fallbackCtaUrl,
+        termsText: this.promo.termsText || fallbackTermsText,
       };
       const promotionInput = {
         purpose: this.promo.promotionPurpose || this.promo.purpose || "",
@@ -2339,7 +2478,7 @@ createApp({
           itemVisibility: templateRuntime.itemVisibility,
           fixedSections: templateRuntime.fixedSections,
           draggableSections: templateRuntime.draggableSections,
-          imageGenerationTargets: templateRuntime.imageGenerationTargets,
+          imageGenerationTargets,
           governance: templateRuntime.governance,
           promotionInputSchema: templateRuntime.promotionInputSchema,
           templateForm: templateRuntime.templateForm,
