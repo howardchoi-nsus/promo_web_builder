@@ -795,7 +795,7 @@ createApp({
       companyStylePresets: dummyCompanyStylePresets,
       selectedDocumentId: localStorage.getItem(storageKeys.selectedDocumentId) || "",
       selectedPresetId: "preset-001",
-      styleSource: "company_default",
+      styleSource: "design_md",
       templateSchema: temp4TemplateSchema,
       generationMode: "ai_agent",
       inputMode: "simple",
@@ -1010,8 +1010,7 @@ createApp({
         { step: 1, title: "기본 설정", summary: "템플릿, 모드, 마켓" },
         { step: 2, title: "프로모션 입력", summary: "혜택, CTA, 약관" },
         { step: 3, title: "섹션 초안", summary: "Temp.4 구성 확인" },
-        { step: 4, title: "스타일 조정", summary: "색상, 폰트 재정의" },
-        { step: 5, title: "디자인 생성", summary: "n8n 실행" },
+        { step: 4, title: "디자인 생성", summary: "n8n 실행" },
       ];
     },
 
@@ -1384,14 +1383,14 @@ createApp({
 
     goBuilderStep(step) {
       if (!this.promoBuilderStarted) return;
-      const nextStep = Math.max(1, Math.min(5, step));
+      const nextStep = Math.max(1, Math.min(this.builderSteps.length, step));
       if (nextStep > this.currentBuilderStep && !this.validateBuilderStepsUntil(nextStep)) return;
       this.currentBuilderStep = nextStep;
     },
 
     nextBuilderStep() {
       if (!this.validateBuilderStep(this.currentBuilderStep)) return;
-      this.currentBuilderStep = Math.min(5, this.currentBuilderStep + 1);
+      this.currentBuilderStep = Math.min(this.builderSteps.length, this.currentBuilderStep + 1);
     },
 
     prevBuilderStep() {
@@ -2147,7 +2146,7 @@ createApp({
       } catch (error) {
         const recovered = await this.waitForStoredDesignResult(listItem, { attempts: 5, delayMs: 1200 }).catch(() => false);
         if (recovered) {
-          this.currentBuilderStep = 5;
+          this.currentBuilderStep = this.builderSteps.length;
           this.setStatus("n8n 응답은 지연됐지만 저장된 UI 디자인을 확인했습니다");
           if (listItem.pageUrl) window.open(listItem.pageUrl, "_blank");
           return;
@@ -2177,7 +2176,7 @@ createApp({
       await this.waitForStoredDesignResult(listItem, { attempts: 5, delayMs: 900 }).catch(() => false);
       await this.loadGeneratedPagesFromServer({ silent: true, fresh: true, preserveIds: [listItem.id] });
 
-      this.currentBuilderStep = 5;
+      this.currentBuilderStep = this.builderSteps.length;
       this.setStatus(n8nResult ? "n8n UI 디자인 생성이 완료되었습니다" : "로컬 UI 디자인 생성이 완료되었습니다");
       if (listItem.pageUrl) window.open(listItem.pageUrl, "_blank");
     },
