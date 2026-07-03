@@ -1779,7 +1779,7 @@ createApp({
     },
 
     closePromoBuilder() {
-      this.$refs.promoBuilderModal.close();
+      if (this.$refs.promoBuilderModal?.open) this.$refs.promoBuilderModal.close();
     },
 
     builderStepClass(step) {
@@ -2711,6 +2711,7 @@ createApp({
           this.setStatus("n8n 응답은 지연됐지만 저장된 UI 디자인을 확인했습니다");
           this.stopGenerationMotion();
           if (listItem.pageUrl) window.open(listItem.pageUrl, "_blank");
+          this.closePromoBuilder();
           return;
         }
 
@@ -2743,6 +2744,7 @@ createApp({
       this.setStatus(n8nResult ? "n8n UI 디자인 생성이 완료되었습니다" : "로컬 UI 디자인 생성이 완료되었습니다");
       this.stopGenerationMotion();
       if (listItem.pageUrl) window.open(listItem.pageUrl, "_blank");
+      this.closePromoBuilder();
     },
 
     generatePage() {
