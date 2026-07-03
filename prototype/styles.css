@@ -500,6 +500,30 @@ body.is-resizing {
   grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
+.form-section-group {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-solid);
+}
+
+.form-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.form-section-heading strong {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 900;
+}
+
 .action-row {
   display: flex;
   gap: 10px;
@@ -1417,6 +1441,10 @@ body.is-resizing {
   cursor: pointer;
 }
 
+.section-config-card summary::-webkit-details-marker {
+  display: none;
+}
+
 .section-config-card summary strong,
 .section-item-row strong {
   display: block;
@@ -1439,11 +1467,15 @@ body.is-resizing {
 
 .section-item-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(120px, 160px);
+  grid-template-columns: minmax(120px, 0.9fr) auto minmax(180px, 1.2fr) minmax(130px, 170px);
   gap: 10px;
   align-items: center;
   padding: 10px 12px;
   border-top: 1px solid var(--line);
+}
+
+.section-item-row.inactive {
+  background: color-mix(in srgb, var(--muted) 5%, transparent);
 }
 
 .section-item-row:first-child {
@@ -1462,9 +1494,48 @@ body.is-resizing {
 }
 
 .switch-control input {
-  width: 15px;
-  height: 15px;
-  accent-color: var(--accent);
+  position: relative;
+  width: 36px;
+  height: 20px;
+  margin: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--surface-2);
+  appearance: none;
+  cursor: pointer;
+}
+
+.switch-control input::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: var(--muted);
+  transition: transform 0.18s ease, background 0.18s ease;
+}
+
+.switch-control input:checked {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.switch-control input:checked::after {
+  background: var(--accent);
+  transform: translateX(16px);
+}
+
+.switch-control input:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.section-item-input input,
+.section-item-input textarea {
+  min-height: 32px;
+  font-size: 12px;
 }
 
 .mini-select {

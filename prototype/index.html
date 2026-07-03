@@ -249,82 +249,58 @@
                 </div>
               </div>
 
-              <div class="form-grid">
-                <label class="field" :class="fieldClass('title')">
-                  <span>프로모션 제목</span>
-                  <input v-model="promo.title" type="text" placeholder="입력해 주세요" autocomplete="off" />
-                  <small class="field-error" v-if="fieldError('title')">{{ fieldError('title') }}</small>
-                </label>
-                <label class="field" :class="fieldClass('promotionPurpose')">
-                  <span>프로모션 목적</span>
-                  <select v-model="promo.promotionPurpose">
-                    <option value="" disabled>선택해 주세요</option>
-                    <option>할인쿠폰</option>
-                    <option>웰컴</option>
-                    <option>이벤트</option>
-                    <option>기타</option>
-                  </select>
-                  <small class="field-error" v-if="fieldError('promotionPurpose')">{{ fieldError('promotionPurpose') }}</small>
-                </label>
-                <label class="field" :class="fieldClass('promotionPurposeOther')" v-if="promo.promotionPurpose === '기타'">
-                  <span>기타 목적</span>
-                  <input v-model="promo.promotionPurposeOther" type="text" placeholder="직접 입력" autocomplete="off" />
-                  <small class="field-error" v-if="fieldError('promotionPurposeOther')">{{ fieldError('promotionPurposeOther') }}</small>
-                </label>
-                <label class="field" :class="fieldClass('mainOffer')">
-                  <span>주요 혜택</span>
-                  <input v-model="simpleBrief.mainOffer" type="text" placeholder="예: 신규 가입자에게 입금 매칭과 무료 티켓 제공" autocomplete="off" />
-                  <small class="field-error" v-if="fieldError('mainOffer')">{{ fieldError('mainOffer') }}</small>
-                </label>
-                <label class="field" :class="fieldClass('targetAction')">
-                  <span>유도 행동</span>
-                  <input v-model="simpleBrief.targetAction" type="text" placeholder="예: 가입 후 첫 입금 진행" autocomplete="off" />
-                  <small class="field-error" v-if="fieldError('targetAction')">{{ fieldError('targetAction') }}</small>
-                </label>
-                <label class="field" :class="fieldClass('ctaLabel')">
-                  <span>CTA 문구</span>
-                  <input v-model="promo.ctaLabel" type="text" placeholder="입력해 주세요" autocomplete="off" />
-                  <small class="field-error" v-if="fieldError('ctaLabel')">{{ fieldError('ctaLabel') }}</small>
-                </label>
-                <label class="field" :class="fieldClass('ctaUrl')">
-                  <span>CTA URL</span>
-                  <input v-model="promo.ctaUrl" type="url" placeholder="입력해 주세요" autocomplete="off" />
-                  <small class="field-error" v-if="fieldError('ctaUrl')">{{ fieldError('ctaUrl') }}</small>
-                </label>
-                <label class="field" :class="fieldClass('audience')">
-                  <span>대상 고객</span>
-                  <select v-model="simpleBrief.audience">
-                    <option value="" disabled>선택해 주세요</option>
-                    <option>신규</option>
-                    <option>기존고객</option>
-                    <option>윈백고객</option>
-                  </select>
-                  <small class="field-error" v-if="fieldError('audience')">{{ fieldError('audience') }}</small>
-                </label>
+              <div class="form-section-group">
+                <div class="form-section-heading">
+                  <strong>1. 프로모션 개요</strong>
+                </div>
+                <div class="form-grid">
+                  <label class="field" :class="fieldClass('title')">
+                    <span>프로모션 제목</span>
+                    <input v-model="promo.title" type="text" placeholder="입력해 주세요" autocomplete="off" />
+                    <small class="field-error" v-if="fieldError('title')">{{ fieldError('title') }}</small>
+                  </label>
+                  <label class="field" :class="fieldClass('promotionPurpose')">
+                    <span>프로모션 목적 선택</span>
+                    <select v-model="promo.promotionPurpose">
+                      <option value="" disabled>선택해 주세요</option>
+                      <option>할인쿠폰</option>
+                      <option>웰컴</option>
+                      <option>이벤트</option>
+                      <option>기타</option>
+                    </select>
+                    <small class="field-error" v-if="fieldError('promotionPurpose')">{{ fieldError('promotionPurpose') }}</small>
+                  </label>
+                  <label class="field" :class="fieldClass('promotionPurposeOther')" v-if="promo.promotionPurpose === '기타'">
+                    <span>기타 목적 직접입력</span>
+                    <input v-model="promo.promotionPurposeOther" type="text" placeholder="직접 입력" autocomplete="off" />
+                    <small class="field-error" v-if="fieldError('promotionPurposeOther')">{{ fieldError('promotionPurposeOther') }}</small>
+                  </label>
+                  <label class="field" :class="fieldClass('audience')">
+                    <span>대상고객 선택</span>
+                    <select v-model="simpleBrief.audience">
+                      <option value="" disabled>선택해 주세요</option>
+                      <option>신규</option>
+                      <option>기존고객</option>
+                      <option>윈백고객</option>
+                    </select>
+                    <small class="field-error" v-if="fieldError('audience')">{{ fieldError('audience') }}</small>
+                  </label>
+                  <label class="field" :class="fieldClass('campaignTone')">
+                    <span>캠페인톤 선택</span>
+                    <select v-model="simpleBrief.campaignTone">
+                      <option value="" disabled>선택해 주세요</option>
+                      <option>활기찬</option>
+                      <option>신중한</option>
+                      <option>럭키</option>
+                      <option>프리미엄</option>
+                      <option>긴급한</option>
+                      <option>친근한</option>
+                    </select>
+                    <small class="field-error" v-if="fieldError('campaignTone')">{{ fieldError('campaignTone') }}</small>
+                  </label>
+                </div>
               </div>
 
-              <label class="field">
-                <span>보조 메시지</span>
-                <textarea v-model="simpleBrief.secondaryMessage" rows="2" placeholder="선택 입력" autocomplete="off"></textarea>
-              </label>
-              <label class="field" :class="fieldClass('campaignTone')">
-                <span>캠페인 톤</span>
-                <select v-model="simpleBrief.campaignTone">
-                  <option value="" disabled>선택해 주세요</option>
-                  <option>활기찬</option>
-                  <option>신중한</option>
-                  <option>럭키</option>
-                  <option>프리미엄</option>
-                  <option>긴급한</option>
-                  <option>친근한</option>
-                </select>
-                <small class="field-error" v-if="fieldError('campaignTone')">{{ fieldError('campaignTone') }}</small>
-              </label>
-              <label class="field" :class="fieldClass('termsText')">
-                <span>이용약관</span>
-                <textarea v-model="promo.termsText" rows="4" placeholder="입력해 주세요" autocomplete="off"></textarea>
-                <small class="field-error" v-if="fieldError('termsText')">{{ fieldError('termsText') }}</small>
-              </label>
               <div class="action-row align-right">
                 <button class="secondary-action" type="button" @click="resetSectionConfig">섹션 기본값</button>
                 <button class="secondary-action" type="button" @click="clearPromoInputs">초기화</button>
@@ -344,7 +320,7 @@
                   v-for="section in sectionConfigSections"
                   :key="section.sectionId"
                   class="section-config-card"
-                  :open="section.required || section.sectionExposure === 'required'"
+                  :open="section.visible"
                 >
                   <summary>
                     <div>
@@ -355,18 +331,17 @@
                       <input
                         type="checkbox"
                         :checked="section.visible"
-                        :disabled="section.fixedPosition === 'top' || section.fixedPosition === 'bottom'"
                         @change="setSectionVisible(section.sectionId, $event.target.checked)"
                       />
                       <span>사용</span>
                     </label>
                   </summary>
 
-                  <div class="section-item-list">
-                    <div v-for="item in section.items" :key="item.itemId" class="section-item-row">
-                      <div>
+                  <div class="section-item-list" v-show="section.visible">
+                    <div v-for="item in section.items" :key="item.itemId" class="section-item-row" :class="{ inactive: !item.visible }">
+                      <div class="section-item-summary">
                         <strong>{{ item.label }}</strong>
-                        <span>{{ item.description || item.inputPath || '섹션 아이템' }}</span>
+                        <span>{{ item.description || '섹션 아이템' }}</span>
                       </div>
                       <label class="switch-control">
                         <input
@@ -377,11 +352,31 @@
                         />
                         <span>{{ item.required ? '필수' : '선택' }}</span>
                       </label>
+                      <label class="field section-item-input" v-if="item.inputPath">
+                        <span>입력 필드</span>
+                        <textarea
+                          v-if="item.inputType === 'textarea'"
+                          rows="3"
+                          :value="sectionInputValue(item.inputPath)"
+                          :disabled="!section.visible || !item.visible"
+                          placeholder="내용을 입력해 주세요"
+                          @input="setSectionInputValue(item.inputPath, $event.target.value)"
+                        ></textarea>
+                        <input
+                          v-else
+                          type="text"
+                          :value="sectionInputValue(item.inputPath)"
+                          :disabled="!section.visible || !item.visible"
+                          placeholder="내용을 입력해 주세요"
+                          autocomplete="off"
+                          @input="setSectionInputValue(item.inputPath, $event.target.value)"
+                        />
+                      </label>
                       <label class="mini-select">
-                        <span>이미지</span>
+                        <span>이미지 생성 요청</span>
                         <select
                           :value="item.imageGenerationMode"
-                          :disabled="!section.visible || !item.visible"
+                          :disabled="!section.visible || !item.visible || !item.imageGenerationRequest"
                           @change="setImageGenerationMode(section.sectionId, item.itemId, $event.target.value)"
                         >
                           <option value="none">없음</option>

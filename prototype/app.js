@@ -278,8 +278,8 @@ const temp4TemplateSchema = {
       fixedPosition: "top",
       orderChangeAllowed: false,
       items: [
-        { itemId: "logoText", label: "Logo", defaultVisible: true, inputPath: "header.logoText" },
-        { itemId: "badgeText", label: "Badge", defaultVisible: true, inputPath: "header.badgeText" },
+        { itemId: "logoText", label: "LOGO", required: true, defaultVisible: true, inputPath: "header.logoText", description: "로고이미지" },
+        { itemId: "badgeText", label: "Badges", required: true, defaultVisible: true, inputPath: "header.badgeText", imageGenerationRequest: true, description: "뱃지 이미지" },
       ],
     },
     {
@@ -288,11 +288,11 @@ const temp4TemplateSchema = {
       defaultVisible: true,
       orderChangeAllowed: true,
       items: [
-        { itemId: "leaderText", label: "Leader Text", defaultVisible: true, inputPath: "heroBanner.leaderText" },
-        { itemId: "title", label: "Title", defaultVisible: true, inputPath: "heroBanner.title" },
-        { itemId: "sublineText", label: "Subline", defaultVisible: true, inputPath: "heroBanner.sublineText" },
-        { itemId: "cta", label: "CTA Button", defaultVisible: true, inputPath: "heroBanner.cta", movesWithSection: true },
-        { itemId: "visual", label: "Hero Visual", defaultVisible: true, inputPath: "heroBanner.visualMode", imageGenerationRequest: true },
+        { itemId: "leaderText", label: "Lead Text", defaultVisible: true, inputPath: "heroBanner.leaderText", description: "주요 문구" },
+        { itemId: "title", label: "Title", required: true, defaultVisible: true, inputPath: "heroBanner.title", description: "제목" },
+        { itemId: "sublineText", label: "Subline Text", defaultVisible: true, inputPath: "heroBanner.sublineText", description: "부제목" },
+        { itemId: "button", label: "Button", defaultVisible: true, inputPath: "heroBanner.cta.label", imageGenerationRequest: true, movesWithSection: true, description: "버튼 텍스트" },
+        { itemId: "alphaText", label: "Alpha Text", defaultVisible: true, inputPath: "heroBanner.alphaText", description: "추가 안내 문구" },
       ],
     },
     {
@@ -301,18 +301,21 @@ const temp4TemplateSchema = {
       defaultVisible: true,
       orderChangeAllowed: true,
       items: [
-        { itemId: "steps", label: "Step Items", defaultVisible: true, inputPath: "stepBar" },
+        { itemId: "title", label: "Title", defaultVisible: true, inputPath: "stepBar.0.title", description: "제목" },
+        { itemId: "description", label: "Description", defaultVisible: true, inputPath: "stepBar.0.description", description: "설명" },
+        { itemId: "ctaButton", label: "CTA Button", defaultVisible: true, inputPath: "stepBar.0.ctaLabel", description: "버튼 텍스트" },
       ],
     },
     {
       sectionId: "contentCta",
-      name: "Content CTA",
+      name: "Contents",
       defaultVisible: true,
       orderChangeAllowed: true,
       items: [
-        { itemId: "longText", label: "Long Text", defaultVisible: true, inputPath: "contentCta.longText" },
-        { itemId: "cta", label: "CTA Button", defaultVisible: true, inputPath: "contentCta.cta", movesWithSection: true },
-        { itemId: "visual", label: "CTA Visual", defaultVisible: true, inputPath: "contentCta.visualMode", imageGenerationRequest: true },
+        { itemId: "title", label: "Title", defaultVisible: true, inputPath: "contentCta.title", imageGenerationRequest: true, description: "제목" },
+        { itemId: "description", label: "Description", defaultVisible: true, inputPath: "contentCta.longText", imageGenerationRequest: true, inputType: "textarea", description: "이미지와 텍스트 및 CTA 버튼으로 자유롭게 구성" },
+        { itemId: "image", label: "Image", defaultVisible: true, inputPath: "contentCta.imageText", imageGenerationRequest: true, description: "이미지" },
+        { itemId: "button", label: "button", defaultVisible: true, inputPath: "contentCta.cta.label", imageGenerationRequest: true, movesWithSection: true, description: "버튼 텍스트" },
       ],
     },
     {
@@ -321,11 +324,9 @@ const temp4TemplateSchema = {
       defaultVisible: true,
       orderChangeAllowed: true,
       items: [
-        { itemId: "headerTitle", label: "Header Title", defaultVisible: true, inputPath: "imageTextRow.headerTitle" },
-        { itemId: "headerDescription", label: "Header Description", defaultVisible: true, inputPath: "imageTextRow.headerDescription" },
+        { itemId: "image", label: "Image", defaultVisible: true, inputPath: "imageTextRow.imageText", imageGenerationRequest: true, description: "이미지" },
         { itemId: "title", label: "Title", defaultVisible: true, inputPath: "imageTextRow.title" },
         { itemId: "description", label: "Description", defaultVisible: true, inputPath: "imageTextRow.description" },
-        { itemId: "visual", label: "Image", defaultVisible: true, inputPath: "imageTextRow.visualMode", imageGenerationRequest: true },
       ],
     },
     {
@@ -335,7 +336,7 @@ const temp4TemplateSchema = {
       orderChangeAllowed: true,
       items: [
         { itemId: "title", label: "Title", defaultVisible: true, inputPath: "titleDescription.title" },
-        { itemId: "contents", label: "Contents", defaultVisible: true, inputPath: "titleDescription.contents" },
+        { itemId: "contents", label: "Contents", defaultVisible: true, inputPath: "titleDescription.contents", imageGenerationRequest: true, inputType: "textarea", description: "텍스트 등록, Bold/블릿 적용 가능" },
       ],
     },
     {
@@ -345,8 +346,9 @@ const temp4TemplateSchema = {
       fixedPosition: "bottom",
       orderChangeAllowed: false,
       items: [
-        { itemId: "logoText", label: "Logo", defaultVisible: true, inputPath: "footer.logoText" },
-        { itemId: "licenseBadges", label: "License Badges", defaultVisible: true, inputPath: "footer.licenseBadges" },
+        { itemId: "logoText", label: "Logo", required: true, defaultVisible: true, inputPath: "footer.logoText", imageGenerationRequest: true, description: "로고" },
+        { itemId: "licenseBadges", label: "License Badges", required: true, defaultVisible: true, inputPath: "footer.licenseBadges", imageGenerationRequest: true, description: "라이선스 뱃지" },
+        { itemId: "content", label: "content", required: true, defaultVisible: true, inputPath: "footer.content", inputType: "textarea", description: "푸터 내용" },
       ],
     },
   ],
@@ -385,7 +387,6 @@ function createDefaultSectionConfig(schema) {
         Object.fromEntries((section.items || []).map((item) => {
           const itemId = item.itemId || item.key;
           if (item.imageGenerationRequest || item.sendToImagePrompt) return [itemId, "generate"];
-          if (/logo|badge/i.test(itemId)) return [itemId, "brand_asset"];
           return [itemId, "none"];
         })),
       ])
@@ -527,18 +528,21 @@ function createEmptyTemp4Inputs() {
       visualMode: "auto",
     },
     stepBar: [
-      { title: "", description: "", link: "", target: "_blank" },
-      { title: "", description: "", link: "", target: "_blank" },
-      { title: "", description: "", link: "", target: "_blank" },
+      { title: "", description: "", ctaLabel: "", link: "", target: "_blank" },
+      { title: "", description: "", ctaLabel: "", link: "", target: "_blank" },
+      { title: "", description: "", ctaLabel: "", link: "", target: "_blank" },
     ],
     contentCta: {
+      title: "",
       longText: "",
+      imageText: "",
       cta: { label: "", link: "", target: "_blank" },
       visualMode: "auto",
     },
     imageTextRow: {
       headerTitle: "",
       headerDescription: "",
+      imageText: "",
       title: "",
       description: "",
       visualMode: "auto",
@@ -550,6 +554,7 @@ function createEmptyTemp4Inputs() {
     footer: {
       logoText: "GGPoker",
       licenseBadges: "Visa, Mastercard, 18+, BeGambleAware",
+      content: "",
     },
   };
 }
@@ -591,30 +596,36 @@ function buildTemp4Draft({ promo, simpleBrief, selectedDocument, visualMode }) {
       {
         title: "시작",
         description: audiencePrefix ? `${audiencePrefix}${actionText.toLowerCase()}.` : actionText,
+        ctaLabel: cta.label,
         link: cta.link,
         target: cta.target,
       },
       {
         title: "혜택 받기",
         description: offerText ? `혜택을 확인하세요: ${offerText}` : "캠페인 참여 조건을 확인하세요.",
+        ctaLabel: cta.label,
         link: cta.link,
         target: cta.target,
       },
       {
         title: "플레이",
         description: secondary || "프로모션을 즐기기 전에 최종 조건을 확인하세요.",
+        ctaLabel: cta.label,
         link: cta.link,
         target: cta.target,
       },
     ],
     contentCta: {
+      title: title || "프로모션 안내",
       longText: secondary || `${offerText}. ${actionText}.${toneHint}`,
+      imageText: offerText || title,
       cta,
       visualMode,
     },
     imageTextRow: {
       headerTitle: title ? `${title} 상세` : "프로모션 상세",
       headerDescription: offerText,
+      imageText: actionText,
       title: actionText,
       description: secondary || terms || "프로모션 상세 내용을 확인한 뒤 CTA를 통해 참여하세요.",
       visualMode,
@@ -626,6 +637,7 @@ function buildTemp4Draft({ promo, simpleBrief, selectedDocument, visualMode }) {
     footer: {
       logoText: brand,
       licenseBadges: "Visa, Mastercard, 18+, BeGambleAware",
+      content: terms,
     },
   };
 }
@@ -953,6 +965,7 @@ createApp({
         secondaryMessage: "",
       },
       sectionInputs: createEmptyTemp4Inputs(),
+      sectionInputsDirty: false,
       override: {
         primaryColor: "#d52b1e",
         ctaColor: "#e12d25",
@@ -1125,7 +1138,7 @@ createApp({
     builderSteps() {
       return [
         { step: 1, title: "디자인 모드 선택", summary: "AI 모드, 고급 모드, 마켓" },
-        { step: 2, title: "프로모션 입력 및 섹션 구성", summary: "혜택, CTA, 섹션/아이템" },
+        { step: 2, title: "프로모션 입력 및 섹션 구성", summary: "개요, 섹션/아이템" },
         { step: 3, title: "디자인 생성", summary: "n8n 실행" },
       ];
     },
@@ -1567,6 +1580,41 @@ createApp({
       };
     },
 
+    sectionInputValue(path) {
+      const value = this.valueAtPath(this.sectionInputs, path);
+      if (value == null) return "";
+      if (typeof value === "object") return value.label || value.text || JSON.stringify(value, null, 2);
+      return String(value);
+    },
+
+    setSectionInputValue(path, value) {
+      const parts = String(path || "").split(".").filter(Boolean);
+      if (!parts.length) return;
+      let target = this.sectionInputs;
+      for (let index = 0; index < parts.length - 1; index += 1) {
+        const key = parts[index];
+        const nextKey = parts[index + 1];
+        if (target[key] == null) target[key] = /^\d+$/.test(nextKey) ? [] : {};
+        target = target[key];
+      }
+      const lastKey = parts[parts.length - 1];
+      const current = target?.[lastKey];
+      if (current && typeof current === "object" && !Array.isArray(current)) {
+        target[lastKey] = { ...current, label: value };
+        this.sectionInputsDirty = true;
+        return;
+      }
+      target[lastKey] = value;
+      this.sectionInputsDirty = true;
+    },
+
+    valueAtPath(source, path) {
+      return String(path || "")
+        .split(".")
+        .filter(Boolean)
+        .reduce((acc, key) => (acc == null ? undefined : acc[key]), source);
+    },
+
     ensureRequiredItemsVisible(sectionId) {
       const section = templateSections(this.templateSchema).find((item) => (item.sectionId || item.key) === sectionId);
       if (!section) return;
@@ -1869,11 +1917,6 @@ createApp({
         promotionPurposeOther:
           this.promo.promotionPurpose !== "기타" || hasValue(this.promo, "promotionPurposeOther"),
         market: hasValue(this.promo, "market"),
-        ctaLabel: hasValue(this.promo, "ctaLabel"),
-        ctaUrl: hasValue(this.promo, "ctaUrl"),
-        termsText: hasValue(this.promo, "termsText"),
-        mainOffer: hasValue(this.simpleBrief, "mainOffer"),
-        targetAction: hasValue(this.simpleBrief, "targetAction"),
         audience: hasValue(this.simpleBrief, "audience"),
         campaignTone: hasValue(this.simpleBrief, "campaignTone"),
         n8nWebhookUrl: this.n8nWebhookUrlIsValid(),
@@ -1919,6 +1962,7 @@ createApp({
       this.n8nWebhookUrl = existingWebhookUrl;
       this.currentBuilderStep = 1;
       this.sectionInputs = createEmptyTemp4Inputs();
+      this.sectionInputsDirty = false;
       this.sectionConfig = createDefaultSectionConfig(this.templateSchema);
       this.stopGenerationMotion();
       if (options.rerender) this.promoBuilderSessionKey += 1;
@@ -1951,6 +1995,7 @@ createApp({
       this.promoBuilderStarted = true;
       this.currentBuilderStep = 2;
       this.refreshSectionDraft();
+      this.sectionInputsDirty = false;
       this.setStatus("GGpoker 테스트 프로모션 입력값을 자동등록했습니다");
     },
 
@@ -2204,6 +2249,7 @@ createApp({
       this.promo.subline = this.simpleBrief.secondaryMessage || this.sectionInputs.contentCta.longText;
       this.promo.template = this.designMode === "advanced" ? "default_temp" : "AI Auto";
       if (!options.silent) this.setStatus("섹션 입력값을 갱신했습니다");
+      this.sectionInputsDirty = false;
     },
 
     hasSectionDraft() {
@@ -2213,7 +2259,7 @@ createApp({
     },
 
     sectionInputsForPayload() {
-      if (this.inputMode === "simple" || (!this.hasSectionDraft() && String(this.promo.title || "").trim())) {
+      if (!this.sectionInputsDirty && (this.inputMode === "simple" || (!this.hasSectionDraft() && String(this.promo.title || "").trim()))) {
         this.refreshSectionDraft({ silent: true });
       }
       return JSON.parse(JSON.stringify(this.sectionInputs));
@@ -2339,17 +2385,12 @@ createApp({
         ["title", "프로모션 제목", this.promo],
         ["promotionPurpose", "프로모션 목적", this.promo],
         ["market", "마켓 / 지역", this.promo],
-        ["ctaLabel", "CTA 문구", this.promo],
-        ["ctaUrl", "CTA URL", this.promo],
-        ["termsText", "이용약관", this.promo],
       ];
       const missingEntries = required.filter(([key, , source]) => !String(source[key] || "").trim());
       if (this.promo.promotionPurpose === "기타" && !String(this.promo.promotionPurposeOther || "").trim()) {
         missingEntries.push(["promotionPurposeOther", "기타 목적", this.promo]);
       }
       const simpleMissing = [
-        ["mainOffer", "주요 혜택", this.simpleBrief],
-        ["targetAction", "유도 행동", this.simpleBrief],
         ["audience", "대상 고객", this.simpleBrief],
         ["campaignTone", "캠페인 톤", this.simpleBrief],
       ]
