@@ -929,6 +929,7 @@ createApp({
       inputMode: "simple",
       globalVisualMode: "auto",
       promoBuilderStarted: false,
+      promoBuilderModalOpen: false,
       promoBuilderSessionKey: 0,
       currentBuilderStep: 1,
       n8nWebhookUrl: localStorage.getItem(storageKeys.n8nWebhookUrl) || "",
@@ -1770,16 +1771,33 @@ createApp({
         this.setStatus("먼저 디자인 MD를 선택해 주세요");
         return;
       }
-      this.resetPromoBuilderState({ rerender: true });
-      this.promoBuilderStarted = true;
+      const wasStarted = this.promoBuilderStarted;
+      if (!this.promoBuilderStarted) {
+        this.resetPromoBuilderState({ rerender: true });
+        this.promoBuilderStarted = true;
+      }
+      this.openPromoBuilderModal();
+      this.setStatus(wasStarted ? "프로모션 생성 단계를 이어서 진행합니다" : "프로모션 생성 단계를 시작했습니다");
+    },
+
+    openPromoBuilderModal() {
+      this.promoBuilderModalOpen = true;
       this.$nextTick(() => {
         if (!this.$refs.promoBuilderModal.open) this.$refs.promoBuilderModal.showModal();
       });
-      this.setStatus("프로모션 생성 단계를 시작했습니다");
     },
 
-    closePromoBuilder() {
+    closePromoBuilder(options = {}) {
       if (this.$refs.promoBuilderModal?.open) this.$refs.promoBuilderModal.close();
+      this.onPromoBuilderClosed(options);
+    },
+
+    onPromoBuilderClosed(options = {}) {
+      this.promoBuilderModalOpen = false;
+      if (options.endSession === true) {
+        this.promoBuilderStarted = false;
+        this.stopGenerationMotion();
+      }
     },
 
     builderStepClass(step) {
@@ -2710,8 +2728,8 @@ createApp({
           this.currentBuilderStep = this.builderSteps.length;
           this.setStatus("n8n 응답은 지연됐지만 저장된 UI 디자인을 확인했습니다");
           this.stopGenerationMotion();
+          this.closePromoBuilder({ endSession: true });
           if (listItem.pageUrl) window.open(listItem.pageUrl, "_blank");
-          this.closePromoBuilder();
           return;
         }
 
@@ -2743,8 +2761,8 @@ createApp({
       this.currentBuilderStep = this.builderSteps.length;
       this.setStatus(n8nResult ? "n8n UI 디자인 생성이 완료되었습니다" : "로컬 UI 디자인 생성이 완료되었습니다");
       this.stopGenerationMotion();
+      this.closePromoBuilder({ endSession: true });
       if (listItem.pageUrl) window.open(listItem.pageUrl, "_blank");
-      this.closePromoBuilder();
     },
 
     generatePage() {

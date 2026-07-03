@@ -1989,12 +1989,19 @@ body.is-resizing {
 }
 
 .builder-modal {
-  display: flex;
-  flex-direction: column;
   width: 70vw;
   height: 70vh;
   max-width: calc(100vw - 40px);
   max-height: calc(100vh - 40px);
+}
+
+.builder-modal:not([open]) {
+  display: none;
+}
+
+.builder-modal[open] {
+  display: flex;
+  flex-direction: column;
 }
 
 .builder-modal > .modal-header,

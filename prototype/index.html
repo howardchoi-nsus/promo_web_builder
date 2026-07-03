@@ -172,7 +172,7 @@
               <button class="primary-action" type="button" @click="startPromoBuilder">{{ promoBuilderStarted ? '프로모션 빌더 열기' : '프로모션 정보 입력' }}</button>
             </div>
 
-            <dialog class="modal builder-modal" ref="promoBuilderModal" :key="promoBuilderSessionKey" autocomplete="off">
+            <dialog class="modal builder-modal" ref="promoBuilderModal" :key="promoBuilderSessionKey" autocomplete="off" @close="onPromoBuilderClosed" @cancel="onPromoBuilderClosed">
               <div class="modal-header">
                 <div>
                   <p class="eyebrow">B 섹션</p>
