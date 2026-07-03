@@ -26,11 +26,23 @@
   --cta: #16a34a;
   --canvas: #f8fafc;
   --radius: 0px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --control-height: 38px;
+  --panel-gap: 12px;
   --shadow: 0 14px 40px rgba(20, 35, 70, 0.08);
   --font-heading: Inter, Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-body: Inter, Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --title-weight: 950;
 }
+
+/* Layout governance:
+   - Grid: page columns, card collections, and true two-dimensional content.
+   - Flex: headers, action bars, controls, and item rows that need consistent vertical centering.
+   - Spacing should use --space-* or --panel-gap so local layouts do not drift apart. */
 
 [data-theme="dark"] {
   color-scheme: dark;
@@ -384,7 +396,7 @@ body.is-resizing {
 
 .field {
   display: grid;
-  gap: 6px;
+  gap: var(--space-1);
 }
 
 .field span {
@@ -410,7 +422,7 @@ body.is-resizing {
 .field select,
 .field textarea {
   width: 100%;
-  min-height: 38px;
+  min-height: var(--control-height);
   padding: 8px 10px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -492,8 +504,8 @@ body.is-resizing {
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--panel-gap);
 }
 
 .form-grid.compact {
@@ -502,8 +514,8 @@ body.is-resizing {
 
 .form-section-group {
   display: grid;
-  gap: 10px;
-  padding: 12px;
+  gap: var(--panel-gap);
+  padding: var(--space-3);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface-solid);
@@ -513,8 +525,8 @@ body.is-resizing {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding-bottom: 8px;
+  gap: var(--space-3);
+  padding-bottom: var(--space-2);
   border-bottom: 1px solid var(--line);
 }
 
@@ -526,7 +538,9 @@ body.is-resizing {
 
 .action-row {
   display: flex;
-  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .align-right {
@@ -535,6 +549,9 @@ body.is-resizing {
 
 .primary-action,
 .secondary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-height: 42px;
   padding: 0 16px;
   border-radius: var(--radius);
@@ -729,8 +746,8 @@ body.is-resizing {
 
 .subsection {
   display: grid;
-  gap: 12px;
-  padding: 14px;
+  gap: var(--panel-gap);
+  padding: var(--space-3);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface-2);
@@ -738,15 +755,17 @@ body.is-resizing {
 
 .subsection-title {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .subsection-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .subsection-title h3 {
@@ -829,7 +848,7 @@ body.is-resizing {
 .style-concept-wrap {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-2);
   padding: 10px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -837,7 +856,9 @@ body.is-resizing {
 }
 
 .style-concept-button {
-  display: inline-grid;
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
   gap: 2px;
   min-height: 44px;
   max-width: 100%;
@@ -911,17 +932,26 @@ body.is-resizing {
 }
 
 .style-group-header {
-  display: grid;
+  display: flex;
   width: 100%;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: start;
-  gap: 8px;
-  padding: 12px;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3);
   border: 0;
   background: var(--surface-2);
   color: var(--ink);
   cursor: pointer;
   text-align: left;
+}
+
+.style-group-header > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.style-group-header > .group-caret,
+.style-group-header > .group-count {
+  flex: 0 0 auto;
 }
 
 .style-group-header strong,
@@ -1033,9 +1063,8 @@ body.is-resizing {
 }
 
 .style-doc-item {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
+  display: flex;
+  gap: var(--space-3);
   align-items: center;
   height: 58px;
   min-height: 58px;
@@ -1043,6 +1072,15 @@ body.is-resizing {
   padding: 10px 12px;
   background: var(--surface-solid);
   overflow: hidden;
+}
+
+.style-doc-item > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.style-doc-item > button {
+  flex: 0 0 auto;
 }
 
 .style-doc-item.selected {
@@ -1080,8 +1118,8 @@ body.is-resizing {
 
 .radio-card {
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 4px 10px;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px var(--space-3);
   align-items: start;
   min-height: 78px;
   padding: 12px;
@@ -1293,14 +1331,26 @@ body.is-resizing {
 
 .builder-start-card,
 .builder-step-actions {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  padding: 14px;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--panel);
+}
+
+.builder-start-card > div,
+.builder-step-actions > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.builder-start-card > button,
+.builder-step-actions > button {
+  flex: 0 0 auto;
 }
 
 .builder-start-card {
@@ -1330,15 +1380,15 @@ body.is-resizing {
   z-index: 4;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  padding: 0 0 10px;
+  gap: var(--space-2);
+  padding: 0 0 var(--space-2);
   background: var(--panel);
 }
 
 .builder-step {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  gap: 2px 8px;
+  gap: 2px var(--space-2);
   align-items: center;
   min-height: 58px;
   padding: 8px;
@@ -1392,16 +1442,17 @@ body.is-resizing {
 /* B2 section config: compact controls for visibility and image-generation intent. */
 .section-config-panel {
   display: grid;
-  gap: 10px;
-  margin-top: 14px;
+  gap: var(--panel-gap);
+  margin-top: var(--space-4);
 }
 
 .section-config-heading {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-3);
   align-items: start;
-  padding: 12px;
+  padding: var(--space-3);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface-2);
@@ -1431,14 +1482,20 @@ body.is-resizing {
 }
 
 .section-config-card summary {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-3);
   align-items: center;
   min-height: 50px;
-  padding: 10px 12px;
+  padding: 10px var(--space-3);
   background: var(--surface-2);
   cursor: pointer;
+}
+
+.section-config-card summary > div {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .section-config-card summary::-webkit-details-marker {
@@ -1466,12 +1523,27 @@ body.is-resizing {
 }
 
 .section-item-row {
-  display: grid;
-  grid-template-columns: 42px minmax(120px, 0.9fr) auto minmax(180px, 1.2fr);
-  gap: 10px;
-  align-items: center;
-  padding: 10px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: 10px var(--space-3);
   border-top: 1px solid var(--line);
+}
+
+.section-item-summary {
+  flex: 1 1 180px;
+  min-width: 140px;
+}
+
+.section-item-row > .switch-control {
+  flex: 0 0 auto;
+  min-height: var(--control-height);
+}
+
+.section-item-input {
+  flex: 1.4 1 220px;
+  min-width: 180px;
 }
 
 .section-item-row.inactive {
@@ -1486,7 +1558,7 @@ body.is-resizing {
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 6px;
+  gap: var(--space-2);
   color: var(--muted);
   font-size: 11px;
   font-weight: 900;
@@ -1534,6 +1606,7 @@ body.is-resizing {
 
 .ai-toggle,
 .ai-toggle-placeholder {
+  flex: 0 0 36px;
   width: 36px;
 }
 
@@ -1585,10 +1658,11 @@ body.is-resizing {
 
 .repeatable-set-toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: var(--space-3);
+  padding: 10px var(--space-3);
   border-bottom: 1px solid var(--line);
   background: var(--surface-2);
 }
@@ -1602,8 +1676,8 @@ body.is-resizing {
 .repeatable-set-grid {
   display: grid;
   grid-template-columns: repeat(var(--set-columns, 1), minmax(0, 1fr));
-  gap: 10px;
-  padding: 10px;
+  gap: var(--panel-gap);
+  padding: var(--space-3);
 }
 
 .repeatable-set-card {
@@ -1616,11 +1690,12 @@ body.is-resizing {
 
 .repeatable-set-heading {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
   min-height: 42px;
-  padding: 8px 10px;
+  padding: var(--space-2) 10px;
   border-bottom: 1px solid var(--line);
   background: var(--surface-2);
 }
@@ -1630,7 +1705,6 @@ body.is-resizing {
 }
 
 .repeat-item-row {
-  grid-template-columns: 42px minmax(90px, 0.7fr) auto minmax(130px, 1fr);
   padding: 9px 10px;
 }
 
@@ -1730,7 +1804,6 @@ body.is-resizing {
 
 .builder-step-actions {
   z-index: 8;
-  grid-template-columns: auto minmax(0, 1fr) auto;
   border-radius: 0;
   box-shadow: 0 -14px 24px rgba(20, 35, 70, 0.12);
 }
@@ -1819,22 +1892,26 @@ body.is-resizing {
 }
 
 .result-card {
-  display: grid;
-  gap: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--panel);
 }
 
-.result-card {
-  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
-  align-items: center;
-}
-
 .result-card div {
+  flex: 1 1 140px;
+  min-width: 120px;
   display: grid;
   gap: 3px;
+}
+
+.result-card .card-actions {
+  flex: 0 0 auto;
+  min-width: auto;
 }
 
 .result-card strong,
@@ -1865,7 +1942,7 @@ body.is-resizing {
 
 .recent-summary-card {
   display: grid;
-  gap: 10px;
+  gap: var(--panel-gap);
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -1874,8 +1951,8 @@ body.is-resizing {
 
 .recent-summary-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-2);
 }
 
 .recent-summary-grid div {
@@ -2390,11 +2467,8 @@ body.is-resizing {
   .summary-grid,
   .style-source-grid,
   .source-summary,
-  .result-card,
   .recent-summary-grid,
-  .builder-start-card,
   .builder-stepper,
-  .builder-step-actions,
   .prompt-md-compare,
   .hero,
   .steps,
