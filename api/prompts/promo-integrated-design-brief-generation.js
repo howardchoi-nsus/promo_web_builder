@@ -71,6 +71,7 @@ Rules:
 - Design Prompt MD controls style tokens, component patterns, layout patterns, and guidelines.
 - Section Input Log MD controls visible content, CTA text, legal text, and selected template section input values.
 - The selected template schema controls output section order, visible section coverage, fixed sections, optional sections, item visibility, and image-generation targets.
+- Market / region is shared promo metadata, but it primarily affects image-generation visual localization. Use it as subtle mood, audience, environment, and compliance context; do not force the market name into visible copy.
 - YAML frontmatter type must be exactly integrated_design_brief.
 - sourceDocuments must include design_prompt and section_input_log.
 - All visible UI copy must be English only.
@@ -80,6 +81,7 @@ Rules:
 - Represent a 1440px desktop Web UI page scaled into the bitmap.
 - The result must read as a web UI design mockup, not a poster, flyer, brochure, presentation slide, print ad, or key visual.
 - The content and layout role of all selected visible template sections must be represented in the provided order.
+- Market / region affects visual localization more than text copy.
 - Template section names are internal structure labels only and must not appear as visible UI text.
 - Do not render side labels, annotation columns, guide text, wireframe labels, section-name callouts, diagram legends, QA checklist labels, or explanatory labels outside the actual webpage.
 - Section Order blocks and numbered section lists are internal planning metadata only and must not be treated as visible UI copy.

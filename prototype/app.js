@@ -409,6 +409,59 @@ function buildTemplateRuntime(schema) {
   };
 }
 
+function marketVisualGuidanceFor(market) {
+  const value = String(market || "").trim();
+  const normalized = value.toLowerCase();
+  const base = {
+    market: value,
+    primaryUse: "image_generation",
+    textCopyInfluence: "low",
+    visualInfluence: value ? "medium_high" : "neutral",
+    instruction: value
+      ? "Use the selected market as subtle visual localization context for mood, audience relevance, environment, and compliance sensitivity. Do not render the market name as a visible UI label unless it is part of user-facing promo copy."
+      : "Use neutral global promotional web UI visuals without region-specific cues.",
+    avoid: [
+      "flag-heavy compositions",
+      "map graphics",
+      "stereotyped cultural symbols",
+      "traditional costume clichés",
+      "visible market labels used as annotations",
+    ],
+  };
+
+  if (/brazil/.test(normalized)) {
+    return {
+      ...base,
+      visualMood: "warm, energetic, social, mobile-friendly, subtly relevant to Brazil/Latam audiences",
+      avoid: [...base.avoid, "carnival stereotypes", "Brazil flag collage"],
+    };
+  }
+  if (/latam|latin/.test(normalized)) {
+    return {
+      ...base,
+      visualMood: "warm, dynamic, social, accessible, subtly relevant to Latam audiences",
+      avoid: [...base.avoid, "generic Latin festival stereotypes"],
+    };
+  }
+  if (/europe|germany|united kingdom|canada ontario|french/.test(normalized)) {
+    return {
+      ...base,
+      visualMood: "restrained, premium, regulation-aware, clean, trust-forward",
+      avoid: [...base.avoid, "EU flag collage", "literal landmark montage"],
+    };
+  }
+  if (/global/.test(normalized)) {
+    return {
+      ...base,
+      visualMood: "international, neutral, broad-audience, non-region-specific",
+    };
+  }
+  return {
+    ...base,
+    visualMood: value ? `subtly localized for ${value} without literal labels or stereotypes` : "neutral global",
+  };
+}
+
 function createEmptyTemp4Inputs() {
   return {
     header: {
@@ -1645,7 +1698,7 @@ createApp({
       };
       this.inputMode = this.designMode === "advanced" ? "advanced" : "simple";
       this.generationMode = this.designMode === "advanced" ? "template_advanced" : "ai_agent";
-      this.globalVisualMode = "use_visual";
+      this.globalVisualMode = "auto";
       this.promoBuilderStarted = true;
       this.currentBuilderStep = 2;
       this.refreshSectionDraft();
@@ -1883,12 +1936,20 @@ createApp({
     },
 
     refreshSectionDraft(options = {}) {
+      const visualModes = {
+        heroBanner: this.sectionInputs?.heroBanner?.visualMode || "auto",
+        contentCta: this.sectionInputs?.contentCta?.visualMode || "auto",
+        imageTextRow: this.sectionInputs?.imageTextRow?.visualMode || "auto",
+      };
       this.sectionInputs = buildTemp4Draft({
         promo: this.promo,
         simpleBrief: this.simpleBrief,
         selectedDocument: this.selectedDocument,
-        visualMode: this.globalVisualMode,
+        visualMode: "auto",
       });
+      this.sectionInputs.heroBanner.visualMode = visualModes.heroBanner;
+      this.sectionInputs.contentCta.visualMode = visualModes.contentCta;
+      this.sectionInputs.imageTextRow.visualMode = visualModes.imageTextRow;
       this.promo.leadText = this.simpleBrief.mainOffer || this.sectionInputs.heroBanner.sublineText;
       this.promo.subline = this.simpleBrief.secondaryMessage || this.sectionInputs.contentCta.longText;
       this.promo.template = this.designMode === "advanced" ? "default_temp" : "AI Auto";
@@ -1926,6 +1987,7 @@ createApp({
         targetCustomer: this.simpleBrief.audience || "",
         campaignTone: this.simpleBrief.campaignTone || "",
       };
+      const marketVisualGuidance = marketVisualGuidanceFor(this.promo.market);
       return {
         id: pageId,
         model: generationModels.text,
@@ -1956,6 +2018,7 @@ createApp({
         },
         promo: promoCompat,
         promotionInput,
+        marketVisualGuidance,
         template: {
           id: this.templateSchema.id,
           name: this.templateSchema.name,
@@ -1994,6 +2057,7 @@ createApp({
         inputSnapshot: {
           promo: promoCompat,
           promotionInput,
+          marketVisualGuidance,
           simpleBrief: { ...this.simpleBrief },
           sectionInputs,
           templateRuntime,

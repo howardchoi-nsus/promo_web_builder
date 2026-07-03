@@ -61,6 +61,8 @@ NON-NEGOTIABLE DESIGN RULES:
 - The design should feel like a browserless screenshot or design mockup of an actual scrollable webpage, not a single centered print composition.
 - Follow the selected template schema's visible content sections in the provided order. Treat section names as internal structure labels, not visible copy.
 - Use sectionInputs as the primary source of visible content. Use promo only as fallback metadata.
+- Use market / region primarily as subtle visual localization context for image generation, not as mandatory visible copy.
+- Do not render market / region as side labels, annotations, map graphics, flag-heavy decorations, or stereotyped cultural symbols.
 - For visualMode auto, infer visuals from that section's own text.
 - For visualMode use_visual, include a relevant visual.
 - For visualMode no_visual, do not create an image area for that section.

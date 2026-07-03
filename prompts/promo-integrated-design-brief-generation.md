@@ -20,6 +20,7 @@ Return valid JSON only. Do not include markdown fences or explanations outside J
 - Design Prompt MD controls style: colors, typography, spacing, radius, component language, layout patterns, guidelines, qualitative classification, and token-derived constraints.
 - Section Input Log MD controls visible content: copy, CTA text, links, legal text, section text, visualMode, footer labels, promo metadata, and selected template input values.
 - The selected template schema controls section order, visible section coverage, fixed sections, optional sections, item visibility, and image-generation targets.
+- Market / region is shared promo metadata, but it primarily affects image-generation visual localization. Use it as subtle mood, audience, environment, and compliance context; do not force the market name into visible copy.
 - Promo metadata is fallback only when sectionInputs are missing.
 - If values conflict, do not silently discard either value. Document the conflict and explain the adopted value.
 
@@ -106,6 +107,7 @@ Include conflicts for at least:
 - content and layout role from all selected visible template sections represented in the provided order
 - English-only visible copy
 - sectionInputs primary content source
+- market / region affects visual localization more than text copy
 - no bottom crop
 - no generic SaaS landing page
 - no browser/editor/Figma UI
@@ -185,6 +187,7 @@ For each section explain exactly how selected design tokens affect:
 - Typography strategy
 - Component strategy
 - Footer strategy
+- Market visual localization strategy: use market/region as subtle visual context, avoid flags, maps, stereotypes, and visible market labels unless supplied as user-facing copy.
 
 ### Final Image Prompt Inputs must include
 
