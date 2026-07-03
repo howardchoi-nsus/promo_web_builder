@@ -36,6 +36,21 @@ const requiredWorkflowPhrases = [
   "Preserve the content and layout role",
 ];
 
+const generatedBriefRequiredPhrases = [
+  "Template section names",
+  "visible UI text",
+  "side labels",
+  "annotation columns",
+  "diagram legends",
+];
+
+const generatedBriefRiskyFinalPromptPhrases = [
+  "Include all sections from Template 4",
+  "Show all sections",
+  "Render section names",
+  "Visible section labels",
+];
+
 function assert(condition, message) {
   if (!condition) {
     throw new Error(message);
@@ -86,12 +101,71 @@ function checkWorkflows() {
   }
 }
 
+function extractFrontmatter(source) {
+  const match = source.match(/^---\s*\n([\s\S]*?)\n---/);
+  return match ? match[1] : "";
+}
+
+function extractSection(source, heading) {
+  const escapedHeading = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(`${escapedHeading}[\\s\\S]*?(?=\\n##\\s+|$)`, "i");
+  const match = source.match(pattern);
+  return match ? match[0] : "";
+}
+
+function checkGeneratedBrief(file) {
+  const source = read(file);
+  const lowerSource = source.toLowerCase();
+  const frontmatter = extractFrontmatter(source);
+  const lowerFrontmatter = frontmatter.toLowerCase();
+  const finalPromptInputs = extractSection(source, "## Final Image Prompt Inputs");
+  const failures = [];
+
+  if (!/^\s*type:\s*integrated_design_brief\s*$/im.test(frontmatter)) {
+    failures.push("frontmatter type must be integrated_design_brief");
+  }
+
+  if (
+    !/sourceDocuments\s*:/i.test(frontmatter) ||
+    !lowerFrontmatter.includes("design_prompt") ||
+    !lowerFrontmatter.includes("section_input_log")
+  ) {
+    failures.push("sourceDocuments must include design_prompt and section_input_log");
+  }
+
+  const missingGuards = generatedBriefRequiredPhrases.filter(
+    (phrase) => !lowerSource.includes(phrase.toLowerCase()),
+  );
+  if (missingGuards.length) {
+    failures.push(`label guard missing: ${missingGuards.join(", ")}`);
+  }
+
+  const usedRiskyPhrases = generatedBriefRiskyFinalPromptPhrases.filter((phrase) =>
+    finalPromptInputs.toLowerCase().includes(phrase.toLowerCase()),
+  );
+  if (usedRiskyPhrases.length) {
+    failures.push(
+      `Final Image Prompt Inputs contains risky section-label phrasing: ${usedRiskyPhrases.join(", ")}`,
+    );
+  }
+
+  if (/###\s*Section Order/i.test(finalPromptInputs) && /\n\s*1\.\s*Header/i.test(finalPromptInputs)) {
+    failures.push("Final Image Prompt Inputs must not expose numbered Template section names to the image model");
+  }
+
+  assert(!failures.length, `${file}: generated brief QA failed:\n- ${failures.join("\n- ")}`);
+}
+
 function main() {
+  const generatedBriefFiles = process.argv.slice(2);
   const allFiles = [...promptFiles, ...workflowFiles];
   checkOldPhrasesAbsent(allFiles);
   checkRequiredPhrases(promptFiles, requiredPromptPhrases);
   checkRequiredPhrases(workflowFiles, requiredWorkflowPhrases);
   checkWorkflows();
+  for (const file of generatedBriefFiles) {
+    checkGeneratedBrief(file);
+  }
   console.log("QA label guard passed");
 }
 

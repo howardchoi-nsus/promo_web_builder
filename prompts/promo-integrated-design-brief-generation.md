@@ -62,7 +62,7 @@ The `integratedDesignBriefMarkdown` must include exactly these sections in this 
 
 ### YAML frontmatter must include
 
-- type
+- type must be exactly `integrated_design_brief`
 - runKey
 - promptGroupId if available
 - promoTitle
@@ -72,7 +72,7 @@ The `integratedDesignBriefMarkdown` must include exactly these sections in this 
 - canvasSize
 - pageWidth
 - language
-- sourceDocuments
+- sourceDocuments must include `design_prompt` and `section_input_log`
 
 ### Source Priority Rules must include
 
@@ -203,6 +203,8 @@ The Image Prompt Direction must be directly usable by an image-generation prompt
 It must explicitly state that Template section names are internal labels and must not be rendered as visible UI text.
 It must explicitly forbid visible template labels, side annotations, wireframe labels, QA labels, diagram legends, and any explanatory text outside the actual promotional webpage.
 It must also include concrete anti-print guidance: avoid poster/flyer/brochure/presentation-slide composition, avoid single centered key visual layouts, and include visible web UI cues such as navigation, CTA components, section containers, grid rhythm, component hierarchy, and footer/legal structure.
+The Section Order block is internal planning metadata only. It must not be phrased as visible copy, must not instruct the image model to render section names, and must say that markdown headings or numbered section lists are not visible UI text.
+Use natural page-flow language for the final image direction, such as top navigation, hero content, steps, CTA, supporting details, legal copy, and footer, instead of telling the image model to show section names.
 
 ### Negative Prompt
 

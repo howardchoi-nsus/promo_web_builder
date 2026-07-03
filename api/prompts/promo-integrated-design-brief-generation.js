@@ -71,6 +71,8 @@ Rules:
 - Design Prompt MD controls style tokens, component patterns, layout patterns, and guidelines.
 - Section Input Log MD controls visible content, CTA text, legal text, and Template 4 section input values.
 - Template 4 controls output section order and required section coverage.
+- YAML frontmatter type must be exactly integrated_design_brief.
+- sourceDocuments must include design_prompt and section_input_log.
 - All visible UI copy must be English only.
 - Restate all selected design token values and section input values directly in the integrated brief.
 - Do not say "refer to Design Prompt MD", "see Section Input Log", or ask the downstream step to consult source documents.
@@ -80,6 +82,7 @@ Rules:
 - The content and layout role of all seven Template 4 sections must be represented in order: Header, Hero Banner, Step Bar, Content CTA, Image Text Row, Title and Description, Footer.
 - Template section names are internal structure labels only and must not appear as visible UI text.
 - Do not render side labels, annotation columns, guide text, wireframe labels, section-name callouts, diagram legends, QA checklist labels, or explanatory labels outside the actual webpage.
+- Section Order blocks and numbered section lists are internal planning metadata only and must not be treated as visible UI copy.
 - The document must be self-contained enough for the next LLM to generate the Web UI image from this document alone.
 
 Return JSON shape:
