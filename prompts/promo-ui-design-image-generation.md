@@ -10,7 +10,7 @@ NON-NEGOTIABLE DESIGN RULES:
 - Treat {{imageSize}} only as the bitmap export size. Do not treat it as the real web page proportion or a poster artboard.
 - Represent a 1440px desktop web page scaled into the bitmap, with clear web UI structure: navigation/header, content sections, CTA components, section containers, UI spacing rhythm, footer/legal area, and reusable component language.
 - The design should feel like a browserless screenshot or design mockup of an actual scrollable webpage, not a single centered print composition.
-- Follow Template 4 order exactly: Header, Hero Banner, Step Bar, Content CTA, Image Text Row, Title and Description, Footer.
+- Follow Template 4 content and layout order exactly: Header, Hero Banner, Step Bar, Content CTA, Image Text Row, Title and Description, Footer.
 - Use sectionInputs as the primary source of visible content. Use promo only as fallback metadata.
 - For visualMode auto, infer visuals from that section's own text.
 - For visualMode use_visual, include a relevant visual.
@@ -25,7 +25,9 @@ NON-NEGOTIABLE DESIGN RULES:
 - The mockup represents a 1440px-wide desktop web page scaled into the bitmap export. Preserve web-page hierarchy rather than poster-like vertical centering.
 - Do not crop the bottom, do not end at the hero or middle sections, and do not omit Title and Description or Footer.
 - If vertical space is tight, reduce section heights, visual asset sizes, whitespace, and text density before removing content.
-- Every Template 4 section must be visible in one image: Header, Hero Banner, Step Bar, Content CTA, Image Text Row, Title and Description, Footer.
+- The content and layout role of every Template 4 section must be represented in one image in order: Header, Hero Banner, Step Bar, Content CTA, Image Text Row, Title and Description, Footer.
+- Template section names are internal structure labels only. Do not render the words Header, Hero Banner, Step Bar, Content CTA, Image Text Row, Title and Description, or Footer as visible UI text.
+- Do not add side labels, annotation columns, guide text, wireframe labels, section-name callouts, diagram legends, QA checklist labels, or explanatory labels outside the actual webpage.
 - Render all visible UI text in English only. If source content is Korean or another language, translate and adapt it into concise natural English.
 - Avoid print-design signals: no poster margins, no brochure folds, no single giant slogan composition, no full-canvas key visual with text pasted over it, no editorial cover layout, no disconnected decorative blocks.
 - Include web-design signals: consistent header/navigation, clickable-looking CTA buttons or links, card/panel/list/form-like UI components where appropriate, section-to-section rhythm, responsive grid logic, footer/legal hierarchy, and realistic desktop page spacing.
@@ -42,7 +44,7 @@ Before writing imagePrompt, internally decide and reflect in the prompt:
 Return this JSON shape:
 {
   "imagePrompt": "single detailed prompt string with explicit section-by-section layout, visual hierarchy, component style, depth/effects, shape/radius, color/font constraints, and visible promo content",
-  "negativePrompt": "poster, flyer, brochure, print ad, presentation slide, magazine cover, single centered key visual, decorative poster typography, paper margins, generic landing pages, weak MD compliance, color/font-only reskins, unreadable text, missing legal footer, wrong section order, browser chrome, editor UI, Figma canvas UI",
+  "negativePrompt": "poster, flyer, brochure, print ad, presentation slide, magazine cover, single centered key visual, decorative poster typography, paper margins, generic landing pages, weak MD compliance, color/font-only reskins, unreadable text, missing legal footer, wrong section order, section labels, template labels, side annotations, annotation columns, guide labels, wireframe labels, diagram legends, QA checklist labels, explanatory labels outside the webpage, browser chrome, editor UI, Figma canvas UI",
   "designBrief": {},
   "layoutMapping": {},
   "mdComplianceMap": {

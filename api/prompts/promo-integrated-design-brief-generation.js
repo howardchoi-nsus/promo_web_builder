@@ -77,7 +77,9 @@ Rules:
 - Treat 1024x1536 as the bitmap export size, not as a poster artboard or real web page proportion.
 - Represent a 1440px desktop Web UI page scaled into the bitmap.
 - The result must read as a web UI design mockup, not a poster, flyer, brochure, presentation slide, print ad, or key visual.
-- All seven Template 4 sections must be visible: Header, Hero Banner, Step Bar, Content CTA, Image Text Row, Title and Description, Footer.
+- The content and layout role of all seven Template 4 sections must be represented in order: Header, Hero Banner, Step Bar, Content CTA, Image Text Row, Title and Description, Footer.
+- Template section names are internal structure labels only and must not appear as visible UI text.
+- Do not render side labels, annotation columns, guide text, wireframe labels, section-name callouts, diagram legends, QA checklist labels, or explanatory labels outside the actual webpage.
 - The document must be self-contained enough for the next LLM to generate the Web UI image from this document alone.
 
 Return JSON shape:
