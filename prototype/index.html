@@ -533,6 +533,7 @@
                   <thead>
                     <tr>
                       <th>No</th>
+                      <th>미리보기</th>
                       <th>프로모션</th>
                       <th>선택 MD</th>
                       <th>스타일 기준</th>
@@ -543,6 +544,18 @@
                   <tbody>
                     <tr v-for="(page, index) in generatedPages" :key="page.id">
                       <td>#{{ index + 1 }}</td>
+                      <td class="result-thumbnail-cell">
+                        <button
+                          class="result-thumbnail"
+                          type="button"
+                          :class="{ empty: !previewImageUrl(page) }"
+                          :disabled="!previewImageUrl(page)"
+                          @click="openGenerated(page)"
+                        >
+                          <img v-if="previewImageUrl(page)" :src="previewImageUrl(page)" :alt="page.title + ' thumbnail'" loading="lazy" />
+                          <span v-else>{{ resultType(page) === 'pending' ? '생성중' : '없음' }}</span>
+                        </button>
+                      </td>
                       <td>
                         <strong class="title-with-stamp">{{ page.title }} <span class="timestamp-stamp" v-if="page.timestampStamp">{{ page.timestampStamp }}</span></strong>
                         <span>{{ page.createdAt }}</span>
