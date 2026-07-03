@@ -751,13 +751,15 @@ function dummyDocuments() {
 }
 
 function sourceFromDocument(doc) {
-  const primary = doc?.summary.colors[0] || "#d52b1e";
+  const colors = Array.isArray(doc?.summary?.colors) ? doc.summary.colors : [];
+  const fonts = Array.isArray(doc?.summary?.fonts) ? doc.summary.fonts : [];
+  const primary = colors[0] || "#d52b1e";
   return {
     primaryColor: primary,
-    ctaColor: doc?.summary.colors[1] || primary,
-    canvasColor: doc?.summary.colors[2] || "#f3f3f3",
-    headingFont: doc?.summary.fonts[0] || "Pretendard, Arial, sans-serif",
-    bodyFont: doc?.summary.fonts[1] || doc?.summary.fonts[0] || "Pretendard, Arial, sans-serif",
+    ctaColor: colors[1] || primary,
+    canvasColor: colors[2] || "#f3f3f3",
+    headingFont: fonts[0] || "Pretendard, Arial, sans-serif",
+    bodyFont: fonts[1] || fonts[0] || "Pretendard, Arial, sans-serif",
     titleWeight: "800",
   };
 }
@@ -797,6 +799,7 @@ createApp({
       selectedPresetId: "preset-001",
       styleSource: "design_md",
       templateSchema: temp4TemplateSchema,
+      designMode: "ai",
       generationMode: "ai_agent",
       inputMode: "simple",
       globalVisualMode: "auto",
@@ -822,7 +825,7 @@ createApp({
       },
       promo: {
         title: "",
-        template: "Template 4",
+        template: "AI Auto",
         promotionPurpose: "",
         promotionPurposeOther: "",
         market: "",
@@ -1001,13 +1004,15 @@ createApp({
       return this.generatedPages[0] || null;
     },
 
-    templateModeLabel() {
-      return `${this.templateLabel(this.templateSchema.name)} / ${this.generationMode === "ai_agent" ? "AI 에이전트" : "룰 기반"} / ${this.inputMode === "advanced" ? "고급" : "간편"}`;
+    designModeLabel() {
+      return this.designMode === "advanced"
+        ? "고급 모드 / Default Temp"
+        : "AI 모드 / 디자인 토큰 기반 자동 구성";
     },
 
     builderSteps() {
       return [
-        { step: 1, title: "기본 설정", summary: "템플릿, 모드, 마켓" },
+        { step: 1, title: "디자인 모드 선택", summary: "AI 모드, 고급 모드, 마켓" },
         { step: 2, title: "프로모션 입력", summary: "혜택, CTA, 약관" },
         { step: 3, title: "섹션 초안", summary: "Temp.4 구성 확인" },
         { step: 4, title: "디자인 생성", summary: "n8n 실행" },
@@ -1028,6 +1033,11 @@ createApp({
     },
     selectedDocumentId() {
       if (this.styleSource === "design_md") this.resetOverride();
+    },
+    designMode() {
+      this.generationMode = this.designMode === "advanced" ? "template_advanced" : "ai_agent";
+      this.inputMode = this.designMode === "advanced" ? "advanced" : "simple";
+      this.promo.template = this.designMode === "advanced" ? "default_temp" : "AI Auto";
     },
   },
 
@@ -1584,7 +1594,7 @@ createApp({
     resetPromoBuilderState(options = {}) {
       this.promo = {
         title: "",
-        template: "Template 4",
+        template: "AI Auto",
         promotionPurpose: "",
         promotionPurposeOther: "",
         market: "",
@@ -1602,6 +1612,7 @@ createApp({
         campaignTone: "",
         secondaryMessage: "",
       };
+      this.designMode = "ai";
       this.inputMode = "simple";
       this.generationMode = "ai_agent";
       this.globalVisualMode = "auto";
@@ -1615,7 +1626,7 @@ createApp({
       this.promo = {
         ...this.promo,
         title: "GGPoker Welcome Bonus",
-        template: "Template 4",
+        template: this.designMode === "advanced" ? "default_temp" : "AI Auto",
         promotionPurpose: "웰컴",
         promotionPurposeOther: "",
         market: "Global",
@@ -1632,8 +1643,8 @@ createApp({
         secondaryMessage:
           "Highlight a clear reward path that helps players register quickly and move straight into cash games and tournaments.",
       };
-      this.inputMode = "simple";
-      this.generationMode = "ai_agent";
+      this.inputMode = this.designMode === "advanced" ? "advanced" : "simple";
+      this.generationMode = this.designMode === "advanced" ? "template_advanced" : "ai_agent";
       this.globalVisualMode = "use_visual";
       this.promoBuilderStarted = true;
       this.currentBuilderStep = 2;
@@ -1880,8 +1891,8 @@ createApp({
       });
       this.promo.leadText = this.simpleBrief.mainOffer || this.sectionInputs.heroBanner.sublineText;
       this.promo.subline = this.simpleBrief.secondaryMessage || this.sectionInputs.contentCta.longText;
-      this.promo.template = "Template 4";
-      if (!options.silent) this.setStatus("Temp.4 섹션 초안을 갱신했습니다");
+      this.promo.template = this.designMode === "advanced" ? "default_temp" : "AI Auto";
+      if (!options.silent) this.setStatus("섹션 초안을 갱신했습니다");
     },
 
     hasSectionDraft() {
@@ -1904,7 +1915,7 @@ createApp({
       const templateRuntime = buildTemplateRuntime(this.templateSchema);
       const promoCompat = {
         ...this.promo,
-        template: this.templateSchema.name,
+        template: this.promo.template,
         leadText: this.promo.leadText || sectionInputs.heroBanner.sublineText || this.simpleBrief.mainOffer,
         subline: this.promo.subline || sectionInputs.contentCta.longText || this.simpleBrief.secondaryMessage,
         alphaText: this.promo.alphaText || sectionInputs.heroBanner.alphaText,
@@ -1948,6 +1959,9 @@ createApp({
         template: {
           id: this.templateSchema.id,
           name: this.templateSchema.name,
+          designMode: this.designMode,
+          selectionMode: this.designMode === "advanced" ? "manual" : "auto",
+          selectedTemplateId: this.designMode === "advanced" ? "default_temp" : "",
           templateId: templateRuntime.templateId,
           templateName: templateRuntime.templateName,
           schemaVersion: templateRuntime.schemaVersion,

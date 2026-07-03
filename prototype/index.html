@@ -172,7 +172,7 @@
               <div class="modal-header">
                 <div>
                   <p class="eyebrow">B 섹션</p>
-                  <h2>TEST B. 프로모션 빌더</h2>
+                  <h2>B. 프로모션 빌더</h2>
                 </div>
                 <button class="icon-button" type="button" aria-label="닫기" @click="closePromoBuilder">x</button>
               </div>
@@ -194,34 +194,30 @@
 
             <div class="subsection promo-required" v-if="promoBuilderStarted && currentBuilderStep === 1">
               <div class="subsection-title">
-                <h3>B1. 템플릿 및 모드</h3>
-                <span>{{ templateModeLabel }}</span>
+                <h3>B1. 디자인 모드 선택</h3>
+                <span>{{ designModeLabel }}</span>
               </div>
 
-              <div class="source-summary">
-                <div class="summary-box">
-                  <strong>AI 자동 생성</strong>
-                  <span>선택한 템플릿과 B섹션 입력값으로 섹션 초안을 구성합니다.</span>
-                </div>
-                <div class="summary-box">
-                  <strong>디자인 토큰 자동 적용</strong>
-                  <span>디자인 스타일 선택은 제거되었고, 선택된 디자인 MD 토큰을 그대로 적용합니다.</span>
-                </div>
+              <div class="style-source-grid">
+                <label class="radio-card">
+                  <input v-model="designMode" type="radio" value="ai" />
+                  <strong>AI 모드</strong>
+                  <span>LLM이 선택된 디자인 토큰 기반으로 템플릿 구성을 자동 생성합니다.</span>
+                </label>
+                <label class="radio-card">
+                  <input v-model="designMode" type="radio" value="advanced" />
+                  <strong>고급 모드</strong>
+                  <span>템플릿을 선택하고 섹션 구성 기준으로 디자인을 생성합니다.</span>
+                </label>
               </div>
 
               <div class="form-grid compact">
-                <label class="field">
-                  <span>템플릿</span>
-                  <select v-model="promo.template" disabled>
-                    <option value="Template 4">템플릿 4</option>
+                <label class="field" v-if="designMode === 'advanced'">
+                  <span>템플릿 선택</span>
+                  <select v-model="promo.template">
+                    <option value="default_temp">Default Temp</option>
                   </select>
-                </label>
-                <label class="field">
-                  <span>입력 모드</span>
-                  <select v-model="inputMode" autocomplete="off">
-                    <option value="simple">간편</option>
-                    <option value="advanced">고급</option>
-                  </select>
+                  <small>POC에서는 default_temp만 사용할 수 있습니다.</small>
                 </label>
                 <label class="field">
                   <span>마켓 / 지역</span>
@@ -848,6 +844,6 @@
     </div>
 
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-    <script src="app.js?v=b-section-test-v1"></script>
+    <script src="app.js?v=b-section-mode-v4"></script>
   </body>
 </html>
