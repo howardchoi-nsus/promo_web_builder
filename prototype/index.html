@@ -330,6 +330,7 @@
                 <button class="secondary-action" type="button" @click="clearPromoInputs">초기화</button>
               </div>
 
+              <!-- B2 section config: visibility and image intent are edited here, while copy is generated from promo inputs. -->
               <div class="section-config-panel">
                 <div class="section-config-heading">
                   <div>
@@ -395,96 +396,7 @@
               </div>
             </div>
 
-            <div class="subsection" v-if="false">
-              <div class="subsection-title">
-                <h3>색상 / 폰트 스타일</h3>
-                <span>원본 + 재정의</span>
-              </div>
-
-              <div class="style-source-grid">
-                <label class="radio-card">
-                  <input v-model="styleSource" type="radio" value="company_default" />
-                  <strong>회사 기본값</strong>
-                  <span>프리셋 스타일 기준</span>
-                </label>
-                <label class="radio-card">
-                  <input v-model="styleSource" type="radio" value="design_md" :disabled="!selectedDocument" />
-                  <strong>디자인 MD 속성</strong>
-                  <span>선택한 MD의 색상/폰트 사용</span>
-                </label>
-              </div>
-
-              <label v-if="styleSource === 'company_default'" class="field">
-                <span>회사 스타일 프리셋</span>
-                <select v-model="selectedPresetId">
-                  <option v-for="preset in companyStylePresets" :key="preset.id" :value="preset.id">
-                    {{ preset.name }} / {{ preset.market }}
-                  </option>
-                </select>
-              </label>
-
-              <div class="source-summary">
-                <div class="summary-box">
-                  <strong>원본 메인 색상</strong>
-                  <span>{{ sourceStyle.primaryColor }}</span>
-                </div>
-                <div class="summary-box">
-                  <strong>원본 CTA 색상</strong>
-                  <span>{{ sourceStyle.ctaColor }}</span>
-                </div>
-                <div class="summary-box">
-                  <strong>원본 제목 폰트</strong>
-                  <span>{{ sourceStyle.headingFont }}</span>
-                </div>
-              </div>
-
-              <div class="section-title">선택 색상/폰트 재정의</div>
-              <div class="form-grid compact">
-                <label class="field">
-                  <span>메인 색상</span>
-                  <input v-model="override.primaryColor" type="color" />
-                </label>
-                <label class="field">
-                  <span>CTA</span>
-                  <input v-model="override.ctaColor" type="color" />
-                </label>
-                <label class="field">
-                  <span>배경색</span>
-                  <input v-model="override.canvasColor" type="color" />
-                </label>
-                <label class="field">
-                  <span>제목 폰트</span>
-                  <select v-model="override.headingFont">
-                    <option value="Pretendard, Arial, sans-serif">Pretendard</option>
-                    <option value="Arial, Helvetica, sans-serif">Arial</option>
-                    <option value="'Arial Black', Arial, sans-serif">Arial Black</option>
-                    <option value="Georgia, serif">Georgia</option>
-                  </select>
-                </label>
-                <label class="field">
-                  <span>본문 폰트</span>
-                  <select v-model="override.bodyFont">
-                    <option value="Pretendard, Arial, sans-serif">Pretendard</option>
-                    <option value="Arial, Helvetica, sans-serif">Arial</option>
-                    <option value="Verdana, Geneva, sans-serif">Verdana</option>
-                    <option value="Georgia, serif">Georgia</option>
-                  </select>
-                </label>
-                <label class="field">
-                  <span>히어로 굵기</span>
-                  <select v-model="override.titleWeight">
-                    <option>700</option>
-                    <option>800</option>
-                    <option>900</option>
-                  </select>
-                </label>
-              </div>
-
-              <div class="action-row">
-                <button class="secondary-action" type="button" @click="resetOverride">원본으로 되돌리기</button>
-              </div>
-            </div>
-
+            <!-- B3 generation console: POC users manually provide the n8n webhook and receive an indeterminate loading state. -->
             <div class="subsection" v-if="promoBuilderStarted && currentBuilderStep === 3">
               <div class="subsection-title">
                 <h3>B3. 디자인 생성</h3>

@@ -2,18 +2,25 @@
 
 :root {
   color-scheme: light;
+  /* Theme tokens are the single source for light/dark surface and text decisions. */
   --bg: #f6f8fc;
   --panel: #ffffff;
   --surface-2: #f9fbff;
+  --surface-solid: #ffffff;
+  --selected-surface: #f8fbff;
   --ink: #111827;
+  --ink-soft: #334155;
   --sub: #63708a;
   --muted: #96a2ba;
+  --placeholder: #98a2b3;
   --line: #dfe6f2;
   --line-strong: #c9d4e7;
+  --focus-border: #9db3ef;
   --primary: #111827;
   --accent: #4768d8;
   --accent-soft: #eef3ff;
   --success: #16a34a;
+  --success-hover: #0f8f3d;
   --success-soft: #eaf8ef;
   --danger: #ef4444;
   --cta: #16a34a;
@@ -30,15 +37,21 @@
   --bg: #0d0e10;
   --panel: #121416;
   --surface-2: #151a18;
+  --surface-solid: #161a1d;
+  --selected-surface: rgba(12, 59, 46, 0.7);
   --ink: #cfeee6;
+  --ink-soft: rgba(207, 238, 230, 0.9);
   --sub: rgba(207, 238, 230, 0.78);
   --muted: rgba(207, 238, 230, 0.66);
+  --placeholder: rgba(207, 238, 230, 0.46);
   --line: rgba(207, 238, 230, 0.14);
   --line-strong: rgba(207, 238, 230, 0.28);
+  --focus-border: #28c39d;
   --primary: #cfeee6;
   --accent: #28c39d;
   --accent-soft: rgba(12, 59, 46, 0.86);
   --success: #28c39d;
+  --success-hover: #0f7a62;
   --success-soft: rgba(15, 122, 98, 0.18);
   --danger: #fb7185;
   --cta: #28c39d;
@@ -123,6 +136,7 @@ textarea {
   color: var(--ink);
 }
 
+/* Topbar controls: theme toggle lives outside the builder so every section inherits the same mode. */
 .theme-toggle {
   display: inline-flex;
   align-items: center;
@@ -411,7 +425,7 @@ body.is-resizing {
 .field select:focus,
 .field textarea:focus {
   outline: 0;
-  border-color: #9db3ef;
+  border-color: var(--focus-border);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
@@ -437,7 +451,7 @@ body.is-resizing {
 
 .field input::placeholder,
 .field textarea::placeholder {
-  color: #98a2b3;
+  color: var(--placeholder);
 }
 
 .promo-required .field input,
@@ -450,7 +464,7 @@ body.is-resizing {
 .promo-required .field input:placeholder-shown,
 .promo-required .field textarea:placeholder-shown,
 .promo-required .field select:invalid {
-  color: #98a2b3;
+  color: var(--placeholder);
 }
 
 .promo-required .field select option {
@@ -458,7 +472,7 @@ body.is-resizing {
 }
 
 .promo-required .field select option[disabled] {
-  color: #98a2b3;
+  color: var(--placeholder);
 }
 
 .field textarea {
@@ -517,7 +531,7 @@ body.is-resizing {
 }
 
 .primary-action:hover {
-  background: #0f8f3d;
+  background: var(--success-hover);
 }
 
 .primary-action:disabled,
@@ -552,8 +566,8 @@ body.is-resizing {
 }
 
 .md-card.selected {
-  border-color: #9db3ef;
-  background: #f8fbff;
+  border-color: var(--focus-border);
+  background: var(--selected-surface);
   box-shadow: 0 0 0 2px rgba(71, 104, 216, 0.12);
 }
 
@@ -584,8 +598,8 @@ body.is-resizing {
   padding: 0 10px;
   border: 1px solid var(--line);
   border-radius: 7px;
-  background: #ffffff;
-  color: #334155;
+  background: var(--surface-solid);
+  color: var(--ink-soft);
   cursor: pointer;
   font-size: 12px;
   font-weight: 800;
@@ -622,7 +636,7 @@ body.is-resizing {
   padding: 10px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: #ffffff;
+  background: var(--surface-solid);
 }
 
 .summary-box strong {
@@ -660,7 +674,7 @@ body.is-resizing {
   padding: 4px 7px;
   border-radius: 6px;
   background: #eef2f7;
-  color: #344054;
+  color: var(--ink-soft);
   font-size: 11px;
   font-weight: 700;
 }
@@ -684,7 +698,7 @@ body.is-resizing {
 .section-title {
   padding-top: 8px;
   border-top: 1px solid var(--line);
-  color: #334155;
+  color: var(--ink-soft);
   font-size: 13px;
   font-weight: 900;
 }
@@ -724,7 +738,7 @@ body.is-resizing {
   overflow: auto;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: #ffffff;
+  background: var(--surface-solid);
 }
 
 .data-table {
@@ -748,7 +762,7 @@ body.is-resizing {
 
 .data-table th {
   background: var(--surface-2);
-  color: #344054;
+  color: var(--ink-soft);
   font-weight: 900;
 }
 
@@ -757,7 +771,7 @@ body.is-resizing {
 }
 
 .data-table tr.selected td {
-  background: #f8fbff;
+  background: var(--selected-surface);
 }
 
 .data-table tr.selected .tiny-button.primary {
@@ -795,7 +809,7 @@ body.is-resizing {
   padding: 10px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: #ffffff;
+  background: var(--surface-solid);
 }
 
 .style-concept-button {
@@ -825,7 +839,7 @@ body.is-resizing {
 }
 
 .style-concept-button.selected {
-  border-color: #9db3ef;
+  border-color: var(--focus-border);
   background: var(--accent-soft);
   color: var(--accent);
 }
@@ -837,7 +851,7 @@ body.is-resizing {
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: #ffffff;
+  background: var(--surface-solid);
 }
 
 .selected-concept-card strong {
@@ -865,11 +879,11 @@ body.is-resizing {
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: #ffffff;
+  background: var(--surface-solid);
 }
 
 .style-group-card.selected {
-  border-color: #9db3ef;
+  border-color: var(--focus-border);
 }
 
 .style-group-header {
@@ -1003,12 +1017,12 @@ body.is-resizing {
   min-height: 58px;
   max-height: 58px;
   padding: 10px 12px;
-  background: #ffffff;
+  background: var(--surface-solid);
   overflow: hidden;
 }
 
 .style-doc-item.selected {
-  background: #f8fbff;
+  background: var(--selected-surface);
 }
 
 .style-doc-item.selected .tiny-button.primary {
@@ -1049,7 +1063,7 @@ body.is-resizing {
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: #ffffff;
+  background: var(--surface-solid);
   cursor: pointer;
 }
 
@@ -1068,8 +1082,8 @@ body.is-resizing {
 }
 
 .radio-card:has(input:checked) {
-  border-color: #9db3ef;
-  background: #f8fbff;
+  border-color: var(--focus-border);
+  background: var(--selected-surface);
   box-shadow: 0 0 0 2px rgba(71, 104, 216, 0.12);
 }
 
@@ -1105,7 +1119,7 @@ body.is-resizing {
 
 .summary-box.large {
   border-color: var(--line-strong);
-  background: #ffffff;
+  background: var(--surface-solid);
 }
 
 .concept-compact-card {
@@ -1150,7 +1164,7 @@ body.is-resizing {
 .token-detail-section {
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: #ffffff;
+  background: var(--surface-solid);
   overflow: hidden;
   interpolate-size: allow-keywords;
 }
@@ -1163,7 +1177,7 @@ body.is-resizing {
   min-height: 36px;
   padding: 9px 10px;
   cursor: pointer;
-  color: #111827;
+  color: var(--primary);
   font-size: 12px;
   font-weight: 900;
   list-style: none;
@@ -1217,7 +1231,7 @@ body.is-resizing {
 
 .token-detail-section[open] .token-row-list,
 .token-detail-section[open] .empty-state.compact {
-  background: #f8fbff;
+  background: var(--selected-surface);
 }
 
 .token-row {
@@ -1236,7 +1250,7 @@ body.is-resizing {
 
 .token-row strong {
   min-width: 0;
-  color: #334155;
+  color: var(--ink-soft);
   overflow-wrap: anywhere;
 }
 
@@ -1337,7 +1351,7 @@ body.is-resizing {
 }
 
 .builder-step.active {
-  border-color: #9db3ef;
+  border-color: var(--focus-border);
   background: var(--accent-soft);
 }
 
@@ -1351,6 +1365,7 @@ body.is-resizing {
   border-color: #c7d2fe;
 }
 
+/* B2 section config: compact controls for visibility and image-generation intent. */
 .section-config-panel {
   display: grid;
   gap: 10px;
@@ -1475,6 +1490,7 @@ body.is-resizing {
   font-weight: 800;
 }
 
+/* B3 generation console: indeterminate poker motion replaces fake numeric progress. */
 .generation-console {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -1876,7 +1892,7 @@ body.is-resizing {
 }
 
 .tab.active {
-  border-color: #9db3ef;
+  border-color: var(--focus-border);
   background: var(--accent-soft);
   color: var(--accent);
   font-weight: 800;
@@ -1967,7 +1983,7 @@ body.is-resizing {
   gap: 12px;
   padding: 16px 24px;
   border-bottom: 1px solid var(--line);
-  background: #ffffff;
+  background: var(--surface-solid);
 }
 
 .generated-toolbar a {
@@ -2094,8 +2110,8 @@ body.is-resizing {
 .chip-two {
   right: 12%;
   top: 18%;
-  background: #ffffff;
-  color: #111827;
+  background: var(--surface-solid);
+  color: var(--primary);
   transform: rotate(8deg);
 }
 
@@ -2171,7 +2187,7 @@ body.is-resizing {
   place-items: center;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: #ffffff;
+  background: var(--surface-solid);
   font-weight: 800;
 }
 

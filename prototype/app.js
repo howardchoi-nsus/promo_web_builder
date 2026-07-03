@@ -207,6 +207,7 @@ const dummyCompanyStylePresets = [
   },
 ];
 
+// Template 4 is local schema data so the POC can build section config without a backend round-trip.
 const temp4TemplateSchema = {
   id: "temp4",
   templateId: "default_temp",
@@ -351,6 +352,7 @@ const temp4TemplateSchema = {
   ],
 };
 
+// Template schema helpers normalize future backend schemas and the current local temp4 schema into one runtime shape.
 function templateSections(schema) {
   return Array.isArray(schema?.sections) ? schema.sections : [];
 }
@@ -456,6 +458,7 @@ function buildTemplateRuntime(schema, config = null) {
   };
 }
 
+// Market is visual guidance, not visible copy, to avoid accidental region labels in generated designs.
 function marketVisualGuidanceFor(market) {
   const value = String(market || "").trim();
   const normalized = value.toLowerCase();
@@ -966,12 +969,14 @@ createApp({
   },
 
   computed: {
+    // Layout state keeps the three-column prototype adjustable without coupling it to builder logic.
     abcGridStyle() {
       return {
         gridTemplateColumns: `${this.sectionWidths[0]}fr 8px ${this.sectionWidths[1]}fr 8px ${this.sectionWidths[2]}fr`,
       };
     },
 
+    // A section: selected Design MD and normalized token display.
     selectedDocument() {
       return this.designDocuments.find((doc) => doc.id === this.selectedDocumentId) || null;
     },
@@ -1110,6 +1115,7 @@ createApp({
       return this.generatedPages[0] || null;
     },
 
+    // B section: builder stepper and generation-status copy.
     designModeLabel() {
       return this.designMode === "advanced"
         ? "고급 모드 / Default Temp"
@@ -1168,6 +1174,7 @@ createApp({
   },
 
   watch: {
+    // Keep derived builder state in sync with user-facing mode changes.
     styleSource() {
       this.resetOverride();
     },
@@ -1210,6 +1217,7 @@ createApp({
   },
 
   methods: {
+    // Theme module: persist the selected color mode because this prototype is often reopened during QA.
     applyThemeMode() {
       document.documentElement.setAttribute("data-theme", this.themeMode === "dark" ? "dark" : "light");
       localStorage.setItem(storageKeys.themeMode, this.themeMode);
@@ -1267,6 +1275,7 @@ createApp({
       this.$refs.handoffModal.close();
     },
 
+    // Design MD module: load, inspect, and register style sources used by the promo builder.
     async loadDesignDocuments(options = {}) {
       try {
         const url = options.fresh ? `/api/design-documents?ts=${Date.now()}` : "/api/design-documents";
@@ -1523,6 +1532,7 @@ createApp({
       return "선택";
     },
 
+    // Section config module: B2 edits only visibility and image-generation intent; content values come from promo inputs.
     setSectionVisible(sectionId, visible) {
       this.sectionConfig.sectionVisibility = {
         ...this.sectionConfig.sectionVisibility,
@@ -1618,6 +1628,7 @@ createApp({
       };
     },
 
+    // Builder navigation validates previous steps so direct step clicks cannot skip required inputs.
     validateBuilderStep(step = this.currentBuilderStep) {
       if (step === 1 && !String(this.promo.market || "").trim()) {
         this.validationErrors = { market: true };
@@ -1625,14 +1636,15 @@ createApp({
         return false;
       }
       if (step === 1) this.validationErrors = {};
-      if (step === 2) return this.validatePromoInputs() && this.validateSectionConfig();
+      if (step === 2) {
+        const isValid = this.validatePromoInputs() && this.validateSectionConfig();
+        if (isValid && !this.hasSectionDraft()) this.refreshSectionDraft({ silent: true });
+        return isValid;
+      }
       if (step === 3 && !this.n8nWebhookUrlIsValid()) {
         this.validationErrors = { n8nWebhookUrl: true };
         this.setStatus("n8n Webhook URL을 입력해 주세요");
         return false;
-      }
-      if (step === 2 && !this.hasSectionDraft()) {
-        this.refreshSectionDraft({ silent: true });
       }
       return true;
     },
@@ -2172,6 +2184,7 @@ createApp({
       return `회사 기본값 / ${this.selectedPreset.name}`;
     },
 
+    // Section draft module: derive template inputs from the compact promo form instead of exposing a separate draft step.
     refreshSectionDraft(options = {}) {
       const visualModes = {
         heroBanner: this.sectionInputs?.heroBanner?.visualMode || "auto",
@@ -2206,6 +2219,7 @@ createApp({
       return JSON.parse(JSON.stringify(this.sectionInputs));
     },
 
+    // Payload builder: this is the contract shared by frontend, markdown builders, prompts, and n8n.
     buildGeneratedPayload(pageId) {
       const source = this.sourceStyle;
       const designDoc = this.selectedDesignDataSource || this.selectedDocument;
@@ -2309,6 +2323,7 @@ createApp({
       };
     },
 
+    // Validation module: fail fast before the expensive n8n workflow starts.
     validatePromoInputs() {
       this.validationErrors = {};
       if (!this.selectedDocument) {
@@ -2378,25 +2393,7 @@ createApp({
       }
     },
 
-    validateLegacyPromoInputs() {
-      const required = [
-        ["title", "프로모션 제목"],
-        ["template", "템플릿"],
-        ["market", "마켓 / 지역"],
-        ["leadText", "리드 문구"],
-        ["ctaLabel", "CTA 문구"],
-        ["ctaUrl", "CTA URL"],
-        ["subline", "보조 문구"],
-        ["termsText", "이용약관"],
-      ];
-      const missing = required.filter(([key]) => !String(this.promo[key] || "").trim()).map(([, label]) => label);
-      if (missing.length) {
-        this.setStatus(`필수 입력 누락: ${missing.slice(0, 2).join(", ")}${missing.length > 2 ? "..." : ""}`);
-        return false;
-      }
-      return true;
-    },
-
+    // n8n client: browser builds use the local API proxy to avoid CORS and centralize URL policy.
     async triggerN8n(payload) {
       const url = this.n8nWebhookUrl.trim();
       if (!this.n8nWebhookUrlIsValid()) {
@@ -2422,6 +2419,7 @@ createApp({
       return result;
     },
 
+    // Generation motion is intentionally indeterminate because the n8n workflow does not stream real progress.
     startGenerationMotion() {
       this.stopGenerationMotion();
       this.isGeneratingDesign = true;
@@ -2439,6 +2437,7 @@ createApp({
       this.isGeneratingDesign = false;
     },
 
+    // Result recovery lets the UI handle slow webhook responses when the backend has already stored the design.
     applyStoredDesignResult(page, result) {
       const updatedPage = this.storedResultToPage(result, page);
       if (!updatedPage.id) return false;
@@ -2470,6 +2469,7 @@ createApp({
       return false;
     },
 
+    // Generation orchestrator: validates, submits the workflow, recovers stored results, and updates C section.
     async generateUiDesign() {
       if (this.isGeneratingDesign) return;
       if (!this.selectedDocument) {

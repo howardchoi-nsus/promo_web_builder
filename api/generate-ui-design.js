@@ -8,11 +8,11 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const webhookUrl = String(process.env.N8N_PROMO_UI_DESIGN_WEBHOOK_URL || req.headers["x-n8n-webhook-url"] || "").trim();
-  if (!webhookUrl) {
+  const webhookResolution = resolveWebhookUrl(req.headers["x-n8n-webhook-url"]);
+  if (!webhookResolution.ok) {
     return res.status(400).json({
-      error: "Missing n8n UI design webhook URL",
-      message: "Set N8N_PROMO_UI_DESIGN_WEBHOOK_URL in Vercel or pass x-n8n-webhook-url.",
+      error: webhookResolution.error,
+      message: webhookResolution.message,
     });
   }
 
@@ -28,7 +28,7 @@ export default async function handler(req, res) {
       requestBody.promptUrl = `${proto}://${host}/api/prompts/promo-ui-design-image-generation`;
     }
 
-    const response = await fetch(webhookUrl, {
+    const response = await fetch(webhookResolution.url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -58,4 +58,62 @@ function parseRequestBody(body) {
   }
   if (typeof body === "object" && !Array.isArray(body)) return { ...body };
   return {};
+}
+
+function resolveWebhookUrl(headerValue) {
+  const envUrl = String(process.env.N8N_PROMO_UI_DESIGN_WEBHOOK_URL || "").trim();
+  const headerUrl = String(headerValue || "").trim();
+  const selectedUrl = envUrl || headerUrl;
+  if (!selectedUrl) {
+    return {
+      ok: false,
+      error: "Missing n8n UI design webhook URL",
+      message: "Set N8N_PROMO_UI_DESIGN_WEBHOOK_URL or pass an allowed x-n8n-webhook-url during POC.",
+    };
+  }
+
+  const parsed = parseWebhookUrl(selectedUrl);
+  if (!parsed) {
+    return {
+      ok: false,
+      error: "Invalid n8n UI design webhook URL",
+      message: "Webhook URL must be a valid http or https URL.",
+    };
+  }
+
+  // 운영 배포에서는 임의 헤더 URL이 SSRF 경로가 될 수 있어 환경변수나 allowlist로만 허용한다.
+  const fromHeader = !envUrl && Boolean(headerUrl);
+  if (fromHeader && isProductionRuntime() && !webhookHostAllowed(parsed.hostname)) {
+    return {
+      ok: false,
+      error: "n8n UI design webhook URL is not allowed",
+      message: "Use N8N_PROMO_UI_DESIGN_WEBHOOK_URL or add the webhook host to N8N_PROMO_UI_DESIGN_WEBHOOK_ALLOWLIST.",
+    };
+  }
+
+  return { ok: true, url: parsed.toString() };
+}
+
+function parseWebhookUrl(value) {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return null;
+    return url;
+  } catch {
+    return null;
+  }
+}
+
+function isProductionRuntime() {
+  return process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production";
+}
+
+function webhookHostAllowed(hostname) {
+  const allowlist = String(process.env.N8N_PROMO_UI_DESIGN_WEBHOOK_ALLOWLIST || "")
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+  if (!allowlist.length) return false;
+  const host = String(hostname || "").toLowerCase();
+  return allowlist.some((allowedHost) => host === allowedHost || host.endsWith(`.${allowedHost}`));
 }
