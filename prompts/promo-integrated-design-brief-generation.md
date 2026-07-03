@@ -18,8 +18,8 @@ Return valid JSON only. Do not include markdown fences or explanations outside J
 ## Source Priority Rules
 
 - Design Prompt MD controls style: colors, typography, spacing, radius, component language, layout patterns, guidelines, qualitative classification, and token-derived constraints.
-- Section Input Log MD controls visible content: copy, CTA text, links, legal text, section text, visualMode, footer labels, promo metadata, and Template 4 input values.
-- Template 4 controls section order and required section coverage.
+- Section Input Log MD controls visible content: copy, CTA text, links, legal text, section text, visualMode, footer labels, promo metadata, and selected template input values.
+- The selected template schema controls section order, visible section coverage, fixed sections, optional sections, item visibility, and image-generation targets.
 - Promo metadata is fallback only when sectionInputs are missing.
 - If values conflict, do not silently discard either value. Document the conflict and explain the adopted value.
 
@@ -36,9 +36,9 @@ Return valid JSON only. Do not include markdown fences or explanations outside J
 - It should look like a browserless screenshot or design mockup of a real scrollable webpage, not a print composition.
 - Header through Footer must be visible in one image.
 - Do not crop the bottom.
-- Do not merge Title and Description into Footer.
+- Do not merge legal/detail content into Footer unless the selected template schema explicitly maps it there.
 - If content is long, compress spacing, section height, visual size, and decoration before removing content.
-- Template section names such as Header, Hero Banner, Step Bar, Content CTA, Image Text Row, Title and Description, and Footer are internal planning labels only.
+- Template section names are internal planning labels only.
 - The final generated UI must not render template section names as visible labels, side labels, side annotations, guide text, wireframe labels, callouts, diagram legends, or QA checklist text.
 
 ## Required Markdown Structure
@@ -92,7 +92,7 @@ The `integratedDesignBriefMarkdown` must include exactly these sections in this 
 Include conflicts for at least:
 
 - Section count / section order
-- Title and Description vs Footer separation
+- Detail/legal content vs Footer separation
 - Typography
 - CTA shape
 - Depth/effects
@@ -103,7 +103,7 @@ Include conflicts for at least:
 - No HTML/CSS generation
 - Full-page Web UI design mockup
 - 1024x1536 tall canvas
-- content and layout role from all seven Template 4 sections represented in order
+- content and layout role from all selected visible template sections represented in the provided order
 - English-only visible copy
 - sectionInputs primary content source
 - no bottom crop
@@ -138,15 +138,9 @@ Include conflicts for at least:
 - Guidelines adopted from Design Prompt MD
 - Unknown token handling
 
-### Section Content Mapping must include one H3 for each Template 4 section
+### Section Content Mapping must include one H3 for each selected visible template section
 
-- `### Header`
-- `### Hero Banner`
-- `### Step Bar`
-- `### Content CTA`
-- `### Image Text Row`
-- `### Title and Description`
-- `### Footer`
+Use the selected template schema's visible section list and order. Section headings in this markdown are internal documentation only; they must not become visible UI copy in the image prompt.
 
 For each section include:
 
@@ -157,7 +151,7 @@ For each section include:
 - MD rule applied
 - Fallback behavior
 
-### Token-to-Section Application must include one H3 for each Template 4 section
+### Token-to-Section Application must include one H3 for each selected visible template section
 
 For each section explain exactly how selected design tokens affect:
 
@@ -195,16 +189,14 @@ For each section explain exactly how selected design tokens affect:
 ### Final Image Prompt Inputs must include
 
 - `### Image Prompt Direction`
-- `### Section Order`
 - `### Must Show`
 - `### Must Avoid`
 
-The Image Prompt Direction must be directly usable by an image-generation prompt LLM. It must include canvas size, page width, full-page requirement, the content and layout role of each Template 4 section, English-only copy, no bottom crop, and design system constraints.
+The Image Prompt Direction must be directly usable by an image-generation prompt LLM. It must include canvas size, page width, full-page requirement, the content and layout role of each selected visible template section, English-only copy, no bottom crop, and design system constraints.
 It must explicitly state that Template section names are internal labels and must not be rendered as visible UI text.
 It must explicitly forbid visible template labels, side annotations, wireframe labels, QA labels, diagram legends, and any explanatory text outside the actual promotional webpage.
 It must also include concrete anti-print guidance: avoid poster/flyer/brochure/presentation-slide composition, avoid single centered key visual layouts, and include visible web UI cues such as navigation, CTA components, section containers, grid rhythm, component hierarchy, and footer/legal structure.
-The Section Order block is internal planning metadata only. It must not be phrased as visible copy, must not instruct the image model to render section names, and must say that markdown headings or numbered section lists are not visible UI text.
-Use natural page-flow language for the final image direction, such as top navigation, hero content, steps, CTA, supporting details, legal copy, and footer, instead of telling the image model to show section names.
+Do not include a `### Section Order` block in Final Image Prompt Inputs. Use natural page-flow language for the final image direction, such as top navigation, hero content, steps, CTA, supporting details, legal copy, and footer, instead of telling the image model to show section names.
 
 ### Negative Prompt
 
@@ -238,7 +230,7 @@ Must include at least 10 checklist items.
 
 - `integratedDesignBriefMarkdown` must be at least 6000 characters.
 - It must include a Resolved Conflicts table.
-- It must include all seven Template 4 section H3 headings.
+- It must include H3 headings for each selected visible template section.
 - It must include at least one JSON block for MD Compliance Map.
 - It must include selected design token values directly; do not say to consult or refer to Design Prompt MD.
 - It must include Section Input Log visible copy directly; do not say to consult or refer to Section Input Log MD.

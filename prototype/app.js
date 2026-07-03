@@ -208,10 +208,206 @@ const dummyCompanyStylePresets = [
 
 const temp4TemplateSchema = {
   id: "temp4",
+  templateId: "default_temp",
   name: "Template 4",
+  templateName: "Default Temp",
+  version: "1.0.0",
   sectionOrder: ["header", "heroBanner", "stepBar", "contentCta", "imageTextRow", "titleDescription", "footer"],
   visualSections: ["heroBanner", "contentCta", "imageTextRow"],
+  governance: {
+    ignorePreviousConfig: true,
+    requiredMissingAlert: true,
+    progressRequired: true,
+    designStyleSelectionRemoved: true,
+    applySelectedDesignTokens: true,
+  },
+  promotionInputSchema: {
+    purpose: {
+      label: "프로모션 목적",
+      required: true,
+      inputType: "select",
+      options: ["할인쿠폰", "웰컴", "이벤트", "기타"],
+      otherInputRequiredWhen: "기타",
+    },
+    targetCustomer: {
+      label: "대상고객",
+      required: true,
+      inputType: "select",
+      options: ["신규", "기존고객", "윈백고객"],
+    },
+    campaignTone: {
+      label: "캠페인톤",
+      required: true,
+      inputType: "select",
+      options: ["활기찬", "신중한", "럭키", "프리미엄", "긴급한", "친근한"],
+    },
+  },
+  templateForm: {
+    mode: "default_template",
+    sectionVisibilityDefault: true,
+    dragOrderEnabled: true,
+    fixedTopSection: "header",
+    fixedBottomSection: "footer",
+    itemVisibilityEnabled: true,
+    ctaMovesWithSection: true,
+  },
+  generationRules: {
+    settings: ["AI 자동 생성", "템플릿 선택"],
+    pocWebhookInputEnabled: true,
+    useSelectedDesignTokensOnly: true,
+    requestImageGenerationForMarkedItems: true,
+  },
+  validationRules: {
+    requiredInputs: ["purpose", "targetCustomer", "campaignTone", "template"],
+    missingInputBehavior: "show_missing_alert",
+  },
+  progress: {
+    enabled: true,
+    message: "디자인 생성되고 있습니다.",
+    animation: true,
+    canClose: true,
+    stages: ["db", "data", "process", "design_generation"],
+  },
+  sections: [
+    {
+      sectionId: "header",
+      name: "Header",
+      defaultVisible: true,
+      fixedPosition: "top",
+      orderChangeAllowed: false,
+      items: [
+        { itemId: "logoText", label: "Logo", defaultVisible: true, inputPath: "header.logoText" },
+        { itemId: "badgeText", label: "Badge", defaultVisible: true, inputPath: "header.badgeText" },
+      ],
+    },
+    {
+      sectionId: "heroBanner",
+      name: "Hero Banner",
+      defaultVisible: true,
+      orderChangeAllowed: true,
+      items: [
+        { itemId: "leaderText", label: "Leader Text", defaultVisible: true, inputPath: "heroBanner.leaderText" },
+        { itemId: "title", label: "Title", defaultVisible: true, inputPath: "heroBanner.title" },
+        { itemId: "sublineText", label: "Subline", defaultVisible: true, inputPath: "heroBanner.sublineText" },
+        { itemId: "cta", label: "CTA Button", defaultVisible: true, inputPath: "heroBanner.cta", movesWithSection: true },
+        { itemId: "visual", label: "Hero Visual", defaultVisible: true, inputPath: "heroBanner.visualMode", imageGenerationRequest: true },
+      ],
+    },
+    {
+      sectionId: "stepBar",
+      name: "Step Bar",
+      defaultVisible: true,
+      orderChangeAllowed: true,
+      items: [
+        { itemId: "steps", label: "Step Items", defaultVisible: true, inputPath: "stepBar" },
+      ],
+    },
+    {
+      sectionId: "contentCta",
+      name: "Content CTA",
+      defaultVisible: true,
+      orderChangeAllowed: true,
+      items: [
+        { itemId: "longText", label: "Long Text", defaultVisible: true, inputPath: "contentCta.longText" },
+        { itemId: "cta", label: "CTA Button", defaultVisible: true, inputPath: "contentCta.cta", movesWithSection: true },
+        { itemId: "visual", label: "CTA Visual", defaultVisible: true, inputPath: "contentCta.visualMode", imageGenerationRequest: true },
+      ],
+    },
+    {
+      sectionId: "imageTextRow",
+      name: "Image Text Row",
+      defaultVisible: true,
+      orderChangeAllowed: true,
+      items: [
+        { itemId: "headerTitle", label: "Header Title", defaultVisible: true, inputPath: "imageTextRow.headerTitle" },
+        { itemId: "headerDescription", label: "Header Description", defaultVisible: true, inputPath: "imageTextRow.headerDescription" },
+        { itemId: "title", label: "Title", defaultVisible: true, inputPath: "imageTextRow.title" },
+        { itemId: "description", label: "Description", defaultVisible: true, inputPath: "imageTextRow.description" },
+        { itemId: "visual", label: "Image", defaultVisible: true, inputPath: "imageTextRow.visualMode", imageGenerationRequest: true },
+      ],
+    },
+    {
+      sectionId: "titleDescription",
+      name: "Title and Description",
+      defaultVisible: true,
+      orderChangeAllowed: true,
+      items: [
+        { itemId: "title", label: "Title", defaultVisible: true, inputPath: "titleDescription.title" },
+        { itemId: "contents", label: "Contents", defaultVisible: true, inputPath: "titleDescription.contents" },
+      ],
+    },
+    {
+      sectionId: "footer",
+      name: "Footer",
+      defaultVisible: true,
+      fixedPosition: "bottom",
+      orderChangeAllowed: false,
+      items: [
+        { itemId: "logoText", label: "Logo", defaultVisible: true, inputPath: "footer.logoText" },
+        { itemId: "licenseBadges", label: "License Badges", defaultVisible: true, inputPath: "footer.licenseBadges" },
+      ],
+    },
+  ],
 };
+
+function templateSections(schema) {
+  return Array.isArray(schema?.sections) ? schema.sections : [];
+}
+
+function orderedTemplateSections(schema) {
+  const sections = templateSections(schema);
+  const byId = new Map(sections.map((section) => [section.sectionId || section.key, section]));
+  const orderedIds = Array.isArray(schema?.sectionOrder) && schema.sectionOrder.length
+    ? schema.sectionOrder
+    : sections.map((section) => section.sectionId || section.key);
+  return orderedIds.map((id) => byId.get(id)).filter(Boolean);
+}
+
+function buildTemplateRuntime(schema) {
+  const sections = templateSections(schema);
+  const orderedSections = orderedTemplateSections(schema).map((section) => section.sectionId || section.key);
+  const sectionVisibility = Object.fromEntries(
+    sections.map((section) => [section.sectionId || section.key, section.defaultVisible !== false])
+  );
+  const itemVisibility = Object.fromEntries(
+    sections.map((section) => [
+      section.sectionId || section.key,
+      Object.fromEntries((section.items || []).map((item) => [item.itemId || item.key, item.defaultVisible !== false])),
+    ])
+  );
+
+  return {
+    templateId: schema?.templateId || schema?.id,
+    templateName: schema?.templateName || schema?.name,
+    schemaVersion: schema?.version || "1.0.0",
+    orderedSections,
+    visibleSections: orderedSections.filter((sectionId) => sectionVisibility[sectionId] !== false),
+    sectionVisibility,
+    itemVisibility,
+    fixedSections: sections
+      .filter((section) => section.fixedPosition)
+      .map((section) => ({ sectionId: section.sectionId || section.key, fixedPosition: section.fixedPosition })),
+    draggableSections: sections
+      .filter((section) => section.orderChangeAllowed !== false && !section.fixedPosition)
+      .map((section) => section.sectionId || section.key),
+    imageGenerationTargets: sections.flatMap((section) =>
+      (section.items || [])
+        .filter((item) => item.imageGenerationRequest || item.sendToImagePrompt)
+        .map((item) => ({
+          sectionId: section.sectionId || section.key,
+          itemId: item.itemId || item.key,
+          label: item.label,
+          inputPath: item.inputPath,
+        }))
+    ),
+    governance: schema?.governance || {},
+    promotionInputSchema: schema?.promotionInputSchema || {},
+    templateForm: schema?.templateForm || {},
+    generationRules: schema?.generationRules || {},
+    validationRules: schema?.validationRules || {},
+    progress: schema?.progress || {},
+  };
+}
 
 function createEmptyTemp4Inputs() {
   return {
@@ -627,6 +823,8 @@ createApp({
       promo: {
         title: "",
         template: "Template 4",
+        promotionPurpose: "",
+        promotionPurposeOther: "",
         market: "",
         leadText: "",
         ctaLabel: "",
@@ -1388,6 +1586,8 @@ createApp({
       this.promo = {
         title: "",
         template: "Template 4",
+        promotionPurpose: "",
+        promotionPurposeOther: "",
         market: "",
         leadText: "",
         ctaLabel: "",
@@ -1417,6 +1617,8 @@ createApp({
         ...this.promo,
         title: "GGPoker Welcome Bonus",
         template: "Template 4",
+        promotionPurpose: "웰컴",
+        promotionPurposeOther: "",
         market: "Global",
         ctaLabel: "Join Now",
         ctaUrl: "https://www.ggpoker.com/promotions/",
@@ -1426,8 +1628,8 @@ createApp({
       this.simpleBrief = {
         mainOffer: "Give new players a first deposit bonus and tournament tickets",
         targetAction: "Sign up, make the first deposit, and claim the welcome rewards",
-        audience: "New poker players joining GGPoker for the first time",
-        campaignTone: "Premium, trustworthy, energetic global poker promotion",
+        audience: "신규",
+        campaignTone: "프리미엄",
         secondaryMessage:
           "Highlight a clear reward path that helps players register quickly and move straight into cash games and tournaments.",
       };
@@ -1700,12 +1902,19 @@ createApp({
       const source = this.sourceStyle;
       const designDoc = this.selectedDesignDataSource || this.selectedDocument;
       const sectionInputs = this.sectionInputsForPayload();
+      const templateRuntime = buildTemplateRuntime(this.templateSchema);
       const promoCompat = {
         ...this.promo,
-        template: "Template 4",
+        template: this.templateSchema.name,
         leadText: this.promo.leadText || sectionInputs.heroBanner.sublineText || this.simpleBrief.mainOffer,
         subline: this.promo.subline || sectionInputs.contentCta.longText || this.simpleBrief.secondaryMessage,
         alphaText: this.promo.alphaText || sectionInputs.heroBanner.alphaText,
+      };
+      const promotionInput = {
+        purpose: this.promo.promotionPurpose || this.promo.purpose || "",
+        purposeOther: this.promo.promotionPurposeOther || "",
+        targetCustomer: this.simpleBrief.audience || "",
+        campaignTone: this.simpleBrief.campaignTone || "",
       };
       return {
         id: pageId,
@@ -1736,22 +1945,46 @@ createApp({
           },
         },
         promo: promoCompat,
+        promotionInput,
         template: {
           id: this.templateSchema.id,
           name: this.templateSchema.name,
+          templateId: templateRuntime.templateId,
+          templateName: templateRuntime.templateName,
+          schemaVersion: templateRuntime.schemaVersion,
           generationMode: this.generationMode,
           inputMode: this.inputMode,
-          sectionOrder: this.templateSchema.sectionOrder,
+          sectionOrder: templateRuntime.orderedSections,
+          visibleSections: templateRuntime.visibleSections,
+          sectionVisibility: templateRuntime.sectionVisibility,
+          itemVisibility: templateRuntime.itemVisibility,
+          fixedSections: templateRuntime.fixedSections,
+          draggableSections: templateRuntime.draggableSections,
+          imageGenerationTargets: templateRuntime.imageGenerationTargets,
+          governance: templateRuntime.governance,
+          promotionInputSchema: templateRuntime.promotionInputSchema,
+          templateForm: templateRuntime.templateForm,
+          generationRules: templateRuntime.generationRules,
+          validationRules: templateRuntime.validationRules,
+          progress: templateRuntime.progress,
         },
         simpleBrief: { ...this.simpleBrief },
         sectionInputs,
         design: { ...this.finalStyle },
+        selectedDesignTokens: { ...this.finalStyle },
         sourceDesign: { ...source },
         styleSource: this.styleSource,
         styleSourceLabel: this.styleSourceLabel(),
         n8nWebhookUrl: this.n8nWebhookUrl.trim(),
         companyPreset: this.styleSource === "company_default" ? this.selectedPreset.name : null,
         hasOverride: this.hasOverride(this.finalStyle, source),
+        inputSnapshot: {
+          promo: promoCompat,
+          promotionInput,
+          simpleBrief: { ...this.simpleBrief },
+          sectionInputs,
+          templateRuntime,
+        },
       };
     },
 
@@ -1767,15 +2000,21 @@ createApp({
       }
       const required = [
         ["title", "프로모션 제목"],
+        ["promotionPurpose", "프로모션 목적"],
         ["market", "마켓 / 지역"],
         ["ctaLabel", "CTA 문구"],
         ["ctaUrl", "CTA URL"],
         ["termsText", "이용약관"],
       ];
       const missing = required.filter(([key]) => !String(this.promo[key] || "").trim()).map(([, label]) => label);
+      if (this.promo.promotionPurpose === "기타" && !String(this.promo.promotionPurposeOther || "").trim()) {
+        missing.push("기타 목적");
+      }
       const simpleMissing = [
         ["mainOffer", "주요 혜택"],
         ["targetAction", "유도 행동"],
+        ["audience", "대상 고객"],
+        ["campaignTone", "캠페인 톤"],
       ]
         .filter(([key]) => !String(this.simpleBrief[key] || "").trim())
         .map(([, label]) => label);

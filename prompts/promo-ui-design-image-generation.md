@@ -10,7 +10,7 @@ NON-NEGOTIABLE DESIGN RULES:
 - Treat {{imageSize}} only as the bitmap export size. Do not treat it as the real web page proportion or a poster artboard.
 - Represent a 1440px desktop web page scaled into the bitmap, with clear web UI structure: navigation/header, content sections, CTA components, section containers, UI spacing rhythm, footer/legal area, and reusable component language.
 - The design should feel like a browserless screenshot or design mockup of an actual scrollable webpage, not a single centered print composition.
-- Follow Template 4 content and layout order exactly: Header, Hero Banner, Step Bar, Content CTA, Image Text Row, Title and Description, Footer.
+- Follow the selected template schema's visible content sections in the provided order. Treat section names as internal structure labels, not visible copy.
 - Use sectionInputs as the primary source of visible content. Use promo only as fallback metadata.
 - For visualMode auto, infer visuals from that section's own text.
 - For visualMode use_visual, include a relevant visual.
@@ -23,17 +23,17 @@ NON-NEGOTIABLE DESIGN RULES:
 - Avoid unreadable tiny text. Legal/terms can be shown as condensed footer blocks but must be visibly present.
 - Use the bitmap at {{imageSize}} to show a full-page web UI mockup from header through footer.
 - The mockup represents a 1440px-wide desktop web page scaled into the bitmap export. Preserve web-page hierarchy rather than poster-like vertical centering.
-- Do not crop the bottom, do not end at the hero or middle sections, and do not omit Title and Description or Footer.
+- Do not crop the bottom, do not end at the hero or middle sections, and do not omit selected visible detail/legal/footer content.
 - If vertical space is tight, reduce section heights, visual asset sizes, whitespace, and text density before removing content.
-- The content and layout role of every Template 4 section must be represented in one image in order: Header, Hero Banner, Step Bar, Content CTA, Image Text Row, Title and Description, Footer.
-- Template section names are internal structure labels only. Do not render the words Header, Hero Banner, Step Bar, Content CTA, Image Text Row, Title and Description, or Footer as visible UI text.
+- The content and layout role of every selected visible template section must be represented in one image in the provided order.
+- Template section names are internal structure labels only. Do not render template section names as visible UI text.
 - Do not add side labels, annotation columns, guide text, wireframe labels, section-name callouts, diagram legends, QA checklist labels, or explanatory labels outside the actual webpage.
 - Render all visible UI text in English only. If source content is Korean or another language, translate and adapt it into concise natural English.
 - Avoid print-design signals: no poster margins, no brochure folds, no single giant slogan composition, no full-canvas key visual with text pasted over it, no editorial cover layout, no disconnected decorative blocks.
 - Include web-design signals: consistent header/navigation, clickable-looking CTA buttons or links, card/panel/list/form-like UI components where appropriate, section-to-section rhythm, responsive grid logic, footer/legal hierarchy, and realistic desktop page spacing.
 
 Before writing imagePrompt, internally decide and reflect in the prompt:
-1. The dominant MD layout model and how Temp.4 sections should be arranged.
+1. The dominant MD layout model and how selected visible template sections should be arranged.
 2. The hero composition and visual treatment that best matches the MD.
 3. The spacing rhythm and information density.
 4. The component language for CTAs, step bars, panels, badges, and legal/footer.

@@ -265,6 +265,20 @@
                   <input v-model="promo.title" type="text" placeholder="입력해 주세요" autocomplete="off" />
                 </label>
                 <label class="field">
+                  <span>프로모션 목적</span>
+                  <select v-model="promo.promotionPurpose">
+                    <option value="" disabled>선택해 주세요</option>
+                    <option>할인쿠폰</option>
+                    <option>웰컴</option>
+                    <option>이벤트</option>
+                    <option>기타</option>
+                  </select>
+                </label>
+                <label class="field" v-if="promo.promotionPurpose === '기타'">
+                  <span>기타 목적</span>
+                  <input v-model="promo.promotionPurposeOther" type="text" placeholder="직접 입력" autocomplete="off" />
+                </label>
+                <label class="field">
                   <span>주요 혜택</span>
                   <input v-model="simpleBrief.mainOffer" type="text" placeholder="예: 신규 가입자에게 입금 매칭과 무료 티켓 제공" autocomplete="off" />
                 </label>
@@ -282,7 +296,12 @@
                 </label>
                 <label class="field">
                   <span>대상 고객</span>
-                  <input v-model="simpleBrief.audience" type="text" placeholder="선택 입력" autocomplete="off" />
+                  <select v-model="simpleBrief.audience">
+                    <option value="" disabled>선택해 주세요</option>
+                    <option>신규</option>
+                    <option>기존고객</option>
+                    <option>윈백고객</option>
+                  </select>
                 </label>
               </div>
 
@@ -292,7 +311,15 @@
               </label>
               <label class="field">
                 <span>캠페인 톤</span>
-                <input v-model="simpleBrief.campaignTone" type="text" placeholder="선택 입력: 활기찬, 프리미엄, 차분한, playful 등" autocomplete="off" />
+                <select v-model="simpleBrief.campaignTone">
+                  <option value="" disabled>선택해 주세요</option>
+                  <option>활기찬</option>
+                  <option>신중한</option>
+                  <option>럭키</option>
+                  <option>프리미엄</option>
+                  <option>긴급한</option>
+                  <option>친근한</option>
+                </select>
               </label>
               <label class="field">
                 <span>이용약관</span>

@@ -1,0 +1,347 @@
+{
+  "templateId": "template_4",
+  "templateName": "Default Temp",
+  "purpose": "B섹션에서 사용하는 Template 4 기본 구성정보. 최종 프로모션 Web UI 이미지에 들어갈 실제 콘텐츠 입력 구조를 정의한다.",
+  "languagePolicy": {
+    "visibleCopy": "English",
+    "authoringGuide": "Korean",
+    "internalSectionNamesVisible": false,
+    "note": "Header, Hero Banner, Step Bar 같은 섹션명은 내부 구조명이며 이미지에 visible text로 렌더링하면 안 된다."
+  },
+  "normalizationNotes": [
+    {
+      "original": "Title and Descrition",
+      "normalized": "Title and Description",
+      "reason": "오타 수정"
+    },
+    {
+      "original": "필수 상항",
+      "normalized": "필수 사항",
+      "reason": "오타 수정"
+    },
+    {
+      "original": "선텍",
+      "normalized": "선택",
+      "reason": "오타 수정"
+    },
+    {
+      "original": " Button",
+      "normalized": "Button",
+      "reason": "앞 공백 제거"
+    },
+    {
+      "original": "button / content",
+      "normalized": "Button / Content",
+      "reason": "필드명 대소문자 통일"
+    },
+    {
+      "original": "Contents",
+      "normalized": "Content CTA",
+      "reason": "Template 4 섹션명과 자동화 매핑을 맞추기 위한 정규화"
+    }
+  ],
+  "sections": [
+    {
+      "key": "header",
+      "name": "Header",
+      "description": "상단 브랜드/내비게이션 영역. 로고와 수상이력 또는 신뢰 배지를 표시한다.",
+      "required": true,
+      "items": [
+        {
+          "key": "logo",
+          "label": "LOGO",
+          "required": true,
+          "type": "image_or_text",
+          "description": "로고 이미지 또는 브랜드 로고 텍스트",
+          "example": "GGPoker logo"
+        },
+        {
+          "key": "badges",
+          "label": "Badges",
+          "required": true,
+          "type": "image_list_or_text_list",
+          "description": "수상이력, 파트너, 신뢰 배지 이미지 또는 배지명",
+          "example": [
+            "world series poker official partner badges",
+            "world's biggest poker room",
+            "guinness world records",
+            "Best soft ware 2021"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "heroBanner",
+      "name": "Hero Banner",
+      "description": "프로모션 메인 배너 영역. 메인 제목, 보조 문구, CTA, 추가 안내 문구를 구성한다.",
+      "required": true,
+      "items": [
+        {
+          "key": "leadText",
+          "label": "Lead Text",
+          "required": false,
+          "type": "text",
+          "description": "리드 텍스트 또는 주요 문구",
+          "example": "For GGPoker Qualifiers"
+        },
+        {
+          "key": "title",
+          "label": "Title",
+          "required": true,
+          "type": "text",
+          "description": "타이틀 또는 제목",
+          "example": "LIVE EVENTS\nGOT BIGGER!"
+        },
+        {
+          "key": "sublineText",
+          "label": "Subline Text",
+          "required": false,
+          "type": "text",
+          "description": "서브 타이틀 또는 부제목",
+          "example": "Not on GGPoker?\nYou’re missing up to 20% live event cashes"
+        },
+        {
+          "key": "button",
+          "label": "Button",
+          "required": false,
+          "type": "cta_text",
+          "description": "버튼 텍스트",
+          "example": "Qualify on GGPoker"
+        },
+        {
+          "key": "alphaText",
+          "label": "Alpha Text",
+          "required": false,
+          "type": "legal_or_helper_text",
+          "description": "추가 안내 문구. 조건, 책임 이용, T&C 등 작은 보조 문구를 포함할 수 있다.",
+          "example": "18+. Cash boost paid in C$ (cash game credit). Selected Main Events only. Entry via GGPoker only (qualify or buy-in direct). T&Cs apply. GambleAware.org. Please play responsibly."
+        }
+      ]
+    },
+    {
+      "key": "stepBar",
+      "name": "Step Bar",
+      "description": "기본 3개 단계로 구성되는 선택 영역. 참여 흐름이나 혜택 수령 과정을 설명한다.",
+      "required": false,
+      "defaultStepCount": 3,
+      "items": [
+        {
+          "key": "steps",
+          "label": "Steps",
+          "required": false,
+          "type": "step_list",
+          "description": "A/B/C 단계 제목과 설명",
+          "items": [
+            {
+              "key": "a",
+              "title": "QUALIFY OR BUY-IN ONLINE",
+              "description": "Enter Grosvenor live poker events via GGPoker"
+            },
+            {
+              "key": "b",
+              "title": "TAKE YOUR SEAT",
+              "description": "Play the UK's biggest live poker tournaments"
+            },
+            {
+              "key": "c",
+              "title": "DON'T MISS OUT",
+              "description": "Get up to 20% more live cash & exclusive perks"
+            }
+          ],
+          "sourceFields": [
+            "A Title",
+            "A Desc",
+            "B Title",
+            "B Desc",
+            "C Title",
+            "C Desc"
+          ]
+        },
+        {
+          "key": "button",
+          "label": "Button",
+          "required": false,
+          "type": "cta_text",
+          "description": "단계 영역 CTA 버튼 텍스트",
+          "example": "Qualify on GGPOKER"
+        }
+      ]
+    },
+    {
+      "key": "contentCta",
+      "name": "Content CTA",
+      "originalName": "Contents",
+      "description": "이미지와 텍스트 콘텐츠를 등록하는 선택 영역. 긴 설명형 콘텐츠와 CTA를 함께 구성한다.",
+      "required": false,
+      "items": [
+        {
+          "key": "editing",
+          "label": "Editing",
+          "required": false,
+          "type": "rich_text_capability",
+          "description": "Bold 및 bullet 적용 가능 여부",
+          "example": "Get up to 20% MORE on live event cashes – only via GGPoker."
+        },
+        {
+          "key": "bodyText",
+          "label": "Body Text",
+          "required": false,
+          "type": "rich_text",
+          "description": "본문 텍스트. 원본 표에서 Section Item이 비어 있는 긴 텍스트 행을 정규화한 필드",
+          "example": "Qualify or buy-in online for the biggest UK poker tournaments – including the iconic Goliath, GUKPT and G200 & G300 – and get more value on your cash finishes. Exclusive to GGPoker Players.\n\nThe path to Goliath is LIVE. Satellites run Sunday to Friday from just £1 – bag your seat to the biggest poker event outside of Vegas!\nG200 & G300 qualifiers are also available, with G200 Round 11 next in Newcastle, Blackpool & Walsall (14–19 July) and G300 London at The Victoria (15–20 Sep).\n\nGet MORE with GGPoker"
+        },
+        {
+          "key": "imageContent",
+          "label": "Image Content",
+          "required": false,
+          "type": "image_or_image_instruction",
+          "description": "이미지 콘텐츠 또는 이미지 설명",
+          "example": "이미지 컨텐츠"
+        },
+        {
+          "key": "button",
+          "label": "Button",
+          "required": false,
+          "type": "cta_text",
+          "description": "버튼 텍스트",
+          "example": "Qualify on GGPoker"
+        }
+      ]
+    },
+    {
+      "key": "imageTextRow",
+      "name": "Image Text Row",
+      "description": "이미지와 텍스트가 결합된 카드형 반복 콘텐츠 영역.",
+      "required": false,
+      "items": [
+        {
+          "key": "cards",
+          "label": "Cards",
+          "required": false,
+          "type": "card_list",
+          "description": "IMG, Title, Desc 3개 필드가 카드 단위로 반복된다.",
+          "items": [
+            {
+              "key": "card1",
+              "image": "이미지",
+              "title": "Your Safety Comes First",
+              "description": "The most advanced Security System in the Industry"
+            },
+            {
+              "key": "card2",
+              "image": "이미지",
+              "title": "All Your Favourite Games",
+              "description": "Play for massive cash prizes every week!"
+            },
+            {
+              "key": "card3",
+              "image": "이미지",
+              "title": "30-Day Honeymoon Offer",
+              "description": "Complete daily missions to get instant rewards"
+            }
+          ],
+          "sourceFields": [
+            "IMG",
+            "Title",
+            "Desc"
+          ]
+        }
+      ]
+    },
+    {
+      "key": "titleAndDescription",
+      "name": "Title and Description",
+      "originalName": "Title and Descrition",
+      "description": "추가 텍스트 기반 콘텐츠 등록 영역. 약관, 주의사항, 상세 조건 등을 포함한다.",
+      "required": false,
+      "items": [
+        {
+          "key": "title",
+          "label": "Title",
+          "required": false,
+          "type": "text",
+          "description": "제목",
+          "example": "Terms and Conditions"
+        },
+        {
+          "key": "contents",
+          "label": "Contents",
+          "required": false,
+          "type": "rich_text",
+          "description": "약관 및 주의사항 텍스트. Bold 및 bullet 적용 가능",
+          "example": "Players must be aged 18+ to participate in all GGPoker promotions.\nGGPoker’s game currency is USD ($). Other currencies, such as GBP (£) are only used for illustrative purposes and subject to currency exchange rate fluctuations.\nPlease note that prize pools and jackpot guarantees are subject to change and some amounts listed on this website may not be current; please check the guarantee amounts listed in the tournament lobby of the GGPoker app for up-to-date prize pool information.\nWelcome Bonus promotion for new players is available for 90 days.\nHoneymoon promotion for new players is available for 30 days.\nIf any players fall under suspicion of fraudulent activity, GGPoker has the right to investigate and remove the players once it’s confirmed.\nThe promotion terms and conditions are subject to the site terms and conditions, which can be found here.\nGGPoker reserves the right to modify or suspend the promotion at any time.\nGGPoker standard rules apply."
+        },
+        {
+          "key": "additionalTermsTitle",
+          "label": "Additional Terms Title",
+          "required": false,
+          "type": "text",
+          "description": "추가 약관 제목. 원본 표에서 Section/Section Item 없이 예제 컬럼에만 존재하던 행을 정규화한 필드",
+          "example": "Satellite and Direct Buy In Terms and Conditions"
+        },
+        {
+          "key": "additionalTerms",
+          "label": "Additional Terms",
+          "required": false,
+          "type": "rich_text",
+          "description": "추가 약관 본문",
+          "example": "Step satellite tournaments advance you to qualify for the next step satellite. Satellites begin at £1, then continue to a £5 Step, and finally into the £30 satellite to Main Event.\nPlease do not enter into step satellites or satellites if you are unable to attend the target tournament for your satellite or the live event.\nStep satellites and direct buy-ins can be found by navigating to the UK Live tab within the GGPoker app.\nStep satellites and satellite schedules may change.\nThe first seat won is a mandatory entry and must be used for a Day 1 flight of your choice. You may choose any available Day 1 flight but can only participate in one flight at a time.\nPlayers who register in multiple Day 1 flights will only be entered into their earliest selected flight. Players with multiple entries to a live event must use their entries sequentially.\nUnused first entries will be forfeited and added to the live event prize pool and are non-refundable.\nFor re-entries or assistance with entries, please visit the on-site GGPoker Desk at Grosvenor Casino during the event. Representatives at the venue can assist in redeeming your remaining entries and registering into a new flight (subject to availability).\nRemaining unused entries (for example, you qualify for Day 2 and no longer need re-entries) will be converted into tournament credit (T$) on your GGPoker account following the conclusion of the event."
+        },
+        {
+          "key": "responsiblePlayText",
+          "label": "Responsible Play Text",
+          "required": false,
+          "type": "legal_or_helper_text",
+          "description": "책임 이용 안내 문구",
+          "example": "Play responsibly. www.gambleaware.org."
+        }
+      ]
+    },
+    {
+      "key": "footer",
+      "name": "Footer",
+      "description": "푸터 영역. 로고, 라이선스/신뢰 배지, 법적 고지를 포함한다.",
+      "required": false,
+      "items": [
+        {
+          "key": "logo",
+          "label": "Logo",
+          "required": false,
+          "type": "image_or_text",
+          "description": "푸터 로고",
+          "example": "로고"
+        },
+        {
+          "key": "licenseBadges",
+          "label": "License Badges",
+          "required": false,
+          "type": "image_list_or_text_list",
+          "description": "라이선스 배지, 결제수단, 인증, 책임 이용 배지",
+          "example": [
+            "Visa",
+            "master",
+            "18+",
+            "bmmtestlabs",
+            "gamecare",
+            "BeGambleAware.org"
+          ]
+        },
+        {
+          "key": "content",
+          "label": "Content",
+          "required": false,
+          "type": "legal_text",
+          "description": "푸터 법적 고지 및 회사 정보",
+          "example": "Disclaimer: GG International Limited, trading as GGPoker; is regulated by the Isle of Man Gambling Supervision Commission under a Licence issued under the Online Gambling Regulations Act 2001 on 15 October 2020. Registered address is The Hubb, Queen Victoria House, Victoria Street, Douglas, IM1 2LF, Isle of Man.\nAll debts are enforceable in Law on the Isle of Man. GG International Limited strictly prohibits access and services to those under the legal age of Eighteen (18). Customers should check the laws and regulations in their own country and comply with them. Information on this website is subject to change without notice. GGPoker | © 2018 - 2026\nPlease play responsibly."
+        }
+      ]
+    }
+  ],
+  "qaRules": [
+    "섹션명은 내부 구조명으로만 사용하고 이미지 visible copy로 넘기지 않는다.",
+    "Section Order 블록을 최종 이미지 프롬프트에 노출하지 않는다.",
+    "필수 필드는 생성 전 누락 여부를 검사한다.",
+    "반복 카드와 반복 단계는 key를 명확히 분리한다.",
+    "약관/책임 이용 문구는 Footer 또는 Title and Description 영역에 포함한다."
+  ]
+}

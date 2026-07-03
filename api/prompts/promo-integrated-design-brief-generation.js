@@ -69,8 +69,8 @@ The integratedDesignBriefMarkdown must be a complete design-generation request d
 
 Rules:
 - Design Prompt MD controls style tokens, component patterns, layout patterns, and guidelines.
-- Section Input Log MD controls visible content, CTA text, legal text, and Template 4 section input values.
-- Template 4 controls output section order and required section coverage.
+- Section Input Log MD controls visible content, CTA text, legal text, and selected template section input values.
+- The selected template schema controls output section order, visible section coverage, fixed sections, optional sections, item visibility, and image-generation targets.
 - YAML frontmatter type must be exactly integrated_design_brief.
 - sourceDocuments must include design_prompt and section_input_log.
 - All visible UI copy must be English only.
@@ -79,7 +79,7 @@ Rules:
 - Treat 1024x1536 as the bitmap export size, not as a poster artboard or real web page proportion.
 - Represent a 1440px desktop Web UI page scaled into the bitmap.
 - The result must read as a web UI design mockup, not a poster, flyer, brochure, presentation slide, print ad, or key visual.
-- The content and layout role of all seven Template 4 sections must be represented in order: Header, Hero Banner, Step Bar, Content CTA, Image Text Row, Title and Description, Footer.
+- The content and layout role of all selected visible template sections must be represented in the provided order.
 - Template section names are internal structure labels only and must not appear as visible UI text.
 - Do not render side labels, annotation columns, guide text, wireframe labels, section-name callouts, diagram legends, QA checklist labels, or explanatory labels outside the actual webpage.
 - Section Order blocks and numbered section lists are internal planning metadata only and must not be treated as visible UI copy.
