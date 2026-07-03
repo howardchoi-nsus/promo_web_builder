@@ -493,14 +493,14 @@
               </div>
             </div>
 
-            <div class="builder-step-actions" v-if="promoBuilderStarted">
-              <button class="secondary-action" type="button" :disabled="currentBuilderStep === 1" @click="prevBuilderStep">이전</button>
-              <div>
-                <strong>Step {{ currentBuilderStep }} / {{ builderSteps.length }}</strong>
-                <span>{{ currentBuilderStepInfo.title }}</span>
               </div>
-              <button class="primary-action" type="button" v-if="currentBuilderStep < builderSteps.length" @click="nextBuilderStep">다음</button>
-            </div>
+              <div class="builder-step-actions" v-if="promoBuilderStarted">
+                <button class="secondary-action" type="button" :disabled="currentBuilderStep === 1" @click="prevBuilderStep">이전</button>
+                <div>
+                  <strong>Step {{ currentBuilderStep }} / {{ builderSteps.length }}</strong>
+                  <span>{{ currentBuilderStepInfo.title }}</span>
+                </div>
+                <button class="primary-action" type="button" v-if="currentBuilderStep < builderSteps.length" @click="nextBuilderStep">다음</button>
               </div>
             </dialog>
             </div>

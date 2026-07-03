@@ -1729,11 +1729,8 @@ body.is-resizing {
 }
 
 .builder-step-actions {
-  position: sticky;
-  bottom: 0;
   z-index: 8;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  margin-top: auto;
   border-radius: 0 0 var(--radius) var(--radius);
   box-shadow: 0 -14px 24px rgba(20, 35, 70, 0.12);
 }
@@ -1992,21 +1989,28 @@ body.is-resizing {
 }
 
 .builder-modal {
+  display: flex;
+  flex-direction: column;
   width: 70vw;
   height: 70vh;
   max-width: calc(100vw - 40px);
   max-height: calc(100vh - 40px);
 }
 
+.builder-modal > .modal-header,
+.builder-modal > .builder-step-actions {
+  flex: 0 0 auto;
+}
+
 .builder-modal-body {
   display: flex;
   flex-direction: column;
-  max-height: calc(70vh - 96px);
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: auto;
   align-content: start;
   padding-bottom: 0;
   scroll-padding-top: 76px;
-  scroll-padding-bottom: 82px;
 }
 
 .modal-body {
