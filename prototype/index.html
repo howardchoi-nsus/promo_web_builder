@@ -219,7 +219,7 @@
                   </select>
                   <small>POC에서는 default_temp만 사용할 수 있습니다.</small>
                 </label>
-                <label class="field">
+                <label class="field" :class="fieldClass('market')">
                   <span>마켓 / 지역</span>
                   <select v-model="promo.market" required autocomplete="off">
                     <option disabled value="">&#49440;&#53469;&#54644; &#51452;&#49464;&#50836;</option>
@@ -232,6 +232,7 @@
                     <option>Germany</option>
                     <option>Canada Ontario</option>
                   </select>
+                  <small class="field-error" v-if="fieldError('market')">{{ fieldError('market') }}</small>
                 </label>
               </div>
             </div>
@@ -246,11 +247,12 @@
               </div>
 
               <div class="form-grid">
-                <label class="field">
+                <label class="field" :class="fieldClass('title')">
                   <span>프로모션 제목</span>
                   <input v-model="promo.title" type="text" placeholder="입력해 주세요" autocomplete="off" />
+                  <small class="field-error" v-if="fieldError('title')">{{ fieldError('title') }}</small>
                 </label>
-                <label class="field">
+                <label class="field" :class="fieldClass('promotionPurpose')">
                   <span>프로모션 목적</span>
                   <select v-model="promo.promotionPurpose">
                     <option value="" disabled>선택해 주세요</option>
@@ -259,28 +261,34 @@
                     <option>이벤트</option>
                     <option>기타</option>
                   </select>
+                  <small class="field-error" v-if="fieldError('promotionPurpose')">{{ fieldError('promotionPurpose') }}</small>
                 </label>
-                <label class="field" v-if="promo.promotionPurpose === '기타'">
+                <label class="field" :class="fieldClass('promotionPurposeOther')" v-if="promo.promotionPurpose === '기타'">
                   <span>기타 목적</span>
                   <input v-model="promo.promotionPurposeOther" type="text" placeholder="직접 입력" autocomplete="off" />
+                  <small class="field-error" v-if="fieldError('promotionPurposeOther')">{{ fieldError('promotionPurposeOther') }}</small>
                 </label>
-                <label class="field">
+                <label class="field" :class="fieldClass('mainOffer')">
                   <span>주요 혜택</span>
                   <input v-model="simpleBrief.mainOffer" type="text" placeholder="예: 신규 가입자에게 입금 매칭과 무료 티켓 제공" autocomplete="off" />
+                  <small class="field-error" v-if="fieldError('mainOffer')">{{ fieldError('mainOffer') }}</small>
                 </label>
-                <label class="field">
+                <label class="field" :class="fieldClass('targetAction')">
                   <span>유도 행동</span>
                   <input v-model="simpleBrief.targetAction" type="text" placeholder="예: 가입 후 첫 입금 진행" autocomplete="off" />
+                  <small class="field-error" v-if="fieldError('targetAction')">{{ fieldError('targetAction') }}</small>
                 </label>
-                <label class="field">
+                <label class="field" :class="fieldClass('ctaLabel')">
                   <span>CTA 문구</span>
                   <input v-model="promo.ctaLabel" type="text" placeholder="입력해 주세요" autocomplete="off" />
+                  <small class="field-error" v-if="fieldError('ctaLabel')">{{ fieldError('ctaLabel') }}</small>
                 </label>
-                <label class="field">
+                <label class="field" :class="fieldClass('ctaUrl')">
                   <span>CTA URL</span>
                   <input v-model="promo.ctaUrl" type="url" placeholder="입력해 주세요" autocomplete="off" />
+                  <small class="field-error" v-if="fieldError('ctaUrl')">{{ fieldError('ctaUrl') }}</small>
                 </label>
-                <label class="field">
+                <label class="field" :class="fieldClass('audience')">
                   <span>대상 고객</span>
                   <select v-model="simpleBrief.audience">
                     <option value="" disabled>선택해 주세요</option>
@@ -288,6 +296,7 @@
                     <option>기존고객</option>
                     <option>윈백고객</option>
                   </select>
+                  <small class="field-error" v-if="fieldError('audience')">{{ fieldError('audience') }}</small>
                 </label>
               </div>
 
@@ -295,7 +304,7 @@
                 <span>보조 메시지</span>
                 <textarea v-model="simpleBrief.secondaryMessage" rows="2" placeholder="선택 입력" autocomplete="off"></textarea>
               </label>
-              <label class="field">
+              <label class="field" :class="fieldClass('campaignTone')">
                 <span>캠페인 톤</span>
                 <select v-model="simpleBrief.campaignTone">
                   <option value="" disabled>선택해 주세요</option>
@@ -306,10 +315,12 @@
                   <option>긴급한</option>
                   <option>친근한</option>
                 </select>
+                <small class="field-error" v-if="fieldError('campaignTone')">{{ fieldError('campaignTone') }}</small>
               </label>
-              <label class="field">
+              <label class="field" :class="fieldClass('termsText')">
                 <span>이용약관</span>
                 <textarea v-model="promo.termsText" rows="4" placeholder="입력해 주세요" autocomplete="off"></textarea>
+                <small class="field-error" v-if="fieldError('termsText')">{{ fieldError('termsText') }}</small>
               </label>
               <div class="action-row align-right">
                 <button class="secondary-action" type="button" @click="clearPromoInputs">초기화</button>

@@ -838,6 +838,7 @@ createApp({
       resizeState: null,
       designDocuments: [],
       mdListSource: "불러오는 중",
+      validationErrors: {},
       handoffDocuments: [],
       selectedHandoffFile: "",
       handoffMarkdown: "",
@@ -1091,6 +1092,18 @@ createApp({
       this.generationMode = this.designMode === "advanced" ? "template_advanced" : "ai_agent";
       this.inputMode = this.designMode === "advanced" ? "advanced" : "simple";
       this.promo.template = this.designMode === "advanced" ? "default_temp" : "AI Auto";
+    },
+    promo: {
+      deep: true,
+      handler() {
+        this.clearResolvedValidationErrors();
+      },
+    },
+    simpleBrief: {
+      deep: true,
+      handler() {
+        this.clearResolvedValidationErrors();
+      },
     },
   },
 
@@ -1427,9 +1440,11 @@ createApp({
 
     validateBuilderStep(step = this.currentBuilderStep) {
       if (step === 1 && !String(this.promo.market || "").trim()) {
+        this.validationErrors = { market: true };
         this.setStatus("마켓 / 지역을 선택해 주세요");
         return false;
       }
+      if (step === 1) this.validationErrors = {};
       if (step === 2) return this.validatePromoInputs();
       if (step === 3 && !this.hasSectionDraft()) {
         this.refreshSectionDraft({ silent: true });
@@ -1639,6 +1654,38 @@ createApp({
       this.status = message;
     },
 
+    fieldClass(key) {
+      return { "field-invalid": Boolean(this.validationErrors[key]) };
+    },
+
+    fieldError(key) {
+      return this.validationErrors[key] ? "입력해 주세요." : "";
+    },
+
+    clearResolvedValidationErrors() {
+      if (!Object.keys(this.validationErrors).length) return;
+      const next = { ...this.validationErrors };
+      const hasValue = (source, key) => String(source?.[key] || "").trim();
+      const checks = {
+        title: hasValue(this.promo, "title"),
+        promotionPurpose: hasValue(this.promo, "promotionPurpose"),
+        promotionPurposeOther:
+          this.promo.promotionPurpose !== "기타" || hasValue(this.promo, "promotionPurposeOther"),
+        market: hasValue(this.promo, "market"),
+        ctaLabel: hasValue(this.promo, "ctaLabel"),
+        ctaUrl: hasValue(this.promo, "ctaUrl"),
+        termsText: hasValue(this.promo, "termsText"),
+        mainOffer: hasValue(this.simpleBrief, "mainOffer"),
+        targetAction: hasValue(this.simpleBrief, "targetAction"),
+        audience: hasValue(this.simpleBrief, "audience"),
+        campaignTone: hasValue(this.simpleBrief, "campaignTone"),
+      };
+      for (const [key, resolved] of Object.entries(checks)) {
+        if (resolved) delete next[key];
+      }
+      this.validationErrors = next;
+    },
+
     clearPromoInputs() {
       this.resetPromoBuilderState();
       this.setStatus("프로모션 입력값을 초기화했습니다");
@@ -1665,6 +1712,7 @@ createApp({
         campaignTone: "",
         secondaryMessage: "",
       };
+      this.validationErrors = {};
       this.designMode = "ai";
       this.inputMode = "simple";
       this.generationMode = "ai_agent";
@@ -2066,6 +2114,7 @@ createApp({
     },
 
     validatePromoInputs() {
+      this.validationErrors = {};
       if (!this.selectedDocument) {
         this.setStatus("먼저 디자인 MD를 선택해 주세요");
         return false;
@@ -2076,30 +2125,32 @@ createApp({
         return false;
       }
       const required = [
-        ["title", "프로모션 제목"],
-        ["promotionPurpose", "프로모션 목적"],
-        ["market", "마켓 / 지역"],
-        ["ctaLabel", "CTA 문구"],
-        ["ctaUrl", "CTA URL"],
-        ["termsText", "이용약관"],
+        ["title", "프로모션 제목", this.promo],
+        ["promotionPurpose", "프로모션 목적", this.promo],
+        ["market", "마켓 / 지역", this.promo],
+        ["ctaLabel", "CTA 문구", this.promo],
+        ["ctaUrl", "CTA URL", this.promo],
+        ["termsText", "이용약관", this.promo],
       ];
-      const missing = required.filter(([key]) => !String(this.promo[key] || "").trim()).map(([, label]) => label);
+      const missingEntries = required.filter(([key, , source]) => !String(source[key] || "").trim());
       if (this.promo.promotionPurpose === "기타" && !String(this.promo.promotionPurposeOther || "").trim()) {
-        missing.push("기타 목적");
+        missingEntries.push(["promotionPurposeOther", "기타 목적", this.promo]);
       }
       const simpleMissing = [
-        ["mainOffer", "주요 혜택"],
-        ["targetAction", "유도 행동"],
-        ["audience", "대상 고객"],
-        ["campaignTone", "캠페인 톤"],
+        ["mainOffer", "주요 혜택", this.simpleBrief],
+        ["targetAction", "유도 행동", this.simpleBrief],
+        ["audience", "대상 고객", this.simpleBrief],
+        ["campaignTone", "캠페인 톤", this.simpleBrief],
       ]
-        .filter(([key]) => !String(this.simpleBrief[key] || "").trim())
-        .map(([, label]) => label);
-      const allMissing = [...missing, ...simpleMissing];
+        .filter(([key, , source]) => !String(source[key] || "").trim());
+      const allMissingEntries = [...missingEntries, ...simpleMissing];
+      const allMissing = allMissingEntries.map(([, label]) => label);
       if (allMissing.length) {
+        this.validationErrors = Object.fromEntries(allMissingEntries.map(([key]) => [key, true]));
         this.setStatus(`필수 입력 누락: ${allMissing.slice(0, 2).join(", ")}${allMissing.length > 2 ? "..." : ""}`);
         return false;
       }
+      this.validationErrors = {};
       return true;
     },
 
