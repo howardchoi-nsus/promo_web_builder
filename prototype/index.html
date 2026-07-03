@@ -213,11 +213,10 @@
 
               <div class="form-grid compact">
                 <label class="field" v-if="designMode === 'advanced'">
-                  <span>템플릿 선택</span>
+                  <span class="field-title-with-hint">템플릿 선택 <small>POC에서는 default_temp만 사용할 수 있습니다.</small></span>
                   <select v-model="promo.template">
                     <option value="default_temp">Default Temp</option>
                   </select>
-                  <small>POC에서는 default_temp만 사용할 수 있습니다.</small>
                 </label>
                 <label class="field" :class="fieldClass('market')">
                   <span>마켓 / 지역</span>
