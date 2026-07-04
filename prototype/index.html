@@ -135,9 +135,9 @@
                 <div class="design-token-heading">
                   <div>
                     <strong>{{ selectedDocument.brandName }}</strong>
-                    <span>{{ designSchemaClassification(selectedDesignDataSource) }}</span>
+                    <span hidden>{{ designSchemaClassification(selectedDesignDataSource) }}</span>
                   </div>
-                  <div class="style-group-tags" v-if="selectedDocumentTags.length">
+                  <div class="style-group-tags" v-if="selectedDocumentTags.length" hidden>
                     <span v-for="tag in selectedDocumentTags" :key="tag">{{ tag }}</span>
                   </div>
                 </div>
@@ -148,7 +148,7 @@
                   class="token-detail-section"
                   :open="section.open"
                 >
-                  <summary>{{ section.label }} <span>{{ section.rows.length }}개</span></summary>
+                  <summary>{{ section.label }} <span hidden>{{ section.rows.length }}개</span></summary>
                   <div class="token-row-list" v-if="section.rows.length">
                     <div v-for="row in section.rows" :key="`${section.key}-${row.key}`" class="token-row">
                       <strong>{{ row.key }}</strong>
