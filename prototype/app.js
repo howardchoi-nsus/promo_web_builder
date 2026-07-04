@@ -405,6 +405,10 @@ function createDefaultSectionConfig(schema) {
   };
 }
 
+function defaultImageGenerationMode(item) {
+  return item?.imageGenerationRequest || item?.sendToImagePrompt ? "generate" : "none";
+}
+
 function buildTemplateRuntime(schema, config = null) {
   const sections = templateSections(schema);
   const orderedSections = orderedTemplateSections(schema).map((section) => section.sectionId || section.key);
@@ -450,16 +454,15 @@ function buildTemplateRuntime(schema, config = null) {
           const sectionId = section.sectionId || section.key;
           const itemId = item.itemId || item.key;
           if (sectionVisibility[sectionId] === false || itemVisibility[sectionId]?.[itemId] === false) return false;
-          const configuredMode = imageGenerationMode?.[sectionId]?.[itemId];
-          if (configuredMode) return configuredMode === "generate";
-          return item.imageGenerationRequest || item.sendToImagePrompt;
+          const configuredMode = imageGenerationMode?.[sectionId]?.[itemId] || defaultImageGenerationMode(item);
+          return configuredMode === "generate";
         })
         .map((item) => ({
           sectionId: section.sectionId || section.key,
           itemId: item.itemId || item.key,
           label: item.label,
           inputPath: item.inputPath,
-          mode: imageGenerationMode?.[section.sectionId || section.key]?.[item.itemId || item.key] || "generate",
+          mode: imageGenerationMode?.[section.sectionId || section.key]?.[item.itemId || item.key] || defaultImageGenerationMode(item),
         }))
     ),
     governance: schema?.governance || {},
@@ -1316,7 +1319,7 @@ createApp({
                 ...item,
                 itemId,
                 visible: this.sectionConfig.itemVisibility?.[sectionId]?.[itemId] !== false,
-                imageGenerationMode: this.sectionConfig.imageGenerationMode?.[sectionId]?.[itemId] || "none",
+                imageGenerationMode: this.sectionConfig.imageGenerationMode?.[sectionId]?.[itemId] || defaultImageGenerationMode(item),
               };
             }),
           };
@@ -1732,10 +1735,6 @@ createApp({
       };
     },
 
-    setImageGenerationChecked(sectionId, itemId, checked) {
-      this.setImageGenerationMode(sectionId, itemId, checked ? "generate" : "none");
-    },
-
     repeatableSectionSets(sectionId) {
       const value = this.sectionInputs?.[sectionId];
       if (Array.isArray(value)) return value;
@@ -1800,13 +1799,13 @@ createApp({
       return this.sectionConfig.imageGenerationMode?.[sectionId]?.[key] || "generate";
     },
 
-    setRepeatImageGenerationChecked(sectionId, setIndex, itemId, checked) {
+    setRepeatImageGenerationMode(sectionId, setIndex, itemId, mode) {
       const key = this.repeatItemKey(setIndex, itemId);
       this.sectionConfig.imageGenerationMode = {
         ...this.sectionConfig.imageGenerationMode,
         [sectionId]: {
           ...(this.sectionConfig.imageGenerationMode?.[sectionId] || {}),
-          [key]: checked ? "generate" : "none",
+          [key]: mode,
         },
       };
     },

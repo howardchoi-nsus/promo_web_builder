@@ -354,7 +354,7 @@
                           {{ section.repeatableSet.addLabel }}
                         </button>
                       </div>
-                      <div class="repeatable-set-grid" :style="{ '--set-columns': section.repeatableSet.maxPerRow || 1 }">
+                      <div class="repeatable-set-grid">
                         <div v-for="(set, setIndex) in repeatableSectionSets(section.sectionId)" :key="`${section.sectionId}-${setIndex}`" class="repeatable-set-card">
                           <div class="repeatable-set-heading">
                             <strong>{{ section.repeatableSet.label }} {{ setIndex + 1 }}</strong>
@@ -364,32 +364,21 @@
                             v-for="item in section.items"
                             :key="`${setIndex}-${item.itemId}`"
                             class="section-item-row repeat-item-row"
-                            :class="{ inactive: !repeatItemVisible(section.sectionId, setIndex, item) }"
+                            :class="{ inactive: !repeatItemVisible(section.sectionId, setIndex, item), 'has-image-setting': item.imageGenerationRequest }"
                           >
-                            <label class="ai-toggle" v-if="item.imageGenerationRequest" title="이미지 생성 대상">
-                              <input
-                                type="checkbox"
-                                :checked="repeatImageGenerationMode(section.sectionId, setIndex, item) === 'generate'"
-                                :disabled="!repeatItemVisible(section.sectionId, setIndex, item)"
-                                @change="setRepeatImageGenerationChecked(section.sectionId, setIndex, item.itemId, $event.target.checked)"
-                              />
-                              <span>AI</span>
-                            </label>
-                            <span class="ai-toggle-placeholder" v-else></span>
-                            <div class="section-item-summary">
-                              <strong>{{ item.label }}</strong>
-                              <span>{{ item.description || '섹션 아이템' }}</span>
-                            </div>
                             <label class="switch-control">
                               <input
                                 type="checkbox"
                                 :checked="repeatItemVisible(section.sectionId, setIndex, item)"
                                 @change="setRepeatItemVisible(section.sectionId, setIndex, item.itemId, $event.target.checked)"
                               />
-                              <span>사용</span>
+                              <span>{{ repeatItemVisible(section.sectionId, setIndex, item) ? '사용' : '미사용' }}</span>
                             </label>
+                            <div class="section-item-summary">
+                              <strong>{{ item.label }}</strong>
+                              <span>{{ item.description || '섹션 아이템' }}</span>
+                            </div>
                             <label class="field section-item-input">
-                              <span>입력 필드</span>
                               <textarea
                                 v-if="item.inputType === 'textarea'"
                                 rows="3"
@@ -408,27 +397,30 @@
                                 @input="setSectionInputValue(repeatItemInputPath(section.sectionId, setIndex, item), $event.target.value)"
                               />
                             </label>
+                            <label class="field section-image-setting" v-if="item.imageGenerationRequest">
+                              <span>이미지 설정</span>
+                              <select
+                                :value="repeatImageGenerationMode(section.sectionId, setIndex, item)"
+                                :disabled="!repeatItemVisible(section.sectionId, setIndex, item)"
+                                @change="setRepeatImageGenerationMode(section.sectionId, setIndex, item.itemId, $event.target.value)"
+                              >
+                                <option value="generate">AI</option>
+                                <option value="upload_or_reference">이미지 등록</option>
+                                <option value="none">미사용</option>
+                              </select>
+                            </label>
                           </div>
                         </div>
                       </div>
                     </template>
 
                     <template v-else>
-                      <div v-for="item in section.items" :key="item.itemId" class="section-item-row" :class="{ inactive: !item.visible }">
-                        <label class="ai-toggle" v-if="item.imageGenerationRequest" title="이미지 생성 대상">
-                          <input
-                            type="checkbox"
-                            :checked="item.imageGenerationMode === 'generate'"
-                            :disabled="!section.visible || !item.visible"
-                            @change="setImageGenerationChecked(section.sectionId, item.itemId, $event.target.checked)"
-                          />
-                          <span>AI</span>
-                        </label>
-                        <span class="ai-toggle-placeholder" v-else></span>
-                        <div class="section-item-summary">
-                          <strong>{{ item.label }}</strong>
-                          <span>{{ item.description || '섹션 아이템' }}</span>
-                        </div>
+                      <div
+                        v-for="item in section.items"
+                        :key="item.itemId"
+                        class="section-item-row"
+                        :class="{ inactive: !item.visible, 'has-image-setting': item.imageGenerationRequest }"
+                      >
                         <label class="switch-control">
                           <input
                             type="checkbox"
@@ -436,10 +428,13 @@
                             :disabled="item.required && section.visible"
                             @change="setItemVisible(section.sectionId, item.itemId, $event.target.checked)"
                           />
-                          <span>{{ item.required ? '필수' : '사용' }}</span>
+                          <span>{{ item.required ? '필수' : (item.visible ? '사용' : '미사용') }}</span>
                         </label>
+                        <div class="section-item-summary">
+                          <strong>{{ item.label }}</strong>
+                          <span>{{ item.description || '섹션 아이템' }}</span>
+                        </div>
                         <label class="field section-item-input" v-if="item.inputPath">
-                          <span>입력 필드</span>
                           <textarea
                             v-if="item.inputType === 'textarea'"
                             rows="3"
@@ -457,6 +452,18 @@
                             autocomplete="off"
                             @input="setSectionInputValue(item.inputPath, $event.target.value)"
                           />
+                        </label>
+                        <label class="field section-image-setting" v-if="item.imageGenerationRequest">
+                          <span>이미지 설정</span>
+                          <select
+                            :value="item.imageGenerationMode"
+                            :disabled="!section.visible || !item.visible"
+                            @change="setImageGenerationMode(section.sectionId, item.itemId, $event.target.value)"
+                          >
+                            <option value="generate">AI</option>
+                            <option value="upload_or_reference">이미지 등록</option>
+                            <option value="none">미사용</option>
+                          </select>
                         </label>
                       </div>
                     </template>
