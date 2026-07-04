@@ -45,10 +45,9 @@ imageNode.parameters = {
 const normalizeNode = workflow.nodes.find((node) => node.name === 'Normalize Payload');
 if (normalizeNode?.parameters?.jsCode) {
   normalizeNode.parameters.jsCode = normalizeNode.parameters.jsCode
-    .replace(
-      "body.image_model ||\n  'models/gemini-3.1-flash-image-preview'",
-      "body.image_model ||\n  'models/gemini-3.1-flash-image'",
-    )
+    .replaceAll("'gemini-3.1-flash-image-preview'", "'gemini-3.1-flash-image'")
+    .replaceAll("'models/gemini-3.1-flash-image'", "'gemini-3.1-flash-image'")
+    .replaceAll("'gpt-image-1'", "'gemini-3.1-flash-image'")
     .replace(
       "imageSize: output.imageSize || '1024x1536'",
       "imageSize: output.imageSize || '1024x1536',\n      aspectRatio: output.aspectRatio || output.aspect_ratio || '2:3',\n      imageSizeTier: output.imageSizeTier || output.image_size_tier || '2K',\n      imageMimeType: output.imageMimeType || output.image_mime_type || 'image/png'",

@@ -125,7 +125,7 @@ const storageKeys = {
 
 const generationModels = {
   text: "gpt-4o-mini",
-  image: "gpt-image-1",
+  image: "gemini-3.1-flash-image",
 };
 
 const dummyCompanyStylePresets = [
