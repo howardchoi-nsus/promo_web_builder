@@ -398,7 +398,6 @@
                               />
                             </label>
                             <label class="field section-image-setting" v-if="item.imageGenerationRequest">
-                              <span>이미지 설정</span>
                               <select
                                 :value="repeatImageGenerationMode(section.sectionId, setIndex, item)"
                                 :disabled="!repeatItemVisible(section.sectionId, setIndex, item)"
@@ -454,7 +453,6 @@
                           />
                         </label>
                         <label class="field section-image-setting" v-if="item.imageGenerationRequest">
-                          <span>이미지 설정</span>
                           <select
                             :value="item.imageGenerationMode"
                             :disabled="!section.visible || !item.visible"
