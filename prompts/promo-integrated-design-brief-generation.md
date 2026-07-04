@@ -146,6 +146,18 @@ Include conflicts for at least:
 
 Use the selected template schema's visible section list and order. Section headings in this markdown are internal documentation only; they must not become visible UI copy in the image prompt.
 
+For Template 4, the Integrated Design Brief must include these exact H3 headings, spelled exactly as shown, under `## Section Content Mapping`:
+
+- `### Header`
+- `### Hero Banner`
+- `### Step Bar`
+- `### Content CTA`
+- `### Image Text Row`
+- `### Title and Description`
+- `### Footer`
+
+If the Section Input Log uses configured names such as `Contents` or keys such as `titleDescription`, normalize them to the canonical headings above. Never rename `### Title and Description` to `### Title & Description`, `### Title Description`, `### Title and Descrition`, `### Contents`, or any other variant.
+
 For each section include:
 
 - Source fields
@@ -160,6 +172,16 @@ For each section include:
 ### Token-to-Section Application must include one H3 for each selected visible template section
 
 For each section explain exactly how selected design tokens affect:
+
+For Template 4, repeat the same exact H3 heading set under `## Token-to-Section Application`:
+
+- `### Header`
+- `### Hero Banner`
+- `### Step Bar`
+- `### Content CTA`
+- `### Image Text Row`
+- `### Title and Description`
+- `### Footer`
 
 - Color usage
 - Typography hierarchy
@@ -237,7 +259,7 @@ Must include at least 10 checklist items.
 
 - `integratedDesignBriefMarkdown` must be at least 6000 characters.
 - It must include a Resolved Conflicts table.
-- It must include H3 headings for each selected visible template section.
+- It must include exact canonical H3 headings for each selected visible template section. For Template 4, include `### Header`, `### Hero Banner`, `### Step Bar`, `### Content CTA`, `### Image Text Row`, `### Title and Description`, and `### Footer`.
 - It must include at least one JSON block for MD Compliance Map.
 - It must include selected design token values directly; do not say to consult or refer to Design Prompt MD.
 - It must include Section Input Log visible copy directly; do not say to consult or refer to Section Input Log MD.

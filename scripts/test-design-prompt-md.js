@@ -32,7 +32,30 @@ const payload = {
       visualMode: "auto",
     },
   },
-  template: { id: "temp4", name: "Template 4" },
+  sectionConfig: {
+    sections: [
+      { sectionId: "header", name: "Header", visible: true },
+      { sectionId: "heroBanner", name: "Hero Banner", visible: true },
+      { sectionId: "stepBar", name: "Step Bar", visible: true },
+      { sectionId: "contentCta", name: "Contents", visible: true },
+      { sectionId: "imageTextRow", name: "Image Text Row", visible: true },
+      { sectionId: "titleDescription", name: "Title and Description", visible: true },
+      { sectionId: "footer", name: "Footer", visible: true },
+    ],
+  },
+  template: {
+    id: "temp4",
+    name: "Template 4",
+    sectionVisibility: {
+      header: true,
+      heroBanner: true,
+      stepBar: true,
+      contentCta: true,
+      imageTextRow: true,
+      titleDescription: true,
+      footer: true,
+    },
+  },
   design: { primaryColor: "#111827" },
   md: {
     id: "sample-md",
@@ -184,6 +207,9 @@ fs.writeFileSync(outputPath, markdown, "utf8");
 assert(sectionInputLog.includes("type: section_input_log"), "Expected Section Input Log frontmatter type");
 assert(sectionInputLog.includes("# Section Input Log MD"), "Expected Section Input Log title");
 assert(sectionInputLog.includes("## Section Inputs"), "Expected Section Inputs section");
+assert(sectionInputLog.includes("## Canonical Template Section Headings"), "Expected canonical section heading contract");
+assert(sectionInputLog.includes("### Content CTA"), "Expected canonical Content CTA heading despite configured Contents name");
+assert(sectionInputLog.includes("### Title and Description"), "Expected canonical Title and Description heading");
 assert(sectionInputLog.includes("Start strong on GGPoker"), "Expected visible copy in Section Input Log");
 
 const sectionOutputPath = path.join(process.cwd(), "tmp", "section-input-log-md-test.md");

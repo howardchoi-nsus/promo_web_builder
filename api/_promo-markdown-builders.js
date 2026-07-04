@@ -59,6 +59,7 @@ function buildDesignPromptMarkdown({ runKey, promptGroupId, generatedAt, payload
 }
 
 function buildPromoInputMarkdown({ runKey, promptGroupId, generatedAt, payload, promo, md, template }) {
+  const canonicalSections = canonicalTemplateSections(payload);
   return [
     "---",
     "type: section_input_log",
@@ -116,6 +117,20 @@ function buildPromoInputMarkdown({ runKey, promptGroupId, generatedAt, payload, 
     JSON.stringify(payload?.sectionInputs || {}, null, 2),
     "```",
     "",
+    "## Canonical Template Section Headings",
+    "",
+    "These headings are internal mapping labels for downstream automation. They must be copied exactly into the Integrated Design Brief under Section Content Mapping and Token-to-Section Application. They must not be rendered as visible UI text in the generated image.",
+    "",
+    ...canonicalSections.flatMap((section, index) => [
+      `### ${section.name}`,
+      "",
+      `- order: ${index + 1}`,
+      `- sectionId: ${section.sectionId}`,
+      `- configuredName: ${section.configuredName || section.name}`,
+      `- visible: ${section.visible ? "true" : "false"}`,
+      `- canonicalHeadingRequired: ${section.visible ? "true" : "false"}`,
+      "",
+    ]),
     "## Section Config",
     "",
     "```json",
@@ -135,6 +150,32 @@ function buildPromoInputMarkdown({ runKey, promptGroupId, generatedAt, payload, 
     "```",
     "",
   ].join("\n");
+}
+
+function canonicalTemplateSections(payload) {
+  const canonical = [
+    { sectionId: "header", name: "Header" },
+    { sectionId: "heroBanner", name: "Hero Banner" },
+    { sectionId: "stepBar", name: "Step Bar" },
+    { sectionId: "contentCta", name: "Content CTA" },
+    { sectionId: "imageTextRow", name: "Image Text Row" },
+    { sectionId: "titleDescription", name: "Title and Description" },
+    { sectionId: "footer", name: "Footer" },
+  ];
+  const configSections = Array.isArray(payload?.sectionConfig?.sections) ? payload.sectionConfig.sections : [];
+  const visibility = payload?.template?.sectionVisibility || {};
+
+  return canonical.map((section) => {
+    const configured = configSections.find((item) => item.sectionId === section.sectionId || item.key === section.sectionId) || {};
+    const visible = Object.prototype.hasOwnProperty.call(visibility, section.sectionId)
+      ? Boolean(visibility[section.sectionId])
+      : configured.visible !== false;
+    return {
+      ...section,
+      configuredName: configured.name || configured.label || "",
+      visible,
+    };
+  });
 }
 
 function appendClassificationSection(lines, classification) {
@@ -240,6 +281,7 @@ function stringOrUnknown(value) {
 module.exports = {
   buildDesignPromptMarkdown,
   buildPromoInputMarkdown,
+  canonicalTemplateSections,
   formatTimestamp,
   tokenValueToText,
 };
