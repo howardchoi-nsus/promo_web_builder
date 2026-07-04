@@ -76,6 +76,12 @@
                   :key="doc.id"
                   class="style-doc-item"
                   :class="{ selected: doc.id === selectedDocumentId }"
+                  role="button"
+                  tabindex="0"
+                  :aria-pressed="doc.id === selectedDocumentId"
+                  @click="selectDocument(doc.id)"
+                  @keydown.enter.prevent="selectDocument(doc.id)"
+                  @keydown.space.prevent="selectDocument(doc.id)"
                 >
                   <div class="style-doc-row">
                     <strong>{{ doc.brandName }}</strong>
@@ -95,9 +101,6 @@
                     <span>{{ stylePopularityLabel(doc) }}</span>
                     <span class="row-separator">/</span>
                     <span>{{ documentDateLabel(doc) }}</span>
-                  </div>
-                  <div class="card-actions">
-                    <button class="tiny-button primary" type="button" @click="selectDocument(doc.id)">선택</button>
                   </div>
                 </div>
               </div>

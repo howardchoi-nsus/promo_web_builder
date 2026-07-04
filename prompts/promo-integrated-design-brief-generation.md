@@ -254,11 +254,11 @@ It must explicitly forbid visible template labels, side annotations, wireframe l
 It must also include concrete anti-print guidance: avoid poster/flyer/brochure/presentation-slide composition, avoid single centered key visual layouts, and include visible web UI cues such as navigation, CTA components, section containers, grid rhythm, component hierarchy, and footer/legal structure.
 Do not include a `### Section Order` block in Final Image Prompt Inputs. Use natural page-flow language for the final image direction, such as top navigation, hero content, steps, CTA, supporting details, legal copy, and footer, instead of telling the image model to show section names.
 
-### Negative Prompt
+## Negative Prompt
 
 Must include a fenced text block.
 
-### Visual QA Checklist
+## Visual QA Checklist
 
 Must include at least 10 checklist items.
 

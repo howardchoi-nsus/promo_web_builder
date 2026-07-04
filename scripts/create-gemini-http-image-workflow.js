@@ -36,7 +36,7 @@ imageNode.parameters = {
   sendBody: true,
   contentType: 'json',
   specifyBody: 'json',
-  jsonBody: "={{ JSON.stringify({ model: String($json.imageModel || 'gemini-3.1-flash-image').replace(/^models\\//, ''), input: [{ type: 'text', text: $json.imagePrompt }], response_format: { type: 'image', mime_type: $json.output?.imageMimeType || 'image/png', aspect_ratio: $json.output?.aspectRatio || '2:3', image_size: $json.output?.imageSizeTier || '2K' } }) }}",
+  jsonBody: "={{ JSON.stringify({ model: String($json.imageModel || 'gemini-3.1-flash-image').replace(/^models\\//, ''), input: [{ type: 'text', text: $json.imagePrompt }], response_format: { type: 'image', mime_type: $json.output?.imageMimeType || 'image/jpeg', aspect_ratio: $json.output?.aspectRatio || '2:3', image_size: $json.output?.imageSizeTier || '2K' } }) }}",
   options: {
     timeout: 300000,
   },
@@ -50,7 +50,7 @@ if (normalizeNode?.parameters?.jsCode) {
     .replaceAll("'gpt-image-1'", "'gemini-3.1-flash-image'")
     .replace(
       "imageSize: output.imageSize || '1024x1536'",
-      "imageSize: output.imageSize || '1024x1536',\n      aspectRatio: output.aspectRatio || output.aspect_ratio || '2:3',\n      imageSizeTier: output.imageSizeTier || output.image_size_tier || '2K',\n      imageMimeType: output.imageMimeType || output.image_mime_type || 'image/png'",
+      "imageSize: output.imageSize || '1024x1536',\n      aspectRatio: output.aspectRatio || output.aspect_ratio || '2:3',\n      imageSizeTier: output.imageSizeTier || output.image_size_tier || '2K',\n      imageMimeType: output.imageMimeType || output.image_mime_type || 'image/jpeg'",
     );
 }
 

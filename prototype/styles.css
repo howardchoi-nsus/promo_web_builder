@@ -1107,7 +1107,9 @@ body.is-resizing {
   max-height: 58px;
   padding: 10px 12px;
   background: var(--surface-solid);
+  cursor: pointer;
   overflow: hidden;
+  transition: background 0.16s ease, box-shadow 0.16s ease;
 }
 
 .style-doc-item > div {
@@ -1115,17 +1117,23 @@ body.is-resizing {
   min-width: 0;
 }
 
-.style-doc-item > button {
-  flex: 0 0 auto;
-}
-
 .style-doc-item.selected {
   background: var(--selected-surface);
 }
 
-.style-doc-item.selected .tiny-button.primary {
-  border-color: var(--accent);
-  background: var(--accent);
+.style-doc-item:hover,
+.style-doc-item:focus-visible {
+  background: var(--surface-2);
+}
+
+.style-doc-item.selected:hover,
+.style-doc-item.selected:focus-visible {
+  background: var(--selected-surface);
+}
+
+.style-doc-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 .style-doc-tags {

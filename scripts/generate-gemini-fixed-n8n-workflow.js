@@ -69,7 +69,7 @@ let b64 =
   response.image_base64 ||
   '';
 
-let mimeType = response.output_image?.mime_type || response.outputImage?.mimeType || response.mimeType || response.mime_type || 'image/png';
+let mimeType = response.output_image?.mime_type || response.outputImage?.mimeType || response.mimeType || response.mime_type || 'image/jpeg';
 
 if (!b64) {
   const inlineData = findInlineImage(response);
