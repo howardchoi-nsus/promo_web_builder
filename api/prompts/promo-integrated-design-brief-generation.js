@@ -12,14 +12,14 @@ module.exports = async function handler(req, res) {
     res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=300");
     return res.status(200).json({
       id: "promo-integrated-design-brief-generation",
-      version: "2026-07-04.canonical-template-heading-v1",
+      version: "2026-07-04.frontmatter-repair-v1",
       prompt,
     });
   } catch (error) {
     res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=300");
     return res.status(200).json({
       id: "promo-integrated-design-brief-generation",
-      version: "2026-07-04.canonical-template-heading-fallback-v1",
+      version: "2026-07-04.frontmatter-repair-fallback-v1",
       prompt: FALLBACK_PROMPT,
       warning: "Prompt file could not be read; served embedded fallback prompt.",
       message: error.message,
@@ -73,6 +73,8 @@ Rules:
 - The selected template schema controls output section order, visible section coverage, fixed sections, optional sections, item visibility, and image-generation targets.
 - Market / region is shared promo metadata, but it primarily affects image-generation visual localization. Use it as subtle mood, audience, environment, and compliance context; do not force the market name into visible copy.
 - YAML frontmatter type must be exactly integrated_design_brief.
+- integratedDesignBriefMarkdown must begin with YAML frontmatter as the first characters, before # Integrated Design Brief MD.
+- The frontmatter must include type: integrated_design_brief, runKey, promptGroupId, promoTitle, selectedMd, selectedMdSlug, template, canvasSize, pageWidth, language, and sourceDocuments.
 - sourceDocuments must include design_prompt and section_input_log.
 - All visible UI copy must be English only.
 - Restate all selected design token values and section input values directly in the integrated brief.

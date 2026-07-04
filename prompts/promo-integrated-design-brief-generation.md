@@ -76,6 +76,28 @@ The `integratedDesignBriefMarkdown` must include exactly these sections in this 
 - language
 - sourceDocuments must include `design_prompt` and `section_input_log`
 
+The markdown string must begin with YAML frontmatter on the first character. Use this exact pattern:
+
+```yaml
+---
+type: integrated_design_brief
+runKey: "..."
+promptGroupId: "..."
+promoTitle: "..."
+selectedMd: "..."
+selectedMdSlug: "..."
+template: "Template 4"
+canvasSize: "1024x1536"
+pageWidth: "1440px scaled to fit"
+language: "English only"
+sourceDocuments:
+  - design_prompt
+  - section_input_log
+---
+```
+
+Do not start the markdown with `# Integrated Design Brief MD` before the frontmatter. Do not omit `type: integrated_design_brief`.
+
 ### Source Priority Rules must include
 
 - Style priority
