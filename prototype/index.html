@@ -152,7 +152,12 @@
                   <div class="token-row-list" v-if="section.rows.length">
                     <div v-for="row in section.rows" :key="`${section.key}-${row.key}`" class="token-row">
                       <strong>{{ row.key }}</strong>
-                      <span>{{ row.value }}</span>
+                      <span v-if="section.key === 'color' && colorTokenHex(row.value)" class="token-color-value">
+                        <i :style="{ background: colorTokenHex(row.value) }"></i>
+                        <code>{{ colorTokenHex(row.value) }}</code>
+                        <em v-if="row.value !== colorTokenHex(row.value)">{{ row.value }}</em>
+                      </span>
+                      <span v-else>{{ row.value }}</span>
                     </div>
                   </div>
                   <div class="empty-state compact" v-else>표시할 토큰이 없습니다.</div>

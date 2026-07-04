@@ -1366,6 +1366,38 @@ body.is-resizing {
   overflow-wrap: anywhere;
 }
 
+.token-row .token-color-value {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.token-color-value i {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--line-strong);
+}
+
+.token-color-value code {
+  flex: 0 0 auto;
+  color: var(--ink-soft);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.token-color-value em {
+  min-width: 0;
+  color: var(--muted);
+  font-style: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .empty-state.compact {
   padding: 10px;
   border-top: 1px solid var(--line);

@@ -1448,6 +1448,11 @@ createApp({
       return entries.length ? entries.join(" | ") : "unknown";
     },
 
+    colorTokenHex(value) {
+      const match = String(value || "").match(/#[0-9a-fA-F]{3,8}\b/);
+      return match ? match[0] : "";
+    },
+
     patternRows(doc, kind) {
       const items = kind === "component" ? doc?.componentPatterns : doc?.layoutPatterns;
       return (Array.isArray(items) ? items : [])
