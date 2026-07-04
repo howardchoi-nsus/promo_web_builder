@@ -147,6 +147,7 @@
                   :key="`${selectedDocumentId}-${section.key}`"
                   class="token-detail-section"
                   :open="section.open"
+                  @toggle="onDesignTokenSectionToggle(section.key, $event)"
                 >
                   <summary>{{ section.label }} <span hidden>{{ section.rows.length }}개</span></summary>
                   <div class="token-row-list" v-if="section.rows.length">

@@ -1045,6 +1045,7 @@ createApp({
       activeHandoffDocument: null,
       expandedStyleGroupSlug: "",
       selectedStyleGroupSlug: "",
+      activeDesignTokenSectionKey: "color",
       styleGroupSearch: "",
       companyStylePresets: dummyCompanyStylePresets,
       selectedDocumentId: localStorage.getItem(storageKeys.selectedDocumentId) || "",
@@ -1147,15 +1148,15 @@ createApp({
     selectedDesignTokenSections() {
       const doc = this.selectedDesignDataSource;
       return [
-        { key: "color", label: "Colors", rows: this.normalizedTokenRows(doc, "color"), open: true },
-        { key: "typography", label: "Typography", rows: this.normalizedTokenRows(doc, "typography"), open: false },
-        { key: "radius", label: "Radius", rows: this.normalizedTokenRows(doc, "radius"), open: false },
-        { key: "spacing", label: "Spacing", rows: this.normalizedTokenRows(doc, "spacing"), open: false },
-        { key: "elevation", label: "Elevation", rows: this.normalizedTokenRows(doc, "elevation"), open: false },
-        { key: "breakpoint", label: "Breakpoints", rows: this.normalizedTokenRows(doc, "breakpoint"), open: false },
-        { key: "component", label: "Components", rows: this.patternRows(doc, "component"), open: false },
-        { key: "layout", label: "Layouts", rows: this.patternRows(doc, "layout"), open: false },
-        { key: "guideline", label: "Guidelines", rows: this.guidelineRows(doc), open: false },
+        { key: "color", label: "Colors", rows: this.normalizedTokenRows(doc, "color"), open: this.activeDesignTokenSectionKey === "color" },
+        { key: "typography", label: "Typography", rows: this.normalizedTokenRows(doc, "typography"), open: this.activeDesignTokenSectionKey === "typography" },
+        { key: "radius", label: "Radius", rows: this.normalizedTokenRows(doc, "radius"), open: this.activeDesignTokenSectionKey === "radius" },
+        { key: "spacing", label: "Spacing", rows: this.normalizedTokenRows(doc, "spacing"), open: this.activeDesignTokenSectionKey === "spacing" },
+        { key: "elevation", label: "Elevation", rows: this.normalizedTokenRows(doc, "elevation"), open: this.activeDesignTokenSectionKey === "elevation" },
+        { key: "breakpoint", label: "Breakpoints", rows: this.normalizedTokenRows(doc, "breakpoint"), open: this.activeDesignTokenSectionKey === "breakpoint" },
+        { key: "component", label: "Components", rows: this.patternRows(doc, "component"), open: this.activeDesignTokenSectionKey === "component" },
+        { key: "layout", label: "Layouts", rows: this.patternRows(doc, "layout"), open: this.activeDesignTokenSectionKey === "layout" },
+        { key: "guideline", label: "Guidelines", rows: this.guidelineRows(doc), open: this.activeDesignTokenSectionKey === "guideline" },
       ];
     },
 
@@ -1332,6 +1333,7 @@ createApp({
       if (this.styleSource === "company_default") this.resetOverride();
     },
     selectedDocumentId() {
+      this.activeDesignTokenSectionKey = "color";
       if (this.styleSource === "design_md") this.resetOverride();
     },
     designMode() {
@@ -1377,6 +1379,14 @@ createApp({
       this.themeMode = this.themeMode === "dark" ? "light" : "dark";
       this.applyThemeMode();
       this.setStatus(this.themeMode === "dark" ? "다크모드를 적용했습니다" : "라이트모드를 적용했습니다");
+    },
+
+    onDesignTokenSectionToggle(sectionKey, event) {
+      if (event.target.open) {
+        this.activeDesignTokenSectionKey = sectionKey;
+      } else if (this.activeDesignTokenSectionKey === sectionKey) {
+        this.activeDesignTokenSectionKey = "";
+      }
     },
 
     async loadHandoffDocuments() {
