@@ -1006,17 +1006,34 @@ body.is-resizing {
 
 .style-doc-tile-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-2);
   min-width: 0;
 }
 
-.style-doc-tile-head strong {
+.style-doc-title {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.style-doc-title strong {
   min-width: 0;
   color: var(--ink);
   font-size: 13px;
   font-weight: 950;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.style-doc-title code {
+  min-width: 0;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 800;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

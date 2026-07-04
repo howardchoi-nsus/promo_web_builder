@@ -84,7 +84,10 @@
                   @keydown.space.prevent="selectDocument(doc.id)"
                 >
                   <div class="style-doc-tile-head">
-                    <strong>{{ doc.brandName }}</strong>
+                    <div class="style-doc-title">
+                      <strong>{{ doc.brandName }}</strong>
+                      <code v-if="doc.slug">{{ doc.slug }}</code>
+                    </div>
                     <span>Update {{ documentDateLabel(doc) }}</span>
                   </div>
                   <div class="style-doc-tile-body">
@@ -99,6 +102,9 @@
                     </div>
                     <span v-else class="style-doc-empty-colors">컬러셋 없음</span>
                     <span class="style-doc-popularity">{{ stylePopularityLabel(doc) }}</span>
+                  </div>
+                  <div class="style-doc-tags" v-if="tagsForDocument(doc).length">
+                    <span v-for="tag in tagsForDocument(doc).slice(0, 3)" :key="`${doc.id}-${tag}`">{{ tag }}</span>
                   </div>
                 </div>
               </div>
@@ -164,7 +170,7 @@
                   <div class="empty-state compact" v-else>표시할 토큰이 없습니다.</div>
                 </details>
 
-                <div class="outline-item">
+                <div class="outline-item" hidden>
                   <strong>standard schema</strong>
                   <span>{{ selectedDesignDataSource?.tokenSet?.normalizedSchema?.schemaVersion || selectedDesignDataSource?.normalizedSchema?.schemaVersion || 'unknown' }}</span>
                 </div>
