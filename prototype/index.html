@@ -602,38 +602,6 @@
               </div>
             </div>
 
-            <div class="subsection">
-              <div class="subsection-title">
-                <h3>C2. 최근 생성 결과 요약</h3>
-                <span>{{ lastGenerated ? lastGenerated.createdAt : '아직 생성 전' }}</span>
-              </div>
-              <div class="recent-summary-card" v-if="lastGenerated">
-                <div class="recent-summary-grid">
-                  <div><strong>프로모션</strong><span class="title-with-stamp">{{ lastGenerated.title }} <span class="timestamp-stamp" v-if="lastGenerated.timestampStamp">{{ lastGenerated.timestampStamp }}</span></span></div>
-                  <div><strong>MD</strong><span>{{ lastGenerated.selectedMd }}</span></div>
-                  <div><strong>상태</strong><span>{{ resultTypeLabel(lastGenerated) }}</span></div>
-                  <div><strong>산출물</strong><span>{{ resultOutputLabel(lastGenerated) }}</span></div>
-                  <div><strong>생성 시간</strong><span>{{ lastGenerated.createdAt }}</span></div>
-                  <div><strong>커밋 스탬프</strong><span>{{ lastGenerated.timestampStamp || '대기 중' }}</span></div>
-                  <div><strong>MD 준수 검토</strong><span>{{ lastGenerated.mdComplianceMap ? '포함됨' : '대기 중' }}</span></div>
-                  <div><strong>그룹 ID</strong><span>{{ lastGenerated.promptGroupId || '대기 중' }}</span></div>
-                  <div><strong>디자인 프롬프트</strong><span>{{ lastGenerated.designPromptStorageKey || '대기 중' }}</span></div>
-                  <div><strong>B섹션 로그</strong><span>{{ lastGenerated.promoInputStorageKey || '대기 중' }}</span></div>
-                </div>
-                <div class="outline-item danger-state" v-if="lastGenerated.errorMessage">
-                  <strong>오류 사유</strong>
-                  <span>{{ lastGenerated.errorMessage }}</span>
-                </div>
-                <div class="action-row align-right">
-                  <button class="tiny-button" type="button" :disabled="!canOpenPromptFiles(lastGenerated)" @click="openPromptFiles(lastGenerated)">프롬프트 보기</button>
-                  <button class="tiny-button primary" type="button" @click="openGenerated(lastGenerated)">새 창 열기</button>
-                </div>
-              </div>
-              <div v-else class="outline-item">
-                <strong>아직 생성된 UI 디자인이 없습니다</strong>
-                <span>B3에서 UI 디자인 생성을 실행해 주세요.</span>
-              </div>
-            </div>
             </div>
           </section>
         </section>

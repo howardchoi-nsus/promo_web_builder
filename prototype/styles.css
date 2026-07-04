@@ -1117,7 +1117,7 @@ body.is-resizing {
   flex-direction: column;
   justify-content: space-between;
   gap: var(--space-4);
-  min-height: 112px;
+  min-height: 162px;
   padding: 12px;
   border: 1px solid var(--line);
   background: var(--surface-solid);
@@ -2007,14 +2007,12 @@ body.is-resizing {
   min-width: auto;
 }
 
-.result-card strong,
-.recent-summary-grid strong {
+.result-card strong {
   color: var(--sub);
   font-size: 12px;
 }
 
-.result-card span,
-.recent-summary-grid span {
+.result-card span {
   color: var(--muted);
   font-size: 12px;
   overflow-wrap: anywhere;
@@ -2031,27 +2029,6 @@ body.is-resizing {
 .danger-text {
   color: #b42318;
   font-weight: 800;
-}
-
-.recent-summary-card {
-  display: grid;
-  gap: var(--panel-gap);
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--panel);
-}
-
-.recent-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: var(--space-2);
-}
-
-.recent-summary-grid div {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
 }
 
 .danger-state {
@@ -2560,7 +2537,6 @@ body.is-resizing {
   .summary-grid,
   .style-source-grid,
   .source-summary,
-  .recent-summary-grid,
   .builder-stepper,
   .prompt-md-compare,
   .hero,
