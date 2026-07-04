@@ -2251,11 +2251,12 @@ body.is-resizing {
 [data-theme="dark"] .token-detail-section[open] .token-row-list,
 [data-theme="dark"] .token-detail-section[open] .empty-state.compact,
 [data-theme="dark"] .md-card.selected {
-  background: var(--surface-2);
+  background: #0d0e10;
 }
 
 [data-theme="dark"] .token-row {
-  border-top-color: var(--line);
+  border-top-color: rgba(207, 238, 230, 0.1);
+  background: #0b0c0e;
 }
 
 [data-theme="dark"] .token-row strong {
@@ -2263,7 +2264,14 @@ body.is-resizing {
 }
 
 [data-theme="dark"] .token-row span {
-  color: var(--muted);
+  color: rgba(207, 238, 230, 0.58);
+}
+
+[data-theme="dark"] .style-group-tags span,
+[data-theme="dark"] .style-doc-tags span {
+  border-color: rgba(40, 195, 157, 0.22);
+  background: #0b0c0e;
+  color: rgba(207, 238, 230, 0.72);
 }
 
 [data-theme="dark"] .primary-action:hover {
