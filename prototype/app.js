@@ -768,22 +768,52 @@ function slugify(value) {
     .replace(/^-+|-+$/g, "");
 }
 
+const koreaDateTimeFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Seoul",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+function datePartsInKorea(value = new Date()) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return koreaDateTimeFormatter.formatToParts(date).reduce((acc, part) => {
+    if (part.type !== "literal") acc[part.type] = part.value;
+    return acc;
+  }, {});
+}
+
+function formatKoreaDateTime(value = new Date()) {
+  const parts = datePartsInKorea(value);
+  if (!parts) return String(value || "");
+  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`;
+}
+
 function nowText() {
-  const date = new Date();
-  return date.toISOString().slice(0, 16).replace("T", " ");
+  return formatKoreaDateTime(new Date());
 }
 
 function timestampStamp(value = new Date()) {
-  const normalized = typeof value === "string" ? value.replace(" ", "T") : value;
-  const date = normalized instanceof Date ? normalized : new Date(normalized);
-  if (Number.isNaN(date.getTime())) return String(value || "").replace(/\D/g, "").slice(2, 12);
   const pad = (part) => String(part).padStart(2, "0");
+  const textValue = String(value || "");
+  const kstTextMatch = textValue.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+  if (kstTextMatch) {
+    const [, year, month, day, hour, minute] = kstTextMatch;
+    return `${year.slice(-2)}${month}${day}${hour}${minute}`;
+  }
+
+  const parts = datePartsInKorea(value);
+  if (!parts) return textValue.replace(/\D/g, "").slice(2, 12);
   return [
-    String(date.getFullYear()).slice(-2),
-    pad(date.getMonth() + 1),
-    pad(date.getDate()),
-    pad(date.getHours()),
-    pad(date.getMinutes()),
+    String(parts.year).slice(-2),
+    pad(parts.month),
+    pad(parts.day),
+    pad(parts.hour),
+    pad(parts.minute),
   ].join("");
 }
 
@@ -2005,8 +2035,10 @@ createApp({
       const imageAsset = assets.find((asset) => asset.asset_type === "generated_image") || {};
       const markdownAssets = assets.filter((asset) => /_markdown$/.test(asset.asset_type || ""));
       const runKey = run.run_key || fallback.id || "";
-      const createdAt = run.created_at || fallback.createdAt || "";
-      const committedAt = imageAsset.created_at || fallback.committedAt || createdAt;
+      const rawCreatedAt = run.created_at || fallback.createdAt || "";
+      const rawCommittedAt = imageAsset.created_at || fallback.committedAt || rawCreatedAt;
+      const createdAt = rawCreatedAt ? formatKoreaDateTime(rawCreatedAt) : "";
+      const committedAt = rawCommittedAt ? formatKoreaDateTime(rawCommittedAt) : createdAt;
       const imageInvalid = isInvalidGeneratedImageAsset(imageAsset);
       const imageFileSize = Number(imageAsset.file_size || 0);
 
@@ -2019,7 +2051,7 @@ createApp({
         market: run.market || fallback.market || "",
         createdAt,
         committedAt,
-        timestampStamp: timestampStamp(committedAt || createdAt),
+        timestampStamp: timestampStamp(rawCommittedAt || rawCreatedAt || committedAt || createdAt),
         status: run.status || fallback.status || "generated",
         designUrl: designViewUrlForId(runKey),
         imageUrl: designImageUrlForId(runKey),
@@ -2843,8 +2875,9 @@ createApp({
       listItem.designPromptStorageKey = n8nResult?.designPromptStorageKey || "";
       listItem.promoInputStorageKey = n8nResult?.promoInputStorageKey || "";
       listItem.integratedBriefStorageKey = n8nResult?.integratedBriefStorageKey || "";
-      listItem.committedAt = n8nResult?.committedAt || listItem.committedAt;
-      listItem.timestampStamp = n8nResult?.timestampStamp || timestampStamp(listItem.committedAt || listItem.createdAt);
+      const rawCommittedAt = n8nResult?.committedAt || listItem.committedAt;
+      listItem.committedAt = rawCommittedAt ? formatKoreaDateTime(rawCommittedAt) : listItem.committedAt;
+      listItem.timestampStamp = n8nResult?.timestampStamp || timestampStamp(rawCommittedAt || listItem.createdAt);
       listItem.payload = n8nResult?.payload || payload;
       await this.waitForStoredDesignResult(listItem, { attempts: 5, delayMs: 900 }).catch(() => false);
       await this.loadGeneratedPagesFromServer({ silent: true, fresh: true, preserveIds: [listItem.id] });

@@ -1,11 +1,23 @@
 function formatTimestamp(date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date).reduce((acc, part) => {
+    if (part.type !== "literal") acc[part.type] = part.value;
+    return acc;
+  }, {});
   const pad = (value) => String(value).padStart(2, "0");
   return [
-    String(date.getFullYear()).slice(-2),
-    pad(date.getMonth() + 1),
-    pad(date.getDate()),
-    pad(date.getHours()),
-    pad(date.getMinutes()),
+    String(parts.year).slice(-2),
+    pad(parts.month),
+    pad(parts.day),
+    pad(parts.hour),
+    pad(parts.minute),
   ].join("");
 }
 

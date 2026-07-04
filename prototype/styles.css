@@ -2142,7 +2142,7 @@ body.is-resizing {
 }
 
 .builder-modal {
-  width: 70vw;
+  width: 60vw;
   height: 70vh;
   max-width: calc(100vw - 40px);
   max-height: calc(100vh - 40px);

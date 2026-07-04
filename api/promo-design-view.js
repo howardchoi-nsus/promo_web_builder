@@ -47,6 +47,7 @@ module.exports = async function handler(req, res) {
 
 function renderImagePage({ title, id, imageUrl, brand, createdAt, committedAt }) {
   const stamp = formatTimestampStamp(committedAt || createdAt);
+  const createdAtLabel = formatKoreaDateTime(createdAt);
   return `<!doctype html>
 <html lang="ko">
 <head>
@@ -54,15 +55,15 @@ function renderImagePage({ title, id, imageUrl, brand, createdAt, committedAt })
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>${title}</title>
   <style>
-    body{margin:0;background:#f6f8fc;font-family:Arial,sans-serif;color:#111827}
+    body{margin:0;background:#000;font-family:Arial,sans-serif;color:#f8fafc}
     .wrap{max-width:1540px;margin:0 auto;padding:24px}
     .bar{display:flex;justify-content:space-between;gap:16px;align-items:center;margin-bottom:16px}
     .title-row{display:flex;align-items:center;gap:8px;min-width:0}
     .title-row strong{font-size:16px;line-height:1.2}
-    .stamp{display:inline-flex;align-items:center;min-height:20px;padding:2px 7px;border:1px solid #dbe3ef;border-radius:999px;background:#fff;color:#64748b;font-size:11px;font-weight:700;white-space:nowrap}
-    .meta{color:#64748b;font-size:13px}
-    .meta a{color:#2563eb;text-decoration:none}
-    img{display:block;width:auto;max-width:100%;height:auto;margin:0 auto;background:#fff}
+    .stamp{display:inline-flex;align-items:center;min-height:20px;padding:2px 7px;border:1px solid #2a2a2a;border-radius:999px;background:#111;color:#e5e7eb;font-size:11px;font-weight:700;white-space:nowrap}
+    .meta{color:#a3a3a3;font-size:13px}
+    .meta a{color:#93c5fd;text-decoration:none}
+    img{display:block;width:auto;max-width:100%;height:auto;margin:0 auto;background:#000}
     .image-error{display:none;margin:24px 0;padding:16px;border:1px solid #fecaca;background:#fff1f2;color:#991b1b}
   </style>
 </head>
@@ -70,7 +71,7 @@ function renderImagePage({ title, id, imageUrl, brand, createdAt, committedAt })
   <main class="wrap">
     <div class="bar">
       <div class="title-row"><strong>${title}</strong>${stamp ? `<span class="stamp">${escapeHtml(stamp)}</span>` : ""}</div>
-      <span class="meta">${escapeHtml(brand || "")} · ${escapeHtml(id)} · ${escapeHtml(String(createdAt || ""))} · <a href="${escapeAttribute(imageUrl)}" target="_blank" rel="noreferrer">Open image</a></span>
+      <span class="meta">${escapeHtml(brand || "")} · ${escapeHtml(id)} · ${escapeHtml(createdAtLabel)} · <a href="${escapeAttribute(imageUrl)}" target="_blank" rel="noreferrer">Open image</a></span>
     </div>
     <img src="${escapeAttribute(imageUrl)}" alt="Generated promo UI design" onerror="this.style.display='none';document.querySelector('.image-error').style.display='block';">
     <div class="image-error">Generated image could not be loaded. Check the image asset or Blob access for this design.</div>
@@ -97,16 +98,49 @@ function escapeAttribute(value) {
 
 function formatTimestampStamp(value) {
   if (!value) return "";
+  const kstTextMatch = String(value).match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+  if (kstTextMatch) {
+    const [, year, month, day, hour, minute] = kstTextMatch;
+    return `${year.slice(-2)}${month}${day}${hour}${minute}`;
+  }
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return String(value).slice(0, 16);
+  const parts = datePartsInKorea(date);
+  if (!parts) return String(value).slice(0, 16);
   const pad = (part) => String(part).padStart(2, "0");
   return [
-    String(date.getFullYear()).slice(-2),
-    pad(date.getMonth() + 1),
-    pad(date.getDate()),
-    pad(date.getHours()),
-    pad(date.getMinutes()),
+    String(parts.year).slice(-2),
+    pad(parts.month),
+    pad(parts.day),
+    pad(parts.hour),
+    pad(parts.minute),
   ].join("");
+}
+
+const koreaDateTimeFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Seoul",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+function datePartsInKorea(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return koreaDateTimeFormatter.formatToParts(date).reduce((acc, part) => {
+    if (part.type !== "literal") acc[part.type] = part.value;
+    return acc;
+  }, {});
+}
+
+function formatKoreaDateTime(value) {
+  if (!value) return "";
+  const parts = datePartsInKorea(value);
+  if (!parts) return String(value || "");
+  return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}`;
 }
 
 function renderError(error) {
