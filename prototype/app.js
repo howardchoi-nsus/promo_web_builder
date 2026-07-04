@@ -566,6 +566,105 @@ function createEmptyTemp4Inputs() {
   };
 }
 
+function createDefaultTempPdfAutoFill() {
+  const cta = {
+    label: "Qualify on GGPoker",
+    link: "https://www.ggpoker.com/promotions/",
+    target: "_blank",
+  };
+  const terms = [
+    "Players must be aged 18+ to participate in all GGPoker promotions.",
+    "GGPoker's game currency is USD ($). Other currencies, such as GBP (£), are only used for illustrative purposes and subject to currency exchange rate fluctuations.",
+    "Please note that prize pools and jackpot guarantees are subject to change and some amounts listed on this website may not be current; please check the guarantee amounts listed in the tournament lobby of the GGPoker app for up-to-date prize pool information.",
+    "Welcome Bonus promotion for new players is available for 90 days.",
+    "Honeymoon promotion for new players is available for 30 days.",
+    "If any players fall under suspicion of fraudulent activity, GGPoker has the right to investigate and remove the players once it's confirmed.",
+    "The promotion terms and conditions are subject to the site terms and conditions, which can be found here.",
+    "GGPoker reserves the right to modify or suspend the promotion at any time.",
+    "GGPoker standard rules apply.",
+  ].join("\n");
+  const footerContent = [
+    "Disclaimer: GG International Limited, trading as GGPoker; is regulated by the Isle of Man Gambling Supervision Commission under a Licence issued under the Online Gambling Regulations Act 2001 on 15 October 2020. Registered address is The Hubb, Queen Victoria House, Victoria Street, Douglas, IM1 2LF, Isle of Man.",
+    "All debts are enforceable in Law on the Isle of Man. GG International Limited strictly prohibits access and services to those under the legal age of Eighteen (18). Customers should check the laws and regulations in their own country and comply with them. Information on this website is subject to change without notice. GGPoker | © 2018 - 2026",
+    "Please play responsibly.",
+  ].join("\n");
+
+  return {
+    promo: {
+      title: "LIVE EVENTS GOT BIGGER!",
+      template: "default_temp",
+      promotionPurpose: "이벤트",
+      promotionPurposeOther: "",
+      market: "United Kingdom",
+      leadText: "For GGPoker Qualifiers",
+      subline: "Not on GGPoker? You're missing up to 20% live event cashes.",
+      alphaText: "18+. Cash boost paid in C$ (cash game credit). Selected Main Events only. Entry via GGPoker only (qualify or buy-in direct). T&Cs apply. GambleAware.org. Please play responsibly.",
+      ctaLabel: cta.label,
+      ctaUrl: cta.link,
+      termsText: terms,
+    },
+    simpleBrief: {
+      mainOffer: "You're missing up to 20% live event cashes",
+      targetAction: "Qualify or buy-in online for Grosvenor live poker events via GGPoker",
+      audience: "기존고객",
+      campaignTone: "활기찬",
+      secondaryMessage: "Get more value on live event cashes and qualify online for the biggest UK poker tournaments.",
+    },
+    sectionInputs: {
+      header: {
+        logoText: "GGPoker logo",
+        badgeText: "World Series of Poker official partner badges, Best Poker Software 2021, world's biggest poker room",
+      },
+      heroBanner: {
+        leaderText: "For GGPoker Qualifiers",
+        title: "LIVE EVENTS GOT BIGGER!",
+        sublineText: "Not on GGPoker? You're missing up to 20% live event cashes.",
+        cta,
+        alphaText: "18+. Cash boost paid in C$ (cash game credit). Selected Main Events only. Entry via GGPoker only (qualify or buy-in direct). T&Cs apply. GambleAware.org. Please play responsibly.",
+        visualMode: "auto",
+      },
+      stepBar: [
+        {
+          title: "QUALIFY OR BUY-IN ONLINE",
+          description: "Enter Grosvenor live poker events via GGPoker",
+          ctaLabel: "Qualify on GGPOKER",
+          link: cta.link,
+          target: "_blank",
+        },
+      ],
+      contentCta: {
+        title: "Get up to 20% MORE on live event cashes - only via GGPoker.",
+        longText: [
+          "Qualify or buy-in online for the biggest UK poker tournaments - including the iconic Goliath, GUKPT and G200 & G300 - and get more value on your cash finishes. Exclusive to GGPoker Players.",
+          "The path to Goliath is LIVE. Satellites run Sunday to Friday from just £1 - bag your seat to the biggest poker event outside of Vegas!",
+          "G200 & G300 qualifiers are also available, with G200 Round 11 next in Newcastle, Blackpool & Walsall (14-19 July) and G300 London at The Victoria (15-20 Sep).",
+          "Get MORE with GGPoker",
+        ].join("\n"),
+        imageText: "[이미지 컨텐츠]",
+        cta,
+        visualMode: "auto",
+      },
+      imageTextRow: [
+        {
+          imageText: "[이미지 컨텐츠]",
+          title: "Your Safety Comes First",
+          description: "The most advanced Security System in the Industry",
+          visualMode: "auto",
+        },
+      ],
+      titleDescription: {
+        title: "Terms and Conditions",
+        contents: terms,
+      },
+      footer: {
+        logoText: "GGPoker logo",
+        licenseBadges: "Visa, Mastercard, 18+, bmm testlabs, GamCare, BeGambleAware.org",
+        content: footerContent,
+      },
+    },
+  };
+}
+
 function buildTemp4Draft({ promo, simpleBrief, selectedDocument, visualMode }) {
   const brand = selectedDocument?.brandName || "GGPoker";
   const title = promo.title.trim();
@@ -2105,34 +2204,21 @@ createApp({
     },
 
     autoFillPromoInputs() {
+      const fixture = createDefaultTempPdfAutoFill();
       this.promo = {
         ...this.promo,
-        title: "GGPoker Welcome Bonus",
+        ...fixture.promo,
         template: this.designMode === "advanced" ? "default_temp" : "AI Auto",
-        promotionPurpose: "웰컴",
-        promotionPurposeOther: "",
-        market: "Global",
-        ctaLabel: "Join Now",
-        ctaUrl: "https://www.ggpoker.com/promotions/",
-        termsText:
-          "This promotion is subject to GGPoker terms and conditions and applicable local regulations. Bonus eligibility, validity period, and participating regions may vary. Available only to responsible players aged 18 or older.",
       };
-      this.simpleBrief = {
-        mainOffer: "Give new players a first deposit bonus and tournament tickets",
-        targetAction: "Sign up, make the first deposit, and claim the welcome rewards",
-        audience: "신규",
-        campaignTone: "프리미엄",
-        secondaryMessage:
-          "Highlight a clear reward path that helps players register quickly and move straight into cash games and tournaments.",
-      };
+      this.simpleBrief = { ...fixture.simpleBrief };
       this.inputMode = this.designMode === "advanced" ? "advanced" : "simple";
       this.generationMode = this.designMode === "advanced" ? "template_advanced" : "ai_agent";
       this.globalVisualMode = "auto";
       this.promoBuilderStarted = true;
       this.currentBuilderStep = 2;
-      this.refreshSectionDraft();
-      this.sectionInputsDirty = false;
-      this.setStatus("GGpoker 테스트 프로모션 입력값을 자동등록했습니다");
+      this.sectionInputs = JSON.parse(JSON.stringify(fixture.sectionInputs));
+      this.sectionInputsDirty = true;
+      this.setStatus("Default Temp PDF 기준 프로모션 입력값을 자동등록했습니다");
     },
 
     openAddDesign() {
