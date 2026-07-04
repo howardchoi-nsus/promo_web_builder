@@ -481,15 +481,21 @@
 
               <div class="generation-console" :class="{ running: isGeneratingDesign }">
                 <div class="poker-loader" aria-hidden="true">
-                  <div class="poker-chip"></div>
-                  <div class="shuffle-cards">
+                  <div class="dice-loader">
+                    <span></span>
+                    <span></span>
                     <span></span>
                     <span></span>
                     <span></span>
                   </div>
+                  <div class="shuffle-cards">
+                    <span data-rank="A" data-suit="♠"></span>
+                    <span data-rank="K" data-suit="♥"></span>
+                    <span data-rank="Q" data-suit="♦"></span>
+                  </div>
                 </div>
-                <div>
-                  <strong>{{ isGeneratingDesign ? '디자인 생성되고 있습니다' : '디자인 생성 준비 완료' }}</strong>
+                <div class="generation-copy">
+                  <strong>{{ isGeneratingDesign ? 'AI가 요청 사항을 접수 중입니다' : '디자인 생성 준비 완료' }}</strong>
                   <span>{{ isGeneratingDesign ? generationStatusMessage : 'Webhook URL을 확인한 뒤 디자인 생성을 실행해 주세요.' }}</span>
                   <small>실제 진행률 대신 작업 중 상태를 표시합니다. 보통 1~2분 정도 걸릴 수 있어요.</small>
                 </div>

@@ -1552,14 +1552,14 @@ body.is-resizing {
 }
 
 .section-config-heading strong,
-.generation-console strong {
+.generation-copy strong {
   display: block;
   font-size: 13px;
 }
 
 .section-config-heading span,
-.generation-console span,
-.generation-console small {
+.generation-copy span,
+.generation-copy small {
   display: block;
   margin-top: 3px;
   color: var(--muted);
@@ -1795,61 +1795,130 @@ body.is-resizing {
 /* B3 generation console: indeterminate poker motion replaces fake numeric progress. */
 .generation-console {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 14px;
-  align-items: center;
-  padding: 16px;
+  justify-items: center;
+  gap: 18px;
+  min-height: 250px;
+  padding: 30px 24px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--surface-2);
+  text-align: center;
+}
+
+.generation-copy strong {
+  font-size: 22px;
+  line-height: 1.25;
+}
+
+.generation-copy span {
+  margin-top: 8px;
+  font-size: 15px;
+}
+
+.generation-copy small {
+  margin-top: 8px;
+  font-size: 12px;
 }
 
 .poker-loader {
   position: relative;
-  width: 92px;
-  height: 70px;
+  width: 190px;
+  height: 104px;
 }
 
-.poker-chip {
+.dice-loader {
   position: absolute;
-  left: 4px;
-  top: 12px;
-  width: 46px;
-  height: 46px;
+  left: 8px;
+  top: 26px;
+  width: 58px;
+  height: 58px;
   border-radius: 0;
-  background:
-    radial-gradient(circle, var(--panel) 0 28%, transparent 30%),
-    repeating-conic-gradient(from 0deg, var(--accent) 0 18deg, #0c3b2e 18deg 36deg);
-  border: 3px solid var(--accent);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent);
+  border: 2px solid var(--line-strong);
+  background: var(--panel);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.18);
 }
 
-.generation-console.running .poker-chip {
-  animation: poker-chip-spin 1.2s linear infinite;
+.dice-loader span {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+}
+
+.dice-loader span:nth-child(1) {
+  left: 12px;
+  top: 12px;
+}
+
+.dice-loader span:nth-child(2) {
+  right: 12px;
+  top: 12px;
+}
+
+.dice-loader span:nth-child(3) {
+  left: 25px;
+  top: 25px;
+}
+
+.dice-loader span:nth-child(4) {
+  left: 12px;
+  bottom: 12px;
+}
+
+.dice-loader span:nth-child(5) {
+  right: 12px;
+  bottom: 12px;
+}
+
+.generation-console.running .dice-loader {
+  animation: dice-roll 1.25s cubic-bezier(0.5, 0, 0.2, 1) infinite;
 }
 
 .shuffle-cards span {
   position: absolute;
-  right: 4px;
-  top: 18px;
-  width: 34px;
-  height: 46px;
+  right: 10px;
+  top: 16px;
+  width: 52px;
+  height: 72px;
   border: 1px solid var(--line-strong);
   border-radius: 0;
   background: var(--panel);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.14);
 }
 
+.shuffle-cards span::before,
+.shuffle-cards span::after {
+  position: absolute;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.shuffle-cards span::before {
+  content: attr(data-rank);
+  left: 7px;
+  top: 7px;
+  color: var(--ink);
+  font-size: 18px;
+}
+
+.shuffle-cards span::after {
+  content: attr(data-suit);
+  right: 7px;
+  bottom: 7px;
+  color: var(--accent);
+  font-size: 20px;
+}
+
 .shuffle-cards span:nth-child(1) {
-  transform: rotate(-10deg) translateX(-18px);
+  transform: rotate(-12deg) translateX(-42px);
 }
 
 .shuffle-cards span:nth-child(2) {
-  transform: rotate(3deg) translateX(-7px);
+  transform: rotate(2deg) translateX(-22px) translateY(-3px);
 }
 
 .shuffle-cards span:nth-child(3) {
-  transform: rotate(12deg) translateX(4px);
+  transform: rotate(13deg) translateX(-2px);
 }
 
 .generation-console.running .shuffle-cards span:nth-child(1) {
@@ -1864,20 +1933,23 @@ body.is-resizing {
   animation: card-shuffle-c 1.8s ease-in-out infinite;
 }
 
-@keyframes poker-chip-spin {
-  to { transform: rotate(360deg); }
+@keyframes dice-roll {
+  25% { transform: translateX(14px) rotate(90deg); }
+  50% { transform: translateX(28px) rotate(180deg); }
+  75% { transform: translateX(14px) rotate(270deg); }
+  100% { transform: translateX(0) rotate(360deg); }
 }
 
 @keyframes card-shuffle-a {
-  50% { transform: rotate(7deg) translateX(3px) translateY(-4px); }
+  50% { transform: rotate(8deg) translateX(-8px) translateY(-7px); }
 }
 
 @keyframes card-shuffle-b {
-  50% { transform: rotate(-8deg) translateX(-16px) translateY(2px); }
+  50% { transform: rotate(-8deg) translateX(-46px) translateY(4px); }
 }
 
 @keyframes card-shuffle-c {
-  50% { transform: rotate(2deg) translateX(-6px) translateY(-2px); }
+  50% { transform: rotate(3deg) translateX(-26px) translateY(-3px); }
 }
 
 .builder-step-actions {

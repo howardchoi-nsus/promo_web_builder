@@ -1290,6 +1290,7 @@ createApp({
 
     generationStatusMessage() {
       const messages = [
+        "AI가 요청 사항을 접수하고 있어요",
         "디자인 브리프를 정리하고 있어요",
         "프로모션 섹션을 조합하고 있어요",
         "UI 디자인 이미지를 생성하고 있어요",
@@ -2824,8 +2825,16 @@ createApp({
       const payload = this.buildGeneratedPayload(pageId);
       const initialStamp = timestampStamp(payload.generatedAt);
       const willUseN8n = true;
-      this.setStatus(willUseN8n ? "UI 디자인 워크플로를 실행 중입니다" : "로컬에서 UI 디자인을 생성했습니다");
+      this.setStatus(willUseN8n ? "AI가 요청 사항을 접수 중입니다" : "로컬에서 UI 디자인을 생성했습니다");
       this.startGenerationMotion();
+      await this.$nextTick();
+      await new Promise((resolve) => {
+        if (window.requestAnimationFrame) {
+          window.requestAnimationFrame(resolve);
+        } else {
+          window.setTimeout(resolve, 0);
+        }
+      });
 
       const listItem = {
         id: pageId,
