@@ -1646,6 +1646,7 @@ body.is-resizing {
 
 .section-image-setting {
   min-width: 0;
+  min-height: var(--control-height);
 }
 
 .section-item-row:not(.has-image-setting) .section-item-input {
@@ -1711,8 +1712,7 @@ body.is-resizing {
 }
 
 .section-item-input input,
-.section-item-input textarea,
-.section-image-setting select {
+.section-item-input textarea {
   min-height: 32px;
   font-size: 12px;
 }

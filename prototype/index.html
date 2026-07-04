@@ -397,16 +397,14 @@
                                 @input="setSectionInputValue(repeatItemInputPath(section.sectionId, setIndex, item), $event.target.value)"
                               />
                             </label>
-                            <label class="field section-image-setting" v-if="item.imageGenerationRequest">
-                              <select
-                                :value="repeatImageGenerationMode(section.sectionId, setIndex, item)"
+                            <label class="switch-control section-image-setting" v-if="item.imageGenerationRequest">
+                              <input
+                                type="checkbox"
+                                :checked="repeatImageGenerationMode(section.sectionId, setIndex, item) === 'generate'"
                                 :disabled="!repeatItemVisible(section.sectionId, setIndex, item)"
-                                @change="setRepeatImageGenerationMode(section.sectionId, setIndex, item.itemId, $event.target.value)"
-                              >
-                                <option value="generate">AI</option>
-                                <option value="upload_or_reference">이미지 등록</option>
-                                <option value="none">미사용</option>
-                              </select>
+                                @change="setRepeatImageGenerationMode(section.sectionId, setIndex, item.itemId, $event.target.checked ? 'generate' : 'none')"
+                              />
+                              <span>AI 이미지 생성</span>
                             </label>
                           </div>
                         </div>
@@ -452,16 +450,14 @@
                             @input="setSectionInputValue(item.inputPath, $event.target.value)"
                           />
                         </label>
-                        <label class="field section-image-setting" v-if="item.imageGenerationRequest">
-                          <select
-                            :value="item.imageGenerationMode"
+                        <label class="switch-control section-image-setting" v-if="item.imageGenerationRequest">
+                          <input
+                            type="checkbox"
+                            :checked="item.imageGenerationMode === 'generate'"
                             :disabled="!section.visible || !item.visible"
-                            @change="setImageGenerationMode(section.sectionId, item.itemId, $event.target.value)"
-                          >
-                            <option value="generate">AI</option>
-                            <option value="upload_or_reference">이미지 등록</option>
-                            <option value="none">미사용</option>
-                          </select>
+                            @change="setImageGenerationMode(section.sectionId, item.itemId, $event.target.checked ? 'generate' : 'none')"
+                          />
+                          <span>AI 이미지 생성</span>
                         </label>
                       </div>
                     </template>
