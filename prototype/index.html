@@ -83,9 +83,11 @@
                   @keydown.enter.prevent="selectDocument(doc.id)"
                   @keydown.space.prevent="selectDocument(doc.id)"
                 >
-                  <div class="style-doc-row">
+                  <div class="style-doc-tile-head">
                     <strong>{{ doc.brandName }}</strong>
-                    <span class="row-separator">/</span>
+                    <span>Update {{ documentDateLabel(doc) }}</span>
+                  </div>
+                  <div class="style-doc-tile-body">
                     <div class="style-doc-swatches" v-if="doc.summary?.colors?.length" :aria-label="doc.summary.colors.slice(0, 4).join(', ')">
                       <span
                         v-for="color in doc.summary.colors.slice(0, 4)"
@@ -95,12 +97,8 @@
                         :style="{ background: color }"
                       ></span>
                     </div>
-                    <span class="row-separator">/</span>
-                    <span class="style-doc-token-label">{{ designTokenCategoryLabel(doc) }}</span>
-                    <span class="row-separator">·</span>
-                    <span>{{ stylePopularityLabel(doc) }}</span>
-                    <span class="row-separator">/</span>
-                    <span>{{ documentDateLabel(doc) }}</span>
+                    <span v-else class="style-doc-empty-colors">컬러셋 없음</span>
+                    <span class="style-doc-popularity">{{ stylePopularityLabel(doc) }}</span>
                   </div>
                 </div>
               </div>
