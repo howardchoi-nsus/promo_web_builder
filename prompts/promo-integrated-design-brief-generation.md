@@ -136,6 +136,11 @@ Include conflicts for at least:
 - no generic SaaS landing page
 - no browser/editor/Figma UI
 - no visible template section labels, side guides, wireframe labels, annotations, diagram legends, or QA checklist labels
+- exact section label guard phrase: `template section names are internal planning labels only, not visible UI text`
+- exact section label guard phrase: `do not add side labels or annotation columns`
+- exact section label guard phrase: `do not add diagram legends`
+
+The generated markdown must include the exact lowercase phrases `template section names`, `visible ui text`, `side labels`, `annotation columns`, and `diagram legends` somewhere in the Non-Negotiable Rules or Final Image Prompt Inputs.
 
 ### MD Compliance Map must include a JSON block with
 

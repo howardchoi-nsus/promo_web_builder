@@ -12,14 +12,14 @@ module.exports = async function handler(req, res) {
     res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=300");
     return res.status(200).json({
       id: "promo-integrated-design-brief-generation",
-      version: "2026-07-04.frontmatter-repair-v1",
+      version: "2026-07-04.label-guard-repair-v1",
       prompt,
     });
   } catch (error) {
     res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=300");
     return res.status(200).json({
       id: "promo-integrated-design-brief-generation",
-      version: "2026-07-04.frontmatter-repair-fallback-v1",
+      version: "2026-07-04.label-guard-repair-fallback-v1",
       prompt: FALLBACK_PROMPT,
       warning: "Prompt file could not be read; served embedded fallback prompt.",
       message: error.message,
@@ -88,6 +88,7 @@ Rules:
 - Market / region affects visual localization more than text copy.
 - Template section names are internal structure labels only and must not appear as visible UI text.
 - Do not render side labels, annotation columns, guide text, wireframe labels, section-name callouts, diagram legends, QA checklist labels, or explanatory labels outside the actual webpage.
+- The generated markdown must include these exact lowercase phrases in Non-Negotiable Rules or Final Image Prompt Inputs: template section names, visible ui text, side labels, annotation columns, diagram legends.
 - Section Order blocks and numbered section lists are internal planning metadata only and must not be treated as visible UI copy.
 - The document must be self-contained enough for the next LLM to generate the Web UI image from this document alone.
 
