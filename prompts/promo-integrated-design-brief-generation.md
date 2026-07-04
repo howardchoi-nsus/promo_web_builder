@@ -127,6 +127,8 @@ Include conflicts for at least:
 - No HTML/CSS generation
 - Full-page Web UI design mockup
 - 1024x1536 tall canvas
+- generated image page canvas/background must be full-bleed pure black `#000000` to all four bitmap edges
+- no gray/off-black/charcoal/white/beige/cream/ivory/transparent outer artboard, page margin, or full-width section background
 - content and layout role from all selected visible template sections represented in the provided order
 - English-only visible copy
 - sectionInputs primary content source
@@ -233,6 +235,7 @@ For Template 4, repeat the same exact H3 heading set under `## Token-to-Section 
 ### Visual Direction must include bullets for
 
 - Canvas strategy
+- Pure black `#000000` page/background canvas strategy: all four bitmap edges, outer margins, page floor, artboard area, and between-section gaps must remain `#000000`; selected MD colors may appear only in components, accents, typography, imagery, and contained inner surfaces.
 - Web UI fidelity strategy
 - Vertical fit strategy
 - Hero strategy
@@ -248,7 +251,7 @@ For Template 4, repeat the same exact H3 heading set under `## Token-to-Section 
 - `### Must Show`
 - `### Must Avoid`
 
-The Image Prompt Direction must be directly usable by an image-generation prompt LLM. It must include canvas size, page width, full-page requirement, the content and layout role of each selected visible template section, English-only copy, no bottom crop, and design system constraints.
+The Image Prompt Direction must be directly usable by an image-generation prompt LLM. It must include canvas size, page width, full-page requirement, full-bleed pure black `#000000` page/background canvas to all four bitmap edges, no gray/light artboard or light full-width section backgrounds, the content and layout role of each selected visible template section, English-only copy, no bottom crop, and design system constraints.
 It must explicitly state that Template section names are internal labels and must not be rendered as visible UI text.
 It must explicitly forbid visible template labels, side annotations, wireframe labels, QA labels, diagram legends, and any explanatory text outside the actual promotional webpage.
 It must also include concrete anti-print guidance: avoid poster/flyer/brochure/presentation-slide composition, avoid single centered key visual layouts, and include visible web UI cues such as navigation, CTA components, section containers, grid rhythm, component hierarchy, and footer/legal structure.

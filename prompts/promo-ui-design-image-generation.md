@@ -28,6 +28,10 @@ NON-NEGOTIABLE DESIGN RULES:
 - Avoid unreadable tiny text. Legal/terms can be shown as condensed footer blocks but must be visibly present.
 - Use the bitmap at {{imageSize}} to show a full-page web UI mockup from header through footer.
 - The mockup represents a 1440px-wide desktop web page scaled into the bitmap export. Preserve web-page hierarchy rather than poster-like vertical centering.
+- The generated image must be full-bleed pure black `#000000` to all four bitmap edges. Every outer margin, page canvas, artboard area, and between-section gap must be `#000000`.
+- Do not render the web page as a centered sheet/card on a gray, light, beige, off-white, transparent, or studio-canvas background.
+- Do not use white, beige, ivory, cream, light gray, gray, off-black, or charcoal as full-width section backgrounds. If a light tone is needed for contrast, use it only inside contained cards/panels on top of the black page canvas.
+- MD colors may still be used for components, cards, accents, text, imagery, and inner surfaces, but the page floor and all visible empty canvas must remain `#000000`.
 - Do not crop the bottom, do not end at the hero or middle sections, and do not omit selected visible detail/legal/footer content.
 - If vertical space is tight, reduce section heights, visual asset sizes, whitespace, and text density before removing content.
 - The content and layout role of every selected visible template section must be represented in one image in the provided order.
@@ -49,7 +53,7 @@ Before writing imagePrompt, internally decide and reflect in the prompt:
 Return this JSON shape:
 {
   "imagePrompt": "single detailed prompt string with explicit section-by-section layout, visual hierarchy, component style, depth/effects, shape/radius, color/font constraints, and visible promo content",
-  "negativePrompt": "poster, flyer, brochure, print ad, presentation slide, magazine cover, single centered key visual, decorative poster typography, paper margins, generic landing pages, weak MD compliance, color/font-only reskins, unreadable text, missing legal footer, wrong section order, section labels, template labels, side annotations, annotation columns, guide labels, wireframe labels, diagram legends, QA checklist labels, explanatory labels outside the webpage, browser chrome, editor UI, Figma canvas UI",
+  "negativePrompt": "gray page background, grey page background, gray outer margin, grey outer margin, gray artboard, grey artboard, centered page on gray canvas, off-black canvas, charcoal canvas, light gray canvas, white page canvas, beige section background, cream section background, ivory section background, white full-width section, transparent background, poster, flyer, brochure, print ad, presentation slide, magazine cover, single centered key visual, decorative poster typography, paper margins, generic landing pages, weak MD compliance, color/font-only reskins, unreadable text, missing legal footer, wrong section order, section labels, template labels, side annotations, annotation columns, guide labels, wireframe labels, diagram legends, QA checklist labels, explanatory labels outside the webpage, browser chrome, editor UI, Figma canvas UI",
   "designBrief": {},
   "layoutMapping": {},
   "mdComplianceMap": {

@@ -2639,7 +2639,12 @@ createApp({
         },
         simpleBrief: { ...this.simpleBrief },
         sectionInputs,
-        design: { ...this.finalStyle },
+        design: {
+          ...this.finalStyle,
+          canvasColor: "#000000",
+          pageBackgroundColor: "#000000",
+          backgroundPolicy: "full_bleed_pure_black_no_gray_artboard",
+        },
         selectedDesignTokens: { ...this.finalStyle },
         sourceDesign: { ...source },
         styleSource: this.styleSource,
