@@ -11,9 +11,8 @@
       <main class="workspace">
         <header class="topbar">
           <div>
-            <p class="eyebrow">Vue 프로토타입 / 더미 DB</p>
             <div class="title-row-with-tools">
-              <h1>디자인 MD 관리 + 프로모션 UI 디자인 생성기</h1>
+              <h1>PROMO WEB BUILDER</h1>
               <div class="handoff-picker">
                 <select v-model="selectedHandoffFile" :disabled="!handoffDocuments.length || handoffLoading" aria-label="handoff 문서 선택">
                   <option value="" disabled>handoff 문서</option>
@@ -49,7 +48,6 @@
           <section class="panel stack abc-panel" id="section-a">
             <div class="panel-header">
               <div>
-                <p class="eyebrow">A 섹션</p>
                 <h2>A. 디자인 MD 관리</h2>
               </div>
               <span>출처: {{ mdListSource }}</span>
@@ -58,7 +56,7 @@
             <div class="abc-panel-body">
             <div class="subsection">
               <div class="subsection-title">
-                <h3>A1. 디자인 스타일 콘셉트</h3>
+                <h3>디자인 스타일 콘셉트</h3>
                 <div class="subsection-actions">
                   <span>{{ designDocuments.length }}개 문서</span>
                   <button class="tiny-button primary" type="button" @click="openAddDesign">+ 디자인 추가</button>
@@ -121,7 +119,6 @@
           <section class="panel stack abc-panel" id="section-b">
             <div class="panel-header">
               <div>
-                <p class="eyebrow">B 섹션</p>
                 <h2>B. 프로모션 빌더</h2>
               </div>
               <span>{{ selectedDocument ? selectedDocument.brandName : '선택된 MD 없음' }}</span>
@@ -188,7 +185,6 @@
             <dialog class="modal builder-modal" ref="promoBuilderModal" :key="promoBuilderSessionKey" autocomplete="off" @close="onPromoBuilderClosed" @cancel="onPromoBuilderClosed">
               <div class="modal-header">
                 <div>
-                  <p class="eyebrow">B 섹션</p>
                   <h2>B. 프로모션 빌더</h2>
                 </div>
                 <button class="icon-button" type="button" aria-label="닫기" @click="closePromoBuilder">x</button>
@@ -524,7 +520,6 @@
           <section class="panel stack abc-panel" id="section-c">
             <div class="panel-header">
               <div>
-                <p class="eyebrow">C 섹션</p>
                 <h2>C. 생성된 UI 디자인 / 결과</h2>
               </div>
               <div class="subsection-actions">
@@ -537,7 +532,7 @@
             <div class="abc-panel-body">
             <div class="subsection">
               <div class="subsection-title">
-                <h3>C1. 생성된 UI 디자인 목록</h3>
+                <h3>생성된 UI 디자인 목록</h3>
                 <span>생성 이력 및 상태</span>
               </div>
 
