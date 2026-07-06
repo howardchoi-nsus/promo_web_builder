@@ -12,14 +12,14 @@ module.exports = async function handler(req, res) {
     res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=300");
     return res.status(200).json({
       id: "promo-integrated-design-brief-generation",
-      version: "2026-07-04.label-guard-repair-v1",
+      version: "2026-07-06.integrated-brief-source-v1",
       prompt,
     });
   } catch (error) {
     res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=300");
     return res.status(200).json({
       id: "promo-integrated-design-brief-generation",
-      version: "2026-07-04.label-guard-repair-fallback-v1",
+      version: "2026-07-06.integrated-brief-source-fallback-v1",
       prompt: FALLBACK_PROMPT,
       warning: "Prompt file could not be read; served embedded fallback prompt.",
       message: error.message,
@@ -83,7 +83,7 @@ Rules:
 - Represent a 1440px desktop Web UI page scaled into the bitmap.
 - The result must read as a web UI design mockup, not a poster, flyer, brochure, presentation slide, print ad, or key visual.
 - The content and layout role of all selected visible template sections must be represented in the provided order.
-- For Template 4, the markdown must include exact canonical H3 headings under Section Content Mapping and Token-to-Section Application: ### Header, ### Hero Banner, ### Step Bar, ### Content CTA, ### Image Text Row, ### Title and Description, and ### Footer.
+- For Template 4, use exact canonical H3 headings under Section Content Mapping and Token-to-Section Application only for sections that are selected and visible in Section Config. Do not force hidden sections into rendered content.
 - If the input uses configured names such as Contents or keys such as titleDescription, normalize them to the canonical Template 4 headings. Never rename ### Title and Description to ### Title & Description, ### Title Description, ### Title and Descrition, or any other variant.
 - Market / region affects visual localization more than text copy.
 - Template section names are internal structure labels only and must not appear as visible UI text.
@@ -103,7 +103,15 @@ Return JSON shape:
     "sectionContentMapping": {},
     "designStyleBasis": {},
     "visualDirection": {},
-    "finalImagePromptInputs": {},
+    "finalImagePromptInputs": {
+      "imagePromptDirection": "Single source-of-truth image direction derived only from this integrated brief.",
+      "visibleSections": ["canonical visible section name"],
+      "visibleCopy": {},
+      "mustShow": [],
+      "mustAvoid": [],
+      "visualTargets": [],
+      "contentCoverage": {}
+    },
     "negativePrompt": "",
     "visualQaChecklist": []
   }

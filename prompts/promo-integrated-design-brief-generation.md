@@ -175,7 +175,7 @@ The generated markdown must include the exact lowercase phrases `template sectio
 
 Use the selected template schema's visible section list and order. Section headings in this markdown are internal documentation only; they must not become visible UI copy in the image prompt.
 
-For Template 4, the Integrated Design Brief must include these exact H3 headings, spelled exactly as shown, under `## Section Content Mapping`:
+For Template 4, use these canonical H3 headings only for sections that are selected and visible in Section Config. Do not create H3 mapping blocks for hidden sections unless they are placed under an explicit `### Excluded Sections` note:
 
 - `### Header`
 - `### Hero Banner`
@@ -202,7 +202,7 @@ For each section include:
 
 For each section explain exactly how selected design tokens affect:
 
-For Template 4, repeat the same exact H3 heading set under `## Token-to-Section Application`:
+For Template 4, repeat the same canonical H3 heading set under `## Token-to-Section Application`, but only for selected visible sections. Hidden sections must not be described as rendered content:
 
 - `### Header`
 - `### Hero Banner`
@@ -250,6 +250,9 @@ For Template 4, repeat the same exact H3 heading set under `## Token-to-Section 
 - `### Image Prompt Direction`
 - `### Must Show`
 - `### Must Avoid`
+- `### Visible Sections`
+- `### Visual Targets`
+- `### Content Coverage`
 
 The Image Prompt Direction must be directly usable by an image-generation prompt LLM. It must include canvas size, page width, full-page requirement, full-bleed pure black `#000000` page/background canvas to all four bitmap edges, no gray/light artboard or light full-width section backgrounds, the content and layout role of each selected visible template section, English-only copy, no bottom crop, and design system constraints.
 It must explicitly state that Template section names are internal labels and must not be rendered as visible UI text.
@@ -278,7 +281,25 @@ Must include at least 10 checklist items.
     "sectionContentMapping": {},
     "designStyleBasis": {},
     "visualDirection": {},
-    "finalImagePromptInputs": {},
+    "finalImagePromptInputs": {
+      "imagePromptDirection": "Single source-of-truth image direction derived only from this integrated brief.",
+      "visibleSections": ["canonical visible section name"],
+      "visibleCopy": {
+        "sectionOrField": "Exact English user-facing copy that may appear in the generated UI"
+      },
+      "mustShow": ["Required visible content, section role, CTA, legal, and footer requirements"],
+      "mustAvoid": ["Brief-specific exclusions beyond the global negative prompt"],
+      "visualTargets": [
+        {
+          "section": "canonical visible section name",
+          "target": "hero visual | supporting visual | badge | image area | none",
+          "description": "Visual instruction grounded in the section's own copy and Design MD"
+        }
+      ],
+      "contentCoverage": {
+        "sourceField": "visible section or final image prompt input where this value is represented"
+      }
+    },
     "negativePrompt": "",
     "visualQaChecklist": []
   }
@@ -289,11 +310,11 @@ Must include at least 10 checklist items.
 
 - `integratedDesignBriefMarkdown` must be at least 6000 characters.
 - It must include a Resolved Conflicts table.
-- It must include exact canonical H3 headings for each selected visible template section. For Template 4, include `### Header`, `### Hero Banner`, `### Step Bar`, `### Content CTA`, `### Image Text Row`, `### Title and Description`, and `### Footer`.
+- It must include exact canonical H3 headings for each selected visible template section. For Template 4, use the canonical section names only when those sections are visible; do not force hidden sections into rendered content.
 - It must include at least one JSON block for MD Compliance Map.
 - It must include selected design token values directly; do not say to consult or refer to Design Prompt MD.
 - It must include Section Input Log visible copy directly; do not say to consult or refer to Section Input Log MD.
-- It must include a final Image Prompt Direction.
+- It must include a final Image Prompt Direction and structured `finalImagePromptInputs` with visibleSections, visibleCopy, mustShow, mustAvoid, visualTargets, and contentCoverage.
 - It must include a Negative Prompt.
 - It must include a Visual QA Checklist.
 - It must be self-contained enough that the next LLM can generate the Web UI design from this document alone.
