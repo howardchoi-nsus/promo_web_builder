@@ -18,9 +18,10 @@ Return valid JSON only. Do not include markdown fences or explanations outside J
 ## Source Priority Rules
 
 - Design Prompt MD controls style: colors, typography, spacing, radius, component language, layout patterns, guidelines, qualitative classification, and token-derived constraints.
-- Section Input Log MD controls visible content: copy, CTA text, links, legal text, section text, visualMode, footer labels, promo metadata, and selected template input values.
-- Section Config in the Section Input Log MD controls section order, visible section coverage, fixed sections, optional sections, item visibility, and image-generation targets.
-- The selected template schema is the fallback structural source only when Section Config is missing.
+- Section Input Log MD controls visible content: copy, CTA text, links, legal text, section text, visualMode, footer labels, promo metadata, user-composed page structure, and selected template input values.
+- Page Composition in the Section Input Log MD is the primary structure source for section order, visible section coverage, hidden sections, fixed sections, custom sections, item visibility, and image-generation targets.
+- Promotion Strategy, Market / Region Context, and Promotion Content Contract in the Section Input Log MD are the primary interpretation source for the promotion purpose, audience, CTA intent, selected region, user disposition, and required visible content.
+- The selected template schema is the fallback structural source only when Page Composition and Section Config are missing.
 - Market / region is shared promo metadata, but it primarily affects image-generation visual localization. Use it as subtle mood, audience, environment, and compliance context; do not force the market name into visible copy.
 - Promo metadata is fallback only when sectionInputs are missing.
 - If values conflict, do not silently discard either value. Document the conflict and explain the adopted value.
@@ -36,7 +37,7 @@ Return valid JSON only. Do not include markdown fences or explanations outside J
 - It represents a 1440px desktop Web UI page scaled into the bitmap.
 - This is a full-page Web UI design mockup, not a cropped viewport screenshot.
 - It should look like a browserless screenshot or design mockup of a real scrollable webpage, not a print composition.
-- Header through Footer must be visible in one image.
+- The full user-composed page from first visible section through final visible section must be visible in one image.
 - Do not crop the bottom.
 - Do not merge legal/detail content into Footer unless the selected template schema explicitly maps it there.
 - If content is long, compress spacing, section height, visual size, and decoration before removing content.
@@ -115,7 +116,7 @@ Do not start the markdown with `# Integrated Design Brief MD` before the frontma
 
 Include conflicts for at least:
 
-- Section count / section order
+- Page Composition / section order
 - Detail/legal content vs Footer separation
 - Typography
 - CTA shape
@@ -129,10 +130,10 @@ Include conflicts for at least:
 - 1024x1536 tall canvas
 - generated image page canvas/background must be full-bleed pure black `#000000` to all four bitmap edges
 - no gray/off-black/charcoal/white/beige/cream/ivory/transparent outer artboard, page margin, or full-width section background
-- content and layout role from all selected visible template sections represented in the provided order
+- content and layout role from all selected visible Page Composition sections represented in the provided order
 - English-only visible copy
 - sectionInputs primary content source
-- sectionConfig controls selected visible sections, visible items, fixed Header/Footer behavior, and image-generation targets
+- Page Composition and sectionConfig control selected visible sections, hidden sections, custom sections, visible items, fixed section behavior, and image-generation targets
 - market / region affects visual localization more than text copy
 - no bottom crop
 - no generic SaaS landing page
@@ -171,46 +172,27 @@ The generated markdown must include the exact lowercase phrases `template sectio
 - Guidelines adopted from Design Prompt MD
 - Unknown token handling
 
-### Section Content Mapping must include one H3 for each selected visible template section
+### Section Content Mapping must include one H3 for each selected visible Page Composition section
 
-Use the selected template schema's visible section list and order. Section headings in this markdown are internal documentation only; they must not become visible UI copy in the image prompt.
+Use Page Composition from the Section Input Log MD as the primary source for visible section list, order, fixed position, custom sections, and hidden sections. Section headings in this markdown are internal documentation only; they must not become visible UI copy in the image prompt.
 
-For Template 4, use these canonical H3 headings only for sections that are selected and visible in Section Config. Do not create H3 mapping blocks for hidden sections unless they are placed under an explicit `### Excluded Sections` note:
+For each visible section, use a stable H3 based on Page Composition order and display name:
 
-- `### Header`
-- `### Hero Banner`
-- `### Step Bar`
-- `### Content CTA`
-- `### Image Text Row`
-- `### Title and Description`
-- `### Footer`
+`### {order}. {displayName}`
 
-If the Section Input Log uses configured names such as `Contents` or keys such as `titleDescription`, normalize them to the canonical headings above. Never rename `### Title and Description` to `### Title & Description`, `### Title Description`, `### Title and Descrition`, `### Contents`, or any other variant.
+Each section block must include `sectionId`, `role`, `visible`, `fixedPosition`, `contentPath`, source fields, visible English copy, section visibility and item visibility decisions, image-generation target decisions, visual treatment, vertical allocation/compression note, MD rule applied, and fallback behavior.
 
-For each section include:
+Do not use `displayName` as the validation key. Use `sectionId` as the stable mapping key. Custom sections that are not part of Template 4 must still be mapped when they appear in Page Composition.
 
-- Source fields
-- Visible English copy
-- Section visibility and item visibility decisions
-- Image-generation target decisions
-- Visual treatment
-- Vertical allocation/compression note
-- MD rule applied
-- Fallback behavior
+Hidden sections must not be described as rendered content. Put hidden sections under an explicit `### Excluded Sections` note with their `sectionId`, `displayName`, and reason.
 
 ### Token-to-Section Application must include one H3 for each selected visible template section
 
 For each section explain exactly how selected design tokens affect:
 
-For Template 4, repeat the same canonical H3 heading set under `## Token-to-Section Application`, but only for selected visible sections. Hidden sections must not be described as rendered content:
+Repeat the same visible Page Composition H3 heading set under `## Token-to-Section Application`. Hidden sections must not be described as rendered content:
 
-- `### Header`
-- `### Hero Banner`
-- `### Step Bar`
-- `### Content CTA`
-- `### Image Text Row`
-- `### Title and Description`
-- `### Footer`
+- `### {order}. {displayName}`
 
 - Color usage
 - Typography hierarchy
@@ -254,11 +236,11 @@ For Template 4, repeat the same canonical H3 heading set under `## Token-to-Sect
 - `### Visual Targets`
 - `### Content Coverage`
 
-The Image Prompt Direction must be directly usable by an image-generation prompt LLM. It must include canvas size, page width, full-page requirement, full-bleed pure black `#000000` page/background canvas to all four bitmap edges, no gray/light artboard or light full-width section backgrounds, the content and layout role of each selected visible template section, English-only copy, no bottom crop, and design system constraints.
+The Image Prompt Direction must be directly usable by an image-generation prompt LLM. It must include canvas size, page width, full-page requirement, full-bleed pure black `#000000` page/background canvas to all four bitmap edges, no gray/light artboard or light full-width section backgrounds, the content and layout role of each selected visible Page Composition section, English-only copy, no bottom crop, and design system constraints.
 It must explicitly state that Template section names are internal labels and must not be rendered as visible UI text.
 It must explicitly forbid visible template labels, side annotations, wireframe labels, QA labels, diagram legends, and any explanatory text outside the actual promotional webpage.
 It must also include concrete anti-print guidance: avoid poster/flyer/brochure/presentation-slide composition, avoid single centered key visual layouts, and include visible web UI cues such as navigation, CTA components, section containers, grid rhythm, component hierarchy, and footer/legal structure.
-Do not include a `### Section Order` block in Final Image Prompt Inputs. Use natural page-flow language for the final image direction, such as top navigation, hero content, steps, CTA, supporting details, legal copy, and footer, instead of telling the image model to show section names.
+Do not include a `### Section Order` block in Final Image Prompt Inputs. Use natural page-flow language for the final image direction, based on Page Composition order, instead of telling the image model to show section names.
 
 ## Negative Prompt
 
@@ -283,7 +265,7 @@ Must include at least 10 checklist items.
     "visualDirection": {},
     "finalImagePromptInputs": {
       "imagePromptDirection": "Single source-of-truth image direction derived only from this integrated brief.",
-      "visibleSections": ["canonical visible section name"],
+      "visibleSections": ["visible sectionId from Page Composition"],
       "visibleCopy": {
         "sectionOrField": "Exact English user-facing copy that may appear in the generated UI"
       },
@@ -291,7 +273,7 @@ Must include at least 10 checklist items.
       "mustAvoid": ["Brief-specific exclusions beyond the global negative prompt"],
       "visualTargets": [
         {
-          "section": "canonical visible section name",
+          "section": "visible sectionId from Page Composition",
           "target": "hero visual | supporting visual | badge | image area | none",
           "description": "Visual instruction grounded in the section's own copy and Design MD"
         }
@@ -310,7 +292,7 @@ Must include at least 10 checklist items.
 
 - `integratedDesignBriefMarkdown` must be at least 6000 characters.
 - It must include a Resolved Conflicts table.
-- It must include exact canonical H3 headings for each selected visible template section. For Template 4, use the canonical section names only when those sections are visible; do not force hidden sections into rendered content.
+- It must include H3 headings for each selected visible Page Composition section. Use Page Composition order and displayName in headings, and include sectionId as the stable mapping key. Do not force hidden sections into rendered content.
 - It must include at least one JSON block for MD Compliance Map.
 - It must include selected design token values directly; do not say to consult or refer to Design Prompt MD.
 - It must include Section Input Log visible copy directly; do not say to consult or refer to Section Input Log MD.

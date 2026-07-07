@@ -12,14 +12,14 @@ module.exports = async function handler(req, res) {
     res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=300");
     return res.status(200).json({
       id: "promo-integrated-design-brief-generation",
-      version: "2026-07-06.integrated-brief-source-v1",
+      version: "2026-07-07.page-composition-source-v1",
       prompt,
     });
   } catch (error) {
     res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=300");
     return res.status(200).json({
       id: "promo-integrated-design-brief-generation",
-      version: "2026-07-06.integrated-brief-source-fallback-v1",
+      version: "2026-07-07.page-composition-source-fallback-v1",
       prompt: FALLBACK_PROMPT,
       warning: "Prompt file could not be read; served embedded fallback prompt.",
       message: error.message,
@@ -69,8 +69,10 @@ The integratedDesignBriefMarkdown must be a complete design-generation request d
 
 Rules:
 - Design Prompt MD controls style tokens, component patterns, layout patterns, and guidelines.
-- Section Input Log MD controls visible content, CTA text, legal text, and selected template section input values.
-- The selected template schema controls output section order, visible section coverage, fixed sections, optional sections, item visibility, and image-generation targets.
+- Section Input Log MD controls visible content, CTA text, legal text, user-composed page structure, selected region context, promotion strategy, and selected template input values.
+- Page Composition in the Section Input Log MD is the primary source for section order, visible section coverage, hidden sections, fixed sections, custom sections, item visibility, and image-generation targets.
+- Promotion Strategy, Market / Region Context, and Promotion Content Contract in the Section Input Log MD are primary interpretation sources.
+- The selected template schema is fallback only when Page Composition and Section Config are missing.
 - Market / region is shared promo metadata, but it primarily affects image-generation visual localization. Use it as subtle mood, audience, environment, and compliance context; do not force the market name into visible copy.
 - YAML frontmatter type must be exactly integrated_design_brief.
 - integratedDesignBriefMarkdown must begin with YAML frontmatter as the first characters, before # Integrated Design Brief MD.
@@ -82,9 +84,11 @@ Rules:
 - Treat 1024x1536 as the bitmap export size, not as a poster artboard or real web page proportion.
 - Represent a 1440px desktop Web UI page scaled into the bitmap.
 - The result must read as a web UI design mockup, not a poster, flyer, brochure, presentation slide, print ad, or key visual.
-- The content and layout role of all selected visible template sections must be represented in the provided order.
-- For Template 4, use exact canonical H3 headings under Section Content Mapping and Token-to-Section Application only for sections that are selected and visible in Section Config. Do not force hidden sections into rendered content.
-- If the input uses configured names such as Contents or keys such as titleDescription, normalize them to the canonical Template 4 headings. Never rename ### Title and Description to ### Title & Description, ### Title Description, ### Title and Descrition, or any other variant.
+- The content and layout role of all selected visible Page Composition sections must be represented in the provided order.
+- Use Page Composition order and displayName for H3 headings under Section Content Mapping and Token-to-Section Application.
+- Always include sectionId as the stable mapping key. Do not use displayName as the validation key.
+- Custom sections that are not part of Template 4 must still be mapped when they appear in Page Composition.
+- Hidden sections must not be described as rendered content; place them under Excluded Sections.
 - Market / region affects visual localization more than text copy.
 - Template section names are internal structure labels only and must not appear as visible UI text.
 - Do not render side labels, annotation columns, guide text, wireframe labels, section-name callouts, diagram legends, QA checklist labels, or explanatory labels outside the actual webpage.
@@ -105,7 +109,7 @@ Return JSON shape:
     "visualDirection": {},
     "finalImagePromptInputs": {
       "imagePromptDirection": "Single source-of-truth image direction derived only from this integrated brief.",
-      "visibleSections": ["canonical visible section name"],
+      "visibleSections": ["visible sectionId from Page Composition"],
       "visibleCopy": {},
       "mustShow": [],
       "mustAvoid": [],

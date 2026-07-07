@@ -71,7 +71,14 @@ function buildDesignPromptMarkdown({ runKey, promptGroupId, generatedAt, payload
 }
 
 function buildPromoInputMarkdown({ runKey, promptGroupId, generatedAt, payload, promo, md, template }) {
-  const canonicalSections = canonicalTemplateSections(payload);
+  const pageComposition = buildPageComposition(payload, template);
+  const visibleSections = pageComposition.filter((section) => section.visible);
+  const excludedSections = pageComposition.filter((section) => !section.visible);
+  const promotionInput = payload?.promotionInput || {};
+  const simpleBrief = payload?.simpleBrief || {};
+  const marketGuidance = payload?.marketVisualGuidance || {};
+  const sectionInputs = payload?.sectionInputs || {};
+  const sectionConfig = payload?.sectionConfig || {};
   return [
     "---",
     "type: section_input_log",
@@ -83,7 +90,11 @@ function buildPromoInputMarkdown({ runKey, promptGroupId, generatedAt, payload, 
     `selectedMd: ${escapeYaml(md?.brand || "")}`,
     "---",
     "",
-    "# Section Input Log MD",
+    "# Promotion Input Log MD",
+    "",
+    "This document is the primary content and page-composition contract for integrated brief generation.",
+    "Use the interpreted sections near the top as the source of truth. The Raw Payload Snapshot is for debugging only.",
+    "Template defaults are fallback only. The final page structure comes from Page Composition, especially section order, visibility, fixed position, and item visibility.",
     "",
     "## Log Summary",
     "",
@@ -93,8 +104,86 @@ function buildPromoInputMarkdown({ runKey, promptGroupId, generatedAt, payload, 
     `- Promo Title: ${promo?.title || ""}`,
     `- Selected Design MD: ${md?.brand || ""}`,
     `- Template: ${template?.name || template?.id || ""}`,
+    `- Visible Sections: ${visibleSections.map((section) => section.sectionId).join(", ") || "none"}`,
+    `- Excluded Sections: ${excludedSections.map((section) => section.sectionId).join(", ") || "none"}`,
     "",
-    "## Selected Design MD",
+    "## Promotion Strategy",
+    "",
+    `- Promotion Definition: ${stringOrUnknown(promo?.title)}`,
+    `- Purpose: ${stringOrUnknown(resolvePurposeLabel(promotionInput, promo))}`,
+    `- Target Customer: ${stringOrUnknown(promotionInput.targetCustomer || simpleBrief.audience)}`,
+    `- Target Action: ${stringOrUnknown(simpleBrief.targetAction)}`,
+    `- Primary Benefit: ${stringOrUnknown(simpleBrief.mainOffer || promo?.leadText)}`,
+    `- Campaign Tone: ${stringOrUnknown(promotionInput.campaignTone || simpleBrief.campaignTone)}`,
+    `- CTA Intent: ${stringOrUnknown(simpleBrief.targetAction || promo?.ctaLabel)}`,
+    `- CTA Copy: ${stringOrUnknown(promo?.ctaLabel)}`,
+    `- CTA URL: ${stringOrUnknown(promo?.ctaUrl)}`,
+    `- Risk / Compliance Notes: ${stringOrUnknown(promo?.alphaText || promo?.termsText)}`,
+    "",
+    "## Market / Region Context",
+    "",
+    `- Selected Region: ${stringOrUnknown(marketGuidance.market || promo?.market)}`,
+    `- Primary Use: ${stringOrUnknown(marketGuidance.primaryUse || "image_generation")}`,
+    `- Text Copy Influence: ${stringOrUnknown(marketGuidance.textCopyInfluence || "low")}`,
+    `- Visual Influence: ${stringOrUnknown(marketGuidance.visualInfluence)}`,
+    `- User Disposition / Visual Mood: ${stringOrUnknown(marketGuidance.visualMood)}`,
+    `- Design Implication: ${stringOrUnknown(marketGuidance.instruction)}`,
+    `- Avoid: ${Array.isArray(marketGuidance.avoid) && marketGuidance.avoid.length ? marketGuidance.avoid.join("; ") : "unknown"}`,
+    "- Market names, flags, maps, landmarks, and stereotypes must not be forced into visible UI copy unless they are explicitly supplied as user-facing promotion content.",
+    "",
+    "## Promotion Content Contract",
+    "",
+    `- Title: ${stringOrUnknown(promo?.title)}`,
+    `- Lead Text: ${stringOrUnknown(promo?.leadText)}`,
+    `- Main Offer: ${stringOrUnknown(simpleBrief.mainOffer)}`,
+    `- Subline / Secondary Message: ${stringOrUnknown(promo?.subline || simpleBrief.secondaryMessage)}`,
+    `- CTA Label: ${stringOrUnknown(promo?.ctaLabel)}`,
+    `- CTA Link: ${stringOrUnknown(promo?.ctaUrl)}`,
+    `- Alpha / Compliance Text: ${stringOrUnknown(promo?.alphaText)}`,
+    `- Terms / Legal Text: ${stringOrUnknown(promo?.termsText)}`,
+    "- Visible UI copy should come from Section Content Mapping first. Promotion metadata is fallback only.",
+    "",
+    "## Page Composition",
+    "",
+    "Page Composition is the final structure contract for the generated page. Use `sectionId`, `order`, and `visible` for validation and mapping; `displayName` is descriptive and may change.",
+    "",
+    "```json",
+    JSON.stringify(pageComposition, null, 2),
+    "```",
+    "",
+    "## Section Content Mapping",
+    "",
+    ...visibleSections.flatMap((section) => sectionToMarkdown(section, sectionInputs)),
+    ...(excludedSections.length ? [
+      "## Excluded Sections",
+      "",
+      ...excludedSections.flatMap((section) => [
+        `### ${section.order}. ${section.displayName}`,
+        "",
+        `- sectionId: ${section.sectionId}`,
+        `- role: ${section.role}`,
+        "- visible: false",
+        "- Rendering rule: Do not render this section as visible page content.",
+        "",
+      ]),
+    ] : []),
+    "## Section Visibility / Generation Controls",
+    "",
+    "```json",
+    JSON.stringify({
+      orderedSections: pageComposition.map((section) => section.sectionId),
+      visibleSections: visibleSections.map((section) => section.sectionId),
+      hiddenSections: excludedSections.map((section) => section.sectionId),
+      sectionVisibility: template?.sectionVisibility || {},
+      itemVisibility: template?.itemVisibility || {},
+      imageGenerationMode: sectionConfig.imageGenerationMode || {},
+      imageGenerationTargets: sectionConfig.imageGenerationTargets || template?.imageGenerationTargets || [],
+      fixedSections: sectionConfig.fixedSections || template?.fixedSections || {},
+      repeatableSets: sectionConfig.repeatableSets || {},
+    }, null, 2),
+    "```",
+    "",
+    "## Design Source Summary",
     "",
     "```json",
     JSON.stringify({
@@ -105,63 +194,152 @@ function buildPromoInputMarkdown({ runKey, promptGroupId, generatedAt, payload, 
     }, null, 2),
     "```",
     "",
-    "## Promo",
+    "## Raw Payload Snapshot",
+    "",
+    "Raw values below are for debugging and traceability. Do not override Page Composition, Promotion Strategy, Market / Region Context, or Promotion Content Contract with raw fallback values unless the interpreted sections are missing.",
+    "",
+    "### Promo",
     "",
     "```json",
     JSON.stringify(promo || {}, null, 2),
     "```",
     "",
-    "## Market Visual Guidance",
+    "### Promotion Input",
     "",
     "```json",
-    JSON.stringify(payload?.marketVisualGuidance || {}, null, 2),
+    JSON.stringify(promotionInput || {}, null, 2),
     "```",
     "",
-    "## Simple Brief",
+    "### Market Visual Guidance",
     "",
     "```json",
-    JSON.stringify(payload?.simpleBrief || {}, null, 2),
+    JSON.stringify(marketGuidance || {}, null, 2),
     "```",
     "",
-    "## Section Inputs",
+    "### Simple Brief",
     "",
     "```json",
-    JSON.stringify(payload?.sectionInputs || {}, null, 2),
+    JSON.stringify(simpleBrief || {}, null, 2),
     "```",
     "",
-    "## Canonical Template Section Headings",
-    "",
-    "These headings are internal mapping labels for downstream automation. They must be copied exactly into the Integrated Design Brief under Section Content Mapping and Token-to-Section Application. They must not be rendered as visible UI text in the generated image.",
-    "",
-    ...canonicalSections.flatMap((section, index) => [
-      `### ${section.name}`,
-      "",
-      `- order: ${index + 1}`,
-      `- sectionId: ${section.sectionId}`,
-      `- configuredName: ${section.configuredName || section.name}`,
-      `- visible: ${section.visible ? "true" : "false"}`,
-      `- canonicalHeadingRequired: ${section.visible ? "true" : "false"}`,
-      "",
-    ]),
-    "## Section Config",
+    "### Section Inputs",
     "",
     "```json",
-    JSON.stringify(payload?.sectionConfig || {}, null, 2),
+    JSON.stringify(sectionInputs || {}, null, 2),
     "```",
     "",
-    "## Template",
+    "### Section Config",
+    "",
+    "```json",
+    JSON.stringify(sectionConfig || {}, null, 2),
+    "```",
+    "",
+    "### Template",
     "",
     "```json",
     JSON.stringify(template || {}, null, 2),
     "```",
     "",
-    "## Design Style",
+    "### Design Style",
     "",
     "```json",
     JSON.stringify(payload?.design || {}, null, 2),
     "```",
     "",
   ].join("\n");
+}
+
+function buildPageComposition(payload, template) {
+  const configSections = Array.isArray(payload?.sectionConfig?.sections) ? payload.sectionConfig.sections : [];
+  const configuredOrder = Array.isArray(payload?.sectionConfig?.orderedSections) ? payload.sectionConfig.orderedSections : [];
+  const sectionOrder = configuredOrder.length
+    ? configuredOrder
+    : (Array.isArray(template?.sectionOrder) ? template.sectionOrder : []);
+  const visibleSections = Array.isArray(template?.visibleSections) ? template.visibleSections : [];
+  const sectionVisibility = payload?.sectionConfig?.sectionVisibility || template?.sectionVisibility || {};
+  const fixedSections = normalizeFixedSections(payload?.sectionConfig?.fixedSections || template?.fixedSections);
+  const byConfiguredId = new Map(configSections.map((section) => [section.sectionId || section.key || section.id, section]));
+  const sourceSections = sectionOrder.length
+    ? sectionOrder.map((sectionId) => byConfiguredId.get(sectionId) || { sectionId, name: canonicalSectionName(sectionId) })
+    : configSections;
+
+  return sourceSections.map((section, index) => {
+    const sectionId = section.sectionId || section.key || section.id || `customSection${index + 1}`;
+    const visible = Object.prototype.hasOwnProperty.call(sectionVisibility, sectionId)
+      ? Boolean(sectionVisibility[sectionId])
+      : (Array.isArray(visibleSections) && visibleSections.length ? visibleSections.includes(sectionId) : section.visible !== false);
+    return {
+      order: index + 1,
+      sectionId,
+      displayName: section.name || section.label || canonicalSectionName(sectionId),
+      role: section.role || sectionRole(sectionId),
+      visible,
+      fixedPosition: fixedSections[sectionId] || section.fixedPosition || null,
+      contentPath: `sectionInputs.${sectionId}`,
+      source: configSections.length ? "sectionConfig.sections" : "template.fallback",
+      repeatable: Boolean(section.repeatableSet),
+    };
+  });
+}
+
+function normalizeFixedSections(value) {
+  if (!value) return {};
+  if (!Array.isArray(value)) return value && typeof value === "object" ? value : {};
+  return Object.fromEntries(value.map((section) => [section.sectionId, section.fixedPosition]).filter(([sectionId]) => sectionId));
+}
+
+function canonicalSectionName(sectionId) {
+  const names = {
+    header: "Header",
+    heroBanner: "Hero Banner",
+    stepBar: "Step Bar",
+    contentCta: "Content CTA",
+    imageTextRow: "Image Text Row",
+    titleDescription: "Title and Description",
+    footer: "Footer",
+  };
+  return names[sectionId] || sectionId;
+}
+
+function sectionRole(sectionId) {
+  const roles = {
+    header: "navigation_or_brand_context",
+    heroBanner: "primary_offer",
+    stepBar: "participation_steps",
+    contentCta: "conversion_support",
+    imageTextRow: "supporting_content",
+    titleDescription: "terms_or_detail_content",
+    footer: "legal_and_brand_footer",
+  };
+  return roles[sectionId] || "custom_content";
+}
+
+function resolvePurposeLabel(promotionInput, promo) {
+  const purpose = promotionInput.purpose || promo?.promotionPurpose || promo?.purpose || "";
+  if (purpose === "기타" && (promotionInput.purposeOther || promo?.promotionPurposeOther)) {
+    return promotionInput.purposeOther || promo.promotionPurposeOther;
+  }
+  return purpose;
+}
+
+function sectionToMarkdown(section, sectionInputs) {
+  const value = sectionInputs?.[section.sectionId];
+  const entries = Array.isArray(value) ? value : [value || {}];
+  return entries.flatMap((entry, index) => [
+    `### ${section.order}${entries.length > 1 ? `.${index + 1}` : ""}. ${section.displayName}`,
+    "",
+    `- sectionId: ${section.sectionId}`,
+    `- role: ${section.role}`,
+    `- visible: ${section.visible ? "true" : "false"}`,
+    `- fixedPosition: ${section.fixedPosition || "none"}`,
+    `- contentPath: ${section.contentPath}${entries.length > 1 ? `.${index}` : ""}`,
+    `- repeatable: ${section.repeatable ? "true" : "false"}`,
+    "- Content:",
+    "```json",
+    JSON.stringify(entry || {}, null, 2),
+    "```",
+    "",
+  ]);
 }
 
 function canonicalTemplateSections(payload) {

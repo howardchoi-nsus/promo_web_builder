@@ -205,12 +205,41 @@ fs.mkdirSync(path.dirname(outputPath), { recursive: true });
 fs.writeFileSync(outputPath, markdown, "utf8");
 
 assert(sectionInputLog.includes("type: section_input_log"), "Expected Section Input Log frontmatter type");
-assert(sectionInputLog.includes("# Section Input Log MD"), "Expected Section Input Log title");
-assert(sectionInputLog.includes("## Section Inputs"), "Expected Section Inputs section");
-assert(sectionInputLog.includes("## Canonical Template Section Headings"), "Expected canonical section heading contract");
-assert(sectionInputLog.includes("### Content CTA"), "Expected canonical Content CTA heading despite configured Contents name");
-assert(sectionInputLog.includes("### Title and Description"), "Expected canonical Title and Description heading");
+assert(sectionInputLog.includes("# Promotion Input Log MD"), "Expected Promotion Input Log title");
+assert(sectionInputLog.includes("## Promotion Strategy"), "Expected Promotion Strategy section");
+assert(sectionInputLog.includes("## Market / Region Context"), "Expected Market / Region Context section");
+assert(sectionInputLog.includes("## Promotion Content Contract"), "Expected Promotion Content Contract section");
+assert(sectionInputLog.includes("## Page Composition"), "Expected Page Composition section");
+assert(sectionInputLog.includes("## Section Content Mapping"), "Expected Section Content Mapping section");
+assert(sectionInputLog.includes("## Section Visibility / Generation Controls"), "Expected Section Visibility / Generation Controls section");
+assert(sectionInputLog.includes("## Raw Payload Snapshot"), "Expected Raw Payload Snapshot section");
+assert(sectionInputLog.includes("### 4. Contents"), "Expected configured displayName for Content CTA section");
+assert(sectionInputLog.includes("- sectionId: contentCta"), "Expected stable sectionId for Content CTA");
+assert(sectionInputLog.includes("### 6. Title and Description"), "Expected Title and Description section mapping");
 assert(sectionInputLog.includes("Start strong on GGPoker"), "Expected visible copy in Section Input Log");
+
+const reorderedPayload = JSON.parse(JSON.stringify(payload));
+reorderedPayload.sectionConfig.orderedSections = ["contentCta", "heroBanner", "header"];
+reorderedPayload.sectionConfig.sectionVisibility = {
+  contentCta: true,
+  heroBanner: true,
+  header: true,
+};
+reorderedPayload.template.sectionOrder = ["header", "heroBanner", "contentCta"];
+reorderedPayload.template.visibleSections = ["header", "heroBanner", "contentCta"];
+const reorderedLog = buildPromoInputMarkdown({
+  runKey: "promo-reordered",
+  promptGroupId: "D0xUF",
+  generatedAt,
+  payload: reorderedPayload,
+  promo: reorderedPayload.promo,
+  md: reorderedPayload.md,
+  template: reorderedPayload.template,
+});
+assert(
+  reorderedLog.indexOf("- sectionId: contentCta") < reorderedLog.indexOf("- sectionId: heroBanner"),
+  "Expected Page Composition and Section Content Mapping to follow user-composed orderedSections",
+);
 
 const sectionOutputPath = path.join(process.cwd(), "tmp", "section-input-log-md-test.md");
 fs.writeFileSync(sectionOutputPath, sectionInputLog, "utf8");
