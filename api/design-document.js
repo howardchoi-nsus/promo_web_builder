@@ -14,6 +14,12 @@ function isoMinute(value) {
   return value ? new Date(value).toISOString().slice(0, 16).replace("T", " ") : "";
 }
 
+function parseJsonValue(value) {
+  if (!value) return {};
+  if (typeof value === "string") return JSON.parse(value);
+  return value;
+}
+
 module.exports = async function handler(req, res) {
   const databaseUrl = getDatabaseUrl();
   if (!databaseUrl) {
@@ -39,9 +45,16 @@ module.exports = async function handler(req, res) {
     if (req.method === "PATCH") {
       const body = req.body || {};
       const markdown = String(body.rawMarkdown || body.markdown || "").trim();
-      const brandName = String(body.brandName || "").trim();
+      const brandName = String(body.designStyleName || body.brandName || "").trim();
       const cleanSlug = slugify(body.slug || brandName);
-      const sourceName = String(body.sourceName || "").trim();
+      const sourceName = String(body.designMdFileName || body.sourceName || "").trim();
+      let tokenJson = {};
+
+      try {
+        tokenJson = parseJsonValue(body.designTokensJson ?? body.rawDesignTokensJson);
+      } catch (error) {
+        return res.status(400).json({ error: "designTokensJson must be valid JSON" });
+      }
 
       if (!markdown) return res.status(400).json({ error: "rawMarkdown is required" });
 
@@ -69,21 +82,16 @@ module.exports = async function handler(req, res) {
         update design_documents
         set raw_markdown = ${markdown},
             original_filename = coalesce(nullif(${sourceName}, ''), original_filename),
-            status = 'extracting',
-            extraction_status = 'extracting',
+            design_style_name = coalesce(nullif(${brandName}, ''), design_style_name),
+            design_token_filename = coalesce(nullif(${body.designTokenFileName || ""}, ''), design_token_filename),
+            design_token_json = ${JSON.stringify(tokenJson)}::jsonb,
+            status = 'ready',
+            extraction_status = 'ready',
             extraction_error = null,
             archived_at = null,
             updated_at = now()
         where id = ${id}::uuid
       `;
-
-      try {
-        const extracted = extractDesignMdData({ markdown, brandName: brandName || current.brand_name, sourceName });
-        await persistDesignMdData(sql, id, extracted);
-      } catch (error) {
-        await markExtractionFailed(sql, id, error);
-        throw error;
-      }
 
       const document = await loadDocument(sql, id);
       return res.status(200).json({ ok: true, document });
@@ -147,10 +155,12 @@ async function loadDocument(sql, id) {
     select
       d.id::text as id,
       d.brand_id::text as brand_id,
-      b.name as brand_name,
+      coalesce(nullif(d.design_style_name, ''), b.name) as brand_name,
       b.slug as slug,
       d.original_filename,
       d.raw_markdown,
+      d.design_token_filename,
+      d.design_token_json,
       d.design_concept_summary,
       d.design_concept_json,
       d.design_prompt_context,
@@ -258,13 +268,20 @@ async function loadDocument(sql, id) {
     .filter((item) => item.token_type === "fontFamily" || item.token_type === "typography")
     .map((item) => normalizeTokenValue(item.token_value))
     .slice(0, 4);
+  const rawTokens = doc.design_token_json || {};
+  const rawColors = tokenValuesFromRawGroup(rawTokens, "color", 8);
+  const rawFonts = tokenValuesFromRawGroup(rawTokens, "typography", 4);
 
   return {
     id: doc.id,
     brandId: doc.brand_id,
     brandName: doc.brand_name,
+    designStyleName: doc.brand_name,
     slug: doc.slug,
     sourceName: doc.original_filename,
+    designTokenFileName: doc.design_token_filename || "",
+    designTokensJson: doc.design_token_json || {},
+    rawDesignTokens: doc.design_token_json || {},
     status: doc.status,
     extractionStatus: doc.extraction_status || doc.status,
     extractionError: doc.extraction_error || "",
@@ -286,11 +303,11 @@ async function loadDocument(sql, id) {
         category: section.category,
         excerpt: (section.content_markdown || "").replace(/^#+\s+.+\n?/, "").trim().slice(0, 180),
       })),
-      colors,
-      fonts: fonts.length ? fonts : ["Pretendard, Arial, sans-serif"],
+      colors: colors.length ? colors : rawColors,
+      fonts: fonts.length ? fonts : (rawFonts.length ? rawFonts : ["Pretendard, Arial, sans-serif"]),
       categories: Array.from(new Set(sections.map((item) => item.category))).filter(Boolean),
       sectionCount: sections.length,
-      tokenCount: tokenItems.length,
+      tokenCount: tokenItems.length || countRawTokens(rawTokens),
       metadataCount: metadataItems.length,
       componentPatternCount: componentPatterns.length,
       layoutPatternCount: layoutPatterns.length,
@@ -379,8 +396,28 @@ function normalizeGuidelineItem(item) {
 
 function normalizeTokenValue(value) {
   if (value && typeof value === "object") {
+    if (value.hex) return String(value.hex);
+    if (typeof value.$value !== "undefined") return normalizeTokenValue(value.$value);
     if (typeof value.value !== "undefined" && value.unit) return `${value.value}${value.unit}`;
+    if (typeof value.value !== "undefined") return normalizeTokenValue(value.value);
     return JSON.stringify(value);
   }
   return String(value || "");
+}
+
+function tokenValuesFromRawGroup(tokens, groupKey, limit) {
+  const group = tokens?.[groupKey] || {};
+  if (!group || typeof group !== "object" || Array.isArray(group)) return [];
+  return Object.values(group)
+    .map(normalizeTokenValue)
+    .filter((value) => value && value !== "unknown")
+    .slice(0, limit);
+}
+
+function countRawTokens(tokens) {
+  if (!tokens || typeof tokens !== "object") return 0;
+  return Object.values(tokens).reduce((total, group) => {
+    if (!group || typeof group !== "object" || Array.isArray(group)) return total;
+    return total + Object.keys(group).filter((key) => !key.startsWith("$")).length;
+  }, 0);
 }

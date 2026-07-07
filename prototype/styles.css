@@ -2638,3 +2638,24 @@ body.is-resizing {
     padding: 16px;
   }
 }
+.add-design-modal label.field:has(textarea) {
+  display: none;
+}
+
+dialog:not(.add-design-modal) label.field:has(input[accept=".json,application/json"]),
+dialog:not(.add-design-modal) label.field:has(input[accept=".json,application/json"]) + .outline-item {
+  display: none;
+}
+
+.add-design-modal .secondary-action {
+  display: none;
+}
+
+.add-design-modal .primary-action {
+  font-size: 0;
+}
+
+.add-design-modal .primary-action::after {
+  content: "디자인 스타일 추가";
+  font-size: 0.95rem;
+}

@@ -62,6 +62,13 @@ function buildDesignPromptMarkdown({ runKey, promptGroupId, generatedAt, payload
   appendTokenSection(lines, "Components", schema.components);
   appendTokenSection(lines, "Layouts", schema.layouts);
   appendTokenSection(lines, "Guidelines", schema.guidelines);
+  if (md.selectedTokens && Object.keys(md.selectedTokens).length) {
+    lines.push("## Selected Raw Design Tokens", "");
+    lines.push("```json");
+    lines.push(JSON.stringify(md.selectedTokens, null, 2));
+    lines.push("```");
+    lines.push("");
+  }
   appendRecordArraySection(lines, "Token Items", designData.tokenItems, tokenItemToMarkdownLine);
   appendRecordArraySection(lines, "Component Patterns", designData.componentPatterns, componentPatternToMarkdownLine);
   appendRecordArraySection(lines, "Layout Patterns", designData.layoutPatterns, layoutPatternToMarkdownLine);
@@ -443,6 +450,8 @@ function tokenValueToText(value) {
     return value.map(tokenValueToText).join(" | ");
   }
   if (typeof value !== "object") return String(value);
+  if (value.hex) return String(value.hex);
+  if (value.$value?.hex) return String(value.$value.hex);
   const direct = value.$value ?? value.value ?? value.summary ?? value.description ?? value.role ?? value.pattern ?? value.guideline;
   const description = value.$description ?? value.description;
   const type = value.$type ?? value.type;

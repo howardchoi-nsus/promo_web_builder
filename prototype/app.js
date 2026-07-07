@@ -771,6 +771,24 @@ function slugify(value) {
     .replace(/^-+|-+$/g, "");
 }
 
+function designStyleNameFromFileName(fileName) {
+  const base = String(fileName || "")
+    .replace(/\.[^.]+$/, "")
+    .replace(/(?:-?design-?system|-?eng|-?kor)$/gi, "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return base || "Untitled Design Style";
+}
+
+function safeParseJson(value, fallback = {}) {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
+
 const koreaDateTimeFormatter = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Asia/Seoul",
   year: "numeric",
@@ -947,14 +965,18 @@ function extractSummary(markdown) {
   };
 }
 
-function createDoc({ id, brandId, brandName, slug, markdown, sourceName, status, updatedAt }) {
+function createDoc({ id, brandId, brandName, slug, markdown, sourceName, designTokenFileName = "", designTokensJson = {}, status, updatedAt }) {
   const summary = extractSummary(markdown);
   return {
     id,
     brandId,
     brandName,
+    designStyleName: brandName,
     slug,
     sourceName,
+    designTokenFileName,
+    designTokensJson,
+    rawDesignTokens: designTokensJson,
     status,
     updatedAt,
     markdown,
@@ -1080,10 +1102,13 @@ createApp({
       modalTab: "outline",
       newMd: {
         id: "",
-        brandName: "GGPoker",
-        slug: "ggpoker",
-        text: sampleMarkdown,
-        sourceName: "text input",
+        designStyleName: "",
+        brandName: "",
+        slug: "",
+        text: "",
+        sourceName: "",
+        tokenText: "",
+        tokenFileName: "",
       },
       promo: {
         title: "",
@@ -1554,6 +1579,18 @@ createApp({
 
       if (rows.length) return rows;
 
+      const rawTokens = doc?.designTokensJson || doc?.rawDesignTokens || {};
+      const rawGroup = rawTokens?.[groupKey] || {};
+      const rawRows = rawGroup && typeof rawGroup === "object" && !Array.isArray(rawGroup)
+        ? Object.entries(rawGroup)
+          .map(([key, token]) => ({
+            key,
+            value: this.formatDesignTokenValue(token),
+          }))
+          .filter((row) => row.value && row.value !== "unknown")
+        : [];
+      if (rawRows.length) return rawRows;
+
       const tokenItems = Array.isArray(doc?.tokenItems) ? doc.tokenItems : [];
       const aliases = typeAliases[groupKey] || [groupKey];
       return tokenItems
@@ -1573,6 +1610,9 @@ createApp({
         return items.length ? items.slice(0, 4).join(", ") : "unknown";
       }
       if (typeof value !== "object") return String(value);
+
+      if (value.hex) return String(value.hex);
+      if (value.$value?.hex) return String(value.$value.hex);
 
       const direct = value.$value ?? value.value ?? value.summary ?? value.description ?? value.role ?? value.pattern ?? value.guideline;
       const type = value.$type || value.type;
@@ -2266,10 +2306,13 @@ createApp({
     openAddDesign() {
       this.newMd = {
         id: "",
-        brandName: "GGPoker",
-        slug: "ggpoker",
-        text: sampleMarkdown,
-        sourceName: "text input",
+        designStyleName: "",
+        brandName: "",
+        slug: "",
+        text: "",
+        sourceName: "",
+        tokenText: "",
+        tokenFileName: "",
       };
       this.$nextTick(() => this.$refs.addDesignModal.showModal());
     },
@@ -2287,31 +2330,36 @@ createApp({
       }
       this.newMd.text = await file.text();
       this.newMd.sourceName = file.name;
+      this.newMd.designStyleName = designStyleNameFromFileName(file.name);
+      this.newMd.brandName = this.newMd.designStyleName;
+      this.newMd.slug = slugify(this.newMd.designStyleName);
       this.setStatus("MD 파일을 불러왔습니다");
     },
 
-    loadSample() {
-      this.newMd = {
-        id: "",
-        brandName: "GGPoker",
-        slug: "ggpoker",
-        text: sampleMarkdown,
-        sourceName: "sample-design.md",
-      };
-      this.setStatus("샘플을 불러왔습니다");
+    async onTokenFileChange(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      this.newMd.tokenText = await file.text();
+      this.newMd.tokenFileName = file.name;
+      this.setStatus("디자인 토큰 파일을 불러왔습니다");
     },
 
     async registerMarkdown() {
       const markdown = this.newMd.text.trim();
       if (!markdown) {
-        this.setStatus("MD 본문이 비어 있습니다");
+        this.setStatus("MD 파일을 선택해 주세요");
+        return;
+      }
+      if (!this.newMd.tokenText.trim()) {
+        this.setStatus("디자인 토큰 파일을 선택해 주세요");
         return;
       }
 
-      const slug = this.newMd.slug.trim() || slugify(this.newMd.brandName);
+      const designStyleName = this.newMd.designStyleName.trim() || designStyleNameFromFileName(this.newMd.sourceName);
+      const slug = this.newMd.slug.trim() || slugify(designStyleName);
       if (window.location.protocol !== "file:") {
         const isEdit = Boolean(this.newMd.id);
-        this.setStatus(isEdit ? "MD를 수정하고 데이터화 중입니다" : "MD를 Neon에 저장하고 데이터화 중입니다");
+        this.setStatus(isEdit ? "디자인 스타일을 수정 중입니다" : "디자인 스타일을 저장 중입니다");
         try {
           const response = await fetch(isEdit ? `/api/design-document?id=${encodeURIComponent(this.newMd.id)}` : "/api/register-design-md", {
             method: isEdit ? "PATCH" : "POST",
@@ -2319,10 +2367,15 @@ createApp({
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              brandName: this.newMd.brandName.trim() || "Untitled Brand",
+              designStyleName,
+              brandName: designStyleName,
               slug,
               rawMarkdown: markdown,
+              designMdMarkdown: markdown,
               sourceName: this.newMd.sourceName,
+              designMdFileName: this.newMd.sourceName,
+              designTokenFileName: this.newMd.tokenFileName,
+              rawDesignTokensJson: this.newMd.tokenText,
             }),
           });
           const payload = await response.json().catch(() => ({}));
@@ -2331,7 +2384,7 @@ createApp({
           this.closeAddDesign();
           await this.loadDesignDocuments({ fresh: true });
           this.selectDocument(doc.id);
-          this.setStatus(isEdit ? "MD 수정 및 데이터화가 완료되었습니다" : "MD 등록 및 데이터화가 완료되었습니다");
+          this.setStatus(isEdit ? "디자인 스타일 수정이 완료되었습니다" : "디자인 스타일 추가가 완료되었습니다");
           return;
         } catch (error) {
           this.setStatus(`등록 실패: ${error.message}`);
@@ -2342,10 +2395,12 @@ createApp({
       const doc = createDoc({
         id: `doc-${String(this.designDocuments.length + 1).padStart(3, "0")}`,
         brandId: `brand-${slug}`,
-        brandName: this.newMd.brandName.trim() || "Untitled Brand",
+        brandName: designStyleName,
         slug,
         markdown,
         sourceName: this.newMd.sourceName,
+        designTokenFileName: this.newMd.tokenFileName,
+        designTokensJson: safeParseJson(this.newMd.tokenText || "{}"),
         status: "uploaded",
         updatedAt: nowText(),
       });
@@ -2353,7 +2408,7 @@ createApp({
       this.designDocuments.unshift(doc);
       this.selectDocument(doc.id);
       saveJson(storageKeys.documents, this.designDocuments);
-      this.setStatus("MD가 등록되었습니다");
+      this.setStatus("디자인 스타일이 등록되었습니다");
       this.closeAddDesign();
     },
 
@@ -2425,10 +2480,13 @@ createApp({
       if (!this.detailDoc) return;
       this.newMd = {
         id: this.detailDoc.id,
-        brandName: this.detailDoc.brandName,
+        designStyleName: this.detailDoc.designStyleName || this.detailDoc.brandName,
+        brandName: this.detailDoc.designStyleName || this.detailDoc.brandName,
         slug: this.detailDoc.slug,
         text: this.detailDoc.markdown || "",
         sourceName: this.detailDoc.sourceName || "DESIGN.md",
+        tokenText: JSON.stringify(this.detailDoc.designTokensJson || this.detailDoc.rawDesignTokens || {}, null, 2),
+        tokenFileName: this.detailDoc.designTokenFileName || "tokens.json",
       };
       this.closeDetail();
       this.$nextTick(() => this.$refs.addDesignModal.showModal());
@@ -2588,8 +2646,13 @@ createApp({
         md: {
           id: designDoc.id,
           brand: designDoc.brandName,
+          designStyleId: designDoc.id,
+          designStyleName: designDoc.designStyleName || designDoc.brandName,
           slug: designDoc.slug,
           summary: designDoc.summary,
+          designMdMarkdown: designDoc.markdown || "",
+          designTokenFileName: designDoc.designTokenFileName || "",
+          selectedTokens: designDoc.designTokensJson || designDoc.rawDesignTokens || {},
           designConcept: designDoc.designConcept,
           styleClassification: designDoc.styleClassification,
           designPromptContext: designDoc.designConcept?.promptContext || "",
@@ -2608,6 +2671,7 @@ createApp({
             sourceHash: designDoc.sourceHash || designDoc.tokenSet?.sourceHash || "",
           },
         },
+        selectedDesignStyleId: designDoc.id,
         promo: promoCompat,
         promotionInput,
         marketVisualGuidance,

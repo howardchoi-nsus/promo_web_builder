@@ -79,6 +79,7 @@ function normalizeStyleClassification(value) {
 
 function normalizeTokenValue(value) {
   if (value && typeof value === "object") {
+    if (value.hex) return String(value.hex);
     if (typeof value.value !== "undefined" && value.unit) return `${value.value}${value.unit}`;
     if (typeof value.$value !== "undefined") return normalizeTokenValue(value.$value);
     if (typeof value.value !== "undefined") return normalizeTokenValue(value.value);
@@ -95,11 +96,28 @@ function valuesFromTokenGroup(schema, groupKey, limit) {
     .slice(0, limit);
 }
 
+function tokenValuesFromRawGroup(tokens, groupKey, limit) {
+  const group = tokens?.[groupKey] || {};
+  if (!group || typeof group !== "object" || Array.isArray(group)) return [];
+  return Object.values(group)
+    .map(normalizeTokenValue)
+    .filter((value) => value && value !== "unknown")
+    .slice(0, limit);
+}
+
 function countSchemaTokens(schema) {
   const tokens = schema?.tokens || {};
   return Object.values(tokens).reduce((total, group) => {
     if (!group || typeof group !== "object" || Array.isArray(group)) return total;
     return total + Object.keys(group).length;
+  }, 0);
+}
+
+function countRawTokens(tokens) {
+  if (!tokens || typeof tokens !== "object") return 0;
+  return Object.values(tokens).reduce((total, group) => {
+    if (!group || typeof group !== "object" || Array.isArray(group)) return total;
+    return total + Object.keys(group).filter((key) => !key.startsWith("$")).length;
   }, 0);
 }
 
@@ -125,9 +143,11 @@ module.exports = async function handler(req, res) {
         select
           d.id::text as id,
           d.brand_id::text as brand_id,
-          b.name as brand_name,
+          coalesce(nullif(d.design_style_name, ''), b.name) as brand_name,
           b.slug as slug,
           d.original_filename,
+          d.design_token_filename,
+          d.design_token_json,
           d.design_concept_summary,
           null::jsonb as design_concept_json,
           ''::text as design_prompt_context,
@@ -147,7 +167,7 @@ module.exports = async function handler(req, res) {
         order by b.name asc
       `;
     } catch (error) {
-      if (!/style_classification_json/i.test(error.message || "")) throw error;
+      if (!/style_classification_json|design_style_name|design_token_filename|design_token_json/i.test(error.message || "")) throw error;
       documents = await sql`
         select
           d.id::text as id,
@@ -155,6 +175,8 @@ module.exports = async function handler(req, res) {
           b.name as brand_name,
           b.slug as slug,
           d.original_filename,
+          ''::text as design_token_filename,
+          '{}'::jsonb as design_token_json,
           d.design_concept_summary,
           null::jsonb as design_concept_json,
           ''::text as design_prompt_context,
@@ -274,14 +296,22 @@ module.exports = async function handler(req, res) {
         const latestTokenSet = tokenSetsByDocument.get(doc.id) || null;
         const schema = latestTokenSet?.normalizedSchema || {};
         const headings = sectionsByDocument.get(doc.id) || [];
-        const colors = valuesFromTokenGroup(schema, "color", 8);
-        const fonts = valuesFromTokenGroup(schema, "typography", 4);
+        const rawTokens = doc.design_token_json || {};
+        const colors = valuesFromTokenGroup(schema, "color", 8).length
+          ? valuesFromTokenGroup(schema, "color", 8)
+          : tokenValuesFromRawGroup(rawTokens, "color", 8);
+        const fonts = valuesFromTokenGroup(schema, "typography", 4).length
+          ? valuesFromTokenGroup(schema, "typography", 4)
+          : tokenValuesFromRawGroup(rawTokens, "typography", 4);
         return {
           id: doc.id,
           brandId: doc.brand_id,
           brandName: doc.brand_name,
+          designStyleName: doc.brand_name,
           slug: doc.slug,
           sourceName: doc.original_filename,
+          designTokenFileName: doc.design_token_filename || "",
+          designTokensJson: rawTokens,
           status: doc.status,
           extractionStatus: doc.extraction_status || doc.status,
           extractionError: doc.extraction_error || "",
@@ -301,13 +331,14 @@ module.exports = async function handler(req, res) {
             fonts: fonts.length ? fonts : ["Pretendard, Arial, sans-serif"],
             categories: Array.from(new Set(headings.map((item) => item.category))).filter(Boolean),
             sectionCount: headings.length,
-            tokenCount: countSchemaTokens(schema),
+            tokenCount: countSchemaTokens(schema) || countRawTokens(rawTokens),
             metadataCount: metadataCounts.get(doc.id) || 0,
             componentPatternCount: componentCounts.get(doc.id) || 0,
             layoutPatternCount: layoutCounts.get(doc.id) || 0,
             guidelineCount: guidelineCounts.get(doc.id) || 0,
           },
           normalizedSchema: latestTokenSet?.normalizedSchema || null,
+          rawDesignTokens: rawTokens,
           metadata: [],
         };
       }),

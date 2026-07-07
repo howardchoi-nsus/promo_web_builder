@@ -697,6 +697,17 @@
           <button class="icon-button" type="button" aria-label="닫기" @click="closeDetail">x</button>
         </div>
         <div v-if="detailDoc" class="modal-body">
+          <label class="field">
+            <span>디자인 토큰 파일</span>
+            <input type="file" accept=".json,application/json" @change="onTokenFileChange" />
+            <small v-if="newMd.tokenFileName">{{ newMd.tokenFileName }}</small>
+          </label>
+
+          <div class="outline-item" v-if="newMd.designStyleName">
+            <strong>디자인 스타일 이름</strong>
+            <span>{{ newMd.designStyleName }}</span>
+          </div>
+
           <div class="action-row align-right">
             <button class="tiny-button" type="button" @click="editDetailDocument">수정</button>
             <button class="tiny-button" type="button" @click="reextractDetailDocument">재추출</button>
@@ -806,7 +817,7 @@
         </div>
       </dialog>
 
-      <dialog class="modal" ref="addDesignModal">
+      <dialog class="modal add-design-modal" ref="addDesignModal">
         <div class="modal-header">
           <div>
             <p class="eyebrow">A2. MD 추가</p>
@@ -815,7 +826,7 @@
           <button class="icon-button" type="button" aria-label="닫기" @click="closeAddDesign">x</button>
         </div>
         <div class="modal-body">
-          <div class="split">
+          <div class="split" hidden>
             <label class="field">
               <span>브랜드</span>
               <input v-model="newMd.brandName" type="text" @input="syncSlug" />
@@ -829,12 +840,24 @@
           <label class="field">
             <span>MD 파일</span>
             <input type="file" accept=".md,text/markdown,text/plain" @change="onFileChange" />
+            <small v-if="newMd.sourceName">{{ newMd.sourceName }}</small>
           </label>
 
           <label class="field">
             <span>MD 본문</span>
             <textarea v-model="newMd.text" rows="12" spellcheck="false"></textarea>
           </label>
+
+          <label class="field">
+            <span>디자인 토큰 파일</span>
+            <input type="file" accept=".json,application/json" @change="onTokenFileChange" />
+            <small v-if="newMd.tokenFileName">{{ newMd.tokenFileName }}</small>
+          </label>
+
+          <div class="outline-item" v-if="newMd.designStyleName">
+            <strong>디자인 스타일 이름</strong>
+            <span>{{ newMd.designStyleName }}</span>
+          </div>
 
           <div class="action-row align-right">
             <button class="secondary-action" type="button" @click="loadSample">샘플 불러오기</button>

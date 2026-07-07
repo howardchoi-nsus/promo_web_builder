@@ -1,6 +1,5 @@
 const { neon } = require("@neondatabase/serverless");
 const { getDatabaseUrl } = require("./_db");
-const { extractDesignMdData, persistDesignMdData, markExtractionFailed } = require("./_design-md-data");
 
 function slugify(value) {
   return String(value || "")
@@ -8,6 +7,22 @@ function slugify(value) {
     .trim()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
+}
+
+function nameFromSource(sourceName, fallback = "Untitled Design Style") {
+  const base = String(sourceName || "")
+    .replace(/\.[^.]+$/, "")
+    .replace(/(?:-?design-?system|-?eng|-?kor)$/gi, "")
+    .replace(/[-_]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return base || fallback;
+}
+
+function parseJsonValue(value) {
+  if (!value) return {};
+  if (typeof value === "string") return JSON.parse(value);
+  return value;
 }
 
 module.exports = async function handler(req, res) {
@@ -23,18 +38,39 @@ module.exports = async function handler(req, res) {
     return;
   }
 
-  const { brandName, slug, rawMarkdown, sourceName } = req.body || {};
+  const {
+    brandName,
+    designStyleName,
+    slug,
+    rawMarkdown,
+    designMdMarkdown,
+    sourceName,
+    designMdFileName,
+    designTokenFileName,
+    designTokensJson,
+    rawDesignTokensJson,
+  } = req.body || {};
   const markdown = String(rawMarkdown || "").trim();
-  const cleanBrandName = String(brandName || "Untitled Brand").trim();
-  const cleanSlug = slugify(slug || cleanBrandName);
-  const filename = String(sourceName || `${cleanSlug}-design.md`).trim();
+  const mdMarkdown = String(designMdMarkdown || markdown || "").trim();
+  const filename = String(designMdFileName || sourceName || "").trim();
+  const cleanStyleName = String(designStyleName || brandName || nameFromSource(filename)).trim();
+  const cleanSlug = slugify(slug || cleanStyleName);
+  const cleanFilename = String(filename || `${cleanSlug}-design.md`).trim();
+  let tokenJson = {};
 
-  if (!markdown) {
-    res.status(400).json({ error: "rawMarkdown is required" });
+  try {
+    tokenJson = parseJsonValue(designTokensJson ?? rawDesignTokensJson);
+  } catch (error) {
+    res.status(400).json({ error: "designTokensJson must be valid JSON" });
+    return;
+  }
+
+  if (!mdMarkdown) {
+    res.status(400).json({ error: "designMdMarkdown is required" });
     return;
   }
   if (!cleanSlug) {
-    res.status(400).json({ error: "Valid brand slug is required" });
+    res.status(400).json({ error: "Valid design style slug is required" });
     return;
   }
 
@@ -43,7 +79,7 @@ module.exports = async function handler(req, res) {
     const rows = await sql`
       with b as (
         insert into brands (name, slug, category, website_url, updated_at)
-        values (${cleanBrandName}, ${cleanSlug}, 'design-reference', null, now())
+        values (${cleanStyleName}, ${cleanSlug}, 'design-reference', null, now())
         on conflict (slug) do update
           set name = excluded.name,
               category = excluded.category,
@@ -58,15 +94,21 @@ module.exports = async function handler(req, res) {
           original_blob_url,
           status,
           raw_markdown,
+          design_style_name,
+          design_token_filename,
+          design_token_json,
           extraction_status,
           updated_at
         )
-        select id, 'markdown_upload', ${filename}, null, 'extracting', ${markdown}, 'extracting', now()
+        select id, 'markdown_upload', ${cleanFilename}, null, 'ready', ${mdMarkdown}, ${cleanStyleName}, ${designTokenFileName || ""}, ${JSON.stringify(tokenJson)}::jsonb, 'ready', now()
         from b
         on conflict (brand_id, original_filename) do update
-          set status = 'extracting',
+          set status = 'ready',
               raw_markdown = excluded.raw_markdown,
-              extraction_status = 'extracting',
+              design_style_name = excluded.design_style_name,
+              design_token_filename = excluded.design_token_filename,
+              design_token_json = excluded.design_token_json,
+              extraction_status = 'ready',
               extraction_error = null,
               archived_at = null,
               updated_at = now()
@@ -86,22 +128,15 @@ module.exports = async function handler(req, res) {
     `;
 
     const doc = rows[0];
-    let extraction = null;
-    try {
-      const extracted = extractDesignMdData({ markdown, brandName: cleanBrandName, sourceName: filename });
-      extraction = await persistDesignMdData(sql, doc.id, extracted);
-    } catch (error) {
-      await markExtractionFailed(sql, doc.id, error);
-      throw error;
-    }
 
     res.status(200).json({
       ok: true,
-      extraction,
+      extraction: null,
       document: {
         id: doc.id,
         brandId: doc.brand_id,
         brandName: doc.brand_name,
+        designStyleName: doc.brand_name,
         slug: doc.slug,
         sourceName: doc.original_filename,
         status: "ready",
