@@ -101,9 +101,9 @@ function buildPromoInputMarkdown({ runKey, promptGroupId, generatedAt, payload, 
     `- Run Key: ${runKey}`,
     `- Prompt Group ID: ${promptGroupId}`,
     `- Generated At: ${generatedAt.toISOString()}`,
-    `- Promo Title: ${promo?.title || ""}`,
-    `- Selected Design MD: ${md?.brand || ""}`,
-    `- Template: ${template?.name || template?.id || ""}`,
+    `- Promo Title: ${stringOrUnknown(promo?.title)}`,
+    `- Selected Design MD: ${stringOrUnknown(md?.brand)}`,
+    `- Template: ${stringOrUnknown(template?.name || template?.id)}`,
     `- Visible Sections: ${visibleSections.map((section) => section.sectionId).join(", ") || "none"}`,
     `- Excluded Sections: ${excludedSections.map((section) => section.sectionId).join(", ") || "none"}`,
     "",
@@ -148,7 +148,7 @@ function buildPromoInputMarkdown({ runKey, promptGroupId, generatedAt, payload, 
     "Page Composition is the final structure contract for the generated page. Use `sectionId`, `order`, and `visible` for validation and mapping; `displayName` is descriptive and may change.",
     "",
     "```json",
-    JSON.stringify(pageComposition, null, 2),
+    stringifyLogJson(pageComposition),
     "```",
     "",
     "## Section Content Mapping",
@@ -170,7 +170,7 @@ function buildPromoInputMarkdown({ runKey, promptGroupId, generatedAt, payload, 
     "## Section Visibility / Generation Controls",
     "",
     "```json",
-    JSON.stringify({
+    stringifyLogJson({
       orderedSections: pageComposition.map((section) => section.sectionId),
       visibleSections: visibleSections.map((section) => section.sectionId),
       hiddenSections: excludedSections.map((section) => section.sectionId),
@@ -180,18 +180,18 @@ function buildPromoInputMarkdown({ runKey, promptGroupId, generatedAt, payload, 
       imageGenerationTargets: sectionConfig.imageGenerationTargets || template?.imageGenerationTargets || [],
       fixedSections: sectionConfig.fixedSections || template?.fixedSections || {},
       repeatableSets: sectionConfig.repeatableSets || {},
-    }, null, 2),
+    }),
     "```",
     "",
     "## Design Source Summary",
     "",
     "```json",
-    JSON.stringify({
+    stringifyLogJson({
       id: md?.id || "",
       brand: md?.brand || "",
       slug: md?.slug || "",
       styleClassification: md?.styleClassification || null,
-    }, null, 2),
+    }),
     "```",
     "",
     "## Raw Payload Snapshot",
@@ -201,49 +201,49 @@ function buildPromoInputMarkdown({ runKey, promptGroupId, generatedAt, payload, 
     "### Promo",
     "",
     "```json",
-    JSON.stringify(promo || {}, null, 2),
+    stringifyLogJson(promo || {}),
     "```",
     "",
     "### Promotion Input",
     "",
     "```json",
-    JSON.stringify(promotionInput || {}, null, 2),
+    stringifyLogJson(promotionInput || {}),
     "```",
     "",
     "### Market Visual Guidance",
     "",
     "```json",
-    JSON.stringify(marketGuidance || {}, null, 2),
+    stringifyLogJson(marketGuidance || {}),
     "```",
     "",
     "### Simple Brief",
     "",
     "```json",
-    JSON.stringify(simpleBrief || {}, null, 2),
+    stringifyLogJson(simpleBrief || {}),
     "```",
     "",
     "### Section Inputs",
     "",
     "```json",
-    JSON.stringify(sectionInputs || {}, null, 2),
+    stringifyLogJson(sectionInputs || {}),
     "```",
     "",
     "### Section Config",
     "",
     "```json",
-    JSON.stringify(sectionConfig || {}, null, 2),
+    stringifyLogJson(sectionConfig || {}),
     "```",
     "",
     "### Template",
     "",
     "```json",
-    JSON.stringify(template || {}, null, 2),
+    stringifyLogJson(template || {}),
     "```",
     "",
     "### Design Style",
     "",
     "```json",
-    JSON.stringify(payload?.design || {}, null, 2),
+    stringifyLogJson(payload?.design || {}),
     "```",
     "",
   ].join("\n");
@@ -271,12 +271,14 @@ function buildPageComposition(payload, template) {
     return {
       order: index + 1,
       sectionId,
-      displayName: section.name || section.label || canonicalSectionName(sectionId),
+      displayName: normalizeLogString(section.name || section.label || canonicalSectionName(sectionId)),
       role: section.role || sectionRole(sectionId),
       visible,
       fixedPosition: fixedSections[sectionId] || section.fixedPosition || null,
       contentPath: `sectionInputs.${sectionId}`,
-      source: configSections.length ? "sectionConfig.sections" : "template.fallback",
+      source: configSections.length
+        ? "sectionConfig.sections"
+        : (configuredOrder.length ? "sectionConfig.orderedSections" : "template.fallback"),
       repeatable: Boolean(section.repeatableSet),
     };
   });
@@ -326,7 +328,7 @@ function sectionToMarkdown(section, sectionInputs) {
   const value = sectionInputs?.[section.sectionId];
   const entries = Array.isArray(value) ? value : [value || {}];
   return entries.flatMap((entry, index) => [
-    `### ${section.order}${entries.length > 1 ? `.${index + 1}` : ""}. ${section.displayName}`,
+    `### ${section.order}${entries.length > 1 ? `.${index + 1}` : ""}. ${normalizeLogString(section.displayName)}`,
     "",
     `- sectionId: ${section.sectionId}`,
     `- role: ${section.role}`,
@@ -336,7 +338,7 @@ function sectionToMarkdown(section, sectionInputs) {
     `- repeatable: ${section.repeatable ? "true" : "false"}`,
     "- Content:",
     "```json",
-    JSON.stringify(entry || {}, null, 2),
+    stringifyLogJson(entry || {}),
     "```",
     "",
   ]);
@@ -460,12 +462,67 @@ function tokenValueToText(value) {
   return ["{", entries.map(([key, entryValue]) => `${key}: ${tokenValueToText(entryValue)}`).join("; "), "}"].join("");
 }
 
+const LOG_VALUE_TRANSLATIONS = new Map([
+  ["할인쿠폰", "Discount coupon"],
+  ["웰컴", "Welcome"],
+  ["이벤트", "Event"],
+  ["기타", "Other"],
+  ["신규", "New players"],
+  ["기존고객", "Existing customers"],
+  ["윈백고객", "Win-back customers"],
+  ["활기찬", "Energetic"],
+  ["신중한", "Considered"],
+  ["럭키", "Lucky"],
+  ["프리미엄", "Premium"],
+  ["긴급한", "Urgent"],
+  ["친근한", "Friendly"],
+  ["프로모션 목적", "Promotion purpose"],
+  ["대상고객", "Target customer"],
+  ["캠페인톤", "Campaign tone"],
+  ["기타 목적", "Other purpose"],
+  ["AI 자동 생성", "AI auto generation"],
+  ["템플릿 선택", "Template selection"],
+  ["디자인 생성되고 있습니다.", "Generating design."],
+  ["Step Set 추가", "Add Step Set"],
+  ["?좎씤荑좏룿", "Discount coupon"],
+  ["?대깽??", "Event"],
+  ["湲고?", "Other"],
+  ["?좉퇋", "New players"],
+  ["湲곗〈怨좉컼", "Existing customers"],
+  ["?덈갚怨좉컼", "Win-back customers"],
+  ["?쒓린李?", "Energetic"],
+  ["?좎쨷??", "Considered"],
+  ["??궎", "Lucky"],
+  ["?꾨━誘몄뾼", "Premium"],
+  ["湲닿툒??", "Urgent"],
+  ["移쒓렐??", "Friendly"],
+]);
+
+function normalizeLogString(value) {
+  const text = String(value || "");
+  return LOG_VALUE_TRANSLATIONS.get(text) || text;
+}
+
+function normalizeLogValue(value) {
+  if (Array.isArray(value)) return value.map((entry) => normalizeLogValue(entry));
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([key, entryValue]) => [key, normalizeLogValue(entryValue)]));
+  }
+  if (typeof value === "string") return normalizeLogString(value);
+  return value;
+}
+
+function stringifyLogJson(value) {
+  return JSON.stringify(normalizeLogValue(value), null, 2);
+}
+
 function escapeYaml(value) {
-  return JSON.stringify(String(value || ""));
+  return JSON.stringify(normalizeLogString(value));
 }
 
 function stringOrUnknown(value) {
-  return value === null || value === undefined || value === "" ? "unknown" : String(value);
+  if (value === null || value === undefined || value === "") return "unknown";
+  return normalizeLogString(value);
 }
 
 module.exports = {

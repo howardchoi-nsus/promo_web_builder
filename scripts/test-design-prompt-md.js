@@ -22,6 +22,11 @@ const payload = {
   simpleBrief: {
     mainOffer: "Give new players a first deposit bonus and tournament tickets",
   },
+  promotionInput: {
+    purpose: "이벤트",
+    targetCustomer: "기존고객",
+    campaignTone: "프리미엄",
+  },
   sectionInputs: {
     header: { logoText: "GGPoker", badgeText: "Global" },
     heroBanner: {
@@ -217,6 +222,12 @@ assert(sectionInputLog.includes("### 4. Contents"), "Expected configured display
 assert(sectionInputLog.includes("- sectionId: contentCta"), "Expected stable sectionId for Content CTA");
 assert(sectionInputLog.includes("### 6. Title and Description"), "Expected Title and Description section mapping");
 assert(sectionInputLog.includes("Start strong on GGPoker"), "Expected visible copy in Section Input Log");
+assert(sectionInputLog.includes("- Purpose: Event"), "Expected Korean purpose option to be normalized to English");
+assert(sectionInputLog.includes("- Target Customer: Existing customers"), "Expected Korean customer option to be normalized to English");
+assert(sectionInputLog.includes("- Campaign Tone: Premium"), "Expected Korean tone option to be normalized to English");
+assert(!sectionInputLog.includes("이벤트"), "Expected Korean purpose option not to remain in Section Input Log");
+assert(!sectionInputLog.includes("기존고객"), "Expected Korean customer option not to remain in Section Input Log");
+assert(!sectionInputLog.includes("프리미엄"), "Expected Korean tone option not to remain in Section Input Log");
 
 const reorderedPayload = JSON.parse(JSON.stringify(payload));
 reorderedPayload.sectionConfig.orderedSections = ["contentCta", "heroBanner", "header"];
