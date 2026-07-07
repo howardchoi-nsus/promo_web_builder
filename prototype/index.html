@@ -24,9 +24,8 @@
           </div>
           <div class="topbar-actions">
             <nav class="top-nav" aria-label="프로토타입 내비게이션">
-              <a href="#section-a">A. 디자인 MD</a>
-              <a href="#section-b">B. 프로모션 빌더</a>
-              <a href="#section-c">C. 결과</a>
+              <button class="nav-button" type="button" :class="{ active: currentView === 'builder' }" @click="showBuilderPage">프로모션 빌더</button>
+              <button class="nav-button" type="button" :class="{ active: currentView === 'prompts' }" @click="openPromptManager">프롬프트 관리</button>
               <a href="generated.html">생성된 UI</a>
             </nav>
             <button class="theme-toggle" type="button" @click="toggleThemeMode" :aria-label="themeMode === 'dark' ? '라이트모드로 변경' : '다크모드로 변경'">
@@ -38,6 +37,7 @@
         </header>
 
         <section
+          v-if="currentView === 'builder'"
           class="abc-layout"
           :style="abcGridStyle"
           @pointermove="onResizeMove"
@@ -604,6 +604,117 @@
               </div>
             </div>
 
+            </div>
+          </section>
+        </section>
+
+        <section v-else class="prompt-manager-page">
+          <section class="panel stack">
+            <div class="panel-header">
+              <div>
+                <h2>프롬프트 관리</h2>
+              </div>
+              <div class="subsection-actions">
+                <span v-if="promptTemplatesLoading">불러오는 중</span>
+                <span v-else>{{ promptTemplates.length }}개 프롬프트</span>
+                <button class="tiny-button" type="button" :disabled="promptTemplatesLoading" @click="loadPromptTemplates({ fresh: true })">새로고침</button>
+              </div>
+            </div>
+
+            <div class="prompt-manager-layout">
+              <aside class="prompt-list-panel">
+                <div class="subsection-title">
+                  <h3>현재 프롬프트</h3>
+                  <select v-model="promptTypeFilter" aria-label="프롬프트 타입 필터">
+                    <option value="">All</option>
+                    <option value="integrated_brief">Integrated Brief</option>
+                    <option value="image_execution">Image Execution</option>
+                  </select>
+                </div>
+                <div class="outline-item danger-state" v-if="promptTemplatesError">
+                  <strong>로딩 오류</strong>
+                  <span>{{ promptTemplatesError }}</span>
+                </div>
+                <button
+                  v-for="prompt in filteredPromptTemplates"
+                  :key="prompt.id"
+                  class="prompt-list-item"
+                  type="button"
+                  :class="{ selected: selectedPromptTemplateId === prompt.id }"
+                  @click="selectPromptTemplate(prompt.id)"
+                >
+                  <strong>{{ prompt.name }}</strong>
+                  <span>{{ prompt.type }} · v{{ prompt.version }}</span>
+                  <em :class="`status-${prompt.status}`">{{ prompt.status }}</em>
+                </button>
+                <div class="empty-state compact" v-if="!promptTemplatesLoading && !filteredPromptTemplates.length">
+                  표시할 프롬프트가 없습니다.
+                </div>
+              </aside>
+
+              <section class="prompt-editor-panel" v-if="selectedPromptTemplate">
+                <div class="prompt-editor-header">
+                  <div>
+                    <strong>{{ selectedPromptTemplate.name }}</strong>
+                    <span>{{ selectedPromptTemplate.type }} · v{{ selectedPromptTemplate.version }} · {{ selectedPromptTemplate.status }}</span>
+                  </div>
+                  <div class="subsection-actions">
+                    <button class="tiny-button primary" type="button" :disabled="promptSaving" @click="savePromptTemplate">저장</button>
+                    <button class="tiny-button" type="button" :disabled="promptSaving || selectedPromptTemplate.status === 'active'" @click="activatePromptTemplate">Active 적용</button>
+                    <button class="tiny-button danger" type="button" :disabled="promptSaving || selectedPromptTemplate.status === 'active' || selectedPromptTemplate.status === 'archived'" @click="archivePromptTemplate">Archive</button>
+                  </div>
+                </div>
+
+                <div class="form-grid compact">
+                  <label class="field">
+                    <span>프롬프트 이름</span>
+                    <input v-model="promptEditor.name" type="text" autocomplete="off" />
+                  </label>
+                  <label class="field">
+                    <span>타입</span>
+                    <input :value="selectedPromptTemplate.type" type="text" disabled />
+                  </label>
+                </div>
+
+                <label class="field">
+                  <span>Required Variables</span>
+                  <input v-model="promptEditor.requiredVariablesText" type="text" autocomplete="off" />
+                </label>
+
+                <label class="field">
+                  <span>Optional Variables</span>
+                  <input v-model="promptEditor.optionalVariablesText" type="text" autocomplete="off" />
+                </label>
+
+                <label class="field">
+                  <span>변경 사유</span>
+                  <input v-model="promptEditor.changeNote" type="text" placeholder="변경 내용을 간단히 입력" autocomplete="off" />
+                </label>
+
+                <label class="field">
+                  <span>프롬프트 본문</span>
+                  <textarea v-model="promptEditor.body" class="prompt-body-editor" rows="24" spellcheck="false"></textarea>
+                </label>
+
+                <div class="subsection">
+                  <div class="subsection-title">
+                    <h3>변경 이력</h3>
+                    <span>최근 20개</span>
+                  </div>
+                  <div class="history-list" v-if="promptHistories.length">
+                    <div v-for="history in promptHistories" :key="history.id" class="history-item">
+                      <strong>v{{ history.previousVersion }} → v{{ history.newVersion }}</strong>
+                      <span>{{ history.previousStatus }} → {{ history.newStatus }}</span>
+                      <em>{{ history.changeNote || 'No note' }}</em>
+                    </div>
+                  </div>
+                  <div class="empty-state compact" v-else>변경 이력이 없습니다.</div>
+                </div>
+              </section>
+
+              <section class="prompt-editor-panel empty-state" v-else>
+                프롬프트를 선택해 주세요.
+              </section>
             </div>
           </section>
         </section>

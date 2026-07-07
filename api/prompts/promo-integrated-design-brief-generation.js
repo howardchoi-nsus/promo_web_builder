@@ -1,5 +1,9 @@
 const { readFile } = require("node:fs/promises");
 const path = require("node:path");
+const {
+  ensureDefaultPromptTemplates,
+  getSql,
+} = require("../_prompt-template-store");
 
 module.exports = async function handler(req, res) {
   if (req.method !== "GET") {
@@ -8,6 +12,19 @@ module.exports = async function handler(req, res) {
   }
 
   try {
+    const managedPrompt = await readManagedPrompt().catch(() => null);
+    if (managedPrompt) {
+      res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=300");
+      return res.status(200).json({
+        id: "promo-integrated-design-brief-generation",
+        version: `managed-v${managedPrompt.version}`,
+        prompt: managedPrompt.body,
+        promptTemplateId: managedPrompt.id,
+        promptTemplateType: managedPrompt.type,
+        promptTemplateStatus: managedPrompt.status,
+      });
+    }
+
     const prompt = await readPromptFile();
     res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=300");
     return res.status(200).json({
@@ -26,6 +43,19 @@ module.exports = async function handler(req, res) {
     });
   }
 };
+
+async function readManagedPrompt() {
+  const sql = getSql();
+  await ensureDefaultPromptTemplates(sql);
+  const rows = await sql`
+    select id::text, type, body, status, version
+    from prompt_templates
+    where type = 'integrated_brief'
+      and status = 'active'
+    limit 1
+  `;
+  return rows[0] || null;
+}
 
 async function readPromptFile() {
   const filename = "promo-integrated-design-brief-generation.md";

@@ -1057,6 +1057,7 @@ createApp({
   data() {
     return {
       status: "준비 완료",
+      currentView: "builder",
       sectionWidths: [30, 30, 40],
       resizeState: null,
       designDocuments: [],
@@ -1099,6 +1100,20 @@ createApp({
       promptModalDesignMarkdown: "",
       promptModalIntegratedMarkdown: "",
       promptModalPromoMarkdown: "",
+      promptTemplates: [],
+      promptTemplatesLoading: false,
+      promptTemplatesError: "",
+      selectedPromptTemplateId: "",
+      promptTypeFilter: "",
+      promptSaving: false,
+      promptHistories: [],
+      promptEditor: {
+        name: "",
+        body: "",
+        requiredVariablesText: "",
+        optionalVariablesText: "",
+        changeNote: "",
+      },
       modalTab: "outline",
       newMd: {
         id: "",
@@ -1351,6 +1366,15 @@ createApp({
           };
         });
     },
+
+    filteredPromptTemplates() {
+      if (!this.promptTypeFilter) return this.promptTemplates;
+      return this.promptTemplates.filter((prompt) => prompt.type === this.promptTypeFilter);
+    },
+
+    selectedPromptTemplate() {
+      return this.promptTemplates.find((prompt) => prompt.id === this.selectedPromptTemplateId) || null;
+    },
   },
 
   watch: {
@@ -1408,6 +1432,156 @@ createApp({
       this.themeMode = this.themeMode === "dark" ? "light" : "dark";
       this.applyThemeMode();
       this.setStatus(this.themeMode === "dark" ? "다크모드를 적용했습니다" : "라이트모드를 적용했습니다");
+    },
+
+    showBuilderPage() {
+      this.currentView = "builder";
+      this.setStatus("프로모션 빌더로 이동했습니다");
+    },
+
+    async openPromptManager() {
+      this.currentView = "prompts";
+      await this.loadPromptTemplates();
+      this.setStatus("프롬프트 관리 페이지로 이동했습니다");
+    },
+
+    async loadPromptTemplates(options = {}) {
+      if (this.promptTemplatesLoading && !options.fresh) return;
+      this.promptTemplatesLoading = true;
+      this.promptTemplatesError = "";
+      try {
+        const response = await fetch("/api/prompt-templates");
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `Prompt ${response.status}`);
+        this.promptTemplates = Array.isArray(result.prompts) ? result.prompts : [];
+        if (!this.selectedPromptTemplateId || !this.promptTemplates.some((prompt) => prompt.id === this.selectedPromptTemplateId)) {
+          const active = this.promptTemplates.find((prompt) => prompt.status === "active");
+          this.selectedPromptTemplateId = active?.id || this.promptTemplates[0]?.id || "";
+        }
+        if (this.selectedPromptTemplateId) await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: true });
+      } catch (error) {
+        this.promptTemplatesError = error.message;
+        this.setStatus(`프롬프트 목록을 불러오지 못했습니다: ${error.message}`);
+      } finally {
+        this.promptTemplatesLoading = false;
+      }
+    },
+
+    async selectPromptTemplate(id, options = {}) {
+      this.selectedPromptTemplateId = id;
+      const prompt = this.promptTemplates.find((item) => item.id === id);
+      if (!prompt) return;
+      try {
+        const response = await fetch(`/api/prompt-template?id=${encodeURIComponent(id)}`);
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `Prompt ${response.status}`);
+        const detail = result.prompt || prompt;
+        const index = this.promptTemplates.findIndex((item) => item.id === id);
+        if (index >= 0) this.promptTemplates.splice(index, 1, detail);
+        this.promptHistories = Array.isArray(result.histories) ? result.histories : [];
+        this.promptEditor = {
+          name: detail.name || "",
+          body: detail.body || "",
+          requiredVariablesText: (detail.requiredVariables || []).join(", "),
+          optionalVariablesText: (detail.optionalVariables || []).join(", "),
+          changeNote: "",
+        };
+        if (!options.silent) this.setStatus(`${detail.name} 프롬프트를 열었습니다`);
+      } catch (error) {
+        this.setStatus(`프롬프트 상세를 불러오지 못했습니다: ${error.message}`);
+      }
+    },
+
+    variableTextToList(value) {
+      return String(value || "")
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
+    },
+
+    async savePromptTemplate() {
+      const prompt = this.selectedPromptTemplate;
+      if (!prompt || this.promptSaving) return;
+      this.promptSaving = true;
+      try {
+        const response = await fetch("/api/prompt-template", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: prompt.id,
+            name: this.promptEditor.name,
+            body: this.promptEditor.body,
+            requiredVariables: this.variableTextToList(this.promptEditor.requiredVariablesText),
+            optionalVariables: this.variableTextToList(this.promptEditor.optionalVariablesText),
+            changeNote: this.promptEditor.changeNote || "Prompt updated from management page.",
+          }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `Prompt ${response.status}`);
+        await this.loadPromptTemplates({ fresh: true });
+        this.selectedPromptTemplateId = result.prompt?.id || prompt.id;
+        await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: true });
+        this.setStatus("프롬프트를 업데이트하고 변경 이력을 생성했습니다");
+      } catch (error) {
+        this.setStatus(`프롬프트 저장 실패: ${error.message}`);
+      } finally {
+        this.promptSaving = false;
+      }
+    },
+
+    async activatePromptTemplate() {
+      const prompt = this.selectedPromptTemplate;
+      if (!prompt || this.promptSaving) return;
+      this.promptSaving = true;
+      try {
+        const response = await fetch("/api/prompt-template-activate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: prompt.id,
+            changeNote: "Activated from prompt management page.",
+          }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `Prompt ${response.status}`);
+        await this.loadPromptTemplates({ fresh: true });
+        this.selectedPromptTemplateId = result.prompt?.id || prompt.id;
+        await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: true });
+        this.setStatus("Active 프롬프트를 적용했습니다");
+      } catch (error) {
+        this.setStatus(`Active 적용 실패: ${error.message}`);
+      } finally {
+        this.promptSaving = false;
+      }
+    },
+
+    async archivePromptTemplate() {
+      const prompt = this.selectedPromptTemplate;
+      if (!prompt || this.promptSaving) return;
+      if (prompt.status === "active") {
+        this.setStatus("Active 프롬프트는 Archive 할 수 없습니다");
+        return;
+      }
+      this.promptSaving = true;
+      try {
+        const response = await fetch("/api/prompt-template-archive", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: prompt.id,
+            changeNote: "Archived from prompt management page.",
+          }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `Prompt ${response.status}`);
+        this.selectedPromptTemplateId = "";
+        await this.loadPromptTemplates({ fresh: true });
+        this.setStatus("프롬프트를 Archive 처리했습니다");
+      } catch (error) {
+        this.setStatus(`Archive 처리 실패: ${error.message}`);
+      } finally {
+        this.promptSaving = false;
+      }
     },
 
     onDesignTokenSectionToggle(sectionKey, event) {
