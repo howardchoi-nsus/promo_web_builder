@@ -1683,16 +1683,17 @@ createApp({
       const countByType = (type) => tokenItems.filter((item) => item.tokenType === type).length;
       const countBySchema = (group) =>
         Object.values(schema?.tokens?.[group] || {}).filter((token) => this.formatDesignTokenValue(token) !== "unknown").length;
+      const countByRaw = (group) => this.rawTokenRowsForGroup(doc, group).length;
       const rows = [
-        ["color", "Colors", countBySchema("color") || countByGroup("color") || countByType("color")],
-        ["typography", "Typography", countBySchema("typography") || countByGroup("typography") || countByType("fontFamily")],
-        ["radius", "Radius", countBySchema("radius") || countByGroup("radius")],
-        ["spacing", "Spacing", countBySchema("spacing") || countByGroup("spacing")],
-        ["dimension", "Layout / Size", countBySchema("breakpoint") || countByGroup("dimension") + countByGroup("breakpoint")],
-        ["elevation", "Elevation", countBySchema("elevation") || countByGroup("shadow") || countByType("shadow")],
-        ["component", "Components", summary.componentPatternCount || doc?.componentPatterns?.length || 0],
-        ["layout", "Layouts", summary.layoutPatternCount || doc?.layoutPatterns?.length || 0],
-        ["guideline", "Guidelines", summary.guidelineCount || doc?.guidelineItems?.length || 0],
+        ["color", "Colors", countBySchema("color") || countByRaw("color") || countByGroup("color") || countByType("color")],
+        ["typography", "Typography", countBySchema("typography") || countByRaw("typography") || countByGroup("typography") || countByType("fontFamily")],
+        ["radius", "Radius", countBySchema("radius") || countByRaw("radius") || countByGroup("radius")],
+        ["spacing", "Spacing", countBySchema("spacing") || countByRaw("spacing") || countByGroup("spacing")],
+        ["dimension", "Layout / Size", countBySchema("breakpoint") || countByRaw("breakpoint") || countByGroup("dimension") + countByGroup("breakpoint")],
+        ["elevation", "Elevation", countBySchema("elevation") || countByRaw("elevation") || countByGroup("shadow") || countByType("shadow")],
+        ["component", "Components", summary.componentPatternCount || doc?.componentPatterns?.length || this.rawPatternRows(doc, "component").length || 0],
+        ["layout", "Layouts", summary.layoutPatternCount || doc?.layoutPatterns?.length || this.rawPatternRows(doc, "layout").length || 0],
+        ["guideline", "Guidelines", summary.guidelineCount || doc?.guidelineItems?.length || this.rawGuidelineRows(doc).length || 0],
         ["metadata", "Metadata", summary.metadataCount || doc?.metadataItems?.length || 0],
       ];
       return rows.map(([key, label, value]) => ({ key, label, value: Number(value || 0).toLocaleString() }));
@@ -1753,16 +1754,7 @@ createApp({
 
       if (rows.length) return rows;
 
-      const rawTokens = doc?.designTokensJson || doc?.rawDesignTokens || {};
-      const rawGroup = rawTokens?.[groupKey] || {};
-      const rawRows = rawGroup && typeof rawGroup === "object" && !Array.isArray(rawGroup)
-        ? Object.entries(rawGroup)
-          .map(([key, token]) => ({
-            key,
-            value: this.formatDesignTokenValue(token),
-          }))
-          .filter((row) => row.value && row.value !== "unknown")
-        : [];
+      const rawRows = this.rawTokenRowsForGroup(doc, groupKey);
       if (rawRows.length) return rawRows;
 
       const tokenItems = Array.isArray(doc?.tokenItems) ? doc.tokenItems : [];
@@ -1777,6 +1769,45 @@ createApp({
         .filter((row) => row.value);
     },
 
+    rawTokenRowsForGroup(doc, groupKey) {
+      const rawTokens = doc?.designTokensJson || doc?.rawDesignTokens || {};
+      const groupPaths = {
+        color: ["color", "colors", "tokens.color", "tokens.colors"],
+        typography: ["typography", "typographies", "font", "fontFamily", "tokens.typography"],
+        radius: ["radius", "borderRadius", "dimension.radius", "tokens.radius"],
+        spacing: ["spacing", "space", "dimension.spacing", "tokens.spacing"],
+        elevation: ["elevation", "shadow", "shadows", "tokens.elevation", "tokens.shadow"],
+        breakpoint: ["breakpoint", "breakpoints", "dimension.breakpoint", "dimension.breakpoints", "tokens.breakpoint"],
+      };
+      const groups = (groupPaths[groupKey] || [groupKey])
+        .map((path) => ({ path, value: this.valueAtPath(rawTokens, path) }))
+        .filter((entry) => entry.value && typeof entry.value === "object" && !Array.isArray(entry.value));
+
+      const rows = groups.flatMap(({ path, value }) => this.rawTokenGroupRows(value, path)).slice(0, 40);
+      if (!rows.length && rawTokens.$extends) {
+        return [{ key: `${groupKey}.inheritance`, value: `Inherited from ${rawTokens.$extends}` }];
+      }
+      return rows;
+    },
+
+    rawTokenGroupRows(group, pathPrefix = "") {
+      if (!group || typeof group !== "object" || Array.isArray(group)) return [];
+      const rows = [];
+      for (const [key, token] of Object.entries(group)) {
+        if (key.startsWith("$")) continue;
+        const rowKey = pathPrefix ? `${pathPrefix}.${key}` : key;
+        const value = this.formatDesignTokenValue(token);
+        if (value && value !== "unknown") rows.push({ key: rowKey, value });
+      }
+      if (!rows.length && group.$description) {
+        rows.push({ key: `${pathPrefix}.$description`, value: this.formatDesignTokenValue(group.$description) });
+      }
+      if (!rows.length && group.$extensions) {
+        rows.push({ key: `${pathPrefix}.$extensions`, value: this.formatDesignTokenValue(group.$extensions) });
+      }
+      return rows;
+    },
+
     formatDesignTokenValue(value) {
       if (value == null || value === "") return "unknown";
       if (Array.isArray(value)) {
@@ -1787,8 +1818,9 @@ createApp({
 
       if (value.hex) return String(value.hex);
       if (value.$value?.hex) return String(value.$value.hex);
+      if (value.value !== undefined && value.unit) return `${value.value}${value.unit}`;
 
-      const direct = value.$value ?? value.value ?? value.summary ?? value.description ?? value.role ?? value.pattern ?? value.guideline;
+      const direct = value.$value ?? value.value ?? value.summary ?? value.$description ?? value.description ?? value.role ?? value.pattern ?? value.guideline;
       const type = value.$type || value.type;
       const confidence = value.confidence != null ? `confidence ${value.confidence}` : "";
       const source = value.source ? `source ${value.source}` : "";
@@ -1799,7 +1831,7 @@ createApp({
       if (parts.length) return parts.join(" | ");
 
       const entries = Object.entries(value)
-        .filter(([, entryValue]) => entryValue != null && entryValue !== "" && entryValue !== "unknown")
+        .filter(([key, entryValue]) => !key.startsWith("$") && entryValue != null && entryValue !== "" && entryValue !== "unknown")
         .slice(0, 4)
         .map(([key, entryValue]) => `${key}: ${this.formatDesignTokenValue(entryValue)}`);
       return entries.length ? entries.join(" | ") : "unknown";
@@ -1812,20 +1844,62 @@ createApp({
 
     patternRows(doc, kind) {
       const items = kind === "component" ? doc?.componentPatterns : doc?.layoutPatterns;
-      return (Array.isArray(items) ? items : [])
+      const normalizedRows = (Array.isArray(items) ? items : [])
         .slice(0, 30)
         .map((item) => ({
           key: item.patternName || item.patternType || item.sectionName || "unknown",
           value: this.formatDesignTokenValue(item.valueJson || item.description || item.sourceText),
         }));
+      if (normalizedRows.length) return normalizedRows;
+      return this.rawPatternRows(doc, kind);
     },
 
     guidelineRows(doc) {
       const items = Array.isArray(doc?.guidelineItems) ? doc.guidelineItems : [];
-      return items.slice(0, 30).map((item) => ({
+      const normalizedRows = items.slice(0, 30).map((item) => ({
         key: item.guidelineType || item.severity || item.sourcePath || "guideline",
         value: this.formatDesignTokenValue(item.valueJson || item.description || item.sourceText),
       }));
+      if (normalizedRows.length) return normalizedRows;
+      return this.rawGuidelineRows(doc);
+    },
+
+    rawPatternRows(doc, kind) {
+      const rawTokens = doc?.designTokensJson || doc?.rawDesignTokens || {};
+      const paths = kind === "component"
+        ? ["component", "components", "componentStyle", "tokens.component", "patterns.component"]
+        : ["layout", "layouts", "composition", "dimension", "shadow", "tokens.layout", "patterns.layout"];
+      return paths
+        .map((path) => ({ path, value: this.valueAtPath(rawTokens, path) }))
+        .filter((entry) => entry.value && typeof entry.value === "object" && !Array.isArray(entry.value))
+        .flatMap(({ path, value }) => {
+          const description = value.$description || value.description || "";
+          const extensions = value.$extensions || value.extensions || null;
+          const rows = [];
+          if (description) rows.push({ key: `${path}.description`, value: this.formatDesignTokenValue(description) });
+          if (extensions) rows.push({ key: `${path}.extensions`, value: this.formatDesignTokenValue(extensions) });
+          rows.push(...this.rawTokenGroupRows(value, path));
+          return rows;
+        })
+        .slice(0, 30);
+    },
+
+    rawGuidelineRows(doc) {
+      const rawTokens = doc?.designTokensJson || doc?.rawDesignTokens || {};
+      const rows = [];
+      if (rawTokens.$description) rows.push({ key: "$description", value: this.formatDesignTokenValue(rawTokens.$description) });
+      if (rawTokens.$extends) rows.push({ key: "$extends", value: `inherits ${rawTokens.$extends}` });
+      const collect = (value, path, depth = 0) => {
+        if (!value || typeof value !== "object" || Array.isArray(value) || depth > 2 || rows.length >= 30) return;
+        if (path && value.$description) rows.push({ key: `${path}.$description`, value: this.formatDesignTokenValue(value.$description) });
+        if (path && value.$extensions) rows.push({ key: `${path}.$extensions`, value: this.formatDesignTokenValue(value.$extensions) });
+        for (const [key, child] of Object.entries(value)) {
+          if (key.startsWith("$")) continue;
+          collect(child, path ? `${path}.${key}` : key, depth + 1);
+        }
+      };
+      collect(rawTokens, "", 0);
+      return rows.slice(0, 30);
     },
 
     designTokenGroupSummary(doc) {
