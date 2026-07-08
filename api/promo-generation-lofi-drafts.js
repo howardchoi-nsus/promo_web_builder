@@ -11,6 +11,8 @@ const {
   triggerWorker,
 } = require("./_promo-generation-worker-trigger");
 
+const MAX_DRAFT_IMAGE_BYTES = 24 * 1024 * 1024;
+
 module.exports = async function handler(req, res) {
   try {
     if (req.method === "POST") return await queueDraft(req, res);
@@ -161,11 +163,37 @@ async function updateDraft(req, res) {
   if (!draftId) return res.status(400).json({ error: "draftId is required" });
 
   const sql = getSql();
+  let draftImageUrl = body.draftImageUrl || body.draft_image_url || "";
+  try {
+    const imageInput = resolveDraftImageInput(body);
+    if (imageInput) {
+      if (imageInput.bytes.length > MAX_DRAFT_IMAGE_BYTES) {
+        return res.status(413).json({ error: "Draft image is too large", maxBytes: MAX_DRAFT_IMAGE_BYTES });
+      }
+      const { put } = await import("@vercel/blob");
+      const storageKey = `promo-generation/lofi-drafts/${draftId}/${Date.now()}.${extensionForMime(imageInput.mimeType)}`;
+      const blobAccess = String(process.env.BLOB_ACCESS || "private").toLowerCase() === "public" ? "public" : "private";
+      const blob = await put(storageKey, imageInput.bytes, {
+        access: blobAccess,
+        contentType: imageInput.mimeType,
+      });
+      draftImageUrl = blob.url;
+    }
+  } catch (error) {
+    if (error instanceof InvalidDraftImageInputError) {
+      return res.status(400).json({
+        error: "Invalid draft image data",
+        message: error.message,
+      });
+    }
+    throw error;
+  }
+
   const rows = await sql`
     update promo_generation_lofi_drafts
     set
       status = ${status},
-      draft_image_url = ${body.draftImageUrl || body.draft_image_url || ""},
+      draft_image_url = ${draftImageUrl},
       draft_prompt = ${body.draftPrompt || body.draft_prompt || body.prompt || ""},
       prompt_meta = coalesce(nullif(${JSON.stringify(body.promptMeta || {})}::jsonb, '{}'::jsonb), prompt_meta),
       model_meta = coalesce(nullif(${JSON.stringify(body.modelMeta || {})}::jsonb, '{}'::jsonb), model_meta),
@@ -204,4 +232,84 @@ async function updateDraft(req, res) {
     draft: draftSummary(rows[0]),
     state,
   });
+}
+
+function resolveDraftImageInput(body) {
+  const imageDataUrl = String(body.draftImageDataUrl || body.draft_image_data_url || body.imageDataUrl || "").trim();
+  if (imageDataUrl) {
+    const match = /^data:([^;]+);base64,(.+)$/i.exec(imageDataUrl);
+    if (!match) throw new InvalidDraftImageInputError("draftImageDataUrl must be a base64 data URL");
+    const bytes = Buffer.from(match[2].replace(/\s/g, ""), "base64");
+    return {
+      bytes,
+      mimeType: validateDraftImageBytes(bytes, match[1]),
+    };
+  }
+
+  const rawBase64 = String(
+    body.draftImageBase64 ||
+    body.draft_image_base64 ||
+    body.b64Json ||
+    body.b64_json ||
+    body.imageBase64 ||
+    ""
+  ).trim();
+  if (!rawBase64) return null;
+
+  const bytes = Buffer.from(rawBase64.replace(/\s/g, ""), "base64");
+  return {
+    bytes,
+    mimeType: validateDraftImageBytes(bytes, body.mimeType || body.mime_type),
+  };
+}
+
+class InvalidDraftImageInputError extends Error {}
+
+function validateDraftImageBytes(bytes, declaredMimeType = "") {
+  const mimeType = detectDraftImageMimeType(bytes);
+  if (!mimeType) {
+    const byteLength = Buffer.isBuffer(bytes) ? bytes.length : 0;
+    throw new InvalidDraftImageInputError(
+      `Draft image payload is not a valid PNG, JPEG, or WebP. bytes=${byteLength}`,
+    );
+  }
+
+  const declared = String(declaredMimeType || "").split(";")[0].trim().toLowerCase();
+  if (declared && declared.startsWith("image/") && !["image/png", "image/jpeg", "image/jpg", "image/webp"].includes(declared)) {
+    throw new InvalidDraftImageInputError(`Unsupported draft image MIME type: ${declaredMimeType}`);
+  }
+
+  return mimeType;
+}
+
+function detectDraftImageMimeType(bytes) {
+  if (!Buffer.isBuffer(bytes) || bytes.length < 16) return "";
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
+  if (
+    bytes[0] === 0x89
+    && bytes[1] === 0x50
+    && bytes[2] === 0x4e
+    && bytes[3] === 0x47
+  ) {
+    return "image/png";
+  }
+  if (
+    bytes[0] === 0x52
+    && bytes[1] === 0x49
+    && bytes[2] === 0x46
+    && bytes[3] === 0x46
+    && bytes[8] === 0x57
+    && bytes[9] === 0x45
+    && bytes[10] === 0x42
+    && bytes[11] === 0x50
+  ) {
+    return "image/webp";
+  }
+  return "";
+}
+
+function extensionForMime(mimeType) {
+  if (/jpe?g/i.test(mimeType)) return "jpg";
+  if (/webp/i.test(mimeType)) return "webp";
+  return "png";
 }
