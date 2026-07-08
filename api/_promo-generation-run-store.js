@@ -2,6 +2,12 @@ const { randomUUID, createHash } = require("node:crypto");
 const { neon } = require("@neondatabase/serverless");
 const { getDatabaseUrl } = require("./_db");
 
+const STAGE_STALE_LIMITS_MS = {
+  integrated_brief: 6 * 60 * 1000,
+  lofi_draft: 4 * 60 * 1000,
+  final_design: 6 * 60 * 1000,
+};
+
 function getSql() {
   const databaseUrl = getDatabaseUrl();
   if (!databaseUrl) {
@@ -52,6 +58,7 @@ function payloadFromBody(body) {
 
 function runSummary(row) {
   if (!row) return null;
+  const stale = staleInfo(row.stage, row.status, row.updated_at);
   return {
     runId: row.id,
     runKey: row.run_key,
@@ -64,8 +71,27 @@ function runSummary(row) {
     inputSnapshot: row.input_snapshot || {},
     errorMessage: row.error_message || "",
     metadata: row.metadata || {},
+    polling: stale,
     createdAt: row.created_at || null,
     updatedAt: row.updated_at || null,
+  };
+}
+
+function staleInfo(stage, status, updatedAt) {
+  const stageKey = String(stage || "");
+  const statusKey = String(status || "");
+  const limitMs = STAGE_STALE_LIMITS_MS[stageKey] || 0;
+  const active = /queued|generating|running|pending|accepted/i.test(statusKey);
+  const updatedTime = updatedAt ? new Date(updatedAt).getTime() : 0;
+  const ageMs = updatedTime ? Math.max(0, Date.now() - updatedTime) : 0;
+  return {
+    staleLimitMs: limitMs,
+    ageMs,
+    isActive: active,
+    isStale: Boolean(limitMs && active && ageMs > limitMs),
+    staleMessage: limitMs && active && ageMs > limitMs
+      ? "This step is taking longer than expected. Please check the worker status or retry this stage."
+      : "",
   };
 }
 
@@ -222,4 +248,5 @@ module.exports = {
   runSummary,
   sha256,
   stableJson,
+  STAGE_STALE_LIMITS_MS,
 };

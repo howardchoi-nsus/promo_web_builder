@@ -5,6 +5,11 @@ const {
   parseBody,
   resolveRun,
 } = require("./_promo-generation-run-store");
+const {
+  buildWorkerPayload,
+  shouldTriggerWorker,
+  triggerWorker,
+} = require("./_promo-generation-worker-trigger");
 
 module.exports = async function handler(req, res) {
   try {
@@ -91,10 +96,46 @@ async function queueDraft(req, res) {
     where id = ${run.id}::uuid
   `;
 
-  return res.status(202).json({
-    ok: true,
-    accepted: true,
-    draft: draftSummary(rows[0]),
+  const draft = draftSummary(rows[0]);
+  const workerPayload = buildWorkerPayload({
+    run,
+    stage: "lofi_draft",
+    taskId: draft.draftId,
+    extra: {
+      draftId: draft.draftId,
+      draftAttempt: draft.draftAttempt,
+    },
+  });
+  const workerTriggerRequested = shouldTriggerWorker(body);
+  const workerTrigger = workerTriggerRequested
+    ? await triggerWorker({
+      stage: "lofi_draft",
+      payload: workerPayload,
+      workerUrl: body.workerUrl || body.worker_url,
+    })
+    : null;
+  if (workerTrigger && !workerTrigger.ok) {
+    await sql`
+      update promo_generation_lofi_drafts
+      set status = 'trigger_failed', error_message = ${workerTrigger.error || "Worker trigger failed"}, updated_at = now()
+      where id = ${draft.draftId}::uuid
+    `;
+    await sql`
+      update promo_generation_runs
+      set status = 'lofi_draft_trigger_failed', stage = 'lofi_draft', error_message = ${workerTrigger.error || "Worker trigger failed"}, updated_at = now()
+      where id = ${run.id}::uuid
+    `;
+    draft.status = "trigger_failed";
+    draft.errorMessage = workerTrigger.error || "Worker trigger failed";
+  }
+
+  const workerTriggerFailed = Boolean(workerTriggerRequested && workerTrigger && !workerTrigger.ok);
+  return res.status(workerTriggerFailed ? 502 : 202).json({
+    ok: !workerTriggerFailed,
+    accepted: !workerTriggerFailed,
+    workerPayload,
+    workerTrigger,
+    draft,
   });
 }
 

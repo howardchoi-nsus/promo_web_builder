@@ -128,6 +128,12 @@ const generationModels = {
   image: "gemini-3.1-flash-image",
 };
 
+const generationStageStaleLimitsMs = {
+  integrated_brief: 6 * 60 * 1000,
+  lofi_draft: 4 * 60 * 1000,
+  final_design: 6 * 60 * 1000,
+};
+
 const dummyCompanyStylePresets = [
   {
     id: "preset-001",
@@ -904,6 +910,28 @@ function delay(ms) {
   return new Promise((resolve) => {
     window.setTimeout(resolve, ms);
   });
+}
+
+function generationPollingState(run) {
+  const stage = String(run?.stage || "");
+  const status = String(run?.status || "");
+  const limitMs = generationStageStaleLimitsMs[stage] || 0;
+  const updatedAt = run?.updatedAt || run?.updated_at || "";
+  const updatedTime = updatedAt ? new Date(updatedAt).getTime() : 0;
+  const ageMs = updatedTime ? Math.max(0, Date.now() - updatedTime) : 0;
+  const isActive = /queued|generating|running|pending|accepted/i.test(status);
+  const isStale = Boolean(limitMs && isActive && ageMs > limitMs);
+  return {
+    stage,
+    status,
+    ageMs,
+    staleLimitMs: limitMs,
+    isActive,
+    isStale,
+    staleMessage: isStale
+      ? "작업이 예상보다 오래 걸리고 있습니다. Worker 상태를 확인하거나 현재 단계를 다시 시도해 주세요."
+      : "",
+  };
 }
 
 function normalizeCategory(title) {

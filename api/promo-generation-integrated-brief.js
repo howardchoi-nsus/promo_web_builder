@@ -5,6 +5,11 @@ const {
   parseBody,
   resolveRun,
 } = require("./_promo-generation-run-store");
+const {
+  buildWorkerPayload,
+  shouldTriggerWorker,
+  triggerWorker,
+} = require("./_promo-generation-worker-trigger");
 
 module.exports = async function handler(req, res) {
   try {
@@ -70,10 +75,43 @@ async function queueIntegratedBrief(req, res) {
     where id = ${run.id}::uuid
   `;
 
-  return res.status(202).json({
-    ok: true,
-    accepted: true,
-    integratedBrief: integratedBriefSummary(rows[0]),
+  const integratedBrief = integratedBriefSummary(rows[0]);
+  const workerPayload = buildWorkerPayload({
+    run,
+    stage: "integrated_brief",
+    taskId: integratedBrief.integratedBriefId,
+    extra: { integratedBriefId: integratedBrief.integratedBriefId },
+  });
+  const workerTriggerRequested = shouldTriggerWorker(body);
+  const workerTrigger = workerTriggerRequested
+    ? await triggerWorker({
+      stage: "integrated_brief",
+      payload: workerPayload,
+      workerUrl: body.workerUrl || body.worker_url,
+    })
+    : null;
+  if (workerTrigger && !workerTrigger.ok) {
+    await sql`
+      update promo_generation_integrated_briefs
+      set status = 'trigger_failed', error_message = ${workerTrigger.error || "Worker trigger failed"}, updated_at = now()
+      where id = ${integratedBrief.integratedBriefId}::uuid
+    `;
+    await sql`
+      update promo_generation_runs
+      set status = 'integrated_brief_trigger_failed', stage = 'integrated_brief', error_message = ${workerTrigger.error || "Worker trigger failed"}, updated_at = now()
+      where id = ${run.id}::uuid
+    `;
+    integratedBrief.status = "trigger_failed";
+    integratedBrief.errorMessage = workerTrigger.error || "Worker trigger failed";
+  }
+
+  const workerTriggerFailed = Boolean(workerTriggerRequested && workerTrigger && !workerTrigger.ok);
+  return res.status(workerTriggerFailed ? 502 : 202).json({
+    ok: !workerTriggerFailed,
+    accepted: !workerTriggerFailed,
+    workerPayload,
+    workerTrigger,
+    integratedBrief,
   });
 }
 

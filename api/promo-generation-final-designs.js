@@ -5,6 +5,11 @@ const {
   parseBody,
   resolveRun,
 } = require("./_promo-generation-run-store");
+const {
+  buildWorkerPayload,
+  shouldTriggerWorker,
+  triggerWorker,
+} = require("./_promo-generation-worker-trigger");
 
 module.exports = async function handler(req, res) {
   try {
@@ -30,21 +35,40 @@ async function queueFinalDesign(req, res) {
   const run = await resolveRun(sql, runId);
   if (!run) return res.status(404).json({ error: "Generation run not found" });
 
-  const draftRows = await sql`
-    select id::text
-    from promo_generation_lofi_drafts
-    where run_id = ${run.id}::uuid
-      and confirmed_at is not null
-    order by confirmed_at desc
-    limit 1
-  `;
+  const requestedConfirmedDraftId = String(body.confirmedDraftId || body.confirmed_draft_id || "").trim();
+  if (requestedConfirmedDraftId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestedConfirmedDraftId)) {
+    return res.status(400).json({ error: "confirmedDraftId must be a valid UUID" });
+  }
+  const draftRows = requestedConfirmedDraftId
+    ? await sql`
+      select id::text
+      from promo_generation_lofi_drafts
+      where run_id = ${run.id}::uuid
+        and id = ${requestedConfirmedDraftId}::uuid
+        and (confirmed_at is not null or ${Boolean(body.force)}::boolean)
+      limit 1
+    `
+    : await sql`
+      select id::text
+      from promo_generation_lofi_drafts
+      where run_id = ${run.id}::uuid
+        and confirmed_at is not null
+      order by confirmed_at desc
+      limit 1
+    `;
   if (!draftRows.length && !body.force) {
     return res.status(409).json({
       error: "Confirmed LO-FI draft is required",
       message: "Confirm one LO-FI draft before starting final design generation.",
     });
   }
-  const confirmedDraftId = String(body.confirmedDraftId || body.confirmed_draft_id || draftRows[0]?.id || "").trim();
+  if (requestedConfirmedDraftId && !draftRows.length) {
+    return res.status(409).json({
+      error: "Confirmed LO-FI draft does not belong to this run",
+      message: "Use a confirmed draft from the same generation run.",
+    });
+  }
+  const confirmedDraftId = String(draftRows[0]?.id || "").trim();
 
   const rows = await sql`
     insert into promo_generation_final_designs (
@@ -85,10 +109,46 @@ async function queueFinalDesign(req, res) {
     where id = ${run.id}::uuid
   `;
 
-  return res.status(202).json({
-    ok: true,
-    accepted: true,
-    finalDesign: finalDesignSummary(rows[0]),
+  const finalDesign = finalDesignSummary(rows[0]);
+  const workerPayload = buildWorkerPayload({
+    run,
+    stage: "final_design",
+    taskId: finalDesign.finalDesignId,
+    extra: {
+      finalDesignId: finalDesign.finalDesignId,
+      confirmedDraftId: finalDesign.confirmedDraftId,
+    },
+  });
+  const workerTriggerRequested = shouldTriggerWorker(body);
+  const workerTrigger = workerTriggerRequested
+    ? await triggerWorker({
+      stage: "final_design",
+      payload: workerPayload,
+      workerUrl: body.workerUrl || body.worker_url,
+    })
+    : null;
+  if (workerTrigger && !workerTrigger.ok) {
+    await sql`
+      update promo_generation_final_designs
+      set status = 'trigger_failed', error_message = ${workerTrigger.error || "Worker trigger failed"}, updated_at = now()
+      where id = ${finalDesign.finalDesignId}::uuid
+    `;
+    await sql`
+      update promo_generation_runs
+      set status = 'final_design_trigger_failed', stage = 'final_design', error_message = ${workerTrigger.error || "Worker trigger failed"}, updated_at = now()
+      where id = ${run.id}::uuid
+    `;
+    finalDesign.status = "trigger_failed";
+    finalDesign.errorMessage = workerTrigger.error || "Worker trigger failed";
+  }
+
+  const workerTriggerFailed = Boolean(workerTriggerRequested && workerTrigger && !workerTrigger.ok);
+  return res.status(workerTriggerFailed ? 502 : 202).json({
+    ok: !workerTriggerFailed,
+    accepted: !workerTriggerFailed,
+    workerPayload,
+    workerTrigger,
+    finalDesign,
   });
 }
 
