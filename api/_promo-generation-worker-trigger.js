@@ -4,7 +4,9 @@ const WORKER_URL_ENV = {
   final_design: "N8N_FINAL_DESIGN_WORKER_URL",
 };
 
-const DEFAULT_TRIGGER_TIMEOUT_MS = 10000;
+const DEFAULT_TRIGGER_ACK_TIMEOUT_MS = 2000;
+const MIN_TRIGGER_ACK_TIMEOUT_MS = 500;
+const MAX_TRIGGER_ACK_TIMEOUT_MS = 5000;
 
 function shouldTriggerWorker(body) {
   return body.triggerWorker === true
@@ -74,7 +76,15 @@ function workerHostAllowed(hostname) {
   return allowlist.some((allowedHost) => host === allowedHost || host.endsWith(`.${allowedHost}`));
 }
 
-async function triggerWorker({ stage, payload, workerUrl = "", timeoutMs = DEFAULT_TRIGGER_TIMEOUT_MS }) {
+function triggerAckTimeoutMs(value) {
+  const envValue = Number(process.env.N8N_WORKER_TRIGGER_ACK_TIMEOUT_MS || 0);
+  const requestedValue = Number(value || 0);
+  const selected = requestedValue || envValue || DEFAULT_TRIGGER_ACK_TIMEOUT_MS;
+  if (!Number.isFinite(selected)) return DEFAULT_TRIGGER_ACK_TIMEOUT_MS;
+  return Math.max(MIN_TRIGGER_ACK_TIMEOUT_MS, Math.min(selected, MAX_TRIGGER_ACK_TIMEOUT_MS));
+}
+
+async function triggerWorker({ stage, payload, workerUrl = "", timeoutMs = null }) {
   const resolved = resolveWorkerUrl(stage, workerUrl);
   if (!resolved.ok) {
     return {
@@ -85,8 +95,9 @@ async function triggerWorker({ stage, payload, workerUrl = "", timeoutMs = DEFAU
     };
   }
 
+  const ackTimeoutMs = triggerAckTimeoutMs(timeoutMs);
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const timeout = setTimeout(() => controller.abort(), ackTimeoutMs);
   try {
     const response = await fetch(resolved.url, {
       method: "POST",
@@ -104,6 +115,7 @@ async function triggerWorker({ stage, payload, workerUrl = "", timeoutMs = DEFAU
       status: response.status,
       payload,
       response: responseBody,
+      ackTimeoutMs,
       urlConfigured: true,
     };
   } catch (error) {
@@ -111,9 +123,10 @@ async function triggerWorker({ stage, payload, workerUrl = "", timeoutMs = DEFAU
       ok: false,
       stage,
       error: error.name === "AbortError"
-        ? `Worker trigger timed out after ${timeoutMs}ms`
+        ? `Worker trigger acknowledgement timed out after ${ackTimeoutMs}ms`
         : error.message,
       payload,
+      ackTimeoutMs,
       urlConfigured: true,
     };
   } finally {
@@ -125,4 +138,5 @@ module.exports = {
   buildWorkerPayload,
   shouldTriggerWorker,
   triggerWorker,
+  triggerAckTimeoutMs,
 };

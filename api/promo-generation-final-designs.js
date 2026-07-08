@@ -125,8 +125,23 @@ async function queueFinalDesign(req, res) {
       stage: "final_design",
       payload: workerPayload,
       workerUrl: body.workerUrl || body.worker_url,
+      timeoutMs: body.triggerTimeoutMs || body.trigger_timeout_ms,
     })
     : null;
+  if (workerTriggerRequested) {
+    const triggerMeta = {
+      workerPayload,
+      workerTrigger,
+      triggeredAt: new Date().toISOString(),
+    };
+    await sql`
+      update promo_generation_final_designs
+      set
+        prompt_meta = coalesce(prompt_meta, '{}'::jsonb) || ${JSON.stringify({ workerTrigger: triggerMeta })}::jsonb,
+        updated_at = now()
+      where id = ${finalDesign.finalDesignId}::uuid
+    `;
+  }
   if (workerTrigger && !workerTrigger.ok) {
     await sql`
       update promo_generation_final_designs
