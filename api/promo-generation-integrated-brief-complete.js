@@ -129,9 +129,12 @@ function parseIntegratedBriefResponse(body) {
     throw new Error(`Failed to parse integrated brief JSON: ${error.message}`);
   }
 
+  const markdown = String(generated.integratedDesignBriefMarkdown || "").trim();
+  const brief = normalizeIntegratedBrief(generated.integratedDesignBrief || {}, markdown);
+
   return {
-    integratedDesignBriefMarkdown: String(generated.integratedDesignBriefMarkdown || "").trim(),
-    integratedDesignBrief: generated.integratedDesignBrief || {},
+    integratedDesignBriefMarkdown: markdown,
+    integratedDesignBrief: brief,
     llmResponseMeta: buildLlmResponseMeta(response, content),
     modelMeta: {
       ...(body.modelMeta || body.model_meta || {}),
@@ -142,6 +145,7 @@ function parseIntegratedBriefResponse(body) {
 }
 
 function extractLlmContent(response) {
+  if (Array.isArray(response)) return extractLlmContent(response[0]);
   if (!response || typeof response !== "object") return "";
   return response.choices?.[0]?.message?.content ||
     response.message?.content ||
@@ -150,6 +154,89 @@ function extractLlmContent(response) {
     response.output_text ||
     response.data?.choices?.[0]?.message?.content ||
     "";
+}
+
+function normalizeIntegratedBrief(brief, markdown) {
+  const safeBrief = brief && typeof brief === "object" && !Array.isArray(brief) ? { ...brief } : {};
+  const finalInputs = safeBrief.finalImagePromptInputs && typeof safeBrief.finalImagePromptInputs === "object"
+    ? { ...safeBrief.finalImagePromptInputs }
+    : {};
+
+  if (!finalInputs.imagePromptDirection && !finalInputs.image_prompt_direction) {
+    const direction = extractMarkdownSection(markdown, "### Image Prompt Direction", [
+      "### Must Show",
+      "### Must Avoid",
+      "### Visible Sections",
+      "### Visual Targets",
+      "### Content Coverage",
+      "## Negative Prompt",
+      "## Visual QA Checklist",
+    ]);
+    if (direction) finalInputs.imagePromptDirection = direction;
+  }
+
+  if (!Array.isArray(finalInputs.mustShow)) {
+    finalInputs.mustShow = extractMarkdownList(markdown, "### Must Show", [
+      "### Must Avoid",
+      "### Visible Sections",
+      "### Visual Targets",
+      "### Content Coverage",
+      "## Negative Prompt",
+    ]);
+  }
+  if (!Array.isArray(finalInputs.mustAvoid)) {
+    finalInputs.mustAvoid = extractMarkdownList(markdown, "### Must Avoid", [
+      "### Visible Sections",
+      "### Visual Targets",
+      "### Content Coverage",
+      "## Negative Prompt",
+    ]);
+  }
+  if (!Array.isArray(finalInputs.visibleSections)) {
+    finalInputs.visibleSections = extractMarkdownList(markdown, "### Visible Sections", [
+      "### Visual Targets",
+      "### Content Coverage",
+      "## Negative Prompt",
+    ]);
+  }
+  if (!finalInputs.contentCoverage || typeof finalInputs.contentCoverage !== "object") {
+    finalInputs.contentCoverage = {
+      summary: extractMarkdownSection(markdown, "### Content Coverage", [
+        "## Negative Prompt",
+        "## Visual QA Checklist",
+      ]),
+    };
+  }
+
+  safeBrief.finalImagePromptInputs = finalInputs;
+  if (!safeBrief.negativePrompt) {
+    safeBrief.negativePrompt = extractMarkdownSection(markdown, "## Negative Prompt", ["## Visual QA Checklist"]);
+  }
+  if (!Array.isArray(safeBrief.visualQaChecklist)) {
+    safeBrief.visualQaChecklist = extractMarkdownList(markdown, "## Visual QA Checklist", []);
+  }
+  return safeBrief;
+}
+
+function extractMarkdownSection(markdown, heading, nextHeadings) {
+  const source = String(markdown || "");
+  const start = source.indexOf(heading);
+  if (start < 0) return "";
+  const contentStart = start + heading.length;
+  const nextIndexes = nextHeadings
+    .map((nextHeading) => source.indexOf(nextHeading, contentStart))
+    .filter((index) => index >= 0);
+  const end = nextIndexes.length ? Math.min(...nextIndexes) : source.length;
+  return source.slice(contentStart, end).trim().replace(/^```(?:text)?\s*/i, "").replace(/```$/i, "").trim();
+}
+
+function extractMarkdownList(markdown, heading, nextHeadings) {
+  const section = extractMarkdownSection(markdown, heading, nextHeadings);
+  if (!section) return [];
+  return section
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^\s*[-*]\s+/, "").trim())
+    .filter(Boolean);
 }
 
 function stripJsonFence(content) {
