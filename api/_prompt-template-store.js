@@ -52,6 +52,50 @@ const PROMPT_TYPES = {
     requiredVariables: ["integratedDesignBriefMarkdown"],
     optionalVariables: ["requiredVisibleCopy", "sectionContentMapping"],
   },
+  lofi_draft: {
+    name: "LO-FI Draft Prompt",
+    body: [
+      "Create a low-fidelity wireframe draft for the promotional web page.",
+      "Use the Integrated Design Brief as the only source of truth.",
+      "Prioritize structure, content placement, section order, and visible copy.",
+      "Use simple grayscale blocks, wireframe-level shapes, and minimal decoration.",
+      "Do not create a polished final design.",
+      "Do not add new promotional copy.",
+      "Do not omit legal, CTA, step, footer, or required visible copy.",
+      "",
+      "Integrated Design Brief:",
+      "{{integratedDesignBriefMarkdown}}",
+      "",
+      "Required Section Content Mapping:",
+      "{{sectionContentMapping}}",
+    ].join("\n"),
+    requiredVariables: ["integratedDesignBriefMarkdown"],
+    optionalVariables: ["sectionContentMapping"],
+  },
+};
+
+const DEFAULT_MODEL_SETTINGS = {
+  integrated_brief: {
+    provider: "openai",
+    model: "gpt-4o-mini",
+    temperature: 0.2,
+    maxTokens: 12000,
+    responseFormat: "json_object",
+  },
+  image_execution: {
+    provider: "openai",
+    model: "gpt-4o-mini",
+    temperature: 0.1,
+    maxTokens: 4000,
+    responseFormat: "text",
+  },
+  lofi_draft: {
+    provider: "google",
+    model: "gemini-3.1-flash-image",
+    temperature: 0.4,
+    maxTokens: null,
+    responseFormat: "image",
+  },
 };
 
 function getSql() {
@@ -84,7 +128,13 @@ async function ensureDefaultPromptTemplates(sql) {
         version,
         required_variables,
         optional_variables,
-        change_note
+        change_note,
+        provider,
+        model,
+        temperature,
+        max_tokens,
+        response_format,
+        model_options
       )
       values (
         ${type},
@@ -94,7 +144,13 @@ async function ensureDefaultPromptTemplates(sql) {
         1,
         ${JSON.stringify(config.requiredVariables || [])}::jsonb,
         ${JSON.stringify(config.optionalVariables || [])}::jsonb,
-        'Initial prompt imported from repository default.'
+        'Initial prompt imported from repository default.',
+        ${DEFAULT_MODEL_SETTINGS[type]?.provider || ""},
+        ${DEFAULT_MODEL_SETTINGS[type]?.model || ""},
+        ${DEFAULT_MODEL_SETTINGS[type]?.temperature ?? null},
+        ${DEFAULT_MODEL_SETTINGS[type]?.maxTokens ?? null},
+        ${DEFAULT_MODEL_SETTINGS[type]?.responseFormat || ""},
+        ${JSON.stringify(DEFAULT_MODEL_SETTINGS[type] || {})}::jsonb
       )
       on conflict (type, name) do nothing
     `;
@@ -138,6 +194,26 @@ function normalizeVariables(value) {
   return [];
 }
 
+function normalizeModelOptions(value) {
+  if (!value) return {};
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+  if (typeof value === "object" && !Array.isArray(value)) return value;
+  return {};
+}
+
+function normalizeNumber(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
 function renderPrompt(body, variables = {}) {
   return String(body || "").replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (match, key) => (
     Object.prototype.hasOwnProperty.call(variables, key) ? String(variables[key] ?? "") : match
@@ -163,6 +239,14 @@ function toPromptTemplate(row) {
     version: Number(row.version || 1),
     requiredVariables: Array.isArray(row.required_variables) ? row.required_variables : [],
     optionalVariables: Array.isArray(row.optional_variables) ? row.optional_variables : [],
+    provider: row.provider || "",
+    model: row.model || "",
+    temperature: row.temperature === null || row.temperature === undefined ? null : Number(row.temperature),
+    maxTokens: row.max_tokens === null || row.max_tokens === undefined ? null : Number(row.max_tokens),
+    responseFormat: row.response_format || "",
+    modelOptions: row.model_options && typeof row.model_options === "object" && !Array.isArray(row.model_options)
+      ? row.model_options
+      : {},
     changeNote: row.change_note || "",
     archivedAt: row.archived_at || null,
     createdAt: row.created_at || null,
@@ -174,6 +258,8 @@ module.exports = {
   PROMPT_TYPES,
   ensureDefaultPromptTemplates,
   getSql,
+  normalizeModelOptions,
+  normalizeNumber,
   normalizeVariables,
   parseBody,
   renderPrompt,

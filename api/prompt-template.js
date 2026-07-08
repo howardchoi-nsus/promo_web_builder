@@ -2,6 +2,8 @@ const {
   ensureDefaultPromptTemplates,
   getSql,
   normalizeVariables,
+  normalizeModelOptions,
+  normalizeNumber,
   parseBody,
   toPromptTemplate,
 } = require("./_prompt-template-store");
@@ -37,6 +39,12 @@ async function getPrompt(req, res) {
       version,
       required_variables,
       optional_variables,
+      provider,
+      model,
+      temperature,
+      max_tokens,
+      response_format,
+      model_options,
       change_note,
       archived_at,
       created_at,
@@ -54,6 +62,12 @@ async function getPrompt(req, res) {
       new_version,
       previous_status,
       new_status,
+      previous_provider,
+      new_provider,
+      previous_model,
+      new_model,
+      previous_model_options,
+      new_model_options,
       change_note,
       changed_at
     from prompt_template_histories
@@ -71,6 +85,12 @@ async function getPrompt(req, res) {
       newVersion: Number(row.new_version || 0),
       previousStatus: row.previous_status || "",
       newStatus: row.new_status || "",
+      previousProvider: row.previous_provider || "",
+      newProvider: row.new_provider || "",
+      previousModel: row.previous_model || "",
+      newModel: row.new_model || "",
+      previousModelOptions: row.previous_model_options || {},
+      newModelOptions: row.new_model_options || {},
       changeNote: row.change_note || "",
       changedAt: row.changed_at || null,
     })),
@@ -87,6 +107,15 @@ async function updatePrompt(req, res) {
   const changeNote = String(body.changeNote || body.change_note || "Prompt updated.").trim();
   const requiredVariables = normalizeVariables(body.requiredVariables || body.required_variables);
   const optionalVariables = normalizeVariables(body.optionalVariables || body.optional_variables);
+  const hasProvider = Object.prototype.hasOwnProperty.call(body, "provider");
+  const hasModel = Object.prototype.hasOwnProperty.call(body, "model");
+  const hasTemperature = Object.prototype.hasOwnProperty.call(body, "temperature");
+  const hasMaxTokens = Object.prototype.hasOwnProperty.call(body, "maxTokens")
+    || Object.prototype.hasOwnProperty.call(body, "max_tokens");
+  const hasResponseFormat = Object.prototype.hasOwnProperty.call(body, "responseFormat")
+    || Object.prototype.hasOwnProperty.call(body, "response_format");
+  const hasModelOptions = Object.prototype.hasOwnProperty.call(body, "modelOptions")
+    || Object.prototype.hasOwnProperty.call(body, "model_options");
 
   if (!nextBody.trim()) return res.status(400).json({ error: "body is required" });
   if (!nextName) return res.status(400).json({ error: "name is required" });
@@ -103,6 +132,12 @@ async function updatePrompt(req, res) {
       version,
       required_variables,
       optional_variables,
+      provider,
+      model,
+      temperature,
+      max_tokens,
+      response_format,
+      model_options,
       change_note,
       archived_at,
       created_at,
@@ -119,6 +154,16 @@ async function updatePrompt(req, res) {
   }
 
   const nextVersion = Number(current.version || 1) + 1;
+  const provider = hasProvider ? String(body.provider || "").trim() : current.provider || "";
+  const model = hasModel ? String(body.model || "").trim() : current.model || "";
+  const temperature = hasTemperature ? normalizeNumber(body.temperature) : current.temperature;
+  const maxTokens = hasMaxTokens ? normalizeNumber(body.maxTokens ?? body.max_tokens) : current.max_tokens;
+  const responseFormat = hasResponseFormat
+    ? String(body.responseFormat || body.response_format || "").trim()
+    : current.response_format || "";
+  const modelOptions = hasModelOptions
+    ? normalizeModelOptions(body.modelOptions || body.model_options)
+    : current.model_options || {};
   const updatedRows = await sql`
     update prompt_templates
     set
@@ -127,6 +172,12 @@ async function updatePrompt(req, res) {
       version = ${nextVersion},
       required_variables = ${JSON.stringify(requiredVariables)}::jsonb,
       optional_variables = ${JSON.stringify(optionalVariables)}::jsonb,
+      provider = ${provider},
+      model = ${model},
+      temperature = ${temperature},
+      max_tokens = ${maxTokens},
+      response_format = ${responseFormat},
+      model_options = ${JSON.stringify(modelOptions)}::jsonb,
       change_note = ${changeNote},
       updated_at = now()
     where id = ${id}::uuid
@@ -139,6 +190,12 @@ async function updatePrompt(req, res) {
       version,
       required_variables,
       optional_variables,
+      provider,
+      model,
+      temperature,
+      max_tokens,
+      response_format,
+      model_options,
       change_note,
       archived_at,
       created_at,
@@ -155,7 +212,13 @@ async function updatePrompt(req, res) {
       new_version,
       previous_status,
       new_status,
-      change_note
+      change_note,
+      previous_provider,
+      new_provider,
+      previous_model,
+      new_model,
+      previous_model_options,
+      new_model_options
     )
     values (
       ${id}::uuid,
@@ -166,7 +229,13 @@ async function updatePrompt(req, res) {
       ${nextVersion},
       ${current.status || ""},
       ${current.status || ""},
-      ${changeNote}
+      ${changeNote},
+      ${current.provider || ""},
+      ${provider},
+      ${current.model || ""},
+      ${model},
+      ${JSON.stringify(current.model_options || {})}::jsonb,
+      ${JSON.stringify(modelOptions)}::jsonb
     )
   `;
 

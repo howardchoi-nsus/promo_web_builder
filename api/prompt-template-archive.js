@@ -20,7 +20,7 @@ module.exports = async function handler(req, res) {
     const sql = getSql();
     await ensureDefaultPromptTemplates(sql);
     const rows = await sql`
-      select id::text, type, body, status, version
+      select id::text, type, body, status, version, provider, model, model_options
       from prompt_templates
       where id = ${id}::uuid
       limit 1
@@ -52,6 +52,12 @@ module.exports = async function handler(req, res) {
         version,
         required_variables,
         optional_variables,
+        provider,
+        model,
+        temperature,
+        max_tokens,
+        response_format,
+        model_options,
         change_note,
         archived_at,
         created_at,
@@ -68,7 +74,13 @@ module.exports = async function handler(req, res) {
         new_version,
         previous_status,
         new_status,
-        change_note
+        change_note,
+        previous_provider,
+        new_provider,
+        previous_model,
+        new_model,
+        previous_model_options,
+        new_model_options
       )
       values (
         ${id}::uuid,
@@ -79,7 +91,13 @@ module.exports = async function handler(req, res) {
         ${Number(current.version || 1)},
         ${current.status || ""},
         'archived',
-        ${changeNote}
+        ${changeNote},
+        ${current.provider || ""},
+        ${current.provider || ""},
+        ${current.model || ""},
+        ${current.model || ""},
+        ${JSON.stringify(current.model_options || {})}::jsonb,
+        ${JSON.stringify(current.model_options || {})}::jsonb
       )
     `;
 

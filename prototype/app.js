@@ -1112,6 +1112,12 @@ createApp({
         body: "",
         requiredVariablesText: "",
         optionalVariablesText: "",
+        provider: "",
+        model: "",
+        temperature: "",
+        maxTokens: "",
+        responseFormat: "",
+        modelOptionsText: "{}",
         changeNote: "",
       },
       modalTab: "outline",
@@ -1484,6 +1490,12 @@ createApp({
           body: detail.body || "",
           requiredVariablesText: (detail.requiredVariables || []).join(", "),
           optionalVariablesText: (detail.optionalVariables || []).join(", "),
+          provider: detail.provider || "",
+          model: detail.model || "",
+          temperature: detail.temperature ?? "",
+          maxTokens: detail.maxTokens ?? "",
+          responseFormat: detail.responseFormat || "",
+          modelOptionsText: JSON.stringify(detail.modelOptions || {}, null, 2),
           changeNote: "",
         };
         if (!options.silent) this.setStatus(`${detail.name} 프롬프트를 열었습니다`);
@@ -1497,6 +1509,17 @@ createApp({
         .split(",")
         .map((item) => item.trim())
         .filter(Boolean);
+    },
+
+    parseModelOptionsText(value) {
+      const text = String(value || "").trim();
+      if (!text) return {};
+      try {
+        const parsed = JSON.parse(text);
+        return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+      } catch (error) {
+        throw new Error(`Model Options JSON 형식이 올바르지 않습니다: ${error.message}`);
+      }
     },
 
     async savePromptTemplate() {
@@ -1513,6 +1536,12 @@ createApp({
             body: this.promptEditor.body,
             requiredVariables: this.variableTextToList(this.promptEditor.requiredVariablesText),
             optionalVariables: this.variableTextToList(this.promptEditor.optionalVariablesText),
+            provider: this.promptEditor.provider,
+            model: this.promptEditor.model,
+            temperature: this.promptEditor.temperature === "" ? null : Number(this.promptEditor.temperature),
+            maxTokens: this.promptEditor.maxTokens === "" ? null : Number(this.promptEditor.maxTokens),
+            responseFormat: this.promptEditor.responseFormat,
+            modelOptions: this.parseModelOptionsText(this.promptEditor.modelOptionsText),
             changeNote: this.promptEditor.changeNote || "Prompt updated from management page.",
           }),
         });

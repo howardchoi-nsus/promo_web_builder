@@ -22,6 +22,9 @@ module.exports = async function handler(req, res) {
         promptTemplateId: managedPrompt.id,
         promptTemplateType: managedPrompt.type,
         promptTemplateStatus: managedPrompt.status,
+        provider: managedPrompt.provider || "",
+        model: managedPrompt.model || "",
+        modelOptions: managedPrompt.model_options || {},
       });
     }
 
@@ -48,7 +51,7 @@ async function readManagedPrompt() {
   const sql = getSql();
   await ensureDefaultPromptTemplates(sql);
   const rows = await sql`
-    select id::text, type, body, status, version
+    select id::text, type, body, status, version, provider, model, model_options
     from prompt_templates
     where type = 'integrated_brief'
       and status = 'active'

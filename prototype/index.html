@@ -629,6 +629,7 @@
                     <option value="">All</option>
                     <option value="integrated_brief">Integrated Brief</option>
                     <option value="image_execution">Image Execution</option>
+                    <option value="lofi_draft">LO-FI Draft</option>
                   </select>
                 </div>
                 <div class="outline-item danger-state" v-if="promptTemplatesError">
@@ -684,6 +685,41 @@
                 <label class="field">
                   <span>Optional Variables</span>
                   <input v-model="promptEditor.optionalVariablesText" type="text" autocomplete="off" />
+                </label>
+
+                <div class="form-grid compact">
+                  <label class="field">
+                    <span>Provider</span>
+                    <select v-model="promptEditor.provider">
+                      <option value="">Not set</option>
+                      <option value="openai">OpenAI / GPT</option>
+                      <option value="google">Google / Gemini</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>Model</span>
+                    <input v-model="promptEditor.model" type="text" autocomplete="off" placeholder="gpt-4o-mini" />
+                  </label>
+                </div>
+
+                <div class="form-grid compact">
+                  <label class="field">
+                    <span>Temperature</span>
+                    <input v-model="promptEditor.temperature" type="number" min="0" max="2" step="0.1" />
+                  </label>
+                  <label class="field">
+                    <span>Max Tokens</span>
+                    <input v-model="promptEditor.maxTokens" type="number" min="1" step="1" />
+                  </label>
+                  <label class="field">
+                    <span>Response Format</span>
+                    <input v-model="promptEditor.responseFormat" type="text" autocomplete="off" placeholder="json_object / text / image" />
+                  </label>
+                </div>
+
+                <label class="field">
+                  <span>Model Options JSON</span>
+                  <textarea v-model="promptEditor.modelOptionsText" rows="5" spellcheck="false"></textarea>
                 </label>
 
                 <label class="field">
