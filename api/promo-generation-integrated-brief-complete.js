@@ -1,0 +1,274 @@
+const {
+  getSql,
+  integratedBriefSummary,
+  loadRunState,
+  parseBody,
+  resolveRun,
+} = require("./_promo-generation-run-store");
+
+module.exports = async function handler(req, res) {
+  if (req.method !== "POST") {
+    res.setHeader("Allow", "POST");
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  try {
+    const body = parseBody(req.body);
+    const runId = String(body.runId || body.run_id || body.id || body.runKey || body.run_key || "").trim();
+    if (!runId) return res.status(400).json({ error: "runId or runKey is required" });
+
+    const sql = getSql();
+    const run = await resolveRun(sql, runId);
+    if (!run) return res.status(404).json({ error: "Generation run not found" });
+
+    const parsed = parseIntegratedBriefResponse(body);
+    const validation = validateIntegratedBrief(parsed);
+    if (!validation.ok) {
+      await saveIntegratedBriefFailure({
+        sql,
+        run,
+        body,
+        errorMessage: validation.error,
+      });
+      return res.status(422).json({
+        ok: false,
+        error: "Integrated brief validation failed",
+        message: validation.error,
+      });
+    }
+
+    const promptMeta = mergeMeta(body.promptMeta || body.prompt_meta, {
+      llmResponseMeta: parsed.llmResponseMeta,
+      completedAt: new Date().toISOString(),
+    });
+    const modelMeta = mergeMeta(body.modelMeta || body.model_meta, parsed.modelMeta);
+    const rows = await sql`
+      insert into promo_generation_integrated_briefs (
+        run_id,
+        status,
+        integrated_brief_markdown,
+        integrated_brief_json,
+        prompt_meta,
+        model_meta,
+        error_message,
+        updated_at
+      )
+      values (
+        ${run.id}::uuid,
+        'ready',
+        ${parsed.integratedDesignBriefMarkdown},
+        ${JSON.stringify(parsed.integratedDesignBrief)}::jsonb,
+        ${JSON.stringify(promptMeta)}::jsonb,
+        ${JSON.stringify(modelMeta)}::jsonb,
+        '',
+        now()
+      )
+      on conflict (run_id) do update set
+        status = 'ready',
+        integrated_brief_markdown = excluded.integrated_brief_markdown,
+        integrated_brief_json = excluded.integrated_brief_json,
+        prompt_meta = coalesce(promo_generation_integrated_briefs.prompt_meta, '{}'::jsonb) || excluded.prompt_meta,
+        model_meta = coalesce(promo_generation_integrated_briefs.model_meta, '{}'::jsonb) || excluded.model_meta,
+        error_message = '',
+        updated_at = now()
+      returning
+        id::text,
+        run_id::text,
+        status,
+        integrated_brief_markdown,
+        integrated_brief_json,
+        prompt_meta,
+        model_meta,
+        error_message,
+        created_at,
+        updated_at
+    `;
+
+    await sql`
+      update promo_generation_runs
+      set status = 'integrated_brief_ready', stage = 'integrated_brief', error_message = '', updated_at = now()
+      where id = ${run.id}::uuid
+    `;
+
+    const state = await loadRunState(sql, run.id);
+    return res.status(200).json({
+      ok: true,
+      integratedBrief: integratedBriefSummary(rows[0]),
+      state,
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      error: "Integrated brief completion API failed",
+      message: error.message,
+    });
+  }
+};
+
+function parseIntegratedBriefResponse(body) {
+  const directMarkdown = body.integratedDesignBriefMarkdown || body.integrated_design_brief_markdown;
+  const directBrief = body.integratedDesignBrief || body.integratedBrief || body.integrated_brief || body.integratedBriefJson;
+  if (directMarkdown && directBrief && typeof directBrief === "object") {
+    return {
+      integratedDesignBriefMarkdown: String(directMarkdown).trim(),
+      integratedDesignBrief: directBrief,
+      llmResponseMeta: { source: "direct" },
+      modelMeta: body.modelMeta || body.model_meta || {},
+    };
+  }
+
+  const response = body.llmResponse || body.llm_response || body.response || body;
+  const content = extractLlmContent(response);
+  if (!content) {
+    throw new Error("LLM response content is empty");
+  }
+
+  let generated;
+  try {
+    generated = typeof content === "string" ? JSON.parse(stripJsonFence(content)) : content;
+  } catch (error) {
+    throw new Error(`Failed to parse integrated brief JSON: ${error.message}`);
+  }
+
+  return {
+    integratedDesignBriefMarkdown: String(generated.integratedDesignBriefMarkdown || "").trim(),
+    integratedDesignBrief: generated.integratedDesignBrief || {},
+    llmResponseMeta: buildLlmResponseMeta(response, content),
+    modelMeta: {
+      ...(body.modelMeta || body.model_meta || {}),
+      provider: body.provider || body.modelMeta?.provider || body.model_meta?.provider || "",
+      model: body.model || response.model || body.modelMeta?.model || body.model_meta?.model || "",
+    },
+  };
+}
+
+function extractLlmContent(response) {
+  if (!response || typeof response !== "object") return "";
+  return response.choices?.[0]?.message?.content ||
+    response.message?.content ||
+    response.content ||
+    response.text ||
+    response.output_text ||
+    response.data?.choices?.[0]?.message?.content ||
+    "";
+}
+
+function stripJsonFence(content) {
+  return String(content)
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/```$/i, "")
+    .trim();
+}
+
+function validateIntegratedBrief(parsed) {
+  const markdown = String(parsed.integratedDesignBriefMarkdown || "").trim();
+  const brief = parsed.integratedDesignBrief;
+  if (!markdown) return { ok: false, error: "integratedDesignBriefMarkdown is required" };
+  if (markdown.length < 6000) {
+    return {
+      ok: false,
+      error: "Integrated design brief is too short; expected a complete self-contained request document",
+    };
+  }
+  if (!brief || typeof brief !== "object" || Array.isArray(brief)) {
+    return { ok: false, error: "integratedDesignBrief object is required" };
+  }
+
+  const finalInputs = brief.finalImagePromptInputs || brief.final_image_prompt_inputs || {};
+  const imageDirection = String(
+    finalInputs.imagePromptDirection ||
+    finalInputs.image_prompt_direction ||
+    finalInputs.direction ||
+    finalInputs.promptDirection ||
+    ""
+  ).trim();
+  if (!imageDirection) return { ok: false, error: "finalImagePromptInputs.imagePromptDirection is required" };
+
+  const requiredHeadings = [
+    "# Integrated Design Brief MD",
+    "## Source Priority Rules",
+    "## Non-Negotiable Rules",
+    "## MD Compliance Map",
+    "## Design Token Application",
+    "## Section Content Mapping",
+    "## Token-to-Section Application",
+    "## Design Style Basis",
+    "## Visual Direction",
+    "## Final Image Prompt Inputs",
+    "## Negative Prompt",
+    "## Visual QA Checklist",
+  ];
+  const missingHeadings = requiredHeadings.filter((heading) => !markdown.includes(heading));
+  if (missingHeadings.length) {
+    return { ok: false, error: `Integrated design brief missing sections: ${missingHeadings.join(", ")}` };
+  }
+
+  const frontmatterMatch = markdown.match(/^---\s*\n([\s\S]*?)\n---/);
+  const frontmatter = frontmatterMatch ? frontmatterMatch[1] : "";
+  if (!/^\s*type:\s*integrated_design_brief\s*$/im.test(frontmatter)) {
+    return { ok: false, error: "Integrated design brief frontmatter type must be integrated_design_brief" };
+  }
+  if (!/sourceDocuments\s*:/i.test(frontmatter) || !frontmatter.toLowerCase().includes("design_prompt") || !frontmatter.toLowerCase().includes("section_input_log")) {
+    return {
+      ok: false,
+      error: "Integrated design brief sourceDocuments must include design_prompt and section_input_log",
+    };
+  }
+
+  return { ok: true };
+}
+
+async function saveIntegratedBriefFailure({ sql, run, body, errorMessage }) {
+  const promptMeta = mergeMeta(body.promptMeta || body.prompt_meta, {
+    failedAt: new Date().toISOString(),
+  });
+  const modelMeta = body.modelMeta || body.model_meta || {};
+  await sql`
+    insert into promo_generation_integrated_briefs (
+      run_id,
+      status,
+      prompt_meta,
+      model_meta,
+      error_message,
+      updated_at
+    )
+    values (
+      ${run.id}::uuid,
+      'failed',
+      ${JSON.stringify(promptMeta)}::jsonb,
+      ${JSON.stringify(modelMeta)}::jsonb,
+      ${errorMessage},
+      now()
+    )
+    on conflict (run_id) do update set
+      status = 'failed',
+      prompt_meta = coalesce(promo_generation_integrated_briefs.prompt_meta, '{}'::jsonb) || excluded.prompt_meta,
+      model_meta = coalesce(promo_generation_integrated_briefs.model_meta, '{}'::jsonb) || excluded.model_meta,
+      error_message = excluded.error_message,
+      updated_at = now()
+  `;
+  await sql`
+    update promo_generation_runs
+    set status = 'integrated_brief_failed', stage = 'integrated_brief', error_message = ${errorMessage}, updated_at = now()
+    where id = ${run.id}::uuid
+  `;
+}
+
+function buildLlmResponseMeta(response, content) {
+  return {
+    source: "llm_response",
+    model: response?.model || "",
+    id: response?.id || "",
+    finishReason: response?.choices?.[0]?.finish_reason || "",
+    usage: response?.usage || {},
+    contentLength: typeof content === "string" ? content.length : 0,
+  };
+}
+
+function mergeMeta(base, extra) {
+  const safeBase = base && typeof base === "object" && !Array.isArray(base) ? base : {};
+  return {
+    ...safeBase,
+    ...extra,
+  };
+}
