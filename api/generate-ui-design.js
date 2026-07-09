@@ -77,7 +77,7 @@ async function resolveWebhookUrl(headerValue) {
     return {
       ok: false,
       error: "Missing n8n UI design webhook URL",
-      message: "Set Promo UI Design Webhook in Prompt Management or configure N8N_PROMO_UI_DESIGN_WEBHOOK_URL.",
+      message: "Set Promo UI Design Webhook in Admin Page or configure N8N_PROMO_UI_DESIGN_WEBHOOK_URL.",
     };
   }
 
@@ -96,7 +96,7 @@ async function resolveWebhookUrl(headerValue) {
     return {
       ok: false,
       error: "n8n UI design webhook URL is not allowed",
-      message: "Use Prompt Management settings, N8N_PROMO_UI_DESIGN_WEBHOOK_URL, or add the webhook host to N8N_PROMO_UI_DESIGN_WEBHOOK_ALLOWLIST.",
+      message: "Use Admin Page settings, N8N_PROMO_UI_DESIGN_WEBHOOK_URL, or add the webhook host to N8N_PROMO_UI_DESIGN_WEBHOOK_ALLOWLIST.",
     };
   }
 

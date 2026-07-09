@@ -1095,6 +1095,8 @@ createApp({
       currentView: "builder",
       sectionWidths: [30, 30, 40],
       resizeState: null,
+      adminSectionWidths: [50, 50],
+      adminResizeState: null,
       designDocuments: [],
       mdListSource: "불러오는 중",
       validationErrors: {},
@@ -1213,6 +1215,12 @@ createApp({
     abcGridStyle() {
       return {
         gridTemplateColumns: `${this.sectionWidths[0]}fr 8px ${this.sectionWidths[1]}fr 8px ${this.sectionWidths[2]}fr`,
+      };
+    },
+
+    adminGridStyle() {
+      return {
+        gridTemplateColumns: `${this.adminSectionWidths[0]}fr 8px ${this.adminSectionWidths[1]}fr`,
       };
     },
 
@@ -1421,6 +1429,13 @@ createApp({
     selectedPromptTemplate() {
       return this.promptTemplates.find((prompt) => prompt.id === this.selectedPromptTemplateId) || null;
     },
+
+    selectedPromptEditorTitle() {
+      if (!this.selectedPromptTemplate) return "Prompt Editor";
+      return this.selectedPromptTemplate.type === "image_execution"
+        ? "Image Execution Prompt"
+        : this.selectedPromptTemplate.name;
+    },
   },
 
   watch: {
@@ -1492,7 +1507,7 @@ createApp({
         this.loadPromptTemplates(),
         this.loadWorkerWebhookSettings(),
       ]);
-      this.setStatus("프롬프트 관리 페이지로 이동했습니다");
+      this.setStatus("관리자 페이지로 이동했습니다");
     },
 
     async loadPromptTemplates(options = {}) {
@@ -1505,7 +1520,10 @@ createApp({
         if (!response.ok) throw new Error(result.message || result.error || `Prompt ${response.status}`);
         this.promptTemplates = Array.isArray(result.prompts) ? result.prompts : [];
         if (!this.selectedPromptTemplateId || !this.promptTemplates.some((prompt) => prompt.id === this.selectedPromptTemplateId)) {
-          const active = this.promptTemplates.find((prompt) => prompt.status === "active");
+          const activeImageExecution = this.promptTemplates.find(
+            (prompt) => prompt.type === "image_execution" && prompt.status === "active"
+          );
+          const active = activeImageExecution || this.promptTemplates.find((prompt) => prompt.status === "active");
           this.selectedPromptTemplateId = active?.id || this.promptTemplates[0]?.id || "";
         }
         if (this.selectedPromptTemplateId) await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: true });
@@ -2945,6 +2963,36 @@ createApp({
     stopResize() {
       if (!this.resizeState) return;
       this.resizeState = null;
+      document.body.classList.remove("is-resizing");
+    },
+
+    startAdminResize(event) {
+      const layout = event.currentTarget.closest(".admin-ab-layout");
+      if (!layout) return;
+      event.currentTarget.setPointerCapture(event.pointerId);
+      this.adminResizeState = {
+        startX: event.clientX,
+        startWidths: [...this.adminSectionWidths],
+        totalWidth: layout.getBoundingClientRect().width,
+      };
+      document.body.classList.add("is-resizing");
+    },
+
+    onAdminResizeMove(event) {
+      if (!this.adminResizeState) return;
+      const deltaPercent = ((event.clientX - this.adminResizeState.startX) / this.adminResizeState.totalWidth) * 100;
+      const next = [
+        this.adminResizeState.startWidths[0] + deltaPercent,
+        this.adminResizeState.startWidths[1] - deltaPercent,
+      ];
+      const min = 25;
+      if (next[0] < min || next[1] < min) return;
+      this.adminSectionWidths = next;
+    },
+
+    stopAdminResize() {
+      if (!this.adminResizeState) return;
+      this.adminResizeState = null;
       document.body.classList.remove("is-resizing");
     },
 

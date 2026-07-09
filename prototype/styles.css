@@ -2608,6 +2608,35 @@ body.is-resizing {
   min-height: calc(100vh - 220px);
 }
 
+.admin-ab-layout {
+  gap: 0;
+  align-items: stretch;
+}
+
+.admin-panel {
+  display: flex;
+  min-width: 0;
+  min-height: calc(100vh - 252px);
+  flex-direction: column;
+  gap: 10px;
+  overflow: auto;
+}
+
+.admin-panel-a {
+  padding-right: 12px;
+}
+
+.admin-panel-b {
+  padding-left: 12px;
+}
+
+.prompt-admin-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 32%) minmax(0, 1fr);
+  gap: 12px;
+  min-height: 0;
+}
+
 .prompt-list-panel,
 .prompt-editor-panel {
   min-width: 0;
@@ -2829,6 +2858,24 @@ body.is-resizing {
   .prompt-manager-layout {
     grid-template-columns: 1fr;
     min-height: auto;
+  }
+
+  .admin-ab-layout {
+    gap: 16px;
+    grid-template-columns: 1fr !important;
+  }
+
+  .admin-ab-layout > .resize-handle {
+    display: none;
+  }
+
+  .admin-panel {
+    min-height: auto;
+    padding: 0;
+  }
+
+  .prompt-admin-grid {
+    grid-template-columns: 1fr;
   }
 
   .prompt-editor-header {
