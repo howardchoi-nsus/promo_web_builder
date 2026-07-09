@@ -119,7 +119,6 @@ const storageKeys = {
   generatedPages: "promoPrototype.generatedPages.abc",
   selectedDocumentId: "promoPrototype.selectedDocumentId.abc",
   generatedPage: "promoPrototype.generatedPage",
-  n8nWebhookUrl: "promoPrototype.n8nWebhookUrl",
   themeMode: "promoPrototype.themeMode",
 };
 
@@ -1124,7 +1123,6 @@ createApp({
       promoBuilderModalOpen: false,
       promoBuilderSessionKey: 0,
       currentBuilderStep: 1,
-      n8nWebhookUrl: localStorage.getItem(storageKeys.n8nWebhookUrl) || "",
       isGeneratingDesign: false,
       generationStatusIndex: 0,
       generationStatusTimer: null,
@@ -1143,6 +1141,11 @@ createApp({
       promptTypeFilter: "",
       promptSaving: false,
       promptHistories: [],
+      workerWebhookSettings: [],
+      workerWebhookSettingsLoading: false,
+      workerWebhookSettingsError: "",
+      workerWebhookSavingStage: "",
+      workerWebhookEditors: {},
       promptEditor: {
         name: "",
         body: "",
@@ -1449,9 +1452,6 @@ createApp({
         this.clearResolvedValidationErrors();
       },
     },
-    n8nWebhookUrl(value) {
-      localStorage.setItem(storageKeys.n8nWebhookUrl, String(value || "").trim());
-    },
   },
 
   mounted() {
@@ -1488,7 +1488,10 @@ createApp({
 
     async openPromptManager() {
       this.currentView = "prompts";
-      await this.loadPromptTemplates();
+      await Promise.all([
+        this.loadPromptTemplates(),
+        this.loadWorkerWebhookSettings(),
+      ]);
       this.setStatus("프롬프트 관리 페이지로 이동했습니다");
     },
 
@@ -1511,6 +1514,78 @@ createApp({
         this.setStatus(`프롬프트 목록을 불러오지 못했습니다: ${error.message}`);
       } finally {
         this.promptTemplatesLoading = false;
+      }
+    },
+
+    async loadWorkerWebhookSettings(options = {}) {
+      if (this.workerWebhookSettingsLoading && !options.fresh) return;
+      this.workerWebhookSettingsLoading = true;
+      this.workerWebhookSettingsError = "";
+      try {
+        const response = await fetch("/api/promo-generation-worker-settings");
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `Worker settings ${response.status}`);
+        this.workerWebhookSettings = Array.isArray(result.settings) ? result.settings : [];
+        const nextEditors = {};
+        this.workerWebhookSettings.forEach((setting) => {
+          const current = this.workerWebhookEditors[setting.stage] || {};
+          const preserveDrafts = Boolean(options.preserveDrafts);
+          nextEditors[setting.stage] = {
+            webhookUrl: preserveDrafts ? (current.webhookUrl || "") : "",
+            isActive: preserveDrafts ? (current.isActive ?? Boolean(setting.isActive)) : Boolean(setting.isActive),
+            timeoutMs: preserveDrafts ? (current.timeoutMs ?? (setting.timeoutMs ?? "")) : (setting.timeoutMs ?? ""),
+            description: preserveDrafts ? (current.description ?? (setting.description || "")) : (setting.description || ""),
+            changeNote: "",
+          };
+        });
+        this.workerWebhookEditors = nextEditors;
+      } catch (error) {
+        this.workerWebhookSettingsError = error.message;
+        this.setStatus(`Webhook 설정을 불러오지 못했습니다: ${error.message}`);
+      } finally {
+        this.workerWebhookSettingsLoading = false;
+      }
+    },
+
+    workerWebhookEditor(stage) {
+      if (!this.workerWebhookEditors[stage]) {
+        this.workerWebhookEditors[stage] = {
+          webhookUrl: "",
+          isActive: false,
+          timeoutMs: "",
+          description: "",
+          changeNote: "",
+        };
+      }
+      return this.workerWebhookEditors[stage];
+    },
+
+    async saveWorkerWebhookSetting(setting) {
+      if (!setting?.stage || this.workerWebhookSavingStage) return;
+      const editor = this.workerWebhookEditor(setting.stage);
+      this.workerWebhookSavingStage = setting.stage;
+      try {
+        const response = await fetch("/api/promo-generation-worker-settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            stage: setting.stage,
+            webhookUrl: editor.webhookUrl,
+            preserveExistingWebhook: !editor.webhookUrl && setting.isConfigured,
+            isActive: editor.isActive,
+            timeoutMs: editor.timeoutMs === "" ? null : Number(editor.timeoutMs),
+            description: editor.description,
+            changeNote: editor.changeNote || "Worker webhook setting updated from prompt management.",
+          }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `Worker settings ${response.status}`);
+        await this.loadWorkerWebhookSettings({ fresh: true });
+        this.setStatus(`${setting.label || setting.stage} Webhook 설정을 저장했습니다`);
+      } catch (error) {
+        this.setStatus(`Webhook 설정 저장 실패: ${error.message}`);
+      } finally {
+        this.workerWebhookSavingStage = "";
       }
     },
 
@@ -2322,11 +2397,6 @@ createApp({
         if (isValid && !this.hasSectionDraft()) this.refreshSectionDraft({ silent: true });
         return isValid;
       }
-      if (step === 3 && !this.n8nWebhookUrlIsValid()) {
-        this.validationErrors = { n8nWebhookUrl: true };
-        this.setStatus("n8n Webhook URL을 입력해 주세요");
-        return false;
-      }
       return true;
     },
 
@@ -2902,7 +2972,6 @@ createApp({
         market: hasValue(this.promo, "market"),
         audience: hasValue(this.simpleBrief, "audience"),
         campaignTone: hasValue(this.simpleBrief, "campaignTone"),
-        n8nWebhookUrl: this.n8nWebhookUrlIsValid(),
       };
       for (const [key, resolved] of Object.entries(checks)) {
         if (resolved) delete next[key];
@@ -2916,7 +2985,6 @@ createApp({
     },
 
     resetPromoBuilderState(options = {}) {
-      const existingWebhookUrl = this.n8nWebhookUrl;
       this.promo = {
         title: "",
         template: "AI Auto",
@@ -2942,7 +3010,6 @@ createApp({
       this.inputMode = "simple";
       this.generationMode = "ai_agent";
       this.globalVisualMode = "auto";
-      this.n8nWebhookUrl = existingWebhookUrl;
       this.currentBuilderStep = 1;
       this.sectionInputs = createEmptyTemp4Inputs();
       this.sectionInputsDirty = false;
@@ -3379,7 +3446,6 @@ createApp({
         sourceDesign: { ...source },
         styleSource: this.styleSource,
         styleSourceLabel: this.styleSourceLabel(),
-        n8nWebhookUrl: this.n8nWebhookUrl.trim(),
         companyPreset: this.styleSource === "company_default" ? this.selectedPreset.name : null,
         hasOverride: this.hasOverride(this.finalStyle, source),
         inputSnapshot: {
@@ -3448,30 +3514,15 @@ createApp({
       return true;
     },
 
-    n8nWebhookUrlIsValid() {
-      const value = String(this.n8nWebhookUrl || "").trim();
-      if (!value) return false;
-      try {
-        const url = new URL(value);
-        return url.protocol === "http:" || url.protocol === "https:";
-      } catch {
-        return false;
-      }
-    },
-
-    // n8n client: browser builds use the local API proxy to avoid CORS and centralize URL policy.
+    // n8n client: browser builds use the local API proxy so webhook URL policy stays server-side.
     async triggerN8n(payload) {
-      const url = this.n8nWebhookUrl.trim();
-      if (!this.n8nWebhookUrlIsValid()) {
-        throw new Error("n8n Webhook URL이 올바르지 않습니다");
-      }
       const useProxy = window.location.protocol !== "file:";
-      const requestUrl = useProxy ? "/api/generate-ui-design" : url;
+      const requestUrl = useProxy ? "/api/generate-ui-design" : "";
+      if (!requestUrl) throw new Error("로컬 파일 모드에서는 서버 Webhook 설정을 사용할 수 없습니다");
 
       const headers = {
         "Content-Type": "application/json",
       };
-      if (useProxy) headers["x-n8n-webhook-url"] = url;
 
       const response = await fetch(requestUrl, {
         method: "POST",
@@ -3544,11 +3595,6 @@ createApp({
       }
       if (!this.validatePromoInputs()) return;
       if (!this.validateSectionConfig()) return;
-      if (!this.n8nWebhookUrlIsValid()) {
-        this.validationErrors = { n8nWebhookUrl: true };
-        this.setStatus("n8n Webhook URL을 입력해 주세요");
-        return;
-      }
       await this.loadSelectedDesignDetail(this.selectedDocumentId);
 
       const pageId = createRunKey();

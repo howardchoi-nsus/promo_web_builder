@@ -89,6 +89,7 @@ async function queueIntegratedBrief(req, res) {
       payload: workerPayload,
       workerUrl: body.workerUrl || body.worker_url,
       timeoutMs: body.triggerTimeoutMs || body.trigger_timeout_ms,
+      sql,
     })
     : null;
   if (workerTriggerRequested) {

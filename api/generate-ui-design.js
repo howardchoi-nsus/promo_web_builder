@@ -1,3 +1,11 @@
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+const {
+  ensureWorkerWebhookSettings,
+  getSql,
+} = require("./_worker-webhook-settings-store");
+
 export const config = {
   maxDuration: 300,
 };
@@ -8,7 +16,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const webhookResolution = resolveWebhookUrl(req.headers["x-n8n-webhook-url"]);
+  const webhookResolution = await resolveWebhookUrl(req.headers["x-n8n-webhook-url"]);
   if (!webhookResolution.ok) {
     return res.status(400).json({
       error: webhookResolution.error,
@@ -60,15 +68,16 @@ function parseRequestBody(body) {
   return {};
 }
 
-function resolveWebhookUrl(headerValue) {
-  const envUrl = String(process.env.N8N_PROMO_UI_DESIGN_WEBHOOK_URL || "").trim();
+async function resolveWebhookUrl(headerValue) {
+  const configured = await loadConfiguredPromoUiWebhookUrl();
+  const envUrl = configured.url || String(process.env.N8N_PROMO_UI_DESIGN_WEBHOOK_URL || "").trim();
   const headerUrl = String(headerValue || "").trim();
   const selectedUrl = envUrl || headerUrl;
   if (!selectedUrl) {
     return {
       ok: false,
       error: "Missing n8n UI design webhook URL",
-      message: "Set N8N_PROMO_UI_DESIGN_WEBHOOK_URL or pass an allowed x-n8n-webhook-url during POC.",
+      message: "Set Promo UI Design Webhook in Prompt Management or configure N8N_PROMO_UI_DESIGN_WEBHOOK_URL.",
     };
   }
 
@@ -87,11 +96,29 @@ function resolveWebhookUrl(headerValue) {
     return {
       ok: false,
       error: "n8n UI design webhook URL is not allowed",
-      message: "Use N8N_PROMO_UI_DESIGN_WEBHOOK_URL or add the webhook host to N8N_PROMO_UI_DESIGN_WEBHOOK_ALLOWLIST.",
+      message: "Use Prompt Management settings, N8N_PROMO_UI_DESIGN_WEBHOOK_URL, or add the webhook host to N8N_PROMO_UI_DESIGN_WEBHOOK_ALLOWLIST.",
     };
   }
 
-  return { ok: true, url: parsed.toString() };
+  return { ok: true, url: parsed.toString(), source: configured.url ? "settings" : envUrl ? "env" : "request" };
+}
+
+async function loadConfiguredPromoUiWebhookUrl() {
+  try {
+    const sql = getSql();
+    await ensureWorkerWebhookSettings(sql);
+    const rows = await sql`
+      select webhook_url
+      from worker_webhook_settings
+      where stage = 'promo_ui_design'
+        and is_active = true
+        and webhook_url <> ''
+      limit 1
+    `;
+    return { url: String(rows[0]?.webhook_url || "").trim() };
+  } catch {
+    return { url: "" };
+  }
 }
 
 function parseWebhookUrl(value) {

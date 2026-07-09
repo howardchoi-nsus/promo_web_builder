@@ -2631,6 +2631,46 @@ body.is-resizing {
   font-size: 12px;
 }
 
+.worker-webhook-list {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.worker-webhook-item {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+
+.worker-webhook-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+}
+
+.worker-webhook-heading strong,
+.worker-webhook-heading span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.worker-webhook-heading strong {
+  font-size: 12px;
+}
+
+.worker-webhook-heading span {
+  margin-top: 2px;
+  color: var(--sub);
+  font-size: 11px;
+}
+
 .prompt-list-item {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

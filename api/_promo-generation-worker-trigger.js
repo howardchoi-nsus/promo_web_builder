@@ -4,6 +4,10 @@ const WORKER_URL_ENV = {
   final_design: "N8N_FINAL_DESIGN_WORKER_URL",
 };
 
+const {
+  ensureWorkerWebhookSettings,
+} = require("./_worker-webhook-settings-store");
+
 const DEFAULT_TRIGGER_ACK_TIMEOUT_MS = 2000;
 const MIN_TRIGGER_ACK_TIMEOUT_MS = 500;
 const MAX_TRIGGER_ACK_TIMEOUT_MS = 5000;
@@ -24,8 +28,9 @@ function buildWorkerPayload({ run, stage, taskId = "", extra = {} }) {
   };
 }
 
-function resolveWorkerUrl(stage, overrideUrl = "") {
-  const envUrl = String(process.env[WORKER_URL_ENV[stage]] || "").trim();
+async function resolveWorkerUrl(stage, overrideUrl = "", sql = null) {
+  const configured = await loadConfiguredWorkerUrl(stage, sql);
+  const envUrl = configured.url || String(process.env[WORKER_URL_ENV[stage]] || "").trim();
   const bodyUrl = String(overrideUrl || "").trim();
   const selectedUrl = envUrl || bodyUrl;
   if (!selectedUrl) {
@@ -52,13 +57,42 @@ function resolveWorkerUrl(stage, overrideUrl = "") {
         envName: WORKER_URL_ENV[stage] || "",
       };
     }
-    return { ok: true, url: parsed.toString(), envName: WORKER_URL_ENV[stage] || "" };
+    return {
+      ok: true,
+      url: parsed.toString(),
+      envName: configured.envName || WORKER_URL_ENV[stage] || "",
+      source: configured.url ? "settings" : envUrl ? "env" : "request",
+      settingId: configured.settingId || "",
+    };
   } catch (error) {
     return {
       ok: false,
       error: `Worker URL is invalid: ${error.message}`,
       envName: WORKER_URL_ENV[stage] || "",
     };
+  }
+}
+
+async function loadConfiguredWorkerUrl(stage, sql) {
+  if (!sql) return { url: "", settingId: "", envName: WORKER_URL_ENV[stage] || "" };
+  try {
+    await ensureWorkerWebhookSettings(sql);
+    const rows = await sql`
+      select id::text, webhook_url, metadata
+      from worker_webhook_settings
+      where stage = ${stage}
+        and is_active = true
+        and webhook_url <> ''
+      limit 1
+    `;
+    if (!rows.length) return { url: "", settingId: "", envName: WORKER_URL_ENV[stage] || "" };
+    return {
+      url: String(rows[0].webhook_url || "").trim(),
+      settingId: rows[0].id || "",
+      envName: rows[0].metadata?.envName || WORKER_URL_ENV[stage] || "",
+    };
+  } catch {
+    return { url: "", settingId: "", envName: WORKER_URL_ENV[stage] || "" };
   }
 }
 
@@ -84,8 +118,8 @@ function triggerAckTimeoutMs(value) {
   return Math.max(MIN_TRIGGER_ACK_TIMEOUT_MS, Math.min(selected, MAX_TRIGGER_ACK_TIMEOUT_MS));
 }
 
-async function triggerWorker({ stage, payload, workerUrl = "", timeoutMs = null }) {
-  const resolved = resolveWorkerUrl(stage, workerUrl);
+async function triggerWorker({ stage, payload, workerUrl = "", timeoutMs = null, sql = null }) {
+  const resolved = await resolveWorkerUrl(stage, workerUrl, sql);
   if (!resolved.ok) {
     return {
       ok: false,
@@ -117,6 +151,8 @@ async function triggerWorker({ stage, payload, workerUrl = "", timeoutMs = null 
       response: responseBody,
       ackTimeoutMs,
       urlConfigured: true,
+      urlSource: resolved.source,
+      settingId: resolved.settingId,
     };
   } catch (error) {
     return {
@@ -128,6 +164,8 @@ async function triggerWorker({ stage, payload, workerUrl = "", timeoutMs = null 
       payload,
       ackTimeoutMs,
       urlConfigured: true,
+      urlSource: resolved.source,
+      settingId: resolved.settingId,
     };
   } finally {
     clearTimeout(timeout);

@@ -466,18 +466,12 @@
               </div>
             </div>
 
-            <!-- B3 generation console: POC users manually provide the n8n webhook and receive an indeterminate loading state. -->
+            <!-- B3 generation console: webhook URLs are managed from Prompt Management. -->
             <div class="subsection" v-if="promoBuilderStarted && currentBuilderStep === 3">
               <div class="subsection-title">
                 <h3>B3. 디자인 생성</h3>
-                <span>POC n8n Webhook 실행</span>
+                <span>n8n worker settings</span>
               </div>
-
-              <label class="field" :class="fieldClass('n8nWebhookUrl')">
-                <span>n8n Webhook URL</span>
-                <input v-model="n8nWebhookUrl" type="url" placeholder="https://your-n8n-domain/webhook/promo-ui-design-generate" autocomplete="off" />
-                <small class="field-error" v-if="fieldError('n8nWebhookUrl')">{{ fieldError('n8nWebhookUrl') }}</small>
-              </label>
 
               <div class="generation-console" :class="{ running: isGeneratingDesign }">
                 <div class="poker-loader" aria-hidden="true">
@@ -496,14 +490,14 @@
                 </div>
                 <div class="generation-copy">
                   <strong>{{ isGeneratingDesign ? 'AI가 요청 사항을 접수 중입니다' : '디자인 생성 준비 완료' }}</strong>
-                  <span>{{ isGeneratingDesign ? generationStatusMessage : 'Webhook URL을 확인한 뒤 디자인 생성을 실행해 주세요.' }}</span>
+                  <span>{{ isGeneratingDesign ? generationStatusMessage : 'Prompt Management Webhook settings will be used.' }}</span>
                   <small>실제 진행률 대신 작업 중 상태를 표시합니다. 보통 1~2분 정도 걸릴 수 있어요.</small>
                 </div>
               </div>
 
               <div class="action-row align-right">
                 <button class="secondary-action" type="button" :disabled="isGeneratingDesign" @click="refreshGeneratedPages">결과 새로고침</button>
-                <button class="primary-action" type="button" :disabled="isGeneratingDesign || !n8nWebhookUrlIsValid()" @click="generateUiDesign">
+                <button class="primary-action" type="button" :disabled="isGeneratingDesign" @click="generateUiDesign">
                   {{ isGeneratingDesign ? '생성 중...' : 'UI 디자인 생성' }}
                 </button>
               </div>
@@ -659,6 +653,50 @@
 
             <div class="prompt-manager-layout">
               <aside class="prompt-list-panel">
+                <div class="subsection-title">
+                  <h3>Worker Webhook</h3>
+                  <button class="tiny-button" type="button" :disabled="workerWebhookSettingsLoading" @click="loadWorkerWebhookSettings({ fresh: true })">Refresh</button>
+                </div>
+                <div class="outline-item danger-state" v-if="workerWebhookSettingsError">
+                  <strong>Webhook settings error</strong>
+                  <span>{{ workerWebhookSettingsError }}</span>
+                </div>
+                <div class="worker-webhook-list" v-if="workerWebhookSettings.length">
+                  <div v-for="setting in workerWebhookSettings" :key="setting.stage" class="worker-webhook-item">
+                    <div class="worker-webhook-heading">
+                      <div>
+                        <strong>{{ setting.label }}</strong>
+                        <span>{{ setting.maskedWebhookUrl || setting.envName || 'Not configured' }}</span>
+                      </div>
+                      <label class="switch-control">
+                        <input type="checkbox" v-model="workerWebhookEditor(setting.stage).isActive" />
+                        <span>Active</span>
+                      </label>
+                    </div>
+                    <label class="field compact-field">
+                      <span>Webhook URL</span>
+                      <input v-model="workerWebhookEditor(setting.stage).webhookUrl" type="url" placeholder="Leave blank to keep existing URL" autocomplete="off" />
+                    </label>
+                    <div class="form-grid compact">
+                      <label class="field compact-field">
+                        <span>Timeout ms</span>
+                        <input v-model="workerWebhookEditor(setting.stage).timeoutMs" type="number" min="500" max="30000" step="500" />
+                      </label>
+                      <label class="field compact-field">
+                        <span>Description</span>
+                        <input v-model="workerWebhookEditor(setting.stage).description" type="text" autocomplete="off" />
+                      </label>
+                    </div>
+                    <label class="field compact-field">
+                      <span>Change note</span>
+                      <input v-model="workerWebhookEditor(setting.stage).changeNote" type="text" autocomplete="off" placeholder="Why this endpoint changed" />
+                    </label>
+                    <div class="action-row align-right">
+                      <button class="tiny-button primary" type="button" :disabled="workerWebhookSavingStage === setting.stage" @click="saveWorkerWebhookSetting(setting)">Save</button>
+                    </div>
+                  </div>
+                </div>
+
                 <div class="subsection-title">
                   <h3>현재 프롬프트</h3>
                   <select v-model="promptTypeFilter" aria-label="프롬프트 타입 필터">
