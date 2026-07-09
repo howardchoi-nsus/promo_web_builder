@@ -224,7 +224,9 @@ async function saveAsset(req, res) {
   const { put } = await import("@vercel/blob");
   const generatedAt = new Date();
   const storageKey = `promo-designs/${runKey}/${generatedAt.getTime()}.${extensionForMime(imageInput.mimeType)}`;
-  const blobAccess = String(process.env.BLOB_ACCESS || "private").toLowerCase() === "public" ? "public" : "private";
+  // The current Blob Store is private. Image display is handled by API proxies,
+  // so asset uploads should not depend on BLOB_ACCESS requesting public storage.
+  const blobAccess = "private";
   const blob = await put(storageKey, imageInput.bytes, {
     access: blobAccess,
     contentType: imageInput.mimeType,

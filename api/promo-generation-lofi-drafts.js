@@ -181,9 +181,10 @@ async function updateDraft(req, res) {
       }
       const { put } = await import("@vercel/blob");
       const storageKey = `promo-generation/lofi-drafts/${draftId}/${Date.now()}.${extensionForMime(imageInput.mimeType)}`;
-      const blobAccess = String(process.env.BLOB_ACCESS || "private").toLowerCase() === "public" ? "public" : "private";
+      // This project uses a private Blob Store; browser display goes through the
+      // LO-FI image proxy, so worker callbacks must not request public Blob access.
       const blob = await put(storageKey, imageInput.bytes, {
-        access: blobAccess,
+        access: "private",
         contentType: imageInput.mimeType,
       });
       draftImageUrl = blob.url;
