@@ -1201,6 +1201,7 @@ createApp({
       generatedPagesLoading: false,
       generatedPagesError: "",
       generatedPagesLoaded: false,
+      generationRunPollingTimer: null,
     };
   },
 
@@ -1461,6 +1462,10 @@ createApp({
     this.loadGeneratedPagesFromServer({ silent: true });
     this.loadHandoffDocuments();
     this.resetOverride();
+  },
+
+  unmounted() {
+    this.stopGenerationRunPolling();
   },
 
   methods: {
@@ -2445,6 +2450,7 @@ createApp({
         generationRunId: fallback.generationRunId || "",
         generationRunStatus: fallback.generationRunStatus || "",
         generationRunStage: fallback.generationRunStage || "",
+        generationRunUpdatedAt: fallback.generationRunUpdatedAt || "",
         generationPolling: fallback.generationPolling || null,
         lofiDrafts: fallback.lofiDrafts || [],
         confirmedLofiDraft: fallback.confirmedLofiDraft || null,
@@ -2510,7 +2516,8 @@ createApp({
         generationRunId: run.runId || page.generationRunId || "",
         generationRunStatus: run.status || "",
         generationRunStage: run.stage || "",
-        generationPolling: run.polling || generationPollingState(run),
+        generationRunUpdatedAt: run.updatedAt || page.generationRunUpdatedAt || "",
+        generationPolling: generationPollingState(run),
         lofiDrafts: drafts,
         confirmedLofiDraft: confirmedDraft,
         currentLofiDraft: currentDraft,
@@ -2600,6 +2607,7 @@ createApp({
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `Confirm ${response.status}`);
         this.applyGenerationRunStateToPage(page, result.state || result);
+        this.syncGenerationRunPolling();
         this.setStatus(`LO-FI 초안 #${draft.draftAttempt || ""}을 확정했습니다`);
       } catch (error) {
         this.setStatus(`LO-FI 초안 확정 실패: ${error.message}`);
@@ -2626,9 +2634,11 @@ createApp({
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || result.workerTrigger?.error || `Final design ${response.status}`);
         await this.refreshGenerationRunState(page).catch(() => false);
+        this.syncGenerationRunPolling();
         this.setStatus("최종 디자인 생성을 요청했습니다");
       } catch (error) {
         await this.refreshGenerationRunState(page).catch(() => false);
+        this.syncGenerationRunPolling();
         this.setStatus(`최종 디자인 생성 요청 실패: ${error.message}`);
       }
     },
@@ -2647,6 +2657,56 @@ createApp({
     async refreshGenerationRunStates(pages) {
       const targets = (pages || []).filter((page) => page?.id).slice(0, 20);
       await Promise.all(targets.map((page) => this.refreshGenerationRunState(page).catch(() => false)));
+    },
+
+    generationRunNeedsPolling(page) {
+      if (!page?.generationRunId) return false;
+      page.generationPolling = generationPollingState({
+        stage: page.generationRunStage,
+        status: page.generationRunStatus,
+        updatedAt: page.generationRunUpdatedAt,
+      });
+      const polling = page.generationPolling || {};
+      if (polling.isStale) return false;
+
+      const statuses = [
+        page.generationRunStatus,
+        page.currentLofiDraft?.status,
+        page.currentFinalDesign?.status,
+      ].map((value) => String(value || ""));
+      return statuses.some((status) => /queued|generating|running|pending|accepted/i.test(status));
+    },
+
+    syncGenerationRunPolling() {
+      const shouldPoll = this.generatedPages.some((page) => this.generationRunNeedsPolling(page));
+      if (shouldPoll) {
+        this.startGenerationRunPolling();
+      } else {
+        this.stopGenerationRunPolling();
+      }
+    },
+
+    startGenerationRunPolling() {
+      if (this.generationRunPollingTimer || window.location.protocol === "file:") return;
+      this.generationRunPollingTimer = window.setInterval(() => {
+        this.pollActiveGenerationRuns();
+      }, 5000);
+    },
+
+    stopGenerationRunPolling() {
+      if (!this.generationRunPollingTimer) return;
+      window.clearInterval(this.generationRunPollingTimer);
+      this.generationRunPollingTimer = null;
+    },
+
+    async pollActiveGenerationRuns() {
+      const activePages = this.generatedPages.filter((page) => this.generationRunNeedsPolling(page));
+      if (!activePages.length) {
+        this.stopGenerationRunPolling();
+        return;
+      }
+      await Promise.all(activePages.map((page) => this.refreshGenerationRunState(page).catch(() => false)));
+      this.syncGenerationRunPolling();
     },
 
     async loadGenerationRunPages(options = {}) {
@@ -2689,6 +2749,7 @@ createApp({
                 runId: generationPage.generationRunId,
                 status: generationPage.generationRunStatus,
                 stage: generationPage.generationRunStage,
+                updatedAt: generationPage.generationRunUpdatedAt,
                 polling: generationPage.generationPolling,
               },
               drafts: generationPage.lofiDrafts,
@@ -2711,6 +2772,7 @@ createApp({
           ...serverPages,
         ];
         await this.refreshGenerationRunStates(this.generatedPages);
+        this.syncGenerationRunPolling();
         this.generatedPagesLoaded = true;
         if (!options.silent) this.setStatus(`서버에서 생성 결과 ${serverPages.length}개를 불러왔습니다`);
       } catch (error) {
