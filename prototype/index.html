@@ -600,6 +600,15 @@
                           class="tiny-button"
                           type="button"
                           v-if="currentLofiDraft(page)"
+                          :disabled="!canRetryLofiDraft(page)"
+                          @click="retryLofiDraft(page)"
+                        >
+                          {{ lofiDraftRetryLabel(page) }}
+                        </button>
+                        <button
+                          class="tiny-button"
+                          type="button"
+                          v-if="currentLofiDraft(page)"
                           :disabled="!canConfirmLofiDraft(page)"
                           @click="confirmLofiDraft(page)"
                         >
@@ -1042,6 +1051,6 @@
     </div>
 
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-    <script src="app.js?v=final-design-action-v1"></script>
+    <script src="app.js?v=lofi-retry-action-v1"></script>
   </body>
 </html>

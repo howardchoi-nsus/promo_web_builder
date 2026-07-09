@@ -2509,8 +2509,11 @@ createApp({
       const readyDrafts = drafts.filter((draft) => ["ready", "completed"].includes(String(draft.status || "")));
       const currentDraft = confirmedDraft || readyDrafts[readyDrafts.length - 1] || drafts[drafts.length - 1] || null;
       const currentDraftReady = ["ready", "completed"].includes(String(currentDraft?.status || ""));
+      const previewDraft = currentDraftReady ? currentDraft : readyDrafts[readyDrafts.length - 1] || null;
       const currentFinalDesign = finalDesigns[0] || null;
       const currentFinalDesignReady = ["ready", "completed"].includes(String(currentFinalDesign?.status || ""));
+      const readyFinalDesigns = finalDesigns.filter((finalDesign) => ["ready", "completed"].includes(String(finalDesign.status || "")));
+      const previewFinalDesign = currentFinalDesignReady ? currentFinalDesign : readyFinalDesigns[0] || null;
 
       Object.assign(page, {
         generationRunId: run.runId || page.generationRunId || "",
@@ -2521,10 +2524,10 @@ createApp({
         lofiDrafts: drafts,
         confirmedLofiDraft: confirmedDraft,
         currentLofiDraft: currentDraft,
-        lofiDraftPreviewUrl: currentDraftReady ? lofiDraftImageUrlForId(currentDraft.draftId) : "",
+        lofiDraftPreviewUrl: previewDraft ? lofiDraftImageUrlForId(previewDraft.draftId) : "",
         finalDesigns,
         currentFinalDesign,
-        finalDesignPreviewUrl: currentFinalDesignReady ? finalDesignImageUrlForId(currentFinalDesign.finalDesignId) : "",
+        finalDesignPreviewUrl: previewFinalDesign ? finalDesignImageUrlForId(previewFinalDesign.finalDesignId) : "",
       });
       return page;
     },
@@ -2540,6 +2543,22 @@ createApp({
     canConfirmLofiDraft(page) {
       const draft = this.currentLofiDraft(page);
       return Boolean(draft?.draftId && this.isReadyLofiDraft(draft) && !draft.confirmedAt);
+    },
+
+    canRetryLofiDraft(page) {
+      if (!page?.generationRunId || page.confirmedLofiDraft) return false;
+      const draft = this.currentLofiDraft(page);
+      const draftStatus = String(draft?.status || "");
+      const finalStatus = String(page?.currentFinalDesign?.status || "");
+      const draftActive = /queued|generating|running|pending/i.test(draftStatus);
+      const finalActive = /queued|generating|running|pending/i.test(finalStatus);
+      return Boolean(draft?.draftId && !draftActive && !finalActive);
+    },
+
+    lofiDraftRetryLabel(page) {
+      const draft = this.currentLofiDraft(page);
+      const nextAttempt = Number(draft?.draftAttempt || 0) + 1;
+      return nextAttempt > 1 ? `초안 재시도 #${nextAttempt}` : "초안 재시도";
     },
 
     lofiDraftConfirmLabel(page) {
@@ -2611,6 +2630,33 @@ createApp({
         this.setStatus(`LO-FI 초안 #${draft.draftAttempt || ""}을 확정했습니다`);
       } catch (error) {
         this.setStatus(`LO-FI 초안 확정 실패: ${error.message}`);
+      }
+    },
+
+    async retryLofiDraft(page) {
+      if (!this.canRetryLofiDraft(page)) {
+        this.setStatus("현재 상태에서는 LO-FI 초안을 다시 생성할 수 없습니다");
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/promo-generation-lofi-drafts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            runId: page.generationRunId || page.id,
+            triggerWorker: true,
+          }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || result.workerTrigger?.error || `LO-FI draft ${response.status}`);
+        await this.refreshGenerationRunState(page).catch(() => false);
+        this.syncGenerationRunPolling();
+        this.setStatus("새 LO-FI 초안 생성을 요청했습니다");
+      } catch (error) {
+        await this.refreshGenerationRunState(page).catch(() => false);
+        this.syncGenerationRunPolling();
+        this.setStatus(`LO-FI 초안 재시도 실패: ${error.message}`);
       }
     },
 
