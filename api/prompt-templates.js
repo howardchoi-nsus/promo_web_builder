@@ -4,6 +4,8 @@ const {
   toPromptTemplate,
 } = require("./_prompt-template-store");
 
+// Listing always ensures repository defaults exist first so a fresh database can
+// open the Admin Page without a separate migration/seed command.
 module.exports = async function handler(req, res) {
   if (req.method !== "GET") {
     res.setHeader("Allow", "GET");

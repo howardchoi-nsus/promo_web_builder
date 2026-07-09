@@ -11,6 +11,8 @@ const {
   triggerWorker,
 } = require("./_promo-generation-worker-trigger");
 
+// Final design generation is gated by a confirmed LO-FI draft so the polished
+// image has an explicit human-approved structure to build on.
 const MAX_FINAL_IMAGE_BYTES = 24 * 1024 * 1024;
 
 module.exports = async function handler(req, res) {
@@ -72,6 +74,8 @@ async function queueFinalDesign(req, res) {
   }
   const confirmedDraftId = String(draftRows[0]?.id || "").trim();
 
+  // Keep final designs append-only. A run may produce several final variants, but
+  // each one records the confirmed draft that shaped it.
   const rows = await sql`
     insert into promo_generation_final_designs (
       run_id,
@@ -146,6 +150,8 @@ async function queueFinalDesign(req, res) {
     `;
   }
   if (workerTrigger && !workerTrigger.ok) {
+    // Keep trigger failures explicit; without this state the UI would keep polling
+    // a queued final design even though n8n never acknowledged the job.
     await sql`
       update promo_generation_final_designs
       set status = 'trigger_failed', error_message = ${workerTrigger.error || "Worker trigger failed"}, updated_at = now()
@@ -181,6 +187,8 @@ async function updateFinalDesign(req, res) {
   try {
     const imageInput = resolveFinalImageInput(body);
     if (imageInput) {
+      // Worker callbacks may send inline images; store them in Blob so reviewers
+      // can inspect the exact generated artifact after the callback completes.
       if (imageInput.bytes.length > MAX_FINAL_IMAGE_BYTES) {
         return res.status(413).json({ error: "Final image is too large", maxBytes: MAX_FINAL_IMAGE_BYTES });
       }

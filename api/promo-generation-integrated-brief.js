@@ -11,6 +11,9 @@ const {
   triggerWorker,
 } = require("./_promo-generation-worker-trigger");
 
+// Integrated brief is the first generated artifact and becomes the contract for
+// image stages. Queueing only creates/updates DB state; n8n owns the long-running
+// generation and calls PATCH when the artifact is ready or failed.
 module.exports = async function handler(req, res) {
   try {
     if (req.method === "POST") return await queueIntegratedBrief(req, res);
@@ -76,6 +79,8 @@ async function queueIntegratedBrief(req, res) {
   `;
 
   const integratedBrief = integratedBriefSummary(rows[0]);
+  // The worker payload stays intentionally small. n8n can fetch prepared prompt
+  // material by run/task id, which avoids duplicating large markdown in trigger logs.
   const workerPayload = buildWorkerPayload({
     run,
     stage: "integrated_brief",
@@ -107,6 +112,8 @@ async function queueIntegratedBrief(req, res) {
     `;
   }
   if (workerTrigger && !workerTrigger.ok) {
+    // Keep trigger failures explicit; without this state the UI would keep polling
+    // a queued step even though n8n never acknowledged the job.
     await sql`
       update promo_generation_integrated_briefs
       set status = 'trigger_failed', error_message = ${workerTrigger.error || "Worker trigger failed"}, updated_at = now()

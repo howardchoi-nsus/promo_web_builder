@@ -9,6 +9,9 @@ const {
   buildPromoInputMarkdown,
 } = require("./_promo-markdown-builders");
 
+// Prepare is a read-only assembly endpoint for workers: it rebuilds prompt input
+// from the stored run snapshot so n8n does not need to trust browser-submitted
+// markdown or carry large prompt bodies in trigger payloads.
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");

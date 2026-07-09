@@ -8,6 +8,9 @@ const {
   toPromptTemplate,
 } = require("./_prompt-template-store");
 
+// Prompt edits are versioned in place instead of creating a new row per save.
+// Activation/archiving APIs decide which row is live; this endpoint preserves
+// the review trail for copy/model changes made from the Admin Page.
 module.exports = async function handler(req, res) {
   try {
     if (req.method === "GET") return await getPrompt(req, res);
@@ -153,6 +156,8 @@ async function updatePrompt(req, res) {
     return res.status(409).json({ error: "Archived prompt templates cannot be updated" });
   }
 
+  // Every save increments the visible version even when status stays the same,
+  // so reviewers can compare Admin Page history with actual prompt executions.
   const nextVersion = Number(current.version || 1) + 1;
   const provider = hasProvider ? String(body.provider || "").trim() : current.provider || "";
   const model = hasModel ? String(body.model || "").trim() : current.model || "";
@@ -202,6 +207,8 @@ async function updatePrompt(req, res) {
       updated_at
   `;
 
+  // Store full previous/new bodies in history because prompt wording changes are
+  // often the root cause when downstream image generation behavior shifts.
   await sql`
     insert into prompt_template_histories (
       prompt_template_id,

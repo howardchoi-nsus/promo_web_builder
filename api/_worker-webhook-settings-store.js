@@ -1,5 +1,7 @@
 const { getSql } = require("./_prompt-template-store");
 
+// These rows are created even before URLs are entered so the Admin Page can render
+// a fixed set of worker slots and keep their env-var fallback names visible.
 const WORKER_STAGES = {
   integrated_brief: {
     label: "Integrated Brief",
@@ -78,6 +80,8 @@ function maskWebhookUrl(value) {
     const maskedLast = last.length <= 6
       ? "****"
       : `${last.slice(0, 2)}****${last.slice(-4)}`;
+    // Hide n8n execution tokens while preserving enough path context for operators
+    // to distinguish production/test webhooks in the Admin Page.
     url.pathname = `/${[...parts, maskedLast].join("/")}`;
     url.search = "";
     url.hash = "";
@@ -95,6 +99,8 @@ function validateWebhookUrl(value) {
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
       return { ok: false, error: "Webhook URL must use http or https" };
     }
+    // Production rejects unapproved hosts because saved admin URLs are later used
+    // server-side and would otherwise become an SSRF entry point.
     if (isProductionRuntime() && !workerHostAllowed(parsed.hostname)) {
       return { ok: false, error: "Webhook URL host is not allowed" };
     }
@@ -142,6 +148,8 @@ function normalizeTimeoutMs(value) {
   if (value === null || value === undefined || value === "") return null;
   const number = Number(value);
   if (!Number.isFinite(number)) return null;
+  // Persist a wider operator-facing range than trigger ACK uses; individual callers
+  // may still clamp to their own runtime-safe limit.
   return Math.max(500, Math.min(Math.round(number), 30000));
 }
 

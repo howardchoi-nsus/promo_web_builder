@@ -8,6 +8,10 @@ const {
   ensureWorkerWebhookSettings,
 } = require("./_worker-webhook-settings-store");
 
+// This module is deliberately limited to "wake the worker" concerns. Stage APIs
+// own DB state transitions, while n8n owns generation and callback completion.
+// The trigger request only waits for n8n to acknowledge receipt. The actual
+// generation continues asynchronously and reports completion through PATCH APIs.
 const DEFAULT_TRIGGER_ACK_TIMEOUT_MS = 2000;
 const MIN_TRIGGER_ACK_TIMEOUT_MS = 500;
 const MAX_TRIGGER_ACK_TIMEOUT_MS = 5000;
@@ -32,6 +36,8 @@ async function resolveWorkerUrl(stage, overrideUrl = "", sql = null) {
   const configured = await loadConfiguredWorkerUrl(stage, sql);
   const envUrl = configured.url || String(process.env[WORKER_URL_ENV[stage]] || "").trim();
   const bodyUrl = String(overrideUrl || "").trim();
+  // Admin/DB settings intentionally win over env and request values so production
+  // operators can rotate worker URLs without changing the builder payload contract.
   const selectedUrl = envUrl || bodyUrl;
   if (!selectedUrl) {
     return {
@@ -115,6 +121,8 @@ function triggerAckTimeoutMs(value) {
   const requestedValue = Number(value || 0);
   const selected = requestedValue || envValue || DEFAULT_TRIGGER_ACK_TIMEOUT_MS;
   if (!Number.isFinite(selected)) return DEFAULT_TRIGGER_ACK_TIMEOUT_MS;
+  // Clamp to a short window: Vercel should return quickly while the n8n worker
+  // continues out-of-band, but very low values cause noisy false trigger failures.
   return Math.max(MIN_TRIGGER_ACK_TIMEOUT_MS, Math.min(selected, MAX_TRIGGER_ACK_TIMEOUT_MS));
 }
 
@@ -129,6 +137,8 @@ async function triggerWorker({ stage, payload, workerUrl = "", timeoutMs = null,
     };
   }
 
+  // A non-2xx acknowledgement is stored as trigger_failed by callers instead of
+  // silently queuing, because the worker may never call back with a terminal state.
   const ackTimeoutMs = triggerAckTimeoutMs(timeoutMs);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), ackTimeoutMs);

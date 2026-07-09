@@ -4,6 +4,8 @@ const path = require("node:path");
 const { neon } = require("@neondatabase/serverless");
 const { getDatabaseUrl } = require("./_db");
 
+// Prompt templates are DB-managed after first boot, but repository defaults remain
+// the recovery baseline for new environments and accidental table resets.
 const PROMPT_TYPES = {
   integrated_brief: {
     name: "Integrated Brief Generation",
@@ -118,6 +120,8 @@ async function ensureDefaultPromptTemplates(sql) {
         and status = 'active'
       limit 1
     `;
+    // Keep exactly one active default per type on first install. Later repository
+    // default changes should not overwrite admin-edited prompts during deployment.
     const initialStatus = activeRows.length ? "draft" : "active";
     await sql`
       insert into prompt_templates (
@@ -215,6 +219,8 @@ function normalizeNumber(value) {
 }
 
 function renderPrompt(body, variables = {}) {
+  // Unknown placeholders are intentionally preserved so prompt QA can report
+  // unresolved variables instead of silently sending incomplete instructions.
   return String(body || "").replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (match, key) => (
     Object.prototype.hasOwnProperty.call(variables, key) ? String(variables[key] ?? "") : match
   ));

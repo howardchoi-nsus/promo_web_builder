@@ -9,6 +9,9 @@ const {
   stableJson,
 } = require("./_promo-generation-run-store");
 
+// A generation run is the durable handoff record between the browser and n8n.
+// Store the original input snapshot so later stages can be retried or audited
+// without depending on transient client state.
 module.exports = async function handler(req, res) {
   try {
     if (req.method === "POST") return await createRun(req, res);
@@ -34,6 +37,8 @@ async function createRun(req, res) {
   const inputHash = sha256(stableJson(inputSnapshot));
   const sql = getSql();
 
+  // Reusing a runKey means "replace the accepted input and start over" rather
+  // than creating a duplicate run. This keeps refresh/retry flows idempotent.
   const rows = await sql`
     insert into promo_generation_runs (
       run_key,

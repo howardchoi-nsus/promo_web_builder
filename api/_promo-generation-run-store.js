@@ -2,6 +2,11 @@ const { randomUUID, createHash } = require("node:crypto");
 const { neon } = require("@neondatabase/serverless");
 const { getDatabaseUrl } = require("./_db");
 
+// Shared persistence helpers for the multi-stage promo generation flow. Keep
+// cross-stage summaries here so the builder, worker callbacks, and reviewers read
+// the same state shape.
+// Polling stale limits are UX guardrails, not hard worker deadlines: image steps get
+// a little longer than LO-FI because n8n may spend extra time on prompt assembly/upload.
 const STAGE_STALE_LIMITS_MS = {
   integrated_brief: 6 * 60 * 1000,
   lofi_draft: 4 * 60 * 1000,
@@ -39,6 +44,8 @@ function stableJson(value) {
   return JSON.stringify(sortValue(value || {}));
 }
 
+// The input hash must stay stable across equivalent JSON payloads so retries can
+// compare generation intent even when clients send object keys in different orders.
 function sortValue(value) {
   if (Array.isArray(value)) return value.map(sortValue);
   if (!value || typeof value !== "object") return value;
@@ -81,6 +88,8 @@ function staleInfo(stage, status, updatedAt) {
   const stageKey = String(stage || "");
   const statusKey = String(status || "");
   const limitMs = STAGE_STALE_LIMITS_MS[stageKey] || 0;
+  // Only active-looking states are marked stale; ready/failed historical runs should
+  // remain readable without creating false retry prompts in the builder UI.
   const active = /queued|generating|running|pending|accepted/i.test(statusKey);
   const updatedTime = updatedAt ? new Date(updatedAt).getTime() : 0;
   const ageMs = updatedTime ? Math.max(0, Date.now() - updatedTime) : 0;

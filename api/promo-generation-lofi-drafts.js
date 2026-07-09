@@ -11,6 +11,8 @@ const {
   triggerWorker,
 } = require("./_promo-generation-worker-trigger");
 
+// LO-FI drafts are intentionally attempt-based: users can request multiple
+// wireframe options before confirming one for final design generation.
 const MAX_DRAFT_IMAGE_BYTES = 24 * 1024 * 1024;
 
 module.exports = async function handler(req, res) {
@@ -58,6 +60,8 @@ async function queueDraft(req, res) {
   `;
   const nextAttempt = Number(attemptRows[0]?.next_attempt || 1);
 
+  // Never overwrite previous drafts; the attempt number lets the UI compare
+  // alternatives and preserves what the user actually confirmed.
   const rows = await sql`
     insert into promo_generation_lofi_drafts (
       run_id,
@@ -133,6 +137,8 @@ async function queueDraft(req, res) {
     `;
   }
   if (workerTrigger && !workerTrigger.ok) {
+    // Keep trigger failures explicit; without this state the UI would keep polling
+    // a queued draft even though n8n never acknowledged the job.
     await sql`
       update promo_generation_lofi_drafts
       set status = 'trigger_failed', error_message = ${workerTrigger.error || "Worker trigger failed"}, updated_at = now()
@@ -168,6 +174,8 @@ async function updateDraft(req, res) {
   try {
     const imageInput = resolveDraftImageInput(body);
     if (imageInput) {
+      // Worker callbacks may send inline images; store them in Blob so the UI can
+      // load drafts consistently through URLs and later proxy endpoints.
       if (imageInput.bytes.length > MAX_DRAFT_IMAGE_BYTES) {
         return res.status(413).json({ error: "Draft image is too large", maxBytes: MAX_DRAFT_IMAGE_BYTES });
       }

@@ -10,6 +10,8 @@ export const config = {
   maxDuration: 300,
 };
 
+// Legacy UI-design generation proxy. Newer multi-stage generation uses worker
+// stage APIs, but this route remains for the builder's direct Promo UI Design flow.
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -32,6 +34,8 @@ export default async function handler(req, res) {
     const isPublicPromptUrl = /^https?:\/\//i.test(promptUrl)
       && !/^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])/i.test(promptUrl);
 
+    // n8n runs outside the browser, so localhost prompt URLs from local/prototype
+    // payloads are replaced with this deployment's public prompt endpoint.
     if ((!promptUrl || !isPublicPromptUrl) && host) {
       requestBody.promptUrl = `${proto}://${host}/api/prompts/promo-ui-design-image-generation`;
     }
@@ -72,6 +76,8 @@ async function resolveWebhookUrl(headerValue) {
   const configured = await loadConfiguredPromoUiWebhookUrl();
   const envUrl = configured.url || String(process.env.N8N_PROMO_UI_DESIGN_WEBHOOK_URL || "").trim();
   const headerUrl = String(headerValue || "").trim();
+  // Admin Page settings are the operational source of truth; the request header is
+  // retained only as a local/dev fallback for older builder flows.
   const selectedUrl = envUrl || headerUrl;
   if (!selectedUrl) {
     return {
