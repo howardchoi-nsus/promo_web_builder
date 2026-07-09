@@ -2,6 +2,9 @@
   "name": "promo-web-builder",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "check": "node --check prototype/app.js && node --check prototype/generated.js",
     "test:design-prompt-md": "node scripts/test-design-prompt-md.js",
