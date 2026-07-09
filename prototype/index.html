@@ -593,6 +593,15 @@
                       <td>
                         <button class="tiny-button primary" type="button" @click="openGenerated(page)">열기</button>
                         <button class="tiny-button" type="button" :disabled="!canOpenPromptFiles(page)" @click="openPromptFiles(page)">MD 보기</button>
+                        <button
+                          class="tiny-button"
+                          type="button"
+                          v-if="currentLofiDraft(page)"
+                          :disabled="!canConfirmLofiDraft(page)"
+                          @click="confirmLofiDraft(page)"
+                        >
+                          {{ lofiDraftConfirmLabel(page) }}
+                        </button>
                       </td>
                     </tr>
                   </tbody>
@@ -1021,6 +1030,6 @@
     </div>
 
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-    <script src="app.js?v=lofi-draft-preview-v1"></script>
+    <script src="app.js?v=lofi-draft-confirm-v1"></script>
   </body>
 </html>

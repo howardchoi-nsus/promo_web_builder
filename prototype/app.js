@@ -2509,6 +2509,21 @@ createApp({
       return page?.currentLofiDraft || page?.confirmedLofiDraft || null;
     },
 
+    isReadyLofiDraft(draft) {
+      return ["ready", "completed"].includes(String(draft?.status || ""));
+    },
+
+    canConfirmLofiDraft(page) {
+      const draft = this.currentLofiDraft(page);
+      return Boolean(draft?.draftId && this.isReadyLofiDraft(draft) && !draft.confirmedAt);
+    },
+
+    lofiDraftConfirmLabel(page) {
+      const draft = this.currentLofiDraft(page);
+      if (draft?.confirmedAt) return "확정됨";
+      return "초안 확정";
+    },
+
     lofiDraftStatusLabel(draft) {
       const labels = {
         queued: "대기",
@@ -2518,6 +2533,32 @@ createApp({
         trigger_failed: "Worker 시작 실패",
       };
       return labels[String(draft?.status || "")] || draft?.status || "";
+    },
+
+    async confirmLofiDraft(page) {
+      const draft = this.currentLofiDraft(page);
+      if (!draft?.draftId) {
+        this.setStatus("확정할 LO-FI 초안이 없습니다");
+        return;
+      }
+      if (!this.isReadyLofiDraft(draft)) {
+        this.setStatus("준비 완료된 LO-FI 초안만 확정할 수 있습니다");
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/promo-generation-lofi-draft-confirm", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ draftId: draft.draftId }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `Confirm ${response.status}`);
+        this.applyGenerationRunStateToPage(page, result.state || result);
+        this.setStatus(`LO-FI 초안 #${draft.draftAttempt || ""}을 확정했습니다`);
+      } catch (error) {
+        this.setStatus(`LO-FI 초안 확정 실패: ${error.message}`);
+      }
     },
 
     async refreshGenerationRunState(page) {
@@ -3443,12 +3484,23 @@ createApp({
         window.open(pageUrl, "_blank");
         return;
       }
+      const imageUrl = this.previewImageUrl(page);
+      if (imageUrl) {
+        window.open(imageUrl, "_blank");
+        return;
+      }
       saveJson(storageKeys.generatedPage, page.payload);
       window.open("generated.html", "_blank");
     },
 
     canOpenPromptFiles(page) {
-      return Boolean(page?.promptGroupId || page?.designPromptStorageKey || page?.promoInputStorageKey || page?.id);
+      return Boolean(
+        page?.promptGroupId
+        || page?.designPromptStorageKey
+        || page?.promoInputStorageKey
+        || page?.integratedBriefStorageKey
+        || (page?.id && !page?.generationRunId)
+      );
     },
 
     async openPromptFiles(page) {
