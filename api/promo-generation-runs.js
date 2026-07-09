@@ -3,6 +3,7 @@ const {
   loadRunState,
   parseBody,
   payloadFromBody,
+  runSummary,
   runKeyFromPayload,
   sha256,
   stableJson,
@@ -87,14 +88,44 @@ async function createRun(req, res) {
 
 async function getRun(req, res) {
   const runId = String(req.query.runId || req.query.id || req.query.runKey || "").trim();
-  if (!runId) return res.status(400).json({ error: "runId or runKey is required" });
-
   const sql = getSql();
+  if (!runId) return await listRuns(req, res, sql);
+
   const state = await loadRunState(sql, runId);
   if (!state) return res.status(404).json({ error: "Generation run not found" });
 
   return res.status(200).json({
     ok: true,
     ...state,
+  });
+}
+
+async function listRuns(req, res, sql) {
+  const limit = Math.max(1, Math.min(Number(req.query.limit || 50) || 50, 100));
+  const rows = await sql`
+    select
+      id::text,
+      run_key,
+      promo_title,
+      selected_md_id,
+      selected_md_name,
+      status,
+      stage,
+      input_hash,
+      input_snapshot,
+      error_message,
+      metadata,
+      created_at,
+      updated_at
+    from promo_generation_runs
+    order by updated_at desc
+    limit ${limit}
+  `;
+
+  const states = await Promise.all(rows.map((row) => loadRunState(sql, row.id)));
+  return res.status(200).json({
+    ok: true,
+    runs: states.filter(Boolean),
+    summaries: rows.map(runSummary),
   });
 }

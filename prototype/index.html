@@ -579,6 +579,12 @@
                       <td>{{ page.styleSourceLabel }}</td>
                       <td>
                         {{ resultTypeLabel(page) }}
+                        <span class="table-subtext" v-if="currentLofiDraft(page)">
+                          LO-FI #{{ currentLofiDraft(page).draftAttempt }} · {{ lofiDraftStatusLabel(currentLofiDraft(page)) }}
+                        </span>
+                        <span class="table-subtext" v-if="page.generationPolling?.isStale">
+                          {{ page.generationPolling.staleMessage }}
+                        </span>
                         <span class="table-subtext" v-if="page.promptGroupId">Group {{ page.promptGroupId }}</span>
                         <span class="table-subtext danger-text" v-if="page.imageInvalid">
                           이미지 손상 의심 · {{ page.imageFileSize }} bytes
@@ -1015,6 +1021,6 @@
     </div>
 
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-    <script src="app.js?v=b-section-mode-v5"></script>
+    <script src="app.js?v=lofi-draft-preview-v1"></script>
   </body>
 </html>

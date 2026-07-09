@@ -882,6 +882,10 @@ function designImageUrlForId(id) {
   return id ? `/api/promo-design-image?id=${encodeURIComponent(id)}` : "";
 }
 
+function lofiDraftImageUrlForId(id) {
+  return id ? `/api/promo-generation-lofi-draft-image?draftId=${encodeURIComponent(id)}` : "";
+}
+
 function isInvalidGeneratedImageAsset(asset) {
   if (!asset || asset.asset_type !== "generated_image") return false;
   const fileSize = Number(asset.file_size || 0);
@@ -2345,6 +2349,8 @@ createApp({
       if (page.status === "n8n_failed" || page.errorMessage) return "failed";
       if (page.status === "n8n_ui_design_pending") return "pending";
       if (isDirectImageUrl(page.imageUrl, page)) return "image";
+      if (page.lofiDraftPreviewUrl) return "lofi_draft";
+      if (/queued|generating|running|pending|accepted/i.test(page.generationRunStatus || "")) return "pending";
       if (page.designUrl || page.pageUrl || isDesignViewUrl(page.imageUrl)) return "view";
       if (page.payload) return "draft";
       return "empty";
@@ -2353,6 +2359,7 @@ createApp({
     resultTypeLabel(page) {
       const labels = {
         image: "이미지 생성 완료",
+        lofi_draft: "LO-FI 초안 준비",
         view: "디자인 보기 가능",
         pending: "생성 중",
         failed: "생성 실패",
@@ -2365,6 +2372,7 @@ createApp({
     resultOutputLabel(page) {
       const labels = {
         image: "이미지 미리보기",
+        lofi_draft: "LO-FI 초안 미리보기",
         view: "결과 화면 미리보기",
         pending: "생성 대기 중",
         failed: "오류 확인 필요",
@@ -2375,7 +2383,8 @@ createApp({
     },
 
     previewImageUrl(page) {
-      return isDirectImageUrl(page?.imageUrl, page) ? page.imageUrl : "";
+      if (isDirectImageUrl(page?.imageUrl, page)) return page.imageUrl;
+      return page?.lofiDraftPreviewUrl || "";
     },
 
     previewFrameUrl(page) {
@@ -2425,7 +2434,117 @@ createApp({
         hasOverride: fallback.hasOverride || false,
         resultType: run.result_type || fallback.resultType || "image",
         payload: run.request_payload || fallback.payload || null,
+        generationRunId: fallback.generationRunId || "",
+        generationRunStatus: fallback.generationRunStatus || "",
+        generationRunStage: fallback.generationRunStage || "",
+        generationPolling: fallback.generationPolling || null,
+        lofiDrafts: fallback.lofiDrafts || [],
+        confirmedLofiDraft: fallback.confirmedLofiDraft || null,
+        currentLofiDraft: fallback.currentLofiDraft || null,
+        lofiDraftPreviewUrl: fallback.lofiDraftPreviewUrl || "",
       };
+    },
+
+    generationRunStateToPage(state, fallback = {}) {
+      const run = state?.run || {};
+      const inputSnapshot = run.inputSnapshot || {};
+      const promo = inputSnapshot.promo || {};
+      const md = inputSnapshot.md || {};
+      const createdAt = run.createdAt ? formatKoreaDateTime(run.createdAt) : fallback.createdAt || "";
+      const page = {
+        id: run.runKey || fallback.id || run.runId || "",
+        title: run.promoTitle || promo.title || fallback.title || run.runKey || "",
+        selectedMd: run.selectedMdName || md.brand || md.name || fallback.selectedMd || "",
+        styleSourceLabel: inputSnapshot.styleSourceLabel || fallback.styleSourceLabel || "",
+        template: promo.template || inputSnapshot.template?.templateName || fallback.template || "",
+        market: promo.market || fallback.market || "",
+        createdAt,
+        committedAt: fallback.committedAt || "",
+        timestampStamp: timestampStamp(run.updatedAt || run.createdAt || createdAt),
+        status: fallback.status || run.status || "generation_run",
+        designUrl: fallback.designUrl || "",
+        imageUrl: fallback.imageUrl || "",
+        pageUrl: fallback.pageUrl || "",
+        layoutMapping: fallback.layoutMapping || null,
+        mdComplianceMap: fallback.mdComplianceMap || null,
+        imagePrompt: fallback.imagePrompt || "",
+        promptGroupId: fallback.promptGroupId || "",
+        imageFileSize: fallback.imageFileSize || 0,
+        imageMimeType: fallback.imageMimeType || "",
+        imageInvalid: fallback.imageInvalid || false,
+        designPromptStorageKey: fallback.designPromptStorageKey || "",
+        promoInputStorageKey: fallback.promoInputStorageKey || "",
+        integratedBriefStorageKey: fallback.integratedBriefStorageKey || "",
+        errorMessage: run.errorMessage || fallback.errorMessage || "",
+        hasOverride: fallback.hasOverride || false,
+        resultType: fallback.resultType || "generation_run",
+        payload: inputSnapshot || fallback.payload || null,
+      };
+      this.applyGenerationRunStateToPage(page, state);
+      return page;
+    },
+
+    applyGenerationRunStateToPage(page, state) {
+      const run = state?.run || {};
+      const drafts = Array.isArray(state?.drafts) ? state.drafts : [];
+      const confirmedDraft = state?.confirmedDraft || null;
+      const readyDrafts = drafts.filter((draft) => ["ready", "completed"].includes(String(draft.status || "")));
+      const currentDraft = confirmedDraft || readyDrafts[readyDrafts.length - 1] || drafts[drafts.length - 1] || null;
+      const currentDraftReady = ["ready", "completed"].includes(String(currentDraft?.status || ""));
+
+      Object.assign(page, {
+        generationRunId: run.runId || page.generationRunId || "",
+        generationRunStatus: run.status || "",
+        generationRunStage: run.stage || "",
+        generationPolling: run.polling || generationPollingState(run),
+        lofiDrafts: drafts,
+        confirmedLofiDraft: confirmedDraft,
+        currentLofiDraft: currentDraft,
+        lofiDraftPreviewUrl: currentDraftReady ? lofiDraftImageUrlForId(currentDraft.draftId) : "",
+      });
+      return page;
+    },
+
+    currentLofiDraft(page) {
+      return page?.currentLofiDraft || page?.confirmedLofiDraft || null;
+    },
+
+    lofiDraftStatusLabel(draft) {
+      const labels = {
+        queued: "대기",
+        ready: "준비 완료",
+        completed: "준비 완료",
+        failed: "실패",
+        trigger_failed: "Worker 시작 실패",
+      };
+      return labels[String(draft?.status || "")] || draft?.status || "";
+    },
+
+    async refreshGenerationRunState(page) {
+      if (!page?.id || window.location.protocol === "file:") return false;
+
+      const response = await fetch(`/api/promo-generation-runs?runId=${encodeURIComponent(page.generationRunId || page.id)}`);
+      const result = await response.json().catch(() => ({}));
+      if (response.status === 404) return false;
+      if (!response.ok) throw new Error(result.message || result.error || `Generation run ${response.status}`);
+      this.applyGenerationRunStateToPage(page, result);
+      return true;
+    },
+
+    async refreshGenerationRunStates(pages) {
+      const targets = (pages || []).filter((page) => page?.id).slice(0, 20);
+      await Promise.all(targets.map((page) => this.refreshGenerationRunState(page).catch(() => false)));
+    },
+
+    async loadGenerationRunPages(options = {}) {
+      const params = new URLSearchParams({ limit: "50" });
+      if (options.fresh) params.set("ts", String(Date.now()));
+      const response = await fetch(`/api/promo-generation-runs?${params.toString()}`);
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.message || result.error || `Generation runs ${response.status}`);
+      return (result.runs || [])
+        .map((state) => this.generationRunStateToPage(state))
+        .filter((page) => page.id);
     },
 
     async loadGeneratedPagesFromServer(options = {}) {
@@ -2447,7 +2566,26 @@ createApp({
         const serverPages = (result.runs || [])
           .map((item) => this.storedResultToPage(item))
           .filter((page) => page.id);
+        const generationPages = await this.loadGenerationRunPages(options).catch(() => []);
+        const generationById = new Map(generationPages.map((page) => [page.id, page]));
+        for (const page of serverPages) {
+          const generationPage = generationById.get(page.id);
+          if (generationPage) {
+            this.applyGenerationRunStateToPage(page, {
+              run: {
+                runId: generationPage.generationRunId,
+                status: generationPage.generationRunStatus,
+                stage: generationPage.generationRunStage,
+                polling: generationPage.generationPolling,
+              },
+              drafts: generationPage.lofiDrafts,
+              confirmedDraft: generationPage.confirmedLofiDraft,
+            });
+            generationById.delete(page.id);
+          }
+        }
         const serverIds = new Set(serverPages.map((page) => page.id));
+        const generationIds = new Set(generationById.keys());
         const preserveIds = new Set(options.preserveIds || []);
         const transientPages = this.generatedPages.filter((page) => (
           page.status === "n8n_ui_design_pending"
@@ -2455,9 +2593,11 @@ createApp({
           || (preserveIds.has(page.id) && !serverIds.has(page.id))
         ));
         this.generatedPages = [
-          ...transientPages.filter((page) => !serverIds.has(page.id)),
+          ...transientPages.filter((page) => !serverIds.has(page.id) && !generationIds.has(page.id)),
+          ...Array.from(generationById.values()).filter((page) => !serverIds.has(page.id)),
           ...serverPages,
         ];
+        await this.refreshGenerationRunStates(this.generatedPages);
         this.generatedPagesLoaded = true;
         if (!options.silent) this.setStatus(`서버에서 생성 결과 ${serverPages.length}개를 불러왔습니다`);
       } catch (error) {
@@ -3226,6 +3366,14 @@ createApp({
         designPromptStorageKey: "",
         promoInputStorageKey: "",
         integratedBriefStorageKey: "",
+        generationRunId: "",
+        generationRunStatus: "",
+        generationRunStage: "",
+        generationPolling: null,
+        lofiDrafts: [],
+        confirmedLofiDraft: null,
+        currentLofiDraft: null,
+        lofiDraftPreviewUrl: "",
         errorMessage: "",
         hasOverride: payload.hasOverride,
         resultType: willUseN8n ? "pending" : "draft",
