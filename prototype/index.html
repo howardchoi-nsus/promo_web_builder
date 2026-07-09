@@ -582,6 +582,9 @@
                         <span class="table-subtext" v-if="currentLofiDraft(page)">
                           LO-FI #{{ currentLofiDraft(page).draftAttempt }} · {{ lofiDraftStatusLabel(currentLofiDraft(page)) }}
                         </span>
+                        <span class="table-subtext" v-if="page.currentFinalDesign">
+                          Final · {{ finalDesignStatusLabel(page.currentFinalDesign) }}
+                        </span>
                         <span class="table-subtext" v-if="page.generationPolling?.isStale">
                           {{ page.generationPolling.staleMessage }}
                         </span>
@@ -601,6 +604,15 @@
                           @click="confirmLofiDraft(page)"
                         >
                           {{ lofiDraftConfirmLabel(page) }}
+                        </button>
+                        <button
+                          class="tiny-button"
+                          type="button"
+                          v-if="page.confirmedLofiDraft"
+                          :disabled="!canGenerateFinalDesign(page)"
+                          @click="generateFinalDesign(page)"
+                        >
+                          {{ finalDesignActionLabel(page) }}
                         </button>
                       </td>
                     </tr>
@@ -1030,6 +1042,6 @@
     </div>
 
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-    <script src="app.js?v=lofi-draft-confirm-v1"></script>
+    <script src="app.js?v=final-design-action-v1"></script>
   </body>
 </html>

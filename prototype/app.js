@@ -886,6 +886,10 @@ function lofiDraftImageUrlForId(id) {
   return id ? `/api/promo-generation-lofi-draft-image?draftId=${encodeURIComponent(id)}` : "";
 }
 
+function finalDesignImageUrlForId(id) {
+  return id ? `/api/promo-generation-final-design-image?finalDesignId=${encodeURIComponent(id)}` : "";
+}
+
 function isInvalidGeneratedImageAsset(asset) {
   if (!asset || asset.asset_type !== "generated_image") return false;
   const fileSize = Number(asset.file_size || 0);
@@ -2349,6 +2353,7 @@ createApp({
       if (page.status === "n8n_failed" || page.errorMessage) return "failed";
       if (page.status === "n8n_ui_design_pending") return "pending";
       if (isDirectImageUrl(page.imageUrl, page)) return "image";
+      if (page.finalDesignPreviewUrl) return "final_design";
       if (page.lofiDraftPreviewUrl) return "lofi_draft";
       if (/queued|generating|running|pending|accepted/i.test(page.generationRunStatus || "")) return "pending";
       if (page.designUrl || page.pageUrl || isDesignViewUrl(page.imageUrl)) return "view";
@@ -2359,6 +2364,7 @@ createApp({
     resultTypeLabel(page) {
       const labels = {
         image: "이미지 생성 완료",
+        final_design: "최종 디자인 준비",
         lofi_draft: "LO-FI 초안 준비",
         view: "디자인 보기 가능",
         pending: "생성 중",
@@ -2372,6 +2378,7 @@ createApp({
     resultOutputLabel(page) {
       const labels = {
         image: "이미지 미리보기",
+        final_design: "최종 디자인 미리보기",
         lofi_draft: "LO-FI 초안 미리보기",
         view: "결과 화면 미리보기",
         pending: "생성 대기 중",
@@ -2384,6 +2391,7 @@ createApp({
 
     previewImageUrl(page) {
       if (isDirectImageUrl(page?.imageUrl, page)) return page.imageUrl;
+      if (page?.finalDesignPreviewUrl) return page.finalDesignPreviewUrl;
       return page?.lofiDraftPreviewUrl || "";
     },
 
@@ -2442,6 +2450,9 @@ createApp({
         confirmedLofiDraft: fallback.confirmedLofiDraft || null,
         currentLofiDraft: fallback.currentLofiDraft || null,
         lofiDraftPreviewUrl: fallback.lofiDraftPreviewUrl || "",
+        finalDesigns: fallback.finalDesigns || [],
+        currentFinalDesign: fallback.currentFinalDesign || null,
+        finalDesignPreviewUrl: fallback.finalDesignPreviewUrl || "",
       };
     },
 
@@ -2487,10 +2498,13 @@ createApp({
     applyGenerationRunStateToPage(page, state) {
       const run = state?.run || {};
       const drafts = Array.isArray(state?.drafts) ? state.drafts : [];
+      const finalDesigns = Array.isArray(state?.finalDesigns) ? state.finalDesigns : [];
       const confirmedDraft = state?.confirmedDraft || null;
       const readyDrafts = drafts.filter((draft) => ["ready", "completed"].includes(String(draft.status || "")));
       const currentDraft = confirmedDraft || readyDrafts[readyDrafts.length - 1] || drafts[drafts.length - 1] || null;
       const currentDraftReady = ["ready", "completed"].includes(String(currentDraft?.status || ""));
+      const currentFinalDesign = finalDesigns[0] || null;
+      const currentFinalDesignReady = ["ready", "completed"].includes(String(currentFinalDesign?.status || ""));
 
       Object.assign(page, {
         generationRunId: run.runId || page.generationRunId || "",
@@ -2501,6 +2515,9 @@ createApp({
         confirmedLofiDraft: confirmedDraft,
         currentLofiDraft: currentDraft,
         lofiDraftPreviewUrl: currentDraftReady ? lofiDraftImageUrlForId(currentDraft.draftId) : "",
+        finalDesigns,
+        currentFinalDesign,
+        finalDesignPreviewUrl: currentFinalDesignReady ? finalDesignImageUrlForId(currentFinalDesign.finalDesignId) : "",
       });
       return page;
     },
@@ -2535,6 +2552,34 @@ createApp({
       return labels[String(draft?.status || "")] || draft?.status || "";
     },
 
+    finalDesignStatusLabel(finalDesign) {
+      const labels = {
+        queued: "대기",
+        ready: "준비 완료",
+        completed: "준비 완료",
+        failed: "실패",
+        trigger_failed: "Worker 시작 실패",
+      };
+      return labels[String(finalDesign?.status || "")] || finalDesign?.status || "";
+    },
+
+    canGenerateFinalDesign(page) {
+      const draft = page?.confirmedLofiDraft;
+      const finalDesign = page?.currentFinalDesign;
+      const finalStatus = String(finalDesign?.status || "");
+      const finalActive = /queued|generating|running|pending/i.test(finalStatus);
+      return Boolean(draft?.draftId && !finalActive);
+    },
+
+    finalDesignActionLabel(page) {
+      const finalDesign = page?.currentFinalDesign;
+      if (!finalDesign) return "최종 디자인 생성";
+      const status = String(finalDesign.status || "");
+      if (/queued|generating|running|pending/i.test(status)) return "최종 생성 중";
+      if (["ready", "completed"].includes(status)) return "최종 재생성";
+      return "최종 디자인 생성";
+    },
+
     async confirmLofiDraft(page) {
       const draft = this.currentLofiDraft(page);
       if (!draft?.draftId) {
@@ -2558,6 +2603,33 @@ createApp({
         this.setStatus(`LO-FI 초안 #${draft.draftAttempt || ""}을 확정했습니다`);
       } catch (error) {
         this.setStatus(`LO-FI 초안 확정 실패: ${error.message}`);
+      }
+    },
+
+    async generateFinalDesign(page) {
+      const confirmedDraft = page?.confirmedLofiDraft;
+      if (!confirmedDraft?.draftId) {
+        this.setStatus("최종 디자인 생성 전에 LO-FI 초안을 확정해 주세요");
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/promo-generation-final-designs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            runId: page.generationRunId || page.id,
+            confirmedDraftId: confirmedDraft.draftId,
+            triggerWorker: true,
+          }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || result.workerTrigger?.error || `Final design ${response.status}`);
+        await this.refreshGenerationRunState(page).catch(() => false);
+        this.setStatus("최종 디자인 생성을 요청했습니다");
+      } catch (error) {
+        await this.refreshGenerationRunState(page).catch(() => false);
+        this.setStatus(`최종 디자인 생성 요청 실패: ${error.message}`);
       }
     },
 
