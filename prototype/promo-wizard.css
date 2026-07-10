@@ -465,6 +465,7 @@ a {
 
 .lofi-run-summary,
 .lofi-action-panel,
+.lofi-large-preview,
 .lofi-draft-card {
   border: 1px solid var(--line);
   background: var(--surface);
@@ -474,6 +475,7 @@ a {
   align-self: start;
   display: grid;
   gap: 14px;
+  grid-row: 1 / span 2;
   padding: 18px;
 }
 
@@ -536,24 +538,67 @@ a {
 }
 
 .lofi-action-panel {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
   gap: 10px;
-  grid-column: 2;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-style: dashed;
   padding: 12px;
 }
 
 .lofi-action-panel small {
+  grid-column: 1 / -1;
   color: var(--sub);
   font-size: 12px;
   font-weight: 800;
 }
 
+.lofi-large-preview {
+  display: grid;
+  gap: 12px;
+  grid-column: 2;
+  min-width: 0;
+  padding: 14px;
+}
+
+.lofi-large-preview h3 {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: 0;
+}
+
+.lofi-large-preview-frame {
+  display: grid;
+  place-items: center;
+  min-height: 360px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.lofi-large-preview-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 620px;
+  object-fit: contain;
+}
+
+.lofi-large-preview-frame span {
+  color: var(--sub);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+}
+
 .lofi-draft-list {
   display: grid;
   grid-column: 2;
+  grid-auto-columns: minmax(180px, 220px);
+  grid-auto-flow: column;
   gap: 12px;
+  min-width: 0;
+  overflow-x: auto;
+  padding-bottom: 4px;
 }
 
 .lofi-draft-card {
@@ -567,6 +612,10 @@ a {
   background: var(--accent-soft);
 }
 
+.lofi-draft-card.is-selected {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
 .lofi-draft-header,
 .lofi-draft-actions {
   display: flex;
@@ -575,27 +624,43 @@ a {
   gap: 10px;
 }
 
-.lofi-preview {
+.lofi-thumbnail-button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  text-align: inherit;
+}
+
+.lofi-thumbnail-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.lofi-thumbnail {
   display: grid;
   place-items: center;
-  min-height: 220px;
+  aspect-ratio: 4 / 3;
   border: 1px solid var(--line);
   background: var(--panel);
   overflow: hidden;
 }
 
-.lofi-preview img {
+.lofi-thumbnail img {
   display: block;
   width: 100%;
-  height: auto;
-  max-height: 520px;
+  height: 100%;
   object-fit: contain;
 }
 
-.lofi-preview span {
+.lofi-thumbnail span {
   color: var(--sub);
   font-size: 13px;
   font-weight: 800;
+  padding: 12px;
+  text-align: center;
 }
 
 .lofi-draft-meta {
@@ -698,16 +763,26 @@ a {
     grid-row: auto;
   }
 
+  .lofi-run-summary,
   .lofi-action-panel,
+  .lofi-large-preview,
   .lofi-draft-list {
     grid-column: auto;
+    grid-row: auto;
   }
 
-  .lofi-action-panel,
   .lofi-draft-header,
   .lofi-draft-actions {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .lofi-action-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .lofi-large-preview-frame {
+    min-height: 260px;
   }
 
   .concept-toolbar {

@@ -6,7 +6,7 @@
     "node": "22.x"
   },
   "scripts": {
-    "check": "node --check prototype/app.js && node --check prototype/generated.js",
+    "check": "node --check prototype/app.js && node --check prototype/generated.js && node --check prototype/promo-wizard.js",
     "test:design-prompt-md": "node scripts/test-design-prompt-md.js",
     "qa:label-guard": "node scripts/qa-label-guard.js",
     "design-md:dry-run": "node scripts/import-design-md-docs.js",

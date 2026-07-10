@@ -19,7 +19,7 @@ const steps = [
   },
   {
     title: "LO-FI 시안 생성 및 선택",
-    copy: "새 LO-FI 시안을 누적 생성하고, 생성된 후보 중 하나를 Final Design 기준으로 확정합니다.",
+    copy: "새 LO-FI 시안을 누적 생성하고, 생성된 시안 중 하나를 Final Design 기준으로 확정합니다.",
     cards: [
       ["생성 준비", "A섹션 Concept과 B섹션 Content를 통합 브리프로 준비합니다."],
       ["LO-FI 시안 생성", "버튼을 누를 때마다 기존 시안을 유지한 채 새 시안을 추가합니다."],
@@ -53,6 +53,7 @@ let validationErrors = {};
 let runState = loadWizardRun();
 let runLoading = false;
 let runError = "";
+let selectedLofiPreviewDraftId = "";
 let runPollingTimer = null;
 let workerSettings = [];
 let workerSettingsError = "";
@@ -410,7 +411,7 @@ function createField({ group, key, label, type = "text", placeholder = "입력�
   wrapper.append(control);
 
   if (fieldInvalid(key)) {
-    appendTextElement(wrapper, "small", "content-field-error", "입력해 주세요.");
+    appendTextElement(wrapper, "small", "content-field-error", "입력해 주세요");
   }
 
   return wrapper;
@@ -590,7 +591,7 @@ function renderContentStep() {
   const autofill = document.createElement("button");
   autofill.className = "secondary-action";
   autofill.type = "button";
-  autofill.textContent = "자동등록";
+  autofill.textContent = "자동 입력";
   autofill.addEventListener("click", autofillContent);
   const reset = document.createElement("button");
   reset.className = "secondary-action";
@@ -606,7 +607,7 @@ function renderContentStep() {
     { group: "promo", key: "promotionPurposeOther", label: "기타 목적", required: contentState.promo.promotionPurpose === "기타" },
     { group: "promo", key: "market", label: "마켓 / 지역", required: true, placeholder: "Global, KR, Ontario..." },
     { group: "simpleBrief", key: "audience", label: "대상 고객", required: true, options: ["신규", "기존고객", "일반고객"] },
-    { group: "simpleBrief", key: "campaignTone", label: "캠페인 톤", required: true, options: ["활기찬", "신중한", "럭키", "프리미엄", "긴급함", "친근함"] },
+    { group: "simpleBrief", key: "campaignTone", label: "캠페인 톤", required: true, options: ["활기찬", "진중함", "럭셔리", "프리미엄", "긴급함", "친근함"] },
   ]);
 
   if (contentState.promo.promotionPurpose !== "기타") {
@@ -614,7 +615,7 @@ function renderContentStep() {
     if (otherField) otherField.hidden = true;
   }
 
-  const message = createContentSection("2. 핵심 메시지", [
+  const message = createContentSection("2. 전달 메시지", [
     { group: "simpleBrief", key: "mainOffer", label: "메인 오퍼", required: true, type: "textarea", rows: 3 },
     { group: "simpleBrief", key: "secondaryMessage", label: "보조 메시지", required: true, type: "textarea", rows: 3 },
     { group: "simpleBrief", key: "targetAction", label: "사용자 행동 목표", required: true },
@@ -731,24 +732,34 @@ function createStatusPill(text, kind = "") {
 
 function createLofiDraftCard(draft) {
   const card = document.createElement("article");
-  card.className = `lofi-draft-card${draft.confirmedAt ? " is-confirmed" : ""}`;
+  card.className = `lofi-draft-card${draft.confirmedAt ? " is-confirmed" : ""}${selectedLofiPreviewDraftId === draft.draftId ? " is-selected" : ""}`;
 
   const header = document.createElement("div");
   header.className = "lofi-draft-header";
   appendTextElement(header, "strong", "", `LO-FI 시안 #${draft.draftAttempt || "-"}`);
   header.append(createStatusPill(draft.confirmedAt ? "Confirmed" : draft.status, isReadyDraft(draft) ? "ready" : ""));
 
-  const preview = document.createElement("div");
-  preview.className = "lofi-preview";
+  const preview = document.createElement("button");
+  preview.className = "lofi-thumbnail-button";
+  preview.type = "button";
+  preview.setAttribute("aria-label", `Preview LO-FI draft ${draft.draftAttempt || ""}`);
+  preview.addEventListener("click", () => {
+    selectedLofiPreviewDraftId = draft.draftId || "";
+    renderStep();
+  });
+
+  const thumbnail = document.createElement("div");
+  thumbnail.className = "lofi-thumbnail";
   if (draft.draftImageUrl || isReadyDraft(draft)) {
     const image = document.createElement("img");
     image.alt = `LO-FI draft attempt ${draft.draftAttempt || ""}`;
     image.src = draftImageSrc(draft);
     image.loading = "lazy";
-    preview.append(image);
+    thumbnail.append(image);
   } else {
-    appendTextElement(preview, "span", "", isActiveStatus(draft.status) ? "시안 생성 중" : "이미지 없음");
+    appendTextElement(thumbnail, "span", "", isActiveStatus(draft.status) ? "Generating draft..." : "No image yet");
   }
+  preview.append(thumbnail);
 
   const meta = document.createElement("dl");
   meta.className = "lofi-draft-meta";
@@ -779,6 +790,26 @@ function createLofiDraftCard(draft) {
   return card;
 }
 
+function createLofiLargePreview(draft) {
+  const panel = document.createElement("section");
+  panel.className = "lofi-large-preview";
+  appendTextElement(panel, "span", "eyebrow", "LO-FI Preview");
+  appendTextElement(panel, "h3", "", draft ? `Draft #${draft.draftAttempt || "-"}` : "No draft selected");
+
+  const frame = document.createElement("div");
+  frame.className = "lofi-large-preview-frame";
+  if (draft?.draftImageUrl || (draft && isReadyDraft(draft))) {
+    const image = document.createElement("img");
+    image.alt = `LO-FI draft attempt ${draft.draftAttempt || ""}`;
+    image.src = draftImageSrc(draft);
+    frame.append(image);
+  } else {
+    appendTextElement(frame, "span", "", draft ? "Draft image is not ready yet." : "Create a LO-FI draft, then select a thumbnail.");
+  }
+  panel.append(frame);
+  return panel;
+}
+
 function renderLofiStep() {
   conceptToolbar.hidden = true;
   placeholders.className = "lofi-layout";
@@ -788,6 +819,12 @@ function renderLofiStep() {
   const drafts = Array.isArray(runState?.drafts) ? [...runState.drafts] : [];
   drafts.sort((a, b) => Number(a.draftAttempt || 0) - Number(b.draftAttempt || 0));
   const confirmed = runState?.confirmedDraft || drafts.find((draft) => draft.confirmedAt) || null;
+  const selectedDraft = drafts.find((draft) => draft.draftId === selectedLofiPreviewDraftId)
+    || confirmed
+    || drafts.find((draft) => isReadyDraft(draft))
+    || drafts[0]
+    || null;
+  selectedLofiPreviewDraftId = selectedDraft?.draftId || "";
 
   const summary = document.createElement("section");
   summary.className = "lofi-run-summary";
@@ -870,6 +907,9 @@ function renderLofiStep() {
   }
   if (runLoading) appendTextElement(actionPanel, "small", "", "요청 처리 중입니다.");
   if (runError) appendTextElement(actionPanel, "small", "lofi-error", runError);
+  summary.append(actionPanel);
+
+  const largePreview = createLofiLargePreview(selectedDraft);
 
   const list = document.createElement("section");
   list.className = "lofi-draft-list";
@@ -883,7 +923,7 @@ function renderLofiStep() {
     drafts.forEach((draft) => list.append(createLofiDraftCard(draft)));
   }
 
-  placeholders.append(summary, actionPanel, list);
+  placeholders.append(summary, largePreview, list);
 }
 
 function createSelectedConceptPanel(doc) {
