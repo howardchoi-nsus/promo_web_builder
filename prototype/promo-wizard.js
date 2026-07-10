@@ -54,6 +54,7 @@ let runState = loadWizardRun();
 let runLoading = false;
 let runError = "";
 let selectedLofiPreviewDraftId = "";
+let selectedFinalPreviewDesignId = "";
 let runPollingTimer = null;
 let workerSettings = [];
 let workerSettingsError = "";
@@ -223,6 +224,25 @@ function saveWizardRun(state) {
   } else {
     localStorage.removeItem(storageKeys.wizardRun);
   }
+}
+
+function mergeQueuedFinalDesign(finalDesign) {
+  if (!finalDesign?.finalDesignId || !runState) return;
+  const existing = Array.isArray(runState.finalDesigns) ? runState.finalDesigns : [];
+  const exists = existing.some((item) => item.finalDesignId === finalDesign.finalDesignId);
+  const nextState = {
+    ...runState,
+    finalDesigns: exists ? existing : [finalDesign, ...existing],
+  };
+  if (nextState.run) {
+    nextState.run = {
+      ...nextState.run,
+      stage: "final_design",
+      status: finalDesign.status === "trigger_failed" ? "final_design_trigger_failed" : "final_design_queued",
+    };
+  }
+  saveWizardRun(nextState);
+  selectedFinalPreviewDesignId = finalDesign.finalDesignId;
 }
 
 function selectedDocument() {
@@ -810,6 +830,74 @@ function createLofiLargePreview(draft) {
   return panel;
 }
 
+function createFinalDesignCard(finalDesign) {
+  const card = document.createElement("article");
+  card.className = `final-design-card${selectedFinalPreviewDesignId === finalDesign.finalDesignId ? " is-selected" : ""}`;
+
+  const header = document.createElement("div");
+  header.className = "lofi-draft-header";
+  appendTextElement(header, "strong", "", `Final Design ${finalDesign.createdAt ? new Date(finalDesign.createdAt).toLocaleDateString() : ""}`.trim());
+  header.append(createStatusPill(finalDesign.status, isReadyFinalDesign(finalDesign) ? "ready" : ""));
+
+  const preview = document.createElement("button");
+  preview.className = "lofi-thumbnail-button";
+  preview.type = "button";
+  preview.setAttribute("aria-label", `Preview final design ${finalDesign.finalDesignId || ""}`);
+  preview.addEventListener("click", () => {
+    selectedFinalPreviewDesignId = finalDesign.finalDesignId || "";
+    renderStep();
+  });
+
+  const thumbnail = document.createElement("div");
+  thumbnail.className = "lofi-thumbnail";
+  if (finalDesign.finalImageUrl || isReadyFinalDesign(finalDesign)) {
+    const image = document.createElement("img");
+    image.alt = "Final design preview";
+    image.src = finalDesignImageSrc(finalDesign);
+    image.loading = "lazy";
+    thumbnail.append(image);
+  } else {
+    appendTextElement(thumbnail, "span", "", isActiveStatus(finalDesign.status) ? "Generating final design..." : "No image yet");
+  }
+  preview.append(thumbnail);
+
+  const meta = document.createElement("dl");
+  meta.className = "lofi-draft-meta";
+  [
+    ["Created", finalDesign.createdAt ? new Date(finalDesign.createdAt).toLocaleString() : "-"],
+    ["Updated", finalDesign.updatedAt ? new Date(finalDesign.updatedAt).toLocaleString() : "-"],
+  ].forEach(([label, value]) => {
+    const row = document.createElement("div");
+    appendTextElement(row, "dt", "", label);
+    appendTextElement(row, "dd", "", value);
+    meta.append(row);
+  });
+  if (finalDesign.errorMessage) appendTextElement(card, "p", "lofi-error", finalDesign.errorMessage);
+
+  card.append(header, preview, meta);
+  return card;
+}
+
+function createFinalLargePreview(finalDesign) {
+  const panel = document.createElement("section");
+  panel.className = "final-large-preview";
+  appendTextElement(panel, "span", "eyebrow", "Final Design Preview");
+  appendTextElement(panel, "h3", "", finalDesign ? finalDesign.status || "Final design" : "No final design yet");
+
+  const frame = document.createElement("div");
+  frame.className = "final-large-preview-frame";
+  if (finalDesign?.finalImageUrl || (finalDesign && isReadyFinalDesign(finalDesign))) {
+    const image = document.createElement("img");
+    image.alt = "Final design preview";
+    image.src = finalDesignImageSrc(finalDesign);
+    frame.append(image);
+  } else {
+    appendTextElement(frame, "span", "", finalDesign ? "Final design image is not ready yet." : "Generate a final design from the confirmed LO-FI draft.");
+  }
+  panel.append(frame);
+  return panel;
+}
+
 function renderLofiStep() {
   conceptToolbar.hidden = true;
   placeholders.className = "lofi-layout";
@@ -921,6 +1009,105 @@ function renderLofiStep() {
     list.append(empty);
   } else {
     drafts.forEach((draft) => list.append(createLofiDraftCard(draft)));
+  }
+
+  placeholders.append(summary, largePreview, list);
+}
+
+function renderFinalStep() {
+  conceptToolbar.hidden = true;
+  placeholders.className = "final-layout";
+  placeholders.innerHTML = "";
+
+  const run = runState?.run || null;
+  const confirmed = runState?.confirmedDraft || null;
+  const finalDesigns = Array.isArray(runState?.finalDesigns) ? [...runState.finalDesigns] : [];
+  finalDesigns.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
+  const selectedFinalDesign = finalDesigns.find((item) => item.finalDesignId === selectedFinalPreviewDesignId)
+    || finalDesigns.find((item) => isReadyFinalDesign(item))
+    || finalDesigns[0]
+    || null;
+  selectedFinalPreviewDesignId = selectedFinalDesign?.finalDesignId || "";
+
+  const summary = document.createElement("section");
+  summary.className = "final-run-summary";
+  appendTextElement(summary, "span", "eyebrow", "Final Design Generation Run");
+  appendTextElement(summary, "h3", "", run?.promoTitle || contentState.promo.title || "Untitled promo");
+  appendTextElement(summary, "p", "", "Confirm Draft로 선택한 LO-FI 시안을 기준으로 n8n final_design worker를 호출합니다.");
+
+  const statusRow = document.createElement("div");
+  statusRow.className = "lofi-status-row";
+  statusRow.append(createStatusPill(runStatusText()));
+  statusRow.append(createStatusPill(`Final Design ${workerStatusLabel("final_design")}`, workerReady("final_design") ? "ready" : ""));
+  statusRow.append(createStatusPill(`${finalDesigns.length} final designs`));
+  if (confirmed?.draftAttempt) statusRow.append(createStatusPill(`Confirmed Draft #${confirmed.draftAttempt}`, "ready"));
+  summary.append(statusRow);
+  if (workerSettingsError) appendTextElement(summary, "p", "lofi-error", `Worker settings: ${workerSettingsError}`);
+
+  const source = document.createElement("div");
+  source.className = "lofi-content-snapshot";
+  appendTextElement(source, "strong", "", "Final Design Source");
+  const sourceList = document.createElement("ul");
+  [
+    ["Run ID", runId()],
+    ["Confirmed Draft ID", confirmed?.draftId],
+    ["Promo Title", contentState.promo.title],
+    ["CTA", contentState.promo.ctaLabel || contentState.simpleBrief.targetAction],
+  ].forEach(([label, value]) => {
+    const item = document.createElement("li");
+    item.textContent = `${label}: ${String(value || "-").slice(0, 110)}`;
+    sourceList.append(item);
+  });
+  source.append(sourceList);
+  summary.append(source);
+
+  const actionPanel = document.createElement("section");
+  actionPanel.className = "lofi-action-panel";
+  const refresh = document.createElement("button");
+  refresh.className = "secondary-action";
+  refresh.type = "button";
+  refresh.textContent = "상태 새로고침";
+  refresh.disabled = runLoading || !runId();
+  refresh.addEventListener("click", async () => {
+    runLoading = true;
+    runError = "";
+    renderStep();
+    try {
+      await refreshRunState();
+      syncRunPolling();
+    } catch (error) {
+      runError = error.message;
+    } finally {
+      runLoading = false;
+      renderStep();
+    }
+  });
+
+  const generate = document.createElement("button");
+  generate.className = "primary-action";
+  generate.type = "button";
+  generate.textContent = finalDesigns.length ? "최종 디자인 재생성" : "최종 디자인 생성";
+  generate.disabled = runLoading || !runId() || !confirmed?.draftId;
+  generate.addEventListener("click", generateFinalDesign);
+  actionPanel.append(refresh, generate);
+  if (!confirmed?.draftId) appendTextElement(actionPanel, "small", "", "Step 3에서 LO-FI 시안 하나를 Confirm Draft로 선택해야 최종 디자인을 생성할 수 있습니다.");
+  if (!workerReady("final_design")) appendTextElement(actionPanel, "small", "", "관리자 페이지에서 final_design n8n webhook이 active인지 확인해 주세요. 환경변수로 설정된 경우에는 서버가 그대로 worker를 호출합니다.");
+  if (runLoading) appendTextElement(actionPanel, "small", "", "요청 처리 중입니다.");
+  if (runError) appendTextElement(actionPanel, "small", "lofi-error", runError);
+  summary.append(actionPanel);
+
+  const largePreview = createFinalLargePreview(selectedFinalDesign);
+
+  const list = document.createElement("section");
+  list.className = "final-design-list";
+  if (!finalDesigns.length) {
+    const empty = document.createElement("article");
+    empty.className = "placeholder-card";
+    appendTextElement(empty, "strong", "", "아직 생성된 최종 디자인이 없습니다");
+    appendTextElement(empty, "span", "", "Confirm Draft가 준비된 뒤 '최종 디자인 생성'을 눌러 n8n final_design worker를 시작합니다.");
+    list.append(empty);
+  } else {
+    finalDesigns.forEach((finalDesign) => list.append(createFinalDesignCard(finalDesign)));
   }
 
   placeholders.append(summary, largePreview, list);
@@ -1093,8 +1280,16 @@ function draftImageSrc(draft) {
   return draft?.draftId ? `/api/promo-generation-lofi-draft-image?draftId=${encodeURIComponent(draft.draftId)}` : "";
 }
 
+function finalDesignImageSrc(finalDesign) {
+  return finalDesign?.finalDesignId ? `/api/promo-generation-final-design-image?finalDesignId=${encodeURIComponent(finalDesign.finalDesignId)}` : "";
+}
+
 function isReadyDraft(draft) {
   return ["ready", "completed"].includes(String(draft?.status || ""));
+}
+
+function isReadyFinalDesign(finalDesign) {
+  return ["ready", "completed"].includes(String(finalDesign?.status || ""));
 }
 
 function isActiveStatus(statusValue) {
@@ -1158,7 +1353,10 @@ function syncRunPolling() {
   }
   const run = runState?.run || {};
   const drafts = Array.isArray(runState?.drafts) ? runState.drafts : [];
-  const active = isActiveStatus(run.status) || drafts.some((draft) => isActiveStatus(draft.status));
+  const finalDesigns = Array.isArray(runState?.finalDesigns) ? runState.finalDesigns : [];
+  const active = isActiveStatus(run.status)
+    || drafts.some((draft) => isActiveStatus(draft.status))
+    || finalDesigns.some((finalDesign) => isActiveStatus(finalDesign.status));
   if (!active) return;
   runPollingTimer = window.setInterval(async () => {
     try {
@@ -1222,6 +1420,46 @@ async function createNewLofiDraft() {
     await refreshRunState().catch(() => false);
     syncRunPolling();
   } catch (error) {
+    runError = error.message;
+  } finally {
+    runLoading = false;
+    renderStep();
+  }
+}
+
+async function generateFinalDesign() {
+  const confirmed = runState?.confirmedDraft || null;
+  if (!confirmed?.draftId) {
+    runError = "Final Design 생성 전에 LO-FI 시안 하나를 Confirm Draft로 선택해 주세요.";
+    renderStep();
+    return;
+  }
+
+  runLoading = true;
+  runError = "";
+  renderStep();
+  try {
+    const result = await fetchJson("/api/promo-generation-final-designs", {
+      method: "POST",
+      body: JSON.stringify({
+        runId: runId(),
+        confirmedDraftId: confirmed.draftId,
+        triggerWorker: true,
+        triggerTimeoutMs: workerTimeout("final_design"),
+        promptMeta: {
+          source: "standalone_wizard",
+          confirmedDraftId: confirmed.draftId,
+          contentCoverageRequired: true,
+        },
+      }),
+    });
+    if (result.state) saveWizardRun(result.state);
+    else if (result.finalDesign) mergeQueuedFinalDesign(result.finalDesign);
+    await refreshRunState().catch(() => false);
+    syncRunPolling();
+  } catch (error) {
+    await refreshRunState().catch(() => false);
+    syncRunPolling();
     runError = error.message;
   } finally {
     runLoading = false;
@@ -1339,6 +1577,11 @@ function renderStep() {
 
   if (currentStep === 2) {
     renderLofiStep();
+    return;
+  }
+
+  if (currentStep === 3) {
+    renderFinalStep();
     return;
   }
 

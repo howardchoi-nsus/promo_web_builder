@@ -456,7 +456,8 @@ a {
   color: #16a34a;
 }
 
-.lofi-layout {
+.lofi-layout,
+.final-layout {
   display: grid;
   grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.6fr);
   gap: 12px;
@@ -464,14 +465,18 @@ a {
 }
 
 .lofi-run-summary,
+.final-run-summary,
 .lofi-action-panel,
 .lofi-large-preview,
+.final-large-preview,
+.final-design-card,
 .lofi-draft-card {
   border: 1px solid var(--line);
   background: var(--surface);
 }
 
-.lofi-run-summary {
+.lofi-run-summary,
+.final-run-summary {
   align-self: start;
   display: grid;
   gap: 14px;
@@ -479,13 +484,15 @@ a {
   padding: 18px;
 }
 
-.lofi-run-summary h3 {
+.lofi-run-summary h3,
+.final-run-summary h3 {
   margin: 0;
   font-size: 20px;
   letter-spacing: 0;
 }
 
-.lofi-run-summary p {
+.lofi-run-summary p,
+.final-run-summary p {
   margin: 0;
   color: var(--sub);
   font-size: 13px;
@@ -552,7 +559,8 @@ a {
   font-weight: 800;
 }
 
-.lofi-large-preview {
+.lofi-large-preview,
+.final-large-preview {
   display: grid;
   gap: 12px;
   grid-column: 2;
@@ -560,13 +568,15 @@ a {
   padding: 14px;
 }
 
-.lofi-large-preview h3 {
+.lofi-large-preview h3,
+.final-large-preview h3 {
   margin: 0;
   font-size: 18px;
   letter-spacing: 0;
 }
 
-.lofi-large-preview-frame {
+.lofi-large-preview-frame,
+.final-large-preview-frame {
   display: grid;
   place-items: center;
   min-height: 360px;
@@ -575,7 +585,8 @@ a {
   overflow: hidden;
 }
 
-.lofi-large-preview-frame img {
+.lofi-large-preview-frame img,
+.final-large-preview-frame img {
   display: block;
   width: 100%;
   height: auto;
@@ -583,14 +594,16 @@ a {
   object-fit: contain;
 }
 
-.lofi-large-preview-frame span {
+.lofi-large-preview-frame span,
+.final-large-preview-frame span {
   color: var(--sub);
   font-size: 13px;
   font-weight: 800;
   text-align: center;
 }
 
-.lofi-draft-list {
+.lofi-draft-list,
+.final-design-list {
   display: grid;
   grid-column: 2;
   grid-auto-columns: minmax(180px, 220px);
@@ -601,7 +614,8 @@ a {
   padding-bottom: 4px;
 }
 
-.lofi-draft-card {
+.lofi-draft-card,
+.final-design-card {
   display: grid;
   gap: 12px;
   padding: 14px;
@@ -612,7 +626,8 @@ a {
   background: var(--accent-soft);
 }
 
-.lofi-draft-card.is-selected {
+.lofi-draft-card.is-selected,
+.final-design-card.is-selected {
   box-shadow: inset 0 0 0 2px var(--accent);
 }
 
@@ -749,7 +764,8 @@ a {
   .concept-layout,
   .content-form-layout,
   .content-form-grid,
-  .lofi-layout {
+  .lofi-layout,
+  .final-layout {
     grid-template-columns: 1fr;
   }
 
@@ -764,8 +780,11 @@ a {
   }
 
   .lofi-run-summary,
+  .final-run-summary,
   .lofi-action-panel,
   .lofi-large-preview,
+  .final-large-preview,
+  .final-design-list,
   .lofi-draft-list {
     grid-column: auto;
     grid-row: auto;
@@ -781,7 +800,8 @@ a {
     grid-template-columns: 1fr;
   }
 
-  .lofi-large-preview-frame {
+  .lofi-large-preview-frame,
+  .final-large-preview-frame {
     min-height: 260px;
   }
 
