@@ -1125,11 +1125,6 @@ createApp({
       promoBuilderModalOpen: false,
       promoBuilderSessionKey: 0,
       currentBuilderStep: 1,
-      activeWizardRunId: "",
-      activeWizardPageId: "",
-      selectedLofiDraftId: "",
-      selectedFinalDesignId: "",
-      wizardAutoLofiRequestedForRunId: "",
       isGeneratingDesign: false,
       generationStatusIndex: 0,
       generationStatusTimer: null,
@@ -1368,11 +1363,6 @@ createApp({
       return this.generatedPages[0] || null;
     },
 
-    activeWizardPage() {
-      if (!this.activeWizardPageId) return null;
-      return this.generatedPages.find((page) => page.id === this.activeWizardPageId || page.generationRunId === this.activeWizardPageId) || null;
-    },
-
     // B section: builder stepper and generation-status copy.
     designModeLabel() {
       return this.designMode === "advanced"
@@ -1382,10 +1372,9 @@ createApp({
 
     builderSteps() {
       return [
-        { step: 1, title: "디자인 컨셉 선택", summary: "스타일, 마켓" },
-        { step: 2, title: "프로모 컨텐츠 입력", summary: "카피, 섹션" },
-        { step: 3, title: "LO-FI 초안 선택", summary: "초안 생성/확정" },
-        { step: 4, title: "최종 디자인 결과", summary: "Final 생성/확인" },
+        { step: 1, title: "디자인 모드 선택", summary: "AI 모드, 고급 모드, 마켓" },
+        { step: 2, title: "프로모션 입력 및 섹션 구성", summary: "개요, 섹션/아이템" },
+        { step: 3, title: "디자인 생성", summary: "n8n 실행" },
       ];
     },
 
@@ -1398,8 +1387,7 @@ createApp({
         "AI가 요청 사항을 접수하고 있어요",
         "디자인 브리프를 정리하고 있어요",
         "프로모션 섹션을 조합하고 있어요",
-        "LO-FI 초안을 생성하고 있어요",
-        "최종 디자인 이미지를 생성하고 있어요",
+        "UI 디자인 이미지를 생성하고 있어요",
         "결과를 저장하고 있어요",
       ];
       return messages[this.generationStatusIndex % messages.length];
@@ -2427,13 +2415,6 @@ createApp({
         if (isValid && !this.hasSectionDraft()) this.refreshSectionDraft({ silent: true });
         return isValid;
       }
-      if (step === 3) {
-        const page = this.activeWizardPage;
-        if (!page?.confirmedLofiDraft?.draftId) {
-          this.setStatus("Step 4로 이동하기 전에 LO-FI 초안을 확정해 주세요");
-          return false;
-        }
-      }
       return true;
     },
 
@@ -2610,29 +2591,17 @@ createApp({
 
     applyGenerationRunStateToPage(page, state) {
       const run = state?.run || {};
-      const integratedBrief = state?.integratedBrief || null;
       const drafts = Array.isArray(state?.drafts) ? state.drafts : [];
       const finalDesigns = Array.isArray(state?.finalDesigns) ? state.finalDesigns : [];
       const confirmedDraft = state?.confirmedDraft || null;
       const readyDrafts = drafts.filter((draft) => ["ready", "completed"].includes(String(draft.status || "")));
-      const selectedDraftId = page.selectedLofiDraftId || (page.id === this.activeWizardPageId ? this.selectedLofiDraftId : "");
-      const selectedDraft = selectedDraftId ? drafts.find((draft) => draft.draftId === selectedDraftId) : null;
-      const currentDraft = selectedDraft || confirmedDraft || readyDrafts[readyDrafts.length - 1] || drafts[drafts.length - 1] || null;
+      const currentDraft = confirmedDraft || readyDrafts[readyDrafts.length - 1] || drafts[drafts.length - 1] || null;
       const currentDraftReady = ["ready", "completed"].includes(String(currentDraft?.status || ""));
       const previewDraft = currentDraftReady ? currentDraft : readyDrafts[readyDrafts.length - 1] || null;
-      const finalDraftId = confirmedDraft?.draftId || currentDraft?.draftId || "";
-      const draftFinalDesigns = finalDraftId
-        ? finalDesigns.filter((finalDesign) => finalDesign.confirmedDraftId === finalDraftId)
-        : finalDesigns;
-      const currentFinalDesign = draftFinalDesigns[0] || null;
+      const currentFinalDesign = finalDesigns[0] || null;
       const currentFinalDesignReady = ["ready", "completed"].includes(String(currentFinalDesign?.status || ""));
-      const readyFinalDesigns = draftFinalDesigns.filter((finalDesign) => ["ready", "completed"].includes(String(finalDesign.status || "")));
+      const readyFinalDesigns = finalDesigns.filter((finalDesign) => ["ready", "completed"].includes(String(finalDesign.status || "")));
       const previewFinalDesign = currentFinalDesignReady ? currentFinalDesign : readyFinalDesigns[0] || null;
-      if (page.id === this.activeWizardPageId) {
-        this.activeWizardRunId = run.runId || this.activeWizardRunId;
-        if (!this.selectedLofiDraftId && currentDraft?.draftId) this.selectedLofiDraftId = currentDraft.draftId;
-        this.selectedFinalDesignId = previewFinalDesign?.finalDesignId || currentFinalDesign?.finalDesignId || this.selectedFinalDesignId;
-      }
 
       Object.assign(page, {
         generationRunId: run.runId || page.generationRunId || "",
@@ -2640,10 +2609,8 @@ createApp({
         generationRunStage: run.stage || "",
         generationRunUpdatedAt: run.updatedAt || page.generationRunUpdatedAt || "",
         generationPolling: generationPollingState(run),
-        integratedBrief,
         lofiDrafts: drafts,
         confirmedLofiDraft: confirmedDraft,
-        selectedLofiDraftId: currentDraft?.draftId || "",
         currentLofiDraft: currentDraft,
         lofiDraftPreviewUrl: previewDraft ? lofiDraftImageUrlForId(previewDraft.draftId) : "",
         finalDesigns,
@@ -2654,50 +2621,7 @@ createApp({
     },
 
     currentLofiDraft(page) {
-      if (!page) return null;
-      const selectedDraftId = page.selectedLofiDraftId || (page.id === this.activeWizardPageId ? this.selectedLofiDraftId : "");
-      if (selectedDraftId) {
-        const selectedDraft = (page.lofiDrafts || []).find((draft) => draft.draftId === selectedDraftId);
-        if (selectedDraft) return selectedDraft;
-      }
-      return page.currentLofiDraft || page.confirmedLofiDraft || null;
-    },
-
-    readyLofiDrafts(page) {
-      return (page?.lofiDrafts || []).filter((draft) => this.isReadyLofiDraft(draft));
-    },
-
-    selectedLofiDraft(page) {
-      return this.currentLofiDraft(page);
-    },
-
-    selectLofiDraft(page, draft) {
-      if (!page || !draft?.draftId) return;
-      page.selectedLofiDraftId = draft.draftId;
-      if (page.id === this.activeWizardPageId) this.selectedLofiDraftId = draft.draftId;
-      this.applyGenerationRunStateToPage(page, {
-        run: {
-          runId: page.generationRunId,
-          status: page.generationRunStatus,
-          stage: page.generationRunStage,
-          updatedAt: page.generationRunUpdatedAt,
-        },
-        integratedBrief: page.integratedBrief,
-        drafts: page.lofiDrafts || [],
-        confirmedDraft: page.confirmedLofiDraft,
-        finalDesigns: page.finalDesigns || [],
-      });
-      this.setStatus(`LO-FI 초안 #${draft.draftAttempt || ""}을 선택했습니다`);
-    },
-
-    finalDesignsForDraft(page, draft = this.currentLofiDraft(page)) {
-      const draftId = draft?.draftId || page?.confirmedLofiDraft?.draftId || "";
-      const finalDesigns = page?.finalDesigns || [];
-      return draftId ? finalDesigns.filter((finalDesign) => finalDesign.confirmedDraftId === draftId) : finalDesigns;
-    },
-
-    isActiveStageStatus(status) {
-      return /queued|generating|running|pending|accepted/i.test(String(status || ""));
+      return page?.currentLofiDraft || page?.confirmedLofiDraft || null;
     },
 
     isReadyLofiDraft(draft) {
@@ -2714,8 +2638,8 @@ createApp({
       const draft = this.currentLofiDraft(page);
       const draftStatus = String(draft?.status || "");
       const finalStatus = String(page?.currentFinalDesign?.status || "");
-      const draftActive = this.isActiveStageStatus(draftStatus);
-      const finalActive = this.isActiveStageStatus(finalStatus) && !page?.generationPolling?.isStale;
+      const draftActive = /queued|generating|running|pending/i.test(draftStatus);
+      const finalActive = /queued|generating|running|pending/i.test(finalStatus);
       return Boolean(draft?.draftId && !draftActive && !finalActive);
     },
 
@@ -2742,10 +2666,6 @@ createApp({
       return labels[String(draft?.status || "")] || draft?.status || "";
     },
 
-    draftImageUrlForId(id) {
-      return lofiDraftImageUrlForId(id);
-    },
-
     finalDesignStatusLabel(finalDesign) {
       const labels = {
         queued: "대기",
@@ -2759,16 +2679,17 @@ createApp({
 
     canGenerateFinalDesign(page) {
       const draft = page?.confirmedLofiDraft;
-      const latestFinal = this.finalDesignsForDraft(page, draft)[0] || null;
-      const finalActive = Boolean(latestFinal && this.isActiveStageStatus(latestFinal.status) && !page?.generationPolling?.isStale);
+      const finalDesign = page?.currentFinalDesign;
+      const finalStatus = String(finalDesign?.status || "");
+      const finalActive = /queued|generating|running|pending/i.test(finalStatus);
       return Boolean(draft?.draftId && !finalActive);
     },
 
     finalDesignActionLabel(page) {
-      const finalDesign = this.finalDesignsForDraft(page, page?.confirmedLofiDraft)[0] || page?.currentFinalDesign;
+      const finalDesign = page?.currentFinalDesign;
       if (!finalDesign) return "최종 디자인 생성";
       const status = String(finalDesign.status || "");
-      if (this.isActiveStageStatus(status) && !page?.generationPolling?.isStale) return "최종 생성 중";
+      if (/queued|generating|running|pending/i.test(status)) return "최종 생성 중";
       if (["ready", "completed"].includes(status)) return "최종 재생성";
       return "최종 디자인 생성";
     },
@@ -2793,10 +2714,6 @@ createApp({
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `Confirm ${response.status}`);
         this.applyGenerationRunStateToPage(page, result.state || result);
-        if (page.id === this.activeWizardPageId) {
-          this.selectedLofiDraftId = draft.draftId;
-          this.currentBuilderStep = 4;
-        }
         this.syncGenerationRunPolling();
         this.setStatus(`LO-FI 초안 #${draft.draftAttempt || ""}을 확정했습니다`);
       } catch (error) {
@@ -2851,7 +2768,6 @@ createApp({
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || result.workerTrigger?.error || `Final design ${response.status}`);
         await this.refreshGenerationRunState(page).catch(() => false);
-        if (page.id === this.activeWizardPageId) this.currentBuilderStep = 4;
         this.syncGenerationRunPolling();
         this.setStatus("최종 디자인 생성을 요청했습니다");
       } catch (error) {
@@ -2869,7 +2785,6 @@ createApp({
       if (response.status === 404) return false;
       if (!response.ok) throw new Error(result.message || result.error || `Generation run ${response.status}`);
       this.applyGenerationRunStateToPage(page, result);
-      await this.ensureWizardLofiDraftQueued(page);
       return true;
     },
 
@@ -2890,7 +2805,6 @@ createApp({
 
       const statuses = [
         page.generationRunStatus,
-        page.integratedBrief?.status,
         page.currentLofiDraft?.status,
         page.currentFinalDesign?.status,
       ].map((value) => String(value || ""));
@@ -2972,10 +2886,8 @@ createApp({
                 updatedAt: generationPage.generationRunUpdatedAt,
                 polling: generationPage.generationPolling,
               },
-              integratedBrief: generationPage.integratedBrief,
               drafts: generationPage.lofiDrafts,
               confirmedDraft: generationPage.confirmedLofiDraft,
-              finalDesigns: generationPage.finalDesigns,
             });
             generationById.delete(page.id);
           }
@@ -3147,11 +3059,6 @@ createApp({
       this.generationMode = "ai_agent";
       this.globalVisualMode = "auto";
       this.currentBuilderStep = 1;
-      this.activeWizardRunId = "";
-      this.activeWizardPageId = "";
-      this.selectedLofiDraftId = "";
-      this.selectedFinalDesignId = "";
-      this.wizardAutoLofiRequestedForRunId = "";
       this.sectionInputs = createEmptyTemp4Inputs();
       this.sectionInputsDirty = false;
       this.sectionConfig = createDefaultSectionConfig(this.templateSchema);
@@ -3655,164 +3562,26 @@ createApp({
       return true;
     },
 
-    isIntegratedBriefReady(page) {
-      return ["ready", "completed"].includes(String(page?.integratedBrief?.status || ""));
-    },
-
-    isIntegratedBriefActive(page) {
-      const stage = String(page?.generationRunStage || "");
-      return this.isActiveStageStatus(page?.integratedBrief?.status) || (stage === "integrated_brief" && this.isActiveStageStatus(page?.generationRunStatus));
-    },
-
-    hasActiveLofiDraft(page) {
-      return (page?.lofiDrafts || []).some((draft) => this.isActiveStageStatus(draft.status));
-    },
-
-    upsertGeneratedPage(page) {
-      if (!page?.id) return page;
-      const index = this.generatedPages.findIndex((item) => (
-        item.id === page.id
-        || (page.generationRunId && item.generationRunId === page.generationRunId)
-      ));
-      if (index >= 0) {
-        Object.assign(this.generatedPages[index], page);
-        return this.generatedPages[index];
-      }
-      this.generatedPages.unshift(page);
-      return page;
-    },
-
-    upsertGenerationPageFromState(state, fallback = {}) {
-      const page = this.generationRunStateToPage(state, fallback);
-      const storedPage = this.upsertGeneratedPage(page);
-      this.activeWizardPageId = storedPage.id;
-      this.activeWizardRunId = storedPage.generationRunId;
-      if (storedPage.currentLofiDraft?.draftId && !this.selectedLofiDraftId) {
-        this.selectedLofiDraftId = storedPage.currentLofiDraft.draftId;
-      }
-      return storedPage;
-    },
-
-    async createWizardGenerationRun() {
-      const pageId = createRunKey();
-      const payload = this.buildGeneratedPayload(pageId);
-      const response = await fetch("/api/promo-generation-runs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ runKey: pageId, payload }),
-      });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(result.message || result.error || `Generation run ${response.status}`);
-      return this.upsertGenerationPageFromState(result.state || result, {
-        id: pageId,
-        title: payload.promo.title,
-        selectedMd: payload.md.brand,
-        styleSourceLabel: payload.styleSourceLabel,
-        template: payload.promo.template,
-        market: payload.promo.market,
-        createdAt: payload.generatedAt,
-        timestampStamp: timestampStamp(payload.generatedAt),
-        status: "generation_run",
-        resultType: "generation_run",
-        payload,
-        hasOverride: payload.hasOverride,
-      });
-    },
-
-    async queueIntegratedBriefForPage(page) {
-      if (!page?.generationRunId) throw new Error("generationRunId is required");
-      const response = await fetch("/api/promo-generation-integrated-brief", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          runId: page.generationRunId,
-          triggerWorker: true,
-        }),
-      });
-      const result = await response.json().catch(() => ({}));
-      await this.refreshGenerationRunState(page).catch(() => false);
-      if (!response.ok) throw new Error(result.message || result.error || result.workerTrigger?.error || `Integrated brief ${response.status}`);
-      return result;
-    },
-
-    async queueLofiDraftForPage(page, options = {}) {
-      if (!page?.generationRunId) throw new Error("generationRunId is required");
-      if (!this.isIntegratedBriefReady(page)) {
-        if (!options.auto) this.setStatus("Integrated Brief가 완료된 뒤 LO-FI 초안을 생성할 수 있습니다");
-        return null;
-      }
-      if (this.hasActiveLofiDraft(page)) return null;
-      const response = await fetch("/api/promo-generation-lofi-drafts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          runId: page.generationRunId,
-          triggerWorker: true,
-        }),
-      });
-      const result = await response.json().catch(() => ({}));
-      await this.refreshGenerationRunState(page).catch(() => false);
-      if (!response.ok) throw new Error(result.message || result.error || result.workerTrigger?.error || `LO-FI draft ${response.status}`);
-      this.setStatus(options.auto ? "Integrated Brief 완료 후 LO-FI 초안 생성을 요청했습니다" : "LO-FI 초안 생성을 요청했습니다");
-      return result;
-    },
-
-    async ensureWizardLofiDraftQueued(page) {
-      if (!page?.generationRunId || page.id !== this.activeWizardPageId) return false;
-      if (!this.isIntegratedBriefReady(page)) return false;
-      if ((page.lofiDrafts || []).length || this.hasActiveLofiDraft(page)) return false;
-      if (this.wizardAutoLofiRequestedForRunId === page.generationRunId) return false;
-      this.wizardAutoLofiRequestedForRunId = page.generationRunId;
-      try {
-        await this.queueLofiDraftForPage(page, { auto: true });
-        this.syncGenerationRunPolling();
-        return true;
-      } catch (error) {
-        this.setStatus(`LO-FI 초안 자동 요청 실패: ${error.message}`);
-        return false;
-      }
-    },
-
-    async startWizardLofiFlow() {
-      if (this.isGeneratingDesign) return;
-      if (window.location.protocol === "file:") {
-        this.setStatus("서버 실행 환경에서만 staged generation을 시작할 수 있습니다");
-        return;
-      }
-      if (!this.validatePromoInputs()) return;
-      if (!this.validateSectionConfig()) return;
-      await this.loadSelectedDesignDetail(this.selectedDocumentId);
-
-      this.startGenerationMotion();
-      try {
-        let page = this.activeWizardPage;
-        if (!page?.generationRunId) {
-          page = await this.createWizardGenerationRun();
-          this.setStatus("Generation Run을 생성했습니다");
-        }
-
-        if (!this.isIntegratedBriefReady(page) && !this.isIntegratedBriefActive(page)) {
-          await this.queueIntegratedBriefForPage(page);
-          this.setStatus("Integrated Brief 생성을 요청했습니다");
-        } else if (this.isIntegratedBriefReady(page) && !(page.lofiDrafts || []).length) {
-          await this.queueLofiDraftForPage(page);
-        } else {
-          await this.refreshGenerationRunState(page).catch(() => false);
-          this.setStatus("현재 생성 상태를 갱신했습니다");
-        }
-
-        this.currentBuilderStep = 3;
-        this.syncGenerationRunPolling();
-      } catch (error) {
-        this.setStatus(`LO-FI 생성 시작 실패: ${error.message}`);
-      } finally {
-        this.stopGenerationMotion();
-      }
-    },
-
-    // Legacy direct-generation guard: B wizard now uses the staged run APIs.
+    // n8n client: browser builds use the local API proxy so webhook URL policy stays server-side.
     async triggerN8n(payload) {
-      throw new Error("Legacy direct UI design generation is disabled. Use the 4-step staged wizard flow.");
+      const useProxy = window.location.protocol !== "file:";
+      const requestUrl = useProxy ? "/api/generate-ui-design" : "";
+      if (!requestUrl) throw new Error("로컬 파일 모드에서는 서버 Webhook 설정을 사용할 수 없습니다");
+
+      const headers = {
+        "Content-Type": "application/json",
+      };
+
+      const response = await fetch(requestUrl, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+      });
+
+      const contentType = response.headers.get("content-type") || "";
+      const result = contentType.includes("application/json") ? await response.json() : { html: await response.text() };
+      if (!response.ok) throw new Error(result.message || result.error || `n8n ${response.status}`);
+      return result;
     },
 
     // Generation motion is intentionally indeterminate because the n8n workflow does not stream real progress.
@@ -3867,7 +3636,112 @@ createApp({
 
     // Generation orchestrator: validates, submits the workflow, recovers stored results, and updates C section.
     async generateUiDesign() {
-      return this.startWizardLofiFlow();
+      if (this.isGeneratingDesign) return;
+      if (!this.selectedDocument) {
+        this.setStatus("먼저 MD를 선택해 주세요");
+        return;
+      }
+      if (!this.validatePromoInputs()) return;
+      if (!this.validateSectionConfig()) return;
+      await this.loadSelectedDesignDetail(this.selectedDocumentId);
+
+      const pageId = createRunKey();
+      const payload = this.buildGeneratedPayload(pageId);
+      const initialStamp = timestampStamp(payload.generatedAt);
+      const willUseN8n = true;
+      this.setStatus(willUseN8n ? "AI가 요청 사항을 접수 중입니다" : "로컬에서 UI 디자인을 생성했습니다");
+      this.startGenerationMotion();
+      await this.$nextTick();
+      await new Promise((resolve) => {
+        if (window.requestAnimationFrame) {
+          window.requestAnimationFrame(resolve);
+        } else {
+          window.setTimeout(resolve, 0);
+        }
+      });
+
+      const listItem = {
+        id: pageId,
+        title: payload.promo.title,
+        selectedMd: payload.md.brand,
+        styleSourceLabel: payload.styleSourceLabel,
+        template: payload.promo.template,
+        market: payload.promo.market,
+        createdAt: payload.generatedAt,
+        committedAt: "",
+        timestampStamp: initialStamp,
+        status: willUseN8n ? "n8n_ui_design_pending" : "draft",
+        designUrl: "",
+        imageUrl: "",
+        pageUrl: "",
+        layoutMapping: null,
+        mdComplianceMap: null,
+        imagePrompt: "",
+        promptGroupId: "",
+        designPromptStorageKey: "",
+        promoInputStorageKey: "",
+        integratedBriefStorageKey: "",
+        generationRunId: "",
+        generationRunStatus: "",
+        generationRunStage: "",
+        generationPolling: null,
+        lofiDrafts: [],
+        confirmedLofiDraft: null,
+        currentLofiDraft: null,
+        lofiDraftPreviewUrl: "",
+        errorMessage: "",
+        hasOverride: payload.hasOverride,
+        resultType: willUseN8n ? "pending" : "draft",
+        payload,
+      };
+
+      this.generatedPages.unshift(listItem);
+
+      let n8nResult = null;
+      try {
+        n8nResult = await this.triggerN8n(payload);
+      } catch (error) {
+        const recovered = await this.waitForStoredDesignResult(listItem, { attempts: 5, delayMs: 1200 }).catch(() => false);
+        if (recovered) {
+          this.currentBuilderStep = this.builderSteps.length;
+          this.setStatus("n8n 응답은 지연됐지만 저장된 UI 디자인을 확인했습니다");
+          this.stopGenerationMotion();
+          this.closePromoBuilder({ endSession: true });
+          if (listItem.pageUrl) window.open(listItem.pageUrl, "_blank");
+          return;
+        }
+
+        listItem.status = "n8n_failed";
+        listItem.errorMessage = error.message;
+        this.setStatus(`n8n 실행 실패. 서버 저장 결과를 확인하지 못했습니다: ${error.message}`);
+        this.stopGenerationMotion();
+        return;
+      }
+
+      listItem.status = n8nResult ? "n8n_ui_design_generated" : "draft";
+      listItem.designUrl = toDesignViewUrl(n8nResult?.designUrl || designViewUrlForId(listItem.id), listItem.id);
+      listItem.imageUrl = n8nResult?.imageUrl || "";
+      listItem.pageUrl = toDesignViewUrl(n8nResult?.designUrl || n8nResult?.pageUrl || n8nResult?.previewUrl || designViewUrlForId(listItem.id), listItem.id) || n8nResult?.imageUrl || "";
+      listItem.resultType = n8nResult?.resultType || this.resultType(listItem);
+      listItem.layoutMapping = n8nResult?.layoutMapping || null;
+      listItem.mdComplianceMap = n8nResult?.mdComplianceMap || null;
+      listItem.imagePrompt = n8nResult?.imagePrompt || "";
+      listItem.promptGroupId = n8nResult?.promptGroupId || "";
+      listItem.designPromptStorageKey = n8nResult?.designPromptStorageKey || "";
+      listItem.promoInputStorageKey = n8nResult?.promoInputStorageKey || "";
+      listItem.integratedBriefStorageKey = n8nResult?.integratedBriefStorageKey || "";
+      const rawCommittedAt = n8nResult?.committedAt || listItem.committedAt;
+      listItem.committedAt = rawCommittedAt ? formatKoreaDateTime(rawCommittedAt) : listItem.committedAt;
+      listItem.timestampStamp = n8nResult?.timestampStamp || timestampStamp(rawCommittedAt || listItem.createdAt);
+      listItem.payload = n8nResult?.payload || payload;
+      await this.waitForStoredDesignResult(listItem, { attempts: 5, delayMs: 900 }).catch(() => false);
+      await this.loadGeneratedPagesFromServer({ silent: true, fresh: true, preserveIds: [listItem.id] });
+
+      this.currentBuilderStep = this.builderSteps.length;
+      this.setStatus(n8nResult ? "n8n UI 디자인 생성이 완료되었습니다" : "로컬 UI 디자인 생성이 완료되었습니다");
+      this.stopGenerationMotion();
+      this.closePromoBuilder({ endSession: true });
+      if (listItem.pageUrl) window.open(listItem.pageUrl, "_blank");
     },
 
     generatePage() {
