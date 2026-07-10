@@ -1,3 +1,25 @@
+# Status: Superseded - 2026-07-10
+
+This design request is superseded by:
+
+```text
+docs/standalone-promo-wizard-development-plan-2026-07-10.md
+```
+
+Reason:
+
+```text
+The A+B in-SPA/tab wizard direction still mixes the long-running generation
+workflow with the restored promo builder page.
+
+The adopted direction is now a standalone full-page wizard:
+prototype/promo-wizard.html
+prototype/promo-wizard.js
+prototype/promo-wizard.css
+```
+
+Keep this file as historical design context only. Do not implement from this document unless the decision is explicitly reopened.
+
 # Promo 빌더 위저드 전환 — 디자인 요청서 (2026-07-10)
 
 작성: Claude (요청/제안용 문서, 소스 수정 없음)
