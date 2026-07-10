@@ -18,12 +18,12 @@ const steps = [
     ],
   },
   {
-    title: "LO-FI Draft Selection",
-    copy: "Generate LO-FI drafts from the validated Integrated Brief, then select the draft to finalize.",
+    title: "LO-FI 시안 생성 및 선택",
+    copy: "새 LO-FI 시안을 누적 생성하고, 생성된 후보 중 하나를 Final Design 기준으로 확정합니다.",
     cards: [
-      ["Integrated Brief", "Queue, poll, and inspect the source-of-truth brief."],
-      ["Draft Images", "Review draft attempts and image proxy output."],
-      ["Confirm Draft", "Lock one LO-FI draft before final generation."],
+      ["생성 준비", "A섹션 Concept과 B섹션 Content를 통합 브리프로 준비합니다."],
+      ["LO-FI 시안 생성", "버튼을 누를 때마다 기존 시안을 유지한 채 새 시안을 추가합니다."],
+      ["시안 선택", "여러 LO-FI 시안 중 하나를 Confirm Draft로 확정합니다."],
     ],
   },
   {
@@ -40,6 +40,7 @@ const steps = [
 const storageKeys = {
   selectedDocumentId: "promoPrototype.selectedDocumentId.abc",
   wizardContent: "promoPrototype.wizardContent.v1",
+  wizardRun: "promoPrototype.wizardRun.v1",
 };
 
 let currentStep = 0;
@@ -49,6 +50,10 @@ let conceptsLoading = false;
 let conceptsError = "";
 let conceptSearch = "";
 let validationErrors = {};
+let runState = loadWizardRun();
+let runLoading = false;
+let runError = "";
+let runPollingTimer = null;
 
 const contentState = loadWizardContent();
 
@@ -104,6 +109,24 @@ function loadWizardContent() {
 
 function saveWizardContent() {
   localStorage.setItem(storageKeys.wizardContent, JSON.stringify(contentState));
+}
+
+function loadWizardRun() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(storageKeys.wizardRun) || "null");
+    return saved && typeof saved === "object" ? saved : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveWizardRun(state) {
+  runState = state || null;
+  if (runState) {
+    localStorage.setItem(storageKeys.wizardRun, JSON.stringify(runState));
+  } else {
+    localStorage.removeItem(storageKeys.wizardRun);
+  }
 }
 
 function selectedDocument() {
@@ -419,6 +442,161 @@ function renderContentStep() {
   placeholders.append(toolbar, overview, message, conversion, coverage);
 }
 
+function createStatusPill(text, kind = "") {
+  const pill = document.createElement("span");
+  pill.className = `status-chip${kind ? ` ${kind}` : ""}`;
+  pill.textContent = text || "unknown";
+  return pill;
+}
+
+function createLofiDraftCard(draft) {
+  const card = document.createElement("article");
+  card.className = `lofi-draft-card${draft.confirmedAt ? " is-confirmed" : ""}`;
+
+  const header = document.createElement("div");
+  header.className = "lofi-draft-header";
+  appendTextElement(header, "strong", "", `LO-FI 시안 #${draft.draftAttempt || "-"}`);
+  header.append(createStatusPill(draft.confirmedAt ? "Confirmed" : draft.status, isReadyDraft(draft) ? "ready" : ""));
+
+  const preview = document.createElement("div");
+  preview.className = "lofi-preview";
+  if (draft.draftImageUrl || isReadyDraft(draft)) {
+    const image = document.createElement("img");
+    image.alt = `LO-FI draft attempt ${draft.draftAttempt || ""}`;
+    image.src = draftImageSrc(draft);
+    image.loading = "lazy";
+    preview.append(image);
+  } else {
+    appendTextElement(preview, "span", "", isActiveStatus(draft.status) ? "시안 생성 중" : "이미지 없음");
+  }
+
+  const meta = document.createElement("dl");
+  meta.className = "lofi-draft-meta";
+  [
+    ["Created", draft.createdAt ? new Date(draft.createdAt).toLocaleString() : "-"],
+    ["Updated", draft.updatedAt ? new Date(draft.updatedAt).toLocaleString() : "-"],
+  ].forEach(([label, value]) => {
+    const row = document.createElement("div");
+    appendTextElement(row, "dt", "", label);
+    appendTextElement(row, "dd", "", value);
+    meta.append(row);
+  });
+  if (draft.errorMessage) {
+    appendTextElement(card, "p", "lofi-error", draft.errorMessage);
+  }
+
+  const actions = document.createElement("div");
+  actions.className = "lofi-draft-actions";
+  const confirm = document.createElement("button");
+  confirm.className = "primary-action";
+  confirm.type = "button";
+  confirm.textContent = draft.confirmedAt ? "Confirmed Draft" : "이 시안 선택";
+  confirm.disabled = runLoading || draft.confirmedAt || !isReadyDraft(draft);
+  confirm.addEventListener("click", () => confirmDraft(draft));
+  actions.append(confirm);
+
+  card.append(header, preview, meta, actions);
+  return card;
+}
+
+function renderLofiStep() {
+  conceptToolbar.hidden = true;
+  placeholders.className = "lofi-layout";
+  placeholders.innerHTML = "";
+
+  const run = runState?.run || null;
+  const drafts = Array.isArray(runState?.drafts) ? [...runState.drafts] : [];
+  drafts.sort((a, b) => Number(a.draftAttempt || 0) - Number(b.draftAttempt || 0));
+  const confirmed = runState?.confirmedDraft || drafts.find((draft) => draft.confirmedAt) || null;
+
+  const summary = document.createElement("section");
+  summary.className = "lofi-run-summary";
+  appendTextElement(summary, "span", "eyebrow", "LO-FI Generation Run");
+  appendTextElement(summary, "h3", "", run?.promoTitle || contentState.promo.title || "Untitled promo");
+  appendTextElement(summary, "p", "", "새 LO-FI 시안을 생성하면 기존 시안은 유지되고 draft attempt가 하나 더 추가됩니다.");
+
+  const statusRow = document.createElement("div");
+  statusRow.className = "lofi-status-row";
+  statusRow.append(createStatusPill(runStatusText()));
+  statusRow.append(createStatusPill(integratedBriefReady() ? "Brief ready" : "Brief pending", integratedBriefReady() ? "ready" : ""));
+  statusRow.append(createStatusPill(`${drafts.length} drafts`));
+  if (confirmed?.draftAttempt) statusRow.append(createStatusPill(`Confirmed #${confirmed.draftAttempt}`, "ready"));
+  summary.append(statusRow);
+
+  const coverage = document.createElement("div");
+  coverage.className = "lofi-content-snapshot";
+  appendTextElement(coverage, "strong", "", "2단계 Content 적용 기준");
+  const snapshotList = document.createElement("ul");
+  [
+    ["Title", contentState.promo.title],
+    ["Offer", contentState.simpleBrief.mainOffer],
+    ["Message", contentState.simpleBrief.secondaryMessage],
+    ["CTA", contentState.promo.ctaLabel || contentState.simpleBrief.targetAction],
+    ["Terms", contentState.promo.termsText],
+  ].forEach(([label, value]) => {
+    const item = document.createElement("li");
+    item.textContent = `${label}: ${String(value || "-").slice(0, 110)}`;
+    snapshotList.append(item);
+  });
+  coverage.append(snapshotList);
+  summary.append(coverage);
+
+  const actionPanel = document.createElement("section");
+  actionPanel.className = "lofi-action-panel";
+  const prepare = document.createElement("button");
+  prepare.className = "secondary-action";
+  prepare.type = "button";
+  prepare.textContent = runId() ? "상태 새로고침" : "생성 준비 시작";
+  prepare.disabled = runLoading;
+  prepare.addEventListener("click", async () => {
+    if (runId()) {
+      runLoading = true;
+      runError = "";
+      renderStep();
+      try {
+        await refreshRunState();
+        syncRunPolling();
+      } catch (error) {
+        runError = error.message;
+      } finally {
+        runLoading = false;
+        renderStep();
+      }
+    } else {
+      await prepareLofiRun();
+    }
+  });
+
+  const createDraft = document.createElement("button");
+  createDraft.className = "primary-action";
+  createDraft.type = "button";
+  createDraft.textContent = "새 LO-FI 시안 생성";
+  createDraft.disabled = runLoading || !runId() || !integratedBriefReady();
+  createDraft.addEventListener("click", createNewLofiDraft);
+  actionPanel.append(prepare, createDraft);
+  if (!integratedBriefReady()) {
+    appendTextElement(actionPanel, "small", "", runId()
+      ? "Integrated Brief가 ready가 되면 새 LO-FI 시안을 생성할 수 있습니다."
+      : "먼저 생성 준비를 시작해 Integrated Brief를 큐에 넣어 주세요.");
+  }
+  if (runLoading) appendTextElement(actionPanel, "small", "", "요청 처리 중입니다.");
+  if (runError) appendTextElement(actionPanel, "small", "lofi-error", runError);
+
+  const list = document.createElement("section");
+  list.className = "lofi-draft-list";
+  if (!drafts.length) {
+    const empty = document.createElement("article");
+    empty.className = "placeholder-card";
+    appendTextElement(empty, "strong", "", "아직 생성된 LO-FI 시안이 없습니다");
+    appendTextElement(empty, "span", "", "Integrated Brief가 준비된 뒤 '새 LO-FI 시안 생성'을 눌러 첫 후보를 생성합니다.");
+    list.append(empty);
+  } else {
+    drafts.forEach((draft) => list.append(createLofiDraftCard(draft)));
+  }
+
+  placeholders.append(summary, actionPanel, list);
+}
+
 function createSelectedConceptPanel(doc) {
   const panel = document.createElement("article");
   panel.className = "selected-concept-panel";
@@ -441,6 +619,296 @@ function createSelectedConceptPanel(doc) {
 
   panel.append(list);
   return panel;
+}
+
+function randomToken(length = 5) {
+  const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789";
+  const values = new Uint8Array(length);
+  if (window.crypto?.getRandomValues) {
+    window.crypto.getRandomValues(values);
+  } else {
+    for (let index = 0; index < length; index += 1) values[index] = Math.floor(Math.random() * 256);
+  }
+  return Array.from(values, (value) => alphabet[value % alphabet.length]).join("");
+}
+
+function createRunKey() {
+  const stamp = new Date().toISOString().replace(/[-:TZ.]/g, "").slice(0, 14);
+  return `promo-wizard-${stamp}-${randomToken(5)}`;
+}
+
+function selectedDesignPayload(doc) {
+  return {
+    id: doc?.id || "",
+    brand: doc?.brandName || "",
+    designStyleId: doc?.id || "",
+    designStyleName: doc?.designStyleName || doc?.brandName || "",
+    slug: doc?.slug || "",
+    summary: doc?.summary || {},
+    designTokenFileName: doc?.designTokenFileName || "",
+    selectedTokens: doc?.designTokensJson || doc?.rawDesignTokens || {},
+    designConcept: doc?.designConcept || {},
+    styleClassification: doc?.styleClassification || null,
+    designPromptContext: doc?.designConcept?.promptContext || "",
+    designData: {
+      summary: doc?.summary || {},
+      normalizedSchema: doc?.normalizedSchema || null,
+      extractionStatus: doc?.extractionStatus || doc?.status || "",
+      sourceHash: doc?.sourceHash || "",
+    },
+  };
+}
+
+function buildWizardPayload(runKey) {
+  const doc = selectedDocument();
+  const promo = {
+    ...contentState.promo,
+    leadText: contentState.promo.leadText || contentState.simpleBrief.mainOffer,
+    subline: contentState.promo.subline || contentState.simpleBrief.secondaryMessage,
+    ctaLabel: contentState.promo.ctaLabel || contentState.simpleBrief.targetAction || "Learn More",
+    ctaUrl: contentState.promo.ctaUrl || "#",
+    termsText: contentState.promo.termsText || "Terms and conditions apply. Please play responsibly.",
+  };
+  const promotionInput = {
+    purpose: contentState.promo.promotionPurpose || "",
+    purposeOther: contentState.promo.promotionPurposeOther || "",
+    targetCustomer: contentState.simpleBrief.audience || "",
+    campaignTone: contentState.simpleBrief.campaignTone || "",
+  };
+  const sectionInputs = {
+    heroBanner: {
+      headline: promo.title,
+      sublineText: promo.leadText,
+      alphaText: promo.alphaText,
+      cta: { label: promo.ctaLabel, link: promo.ctaUrl },
+    },
+    contentCta: {
+      title: promo.title,
+      longText: promo.subline,
+      cta: { label: promo.ctaLabel, link: promo.ctaUrl },
+    },
+    titleDescription: {
+      title: promo.title,
+      contents: promo.termsText,
+    },
+    footer: {
+      content: promo.termsText,
+    },
+  };
+  const templateRuntime = {
+    templateId: "wizard_lofi",
+    templateName: "Standalone Promo Wizard",
+    orderedSections: ["header", "heroBanner", "contentCta", "titleDescription", "footer"],
+    visibleSections: ["header", "heroBanner", "contentCta", "titleDescription", "footer"],
+  };
+  return {
+    id: runKey,
+    generatedAt: new Date().toISOString(),
+    selectedDesignStyleId: doc?.id || "",
+    md: selectedDesignPayload(doc),
+    promo,
+    promotionInput,
+    marketVisualGuidance: promo.market ? `Use ${promo.market} as market context without inventing visible copy.` : "",
+    simpleBrief: { ...contentState.simpleBrief },
+    sectionInputs,
+    sectionConfig: {
+      visibleSections: templateRuntime.visibleSections,
+      source: "standalone_wizard",
+    },
+    template: {
+      id: "standalone_promo_wizard",
+      name: "Standalone Promo Wizard",
+      designMode: "ai",
+      generationMode: "lofi_draft",
+      inputMode: "wizard",
+      sectionOrder: templateRuntime.orderedSections,
+      visibleSections: templateRuntime.visibleSections,
+    },
+    inputSnapshot: {
+      promo,
+      promotionInput,
+      simpleBrief: { ...contentState.simpleBrief },
+      sectionInputs,
+      sectionConfig: {
+        visibleSections: templateRuntime.visibleSections,
+        source: "standalone_wizard",
+      },
+      templateRuntime,
+      marketVisualGuidance: promo.market ? `Use ${promo.market} as market context without inventing visible copy.` : "",
+    },
+  };
+}
+
+function runId() {
+  return runState?.run?.runId || runState?.runId || "";
+}
+
+function runStatusText() {
+  const run = runState?.run || {};
+  return [run.stage, run.status].filter(Boolean).join(" / ") || "not started";
+}
+
+function integratedBriefReady() {
+  const statusValue = String(runState?.integratedBrief?.status || "");
+  return ["ready", "completed"].includes(statusValue);
+}
+
+function draftImageSrc(draft) {
+  return draft?.draftId ? `/api/promo-generation-lofi-draft-image?draftId=${encodeURIComponent(draft.draftId)}` : "";
+}
+
+function isReadyDraft(draft) {
+  return ["ready", "completed"].includes(String(draft?.status || ""));
+}
+
+function isActiveStatus(statusValue) {
+  return /queued|generating|running|pending|accepted/i.test(String(statusValue || ""));
+}
+
+async function fetchJson(url, options = {}) {
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload.message || payload.error || payload.workerTrigger?.error || `HTTP ${response.status}`);
+  }
+  return payload;
+}
+
+async function createOrRefreshRun() {
+  if (runId()) return runState;
+  const runKey = createRunKey();
+  const payload = buildWizardPayload(runKey);
+  const result = await fetchJson("/api/promo-generation-runs", {
+    method: "POST",
+    body: JSON.stringify({ runKey, payload }),
+  });
+  saveWizardRun(result.state || result);
+  return runState;
+}
+
+async function queueIntegratedBrief() {
+  if (!runId() || integratedBriefReady()) return;
+  const result = await fetchJson("/api/promo-generation-integrated-brief", {
+    method: "POST",
+    body: JSON.stringify({
+      runId: runId(),
+      triggerWorker: true,
+      promptMeta: {
+        source: "standalone_wizard",
+        contentCoverageRequired: true,
+      },
+    }),
+  });
+  if (result.state) saveWizardRun(result.state);
+}
+
+async function refreshRunState() {
+  if (!runId()) return;
+  const result = await fetchJson(`/api/promo-generation-runs?runId=${encodeURIComponent(runId())}`);
+  saveWizardRun(result);
+}
+
+function syncRunPolling() {
+  if (runPollingTimer) {
+    window.clearInterval(runPollingTimer);
+    runPollingTimer = null;
+  }
+  const run = runState?.run || {};
+  const drafts = Array.isArray(runState?.drafts) ? runState.drafts : [];
+  const active = isActiveStatus(run.status) || drafts.some((draft) => isActiveStatus(draft.status));
+  if (!active) return;
+  runPollingTimer = window.setInterval(async () => {
+    try {
+      await refreshRunState();
+      renderStep();
+      syncRunPolling();
+    } catch (error) {
+      runError = error.message;
+      renderStep();
+    }
+  }, 5000);
+}
+
+async function prepareLofiRun() {
+  runLoading = true;
+  runError = "";
+  renderStep();
+  try {
+    await createOrRefreshRun();
+    await queueIntegratedBrief();
+    await refreshRunState().catch(() => false);
+    syncRunPolling();
+  } catch (error) {
+    runError = error.message;
+  } finally {
+    runLoading = false;
+    renderStep();
+  }
+}
+
+async function createNewLofiDraft() {
+  runLoading = true;
+  runError = "";
+  renderStep();
+  try {
+    await createOrRefreshRun();
+    if (!integratedBriefReady()) {
+      await queueIntegratedBrief();
+      await refreshRunState().catch(() => false);
+      if (!integratedBriefReady()) {
+        throw new Error("Integrated Brief is not ready yet. Wait for generation to finish, then create a LO-FI draft.");
+      }
+    }
+    const result = await fetchJson("/api/promo-generation-lofi-drafts", {
+      method: "POST",
+      body: JSON.stringify({
+        runId: runId(),
+        triggerWorker: true,
+        promptMeta: {
+          source: "standalone_wizard",
+          contentSnapshot: {
+            promo: contentState.promo,
+            simpleBrief: contentState.simpleBrief,
+          },
+          contentCoverageRequired: true,
+        },
+      }),
+    });
+    if (result.state) saveWizardRun(result.state);
+    await refreshRunState().catch(() => false);
+    syncRunPolling();
+  } catch (error) {
+    runError = error.message;
+  } finally {
+    runLoading = false;
+    renderStep();
+  }
+}
+
+async function confirmDraft(draft) {
+  if (!draft?.draftId) return;
+  runLoading = true;
+  runError = "";
+  renderStep();
+  try {
+    const result = await fetchJson("/api/promo-generation-lofi-draft-confirm", {
+      method: "POST",
+      body: JSON.stringify({ draftId: draft.draftId }),
+    });
+    saveWizardRun(result.state || result);
+    syncRunPolling();
+  } catch (error) {
+    runError = error.message;
+  } finally {
+    runLoading = false;
+    renderStep();
+  }
 }
 
 function renderConceptStep() {
@@ -531,6 +999,11 @@ function renderStep() {
     return;
   }
 
+  if (currentStep === 2) {
+    renderLofiStep();
+    return;
+  }
+
   conceptToolbar.hidden = true;
   placeholders.className = "placeholder-grid";
   placeholders.innerHTML = "";
@@ -550,9 +1023,23 @@ function renderStep() {
 }
 
 stepButtons.forEach((button, index) => {
-  button.addEventListener("click", () => {
+  button.addEventListener("click", async () => {
+    if (index >= 2 && !validateContentStep()) {
+      currentStep = 1;
+      renderStep();
+      return;
+    }
+    if (index >= 3 && !runState?.confirmedDraft) {
+      currentStep = 2;
+      runError = "Final Design으로 이동하기 전에 LO-FI 시안 하나를 Confirm Draft로 선택해 주세요.";
+      renderStep();
+      return;
+    }
     currentStep = index;
     renderStep();
+    if (currentStep === 2 && !runId()) {
+      await prepareLofiRun();
+    }
   });
 });
 
@@ -561,13 +1048,21 @@ prev.addEventListener("click", () => {
   renderStep();
 });
 
-next.addEventListener("click", () => {
+next.addEventListener("click", async () => {
   if (currentStep === 1 && !validateContentStep()) {
+    renderStep();
+    return;
+  }
+  if (currentStep === 2 && !runState?.confirmedDraft) {
+    runError = "Final Design으로 이동하기 전에 LO-FI 시안 하나를 Confirm Draft로 선택해 주세요.";
     renderStep();
     return;
   }
   currentStep = Math.min(steps.length - 1, currentStep + 1);
   renderStep();
+  if (currentStep === 2 && !runId()) {
+    await prepareLofiRun();
+  }
 });
 
 conceptSearchInput.addEventListener("input", (event) => {

@@ -456,6 +456,177 @@ a {
   color: #16a34a;
 }
 
+.lofi-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.6fr);
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.lofi-run-summary,
+.lofi-action-panel,
+.lofi-draft-card {
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.lofi-run-summary {
+  align-self: start;
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.lofi-run-summary h3 {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: 0;
+}
+
+.lofi-run-summary p {
+  margin: 0;
+  color: var(--sub);
+  font-size: 13px;
+}
+
+.lofi-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--sub);
+  font-size: 11px;
+  font-weight: 900;
+  padding: 0 8px;
+}
+
+.status-chip.ready {
+  border-color: rgba(22, 163, 74, 0.35);
+  background: #ecfdf3;
+  color: #15803d;
+}
+
+.lofi-content-snapshot {
+  display: grid;
+  gap: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.lofi-content-snapshot ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lofi-content-snapshot li {
+  color: var(--sub);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.lofi-action-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  grid-column: 2;
+  padding: 12px;
+}
+
+.lofi-action-panel small {
+  color: var(--sub);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.lofi-draft-list {
+  display: grid;
+  grid-column: 2;
+  gap: 12px;
+}
+
+.lofi-draft-card {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.lofi-draft-card.is-confirmed {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.lofi-draft-header,
+.lofi-draft-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.lofi-preview {
+  display: grid;
+  place-items: center;
+  min-height: 220px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.lofi-preview img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 520px;
+  object-fit: contain;
+}
+
+.lofi-preview span {
+  color: var(--sub);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.lofi-draft-meta {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.lofi-draft-meta > div {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.lofi-draft-meta dt,
+.lofi-draft-meta dd {
+  margin: 0;
+  color: var(--sub);
+  font-size: 12px;
+}
+
+.lofi-draft-meta dt {
+  font-weight: 900;
+}
+
+.lofi-error {
+  color: #ef4444;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .placeholder-card {
   min-height: 150px;
   padding: 16px;
@@ -512,7 +683,8 @@ a {
   .placeholder-grid,
   .concept-layout,
   .content-form-layout,
-  .content-form-grid {
+  .content-form-grid,
+  .lofi-layout {
     grid-template-columns: 1fr;
   }
 
@@ -524,6 +696,18 @@ a {
   .content-coverage-panel {
     grid-column: auto;
     grid-row: auto;
+  }
+
+  .lofi-action-panel,
+  .lofi-draft-list {
+    grid-column: auto;
+  }
+
+  .lofi-action-panel,
+  .lofi-draft-header,
+  .lofi-draft-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .concept-toolbar {
