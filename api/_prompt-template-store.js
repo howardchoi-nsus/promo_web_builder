@@ -85,11 +85,11 @@ const DEFAULT_MODEL_SETTINGS = {
     responseFormat: "json_object",
   },
   image_execution: {
-    provider: "openai",
-    model: "gpt-4o-mini",
-    temperature: 0.1,
-    maxTokens: 4000,
-    responseFormat: "text",
+    provider: "google",
+    model: "gemini-3.1-flash-image",
+    temperature: 0.4,
+    maxTokens: null,
+    responseFormat: "image",
   },
   lofi_draft: {
     provider: "google",
