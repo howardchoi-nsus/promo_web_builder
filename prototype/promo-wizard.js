@@ -54,6 +54,8 @@ let runState = loadWizardRun();
 let runLoading = false;
 let runError = "";
 let runPollingTimer = null;
+let workerSettings = [];
+let workerSettingsError = "";
 
 const contentState = loadWizardContent();
 
@@ -68,6 +70,33 @@ const next = document.getElementById("next-step");
 const conceptToolbar = document.getElementById("concept-toolbar");
 const conceptSearchInput = document.getElementById("concept-search");
 const refreshConcepts = document.getElementById("refresh-concepts");
+
+function workerSetting(stage) {
+  return workerSettings.find((setting) => setting.stage === stage) || null;
+}
+
+function workerReady(stage) {
+  const setting = workerSetting(stage);
+  return Boolean(setting?.isActive && setting?.isConfigured);
+}
+
+function workerStatusLabel(stage) {
+  const setting = workerSetting(stage);
+  if (setting?.isActive && setting?.isConfigured) return "n8n active";
+  if (setting?.isConfigured) return "n8n inactive";
+  return "n8n not configured";
+}
+
+async function loadWorkerSettings() {
+  try {
+    const result = await fetchJson("/api/promo-generation-worker-settings");
+    workerSettings = Array.isArray(result.settings) ? result.settings : [];
+    workerSettingsError = "";
+  } catch (error) {
+    workerSettingsError = error.message || "Worker settings load failed";
+  }
+  renderStep();
+}
 
 function defaultWizardContent() {
   return {
@@ -173,6 +202,8 @@ function filteredDocuments() {
 function selectDocument(id) {
   selectedDocumentId = id;
   localStorage.setItem(storageKeys.selectedDocumentId, id);
+  saveWizardRun(null);
+  runError = "";
   renderStep();
 }
 
@@ -240,6 +271,8 @@ function setFieldValue(group, key, value) {
     delete validationErrors.promotionPurposeOther;
   }
   saveWizardContent();
+  saveWizardRun(null);
+  runError = "";
   renderStep();
 }
 
@@ -340,6 +373,8 @@ function autofillContent() {
   };
   validationErrors = {};
   saveWizardContent();
+  saveWizardRun(null);
+  runError = "";
   renderStep();
 }
 
@@ -349,6 +384,8 @@ function resetContent() {
   contentState.simpleBrief = empty.simpleBrief;
   validationErrors = {};
   saveWizardContent();
+  saveWizardRun(null);
+  runError = "";
   renderStep();
 }
 
@@ -519,9 +556,12 @@ function renderLofiStep() {
   statusRow.className = "lofi-status-row";
   statusRow.append(createStatusPill(runStatusText()));
   statusRow.append(createStatusPill(integratedBriefReady() ? "Brief ready" : "Brief pending", integratedBriefReady() ? "ready" : ""));
+  statusRow.append(createStatusPill(`Integrated Brief ${workerStatusLabel("integrated_brief")}`, workerReady("integrated_brief") ? "ready" : ""));
+  statusRow.append(createStatusPill(`LO-FI ${workerStatusLabel("lofi_draft")}`, workerReady("lofi_draft") ? "ready" : ""));
   statusRow.append(createStatusPill(`${drafts.length} drafts`));
   if (confirmed?.draftAttempt) statusRow.append(createStatusPill(`Confirmed #${confirmed.draftAttempt}`, "ready"));
   summary.append(statusRow);
+  if (workerSettingsError) appendTextElement(summary, "p", "lofi-error", `Worker settings: ${workerSettingsError}`);
 
   const coverage = document.createElement("div");
   coverage.className = "lofi-content-snapshot";
@@ -578,6 +618,9 @@ function renderLofiStep() {
     appendTextElement(actionPanel, "small", "", runId()
       ? "Integrated Brief가 ready가 되면 새 LO-FI 시안을 생성할 수 있습니다."
       : "먼저 생성 준비를 시작해 Integrated Brief를 큐에 넣어 주세요.");
+  }
+  if (!workerReady("integrated_brief") || !workerReady("lofi_draft")) {
+    appendTextElement(actionPanel, "small", "", "관리자 페이지에서 integrated_brief / lofi_draft n8n webhook이 active인지 확인해 주세요. 환경변수로 설정된 경우에는 서버가 그대로 worker를 호출합니다.");
   }
   if (runLoading) appendTextElement(actionPanel, "small", "", "요청 처리 중입니다.");
   if (runError) appendTextElement(actionPanel, "small", "lofi-error", runError);
@@ -748,6 +791,10 @@ function runStatusText() {
   return [run.stage, run.status].filter(Boolean).join(" / ") || "not started";
 }
 
+function workerTimeout(stage) {
+  return Number(workerSetting(stage)?.timeoutMs || 0) || undefined;
+}
+
 function integratedBriefReady() {
   const statusValue = String(runState?.integratedBrief?.status || "");
   return ["ready", "completed"].includes(statusValue);
@@ -799,6 +846,7 @@ async function queueIntegratedBrief() {
     body: JSON.stringify({
       runId: runId(),
       triggerWorker: true,
+      triggerTimeoutMs: workerTimeout("integrated_brief"),
       promptMeta: {
         source: "standalone_wizard",
         contentCoverageRequired: true,
@@ -870,6 +918,7 @@ async function createNewLofiDraft() {
       body: JSON.stringify({
         runId: runId(),
         triggerWorker: true,
+        triggerTimeoutMs: workerTimeout("lofi_draft"),
         promptMeta: {
           source: "standalone_wizard",
           contentSnapshot: {
@@ -1076,3 +1125,5 @@ refreshConcepts.addEventListener("click", () => {
 
 renderStep();
 loadDesignDocuments();
+loadWorkerSettings();
+syncRunPolling();
