@@ -137,16 +137,17 @@ prototype/promo-wizard.js
 prototype/promo-wizard.css
 ```
 
-Alternative if duplication becomes too high:
+Non-adopted option:
 
 ```text
 SPA view: currentView === "wizard"
 ```
 
-Recommendation:
+Decision:
 
 ```text
-Use a new standalone HTML page first.
+Do not use this option for the first implementation.
+Use a new standalone HTML page.
 ```
 
 Reason:
@@ -155,6 +156,8 @@ Reason:
 The current prototype is already dense and stateful.
 A separate page avoids mixing long-running wizard state into the existing A/B/C page.
 It also reduces regression risk for the restored promo builder page.
+If helper duplication becomes painful later, extract shared helper modules without moving
+the wizard back into the main SPA.
 ```
 
 ## Wizard Flow
