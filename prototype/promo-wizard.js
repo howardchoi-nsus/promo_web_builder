@@ -120,6 +120,71 @@ function defaultWizardContent() {
       campaignTone: "",
       secondaryMessage: "",
     },
+    sectionInputs: defaultSectionInputs(),
+  };
+}
+
+function defaultSectionInputs() {
+  return {
+    header: {
+      logoText: "GGPoker",
+      badgeText: "프로모션",
+    },
+    heroBanner: {
+      leaderText: "",
+      title: "",
+      sublineText: "",
+      cta: { label: "", link: "", target: "_blank" },
+      alphaText: "",
+      visualMode: "auto",
+    },
+    stepBar: [
+      { title: "", description: "", ctaLabel: "", link: "", target: "_blank" },
+      { title: "", description: "", ctaLabel: "", link: "", target: "_blank" },
+      { title: "", description: "", ctaLabel: "", link: "", target: "_blank" },
+    ],
+    contentCta: {
+      title: "",
+      longText: "",
+      imageText: "",
+      cta: { label: "", link: "", target: "_blank" },
+      visualMode: "auto",
+    },
+    imageTextRow: [
+      { imageText: "", title: "", description: "", visualMode: "auto" },
+    ],
+    titleDescription: {
+      title: "이용약관",
+      contents: "",
+    },
+    footer: {
+      logoText: "GGPoker",
+      licenseBadges: "Visa, Mastercard, 18+, BeGambleAware",
+      content: "",
+    },
+  };
+}
+
+function mergeSectionInputs(saved = {}) {
+  const fallback = defaultSectionInputs();
+  return {
+    ...fallback,
+    ...saved,
+    header: { ...fallback.header, ...(saved.header || {}) },
+    heroBanner: {
+      ...fallback.heroBanner,
+      ...(saved.heroBanner || {}),
+      cta: { ...fallback.heroBanner.cta, ...(saved.heroBanner?.cta || {}) },
+    },
+    stepBar: Array.isArray(saved.stepBar) && saved.stepBar.length ? saved.stepBar : fallback.stepBar,
+    contentCta: {
+      ...fallback.contentCta,
+      ...(saved.contentCta || {}),
+      cta: { ...fallback.contentCta.cta, ...(saved.contentCta?.cta || {}) },
+    },
+    imageTextRow: Array.isArray(saved.imageTextRow) && saved.imageTextRow.length ? saved.imageTextRow : fallback.imageTextRow,
+    titleDescription: { ...fallback.titleDescription, ...(saved.titleDescription || {}) },
+    footer: { ...fallback.footer, ...(saved.footer || {}) },
   };
 }
 
@@ -130,6 +195,7 @@ function loadWizardContent() {
     return {
       promo: { ...fallback.promo, ...(saved?.promo || {}) },
       simpleBrief: { ...fallback.simpleBrief, ...(saved?.simpleBrief || {}) },
+      sectionInputs: mergeSectionInputs(saved?.sectionInputs || {}),
     };
   } catch {
     return defaultWizardContent();
@@ -263,6 +329,24 @@ function fieldValue(group, key) {
   return contentState[group]?.[key] || "";
 }
 
+function valueAtPath(source, path) {
+  return String(path || "")
+    .split(".")
+    .filter(Boolean)
+    .reduce((value, key) => value?.[key], source);
+}
+
+function setValueAtPath(source, path, value) {
+  const parts = String(path || "").split(".").filter(Boolean);
+  if (!parts.length) return;
+  let target = source;
+  parts.slice(0, -1).forEach((part) => {
+    if (!target[part] || typeof target[part] !== "object") target[part] = {};
+    target = target[part];
+  });
+  target[parts[parts.length - 1]] = value;
+}
+
 function setFieldValue(group, key, value) {
   contentState[group][key] = value;
   if (validationErrors[key] && String(value || "").trim()) delete validationErrors[key];
@@ -274,6 +358,13 @@ function setFieldValue(group, key, value) {
   saveWizardRun(null);
   runError = "";
   renderStep();
+}
+
+function setSectionValue(path, value) {
+  setValueAtPath(contentState.sectionInputs, path, value);
+  saveWizardContent();
+  saveWizardRun(null);
+  runError = "";
 }
 
 function fieldInvalid(key) {
@@ -325,6 +416,42 @@ function createField({ group, key, label, type = "text", placeholder = "입력�
   return wrapper;
 }
 
+function createSectionField({ path, label, type = "text", placeholder = "입력해 주세요", rows = 3 }) {
+  const wrapper = document.createElement("label");
+  wrapper.className = "content-field";
+
+  const caption = document.createElement("span");
+  caption.textContent = label;
+  wrapper.append(caption);
+
+  const control = type === "textarea" ? document.createElement("textarea") : document.createElement("input");
+  if (type === "textarea") {
+    control.rows = rows;
+  } else {
+    control.type = type;
+    control.autocomplete = "off";
+  }
+  control.placeholder = placeholder;
+  control.value = valueAtPath(contentState.sectionInputs, path) || "";
+  control.addEventListener("input", (event) => {
+    setSectionValue(path, event.target.value);
+  });
+  wrapper.append(control);
+  return wrapper;
+}
+
+function createSectionInputSection(titleText, fields) {
+  const section = document.createElement("article");
+  section.className = "content-form-section";
+  appendTextElement(section, "h3", "", titleText);
+
+  const grid = document.createElement("div");
+  grid.className = "content-form-grid";
+  fields.forEach((field) => grid.append(createSectionField(field)));
+  section.append(grid);
+  return section;
+}
+
 function contentErrors() {
   const errors = {};
   const required = [
@@ -336,6 +463,10 @@ function contentErrors() {
     ["mainOffer", contentState.simpleBrief.mainOffer],
     ["secondaryMessage", contentState.simpleBrief.secondaryMessage],
     ["targetAction", contentState.simpleBrief.targetAction],
+    ["heroTitle", valueAtPath(contentState.sectionInputs, "heroBanner.title") || contentState.promo.title],
+    ["heroSubline", valueAtPath(contentState.sectionInputs, "heroBanner.sublineText") || contentState.promo.subline || contentState.simpleBrief.secondaryMessage],
+    ["heroCta", valueAtPath(contentState.sectionInputs, "heroBanner.cta.label") || contentState.promo.ctaLabel || contentState.simpleBrief.targetAction],
+    ["footerContent", valueAtPath(contentState.sectionInputs, "footer.content") || contentState.promo.termsText],
   ];
   if (contentState.promo.promotionPurpose === "기타") {
     required.push(["promotionPurposeOther", contentState.promo.promotionPurposeOther]);
@@ -352,6 +483,7 @@ function validateContentStep() {
 }
 
 function autofillContent() {
+  const terms = "Players must be aged 18+ to participate. Promotion terms and conditions apply. Please play responsibly.";
   contentState.promo = {
     ...contentState.promo,
     title: "Weekend Welcome Bonus",
@@ -362,7 +494,7 @@ function autofillContent() {
     ctaUrl: "https://www.ggpoker.com/promotions/",
     subline: "Start strong with boosted rewards and clear next steps.",
     alphaText: "18+ | Terms apply",
-    termsText: "Players must be aged 18+ to participate. Promotion terms and conditions apply. Please play responsibly.",
+    termsText: terms,
   };
   contentState.simpleBrief = {
     mainOffer: "Limited-time welcome bonus for new players",
@@ -371,6 +503,49 @@ function autofillContent() {
     campaignTone: "긴급함",
     secondaryMessage: "A clear promotional flow from offer discovery to CTA conversion.",
   };
+  contentState.sectionInputs = mergeSectionInputs({
+    header: {
+      logoText: "GGPoker logo",
+      badgeText: "Welcome Bonus, 18+, Responsible Gaming",
+    },
+    heroBanner: {
+      leaderText: "Limited-time welcome package",
+      title: "Weekend Welcome Bonus",
+      sublineText: "Start strong with boosted rewards and clear next steps.",
+      cta: { label: "Join Now", link: "https://www.ggpoker.com/promotions/", target: "_blank" },
+      alphaText: "18+ | Terms apply",
+      visualMode: "auto",
+    },
+    stepBar: [
+      { title: "Register", description: "Create or sign in to your GGPoker account.", ctaLabel: "Join Now", link: "https://www.ggpoker.com/promotions/", target: "_blank" },
+      { title: "Claim", description: "Opt in to the weekend welcome promotion.", ctaLabel: "Claim Offer", link: "https://www.ggpoker.com/promotions/", target: "_blank" },
+      { title: "Play", description: "Use your rewards before the promotion ends.", ctaLabel: "Start Playing", link: "https://www.ggpoker.com/promotions/", target: "_blank" },
+    ],
+    contentCta: {
+      title: "Limited-time welcome bonus for new players",
+      longText: "A clear promotional flow from offer discovery to CTA conversion.",
+      imageText: "Dynamic poker table with bonus chips and weekend event energy",
+      cta: { label: "Join Now", link: "https://www.ggpoker.com/promotions/", target: "_blank" },
+      visualMode: "auto",
+    },
+    imageTextRow: [
+      {
+        imageText: "Secure poker platform visual",
+        title: "Your safety comes first",
+        description: "Play on a trusted platform with clear responsible gaming guidance.",
+        visualMode: "auto",
+      },
+    ],
+    titleDescription: {
+      title: "Terms and Conditions",
+      contents: terms,
+    },
+    footer: {
+      logoText: "GGPoker logo",
+      licenseBadges: "Visa, Mastercard, 18+, BeGambleAware",
+      content: terms,
+    },
+  });
   validationErrors = {};
   saveWizardContent();
   saveWizardRun(null);
@@ -382,6 +557,7 @@ function resetContent() {
   const empty = defaultWizardContent();
   contentState.promo = empty.promo;
   contentState.simpleBrief = empty.simpleBrief;
+  contentState.sectionInputs = empty.sectionInputs;
   validationErrors = {};
   saveWizardContent();
   saveWizardRun(null);
@@ -453,6 +629,57 @@ function renderContentStep() {
     { group: "promo", key: "termsText", label: "약관 / Responsible Gaming 문구", type: "textarea", rows: 4 },
   ]);
 
+  const headerSection = createSectionInputSection("4. Header", [
+    { path: "header.logoText", label: "Logo" },
+    { path: "header.badgeText", label: "Badges" },
+  ]);
+
+  const heroSection = createSectionInputSection("5. Hero Banner", [
+    { path: "heroBanner.leaderText", label: "Lead Text" },
+    { path: "heroBanner.title", label: "Title" },
+    { path: "heroBanner.sublineText", label: "Subline Text", type: "textarea", rows: 2 },
+    { path: "heroBanner.cta.label", label: "Button Text" },
+    { path: "heroBanner.cta.link", label: "Button URL", type: "url", placeholder: "https://..." },
+    { path: "heroBanner.alphaText", label: "Alpha Text", type: "textarea", rows: 2 },
+  ]);
+
+  const stepBarSection = createSectionInputSection("6. Step Bar", [
+    { path: "stepBar.0.title", label: "Step 1 Title" },
+    { path: "stepBar.0.description", label: "Step 1 Description", type: "textarea", rows: 2 },
+    { path: "stepBar.0.ctaLabel", label: "Step 1 CTA" },
+    { path: "stepBar.1.title", label: "Step 2 Title" },
+    { path: "stepBar.1.description", label: "Step 2 Description", type: "textarea", rows: 2 },
+    { path: "stepBar.1.ctaLabel", label: "Step 2 CTA" },
+    { path: "stepBar.2.title", label: "Step 3 Title" },
+    { path: "stepBar.2.description", label: "Step 3 Description", type: "textarea", rows: 2 },
+    { path: "stepBar.2.ctaLabel", label: "Step 3 CTA" },
+  ]);
+
+  const contentCtaSection = createSectionInputSection("7. Contents / CTA", [
+    { path: "contentCta.title", label: "Title" },
+    { path: "contentCta.longText", label: "Description", type: "textarea", rows: 4 },
+    { path: "contentCta.imageText", label: "Image Prompt Text", type: "textarea", rows: 2 },
+    { path: "contentCta.cta.label", label: "Button Text" },
+    { path: "contentCta.cta.link", label: "Button URL", type: "url", placeholder: "https://..." },
+  ]);
+
+  const imageTextSection = createSectionInputSection("8. Image Text Row", [
+    { path: "imageTextRow.0.imageText", label: "Image Text", type: "textarea", rows: 2 },
+    { path: "imageTextRow.0.title", label: "Title" },
+    { path: "imageTextRow.0.description", label: "Description", type: "textarea", rows: 3 },
+  ]);
+
+  const titleDescriptionSection = createSectionInputSection("9. Title and Description", [
+    { path: "titleDescription.title", label: "Title" },
+    { path: "titleDescription.contents", label: "Contents", type: "textarea", rows: 5 },
+  ]);
+
+  const footerSection = createSectionInputSection("10. Footer", [
+    { path: "footer.logoText", label: "Logo" },
+    { path: "footer.licenseBadges", label: "License Badges", type: "textarea", rows: 2 },
+    { path: "footer.content", label: "Footer Content", type: "textarea", rows: 5 },
+  ]);
+
   const coverage = document.createElement("aside");
   coverage.className = "content-coverage-panel";
   appendTextElement(coverage, "span", "eyebrow", "Coverage Checklist");
@@ -468,6 +695,9 @@ function renderContentStep() {
     ["Main offer", contentState.simpleBrief.mainOffer],
     ["Secondary message", contentState.simpleBrief.secondaryMessage],
     ["Target action", contentState.simpleBrief.targetAction],
+    ["Hero title", valueAtPath(contentState.sectionInputs, "heroBanner.title") || contentState.promo.title],
+    ["Hero CTA", valueAtPath(contentState.sectionInputs, "heroBanner.cta.label") || contentState.promo.ctaLabel],
+    ["Footer terms", valueAtPath(contentState.sectionInputs, "footer.content") || contentState.promo.termsText],
   ].forEach(([label, value]) => {
     const item = document.createElement("li");
     item.className = String(value || "").trim() ? "is-ready" : "is-missing";
@@ -476,7 +706,20 @@ function renderContentStep() {
   });
   coverage.append(list);
 
-  placeholders.append(toolbar, overview, message, conversion, coverage);
+  placeholders.append(
+    toolbar,
+    overview,
+    message,
+    conversion,
+    headerSection,
+    heroSection,
+    stepBarSection,
+    contentCtaSection,
+    imageTextSection,
+    titleDescriptionSection,
+    footerSection,
+    coverage
+  );
 }
 
 function createStatusPill(text, kind = "") {
@@ -573,6 +816,9 @@ function renderLofiStep() {
     ["Message", contentState.simpleBrief.secondaryMessage],
     ["CTA", contentState.promo.ctaLabel || contentState.simpleBrief.targetAction],
     ["Terms", contentState.promo.termsText],
+    ["Hero", valueAtPath(contentState.sectionInputs, "heroBanner.title") || contentState.promo.title],
+    ["Contents", valueAtPath(contentState.sectionInputs, "contentCta.longText") || contentState.simpleBrief.secondaryMessage],
+    ["Footer", valueAtPath(contentState.sectionInputs, "footer.content") || contentState.promo.termsText],
   ].forEach(([label, value]) => {
     const item = document.createElement("li");
     item.textContent = `${label}: ${String(value || "-").slice(0, 110)}`;
@@ -704,45 +950,48 @@ function selectedDesignPayload(doc) {
 
 function buildWizardPayload(runKey) {
   const doc = selectedDocument();
+  const sectionInputs = mergeSectionInputs(contentState.sectionInputs || {});
   const promo = {
     ...contentState.promo,
-    leadText: contentState.promo.leadText || contentState.simpleBrief.mainOffer,
-    subline: contentState.promo.subline || contentState.simpleBrief.secondaryMessage,
-    ctaLabel: contentState.promo.ctaLabel || contentState.simpleBrief.targetAction || "Learn More",
-    ctaUrl: contentState.promo.ctaUrl || "#",
-    termsText: contentState.promo.termsText || "Terms and conditions apply. Please play responsibly.",
+    leadText: contentState.promo.leadText || sectionInputs.heroBanner.leaderText || contentState.simpleBrief.mainOffer,
+    subline: contentState.promo.subline || sectionInputs.heroBanner.sublineText || sectionInputs.contentCta.longText || contentState.simpleBrief.secondaryMessage,
+    ctaLabel: contentState.promo.ctaLabel || sectionInputs.heroBanner.cta?.label || sectionInputs.contentCta.cta?.label || sectionInputs.stepBar?.[0]?.ctaLabel || contentState.simpleBrief.targetAction || "Learn More",
+    ctaUrl: contentState.promo.ctaUrl || sectionInputs.heroBanner.cta?.link || sectionInputs.contentCta.cta?.link || sectionInputs.stepBar?.[0]?.link || "#",
+    alphaText: contentState.promo.alphaText || sectionInputs.heroBanner.alphaText,
+    termsText: contentState.promo.termsText || sectionInputs.titleDescription.contents || sectionInputs.footer.content || "Terms and conditions apply. Please play responsibly.",
   };
+  const fillBlank = (path, value) => {
+    if (!String(valueAtPath(sectionInputs, path) || "").trim() && String(value || "").trim()) {
+      setValueAtPath(sectionInputs, path, value);
+    }
+  };
+  fillBlank("heroBanner.leaderText", promo.leadText);
+  fillBlank("heroBanner.title", promo.title);
+  fillBlank("heroBanner.sublineText", promo.subline);
+  fillBlank("heroBanner.cta.label", promo.ctaLabel);
+  fillBlank("heroBanner.cta.link", promo.ctaUrl);
+  fillBlank("heroBanner.alphaText", promo.alphaText);
+  fillBlank("stepBar.0.title", contentState.simpleBrief.targetAction);
+  fillBlank("stepBar.0.description", contentState.simpleBrief.mainOffer);
+  fillBlank("stepBar.0.ctaLabel", promo.ctaLabel);
+  fillBlank("stepBar.0.link", promo.ctaUrl);
+  fillBlank("contentCta.title", contentState.simpleBrief.mainOffer || promo.title);
+  fillBlank("contentCta.longText", contentState.simpleBrief.secondaryMessage || promo.subline);
+  fillBlank("contentCta.cta.label", promo.ctaLabel);
+  fillBlank("contentCta.cta.link", promo.ctaUrl);
+  fillBlank("titleDescription.contents", promo.termsText);
+  fillBlank("footer.content", promo.termsText);
   const promotionInput = {
     purpose: contentState.promo.promotionPurpose || "",
     purposeOther: contentState.promo.promotionPurposeOther || "",
     targetCustomer: contentState.simpleBrief.audience || "",
     campaignTone: contentState.simpleBrief.campaignTone || "",
   };
-  const sectionInputs = {
-    heroBanner: {
-      headline: promo.title,
-      sublineText: promo.leadText,
-      alphaText: promo.alphaText,
-      cta: { label: promo.ctaLabel, link: promo.ctaUrl },
-    },
-    contentCta: {
-      title: promo.title,
-      longText: promo.subline,
-      cta: { label: promo.ctaLabel, link: promo.ctaUrl },
-    },
-    titleDescription: {
-      title: promo.title,
-      contents: promo.termsText,
-    },
-    footer: {
-      content: promo.termsText,
-    },
-  };
   const templateRuntime = {
     templateId: "wizard_lofi",
     templateName: "Standalone Promo Wizard",
-    orderedSections: ["header", "heroBanner", "contentCta", "titleDescription", "footer"],
-    visibleSections: ["header", "heroBanner", "contentCta", "titleDescription", "footer"],
+    orderedSections: ["header", "heroBanner", "stepBar", "contentCta", "imageTextRow", "titleDescription", "footer"],
+    visibleSections: ["header", "heroBanner", "stepBar", "contentCta", "imageTextRow", "titleDescription", "footer"],
   };
   return {
     id: runKey,
