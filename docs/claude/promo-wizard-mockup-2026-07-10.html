@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Promo 빌더 위저드 전환 시안 (참고용, 정적 목업)</title>
+<style>
+  :root {
+    --surface-0: #f5f4f0;
+    --surface-1: #ffffff;
+    --surface-2: #fbfaf7;
+    --border: #e2e0d8;
+    --border-strong: #c9c6ba;
+    --text-primary: #1f1e1a;
+    --text-secondary: #6b6a62;
+    --accent: #185fa5;
+    --accent-bg: #e6f1fb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 32px 16px;
+    background: var(--surface-0);
+    color: var(--text-primary);
+    font-family: -apple-system, "Segoe UI", Pretendard, Arial, sans-serif;
+    line-height: 1.6;
+  }
+  .note {
+    max-width: 680px;
+    margin: 0 auto 24px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 16px;
+  }
+  .block {
+    max-width: 680px;
+    margin: 0 auto 40px;
+  }
+  h2 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 12px;
+  }
+  .tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+  .tab-btn {
+    flex: 1;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--text-primary);
+  }
+  .tab-btn.active { background: var(--surface-1); border-color: var(--border-strong); }
+  .frame {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--surface-1);
+  }
+  .frame-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-1);
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .pill {
+    font-size: 11px;
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 2px 8px;
+  }
+  .grid3 {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    padding: 14px;
+    background: var(--surface-2);
+  }
+  .card {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    background: var(--surface-1);
+  }
+  .card.accent { border: 2px solid var(--accent); }
+  .card .icon { font-size: 18px; }
+  .card p.title { font-weight: 600; font-size: 13px; margin: 8px 0 2px; }
+  .card p.sub { font-size: 11px; color: var(--text-secondary); margin: 0 0 10px; }
+  .badge {
+    font-size: 11px;
+    background: var(--accent-bg);
+    color: var(--accent);
+    padding: 3px 8px;
+    border-radius: 8px;
+  }
+  .dot-row { display: flex; gap: 6px; }
+  .dot { width: 16px; height: 16px; border-radius: 50%; }
+  .bar-row { display: flex; gap: 4px; }
+  .bar { flex: 1; height: 6px; border-radius: 3px; background: var(--border-strong); }
+  .bar.on { background: var(--text-primary); }
+  .mini-row {
+    font-size: 11px;
+    background: var(--surface-2);
+    border-radius: 8px;
+    padding: 3px 8px;
+    margin-bottom: 5px;
+  }
+  .wizard-body {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    background: var(--surface-1);
+    min-height: 100px;
+  }
+  .wizard-controls { display: flex; align-items: center; gap: 6px; margin: 14px 14px 0; }
+  .wizard-dots { display: flex; gap: 6px; flex: 1; }
+  .wizard-dot { flex: 1; height: 4px; border-radius: 2px; background: var(--border-strong); }
+  .wizard-dot.done { background: var(--text-primary); }
+  .step-btn {
+    font-size: 11px;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-1);
+    cursor: pointer;
+  }
+  .step-btn:disabled { opacity: 0.4; cursor: default; }
+  .footnote { font-size: 11px; color: var(--text-secondary); margin: 10px 14px 14px; }
+</style>
+</head>
+<body>
+
+<div class="note">
+  참고용 정적 목업입니다. Claude 대화 중 생성한 인터랙티브 시안을 그대로 코드로 옮긴 파일이며, 실제 PROMO 웹 앱(Vue3 기반 prototype/index.html)에는 아직 반영되지 않았습니다.
+  실제 반영은 <code>docs/claude/promo-builder-wizard-design-request-2026-07-10.md</code> 요청서를 참고해 코덱스가 진행합니다.
+</div>
+
+<div class="block">
+  <h2>1. Promo(사용자) / 관리자 페이지 분리</h2>
+  <div class="tabs">
+    <button class="tab-btn active" id="tab-promo">프로모션 빌더 (사용자)</button>
+    <button class="tab-btn" id="tab-admin">관리자 페이지</button>
+  </div>
+  <div class="frame">
+    <div class="frame-header">
+      <span>PROMO WEB BUILDER</span>
+      <span class="pill" id="status-pill">사용자 화면</span>
+    </div>
+    <div class="grid3" id="view-promo">
+      <div class="card">
+        <div class="icon">A</div>
+        <p class="title">디자인 MD 관리</p>
+        <p class="sub">74개 디자인 스타일</p>
+        <div class="dot-row">
+          <span class="dot" style="background:#7F77DD"></span>
+          <span class="dot" style="background:#1D9E75"></span>
+          <span class="dot" style="background:#D85A30"></span>
+          <span class="dot" style="background:#888780"></span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="icon">B</div>
+        <p class="title">프로모션 빌더</p>
+        <p class="sub">Step 1~3 입력</p>
+        <div class="bar-row">
+          <span class="bar on"></span>
+          <span class="bar"></span>
+          <span class="bar"></span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="icon">C</div>
+        <p class="title">생성된 UI 결과</p>
+        <p class="sub">LO-FI · Final 이력</p>
+        <div class="mini-row">promo-042 · Final ready</div>
+        <div class="mini-row">promo-041 · LO-FI #2</div>
+      </div>
+    </div>
+    <div class="grid3" id="view-admin" style="display:none;">
+      <div class="card">
+        <div class="icon">A</div>
+        <p class="title">Worker Webhook</p>
+        <p class="sub">n8n 워커 4종 설정</p>
+        <div class="mini-row">integrated_brief · active</div>
+        <div class="mini-row">final_design · active</div>
+      </div>
+      <div class="card">
+        <div class="icon">B</div>
+        <p class="title">프롬프트 관리</p>
+        <p class="sub">버전 · 이력 관리</p>
+        <div class="mini-row">image_execution v3</div>
+        <div class="mini-row">integrated_brief v5</div>
+      </div>
+      <div class="card accent">
+        <span class="badge">제안(신규)</span>
+        <p class="title">Handoff 문서</p>
+        <p class="sub">참고자료 · 사용자 비노출</p>
+        <div class="mini-row">handoff-2026-07-09.md</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="block">
+  <h2>2. 3컬럼 대시보드 vs 위저드 3단계</h2>
+  <div class="tabs">
+    <button class="tab-btn active" id="tab-current">현재: A·B·C 동시 노출</button>
+    <button class="tab-btn" id="tab-wizard">제안: 위저드 3단계</button>
+  </div>
+  <div class="frame">
+    <div class="frame-header">
+      <span>PROMO WEB BUILDER</span>
+      <span class="pill" id="mode-pill">현재 구조</span>
+    </div>
+    <div class="grid3" id="view-current">
+      <div class="card"><div class="icon">A</div><p class="title">디자인 MD</p><p class="sub">항상 노출</p></div>
+      <div class="card"><div class="icon">B</div><p class="title">빌더(내부 위저드)</p><p class="sub">항상 노출</p></div>
+      <div class="card"><div class="icon">C</div><p class="title">결과 목록</p><p class="sub">항상 노출</p></div>
+    </div>
+    <div id="view-wizard" style="display:none;">
+      <div class="wizard-controls">
+        <div class="wizard-dots" id="wizard-dots"></div>
+        <button class="step-btn" id="prev-step">이전</button>
+        <button class="step-btn" id="next-step">다음</button>
+      </div>
+      <div class="wizard-body" style="margin:14px;" id="wizard-body"></div>
+      <p class="footnote">지난 결과 목록은 상단 네비게이션의 별도 탭(생성 이력)으로 분리</p>
+    </div>
+  </div>
+</div>
+
+<script>
+  function setupTabs(promoBtnId, adminBtnId, promoViewId, adminViewId, pillId, promoLabel, adminLabel) {
+    var promoBtn = document.getElementById(promoBtnId);
+    var adminBtn = document.getElementById(adminBtnId);
+    var promoView = document.getElementById(promoViewId);
+    var adminView = document.getElementById(adminViewId);
+    var pill = document.getElementById(pillId);
+    function set(isPromo) {
+      promoView.style.display = isPromo ? 'grid' : 'none';
+      adminView.style.display = isPromo ? 'none' : 'grid';
+      promoBtn.classList.toggle('active', isPromo);
+      adminBtn.classList.toggle('active', !isPromo);
+      pill.textContent = isPromo ? promoLabel : adminLabel;
+    }
+    promoBtn.addEventListener('click', function () { set(true); });
+    adminBtn.addEventListener('click', function () { set(false); });
+    set(true);
+  }
+
+  setupTabs('tab-promo', 'tab-admin', 'view-promo', 'view-admin', 'status-pill', '사용자 화면', '관리 전용');
+  setupTabs('tab-current', 'tab-wizard', 'view-current', 'view-wizard', 'mode-pill', '현재 구조', '위저드 제안');
+
+  var steps = [
+    { title: '1. 디자인 스타일 선택', body: '74개 디자인 MD 중 브랜드/톤 검색 후 하나 선택' },
+    { title: '2. 프로모션 컨텐츠 입력', body: '제목·혜택·대상고객·섹션 구성 입력' },
+    { title: '3. 생성 및 결과 확인', body: 'LO-FI 초안 확인 → 확정 → 최종 디자인 생성/검수' }
+  ];
+  var current = 0;
+  var dotsEl = document.getElementById('wizard-dots');
+  var bodyEl = document.getElementById('wizard-body');
+
+  function renderStep() {
+    dotsEl.innerHTML = '';
+    steps.forEach(function (s, i) {
+      var dot = document.createElement('div');
+      dot.className = 'wizard-dot' + (i <= current ? ' done' : '');
+      dotsEl.appendChild(dot);
+    });
+    var s = steps[current];
+    bodyEl.innerHTML = '<p class="title" style="font-size:15px;">' + s.title + '</p>' +
+      '<p class="sub" style="font-size:13px;">' + s.body + '</p>';
+    document.getElementById('prev-step').disabled = current === 0;
+    document.getElementById('next-step').disabled = current === steps.length - 1;
+  }
+
+  document.getElementById('prev-step').addEventListener('click', function () {
+    if (current > 0) { current--; renderStep(); }
+  });
+  document.getElementById('next-step').addEventListener('click', function () {
+    if (current < steps.length - 1) { current++; renderStep(); }
+  });
+  renderStep();
+</script>
+
+</body>
+</html>
