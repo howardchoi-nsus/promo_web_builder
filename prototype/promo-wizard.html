@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Promo Wizard</title>
+    <link rel="stylesheet" href="promo-wizard.css" />
+  </head>
+  <body>
+    <main class="wizard-shell">
+      <header class="wizard-header">
+        <div>
+          <p class="eyebrow">Standalone generation flow</p>
+          <h1>Promo Wizard</h1>
+        </div>
+        <nav class="wizard-actions" aria-label="Wizard navigation">
+          <a href="index.html">Promo Builder</a>
+          <a href="generated.html">Generated UI</a>
+        </nav>
+      </header>
+
+      <section class="wizard-progress" aria-label="Wizard steps">
+        <button class="step is-active" type="button" data-step="1">
+          <span>1</span>
+          <strong>Concept</strong>
+        </button>
+        <button class="step" type="button" data-step="2">
+          <span>2</span>
+          <strong>Content</strong>
+        </button>
+        <button class="step" type="button" data-step="3">
+          <span>3</span>
+          <strong>LO-FI</strong>
+        </button>
+        <button class="step" type="button" data-step="4">
+          <span>4</span>
+          <strong>Final</strong>
+        </button>
+      </section>
+
+      <section class="wizard-panel" id="wizard-panel" aria-live="polite">
+        <p class="eyebrow" id="step-eyebrow">Step 1</p>
+        <h2 id="step-title">Design Concept Selection</h2>
+        <p id="step-copy">
+          Select the design concept that will guide the integrated brief, LO-FI draft, and final design generation.
+        </p>
+        <div class="placeholder-grid" id="step-placeholders"></div>
+      </section>
+
+      <footer class="wizard-footer">
+        <button class="secondary-action" type="button" id="prev-step">Previous</button>
+        <span id="step-status">Step 1 / 4</span>
+        <button class="primary-action" type="button" id="next-step">Next</button>
+      </footer>
+    </main>
+
+    <script src="promo-wizard.js"></script>
+  </body>
+</html>
