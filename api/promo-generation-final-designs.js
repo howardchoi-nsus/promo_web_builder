@@ -10,6 +10,8 @@ const {
   shouldTriggerWorker,
   triggerWorker,
 } = require("./_promo-generation-worker-trigger");
+const { createPromptExecutionSnapshot } = require("./_prompt-execution-snapshot");
+const { imageStageVariables, requestOrigin } = require("./_promo-generation-prompt-context");
 
 // Final design generation is gated by a confirmed LO-FI draft so the polished
 // image has an explicit human-approved structure to build on.
@@ -45,34 +47,85 @@ async function queueFinalDesign(req, res) {
   }
   const draftRows = requestedConfirmedDraftId
     ? await sql`
-      select id::text
+      select id::text, draft_attempt, draft_image_url, draft_prompt, prompt_meta, model_meta, confirmed_at
       from promo_generation_lofi_drafts
       where run_id = ${run.id}::uuid
         and id = ${requestedConfirmedDraftId}::uuid
-        and (confirmed_at is not null or ${Boolean(body.force)}::boolean)
+        and confirmed_at is not null
       limit 1
     `
     : await sql`
-      select id::text
+      select id::text, draft_attempt, draft_image_url, draft_prompt, prompt_meta, model_meta, confirmed_at
       from promo_generation_lofi_drafts
       where run_id = ${run.id}::uuid
         and confirmed_at is not null
       order by confirmed_at desc
       limit 1
     `;
-  if (!draftRows.length && !body.force) {
-    return res.status(409).json({
-      error: "Confirmed LO-FI draft is required",
-      message: "Confirm one LO-FI draft before starting final design generation.",
-    });
-  }
   if (requestedConfirmedDraftId && !draftRows.length) {
     return res.status(409).json({
       error: "Confirmed LO-FI draft does not belong to this run",
       message: "Use a confirmed draft from the same generation run.",
     });
   }
-  const confirmedDraftId = String(draftRows[0]?.id || "").trim();
+  if (!draftRows.length) {
+    return res.status(409).json({
+      error: "Confirmed LO-FI draft is required",
+      message: "Confirm one LO-FI draft before starting final design generation.",
+    });
+  }
+  const confirmedDraft = draftRows[0] || {};
+  const confirmedDraftId = String(confirmedDraft.id || "").trim();
+  if (!confirmedDraft.draft_image_url) {
+    return res.status(409).json({
+      error: "Confirmed LO-FI draft image is required",
+      message: "The confirmed draft must have a stored image before final design generation.",
+    });
+  }
+  const briefRows = await sql`
+    select integrated_brief_markdown
+    from promo_generation_integrated_briefs
+    where run_id = ${run.id}::uuid
+      and status in ('ready', 'completed')
+    limit 1
+  `;
+  if (!briefRows.length) {
+    return res.status(409).json({ error: "Ready Integrated Brief is required" });
+  }
+  const origin = requestOrigin(req);
+  if (!origin) return res.status(409).json({ error: "Public application origin is required for the LO-FI reference image" });
+  const draftImageProxyUrl = `${origin}/api/promo-generation-lofi-draft-image?draftId=${encodeURIComponent(confirmedDraftId)}`;
+  const layoutFidelityPolicy = {
+    sourceOfTruth: "confirmed_lofi_draft",
+    preserveSectionOrder: true,
+    preserveRelativePlacement: true,
+    preserveContentGrouping: true,
+    preserveCtaPosition: true,
+    allowPolishOnly: true,
+  };
+  const executionSnapshot = await createPromptExecutionSnapshot(
+    sql,
+    "final_design",
+    imageStageVariables(run, briefRows[0]?.integrated_brief_markdown, {
+      confirmedDraftPrompt: confirmedDraft.draft_prompt || "",
+      confirmedDraftImageProxyUrl: draftImageProxyUrl,
+      layoutFidelityPolicy: JSON.stringify(layoutFidelityPolicy, null, 2),
+    })
+  );
+  const confirmedDraftSnapshot = {
+    draftId: confirmedDraftId,
+    draftAttempt: Number(confirmedDraft.draft_attempt || 0),
+    draftImageProxyUrl,
+    draftPrompt: confirmedDraft.draft_prompt || "",
+    promptMeta: summarizePromptMeta(confirmedDraft.prompt_meta),
+    confirmedAt: confirmedDraft.confirmed_at || null,
+  };
+  const promptMeta = mergeObject(body.promptMeta, {
+    executionSnapshot,
+    confirmedDraft: confirmedDraftSnapshot,
+    layoutFidelityPolicy,
+  });
+  const modelMeta = mergeObject(body.modelMeta, executionModelMeta(executionSnapshot));
 
   // Keep final designs append-only. A run may produce several final variants, but
   // each one records the confirmed draft that shaped it.
@@ -90,9 +143,9 @@ async function queueFinalDesign(req, res) {
       ${run.id}::uuid,
       ${confirmedDraftId || null}::uuid,
       'queued',
-      ${body.finalPrompt || body.prompt || ""},
-      ${JSON.stringify(body.promptMeta || {})}::jsonb,
-      ${JSON.stringify(body.modelMeta || {})}::jsonb,
+      ${body.finalPrompt || body.prompt || executionSnapshot.promptConfig.renderedPrompt || ""},
+      ${JSON.stringify(promptMeta)}::jsonb,
+      ${JSON.stringify(modelMeta)}::jsonb,
       now()
     )
     returning
@@ -123,6 +176,10 @@ async function queueFinalDesign(req, res) {
     extra: {
       finalDesignId: finalDesign.finalDesignId,
       confirmedDraftId: finalDesign.confirmedDraftId,
+      taskDetailUrl: buildTaskDetailUrl(origin, run.id),
+      execution: workerExecutionSummary(executionSnapshot),
+      confirmedDraft: confirmedDraftSnapshot,
+      layoutFidelityPolicy,
     },
   });
   const workerTriggerRequested = shouldTriggerWorker(body);
@@ -174,6 +231,51 @@ async function queueFinalDesign(req, res) {
     workerTrigger,
     finalDesign,
   });
+}
+
+function mergeObject(value, extra) {
+  return {
+    ...(value && typeof value === "object" && !Array.isArray(value) ? value : {}),
+    ...extra,
+  };
+}
+
+function executionModelMeta(snapshot) {
+  const config = snapshot.promptConfig || {};
+  return {
+    provider: config.provider || "",
+    model: config.model || "",
+    modelOptions: config.modelOptions || {},
+    promptVersion: config.promptVersion || null,
+    referenceMode: "image_edit",
+  };
+}
+
+function workerExecutionSummary(snapshot) {
+  const config = snapshot.promptConfig || {};
+  return {
+    promptType: config.promptType || "",
+    promptVersion: config.promptVersion || null,
+    provider: config.provider || "",
+    model: config.model || "",
+    modelOptions: config.modelOptions || {},
+    renderedPromptHash: config.renderedPromptHash || "",
+  };
+}
+
+function buildTaskDetailUrl(origin, runId) {
+  return `${origin}/api/promo-generation-runs?runId=${encodeURIComponent(runId)}`;
+}
+
+function summarizePromptMeta(value) {
+  const meta = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const config = meta.executionSnapshot?.promptConfig || {};
+  return {
+    source: meta.source || "",
+    promptType: config.promptType || "lofi_draft",
+    promptVersion: config.promptVersion || null,
+    renderedPromptHash: config.renderedPromptHash || "",
+  };
 }
 
 async function updateFinalDesign(req, res) {

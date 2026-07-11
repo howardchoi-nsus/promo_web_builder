@@ -1,0 +1,70 @@
+const assert = require("node:assert/strict");
+const {
+  createPromptExecutionSnapshot,
+  validateStageModelConfig,
+} = require("../api/_prompt-execution-snapshot");
+
+async function main() {
+  validateStageModelConfig("integrated_brief", {
+    provider: "openai",
+    model: "gpt-4o-mini",
+    responseFormat: "json_object",
+  });
+  validateStageModelConfig("lofi_draft", {
+    provider: "google",
+    model: "gemini-3.1-flash-image",
+    responseFormat: "image",
+  });
+  validateStageModelConfig("final_design", {
+    provider: "openai",
+    model: "gpt-image-1",
+    responseFormat: "image",
+  });
+  assert.throws(() => validateStageModelConfig("final_design", {
+    provider: "google",
+    model: "gemini-3.1-flash-image",
+    responseFormat: "image",
+  }), /openai provider only/);
+
+  const sql = async (strings) => {
+    const query = strings.join("?");
+    if (query.includes("select id::text") && !query.includes("name,")) return [{ id: "existing" }];
+    if (query.includes("from prompt_templates") && query.includes("required_variables")) {
+      return [{
+        id: "00000000-0000-0000-0000-000000000014",
+        type: "final_design",
+        name: "Final Design Generation",
+        body: "Brief={{integratedDesignBriefMarkdown}}\nImage={{confirmedDraftImageProxyUrl}}\nPolicy={{layoutFidelityPolicy}}",
+        status: "active",
+        version: 1,
+        required_variables: ["integratedDesignBriefMarkdown", "confirmedDraftImageProxyUrl"],
+        optional_variables: ["layoutFidelityPolicy"],
+        provider: "openai",
+        model: "gpt-image-1",
+        temperature: null,
+        max_tokens: null,
+        response_format: "image",
+        model_options: { inputFidelity: "high" },
+      }];
+    }
+    return [];
+  };
+
+  const snapshot = await createPromptExecutionSnapshot(sql, "final_design", {
+    integratedDesignBriefMarkdown: "# Integrated Brief",
+    confirmedDraftImageProxyUrl: "https://example.com/api/draft-image?id=1",
+    layoutFidelityPolicy: JSON.stringify({ preserveSectionOrder: true }),
+  });
+  assert.equal(snapshot.promptConfig.promptType, "final_design");
+  assert.equal(snapshot.promptConfig.provider, "openai");
+  assert.equal(snapshot.promptConfig.modelOptions.inputFidelity, "high");
+  assert.match(snapshot.promptConfig.renderedPrompt, /preserveSectionOrder/);
+  assert.match(snapshot.promptConfig.renderedPromptHash, /^[0-9a-f]{64}$/);
+
+  console.log("Worker prompt contract test passed");
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

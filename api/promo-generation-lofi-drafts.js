@@ -10,6 +10,8 @@ const {
   shouldTriggerWorker,
   triggerWorker,
 } = require("./_promo-generation-worker-trigger");
+const { createPromptExecutionSnapshot } = require("./_prompt-execution-snapshot");
+const { imageStageVariables, requestOrigin } = require("./_promo-generation-prompt-context");
 
 // LO-FI drafts are intentionally attempt-based: users can request multiple
 // wireframe options before confirming one for final design generation.
@@ -40,7 +42,7 @@ async function queueDraft(req, res) {
   if (!run) return res.status(404).json({ error: "Generation run not found" });
 
   const briefRows = await sql`
-    select status
+    select status, integrated_brief_markdown
     from promo_generation_integrated_briefs
     where run_id = ${run.id}::uuid
     limit 1
@@ -52,6 +54,13 @@ async function queueDraft(req, res) {
       message: "Generate and validate the integrated brief before requesting a LO-FI draft.",
     });
   }
+  const executionSnapshot = await createPromptExecutionSnapshot(
+    sql,
+    "lofi_draft",
+    imageStageVariables(run, briefRows[0]?.integrated_brief_markdown)
+  );
+  const promptMeta = mergeObject(body.promptMeta, { executionSnapshot });
+  const modelMeta = mergeObject(body.modelMeta, executionModelMeta(executionSnapshot));
 
   const attemptRows = await sql`
     select coalesce(max(draft_attempt), 0) + 1 as next_attempt
@@ -77,8 +86,8 @@ async function queueDraft(req, res) {
       ${nextAttempt},
       'queued',
       ${body.draftPrompt || body.prompt || ""},
-      ${JSON.stringify(body.promptMeta || {})}::jsonb,
-      ${JSON.stringify(body.modelMeta || {})}::jsonb,
+      ${JSON.stringify(promptMeta)}::jsonb,
+      ${JSON.stringify(modelMeta)}::jsonb,
       now()
     )
     returning
@@ -110,6 +119,8 @@ async function queueDraft(req, res) {
     extra: {
       draftId: draft.draftId,
       draftAttempt: draft.draftAttempt,
+      taskDetailUrl: buildTaskDetailUrl(req, run.id),
+      execution: workerExecutionSummary(executionSnapshot),
     },
   });
   const workerTriggerRequested = shouldTriggerWorker(body);
@@ -161,6 +172,40 @@ async function queueDraft(req, res) {
     workerTrigger,
     draft,
   });
+}
+
+function mergeObject(value, extra) {
+  return {
+    ...(value && typeof value === "object" && !Array.isArray(value) ? value : {}),
+    ...extra,
+  };
+}
+
+function executionModelMeta(snapshot) {
+  const config = snapshot.promptConfig || {};
+  return {
+    provider: config.provider || "",
+    model: config.model || "",
+    modelOptions: config.modelOptions || {},
+    promptVersion: config.promptVersion || null,
+  };
+}
+
+function workerExecutionSummary(snapshot) {
+  const config = snapshot.promptConfig || {};
+  return {
+    promptType: config.promptType || "",
+    promptVersion: config.promptVersion || null,
+    provider: config.provider || "",
+    model: config.model || "",
+    modelOptions: config.modelOptions || {},
+    renderedPromptHash: config.renderedPromptHash || "",
+  };
+}
+
+function buildTaskDetailUrl(req, runId) {
+  const origin = requestOrigin(req);
+  return origin ? `${origin}/api/promo-generation-runs?runId=${encodeURIComponent(runId)}` : "";
 }
 
 async function updateDraft(req, res) {
