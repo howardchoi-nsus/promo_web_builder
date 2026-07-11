@@ -95,7 +95,8 @@ function validateStageModelConfig(type, prompt) {
     return true;
   }
   if (type === "lofi_draft") {
-    if (!['openai', 'google'].includes(provider)) fail("lofi_draft provider must be openai or google");
+    if (provider !== "openai") fail("lofi_draft currently supports the openai provider only");
+    if (!/^gpt-image-/i.test(model)) fail("lofi_draft requires a GPT Image model");
     if (responseFormat !== "image") fail("lofi_draft responseFormat must be image");
     return true;
   }

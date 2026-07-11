@@ -11,10 +11,15 @@ async function main() {
     responseFormat: "json_object",
   });
   validateStageModelConfig("lofi_draft", {
+    provider: "openai",
+    model: "gpt-image-1",
+    responseFormat: "image",
+  });
+  assert.throws(() => validateStageModelConfig("lofi_draft", {
     provider: "google",
     model: "gemini-3.1-flash-image",
     responseFormat: "image",
-  });
+  }), /openai provider only/);
   validateStageModelConfig("final_design", {
     provider: "openai",
     model: "gpt-image-1",

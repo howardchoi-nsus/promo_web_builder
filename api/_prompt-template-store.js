@@ -121,8 +121,8 @@ const DEFAULT_MODEL_SETTINGS = {
     responseFormat: "image",
   },
   lofi_draft: {
-    provider: "google",
-    model: "gemini-3.1-flash-image",
+    provider: "openai",
+    model: "gpt-image-1",
     temperature: 0.4,
     maxTokens: null,
     responseFormat: "image",
