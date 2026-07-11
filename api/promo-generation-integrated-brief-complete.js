@@ -21,7 +21,22 @@ module.exports = async function handler(req, res) {
     const run = await resolveRun(sql, runId);
     if (!run) return res.status(404).json({ error: "Generation run not found" });
 
-    const parsed = parseIntegratedBriefResponse(body);
+    let parsed;
+    try {
+      parsed = parseIntegratedBriefResponse(body);
+    } catch (error) {
+      await saveIntegratedBriefFailure({
+        sql,
+        run,
+        body,
+        errorMessage: error.message,
+      });
+      return res.status(422).json({
+        ok: false,
+        error: "Integrated brief response processing failed",
+        message: error.message,
+      });
+    }
     const validation = validateIntegratedBrief(parsed);
     if (!validation.ok) {
       await saveIntegratedBriefFailure({
@@ -29,6 +44,7 @@ module.exports = async function handler(req, res) {
         run,
         body,
         errorMessage: validation.error,
+        extraPromptMeta: { lengthGuard: buildLengthGuardMeta(parsed) },
       });
       return res.status(422).json({
         ok: false,
@@ -39,6 +55,7 @@ module.exports = async function handler(req, res) {
 
     const promptMeta = mergeMeta(body.promptMeta || body.prompt_meta, {
       llmResponseMeta: parsed.llmResponseMeta,
+      lengthGuard: buildLengthGuardMeta(parsed),
       completedAt: new Date().toISOString(),
     });
     const modelMeta = mergeMeta(body.modelMeta || body.model_meta, parsed.modelMeta);
@@ -251,6 +268,18 @@ function validateIntegratedBrief(parsed) {
   const markdown = String(parsed.integratedDesignBriefMarkdown || "").trim();
   const brief = parsed.integratedDesignBrief;
   if (!markdown) return { ok: false, error: "integratedDesignBriefMarkdown is required" };
+  if (markdown.length > 30000) {
+    return {
+      ok: false,
+      error: `Integrated design brief exceeds the 30000 character hard limit (${markdown.length})`,
+    };
+  }
+  if (markdown.length > 20000) {
+    return {
+      ok: false,
+      error: `Integrated design brief exceeds the 20000 character retry threshold (${markdown.length})`,
+    };
+  }
   if (markdown.length < 6000) {
     return {
       ok: false,
@@ -305,8 +334,23 @@ function validateIntegratedBrief(parsed) {
   return { ok: true };
 }
 
-async function saveIntegratedBriefFailure({ sql, run, body, errorMessage }) {
+function buildLengthGuardMeta(parsed) {
+  const contentLength = Number(parsed?.llmResponseMeta?.contentLength || 0);
+  const markdownLength = String(parsed?.integratedDesignBriefMarkdown || "").length;
+  const measuredLength = Math.max(contentLength, markdownLength);
+  return {
+    measuredLength,
+    warningThreshold: 15000,
+    retryThreshold: 20000,
+    hardLimit: 30000,
+    warning: measuredLength > 15000,
+    retryRecommended: measuredLength > 20000,
+  };
+}
+
+async function saveIntegratedBriefFailure({ sql, run, body, errorMessage, extraPromptMeta = {} }) {
   const promptMeta = mergeMeta(body.promptMeta || body.prompt_meta, {
+    ...extraPromptMeta,
     failedAt: new Date().toISOString(),
   });
   const modelMeta = body.modelMeta || body.model_meta || {};
