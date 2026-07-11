@@ -662,45 +662,45 @@
             >
               <section class="admin-panel admin-panel-a">
                 <div class="subsection-title">
-                  <h3>A. Worker Webhook</h3>
-                  <button class="tiny-button" type="button" :disabled="workerWebhookSettingsLoading" @click="loadWorkerWebhookSettings({ fresh: true })">Refresh</button>
+                  <h3>A. 작업자 웹훅 설정</h3>
+                  <button class="tiny-button" type="button" :disabled="workerWebhookSettingsLoading" @click="loadWorkerWebhookSettings({ fresh: true })">새로고침</button>
                 </div>
                 <div class="outline-item danger-state" v-if="workerWebhookSettingsError">
-                  <strong>Webhook settings error</strong>
+                  <strong>웹훅 설정 오류</strong>
                   <span>{{ workerWebhookSettingsError }}</span>
                 </div>
                 <div class="worker-webhook-list" v-if="workerWebhookSettings.length">
                   <div v-for="setting in workerWebhookSettings" :key="setting.stage" class="worker-webhook-item">
                     <div class="worker-webhook-heading">
                       <div>
-                        <strong>{{ setting.label }}</strong>
-                        <span>{{ setting.maskedWebhookUrl || setting.envName || 'Not configured' }}</span>
+                        <strong>{{ workerStageLabel(setting.stage, setting.label) }}</strong>
+                        <span>{{ setting.maskedWebhookUrl || setting.envName || '설정되지 않음' }}</span>
                       </div>
                       <label class="switch-control">
                         <input type="checkbox" v-model="workerWebhookEditor(setting.stage).isActive" />
-                        <span>Active</span>
+                        <span>활성</span>
                       </label>
                     </div>
                     <label class="field compact-field">
-                      <span>Webhook URL</span>
-                      <input v-model="workerWebhookEditor(setting.stage).webhookUrl" type="url" placeholder="Leave blank to keep existing URL" autocomplete="off" />
+                      <span>웹훅 URL</span>
+                      <input v-model="workerWebhookEditor(setting.stage).webhookUrl" type="url" placeholder="기존 URL을 유지하려면 비워 두세요" autocomplete="off" />
                     </label>
                     <div class="form-grid compact">
                       <label class="field compact-field">
-                        <span>Timeout ms</span>
+                        <span>제한 시간(ms)</span>
                         <input v-model="workerWebhookEditor(setting.stage).timeoutMs" type="number" min="500" max="30000" step="500" />
                       </label>
                       <label class="field compact-field">
-                        <span>Description</span>
+                        <span>설명</span>
                         <input v-model="workerWebhookEditor(setting.stage).description" type="text" autocomplete="off" />
                       </label>
                     </div>
                     <label class="field compact-field">
-                      <span>Change note</span>
-                      <input v-model="workerWebhookEditor(setting.stage).changeNote" type="text" autocomplete="off" placeholder="Why this endpoint changed" />
+                      <span>변경 사유</span>
+                      <input v-model="workerWebhookEditor(setting.stage).changeNote" type="text" autocomplete="off" placeholder="웹훅을 변경한 이유를 입력하세요" />
                     </label>
                     <div class="action-row align-right">
-                      <button class="tiny-button primary" type="button" :disabled="workerWebhookSavingStage === setting.stage" @click="saveWorkerWebhookSetting(setting)">Save</button>
+                      <button class="tiny-button primary" type="button" :disabled="workerWebhookSavingStage === setting.stage" @click="saveWorkerWebhookSetting(setting)">{{ workerWebhookSavingStage === setting.stage ? '저장 중...' : '저장' }}</button>
                     </div>
                   </div>
                 </div>
@@ -712,10 +712,10 @@
                 <div class="subsection-title">
                   <h3>B. 현재 프롬프트</h3>
                   <select v-model="promptTypeFilter" aria-label="프롬프트 타입 필터">
-                    <option value="">All</option>
-                    <option value="integrated_brief">Integrated Brief</option>
-                    <option value="image_execution">Image Execution</option>
-                    <option value="lofi_draft">LO-FI Draft</option>
+                    <option value="">전체</option>
+                    <option value="integrated_brief">통합 디자인 브리프</option>
+                    <option value="image_execution">이미지 생성</option>
+                    <option value="lofi_draft">LO-FI 시안</option>
                   </select>
                 </div>
                 <div class="prompt-admin-grid">
@@ -733,8 +733,8 @@
                       @click="selectPromptTemplate(prompt.id)"
                     >
                       <strong>{{ prompt.name }}</strong>
-                      <span>{{ prompt.type }} · v{{ prompt.version }}</span>
-                      <em :class="`status-${prompt.status}`">{{ prompt.status }}</em>
+                      <span>{{ promptTypeLabel(prompt.type) }} · v{{ prompt.version }}</span>
+                      <em :class="`status-${prompt.status}`">{{ promptStatusLabel(prompt.status) }}</em>
                     </button>
                     <div class="empty-state compact" v-if="!promptTemplatesLoading && !filteredPromptTemplates.length">
                       표시할 프롬프트가 없습니다.
@@ -745,12 +745,12 @@
                     <div class="prompt-editor-header">
                       <div>
                         <strong>{{ selectedPromptEditorTitle }}</strong>
-                        <span>{{ selectedPromptTemplate.name }} · {{ selectedPromptTemplate.type }} · v{{ selectedPromptTemplate.version }} · {{ selectedPromptTemplate.status }}</span>
+                        <span>{{ selectedPromptTemplate.name }} · {{ promptTypeLabel(selectedPromptTemplate.type) }} · v{{ selectedPromptTemplate.version }} · {{ promptStatusLabel(selectedPromptTemplate.status) }}</span>
                       </div>
                       <div class="subsection-actions">
                         <button class="tiny-button primary" type="button" :disabled="promptSaving" @click="savePromptTemplate">저장</button>
-                        <button class="tiny-button" type="button" :disabled="promptSaving || selectedPromptTemplate.status === 'active'" @click="activatePromptTemplate">Active 적용</button>
-                        <button class="tiny-button danger" type="button" :disabled="promptSaving || selectedPromptTemplate.status === 'active' || selectedPromptTemplate.status === 'archived'" @click="archivePromptTemplate">Archive</button>
+                        <button class="tiny-button" type="button" :disabled="promptSaving || selectedPromptTemplate.status === 'active'" @click="activatePromptTemplate">활성 프롬프트로 지정</button>
+                        <button class="tiny-button danger" type="button" :disabled="promptSaving || selectedPromptTemplate.status === 'active' || selectedPromptTemplate.status === 'archived'" @click="archivePromptTemplate">보관</button>
                       </div>
                     </div>
 
@@ -761,52 +761,52 @@
                   </label>
                   <label class="field">
                     <span>타입</span>
-                    <input :value="selectedPromptTemplate.type" type="text" disabled />
+                    <input :value="promptTypeLabel(selectedPromptTemplate.type)" type="text" disabled />
                   </label>
                 </div>
 
                 <label class="field">
-                  <span>Required Variables</span>
+                  <span>필수 변수</span>
                   <input v-model="promptEditor.requiredVariablesText" type="text" autocomplete="off" />
                 </label>
 
                 <label class="field">
-                  <span>Optional Variables</span>
+                  <span>선택 변수</span>
                   <input v-model="promptEditor.optionalVariablesText" type="text" autocomplete="off" />
                 </label>
 
                 <div class="form-grid compact">
                   <label class="field">
-                    <span>Provider</span>
+                    <span>모델 제공자</span>
                     <select v-model="promptEditor.provider">
-                      <option value="">Not set</option>
+                      <option value="">설정 안 함</option>
                       <option value="openai">OpenAI / GPT</option>
                       <option value="google">Google / Gemini</option>
                     </select>
                   </label>
                   <label class="field">
-                    <span>Model</span>
+                    <span>모델</span>
                     <input v-model="promptEditor.model" type="text" autocomplete="off" placeholder="gpt-4o-mini" />
                   </label>
                 </div>
 
                 <div class="form-grid compact">
                   <label class="field">
-                    <span>Temperature</span>
+                    <span>창의성 수치(Temperature)</span>
                     <input v-model="promptEditor.temperature" type="number" min="0" max="2" step="0.1" />
                   </label>
                   <label class="field">
-                    <span>Max Tokens</span>
+                    <span>최대 토큰 수</span>
                     <input v-model="promptEditor.maxTokens" type="number" min="1" step="1" />
                   </label>
                   <label class="field">
-                    <span>Response Format</span>
+                    <span>응답 형식</span>
                     <input v-model="promptEditor.responseFormat" type="text" autocomplete="off" placeholder="json_object / text / image" />
                   </label>
                 </div>
 
                 <label class="field">
-                  <span>Model Options JSON</span>
+                  <span>모델 상세 옵션(JSON)</span>
                   <textarea v-model="promptEditor.modelOptionsText" rows="5" spellcheck="false"></textarea>
                 </label>
 
@@ -828,8 +828,8 @@
                   <div class="history-list" v-if="promptHistories.length">
                     <div v-for="history in promptHistories" :key="history.id" class="history-item">
                       <strong>v{{ history.previousVersion }} → v{{ history.newVersion }}</strong>
-                      <span>{{ history.previousStatus }} → {{ history.newStatus }}</span>
-                      <em>{{ history.changeNote || 'No note' }}</em>
+                      <span>{{ promptStatusLabel(history.previousStatus) }} → {{ promptStatusLabel(history.newStatus) }}</span>
+                      <em>{{ history.changeNote || '변경 사유 없음' }}</em>
                     </div>
                   </div>
                   <div class="empty-state compact" v-else>변경 이력이 없습니다.</div>
@@ -1105,6 +1105,6 @@
     </div>
 
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-    <script src="app.js?v=lofi-retry-action-v1"></script>
+    <script src="app.js?v=admin-ko-v1"></script>
   </body>
 </html>

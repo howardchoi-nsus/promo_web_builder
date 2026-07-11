@@ -1431,10 +1431,8 @@ createApp({
     },
 
     selectedPromptEditorTitle() {
-      if (!this.selectedPromptTemplate) return "Prompt Editor";
-      return this.selectedPromptTemplate.type === "image_execution"
-        ? "Image Execution Prompt"
-        : this.selectedPromptTemplate.name;
+      if (!this.selectedPromptTemplate) return "프롬프트 편집기";
+      return `${this.promptTypeLabel(this.selectedPromptTemplate.type)} 프롬프트`;
     },
   },
 
@@ -1517,7 +1515,7 @@ createApp({
       try {
         const response = await fetch("/api/prompt-templates");
         const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.message || result.error || `Prompt ${response.status}`);
+        if (!response.ok) throw new Error(result.message || result.error || `프롬프트 목록 요청 오류(${response.status})`);
         this.promptTemplates = Array.isArray(result.prompts) ? result.prompts : [];
         if (!this.selectedPromptTemplateId || !this.promptTemplates.some((prompt) => prompt.id === this.selectedPromptTemplateId)) {
           const activeImageExecution = this.promptTemplates.find(
@@ -1542,7 +1540,7 @@ createApp({
       try {
         const response = await fetch("/api/promo-generation-worker-settings");
         const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.message || result.error || `Worker settings ${response.status}`);
+        if (!response.ok) throw new Error(result.message || result.error || `작업자 설정 요청 오류(${response.status})`);
         this.workerWebhookSettings = Array.isArray(result.settings) ? result.settings : [];
         const nextEditors = {};
         this.workerWebhookSettings.forEach((setting) => {
@@ -1559,7 +1557,7 @@ createApp({
         this.workerWebhookEditors = nextEditors;
       } catch (error) {
         this.workerWebhookSettingsError = error.message;
-        this.setStatus(`Webhook 설정을 불러오지 못했습니다: ${error.message}`);
+        this.setStatus(`웹훅 설정을 불러오지 못했습니다: ${error.message}`);
       } finally {
         this.workerWebhookSettingsLoading = false;
       }
@@ -1578,6 +1576,33 @@ createApp({
       return this.workerWebhookEditors[stage];
     },
 
+    workerStageLabel(stage, fallback = "") {
+      return ({
+        integrated_brief: "통합 디자인 브리프",
+        lofi_draft: "LO-FI 시안",
+        final_design: "최종 디자인",
+        promo_ui_design: "프로모션 UI 디자인",
+      })[stage] || fallback || stage;
+    },
+
+    promptTypeLabel(type) {
+      return ({
+        integrated_brief: "통합 디자인 브리프",
+        image_execution: "이미지 생성",
+        lofi_draft: "LO-FI 시안",
+        final_design: "최종 디자인",
+      })[type] || type || "알 수 없음";
+    },
+
+    promptStatusLabel(status) {
+      return ({
+        draft: "초안",
+        active: "활성",
+        inactive: "비활성",
+        archived: "보관됨",
+      })[status] || status || "알 수 없음";
+    },
+
     async saveWorkerWebhookSetting(setting) {
       if (!setting?.stage || this.workerWebhookSavingStage) return;
       const editor = this.workerWebhookEditor(setting.stage);
@@ -1593,15 +1618,15 @@ createApp({
             isActive: editor.isActive,
             timeoutMs: editor.timeoutMs === "" ? null : Number(editor.timeoutMs),
             description: editor.description,
-            changeNote: editor.changeNote || "Worker webhook setting updated from prompt management.",
+            changeNote: editor.changeNote || "관리자 페이지에서 작업자 웹훅 설정을 변경했습니다.",
           }),
         });
         const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.message || result.error || `Worker settings ${response.status}`);
+        if (!response.ok) throw new Error(result.message || result.error || `작업자 설정 저장 오류(${response.status})`);
         await this.loadWorkerWebhookSettings({ fresh: true });
-        this.setStatus(`${setting.label || setting.stage} Webhook 설정을 저장했습니다`);
+        this.setStatus(`${this.workerStageLabel(setting.stage, setting.label)} 웹훅 설정을 저장했습니다`);
       } catch (error) {
-        this.setStatus(`Webhook 설정 저장 실패: ${error.message}`);
+        this.setStatus(`웹훅 설정 저장 실패: ${error.message}`);
       } finally {
         this.workerWebhookSavingStage = "";
       }
@@ -1614,7 +1639,7 @@ createApp({
       try {
         const response = await fetch(`/api/prompt-template?id=${encodeURIComponent(id)}`);
         const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.message || result.error || `Prompt ${response.status}`);
+        if (!response.ok) throw new Error(result.message || result.error || `프롬프트 요청 오류(${response.status})`);
         const detail = result.prompt || prompt;
         const index = this.promptTemplates.findIndex((item) => item.id === id);
         if (index >= 0) this.promptTemplates.splice(index, 1, detail);
@@ -1652,7 +1677,7 @@ createApp({
         const parsed = JSON.parse(text);
         return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
       } catch (error) {
-        throw new Error(`Model Options JSON 형식이 올바르지 않습니다: ${error.message}`);
+        throw new Error(`모델 상세 옵션 JSON 형식이 올바르지 않습니다: ${error.message}`);
       }
     },
 
@@ -1676,11 +1701,11 @@ createApp({
             maxTokens: this.promptEditor.maxTokens === "" ? null : Number(this.promptEditor.maxTokens),
             responseFormat: this.promptEditor.responseFormat,
             modelOptions: this.parseModelOptionsText(this.promptEditor.modelOptionsText),
-            changeNote: this.promptEditor.changeNote || "Prompt updated from management page.",
+            changeNote: this.promptEditor.changeNote || "관리자 페이지에서 프롬프트를 변경했습니다.",
           }),
         });
         const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.message || result.error || `Prompt ${response.status}`);
+        if (!response.ok) throw new Error(result.message || result.error || `프롬프트 저장 오류(${response.status})`);
         await this.loadPromptTemplates({ fresh: true });
         this.selectedPromptTemplateId = result.prompt?.id || prompt.id;
         await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: true });
@@ -1702,17 +1727,17 @@ createApp({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             id: prompt.id,
-            changeNote: "Activated from prompt management page.",
+            changeNote: "관리자 페이지에서 활성 프롬프트로 지정했습니다.",
           }),
         });
         const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.message || result.error || `Prompt ${response.status}`);
+        if (!response.ok) throw new Error(result.message || result.error || `프롬프트 활성화 오류(${response.status})`);
         await this.loadPromptTemplates({ fresh: true });
         this.selectedPromptTemplateId = result.prompt?.id || prompt.id;
         await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: true });
-        this.setStatus("Active 프롬프트를 적용했습니다");
+        this.setStatus("활성 프롬프트로 지정했습니다");
       } catch (error) {
-        this.setStatus(`Active 적용 실패: ${error.message}`);
+        this.setStatus(`활성 프롬프트 지정 실패: ${error.message}`);
       } finally {
         this.promptSaving = false;
       }
@@ -1722,7 +1747,7 @@ createApp({
       const prompt = this.selectedPromptTemplate;
       if (!prompt || this.promptSaving) return;
       if (prompt.status === "active") {
-        this.setStatus("Active 프롬프트는 Archive 할 수 없습니다");
+        this.setStatus("활성 프롬프트는 보관할 수 없습니다");
         return;
       }
       this.promptSaving = true;
@@ -1732,16 +1757,16 @@ createApp({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             id: prompt.id,
-            changeNote: "Archived from prompt management page.",
+            changeNote: "관리자 페이지에서 프롬프트를 보관했습니다.",
           }),
         });
         const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.message || result.error || `Prompt ${response.status}`);
+        if (!response.ok) throw new Error(result.message || result.error || `프롬프트 보관 오류(${response.status})`);
         this.selectedPromptTemplateId = "";
         await this.loadPromptTemplates({ fresh: true });
-        this.setStatus("프롬프트를 Archive 처리했습니다");
+        this.setStatus("프롬프트를 보관했습니다");
       } catch (error) {
-        this.setStatus(`Archive 처리 실패: ${error.message}`);
+        this.setStatus(`프롬프트 보관 실패: ${error.message}`);
       } finally {
         this.promptSaving = false;
       }
