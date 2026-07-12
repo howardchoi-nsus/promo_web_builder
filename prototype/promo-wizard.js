@@ -1523,11 +1523,54 @@ function renderConceptStep() {
 
   const selectedPanel = createSelectedConceptPanel(selected);
 
+  const carousel = document.createElement("section");
+  carousel.className = "concept-carousel";
+  carousel.setAttribute("aria-label", "Design MD concept carousel");
+
+  const previous = document.createElement("button");
+  previous.className = "concept-carousel-control concept-carousel-previous";
+  previous.type = "button";
+  previous.setAttribute("aria-label", "이전 디자인 콘셉트 보기");
+  previous.textContent = "←";
+
   const list = document.createElement("div");
   list.className = "concept-list";
+  list.tabIndex = 0;
   docs.forEach((doc) => list.append(createConceptCard(doc)));
 
-  placeholders.append(selectedPanel, list);
+  const next = document.createElement("button");
+  next.className = "concept-carousel-control concept-carousel-next";
+  next.type = "button";
+  next.setAttribute("aria-label", "다음 디자인 콘셉트 보기");
+  next.textContent = "→";
+
+  const updateControls = () => {
+    const maxScroll = Math.max(0, list.scrollWidth - list.clientWidth);
+    previous.disabled = list.scrollLeft <= 2;
+    next.disabled = list.scrollLeft >= maxScroll - 2;
+  };
+  const moveCarousel = (direction) => {
+    const card = list.querySelector(".concept-card");
+    const gap = Number.parseFloat(getComputedStyle(list).gap) || 12;
+    const distance = card ? card.getBoundingClientRect().width + gap : list.clientWidth * 0.8;
+    list.scrollBy({ left: direction * distance, behavior: "smooth" });
+  };
+
+  previous.addEventListener("click", () => moveCarousel(-1));
+  next.addEventListener("click", () => moveCarousel(1));
+  list.addEventListener("scroll", updateControls, { passive: true });
+  list.addEventListener("keydown", (event) => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    moveCarousel(event.key === "ArrowLeft" ? -1 : 1);
+  });
+
+  carousel.append(previous, list, next);
+  placeholders.append(selectedPanel, carousel);
+  requestAnimationFrame(() => {
+    list.querySelector(".concept-card.is-selected")?.scrollIntoView({ inline: "center", block: "nearest" });
+    updateControls();
+  });
 }
 
 async function loadDesignDocuments(options = {}) {

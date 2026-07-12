@@ -213,7 +213,7 @@ a {
 
 .concept-layout {
   display: grid;
-  grid-template-columns: minmax(280px, 0.9fr) minmax(0, 1.6fr);
+  grid-template-columns: 1fr;
   gap: 12px;
   margin-top: 16px;
 }
@@ -226,7 +226,7 @@ a {
 
 .selected-concept-panel {
   align-self: start;
-  min-height: 280px;
+  min-height: 0;
   padding: 18px;
 }
 
@@ -242,7 +242,8 @@ a {
 }
 
 .selected-concept-panel dl {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin: 18px 0 0;
 }
@@ -251,6 +252,8 @@ a {
   display: grid;
   grid-template-columns: 78px minmax(0, 1fr);
   gap: 10px;
+  min-width: 220px;
+  flex: 1;
   padding-top: 8px;
   border-top: 1px solid var(--line);
 }
@@ -271,23 +274,57 @@ a {
   overflow-wrap: anywhere;
 }
 
-.concept-list {
+.concept-carousel {
+  position: relative;
   display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 42px;
+  align-items: center;
   gap: 10px;
-  max-height: 520px;
-  overflow: auto;
-  padding-right: 4px;
+}
+
+.concept-list {
+  display: flex;
+  gap: 12px;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 2px 12px;
+  scroll-behavior: smooth;
+  scroll-snap-type: x mandatory;
+  scrollbar-color: var(--line-strong) transparent;
 }
 
 .concept-card {
   display: grid;
+  flex: 0 0 clamp(250px, 34vw, 340px);
   gap: 10px;
-  width: 100%;
   min-height: 126px;
   padding: 14px;
   color: var(--ink);
   cursor: pointer;
+  scroll-snap-align: start;
   text-align: left;
+}
+
+.concept-carousel-control {
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  background: var(--panel);
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 20px;
+}
+
+.concept-carousel-control:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.concept-carousel-control:disabled {
+  cursor: not-allowed;
+  opacity: 0.28;
 }
 
 .concept-card:hover {
@@ -793,6 +830,18 @@ a {
   .content-form-actions {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .concept-carousel {
+    grid-template-columns: 1fr;
+  }
+
+  .concept-carousel-control {
+    display: none;
+  }
+
+  .concept-card {
+    flex-basis: min(82vw, 320px);
   }
 
   .content-coverage-panel {
