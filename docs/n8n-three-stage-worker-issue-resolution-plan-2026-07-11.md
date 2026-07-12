@@ -499,10 +499,12 @@ n8n:
 - n8n 실행 `1179`는 9개 노드를 약 18초에 모두 통과했으며, OpenAI 오류도 후속 callback까지 전달됐다.
 - DB에서 `provider=openai`, `model=gpt-image-1`, `inputFidelity=high`, `referenceMode=image_edit`와 `final_design_failed` 상태를 확인했다.
 
-### 현재 외부 차단 사항
+### 외부 차단 사항 해소
 
-OpenAI가 `billing_hard_limit_reached`를 반환하므로 실제 Final 이미지 생성 및 LO-FI 대비 시각 회귀 검증은 완료할 수 없다. 결제 한도 해제 후 동일 검증 payload로 1회 재실행하고 `ready`, 비어 있지 않은 `final_image_url`, 최종 이미지의 레이아웃 보존 여부를 확인해야 한다.
+최초 검증에서는 OpenAI가 `billing_hard_limit_reached`를 반환했으나, 2026-07-12 크레딧 충전 후 재실행하여 해소를 확인했다. 백업 실행 `1180`은 약 65초에 성공했고, 운영 실행 `1181`은 약 56초에 성공했다.
+
+DB에서 `ready`, 비어 있지 않은 `final_image_url`, `inputFidelity=high`, `referenceMode=image_edit`, `final_design_ready`, 빈 오류 메시지를 확인했다. 생성 결과를 Confirmed LO-FI와 직접 비교한 결과 헤더, 제목, 히어로, 3개 카드, CTA, 하단 문구, 푸터의 순서와 상대 위치가 유지되고 색상·이미지·버튼 스타일만 고도화됐다.
 
 ### 배포 판단
 
-실패 경로와 데이터 저장은 검증됐지만 성공 이미지 경로는 결제 한도 때문에 검증되지 않았다. 따라서 기존 운영 Final Worker 교체는 보류하고, 수정본은 별도 백업 Webhook에 유지한다. 이 계획의 완료 범위는 레이아웃 fidelity이며 브랜드 스타일 fidelity는 별도 트랙이다.
+실패 경로와 성공 이미지 경로를 모두 검증한 뒤 운영 `Promo Final Design Worker`에 이미지 편집 구조를 게시했다. 기존 운영 Webhook 경로는 유지했으며 운영 실행 `1181`로 최종 검증했다. 별도 백업 Webhook도 회귀 검증용으로 유지한다. 이 계획의 완료 범위는 레이아웃 fidelity이며 브랜드 스타일 fidelity는 별도 트랙이다.
