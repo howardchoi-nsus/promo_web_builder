@@ -5,6 +5,7 @@ const {
   parseBody,
   resolveRun,
 } = require("./_promo-generation-run-store");
+const { executionModelMeta, workerExecutionSummary } = require("./_worker-execution-contract");
 const {
   buildWorkerPayload,
   shouldTriggerWorker,
@@ -155,28 +156,6 @@ function mergeObject(value, extra) {
   return {
     ...(value && typeof value === "object" && !Array.isArray(value) ? value : {}),
     ...extra,
-  };
-}
-
-function executionModelMeta(snapshot) {
-  const config = snapshot.promptConfig || {};
-  return {
-    provider: config.provider || "",
-    model: config.model || "",
-    modelOptions: config.modelOptions || {},
-    promptVersion: config.promptVersion || null,
-  };
-}
-
-function workerExecutionSummary(snapshot) {
-  const config = snapshot.promptConfig || {};
-  return {
-    promptType: config.promptType || "",
-    promptVersion: config.promptVersion || null,
-    provider: config.provider || "",
-    model: config.model || "",
-    modelOptions: config.modelOptions || {},
-    renderedPromptHash: config.renderedPromptHash || "",
   };
 }
 

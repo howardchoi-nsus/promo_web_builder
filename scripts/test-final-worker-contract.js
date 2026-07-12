@@ -18,7 +18,7 @@ assert(workflow.active === false, "Repository workflow fixture must stay inactiv
 assert(normalize && download && generate && save, "Final worker nodes are incomplete");
 
 const normalizeFields = new Set(normalize.parameters.assignments.assignments.map((item) => item.name));
-for (const field of ["confirmedDraftImageProxyUrl", "layoutFidelityPolicy", "provider", "model", "modelOptions"]) {
+for (const field of ["confirmedDraftImageProxyUrl", "layoutFidelityPolicy", "provider", "model", "modelOptions", "renderedPrompt", "promptVersion", "renderedPromptHash"]) {
   assert(normalizeFields.has(field), `Normalize node is missing ${field}`);
 }
 
@@ -31,6 +31,9 @@ assert(generate.parameters.contentType === "multipart-form-data", "Image edit re
 const bodyFields = generate.parameters.bodyParameters.parameters;
 assert(bodyFields.some((field) => field.name === "image" && field.parameterType === "formBinaryData"), "Binary image field is missing");
 assert(bodyFields.some((field) => field.name === "input_fidelity" && String(field.value).includes("high")), "High input fidelity is missing");
+assert(bodyFields.some((field) => field.name === "input_fidelity" && String(field.value).includes("inputFidelity")), "Canonical inputFidelity is not mapped");
+assert(bodyFields.some((field) => field.name === "prompt" && String(field.value).includes("Normalize Final Design Payload")), "Immutable renderedPrompt is not used");
+assert(!byName.has("Render Final Design Prompt"), "Final worker must not re-render the active prompt");
 assert(generate.retryOnFail && generate.maxTries === 2, "Image edit must retry once");
 assert(generate.onError === "continueRegularOutput", "Image edit errors must reach the failure callback");
 

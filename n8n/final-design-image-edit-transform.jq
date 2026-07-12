@@ -7,17 +7,21 @@
   {"id":"fd-provider","name":"provider","value":"={{ $json.body.execution.provider || 'openai' }}","type":"string"},
   {"id":"fd-model","name":"model","value":"={{ $json.body.execution.model || 'gpt-image-1' }}","type":"string"},
   {"id":"fd-model-options","name":"modelOptions","value":"={{ $json.body.execution.modelOptions || {} }}","type":"object"}
+  ,{"id":"fd-rendered-prompt","name":"renderedPrompt","value":"={{ $json.body.execution.renderedPrompt || '' }}","type":"string"}
+  ,{"id":"fd-prompt-version","name":"promptVersion","value":"={{ $json.body.execution.promptVersion || null }}","type":"number"}
+  ,{"id":"fd-rendered-prompt-hash","name":"renderedPromptHash","value":"={{ $json.body.execution.renderedPromptHash || '' }}","type":"string"}
 ]
 | (.nodes[] | select(.name == "Render Final Design Prompt") | .parameters.bodyParameters.parameters[0].value) = "final_design"
 | (.nodes[] | select(.name == "Render Final Design Prompt") | .parameters.bodyParameters.parameters[1].value) = "={{ { integratedDesignBriefMarkdown: $json.integratedBrief.integratedBriefMarkdown, confirmedDraftPrompt: $('Normalize Final Design Payload').item.json.confirmedDraftPrompt, confirmedDraftImageProxyUrl: $('Normalize Final Design Payload').item.json.confirmedDraftImageProxyUrl, layoutFidelityPolicy: JSON.stringify($('Normalize Final Design Payload').item.json.layoutFidelityPolicy, null, 2), sectionContentMapping: JSON.stringify($json.integratedBrief.integratedBriefJson.sectionContentMapping || $json.integratedBrief.integratedBriefJson.finalImagePromptInputs?.contentCoverage || {}, null, 2) } }}"
 | (.nodes[] | select(.name == "Generate Final Design Image") | .parameters.url) = "https://api.openai.com/v1/images/edits"
+| (.nodes[] | select(.name == "Generate Final Design Image") | .parameters.headerParameters.parameters) |= map(if .name == "Authorization" then .value = "Bearer __RETAIN_EXISTING_N8N_KEY__" else . end)
 | (.nodes[] | select(.name == "Generate Final Design Image") | .parameters.headerParameters.parameters) |= map(select(.name != "Content-Type"))
 | (.nodes[] | select(.name == "Generate Final Design Image") | .parameters.contentType) = "multipart-form-data"
 | (.nodes[] | select(.name == "Generate Final Design Image") | .parameters.bodyParameters.parameters) = [
   {"parameterType":"formBinaryData","name":"image","inputDataFieldName":"data"},
   {"name":"model","value":"={{ $('Normalize Final Design Payload').item.json.model || 'gpt-image-1' }}"},
-  {"name":"prompt","value":"={{ $('Render Final Design Prompt').item.json.renderedPrompt }}"},
-  {"name":"input_fidelity","value":"={{ $('Normalize Final Design Payload').item.json.modelOptions.input_fidelity || 'high' }}"},
+  {"name":"prompt","value":"={{ String($('Normalize Final Design Payload').item.json.renderedPrompt || '').slice(0, 30000) }}"},
+  {"name":"input_fidelity","value":"={{ $('Normalize Final Design Payload').item.json.modelOptions.inputFidelity || 'high' }}"},
   {"name":"quality","value":"={{ $('Normalize Final Design Payload').item.json.modelOptions.quality || 'high' }}"},
   {"name":"size","value":"={{ $('Normalize Final Design Payload').item.json.modelOptions.size || '1024x1536' }}"},
   {"name":"n","value":"={{ 1 }}"}
@@ -37,9 +41,9 @@
   {"name":"status","value":"={{ $('Check Final Image Base64').item.json.hasBase64 ? 'ready' : 'failed' }}"},
   {"name":"errorMessage","value":"={{ $('Check Final Image Base64').item.json.generationError }}"},
   {"name":"finalImageBase64","value":"={{ $('Check Final Image Base64').item.json.finalImageBase64 }}"},
-  {"name":"finalPrompt","value":"={{ $('Render Final Design Prompt').item.json.renderedPrompt }}"},
-  {"name":"promptMeta","value":"={{ $('Render Final Design Prompt').item.json.promptMeta }}"},
-  {"name":"modelMeta","value":"={{ { provider: $('Normalize Final Design Payload').item.json.provider, model: $('Normalize Final Design Payload').item.json.model, inputFidelity: $('Normalize Final Design Payload').item.json.modelOptions.input_fidelity || 'high', referenceMode: 'image_edit' } }}"}
+  {"name":"finalPrompt","value":"={{ $('Normalize Final Design Payload').item.json.renderedPrompt }}"},
+  {"name":"promptMeta","value":"={{ { promptVersion: $('Normalize Final Design Payload').item.json.promptVersion, renderedPromptHash: $('Normalize Final Design Payload').item.json.renderedPromptHash } }}"},
+  {"name":"modelMeta","value":"={{ { provider: $('Normalize Final Design Payload').item.json.provider, model: $('Normalize Final Design Payload').item.json.model, modelOptions: $('Normalize Final Design Payload').item.json.modelOptions, inputFidelity: $('Normalize Final Design Payload').item.json.modelOptions.inputFidelity || 'high', referenceMode: 'image_edit' } }}"}
 ]
 | .nodes += [{
   "parameters": {
@@ -59,6 +63,8 @@
 | (.nodes[] | select(.name == "Generate Final Design Image") | .position) = [928,176]
 | (.nodes[] | select(.name == "Check Final Image Base64") | .position) = [1152,176]
 | (.nodes[] | select(.name == "Save Final Design Result") | .position) = [1376,176]
-| .connections["Render Final Design Prompt"].main[0][0].node = "Download Confirmed LO-FI Image"
+| .connections["Get Generation Run State"].main[0][0].node = "Download Confirmed LO-FI Image"
 | .connections["Download Confirmed LO-FI Image"] = {"main":[[{"node":"Generate Final Design Image","type":"main","index":0}]]}
+| del(.connections["Render Final Design Prompt"])
+| .nodes |= map(select(.name != "Render Final Design Prompt"))
 | del(.id, .versionId, .createdAt, .updatedAt, .shared, .tags, .meta, .pinData)

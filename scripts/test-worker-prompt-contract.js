@@ -8,6 +8,10 @@ const {
   fitFinalDesignPromptVariables,
 } = require("../api/_final-design-prompt-budget");
 const { renderPrompt } = require("../api/_prompt-template-store");
+const {
+  normalizeExecutionModelOptions,
+  workerExecutionSummary,
+} = require("../api/_worker-execution-contract");
 
 async function main() {
   validateStageModelConfig("integrated_brief", {
@@ -70,6 +74,16 @@ async function main() {
   assert.equal(snapshot.promptConfig.modelOptions.inputFidelity, "high");
   assert.match(snapshot.promptConfig.renderedPrompt, /preserveSectionOrder/);
   assert.match(snapshot.promptConfig.renderedPromptHash, /^[0-9a-f]{64}$/);
+  const execution = workerExecutionSummary(snapshot);
+  assert.equal(execution.snapshotVersion, 2);
+  assert.equal(execution.renderedPrompt, snapshot.promptConfig.renderedPrompt);
+  assert.equal(execution.renderedPromptHash, snapshot.promptConfig.renderedPromptHash);
+  assert.equal(execution.model, "gpt-image-1");
+  assert.equal(execution.modelOptions.inputFidelity, "high");
+  assert.deepEqual(
+    normalizeExecutionModelOptions({ input_fidelity: "low", output_format: "png" }),
+    { inputFidelity: "low", outputFormat: "png" }
+  );
 
   const oversized = fitFinalDesignPromptVariables(
     "Brief={{integratedDesignBriefMarkdown}}\nMapping={{sectionContentMapping}}\nPolicy={{layoutFidelityPolicy}}",

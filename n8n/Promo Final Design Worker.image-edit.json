@@ -108,6 +108,24 @@
               "name": "modelOptions",
               "value": "={{ $json.body.execution.modelOptions || {} }}",
               "type": "object"
+            },
+            {
+              "id": "fd-rendered-prompt",
+              "name": "renderedPrompt",
+              "value": "={{ $json.body.execution.renderedPrompt || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "fd-prompt-version",
+              "name": "promptVersion",
+              "value": "={{ $json.body.execution.promptVersion || null }}",
+              "type": "number"
+            },
+            {
+              "id": "fd-rendered-prompt-hash",
+              "name": "renderedPromptHash",
+              "value": "={{ $json.body.execution.renderedPromptHash || '' }}",
+              "type": "string"
             }
           ]
         },
@@ -148,34 +166,6 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "https://promo-web-builder.vercel.app/api/prompts-render",
-        "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "type",
-              "value": "final_design"
-            },
-            {
-              "name": "variables",
-              "value": "={{ { integratedDesignBriefMarkdown: $json.integratedBrief.integratedBriefMarkdown, confirmedDraftPrompt: $('Normalize Final Design Payload').item.json.confirmedDraftPrompt, confirmedDraftImageProxyUrl: $('Normalize Final Design Payload').item.json.confirmedDraftImageProxyUrl, layoutFidelityPolicy: JSON.stringify($('Normalize Final Design Payload').item.json.layoutFidelityPolicy, null, 2), sectionContentMapping: JSON.stringify($json.integratedBrief.integratedBriefJson.sectionContentMapping || $json.integratedBrief.integratedBriefJson.finalImagePromptInputs?.contentCoverage || {}, null, 2) } }}"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
-      "position": [
-        576,
-        176
-      ],
-      "id": "405b6c59-1227-432f-a87f-7550ce1aa702",
-      "name": "Render Final Design Prompt"
-    },
-    {
-      "parameters": {
-        "method": "POST",
         "url": "https://api.openai.com/v1/images/edits",
         "sendHeaders": true,
         "headerParameters": {
@@ -200,11 +190,11 @@
             },
             {
               "name": "prompt",
-              "value": "={{ $('Render Final Design Prompt').item.json.renderedPrompt }}"
+              "value": "={{ String($('Normalize Final Design Payload').item.json.renderedPrompt || '').slice(0, 30000) }}"
             },
             {
               "name": "input_fidelity",
-              "value": "={{ $('Normalize Final Design Payload').item.json.modelOptions.input_fidelity || 'high' }}"
+              "value": "={{ $('Normalize Final Design Payload').item.json.modelOptions.inputFidelity || 'high' }}"
             },
             {
               "name": "quality",
@@ -302,15 +292,15 @@
             },
             {
               "name": "finalPrompt",
-              "value": "={{ $('Render Final Design Prompt').item.json.renderedPrompt }}"
+              "value": "={{ $('Normalize Final Design Payload').item.json.renderedPrompt }}"
             },
             {
               "name": "promptMeta",
-              "value": "={{ $('Render Final Design Prompt').item.json.promptMeta }}"
+              "value": "={{ { promptVersion: $('Normalize Final Design Payload').item.json.promptVersion, renderedPromptHash: $('Normalize Final Design Payload').item.json.renderedPromptHash } }}"
             },
             {
               "name": "modelMeta",
-              "value": "={{ { provider: $('Normalize Final Design Payload').item.json.provider, model: $('Normalize Final Design Payload').item.json.model, inputFidelity: $('Normalize Final Design Payload').item.json.modelOptions.input_fidelity || 'high', referenceMode: 'image_edit' } }}"
+              "value": "={{ { provider: $('Normalize Final Design Payload').item.json.provider, model: $('Normalize Final Design Payload').item.json.model, modelOptions: $('Normalize Final Design Payload').item.json.modelOptions, inputFidelity: $('Normalize Final Design Payload').item.json.modelOptions.inputFidelity || 'high', referenceMode: 'image_edit' } }}"
             }
           ]
         },
@@ -378,7 +368,7 @@
       "main": [
         [
           {
-            "node": "Render Final Design Prompt",
+            "node": "Download Confirmed LO-FI Image",
             "type": "main",
             "index": 0
           }
@@ -401,17 +391,6 @@
         [
           {
             "node": "Get Generation Run State",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Render Final Design Prompt": {
-      "main": [
-        [
-          {
-            "node": "Download Confirmed LO-FI Image",
             "type": "main",
             "index": 0
           }

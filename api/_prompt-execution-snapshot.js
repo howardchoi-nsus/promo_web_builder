@@ -6,6 +6,7 @@ const {
   unresolvedVariables,
 } = require("./_prompt-template-store");
 const { fitFinalDesignPromptVariables } = require("./_final-design-prompt-budget");
+const { normalizeExecutionModelOptions } = require("./_worker-execution-contract");
 
 async function createPromptExecutionSnapshot(sql, type, variables = {}) {
   await ensureDefaultPromptTemplates(sql);
@@ -60,12 +61,12 @@ async function createPromptExecutionSnapshot(sql, type, variables = {}) {
     throw error;
   }
 
-  const modelOptions = {
+  const modelOptions = normalizeExecutionModelOptions({
     ...(prompt.modelOptions || {}),
     temperature: prompt.temperature,
     maxTokens: prompt.maxTokens,
     responseFormat: prompt.responseFormat,
-  };
+  });
   return {
     promptConfig: {
       promptId: prompt.id,
