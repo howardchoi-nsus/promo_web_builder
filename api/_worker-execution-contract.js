@@ -13,6 +13,8 @@ function normalizeExecutionModelOptions(value = {}) {
   alias("background", "background");
   alias("quality", "quality");
   alias("size", "size");
+  alias("aspectRatio", "aspectRatio", "aspect_ratio");
+  alias("imageSize", "imageSize", "image_size");
   alias("temperature", "temperature");
   alias("maxTokens", "maxTokens", "max_tokens");
   alias("responseFormat", "responseFormat", "response_format");
@@ -21,6 +23,8 @@ function normalizeExecutionModelOptions(value = {}) {
   delete normalized.output_format;
   delete normalized.max_tokens;
   delete normalized.response_format;
+  delete normalized.aspect_ratio;
+  delete normalized.image_size;
   delete normalized.provider;
   delete normalized.model;
   return normalized;

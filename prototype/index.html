@@ -782,7 +782,7 @@
                     <select v-model="promptEditor.provider">
                       <option value="">설정 안 함</option>
                       <option value="openai">OpenAI / GPT</option>
-                      <option value="google" :disabled="['integrated_brief', 'lofi_draft', 'final_design'].includes(selectedPromptTemplate.type)">Google / Gemini</option>
+                      <option value="google" :disabled="['integrated_brief', 'lofi_draft'].includes(selectedPromptTemplate.type)">Google / Gemini</option>
                     </select>
                   </label>
                   <label class="field">
@@ -811,8 +811,11 @@
                   <textarea v-model="promptEditor.modelOptionsText" rows="5" spellcheck="false"></textarea>
                 </label>
 
-                <div class="empty-state compact" v-if="['integrated_brief', 'lofi_draft', 'final_design'].includes(selectedPromptTemplate.type)">
+                <div class="empty-state compact" v-if="['integrated_brief', 'lofi_draft'].includes(selectedPromptTemplate.type)">
                   현재 {{ promptTypeLabel(selectedPromptTemplate.type) }} Worker는 OpenAI만 지원합니다. 저장한 프롬프트·모델·옵션은 새로 Queue되는 작업의 실행 snapshot에 고정되며, 이미 대기 또는 실행 중인 작업에는 영향을 주지 않습니다.
+                </div>
+                <div class="empty-state compact" v-else-if="selectedPromptTemplate.type === 'final_design'">
+                  최종 디자인은 OpenAI GPT Image 또는 Google Gemini 이미지 편집 모델을 지원합니다. Gemini 권장 모델은 gemini-3.1-flash-image이며, 제공자 변경은 새로 Queue되는 작업부터 적용됩니다.
                 </div>
                 <div class="empty-state compact" v-else-if="selectedPromptTemplate.type === 'image_execution'">
                   이미지 생성 설정은 image_execution 타입을 호출하는 별도 Workflow에만 적용됩니다. LO-FI와 최종 디자인은 각각 전용 설정을 사용합니다.

@@ -34,11 +34,21 @@ async function main() {
     model: "gpt-image-1",
     responseFormat: "image",
   });
-  assert.throws(() => validateStageModelConfig("final_design", {
+  validateStageModelConfig("final_design", {
     provider: "google",
     model: "gemini-3.1-flash-image",
     responseFormat: "image",
-  }), /openai provider only/);
+  });
+  validateStageModelConfig("final_design", {
+    provider: "google",
+    model: "gemini-2.5-flash-image",
+    responseFormat: "image",
+  });
+  assert.throws(() => validateStageModelConfig("final_design", {
+    provider: "google",
+    model: "gemini-2.5-flash",
+    responseFormat: "image",
+  }), /image-edit model/);
 
   const sql = async (strings) => {
     const query = strings.join("?");

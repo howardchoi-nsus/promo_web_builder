@@ -1,0 +1,578 @@
+{
+  "name": "Promo Final Design Worker provider-routed",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "be944443-54e2-435a-a6d6-43c8d66900fb",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -256,
+        176
+      ],
+      "id": "654f0cf3-70f6-42e8-b341-914ac5742b10",
+      "name": "Webhook",
+      "webhookId": "be944443-54e2-435a-a6d6-43c8d66900fb"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"ok\": true,\n  \"accepted\": true,\n  \"stage\": \"final_design\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -48,
+        176
+      ],
+      "id": "7e4f6206-8382-4270-be21-8be15794b51d",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "fd-run-id",
+              "name": "runId",
+              "value": "={{ $json.body.runId }}",
+              "type": "string"
+            },
+            {
+              "id": "fd-run-key",
+              "name": "runKey",
+              "value": "={{ $json.body.runKey }}",
+              "type": "string"
+            },
+            {
+              "id": "fd-stage",
+              "name": "stage",
+              "value": "={{ $json.body.stage }}",
+              "type": "string"
+            },
+            {
+              "id": "fd-task-id",
+              "name": "taskId",
+              "value": "={{ $json.body.taskId }}",
+              "type": "string"
+            },
+            {
+              "id": "fd-final-design-id",
+              "name": "finalDesignId",
+              "value": "={{ $json.body.finalDesignId }}",
+              "type": "string"
+            },
+            {
+              "id": "fd-confirmed-draft-id",
+              "name": "confirmedDraftId",
+              "value": "={{ $json.body.confirmedDraftId }}",
+              "type": "string"
+            },
+            {
+              "id": "fd-confirmed-draft-proxy",
+              "name": "confirmedDraftImageProxyUrl",
+              "value": "={{ $json.body.confirmedDraft.draftImageProxyUrl }}",
+              "type": "string"
+            },
+            {
+              "id": "fd-confirmed-draft-prompt",
+              "name": "confirmedDraftPrompt",
+              "value": "={{ $json.body.confirmedDraft.draftPrompt || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "fd-layout-policy",
+              "name": "layoutFidelityPolicy",
+              "value": "={{ $json.body.layoutFidelityPolicy || {} }}",
+              "type": "object"
+            },
+            {
+              "id": "fd-provider",
+              "name": "provider",
+              "value": "={{ $json.body.execution.provider || 'openai' }}",
+              "type": "string"
+            },
+            {
+              "id": "fd-model",
+              "name": "model",
+              "value": "={{ $json.body.execution.model || 'gpt-image-1' }}",
+              "type": "string"
+            },
+            {
+              "id": "fd-model-options",
+              "name": "modelOptions",
+              "value": "={{ $json.body.execution.modelOptions || {} }}",
+              "type": "object"
+            },
+            {
+              "id": "fd-rendered-prompt",
+              "name": "renderedPrompt",
+              "value": "={{ $json.body.execution.renderedPrompt || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "fd-prompt-version",
+              "name": "promptVersion",
+              "value": "={{ $json.body.execution.promptVersion || null }}",
+              "type": "number"
+            },
+            {
+              "id": "fd-rendered-prompt-hash",
+              "name": "renderedPromptHash",
+              "value": "={{ $json.body.execution.renderedPromptHash || '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        160,
+        176
+      ],
+      "id": "e931edc9-799a-412f-ac36-807f923a0712",
+      "name": "Normalize Final Design Payload"
+    },
+    {
+      "parameters": {
+        "url": "https://promo-web-builder.vercel.app/api/promo-generation-runs",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "runId",
+              "value": "={{ $json.runId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        352,
+        176
+      ],
+      "id": "d5d6ba8a-883c-4e29-9e3a-0256e6cbe733",
+      "name": "Get Generation Run State"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/images/edits",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer __RETAIN_EXISTING_N8N_KEY__"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "image",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "model",
+              "value": "={{ $('Normalize Final Design Payload').item.json.model || 'gpt-image-1' }}"
+            },
+            {
+              "name": "prompt",
+              "value": "={{ String($('Normalize Final Design Payload').item.json.renderedPrompt || '').slice(0, 30000) }}"
+            },
+            {
+              "name": "input_fidelity",
+              "value": "={{ $('Normalize Final Design Payload').item.json.modelOptions.inputFidelity || 'high' }}"
+            },
+            {
+              "name": "quality",
+              "value": "={{ $('Normalize Final Design Payload').item.json.modelOptions.quality || 'high' }}"
+            },
+            {
+              "name": "size",
+              "value": "={{ $('Normalize Final Design Payload').item.json.modelOptions.size || '1024x1536' }}"
+            },
+            {
+              "name": "n",
+              "value": "={{ 1 }}"
+            }
+          ]
+        },
+        "options": {},
+        "contentType": "multipart-form-data"
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1120,
+        272
+      ],
+      "id": "34aeeb55-6913-4a32-95cf-f5a8bfba5b26",
+      "name": "Generate Final Design with OpenAI",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "fd-base64-length",
+              "name": "base64Length",
+              "value": "={{ ($json.finalImageBase64 || '').length }}",
+              "type": "number"
+            },
+            {
+              "id": "fd-has-base64",
+              "name": "hasBase64",
+              "value": "={{ Boolean($json.finalImageBase64) }}",
+              "type": "boolean"
+            },
+            {
+              "id": "fd-final-image-base64",
+              "name": "finalImageBase64",
+              "value": "={{ $json.finalImageBase64 || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "fd-generation-error",
+              "name": "generationError",
+              "value": "={{ $json.generationError || ($json.finalImageBase64 ? '' : 'Image generation returned no image') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1504,
+        176
+      ],
+      "id": "59cea5d0-2110-4db9-bc87-5da1ea30320a",
+      "name": "Check Final Image Base64"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "https://promo-web-builder.vercel.app/api/promo-generation-final-designs",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "finalDesignId",
+              "value": "={{ $('Normalize Final Design Payload').item.json.finalDesignId }}"
+            },
+            {
+              "name": "status",
+              "value": "={{ $('Check Final Image Base64').item.json.hasBase64 ? 'ready' : 'failed' }}"
+            },
+            {
+              "name": "errorMessage",
+              "value": "={{ $('Check Final Image Base64').item.json.generationError }}"
+            },
+            {
+              "name": "finalImageBase64",
+              "value": "={{ $('Check Final Image Base64').item.json.finalImageBase64 }}"
+            },
+            {
+              "name": "finalPrompt",
+              "value": "={{ $('Normalize Final Design Payload').item.json.renderedPrompt }}"
+            },
+            {
+              "name": "promptMeta",
+              "value": "={{ { promptVersion: $('Normalize Final Design Payload').item.json.promptVersion, renderedPromptHash: $('Normalize Final Design Payload').item.json.renderedPromptHash } }}"
+            },
+            {
+              "name": "modelMeta",
+              "value": "={{ { provider: $('Normalize Final Design Payload').item.json.provider, model: $('Normalize Final Design Payload').item.json.model, modelOptions: $('Normalize Final Design Payload').item.json.modelOptions, inputFidelity: $('Normalize Final Design Payload').item.json.modelOptions.inputFidelity || 'high', referenceMode: 'image_edit' } }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1696,
+        176
+      ],
+      "id": "7685de01-cbac-439e-8cfc-3282820c7fdc",
+      "name": "Save Final Design Result"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Normalize Final Design Payload').item.json.confirmedDraftImageProxyUrl }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "data"
+            }
+          }
+        }
+      },
+      "id": "fd-download-confirmed-lofi",
+      "name": "Download Confirmed LO-FI Image",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        704,
+        176
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "final-provider-google",
+              "leftValue": "={{ $('Normalize Final Design Payload').item.json.provider }}",
+              "rightValue": "google",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "final-provider-router",
+      "name": "Route Final Design Provider",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        928,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const buffer = await this.helpers.getBinaryDataBuffer(0, 'data');\nconst normalized = $('Normalize Final Design Payload').item.json;\nreturn [{ json: { ...normalized, geminiImageBase64: buffer.toString('base64'), geminiImageMimeType: $binary.data?.mimeType || 'image/png' } }];"
+      },
+      "id": "prepare-gemini-final-image",
+      "name": "Prepare Gemini Image Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1088,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://generativelanguage.googleapis.com/v1beta/interactions' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-goog-api-key",
+              "value": "__RETAIN_EXISTING_GEMINI_KEY__"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: String($json.model || 'gemini-3.1-flash-image').replace(/^models\\//, ''), input: [{ type: 'text', text: String($json.renderedPrompt || '').slice(0, 30000) }, { type: 'image', mime_type: $json.geminiImageMimeType || 'image/png', data: $json.geminiImageBase64 }], response_format: { type: 'image', mime_type: 'image/jpeg', aspect_ratio: $json.modelOptions?.aspectRatio || '2:3', image_size: $json.modelOptions?.imageSize || '2K' } }) }}",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "generate-final-gemini",
+      "name": "Generate Final Design with Gemini",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1280,
+        80
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $json || {};\nconst findImage = (value, seen = new Set()) => {\n  if (!value || typeof value !== 'object' || seen.has(value)) return null;\n  seen.add(value);\n  if (value.inlineData?.data) return { data: value.inlineData.data, mimeType: value.inlineData.mimeType || value.inlineData.mime_type };\n  if (value.inline_data?.data) return { data: value.inline_data.data, mimeType: value.inline_data.mime_type || value.inline_data.mimeType };\n  if (value.type === 'image' && value.data) return { data: value.data, mimeType: value.mime_type || value.mimeType };\n  for (const child of Object.values(value)) {\n    if (Array.isArray(child)) {\n      for (const item of child) { const found = findImage(item, seen); if (found) return found; }\n    } else {\n      const found = findImage(child, seen); if (found) return found;\n    }\n  }\n  return null;\n};\nconst direct = response.data?.[0]?.b64_json ? { data: response.data[0].b64_json, mimeType: 'image/png' } : null;\nconst image = direct || findImage(response) || {};\nconst apiError = response.error?.message || response.message || response.error || '';\nreturn [{ json: { provider: $('Normalize Final Design Payload').item.json.provider, finalImageBase64: image.data || '', finalImageMimeType: image.mimeType || 'image/png', generationError: image.data ? '' : String(apiError || 'Image generation returned no image') } }];"
+      },
+      "id": "normalize-final-provider-result",
+      "name": "Normalize Final Provider Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1312,
+        176
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Final Design Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Generation Run State": {
+      "main": [
+        [
+          {
+            "node": "Download Confirmed LO-FI Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Final Image Base64": {
+      "main": [
+        [
+          {
+            "node": "Save Final Design Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Final Design Payload": {
+      "main": [
+        [
+          {
+            "node": "Get Generation Run State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Confirmed LO-FI Image": {
+      "main": [
+        [
+          {
+            "node": "Route Final Design Provider",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Final Design Provider": {
+      "main": [
+        [
+          {
+            "node": "Prepare Gemini Image Input",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Generate Final Design with OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Gemini Image Input": {
+      "main": [
+        [
+          {
+            "node": "Generate Final Design with Gemini",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Final Design with OpenAI": {
+      "main": [
+        [
+          {
+            "node": "Normalize Final Provider Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Final Design with Gemini": {
+      "main": [
+        [
+          {
+            "node": "Normalize Final Provider Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Final Provider Result": {
+      "main": [
+        [
+          {
+            "node": "Check Final Image Base64",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "nodeGroups": []
+}

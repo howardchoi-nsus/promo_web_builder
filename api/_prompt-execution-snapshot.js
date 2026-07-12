@@ -107,8 +107,11 @@ function validateStageModelConfig(type, prompt) {
     return true;
   }
   if (type === "final_design") {
-    if (provider !== "openai") fail("final_design currently supports the openai provider only");
-    if (!/^gpt-image-/i.test(model)) fail("final_design requires a GPT Image model with image edit support");
+    const openAiImageEdit = provider === "openai" && /^gpt-image-/i.test(model);
+    const geminiImageEdit = provider === "google" && /^gemini-(?:2\.5-flash-image|3(?:\.1)?-(?:flash|pro)-image)$/i.test(model);
+    if (!openAiImageEdit && !geminiImageEdit) {
+      fail("final_design requires an approved OpenAI GPT Image or Google Gemini image-edit model");
+    }
     if (responseFormat !== "image") fail("final_design responseFormat must be image");
     return true;
   }
