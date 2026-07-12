@@ -81,7 +81,7 @@ async function main() {
   assert.equal(execution.model, "gpt-image-1");
   assert.equal(execution.modelOptions.inputFidelity, "high");
   assert.deepEqual(
-    normalizeExecutionModelOptions({ input_fidelity: "low", output_format: "png" }),
+    normalizeExecutionModelOptions({ provider: "openai", model: "gpt-image-1", input_fidelity: "low", output_format: "png" }),
     { inputFidelity: "low", outputFormat: "png" }
   );
 

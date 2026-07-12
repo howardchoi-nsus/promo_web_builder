@@ -21,6 +21,8 @@ function normalizeExecutionModelOptions(value = {}) {
   delete normalized.output_format;
   delete normalized.max_tokens;
   delete normalized.response_format;
+  delete normalized.provider;
+  delete normalized.model;
   return normalized;
 }
 
