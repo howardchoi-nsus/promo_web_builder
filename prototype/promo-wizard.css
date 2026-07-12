@@ -154,6 +154,9 @@ a {
 }
 
 .wizard-panel {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
   min-height: 420px;
   padding: 24px;
 }
