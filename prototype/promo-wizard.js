@@ -299,39 +299,18 @@ function conceptThumbnailUrl(doc) {
     .find((value) => /^(https?:\/\/|\/|data:image\/|blob:)/i.test(String(value || "")));
   if (suppliedUrl) return suppliedUrl;
 
-  const group = doc?.styleClassification?.primaryGroup?.slug || doc?.styleClassification?.primaryGroup || "unclassified";
-  const palettes = {
-    dense_systematic: ["#07151c", "#17c3b2", "#d8fff9", "#16313b"],
-    premium_editorial: ["#17130f", "#caa66a", "#fff7e8", "#3b3022"],
-    high_impact_promo: ["#170b19", "#ff476f", "#fff0f4", "#4b1730"],
-    playful_immersive: ["#160d32", "#9b6cff", "#ffce55", "#342064"],
-    minimal_product: ["#edf2f7", "#377dff", "#172033", "#d9e3f0"],
-    content_rich_commerce: ["#f2eadc", "#237a57", "#172b24", "#d6c8ad"],
-    unclassified: ["#101722", "#7894ff", "#f4f7fb", "#29364b"],
+  const groupValue = doc?.styleClassification?.primaryGroup;
+  const group = typeof groupValue === "string" ? groupValue : groupValue?.slug;
+  const images = {
+    dense_systematic: "assets/concept-thumbnails/dense-systematic.jpg",
+    premium_editorial: "assets/concept-thumbnails/premium-editorial.jpg",
+    high_impact_promo: "assets/concept-thumbnails/high-impact-promo.jpg",
+    playful_immersive: "assets/concept-thumbnails/playful-immersive.jpg",
+    minimal_product: "assets/concept-thumbnails/minimal-product.jpg",
+    content_rich_commerce: "assets/concept-thumbnails/content-rich-commerce.jpg",
+    unclassified: "assets/concept-thumbnails/unclassified.jpg",
   };
-  const [background, accent, text, surface] = palettes[group] || palettes.unclassified;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="680" height="360" viewBox="0 0 680 360">
-    <rect width="680" height="360" fill="${background}"/>
-    <rect x="34" y="28" width="110" height="12" rx="6" fill="${text}" opacity=".9"/>
-    <rect x="510" y="27" width="54" height="14" rx="7" fill="${text}" opacity=".35"/>
-    <rect x="576" y="20" width="70" height="28" rx="14" fill="${accent}"/>
-    <rect x="34" y="90" width="265" height="26" rx="5" fill="${text}"/>
-    <rect x="34" y="128" width="210" height="16" rx="4" fill="${text}" opacity=".55"/>
-    <rect x="34" y="158" width="92" height="34" rx="17" fill="${accent}"/>
-    <rect x="350" y="78" width="296" height="132" rx="18" fill="${surface}"/>
-    <circle cx="500" cy="144" r="48" fill="${accent}" opacity=".9"/>
-    <path d="M452 178l45-62 28 34 27-20 58 48z" fill="${text}" opacity=".72"/>
-    <rect x="34" y="246" width="188" height="82" rx="14" fill="${surface}"/>
-    <rect x="246" y="246" width="188" height="82" rx="14" fill="${surface}"/>
-    <rect x="458" y="246" width="188" height="82" rx="14" fill="${surface}"/>
-    <rect x="52" y="264" width="66" height="9" rx="4" fill="${accent}"/>
-    <rect x="264" y="264" width="66" height="9" rx="4" fill="${accent}"/>
-    <rect x="476" y="264" width="66" height="9" rx="4" fill="${accent}"/>
-    <rect x="52" y="284" width="132" height="8" rx="4" fill="${text}" opacity=".45"/>
-    <rect x="264" y="284" width="132" height="8" rx="4" fill="${text}" opacity=".45"/>
-    <rect x="476" y="284" width="132" height="8" rx="4" fill="${text}" opacity=".45"/>
-  </svg>`;
-  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+  return images[group] || images.unclassified;
 }
 
 function createConceptCard(doc) {
@@ -352,7 +331,7 @@ function createConceptCard(doc) {
   image.loading = "lazy";
   image.addEventListener("error", () => {
     if (image.src !== fallbackUrl) image.src = fallbackUrl;
-  });
+  }, { once: true });
   thumbnail.append(image);
 
   const header = document.createElement("span");
