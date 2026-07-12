@@ -3,6 +3,11 @@ const {
   createPromptExecutionSnapshot,
   validateStageModelConfig,
 } = require("../api/_prompt-execution-snapshot");
+const {
+  FINAL_DESIGN_PROMPT_MAX_LENGTH,
+  fitFinalDesignPromptVariables,
+} = require("../api/_final-design-prompt-budget");
+const { renderPrompt } = require("../api/_prompt-template-store");
 
 async function main() {
   validateStageModelConfig("integrated_brief", {
@@ -65,6 +70,22 @@ async function main() {
   assert.equal(snapshot.promptConfig.modelOptions.inputFidelity, "high");
   assert.match(snapshot.promptConfig.renderedPrompt, /preserveSectionOrder/);
   assert.match(snapshot.promptConfig.renderedPromptHash, /^[0-9a-f]{64}$/);
+
+  const oversized = fitFinalDesignPromptVariables(
+    "Brief={{integratedDesignBriefMarkdown}}\nMapping={{sectionContentMapping}}\nPolicy={{layoutFidelityPolicy}}",
+    {
+      integratedDesignBriefMarkdown: `HEAD-${"A".repeat(35000)}-TAIL`,
+      sectionContentMapping: "B".repeat(8000),
+      layoutFidelityPolicy: "preserveSectionOrder=true",
+    },
+    renderPrompt
+  );
+  assert.ok(oversized.renderedPrompt.length <= FINAL_DESIGN_PROMPT_MAX_LENGTH);
+  assert.equal(oversized.lengthGuard.compacted, true);
+  assert.ok(oversized.lengthGuard.originalLength > 32000);
+  assert.match(oversized.renderedPrompt, /HEAD-/);
+  assert.match(oversized.renderedPrompt, /-TAIL/);
+  assert.match(oversized.renderedPrompt, /preserveSectionOrder=true/);
 
   console.log("Worker prompt contract test passed");
 }

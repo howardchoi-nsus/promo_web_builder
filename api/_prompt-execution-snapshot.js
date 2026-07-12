@@ -5,6 +5,7 @@ const {
   toPromptTemplate,
   unresolvedVariables,
 } = require("./_prompt-template-store");
+const { fitFinalDesignPromptVariables } = require("./_final-design-prompt-budget");
 
 async function createPromptExecutionSnapshot(sql, type, variables = {}) {
   await ensureDefaultPromptTemplates(sql);
@@ -48,7 +49,10 @@ async function createPromptExecutionSnapshot(sql, type, variables = {}) {
     throw error;
   }
 
-  const renderedPrompt = renderPrompt(prompt.body, variables);
+  const fitted = type === "final_design"
+    ? fitFinalDesignPromptVariables(prompt.body, variables, renderPrompt)
+    : { variables, renderedPrompt: renderPrompt(prompt.body, variables), lengthGuard: null };
+  const renderedPrompt = fitted.renderedPrompt;
   const unresolved = unresolvedVariables(renderedPrompt);
   if (unresolved.length) {
     const error = new Error(`Rendered ${type} prompt contains unresolved variables: ${unresolved.join(", ")}`);
@@ -73,7 +77,8 @@ async function createPromptExecutionSnapshot(sql, type, variables = {}) {
       modelOptions,
       renderedPrompt,
       renderedPromptHash: sha256(renderedPrompt),
-      variableHash: sha256(JSON.stringify(variables)),
+      variableHash: sha256(JSON.stringify(fitted.variables)),
+      ...(fitted.lengthGuard ? { lengthGuard: fitted.lengthGuard } : {}),
     },
   };
 }
