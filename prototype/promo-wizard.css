@@ -221,60 +221,9 @@ a {
   margin-top: 16px;
 }
 
-.selected-concept-panel,
 .concept-card {
   border: 1px solid var(--line);
   background: var(--surface);
-}
-
-.selected-concept-panel {
-  align-self: start;
-  min-height: 0;
-  padding: 18px;
-}
-
-.selected-concept-panel h3 {
-  margin: 0;
-  font-size: 22px;
-  letter-spacing: 0;
-}
-
-.selected-concept-panel p {
-  color: var(--sub);
-  font-size: 13px;
-}
-
-.selected-concept-panel dl {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 18px 0 0;
-}
-
-.selected-concept-panel dl > div {
-  display: grid;
-  grid-template-columns: 78px minmax(0, 1fr);
-  gap: 10px;
-  min-width: 220px;
-  flex: 1;
-  padding-top: 8px;
-  border-top: 1px solid var(--line);
-}
-
-.selected-concept-panel dt,
-.selected-concept-panel dd {
-  margin: 0;
-  min-width: 0;
-  font-size: 12px;
-}
-
-.selected-concept-panel dt {
-  color: var(--sub);
-  font-weight: 900;
-}
-
-.selected-concept-panel dd {
-  overflow-wrap: anywhere;
 }
 
 .concept-carousel {

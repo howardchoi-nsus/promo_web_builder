@@ -1113,30 +1113,6 @@ function renderFinalStep() {
   placeholders.append(summary, largePreview, list);
 }
 
-function createSelectedConceptPanel(doc) {
-  const panel = document.createElement("article");
-  panel.className = "selected-concept-panel";
-
-  appendTextElement(panel, "span", "eyebrow", "A Section Selected Concept");
-  appendTextElement(panel, "h3", "", doc?.brandName || "No concept selected");
-  appendTextElement(panel, "p", "", doc ? conceptSummary(doc) : "A섹션에서 사용할 Design MD를 선택해 주세요.");
-
-  const list = document.createElement("dl");
-  [
-    ["Source", doc?.sourceName || "-"],
-    ["Updated", doc?.updatedAt || "-"],
-    ["Tokens", compactCount(doc?.summary?.tokenCount)],
-  ].forEach(([label, value]) => {
-    const row = document.createElement("div");
-    appendTextElement(row, "dt", "", label);
-    appendTextElement(row, "dd", "", value);
-    list.append(row);
-  });
-
-  panel.append(list);
-  return panel;
-}
-
 function randomToken(length = 5) {
   const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789";
   const values = new Uint8Array(length);
@@ -1511,7 +1487,6 @@ function renderConceptStep() {
   }
 
   const docs = filteredDocuments();
-  const selected = selectedDocument();
   if (!docs.length) {
     const empty = document.createElement("article");
     empty.className = "placeholder-card";
@@ -1520,8 +1495,6 @@ function renderConceptStep() {
     placeholders.append(empty);
     return;
   }
-
-  const selectedPanel = createSelectedConceptPanel(selected);
 
   const carousel = document.createElement("section");
   carousel.className = "concept-carousel";
@@ -1566,7 +1539,7 @@ function renderConceptStep() {
   });
 
   carousel.append(previous, list, next);
-  placeholders.append(selectedPanel, carousel);
+  placeholders.append(carousel);
   requestAnimationFrame(() => {
     list.querySelector(".concept-card.is-selected")?.scrollIntoView({ inline: "center", block: "nearest" });
     updateControls();
