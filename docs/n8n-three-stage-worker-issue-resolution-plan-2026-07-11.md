@@ -487,3 +487,22 @@ n8n:
 - n8n HTTP Request credential: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/
 - OpenAI Images API: https://platform.openai.com/docs/api-reference/images
 - GPT Image 1 모델 및 가격: https://developers.openai.com/api/docs/models/gpt-image-1
+
+## 13. 2026-07-12 구현 및 디버깅 결과
+
+### 완료
+
+- Integrated Brief와 Lo-Fi Draft 백업 워커의 provider/model snapshot 및 일반 실패 처리를 반영했다.
+- Final Design 백업 워커를 텍스트 기반 `images/generations`에서 LO-FI binary 입력 기반 `images/edits` multipart 호출로 전환했다.
+- Confirmed LO-FI proxy 다운로드, 다운로드/편집 각 1회 재시도, `input_fidelity=high`, 실패 callback과 오류 메시지 저장을 반영했다.
+- Final 백업 워크플로를 별도 Webhook 경로로 게시하고 실제 호출했다.
+- n8n 실행 `1179`는 9개 노드를 약 18초에 모두 통과했으며, OpenAI 오류도 후속 callback까지 전달됐다.
+- DB에서 `provider=openai`, `model=gpt-image-1`, `inputFidelity=high`, `referenceMode=image_edit`와 `final_design_failed` 상태를 확인했다.
+
+### 현재 외부 차단 사항
+
+OpenAI가 `billing_hard_limit_reached`를 반환하므로 실제 Final 이미지 생성 및 LO-FI 대비 시각 회귀 검증은 완료할 수 없다. 결제 한도 해제 후 동일 검증 payload로 1회 재실행하고 `ready`, 비어 있지 않은 `final_image_url`, 최종 이미지의 레이아웃 보존 여부를 확인해야 한다.
+
+### 배포 판단
+
+실패 경로와 데이터 저장은 검증됐지만 성공 이미지 경로는 결제 한도 때문에 검증되지 않았다. 따라서 기존 운영 Final Worker 교체는 보류하고, 수정본은 별도 백업 Webhook에 유지한다. 이 계획의 완료 범위는 레이아웃 fidelity이며 브랜드 스타일 fidelity는 별도 트랙이다.
