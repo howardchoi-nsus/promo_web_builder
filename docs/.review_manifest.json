@@ -189,5 +189,9 @@
   "n8n-three-stage-worker-and-admin-llm-discussion-2026-07-11.md": "acbe4ff9ba5908020c8516d51f3309dce3d560419201c9cd0dc5ca8a22a263c0",
   "claude/review-lofi-final-design-fidelity-discussion-2026-07-11.md": "b6876206006a15ed65c893e9fa04208d5c4180a396d24705ab0739db5a230ba3",
   "claude/review-n8n-three-stage-worker-and-admin-llm-discussion-2026-07-11.md": "871118ba6df99bec83c4a7808e1da91e228e8dc9fdc044efa3c7fe9462b033ce",
-  "codex-project-transfer-env-guide-2026-07-11.md": "267e2ac6f4806363820d91471b81e570ac5c5f262cb5f3997c46e6557395a701"
+  "codex-project-transfer-env-guide-2026-07-11.md": "267e2ac6f4806363820d91471b81e570ac5c5f262cb5f3997c46e6557395a701",
+  "files": {
+    "handoff-2026-07-12.md": "c7efae2d2954887f5f4eab1695a87b693fa4ff22328e101807b1834a94febafb",
+    "admin-llm-to-n8n-application-plan-2026-07-12.md": "0eb0637034b086c7d0ed0ddbb755ed9a4ec5c8e470ff789991eab3aca65252b9"
+  }
 }
