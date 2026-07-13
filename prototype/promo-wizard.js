@@ -822,7 +822,7 @@ function createLofiDraftCard(draft) {
   return card;
 }
 
-function createLofiLargePreview(draft) {
+function createLofiLargePreview(draft, draftList) {
   const panel = document.createElement("section");
   panel.className = "lofi-large-preview";
   appendTextElement(panel, "span", "eyebrow", "LO-FI Preview");
@@ -830,14 +830,19 @@ function createLofiLargePreview(draft) {
 
   const frame = document.createElement("div");
   frame.className = "lofi-large-preview-frame";
+  if (draftList) frame.append(draftList);
+
+  const media = document.createElement("div");
+  media.className = "lofi-large-preview-media";
   if (draft?.draftImageUrl || (draft && isReadyDraft(draft))) {
     const image = document.createElement("img");
     image.alt = `LO-FI draft attempt ${draft.draftAttempt || ""}`;
     image.src = draftImageSrc(draft);
-    frame.append(image);
+    media.append(image);
   } else {
-    appendTextElement(frame, "span", "", draft ? "Draft image is not ready yet." : "Create a LO-FI draft, then select a thumbnail.");
+    appendTextElement(media, "span", "", draft ? "Draft image is not ready yet." : "Create a LO-FI draft, then select a thumbnail.");
   }
+  frame.append(media);
   panel.append(frame);
   return panel;
 }
@@ -1027,8 +1032,6 @@ function renderLofiStep() {
   if (runError) appendTextElement(actionPanel, "small", "lofi-error", runError);
   summary.append(actionPanel);
 
-  const largePreview = createLofiLargePreview(selectedDraft);
-
   const list = document.createElement("section");
   list.className = "lofi-draft-list";
   if (!drafts.length) {
@@ -1041,7 +1044,9 @@ function renderLofiStep() {
     drafts.forEach((draft) => list.append(createLofiDraftCard(draft)));
   }
 
-  placeholders.append(summary, largePreview, list);
+  const largePreview = createLofiLargePreview(selectedDraft, list);
+
+  placeholders.append(summary, largePreview);
 }
 
 function renderFinalStep() {
