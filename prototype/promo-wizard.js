@@ -275,10 +275,43 @@ function selectDocument(id) {
   renderStep();
 }
 
+function conceptThumbnailUrl(doc) {
+  const suppliedUrl = [doc?.thumbnailUrl, doc?.thumbnail_url, doc?.coverImageUrl, doc?.previewImageUrl]
+    .find((value) => /^(https?:\/\/|\/|data:image\/|blob:)/i.test(String(value || "")));
+  if (suppliedUrl) return suppliedUrl;
+
+  const groupValue = doc?.styleClassification?.primaryGroup;
+  const group = typeof groupValue === "string" ? groupValue : groupValue?.slug;
+  const images = {
+    dense_systematic: "assets/concept-thumbnails/dense-systematic.jpg",
+    premium_editorial: "assets/concept-thumbnails/premium-editorial.jpg",
+    high_impact_promo: "assets/concept-thumbnails/high-impact-promo.jpg",
+    playful_immersive: "assets/concept-thumbnails/playful-immersive.jpg",
+    minimal_product: "assets/concept-thumbnails/minimal-product.jpg",
+    content_rich_commerce: "assets/concept-thumbnails/content-rich-commerce.jpg",
+    unclassified: "assets/concept-thumbnails/unclassified.jpg",
+  };
+  return images[group] || images.unclassified;
+}
+
 function createConceptCard(doc) {
   const selected = doc.id === selectedDocumentId;
   const card = document.createElement("article");
   card.className = `concept-card${selected ? " is-selected" : ""}`;
+
+  const thumbnail = document.createElement("span");
+  thumbnail.className = "concept-thumbnail";
+  const image = document.createElement("img");
+  const fallbackUrl = conceptThumbnailUrl({
+    styleClassification: doc?.styleClassification,
+  });
+  image.src = conceptThumbnailUrl(doc);
+  image.alt = `${doc.brandName || doc.slug || "Design MD"} 테마 미리보기`;
+  image.loading = "lazy";
+  image.addEventListener("error", () => {
+    if (image.src !== fallbackUrl) image.src = fallbackUrl;
+  }, { once: true });
+  thumbnail.append(image);
 
   const header = document.createElement("span");
   header.className = "concept-card-header";
@@ -313,6 +346,7 @@ function createConceptCard(doc) {
       tags.append(item);
     });
 
+<<<<<<< HEAD
   const select = document.createElement("button");
   select.className = "concept-select-action";
   select.type = "button";
@@ -321,6 +355,10 @@ function createConceptCard(doc) {
 
   card.append(header, summary, meta, tags, select);
   return card;
+=======
+  button.append(thumbnail, header, summary, meta, tags);
+  return button;
+>>>>>>> caad4395f7ab4e395d9aa29a23ff740b11fa4493
 }
 
 function appendTextElement(parent, tagName, className, text) {
@@ -1098,30 +1136,6 @@ function renderFinalStep() {
   placeholders.append(summary, largePreview, list);
 }
 
-function createSelectedConceptPanel(doc) {
-  const panel = document.createElement("article");
-  panel.className = "selected-concept-panel";
-
-  appendTextElement(panel, "span", "eyebrow", "A Section Selected Concept");
-  appendTextElement(panel, "h3", "", doc?.brandName || "No concept selected");
-  appendTextElement(panel, "p", "", doc ? conceptSummary(doc) : "A섹션에서 사용할 Design MD를 선택해 주세요.");
-
-  const list = document.createElement("dl");
-  [
-    ["Source", doc?.sourceName || "-"],
-    ["Updated", doc?.updatedAt || "-"],
-    ["Tokens", compactCount(doc?.summary?.tokenCount)],
-  ].forEach(([label, value]) => {
-    const row = document.createElement("div");
-    appendTextElement(row, "dt", "", label);
-    appendTextElement(row, "dd", "", value);
-    list.append(row);
-  });
-
-  panel.append(list);
-  return panel;
-}
-
 function randomToken(length = 5) {
   const alphabet = "abcdefghijklmnopqrstuvwxyz0123456789";
   const values = new Uint8Array(length);
@@ -1495,8 +1509,12 @@ function renderConceptStep() {
     return;
   }
 
+<<<<<<< HEAD
   const docs = designDocuments;
   const selected = selectedDocument();
+=======
+  const docs = filteredDocuments();
+>>>>>>> caad4395f7ab4e395d9aa29a23ff740b11fa4493
   if (!docs.length) {
     const empty = document.createElement("article");
     empty.className = "placeholder-card";
@@ -1506,13 +1524,54 @@ function renderConceptStep() {
     return;
   }
 
-  const selectedPanel = createSelectedConceptPanel(selected);
+  const carousel = document.createElement("section");
+  carousel.className = "concept-carousel";
+  carousel.setAttribute("aria-label", "Design MD concept carousel");
+
+  const previous = document.createElement("button");
+  previous.className = "concept-carousel-control concept-carousel-previous";
+  previous.type = "button";
+  previous.setAttribute("aria-label", "이전 디자인 콘셉트 보기");
+  previous.textContent = "←";
 
   const list = document.createElement("div");
   list.className = "concept-list";
+  list.tabIndex = 0;
   docs.forEach((doc) => list.append(createConceptCard(doc)));
 
-  placeholders.append(selectedPanel, list);
+  const next = document.createElement("button");
+  next.className = "concept-carousel-control concept-carousel-next";
+  next.type = "button";
+  next.setAttribute("aria-label", "다음 디자인 콘셉트 보기");
+  next.textContent = "→";
+
+  const updateControls = () => {
+    const maxScroll = Math.max(0, list.scrollWidth - list.clientWidth);
+    previous.disabled = list.scrollLeft <= 2;
+    next.disabled = list.scrollLeft >= maxScroll - 2;
+  };
+  const moveCarousel = (direction) => {
+    const card = list.querySelector(".concept-card");
+    const gap = Number.parseFloat(getComputedStyle(list).gap) || 12;
+    const distance = card ? card.getBoundingClientRect().width + gap : list.clientWidth * 0.8;
+    list.scrollBy({ left: direction * distance, behavior: "smooth" });
+  };
+
+  previous.addEventListener("click", () => moveCarousel(-1));
+  next.addEventListener("click", () => moveCarousel(1));
+  list.addEventListener("scroll", updateControls, { passive: true });
+  list.addEventListener("keydown", (event) => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    moveCarousel(event.key === "ArrowLeft" ? -1 : 1);
+  });
+
+  carousel.append(previous, list, next);
+  placeholders.append(carousel);
+  requestAnimationFrame(() => {
+    list.querySelector(".concept-card.is-selected")?.scrollIntoView({ inline: "center", block: "nearest" });
+    updateControls();
+  });
 }
 
 async function loadDesignDocuments(options = {}) {

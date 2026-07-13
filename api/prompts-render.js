@@ -7,6 +7,7 @@ const {
   toPromptTemplate,
   unresolvedVariables,
 } = require("./_prompt-template-store");
+const { fitFinalDesignPromptVariables } = require("./_final-design-prompt-budget");
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
@@ -62,7 +63,10 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    const renderedPrompt = renderPrompt(prompt.body, variables);
+    const fitted = type === "final_design"
+      ? fitFinalDesignPromptVariables(prompt.body, variables, renderPrompt)
+      : { variables, renderedPrompt: renderPrompt(prompt.body, variables), lengthGuard: null };
+    const renderedPrompt = fitted.renderedPrompt;
     const unresolved = unresolvedVariables(renderedPrompt);
     if (unresolved.length) {
       return res.status(400).json({
@@ -72,7 +76,7 @@ module.exports = async function handler(req, res) {
     }
 
     const renderedPromptHash = sha256(renderedPrompt);
-    const variableHash = sha256(JSON.stringify(variables));
+    const variableHash = sha256(JSON.stringify(fitted.variables));
 
     return res.status(200).json({
       ok: true,
@@ -108,6 +112,7 @@ module.exports = async function handler(req, res) {
         },
         renderedPromptHash,
         variableHash,
+        ...(fitted.lengthGuard ? { lengthGuard: fitted.lengthGuard } : {}),
       },
     });
   } catch (error) {

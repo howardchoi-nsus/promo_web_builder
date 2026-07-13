@@ -1,0 +1,364 @@
+{
+  "name": "Promo Lo-Fi Draft Worker admin-driven",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "promo-lofi-draft-worker",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "cdea4224-8c8d-4a2e-8413-cf2989f7da93",
+      "name": "Webhook",
+      "webhookId": "cbdafcbb-169b-45e8-9d71-3924a3413fdd"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"ok\": true,\n  \"accepted\": true,\n  \"stage\": \"lofi_draft\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        208,
+        0
+      ],
+      "id": "f0043275-127d-4528-8e8f-698232bd69ec",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6f650c92-42f4-4ac1-91ab-6822c1a95241",
+              "name": "runId",
+              "value": "={{ $json.body.runId }}",
+              "type": "string"
+            },
+            {
+              "id": "ad3f5bcf-41a6-412b-b7ba-0c57d26fb541",
+              "name": "runKey",
+              "value": "={{ $json.body.runKey }}",
+              "type": "string"
+            },
+            {
+              "id": "0ccbb705-3a1a-4977-b1a3-d2bd0548d0c3",
+              "name": "stage",
+              "value": "={{ $json.body.stage }}",
+              "type": "string"
+            },
+            {
+              "id": "7423d182-7b58-4c96-a3ee-63b229ae0d27",
+              "name": "draftId",
+              "value": "={{ $json.body.draftId }}",
+              "type": "string"
+            },
+            {
+              "id": "124a371c-727a-495e-a3ff-ee7678210a8a",
+              "name": "draftAttempt",
+              "value": "={{ $json.body.draftAttempt }}",
+              "type": "string"
+            },
+            {
+              "id": "ld-provider",
+              "name": "provider",
+              "value": "={{ $json.body.execution.provider || 'openai' }}",
+              "type": "string"
+            },
+            {
+              "id": "ld-model",
+              "name": "model",
+              "value": "={{ $json.body.execution.model || 'gpt-image-1' }}",
+              "type": "string"
+            },
+            {
+              "id": "ld-model-options",
+              "name": "modelOptions",
+              "value": "={{ $json.body.execution.modelOptions || {} }}",
+              "type": "object"
+            },
+            {
+              "id": "ld-rendered-prompt",
+              "name": "renderedPrompt",
+              "value": "={{ $json.body.execution.renderedPrompt || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "ld-prompt-version",
+              "name": "promptVersion",
+              "value": "={{ $json.body.execution.promptVersion || null }}",
+              "type": "number"
+            },
+            {
+              "id": "ld-rendered-prompt-hash",
+              "name": "renderedPromptHash",
+              "value": "={{ $json.body.execution.renderedPromptHash || '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        416,
+        0
+      ],
+      "id": "a2b668fb-1eb9-424d-b2b8-b8d8653faeb2",
+      "name": "Normalize Draft Payload"
+    },
+    {
+      "parameters": {
+        "url": "https://promo-web-builder.vercel.app/api/promo-generation-runs",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "runId",
+              "value": "={{ $json.runId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        624,
+        0
+      ],
+      "id": "a032d456-852a-4d74-ad5c-4a190fb92531",
+      "name": "Get Generation Run State"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/images/generations",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer __RETAIN_EXISTING_N8N_KEY__"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "={{ $('Normalize Draft Payload').item.json.model }}"
+            },
+            {
+              "name": "prompt",
+              "value": "={{ String($('Normalize Draft Payload').item.json.renderedPrompt || '').slice(0, 30000) }}"
+            },
+            {
+              "name": "size",
+              "value": "={{ $('Normalize Draft Payload').item.json.modelOptions.size || '1024x1536' }}"
+            },
+            {
+              "name": "quality",
+              "value": "={{ $('Normalize Draft Payload').item.json.modelOptions.quality || 'medium' }}"
+            },
+            {
+              "name": "n",
+              "value": "={{ 1 }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "9ba8206a-6c69-488d-8859-4b3b078e512e",
+      "name": "Generate LO-FI Draft Image",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ld-base64-length",
+              "name": "base64Length",
+              "value": "={{ ($json.data?.[0]?.b64_json || '').length }}",
+              "type": "number"
+            },
+            {
+              "id": "ld-has-base64",
+              "name": "hasBase64",
+              "value": "={{ Boolean($json.data?.[0]?.b64_json) }}",
+              "type": "boolean"
+            },
+            {
+              "id": "ld-image-base64",
+              "name": "draftImageBase64",
+              "value": "={{ $json.data?.[0]?.b64_json || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "ld-generation-error",
+              "name": "generationError",
+              "value": "={{ $json.error?.message || $json.message || ($json.data?.[0]?.b64_json ? '' : 'OpenAI image generation returned no image') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1264,
+        336
+      ],
+      "id": "d441d5f4-c5cf-4747-a989-32b0fae5c5f3",
+      "name": "Check Image Base64"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "https://promo-web-builder.vercel.app/api/promo-generation-lofi-drafts",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "draftId",
+              "value": "={{ $('Normalize Draft Payload').item.json.draftId }}"
+            },
+            {
+              "name": "status",
+              "value": "={{ $('Check Image Base64').item.json.hasBase64 ? 'ready' : 'failed' }}"
+            },
+            {
+              "name": "errorMessage",
+              "value": "={{ $('Check Image Base64').item.json.generationError }}"
+            },
+            {
+              "name": "draftImageBase64",
+              "value": "={{ $('Check Image Base64').item.json.draftImageBase64 }}"
+            },
+            {
+              "name": "draftPrompt",
+              "value": "={{ $('Normalize Draft Payload').item.json.renderedPrompt }}"
+            },
+            {
+              "name": "promptMeta",
+              "value": "={{ { promptVersion: $('Normalize Draft Payload').item.json.promptVersion, renderedPromptHash: $('Normalize Draft Payload').item.json.renderedPromptHash } }}"
+            },
+            {
+              "name": "modelMeta",
+              "value": "={{ { provider: $('Normalize Draft Payload').item.json.provider, model: $('Normalize Draft Payload').item.json.model, modelOptions: $('Normalize Draft Payload').item.json.modelOptions } }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1440,
+        336
+      ],
+      "id": "566bb68e-b2d3-42fa-ad3e-d35efbbafc0b",
+      "name": "Save LO-FI Draft Result"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Draft Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Draft Payload": {
+      "main": [
+        [
+          {
+            "node": "Get Generation Run State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Generation Run State": {
+      "main": [
+        [
+          {
+            "node": "Generate LO-FI Draft Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate LO-FI Draft Image": {
+      "main": [
+        [
+          {
+            "node": "Check Image Base64",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Image Base64": {
+      "main": [
+        [
+          {
+            "node": "Save LO-FI Draft Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "nodeGroups": []
+}

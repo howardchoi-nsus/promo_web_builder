@@ -7,6 +7,7 @@ const {
   parseBody,
   toPromptTemplate,
 } = require("./_prompt-template-store");
+const { validateStageModelConfig } = require("./_prompt-execution-snapshot");
 
 // Prompt edits are versioned in place instead of creating a new row per save.
 // Activation/archiving APIs decide which row is live; this endpoint preserves
@@ -169,6 +170,9 @@ async function updatePrompt(req, res) {
   const modelOptions = hasModelOptions
     ? normalizeModelOptions(body.modelOptions || body.model_options)
     : current.model_options || {};
+  if (current.status === "active" && ["integrated_brief", "lofi_draft", "final_design"].includes(current.type)) {
+    validateStageModelConfig(current.type, { provider, model, responseFormat });
+  }
   const updatedRows = await sql`
     update prompt_templates
     set

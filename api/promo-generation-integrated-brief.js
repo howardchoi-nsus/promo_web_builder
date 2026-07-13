@@ -5,11 +5,14 @@ const {
   parseBody,
   resolveRun,
 } = require("./_promo-generation-run-store");
+const { executionModelMeta, workerExecutionSummary } = require("./_worker-execution-contract");
 const {
   buildWorkerPayload,
   shouldTriggerWorker,
   triggerWorker,
 } = require("./_promo-generation-worker-trigger");
+const { createPromptExecutionSnapshot } = require("./_prompt-execution-snapshot");
+const { integratedBriefVariables, requestOrigin } = require("./_promo-generation-prompt-context");
 
 // Integrated brief is the first generated artifact and becomes the contract for
 // image stages. Queueing only creates/updates DB state; n8n owns the long-running
@@ -37,6 +40,13 @@ async function queueIntegratedBrief(req, res) {
   const sql = getSql();
   const run = await resolveRun(sql, runId);
   if (!run) return res.status(404).json({ error: "Generation run not found" });
+  const executionSnapshot = await createPromptExecutionSnapshot(
+    sql,
+    "integrated_brief",
+    integratedBriefVariables(run)
+  );
+  const promptMeta = mergeObject(body.promptMeta, { executionSnapshot });
+  const modelMeta = mergeObject(body.modelMeta, executionModelMeta(executionSnapshot));
 
   const rows = await sql`
     insert into promo_generation_integrated_briefs (
@@ -49,15 +59,15 @@ async function queueIntegratedBrief(req, res) {
     values (
       ${run.id}::uuid,
       'queued',
-      ${JSON.stringify(body.promptMeta || {})}::jsonb,
-      ${JSON.stringify(body.modelMeta || {})}::jsonb,
+      ${JSON.stringify(promptMeta)}::jsonb,
+      ${JSON.stringify(modelMeta)}::jsonb,
       now()
     )
     on conflict (run_id) do update set
       status = 'queued',
       error_message = '',
-      prompt_meta = coalesce(nullif(${JSON.stringify(body.promptMeta || {})}::jsonb, '{}'::jsonb), promo_generation_integrated_briefs.prompt_meta),
-      model_meta = coalesce(nullif(${JSON.stringify(body.modelMeta || {})}::jsonb, '{}'::jsonb), promo_generation_integrated_briefs.model_meta),
+      prompt_meta = ${JSON.stringify(promptMeta)}::jsonb,
+      model_meta = ${JSON.stringify(modelMeta)}::jsonb,
       updated_at = now()
     returning
       id::text,
@@ -85,7 +95,11 @@ async function queueIntegratedBrief(req, res) {
     run,
     stage: "integrated_brief",
     taskId: integratedBrief.integratedBriefId,
-    extra: { integratedBriefId: integratedBrief.integratedBriefId },
+    extra: {
+      integratedBriefId: integratedBrief.integratedBriefId,
+      taskDetailUrl: buildTaskDetailUrl(req, run.id),
+      execution: workerExecutionSummary(executionSnapshot),
+    },
   });
   const workerTriggerRequested = shouldTriggerWorker(body);
   const workerTrigger = workerTriggerRequested
@@ -136,6 +150,18 @@ async function queueIntegratedBrief(req, res) {
     workerTrigger,
     integratedBrief,
   });
+}
+
+function mergeObject(value, extra) {
+  return {
+    ...(value && typeof value === "object" && !Array.isArray(value) ? value : {}),
+    ...extra,
+  };
+}
+
+function buildTaskDetailUrl(req, runId) {
+  const origin = requestOrigin(req);
+  return origin ? `${origin}/api/promo-generation-runs?runId=${encodeURIComponent(runId)}` : "";
 }
 
 async function updateIntegratedBrief(req, res) {
