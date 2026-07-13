@@ -611,6 +611,72 @@ function createContentSection(titleText, fields) {
   return section;
 }
 
+function messageJsonPayload() {
+  return {
+    mainOffer: contentState.simpleBrief.mainOffer || "",
+    secondaryMessage: contentState.simpleBrief.secondaryMessage || "",
+    targetAction: contentState.simpleBrief.targetAction || "",
+    leadText: contentState.promo.leadText || "",
+    subline: contentState.promo.subline || "",
+  };
+}
+
+function applyMessageJsonPayload(value) {
+  let parsed;
+  try {
+    parsed = JSON.parse(value);
+  } catch (error) {
+    return { ok: false, error: error.message || "Invalid JSON" };
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return { ok: false, error: "JSON object is required." };
+  }
+
+  contentState.simpleBrief.mainOffer = String(parsed.mainOffer || "");
+  contentState.simpleBrief.secondaryMessage = String(parsed.secondaryMessage || "");
+  contentState.simpleBrief.targetAction = String(parsed.targetAction || "");
+  contentState.promo.leadText = String(parsed.leadText || "");
+  contentState.promo.subline = String(parsed.subline || "");
+
+  ["mainOffer", "secondaryMessage", "targetAction"].forEach((key) => {
+    if (String(contentState.simpleBrief[key] || "").trim()) delete validationErrors[key];
+  });
+  saveWizardContent();
+  saveWizardRun(null);
+  runError = "";
+  return { ok: true };
+}
+
+function createMessageJsonSection() {
+  const section = document.createElement("article");
+  section.className = "content-form-section";
+  appendTextElement(section, "h3", "", "2. Message JSON");
+
+  const wrapper = document.createElement("label");
+  wrapper.className = "content-field content-json-field";
+  appendTextElement(wrapper, "span", "", "messagePayload");
+
+  const control = document.createElement("textarea");
+  control.rows = 12;
+  control.spellcheck = false;
+  control.value = JSON.stringify(messageJsonPayload(), null, 2);
+
+  const error = appendTextElement(wrapper, "small", "content-field-error", "");
+  error.hidden = true;
+
+  control.addEventListener("input", (event) => {
+    const result = applyMessageJsonPayload(event.target.value);
+    wrapper.classList.toggle("is-invalid", !result.ok);
+    error.hidden = result.ok;
+    error.textContent = result.ok ? "" : result.error;
+  });
+  control.addEventListener("blur", renderStep);
+
+  wrapper.append(control);
+  section.append(wrapper);
+  return section;
+}
+
 function renderContentStep() {
   placeholders.className = "content-form-layout";
   placeholders.innerHTML = "";
@@ -647,13 +713,7 @@ function renderContentStep() {
     if (otherField) otherField.hidden = true;
   }
 
-  const message = createContentSection("2. 전달 메시지", [
-    { group: "simpleBrief", key: "mainOffer", label: "메인 오퍼", required: true, type: "textarea", rows: 3 },
-    { group: "simpleBrief", key: "secondaryMessage", label: "보조 메시지", required: true, type: "textarea", rows: 3 },
-    { group: "simpleBrief", key: "targetAction", label: "사용자 행동 목표", required: true },
-    { group: "promo", key: "leadText", label: "Hero Lead Text", type: "textarea", rows: 2 },
-    { group: "promo", key: "subline", label: "Hero Subline", type: "textarea", rows: 2 },
-  ]);
+  const message = createMessageJsonSection();
 
   const conversion = createContentSection("3. CTA / 약관", [
     { group: "promo", key: "ctaLabel", label: "CTA 버튼 텍스트" },
@@ -1646,6 +1706,7 @@ function renderStep() {
 
   stepButtons.forEach((button, index) => {
     button.classList.toggle("is-active", index === currentStep);
+    button.classList.toggle("is-complete", index < currentStep);
   });
 
   if (currentStep === 0) {
