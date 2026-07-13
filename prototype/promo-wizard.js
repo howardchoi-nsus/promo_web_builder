@@ -48,7 +48,6 @@ let designDocuments = [];
 let selectedDocumentId = localStorage.getItem(storageKeys.selectedDocumentId) || "";
 let conceptsLoading = false;
 let conceptsError = "";
-let conceptSearch = "";
 let validationErrors = {};
 let runState = loadWizardRun();
 let runLoading = false;
@@ -70,7 +69,6 @@ const status = document.getElementById("step-status");
 const prev = document.getElementById("prev-step");
 const next = document.getElementById("next-step");
 const conceptToolbar = document.getElementById("concept-toolbar");
-const conceptSearchInput = document.getElementById("concept-search");
 const refreshConcepts = document.getElementById("refresh-concepts");
 
 function workerSetting(stage) {
@@ -268,38 +266,19 @@ function compactCount(value) {
   return Number.isFinite(number) ? number.toLocaleString() : "0";
 }
 
-function filteredDocuments() {
-  const search = conceptSearch.trim().toLowerCase();
-  if (!search) return designDocuments;
-  return designDocuments.filter((doc) => {
-    const haystack = [
-      doc.brandName,
-      doc.slug,
-      doc.sourceName,
-      conceptSummary(doc),
-      ...tagsForDocument(doc),
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
-    return haystack.includes(search);
-  });
-}
-
 function selectDocument(id) {
   selectedDocumentId = id;
   localStorage.setItem(storageKeys.selectedDocumentId, id);
   saveWizardRun(null);
   runError = "";
+  currentStep = 1;
   renderStep();
 }
 
 function createConceptCard(doc) {
   const selected = doc.id === selectedDocumentId;
-  const button = document.createElement("button");
-  button.className = `concept-card${selected ? " is-selected" : ""}`;
-  button.type = "button";
-  button.addEventListener("click", () => selectDocument(doc.id));
+  const card = document.createElement("article");
+  card.className = `concept-card${selected ? " is-selected" : ""}`;
 
   const header = document.createElement("span");
   header.className = "concept-card-header";
@@ -334,8 +313,14 @@ function createConceptCard(doc) {
       tags.append(item);
     });
 
-  button.append(header, summary, meta, tags);
-  return button;
+  const select = document.createElement("button");
+  select.className = "concept-select-action";
+  select.type = "button";
+  select.textContent = selected ? "선택됨 · Content로 이동" : "선택";
+  select.addEventListener("click", () => selectDocument(doc.id));
+
+  card.append(header, summary, meta, tags, select);
+  return card;
 }
 
 function appendTextElement(parent, tagName, className, text) {
@@ -1510,13 +1495,13 @@ function renderConceptStep() {
     return;
   }
 
-  const docs = filteredDocuments();
+  const docs = designDocuments;
   const selected = selectedDocument();
   if (!docs.length) {
     const empty = document.createElement("article");
     empty.className = "placeholder-card";
-    appendTextElement(empty, "strong", "", "No matching Design MD");
-    appendTextElement(empty, "span", "", "검색어를 변경하거나 A섹션 데이터를 새로고침해 주세요.");
+    appendTextElement(empty, "strong", "", "No Design MD");
+    appendTextElement(empty, "span", "", "A섹션 데이터를 새로고침해 주세요.");
     placeholders.append(empty);
     return;
   }
@@ -1644,11 +1629,6 @@ next.addEventListener("click", async () => {
   if (currentStep === 2 && !runId()) {
     await prepareLofiRun();
   }
-});
-
-conceptSearchInput.addEventListener("input", (event) => {
-  conceptSearch = event.target.value;
-  renderStep();
 });
 
 refreshConcepts.addEventListener("click", () => {
