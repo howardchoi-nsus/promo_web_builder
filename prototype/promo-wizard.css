@@ -548,6 +548,18 @@ a {
   color: var(--success);
 }
 
+.status-chip.progress {
+  border-color: rgba(71, 104, 216, 0.38);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.status-chip.pending {
+  border-color: var(--line);
+  background: var(--surface);
+  color: var(--sub);
+}
+
 .lofi-content-snapshot {
   display: grid;
   gap: 8px;

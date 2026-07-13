@@ -940,14 +940,21 @@ function renderLofiStep() {
 
   const statusRow = document.createElement("div");
   statusRow.className = "lofi-status-row";
-  statusRow.append(createStatusPill(runStatusText()));
-  statusRow.append(createStatusPill(integratedBriefReady() ? "Brief ready" : "Brief pending", integratedBriefReady() ? "ready" : ""));
-  statusRow.append(createStatusPill(`Integrated Brief ${workerStatusLabel("integrated_brief")}`, workerReady("integrated_brief") ? "ready" : ""));
-  statusRow.append(createStatusPill(`LO-FI ${workerStatusLabel("lofi_draft")}`, workerReady("lofi_draft") ? "ready" : ""));
-  statusRow.append(createStatusPill(`${drafts.length} drafts`));
-  if (confirmed?.draftAttempt) statusRow.append(createStatusPill(`Confirmed #${confirmed.draftAttempt}`, "ready"));
+  const briefProgress = generationProgress(
+    "통합 브리프",
+    runState?.integratedBrief?.status || (run?.stage === "integrated_brief" ? run.status : ""),
+    integratedBriefReady() || /integrated_brief_ready/i.test(String(run?.status || ""))
+  );
+  const lofiProgress = generationProgress(
+    "LO-FI 생성",
+    drafts.find((draft) => isActiveStatus(draft.status))?.status || (run?.stage === "lofi_draft" ? run.status : ""),
+    drafts.some((draft) => isReadyDraft(draft)) || /lofi_draft_(ready|confirmed)/i.test(String(run?.status || ""))
+  );
+  statusRow.append(createStatusPill(briefProgress.text, briefProgress.kind));
+  statusRow.append(createStatusPill(lofiProgress.text, lofiProgress.kind));
+  statusRow.append(createStatusPill(`시안 ${drafts.length}개`));
+  if (confirmed?.draftAttempt) statusRow.append(createStatusPill(`시안 #${confirmed.draftAttempt} 선택됨`, "ready"));
   summary.append(statusRow);
-  if (workerSettingsError) appendTextElement(summary, "p", "lofi-error", `Worker settings: ${workerSettingsError}`);
 
   const coverage = document.createElement("div");
   coverage.className = "lofi-content-snapshot";
@@ -1288,6 +1295,12 @@ function isReadyFinalDesign(finalDesign) {
 
 function isActiveStatus(statusValue) {
   return /queued|generating|running|pending|accepted/i.test(String(statusValue || ""));
+}
+
+function generationProgress(label, statusValue, isComplete = false) {
+  if (isComplete) return { text: `${label} · 완료`, kind: "ready" };
+  if (isActiveStatus(statusValue)) return { text: `${label} · 진행 중`, kind: "progress" };
+  return { text: `${label} · 진행 전`, kind: "pending" };
 }
 
 async function fetchJson(url, options = {}) {
