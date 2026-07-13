@@ -933,11 +933,13 @@ function renderLofiStep() {
 
   const statusRow = document.createElement("div");
   statusRow.className = "lofi-status-row";
-  const briefProgress = generationProgress(
-    "통합 브리프",
-    runState?.integratedBrief?.status || (run?.stage === "integrated_brief" ? run.status : ""),
-    integratedBriefReady() || /integrated_brief_ready/i.test(String(run?.status || ""))
-  );
+  const briefProgress = integratedBriefFailed()
+    ? { text: "통합 브리프 · 생성 실패", kind: "error" }
+    : generationProgress(
+      "통합 브리프",
+      runState?.integratedBrief?.status || (run?.stage === "integrated_brief" ? run.status : ""),
+      integratedBriefReady() || /integrated_brief_ready/i.test(String(run?.status || ""))
+    );
   const lofiProgress = generationProgress(
     "LO-FI 생성",
     drafts.find((draft) => isActiveStatus(draft.status))?.status || (run?.stage === "lofi_draft" ? run.status : ""),
@@ -975,7 +977,9 @@ function renderLofiStep() {
   const prepare = document.createElement("button");
   prepare.className = "secondary-action";
   prepare.type = "button";
-  prepare.textContent = runId() ? "상태 새로고침" : "생성 준비 시작";
+  prepare.textContent = integratedBriefFailed()
+    ? "통합 브리프 다시 생성"
+    : runId() ? "상태 새로고침" : "생성 준비 시작";
   prepare.disabled = runLoading;
   prepare.addEventListener("click", async () => {
     if (runId()) {
@@ -983,6 +987,7 @@ function renderLofiStep() {
       runError = "";
       renderStep();
       try {
+        if (integratedBriefFailed()) await queueIntegratedBrief();
         await refreshRunState();
         syncRunPolling();
       } catch (error) {
@@ -1003,7 +1008,14 @@ function renderLofiStep() {
   createDraft.disabled = runLoading || !runId() || !integratedBriefReady();
   createDraft.addEventListener("click", createNewLofiDraft);
   actionPanel.append(prepare, createDraft);
-  if (!integratedBriefReady()) {
+  if (integratedBriefFailed()) {
+    appendTextElement(
+      actionPanel,
+      "small",
+      "lofi-error",
+      integratedBriefErrorMessage() || "통합 브리프 생성에 실패했습니다. 다시 생성해 주세요."
+    );
+  } else if (!integratedBriefReady()) {
     appendTextElement(actionPanel, "small", "", runId()
       ? "Integrated Brief가 ready가 되면 새 LO-FI 시안을 생성할 수 있습니다."
       : "먼저 생성 준비를 시작해 Integrated Brief를 큐에 넣어 주세요.");
@@ -1285,6 +1297,16 @@ function workerTimeout(stage) {
 function integratedBriefReady() {
   const statusValue = String(runState?.integratedBrief?.status || "");
   return ["ready", "completed"].includes(statusValue);
+}
+
+function integratedBriefFailed() {
+  const briefStatus = String(runState?.integratedBrief?.status || "");
+  const runStatus = String(runState?.run?.status || "");
+  return /failed/i.test(briefStatus) || /integrated_brief_(?:trigger_)?failed/i.test(runStatus);
+}
+
+function integratedBriefErrorMessage() {
+  return String(runState?.integratedBrief?.errorMessage || runState?.run?.errorMessage || "").trim();
 }
 
 function draftImageSrc(draft) {

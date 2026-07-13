@@ -10,6 +10,7 @@
     "test:design-prompt-md": "node scripts/test-design-prompt-md.js",
     "qa:label-guard": "node scripts/qa-label-guard.js",
     "test:worker-contract": "node scripts/test-worker-prompt-contract.js",
+    "test:integrated-brief-contract": "node scripts/test-integrated-brief-completion-contract.js",
     "test:final-worker-contract": "node scripts/test-final-worker-contract.js",
     "test:lofi-worker-contract": "node scripts/test-lofi-worker-contract.js",
     "design-md:dry-run": "node scripts/import-design-md-docs.js",

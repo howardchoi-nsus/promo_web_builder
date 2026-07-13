@@ -8,6 +8,16 @@ const {
 const { fitFinalDesignPromptVariables } = require("./_final-design-prompt-budget");
 const { normalizeExecutionModelOptions } = require("./_worker-execution-contract");
 
+const INTEGRATED_BRIEF_OUTPUT_GUARD = [
+  "",
+  "Mandatory completion guard:",
+  "- integratedDesignBriefMarkdown must contain the exact heading `## Negative Prompt` followed by a fenced text block.",
+  "- integratedDesignBriefMarkdown must contain the exact heading `## Visual QA Checklist` followed by at least 10 checklist items.",
+  "- integratedDesignBrief.negativePrompt must contain the same substantive negative-prompt content.",
+  "- integratedDesignBrief.visualQaChecklist must contain the same checklist as an array.",
+  "- Do not omit these final sections when the response is long. Compress earlier prose before removing either section.",
+].join("\n");
+
 async function createPromptExecutionSnapshot(sql, type, variables = {}) {
   await ensureDefaultPromptTemplates(sql);
   const rows = await sql`
@@ -53,7 +63,9 @@ async function createPromptExecutionSnapshot(sql, type, variables = {}) {
   const fitted = type === "final_design"
     ? fitFinalDesignPromptVariables(prompt.body, variables, renderPrompt)
     : { variables, renderedPrompt: renderPrompt(prompt.body, variables), lengthGuard: null };
-  const renderedPrompt = fitted.renderedPrompt;
+  const renderedPrompt = type === "integrated_brief"
+    ? `${fitted.renderedPrompt.trim()}\n${INTEGRATED_BRIEF_OUTPUT_GUARD}`
+    : fitted.renderedPrompt;
   const unresolved = unresolvedVariables(renderedPrompt);
   if (unresolved.length) {
     const error = new Error(`Rendered ${type} prompt contains unresolved variables: ${unresolved.join(", ")}`);

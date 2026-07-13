@@ -125,9 +125,10 @@ function parseIntegratedBriefResponse(body) {
   const directMarkdown = body.integratedDesignBriefMarkdown || body.integrated_design_brief_markdown;
   const directBrief = body.integratedDesignBrief || body.integratedBrief || body.integrated_brief || body.integratedBriefJson;
   if (directMarkdown && directBrief && typeof directBrief === "object") {
+    const normalizedBrief = normalizeIntegratedBrief(directBrief, directMarkdown);
     return {
-      integratedDesignBriefMarkdown: String(directMarkdown).trim(),
-      integratedDesignBrief: directBrief,
+      integratedDesignBriefMarkdown: materializeRequiredMarkdownSections(directMarkdown, normalizedBrief),
+      integratedDesignBrief: normalizedBrief,
       llmResponseMeta: { source: "direct" },
       modelMeta: body.modelMeta || body.model_meta || {},
     };
@@ -150,7 +151,7 @@ function parseIntegratedBriefResponse(body) {
   const brief = normalizeIntegratedBrief(generated.integratedDesignBrief || {}, markdown);
 
   return {
-    integratedDesignBriefMarkdown: markdown,
+    integratedDesignBriefMarkdown: materializeRequiredMarkdownSections(markdown, brief),
     integratedDesignBrief: brief,
     llmResponseMeta: buildLlmResponseMeta(response, content),
     modelMeta: {
@@ -226,13 +227,39 @@ function normalizeIntegratedBrief(brief, markdown) {
   }
 
   safeBrief.finalImagePromptInputs = finalInputs;
+  if (!safeBrief.negativePrompt && safeBrief.negative_prompt) {
+    safeBrief.negativePrompt = safeBrief.negative_prompt;
+  }
   if (!safeBrief.negativePrompt) {
     safeBrief.negativePrompt = extractMarkdownSection(markdown, "## Negative Prompt", ["## Visual QA Checklist"]);
+  }
+  if (!Array.isArray(safeBrief.visualQaChecklist) && Array.isArray(safeBrief.visual_qa_checklist)) {
+    safeBrief.visualQaChecklist = safeBrief.visual_qa_checklist;
   }
   if (!Array.isArray(safeBrief.visualQaChecklist)) {
     safeBrief.visualQaChecklist = extractMarkdownList(markdown, "## Visual QA Checklist", []);
   }
   return safeBrief;
+}
+
+function materializeRequiredMarkdownSections(markdown, brief) {
+  let result = String(markdown || "").trim();
+  const negativePrompt = String(brief?.negativePrompt || "").trim();
+  const checklist = Array.isArray(brief?.visualQaChecklist)
+    ? brief.visualQaChecklist.map((item) => String(item || "").trim()).filter(Boolean)
+    : [];
+
+  if (!result.includes("## Negative Prompt") && negativePrompt) {
+    const section = `## Negative Prompt\n\n\`\`\`text\n${negativePrompt}\n\`\`\``;
+    const qaIndex = result.indexOf("## Visual QA Checklist");
+    result = qaIndex >= 0
+      ? `${result.slice(0, qaIndex).trimEnd()}\n\n${section}\n\n${result.slice(qaIndex).trimStart()}`
+      : `${result}\n\n${section}`;
+  }
+  if (!result.includes("## Visual QA Checklist") && checklist.length) {
+    result = `${result}\n\n## Visual QA Checklist\n\n${checklist.map((item) => `- [ ] ${item.replace(/^\[[ xX]\]\s*/, "")}`).join("\n")}`;
+  }
+  return result.trim();
 }
 
 function extractMarkdownSection(markdown, heading, nextHeadings) {
@@ -299,6 +326,15 @@ function validateIntegratedBrief(parsed) {
     ""
   ).trim();
   if (!imageDirection) return { ok: false, error: "finalImagePromptInputs.imagePromptDirection is required" };
+
+  const negativePrompt = String(brief.negativePrompt || brief.negative_prompt || "").trim();
+  if (!negativePrompt) return { ok: false, error: "integratedDesignBrief.negativePrompt is required" };
+  const visualQaChecklist = Array.isArray(brief.visualQaChecklist)
+    ? brief.visualQaChecklist
+    : Array.isArray(brief.visual_qa_checklist) ? brief.visual_qa_checklist : [];
+  if (visualQaChecklist.filter((item) => String(item || "").trim()).length < 10) {
+    return { ok: false, error: "integratedDesignBrief.visualQaChecklist requires at least 10 items" };
+  }
 
   const requiredHeadings = [
     "# Integrated Design Brief MD",
@@ -403,3 +439,7 @@ function mergeMeta(base, extra) {
     ...extra,
   };
 }
+
+module.exports._test = {
+  materializeRequiredMarkdownSections,
+};
