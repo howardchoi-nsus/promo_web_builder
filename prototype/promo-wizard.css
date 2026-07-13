@@ -664,6 +664,11 @@ a {
   overflow: hidden;
 }
 
+.lofi-large-preview-frame {
+  align-items: center;
+  justify-items: start;
+}
+
 .lofi-large-preview-frame img,
 .final-large-preview-frame img {
   display: block;
@@ -686,11 +691,18 @@ a {
   display: grid;
   grid-column: 2;
   grid-auto-columns: minmax(180px, 220px);
-  grid-auto-flow: column;
   gap: 12px;
   min-width: 0;
   overflow-x: auto;
   padding-bottom: 4px;
+}
+
+.lofi-draft-list {
+  grid-auto-flow: row;
+}
+
+.final-design-list {
+  grid-auto-flow: column;
 }
 
 .lofi-draft-card,
