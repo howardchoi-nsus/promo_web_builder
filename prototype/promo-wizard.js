@@ -68,8 +68,6 @@ const placeholders = document.getElementById("step-placeholders");
 const status = document.getElementById("step-status");
 const prev = document.getElementById("prev-step");
 const next = document.getElementById("next-step");
-const conceptToolbar = document.getElementById("concept-toolbar");
-const refreshConcepts = document.getElementById("refresh-concepts");
 
 function workerSetting(stage) {
   return workerSettings.find((setting) => setting.stage === stage) || null;
@@ -319,10 +317,7 @@ function createConceptCard(doc) {
   const brand = document.createElement("strong");
   brand.textContent = doc.brandName || doc.slug || "Untitled Design MD";
 
-  const state = document.createElement("small");
-  state.textContent = selected ? "Selected in A section" : (doc.extractionStatus || doc.status || "ready");
-
-  header.append(brand, state);
+  header.append(brand);
 
   const summary = document.createElement("span");
   summary.className = "concept-card-summary";
@@ -617,7 +612,6 @@ function createContentSection(titleText, fields) {
 }
 
 function renderContentStep() {
-  conceptToolbar.hidden = true;
   placeholders.className = "content-form-layout";
   placeholders.innerHTML = "";
 
@@ -917,7 +911,6 @@ function createFinalLargePreview(finalDesign) {
 }
 
 function renderLofiStep() {
-  conceptToolbar.hidden = true;
   placeholders.className = "lofi-layout";
   placeholders.innerHTML = "";
 
@@ -1040,7 +1033,6 @@ function renderLofiStep() {
 }
 
 function renderFinalStep() {
-  conceptToolbar.hidden = true;
   placeholders.className = "final-layout";
   placeholders.innerHTML = "";
 
@@ -1513,7 +1505,6 @@ async function confirmDraft(draft) {
 }
 
 function renderConceptStep() {
-  conceptToolbar.hidden = false;
   placeholders.className = "concept-layout";
   placeholders.innerHTML = "";
 
@@ -1650,7 +1641,6 @@ function renderStep() {
     return;
   }
 
-  conceptToolbar.hidden = true;
   placeholders.className = "placeholder-grid";
   placeholders.innerHTML = "";
   step.cards.forEach(([cardTitle, cardCopy]) => {
@@ -1709,10 +1699,6 @@ next.addEventListener("click", async () => {
   if (currentStep === 2 && !runId()) {
     await prepareLofiRun();
   }
-});
-
-refreshConcepts.addEventListener("click", () => {
-  loadDesignDocuments({ fresh: true });
 });
 
 renderStep();

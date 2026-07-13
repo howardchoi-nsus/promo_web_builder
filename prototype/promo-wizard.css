@@ -174,14 +174,6 @@ a {
   margin-top: 22px;
 }
 
-.concept-toolbar {
-  display: flex;
-  align-items: end;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 20px;
-}
-
 .content-field input::placeholder,
 .content-field textarea::placeholder {
   color: #6f7c91;
@@ -305,20 +297,23 @@ a {
 }
 
 .concept-card-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   align-items: baseline;
-  justify-content: space-between;
   gap: 12px;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .concept-card-header strong {
   min-width: 0;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.concept-card-header small,
 .concept-card-meta,
 .concept-card-summary {
   color: var(--sub);
@@ -879,11 +874,6 @@ a {
   .lofi-large-preview-frame,
   .final-large-preview-frame {
     min-height: 260px;
-  }
-
-  .concept-toolbar {
-    align-items: stretch;
-    flex-direction: column;
   }
 
   .wizard-actions {
