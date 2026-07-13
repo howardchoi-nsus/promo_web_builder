@@ -346,19 +346,14 @@ function createConceptCard(doc) {
       tags.append(item);
     });
 
-<<<<<<< HEAD
   const select = document.createElement("button");
   select.className = "concept-select-action";
   select.type = "button";
   select.textContent = selected ? "선택됨 · Content로 이동" : "선택";
   select.addEventListener("click", () => selectDocument(doc.id));
 
-  card.append(header, summary, meta, tags, select);
+  card.append(thumbnail, header, summary, meta, tags, select);
   return card;
-=======
-  button.append(thumbnail, header, summary, meta, tags);
-  return button;
->>>>>>> caad4395f7ab4e395d9aa29a23ff740b11fa4493
 }
 
 function appendTextElement(parent, tagName, className, text) {
@@ -1509,12 +1504,7 @@ function renderConceptStep() {
     return;
   }
 
-<<<<<<< HEAD
   const docs = designDocuments;
-  const selected = selectedDocument();
-=======
-  const docs = filteredDocuments();
->>>>>>> caad4395f7ab4e395d9aa29a23ff740b11fa4493
   if (!docs.length) {
     const empty = document.createElement("article");
     empty.className = "placeholder-card";

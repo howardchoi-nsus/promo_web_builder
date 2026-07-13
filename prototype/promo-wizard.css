@@ -182,32 +182,11 @@ a {
   margin-top: 20px;
 }
 
-<<<<<<< HEAD
-=======
-.concept-search {
-  display: grid;
-  gap: 6px;
-  width: min(420px, 100%);
-  color: var(--sub);
-  font-size: 12px;
-  font-weight: 900;
-}
-
-.concept-search input {
-  min-height: 38px;
-  border: 1px solid var(--line);
-  background: var(--panel);
-  color: var(--ink);
-  padding: 0 12px;
-}
-
-.concept-search input::placeholder,
 .content-field input::placeholder,
 .content-field textarea::placeholder {
   color: #6f7c91;
 }
 
-.concept-search input:focus,
 .content-field input:focus,
 .content-field select:focus,
 .content-field textarea:focus {
@@ -215,8 +194,6 @@ a {
   outline: 2px solid rgba(120, 148, 255, 0.22);
   outline-offset: 1px;
 }
-
->>>>>>> caad4395f7ab4e395d9aa29a23ff740b11fa4493
 .concept-layout {
   display: grid;
   grid-template-columns: 1fr;
@@ -251,18 +228,19 @@ a {
 
 .concept-card {
   display: grid;
-  grid-template-rows: 170px auto auto auto auto;
+  grid-template-rows: 170px auto auto auto auto auto;
   flex: 0 0 340px;
   gap: 8px;
   width: 340px;
-  height: 340px;
+  min-height: 390px;
   padding: 14px;
   color: var(--ink);
-<<<<<<< HEAD
+  scroll-snap-align: start;
   text-align: left;
 }
 
 .concept-select-action {
+  align-self: end;
   justify-self: end;
   min-height: 34px;
   padding: 0 14px;
@@ -276,10 +254,6 @@ a {
 
 .concept-select-action:hover {
   filter: brightness(0.94);
-=======
-  cursor: pointer;
-  scroll-snap-align: start;
-  text-align: left;
 }
 
 .concept-thumbnail {
@@ -318,7 +292,6 @@ a {
 .concept-carousel-control:disabled {
   cursor: not-allowed;
   opacity: 0.28;
->>>>>>> caad4395f7ab4e395d9aa29a23ff740b11fa4493
 }
 
 .concept-card:hover {
