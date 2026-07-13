@@ -1062,16 +1062,34 @@ function renderFinalStep() {
 
   const statusRow = document.createElement("div");
   statusRow.className = "lofi-status-row";
-  statusRow.append(createStatusPill(runStatusText()));
-  statusRow.append(createStatusPill(`Final Design ${workerStatusLabel("final_design")}`, workerReady("final_design") ? "ready" : ""));
-  statusRow.append(createStatusPill(`${finalDesigns.length} final designs`));
-  if (confirmed?.draftAttempt) statusRow.append(createStatusPill(`Confirmed Draft #${confirmed.draftAttempt}`, "ready"));
+  const finalComplete = finalDesigns.some((item) => isReadyFinalDesign(item))
+    || /final_design_ready/i.test(String(run?.status || ""));
+  const finalInProgress = finalDesigns.some((item) => isActiveStatus(item.status))
+    || (run?.stage === "final_design" && isActiveStatus(run.status));
+  const finalProgress = finalComplete
+    ? { text: "최종 디자인 · 진행 완료", kind: "ready" }
+    : finalInProgress
+      ? { text: "최종 디자인 · 진행 중", kind: "progress" }
+      : { text: "최종 디자인 · 대기 중", kind: "waiting" };
+  statusRow.append(createStatusPill(finalProgress.text, finalProgress.kind));
+  statusRow.append(createStatusPill(`결과 ${finalDesigns.length}개`));
+  if (confirmed?.draftAttempt) statusRow.append(createStatusPill(`LO-FI 시안 #${confirmed.draftAttempt} 선택됨`, "ready"));
   summary.append(statusRow);
-  if (workerSettingsError) appendTextElement(summary, "p", "lofi-error", `Worker settings: ${workerSettingsError}`);
 
   const source = document.createElement("div");
-  source.className = "lofi-content-snapshot";
+  source.className = "lofi-content-snapshot final-design-source";
   appendTextElement(source, "strong", "", "Final Design Source");
+  const sourcePreview = document.createElement("div");
+  sourcePreview.className = "final-design-source-preview";
+  if (confirmed?.draftId) {
+    const sourceImage = document.createElement("img");
+    sourceImage.src = draftImageSrc(confirmed);
+    sourceImage.alt = `선택된 LO-FI 시안 #${confirmed.draftAttempt || ""}`.trim();
+    sourceImage.loading = "lazy";
+    sourcePreview.append(sourceImage);
+  } else {
+    appendTextElement(sourcePreview, "span", "", "Step 3에서 선택된 LO-FI 시안이 없습니다.");
+  }
   const sourceList = document.createElement("ul");
   [
     ["Run ID", runId()],
@@ -1083,7 +1101,7 @@ function renderFinalStep() {
     item.textContent = `${label}: ${String(value || "-").slice(0, 110)}`;
     sourceList.append(item);
   });
-  source.append(sourceList);
+  source.append(sourcePreview, sourceList);
   summary.append(source);
 
   const actionPanel = document.createElement("section");

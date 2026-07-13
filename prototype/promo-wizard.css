@@ -154,7 +154,7 @@ a {
 }
 
 .wizard-panel {
-  border: 0;
+  border: 1px solid var(--line);
   background: transparent;
   box-shadow: none;
   min-height: 420px;
@@ -557,6 +557,12 @@ a {
   color: var(--sub);
 }
 
+.status-chip.waiting {
+  border-color: rgba(234, 179, 8, 0.45);
+  background: rgba(234, 179, 8, 0.12);
+  color: #ca8a04;
+}
+
 .lofi-content-snapshot {
   display: grid;
   gap: 8px;
@@ -577,6 +583,30 @@ a {
   font-size: 12px;
   line-height: 1.45;
   overflow-wrap: anywhere;
+}
+
+.final-design-source-preview {
+  display: grid;
+  place-items: center;
+  min-height: 240px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.final-design-source-preview img {
+  display: block;
+  width: 100%;
+  max-height: 520px;
+  object-fit: contain;
+}
+
+.final-design-source-preview span {
+  padding: 20px;
+  color: var(--sub);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
 }
 
 .lofi-action-panel {
