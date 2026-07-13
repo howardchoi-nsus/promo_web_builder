@@ -484,9 +484,6 @@ a {
 
 .lofi-layout,
 .final-layout {
-  display: grid;
-  grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.6fr);
-  gap: 12px;
   margin-top: 18px;
 }
 
@@ -801,9 +798,7 @@ a {
   .placeholder-grid,
   .concept-layout,
   .content-form-layout,
-  .content-form-grid,
-  .lofi-layout,
-  .final-layout {
+  .content-form-grid {
     grid-template-columns: 1fr;
   }
 
