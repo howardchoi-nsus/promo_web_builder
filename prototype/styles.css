@@ -2826,6 +2826,15 @@ body.is-resizing {
   background: var(--accent-soft);
 }
 
+.template-section-expanded {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-top: 1px solid var(--line);
+  background: var(--panel);
+}
+
 .template-section-row.dragging {
   opacity: 0.55;
   transform: scale(0.98);
@@ -2876,13 +2885,6 @@ body.is-resizing {
 .template-section-select span {
   color: var(--sub);
   font-size: 11px;
-}
-
-.template-section-settings {
-  display: grid;
-  gap: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--line);
 }
 
 .template-section-items-panel {
