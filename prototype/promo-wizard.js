@@ -391,7 +391,6 @@ function setFieldValue(group, key, value) {
   saveWizardContent();
   saveWizardRun(null);
   runError = "";
-  renderStep();
 }
 
 function setSectionValue(path, value) {
@@ -408,6 +407,7 @@ function fieldInvalid(key) {
 function createField({ group, key, label, type = "text", placeholder = "입력해 주세요", required = false, options = null, rows = 3 }) {
   const wrapper = document.createElement("label");
   wrapper.className = `content-field${fieldInvalid(key) ? " is-invalid" : ""}`;
+  wrapper.dataset.fieldKey = key;
 
   const caption = document.createElement("span");
   caption.textContent = required ? `${label} *` : label;
@@ -439,8 +439,14 @@ function createField({ group, key, label, type = "text", placeholder = "입력�
   }
 
   control.value = fieldValue(group, key);
-  control.addEventListener("input", (event) => setFieldValue(group, key, event.target.value));
-  control.addEventListener("change", (event) => setFieldValue(group, key, event.target.value));
+  if (options) {
+    control.addEventListener("change", (event) => {
+      setFieldValue(group, key, event.target.value);
+      if (key === "promotionPurpose") renderStep();
+    });
+  } else {
+    control.addEventListener("input", (event) => setFieldValue(group, key, event.target.value));
+  }
   wrapper.append(control);
 
   if (fieldInvalid(key)) {
@@ -709,7 +715,7 @@ function renderContentStep() {
   ]);
 
   if (contentState.promo.promotionPurpose !== "기타") {
-    const otherField = overview.querySelector("label:nth-child(3)");
+    const otherField = overview.querySelector('[data-field-key="promotionPurposeOther"]');
     if (otherField) otherField.hidden = true;
   }
 
