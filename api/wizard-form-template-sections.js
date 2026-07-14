@@ -45,11 +45,12 @@ async function addSection(req, res) {
   const templateId = String(body.templateId || "").trim();
   const sectionKey = String(body.sectionKey || "").trim();
   if (!templateId) return res.status(400).json({ error: "templateId is required" });
-  if (!sectionKey) return res.status(400).json({ error: "sectionKey is required" });
   const sql = getSql();
-  await requireDraftTemplate(sql, templateId);
+  const template = await requireDraftTemplate(sql, templateId);
+  if (body.createNew === true) return await createOwnedSection(sql, template, body, res);
+  if (!sectionKey) return res.status(400).json({ error: "sectionKey is required" });
   const sourceRows = await sql`
-    select section_key, is_required, order_change_allowed, fixed_position, is_visible_in_wizard
+    select id::text, section_key, is_required, order_change_allowed, fixed_position, is_visible_in_wizard
     from wizard_content_sections
     where section_key = ${sectionKey} and status = 'active'
     limit 1
@@ -72,20 +73,57 @@ async function addSection(req, res) {
     : source.fixed_position;
   const rows = await sql`
     insert into wizard_form_template_sections (
-      form_template_id, section_key, sort_order, is_required,
-      is_visible, order_change_allowed, fixed_position
+      form_template_id, section_id, section_key, sort_order, is_required,
+      is_visible, order_change_allowed, user_reorder_allowed, fixed_position
     ) values (
-      ${templateId}::uuid, ${sectionKey},
+      ${templateId}::uuid, ${source.id}::uuid, ${sectionKey},
       ${Object.prototype.hasOwnProperty.call(body, "sortOrder") ? normalizeNumber(body.sortOrder) : Number(maxRows[0].max_sort_order) + 10},
       ${normalizeBoolean(body.isRequired, source.is_required)},
       ${normalizeBoolean(body.isVisible, source.is_visible_in_wizard)},
-      ${fixedPosition ? false : normalizeBoolean(body.orderChangeAllowed, source.order_change_allowed)},
+      true, ${fixedPosition ? false : normalizeBoolean(body.userReorderAllowed, source.order_change_allowed)},
       ${fixedPosition || null}
     )
-    returning id::text, form_template_id::text, section_key, sort_order,
-      is_required, is_visible, order_change_allowed, fixed_position, created_at, updated_at
+    returning id::text, form_template_id::text, section_id::text, section_key, sort_order,
+      is_required, is_visible, order_change_allowed, user_reorder_allowed, fixed_position, created_at, updated_at
   `;
   return res.status(201).json({ ok: true, section: toTemplateSection(rows[0]) });
+}
+
+async function createOwnedSection(sql, template, body, res) {
+  const name = String(body.name || "").trim();
+  if (!name) return res.status(400).json({ error: "name is required" });
+  const slug = String(body.sectionKey || name).trim().replace(/[^a-zA-Z0-9_]+/g, "_").replace(/^_+|_+$/g, "") || "section";
+  const sectionKey = `${template.template_key}_${slug}_${Date.now().toString(36)}`;
+  const fixedPosition = body.fixedPosition === "top" || body.fixedPosition === "bottom" ? body.fixedPosition : null;
+  const maxRows = await sql`
+    select coalesce(max(sort_order), -10)::integer as max_sort_order
+    from wizard_form_template_sections where form_template_id = ${template.id}::uuid
+  `;
+  const rows = await sql`
+    with new_section as (
+      insert into wizard_content_sections (
+        section_key, name, description, is_required, order_change_allowed,
+        fixed_position, sort_order, is_visible_in_wizard, status, version,
+        change_note, owner_form_template_id
+      ) values (
+        ${sectionKey}, ${name}, ${String(body.description || "")},
+        ${normalizeBoolean(body.isRequired, false)}, true, ${fixedPosition},
+        ${Number(maxRows[0].max_sort_order) + 10}, ${normalizeBoolean(body.isVisible, true)},
+        'draft', 1, ${String(body.changeNote || "Template-owned section created.")}, ${template.id}::uuid
+      ) returning id, section_key
+    )
+    insert into wizard_form_template_sections (
+      form_template_id, section_id, section_key, sort_order, is_required,
+      is_visible, order_change_allowed, user_reorder_allowed, fixed_position
+    )
+    select ${template.id}::uuid, id, section_key, ${Number(maxRows[0].max_sort_order) + 10},
+      ${normalizeBoolean(body.isRequired, false)}, ${normalizeBoolean(body.isVisible, true)}, true,
+      ${fixedPosition ? false : normalizeBoolean(body.userReorderAllowed, true)}, ${fixedPosition}
+    from new_section
+    returning id::text, form_template_id::text, section_id::text, section_key, sort_order,
+      is_required, is_visible, order_change_allowed, user_reorder_allowed, fixed_position, created_at, updated_at
+  `;
+  return res.status(201).json({ ok: true, section: toTemplateSection({ ...rows[0], section_name: name, section_version: 1, section_status: "draft" }) });
 }
 
 async function updateSection(req, res) {
@@ -94,13 +132,24 @@ async function updateSection(req, res) {
   if (!id) return res.status(400).json({ error: "id is required" });
   const sql = getSql();
   const currentRows = await sql`
-    select id::text, form_template_id::text, section_key, sort_order,
-      is_required, is_visible, order_change_allowed, fixed_position, created_at, updated_at
+    select id::text, form_template_id::text, section_id::text, section_key, sort_order,
+      is_required, is_visible, order_change_allowed, user_reorder_allowed, fixed_position, created_at, updated_at
     from wizard_form_template_sections where id = ${id}::uuid limit 1
   `;
   if (!currentRows.length) return res.status(404).json({ error: "Form template section not found" });
   const current = currentRows[0];
   await requireDraftTemplate(sql, current.form_template_id);
+  if (current.section_id && (Object.prototype.hasOwnProperty.call(body, "name") || Object.prototype.hasOwnProperty.call(body, "description"))) {
+    await sql`
+      update wizard_content_sections set
+        name = ${String(body.name || "").trim()},
+        description = ${String(body.description || "")},
+        updated_at = now()
+      where id = ${current.section_id}::uuid
+        and owner_form_template_id = ${current.form_template_id}::uuid
+        and status = 'draft'
+    `;
+  }
   const fixedPosition = Object.prototype.hasOwnProperty.call(body, "fixedPosition")
     ? (body.fixedPosition === "top" || body.fixedPosition === "bottom" ? body.fixedPosition : null)
     : current.fixed_position;
@@ -108,12 +157,13 @@ async function updateSection(req, res) {
     update wizard_form_template_sections set
       is_required = ${Object.prototype.hasOwnProperty.call(body, "isRequired") ? normalizeBoolean(body.isRequired, current.is_required) : current.is_required},
       is_visible = ${Object.prototype.hasOwnProperty.call(body, "isVisible") ? normalizeBoolean(body.isVisible, current.is_visible) : current.is_visible},
-      order_change_allowed = ${fixedPosition ? false : (Object.prototype.hasOwnProperty.call(body, "orderChangeAllowed") ? normalizeBoolean(body.orderChangeAllowed, current.order_change_allowed) : current.order_change_allowed)},
+      order_change_allowed = true,
+      user_reorder_allowed = ${fixedPosition ? false : (Object.prototype.hasOwnProperty.call(body, "userReorderAllowed") ? normalizeBoolean(body.userReorderAllowed, current.user_reorder_allowed) : current.user_reorder_allowed)},
       fixed_position = ${fixedPosition},
       updated_at = now()
     where id = ${id}::uuid
-    returning id::text, form_template_id::text, section_key, sort_order,
-      is_required, is_visible, order_change_allowed, fixed_position, created_at, updated_at
+    returning id::text, form_template_id::text, section_id::text, section_key, sort_order,
+      is_required, is_visible, order_change_allowed, user_reorder_allowed, fixed_position, created_at, updated_at
   `;
   return res.status(200).json({ ok: true, section: toTemplateSection(rows[0]) });
 }
@@ -124,11 +174,18 @@ async function removeSection(req, res) {
   if (!id) return res.status(400).json({ error: "id is required" });
   const sql = getSql();
   const rows = await sql`
-    select id::text, form_template_id::text from wizard_form_template_sections
+    select id::text, form_template_id::text, section_id::text from wizard_form_template_sections
     where id = ${id}::uuid limit 1
   `;
   if (!rows.length) return res.status(404).json({ error: "Form template section not found" });
   await requireDraftTemplate(sql, rows[0].form_template_id);
-  await sql`delete from wizard_form_template_sections where id = ${id}::uuid`;
+  const ownedRows = rows[0].section_id ? await sql`
+    delete from wizard_content_sections
+    where id = ${rows[0].section_id}::uuid
+      and owner_form_template_id = ${rows[0].form_template_id}::uuid
+      and status = 'draft'
+    returning id::text
+  ` : [];
+  if (!ownedRows.length) await sql`delete from wizard_form_template_sections where id = ${id}::uuid`;
   return res.status(200).json({ ok: true, id });
 }

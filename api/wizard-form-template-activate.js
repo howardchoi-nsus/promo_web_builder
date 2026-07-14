@@ -33,6 +33,7 @@ module.exports = async function handler(req, res) {
     }
     const errors = await validateTemplateDraft(sql, id);
     if (errors.length) return res.status(422).json({ error: "Form template validation failed", errors });
+    await sql`select activate_wizard_form_template_owned_sections(${id}::uuid)`;
     await sql`select activate_wizard_form_template(
       ${id}::uuid, ${String(body.changeNote || "Form template activated from Admin Page.").trim()}
     )`;

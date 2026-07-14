@@ -24,7 +24,7 @@ module.exports = async function handler(req, res) {
     if (template.status !== "draft") return res.status(409).json({ error: "Only draft form templates can change section order" });
     const current = await fetchTemplateSections(sql, templateId);
     const currentKeys = current
-      .filter((section) => section.orderChangeAllowed && !section.fixedPosition)
+      .filter((section) => !section.fixedPosition)
       .map((section) => section.sectionKey);
     if (currentKeys.length !== sectionKeys.length || currentKeys.some((key) => !sectionKeys.includes(key))) {
       return res.status(409).json({ error: "Section order is stale. Refresh and try again." });
@@ -40,7 +40,6 @@ module.exports = async function handler(req, res) {
       from requested
       where ts.form_template_id = ${templateId}::uuid
         and ts.section_key = requested.section_key
-        and ts.order_change_allowed = true
         and ts.fixed_position is null
       returning ts.section_key
     `;

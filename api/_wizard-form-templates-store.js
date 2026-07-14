@@ -53,13 +53,17 @@ function toTemplateSection(row) {
   return {
     id: row.id,
     formTemplateId: row.form_template_id,
+    sectionId: row.section_id || null,
     sectionKey: row.section_key,
     sectionName: row.section_name || "",
+    sectionDescription: row.section_description || "",
     sectionVersion: row.section_version ? Number(row.section_version) : null,
+    sectionStatus: row.section_status || null,
     sortOrder: Number(row.sort_order || 0),
     isRequired: Boolean(row.is_required),
     isVisible: Boolean(row.is_visible),
     orderChangeAllowed: Boolean(row.order_change_allowed),
+    userReorderAllowed: row.user_reorder_allowed === undefined ? Boolean(row.order_change_allowed) : Boolean(row.user_reorder_allowed),
     fixedPosition: row.fixed_position || null,
     createdAt: row.created_at || null,
     updatedAt: row.updated_at || null,
@@ -101,17 +105,20 @@ async function fetchTemplates(sql, { includeArchived = false, activeOnly = false
 
 async function fetchTemplateSections(sql, templateId) {
   const rows = await sql`
-    select ts.id::text, ts.form_template_id::text, ts.section_key,
-      active_section.name as section_name, active_section.version as section_version,
+    select ts.id::text, ts.form_template_id::text, ts.section_id::text, ts.section_key,
+      source_section.name as section_name, source_section.description as section_description, source_section.version as section_version,
+      source_section.status as section_status,
       ts.sort_order, ts.is_required, ts.is_visible, ts.order_change_allowed,
-      ts.fixed_position, ts.created_at, ts.updated_at
+      ts.user_reorder_allowed, ts.fixed_position, ts.created_at, ts.updated_at
     from wizard_form_template_sections ts
     left join lateral (
-      select s.name, s.version
+      select s.name, s.description, s.version, s.status
       from wizard_content_sections s
-      where s.section_key = ts.section_key and s.status = 'active'
+      where (ts.section_id is not null and s.id = ts.section_id)
+        or (ts.section_id is null and s.section_key = ts.section_key and s.status = 'active')
+      order by case when s.id = ts.section_id then 0 else 1 end, s.version desc
       limit 1
-    ) active_section on true
+    ) source_section on true
     where ts.form_template_id = ${templateId}::uuid
     order by
       case ts.fixed_position when 'top' then 0 when 'bottom' then 2 else 1 end,

@@ -101,6 +101,7 @@ async function upsertItem(req, res) {
         name = ${name},
         is_visible_in_wizard = ${normalizeBoolean(body.isVisibleInWizard, true)},
         is_required = ${normalizeBoolean(body.isRequired, false)},
+        user_reorder_allowed = ${normalizeBoolean(body.userReorderAllowed, true)},
         sort_order = ${normalizeNumber(body.sortOrder) ?? 0},
         field_kind = ${fieldKind},
         text_type = ${textType},
@@ -119,7 +120,7 @@ async function upsertItem(req, res) {
         updated_at = now()
       where id = ${id}::uuid and section_id = ${sectionId}::uuid
       returning
-        id::text, section_id::text, item_key, name, is_visible_in_wizard, is_required, sort_order,
+        id::text, section_id::text, item_key, name, is_visible_in_wizard, is_required, user_reorder_allowed, sort_order,
         field_kind, text_type, image_allowed_sources, image_prompt_text, image_alt_text_required,
         image_aspect_ratio, image_max_size_kb, cta_utm_source, cta_utm_medium, cta_utm_campaign,
         cta_utm_content, cta_utm_term, is_locked, locked_value, created_at, updated_at
@@ -142,7 +143,7 @@ async function upsertItem(req, res) {
 
   const rows = await sql`
     insert into wizard_content_section_items (
-      section_id, item_key, name, is_visible_in_wizard, is_required, sort_order,
+      section_id, item_key, name, is_visible_in_wizard, is_required, user_reorder_allowed, sort_order,
       field_kind, text_type, image_allowed_sources, image_prompt_text,
       image_alt_text_required, image_aspect_ratio, image_max_size_kb,
       cta_utm_source, cta_utm_medium, cta_utm_campaign, cta_utm_content, cta_utm_term,
@@ -150,7 +151,7 @@ async function upsertItem(req, res) {
     )
     values (
       ${sectionId}::uuid, ${itemKey}, ${name}, ${normalizeBoolean(body.isVisibleInWizard, true)},
-      ${normalizeBoolean(body.isRequired, false)}, ${normalizeNumber(body.sortOrder) ?? 0},
+      ${normalizeBoolean(body.isRequired, false)}, ${normalizeBoolean(body.userReorderAllowed, true)}, ${normalizeNumber(body.sortOrder) ?? 0},
       ${fieldKind}, ${textType}, ${JSON.stringify(allowedSources)}::jsonb,
       ${String(image.promptText || "")}, ${normalizeBoolean(image.altTextRequired, false)},
       ${image.aspectRatio ? String(image.aspectRatio) : null}, ${maxSizeKb},
@@ -159,7 +160,7 @@ async function upsertItem(req, res) {
       ${isLocked}, ${hasLockedValue(lockedValue) ? JSON.stringify(lockedValue) : null}::jsonb
     )
     returning
-      id::text, section_id::text, item_key, name, is_visible_in_wizard, is_required, sort_order,
+      id::text, section_id::text, item_key, name, is_visible_in_wizard, is_required, user_reorder_allowed, sort_order,
       field_kind, text_type, image_allowed_sources, image_prompt_text, image_alt_text_required,
       image_aspect_ratio, image_max_size_kb, cta_utm_source, cta_utm_medium, cta_utm_campaign,
       cta_utm_content, cta_utm_term, is_locked, locked_value, created_at, updated_at

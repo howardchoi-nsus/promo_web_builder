@@ -2787,6 +2787,24 @@ body.is-resizing {
   min-width: 0;
 }
 
+.template-list-add {
+  width: 100%;
+  margin-top: auto;
+}
+
+.template-section-create,
+.template-item-editor {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.template-section-items-panel {
+  overflow: auto;
+}
+
 .template-section-list {
   display: grid;
   gap: 8px;

@@ -139,6 +139,7 @@ function toSectionItem(row) {
     name: row.name,
     isVisibleInWizard: Boolean(row.is_visible_in_wizard),
     isRequired: Boolean(row.is_required),
+    userReorderAllowed: row.user_reorder_allowed === undefined ? true : Boolean(row.user_reorder_allowed),
     sortOrder: Number(row.sort_order || 0),
     fieldKind: row.field_kind,
     textType: row.text_type || null,
@@ -179,7 +180,7 @@ async function fetchSectionRow(sql, id) {
 async function fetchItemRows(sql, sectionId) {
   return sql`
     select
-      id::text, section_id::text, item_key, name, is_visible_in_wizard, is_required, sort_order,
+      id::text, section_id::text, item_key, name, is_visible_in_wizard, is_required, user_reorder_allowed, sort_order,
       field_kind, text_type, image_allowed_sources, image_prompt_text, image_alt_text_required,
       image_aspect_ratio, image_max_size_kb, cta_utm_source, cta_utm_medium, cta_utm_campaign,
       cta_utm_content, cta_utm_term, is_locked, locked_value, created_at, updated_at
@@ -269,7 +270,7 @@ async function fetchPublicSectionsWithItems(sql) {
     const section = toSection(row);
     const itemRows = await sql`
       select
-        id::text, section_id::text, item_key, name, is_visible_in_wizard, is_required, sort_order,
+        id::text, section_id::text, item_key, name, is_visible_in_wizard, is_required, user_reorder_allowed, sort_order,
         field_kind, text_type, image_allowed_sources, image_prompt_text, image_alt_text_required,
         image_aspect_ratio, image_max_size_kb, cta_utm_source, cta_utm_medium, cta_utm_campaign,
         cta_utm_content, cta_utm_term, is_locked, locked_value, created_at, updated_at
