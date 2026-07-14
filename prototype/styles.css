@@ -2622,6 +2622,50 @@ body.is-resizing {
   overflow: auto;
 }
 
+.admin-tab-menu {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--line);
+}
+
+.admin-tab {
+  min-height: 42px;
+  padding: 0 16px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.admin-tab:hover {
+  color: var(--ink);
+}
+
+.admin-tab.active {
+  border-bottom-color: var(--accent);
+  color: var(--ink);
+}
+
+.admin-tab:focus-visible {
+  outline: 2px solid var(--focus-border);
+  outline-offset: -2px;
+}
+
+.admin-ab-layout.is-single-panel {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.admin-ab-layout.is-single-panel .admin-panel-a,
+.admin-ab-layout.is-single-panel .admin-panel-b {
+  padding-right: 0;
+  padding-left: 0;
+}
+
 .admin-panel-a {
   padding-right: 12px;
 }

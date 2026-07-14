@@ -1093,6 +1093,7 @@ createApp({
     return {
       status: "준비 완료",
       currentView: "builder",
+      adminTab: "webhook",
       sectionWidths: [30, 30, 40],
       resizeState: null,
       adminSectionWidths: [50, 50],
