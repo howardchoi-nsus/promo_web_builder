@@ -59,6 +59,8 @@ assert.match(adminSource, /dropWizardFormTemplateSection/);
 assert.match(adminSource, /this\.showDuplicateWizardFormTemplateForm = false;[\s\S]*this\.wizardFormTemplateDetail = null;/);
 assert.match(adminHtml, /template-section-composer/);
 assert.match(adminHtml, /template-section-items-panel/);
+assert.match(adminHtml, /template-basic-settings/);
+assert.match(adminHtml, /section-library-manager/);
 assert.match(adminHtml, /폼 템플릿/);
 assert.match(adminHtml, /섹션 라이브러리/);
 

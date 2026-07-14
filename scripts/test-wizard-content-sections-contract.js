@@ -33,7 +33,7 @@ assert.match(wizardSource, /applyCtaUtmParameters/);
 assert.match(adminSource, /dragOverWizardSection/);
 assert.match(adminSource, /wizardSectionDropPosition/);
 assert.match(adminHtmlSource, /transition-group name="section-order-list"/);
-assert.match(adminHtmlSource, /form-template-sections-v1/);
+assert.match(adminHtmlSource, /template-centric-form-v1/);
 assert.match(adminStyleSource, /\.section-order-list-move/);
 assert.match(adminStyleSource, /\.prompt-list-item\.drop-before/);
 assert.match(activateSource, /activate_wizard_content_section/);

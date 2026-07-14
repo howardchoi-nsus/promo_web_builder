@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>프로모션 UI 디자인 빌더</title>
-    <link rel="stylesheet" href="styles.css?v=form-template-sections-v1" />
+    <link rel="stylesheet" href="styles.css?v=template-centric-form-v1" />
   </head>
   <body>
     <div id="app" class="app-shell">
@@ -982,6 +982,9 @@
                     </div>
                   </div>
 
+                  <details class="template-basic-settings">
+                    <summary>템플릿 기본 설정</summary>
+                    <div class="template-basic-settings-body">
                   <label class="field compact-field" v-if="selectedWizardFormTemplateGroup?.versions.length > 1">
                     <span>버전 보기</span>
                     <select :value="wizardFormTemplateDetail.template.id" @change="loadWizardFormTemplateDetail($event.target.value)">
@@ -1011,6 +1014,8 @@
                     <span>포함된 섹션</span>
                     <strong>{{ wizardFormTemplateDetail.sections.length }}개</strong>
                   </div>
+                    </div>
+                  </details>
 
                   <div class="subsection template-section-composer">
                     <div class="subsection-title">
@@ -1054,32 +1059,6 @@
                     </div>
                     <div class="empty-state compact danger-state" v-else>활성화하려면 노출할 Section을 하나 이상 추가해야 합니다.</div>
 
-                    <div class="template-section-settings" v-if="selectedWizardFormTemplateSection">
-                      <label class="switch-control">
-                        <input v-model="wizardFormTemplateSectionEditor.isRequired" type="checkbox" :disabled="!wizardFormTemplateCanEdit" />
-                        <span>필수 Section</span>
-                      </label>
-                      <label class="switch-control">
-                        <input v-model="wizardFormTemplateSectionEditor.isVisible" type="checkbox" :disabled="!wizardFormTemplateCanEdit" />
-                        <span>Wizard 노출</span>
-                      </label>
-                      <label class="switch-control">
-                        <input v-model="wizardFormTemplateSectionEditor.orderChangeAllowed" type="checkbox" :disabled="!wizardFormTemplateCanEdit || Boolean(wizardFormTemplateSectionEditor.fixedPosition)" />
-                        <span>순서 변경 허용</span>
-                      </label>
-                      <label class="field compact-field">
-                        <span>고정 위치</span>
-                        <select v-model="wizardFormTemplateSectionEditor.fixedPosition" :disabled="!wizardFormTemplateCanEdit">
-                          <option value="">고정하지 않음</option>
-                          <option value="top">상단</option>
-                          <option value="bottom">하단</option>
-                        </select>
-                      </label>
-                      <div class="action-row align-right">
-                        <button class="tiny-button danger" type="button" :disabled="!wizardFormTemplateCanEdit || wizardFormTemplateSectionSaving" @click="removeWizardFormTemplateSection">템플릿에서 제외</button>
-                        <button class="tiny-button primary" type="button" :disabled="!wizardFormTemplateCanEdit || wizardFormTemplateSectionSaving" @click="saveWizardFormTemplateSection">Section 설정 저장</button>
-                      </div>
-                    </div>
                   </div>
                 </section>
 
@@ -1088,9 +1067,38 @@
                 <aside class="template-section-items-panel" v-if="wizardFormTemplateDetail">
                   <div class="subsection-title">
                     <div>
-                      <h3>Section Items</h3>
+                      <h3>Section 상세</h3>
                       <span v-if="selectedWizardFormTemplateSectionSource">{{ selectedWizardFormTemplateSectionSource.sectionKey }} · 활성 v{{ selectedWizardFormTemplateSectionSource.version }}</span>
                     </div>
+                  </div>
+                  <div class="template-section-settings" v-if="selectedWizardFormTemplateSection">
+                    <label class="switch-control">
+                      <input v-model="wizardFormTemplateSectionEditor.isRequired" type="checkbox" :disabled="!wizardFormTemplateCanEdit" />
+                      <span>필수 Section</span>
+                    </label>
+                    <label class="switch-control">
+                      <input v-model="wizardFormTemplateSectionEditor.isVisible" type="checkbox" :disabled="!wizardFormTemplateCanEdit" />
+                      <span>Wizard 노출</span>
+                    </label>
+                    <label class="switch-control">
+                      <input v-model="wizardFormTemplateSectionEditor.orderChangeAllowed" type="checkbox" :disabled="!wizardFormTemplateCanEdit || Boolean(wizardFormTemplateSectionEditor.fixedPosition)" />
+                      <span>순서 변경 허용</span>
+                    </label>
+                    <label class="field compact-field">
+                      <span>고정 위치</span>
+                      <select v-model="wizardFormTemplateSectionEditor.fixedPosition" :disabled="!wizardFormTemplateCanEdit">
+                        <option value="">고정하지 않음</option>
+                        <option value="top">상단</option>
+                        <option value="bottom">하단</option>
+                      </select>
+                    </label>
+                    <div class="action-row align-right">
+                      <button class="tiny-button danger" type="button" :disabled="!wizardFormTemplateCanEdit || wizardFormTemplateSectionSaving" @click="removeWizardFormTemplateSection">삭제</button>
+                      <button class="tiny-button primary" type="button" :disabled="!wizardFormTemplateCanEdit || wizardFormTemplateSectionSaving" @click="saveWizardFormTemplateSection">수정 저장</button>
+                    </div>
+                  </div>
+                  <div class="subsection-title template-items-heading" v-if="selectedWizardFormTemplateSection">
+                    <h3>Section Items</h3>
                   </div>
                   <div class="empty-state compact" v-if="wizardFormTemplateSectionItemsLoading">Item을 불러오는 중입니다.</div>
                   <div class="history-list" v-else-if="wizardFormTemplateSectionItems.length">
@@ -1106,6 +1114,9 @@
               </div>
             </section>
 
+            <details class="section-library-manager">
+              <summary>공통 Section 원본 관리</summary>
+              <div class="section-library-manager-body">
             <div class="panel-header">
               <div>
                 <h2>섹션 라이브러리</h2>
@@ -1379,6 +1390,8 @@
                 섹션을 선택해 주세요.
               </section>
             </div>
+              </div>
+            </details>
           </section>
         </section>
       </main>
@@ -1642,6 +1655,6 @@
     </div>
 
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-    <script src="app.js?v=form-template-sections-v1"></script>
+    <script src="app.js?v=template-centric-form-v1"></script>
   </body>
 </html>
