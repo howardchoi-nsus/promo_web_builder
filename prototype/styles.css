@@ -2600,6 +2600,15 @@ body.is-resizing {
   min-height: calc(100vh - 136px);
 }
 
+.prompt-manager-page .form-grid,
+.prompt-manager-page .form-grid.compact {
+  display: block;
+}
+
+.prompt-manager-page .form-grid > * + * {
+  margin-top: var(--panel-gap);
+}
+
 .prompt-manager-layout {
   display: grid;
   grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
