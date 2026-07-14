@@ -132,13 +132,57 @@ async function updateSection(req, res) {
   if (!id) return res.status(400).json({ error: "id is required" });
   const sql = getSql();
   const currentRows = await sql`
-    select id::text, form_template_id::text, section_id::text, section_key, sort_order,
-      is_required, is_visible, order_change_allowed, user_reorder_allowed, fixed_position, created_at, updated_at
-    from wizard_form_template_sections where id = ${id}::uuid limit 1
+    select ts.id::text, ts.form_template_id::text, ts.section_id::text, ts.section_key, ts.sort_order,
+      ts.is_required, ts.is_visible, ts.order_change_allowed, ts.user_reorder_allowed, ts.fixed_position,
+      ts.created_at, ts.updated_at, template.template_key,
+      source.owner_form_template_id::text as source_owner_template_id, source.status as source_status
+    from wizard_form_template_sections ts
+    join wizard_form_templates template on template.id = ts.form_template_id
+    left join wizard_content_sections source on source.id = ts.section_id
+    where ts.id = ${id}::uuid limit 1
   `;
   if (!currentRows.length) return res.status(404).json({ error: "Form template section not found" });
   const current = currentRows[0];
   await requireDraftTemplate(sql, current.form_template_id);
+  if (current.section_id && (current.source_owner_template_id !== current.form_template_id || current.source_status !== "draft")) {
+    const ownedSectionKey = `${current.template_key}_${current.section_key}_edit_${Date.now().toString(36)}`
+      .replace(/[^a-zA-Z0-9_]+/g, "_");
+    const clonedRows = await sql`
+      insert into wizard_content_sections (
+        section_key, name, description, is_required, order_change_allowed, fixed_position,
+        sort_order, is_visible_in_wizard, status, version, change_note, owner_form_template_id
+      )
+      select ${ownedSectionKey}, name, description, is_required, order_change_allowed, fixed_position,
+        sort_order, is_visible_in_wizard, 'draft', 1, 'Template-owned draft created for editing.',
+        ${current.form_template_id}::uuid
+      from wizard_content_sections where id = ${current.section_id}::uuid
+      returning id::text, section_key
+    `;
+    if (!clonedRows.length) return res.status(409).json({ error: "Section source could not be prepared for editing" });
+    const clonedSection = clonedRows[0];
+    await sql`
+      insert into wizard_content_section_items (
+        section_id, item_key, name, is_visible_in_wizard, is_required, user_reorder_allowed,
+        sort_order, field_kind, text_type, image_allowed_sources, image_prompt_text,
+        image_alt_text_required, image_aspect_ratio, image_max_size_kb,
+        cta_utm_source, cta_utm_medium, cta_utm_campaign, cta_utm_content, cta_utm_term,
+        is_locked, locked_value
+      )
+      select ${clonedSection.id}::uuid, item_key, name, is_visible_in_wizard, is_required,
+        user_reorder_allowed, sort_order, field_kind, text_type, image_allowed_sources,
+        image_prompt_text, image_alt_text_required, image_aspect_ratio, image_max_size_kb,
+        cta_utm_source, cta_utm_medium, cta_utm_campaign, cta_utm_content, cta_utm_term,
+        is_locked, locked_value
+      from wizard_content_section_items where section_id = ${current.section_id}::uuid
+    `;
+    await sql`
+      update wizard_form_template_sections
+      set section_id = ${clonedSection.id}::uuid, section_key = ${clonedSection.section_key}, updated_at = now()
+      where id = ${id}::uuid
+    `;
+    current.section_id = clonedSection.id;
+    current.section_key = clonedSection.section_key;
+  }
   if (current.section_id && (Object.prototype.hasOwnProperty.call(body, "name") || Object.prototype.hasOwnProperty.call(body, "description"))) {
     await sql`
       update wizard_content_sections set
@@ -165,7 +209,8 @@ async function updateSection(req, res) {
     returning id::text, form_template_id::text, section_id::text, section_key, sort_order,
       is_required, is_visible, order_change_allowed, user_reorder_allowed, fixed_position, created_at, updated_at
   `;
-  return res.status(200).json({ ok: true, section: toTemplateSection(rows[0]) });
+  const sections = await fetchTemplateSections(sql, current.form_template_id);
+  return res.status(200).json({ ok: true, section: sections.find((section) => section.id === id) || toTemplateSection(rows[0]) });
 }
 
 async function removeSection(req, res) {

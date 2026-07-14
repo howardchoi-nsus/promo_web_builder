@@ -37,6 +37,8 @@ assert.match(activateApi, /activate_wizard_form_template_owned_sections/);
 assert.match(sectionsApi, /body\.createNew === true/);
 assert.match(sectionsApi, /owner_form_template_id/);
 assert.match(sectionsApi, /userReorderAllowed/);
+assert.match(sectionsApi, /Template-owned draft created for editing/);
+assert.match(sectionsApi, /from wizard_content_section_items where section_id/);
 assert.match(orderApi, /Section order is stale/);
 assert.doesNotMatch(orderApi, /order_change_allowed = true/);
 assert.match(orderApi, /ts\.fixed_position is null/);
