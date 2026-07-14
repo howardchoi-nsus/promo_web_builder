@@ -2754,6 +2754,7 @@ body.is-resizing {
 }
 
 .prompt-list-item {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 4px 8px;
@@ -2765,6 +2766,7 @@ body.is-resizing {
   color: var(--ink);
   cursor: pointer;
   text-align: left;
+  transition: transform 160ms ease, opacity 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
 }
 
 .prompt-list-item.selected {
@@ -2773,7 +2775,78 @@ body.is-resizing {
 }
 
 .prompt-list-item.dragging {
-  opacity: 0.5;
+  z-index: 2;
+  opacity: 0.55;
+  transform: scale(0.98);
+  border-color: var(--accent);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.14);
+}
+
+.prompt-list-item.drop-before {
+  transform: translateY(4px);
+}
+
+.prompt-list-item.drop-after {
+  transform: translateY(-4px);
+}
+
+.prompt-list-item.drop-before::before,
+.prompt-list-item.drop-after::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.prompt-list-item.drop-before::before {
+  top: -7px;
+}
+
+.prompt-list-item.drop-after::after {
+  bottom: -7px;
+}
+
+.section-order-list-move {
+  transition: transform 220ms ease;
+}
+
+.section-order-saving {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 10px;
+  color: var(--sub);
+  font-size: 12px;
+  text-align: center;
+}
+
+.section-order-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: section-order-spin 700ms linear infinite;
+}
+
+@keyframes section-order-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prompt-list-item,
+  .section-order-list-move {
+    transition: none;
+  }
+
+  .section-order-spinner {
+    animation: none;
+  }
 }
 
 .section-drag-handle {

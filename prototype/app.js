@@ -1155,6 +1155,8 @@ createApp({
       wizardSectionSaving: false,
       wizardSectionOrderSaving: false,
       draggedWizardSectionKey: "",
+      wizardSectionDropTargetKey: "",
+      wizardSectionDropPosition: "",
       selectedWizardSectionKey: "",
       wizardSectionDetail: null,
       wizardSectionDetailLoading: false,
@@ -1937,22 +1939,50 @@ createApp({
 
     stopWizardSectionDrag() {
       this.draggedWizardSectionKey = "";
+      this.wizardSectionDropTargetKey = "";
+      this.wizardSectionDropPosition = "";
+    },
+
+    dragOverWizardSection(targetGroup, event) {
+      if (!this.draggedWizardSectionKey || !this.wizardSectionCanReorder(targetGroup)) return;
+      const bounds = event.currentTarget.getBoundingClientRect();
+      this.wizardSectionDropTargetKey = targetGroup.sectionKey;
+      this.wizardSectionDropPosition = event.clientY < bounds.top + (bounds.height / 2) ? "before" : "after";
+      event.dataTransfer.dropEffect = "move";
+    },
+
+    leaveWizardSectionDrop(targetGroup, event) {
+      if (targetGroup.sectionKey !== this.wizardSectionDropTargetKey) return;
+      if (event.currentTarget.contains(event.relatedTarget)) return;
+      this.wizardSectionDropTargetKey = "";
+      this.wizardSectionDropPosition = "";
     },
 
     async dropWizardSection(targetGroup) {
       const sourceKey = this.draggedWizardSectionKey;
+      const dropPosition = this.wizardSectionDropPosition || "before";
       this.draggedWizardSectionKey = "";
+      this.wizardSectionDropTargetKey = "";
+      this.wizardSectionDropPosition = "";
       if (!sourceKey || sourceKey === targetGroup?.sectionKey || !this.wizardSectionCanReorder(targetGroup)) return;
 
       const movableGroups = this.groupedWizardSections.filter((group) => this.wizardSectionCanReorder(group));
       const sourceIndex = movableGroups.findIndex((group) => group.sectionKey === sourceKey);
-      const targetIndex = movableGroups.findIndex((group) => group.sectionKey === targetGroup.sectionKey);
-      if (sourceIndex < 0 || targetIndex < 0) return;
+      if (sourceIndex < 0) return;
 
-      const reordered = [...movableGroups];
-      const [source] = reordered.splice(sourceIndex, 1);
-      reordered.splice(targetIndex, 0, source);
+      const source = movableGroups[sourceIndex];
+      const reordered = movableGroups.filter((group) => group.sectionKey !== sourceKey);
+      const targetIndex = reordered.findIndex((group) => group.sectionKey === targetGroup.sectionKey);
+      if (targetIndex < 0) return;
+      reordered.splice(targetIndex + (dropPosition === "after" ? 1 : 0), 0, source);
       const sectionKeys = reordered.map((group) => group.sectionKey);
+      const previousSections = this.wizardSections;
+      const orderByKey = new Map(sectionKeys.map((key, index) => [key, index * 10]));
+      this.wizardSections = this.wizardSections.map((section) => (
+        orderByKey.has(section.sectionKey)
+          ? { ...section, sortOrder: orderByKey.get(section.sectionKey) }
+          : section
+      ));
 
       this.wizardSectionOrderSaving = true;
       try {
@@ -1967,6 +1997,7 @@ createApp({
         await this.selectWizardSection(this.selectedWizardSectionKey, { silent: true });
         this.setStatus("섹션 순서를 저장했습니다");
       } catch (error) {
+        this.wizardSections = previousSections;
         await this.loadWizardSections({ fresh: true });
         this.setStatus(`섹션 순서 저장 실패: ${error.message}`);
       } finally {
