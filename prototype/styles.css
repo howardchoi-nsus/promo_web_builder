@@ -2813,7 +2813,7 @@ body.is-resizing {
 .template-section-row {
   position: relative;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) 32px;
   align-items: center;
   gap: 6px;
   border: 1px solid var(--line);
@@ -2833,6 +2833,56 @@ body.is-resizing {
   padding: 12px;
   border-top: 1px solid var(--line);
   background: var(--panel);
+}
+
+.section-expand-button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 18px;
+  cursor: pointer;
+  transition: color 160ms ease, background 160ms ease;
+}
+
+.section-expand-button:hover,
+.section-expand-button:focus-visible {
+  background: var(--accent-soft);
+  color: var(--accent);
+  outline: 1px solid var(--accent);
+}
+
+.section-expand-enter-active,
+.section-expand-leave-active {
+  overflow: hidden;
+  transition: max-height 240ms ease, opacity 180ms ease, transform 240ms ease, padding 240ms ease;
+}
+
+.section-expand-enter-from,
+.section-expand-leave-to {
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+.section-expand-enter-to,
+.section-expand-leave-from {
+  max-height: 720px;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .section-expand-enter-active,
+  .section-expand-leave-active {
+    transition: none;
+  }
 }
 
 .template-section-row.dragging {

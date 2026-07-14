@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>프로모션 UI 디자인 빌더</title>
-    <link rel="stylesheet" href="styles.css?v=template-section-accordion-v2" />
+    <link rel="stylesheet" href="styles.css?v=template-section-accordion-v4" />
   </head>
   <body>
     <div id="app" class="app-shell">
@@ -1062,7 +1062,14 @@
                           <strong>{{ section.sectionName || section.sectionKey }}</strong>
                           <span>{{ section.sectionKey }} · {{ section.isVisible ? '노출' : '숨김' }} · {{ section.isRequired ? '필수' : '선택' }}</span>
                         </button>
-                        <div class="template-section-expanded" v-if="selectedWizardFormTemplateSectionId === section.id">
+                        <button class="section-expand-button" type="button"
+                          :aria-expanded="expandedWizardFormTemplateSectionId === section.id"
+                          :aria-label="expandedWizardFormTemplateSectionId === section.id ? 'Section 닫기' : 'Section 열기'"
+                          :title="expandedWizardFormTemplateSectionId === section.id ? 'Section 닫기' : 'Section 열기'"
+                          @click.stop="toggleWizardFormTemplateSection(section)"
+                        >{{ expandedWizardFormTemplateSectionId === section.id ? '▾' : '▸' }}</button>
+                        <transition name="section-expand">
+                        <div class="template-section-expanded" v-if="expandedWizardFormTemplateSectionId === section.id">
                           <label class="field compact-field"><span>Section 이름</span><input v-model="wizardFormTemplateSectionEditor.name" type="text" :disabled="!wizardFormTemplateCanEdit" /></label>
                           <label class="field compact-field"><span>간략 설명</span><textarea v-model="wizardFormTemplateSectionEditor.description" rows="2" :disabled="!wizardFormTemplateCanEdit"></textarea></label>
                           <div class="form-grid compact">
@@ -1076,6 +1083,7 @@
                             <button class="tiny-button primary" type="button" :disabled="!wizardFormTemplateCanEdit || wizardFormTemplateSectionSaving" @click="saveWizardFormTemplateSection">수정 저장</button>
                           </div>
                         </div>
+                        </transition>
                       </div>
                     </div>
                     <div class="empty-state compact danger-state" v-else>활성화하려면 노출할 Section을 하나 이상 추가해야 합니다.</div>
@@ -1675,6 +1683,6 @@
     </div>
 
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-    <script src="app.js?v=template-section-accordion-v2"></script>
+    <script src="app.js?v=template-section-accordion-v4"></script>
   </body>
 </html>

@@ -1162,6 +1162,7 @@ createApp({
       duplicateWizardFormTemplateForm: { templateKey: "", name: "", description: "" },
       duplicateWizardFormTemplateError: "",
       selectedWizardFormTemplateSectionId: "",
+      expandedWizardFormTemplateSectionId: "",
       wizardFormTemplateSectionEditor: { name: "", description: "", isRequired: false, isVisible: true, userReorderAllowed: true, fixedPosition: "" },
       wizardFormTemplateSectionSaving: false,
       showNewWizardFormTemplateSectionForm: false,
@@ -2163,6 +2164,18 @@ createApp({
       await this.loadWizardFormTemplateSectionItems(section);
     },
 
+    async toggleWizardFormTemplateSection(section) {
+      if (!section) return;
+      if (this.expandedWizardFormTemplateSectionId === section.id) {
+        this.expandedWizardFormTemplateSectionId = "";
+        return;
+      }
+      this.expandedWizardFormTemplateSectionId = section.id;
+      if (this.selectedWizardFormTemplateSectionId !== section.id) {
+        await this.selectWizardFormTemplateSection(section);
+      }
+    },
+
     async loadWizardFormTemplateSectionItems(section = this.selectedWizardFormTemplateSection) {
       const sectionId = section?.sectionId || this.selectedWizardFormTemplateSectionSource?.id;
       if (!sectionId) {
@@ -2196,6 +2209,7 @@ createApp({
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `템플릿 Section 추가 오류(${response.status})`);
         this.selectedWizardFormTemplateSectionId = result.section.id;
+        this.expandedWizardFormTemplateSectionId = result.section.id;
         this.showNewWizardFormTemplateSectionForm = false;
         this.newWizardFormTemplateSectionForm = { name: "", description: "", isRequired: false, isVisible: true, userReorderAllowed: true, fixedPosition: "" };
         await this.loadWizardFormTemplateDetail(template.id);
@@ -2242,6 +2256,7 @@ createApp({
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `템플릿 Section 제외 오류(${response.status})`);
         this.selectedWizardFormTemplateSectionId = "";
+        this.expandedWizardFormTemplateSectionId = "";
         await this.loadWizardFormTemplateDetail(this.wizardFormTemplateDetail.template.id);
         this.setStatus("템플릿에서 Section을 제외했습니다");
       } catch (error) {
