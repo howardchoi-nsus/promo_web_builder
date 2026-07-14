@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>프로모션 UI 디자인 빌더</title>
-    <link rel="stylesheet" href="styles.css?v=ui-design-qa" />
+    <link rel="stylesheet" href="styles.css?v=wizard-section-order-motion-v1" />
   </head>
   <body>
     <div id="app" class="app-shell">
@@ -925,7 +925,6 @@
                     'drop-after': wizardSectionDropTargetKey === group.sectionKey && wizardSectionDropPosition === 'after'
                   }"
                   @dragover.prevent="dragOverWizardSection(group, $event)"
-                  @dragleave="leaveWizardSectionDrop(group, $event)"
                   @drop.prevent.stop="dropWizardSection(group)"
                   @click="selectWizardSection(group.sectionKey)"
                 >
@@ -1413,6 +1412,6 @@
     </div>
 
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-    <script src="app.js?v=admin-ko-v1"></script>
+    <script src="app.js?v=wizard-section-order-motion-v1"></script>
   </body>
 </html>
