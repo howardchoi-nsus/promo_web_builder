@@ -53,7 +53,12 @@ assert.match(adminSource, /duplicateWizardFormTemplateError/);
 assert.match(adminSource, /duplicateWizardFormTemplateKeyExists/);
 assert.match(adminSource, /newWizardFormTemplateKeyExists/);
 assert.match(adminSource, /activateWizardFormTemplate/);
+assert.match(adminSource, /addWizardFormTemplateSection/);
+assert.match(adminSource, /saveWizardFormTemplateSection/);
+assert.match(adminSource, /dropWizardFormTemplateSection/);
 assert.match(adminSource, /this\.showDuplicateWizardFormTemplateForm = false;[\s\S]*this\.wizardFormTemplateDetail = null;/);
+assert.match(adminHtml, /template-section-composer/);
+assert.match(adminHtml, /template-section-items-panel/);
 assert.match(adminHtml, /폼 템플릿/);
 assert.match(adminHtml, /섹션 라이브러리/);
 

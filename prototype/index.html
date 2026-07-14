@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>프로모션 UI 디자인 빌더</title>
-    <link rel="stylesheet" href="styles.css?v=form-template-admin-v1" />
+    <link rel="stylesheet" href="styles.css?v=form-template-sections-v1" />
   </head>
   <body>
     <div id="app" class="app-shell">
@@ -1011,14 +1011,98 @@
                     <span>포함된 섹션</span>
                     <strong>{{ wizardFormTemplateDetail.sections.length }}개</strong>
                   </div>
-                  <div class="empty-state compact" :class="{ 'danger-state': !wizardFormTemplateDetail.sections.some(section => section.isVisible) }">
-                    {{ wizardFormTemplateDetail.sections.some(section => section.isVisible)
-                      ? '템플릿별 섹션 추가·제외·순서 편집은 다음 관리자 개발 단계에서 연결됩니다.'
-                      : '활성화하려면 노출할 섹션을 하나 이상 구성해야 합니다.' }}
+
+                  <div class="subsection template-section-composer">
+                    <div class="subsection-title">
+                      <h3>템플릿 Section 구성</h3>
+                    </div>
+                    <div class="template-section-add">
+                      <select v-model="wizardFormTemplateSectionToAdd" :disabled="!wizardFormTemplateCanEdit || !availableWizardSectionsForTemplate.length">
+                        <option value="">Section 선택</option>
+                        <option v-for="group in availableWizardSectionsForTemplate" :key="group.sectionKey" :value="group.sectionKey">{{ group.primary?.name }} ({{ group.sectionKey }})</option>
+                      </select>
+                      <button class="tiny-button primary" type="button" :disabled="!wizardFormTemplateCanEdit || !wizardFormTemplateSectionToAdd || wizardFormTemplateSectionSaving" @click="addWizardFormTemplateSection">추가</button>
+                    </div>
+
+                    <div class="template-section-list" v-if="wizardFormTemplateDetail.sections.length">
+                      <div
+                        v-for="section in wizardFormTemplateDetail.sections"
+                        :key="section.id"
+                        class="template-section-row"
+                        :class="{
+                          selected: selectedWizardFormTemplateSectionId === section.id,
+                          dragging: draggedWizardFormTemplateSectionKey === section.sectionKey,
+                          'drop-before': wizardFormTemplateSectionDropTargetKey === section.sectionKey && wizardFormTemplateSectionDropPosition === 'before',
+                          'drop-after': wizardFormTemplateSectionDropTargetKey === section.sectionKey && wizardFormTemplateSectionDropPosition === 'after'
+                        }"
+                        @dragover.prevent="dragOverWizardFormTemplateSection(section, $event)"
+                        @drop.prevent.stop="dropWizardFormTemplateSection(section)"
+                      >
+                        <span
+                          class="section-drag-handle"
+                          :class="{ disabled: !wizardFormTemplateSectionCanReorder(section) }"
+                          :draggable="wizardFormTemplateSectionCanReorder(section) && !wizardFormTemplateSectionSaving"
+                          :title="wizardFormTemplateSectionCanReorder(section) ? '드래그해서 순서 변경' : '순서 고정'"
+                          @dragstart.stop="startWizardFormTemplateSectionDrag(section, $event)"
+                          @dragend.stop="stopWizardFormTemplateSectionDrag"
+                        >{{ wizardFormTemplateSectionCanReorder(section) ? '⋮⋮' : '고정' }}</span>
+                        <button class="template-section-select" type="button" @click="selectWizardFormTemplateSection(section)">
+                          <strong>{{ section.sectionName || section.sectionKey }}</strong>
+                          <span>{{ section.sectionKey }} · {{ section.isVisible ? '노출' : '숨김' }} · {{ section.isRequired ? '필수' : '선택' }}</span>
+                        </button>
+                      </div>
+                    </div>
+                    <div class="empty-state compact danger-state" v-else>활성화하려면 노출할 Section을 하나 이상 추가해야 합니다.</div>
+
+                    <div class="template-section-settings" v-if="selectedWizardFormTemplateSection">
+                      <label class="switch-control">
+                        <input v-model="wizardFormTemplateSectionEditor.isRequired" type="checkbox" :disabled="!wizardFormTemplateCanEdit" />
+                        <span>필수 Section</span>
+                      </label>
+                      <label class="switch-control">
+                        <input v-model="wizardFormTemplateSectionEditor.isVisible" type="checkbox" :disabled="!wizardFormTemplateCanEdit" />
+                        <span>Wizard 노출</span>
+                      </label>
+                      <label class="switch-control">
+                        <input v-model="wizardFormTemplateSectionEditor.orderChangeAllowed" type="checkbox" :disabled="!wizardFormTemplateCanEdit || Boolean(wizardFormTemplateSectionEditor.fixedPosition)" />
+                        <span>순서 변경 허용</span>
+                      </label>
+                      <label class="field compact-field">
+                        <span>고정 위치</span>
+                        <select v-model="wizardFormTemplateSectionEditor.fixedPosition" :disabled="!wizardFormTemplateCanEdit">
+                          <option value="">고정하지 않음</option>
+                          <option value="top">상단</option>
+                          <option value="bottom">하단</option>
+                        </select>
+                      </label>
+                      <div class="action-row align-right">
+                        <button class="tiny-button danger" type="button" :disabled="!wizardFormTemplateCanEdit || wizardFormTemplateSectionSaving" @click="removeWizardFormTemplateSection">템플릿에서 제외</button>
+                        <button class="tiny-button primary" type="button" :disabled="!wizardFormTemplateCanEdit || wizardFormTemplateSectionSaving" @click="saveWizardFormTemplateSection">Section 설정 저장</button>
+                      </div>
+                    </div>
                   </div>
                 </section>
 
                 <section class="prompt-editor-panel empty-state" v-else>폼 템플릿을 선택해 주세요.</section>
+
+                <aside class="template-section-items-panel" v-if="wizardFormTemplateDetail">
+                  <div class="subsection-title">
+                    <div>
+                      <h3>Section Items</h3>
+                      <span v-if="selectedWizardFormTemplateSectionSource">{{ selectedWizardFormTemplateSectionSource.sectionKey }} · 활성 v{{ selectedWizardFormTemplateSectionSource.version }}</span>
+                    </div>
+                  </div>
+                  <div class="empty-state compact" v-if="wizardFormTemplateSectionItemsLoading">Item을 불러오는 중입니다.</div>
+                  <div class="history-list" v-else-if="wizardFormTemplateSectionItems.length">
+                    <div class="history-item" v-for="item in wizardFormTemplateSectionItems" :key="item.id">
+                      <strong>{{ item.name }}</strong>
+                      <span>{{ item.itemKey }} · {{ fieldKindLabel(item.fieldKind) }}{{ item.textType ? ' · ' + textTypeLabel(item.textType) : '' }}</span>
+                      <em>{{ item.isVisibleInWizard ? 'Wizard 노출' : 'Wizard 숨김' }} · {{ item.isRequired ? '필수' : '선택' }}{{ item.isLocked ? ' · 고정값' : '' }}</em>
+                    </div>
+                  </div>
+                  <div class="empty-state compact" v-else-if="selectedWizardFormTemplateSection">활성 Section에 등록된 Item이 없습니다.</div>
+                  <div class="empty-state compact" v-else>Section을 선택해 주세요.</div>
+                </aside>
               </div>
             </section>
 
@@ -1558,6 +1642,6 @@
     </div>
 
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-    <script src="app.js?v=form-template-admin-v1"></script>
+    <script src="app.js?v=form-template-sections-v1"></script>
   </body>
 </html>

@@ -2704,7 +2704,7 @@ body.is-resizing {
 
 .form-template-admin-grid {
   display: grid;
-  grid-template-columns: minmax(220px, 30%) minmax(0, 1fr);
+  grid-template-columns: minmax(200px, 23%) minmax(360px, 1fr) minmax(240px, 30%);
   gap: 12px;
   min-height: 0;
 }
@@ -2737,6 +2737,109 @@ body.is-resizing {
 .form-template-summary strong {
   color: var(--ink);
   font-size: 13px;
+}
+
+.template-section-composer {
+  display: grid;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.template-section-add {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.template-section-add select {
+  min-width: 0;
+}
+
+.template-section-list {
+  display: grid;
+  gap: 8px;
+}
+
+.template-section-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  transition: transform 160ms ease, opacity 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.template-section-row.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.template-section-row.dragging {
+  opacity: 0.55;
+  transform: scale(0.98);
+}
+
+.template-section-row.drop-before::before,
+.template-section-row.drop-after::after {
+  content: "";
+  position: absolute;
+  right: 4px;
+  left: 4px;
+  height: 3px;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.template-section-row.drop-before::before {
+  top: -6px;
+}
+
+.template-section-row.drop-after::after {
+  bottom: -6px;
+}
+
+.template-section-select {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 10px 10px 10px 2px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.template-section-select strong,
+.template-section-select span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.template-section-select strong {
+  font-size: 13px;
+}
+
+.template-section-select span {
+  color: var(--sub);
+  font-size: 11px;
+}
+
+.template-section-settings {
+  display: grid;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.template-section-items-panel {
+  min-width: 0;
+  padding-left: 12px;
+  border-left: 1px solid var(--line);
 }
 
 .prompt-list-panel,
@@ -3084,6 +3187,13 @@ body.is-resizing {
 
   .form-template-admin-grid {
     grid-template-columns: 1fr;
+  }
+
+  .template-section-items-panel {
+    padding-top: 12px;
+    padding-left: 0;
+    border-top: 1px solid var(--line);
+    border-left: 0;
   }
 
   .prompt-editor-header {
