@@ -2772,6 +2772,35 @@ body.is-resizing {
   background: var(--accent-soft);
 }
 
+.prompt-list-item.dragging {
+  opacity: 0.5;
+}
+
+.section-drag-handle {
+  display: inline-flex;
+  min-width: 28px;
+  min-height: 24px;
+  align-items: center;
+  justify-content: center;
+  margin-right: 6px;
+  border: 1px solid var(--line);
+  color: var(--sub);
+  cursor: grab;
+  user-select: none;
+}
+
+.section-drag-handle:active {
+  cursor: grabbing;
+}
+
+.section-drag-handle.disabled {
+  min-width: 36px;
+  border-color: transparent;
+  color: var(--muted);
+  cursor: default;
+  font-size: 11px;
+}
+
 .prompt-list-item strong,
 .prompt-list-item span {
   overflow: hidden;

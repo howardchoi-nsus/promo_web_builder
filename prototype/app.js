@@ -1153,6 +1153,8 @@ createApp({
       wizardSectionsLoading: false,
       wizardSectionsError: "",
       wizardSectionSaving: false,
+      wizardSectionOrderSaving: false,
+      draggedWizardSectionKey: "",
       selectedWizardSectionKey: "",
       wizardSectionDetail: null,
       wizardSectionDetailLoading: false,
@@ -1162,7 +1164,6 @@ createApp({
         isRequired: false,
         orderChangeAllowed: true,
         fixedPosition: "",
-        sortOrder: 0,
         isVisibleInWizard: true,
         changeNote: "",
       },
@@ -1889,7 +1890,6 @@ createApp({
           isRequired: result.section.isRequired,
           orderChangeAllowed: result.section.orderChangeAllowed,
           fixedPosition: result.section.fixedPosition || "",
-          sortOrder: result.section.sortOrder,
           isVisibleInWizard: result.section.isVisibleInWizard,
           changeNote: "",
         };
@@ -1915,6 +1915,63 @@ createApp({
 
     imageSourceLabel(source) {
       return ({ file: "파일첨부", url: "URL첨부", ai: "AI 생성" })[source] || source;
+    },
+
+    wizardSectionCanReorder(group) {
+      return Boolean(
+        group?.primary?.status === "active"
+        && group.primary.orderChangeAllowed
+        && !group.primary.fixedPosition
+      );
+    },
+
+    startWizardSectionDrag(group, event) {
+      if (!this.wizardSectionCanReorder(group) || this.wizardSectionOrderSaving) {
+        event.preventDefault();
+        return;
+      }
+      this.draggedWizardSectionKey = group.sectionKey;
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", group.sectionKey);
+    },
+
+    stopWizardSectionDrag() {
+      this.draggedWizardSectionKey = "";
+    },
+
+    async dropWizardSection(targetGroup) {
+      const sourceKey = this.draggedWizardSectionKey;
+      this.draggedWizardSectionKey = "";
+      if (!sourceKey || sourceKey === targetGroup?.sectionKey || !this.wizardSectionCanReorder(targetGroup)) return;
+
+      const movableGroups = this.groupedWizardSections.filter((group) => this.wizardSectionCanReorder(group));
+      const sourceIndex = movableGroups.findIndex((group) => group.sectionKey === sourceKey);
+      const targetIndex = movableGroups.findIndex((group) => group.sectionKey === targetGroup.sectionKey);
+      if (sourceIndex < 0 || targetIndex < 0) return;
+
+      const reordered = [...movableGroups];
+      const [source] = reordered.splice(sourceIndex, 1);
+      reordered.splice(targetIndex, 0, source);
+      const sectionKeys = reordered.map((group) => group.sectionKey);
+
+      this.wizardSectionOrderSaving = true;
+      try {
+        const response = await fetch("/api/wizard-content-sections-order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sectionKeys }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `섹션 순서 저장 오류(${response.status})`);
+        this.wizardSections = Array.isArray(result.sections) ? result.sections : this.wizardSections;
+        await this.selectWizardSection(this.selectedWizardSectionKey, { silent: true });
+        this.setStatus("섹션 순서를 저장했습니다");
+      } catch (error) {
+        await this.loadWizardSections({ fresh: true });
+        this.setStatus(`섹션 순서 저장 실패: ${error.message}`);
+      } finally {
+        this.wizardSectionOrderSaving = false;
+      }
     },
 
     toggleNewWizardSectionForm() {

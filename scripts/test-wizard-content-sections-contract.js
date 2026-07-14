@@ -20,6 +20,7 @@ const root = path.resolve(__dirname, "..");
 const wizardSource = fs.readFileSync(path.join(root, "prototype", "promo-wizard.js"), "utf8");
 const activateSource = fs.readFileSync(path.join(root, "api", "wizard-content-section-activate.js"), "utf8");
 const archiveSource = fs.readFileSync(path.join(root, "api", "wizard-content-section-archive.js"), "utf8");
+const orderSource = fs.readFileSync(path.join(root, "api", "wizard-content-sections-order.js"), "utf8");
 const migrationSource = fs.readFileSync(path.join(root, "db", "migrations", "016_wizard_content_sections.sql"), "utf8");
 
 assert.match(wizardSource, /wizardContentLegacyBackup/);
@@ -29,6 +30,9 @@ assert.match(wizardSource, /applyCtaUtmParameters/);
 assert.match(activateSource, /activate_wizard_content_section/);
 assert.match(activateSource, /validateSectionDraft/);
 assert.match(archiveSource, /Active sections cannot be archived directly/);
+assert.match(orderSource, /s\.status <> 'archived'/);
+assert.match(orderSource, /const updatedKeys = new Set/);
+assert.doesNotMatch(orderSource, /set sort_order[\s\S]*where s\.section_key = r\.section_key[\s\S]*and s\.status = 'active'/);
 assert.match(migrationSource, /create or replace function clone_wizard_content_section_draft/);
 assert.match(migrationSource, /create or replace function activate_wizard_content_section/);
 assert.match(migrationSource, /coalesce\(max\(version\), 0\) \+ 1/);
