@@ -1944,18 +1944,15 @@ createApp({
     },
 
     dragOverWizardSection(targetGroup, event) {
-      if (!this.draggedWizardSectionKey || !this.wizardSectionCanReorder(targetGroup)) return;
+      if (
+        !this.draggedWizardSectionKey
+        || this.draggedWizardSectionKey === targetGroup.sectionKey
+        || !this.wizardSectionCanReorder(targetGroup)
+      ) return;
       const bounds = event.currentTarget.getBoundingClientRect();
       this.wizardSectionDropTargetKey = targetGroup.sectionKey;
       this.wizardSectionDropPosition = event.clientY < bounds.top + (bounds.height / 2) ? "before" : "after";
       event.dataTransfer.dropEffect = "move";
-    },
-
-    leaveWizardSectionDrop(targetGroup, event) {
-      if (targetGroup.sectionKey !== this.wizardSectionDropTargetKey) return;
-      if (event.currentTarget.contains(event.relatedTarget)) return;
-      this.wizardSectionDropTargetKey = "";
-      this.wizardSectionDropPosition = "";
     },
 
     async dropWizardSection(targetGroup) {
