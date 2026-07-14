@@ -2690,6 +2690,55 @@ body.is-resizing {
   min-height: 0;
 }
 
+.form-template-manager {
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--line);
+}
+
+.form-template-manager > .subsection-title > div:first-child span {
+  display: block;
+  margin-top: 3px;
+  color: var(--sub);
+  font-size: 12px;
+}
+
+.form-template-admin-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 30%) minmax(0, 1fr);
+  gap: 12px;
+  min-height: 0;
+}
+
+.form-template-create,
+.form-template-duplicate {
+  display: grid;
+  gap: 10px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.form-template-duplicate > strong {
+  font-size: 13px;
+}
+
+.form-template-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 38px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  color: var(--sub);
+  font-size: 12px;
+}
+
+.form-template-summary strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
 .prompt-list-panel,
 .prompt-editor-panel {
   min-width: 0;
@@ -3030,6 +3079,10 @@ body.is-resizing {
   }
 
   .prompt-admin-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-template-admin-grid {
     grid-template-columns: 1fr;
   }
 

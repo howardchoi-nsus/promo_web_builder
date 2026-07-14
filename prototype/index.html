@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>프로모션 UI 디자인 빌더</title>
-    <link rel="stylesheet" href="styles.css?v=wizard-section-order-motion-v1" />
+    <link rel="stylesheet" href="styles.css?v=form-template-admin-v1" />
   </head>
   <body>
     <div id="app" class="app-shell">
@@ -876,9 +876,149 @@
           </section>
 
           <section class="panel stack" v-show="adminTab === 'promo-form'">
+            <section class="subsection form-template-manager">
+              <div class="subsection-title">
+                <div>
+                  <h2>폼 템플릿</h2>
+                  <span>Wizard 2단계에 사용할 프로모션 입력 폼 그룹</span>
+                </div>
+                <div class="subsection-actions">
+                  <button class="tiny-button" type="button" :disabled="wizardFormTemplatesLoading" @click="loadWizardFormTemplates({ fresh: true })">새로고침</button>
+                  <button class="tiny-button primary" type="button" @click="toggleNewWizardFormTemplateForm">{{ showNewWizardFormTemplateForm ? '취소' : '+ 템플릿 추가' }}</button>
+                </div>
+              </div>
+
+              <div class="outline-item danger-state" v-if="wizardFormTemplatesError">
+                <strong>폼 템플릿 오류</strong>
+                <span>{{ wizardFormTemplatesError }}</span>
+              </div>
+
+              <div class="form-template-create" v-if="showNewWizardFormTemplateForm">
+                <label class="field compact-field">
+                  <span>Template Key</span>
+                  <input v-model="newWizardFormTemplateForm.templateKey" type="text" autocomplete="off" placeholder="예: aaa" />
+                </label>
+                <label class="field compact-field">
+                  <span>템플릿 이름</span>
+                  <input v-model="newWizardFormTemplateForm.name" type="text" autocomplete="off" />
+                </label>
+                <label class="field compact-field">
+                  <span>설명</span>
+                  <input v-model="newWizardFormTemplateForm.description" type="text" autocomplete="off" />
+                </label>
+                <div class="action-row align-right">
+                  <button class="tiny-button primary" type="button" :disabled="wizardFormTemplateSaving || !newWizardFormTemplateForm.templateKey || !newWizardFormTemplateForm.name" @click="createWizardFormTemplate">템플릿 생성</button>
+                </div>
+              </div>
+
+              <div class="form-template-admin-grid">
+                <aside class="prompt-list-panel">
+                  <button
+                    v-for="group in groupedWizardFormTemplates"
+                    :key="group.templateKey"
+                    class="prompt-list-item"
+                    type="button"
+                    :class="{ selected: selectedWizardFormTemplateKey === group.templateKey }"
+                    @click="selectWizardFormTemplate(group.templateKey)"
+                  >
+                    <strong>{{ group.primary?.name }}</strong>
+                    <span>{{ group.templateKey }} · v{{ group.primary?.version }} · {{ group.versions.length }}개 버전</span>
+                    <em :class="`status-${group.primary?.status}`">{{ group.primary?.isDefault ? '기본' : wizardSectionStatusLabel(group.primary?.status) }}</em>
+                  </button>
+                  <div class="empty-state compact" v-if="!wizardFormTemplatesLoading && !groupedWizardFormTemplates.length">등록된 폼 템플릿이 없습니다.</div>
+                </aside>
+
+                <section class="prompt-editor-panel" v-if="wizardFormTemplateDetail">
+                  <div class="prompt-editor-header">
+                    <div>
+                      <strong>{{ wizardFormTemplateDetail.template.name }}</strong>
+                      <span>{{ wizardFormTemplateDetail.template.templateKey }} · v{{ wizardFormTemplateDetail.template.version }} · {{ wizardSectionStatusLabel(wizardFormTemplateDetail.template.status) }}</span>
+                    </div>
+                    <div class="subsection-actions">
+                      <button class="tiny-button" type="button" @click="toggleDuplicateWizardFormTemplateForm">복제</button>
+                      <button
+                        class="tiny-button"
+                        type="button"
+                        v-if="wizardFormTemplateDetail.template.status !== 'draft'"
+                        :disabled="wizardFormTemplateSaving || selectedWizardFormTemplateHasDraft"
+                        @click="createWizardFormTemplateDraft"
+                      >새 초안 만들기</button>
+                      <button class="tiny-button primary" type="button" v-if="wizardFormTemplateDetail.template.status === 'draft'" :disabled="wizardFormTemplateSaving" @click="saveWizardFormTemplate">저장</button>
+                      <button
+                        class="tiny-button"
+                        type="button"
+                        v-if="wizardFormTemplateDetail.template.status === 'draft'"
+                        :disabled="wizardFormTemplateSaving || !wizardFormTemplateDetail.sections.some(section => section.isVisible)"
+                        :title="wizardFormTemplateDetail.sections.some(section => section.isVisible) ? '폼 템플릿 활성화' : '노출할 섹션을 먼저 구성해야 합니다'"
+                        @click="activateWizardFormTemplate"
+                      >활성화</button>
+                      <button class="tiny-button danger" type="button" :disabled="wizardFormTemplateSaving || ['active', 'archived'].includes(wizardFormTemplateDetail.template.status)" @click="archiveWizardFormTemplate">보관</button>
+                    </div>
+                  </div>
+
+                  <div class="form-template-duplicate" v-if="showDuplicateWizardFormTemplateForm">
+                    <strong>새 템플릿으로 복제</strong>
+                    <label class="field compact-field">
+                      <span>새 Template Key</span>
+                      <input v-model="duplicateWizardFormTemplateForm.templateKey" type="text" autocomplete="off" placeholder="예: bbb" />
+                    </label>
+                    <label class="field compact-field">
+                      <span>새 템플릿 이름</span>
+                      <input v-model="duplicateWizardFormTemplateForm.name" type="text" autocomplete="off" />
+                    </label>
+                    <label class="field compact-field">
+                      <span>설명</span>
+                      <input v-model="duplicateWizardFormTemplateForm.description" type="text" autocomplete="off" />
+                    </label>
+                    <div class="action-row align-right">
+                      <button class="tiny-button" type="button" @click="showDuplicateWizardFormTemplateForm = false">취소</button>
+                      <button class="tiny-button primary" type="button" :disabled="wizardFormTemplateSaving || !duplicateWizardFormTemplateForm.templateKey || !duplicateWizardFormTemplateForm.name" @click="duplicateWizardFormTemplate">복제</button>
+                    </div>
+                  </div>
+
+                  <label class="field compact-field" v-if="selectedWizardFormTemplateGroup?.versions.length > 1">
+                    <span>버전 보기</span>
+                    <select :value="wizardFormTemplateDetail.template.id" @change="loadWizardFormTemplateDetail($event.target.value)">
+                      <option v-for="version in selectedWizardFormTemplateGroup.versions" :key="version.id" :value="version.id">v{{ version.version }} · {{ wizardSectionStatusLabel(version.status) }}</option>
+                    </select>
+                  </label>
+
+                  <div class="empty-state compact" v-if="wizardFormTemplateDetail.template.status !== 'draft'">활성·비활성 버전은 읽기 전용입니다. 수정하려면 새 초안을 만드세요.</div>
+
+                  <label class="field">
+                    <span>템플릿 이름</span>
+                    <input v-model="wizardFormTemplateEditor.name" type="text" :disabled="wizardFormTemplateDetail.template.status !== 'draft'" autocomplete="off" />
+                  </label>
+                  <label class="field">
+                    <span>설명</span>
+                    <input v-model="wizardFormTemplateEditor.description" type="text" :disabled="wizardFormTemplateDetail.template.status !== 'draft'" autocomplete="off" />
+                  </label>
+                  <label class="switch-control">
+                    <input v-model="wizardFormTemplateEditor.isDefault" type="checkbox" :disabled="wizardFormTemplateDetail.template.status !== 'draft'" />
+                    <span>기본 템플릿으로 지정</span>
+                  </label>
+                  <label class="field compact-field" v-if="wizardFormTemplateDetail.template.status === 'draft'">
+                    <span>변경 사유</span>
+                    <input v-model="wizardFormTemplateEditor.changeNote" type="text" autocomplete="off" />
+                  </label>
+                  <div class="form-template-summary">
+                    <span>포함된 섹션</span>
+                    <strong>{{ wizardFormTemplateDetail.sections.length }}개</strong>
+                  </div>
+                  <div class="empty-state compact" :class="{ 'danger-state': !wizardFormTemplateDetail.sections.some(section => section.isVisible) }">
+                    {{ wizardFormTemplateDetail.sections.some(section => section.isVisible)
+                      ? '템플릿별 섹션 추가·제외·순서 편집은 다음 관리자 개발 단계에서 연결됩니다.'
+                      : '활성화하려면 노출할 섹션을 하나 이상 구성해야 합니다.' }}
+                  </div>
+                </section>
+
+                <section class="prompt-editor-panel empty-state" v-else>폼 템플릿을 선택해 주세요.</section>
+              </div>
+            </section>
+
             <div class="panel-header">
               <div>
-                <h2>프로모션 폼 관리</h2>
+                <h2>섹션 라이브러리</h2>
               </div>
               <div class="subsection-actions">
                 <span v-if="wizardSectionsLoading">불러오는 중</span>
@@ -1412,6 +1552,6 @@
     </div>
 
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-    <script src="app.js?v=wizard-section-order-motion-v1"></script>
+    <script src="app.js?v=form-template-admin-v1"></script>
   </body>
 </html>

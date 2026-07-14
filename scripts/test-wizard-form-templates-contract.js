@@ -23,6 +23,8 @@ const templatesApi = fs.readFileSync(path.join(root, "api", "wizard-form-templat
 const activateApi = fs.readFileSync(path.join(root, "api", "wizard-form-template-activate.js"), "utf8");
 const sectionsApi = fs.readFileSync(path.join(root, "api", "wizard-form-template-sections.js"), "utf8");
 const orderApi = fs.readFileSync(path.join(root, "api", "wizard-form-template-sections-order.js"), "utf8");
+const adminSource = fs.readFileSync(path.join(root, "prototype", "app.js"), "utf8");
+const adminHtml = fs.readFileSync(path.join(root, "prototype", "index.html"), "utf8");
 
 assert.match(migration, /create table if not exists wizard_form_templates/);
 assert.match(migration, /create table if not exists wizard_form_template_sections/);
@@ -44,5 +46,11 @@ assert.match(orderApi, /Section order is stale/);
 assert.match(orderApi, /jsonb_array_elements/);
 assert.match(orderApi, /section\.orderChangeAllowed && !section\.fixedPosition/);
 assert.match(orderApi, /ts\.fixed_position is null/);
+assert.match(adminSource, /loadWizardFormTemplates/);
+assert.match(adminSource, /duplicateWizardFormTemplate/);
+assert.match(adminSource, /activateWizardFormTemplate/);
+assert.match(adminSource, /this\.showDuplicateWizardFormTemplateForm = false;[\s\S]*this\.wizardFormTemplateDetail = null;/);
+assert.match(adminHtml, /폼 템플릿/);
+assert.match(adminHtml, /섹션 라이브러리/);
 
 console.log("Wizard form templates contract test passed");

@@ -1149,6 +1149,17 @@ createApp({
       workerWebhookSettingsError: "",
       workerWebhookSavingStage: "",
       workerWebhookEditors: {},
+      wizardFormTemplates: [],
+      wizardFormTemplatesLoading: false,
+      wizardFormTemplatesError: "",
+      wizardFormTemplateSaving: false,
+      selectedWizardFormTemplateKey: "",
+      wizardFormTemplateDetail: null,
+      wizardFormTemplateEditor: { name: "", description: "", isDefault: false, changeNote: "" },
+      showNewWizardFormTemplateForm: false,
+      newWizardFormTemplateForm: { templateKey: "", name: "", description: "" },
+      showDuplicateWizardFormTemplateForm: false,
+      duplicateWizardFormTemplateForm: { templateKey: "", name: "", description: "" },
       wizardSections: [],
       wizardSectionsLoading: false,
       wizardSectionsError: "",
@@ -1473,6 +1484,34 @@ createApp({
       return `${this.promptTypeLabel(this.selectedPromptTemplate.type)} 프롬프트`;
     },
 
+    groupedWizardFormTemplates() {
+      const groups = new Map();
+      this.wizardFormTemplates.forEach((template) => {
+        if (!groups.has(template.templateKey)) {
+          groups.set(template.templateKey, { templateKey: template.templateKey, versions: [] });
+        }
+        groups.get(template.templateKey).versions.push(template);
+      });
+      return Array.from(groups.values())
+        .map((group) => {
+          const versions = [...group.versions].sort((a, b) => b.version - a.version);
+          const primary = versions.find((version) => version.status === "active")
+            || versions.find((version) => version.status === "draft")
+            || versions[0];
+          return { ...group, versions, primary };
+        })
+        .sort((a, b) => Number(Boolean(b.primary?.isDefault)) - Number(Boolean(a.primary?.isDefault))
+          || String(a.primary?.name || "").localeCompare(String(b.primary?.name || "")));
+    },
+
+    selectedWizardFormTemplateGroup() {
+      return this.groupedWizardFormTemplates.find((group) => group.templateKey === this.selectedWizardFormTemplateKey) || null;
+    },
+
+    selectedWizardFormTemplateHasDraft() {
+      return Boolean(this.selectedWizardFormTemplateGroup?.versions.some((version) => version.status === "draft"));
+    },
+
     // Wizard Content Sections: group the flat draft/active/inactive/archived
     // rows returned by the API by sectionKey, so the list shows one entry per
     // logical section with its versions available underneath.
@@ -1572,6 +1611,7 @@ createApp({
       await Promise.all([
         this.loadPromptTemplates(),
         this.loadWorkerWebhookSettings(),
+        this.loadWizardFormTemplates(),
         this.loadWizardSections(),
       ]);
       this.setStatus("관리자 페이지로 이동했습니다");
@@ -1838,6 +1878,211 @@ createApp({
         this.setStatus(`프롬프트 보관 실패: ${error.message}`);
       } finally {
         this.promptSaving = false;
+      }
+    },
+
+    // --- Wizard Form Templates ---------------------------------------------
+    async loadWizardFormTemplates(options = {}) {
+      if (this.wizardFormTemplatesLoading && !options.fresh) return;
+      this.wizardFormTemplatesLoading = true;
+      this.wizardFormTemplatesError = "";
+      try {
+        const response = await fetch("/api/wizard-form-templates?includeArchived=true");
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `폼 템플릿 목록 요청 오류(${response.status})`);
+        this.wizardFormTemplates = Array.isArray(result.templates) ? result.templates : [];
+        if (!this.groupedWizardFormTemplates.some((group) => group.templateKey === this.selectedWizardFormTemplateKey)) {
+          this.selectedWizardFormTemplateKey = this.groupedWizardFormTemplates[0]?.templateKey || "";
+        }
+        if (this.selectedWizardFormTemplateKey) {
+          await this.selectWizardFormTemplate(this.selectedWizardFormTemplateKey, { silent: true });
+        } else {
+          this.wizardFormTemplateDetail = null;
+        }
+      } catch (error) {
+        this.wizardFormTemplatesError = error.message;
+        this.setStatus(`폼 템플릿 목록을 불러오지 못했습니다: ${error.message}`);
+      } finally {
+        this.wizardFormTemplatesLoading = false;
+      }
+    },
+
+    async selectWizardFormTemplate(templateKey, options = {}) {
+      this.selectedWizardFormTemplateKey = templateKey;
+      this.showDuplicateWizardFormTemplateForm = false;
+      this.wizardFormTemplateDetail = null;
+      const group = this.groupedWizardFormTemplates.find((item) => item.templateKey === templateKey);
+      const target = group?.versions.find((version) => version.status === "draft") || group?.primary;
+      if (!target) {
+        this.wizardFormTemplateDetail = null;
+        return;
+      }
+      await this.loadWizardFormTemplateDetail(target.id, options);
+    },
+
+    async loadWizardFormTemplateDetail(id, options = {}) {
+      try {
+        const response = await fetch(`/api/wizard-form-template?id=${encodeURIComponent(id)}`);
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `폼 템플릿 상세 요청 오류(${response.status})`);
+        this.wizardFormTemplateDetail = { template: result.template, sections: result.sections || [] };
+        this.wizardFormTemplateEditor = {
+          name: result.template.name,
+          description: result.template.description,
+          isDefault: result.template.isDefault,
+          changeNote: "",
+        };
+      } catch (error) {
+        if (!options.silent) this.setStatus(`폼 템플릿 상세를 불러오지 못했습니다: ${error.message}`);
+      }
+    },
+
+    toggleNewWizardFormTemplateForm() {
+      this.showNewWizardFormTemplateForm = !this.showNewWizardFormTemplateForm;
+      this.showDuplicateWizardFormTemplateForm = false;
+      this.newWizardFormTemplateForm = { templateKey: "", name: "", description: "" };
+    },
+
+    toggleDuplicateWizardFormTemplateForm() {
+      const source = this.wizardFormTemplateDetail?.template;
+      if (!source) return;
+      this.showDuplicateWizardFormTemplateForm = !this.showDuplicateWizardFormTemplateForm;
+      this.showNewWizardFormTemplateForm = false;
+      this.duplicateWizardFormTemplateForm = {
+        templateKey: "",
+        name: `${source.name} Copy`,
+        description: source.description || "",
+      };
+    },
+
+    async createWizardFormTemplate() {
+      if (this.wizardFormTemplateSaving) return;
+      this.wizardFormTemplateSaving = true;
+      try {
+        const response = await fetch("/api/wizard-form-templates", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(this.newWizardFormTemplateForm),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `폼 템플릿 생성 오류(${response.status})`);
+        this.showNewWizardFormTemplateForm = false;
+        this.selectedWizardFormTemplateKey = result.template.templateKey;
+        await this.loadWizardFormTemplates({ fresh: true });
+        this.setStatus("폼 템플릿 초안을 생성했습니다");
+      } catch (error) {
+        this.setStatus(`폼 템플릿 생성 실패: ${error.message}`);
+      } finally {
+        this.wizardFormTemplateSaving = false;
+      }
+    },
+
+    async duplicateWizardFormTemplate() {
+      const source = this.wizardFormTemplateDetail?.template;
+      if (!source || this.wizardFormTemplateSaving) return;
+      this.wizardFormTemplateSaving = true;
+      try {
+        const response = await fetch("/api/wizard-form-templates", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sourceId: source.id, ...this.duplicateWizardFormTemplateForm }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `폼 템플릿 복제 오류(${response.status})`);
+        this.showDuplicateWizardFormTemplateForm = false;
+        this.selectedWizardFormTemplateKey = result.template.templateKey;
+        await this.loadWizardFormTemplates({ fresh: true });
+        this.setStatus("폼 템플릿을 새 초안으로 복제했습니다");
+      } catch (error) {
+        this.setStatus(`폼 템플릿 복제 실패: ${error.message}`);
+      } finally {
+        this.wizardFormTemplateSaving = false;
+      }
+    },
+
+    async createWizardFormTemplateDraft() {
+      const source = this.wizardFormTemplateDetail?.template;
+      if (!source || this.wizardFormTemplateSaving) return;
+      this.wizardFormTemplateSaving = true;
+      try {
+        const response = await fetch("/api/wizard-form-templates", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: source.id, changeNote: "관리자 페이지에서 새 초안을 만들었습니다." }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `폼 템플릿 초안 생성 오류(${response.status})`);
+        await this.loadWizardFormTemplates({ fresh: true });
+        await this.loadWizardFormTemplateDetail(result.template.id);
+        this.setStatus("폼 템플릿 새 초안을 만들었습니다");
+      } catch (error) {
+        this.setStatus(`폼 템플릿 초안 생성 실패: ${error.message}`);
+      } finally {
+        this.wizardFormTemplateSaving = false;
+      }
+    },
+
+    async saveWizardFormTemplate() {
+      const template = this.wizardFormTemplateDetail?.template;
+      if (!template || template.status !== "draft" || this.wizardFormTemplateSaving) return;
+      this.wizardFormTemplateSaving = true;
+      try {
+        const response = await fetch("/api/wizard-form-template", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: template.id, ...this.wizardFormTemplateEditor }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `폼 템플릿 저장 오류(${response.status})`);
+        await this.loadWizardFormTemplates({ fresh: true });
+        await this.loadWizardFormTemplateDetail(result.template.id);
+        this.setStatus("폼 템플릿 정보를 저장했습니다");
+      } catch (error) {
+        this.setStatus(`폼 템플릿 저장 실패: ${error.message}`);
+      } finally {
+        this.wizardFormTemplateSaving = false;
+      }
+    },
+
+    async activateWizardFormTemplate() {
+      const template = this.wizardFormTemplateDetail?.template;
+      if (!template || this.wizardFormTemplateSaving) return;
+      this.wizardFormTemplateSaving = true;
+      try {
+        const response = await fetch("/api/wizard-form-template-activate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: template.id, changeNote: "관리자 페이지에서 폼 템플릿을 활성화했습니다." }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `폼 템플릿 활성화 오류(${response.status})`);
+        await this.loadWizardFormTemplates({ fresh: true });
+        this.setStatus("폼 템플릿을 활성화했습니다");
+      } catch (error) {
+        this.setStatus(`폼 템플릿 활성화 실패: ${error.message}`);
+      } finally {
+        this.wizardFormTemplateSaving = false;
+      }
+    },
+
+    async archiveWizardFormTemplate() {
+      const template = this.wizardFormTemplateDetail?.template;
+      if (!template || this.wizardFormTemplateSaving) return;
+      this.wizardFormTemplateSaving = true;
+      try {
+        const response = await fetch("/api/wizard-form-template-archive", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: template.id, changeNote: "관리자 페이지에서 폼 템플릿을 보관했습니다." }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `폼 템플릿 보관 오류(${response.status})`);
+        await this.loadWizardFormTemplates({ fresh: true });
+        this.setStatus("폼 템플릿 버전을 보관했습니다");
+      } catch (error) {
+        this.setStatus(`폼 템플릿 보관 실패: ${error.message}`);
+      } finally {
+        this.wizardFormTemplateSaving = false;
       }
     },
 
