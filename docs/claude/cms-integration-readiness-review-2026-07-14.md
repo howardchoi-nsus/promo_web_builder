@@ -95,3 +95,77 @@ Phase 6. 인증/환경 분리, 컴플라이언스 게이트 연결
 ```
 
 상세 내용(예: Directus 컬렉션 스키마 초안, WP 커스텀 포스트 타입/ACF 필드 초안, publish worker payload 계약 등)이 필요하면 요청 바랍니다.
+
+## 상세 준비 항목 (실행 체크리스트)
+
+### 1. 콘텐츠/데이터 준비
+
+- Publish Contract 필드 확정표 작성: `wizard_content_section_items`(field_kind: text/image/cta) → Publish Contract 필드 매핑표.
+- 필드별 필수/선택 여부, 타입, validation 규칙 정의(예: CTA는 label+url 필수, terms는 필수 text).
+- `market`/`region` 값 체계 확정: 현재 `promo_design_runs.market`은 자유 text. CMS에서 enum/taxonomy로 관리할지, 자유 text를 유지할지 결정 필요.
+- SEO 메타(og:title/description/image) 필드를 어느 단계 데이터에서 파생할지 결정(자동 생성 vs 운영자 수동 입력).
+- 버전 정책: 같은 프로모션을 재발행할 때 새 버전으로 남길지, 덮어쓸지 결정(`wizard_content_sections`의 draft/active/archived 패턴 재사용 검토).
+
+### 2. 자산(이미지) 준비
+
+- desktop/mobile 자산 분리 규칙 확정(권고안 6.5 기준: 별도 생성 또는 `object-position` 방식).
+- 업로드 대상 API 스펙 확인: WP `POST /wp/v2/media`(multipart), Directus `POST /files`(multipart 또는 import-by-url `/files/import`).
+- `promo_publish_assets` 매핑 테이블 설계: `internal_asset_id`, `checksum`, `target_platform`, `external_media_id`, `external_url` — 재발행 시 checksum 비교로 중복 업로드 방지.
+- 이미지 라이선스/저작권 메타데이터를 CMS 필드로 넘길지 여부.
+
+### 3. DB/백엔드 준비
+
+- `promo_publish_jobs` 마이그레이션 작성(본 문서 B절 스키마 기준).
+- `api/promo-publish.js` (POST 발행 요청 / PATCH worker callback) 신설.
+- `_promo-generation-worker-trigger.js`에 `publish` stage 추가.
+- `_worker-webhook-settings-store.js`와 동일 패턴의 `cms_publish_settings` 테이블/스토어 신설(target_platform, target_env, base_url, auth_ref).
+- `GET /api/promo-generation-runs` 응답에 `publishJobs` summary 추가(기존 `webPages` summary와 동일 패턴).
+- idempotency 규칙: `(run_id, target_platform, target_env)` unique, 재요청 시 기존 job update.
+
+### 4. 인증/보안 준비
+
+- WordPress: 연동 전용 서비스 계정 생성 + Application Password 발급, 계정 role을 필요한 최소 권한(예: `editor`, 커스텀 포스트 타입만)으로 제한.
+- Directus: 연동 전용 role 생성 + static access token 또는 OAuth 클라이언트 발급, 해당 role에 대상 컬렉션 CRUD 권한만 부여.
+- 자격증명 저장: Vercel 환경변수 또는 secret manager 사용, 스테이징/프로덕션 값 분리, 코드/DB에 평문 저장 금지.
+- 아웃바운드 네트워크 허용 목록에 대상 CMS 도메인 등록(현재 프로젝트의 outbound 정책 확인 필요).
+
+### 5. 플랫폼별 스키마 준비
+
+**Directus (우선 PoC 대상)**
+
+- 컬렉션 초안: `promo_pages`(메인), `promo_page_sections`(1:N, section_key/order/payload jsonb), `promo_assets`(파일 relation).
+- 필드 타입 매핑: text→string/text, image→file relation, cta→JSON 또는 개별 필드(label/url/utm_*), terms→text(WYSIWYG 여부 결정).
+- status 필드를 Directus 기본 draft/published 워크플로우에 맞출지, 커스텀 상태 값을 쓸지 결정.
+
+**WordPress (headless 전제)**
+
+- Custom Post Type(`promo_page`) 등록, `show_in_rest: true` 필수.
+- ACF(또는 native meta) 필드 그룹 초안: hero, step_bar, content_cta, image_text_row(반복 필드), terms, compliance_flags.
+- REST API에서 ACF 필드가 기본 노출되지 않으므로 `acf/rest_api` 확장 또는 커스텀 REST 필드 등록(`register_rest_field`) 필요.
+- 프론트가 소비할 것은 이 REST 응답뿐이며, 테마 템플릿/블록 렌더링에는 의존하지 않는다는 원칙 재확인.
+
+### 6. 렌더링/배포 준비
+
+- Directus 경로: 발행된 구조화 콘텐츠를 소비하는 Vue 프론트의 배포 위치 확정(기존 Vercel 프로젝트 재사용 여부, 정적 배포 vs SSR).
+- WordPress headless 경로: 별도 Vue 정적 빌드의 배포 도메인/서브도메인 전략, WP 자체 도메인과의 라우팅 관계(리버스 프록시 여부) 확정.
+- 두 경로 모두 "Web Output에는 LLM이 관여하지 않는다"는 기존 원칙(자동화 Vue 생성 권고안 7.3절)을 발행 단계에도 유지.
+
+### 7. 컴플라이언스/승인 준비
+
+- Rule Base 검증 결과를 `complianceFlags`(bonusCode/affiliate/qTag/responsibleGaming 등)로 구조화해 payload에 강제 포함.
+- 승인 상태 모델 정의: `draft → review → approved → publishing → published / failed`.
+- 승인되지 않은 run은 발행 API 자체에서 차단(프론트 버튼 비활성화만으로는 불충분).
+
+### 8. 조직/의사결정 준비
+
+- README에 명시된 "플랫폼 결정은 추후 검토" 항목의 결정 시점과 결정 주체를 명확히 할 것.
+- 기존 WordPress 운영팀(현 GG Promo Builder 담당)과의 인터페이스 담당자 지정.
+- 리전별 담당자의 CMS 접근 권한 정책(발행만 가능/편집도 가능 여부) 결정.
+
+### 9. 테스트/검증 준비
+
+- Publish Contract에 대한 contract test 추가(`scripts/test-*-contract.js` 기존 패턴 재사용).
+- 재발행 idempotency 테스트(동일 run 재발행 시 중복 생성 없음 확인).
+- E2E 테스트: 생성 → 승인 → 발행 → 대상 CMS 노출 확인 → 프론트 렌더링 확인.
+
+이 체크리스트는 실제 착수 시점의 선행 조건이며, 소스코드 반영은 요청 시 별도로 진행합니다.

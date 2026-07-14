@@ -14,6 +14,7 @@
     "test:final-worker-contract": "node scripts/test-final-worker-contract.js",
     "test:lofi-worker-contract": "node scripts/test-lofi-worker-contract.js",
     "test:wizard-content-sections-contract": "node scripts/test-wizard-content-sections-contract.js",
+    "test:wizard-form-templates-contract": "node scripts/test-wizard-form-templates-contract.js",
     "design-md:dry-run": "node scripts/import-design-md-docs.js",
     "design-md:import": "node scripts/import-design-md-docs.js --apply"
   },
