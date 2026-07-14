@@ -497,6 +497,17 @@ a {
   font-size: 11px;
 }
 
+.locked-field-value {
+  min-height: 38px;
+  border: 1px dashed var(--line-strong);
+  background: var(--surface);
+  color: var(--sub);
+  padding: 8px 10px;
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
 .content-coverage-panel {
   grid-column: 2;
   grid-row: 2 / span 3;

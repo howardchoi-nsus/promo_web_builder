@@ -1148,6 +1148,40 @@ createApp({
       workerWebhookSettingsError: "",
       workerWebhookSavingStage: "",
       workerWebhookEditors: {},
+      wizardSections: [],
+      wizardSectionsLoading: false,
+      wizardSectionsError: "",
+      wizardSectionSaving: false,
+      selectedWizardSectionKey: "",
+      wizardSectionDetail: null,
+      wizardSectionDetailLoading: false,
+      wizardSectionFieldsEditor: {
+        name: "",
+        description: "",
+        isRequired: false,
+        orderChangeAllowed: true,
+        fixedPosition: "",
+        sortOrder: 0,
+        isVisibleInWizard: true,
+        changeNote: "",
+      },
+      showNewWizardSectionForm: false,
+      newWizardSectionForm: { sectionKey: "", name: "", description: "" },
+      wizardItemEditorOpenId: "",
+      wizardItemEditor: {
+        id: "",
+        itemKey: "",
+        name: "",
+        isVisibleInWizard: true,
+        isRequired: false,
+        sortOrder: 0,
+        fieldKind: "text",
+        textType: "title",
+        image: { allowedSources: [], promptText: "", altTextRequired: false, aspectRatio: "", maxSizeKb: "" },
+        ctaUtm: { source: "", medium: "", campaign: "", content: "", term: "" },
+        isLocked: false,
+        lockedValueText: "",
+      },
       promptEditor: {
         name: "",
         body: "",
@@ -1434,6 +1468,36 @@ createApp({
       if (!this.selectedPromptTemplate) return "프롬프트 편집기";
       return `${this.promptTypeLabel(this.selectedPromptTemplate.type)} 프롬프트`;
     },
+
+    // Wizard Content Sections: group the flat draft/active/inactive/archived
+    // rows returned by the API by sectionKey, so the list shows one entry per
+    // logical section with its versions available underneath.
+    groupedWizardSections() {
+      const groups = new Map();
+      this.wizardSections.forEach((section) => {
+        if (!groups.has(section.sectionKey)) {
+          groups.set(section.sectionKey, { sectionKey: section.sectionKey, versions: [] });
+        }
+        groups.get(section.sectionKey).versions.push(section);
+      });
+      return Array.from(groups.values())
+        .map((group) => {
+          const versions = [...group.versions].sort((a, b) => b.version - a.version);
+          const primary = versions.find((version) => version.status === "active")
+            || versions.find((version) => version.status === "draft")
+            || versions[0];
+          return { ...group, versions, primary };
+        })
+        .sort((a, b) => (a.primary?.sortOrder ?? 0) - (b.primary?.sortOrder ?? 0));
+    },
+
+    selectedWizardGroup() {
+      return this.groupedWizardSections.find((group) => group.sectionKey === this.selectedWizardSectionKey) || null;
+    },
+
+    selectedWizardSectionHasDraft() {
+      return Boolean(this.selectedWizardGroup?.versions.some((version) => version.status === "draft"));
+    },
   },
 
   watch: {
@@ -1504,6 +1568,7 @@ createApp({
       await Promise.all([
         this.loadPromptTemplates(),
         this.loadWorkerWebhookSettings(),
+        this.loadWizardSections(),
       ]);
       this.setStatus("관리자 페이지로 이동했습니다");
     },
@@ -1769,6 +1834,314 @@ createApp({
         this.setStatus(`프롬프트 보관 실패: ${error.message}`);
       } finally {
         this.promptSaving = false;
+      }
+    },
+
+    // --- Wizard Content Sections (Admin Page "C" subsection) -------------
+    // Sections/items are versioned like prompt templates: editing always
+    // happens on a 'draft' row (see api/_wizard-content-sections-store.js
+    // cloneSectionAsDraft), and "활성화" swaps which version Promo Wizard
+    // Step 2 actually renders.
+    async loadWizardSections(options = {}) {
+      if (this.wizardSectionsLoading && !options.fresh) return;
+      this.wizardSectionsLoading = true;
+      this.wizardSectionsError = "";
+      try {
+        const response = await fetch("/api/wizard-content-sections?includeArchived=true");
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `섹션 목록 요청 오류(${response.status})`);
+        this.wizardSections = Array.isArray(result.sections) ? result.sections : [];
+        if (!this.selectedWizardSectionKey && this.groupedWizardSections.length) {
+          await this.selectWizardSection(this.groupedWizardSections[0].sectionKey);
+        } else if (this.selectedWizardSectionKey) {
+          await this.selectWizardSection(this.selectedWizardSectionKey, { silent: true });
+        }
+      } catch (error) {
+        this.wizardSectionsError = error.message;
+        this.setStatus(`Wizard 섹션 목록을 불러오지 못했습니다: ${error.message}`);
+      } finally {
+        this.wizardSectionsLoading = false;
+      }
+    },
+
+    async selectWizardSection(sectionKey, options = {}) {
+      this.selectedWizardSectionKey = sectionKey;
+      const group = this.groupedWizardSections.find((item) => item.sectionKey === sectionKey);
+      const target = group?.versions.find((version) => version.status === "draft") || group?.primary;
+      if (!target) {
+        this.wizardSectionDetail = null;
+        return;
+      }
+      await this.loadWizardSectionDetail(target.id, options);
+    },
+
+    async loadWizardSectionDetail(id, options = {}) {
+      this.wizardSectionDetailLoading = true;
+      try {
+        const response = await fetch(`/api/wizard-content-section?id=${encodeURIComponent(id)}`);
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `섹션 상세 요청 오류(${response.status})`);
+        this.wizardSectionDetail = { section: result.section, items: result.items || [], histories: result.histories || [] };
+        this.wizardSectionFieldsEditor = {
+          name: result.section.name,
+          description: result.section.description,
+          isRequired: result.section.isRequired,
+          orderChangeAllowed: result.section.orderChangeAllowed,
+          fixedPosition: result.section.fixedPosition || "",
+          sortOrder: result.section.sortOrder,
+          isVisibleInWizard: result.section.isVisibleInWizard,
+          changeNote: "",
+        };
+        this.wizardItemEditorOpenId = "";
+      } catch (error) {
+        if (!options.silent) this.setStatus(`섹션 상세를 불러오지 못했습니다: ${error.message}`);
+      } finally {
+        this.wizardSectionDetailLoading = false;
+      }
+    },
+
+    wizardSectionStatusLabel(status) {
+      return this.promptStatusLabel(status);
+    },
+
+    fieldKindLabel(kind) {
+      return ({ text: "텍스트", image: "이미지", cta: "CTA 버튼" })[kind] || kind;
+    },
+
+    textTypeLabel(type) {
+      return ({ title: "Title", remark: "remark (참고)", multi: "Multi (설명)" })[type] || type || "";
+    },
+
+    imageSourceLabel(source) {
+      return ({ file: "파일첨부", url: "URL첨부", ai: "AI 생성" })[source] || source;
+    },
+
+    toggleNewWizardSectionForm() {
+      this.showNewWizardSectionForm = !this.showNewWizardSectionForm;
+      if (this.showNewWizardSectionForm) {
+        this.newWizardSectionForm = { sectionKey: "", name: "", description: "" };
+      }
+    },
+
+    async createWizardSection() {
+      if (this.wizardSectionSaving) return;
+      this.wizardSectionSaving = true;
+      try {
+        const response = await fetch("/api/wizard-content-sections", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(this.newWizardSectionForm),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `섹션 생성 오류(${response.status})`);
+        this.showNewWizardSectionForm = false;
+        await this.loadWizardSections({ fresh: true });
+        await this.selectWizardSection(result.section.sectionKey);
+        this.setStatus(`"${result.section.name}" 섹션을 생성했습니다 (초안)`);
+      } catch (error) {
+        this.setStatus(`섹션 생성 실패: ${error.message}`);
+      } finally {
+        this.wizardSectionSaving = false;
+      }
+    },
+
+    async createWizardSectionDraft() {
+      const source = this.selectedWizardGroup?.primary;
+      if (!source || this.wizardSectionSaving) return;
+      this.wizardSectionSaving = true;
+      try {
+        const response = await fetch("/api/wizard-content-sections", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: source.id, changeNote: "관리자 페이지에서 새 초안을 만들었습니다." }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `초안 생성 오류(${response.status})`);
+        await this.loadWizardSections({ fresh: true });
+        await this.loadWizardSectionDetail(result.section.id);
+        this.setStatus("새 초안을 만들었습니다");
+      } catch (error) {
+        this.setStatus(`초안 생성 실패: ${error.message}`);
+      } finally {
+        this.wizardSectionSaving = false;
+      }
+    },
+
+    async saveWizardSectionFields() {
+      const section = this.wizardSectionDetail?.section;
+      if (!section || this.wizardSectionSaving) return;
+      this.wizardSectionSaving = true;
+      try {
+        const response = await fetch("/api/wizard-content-section", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: section.id, ...this.wizardSectionFieldsEditor }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `섹션 저장 오류(${response.status})`);
+        await this.loadWizardSections({ fresh: true });
+        await this.loadWizardSectionDetail(section.id);
+        this.setStatus("섹션 정보를 저장했습니다");
+      } catch (error) {
+        this.setStatus(`섹션 저장 실패: ${error.message}`);
+      } finally {
+        this.wizardSectionSaving = false;
+      }
+    },
+
+    async activateWizardSection(id) {
+      if (this.wizardSectionSaving) return;
+      this.wizardSectionSaving = true;
+      try {
+        const response = await fetch("/api/wizard-content-section-activate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, changeNote: "관리자 페이지에서 활성 버전으로 지정했습니다." }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `섹션 활성화 오류(${response.status})`);
+        await this.loadWizardSections({ fresh: true });
+        await this.loadWizardSectionDetail(id);
+        this.setStatus("섹션을 활성 버전으로 지정했습니다. Wizard에 즉시 반영됩니다.");
+      } catch (error) {
+        this.setStatus(`섹션 활성화 실패: ${error.message}`);
+      } finally {
+        this.wizardSectionSaving = false;
+      }
+    },
+
+    async archiveWizardSection(id) {
+      if (this.wizardSectionSaving) return;
+      this.wizardSectionSaving = true;
+      try {
+        const response = await fetch("/api/wizard-content-section-archive", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, changeNote: "관리자 페이지에서 보관 처리했습니다." }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `섹션 보관 오류(${response.status})`);
+        await this.loadWizardSections({ fresh: true });
+        this.setStatus("섹션을 보관 처리했습니다 (Wizard에서 즉시 숨겨짐)");
+      } catch (error) {
+        this.setStatus(`섹션 보관 실패: ${error.message}`);
+      } finally {
+        this.wizardSectionSaving = false;
+      }
+    },
+
+    openNewWizardItemEditor() {
+      this.wizardItemEditor = {
+        id: "",
+        itemKey: "",
+        name: "",
+        isVisibleInWizard: true,
+        isRequired: false,
+        sortOrder: (this.wizardSectionDetail?.items?.length || 0) * 10,
+        fieldKind: "text",
+        textType: "title",
+        image: { allowedSources: [], promptText: "", altTextRequired: false, aspectRatio: "", maxSizeKb: "" },
+        ctaUtm: { source: "", medium: "", campaign: "", content: "", term: "" },
+        isLocked: false,
+        lockedValueText: "",
+      };
+      this.wizardItemEditorOpenId = "new";
+    },
+
+    openWizardItemEditor(item) {
+      this.wizardItemEditor = {
+        id: item.id,
+        itemKey: item.itemKey,
+        name: item.name,
+        isVisibleInWizard: item.isVisibleInWizard,
+        isRequired: item.isRequired,
+        sortOrder: item.sortOrder,
+        fieldKind: item.fieldKind,
+        textType: item.textType || "title",
+        image: item.image ? { ...item.image } : { allowedSources: [], promptText: "", altTextRequired: false, aspectRatio: "", maxSizeKb: "" },
+        ctaUtm: item.ctaUtm ? { ...item.ctaUtm } : { source: "", medium: "", campaign: "", content: "", term: "" },
+        isLocked: item.isLocked,
+        lockedValueText: item.lockedValue !== null && item.lockedValue !== undefined
+          ? JSON.stringify(item.lockedValue, null, 2)
+          : "",
+      };
+      this.wizardItemEditorOpenId = item.id;
+    },
+
+    closeWizardItemEditor() {
+      this.wizardItemEditorOpenId = "";
+    },
+
+    toggleWizardItemImageSource(source) {
+      const sources = this.wizardItemEditor.image.allowedSources;
+      const index = sources.indexOf(source);
+      if (index >= 0) sources.splice(index, 1);
+      else sources.push(source);
+    },
+
+    async saveWizardItem() {
+      const section = this.wizardSectionDetail?.section;
+      if (!section || this.wizardSectionSaving) return;
+
+      let lockedValue = null;
+      if (this.wizardItemEditor.isLocked && this.wizardItemEditor.lockedValueText.trim()) {
+        try {
+          lockedValue = JSON.parse(this.wizardItemEditor.lockedValueText);
+        } catch (error) {
+          this.setStatus(`고정값 JSON 형식이 올바르지 않습니다: ${error.message}`);
+          return;
+        }
+      }
+
+      this.wizardSectionSaving = true;
+      try {
+        const response = await fetch("/api/wizard-content-section-items", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: this.wizardItemEditor.id || undefined,
+            sectionId: section.id,
+            itemKey: this.wizardItemEditor.itemKey,
+            name: this.wizardItemEditor.name,
+            isVisibleInWizard: this.wizardItemEditor.isVisibleInWizard,
+            isRequired: this.wizardItemEditor.isRequired,
+            sortOrder: Number(this.wizardItemEditor.sortOrder) || 0,
+            fieldKind: this.wizardItemEditor.fieldKind,
+            textType: this.wizardItemEditor.textType,
+            image: this.wizardItemEditor.image,
+            ctaUtm: this.wizardItemEditor.ctaUtm,
+            isLocked: this.wizardItemEditor.isLocked,
+            lockedValue,
+          }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `아이템 저장 오류(${response.status})`);
+        await this.loadWizardSectionDetail(section.id);
+        this.wizardItemEditorOpenId = "";
+        this.setStatus("섹션 아이템을 저장했습니다");
+      } catch (error) {
+        this.setStatus(`아이템 저장 실패: ${error.message}`);
+      } finally {
+        this.wizardSectionSaving = false;
+      }
+    },
+
+    async deleteWizardItem(item) {
+      const section = this.wizardSectionDetail?.section;
+      if (!section || this.wizardSectionSaving) return;
+      this.wizardSectionSaving = true;
+      try {
+        const response = await fetch(`/api/wizard-content-section-items?id=${encodeURIComponent(item.id)}&sectionId=${encodeURIComponent(section.id)}`, {
+          method: "DELETE",
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `아이템 삭제 오류(${response.status})`);
+        await this.loadWizardSectionDetail(section.id);
+        this.setStatus("섹션 아이템을 삭제했습니다");
+      } catch (error) {
+        this.setStatus(`아이템 삭제 실패: ${error.message}`);
+      } finally {
+        this.wizardSectionSaving = false;
       }
     },
 
