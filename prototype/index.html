@@ -897,6 +897,7 @@
                 <label class="field compact-field">
                   <span>Template Key</span>
                   <input v-model="newWizardFormTemplateForm.templateKey" type="text" autocomplete="off" placeholder="예: aaa" />
+                  <small class="field-error" v-if="newWizardFormTemplateKeyExists">이미 사용 중인 Template Key입니다.</small>
                 </label>
                 <label class="field compact-field">
                   <span>템플릿 이름</span>
@@ -907,7 +908,7 @@
                   <input v-model="newWizardFormTemplateForm.description" type="text" autocomplete="off" />
                 </label>
                 <div class="action-row align-right">
-                  <button class="tiny-button primary" type="button" :disabled="wizardFormTemplateSaving || !newWizardFormTemplateForm.templateKey || !newWizardFormTemplateForm.name" @click="createWizardFormTemplate">템플릿 생성</button>
+                  <button class="tiny-button primary" type="button" :disabled="wizardFormTemplateSaving || !newWizardFormTemplateForm.templateKey || !newWizardFormTemplateForm.name || newWizardFormTemplateKeyExists" @click="createWizardFormTemplate">템플릿 생성</button>
                 </div>
               </div>
 
@@ -958,9 +959,14 @@
 
                   <div class="form-template-duplicate" v-if="showDuplicateWizardFormTemplateForm">
                     <strong>새 템플릿으로 복제</strong>
+                    <div class="outline-item danger-state" v-if="duplicateWizardFormTemplateError">
+                      <strong>복제 실패</strong>
+                      <span>{{ duplicateWizardFormTemplateError }}</span>
+                    </div>
                     <label class="field compact-field">
                       <span>새 Template Key</span>
                       <input v-model="duplicateWizardFormTemplateForm.templateKey" type="text" autocomplete="off" placeholder="예: bbb" />
+                      <small class="field-error" v-if="duplicateWizardFormTemplateKeyExists">이미 사용 중인 Template Key입니다.</small>
                     </label>
                     <label class="field compact-field">
                       <span>새 템플릿 이름</span>
@@ -972,7 +978,7 @@
                     </label>
                     <div class="action-row align-right">
                       <button class="tiny-button" type="button" @click="showDuplicateWizardFormTemplateForm = false">취소</button>
-                      <button class="tiny-button primary" type="button" :disabled="wizardFormTemplateSaving || !duplicateWizardFormTemplateForm.templateKey || !duplicateWizardFormTemplateForm.name" @click="duplicateWizardFormTemplate">복제</button>
+                      <button class="tiny-button primary" type="button" :disabled="wizardFormTemplateSaving || !duplicateWizardFormTemplateForm.templateKey || !duplicateWizardFormTemplateForm.name || duplicateWizardFormTemplateKeyExists" @click="duplicateWizardFormTemplate">복제</button>
                     </div>
                   </div>
 

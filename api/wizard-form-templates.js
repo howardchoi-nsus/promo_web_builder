@@ -33,6 +33,10 @@ async function createTemplate(req, res) {
     if (!/^[a-zA-Z][a-zA-Z0-9_]*$/.test(templateKey)) {
       return res.status(400).json({ error: "templateKey must start with a letter and contain only letters, numbers, and underscores" });
     }
+    const duplicateKeyRows = await sql`
+      select id::text from wizard_form_templates where template_key = ${templateKey} limit 1
+    `;
+    if (duplicateKeyRows.length) return res.status(409).json({ error: "templateKey already exists" });
     if (!await fetchTemplateRow(sql, duplicateSourceId)) {
       return res.status(404).json({ error: "Source form template not found" });
     }

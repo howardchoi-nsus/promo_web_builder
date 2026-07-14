@@ -1160,6 +1160,7 @@ createApp({
       newWizardFormTemplateForm: { templateKey: "", name: "", description: "" },
       showDuplicateWizardFormTemplateForm: false,
       duplicateWizardFormTemplateForm: { templateKey: "", name: "", description: "" },
+      duplicateWizardFormTemplateError: "",
       wizardSections: [],
       wizardSectionsLoading: false,
       wizardSectionsError: "",
@@ -1510,6 +1511,16 @@ createApp({
 
     selectedWizardFormTemplateHasDraft() {
       return Boolean(this.selectedWizardFormTemplateGroup?.versions.some((version) => version.status === "draft"));
+    },
+
+    newWizardFormTemplateKeyExists() {
+      const key = String(this.newWizardFormTemplateForm.templateKey || "").trim();
+      return Boolean(key && this.wizardFormTemplates.some((template) => template.templateKey === key));
+    },
+
+    duplicateWizardFormTemplateKeyExists() {
+      const key = String(this.duplicateWizardFormTemplateForm.templateKey || "").trim();
+      return Boolean(key && this.wizardFormTemplates.some((template) => template.templateKey === key));
     },
 
     // Wizard Content Sections: group the flat draft/active/inactive/archived
@@ -1910,6 +1921,7 @@ createApp({
     async selectWizardFormTemplate(templateKey, options = {}) {
       this.selectedWizardFormTemplateKey = templateKey;
       this.showDuplicateWizardFormTemplateForm = false;
+      this.duplicateWizardFormTemplateError = "";
       this.wizardFormTemplateDetail = null;
       const group = this.groupedWizardFormTemplates.find((item) => item.templateKey === templateKey);
       const target = group?.versions.find((version) => version.status === "draft") || group?.primary;
@@ -1947,6 +1959,7 @@ createApp({
       const source = this.wizardFormTemplateDetail?.template;
       if (!source) return;
       this.showDuplicateWizardFormTemplateForm = !this.showDuplicateWizardFormTemplateForm;
+      this.duplicateWizardFormTemplateError = "";
       this.showNewWizardFormTemplateForm = false;
       this.duplicateWizardFormTemplateForm = {
         templateKey: "",
@@ -1980,6 +1993,7 @@ createApp({
     async duplicateWizardFormTemplate() {
       const source = this.wizardFormTemplateDetail?.template;
       if (!source || this.wizardFormTemplateSaving) return;
+      this.duplicateWizardFormTemplateError = "";
       this.wizardFormTemplateSaving = true;
       try {
         const response = await fetch("/api/wizard-form-templates", {
@@ -1994,6 +2008,9 @@ createApp({
         await this.loadWizardFormTemplates({ fresh: true });
         this.setStatus("폼 템플릿을 새 초안으로 복제했습니다");
       } catch (error) {
+        this.duplicateWizardFormTemplateError = error.message === "templateKey already exists"
+          ? "이미 사용 중인 Template Key입니다. 다른 Key를 입력해 주세요."
+          : error.message;
         this.setStatus(`폼 템플릿 복제 실패: ${error.message}`);
       } finally {
         this.wizardFormTemplateSaving = false;
