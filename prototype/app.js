@@ -1935,10 +1935,11 @@ createApp({
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `섹션 생성 오류(${response.status})`);
-        this.showNewWizardSectionForm = false;
+        const createdSection = result.section;
         await this.loadWizardSections({ fresh: true });
-        await this.selectWizardSection(result.section.sectionKey);
-        this.setStatus(`"${result.section.name}" 섹션을 생성했습니다 (초안)`);
+        await this.selectWizardSection(createdSection.sectionKey);
+        this.newWizardSectionForm = { sectionKey: "", name: "", description: "" };
+        this.setStatus(`"${createdSection.name}" 섹션을 생성했습니다. 다른 섹션을 계속 추가할 수 있습니다.`);
       } catch (error) {
         this.setStatus(`섹션 생성 실패: ${error.message}`);
       } finally {
