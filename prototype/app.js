@@ -1087,12 +1087,13 @@ function sourceFromPreset(preset) {
 }
 
 const { createApp } = Vue;
+const initialView = new URLSearchParams(window.location.search).get("view") === "admin" ? "prompts" : "builder";
 
 createApp({
   data() {
     return {
       status: "준비 완료",
-      currentView: "builder",
+      currentView: initialView,
       adminTab: "webhook",
       sectionWidths: [30, 30, 40],
       resizeState: null,
@@ -1637,6 +1638,7 @@ createApp({
     this.loadGeneratedPagesFromServer({ silent: true });
     this.loadHandoffDocuments();
     this.resetOverride();
+    if (this.currentView === "prompts") this.openPromptManager();
   },
 
   unmounted() {
@@ -1658,11 +1660,17 @@ createApp({
 
     showBuilderPage() {
       this.currentView = "builder";
+      const url = new URL(window.location.href);
+      url.searchParams.delete("view");
+      window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
       this.setStatus("프로모션 빌더로 이동했습니다");
     },
 
     async openPromptManager() {
       this.currentView = "prompts";
+      const url = new URL(window.location.href);
+      url.searchParams.set("view", "admin");
+      window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
       await Promise.all([
         this.loadPromptTemplates(),
         this.loadWorkerWebhookSettings(),

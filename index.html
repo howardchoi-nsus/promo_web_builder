@@ -3,20 +3,237 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>프로모션 UI 디자인 빌더</title>
-    <link rel="stylesheet" href="/prototype/styles.css" />
+    <meta name="description" content="프로모션 제작 도구 통합 진입 화면" />
+    <title>Promo Web Builder</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: Inter, Pretendard, "Noto Sans KR", Arial, sans-serif;
+        color: #17201c;
+        background: #f4f6f5;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        min-width: 320px;
+        min-height: 100vh;
+        margin: 0;
+      }
+
+      .site-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 64px;
+        padding: 0 28px;
+        border-bottom: 1px solid #d9dfdc;
+        background: #ffffff;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: inherit;
+        font-size: 15px;
+        font-weight: 800;
+        text-decoration: none;
+      }
+
+      .brand-mark {
+        display: grid;
+        width: 30px;
+        height: 30px;
+        place-items: center;
+        border-radius: 6px;
+        background: #176b4d;
+        color: #ffffff;
+        font-size: 13px;
+      }
+
+      .site-label {
+        color: #64706a;
+        font-size: 13px;
+      }
+
+      main {
+        width: min(1040px, calc(100% - 40px));
+        margin: 0 auto;
+        padding: clamp(64px, 10vh, 108px) 0 56px;
+      }
+
+      .intro {
+        max-width: 680px;
+        margin-bottom: 36px;
+      }
+
+      .eyebrow {
+        margin: 0 0 12px;
+        color: #176b4d;
+        font-size: 13px;
+        font-weight: 800;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(32px, 5vw, 52px);
+        line-height: 1.15;
+        letter-spacing: 0;
+      }
+
+      .intro p:last-child {
+        max-width: 560px;
+        margin: 18px 0 0;
+        color: #59645f;
+        font-size: 16px;
+        line-height: 1.7;
+      }
+
+      .entry-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .entry-card {
+        display: flex;
+        min-height: 218px;
+        flex-direction: column;
+        padding: 24px;
+        border: 1px solid #d5dcd8;
+        border-radius: 8px;
+        background: #ffffff;
+        color: inherit;
+        text-decoration: none;
+        transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+      }
+
+      .entry-card:hover,
+      .entry-card:focus-visible {
+        border-color: #176b4d;
+        box-shadow: 0 10px 28px rgba(23, 32, 28, 0.1);
+        transform: translateY(-2px);
+        outline: none;
+      }
+
+      .entry-index {
+        display: grid;
+        width: 36px;
+        height: 36px;
+        place-items: center;
+        margin-bottom: 28px;
+        border-radius: 6px;
+        background: #e5f1eb;
+        color: #176b4d;
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .entry-card:nth-child(2) .entry-index {
+        background: #e8eef8;
+        color: #315a91;
+      }
+
+      .entry-card:nth-child(3) .entry-index {
+        background: #f5ece5;
+        color: #8b4b2f;
+      }
+
+      .entry-card h2 {
+        margin: 0 0 8px;
+        font-size: 21px;
+        letter-spacing: 0;
+      }
+
+      .entry-card p {
+        margin: 0;
+        color: #65706b;
+        font-size: 14px;
+        line-height: 1.6;
+      }
+
+      .entry-action {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: auto;
+        padding-top: 22px;
+        color: #17201c;
+        font-size: 14px;
+        font-weight: 800;
+      }
+
+      .entry-arrow {
+        font-size: 20px;
+        line-height: 1;
+      }
+
+      @media (max-width: 760px) {
+        .site-header {
+          padding: 0 20px;
+        }
+
+        .site-label {
+          display: none;
+        }
+
+        main {
+          width: min(100% - 32px, 520px);
+          padding-top: 48px;
+        }
+
+        .entry-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .entry-card {
+          min-height: 190px;
+        }
+      }
+    </style>
   </head>
   <body>
-    <script>
-      window.location.replace("/prototype/index.html");
-    </script>
-    <main class="panel stack" style="max-width: 720px; margin: 28px auto;">
-      <div class="panel-header">
-        <h1>프로모션 UI 디자인 빌더</h1>
-        <span>이동 중</span>
-      </div>
-      <p>프로토타입 관리 화면으로 이동 중입니다.</p>
-      <a class="primary-action" style="display: inline-flex; align-items: center; text-decoration: none;" href="/prototype/index.html">프로토타입 열기</a>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="Promo Web Builder 홈">
+        <span class="brand-mark" aria-hidden="true">PW</span>
+        <span>Promo Web Builder</span>
+      </a>
+      <span class="site-label">Promotion creation workspace</span>
+    </header>
+
+    <main>
+      <section class="intro" aria-labelledby="page-title">
+        <p class="eyebrow">Workspace</p>
+        <h1 id="page-title">프로모션 제작을 시작하세요</h1>
+        <p>작업 목적에 맞는 도구를 선택하면 해당 화면으로 바로 이동합니다.</p>
+      </section>
+
+      <nav class="entry-grid" aria-label="프로모션 제작 도구">
+        <a class="entry-card" href="/promo-wizard.html">
+          <span class="entry-index" aria-hidden="true">01</span>
+          <h2>Promo Wizard</h2>
+          <p>템플릿 선택부터 콘텐츠 입력, 디자인 생성까지 단계별로 진행합니다.</p>
+          <span class="entry-action">Wizard 열기 <span class="entry-arrow" aria-hidden="true">→</span></span>
+        </a>
+
+        <a class="entry-card" href="/prototype/index.html">
+          <span class="entry-index" aria-hidden="true">02</span>
+          <h2>Promo Builder</h2>
+          <p>프로모션 디자인 설정과 생성 결과를 관리합니다.</p>
+          <span class="entry-action">Builder 열기 <span class="entry-arrow" aria-hidden="true">→</span></span>
+        </a>
+
+        <a class="entry-card" href="/prototype/index.html?view=admin">
+          <span class="entry-index" aria-hidden="true">03</span>
+          <h2>Admin</h2>
+          <p>웹훅, LLM 프롬프트와 프로모션 폼 템플릿을 설정합니다.</p>
+          <span class="entry-action">Admin 열기 <span class="entry-arrow" aria-hidden="true">→</span></span>
+        </a>
+      </nav>
     </main>
   </body>
 </html>
