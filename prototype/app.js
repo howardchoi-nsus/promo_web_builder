@@ -2349,7 +2349,7 @@ createApp({
         isRequired: item?.isRequired ?? false,
         userReorderAllowed: item?.userReorderAllowed ?? true,
         sortOrder: item?.sortOrder ?? this.wizardFormTemplateSectionItems.length * 10,
-        fieldKind: item?.fieldKind === "image" && item?.image?.descriptionEnabled ? "image_description" : (item?.fieldKind || "text"),
+        fieldKind: item?.fieldKind || "text",
         textType: item?.textType || "title",
         image: item?.image
           ? { ...item.image, allowedSources: [...(item.image.allowedSources || [])] }
@@ -2394,8 +2394,8 @@ createApp({
           body: JSON.stringify({
             ...editor,
             sectionId,
-            fieldKind: editor.fieldKind === "image_description" ? "image" : editor.fieldKind,
-            image: { ...editor.image, descriptionEnabled: editor.fieldKind === "image_description" },
+            fieldKind: editor.fieldKind,
+            image: { ...editor.image },
             lockedValue,
           }),
         });
@@ -2786,7 +2786,7 @@ createApp({
         isVisibleInWizard: item.isVisibleInWizard,
         isRequired: item.isRequired,
         sortOrder: item.sortOrder,
-        fieldKind: item.fieldKind === "image" && item.image?.descriptionEnabled ? "image_description" : item.fieldKind,
+        fieldKind: item.fieldKind,
         textType: item.textType || "title",
         image: item.image
           ? { ...item.image, allowedSources: [...(item.image.allowedSources || [])] }
@@ -2838,9 +2838,9 @@ createApp({
             isVisibleInWizard: this.wizardItemEditor.isVisibleInWizard,
             isRequired: this.wizardItemEditor.isRequired,
             sortOrder: Number(this.wizardItemEditor.sortOrder) || 0,
-            fieldKind: this.wizardItemEditor.fieldKind === "image_description" ? "image" : this.wizardItemEditor.fieldKind,
+            fieldKind: this.wizardItemEditor.fieldKind,
             textType: this.wizardItemEditor.textType,
-            image: { ...this.wizardItemEditor.image, descriptionEnabled: this.wizardItemEditor.fieldKind === "image_description" },
+            image: { ...this.wizardItemEditor.image },
             ctaUtm: this.wizardItemEditor.ctaUtm,
             isLocked: this.wizardItemEditor.isLocked,
             lockedValue,

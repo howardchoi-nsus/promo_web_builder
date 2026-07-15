@@ -87,9 +87,6 @@ async function upsertItem(req, res) {
   if (fieldKind === "image" && !allowedSources.length) {
     return res.status(400).json({ error: "image.allowedSources must include at least one of: url, file, ai" });
   }
-  if (fieldKind === "image" && allowedSources.includes("ai") && !String(image.promptText || "").trim()) {
-    return res.status(400).json({ error: "image.promptText is required when AI generation is allowed" });
-  }
   const maxSizeKb = normalizeNumber(image.maxSizeKb);
   if (fieldKind === "image" && maxSizeKb !== null && maxSizeKb <= 0) {
     return res.status(400).json({ error: "image.maxSizeKb must be greater than zero" });
