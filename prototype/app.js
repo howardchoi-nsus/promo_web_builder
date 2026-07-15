@@ -2378,7 +2378,8 @@ createApp({
     },
 
     async saveWizardFormTemplateItem() {
-      const sectionId = this.selectedWizardFormTemplateSection?.sectionId;
+      const selectedSection = this.selectedWizardFormTemplateSection;
+      let sectionId = selectedSection?.sectionId;
       const editor = this.wizardFormTemplateItemEditor;
       if (!editor || this.wizardFormTemplateSectionSaving) return;
       if (!sectionId) {
@@ -2392,6 +2393,32 @@ createApp({
       }
       this.wizardFormTemplateSectionSaving = true;
       try {
+        if (selectedSection.sectionStatus !== "draft") {
+          const draftResponse = await fetch("/api/wizard-form-template-sections", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: selectedSection.id }),
+          });
+          const draftResult = await draftResponse.json().catch(() => ({}));
+          if (!draftResponse.ok) {
+            throw new Error(draftResult.message || draftResult.error || `편집용 Section 준비 오류(${draftResponse.status})`);
+          }
+          sectionId = draftResult.section?.sectionId;
+          if (!sectionId) throw new Error("편집용 Section 연결을 확인할 수 없습니다");
+
+          const itemResponse = await fetch(`/api/wizard-content-section?id=${encodeURIComponent(sectionId)}`);
+          const itemResult = await itemResponse.json().catch(() => ({}));
+          if (!itemResponse.ok) {
+            throw new Error(itemResult.message || itemResult.error || `편집용 Item 요청 오류(${itemResponse.status})`);
+          }
+          const draftItems = Array.isArray(itemResult.items) ? itemResult.items : [];
+          const matchingItem = draftItems.find((item) => item.itemKey === editor.itemKey);
+          editor.id = matchingItem?.id || "";
+          this.wizardFormTemplateSectionItems = draftItems;
+          const index = this.wizardFormTemplateDetail.sections.findIndex((section) => section.id === selectedSection.id);
+          if (index >= 0) this.wizardFormTemplateDetail.sections.splice(index, 1, draftResult.section);
+        }
+
         const response = await fetch("/api/wizard-content-section-items", {
           method: "POST",
           headers: { "Content-Type": "application/json" },

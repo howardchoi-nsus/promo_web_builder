@@ -53,6 +53,8 @@ assert.match(adminSource, /const previousSections = \[\.\.\.this\.wizardFormTemp
 assert.match(adminSource, /this\.wizardFormTemplateDetail\.sections = previousSections/);
 assert.match(adminSource, /openNewWizardFormTemplateItemEditor/);
 assert.match(adminSource, /saveWizardFormTemplateItem/);
+assert.match(adminSource, /selectedSection\.sectionStatus !== "draft"/);
+assert.match(adminSource, /matchingItem.*item\.itemKey === editor\.itemKey/);
 assert.match(adminSource, /dropWizardFormTemplateItem/);
 assert.match(adminHtml, /template-section-composer/);
 assert.match(adminHtml, /transition-group name="template-section-order"/);
