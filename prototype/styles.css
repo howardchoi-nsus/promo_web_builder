@@ -2835,9 +2835,19 @@ body.is-resizing {
   grid-column: 2;
 }
 
-.template-item-row > .action-row {
+.template-item-row > .template-item-expand-button {
   grid-column: 3;
   grid-row: 1 / span 3;
+}
+
+.template-item-expanded {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 10px;
+  margin: 8px -12px -12px;
+  padding: 12px;
+  border-top: 1px solid var(--line);
+  background: var(--panel);
 }
 
 .template-item-row.dragging {
@@ -3364,7 +3374,7 @@ body.is-resizing {
   }
 
   .template-item-row {
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr) 28px;
   }
 
   .template-item-row > .section-drag-handle {
@@ -3372,10 +3382,9 @@ body.is-resizing {
     grid-row: 1 / span 4;
   }
 
-  .template-item-row > .action-row {
-    grid-column: 2;
-    grid-row: auto;
-    justify-content: flex-start;
+  .template-item-row > .template-item-expand-button {
+    grid-column: 3;
+    grid-row: 1 / span 3;
   }
 
   .abc-layout {

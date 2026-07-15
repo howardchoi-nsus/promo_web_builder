@@ -2366,6 +2366,11 @@ createApp({
     },
 
     openWizardFormTemplateItemEditor(item) {
+      if (this.wizardFormTemplateItemEditorOpenId === item.id) {
+        this.wizardFormTemplateItemEditorOpenId = "";
+        this.wizardFormTemplateItemEditor = null;
+        return;
+      }
       this.wizardFormTemplateItemEditor = this.newWizardFormTemplateItem(item);
       this.wizardFormTemplateItemEditorOpenId = item.id;
     },
@@ -2412,6 +2417,7 @@ createApp({
 
     async saveWizardFormTemplateItem() {
       const editor = this.wizardFormTemplateItemEditor;
+      const isNewItem = this.wizardFormTemplateItemEditorOpenId === "new";
       if (!editor || this.wizardFormTemplateSectionSaving) return;
       let lockedValue = null;
       if (editor.isLocked && editor.lockedValueText.trim()) {
@@ -2438,8 +2444,14 @@ createApp({
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `아이템 저장 오류(${response.status})`);
         await this.loadWizardFormTemplateSectionItems();
-        this.openNewWizardFormTemplateItemEditor();
-        this.setStatus("섹션 아이템을 저장했습니다. 다음 아이템을 계속 추가할 수 있습니다");
+        if (isNewItem) {
+          this.openNewWizardFormTemplateItemEditor();
+          this.setStatus("섹션 아이템을 저장했습니다. 다음 아이템을 계속 추가할 수 있습니다");
+        } else {
+          this.wizardFormTemplateItemEditorOpenId = "";
+          this.wizardFormTemplateItemEditor = null;
+          this.setStatus("섹션 아이템 수정사항을 저장했습니다");
+        }
       } catch (error) {
         this.setStatus(`아이템 저장 실패: ${error.message}`);
       } finally {
