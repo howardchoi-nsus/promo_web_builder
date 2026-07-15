@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>프로모션 UI 디자인 빌더</title>
-    <link rel="stylesheet" href="styles.css?v=template-section-accordion-v6" />
+    <link rel="stylesheet" href="styles.css?v=template-section-accordion-v7" />
   </head>
   <body>
     <div id="app" class="app-shell">
@@ -1121,7 +1121,6 @@
                   <div class="empty-state compact" v-else-if="selectedWizardFormTemplateSection">선택 Section에 등록된 Item이 없습니다.</div>
                   <div class="template-item-editor" v-if="wizardFormTemplateItemEditorOpenId && wizardFormTemplateItemEditor">
                     <div class="subsection-title"><h3>{{ wizardFormTemplateItemEditorOpenId === 'new' ? 'Item 추가' : 'Item 수정' }}</h3></div>
-                    <label class="field compact-field"><span>Item Key</span><input v-model="wizardFormTemplateItemEditor.itemKey" type="text" :disabled="wizardFormTemplateItemEditorOpenId !== 'new'" /></label>
                     <label class="field compact-field"><span>Item 이름</span><input v-model="wizardFormTemplateItemEditor.name" type="text" /></label>
                     <label class="field compact-field"><span>유형</span><select v-model="wizardFormTemplateItemEditor.fieldKind"><option value="text">텍스트</option><option value="image">이미지</option><option value="cta">CTA 버튼</option></select></label>
                     <label class="field compact-field" v-if="wizardFormTemplateItemEditor.fieldKind === 'text'"><span>텍스트 유형</span><select v-model="wizardFormTemplateItemEditor.textType"><option value="title">Title</option><option value="remark">remark</option><option value="multi">Multi</option></select></label>
@@ -1135,7 +1134,7 @@
                     <label class="field" v-if="wizardFormTemplateItemEditor.fieldKind === 'image'"><span>AI 생성/설명 텍스트</span><textarea v-model="wizardFormTemplateItemEditor.image.promptText" rows="2"></textarea></label>
                     <div class="form-grid compact" v-if="wizardFormTemplateItemEditor.fieldKind === 'cta'"><label class="field compact-field"><span>UTM Source</span><input v-model="wizardFormTemplateItemEditor.ctaUtm.source" type="text" /></label><label class="field compact-field"><span>UTM Medium</span><input v-model="wizardFormTemplateItemEditor.ctaUtm.medium" type="text" /></label><label class="field compact-field"><span>UTM Campaign</span><input v-model="wizardFormTemplateItemEditor.ctaUtm.campaign" type="text" /></label></div>
                     <label class="field" v-if="wizardFormTemplateItemEditor.isLocked"><span>고정 내용 (JSON)</span><textarea v-model="wizardFormTemplateItemEditor.lockedValueText" rows="3"></textarea></label>
-                    <div class="action-row align-right"><button class="tiny-button" type="button" @click="wizardFormTemplateItemEditorOpenId = ''">취소</button><button class="tiny-button primary" type="button" :disabled="!wizardFormTemplateItemEditor.itemKey || !wizardFormTemplateItemEditor.name || wizardFormTemplateSectionSaving" @click="saveWizardFormTemplateItem">저장 후 계속 추가</button></div>
+                    <div class="action-row align-right"><button class="tiny-button" type="button" @click="wizardFormTemplateItemEditorOpenId = ''">취소</button><button class="tiny-button primary" type="button" :disabled="!wizardFormTemplateItemEditor.name || wizardFormTemplateSectionSaving" @click="saveWizardFormTemplateItem">저장 후 계속 추가</button></div>
                   </div>
                   <div class="empty-state compact" v-if="!selectedWizardFormTemplateSection">Section을 선택해 주세요.</div>
                 </aside>
@@ -1683,6 +1682,6 @@
     </div>
 
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-    <script src="app.js?v=template-section-accordion-v6"></script>
+    <script src="app.js?v=template-section-accordion-v7"></script>
   </body>
 </html>

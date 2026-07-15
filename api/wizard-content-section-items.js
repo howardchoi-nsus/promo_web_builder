@@ -13,6 +13,11 @@ const {
   fetchSectionRow,
   fetchItemsForSection,
 } = require("./_wizard-content-sections-store");
+const { randomUUID } = require("crypto");
+
+function createItemKey() {
+  return `item_${Date.now().toString(36)}_${randomUUID().replace(/-/g, "").slice(0, 8)}`;
+}
 
 // GET    ?sectionId=          -> list items for a section.
 // POST   { sectionId, ... }   -> create a new item (no id) or update an existing one (id present).
@@ -76,7 +81,7 @@ async function upsertItem(req, res) {
 
   const id = String(body.id || "").trim();
   const name = String(body.name || "").trim();
-  const itemKey = String(body.itemKey || "").trim();
+  const requestedItemKey = String(body.itemKey || "").trim();
   if (!name) return res.status(400).json({ error: "name is required" });
   const allowedSources = normalizeImageSources(image.allowedSources);
   if (fieldKind === "image" && !allowedSources.length) {
@@ -129,7 +134,7 @@ async function upsertItem(req, res) {
     return res.status(200).json({ ok: true, item: toSectionItem(rows[0]) });
   }
 
-  if (!itemKey) return res.status(400).json({ error: "itemKey is required for new items" });
+  const itemKey = requestedItemKey || createItemKey();
   if (!/^[a-zA-Z][a-zA-Z0-9_]*$/.test(itemKey)) {
     return res.status(400).json({ error: "itemKey must start with a letter and contain only letters, numbers, and underscores" });
   }

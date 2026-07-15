@@ -24,6 +24,7 @@ const adminStyleSource = fs.readFileSync(path.join(root, "prototype", "styles.cs
 const activateSource = fs.readFileSync(path.join(root, "api", "wizard-content-section-activate.js"), "utf8");
 const archiveSource = fs.readFileSync(path.join(root, "api", "wizard-content-section-archive.js"), "utf8");
 const orderSource = fs.readFileSync(path.join(root, "api", "wizard-content-sections-order.js"), "utf8");
+const itemApiSource = fs.readFileSync(path.join(root, "api", "wizard-content-section-items.js"), "utf8");
 const migrationSource = fs.readFileSync(path.join(root, "db", "migrations", "016_wizard_content_sections.sql"), "utf8");
 
 assert.match(wizardSource, /wizardContentLegacyBackup/);
@@ -33,7 +34,8 @@ assert.match(wizardSource, /applyCtaUtmParameters/);
 assert.match(adminSource, /dragOverWizardSection/);
 assert.match(adminSource, /wizardSectionDropPosition/);
 assert.match(adminHtmlSource, /transition-group name="section-order-list"/);
-assert.match(adminHtmlSource, /template-section-accordion-v6/);
+assert.match(adminHtmlSource, /template-section-accordion-v7/);
+assert.match(itemApiSource, /requestedItemKey \|\| createItemKey\(\)/);
 assert.match(adminHtmlSource, /section-expand-button/);
 assert.match(adminHtmlSource, /transition name="section-expand"/);
 assert.match(adminStyleSource, /\.section-order-list-move/);
