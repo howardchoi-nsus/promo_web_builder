@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>프로모션 UI 디자인 빌더</title>
-    <link rel="stylesheet" href="styles.css?v=template-section-accordion-v8" />
+    <link rel="stylesheet" href="styles.css?v=template-section-accordion-v9" />
   </head>
   <body>
     <div id="app" class="app-shell">
@@ -1105,19 +1105,30 @@
                     <button class="tiny-button primary" type="button" :disabled="!wizardFormTemplateCanEdit" @click="openNewWizardFormTemplateItemEditor">+ Item 추가</button>
                   </div>
                   <div class="empty-state compact" v-if="wizardFormTemplateSectionItemsLoading">Item을 불러오는 중입니다.</div>
-                  <div class="history-list" v-else-if="wizardFormTemplateSectionItems.length">
-                    <div class="history-item" v-for="item in wizardFormTemplateSectionItems" :key="item.id">
+                  <transition-group name="template-item-order" tag="div" class="history-list" v-else-if="wizardFormTemplateSectionItems.length">
+                    <div class="history-item template-item-row" v-for="item in wizardFormTemplateSectionItems" :key="item.id"
+                      :class="{
+                        dragging: draggedWizardFormTemplateItemId === item.id,
+                        'drop-before': wizardFormTemplateItemDropTargetId === item.id && wizardFormTemplateItemDropPosition === 'before',
+                        'drop-after': wizardFormTemplateItemDropTargetId === item.id && wizardFormTemplateItemDropPosition === 'after'
+                      }"
+                      @dragover.prevent="dragOverWizardFormTemplateItem(item, $event)"
+                      @drop.prevent.stop="dropWizardFormTemplateItem(item)"
+                    >
+                      <span class="section-drag-handle" :draggable="!wizardFormTemplateSectionSaving"
+                        title="드래그해서 순서 변경"
+                        @dragstart.stop="startWizardFormTemplateItemDrag(item, $event)"
+                        @dragend.stop="stopWizardFormTemplateItemDrag"
+                      >⋮⋮</span>
                       <strong>{{ item.name }}</strong>
                       <span>{{ item.itemKey }} · {{ fieldKindLabel(item.fieldKind) }}{{ item.textType ? ' · ' + textTypeLabel(item.textType) : '' }}</span>
                       <em>{{ item.isVisibleInWizard ? 'Wizard 노출' : 'Wizard 숨김' }} · {{ item.isRequired ? '필수' : '선택' }} · {{ item.userReorderAllowed ? '사용자 순서 변경 가능' : '사용자 순서 고정' }}{{ item.isLocked ? ' · 내용 고정' : '' }}</em>
                       <div class="action-row align-right">
-                        <button class="tiny-button" type="button" title="위로 이동" @click="moveWizardFormTemplateItem(item, -1)">↑</button>
-                        <button class="tiny-button" type="button" title="아래로 이동" @click="moveWizardFormTemplateItem(item, 1)">↓</button>
                         <button class="tiny-button" type="button" @click="openWizardFormTemplateItemEditor(item)">수정</button>
                         <button class="tiny-button danger" type="button" @click="deleteWizardFormTemplateItem(item)">삭제</button>
                       </div>
                     </div>
-                  </div>
+                  </transition-group>
                   <div class="empty-state compact" v-else-if="selectedWizardFormTemplateSection">선택 Section에 등록된 Item이 없습니다.</div>
                   <div class="template-item-editor" v-if="wizardFormTemplateItemEditorOpenId && wizardFormTemplateItemEditor">
                     <div class="subsection-title"><h3>{{ wizardFormTemplateItemEditorOpenId === 'new' ? 'Item 추가' : 'Item 수정' }}</h3></div>
@@ -1682,6 +1693,6 @@
     </div>
 
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-    <script src="app.js?v=template-section-accordion-v8"></script>
+    <script src="app.js?v=template-section-accordion-v9"></script>
   </body>
 </html>

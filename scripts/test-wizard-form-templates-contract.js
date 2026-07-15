@@ -49,8 +49,10 @@ assert.match(adminSource, /const previousSections = \[\.\.\.this\.wizardFormTemp
 assert.match(adminSource, /this\.wizardFormTemplateDetail\.sections = previousSections/);
 assert.match(adminSource, /openNewWizardFormTemplateItemEditor/);
 assert.match(adminSource, /saveWizardFormTemplateItem/);
+assert.match(adminSource, /dropWizardFormTemplateItem/);
 assert.match(adminHtml, /template-section-composer/);
 assert.match(adminHtml, /transition-group name="template-section-order"/);
+assert.match(adminHtml, /transition-group name="template-item-order"/);
 assert.match(adminHtml, /template-section-items-panel/);
 assert.match(adminHtml, /\+ 템플릿 추가/);
 assert.match(adminHtml, /공통 Section 원본 관리/);

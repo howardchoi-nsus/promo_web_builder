@@ -2814,6 +2814,51 @@ body.is-resizing {
   transition: transform 200ms ease;
 }
 
+.template-item-order-move {
+  transition: transform 200ms ease;
+}
+
+.template-item-row {
+  position: relative;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  transition: transform 160ms ease, opacity 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.template-item-row > .section-drag-handle {
+  grid-column: 1;
+  grid-row: 1 / span 3;
+}
+
+.template-item-row > strong,
+.template-item-row > span:not(.section-drag-handle),
+.template-item-row > em {
+  grid-column: 2;
+}
+
+.template-item-row > .action-row {
+  grid-column: 3;
+  grid-row: 1 / span 3;
+}
+
+.template-item-row.dragging {
+  opacity: 0.55;
+  transform: scale(0.98);
+}
+
+.template-item-row.drop-before::before,
+.template-item-row.drop-after::after {
+  content: "";
+  position: absolute;
+  right: 4px;
+  left: 4px;
+  height: 3px;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.template-item-row.drop-before::before { top: -6px; }
+.template-item-row.drop-after::after { bottom: -6px; }
+
 .template-section-row {
   position: relative;
   display: grid;
@@ -2884,6 +2929,7 @@ body.is-resizing {
 
 @media (prefers-reduced-motion: reduce) {
   .template-section-order-move,
+  .template-item-order-move,
   .section-expand-enter-active,
   .section-expand-leave-active {
     transition: none;
@@ -3315,6 +3361,21 @@ body.is-resizing {
 
   .history-item {
     grid-template-columns: 1fr;
+  }
+
+  .template-item-row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .template-item-row > .section-drag-handle {
+    grid-column: 1;
+    grid-row: 1 / span 4;
+  }
+
+  .template-item-row > .action-row {
+    grid-column: 2;
+    grid-row: auto;
+    justify-content: flex-start;
   }
 
   .abc-layout {

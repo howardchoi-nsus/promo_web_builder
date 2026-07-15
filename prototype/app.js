@@ -1171,6 +1171,9 @@ createApp({
       wizardFormTemplateSectionItemsLoading: false,
       wizardFormTemplateItemEditorOpenId: "",
       wizardFormTemplateItemEditor: null,
+      draggedWizardFormTemplateItemId: "",
+      wizardFormTemplateItemDropTargetId: "",
+      wizardFormTemplateItemDropPosition: "",
       draggedWizardFormTemplateSectionKey: "",
       wizardFormTemplateSectionDropTargetKey: "",
       wizardFormTemplateSectionDropPosition: "",
@@ -2348,7 +2351,9 @@ createApp({
         sortOrder: item?.sortOrder ?? this.wizardFormTemplateSectionItems.length * 10,
         fieldKind: item?.fieldKind || "text",
         textType: item?.textType || "title",
-        image: item?.image ? { ...item.image } : { allowedSources: [], promptText: "", altTextRequired: false, aspectRatio: "", maxSizeKb: "" },
+        image: item?.image
+          ? { ...item.image, allowedSources: (item.image.allowedSources || []).slice(0, 1) }
+          : { allowedSources: [], promptText: "", altTextRequired: false, aspectRatio: "", maxSizeKb: "" },
         ctaUtm: item?.ctaUtm ? { ...item.ctaUtm } : { source: "", medium: "", campaign: "", content: "", term: "" },
         isLocked: item?.isLocked ?? false,
         lockedValueText: item?.lockedValue === null || item?.lockedValue === undefined ? "" : JSON.stringify(item.lockedValue, null, 2),
@@ -2415,12 +2420,43 @@ createApp({
       }
     },
 
-    async moveWizardFormTemplateItem(item, offset) {
-      const items = [...this.wizardFormTemplateSectionItems];
-      const index = items.findIndex((candidate) => candidate.id === item.id);
-      const target = index + offset;
-      if (index < 0 || target < 0 || target >= items.length || this.wizardFormTemplateSectionSaving) return;
-      [items[index], items[target]] = [items[target], items[index]];
+    startWizardFormTemplateItemDrag(item, event) {
+      if (this.wizardFormTemplateSectionSaving) {
+        event.preventDefault();
+        return;
+      }
+      this.draggedWizardFormTemplateItemId = item.id;
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", item.id);
+    },
+
+    dragOverWizardFormTemplateItem(item, event) {
+      if (!this.draggedWizardFormTemplateItemId || this.draggedWizardFormTemplateItemId === item.id) return;
+      const bounds = event.currentTarget.getBoundingClientRect();
+      this.wizardFormTemplateItemDropTargetId = item.id;
+      this.wizardFormTemplateItemDropPosition = event.clientY < bounds.top + bounds.height / 2 ? "before" : "after";
+      event.dataTransfer.dropEffect = "move";
+    },
+
+    stopWizardFormTemplateItemDrag() {
+      this.draggedWizardFormTemplateItemId = "";
+      this.wizardFormTemplateItemDropTargetId = "";
+      this.wizardFormTemplateItemDropPosition = "";
+    },
+
+    async dropWizardFormTemplateItem(targetItem) {
+      const sourceId = this.draggedWizardFormTemplateItemId;
+      const position = this.wizardFormTemplateItemDropPosition || "before";
+      this.stopWizardFormTemplateItemDrag();
+      if (!sourceId || sourceId === targetItem.id || this.wizardFormTemplateSectionSaving) return;
+      const previousItems = [...this.wizardFormTemplateSectionItems];
+      const source = previousItems.find((item) => item.id === sourceId);
+      const items = previousItems.filter((item) => item.id !== sourceId);
+      const targetIndex = items.findIndex((item) => item.id === targetItem.id);
+      if (!source || targetIndex < 0) return;
+      items.splice(targetIndex + (position === "after" ? 1 : 0), 0, source);
+      this.wizardFormTemplateSectionItems = items;
+      this.setStatus("Section Item 순서를 저장하는 중입니다");
       this.wizardFormTemplateSectionSaving = true;
       try {
         const response = await fetch("/api/wizard-content-section-items-order", {
@@ -2430,7 +2466,9 @@ createApp({
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `아이템 순서 오류(${response.status})`);
         this.wizardFormTemplateSectionItems = result.items;
+        this.setStatus("Section Item 순서를 저장했습니다");
       } catch (error) {
+        this.wizardFormTemplateSectionItems = previousItems;
         this.setStatus(`아이템 순서 저장 실패: ${error.message}`);
       } finally {
         this.wizardFormTemplateSectionSaving = false;
@@ -2741,7 +2779,9 @@ createApp({
         sortOrder: item.sortOrder,
         fieldKind: item.fieldKind,
         textType: item.textType || "title",
-        image: item.image ? { ...item.image } : { allowedSources: [], promptText: "", altTextRequired: false, aspectRatio: "", maxSizeKb: "" },
+        image: item.image
+          ? { ...item.image, allowedSources: (item.image.allowedSources || []).slice(0, 1) }
+          : { allowedSources: [], promptText: "", altTextRequired: false, aspectRatio: "", maxSizeKb: "" },
         ctaUtm: item.ctaUtm ? { ...item.ctaUtm } : { source: "", medium: "", campaign: "", content: "", term: "" },
         isLocked: item.isLocked,
         lockedValueText: item.lockedValue !== null && item.lockedValue !== undefined

@@ -26,6 +26,7 @@ const archiveSource = fs.readFileSync(path.join(root, "api", "wizard-content-sec
 const orderSource = fs.readFileSync(path.join(root, "api", "wizard-content-sections-order.js"), "utf8");
 const itemApiSource = fs.readFileSync(path.join(root, "api", "wizard-content-section-items.js"), "utf8");
 const migrationSource = fs.readFileSync(path.join(root, "db", "migrations", "016_wizard_content_sections.sql"), "utf8");
+const singleImageSourceMigration = fs.readFileSync(path.join(root, "db", "migrations", "019_single_image_source.sql"), "utf8");
 
 assert.match(wizardSource, /wizardContentLegacyBackup/);
 assert.match(wizardSource, /migrateLegacySectionInputs/);
@@ -34,7 +35,7 @@ assert.match(wizardSource, /applyCtaUtmParameters/);
 assert.match(adminSource, /dragOverWizardSection/);
 assert.match(adminSource, /wizardSectionDropPosition/);
 assert.match(adminHtmlSource, /transition-group name="section-order-list"/);
-assert.match(adminHtmlSource, /template-section-accordion-v8/);
+assert.match(adminHtmlSource, /template-section-accordion-v9/);
 assert.match(adminHtmlSource, /type="radio" name="wizard-form-template-image-source"/);
 assert.match(itemApiSource, /must contain exactly one of: url, file, ai/);
 assert.match(itemApiSource, /requestedItemKey \|\| createItemKey\(\)/);
@@ -51,5 +52,7 @@ assert.doesNotMatch(orderSource, /set sort_order[\s\S]*where s\.section_key = r\
 assert.match(migrationSource, /create or replace function clone_wizard_content_section_draft/);
 assert.match(migrationSource, /create or replace function activate_wizard_content_section/);
 assert.match(migrationSource, /coalesce\(max\(version\), 0\) \+ 1/);
+assert.match(singleImageSourceMigration, /wizard_content_section_items_single_image_source_check/);
+assert.match(singleImageSourceMigration, /jsonb_array_length\(image_allowed_sources\) = 1/);
 
 console.log("Wizard content sections contract test passed");
