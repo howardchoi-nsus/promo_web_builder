@@ -1209,7 +1209,7 @@ createApp({
         sortOrder: 0,
         fieldKind: "text",
         textType: "title",
-        image: { allowedSources: [], promptText: "", altTextRequired: false, aspectRatio: "", maxSizeKb: "" },
+        image: { allowedSources: [], promptText: "", descriptionEnabled: false, altTextRequired: false, aspectRatio: "", maxSizeKb: "" },
         ctaUtm: { source: "", medium: "", campaign: "", content: "", term: "" },
         isLocked: false,
         lockedValueText: "",
@@ -2349,11 +2349,11 @@ createApp({
         isRequired: item?.isRequired ?? false,
         userReorderAllowed: item?.userReorderAllowed ?? true,
         sortOrder: item?.sortOrder ?? this.wizardFormTemplateSectionItems.length * 10,
-        fieldKind: item?.fieldKind || "text",
+        fieldKind: item?.fieldKind === "image" && item?.image?.descriptionEnabled ? "image_description" : (item?.fieldKind || "text"),
         textType: item?.textType || "title",
         image: item?.image
-          ? { ...item.image, allowedSources: (item.image.allowedSources || []).slice(0, 1) }
-          : { allowedSources: [], promptText: "", altTextRequired: false, aspectRatio: "", maxSizeKb: "" },
+          ? { ...item.image, allowedSources: [...(item.image.allowedSources || [])] }
+          : { allowedSources: [], promptText: "", descriptionEnabled: false, altTextRequired: false, aspectRatio: "", maxSizeKb: "" },
         ctaUtm: item?.ctaUtm ? { ...item.ctaUtm } : { source: "", medium: "", campaign: "", content: "", term: "" },
         isLocked: item?.isLocked ?? false,
         lockedValueText: item?.lockedValue === null || item?.lockedValue === undefined ? "" : JSON.stringify(item.lockedValue, null, 2),
@@ -2370,8 +2370,11 @@ createApp({
       this.wizardFormTemplateItemEditorOpenId = item.id;
     },
 
-    selectWizardFormTemplateItemImageSource(source) {
-      this.wizardFormTemplateItemEditor.image.allowedSources = [source];
+    toggleWizardFormTemplateItemImageSource(source) {
+      const sources = this.wizardFormTemplateItemEditor.image.allowedSources;
+      const index = sources.indexOf(source);
+      if (index >= 0) sources.splice(index, 1);
+      else sources.push(source);
     },
 
     async saveWizardFormTemplateItem() {
@@ -2388,7 +2391,13 @@ createApp({
         const response = await fetch("/api/wizard-content-section-items", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...editor, sectionId, lockedValue }),
+          body: JSON.stringify({
+            ...editor,
+            sectionId,
+            fieldKind: editor.fieldKind === "image_description" ? "image" : editor.fieldKind,
+            image: { ...editor.image, descriptionEnabled: editor.fieldKind === "image_description" },
+            lockedValue,
+          }),
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `아이템 저장 오류(${response.status})`);
@@ -2761,7 +2770,7 @@ createApp({
         sortOrder: (this.wizardSectionDetail?.items?.length || 0) * 10,
         fieldKind: "text",
         textType: "title",
-        image: { allowedSources: [], promptText: "", altTextRequired: false, aspectRatio: "", maxSizeKb: "" },
+        image: { allowedSources: [], promptText: "", descriptionEnabled: false, altTextRequired: false, aspectRatio: "", maxSizeKb: "" },
         ctaUtm: { source: "", medium: "", campaign: "", content: "", term: "" },
         isLocked: false,
         lockedValueText: "",
@@ -2777,11 +2786,11 @@ createApp({
         isVisibleInWizard: item.isVisibleInWizard,
         isRequired: item.isRequired,
         sortOrder: item.sortOrder,
-        fieldKind: item.fieldKind,
+        fieldKind: item.fieldKind === "image" && item.image?.descriptionEnabled ? "image_description" : item.fieldKind,
         textType: item.textType || "title",
         image: item.image
-          ? { ...item.image, allowedSources: (item.image.allowedSources || []).slice(0, 1) }
-          : { allowedSources: [], promptText: "", altTextRequired: false, aspectRatio: "", maxSizeKb: "" },
+          ? { ...item.image, allowedSources: [...(item.image.allowedSources || [])] }
+          : { allowedSources: [], promptText: "", descriptionEnabled: false, altTextRequired: false, aspectRatio: "", maxSizeKb: "" },
         ctaUtm: item.ctaUtm ? { ...item.ctaUtm } : { source: "", medium: "", campaign: "", content: "", term: "" },
         isLocked: item.isLocked,
         lockedValueText: item.lockedValue !== null && item.lockedValue !== undefined
@@ -2795,8 +2804,11 @@ createApp({
       this.wizardItemEditorOpenId = "";
     },
 
-    selectWizardItemImageSource(source) {
-      this.wizardItemEditor.image.allowedSources = [source];
+    toggleWizardItemImageSource(source) {
+      const sources = this.wizardItemEditor.image.allowedSources;
+      const index = sources.indexOf(source);
+      if (index >= 0) sources.splice(index, 1);
+      else sources.push(source);
     },
 
     async saveWizardItem() {
@@ -2826,9 +2838,9 @@ createApp({
             isVisibleInWizard: this.wizardItemEditor.isVisibleInWizard,
             isRequired: this.wizardItemEditor.isRequired,
             sortOrder: Number(this.wizardItemEditor.sortOrder) || 0,
-            fieldKind: this.wizardItemEditor.fieldKind,
+            fieldKind: this.wizardItemEditor.fieldKind === "image_description" ? "image" : this.wizardItemEditor.fieldKind,
             textType: this.wizardItemEditor.textType,
-            image: this.wizardItemEditor.image,
+            image: { ...this.wizardItemEditor.image, descriptionEnabled: this.wizardItemEditor.fieldKind === "image_description" },
             ctaUtm: this.wizardItemEditor.ctaUtm,
             isLocked: this.wizardItemEditor.isLocked,
             lockedValue,

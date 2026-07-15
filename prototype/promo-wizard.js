@@ -191,7 +191,7 @@ function defaultItemValue(item) {
   if (item.fieldKind === "cta") return { label: "", link: "", target: "_blank" };
   if (item.fieldKind === "image") {
     const firstSource = Array.isArray(item.image?.allowedSources) ? item.image.allowedSources[0] : "";
-    return { source: firstSource || "url", value: "", alt: "" };
+    return { source: firstSource || "url", value: "", description: "", alt: "" };
   }
   return "";
 }
@@ -649,6 +649,15 @@ function createImageSectionField(sectionKey, item) {
     type: "text",
     placeholder: item.image?.promptText || "https://... 또는 이미지 설명",
   }));
+
+  if (item.image?.descriptionEnabled) {
+    wrapper.append(createSectionField({
+      path: `${path}.description`,
+      label: "이미지 설명",
+      type: "textarea",
+      placeholder: "이미지와 함께 표시할 설명을 입력하세요",
+    }));
+  }
 
   if (item.image?.altTextRequired) {
     wrapper.append(createSectionField({ path: `${path}.alt`, label: "대체 텍스트 (alt)" }));

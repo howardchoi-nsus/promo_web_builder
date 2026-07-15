@@ -163,14 +163,14 @@ async function updateSection(req, res) {
     await sql`
       insert into wizard_content_section_items (
         section_id, item_key, name, is_visible_in_wizard, is_required, user_reorder_allowed,
-        sort_order, field_kind, text_type, image_allowed_sources, image_prompt_text,
+        sort_order, field_kind, text_type, image_allowed_sources, image_prompt_text, image_description_enabled,
         image_alt_text_required, image_aspect_ratio, image_max_size_kb,
         cta_utm_source, cta_utm_medium, cta_utm_campaign, cta_utm_content, cta_utm_term,
         is_locked, locked_value
       )
       select ${clonedSection.id}::uuid, item_key, name, is_visible_in_wizard, is_required,
         user_reorder_allowed, sort_order, field_kind, text_type, image_allowed_sources,
-        image_prompt_text, image_alt_text_required, image_aspect_ratio, image_max_size_kb,
+        image_prompt_text, image_description_enabled, image_alt_text_required, image_aspect_ratio, image_max_size_kb,
         cta_utm_source, cta_utm_medium, cta_utm_campaign, cta_utm_content, cta_utm_term,
         is_locked, locked_value
       from wizard_content_section_items where section_id = ${current.section_id}::uuid

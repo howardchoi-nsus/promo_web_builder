@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>프로모션 UI 디자인 빌더</title>
-    <link rel="stylesheet" href="styles.css?v=template-section-accordion-v9" />
+    <link rel="stylesheet" href="styles.css?v=template-section-accordion-v10" />
   </head>
   <body>
     <div id="app" class="app-shell">
@@ -1121,7 +1121,7 @@
                         @dragend.stop="stopWizardFormTemplateItemDrag"
                       >⋮⋮</span>
                       <strong>{{ item.name }}</strong>
-                      <span>{{ item.itemKey }} · {{ fieldKindLabel(item.fieldKind) }}{{ item.textType ? ' · ' + textTypeLabel(item.textType) : '' }}</span>
+                      <span>{{ item.itemKey }} · {{ fieldKindLabel(item.fieldKind) }}{{ item.image?.descriptionEnabled ? ' + 설명' : '' }}{{ item.textType ? ' · ' + textTypeLabel(item.textType) : '' }}</span>
                       <em>{{ item.isVisibleInWizard ? 'Wizard 노출' : 'Wizard 숨김' }} · {{ item.isRequired ? '필수' : '선택' }} · {{ item.userReorderAllowed ? '사용자 순서 변경 가능' : '사용자 순서 고정' }}{{ item.isLocked ? ' · 내용 고정' : '' }}</em>
                       <div class="action-row align-right">
                         <button class="tiny-button" type="button" @click="openWizardFormTemplateItemEditor(item)">수정</button>
@@ -1133,7 +1133,7 @@
                   <div class="template-item-editor" v-if="wizardFormTemplateItemEditorOpenId && wizardFormTemplateItemEditor">
                     <div class="subsection-title"><h3>{{ wizardFormTemplateItemEditorOpenId === 'new' ? 'Item 추가' : 'Item 수정' }}</h3></div>
                     <label class="field compact-field"><span>Item 이름</span><input v-model="wizardFormTemplateItemEditor.name" type="text" /></label>
-                    <label class="field compact-field"><span>유형</span><select v-model="wizardFormTemplateItemEditor.fieldKind"><option value="text">텍스트</option><option value="image">이미지</option><option value="cta">CTA 버튼</option></select></label>
+                    <label class="field compact-field"><span>유형</span><select v-model="wizardFormTemplateItemEditor.fieldKind"><option value="text">텍스트</option><option value="image">이미지</option><option value="image_description">이미지 + 설명</option><option value="cta">CTA 버튼</option></select></label>
                     <label class="field compact-field" v-if="wizardFormTemplateItemEditor.fieldKind === 'text'"><span>텍스트 유형</span><select v-model="wizardFormTemplateItemEditor.textType"><option value="title">Title</option><option value="remark">remark</option><option value="multi">Multi</option></select></label>
                     <div class="form-grid compact">
                       <label class="switch-control"><input v-model="wizardFormTemplateItemEditor.isRequired" type="checkbox" /><span>필수</span></label>
@@ -1141,8 +1141,8 @@
                       <label class="switch-control"><input v-model="wizardFormTemplateItemEditor.userReorderAllowed" type="checkbox" /><span>Wizard 사용자 순서 변경 허용</span></label>
                       <label class="switch-control"><input v-model="wizardFormTemplateItemEditor.isLocked" type="checkbox" /><span>내용 고정</span></label>
                     </div>
-                    <div class="field" v-if="wizardFormTemplateItemEditor.fieldKind === 'image'"><span>이미지 입력 방식</span><div class="subsection-actions"><label v-for="source in ['url', 'file', 'ai']" :key="source" class="switch-control"><input type="radio" name="wizard-form-template-image-source" :value="source" :checked="wizardFormTemplateItemEditor.image.allowedSources[0] === source" @change="selectWizardFormTemplateItemImageSource(source)" /><span>{{ imageSourceLabel(source) }}</span></label></div></div>
-                    <label class="field" v-if="wizardFormTemplateItemEditor.fieldKind === 'image'"><span>AI 생성/설명 텍스트</span><textarea v-model="wizardFormTemplateItemEditor.image.promptText" rows="2"></textarea></label>
+                    <div class="field" v-if="['image', 'image_description'].includes(wizardFormTemplateItemEditor.fieldKind)"><span>이미지 입력 방식</span><div class="subsection-actions"><label v-for="source in ['url', 'file', 'ai']" :key="source" class="switch-control"><input type="checkbox" :checked="wizardFormTemplateItemEditor.image.allowedSources.includes(source)" @change="toggleWizardFormTemplateItemImageSource(source)" /><span>{{ imageSourceLabel(source) }}</span></label></div></div>
+                    <label class="field" v-if="['image', 'image_description'].includes(wizardFormTemplateItemEditor.fieldKind)"><span>AI 생성/설명 텍스트</span><textarea v-model="wizardFormTemplateItemEditor.image.promptText" rows="2"></textarea></label>
                     <div class="form-grid compact" v-if="wizardFormTemplateItemEditor.fieldKind === 'cta'"><label class="field compact-field"><span>UTM Source</span><input v-model="wizardFormTemplateItemEditor.ctaUtm.source" type="text" /></label><label class="field compact-field"><span>UTM Medium</span><input v-model="wizardFormTemplateItemEditor.ctaUtm.medium" type="text" /></label><label class="field compact-field"><span>UTM Campaign</span><input v-model="wizardFormTemplateItemEditor.ctaUtm.campaign" type="text" /></label></div>
                     <label class="field" v-if="wizardFormTemplateItemEditor.isLocked"><span>고정 내용 (JSON)</span><textarea v-model="wizardFormTemplateItemEditor.lockedValueText" rows="3"></textarea></label>
                     <div class="action-row align-right"><button class="tiny-button" type="button" @click="wizardFormTemplateItemEditorOpenId = ''">취소</button><button class="tiny-button primary" type="button" :disabled="!wizardFormTemplateItemEditor.name || wizardFormTemplateSectionSaving" @click="saveWizardFormTemplateItem">저장 후 계속 추가</button></div>
@@ -1313,7 +1313,7 @@
                   <div class="history-list">
                     <div v-for="item in wizardSectionDetail.items" :key="item.id" class="history-item">
                       <strong>{{ item.name }}<em v-if="item.isLocked" class="status-active">고정됨</em></strong>
-                      <span>{{ item.itemKey }} · {{ fieldKindLabel(item.fieldKind) }}{{ item.textType ? ' · ' + textTypeLabel(item.textType) : '' }} · {{ item.isRequired ? '필수' : '선택' }} · {{ item.isVisibleInWizard ? 'Wizard 노출' : 'Wizard 숨김' }}</span>
+                      <span>{{ item.itemKey }} · {{ fieldKindLabel(item.fieldKind) }}{{ item.image?.descriptionEnabled ? ' + 설명' : '' }}{{ item.textType ? ' · ' + textTypeLabel(item.textType) : '' }} · {{ item.isRequired ? '필수' : '선택' }} · {{ item.isVisibleInWizard ? 'Wizard 노출' : 'Wizard 숨김' }}</span>
                       <div class="action-row align-right">
                         <button class="tiny-button" type="button" :disabled="wizardSectionDetail.section.status !== 'draft'" @click="openWizardItemEditor(item)">편집</button>
                         <button class="tiny-button danger" type="button" :disabled="wizardSectionDetail.section.status !== 'draft'" @click="deleteWizardItem(item)">삭제</button>
@@ -1344,6 +1344,7 @@
                         <select v-model="wizardItemEditor.fieldKind">
                           <option value="text">텍스트</option>
                           <option value="image">이미지</option>
+                          <option value="image_description">이미지 + 설명</option>
                           <option value="cta">CTA 버튼</option>
                         </select>
                       </label>
@@ -1361,20 +1362,20 @@
                       </label>
                     </div>
 
-                    <div class="field" v-if="wizardItemEditor.fieldKind === 'image'">
+                    <div class="field" v-if="['image', 'image_description'].includes(wizardItemEditor.fieldKind)">
                       <span>허용 이미지 소스</span>
                       <div class="subsection-actions">
                         <label v-for="source in ['url', 'file', 'ai']" :key="source" class="switch-control">
-                          <input type="radio" name="wizard-item-image-source" :value="source" :checked="wizardItemEditor.image.allowedSources[0] === source" @change="selectWizardItemImageSource(source)" />
+                          <input type="checkbox" :checked="wizardItemEditor.image.allowedSources.includes(source)" @change="toggleWizardItemImageSource(source)" />
                           <span>{{ imageSourceLabel(source) }}</span>
                         </label>
                       </div>
                     </div>
-                    <label class="field" v-if="wizardItemEditor.fieldKind === 'image'">
+                    <label class="field" v-if="['image', 'image_description'].includes(wizardItemEditor.fieldKind)">
                       <span>AI 생성/설명 텍스트</span>
                       <textarea v-model="wizardItemEditor.image.promptText" rows="2"></textarea>
                     </label>
-                    <div class="form-grid compact" v-if="wizardItemEditor.fieldKind === 'image'">
+                    <div class="form-grid compact" v-if="['image', 'image_description'].includes(wizardItemEditor.fieldKind)">
                       <label class="switch-control">
                         <input type="checkbox" v-model="wizardItemEditor.image.altTextRequired" />
                         <span>Alt 텍스트 필수</span>
@@ -1693,6 +1694,6 @@
     </div>
 
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-    <script src="app.js?v=template-section-accordion-v9"></script>
+    <script src="app.js?v=template-section-accordion-v10"></script>
   </body>
 </html>

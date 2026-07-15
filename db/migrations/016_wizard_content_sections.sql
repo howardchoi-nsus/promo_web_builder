@@ -50,6 +50,7 @@ create table if not exists wizard_content_section_items (
   text_type text,
   image_allowed_sources jsonb not null default '[]'::jsonb,
   image_prompt_text text not null default '',
+  image_description_enabled boolean not null default false,
   image_alt_text_required boolean not null default false,
   image_aspect_ratio text,
   image_max_size_kb integer,
@@ -139,14 +140,14 @@ begin
 
   insert into wizard_content_section_items (
     section_id, item_key, name, is_visible_in_wizard, is_required, sort_order,
-    field_kind, text_type, image_allowed_sources, image_prompt_text,
+    field_kind, text_type, image_allowed_sources, image_prompt_text, image_description_enabled,
     image_alt_text_required, image_aspect_ratio, image_max_size_kb,
     cta_utm_source, cta_utm_medium, cta_utm_campaign, cta_utm_content, cta_utm_term,
     is_locked, locked_value
   )
   select
     v_new_id, item_key, name, is_visible_in_wizard, is_required, sort_order,
-    field_kind, text_type, image_allowed_sources, image_prompt_text,
+    field_kind, text_type, image_allowed_sources, image_prompt_text, image_description_enabled,
     image_alt_text_required, image_aspect_ratio, image_max_size_kb,
     cta_utm_source, cta_utm_medium, cta_utm_campaign, cta_utm_content, cta_utm_term,
     is_locked, locked_value

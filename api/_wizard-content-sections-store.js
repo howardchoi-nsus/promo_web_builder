@@ -145,6 +145,7 @@ function toSectionItem(row) {
     image: row.field_kind === "image" ? {
       allowedSources: Array.isArray(row.image_allowed_sources) ? row.image_allowed_sources : [],
       promptText: row.image_prompt_text || "",
+      descriptionEnabled: Boolean(row.image_description_enabled),
       altTextRequired: Boolean(row.image_alt_text_required),
       aspectRatio: row.image_aspect_ratio || "",
       maxSizeKb: row.image_max_size_kb === null || row.image_max_size_kb === undefined ? null : Number(row.image_max_size_kb),
@@ -180,7 +181,7 @@ async function fetchItemRows(sql, sectionId) {
   return sql`
     select
       id::text, section_id::text, item_key, name, is_visible_in_wizard, is_required, user_reorder_allowed, sort_order,
-      field_kind, text_type, image_allowed_sources, image_prompt_text, image_alt_text_required,
+      field_kind, text_type, image_allowed_sources, image_prompt_text, image_description_enabled, image_alt_text_required,
       image_aspect_ratio, image_max_size_kb, cta_utm_source, cta_utm_medium, cta_utm_campaign,
       cta_utm_content, cta_utm_term, is_locked, locked_value, created_at, updated_at
     from wizard_content_section_items
@@ -216,7 +217,6 @@ async function validateSectionDraft(sql, sectionId) {
     if (item.fieldKind === "image") {
       const sources = item.image?.allowedSources || [];
       if (!sources.length) errors.push({ path: `${sectionRow.section_key}.${item.itemKey}`, code: "IMAGE_SOURCE_REQUIRED", message: "Image items need at least one supported source." });
-      if (sources.length > 1) errors.push({ path: `${sectionRow.section_key}.${item.itemKey}`, code: "SINGLE_IMAGE_SOURCE_REQUIRED", message: "Image items must use exactly one source." });
       if (sources.includes("ai") && !String(item.image?.promptText || "").trim()) {
         errors.push({ path: `${sectionRow.section_key}.${item.itemKey}`, code: "IMAGE_PROMPT_REQUIRED", message: "AI image sources require prompt text." });
       }
@@ -271,7 +271,7 @@ async function fetchPublicSectionsWithItems(sql) {
     const itemRows = await sql`
       select
         id::text, section_id::text, item_key, name, is_visible_in_wizard, is_required, user_reorder_allowed, sort_order,
-        field_kind, text_type, image_allowed_sources, image_prompt_text, image_alt_text_required,
+        field_kind, text_type, image_allowed_sources, image_prompt_text, image_description_enabled, image_alt_text_required,
         image_aspect_ratio, image_max_size_kb, cta_utm_source, cta_utm_medium, cta_utm_campaign,
         cta_utm_content, cta_utm_term, is_locked, locked_value, created_at, updated_at
       from wizard_content_section_items

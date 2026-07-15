@@ -84,8 +84,8 @@ async function upsertItem(req, res) {
   const requestedItemKey = String(body.itemKey || "").trim();
   if (!name) return res.status(400).json({ error: "name is required" });
   const allowedSources = normalizeImageSources(image.allowedSources);
-  if (fieldKind === "image" && allowedSources.length !== 1) {
-    return res.status(400).json({ error: "image.allowedSources must contain exactly one of: url, file, ai" });
+  if (fieldKind === "image" && !allowedSources.length) {
+    return res.status(400).json({ error: "image.allowedSources must include at least one of: url, file, ai" });
   }
   if (fieldKind === "image" && allowedSources.includes("ai") && !String(image.promptText || "").trim()) {
     return res.status(400).json({ error: "image.promptText is required when AI generation is allowed" });
@@ -112,6 +112,7 @@ async function upsertItem(req, res) {
         text_type = ${textType},
         image_allowed_sources = ${JSON.stringify(allowedSources)}::jsonb,
         image_prompt_text = ${String(image.promptText || "")},
+        image_description_enabled = ${normalizeBoolean(image.descriptionEnabled, false)},
         image_alt_text_required = ${normalizeBoolean(image.altTextRequired, false)},
         image_aspect_ratio = ${image.aspectRatio ? String(image.aspectRatio) : null},
         image_max_size_kb = ${maxSizeKb},
@@ -126,7 +127,7 @@ async function upsertItem(req, res) {
       where id = ${id}::uuid and section_id = ${sectionId}::uuid
       returning
         id::text, section_id::text, item_key, name, is_visible_in_wizard, is_required, user_reorder_allowed, sort_order,
-        field_kind, text_type, image_allowed_sources, image_prompt_text, image_alt_text_required,
+        field_kind, text_type, image_allowed_sources, image_prompt_text, image_description_enabled, image_alt_text_required,
         image_aspect_ratio, image_max_size_kb, cta_utm_source, cta_utm_medium, cta_utm_campaign,
         cta_utm_content, cta_utm_term, is_locked, locked_value, created_at, updated_at
     `;
@@ -149,7 +150,7 @@ async function upsertItem(req, res) {
   const rows = await sql`
     insert into wizard_content_section_items (
       section_id, item_key, name, is_visible_in_wizard, is_required, user_reorder_allowed, sort_order,
-      field_kind, text_type, image_allowed_sources, image_prompt_text,
+      field_kind, text_type, image_allowed_sources, image_prompt_text, image_description_enabled,
       image_alt_text_required, image_aspect_ratio, image_max_size_kb,
       cta_utm_source, cta_utm_medium, cta_utm_campaign, cta_utm_content, cta_utm_term,
       is_locked, locked_value
@@ -158,7 +159,7 @@ async function upsertItem(req, res) {
       ${sectionId}::uuid, ${itemKey}, ${name}, ${normalizeBoolean(body.isVisibleInWizard, true)},
       ${normalizeBoolean(body.isRequired, false)}, ${normalizeBoolean(body.userReorderAllowed, true)}, ${normalizeNumber(body.sortOrder) ?? 0},
       ${fieldKind}, ${textType}, ${JSON.stringify(allowedSources)}::jsonb,
-      ${String(image.promptText || "")}, ${normalizeBoolean(image.altTextRequired, false)},
+      ${String(image.promptText || "")}, ${normalizeBoolean(image.descriptionEnabled, false)}, ${normalizeBoolean(image.altTextRequired, false)},
       ${image.aspectRatio ? String(image.aspectRatio) : null}, ${maxSizeKb},
       ${ctaUtm.source || null}, ${ctaUtm.medium || null}, ${ctaUtm.campaign || null},
       ${ctaUtm.content || null}, ${ctaUtm.term || null},
@@ -166,7 +167,7 @@ async function upsertItem(req, res) {
     )
     returning
       id::text, section_id::text, item_key, name, is_visible_in_wizard, is_required, user_reorder_allowed, sort_order,
-      field_kind, text_type, image_allowed_sources, image_prompt_text, image_alt_text_required,
+      field_kind, text_type, image_allowed_sources, image_prompt_text, image_description_enabled, image_alt_text_required,
       image_aspect_ratio, image_max_size_kb, cta_utm_source, cta_utm_medium, cta_utm_campaign,
       cta_utm_content, cta_utm_term, is_locked, locked_value, created_at, updated_at
   `;
