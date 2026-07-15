@@ -27,7 +27,7 @@ module.exports = async function handler(req, res) {
     }
     await sql`
       with requested as (
-        select (value #>> '{}')::uuid as item_id, ordinal::integer
+        select (value #>> '{}')::uuid as item_id, ordinality::integer as ordinal
         from jsonb_array_elements(${JSON.stringify(itemIds)}::jsonb) with ordinality
       )
       update wizard_content_section_items item

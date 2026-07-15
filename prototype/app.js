@@ -2377,15 +2377,42 @@ createApp({
       else sources.push(source);
     },
 
-    async saveWizardFormTemplateItem() {
+    async prepareWizardFormTemplateSectionDraft() {
       const selectedSection = this.selectedWizardFormTemplateSection;
-      let sectionId = selectedSection?.sectionId;
+      if (!selectedSection?.sectionId) {
+        throw new Error("선택한 섹션의 원본 연결이 없습니다. DB 마이그레이션 021을 적용해 주세요.");
+      }
+      if (selectedSection.sectionStatus === "draft") {
+        return { sectionId: selectedSection.sectionId, items: this.wizardFormTemplateSectionItems };
+      }
+
+      const draftResponse = await fetch("/api/wizard-form-template-sections", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: selectedSection.id }),
+      });
+      const draftResult = await draftResponse.json().catch(() => ({}));
+      if (!draftResponse.ok) {
+        throw new Error(draftResult.message || draftResult.error || `편집용 Section 준비 오류(${draftResponse.status})`);
+      }
+      const sectionId = draftResult.section?.sectionId;
+      if (!sectionId) throw new Error("편집용 Section 연결을 확인할 수 없습니다");
+
+      const itemResponse = await fetch(`/api/wizard-content-section?id=${encodeURIComponent(sectionId)}`);
+      const itemResult = await itemResponse.json().catch(() => ({}));
+      if (!itemResponse.ok) {
+        throw new Error(itemResult.message || itemResult.error || `편집용 Item 요청 오류(${itemResponse.status})`);
+      }
+      const items = Array.isArray(itemResult.items) ? itemResult.items : [];
+      this.wizardFormTemplateSectionItems = items;
+      const index = this.wizardFormTemplateDetail.sections.findIndex((section) => section.id === selectedSection.id);
+      if (index >= 0) this.wizardFormTemplateDetail.sections.splice(index, 1, draftResult.section);
+      return { sectionId, items };
+    },
+
+    async saveWizardFormTemplateItem() {
       const editor = this.wizardFormTemplateItemEditor;
       if (!editor || this.wizardFormTemplateSectionSaving) return;
-      if (!sectionId) {
-        this.setStatus("아이템 저장 실패: 선택한 섹션의 원본 연결이 없습니다. DB 마이그레이션 021을 적용해 주세요.");
-        return;
-      }
       let lockedValue = null;
       if (editor.isLocked && editor.lockedValueText.trim()) {
         try { lockedValue = JSON.parse(editor.lockedValueText); }
@@ -2393,38 +2420,16 @@ createApp({
       }
       this.wizardFormTemplateSectionSaving = true;
       try {
-        if (selectedSection.sectionStatus !== "draft") {
-          const draftResponse = await fetch("/api/wizard-form-template-sections", {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: selectedSection.id }),
-          });
-          const draftResult = await draftResponse.json().catch(() => ({}));
-          if (!draftResponse.ok) {
-            throw new Error(draftResult.message || draftResult.error || `편집용 Section 준비 오류(${draftResponse.status})`);
-          }
-          sectionId = draftResult.section?.sectionId;
-          if (!sectionId) throw new Error("편집용 Section 연결을 확인할 수 없습니다");
-
-          const itemResponse = await fetch(`/api/wizard-content-section?id=${encodeURIComponent(sectionId)}`);
-          const itemResult = await itemResponse.json().catch(() => ({}));
-          if (!itemResponse.ok) {
-            throw new Error(itemResult.message || itemResult.error || `편집용 Item 요청 오류(${itemResponse.status})`);
-          }
-          const draftItems = Array.isArray(itemResult.items) ? itemResult.items : [];
-          const matchingItem = draftItems.find((item) => item.itemKey === editor.itemKey);
-          editor.id = matchingItem?.id || "";
-          this.wizardFormTemplateSectionItems = draftItems;
-          const index = this.wizardFormTemplateDetail.sections.findIndex((section) => section.id === selectedSection.id);
-          if (index >= 0) this.wizardFormTemplateDetail.sections.splice(index, 1, draftResult.section);
-        }
+        const draft = await this.prepareWizardFormTemplateSectionDraft();
+        const matchingItem = draft.items.find((item) => item.itemKey === editor.itemKey);
+        editor.id = matchingItem?.id || "";
 
         const response = await fetch("/api/wizard-content-section-items", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ...editor,
-            sectionId,
+            sectionId: draft.sectionId,
             fieldKind: editor.fieldKind,
             image: { ...editor.image },
             lockedValue,
@@ -2443,11 +2448,13 @@ createApp({
     },
 
     async deleteWizardFormTemplateItem(item) {
-      const sectionId = this.selectedWizardFormTemplateSection?.sectionId;
-      if (!sectionId || this.wizardFormTemplateSectionSaving || !window.confirm(`${item.name} 아이템을 삭제할까요?`)) return;
+      if (this.wizardFormTemplateSectionSaving || !window.confirm(`${item.name} 아이템을 삭제할까요?`)) return;
       this.wizardFormTemplateSectionSaving = true;
       try {
-        const response = await fetch(`/api/wizard-content-section-items?id=${encodeURIComponent(item.id)}&sectionId=${encodeURIComponent(sectionId)}`, { method: "DELETE" });
+        const draft = await this.prepareWizardFormTemplateSectionDraft();
+        const draftItem = draft.items.find((candidate) => candidate.itemKey === item.itemKey);
+        if (!draftItem) throw new Error("삭제할 아이템을 편집용 Section에서 찾을 수 없습니다");
+        const response = await fetch(`/api/wizard-content-section-items?id=${encodeURIComponent(draftItem.id)}&sectionId=${encodeURIComponent(draft.sectionId)}`, { method: "DELETE" });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `아이템 삭제 오류(${response.status})`);
         await this.loadWizardFormTemplateSectionItems();
@@ -2499,9 +2506,13 @@ createApp({
       this.setStatus("Section Item 순서를 저장하는 중입니다");
       this.wizardFormTemplateSectionSaving = true;
       try {
+        const draft = await this.prepareWizardFormTemplateSectionDraft();
+        const draftByKey = new Map(draft.items.map((item) => [item.itemKey, item]));
+        const draftOrder = items.map((item) => draftByKey.get(item.itemKey));
+        if (draftOrder.some((item) => !item)) throw new Error("아이템 순서 정보가 최신 상태와 일치하지 않습니다");
         const response = await fetch("/api/wizard-content-section-items-order", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sectionId: this.selectedWizardFormTemplateSection.sectionId, itemIds: items.map((candidate) => candidate.id) }),
+          body: JSON.stringify({ sectionId: draft.sectionId, itemIds: draftOrder.map((candidate) => candidate.id) }),
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `아이템 순서 오류(${response.status})`);
