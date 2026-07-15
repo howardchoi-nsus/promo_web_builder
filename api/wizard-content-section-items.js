@@ -84,8 +84,8 @@ async function upsertItem(req, res) {
   const requestedItemKey = String(body.itemKey || "").trim();
   if (!name) return res.status(400).json({ error: "name is required" });
   const allowedSources = normalizeImageSources(image.allowedSources);
-  if (fieldKind === "image" && !allowedSources.length) {
-    return res.status(400).json({ error: "image.allowedSources must include url or ai" });
+  if (fieldKind === "image" && allowedSources.length !== 1) {
+    return res.status(400).json({ error: "image.allowedSources must contain exactly one of: url, file, ai" });
   }
   if (fieldKind === "image" && allowedSources.includes("ai") && !String(image.promptText || "").trim()) {
     return res.status(400).json({ error: "image.promptText is required when AI generation is allowed" });

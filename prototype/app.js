@@ -2365,11 +2365,8 @@ createApp({
       this.wizardFormTemplateItemEditorOpenId = item.id;
     },
 
-    toggleWizardFormTemplateItemImageSource(source) {
-      const sources = this.wizardFormTemplateItemEditor.image.allowedSources;
-      const index = sources.indexOf(source);
-      if (index >= 0) sources.splice(index, 1);
-      else sources.push(source);
+    selectWizardFormTemplateItemImageSource(source) {
+      this.wizardFormTemplateItemEditor.image.allowedSources = [source];
     },
 
     async saveWizardFormTemplateItem() {
@@ -2758,11 +2755,8 @@ createApp({
       this.wizardItemEditorOpenId = "";
     },
 
-    toggleWizardItemImageSource(source) {
-      const sources = this.wizardItemEditor.image.allowedSources;
-      const index = sources.indexOf(source);
-      if (index >= 0) sources.splice(index, 1);
-      else sources.push(source);
+    selectWizardItemImageSource(source) {
+      this.wizardItemEditor.image.allowedSources = [source];
     },
 
     async saveWizardItem() {

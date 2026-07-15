@@ -11,8 +11,7 @@ const { neon } = require("@neondatabase/serverless");
 
 const FIELD_KINDS = ["text", "image", "cta"];
 const TEXT_TYPES = ["title", "remark", "multi"];
-// File uploads are not accepted until the Blob upload flow is implemented.
-const IMAGE_SOURCES = ["url", "ai"];
+const IMAGE_SOURCES = ["url", "file", "ai"];
 const SECTION_STATUSES = ["draft", "active", "inactive", "archived"];
 
 function getSql() {
@@ -217,6 +216,7 @@ async function validateSectionDraft(sql, sectionId) {
     if (item.fieldKind === "image") {
       const sources = item.image?.allowedSources || [];
       if (!sources.length) errors.push({ path: `${sectionRow.section_key}.${item.itemKey}`, code: "IMAGE_SOURCE_REQUIRED", message: "Image items need at least one supported source." });
+      if (sources.length > 1) errors.push({ path: `${sectionRow.section_key}.${item.itemKey}`, code: "SINGLE_IMAGE_SOURCE_REQUIRED", message: "Image items must use exactly one source." });
       if (sources.includes("ai") && !String(item.image?.promptText || "").trim()) {
         errors.push({ path: `${sectionRow.section_key}.${item.itemKey}`, code: "IMAGE_PROMPT_REQUIRED", message: "AI image sources require prompt text." });
       }

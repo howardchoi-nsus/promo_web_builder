@@ -4,13 +4,13 @@ const path = require("path");
 
 const store = require("../api/_wizard-content-sections-store");
 
-assert.deepStrictEqual(store.normalizeImageSources(["file", "url", "ai", "other"]), ["url", "ai"]);
+assert.deepStrictEqual(store.normalizeImageSources(["file", "url", "ai", "other"]), ["file", "url", "ai"]);
 assert.strictEqual(store.validateLockedValue("text", "Fixed copy"), "");
 assert.match(store.validateLockedValue("text", ""), /non-empty string/);
 assert.strictEqual(store.validateLockedValue("cta", { label: "Join", link: "/join" }), "");
 assert.match(store.validateLockedValue("cta", { label: "Join" }), /label and link/);
 assert.strictEqual(store.validateLockedValue("image", { source: "url", value: "https://example.com/a.png" }), "");
-assert.match(store.validateLockedValue("image", { source: "file", value: "asset" }), /allowed source/);
+assert.strictEqual(store.validateLockedValue("image", { source: "file", value: "asset" }), "");
 assert.strictEqual(store.hasLockedValue(false), true);
 assert.strictEqual(store.hasLockedValue(0), true);
 assert.strictEqual(store.hasLockedValue(""), true);
@@ -34,7 +34,9 @@ assert.match(wizardSource, /applyCtaUtmParameters/);
 assert.match(adminSource, /dragOverWizardSection/);
 assert.match(adminSource, /wizardSectionDropPosition/);
 assert.match(adminHtmlSource, /transition-group name="section-order-list"/);
-assert.match(adminHtmlSource, /template-section-accordion-v7/);
+assert.match(adminHtmlSource, /template-section-accordion-v8/);
+assert.match(adminHtmlSource, /type="radio" name="wizard-form-template-image-source"/);
+assert.match(itemApiSource, /must contain exactly one of: url, file, ai/);
 assert.match(itemApiSource, /requestedItemKey \|\| createItemKey\(\)/);
 assert.match(adminHtmlSource, /section-expand-button/);
 assert.match(adminHtmlSource, /transition name="section-expand"/);
