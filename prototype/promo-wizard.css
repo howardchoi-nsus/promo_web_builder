@@ -507,6 +507,21 @@ a {
   color: var(--accent);
 }
 
+.wizard-template-content-sections {
+  display: grid;
+  grid-column: 1;
+  min-width: 0;
+  gap: 0;
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.wizard-template-content-sections > .content-form-section {
+  border: 0;
+  border-radius: 0;
+}
+
+
 .content-form-grid {
   display: grid;
   grid-template-columns: repeat(1, minmax(0, 1fr));

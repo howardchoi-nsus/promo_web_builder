@@ -995,6 +995,9 @@ function renderContentStep() {
       dynamicSections.push(sectionEl);
     });
   }
+  const dynamicSectionsWrapper = document.createElement("div");
+  dynamicSectionsWrapper.className = "wizard-template-content-sections";
+  dynamicSectionsWrapper.append(...dynamicSections);
 
   const coverage = document.createElement("aside");
   coverage.className = "content-coverage-panel";
@@ -1022,7 +1025,7 @@ function renderContentStep() {
     toolbar,
     templateSection,
     overview,
-    ...dynamicSections,
+    dynamicSectionsWrapper,
     coverage
   );
 }
