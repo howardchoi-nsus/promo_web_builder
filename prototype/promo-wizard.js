@@ -911,7 +911,7 @@ function renderContentStep() {
   buttons.append(autofill, reset);
   toolbar.append(buttons);
 
-  const overview = createContentSection("1. 프로모션 개요", [
+  const overview = createContentSection("2. 프로모션 개요", [
     { group: "promo", key: "title", label: "프로모션 제목", required: true },
     { group: "promo", key: "promotionPurpose", label: "프로모션 목적", required: true, options: ["할인쿠폰", "경품", "이벤트", "기타"] },
     { group: "promo", key: "promotionPurposeOther", label: "기타 목적", required: contentState.promo.promotionPurpose === "기타" },
@@ -927,35 +927,38 @@ function renderContentStep() {
 
   const templateSection = document.createElement("article");
   templateSection.className = "content-form-section";
-  appendTextElement(templateSection, "h3", "", "2. 프로모션 템플릿 선택");
-  const templateField = document.createElement("label");
-  templateField.className = "content-field";
-  appendTextElement(templateField, "span", "", "템플릿 *");
-  const templateSelect = document.createElement("select");
+  appendTextElement(templateSection, "h3", "", "1. 프로모션 템플릿 선택");
+  const templateTiles = document.createElement("div");
+  templateTiles.className = "wizard-template-tiles";
   wizardFormTemplates.forEach((template) => {
-    const option = document.createElement("option");
-    option.value = template.id;
-    option.textContent = `${template.name}${template.isDefault ? " (기본)" : ""}`;
-    templateSelect.append(option);
-  });
-  templateSelect.value = selectedWizardFormTemplate?.id || "";
-  templateSelect.addEventListener("change", async (event) => {
-    const templateId = event.target.value;
-    wizardSectionDefinitionsLoading = true;
-    renderStep();
-    try {
-      await selectWizardFormTemplate(templateId);
-      wizardSectionDefinitionsError = "";
-    } catch (error) {
-      wizardSectionDefinitionsError = error.message || "템플릿을 불러오지 못했습니다.";
-    } finally {
-      wizardSectionDefinitionsLoading = false;
+    const tile = document.createElement("button");
+    tile.type = "button";
+    tile.className = `wizard-template-tile${selectedWizardFormTemplate?.id === template.id ? " is-selected" : ""}`;
+    tile.disabled = wizardSectionDefinitionsLoading;
+    tile.setAttribute("aria-pressed", String(selectedWizardFormTemplate?.id === template.id));
+    const heading = document.createElement("span");
+    appendTextElement(heading, "strong", "", template.name);
+    if (template.isDefault) appendTextElement(heading, "em", "wizard-template-default", "기본");
+    tile.append(heading);
+    appendTextElement(tile, "small", "", template.description || "프로모션 콘텐츠 템플릿");
+    appendTextElement(tile, "code", "", `${template.templateKey} · v${template.version}`);
+    tile.addEventListener("click", async () => {
+      if (wizardSectionDefinitionsLoading || selectedWizardFormTemplate?.id === template.id) return;
+      wizardSectionDefinitionsLoading = true;
       renderStep();
-    }
+      try {
+        await selectWizardFormTemplate(template.id);
+        wizardSectionDefinitionsError = "";
+      } catch (error) {
+        wizardSectionDefinitionsError = error.message || "템플릿을 불러오지 못했습니다.";
+      } finally {
+        wizardSectionDefinitionsLoading = false;
+        renderStep();
+      }
+    });
+    templateTiles.append(tile);
   });
-  templateField.append(templateSelect);
-  if (selectedWizardFormTemplate?.description) appendTextElement(templateField, "small", "", selectedWizardFormTemplate.description);
-  templateSection.append(templateField);
+  templateSection.append(templateTiles);
 
   // Sections 4+ (Header, Hero Banner, Step Bar, Content CTA, Image Text Row,
   // Title and Description, Footer by default) are admin-managed. See
@@ -1017,8 +1020,8 @@ function renderContentStep() {
 
   placeholders.append(
     toolbar,
-    overview,
     templateSection,
+    overview,
     ...dynamicSections,
     coverage
   );
