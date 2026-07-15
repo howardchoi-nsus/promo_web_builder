@@ -521,6 +521,14 @@ a {
   border-radius: 0;
 }
 
+.wizard-template-content-title {
+  margin: 0;
+  padding: 16px;
+  color: var(--ink);
+  font-size: 15px;
+  letter-spacing: 0;
+}
+
 
 .content-form-grid {
   display: grid;

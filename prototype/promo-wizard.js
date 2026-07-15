@@ -982,12 +982,12 @@ function renderContentStep() {
     error.append(retry);
     dynamicSections.push(error);
   } else {
-    wizardSectionDefinitions.forEach((section, index) => {
+    wizardSectionDefinitions.forEach((section) => {
       const visibleItems = (section.items || []).filter((item) => item.isVisibleInWizard);
       if (!visibleItems.length) return;
       const sectionEl = document.createElement("article");
       sectionEl.className = "content-form-section";
-      appendTextElement(sectionEl, "h3", "", `${index + 3}. ${section.name}`);
+      appendTextElement(sectionEl, "h3", "", section.name);
       const grid = document.createElement("div");
       grid.className = "content-form-grid";
       visibleItems.forEach((item) => grid.append(createDynamicSectionField(section.sectionKey, item)));
@@ -997,6 +997,7 @@ function renderContentStep() {
   }
   const dynamicSectionsWrapper = document.createElement("div");
   dynamicSectionsWrapper.className = "wizard-template-content-sections";
+  appendTextElement(dynamicSectionsWrapper, "h3", "wizard-template-content-title", "3. 컨텐츠 등록");
   dynamicSectionsWrapper.append(...dynamicSections);
 
   const coverage = document.createElement("aside");
