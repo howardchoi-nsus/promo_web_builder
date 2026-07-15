@@ -68,7 +68,7 @@ assert.match(adminHtml, /wizardFormTemplateItemEditorOpenId === item\.id \? '▾
 assert.doesNotMatch(adminHtml, /openWizardFormTemplateItemEditor\(item\)">수정/);
 assert.match(adminHtml, /template-section-items-panel/);
 assert.match(adminHtml, /\+ 템플릿 추가/);
-assert.match(adminHtml, /공통 Section 원본 관리/);
+assert.match(adminHtml, /Section CRUD 로그/);
 assert.match(adminHtml, /Wizard 사용자 순서 변경 허용/);
 
 console.log("Wizard form templates contract test passed");

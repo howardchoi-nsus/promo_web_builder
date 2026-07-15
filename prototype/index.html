@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>프로모션 UI 디자인 빌더</title>
-    <link rel="stylesheet" href="styles.css?v=template-section-accordion-v13" />
+    <link rel="stylesheet" href="styles.css?v=section-audit-log-v14" />
   </head>
   <body>
     <div id="app" class="app-shell">
@@ -1170,9 +1170,31 @@
               </div>
             </section>
 
-            <details class="section-library-manager">
-              <summary>공통 Section 원본 관리</summary>
-              <div class="section-library-manager-body">
+            <details class="section-library-manager" open>
+              <summary>Section CRUD 로그</summary>
+              <div class="section-library-manager-body section-audit-manager">
+                <div class="panel-header">
+                  <div><h2>Section 변경 로그</h2></div>
+                  <div class="subsection-actions">
+                    <span>{{ wizardSectionAuditLogs.length }}건</span>
+                    <button class="tiny-button" type="button" :disabled="wizardSectionAuditLoading" @click="loadWizardSectionAuditLogs">새로고침</button>
+                  </div>
+                </div>
+                <div class="form-grid compact section-audit-filters">
+                  <label class="field compact-field"><span>템플릿</span><select v-model="wizardSectionAuditFilters.templateKey" @change="loadWizardSectionAuditLogs"><option value="">전체</option><option v-for="group in groupedWizardFormTemplates" :key="group.templateKey" :value="group.templateKey">{{ group.primary?.name || group.templateKey }}</option></select></label>
+                  <label class="field compact-field"><span>변경 유형</span><select v-model="wizardSectionAuditFilters.action" @change="loadWizardSectionAuditLogs"><option value="">전체</option><option value="create">생성</option><option value="update">수정</option><option value="delete">삭제</option><option value="reorder">순서 변경</option><option value="draft">Draft 생성</option><option value="activate">활성화</option></select></label>
+                </div>
+                <div class="outline-item danger-state" v-if="wizardSectionAuditError"><strong>로그 조회 오류</strong><span>{{ wizardSectionAuditError }}</span></div>
+                <div class="empty-state compact" v-if="wizardSectionAuditLoading">Section 변경 로그를 불러오는 중입니다.</div>
+                <div class="history-list section-audit-list" v-else-if="wizardSectionAuditLogs.length">
+                  <details class="history-item section-audit-row" v-for="log in wizardSectionAuditLogs" :key="log.id">
+                    <summary><strong>{{ wizardSectionAuditActionLabel(log.action) }} · {{ log.entityType === 'item' ? 'Item' : 'Section' }}</strong><span>{{ log.formTemplateKey || '공통' }} · {{ log.sectionKey || '-' }}{{ log.itemKey ? ' · ' + log.itemKey : '' }}</span><em>{{ formatAuditDate(log.createdAt) }}</em></summary>
+                    <div class="section-audit-detail"><p>{{ log.summary }}</p><div class="section-audit-states"><div><strong>변경 전</strong><pre>{{ formatAuditState(log.previousState) }}</pre></div><div><strong>변경 후</strong><pre>{{ formatAuditState(log.newState) }}</pre></div></div></div>
+                  </details>
+                </div>
+                <div class="empty-state compact" v-else>기록된 Section 변경 로그가 없습니다.</div>
+              </div>
+              <div class="section-library-manager-body" v-if="false">
             <div class="panel-header">
               <div>
                 <h2>섹션 라이브러리</h2>
@@ -1711,6 +1733,6 @@
     </div>
 
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-    <script src="app.js?v=template-section-accordion-v13"></script>
+    <script src="app.js?v=section-audit-log-v14"></script>
   </body>
 </html>

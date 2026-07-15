@@ -1178,6 +1178,10 @@ createApp({
       wizardFormTemplateSectionDropTargetKey: "",
       wizardFormTemplateSectionDropPosition: "",
       wizardSections: [],
+      wizardSectionAuditLogs: [],
+      wizardSectionAuditLoading: false,
+      wizardSectionAuditError: "",
+      wizardSectionAuditFilters: { templateKey: "", action: "" },
       wizardSectionsLoading: false,
       wizardSectionsError: "",
       wizardSectionSaving: false,
@@ -1663,9 +1667,42 @@ createApp({
         this.loadPromptTemplates(),
         this.loadWorkerWebhookSettings(),
         this.loadWizardFormTemplates(),
-        this.loadWizardSections(),
+        this.loadWizardSectionAuditLogs(),
       ]);
       this.setStatus("관리자 페이지로 이동했습니다");
+    },
+
+    async loadWizardSectionAuditLogs() {
+      if (this.wizardSectionAuditLoading) return;
+      this.wizardSectionAuditLoading = true;
+      this.wizardSectionAuditError = "";
+      try {
+        const params = new URLSearchParams({ limit: "200" });
+        if (this.wizardSectionAuditFilters.templateKey) params.set("templateKey", this.wizardSectionAuditFilters.templateKey);
+        if (this.wizardSectionAuditFilters.action) params.set("action", this.wizardSectionAuditFilters.action);
+        const response = await fetch(`/api/wizard-section-audit-logs?${params}`);
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `Section 로그 요청 오류(${response.status})`);
+        this.wizardSectionAuditLogs = Array.isArray(result.logs) ? result.logs : [];
+      } catch (error) {
+        this.wizardSectionAuditLogs = [];
+        this.wizardSectionAuditError = error.message;
+      } finally {
+        this.wizardSectionAuditLoading = false;
+      }
+    },
+
+    wizardSectionAuditActionLabel(action) {
+      return ({ create: "생성", update: "수정", delete: "삭제", reorder: "순서 변경", draft: "Draft 생성", activate: "활성화" })[action] || action;
+    },
+
+    formatAuditDate(value) {
+      if (!value) return "-";
+      return new Intl.DateTimeFormat("ko-KR", { dateStyle: "short", timeStyle: "medium" }).format(new Date(value));
+    },
+
+    formatAuditState(value) {
+      return value ? JSON.stringify(value, null, 2) : "없음";
     },
 
     async loadPromptTemplates(options = {}) {

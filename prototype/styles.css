@@ -2805,6 +2805,57 @@ body.is-resizing {
   overflow: auto;
 }
 
+.section-audit-manager {
+  display: grid;
+  gap: 12px;
+}
+
+.section-audit-filters {
+  grid-template-columns: repeat(2, minmax(0, 240px));
+}
+
+.section-audit-row {
+  padding: 0;
+}
+
+.section-audit-row > summary {
+  display: grid;
+  grid-template-columns: minmax(140px, auto) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  cursor: pointer;
+}
+
+.section-audit-row > summary span,
+.section-audit-row > summary em {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.section-audit-detail {
+  padding: 0 12px 12px;
+  border-top: 1px solid var(--line);
+}
+
+.section-audit-states {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.section-audit-states pre {
+  max-height: 320px;
+  overflow: auto;
+  padding: 10px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .template-section-list {
   display: grid;
   gap: 8px;
@@ -2943,6 +2994,17 @@ body.is-resizing {
   .section-expand-enter-active,
   .section-expand-leave-active {
     transition: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .section-audit-filters,
+  .section-audit-states {
+    grid-template-columns: 1fr;
+  }
+
+  .section-audit-row > summary {
+    grid-template-columns: 1fr;
   }
 }
 
