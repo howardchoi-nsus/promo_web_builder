@@ -33,7 +33,7 @@ assert.match(wizardSource, /applyCtaUtmParameters/);
 assert.match(adminSource, /dragOverWizardSection/);
 assert.match(adminSource, /wizardSectionDropPosition/);
 assert.match(adminHtmlSource, /transition-group name="section-order-list"/);
-assert.match(adminHtmlSource, /template-section-accordion-v4/);
+assert.match(adminHtmlSource, /template-section-accordion-v6/);
 assert.match(adminHtmlSource, /section-expand-button/);
 assert.match(adminHtmlSource, /transition name="section-expand"/);
 assert.match(adminStyleSource, /\.section-order-list-move/);

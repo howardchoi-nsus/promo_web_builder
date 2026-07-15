@@ -2308,6 +2308,13 @@ createApp({
       if (!source || targetIndex < 0) return;
       reordered.splice(targetIndex + (position === "after" ? 1 : 0), 0, source);
 
+      const previousSections = [...this.wizardFormTemplateDetail.sections];
+      const optimisticMovable = [...reordered];
+      this.wizardFormTemplateDetail.sections = previousSections.map((section) => (
+        section.fixedPosition ? section : optimisticMovable.shift()
+      ));
+      this.setStatus("템플릿 Section 순서를 저장하는 중입니다");
+
       this.wizardFormTemplateSectionSaving = true;
       try {
         const response = await fetch("/api/wizard-form-template-sections-order", {
@@ -2323,7 +2330,7 @@ createApp({
         this.wizardFormTemplateDetail.sections = result.sections || this.wizardFormTemplateDetail.sections;
         this.setStatus("템플릿 Section 순서를 저장했습니다");
       } catch (error) {
-        await this.loadWizardFormTemplateDetail(this.wizardFormTemplateDetail.template.id);
+        this.wizardFormTemplateDetail.sections = previousSections;
         this.setStatus(`템플릿 Section 순서 저장 실패: ${error.message}`);
       } finally {
         this.wizardFormTemplateSectionSaving = false;

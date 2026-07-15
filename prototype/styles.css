@@ -2810,6 +2810,10 @@ body.is-resizing {
   gap: 8px;
 }
 
+.template-section-order-move {
+  transition: transform 200ms ease;
+}
+
 .template-section-row {
   position: relative;
   display: grid;
@@ -2879,6 +2883,7 @@ body.is-resizing {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .template-section-order-move,
   .section-expand-enter-active,
   .section-expand-leave-active {
     transition: none;
