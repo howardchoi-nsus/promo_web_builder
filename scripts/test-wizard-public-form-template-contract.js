@@ -1,0 +1,28 @@
+const assert = require("assert");
+const fs = require("fs");
+const path = require("path");
+const root = path.resolve(__dirname, "..");
+const read = (...parts) => fs.readFileSync(path.join(root, ...parts), "utf8");
+const listApi = read("api", "wizard-form-templates-public.js");
+const detailApi = read("api", "wizard-form-template-public.js");
+const wizard = read("prototype", "promo-wizard.js");
+const wizardHtml = read("prototype", "promo-wizard.html");
+
+assert.match(listApi, /activeOnly: true/);
+assert.doesNotMatch(listApi, /changeNote/);
+assert.match(detailApi, /row\.status !== "active"/);
+assert.match(detailApi, /section\.isVisible && section\.sectionId/);
+assert.match(detailApi, /item\.isVisibleInWizard/);
+assert.match(detailApi, /VISIBLE_SECTION_WITHOUT_ITEMS/);
+assert.match(detailApi, /configurationWarnings/);
+assert.match(detailApi, /configRevision/);
+assert.match(wizard, /wizard-form-templates-public/);
+assert.match(wizard, /wizard-form-template-public\?id=/);
+assert.match(wizard, /2\. 프로모션 템플릿 선택/);
+assert.match(wizard, /sectionSnapshot/);
+assert.match(wizard, /templateInputs/);
+assert.match(wizard, /선택한 템플릿에 Wizard 입력 항목이 없습니다/);
+assert.doesNotMatch(wizard, /2\. Message JSON/);
+assert.doesNotMatch(wizard, /createMessageJsonSection/);
+assert.match(wizardHtml, /20260715-template-step2/);
+console.log("Wizard public form template contract test passed");

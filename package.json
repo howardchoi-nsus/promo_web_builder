@@ -16,6 +16,7 @@
     "test:wizard-content-sections-contract": "node scripts/test-wizard-content-sections-contract.js",
     "test:wizard-form-templates-contract": "node scripts/test-wizard-form-templates-contract.js",
     "test:wizard-section-audit-log-contract": "node scripts/test-wizard-section-audit-log-contract.js",
+    "test:wizard-public-form-template-contract": "node scripts/test-wizard-public-form-template-contract.js",
     "design-md:dry-run": "node scripts/import-design-md-docs.js",
     "design-md:import": "node scripts/import-design-md-docs.js --apply"
   },

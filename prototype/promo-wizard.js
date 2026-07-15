@@ -65,6 +65,8 @@ let workerSettingsError = "";
 // Only the currently active + wizard-visible version of each section is
 // fetched here (see api/wizard-content-sections.js, ?scope=public).
 let wizardSectionDefinitions = [];
+let wizardFormTemplates = [];
+let selectedWizardFormTemplate = null;
 let wizardSectionDefinitionsLoading = false;
 let wizardSectionDefinitionsError = "";
 let wizardSectionConfigRevision = "";
@@ -130,6 +132,8 @@ function defaultWizardContent() {
       campaignTone: "",
       secondaryMessage: "",
     },
+    formTemplate: null,
+    templateInputs: {},
     // Section 4~10 (Header/Hero/Step Bar/Content CTA/Image Text Row/Title and
     // Description/Footer) used to be hardcoded here. They are now admin-managed
     // (see wizardSectionDefinitions) and this starts empty until
@@ -243,6 +247,8 @@ function loadWizardContent() {
       sectionInputSchemaVersion: SECTION_INPUT_SCHEMA_VERSION,
       promo: { ...fallback.promo, ...(saved?.promo || {}) },
       simpleBrief: { ...fallback.simpleBrief, ...(saved?.simpleBrief || {}) },
+      formTemplate: saved?.formTemplate || null,
+      templateInputs: (saved && typeof saved.templateInputs === "object" && saved.templateInputs) || {},
       // Raw saved value is kept as-is until wizardSectionDefinitions loads;
       // loadWizardSectionDefinitions() then calls mergeSectionInputs() to
       // reconcile it against the current admin configuration.
@@ -259,18 +265,52 @@ async function loadWizardSectionDefinitions() {
   wizardSectionDefinitionsLoading = true;
   wizardSectionDefinitionsError = "";
   try {
-    const result = await fetchJson("/api/wizard-content-sections?scope=public");
-    wizardSectionDefinitions = Array.isArray(result.sections) ? result.sections : [];
-    wizardSectionConfigRevision = String(result.configRevision || "");
-    if (!wizardSectionDefinitions.length) throw new Error("활성화된 콘텐츠 섹션 구성이 없습니다.");
-    contentState.sectionInputs = mergeSectionInputs(contentState.sectionInputs, wizardSectionDefinitions);
-    saveWizardContent();
+    const result = await fetchJson("/api/wizard-form-templates-public");
+    wizardFormTemplates = Array.isArray(result.templates) ? result.templates : [];
+    if (!wizardFormTemplates.length) throw new Error("활성화된 프로모션 템플릿이 없습니다.");
+    const savedId = contentState.formTemplate?.id;
+    const target = wizardFormTemplates.find((template) => template.id === savedId)
+      || wizardFormTemplates.find((template) => template.isDefault)
+      || wizardFormTemplates[0];
+    await selectWizardFormTemplate(target.id, { skipConfirmation: true });
   } catch (error) {
     wizardSectionDefinitionsError = error.message || "콘텐츠 섹션 구성을 불러오지 못했습니다.";
   } finally {
     wizardSectionDefinitionsLoading = false;
     renderStep();
   }
+}
+
+function hasTemplateInputValues(value = contentState.sectionInputs) {
+  return JSON.stringify(value || {}) !== JSON.stringify(defaultSectionInputsFromDefinitions(wizardSectionDefinitions));
+}
+
+async function selectWizardFormTemplate(templateId, options = {}) {
+  if (!templateId || selectedWizardFormTemplate?.id === templateId) return;
+  if (!options.skipConfirmation && selectedWizardFormTemplate && hasTemplateInputValues()) {
+    if (!window.confirm("템플릿을 변경할까요? 현재 입력값은 기존 템플릿에 보관됩니다.")) {
+      renderStep();
+      return;
+    }
+  }
+  if (selectedWizardFormTemplate?.templateKey) {
+    contentState.templateInputs[selectedWizardFormTemplate.templateKey] = contentState.sectionInputs;
+  }
+  const result = await fetchJson(`/api/wizard-form-template-public?id=${encodeURIComponent(templateId)}`);
+  const nextDefinitions = Array.isArray(result.sections) ? result.sections : [];
+  if (!nextDefinitions.length || !nextDefinitions.some((section) => (section.items || []).length)) {
+    throw new Error("선택한 템플릿에 Wizard 입력 항목이 없습니다. 관리자에게 템플릿 구성을 요청해 주세요.");
+  }
+  selectedWizardFormTemplate = result.template;
+  wizardSectionDefinitions = nextDefinitions;
+  wizardSectionConfigRevision = String(result.configRevision || "");
+  contentState.formTemplate = { ...result.template, configRevision: wizardSectionConfigRevision };
+  contentState.sectionInputs = mergeSectionInputs(
+    contentState.templateInputs[result.template.templateKey] || {},
+    wizardSectionDefinitions
+  );
+  contentState.templateInputs[result.template.templateKey] = contentState.sectionInputs;
+  saveWizardContent();
 }
 
 function wizardSectionConfigurationReady() {
@@ -280,6 +320,9 @@ function wizardSectionConfigurationReady() {
 }
 
 function saveWizardContent() {
+  if (selectedWizardFormTemplate?.templateKey) {
+    contentState.templateInputs[selectedWizardFormTemplate.templateKey] = contentState.sectionInputs;
+  }
   localStorage.setItem(storageKeys.wizardContent, JSON.stringify(contentState));
 }
 
@@ -677,9 +720,6 @@ function contentErrors() {
     ["market", contentState.promo.market],
     ["audience", contentState.simpleBrief.audience],
     ["campaignTone", contentState.simpleBrief.campaignTone],
-    ["mainOffer", contentState.simpleBrief.mainOffer],
-    ["secondaryMessage", contentState.simpleBrief.secondaryMessage],
-    ["targetAction", contentState.simpleBrief.targetAction],
   ];
   if (contentState.promo.promotionPurpose === "기타") {
     required.push(["promotionPurposeOther", contentState.promo.promotionPurposeOther]);
@@ -800,6 +840,21 @@ function autofillContent() {
       content: terms,
     },
   });
+  wizardSectionDefinitions.forEach((section) => {
+    (section.items || []).forEach((item) => {
+      if (item.isLocked) return;
+      const path = `${section.sectionKey}.${item.itemKey}`;
+      const current = valueAtPath(contentState.sectionInputs, path);
+      if (item.fieldKind === "cta" && !String(current?.label || "").trim()) {
+        setValueAtPath(contentState.sectionInputs, path, { label: item.name, link: "https://example.com/", target: "_blank" });
+      } else if (item.fieldKind === "image" && !String(current?.value || "").trim()) {
+        const source = item.image?.allowedSources?.[0] || "url";
+        setValueAtPath(contentState.sectionInputs, path, { source, value: `${item.name} image`, description: "", alt: item.name });
+      } else if (item.fieldKind === "text" && !String(current || "").trim()) {
+        setValueAtPath(contentState.sectionInputs, path, `${item.name} sample content`);
+      }
+    });
+  });
   validationErrors = {};
   saveWizardContent();
   saveWizardRun(null);
@@ -834,79 +889,13 @@ function createContentSection(titleText, fields) {
   return section;
 }
 
-function messageJsonPayload() {
-  return {
-    mainOffer: contentState.simpleBrief.mainOffer || "",
-    secondaryMessage: contentState.simpleBrief.secondaryMessage || "",
-    targetAction: contentState.simpleBrief.targetAction || "",
-    leadText: contentState.promo.leadText || "",
-    subline: contentState.promo.subline || "",
-  };
-}
-
-function applyMessageJsonPayload(value) {
-  let parsed;
-  try {
-    parsed = JSON.parse(value);
-  } catch (error) {
-    return { ok: false, error: error.message || "Invalid JSON" };
-  }
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    return { ok: false, error: "JSON object is required." };
-  }
-
-  contentState.simpleBrief.mainOffer = String(parsed.mainOffer || "");
-  contentState.simpleBrief.secondaryMessage = String(parsed.secondaryMessage || "");
-  contentState.simpleBrief.targetAction = String(parsed.targetAction || "");
-  contentState.promo.leadText = String(parsed.leadText || "");
-  contentState.promo.subline = String(parsed.subline || "");
-
-  ["mainOffer", "secondaryMessage", "targetAction"].forEach((key) => {
-    if (String(contentState.simpleBrief[key] || "").trim()) delete validationErrors[key];
-  });
-  saveWizardContent();
-  saveWizardRun(null);
-  runError = "";
-  return { ok: true };
-}
-
-function createMessageJsonSection() {
-  const section = document.createElement("article");
-  section.className = "content-form-section";
-  appendTextElement(section, "h3", "", "2. Message JSON");
-
-  const wrapper = document.createElement("label");
-  wrapper.className = "content-field content-json-field";
-  appendTextElement(wrapper, "span", "", "messagePayload");
-
-  const control = document.createElement("textarea");
-  control.rows = 12;
-  control.spellcheck = false;
-  control.value = JSON.stringify(messageJsonPayload(), null, 2);
-
-  const error = appendTextElement(wrapper, "small", "content-field-error", "");
-  error.hidden = true;
-
-  control.addEventListener("input", (event) => {
-    const result = applyMessageJsonPayload(event.target.value);
-    wrapper.classList.toggle("is-invalid", !result.ok);
-    error.hidden = result.ok;
-    error.textContent = result.ok ? "" : result.error;
-  });
-  control.addEventListener("blur", renderStep);
-
-  wrapper.append(control);
-  section.append(wrapper);
-  return section;
-}
-
 function renderContentStep() {
   placeholders.className = "content-form-layout";
   placeholders.innerHTML = "";
 
   const toolbar = document.createElement("div");
   toolbar.className = "content-form-actions";
-  const note = appendTextElement(toolbar, "span", "", "B섹션 입력값은 wizardContent에 저장되며 LO-FI payload의 promo/simpleBrief 소스로 사용됩니다.");
+  const note = appendTextElement(toolbar, "span", "", "프로모션 개요와 선택 템플릿의 콘텐츠가 LO-FI 생성 요청에 저장됩니다.");
   note.className = "content-save-note";
   const buttons = document.createElement("div");
   const autofill = document.createElement("button");
@@ -936,14 +925,37 @@ function renderContentStep() {
     if (otherField) otherField.hidden = true;
   }
 
-  const message = createMessageJsonSection();
-
-  const conversion = createContentSection("3. CTA / 약관", [
-    { group: "promo", key: "ctaLabel", label: "CTA 버튼 텍스트" },
-    { group: "promo", key: "ctaUrl", label: "CTA URL", type: "url", placeholder: "https://..." },
-    { group: "promo", key: "alphaText", label: "Alpha / 보조 고지" },
-    { group: "promo", key: "termsText", label: "약관 / Responsible Gaming 문구", type: "textarea", rows: 4 },
-  ]);
+  const templateSection = document.createElement("article");
+  templateSection.className = "content-form-section";
+  appendTextElement(templateSection, "h3", "", "2. 프로모션 템플릿 선택");
+  const templateField = document.createElement("label");
+  templateField.className = "content-field";
+  appendTextElement(templateField, "span", "", "템플릿 *");
+  const templateSelect = document.createElement("select");
+  wizardFormTemplates.forEach((template) => {
+    const option = document.createElement("option");
+    option.value = template.id;
+    option.textContent = `${template.name}${template.isDefault ? " (기본)" : ""}`;
+    templateSelect.append(option);
+  });
+  templateSelect.value = selectedWizardFormTemplate?.id || "";
+  templateSelect.addEventListener("change", async (event) => {
+    const templateId = event.target.value;
+    wizardSectionDefinitionsLoading = true;
+    renderStep();
+    try {
+      await selectWizardFormTemplate(templateId);
+      wizardSectionDefinitionsError = "";
+    } catch (error) {
+      wizardSectionDefinitionsError = error.message || "템플릿을 불러오지 못했습니다.";
+    } finally {
+      wizardSectionDefinitionsLoading = false;
+      renderStep();
+    }
+  });
+  templateField.append(templateSelect);
+  if (selectedWizardFormTemplate?.description) appendTextElement(templateField, "small", "", selectedWizardFormTemplate.description);
+  templateSection.append(templateField);
 
   // Sections 4+ (Header, Hero Banner, Step Bar, Content CTA, Image Text Row,
   // Title and Description, Footer by default) are admin-managed. See
@@ -972,7 +984,7 @@ function renderContentStep() {
       if (!visibleItems.length) return;
       const sectionEl = document.createElement("article");
       sectionEl.className = "content-form-section";
-      appendTextElement(sectionEl, "h3", "", `${index + 4}. ${section.name}`);
+      appendTextElement(sectionEl, "h3", "", `${index + 3}. ${section.name}`);
       const grid = document.createElement("div");
       grid.className = "content-form-grid";
       visibleItems.forEach((item) => grid.append(createDynamicSectionField(section.sectionKey, item)));
@@ -993,9 +1005,7 @@ function renderContentStep() {
     ["Market", contentState.promo.market],
     ["Audience", contentState.simpleBrief.audience],
     ["Tone", contentState.simpleBrief.campaignTone],
-    ["Main offer", contentState.simpleBrief.mainOffer],
-    ["Secondary message", contentState.simpleBrief.secondaryMessage],
-    ["Target action", contentState.simpleBrief.targetAction],
+    ["Template", selectedWizardFormTemplate?.name],
     ...dynamicCoverageRows(),
   ].forEach(([label, value]) => {
     const item = document.createElement("li");
@@ -1008,8 +1018,7 @@ function renderContentStep() {
   placeholders.append(
     toolbar,
     overview,
-    message,
-    conversion,
+    templateSection,
     ...dynamicSections,
     coverage
   );
@@ -1220,16 +1229,12 @@ function renderLofiStep() {
   coverage.className = "lofi-content-snapshot";
   appendTextElement(coverage, "strong", "", "2단계 Content 적용 기준");
   const snapshotList = document.createElement("ul");
-  [
+  const snapshotRows = [
     ["Title", contentState.promo.title],
-    ["Offer", contentState.simpleBrief.mainOffer],
-    ["Message", contentState.simpleBrief.secondaryMessage],
-    ["CTA", contentState.promo.ctaLabel || contentState.simpleBrief.targetAction],
-    ["Terms", contentState.promo.termsText],
-    ["Hero", valueAtPath(contentState.sectionInputs, "heroBanner.title") || contentState.promo.title],
-    ["Contents", valueAtPath(contentState.sectionInputs, "contentCta.description") || contentState.simpleBrief.secondaryMessage],
-    ["Footer", valueAtPath(contentState.sectionInputs, "footer.content") || contentState.promo.termsText],
-  ].forEach(([label, value]) => {
+    ["Template", selectedWizardFormTemplate?.name],
+    ...dynamicCoverageRows(),
+  ];
+  snapshotRows.forEach(([label, value]) => {
     const item = document.createElement("li");
     item.textContent = `${label}: ${String(value || "-").slice(0, 110)}`;
     snapshotList.append(item);
@@ -1479,21 +1484,43 @@ function wizardSectionConfigSections() {
   }));
 }
 
+function templateContentAdapter(sectionInputs) {
+  const textValues = [];
+  const ctaValues = [];
+  wizardSectionDefinitions.forEach((section) => {
+    (section.items || []).forEach((item) => {
+      const value = valueAtPath(sectionInputs, `${section.sectionKey}.${item.itemKey}`);
+      if (item.fieldKind === "cta" && value) ctaValues.push(value);
+      if (item.fieldKind === "text" && String(value || "").trim()) textValues.push(String(value).trim());
+    });
+  });
+  return {
+    mainOffer: textValues[0] || contentState.promo.title || "",
+    secondaryMessage: textValues[1] || "",
+    targetAction: ctaValues[0]?.label || "",
+    leadText: textValues[0] || "",
+    subline: textValues[1] || "",
+    ctaLabel: ctaValues[0]?.label || "",
+    ctaUrl: ctaValues[0]?.link || "",
+  };
+}
+
 function buildWizardPayload(runKey) {
   if (!wizardSectionConfigurationReady()) {
     throw new Error("콘텐츠 섹션 구성이 준비되지 않아 생성을 시작할 수 없습니다.");
   }
   const doc = selectedDocument();
   const sectionInputs = mergeSectionInputs(contentState.sectionInputs || {});
+  const contentAdapter = templateContentAdapter(sectionInputs);
   const heroButton = sectionInputs.heroBanner?.button || {};
   const contentCtaButton = sectionInputs.contentCta?.button || {};
   const stepBarButton = sectionInputs.stepBar?.ctaButton || {};
   const promo = {
     ...contentState.promo,
-    leadText: contentState.promo.leadText || sectionInputs.heroBanner?.leadText || contentState.simpleBrief.mainOffer,
-    subline: contentState.promo.subline || sectionInputs.heroBanner?.sublineText || sectionInputs.contentCta?.description || contentState.simpleBrief.secondaryMessage,
-    ctaLabel: contentState.promo.ctaLabel || heroButton.label || contentCtaButton.label || stepBarButton.label || contentState.simpleBrief.targetAction || "Learn More",
-    ctaUrl: contentState.promo.ctaUrl || heroButton.link || contentCtaButton.link || stepBarButton.link || "#",
+    leadText: contentAdapter.leadText || sectionInputs.heroBanner?.leadText || "",
+    subline: contentAdapter.subline || sectionInputs.heroBanner?.sublineText || sectionInputs.contentCta?.description || "",
+    ctaLabel: contentAdapter.ctaLabel || heroButton.label || contentCtaButton.label || stepBarButton.label || "Learn More",
+    ctaUrl: contentAdapter.ctaUrl || heroButton.link || contentCtaButton.link || stepBarButton.link || "#",
     alphaText: contentState.promo.alphaText || sectionInputs.heroBanner?.alphaText,
     termsText: contentState.promo.termsText || sectionInputs.titleDescription?.contents || sectionInputs.footer?.content || "Terms and conditions apply. Please play responsibly.",
   };
@@ -1508,12 +1535,12 @@ function buildWizardPayload(runKey) {
   fillBlank("heroBanner.button.label", promo.ctaLabel);
   fillBlank("heroBanner.button.link", promo.ctaUrl);
   fillBlank("heroBanner.alphaText", promo.alphaText);
-  fillBlank("stepBar.title", contentState.simpleBrief.targetAction);
-  fillBlank("stepBar.description", contentState.simpleBrief.mainOffer);
+  fillBlank("stepBar.title", contentAdapter.targetAction);
+  fillBlank("stepBar.description", contentAdapter.mainOffer);
   fillBlank("stepBar.ctaButton.label", promo.ctaLabel);
   fillBlank("stepBar.ctaButton.link", promo.ctaUrl);
-  fillBlank("contentCta.title", contentState.simpleBrief.mainOffer || promo.title);
-  fillBlank("contentCta.description", contentState.simpleBrief.secondaryMessage || promo.subline);
+  fillBlank("contentCta.title", contentAdapter.mainOffer || promo.title);
+  fillBlank("contentCta.description", contentAdapter.secondaryMessage || promo.subline);
   fillBlank("contentCta.button.label", promo.ctaLabel);
   fillBlank("contentCta.button.link", promo.ctaUrl);
   fillBlank("titleDescription.contents", promo.termsText);
@@ -1536,8 +1563,10 @@ function buildWizardPayload(runKey) {
   };
   const dynamicSectionKeys = wizardSectionDefinitions.map((section) => section.sectionKey);
   const templateRuntime = {
-    templateId: "wizard_lofi",
-    templateName: "Standalone Promo Wizard",
+    templateId: selectedWizardFormTemplate?.id || "",
+    templateKey: selectedWizardFormTemplate?.templateKey || "",
+    templateName: selectedWizardFormTemplate?.name || "",
+    templateVersion: selectedWizardFormTemplate?.version || 1,
     orderedSections: dynamicSectionKeys,
     visibleSections: dynamicSectionKeys,
   };
@@ -1549,7 +1578,13 @@ function buildWizardPayload(runKey) {
     promo,
     promotionInput,
     marketVisualGuidance: promo.market ? `Use ${promo.market} as market context without inventing visible copy.` : "",
-    simpleBrief: { ...contentState.simpleBrief },
+    simpleBrief: {
+      ...contentAdapter,
+      audience: contentState.simpleBrief.audience,
+      campaignTone: contentState.simpleBrief.campaignTone,
+    },
+    formTemplate: { ...contentState.formTemplate },
+    sectionSnapshot: wizardSectionDefinitions.map((section) => ({ ...section, items: (section.items || []).map((item) => ({ ...item })) })),
     sectionInputs,
     sectionConfig: {
       sections: wizardSectionConfigSections(),
@@ -1559,8 +1594,10 @@ function buildWizardPayload(runKey) {
       revision: wizardSectionConfigRevision,
     },
     template: {
-      id: "standalone_promo_wizard",
-      name: "Standalone Promo Wizard",
+      id: selectedWizardFormTemplate?.id || "",
+      key: selectedWizardFormTemplate?.templateKey || "",
+      name: selectedWizardFormTemplate?.name || "",
+      version: selectedWizardFormTemplate?.version || 1,
       designMode: "ai",
       generationMode: "lofi_draft",
       inputMode: "wizard",
@@ -1570,8 +1607,10 @@ function buildWizardPayload(runKey) {
     inputSnapshot: {
       promo,
       promotionInput,
-      simpleBrief: { ...contentState.simpleBrief },
+      simpleBrief: { ...contentAdapter, audience: contentState.simpleBrief.audience, campaignTone: contentState.simpleBrief.campaignTone },
       sectionInputs,
+      sectionSnapshot: wizardSectionDefinitions.map((section) => ({ ...section, items: (section.items || []).map((item) => ({ ...item })) })),
+      formTemplate: { ...contentState.formTemplate },
       sectionConfig: {
         sections: wizardSectionConfigSections(),
         orderedSections: dynamicSectionKeys,
@@ -1787,7 +1826,8 @@ async function createNewLofiDraft() {
           source: "standalone_wizard",
           contentSnapshot: {
             promo: contentState.promo,
-            simpleBrief: contentState.simpleBrief,
+            formTemplate: contentState.formTemplate,
+            sectionInputs: contentState.sectionInputs,
           },
           contentCoverageRequired: true,
         },
