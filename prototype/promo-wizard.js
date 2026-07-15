@@ -70,6 +70,8 @@ let selectedWizardFormTemplate = null;
 let wizardSectionDefinitionsLoading = false;
 let wizardSectionDefinitionsError = "";
 let wizardSectionConfigRevision = "";
+let expandedTemplateSectionKeys = new Set();
+let draggedTemplateSectionKey = "";
 
 const contentState = loadWizardContent();
 
@@ -134,6 +136,7 @@ function defaultWizardContent() {
     },
     formTemplate: null,
     templateInputs: {},
+    templateSectionOrders: {},
     // Section 4~10 (Header/Hero/Step Bar/Content CTA/Image Text Row/Title and
     // Description/Footer) used to be hardcoded here. They are now admin-managed
     // (see wizardSectionDefinitions) and this starts empty until
@@ -249,6 +252,7 @@ function loadWizardContent() {
       simpleBrief: { ...fallback.simpleBrief, ...(saved?.simpleBrief || {}) },
       formTemplate: saved?.formTemplate || null,
       templateInputs: (saved && typeof saved.templateInputs === "object" && saved.templateInputs) || {},
+      templateSectionOrders: (saved && typeof saved.templateSectionOrders === "object" && saved.templateSectionOrders) || {},
       // Raw saved value is kept as-is until wizardSectionDefinitions loads;
       // loadWizardSectionDefinitions() then calls mergeSectionInputs() to
       // reconcile it against the current admin configuration.
@@ -302,7 +306,17 @@ async function selectWizardFormTemplate(templateId, options = {}) {
     throw new Error("선택한 템플릿에 Wizard 입력 항목이 없습니다. 관리자에게 템플릿 구성을 요청해 주세요.");
   }
   selectedWizardFormTemplate = result.template;
-  wizardSectionDefinitions = nextDefinitions;
+  const savedOrder = contentState.templateSectionOrders[result.template.templateKey] || [];
+  const byKey = new Map(nextDefinitions.map((section) => [section.sectionKey, section]));
+  const savedMovable = savedOrder.map((key) => byKey.get(key)).filter(templateSectionCanReorder);
+  const movableQueue = [
+    ...savedMovable,
+    ...nextDefinitions.filter((section) => templateSectionCanReorder(section) && !savedOrder.includes(section.sectionKey)),
+  ];
+  wizardSectionDefinitions = nextDefinitions.map((section) => (
+    templateSectionCanReorder(section) ? movableQueue.shift() : section
+  ));
+  expandedTemplateSectionKeys = new Set(wizardSectionDefinitions.slice(0, 1).map((section) => section.sectionKey));
   wizardSectionConfigRevision = String(result.configRevision || "");
   contentState.formTemplate = { ...result.template, configRevision: wizardSectionConfigRevision };
   contentState.sectionInputs = mergeSectionInputs(
@@ -322,8 +336,46 @@ function wizardSectionConfigurationReady() {
 function saveWizardContent() {
   if (selectedWizardFormTemplate?.templateKey) {
     contentState.templateInputs[selectedWizardFormTemplate.templateKey] = contentState.sectionInputs;
+    contentState.templateSectionOrders[selectedWizardFormTemplate.templateKey] = wizardSectionDefinitions.map((section) => section.sectionKey);
   }
   localStorage.setItem(storageKeys.wizardContent, JSON.stringify(contentState));
+}
+
+function templateSectionCanReorder(section) {
+  return Boolean(section?.userReorderAllowed && !section?.fixedPosition);
+}
+
+function startTemplateSectionDrag(section, event) {
+  if (!templateSectionCanReorder(section)) {
+    event.preventDefault();
+    return;
+  }
+  draggedTemplateSectionKey = section.sectionKey;
+  event.dataTransfer.effectAllowed = "move";
+  event.dataTransfer.setData("text/plain", section.sectionKey);
+}
+
+function stopTemplateSectionDrag() {
+  draggedTemplateSectionKey = "";
+}
+
+function dropTemplateSection(targetSection, event) {
+  event.preventDefault();
+  const sourceKey = draggedTemplateSectionKey;
+  stopTemplateSectionDrag();
+  if (!sourceKey || sourceKey === targetSection.sectionKey || !templateSectionCanReorder(targetSection)) return;
+  const movable = wizardSectionDefinitions.filter(templateSectionCanReorder);
+  const sourceIndex = movable.findIndex((section) => section.sectionKey === sourceKey);
+  const targetIndex = movable.findIndex((section) => section.sectionKey === targetSection.sectionKey);
+  if (sourceIndex < 0 || targetIndex < 0) return;
+  const [source] = movable.splice(sourceIndex, 1);
+  movable.splice(targetIndex, 0, source);
+  const queue = [...movable];
+  wizardSectionDefinitions = wizardSectionDefinitions.map((section) => (
+    templateSectionCanReorder(section) ? queue.shift() : section
+  ));
+  saveWizardContent();
+  renderStep();
 }
 
 function loadWizardRun() {
@@ -986,12 +1038,47 @@ function renderContentStep() {
       const visibleItems = (section.items || []).filter((item) => item.isVisibleInWizard);
       if (!visibleItems.length) return;
       const sectionEl = document.createElement("article");
-      sectionEl.className = "content-form-section";
-      appendTextElement(sectionEl, "h3", "", section.name);
+      sectionEl.className = `content-form-section wizard-content-accordion${draggedTemplateSectionKey === section.sectionKey ? " is-dragging" : ""}`;
+      sectionEl.addEventListener("dragover", (event) => {
+        if (draggedTemplateSectionKey && templateSectionCanReorder(section)) event.preventDefault();
+      });
+      sectionEl.addEventListener("drop", (event) => dropTemplateSection(section, event));
+      const sectionHeader = document.createElement("div");
+      sectionHeader.className = "wizard-content-accordion-header";
+      const dragHandle = document.createElement("span");
+      dragHandle.className = `wizard-content-drag-handle${templateSectionCanReorder(section) ? "" : " is-disabled"}`;
+      dragHandle.draggable = templateSectionCanReorder(section);
+      dragHandle.title = templateSectionCanReorder(section) ? "드래그해서 Section 순서 변경" : "관리자 설정에 따라 순서 변경 불가";
+      dragHandle.textContent = templateSectionCanReorder(section) ? "⋮⋮" : "고정";
+      dragHandle.addEventListener("dragstart", (event) => startTemplateSectionDrag(section, event));
+      dragHandle.addEventListener("dragend", stopTemplateSectionDrag);
+      const sectionName = document.createElement("h3");
+      sectionName.textContent = section.name;
+      const expanded = expandedTemplateSectionKeys.has(section.sectionKey);
+      const toggle = document.createElement("button");
+      toggle.type = "button";
+      toggle.className = "wizard-content-accordion-toggle";
+      toggle.setAttribute("aria-expanded", String(expanded));
+      toggle.setAttribute("aria-label", expanded ? `${section.name} 닫기` : `${section.name} 열기`);
+      toggle.textContent = expanded ? "▾" : "▸";
+      sectionHeader.append(dragHandle, sectionName, toggle);
       const grid = document.createElement("div");
-      grid.className = "content-form-grid";
+      grid.className = `content-form-grid wizard-content-accordion-body${expanded ? " is-open" : ""}`;
+      grid.inert = !expanded;
+      grid.setAttribute("aria-hidden", String(!expanded));
       visibleItems.forEach((item) => grid.append(createDynamicSectionField(section.sectionKey, item)));
-      sectionEl.append(grid);
+      toggle.addEventListener("click", () => {
+        const isOpen = expandedTemplateSectionKeys.has(section.sectionKey);
+        if (isOpen) expandedTemplateSectionKeys.delete(section.sectionKey);
+        else expandedTemplateSectionKeys.add(section.sectionKey);
+        grid.classList.toggle("is-open", !isOpen);
+        grid.inert = isOpen;
+        grid.setAttribute("aria-hidden", String(isOpen));
+        toggle.textContent = isOpen ? "▸" : "▾";
+        toggle.setAttribute("aria-expanded", String(!isOpen));
+        toggle.setAttribute("aria-label", isOpen ? `${section.name} 열기` : `${section.name} 닫기`);
+      });
+      sectionEl.append(sectionHeader, grid);
       dynamicSections.push(sectionEl);
     });
   }
