@@ -2380,7 +2380,11 @@ createApp({
     async saveWizardFormTemplateItem() {
       const sectionId = this.selectedWizardFormTemplateSection?.sectionId;
       const editor = this.wizardFormTemplateItemEditor;
-      if (!sectionId || !editor || this.wizardFormTemplateSectionSaving) return;
+      if (!editor || this.wizardFormTemplateSectionSaving) return;
+      if (!sectionId) {
+        this.setStatus("아이템 저장 실패: 선택한 섹션의 원본 연결이 없습니다. DB 마이그레이션 021을 적용해 주세요.");
+        return;
+      }
       let lockedValue = null;
       if (editor.isLocked && editor.lockedValueText.trim()) {
         try { lockedValue = JSON.parse(editor.lockedValueText); }
