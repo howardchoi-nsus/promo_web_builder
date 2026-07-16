@@ -6,6 +6,14 @@ const {
   resolveRun,
 } = require("./_promo-generation-run-store");
 
+const DEFAULT_NEGATIVE_PROMPT = [
+  "poster, flyer, brochure, print ad, presentation slide, magazine cover",
+  "browser chrome, editor UI, Figma canvas UI",
+  "template labels, section labels, side annotations, annotation columns, wireframe labels, diagram legends, QA checklist labels",
+  "non-English UI copy, Korean text, unreadable text",
+  "cropped footer, missing legal content, missing required promotional sections",
+].join(", ");
+
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -233,6 +241,9 @@ function normalizeIntegratedBrief(brief, markdown) {
   if (!safeBrief.negativePrompt) {
     safeBrief.negativePrompt = extractMarkdownSection(markdown, "## Negative Prompt", ["## Visual QA Checklist"]);
   }
+  if (!String(safeBrief.negativePrompt || "").trim()) {
+    safeBrief.negativePrompt = DEFAULT_NEGATIVE_PROMPT;
+  }
   if (!Array.isArray(safeBrief.visualQaChecklist) && Array.isArray(safeBrief.visual_qa_checklist)) {
     safeBrief.visualQaChecklist = safeBrief.visual_qa_checklist;
   }
@@ -249,12 +260,21 @@ function materializeRequiredMarkdownSections(markdown, brief) {
     ? brief.visualQaChecklist.map((item) => String(item || "").trim()).filter(Boolean)
     : [];
 
-  if (!result.includes("## Negative Prompt") && negativePrompt) {
+  const existingNegativePrompt = extractMarkdownSection(result, "## Negative Prompt", ["## Visual QA Checklist"]);
+  if (!existingNegativePrompt && negativePrompt) {
     const section = `## Negative Prompt\n\n\`\`\`text\n${negativePrompt}\n\`\`\``;
-    const qaIndex = result.indexOf("## Visual QA Checklist");
-    result = qaIndex >= 0
-      ? `${result.slice(0, qaIndex).trimEnd()}\n\n${section}\n\n${result.slice(qaIndex).trimStart()}`
-      : `${result}\n\n${section}`;
+    const negativeIndex = result.indexOf("## Negative Prompt");
+    if (negativeIndex >= 0) {
+      const qaIndex = result.indexOf("## Visual QA Checklist", negativeIndex);
+      result = qaIndex >= 0
+        ? `${result.slice(0, negativeIndex).trimEnd()}\n\n${section}\n\n${result.slice(qaIndex).trimStart()}`
+        : `${result.slice(0, negativeIndex).trimEnd()}\n\n${section}`;
+    } else {
+      const qaIndex = result.indexOf("## Visual QA Checklist");
+      result = qaIndex >= 0
+        ? `${result.slice(0, qaIndex).trimEnd()}\n\n${section}\n\n${result.slice(qaIndex).trimStart()}`
+        : `${result}\n\n${section}`;
+    }
   }
   if (!result.includes("## Visual QA Checklist") && checklist.length) {
     result = `${result}\n\n## Visual QA Checklist\n\n${checklist.map((item) => `- [ ] ${item.replace(/^\[[ xX]\]\s*/, "")}`).join("\n")}`;
@@ -441,5 +461,7 @@ function mergeMeta(base, extra) {
 }
 
 module.exports._test = {
+  DEFAULT_NEGATIVE_PROMPT,
   materializeRequiredMarkdownSections,
+  normalizeIntegratedBrief,
 };

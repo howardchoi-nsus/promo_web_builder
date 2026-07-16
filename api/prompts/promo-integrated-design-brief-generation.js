@@ -128,6 +128,8 @@ Rules:
 - The generated markdown must include these exact lowercase phrases in Non-Negotiable Rules or Final Image Prompt Inputs: template section names, visible ui text, side labels, annotation columns, diagram legends.
 - Section Order blocks and numbered section lists are internal planning metadata only and must not be treated as visible UI copy.
 - The document must be self-contained enough for the next LLM to generate the Web UI image from this document alone.
+- integratedDesignBrief.negativePrompt is required and must be a non-empty, substantive string. It must prohibit poster-like composition, internal section labels, editor UI, non-English copy, unreadable text, cropped footer, and missing required content.
+- The ## Negative Prompt markdown section must contain the same substantive restrictions as integratedDesignBrief.negativePrompt. Never return an empty heading or empty string.
 
 Return JSON shape:
 {
@@ -149,7 +151,7 @@ Return JSON shape:
       "visualTargets": [],
       "contentCoverage": {}
     },
-    "negativePrompt": "",
+    "negativePrompt": "poster, flyer, brochure, presentation slide, browser chrome, editor UI, Figma canvas UI, template labels, section labels, side annotations, non-English UI copy, Korean text, unreadable text, cropped footer, missing legal content, missing required promotional sections",
     "visualQaChecklist": []
   }
 }
