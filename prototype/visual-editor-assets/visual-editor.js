@@ -3342,7 +3342,7 @@ var xo = {
 			}
 		}
 		function ce() {
-			b.value && (localStorage.setItem(po, JSON.stringify(b.value)), window.open("/visual-output.html", "_blank", "noopener"));
+			b.value && (localStorage.setItem(po, JSON.stringify(b.value)), window.open("/prototype/visual-output.html", "_blank", "noopener"));
 		}
 		function le() {
 			try {
@@ -3355,7 +3355,7 @@ var xo = {
 		}
 		return Jn(() => {
 			t.mode === "output" ? le() : se();
-		}), (t, i) => e.mode === "output" ? (Y(), X("div", Po, [Z("header", Fo, [Z("div", null, [i[16] ||= Z("span", null, "WEB OUTPUT", -1), Z("strong", null, N(x.value?.content?.formTemplate?.name || "Visual Editor"), 1)]), i[17] ||= Z("a", { href: "/visual-editor.html" }, "Visual Editor로 돌아가기", -1)]), r.value ? (Y(), X("div", Io, N(r.value), 1)) : x.value ? (Y(), wi(No, {
+		}), (t, i) => e.mode === "output" ? (Y(), X("div", Po, [Z("header", Fo, [Z("div", null, [i[16] ||= Z("span", null, "WEB OUTPUT", -1), Z("strong", null, N(x.value?.content?.formTemplate?.name || "Visual Editor"), 1)]), i[17] ||= Z("a", { href: "/prototype/visual-editor.html" }, "Visual Editor로 돌아가기", -1)]), r.value ? (Y(), X("div", Io, N(r.value), 1)) : x.value ? (Y(), wi(No, {
 			key: 1,
 			content: x.value.content,
 			"design-spec": x.value.designSpec,

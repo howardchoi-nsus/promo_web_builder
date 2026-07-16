@@ -236,7 +236,7 @@ async function loadEditor() {
 function openOutput() {
   if (!editorSnapshot.value) return;
   localStorage.setItem(SNAPSHOT_STORAGE_KEY, JSON.stringify(editorSnapshot.value));
-  window.open("/visual-output.html", "_blank", "noopener");
+  window.open("/prototype/visual-output.html", "_blank", "noopener");
 }
 
 function loadOutput() {
@@ -262,7 +262,7 @@ onMounted(() => {
         <span>WEB OUTPUT</span>
         <strong>{{ rendererSnapshot?.content?.formTemplate?.name || "Visual Editor" }}</strong>
       </div>
-      <a href="/visual-editor.html">Visual Editor로 돌아가기</a>
+      <a href="/prototype/visual-editor.html">Visual Editor로 돌아가기</a>
     </header>
     <div v-if="error" class="system-message system-message--error">{{ error }}</div>
     <PromoPageRenderer
