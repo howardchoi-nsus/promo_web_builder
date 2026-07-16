@@ -12,7 +12,8 @@
 | Phase | 상태 | 결과 |
 |---|---|---|
 | Phase 0 | 완료 | `visual-renderer-p0-baseline-and-contract-2026-07-16.md` |
-| Phase 1 이후 | 미착수 | Phase 1 개발 승인 후 진행 |
+| Phase 1 | 진행 중 | Slice 1 Default Renderer Preview/Output 구현 및 검수 완료 |
+| Phase 2 이후 | 미착수 | Phase 1 잔여 범위 완료 후 진행 |
 
 ## 0. 검토자 안내
 
