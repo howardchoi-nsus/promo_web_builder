@@ -70,6 +70,7 @@ let selectedWizardFormTemplate = null;
 let wizardSectionDefinitionsLoading = false;
 let wizardSectionDefinitionsError = "";
 let wizardSectionConfigRevision = "";
+let wizardTemplateSwitchTargetId = "";
 let expandedTemplateSectionKeys = new Set();
 let draggedTemplateSectionKey = "";
 
@@ -357,17 +358,17 @@ function startTemplateSectionDrag(section, event) {
 
 function stopTemplateSectionDrag() {
   draggedTemplateSectionKey = "";
+  document.querySelectorAll(".wizard-content-accordion.is-drop-target").forEach((section) => {
+    section.classList.remove("is-drop-target");
+  });
 }
 
-function dropTemplateSection(targetSection, event) {
-  event.preventDefault();
-  const sourceKey = draggedTemplateSectionKey;
-  stopTemplateSectionDrag();
-  if (!sourceKey || sourceKey === targetSection.sectionKey || !templateSectionCanReorder(targetSection)) return;
+function reorderTemplateSection(sourceKey, targetKey) {
+  if (!sourceKey || sourceKey === targetKey) return false;
   const movable = wizardSectionDefinitions.filter(templateSectionCanReorder);
   const sourceIndex = movable.findIndex((section) => section.sectionKey === sourceKey);
-  const targetIndex = movable.findIndex((section) => section.sectionKey === targetSection.sectionKey);
-  if (sourceIndex < 0 || targetIndex < 0) return;
+  const targetIndex = movable.findIndex((section) => section.sectionKey === targetKey);
+  if (sourceIndex < 0 || targetIndex < 0) return false;
   const [source] = movable.splice(sourceIndex, 1);
   movable.splice(targetIndex, 0, source);
   const queue = [...movable];
@@ -376,6 +377,23 @@ function dropTemplateSection(targetSection, event) {
   ));
   saveWizardContent();
   renderStep();
+  return true;
+}
+
+function dropTemplateSection(targetSection, event) {
+  event.preventDefault();
+  const sourceKey = draggedTemplateSectionKey;
+  stopTemplateSectionDrag();
+  if (!templateSectionCanReorder(targetSection)) return;
+  reorderTemplateSection(sourceKey, targetSection.sectionKey);
+}
+
+function moveTemplateSectionByKeyboard(sectionKey, direction) {
+  const movable = wizardSectionDefinitions.filter(templateSectionCanReorder);
+  const sourceIndex = movable.findIndex((section) => section.sectionKey === sectionKey);
+  const target = movable[sourceIndex + direction];
+  if (sourceIndex < 0 || !target) return;
+  reorderTemplateSection(sectionKey, target.sectionKey);
 }
 
 function loadWizardRun() {
@@ -988,6 +1006,7 @@ function renderContentStep() {
     tile.className = `wizard-template-tile${selectedWizardFormTemplate?.id === template.id ? " is-selected" : ""}`;
     tile.disabled = wizardSectionDefinitionsLoading;
     tile.setAttribute("aria-pressed", String(selectedWizardFormTemplate?.id === template.id));
+    tile.setAttribute("aria-busy", String(wizardTemplateSwitchTargetId === template.id));
     const heading = document.createElement("span");
     appendTextElement(heading, "strong", "", template.name);
     if (template.isDefault) appendTextElement(heading, "em", "wizard-template-default", "기본");
@@ -996,6 +1015,7 @@ function renderContentStep() {
     appendTextElement(tile, "code", "", `${template.templateKey} · v${template.version}`);
     tile.addEventListener("click", async () => {
       if (wizardSectionDefinitionsLoading || selectedWizardFormTemplate?.id === template.id) return;
+      wizardTemplateSwitchTargetId = template.id;
       wizardSectionDefinitionsLoading = true;
       renderStep();
       try {
@@ -1004,6 +1024,7 @@ function renderContentStep() {
       } catch (error) {
         wizardSectionDefinitionsError = error.message || "템플릿을 불러오지 못했습니다.";
       } finally {
+        wizardTemplateSwitchTargetId = "";
         wizardSectionDefinitionsLoading = false;
         renderStep();
       }
@@ -1011,6 +1032,20 @@ function renderContentStep() {
     templateTiles.append(tile);
   });
   templateSection.append(templateTiles);
+  if (wizardSectionDefinitionsLoading) {
+    const loadingTemplate = wizardFormTemplates.find((template) => template.id === wizardTemplateSwitchTargetId);
+    const templateLoadingStatus = document.createElement("div");
+    templateLoadingStatus.className = "wizard-template-loading-status";
+    templateLoadingStatus.setAttribute("role", "status");
+    templateLoadingStatus.setAttribute("aria-live", "polite");
+    const spinner = document.createElement("span");
+    spinner.className = "wizard-template-loading-spinner";
+    spinner.setAttribute("aria-hidden", "true");
+    templateLoadingStatus.append(spinner, document.createTextNode(
+      loadingTemplate ? `${loadingTemplate.name} 템플릿을 불러오는 중입니다.` : "템플릿 구성을 불러오는 중입니다."
+    ));
+    templateSection.append(templateLoadingStatus);
+  }
 
   // Sections 4+ (Header, Hero Banner, Step Bar, Content CTA, Image Text Row,
   // Title and Description, Footer by default) are admin-managed. See
@@ -1039,8 +1074,15 @@ function renderContentStep() {
       if (!visibleItems.length) return;
       const sectionEl = document.createElement("article");
       sectionEl.className = `content-form-section wizard-content-accordion${draggedTemplateSectionKey === section.sectionKey ? " is-dragging" : ""}`;
+      sectionEl.dataset.sectionKey = section.sectionKey;
       sectionEl.addEventListener("dragover", (event) => {
-        if (draggedTemplateSectionKey && templateSectionCanReorder(section)) event.preventDefault();
+        if (!draggedTemplateSectionKey || !templateSectionCanReorder(section)) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+        sectionEl.classList.add("is-drop-target");
+      });
+      sectionEl.addEventListener("dragleave", (event) => {
+        if (!sectionEl.contains(event.relatedTarget)) sectionEl.classList.remove("is-drop-target");
       });
       sectionEl.addEventListener("drop", (event) => dropTemplateSection(section, event));
       const sectionHeader = document.createElement("div");
@@ -1050,6 +1092,16 @@ function renderContentStep() {
       dragHandle.draggable = templateSectionCanReorder(section);
       dragHandle.title = templateSectionCanReorder(section) ? "드래그해서 Section 순서 변경" : "관리자 설정에 따라 순서 변경 불가";
       dragHandle.textContent = templateSectionCanReorder(section) ? "⋮⋮" : "고정";
+      if (templateSectionCanReorder(section)) {
+        dragHandle.tabIndex = 0;
+        dragHandle.setAttribute("role", "button");
+        dragHandle.setAttribute("aria-label", `${section.name} 순서 변경. 위아래 방향키를 사용할 수 있습니다.`);
+        dragHandle.addEventListener("keydown", (event) => {
+          if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+          event.preventDefault();
+          moveTemplateSectionByKeyboard(section.sectionKey, event.key === "ArrowUp" ? -1 : 1);
+        });
+      }
       dragHandle.addEventListener("dragstart", (event) => startTemplateSectionDrag(section, event));
       dragHandle.addEventListener("dragend", stopTemplateSectionDrag);
       const sectionName = document.createElement("h3");
@@ -1069,14 +1121,25 @@ function renderContentStep() {
       visibleItems.forEach((item) => grid.append(createDynamicSectionField(section.sectionKey, item)));
       toggle.addEventListener("click", () => {
         const isOpen = expandedTemplateSectionKeys.has(section.sectionKey);
-        if (isOpen) expandedTemplateSectionKeys.delete(section.sectionKey);
-        else expandedTemplateSectionKeys.add(section.sectionKey);
-        grid.classList.toggle("is-open", !isOpen);
-        grid.inert = isOpen;
-        grid.setAttribute("aria-hidden", String(isOpen));
-        toggle.textContent = isOpen ? "▸" : "▾";
-        toggle.setAttribute("aria-expanded", String(!isOpen));
-        toggle.setAttribute("aria-label", isOpen ? `${section.name} 열기` : `${section.name} 닫기`);
+        expandedTemplateSectionKeys.clear();
+        if (!isOpen) expandedTemplateSectionKeys.add(section.sectionKey);
+        document.querySelectorAll(".wizard-content-accordion").forEach((accordion) => {
+          const accordionKey = accordion.dataset.sectionKey;
+          const accordionOpen = expandedTemplateSectionKeys.has(accordionKey);
+          const accordionBody = accordion.querySelector(".wizard-content-accordion-body");
+          const accordionToggle = accordion.querySelector(".wizard-content-accordion-toggle");
+          const accordionName = accordion.querySelector("h3")?.textContent || "Section";
+          accordionBody?.classList.toggle("is-open", accordionOpen);
+          if (accordionBody) {
+            accordionBody.inert = !accordionOpen;
+            accordionBody.setAttribute("aria-hidden", String(!accordionOpen));
+          }
+          if (accordionToggle) {
+            accordionToggle.textContent = accordionOpen ? "▾" : "▸";
+            accordionToggle.setAttribute("aria-expanded", String(accordionOpen));
+            accordionToggle.setAttribute("aria-label", accordionOpen ? `${accordionName} 닫기` : `${accordionName} 열기`);
+          }
+        });
       });
       sectionEl.append(sectionHeader, grid);
       dynamicSections.push(sectionEl);
