@@ -853,3 +853,169 @@ Template Registry 등록
 ```
 
 이 방향은 현재 이미지 기반 디자인과 웹 출력 사이의 불일치를 제거하고, 사람이 개입하지 않는 자동 생성 목표를 유지하면서도 웹페이지의 안정성, 반응형, 콘텐츠 충실도와 접근성을 높일 수 있다.
+
+## 23. 현재 구현 상세 분석
+
+분석 기준은 2026-07-16 로컬 소스와 DB migration이다. 문서에 적힌 계획과 실제 구현을 혼동하지 않도록 `구현 완료`, `부분 구현`, `계획만 존재`로 구분한다.
+
+### 23.1 화면 및 프런트엔드 구성
+
+| 영역 | 현재 구현 | 판정 |
+|---|---|---|
+| Landing | Wizard, Builder, Admin 진입 화면이 분리되어 있다. | 구현 완료 |
+| Promo Wizard | `prototype/promo-wizard.html/js/css` 기반의 독립 4단계 화면이다. | 구현 완료 |
+| Builder/Admin | `prototype/app.js`를 중심으로 한 Vue SPA에 관리 기능과 기존 Builder 기능이 함께 있다. | 구현 완료 |
+| Generated Page | `prototype/generated.js`가 Local Storage payload의 색상·폰트 값을 CSS 변수에 반영한다. | 프로토타입 |
+| Visual Template Editor | 실제 웹 레이아웃 위에서 Section Item을 입력·미리보기하는 편집기는 없다. | 미구현 |
+
+현재 Wizard Step 2는 동적 폼 입력 UX이고, Canva형 웹 캔버스 편집기가 아니다. 따라서 기존 Step 2를 폐기하기보다 입력 상태와 검증 로직을 유지한 채, 표시 계층을 `Form View`에서 `Visual Renderer View`로 확장하는 것이 적절하다.
+
+### 23.2 관리자 Form Template 구현
+
+현재 관리자 템플릿은 이름 때문에 시각 템플릿으로 오해할 수 있으나, 실제 역할은 **프로모션 콘텐츠 입력 스키마**다.
+
+구현된 범위:
+
+- Form Template 생성, 버전, 상태(`draft`, `active`, `inactive`, `archived`), 기본 템플릿 지정
+- 템플릿 소유 Section 및 Section Item CRUD
+- Section/Item 표시 여부, 필수 여부, 고정 위치, 사용자 순서 변경 허용
+- 텍스트, 이미지, 이미지+설명, CTA 계열 입력 정의
+- 이미지 입력 방식 설정과 CTA URL/UTM 관련 설정
+- 템플릿 복제 및 활성화
+- Section CRUD 감사 로그
+- Wizard 공개 API에서 active 템플릿과 표시 가능한 Section/Item만 제공
+- `configRevision`을 생성해 실행 시점 설정 변경을 추적
+
+핵심 제약:
+
+- HTML 구조, Vue Component, CSS Layout, 반응형 규칙은 저장하지 않는다.
+- Form Template과 실제 화면 Renderer의 연결 모델이 없다.
+- 현재 이름을 유지하더라도 UI에서는 `콘텐츠 폼 템플릿`으로 명시해 시각 템플릿과 구분할 필요가 있다.
+
+### 23.3 Wizard Step 2 구현
+
+현재 Step 2에는 다음 데이터 흐름이 구현되어 있다.
+
+1. active Form Template 목록 조회 및 타일 선택
+2. 선택된 템플릿의 Section/Item 동적 렌더링
+3. 공통 프로모션 개요 입력
+4. Section별 Accordion, 표시 순서 및 사용자 재정렬
+5. 템플릿별 입력값과 순서 상태 유지
+6. 필수값 검증
+7. `formTemplate`, `configRevision`, `sectionSnapshot`, `sectionInputs`를 생성 요청에 포함
+8. 기존 worker 호환을 위한 `templateContentAdapter()` 제공
+
+이 구조는 신규 Visual Editor의 데이터 기반으로 재사용 가치가 높다. 특히 `sectionInputs`를 콘텐츠 Source of Truth로 유지하면 기존 Integrated Brief와 coverage validation을 보존하면서 렌더링 UI만 교체할 수 있다.
+
+주의할 점:
+
+- 사용자 정의 Section Key가 계속 추가될 수 있으므로 Renderer가 특정 `header`, `contents`, `cta`만 하드코딩하면 안 된다.
+- 알려진 Section에는 전용 Component를 사용하고, 알 수 없는 Section에는 Generic Section Renderer를 제공해야 한다.
+- File 직접 첨부는 입력 옵션 정의와 실제 파일 업로드·저장·보안 검증을 분리해 확인해야 한다. 현재 구조만으로 운영용 Asset Pipeline이 완성됐다고 볼 수 없다.
+
+### 23.4 Integrated Brief, LO-FI, Final 구현
+
+현재 생성 파이프라인은 다음과 같이 실제 연결되어 있다.
+
+```text
+Step 2 content snapshot
+  -> generation prepare/run 생성
+  -> n8n Integrated Brief worker
+  -> LO-FI draft image 생성(여러 attempt 누적)
+  -> 사용자 Confirm Draft 선택
+  -> n8n Final Design worker
+  -> Final Design image 저장·조회
+```
+
+구현 특성:
+
+- Run 상태와 단계별 polling이 있다.
+- LO-FI는 재생성 시 기존 시안을 유지하고 새 attempt를 추가한다.
+- Confirmed Draft가 Final Design의 입력 기준이다.
+- LO-FI 및 Final 결과는 이미지 URL/프록시를 통해 표시한다.
+- 관리자에서 worker webhook, model, prompt 관련 설정을 관리한다.
+- DB migration 011~015가 generation run과 이미지 worker 설정을 지원한다.
+
+이는 운영 가능한 이미지 생성 파이프라인이지만, 실시간 웹 Renderer 기반 파이프라인과는 별개다. 신규 구조 도입 초기에는 삭제하지 말고 Feature Flag로 병행해야 한다.
+
+### 23.5 현재 웹 출력 구현 수준
+
+`api/generate-promo-page.js`는 요청 payload를 `N8N_PROMO_WEBHOOK_URL`로 전달하고 JSON 또는 HTML 응답을 반환하는 프록시다. 자체적으로 Vue 프로젝트를 생성하거나 빌드·검증·배포하지 않는다.
+
+`prototype/generated.js`는 저장된 디자인 값으로 CSS 변수를 설정하는 로컬 데모다. 다음 기능은 현재 코드에서 확인되지 않는다.
+
+- 생성 결과용 DB 테이블과 attempt 이력
+- Vue 소스 파일 생성 및 Artifact 저장
+- Vite build 실행
+- 격리된 Sandbox
+- import allowlist 및 보안 검사
+- Desktop/Mobile 자동 Screenshot QA
+- 콘텐츠 coverage/overflow/accessibility gate
+- Preview URL 및 ZIP Artifact 관리
+- Renderer Registry와 버전 관리
+
+따라서 `final-design-vue-webpage-generation-development-plan-2026-07-14.md`의 Vue 코드 생성 구조는 **개발 계획**이며 현재 구현 완료 기능으로 간주하면 안 된다.
+
+## 24. 재사용·변경·신규 개발 매트릭스
+
+| 구분 | 대상 | 처리 방향 |
+|---|---|---|
+| 재사용 | Form Template/Section/Item CRUD와 버전 | 콘텐츠 스키마 계층으로 유지 |
+| 재사용 | Wizard `sectionInputs`, 필수값 검증, 템플릿별 상태 | Visual Editor의 입력 상태로 연결 |
+| 재사용 | `configRevision`, `sectionSnapshot` | Run 재현성과 감사 추적에 유지 |
+| 재사용 | CTA URL/UTM 처리 | 실제 DOM CTA Component에 연결 |
+| 재사용 | Generation Run/polling/error UI 패턴 | Design Spec·Asset·Render Run으로 확장 |
+| 변경 | Wizard Step 2 Accordion 중심 화면 | 실제 Renderer Preview + 선택 Item 편집 패널로 확장 |
+| 변경 | Step 3 LO-FI 이미지 후보 | Page Design Spec + Renderer Variant 후보로 교체 |
+| 변경 | Step 4 Final 이미지 | 선택 Variant의 실제 반응형 웹 Preview로 교체 |
+| 변경 | n8n 이미지 worker 중심 역할 | Design Spec 및 Section Asset 생성 중심으로 재구성 |
+| 신규 | Renderer Registry 및 Renderer Version | Form Template과 별도 엔터티로 구현 |
+| 신규 | Form Template-Renderer 연결 | 초기에는 1:N, 기본 Renderer 1개 필수 |
+| 신규 | Page Design Spec Schema | LLM 출력의 구조화·검증 가능한 계약 |
+| 신규 | Asset Manifest/Pipeline | 이미지 출처, 크기, focal point, safe area, 상태 관리 |
+| 신규 | Sandbox Build/QA/Artifact | LLM Vue 코드 생성 단계에 필수 |
+
+## 25. 현행 구조에서 발견된 핵심 이슈
+
+### 25.1 Form Template과 Visual Template의 개념 충돌
+
+하나의 엔터티에 입력 스키마와 화면 코드를 같이 넣으면 버전, 배포, 보안, 재사용 규칙이 복잡해진다. 다음처럼 분리해야 한다.
+
+```text
+Form Template = 어떤 콘텐츠를 받을 것인가
+Renderer      = 그 콘텐츠를 어떤 웹 구조로 보여줄 것인가
+Design Spec   = Renderer를 어떤 톤과 Variant로 표현할 것인가
+```
+
+### 25.2 전체 이미지가 현재 파이프라인의 중심
+
+현재 Confirm Draft와 Final Design은 이미지 ID를 중심으로 연결된다. 이를 즉시 제거하면 Run API, UI 상태, n8n workflow와 기존 이력이 동시에 깨질 수 있다. 신규 `render` 파이프라인을 병행한 뒤 트래픽과 이력을 단계적으로 전환해야 한다.
+
+### 25.3 웹 출력의 실행 안전장치 부재
+
+현재 webhook 프록시만으로 LLM 생성 코드를 운영하면 임의 import, 외부 통신, 빌드 실패, XSS, 무한 렌더링을 통제하기 어렵다. 자유 코드 생성은 Visual Renderer MVP 이후 별도 Sandbox 단계로 미뤄야 한다.
+
+### 25.4 Preview와 Output의 동등성 미보장
+
+현재 Step 2 폼, LO-FI 이미지, Final 이미지, generated page가 서로 다른 표현 계층이다. 신규 구조에서는 Preview 전용 복제 UI를 만들지 말고 동일 Renderer Build를 편집 화면과 최종 출력에서 사용해야 한다.
+
+### 25.5 동적 Section 대응
+
+관리자가 새로운 Section과 Item을 만들 수 있으므로 생성 Renderer가 모든 스키마를 사전에 알 수 없다. `GenericSection`, `GenericTextItem`, `GenericImageItem`, `GenericCtaItem`을 기본 계약으로 제공하고, 전용 Component는 점진적으로 추가해야 한다.
+
+## 26. 코드 기준 권장 착수 순서
+
+1. `Renderer Registry`의 최소 데이터 계약과 Form Template 1:N 연결을 정의한다.
+2. 기존 `sectionInputs`를 그대로 받는 Default Vue Renderer 한 개를 만든다.
+3. Wizard Step 2에서 Accordion 입력과 Renderer Preview를 양방향 연결한다.
+4. 같은 Renderer를 별도 Web Output route에서 사용해 Preview/Output 동등성을 검증한다.
+5. Design Spec Schema와 제한된 Variant 생성을 추가한다.
+6. Section Asset Pipeline을 추가한다.
+7. 기존 LO-FI/Final 이미지 파이프라인과 A/B 운영한다.
+8. 안정화 후 LLM Vue 코드 생성, Sandbox, 자동 QA를 추가한다.
+
+첫 개발 목표는 “LLM이 다양한 Vue 코드를 생성하는 것”이 아니라 다음 한 문장을 증명하는 것이어야 한다.
+
+> 관리자 콘텐츠 스키마로 입력한 모든 값이 동일한 Vue Renderer를 통해 편집 Preview와 최종 Web Output에 빠짐없이 동일하게 표시된다.
+
+이 동등성이 확보된 뒤 Design Spec 다양화와 LLM 코드 생성을 추가해야 기존 LO-FI/HI-FI에서 발생했던 디자인 충실도 손실을 반복하지 않는다.
