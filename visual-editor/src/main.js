@@ -5,5 +5,6 @@ import "./styles.css";
 const root = document.querySelector("#visual-editor-app");
 
 if (root) {
-  createApp(App, { mode: root.dataset.mode || "editor" }).mount(root);
+  const queryMode = new URLSearchParams(window.location.search).get("mode");
+  createApp(App, { mode: queryMode || root.dataset.mode || "editor" }).mount(root);
 }

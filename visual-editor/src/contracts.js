@@ -39,6 +39,9 @@ function cloneJson(value) {
 }
 
 export function createDefaultValue(item) {
+  if (item?.isLocked && item.lockedValue !== null && item.lockedValue !== undefined) {
+    return cloneJson(item.lockedValue);
+  }
   if (item?.fieldKind === "cta") {
     return { label: item.defaultValue || "", link: "", target: "_self" };
   }

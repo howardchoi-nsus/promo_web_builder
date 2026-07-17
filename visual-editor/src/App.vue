@@ -1,7 +1,8 @@
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import PromoPageRenderer from "./PromoPageRenderer.vue";
 import { persistSnapshot, withoutFreePosition } from "./editor-utils.mjs";
+import { normalizeLayoutSpec, validateLayoutSpec } from "./layout-utils.mjs";
 import {
   DESIGN_COLOR_TOKENS,
   DEFAULT_DESIGN_SPEC,
@@ -14,7 +15,7 @@ const props = defineProps({
   mode: { type: String, default: "editor" },
 });
 
-const loading = ref(props.mode === "editor");
+const loading = ref(props.mode !== "output");
 const error = ref("");
 const templates = ref([]);
 const template = ref(null);
@@ -30,6 +31,16 @@ const guidesVisible = ref(true);
 const backgroundImageError = ref("");
 const outputSaveError = ref("");
 const outputSnapshot = ref(null);
+const layoutRevision = ref(1);
+const layoutId = ref(null);
+const layoutChangeNote = ref("");
+const layoutSaving = ref(false);
+const layoutSaveMessage = ref("");
+const externalSnapshotReady = ref(false);
+let applyingExternalSnapshot = false;
+
+const isAdminLayoutMode = computed(() => props.mode === "admin-layout");
+const isWizardLayoutMode = computed(() => props.mode === "wizard-layout");
 
 const selectedSection = computed(() => sections.value.find((section) => section.sectionKey === selectedSectionKey.value) || sections.value[0]);
 const selectedItem = computed(() => selectedSection.value?.items?.find((item) => item.itemKey === selectedItemKey.value) || selectedSection.value?.items?.[0]);
@@ -257,6 +268,104 @@ function openOutput() {
   window.open("/prototype/visual-output.html", "_blank", "noopener");
 }
 
+async function loadAdminLayout() {
+  const templateId = new URLSearchParams(window.location.search).get("templateId");
+  if (!templateId) {
+    error.value = "templateId가 필요합니다.";
+    loading.value = false;
+    return;
+  }
+  try {
+    const response = await fetch(`/api/wizard-form-template-layout?templateId=${encodeURIComponent(templateId)}`);
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message || result.error || "기본 레이아웃을 불러오지 못했습니다.");
+    template.value = result.template;
+    sections.value = result.sections || [];
+    sectionInputs.value = createSectionInputs(sections.value);
+    designSpec.value = normalizeLayoutSpec(result.layout?.layoutSpec);
+    layoutRevision.value = Number(result.layout?.layoutRevision || 1);
+    layoutId.value = result.layout?.id || null;
+    selectedSectionKey.value = sections.value[0]?.sectionKey || "";
+    selectedItemKey.value = sections.value[0]?.items?.[0]?.itemKey || "";
+    expandedSectionKey.value = sections.value[0]?.sectionKey || "";
+  } catch (loadError) {
+    error.value = loadError.message;
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function saveAdminLayout() {
+  if (!template.value?.id || layoutSaving.value) return;
+  layoutSaveMessage.value = "";
+  const validation = validateLayoutSpec(designSpec.value);
+  if (!validation.ok) {
+    layoutSaveMessage.value = `레이아웃 검증 실패: ${validation.errors[0]?.path || "unknown"}`;
+    return;
+  }
+  layoutSaving.value = true;
+  try {
+    const response = await fetch("/api/wizard-form-template-layout", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        templateId: template.value.id,
+        expectedRevision: layoutRevision.value,
+        rendererKey: "default-promo-renderer",
+        rendererVersion: 1,
+        layoutSpec: validation.spec,
+        changeNote: layoutChangeNote.value || "Admin Layout Editor에서 기본 레이아웃을 저장했습니다.",
+      }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.message || result.error || `레이아웃 저장 오류(${response.status})`);
+    designSpec.value = normalizeLayoutSpec(result.layout.layoutSpec);
+    layoutRevision.value = Number(result.layout.layoutRevision || layoutRevision.value + 1);
+    layoutId.value = result.layout.id || layoutId.value;
+    layoutChangeNote.value = "";
+    layoutSaveMessage.value = `기본 레이아웃을 저장했습니다. revision ${layoutRevision.value}`;
+  } catch (saveError) {
+    layoutSaveMessage.value = saveError.message;
+  } finally {
+    layoutSaving.value = false;
+  }
+}
+
+async function applyExternalSnapshot(snapshot) {
+  if (!snapshot?.content) return;
+  applyingExternalSnapshot = true;
+  template.value = snapshot.content.formTemplate || null;
+  configRevision.value = snapshot.content.formTemplate?.configRevision || "";
+  sections.value = snapshot.content.sectionSnapshot || [];
+  sectionInputs.value = snapshot.content.sectionInputs || {};
+  designSpec.value = normalizeLayoutSpec(snapshot.designSpec);
+  layoutRevision.value = Number(snapshot.layoutRevision || 1);
+  selectedSectionKey.value = sections.value[0]?.sectionKey || "";
+  selectedItemKey.value = sections.value[0]?.items?.[0]?.itemKey || "";
+  expandedSectionKey.value = sections.value[0]?.sectionKey || "";
+  externalSnapshotReady.value = true;
+  loading.value = false;
+  error.value = "";
+  await nextTick();
+  applyingExternalSnapshot = false;
+}
+
+function handleParentMessage(event) {
+  if (!isWizardLayoutMode.value || event.origin !== window.location.origin) return;
+  if (event.data?.type === "promo-wizard-layout-snapshot") {
+    applyExternalSnapshot(event.data.snapshot);
+  }
+}
+
+watch([designSpec, sectionInputs], () => {
+  if (!isWizardLayoutMode.value || !externalSnapshotReady.value || applyingExternalSnapshot) return;
+  window.parent.postMessage({
+    type: "promo-wizard-layout-change",
+    designSpec: JSON.parse(JSON.stringify(designSpec.value)),
+    sectionInputs: JSON.parse(JSON.stringify(sectionInputs.value)),
+  }, window.location.origin);
+}, { deep: true });
+
 function loadOutput() {
   try {
     const stored = localStorage.getItem(SNAPSHOT_STORAGE_KEY);
@@ -269,8 +378,15 @@ function loadOutput() {
 
 onMounted(() => {
   if (props.mode === "output") loadOutput();
-  else loadEditor();
+  else if (isAdminLayoutMode.value) loadAdminLayout();
+  else if (isWizardLayoutMode.value) {
+    loading.value = true;
+    window.addEventListener("message", handleParentMessage);
+    window.parent.postMessage({ type: "promo-wizard-layout-ready" }, window.location.origin);
+  } else loadEditor();
 });
+
+onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage));
 </script>
 
 <template>
@@ -294,7 +410,7 @@ onMounted(() => {
   <main v-else class="editor-shell">
     <header class="editor-header">
       <div>
-        <span>VISUAL EDITOR</span>
+        <span>{{ isAdminLayoutMode ? "ADMIN TEMPLATE LAYOUT" : isWizardLayoutMode ? "WIZARD LAYOUT" : "VISUAL EDITOR" }}</span>
         <h1>{{ template?.name || "Default Renderer" }}</h1>
       </div>
       <div class="editor-global-actions">
@@ -324,9 +440,17 @@ onMounted(() => {
           <small v-if="backgroundImageError" class="background-image-error">{{ backgroundImageError }}</small>
         </div>
         <nav aria-label="Visual Editor navigation">
-          <a href="/prototype/index.html">Promo Builder</a>
-          <a href="/promo-wizard.html">Promo Wizard</a>
-          <button type="button" :disabled="!editorSnapshot" @click="openOutput">Web Output 열기</button>
+          <template v-if="isAdminLayoutMode">
+            <input v-model="layoutChangeNote" type="text" placeholder="변경 사유" aria-label="레이아웃 변경 사유" />
+            <button type="button" :disabled="!editorSnapshot || layoutSaving" @click="saveAdminLayout">
+              {{ layoutSaving ? "저장 중" : "기본 레이아웃 저장" }}
+            </button>
+          </template>
+          <template v-else-if="!isWizardLayoutMode">
+            <a href="/prototype/index.html">Promo Builder</a>
+            <a href="/promo-wizard.html">Promo Wizard</a>
+            <button type="button" :disabled="!editorSnapshot" @click="openOutput">Web Output 열기</button>
+          </template>
         </nav>
       </div>
     </header>
@@ -334,6 +458,7 @@ onMounted(() => {
     <div v-if="loading" class="system-message">기본 Form Template을 불러오는 중입니다.</div>
     <div v-else-if="error" class="system-message system-message--error">{{ error }}</div>
     <div v-if="outputSaveError" class="system-message system-message--error" role="alert">{{ outputSaveError }}</div>
+    <div v-if="layoutSaveMessage" class="system-message" role="status">{{ layoutSaveMessage }}</div>
 
     <section v-if="!loading && !error" class="editor-workspace">
       <aside class="section-rail" aria-label="콘텐츠 섹션">

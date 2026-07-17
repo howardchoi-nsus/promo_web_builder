@@ -2043,6 +2043,15 @@ createApp({
       }
     },
 
+    openWizardFormTemplateLayout() {
+      const template = this.wizardFormTemplateDetail?.template;
+      if (!template?.id) return;
+      const url = new URL("/prototype/visual-editor.html", window.location.origin);
+      url.searchParams.set("mode", "admin-layout");
+      url.searchParams.set("templateId", template.id);
+      window.open(url.toString(), "_blank", "noopener");
+    },
+
     toggleNewWizardFormTemplateForm() {
       this.showNewWizardFormTemplateForm = !this.showNewWizardFormTemplateForm;
       this.showDuplicateWizardFormTemplateForm = false;

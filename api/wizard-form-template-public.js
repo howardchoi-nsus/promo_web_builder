@@ -1,5 +1,6 @@
 const { getSql, fetchTemplateRow, fetchTemplateSections, toFormTemplate } = require("./_wizard-form-templates-store");
 const { fetchItemsForSection } = require("./_wizard-content-sections-store");
+const { fetchLayoutRow, toLayout } = require("./_wizard-form-template-layout-store");
 
 module.exports = async function handler(req, res) {
   if (req.method !== "GET") {
@@ -41,6 +42,7 @@ module.exports = async function handler(req, res) {
     const revision = [template.id, template.version, template.updatedAt, ...sections.flatMap((section) => [
       section.sectionId, section.sectionKey, ...section.items.map((item) => `${item.id}:${item.updatedAt || ""}`),
     ])].join("|");
+    const layout = toLayout(await fetchLayoutRow(sql, id));
     return res.status(200).json({
       ok: true,
       template: {
@@ -52,6 +54,9 @@ module.exports = async function handler(req, res) {
         isDefault: template.isDefault,
       },
       configRevision: revision,
+      layoutRevision: layout.layoutRevision,
+      renderer: { key: layout.rendererKey, version: layout.rendererVersion },
+      defaultLayout: layout.layoutSpec,
       sections,
       configurationWarnings,
     });

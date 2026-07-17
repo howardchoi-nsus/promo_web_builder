@@ -48,6 +48,23 @@ const sections = [
   },
 ];
 
+let fixtureLayoutRevision = 1;
+let fixtureLayout = {
+  contractVersion: 1,
+  specKey: "admin-default",
+  theme: {
+    backgroundColor: "#f5f7fb",
+    backgroundImage: "",
+    backgroundImageName: "",
+    textColor: "#172033",
+    accentColor: "#156b5b",
+    fontFamily: "Inter, Pretendard, sans-serif",
+  },
+  responsive: { contentMaxWidth: 1440, contentMinWidth: 1140, mobileBreakpoint: 720 },
+  itemStyles: {},
+  sectionStyles: {},
+};
+
 const mime = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
@@ -56,9 +73,15 @@ const mime = {
   ".png": "image/png",
 };
 
-function json(res, body) {
-  res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+function json(res, body, status = 200) {
+  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
   res.end(JSON.stringify(body));
+}
+
+async function readJson(req) {
+  const chunks = [];
+  for await (const chunk of req) chunks.push(chunk);
+  try { return JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}"); } catch { return {}; }
 }
 
 http.createServer(async (req, res) => {
@@ -67,7 +90,51 @@ http.createServer(async (req, res) => {
     return json(res, { ok: true, templates: [template] });
   }
   if (useFixture && requestUrl.pathname === "/api/wizard-form-template-public") {
-    return json(res, { ok: true, template, configRevision: "preview-v1", sections, configurationWarnings: [] });
+    return json(res, {
+      ok: true,
+      template,
+      configRevision: "preview-v1",
+      layoutRevision: fixtureLayoutRevision,
+      renderer: { key: "default-promo-renderer", version: 1 },
+      defaultLayout: fixtureLayout,
+      sections,
+      configurationWarnings: [],
+    });
+  }
+  if (useFixture && requestUrl.pathname === "/api/wizard-form-template-layout" && req.method === "GET") {
+    return json(res, {
+      ok: true,
+      template: { ...template, status: "draft" },
+      sections,
+      layout: {
+        id: "fixture-layout",
+        layoutRevision: fixtureLayoutRevision,
+        rendererKey: "default-promo-renderer",
+        rendererVersion: 1,
+        layoutSpec: fixtureLayout,
+      },
+    });
+  }
+  if (useFixture && requestUrl.pathname === "/api/wizard-form-template-layout" && req.method === "PATCH") {
+    const body = await readJson(req);
+    if (Number(body.expectedRevision) !== fixtureLayoutRevision) {
+      return json(res, { error: "Layout revision conflict", currentRevision: fixtureLayoutRevision }, 409);
+    }
+    fixtureLayout = body.layoutSpec || fixtureLayout;
+    fixtureLayoutRevision += 1;
+    return json(res, {
+      ok: true,
+      layout: {
+        id: "fixture-layout",
+        layoutRevision: fixtureLayoutRevision,
+        rendererKey: "default-promo-renderer",
+        rendererVersion: 1,
+        layoutSpec: fixtureLayout,
+      },
+    });
+  }
+  if (useFixture && requestUrl.pathname === "/api/wizard-layout-usage-events") {
+    return json(res, { ok: true, event: { id: "fixture-event", createdAt: new Date().toISOString() } }, 201);
   }
   if (requestUrl.pathname === "/favicon.ico") {
     res.writeHead(204);

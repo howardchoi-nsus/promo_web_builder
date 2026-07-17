@@ -2,6 +2,7 @@ const {
   getSql, parseBody, normalizeBoolean, normalizeNumber,
   fetchTemplateRow, fetchTemplateSections, toTemplateSection,
 } = require("./_wizard-form-templates-store");
+const { remapLayoutSectionKey } = require("./_wizard-form-template-layout-store");
 
 module.exports = async function handler(req, res) {
   try {
@@ -145,6 +146,7 @@ async function updateSection(req, res) {
   const current = currentRows[0];
   await requireDraftTemplate(sql, current.form_template_id);
   if (current.section_id && (current.source_owner_template_id !== current.form_template_id || current.source_status !== "draft")) {
+    const previousSectionKey = current.section_key;
     const ownedSectionKey = `${current.template_key}_${current.section_key}_edit_${Date.now().toString(36)}`
       .replace(/[^a-zA-Z0-9_]+/g, "_");
     const clonedRows = await sql`
@@ -180,6 +182,7 @@ async function updateSection(req, res) {
       set section_id = ${clonedSection.id}::uuid, section_key = ${clonedSection.section_key}, updated_at = now()
       where id = ${id}::uuid
     `;
+    await remapLayoutSectionKey(sql, current.form_template_id, previousSectionKey, clonedSection.section_key);
     current.section_id = clonedSection.id;
     current.section_key = clonedSection.section_key;
   }

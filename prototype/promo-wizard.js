@@ -42,6 +42,7 @@ const storageKeys = {
   wizardContent: "promoPrototype.wizardContent.v1",
   wizardContentLegacyBackup: "promoPrototype.wizardContent.legacyBackup.v1",
   wizardRun: "promoPrototype.wizardRun.v1",
+  wizardSessionId: "promoPrototype.wizardSessionId.v1",
 };
 
 const SECTION_INPUT_SCHEMA_VERSION = 2;
@@ -73,6 +74,31 @@ let wizardSectionConfigRevision = "";
 let wizardTemplateSwitchTargetId = "";
 let expandedTemplateSectionKeys = new Set();
 let draggedTemplateSectionKey = "";
+let wizardBaseLayout = null;
+let wizardResolvedLayout = null;
+let wizardLayoutRevision = 1;
+let wizardRenderer = { key: "default-promo-renderer", version: 1 };
+let wizardLayoutFrame = null;
+let wizardLayoutLogTimer = null;
+const wizardSessionId = sessionStorage.getItem(storageKeys.wizardSessionId)
+  || (globalThis.crypto?.randomUUID?.() || `wizard-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+sessionStorage.setItem(storageKeys.wizardSessionId, wizardSessionId);
+
+const FALLBACK_LAYOUT = {
+  contractVersion: 1,
+  specKey: "admin-default",
+  theme: {
+    backgroundColor: "#f5f7fb",
+    backgroundImage: "",
+    backgroundImageName: "",
+    textColor: "#172033",
+    accentColor: "#156b5b",
+    fontFamily: "Inter, Pretendard, sans-serif",
+  },
+  responsive: { contentMaxWidth: 1440, contentMinWidth: 1140, mobileBreakpoint: 720 },
+  itemStyles: {},
+  sectionStyles: {},
+};
 
 const contentState = loadWizardContent();
 
@@ -138,6 +164,7 @@ function defaultWizardContent() {
     formTemplate: null,
     templateInputs: {},
     templateSectionOrders: {},
+    templateLayouts: {},
     // Section 4~10 (Header/Hero/Step Bar/Content CTA/Image Text Row/Title and
     // Description/Footer) used to be hardcoded here. They are now admin-managed
     // (see wizardSectionDefinitions) and this starts empty until
@@ -254,6 +281,7 @@ function loadWizardContent() {
       formTemplate: saved?.formTemplate || null,
       templateInputs: (saved && typeof saved.templateInputs === "object" && saved.templateInputs) || {},
       templateSectionOrders: (saved && typeof saved.templateSectionOrders === "object" && saved.templateSectionOrders) || {},
+      templateLayouts: (saved && typeof saved.templateLayouts === "object" && saved.templateLayouts) || {},
       // Raw saved value is kept as-is until wizardSectionDefinitions loads;
       // loadWizardSectionDefinitions() then calls mergeSectionInputs() to
       // reconcile it against the current admin configuration.
@@ -319,13 +347,32 @@ async function selectWizardFormTemplate(templateId, options = {}) {
   ));
   expandedTemplateSectionKeys = new Set(wizardSectionDefinitions.slice(0, 1).map((section) => section.sectionKey));
   wizardSectionConfigRevision = String(result.configRevision || "");
-  contentState.formTemplate = { ...result.template, configRevision: wizardSectionConfigRevision };
+  wizardLayoutRevision = Number(result.layoutRevision || 1);
+  wizardRenderer = result.renderer || { key: "default-promo-renderer", version: 1 };
+  wizardBaseLayout = JSON.parse(JSON.stringify(result.defaultLayout || FALLBACK_LAYOUT));
+  const savedLayout = contentState.templateLayouts[result.template.templateKey];
+  wizardResolvedLayout = savedLayout?.layoutRevision === wizardLayoutRevision
+    ? JSON.parse(JSON.stringify(savedLayout.resolvedLayout || wizardBaseLayout))
+    : JSON.parse(JSON.stringify(wizardBaseLayout));
+  contentState.formTemplate = {
+    ...result.template,
+    configRevision: wizardSectionConfigRevision,
+    layoutRevision: wizardLayoutRevision,
+    renderer: wizardRenderer,
+  };
   contentState.sectionInputs = mergeSectionInputs(
     contentState.templateInputs[result.template.templateKey] || {},
     wizardSectionDefinitions
   );
   contentState.templateInputs[result.template.templateKey] = contentState.sectionInputs;
+  contentState.templateLayouts[result.template.templateKey] = {
+    layoutRevision: wizardLayoutRevision,
+    renderer: wizardRenderer,
+    baseLayout: wizardBaseLayout,
+    resolvedLayout: wizardResolvedLayout,
+  };
   saveWizardContent();
+  logWizardLayoutEvent("layout_loaded", { sectionCount: wizardSectionDefinitions.length });
 }
 
 function wizardSectionConfigurationReady() {
@@ -338,9 +385,92 @@ function saveWizardContent() {
   if (selectedWizardFormTemplate?.templateKey) {
     contentState.templateInputs[selectedWizardFormTemplate.templateKey] = contentState.sectionInputs;
     contentState.templateSectionOrders[selectedWizardFormTemplate.templateKey] = wizardSectionDefinitions.map((section) => section.sectionKey);
+    contentState.templateLayouts[selectedWizardFormTemplate.templateKey] = {
+      layoutRevision: wizardLayoutRevision,
+      renderer: wizardRenderer,
+      baseLayout: wizardBaseLayout,
+      resolvedLayout: wizardResolvedLayout,
+    };
   }
   localStorage.setItem(storageKeys.wizardContent, JSON.stringify(contentState));
 }
+
+function wizardLayoutSnapshot() {
+  if (!selectedWizardFormTemplate || !wizardResolvedLayout) return null;
+  return {
+    layoutRevision: wizardLayoutRevision,
+    content: {
+      contractVersion: 1,
+      formTemplate: { ...contentState.formTemplate },
+      sectionSnapshot: wizardSectionDefinitions.map((section) => ({
+        ...section,
+        items: (section.items || []).map((item) => ({ ...item })),
+      })),
+      sectionInputs: JSON.parse(JSON.stringify(contentState.sectionInputs)),
+      sectionOrder: wizardSectionDefinitions.map((section) => section.sectionKey),
+    },
+    designSpec: JSON.parse(JSON.stringify(wizardResolvedLayout)),
+    assets: { contractVersion: 1, items: {} },
+  };
+}
+
+function postWizardLayoutSnapshot() {
+  const snapshot = wizardLayoutSnapshot();
+  if (!snapshot || !wizardLayoutFrame?.contentWindow) return;
+  wizardLayoutFrame.contentWindow.postMessage({
+    type: "promo-wizard-layout-snapshot",
+    snapshot,
+  }, window.location.origin);
+}
+
+function resetWizardLayout() {
+  wizardResolvedLayout = JSON.parse(JSON.stringify(wizardBaseLayout || FALLBACK_LAYOUT));
+  saveWizardContent();
+  postWizardLayoutSnapshot();
+  logWizardLayoutEvent("layout_reset");
+}
+
+function logWizardLayoutEvent(eventName, changeSummary = {}, targetKey = "") {
+  const body = {
+    clientEventId: `${wizardSessionId}:${eventName}:${Date.now()}:${Math.random().toString(16).slice(2)}`,
+    eventName,
+    sessionId: wizardSessionId,
+    runId: runId() || null,
+    formTemplateId: selectedWizardFormTemplate?.id || null,
+    templateKey: selectedWizardFormTemplate?.templateKey || "",
+    templateVersion: selectedWizardFormTemplate?.version || 1,
+    configRevision: wizardSectionConfigRevision,
+    layoutRevision: wizardLayoutRevision,
+    targetKey,
+    changeSummary,
+  };
+  fetch("/api/wizard-layout-usage-events", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  }).catch(() => {});
+}
+
+window.addEventListener("message", (event) => {
+  if (event.origin !== window.location.origin) return;
+  if (event.data?.type === "promo-wizard-layout-ready") {
+    postWizardLayoutSnapshot();
+    return;
+  }
+  if (event.data?.type !== "promo-wizard-layout-change" || !event.data.designSpec) return;
+  wizardResolvedLayout = JSON.parse(JSON.stringify(event.data.designSpec));
+  if (event.data.sectionInputs && typeof event.data.sectionInputs === "object") {
+    contentState.sectionInputs = event.data.sectionInputs;
+  }
+  saveWizardContent();
+  clearTimeout(wizardLayoutLogTimer);
+  wizardLayoutLogTimer = setTimeout(() => {
+    logWizardLayoutEvent("item_style_changed", {
+      itemStyleCount: Object.keys(wizardResolvedLayout?.itemStyles || {}).length,
+      sectionStyleCount: Object.keys(wizardResolvedLayout?.sectionStyles || {}).length,
+    });
+  }, 500);
+});
 
 function templateSectionCanReorder(section) {
   return Boolean(section?.userReorderAllowed && !section?.fixedPosition);
@@ -590,6 +720,7 @@ function setSectionValue(path, value) {
   saveWizardContent();
   saveWizardRun(null);
   runError = "";
+  postWizardLayoutSnapshot();
 }
 
 function fieldInvalid(key) {
@@ -1172,13 +1303,39 @@ function renderContentStep() {
   });
   coverage.append(list);
 
+  const layoutPanel = document.createElement("section");
+  layoutPanel.className = "wizard-layout-panel";
+  const layoutHeader = document.createElement("div");
+  layoutHeader.className = "wizard-layout-panel__header";
+  const layoutHeading = document.createElement("div");
+  appendTextElement(layoutHeading, "span", "eyebrow", "Template Layout");
+  appendTextElement(layoutHeading, "strong", "", `${selectedWizardFormTemplate?.name || "Template"} · layout r${wizardLayoutRevision}`);
+  const layoutReset = document.createElement("button");
+  layoutReset.className = "secondary-action";
+  layoutReset.type = "button";
+  layoutReset.textContent = "관리자 기본 레이아웃으로 초기화";
+  layoutReset.addEventListener("click", () => {
+    if (!window.confirm("현재 레이아웃 변경을 모두 지우고 관리자 기본 레이아웃으로 복원할까요?")) return;
+    resetWizardLayout();
+  });
+  layoutHeader.append(layoutHeading, layoutReset);
+  const layoutFrame = document.createElement("iframe");
+  layoutFrame.className = "wizard-layout-frame";
+  layoutFrame.title = "Wizard 템플릿 레이아웃 편집기";
+  layoutFrame.src = "/prototype/visual-editor.html?mode=wizard-layout";
+  layoutFrame.addEventListener("load", postWizardLayoutSnapshot);
+  wizardLayoutFrame = layoutFrame;
+  layoutPanel.append(layoutHeader, layoutFrame);
+
   placeholders.append(
     toolbar,
     templateSection,
     overview,
     dynamicSectionsWrapper,
+    layoutPanel,
     coverage
   );
+  requestAnimationFrame(postWizardLayoutSnapshot);
 }
 
 function createStatusPill(text, kind = "") {
@@ -1741,6 +1898,12 @@ function buildWizardPayload(runKey) {
       campaignTone: contentState.simpleBrief.campaignTone,
     },
     formTemplate: { ...contentState.formTemplate },
+    layoutSnapshot: {
+      layoutRevision: wizardLayoutRevision,
+      renderer: wizardRenderer,
+      baseLayout: JSON.parse(JSON.stringify(wizardBaseLayout || FALLBACK_LAYOUT)),
+      resolvedLayout: JSON.parse(JSON.stringify(wizardResolvedLayout || wizardBaseLayout || FALLBACK_LAYOUT)),
+    },
     sectionSnapshot: wizardSectionDefinitions.map((section) => ({ ...section, items: (section.items || []).map((item) => ({ ...item })) })),
     sectionInputs,
     sectionConfig: {
@@ -1768,6 +1931,12 @@ function buildWizardPayload(runKey) {
       sectionInputs,
       sectionSnapshot: wizardSectionDefinitions.map((section) => ({ ...section, items: (section.items || []).map((item) => ({ ...item })) })),
       formTemplate: { ...contentState.formTemplate },
+      layoutSnapshot: {
+        layoutRevision: wizardLayoutRevision,
+        renderer: wizardRenderer,
+        baseLayout: JSON.parse(JSON.stringify(wizardBaseLayout || FALLBACK_LAYOUT)),
+        resolvedLayout: JSON.parse(JSON.stringify(wizardResolvedLayout || wizardBaseLayout || FALLBACK_LAYOUT)),
+      },
       sectionConfig: {
         sections: wizardSectionConfigSections(),
         orderedSections: dynamicSectionKeys,

@@ -1,6 +1,7 @@
 const {
   getSql, parseBody, fetchTemplates, fetchTemplateRow, toFormTemplate,
 } = require("./_wizard-form-templates-store");
+const { ensureLayout, cloneLayout } = require("./_wizard-form-template-layout-store");
 
 module.exports = async function handler(req, res) {
   try {
@@ -47,6 +48,7 @@ async function createTemplate(req, res) {
       )::text as id
     `;
     const row = await fetchTemplateRow(sql, rows[0]?.id);
+    await cloneLayout(sql, duplicateSourceId, row.id);
     return res.status(201).json({ ok: true, template: toFormTemplate(row) });
   }
 
@@ -62,6 +64,7 @@ async function createTemplate(req, res) {
       )::text as id
     `;
     const row = await fetchTemplateRow(sql, rows[0]?.id);
+    await cloneLayout(sql, sourceId, row.id);
     return res.status(201).json({ ok: true, template: toFormTemplate(row) });
   }
 
@@ -85,5 +88,6 @@ async function createTemplate(req, res) {
     returning id::text, template_key, name, description, status, version,
       is_default, change_note, archived_at, created_at, updated_at
   `;
+  await ensureLayout(sql, rows[0].id);
   return res.status(201).json({ ok: true, template: toFormTemplate(rows[0]) });
 }
