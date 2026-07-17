@@ -8,7 +8,7 @@
   "scripts": {
     "build:visual-editor": "vite build --config visual-editor/vite.config.js",
     "dev:visual-editor": "vite --config visual-editor/vite.config.js",
-    "check": "node --check prototype/app.js && node --check prototype/generated.js && node --check prototype/promo-wizard.js",
+    "check": "node --check prototype/app.js && node --check prototype/generated.js && node --check prototype/promo-wizard.js && node --check prototype/create-promo.js",
     "test:design-prompt-md": "node scripts/test-design-prompt-md.js",
     "qa:label-guard": "node scripts/qa-label-guard.js",
     "test:worker-contract": "node scripts/test-worker-prompt-contract.js",
@@ -24,6 +24,7 @@
     "test:wizard-layout-behavior": "node scripts/test-wizard-layout-behavior.mjs",
     "test:wizard-form-template-layout-contract": "node scripts/test-wizard-form-template-layout-contract.js",
     "test:shared-shell-header-contract": "node scripts/test-shared-shell-header-contract.js",
+    "test:create-promo-clone-contract": "node scripts/test-create-promo-clone-contract.js",
     "design-md:dry-run": "node scripts/import-design-md-docs.js",
     "design-md:import": "node scripts/import-design-md-docs.js --apply"
   },

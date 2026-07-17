@@ -421,6 +421,7 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
           <a href="/prototype/index.html">프로모션 빌더</a>
           <a href="/prototype/index.html?view=admin&amp;tab=promo-form">관리자 페이지</a>
           <a href="/promo-wizard.html">Promo Wizard</a>
+          <a href="/create-promo.html">Create Promo</a>
           <a class="active" href="/prototype/visual-editor.html" aria-current="page">Visual Editor</a>
           <a href="/prototype/generated.html">생성된 UI</a>
         </nav>

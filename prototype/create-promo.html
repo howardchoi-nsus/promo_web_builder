@@ -3,26 +3,26 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Promo Wizard</title>
-    <link rel="stylesheet" href="shared-shell-header.css?v=shared-shell-header-v16" />
-    <link rel="stylesheet" href="promo-wizard.css?v=shared-shell-header-v16" />
-    <script src="shared-shell.js?v=shared-shell-header-v16"></script>
+    <title>Create Promo</title>
+    <link rel="stylesheet" href="shared-shell-header.css?v=create-promo-clone-v17" />
+    <link rel="stylesheet" href="create-promo.css?v=create-promo-clone-v17" />
+    <script src="shared-shell.js?v=create-promo-clone-v17"></script>
   </head>
-  <body>
+  <body data-promo-flow="create-promo">
     <main class="wizard-shell">
       <header class="shell-header">
         <div class="shell-header__identity">
           <div class="shell-header__brand-row">
             <h1 class="shell-header__brand">PROMO WEB BUILDER</h1>
-            <span class="shell-header__page-label">Promo Wizard</span>
+            <span class="shell-header__page-label">Create Promo</span>
           </div>
         </div>
         <div class="shell-header__actions">
           <nav class="shell-nav" aria-label="프로토타입 내비게이션">
             <a href="/prototype/index.html">프로모션 빌더</a>
             <a href="/prototype/index.html?view=admin&amp;tab=promo-form">관리자 페이지</a>
-            <a class="active" href="/promo-wizard.html" aria-current="page">Promo Wizard</a>
-            <a href="/create-promo.html">Create Promo</a>
+            <a href="/promo-wizard.html">Promo Wizard</a>
+            <a class="active" href="/create-promo.html" aria-current="page">Create Promo</a>
             <a href="/prototype/visual-editor.html">Visual Editor</a>
             <a href="/prototype/generated.html">생성된 UI</a>
           </nav>
@@ -34,7 +34,7 @@
         </div>
       </header>
 
-      <section class="wizard-progress" aria-label="Wizard steps">
+      <section class="wizard-progress" aria-label="Create Promo steps">
         <button class="step is-active" type="button" data-step="1">
           <span>1</span>
           <strong>Concept</strong>
@@ -71,6 +71,6 @@
       </footer>
     </main>
 
-    <script src="promo-wizard.js?v=shared-shell-header-v16"></script>
+    <script src="create-promo.js?v=create-promo-clone-v17"></script>
   </body>
 </html>
