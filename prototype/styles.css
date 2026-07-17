@@ -2709,6 +2709,70 @@ body.is-resizing {
   min-height: 0;
 }
 
+.template-layout-settings {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  margin: 4px 0 14px;
+  padding: 18px;
+  border: 1px solid rgba(21, 107, 91, 0.32);
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, rgba(21, 107, 91, 0.09), rgba(255, 255, 255, 0.96));
+}
+
+.template-layout-settings-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.template-layout-settings-eyebrow {
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.template-layout-settings h3,
+.template-layout-settings p {
+  margin: 0;
+}
+
+.template-layout-settings h3 {
+  font-size: 16px;
+}
+
+.template-layout-settings p {
+  max-width: 680px;
+  color: var(--sub);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.template-layout-settings-state {
+  width: fit-content;
+  margin-top: 2px;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.template-layout-settings-actions {
+  display: grid;
+  width: min(210px, 100%);
+  gap: 7px;
+}
+
+.template-layout-settings-button {
+  min-height: 38px;
+}
+
+.template-layout-settings-actions small {
+  color: var(--sub);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
 .template-basic-settings,
 .section-library-manager {
   border-top: 1px solid var(--line);
@@ -3417,6 +3481,14 @@ body.is-resizing {
 
   .form-template-admin-grid {
     grid-template-columns: 1fr;
+  }
+
+  .template-layout-settings {
+    grid-template-columns: 1fr;
+  }
+
+  .template-layout-settings-actions {
+    width: 100%;
   }
 
   .template-section-items-panel {

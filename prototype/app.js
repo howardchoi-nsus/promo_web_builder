@@ -1087,14 +1087,19 @@ function sourceFromPreset(preset) {
 }
 
 const { createApp } = Vue;
-const initialView = new URLSearchParams(window.location.search).get("view") === "admin" ? "prompts" : "builder";
+const initialSearchParams = new URLSearchParams(window.location.search);
+const initialView = initialSearchParams.get("view") === "admin" ? "prompts" : "builder";
+const requestedAdminTab = initialSearchParams.get("tab");
+const initialAdminTab = ["webhook", "llm", "promo-form"].includes(requestedAdminTab)
+  ? requestedAdminTab
+  : "promo-form";
 
 createApp({
   data() {
     return {
       status: "준비 완료",
       currentView: initialView,
-      adminTab: "webhook",
+      adminTab: initialAdminTab,
       sectionWidths: [30, 30, 40],
       resizeState: null,
       adminSectionWidths: [50, 50],
@@ -1678,6 +1683,15 @@ createApp({
         this.loadWizardSectionAuditLogs(),
       ]);
       this.setStatus("관리자 페이지로 이동했습니다");
+    },
+
+    selectAdminTab(tab) {
+      if (!["webhook", "llm", "promo-form"].includes(tab)) return;
+      this.adminTab = tab;
+      const url = new URL(window.location.href);
+      url.searchParams.set("view", "admin");
+      url.searchParams.set("tab", tab);
+      window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
     },
 
     async loadWizardSectionAuditLogs() {
