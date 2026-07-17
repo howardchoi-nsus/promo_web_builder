@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from "vue";
 import { DEFAULT_LOREM_IPSUM } from "./contracts";
+import { normalizeCtaUrl } from "./editor-utils.mjs";
 
 const props = defineProps({
   content: { type: Object, required: true },
@@ -31,7 +32,7 @@ function imageUrl(value) {
 }
 
 function ctaUrl(value) {
-  return String(value?.link || "#").trim() || "#";
+  return normalizeCtaUrl(value?.link);
 }
 
 function hasContent(value) {

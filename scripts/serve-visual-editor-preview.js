@@ -69,6 +69,10 @@ http.createServer(async (req, res) => {
   if (useFixture && requestUrl.pathname === "/api/wizard-form-template-public") {
     return json(res, { ok: true, template, configRevision: "preview-v1", sections, configurationWarnings: [] });
   }
+  if (requestUrl.pathname === "/favicon.ico") {
+    res.writeHead(204);
+    return res.end();
+  }
   if (requestUrl.pathname.startsWith("/api/")) {
     try {
       const upstream = await fetch(`${apiOrigin}${requestUrl.pathname}${requestUrl.search}`);
@@ -83,7 +87,10 @@ http.createServer(async (req, res) => {
     }
   }
 
-  const pathname = requestUrl.pathname === "/" ? "/visual-editor.html" : requestUrl.pathname;
+  let pathname = requestUrl.pathname === "/" ? "/visual-editor.html" : requestUrl.pathname;
+  if (pathname.startsWith("/prototype/")) {
+    pathname = pathname.slice("/prototype".length);
+  }
   const filePath = path.resolve(root, `.${pathname}`);
   if (!filePath.startsWith(root) || !fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
     res.writeHead(404);

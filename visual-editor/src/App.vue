@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import PromoPageRenderer from "./PromoPageRenderer.vue";
+import { persistSnapshot, withoutFreePosition } from "./editor-utils.mjs";
 import {
   DESIGN_COLOR_TOKENS,
   DEFAULT_DESIGN_SPEC,
@@ -27,6 +28,7 @@ const expandedSectionKey = ref("");
 const viewport = ref("desktop");
 const guidesVisible = ref(true);
 const backgroundImageError = ref("");
+const outputSaveError = ref("");
 const outputSnapshot = ref(null);
 
 const selectedSection = computed(() => sections.value.find((section) => section.sectionKey === selectedSectionKey.value) || sections.value[0]);
@@ -108,6 +110,7 @@ function attachBackgroundImage(event) {
   }
   const reader = new FileReader();
   reader.onload = () => {
+    outputSaveError.value = "";
     designSpec.value = {
       ...designSpec.value,
       theme: {
@@ -133,6 +136,7 @@ function removeBackgroundImage() {
     },
   };
   backgroundImageError.value = "";
+  outputSaveError.value = "";
 }
 
 const selectedStyleKey = computed(() => (
@@ -180,6 +184,15 @@ function resetItemStyle() {
   if (!selectedStyleKey.value || selectedItem.value?.isLocked) return;
   const nextStyles = { ...(designSpec.value.itemStyles || {}) };
   delete nextStyles[selectedStyleKey.value];
+  designSpec.value = { ...designSpec.value, itemStyles: nextStyles };
+}
+
+function restoreAutomaticPosition() {
+  if (!selectedStyleKey.value || selectedItem.value?.isLocked) return;
+  const nextStyles = { ...(designSpec.value.itemStyles || {}) };
+  const nextStyle = withoutFreePosition(nextStyles[selectedStyleKey.value]);
+  if (Object.keys(nextStyle).length) nextStyles[selectedStyleKey.value] = nextStyle;
+  else delete nextStyles[selectedStyleKey.value];
   designSpec.value = { ...designSpec.value, itemStyles: nextStyles };
 }
 
@@ -235,7 +248,12 @@ async function loadEditor() {
 
 function openOutput() {
   if (!editorSnapshot.value) return;
-  localStorage.setItem(SNAPSHOT_STORAGE_KEY, JSON.stringify(editorSnapshot.value));
+  outputSaveError.value = "";
+  const result = persistSnapshot(localStorage, SNAPSHOT_STORAGE_KEY, editorSnapshot.value);
+  if (!result.ok) {
+    outputSaveError.value = result.message;
+    return;
+  }
   window.open("/prototype/visual-output.html", "_blank", "noopener");
 }
 
@@ -306,7 +324,7 @@ onMounted(() => {
           <small v-if="backgroundImageError" class="background-image-error">{{ backgroundImageError }}</small>
         </div>
         <nav aria-label="Visual Editor navigation">
-          <a href="/">Promo Builder</a>
+          <a href="/prototype/index.html">Promo Builder</a>
           <a href="/promo-wizard.html">Promo Wizard</a>
           <button type="button" :disabled="!editorSnapshot" @click="openOutput">Web Output 열기</button>
         </nav>
@@ -315,8 +333,9 @@ onMounted(() => {
 
     <div v-if="loading" class="system-message">기본 Form Template을 불러오는 중입니다.</div>
     <div v-else-if="error" class="system-message system-message--error">{{ error }}</div>
+    <div v-if="outputSaveError" class="system-message system-message--error" role="alert">{{ outputSaveError }}</div>
 
-    <section v-else class="editor-workspace">
+    <section v-if="!loading && !error" class="editor-workspace">
       <aside class="section-rail" aria-label="콘텐츠 섹션">
         <div class="panel-heading">
           <span>SECTIONS</span>
@@ -500,7 +519,7 @@ onMounted(() => {
             <div class="position-status">
               <span>위치</span>
               <strong v-if="selectedItemStyle.positionMode === 'free'">
-                X {{ Math.round(selectedItemStyle.xPct || 0) }}% · Y {{ Math.round(selectedItemStyle.yPct || 0) }}%
+                X {{ Math.round(selectedItemStyle.xPct || 0) }}% · Y {{ Math.round(selectedItemStyle.yPx || 0) }}px
               </strong>
               <strong v-else>자동 배치</strong>
             </div>
@@ -509,7 +528,7 @@ onMounted(() => {
               class="secondary-control"
               type="button"
               :disabled="selectedItem.isLocked"
-              @click="updateItemStyle({ positionMode: 'flow', xPct: undefined, yPct: undefined })"
+              @click="restoreAutomaticPosition"
             >
               자동 배치로 복원
             </button>
