@@ -1122,8 +1122,10 @@ Feature Flag 예:
 
 로컬 구현과 Fixture 기반 디버깅은 완료됐지만 운영 반영 완료를 의미하지는 않는다. 배포 전에 다음 작업이 필요하다.
 
-1. 운영/검증 DB에 Migration 023을 적용한다.
+1. ~~운영/검증 DB에 Migration 023을 적용한다.~~ — 2026-07-17 적용 완료(사용자 확인)
 2. 기존 Template의 Layout Backfill 건수와 Section Key 참조 무결성을 확인한다.
 3. API와 정적 Visual Editor Bundle을 같은 Release로 배포한다.
 4. Draft 저장, Active 조회, Wizard 변경/복원, Generation Run Snapshot을 운영 환경에서 Smoke Test한다.
 5. `wizard_layout_usage_events` 적재량과 실패율을 모니터링한다.
+
+현재 Codex 로컬 실행 환경에는 DB 연결 환경 변수가 제공되지 않아 Migration 적용 및 Backfill 건수를 직접 재조회하지 못했다. 2번 검증은 배포 환경의 읽기 전용 점검 또는 Smoke Test에서 수행한다.
