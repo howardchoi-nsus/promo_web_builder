@@ -1,40 +1,55 @@
 const steps = [
   {
-    title: "Design Concept Selection",
-    copy: "Select the design concept that will guide the integrated brief, LO-FI draft, and final design generation.",
+    title: "배경색 선택",
+    copy: "프로모션의 기본 배경색을 고르세요. 선택 결과는 미리보기에 즉시 반영됩니다.",
+    cards: [],
+  },
+  {
+    title: "CTA 버튼 스타일 선택",
+    copy: "버튼 모양, 표현 방식, 색상을 선택하세요. 조합 결과를 미리보기에서 확인할 수 있습니다.",
+    cards: [],
+  },
+  {
+    title: "템플릿 및 콘텐츠 등록",
+    copy: "관리자에서 생성한 템플릿을 선택하고 프로모션 콘텐츠를 등록하는 단계입니다.",
     cards: [
-      ["Design MD", "Choose the source design document and concept."],
-      ["Visual Mode", "Confirm standard or advanced visual generation mode."],
-      ["Style Tokens", "Preserve key colors, layout intent, typography, and CTA treatment."],
+      ["다음 개발 범위", "템플릿 선택과 템플릿별 콘텐츠 입력 기능은 다음 단계에서 연결합니다."],
     ],
   },
   {
-    title: "Promo Content Input",
-    copy: "Enter and review the promo content that must be preserved through coverage validation.",
+    title: "웹 출력",
+    copy: "선택한 스타일, 템플릿, 콘텐츠를 최종 웹 결과물로 출력하는 단계입니다.",
     cards: [
-      ["Required Copy", "Title, offer, supporting message, CTA, alpha text, and terms."],
-      ["Market Context", "Market, audience, promotion purpose, and tone guidance."],
-      ["Coverage Gate", "Required content must survive Integrated Brief compression."],
+      ["다음 개발 범위", "최종 미리보기와 웹 출력 기능은 템플릿·콘텐츠 등록 단계 이후 연결합니다."],
     ],
   },
-  {
-    title: "LO-FI 시안 생성 및 선택",
-    copy: "새 LO-FI 시안을 누적 생성하고, 생성된 시안 중 하나를 Final Design 기준으로 확정합니다.",
-    cards: [
-      ["생성 준비", "A섹션 Concept과 B섹션 Content를 통합 브리프로 준비합니다."],
-      ["LO-FI 시안 생성", "버튼을 누를 때마다 기존 시안을 유지한 채 새 시안을 추가합니다."],
-      ["시안 선택", "여러 LO-FI 시안 중 하나를 Confirm Draft로 확정합니다."],
-    ],
-  },
-  {
-    title: "Final Design Result",
-    copy: "Generate the final design from the confirmed LO-FI draft and inspect the resulting asset.",
-    cards: [
-      ["Final Worker", "Trigger final_design generation for the selected draft."],
-      ["Result Preview", "Display the final image and generation metadata."],
-      ["Resume", "Reload by runId without losing generation state."],
-    ],
-  },
+];
+
+const BACKGROUND_OPTIONS = [
+  { id: "warm-white", name: "웜 화이트", color: "#f7f3ed", textColor: "#1c2330" },
+  { id: "sand", name: "샌드", color: "#e7d8bd", textColor: "#1c2330" },
+  { id: "coral", name: "코랄", color: "#d94841", textColor: "#ffffff" },
+  { id: "royal-blue", name: "로열 블루", color: "#2155cd", textColor: "#ffffff" },
+  { id: "forest", name: "포레스트", color: "#174f3a", textColor: "#ffffff" },
+  { id: "midnight", name: "미드나이트", color: "#111827", textColor: "#ffffff" },
+];
+
+const CTA_SHAPES = [
+  { id: "square", name: "각진 버튼" },
+  { id: "round", name: "라운드 버튼" },
+];
+
+const CTA_VARIANTS = [
+  { id: "fill", name: "채움" },
+  { id: "ghost", name: "고스트" },
+];
+
+const CTA_COLORS = [
+  { id: "red", name: "레드", color: "#e23c34" },
+  { id: "blue", name: "블루", color: "#3478f6" },
+  { id: "green", name: "그린", color: "#18a66a" },
+  { id: "orange", name: "오렌지", color: "#f2762e" },
+  { id: "black", name: "블랙", color: "#141923" },
 ];
 
 const storageKeys = {
@@ -43,6 +58,7 @@ const storageKeys = {
   wizardContentLegacyBackup: "promoPrototype.createPromo.content.legacyBackup.v1",
   wizardRun: "promoPrototype.createPromo.run.v1",
   wizardSessionId: "promoPrototype.createPromo.sessionId.v1",
+  appearance: "promoPrototype.createPromo.appearance.v1",
 };
 
 const SECTION_INPUT_SCHEMA_VERSION = 2;
@@ -101,6 +117,7 @@ const FALLBACK_LAYOUT = {
 };
 
 const contentState = loadWizardContent();
+const appearanceState = loadAppearanceState();
 
 const stepButtons = Array.from(document.querySelectorAll(".step"));
 const title = document.getElementById("step-title");
@@ -111,6 +128,169 @@ const status = document.getElementById("step-status");
 const shellStatus = document.getElementById("wizard-shell-status");
 const prev = document.getElementById("prev-step");
 const next = document.getElementById("next-step");
+
+function loadAppearanceState() {
+  const fallback = {
+    backgroundId: BACKGROUND_OPTIONS[0].id,
+    ctaShape: CTA_SHAPES[1].id,
+    ctaVariant: CTA_VARIANTS[0].id,
+    ctaColorId: CTA_COLORS[0].id,
+  };
+  try {
+    const saved = JSON.parse(localStorage.getItem(storageKeys.appearance) || "null");
+    return {
+      backgroundId: BACKGROUND_OPTIONS.some((option) => option.id === saved?.backgroundId)
+        ? saved.backgroundId : fallback.backgroundId,
+      ctaShape: CTA_SHAPES.some((option) => option.id === saved?.ctaShape)
+        ? saved.ctaShape : fallback.ctaShape,
+      ctaVariant: CTA_VARIANTS.some((option) => option.id === saved?.ctaVariant)
+        ? saved.ctaVariant : fallback.ctaVariant,
+      ctaColorId: CTA_COLORS.some((option) => option.id === saved?.ctaColorId)
+        ? saved.ctaColorId : fallback.ctaColorId,
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+function saveAppearanceState() {
+  localStorage.setItem(storageKeys.appearance, JSON.stringify(appearanceState));
+}
+
+function selectedBackground() {
+  return BACKGROUND_OPTIONS.find((option) => option.id === appearanceState.backgroundId)
+    || BACKGROUND_OPTIONS[0];
+}
+
+function selectedCtaColor() {
+  return CTA_COLORS.find((option) => option.id === appearanceState.ctaColorId)
+    || CTA_COLORS[0];
+}
+
+function createAppearancePreview() {
+  const background = selectedBackground();
+  const ctaColor = selectedCtaColor();
+  const preview = document.createElement("section");
+  preview.className = "appearance-preview";
+  preview.style.setProperty("--preview-background", background.color);
+  preview.style.setProperty("--preview-text", background.textColor);
+  preview.style.setProperty("--preview-cta", ctaColor.color);
+
+  const label = appendTextElement(preview, "span", "appearance-preview__label", "LIVE PREVIEW");
+  label.setAttribute("aria-hidden", "true");
+  const content = document.createElement("div");
+  content.className = "appearance-preview__content";
+  appendTextElement(content, "p", "appearance-preview__eyebrow", "LIMITED PROMOTION");
+  appendTextElement(content, "h3", "", "Create your next promotion");
+  appendTextElement(content, "p", "appearance-preview__copy", "선택한 배경색과 CTA 스타일을 실시간으로 확인하세요.");
+
+  const cta = document.createElement("button");
+  cta.type = "button";
+  cta.className = `appearance-preview__cta is-${appearanceState.ctaShape} is-${appearanceState.ctaVariant}`;
+  cta.textContent = "Get Started";
+  cta.tabIndex = -1;
+  content.append(cta);
+  preview.append(content);
+  return preview;
+}
+
+function createChoiceButton({ group, value, label, selected, swatchColor, onSelect }) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = `appearance-choice${selected ? " is-selected" : ""}`;
+  button.setAttribute("role", "radio");
+  button.setAttribute("aria-checked", String(selected));
+  button.dataset.choiceGroup = group;
+  button.dataset.choiceValue = value;
+  if (swatchColor) {
+    const swatch = document.createElement("span");
+    swatch.className = "appearance-choice__swatch";
+    swatch.style.backgroundColor = swatchColor;
+    swatch.setAttribute("aria-hidden", "true");
+    button.append(swatch);
+  }
+  appendTextElement(button, "strong", "", label);
+  const check = appendTextElement(button, "span", "appearance-choice__check", selected ? "✓" : "");
+  check.setAttribute("aria-hidden", "true");
+  button.addEventListener("click", () => {
+    onSelect();
+    saveAppearanceState();
+    renderStep();
+    requestAnimationFrame(() => {
+      document.querySelector(`[data-choice-group="${group}"][data-choice-value="${value}"]`)?.focus();
+    });
+  });
+  return button;
+}
+
+function createChoiceGroup(titleText, description, buttons) {
+  const fieldset = document.createElement("fieldset");
+  fieldset.className = "appearance-fieldset";
+  const legend = document.createElement("legend");
+  legend.textContent = titleText;
+  fieldset.append(legend);
+  if (description) appendTextElement(fieldset, "p", "appearance-fieldset__description", description);
+  const choices = document.createElement("div");
+  choices.className = "appearance-choices";
+  choices.setAttribute("role", "radiogroup");
+  buttons.forEach((button) => choices.append(button));
+  fieldset.append(choices);
+  return fieldset;
+}
+
+function renderBackgroundStep() {
+  placeholders.className = "appearance-layout";
+  placeholders.innerHTML = "";
+  placeholders.append(createAppearancePreview());
+  const controls = document.createElement("section");
+  controls.className = "appearance-controls";
+  controls.append(createChoiceGroup(
+    "배경색",
+    "어두운 배경을 선택하면 읽기 쉽도록 미리보기 텍스트가 자동으로 밝게 바뀝니다.",
+    BACKGROUND_OPTIONS.map((option) => createChoiceButton({
+      group: "background",
+      value: option.id,
+      label: option.name,
+      selected: appearanceState.backgroundId === option.id,
+      swatchColor: option.color,
+      onSelect: () => { appearanceState.backgroundId = option.id; },
+    }))
+  ));
+  placeholders.append(controls);
+}
+
+function renderCtaStep() {
+  placeholders.className = "appearance-layout";
+  placeholders.innerHTML = "";
+  placeholders.append(createAppearancePreview());
+  const controls = document.createElement("section");
+  controls.className = "appearance-controls appearance-controls--cta";
+  controls.append(
+    createChoiceGroup("버튼 모양", "", CTA_SHAPES.map((option) => createChoiceButton({
+      group: "cta-shape",
+      value: option.id,
+      label: option.name,
+      selected: appearanceState.ctaShape === option.id,
+      onSelect: () => { appearanceState.ctaShape = option.id; },
+    }))),
+    createChoiceGroup("표현 방식", "", CTA_VARIANTS.map((option) => createChoiceButton({
+      group: "cta-variant",
+      value: option.id,
+      label: option.name,
+      selected: appearanceState.ctaVariant === option.id,
+      onSelect: () => { appearanceState.ctaVariant = option.id; },
+    }))),
+    createChoiceGroup("버튼 색상", "", CTA_COLORS.map((option) => createChoiceButton({
+      group: "cta-color",
+      value: option.id,
+      label: option.name,
+      selected: appearanceState.ctaColorId === option.id,
+      swatchColor: option.color,
+      onSelect: () => { appearanceState.ctaColorId = option.id; },
+    })))
+  );
+  placeholders.append(controls);
+}
 
 function workerSetting(stage) {
   return workerSettings.find((setting) => setting.stage === stage) || null;
@@ -592,7 +772,7 @@ function selectDocument(id) {
   localStorage.setItem(storageKeys.selectedDocumentId, id);
   saveWizardRun(null);
   runError = "";
-  currentStep = 1;
+  currentStep = 2;
   renderStep();
 }
 
@@ -2343,8 +2523,7 @@ function renderStep() {
   status.textContent = `Step ${currentStep + 1} / ${steps.length}`;
   if (shellStatus) shellStatus.textContent = `Step ${currentStep + 1} / ${steps.length}`;
   prev.disabled = currentStep === 0;
-  next.disabled = currentStep === steps.length - 1
-    || (currentStep === 1 && !wizardSectionConfigurationReady());
+  next.disabled = currentStep === steps.length - 1;
 
   stepButtons.forEach((button, index) => {
     button.classList.toggle("is-active", index === currentStep);
@@ -2352,22 +2531,12 @@ function renderStep() {
   });
 
   if (currentStep === 0) {
-    renderConceptStep();
+    renderBackgroundStep();
     return;
   }
 
   if (currentStep === 1) {
-    renderContentStep();
-    return;
-  }
-
-  if (currentStep === 2) {
-    renderLofiStep();
-    return;
-  }
-
-  if (currentStep === 3) {
-    renderFinalStep();
+    renderCtaStep();
     return;
   }
 
@@ -2389,23 +2558,9 @@ function renderStep() {
 }
 
 stepButtons.forEach((button, index) => {
-  button.addEventListener("click", async () => {
-    if (index >= 2 && !validateContentStep()) {
-      currentStep = 1;
-      renderStep();
-      return;
-    }
-    if (index >= 3 && !runState?.confirmedDraft) {
-      currentStep = 2;
-      runError = "Final Design으로 이동하기 전에 LO-FI 시안 하나를 Confirm Draft로 선택해 주세요.";
-      renderStep();
-      return;
-    }
+  button.addEventListener("click", () => {
     currentStep = index;
     renderStep();
-    if (currentStep === 2 && !runId()) {
-      await prepareLofiRun();
-    }
   });
 });
 
@@ -2414,21 +2569,9 @@ prev.addEventListener("click", () => {
   renderStep();
 });
 
-next.addEventListener("click", async () => {
-  if (currentStep === 1 && !validateContentStep()) {
-    renderStep();
-    return;
-  }
-  if (currentStep === 2 && !runState?.confirmedDraft) {
-    runError = "Final Design으로 이동하기 전에 LO-FI 시안 하나를 Confirm Draft로 선택해 주세요.";
-    renderStep();
-    return;
-  }
+next.addEventListener("click", () => {
   currentStep = Math.min(steps.length - 1, currentStep + 1);
   renderStep();
-  if (currentStep === 2 && !runId()) {
-    await prepareLofiRun();
-  }
 });
 
 renderStep();
