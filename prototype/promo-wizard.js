@@ -108,6 +108,7 @@ const copy = document.getElementById("step-copy");
 const eyebrow = document.getElementById("step-eyebrow");
 const placeholders = document.getElementById("step-placeholders");
 const status = document.getElementById("step-status");
+const shellStatus = document.getElementById("wizard-shell-status");
 const prev = document.getElementById("prev-step");
 const next = document.getElementById("next-step");
 
@@ -2340,6 +2341,7 @@ function renderStep() {
   copy.textContent = step.copy;
   eyebrow.textContent = `Step ${currentStep + 1}`;
   status.textContent = `Step ${currentStep + 1} / ${steps.length}`;
+  if (shellStatus) shellStatus.textContent = `Step ${currentStep + 1} / ${steps.length}`;
   prev.disabled = currentStep === 0;
   next.disabled = currentStep === steps.length - 1
     || (currentStep === 1 && !wizardSectionConfigurationReady());

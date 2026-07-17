@@ -4,19 +4,33 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Promo Wizard</title>
-    <link rel="stylesheet" href="promo-wizard.css?v=20260716-template-ux" />
+    <link rel="stylesheet" href="shared-shell-header.css?v=shared-shell-header-v16" />
+    <link rel="stylesheet" href="promo-wizard.css?v=shared-shell-header-v16" />
+    <script src="shared-shell.js?v=shared-shell-header-v16"></script>
   </head>
   <body>
     <main class="wizard-shell">
-      <header class="wizard-header">
-        <div>
-          <p class="eyebrow">Standalone generation flow</p>
-          <h1>Promo Wizard</h1>
+      <header class="shell-header">
+        <div class="shell-header__identity">
+          <div class="shell-header__brand-row">
+            <h1 class="shell-header__brand">PROMO WEB BUILDER</h1>
+            <span class="shell-header__page-label">Promo Wizard</span>
+          </div>
         </div>
-        <nav class="wizard-actions" aria-label="Wizard navigation">
-          <a href="index.html">Promo Builder</a>
-          <a href="generated.html">Generated UI</a>
-        </nav>
+        <div class="shell-header__actions">
+          <nav class="shell-nav" aria-label="프로토타입 내비게이션">
+            <a href="/prototype/index.html">프로모션 빌더</a>
+            <a href="/prototype/index.html?view=admin&amp;tab=promo-form">관리자 페이지</a>
+            <a class="active" href="/promo-wizard.html" aria-current="page">Promo Wizard</a>
+            <a href="/prototype/visual-editor.html">Visual Editor</a>
+            <a href="/prototype/generated.html">생성된 UI</a>
+          </nav>
+          <button class="shell-theme-toggle" type="button" data-shell-theme-toggle>
+            <span class="shell-theme-dot" aria-hidden="true"></span>
+            <strong data-shell-theme-label>Light</strong>
+          </button>
+          <div class="shell-status" id="wizard-shell-status" role="status">Step 1 / 4</div>
+        </div>
       </header>
 
       <section class="wizard-progress" aria-label="Wizard steps">
@@ -56,6 +70,6 @@
       </footer>
     </main>
 
-    <script src="promo-wizard.js?v=20260716-template-ux"></script>
+    <script src="promo-wizard.js?v=shared-shell-header-v16"></script>
   </body>
 </html>

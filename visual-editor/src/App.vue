@@ -377,6 +377,7 @@ function loadOutput() {
 }
 
 onMounted(() => {
+  window.PromoShell?.init(document);
   if (props.mode === "output") loadOutput();
   else if (isAdminLayoutMode.value) loadAdminLayout();
   else if (isWizardLayoutMode.value) {
@@ -408,10 +409,33 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
   </div>
 
   <main v-else class="editor-shell">
-    <header class="editor-header">
+    <header v-if="!isWizardLayoutMode" class="shell-header editor-shell-header">
+      <div class="shell-header__identity">
+        <div class="shell-header__brand-row">
+          <h1 class="shell-header__brand">PROMO WEB BUILDER</h1>
+          <span class="shell-header__page-label">{{ isAdminLayoutMode ? "Admin Template Layout" : "Visual Editor" }}</span>
+        </div>
+      </div>
+      <div class="shell-header__actions">
+        <nav class="shell-nav" aria-label="프로토타입 내비게이션">
+          <a href="/prototype/index.html">프로모션 빌더</a>
+          <a href="/prototype/index.html?view=admin&amp;tab=promo-form">관리자 페이지</a>
+          <a href="/promo-wizard.html">Promo Wizard</a>
+          <a class="active" href="/prototype/visual-editor.html" aria-current="page">Visual Editor</a>
+          <a href="/prototype/generated.html">생성된 UI</a>
+        </nav>
+        <button class="shell-theme-toggle" type="button" data-shell-theme-toggle>
+          <span class="shell-theme-dot" aria-hidden="true"></span>
+          <strong data-shell-theme-label>Light</strong>
+        </button>
+        <div class="shell-status" role="status">{{ isAdminLayoutMode ? `Layout revision ${layoutRevision}` : "편집 준비" }}</div>
+      </div>
+    </header>
+
+    <header class="editor-header editor-toolbar">
       <div>
         <span>{{ isAdminLayoutMode ? "ADMIN TEMPLATE LAYOUT" : isWizardLayoutMode ? "WIZARD LAYOUT" : "VISUAL EDITOR" }}</span>
-        <h1>{{ template?.name || "Default Renderer" }}</h1>
+        <h2>{{ template?.name || "Default Renderer" }}</h2>
       </div>
       <div class="editor-global-actions">
         <fieldset class="global-token-menu">
@@ -447,8 +471,6 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
             </button>
           </template>
           <template v-else-if="!isWizardLayoutMode">
-            <a href="/prototype/index.html">Promo Builder</a>
-            <a href="/promo-wizard.html">Promo Wizard</a>
             <button type="button" :disabled="!editorSnapshot" @click="openOutput">Web Output 열기</button>
           </template>
         </nav>

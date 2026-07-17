@@ -30,10 +30,19 @@ const requiredPromptPhrases = [
   "diagram legends",
 ];
 
-const requiredWorkflowPhrases = [
-  "Template section names are internal structure labels only",
-  "Avoid: visible template section labels",
-  "Preserve the content and layout role",
+const requiredWorkflowGuards = [
+  {
+    label: "template section names remain internal labels",
+    pattern: /Template section names are internal (?:structure|planning) labels only/,
+  },
+  {
+    label: "visible template section labels are forbidden",
+    pattern: /(?:Avoid:[^"\n]*visible template section labels|Never render section names as visible UI text)/,
+  },
+  {
+    label: "section content and layout roles are preserved",
+    pattern: /(?:Preserve the content and layout role|Do not add, remove, reinterpret, or prioritize content outside the integrated brief)/,
+  },
 ];
 
 const generatedBriefRequiredPhrases = [
@@ -85,6 +94,19 @@ function checkRequiredPhrases(files, phrases) {
     }
   }
   assert(!failures.length, `Required guard phrases missing:\n${failures.join("\n")}`);
+}
+
+function checkRequiredPatterns(files, guards) {
+  const failures = [];
+  for (const file of files) {
+    const source = read(file);
+    for (const guard of guards) {
+      if (!guard.pattern.test(source)) {
+        failures.push(`${file}: missing guard for "${guard.label}"`);
+      }
+    }
+  }
+  assert(!failures.length, `Required workflow guards missing:\n${failures.join("\n")}`);
 }
 
 function checkWorkflows() {
@@ -161,7 +183,7 @@ function main() {
   const allFiles = [...promptFiles, ...workflowFiles];
   checkOldPhrasesAbsent(allFiles);
   checkRequiredPhrases(promptFiles, requiredPromptPhrases);
-  checkRequiredPhrases(workflowFiles, requiredWorkflowPhrases);
+  checkRequiredPatterns(workflowFiles, requiredWorkflowGuards);
   checkWorkflows();
   for (const file of generatedBriefFiles) {
     checkGeneratedBrief(file);

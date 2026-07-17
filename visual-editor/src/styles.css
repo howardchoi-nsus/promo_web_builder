@@ -12,14 +12,16 @@ button, input, textarea, select { font: inherit; }
 button, a { letter-spacing: 0; }
 
 .editor-shell { min-height: 100vh; padding: 14px; }
+.editor-shell-header { margin-bottom: 12px; }
 .editor-header {
   display: flex; align-items: center; justify-content: space-between; gap: 20px;
   min-height: 68px; padding: 12px 16px; border: 1px solid #d4dae4; background: #fff;
 }
+.editor-toolbar { box-shadow: none; }
 .editor-header span, .output-toolbar span, .panel-heading span, .item-list > span {
   color: #687287; font-size: 11px; font-weight: 800; letter-spacing: 0;
 }
-.editor-header h1 { margin: 3px 0 0; font-size: 20px; letter-spacing: 0; }
+.editor-header h1, .editor-header h2 { margin: 3px 0 0; font-size: 20px; letter-spacing: 0; }
 .editor-global-actions { display: flex; align-items: center; justify-content: flex-end; gap: 14px; min-width: 0; }
 .editor-header nav { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 .editor-header a, .editor-header button, .output-toolbar a, .viewport-control button {
@@ -33,7 +35,7 @@ button, a { letter-spacing: 0; }
 .editor-workspace {
   display: grid; grid-template-columns: minmax(190px, 230px) minmax(240px, 300px) minmax(480px, 1fr);
   grid-template-areas: "sections content preview";
-  min-height: calc(100vh - 98px); margin-top: 12px;
+  min-height: calc(100vh - 182px); margin-top: 12px;
 }
 .section-rail, .property-panel { min-width: 0; background: #f8f9fb; }
 .section-rail { grid-area: sections; border-right: 1px solid #d9dee7; }

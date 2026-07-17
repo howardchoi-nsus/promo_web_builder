@@ -4,15 +4,16 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>프로모션 UI 디자인 빌더</title>
-    <link rel="stylesheet" href="styles.css?v=template-layout-settings-v15" />
+    <link rel="stylesheet" href="styles.css?v=shared-shell-header-v16" />
+    <link rel="stylesheet" href="shared-shell-header.css?v=shared-shell-header-v16" />
   </head>
   <body>
     <div id="app" class="app-shell">
       <main class="workspace">
-        <header class="topbar">
-          <div>
-            <div class="title-row-with-tools">
-              <h1>PROMO WEB BUILDER</h1>
+        <header class="topbar shell-header">
+          <div class="shell-header__identity">
+            <div class="title-row-with-tools shell-header__brand-row">
+              <h1 class="shell-header__brand">PROMO WEB BUILDER</h1>
               <div class="handoff-picker">
                 <select v-model="selectedHandoffFile" :disabled="!handoffDocuments.length || handoffLoading" aria-label="handoff 문서 선택">
                   <option value="" disabled>handoff 문서</option>
@@ -22,19 +23,19 @@
               </div>
             </div>
           </div>
-          <div class="topbar-actions">
-            <nav class="top-nav" aria-label="프로토타입 내비게이션">
-              <button class="nav-button" type="button" :class="{ active: currentView === 'builder' }" @click="showBuilderPage">프로모션 빌더</button>
-              <button class="nav-button" type="button" :class="{ active: currentView === 'prompts' }" @click="openPromptManager">관리자 페이지</button>
+          <div class="topbar-actions shell-header__actions">
+            <nav class="top-nav shell-nav" aria-label="프로토타입 내비게이션">
+              <button class="nav-button" type="button" :class="{ active: currentView === 'builder' }" :aria-current="currentView === 'builder' ? 'page' : null" @click="showBuilderPage">프로모션 빌더</button>
+              <button class="nav-button" type="button" :class="{ active: currentView === 'prompts' }" :aria-current="currentView === 'prompts' ? 'page' : null" @click="openPromptManager">관리자 페이지</button>
               <a class="nav-button" href="/promo-wizard.html">Promo Wizard</a>
               <a class="nav-button" href="/prototype/visual-editor.html">Visual Editor</a>
               <a href="generated.html">생성된 UI</a>
             </nav>
-            <button class="theme-toggle" type="button" @click="toggleThemeMode" :aria-label="themeMode === 'dark' ? '라이트모드로 변경' : '다크모드로 변경'">
-              <span class="theme-dot"></span>
+            <button class="theme-toggle shell-theme-toggle" type="button" @click="toggleThemeMode" :aria-label="themeMode === 'dark' ? '라이트모드로 변경' : '다크모드로 변경'">
+              <span class="theme-dot shell-theme-dot"></span>
               <strong>{{ themeMode === 'dark' ? 'Dark' : 'Light' }}</strong>
             </button>
-            <div class="status-pill">{{ status }}</div>
+            <div class="status-pill shell-status">{{ status }}</div>
           </div>
         </header>
 
@@ -1759,6 +1760,6 @@
     </div>
 
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-    <script src="app.js?v=template-layout-settings-v15"></script>
+    <script src="app.js?v=shared-shell-header-v16"></script>
   </body>
 </html>

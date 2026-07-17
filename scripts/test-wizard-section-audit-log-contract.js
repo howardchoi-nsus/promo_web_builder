@@ -18,7 +18,8 @@ assert.match(api, /listWizardSectionAudits/);
 assert.match(store, /order by created_at desc/);
 assert.match(app, /loadWizardSectionAuditLogs/);
 assert.match(html, /Section CRUD 로그/);
-assert.match(html, /section-audit-log-v14/);
+assert.match(html, /shared-shell-header\.css/);
+assert.match(html, /app\.js/);
 assert.doesNotMatch(html, /<summary>공통 Section 원본 관리<\/summary>/);
 
 console.log("Wizard section audit log contract test passed");
