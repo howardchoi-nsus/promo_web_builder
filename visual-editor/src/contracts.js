@@ -21,6 +21,9 @@ export const DEFAULT_DESIGN_SPEC = Object.freeze({
     backgroundImageName: "",
     textColor: "#172033",
     accentColor: "#156b5b",
+    ctaColor: "#156b5b",
+    ctaShape: "round",
+    ctaVariant: "fill",
     fontFamily: "Inter, Pretendard, sans-serif",
   },
   responsive: {

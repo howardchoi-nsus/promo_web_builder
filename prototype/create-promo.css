@@ -1301,6 +1301,14 @@ a {
   display: block;
 }
 
+.create-promo-appearance-note {
+  display: block;
+  margin-top: 5px;
+  color: var(--sub);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
 .wizard-layout-frame {
   display: block;
   width: 100%;

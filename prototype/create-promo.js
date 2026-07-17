@@ -167,6 +167,25 @@ function selectedCtaColor() {
     || CTA_COLORS[0];
 }
 
+function applyCreatePromoAppearance(layout = FALLBACK_LAYOUT) {
+  const background = selectedBackground();
+  const ctaColor = selectedCtaColor();
+  const source = JSON.parse(JSON.stringify(layout || FALLBACK_LAYOUT));
+  return {
+    ...source,
+    theme: {
+      ...(source.theme || {}),
+      backgroundColor: background.color,
+      backgroundImage: "",
+      backgroundImageName: "",
+      textColor: background.textColor,
+      ctaColor: ctaColor.color,
+      ctaShape: appearanceState.ctaShape,
+      ctaVariant: appearanceState.ctaVariant,
+    },
+  };
+}
+
 function createAppearancePreview() {
   const background = selectedBackground();
   const ctaColor = selectedCtaColor();
@@ -590,7 +609,7 @@ function wizardLayoutSnapshot() {
       sectionInputs: JSON.parse(JSON.stringify(contentState.sectionInputs)),
       sectionOrder: wizardSectionDefinitions.map((section) => section.sectionKey),
     },
-    designSpec: JSON.parse(JSON.stringify(wizardResolvedLayout)),
+    designSpec: applyCreatePromoAppearance(wizardResolvedLayout),
     assets: { contractVersion: 1, items: {} },
   };
 }
@@ -639,7 +658,21 @@ window.addEventListener("message", (event) => {
     return;
   }
   if (event.data?.type !== "promo-wizard-layout-change" || !event.data.designSpec) return;
-  wizardResolvedLayout = JSON.parse(JSON.stringify(event.data.designSpec));
+  const previousTheme = wizardResolvedLayout?.theme || FALLBACK_LAYOUT.theme;
+  const incomingLayout = JSON.parse(JSON.stringify(event.data.designSpec));
+  wizardResolvedLayout = {
+    ...incomingLayout,
+    theme: {
+      ...(incomingLayout.theme || {}),
+      backgroundColor: previousTheme.backgroundColor,
+      backgroundImage: previousTheme.backgroundImage || "",
+      backgroundImageName: previousTheme.backgroundImageName || "",
+      textColor: previousTheme.textColor,
+    },
+  };
+  delete wizardResolvedLayout.theme.ctaColor;
+  delete wizardResolvedLayout.theme.ctaShape;
+  delete wizardResolvedLayout.theme.ctaVariant;
   if (event.data.sectionInputs && typeof event.data.sectionInputs === "object") {
     contentState.sectionInputs = event.data.sectionInputs;
   }
@@ -651,6 +684,7 @@ window.addEventListener("message", (event) => {
       sectionStyleCount: Object.keys(wizardResolvedLayout?.sectionStyles || {}).length,
     });
   }, 500);
+  postWizardLayoutSnapshot();
 });
 
 function templateSectionCanReorder(section) {
@@ -1091,8 +1125,8 @@ function createImageSectionField(sectionKey, item) {
   return wrapper;
 }
 
-// Every visible, required item across the fixed "1/3" fields and the
-// admin-managed dynamic sections must be filled before Step 2 can advance.
+// Every visible, required item across the fixed fields and the admin-managed
+// dynamic sections must be filled before Create Promo Step 3 can advance.
 function contentErrors() {
   const errors = {};
   if (!wizardSectionConfigurationReady()) errors.sectionConfiguration = true;
@@ -1136,7 +1170,7 @@ function contentErrors() {
 }
 
 // Coverage checklist rows for the admin-managed sections (used by both the
-// Step 2 sidebar and Step 3's "content applied" snapshot).
+// Step 3 sidebar and the future Web Output snapshot).
 function dynamicCoverageRows() {
   const rows = [];
   wizardSectionDefinitions.forEach((section) => {
@@ -1277,7 +1311,7 @@ function renderContentStep() {
 
   const toolbar = document.createElement("div");
   toolbar.className = "content-form-actions";
-  const note = appendTextElement(toolbar, "span", "", "프로모션 개요와 선택 템플릿의 콘텐츠가 LO-FI 생성 요청에 저장됩니다.");
+  const note = appendTextElement(toolbar, "span", "", "선택한 템플릿과 콘텐츠는 Create Promo 웹 출력에 저장됩니다. 배경과 CTA 스타일은 1·2단계 선택값이 적용됩니다.");
   note.className = "content-save-note";
   const buttons = document.createElement("div");
   const autofill = document.createElement("button");
@@ -1491,6 +1525,7 @@ function renderContentStep() {
   const layoutHeading = document.createElement("div");
   appendTextElement(layoutHeading, "span", "eyebrow", "Template Layout");
   appendTextElement(layoutHeading, "strong", "", `${selectedWizardFormTemplate?.name || "Template"} · layout r${wizardLayoutRevision}`);
+  appendTextElement(layoutHeading, "small", "create-promo-appearance-note", "배경색과 CTA 스타일은 Step 1·2 설정으로 고정됩니다.");
   const layoutReset = document.createElement("button");
   layoutReset.className = "secondary-action";
   layoutReset.type = "button";
@@ -1502,7 +1537,7 @@ function renderContentStep() {
   layoutHeader.append(layoutHeading, layoutReset);
   const layoutFrame = document.createElement("iframe");
   layoutFrame.className = "wizard-layout-frame";
-  layoutFrame.title = "Wizard 템플릿 레이아웃 편집기";
+  layoutFrame.title = "Create Promo 템플릿 콘텐츠 및 레이아웃 편집기";
   layoutFrame.src = "/prototype/visual-editor.html?mode=wizard-layout";
   layoutFrame.addEventListener("load", postWizardLayoutSnapshot);
   wizardLayoutFrame = layoutFrame;
@@ -2523,7 +2558,8 @@ function renderStep() {
   status.textContent = `Step ${currentStep + 1} / ${steps.length}`;
   if (shellStatus) shellStatus.textContent = `Step ${currentStep + 1} / ${steps.length}`;
   prev.disabled = currentStep === 0;
-  next.disabled = currentStep === steps.length - 1;
+  next.disabled = currentStep === steps.length - 1
+    || (currentStep === 2 && !wizardSectionConfigurationReady());
 
   stepButtons.forEach((button, index) => {
     button.classList.toggle("is-active", index === currentStep);
@@ -2537,6 +2573,11 @@ function renderStep() {
 
   if (currentStep === 1) {
     renderCtaStep();
+    return;
+  }
+
+  if (currentStep === 2) {
+    renderContentStep();
     return;
   }
 
@@ -2559,6 +2600,11 @@ function renderStep() {
 
 stepButtons.forEach((button, index) => {
   button.addEventListener("click", () => {
+    if (index === 3 && !validateContentStep()) {
+      currentStep = 2;
+      renderStep();
+      return;
+    }
     currentStep = index;
     renderStep();
   });
@@ -2570,6 +2616,10 @@ prev.addEventListener("click", () => {
 });
 
 next.addEventListener("click", () => {
+  if (currentStep === 2 && !validateContentStep()) {
+    renderStep();
+    return;
+  }
   currentStep = Math.min(steps.length - 1, currentStep + 1);
   renderStep();
 });

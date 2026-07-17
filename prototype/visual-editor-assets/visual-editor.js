@@ -2840,6 +2840,9 @@ var po = "default-promo-renderer", mo = "promoVisualEditor.snapshot.v1", ho = Ob
 		backgroundImageName: "",
 		textColor: "#172033",
 		accentColor: "#156b5b",
+		ctaColor: "#156b5b",
+		ctaShape: "round",
+		ctaVariant: "fill",
 		fontFamily: "Inter, Pretendard, sans-serif"
 	},
 	responsive: {
@@ -3134,6 +3137,10 @@ var Eo = {
 				"--promo-bg-image": e.designSpec.theme.backgroundImage ? `url(${JSON.stringify(e.designSpec.theme.backgroundImage)})` : "none",
 				"--promo-ink": e.designSpec.theme.textColor,
 				"--promo-accent": e.designSpec.theme.accentColor,
+				"--promo-cta": e.designSpec.theme.ctaColor || e.designSpec.theme.accentColor,
+				"--promo-cta-bg": e.designSpec.theme.ctaVariant === "ghost" ? "transparent" : e.designSpec.theme.ctaColor || e.designSpec.theme.accentColor,
+				"--promo-cta-ink": e.designSpec.theme.ctaVariant === "ghost" ? e.designSpec.theme.ctaColor || e.designSpec.theme.accentColor : "#ffffff",
+				"--promo-cta-radius": e.designSpec.theme.ctaShape === "round" ? "999px" : "2px",
 				"--promo-font": e.designSpec.theme.fontFamily,
 				"--promo-width": `${e.designSpec.responsive.contentMaxWidth}px`,
 				"--promo-min-width": `${e.designSpec.responsive.contentMinWidth || 0}px`

@@ -27,9 +27,9 @@ const sections = [
     userReorderAllowed: false,
     fixedPosition: "top",
     items: [
-      { id: "hero-title", itemKey: "title", name: "프로모션 타이틀", fieldKind: "text", textType: "title", isRequired: true, isLocked: false, defaultValue: "Limited-time welcome bonus" },
-      { id: "hero-copy", itemKey: "description", name: "프로모션 설명", fieldKind: "text", textType: "multi", isRequired: true, isLocked: false, defaultValue: "Join today and discover a clear, responsive promotion experience." },
-      { id: "hero-cta", itemKey: "button", name: "참여 버튼", fieldKind: "cta", isRequired: true, isLocked: false, defaultValue: "Join Now" },
+      { id: "hero-title", itemKey: "title", name: "프로모션 타이틀", fieldKind: "text", textType: "title", isRequired: true, isLocked: false, isVisibleInWizard: true, defaultValue: "Limited-time welcome bonus" },
+      { id: "hero-copy", itemKey: "description", name: "프로모션 설명", fieldKind: "text", textType: "multi", isRequired: true, isLocked: false, isVisibleInWizard: true, defaultValue: "Join today and discover a clear, responsive promotion experience." },
+      { id: "hero-cta", itemKey: "button", name: "참여 버튼", fieldKind: "cta", isRequired: true, isLocked: false, isVisibleInWizard: true, defaultValue: "Join Now" },
     ],
   },
   {
@@ -42,8 +42,8 @@ const sections = [
     userReorderAllowed: true,
     fixedPosition: null,
     items: [
-      { id: "content-image", itemKey: "image", name: "프로모션 이미지", fieldKind: "image", isRequired: false, isLocked: false, image: { allowedSources: ["url", "file", "ai"], descriptionEnabled: true, altTextRequired: false } },
-      { id: "content-copy", itemKey: "copy", name: "상세 설명", fieldKind: "text", textType: "multi", isRequired: false, isLocked: false, defaultValue: "Every content field remains editable and is rendered as real DOM." },
+      { id: "content-image", itemKey: "image", name: "프로모션 이미지", fieldKind: "image", isRequired: false, isLocked: false, isVisibleInWizard: true, image: { allowedSources: ["url", "file", "ai"], descriptionEnabled: true, altTextRequired: false } },
+      { id: "content-copy", itemKey: "copy", name: "상세 설명", fieldKind: "text", textType: "multi", isRequired: false, isLocked: false, isVisibleInWizard: true, defaultValue: "Every content field remains editable and is rendered as real DOM." },
     ],
   },
 ];
