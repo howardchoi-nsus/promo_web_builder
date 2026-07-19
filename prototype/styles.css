@@ -2709,8 +2709,16 @@ body.is-resizing {
 
 .form-template-admin-grid {
   display: grid;
-  grid-template-columns: minmax(200px, 23%) minmax(360px, 1fr) minmax(240px, 30%);
+  grid-template-columns: minmax(200px, 23%) minmax(0, 1fr);
   gap: 12px;
+  min-height: 0;
+}
+
+.form-template-editor-panels {
+  display: grid;
+  grid-template-columns: minmax(360px, 1fr) minmax(240px, 30%);
+  gap: 12px;
+  min-width: 0;
   min-height: 0;
 }
 
@@ -3493,6 +3501,10 @@ body.is-resizing {
   }
 
   .form-template-admin-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-template-editor-panels {
     grid-template-columns: 1fr;
   }
 

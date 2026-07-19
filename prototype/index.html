@@ -934,6 +934,7 @@
                   <button class="tiny-button primary template-list-add" type="button" @click="toggleNewWizardFormTemplateForm">{{ showNewWizardFormTemplateForm ? '취소' : '+ 템플릿 추가' }}</button>
                 </aside>
 
+                <div class="form-template-editor-panels">
                 <section class="prompt-editor-panel" v-if="wizardFormTemplateDetail">
                   <div class="prompt-editor-header">
                     <div>
@@ -1197,6 +1198,7 @@
                   </div>
                   <div class="empty-state compact" v-if="!selectedWizardFormTemplateSection">Section을 선택해 주세요.</div>
                 </aside>
+                </div>
               </div>
             </section>
 

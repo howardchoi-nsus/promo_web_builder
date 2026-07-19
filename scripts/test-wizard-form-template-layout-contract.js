@@ -14,6 +14,7 @@ const activationApi = read("api/wizard-form-template-activate.js");
 const sectionsApi = read("api/wizard-form-template-sections.js");
 const wizard = read("prototype/promo-wizard.js");
 const admin = read("prototype/index.html");
+const adminStyles = read("prototype/styles.css");
 const editor = read("visual-editor/src/App.vue");
 
 assert.match(migration, /create table if not exists wizard_form_template_layouts/);
@@ -30,6 +31,8 @@ assert.match(activationApi, /Form template layout validation failed/);
 assert.match(store, /remapLayoutSectionKey/);
 assert.match(sectionsApi, /remapLayoutSectionKey/);
 assert.match(admin, /기본 레이아웃 설정/);
+assert.match(admin, /<div class="form-template-editor-panels">[\s\S]*?<section class="prompt-editor-panel"[\s\S]*?<aside class="template-section-items-panel"/);
+assert.match(adminStyles, /\.form-template-editor-panels\s*\{[\s\S]*?display:\s*grid;[\s\S]*?grid-template-columns:\s*minmax\(360px, 1fr\) minmax\(240px, 30%\);/);
 assert.match(editor, /admin-layout/);
 assert.match(editor, /wizard-layout/);
 assert.match(wizard, /promo-wizard-layout-change/);
