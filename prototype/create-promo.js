@@ -44,6 +44,13 @@ const CTA_VARIANTS = [
   { id: "ghost", name: "고스트" },
 ];
 
+const CTA_STYLE_OPTIONS = [
+  { id: "square-ghost", name: "각진 버튼 · 고스트", shape: "square", variant: "ghost" },
+  { id: "square-fill", name: "각진 버튼 · 채움", shape: "square", variant: "fill" },
+  { id: "round-ghost", name: "둥근 버튼 · 고스트", shape: "round", variant: "ghost" },
+  { id: "round-fill", name: "둥근 버튼 · 채움", shape: "round", variant: "fill" },
+];
+
 const CTA_COLORS = [
   { id: "red", name: "레드", color: "#e23c34" },
   { id: "blue", name: "블루", color: "#3478f6" },
@@ -219,11 +226,10 @@ function createChoiceButton({
   label,
   selected,
   swatchColor,
-  ctaShapePreview = false,
-  ctaVariantPreview = false,
+  ctaStylePreview = null,
   onSelect,
 }) {
-  const hasCtaPreview = ctaShapePreview || ctaVariantPreview;
+  const hasCtaPreview = Boolean(ctaStylePreview);
   const button = document.createElement("button");
   button.type = "button";
   button.className = `appearance-choice${hasCtaPreview ? " appearance-choice--cta-preview" : ""}${selected ? " is-selected" : ""}`;
@@ -240,8 +246,8 @@ function createChoiceButton({
     button.append(swatch);
   }
   if (hasCtaPreview) {
-    const previewShape = ctaShapePreview ? value : appearanceState.ctaShape;
-    const previewVariant = ctaVariantPreview ? value : appearanceState.ctaVariant;
+    const previewShape = ctaStylePreview.shape;
+    const previewVariant = ctaStylePreview.variant;
     const sample = appendTextElement(button, "span", `appearance-choice__cta-sample is-${previewShape} is-${previewVariant}`, "CTA");
     sample.style.setProperty("--choice-cta-color", selectedCtaColor().color);
     sample.setAttribute("aria-hidden", "true");
@@ -304,21 +310,16 @@ function renderCtaStep() {
   const controls = document.createElement("section");
   controls.className = "appearance-controls appearance-controls--cta";
   controls.append(
-    createChoiceGroup("버튼 모양", "", CTA_SHAPES.map((option) => createChoiceButton({
-      group: "cta-shape",
+    createChoiceGroup("버튼 스타일", "버튼 모양과 채움 방식을 하나의 조합으로 선택하세요.", CTA_STYLE_OPTIONS.map((option) => createChoiceButton({
+      group: "cta-style",
       value: option.id,
       label: option.name,
-      selected: appearanceState.ctaShape === option.id,
-      ctaShapePreview: true,
-      onSelect: () => { appearanceState.ctaShape = option.id; },
-    }))),
-    createChoiceGroup("표현 방식", "", CTA_VARIANTS.map((option) => createChoiceButton({
-      group: "cta-variant",
-      value: option.id,
-      label: option.name,
-      selected: appearanceState.ctaVariant === option.id,
-      ctaVariantPreview: true,
-      onSelect: () => { appearanceState.ctaVariant = option.id; },
+      selected: appearanceState.ctaShape === option.shape && appearanceState.ctaVariant === option.variant,
+      ctaStylePreview: option,
+      onSelect: () => {
+        appearanceState.ctaShape = option.shape;
+        appearanceState.ctaVariant = option.variant;
+      },
     }))),
     createChoiceGroup("버튼 색상", "", CTA_COLORS.map((option) => createChoiceButton({
       group: "cta-color",
