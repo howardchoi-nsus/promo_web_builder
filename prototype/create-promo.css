@@ -1,4 +1,23 @@
-:root {
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f6f8fc;
+  --panel: #ffffff;
+  --surface: #f9fbff;
+  --ink: #111827;
+  --sub: #63708a;
+  --line: #dfe6f2;
+  --line-strong: #c9d4e7;
+  --accent: #4768d8;
+  --accent-soft: #eef3ff;
+  --danger: #ef4444;
+  --danger-soft: #fff1f2;
+  --success: #16a34a;
+  --success-soft: #eaf8ef;
+  --shadow: 0 14px 40px rgba(20, 35, 70, 0.08);
+}
+
+[data-theme="dark"] {
   color-scheme: dark;
   --bg: #080b12;
   --panel: #10151f;
@@ -107,7 +126,7 @@ a {
   gap: 6px;
   min-height: 68px;
   border: 0;
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  border-right: 1px solid color-mix(in srgb, var(--ink) 9%, transparent);
   background: transparent;
   color: var(--sub);
   cursor: pointer;
@@ -117,7 +136,7 @@ a {
 }
 
 .step span {
-  color: #70727a;
+  color: var(--sub);
   font-size: 12px;
   font-weight: 800;
   text-transform: uppercase;
@@ -129,7 +148,7 @@ a {
 
 .step strong {
   overflow: hidden;
-  color: #b7bac4;
+  color: color-mix(in srgb, var(--sub) 78%, var(--ink));
   font-size: 16px;
   font-weight: 500;
   text-overflow: ellipsis;
@@ -147,7 +166,7 @@ a {
   left: 0;
   right: 0;
   height: 1px;
-  background: rgba(255, 255, 255, 0.09);
+  background: color-mix(in srgb, var(--ink) 9%, transparent);
 }
 
 .step::after {
@@ -160,7 +179,7 @@ a {
 }
 
 .step.is-complete::after {
-  background: #555862;
+  background: color-mix(in srgb, var(--sub) 64%, var(--ink));
 }
 
 .step.is-active {
@@ -1312,7 +1331,7 @@ a {
 .appearance-choice__swatch {
   width: 26px;
   height: 26px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  border: 1px solid color-mix(in srgb, var(--ink) 22%, transparent);
   border-radius: 50%;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.14);
 }
