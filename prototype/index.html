@@ -1052,21 +1052,6 @@
                     <div class="subsection-title">
                       <h3>템플릿 Section 구성</h3>
                     </div>
-                    <div class="template-section-add">
-                      <button class="tiny-button primary" type="button" :disabled="!wizardFormTemplateCanEdit" @click="showNewWizardFormTemplateSectionForm = !showNewWizardFormTemplateSectionForm">{{ showNewWizardFormTemplateSectionForm ? '취소' : '+ Section 추가' }}</button>
-                    </div>
-                    <div class="template-section-create" v-if="showNewWizardFormTemplateSectionForm">
-                      <label class="field compact-field"><span>Section 이름</span><input v-model="newWizardFormTemplateSectionForm.name" type="text" autocomplete="off" /></label>
-                      <label class="field compact-field"><span>간략 설명</span><textarea v-model="newWizardFormTemplateSectionForm.description" rows="2"></textarea></label>
-                      <div class="form-grid compact">
-                        <label class="switch-control"><input v-model="newWizardFormTemplateSectionForm.isRequired" type="checkbox" /><span>필수 Section</span></label>
-                        <label class="switch-control"><input v-model="newWizardFormTemplateSectionForm.isVisible" type="checkbox" /><span>Wizard 노출</span></label>
-                        <label class="switch-control"><input v-model="newWizardFormTemplateSectionForm.userReorderAllowed" type="checkbox" :disabled="Boolean(newWizardFormTemplateSectionForm.fixedPosition)" /><span>Wizard 사용자 순서 변경 허용</span></label>
-                      </div>
-                      <label class="field compact-field"><span>고정 위치</span><select v-model="newWizardFormTemplateSectionForm.fixedPosition"><option value="">고정하지 않음</option><option value="top">상단</option><option value="bottom">하단</option></select></label>
-                      <div class="action-row align-right"><button class="tiny-button primary" type="button" :disabled="!newWizardFormTemplateSectionForm.name.trim() || wizardFormTemplateSectionSaving" @click="addWizardFormTemplateSection">Section 생성</button></div>
-                    </div>
-
                     <transition-group name="template-section-order" tag="div" class="template-section-list" v-if="wizardFormTemplateDetail.sections.length">
                       <div
                         v-for="section in wizardFormTemplateDetail.sections"
@@ -1118,6 +1103,21 @@
                       </div>
                     </transition-group>
                     <div class="empty-state compact danger-state" v-else>활성화하려면 노출할 Section을 하나 이상 추가해야 합니다.</div>
+
+                    <div class="template-section-add">
+                      <button class="tiny-button primary" type="button" :disabled="!wizardFormTemplateCanEdit" @click="showNewWizardFormTemplateSectionForm = !showNewWizardFormTemplateSectionForm">{{ showNewWizardFormTemplateSectionForm ? '취소' : '+ Section 추가' }}</button>
+                    </div>
+                    <div class="template-section-create" v-if="showNewWizardFormTemplateSectionForm">
+                      <label class="field compact-field"><span>Section 이름</span><input v-model="newWizardFormTemplateSectionForm.name" type="text" autocomplete="off" /></label>
+                      <label class="field compact-field"><span>간략 설명</span><textarea v-model="newWizardFormTemplateSectionForm.description" rows="2"></textarea></label>
+                      <div class="form-grid compact">
+                        <label class="switch-control"><input v-model="newWizardFormTemplateSectionForm.isRequired" type="checkbox" /><span>필수 Section</span></label>
+                        <label class="switch-control"><input v-model="newWizardFormTemplateSectionForm.isVisible" type="checkbox" /><span>Wizard 노출</span></label>
+                        <label class="switch-control"><input v-model="newWizardFormTemplateSectionForm.userReorderAllowed" type="checkbox" :disabled="Boolean(newWizardFormTemplateSectionForm.fixedPosition)" /><span>Wizard 사용자 순서 변경 허용</span></label>
+                      </div>
+                      <label class="field compact-field"><span>고정 위치</span><select v-model="newWizardFormTemplateSectionForm.fixedPosition"><option value="">고정하지 않음</option><option value="top">상단</option><option value="bottom">하단</option></select></label>
+                      <div class="action-row align-right"><button class="tiny-button primary" type="button" :disabled="!newWizardFormTemplateSectionForm.name.trim() || wizardFormTemplateSectionSaving" @click="addWizardFormTemplateSection">Section 생성</button></div>
+                    </div>
 
                   </div>
                 </section>

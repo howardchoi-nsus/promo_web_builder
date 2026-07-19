@@ -62,6 +62,10 @@ assert.match(adminSource, /draftByKey = new Map/);
 assert.match(adminSource, /dropWizardFormTemplateItem/);
 assert.match(adminHtml, /template-section-composer/);
 assert.match(adminHtml, /transition-group name="template-section-order"/);
+assert.ok(
+  adminHtml.indexOf('class="template-section-add"') > adminHtml.indexOf('class="template-section-list"'),
+  "Section 추가 버튼은 Section 목록 아래에 있어야 합니다."
+);
 assert.match(adminHtml, /transition-group name="template-item-order"/);
 assert.match(adminHtml, /class="template-item-expanded"/);
 assert.match(adminHtml, /wizardFormTemplateItemEditorOpenId === item\.id \? '▾' : '▸'/);
