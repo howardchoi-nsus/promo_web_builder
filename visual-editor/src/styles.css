@@ -22,6 +22,7 @@ button, a { letter-spacing: 0; }
   color: #687287; font-size: 11px; font-weight: 800; letter-spacing: 0;
 }
 .editor-header h1, .editor-header h2 { margin: 3px 0 0; font-size: 20px; letter-spacing: 0; }
+.editor-mode-note { display: block; margin-top: 4px; color: #667085; font-size: 11px; line-height: 1.4; }
 .editor-global-actions { display: flex; align-items: center; justify-content: flex-end; gap: 14px; min-width: 0; }
 .editor-header nav { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 .editor-header a, .editor-header button, .output-toolbar a, .viewport-control button {

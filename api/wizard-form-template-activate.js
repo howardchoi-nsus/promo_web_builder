@@ -2,7 +2,7 @@ const {
   getSql, parseBody, fetchTemplateRow, toFormTemplate, validateTemplateDraft,
 } = require("./_wizard-form-templates-store");
 const {
-  ensureLayout, toLayout, fetchTemplateWithItems, validateLayoutSpec,
+  ensureLayout, toLayout, createLayoutIdentity, fetchTemplateWithItems, validateLayoutSpec,
 } = require("./_wizard-form-template-layout-store");
 
 module.exports = async function handler(req, res) {
@@ -60,7 +60,12 @@ module.exports = async function handler(req, res) {
         ${String(body.changeNote || "Form template and default layout activated.")}
       )
     `;
-    return res.status(200).json({ ok: true, template: toFormTemplate(updated) });
+    const activatedTemplate = toFormTemplate(updated);
+    return res.status(200).json({
+      ok: true,
+      template: activatedTemplate,
+      layoutIdentity: createLayoutIdentity(activatedTemplate, layout),
+    });
   } catch (error) {
     return res.status(error.statusCode || 500).json({ error: "Wizard form template activation failed", message: error.message });
   }

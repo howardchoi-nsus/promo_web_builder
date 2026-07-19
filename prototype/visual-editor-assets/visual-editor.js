@@ -3254,62 +3254,65 @@ var Wo = {
 }, Yo = { class: "shell-header__identity" }, Xo = { class: "shell-header__brand-row" }, Zo = { class: "shell-header__page-label" }, Qo = { class: "shell-header__actions" }, $o = {
 	class: "shell-status",
 	role: "status"
-}, es = { class: "editor-header editor-toolbar" }, ts = { class: "editor-global-actions" }, ns = {
+}, es = { class: "editor-header editor-toolbar" }, ts = {
+	key: 0,
+	class: "editor-mode-note"
+}, ns = { class: "editor-global-actions" }, rs = {
 	key: 0,
 	class: "global-token-menu"
-}, rs = { class: "global-token-swatches" }, is = [
+}, is = { class: "global-token-swatches" }, as = [
 	"title",
 	"aria-label",
 	"onClick"
-], as = {
+], os = {
 	key: 1,
 	class: "background-image-control"
-}, os = { class: "background-image-button" }, ss = {
+}, ss = { class: "background-image-button" }, cs = {
 	key: 0,
 	class: "background-image-name"
-}, cs = {
+}, ls = {
 	key: 2,
 	class: "background-image-error"
-}, ls = { "aria-label": "Visual Editor navigation" }, us = ["disabled"], ds = ["disabled"], fs = {
+}, us = { "aria-label": "Visual Editor navigation" }, ds = ["disabled"], fs = ["disabled"], ps = {
 	key: 1,
 	class: "system-message"
-}, ps = {
+}, ms = {
 	key: 2,
 	class: "system-message system-message--error"
-}, ms = {
+}, hs = {
 	key: 3,
 	class: "system-message system-message--error",
 	role: "alert"
-}, hs = {
+}, gs = {
 	key: 4,
 	class: "system-message",
 	role: "status"
-}, gs = {
+}, _s = {
 	key: 5,
 	class: "editor-workspace"
-}, _s = {
+}, vs = {
 	class: "section-rail",
 	"aria-label": "콘텐츠 섹션"
-}, vs = { class: "panel-heading" }, ys = { class: "section-list" }, bs = ["aria-expanded", "onClick"], xs = ["aria-label"], Ss = {
+}, ys = { class: "panel-heading" }, bs = { class: "section-list" }, xs = ["aria-expanded", "onClick"], Ss = ["aria-label"], Cs = {
 	key: 0,
 	d: "M5.8 10.2 8.6 13l5.8-6"
-}, Cs = {
+}, ws = {
 	key: 1,
 	d: "M10 5.5v6M10 14.5v.1"
-}, ws = { class: "section-accordion__body" }, Ts = { class: "section-accordion__items" }, Es = ["onClick"], Ds = { key: 0 }, Os = { class: "preview-panel" }, ks = { class: "preview-toolbar" }, As = { class: "preview-title-group" }, js = ["disabled"], Ms = {
+}, Ts = { class: "section-accordion__body" }, Es = { class: "section-accordion__items" }, Ds = ["onClick"], Os = { key: 0 }, ks = { class: "preview-panel" }, As = { class: "preview-toolbar" }, js = { class: "preview-title-group" }, Ms = ["disabled"], Ns = {
 	key: 1,
 	class: "preview-edit-hint"
-}, Ns = {
+}, Ps = {
 	key: 2,
 	class: "auto-register-message",
 	role: "status"
-}, Ps = { class: "preview-controls" }, Fs = { class: "guide-toggle" }, Is = {
+}, Fs = { class: "preview-controls" }, Is = { class: "guide-toggle" }, Ls = {
 	class: "viewport-control",
 	"aria-label": "Preview viewport"
-}, Ls = { class: "property-panel" }, Rs = { class: "panel-heading" }, zs = {
+}, Rs = { class: "property-panel" }, zs = { class: "panel-heading" }, Bs = {
 	key: 0,
 	class: "property-form"
-}, Bs = { key: 0 }, Vs = ["disabled", "value"], Hs = { key: 1 }, Us = ["disabled", "value"], Ws = ["disabled", "value"], Gs = ["value"], Ks = ["disabled", "value"], qs = { key: 0 }, Js = ["disabled", "value"], Ys = { key: 1 }, Xs = ["disabled", "value"], Zs = { key: 3 }, Qs = ["disabled"], $s = ["disabled"], ec = { class: "item-meta" }, tc = { class: "design-controls" }, nc = { class: "design-controls__heading" }, rc = ["disabled"], ic = ["disabled", "value"], ac = { class: "range-field" }, oc = ["disabled", "value"], sc = ["disabled", "value"], cc = ["disabled", "value"], lc = { class: "position-status" }, uc = { key: 0 }, dc = { key: 1 }, fc = ["disabled"], pc = { class: "section-size-control" }, mc = ["disabled"], hc = {
+}, Vs = { key: 0 }, Hs = ["disabled", "value"], Us = { key: 1 }, Ws = ["disabled", "value"], Gs = ["disabled", "value"], Ks = ["value"], qs = ["disabled", "value"], Js = { key: 0 }, Ys = ["disabled", "value"], Xs = { key: 1 }, Zs = ["disabled", "value"], Qs = { key: 3 }, $s = ["disabled"], ec = ["disabled"], tc = { class: "item-meta" }, nc = { class: "design-controls" }, rc = { class: "design-controls__heading" }, ic = ["disabled"], ac = ["disabled", "value"], oc = { class: "range-field" }, sc = ["disabled", "value"], cc = ["disabled", "value"], lc = ["disabled", "value"], uc = { class: "position-status" }, dc = { key: 0 }, fc = { key: 1 }, pc = ["disabled"], mc = { class: "section-size-control" }, hc = ["disabled"], gc = {
 	__name: "App",
 	props: { mode: {
 		type: String,
@@ -3544,7 +3547,7 @@ var Wo = {
 					})
 				}), n = await t.json().catch(() => ({}));
 				if (!t.ok) throw Error(n.message || n.error || `레이아웃 저장 오류(${t.status})`);
-				l.value = Vo(n.layout.layoutSpec), v.value = Number(n.layout.layoutRevision || v.value + 1), y.value = n.layout.id || y.value, b.value = "", S.value = `기본 레이아웃을 저장했습니다. revision ${v.value}`;
+				l.value = Vo(n.layout.layoutSpec), v.value = Number(n.layout.layoutRevision || v.value + 1), y.value = n.layout.id || y.value, b.value = "", S.value = `기본 레이아웃을 Draft에 저장했습니다. revision ${v.value} · Create Promo 반영을 위해 관리자 페이지에서 템플릿을 활성화하세요.`;
 			} catch (e) {
 				S.value = e.message;
 			} finally {
@@ -3594,31 +3597,35 @@ var Wo = {
 			"assets"
 		])) : Z("", !0)])) : (J(), Y("main", qo, [
 			T.value ? Z("", !0) : (J(), Y("header", Jo, [X("div", Yo, [X("div", Xo, [i[18] ||= X("h1", { class: "shell-header__brand" }, "PROMO WEB BUILDER", -1), X("span", Zo, P(ne.value ? "Admin Template Layout" : "Visual Editor"), 1)])]), X("div", Qo, [i[19] ||= Fi("<nav class=\"shell-nav\" aria-label=\"프로토타입 내비게이션\"><a href=\"/prototype/index.html\">프로모션 빌더</a><a href=\"/prototype/index.html?view=admin&amp;tab=promo-form\">관리자 페이지</a><a href=\"/promo-wizard.html\">Promo Wizard</a><a href=\"/create-promo.html\">Create Promo</a><a class=\"active\" href=\"/prototype/visual-editor.html\" aria-current=\"page\">Visual Editor</a><a href=\"/prototype/generated.html\">생성된 UI</a></nav><button class=\"shell-theme-toggle\" type=\"button\" data-shell-theme-toggle><span class=\"shell-theme-dot\" aria-hidden=\"true\"></span><strong data-shell-theme-label>Light</strong></button>", 2), X("div", $o, P(ne.value ? `Layout revision ${v.value}` : "편집 준비"), 1)])])),
-			X("header", es, [X("div", null, [X("span", null, P(ne.value ? "ADMIN TEMPLATE LAYOUT" : T.value ? "WIZARD LAYOUT" : "VISUAL EDITOR"), 1), X("h2", null, P(a.value?.name || "Default Renderer"), 1)]), X("div", ts, [
-				E.value ? Z("", !0) : (J(), Y("fieldset", ns, [i[20] ||= X("legend", null, "페이지 배경", -1), X("div", rs, [(J(!0), Y(K, null, ar(Vt(ho), (e) => (J(), Y("button", {
+			X("header", es, [X("div", null, [
+				X("span", null, P(ne.value ? "ADMIN TEMPLATE LAYOUT" : T.value ? "WIZARD LAYOUT" : "VISUAL EDITOR"), 1),
+				X("h2", null, P(a.value?.name || "Default Renderer"), 1),
+				ne.value ? (J(), Y("small", ts, " v" + P(a.value?.version || 1) + " · " + P(a.value?.status || "draft") + " · Draft 저장 후 템플릿을 활성화해야 Create Promo에 반영됩니다. ", 1)) : Z("", !0)
+			]), X("div", ns, [
+				E.value ? Z("", !0) : (J(), Y("fieldset", rs, [i[20] ||= X("legend", null, "페이지 배경", -1), X("div", is, [(J(!0), Y(K, null, ar(Vt(ho), (e) => (J(), Y("button", {
 					key: e.key,
 					type: "button",
 					class: j({ active: l.value.theme.backgroundColor === e.value }),
 					title: `${e.name} ${e.value}`,
 					"aria-label": `${e.name} ${e.value}`,
 					onClick: (t) => me(e)
-				}, [X("i", { style: ce({ backgroundColor: e.value }) }, null, 4)], 10, is))), 128))])])),
-				E.value ? Z("", !0) : (J(), Y("div", as, [
-					X("label", os, [X("input", {
+				}, [X("i", { style: ce({ backgroundColor: e.value }) }, null, 4)], 10, as))), 128))])])),
+				E.value ? Z("", !0) : (J(), Y("div", os, [
+					X("label", ss, [X("input", {
 						type: "file",
 						accept: "image/*",
 						onChange: he
 					}, null, 32), X("span", null, P(l.value.theme.backgroundImage ? "배경 이미지 교체" : "배경 이미지 첨부"), 1)]),
-					l.value.theme.backgroundImageName ? (J(), Y("span", ss, P(l.value.theme.backgroundImageName), 1)) : Z("", !0),
+					l.value.theme.backgroundImageName ? (J(), Y("span", cs, P(l.value.theme.backgroundImageName), 1)) : Z("", !0),
 					l.value.theme.backgroundImage ? (J(), Y("button", {
 						key: 1,
 						type: "button",
 						class: "background-image-remove",
 						onClick: ge
 					}, "제거")) : Z("", !0),
-					h.value ? (J(), Y("small", cs, P(h.value), 1)) : Z("", !0)
+					h.value ? (J(), Y("small", ls, P(h.value), 1)) : Z("", !0)
 				])),
-				X("nav", ls, [ne.value ? (J(), Y(K, { key: 0 }, [xn(X("input", {
+				X("nav", us, [ne.value ? (J(), Y(K, { key: 0 }, [xn(X("input", {
 					"onUpdate:modelValue": i[0] ||= (e) => b.value = e,
 					type: "text",
 					placeholder: "변경 사유",
@@ -3627,18 +3634,18 @@ var Wo = {
 					type: "button",
 					disabled: !ie.value || x.value,
 					onClick: Te
-				}, P(x.value ? "저장 중" : "기본 레이아웃 저장"), 9, us)], 64)) : T.value ? Z("", !0) : (J(), Y("button", {
+				}, P(x.value ? "저장 중" : "기본 레이아웃 저장"), 9, ds)], 64)) : T.value ? Z("", !0) : (J(), Y("button", {
 					key: 1,
 					type: "button",
 					disabled: !ie.value,
 					onClick: Ce
-				}, "Web Output 열기", 8, ds))])
+				}, "Web Output 열기", 8, fs))])
 			])]),
-			n.value ? (J(), Y("div", fs, "기본 Form Template을 불러오는 중입니다.")) : r.value ? (J(), Y("div", ps, P(r.value), 1)) : Z("", !0),
-			g.value ? (J(), Y("div", ms, P(g.value), 1)) : Z("", !0),
-			S.value ? (J(), Y("div", hs, P(S.value), 1)) : Z("", !0),
-			!n.value && !r.value ? (J(), Y("section", gs, [
-				X("aside", _s, [X("div", vs, [i[21] ||= X("span", null, "SECTIONS", -1), X("strong", null, P(s.value.length), 1)]), X("div", ys, [(J(!0), Y(K, null, ar(s.value, (e) => (J(), Y("div", {
+			n.value ? (J(), Y("div", ps, "기본 Form Template을 불러오는 중입니다.")) : r.value ? (J(), Y("div", ms, P(r.value), 1)) : Z("", !0),
+			g.value ? (J(), Y("div", hs, P(g.value), 1)) : Z("", !0),
+			S.value ? (J(), Y("div", gs, P(S.value), 1)) : Z("", !0),
+			!n.value && !r.value ? (J(), Y("section", _s, [
+				X("aside", vs, [X("div", ys, [i[21] ||= X("span", null, "SECTIONS", -1), X("strong", null, P(s.value.length), 1)]), X("div", bs, [(J(!0), Y(K, null, ar(s.value, (e) => (J(), Y("div", {
 					key: e.sectionKey,
 					class: j(["section-accordion", { open: e.sectionKey === f.value }])
 				}, [X("button", {
@@ -3657,15 +3664,15 @@ var Wo = {
 						cx: "10",
 						cy: "10",
 						r: "9"
-					}, null, -1), fe(e) ? (J(), Y("path", Ss)) : (J(), Y("path", Cs))], 10, xs)),
+					}, null, -1), fe(e) ? (J(), Y("path", Cs)) : (J(), Y("path", ws))], 10, Ss)),
 					i[23] ||= X("i", { "aria-hidden": "true" }, null, -1)
-				], 10, bs), X("div", ws, [X("div", Ts, [(J(!0), Y(K, null, ar(e.items || [], (t) => (J(), Y("button", {
+				], 10, xs), X("div", Ts, [X("div", Es, [(J(!0), Y(K, null, ar(e.items || [], (t) => (J(), Y("button", {
 					key: t.itemKey,
 					type: "button",
 					class: j({ active: e.sectionKey === D.value?.sectionKey && t.itemKey === O.value?.itemKey }),
 					onClick: (n) => ae(e, t)
-				}, P(t.name), 11, Es))), 128)), e.items?.length ? Z("", !0) : (J(), Y("span", Ds, "등록된 아이템 없음"))])])], 2))), 128))])]),
-				X("section", Os, [X("div", ks, [X("div", As, [
+				}, P(t.name), 11, Ds))), 128)), e.items?.length ? Z("", !0) : (J(), Y("span", Os, "등록된 아이템 없음"))])])], 2))), 128))])]),
+				X("section", ks, [X("div", As, [X("div", js, [
 					i[24] ||= X("strong", null, "Live Preview", -1),
 					X("small", null, P(a.value.templateKey) + " · v" + P(a.value.version), 1),
 					E.value ? (J(), Y("button", {
@@ -3674,17 +3681,17 @@ var Wo = {
 						type: "button",
 						disabled: w.value,
 						onClick: pe
-					}, P(w.value ? "등록 중" : "자동등록"), 9, js)) : Z("", !0),
-					E.value ? (J(), Y("small", Ms, "미리보기 요소를 선택해 내용을 입력하세요.")) : Z("", !0),
-					ee.value ? (J(), Y("small", Ns, P(ee.value), 1)) : Z("", !0)
-				]), X("div", Ps, [X("label", Fs, [
+					}, P(w.value ? "등록 중" : "자동등록"), 9, Ms)) : Z("", !0),
+					E.value ? (J(), Y("small", Ns, "미리보기 요소를 선택해 내용을 입력하세요.")) : Z("", !0),
+					ee.value ? (J(), Y("small", Ps, P(ee.value), 1)) : Z("", !0)
+				]), X("div", Fs, [X("label", Is, [
 					xn(X("input", {
 						"onUpdate:modelValue": i[1] ||= (e) => m.value = e,
 						type: "checkbox"
 					}, null, 512), [[$a, m.value]]),
 					i[25] ||= X("span", null, "Guides", -1),
 					X("strong", null, P(m.value ? "ON" : "OFF"), 1)
-				]), X("div", Is, [X("button", {
+				]), X("div", Ls, [X("button", {
 					type: "button",
 					class: j({ active: p.value === "desktop" }),
 					onClick: i[2] ||= (e) => p.value = "desktop"
@@ -3712,18 +3719,18 @@ var Wo = {
 					"show-guides",
 					"selected-item-key"
 				])) : Z("", !0)], 2)]),
-				X("aside", Ls, [X("div", Rs, [i[26] ||= X("span", null, "CONTENT", -1), X("strong", null, P(O.value?.name || "항목 선택"), 1)]), O.value ? (J(), Y("div", zs, [
-					O.value.fieldKind === "cta" ? (J(), Y("label", Bs, [i[27] ||= X("span", null, "버튼 텍스트", -1), X("input", {
+				X("aside", Rs, [X("div", zs, [i[26] ||= X("span", null, "CONTENT", -1), X("strong", null, P(O.value?.name || "항목 선택"), 1)]), O.value ? (J(), Y("div", Bs, [
+					O.value.fieldKind === "cta" ? (J(), Y("label", Vs, [i[27] ||= X("span", null, "버튼 텍스트", -1), X("input", {
 						disabled: O.value.isLocked,
 						value: k.value?.label,
 						onInput: i[4] ||= (e) => le("label", e.target.value)
-					}, null, 40, Vs)])) : Z("", !0),
-					O.value.fieldKind === "cta" ? (J(), Y("label", Hs, [i[28] ||= X("span", null, "버튼 URL", -1), X("input", {
+					}, null, 40, Hs)])) : Z("", !0),
+					O.value.fieldKind === "cta" ? (J(), Y("label", Us, [i[28] ||= X("span", null, "버튼 URL", -1), X("input", {
 						disabled: O.value.isLocked,
 						type: "url",
 						value: k.value?.link,
 						onInput: i[5] ||= (e) => le("link", e.target.value)
-					}, null, 40, Us)])) : O.value.fieldKind === "image" ? (J(), Y(K, { key: 2 }, [
+					}, null, 40, Ws)])) : O.value.fieldKind === "image" ? (J(), Y(K, { key: 2 }, [
 						X("label", null, [i[29] ||= X("span", null, "이미지 입력 방식", -1), X("select", {
 							disabled: O.value.isLocked,
 							value: k.value?.source,
@@ -3731,52 +3738,52 @@ var Wo = {
 						}, [(J(!0), Y(K, null, ar(O.value.image?.allowedSources || ["url"], (e) => (J(), Y("option", {
 							key: e,
 							value: e
-						}, P(e), 9, Gs))), 128))], 40, Ws)]),
+						}, P(e), 9, Ks))), 128))], 40, Gs)]),
 						X("label", null, [i[30] ||= X("span", null, "URL 또는 이미지 설명", -1), X("textarea", {
 							disabled: O.value.isLocked,
 							rows: "4",
 							value: k.value?.value,
 							onInput: i[7] ||= (e) => le("value", e.target.value)
-						}, null, 40, Ks)]),
-						O.value.image?.descriptionEnabled ? (J(), Y("label", qs, [i[31] ||= X("span", null, "설명", -1), X("textarea", {
+						}, null, 40, qs)]),
+						O.value.image?.descriptionEnabled ? (J(), Y("label", Js, [i[31] ||= X("span", null, "설명", -1), X("textarea", {
 							disabled: O.value.isLocked,
 							rows: "3",
 							value: k.value?.description,
 							onInput: i[8] ||= (e) => le("description", e.target.value)
-						}, null, 40, Js)])) : Z("", !0),
-						O.value.image?.altTextRequired ? (J(), Y("label", Ys, [i[32] ||= X("span", null, "대체 텍스트", -1), X("input", {
+						}, null, 40, Ys)])) : Z("", !0),
+						O.value.image?.altTextRequired ? (J(), Y("label", Xs, [i[32] ||= X("span", null, "대체 텍스트", -1), X("input", {
 							disabled: O.value.isLocked,
 							value: k.value?.alt,
 							onInput: i[9] ||= (e) => le("alt", e.target.value)
-						}, null, 40, Xs)])) : Z("", !0)
-					], 64)) : (J(), Y("label", Zs, [X("span", null, P(O.value.textType === "multi" ? "설명 텍스트" : "텍스트"), 1), O.value.textType === "multi" ? xn((J(), Y("textarea", {
+						}, null, 40, Zs)])) : Z("", !0)
+					], 64)) : (J(), Y("label", Qs, [X("span", null, P(O.value.textType === "multi" ? "설명 텍스트" : "텍스트"), 1), O.value.textType === "multi" ? xn((J(), Y("textarea", {
 						key: 0,
 						"onUpdate:modelValue": i[10] ||= (e) => k.value = e,
 						disabled: O.value.isLocked,
 						rows: "8"
-					}, null, 8, Qs)), [[Qa, k.value]]) : xn((J(), Y("input", {
+					}, null, 8, $s)), [[Qa, k.value]]) : xn((J(), Y("input", {
 						key: 1,
 						"onUpdate:modelValue": i[11] ||= (e) => k.value = e,
 						disabled: O.value.isLocked
-					}, null, 8, $s)), [[Qa, k.value]])])),
-					X("dl", ec, [
+					}, null, 8, ec)), [[Qa, k.value]])])),
+					X("dl", tc, [
 						X("div", null, [i[33] ||= X("dt", null, "Item key", -1), X("dd", null, P(O.value.itemKey), 1)]),
 						X("div", null, [i[34] ||= X("dt", null, "필수", -1), X("dd", null, P(O.value.isRequired ? "Y" : "N"), 1)]),
 						X("div", null, [i[35] ||= X("dt", null, "고정", -1), X("dd", null, P(O.value.isLocked ? "Y" : "N"), 1)])
 					]),
-					X("section", tc, [
-						X("div", nc, [i[36] ||= X("strong", null, "DESIGN", -1), X("button", {
+					X("section", nc, [
+						X("div", rc, [i[36] ||= X("strong", null, "DESIGN", -1), X("button", {
 							type: "button",
 							disabled: O.value.isLocked,
 							onClick: F
-						}, "초기화", 8, rc)]),
+						}, "초기화", 8, ic)]),
 						X("label", null, [i[37] ||= X("span", null, "글자 색상", -1), X("input", {
 							type: "color",
 							disabled: O.value.isLocked,
 							value: N.value.color || "#172033",
 							onInput: i[12] ||= (e) => ve({ color: e.target.value })
-						}, null, 40, ic)]),
-						X("label", null, [i[38] ||= X("span", null, "폰트 크기", -1), X("div", ac, [X("input", {
+						}, null, 40, ac)]),
+						X("label", null, [i[38] ||= X("span", null, "폰트 크기", -1), X("div", oc, [X("input", {
 							type: "range",
 							min: "10",
 							max: "80",
@@ -3784,7 +3791,7 @@ var Wo = {
 							disabled: O.value.isLocked,
 							value: N.value.fontSize || 18,
 							onInput: i[13] ||= (e) => ve({ fontSize: Number(e.target.value) })
-						}, null, 40, oc), X("output", null, P(N.value.fontSize || 18) + "px", 1)])]),
+						}, null, 40, sc), X("output", null, P(N.value.fontSize || 18) + "px", 1)])]),
 						X("label", null, [i[40] ||= X("span", null, "폰트 굵기", -1), X("select", {
 							disabled: O.value.isLocked,
 							value: N.value.fontWeight || 400,
@@ -3794,7 +3801,7 @@ var Wo = {
 							X("option", { value: 500 }, "Medium", -1),
 							X("option", { value: 700 }, "Bold", -1),
 							X("option", { value: 800 }, "Extra Bold", -1)
-						]], 40, sc)]),
+						]], 40, cc)]),
 						X("label", null, [i[42] ||= X("span", null, "정렬", -1), X("select", {
 							disabled: O.value.isLocked,
 							value: N.value.textAlign || "left",
@@ -3803,25 +3810,25 @@ var Wo = {
 							X("option", { value: "left" }, "왼쪽", -1),
 							X("option", { value: "center" }, "가운데", -1),
 							X("option", { value: "right" }, "오른쪽", -1)
-						]], 40, cc)]),
-						X("div", lc, [i[43] ||= X("span", null, "위치", -1), N.value.positionMode === "free" ? (J(), Y("strong", uc, " X " + P(Math.round(N.value.xPct || 0)) + "% · Y " + P(Math.round(N.value.yPx || 0)) + "px ", 1)) : (J(), Y("strong", dc, "자동 배치"))]),
+						]], 40, lc)]),
+						X("div", uc, [i[43] ||= X("span", null, "위치", -1), N.value.positionMode === "free" ? (J(), Y("strong", dc, " X " + P(Math.round(N.value.xPct || 0)) + "% · Y " + P(Math.round(N.value.yPx || 0)) + "px ", 1)) : (J(), Y("strong", fc, "자동 배치"))]),
 						N.value.positionMode === "free" ? (J(), Y("button", {
 							key: 0,
 							class: "secondary-control",
 							type: "button",
 							disabled: O.value.isLocked,
 							onClick: be
-						}, " 자동 배치로 복원 ", 8, fc)) : Z("", !0),
-						X("div", pc, [X("div", null, [i[44] ||= X("span", null, "섹션 높이", -1), X("strong", null, P(_e.value.minHeight ? `${Math.round(_e.value.minHeight)}px` : "자동"), 1)]), X("button", {
+						}, " 자동 배치로 복원 ", 8, pc)) : Z("", !0),
+						X("div", mc, [X("div", null, [i[44] ||= X("span", null, "섹션 높이", -1), X("strong", null, P(_e.value.minHeight ? `${Math.round(_e.value.minHeight)}px` : "자동"), 1)]), X("button", {
 							type: "button",
 							disabled: !_e.value.minHeight,
 							onClick: I
-						}, " 높이 초기화 ", 8, mc)])
+						}, " 높이 초기화 ", 8, hc)])
 					])
 				])) : Z("", !0)])
 			])) : Z("", !0)
 		]));
 	}
-}, gc = document.querySelector("#visual-editor-app");
-gc && lo(hc, { mode: new URLSearchParams(window.location.search).get("mode") || gc.dataset.mode || "editor" }).mount(gc);
+}, _c = document.querySelector("#visual-editor-app");
+_c && lo(gc, { mode: new URLSearchParams(window.location.search).get("mode") || _c.dataset.mode || "editor" }).mount(_c);
 //#endregion

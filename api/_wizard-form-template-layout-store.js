@@ -110,6 +110,20 @@ function toLayout(row) {
   };
 }
 
+function createLayoutIdentity(template = {}, layout = {}, configRevision = "") {
+  return {
+    contractVersion: 2,
+    templateId: String(template.id || layout.formTemplateId || ""),
+    templateKey: String(template.templateKey || template.template_key || ""),
+    templateVersion: Number(template.version || 1),
+    layoutId: String(layout.id || ""),
+    layoutRevision: Number(layout.layoutRevision || 1),
+    configRevision: String(configRevision || ""),
+    rendererKey: String(layout.rendererKey || "default-promo-renderer"),
+    rendererVersion: Number(layout.rendererVersion || 1),
+  };
+}
+
 async function fetchTemplateWithItems(sql, templateId) {
   const template = await fetchTemplateRow(sql, templateId);
   if (!template) return null;
@@ -204,6 +218,7 @@ module.exports = {
   validateLayoutSpec,
   fetchLayoutRow,
   toLayout,
+  createLayoutIdentity,
   fetchTemplateWithItems,
   ensureLayout,
   cloneLayout,

@@ -353,7 +353,7 @@ async function saveAdminLayout() {
     layoutRevision.value = Number(result.layout.layoutRevision || layoutRevision.value + 1);
     layoutId.value = result.layout.id || layoutId.value;
     layoutChangeNote.value = "";
-    layoutSaveMessage.value = `기본 레이아웃을 저장했습니다. revision ${layoutRevision.value}`;
+    layoutSaveMessage.value = `기본 레이아웃을 Draft에 저장했습니다. revision ${layoutRevision.value} · Create Promo 반영을 위해 관리자 페이지에서 템플릿을 활성화하세요.`;
   } catch (saveError) {
     layoutSaveMessage.value = saveError.message;
   } finally {
@@ -475,6 +475,9 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
       <div>
         <span>{{ isAdminLayoutMode ? "ADMIN TEMPLATE LAYOUT" : isWizardLayoutMode ? "WIZARD LAYOUT" : "VISUAL EDITOR" }}</span>
         <h2>{{ template?.name || "Default Renderer" }}</h2>
+        <small v-if="isAdminLayoutMode" class="editor-mode-note">
+          v{{ template?.version || 1 }} · {{ template?.status || "draft" }} · Draft 저장 후 템플릿을 활성화해야 Create Promo에 반영됩니다.
+        </small>
       </div>
       <div class="editor-global-actions">
         <fieldset v-if="!isCreatePromoWizardMode" class="global-token-menu">

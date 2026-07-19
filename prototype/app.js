@@ -2191,7 +2191,8 @@ createApp({
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `폼 템플릿 활성화 오류(${response.status})`);
         await this.loadWizardFormTemplates({ fresh: true });
-        this.setStatus("폼 템플릿을 활성화했습니다");
+        const layoutRevision = Number(result.layoutIdentity?.layoutRevision || 1);
+        this.setStatus(`폼 템플릿 v${result.template?.version || template.version} · Layout r${layoutRevision}을 활성화했습니다`);
       } catch (error) {
         this.setStatus(`폼 템플릿 활성화 실패: ${error.message}`);
       } finally {

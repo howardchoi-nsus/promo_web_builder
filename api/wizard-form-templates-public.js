@@ -6,6 +6,7 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
   try {
+    res.setHeader("Cache-Control", "no-store");
     const templates = await fetchTemplates(getSql(), { activeOnly: true });
     return res.status(200).json({
       ok: true,

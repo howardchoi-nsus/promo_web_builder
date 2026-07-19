@@ -25,6 +25,7 @@
     "test:wizard-form-template-layout-contract": "node scripts/test-wizard-form-template-layout-contract.js",
     "test:shared-shell-header-contract": "node scripts/test-shared-shell-header-contract.js",
     "test:create-promo-clone-contract": "node scripts/test-create-promo-clone-contract.js",
+    "test:create-promo-layout-cache": "node scripts/test-create-promo-layout-cache.js",
     "design-md:dry-run": "node scripts/import-design-md-docs.js",
     "design-md:import": "node scripts/import-design-md-docs.js --apply"
   },

@@ -1,6 +1,6 @@
 const { getSql, fetchTemplateRow, fetchTemplateSections, toFormTemplate } = require("./_wizard-form-templates-store");
 const { fetchItemsForSection } = require("./_wizard-content-sections-store");
-const { fetchLayoutRow, toLayout } = require("./_wizard-form-template-layout-store");
+const { fetchLayoutRow, toLayout, createLayoutIdentity } = require("./_wizard-form-template-layout-store");
 
 module.exports = async function handler(req, res) {
   if (req.method !== "GET") {
@@ -8,6 +8,7 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
   try {
+    res.setHeader("Cache-Control", "no-store");
     const id = String(req.query.id || "").trim();
     if (!id) return res.status(400).json({ error: "id is required" });
     const sql = getSql();
@@ -56,6 +57,7 @@ module.exports = async function handler(req, res) {
       configRevision: revision,
       layoutRevision: layout.layoutRevision,
       renderer: { key: layout.rendererKey, version: layout.rendererVersion },
+      layoutIdentity: createLayoutIdentity(template, layout, revision),
       defaultLayout: layout.layoutSpec,
       sections,
       configurationWarnings,

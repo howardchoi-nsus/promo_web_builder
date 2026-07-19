@@ -69,6 +69,13 @@ const storageKeys = {
 };
 
 const SECTION_INPUT_SCHEMA_VERSION = 2;
+const LAYOUT_CACHE_CONTRACT_VERSION = 2;
+const {
+  normalizeLayoutIdentity,
+  sameLayoutIdentity,
+  hasLayoutOverrides,
+  resolveLayoutCache,
+} = globalThis.CreatePromoLayoutCache || {};
 
 let currentStep = 0;
 let designDocuments = [];
@@ -101,6 +108,12 @@ let wizardBaseLayout = null;
 let wizardResolvedLayout = null;
 let wizardLayoutRevision = 1;
 let wizardRenderer = { key: "default-promo-renderer", version: 1 };
+let wizardLayoutIdentity = null;
+let pendingAdminLayoutUpdate = null;
+let deferredAdminLayoutIdentityKey = "";
+let wizardTemplateRefreshPromise = null;
+let wizardTemplateRefreshRequestId = 0;
+let wizardTemplateRefreshError = "";
 let wizardLayoutFrame = null;
 let wizardLayoutLogTimer = null;
 const wizardSessionId = sessionStorage.getItem(storageKeys.wizardSessionId)
@@ -520,7 +533,7 @@ async function loadWizardSectionDefinitions() {
   wizardSectionDefinitionsLoading = true;
   wizardSectionDefinitionsError = "";
   try {
-    const result = await fetchJson("/api/wizard-form-templates-public");
+    const result = await fetchJson("/api/wizard-form-templates-public", { cache: "no-store" });
     wizardFormTemplates = Array.isArray(result.templates) ? result.templates : [];
     if (!wizardFormTemplates.length) throw new Error("활성화된 프로모션 템플릿이 없습니다.");
     const savedId = contentState.formTemplate?.id;
@@ -536,12 +549,43 @@ async function loadWizardSectionDefinitions() {
   }
 }
 
+function layoutIdentityFromTemplateResult(result = {}) {
+  const template = result.template || {};
+  const renderer = result.renderer || { key: "default-promo-renderer", version: 1 };
+  return normalizeLayoutIdentity(result.layoutIdentity || {
+    contractVersion: LAYOUT_CACHE_CONTRACT_VERSION,
+    templateId: template.id,
+    templateKey: template.templateKey,
+    templateVersion: template.version,
+    layoutId: "",
+    layoutRevision: result.layoutRevision,
+    configRevision: result.configRevision,
+    rendererKey: renderer.key,
+    rendererVersion: renderer.version,
+  });
+}
+
+function layoutIdentityKey(identity) {
+  return JSON.stringify(normalizeLayoutIdentity(identity) || {});
+}
+
+function layoutIdentityEventSummary(identity) {
+  const normalized = normalizeLayoutIdentity(identity);
+  if (!normalized) return null;
+  const { configRevision, ...summary } = normalized;
+  return {
+    ...summary,
+    configRevisionLength: configRevision.length,
+  };
+}
+
 function hasTemplateInputValues(value = contentState.sectionInputs) {
   return JSON.stringify(value || {}) !== JSON.stringify(defaultSectionInputsFromDefinitions(wizardSectionDefinitions));
 }
 
 async function selectWizardFormTemplate(templateId, options = {}) {
-  if (!templateId || selectedWizardFormTemplate?.id === templateId) return;
+  if (!templateId || (selectedWizardFormTemplate?.id === templateId && !options.force)) return;
+  if (!options.fromRefresh) wizardTemplateRefreshRequestId += 1;
   if (!options.skipConfirmation && selectedWizardFormTemplate && hasTemplateInputValues()) {
     if (!window.confirm("템플릿을 변경할까요? 현재 입력값은 기존 템플릿에 보관됩니다.")) {
       renderStep();
@@ -551,7 +595,10 @@ async function selectWizardFormTemplate(templateId, options = {}) {
   if (selectedWizardFormTemplate?.templateKey) {
     contentState.templateInputs[selectedWizardFormTemplate.templateKey] = contentState.sectionInputs;
   }
-  const result = await fetchJson(`/api/wizard-form-template-public?id=${encodeURIComponent(templateId)}`);
+  const result = options.prefetchedResult || await fetchJson(
+    `/api/wizard-form-template-public?id=${encodeURIComponent(templateId)}`,
+    { cache: "no-store" }
+  );
   const nextDefinitions = Array.isArray(result.sections) ? result.sections : [];
   if (!nextDefinitions.length || !nextDefinitions.some((section) => (section.items || []).length)) {
     throw new Error("선택한 템플릿에 Wizard 입력 항목이 없습니다. 관리자에게 템플릿 구성을 요청해 주세요.");
@@ -571,16 +618,21 @@ async function selectWizardFormTemplate(templateId, options = {}) {
   wizardSectionConfigRevision = String(result.configRevision || "");
   wizardLayoutRevision = Number(result.layoutRevision || 1);
   wizardRenderer = result.renderer || { key: "default-promo-renderer", version: 1 };
+  wizardLayoutIdentity = layoutIdentityFromTemplateResult(result);
   wizardBaseLayout = JSON.parse(JSON.stringify(result.defaultLayout || FALLBACK_LAYOUT));
   const savedLayout = contentState.templateLayouts[result.template.templateKey];
-  wizardResolvedLayout = savedLayout?.layoutRevision === wizardLayoutRevision
-    ? JSON.parse(JSON.stringify(savedLayout.resolvedLayout || wizardBaseLayout))
-    : JSON.parse(JSON.stringify(wizardBaseLayout));
+  const cacheResolution = resolveLayoutCache({
+    savedLayout,
+    incomingIdentity: wizardLayoutIdentity,
+    defaultLayout: wizardBaseLayout,
+  });
+  wizardResolvedLayout = cacheResolution.resolvedLayout;
   contentState.formTemplate = {
     ...result.template,
     configRevision: wizardSectionConfigRevision,
     layoutRevision: wizardLayoutRevision,
     renderer: wizardRenderer,
+    layoutIdentity: wizardLayoutIdentity,
   };
   contentState.sectionInputs = mergeSectionInputs(
     contentState.templateInputs[result.template.templateKey] || {},
@@ -588,13 +640,133 @@ async function selectWizardFormTemplate(templateId, options = {}) {
   );
   contentState.templateInputs[result.template.templateKey] = contentState.sectionInputs;
   contentState.templateLayouts[result.template.templateKey] = {
+    contractVersion: LAYOUT_CACHE_CONTRACT_VERSION,
+    layoutIdentity: wizardLayoutIdentity,
     layoutRevision: wizardLayoutRevision,
     renderer: wizardRenderer,
     baseLayout: wizardBaseLayout,
     resolvedLayout: wizardResolvedLayout,
   };
+  pendingAdminLayoutUpdate = null;
+  wizardTemplateRefreshError = "";
+  if (!options.fromRefresh) deferredAdminLayoutIdentityKey = "";
   saveWizardContent();
+  if (cacheResolution.cacheStatus === "legacy_invalidated") {
+    logWizardLayoutEvent("legacy_layout_cache_invalidated", { templateKey: result.template.templateKey });
+  } else if (cacheResolution.cacheStatus === "identity_mismatch") {
+    logWizardLayoutEvent("layout_identity_mismatch", {
+      previousIdentity: layoutIdentityEventSummary(savedLayout?.layoutIdentity),
+      nextIdentity: layoutIdentityEventSummary(wizardLayoutIdentity),
+    });
+  }
   logWizardLayoutEvent("layout_loaded", { sectionCount: wizardSectionDefinitions.length });
+}
+
+async function refreshActiveWizardTemplate() {
+  if (!selectedWizardFormTemplate || wizardSectionDefinitionsLoading) return false;
+  if (wizardTemplateRefreshPromise) return wizardTemplateRefreshPromise;
+  const requestId = ++wizardTemplateRefreshRequestId;
+  wizardTemplateRefreshPromise = (async () => {
+    try {
+      const catalogResult = await fetchJson("/api/wizard-form-templates-public", { cache: "no-store" });
+      if (requestId !== wizardTemplateRefreshRequestId) return false;
+      const activeTemplates = Array.isArray(catalogResult.templates) ? catalogResult.templates : [];
+      if (!activeTemplates.length) throw new Error("활성화된 프로모션 템플릿이 없습니다.");
+      wizardFormTemplates = activeTemplates;
+      const target = activeTemplates.find((template) => template.id === selectedWizardFormTemplate.id)
+        || activeTemplates.find((template) => template.templateKey === selectedWizardFormTemplate.templateKey)
+        || activeTemplates.find((template) => template.isDefault)
+        || activeTemplates[0];
+      const detail = await fetchJson(
+        `/api/wizard-form-template-public?id=${encodeURIComponent(target.id)}`,
+        { cache: "no-store" }
+      );
+      if (requestId !== wizardTemplateRefreshRequestId) return false;
+      const nextIdentity = layoutIdentityFromTemplateResult(detail);
+      if (sameLayoutIdentity(wizardLayoutIdentity, nextIdentity)) {
+        wizardTemplateRefreshError = "";
+        pendingAdminLayoutUpdate = null;
+        return false;
+      }
+      const nextIdentityKey = layoutIdentityKey(nextIdentity);
+      if (deferredAdminLayoutIdentityKey === nextIdentityKey) return false;
+      const previousIdentity = wizardLayoutIdentity;
+      const userHasOverrides = hasLayoutOverrides(wizardBaseLayout, wizardResolvedLayout);
+      logWizardLayoutEvent("admin_layout_update_detected", {
+        previousIdentity: layoutIdentityEventSummary(previousIdentity),
+        nextIdentity: layoutIdentityEventSummary(nextIdentity),
+        configRevisionChanged: previousIdentity?.configRevision !== nextIdentity?.configRevision,
+        userHasOverrides,
+      });
+      if (!userHasOverrides) {
+        await selectWizardFormTemplate(target.id, {
+          force: true,
+          fromRefresh: true,
+          skipConfirmation: true,
+          prefetchedResult: detail,
+        });
+        pendingAdminLayoutUpdate = null;
+        wizardTemplateRefreshError = "";
+        logWizardLayoutEvent("admin_layout_update_applied", {
+          previousIdentity: layoutIdentityEventSummary(previousIdentity),
+          nextIdentity: layoutIdentityEventSummary(nextIdentity),
+          applyMode: "automatic",
+        });
+        return true;
+      }
+      pendingAdminLayoutUpdate = { target, detail, previousIdentity, nextIdentity };
+      wizardTemplateRefreshError = "";
+      return true;
+    } catch (error) {
+      wizardTemplateRefreshError = error.message || "관리자 템플릿 변경을 확인하지 못했습니다.";
+      return false;
+    } finally {
+      wizardTemplateRefreshPromise = null;
+      if (currentStep === 2) renderStep();
+    }
+  })();
+  return wizardTemplateRefreshPromise;
+}
+
+async function applyPendingAdminLayoutUpdate() {
+  if (!pendingAdminLayoutUpdate || wizardSectionDefinitionsLoading) return;
+  const update = pendingAdminLayoutUpdate;
+  wizardSectionDefinitionsLoading = true;
+  wizardTemplateSwitchTargetId = update.target.id;
+  renderStep();
+  try {
+    await selectWizardFormTemplate(update.target.id, {
+      force: true,
+      fromRefresh: true,
+      skipConfirmation: true,
+      prefetchedResult: update.detail,
+    });
+    pendingAdminLayoutUpdate = null;
+    deferredAdminLayoutIdentityKey = "";
+    wizardTemplateRefreshError = "";
+    logWizardLayoutEvent("admin_layout_update_applied", {
+      previousIdentity: layoutIdentityEventSummary(update.previousIdentity),
+      nextIdentity: layoutIdentityEventSummary(update.nextIdentity),
+      applyMode: "user-confirmed",
+    });
+  } catch (error) {
+    wizardTemplateRefreshError = error.message || "새 관리자 레이아웃을 적용하지 못했습니다.";
+  } finally {
+    wizardTemplateSwitchTargetId = "";
+    wizardSectionDefinitionsLoading = false;
+    renderStep();
+  }
+}
+
+function deferPendingAdminLayoutUpdate() {
+  if (!pendingAdminLayoutUpdate) return;
+  deferredAdminLayoutIdentityKey = layoutIdentityKey(pendingAdminLayoutUpdate.nextIdentity);
+  logWizardLayoutEvent("admin_layout_update_deferred", {
+    previousIdentity: layoutIdentityEventSummary(pendingAdminLayoutUpdate.previousIdentity),
+    nextIdentity: layoutIdentityEventSummary(pendingAdminLayoutUpdate.nextIdentity),
+  });
+  pendingAdminLayoutUpdate = null;
+  renderStep();
 }
 
 function wizardSectionConfigurationReady() {
@@ -608,6 +780,8 @@ function saveWizardContent() {
     contentState.templateInputs[selectedWizardFormTemplate.templateKey] = contentState.sectionInputs;
     contentState.templateSectionOrders[selectedWizardFormTemplate.templateKey] = wizardSectionDefinitions.map((section) => section.sectionKey);
     contentState.templateLayouts[selectedWizardFormTemplate.templateKey] = {
+      contractVersion: LAYOUT_CACHE_CONTRACT_VERSION,
+      layoutIdentity: wizardLayoutIdentity,
       layoutRevision: wizardLayoutRevision,
       renderer: wizardRenderer,
       baseLayout: wizardBaseLayout,
@@ -621,6 +795,7 @@ function wizardLayoutSnapshot() {
   if (!selectedWizardFormTemplate || !wizardResolvedLayout) return null;
   return {
     layoutRevision: wizardLayoutRevision,
+    layoutIdentity: wizardLayoutIdentity,
     content: {
       contractVersion: 1,
       formTemplate: { ...contentState.formTemplate },
@@ -1586,6 +1761,14 @@ function renderContentStep() {
   appendTextElement(layoutHeading, "span", "eyebrow", "Template Layout");
   appendTextElement(layoutHeading, "strong", "", `${selectedWizardFormTemplate?.name || "Template"} · layout r${wizardLayoutRevision}`);
   appendTextElement(layoutHeading, "small", "create-promo-appearance-note", "배경색과 CTA 스타일은 Step 1·2 설정으로 고정됩니다.");
+  const layoutActions = document.createElement("div");
+  layoutActions.className = "wizard-layout-panel__actions";
+  const layoutRefresh = document.createElement("button");
+  layoutRefresh.className = "secondary-action";
+  layoutRefresh.type = "button";
+  layoutRefresh.textContent = wizardTemplateRefreshPromise ? "변경 확인 중" : "관리자 변경 확인";
+  layoutRefresh.disabled = Boolean(wizardTemplateRefreshPromise || wizardSectionDefinitionsLoading);
+  layoutRefresh.addEventListener("click", refreshActiveWizardTemplate);
   const layoutReset = document.createElement("button");
   layoutReset.className = "secondary-action";
   layoutReset.type = "button";
@@ -1594,14 +1777,56 @@ function renderContentStep() {
     if (!window.confirm("현재 레이아웃 변경을 모두 지우고 관리자 기본 레이아웃으로 복원할까요?")) return;
     resetWizardLayout();
   });
-  layoutHeader.append(layoutHeading, layoutReset);
+  layoutActions.append(layoutRefresh, layoutReset);
+  layoutHeader.append(layoutHeading, layoutActions);
   const layoutFrame = document.createElement("iframe");
   layoutFrame.className = "wizard-layout-frame";
   layoutFrame.title = "Create Promo 템플릿 콘텐츠 및 레이아웃 편집기";
   layoutFrame.src = "/prototype/visual-editor.html?mode=wizard-layout&source=create-promo";
   layoutFrame.addEventListener("load", postWizardLayoutSnapshot);
   wizardLayoutFrame = layoutFrame;
-  layoutPanel.append(layoutHeader, layoutFrame);
+  layoutPanel.append(layoutHeader);
+  if (pendingAdminLayoutUpdate) {
+    const updateBanner = document.createElement("div");
+    updateBanner.className = "admin-layout-update-banner";
+    updateBanner.setAttribute("role", "status");
+    const updateCopy = document.createElement("div");
+    appendTextElement(updateCopy, "strong", "", "관리자 기본 레이아웃이 업데이트되었습니다.");
+    appendTextElement(
+      updateCopy,
+      "span",
+      "",
+      `${pendingAdminLayoutUpdate.target.name} v${pendingAdminLayoutUpdate.target.version} · layout r${pendingAdminLayoutUpdate.nextIdentity?.layoutRevision || 1}`
+    );
+    const updateActions = document.createElement("div");
+    updateActions.className = "admin-layout-update-banner__actions";
+    const applyUpdate = document.createElement("button");
+    applyUpdate.className = "secondary-action is-primary";
+    applyUpdate.type = "button";
+    applyUpdate.textContent = "새 관리자 레이아웃 적용";
+    applyUpdate.addEventListener("click", applyPendingAdminLayoutUpdate);
+    const keepCurrent = document.createElement("button");
+    keepCurrent.className = "secondary-action";
+    keepCurrent.type = "button";
+    keepCurrent.textContent = "현재 작업 유지";
+    keepCurrent.addEventListener("click", deferPendingAdminLayoutUpdate);
+    updateActions.append(applyUpdate, keepCurrent);
+    updateBanner.append(updateCopy, updateActions);
+    layoutPanel.append(updateBanner);
+  } else if (wizardTemplateRefreshError) {
+    const refreshError = document.createElement("div");
+    refreshError.className = "admin-layout-update-banner is-error";
+    refreshError.setAttribute("role", "alert");
+    appendTextElement(refreshError, "span", "", wizardTemplateRefreshError);
+    const retryRefresh = document.createElement("button");
+    retryRefresh.className = "secondary-action";
+    retryRefresh.type = "button";
+    retryRefresh.textContent = "다시 확인";
+    retryRefresh.addEventListener("click", refreshActiveWizardTemplate);
+    refreshError.append(retryRefresh);
+    layoutPanel.append(refreshError);
+  }
+  layoutPanel.append(layoutFrame);
 
   placeholders.append(
     overview,
@@ -2172,6 +2397,7 @@ function buildWizardPayload(runKey) {
     },
     formTemplate: { ...contentState.formTemplate },
     layoutSnapshot: {
+      layoutIdentity: wizardLayoutIdentity,
       layoutRevision: wizardLayoutRevision,
       renderer: wizardRenderer,
       baseLayout: JSON.parse(JSON.stringify(wizardBaseLayout || FALLBACK_LAYOUT)),
@@ -2205,6 +2431,7 @@ function buildWizardPayload(runKey) {
       sectionSnapshot: wizardSectionDefinitions.map((section) => ({ ...section, items: (section.items || []).map((item) => ({ ...item })) })),
       formTemplate: { ...contentState.formTemplate },
       layoutSnapshot: {
+        layoutIdentity: wizardLayoutIdentity,
         layoutRevision: wizardLayoutRevision,
         renderer: wizardRenderer,
         baseLayout: JSON.parse(JSON.stringify(wizardBaseLayout || FALLBACK_LAYOUT)),
@@ -2664,12 +2891,14 @@ stepButtons.forEach((button, index) => {
     }
     currentStep = index;
     renderStep();
+    if (currentStep === 2) refreshActiveWizardTemplate();
   });
 });
 
 prev.addEventListener("click", () => {
   currentStep = Math.max(0, currentStep - 1);
   renderStep();
+  if (currentStep === 2) refreshActiveWizardTemplate();
 });
 
 next.addEventListener("click", () => {
@@ -2679,6 +2908,7 @@ next.addEventListener("click", () => {
   }
   currentStep = Math.min(steps.length - 1, currentStep + 1);
   renderStep();
+  if (currentStep === 2) refreshActiveWizardTemplate();
 });
 
 renderStep();
