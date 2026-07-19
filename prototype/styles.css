@@ -2609,6 +2609,11 @@ body.is-resizing {
   margin-top: var(--panel-gap);
 }
 
+.prompt-manager-page .subsection {
+  border: 0;
+  background: transparent;
+}
+
 .prompt-manager-layout {
   display: grid;
   grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
@@ -3137,6 +3142,7 @@ body.is-resizing {
 }
 
 .prompt-list-panel,
+.prompt-editor-panel-frame,
 .prompt-editor-panel {
   min-width: 0;
 }
@@ -3145,6 +3151,13 @@ body.is-resizing {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+}
+
+.prompt-editor-panel-frame {
+  padding: 10px;
+  border: 1px solid var(--line);
 }
 
 .prompt-list-panel .subsection-title {

@@ -62,6 +62,8 @@ assert.match(createJs, /function autoRegisterPromoOverview\b/);
 assert.match(createJs, /create-promo-auto-register-request/);
 assert.match(createJs, /placeholders\.append\(\s*overview,\s*templateSection,\s*layoutPanel\s*\)/);
 assert.match(editorApp, /isCreatePromoWizardMode/);
+assert.match(editorApp, /v-if="!isCreatePromoWizardMode" class="global-token-menu"/);
+assert.match(editorApp, /v-if="!isCreatePromoWizardMode" class="background-image-control"/);
 assert.match(editorApp, /create-promo-auto-register-request/);
 assert.match(editorApp, /sectionInputs:\s*JSON\.parse\(JSON\.stringify\(sectionInputs\.value\)\)/);
 assert.match(createJs, /contentState\.sectionInputs = mergeSectionInputs\(event\.data\.sectionInputs\)/);

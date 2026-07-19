@@ -3254,11 +3254,17 @@ var Wo = {
 }, Yo = { class: "shell-header__identity" }, Xo = { class: "shell-header__brand-row" }, Zo = { class: "shell-header__page-label" }, Qo = { class: "shell-header__actions" }, $o = {
 	class: "shell-status",
 	role: "status"
-}, es = { class: "editor-header editor-toolbar" }, ts = { class: "editor-global-actions" }, ns = { class: "global-token-menu" }, rs = { class: "global-token-swatches" }, is = [
+}, es = { class: "editor-header editor-toolbar" }, ts = { class: "editor-global-actions" }, ns = {
+	key: 0,
+	class: "global-token-menu"
+}, rs = { class: "global-token-swatches" }, is = [
 	"title",
 	"aria-label",
 	"onClick"
-], as = { class: "background-image-control" }, os = { class: "background-image-button" }, ss = {
+], as = {
+	key: 1,
+	class: "background-image-control"
+}, os = { class: "background-image-button" }, ss = {
 	key: 0,
 	class: "background-image-name"
 }, cs = {
@@ -3589,15 +3595,15 @@ var Wo = {
 		])) : Z("", !0)])) : (J(), Y("main", qo, [
 			T.value ? Z("", !0) : (J(), Y("header", Jo, [X("div", Yo, [X("div", Xo, [i[18] ||= X("h1", { class: "shell-header__brand" }, "PROMO WEB BUILDER", -1), X("span", Zo, P(ne.value ? "Admin Template Layout" : "Visual Editor"), 1)])]), X("div", Qo, [i[19] ||= Fi("<nav class=\"shell-nav\" aria-label=\"프로토타입 내비게이션\"><a href=\"/prototype/index.html\">프로모션 빌더</a><a href=\"/prototype/index.html?view=admin&amp;tab=promo-form\">관리자 페이지</a><a href=\"/promo-wizard.html\">Promo Wizard</a><a href=\"/create-promo.html\">Create Promo</a><a class=\"active\" href=\"/prototype/visual-editor.html\" aria-current=\"page\">Visual Editor</a><a href=\"/prototype/generated.html\">생성된 UI</a></nav><button class=\"shell-theme-toggle\" type=\"button\" data-shell-theme-toggle><span class=\"shell-theme-dot\" aria-hidden=\"true\"></span><strong data-shell-theme-label>Light</strong></button>", 2), X("div", $o, P(ne.value ? `Layout revision ${v.value}` : "편집 준비"), 1)])])),
 			X("header", es, [X("div", null, [X("span", null, P(ne.value ? "ADMIN TEMPLATE LAYOUT" : T.value ? "WIZARD LAYOUT" : "VISUAL EDITOR"), 1), X("h2", null, P(a.value?.name || "Default Renderer"), 1)]), X("div", ts, [
-				X("fieldset", ns, [i[20] ||= X("legend", null, "페이지 배경", -1), X("div", rs, [(J(!0), Y(K, null, ar(Vt(ho), (e) => (J(), Y("button", {
+				E.value ? Z("", !0) : (J(), Y("fieldset", ns, [i[20] ||= X("legend", null, "페이지 배경", -1), X("div", rs, [(J(!0), Y(K, null, ar(Vt(ho), (e) => (J(), Y("button", {
 					key: e.key,
 					type: "button",
 					class: j({ active: l.value.theme.backgroundColor === e.value }),
 					title: `${e.name} ${e.value}`,
 					"aria-label": `${e.name} ${e.value}`,
 					onClick: (t) => me(e)
-				}, [X("i", { style: ce({ backgroundColor: e.value }) }, null, 4)], 10, is))), 128))])]),
-				X("div", as, [
+				}, [X("i", { style: ce({ backgroundColor: e.value }) }, null, 4)], 10, is))), 128))])])),
+				E.value ? Z("", !0) : (J(), Y("div", as, [
 					X("label", os, [X("input", {
 						type: "file",
 						accept: "image/*",
@@ -3611,7 +3617,7 @@ var Wo = {
 						onClick: ge
 					}, "제거")) : Z("", !0),
 					h.value ? (J(), Y("small", cs, P(h.value), 1)) : Z("", !0)
-				]),
+				])),
 				X("nav", ls, [ne.value ? (J(), Y(K, { key: 0 }, [xn(X("input", {
 					"onUpdate:modelValue": i[0] ||= (e) => b.value = e,
 					type: "text",

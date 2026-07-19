@@ -477,7 +477,7 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
         <h2>{{ template?.name || "Default Renderer" }}</h2>
       </div>
       <div class="editor-global-actions">
-        <fieldset class="global-token-menu">
+        <fieldset v-if="!isCreatePromoWizardMode" class="global-token-menu">
           <legend>페이지 배경</legend>
           <div class="global-token-swatches">
             <button
@@ -493,7 +493,7 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
             </button>
           </div>
         </fieldset>
-        <div class="background-image-control">
+        <div v-if="!isCreatePromoWizardMode" class="background-image-control">
           <label class="background-image-button">
             <input type="file" accept="image/*" @change="attachBackgroundImage" />
             <span>{{ designSpec.theme.backgroundImage ? "배경 이미지 교체" : "배경 이미지 첨부" }}</span>

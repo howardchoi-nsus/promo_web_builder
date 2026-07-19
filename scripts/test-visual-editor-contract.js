@@ -116,6 +116,8 @@ assert.match(app, /section-accordion/);
 assert.match(app, /sectionContentRegistered/);
 assert.match(app, /section-registration-icon/);
 assert.match(app, /create-promo-auto-register-request/);
+assert.match(app, /v-if="!isCreatePromoWizardMode" class="global-token-menu"/);
+assert.match(app, /v-if="!isCreatePromoWizardMode" class="background-image-control"/);
 assert.match(read("visual-editor", "src", "styles.css"), /\.section-registration-icon\.is-complete circle/);
 assert.match(read("visual-editor", "src", "styles.css"), /\.section-registration-icon\.is-incomplete circle/);
 assert.match(app, /section-accordion__items/);
