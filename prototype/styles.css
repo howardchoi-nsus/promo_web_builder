@@ -2720,6 +2720,9 @@ body.is-resizing {
   gap: 12px;
   min-width: 0;
   min-height: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
 }
 
 .template-layout-settings {

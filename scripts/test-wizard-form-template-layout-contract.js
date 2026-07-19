@@ -33,6 +33,7 @@ assert.match(sectionsApi, /remapLayoutSectionKey/);
 assert.match(admin, /기본 레이아웃 설정/);
 assert.match(admin, /<div class="form-template-editor-panels">[\s\S]*?<section class="prompt-editor-panel"[\s\S]*?<aside class="template-section-items-panel"/);
 assert.match(adminStyles, /\.form-template-editor-panels\s*\{[\s\S]*?display:\s*grid;[\s\S]*?grid-template-columns:\s*minmax\(360px, 1fr\) minmax\(240px, 30%\);/);
+assert.match(adminStyles, /\.form-template-editor-panels\s*\{[\s\S]*?padding:\s*10px;[\s\S]*?border:\s*1px solid var\(--line\);[\s\S]*?border-radius:\s*var\(--radius\);/);
 assert.match(editor, /admin-layout/);
 assert.match(editor, /wizard-layout/);
 assert.match(wizard, /promo-wizard-layout-change/);
