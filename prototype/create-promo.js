@@ -213,13 +213,23 @@ function createAppearancePreview() {
   return preview;
 }
 
-function createChoiceButton({ group, value, label, selected, swatchColor, ctaShapePreview = false, onSelect }) {
+function createChoiceButton({
+  group,
+  value,
+  label,
+  selected,
+  swatchColor,
+  ctaShapePreview = false,
+  ctaVariantPreview = false,
+  onSelect,
+}) {
+  const hasCtaPreview = ctaShapePreview || ctaVariantPreview;
   const button = document.createElement("button");
   button.type = "button";
-  button.className = `appearance-choice${ctaShapePreview ? " appearance-choice--cta-shape" : ""}${selected ? " is-selected" : ""}`;
+  button.className = `appearance-choice${hasCtaPreview ? " appearance-choice--cta-preview" : ""}${selected ? " is-selected" : ""}`;
   button.setAttribute("role", "radio");
   button.setAttribute("aria-checked", String(selected));
-  if (ctaShapePreview) button.setAttribute("aria-label", label);
+  if (hasCtaPreview) button.setAttribute("aria-label", label);
   button.dataset.choiceGroup = group;
   button.dataset.choiceValue = value;
   if (swatchColor) {
@@ -229,8 +239,10 @@ function createChoiceButton({ group, value, label, selected, swatchColor, ctaSha
     swatch.setAttribute("aria-hidden", "true");
     button.append(swatch);
   }
-  if (ctaShapePreview) {
-    const sample = appendTextElement(button, "span", `appearance-choice__cta-sample is-${value} is-${appearanceState.ctaVariant}`, "CTA");
+  if (hasCtaPreview) {
+    const previewShape = ctaShapePreview ? value : appearanceState.ctaShape;
+    const previewVariant = ctaVariantPreview ? value : appearanceState.ctaVariant;
+    const sample = appendTextElement(button, "span", `appearance-choice__cta-sample is-${previewShape} is-${previewVariant}`, "CTA");
     sample.style.setProperty("--choice-cta-color", selectedCtaColor().color);
     sample.setAttribute("aria-hidden", "true");
   } else {
@@ -305,6 +317,7 @@ function renderCtaStep() {
       value: option.id,
       label: option.name,
       selected: appearanceState.ctaVariant === option.id,
+      ctaVariantPreview: true,
       onSelect: () => { appearanceState.ctaVariant = option.id; },
     }))),
     createChoiceGroup("버튼 색상", "", CTA_COLORS.map((option) => createChoiceButton({

@@ -1264,7 +1264,7 @@ a {
   white-space: nowrap;
 }
 
-.appearance-choice--cta-shape {
+.appearance-choice--cta-preview {
   grid-template-columns: minmax(0, 1fr) 18px;
   min-height: 88px;
   padding: 14px;
