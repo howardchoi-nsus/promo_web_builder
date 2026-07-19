@@ -113,6 +113,11 @@ assert.match(read("visual-editor", "src", "styles.css"), /\.preview-panel\s*\{[^
 assert.doesNotMatch(read("visual-editor", "src", "styles.css"), /\.rendered-section--heroBanner[^}]*min-height/s);
 assert.match(app, /guidesVisible/);
 assert.match(app, /section-accordion/);
+assert.match(app, /sectionContentRegistered/);
+assert.match(app, /section-registration-icon/);
+assert.match(app, /create-promo-auto-register-request/);
+assert.match(read("visual-editor", "src", "styles.css"), /\.section-registration-icon\.is-complete circle/);
+assert.match(read("visual-editor", "src", "styles.css"), /\.section-registration-icon\.is-incomplete circle/);
 assert.match(app, /section-accordion__items/);
 assert.match(app, /expandedSectionKey/);
 assert.match(app, /function toggleSection/);

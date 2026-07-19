@@ -37,10 +37,14 @@ const layoutChangeNote = ref("");
 const layoutSaving = ref(false);
 const layoutSaveMessage = ref("");
 const externalSnapshotReady = ref(false);
+const autoRegisterPending = ref(false);
+const autoRegisterMessage = ref("");
 let applyingExternalSnapshot = false;
 
 const isAdminLayoutMode = computed(() => props.mode === "admin-layout");
 const isWizardLayoutMode = computed(() => props.mode === "wizard-layout");
+const wizardSource = new URLSearchParams(window.location.search).get("source") || "";
+const isCreatePromoWizardMode = computed(() => isWizardLayoutMode.value && wizardSource === "create-promo");
 
 const selectedSection = computed(() => sections.value.find((section) => section.sectionKey === selectedSectionKey.value) || sections.value[0]);
 const selectedItem = computed(() => selectedSection.value?.items?.find((item) => item.itemKey === selectedItemKey.value) || selectedSection.value?.items?.[0]);
@@ -92,6 +96,32 @@ function updateRendererContent(section, item, value) {
   selectItem(section, item);
   if (item.fieldKind !== "text" || item.isLocked) return;
   updateSelectedValue(value);
+}
+
+function itemContentRegistered(section, item) {
+  const value = sectionInputs.value?.[section.sectionKey]?.[item.itemKey];
+  if (item.fieldKind === "cta") {
+    return Boolean(String(value?.label || "").trim() && String(value?.link || "").trim());
+  }
+  if (item.fieldKind === "image") return Boolean(String(value?.value || "").trim());
+  return Boolean(String(value || "").trim());
+}
+
+function sectionContentRegistered(section) {
+  const items = section.items || [];
+  const requiredItems = items.filter((item) => item.isRequired || item.isLocked);
+  if (requiredItems.length) return requiredItems.every((item) => itemContentRegistered(section, item));
+  return items.some((item) => itemContentRegistered(section, item));
+}
+
+function requestAutoRegister() {
+  if (!isCreatePromoWizardMode.value || autoRegisterPending.value) return;
+  autoRegisterPending.value = true;
+  autoRegisterMessage.value = "";
+  window.parent.postMessage({
+    type: "create-promo-auto-register-request",
+    sectionInputs: JSON.parse(JSON.stringify(sectionInputs.value)),
+  }, window.location.origin);
 }
 
 function updateBackgroundToken(token) {
@@ -352,6 +382,14 @@ async function applyExternalSnapshot(snapshot) {
 
 function handleParentMessage(event) {
   if (!isWizardLayoutMode.value || event.origin !== window.location.origin) return;
+  if (event.data?.type === "create-promo-auto-register-result") {
+    autoRegisterPending.value = false;
+    const count = Number(event.data.registeredCount || 0);
+    autoRegisterMessage.value = count
+      ? `${count}개 항목을 자동 등록했습니다.`
+      : "자동 등록할 빈 항목이 없습니다.";
+    return;
+  }
   if (event.data?.type === "promo-wizard-layout-snapshot") {
     applyExternalSnapshot(event.data.snapshot);
   }
@@ -504,7 +542,17 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
               @click="toggleSection(section)"
             >
               <span>{{ section.name }}</span>
-              <small>{{ section.items?.length || 0 }} items</small>
+              <svg
+                class="section-registration-icon"
+                :class="sectionContentRegistered(section) ? 'is-complete' : 'is-incomplete'"
+                viewBox="0 0 20 20"
+                role="img"
+                :aria-label="sectionContentRegistered(section) ? `${section.name} 콘텐츠 등록 완료` : `${section.name} 콘텐츠 등록 필요`"
+              >
+                <circle cx="10" cy="10" r="9"></circle>
+                <path v-if="sectionContentRegistered(section)" d="M5.8 10.2 8.6 13l5.8-6"></path>
+                <path v-else d="M10 5.5v6M10 14.5v.1"></path>
+              </svg>
               <i aria-hidden="true"></i>
             </button>
             <div class="section-accordion__body">
@@ -527,9 +575,20 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
 
       <section class="preview-panel">
         <div class="preview-toolbar">
-          <div>
+          <div class="preview-title-group">
             <strong>Live Preview</strong>
             <small>{{ template.templateKey }} · v{{ template.version }}</small>
+            <button
+              v-if="isCreatePromoWizardMode"
+              class="auto-register-action"
+              type="button"
+              :disabled="autoRegisterPending"
+              @click="requestAutoRegister"
+            >
+              {{ autoRegisterPending ? "등록 중" : "자동등록" }}
+            </button>
+            <small v-if="isCreatePromoWizardMode" class="preview-edit-hint">미리보기 요소를 선택해 내용을 입력하세요.</small>
+            <small v-if="autoRegisterMessage" class="auto-register-message" role="status">{{ autoRegisterMessage }}</small>
           </div>
           <div class="preview-controls">
             <label class="guide-toggle">

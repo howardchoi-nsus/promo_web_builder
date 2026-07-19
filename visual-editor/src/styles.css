@@ -51,6 +51,11 @@ button, a { letter-spacing: 0; }
 .section-trigger.active, .section-accordion__items button.active { background: #e7f2ef; color: #0f5c4e; font-weight: 750; }
 .section-trigger span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .section-trigger small { margin-left: auto; color: #7c8799; font-size: 11px; white-space: nowrap; }
+.section-registration-icon { flex: 0 0 18px; width: 18px; height: 18px; margin-left: auto; overflow: visible; }
+.section-registration-icon circle { stroke: none; }
+.section-registration-icon path { fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.section-registration-icon.is-complete circle { fill: #18a66a; }
+.section-registration-icon.is-incomplete circle { fill: #d94841; }
 .section-trigger i { width: 7px; height: 7px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); transition: transform 180ms ease; }
 .section-accordion.open .section-trigger i { transform: rotate(225deg); }
 .section-accordion__body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 180ms ease; }
@@ -63,6 +68,12 @@ button, a { letter-spacing: 0; }
 .preview-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 54px; padding: 8px 12px; background: #fff; border-bottom: 1px solid #d4dae4; }
 .preview-toolbar > div:first-child { display: grid; gap: 2px; }
 .preview-toolbar small { color: #7b8597; }
+.preview-title-group { grid-template-columns: auto auto; align-items: center; column-gap: 8px; }
+.preview-title-group > small:first-of-type { grid-column: 1; }
+.auto-register-action { grid-column: 2; grid-row: 1 / span 2; align-self: center; min-height: 32px; padding: 0 12px; border: 1px solid #156b5b; background: #156b5b; color: #fff; cursor: pointer; font-size: 11px; font-weight: 800; }
+.auto-register-action:disabled { cursor: wait; opacity: .55; }
+.preview-edit-hint, .auto-register-message { grid-column: 1 / -1; }
+.auto-register-message { color: #0f5c4e !important; font-weight: 750; }
 .preview-controls { display: flex; align-items: center; gap: 10px; }
 .guide-toggle { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 9px; border: 1px solid #cbd3df; background: #fff; color: #475569; cursor: pointer; font-size: 11px; }
 .guide-toggle input { width: 14px; height: 14px; margin: 0; accent-color: #156b5b; }

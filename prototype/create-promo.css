@@ -386,6 +386,10 @@ a {
   margin-top: 18px;
 }
 
+.create-promo-content-layout {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .content-form-actions,
 .content-form-section,
 .content-coverage-panel {

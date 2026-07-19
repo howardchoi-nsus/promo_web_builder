@@ -673,10 +673,66 @@ function logWizardLayoutEvent(eventName, changeSummary = {}, targetKey = "") {
   }).catch(() => {});
 }
 
+function autoRegisterPromoOverview() {
+  const promo = contentState.promo;
+  const brief = contentState.simpleBrief;
+  const purpose = promo.promotionPurpose === "기타"
+    ? promo.promotionPurposeOther
+    : promo.promotionPurpose;
+  const summary = [purpose, promo.market, brief.audience, brief.campaignTone]
+    .filter((value) => String(value || "").trim())
+    .join(" · ");
+  let registeredCount = 0;
+  let firstTextRegistered = false;
+
+  wizardSectionDefinitions.forEach((section) => {
+    (section.items || []).forEach((item) => {
+      if (!item.isVisibleInWizard || item.isLocked) return;
+      const path = `${section.sectionKey}.${item.itemKey}`;
+      const current = valueAtPath(contentState.sectionInputs, path);
+      if (item.fieldKind === "text") {
+        if (String(current || "").trim()) return;
+        const semanticKey = `${item.itemKey} ${item.name} ${item.textType || ""}`.toLowerCase();
+        const titleLike = /title|headline|heading|제목|타이틀/.test(semanticKey);
+        const nextValue = titleLike || !firstTextRegistered ? promo.title : summary;
+        if (!String(nextValue || "").trim()) return;
+        setValueAtPath(contentState.sectionInputs, path, nextValue);
+        firstTextRegistered = true;
+        registeredCount += 1;
+        return;
+      }
+      if (item.fieldKind === "cta") {
+        if (String(current?.label || "").trim() || String(current?.link || "").trim()) return;
+        setValueAtPath(contentState.sectionInputs, path, {
+          label: purpose ? `${purpose} 보기` : "자세히 보기",
+          link: "#",
+          target: "_self",
+        });
+        registeredCount += 1;
+      }
+    });
+  });
+
+  saveWizardContent();
+  postWizardLayoutSnapshot();
+  return registeredCount;
+}
+
 window.addEventListener("message", (event) => {
   if (event.origin !== window.location.origin) return;
   if (event.data?.type === "promo-wizard-layout-ready") {
     postWizardLayoutSnapshot();
+    return;
+  }
+  if (event.data?.type === "create-promo-auto-register-request") {
+    if (event.data.sectionInputs && typeof event.data.sectionInputs === "object") {
+      contentState.sectionInputs = mergeSectionInputs(event.data.sectionInputs);
+    }
+    const registeredCount = autoRegisterPromoOverview();
+    wizardLayoutFrame?.contentWindow?.postMessage({
+      type: "create-promo-auto-register-result",
+      registeredCount,
+    }, window.location.origin);
     return;
   }
   if (event.data?.type !== "promo-wizard-layout-change" || !event.data.designSpec) return;
@@ -1328,28 +1384,10 @@ function createContentSection(titleText, fields) {
 }
 
 function renderContentStep() {
-  placeholders.className = "content-form-layout";
+  placeholders.className = "content-form-layout create-promo-content-layout";
   placeholders.innerHTML = "";
 
-  const toolbar = document.createElement("div");
-  toolbar.className = "content-form-actions";
-  const note = appendTextElement(toolbar, "span", "", "선택한 템플릿과 콘텐츠는 Create Promo 웹 출력에 저장됩니다. 배경과 CTA 스타일은 1·2단계 선택값이 적용됩니다.");
-  note.className = "content-save-note";
-  const buttons = document.createElement("div");
-  const autofill = document.createElement("button");
-  autofill.className = "secondary-action";
-  autofill.type = "button";
-  autofill.textContent = "자동 입력";
-  autofill.addEventListener("click", autofillContent);
-  const reset = document.createElement("button");
-  reset.className = "secondary-action";
-  reset.type = "button";
-  reset.textContent = "초기화";
-  reset.addEventListener("click", resetContent);
-  buttons.append(autofill, reset);
-  toolbar.append(buttons);
-
-  const overview = createContentSection("2. 프로모션 개요", [
+  const overview = createContentSection("1. 프로모션 개요", [
     { group: "promo", key: "title", label: "프로모션 제목", required: true },
     { group: "promo", key: "promotionPurpose", label: "프로모션 목적", required: true, options: ["할인쿠폰", "경품", "이벤트", "기타"] },
     { group: "promo", key: "promotionPurposeOther", label: "기타 목적", required: contentState.promo.promotionPurpose === "기타" },
@@ -1365,7 +1403,7 @@ function renderContentStep() {
 
   const templateSection = document.createElement("article");
   templateSection.className = "content-form-section";
-  appendTextElement(templateSection, "h3", "", "1. 프로모션 템플릿 선택");
+  appendTextElement(templateSection, "h3", "", "2. 프로모션 템플릿 선택");
   const templateTiles = document.createElement("div");
   templateTiles.className = "wizard-template-tiles";
   wizardFormTemplates.forEach((template) => {
@@ -1560,18 +1598,15 @@ function renderContentStep() {
   const layoutFrame = document.createElement("iframe");
   layoutFrame.className = "wizard-layout-frame";
   layoutFrame.title = "Create Promo 템플릿 콘텐츠 및 레이아웃 편집기";
-  layoutFrame.src = "/prototype/visual-editor.html?mode=wizard-layout";
+  layoutFrame.src = "/prototype/visual-editor.html?mode=wizard-layout&source=create-promo";
   layoutFrame.addEventListener("load", postWizardLayoutSnapshot);
   wizardLayoutFrame = layoutFrame;
   layoutPanel.append(layoutHeader, layoutFrame);
 
   placeholders.append(
-    toolbar,
-    templateSection,
     overview,
-    dynamicSectionsWrapper,
-    layoutPanel,
-    coverage
+    templateSection,
+    layoutPanel
   );
   requestAnimationFrame(postWizardLayoutSnapshot);
 }
