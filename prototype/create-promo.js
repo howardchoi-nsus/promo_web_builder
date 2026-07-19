@@ -213,12 +213,13 @@ function createAppearancePreview() {
   return preview;
 }
 
-function createChoiceButton({ group, value, label, selected, swatchColor, onSelect }) {
+function createChoiceButton({ group, value, label, selected, swatchColor, ctaShapePreview = false, onSelect }) {
   const button = document.createElement("button");
   button.type = "button";
-  button.className = `appearance-choice${selected ? " is-selected" : ""}`;
+  button.className = `appearance-choice${ctaShapePreview ? " appearance-choice--cta-shape" : ""}${selected ? " is-selected" : ""}`;
   button.setAttribute("role", "radio");
   button.setAttribute("aria-checked", String(selected));
+  if (ctaShapePreview) button.setAttribute("aria-label", label);
   button.dataset.choiceGroup = group;
   button.dataset.choiceValue = value;
   if (swatchColor) {
@@ -228,7 +229,13 @@ function createChoiceButton({ group, value, label, selected, swatchColor, onSele
     swatch.setAttribute("aria-hidden", "true");
     button.append(swatch);
   }
-  appendTextElement(button, "strong", "", label);
+  if (ctaShapePreview) {
+    const sample = appendTextElement(button, "span", `appearance-choice__cta-sample is-${value} is-${appearanceState.ctaVariant}`, "CTA");
+    sample.style.setProperty("--choice-cta-color", selectedCtaColor().color);
+    sample.setAttribute("aria-hidden", "true");
+  } else {
+    appendTextElement(button, "strong", "", label);
+  }
   const check = appendTextElement(button, "span", "appearance-choice__check", selected ? "✓" : "");
   check.setAttribute("aria-hidden", "true");
   button.addEventListener("click", () => {
@@ -290,6 +297,7 @@ function renderCtaStep() {
       value: option.id,
       label: option.name,
       selected: appearanceState.ctaShape === option.id,
+      ctaShapePreview: true,
       onSelect: () => { appearanceState.ctaShape = option.id; },
     }))),
     createChoiceGroup("표현 방식", "", CTA_VARIANTS.map((option) => createChoiceButton({
