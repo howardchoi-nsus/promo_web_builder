@@ -6,6 +6,9 @@ const ALLOWED_EVENTS = new Set([
   "item_reset", "layout_reset", "layout_completed", "run_snapshot_created",
   "legacy_layout_cache_invalidated", "layout_identity_mismatch",
   "admin_layout_update_detected", "admin_layout_update_applied", "admin_layout_update_deferred",
+  "legacy_section_order_cache_invalidated",
+  "admin_section_order_update_detected", "admin_section_order_update_applied", "admin_section_order_update_deferred",
+  "admin_layout_reset_with_section_order",
 ]);
 
 module.exports = async function handler(req, res) {

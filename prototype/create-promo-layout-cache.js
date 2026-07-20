@@ -70,6 +70,46 @@
       !== JSON.stringify(stableValue(layoutWithoutCreatePromoAppearance(resolvedLayout)));
   }
 
+  function normalizeSectionOrder(value = []) {
+    if (!Array.isArray(value)) return [];
+    return [...new Set(value.map((key) => String(key || "").trim()).filter(Boolean))];
+  }
+
+  function sameSectionOrder(left, right) {
+    const normalizedLeft = normalizeSectionOrder(left);
+    const normalizedRight = normalizeSectionOrder(right);
+    return normalizedLeft.length === normalizedRight.length
+      && normalizedLeft.every((key, index) => key === normalizedRight[index]);
+  }
+
+  function mergeSectionOrder(savedOrder, defaultOrder) {
+    const normalizedDefault = normalizeSectionOrder(defaultOrder);
+    const allowed = new Set(normalizedDefault);
+    const restored = normalizeSectionOrder(savedOrder).filter((key) => allowed.has(key));
+    normalizedDefault.forEach((key) => {
+      if (!restored.includes(key)) restored.push(key);
+    });
+    return restored;
+  }
+
+  function resolveSectionOrderCache({ savedOrder, incomingIdentity, defaultOrder }) {
+    const identity = normalizeLayoutIdentity(incomingIdentity);
+    const fallback = normalizeSectionOrder(defaultOrder);
+    if (!identity) return { resolvedOrder: fallback, cacheStatus: "invalid_identity", identity: null };
+    if (!savedOrder) return { resolvedOrder: fallback, cacheStatus: "fresh", identity };
+    if (Array.isArray(savedOrder) || typeof savedOrder !== "object") {
+      return { resolvedOrder: fallback, cacheStatus: "legacy_invalidated", identity };
+    }
+    if (!sameLayoutIdentity(savedOrder.layoutIdentity, identity)) {
+      return { resolvedOrder: fallback, cacheStatus: "identity_mismatch", identity };
+    }
+    return {
+      resolvedOrder: mergeSectionOrder(savedOrder.resolvedOrder, fallback),
+      cacheStatus: "restored",
+      identity,
+    };
+  }
+
   function resolveLayoutCache({ savedLayout, incomingIdentity, defaultLayout }) {
     const normalizedIdentity = normalizeLayoutIdentity(incomingIdentity);
     const fallback = clone(defaultLayout || {});
@@ -97,6 +137,9 @@
     sameLayoutIdentity,
     hasLayoutOverrides,
     resolveLayoutCache,
+    normalizeSectionOrder,
+    sameSectionOrder,
+    resolveSectionOrderCache,
   };
 
   if (typeof module !== "undefined" && module.exports) module.exports = api;

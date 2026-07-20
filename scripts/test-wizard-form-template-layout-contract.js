@@ -33,6 +33,8 @@ assert.match(activationApi, /layoutIdentity:\s*createLayoutIdentity/);
 assert.match(usageApi, /admin_layout_update_detected/);
 assert.match(usageApi, /admin_layout_update_applied/);
 assert.match(usageApi, /legacy_layout_cache_invalidated/);
+assert.match(usageApi, /legacy_section_order_cache_invalidated/);
+assert.match(usageApi, /admin_layout_reset_with_section_order/);
 assert.match(templatesApi, /cloneLayout/);
 assert.match(activationApi, /Form template layout validation failed/);
 assert.match(store, /remapLayoutSectionKey/);

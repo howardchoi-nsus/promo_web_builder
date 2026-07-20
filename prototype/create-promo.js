@@ -75,6 +75,8 @@ const {
   sameLayoutIdentity,
   hasLayoutOverrides,
   resolveLayoutCache,
+  sameSectionOrder,
+  resolveSectionOrderCache,
 } = globalThis.CreatePromoLayoutCache || {};
 
 let currentStep = 0;
@@ -109,6 +111,7 @@ let wizardResolvedLayout = null;
 let wizardLayoutRevision = 1;
 let wizardRenderer = { key: "default-promo-renderer", version: 1 };
 let wizardLayoutIdentity = null;
+let wizardBaseSectionOrder = [];
 let pendingAdminLayoutUpdate = null;
 let deferredAdminLayoutIdentityKey = "";
 let wizardTemplateRefreshPromise = null;
@@ -604,7 +607,15 @@ async function selectWizardFormTemplate(templateId, options = {}) {
     throw new Error("선택한 템플릿에 Wizard 입력 항목이 없습니다. 관리자에게 템플릿 구성을 요청해 주세요.");
   }
   selectedWizardFormTemplate = result.template;
-  const savedOrder = contentState.templateSectionOrders[result.template.templateKey] || [];
+  const adminSectionOrder = nextDefinitions.map((section) => section.sectionKey);
+  const savedSectionOrder = contentState.templateSectionOrders[result.template.templateKey];
+  const nextIdentity = layoutIdentityFromTemplateResult(result);
+  const sectionOrderResolution = resolveSectionOrderCache({
+    savedOrder: savedSectionOrder,
+    incomingIdentity: nextIdentity,
+    defaultOrder: adminSectionOrder,
+  });
+  const savedOrder = sectionOrderResolution.resolvedOrder;
   const byKey = new Map(nextDefinitions.map((section) => [section.sectionKey, section]));
   const savedMovable = savedOrder.map((key) => byKey.get(key)).filter(templateSectionCanReorder);
   const movableQueue = [
@@ -618,7 +629,8 @@ async function selectWizardFormTemplate(templateId, options = {}) {
   wizardSectionConfigRevision = String(result.configRevision || "");
   wizardLayoutRevision = Number(result.layoutRevision || 1);
   wizardRenderer = result.renderer || { key: "default-promo-renderer", version: 1 };
-  wizardLayoutIdentity = layoutIdentityFromTemplateResult(result);
+  wizardLayoutIdentity = nextIdentity;
+  wizardBaseSectionOrder = adminSectionOrder;
   wizardBaseLayout = JSON.parse(JSON.stringify(result.defaultLayout || FALLBACK_LAYOUT));
   const savedLayout = contentState.templateLayouts[result.template.templateKey];
   const cacheResolution = resolveLayoutCache({
@@ -647,6 +659,12 @@ async function selectWizardFormTemplate(templateId, options = {}) {
     baseLayout: wizardBaseLayout,
     resolvedLayout: wizardResolvedLayout,
   };
+  contentState.templateSectionOrders[result.template.templateKey] = {
+    contractVersion: LAYOUT_CACHE_CONTRACT_VERSION,
+    layoutIdentity: wizardLayoutIdentity,
+    baseOrder: [...wizardBaseSectionOrder],
+    resolvedOrder: wizardSectionDefinitions.map((section) => section.sectionKey),
+  };
   pendingAdminLayoutUpdate = null;
   wizardTemplateRefreshError = "";
   if (!options.fromRefresh) deferredAdminLayoutIdentityKey = "";
@@ -656,6 +674,15 @@ async function selectWizardFormTemplate(templateId, options = {}) {
   } else if (cacheResolution.cacheStatus === "identity_mismatch") {
     logWizardLayoutEvent("layout_identity_mismatch", {
       previousIdentity: layoutIdentityEventSummary(savedLayout?.layoutIdentity),
+      nextIdentity: layoutIdentityEventSummary(wizardLayoutIdentity),
+    });
+  }
+  if (sectionOrderResolution.cacheStatus === "legacy_invalidated") {
+    logWizardLayoutEvent("legacy_section_order_cache_invalidated", { templateKey: result.template.templateKey });
+  } else if (sectionOrderResolution.cacheStatus === "identity_mismatch") {
+    logWizardLayoutEvent("admin_section_order_update_applied", {
+      applyMode: "identity-reset",
+      previousIdentity: layoutIdentityEventSummary(savedSectionOrder?.layoutIdentity),
       nextIdentity: layoutIdentityEventSummary(wizardLayoutIdentity),
     });
   }
@@ -691,12 +718,19 @@ async function refreshActiveWizardTemplate() {
       const nextIdentityKey = layoutIdentityKey(nextIdentity);
       if (deferredAdminLayoutIdentityKey === nextIdentityKey) return false;
       const previousIdentity = wizardLayoutIdentity;
-      const userHasOverrides = hasLayoutOverrides(wizardBaseLayout, wizardResolvedLayout);
+      const layoutChanged = hasLayoutOverrides(wizardBaseLayout, wizardResolvedLayout);
+      const sectionOrderChanged = !sameSectionOrder(
+        wizardBaseSectionOrder,
+        wizardSectionDefinitions.map((section) => section.sectionKey)
+      );
+      const userHasOverrides = layoutChanged || sectionOrderChanged;
       logWizardLayoutEvent("admin_layout_update_detected", {
         previousIdentity: layoutIdentityEventSummary(previousIdentity),
         nextIdentity: layoutIdentityEventSummary(nextIdentity),
         configRevisionChanged: previousIdentity?.configRevision !== nextIdentity?.configRevision,
         userHasOverrides,
+        layoutChanged,
+        sectionOrderChanged,
       });
       if (!userHasOverrides) {
         await selectWizardFormTemplate(target.id, {
@@ -778,7 +812,12 @@ function wizardSectionConfigurationReady() {
 function saveWizardContent() {
   if (selectedWizardFormTemplate?.templateKey) {
     contentState.templateInputs[selectedWizardFormTemplate.templateKey] = contentState.sectionInputs;
-    contentState.templateSectionOrders[selectedWizardFormTemplate.templateKey] = wizardSectionDefinitions.map((section) => section.sectionKey);
+    contentState.templateSectionOrders[selectedWizardFormTemplate.templateKey] = {
+      contractVersion: LAYOUT_CACHE_CONTRACT_VERSION,
+      layoutIdentity: wizardLayoutIdentity,
+      baseOrder: [...wizardBaseSectionOrder],
+      resolvedOrder: wizardSectionDefinitions.map((section) => section.sectionKey),
+    };
     contentState.templateLayouts[selectedWizardFormTemplate.templateKey] = {
       contractVersion: LAYOUT_CACHE_CONTRACT_VERSION,
       layoutIdentity: wizardLayoutIdentity,
@@ -822,9 +861,14 @@ function postWizardLayoutSnapshot() {
 
 function resetWizardLayout() {
   wizardResolvedLayout = JSON.parse(JSON.stringify(wizardBaseLayout || FALLBACK_LAYOUT));
+  const byKey = new Map(wizardSectionDefinitions.map((section) => [section.sectionKey, section]));
+  wizardSectionDefinitions = wizardBaseSectionOrder.map((key) => byKey.get(key)).filter(Boolean);
+  byKey.forEach((section, key) => {
+    if (!wizardBaseSectionOrder.includes(key)) wizardSectionDefinitions.push(section);
+  });
   saveWizardContent();
   postWizardLayoutSnapshot();
-  logWizardLayoutEvent("layout_reset");
+  logWizardLayoutEvent("admin_layout_reset_with_section_order", { sectionOrderReset: true });
 }
 
 function logWizardLayoutEvent(eventName, changeSummary = {}, targetKey = "") {

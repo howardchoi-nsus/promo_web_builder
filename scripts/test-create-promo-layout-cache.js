@@ -4,6 +4,8 @@ const {
   sameLayoutIdentity,
   hasLayoutOverrides,
   resolveLayoutCache,
+  sameSectionOrder,
+  resolveSectionOrderCache,
 } = require("../prototype/create-promo-layout-cache.js");
 
 function identity(overrides = {}) {
@@ -76,5 +78,41 @@ appearanceOnly.theme = {
   ctaVariant: "ghost",
 };
 assert.equal(hasLayoutOverrides(baseLayout, appearanceOnly), false);
+
+const defaultOrder = ["header", "hero", "content", "footer"];
+const customOrder = ["header", "content", "hero", "footer"];
+assert.equal(sameSectionOrder(defaultOrder, [...defaultOrder]), true);
+assert.equal(sameSectionOrder(defaultOrder, customOrder), false);
+
+const restoredOrder = resolveSectionOrderCache({
+  savedOrder: { layoutIdentity: identity(), resolvedOrder: customOrder },
+  incomingIdentity: identity(),
+  defaultOrder,
+});
+assert.equal(restoredOrder.cacheStatus, "restored");
+assert.deepEqual(restoredOrder.resolvedOrder, customOrder);
+
+const mismatchedOrder = resolveSectionOrderCache({
+  savedOrder: { layoutIdentity: identity(), resolvedOrder: customOrder },
+  incomingIdentity: identity({ templateVersion: 2, layoutRevision: 3 }),
+  defaultOrder,
+});
+assert.equal(mismatchedOrder.cacheStatus, "identity_mismatch");
+assert.deepEqual(mismatchedOrder.resolvedOrder, defaultOrder);
+
+const legacyOrder = resolveSectionOrderCache({
+  savedOrder: customOrder,
+  incomingIdentity: identity(),
+  defaultOrder,
+});
+assert.equal(legacyOrder.cacheStatus, "legacy_invalidated");
+assert.deepEqual(legacyOrder.resolvedOrder, defaultOrder);
+
+const changedDefinitions = resolveSectionOrderCache({
+  savedOrder: { layoutIdentity: identity(), resolvedOrder: ["hero", "removed", "header"] },
+  incomingIdentity: identity(),
+  defaultOrder: ["header", "hero", "new-section", "footer"],
+});
+assert.deepEqual(changedDefinitions.resolvedOrder, ["hero", "header", "new-section", "footer"]);
 
 console.log("Create Promo layout cache test passed");
