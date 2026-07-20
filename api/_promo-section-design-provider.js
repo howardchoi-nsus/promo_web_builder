@@ -125,29 +125,28 @@ async function generateGeminiSectionImage({ prompt, signal }) {
   const imageSize = process.env.SECTION_IMAGE_SIZE || "2K";
   const startedAt = Date.now();
   const { payload, requestId } = await requestJson(
-    `https://generativelanguage.googleapis.com/v1/models/${encodeURIComponent(model)}:generateContent`,
+    "https://generativelanguage.googleapis.com/v1beta/interactions",
     {
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        responseModalities: ["IMAGE"],
-        responseFormat: {
-          image: {
-            aspectRatio: "16:9",
-            imageSize,
-          },
-        },
+      model,
+      input: [{ type: "text", text: prompt }],
+      response_format: {
+        type: "image",
+        mime_type: "image/jpeg",
+        aspect_ratio: "16:9",
+        image_size: imageSize,
       },
     },
     geminiHeaders(),
     signal,
     Number(process.env.SECTION_IMAGE_TIMEOUT_MS || 240000)
   );
-  const parts = payload.candidates?.[0]?.content?.parts || [];
-  const inlineData = parts.map((part) => part.inlineData || part.inline_data).find((item) => item?.data);
-  if (!inlineData?.data) throw Object.assign(new Error("Gemini image model returned no inline image data"), { code: "EMPTY_IMAGE_RESULT" });
-  const mimeType = inlineData.mimeType || inlineData.mime_type || "image/png";
+  const stepImage = (payload.steps || []).flatMap((step) => step.content || [])
+    .find((content) => content.type === "image" && content.data);
+  const outputImage = payload.output_image || stepImage;
+  if (!outputImage?.data) throw Object.assign(new Error("Gemini image model returned no inline image data"), { code: "EMPTY_IMAGE_RESULT" });
+  const mimeType = outputImage.mime_type || outputImage.mimeType || "image/jpeg";
   return {
-    bytes: Buffer.from(inlineData.data, "base64"),
+    bytes: Buffer.from(outputImage.data, "base64"),
     mimeType,
     width: imageSize === "4K" ? 4096 : imageSize === "2K" ? 2048 : 1024,
     height: imageSize === "4K" ? 2304 : imageSize === "2K" ? 1152 : 576,

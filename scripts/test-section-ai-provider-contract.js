@@ -28,8 +28,9 @@ process.env.SECTION_IMAGE_PROVIDER = "openai";
     }
     if (url.includes("generativelanguage.googleapis.com")) {
       return new Response(JSON.stringify({
-        candidates: [{ content: { parts: [{ inlineData: { mimeType: "image/png", data: Buffer.alloc(3072, 2).toString("base64") } }] } }],
-        usageMetadata: { totalTokenCount: 80 },
+        status: "completed",
+        steps: [{ type: "model_output", content: [{ type: "image", mime_type: "image/jpeg", data: Buffer.alloc(3072, 2).toString("base64") }] }],
+        usage: { total_tokens: 80 },
       }), { status: 200, headers: { "content-type": "application/json", "x-goog-request-id": "gemini-image-request" } });
     }
     return new Response(JSON.stringify({
@@ -60,15 +61,17 @@ process.env.SECTION_IMAGE_PROVIDER = "openai";
   process.env.SECTION_IMAGE_MODEL = "gemini-3.1-flash-image";
   const geminiImage = await generateSectionImage({ prompt: "Premium visual with left-side negative space, no text" });
   assert.equal(geminiImage.bytes.length, 3072);
-  assert.equal(geminiImage.mimeType, "image/png");
+  assert.equal(geminiImage.mimeType, "image/jpeg");
   assert.equal(geminiImage.width, 2048);
   assert.equal(geminiImage.height, 1152);
   assert.equal(geminiImage.provider.provider, "gemini");
   assert.equal(geminiImage.provider.requestId, "gemini-image-request");
-  assert.match(requests[2].url, /gemini-3\.1-flash-image:generateContent$/);
-  assert.equal(requests[2].body.generationConfig.responseModalities[0], "IMAGE");
-  assert.equal(requests[2].body.generationConfig.responseFormat.image.aspectRatio, "16:9");
-  assert.equal(requests[2].body.generationConfig.responseFormat.image.imageSize, "2K");
+  assert.match(requests[2].url, /\/v1beta\/interactions$/);
+  assert.equal(requests[2].body.model, "gemini-3.1-flash-image");
+  assert.equal(requests[2].body.input[0].type, "text");
+  assert.equal(requests[2].body.response_format.type, "image");
+  assert.equal(requests[2].body.response_format.aspect_ratio, "16:9");
+  assert.equal(requests[2].body.response_format.image_size, "2K");
 
   console.log("Section AI provider contract tests passed.");
 })().finally(() => {
