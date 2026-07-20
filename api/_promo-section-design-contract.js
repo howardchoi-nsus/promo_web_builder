@@ -1,7 +1,13 @@
 const crypto = require("node:crypto");
 
 const LAYOUT_VARIANTS = Object.freeze(["split-left", "split-right", "centered-hero"]);
-const SECTION_STYLE_KEYS = new Set(["minHeight"]);
+const SECTION_STYLE_KEYS = new Set([
+  "minHeight",
+  "backgroundImage",
+  "backgroundSize",
+  "backgroundPosition",
+  "backgroundRepeat",
+]);
 const ITEM_STYLE_KEYS = new Set(["fontSize", "fontWeight", "textAlign", "positionMode", "xPct", "yPx"]);
 
 function stableValue(value) {
@@ -28,16 +34,37 @@ function hasAnalyzableContent(sectionInputs) {
 
 function defaultConstraints(section, layout = {}) {
   const visibleItems = (section.items || []).filter((item) => item.isVisibleInWizard !== false);
-  const imageItem = visibleItems.find((item) => item.fieldKind === "image");
+  const imageItem = visibleItems.find((item) => item.fieldKind === "image" && !item.isLocked);
   const lockedItems = visibleItems.filter((item) => item.isLocked).map((item) => item.itemKey);
   const currentHeight = layout.sectionStyles?.[section.sectionKey]?.minHeight;
   return {
     allowedLayoutVariants: [...LAYOUT_VARIANTS],
     imageTargetItemKeys: imageItem ? [imageItem.itemKey] : [],
+    imageTarget: imageItem
+      ? { type: "item", sectionKey: section.sectionKey, itemKey: imageItem.itemKey }
+      : { type: "section-background", sectionKey: section.sectionKey },
     contentLocks: lockedItems,
     layoutLocks: currentHeight ? ["minHeight"] : [],
     imageAspectRatio: "16:9",
   };
+}
+
+function analyzableSectionContent(section, sectionInputs) {
+  const result = {};
+  (section.items || []).forEach((item) => {
+    if (item.isVisibleInWizard === false || item.fieldKind === "image") return;
+    const value = sectionInputs?.[item.itemKey];
+    if (item.fieldKind === "cta") {
+      const label = String(value?.label || "").trim();
+      if (label) result[item.itemKey] = { label };
+      return;
+    }
+    if (item.fieldKind === "text") {
+      const text = String(value || "").trim();
+      if (text) result[item.itemKey] = text;
+    }
+  });
+  return result;
 }
 
 function clamp(number, min, max) {
@@ -80,9 +107,12 @@ function layoutPatchFromResult(section, result, constraints) {
       sectionStyles: { [sectionKey]: sectionStyle },
       itemStyles,
     },
-    imageRequest: constraints.imageTargetItemKeys?.[0] && result.imagePrompt
+    imageRequest: result.imagePrompt
       ? {
-        itemKey: constraints.imageTargetItemKeys[0],
+        target: constraints.imageTarget || (constraints.imageTargetItemKeys?.[0]
+          ? { type: "item", sectionKey, itemKey: constraints.imageTargetItemKeys[0] }
+          : { type: "section-background", sectionKey }),
+        itemKey: constraints.imageTargetItemKeys?.[0] || null,
         prompt: String(result.imagePrompt).trim(),
         aspectRatio: constraints.imageAspectRatio || "16:9",
         safeArea: result.layoutVariant === "split-left" ? "right-copy" : "left-copy",
@@ -109,8 +139,19 @@ function validatePatch(section, generated, constraints) {
       if (!ITEM_STYLE_KEYS.has(property)) errors.push(`Unsupported item style: ${property}`);
     });
   });
-  if (generated.imageRequest && !(constraints.imageTargetItemKeys || []).includes(generated.imageRequest.itemKey)) {
-    errors.push(`Unsupported image target: ${generated.imageRequest.itemKey}`);
+  if (generated.imageRequest) {
+    const target = generated.imageRequest.target || (generated.imageRequest.itemKey
+      ? { type: "item", sectionKey, itemKey: generated.imageRequest.itemKey }
+      : null);
+    if (!target || !["item", "section-background"].includes(target.type)) {
+      errors.push("Unsupported image target type");
+    } else if (target.sectionKey !== sectionKey) {
+      errors.push(`Unsupported image target section: ${target.sectionKey}`);
+    } else if (target.type === "item" && !(constraints.imageTargetItemKeys || []).includes(target.itemKey)) {
+      errors.push(`Unsupported image target: ${target.itemKey}`);
+    } else if (target.type === "section-background" && (constraints.imageTargetItemKeys || []).length) {
+      errors.push("Section background is not the selected image target");
+    }
   }
   return { ok: errors.length === 0, errors };
 }
@@ -120,6 +161,7 @@ module.exports = {
   inputHash,
   textContent,
   hasAnalyzableContent,
+  analyzableSectionContent,
   defaultConstraints,
   layoutPatchFromResult,
   validatePatch,

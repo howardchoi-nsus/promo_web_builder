@@ -28,7 +28,12 @@ function valueFor(section, item) {
 
 function imageUrl(value) {
   const candidate = String(value?.value || "").trim();
-  return /^https?:\/\//i.test(candidate) ? candidate : "";
+  return /^(https?:\/\/|\/api\/)/i.test(candidate) ? candidate : "";
+}
+
+function sectionBackgroundUrl(section) {
+  const candidate = String(sectionStyle(section).backgroundImage || "").trim();
+  return /^(https?:\/\/|\/api\/)/i.test(candidate) ? candidate : "";
 }
 
 function ctaUrl(value) {
@@ -79,8 +84,13 @@ function defaultItemPosition(section, item) {
 function inlineSectionStyle(section) {
   const style = sectionStyle(section);
   const canvasHeight = style.minHeight || defaultSectionHeight(section);
+  const backgroundImage = sectionBackgroundUrl(section);
   return {
     height: `${Math.max(50, canvasHeight)}px`,
+    backgroundImage: backgroundImage ? `url(${JSON.stringify(backgroundImage)})` : undefined,
+    backgroundSize: backgroundImage ? (style.backgroundSize || "cover") : undefined,
+    backgroundPosition: backgroundImage ? (style.backgroundPosition || "center") : undefined,
+    backgroundRepeat: backgroundImage ? (style.backgroundRepeat || "no-repeat") : undefined,
   };
 }
 
@@ -319,7 +329,7 @@ function startSectionResize(event, section) {
                   <span>{{ item.name }}</span>
                   <small>{{ valueFor(section, item)?.value || '이미지 준비 중' }}</small>
                 </div>
-                <figcaption v-if="valueFor(section, item)?.description">{{ valueFor(section, item).description }}</figcaption>
+                <figcaption v-if="item.image?.descriptionEnabled && valueFor(section, item)?.description">{{ valueFor(section, item).description }}</figcaption>
               </figure>
             </template>
 

@@ -34,7 +34,7 @@ module.exports = async function handler(req, res) {
     const section = snapshot.section;
     const layoutGeneration = await generateSectionLayout({
       section,
-      sectionInputs: section.sectionInputs,
+      sectionInputs: section.aiContent || section.sectionInputs,
       constraints: run.constraintsSnapshot,
     });
     console.log("[section-design] layout generated", { runId: id, model: layoutGeneration.provider.model, latencyMs: layoutGeneration.provider.latencyMs });
@@ -52,11 +52,18 @@ module.exports = async function handler(req, res) {
       if (image.bytes.length < 1024) throw Object.assign(new Error("Generated image is too small"), { code: "IMAGE_VALIDATION_FAILED" });
       await transitionRun(sql, id, ["generating_assets"], "validating_assets");
       const extension = image.mimeType === "image/jpeg" ? "jpg" : image.mimeType === "image/webp" ? "webp" : "png";
-      const storageKey = `section-ai/${id}/${generated.imageRequest.itemKey}-${Date.now()}.${extension}`;
+      const target = generated.imageRequest.target || {
+        type: "item",
+        sectionKey: section.sectionKey,
+        itemKey: generated.imageRequest.itemKey,
+      };
+      const targetKey = target.type === "item" ? target.itemKey : `${target.sectionKey}-background`;
+      const storageKey = `section-ai/${id}/${targetKey}-${Date.now()}.${extension}`;
       const { put } = await import("@vercel/blob");
       const blob = await put(storageKey, image.bytes, { access: "private", contentType: image.mimeType });
       imageResult = {
-        itemKey: generated.imageRequest.itemKey,
+        target,
+        itemKey: target.type === "item" ? target.itemKey : null,
         storageKey,
         assetUrl: blob.url,
         proxyUrl: `/api/promo-section-design-image?runId=${encodeURIComponent(id)}`,

@@ -2,7 +2,7 @@ const { fetchTemplateWithItems, fetchLayoutRow, toLayout } = require("./_wizard-
 const { toFormTemplate } = require("./_wizard-form-templates-store");
 const { getSql, parseBody, fetchRun, createRun } = require("./_promo-section-design-store");
 const {
-  inputHash, hasAnalyzableContent, defaultConstraints,
+  inputHash, hasAnalyzableContent, analyzableSectionContent, defaultConstraints,
 } = require("./_promo-section-design-contract");
 
 module.exports = async function handler(req, res) {
@@ -23,12 +23,13 @@ module.exports = async function handler(req, res) {
     const sectionKey = String(body.sectionKey || "").trim();
     const sectionInputs = body.sectionInputs && typeof body.sectionInputs === "object" ? body.sectionInputs : {};
     if (!formTemplateId || !sectionKey) return res.status(400).json({ error: "formTemplateId and sectionKey are required" });
-    if (!hasAnalyzableContent(sectionInputs)) return res.status(400).json({ error: "Section content is required before AI generation" });
     const sql = getSql();
     const templateData = await fetchTemplateWithItems(sql, formTemplateId);
     if (!templateData || templateData.template.status !== "active") return res.status(404).json({ error: "Active form template not found" });
     const section = templateData.sections.find((item) => item.sectionKey === sectionKey && item.isVisible !== false);
     if (!section) return res.status(404).json({ error: "Template section not found" });
+    const aiContent = analyzableSectionContent(section, sectionInputs);
+    if (!hasAnalyzableContent(aiContent)) return res.status(400).json({ error: "Section text or CTA content is required before AI generation" });
     const layout = toLayout(await fetchLayoutRow(sql, formTemplateId));
     const template = toFormTemplate(templateData.template);
     const constraints = defaultConstraints(section, layout.layoutSpec);
@@ -43,6 +44,7 @@ module.exports = async function handler(req, res) {
           isLocked: item.isLocked, isVisibleInWizard: item.isVisibleInWizard,
         })),
         sectionInputs,
+        aiContent,
       },
     };
     const hash = inputHash({ snapshot, constraints });

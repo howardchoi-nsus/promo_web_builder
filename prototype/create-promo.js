@@ -1679,8 +1679,13 @@ function sectionAiHasContent(sectionKey) {
   return values.some((item) => item.length >= 2);
 }
 
-function sectionAiSupportsImage(section) {
-  return (section.items || []).some((item) => item.fieldKind === "image" && item.isVisibleInWizard !== false);
+function sectionAiImageTarget(section) {
+  const imageItem = (section.items || []).find((item) => (
+    item.fieldKind === "image" && item.isVisibleInWizard !== false && !item.isLocked
+  ));
+  return imageItem
+    ? { type: "item", sectionKey: section.sectionKey, itemKey: imageItem.itemKey }
+    : { type: "section-background", sectionKey: section.sectionKey };
 }
 
 function saveSectionAiRun(sectionKey, run, sourceInputs) {
@@ -1759,15 +1764,28 @@ async function applySectionAiDesign(section, saved) {
     Object.entries(patch.itemStyles || {}).forEach(([key, value]) => {
       wizardResolvedLayout.itemStyles[key] = { ...(wizardResolvedLayout.itemStyles[key] || {}), ...(value || {}) };
     });
-    if (saved.imageResult?.itemKey && saved.imageResult?.proxyUrl) {
-      const imageItem = (section.items || []).find((item) => item.itemKey === saved.imageResult.itemKey);
+    if (saved.imageResult?.proxyUrl) {
+      const target = saved.imageResult.target || (saved.imageResult.itemKey
+        ? { type: "item", sectionKey: section.sectionKey, itemKey: saved.imageResult.itemKey }
+        : sectionAiImageTarget(section));
+      const imageItem = target.type === "item"
+        ? (section.items || []).find((item) => item.itemKey === target.itemKey)
+        : null;
       if (imageItem && !imageItem.isLocked) {
         setValueAtPath(contentState.sectionInputs, `${section.sectionKey}.${imageItem.itemKey}`, {
           source: "ai",
           value: saved.imageResult.proxyUrl,
-          description: saved.layoutResult?.imageRequest?.prompt || "AI generated section image",
+          description: "",
           alt: `${section.name || section.sectionKey} visual`,
         });
+      } else if (target.type === "section-background" && target.sectionKey === section.sectionKey) {
+        wizardResolvedLayout.sectionStyles[section.sectionKey] = {
+          ...(wizardResolvedLayout.sectionStyles[section.sectionKey] || {}),
+          backgroundImage: saved.imageResult.proxyUrl,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+        };
       }
     }
     saveSectionAiRun(section.sectionKey, result.run, contentState.sectionInputs?.[section.sectionKey]);
@@ -1778,20 +1796,19 @@ async function applySectionAiDesign(section, saved) {
   }
 }
 
-function createSectionAiDesignPanel() {
+function createSectionAiDesignPanel(section) {
   const panel = document.createElement("section");
   panel.className = "section-ai-design-panel";
   const heading = document.createElement("div");
   heading.className = "section-ai-design-panel__heading";
   appendTextElement(heading, "span", "eyebrow", "AI Section Design");
-  appendTextElement(heading, "strong", "", "등록된 콘텐츠로 섹션 레이아웃과 이미지를 생성합니다.");
-  appendTextElement(heading, "small", "", "텍스트와 CTA는 실제 웹 콘텐츠로 유지되며 이미지는 지정된 이미지 항목에만 적용됩니다.");
+  appendTextElement(heading, "strong", "", `${section.name || section.sectionKey} AI 디자인`);
+  const target = sectionAiImageTarget(section);
+  appendTextElement(heading, "small", "", target.type === "item" ? "생성 이미지는 이 섹션의 이미지 항목에 적용됩니다." : "이미지 항목이 없어 생성 이미지는 이 섹션의 배경에 적용됩니다.");
   panel.append(heading);
   const list = document.createElement("div");
   list.className = "section-ai-design-list";
-  const supported = wizardSectionDefinitions.filter(sectionAiSupportsImage);
-  if (!supported.length) appendTextElement(list, "p", "section-ai-design-empty", "이미지 항목이 포함된 섹션이 없습니다.");
-  supported.forEach((section) => {
+  [section].forEach((section) => {
     const saved = sectionAiRun(section.sectionKey);
     const stale = sectionAiIsStale(section.sectionKey, saved);
     const processing = ["queued", "analyzing_content", "generating_layout", "validating_layout", "generating_assets", "validating_assets"].includes(saved?.status);
@@ -1986,6 +2003,7 @@ function renderContentStep() {
       grid.inert = !expanded;
       grid.setAttribute("aria-hidden", String(!expanded));
       visibleItems.forEach((item) => grid.append(createDynamicSectionField(section.sectionKey, item)));
+      grid.append(createSectionAiDesignPanel(section));
       toggle.addEventListener("click", () => {
         const isOpen = expandedTemplateSectionKeys.has(section.sectionKey);
         expandedTemplateSectionKeys.clear();
@@ -2071,7 +2089,7 @@ function renderContentStep() {
   layoutFrame.src = "/prototype/visual-editor.html?mode=wizard-layout&source=create-promo";
   layoutFrame.addEventListener("load", postWizardLayoutSnapshot);
   wizardLayoutFrame = layoutFrame;
-  layoutPanel.append(layoutHeader, createSectionAiDesignPanel());
+  layoutPanel.append(layoutHeader);
   if (pendingAdminLayoutUpdate) {
     const updateBanner = document.createElement("div");
     updateBanner.className = "admin-layout-update-banner";

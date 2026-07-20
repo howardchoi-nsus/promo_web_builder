@@ -3008,46 +3008,56 @@ var Eo = {
 		}
 		function o(e) {
 			let t = String(e?.value || "").trim();
-			return /^https?:\/\//i.test(t) ? t : "";
+			return /^(https?:\/\/|\/api\/)/i.test(t) ? t : "";
 		}
 		function s(e) {
-			return Co(e?.link);
+			let t = String(f(e).backgroundImage || "").trim();
+			return /^(https?:\/\/|\/api\/)/i.test(t) ? t : "";
 		}
 		function c(e) {
+			return Co(e?.link);
+		}
+		function l(e) {
 			return e && typeof e == "object" ? !!(e.value || e.label || e.description) : !!String(e || "").trim();
 		}
-		function l(e, t) {
+		function u(e, t) {
 			return `${e.sectionKey}.${t.itemKey}`;
 		}
-		function u(e, t) {
-			return n.designSpec?.itemStyles?.[l(e, t)] || {};
-		}
-		function d(e) {
-			return n.designSpec?.sectionStyles?.[e.sectionKey] || {};
+		function d(e, t) {
+			return n.designSpec?.itemStyles?.[u(e, t)] || {};
 		}
 		function f(e) {
-			return e.fieldKind === "image" ? 250 : e.fieldKind === "cta" ? 64 : 86;
+			return n.designSpec?.sectionStyles?.[e.sectionKey] || {};
 		}
 		function p(e) {
-			return Math.max(180, (e.items || []).reduce((e, t) => e + f(t), 0) + 52);
+			return e.fieldKind === "image" ? 250 : e.fieldKind === "cta" ? 64 : 86;
 		}
-		function m(e, t) {
-			let n = e.items || [], r = Math.max(0, n.findIndex((e) => e.itemKey === t.itemKey)), i = n.slice(0, r).reduce((e, t) => e + f(t), 0), a = d(e).minHeight || p(e), o = Math.max(50, a - 76);
+		function m(e) {
+			return Math.max(180, (e.items || []).reduce((e, t) => e + p(t), 0) + 52);
+		}
+		function h(e, t) {
+			let n = e.items || [], r = Math.max(0, n.findIndex((e) => e.itemKey === t.itemKey)), i = n.slice(0, r).reduce((e, t) => e + p(t), 0), a = f(e).minHeight || m(e), o = Math.max(50, a - 76);
 			return {
 				xPct: 0,
 				yPct: o ? i / o * 100 : 0
 			};
 		}
-		function h(e) {
-			let t = d(e).minHeight || p(e);
-			return { height: `${Math.max(50, t)}px` };
-		}
 		function g(e) {
-			let t = d(e).minHeight || p(e);
+			let t = f(e), n = t.minHeight || m(e), r = s(e);
+			return {
+				height: `${Math.max(50, n)}px`,
+				backgroundImage: r ? `url(${JSON.stringify(r)})` : void 0,
+				backgroundSize: r ? t.backgroundSize || "cover" : void 0,
+				backgroundPosition: r ? t.backgroundPosition || "center" : void 0,
+				backgroundRepeat: r ? t.backgroundRepeat || "no-repeat" : void 0
+			};
+		}
+		function _(e) {
+			let t = f(e).minHeight || m(e);
 			return { height: `${Math.max(0, t - 76)}px` };
 		}
-		function _(e, t) {
-			let n = u(e, t), r = n.positionMode === "free" ? n : m(e, t);
+		function v(e, t) {
+			let n = d(e, t), r = n.positionMode === "free" ? n : h(e, t);
 			return {
 				left: `${r.xPct || 0}%`,
 				top: n.yPx === void 0 ? `${r.yPct || 0}%` : `${n.yPx}px`,
@@ -3061,14 +3071,14 @@ var Eo = {
 				textAlign: n.textAlign
 			};
 		}
-		function v(e, t) {
+		function y(e, t) {
 			n.editable && r("select-item", e, t);
 		}
-		function y(e, t, i) {
+		function b(e, t, i) {
 			if (!n.editable || i.isLocked || e.button !== 0 || e.currentTarget.classList.contains("is-editing")) return;
 			let a = e.currentTarget, o = a.closest(".rendered-items");
 			if (!o) return;
-			e.preventDefault(), v(t, i), a.setPointerCapture(e.pointerId), a.classList.add("is-dragging");
+			e.preventDefault(), y(t, i), a.setPointerCapture(e.pointerId), a.classList.add("is-dragging");
 			let s = o.getBoundingClientRect(), c = a.getBoundingClientRect(), l = e.clientX, u = e.clientY, d = c.left - s.left, f = c.top - s.top, p = d, m = f, h = 0, g = (e) => {
 				p = Math.min(Math.max(0, s.width - a.offsetWidth), Math.max(0, d + e.clientX - l)), m = Math.min(Math.max(0, s.height - a.offsetHeight), Math.max(0, f + e.clientY - u)), !h && (h = requestAnimationFrame(() => {
 					h = 0, a.style.left = `${p}px`, a.style.top = `${m}px`;
@@ -3084,9 +3094,9 @@ var Eo = {
 			};
 			a.addEventListener("pointermove", g), a.addEventListener("pointerup", _), a.addEventListener("pointercancel", _);
 		}
-		function b(e, t, i) {
+		function x(e, t, i) {
 			if (!n.editable || i.isLocked || i.fieldKind !== "text") return;
-			e.preventDefault(), e.stopPropagation(), v(t, i);
+			e.preventDefault(), e.stopPropagation(), y(t, i);
 			let o = e.currentTarget, s = o.querySelector(".rendered-text, .rendered-empty");
 			if (!s) return;
 			o.classList.add("is-editing"), s.classList.remove("rendered-empty"), s.classList.add("rendered-text"), s.contentEditable = "true", String(a(t, i) || "").trim() || (s.textContent = _o), s.focus();
@@ -3100,7 +3110,7 @@ var Eo = {
 			};
 			s.addEventListener("blur", u), s.addEventListener("keydown", d);
 		}
-		function x(e, t) {
+		function S(e, t) {
 			if (!n.editable || e.button !== 0) return;
 			let i = e.currentTarget, a = i.closest(".rendered-section");
 			if (!a) return;
@@ -3149,40 +3159,40 @@ var Eo = {
 			key: t.sectionKey,
 			class: j(["rendered-section", `rendered-section--${t.sectionKey}`]),
 			"data-section-key": t.sectionKey,
-			style: ce(h(t))
+			style: ce(g(t))
 		}, [X("div", Oo, [X("div", {
 			class: "rendered-items",
-			style: ce(g(t))
+			style: ce(_(t))
 		}, [(J(!0), Y(K, null, ar(t.items, (n) => (J(), Y("article", {
 			key: n.itemKey,
 			class: j(["rendered-item", [`rendered-item--${n.fieldKind || "text"}`, {
 				"is-editable": e.editable && !n.isLocked,
-				"is-selected": e.editable && e.selectedItemKey === l(t, n),
+				"is-selected": e.editable && e.selectedItemKey === u(t, n),
 				"is-free-positioned": !0
 			}]]),
 			"data-item-key": n.itemKey,
-			"data-style-key": l(t, n),
-			style: ce(_(t, n)),
-			onClick: ao((e) => v(t, n), ["stop"]),
-			onPointerdown: (e) => y(e, t, n),
-			onDblclick: (e) => b(e, t, n)
+			"data-style-key": u(t, n),
+			style: ce(v(t, n)),
+			onClick: ao((e) => y(t, n), ["stop"]),
+			onPointerdown: (e) => b(e, t, n),
+			onDblclick: (e) => x(e, t, n)
 		}, [n.fieldKind === "cta" ? (J(), Y("a", {
 			key: 0,
 			class: "rendered-cta",
-			href: s(a(t, n)),
+			href: c(a(t, n)),
 			target: a(t, n)?.target || "_self",
 			rel: a(t, n)?.target === "_blank" ? "noopener noreferrer" : void 0
 		}, P(a(t, n)?.label || n.name), 9, Ao)) : n.fieldKind === "image" ? (J(), Y("figure", jo, [o(a(t, n)) ? (J(), Y("img", {
 			key: 0,
 			src: o(a(t, n)),
 			alt: a(t, n)?.alt || n.name
-		}, null, 8, Mo)) : (J(), Y("div", No, [X("span", null, P(n.name), 1), X("small", null, P(a(t, n)?.value || "이미지 준비 중"), 1)])), a(t, n)?.description ? (J(), Y("figcaption", Po, P(a(t, n).description), 1)) : Z("", !0)])) : (J(), Y(K, { key: 2 }, [c(a(t, n)) ? (J(), Y("p", Fo, P(a(t, n)), 1)) : (J(), Y("p", Io, P(n.name), 1))], 64))], 46, ko))), 128))], 4)]), e.editable && e.showGuides ? (J(), Y("button", {
+		}, null, 8, Mo)) : (J(), Y("div", No, [X("span", null, P(n.name), 1), X("small", null, P(a(t, n)?.value || "이미지 준비 중"), 1)])), n.image?.descriptionEnabled && a(t, n)?.description ? (J(), Y("figcaption", Po, P(a(t, n).description), 1)) : Z("", !0)])) : (J(), Y(K, { key: 2 }, [l(a(t, n)) ? (J(), Y("p", Fo, P(a(t, n)), 1)) : (J(), Y("p", Io, P(n.name), 1))], 64))], 46, ko))), 128))], 4)]), e.editable && e.showGuides ? (J(), Y("button", {
 			key: 0,
 			class: "section-resize-handle",
 			type: "button",
 			"aria-label": `${t.name} 섹션 높이 조절`,
 			title: `${t.name} 섹션 높이 조절`,
-			onPointerdown: (e) => x(e, t)
+			onPointerdown: (e) => S(e, t)
 		}, null, 40, Lo)) : Z("", !0)], 14, Do))), 128))], 6));
 	}
 };
