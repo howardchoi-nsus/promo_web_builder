@@ -20,9 +20,9 @@ const rendererCss = read("visual-editor", "src", "styles.css");
 assert.match(createHtml, /<title>Create Promo<\/title>/);
 assert.match(createHtml, /aria-current="page">Create Promo<\/a>/);
 assert.doesNotMatch(createHtml, /class="active" href="\/promo-wizard\.html"/);
-assert.match(createHtml, /create-promo\.css\?v=create-promo-light-v27/);
+assert.match(createHtml, /create-promo\.css\?v=create-promo-light-v28/);
 assert.match(createHtml, /create-promo-layout-cache\.js\?v=create-promo-light-v28/);
-assert.match(createHtml, /create-promo\.js\?v=create-promo-light-v28/);
+assert.match(createHtml, /create-promo\.js\?v=create-promo-light-v29/);
 assert.match(createCss, /\[data-theme="light"\]\s*\{[\s\S]*?color-scheme:\s*light;/);
 assert.match(createCss, /\[data-theme="dark"\]\s*\{[\s\S]*?color-scheme:\s*dark;/);
 assert.match(createHtml, /<strong>Background<\/strong>/);
@@ -34,6 +34,7 @@ assert.match(rootRedirect, /\/prototype\/create-promo\.html/);
 assert.match(createCss, /\.wizard-shell/);
 assert.match(createCss, /\.wizard-progress/);
 assert.match(createCss, /\.wizard-layout-frame/);
+assert.match(createCss, /\.section-ai-design-panel/);
 
 [
   "loadWizardContent",
@@ -63,6 +64,9 @@ assert.match(createJs, /1\. 프로모션 개요/);
 assert.match(createJs, /2\. 프로모션 템플릿 선택/);
 assert.match(createJs, /source=create-promo/);
 assert.match(createJs, /function autoRegisterPromoOverview\b/);
+assert.match(createJs, /function createSectionAiDesignPanel\b/);
+assert.match(createJs, /async function generateSectionAiDesign\b/);
+assert.match(createJs, /async function applySectionAiDesign\b/);
 assert.match(createJs, /create-promo-auto-register-request/);
 assert.match(createJs, /workspace\.append\(layoutPanel\)/);
 assert.doesNotMatch(createJs, /contentColumn\.append\(dynamicSectionsWrapper, coverage\)/);

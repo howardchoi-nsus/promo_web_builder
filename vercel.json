@@ -1,4 +1,9 @@
 {
   "cleanUrls": true,
-  "trailingSlash": false
+  "trailingSlash": false,
+  "functions": {
+    "api/promo-section-design-process.js": {
+      "maxDuration": 300
+    }
+  }
 }

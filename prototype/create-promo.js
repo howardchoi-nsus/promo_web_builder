@@ -409,6 +409,7 @@ function defaultWizardContent() {
     templateInputs: {},
     templateSectionOrders: {},
     templateLayouts: {},
+    sectionDesignRuns: {},
     // Section 4~10 (Header/Hero/Step Bar/Content CTA/Image Text Row/Title and
     // Description/Footer) used to be hardcoded here. They are now admin-managed
     // (see wizardSectionDefinitions) and this starts empty until
@@ -526,6 +527,7 @@ function loadWizardContent() {
       templateInputs: (saved && typeof saved.templateInputs === "object" && saved.templateInputs) || {},
       templateSectionOrders: (saved && typeof saved.templateSectionOrders === "object" && saved.templateSectionOrders) || {},
       templateLayouts: (saved && typeof saved.templateLayouts === "object" && saved.templateLayouts) || {},
+      sectionDesignRuns: (saved && typeof saved.sectionDesignRuns === "object" && saved.sectionDesignRuns) || {},
       // Raw saved value is kept as-is until wizardSectionDefinitions loads;
       // loadWizardSectionDefinitions() then calls mergeSectionInputs() to
       // reconcile it against the current admin configuration.
@@ -1652,11 +1654,182 @@ function resetContent() {
   // there); rebuild it from the current admin-managed definitions so locked
   // items keep their fixed values instead of disappearing after a reset.
   contentState.sectionInputs = defaultSectionInputsFromDefinitions(wizardSectionDefinitions);
+  contentState.sectionDesignRuns = {};
   validationErrors = {};
   saveWizardContent();
   saveWizardRun(null);
   runError = "";
   renderStep();
+}
+
+function sectionAiRun(sectionKey) {
+  return contentState.sectionDesignRuns?.[sectionKey] || null;
+}
+
+function sectionAiHasContent(sectionKey) {
+  const values = [];
+  const collect = (input) => {
+    if (input === null || input === undefined) return;
+    if (typeof input === "string" || typeof input === "number") {
+      if (String(input).trim()) values.push(String(input).trim());
+    } else if (Array.isArray(input)) input.forEach(collect);
+    else if (typeof input === "object") Object.values(input).forEach(collect);
+  };
+  collect(contentState.sectionInputs?.[sectionKey]);
+  return values.some((item) => item.length >= 2);
+}
+
+function sectionAiSupportsImage(section) {
+  return (section.items || []).some((item) => item.fieldKind === "image" && item.isVisibleInWizard !== false);
+}
+
+function saveSectionAiRun(sectionKey, run, sourceInputs) {
+  contentState.sectionDesignRuns = contentState.sectionDesignRuns || {};
+  contentState.sectionDesignRuns[sectionKey] = {
+    ...run,
+    sourceInputs: JSON.parse(JSON.stringify(sourceInputs || {})),
+  };
+  saveWizardContent();
+}
+
+function sectionAiIsStale(sectionKey, saved = sectionAiRun(sectionKey)) {
+  if (!saved?.sourceInputs) return false;
+  return JSON.stringify(saved.sourceInputs) !== JSON.stringify(contentState.sectionInputs?.[sectionKey] || {});
+}
+
+async function generateSectionAiDesign(section) {
+  const sectionKey = section.sectionKey;
+  const sectionInputs = JSON.parse(JSON.stringify(contentState.sectionInputs?.[sectionKey] || {}));
+  saveSectionAiRun(sectionKey, { status: "queued" }, sectionInputs);
+  renderStep();
+  try {
+    const created = await fetchJson("/api/promo-section-design-runs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        promoRunId: runId() || null,
+        formTemplateId: selectedWizardFormTemplate?.id,
+        sectionKey,
+        sectionInputs,
+      }),
+    });
+    saveSectionAiRun(sectionKey, created.run, sectionInputs);
+    renderStep();
+    if (["ready", "applied"].includes(created.run.status)) return;
+    const processed = await fetchJson("/api/promo-section-design-process", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ runId: created.run.id }),
+    });
+    saveSectionAiRun(sectionKey, processed.run, sectionInputs);
+  } catch (error) {
+    contentState.sectionDesignRuns[sectionKey] = {
+      ...contentState.sectionDesignRuns[sectionKey],
+      status: "failed",
+      errorMessage: error.message || "섹션 AI 디자인 생성에 실패했습니다.",
+    };
+    saveWizardContent();
+  } finally {
+    renderStep();
+  }
+}
+
+async function applySectionAiDesign(section, saved) {
+  if (!saved?.id || !saved.layoutResult?.layoutPatch) return;
+  if (sectionAiIsStale(section.sectionKey, saved)) {
+    window.alert("섹션 콘텐츠가 생성 시점과 달라졌습니다. AI 디자인을 다시 생성해 주세요.");
+    return;
+  }
+  try {
+    const result = await fetchJson("/api/promo-section-design-apply", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        runId: saved.id,
+        sectionInputs: contentState.sectionInputs?.[section.sectionKey] || {},
+      }),
+    });
+    const patch = saved.layoutResult.layoutPatch;
+    wizardResolvedLayout = wizardResolvedLayout || JSON.parse(JSON.stringify(wizardBaseLayout || FALLBACK_LAYOUT));
+    wizardResolvedLayout.sectionStyles = { ...(wizardResolvedLayout.sectionStyles || {}) };
+    Object.entries(patch.sectionStyles || {}).forEach(([key, value]) => {
+      wizardResolvedLayout.sectionStyles[key] = { ...(wizardResolvedLayout.sectionStyles[key] || {}), ...(value || {}) };
+    });
+    wizardResolvedLayout.itemStyles = { ...(wizardResolvedLayout.itemStyles || {}) };
+    Object.entries(patch.itemStyles || {}).forEach(([key, value]) => {
+      wizardResolvedLayout.itemStyles[key] = { ...(wizardResolvedLayout.itemStyles[key] || {}), ...(value || {}) };
+    });
+    if (saved.imageResult?.itemKey && saved.imageResult?.proxyUrl) {
+      const imageItem = (section.items || []).find((item) => item.itemKey === saved.imageResult.itemKey);
+      if (imageItem && !imageItem.isLocked) {
+        setValueAtPath(contentState.sectionInputs, `${section.sectionKey}.${imageItem.itemKey}`, {
+          source: "ai",
+          value: saved.imageResult.proxyUrl,
+          description: saved.layoutResult?.imageRequest?.prompt || "AI generated section image",
+          alt: `${section.name || section.sectionKey} visual`,
+        });
+      }
+    }
+    saveSectionAiRun(section.sectionKey, result.run, contentState.sectionInputs?.[section.sectionKey]);
+    postWizardLayoutSnapshot();
+    renderStep();
+  } catch (error) {
+    window.alert(error.message || "AI 디자인을 적용하지 못했습니다.");
+  }
+}
+
+function createSectionAiDesignPanel() {
+  const panel = document.createElement("section");
+  panel.className = "section-ai-design-panel";
+  const heading = document.createElement("div");
+  heading.className = "section-ai-design-panel__heading";
+  appendTextElement(heading, "span", "eyebrow", "AI Section Design");
+  appendTextElement(heading, "strong", "", "등록된 콘텐츠로 섹션 레이아웃과 이미지를 생성합니다.");
+  appendTextElement(heading, "small", "", "텍스트와 CTA는 실제 웹 콘텐츠로 유지되며 이미지는 지정된 이미지 항목에만 적용됩니다.");
+  panel.append(heading);
+  const list = document.createElement("div");
+  list.className = "section-ai-design-list";
+  const supported = wizardSectionDefinitions.filter(sectionAiSupportsImage);
+  if (!supported.length) appendTextElement(list, "p", "section-ai-design-empty", "이미지 항목이 포함된 섹션이 없습니다.");
+  supported.forEach((section) => {
+    const saved = sectionAiRun(section.sectionKey);
+    const stale = sectionAiIsStale(section.sectionKey, saved);
+    const processing = ["queued", "analyzing_content", "generating_layout", "validating_layout", "generating_assets", "validating_assets"].includes(saved?.status);
+    const card = document.createElement("article");
+    card.className = "section-ai-design-card";
+    const copy = document.createElement("div");
+    appendTextElement(copy, "strong", "", section.name || section.sectionKey);
+    appendTextElement(copy, "small", "", stale ? "콘텐츠가 변경되어 재생성이 필요합니다." : saved?.errorMessage || saved?.status || "생성 전");
+    if (saved?.imageResult?.proxyUrl) {
+      const image = document.createElement("img");
+      image.src = saved.imageResult.proxyUrl;
+      image.alt = `${section.name || section.sectionKey} AI 미리보기`;
+      image.className = "section-ai-design-card__image";
+      copy.append(image);
+    }
+    const actions = document.createElement("div");
+    actions.className = "section-ai-design-card__actions";
+    const generate = document.createElement("button");
+    generate.type = "button";
+    generate.className = "secondary-action";
+    generate.textContent = processing ? "AI 생성 중" : ["ready", "applied"].includes(saved?.status) ? "재생성" : "AI 디자인 생성";
+    generate.disabled = processing || !sectionAiHasContent(section.sectionKey);
+    generate.title = generate.disabled && !processing ? "섹션 콘텐츠를 먼저 등록해 주세요." : "";
+    generate.addEventListener("click", () => generateSectionAiDesign(section));
+    actions.append(generate);
+    if (saved?.status === "ready" && !stale) {
+      const apply = document.createElement("button");
+      apply.type = "button";
+      apply.className = "secondary-action is-primary";
+      apply.textContent = "레이아웃 및 이미지 적용";
+      apply.addEventListener("click", () => applySectionAiDesign(section, saved));
+      actions.append(apply);
+    }
+    card.append(copy, actions);
+    list.append(card);
+  });
+  panel.append(list);
+  return panel;
 }
 
 function createContentSection(titleText, fields) {
@@ -1898,7 +2071,7 @@ function renderContentStep() {
   layoutFrame.src = "/prototype/visual-editor.html?mode=wizard-layout&source=create-promo";
   layoutFrame.addEventListener("load", postWizardLayoutSnapshot);
   wizardLayoutFrame = layoutFrame;
-  layoutPanel.append(layoutHeader);
+  layoutPanel.append(layoutHeader, createSectionAiDesignPanel());
   if (pendingAdminLayoutUpdate) {
     const updateBanner = document.createElement("div");
     updateBanner.className = "admin-layout-update-banner";
