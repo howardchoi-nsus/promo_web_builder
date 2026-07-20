@@ -3321,7 +3321,13 @@ var Wo = {
 }, Ls = { class: "property-panel" }, Rs = { class: "panel-heading" }, zs = {
 	key: 0,
 	class: "property-form"
-}, Bs = { key: 0 }, Vs = ["disabled", "value"], Hs = { key: 1 }, Us = ["disabled", "value"], Ws = ["disabled", "value"], Gs = ["value"], Ks = ["disabled", "value"], qs = { key: 0 }, Js = ["disabled", "value"], Ys = { key: 1 }, Xs = ["disabled", "value"], Zs = { key: 3 }, Qs = ["disabled"], $s = ["disabled"], ec = { class: "item-meta" }, tc = { class: "design-controls" }, nc = { class: "design-controls__heading" }, rc = ["disabled"], ic = ["disabled", "value"], ac = { class: "range-field" }, oc = ["disabled", "value"], sc = ["disabled", "value"], cc = ["disabled", "value"], lc = { class: "position-status" }, uc = { key: 0 }, dc = { key: 1 }, fc = ["disabled"], pc = { class: "section-size-control" }, mc = ["disabled"], hc = {
+}, Bs = { key: 0 }, Vs = ["disabled", "value"], Hs = { key: 1 }, Us = ["disabled", "value"], Ws = ["disabled", "value"], Gs = ["value"], Ks = ["disabled", "value"], qs = { key: 0 }, Js = ["disabled", "value"], Ys = { key: 1 }, Xs = ["disabled", "value"], Zs = { key: 3 }, Qs = ["disabled"], $s = ["disabled"], ec = { class: "item-meta" }, tc = { class: "design-controls" }, nc = { class: "design-controls__heading" }, rc = ["disabled"], ic = ["disabled", "value"], ac = { class: "range-field" }, oc = ["disabled", "value"], sc = ["disabled", "value"], cc = ["disabled", "value"], lc = { class: "position-status" }, uc = { key: 0 }, dc = { key: 1 }, fc = ["disabled"], pc = {
+	key: 1,
+	class: "section-background-alignment"
+}, mc = {
+	role: "group",
+	"aria-label": "배경 이미지 가로 정렬"
+}, hc = ["onClick"], gc = { class: "section-size-control" }, _c = ["disabled"], vc = {
 	__name: "App",
 	props: { mode: {
 		type: String,
@@ -3512,7 +3518,14 @@ var Wo = {
 				}
 			});
 		}
-		function Oe() {
+		function Oe(e) {
+			!D.value || ![
+				"left",
+				"center",
+				"right"
+			].includes(e) || De(D.value.sectionKey, { backgroundPosition: `${e} center` });
+		}
+		function ke() {
 			if (!D.value) return;
 			let e = { ...l.value.sectionStyles || {} }, t = { ...e[D.value.sectionKey] || {} };
 			delete t.minHeight, Object.keys(t).length ? e[D.value.sectionKey] = t : delete e[D.value.sectionKey], l.value = {
@@ -3520,7 +3533,7 @@ var Wo = {
 				sectionStyles: e
 			};
 		}
-		async function ke() {
+		async function Ae() {
 			try {
 				let e = await fetch("/api/wizard-form-templates-public"), t = await e.json();
 				if (!e.ok) throw Error(t.message || t.error || "템플릿 목록을 불러오지 못했습니다.");
@@ -3536,7 +3549,7 @@ var Wo = {
 				n.value = !1;
 			}
 		}
-		function Ae() {
+		function je() {
 			if (!ie.value) return;
 			h.value = "";
 			let e = To(localStorage, mo, ie.value);
@@ -3546,7 +3559,7 @@ var Wo = {
 			}
 			window.open("/prototype/visual-output.html", "_blank", "noopener");
 		}
-		async function je() {
+		async function Me() {
 			let e = new URLSearchParams(window.location.search).get("templateId");
 			if (!e) {
 				r.value = "templateId가 필요합니다.", n.value = !1;
@@ -3562,7 +3575,7 @@ var Wo = {
 				n.value = !1;
 			}
 		}
-		async function Me() {
+		async function Ne() {
 			if (!a.value?.id || b.value) return;
 			x.value = "";
 			let e = Uo(l.value);
@@ -3592,10 +3605,10 @@ var Wo = {
 				b.value = !1;
 			}
 		}
-		async function Ne(e) {
+		async function Pe(e) {
 			e?.content && (te = !0, a.value = e.content.formTemplate || null, o.value = e.content.formTemplate?.configRevision || "", s.value = e.content.sectionSnapshot || [], c.value = e.content.sectionInputs || {}, ee.value = e.content.sectionDesignRuns || {}, l.value = Vo(e.designSpec), _.value = Number(e.layoutRevision || 1), u.value = s.value[0]?.sectionKey || "", d.value = s.value[0]?.items?.[0]?.itemKey || "", f.value = s.value[0]?.sectionKey || "", S.value = !0, n.value = !1, r.value = "", await ln(), te = !1);
 		}
-		function Pe(e) {
+		function Fe(e) {
 			if (!(!T.value || e.origin !== window.location.origin)) {
 				if (e.data?.type === "create-promo-auto-register-result") {
 					C.value = !1;
@@ -3603,7 +3616,7 @@ var Wo = {
 					w.value = t ? `${t}개 항목을 자동 등록했습니다.` : "자동 등록할 빈 항목이 없습니다.";
 					return;
 				}
-				e.data?.type === "promo-wizard-layout-snapshot" && Ne(e.data.snapshot);
+				e.data?.type === "promo-wizard-layout-snapshot" && Pe(e.data.snapshot);
 			}
 		}
 		Dn([l, c], () => {
@@ -3613,7 +3626,7 @@ var Wo = {
 				sectionInputs: JSON.parse(JSON.stringify(c.value))
 			}, window.location.origin);
 		}, { deep: !0 });
-		function Fe() {
+		function Ie() {
 			try {
 				let e = localStorage.getItem(mo);
 				if (!e) throw Error("Visual Editor에서 확정한 Snapshot이 없습니다.");
@@ -3623,8 +3636,8 @@ var Wo = {
 			}
 		}
 		return Yn(() => {
-			window.PromoShell?.init(document), t.mode === "output" ? Fe() : ne.value ? je() : T.value ? (n.value = !0, window.addEventListener("message", Pe), window.parent.postMessage({ type: "promo-wizard-layout-ready" }, window.location.origin)) : ke();
-		}), Qn(() => window.removeEventListener("message", Pe)), (t, i) => e.mode === "output" ? (J(), Y("div", Wo, [X("header", Go, [X("div", null, [i[16] ||= X("span", null, "WEB OUTPUT", -1), X("strong", null, N(A.value?.content?.formTemplate?.name || "Visual Editor"), 1)]), i[17] ||= X("a", { href: "/prototype/visual-editor.html" }, "Visual Editor로 돌아가기", -1)]), r.value ? (J(), Y("div", Ko, N(r.value), 1)) : A.value ? (J(), Ti(Ro, {
+			window.PromoShell?.init(document), t.mode === "output" ? Ie() : ne.value ? Me() : T.value ? (n.value = !0, window.addEventListener("message", Fe), window.parent.postMessage({ type: "promo-wizard-layout-ready" }, window.location.origin)) : Ae();
+		}), Qn(() => window.removeEventListener("message", Fe)), (t, i) => e.mode === "output" ? (J(), Y("div", Wo, [X("header", Go, [X("div", null, [i[16] ||= X("span", null, "WEB OUTPUT", -1), X("strong", null, N(A.value?.content?.formTemplate?.name || "Visual Editor"), 1)]), i[17] ||= X("a", { href: "/prototype/visual-editor.html" }, "Visual Editor로 돌아가기", -1)]), r.value ? (J(), Y("div", Ko, N(r.value), 1)) : A.value ? (J(), Ti(Ro, {
 			key: 1,
 			content: A.value.content,
 			"design-spec": A.value.designSpec,
@@ -3654,12 +3667,12 @@ var Wo = {
 			}, null, 512), [[Qa, y.value]]), X("button", {
 				type: "button",
 				disabled: !ie.value || b.value,
-				onClick: Me
+				onClick: Ne
 			}, N(b.value ? "저장 중" : "기본 레이아웃 저장"), 9, ss)], 64)) : T.value ? Z("", !0) : (J(), Y("button", {
 				key: 1,
 				type: "button",
 				disabled: !ie.value,
-				onClick: Ae
+				onClick: je
 			}, "Web Output 열기", 8, cs))])])]),
 			n.value ? (J(), Y("div", ls, "기본 Form Template을 불러오는 중입니다.")) : r.value ? (J(), Y("div", us, N(r.value), 1)) : Z("", !0),
 			h.value ? (J(), Y("div", ds, N(h.value), 1)) : Z("", !0),
@@ -3859,16 +3872,35 @@ var Wo = {
 							disabled: O.value.isLocked,
 							onClick: Ee
 						}, " 자동 배치로 복원 ", 8, fc)) : Z("", !0),
-						X("div", pc, [X("div", null, [i[44] ||= X("span", null, "섹션 높이", -1), X("strong", null, N(F.value.minHeight ? `${Math.round(F.value.minHeight)}px` : "자동"), 1)]), X("button", {
+						ye(D.value) ? (J(), Y("div", pc, [i[44] ||= X("span", null, "배경 이미지 정렬", -1), X("div", mc, [(J(), Y(K, null, ar([
+							{
+								value: "left",
+								label: "왼쪽"
+							},
+							{
+								value: "center",
+								label: "중앙"
+							},
+							{
+								value: "right",
+								label: "오른쪽"
+							}
+						], (e) => X("button", {
+							key: e.value,
+							type: "button",
+							class: M({ active: (F.value.backgroundPosition || "right center") === `${e.value} center` }),
+							onClick: (t) => Oe(e.value)
+						}, N(e.label), 11, hc)), 64))])])) : Z("", !0),
+						X("div", gc, [X("div", null, [i[45] ||= X("span", null, "섹션 높이", -1), X("strong", null, N(F.value.minHeight ? `${Math.round(F.value.minHeight)}px` : "자동"), 1)]), X("button", {
 							type: "button",
 							disabled: !F.value.minHeight,
-							onClick: Oe
-						}, " 높이 초기화 ", 8, mc)])
+							onClick: ke
+						}, " 높이 초기화 ", 8, _c)])
 					])
 				])) : Z("", !0)])
 			], 2)) : Z("", !0)
 		]));
 	}
-}, gc = document.querySelector("#visual-editor-app");
-gc && lo(hc, { mode: new URLSearchParams(window.location.search).get("mode") || gc.dataset.mode || "editor" }).mount(gc);
+}, yc = document.querySelector("#visual-editor-app");
+yc && lo(vc, { mode: new URLSearchParams(window.location.search).get("mode") || yc.dataset.mode || "editor" }).mount(yc);
 //#endregion

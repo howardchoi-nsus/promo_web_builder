@@ -271,6 +271,13 @@ function updateSectionStyle(sectionKey, patch) {
   };
 }
 
+function setSectionBackgroundAlignment(alignment) {
+  if (!selectedSection.value || !["left", "center", "right"].includes(alignment)) return;
+  updateSectionStyle(selectedSection.value.sectionKey, {
+    backgroundPosition: `${alignment} center`,
+  });
+}
+
 function resetSectionHeight() {
   if (!selectedSection.value) return;
   const nextStyles = { ...(designSpec.value.sectionStyles || {}) };
@@ -781,6 +788,24 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
             >
               자동 배치로 복원
             </button>
+            <div v-if="sectionHasAiBackground(selectedSection)" class="section-background-alignment">
+              <span>배경 이미지 정렬</span>
+              <div role="group" aria-label="배경 이미지 가로 정렬">
+                <button
+                  v-for="option in [
+                    { value: 'left', label: '왼쪽' },
+                    { value: 'center', label: '중앙' },
+                    { value: 'right', label: '오른쪽' },
+                  ]"
+                  :key="option.value"
+                  type="button"
+                  :class="{ active: (selectedSectionStyle.backgroundPosition || 'right center') === `${option.value} center` }"
+                  @click="setSectionBackgroundAlignment(option.value)"
+                >
+                  {{ option.label }}
+                </button>
+              </div>
+            </div>
             <div class="section-size-control">
               <div>
                 <span>섹션 높이</span>
