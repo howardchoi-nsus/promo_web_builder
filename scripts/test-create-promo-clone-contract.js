@@ -69,6 +69,7 @@ assert.match(createJs, /grid\.append\(createSectionAiDesignPanel\(section\)\)/);
 assert.doesNotMatch(createJs, /layoutPanel\.append\(layoutHeader, createSectionAiDesignPanel\(\)\)/);
 assert.match(createJs, /wizardResolvedLayout\.sectionStyles\[section\.sectionKey\]/);
 assert.match(createJs, /backgroundSize:\s*"contain"/);
+assert.match(createJs, /backgroundPosition:\s*"right center"/);
 assert.doesNotMatch(createJs, /source:\s*"ai"/);
 assert.match(createJs, /isLegacyAiImage/);
 assert.match(createJs, /currentUrl\.startsWith\("\/api\/promo-section-design-image\?"\)/);

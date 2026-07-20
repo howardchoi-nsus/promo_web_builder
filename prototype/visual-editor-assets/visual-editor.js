@@ -3053,7 +3053,7 @@ var Eo = {
 				height: `${Math.max(50, n)}px`,
 				backgroundImage: r ? `url(${JSON.stringify(r)})` : void 0,
 				backgroundSize: r ? t.backgroundSize || "contain" : void 0,
-				backgroundPosition: r ? t.backgroundPosition || "center" : void 0,
+				backgroundPosition: r ? t.backgroundPosition || "right center" : void 0,
 				backgroundRepeat: r ? t.backgroundRepeat || "no-repeat" : void 0
 			};
 		}

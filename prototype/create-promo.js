@@ -1773,7 +1773,7 @@ async function applySectionAiDesign(section, saved) {
         ...(wizardResolvedLayout.sectionStyles[section.sectionKey] || {}),
         backgroundImage: saved.imageResult.proxyUrl,
         backgroundSize: "contain",
-        backgroundPosition: "center",
+        backgroundPosition: "right center",
         backgroundRepeat: "no-repeat",
       };
     }

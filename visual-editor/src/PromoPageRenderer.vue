@@ -105,7 +105,7 @@ function inlineSectionStyle(section) {
     height: `${Math.max(50, canvasHeight)}px`,
     backgroundImage: backgroundImage ? `url(${JSON.stringify(backgroundImage)})` : undefined,
     backgroundSize: backgroundImage ? (style.backgroundSize || "contain") : undefined,
-    backgroundPosition: backgroundImage ? (style.backgroundPosition || "center") : undefined,
+    backgroundPosition: backgroundImage ? (style.backgroundPosition || "right center") : undefined,
     backgroundRepeat: backgroundImage ? (style.backgroundRepeat || "no-repeat") : undefined,
   };
 }

@@ -134,7 +134,7 @@
   "backgroundImage": "/api/promo-section-design-image?runId=...",
   "backgroundImageAssetId": "asset-id",
   "backgroundSize": "contain",
-  "backgroundPosition": "center",
+  "backgroundPosition": "right center",
   "backgroundRepeat": "no-repeat"
 }
 ```

@@ -85,6 +85,7 @@ assert.match(renderer, /v-for="item in renderedItems\(section\)"/);
 assert.match(renderer, /configured \|\| String\(legacyAiImage\?\.value/);
 assert.match(renderer, /backgroundSize/);
 assert.match(renderer, /style\.backgroundSize \|\| "contain"/);
+assert.match(renderer, /style\.backgroundPosition \|\| "right center"/);
 assert.match(renderer, /item\.image\?\.descriptionEnabled/);
 assert.match(renderer, /--promo-cta-bg/);
 assert.match(renderer, /--promo-cta-radius/);
