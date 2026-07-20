@@ -70,6 +70,9 @@ const storageKeys = {
 
 const SECTION_INPUT_SCHEMA_VERSION = 2;
 const LAYOUT_CACHE_CONTRACT_VERSION = 2;
+const WEB_OUTPUT_SNAPSHOT_STORAGE_KEY = "promoVisualEditor.snapshot.v1";
+const CONTENT_SUBSTEP_STORAGE_KEY = "promoPrototype.createPromo.contentSubstep.v1";
+const CONTENT_SUBSTEPS = ["overview", "template", "layout"];
 const {
   normalizeLayoutIdentity,
   sameLayoutIdentity,
@@ -80,6 +83,9 @@ const {
 } = globalThis.CreatePromoLayoutCache || {};
 
 let currentStep = 0;
+let contentSubstep = CONTENT_SUBSTEPS.includes(sessionStorage.getItem(CONTENT_SUBSTEP_STORAGE_KEY))
+  ? sessionStorage.getItem(CONTENT_SUBSTEP_STORAGE_KEY)
+  : "overview";
 let designDocuments = [];
 let selectedDocumentId = localStorage.getItem(storageKeys.selectedDocumentId) || "";
 let conceptsLoading = false;
@@ -1490,6 +1496,86 @@ function validateContentStep() {
   return !Object.keys(validationErrors).length;
 }
 
+function promotionOverviewErrors() {
+  const errors = {};
+  [
+    ["title", contentState.promo.title],
+    ["promotionPurpose", contentState.promo.promotionPurpose],
+    ["market", contentState.promo.market],
+    ["audience", contentState.simpleBrief.audience],
+    ["campaignTone", contentState.simpleBrief.campaignTone],
+  ].forEach(([key, value]) => {
+    if (!String(value || "").trim()) errors[key] = true;
+  });
+  if (contentState.promo.promotionPurpose === "기타"
+    && !String(contentState.promo.promotionPurposeOther || "").trim()) {
+    errors.promotionPurposeOther = true;
+  }
+  return errors;
+}
+
+function setContentSubstep(nextSubstep, { validate = true } = {}) {
+  if (!CONTENT_SUBSTEPS.includes(nextSubstep)) return false;
+  const nextIndex = CONTENT_SUBSTEPS.indexOf(nextSubstep);
+  if (validate && nextIndex > 0) {
+    const overviewErrors = promotionOverviewErrors();
+    if (Object.keys(overviewErrors).length) {
+      validationErrors = overviewErrors;
+      contentSubstep = "overview";
+      sessionStorage.setItem(CONTENT_SUBSTEP_STORAGE_KEY, contentSubstep);
+      renderStep();
+      return false;
+    }
+  }
+  if (validate && nextIndex > 1 && !wizardSectionConfigurationReady()) {
+    validationErrors = { sectionConfiguration: true };
+    contentSubstep = "template";
+    sessionStorage.setItem(CONTENT_SUBSTEP_STORAGE_KEY, contentSubstep);
+    renderStep();
+    return false;
+  }
+  validationErrors = {};
+  contentSubstep = nextSubstep;
+  sessionStorage.setItem(CONTENT_SUBSTEP_STORAGE_KEY, contentSubstep);
+  renderStep();
+  if (contentSubstep === "layout") refreshActiveWizardTemplate();
+  return true;
+}
+
+function createWebOutputSnapshot() {
+  const snapshot = wizardLayoutSnapshot();
+  if (!snapshot) return null;
+  return { ...snapshot, contractVersion: 1, createdAt: new Date().toISOString() };
+}
+
+function goToWebOutput() {
+  if (pendingAdminLayoutUpdate) {
+    wizardTemplateRefreshError = "관리자 레이아웃 변경 사항을 적용하거나 현재 작업 유지를 선택한 후 Web Output을 확인해 주세요.";
+    contentSubstep = "layout";
+    sessionStorage.setItem(CONTENT_SUBSTEP_STORAGE_KEY, contentSubstep);
+    renderStep();
+    return false;
+  }
+  if (!validateContentStep()) {
+    contentSubstep = Object.keys(promotionOverviewErrors()).length ? "overview" : "layout";
+    sessionStorage.setItem(CONTENT_SUBSTEP_STORAGE_KEY, contentSubstep);
+    renderStep();
+    return false;
+  }
+  const snapshot = createWebOutputSnapshot();
+  if (!snapshot) {
+    wizardTemplateRefreshError = "Web Output Snapshot을 생성할 수 없습니다. 템플릿과 레이아웃을 다시 확인해 주세요.";
+    contentSubstep = "layout";
+    renderStep();
+    return false;
+  }
+  localStorage.setItem(WEB_OUTPUT_SNAPSHOT_STORAGE_KEY, JSON.stringify(snapshot));
+  saveWizardContent();
+  currentStep = 3;
+  renderStep();
+  return true;
+}
+
 function autofillContent() {
   const terms = "Players must be aged 18+ to participate. Promotion terms and conditions apply. Please play responsibly.";
   contentState.promo = {
@@ -1872,12 +1958,63 @@ function renderContentStep() {
   }
   layoutPanel.append(layoutFrame);
 
-  placeholders.append(
-    overview,
-    templateSection,
-    layoutPanel
-  );
-  requestAnimationFrame(postWizardLayoutSnapshot);
+  const substepNav = document.createElement("nav");
+  substepNav.className = "content-substep-nav";
+  substepNav.setAttribute("aria-label", "Step 3 세부 단계");
+  [
+    ["overview", "1", "프로모션 개요 등록"],
+    ["template", "2", "프로모션 템플릿 선택"],
+    ["layout", "3", "템플릿 레이아웃"],
+  ].forEach(([key, number, label]) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `content-substep${contentSubstep === key ? " is-active" : ""}`;
+    button.disabled = (key === "template" && Object.keys(promotionOverviewErrors()).length > 0)
+      || (key === "layout" && (!wizardSectionConfigurationReady() || Object.keys(promotionOverviewErrors()).length > 0));
+    if (contentSubstep === key) button.setAttribute("aria-current", "step");
+    appendTextElement(button, "span", "", number);
+    appendTextElement(button, "strong", "", label);
+    button.addEventListener("click", () => setContentSubstep(key));
+    substepNav.append(button);
+  });
+
+  const substepActions = document.createElement("div");
+  substepActions.className = "content-substep-actions";
+  if (contentSubstep !== "overview") {
+    const back = document.createElement("button");
+    back.type = "button";
+    back.className = "secondary-action";
+    back.textContent = "이전";
+    back.addEventListener("click", () => setContentSubstep(
+      CONTENT_SUBSTEPS[Math.max(0, CONTENT_SUBSTEPS.indexOf(contentSubstep) - 1)],
+      { validate: false }
+    ));
+    substepActions.append(back);
+  }
+  const forward = document.createElement("button");
+  forward.type = "button";
+  forward.className = "primary-action";
+  forward.textContent = contentSubstep === "layout" ? "Web Output" : "다음";
+  forward.addEventListener("click", () => {
+    if (contentSubstep === "layout") goToWebOutput();
+    else setContentSubstep(CONTENT_SUBSTEPS[CONTENT_SUBSTEPS.indexOf(contentSubstep) + 1]);
+  });
+  substepActions.append(forward);
+
+  placeholders.append(substepNav);
+  if (contentSubstep === "overview") placeholders.append(overview);
+  if (contentSubstep === "template") placeholders.append(templateSection);
+  if (contentSubstep === "layout") {
+    const workspace = document.createElement("div");
+    workspace.className = "template-layout-workspace";
+    const contentColumn = document.createElement("div");
+    contentColumn.className = "template-layout-content-column";
+    contentColumn.append(dynamicSectionsWrapper, coverage);
+    workspace.append(contentColumn, layoutPanel);
+    placeholders.append(workspace);
+    requestAnimationFrame(postWizardLayoutSnapshot);
+  }
+  placeholders.append(substepActions);
 }
 
 function createStatusPill(text, kind = "") {
@@ -2878,6 +3015,52 @@ async function loadDesignDocuments(options = {}) {
   }
 }
 
+function renderWebOutputStep() {
+  placeholders.className = "web-output-layout";
+  placeholders.innerHTML = "";
+  let snapshot = null;
+  try {
+    snapshot = JSON.parse(localStorage.getItem(WEB_OUTPUT_SNAPSHOT_STORAGE_KEY) || "null");
+  } catch {
+    snapshot = null;
+  }
+
+  const header = document.createElement("section");
+  header.className = "web-output-summary";
+  appendTextElement(header, "span", "eyebrow", "Web Output Snapshot");
+  appendTextElement(header, "h3", "", snapshot?.content?.formTemplate?.name || "Web Output 준비 필요");
+  appendTextElement(
+    header,
+    "p",
+    "",
+    snapshot
+      ? `Template v${snapshot.content?.formTemplate?.version || 1} · layout r${snapshot.layoutRevision || 1} · ${new Date(snapshot.createdAt).toLocaleString()}`
+      : "Step 3에서 필수 콘텐츠와 레이아웃을 확인한 후 Web Output을 생성해 주세요."
+  );
+  const actions = document.createElement("div");
+  actions.className = "web-output-actions";
+  const edit = document.createElement("button");
+  edit.type = "button";
+  edit.className = "secondary-action";
+  edit.textContent = "Step 3으로 돌아가 수정";
+  edit.addEventListener("click", () => {
+    currentStep = 2;
+    contentSubstep = "layout";
+    sessionStorage.setItem(CONTENT_SUBSTEP_STORAGE_KEY, contentSubstep);
+    renderStep();
+  });
+  actions.append(edit);
+  header.append(actions);
+  placeholders.append(header);
+
+  if (!snapshot) return;
+  const frame = document.createElement("iframe");
+  frame.className = "web-output-frame";
+  frame.title = "Create Promo Web Output 읽기 전용 미리보기";
+  frame.src = "/prototype/visual-editor.html?mode=output&source=create-promo";
+  placeholders.append(frame);
+}
+
 function renderStep() {
   const step = steps[currentStep];
   title.textContent = step.title;
@@ -2888,6 +3071,7 @@ function renderStep() {
   prev.disabled = currentStep === 0;
   next.disabled = currentStep === steps.length - 1
     || (currentStep === 2 && !wizardSectionConfigurationReady());
+  next.textContent = currentStep === 2 && contentSubstep === "layout" ? "Web Output" : "Next";
 
   stepButtons.forEach((button, index) => {
     button.classList.toggle("is-active", index === currentStep);
@@ -2906,6 +3090,11 @@ function renderStep() {
 
   if (currentStep === 2) {
     renderContentStep();
+    return;
+  }
+
+  if (currentStep === 3) {
+    renderWebOutputStep();
     return;
   }
 
@@ -2928,9 +3117,8 @@ function renderStep() {
 
 stepButtons.forEach((button, index) => {
   button.addEventListener("click", () => {
-    if (index === 3 && !validateContentStep()) {
-      currentStep = 2;
-      renderStep();
+    if (index === 3) {
+      goToWebOutput();
       return;
     }
     currentStep = index;
@@ -2940,14 +3128,19 @@ stepButtons.forEach((button, index) => {
 });
 
 prev.addEventListener("click", () => {
+  if (currentStep === 2 && contentSubstep !== "overview") {
+    setContentSubstep(CONTENT_SUBSTEPS[CONTENT_SUBSTEPS.indexOf(contentSubstep) - 1], { validate: false });
+    return;
+  }
   currentStep = Math.max(0, currentStep - 1);
   renderStep();
   if (currentStep === 2) refreshActiveWizardTemplate();
 });
 
 next.addEventListener("click", () => {
-  if (currentStep === 2 && !validateContentStep()) {
-    renderStep();
+  if (currentStep === 2) {
+    if (contentSubstep === "layout") goToWebOutput();
+    else setContentSubstep(CONTENT_SUBSTEPS[CONTENT_SUBSTEPS.indexOf(contentSubstep) + 1]);
     return;
   }
   currentStep = Math.min(steps.length - 1, currentStep + 1);

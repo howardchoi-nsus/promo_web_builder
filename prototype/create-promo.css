@@ -450,6 +450,129 @@ a {
   letter-spacing: 0;
 }
 
+.content-substep-nav {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.content-substep {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 58px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--sub);
+  text-align: left;
+  cursor: pointer;
+}
+
+.content-substep > span {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 12px;
+}
+
+.content-substep.is-active {
+  border-color: var(--accent);
+  color: var(--ink);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.content-substep.is-active > span {
+  background: var(--accent);
+  color: #fff;
+}
+
+.content-substep:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.content-substep-actions,
+.web-output-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.template-layout-workspace {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.72fr) minmax(520px, 1.28fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.template-layout-content-column {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.web-output-layout {
+  display: grid;
+  gap: 16px;
+}
+
+.web-output-summary {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+
+.web-output-summary h3,
+.web-output-summary p {
+  margin: 6px 0 0;
+}
+
+.web-output-frame {
+  width: 100%;
+  min-height: 780px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+}
+
+@media (max-width: 980px) {
+  .template-layout-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .content-substep-nav {
+    grid-template-columns: 1fr;
+  }
+
+  .web-output-frame {
+    min-height: 620px;
+  }
+}
+
+@media (max-width: 640px) {
+  .content-substep-actions {
+    position: sticky;
+    bottom: 8px;
+    z-index: 5;
+    padding: 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--panel);
+  }
+
+  .content-substep-actions > button {
+    flex: 1;
+  }
+}
+
 .wizard-template-tiles {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
