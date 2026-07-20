@@ -1673,15 +1673,6 @@ function sectionAiHasContent(sectionKey) {
   return values.some((item) => item.length >= 2);
 }
 
-function sectionAiImageTarget(section) {
-  const imageItem = (section.items || []).find((item) => (
-    item.fieldKind === "image" && item.isVisibleInWizard !== false && !item.isLocked
-  ));
-  return imageItem
-    ? { type: "item", sectionKey: section.sectionKey, itemKey: imageItem.itemKey }
-    : { type: "section-background", sectionKey: section.sectionKey };
-}
-
 function saveSectionAiRun(sectionKey, run, sourceInputs) {
   contentState.sectionDesignRuns = contentState.sectionDesignRuns || {};
   contentState.sectionDesignRuns[sectionKey] = {
@@ -1759,28 +1750,13 @@ async function applySectionAiDesign(section, saved) {
       wizardResolvedLayout.itemStyles[key] = { ...(wizardResolvedLayout.itemStyles[key] || {}), ...(value || {}) };
     });
     if (saved.imageResult?.proxyUrl) {
-      const target = saved.imageResult.target || (saved.imageResult.itemKey
-        ? { type: "item", sectionKey: section.sectionKey, itemKey: saved.imageResult.itemKey }
-        : sectionAiImageTarget(section));
-      const imageItem = target.type === "item"
-        ? (section.items || []).find((item) => item.itemKey === target.itemKey)
-        : null;
-      if (imageItem && !imageItem.isLocked) {
-        setValueAtPath(contentState.sectionInputs, `${section.sectionKey}.${imageItem.itemKey}`, {
-          source: "ai",
-          value: saved.imageResult.proxyUrl,
-          description: "",
-          alt: `${section.name || section.sectionKey} visual`,
-        });
-      } else if (target.type === "section-background" && target.sectionKey === section.sectionKey) {
-        wizardResolvedLayout.sectionStyles[section.sectionKey] = {
-          ...(wizardResolvedLayout.sectionStyles[section.sectionKey] || {}),
-          backgroundImage: saved.imageResult.proxyUrl,
-          backgroundSize: "contain",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-        };
-      }
+      wizardResolvedLayout.sectionStyles[section.sectionKey] = {
+        ...(wizardResolvedLayout.sectionStyles[section.sectionKey] || {}),
+        backgroundImage: saved.imageResult.proxyUrl,
+        backgroundSize: "contain",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      };
     }
     saveSectionAiRun(section.sectionKey, result.run, contentState.sectionInputs?.[section.sectionKey]);
     postWizardLayoutSnapshot();
@@ -1797,8 +1773,7 @@ function createSectionAiDesignPanel(section) {
   heading.className = "section-ai-design-panel__heading";
   appendTextElement(heading, "span", "eyebrow", "AI Section Design");
   appendTextElement(heading, "strong", "", `${section.name || section.sectionKey} AI 디자인`);
-  const target = sectionAiImageTarget(section);
-  appendTextElement(heading, "small", "", target.type === "item" ? "생성 이미지는 이 섹션의 이미지 항목에 적용됩니다." : "이미지 항목이 없어 생성 이미지는 이 섹션의 배경에 적용됩니다.");
+  appendTextElement(heading, "small", "", "생성 이미지는 이 섹션의 배경에 적용됩니다.");
   panel.append(heading);
   const list = document.createElement("div");
   list.className = "section-ai-design-list";

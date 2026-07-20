@@ -34,15 +34,12 @@ function hasAnalyzableContent(sectionInputs) {
 
 function defaultConstraints(section, layout = {}) {
   const visibleItems = (section.items || []).filter((item) => item.isVisibleInWizard !== false);
-  const imageItem = visibleItems.find((item) => item.fieldKind === "image" && !item.isLocked);
   const lockedItems = visibleItems.filter((item) => item.isLocked).map((item) => item.itemKey);
   const currentHeight = layout.sectionStyles?.[section.sectionKey]?.minHeight;
   return {
     allowedLayoutVariants: [...LAYOUT_VARIANTS],
-    imageTargetItemKeys: imageItem ? [imageItem.itemKey] : [],
-    imageTarget: imageItem
-      ? { type: "item", sectionKey: section.sectionKey, itemKey: imageItem.itemKey }
-      : { type: "section-background", sectionKey: section.sectionKey },
+    imageTargetItemKeys: [],
+    imageTarget: { type: "section-background", sectionKey: section.sectionKey },
     contentLocks: lockedItems,
     layoutLocks: currentHeight ? ["minHeight"] : [],
     imageAspectRatio: "16:9",

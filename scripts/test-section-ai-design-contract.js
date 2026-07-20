@@ -29,8 +29,8 @@ assert.deepEqual(analyzableSectionContent(section, {
 
 const constraints = defaultConstraints(section, { sectionStyles: {} });
 assert.deepEqual(constraints.contentLocks, ["title"]);
-assert.deepEqual(constraints.imageTargetItemKeys, ["heroImage"]);
-assert.deepEqual(constraints.imageTarget, { type: "item", sectionKey: "heroBanner", itemKey: "heroImage" });
+assert.deepEqual(constraints.imageTargetItemKeys, []);
+assert.deepEqual(constraints.imageTarget, { type: "section-background", sectionKey: "heroBanner" });
 
 const generated = layoutPatchFromResult(section, {
   layoutVariant: "split-right",
@@ -39,8 +39,8 @@ const generated = layoutPatchFromResult(section, {
   rationale: "Copy remains readable next to the supporting visual.",
 }, constraints);
 assert.equal(generated.layoutPatch.sectionStyles.heroBanner.minHeight, 520);
-assert.equal(generated.imageRequest.itemKey, "heroImage");
-assert.equal(generated.imageRequest.target.type, "item");
+assert.equal(generated.imageRequest.itemKey, null);
+assert.equal(generated.imageRequest.target.type, "section-background");
 assert.equal(validatePatch(section, generated, constraints).ok, true);
 
 assert.throws(() => layoutPatchFromResult(section, {
