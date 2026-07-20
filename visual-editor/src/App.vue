@@ -470,7 +470,11 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
     <div v-if="outputSaveError" class="system-message system-message--error" role="alert">{{ outputSaveError }}</div>
     <div v-if="layoutSaveMessage" class="system-message" role="status">{{ layoutSaveMessage }}</div>
 
-    <section v-if="!loading && !error" class="editor-workspace">
+    <section
+      v-if="!loading && !error"
+      class="editor-workspace"
+      :class="{ 'is-create-promo-wizard': isCreatePromoWizardMode }"
+    >
       <aside class="section-rail" aria-label="콘텐츠 섹션">
         <div class="panel-heading">
           <span>SECTIONS</span>

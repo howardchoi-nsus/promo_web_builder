@@ -34,7 +34,9 @@ assert.match(app, /href="\/prototype\/index\.html">프로모션 빌더/);
 assert.match(app, /aria-current="page">Visual Editor/);
 assert.match(editorHtml, /shared-shell-header\.css/);
 assert.match(editorHtml, /shared-shell\.js/);
-assert.match(app, /v-if="!loading && !error" class="editor-workspace"/);
+assert.match(app, /v-if="!loading && !error"/);
+assert.match(app, /class="editor-workspace"/);
+assert.match(app, /'is-create-promo-wizard': isCreatePromoWizardMode/);
 assert.match(app, /mode === "output"/);
 assert.match(renderer, /data-section-key/);
 assert.match(renderer, /data-item-key/);
@@ -118,6 +120,7 @@ assert.match(read("visual-editor", "src", "styles.css"), /grid-template-areas:\s
 assert.match(read("visual-editor", "src", "styles.css"), /\.section-rail\s*\{[^}]*grid-area:\s*sections/s);
 assert.match(read("visual-editor", "src", "styles.css"), /\.property-panel\s*\{[^}]*grid-area:\s*content/s);
 assert.match(read("visual-editor", "src", "styles.css"), /\.preview-panel\s*\{[^}]*grid-area:\s*preview/s);
+assert.match(read("visual-editor", "src", "styles.css"), /\.editor-workspace\.is-create-promo-wizard\s*\{[^}]*"preview preview"[^}]*"sections content"/s);
 assert.doesNotMatch(read("visual-editor", "src", "styles.css"), /\.rendered-section--heroBanner[^}]*min-height/s);
 assert.match(app, /guidesVisible/);
 assert.match(app, /section-accordion/);
