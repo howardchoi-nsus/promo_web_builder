@@ -69,6 +69,7 @@ assert.match(createJs, /grid\.append\(createSectionAiDesignPanel\(section\)\)/);
 assert.doesNotMatch(createJs, /layoutPanel\.append\(layoutHeader, createSectionAiDesignPanel\(\)\)/);
 assert.match(createJs, /type:\s*"section-background"/);
 assert.match(createJs, /description:\s*""/);
+assert.match(createJs, /backgroundSize:\s*"contain"/);
 assert.match(createJs, /async function generateSectionAiDesign\b/);
 assert.match(createJs, /async function applySectionAiDesign\b/);
 assert.match(createJs, /create-promo-auto-register-request/);

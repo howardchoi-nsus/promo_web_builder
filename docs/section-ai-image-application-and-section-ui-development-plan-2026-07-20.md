@@ -138,7 +138,7 @@
 {
   "backgroundImage": "/api/promo-section-design-image?runId=...",
   "backgroundImageAssetId": "asset-id",
-  "backgroundSize": "cover",
+  "backgroundSize": "contain",
   "backgroundPosition": "center",
   "backgroundRepeat": "no-repeat"
 }
@@ -253,7 +253,7 @@
 
 1. Visual Renderer에 섹션 background style을 적용한다.
 2. Web Output serialization에 배경 image asset을 포함한다.
-3. desktop/mobile에서 cover, position, safe area를 검증한다.
+3. desktop/mobile에서 contain, position, safe area를 검증한다.
 4. 텍스트 가독성을 위한 기존 overlay 또는 theme 규칙과 충돌 여부를 확인한다.
 
 ### Phase 5. 통합 검증 및 배포

@@ -76,6 +76,7 @@ assert.match(renderer, /--promo-bg-image/);
 assert.match(renderer, /\\\/api\\\//);
 assert.match(renderer, /sectionBackgroundUrl/);
 assert.match(renderer, /backgroundSize/);
+assert.match(renderer, /style\.backgroundSize \|\| "contain"/);
 assert.match(renderer, /item\.image\?\.descriptionEnabled/);
 assert.match(renderer, /--promo-cta-bg/);
 assert.match(renderer, /--promo-cta-radius/);

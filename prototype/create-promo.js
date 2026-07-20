@@ -1782,7 +1782,7 @@ async function applySectionAiDesign(section, saved) {
         wizardResolvedLayout.sectionStyles[section.sectionKey] = {
           ...(wizardResolvedLayout.sectionStyles[section.sectionKey] || {}),
           backgroundImage: saved.imageResult.proxyUrl,
-          backgroundSize: "cover",
+          backgroundSize: "contain",
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
         };
