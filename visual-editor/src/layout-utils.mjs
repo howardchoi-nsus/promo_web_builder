@@ -27,6 +27,8 @@ export function mergeLayoutSpec(base = DEFAULT_DESIGN_SPEC, override = {}) {
   merged.contractVersion = Number(merged.contractVersion || 1);
   merged.specKey = String(merged.specKey || "default");
   merged.theme = merged.theme || {};
+  delete merged.theme.backgroundImage;
+  delete merged.theme.backgroundImageName;
   merged.responsive = merged.responsive || {};
   merged.itemStyles = merged.itemStyles || {};
   merged.sectionStyles = merged.sectionStyles || {};

@@ -269,7 +269,6 @@ function startSectionResize(event, section) {
     :class="{ 'is-editor-preview': editable, 'has-editor-guides': editable && showGuides }"
     :style="{
       '--promo-bg': designSpec.theme.backgroundColor,
-      '--promo-bg-image': designSpec.theme.backgroundImage ? `url(${JSON.stringify(designSpec.theme.backgroundImage)})` : 'none',
       '--promo-ink': designSpec.theme.textColor,
       '--promo-accent': designSpec.theme.accentColor,
       '--promo-cta': designSpec.theme.ctaColor || designSpec.theme.accentColor,

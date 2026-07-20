@@ -134,8 +134,6 @@ const FALLBACK_LAYOUT = {
   specKey: "admin-default",
   theme: {
     backgroundColor: "#f5f7fb",
-    backgroundImage: "",
-    backgroundImageName: "",
     textColor: "#172033",
     accentColor: "#156b5b",
     fontFamily: "Inter, Pretendard, sans-serif",
@@ -205,8 +203,6 @@ function applyCreatePromoAppearance(layout = FALLBACK_LAYOUT) {
     theme: {
       ...(source.theme || {}),
       backgroundColor: background.color,
-      backgroundImage: "",
-      backgroundImageName: "",
       textColor: background.textColor,
       ctaColor: ctaColor.color,
       ctaShape: appearanceState.ctaShape,
@@ -970,8 +966,6 @@ window.addEventListener("message", (event) => {
     theme: {
       ...(incomingLayout.theme || {}),
       backgroundColor: previousTheme.backgroundColor,
-      backgroundImage: previousTheme.backgroundImage || "",
-      backgroundImageName: previousTheme.backgroundImageName || "",
       textColor: previousTheme.textColor,
     },
   };

@@ -54,8 +54,6 @@ let fixtureLayout = {
   specKey: "admin-default",
   theme: {
     backgroundColor: "#f5f7fb",
-    backgroundImage: "",
-    backgroundImageName: "",
     textColor: "#172033",
     accentColor: "#156b5b",
     fontFamily: "Inter, Pretendard, sans-serif",

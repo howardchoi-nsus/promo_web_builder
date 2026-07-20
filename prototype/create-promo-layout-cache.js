@@ -46,8 +46,6 @@
     layout.theme = { ...(layout.theme || {}) };
     [
       "backgroundColor",
-      "backgroundImage",
-      "backgroundImageName",
       "textColor",
       "ctaColor",
       "ctaShape",

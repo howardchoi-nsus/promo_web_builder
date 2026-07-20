@@ -77,7 +77,7 @@ assert.match(createJs, /workspace\.append\(layoutPanel\)/);
 assert.doesNotMatch(createJs, /contentColumn\.append\(dynamicSectionsWrapper, coverage\)/);
 assert.match(editorApp, /isCreatePromoWizardMode/);
 assert.match(editorApp, /v-if="!isCreatePromoWizardMode" class="global-token-menu"/);
-assert.match(editorApp, /v-if="!isCreatePromoWizardMode" class="background-image-control"/);
+assert.doesNotMatch(editorApp, /background-image-control/);
 assert.match(editorApp, /create-promo-auto-register-request/);
 assert.match(editorApp, /sectionInputs:\s*JSON\.parse\(JSON\.stringify\(sectionInputs\.value\)\)/);
 assert.match(createJs, /contentState\.sectionInputs = mergeSectionInputs\(event\.data\.sectionInputs\)/);

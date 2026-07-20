@@ -17,8 +17,6 @@ export const DEFAULT_DESIGN_SPEC = Object.freeze({
   specKey: "default",
   theme: {
     backgroundColor: "#f5f7fb",
-    backgroundImage: "",
-    backgroundImageName: "",
     textColor: "#172033",
     accentColor: "#156b5b",
     ctaColor: "#156b5b",

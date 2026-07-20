@@ -28,7 +28,6 @@ const selectedItemKey = ref("");
 const expandedSectionKey = ref("");
 const viewport = ref("desktop");
 const guidesVisible = ref(true);
-const backgroundImageError = ref("");
 const outputSaveError = ref("");
 const outputSnapshot = ref(null);
 const layoutRevision = ref(1);
@@ -134,50 +133,6 @@ function updateBackgroundToken(token) {
       textColor: token.textColor,
     },
   };
-}
-
-function attachBackgroundImage(event) {
-  const file = event.target.files?.[0];
-  event.target.value = "";
-  if (!file) return;
-  backgroundImageError.value = "";
-  if (!file.type.startsWith("image/")) {
-    backgroundImageError.value = "이미지 파일만 첨부할 수 있습니다.";
-    return;
-  }
-  if (file.size > 3 * 1024 * 1024) {
-    backgroundImageError.value = "배경 이미지는 3MB 이하 파일을 사용해주세요.";
-    return;
-  }
-  const reader = new FileReader();
-  reader.onload = () => {
-    outputSaveError.value = "";
-    designSpec.value = {
-      ...designSpec.value,
-      theme: {
-        ...designSpec.value.theme,
-        backgroundImage: String(reader.result || ""),
-        backgroundImageName: file.name,
-      },
-    };
-  };
-  reader.onerror = () => {
-    backgroundImageError.value = "배경 이미지를 불러오지 못했습니다.";
-  };
-  reader.readAsDataURL(file);
-}
-
-function removeBackgroundImage() {
-  designSpec.value = {
-    ...designSpec.value,
-    theme: {
-      ...designSpec.value.theme,
-      backgroundImage: "",
-      backgroundImageName: "",
-    },
-  };
-  backgroundImageError.value = "";
-  outputSaveError.value = "";
 }
 
 const selectedStyleKey = computed(() => (
@@ -496,15 +451,6 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
             </button>
           </div>
         </fieldset>
-        <div v-if="!isCreatePromoWizardMode" class="background-image-control">
-          <label class="background-image-button">
-            <input type="file" accept="image/*" @change="attachBackgroundImage" />
-            <span>{{ designSpec.theme.backgroundImage ? "배경 이미지 교체" : "배경 이미지 첨부" }}</span>
-          </label>
-          <span v-if="designSpec.theme.backgroundImageName" class="background-image-name">{{ designSpec.theme.backgroundImageName }}</span>
-          <button v-if="designSpec.theme.backgroundImage" type="button" class="background-image-remove" @click="removeBackgroundImage">제거</button>
-          <small v-if="backgroundImageError" class="background-image-error">{{ backgroundImageError }}</small>
-        </div>
         <nav aria-label="Visual Editor navigation">
           <template v-if="isAdminLayoutMode">
             <input v-model="layoutChangeNote" type="text" placeholder="변경 사유" aria-label="레이아웃 변경 사유" />
