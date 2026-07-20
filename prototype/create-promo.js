@@ -1447,27 +1447,10 @@ function contentErrors() {
     if (!String(value || "").trim()) errors[key] = true;
   });
 
-  wizardSectionDefinitions.forEach((section) => {
-    const visibleItems = (section.items || []).filter((item) => item.isVisibleInWizard);
-    const requiredItems = visibleItems.filter((item) => item.isRequired);
-    if (section.isRequired && (!visibleItems.length || !requiredItems.length)) {
-      errors[`section:${section.sectionKey}`] = true;
-    }
-    visibleItems.forEach((item) => {
-      if (!item.isRequired && !item.isLocked) return;
-      const errorKey = `section:${section.sectionKey}.${item.itemKey}`;
-      const value = valueAtPath(contentState.sectionInputs, `${section.sectionKey}.${item.itemKey}`);
-      const isFilled = item.fieldKind === "cta"
-        ? Boolean(String(value?.label || "").trim() && String(value?.link || "").trim())
-        : item.fieldKind === "image"
-          ? Boolean(
-            String(value?.value || "").trim()
-            && (!item.image?.altTextRequired || String(value?.alt || "").trim())
-          )
-          : Boolean(String(value || "").trim());
-      if (!isFilled) errors[errorKey] = true;
-    });
-  });
+  // Template content registration is no longer part of Step 3. Empty dynamic
+  // Section/Item values are allowed in Web Output and may be completed by the
+  // later AI/generation flow. Keep configuration readiness validation above,
+  // but do not block navigation on fields that are no longer editable here.
 
   return errors;
 }
@@ -2007,10 +1990,7 @@ function renderContentStep() {
   if (contentSubstep === "layout") {
     const workspace = document.createElement("div");
     workspace.className = "template-layout-workspace";
-    const contentColumn = document.createElement("div");
-    contentColumn.className = "template-layout-content-column";
-    contentColumn.append(dynamicSectionsWrapper, coverage);
-    workspace.append(contentColumn, layoutPanel);
+    workspace.append(layoutPanel);
     placeholders.append(workspace);
     requestAnimationFrame(postWizardLayoutSnapshot);
   }
