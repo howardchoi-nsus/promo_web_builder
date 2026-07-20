@@ -708,8 +708,12 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
 
           <label v-else>
             <span>{{ selectedItem.textType === 'multi' ? '설명 텍스트' : '텍스트' }}</span>
-            <textarea v-if="selectedItem.textType === 'multi'" v-model="selectedValue" :disabled="selectedItem.isLocked" rows="8"></textarea>
-            <input v-else v-model="selectedValue" :disabled="selectedItem.isLocked" />
+            <textarea
+              v-model="selectedValue"
+              :disabled="selectedItem.isLocked"
+              :rows="selectedItem.textType === 'multi' ? 8 : 3"
+              placeholder="Enter 키로 줄바꿈할 수 있습니다."
+            ></textarea>
           </label>
 
           <dl class="item-meta">

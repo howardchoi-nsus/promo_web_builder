@@ -56,6 +56,7 @@ assert.match(createJs, /promoPrototype\.createPromo\.sessionId\.v1/);
 assert.match(createJs, /promoPrototype\.createPromo\.appearance\.v1/);
 assert.match(createJs, /function renderBackgroundStep\b/);
 assert.match(createJs, /function renderCtaStep\b/);
+assert.match(createJs, /type:\s*"textarea",\s*\n\s*rows:\s*item\.textType === "multi" \? 4 : 3/);
 assert.match(createJs, /const CTA_STYLE_OPTIONS/);
 assert.match(createJs, /group:\s*"cta-style"/);
 assert.match(createJs, /appearanceState\.ctaShape = option\.shape/);

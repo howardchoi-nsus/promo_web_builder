@@ -209,7 +209,7 @@ function startTextEdit(event, section, item) {
   selection.addRange(range);
 
   const finish = () => {
-    const nextValue = textNode.textContent.trim() || DEFAULT_LOREM_IPSUM;
+    const nextValue = textNode.innerText.replace(/\r\n?/g, "\n").trim() || DEFAULT_LOREM_IPSUM;
     emit("update-item-content", section, item, nextValue);
     textNode.contentEditable = "false";
     article.classList.remove("is-editing");

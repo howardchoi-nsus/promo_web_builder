@@ -1362,12 +1362,11 @@ function createDynamicSectionField(sectionKey, item) {
   if (item.fieldKind === "cta") return createCtaSectionField(sectionKey, item);
   if (item.fieldKind === "image") return createImageSectionField(sectionKey, item);
 
-  const isMulti = item.textType === "multi";
   return createSectionField({
     path: `${sectionKey}.${item.itemKey}`,
     label: item.isRequired ? `${item.name} *` : item.name,
-    type: isMulti ? "textarea" : "text",
-    rows: isMulti ? 4 : undefined,
+    type: "textarea",
+    rows: item.textType === "multi" ? 4 : 3,
   });
 }
 
