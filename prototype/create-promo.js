@@ -1750,6 +1750,25 @@ async function applySectionAiDesign(section, saved) {
       wizardResolvedLayout.itemStyles[key] = { ...(wizardResolvedLayout.itemStyles[key] || {}), ...(value || {}) };
     });
     if (saved.imageResult?.proxyUrl) {
+      // Runs created before section-background targeting stored the generated
+      // asset in an image item. Remove only those legacy AI values so user
+      // supplied image content remains untouched.
+      (section.items || []).forEach((item) => {
+        if (item.fieldKind !== "image" || item.isLocked) return;
+        const path = `${section.sectionKey}.${item.itemKey}`;
+        const current = valueAtPath(contentState.sectionInputs, path);
+        const currentUrl = String(current?.value || "").trim();
+        const isLegacyAiImage = current?.source === "ai"
+          || currentUrl.startsWith("/api/promo-section-design-image?");
+        if (!isLegacyAiImage) return;
+        setValueAtPath(contentState.sectionInputs, path, {
+          ...current,
+          source: item.image?.allowedSources?.[0] || "url",
+          value: "",
+          description: "",
+          alt: "",
+        });
+      });
       wizardResolvedLayout.sectionStyles[section.sectionKey] = {
         ...(wizardResolvedLayout.sectionStyles[section.sectionKey] || {}),
         backgroundImage: saved.imageResult.proxyUrl,

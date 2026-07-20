@@ -70,6 +70,9 @@ assert.doesNotMatch(createJs, /layoutPanel\.append\(layoutHeader, createSectionA
 assert.match(createJs, /wizardResolvedLayout\.sectionStyles\[section\.sectionKey\]/);
 assert.match(createJs, /backgroundSize:\s*"contain"/);
 assert.doesNotMatch(createJs, /source:\s*"ai"/);
+assert.match(createJs, /isLegacyAiImage/);
+assert.match(createJs, /currentUrl\.startsWith\("\/api\/promo-section-design-image\?"\)/);
+assert.match(createJs, /value:\s*""/);
 assert.match(createJs, /async function generateSectionAiDesign\b/);
 assert.match(createJs, /async function applySectionAiDesign\b/);
 assert.match(createJs, /create-promo-auto-register-request/);
