@@ -847,6 +847,7 @@ function wizardLayoutSnapshot() {
         items: (section.items || []).map((item) => ({ ...item })),
       })),
       sectionInputs: JSON.parse(JSON.stringify(contentState.sectionInputs)),
+      sectionDesignRuns: JSON.parse(JSON.stringify(contentState.sectionDesignRuns || {})),
       sectionOrder: wizardSectionDefinitions.map((section) => section.sectionKey),
     },
     designSpec: applyCreatePromoAppearance(wizardResolvedLayout),
@@ -956,6 +957,30 @@ window.addEventListener("message", (event) => {
       type: "create-promo-auto-register-result",
       registeredCount,
     }, window.location.origin);
+    return;
+  }
+  if (event.data?.type === "create-promo-section-ai-action") {
+    if (event.source !== wizardLayoutFrame?.contentWindow) return;
+    const section = wizardSectionDefinitions.find((item) => item.sectionKey === event.data.sectionKey);
+    if (!section) return;
+    const saved = sectionAiRun(section.sectionKey);
+    if (event.data.action === "generate") generateSectionAiDesign(section);
+    else if (event.data.action === "apply" && saved) applySectionAiDesign(section, saved);
+    else if (event.data.action === "remove-background") removeSectionAiBackground(section);
+    return;
+  }
+  if (event.data?.type === "create-promo-remove-image") {
+    if (event.source !== wizardLayoutFrame?.contentWindow) return;
+    const section = wizardSectionDefinitions.find((item) => item.sectionKey === event.data.sectionKey);
+    const item = section?.items?.find((candidate) => candidate.itemKey === event.data.itemKey);
+    if (!section || !item || item.fieldKind !== "image" || item.isLocked) return;
+    setSectionValue(`${section.sectionKey}.${item.itemKey}`, {
+      source: item.image?.allowedSources?.[0] || "url",
+      value: "",
+      description: "",
+      alt: "",
+    });
+    postWizardLayoutSnapshot();
     return;
   }
   if (event.data?.type !== "promo-wizard-layout-change" || !event.data.designSpec) return;
@@ -1421,6 +1446,25 @@ function createImageSectionField(sectionKey, item) {
     wrapper.append(createSectionField({ path: `${path}.alt`, label: "대체 텍스트 (alt)" }));
   }
 
+  const currentImage = valueAtPath(contentState.sectionInputs, path);
+  if (String(currentImage?.value || "").trim()) {
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "secondary-action image-content-remove";
+    remove.textContent = "이미지 삭제";
+    remove.addEventListener("click", () => {
+      if (!window.confirm(`${item.name} 이미지를 삭제할까요?`)) return;
+      setSectionValue(path, {
+        source: sources[0] || "url",
+        value: "",
+        description: "",
+        alt: "",
+      });
+      renderStep();
+    });
+    wrapper.append(remove);
+  }
+
   return wrapper;
 }
 
@@ -1687,6 +1731,71 @@ function sectionAiIsStale(sectionKey, saved = sectionAiRun(sectionKey)) {
   return JSON.stringify(saved.sourceInputs) !== JSON.stringify(contentState.sectionInputs?.[sectionKey] || {});
 }
 
+function sectionAiIsProcessing(saved) {
+  return ["queued", "analyzing_content", "generating_layout", "validating_layout", "generating_assets", "validating_assets"].includes(saved?.status);
+}
+
+function isLegacySectionAiImage(value) {
+  const currentUrl = String(value?.value || "").trim();
+  return value?.source === "ai" || currentUrl.startsWith("/api/promo-section-design-image?");
+}
+
+function clearLegacySectionAiImages(section) {
+  (section.items || []).forEach((item) => {
+    if (item.fieldKind !== "image" || item.isLocked) return;
+    const path = `${section.sectionKey}.${item.itemKey}`;
+    const current = valueAtPath(contentState.sectionInputs, path);
+    if (!isLegacySectionAiImage(current)) return;
+    setValueAtPath(contentState.sectionInputs, path, {
+      ...current,
+      source: item.image?.allowedSources?.[0] || "url",
+      value: "",
+      description: "",
+      alt: "",
+    });
+  });
+}
+
+function sectionAiHasAppliedBackground(section) {
+  const style = wizardResolvedLayout?.sectionStyles?.[section.sectionKey] || {};
+  if (String(style.backgroundImage || "").trim()) return true;
+  return (section.items || []).some((item) => (
+    item.fieldKind === "image"
+      && isLegacySectionAiImage(valueAtPath(contentState.sectionInputs, `${section.sectionKey}.${item.itemKey}`))
+  ));
+}
+
+function removeSectionAiBackground(section) {
+  if (!window.confirm(`${section.name || section.sectionKey}의 AI 배경 이미지를 삭제할까요?`)) return;
+  wizardResolvedLayout = wizardResolvedLayout || JSON.parse(JSON.stringify(wizardBaseLayout || FALLBACK_LAYOUT));
+  wizardResolvedLayout.sectionStyles = { ...(wizardResolvedLayout.sectionStyles || {}) };
+  const current = { ...(wizardResolvedLayout.sectionStyles[section.sectionKey] || {}) };
+  ["backgroundImage", "backgroundSize", "backgroundPosition", "backgroundRepeat"].forEach((key) => delete current[key]);
+  if (Object.keys(current).length) wizardResolvedLayout.sectionStyles[section.sectionKey] = current;
+  else delete wizardResolvedLayout.sectionStyles[section.sectionKey];
+  clearLegacySectionAiImages(section);
+  saveWizardContent();
+  saveWizardRun(null);
+  postWizardLayoutSnapshot();
+  renderStep();
+}
+
+function createSectionAiHeaderAction(section) {
+  const saved = sectionAiRun(section.sectionKey);
+  const processing = sectionAiIsProcessing(saved);
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "secondary-action section-ai-header-action";
+  button.textContent = processing ? "AI 생성 중" : ["ready", "applied"].includes(saved?.status) ? "AI 재생성" : "AI 디자인";
+  button.disabled = processing || !sectionAiHasContent(section.sectionKey);
+  button.title = button.disabled && !processing ? "섹션 콘텐츠를 먼저 등록해 주세요." : "";
+  button.addEventListener("click", (event) => {
+    event.stopPropagation();
+    generateSectionAiDesign(section);
+  });
+  return button;
+}
+
 async function generateSectionAiDesign(section) {
   const sectionKey = section.sectionKey;
   const sectionInputs = JSON.parse(JSON.stringify(contentState.sectionInputs?.[sectionKey] || {}));
@@ -1750,25 +1859,7 @@ async function applySectionAiDesign(section, saved) {
       wizardResolvedLayout.itemStyles[key] = { ...(wizardResolvedLayout.itemStyles[key] || {}), ...(value || {}) };
     });
     if (saved.imageResult?.proxyUrl) {
-      // Runs created before section-background targeting stored the generated
-      // asset in an image item. Remove only those legacy AI values so user
-      // supplied image content remains untouched.
-      (section.items || []).forEach((item) => {
-        if (item.fieldKind !== "image" || item.isLocked) return;
-        const path = `${section.sectionKey}.${item.itemKey}`;
-        const current = valueAtPath(contentState.sectionInputs, path);
-        const currentUrl = String(current?.value || "").trim();
-        const isLegacyAiImage = current?.source === "ai"
-          || currentUrl.startsWith("/api/promo-section-design-image?");
-        if (!isLegacyAiImage) return;
-        setValueAtPath(contentState.sectionInputs, path, {
-          ...current,
-          source: item.image?.allowedSources?.[0] || "url",
-          value: "",
-          description: "",
-          alt: "",
-        });
-      });
+      clearLegacySectionAiImages(section);
       wizardResolvedLayout.sectionStyles[section.sectionKey] = {
         ...(wizardResolvedLayout.sectionStyles[section.sectionKey] || {}),
         backgroundImage: saved.imageResult.proxyUrl,
@@ -1799,7 +1890,6 @@ function createSectionAiDesignPanel(section) {
   [section].forEach((section) => {
     const saved = sectionAiRun(section.sectionKey);
     const stale = sectionAiIsStale(section.sectionKey, saved);
-    const processing = ["queued", "analyzing_content", "generating_layout", "validating_layout", "generating_assets", "validating_assets"].includes(saved?.status);
     const card = document.createElement("article");
     card.className = "section-ai-design-card";
     const copy = document.createElement("div");
@@ -1814,14 +1904,6 @@ function createSectionAiDesignPanel(section) {
     }
     const actions = document.createElement("div");
     actions.className = "section-ai-design-card__actions";
-    const generate = document.createElement("button");
-    generate.type = "button";
-    generate.className = "secondary-action";
-    generate.textContent = processing ? "AI 생성 중" : ["ready", "applied"].includes(saved?.status) ? "재생성" : "AI 디자인 생성";
-    generate.disabled = processing || !sectionAiHasContent(section.sectionKey);
-    generate.title = generate.disabled && !processing ? "섹션 콘텐츠를 먼저 등록해 주세요." : "";
-    generate.addEventListener("click", () => generateSectionAiDesign(section));
-    actions.append(generate);
     if (saved?.status === "ready" && !stale) {
       const apply = document.createElement("button");
       apply.type = "button";
@@ -1829,6 +1911,14 @@ function createSectionAiDesignPanel(section) {
       apply.textContent = "레이아웃 및 이미지 적용";
       apply.addEventListener("click", () => applySectionAiDesign(section, saved));
       actions.append(apply);
+    }
+    if (sectionAiHasAppliedBackground(section)) {
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "secondary-action is-danger";
+      remove.textContent = "AI 배경 삭제";
+      remove.addEventListener("click", () => removeSectionAiBackground(section));
+      actions.append(remove);
     }
     card.append(copy, actions);
     list.append(card);
@@ -1991,7 +2081,6 @@ function renderContentStep() {
       grid.inert = !expanded;
       grid.setAttribute("aria-hidden", String(!expanded));
       visibleItems.forEach((item) => grid.append(createDynamicSectionField(section.sectionKey, item)));
-      grid.append(createSectionAiDesignPanel(section));
       toggle.addEventListener("click", () => {
         const isOpen = expandedTemplateSectionKeys.has(section.sectionKey);
         expandedTemplateSectionKeys.clear();

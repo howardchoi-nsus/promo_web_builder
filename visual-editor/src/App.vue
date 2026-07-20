@@ -38,6 +38,7 @@ const layoutSaveMessage = ref("");
 const externalSnapshotReady = ref(false);
 const autoRegisterPending = ref(false);
 const autoRegisterMessage = ref("");
+const sectionDesignRuns = ref({});
 let applyingExternalSnapshot = false;
 
 const isAdminLayoutMode = computed(() => props.mode === "admin-layout");
@@ -120,6 +121,70 @@ function requestAutoRegister() {
   window.parent.postMessage({
     type: "create-promo-auto-register-request",
     sectionInputs: JSON.parse(JSON.stringify(sectionInputs.value)),
+  }, window.location.origin);
+}
+
+function sectionAiRun(section) {
+  return sectionDesignRuns.value?.[section.sectionKey] || null;
+}
+
+function sectionAiIsStale(section) {
+  const saved = sectionAiRun(section);
+  if (!saved?.sourceInputs) return false;
+  return JSON.stringify(saved.sourceInputs) !== JSON.stringify(sectionInputs.value?.[section.sectionKey] || {});
+}
+
+function sectionAiIsProcessing(section) {
+  return ["queued", "analyzing_content", "generating_layout", "validating_layout", "generating_assets", "validating_assets"]
+    .includes(sectionAiRun(section)?.status);
+}
+
+function sectionAiHasContent(section) {
+  const values = [];
+  const collect = (value) => {
+    if (value === null || value === undefined) return;
+    if (typeof value === "string" || typeof value === "number") {
+      if (String(value).trim()) values.push(String(value).trim());
+    } else if (Array.isArray(value)) value.forEach(collect);
+    else if (typeof value === "object") Object.values(value).forEach(collect);
+  };
+  collect(sectionInputs.value?.[section.sectionKey]);
+  return values.some((value) => value.length >= 2);
+}
+
+function sectionAiPrimaryAction(section) {
+  const run = sectionAiRun(section);
+  if (sectionAiIsProcessing(section)) return { action: "generate", label: "AI 생성 중", disabled: true };
+  if (run?.status === "ready" && !sectionAiIsStale(section)) return { action: "apply", label: "AI 적용", disabled: false };
+  if (run?.status === "applied") return { action: "generate", label: "AI 재생성", disabled: !sectionAiHasContent(section) };
+  return { action: "generate", label: "AI 디자인", disabled: !sectionAiHasContent(section) };
+}
+
+function requestSectionAiAction(section, action) {
+  window.parent.postMessage({
+    type: "create-promo-section-ai-action",
+    sectionKey: section.sectionKey,
+    action,
+  }, window.location.origin);
+}
+
+function sectionHasAiBackground(section) {
+  if (designSpec.value?.sectionStyles?.[section.sectionKey]?.backgroundImage) return true;
+  return (section.items || []).some((item) => {
+    if (item.fieldKind !== "image") return false;
+    const value = sectionInputs.value?.[section.sectionKey]?.[item.itemKey];
+    const url = String(value?.value || "").trim();
+    return value?.source === "ai" || url.startsWith("/api/promo-section-design-image?");
+  });
+}
+
+function requestImageRemoval() {
+  if (!selectedSection.value || !selectedItem.value || selectedItem.value.isLocked) return;
+  if (!window.confirm(`${selectedItem.value.name} 이미지를 삭제할까요?`)) return;
+  window.parent.postMessage({
+    type: "create-promo-remove-image",
+    sectionKey: selectedSection.value.sectionKey,
+    itemKey: selectedItem.value.itemKey,
   }, window.location.origin);
 }
 
@@ -323,6 +388,7 @@ async function applyExternalSnapshot(snapshot) {
   configRevision.value = snapshot.content.formTemplate?.configRevision || "";
   sections.value = snapshot.content.sectionSnapshot || [];
   sectionInputs.value = snapshot.content.sectionInputs || {};
+  sectionDesignRuns.value = snapshot.content.sectionDesignRuns || {};
   designSpec.value = normalizeLayoutSpec(snapshot.designSpec);
   layoutRevision.value = Number(snapshot.layoutRevision || 1);
   selectedSectionKey.value = sections.value[0]?.sectionKey || "";
@@ -487,6 +553,7 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
             class="section-accordion"
             :class="{ open: section.sectionKey === expandedSectionKey }"
           >
+            <div class="section-trigger-row">
             <button
               type="button"
               class="section-trigger"
@@ -508,6 +575,22 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
               </svg>
               <i aria-hidden="true"></i>
             </button>
+              <div v-if="isCreatePromoWizardMode" class="section-ai-actions">
+                <button
+                  type="button"
+                  class="section-ai-action"
+                  :disabled="sectionAiPrimaryAction(section).disabled"
+                  :title="sectionAiPrimaryAction(section).disabled && !sectionAiIsProcessing(section) ? '섹션 콘텐츠를 먼저 등록해 주세요.' : ''"
+                  @click="requestSectionAiAction(section, sectionAiPrimaryAction(section).action)"
+                >{{ sectionAiPrimaryAction(section).label }}</button>
+                <button
+                  v-if="sectionHasAiBackground(section)"
+                  type="button"
+                  class="section-ai-remove"
+                  @click="requestSectionAiAction(section, 'remove-background')"
+                >배경 삭제</button>
+              </div>
+            </div>
             <div class="section-accordion__body">
               <div class="section-accordion__items">
                 <button
@@ -608,6 +691,12 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
               <span>대체 텍스트</span>
               <input :disabled="selectedItem.isLocked" :value="selectedValue?.alt" @input="updateObjectField('alt', $event.target.value)" />
             </label>
+            <button
+              v-if="!selectedItem.isLocked && selectedValue?.value"
+              type="button"
+              class="image-remove-action"
+              @click="requestImageRemoval"
+            >이미지 삭제</button>
           </template>
 
           <label v-else>
