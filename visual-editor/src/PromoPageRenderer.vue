@@ -31,8 +31,24 @@ function imageUrl(value) {
   return /^(https?:\/\/|\/api\/)/i.test(candidate) ? candidate : "";
 }
 
+function isLegacyAiImageValue(value) {
+  const candidate = String(value?.value || "").trim();
+  return value?.source === "ai" || candidate.startsWith("/api/promo-section-design-image?");
+}
+
+function renderedItems(section) {
+  return (section.items || []).filter((item) => (
+    item.fieldKind !== "image" || !isLegacyAiImageValue(valueFor(section, item))
+  ));
+}
+
 function sectionBackgroundUrl(section) {
-  const candidate = String(sectionStyle(section).backgroundImage || "").trim();
+  const configured = String(sectionStyle(section).backgroundImage || "").trim();
+  const legacyAiImage = (section.items || [])
+    .filter((item) => item.fieldKind === "image")
+    .map((item) => valueFor(section, item))
+    .find(isLegacyAiImageValue);
+  const candidate = configured || String(legacyAiImage?.value || "").trim();
   return /^(https?:\/\/|\/api\/)/i.test(candidate) ? candidate : "";
 }
 
@@ -292,7 +308,7 @@ function startSectionResize(event, section) {
       <div class="rendered-section__inner">
         <div class="rendered-items" :style="inlineCanvasStyle(section)">
           <article
-            v-for="item in section.items"
+            v-for="item in renderedItems(section)"
             :key="item.itemKey"
             class="rendered-item"
             :class="[
