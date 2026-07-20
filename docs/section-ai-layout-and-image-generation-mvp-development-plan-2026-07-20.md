@@ -616,4 +616,9 @@ AI 결과가 관리자 잠금 속성을 포함하면 해당 필드는 무시하�
 - Run 및 결과 저장 migration 작성
 - 계약 테스트와 기존 Create Promo 회귀 테스트 추가
 
-운영 반영 전 `025_promo_section_design_runs.sql` migration 적용과 `OPENAI_API_KEY`, 선택적 `SECTION_LAYOUT_MODEL`, `SECTION_IMAGE_MODEL`, `SECTION_IMAGE_QUALITY`, `BLOB_READ_WRITE_TOKEN` 설정이 필요하다.
+운영 반영 전 `025_promo_section_design_runs.sql` migration 적용과 다음 환경변수 설정이 필요하다.
+
+- Layout LLM: `OPENAI_API_KEY`, 선택적 `SECTION_LAYOUT_MODEL`
+- Image Provider: `SECTION_IMAGE_PROVIDER=gemini`, `GEMINI_API_KEY`, `SECTION_IMAGE_MODEL=gemini-3.1-flash-image`
+- Image 옵션: 선택적 `SECTION_IMAGE_SIZE=2K`, `SECTION_IMAGE_TIMEOUT_MS`
+- Asset 저장: `BLOB_READ_WRITE_TOKEN`

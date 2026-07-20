@@ -2,8 +2,13 @@ const assert = require("node:assert/strict");
 const { generateSectionLayout, generateSectionImage } = require("../api/_promo-section-design-provider");
 
 const previousKey = process.env.OPENAI_API_KEY;
+const previousGeminiKey = process.env.GEMINI_API_KEY;
+const previousImageProvider = process.env.SECTION_IMAGE_PROVIDER;
+const previousImageModel = process.env.SECTION_IMAGE_MODEL;
 const previousFetch = global.fetch;
 process.env.OPENAI_API_KEY = "test-key";
+process.env.GEMINI_API_KEY = "gemini-test-key";
+process.env.SECTION_IMAGE_PROVIDER = "openai";
 
 (async () => {
   const requests = [];
@@ -20,6 +25,12 @@ process.env.OPENAI_API_KEY = "test-key";
         }),
         usage: { input_tokens: 10, output_tokens: 12, total_tokens: 22 },
       }), { status: 200, headers: { "content-type": "application/json", "x-request-id": "layout-request" } });
+    }
+    if (url.includes("generativelanguage.googleapis.com")) {
+      return new Response(JSON.stringify({
+        candidates: [{ content: { parts: [{ inlineData: { mimeType: "image/png", data: Buffer.alloc(3072, 2).toString("base64") } }] } }],
+        usageMetadata: { totalTokenCount: 80 },
+      }), { status: 200, headers: { "content-type": "application/json", "x-goog-request-id": "gemini-image-request" } });
     }
     return new Response(JSON.stringify({
       data: [{ b64_json: Buffer.alloc(2048, 1).toString("base64") }],
@@ -45,11 +56,31 @@ process.env.OPENAI_API_KEY = "test-key";
   assert.equal(requests[1].body.output_format, "webp");
   assert.equal(requests[1].body.size, "1536x1024");
 
+  process.env.SECTION_IMAGE_PROVIDER = "gemini";
+  process.env.SECTION_IMAGE_MODEL = "gemini-3.1-flash-image";
+  const geminiImage = await generateSectionImage({ prompt: "Premium visual with left-side negative space, no text" });
+  assert.equal(geminiImage.bytes.length, 3072);
+  assert.equal(geminiImage.mimeType, "image/png");
+  assert.equal(geminiImage.width, 2048);
+  assert.equal(geminiImage.height, 1152);
+  assert.equal(geminiImage.provider.provider, "gemini");
+  assert.equal(geminiImage.provider.requestId, "gemini-image-request");
+  assert.match(requests[2].url, /gemini-3\.1-flash-image:generateContent$/);
+  assert.equal(requests[2].body.generationConfig.responseModalities[0], "IMAGE");
+  assert.equal(requests[2].body.generationConfig.responseFormat.image.aspectRatio, "16:9");
+  assert.equal(requests[2].body.generationConfig.responseFormat.image.imageSize, "2K");
+
   console.log("Section AI provider contract tests passed.");
 })().finally(() => {
   global.fetch = previousFetch;
   if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
   else process.env.OPENAI_API_KEY = previousKey;
+  if (previousGeminiKey === undefined) delete process.env.GEMINI_API_KEY;
+  else process.env.GEMINI_API_KEY = previousGeminiKey;
+  if (previousImageProvider === undefined) delete process.env.SECTION_IMAGE_PROVIDER;
+  else process.env.SECTION_IMAGE_PROVIDER = previousImageProvider;
+  if (previousImageModel === undefined) delete process.env.SECTION_IMAGE_MODEL;
+  else process.env.SECTION_IMAGE_MODEL = previousImageModel;
 }).catch((error) => {
   console.error(error);
   process.exitCode = 1;
