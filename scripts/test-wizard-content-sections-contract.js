@@ -37,7 +37,7 @@ assert.match(wizardSource, /path: `\$\{path\}\.description`/);
 assert.match(adminSource, /dragOverWizardSection/);
 assert.match(adminSource, /wizardSectionDropPosition/);
 assert.match(adminHtmlSource, /transition-group name="section-order-list"/);
-assert.match(adminHtmlSource, /shared-shell-header\.css/);
+assert.match(adminHtmlSource, /app-shell\.css\?v=app-shell-v1/);
 assert.match(adminHtmlSource, /app\.js/);
 assert.doesNotMatch(adminHtmlSource, /value="image_description"/);
 assert.match(adminHtmlSource, /설명 입력 허용/);

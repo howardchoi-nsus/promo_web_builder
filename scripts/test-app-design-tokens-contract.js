@@ -5,7 +5,8 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const tokens = fs.readFileSync(path.join(root, "prototype/design-tokens.css"), "utf8");
 const builderCss = fs.readFileSync(path.join(root, "prototype/styles.css"), "utf8");
-const shellCss = fs.readFileSync(path.join(root, "prototype/shared-shell-header.css"), "utf8");
+const shellCss = fs.readFileSync(path.join(root, "prototype/app-shell.css"), "utf8");
+const legacyShellCss = fs.readFileSync(path.join(root, "prototype/shared-shell-header.css"), "utf8");
 const createPromoCss = fs.readFileSync(path.join(root, "prototype/create-promo.css"), "utf8");
 const promoWizardCss = fs.readFileSync(path.join(root, "prototype/promo-wizard.css"), "utf8");
 const visualEditorCss = fs.readFileSync(path.join(root, "visual-editor/src/styles.css"), "utf8");
@@ -42,6 +43,7 @@ assert.doesNotMatch(builderCss, /\[data-theme="dark"\]\s*\{[\s\S]*?--bg:/);
 assert.match(shellCss, /--shell-bg:\s*var\(--app-panel\)/);
 assert.match(shellCss, /--shell-accent:\s*var\(--app-accent\)/);
 assert.doesNotMatch(shellCss, /\[data-theme="dark"\]\s*\{/);
+assert.match(legacyShellCss, /app-shell\.css\?v=app-shell-v1/);
 [createPromoCss, promoWizardCss].forEach((css) => {
   assert.match(css, /--bg:\s*var\(--app-bg\)/);
   assert.match(css, /--accent:\s*var\(--app-accent\)/);
@@ -64,6 +66,12 @@ htmlFiles.forEach((file) => {
   const tokenIndex = html.indexOf("design-tokens.css");
   const screenCssIndex = html.search(/(?:styles|create-promo|promo-wizard|shared-shell-header|visual-editor)\.css/);
   assert(tokenIndex >= 0 && screenCssIndex > tokenIndex, `${file} must load design tokens before screen CSS`);
+});
+
+["index.html", "create-promo.html", "promo-wizard.html", "visual-editor.html"].forEach((file) => {
+  const html = fs.readFileSync(path.join(root, "prototype", file), "utf8");
+  assert.match(html, /app-shell\.css\?v=app-shell-v1/);
+  assert.doesNotMatch(html, /shared-shell-header\.css/);
 });
 
 console.log("App design token contract test passed");

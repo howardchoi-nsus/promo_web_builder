@@ -10,12 +10,14 @@ const wizard = read("prototype", "promo-wizard.html");
 const wizardScript = read("prototype", "promo-wizard.js");
 const editorHtml = read("prototype", "visual-editor.html");
 const editorApp = read("visual-editor", "src", "App.vue");
-const sharedCss = read("prototype", "shared-shell-header.css");
+const appShellCss = read("prototype", "app-shell.css");
+const legacyShellCss = read("prototype", "shared-shell-header.css");
 const sharedScript = read("prototype", "shared-shell.js");
 
-assert.match(sharedCss, /\.shell-header\s*\{/);
-assert.match(sharedCss, /\.shell-nav \[aria-current="page"\]/);
-assert.match(sharedCss, /@media \(max-width: 680px\)/);
+assert.match(appShellCss, /\.shell-header\s*\{/);
+assert.match(appShellCss, /\.shell-nav \[aria-current="page"\]/);
+assert.match(appShellCss, /@media \(max-width: 680px\)/);
+assert.match(legacyShellCss, /@import url\("\.\/app-shell\.css\?v=app-shell-v1"\)/);
 assert.match(sharedScript, /promoPrototype\.themeMode/);
 assert.match(sharedScript, /data-shell-theme-toggle/);
 
@@ -28,7 +30,7 @@ assert.match(wizard, /aria-current="page">Promo Wizard/);
 assert.match(wizard, /id="wizard-shell-status"/);
 assert.match(wizardScript, /shellStatus\.textContent = `Step/);
 
-assert.match(editorHtml, /shared-shell-header\.css/);
+assert.match(editorHtml, /app-shell\.css\?v=app-shell-v1/);
 assert.match(editorHtml, /shared-shell\.js/);
 assert.match(editorApp, /v-if="!isWizardLayoutMode" class="shell-header editor-shell-header"/);
 assert.match(editorApp, /class="editor-header editor-toolbar"/);

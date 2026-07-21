@@ -22,7 +22,7 @@ const rendererCss = read("visual-editor", "src", "styles.css");
 assert.match(createHtml, /<title>Create Promo<\/title>/);
 assert.match(createHtml, /aria-current="page">Create Promo<\/a>/);
 assert.doesNotMatch(createHtml, /class="active" href="\/promo-wizard\.html"/);
-assert.match(createHtml, /create-promo\.css\?v=create-promo-light-v30/);
+assert.match(createHtml, /create-promo\.css\?v=app-tokens-v1/);
 assert.match(createHtml, /wizard\/wizard-core\.js\?v=wizard-core-v1/);
 assert.match(createHtml, /create-promo-layout-cache\.js\?v=create-promo-light-v28/);
 assert.match(createHtml, /create-promo\.js\?v=create-promo-light-v32/);

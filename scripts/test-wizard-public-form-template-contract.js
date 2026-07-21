@@ -48,7 +48,7 @@ assert.doesNotMatch(wizard, /2\. Message JSON/);
 assert.doesNotMatch(wizard, /createMessageJsonSection/);
 assert.match(wizardCss, /\.wizard-template-loading-status/);
 assert.match(wizardCss, /\.wizard-content-accordion\.is-drop-target/);
-assert.match(wizardHtml, /shared-shell-header\.css/);
+assert.match(wizardHtml, /app-shell\.css\?v=app-shell-v1/);
 assert.match(wizardHtml, /shared-shell\.js/);
 assert.match(wizardHtml, /promo-wizard\.js/);
 console.log("Wizard public form template contract test passed");
