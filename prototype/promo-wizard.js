@@ -46,6 +46,7 @@ const storageKeys = {
 };
 
 const SECTION_INPUT_SCHEMA_VERSION = 2;
+const { appendTextElement, valueAtPath, setValueAtPath, fetchJson } = globalThis.PromoWizardCore || {};
 
 let currentStep = 0;
 let designDocuments = [];
@@ -672,34 +673,8 @@ function createConceptCard(doc) {
   return card;
 }
 
-function appendTextElement(parent, tagName, className, text) {
-  const element = document.createElement(tagName);
-  if (className) element.className = className;
-  element.textContent = text;
-  parent.append(element);
-  return element;
-}
-
 function fieldValue(group, key) {
   return contentState[group]?.[key] || "";
-}
-
-function valueAtPath(source, path) {
-  return String(path || "")
-    .split(".")
-    .filter(Boolean)
-    .reduce((value, key) => value?.[key], source);
-}
-
-function setValueAtPath(source, path, value) {
-  const parts = String(path || "").split(".").filter(Boolean);
-  if (!parts.length) return;
-  let target = source;
-  parts.slice(0, -1).forEach((part) => {
-    if (!target[part] || typeof target[part] !== "object") target[part] = {};
-    target = target[part];
-  });
-  target[parts[parts.length - 1]] = value;
 }
 
 function setFieldValue(group, key, value) {
@@ -2035,21 +2010,6 @@ function generationProgress(label, statusValue, isComplete = false) {
   if (isComplete) return { text: `${label} · 완료`, kind: "ready" };
   if (isActiveStatus(statusValue)) return { text: `${label} · 진행 중`, kind: "progress" };
   return { text: `${label} · 진행 전`, kind: "pending" };
-}
-
-async function fetchJson(url, options = {}) {
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
-  });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(payload.message || payload.error || payload.workerTrigger?.error || `HTTP ${response.status}`);
-  }
-  return payload;
 }
 
 async function createOrRefreshRun() {

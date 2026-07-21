@@ -37,7 +37,9 @@ try {
   const page = await context.newPage();
   const pageErrors = [];
   const failedRequests = [];
+  const requestedPaths = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
+  page.on("request", (request) => requestedPaths.push(new URL(request.url()).pathname));
   page.on("requestfailed", (request) => {
     const reason = request.failure()?.errorText || "failed";
     // Create Promo intentionally replaces the embedded editor iframe when a
@@ -95,6 +97,13 @@ try {
 
   assert.deepEqual(pageErrors, [], `Browser page errors:\n${pageErrors.join("\n")}`);
   assert.deepEqual(failedRequests, [], `Failed browser requests:\n${failedRequests.join("\n")}`);
+  [
+    "/api/design-documents",
+    "/api/promo-generation-worker-settings",
+    "/api/promo-generation-runs",
+  ].forEach((legacyPath) => {
+    assert.equal(requestedPaths.includes(legacyPath), false, `Legacy request should not run: ${legacyPath}`);
+  });
   await context.close();
   console.log("Create Promo browser smoke test passed");
 } finally {

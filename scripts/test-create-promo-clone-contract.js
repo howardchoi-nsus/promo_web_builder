@@ -9,6 +9,7 @@ const createHtml = read("prototype", "create-promo.html");
 const createCss = read("prototype", "create-promo.css");
 const createJs = read("prototype", "create-promo.js");
 const createLayoutCache = read("prototype", "create-promo-layout-cache.js");
+const wizardCore = read("prototype", "wizard", "wizard-core.js");
 const wizardJs = read("prototype", "promo-wizard.js");
 const rootRedirect = read("create-promo.html");
 const builderHtml = read("prototype", "index.html");
@@ -21,6 +22,7 @@ assert.match(createHtml, /<title>Create Promo<\/title>/);
 assert.match(createHtml, /aria-current="page">Create Promo<\/a>/);
 assert.doesNotMatch(createHtml, /class="active" href="\/promo-wizard\.html"/);
 assert.match(createHtml, /create-promo\.css\?v=create-promo-light-v30/);
+assert.match(createHtml, /wizard\/wizard-core\.js\?v=wizard-core-v1/);
 assert.match(createHtml, /create-promo-layout-cache\.js\?v=create-promo-light-v28/);
 assert.match(createHtml, /create-promo\.js\?v=create-promo-light-v32/);
 assert.match(createCss, /\[data-theme="light"\]\s*\{[\s\S]*?color-scheme:\s*light;/);
@@ -38,12 +40,8 @@ assert.match(createCss, /\.section-ai-design-panel/);
 
 [
   "loadWizardContent",
-  "loadWizardRun",
   "selectWizardFormTemplate",
   "renderContentStep",
-  "queueIntegratedBrief",
-  "createNewLofiDraft",
-  "generateFinalDesign",
   "renderStep",
 ].forEach((contractName) => {
   assert.match(createJs, new RegExp(`(?:function|async function) ${contractName}\\b`));
@@ -51,7 +49,6 @@ assert.match(createCss, /\.section-ai-design-panel/);
 });
 
 assert.match(createJs, /promoPrototype\.createPromo\.content\.v1/);
-assert.match(createJs, /promoPrototype\.createPromo\.run\.v1/);
 assert.match(createJs, /promoPrototype\.createPromo\.sessionId\.v1/);
 assert.match(createJs, /promoPrototype\.createPromo\.appearance\.v1/);
 assert.match(createJs, /function renderBackgroundStep\b/);
@@ -80,8 +77,6 @@ assert.match(createJs, /isLegacySectionAiImage/);
 assert.match(createJs, /currentUrl\.startsWith\("\/api\/promo-section-design-image\?"\)/);
 assert.match(createJs, /value:\s*""/);
 assert.match(createJs, /function removeSectionAiBackground\b/);
-assert.match(createJs, /AI 배경 삭제/);
-assert.match(createJs, /이미지 삭제/);
 assert.match(createJs, /async function generateSectionAiDesign\b/);
 assert.match(createJs, /async function applySectionAiDesign\b/);
 assert.match(createJs, /const appliedRun = result\.run/);
@@ -139,6 +134,16 @@ assert.match(renderer, /--promo-cta-radius/);
 assert.match(rendererCss, /border-radius:\s*var\(--promo-cta-radius/);
 assert.doesNotMatch(createJs, /"promoPrototype\.wizardContent\.v1"/);
 assert.doesNotMatch(createJs, /"promoPrototype\.wizardRun\.v1"/);
+assert.doesNotMatch(createJs, /loadDesignDocuments\(\)|loadWorkerSettings\(\)|syncRunPolling\(\)/);
+assert.doesNotMatch(createJs, /\/api\/design-documents|\/api\/promo-generation-worker-settings/);
+assert.match(createJs, /globalThis\.PromoWizardCore/);
+assert.match(wizardJs, /globalThis\.PromoWizardCore/);
+assert.match(wizardHtml, /wizard\/wizard-core\.js\?v=wizard-core-v1/);
+["appendTextElement", "valueAtPath", "setValueAtPath", "fetchJson"].forEach((name) => {
+  assert.match(wizardCore, new RegExp(`(?:function|async function) ${name}\\b`));
+  assert.doesNotMatch(createJs, new RegExp(`(?:function|async function) ${name}\\b`));
+  assert.doesNotMatch(wizardJs, new RegExp(`(?:function|async function) ${name}\\b`));
+});
 assert.match(wizardJs, /"promoPrototype\.wizardContent\.v1"/);
 assert.match(wizardJs, /"promoPrototype\.wizardRun\.v1"/);
 
