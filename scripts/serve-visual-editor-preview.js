@@ -82,10 +82,16 @@ async function readJson(req) {
   try { return JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}"); } catch { return {}; }
 }
 
-http.createServer(async (req, res) => {
+const server = http.createServer(async (req, res) => {
   const requestUrl = new URL(req.url, `http://127.0.0.1:${port}`);
   if (useFixture && requestUrl.pathname === "/api/wizard-form-templates-public") {
     return json(res, { ok: true, templates: [template] });
+  }
+  if (useFixture && requestUrl.pathname === "/api/design-documents") {
+    return json(res, { ok: true, documents: [] });
+  }
+  if (useFixture && requestUrl.pathname === "/api/promo-generation-worker-settings") {
+    return json(res, { ok: true, settings: [] });
   }
   if (useFixture && requestUrl.pathname === "/api/wizard-form-template-public") {
     return json(res, {
@@ -174,7 +180,9 @@ http.createServer(async (req, res) => {
   }
   res.writeHead(200, { "Content-Type": mime[path.extname(filePath)] || "application/octet-stream" });
   fs.createReadStream(filePath).pipe(res);
-}).listen(port, "127.0.0.1", () => {
+});
+
+server.listen(port, "127.0.0.1", () => {
   console.log(`Visual Editor preview: http://127.0.0.1:${port}/visual-editor.html`);
   console.log(useFixture ? "API mode: fixture" : `API proxy: ${apiOrigin}`);
 });

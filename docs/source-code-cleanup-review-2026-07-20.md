@@ -494,3 +494,28 @@ legacy migration은 일정 기간의 사용 로그를 확인하고 구버전 sto
 그다음 Create Promo와 Promo Wizard의 공통 로직을 추출해야 한다. 이 과정을 거치지 않고 새 App Shell이나 AI 기능을 계속 추가하면 두 Wizard의 차이가 커지고 관리자 템플릿 계약 변경 비용도 증가한다.
 
 마지막으로 공통 App Shell을 적용하면서 관리자 페이지를 기능 단위로 분리하는 것이 좋다. 좌측 글로벌 메뉴와 우측 보조 패널 구조는 현재 제품에 적합하지만, 기존의 거대한 단일 파일 위에 직접 덧붙이기보다 Shell과 콘텐츠 모듈의 경계를 먼저 만드는 것이 안전하다.
+
+## 8. 2026-07-21 P0 테스트 안전망 반영
+
+코드 정리 착수 전 P0 브라우저 회귀 테스트 기반을 먼저 반영했다.
+
+- Playwright 개발 의존성 추가
+- fixture 서버에 Create Promo 초기 API 응답 추가
+- Create Promo Step 1~4 Chromium smoke test 추가
+- 모든 `scripts/test-*.js`, `scripts/test-*.mjs`를 실행하는 통합 `test` 명령 추가
+- 브라우저 설치 명령: `pnpm run test:browser:install`
+- 브라우저 smoke test: `pnpm run test:create-promo-browser-smoke`
+- 전체 테스트: `pnpm test`
+
+브라우저 smoke test 범위:
+
+1. Step 1 배경색 선택 및 상태 반영
+2. Step 2 CTA 모양·표현 방식·색상 선택
+3. Step 3 프로모션 개요 입력 및 세부 단계 이동
+4. 기본 템플릿 선택 상태 확인
+5. Visual Editor iframe 로드 및 섹션별 AI 버튼 확인
+6. Step 4 Web Output 이동 및 renderer 로드
+7. Create Promo 콘텐츠 저장소와 Web Output snapshot 검증
+8. 브라우저 page error 및 실제 네트워크 실패 검증
+
+최종 실행 결과는 브라우저 smoke test를 포함한 19개 테스트 파일 전체 통과다. 기존 `MODULE_TYPELESS_PACKAGE_JSON` 경고는 그대로 남아 있으며 별도 P3 정리 대상으로 유지한다.

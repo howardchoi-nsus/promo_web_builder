@@ -6,6 +6,7 @@
     "node": "22.x"
   },
   "scripts": {
+    "test": "node scripts/run-tests.js",
     "build:visual-editor": "vite build --config visual-editor/vite.config.js",
     "dev:visual-editor": "vite --config visual-editor/vite.config.js",
     "check": "node --check prototype/app.js && node --check prototype/generated.js && node --check prototype/promo-wizard.js && node --check prototype/create-promo.js",
@@ -26,6 +27,8 @@
     "test:shared-shell-header-contract": "node scripts/test-shared-shell-header-contract.js",
     "test:create-promo-clone-contract": "node scripts/test-create-promo-clone-contract.js",
     "test:create-promo-layout-cache": "node scripts/test-create-promo-layout-cache.js",
+    "test:browser:install": "playwright install chromium",
+    "test:create-promo-browser-smoke": "node scripts/test-create-promo-browser-smoke.mjs",
     "test:section-ai-design-contract": "node scripts/test-section-ai-design-contract.js",
     "test:section-ai-provider-contract": "node scripts/test-section-ai-provider-contract.js",
     "design-md:dry-run": "node scripts/import-design-md-docs.js",
@@ -38,6 +41,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.8",
+    "playwright": "^1.61.1",
     "vite": "^8.1.4"
   }
 }

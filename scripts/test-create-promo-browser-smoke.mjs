@@ -1,0 +1,108 @@
+import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
+import { chromium } from "playwright";
+
+const port = Number(process.env.CREATE_PROMO_SMOKE_PORT || 4178);
+const origin = `http://127.0.0.1:${port}`;
+const server = spawn(process.execPath, ["scripts/serve-visual-editor-preview.js"], {
+  cwd: process.cwd(),
+  env: { ...process.env, PORT: String(port), USE_FIXTURE: "1" },
+  stdio: ["ignore", "pipe", "pipe"],
+});
+
+let serverOutput = "";
+server.stdout.on("data", (chunk) => { serverOutput += chunk.toString(); });
+server.stderr.on("data", (chunk) => { serverOutput += chunk.toString(); });
+
+async function waitForServer(timeoutMs = 10_000) {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    if (server.exitCode !== null) throw new Error(`Fixture server exited early.\n${serverOutput}`);
+    try {
+      const response = await fetch(`${origin}/create-promo.html`);
+      if (response.ok) return;
+    } catch {
+      // Server is still starting.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error(`Fixture server did not start within ${timeoutMs}ms.\n${serverOutput}`);
+}
+
+let browser;
+try {
+  await waitForServer();
+  browser = await chromium.launch({ headless: true });
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  const pageErrors = [];
+  const failedRequests = [];
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+  page.on("requestfailed", (request) => {
+    const reason = request.failure()?.errorText || "failed";
+    // Create Promo intentionally replaces the embedded editor iframe when a
+    // fresh layout snapshot is rendered. Chromium reports the old frame's
+    // in-flight static assets as aborted; network or server failures still fail.
+    if (reason === "net::ERR_ABORTED") return;
+    failedRequests.push(`${request.method()} ${request.url()}: ${reason}`);
+  });
+
+  await page.goto(`${origin}/create-promo.html`, { waitUntil: "networkidle" });
+  await assertPageText(page.locator("#step-title"), "배경색 선택");
+
+  await page.locator('[data-choice-group="background"][data-choice-value="midnight"]').click();
+  assert.equal(
+    await page.locator('[data-choice-group="background"][data-choice-value="midnight"]').getAttribute("aria-checked"),
+    "true",
+  );
+
+  await page.locator("#next-step").click();
+  await assertPageText(page.locator("#step-title"), "CTA 버튼 스타일 선택");
+  await page.locator('[data-choice-group="cta-style"][data-choice-value="round-fill"]').click();
+  await page.locator('[data-choice-group="cta-color"][data-choice-value="blue"]').click();
+
+  await page.locator("#next-step").click();
+  await assertPageText(page.locator("#step-title"), "템플릿 및 콘텐츠 등록");
+  await page.locator('[data-field-key="title"] input').fill("Browser Smoke Promotion");
+  await page.locator('[data-field-key="promotionPurpose"] select').selectOption("이벤트");
+  await page.locator('[data-field-key="market"] input').fill("KR");
+  await page.locator('[data-field-key="audience"] select').selectOption("신규");
+  await page.locator('[data-field-key="campaignTone"] select').selectOption("활기찬");
+
+  await page.locator(".content-substep-actions .primary-action").click();
+  await page.locator('.content-substep[aria-current="step"] strong').waitFor();
+  await assertPageText(page.locator('.content-substep[aria-current="step"] strong'), "프로모션 템플릿 선택");
+  await page.locator('.wizard-template-tile[aria-pressed="true"]').waitFor();
+
+  await page.locator(".content-substep-actions .primary-action").click();
+  await assertPageText(page.locator('.content-substep[aria-current="step"] strong'), "템플릿 레이아웃");
+  const editorFrame = page.frameLocator("iframe.wizard-layout-frame");
+  await editorFrame.locator(".editor-workspace.is-create-promo-wizard").waitFor({ timeout: 10_000 });
+  assert.equal(await editorFrame.locator(".section-ai-action").count(), 2, "Every fixture section should expose an AI action");
+
+  await page.locator(".content-substep-actions .primary-action").click();
+  await assertPageText(page.locator("#step-title"), "웹 출력");
+  const outputFrame = page.frameLocator("iframe.web-output-frame");
+  await outputFrame.locator(".promo-renderer").waitFor({ timeout: 10_000 });
+  const snapshot = await page.evaluate(() => JSON.parse(localStorage.getItem("promoVisualEditor.snapshot.v1") || "null"));
+  const wizardContent = await page.evaluate(() => JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null"));
+  assert.equal(wizardContent?.promo?.title, "Browser Smoke Promotion");
+  assert.equal(snapshot?.content?.formTemplate?.templateKey, "default-preview");
+  assert.equal(snapshot?.designSpec?.theme?.backgroundColor, "#111827");
+  assert.equal(snapshot?.designSpec?.theme?.ctaColor, "#3478f6");
+  assert.equal(snapshot?.designSpec?.theme?.ctaShape, "round");
+  assert.equal(snapshot?.designSpec?.theme?.ctaVariant, "fill");
+
+  assert.deepEqual(pageErrors, [], `Browser page errors:\n${pageErrors.join("\n")}`);
+  assert.deepEqual(failedRequests, [], `Failed browser requests:\n${failedRequests.join("\n")}`);
+  await context.close();
+  console.log("Create Promo browser smoke test passed");
+} finally {
+  if (browser) await browser.close();
+  if (server.exitCode === null) server.kill();
+}
+
+async function assertPageText(locator, expected) {
+  await locator.waitFor({ timeout: 10_000 });
+  assert.equal((await locator.textContent())?.trim(), expected);
+}
