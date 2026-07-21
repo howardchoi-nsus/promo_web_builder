@@ -6,6 +6,8 @@ const root = path.resolve(__dirname, "..");
 const tokens = fs.readFileSync(path.join(root, "prototype/design-tokens.css"), "utf8");
 const builderCss = fs.readFileSync(path.join(root, "prototype/styles.css"), "utf8");
 const shellCss = fs.readFileSync(path.join(root, "prototype/shared-shell-header.css"), "utf8");
+const createPromoCss = fs.readFileSync(path.join(root, "prototype/create-promo.css"), "utf8");
+const promoWizardCss = fs.readFileSync(path.join(root, "prototype/promo-wizard.css"), "utf8");
 const htmlFiles = [
   "index.html",
   "create-promo.html",
@@ -39,6 +41,12 @@ assert.doesNotMatch(builderCss, /\[data-theme="dark"\]\s*\{[\s\S]*?--bg:/);
 assert.match(shellCss, /--shell-bg:\s*var\(--app-panel\)/);
 assert.match(shellCss, /--shell-accent:\s*var\(--app-accent\)/);
 assert.doesNotMatch(shellCss, /\[data-theme="dark"\]\s*\{/);
+[createPromoCss, promoWizardCss].forEach((css) => {
+  assert.match(css, /--bg:\s*var\(--app-bg\)/);
+  assert.match(css, /--accent:\s*var\(--app-accent\)/);
+  assert.match(css, /font-family:\s*var\(--app-font-body\)/);
+  assert.doesNotMatch(css, /\[data-theme="dark"\]\s*\{[\s\S]*?--bg:/);
+});
 
 htmlFiles.forEach((file) => {
   const html = fs.readFileSync(path.join(root, "prototype", file), "utf8");
