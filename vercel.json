@@ -3,6 +3,9 @@
   "trailingSlash": false,
   "functions": {
     "api/promo-section-design-process.js": {
+      "maxDuration": 120
+    },
+    "api/promo-section-design-image-process.js": {
       "maxDuration": 300
     }
   }

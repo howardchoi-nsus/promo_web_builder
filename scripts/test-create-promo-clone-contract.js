@@ -11,6 +11,8 @@ const designTokensCss = read("prototype", "design-tokens.css");
 const createJs = read("prototype", "create-promo.js");
 const createLayoutCache = read("prototype", "create-promo-layout-cache.js");
 const wizardCore = read("prototype", "wizard", "wizard-core.js");
+const wizardContent = read("prototype", "wizard", "wizard-content.js");
+const wizardStorage = read("prototype", "wizard", "wizard-storage.js");
 const wizardJs = read("prototype", "promo-wizard.js");
 const rootRedirect = read("create-promo.html");
 const builderHtml = read("prototype", "index.html");
@@ -18,12 +20,15 @@ const wizardHtml = read("prototype", "promo-wizard.html");
 const editorApp = read("visual-editor", "src", "App.vue");
 const renderer = read("visual-editor", "src", "PromoPageRenderer.vue");
 const rendererCss = read("visual-editor", "src", "styles.css");
+const sharedShell = read("prototype", "shared-shell.js");
 
 assert.match(createHtml, /<title>Create Promo<\/title>/);
-assert.match(createHtml, /aria-current="page">Create Promo<\/a>/);
+assert.match(createHtml, /data-shell-nav data-shell-active="create-promo"/);
 assert.doesNotMatch(createHtml, /class="active" href="\/promo-wizard\.html"/);
 assert.match(createHtml, /create-promo\.css\?v=app-tokens-v1/);
 assert.match(createHtml, /wizard\/wizard-core\.js\?v=wizard-core-v1/);
+assert.match(createHtml, /wizard\/wizard-content\.js\?v=wizard-content-v1/);
+assert.match(createHtml, /wizard\/wizard-storage\.js\?v=wizard-storage-v1/);
 assert.match(createHtml, /create-promo-layout-cache\.js\?v=create-promo-light-v28/);
 assert.match(createHtml, /create-promo\.js\?v=create-promo-light-v32/);
 assert.match(designTokensCss, /\[data-theme="light"\]\s*\{[\s\S]*?color-scheme:\s*light;/);
@@ -35,6 +40,8 @@ assert.match(createHtml, /<strong>CTA Style<\/strong>/);
 assert.match(createHtml, /<strong>Template &amp; Content<\/strong>/);
 assert.match(createHtml, /<strong>Web Output<\/strong>/);
 assert.match(rootRedirect, /\/prototype\/create-promo\.html/);
+assert.match(wizardContent, /global\.PromoWizardContent = Object\.freeze/);
+assert.match(wizardStorage, /global\.PromoWizardStorage = Object\.freeze/);
 
 assert.match(createCss, /\.wizard-shell/);
 assert.match(createCss, /\.wizard-progress/);
@@ -102,7 +109,8 @@ assert.match(editorApp, /item\.fieldKind === "cta" \? value\?\.label : value/);
 assert.match(editorApp, /class="section-ai-action"/);
 assert.match(editorApp, /class="section-ai-remove"/);
 assert.match(editorApp, /class="image-remove-action"/);
-assert.match(createJs, /sectionDesignRuns:\s*JSON\.parse/);
+assert.match(createJs, /sectionDesignRuns:\s*contentState\.sectionDesignRuns/);
+assert.match(wizardStorage, /content\.sectionDesignRuns = clone/);
 assert.match(createJs, /event\.source !== wizardLayoutFrame\?\.contentWindow/);
 assert.match(editorApp, /sectionInputs:\s*JSON\.parse\(JSON\.stringify\(sectionInputs\.value\)\)/);
 assert.match(createJs, /contentState\.sectionInputs = mergeSectionInputs\(event\.data\.sectionInputs\)/);
@@ -154,8 +162,9 @@ assert.match(wizardHtml, /wizard\/wizard-core\.js\?v=wizard-core-v1/);
 assert.match(wizardJs, /"promoPrototype\.wizardContent\.v1"/);
 assert.match(wizardJs, /"promoPrototype\.wizardRun\.v1"/);
 
-[builderHtml, wizardHtml, editorApp].forEach((source) => {
-  assert.match(source, /href="\/create-promo\.html">Create Promo<\/a>/);
-});
+assert.match(sharedShell, /label: "Create Promo", href: "\/create-promo\.html"/);
+assert.match(builderHtml, /data-shell-nav/);
+assert.match(wizardHtml, /data-shell-nav/);
+assert.match(editorApp, /shellNavItems/);
 
 console.log("Create Promo clone contract test passed");

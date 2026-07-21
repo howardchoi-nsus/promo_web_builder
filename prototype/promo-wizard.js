@@ -47,6 +47,17 @@ const storageKeys = {
 
 const SECTION_INPUT_SCHEMA_VERSION = 2;
 const { appendTextElement, valueAtPath, setValueAtPath, fetchJson } = globalThis.PromoWizardCore || {};
+const {
+  createDefaultWizardContent,
+  migrateLegacySectionInputs,
+  defaultSectionInputsFromDefinitions,
+  mergeSectionInputs,
+} = globalThis.PromoWizardContent || {};
+const {
+  loadWizardContent: loadWizardContentFromStorage,
+  persistWizardContent,
+  createLayoutSnapshot,
+} = globalThis.PromoWizardStorage || {};
 
 let currentStep = 0;
 let designDocuments = [];
@@ -139,159 +150,19 @@ async function loadWorkerSettings() {
 }
 
 function defaultWizardContent() {
-  return {
-    sectionInputSchemaVersion: SECTION_INPUT_SCHEMA_VERSION,
-    promo: {
-      title: "",
-      template: "AI Auto",
-      promotionPurpose: "",
-      promotionPurposeOther: "",
-      market: "",
-      leadText: "",
-      ctaLabel: "",
-      ctaUrl: "",
-      subline: "",
-      alphaText: "",
-      termsText: "",
-    },
-    simpleBrief: {
-      mainOffer: "",
-      targetAction: "",
-      audience: "",
-      campaignTone: "",
-      secondaryMessage: "",
-    },
-    formTemplate: null,
-    templateInputs: {},
-    templateSectionOrders: {},
-    templateLayouts: {},
-    // Section 4~10 (Header/Hero/Step Bar/Content CTA/Image Text Row/Title and
-    // Description/Footer) used to be hardcoded here. They are now admin-managed
-    // (see wizardSectionDefinitions) and this starts empty until
-    // loadWizardSectionDefinitions() resolves and calls mergeSectionInputs().
-    sectionInputs: {},
-  };
-}
-
-function migrateLegacySectionInputs(saved = {}) {
-  if (!saved || typeof saved !== "object") return {};
-  const migrated = JSON.parse(JSON.stringify(saved));
-  const assignIfMissing = (target, key, value) => {
-    if (target[key] === undefined && value !== undefined) target[key] = value;
-  };
-
-  if (migrated.header) {
-    assignIfMissing(migrated.header, "logo", migrated.header.logoText);
-    assignIfMissing(migrated.header, "badges", migrated.header.badgeText);
-  }
-  if (migrated.heroBanner) {
-    assignIfMissing(migrated.heroBanner, "leadText", migrated.heroBanner.leaderText);
-    assignIfMissing(migrated.heroBanner, "button", migrated.heroBanner.cta);
-  }
-  if (Array.isArray(migrated.stepBar) && migrated.stepBar.length) {
-    const firstStep = migrated.stepBar[0] || {};
-    migrated.stepBar = {
-      title: firstStep.title || "",
-      description: firstStep.description || "",
-      ctaButton: {
-        label: firstStep.ctaLabel || "",
-        link: firstStep.link || "",
-        target: "_blank",
-      },
-      legacyItems: migrated.stepBar,
-    };
-  }
-  if (migrated.contentCta) {
-    assignIfMissing(migrated.contentCta, "description", migrated.contentCta.longText);
-    assignIfMissing(migrated.contentCta, "button", migrated.contentCta.cta);
-  }
-  if (Array.isArray(migrated.imageTextRow) && migrated.imageTextRow.length) {
-    const firstRow = migrated.imageTextRow[0] || {};
-    migrated.imageTextRow = {
-      image: firstRow.image || { source: "url", value: firstRow.imageUrl || "", alt: firstRow.alt || "" },
-      title: firstRow.title || "",
-      description: firstRow.description || firstRow.text || "",
-      legacyItems: migrated.imageTextRow,
-    };
-  }
-  return migrated;
-}
-
-// Builds an empty value for one section item, matching its fieldKind. Locked
-// items start pre-filled with the admin's fixed value.
-function defaultItemValue(item) {
-  if (item.isLocked && item.lockedValue !== null && item.lockedValue !== undefined) {
-    return item.lockedValue;
-  }
-  if (item.fieldKind === "cta") return { label: "", link: "", target: "_blank" };
-  if (item.fieldKind === "image") {
-    const firstSource = Array.isArray(item.image?.allowedSources) ? item.image.allowedSources[0] : "";
-    return { source: firstSource || "url", value: "", description: "", alt: "" };
-  }
-  return "";
-}
-
-function defaultSectionInputsFromDefinitions(definitions) {
-  const result = {};
-  definitions.forEach((section) => {
-    const itemValues = {};
-    (section.items || []).forEach((item) => {
-      itemValues[item.itemKey] = defaultItemValue(item);
-    });
-    result[section.sectionKey] = itemValues;
-  });
-  return result;
-}
-
-// Merges saved localStorage values into the shape defined by the currently
-// active section/item definitions. Values for sections or items that were
-// removed or renamed by an admin are intentionally dropped; new items get
-// their default (or locked) value.
-function mergeSectionInputs(saved = {}, definitions = wizardSectionDefinitions) {
-  const fallback = defaultSectionInputsFromDefinitions(definitions);
-  const merged = {};
-  Object.keys(fallback).forEach((sectionKey) => {
-    const savedSection = (saved && typeof saved === "object" ? saved[sectionKey] : null) || {};
-    merged[sectionKey] = { ...fallback[sectionKey] };
-    Object.keys(fallback[sectionKey]).forEach((itemKey) => {
-      const item = (definitions.find((section) => section.sectionKey === sectionKey)?.items || [])
-        .find((candidate) => candidate.itemKey === itemKey);
-      if (item?.isLocked) return; // locked items always keep the admin-fixed value
-      if (savedSection[itemKey] !== undefined) merged[sectionKey][itemKey] = savedSection[itemKey];
-    });
-    if (Array.isArray(savedSection.legacyItems)) {
-      merged[sectionKey].legacyItems = savedSection.legacyItems;
-    }
-  });
-  return merged;
+  return createDefaultWizardContent();
 }
 
 function loadWizardContent() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(storageKeys.wizardContent) || "null");
-    const fallback = defaultWizardContent();
-    const needsMigration = saved && Number(saved.sectionInputSchemaVersion || 1) < SECTION_INPUT_SCHEMA_VERSION;
-    if (needsMigration && !localStorage.getItem(storageKeys.wizardContentLegacyBackup)) {
-      localStorage.setItem(storageKeys.wizardContentLegacyBackup, JSON.stringify(saved));
-    }
-    return {
-      sectionInputSchemaVersion: SECTION_INPUT_SCHEMA_VERSION,
-      promo: { ...fallback.promo, ...(saved?.promo || {}) },
-      simpleBrief: { ...fallback.simpleBrief, ...(saved?.simpleBrief || {}) },
-      formTemplate: saved?.formTemplate || null,
-      templateInputs: (saved && typeof saved.templateInputs === "object" && saved.templateInputs) || {},
-      templateSectionOrders: (saved && typeof saved.templateSectionOrders === "object" && saved.templateSectionOrders) || {},
-      templateLayouts: (saved && typeof saved.templateLayouts === "object" && saved.templateLayouts) || {},
-      // Raw saved value is kept as-is until wizardSectionDefinitions loads;
-      // loadWizardSectionDefinitions() then calls mergeSectionInputs() to
-      // reconcile it against the current admin configuration.
-      sectionInputs: needsMigration
-        ? migrateLegacySectionInputs(saved.sectionInputs || {})
-        : ((saved && typeof saved.sectionInputs === "object" && saved.sectionInputs) || {}),
-    };
-  } catch {
-    return defaultWizardContent();
-  }
+  return loadWizardContentFromStorage({
+    storage: localStorage,
+    storageKey: storageKeys.wizardContent,
+    backupKey: storageKeys.wizardContentLegacyBackup,
+    schemaVersion: SECTION_INPUT_SCHEMA_VERSION,
+    createDefault: defaultWizardContent,
+    migrateSectionInputs: migrateLegacySectionInputs,
+    objectKeys: ["templateInputs", "templateSectionOrders", "templateLayouts"],
+  });
 }
 
 async function loadWizardSectionDefinitions() {
@@ -392,26 +263,18 @@ function saveWizardContent() {
       resolvedLayout: wizardResolvedLayout,
     };
   }
-  localStorage.setItem(storageKeys.wizardContent, JSON.stringify(contentState));
+  persistWizardContent(localStorage, storageKeys.wizardContent, contentState);
 }
 
 function wizardLayoutSnapshot() {
   if (!selectedWizardFormTemplate || !wizardResolvedLayout) return null;
-  return {
+  return createLayoutSnapshot({
     layoutRevision: wizardLayoutRevision,
-    content: {
-      contractVersion: 1,
-      formTemplate: { ...contentState.formTemplate },
-      sectionSnapshot: wizardSectionDefinitions.map((section) => ({
-        ...section,
-        items: (section.items || []).map((item) => ({ ...item })),
-      })),
-      sectionInputs: JSON.parse(JSON.stringify(contentState.sectionInputs)),
-      sectionOrder: wizardSectionDefinitions.map((section) => section.sectionKey),
-    },
-    designSpec: JSON.parse(JSON.stringify(wizardResolvedLayout)),
-    assets: { contractVersion: 1, items: {} },
-  };
+    formTemplate: contentState.formTemplate,
+    sections: wizardSectionDefinitions,
+    sectionInputs: contentState.sectionInputs,
+    designSpec: wizardResolvedLayout,
+  });
 }
 
 function postWizardLayoutSnapshot() {

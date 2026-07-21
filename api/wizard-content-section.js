@@ -3,6 +3,7 @@ const {
   parseBody,
   normalizeBoolean,
   normalizeNumber,
+  normalizeAiDesign,
   toSection,
   fetchSectionRow,
   fetchItemsForSection,
@@ -82,6 +83,7 @@ async function updateSection(req, res) {
   const hasFixedPosition = Object.prototype.hasOwnProperty.call(body, "fixedPosition");
   const hasSortOrder = Object.prototype.hasOwnProperty.call(body, "sortOrder");
   const hasVisible = Object.prototype.hasOwnProperty.call(body, "isVisibleInWizard");
+  const hasAiDesign = Object.prototype.hasOwnProperty.call(body, "aiDesign");
   const changeNote = String(body.changeNote || "Section draft updated.").trim();
 
   const name = hasName ? String(body.name || "").trim() : current.name;
@@ -101,13 +103,14 @@ async function updateSection(req, res) {
       fixed_position = ${fixedPosition},
       sort_order = ${hasSortOrder ? (normalizeNumber(body.sortOrder) ?? current.sort_order) : current.sort_order},
       is_visible_in_wizard = ${hasVisible ? normalizeBoolean(body.isVisibleInWizard, current.is_visible_in_wizard) : current.is_visible_in_wizard},
+      ai_design = ${JSON.stringify(hasAiDesign ? normalizeAiDesign(body.aiDesign) : normalizeAiDesign(current.ai_design))}::jsonb,
       change_note = ${changeNote},
       updated_at = now()
     where id = ${id}::uuid
     returning
       id::text, section_key, name, description, is_required, order_change_allowed,
       fixed_position, sort_order, is_visible_in_wizard, status, version,
-      change_note, archived_at, created_at, updated_at
+      change_note, ai_design, archived_at, created_at, updated_at
   `;
 
   return res.status(200).json({ ok: true, section: toSection(rows[0]) });

@@ -33,6 +33,8 @@ module.exports = async function handler(req, res) {
     const layout = toLayout(await fetchLayoutRow(sql, formTemplateId));
     const template = toFormTemplate(templateData.template);
     const constraints = defaultConstraints(section, layout.layoutSpec);
+    if (!constraints.enabled) return res.status(403).json({ error: "AI design generation is disabled for this section" });
+    if (!constraints.allowedLayoutVariants.length) return res.status(422).json({ error: "No AI layout variant is allowed for this section" });
     const backgroundColor = normalizeBackgroundColor(
       body.backgroundColor,
       normalizeBackgroundColor(layout.layoutSpec?.theme?.backgroundColor)

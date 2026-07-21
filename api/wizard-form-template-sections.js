@@ -152,11 +152,11 @@ async function updateSection(req, res) {
     const clonedRows = await sql`
       insert into wizard_content_sections (
         section_key, name, description, is_required, order_change_allowed, fixed_position,
-        sort_order, is_visible_in_wizard, status, version, change_note, owner_form_template_id
+        sort_order, is_visible_in_wizard, status, version, change_note, owner_form_template_id, ai_design
       )
       select ${ownedSectionKey}, name, description, is_required, order_change_allowed, fixed_position,
         sort_order, is_visible_in_wizard, 'draft', 1, 'Template-owned draft created for editing.',
-        ${current.form_template_id}::uuid
+        ${current.form_template_id}::uuid, ai_design
       from wizard_content_sections where id = ${current.section_id}::uuid
       returning id::text, section_key
     `;

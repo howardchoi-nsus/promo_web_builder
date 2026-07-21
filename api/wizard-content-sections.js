@@ -3,6 +3,7 @@ const {
   parseBody,
   normalizeBoolean,
   normalizeNumber,
+  normalizeAiDesign,
   toSection,
   fetchAllSections,
   fetchPublicSectionsWithItems,
@@ -72,19 +73,20 @@ async function createSection(req, res) {
   const rows = await sql`
     insert into wizard_content_sections (
       section_key, name, description, is_required, order_change_allowed,
-      fixed_position, sort_order, is_visible_in_wizard, status, version, change_note
+      fixed_position, sort_order, is_visible_in_wizard, status, version, change_note, ai_design
     )
     values (
       ${sectionKey}, ${name}, ${String(body.description || "")},
       ${normalizeBoolean(body.isRequired, false)}, ${normalizeBoolean(body.orderChangeAllowed, true)},
       ${body.fixedPosition === "top" || body.fixedPosition === "bottom" ? body.fixedPosition : null},
       ${normalizeNumber(body.sortOrder) ?? 0}, ${normalizeBoolean(body.isVisibleInWizard, true)},
-      'draft', 1, ${String(body.changeNote || "Section created from Admin Page.")}
+      'draft', 1, ${String(body.changeNote || "Section created from Admin Page.")},
+      ${JSON.stringify(normalizeAiDesign(body.aiDesign))}::jsonb
     )
     returning
       id::text, section_key, name, description, is_required, order_change_allowed,
       fixed_position, sort_order, is_visible_in_wizard, status, version,
-      change_note, archived_at, created_at, updated_at
+      change_note, ai_design, archived_at, created_at, updated_at
   `;
 
   return res.status(201).json({ ok: true, section: toSection(rows[0]) });

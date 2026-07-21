@@ -59,6 +59,7 @@ function toTemplateSection(row) {
     sectionDescription: row.section_description || "",
     sectionVersion: row.section_version ? Number(row.section_version) : null,
     sectionStatus: row.section_status || null,
+    aiDesign: row.ai_design || null,
     sortOrder: Number(row.sort_order || 0),
     isRequired: Boolean(row.is_required),
     isVisible: Boolean(row.is_visible),
@@ -107,12 +108,12 @@ async function fetchTemplateSections(sql, templateId) {
   const rows = await sql`
     select ts.id::text, ts.form_template_id::text, ts.section_id::text, ts.section_key,
       source_section.name as section_name, source_section.description as section_description, source_section.version as section_version,
-      source_section.status as section_status,
+      source_section.status as section_status, source_section.ai_design,
       ts.sort_order, ts.is_required, ts.is_visible, ts.order_change_allowed,
       ts.user_reorder_allowed, ts.fixed_position, ts.created_at, ts.updated_at
     from wizard_form_template_sections ts
     left join lateral (
-      select s.name, s.description, s.version, s.status
+      select s.name, s.description, s.version, s.status, s.ai_design
       from wizard_content_sections s
       where (ts.section_id is not null and s.id = ts.section_id)
         or (ts.section_id is null and s.section_key = ts.section_key and s.status = 'active')

@@ -1094,7 +1094,7 @@ const initialAdminTab = ["webhook", "llm", "promo-form"].includes(requestedAdmin
   ? requestedAdminTab
   : "promo-form";
 
-createApp({
+const adminApp = createApp({
   data() {
     return {
       status: "준비 완료",
@@ -1205,6 +1205,13 @@ createApp({
         orderChangeAllowed: true,
         fixedPosition: "",
         isVisibleInWizard: true,
+        aiDesign: {
+          enabled: true,
+          allowedLayoutVariants: ["split-left", "split-right", "centered-hero"],
+          imageTarget: "section-background",
+          imageTargetItemKeys: [],
+          imageAspectRatio: "16:9",
+        },
         changeNote: "",
       },
       showNewWizardSectionForm: false,
@@ -2057,15 +2064,6 @@ createApp({
       }
     },
 
-    openWizardFormTemplateLayout() {
-      const template = this.wizardFormTemplateDetail?.template;
-      if (!template?.id) return;
-      const url = new URL("/prototype/visual-editor.html", window.location.origin);
-      url.searchParams.set("mode", "admin-layout");
-      url.searchParams.set("templateId", template.id);
-      window.open(url.toString(), "_blank", "noopener");
-    },
-
     toggleNewWizardFormTemplateForm() {
       this.showNewWizardFormTemplateForm = !this.showNewWizardFormTemplateForm;
       this.showDuplicateWizardFormTemplateForm = false;
@@ -2659,6 +2657,17 @@ createApp({
           orderChangeAllowed: result.section.orderChangeAllowed,
           fixedPosition: result.section.fixedPosition || "",
           isVisibleInWizard: result.section.isVisibleInWizard,
+          aiDesign: {
+            enabled: result.section.aiDesign?.enabled !== false,
+            allowedLayoutVariants: Array.isArray(result.section.aiDesign?.allowedLayoutVariants)
+              ? [...result.section.aiDesign.allowedLayoutVariants]
+              : ["split-left", "split-right", "centered-hero"],
+            imageTarget: result.section.aiDesign?.imageTarget === "item" ? "item" : "section-background",
+            imageTargetItemKeys: Array.isArray(result.section.aiDesign?.imageTargetItemKeys)
+              ? [...result.section.aiDesign.imageTargetItemKeys]
+              : [],
+            imageAspectRatio: result.section.aiDesign?.imageAspectRatio || "16:9",
+          },
           changeNote: "",
         };
         this.wizardItemEditorOpenId = "";
@@ -5145,4 +5154,6 @@ createApp({
       this.$refs.promptFilesModal.close();
     },
   },
-}).mount("#app");
+});
+adminApp.component("template-layout-manager", window.PromoAdminTemplateLayout.component);
+adminApp.mount("#app");

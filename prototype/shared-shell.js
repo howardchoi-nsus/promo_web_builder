@@ -1,5 +1,43 @@
 (function initializePromoShell(global) {
   const STORAGE_KEY = "promoPrototype.themeMode";
+  const NAV_ITEMS = Object.freeze([
+    { key: "builder", label: "프로모션 빌더", href: "/prototype/index.html" },
+    { key: "admin", label: "관리자 페이지", href: "/prototype/index.html?view=admin&tab=promo-form" },
+    { key: "promo-wizard", label: "Promo Wizard", href: "/promo-wizard.html" },
+    { key: "create-promo", label: "Create Promo", href: "/create-promo.html" },
+    { key: "visual-editor", label: "Visual Editor", href: "/prototype/visual-editor.html" },
+    { key: "generated", label: "생성된 UI", href: "/prototype/generated.html" },
+  ]);
+
+  function activeNavKey(location = global.location) {
+    const pathname = String(location?.pathname || "").replace(/\/$/, "");
+    const search = new URLSearchParams(String(location?.search || ""));
+    if (pathname.endsWith("/create-promo.html") || pathname.endsWith("/create-promo")) return "create-promo";
+    if (pathname.endsWith("/promo-wizard.html") || pathname.endsWith("/promo-wizard")) return "promo-wizard";
+    if (pathname.endsWith("/visual-editor.html") || pathname.endsWith("/visual-editor")) return "visual-editor";
+    if (pathname.endsWith("/generated.html") || pathname.endsWith("/generated")) return "generated";
+    if (pathname.endsWith("/prototype/index.html") || pathname.endsWith("/prototype/index") || pathname.endsWith("/prototype")) {
+      return search.get("view") === "admin" ? "admin" : "builder";
+    }
+    return "";
+  }
+
+  function renderNavigation(root = document) {
+    root.querySelectorAll("[data-shell-nav]").forEach((nav) => {
+      const active = nav.dataset.shellActive || activeNavKey();
+      nav.replaceChildren(...NAV_ITEMS.map((item) => {
+        const link = document.createElement("a");
+        link.href = item.href;
+        link.textContent = item.label;
+        link.dataset.shellNavKey = item.key;
+        if (item.key === active) {
+          link.classList.add("active");
+          link.setAttribute("aria-current", "page");
+        }
+        return link;
+      }));
+    });
+  }
 
   function normalizeTheme(value) {
     return value === "dark" ? "dark" : "light";
@@ -38,6 +76,7 @@
   }
 
   function init(root = document) {
+    renderNavigation(root);
     applyTheme(storedTheme(), { persist: false, root });
     root.querySelectorAll("[data-shell-theme-toggle]").forEach((button) => {
       if (button.dataset.shellThemeBound === "true") return;
@@ -50,7 +89,15 @@
     syncThemeControls(root);
   }
 
-  global.PromoShell = { init, applyTheme, getTheme: storedTheme, storageKey: STORAGE_KEY };
+  global.PromoShell = {
+    init,
+    applyTheme,
+    getTheme: storedTheme,
+    renderNavigation,
+    activeNavKey,
+    navItems: NAV_ITEMS,
+    storageKey: STORAGE_KEY,
+  };
   applyTheme(storedTheme(), { persist: false, root: document });
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => init(document), { once: true });
   else init(document);

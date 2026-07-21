@@ -13,6 +13,15 @@ const FIELD_KINDS = ["text", "image", "cta"];
 const TEXT_TYPES = ["title", "remark", "multi"];
 const IMAGE_SOURCES = ["url", "file", "ai"];
 const SECTION_STATUSES = ["draft", "active", "inactive", "archived"];
+const AI_LAYOUT_VARIANTS = ["split-left", "split-right", "centered-hero"];
+const AI_IMAGE_TARGETS = ["section-background", "item"];
+const DEFAULT_AI_DESIGN = Object.freeze({
+  enabled: true,
+  allowedLayoutVariants: AI_LAYOUT_VARIANTS,
+  imageTarget: "section-background",
+  imageTargetItemKeys: [],
+  imageAspectRatio: "16:9",
+});
 
 function getSql() {
   const databaseUrl = getDatabaseUrl();
@@ -55,6 +64,28 @@ function normalizeImageSources(value) {
   return list
     .map((item) => String(item || "").trim().toLowerCase())
     .filter((item) => IMAGE_SOURCES.includes(item));
+}
+
+function normalizeAiDesign(value = {}) {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const allowedLayoutVariants = [...new Set(
+    (Array.isArray(source.allowedLayoutVariants) ? source.allowedLayoutVariants : DEFAULT_AI_DESIGN.allowedLayoutVariants)
+      .map((item) => String(item || "").trim())
+      .filter((item) => AI_LAYOUT_VARIANTS.includes(item))
+  )];
+  const imageTarget = AI_IMAGE_TARGETS.includes(source.imageTarget) ? source.imageTarget : DEFAULT_AI_DESIGN.imageTarget;
+  const imageTargetItemKeys = [...new Set(
+    (Array.isArray(source.imageTargetItemKeys) ? source.imageTargetItemKeys : [])
+      .map((item) => String(item || "").trim())
+      .filter(Boolean)
+  )];
+  return {
+    enabled: normalizeBoolean(source.enabled, DEFAULT_AI_DESIGN.enabled),
+    allowedLayoutVariants,
+    imageTarget,
+    imageTargetItemKeys: imageTarget === "item" ? imageTargetItemKeys : [],
+    imageAspectRatio: String(source.imageAspectRatio || DEFAULT_AI_DESIGN.imageAspectRatio).trim() || DEFAULT_AI_DESIGN.imageAspectRatio,
+  };
 }
 
 function normalizeUtm(body = {}) {
@@ -124,6 +155,7 @@ function toSection(row) {
     status: row.status,
     version: Number(row.version || 1),
     changeNote: row.change_note || "",
+    aiDesign: normalizeAiDesign(row.ai_design),
     archivedAt: row.archived_at || null,
     createdAt: row.created_at || null,
     updatedAt: row.updated_at || null,
@@ -169,7 +201,7 @@ async function fetchSectionRow(sql, id) {
     select
       id::text, section_key, name, description, is_required, order_change_allowed,
       fixed_position, sort_order, is_visible_in_wizard, status, version,
-      change_note, archived_at, created_at, updated_at
+      change_note, ai_design, archived_at, created_at, updated_at
     from wizard_content_sections
     where id = ${id}::uuid
     limit 1
@@ -205,6 +237,17 @@ async function validateSectionDraft(sql, sectionId) {
   const items = await fetchItemsForSection(sql, sectionId);
   const visibleItems = items.filter((item) => item.isVisibleInWizard);
   const errors = [];
+  const aiDesign = normalizeAiDesign(sectionRow.ai_design);
+
+  if (aiDesign.enabled && !aiDesign.allowedLayoutVariants.length) {
+    errors.push({ path: `${sectionRow.section_key}.aiDesign.allowedLayoutVariants`, code: "AI_LAYOUT_VARIANT_REQUIRED", message: "An AI-enabled section needs at least one allowed layout variant." });
+  }
+  if (aiDesign.enabled && aiDesign.imageTarget === "item") {
+    const visibleImageKeys = new Set(visibleItems.filter((item) => item.fieldKind === "image").map((item) => item.itemKey));
+    if (!aiDesign.imageTargetItemKeys.some((key) => visibleImageKeys.has(key))) {
+      errors.push({ path: `${sectionRow.section_key}.aiDesign.imageTargetItemKeys`, code: "AI_IMAGE_TARGET_REQUIRED", message: "Select at least one visible image item for the AI image target." });
+    }
+  }
 
   if (sectionRow.is_required && !visibleItems.some((item) => item.isRequired)) {
     errors.push({ path: sectionRow.section_key, code: "REQUIRED_SECTION_ITEM", message: "A required section needs at least one visible required item." });
@@ -234,7 +277,7 @@ async function fetchAllSections(sql, { includeArchived = false } = {}) {
       select
         id::text, section_key, name, description, is_required, order_change_allowed,
         fixed_position, sort_order, is_visible_in_wizard, status, version,
-        change_note, archived_at, created_at, updated_at
+        change_note, ai_design, archived_at, created_at, updated_at
       from wizard_content_sections
       order by sort_order asc, section_key asc, version desc
     `
@@ -242,7 +285,7 @@ async function fetchAllSections(sql, { includeArchived = false } = {}) {
       select
         id::text, section_key, name, description, is_required, order_change_allowed,
         fixed_position, sort_order, is_visible_in_wizard, status, version,
-        change_note, archived_at, created_at, updated_at
+        change_note, ai_design, archived_at, created_at, updated_at
       from wizard_content_sections
       where status <> 'archived'
       order by sort_order asc, section_key asc, version desc
@@ -258,7 +301,7 @@ async function fetchPublicSectionsWithItems(sql) {
     select
       id::text, section_key, name, description, is_required, order_change_allowed,
       fixed_position, sort_order, is_visible_in_wizard, status, version,
-      change_note, archived_at, created_at, updated_at
+      change_note, ai_design, archived_at, created_at, updated_at
     from wizard_content_sections
     where status = 'active' and is_visible_in_wizard = true
     order by
@@ -329,11 +372,15 @@ module.exports = {
   TEXT_TYPES,
   IMAGE_SOURCES,
   SECTION_STATUSES,
+  AI_LAYOUT_VARIANTS,
+  AI_IMAGE_TARGETS,
+  DEFAULT_AI_DESIGN,
   getSql,
   parseBody,
   normalizeBoolean,
   normalizeNumber,
   normalizeImageSources,
+  normalizeAiDesign,
   normalizeUtm,
   validateFieldKind,
   validateTextType,

@@ -1,6 +1,6 @@
 const { getSql, parseBody, fetchRun, transitionRun } = require("./_promo-section-design-store");
 const { layoutPatchFromResult, validatePatch } = require("./_promo-section-design-contract");
-const { generateSectionLayout, generateSectionImage } = require("./_promo-section-design-provider");
+const { generateSectionLayout } = require("./_promo-section-design-provider");
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
@@ -42,52 +42,21 @@ module.exports = async function handler(req, res) {
     const generated = layoutPatchFromResult(section, layoutGeneration.result, run.constraintsSnapshot);
     const validation = validatePatch(section, generated, run.constraintsSnapshot);
     if (!validation.ok) throw Object.assign(new Error(validation.errors.join("; ")), { code: "LAYOUT_SCHEMA_FAILED" });
-    let imageResult = null;
-    let imageProvider = null;
-    let imageUsage = null;
     if (generated.imageRequest) {
-      await transitionRun(sql, id, ["validating_layout"], "generating_assets", { layoutResult: generated });
-      const image = await generateSectionImage({
-        prompt: generated.imageRequest.prompt,
-        safeArea: generated.imageRequest.safeArea,
-        backgroundColor: snapshot.design?.backgroundColor,
+      run = await transitionRun(sql, id, ["validating_layout"], "generating_assets", {
+        layoutResult: generated,
+        providerSnapshot: { layout: layoutGeneration.provider },
+        usageSnapshot: { layout: layoutGeneration.usage },
       });
-      console.log("[section-design] image generated", { runId: id, model: image.provider.model, latencyMs: image.provider.latencyMs, bytes: image.bytes.length });
-      if (image.bytes.length < 1024) throw Object.assign(new Error("Generated image is too small"), { code: "IMAGE_VALIDATION_FAILED" });
-      await transitionRun(sql, id, ["generating_assets"], "validating_assets");
-      const extension = image.mimeType === "image/jpeg" ? "jpg" : image.mimeType === "image/webp" ? "webp" : "png";
-      const target = generated.imageRequest.target || {
-        type: "item",
-        sectionKey: section.sectionKey,
-        itemKey: generated.imageRequest.itemKey,
-      };
-      const targetKey = target.type === "item" ? target.itemKey : `${target.sectionKey}-background`;
-      const storageKey = `section-ai/${id}/${targetKey}-${Date.now()}.${extension}`;
-      const { put } = await import("@vercel/blob");
-      const blob = await put(storageKey, image.bytes, { access: "private", contentType: image.mimeType });
-      imageResult = {
-        target,
-        itemKey: target.type === "item" ? target.itemKey : null,
-        storageKey,
-        assetUrl: blob.url,
-        proxyUrl: `/api/promo-section-design-image?runId=${encodeURIComponent(id)}`,
-        mimeType: image.mimeType,
-        width: image.width,
-        height: image.height,
-        safeArea: generated.imageRequest.safeArea,
-        backgroundColor: snapshot.design?.backgroundColor,
-      };
-      imageProvider = image.provider;
-      imageUsage = image.usage;
+      console.log("[section-design] layout processing completed; image stage queued", { runId: id, status: run?.status });
+      return res.status(202).json({ ok: true, nextStage: "image", run });
     }
-    const from = imageResult ? ["validating_assets"] : ["validating_layout"];
-    run = await transitionRun(sql, id, from, "ready", {
+    run = await transitionRun(sql, id, ["validating_layout"], "ready", {
       layoutResult: generated,
-      imageResult,
-      providerSnapshot: { layout: layoutGeneration.provider, image: imageProvider },
-      usageSnapshot: { layout: layoutGeneration.usage, image: imageUsage },
+      providerSnapshot: { layout: layoutGeneration.provider },
+      usageSnapshot: { layout: layoutGeneration.usage },
     });
-    console.log("[section-design] processing completed", { runId: id, status: run?.status, hasImage: Boolean(imageResult) });
+    console.log("[section-design] processing completed", { runId: id, status: run?.status, hasImage: false });
     return res.status(200).json({ ok: true, run });
   } catch (error) {
     console.error("[section-design] processing failed", { runId: id, code: error.code || "SECTION_DESIGN_FAILED", message: error.message, stack: error.stack });

@@ -45,6 +45,7 @@ const isAdminLayoutMode = computed(() => props.mode === "admin-layout");
 const isWizardLayoutMode = computed(() => props.mode === "wizard-layout");
 const wizardSource = new URLSearchParams(window.location.search).get("source") || "";
 const isCreatePromoWizardMode = computed(() => isWizardLayoutMode.value && wizardSource === "create-promo");
+const shellNavItems = window.PromoShell?.navItems || [];
 
 const selectedSection = computed(() => sections.value.find((section) => section.sectionKey === selectedSectionKey.value) || sections.value[0]);
 const selectedItem = computed(() => selectedSection.value?.items?.find((item) => item.itemKey === selectedItemKey.value) || selectedSection.value?.items?.[0]);
@@ -481,12 +482,13 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
       </div>
       <div class="shell-header__actions">
         <nav class="shell-nav" aria-label="프로토타입 내비게이션">
-          <a href="/prototype/index.html">프로모션 빌더</a>
-          <a href="/prototype/index.html?view=admin&amp;tab=promo-form">관리자 페이지</a>
-          <a href="/promo-wizard.html">Promo Wizard</a>
-          <a href="/create-promo.html">Create Promo</a>
-          <a class="active" href="/prototype/visual-editor.html" aria-current="page">Visual Editor</a>
-          <a href="/prototype/generated.html">생성된 UI</a>
+          <a
+            v-for="item in shellNavItems"
+            :key="item.key"
+            :href="item.href"
+            :class="{ active: item.key === 'visual-editor' }"
+            :aria-current="item.key === 'visual-editor' ? 'page' : null"
+          >{{ item.label }}</a>
         </nav>
         <button class="shell-theme-toggle" type="button" data-shell-theme-toggle>
           <span class="shell-theme-dot" aria-hidden="true"></span>

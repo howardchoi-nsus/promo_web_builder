@@ -75,7 +75,11 @@ async function transitionRun(sql, id, fromStatuses, status, patch = {}) {
       usage_snapshot = coalesce(${patch.usageSnapshot ? JSON.stringify(patch.usageSnapshot) : null}::jsonb, usage_snapshot),
       error_code = ${patch.errorCode || null},
       error_message = ${patch.errorMessage || null},
-      completed_at = case when ${status} in ('ready', 'failed', 'cancelled') then now() else completed_at end,
+      completed_at = case
+        when ${patch.clearCompletedAt ? true : false} then null
+        when ${status} in ('ready', 'failed', 'cancelled') then now()
+        else completed_at
+      end,
       applied_at = case when ${status} = 'applied' then now() else applied_at end,
       updated_at = now()
     where id = ${id}::uuid and status = any(${fromStatuses}::text[])

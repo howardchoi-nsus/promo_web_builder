@@ -40,14 +40,28 @@ function hasAnalyzableContent(sectionInputs) {
 function defaultConstraints(section, layout = {}) {
   const visibleItems = (section.items || []).filter((item) => item.isVisibleInWizard !== false);
   const lockedItems = visibleItems.filter((item) => item.isLocked).map((item) => item.itemKey);
+  const imageItemKeys = new Set(visibleItems.filter((item) => item.fieldKind === "image").map((item) => item.itemKey));
+  const policy = section.aiDesign && typeof section.aiDesign === "object" ? section.aiDesign : {};
+  const allowedLayoutVariants = [...new Set(
+    (Array.isArray(policy.allowedLayoutVariants) ? policy.allowedLayoutVariants : LAYOUT_VARIANTS)
+      .filter((item) => LAYOUT_VARIANTS.includes(item))
+  )];
+  const imageTargetItemKeys = [...new Set(
+    (Array.isArray(policy.imageTargetItemKeys) ? policy.imageTargetItemKeys : [])
+      .filter((item) => imageItemKeys.has(item))
+  )];
+  const useItemTarget = policy.imageTarget === "item" && imageTargetItemKeys.length > 0;
   const currentHeight = layout.sectionStyles?.[section.sectionKey]?.minHeight;
   return {
-    allowedLayoutVariants: [...LAYOUT_VARIANTS],
-    imageTargetItemKeys: [],
-    imageTarget: { type: "section-background", sectionKey: section.sectionKey },
+    enabled: policy.enabled !== false,
+    allowedLayoutVariants,
+    imageTargetItemKeys,
+    imageTarget: useItemTarget
+      ? { type: "item", sectionKey: section.sectionKey, itemKey: imageTargetItemKeys[0] }
+      : { type: "section-background", sectionKey: section.sectionKey },
     contentLocks: lockedItems,
     layoutLocks: currentHeight ? ["minHeight"] : [],
-    imageAspectRatio: "16:9",
+    imageAspectRatio: String(policy.imageAspectRatio || "16:9"),
   };
 }
 

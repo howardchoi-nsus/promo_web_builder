@@ -36,6 +36,24 @@ assert.deepEqual(constraints.contentLocks, ["title"]);
 assert.deepEqual(constraints.imageTargetItemKeys, []);
 assert.deepEqual(constraints.imageTarget, { type: "section-background", sectionKey: "heroBanner" });
 
+const managedConstraints = defaultConstraints({
+  ...section,
+  aiDesign: {
+    enabled: true,
+    allowedLayoutVariants: ["split-left"],
+    imageTarget: "item",
+    imageTargetItemKeys: ["heroImage", "missingImage"],
+    imageAspectRatio: "4:3",
+  },
+}, { sectionStyles: {} });
+assert.deepEqual(managedConstraints.allowedLayoutVariants, ["split-left"]);
+assert.deepEqual(managedConstraints.imageTargetItemKeys, ["heroImage"]);
+assert.deepEqual(managedConstraints.imageTarget, { type: "item", sectionKey: "heroBanner", itemKey: "heroImage" });
+assert.equal(managedConstraints.imageAspectRatio, "4:3");
+
+const disabledConstraints = defaultConstraints({ ...section, aiDesign: { enabled: false } }, { sectionStyles: {} });
+assert.equal(disabledConstraints.enabled, false);
+
 const generated = layoutPatchFromResult(section, {
   layoutVariant: "split-right",
   minHeight: 520,
