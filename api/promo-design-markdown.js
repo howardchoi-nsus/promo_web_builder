@@ -3,53 +3,42 @@ const { getDatabaseUrl } = require("./_db");
 
 const ALLOWED_TYPES = new Set(["design_prompt_markdown", "promo_input_markdown", "integrated_design_brief_markdown"]);
 
-module.exports = async function handler(req, res) {
-  if (req.method !== "GET") {
-    res.setHeader("Allow", "GET");
-    return res.status(405).json({ error: "Method not allowed" });
-  }
+async function getPrivateBlob(urlOrPathname, options) {
+  const { get } = await import("@vercel/blob");
+  return get(urlOrPathname, options);
+}
 
-  try {
-    const promptGroupId = String(req.query.promptGroupId || req.query.prompt_group_id || "").trim();
-    const runKey = String(req.query.runKey || req.query.id || "").trim();
-    const assetType = String(req.query.type || "").trim();
+const defaultDependencies = {
+  getDatabaseUrl,
+  createSql: neon,
+  getPrivateBlob,
+};
 
-    if (!promptGroupId && !runKey) {
-      return res.status(400).json({ error: "promptGroupId or runKey is required" });
+function createHandler(overrides = {}) {
+  const dependencies = { ...defaultDependencies, ...overrides };
+  return async function handler(req, res) {
+    if (req.method !== "GET") {
+      res.setHeader("Allow", "GET");
+      return res.status(405).json({ error: "Method not allowed" });
     }
-    if (!ALLOWED_TYPES.has(assetType)) {
-      return res.status(400).json({ error: "Invalid markdown asset type" });
-    }
 
-    const databaseUrl = getDatabaseUrl();
-    if (!databaseUrl) return res.status(500).json({ error: "DATABASE_URL is not configured" });
+    try {
+      const promptGroupId = String(req.query.promptGroupId || req.query.prompt_group_id || "").trim();
+      const runKey = String(req.query.runKey || req.query.id || "").trim();
+      const assetType = String(req.query.type || "").trim();
 
-    const sql = neon(databaseUrl);
-    const rows = await sql`
-      select
-        r.run_key,
-        r.prompt_group_id,
-        a.asset_type,
-        a.asset_url,
-        a.storage_key,
-        a.mime_type,
-        a.metadata
-      from promo_design_runs r
-      join promo_design_assets a on a.run_id = r.id
-      where a.asset_type = ${assetType}
-        and (
-          (${promptGroupId} <> '' and (r.prompt_group_id = ${promptGroupId} or a.prompt_group_id = ${promptGroupId} or a.metadata->>'promptGroupId' = ${promptGroupId}))
-          or
-          (${runKey} <> '' and r.run_key = ${runKey})
-        )
-      order by a.created_at desc
-      limit 1
-    `;
+      if (!promptGroupId && !runKey) {
+        return res.status(400).json({ error: "promptGroupId or runKey is required" });
+      }
+      if (!ALLOWED_TYPES.has(assetType)) {
+        return res.status(400).json({ error: "Invalid markdown asset type" });
+      }
 
-    let asset = rows[0];
-    let isIntegratedFallback = false;
-    if (!asset?.asset_url && assetType === "integrated_design_brief_markdown") {
-      const fallbackRows = await sql`
+      const databaseUrl = dependencies.getDatabaseUrl();
+      if (!databaseUrl) return res.status(500).json({ error: "DATABASE_URL is not configured" });
+
+      const sql = dependencies.createSql(databaseUrl);
+      const rows = await sql`
         select
           r.run_key,
           r.prompt_group_id,
@@ -60,7 +49,7 @@ module.exports = async function handler(req, res) {
           a.metadata
         from promo_design_runs r
         join promo_design_assets a on a.run_id = r.id
-        where a.asset_type = 'design_prompt_markdown'
+        where a.asset_type = ${assetType}
           and (
             (${promptGroupId} <> '' and (r.prompt_group_id = ${promptGroupId} or a.prompt_group_id = ${promptGroupId} or a.metadata->>'promptGroupId' = ${promptGroupId}))
             or
@@ -69,55 +58,118 @@ module.exports = async function handler(req, res) {
         order by a.created_at desc
         limit 1
       `;
-      asset = fallbackRows[0];
-      isIntegratedFallback = Boolean(asset?.asset_url);
-    }
 
-    if (!asset?.asset_url) {
-      return res.status(404).json({ error: "Markdown asset not found", promptGroupId, runKey, assetType });
-    }
+      let asset = rows[0];
+      let isIntegratedFallback = false;
+      if (!hasBlobLocation(asset) && assetType === "integrated_design_brief_markdown") {
+        const fallbackRows = await sql`
+          select
+            r.run_key,
+            r.prompt_group_id,
+            a.asset_type,
+            a.asset_url,
+            a.storage_key,
+            a.mime_type,
+            a.metadata
+          from promo_design_runs r
+          join promo_design_assets a on a.run_id = r.id
+          where a.asset_type = 'design_prompt_markdown'
+            and (
+              (${promptGroupId} <> '' and (r.prompt_group_id = ${promptGroupId} or a.prompt_group_id = ${promptGroupId} or a.metadata->>'promptGroupId' = ${promptGroupId}))
+              or
+              (${runKey} <> '' and r.run_key = ${runKey})
+            )
+          order by a.created_at desc
+          limit 1
+        `;
+        asset = fallbackRows[0];
+        isIntegratedFallback = hasBlobLocation(asset);
+      }
 
-    const headers = {};
-    if (process.env.BLOB_READ_WRITE_TOKEN) {
-      headers.Authorization = `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`;
-    }
+      const blobLocations = blobLocationsForAsset(asset);
+      if (!blobLocations.length) {
+        return res.status(404).json({ error: "Markdown asset not found", promptGroupId, runKey, assetType });
+      }
 
-    const response = await fetch(asset.asset_url, { headers });
-    if (!response.ok) {
-      return res.status(response.status).json({
-        error: "Failed to read markdown blob",
-        status: response.status,
+      let blob;
+      try {
+        blob = await getFirstReadablePrivateBlob(blobLocations, dependencies.getPrivateBlob);
+      } catch {
+        return res.status(502).json({ error: "Failed to read markdown blob" });
+      }
+      if (!blob) return res.status(404).json({ error: "Markdown asset not found", promptGroupId, runKey, assetType });
+      if (blob.statusCode !== 200 || !blob.stream) {
+        return res.status(502).json({ error: "Failed to read markdown blob" });
+      }
+
+      const sourceMarkdown = await new Response(blob.stream).text();
+      const markdown = isIntegratedFallback ? extractIntegratedDesignBrief(sourceMarkdown) : sourceMarkdown;
+      if (isIntegratedFallback && !markdown) {
+        return res.status(404).json({
+          error: "Integrated design brief markdown not found in design prompt",
+          promptGroupId,
+          runKey,
+        });
+      }
+
+      return res.status(200).json({
+        ok: true,
+        runKey: asset.run_key,
+        promptGroupId: asset.prompt_group_id || asset.metadata?.promptGroupId || promptGroupId,
+        assetType,
         storageKey: asset.storage_key,
+        fallbackAssetType: isIntegratedFallback ? asset.asset_type : "",
+        markdown,
+      });
+    } catch (error) {
+      return res.status(500).json({
+        error: "Promo design markdown API failed",
+        message: error.message,
       });
     }
+  };
+}
 
-    const sourceMarkdown = await response.text();
-    const markdown = isIntegratedFallback ? extractIntegratedDesignBrief(sourceMarkdown) : sourceMarkdown;
-    if (isIntegratedFallback && !markdown) {
-      return res.status(404).json({
-        error: "Integrated design brief markdown not found in design prompt",
-        promptGroupId,
-        runKey,
-        storageKey: asset.storage_key,
-      });
+function hasBlobLocation(asset) {
+  return blobLocationsForAsset(asset).length > 0;
+}
+
+function blobLocationsForAsset(asset) {
+  if (!asset) return [];
+  return uniqueValues([
+    asset.storage_key,
+    asset.asset_url,
+    asset.metadata?.downloadUrl,
+    asset.metadata?.download_url,
+    asset.metadata?.url,
+  ]);
+}
+
+async function getFirstReadablePrivateBlob(locations, getBlob) {
+  const options = {
+    access: "private",
+    ...(process.env.BLOB_READ_WRITE_TOKEN ? { token: process.env.BLOB_READ_WRITE_TOKEN } : {}),
+  };
+  let lastError = null;
+  for (const location of locations) {
+    try {
+      const blob = await getBlob(location, options);
+      if (blob) return blob;
+    } catch (error) {
+      lastError = error;
     }
-
-    return res.status(200).json({
-      ok: true,
-      runKey: asset.run_key,
-      promptGroupId: asset.prompt_group_id || asset.metadata?.promptGroupId || promptGroupId,
-      assetType,
-      storageKey: asset.storage_key,
-      fallbackAssetType: isIntegratedFallback ? asset.asset_type : "",
-      markdown,
-    });
-  } catch (error) {
-    return res.status(500).json({
-      error: "Promo design markdown API failed",
-      message: error.message,
-    });
   }
-};
+  if (lastError) throw lastError;
+  return null;
+}
+
+function uniqueValues(values) {
+  return Array.from(new Set(values.map((value) => String(value || "").trim()).filter(Boolean)));
+}
+
+const handler = createHandler();
+handler.createHandler = createHandler;
+module.exports = handler;
 
 function extractIntegratedDesignBrief(markdown) {
   const source = String(markdown || "");
