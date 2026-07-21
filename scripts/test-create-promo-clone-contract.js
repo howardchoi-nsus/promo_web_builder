@@ -94,6 +94,8 @@ assert.match(editorApp, /create-promo-auto-register-request/);
 assert.match(editorApp, /create-promo-section-ai-action/);
 assert.match(editorApp, /create-promo-remove-image/);
 assert.match(editorApp, /sectionAiPrimaryAction/);
+assert.match(editorApp, /item\.fieldKind === "image"\) return false/);
+assert.match(editorApp, /item\.fieldKind === "cta" \? value\?\.label : value/);
 assert.match(editorApp, /class="section-ai-action"/);
 assert.match(editorApp, /class="section-ai-remove"/);
 assert.match(editorApp, /class="image-remove-action"/);

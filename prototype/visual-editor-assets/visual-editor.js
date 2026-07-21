@@ -3406,10 +3406,12 @@ var Wo = {
 			].includes(me(e)?.status);
 		}
 		function M(e) {
-			let t = [], n = (e) => {
-				e != null && (typeof e == "string" || typeof e == "number" ? String(e).trim() && t.push(String(e).trim()) : Array.isArray(e) ? e.forEach(n) : typeof e == "object" && Object.values(e).forEach(n));
-			};
-			return n(c.value?.[e.sectionKey]), t.some((e) => e.length >= 2);
+			let t = c.value?.[e.sectionKey] || {};
+			return (e.items || []).some((e) => {
+				if (e.isVisibleInWizard === !1 || e.fieldKind === "image") return !1;
+				let n = t[e.itemKey], r = e.fieldKind === "cta" ? n?.label : n;
+				return String(r || "").trim().length >= 2;
+			});
 		}
 		function _e(e) {
 			let t = me(e);

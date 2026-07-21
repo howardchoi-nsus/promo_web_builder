@@ -140,16 +140,13 @@ function sectionAiIsProcessing(section) {
 }
 
 function sectionAiHasContent(section) {
-  const values = [];
-  const collect = (value) => {
-    if (value === null || value === undefined) return;
-    if (typeof value === "string" || typeof value === "number") {
-      if (String(value).trim()) values.push(String(value).trim());
-    } else if (Array.isArray(value)) value.forEach(collect);
-    else if (typeof value === "object") Object.values(value).forEach(collect);
-  };
-  collect(sectionInputs.value?.[section.sectionKey]);
-  return values.some((value) => value.length >= 2);
+  const inputs = sectionInputs.value?.[section.sectionKey] || {};
+  return (section.items || []).some((item) => {
+    if (item.isVisibleInWizard === false || item.fieldKind === "image") return false;
+    const value = inputs[item.itemKey];
+    const content = item.fieldKind === "cta" ? value?.label : value;
+    return String(content || "").trim().length >= 2;
+  });
 }
 
 function sectionAiPrimaryAction(section) {

@@ -1343,19 +1343,6 @@ function sectionAiRun(sectionKey) {
   return contentState.sectionDesignRuns?.[sectionKey] || null;
 }
 
-function sectionAiHasContent(sectionKey) {
-  const values = [];
-  const collect = (input) => {
-    if (input === null || input === undefined) return;
-    if (typeof input === "string" || typeof input === "number") {
-      if (String(input).trim()) values.push(String(input).trim());
-    } else if (Array.isArray(input)) input.forEach(collect);
-    else if (typeof input === "object") Object.values(input).forEach(collect);
-  };
-  collect(contentState.sectionInputs?.[sectionKey]);
-  return values.some((item) => item.length >= 2);
-}
-
 function saveSectionAiRun(sectionKey, run, sourceInputs) {
   contentState.sectionDesignRuns = contentState.sectionDesignRuns || {};
   contentState.sectionDesignRuns[sectionKey] = {

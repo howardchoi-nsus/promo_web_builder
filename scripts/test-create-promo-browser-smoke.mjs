@@ -94,6 +94,8 @@ try {
   const editorFrame = page.frameLocator("iframe.wizard-layout-frame");
   await editorFrame.locator(".editor-workspace.is-create-promo-wizard").waitFor({ timeout: 10_000 });
   assert.equal(await editorFrame.locator(".section-ai-action").count(), 2, "Every fixture section should expose an AI action");
+  assert.equal(await editorFrame.locator(".section-ai-action:not([disabled])").count(), 0, "Structural image/CTA values must not enable AI generation");
+  assert.equal(await editorFrame.locator(".section-ai-action").first().getAttribute("title"), "섹션 콘텐츠를 먼저 등록해 주세요.");
   await editorFrame.getByRole("button", { name: "자동등록" }).click();
   await editorFrame.locator(".auto-register-message").waitFor({ timeout: 10_000 });
   await editorFrame.locator(".section-ai-action:not([disabled])").first().click();
