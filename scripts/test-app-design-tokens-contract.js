@@ -8,6 +8,7 @@ const builderCss = fs.readFileSync(path.join(root, "prototype/styles.css"), "utf
 const shellCss = fs.readFileSync(path.join(root, "prototype/shared-shell-header.css"), "utf8");
 const createPromoCss = fs.readFileSync(path.join(root, "prototype/create-promo.css"), "utf8");
 const promoWizardCss = fs.readFileSync(path.join(root, "prototype/promo-wizard.css"), "utf8");
+const visualEditorCss = fs.readFileSync(path.join(root, "visual-editor/src/styles.css"), "utf8");
 const htmlFiles = [
   "index.html",
   "create-promo.html",
@@ -47,6 +48,15 @@ assert.doesNotMatch(shellCss, /\[data-theme="dark"\]\s*\{/);
   assert.match(css, /font-family:\s*var\(--app-font-body\)/);
   assert.doesNotMatch(css, /\[data-theme="dark"\]\s*\{[\s\S]*?--bg:/);
 });
+const editorChromeCss = visualEditorCss.slice(0, visualEditorCss.indexOf(".promo-renderer"));
+assert.match(editorChromeCss, /background:\s*var\(--app-bg\)/);
+assert.match(editorChromeCss, /background:\s*var\(--app-panel\)/);
+assert.match(editorChromeCss, /var\(--app-accent\)/);
+assert.doesNotMatch(editorChromeCss, /#[0-9a-f]{3,8}|rgba?\(/i);
+const promoRendererRule = visualEditorCss.match(/^\.promo-renderer\s*\{[^}]+\}/m)?.[0] || "";
+assert.match(promoRendererRule, /var\(--promo-bg\)/);
+assert.match(promoRendererRule, /var\(--promo-ink\)/);
+assert.doesNotMatch(promoRendererRule, /var\(--app-/);
 
 htmlFiles.forEach((file) => {
   const html = fs.readFileSync(path.join(root, "prototype", file), "utf8");
