@@ -35,6 +35,19 @@ try {
   browser = await chromium.launch({ headless: true });
   const context = await browser.newContext();
   const page = await context.newPage();
+  let sectionAiRunRequest = null;
+  await page.route("**/api/promo-section-design-runs", async (route) => {
+    sectionAiRunRequest = route.request().postDataJSON();
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ok: true,
+        reused: true,
+        run: { id: "fixture-section-ai-run", status: "ready", inputHash: "fixture-hash" },
+      }),
+    });
+  });
   const pageErrors = [];
   const failedRequests = [];
   const requestedPaths = [];
@@ -81,6 +94,16 @@ try {
   const editorFrame = page.frameLocator("iframe.wizard-layout-frame");
   await editorFrame.locator(".editor-workspace.is-create-promo-wizard").waitFor({ timeout: 10_000 });
   assert.equal(await editorFrame.locator(".section-ai-action").count(), 2, "Every fixture section should expose an AI action");
+  await editorFrame.getByRole("button", { name: "자동등록" }).click();
+  await editorFrame.locator(".auto-register-message").waitFor({ timeout: 10_000 });
+  await editorFrame.locator(".section-ai-action:not([disabled])").first().click();
+  for (let attempt = 0; attempt < 50 && !sectionAiRunRequest; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  assert.equal(sectionAiRunRequest?.promoRunId, null);
+  assert.equal(sectionAiRunRequest?.formTemplateId, "visual-editor-preview-template");
+  assert.equal(sectionAiRunRequest?.sectionKey, "heroBanner");
+  assert.equal(sectionAiRunRequest?.sectionInputs?.title, "Browser Smoke Promotion");
 
   await page.locator(".content-substep-actions .primary-action").click();
   await assertPageText(page.locator("#step-title"), "웹 출력");

@@ -78,6 +78,8 @@ assert.match(createJs, /currentUrl\.startsWith\("\/api\/promo-section-design-ima
 assert.match(createJs, /value:\s*""/);
 assert.match(createJs, /function removeSectionAiBackground\b/);
 assert.match(createJs, /async function generateSectionAiDesign\b/);
+assert.doesNotMatch(createJs, /\brunId\(\)/);
+assert.match(createJs, /promoRunId:\s*null/);
 assert.match(createJs, /async function applySectionAiDesign\b/);
 assert.match(createJs, /const appliedRun = result\.run/);
 assert.match(createJs, /const patch = appliedRun\.layoutResult\.layoutPatch/);

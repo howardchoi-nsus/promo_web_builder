@@ -1428,7 +1428,7 @@ async function generateSectionAiDesign(section) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        promoRunId: runId() || null,
+        promoRunId: null,
         formTemplateId: selectedWizardFormTemplate?.id,
         sectionKey,
         sectionInputs,
