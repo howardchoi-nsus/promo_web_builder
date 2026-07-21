@@ -30,6 +30,7 @@ const adminHtml = fs.readFileSync(path.join(root, "prototype/index.html"), "utf8
 const adminApp = fs.readFileSync(path.join(root, "prototype/app.js"), "utf8");
 const runs = fs.readFileSync(path.join(root, "api/promo-section-design-runs.js"), "utf8");
 const templateSectionsApi = fs.readFileSync(path.join(root, "api/wizard-form-template-sections.js"), "utf8");
+const publicTemplateApi = fs.readFileSync(path.join(root, "api/wizard-form-template-public.js"), "utf8");
 assert.match(migration, /add column if not exists ai_design jsonb/i);
 assert.match(migration, /v_source\.ai_design/);
 assert.match(adminHtml, /wizardSectionFieldsEditor\.aiDesign\.enabled/);
@@ -37,6 +38,8 @@ assert.match(adminHtml, /Section Items[\s\S]*wizardFormTemplateSectionEditor\.ai
 assert.match(adminHtml, /AI 정책 저장/);
 assert.match(adminApp, /aiDesign:\s*\{[\s\S]*allowedLayoutVariants/);
 assert.match(templateSectionsApi, /ai_design = \$\{JSON\.stringify\(normalizeAiDesign/);
+assert.match(publicTemplateApi, /aiDesign: normalizeAiDesign\(membership\.aiDesign\)/);
+assert.match(publicTemplateApi, /JSON\.stringify\(section\.aiDesign\)/);
 assert.match(runs, /constraints\.enabled/);
 
 console.log("Wizard section AI policy contract tests passed.");

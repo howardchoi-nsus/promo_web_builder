@@ -26,6 +26,13 @@ const sections = [
     isRequired: true,
     userReorderAllowed: false,
     fixedPosition: "top",
+    aiDesign: {
+      enabled: true,
+      allowedLayoutVariants: ["split-left"],
+      imageTarget: "section-background",
+      imageTargetItemKeys: [],
+      imageAspectRatio: "16:9",
+    },
     items: [
       { id: "hero-title", itemKey: "title", name: "프로모션 타이틀", fieldKind: "text", textType: "title", isRequired: true, isLocked: false, isVisibleInWizard: true, defaultValue: "Limited-time welcome bonus" },
       { id: "hero-copy", itemKey: "description", name: "프로모션 설명", fieldKind: "text", textType: "multi", isRequired: true, isLocked: false, isVisibleInWizard: true, defaultValue: "Join today and discover a clear, responsive promotion experience." },
@@ -41,6 +48,13 @@ const sections = [
     isRequired: false,
     userReorderAllowed: true,
     fixedPosition: null,
+    aiDesign: {
+      enabled: false,
+      allowedLayoutVariants: ["split-left", "split-right", "centered-hero"],
+      imageTarget: "section-background",
+      imageTargetItemKeys: [],
+      imageAspectRatio: "16:9",
+    },
     items: [
       { id: "content-image", itemKey: "image", name: "프로모션 이미지", fieldKind: "image", isRequired: false, isLocked: false, isVisibleInWizard: true, image: { allowedSources: ["url", "file", "ai"], descriptionEnabled: true, altTextRequired: false } },
       { id: "content-copy", itemKey: "copy", name: "상세 설명", fieldKind: "text", textType: "multi", isRequired: false, isLocked: false, isVisibleInWizard: true, defaultValue: "Every content field remains editable and is rendered as real DOM." },

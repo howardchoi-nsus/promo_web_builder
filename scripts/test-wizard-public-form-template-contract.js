@@ -17,6 +17,8 @@ assert.match(detailApi, /item\.isVisibleInWizard/);
 assert.match(detailApi, /VISIBLE_SECTION_WITHOUT_ITEMS/);
 assert.match(detailApi, /configurationWarnings/);
 assert.match(detailApi, /configRevision/);
+assert.match(detailApi, /aiDesign: normalizeAiDesign\(membership\.aiDesign\)/);
+assert.match(detailApi, /JSON\.stringify\(section\.aiDesign\)/);
 assert.match(detailApi, /layoutIdentity/);
 assert.match(detailApi, /Cache-Control", "no-store/);
 assert.match(listApi, /Cache-Control", "no-store/);

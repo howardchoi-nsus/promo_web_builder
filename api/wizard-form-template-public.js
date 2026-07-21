@@ -1,5 +1,5 @@
 const { getSql, fetchTemplateRow, fetchTemplateSections, toFormTemplate } = require("./_wizard-form-templates-store");
-const { fetchItemsForSection } = require("./_wizard-content-sections-store");
+const { fetchItemsForSection, normalizeAiDesign } = require("./_wizard-content-sections-store");
 const { fetchLayoutRow, toLayout, createLayoutIdentity } = require("./_wizard-form-template-layout-store");
 
 module.exports = async function handler(req, res) {
@@ -37,11 +37,13 @@ module.exports = async function handler(req, res) {
         isRequired: membership.isRequired,
         userReorderAllowed: membership.userReorderAllowed,
         fixedPosition: membership.fixedPosition,
+        aiDesign: normalizeAiDesign(membership.aiDesign),
         items,
       });
     }
     const revision = [template.id, template.version, template.updatedAt, ...sections.flatMap((section) => [
-      section.sectionId, section.sectionKey, ...section.items.map((item) => `${item.id}:${item.updatedAt || ""}`),
+      section.sectionId, section.sectionKey, JSON.stringify(section.aiDesign),
+      ...section.items.map((item) => `${item.id}:${item.updatedAt || ""}`),
     ])].join("|");
     const layout = toLayout(await fetchLayoutRow(sql, id));
     return res.status(200).json({
