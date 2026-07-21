@@ -47,7 +47,10 @@ module.exports = async function handler(req, res) {
     let imageUsage = null;
     if (generated.imageRequest) {
       await transitionRun(sql, id, ["validating_layout"], "generating_assets", { layoutResult: generated });
-      const image = await generateSectionImage({ prompt: generated.imageRequest.prompt });
+      const image = await generateSectionImage({
+        prompt: generated.imageRequest.prompt,
+        safeArea: generated.imageRequest.safeArea,
+      });
       console.log("[section-design] image generated", { runId: id, model: image.provider.model, latencyMs: image.provider.latencyMs, bytes: image.bytes.length });
       if (image.bytes.length < 1024) throw Object.assign(new Error("Generated image is too small"), { code: "IMAGE_VALIDATION_FAILED" });
       await transitionRun(sql, id, ["generating_assets"], "validating_assets");

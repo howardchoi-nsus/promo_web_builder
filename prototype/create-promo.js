@@ -1847,7 +1847,9 @@ async function applySectionAiDesign(section, saved) {
         sectionInputs: contentState.sectionInputs?.[section.sectionKey] || {},
       }),
     });
-    const patch = saved.layoutResult.layoutPatch;
+    const appliedRun = result.run;
+    if (!appliedRun?.layoutResult?.layoutPatch) throw new Error("서버가 검증된 섹션 레이아웃을 반환하지 않았습니다.");
+    const patch = appliedRun.layoutResult.layoutPatch;
     wizardResolvedLayout = wizardResolvedLayout || JSON.parse(JSON.stringify(wizardBaseLayout || FALLBACK_LAYOUT));
     wizardResolvedLayout.sectionStyles = { ...(wizardResolvedLayout.sectionStyles || {}) };
     Object.entries(patch.sectionStyles || {}).forEach(([key, value]) => {
@@ -1857,17 +1859,28 @@ async function applySectionAiDesign(section, saved) {
     Object.entries(patch.itemStyles || {}).forEach(([key, value]) => {
       wizardResolvedLayout.itemStyles[key] = { ...(wizardResolvedLayout.itemStyles[key] || {}), ...(value || {}) };
     });
-    if (saved.imageResult?.proxyUrl) {
+    if (appliedRun.imageResult?.proxyUrl) {
       clearLegacySectionAiImages(section);
+      const layoutVariant = appliedRun.layoutResult?.layoutVariant;
+      const safeArea = layoutVariant === "split-left"
+        ? "right-copy"
+        : layoutVariant === "split-right"
+          ? "left-copy"
+          : layoutVariant === "centered-hero"
+            ? "center-copy"
+            : appliedRun.imageResult.safeArea || appliedRun.layoutResult?.imageRequest?.safeArea || "left-copy";
+      const backgroundPosition = safeArea === "right-copy"
+        ? "left center"
+        : safeArea === "center-copy" ? "center center" : "right center";
       wizardResolvedLayout.sectionStyles[section.sectionKey] = {
         ...(wizardResolvedLayout.sectionStyles[section.sectionKey] || {}),
-        backgroundImage: saved.imageResult.proxyUrl,
+        backgroundImage: appliedRun.imageResult.proxyUrl,
         backgroundSize: "contain",
-        backgroundPosition: "right center",
+        backgroundPosition,
         backgroundRepeat: "no-repeat",
       };
     }
-    saveSectionAiRun(section.sectionKey, result.run, contentState.sectionInputs?.[section.sectionKey]);
+    saveSectionAiRun(section.sectionKey, appliedRun, contentState.sectionInputs?.[section.sectionKey]);
     postWizardLayoutSnapshot();
     renderStep();
   } catch (error) {

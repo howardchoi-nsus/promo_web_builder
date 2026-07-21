@@ -68,6 +68,12 @@ function clamp(number, min, max) {
   return Math.min(max, Math.max(min, Number(number)));
 }
 
+function safeAreaForVariant(layoutVariant) {
+  if (layoutVariant === "split-left") return "right-copy";
+  if (layoutVariant === "split-right") return "left-copy";
+  return "center-copy";
+}
+
 function layoutPatchFromResult(section, result, constraints) {
   const sectionKey = section.sectionKey;
   const allowedVariants = new Set(constraints.allowedLayoutVariants || []);
@@ -112,7 +118,7 @@ function layoutPatchFromResult(section, result, constraints) {
         itemKey: constraints.imageTargetItemKeys?.[0] || null,
         prompt: String(result.imagePrompt).trim(),
         aspectRatio: constraints.imageAspectRatio || "16:9",
-        safeArea: result.layoutVariant === "split-left" ? "right-copy" : "left-copy",
+        safeArea: safeAreaForVariant(result.layoutVariant),
       }
       : null,
     rationale: String(result.rationale || "").trim(),
@@ -160,6 +166,7 @@ module.exports = {
   hasAnalyzableContent,
   analyzableSectionContent,
   defaultConstraints,
+  safeAreaForVariant,
   layoutPatchFromResult,
   validatePatch,
 };

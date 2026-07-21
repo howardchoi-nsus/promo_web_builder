@@ -64,6 +64,19 @@ function responseOutputText(payload) {
     .find((part) => part.type === "output_text")?.text || "";
 }
 
+function imagePromptForSafeArea(prompt, safeArea) {
+  const composition = safeArea === "right-copy"
+    ? "Keep the right half as clean negative space for DOM copy and place the main visual subject on the left."
+    : safeArea === "left-copy"
+      ? "Keep the left half as clean negative space for DOM copy and place the main visual subject on the right."
+      : "Keep the center as clean negative space for centered DOM copy and place supporting visual detail around the outer edges.";
+  return [
+    String(prompt || "").trim(),
+    composition,
+    "Do not render text, buttons, logos, badges, or legal copy inside the image.",
+  ].filter(Boolean).join("\n");
+}
+
 async function generateSectionLayout({ section, sectionInputs, constraints, signal }) {
   const model = process.env.SECTION_LAYOUT_MODEL || "gpt-4.1-mini";
   const prompt = [
@@ -157,9 +170,16 @@ async function generateGeminiSectionImage({ prompt, signal }) {
 
 async function generateSectionImage(input) {
   const provider = String(process.env.SECTION_IMAGE_PROVIDER || "openai").trim().toLowerCase();
-  if (provider === "gemini") return generateGeminiSectionImage(input);
-  if (provider === "openai") return generateOpenAiSectionImage(input);
+  const request = { ...input, prompt: imagePromptForSafeArea(input.prompt, input.safeArea) };
+  if (provider === "gemini") return generateGeminiSectionImage(request);
+  if (provider === "openai") return generateOpenAiSectionImage(request);
   throw Object.assign(new Error(`Unsupported section image provider: ${provider}`), { code: "UNSUPPORTED_IMAGE_PROVIDER" });
 }
 
-module.exports = { generateSectionLayout, generateSectionImage, generateOpenAiSectionImage, generateGeminiSectionImage };
+module.exports = {
+  generateSectionLayout,
+  generateSectionImage,
+  generateOpenAiSectionImage,
+  generateGeminiSectionImage,
+  imagePromptForSafeArea,
+};

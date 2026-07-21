@@ -5,6 +5,7 @@ const {
   defaultConstraints,
   analyzableSectionContent,
   layoutPatchFromResult,
+  safeAreaForVariant,
   validatePatch,
 } = require("../api/_promo-section-design-contract");
 
@@ -41,7 +42,11 @@ const generated = layoutPatchFromResult(section, {
 assert.equal(generated.layoutPatch.sectionStyles.heroBanner.minHeight, 520);
 assert.equal(generated.imageRequest.itemKey, null);
 assert.equal(generated.imageRequest.target.type, "section-background");
+assert.equal(generated.imageRequest.safeArea, "left-copy");
 assert.equal(validatePatch(section, generated, constraints).ok, true);
+assert.equal(safeAreaForVariant("split-left"), "right-copy");
+assert.equal(safeAreaForVariant("split-right"), "left-copy");
+assert.equal(safeAreaForVariant("centered-hero"), "center-copy");
 
 assert.throws(() => layoutPatchFromResult(section, {
   layoutVariant: "unsupported",
@@ -75,6 +80,7 @@ const backgroundGenerated = layoutPatchFromResult(textOnlySection, {
 }, backgroundConstraints);
 assert.equal(backgroundGenerated.imageRequest.target.type, "section-background");
 assert.equal(backgroundGenerated.imageRequest.itemKey, null);
+assert.equal(backgroundGenerated.imageRequest.safeArea, "center-copy");
 assert.equal(validatePatch(textOnlySection, backgroundGenerated, backgroundConstraints).ok, true);
 
 console.log("Section AI design contract tests passed.");

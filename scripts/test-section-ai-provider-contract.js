@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { generateSectionLayout, generateSectionImage } = require("../api/_promo-section-design-provider");
+const { generateSectionLayout, generateSectionImage, imagePromptForSafeArea } = require("../api/_promo-section-design-provider");
 
 const previousKey = process.env.OPENAI_API_KEY;
 const previousGeminiKey = process.env.GEMINI_API_KEY;
@@ -51,15 +51,17 @@ process.env.SECTION_IMAGE_PROVIDER = "openai";
   assert.equal(requests[0].body.text.format.strict, true);
   assert(requests[0].signal instanceof AbortSignal);
 
-  const image = await generateSectionImage({ prompt: "Premium visual, no text" });
+  const image = await generateSectionImage({ prompt: "Premium visual, no text", safeArea: "right-copy" });
   assert.equal(image.bytes.length, 2048);
   assert.equal(image.mimeType, "image/webp");
   assert.equal(requests[1].body.output_format, "webp");
   assert.equal(requests[1].body.size, "1536x1024");
+  assert.match(requests[1].body.prompt, /right half as clean negative space/);
+  assert.match(requests[1].body.prompt, /main visual subject on the left/);
 
   process.env.SECTION_IMAGE_PROVIDER = "gemini";
   process.env.SECTION_IMAGE_MODEL = "gemini-3.1-flash-image";
-  const geminiImage = await generateSectionImage({ prompt: "Premium visual with left-side negative space, no text" });
+  const geminiImage = await generateSectionImage({ prompt: "Premium visual", safeArea: "left-copy" });
   assert.equal(geminiImage.bytes.length, 3072);
   assert.equal(geminiImage.mimeType, "image/jpeg");
   assert.equal(geminiImage.width, 2048);
@@ -72,6 +74,9 @@ process.env.SECTION_IMAGE_PROVIDER = "openai";
   assert.equal(requests[2].body.response_format.type, "image");
   assert.equal(requests[2].body.response_format.aspect_ratio, "16:9");
   assert.equal(requests[2].body.response_format.image_size, "2K");
+  assert.match(requests[2].body.input[0].text, /left half as clean negative space/);
+  assert.match(requests[2].body.input[0].text, /main visual subject on the right/);
+  assert.match(imagePromptForSafeArea("Centered visual", "center-copy"), /center as clean negative space/);
 
   console.log("Section AI provider contract tests passed.");
 })().finally(() => {
