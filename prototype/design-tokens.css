@@ -14,6 +14,7 @@
   --app-accent: #4768d8;
   --app-accent-soft: #eef3ff;
   --app-success: #16a34a;
+  --app-success-hover: #0f8f3d;
   --app-success-soft: #eaf8ef;
   --app-danger: #ef4444;
   --app-danger-soft: #fff1f2;
@@ -45,6 +46,7 @@
   --app-accent: #28c39d;
   --app-accent-soft: rgba(12, 59, 46, 0.86);
   --app-success: #28c39d;
+  --app-success-hover: #0f7a62;
   --app-success-soft: rgba(15, 122, 98, 0.18);
   --app-danger: #fb7185;
   --app-danger-soft: rgba(251, 113, 133, 0.14);

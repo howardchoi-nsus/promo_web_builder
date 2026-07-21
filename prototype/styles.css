@@ -1,41 +1,40 @@
 @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css");
 
 :root {
-  color-scheme: light;
-  /* Theme tokens are the single source for light/dark surface and text decisions. */
-  --bg: #f6f8fc;
-  --panel: #ffffff;
-  --surface-2: #f9fbff;
-  --surface-solid: #ffffff;
-  --selected-surface: #f8fbff;
-  --ink: #111827;
-  --ink-soft: #334155;
-  --sub: #63708a;
-  --muted: #96a2ba;
-  --placeholder: #98a2b3;
-  --line: #dfe6f2;
-  --line-strong: #c9d4e7;
-  --focus-border: #9db3ef;
-  --primary: #111827;
-  --accent: #4768d8;
-  --accent-soft: #eef3ff;
-  --success: #16a34a;
-  --success-hover: #0f8f3d;
-  --success-soft: #eaf8ef;
-  --danger: #ef4444;
-  --cta: #16a34a;
-  --canvas: #f8fafc;
-  --radius: 10px;
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --control-height: 38px;
-  --panel-gap: 12px;
-  --shadow: 0 14px 40px rgba(20, 35, 70, 0.08);
-  --font-heading: Inter, Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-body: Inter, Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* Compatibility aliases. Layer A values are defined only in design-tokens.css. */
+  --bg: var(--app-bg);
+  --panel: var(--app-panel);
+  --surface-2: var(--app-surface);
+  --surface-solid: var(--app-panel);
+  --selected-surface: var(--app-accent-soft);
+  --ink: var(--app-ink);
+  --ink-soft: var(--app-ink-soft);
+  --sub: var(--app-sub);
+  --muted: var(--app-muted);
+  --placeholder: var(--app-muted);
+  --line: var(--app-line);
+  --line-strong: var(--app-line-strong);
+  --focus-border: var(--app-focus);
+  --primary: var(--app-ink);
+  --accent: var(--app-accent);
+  --accent-soft: var(--app-accent-soft);
+  --success: var(--app-success);
+  --success-hover: var(--app-success-hover);
+  --success-soft: var(--app-success-soft);
+  --danger: var(--app-danger);
+  --cta: var(--app-success);
+  --canvas: var(--app-bg);
+  --radius: var(--app-radius);
+  --space-1: var(--app-space-1);
+  --space-2: var(--app-space-2);
+  --space-3: var(--app-space-3);
+  --space-4: var(--app-space-4);
+  --space-5: var(--app-space-5);
+  --control-height: var(--app-control-height);
+  --panel-gap: var(--app-panel-gap);
+  --shadow: var(--app-shadow);
+  --font-heading: var(--app-font-heading);
+  --font-body: var(--app-font-body);
   --title-weight: 950;
 }
 
@@ -43,33 +42,6 @@
    - Grid: page columns, card collections, and true two-dimensional content.
    - Flex: headers, action bars, controls, and item rows that need consistent vertical centering.
    - Spacing should use --space-* or --panel-gap so local layouts do not drift apart. */
-
-[data-theme="dark"] {
-  color-scheme: dark;
-  --bg: #0d0e10;
-  --panel: #121416;
-  --surface-2: #151a18;
-  --surface-solid: #161a1d;
-  --selected-surface: rgba(12, 59, 46, 0.7);
-  --ink: #cfeee6;
-  --ink-soft: rgba(207, 238, 230, 0.9);
-  --sub: rgba(207, 238, 230, 0.78);
-  --muted: rgba(207, 238, 230, 0.66);
-  --placeholder: rgba(207, 238, 230, 0.46);
-  --line: rgba(207, 238, 230, 0.14);
-  --line-strong: rgba(207, 238, 230, 0.28);
-  --focus-border: #28c39d;
-  --primary: #cfeee6;
-  --accent: #28c39d;
-  --accent-soft: rgba(12, 59, 46, 0.86);
-  --success: #28c39d;
-  --success-hover: #0f7a62;
-  --success-soft: rgba(15, 122, 98, 0.18);
-  --danger: #fb7185;
-  --cta: #28c39d;
-  --canvas: #0d0e10;
-  --shadow: 0 18px 48px rgba(0, 0, 0, 0.38);
-}
 
 * {
   box-sizing: border-box;

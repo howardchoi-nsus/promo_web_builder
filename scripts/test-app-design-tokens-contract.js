@@ -4,6 +4,8 @@ const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
 const tokens = fs.readFileSync(path.join(root, "prototype/design-tokens.css"), "utf8");
+const builderCss = fs.readFileSync(path.join(root, "prototype/styles.css"), "utf8");
+const shellCss = fs.readFileSync(path.join(root, "prototype/shared-shell-header.css"), "utf8");
 const htmlFiles = [
   "index.html",
   "create-promo.html",
@@ -31,6 +33,12 @@ const htmlFiles = [
 assert.match(tokens, /\[data-theme="dark"\]/);
 assert.match(tokens, /--app-accent:\s*#4768d8/);
 assert.match(tokens, /\[data-theme="dark"\][\s\S]*--app-accent:\s*#28c39d/);
+assert.match(builderCss, /--bg:\s*var\(--app-bg\)/);
+assert.match(builderCss, /--accent:\s*var\(--app-accent\)/);
+assert.doesNotMatch(builderCss, /\[data-theme="dark"\]\s*\{[\s\S]*?--bg:/);
+assert.match(shellCss, /--shell-bg:\s*var\(--app-panel\)/);
+assert.match(shellCss, /--shell-accent:\s*var\(--app-accent\)/);
+assert.doesNotMatch(shellCss, /\[data-theme="dark"\]\s*\{/);
 
 htmlFiles.forEach((file) => {
   const html = fs.readFileSync(path.join(root, "prototype", file), "utf8");

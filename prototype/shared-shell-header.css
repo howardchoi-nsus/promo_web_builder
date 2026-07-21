@@ -1,29 +1,16 @@
 :root {
-  --shell-bg: #ffffff;
-  --shell-surface: #f9fbff;
-  --shell-ink: #111827;
-  --shell-sub: #63708a;
-  --shell-line: #dfe6f2;
-  --shell-line-strong: #c9d4e7;
-  --shell-accent: #4768d8;
-  --shell-accent-soft: #eef3ff;
-  --shell-success: #16a34a;
-  --shell-success-soft: #eaf8ef;
-  --shell-shadow: 0 14px 40px rgba(20, 35, 70, 0.08);
-}
-
-[data-theme="dark"] {
-  --shell-bg: #121416;
-  --shell-surface: #151a18;
-  --shell-ink: #cfeee6;
-  --shell-sub: rgba(207, 238, 230, 0.78);
-  --shell-line: rgba(207, 238, 230, 0.14);
-  --shell-line-strong: rgba(207, 238, 230, 0.28);
-  --shell-accent: #28c39d;
-  --shell-accent-soft: rgba(12, 59, 46, 0.86);
-  --shell-success: #28c39d;
-  --shell-success-soft: rgba(15, 122, 98, 0.18);
-  --shell-shadow: 0 18px 48px rgba(0, 0, 0, 0.38);
+  /* Compatibility aliases. Layer A values are defined only in design-tokens.css. */
+  --shell-bg: var(--app-panel);
+  --shell-surface: var(--app-surface);
+  --shell-ink: var(--app-ink);
+  --shell-sub: var(--app-sub);
+  --shell-line: var(--app-line);
+  --shell-line-strong: var(--app-line-strong);
+  --shell-accent: var(--app-accent);
+  --shell-accent-soft: var(--app-accent-soft);
+  --shell-success: var(--app-success);
+  --shell-success-soft: var(--app-success-soft);
+  --shell-shadow: var(--app-shadow);
 }
 
 .shell-header {
