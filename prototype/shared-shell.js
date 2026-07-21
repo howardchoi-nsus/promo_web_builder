@@ -1,12 +1,13 @@
 (function initializePromoShell(global) {
   const STORAGE_KEY = "promoPrototype.themeMode";
+  const SIDEBAR_MODE_STORAGE_KEY = "promoPrototype.sidebarMode";
   const NAV_ITEMS = Object.freeze([
-    { key: "builder", label: "프로모션 빌더", href: "/prototype/index.html" },
-    { key: "admin", label: "관리자 페이지", href: "/prototype/index.html?view=admin&tab=promo-form" },
-    { key: "promo-wizard", label: "Promo Wizard", href: "/promo-wizard.html" },
-    { key: "create-promo", label: "Create Promo", href: "/create-promo.html" },
-    { key: "visual-editor", label: "Visual Editor", href: "/prototype/visual-editor.html" },
-    { key: "generated", label: "생성된 UI", href: "/prototype/generated.html" },
+    { key: "builder", label: "프로모션 빌더", href: "/prototype/index.html", icon: "layout-dashboard" },
+    { key: "admin", label: "관리자 페이지", href: "/prototype/index.html?view=admin&tab=promo-form", icon: "settings" },
+    { key: "promo-wizard", label: "Promo Wizard", href: "/promo-wizard.html", icon: "wand-sparkles" },
+    { key: "create-promo", label: "Create Promo", href: "/create-promo.html", icon: "megaphone" },
+    { key: "visual-editor", label: "Visual Editor", href: "/prototype/visual-editor.html", icon: "panels-top-left" },
+    { key: "generated", label: "생성된 UI", href: "/prototype/generated.html", icon: "file-output" },
   ]);
 
   function activeNavKey(location = global.location) {
@@ -28,8 +29,16 @@
       nav.replaceChildren(...NAV_ITEMS.map((item) => {
         const link = document.createElement("a");
         link.href = item.href;
-        link.textContent = item.label;
+        link.setAttribute("aria-label", item.label);
+        link.title = item.label;
         link.dataset.shellNavKey = item.key;
+        const icon = document.createElement("i");
+        icon.dataset.lucide = item.icon;
+        icon.setAttribute("aria-hidden", "true");
+        const label = document.createElement("span");
+        label.dataset.shellNavLabel = "";
+        label.textContent = item.label;
+        link.append(icon, label);
         if (item.key === active) {
           link.classList.add("active");
           link.setAttribute("aria-current", "page");
@@ -37,6 +46,43 @@
         return link;
       }));
     });
+  }
+
+  function renderIcons() {
+    global.lucide?.createIcons({ attrs: { "aria-hidden": "true" } });
+  }
+
+  function normalizeSidebarMode(value) {
+    return value === "min" ? "min" : "max";
+  }
+
+  function storedSidebarMode() {
+    try {
+      return normalizeSidebarMode(global.localStorage.getItem(SIDEBAR_MODE_STORAGE_KEY));
+    } catch {
+      return "max";
+    }
+  }
+
+  function applySidebarMode(value, options = {}) {
+    const mode = normalizeSidebarMode(value);
+    const root = options.root || document;
+    root.querySelectorAll("[data-shell-frame]").forEach((frame) => {
+      frame.classList.toggle("is-sidebar-minimized", mode === "min");
+      frame.dataset.shellSidebarState = mode;
+      frame.querySelectorAll("[data-shell-sidebar-mode]").forEach((button) => {
+        button.setAttribute("aria-pressed", String(button.dataset.shellSidebarMode === mode));
+      });
+    });
+    if (options.persist !== false) {
+      try {
+        global.localStorage.setItem(SIDEBAR_MODE_STORAGE_KEY, mode);
+      } catch {
+        // localStorage may be unavailable in embedded or privacy-restricted contexts.
+      }
+    }
+    global.dispatchEvent(new CustomEvent("promo-shell-sidebar-mode-change", { detail: { mode } }));
+    return mode;
   }
 
   function normalizeTheme(value) {
@@ -114,6 +160,9 @@
     frame.querySelectorAll("[data-shell-sidebar-close], [data-shell-overlay]").forEach((button) => {
       button.addEventListener("click", () => closeSidebar(frame));
     });
+    frame.querySelectorAll("[data-shell-sidebar-mode]").forEach((button) => {
+      button.addEventListener("click", () => applySidebarMode(button.dataset.shellSidebarMode, { root: document }));
+    });
     frame.querySelector("[data-shell-sidebar]")?.addEventListener("click", (event) => {
       if (event.target.closest("a")) closeSidebar(frame);
     });
@@ -125,6 +174,7 @@
   function init(root = document) {
     renderNavigation(root);
     bindSidebar(root);
+    applySidebarMode(storedSidebarMode(), { persist: false, root });
     applyTheme(storedTheme(), { persist: false, root });
     root.querySelectorAll("[data-shell-theme-toggle]").forEach((button) => {
       if (button.dataset.shellThemeBound === "true") return;
@@ -135,6 +185,7 @@
       });
     });
     syncThemeControls(root);
+    renderIcons();
   }
 
   global.PromoShell = {
@@ -143,10 +194,13 @@
     getTheme: storedTheme,
     renderNavigation,
     activeNavKey,
+    applySidebarMode,
+    getSidebarMode: storedSidebarMode,
     openSidebar,
     closeSidebar,
     navItems: NAV_ITEMS,
     storageKey: STORAGE_KEY,
+    sidebarModeStorageKey: SIDEBAR_MODE_STORAGE_KEY,
   };
   applyTheme(storedTheme(), { persist: false, root: document });
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => init(document), { once: true });

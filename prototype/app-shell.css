@@ -43,11 +43,36 @@ body.shell-drawer-open { overflow: hidden; }
 
 .shell-sidebar__brand {
   display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: center;
   gap: 4px;
   min-height: 78px;
   padding: 6px 8px 18px;
   border-bottom: 1px solid var(--shell-line);
 }
+
+.shell-sidebar__brand-mark {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--shell-line);
+  border-radius: var(--app-radius);
+  background: var(--shell-accent-soft);
+  color: var(--shell-accent);
+}
+
+.shell-sidebar__brand-mark svg,
+.shell-nav--vertical svg,
+.shell-sidebar__mode svg,
+.shell-theme-toggle svg {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  stroke-width: 1.8;
+}
+
+.shell-sidebar__brand-copy { display: grid; gap: 4px; min-width: 0; }
 
 .shell-sidebar__brand strong {
   color: var(--shell-ink);
@@ -57,12 +82,49 @@ body.shell-drawer-open { overflow: hidden; }
   line-height: 1.2;
 }
 
-.shell-sidebar__brand span {
+.shell-sidebar__brand-copy > span {
   color: var(--shell-sub);
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.shell-sidebar__mode {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.shell-sidebar__mode button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 34px;
+  padding: 0 8px;
+  border: 1px solid var(--shell-line);
+  border-radius: var(--app-radius);
+  background: var(--shell-bg);
+  color: var(--shell-sub);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.shell-sidebar__mode button:hover {
+  border-color: var(--shell-line-strong);
+  background: var(--shell-surface);
+  color: var(--shell-ink);
+}
+
+.shell-sidebar__mode button[aria-pressed="true"] {
+  border-color: var(--shell-accent);
+  background: var(--shell-accent-soft);
+  color: var(--shell-accent);
 }
 
 .shell-sidebar__close {
@@ -85,6 +147,7 @@ body.shell-drawer-open { overflow: hidden; }
 .shell-nav--vertical button {
   position: relative;
   justify-content: flex-start;
+  gap: 10px;
   width: 100%;
   min-height: var(--app-nav-item-height);
   padding: 0 12px;
@@ -92,6 +155,12 @@ body.shell-drawer-open { overflow: hidden; }
   border-radius: var(--app-radius);
   background: transparent;
   text-align: left;
+}
+
+.shell-nav--vertical [data-shell-nav-label] {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .shell-nav--vertical .active,
@@ -122,6 +191,43 @@ body.shell-drawer-open { overflow: hidden; }
 }
 
 .shell-sidebar__footer .shell-theme-toggle { width: 100%; }
+
+.shell-frame.is-sidebar-minimized {
+  grid-template-columns: var(--app-sidebar-width-min) minmax(0, 1fr);
+}
+
+.shell-frame.is-sidebar-minimized .shell-sidebar {
+  width: var(--app-sidebar-width-min);
+  padding-right: 8px;
+  padding-left: 8px;
+}
+
+.shell-frame.is-sidebar-minimized .shell-sidebar__brand {
+  grid-template-columns: 1fr;
+  justify-items: center;
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.shell-frame.is-sidebar-minimized .shell-sidebar__brand-copy,
+.shell-frame.is-sidebar-minimized [data-shell-nav-label],
+.shell-frame.is-sidebar-minimized [data-shell-theme-label],
+.shell-frame.is-sidebar-minimized .shell-sidebar__mode span {
+  display: none;
+}
+
+.shell-frame.is-sidebar-minimized .shell-sidebar__mode {
+  grid-template-columns: 1fr;
+}
+
+.shell-frame.is-sidebar-minimized .shell-sidebar__mode button,
+.shell-frame.is-sidebar-minimized .shell-nav--vertical a,
+.shell-frame.is-sidebar-minimized .shell-nav--vertical button,
+.shell-frame.is-sidebar-minimized .shell-theme-toggle {
+  justify-content: center;
+  padding-right: 0;
+  padding-left: 0;
+}
 
 .shell-main {
   display: flex;
@@ -298,6 +404,7 @@ body.shell-drawer-open { overflow: hidden; }
 
 .shell-nav a:focus-visible,
 .shell-nav button:focus-visible,
+.shell-sidebar__mode button:focus-visible,
 .shell-theme-toggle:focus-visible,
 .shell-menu-toggle:focus-visible,
 .shell-sidebar__close:focus-visible {
@@ -354,6 +461,28 @@ body.shell-drawer-open { overflow: hidden; }
     pointer-events: auto;
     transform: translateX(0);
     transition-delay: 0s;
+  }
+  .shell-frame.is-sidebar-minimized .shell-sidebar {
+    width: min(86vw, var(--app-sidebar-width));
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+  .shell-frame.is-sidebar-minimized .shell-sidebar__brand {
+    grid-template-columns: 36px minmax(0, 1fr);
+    justify-items: stretch;
+    padding-right: 8px;
+    padding-left: 8px;
+  }
+  .shell-frame.is-sidebar-minimized .shell-sidebar__brand-copy,
+  .shell-frame.is-sidebar-minimized [data-shell-nav-label],
+  .shell-frame.is-sidebar-minimized [data-shell-theme-label] { display: grid; }
+  .shell-frame.is-sidebar-minimized .shell-sidebar__mode { display: none; }
+  .shell-frame.is-sidebar-minimized .shell-nav--vertical a,
+  .shell-frame.is-sidebar-minimized .shell-nav--vertical button,
+  .shell-frame.is-sidebar-minimized .shell-theme-toggle {
+    justify-content: flex-start;
+    padding-right: 10px;
+    padding-left: 10px;
   }
   .shell-sidebar__close { display: inline-flex; }
   .shell-menu-toggle { display: inline-flex; flex: 0 0 auto; }

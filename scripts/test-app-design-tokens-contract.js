@@ -70,7 +70,7 @@ htmlFiles.forEach((file) => {
 
 ["index.html", "create-promo.html", "promo-wizard.html", "visual-editor.html"].forEach((file) => {
   const html = fs.readFileSync(path.join(root, "prototype", file), "utf8");
-  assert.match(html, /app-shell\.css\?v=app-shell-sidebar-v2/);
+  assert.match(html, /app-shell\.css\?v=app-shell-sidebar-v3/);
   assert.doesNotMatch(html, /shared-shell-header\.css/);
 });
 

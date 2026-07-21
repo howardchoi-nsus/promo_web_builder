@@ -29,6 +29,7 @@
   --app-panel-gap: 12px;
   --app-sidebar-width: 208px;
   --app-sidebar-width-compact: 176px;
+  --app-sidebar-width-min: 72px;
   --app-utility-height: 60px;
   --app-nav-item-height: 44px;
   --app-shell-z-sidebar: 40;

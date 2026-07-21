@@ -521,8 +521,12 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
     <aside v-if="!isWizardLayoutMode" class="shell-sidebar" id="visual-editor-global-navigation" data-shell-sidebar aria-label="전역 내비게이션">
       <button class="shell-sidebar__close" type="button" data-shell-sidebar-close aria-label="메뉴 닫기">닫기</button>
       <div class="shell-sidebar__brand">
-        <strong>PROMO WEB<br />BUILDER</strong>
-        <span>Workspace</span>
+        <span class="shell-sidebar__brand-mark" aria-hidden="true"><i data-lucide="panels-top-left"></i></span>
+        <span class="shell-sidebar__brand-copy"><strong>PROMO WEB<br />BUILDER</strong><span>Workspace</span></span>
+      </div>
+      <div class="shell-sidebar__mode" role="group" aria-label="사이드바 표시 방식">
+        <button type="button" data-shell-sidebar-mode="min" aria-label="사이드바 최소화" title="최소"><i data-lucide="panel-left-close" aria-hidden="true"></i><span>최소</span></button>
+        <button type="button" data-shell-sidebar-mode="max" aria-label="사이드바 최대화" title="최대"><i data-lucide="panel-left-open" aria-hidden="true"></i><span>최대</span></button>
       </div>
       <nav class="shell-nav shell-nav--vertical" aria-label="프로토타입 내비게이션">
         <a
@@ -531,11 +535,13 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
           :href="item.href"
           :class="{ active: item.key === 'visual-editor' }"
           :aria-current="item.key === 'visual-editor' ? 'page' : null"
-        >{{ item.label }}</a>
+          :aria-label="item.label"
+          :title="item.label"
+        ><i :data-lucide="item.icon" aria-hidden="true"></i><span data-shell-nav-label>{{ item.label }}</span></a>
       </nav>
       <div class="shell-sidebar__footer">
         <button class="shell-theme-toggle" type="button" data-shell-theme-toggle>
-          <span class="shell-theme-dot" aria-hidden="true"></span>
+          <i data-lucide="sun-moon" aria-hidden="true"></i>
           <strong data-shell-theme-label>Light</strong>
         </button>
       </div>

@@ -34,6 +34,8 @@
 - Drawer: `aria-expanded` 갱신, body scroll lock, 닫기 버튼 focus, Escape 후 trigger focus 복귀 확인
 - URL active state: Builder, Admin, Create Promo, Visual Editor, Generated UI 확인
 - Visual Editor `wizard-layout`와 `output`: 전역 sidebar 0개 확인
+- Sidebar 최대/최소: 208px 전체 메뉴 ↔ 72px Lucide 아이콘 rail 전환 및 화면 간 상태 유지 확인
+- 모바일: 최소 상태가 저장되어 있어도 208px 전체 Drawer와 메뉴 라벨 6개 표시
 
 ## Defect triage
 
