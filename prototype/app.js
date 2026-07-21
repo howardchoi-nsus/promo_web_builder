@@ -1169,7 +1169,16 @@ const adminApp = createApp({
       duplicateWizardFormTemplateError: "",
       selectedWizardFormTemplateSectionId: "",
       expandedWizardFormTemplateSectionId: "",
-      wizardFormTemplateSectionEditor: { name: "", description: "", isRequired: false, isVisible: true, userReorderAllowed: true, fixedPosition: "" },
+      wizardFormTemplateSectionEditor: {
+        name: "", description: "", isRequired: false, isVisible: true, userReorderAllowed: true, fixedPosition: "",
+        aiDesign: {
+          enabled: true,
+          allowedLayoutVariants: ["split-left", "split-right", "centered-hero"],
+          imageTarget: "section-background",
+          imageTargetItemKeys: [],
+          imageAspectRatio: "16:9",
+        },
+      },
       wizardFormTemplateSectionSaving: false,
       showNewWizardFormTemplateSectionForm: false,
       newWizardFormTemplateSectionForm: { name: "", description: "", isRequired: false, isVisible: true, userReorderAllowed: true, fixedPosition: "" },
@@ -2229,6 +2238,17 @@ const adminApp = createApp({
         isVisible: section.isVisible,
         userReorderAllowed: section.userReorderAllowed,
         fixedPosition: section.fixedPosition || "",
+        aiDesign: {
+          enabled: section.aiDesign?.enabled !== false,
+          allowedLayoutVariants: Array.isArray(section.aiDesign?.allowedLayoutVariants)
+            ? [...section.aiDesign.allowedLayoutVariants]
+            : ["split-left", "split-right", "centered-hero"],
+          imageTarget: section.aiDesign?.imageTarget === "item" ? "item" : "section-background",
+          imageTargetItemKeys: Array.isArray(section.aiDesign?.imageTargetItemKeys)
+            ? [...section.aiDesign.imageTargetItemKeys]
+            : [],
+          imageAspectRatio: section.aiDesign?.imageAspectRatio || "16:9",
+        },
       };
       this.wizardFormTemplateItemEditorOpenId = "";
       await this.loadWizardFormTemplateSectionItems(section);

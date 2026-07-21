@@ -3,6 +3,7 @@ const {
   fetchTemplateRow, fetchTemplateSections, toTemplateSection,
 } = require("./_wizard-form-templates-store");
 const { remapLayoutSectionKey } = require("./_wizard-form-template-layout-store");
+const { normalizeAiDesign } = require("./_wizard-content-sections-store");
 
 module.exports = async function handler(req, res) {
   try {
@@ -136,7 +137,8 @@ async function updateSection(req, res) {
     select ts.id::text, ts.form_template_id::text, ts.section_id::text, ts.section_key, ts.sort_order,
       ts.is_required, ts.is_visible, ts.order_change_allowed, ts.user_reorder_allowed, ts.fixed_position,
       ts.created_at, ts.updated_at, template.template_key,
-      source.owner_form_template_id::text as source_owner_template_id, source.status as source_status
+      source.owner_form_template_id::text as source_owner_template_id, source.status as source_status,
+      source.ai_design as source_ai_design
     from wizard_form_template_sections ts
     join wizard_form_templates template on template.id = ts.form_template_id
     left join wizard_content_sections source on source.id = ts.section_id
@@ -186,11 +188,13 @@ async function updateSection(req, res) {
     current.section_id = clonedSection.id;
     current.section_key = clonedSection.section_key;
   }
-  if (current.section_id && (Object.prototype.hasOwnProperty.call(body, "name") || Object.prototype.hasOwnProperty.call(body, "description"))) {
+  const hasAiDesign = Object.prototype.hasOwnProperty.call(body, "aiDesign");
+  if (current.section_id && (Object.prototype.hasOwnProperty.call(body, "name") || Object.prototype.hasOwnProperty.call(body, "description") || hasAiDesign)) {
     await sql`
       update wizard_content_sections set
         name = ${String(body.name || "").trim()},
         description = ${String(body.description || "")},
+        ai_design = ${JSON.stringify(normalizeAiDesign(hasAiDesign ? body.aiDesign : current.source_ai_design))}::jsonb,
         updated_at = now()
       where id = ${current.section_id}::uuid
         and owner_form_template_id = ${current.form_template_id}::uuid

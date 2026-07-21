@@ -1105,6 +1105,42 @@
                       <span v-if="selectedWizardFormTemplateSection">{{ selectedWizardFormTemplateSection.sectionName || selectedWizardFormTemplateSection.sectionKey }}</span>
                     </div>
                   </div>
+                  <div class="subsection" v-if="selectedWizardFormTemplateSection">
+                    <div class="subsection-title"><h3>AI 디자인 정책</h3></div>
+                    <label class="switch-control">
+                      <input type="checkbox" v-model="wizardFormTemplateSectionEditor.aiDesign.enabled" :disabled="!wizardFormTemplateCanEdit" />
+                      <span>이 Section에서 AI 디자인 생성 허용</span>
+                    </label>
+                    <div class="form-grid compact">
+                      <label class="switch-control" v-for="variant in ['split-left', 'split-right', 'centered-hero']" :key="variant">
+                        <input type="checkbox" :value="variant" v-model="wizardFormTemplateSectionEditor.aiDesign.allowedLayoutVariants" :disabled="!wizardFormTemplateCanEdit || !wizardFormTemplateSectionEditor.aiDesign.enabled" />
+                        <span>{{ variant }}</span>
+                      </label>
+                    </div>
+                    <label class="field compact-field">
+                      <span>이미지 적용 대상</span>
+                      <select v-model="wizardFormTemplateSectionEditor.aiDesign.imageTarget" :disabled="!wizardFormTemplateCanEdit || !wizardFormTemplateSectionEditor.aiDesign.enabled">
+                        <option value="section-background">Section 배경</option>
+                        <option value="item">이미지 Item</option>
+                      </select>
+                    </label>
+                    <div class="form-grid compact" v-if="wizardFormTemplateSectionEditor.aiDesign.imageTarget === 'item'">
+                      <label class="switch-control" v-for="item in wizardFormTemplateSectionItems.filter((entry) => entry.fieldKind === 'image' && entry.isVisibleInWizard && entry.image?.allowedSources?.includes('ai'))" :key="item.itemKey">
+                        <input type="checkbox" :value="item.itemKey" v-model="wizardFormTemplateSectionEditor.aiDesign.imageTargetItemKeys" :disabled="!wizardFormTemplateCanEdit || !wizardFormTemplateSectionEditor.aiDesign.enabled" />
+                        <span>{{ item.name }}</span>
+                      </label>
+                      <div class="empty-state compact" v-if="!wizardFormTemplateSectionItems.some((entry) => entry.fieldKind === 'image' && entry.isVisibleInWizard && entry.image?.allowedSources?.includes('ai'))">AI 소스를 허용한 이미지 Item이 없습니다.</div>
+                    </div>
+                    <label class="field compact-field">
+                      <span>이미지 비율</span>
+                      <select v-model="wizardFormTemplateSectionEditor.aiDesign.imageAspectRatio" :disabled="!wizardFormTemplateCanEdit || !wizardFormTemplateSectionEditor.aiDesign.enabled">
+                        <option value="16:9">16:9</option><option value="4:3">4:3</option><option value="1:1">1:1</option><option value="3:4">3:4</option>
+                      </select>
+                    </label>
+                    <div class="action-row align-right">
+                      <button class="tiny-button primary" type="button" :disabled="!wizardFormTemplateCanEdit || wizardFormTemplateSectionSaving" @click="saveWizardFormTemplateSection">AI 정책 저장</button>
+                    </div>
+                  </div>
                   <div class="subsection-title template-items-heading" v-if="selectedWizardFormTemplateSection">
                     <span>{{ wizardFormTemplateSectionItems.length }}개 Item</span>
                     <button class="tiny-button primary" type="button" :disabled="!wizardFormTemplateCanEdit" @click="openNewWizardFormTemplateItemEditor">+ Item 추가</button>
