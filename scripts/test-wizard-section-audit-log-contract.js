@@ -18,7 +18,7 @@ assert.match(api, /listWizardSectionAudits/);
 assert.match(store, /order by created_at desc/);
 assert.match(app, /loadWizardSectionAuditLogs/);
 assert.match(html, /Section CRUD 로그/);
-assert.match(html, /app-shell\.css\?v=app-shell-v1/);
+assert.match(html, /app-shell\.css\?v=app-shell-sidebar-v2/);
 assert.match(html, /app\.js/);
 assert.doesNotMatch(html, /<summary>공통 Section 원본 관리<\/summary>/);
 

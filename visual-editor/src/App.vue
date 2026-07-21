@@ -512,31 +512,47 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
     />
   </div>
 
-  <main v-else class="editor-shell">
-    <header v-if="!isWizardLayoutMode" class="shell-header editor-shell-header">
-      <div class="shell-header__identity">
-        <div class="shell-header__brand-row">
-          <h1 class="shell-header__brand">PROMO WEB BUILDER</h1>
-          <span class="shell-header__page-label">{{ isAdminLayoutMode ? "Admin Template Layout" : "Visual Editor" }}</span>
-        </div>
+  <main
+    v-else
+    class="editor-shell"
+    :class="{ 'shell-frame': !isWizardLayoutMode }"
+    :data-shell-frame="!isWizardLayoutMode ? '' : null"
+  >
+    <aside v-if="!isWizardLayoutMode" class="shell-sidebar" id="visual-editor-global-navigation" data-shell-sidebar aria-label="전역 내비게이션">
+      <button class="shell-sidebar__close" type="button" data-shell-sidebar-close aria-label="메뉴 닫기">닫기</button>
+      <div class="shell-sidebar__brand">
+        <strong>PROMO WEB<br />BUILDER</strong>
+        <span>Workspace</span>
       </div>
-      <div class="shell-header__actions">
-        <nav class="shell-nav" aria-label="프로토타입 내비게이션">
-          <a
-            v-for="item in shellNavItems"
-            :key="item.key"
-            :href="item.href"
-            :class="{ active: item.key === 'visual-editor' }"
-            :aria-current="item.key === 'visual-editor' ? 'page' : null"
-          >{{ item.label }}</a>
-        </nav>
+      <nav class="shell-nav shell-nav--vertical" aria-label="프로토타입 내비게이션">
+        <a
+          v-for="item in shellNavItems"
+          :key="item.key"
+          :href="item.href"
+          :class="{ active: item.key === 'visual-editor' }"
+          :aria-current="item.key === 'visual-editor' ? 'page' : null"
+        >{{ item.label }}</a>
+      </nav>
+      <div class="shell-sidebar__footer">
         <button class="shell-theme-toggle" type="button" data-shell-theme-toggle>
           <span class="shell-theme-dot" aria-hidden="true"></span>
           <strong data-shell-theme-label>Light</strong>
         </button>
-        <div class="shell-status" role="status">{{ isAdminLayoutMode ? `Layout revision ${layoutRevision}` : "편집 준비" }}</div>
       </div>
-    </header>
+    </aside>
+
+    <div :class="!isWizardLayoutMode ? 'shell-main' : 'editor-embedded-main'">
+      <header v-if="!isWizardLayoutMode" class="shell-utility-bar editor-shell-header">
+        <div class="shell-page-identity">
+          <button class="shell-menu-toggle" type="button" data-shell-menu-toggle aria-controls="visual-editor-global-navigation" aria-expanded="false" aria-label="메뉴 열기">메뉴</button>
+          <strong>{{ isAdminLayoutMode ? "Admin Template Layout" : "Visual Editor" }}</strong>
+        </div>
+        <div class="shell-page-actions">
+        <div class="shell-status" role="status">{{ isAdminLayoutMode ? `Layout revision ${layoutRevision}` : "편집 준비" }}</div>
+        </div>
+      </header>
+
+      <div :class="{ 'shell-content': !isWizardLayoutMode }">
 
     <header class="editor-header editor-toolbar">
       <div>
@@ -875,5 +891,8 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
         </div>
       </aside>
     </section>
+      </div>
+    </div>
+    <button v-if="!isWizardLayoutMode" class="shell-overlay" type="button" data-shell-overlay aria-label="메뉴 닫기"></button>
   </main>
 </template>

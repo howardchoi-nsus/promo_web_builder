@@ -70,6 +70,8 @@ textarea {
   padding: 20px 22px;
 }
 
+.workspace.shell-content { flex: 1; }
+
 .topbar {
   display: flex;
   align-items: center;

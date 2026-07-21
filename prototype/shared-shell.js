@@ -75,8 +75,56 @@
     return theme;
   }
 
+  function findFrame(root = document) {
+    return root.querySelector?.("[data-shell-frame]") || document.querySelector("[data-shell-frame]");
+  }
+
+  function setSidebarOpen(frame, open, trigger = null) {
+    if (!frame) return;
+    const shouldOpen = Boolean(open);
+    frame.classList.toggle("is-sidebar-open", shouldOpen);
+    document.body.classList.toggle("shell-drawer-open", shouldOpen);
+    frame.querySelectorAll("[data-shell-menu-toggle]").forEach((button) => {
+      button.setAttribute("aria-expanded", String(shouldOpen));
+    });
+    if (shouldOpen) {
+      frame._shellDrawerTrigger = trigger || document.activeElement;
+      frame.querySelector("[data-shell-sidebar-close]")?.focus();
+    } else if (frame._shellDrawerTrigger instanceof HTMLElement) {
+      frame._shellDrawerTrigger.focus();
+      frame._shellDrawerTrigger = null;
+    }
+  }
+
+  function openSidebar(root = document, trigger = null) {
+    setSidebarOpen(findFrame(root), true, trigger);
+  }
+
+  function closeSidebar(root = document) {
+    setSidebarOpen(findFrame(root), false);
+  }
+
+  function bindSidebar(root = document) {
+    const frame = findFrame(root);
+    if (!frame || frame.dataset.shellSidebarBound === "true") return;
+    frame.dataset.shellSidebarBound = "true";
+    frame.querySelectorAll("[data-shell-menu-toggle]").forEach((button) => {
+      button.addEventListener("click", () => openSidebar(frame, button));
+    });
+    frame.querySelectorAll("[data-shell-sidebar-close], [data-shell-overlay]").forEach((button) => {
+      button.addEventListener("click", () => closeSidebar(frame));
+    });
+    frame.querySelector("[data-shell-sidebar]")?.addEventListener("click", (event) => {
+      if (event.target.closest("a")) closeSidebar(frame);
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && frame.classList.contains("is-sidebar-open")) closeSidebar(frame);
+    });
+  }
+
   function init(root = document) {
     renderNavigation(root);
+    bindSidebar(root);
     applyTheme(storedTheme(), { persist: false, root });
     root.querySelectorAll("[data-shell-theme-toggle]").forEach((button) => {
       if (button.dataset.shellThemeBound === "true") return;
@@ -95,6 +143,8 @@
     getTheme: storedTheme,
     renderNavigation,
     activeNavKey,
+    openSidebar,
+    closeSidebar,
     navItems: NAV_ITEMS,
     storageKey: STORAGE_KEY,
   };

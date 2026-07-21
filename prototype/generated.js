@@ -28,5 +28,6 @@ createApp({
 
   mounted() {
     if (this.payload) applyDesign(this.payload.design);
+    window.PromoShell?.init(document);
   },
 }).mount("#generatedApp");

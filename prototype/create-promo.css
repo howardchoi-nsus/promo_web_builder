@@ -44,6 +44,11 @@ a {
   padding: 20px 0;
 }
 
+.wizard-shell.shell-content {
+  width: 100%;
+  padding: 20px;
+}
+
 .wizard-progress,
 .wizard-panel,
 .wizard-footer {

@@ -3265,78 +3265,87 @@ var Uo = {
 }, Wo = { class: "output-toolbar" }, Go = {
 	key: 0,
 	class: "system-message system-message--error"
-}, Ko = {
-	key: 1,
-	class: "editor-shell"
-}, qo = {
+}, Ko = ["data-shell-frame"], qo = {
 	key: 0,
-	class: "shell-header editor-shell-header"
-}, Jo = { class: "shell-header__identity" }, Yo = { class: "shell-header__brand-row" }, Xo = { class: "shell-header__page-label" }, Zo = { class: "shell-header__actions" }, Qo = {
-	class: "shell-nav",
+	class: "shell-sidebar",
+	id: "visual-editor-global-navigation",
+	"data-shell-sidebar": "",
+	"aria-label": "전역 내비게이션"
+}, Jo = {
+	class: "shell-nav shell-nav--vertical",
 	"aria-label": "프로토타입 내비게이션"
-}, $o = ["href", "aria-current"], es = {
+}, Yo = ["href", "aria-current"], Xo = {
+	key: 0,
+	class: "shell-utility-bar editor-shell-header"
+}, Zo = { class: "shell-page-identity" }, Qo = { class: "shell-page-actions" }, $o = {
 	class: "shell-status",
 	role: "status"
-}, ts = { class: "editor-header editor-toolbar" }, ns = {
+}, es = { class: "editor-header editor-toolbar" }, ts = {
 	key: 0,
 	class: "editor-mode-note"
-}, rs = { class: "editor-global-actions" }, is = {
+}, ns = { class: "editor-global-actions" }, rs = {
 	key: 0,
 	class: "global-token-menu"
-}, as = { class: "global-token-swatches" }, os = [
+}, is = { class: "global-token-swatches" }, as = [
 	"title",
 	"aria-label",
 	"onClick"
-], ss = { "aria-label": "Visual Editor navigation" }, cs = ["disabled"], ls = ["disabled"], us = {
-	key: 1,
+], os = { "aria-label": "Visual Editor navigation" }, ss = ["disabled"], cs = ["disabled"], ls = {
+	key: 0,
 	class: "system-message"
+}, us = {
+	key: 1,
+	class: "system-message system-message--error"
 }, ds = {
 	key: 2,
-	class: "system-message system-message--error"
-}, fs = {
-	key: 3,
 	class: "system-message system-message--error",
 	role: "alert"
-}, ps = {
-	key: 4,
+}, fs = {
+	key: 3,
 	class: "system-message",
 	role: "status"
-}, ms = {
+}, ps = {
 	class: "section-rail",
 	"aria-label": "콘텐츠 섹션"
-}, hs = { class: "panel-heading" }, gs = { class: "section-list" }, _s = { class: "section-trigger-row" }, vs = ["aria-expanded", "onClick"], ys = ["aria-label"], bs = {
+}, ms = { class: "panel-heading" }, hs = { class: "section-list" }, gs = { class: "section-trigger-row" }, _s = ["aria-expanded", "onClick"], vs = ["aria-label"], ys = {
 	key: 0,
 	d: "M5.8 10.2 8.6 13l5.8-6"
-}, xs = {
+}, bs = {
 	key: 1,
 	d: "M10 5.5v6M10 14.5v.1"
-}, Ss = {
+}, xs = {
 	key: 0,
 	class: "section-ai-actions"
-}, Cs = [
+}, Ss = [
 	"disabled",
 	"title",
 	"onClick"
-], ws = ["onClick"], Ts = { class: "section-accordion__body" }, Es = { class: "section-accordion__items" }, Ds = ["onClick"], Os = { key: 0 }, ks = { class: "preview-panel" }, As = { class: "preview-toolbar" }, js = { class: "preview-title-group" }, Ms = ["disabled"], Ns = {
+], Cs = ["onClick"], ws = { class: "section-accordion__body" }, Ts = { class: "section-accordion__items" }, Es = ["onClick"], Ds = { key: 0 }, Os = { class: "preview-panel" }, ks = { class: "preview-toolbar" }, As = { class: "preview-title-group" }, js = ["disabled"], Ms = {
 	key: 1,
 	class: "preview-edit-hint"
-}, Ps = {
+}, Ns = {
 	key: 2,
 	class: "auto-register-message",
 	role: "status"
-}, Fs = { class: "preview-controls" }, Is = { class: "guide-toggle" }, Ls = {
+}, Ps = { class: "preview-controls" }, Fs = { class: "guide-toggle" }, Is = {
 	class: "viewport-control",
 	"aria-label": "Preview viewport"
-}, Rs = { class: "property-panel" }, zs = { class: "panel-heading" }, Bs = {
+}, Ls = { class: "property-panel" }, Rs = { class: "panel-heading" }, zs = {
 	key: 0,
 	class: "property-form"
-}, Vs = { key: 0 }, Hs = ["disabled", "value"], Us = { key: 1 }, Ws = ["disabled", "value"], Gs = ["disabled", "title"], Ks = ["disabled", "value"], qs = ["value"], Js = ["disabled", "value"], Ys = { key: 1 }, Xs = ["disabled", "value"], Zs = { key: 2 }, Qs = ["disabled", "value"], $s = { key: 3 }, ec = ["disabled", "rows"], tc = { class: "item-meta" }, nc = { class: "design-controls" }, rc = { class: "design-controls__heading" }, ic = ["disabled"], ac = ["disabled", "value"], oc = { class: "range-field" }, sc = ["disabled", "value"], cc = ["disabled", "value"], lc = ["disabled", "value"], uc = { class: "position-status" }, dc = { key: 0 }, fc = { key: 1 }, pc = ["disabled"], mc = {
+}, Bs = { key: 0 }, Vs = ["disabled", "value"], Hs = { key: 1 }, Us = ["disabled", "value"], Ws = ["disabled", "title"], Gs = ["disabled", "value"], Ks = ["value"], qs = ["disabled", "value"], Js = { key: 1 }, Ys = ["disabled", "value"], Xs = { key: 2 }, Zs = ["disabled", "value"], Qs = { key: 3 }, $s = ["disabled", "rows"], ec = { class: "item-meta" }, tc = { class: "design-controls" }, nc = { class: "design-controls__heading" }, rc = ["disabled"], ic = ["disabled", "value"], ac = { class: "range-field" }, oc = ["disabled", "value"], sc = ["disabled", "value"], cc = ["disabled", "value"], lc = { class: "position-status" }, uc = { key: 0 }, dc = { key: 1 }, fc = ["disabled"], pc = {
 	key: 1,
 	class: "section-background-alignment"
-}, hc = {
+}, mc = {
 	role: "group",
 	"aria-label": "배경 이미지 가로 정렬"
-}, gc = ["onClick"], _c = { class: "section-size-control" }, vc = ["disabled"], yc = {
+}, hc = ["onClick"], gc = { class: "section-size-control" }, _c = ["disabled"], vc = {
+	key: 1,
+	class: "shell-overlay",
+	type: "button",
+	"data-shell-overlay": "",
+	"aria-label": "메뉴 닫기"
+}, yc = {
 	__name: "App",
 	props: { mode: {
 		type: String,
@@ -3688,281 +3697,305 @@ var Uo = {
 			"content",
 			"design-spec",
 			"assets"
-		])) : Z("", !0)])) : (J(), Y("main", Ko, [
-			T.value ? Z("", !0) : (J(), Y("header", qo, [X("div", Jo, [X("div", Yo, [i[18] ||= X("h1", { class: "shell-header__brand" }, "PROMO WEB BUILDER", -1), X("span", Xo, P(ne.value ? "Admin Template Layout" : "Visual Editor"), 1)])]), X("div", Zo, [
-				X("nav", Qo, [(J(!0), Y(K, null, ar(Bt(ie), (e) => (J(), Y("a", {
+		])) : Z("", !0)])) : (J(), Y("main", {
+			key: 1,
+			class: M(["editor-shell", { "shell-frame": !T.value }]),
+			"data-shell-frame": T.value ? null : ""
+		}, [
+			T.value ? Z("", !0) : (J(), Y("aside", qo, [
+				i[18] ||= X("button", {
+					class: "shell-sidebar__close",
+					type: "button",
+					"data-shell-sidebar-close": "",
+					"aria-label": "메뉴 닫기"
+				}, "닫기", -1),
+				i[19] ||= X("div", { class: "shell-sidebar__brand" }, [X("strong", null, [
+					Pi("PROMO WEB"),
+					X("br"),
+					Pi("BUILDER")
+				]), X("span", null, "Workspace")], -1),
+				X("nav", Jo, [(J(!0), Y(K, null, ar(Bt(ie), (e) => (J(), Y("a", {
 					key: e.key,
 					href: e.href,
 					class: M({ active: e.key === "visual-editor" }),
 					"aria-current": e.key === "visual-editor" ? "page" : null
-				}, P(e.label), 11, $o))), 128))]),
-				i[19] ||= X("button", {
+				}, P(e.label), 11, Yo))), 128))]),
+				i[20] ||= X("div", { class: "shell-sidebar__footer" }, [X("button", {
 					class: "shell-theme-toggle",
 					type: "button",
 					"data-shell-theme-toggle": ""
 				}, [X("span", {
 					class: "shell-theme-dot",
 					"aria-hidden": "true"
-				}), X("strong", { "data-shell-theme-label": "" }, "Light")], -1),
-				X("div", es, P(ne.value ? `Layout revision ${_.value}` : "편집 준비"), 1)
-			])])),
-			X("header", ts, [X("div", null, [
-				X("span", null, P(ne.value ? "ADMIN TEMPLATE LAYOUT" : T.value ? "WIZARD LAYOUT" : "VISUAL EDITOR"), 1),
-				X("h2", null, P(a.value?.name || "Default Renderer"), 1),
-				ne.value ? (J(), Y("small", ns, " v" + P(a.value?.version || 1) + " · " + P(a.value?.status || "draft") + " · Draft 저장 후 템플릿을 활성화해야 Create Promo에 반영됩니다. ", 1)) : Z("", !0)
-			]), X("div", rs, [E.value ? Z("", !0) : (J(), Y("fieldset", is, [i[20] ||= X("legend", null, "페이지 배경", -1), X("div", as, [(J(!0), Y(K, null, ar(Bt(mo), (e) => (J(), Y("button", {
-				key: e.key,
+				}), X("strong", { "data-shell-theme-label": "" }, "Light")])], -1)
+			])),
+			X("div", { class: M(T.value ? "editor-embedded-main" : "shell-main") }, [T.value ? Z("", !0) : (J(), Y("header", Xo, [X("div", Zo, [i[21] ||= X("button", {
+				class: "shell-menu-toggle",
 				type: "button",
-				class: M({ active: l.value.theme.backgroundColor === e.value }),
-				title: `${e.name} ${e.value}`,
-				"aria-label": `${e.name} ${e.value}`,
-				onClick: (t) => Ce(e)
-			}, [X("i", { style: se({ backgroundColor: e.value }) }, null, 4)], 10, os))), 128))])])), X("nav", ss, [ne.value ? (J(), Y(K, { key: 0 }, [xn(X("input", {
-				"onUpdate:modelValue": i[0] ||= (e) => y.value = e,
-				type: "text",
-				placeholder: "변경 사유",
-				"aria-label": "레이아웃 변경 사유"
-			}, null, 512), [[Za, y.value]]), X("button", {
-				type: "button",
-				disabled: !A.value || b.value,
-				onClick: Ie
-			}, P(b.value ? "저장 중" : "기본 레이아웃 저장"), 9, cs)], 64)) : T.value ? Z("", !0) : (J(), Y("button", {
-				key: 1,
-				type: "button",
-				disabled: !A.value,
-				onClick: Pe
-			}, "Web Output 열기", 8, ls))])])]),
-			n.value ? (J(), Y("div", us, "기본 Form Template을 불러오는 중입니다.")) : r.value ? (J(), Y("div", ds, P(r.value), 1)) : Z("", !0),
-			h.value ? (J(), Y("div", fs, P(h.value), 1)) : Z("", !0),
-			x.value ? (J(), Y("div", ps, P(x.value), 1)) : Z("", !0),
-			!n.value && !r.value ? (J(), Y("section", {
-				key: 5,
-				class: M(["editor-workspace", { "is-create-promo-wizard": E.value }])
-			}, [
-				X("aside", ms, [X("div", hs, [i[21] ||= X("span", null, "SECTIONS", -1), X("strong", null, P(s.value.length), 1)]), X("div", gs, [(J(!0), Y(K, null, ar(s.value, (e) => (J(), Y("div", {
-					key: e.sectionKey,
-					class: M(["section-accordion", { open: e.sectionKey === f.value }])
-				}, [X("div", _s, [X("button", {
+				"data-shell-menu-toggle": "",
+				"aria-controls": "visual-editor-global-navigation",
+				"aria-expanded": "false",
+				"aria-label": "메뉴 열기"
+			}, "메뉴", -1), X("strong", null, P(ne.value ? "Admin Template Layout" : "Visual Editor"), 1)]), X("div", Qo, [X("div", $o, P(ne.value ? `Layout revision ${_.value}` : "편집 준비"), 1)])])), X("div", { class: M({ "shell-content": !T.value }) }, [
+				X("header", es, [X("div", null, [
+					X("span", null, P(ne.value ? "ADMIN TEMPLATE LAYOUT" : T.value ? "WIZARD LAYOUT" : "VISUAL EDITOR"), 1),
+					X("h2", null, P(a.value?.name || "Default Renderer"), 1),
+					ne.value ? (J(), Y("small", ts, " v" + P(a.value?.version || 1) + " · " + P(a.value?.status || "draft") + " · Draft 저장 후 템플릿을 활성화해야 Create Promo에 반영됩니다. ", 1)) : Z("", !0)
+				]), X("div", ns, [E.value ? Z("", !0) : (J(), Y("fieldset", rs, [i[22] ||= X("legend", null, "페이지 배경", -1), X("div", is, [(J(!0), Y(K, null, ar(Bt(mo), (e) => (J(), Y("button", {
+					key: e.key,
 					type: "button",
-					class: M(["section-trigger", { active: e.sectionKey === D.value?.sectionKey }]),
-					"aria-expanded": e.sectionKey === f.value,
-					onClick: (t) => oe(e)
-				}, [
-					X("span", null, P(e.name), 1),
-					(J(), Y("svg", {
-						class: M(["section-registration-icon", fe(e) ? "is-complete" : "is-incomplete"]),
-						viewBox: "0 0 20 20",
-						role: "img",
-						"aria-label": fe(e) ? `${e.name} 콘텐츠 등록 완료` : `${e.name} 콘텐츠 등록 필요`
-					}, [i[22] ||= X("circle", {
-						cx: "10",
-						cy: "10",
-						r: "9"
-					}, null, -1), fe(e) ? (J(), Y("path", bs)) : (J(), Y("path", xs))], 10, ys)),
-					i[23] ||= X("i", { "aria-hidden": "true" }, null, -1)
-				], 10, vs), E.value ? (J(), Y("div", Ss, [e.aiDesign?.enabled !== !1 && e.aiDesign?.imageTarget !== "item" ? (J(), Y("button", {
-					key: 0,
+					class: M({ active: l.value.theme.backgroundColor === e.value }),
+					title: `${e.name} ${e.value}`,
+					"aria-label": `${e.name} ${e.value}`,
+					onClick: (t) => Ce(e)
+				}, [X("i", { style: se({ backgroundColor: e.value }) }, null, 4)], 10, as))), 128))])])), X("nav", os, [ne.value ? (J(), Y(K, { key: 0 }, [xn(X("input", {
+					"onUpdate:modelValue": i[0] ||= (e) => y.value = e,
+					type: "text",
+					placeholder: "변경 사유",
+					"aria-label": "레이아웃 변경 사유"
+				}, null, 512), [[Za, y.value]]), X("button", {
 					type: "button",
-					class: "section-ai-action",
-					disabled: _e(e).disabled,
-					title: _e(e).disabled && !N(e) ? "섹션 콘텐츠를 먼저 등록해 주세요." : "",
-					onClick: (t) => xe(e, _e(e).action)
-				}, P(_e(e).label), 9, Cs)) : Z("", !0), I(e) ? (J(), Y("button", {
+					disabled: !A.value || b.value,
+					onClick: Ie
+				}, P(b.value ? "저장 중" : "기본 레이아웃 저장"), 9, ss)], 64)) : T.value ? Z("", !0) : (J(), Y("button", {
 					key: 1,
 					type: "button",
-					class: "section-ai-remove",
-					onClick: (t) => xe(e, "remove-background")
-				}, "배경 삭제", 8, ws)) : Z("", !0)])) : Z("", !0)]), X("div", Ts, [X("div", Es, [(J(!0), Y(K, null, ar(e.items || [], (t) => (J(), Y("button", {
-					key: t.itemKey,
-					type: "button",
-					class: M({ active: e.sectionKey === D.value?.sectionKey && t.itemKey === O.value?.itemKey }),
-					onClick: (n) => ae(e, t)
-				}, P(t.name), 11, Ds))), 128)), e.items?.length ? Z("", !0) : (J(), Y("span", Os, "등록된 아이템 없음"))])])], 2))), 128))])]),
-				X("section", ks, [X("div", As, [X("div", js, [
-					i[24] ||= X("strong", null, "Live Preview", -1),
-					X("small", null, P(a.value.templateKey) + " · v" + P(a.value.version), 1),
-					E.value ? (J(), Y("button", {
-						key: 0,
-						class: "auto-register-action",
+					disabled: !A.value,
+					onClick: Pe
+				}, "Web Output 열기", 8, cs))])])]),
+				n.value ? (J(), Y("div", ls, "기본 Form Template을 불러오는 중입니다.")) : r.value ? (J(), Y("div", us, P(r.value), 1)) : Z("", !0),
+				h.value ? (J(), Y("div", ds, P(h.value), 1)) : Z("", !0),
+				x.value ? (J(), Y("div", fs, P(x.value), 1)) : Z("", !0),
+				!n.value && !r.value ? (J(), Y("section", {
+					key: 4,
+					class: M(["editor-workspace", { "is-create-promo-wizard": E.value }])
+				}, [
+					X("aside", ps, [X("div", ms, [i[23] ||= X("span", null, "SECTIONS", -1), X("strong", null, P(s.value.length), 1)]), X("div", hs, [(J(!0), Y(K, null, ar(s.value, (e) => (J(), Y("div", {
+						key: e.sectionKey,
+						class: M(["section-accordion", { open: e.sectionKey === f.value }])
+					}, [X("div", gs, [X("button", {
 						type: "button",
-						disabled: C.value,
-						onClick: pe
-					}, P(C.value ? "등록 중" : "자동등록"), 9, Ms)) : Z("", !0),
-					E.value ? (J(), Y("small", Ns, "미리보기 요소를 선택해 내용을 입력하세요.")) : Z("", !0),
-					w.value ? (J(), Y("small", Ps, P(w.value), 1)) : Z("", !0)
-				]), X("div", Fs, [X("label", Is, [
-					xn(X("input", {
-						"onUpdate:modelValue": i[1] ||= (e) => m.value = e,
-						type: "checkbox"
-					}, null, 512), [[Qa, m.value]]),
-					i[25] ||= X("span", null, "Guides", -1),
-					X("strong", null, P(m.value ? "ON" : "OFF"), 1)
-				]), X("div", Ls, [X("button", {
-					type: "button",
-					class: M({ active: p.value === "desktop" }),
-					onClick: i[2] ||= (e) => p.value = "desktop"
-				}, "Desktop", 2), X("button", {
-					type: "button",
-					class: M({ active: p.value === "mobile" }),
-					onClick: i[3] ||= (e) => p.value = "mobile"
-				}, "Mobile", 2)])])]), X("div", { class: M(["preview-stage", `preview-stage--${p.value}`]) }, [j.value ? (J(), Ti(Lo, {
-					key: 0,
-					content: j.value.content,
-					"design-spec": j.value.designSpec,
-					assets: j.value.assets,
-					editable: "",
-					"show-guides": m.value,
-					"selected-item-key": we.value,
-					onSelectItem: ae,
-					onUpdateItemStyle: Ee,
-					onUpdateRendererItemStyle: De,
-					onUpdateItemContent: ue,
-					onUpdateSectionStyle: Ae
-				}, null, 8, [
-					"content",
-					"design-spec",
-					"assets",
-					"show-guides",
-					"selected-item-key"
-				])) : Z("", !0)], 2)]),
-				X("aside", Rs, [X("div", zs, [i[26] ||= X("span", null, "CONTENT", -1), X("strong", null, P(O.value?.name || "항목 선택"), 1)]), O.value ? (J(), Y("div", Bs, [
-					O.value.fieldKind === "cta" ? (J(), Y("label", Vs, [i[27] ||= X("span", null, "버튼 텍스트", -1), X("input", {
-						disabled: O.value.isLocked,
-						value: k.value?.label,
-						onInput: i[4] ||= (e) => le("label", e.target.value)
-					}, null, 40, Hs)])) : Z("", !0),
-					O.value.fieldKind === "cta" ? (J(), Y("label", Us, [i[28] ||= X("span", null, "버튼 URL", -1), X("input", {
-						disabled: O.value.isLocked,
-						type: "url",
-						value: k.value?.link,
-						onInput: i[5] ||= (e) => le("link", e.target.value)
-					}, null, 40, Ws)])) : O.value.fieldKind === "image" ? (J(), Y(K, { key: 2 }, [
-						E.value && ye(D.value, O.value) ? (J(), Y("button", {
+						class: M(["section-trigger", { active: e.sectionKey === D.value?.sectionKey }]),
+						"aria-expanded": e.sectionKey === f.value,
+						onClick: (t) => oe(e)
+					}, [
+						X("span", null, P(e.name), 1),
+						(J(), Y("svg", {
+							class: M(["section-registration-icon", fe(e) ? "is-complete" : "is-incomplete"]),
+							viewBox: "0 0 20 20",
+							role: "img",
+							"aria-label": fe(e) ? `${e.name} 콘텐츠 등록 완료` : `${e.name} 콘텐츠 등록 필요`
+						}, [i[24] ||= X("circle", {
+							cx: "10",
+							cy: "10",
+							r: "9"
+						}, null, -1), fe(e) ? (J(), Y("path", ys)) : (J(), Y("path", bs))], 10, vs)),
+						i[25] ||= X("i", { "aria-hidden": "true" }, null, -1)
+					], 10, _s), E.value ? (J(), Y("div", xs, [e.aiDesign?.enabled !== !1 && e.aiDesign?.imageTarget !== "item" ? (J(), Y("button", {
+						key: 0,
+						type: "button",
+						class: "section-ai-action",
+						disabled: _e(e).disabled,
+						title: _e(e).disabled && !N(e) ? "섹션 콘텐츠를 먼저 등록해 주세요." : "",
+						onClick: (t) => xe(e, _e(e).action)
+					}, P(_e(e).label), 9, Ss)) : Z("", !0), I(e) ? (J(), Y("button", {
+						key: 1,
+						type: "button",
+						class: "section-ai-remove",
+						onClick: (t) => xe(e, "remove-background")
+					}, "배경 삭제", 8, Cs)) : Z("", !0)])) : Z("", !0)]), X("div", ws, [X("div", Ts, [(J(!0), Y(K, null, ar(e.items || [], (t) => (J(), Y("button", {
+						key: t.itemKey,
+						type: "button",
+						class: M({ active: e.sectionKey === D.value?.sectionKey && t.itemKey === O.value?.itemKey }),
+						onClick: (n) => ae(e, t)
+					}, P(t.name), 11, Es))), 128)), e.items?.length ? Z("", !0) : (J(), Y("span", Ds, "등록된 아이템 없음"))])])], 2))), 128))])]),
+					X("section", Os, [X("div", ks, [X("div", As, [
+						i[26] ||= X("strong", null, "Live Preview", -1),
+						X("small", null, P(a.value.templateKey) + " · v" + P(a.value.version), 1),
+						E.value ? (J(), Y("button", {
 							key: 0,
+							class: "auto-register-action",
 							type: "button",
-							class: "section-ai-action item-ai-generation-action",
-							disabled: be(D.value, O.value).disabled,
-							title: be(D.value, O.value).disabled && !N(D.value) ? "섹션 콘텐츠를 먼저 등록해 주세요." : "",
-							onClick: i[6] ||= (e) => xe(D.value, be(D.value, O.value).action, O.value.itemKey)
-						}, P(be(D.value, O.value).label), 9, Gs)) : Z("", !0),
-						X("label", null, [i[29] ||= X("span", null, "이미지 입력 방식", -1), X("select", {
+							disabled: C.value,
+							onClick: pe
+						}, P(C.value ? "등록 중" : "자동등록"), 9, js)) : Z("", !0),
+						E.value ? (J(), Y("small", Ms, "미리보기 요소를 선택해 내용을 입력하세요.")) : Z("", !0),
+						w.value ? (J(), Y("small", Ns, P(w.value), 1)) : Z("", !0)
+					]), X("div", Ps, [X("label", Fs, [
+						xn(X("input", {
+							"onUpdate:modelValue": i[1] ||= (e) => m.value = e,
+							type: "checkbox"
+						}, null, 512), [[Qa, m.value]]),
+						i[27] ||= X("span", null, "Guides", -1),
+						X("strong", null, P(m.value ? "ON" : "OFF"), 1)
+					]), X("div", Is, [X("button", {
+						type: "button",
+						class: M({ active: p.value === "desktop" }),
+						onClick: i[2] ||= (e) => p.value = "desktop"
+					}, "Desktop", 2), X("button", {
+						type: "button",
+						class: M({ active: p.value === "mobile" }),
+						onClick: i[3] ||= (e) => p.value = "mobile"
+					}, "Mobile", 2)])])]), X("div", { class: M(["preview-stage", `preview-stage--${p.value}`]) }, [j.value ? (J(), Ti(Lo, {
+						key: 0,
+						content: j.value.content,
+						"design-spec": j.value.designSpec,
+						assets: j.value.assets,
+						editable: "",
+						"show-guides": m.value,
+						"selected-item-key": we.value,
+						onSelectItem: ae,
+						onUpdateItemStyle: Ee,
+						onUpdateRendererItemStyle: De,
+						onUpdateItemContent: ue,
+						onUpdateSectionStyle: Ae
+					}, null, 8, [
+						"content",
+						"design-spec",
+						"assets",
+						"show-guides",
+						"selected-item-key"
+					])) : Z("", !0)], 2)]),
+					X("aside", Ls, [X("div", Rs, [i[28] ||= X("span", null, "CONTENT", -1), X("strong", null, P(O.value?.name || "항목 선택"), 1)]), O.value ? (J(), Y("div", zs, [
+						O.value.fieldKind === "cta" ? (J(), Y("label", Bs, [i[29] ||= X("span", null, "버튼 텍스트", -1), X("input", {
 							disabled: O.value.isLocked,
-							value: k.value?.source,
-							onChange: i[7] ||= (e) => le("source", e.target.value)
-						}, [(J(!0), Y(K, null, ar(O.value.image?.allowedSources || ["url"], (e) => (J(), Y("option", {
-							key: e,
-							value: e
-						}, P(e), 9, qs))), 128))], 40, Ks)]),
-						X("label", null, [i[30] ||= X("span", null, "URL 또는 이미지 설명", -1), X("textarea", {
+							value: k.value?.label,
+							onInput: i[4] ||= (e) => le("label", e.target.value)
+						}, null, 40, Vs)])) : Z("", !0),
+						O.value.fieldKind === "cta" ? (J(), Y("label", Hs, [i[30] ||= X("span", null, "버튼 URL", -1), X("input", {
 							disabled: O.value.isLocked,
-							rows: "4",
-							value: k.value?.value,
-							onInput: i[8] ||= (e) => le("value", e.target.value)
-						}, null, 40, Js)]),
-						O.value.image?.descriptionEnabled ? (J(), Y("label", Ys, [i[31] ||= X("span", null, "설명", -1), X("textarea", {
+							type: "url",
+							value: k.value?.link,
+							onInput: i[5] ||= (e) => le("link", e.target.value)
+						}, null, 40, Us)])) : O.value.fieldKind === "image" ? (J(), Y(K, { key: 2 }, [
+							E.value && ye(D.value, O.value) ? (J(), Y("button", {
+								key: 0,
+								type: "button",
+								class: "section-ai-action item-ai-generation-action",
+								disabled: be(D.value, O.value).disabled,
+								title: be(D.value, O.value).disabled && !N(D.value) ? "섹션 콘텐츠를 먼저 등록해 주세요." : "",
+								onClick: i[6] ||= (e) => xe(D.value, be(D.value, O.value).action, O.value.itemKey)
+							}, P(be(D.value, O.value).label), 9, Ws)) : Z("", !0),
+							X("label", null, [i[31] ||= X("span", null, "이미지 입력 방식", -1), X("select", {
+								disabled: O.value.isLocked,
+								value: k.value?.source,
+								onChange: i[7] ||= (e) => le("source", e.target.value)
+							}, [(J(!0), Y(K, null, ar(O.value.image?.allowedSources || ["url"], (e) => (J(), Y("option", {
+								key: e,
+								value: e
+							}, P(e), 9, Ks))), 128))], 40, Gs)]),
+							X("label", null, [i[32] ||= X("span", null, "URL 또는 이미지 설명", -1), X("textarea", {
+								disabled: O.value.isLocked,
+								rows: "4",
+								value: k.value?.value,
+								onInput: i[8] ||= (e) => le("value", e.target.value)
+							}, null, 40, qs)]),
+							O.value.image?.descriptionEnabled ? (J(), Y("label", Js, [i[33] ||= X("span", null, "설명", -1), X("textarea", {
+								disabled: O.value.isLocked,
+								rows: "3",
+								value: k.value?.description,
+								onInput: i[9] ||= (e) => le("description", e.target.value)
+							}, null, 40, Ys)])) : Z("", !0),
+							O.value.image?.altTextRequired ? (J(), Y("label", Xs, [i[34] ||= X("span", null, "대체 텍스트", -1), X("input", {
+								disabled: O.value.isLocked,
+								value: k.value?.alt,
+								onInput: i[10] ||= (e) => le("alt", e.target.value)
+							}, null, 40, Zs)])) : Z("", !0),
+							!O.value.isLocked && k.value?.value ? (J(), Y("button", {
+								key: 3,
+								type: "button",
+								class: "image-remove-action",
+								onClick: Se
+							}, "이미지 삭제")) : Z("", !0)
+						], 64)) : (J(), Y("label", Qs, [X("span", null, P(O.value.textType === "multi" ? "설명 텍스트" : "텍스트"), 1), xn(X("textarea", {
+							"onUpdate:modelValue": i[11] ||= (e) => k.value = e,
 							disabled: O.value.isLocked,
-							rows: "3",
-							value: k.value?.description,
-							onInput: i[9] ||= (e) => le("description", e.target.value)
-						}, null, 40, Xs)])) : Z("", !0),
-						O.value.image?.altTextRequired ? (J(), Y("label", Zs, [i[32] ||= X("span", null, "대체 텍스트", -1), X("input", {
-							disabled: O.value.isLocked,
-							value: k.value?.alt,
-							onInput: i[10] ||= (e) => le("alt", e.target.value)
-						}, null, 40, Qs)])) : Z("", !0),
-						!O.value.isLocked && k.value?.value ? (J(), Y("button", {
-							key: 3,
-							type: "button",
-							class: "image-remove-action",
-							onClick: Se
-						}, "이미지 삭제")) : Z("", !0)
-					], 64)) : (J(), Y("label", $s, [X("span", null, P(O.value.textType === "multi" ? "설명 텍스트" : "텍스트"), 1), xn(X("textarea", {
-						"onUpdate:modelValue": i[11] ||= (e) => k.value = e,
-						disabled: O.value.isLocked,
-						rows: O.value.textType === "multi" ? 8 : 3,
-						placeholder: "Enter 키로 줄바꿈할 수 있습니다."
-					}, null, 8, ec), [[Za, k.value]])])),
-					X("dl", tc, [
-						X("div", null, [i[33] ||= X("dt", null, "Item key", -1), X("dd", null, P(O.value.itemKey), 1)]),
-						X("div", null, [i[34] ||= X("dt", null, "필수", -1), X("dd", null, P(O.value.isRequired ? "Y" : "N"), 1)]),
-						X("div", null, [i[35] ||= X("dt", null, "고정", -1), X("dd", null, P(O.value.isLocked ? "Y" : "N"), 1)])
-					]),
-					X("section", nc, [
-						X("div", rc, [i[36] ||= X("strong", null, "DESIGN", -1), X("button", {
-							type: "button",
-							disabled: O.value.isLocked,
-							onClick: Oe
-						}, "초기화", 8, ic)]),
-						X("label", null, [i[37] ||= X("span", null, "글자 색상", -1), X("input", {
-							type: "color",
-							disabled: O.value.isLocked,
-							value: L.value.color || "#172033",
-							onInput: i[12] ||= (e) => Ee({ color: e.target.value })
-						}, null, 40, ac)]),
-						X("label", null, [i[38] ||= X("span", null, "폰트 크기", -1), X("div", oc, [X("input", {
-							type: "range",
-							min: "10",
-							max: "80",
-							step: "1",
-							disabled: O.value.isLocked,
-							value: L.value.fontSize || 18,
-							onInput: i[13] ||= (e) => Ee({ fontSize: Number(e.target.value) })
-						}, null, 40, sc), X("output", null, P(L.value.fontSize || 18) + "px", 1)])]),
-						X("label", null, [i[40] ||= X("span", null, "폰트 굵기", -1), X("select", {
-							disabled: O.value.isLocked,
-							value: L.value.fontWeight || 400,
-							onChange: i[14] ||= (e) => Ee({ fontWeight: Number(e.target.value) })
-						}, [...i[39] ||= [
-							X("option", { value: 400 }, "Regular", -1),
-							X("option", { value: 500 }, "Medium", -1),
-							X("option", { value: 700 }, "Bold", -1),
-							X("option", { value: 800 }, "Extra Bold", -1)
-						]], 40, cc)]),
-						X("label", null, [i[42] ||= X("span", null, "정렬", -1), X("select", {
-							disabled: O.value.isLocked,
-							value: L.value.textAlign || "left",
-							onChange: i[15] ||= (e) => Ee({ textAlign: e.target.value })
-						}, [...i[41] ||= [
-							X("option", { value: "left" }, "왼쪽", -1),
-							X("option", { value: "center" }, "가운데", -1),
-							X("option", { value: "right" }, "오른쪽", -1)
-						]], 40, lc)]),
-						X("div", uc, [i[43] ||= X("span", null, "위치", -1), L.value.positionMode === "free" ? (J(), Y("strong", dc, " X " + P(Math.round(L.value.xPct || 0)) + "% · Y " + P(Math.round(L.value.yPx || 0)) + "px ", 1)) : (J(), Y("strong", fc, "자동 배치"))]),
-						L.value.positionMode === "free" ? (J(), Y("button", {
-							key: 0,
-							class: "secondary-control",
-							type: "button",
-							disabled: O.value.isLocked,
-							onClick: ke
-						}, " 자동 배치로 복원 ", 8, pc)) : Z("", !0),
-						I(D.value) ? (J(), Y("div", mc, [i[44] ||= X("span", null, "배경 이미지 정렬", -1), X("div", hc, [(J(), Y(K, null, ar([
-							{
-								value: "left",
-								label: "왼쪽"
-							},
-							{
-								value: "center",
-								label: "중앙"
-							},
-							{
-								value: "right",
-								label: "오른쪽"
-							}
-						], (e) => X("button", {
-							key: e.value,
-							type: "button",
-							class: M({ active: (Te.value.backgroundPosition || "right center") === `${e.value} center` }),
-							onClick: (t) => je(e.value)
-						}, P(e.label), 11, gc)), 64))])])) : Z("", !0),
-						X("div", _c, [X("div", null, [i[45] ||= X("span", null, "섹션 높이", -1), X("strong", null, P(Te.value.minHeight ? `${Math.round(Te.value.minHeight)}px` : "자동"), 1)]), X("button", {
-							type: "button",
-							disabled: !Te.value.minHeight,
-							onClick: Me
-						}, " 높이 초기화 ", 8, vc)])
-					])
-				])) : Z("", !0)])
-			], 2)) : Z("", !0)
-		]));
+							rows: O.value.textType === "multi" ? 8 : 3,
+							placeholder: "Enter 키로 줄바꿈할 수 있습니다."
+						}, null, 8, $s), [[Za, k.value]])])),
+						X("dl", ec, [
+							X("div", null, [i[35] ||= X("dt", null, "Item key", -1), X("dd", null, P(O.value.itemKey), 1)]),
+							X("div", null, [i[36] ||= X("dt", null, "필수", -1), X("dd", null, P(O.value.isRequired ? "Y" : "N"), 1)]),
+							X("div", null, [i[37] ||= X("dt", null, "고정", -1), X("dd", null, P(O.value.isLocked ? "Y" : "N"), 1)])
+						]),
+						X("section", tc, [
+							X("div", nc, [i[38] ||= X("strong", null, "DESIGN", -1), X("button", {
+								type: "button",
+								disabled: O.value.isLocked,
+								onClick: Oe
+							}, "초기화", 8, rc)]),
+							X("label", null, [i[39] ||= X("span", null, "글자 색상", -1), X("input", {
+								type: "color",
+								disabled: O.value.isLocked,
+								value: L.value.color || "#172033",
+								onInput: i[12] ||= (e) => Ee({ color: e.target.value })
+							}, null, 40, ic)]),
+							X("label", null, [i[40] ||= X("span", null, "폰트 크기", -1), X("div", ac, [X("input", {
+								type: "range",
+								min: "10",
+								max: "80",
+								step: "1",
+								disabled: O.value.isLocked,
+								value: L.value.fontSize || 18,
+								onInput: i[13] ||= (e) => Ee({ fontSize: Number(e.target.value) })
+							}, null, 40, oc), X("output", null, P(L.value.fontSize || 18) + "px", 1)])]),
+							X("label", null, [i[42] ||= X("span", null, "폰트 굵기", -1), X("select", {
+								disabled: O.value.isLocked,
+								value: L.value.fontWeight || 400,
+								onChange: i[14] ||= (e) => Ee({ fontWeight: Number(e.target.value) })
+							}, [...i[41] ||= [
+								X("option", { value: 400 }, "Regular", -1),
+								X("option", { value: 500 }, "Medium", -1),
+								X("option", { value: 700 }, "Bold", -1),
+								X("option", { value: 800 }, "Extra Bold", -1)
+							]], 40, sc)]),
+							X("label", null, [i[44] ||= X("span", null, "정렬", -1), X("select", {
+								disabled: O.value.isLocked,
+								value: L.value.textAlign || "left",
+								onChange: i[15] ||= (e) => Ee({ textAlign: e.target.value })
+							}, [...i[43] ||= [
+								X("option", { value: "left" }, "왼쪽", -1),
+								X("option", { value: "center" }, "가운데", -1),
+								X("option", { value: "right" }, "오른쪽", -1)
+							]], 40, cc)]),
+							X("div", lc, [i[45] ||= X("span", null, "위치", -1), L.value.positionMode === "free" ? (J(), Y("strong", uc, " X " + P(Math.round(L.value.xPct || 0)) + "% · Y " + P(Math.round(L.value.yPx || 0)) + "px ", 1)) : (J(), Y("strong", dc, "자동 배치"))]),
+							L.value.positionMode === "free" ? (J(), Y("button", {
+								key: 0,
+								class: "secondary-control",
+								type: "button",
+								disabled: O.value.isLocked,
+								onClick: ke
+							}, " 자동 배치로 복원 ", 8, fc)) : Z("", !0),
+							I(D.value) ? (J(), Y("div", pc, [i[46] ||= X("span", null, "배경 이미지 정렬", -1), X("div", mc, [(J(), Y(K, null, ar([
+								{
+									value: "left",
+									label: "왼쪽"
+								},
+								{
+									value: "center",
+									label: "중앙"
+								},
+								{
+									value: "right",
+									label: "오른쪽"
+								}
+							], (e) => X("button", {
+								key: e.value,
+								type: "button",
+								class: M({ active: (Te.value.backgroundPosition || "right center") === `${e.value} center` }),
+								onClick: (t) => je(e.value)
+							}, P(e.label), 11, hc)), 64))])])) : Z("", !0),
+							X("div", gc, [X("div", null, [i[47] ||= X("span", null, "섹션 높이", -1), X("strong", null, P(Te.value.minHeight ? `${Math.round(Te.value.minHeight)}px` : "자동"), 1)]), X("button", {
+								type: "button",
+								disabled: !Te.value.minHeight,
+								onClick: Me
+							}, " 높이 초기화 ", 8, _c)])
+						])
+					])) : Z("", !0)])
+				], 2)) : Z("", !0)
+			], 2)], 2),
+			T.value ? Z("", !0) : (J(), Y("button", vc))
+		], 10, Ko));
 	}
 }, bc = document.querySelector("#visual-editor-app");
 bc && co(yc, { mode: new URLSearchParams(window.location.search).get("mode") || bc.dataset.mode || "editor" }).mount(bc);
