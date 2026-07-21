@@ -583,6 +583,7 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
             </button>
               <div v-if="isCreatePromoWizardMode" class="section-ai-actions">
                 <button
+                  v-if="section.aiDesign?.enabled !== false"
                   type="button"
                   class="section-ai-action"
                   :disabled="sectionAiPrimaryAction(section).disabled"

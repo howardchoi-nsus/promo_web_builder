@@ -16,7 +16,7 @@ const section = {
   items: [
     { itemKey: "title", fieldKind: "text", isLocked: true, isVisibleInWizard: true },
     { itemKey: "description", fieldKind: "text", isLocked: false, isVisibleInWizard: true },
-    { itemKey: "heroImage", fieldKind: "image", isLocked: false, isVisibleInWizard: true },
+    { itemKey: "heroImage", fieldKind: "image", isLocked: false, isVisibleInWizard: true, image: { allowedSources: ["ai", "file"] } },
   ],
 };
 

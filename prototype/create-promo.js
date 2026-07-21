@@ -1372,28 +1372,48 @@ async function applySectionAiDesign(section, saved) {
     });
     if (appliedRun.imageResult?.proxyUrl) {
       clearLegacySectionAiImages(section);
-      const layoutVariant = appliedRun.layoutResult?.layoutVariant;
-      const safeArea = layoutVariant === "split-left"
-        ? "right-copy"
-        : layoutVariant === "split-right"
-          ? "left-copy"
-          : layoutVariant === "centered-hero"
-            ? "center-copy"
-            : appliedRun.imageResult.safeArea || appliedRun.layoutResult?.imageRequest?.safeArea || "left-copy";
-      const backgroundPosition = safeArea === "right-copy"
-        ? "left center"
-        : safeArea === "center-copy" ? "center center" : "right center";
-      wizardResolvedLayout.sectionStyles[section.sectionKey] = {
-        ...(wizardResolvedLayout.sectionStyles[section.sectionKey] || {}),
-        backgroundImage: appliedRun.imageResult.proxyUrl,
-        backgroundSize: "contain",
-        backgroundPosition,
-        backgroundRepeat: "no-repeat",
-        backgroundFadeSafeArea: safeArea,
-        backgroundFadeColor: appliedRun.imageResult.backgroundColor
-          || wizardResolvedLayout?.theme?.backgroundColor
-          || FALLBACK_LAYOUT.theme.backgroundColor,
-      };
+      const imageTarget = appliedRun.imageResult.target || appliedRun.layoutResult?.imageRequest?.target;
+      if (imageTarget?.type === "item" && imageTarget.itemKey) {
+        const targetItem = section.items?.find((item) => item.itemKey === imageTarget.itemKey && item.fieldKind === "image");
+        if (!targetItem || targetItem.isLocked || !targetItem.image?.allowedSources?.includes("ai")) {
+          throw new Error("관리자 정책에서 선택한 AI 이미지 Item을 현재 섹션에 적용할 수 없습니다.");
+        }
+        setValueAtPath(contentState.sectionInputs, `${section.sectionKey}.${targetItem.itemKey}`, {
+          source: "ai",
+          value: appliedRun.imageResult.proxyUrl,
+          description: appliedRun.layoutResult?.imageRequest?.prompt || "",
+          alt: targetItem.name || section.name || "AI generated promotion image",
+        });
+        const currentSectionStyle = { ...(wizardResolvedLayout.sectionStyles[section.sectionKey] || {}) };
+        if (String(currentSectionStyle.backgroundImage || "").startsWith("/api/promo-section-design-image?")) {
+          ["backgroundImage", "backgroundSize", "backgroundPosition", "backgroundRepeat", "backgroundFadeSafeArea", "backgroundFadeColor"]
+            .forEach((key) => delete currentSectionStyle[key]);
+          wizardResolvedLayout.sectionStyles[section.sectionKey] = currentSectionStyle;
+        }
+      } else {
+        const layoutVariant = appliedRun.layoutResult?.layoutVariant;
+        const safeArea = layoutVariant === "split-left"
+          ? "right-copy"
+          : layoutVariant === "split-right"
+            ? "left-copy"
+            : layoutVariant === "centered-hero"
+              ? "center-copy"
+              : appliedRun.imageResult.safeArea || appliedRun.layoutResult?.imageRequest?.safeArea || "left-copy";
+        const backgroundPosition = safeArea === "right-copy"
+          ? "left center"
+          : safeArea === "center-copy" ? "center center" : "right center";
+        wizardResolvedLayout.sectionStyles[section.sectionKey] = {
+          ...(wizardResolvedLayout.sectionStyles[section.sectionKey] || {}),
+          backgroundImage: appliedRun.imageResult.proxyUrl,
+          backgroundSize: "contain",
+          backgroundPosition,
+          backgroundRepeat: "no-repeat",
+          backgroundFadeSafeArea: safeArea,
+          backgroundFadeColor: appliedRun.imageResult.backgroundColor
+            || wizardResolvedLayout?.theme?.backgroundColor
+            || FALLBACK_LAYOUT.theme.backgroundColor,
+        };
+      }
     }
     saveSectionAiRun(section.sectionKey, appliedRun, contentState.sectionInputs?.[section.sectionKey]);
     postWizardLayoutSnapshot();

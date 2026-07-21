@@ -3722,14 +3722,15 @@ var Uo = {
 						r: "9"
 					}, null, -1), fe(e) ? (J(), Y("path", bs)) : (J(), Y("path", xs))], 10, ys)),
 					i[22] ||= X("i", { "aria-hidden": "true" }, null, -1)
-				], 10, vs), E.value ? (J(), Y("div", Ss, [X("button", {
+				], 10, vs), E.value ? (J(), Y("div", Ss, [e.aiDesign?.enabled === !1 ? Z("", !0) : (J(), Y("button", {
+					key: 0,
 					type: "button",
 					class: "section-ai-action",
 					disabled: ve(e).disabled,
 					title: ve(e).disabled && !ge(e) ? "섹션 콘텐츠를 먼저 등록해 주세요." : "",
 					onClick: (t) => ye(e, ve(e).action)
-				}, N(ve(e).label), 9, Cs), be(e) ? (J(), Y("button", {
-					key: 0,
+				}, N(ve(e).label), 9, Cs)), be(e) ? (J(), Y("button", {
+					key: 1,
 					type: "button",
 					class: "section-ai-remove",
 					onClick: (t) => ye(e, "remove-background")

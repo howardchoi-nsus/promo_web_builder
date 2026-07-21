@@ -243,9 +243,11 @@ async function validateSectionDraft(sql, sectionId) {
     errors.push({ path: `${sectionRow.section_key}.aiDesign.allowedLayoutVariants`, code: "AI_LAYOUT_VARIANT_REQUIRED", message: "An AI-enabled section needs at least one allowed layout variant." });
   }
   if (aiDesign.enabled && aiDesign.imageTarget === "item") {
-    const visibleImageKeys = new Set(visibleItems.filter((item) => item.fieldKind === "image").map((item) => item.itemKey));
+    const visibleImageKeys = new Set(visibleItems
+      .filter((item) => item.fieldKind === "image" && item.image?.allowedSources?.includes("ai"))
+      .map((item) => item.itemKey));
     if (!aiDesign.imageTargetItemKeys.some((key) => visibleImageKeys.has(key))) {
-      errors.push({ path: `${sectionRow.section_key}.aiDesign.imageTargetItemKeys`, code: "AI_IMAGE_TARGET_REQUIRED", message: "Select at least one visible image item for the AI image target." });
+      errors.push({ path: `${sectionRow.section_key}.aiDesign.imageTargetItemKeys`, code: "AI_IMAGE_TARGET_REQUIRED", message: "Select at least one visible image item that allows the AI source." });
     }
   }
 

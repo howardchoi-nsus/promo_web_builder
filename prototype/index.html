@@ -1362,11 +1362,11 @@
                     </select>
                   </label>
                   <div class="form-grid compact" v-if="wizardSectionFieldsEditor.aiDesign.imageTarget === 'item'">
-                    <label class="switch-control" v-for="item in wizardSectionDetail.items.filter((entry) => entry.fieldKind === 'image' && entry.isVisibleInWizard)" :key="item.itemKey">
+                    <label class="switch-control" v-for="item in wizardSectionDetail.items.filter((entry) => entry.fieldKind === 'image' && entry.isVisibleInWizard && entry.image?.allowedSources?.includes('ai'))" :key="item.itemKey">
                       <input type="checkbox" :value="item.itemKey" v-model="wizardSectionFieldsEditor.aiDesign.imageTargetItemKeys" :disabled="wizardSectionDetail.section.status !== 'draft' || !wizardSectionFieldsEditor.aiDesign.enabled" />
                       <span>{{ item.name }} ({{ item.itemKey }})</span>
                     </label>
-                    <div class="empty-state compact" v-if="!wizardSectionDetail.items.some((entry) => entry.fieldKind === 'image' && entry.isVisibleInWizard)">선택할 수 있는 이미지 Item이 없습니다.</div>
+                    <div class="empty-state compact" v-if="!wizardSectionDetail.items.some((entry) => entry.fieldKind === 'image' && entry.isVisibleInWizard && entry.image?.allowedSources?.includes('ai'))">AI 소스를 허용한 이미지 Item이 없습니다.</div>
                   </div>
                   <label class="field compact-field">
                     <span>이미지 비율</span>

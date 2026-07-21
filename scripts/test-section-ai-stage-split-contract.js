@@ -15,5 +15,7 @@ assert.match(imageHandler, /run\.status === "failed"/);
 assert.match(imageHandler, /clearCompletedAt:\s*true/);
 assert.match(createPromo, /promo-section-design-image-process/);
 assert.match(createPromo, /canRetryImage/);
+assert.match(createPromo, /imageTarget\?\.type === "item"/);
+assert.match(createPromo, /source: "ai"/);
 
 console.log("Section AI stage split contract tests passed.");

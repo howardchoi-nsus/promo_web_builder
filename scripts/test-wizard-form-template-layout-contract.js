@@ -15,6 +15,7 @@ const usageApi = read("api/wizard-layout-usage-events.js");
 const sectionsApi = read("api/wizard-form-template-sections.js");
 const wizard = read("prototype/promo-wizard.js");
 const admin = read("prototype/index.html");
+const adminLayoutManager = read("prototype/admin/template-layout-manager.js");
 const adminStyles = read("prototype/styles.css");
 const editor = read("visual-editor/src/App.vue");
 
@@ -39,7 +40,8 @@ assert.match(templatesApi, /cloneLayout/);
 assert.match(activationApi, /Form template layout validation failed/);
 assert.match(store, /remapLayoutSectionKey/);
 assert.match(sectionsApi, /remapLayoutSectionKey/);
-assert.match(admin, /기본 레이아웃 설정/);
+assert.match(admin, /<template-layout-manager/);
+assert.match(adminLayoutManager, /템플릿 기본 레이아웃/);
 assert.match(admin, /<div class="form-template-editor-panels">[\s\S]*?<section class="prompt-editor-panel"[\s\S]*?<aside class="template-section-items-panel"/);
 assert.match(adminStyles, /\.form-template-editor-panels\s*\{[\s\S]*?display:\s*grid;[\s\S]*?grid-template-columns:\s*minmax\(360px, 1fr\) minmax\(240px, 30%\);/);
 assert.match(adminStyles, /\.form-template-editor-panels\s*\{[\s\S]*?padding:\s*10px;[\s\S]*?border:\s*1px solid var\(--line\);[\s\S]*?border-radius:\s*var\(--radius\);/);
