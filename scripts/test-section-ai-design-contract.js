@@ -6,6 +6,7 @@ const {
   analyzableSectionContent,
   layoutPatchFromResult,
   normalizeBackgroundColor,
+  resolveImageTarget,
   safeAreaForVariant,
   validatePatch,
 } = require("../api/_promo-section-design-contract");
@@ -17,6 +18,7 @@ const section = {
     { itemKey: "title", fieldKind: "text", isLocked: true, isVisibleInWizard: true },
     { itemKey: "description", fieldKind: "text", isLocked: false, isVisibleInWizard: true },
     { itemKey: "heroImage", fieldKind: "image", isLocked: false, isVisibleInWizard: true, image: { allowedSources: ["ai", "file"] } },
+    { itemKey: "secondaryImage", fieldKind: "image", isLocked: false, isVisibleInWizard: true, image: { allowedSources: ["ai"] } },
   ],
 };
 
@@ -42,14 +44,28 @@ const managedConstraints = defaultConstraints({
     enabled: true,
     allowedLayoutVariants: ["split-left"],
     imageTarget: "item",
-    imageTargetItemKeys: ["heroImage", "missingImage"],
+    imageTargetItemKeys: ["heroImage", "secondaryImage", "missingImage"],
     imageAspectRatio: "4:3",
   },
 }, { sectionStyles: {} });
 assert.deepEqual(managedConstraints.allowedLayoutVariants, ["split-left"]);
-assert.deepEqual(managedConstraints.imageTargetItemKeys, ["heroImage"]);
+assert.deepEqual(managedConstraints.imageTargetItemKeys, ["heroImage", "secondaryImage"]);
 assert.deepEqual(managedConstraints.imageTarget, { type: "item", sectionKey: "heroBanner", itemKey: "heroImage" });
 assert.equal(managedConstraints.imageAspectRatio, "4:3");
+const selectedTarget = resolveImageTarget(managedConstraints, "heroBanner", "secondaryImage");
+assert.equal(selectedTarget.ok, true);
+assert.deepEqual(selectedTarget.constraints.imageTarget, { type: "item", sectionKey: "heroBanner", itemKey: "secondaryImage" });
+assert.equal(resolveImageTarget(managedConstraints, "heroBanner", "missingImage").ok, false);
+
+const invalidItemConstraints = defaultConstraints({
+  ...section,
+  aiDesign: {
+    ...section.aiDesign,
+    imageTarget: "item",
+    imageTargetItemKeys: ["missingImage"],
+  },
+}, { sectionStyles: {} });
+assert.equal(invalidItemConstraints.imageTarget, null);
 
 const disabledConstraints = defaultConstraints({ ...section, aiDesign: { enabled: false } }, { sectionStyles: {} });
 assert.equal(disabledConstraints.enabled, false);
@@ -65,6 +81,14 @@ assert.equal(generated.imageRequest.itemKey, null);
 assert.equal(generated.imageRequest.target.type, "section-background");
 assert.equal(generated.imageRequest.safeArea, "left-copy");
 assert.equal(validatePatch(section, generated, constraints).ok, true);
+const selectedTargetGenerated = layoutPatchFromResult(section, {
+  layoutVariant: "split-left",
+  minHeight: 520,
+  imagePrompt: "Secondary supporting image",
+  rationale: "Use the specifically requested image Item.",
+}, selectedTarget.constraints);
+assert.equal(selectedTargetGenerated.imageRequest.itemKey, "secondaryImage");
+assert.equal(selectedTargetGenerated.imageRequest.target.itemKey, "secondaryImage");
 assert.equal(safeAreaForVariant("split-left"), "right-copy");
 assert.equal(safeAreaForVariant("split-right"), "left-copy");
 assert.equal(safeAreaForVariant("centered-hero"), "center-copy");

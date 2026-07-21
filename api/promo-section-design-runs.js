@@ -3,6 +3,7 @@ const { toFormTemplate } = require("./_wizard-form-templates-store");
 const { getSql, parseBody, fetchRun, createRun } = require("./_promo-section-design-store");
 const {
   inputHash, hasAnalyzableContent, analyzableSectionContent, defaultConstraints, normalizeBackgroundColor,
+  resolveImageTarget,
 } = require("./_promo-section-design-contract");
 
 module.exports = async function handler(req, res) {
@@ -32,9 +33,19 @@ module.exports = async function handler(req, res) {
     if (!hasAnalyzableContent(aiContent)) return res.status(400).json({ error: "Section text or CTA content is required before AI generation" });
     const layout = toLayout(await fetchLayoutRow(sql, formTemplateId));
     const template = toFormTemplate(templateData.template);
-    const constraints = defaultConstraints(section, layout.layoutSpec);
+    let constraints = defaultConstraints(section, layout.layoutSpec);
     if (!constraints.enabled) return res.status(403).json({ error: "AI design generation is disabled for this section" });
     if (!constraints.allowedLayoutVariants.length) return res.status(422).json({ error: "No AI layout variant is allowed for this section" });
+    const targetItemKey = String(body.targetItemKey || "").trim();
+    const targetResolution = resolveImageTarget(constraints, sectionKey, targetItemKey);
+    if (!targetResolution.ok) {
+      return res.status(422).json({
+        error: targetItemKey
+          ? "Requested AI image Item is not allowed for this section"
+          : "No valid AI image target is configured for this section",
+      });
+    }
+    constraints = targetResolution.constraints;
     const backgroundColor = normalizeBackgroundColor(
       body.backgroundColor,
       normalizeBackgroundColor(layout.layoutSpec?.theme?.backgroundColor)

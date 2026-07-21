@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
 const applyModule = require("../api/promo-section-design-apply");
-const { defaultConstraints, inputHash, layoutPatchFromResult } = require("../api/_promo-section-design-contract");
+const { defaultConstraints, inputHash, layoutPatchFromResult, resolveImageTarget } = require("../api/_promo-section-design-contract");
 
 const section = {
   sectionKey: "heroBanner",
@@ -75,6 +75,45 @@ async function execute(handler, body = {
   let res = await execute(handlerFor());
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.run.status, "applied");
+
+  const itemSection = {
+    ...section,
+    aiDesign: {
+      enabled: true,
+      allowedLayoutVariants: ["split-right"],
+      imageTarget: "item",
+      imageTargetItemKeys: ["heroImage", "secondaryImage"],
+      imageAspectRatio: "16:9",
+    },
+    items: [
+      ...section.items,
+      { itemKey: "heroImage", fieldKind: "image", isLocked: false, isVisibleInWizard: true, image: { allowedSources: ["ai"] } },
+      { itemKey: "secondaryImage", fieldKind: "image", isLocked: false, isVisibleInWizard: true, image: { allowedSources: ["ai"] } },
+    ],
+  };
+  const selectedConstraints = resolveImageTarget(
+    defaultConstraints(itemSection, layout.layoutSpec),
+    itemSection.sectionKey,
+    "secondaryImage"
+  ).constraints;
+  const selectedRun = {
+    ...run,
+    constraintsSnapshot: selectedConstraints,
+    layoutResult: layoutPatchFromResult(itemSection, {
+      layoutVariant: "split-right",
+      minHeight: 520,
+      imagePrompt: "Secondary supporting image",
+      rationale: "Apply to the requested Item.",
+    }, selectedConstraints),
+  };
+  res = await execute(handlerFor({
+    fetchRun: async () => structuredClone(selectedRun),
+    fetchTemplateWithItems: async () => ({
+      template: { id: "template-id", status: "active", version: 2 },
+      sections: [structuredClone(itemSection)],
+    }),
+  }));
+  assert.equal(res.statusCode, 200);
 
   res = await execute(handlerFor({
     fetchTemplateWithItems: async () => ({ template: { status: "active", version: 3 }, sections: [section] }),

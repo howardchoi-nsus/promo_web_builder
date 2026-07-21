@@ -2,7 +2,7 @@ const { getSql, parseBody, fetchRun, transitionRun } = require("./_promo-section
 const { fetchTemplateWithItems, fetchLayoutRow, toLayout } = require("./_wizard-form-template-layout-store");
 const { toFormTemplate } = require("./_wizard-form-templates-store");
 const {
-  inputHash, defaultConstraints, normalizeBackgroundColor, validatePatch,
+  inputHash, defaultConstraints, normalizeBackgroundColor, resolveImageTarget, validatePatch,
 } = require("./_promo-section-design-contract");
 
 const defaultDependencies = {
@@ -75,7 +75,16 @@ function createHandler(overrides = {}) {
     if (!section) {
       return res.status(409).json({ error: "Template section changed; regenerate the design", code: "SECTION_DEFINITION_MISMATCH" });
     }
-    const currentConstraints = defaultConstraints(section, layout.layoutSpec);
+    const savedImageTarget = run.constraintsSnapshot?.imageTarget;
+    const targetResolution = resolveImageTarget(
+      defaultConstraints(section, layout.layoutSpec),
+      run.sectionKey,
+      savedImageTarget?.type === "item" ? savedImageTarget.itemKey : ""
+    );
+    const currentConstraints = targetResolution.constraints;
+    if (!targetResolution.ok) {
+      return res.status(409).json({ error: "Section AI image target changed; regenerate the design", code: "CONSTRAINTS_MISMATCH" });
+    }
     if (inputHash(currentConstraints) !== inputHash(run.constraintsSnapshot || {})) {
       return res.status(409).json({ error: "Section AI policy changed; regenerate the design", code: "CONSTRAINTS_MISMATCH" });
     }

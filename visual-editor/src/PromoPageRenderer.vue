@@ -31,14 +31,21 @@ function imageUrl(value) {
   return /^(https?:\/\/|\/api\/)/i.test(candidate) ? candidate : "";
 }
 
-function isLegacyAiImageValue(value) {
+function isConfiguredAiImageItem(section, item) {
+  return section?.aiDesign?.imageTarget === "item"
+    && Array.isArray(section.aiDesign.imageTargetItemKeys)
+    && section.aiDesign.imageTargetItemKeys.includes(item?.itemKey);
+}
+
+function isLegacyAiImageValue(section, item, value) {
+  if (isConfiguredAiImageItem(section, item)) return false;
   const candidate = String(value?.value || "").trim();
   return value?.source === "ai" || candidate.startsWith("/api/promo-section-design-image?");
 }
 
 function renderedItems(section) {
   return (section.items || []).filter((item) => (
-    item.fieldKind !== "image" || !isLegacyAiImageValue(valueFor(section, item))
+    item.fieldKind !== "image" || !isLegacyAiImageValue(section, item, valueFor(section, item))
   ));
 }
 
@@ -46,9 +53,9 @@ function sectionBackgroundUrl(section) {
   const configured = String(sectionStyle(section).backgroundImage || "").trim();
   const legacyAiImage = (section.items || [])
     .filter((item) => item.fieldKind === "image")
-    .map((item) => valueFor(section, item))
-    .find(isLegacyAiImageValue);
-  const candidate = configured || String(legacyAiImage?.value || "").trim();
+    .map((item) => ({ item, value: valueFor(section, item) }))
+    .find(({ item, value }) => isLegacyAiImageValue(section, item, value));
+  const candidate = configured || String(legacyAiImage?.value?.value || "").trim();
   return /^(https?:\/\/|\/api\/)/i.test(candidate) ? candidate : "";
 }
 

@@ -36,16 +36,58 @@ try {
   const context = await browser.newContext();
   const page = await context.newPage();
   let sectionAiRunRequest = null;
+  let latestSectionAiRun = null;
   await page.route("**/api/promo-section-design-runs", async (route) => {
     sectionAiRunRequest = route.request().postDataJSON();
+    const target = sectionAiRunRequest.targetItemKey
+      ? { type: "item", sectionKey: sectionAiRunRequest.sectionKey, itemKey: sectionAiRunRequest.targetItemKey }
+      : { type: "section-background", sectionKey: sectionAiRunRequest.sectionKey };
+    latestSectionAiRun = {
+      id: `fixture-section-ai-run-${sectionAiRunRequest.sectionKey}`,
+      status: "ready",
+      inputHash: "fixture-hash",
+      constraintsSnapshot: {
+        imageTarget: target,
+        imageTargetItemKeys: sectionAiRunRequest.targetItemKey ? [sectionAiRunRequest.targetItemKey] : [],
+      },
+      layoutResult: {
+        layoutVariant: "split-left",
+        layoutPatch: { sectionStyles: { [sectionAiRunRequest.sectionKey]: {} }, itemStyles: {} },
+        imageRequest: {
+          target,
+          itemKey: sectionAiRunRequest.targetItemKey || null,
+          prompt: "Fixture AI image",
+          aspectRatio: "16:9",
+          safeArea: "right-copy",
+        },
+      },
+      imageResult: {
+        target,
+        proxyUrl: `/api/promo-section-design-image?runId=fixture-${sectionAiRunRequest.sectionKey}`,
+      },
+    };
     await route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({
         ok: true,
         reused: true,
-        run: { id: "fixture-section-ai-run", status: "ready", inputHash: "fixture-hash" },
+        run: latestSectionAiRun,
       }),
+    });
+  });
+  await page.route("**/api/promo-section-design-apply", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ ok: true, run: { ...latestSectionAiRun, status: "applied" } }),
+    });
+  });
+  await page.route("**/api/promo-section-design-image?*", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "image/svg+xml",
+      body: "<svg xmlns='http://www.w3.org/2000/svg' width='16' height='9'><rect width='16' height='9' fill='#156b5b'/></svg>",
     });
   });
   const pageErrors = [];
@@ -93,7 +135,7 @@ try {
   await assertPageText(page.locator('.content-substep[aria-current="step"] strong'), "템플릿 레이아웃");
   const editorFrame = page.frameLocator("iframe.wizard-layout-frame");
   await editorFrame.locator(".editor-workspace.is-create-promo-wizard").waitFor({ timeout: 10_000 });
-  assert.equal(await editorFrame.locator(".section-ai-action").count(), 1, "AI-disabled fixture sections must not expose an AI action");
+  assert.equal(await editorFrame.locator(".section-ai-actions > .section-ai-action").count(), 1, "Item-target sections must not expose the Section background AI action");
   assert.equal(await editorFrame.locator(".section-ai-action:not([disabled])").count(), 0, "Structural image/CTA values must not enable AI generation");
   assert.equal(await editorFrame.locator(".section-ai-action").first().getAttribute("title"), "섹션 콘텐츠를 먼저 등록해 주세요.");
   await editorFrame.getByRole("button", { name: "자동등록" }).click();
@@ -106,6 +148,38 @@ try {
   assert.equal(sectionAiRunRequest?.formTemplateId, "visual-editor-preview-template");
   assert.equal(sectionAiRunRequest?.sectionKey, "heroBanner");
   assert.equal(sectionAiRunRequest?.sectionInputs?.title, "Browser Smoke Promotion");
+
+  sectionAiRunRequest = null;
+  await editorFrame.locator(".section-trigger").filter({ hasText: "Feature Content" }).click();
+  await editorFrame.locator(".section-accordion__items button").filter({ hasText: "프로모션 이미지" }).click();
+  const itemAiAction = editorFrame.locator(".item-ai-generation-action");
+  await itemAiAction.waitFor();
+  assert.equal(await itemAiAction.isDisabled(), false, "Allowed image Item AI action should be enabled when the Section has content");
+  await itemAiAction.click();
+  for (let attempt = 0; attempt < 50 && !sectionAiRunRequest; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  assert.equal(sectionAiRunRequest?.sectionKey, "contentFeature");
+  assert.equal(sectionAiRunRequest?.targetItemKey, "image");
+  for (let attempt = 0; attempt < 50 && (await itemAiAction.textContent())?.trim() !== "AI 이미지 적용"; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  assert.equal((await itemAiAction.textContent())?.trim(), "AI 이미지 적용");
+  await itemAiAction.click();
+  let itemAppliedContent = null;
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    itemAppliedContent = await page.evaluate(() => JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null"));
+    if (itemAppliedContent?.sectionInputs?.contentFeature?.image?.source === "ai") break;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  assert.equal(itemAppliedContent?.sectionInputs?.contentFeature?.image?.source, "ai");
+  assert.match(itemAppliedContent?.sectionInputs?.contentFeature?.image?.value || "", /^\/api\/promo-section-design-image\?/);
+  await editorFrame.locator(".rendered-image img").waitFor({ state: "attached" });
+  assert.equal(
+    Boolean(itemAppliedContent?.templateLayouts?.["default-preview"]?.resolvedLayout?.sectionStyles?.contentFeature?.backgroundImage),
+    false,
+    "Item-target AI generation must not create a Section background image",
+  );
 
   await page.locator(".content-substep-actions .primary-action").click();
   await assertPageText(page.locator("#step-title"), "웹 출력");

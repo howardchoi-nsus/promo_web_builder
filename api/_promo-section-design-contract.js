@@ -52,18 +52,37 @@ function defaultConstraints(section, layout = {}) {
     (Array.isArray(policy.imageTargetItemKeys) ? policy.imageTargetItemKeys : [])
       .filter((item) => imageItemKeys.has(item))
   )];
-  const useItemTarget = policy.imageTarget === "item" && imageTargetItemKeys.length > 0;
+  const useItemTarget = policy.imageTarget === "item";
   const currentHeight = layout.sectionStyles?.[section.sectionKey]?.minHeight;
   return {
     enabled: policy.enabled !== false,
     allowedLayoutVariants,
     imageTargetItemKeys,
     imageTarget: useItemTarget
-      ? { type: "item", sectionKey: section.sectionKey, itemKey: imageTargetItemKeys[0] }
+      ? (imageTargetItemKeys.length
+        ? { type: "item", sectionKey: section.sectionKey, itemKey: imageTargetItemKeys[0] }
+        : null)
       : { type: "section-background", sectionKey: section.sectionKey },
     contentLocks: lockedItems,
     layoutLocks: currentHeight ? ["minHeight"] : [],
     imageAspectRatio: String(policy.imageAspectRatio || "16:9"),
+  };
+}
+
+function resolveImageTarget(constraints, sectionKey, targetItemKey = "") {
+  if (!constraints?.imageTarget) return { ok: false, constraints };
+  const requestedItemKey = String(targetItemKey || "").trim();
+  if (!requestedItemKey) return { ok: true, constraints };
+  if (constraints.imageTarget.type !== "item"
+    || !(constraints.imageTargetItemKeys || []).includes(requestedItemKey)) {
+    return { ok: false, constraints };
+  }
+  return {
+    ok: true,
+    constraints: {
+      ...constraints,
+      imageTarget: { type: "item", sectionKey, itemKey: requestedItemKey },
+    },
   };
 }
 
@@ -136,7 +155,7 @@ function layoutPatchFromResult(section, result, constraints) {
         target: constraints.imageTarget || (constraints.imageTargetItemKeys?.[0]
           ? { type: "item", sectionKey, itemKey: constraints.imageTargetItemKeys[0] }
           : { type: "section-background", sectionKey }),
-        itemKey: constraints.imageTargetItemKeys?.[0] || null,
+        itemKey: constraints.imageTarget?.type === "item" ? constraints.imageTarget.itemKey : null,
         prompt: String(result.imagePrompt).trim(),
         aspectRatio: constraints.imageAspectRatio || "16:9",
         safeArea: safeAreaForVariant(result.layoutVariant),
@@ -188,6 +207,7 @@ module.exports = {
   hasAnalyzableContent,
   analyzableSectionContent,
   defaultConstraints,
+  resolveImageTarget,
   safeAreaForVariant,
   layoutPatchFromResult,
   validatePatch,

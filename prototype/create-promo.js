@@ -777,8 +777,18 @@ window.addEventListener("message", (event) => {
     const section = wizardSectionDefinitions.find((item) => item.sectionKey === event.data.sectionKey);
     if (!section) return;
     const saved = sectionAiRun(section.sectionKey);
-    if (event.data.action === "generate") generateSectionAiDesign(section);
-    else if (event.data.action === "apply" && saved) applySectionAiDesign(section, saved);
+    const targetItemKey = String(event.data.targetItemKey || "").trim();
+    if (event.data.action === "generate") generateSectionAiDesign(section, targetItemKey);
+    else if (event.data.action === "apply" && saved) {
+      const savedTargetItemKey = saved.constraintsSnapshot?.imageTarget?.type === "item"
+        ? saved.constraintsSnapshot.imageTarget.itemKey
+        : "";
+      if (targetItemKey && savedTargetItemKey !== targetItemKey) {
+        window.alert("선택한 이미지 Item의 AI 생성 결과가 아닙니다. 다시 생성해 주세요.");
+        return;
+      }
+      applySectionAiDesign(section, saved);
+    }
     else if (event.data.action === "remove-background") removeSectionAiBackground(section);
     return;
   }
@@ -1231,8 +1241,12 @@ function isLegacySectionAiImage(value) {
 }
 
 function clearLegacySectionAiImages(section) {
+  const configuredItemTargets = section.aiDesign?.imageTarget === "item"
+    ? new Set(section.aiDesign.imageTargetItemKeys || [])
+    : new Set();
   (section.items || []).forEach((item) => {
     if (item.fieldKind !== "image" || item.isLocked) return;
+    if (configuredItemTargets.has(item.itemKey)) return;
     const path = `${section.sectionKey}.${item.itemKey}`;
     const current = valueAtPath(contentState.sectionInputs, path);
     if (!isLegacySectionAiImage(current)) return;
@@ -1266,18 +1280,21 @@ function removeSectionAiBackground(section) {
   clearLegacySectionAiImages(section);
   saveWizardContent();
   postWizardLayoutSnapshot();
-  renderStep();
 }
 
-async function generateSectionAiDesign(section) {
+async function generateSectionAiDesign(section, targetItemKey = "") {
   const sectionKey = section.sectionKey;
   const sectionInputs = JSON.parse(JSON.stringify(contentState.sectionInputs?.[sectionKey] || {}));
   const previous = sectionAiRun(sectionKey);
+  const previousTargetItemKey = previous?.constraintsSnapshot?.imageTarget?.type === "item"
+    ? previous.constraintsSnapshot.imageTarget.itemKey
+    : "";
   const canRetryImage = previous?.status === "failed"
     && previous.layoutResult?.imageRequest
-    && !sectionAiIsStale(sectionKey, previous);
+    && !sectionAiIsStale(sectionKey, previous)
+    && previousTargetItemKey === String(targetItemKey || "").trim();
   if (canRetryImage) {
-    renderStep();
+    postWizardLayoutSnapshot();
     try {
       const retried = await fetchJson("/api/promo-section-design-image-process", {
         method: "POST",
@@ -1293,12 +1310,12 @@ async function generateSectionAiDesign(section) {
       };
       saveWizardContent();
     } finally {
-      renderStep();
+      postWizardLayoutSnapshot();
     }
     return;
   }
   saveSectionAiRun(sectionKey, { status: "queued" }, sectionInputs);
-  renderStep();
+  postWizardLayoutSnapshot();
   try {
     const created = await fetchJson("/api/promo-section-design-runs", {
       method: "POST",
@@ -1308,11 +1325,12 @@ async function generateSectionAiDesign(section) {
         formTemplateId: selectedWizardFormTemplate?.id,
         sectionKey,
         sectionInputs,
+        targetItemKey: String(targetItemKey || "").trim() || null,
         backgroundColor: wizardResolvedLayout?.theme?.backgroundColor || FALLBACK_LAYOUT.theme.backgroundColor,
       }),
     });
     saveSectionAiRun(sectionKey, created.run, sectionInputs);
-    renderStep();
+    postWizardLayoutSnapshot();
     if (["ready", "applied"].includes(created.run.status)) return;
     const processed = created.run.status === "generating_assets"
       ? created
@@ -1338,7 +1356,7 @@ async function generateSectionAiDesign(section) {
     };
     saveWizardContent();
   } finally {
-    renderStep();
+    postWizardLayoutSnapshot();
   }
 }
 
@@ -1371,7 +1389,6 @@ async function applySectionAiDesign(section, saved) {
       wizardResolvedLayout.itemStyles[key] = { ...(wizardResolvedLayout.itemStyles[key] || {}), ...(value || {}) };
     });
     if (appliedRun.imageResult?.proxyUrl) {
-      clearLegacySectionAiImages(section);
       const imageTarget = appliedRun.imageResult.target || appliedRun.layoutResult?.imageRequest?.target;
       if (imageTarget?.type === "item" && imageTarget.itemKey) {
         const targetItem = section.items?.find((item) => item.itemKey === imageTarget.itemKey && item.fieldKind === "image");
@@ -1391,6 +1408,7 @@ async function applySectionAiDesign(section, saved) {
           wizardResolvedLayout.sectionStyles[section.sectionKey] = currentSectionStyle;
         }
       } else {
+        clearLegacySectionAiImages(section);
         const layoutVariant = appliedRun.layoutResult?.layoutVariant;
         const safeArea = layoutVariant === "split-left"
           ? "right-copy"
@@ -1417,7 +1435,6 @@ async function applySectionAiDesign(section, saved) {
     }
     saveSectionAiRun(section.sectionKey, appliedRun, contentState.sectionInputs?.[section.sectionKey]);
     postWizardLayoutSnapshot();
-    renderStep();
   } catch (error) {
     window.alert(error.message || "AI 디자인을 적용하지 못했습니다.");
   }

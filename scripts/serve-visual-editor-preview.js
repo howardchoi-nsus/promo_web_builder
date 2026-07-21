@@ -49,10 +49,10 @@ const sections = [
     userReorderAllowed: true,
     fixedPosition: null,
     aiDesign: {
-      enabled: false,
+      enabled: true,
       allowedLayoutVariants: ["split-left", "split-right", "centered-hero"],
-      imageTarget: "section-background",
-      imageTargetItemKeys: [],
+      imageTarget: "item",
+      imageTargetItemKeys: ["image"],
       imageAspectRatio: "16:9",
     },
     items: [

@@ -158,22 +158,53 @@ function sectionAiPrimaryAction(section) {
   return { action: "generate", label: "AI 디자인", disabled: !sectionAiHasContent(section) };
 }
 
-function requestSectionAiAction(section, action) {
+function sectionAiAllowedItemKeys(section) {
+  return Array.isArray(section?.aiDesign?.imageTargetItemKeys)
+    ? section.aiDesign.imageTargetItemKeys
+    : [];
+}
+
+function sectionAiItemAllowed(section, item) {
+  return Boolean(
+    section?.aiDesign?.enabled !== false
+      && section?.aiDesign?.imageTarget === "item"
+      && item?.fieldKind === "image"
+      && item?.isVisibleInWizard !== false
+      && !item?.isLocked
+      && item?.image?.allowedSources?.includes("ai")
+      && sectionAiAllowedItemKeys(section).includes(item.itemKey)
+  );
+}
+
+function sectionAiRunTargetItemKey(section) {
+  const target = sectionAiRun(section)?.constraintsSnapshot?.imageTarget;
+  return target?.type === "item" ? target.itemKey : "";
+}
+
+function sectionAiItemAction(section, item) {
+  const run = sectionAiRun(section);
+  const matchesItem = sectionAiRunTargetItemKey(section) === item?.itemKey;
+  if (sectionAiIsProcessing(section)) return { action: "generate", label: "AI 이미지 생성 중", disabled: true };
+  if (matchesItem && run?.status === "ready" && !sectionAiIsStale(section)) {
+    return { action: "apply", label: "AI 이미지 적용", disabled: false };
+  }
+  if (matchesItem && run?.status === "applied") {
+    return { action: "generate", label: "AI 이미지 재생성", disabled: !sectionAiHasContent(section) };
+  }
+  return { action: "generate", label: "AI 이미지 생성", disabled: !sectionAiHasContent(section) };
+}
+
+function requestSectionAiAction(section, action, targetItemKey = "") {
   window.parent.postMessage({
     type: "create-promo-section-ai-action",
     sectionKey: section.sectionKey,
     action,
+    targetItemKey: String(targetItemKey || "").trim() || null,
   }, window.location.origin);
 }
 
 function sectionHasAiBackground(section) {
-  if (designSpec.value?.sectionStyles?.[section.sectionKey]?.backgroundImage) return true;
-  return (section.items || []).some((item) => {
-    if (item.fieldKind !== "image") return false;
-    const value = sectionInputs.value?.[section.sectionKey]?.[item.itemKey];
-    const url = String(value?.value || "").trim();
-    return value?.source === "ai" || url.startsWith("/api/promo-section-design-image?");
-  });
+  return Boolean(designSpec.value?.sectionStyles?.[section.sectionKey]?.backgroundImage);
 }
 
 function requestImageRemoval() {
@@ -388,6 +419,9 @@ async function saveAdminLayout() {
 
 async function applyExternalSnapshot(snapshot) {
   if (!snapshot?.content) return;
+  const previousSectionKey = selectedSection.value?.sectionKey || selectedSectionKey.value;
+  const previousItemKey = selectedItem.value?.itemKey || selectedItemKey.value;
+  const previousExpandedSectionKey = expandedSectionKey.value;
   applyingExternalSnapshot = true;
   template.value = snapshot.content.formTemplate || null;
   configRevision.value = snapshot.content.formTemplate?.configRevision || "";
@@ -396,9 +430,15 @@ async function applyExternalSnapshot(snapshot) {
   sectionDesignRuns.value = snapshot.content.sectionDesignRuns || {};
   designSpec.value = normalizeLayoutSpec(snapshot.designSpec);
   layoutRevision.value = Number(snapshot.layoutRevision || 1);
-  selectedSectionKey.value = sections.value[0]?.sectionKey || "";
-  selectedItemKey.value = sections.value[0]?.items?.[0]?.itemKey || "";
-  expandedSectionKey.value = sections.value[0]?.sectionKey || "";
+  const nextSelectedSection = sections.value.find((section) => section.sectionKey === previousSectionKey)
+    || sections.value[0];
+  selectedSectionKey.value = nextSelectedSection?.sectionKey || "";
+  selectedItemKey.value = nextSelectedSection?.items?.some((item) => item.itemKey === previousItemKey)
+    ? previousItemKey
+    : nextSelectedSection?.items?.[0]?.itemKey || "";
+  expandedSectionKey.value = sections.value.some((section) => section.sectionKey === previousExpandedSectionKey)
+    ? previousExpandedSectionKey
+    : nextSelectedSection?.sectionKey || "";
   externalSnapshotReady.value = true;
   loading.value = false;
   error.value = "";
@@ -583,7 +623,7 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
             </button>
               <div v-if="isCreatePromoWizardMode" class="section-ai-actions">
                 <button
-                  v-if="section.aiDesign?.enabled !== false"
+                  v-if="section.aiDesign?.enabled !== false && section.aiDesign?.imageTarget !== 'item'"
                   type="button"
                   class="section-ai-action"
                   :disabled="sectionAiPrimaryAction(section).disabled"
@@ -680,6 +720,14 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
           </label>
 
           <template v-else-if="selectedItem.fieldKind === 'image'">
+            <button
+              v-if="isCreatePromoWizardMode && sectionAiItemAllowed(selectedSection, selectedItem)"
+              type="button"
+              class="section-ai-action item-ai-generation-action"
+              :disabled="sectionAiItemAction(selectedSection, selectedItem).disabled"
+              :title="sectionAiItemAction(selectedSection, selectedItem).disabled && !sectionAiIsProcessing(selectedSection) ? '섹션 콘텐츠를 먼저 등록해 주세요.' : ''"
+              @click="requestSectionAiAction(selectedSection, sectionAiItemAction(selectedSection, selectedItem).action, selectedItem.itemKey)"
+            >{{ sectionAiItemAction(selectedSection, selectedItem).label }}</button>
             <label>
               <span>이미지 입력 방식</span>
               <select :disabled="selectedItem.isLocked" :value="selectedValue?.source" @change="updateObjectField('source', $event.target.value)">
