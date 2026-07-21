@@ -64,7 +64,7 @@ function responseOutputText(payload) {
     .find((part) => part.type === "output_text")?.text || "";
 }
 
-function imagePromptForSafeArea(prompt, safeArea) {
+function imagePromptForSafeArea(prompt, safeArea, backgroundColor = "#f5f7fb") {
   const composition = safeArea === "right-copy"
     ? "Keep the right half as clean negative space for DOM copy and place the main visual subject on the left."
     : safeArea === "left-copy"
@@ -73,6 +73,8 @@ function imagePromptForSafeArea(prompt, safeArea) {
   return [
     String(prompt || "").trim(),
     composition,
+    `Fade the image smoothly into the exact solid background color ${backgroundColor} on the copy-safe side; do not fade to white, black, or transparency.`,
+    "Use a broad, low-contrast transition zone so the image joins the surrounding section background without a visible edge.",
     "Do not render text, buttons, logos, badges, or legal copy inside the image.",
   ].filter(Boolean).join("\n");
 }
@@ -170,7 +172,10 @@ async function generateGeminiSectionImage({ prompt, signal }) {
 
 async function generateSectionImage(input) {
   const provider = String(process.env.SECTION_IMAGE_PROVIDER || "openai").trim().toLowerCase();
-  const request = { ...input, prompt: imagePromptForSafeArea(input.prompt, input.safeArea) };
+  const request = {
+    ...input,
+    prompt: imagePromptForSafeArea(input.prompt, input.safeArea, input.backgroundColor),
+  };
   if (provider === "gemini") return generateGeminiSectionImage(request);
   if (provider === "openai") return generateOpenAiSectionImage(request);
   throw Object.assign(new Error(`Unsupported section image provider: ${provider}`), { code: "UNSUPPORTED_IMAGE_PROVIDER" });

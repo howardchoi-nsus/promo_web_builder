@@ -25,7 +25,10 @@ const run = {
   layoutRevision: 8,
   sectionKey: "heroBanner",
   status: "ready",
-  inputSnapshot: { section: { sectionInputs: { title: "Welcome" } } },
+  inputSnapshot: {
+    design: { backgroundColor: "#f5f7fb" },
+    section: { sectionInputs: { title: "Welcome" } },
+  },
   constraintsSnapshot: constraints,
   layoutResult,
 };
@@ -58,7 +61,11 @@ function handlerFor(overrides = {}) {
   });
 }
 
-async function execute(handler, body = { runId: "run-id", sectionInputs: { title: "Welcome" } }) {
+async function execute(handler, body = {
+  runId: "run-id",
+  sectionInputs: { title: "Welcome" },
+  backgroundColor: "#f5f7fb",
+}) {
   const res = responseRecorder();
   await handler({ method: "POST", body }, res);
   return res;
@@ -88,6 +95,14 @@ async function execute(handler, body = { runId: "run-id", sectionInputs: { title
   res = await execute(handlerFor(), { runId: "run-id", sectionInputs: { title: "Changed" } });
   assert.equal(res.statusCode, 409);
   assert.equal(res.body.code, "INPUT_HASH_MISMATCH");
+
+  res = await execute(handlerFor(), {
+    runId: "run-id",
+    sectionInputs: { title: "Welcome" },
+    backgroundColor: "#ffffff",
+  });
+  assert.equal(res.statusCode, 409);
+  assert.equal(res.body.code, "BACKGROUND_COLOR_MISMATCH");
 
   res = await execute(handlerFor({
     fetchLayoutRow: async () => ({

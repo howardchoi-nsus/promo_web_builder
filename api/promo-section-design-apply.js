@@ -1,7 +1,9 @@
 const { getSql, parseBody, fetchRun, transitionRun } = require("./_promo-section-design-store");
 const { fetchTemplateWithItems, fetchLayoutRow, toLayout } = require("./_wizard-form-template-layout-store");
 const { toFormTemplate } = require("./_wizard-form-templates-store");
-const { inputHash, defaultConstraints, validatePatch } = require("./_promo-section-design-contract");
+const {
+  inputHash, defaultConstraints, normalizeBackgroundColor, validatePatch,
+} = require("./_promo-section-design-contract");
 
 const defaultDependencies = {
   getSql,
@@ -34,6 +36,16 @@ function createHandler(overrides = {}) {
     if (!currentSectionInputs) return res.status(400).json({ error: "sectionInputs is required" });
     if (inputHash(currentSectionInputs) !== inputHash(run.inputSnapshot?.section?.sectionInputs || {})) {
       return res.status(409).json({ error: "Section content changed; regenerate the design", code: "INPUT_HASH_MISMATCH" });
+    }
+    const generatedBackgroundColor = run.inputSnapshot?.design?.backgroundColor;
+    if (generatedBackgroundColor) {
+      const currentBackgroundColor = normalizeBackgroundColor(body.backgroundColor, "");
+      if (!currentBackgroundColor || currentBackgroundColor !== generatedBackgroundColor) {
+        return res.status(409).json({
+          error: "Promotion background color changed; regenerate the design",
+          code: "BACKGROUND_COLOR_MISMATCH",
+        });
+      }
     }
     const templateData = await dependencies.fetchTemplateWithItems(sql, run.formTemplateId);
     if (!templateData || templateData.template.status !== "active") {

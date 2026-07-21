@@ -3047,21 +3047,24 @@ var Eo = {
 				yPct: o ? i / o * 100 : 0
 			};
 		}
-		function v(e) {
-			let t = m(e), n = t.minHeight || g(e), r = l(e);
-			return {
-				height: `${Math.max(50, n)}px`,
-				backgroundImage: r ? `url(${JSON.stringify(r)})` : void 0,
-				backgroundSize: r ? t.backgroundSize || "contain" : void 0,
-				backgroundPosition: r ? t.backgroundPosition || "right center" : void 0,
-				backgroundRepeat: r ? t.backgroundRepeat || "no-repeat" : void 0
-			};
+		function v(e, t) {
+			return /^#[0-9a-f]{6}$/i.test(String(t || "")) ? e === "left-copy" ? `linear-gradient(to right, ${t} 0%, ${t} 18%, transparent 58%)` : e === "right-copy" ? `linear-gradient(to left, ${t} 0%, ${t} 18%, transparent 58%)` : e === "center-copy" ? `radial-gradient(ellipse at center, ${t} 0%, ${t} 22%, transparent 64%)` : "" : "";
 		}
 		function y(e) {
+			let t = m(e), r = t.minHeight || g(e), i = l(e), a = i ? v(t.backgroundFadeSafeArea, t.backgroundFadeColor || n.designSpec?.theme?.backgroundColor) : "";
+			return {
+				height: `${Math.max(50, r)}px`,
+				backgroundImage: i ? [a, `url(${JSON.stringify(i)})`].filter(Boolean).join(", ") : void 0,
+				backgroundSize: i ? a ? `100% 100%, ${t.backgroundSize || "contain"}` : t.backgroundSize || "contain" : void 0,
+				backgroundPosition: i ? a ? `center, ${t.backgroundPosition || "right center"}` : t.backgroundPosition || "right center" : void 0,
+				backgroundRepeat: i ? a ? `no-repeat, ${t.backgroundRepeat || "no-repeat"}` : t.backgroundRepeat || "no-repeat" : void 0
+			};
+		}
+		function b(e) {
 			let t = m(e).minHeight || g(e);
 			return { height: `${Math.max(0, t - 76)}px` };
 		}
-		function b(e, t) {
+		function x(e, t) {
 			let n = p(e, t), r = n.positionMode === "free" ? n : _(e, t);
 			return {
 				left: `${r.xPct || 0}%`,
@@ -3076,14 +3079,14 @@ var Eo = {
 				textAlign: n.textAlign
 			};
 		}
-		function x(e, t) {
+		function S(e, t) {
 			n.editable && r("select-item", e, t);
 		}
-		function S(e, t, i) {
+		function C(e, t, i) {
 			if (!n.editable || i.isLocked || e.button !== 0 || e.currentTarget.classList.contains("is-editing")) return;
 			let a = e.currentTarget, o = a.closest(".rendered-items");
 			if (!o) return;
-			e.preventDefault(), x(t, i), a.setPointerCapture(e.pointerId), a.classList.add("is-dragging");
+			e.preventDefault(), S(t, i), a.setPointerCapture(e.pointerId), a.classList.add("is-dragging");
 			let s = o.getBoundingClientRect(), c = a.getBoundingClientRect(), l = e.clientX, u = e.clientY, d = c.left - s.left, f = c.top - s.top, p = d, m = f, h = 0, g = (e) => {
 				p = Math.min(Math.max(0, s.width - a.offsetWidth), Math.max(0, d + e.clientX - l)), m = Math.min(Math.max(0, s.height - a.offsetHeight), Math.max(0, f + e.clientY - u)), !h && (h = requestAnimationFrame(() => {
 					h = 0, a.style.left = `${p}px`, a.style.top = `${m}px`;
@@ -3099,9 +3102,9 @@ var Eo = {
 			};
 			a.addEventListener("pointermove", g), a.addEventListener("pointerup", _), a.addEventListener("pointercancel", _);
 		}
-		function C(e, t, i) {
+		function w(e, t, i) {
 			if (!n.editable || i.isLocked || i.fieldKind !== "text") return;
-			e.preventDefault(), e.stopPropagation(), x(t, i);
+			e.preventDefault(), e.stopPropagation(), S(t, i);
 			let o = e.currentTarget, s = o.querySelector(".rendered-text, .rendered-empty");
 			if (!s) return;
 			o.classList.add("is-editing"), s.classList.remove("rendered-empty"), s.classList.add("rendered-text"), s.contentEditable = "true", String(a(t, i) || "").trim() || (s.textContent = _o), s.focus();
@@ -3115,7 +3118,7 @@ var Eo = {
 			};
 			s.addEventListener("blur", u), s.addEventListener("keydown", d);
 		}
-		function w(e, t) {
+		function ee(e, t) {
 			if (!n.editable || e.button !== 0) return;
 			let i = e.currentTarget, a = i.closest(".rendered-section");
 			if (!a) return;
@@ -3163,10 +3166,10 @@ var Eo = {
 			key: t.sectionKey,
 			class: j(["rendered-section", `rendered-section--${t.sectionKey}`]),
 			"data-section-key": t.sectionKey,
-			style: ce(v(t))
+			style: ce(y(t))
 		}, [X("div", Oo, [X("div", {
 			class: "rendered-items",
-			style: ce(y(t))
+			style: ce(b(t))
 		}, [(J(!0), Y(K, null, ar(c(t), (n) => (J(), Y("article", {
 			key: n.itemKey,
 			class: j(["rendered-item", [`rendered-item--${n.fieldKind || "text"}`, {
@@ -3176,10 +3179,10 @@ var Eo = {
 			}]]),
 			"data-item-key": n.itemKey,
 			"data-style-key": f(t, n),
-			style: ce(b(t, n)),
-			onClick: ao((e) => x(t, n), ["stop"]),
-			onPointerdown: (e) => S(e, t, n),
-			onDblclick: (e) => C(e, t, n)
+			style: ce(x(t, n)),
+			onClick: ao((e) => S(t, n), ["stop"]),
+			onPointerdown: (e) => C(e, t, n),
+			onDblclick: (e) => w(e, t, n)
 		}, [n.fieldKind === "cta" ? (J(), Y("a", {
 			key: 0,
 			class: "rendered-cta",
@@ -3196,7 +3199,7 @@ var Eo = {
 			type: "button",
 			"aria-label": `${t.name} 섹션 높이 조절`,
 			title: `${t.name} 섹션 높이 조절`,
-			onPointerdown: (e) => w(e, t)
+			onPointerdown: (e) => ee(e, t)
 		}, null, 40, Lo)) : Z("", !0)], 14, Do))), 128))], 6));
 	}
 };

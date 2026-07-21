@@ -97,16 +97,41 @@ function defaultItemPosition(section, item) {
   };
 }
 
+function backgroundFadeGradient(safeArea, color) {
+  if (!/^#[0-9a-f]{6}$/i.test(String(color || ""))) return "";
+  if (safeArea === "left-copy") {
+    return `linear-gradient(to right, ${color} 0%, ${color} 18%, transparent 58%)`;
+  }
+  if (safeArea === "right-copy") {
+    return `linear-gradient(to left, ${color} 0%, ${color} 18%, transparent 58%)`;
+  }
+  if (safeArea === "center-copy") {
+    return `radial-gradient(ellipse at center, ${color} 0%, ${color} 22%, transparent 64%)`;
+  }
+  return "";
+}
+
 function inlineSectionStyle(section) {
   const style = sectionStyle(section);
   const canvasHeight = style.minHeight || defaultSectionHeight(section);
   const backgroundImage = sectionBackgroundUrl(section);
+  const fadeGradient = backgroundImage
+    ? backgroundFadeGradient(style.backgroundFadeSafeArea, style.backgroundFadeColor || props.designSpec?.theme?.backgroundColor)
+    : "";
   return {
     height: `${Math.max(50, canvasHeight)}px`,
-    backgroundImage: backgroundImage ? `url(${JSON.stringify(backgroundImage)})` : undefined,
-    backgroundSize: backgroundImage ? (style.backgroundSize || "contain") : undefined,
-    backgroundPosition: backgroundImage ? (style.backgroundPosition || "right center") : undefined,
-    backgroundRepeat: backgroundImage ? (style.backgroundRepeat || "no-repeat") : undefined,
+    backgroundImage: backgroundImage
+      ? [fadeGradient, `url(${JSON.stringify(backgroundImage)})`].filter(Boolean).join(", ")
+      : undefined,
+    backgroundSize: backgroundImage
+      ? (fadeGradient ? `100% 100%, ${style.backgroundSize || "contain"}` : (style.backgroundSize || "contain"))
+      : undefined,
+    backgroundPosition: backgroundImage
+      ? (fadeGradient ? `center, ${style.backgroundPosition || "right center"}` : (style.backgroundPosition || "right center"))
+      : undefined,
+    backgroundRepeat: backgroundImage
+      ? (fadeGradient ? `no-repeat, ${style.backgroundRepeat || "no-repeat"}` : (style.backgroundRepeat || "no-repeat"))
+      : undefined,
   };
 }
 

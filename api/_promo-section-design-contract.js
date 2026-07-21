@@ -20,6 +20,11 @@ function inputHash(value) {
   return crypto.createHash("sha256").update(JSON.stringify(stableValue(value))).digest("hex");
 }
 
+function normalizeBackgroundColor(value, fallback = "#f5f7fb") {
+  const color = String(value || "").trim().toLowerCase();
+  return /^#[0-9a-f]{6}$/.test(color) ? color : fallback;
+}
+
 function textContent(value) {
   if (value === null || value === undefined) return [];
   if (typeof value === "string" || typeof value === "number") return [String(value).trim()].filter(Boolean);
@@ -162,6 +167,7 @@ function validatePatch(section, generated, constraints) {
 module.exports = {
   LAYOUT_VARIANTS,
   inputHash,
+  normalizeBackgroundColor,
   textContent,
   hasAnalyzableContent,
   analyzableSectionContent,

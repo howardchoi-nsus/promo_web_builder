@@ -50,6 +50,7 @@ module.exports = async function handler(req, res) {
       const image = await generateSectionImage({
         prompt: generated.imageRequest.prompt,
         safeArea: generated.imageRequest.safeArea,
+        backgroundColor: snapshot.design?.backgroundColor,
       });
       console.log("[section-design] image generated", { runId: id, model: image.provider.model, latencyMs: image.provider.latencyMs, bytes: image.bytes.length });
       if (image.bytes.length < 1024) throw Object.assign(new Error("Generated image is too small"), { code: "IMAGE_VALIDATION_FAILED" });
@@ -74,6 +75,7 @@ module.exports = async function handler(req, res) {
         width: image.width,
         height: image.height,
         safeArea: generated.imageRequest.safeArea,
+        backgroundColor: snapshot.design?.backgroundColor,
       };
       imageProvider = image.provider;
       imageUsage = image.usage;

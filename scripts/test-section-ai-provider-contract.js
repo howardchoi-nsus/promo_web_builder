@@ -51,13 +51,19 @@ process.env.SECTION_IMAGE_PROVIDER = "openai";
   assert.equal(requests[0].body.text.format.strict, true);
   assert(requests[0].signal instanceof AbortSignal);
 
-  const image = await generateSectionImage({ prompt: "Premium visual, no text", safeArea: "right-copy" });
+  const image = await generateSectionImage({
+    prompt: "Premium visual, no text",
+    safeArea: "right-copy",
+    backgroundColor: "#123e36",
+  });
   assert.equal(image.bytes.length, 2048);
   assert.equal(image.mimeType, "image/webp");
   assert.equal(requests[1].body.output_format, "webp");
   assert.equal(requests[1].body.size, "1536x1024");
   assert.match(requests[1].body.prompt, /right half as clean negative space/);
   assert.match(requests[1].body.prompt, /main visual subject on the left/);
+  assert.match(requests[1].body.prompt, /exact solid background color #123e36/);
+  assert.match(requests[1].body.prompt, /do not fade to white, black, or transparency/);
 
   process.env.SECTION_IMAGE_PROVIDER = "gemini";
   process.env.SECTION_IMAGE_MODEL = "gemini-3.1-flash-image";

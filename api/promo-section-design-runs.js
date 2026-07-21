@@ -2,7 +2,7 @@ const { fetchTemplateWithItems, fetchLayoutRow, toLayout } = require("./_wizard-
 const { toFormTemplate } = require("./_wizard-form-templates-store");
 const { getSql, parseBody, fetchRun, createRun } = require("./_promo-section-design-store");
 const {
-  inputHash, hasAnalyzableContent, analyzableSectionContent, defaultConstraints,
+  inputHash, hasAnalyzableContent, analyzableSectionContent, defaultConstraints, normalizeBackgroundColor,
 } = require("./_promo-section-design-contract");
 
 module.exports = async function handler(req, res) {
@@ -33,9 +33,14 @@ module.exports = async function handler(req, res) {
     const layout = toLayout(await fetchLayoutRow(sql, formTemplateId));
     const template = toFormTemplate(templateData.template);
     const constraints = defaultConstraints(section, layout.layoutSpec);
+    const backgroundColor = normalizeBackgroundColor(
+      body.backgroundColor,
+      normalizeBackgroundColor(layout.layoutSpec?.theme?.backgroundColor)
+    );
     const snapshot = {
       template: { id: template.id, templateKey: template.templateKey, version: template.version },
       layoutRevision: layout.layoutRevision,
+      design: { backgroundColor },
       section: {
         sectionKey,
         name: section.name || section.sectionName || sectionKey,

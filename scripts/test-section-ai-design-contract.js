@@ -5,6 +5,7 @@ const {
   defaultConstraints,
   analyzableSectionContent,
   layoutPatchFromResult,
+  normalizeBackgroundColor,
   safeAreaForVariant,
   validatePatch,
 } = require("../api/_promo-section-design-contract");
@@ -22,6 +23,8 @@ const section = {
 assert.equal(hasAnalyzableContent({ title: "Welcome" }), true);
 assert.equal(hasAnalyzableContent({ title: "" }), false);
 assert.equal(inputHash({ b: 2, a: 1 }), inputHash({ a: 1, b: 2 }));
+assert.equal(normalizeBackgroundColor("#ABCDEF"), "#abcdef");
+assert.equal(normalizeBackgroundColor("not-a-color", "#123456"), "#123456");
 assert.deepEqual(analyzableSectionContent(section, {
   title: "Welcome",
   description: "Bonus details",
