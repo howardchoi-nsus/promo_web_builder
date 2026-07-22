@@ -5,6 +5,7 @@
 - 기준 브랜치: `codex/source-cleanup-consolidation`
 - 기준 커밋: `88f4645 css 수정`
 - 문서 상태: 구현 전 개발계획 / 소스코드 미반영
+- 최근 수정: 2026-07-22 — Visual Editor CSS 단일 출처, Web Output 산출물 분리, breakpoint 경계 테스트 보완
 - 선행 문서: `docs/css-design-token-unification-development-plan-2026-07-21.md`
 - 관련 문서: `docs/source-code-cleanup-and-consolidation-development-plan-2026-07-21.md`
 - 적용 대상: Promo Builder, 관리자 페이지, Create Promo, Promo Wizard, Visual Editor, Generated UI, Web Output
@@ -71,6 +72,8 @@
 | `prototype/create-promo.css` | 1,737 | 33.3 KB | Create Promo 전체 스타일 및 로컬 alias |
 | `prototype/promo-wizard.css` | 1,222 | 22.6 KB | Promo Wizard 전체 스타일 및 로컬 alias |
 | `visual-editor/src/styles.css` | 227 | 17.6 KB | Visual Editor 앱 UI와 `.promo-renderer` 혼재 |
+
+`visual-editor/src/styles.css`의 227줄/17.6KB는 오기가 아니다. 현재 여러 선언이 한 줄에 길게 작성되어 줄당 평균 길이가 크다. 향후 포맷 변경으로 줄 수가 크게 달라질 수 있으므로 줄 수는 구조 품질 지표가 아니라 기준선 참고값으로만 사용한다.
 
 ### 3.1 현재 로드 순서
 
@@ -179,10 +182,17 @@ prototype/
 
 visual-editor/src/
 ├── styles.css                    # Visual Editor Layer A 전용
+├── visual-output.css             # Visual Output host chrome 전용, 필요 시 최소 범위
 ├── promo-renderer.css            # Layer B 정적 렌더링 규칙
 ├── App.vue
 ├── PromoPageRenderer.vue
 └── main.js
+
+prototype/visual-editor-assets/
+├── visual-editor.css             # Editor Layer A 번들
+├── visual-output.css             # Output host chrome 번들
+├── promo-renderer.css            # Layer B 독립 산출물
+└── visual-editor.js
 ```
 
 `index.html`은 단일 Vue 앱 안에서 Builder와 관리자 화면을 전환하므로 `builder.css`와 `admin.css`를 모두 로드해도 된다. 두 파일은 네임스페이스를 분명히 하고 서로의 선택자를 재정의하지 않아야 한다.
@@ -219,30 +229,52 @@ visual-editor/src/
 
 ### 5.4 Visual Editor
 
+Visual Editor는 공통 컴포넌트를 외부 링크로 한 번만 로드한다. Vite의 `visual-editor.css` 번들에는 `app-components.css`를 import하거나 복제하지 않는다.
+
 ```html
 <link rel="stylesheet" href="/prototype/design-tokens.css" />
 <link rel="stylesheet" href="/prototype/app-shell.css" />
 <link rel="stylesheet" href="/prototype/app-components.css" />
 <link rel="stylesheet" href="/prototype/visual-editor-assets/visual-editor.css" />
+<link rel="stylesheet" href="/prototype/visual-editor-assets/promo-renderer.css" />
 ```
 
-Vite 번들 내부에서는 다음 순서를 유지한다.
+최종 cascade 순서는 다음으로 고정한다.
 
-```js
-import "./styles.css";
-import "./promo-renderer.css";
+```text
+tokens → shell → components → visual-editor page CSS → promo-renderer scoped CSS
 ```
+
+`visual-editor/src/styles.css`는 `.editor-*`, `.preview-*` 등 Editor 전용 선택자만 정의한다. `.app-*` 공통 컴포넌트의 기본 appearance를 다시 정의해서는 안 된다. Editor 전용 배치 변경이 필요하면 `.editor-*` wrapper와 공통 컴포넌트를 함께 사용하는 명시적 selector 또는 modifier를 사용한다.
+
+`promo-renderer.css`는 Vite 설정에서 독립 CSS entry 또는 동등한 별도 산출 방식으로 빌드한다. `main.js`가 두 CSS를 모두 import하여 하나의 CSS 파일로 합치는 구조는 최종 상태로 허용하지 않는다.
 
 ### 5.5 Web Output
 
-Web Output은 앱 Sidebar와 관리자 컴포넌트가 필요하지 않다. 최종적으로 다음만 로드하는 것을 목표로 한다.
+Web Output에는 두 종류가 있다.
+
+1. `visual-output.html` 검사 화면: 돌아가기 버튼이나 상태 표시처럼 최소 host chrome이 존재한다.
+2. 최종 게시용 프로모션 출력: 앱 chrome이 없는 실제 프로모션 결과다.
+
+검사 화면은 다음을 로드할 수 있다.
+
+```text
+design-tokens.css
+→ visual-output.css
+→ promo-renderer.css
+→ designSpec 런타임 값
+```
+
+`visual-output.css`는 `.output-*`만 정의하고 `.promo-renderer` 및 `.rendered-*`를 정의하지 않는다.
+
+최종 게시용 프로모션 출력은 다음만 로드하는 것을 목표로 한다.
 
 ```text
 promo-renderer.css
 + designSpec 런타임 값
 ```
 
-전환기에는 기존 Visual Editor 번들을 사용할 수 있으나, 출력 모드에서 Layer A 규칙이 결과물에 영향을 주지 않는지 테스트해야 한다.
+전환기에는 기존 Visual Editor 단일 번들을 사용할 수 있으나, 각 Phase 완료 시 출력 모드에서 Layer A 규칙이 프로모션 콘텐츠에 적용되지 않는지 검증해야 한다. Phase 6 완료 후에는 단일 번들 fallback을 제거하고 물리적으로 분리된 산출물을 사용한다.
 
 ## 6. design-tokens.css 정책
 
@@ -270,9 +302,11 @@ promo-renderer.css
 --app-danger-line
 --app-warning
 --app-warning-soft
+--app-warning-ink
+--app-warning-line
 ```
 
-실제 사용처가 없는 토큰을 미리 대량 추가하지 않는다. 최소 두 개 이상의 화면 또는 공통 컴포넌트에서 사용하는 값만 공통 토큰으로 승격한다.
+Warning 계열은 실제 사용처가 있을 때 `warning`, `warning-soft`, `warning-ink`, `warning-line`을 의미 단위로 함께 추가한다. 실제 사용처가 없는 토큰을 미리 대량 추가하지 않는다. 최소 두 개 이상의 화면 또는 공통 컴포넌트에서 사용하는 값만 공통 토큰으로 승격한다.
 
 ### 6.3 Light/Dark 규칙
 
@@ -337,6 +371,17 @@ Mobile: 680px
 ```
 
 기존 640/720/760/920/1180px 규칙은 기능적 이유를 확인한 후 위 표준으로 합칠 수 있는지 화면별로 검토한다. 무조건 기계적으로 변경하지 않는다.
+
+일반 시각 회귀 viewport와 breakpoint 경계 검증을 분리한다. 각 표준 breakpoint는 조건에 포함되는 값과 바로 바깥 값을 함께 검사한다.
+
+```text
+1080 / 1081
+1023 / 1024
+980 / 981
+680 / 681
+```
+
+경계 테스트에서는 전체 화면의 픽셀 비교보다 Sidebar/Drawer 표시, grid column, 콘텐츠 padding, overlay, body scroll lock 같은 상태 계약을 우선 검증한다.
 
 향후 PostCSS `@custom-media`를 도입하면 breakpoint 단일 정의를 별도 프로젝트로 진행할 수 있다.
 
@@ -615,21 +660,35 @@ AI는 자유 형식 CSS/HTML을 최종 결과로 직접 반환하지 않는다. 
 
 ## 13. 단계별 구현 계획
 
+### 13.1 모든 Phase에 적용하는 Web Output 회귀 게이트
+
+CSS를 이동하거나 토큰을 변경하는 모든 Phase는 다음 검증을 통과해야 한다. Phase 0과 Phase 6 사이에도 예외 없이 적용한다.
+
+1. 동일한 snapshot을 Visual Editor Preview와 Web Output에 로드한다.
+2. `.promo-renderer`의 주요 `--promo-*` 계산값을 비교한다.
+3. 대표 Section의 background, typography, CTA, Item image 계산 스타일을 비교한다.
+4. Web Output의 `.promo-renderer` 하위에 Layer A `.app-*`, `.shell-*`, `.editor-*` 규칙이 적용되지 않는지 확인한다.
+5. 검사 결과를 해당 Phase 테스트 로그 또는 handoff에 기록한다.
+
+전환기 단일 번들을 사용하는 동안에도 이 게이트를 유지한다. Phase 6에서 물리적 CSS 분리가 완료되면 asset 로드 목록 검증을 추가한다.
+
 ### Phase 0 — 기준선과 안전망
 
 1. 현재 전체 테스트를 실행하고 결과를 기록한다.
 2. Visual Editor production build를 실행하고 번들 크기를 기록한다.
-3. 1440, 1280, 1024, 768, 390px 화면 기준 스크린샷을 확보한다.
+3. 1440, 1280, 1024, 768, 390px 일반 화면 기준 스크린샷을 확보한다.
 4. Light/Dark 상태를 각각 캡처한다.
 5. Create Promo Item AI와 Background AI의 기존 렌더링을 캡처한다.
 6. Web Output이 Visual Editor Preview와 동일한지 기준 결과를 확보한다.
+7. 1080/1081, 1023/1024, 980/981, 680/681px breakpoint 경계 상태를 기록한다.
 
 완료 기준:
 
-- 기존 31개 테스트 파일 통과
+- 현재 전체 테스트 스위트 통과
 - `npm run check` 통과
 - Visual Editor build 통과
 - 기준 스크린샷과 테스트 URL 기록
+- 실제 테스트 파일 개수와 실행 결과는 Phase 0 로그 또는 handoff에 기록
 
 ### Phase 1 — 토큰 보완 및 정적 검사
 
@@ -736,14 +795,22 @@ scripts/test-promo-renderer-css-isolation.js
 2. Editor chrome을 `--app-*` 및 공통 컴포넌트로 전환한다.
 3. `.rendered-*` 전역 선택자를 `.promo-renderer` 하위로 scope한다.
 4. Editor-only guide가 output mode에 표시되지 않는지 확인한다.
-5. Vite production build를 실행한다.
-6. 생성된 `prototype/visual-editor-assets/`를 검증한다.
+5. `visual-output.css`가 필요한 최소 host chrome만 포함하도록 분리한다.
+6. Vite 설정에 Editor CSS와 Renderer CSS의 독립 entry 또는 동등한 분리 산출 구성을 추가한다.
+7. `main.js`가 공통 컴포넌트 CSS와 Renderer CSS를 다시 합쳐 번들링하지 않는지 확인한다.
+8. Vite production build를 실행한다.
+9. 생성된 `visual-editor.css`, `visual-output.css`, `promo-renderer.css`를 각각 검증한다.
+10. `visual-editor.html`은 공통 CSS + Editor CSS + Renderer CSS 순서로 로드한다.
+11. `visual-output.html`은 Output host CSS + Renderer CSS만 로드한다.
 
 완료 기준:
 
 - standalone/editor/admin-layout/wizard-layout/output mode 모두 정상
 - Preview와 Web Output의 프로모션 스타일 동등
 - Layer A/Layer B 토큰 교차 참조 0건
+- `visual-editor.css`가 `.app-*` 기본 컴포넌트 규칙을 복제하지 않음
+- `promo-renderer.css`가 독립 asset으로 생성됨
+- Web Output에서 `visual-editor.css`가 로드되지 않음
 
 ### Phase 7 — 최종 정리
 
@@ -771,8 +838,10 @@ scripts/test-promo-renderer-css-isolation.js
 | `prototype/promo-wizard.html` | 수정 | `app-components.css` 로드 및 공통 클래스 적용 |
 | `prototype/generated.html` | 수정 | `generated.css` 로드, 구형 Toolbar 제거 상태 유지 |
 | `visual-editor/src/styles.css` | 수정 | Layer A Editor UI만 유지 |
+| `visual-editor/src/visual-output.css` | 신규 | Output host chrome만 유지, Renderer 규칙 금지 |
 | `visual-editor/src/promo-renderer.css` | 신규 | Layer B 정적 렌더러 규칙 |
-| `visual-editor/src/main.js` | 수정 | CSS import 순서 명시 |
+| `visual-editor/src/main.js` | 수정 | Editor 전용 CSS만 연결, 공통/Renderer CSS 중복 import 금지 |
+| `visual-editor/vite.config.js` | 수정 | Editor/Output/Renderer CSS를 독립 asset으로 산출 |
 | `visual-editor/src/PromoPageRenderer.vue` | 제한적 수정 | runtime `--promo-*`와 scope 계약 유지 |
 | `scripts/run-tests.js` | 자동 포함 | 새 `test-*.js`가 자동 실행되는지 확인 |
 
@@ -788,6 +857,10 @@ scripts/test-promo-renderer-css-isolation.js
 - `app-shell.css`에 일반 `.panel`, `.field` 정의가 없음
 - Layer A CSS에서 `--promo-*`, `--item-*` 사용 0건
 - Layer B CSS에서 `--app-*`, `--shell-*` 사용 0건
+- `visual-editor/src/styles.css`에서 `.app-*` 공통 컴포넌트 기본 규칙을 재정의하지 않음
+- `visual-editor.css`, `visual-output.css`, `promo-renderer.css`가 독립 asset으로 생성됨
+- `visual-editor.html`과 `visual-output.html`이 각 mode에 필요한 asset만 정해진 순서로 로드함
+- Web Output에서 `visual-editor.css`가 로드되지 않음
 
 ### 15.2 하드코딩 검사
 
@@ -840,6 +913,23 @@ PromoPageRenderer.vue의 검증된 runtime instance 값
 390 × 844
 ```
 
+Breakpoint 경계 상태 테스트:
+
+```text
+1080 / 1081
+1023 / 1024
+980 / 981
+680 / 681
+```
+
+경계 상태 테스트는 다음을 자동 확인한다.
+
+- Sidebar 고정/compact/Drawer 상태
+- 메뉴 버튼과 overlay 표시 여부
+- `aria-expanded`
+- Drawer open 상태에서 viewport 변경 후 body scroll lock 해제
+- 주요 grid column과 콘텐츠 padding 전환
+
 필수 상태:
 
 - Light/Dark
@@ -859,11 +949,16 @@ PromoPageRenderer.vue의 검증된 runtime instance 값
 ```bash
 npm test
 npm run check
-npm run build:visual-editor
 git diff --check
 ```
 
-Node가 PATH에 없는 Codex Desktop 환경에서는 번들 런타임 경로를 사용한다. Visual Editor build는 산출물을 수정하므로 해당 Phase에서만 실행하고, 리뷰 전용 작업에서는 실행하지 않는다.
+Visual Editor source 또는 Vite 설정을 변경하는 Phase에서는 추가로 다음을 실행한다.
+
+```bash
+npm run build:visual-editor
+```
+
+Node가 PATH에 없는 Codex Desktop 환경에서는 번들 런타임 경로를 사용한다. Visual Editor build는 산출물을 수정하므로 Phase 0 기준선 확보와 Phase 6 구현·검증 등 명시된 개발 단계에서만 실행하고, 리뷰 전용 작업에서는 실행하지 않는다. 테스트 파일 개수는 계획서에 고정하지 않고 실행 로그에 기록한다.
 
 ## 16. 수동 QA 체크리스트
 
@@ -1034,8 +1129,11 @@ Node가 PATH에 없는 Codex Desktop 환경에서는 번들 런타임 경로를 
 14. 관리자 Light/Dark 변경이 프로모션 브랜드 디자인에 영향을 주지 않는다.
 15. 전체 자동 테스트와 문법 검사가 통과한다.
 16. Visual Editor production build가 통과한다.
-17. 1440/1280/1024/768/390 viewport 브라우저 검증이 완료된다.
-18. dead CSS 삭제 목록과 잔여 compatibility 목록이 문서화된다.
+17. 1440/1280/1024/768/390 일반 viewport 브라우저 검증이 완료된다.
+18. 1080/1081, 1023/1024, 980/981, 680/681 breakpoint 경계 상태 테스트가 통과한다.
+19. `visual-editor.css`, `visual-output.css`, `promo-renderer.css`가 독립 산출되고 Web Output은 `visual-editor.css`를 로드하지 않는다.
+20. 모든 CSS 변경 Phase에서 Preview/Web Output 회귀 게이트가 통과한다.
+21. dead CSS 삭제 목록과 잔여 compatibility 목록이 문서화된다.
 
 ## 21. Phase 시작 전 최종 확인 사항
 
@@ -1053,7 +1151,6 @@ Node가 PATH에 없는 Codex Desktop 환경에서는 번들 런타임 경로를 
 
 - `.app-*` 신규 클래스와 기존 클래스 병행 기간
 - `styles.css` 최종 제거 시점
-- Web Output 전용 CSS bundle 분리 여부
 - Stylelint/PostCSS 도입 여부
 - 기존 세부 breakpoint를 표준 breakpoint로 합치는 시점
 
