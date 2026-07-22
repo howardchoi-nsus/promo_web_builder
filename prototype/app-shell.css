@@ -38,7 +38,7 @@ body.shell-drawer-open { overflow: hidden; }
   padding: 18px 12px 14px;
   border-right: 1px solid var(--shell-line);
   background: var(--shell-bg);
-  box-shadow: 8px 0 28px rgba(20, 35, 70, 0.04);
+  box-shadow: var(--app-sidebar-shadow);
 }
 
 .shell-sidebar__brand {
@@ -415,12 +415,8 @@ body.shell-drawer-open { overflow: hidden; }
 .shell-theme-dot {
   width: 16px;
   height: 16px;
-  background: linear-gradient(135deg, #f8fafc 0 48%, #111827 50% 100%);
+  background: var(--app-theme-toggle-gradient);
   box-shadow: inset 0 0 0 1px var(--shell-line-strong);
-}
-
-[data-theme="dark"] .shell-theme-dot {
-  background: linear-gradient(135deg, #0c3b2e 0 48%, #28c39d 50% 100%);
 }
 
 .shell-status {
@@ -492,7 +488,7 @@ body.shell-drawer-open { overflow: hidden; }
     inset: 0;
     display: block;
     border: 0;
-    background: rgba(15, 23, 42, 0.48);
+    background: var(--app-overlay);
     visibility: hidden;
     opacity: 0;
     pointer-events: none;

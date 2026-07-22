@@ -4,8 +4,8 @@
 - 대상 프로젝트: `promo_web_builder`
 - 기준 브랜치: `codex/source-cleanup-consolidation`
 - 기준 커밋: `88f4645 css 수정`
-- 문서 상태: 구현 전 개발계획 / 소스코드 미반영
-- 최근 수정: 2026-07-22 — Visual Editor CSS 단일 출처, Web Output 산출물 분리, breakpoint 경계 테스트 보완
+- 문서 상태: 1차 기반 구현 반영 / Phase 3~5 점진 전환 대기
+- 최근 수정: 2026-07-22 — 공통 토큰·컴포넌트 기반, Visual Editor/Web Output CSS 분리 및 계약 테스트 반영
 - 선행 문서: `docs/css-design-token-unification-development-plan-2026-07-21.md`
 - 관련 문서: `docs/source-code-cleanup-and-consolidation-development-plan-2026-07-21.md`
 - 적용 대상: Promo Builder, 관리자 페이지, Create Promo, Promo Wizard, Visual Editor, Generated UI, Web Output
@@ -45,6 +45,24 @@
 - AI가 반환한 자유 형식 CSS를 검증 없이 `<style>`에 삽입하지 않는다.
 - `.promo-renderer` 하위에 `--app-*` 변수를 사용하지 않는다.
 - 앱 Sidebar, Panel, Modal 등이 `--promo-*`를 참조하지 않는다.
+
+### 1.3 2026-07-22 구현 현황
+
+반영 완료:
+
+- `design-tokens.css`의 공통 의미 토큰 보완 및 Pretendard 로드 단일화
+- `app-components.css` 생성과 기존 alias의 전환기 단일 출처 구성
+- 관리자/Builder, Create Promo, Promo Wizard, Generated UI, Visual Editor의 공통 CSS 로드 순서 반영
+- Create Promo, Promo Wizard, 기존 `styles.css`의 페이지 로컬 `:root` alias 제거
+- Visual Editor 앱 UI, Web Output host, Promo Renderer CSS의 소스 및 빌드 산출물 분리
+- Layer A/Layer B 교차 참조, 색상 하드코딩, 로드 순서 계약 테스트 추가
+- 1023/1024px 전환 시 열린 모바일 Sidebar Drawer 자동 정리
+
+후속 점진 전환:
+
+- `styles.css`를 `builder.css`, `admin.css`, `generated.css`로 물리 분해
+- Create Promo와 Promo Wizard의 중복 컴포넌트 선언 및 잔여 디자인 리터럴 제거
+- compatibility alias 제거 전 실제 클래스의 `.app-*` 전환과 브라우저 회귀 검증
 
 ## 2. 용어와 강제 수준
 

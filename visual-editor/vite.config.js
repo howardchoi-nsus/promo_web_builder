@@ -3,6 +3,25 @@ import vue from "@vitejs/plugin-vue";
 import { resolve } from "node:path";
 import { readFileSync } from "node:fs";
 
+function emitStandaloneCssAssets() {
+  return {
+    name: "emit-standalone-css-assets",
+    apply: "build",
+    generateBundle() {
+      [
+        ["promo-renderer.css", "src/promo-renderer.css"],
+        ["visual-output.css", "src/visual-output.css"],
+      ].forEach(([fileName, sourcePath]) => {
+        this.emitFile({
+          type: "asset",
+          fileName,
+          source: readFileSync(resolve(__dirname, sourcePath), "utf8"),
+        });
+      });
+    },
+  };
+}
+
 function localRouteAliases() {
   return {
     name: "local-route-aliases",
@@ -25,7 +44,7 @@ function localRouteAliases() {
 
 export default defineConfig({
   root: resolve(__dirname, "../prototype"),
-  plugins: [localRouteAliases(), vue()],
+  plugins: [localRouteAliases(), vue(), emitStandaloneCssAssets()],
   define: {
     "process.env.NODE_ENV": JSON.stringify("production"),
   },

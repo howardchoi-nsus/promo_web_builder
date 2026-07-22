@@ -37,6 +37,8 @@ assert.match(sharedScript, /promoPrototype\.themeMode/);
 assert.match(sharedScript, /promoPrototype\.sidebarMode/);
 assert.match(sharedScript, /data-shell-theme-toggle/);
 assert.match(sharedScript, /data-shell-sidebar-mode/);
+assert.match(sharedScript, /matchMedia\("\(max-width: 1023px\)"\)/);
+assert.match(sharedScript, /mobileViewport\.addEventListener\?\.\("change", closeDrawerOutsideMobile\)/);
 assert.match(sharedScript, /const NAV_ITEMS/);
 assert.match(sharedScript, /icon:\s*"layout-dashboard"/);
 assert.match(sharedScript, /function renderNavigation/);

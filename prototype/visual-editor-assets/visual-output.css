@@ -1,0 +1,13 @@
+/* Layer A output host only: promo content styles belong to promo-renderer.css. */
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--app-bg); color: var(--app-ink); font-family: var(--app-font-body); }
+.output-shell { min-height: 100vh; background: var(--app-bg); }
+.output-toolbar { display: flex; align-items: center; justify-content: space-between; gap: var(--app-space-4); min-height: 58px; padding: var(--app-space-2) var(--app-space-4); background: var(--app-panel); border-bottom: var(--app-border-width) solid var(--app-line); }
+.output-toolbar > div { display: grid; gap: var(--app-space-1); }
+.output-toolbar span { color: var(--app-sub); font-size: var(--app-font-size-small); font-weight: var(--app-font-weight-strong); }
+.output-toolbar a { display: inline-flex; align-items: center; justify-content: center; min-height: var(--app-control-height); padding: 0 var(--app-space-3); border: var(--app-border-width) solid var(--app-line-strong); background: var(--app-panel); color: var(--app-ink-soft); text-decoration: none; }
+.output-shell > :last-child { min-height: calc(100vh - 58px); box-shadow: none; }
+
+@media (max-width: 680px) {
+  .output-toolbar { align-items: flex-start; flex-direction: column; }
+}

@@ -1,0 +1,316 @@
+/* Layer A only: reusable application UI components. */
+
+:root {
+  /* Transitional aliases live here once while legacy page selectors migrate to --app-* tokens. */
+  --bg: var(--app-bg);
+  --panel: var(--app-panel);
+  --surface: var(--app-surface);
+  --surface-2: var(--app-surface);
+  --surface-solid: var(--app-panel);
+  --selected-surface: var(--app-accent-soft);
+  --ink: var(--app-ink);
+  --ink-soft: var(--app-ink-soft);
+  --sub: var(--app-sub);
+  --muted: var(--app-muted);
+  --placeholder: var(--app-muted);
+  --line: var(--app-line);
+  --line-strong: var(--app-line-strong);
+  --focus-border: var(--app-focus);
+  --primary: var(--app-ink);
+  --accent: var(--app-accent);
+  --accent-soft: var(--app-accent-soft);
+  --success: var(--app-success);
+  --success-hover: var(--app-success-hover);
+  --success-soft: var(--app-success-soft);
+  --danger: var(--app-danger);
+  --danger-soft: var(--app-danger-soft);
+  --cta: var(--app-success);
+  --canvas: var(--app-bg);
+  --radius: var(--app-radius);
+  --space-1: var(--app-space-1);
+  --space-2: var(--app-space-2);
+  --space-3: var(--app-space-3);
+  --space-4: var(--app-space-4);
+  --space-5: var(--app-space-5);
+  --control-height: var(--app-control-height);
+  --panel-gap: var(--app-panel-gap);
+  --shadow: var(--app-shadow);
+  --font-heading: var(--app-font-heading);
+  --font-body: var(--app-font-body);
+  --mono: var(--app-font-mono);
+  --title-weight: var(--app-font-weight-title);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: var(--app-bg);
+  color: var(--app-ink);
+  font-family: var(--app-font-body);
+  font-size: var(--app-font-size-body);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.app-workspace,
+.workspace {
+  min-width: 0;
+  padding: var(--app-content-padding);
+}
+
+.app-workspace.shell-content,
+.workspace.shell-content {
+  flex: 1;
+}
+
+.app-panel,
+.panel,
+.wizard-panel {
+  min-width: 0;
+  border: var(--app-border-width) solid var(--app-line);
+  border-radius: var(--app-radius);
+  background: var(--app-panel);
+  box-shadow: var(--app-shadow);
+}
+
+.app-panel__header,
+.panel-header,
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--app-space-3);
+  padding-bottom: var(--app-space-2);
+  border-bottom: var(--app-border-width) solid var(--app-line);
+}
+
+.app-panel__header h2,
+.panel-header h2,
+.modal-header h2 {
+  margin: 0;
+  color: var(--app-ink);
+  font-family: var(--app-font-heading);
+  font-size: var(--app-font-size-heading);
+  font-weight: var(--app-font-weight-heading);
+}
+
+.app-field,
+.field,
+.content-field {
+  display: grid;
+  gap: var(--app-space-1);
+  min-width: 0;
+}
+
+.app-field__label,
+.field > span,
+.content-field > span {
+  color: var(--app-sub);
+  font-size: var(--app-font-size-small);
+  font-weight: var(--app-font-weight-label);
+}
+
+.app-field input,
+.app-field select,
+.app-field textarea,
+.field input,
+.field select,
+.field textarea,
+.content-field input,
+.content-field select,
+.content-field textarea {
+  width: 100%;
+  min-height: var(--app-control-height);
+  padding: var(--app-space-2) var(--app-space-3);
+  border: var(--app-border-width) solid var(--app-line);
+  border-radius: var(--app-radius);
+  background: var(--app-panel);
+  color: var(--app-ink);
+  font-family: var(--app-font-body);
+  font-size: var(--app-font-size-control);
+  line-height: 1.35;
+}
+
+.app-field input:focus,
+.app-field select:focus,
+.app-field textarea:focus,
+.field input:focus,
+.field select:focus,
+.field textarea:focus,
+.content-field input:focus,
+.content-field select:focus,
+.content-field textarea:focus {
+  border-color: var(--app-focus);
+  outline: 0;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 20%, transparent);
+}
+
+.app-field.is-invalid input,
+.app-field.is-invalid select,
+.app-field.is-invalid textarea,
+.field.field-invalid input,
+.field.field-invalid select,
+.field.field-invalid textarea,
+.content-field.is-invalid input,
+.content-field.is-invalid select,
+.content-field.is-invalid textarea {
+  border-color: var(--app-danger);
+  background: color-mix(in srgb, var(--app-danger) 10%, var(--app-panel));
+}
+
+.app-field__error,
+.field-error,
+.content-field-error {
+  color: var(--app-danger-ink);
+  font-size: var(--app-font-size-xs);
+  font-weight: var(--app-font-weight-strong);
+}
+
+.app-form-grid,
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--app-panel-gap);
+}
+
+.app-form-grid--split,
+.split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--app-space-2);
+}
+
+.app-actions,
+.action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--app-space-2);
+}
+
+.app-actions--end,
+.align-right {
+  justify-content: flex-end;
+}
+
+.app-button,
+.primary-action,
+.secondary-action,
+.tiny-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--app-button-height);
+  padding: 0 var(--app-space-4);
+  border: var(--app-border-width) solid var(--app-line);
+  border-radius: var(--app-radius);
+  background: var(--app-panel);
+  color: var(--app-sub);
+  cursor: pointer;
+  font-weight: var(--app-font-weight-heading);
+  text-decoration: none;
+}
+
+.app-button--primary,
+.primary-action {
+  border-color: var(--app-success);
+  background: var(--app-success);
+  color: var(--app-on-accent);
+}
+
+.app-button--secondary,
+.secondary-action {
+  border-color: var(--app-line);
+  background: var(--app-panel);
+  color: var(--app-sub);
+}
+
+.app-button--small,
+.tiny-button {
+  min-height: var(--app-control-height-small);
+  padding: 0 var(--app-space-2);
+  font-size: var(--app-font-size-small);
+  font-weight: var(--app-font-weight-strong);
+}
+
+.app-button--danger,
+.tiny-button.danger {
+  border-color: var(--app-danger-line);
+  background: var(--app-danger-soft);
+  color: var(--app-danger-ink);
+}
+
+.app-button:hover,
+.secondary-action:hover,
+.tiny-button:hover {
+  border-color: var(--app-line-strong);
+  background: var(--app-surface);
+}
+
+.app-button--primary:hover,
+.primary-action:hover {
+  border-color: var(--app-success-hover);
+  background: var(--app-success-hover);
+}
+
+.app-button:disabled,
+.primary-action:disabled,
+.secondary-action:disabled,
+.tiny-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.app-status,
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 86px;
+  min-height: var(--app-control-height-small);
+  padding: 0 var(--app-space-3);
+  border: var(--app-border-width) solid var(--app-line);
+  border-radius: var(--app-radius);
+  background: var(--app-success-soft);
+  color: var(--app-success);
+  font-size: var(--app-font-size-control);
+  font-weight: var(--app-font-weight-strong);
+}
+
+.app-empty-state,
+.empty-state {
+  padding: var(--app-space-4);
+  border: var(--app-border-width) dashed var(--app-line-strong);
+  border-radius: var(--app-radius);
+  color: var(--app-muted);
+  font-size: var(--app-font-size-small);
+  text-align: center;
+}
+
+@media (max-width: 980px) {
+  .app-form-grid,
+  .form-grid,
+  .app-form-grid--split,
+  .split {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .app-workspace,
+  .workspace {
+    padding: var(--app-space-4);
+  }
+}

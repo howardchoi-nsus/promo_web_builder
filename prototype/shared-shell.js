@@ -169,6 +169,11 @@
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && frame.classList.contains("is-sidebar-open")) closeSidebar(frame);
     });
+    const mobileViewport = window.matchMedia("(max-width: 1023px)");
+    const closeDrawerOutsideMobile = (event) => {
+      if (!event.matches) closeSidebar(frame);
+    };
+    mobileViewport.addEventListener?.("change", closeDrawerOutsideMobile);
   }
 
   function init(root = document) {

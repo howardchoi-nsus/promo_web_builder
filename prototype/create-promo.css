@@ -1,21 +1,3 @@
-:root {
-  /* Compatibility aliases. Layer A values are defined only in design-tokens.css. */
-  --bg: var(--app-bg);
-  --panel: var(--app-panel);
-  --surface: var(--app-surface);
-  --ink: var(--app-ink);
-  --sub: var(--app-sub);
-  --line: var(--app-line);
-  --line-strong: var(--app-line-strong);
-  --accent: var(--app-accent);
-  --accent-soft: var(--app-accent-soft);
-  --danger: var(--app-danger);
-  --danger-soft: var(--app-danger-soft);
-  --success: var(--app-success);
-  --success-soft: var(--app-success-soft);
-  --shadow: var(--app-shadow);
-}
-
 * {
   box-sizing: border-box;
 }

@@ -1,0 +1,37 @@
+/* Layer B only: isolated promo template rendering rules. */
+.promo-renderer { position: relative; width: 100%; min-height: 100%; overflow: hidden; border-radius: 15px; background-color: var(--promo-bg); color: var(--promo-ink); font-family: var(--promo-font); box-shadow: 0 10px 32px rgba(33, 43, 61, .12); }
+.promo-renderer .content-width-guide { position: absolute; z-index: 20; top: 0; bottom: 0; left: 50%; width: min(var(--promo-width), 100%); border-right: 1px dotted color-mix(in srgb, var(--promo-accent) 72%, transparent); border-left: 1px dotted color-mix(in srgb, var(--promo-accent) 72%, transparent); pointer-events: none; transform: translateX(-50%); }
+.promo-renderer .rendered-section { position: relative; min-height: 50px; }
+.promo-renderer.has-editor-guides .rendered-section { border-bottom: 1px dotted color-mix(in srgb, var(--promo-accent) 58%, transparent); }
+.promo-renderer .rendered-section.is-resizing { outline: 2px solid var(--promo-accent); outline-offset: -2px; }
+.promo-renderer .rendered-section__inner { position: relative; width: min(var(--promo-width), 100%); height: 100%; margin: 0 auto; padding: 38px clamp(18px, 4vw, 52px); }
+.promo-renderer .rendered-items { position: relative; width: 100%; height: 100%; min-height: 0; }
+.promo-renderer .rendered-item { position: absolute; width: fit-content; min-width: 0; will-change: left, top; }
+.promo-renderer .rendered-item.is-editable { cursor: grab; touch-action: none; }
+.promo-renderer .rendered-item.is-editable:hover { outline: 1px dashed color-mix(in srgb, var(--promo-accent) 72%, transparent); outline-offset: 4px; }
+.promo-renderer .rendered-item.is-selected { outline: 2px solid var(--promo-accent); outline-offset: 5px; }
+.promo-renderer .rendered-item.is-dragging { cursor: grabbing; opacity: .86; }
+.promo-renderer .rendered-item.is-editing { cursor: text; outline: 2px dashed var(--promo-accent); }
+.promo-renderer .rendered-item.is-editing .rendered-text { cursor: text; user-select: text; }
+.promo-renderer .rendered-item.is-free-positioned { margin: 0; }
+.promo-renderer .rendered-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--item-font-size, clamp(16px, 2vw, 22px)); line-height: 1.45; }
+.promo-renderer .rendered-empty { margin: 0; color: color-mix(in srgb, var(--promo-ink) 42%, transparent); }
+.promo-renderer .rendered-cta { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 18px; border: 2px solid var(--promo-cta, var(--promo-accent)); border-radius: var(--promo-cta-radius, 2px); background: var(--promo-cta-bg, var(--promo-accent)); color: var(--item-color, var(--promo-cta-ink, #fff)); text-decoration: none; font-size: var(--item-font-size, 16px); font-weight: var(--item-font-weight, 800); }
+.promo-renderer .rendered-image { margin: 0; }
+.promo-renderer .rendered-image img { display: block; width: auto; height: auto; object-fit: contain; }
+.promo-renderer .rendered-image__placeholder { display: grid; width: fit-content; min-width: 0; place-content: center; gap: 6px; padding: 20px; background: #d9e0e7; color: #475569; text-align: center; }
+.promo-renderer .rendered-image__placeholder small { overflow-wrap: anywhere; }
+.promo-renderer .rendered-image figcaption { margin-top: 8px; color: color-mix(in srgb, var(--promo-ink) 68%, transparent); line-height: 1.5; }
+.promo-renderer .section-resize-handle { position: absolute; z-index: 8; left: 50%; bottom: -5px; width: 54px; height: 10px; padding: 0; border: 1px solid #9ba7b8; border-radius: 20px; background: #fff; cursor: ns-resize; transform: translateX(-50%); touch-action: none; }
+.promo-renderer .section-resize-handle:hover,
+.promo-renderer .rendered-section.is-resizing .section-resize-handle { border-color: var(--promo-accent); background: color-mix(in srgb, var(--promo-accent) 10%, #fff); }
+
+@media (max-width: 680px) {
+  .promo-renderer .rendered-section__inner { padding: 28px 18px; }
+}
+
+@media (min-width: 1140px) {
+  .promo-renderer:not(.is-editor-preview) {
+    min-width: min(var(--promo-min-width), 100%);
+  }
+}
