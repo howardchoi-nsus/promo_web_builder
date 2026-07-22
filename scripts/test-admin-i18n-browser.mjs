@@ -41,6 +41,12 @@ const draftMessage = {
   ...activeMessage, id: "00000000-0000-4000-8000-000000000002", value: draftValue,
   status: "draft", version: 2, changedBy: "admin", updatedAt: "2026-07-22T01:00:00.000Z",
 };
+const activeEnglishMessage = {
+  ...activeMessage,
+  id: "00000000-0000-4000-8000-000000000003",
+  locale: "en",
+  value: "Save",
+};
 
 let browser;
 try {
@@ -65,9 +71,20 @@ try {
     const pathname = url.pathname;
     const fulfill = (body, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
     if (pathname === "/api/locales") return fulfill({ ok: true, locales });
-    if (pathname === "/api/locale-snapshot") return fulfill({ ok: true, locale: url.searchParams.get("locale") || "ko", defaultLocale: "ko", revision: 2, messages: { "common.action.save": "저장" }, defaultMessages: {} });
-    if (pathname === "/api/locale-messages") return fulfill({ ok: true, locale: "ko", messages: [{ ...activeMessage }, { ...draftMessage, value: draftValue }] });
-    if (pathname === "/api/locale-message-history") return fulfill({ ok: true, locale: "ko", messageKey: activeMessage.messageKey, versions: [{ ...draftMessage, value: draftValue }, activeMessage] });
+    if (pathname === "/api/locale-snapshot") {
+      const locale = url.searchParams.get("locale") || "ko";
+      return fulfill({ ok: true, locale, defaultLocale: "ko", revision: 2, messages: { "common.action.save": locale === "en" ? "Save" : "저장" }, defaultMessages: {} });
+    }
+    if (pathname === "/api/locale-messages") {
+      const locale = url.searchParams.get("locale") || "ko";
+      const messages = locale === "en" ? [activeEnglishMessage] : [{ ...activeMessage }, { ...draftMessage, value: draftValue }];
+      return fulfill({ ok: true, locale, messages });
+    }
+    if (pathname === "/api/locale-message-history") {
+      const locale = url.searchParams.get("locale") || "ko";
+      const versions = locale === "en" ? [activeEnglishMessage] : [{ ...draftMessage, value: draftValue }, activeMessage];
+      return fulfill({ ok: true, locale, messageKey: activeMessage.messageKey, versions });
+    }
     if (pathname === "/api/locale-message" && request.method() === "POST") {
       draftValue = request.postDataJSON().value;
       return fulfill({ ok: true, message: { ...draftMessage, value: draftValue } });
@@ -81,6 +98,10 @@ try {
 
   await page.goto(`${origin}/prototype/index.html?view=admin&tab=i18n`, { waitUntil: "networkidle" });
   await page.locator(".locale-manager").waitFor({ state: "visible" });
+  assert.equal(await page.getByRole("columnheader", { name: "한글 문구" }).count(), 1);
+  assert.equal(await page.getByRole("columnheader", { name: "영문 문구" }).count(), 1);
+  assert.equal(await page.getByText("저장 수정본", { exact: true }).count(), 1);
+  assert.equal(await page.getByText("Save", { exact: true }).count(), 1);
   await page.getByText("common.action.save", { exact: true }).click();
   const editor = page.locator(".locale-message-editor textarea");
   await assert.doesNotReject(() => editor.waitFor({ state: "visible" }));

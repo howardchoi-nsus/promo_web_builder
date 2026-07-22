@@ -74,6 +74,8 @@
   "admin.i18n.messageCategory": "Message category",
   "admin.i18n.messageId": "Message ID",
   "admin.i18n.translation": "Translation",
+  "admin.i18n.koreanText": "Korean text",
+  "admin.i18n.englishText": "English text",
   "admin.i18n.messages": "Messages",
   "admin.i18n.untranslated": "Untranslated messages",
   "admin.i18n.progress": "Translation progress",

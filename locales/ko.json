@@ -74,6 +74,8 @@
   "admin.i18n.messageCategory": "문구 분류",
   "admin.i18n.messageId": "메시지 식별자",
   "admin.i18n.translation": "번역 문구",
+  "admin.i18n.koreanText": "한글 문구",
+  "admin.i18n.englishText": "영문 문구",
   "admin.i18n.messages": "문구 목록",
   "admin.i18n.untranslated": "미번역 문구",
   "admin.i18n.progress": "번역 진행률",

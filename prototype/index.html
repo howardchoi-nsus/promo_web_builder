@@ -960,13 +960,15 @@
                 </div>
                 <div class="app-table-wrap" v-if="localeMessageRows.length">
                   <table class="app-table">
-                    <thead><tr><th class="app-table__select"></th><th>{{ t('admin.i18n.messageId') }}</th><th>{{ t('common.field.status') }}</th><th>{{ t('common.field.version') }}</th><th>{{ t('common.field.lastUpdated') }}</th></tr></thead>
+                    <thead><tr><th class="app-table__select"></th><th>{{ t('admin.i18n.messageId') }}</th><th>{{ t('common.field.status') }}</th><th>{{ t('admin.i18n.koreanText') }}</th><th>{{ t('admin.i18n.englishText') }}</th><th>{{ t('common.field.version') }}</th><th>{{ t('common.field.lastUpdated') }}</th></tr></thead>
                     <tbody>
                       <tr v-for="row in localeMessageRows" :key="row.messageKey" :class="{ selected: selectedLocaleMessageKey === row.messageKey }" @click="selectLocaleMessage(row)">
                         <td @click.stop><input v-model="selectedLocaleMessageIds" type="checkbox" :value="row.messageKey" :disabled="!row.draft" :aria-label="`${row.messageKey} 선택`" /></td>
-                        <td><strong>{{ row.messageKey }}</strong><small>{{ row.current?.value }}</small></td>
-                        <td><span class="app-status">{{ localeStatusLabel(row.current?.status) }}</span></td>
-                        <td>v{{ row.current?.version }}</td>
+                        <td><strong>{{ row.messageKey }}</strong></td>
+                        <td><span class="app-status">{{ row.current ? localeStatusLabel(row.current.status) : '-' }}</span></td>
+                        <td>{{ row.koValue || '-' }}</td>
+                        <td>{{ row.enValue || '-' }}</td>
+                        <td>{{ row.current ? `v${row.current.version}` : '-' }}</td>
                         <td>{{ formatLocaleDate(row.current?.updatedAt) }}</td>
                       </tr>
                     </tbody>

@@ -1155,6 +1155,7 @@ const adminApp = createApp({
       locales: [],
       localesLoading: false,
       localeMessages: [],
+      localeMessagesByLocale: {},
       localeMessagesLoading: false,
       localeManagerError: "",
       selectedLocaleCode: "ko",
@@ -1535,20 +1536,41 @@ const adminApp = createApp({
     },
 
     localeNamespaces() {
-      return [...new Set(this.localeMessages.map((message) => message.namespace).filter(Boolean))].sort();
+      const messages = Object.values(this.localeMessagesByLocale).flat();
+      return [...new Set(messages.map((message) => message.namespace).filter(Boolean))].sort();
     },
 
     localeMessageRows() {
-      const grouped = new Map();
-      this.localeMessages.forEach((message) => {
-        if (!grouped.has(message.messageKey)) grouped.set(message.messageKey, []);
-        grouped.get(message.messageKey).push(message);
-      });
-      return [...grouped.entries()].map(([messageKey, versions]) => {
+      const messagesByLocale = this.localeMessagesByLocale;
+      const groupByKey = (messages = []) => {
+        const grouped = new Map();
+        messages.forEach((message) => {
+          if (!grouped.has(message.messageKey)) grouped.set(message.messageKey, []);
+          grouped.get(message.messageKey).push(message);
+        });
+        return grouped;
+      };
+      const selectedByKey = groupByKey(messagesByLocale[this.selectedLocaleCode] || this.localeMessages);
+      const koByKey = groupByKey(messagesByLocale.ko);
+      const enByKey = groupByKey(messagesByLocale.en);
+      const messageKeys = new Set([...selectedByKey.keys(), ...koByKey.keys(), ...enByKey.keys()]);
+      const summarize = (versions = []) => {
         const sorted = [...versions].sort((a, b) => b.version - a.version);
         const draft = sorted.find((version) => version.status === "draft") || null;
         const active = sorted.find((version) => version.status === "active") || null;
-        return { messageKey, namespace: sorted[0]?.namespace || "", draft, active, current: draft || active || sorted[0] };
+        return { draft, active, current: draft || active || sorted[0] || null };
+      };
+      return [...messageKeys].map((messageKey) => {
+        const selected = summarize(selectedByKey.get(messageKey));
+        const ko = summarize(koByKey.get(messageKey));
+        const en = summarize(enByKey.get(messageKey));
+        return {
+          messageKey,
+          namespace: selected.current?.namespace || ko.current?.namespace || en.current?.namespace || "",
+          ...selected,
+          koValue: ko.current?.value || "",
+          enValue: en.current?.value || "",
+        };
       }).sort((a, b) => a.messageKey.localeCompare(b.messageKey));
     },
 
@@ -1758,10 +1780,15 @@ const adminApp = createApp({
       this.localeMessagesLoading = true;
       this.localeManagerError = "";
       try {
-        const query = new URLSearchParams({ locale: this.selectedLocaleCode });
-        if (this.selectedLocaleNamespace) query.set("namespace", this.selectedLocaleNamespace);
-        const result = await this.localeApi(`/api/locale-messages?${query}`);
-        this.localeMessages = result.messages || [];
+        const localeCodes = [...new Set([this.selectedLocaleCode, "ko", "en"])];
+        const results = await Promise.all(localeCodes.map(async (locale) => {
+          const query = new URLSearchParams({ locale });
+          if (this.selectedLocaleNamespace) query.set("namespace", this.selectedLocaleNamespace);
+          const result = await this.localeApi(`/api/locale-messages?${query}`);
+          return [locale, result.messages || []];
+        }));
+        this.localeMessagesByLocale = { ...this.localeMessagesByLocale, ...Object.fromEntries(results) };
+        this.localeMessages = this.localeMessagesByLocale[this.selectedLocaleCode] || [];
         this.selectedLocaleMessageIds = this.selectedLocaleMessageIds.filter((key) => this.localeMessageRows.some((row) => row.messageKey === key));
         if (this.selectedLocaleMessageKey && !this.localeMessageRows.some((row) => row.messageKey === this.selectedLocaleMessageKey)) {
           this.selectedLocaleMessageKey = "";
