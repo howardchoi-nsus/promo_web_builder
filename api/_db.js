@@ -12,16 +12,21 @@ function buildPostgresUrlFromParts(env) {
   return `postgresql://${encodedUser}:${encodedPassword}@${host}:${port}/${database}?sslmode=require`;
 }
 
-function getDatabaseUrl() {
+function getDatabaseUrl(env = process.env) {
+  const previewDatabaseUrl = env.VERCEL_ENV === "preview"
+    ? String(env.PREVIEW_DATABASE_URL || "").trim()
+    : "";
   return (
-    process.env.NEON_DATABASE_URL ||
-    process.env.DATABASE_URL ||
-    process.env.POSTGRES_URL ||
-    process.env.POSTGRES_URL_NON_POOLING ||
-    buildPostgresUrlFromParts(process.env)
+    previewDatabaseUrl ||
+    env.NEON_DATABASE_URL ||
+    env.DATABASE_URL ||
+    env.POSTGRES_URL ||
+    env.POSTGRES_URL_NON_POOLING ||
+    buildPostgresUrlFromParts(env)
   );
 }
 
 module.exports = {
+  buildPostgresUrlFromParts,
   getDatabaseUrl,
 };
