@@ -3,6 +3,7 @@ const http = require("http");
 const path = require("path");
 
 const root = path.resolve(__dirname, "..", "prototype");
+const projectRoot = path.resolve(__dirname, "..");
 const port = Number(process.env.PORT || 4174);
 const apiOrigin = process.env.API_ORIGIN || "https://promo-web-builder.vercel.app";
 const useFixture = process.env.USE_FIXTURE === "1";
@@ -101,6 +102,13 @@ const server = http.createServer(async (req, res) => {
   if (useFixture && requestUrl.pathname === "/api/wizard-form-templates-public") {
     return json(res, { ok: true, templates: [template] });
   }
+  if (useFixture && requestUrl.pathname === "/api/locale-snapshot") {
+    const locale = requestUrl.searchParams.get("locale") || "ko";
+    return json(res, { ok: true, locale, defaultLocale: "ko", revision: 1, updatedAt: null, messages: {} });
+  }
+  if (useFixture && requestUrl.pathname === "/api/locales") {
+    return json(res, { ok: true, locales: [{ code: "ko", label: "한국어", isDefault: true, enabled: true, snapshotRevision: 1 }] });
+  }
   if (useFixture && requestUrl.pathname === "/api/design-documents") {
     return json(res, { ok: true, documents: [] });
   }
@@ -181,6 +189,17 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(502, { "Content-Type": "application/json; charset=utf-8" });
       return res.end(JSON.stringify({ error: "Preview API proxy failed", message: error.message }));
     }
+  }
+
+  if (requestUrl.pathname.startsWith("/locales/")) {
+    const localePath = path.resolve(projectRoot, `.${requestUrl.pathname}`);
+    const localesRoot = path.resolve(projectRoot, "locales");
+    if (!localePath.startsWith(localesRoot) || !fs.existsSync(localePath) || fs.statSync(localePath).isDirectory()) {
+      res.writeHead(404);
+      return res.end("Not found");
+    }
+    res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
+    return fs.createReadStream(localePath).pipe(res);
   }
 
   let pathname = requestUrl.pathname === "/" ? "/visual-editor.html" : requestUrl.pathname;

@@ -3533,3 +3533,52 @@ dialog:not(.add-design-modal) label.field:has(input[accept=".json,application/js
   content: "디자인 스타일 추가";
   font-size: 0.95rem;
 }
+
+.locale-create-form,
+.locale-toolbar,
+.locale-manager-grid {
+  padding: var(--app-space-4);
+  border: var(--app-border-width) solid var(--app-line);
+  border-radius: var(--app-radius);
+  background: var(--app-panel);
+}
+
+.locale-toolbar {
+  display: grid;
+  grid-template-columns: minmax(var(--app-field-min-width), 1fr) minmax(var(--app-field-min-width), 1fr) minmax(var(--app-field-min-width), auto) auto;
+  align-items: end;
+  gap: var(--app-panel-gap);
+}
+
+.locale-progress {
+  display: grid;
+  gap: var(--app-space-1);
+  color: var(--app-sub);
+  font-size: var(--app-font-size-small);
+}
+
+.locale-progress strong {
+  color: var(--app-ink);
+}
+
+.locale-manager-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(var(--app-aside-min-width), 2fr);
+  gap: var(--app-panel-gap);
+}
+
+.locale-message-list,
+.locale-message-editor {
+  min-width: 0;
+}
+
+.locale-message-editor {
+  align-content: start;
+}
+
+@media (max-width: 1023px) {
+  .locale-toolbar,
+  .locale-manager-grid {
+    grid-template-columns: 1fr;
+  }
+}

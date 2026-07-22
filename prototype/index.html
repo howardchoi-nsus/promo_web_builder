@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="/prototype/app-components.css?v=app-components-v1" />
     <link rel="stylesheet" href="/prototype/styles.css?v=app-tokens-v1" />
     <script src="/prototype/vendor/lucide/lucide.min.js?v=1.8.0"></script>
+    <script src="/prototype/i18n-runtime.js?v=i18n-runtime-v1"></script>
     <script src="/prototype/shared-shell.js?v=app-shell-sidebar-v3"></script>
   </head>
   <body>
@@ -687,6 +688,14 @@
                 :aria-selected="adminTab === 'promo-form'"
                 @click="selectAdminTab('promo-form')"
               >템플릿·레이아웃 관리</button>
+              <button
+                class="admin-tab"
+                :class="{ active: adminTab === 'i18n' }"
+                type="button"
+                role="tab"
+                :aria-selected="adminTab === 'i18n'"
+                @click="selectAdminTab('i18n')"
+              >{{ t('admin.i18n.title') }}</button>
             </nav>
 
             <div
@@ -785,7 +794,7 @@
                         <span>{{ selectedPromptTemplate.name }} · {{ promptTypeLabel(selectedPromptTemplate.type) }} · v{{ selectedPromptTemplate.version }} · {{ promptStatusLabel(selectedPromptTemplate.status) }}</span>
                       </div>
                       <div class="subsection-actions">
-                        <button class="tiny-button primary" type="button" :disabled="promptSaving" @click="savePromptTemplate">저장</button>
+                      <button class="tiny-button primary" type="button" :disabled="promptSaving" @click="savePromptTemplate">{{ t('common.action.save') }}</button>
                         <button class="tiny-button" type="button" :disabled="promptSaving || selectedPromptTemplate.status === 'active'" @click="activatePromptTemplate">활성 프롬프트로 지정</button>
                         <button class="tiny-button danger" type="button" :disabled="promptSaving || selectedPromptTemplate.status === 'active' || selectedPromptTemplate.status === 'archived'" @click="archivePromptTemplate">보관</button>
                       </div>
@@ -889,6 +898,105 @@
                   </div>
                 </div>
               </section>
+            </div>
+          </section>
+
+          <section class="panel stack locale-manager" v-show="adminTab === 'i18n'">
+            <div class="subsection-title">
+              <div>
+                <h2>{{ t('admin.i18n.title') }}</h2>
+                <span>{{ t('admin.i18n.scopeNotice') }}</span>
+              </div>
+              <div class="subsection-actions">
+                <button class="tiny-button" type="button" :disabled="localesLoading" @click="loadLocales">{{ t('common.action.refresh') }}</button>
+                <button class="tiny-button primary" type="button" @click="showNewLocaleForm = !showNewLocaleForm">{{ t('admin.i18n.addLanguage') }}</button>
+              </div>
+            </div>
+
+            <div class="outline-item danger-state" v-if="localeManagerError">
+              <strong>{{ t('admin.i18n.loadFailed') }}</strong>
+              <span>{{ localeManagerError }}</span>
+            </div>
+
+            <div class="app-form-grid locale-create-form" v-if="showNewLocaleForm">
+              <label class="app-field"><span>{{ t('admin.i18n.languageCode') }}</span><input v-model="newLocaleEditor.code" type="text" :placeholder="t('admin.i18n.languageCodeExample')" /></label>
+              <label class="app-field"><span>{{ t('common.field.name') }}</span><input v-model="newLocaleEditor.label" type="text" :placeholder="t('admin.i18n.languageNameExample')" /></label>
+              <div class="app-actions app-actions--end">
+                <button class="tiny-button" type="button" @click="showNewLocaleForm = false">{{ t('common.action.cancel') }}</button>
+                <button class="tiny-button primary" type="button" :disabled="localeManagerSaving || !newLocaleEditor.code || !newLocaleEditor.label" @click="createManagedLocale">{{ t('admin.i18n.addLanguage') }}</button>
+              </div>
+            </div>
+
+            <div class="locale-toolbar">
+              <label class="app-field">
+                <span>{{ t('admin.i18n.language') }}</span>
+                <select v-model="selectedLocaleCode" @change="changeManagedLocale">
+                  <option v-for="locale in locales" :key="locale.code" :value="locale.code">{{ locale.label }} ({{ locale.code }}){{ locale.isDefault ? ` · ${t('admin.i18n.defaultLanguage')}` : '' }}</option>
+                </select>
+              </label>
+              <label class="app-field">
+                <span>{{ t('admin.i18n.messageCategory') }}</span>
+                <select v-model="selectedLocaleNamespace" @change="loadLocaleMessages">
+                  <option value="">{{ t('common.state.all') }}</option>
+                  <option v-for="namespace in localeNamespaces" :key="namespace" :value="namespace">{{ namespace }}</option>
+                </select>
+              </label>
+              <div class="locale-progress">
+                <span>{{ t('admin.i18n.progress') }}</span>
+                <strong>{{ localeTranslationProgress.translated }} / {{ localeTranslationProgress.total }} ({{ localeTranslationProgress.percent }}%)</strong>
+              </div>
+              <div class="app-actions app-actions--end" v-if="locales.find(locale => locale.code === selectedLocaleCode)">
+                <button class="tiny-button" type="button" :disabled="localeManagerSaving || !locales.find(locale => locale.code === selectedLocaleCode)?.enabled" @click="applyManagedLocale">{{ t('admin.i18n.applyToCurrentScreen') }}</button>
+                <button class="tiny-button" type="button" :disabled="localeManagerSaving || locales.find(locale => locale.code === selectedLocaleCode)?.isDefault" @click="setManagedDefaultLocale(selectedLocaleCode)">{{ t('admin.i18n.defaultLanguage') }}</button>
+                <button class="tiny-button" type="button" :disabled="localeManagerSaving || locales.find(locale => locale.code === selectedLocaleCode)?.isDefault" @click="updateManagedLocale(locales.find(locale => locale.code === selectedLocaleCode), { enabled: !locales.find(locale => locale.code === selectedLocaleCode)?.enabled })">{{ t(locales.find(locale => locale.code === selectedLocaleCode)?.enabled ? 'common.action.deactivate' : 'common.action.activate') }}</button>
+              </div>
+            </div>
+
+            <div class="locale-manager-grid">
+              <section class="app-panel locale-message-list">
+                <div class="subsection-title">
+                  <h3>{{ t('admin.i18n.messages') }}</h3>
+                  <button class="tiny-button primary" type="button" :disabled="!selectedLocaleDraftIds.length || localeManagerSaving" @click="activateSelectedLocaleMessages">{{ t('admin.i18n.activateSelected', { count: selectedLocaleDraftIds.length }) }}</button>
+                </div>
+                <div class="app-table-wrap" v-if="localeMessageRows.length">
+                  <table class="app-table">
+                    <thead><tr><th class="app-table__select"></th><th>{{ t('admin.i18n.messageId') }}</th><th>{{ t('common.field.status') }}</th><th>{{ t('common.field.version') }}</th><th>{{ t('common.field.lastUpdated') }}</th></tr></thead>
+                    <tbody>
+                      <tr v-for="row in localeMessageRows" :key="row.messageKey" :class="{ selected: selectedLocaleMessageKey === row.messageKey }" @click="selectLocaleMessage(row)">
+                        <td @click.stop><input v-model="selectedLocaleMessageIds" type="checkbox" :value="row.messageKey" :disabled="!row.draft" :aria-label="`${row.messageKey} 선택`" /></td>
+                        <td><strong>{{ row.messageKey }}</strong><small>{{ row.current?.value }}</small></td>
+                        <td><span class="app-status">{{ localeStatusLabel(row.current?.status) }}</span></td>
+                        <td>v{{ row.current?.version }}</td>
+                        <td>{{ formatLocaleDate(row.current?.updatedAt) }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="empty-state" v-else-if="!localeMessagesLoading">{{ t('admin.i18n.emptyMessages') }}</div>
+              </section>
+
+              <aside class="app-panel locale-message-editor" v-if="selectedLocaleMessageRow">
+                <div class="subsection-title"><div><h3>{{ selectedLocaleMessageRow.messageKey }}</h3><span>{{ selectedLocaleMessageRow.namespace }}</span></div></div>
+                <label class="app-field"><span>{{ t('admin.i18n.translation') }}</span><textarea v-model="localeMessageEditor.value" rows="5" spellcheck="false"></textarea></label>
+                <label class="app-field"><span>{{ t('common.field.changeReason') }}</span><input v-model="localeMessageEditor.changeNote" type="text" /></label>
+                <div class="app-actions app-actions--end">
+                  <button class="tiny-button" type="button" :disabled="localeManagerSaving" @click="saveLocaleMessageDraft">{{ t('common.state.draft') }} {{ t('common.action.save') }}</button>
+                  <button class="tiny-button primary" type="button" :disabled="localeManagerSaving || !selectedLocaleMessageRow.draft" @click="activateLocaleMessage(selectedLocaleMessageRow.draft?.id)">{{ t('common.action.activate') }}</button>
+                  <button class="tiny-button danger" type="button" :disabled="localeManagerSaving || !selectedLocaleMessageRow.draft" @click="archiveLocaleMessage(selectedLocaleMessageRow.draft?.id)">{{ t('common.action.archive') }}</button>
+                </div>
+                <div class="subsection">
+                  <div class="subsection-title"><h3>{{ t('admin.i18n.history') }}</h3></div>
+                  <div class="history-list" v-if="localeMessageHistory.length">
+                    <div class="history-item" v-for="version in localeMessageHistory" :key="version.id">
+                      <strong>v{{ version.version }} · {{ localeStatusLabel(version.status) }}</strong>
+                      <span>{{ version.value }}</span>
+                      <em>{{ formatLocaleDate(version.updatedAt) }} · {{ version.changedBy }}</em>
+                      <button class="tiny-button" type="button" :disabled="localeManagerSaving || version.status === 'draft'" @click="rollbackLocaleMessage(version.id)">{{ t('common.action.rollback') }}</button>
+                    </div>
+                  </div>
+                </div>
+              </aside>
+              <aside class="app-panel empty-state" v-else>{{ t('admin.i18n.selectMessage') }}</aside>
             </div>
           </section>
 

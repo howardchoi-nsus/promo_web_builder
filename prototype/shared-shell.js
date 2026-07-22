@@ -2,13 +2,18 @@
   const STORAGE_KEY = "promoPrototype.themeMode";
   const SIDEBAR_MODE_STORAGE_KEY = "promoPrototype.sidebarMode";
   const NAV_ITEMS = Object.freeze([
-    { key: "builder", label: "프로모션 빌더", href: "/prototype/index.html", icon: "layout-dashboard" },
-    { key: "admin", label: "관리자 페이지", href: "/prototype/index.html?view=admin&tab=promo-form", icon: "settings" },
-    { key: "promo-wizard", label: "Promo Wizard", href: "/promo-wizard.html", icon: "wand-sparkles" },
-    { key: "create-promo", label: "Create Promo", href: "/create-promo.html", icon: "megaphone" },
-    { key: "visual-editor", label: "Visual Editor", href: "/prototype/visual-editor.html", icon: "panels-top-left" },
-    { key: "generated", label: "생성된 UI", href: "/prototype/generated.html", icon: "file-output" },
+    { key: "builder", labelKey: "shell.nav.builder", label: "프로모션 빌더", href: "/prototype/index.html", icon: "layout-dashboard" },
+    { key: "admin", labelKey: "shell.nav.admin", label: "관리자 페이지", href: "/prototype/index.html?view=admin&tab=promo-form", icon: "settings" },
+    { key: "promo-wizard", labelKey: "shell.nav.promoWizard", label: "Promo Wizard", href: "/promo-wizard.html", icon: "wand-sparkles" },
+    { key: "create-promo", labelKey: "shell.nav.createPromo", label: "Create Promo", href: "/create-promo.html", icon: "megaphone" },
+    { key: "visual-editor", labelKey: "shell.nav.visualEditor", label: "Visual Editor", href: "/prototype/visual-editor.html", icon: "panels-top-left" },
+    { key: "generated", labelKey: "shell.nav.generated", label: "생성된 UI", href: "/prototype/generated.html", icon: "file-output" },
   ]);
+
+  function translate(key, fallback) {
+    const value = global.PromoI18n?.t?.(key);
+    return value && value !== key ? value : fallback;
+  }
 
   function activeNavKey(location = global.location) {
     const pathname = String(location?.pathname || "").replace(/\/$/, "");
@@ -27,17 +32,18 @@
     root.querySelectorAll("[data-shell-nav]").forEach((nav) => {
       const active = nav.dataset.shellActive || activeNavKey();
       nav.replaceChildren(...NAV_ITEMS.map((item) => {
+        const itemLabel = translate(item.labelKey, item.label);
         const link = document.createElement("a");
         link.href = item.href;
-        link.setAttribute("aria-label", item.label);
-        link.title = item.label;
+        link.setAttribute("aria-label", itemLabel);
+        link.title = itemLabel;
         link.dataset.shellNavKey = item.key;
         const icon = document.createElement("i");
         icon.dataset.lucide = item.icon;
         icon.setAttribute("aria-hidden", "true");
         const label = document.createElement("span");
         label.dataset.shellNavLabel = "";
-        label.textContent = item.label;
+        label.textContent = itemLabel;
         link.append(icon, label);
         if (item.key === active) {
           link.classList.add("active");
@@ -100,7 +106,9 @@
   function syncThemeControls(root) {
     const theme = normalizeTheme(document.documentElement.getAttribute("data-theme"));
     root.querySelectorAll("[data-shell-theme-toggle]").forEach((button) => {
-      button.setAttribute("aria-label", theme === "dark" ? "라이트모드로 변경" : "다크모드로 변경");
+      button.setAttribute("aria-label", theme === "dark"
+        ? translate("shell.theme.toLight", "라이트모드로 변경")
+        : translate("shell.theme.toDark", "다크모드로 변경"));
       const label = button.querySelector("[data-shell-theme-label]");
       if (label) label.textContent = theme === "dark" ? "Dark" : "Light";
     });
@@ -207,6 +215,12 @@
     storageKey: STORAGE_KEY,
     sidebarModeStorageKey: SIDEBAR_MODE_STORAGE_KEY,
   };
+  global.PromoI18n?.subscribe?.(() => {
+    renderNavigation(document);
+    syncThemeControls(document);
+    renderIcons();
+  });
+  global.PromoI18n?.init?.().catch(() => {});
   applyTheme(storedTheme(), { persist: false, root: document });
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => init(document), { once: true });
   else init(document);

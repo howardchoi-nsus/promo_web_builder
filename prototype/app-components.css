@@ -299,6 +299,61 @@ textarea {
   text-align: center;
 }
 
+.app-table-wrap {
+  overflow: auto;
+  border: var(--app-border-width) solid var(--app-line);
+  border-radius: var(--app-radius);
+}
+
+.app-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--app-ink);
+  font-size: var(--app-font-size-small);
+}
+
+.app-table th,
+.app-table td {
+  padding: var(--app-space-3);
+  border-bottom: var(--app-border-width) solid var(--app-line);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.app-table th {
+  background: var(--app-surface);
+  color: var(--app-sub);
+  font-weight: var(--app-font-weight-heading);
+  white-space: nowrap;
+}
+
+.app-table tbody tr {
+  cursor: pointer;
+}
+
+.app-table tbody tr:hover,
+.app-table tbody tr.selected {
+  background: var(--app-accent-soft);
+}
+
+.app-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.app-table td strong,
+.app-table td small {
+  display: block;
+}
+
+.app-table td small {
+  margin-top: var(--app-space-1);
+  color: var(--app-muted);
+}
+
+.app-table__select {
+  width: var(--app-control-height-small);
+}
+
 @media (max-width: 980px) {
   .app-form-grid,
   .form-grid,

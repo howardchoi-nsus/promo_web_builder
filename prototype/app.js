@@ -1090,7 +1090,7 @@ const { createApp } = Vue;
 const initialSearchParams = new URLSearchParams(window.location.search);
 const initialView = initialSearchParams.get("view") === "admin" ? "prompts" : "builder";
 const requestedAdminTab = initialSearchParams.get("tab");
-const initialAdminTab = ["webhook", "llm", "promo-form"].includes(requestedAdminTab)
+const initialAdminTab = ["webhook", "llm", "promo-form", "i18n"].includes(requestedAdminTab)
   ? requestedAdminTab
   : "promo-form";
 
@@ -1098,6 +1098,8 @@ const adminApp = createApp({
   data() {
     return {
       status: "준비 완료",
+      localeRevision: 0,
+      localeUnsubscribe: null,
       currentView: initialView,
       adminTab: initialAdminTab,
       sectionWidths: [30, 30, 40],
@@ -1150,6 +1152,20 @@ const adminApp = createApp({
       promptTypeFilter: "",
       promptSaving: false,
       promptHistories: [],
+      locales: [],
+      localesLoading: false,
+      localeMessages: [],
+      localeMessagesLoading: false,
+      localeManagerError: "",
+      selectedLocaleCode: "ko",
+      selectedLocaleNamespace: "",
+      selectedLocaleMessageKey: "",
+      selectedLocaleMessageIds: [],
+      localeMessageEditor: { value: "", changeNote: "" },
+      localeMessageHistory: [],
+      newLocaleEditor: { code: "", label: "" },
+      showNewLocaleForm: false,
+      localeManagerSaving: false,
       workerWebhookSettings: [],
       workerWebhookSettingsLoading: false,
       workerWebhookSettingsError: "",
@@ -1518,6 +1534,39 @@ const adminApp = createApp({
       return this.promptTemplates.filter((prompt) => prompt.type === this.promptTypeFilter);
     },
 
+    localeNamespaces() {
+      return [...new Set(this.localeMessages.map((message) => message.namespace).filter(Boolean))].sort();
+    },
+
+    localeMessageRows() {
+      const grouped = new Map();
+      this.localeMessages.forEach((message) => {
+        if (!grouped.has(message.messageKey)) grouped.set(message.messageKey, []);
+        grouped.get(message.messageKey).push(message);
+      });
+      return [...grouped.entries()].map(([messageKey, versions]) => {
+        const sorted = [...versions].sort((a, b) => b.version - a.version);
+        const draft = sorted.find((version) => version.status === "draft") || null;
+        const active = sorted.find((version) => version.status === "active") || null;
+        return { messageKey, namespace: sorted[0]?.namespace || "", draft, active, current: draft || active || sorted[0] };
+      }).sort((a, b) => a.messageKey.localeCompare(b.messageKey));
+    },
+
+    selectedLocaleMessageRow() {
+      return this.localeMessageRows.find((row) => row.messageKey === this.selectedLocaleMessageKey) || null;
+    },
+
+    selectedLocaleDraftIds() {
+      const selected = new Set(this.selectedLocaleMessageIds);
+      return this.localeMessageRows.filter((row) => selected.has(row.messageKey) && row.draft).map((row) => row.draft.id);
+    },
+
+    localeTranslationProgress() {
+      const total = this.localeMessageRows.length;
+      const translated = this.localeMessageRows.filter((row) => String(row.active?.value || "").trim()).length;
+      return { total, translated, percent: total ? Math.round((translated / total) * 100) : 0 };
+    },
+
     selectedPromptTemplate() {
       return this.promptTemplates.find((prompt) => prompt.id === this.selectedPromptTemplateId) || null;
     },
@@ -1652,6 +1701,9 @@ const adminApp = createApp({
   },
 
   mounted() {
+    this.localeUnsubscribe = window.PromoI18n?.subscribe(() => {
+      this.localeRevision += 1;
+    }) || null;
     localStorage.removeItem(storageKeys.generatedPages);
     localStorage.removeItem(storageKeys.generatedPage);
     this.applyThemeMode();
@@ -1663,10 +1715,252 @@ const adminApp = createApp({
   },
 
   unmounted() {
+    if (this.localeUnsubscribe) this.localeUnsubscribe();
     this.stopGenerationRunPolling();
   },
 
   methods: {
+    t(key, params = {}) {
+      void this.localeRevision;
+      return window.PromoI18n?.t(key, params) || key;
+    },
+
+    async localeApi(url, options = {}) {
+      const response = await fetch(url, {
+        ...options,
+        headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.message || result.error || `언어 관리 요청 오류(${response.status})`);
+      return result;
+    },
+
+    async loadLocales() {
+      if (this.localesLoading) return;
+      this.localesLoading = true;
+      this.localeManagerError = "";
+      try {
+        const result = await this.localeApi("/api/locales?includeDisabled=true");
+        this.locales = result.locales || [];
+        if (!this.locales.some((locale) => locale.code === this.selectedLocaleCode)) {
+          this.selectedLocaleCode = this.locales.find((locale) => locale.isDefault)?.code || this.locales[0]?.code || "ko";
+        }
+        await this.loadLocaleMessages();
+      } catch (error) {
+        this.localeManagerError = error.message;
+      } finally {
+        this.localesLoading = false;
+      }
+    },
+
+    async loadLocaleMessages() {
+      if (!this.selectedLocaleCode || this.localeMessagesLoading) return;
+      this.localeMessagesLoading = true;
+      this.localeManagerError = "";
+      try {
+        const query = new URLSearchParams({ locale: this.selectedLocaleCode });
+        if (this.selectedLocaleNamespace) query.set("namespace", this.selectedLocaleNamespace);
+        const result = await this.localeApi(`/api/locale-messages?${query}`);
+        this.localeMessages = result.messages || [];
+        this.selectedLocaleMessageIds = this.selectedLocaleMessageIds.filter((key) => this.localeMessageRows.some((row) => row.messageKey === key));
+        if (this.selectedLocaleMessageKey && !this.localeMessageRows.some((row) => row.messageKey === this.selectedLocaleMessageKey)) {
+          this.selectedLocaleMessageKey = "";
+          this.localeMessageHistory = [];
+        }
+      } catch (error) {
+        this.localeManagerError = error.message;
+      } finally {
+        this.localeMessagesLoading = false;
+      }
+    },
+
+    async changeManagedLocale() {
+      this.selectedLocaleMessageIds = [];
+      this.selectedLocaleMessageKey = "";
+      this.localeMessageEditor = { value: "", changeNote: "" };
+      this.localeMessageHistory = [];
+      await this.loadLocaleMessages();
+    },
+
+    async selectLocaleMessage(row) {
+      this.selectedLocaleMessageKey = row.messageKey;
+      this.localeMessageEditor = { value: row.current?.value || "", changeNote: "" };
+      await this.loadLocaleMessageHistory();
+    },
+
+    async loadLocaleMessageHistory() {
+      if (!this.selectedLocaleMessageKey) return;
+      try {
+        const query = new URLSearchParams({ locale: this.selectedLocaleCode, messageKey: this.selectedLocaleMessageKey });
+        const result = await this.localeApi(`/api/locale-message-history?${query}`);
+        this.localeMessageHistory = result.versions || [];
+      } catch (error) {
+        this.localeManagerError = error.message;
+      }
+    },
+
+    async saveLocaleMessageDraft() {
+      if (!this.selectedLocaleMessageKey || this.localeManagerSaving) return;
+      this.localeManagerSaving = true;
+      try {
+        await this.localeApi("/api/locale-message", {
+          method: "POST",
+          body: JSON.stringify({
+            locale: this.selectedLocaleCode,
+            messageKey: this.selectedLocaleMessageKey,
+            value: this.localeMessageEditor.value,
+            changeNote: this.localeMessageEditor.changeNote,
+            actor: "admin",
+          }),
+        });
+        await this.loadLocaleMessages();
+        const row = this.localeMessageRows.find((item) => item.messageKey === this.selectedLocaleMessageKey);
+        if (row) await this.selectLocaleMessage(row);
+        this.setStatus(this.t("admin.i18n.savedDraft"));
+      } catch (error) {
+        this.localeManagerError = error.message;
+      } finally {
+        this.localeManagerSaving = false;
+      }
+    },
+
+    async activateLocaleMessage(id) {
+      if (!id || this.localeManagerSaving) return;
+      this.localeManagerSaving = true;
+      try {
+        await this.localeApi("/api/locale-message-activate", {
+          method: "POST",
+          body: JSON.stringify({ id, actor: "admin", changeNote: this.localeMessageEditor.changeNote }),
+        });
+        const reloadSnapshot = window.PromoI18n?.reloadSnapshot?.() || Promise.resolve();
+        await Promise.all([this.loadLocaleMessages(), reloadSnapshot.catch(() => {})]);
+        this.setStatus(this.t("admin.i18n.activated"));
+      } catch (error) {
+        this.localeManagerError = error.message;
+      } finally {
+        this.localeManagerSaving = false;
+      }
+    },
+
+    async activateSelectedLocaleMessages() {
+      const ids = this.selectedLocaleDraftIds;
+      if (!ids.length || this.localeManagerSaving) return;
+      this.localeManagerSaving = true;
+      try {
+        await this.localeApi("/api/locale-messages-activate", {
+          method: "POST",
+          body: JSON.stringify({ ids, actor: "admin", changeNote: "선택 문구 일괄 활성화" }),
+        });
+        this.selectedLocaleMessageIds = [];
+        const reloadSnapshot = window.PromoI18n?.reloadSnapshot?.() || Promise.resolve();
+        await Promise.all([this.loadLocaleMessages(), reloadSnapshot.catch(() => {})]);
+        this.setStatus(this.t("admin.i18n.activatedCount", { count: ids.length }));
+      } catch (error) {
+        this.localeManagerError = error.message;
+      } finally {
+        this.localeManagerSaving = false;
+      }
+    },
+
+    async archiveLocaleMessage(id) {
+      if (!id || this.localeManagerSaving) return;
+      this.localeManagerSaving = true;
+      try {
+        await this.localeApi("/api/locale-message-archive", {
+          method: "POST",
+          body: JSON.stringify({ id, actor: "admin", changeNote: this.localeMessageEditor.changeNote }),
+        });
+        await this.loadLocaleMessages();
+        this.setStatus(this.t("admin.i18n.archived"));
+      } catch (error) {
+        this.localeManagerError = error.message;
+      } finally {
+        this.localeManagerSaving = false;
+      }
+    },
+
+    async rollbackLocaleMessage(id) {
+      if (!id || this.localeManagerSaving) return;
+      this.localeManagerSaving = true;
+      try {
+        await this.localeApi("/api/locale-message-rollback", {
+          method: "POST",
+          body: JSON.stringify({ id, actor: "admin", changeNote: "과거 버전으로 새 초안 생성" }),
+        });
+        await this.loadLocaleMessages();
+        this.setStatus(this.t("admin.i18n.rollbackCreated"));
+      } catch (error) {
+        this.localeManagerError = error.message;
+      } finally {
+        this.localeManagerSaving = false;
+      }
+    },
+
+    async createManagedLocale() {
+      if (this.localeManagerSaving) return;
+      this.localeManagerSaving = true;
+      try {
+        const result = await this.localeApi("/api/locales", {
+          method: "POST",
+          body: JSON.stringify(this.newLocaleEditor),
+        });
+        this.newLocaleEditor = { code: "", label: "" };
+        this.showNewLocaleForm = false;
+        this.selectedLocaleCode = result.locale.code;
+        await this.loadLocales();
+      } catch (error) {
+        this.localeManagerError = error.message;
+      } finally {
+        this.localeManagerSaving = false;
+      }
+    },
+
+    async updateManagedLocale(locale, changes) {
+      if (this.localeManagerSaving) return;
+      this.localeManagerSaving = true;
+      try {
+        await this.localeApi("/api/locales", {
+          method: "PATCH",
+          body: JSON.stringify({ code: locale.code, ...changes }),
+        });
+        await this.loadLocales();
+      } catch (error) {
+        this.localeManagerError = error.message;
+      } finally {
+        this.localeManagerSaving = false;
+      }
+    },
+
+    async setManagedDefaultLocale(code) {
+      if (this.localeManagerSaving) return;
+      this.localeManagerSaving = true;
+      try {
+        await this.localeApi("/api/locale-default", { method: "POST", body: JSON.stringify({ code }) });
+        await this.loadLocales();
+        const reloadSnapshot = window.PromoI18n?.reloadSnapshot?.() || Promise.resolve();
+        await reloadSnapshot.catch(() => {});
+      } catch (error) {
+        this.localeManagerError = error.message;
+      } finally {
+        this.localeManagerSaving = false;
+      }
+    },
+
+    async applyManagedLocale() {
+      await window.PromoI18n?.setLocale?.(this.selectedLocaleCode);
+      this.setStatus(`${this.selectedLocaleCode} 언어를 현재 화면에 적용했습니다`);
+    },
+
+    localeStatusLabel(status) {
+      const key = { active: "common.state.active", inactive: "common.state.inactive", draft: "common.state.draft", archived: "common.state.archived" }[status];
+      return key ? this.t(key) : status;
+    },
+
+    formatLocaleDate(value) {
+      if (!value) return "-";
+      return new Intl.DateTimeFormat(this.selectedLocaleCode || "ko", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+    },
+
     // Theme module: persist the selected color mode because this prototype is often reopened during QA.
     applyThemeMode() {
       document.documentElement.setAttribute("data-theme", this.themeMode === "dark" ? "dark" : "light");
@@ -1698,12 +1992,14 @@ const adminApp = createApp({
         this.loadWizardFormTemplates(),
         this.loadWizardSectionAuditLogs(),
       ]);
+      if (this.adminTab === "i18n") await this.loadLocales();
       this.setStatus("관리자 페이지로 이동했습니다");
     },
 
     selectAdminTab(tab) {
-      if (!["webhook", "llm", "promo-form"].includes(tab)) return;
+      if (!["webhook", "llm", "promo-form", "i18n"].includes(tab)) return;
       this.adminTab = tab;
+      if (tab === "i18n") this.loadLocales();
       const url = new URL(window.location.href);
       url.searchParams.set("view", "admin");
       url.searchParams.set("tab", tab);
@@ -5176,4 +5472,5 @@ const adminApp = createApp({
   },
 });
 adminApp.component("template-layout-manager", window.PromoAdminTemplateLayout.component);
-adminApp.mount("#app");
+const localeReady = window.PromoI18n?.init?.() || Promise.resolve();
+localeReady.finally(() => adminApp.mount("#app"));

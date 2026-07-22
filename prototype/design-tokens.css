@@ -44,6 +44,8 @@
   --app-button-height: 42px;
   --app-panel-gap: 12px;
   --app-content-max-width: 1600px;
+  --app-field-min-width: 180px;
+  --app-aside-min-width: 300px;
   --app-content-padding: 20px;
   --app-font-size-xs: 10px;
   --app-font-size-small: 12px;
