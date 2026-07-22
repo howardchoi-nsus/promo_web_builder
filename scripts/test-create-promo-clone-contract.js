@@ -43,7 +43,8 @@ assert.match(rootRedirect, /\/prototype\/create-promo\.html/);
 assert.match(wizardContent, /global\.PromoWizardContent = Object\.freeze/);
 assert.match(wizardStorage, /global\.PromoWizardStorage = Object\.freeze/);
 
-assert.match(createCss, /\.wizard-shell/);
+assert.match(createHtml, /<main class="workspace shell-content">/);
+assert.match(createCss, /\.workspace\.shell-content/);
 assert.match(createCss, /\.wizard-progress/);
 assert.match(createCss, /\.wizard-layout-frame/);
 assert.match(createCss, /\.section-ai-design-panel/);

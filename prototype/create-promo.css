@@ -35,7 +35,7 @@ a {
   font: inherit;
 }
 
-.wizard-shell {
+.workspace {
   display: grid;
   gap: 16px;
   width: calc(100% - 32px);
@@ -44,7 +44,7 @@ a {
   padding: 20px 0;
 }
 
-.wizard-shell.shell-content {
+.workspace.shell-content {
   width: 100%;
   padding: 20px;
 }
