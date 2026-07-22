@@ -27,6 +27,7 @@ const orderSource = fs.readFileSync(path.join(root, "api", "wizard-content-secti
 const itemApiSource = fs.readFileSync(path.join(root, "api", "wizard-content-section-items.js"), "utf8");
 const migrationSource = fs.readFileSync(path.join(root, "db", "migrations", "016_wizard_content_sections.sql"), "utf8");
 const imageDescriptionMigration = fs.readFileSync(path.join(root, "db", "migrations", "020_image_description_enabled.sql"), "utf8");
+const componentMigration = fs.readFileSync(path.join(root, "db", "migrations", "028_section_component_registry.sql"), "utf8");
 
 assert.match(wizardSource, /wizardContentLegacyBackup/);
 assert.match(wizardSource, /migrateLegacySectionInputs/);
@@ -59,5 +60,9 @@ assert.match(migrationSource, /create or replace function activate_wizard_conten
 assert.match(migrationSource, /coalesce\(max\(version\), 0\) \+ 1/);
 assert.match(imageDescriptionMigration, /image_description_enabled/);
 assert.match(imageDescriptionMigration, /clone_wizard_content_section_draft/);
+assert.match(componentMigration, /wizard_section_components/);
+assert.match(componentMigration, /component_id/);
+assert.match(archiveSource, /fetchComponentUsage/);
+assert.match(archiveSource, /cannot be archived/);
 
 console.log("Wizard content sections contract test passed");

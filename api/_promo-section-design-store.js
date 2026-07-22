@@ -5,7 +5,8 @@ function toRun(row) {
   return {
     id: row.id,
     promoRunId: row.promo_run_id || null,
-    formTemplateId: row.form_template_id,
+    formTemplateId: row.form_template_id || null,
+    templateKey: row.template_key_snapshot || row.input_snapshot?.template?.templateKey || "",
     templateVersion: Number(row.template_version || 1),
     layoutRevision: Number(row.layout_revision || 1),
     sectionKey: row.section_key,
@@ -29,7 +30,7 @@ function toRun(row) {
 
 async function fetchRun(sql, id) {
   const rows = await sql`
-    select id::text, promo_run_id::text, form_template_id::text, template_version,
+    select id::text, promo_run_id::text, form_template_id::text, template_key_snapshot, template_version,
       layout_revision, section_key, status, input_snapshot, input_hash, constraints_snapshot,
       layout_result, image_result, provider_snapshot, usage_snapshot, current_attempt,
       error_code, error_message, created_at, updated_at, completed_at, applied_at
@@ -53,10 +54,10 @@ async function createRun(sql, input) {
   if (existing[0]) return { run: await fetchRun(sql, existing[0].id), reused: true };
   const rows = await sql`
     insert into promo_section_design_runs (
-      promo_run_id, form_template_id, template_version, layout_revision, section_key,
+      promo_run_id, form_template_id, template_key_snapshot, template_version, layout_revision, section_key,
       input_snapshot, input_hash, constraints_snapshot
     ) values (
-      ${input.promoRunId || null}::uuid, ${input.formTemplateId}::uuid, ${input.templateVersion},
+      ${input.promoRunId || null}::uuid, ${input.formTemplateId}::uuid, ${input.templateKey}, ${input.templateVersion},
       ${input.layoutRevision}, ${input.sectionKey}, ${JSON.stringify(input.inputSnapshot)}::jsonb,
       ${input.inputHash}, ${JSON.stringify(input.constraintsSnapshot)}::jsonb
     ) returning id::text

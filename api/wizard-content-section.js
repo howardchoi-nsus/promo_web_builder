@@ -108,7 +108,7 @@ async function updateSection(req, res) {
       updated_at = now()
     where id = ${id}::uuid
     returning
-      id::text, section_key, name, description, is_required, order_change_allowed,
+      id::text, component_id::text, section_key, name, description, is_required, order_change_allowed,
       fixed_position, sort_order, is_visible_in_wizard, status, version,
       change_note, ai_design, archived_at, created_at, updated_at
   `;

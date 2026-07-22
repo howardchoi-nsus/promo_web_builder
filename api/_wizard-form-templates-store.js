@@ -53,6 +53,7 @@ function toTemplateSection(row) {
   return {
     id: row.id,
     formTemplateId: row.form_template_id,
+    componentId: row.component_id || null,
     sectionId: row.section_id || null,
     sectionKey: row.section_key,
     sectionName: row.section_name || "",
@@ -106,18 +107,32 @@ async function fetchTemplates(sql, { includeArchived = false, activeOnly = false
 
 async function fetchTemplateSections(sql, templateId) {
   const rows = await sql`
-    select ts.id::text, ts.form_template_id::text, ts.section_id::text, ts.section_key,
+    select ts.id::text, ts.form_template_id::text, ts.component_id::text, source_section.id::text as section_id,
+      coalesce(component.component_key, ts.section_key) as section_key,
       source_section.name as section_name, source_section.description as section_description, source_section.version as section_version,
       source_section.status as section_status, source_section.ai_design,
       ts.sort_order, ts.is_required, ts.is_visible, ts.order_change_allowed,
       ts.user_reorder_allowed, ts.fixed_position, ts.created_at, ts.updated_at
     from wizard_form_template_sections ts
+    left join wizard_section_components component on component.id = ts.component_id
     left join lateral (
-      select s.name, s.description, s.version, s.status, s.ai_design
+      select s.id, s.name, s.description, s.version, s.status, s.ai_design
       from wizard_content_sections s
-      where (ts.section_id is not null and s.id = ts.section_id)
-        or (ts.section_id is null and s.section_key = ts.section_key and s.status = 'active')
-      order by case when s.id = ts.section_id then 0 else 1 end, s.version desc
+      where (
+        ts.component_id is not null
+        and s.component_id = ts.component_id
+        and s.status = 'active'
+      ) or (
+        ts.component_id is null
+        and (
+          (ts.section_id is not null and s.id = ts.section_id)
+          or (ts.section_id is null and s.section_key = ts.section_key and s.status = 'active')
+        )
+      )
+      order by
+        case when ts.component_id is not null and s.status = 'active' then 0
+          when s.id = ts.section_id then 1 else 2 end,
+        s.version desc
       limit 1
     ) source_section on true
     where ts.form_template_id = ${templateId}::uuid

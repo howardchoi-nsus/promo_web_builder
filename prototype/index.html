@@ -1187,8 +1187,7 @@
                         >{{ expandedWizardFormTemplateSectionId === section.id ? '▾' : '▸' }}</button>
                         <transition name="section-expand">
                         <div class="template-section-expanded" v-if="expandedWizardFormTemplateSectionId === section.id">
-                          <label class="field compact-field"><span>Section 이름</span><input v-model="wizardFormTemplateSectionEditor.name" type="text" :disabled="!wizardFormTemplateCanEdit" /></label>
-                          <label class="field compact-field"><span>간략 설명</span><textarea v-model="wizardFormTemplateSectionEditor.description" rows="2" :disabled="!wizardFormTemplateCanEdit"></textarea></label>
+                          <div class="field compact-field"><span>{{ t('entity.component.label') }}</span><strong>{{ section.sectionName || section.sectionKey }}</strong><small>{{ section.sectionKey }} · v{{ section.sectionVersion }}</small></div>
                           <div class="form-grid compact">
                             <label class="switch-control"><input v-model="wizardFormTemplateSectionEditor.isRequired" type="checkbox" :disabled="!wizardFormTemplateCanEdit" /><span>필수 Section</span></label>
                             <label class="switch-control"><input v-model="wizardFormTemplateSectionEditor.isVisible" type="checkbox" :disabled="!wizardFormTemplateCanEdit" /><span>Wizard 노출</span></label>
@@ -1209,15 +1208,9 @@
                       <button class="tiny-button primary" type="button" :disabled="!wizardFormTemplateCanEdit" @click="showNewWizardFormTemplateSectionForm = !showNewWizardFormTemplateSectionForm">{{ showNewWizardFormTemplateSectionForm ? t('common.action.cancel') : `+ ${t('entity.section.add')}` }}</button>
                     </div>
                     <div class="template-section-create" v-if="showNewWizardFormTemplateSectionForm">
-                      <label class="field compact-field"><span>Section 이름</span><input v-model="newWizardFormTemplateSectionForm.name" type="text" autocomplete="off" /></label>
-                      <label class="field compact-field"><span>간략 설명</span><textarea v-model="newWizardFormTemplateSectionForm.description" rows="2"></textarea></label>
-                      <div class="form-grid compact">
-                        <label class="switch-control"><input v-model="newWizardFormTemplateSectionForm.isRequired" type="checkbox" /><span>필수 Section</span></label>
-                        <label class="switch-control"><input v-model="newWizardFormTemplateSectionForm.isVisible" type="checkbox" /><span>Wizard 노출</span></label>
-                        <label class="switch-control"><input v-model="newWizardFormTemplateSectionForm.userReorderAllowed" type="checkbox" :disabled="Boolean(newWizardFormTemplateSectionForm.fixedPosition)" /><span>Wizard 사용자 순서 변경 허용</span></label>
-                      </div>
-                      <label class="field compact-field"><span>고정 위치</span><select v-model="newWizardFormTemplateSectionForm.fixedPosition"><option value="">고정하지 않음</option><option value="top">상단</option><option value="bottom">하단</option></select></label>
-                      <div class="action-row align-right"><button class="tiny-button primary" type="button" :disabled="!newWizardFormTemplateSectionForm.name.trim() || wizardFormTemplateSectionSaving" @click="addWizardFormTemplateSection">Section 생성</button></div>
+                      <label class="field compact-field"><span>{{ t('entity.component.select') }}</span><select v-model="newWizardFormTemplateSectionForm.componentId"><option value="">{{ t('entity.component.selectPrompt') }}</option><option v-for="group in availableWizardSectionsForTemplate" :key="group.primary.componentId" :value="group.primary.componentId">{{ group.primary.name }} · {{ group.sectionKey }} · v{{ group.primary.version }}</option></select></label>
+                      <small>{{ t('entity.component.addDefaultsHint') }}</small>
+                      <div class="action-row align-right"><button class="tiny-button primary" type="button" :disabled="!newWizardFormTemplateSectionForm.componentId || wizardFormTemplateSectionSaving" @click="addWizardFormTemplateSection">{{ t('entity.component.add') }}</button></div>
                     </div>
 
                   </div>
@@ -1225,7 +1218,7 @@
 
                 <section class="prompt-editor-panel empty-state" v-else>폼 템플릿을 선택해 주세요.</section>
 
-                <aside class="template-section-items-panel" v-if="wizardFormTemplateDetail">
+                <aside class="template-section-items-panel" v-if="false && wizardFormTemplateDetail">
                   <div class="subsection-title">
                     <div>
                       <h3>Section Items</h3>
@@ -1335,6 +1328,17 @@
                   </div>
                   <div class="empty-state compact" v-if="!selectedWizardFormTemplateSection">Section을 선택해 주세요.</div>
                 </aside>
+                <aside class="template-section-items-panel" v-if="wizardFormTemplateDetail">
+                  <div class="subsection-title"><div><h3>{{ t('entity.component.info') }}</h3><span>{{ t('entity.component.editNotice') }}</span></div></div>
+                  <div class="subsection" v-if="selectedWizardFormTemplateSection">
+                    <strong>{{ selectedWizardFormTemplateSection.sectionName || selectedWizardFormTemplateSection.sectionKey }}</strong>
+                    <p>{{ selectedWizardFormTemplateSection.sectionDescription || '설명이 없습니다.' }}</p>
+                    <div class="form-template-summary"><span>{{ t('entity.component.activeVersion') }}</span><strong>v{{ selectedWizardFormTemplateSection.sectionVersion }}</strong></div>
+                    <div class="form-template-summary"><span>Item</span><strong>{{ wizardFormTemplateSectionItems.length }}개</strong></div>
+                    <div class="empty-state compact">{{ t('entity.component.editDetailNotice') }}</div>
+                  </div>
+                  <div class="empty-state compact" v-else>{{ t('entity.component.selectPrompt') }}</div>
+                </aside>
                 </div>
               </div>
             </section>
@@ -1363,10 +1367,13 @@
                 </div>
                 <div class="empty-state compact" v-else>기록된 Section 변경 로그가 없습니다.</div>
               </div>
-              <div class="section-library-manager-body" v-if="false">
+            </details>
+            <details class="section-library-manager" open>
+              <summary>{{ t('entity.component.manage') }}</summary>
+              <div class="section-library-manager-body">
             <div class="panel-header">
               <div>
-                <h2>섹션 라이브러리</h2>
+                <h2>{{ t('entity.component.manage') }}</h2>
               </div>
               <div class="subsection-actions">
                 <span v-if="wizardSectionsLoading">불러오는 중</span>
@@ -1475,6 +1482,12 @@
                       @click="archiveWizardSection(wizardSectionDetail.section.id)"
                     >보관(삭제)</button>
                   </div>
+                </div>
+
+                <div class="outline-item" v-if="wizardSectionUsageLoading || wizardSectionUsage.length">
+                  <strong>{{ wizardSectionUsageLoading ? t('entity.component.usageLoading') : t('entity.component.usage', { count: wizardSectionUsage.length }) }}</strong>
+                  <span v-if="wizardSectionUsage.length">{{ wizardSectionUsage.map(template => `${template.name} v${template.version} (${wizardSectionStatusLabel(template.status)})`).join(', ') }}</span>
+                  <span v-else>{{ t('entity.component.usageLoading') }}</span>
                 </div>
 
                 <div class="empty-state compact" v-if="wizardSectionDetail.section.status !== 'draft'">

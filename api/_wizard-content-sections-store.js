@@ -144,6 +144,7 @@ function validateLockedValue(fieldKind, value) {
 function toSection(row) {
   return {
     id: row.id,
+    componentId: row.component_id || null,
     sectionKey: row.section_key,
     name: row.name,
     description: row.description || "",
@@ -199,7 +200,7 @@ function toSectionItem(row) {
 async function fetchSectionRow(sql, id) {
   const rows = await sql`
     select
-      id::text, section_key, name, description, is_required, order_change_allowed,
+      id::text, component_id::text, section_key, name, description, is_required, order_change_allowed,
       fixed_position, sort_order, is_visible_in_wizard, status, version,
       change_note, ai_design, archived_at, created_at, updated_at
     from wizard_content_sections
@@ -277,7 +278,7 @@ async function fetchAllSections(sql, { includeArchived = false } = {}) {
   const rows = includeArchived
     ? await sql`
       select
-        id::text, section_key, name, description, is_required, order_change_allowed,
+        id::text, component_id::text, section_key, name, description, is_required, order_change_allowed,
         fixed_position, sort_order, is_visible_in_wizard, status, version,
         change_note, ai_design, archived_at, created_at, updated_at
       from wizard_content_sections
@@ -285,7 +286,7 @@ async function fetchAllSections(sql, { includeArchived = false } = {}) {
     `
     : await sql`
       select
-        id::text, section_key, name, description, is_required, order_change_allowed,
+        id::text, component_id::text, section_key, name, description, is_required, order_change_allowed,
         fixed_position, sort_order, is_visible_in_wizard, status, version,
         change_note, ai_design, archived_at, created_at, updated_at
       from wizard_content_sections
@@ -301,7 +302,7 @@ async function fetchAllSections(sql, { includeArchived = false } = {}) {
 async function fetchPublicSectionsWithItems(sql) {
   const sectionRows = await sql`
     select
-      id::text, section_key, name, description, is_required, order_change_allowed,
+      id::text, component_id::text, section_key, name, description, is_required, order_change_allowed,
       fixed_position, sort_order, is_visible_in_wizard, status, version,
       change_note, ai_design, archived_at, created_at, updated_at
     from wizard_content_sections
@@ -342,6 +343,32 @@ async function cloneSectionAsDraft(sql, sourceId, changeNote = "Draft created fr
     throw error;
   }
   return toSection(draft);
+}
+
+async function fetchComponentUsage(sql, componentId, { includeArchived = false } = {}) {
+  const rows = includeArchived
+    ? await sql`
+      select template.id::text, template.template_key, template.name, template.version, template.status
+      from wizard_form_template_sections membership
+      join wizard_form_templates template on template.id = membership.form_template_id
+      where membership.component_id = ${componentId}::uuid
+      order by template.name asc, template.version desc
+    `
+    : await sql`
+      select template.id::text, template.template_key, template.name, template.version, template.status
+      from wizard_form_template_sections membership
+      join wizard_form_templates template on template.id = membership.form_template_id
+      where membership.component_id = ${componentId}::uuid
+        and template.status in ('active', 'draft')
+      order by template.name asc, template.version desc
+    `;
+  return rows.map((row) => ({
+    id: row.id,
+    templateKey: row.template_key,
+    name: row.name,
+    version: Number(row.version || 1),
+    status: row.status,
+  }));
 }
 
 async function recordHistory(sql, {
@@ -396,5 +423,6 @@ module.exports = {
   fetchAllSections,
   fetchPublicSectionsWithItems,
   cloneSectionAsDraft,
+  fetchComponentUsage,
   recordHistory,
 };

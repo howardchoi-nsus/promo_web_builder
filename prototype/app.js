@@ -1198,7 +1198,7 @@ const adminApp = createApp({
       },
       wizardFormTemplateSectionSaving: false,
       showNewWizardFormTemplateSectionForm: false,
-      newWizardFormTemplateSectionForm: { name: "", description: "", isRequired: false, isVisible: true, userReorderAllowed: true, fixedPosition: "" },
+      newWizardFormTemplateSectionForm: { componentId: "" },
       wizardFormTemplateSectionItems: [],
       wizardFormTemplateSectionItemsLoading: false,
       wizardFormTemplateItemEditorOpenId: "",
@@ -1224,6 +1224,8 @@ const adminApp = createApp({
       selectedWizardSectionKey: "",
       wizardSectionDetail: null,
       wizardSectionDetailLoading: false,
+      wizardSectionUsage: [],
+      wizardSectionUsageLoading: false,
       wizardSectionFieldsEditor: {
         name: "",
         description: "",
@@ -1654,10 +1656,10 @@ const adminApp = createApp({
     },
 
     availableWizardSectionsForTemplate() {
-      const includedKeys = new Set((this.wizardFormTemplateDetail?.sections || []).map((section) => section.sectionKey));
+      const includedComponentIds = new Set((this.wizardFormTemplateDetail?.sections || []).map((section) => section.componentId));
       return this.groupedWizardSections
         .filter((group) => group.versions.some((version) => version.status === "active"))
-        .filter((group) => !includedKeys.has(group.sectionKey));
+        .filter((group) => !includedComponentIds.has(group.primary?.componentId));
     },
 
     // Wizard Content Sections: group the flat draft/active/inactive/archived
@@ -2017,6 +2019,7 @@ const adminApp = createApp({
         this.loadPromptTemplates(),
         this.loadWorkerWebhookSettings(),
         this.loadWizardFormTemplates(),
+        this.loadWizardSections(),
         this.loadWizardSectionAuditLogs(),
       ]);
       if (this.adminTab === "i18n") await this.loadLocales();
@@ -2611,20 +2614,23 @@ const adminApp = createApp({
 
     async addWizardFormTemplateSection() {
       const template = this.wizardFormTemplateDetail?.template;
-      if (!template || !this.newWizardFormTemplateSectionForm.name.trim() || this.wizardFormTemplateSectionSaving) return;
+      if (!template || !this.newWizardFormTemplateSectionForm.componentId || this.wizardFormTemplateSectionSaving) return;
       this.wizardFormTemplateSectionSaving = true;
       try {
         const response = await fetch("/api/wizard-form-template-sections", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ templateId: template.id, createNew: true, ...this.newWizardFormTemplateSectionForm }),
+          body: JSON.stringify({
+            templateId: template.id,
+            componentId: this.newWizardFormTemplateSectionForm.componentId,
+          }),
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `템플릿 Section 추가 오류(${response.status})`);
         this.selectedWizardFormTemplateSectionId = result.section.id;
         this.expandedWizardFormTemplateSectionId = result.section.id;
         this.showNewWizardFormTemplateSectionForm = false;
-        this.newWizardFormTemplateSectionForm = { name: "", description: "", isRequired: false, isVisible: true, userReorderAllowed: true, fixedPosition: "" };
+        this.newWizardFormTemplateSectionForm = { componentId: "" };
         await this.loadWizardFormTemplateDetail(template.id);
         this.setStatus("템플릿에 Section을 추가했습니다");
       } catch (error) {
@@ -2642,7 +2648,13 @@ const adminApp = createApp({
         const response = await fetch("/api/wizard-form-template-sections", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: section.id, ...this.wizardFormTemplateSectionEditor }),
+          body: JSON.stringify({
+            id: section.id,
+            isRequired: this.wizardFormTemplateSectionEditor.isRequired,
+            isVisible: this.wizardFormTemplateSectionEditor.isVisible,
+            userReorderAllowed: this.wizardFormTemplateSectionEditor.userReorderAllowed,
+            fixedPosition: this.wizardFormTemplateSectionEditor.fixedPosition,
+          }),
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `템플릿 Section 저장 오류(${response.status})`);
@@ -2735,7 +2747,7 @@ const adminApp = createApp({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             templateId: this.wizardFormTemplateDetail.template.id,
-            sectionKeys: reordered.map((section) => section.sectionKey),
+            componentIds: reordered.map((section) => section.componentId),
           }),
         });
         const result = await response.json().catch(() => ({}));
@@ -2993,6 +3005,7 @@ const adminApp = createApp({
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `섹션 상세 요청 오류(${response.status})`);
         this.wizardSectionDetail = { section: result.section, items: result.items || [], histories: result.histories || [] };
+        await this.loadWizardSectionUsage(result.section);
         this.wizardSectionFieldsEditor = {
           name: result.section.name,
           description: result.section.description,
@@ -3018,6 +3031,26 @@ const adminApp = createApp({
         if (!options.silent) this.setStatus(`섹션 상세를 불러오지 못했습니다: ${error.message}`);
       } finally {
         this.wizardSectionDetailLoading = false;
+      }
+    },
+
+    async loadWizardSectionUsage(section = this.wizardSectionDetail?.section) {
+      const componentId = String(section?.componentId || "").trim();
+      if (!componentId) {
+        this.wizardSectionUsage = [];
+        return;
+      }
+      this.wizardSectionUsageLoading = true;
+      try {
+        const response = await fetch(`/api/section-component-usage?componentId=${encodeURIComponent(componentId)}`);
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `컴포넌트 사용처 요청 오류(${response.status})`);
+        this.wizardSectionUsage = Array.isArray(result.templates) ? result.templates : [];
+      } catch (error) {
+        this.wizardSectionUsage = [];
+        this.setStatus(`컴포넌트 사용처를 불러오지 못했습니다: ${error.message}`);
+      } finally {
+        this.wizardSectionUsageLoading = false;
       }
     },
 

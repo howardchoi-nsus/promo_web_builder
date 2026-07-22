@@ -29,6 +29,7 @@ module.exports = async function handler(req, res) {
         continue;
       }
       sections.push({
+        componentId: membership.componentId,
         sectionId: membership.sectionId,
         sectionKey: membership.sectionKey,
         name: membership.sectionName,
@@ -42,7 +43,7 @@ module.exports = async function handler(req, res) {
       });
     }
     const revision = [template.id, template.version, template.updatedAt, ...sections.flatMap((section) => [
-      section.sectionId, section.sectionKey, JSON.stringify(section.aiDesign),
+      section.componentId, section.sectionId, section.sectionKey, JSON.stringify(section.aiDesign),
       ...section.items.map((item) => `${item.id}:${item.updatedAt || ""}`),
     ])].join("|");
     const layout = toLayout(await fetchLayoutRow(sql, id));

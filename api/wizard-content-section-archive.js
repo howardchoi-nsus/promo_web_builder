@@ -3,6 +3,7 @@ const {
   parseBody,
   toSection,
   fetchSectionRow,
+  fetchComponentUsage,
   recordHistory,
 } = require("./_wizard-content-sections-store");
 
@@ -32,6 +33,15 @@ module.exports = async function handler(req, res) {
         error: "Active sections cannot be archived directly. Activate a replacement or publish a hidden draft first.",
       });
     }
+    const usage = current.component_id
+      ? await fetchComponentUsage(sql, current.component_id)
+      : [];
+    if (usage.length) {
+      return res.status(409).json({
+        error: "Components referenced by active or draft templates cannot be archived",
+        usage,
+      });
+    }
 
     const updatedRows = await sql`
       update wizard_content_sections
@@ -43,7 +53,7 @@ module.exports = async function handler(req, res) {
         updated_at = now()
       where id = ${id}::uuid
       returning
-        id::text, section_key, name, description, is_required, order_change_allowed,
+        id::text, component_id::text, section_key, name, description, is_required, order_change_allowed,
         fixed_position, sort_order, is_visible_in_wizard, status, version,
         change_note, ai_design, archived_at, created_at, updated_at
     `;

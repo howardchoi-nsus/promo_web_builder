@@ -69,6 +69,7 @@ module.exports = async function handler(req, res) {
     const result = await createRun(sql, {
       promoRunId: body.promoRunId || null,
       formTemplateId,
+      templateKey: template.templateKey,
       templateVersion: template.version,
       layoutRevision: layout.layoutRevision,
       sectionKey,
