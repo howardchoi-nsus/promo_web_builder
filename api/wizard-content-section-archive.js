@@ -3,7 +3,6 @@ const {
   parseBody,
   toSection,
   fetchSectionRow,
-  fetchComponentUsage,
   recordHistory,
 } = require("./_wizard-content-sections-store");
 
@@ -33,12 +32,21 @@ module.exports = async function handler(req, res) {
         error: "Active sections cannot be archived directly. Activate a replacement or publish a hidden draft first.",
       });
     }
-    const usage = current.component_id
-      ? await fetchComponentUsage(sql, current.component_id)
-      : [];
+    const usageRows = await sql`
+      select template.id::text, template.template_key, template.name, template.version, template.status
+      from wizard_form_template_sections membership
+      join wizard_form_templates template on template.id = membership.form_template_id
+      where (membership.section_id = ${id}::uuid or membership.section_key = ${current.section_key})
+        and template.status in ('active', 'draft')
+      order by template.name, template.version desc
+    `;
+    const usage = usageRows.map((row) => ({
+      id: row.id, templateKey: row.template_key, name: row.name,
+      version: Number(row.version), status: row.status,
+    }));
     if (usage.length) {
       return res.status(409).json({
-        error: "Components referenced by active or draft templates cannot be archived",
+        error: "Sections referenced by active or draft templates cannot be archived",
         usage,
       });
     }
@@ -53,7 +61,7 @@ module.exports = async function handler(req, res) {
         updated_at = now()
       where id = ${id}::uuid
       returning
-        id::text, component_id::text, section_key, name, description, is_required, order_change_allowed,
+        id::text, section_key, name, description, is_required, order_change_allowed,
         fixed_position, sort_order, is_visible_in_wizard, status, version,
         change_note, ai_design, archived_at, created_at, updated_at
     `;

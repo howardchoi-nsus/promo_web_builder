@@ -1090,7 +1090,7 @@ const { createApp } = Vue;
 const initialSearchParams = new URLSearchParams(window.location.search);
 const initialView = initialSearchParams.get("view") === "admin" ? "prompts" : "builder";
 const requestedAdminTab = initialSearchParams.get("tab");
-const initialAdminTab = ["webhook", "llm", "promo-form", "i18n"].includes(requestedAdminTab)
+const initialAdminTab = ["webhook", "llm", "components", "promo-form", "i18n"].includes(requestedAdminTab)
   ? requestedAdminTab
   : "promo-form";
 
@@ -1172,15 +1172,29 @@ const adminApp = createApp({
       workerWebhookSettingsError: "",
       workerWebhookSavingStage: "",
       workerWebhookEditors: {},
+      itemComponents: [],
+      itemComponentsLoading: false,
+      itemComponentsError: "",
+      selectedItemComponentId: "",
+      itemComponentSaving: false,
+      showNewItemComponentForm: false,
+      itemComponentEditor: {
+        name: "", description: "", fieldKind: "text", textType: "title",
+        imagePolicy: { allowedSources: ["file", "url"], promptText: "", aspectRatio: "" },
+        capabilities: { layoutRegions: ["copy-primary", "copy-secondary", "center"] },
+        styleSlots: [], changeNote: "",
+      },
+      designTokenSets: [],
+      designTokenSetsLoading: false,
       wizardFormTemplates: [],
       wizardFormTemplatesLoading: false,
       wizardFormTemplatesError: "",
       wizardFormTemplateSaving: false,
       selectedWizardFormTemplateKey: "",
       wizardFormTemplateDetail: null,
-      wizardFormTemplateEditor: { name: "", description: "", isDefault: false, changeNote: "" },
+      wizardFormTemplateEditor: { name: "", description: "", isDefault: false, designTokenSetVersionId: "", changeNote: "" },
       showNewWizardFormTemplateForm: false,
-      newWizardFormTemplateForm: { templateKey: "", name: "", description: "" },
+      newWizardFormTemplateForm: { templateKey: "", name: "", description: "", designTokenSetVersionId: "" },
       showDuplicateWizardFormTemplateForm: false,
       duplicateWizardFormTemplateForm: { templateKey: "", name: "", description: "" },
       duplicateWizardFormTemplateError: "",
@@ -1198,7 +1212,7 @@ const adminApp = createApp({
       },
       wizardFormTemplateSectionSaving: false,
       showNewWizardFormTemplateSectionForm: false,
-      newWizardFormTemplateSectionForm: { componentId: "" },
+      newWizardFormTemplateSectionForm: { sectionId: "" },
       wizardFormTemplateSectionItems: [],
       wizardFormTemplateSectionItemsLoading: false,
       wizardFormTemplateItemEditorOpenId: "",
@@ -1247,6 +1261,7 @@ const adminApp = createApp({
       wizardItemEditorOpenId: "",
       wizardItemEditor: {
         id: "",
+        componentVersionId: "",
         itemKey: "",
         name: "",
         isVisibleInWizard: true,
@@ -1656,10 +1671,18 @@ const adminApp = createApp({
     },
 
     availableWizardSectionsForTemplate() {
-      const includedComponentIds = new Set((this.wizardFormTemplateDetail?.sections || []).map((section) => section.componentId));
+      const includedSectionKeys = new Set((this.wizardFormTemplateDetail?.sections || []).map((section) => section.sectionKey));
       return this.groupedWizardSections
         .filter((group) => group.versions.some((version) => version.status === "active"))
-        .filter((group) => !includedComponentIds.has(group.primary?.componentId));
+        .filter((group) => !includedSectionKeys.has(group.sectionKey));
+    },
+
+    activeItemComponents() {
+      return this.itemComponents.filter((component) => component.status === "active" && component.versionStatus === "active");
+    },
+
+    selectedItemComponent() {
+      return this.itemComponents.find((component) => component.id === this.selectedItemComponentId) || null;
     },
 
     // Wizard Content Sections: group the flat draft/active/inactive/archived
@@ -2021,19 +2044,157 @@ const adminApp = createApp({
         this.loadWizardFormTemplates(),
         this.loadWizardSections(),
         this.loadWizardSectionAuditLogs(),
+        this.loadItemComponents(),
+        this.loadDesignTokenSets(),
       ]);
       if (this.adminTab === "i18n") await this.loadLocales();
       this.setStatus("관리자 페이지로 이동했습니다");
     },
 
     selectAdminTab(tab) {
-      if (!["webhook", "llm", "promo-form", "i18n"].includes(tab)) return;
+      if (!["webhook", "llm", "components", "promo-form", "i18n"].includes(tab)) return;
       this.adminTab = tab;
       if (tab === "i18n") this.loadLocales();
+      if (tab === "components") this.loadItemComponents();
       const url = new URL(window.location.href);
       url.searchParams.set("view", "admin");
       url.searchParams.set("tab", tab);
       window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+    },
+
+    resetItemComponentEditor() {
+      this.itemComponentEditor = {
+        name: "", description: "", fieldKind: "text", textType: "title",
+        editorSchema: { multiline: true }, defaultValue: null,
+        imagePolicy: { allowedSources: ["file", "url"], promptText: "", aspectRatio: "" },
+        capabilities: { layoutRegions: ["copy-primary", "copy-secondary", "center"] },
+        styleSlots: [], changeNote: "",
+      };
+    },
+
+    async loadItemComponents() {
+      if (this.itemComponentsLoading) return;
+      this.itemComponentsLoading = true;
+      this.itemComponentsError = "";
+      try {
+        const response = await fetch("/api/item-components?includeArchived=true");
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `컴포넌트 목록 요청 오류(${response.status})`);
+        this.itemComponents = Array.isArray(result.components) ? result.components : [];
+        if (!this.itemComponents.some((component) => component.id === this.selectedItemComponentId)) {
+          this.selectedItemComponentId = this.itemComponents[0]?.id || "";
+        }
+      } catch (error) {
+        this.itemComponentsError = error.message;
+      } finally {
+        this.itemComponentsLoading = false;
+      }
+    },
+
+    selectItemComponent(component) {
+      this.selectedItemComponentId = component.id;
+      this.itemComponentEditor = {
+        name: component.name, description: component.description || "", fieldKind: component.fieldKind || "text",
+        textType: component.textType || "title", editorSchema: component.editorSchema || {},
+        defaultValue: component.defaultValue ?? null, imagePolicy: { ...(component.imagePolicy || {}) },
+        capabilities: { ...(component.capabilities || {}) }, styleSlots: [...(component.styleSlots || [])], changeNote: "",
+      };
+      this.showNewItemComponentForm = false;
+    },
+
+    openNewItemComponentForm() {
+      this.selectedItemComponentId = "";
+      this.resetItemComponentEditor();
+      this.showNewItemComponentForm = true;
+    },
+
+    async saveNewItemComponent() {
+      if (!this.itemComponentEditor.name || this.itemComponentSaving) return;
+      this.itemComponentSaving = true;
+      try {
+        const response = await fetch("/api/item-components", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(this.itemComponentEditor),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `컴포넌트 생성 오류(${response.status})`);
+        this.showNewItemComponentForm = false;
+        this.selectedItemComponentId = result.component.id;
+        await this.loadItemComponents();
+        this.setStatus("컴포넌트 초안을 생성했습니다");
+      } catch (error) {
+        this.setStatus(`컴포넌트 생성 실패: ${error.message}`);
+      } finally {
+        this.itemComponentSaving = false;
+      }
+    },
+
+    async activateItemComponent(component) {
+      if (!component?.versionId || this.itemComponentSaving) return;
+      this.itemComponentSaving = true;
+      try {
+        const response = await fetch("/api/item-component-activate", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ componentId: component.id, versionId: component.versionId, changeNote: "관리자 페이지에서 활성화" }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `컴포넌트 활성화 오류(${response.status})`);
+        await this.loadItemComponents();
+        this.setStatus("컴포넌트 버전을 활성화했습니다");
+      } catch (error) {
+        this.setStatus(`컴포넌트 활성화 실패: ${error.message}`);
+      } finally {
+        this.itemComponentSaving = false;
+      }
+    },
+
+    async createItemComponentDraft(component) {
+      if (!component?.id || this.itemComponentSaving) return;
+      this.itemComponentSaving = true;
+      try {
+        const response = await fetch("/api/item-component-draft", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ componentId: component.id, changeNote: "관리자 페이지에서 새 초안 생성" }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `컴포넌트 초안 오류(${response.status})`);
+        await this.loadItemComponents();
+        this.selectItemComponent(result.component);
+        this.setStatus("컴포넌트 새 초안을 만들었습니다");
+      } catch (error) { this.setStatus(`컴포넌트 초안 생성 실패: ${error.message}`); }
+      finally { this.itemComponentSaving = false; }
+    },
+
+    async saveItemComponentDraft(component) {
+      if (!component?.id || component.versionStatus !== "draft" || this.itemComponentSaving) return;
+      this.itemComponentSaving = true;
+      try {
+        const response = await fetch(`/api/item-component?componentId=${encodeURIComponent(component.id)}`, {
+          method: "PATCH", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...this.itemComponentEditor, versionId: component.versionId }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `컴포넌트 저장 오류(${response.status})`);
+        await this.loadItemComponents();
+        this.selectItemComponent(result.component);
+        this.setStatus("컴포넌트 초안을 저장했습니다");
+      } catch (error) { this.setStatus(`컴포넌트 저장 실패: ${error.message}`); }
+      finally { this.itemComponentSaving = false; }
+    },
+
+    async loadDesignTokenSets() {
+      if (this.designTokenSetsLoading) return;
+      this.designTokenSetsLoading = true;
+      try {
+        const response = await fetch("/api/design-token-sets");
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `디자인 토큰 요청 오류(${response.status})`);
+        this.designTokenSets = Array.isArray(result.tokenSets) ? result.tokenSets : [];
+      } catch (error) {
+        this.setStatus(`디자인 토큰 목록 실패: ${error.message}`);
+      } finally {
+        this.designTokenSetsLoading = false;
+      }
     },
 
     async loadWizardSectionAuditLogs() {
@@ -2383,6 +2544,7 @@ const adminApp = createApp({
           name: result.template.name,
           description: result.template.description,
           isDefault: result.template.isDefault,
+          designTokenSetVersionId: result.template.designTokenSetVersionId || "",
           changeNote: "",
         };
         const selectedSection = this.wizardFormTemplateDetail.sections.find(
@@ -2402,7 +2564,7 @@ const adminApp = createApp({
     toggleNewWizardFormTemplateForm() {
       this.showNewWizardFormTemplateForm = !this.showNewWizardFormTemplateForm;
       this.showDuplicateWizardFormTemplateForm = false;
-      this.newWizardFormTemplateForm = { templateKey: "", name: "", description: "" };
+      this.newWizardFormTemplateForm = { templateKey: "", name: "", description: "", designTokenSetVersionId: "" };
     },
 
     toggleDuplicateWizardFormTemplateForm() {
@@ -2614,7 +2776,7 @@ const adminApp = createApp({
 
     async addWizardFormTemplateSection() {
       const template = this.wizardFormTemplateDetail?.template;
-      if (!template || !this.newWizardFormTemplateSectionForm.componentId || this.wizardFormTemplateSectionSaving) return;
+      if (!template || !this.newWizardFormTemplateSectionForm.sectionId || this.wizardFormTemplateSectionSaving) return;
       this.wizardFormTemplateSectionSaving = true;
       try {
         const response = await fetch("/api/wizard-form-template-sections", {
@@ -2622,7 +2784,7 @@ const adminApp = createApp({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             templateId: template.id,
-            componentId: this.newWizardFormTemplateSectionForm.componentId,
+            sectionId: this.newWizardFormTemplateSectionForm.sectionId,
           }),
         });
         const result = await response.json().catch(() => ({}));
@@ -2630,7 +2792,7 @@ const adminApp = createApp({
         this.selectedWizardFormTemplateSectionId = result.section.id;
         this.expandedWizardFormTemplateSectionId = result.section.id;
         this.showNewWizardFormTemplateSectionForm = false;
-        this.newWizardFormTemplateSectionForm = { componentId: "" };
+        this.newWizardFormTemplateSectionForm = { sectionId: "" };
         await this.loadWizardFormTemplateDetail(template.id);
         this.setStatus("템플릿에 Section을 추가했습니다");
       } catch (error) {
@@ -2747,7 +2909,7 @@ const adminApp = createApp({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             templateId: this.wizardFormTemplateDetail.template.id,
-            componentIds: reordered.map((section) => section.componentId),
+            sectionIds: reordered.map((section) => section.sectionId),
           }),
         });
         const result = await response.json().catch(() => ({}));
@@ -3035,20 +3197,20 @@ const adminApp = createApp({
     },
 
     async loadWizardSectionUsage(section = this.wizardSectionDetail?.section) {
-      const componentId = String(section?.componentId || "").trim();
-      if (!componentId) {
+      const sectionId = String(section?.id || "").trim();
+      if (!sectionId) {
         this.wizardSectionUsage = [];
         return;
       }
       this.wizardSectionUsageLoading = true;
       try {
-        const response = await fetch(`/api/section-component-usage?componentId=${encodeURIComponent(componentId)}`);
+        const response = await fetch(`/api/wizard-content-section-usage?sectionId=${encodeURIComponent(sectionId)}`);
         const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.message || result.error || `컴포넌트 사용처 요청 오류(${response.status})`);
+        if (!response.ok) throw new Error(result.message || result.error || `섹션 사용처 요청 오류(${response.status})`);
         this.wizardSectionUsage = Array.isArray(result.templates) ? result.templates : [];
       } catch (error) {
         this.wizardSectionUsage = [];
-        this.setStatus(`컴포넌트 사용처를 불러오지 못했습니다: ${error.message}`);
+        this.setStatus(`섹션 사용처를 불러오지 못했습니다: ${error.message}`);
       } finally {
         this.wizardSectionUsageLoading = false;
       }
@@ -3271,6 +3433,7 @@ const adminApp = createApp({
     openNewWizardItemEditor() {
       this.wizardItemEditor = {
         id: "",
+        componentVersionId: "",
         itemKey: "",
         name: "",
         isVisibleInWizard: true,
@@ -3289,6 +3452,7 @@ const adminApp = createApp({
     openWizardItemEditor(item) {
       this.wizardItemEditor = {
         id: item.id,
+        componentVersionId: item.componentVersionId || "",
         itemKey: item.itemKey,
         name: item.name,
         isVisibleInWizard: item.isVisibleInWizard,
@@ -3341,15 +3505,12 @@ const adminApp = createApp({
           body: JSON.stringify({
             id: this.wizardItemEditor.id || undefined,
             sectionId: section.id,
+            componentVersionId: this.wizardItemEditor.componentVersionId,
             itemKey: this.wizardItemEditor.itemKey,
             name: this.wizardItemEditor.name,
             isVisibleInWizard: this.wizardItemEditor.isVisibleInWizard,
             isRequired: this.wizardItemEditor.isRequired,
             sortOrder: Number(this.wizardItemEditor.sortOrder) || 0,
-            fieldKind: this.wizardItemEditor.fieldKind,
-            textType: this.wizardItemEditor.textType,
-            image: { ...this.wizardItemEditor.image },
-            ctaUtm: this.wizardItemEditor.ctaUtm,
             isLocked: this.wizardItemEditor.isLocked,
             lockedValue,
           }),

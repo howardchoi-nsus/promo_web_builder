@@ -27,7 +27,7 @@ const orderSource = fs.readFileSync(path.join(root, "api", "wizard-content-secti
 const itemApiSource = fs.readFileSync(path.join(root, "api", "wizard-content-section-items.js"), "utf8");
 const migrationSource = fs.readFileSync(path.join(root, "db", "migrations", "016_wizard_content_sections.sql"), "utf8");
 const imageDescriptionMigration = fs.readFileSync(path.join(root, "db", "migrations", "020_image_description_enabled.sql"), "utf8");
-const componentMigration = fs.readFileSync(path.join(root, "db", "migrations", "028_section_component_registry.sql"), "utf8");
+const componentMigration = fs.readFileSync(path.join(root, "db", "migrations", "029_item_components_design_tokens_and_planner.sql"), "utf8");
 
 assert.match(wizardSource, /wizardContentLegacyBackup/);
 assert.match(wizardSource, /migrateLegacySectionInputs/);
@@ -42,9 +42,9 @@ assert.match(adminHtmlSource, /app-shell\.css\?v=app-shell-sidebar-v3/);
 assert.match(adminHtmlSource, /app\.js/);
 assert.doesNotMatch(adminHtmlSource, /value="image_description"/);
 assert.match(adminHtmlSource, /설명 입력 허용/);
-assert.match(itemApiSource, /must include at least one of: url, file, ai/);
-assert.doesNotMatch(itemApiSource, /image\.promptText is required when AI generation is allowed/);
-assert.match(itemApiSource, /requestedItemKey \|\| createItemKey\(\)/);
+assert.match(itemApiSource, /componentVersionId is required/);
+assert.match(itemApiSource, /active component version/);
+assert.match(itemApiSource, /createItemKey\(\)/);
 assert.match(adminHtmlSource, /section-expand-button/);
 assert.match(adminHtmlSource, /transition name="section-expand"/);
 assert.match(adminStyleSource, /\.section-order-list-move/);
@@ -60,9 +60,9 @@ assert.match(migrationSource, /create or replace function activate_wizard_conten
 assert.match(migrationSource, /coalesce\(max\(version\), 0\) \+ 1/);
 assert.match(imageDescriptionMigration, /image_description_enabled/);
 assert.match(imageDescriptionMigration, /clone_wizard_content_section_draft/);
-assert.match(componentMigration, /wizard_section_components/);
-assert.match(componentMigration, /component_id/);
-assert.match(archiveSource, /fetchComponentUsage/);
+assert.match(componentMigration, /wizard_item_components/);
+assert.match(componentMigration, /wizard_content_section_component_instances/);
+assert.match(archiveSource, /wizard_form_template_sections/);
 assert.match(archiveSource, /cannot be archived/);
 
 console.log("Wizard content sections contract test passed");

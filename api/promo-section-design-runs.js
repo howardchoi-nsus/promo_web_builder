@@ -23,6 +23,7 @@ module.exports = async function handler(req, res) {
     const formTemplateId = String(body.formTemplateId || "").trim();
     const sectionKey = String(body.sectionKey || "").trim();
     const sectionInputs = body.sectionInputs && typeof body.sectionInputs === "object" ? body.sectionInputs : {};
+    const requestMode = ["full", "layout-style", "assets"].includes(body.requestMode) ? body.requestMode : "full";
     if (!formTemplateId || !sectionKey) return res.status(400).json({ error: "formTemplateId and sectionKey are required" });
     const sql = getSql();
     const templateData = await fetchTemplateWithItems(sql, formTemplateId);
@@ -33,6 +34,7 @@ module.exports = async function handler(req, res) {
     if (!hasAnalyzableContent(aiContent)) return res.status(400).json({ error: "Section text or CTA content is required before AI generation" });
     const layout = toLayout(await fetchLayoutRow(sql, formTemplateId));
     const template = toFormTemplate(templateData.template);
+    if (!template.designTokenSetVersionId) return res.status(422).json({ error: "Template needs an active design token set version before AI design generation" });
     let constraints = defaultConstraints(section, layout.layoutSpec);
     if (!constraints.enabled) return res.status(403).json({ error: "AI design generation is disabled for this section" });
     if (!constraints.allowedLayoutVariants.length) return res.status(422).json({ error: "No AI layout variant is allowed for this section" });
@@ -59,6 +61,8 @@ module.exports = async function handler(req, res) {
         name: section.name || section.sectionName || sectionKey,
         items: (section.items || []).map((item) => ({
           itemKey: item.itemKey, name: item.name, fieldKind: item.fieldKind,
+          componentId: item.componentId, componentVersionId: item.componentVersionId,
+          componentVersion: item.componentVersion, capabilities: item.capabilities, styleSlots: item.styleSlots,
           isLocked: item.isLocked, isVisibleInWizard: item.isVisibleInWizard,
         })),
         sectionInputs,
@@ -76,6 +80,16 @@ module.exports = async function handler(req, res) {
       inputSnapshot: snapshot,
       inputHash: hash,
       constraintsSnapshot: constraints,
+      requestMode,
+      componentVersionsSnapshot: (section.items || []).map((item) => ({
+        itemKey: item.itemKey, componentId: item.componentId,
+        componentVersionId: item.componentVersionId, version: item.componentVersion,
+      })),
+      tokenSetVersionId: template.designTokenSetVersionId,
+      baseRevision: {
+        templateVersion: template.version, sectionVersion: section.sectionVersion,
+        layoutRevision: layout.layoutRevision, tokenSetVersionId: template.designTokenSetVersionId,
+      },
     });
     return res.status(result.reused ? 200 : 202).json({ ok: true, reused: result.reused, run: result.run });
   } catch (error) {

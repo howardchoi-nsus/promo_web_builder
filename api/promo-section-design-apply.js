@@ -2,8 +2,9 @@ const { getSql, parseBody, fetchRun, transitionRun } = require("./_promo-section
 const { fetchTemplateWithItems, fetchLayoutRow, toLayout } = require("./_wizard-form-template-layout-store");
 const { toFormTemplate } = require("./_wizard-form-templates-store");
 const {
-  inputHash, defaultConstraints, normalizeBackgroundColor, resolveImageTarget, validatePatch,
+  inputHash, defaultConstraints, normalizeBackgroundColor, resolveImageTarget, validatePatch, validateDesignPlan,
 } = require("./_promo-section-design-contract");
+const { fetchTokenVersion } = require("./_design-token-store");
 
 const defaultDependencies = {
   getSql,
@@ -60,6 +61,9 @@ function createHandler(overrides = {}) {
         currentVersion: template.version,
       });
     }
+    if (run.tokenSetVersionId && template.designTokenSetVersionId !== run.tokenSetVersionId) {
+      return res.status(409).json({ error: "Template design token set changed; regenerate the design", code: "TOKEN_SET_VERSION_MISMATCH" });
+    }
     const layout = dependencies.toLayout(await dependencies.fetchLayoutRow(sql, run.formTemplateId));
     if (layout.layoutRevision !== run.layoutRevision) {
       return res.status(409).json({
@@ -75,6 +79,14 @@ function createHandler(overrides = {}) {
     if (!section) {
       return res.status(409).json({ error: "Template section changed; regenerate the design", code: "SECTION_DEFINITION_MISMATCH" });
     }
+    const currentComponentVersions = (section.items || []).map((item) => ({
+      itemKey: item.itemKey, componentId: item.componentId,
+      componentVersionId: item.componentVersionId, version: item.componentVersion,
+    }));
+    if ((run.componentVersionsSnapshot || []).length
+      && inputHash(currentComponentVersions) !== inputHash(run.componentVersionsSnapshot)) {
+      return res.status(409).json({ error: "Section component versions changed; regenerate the design", code: "COMPONENT_VERSION_MISMATCH" });
+    }
     const savedImageTarget = run.constraintsSnapshot?.imageTarget;
     const targetResolution = resolveImageTarget(
       defaultConstraints(section, layout.layoutSpec),
@@ -88,7 +100,10 @@ function createHandler(overrides = {}) {
     if (inputHash(currentConstraints) !== inputHash(run.constraintsSnapshot || {})) {
       return res.status(409).json({ error: "Section AI policy changed; regenerate the design", code: "CONSTRAINTS_MISMATCH" });
     }
-    const validation = validatePatch(section, run.layoutResult || {}, currentConstraints);
+    const tokenSet = run.tokenSetVersionId ? await fetchTokenVersion(sql, run.tokenSetVersionId) : null;
+    const validation = run.designPlan
+      ? validateDesignPlan(section, run.designPlan, currentConstraints, tokenSet)
+      : validatePatch(section, run.layoutResult || {}, currentConstraints);
     if (!validation.ok) {
       return res.status(409).json({
         error: "Section design no longer satisfies the current template policy",

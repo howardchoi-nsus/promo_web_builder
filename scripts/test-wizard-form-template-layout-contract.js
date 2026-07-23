@@ -40,7 +40,7 @@ assert.match(templatesApi, /cloneLayout/);
 assert.match(activationApi, /Form template layout validation failed/);
 assert.match(store, /remapLayoutSectionKey/);
 assert.doesNotMatch(sectionsApi, /remapLayoutSectionKey/);
-assert.match(sectionsApi, /Component definitions cannot be changed from Template Management/);
+assert.match(sectionsApi, /Section definitions cannot be changed from Template Management/);
 assert.match(admin, /<template-layout-manager/);
 assert.match(adminLayoutManager, /템플릿 기본 레이아웃/);
 assert.match(admin, /<div class="form-template-editor-panels">[\s\S]*?<section class="prompt-editor-panel"[\s\S]*?<aside class="template-section-items-panel"/);

@@ -1,0 +1,43 @@
+const { getSql, parseBody, fetchComponent } = require("./_item-components-store");
+
+module.exports = async function handler(req, res) {
+  if (req.method !== "POST") {
+    res.setHeader("Allow", "POST");
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+  try {
+    const body = parseBody(req.body);
+    const componentId = String(body.componentId || "").trim();
+    if (!componentId) return res.status(400).json({ error: "componentId is required" });
+    const sql = getSql();
+    const rows = await sql`
+      with source as (
+        select * from wizard_item_component_versions
+        where component_id = ${componentId}::uuid and status <> 'archived'
+        order by case status when 'active' then 0 else 1 end, version desc limit 1
+      ), guard as (
+        select case when exists (
+          select 1 from wizard_item_component_versions
+          where component_id = ${componentId}::uuid and status = 'draft'
+        ) then 1 / 0 else 1 end as ok
+      )
+      insert into wizard_item_component_versions (
+        component_id, version, status, field_kind, text_type, editor_schema, default_value,
+        capabilities, image_policy, cta_policy, style_slots, change_note
+      ) select source.component_id,
+        (select coalesce(max(v.version), 0) + 1 from wizard_item_component_versions v where v.component_id = source.component_id),
+        'draft', source.field_kind, source.text_type, source.editor_schema, source.default_value,
+        source.capabilities, source.image_policy, source.cta_policy, source.style_slots,
+        ${String(body.changeNote || "Draft created.")}
+      from source cross join guard returning id::text
+    `;
+    if (!rows.length) return res.status(404).json({ error: "Component not found" });
+    return res.status(201).json({ ok: true, component: await fetchComponent(sql, componentId, rows[0].id) });
+  } catch (error) {
+    const conflict = /division by zero/i.test(error.message || "");
+    return res.status(conflict ? 409 : (error.statusCode || 500)).json({
+      error: conflict ? "A draft already exists for this component" : "Component draft creation failed",
+      message: error.message,
+    });
+  }
+};

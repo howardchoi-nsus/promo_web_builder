@@ -30,7 +30,7 @@ module.exports = async function handler(req, res) {
         select (value #>> '{}')::uuid as item_id, ordinality::integer as ordinal
         from jsonb_array_elements(${JSON.stringify(itemIds)}::jsonb) with ordinality
       )
-      update wizard_content_section_items item
+      update wizard_content_section_component_instances item
       set sort_order = (requested.ordinal - 1) * 10, updated_at = now()
       from requested
       where item.section_id = ${sectionId}::uuid and item.id = requested.item_id

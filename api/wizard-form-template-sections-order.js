@@ -10,44 +10,41 @@ module.exports = async function handler(req, res) {
   try {
     const body = parseBody(req.body);
     const templateId = String(body.templateId || "").trim();
-    const componentIds = Array.isArray(body.componentIds)
-      ? body.componentIds.map((id) => String(id || "").trim()).filter(Boolean)
+    const sectionIds = Array.isArray(body.sectionIds)
+      ? body.sectionIds.map((id) => String(id || "").trim()).filter(Boolean)
       : [];
     if (!templateId) return res.status(400).json({ error: "templateId is required" });
-    if (!componentIds.length) return res.status(400).json({ error: "componentIds is required" });
-    if (new Set(componentIds).size !== componentIds.length) {
-      return res.status(400).json({ error: "componentIds must not contain duplicates" });
+    if (!sectionIds.length) return res.status(400).json({ error: "sectionIds is required" });
+    if (new Set(sectionIds).size !== sectionIds.length) {
+      return res.status(400).json({ error: "sectionIds must not contain duplicates" });
     }
     const sql = getSql();
     const template = await fetchTemplateRow(sql, templateId);
     if (!template) return res.status(404).json({ error: "Form template not found" });
     if (template.status !== "draft") return res.status(409).json({ error: "Only draft form templates can change section order" });
     const current = await fetchTemplateSections(sql, templateId);
-    const currentComponentIds = current
+    const currentSectionIds = current
       .filter((section) => !section.fixedPosition)
-      .map((section) => section.componentId);
-    if (currentComponentIds.some((id) => !id)) {
-      return res.status(409).json({ error: "Legacy component references must be migrated before reordering" });
-    }
-    if (currentComponentIds.length !== componentIds.length
-      || currentComponentIds.some((id) => !componentIds.includes(id))) {
+      .map((section) => section.sectionId);
+    if (currentSectionIds.length !== sectionIds.length
+      || currentSectionIds.some((id) => !sectionIds.includes(id))) {
       return res.status(409).json({ error: "Section order is stale. Refresh and try again." });
     }
 
     const rows = await sql`
       with requested as (
-        select (value #>> '{}')::uuid as component_id, (ordinality - 1)::integer * 10 as sort_order
-        from jsonb_array_elements(${JSON.stringify(componentIds)}::jsonb) with ordinality
+        select (value #>> '{}')::uuid as section_id, (ordinality - 1)::integer * 10 as sort_order
+        from jsonb_array_elements(${JSON.stringify(sectionIds)}::jsonb) with ordinality
       )
       update wizard_form_template_sections ts
       set sort_order = requested.sort_order, updated_at = now()
       from requested
       where ts.form_template_id = ${templateId}::uuid
-        and ts.component_id = requested.component_id
+        and ts.section_id = requested.section_id
         and ts.fixed_position is null
-      returning ts.component_id::text
+      returning ts.section_id::text
     `;
-    if (new Set(rows.map((row) => row.component_id)).size !== componentIds.length) {
+    if (new Set(rows.map((row) => row.section_id)).size !== sectionIds.length) {
       return res.status(409).json({ error: "Section order changed while saving. Refresh and try again." });
     }
     return res.status(200).json({ ok: true, sections: await fetchTemplateSections(sql, templateId) });

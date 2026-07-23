@@ -144,7 +144,6 @@ function validateLockedValue(fieldKind, value) {
 function toSection(row) {
   return {
     id: row.id,
-    componentId: row.component_id || null,
     sectionKey: row.section_key,
     name: row.name,
     description: row.description || "",
@@ -164,9 +163,16 @@ function toSection(row) {
 }
 
 function toSectionItem(row) {
+  const imagePolicy = row.image_policy && typeof row.image_policy === "object" ? row.image_policy : {};
+  const ctaPolicy = row.cta_policy && typeof row.cta_policy === "object" ? row.cta_policy : {};
+  const instanceConfig = row.instance_config && typeof row.instance_config === "object" ? row.instance_config : {};
   return {
     id: row.id,
     sectionId: row.section_id,
+    componentId: row.item_component_id || null,
+    componentKey: row.component_key || null,
+    componentVersionId: row.component_version_id || null,
+    componentVersion: row.component_version == null ? null : Number(row.component_version),
     itemKey: row.item_key,
     name: row.name,
     isVisibleInWizard: Boolean(row.is_visible_in_wizard),
@@ -176,20 +182,25 @@ function toSectionItem(row) {
     fieldKind: row.field_kind,
     textType: row.text_type || null,
     image: row.field_kind === "image" ? {
-      allowedSources: Array.isArray(row.image_allowed_sources) ? row.image_allowed_sources : [],
-      promptText: row.image_prompt_text || "",
-      descriptionEnabled: Boolean(row.image_description_enabled),
-      altTextRequired: Boolean(row.image_alt_text_required),
-      aspectRatio: row.image_aspect_ratio || "",
-      maxSizeKb: row.image_max_size_kb === null || row.image_max_size_kb === undefined ? null : Number(row.image_max_size_kb),
+      allowedSources: Array.isArray(imagePolicy.allowedSources) ? imagePolicy.allowedSources : [],
+      promptText: imagePolicy.promptText || "",
+      descriptionEnabled: Boolean(imagePolicy.descriptionEnabled),
+      altTextRequired: Boolean(imagePolicy.altTextRequired),
+      aspectRatio: imagePolicy.aspectRatio || "",
+      maxSizeKb: imagePolicy.maxSizeKb == null ? null : Number(imagePolicy.maxSizeKb),
     } : null,
     ctaUtm: row.field_kind === "cta" ? {
-      source: row.cta_utm_source || "",
-      medium: row.cta_utm_medium || "",
-      campaign: row.cta_utm_campaign || "",
-      content: row.cta_utm_content || "",
-      term: row.cta_utm_term || "",
+      source: ctaPolicy.source || "",
+      medium: ctaPolicy.medium || "",
+      campaign: ctaPolicy.campaign || "",
+      content: ctaPolicy.content || "",
+      term: ctaPolicy.term || "",
     } : null,
+    editorSchema: row.editor_schema || {},
+    defaultValue: row.default_value ?? null,
+    capabilities: row.capabilities || {},
+    styleSlots: row.style_slots || [],
+    instanceConfig,
     isLocked: Boolean(row.is_locked),
     lockedValue: row.locked_value ?? null,
     createdAt: row.created_at || null,
@@ -200,7 +211,7 @@ function toSectionItem(row) {
 async function fetchSectionRow(sql, id) {
   const rows = await sql`
     select
-      id::text, component_id::text, section_key, name, description, is_required, order_change_allowed,
+      id::text, section_key, name, description, is_required, order_change_allowed,
       fixed_position, sort_order, is_visible_in_wizard, status, version,
       change_note, ai_design, archived_at, created_at, updated_at
     from wizard_content_sections
@@ -213,13 +224,20 @@ async function fetchSectionRow(sql, id) {
 async function fetchItemRows(sql, sectionId) {
   return sql`
     select
-      id::text, section_id::text, item_key, name, is_visible_in_wizard, is_required, user_reorder_allowed, sort_order,
-      field_kind, text_type, image_allowed_sources, image_prompt_text, image_description_enabled, image_alt_text_required,
-      image_aspect_ratio, image_max_size_kb, cta_utm_source, cta_utm_medium, cta_utm_campaign,
-      cta_utm_content, cta_utm_term, is_locked, locked_value, created_at, updated_at
-    from wizard_content_section_items
-    where section_id = ${sectionId}::uuid
-    order by sort_order asc, created_at asc
+      instance.id::text, instance.section_id::text, instance.item_key,
+      coalesce(nullif(instance.display_name, ''), component.name) as name,
+      instance.is_visible_in_wizard, instance.is_required, instance.user_reorder_allowed,
+      instance.sort_order, instance.is_locked, instance.locked_value, instance.instance_config,
+      instance.created_at, instance.updated_at,
+      component.id::text as item_component_id, component.component_key,
+      version.id::text as component_version_id, version.version as component_version,
+      version.field_kind, version.text_type, version.editor_schema, version.default_value,
+      version.capabilities, version.image_policy, version.cta_policy, version.style_slots
+    from wizard_content_section_component_instances instance
+    join wizard_item_component_versions version on version.id = instance.component_version_id
+    join wizard_item_components component on component.id = version.component_id
+    where instance.section_id = ${sectionId}::uuid
+    order by instance.sort_order asc, instance.created_at asc
   `;
 }
 
@@ -278,7 +296,7 @@ async function fetchAllSections(sql, { includeArchived = false } = {}) {
   const rows = includeArchived
     ? await sql`
       select
-        id::text, component_id::text, section_key, name, description, is_required, order_change_allowed,
+        id::text, section_key, name, description, is_required, order_change_allowed,
         fixed_position, sort_order, is_visible_in_wizard, status, version,
         change_note, ai_design, archived_at, created_at, updated_at
       from wizard_content_sections
@@ -286,7 +304,7 @@ async function fetchAllSections(sql, { includeArchived = false } = {}) {
     `
     : await sql`
       select
-        id::text, component_id::text, section_key, name, description, is_required, order_change_allowed,
+        id::text, section_key, name, description, is_required, order_change_allowed,
         fixed_position, sort_order, is_visible_in_wizard, status, version,
         change_note, ai_design, archived_at, created_at, updated_at
       from wizard_content_sections
@@ -302,7 +320,7 @@ async function fetchAllSections(sql, { includeArchived = false } = {}) {
 async function fetchPublicSectionsWithItems(sql) {
   const sectionRows = await sql`
     select
-      id::text, component_id::text, section_key, name, description, is_required, order_change_allowed,
+      id::text, section_key, name, description, is_required, order_change_allowed,
       fixed_position, sort_order, is_visible_in_wizard, status, version,
       change_note, ai_design, archived_at, created_at, updated_at
     from wizard_content_sections
@@ -314,17 +332,8 @@ async function fetchPublicSectionsWithItems(sql) {
   const sections = [];
   for (const row of sectionRows) {
     const section = toSection(row);
-    const itemRows = await sql`
-      select
-        id::text, section_id::text, item_key, name, is_visible_in_wizard, is_required, user_reorder_allowed, sort_order,
-        field_kind, text_type, image_allowed_sources, image_prompt_text, image_description_enabled, image_alt_text_required,
-        image_aspect_ratio, image_max_size_kb, cta_utm_source, cta_utm_medium, cta_utm_campaign,
-        cta_utm_content, cta_utm_term, is_locked, locked_value, created_at, updated_at
-      from wizard_content_section_items
-      where section_id = ${row.id}::uuid and is_visible_in_wizard = true
-      order by sort_order asc, created_at asc
-    `;
-    sections.push({ ...section, items: itemRows.map(toSectionItem) });
+    const items = (await fetchItemsForSection(sql, row.id)).filter((item) => item.isVisibleInWizard);
+    sections.push({ ...section, items });
   }
   return sections;
 }
@@ -343,32 +352,6 @@ async function cloneSectionAsDraft(sql, sourceId, changeNote = "Draft created fr
     throw error;
   }
   return toSection(draft);
-}
-
-async function fetchComponentUsage(sql, componentId, { includeArchived = false } = {}) {
-  const rows = includeArchived
-    ? await sql`
-      select template.id::text, template.template_key, template.name, template.version, template.status
-      from wizard_form_template_sections membership
-      join wizard_form_templates template on template.id = membership.form_template_id
-      where membership.component_id = ${componentId}::uuid
-      order by template.name asc, template.version desc
-    `
-    : await sql`
-      select template.id::text, template.template_key, template.name, template.version, template.status
-      from wizard_form_template_sections membership
-      join wizard_form_templates template on template.id = membership.form_template_id
-      where membership.component_id = ${componentId}::uuid
-        and template.status in ('active', 'draft')
-      order by template.name asc, template.version desc
-    `;
-  return rows.map((row) => ({
-    id: row.id,
-    templateKey: row.template_key,
-    name: row.name,
-    version: Number(row.version || 1),
-    status: row.status,
-  }));
 }
 
 async function recordHistory(sql, {
@@ -423,6 +406,5 @@ module.exports = {
   fetchAllSections,
   fetchPublicSectionsWithItems,
   cloneSectionAsDraft,
-  fetchComponentUsage,
   recordHistory,
 };

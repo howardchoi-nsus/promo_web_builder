@@ -80,13 +80,14 @@ async function createTemplate(req, res) {
 
   const rows = await sql`
     insert into wizard_form_templates (
-      template_key, name, description, status, version, is_default, change_note
+      template_key, name, description, status, version, is_default, change_note, design_token_set_version_id
     ) values (
       ${templateKey}, ${name}, ${String(body.description || "")}, 'draft', 1, false,
-      ${String(body.changeNote || "Form template created from Admin Page.")}
+      ${String(body.changeNote || "Form template created from Admin Page.")},
+      ${String(body.designTokenSetVersionId || "").trim() || null}::uuid
     )
     returning id::text, template_key, name, description, status, version,
-      is_default, change_note, archived_at, created_at, updated_at
+      is_default, change_note, design_token_set_version_id::text, archived_at, created_at, updated_at
   `;
   await ensureLayout(sql, rows[0].id);
   return res.status(201).json({ ok: true, template: toFormTemplate(rows[0]) });

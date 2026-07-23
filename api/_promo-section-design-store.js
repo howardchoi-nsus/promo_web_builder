@@ -14,6 +14,12 @@ function toRun(row) {
     inputSnapshot: row.input_snapshot || {},
     inputHash: row.input_hash,
     constraintsSnapshot: row.constraints_snapshot || {},
+    requestMode: row.request_mode || "full",
+    componentVersionsSnapshot: row.component_versions_snapshot || [],
+    tokenSetVersionId: row.token_set_version_id || null,
+    baseRevision: row.base_revision || {},
+    designPlan: row.design_plan || null,
+    effectivePatch: row.effective_patch || null,
     layoutResult: row.layout_result || null,
     imageResult: row.image_result || null,
     providerSnapshot: row.provider_snapshot || {},
@@ -32,6 +38,8 @@ async function fetchRun(sql, id) {
   const rows = await sql`
     select id::text, promo_run_id::text, form_template_id::text, template_key_snapshot, template_version,
       layout_revision, section_key, status, input_snapshot, input_hash, constraints_snapshot,
+      request_mode, component_versions_snapshot, token_set_version_id::text, base_revision,
+      design_plan, effective_patch,
       layout_result, image_result, provider_snapshot, usage_snapshot, current_attempt,
       error_code, error_message, created_at, updated_at, completed_at, applied_at
     from promo_section_design_runs where id = ${id}::uuid limit 1
@@ -55,11 +63,14 @@ async function createRun(sql, input) {
   const rows = await sql`
     insert into promo_section_design_runs (
       promo_run_id, form_template_id, template_key_snapshot, template_version, layout_revision, section_key,
-      input_snapshot, input_hash, constraints_snapshot
+      input_snapshot, input_hash, constraints_snapshot, request_mode, component_versions_snapshot,
+      token_set_version_id, base_revision
     ) values (
       ${input.promoRunId || null}::uuid, ${input.formTemplateId}::uuid, ${input.templateKey}, ${input.templateVersion},
       ${input.layoutRevision}, ${input.sectionKey}, ${JSON.stringify(input.inputSnapshot)}::jsonb,
-      ${input.inputHash}, ${JSON.stringify(input.constraintsSnapshot)}::jsonb
+      ${input.inputHash}, ${JSON.stringify(input.constraintsSnapshot)}::jsonb, ${input.requestMode || "full"},
+      ${JSON.stringify(input.componentVersionsSnapshot || [])}::jsonb,
+      ${input.tokenSetVersionId || null}::uuid, ${JSON.stringify(input.baseRevision || {})}::jsonb
     ) returning id::text
   `;
   return { run: await fetchRun(sql, rows[0].id), reused: false };
@@ -72,6 +83,8 @@ async function transitionRun(sql, id, fromStatuses, status, patch = {}) {
       current_attempt = current_attempt + ${patch.incrementAttempt ? 1 : 0},
       layout_result = coalesce(${patch.layoutResult ? JSON.stringify(patch.layoutResult) : null}::jsonb, layout_result),
       image_result = coalesce(${patch.imageResult ? JSON.stringify(patch.imageResult) : null}::jsonb, image_result),
+      design_plan = coalesce(${patch.designPlan ? JSON.stringify(patch.designPlan) : null}::jsonb, design_plan),
+      effective_patch = coalesce(${patch.effectivePatch ? JSON.stringify(patch.effectivePatch) : null}::jsonb, effective_patch),
       provider_snapshot = coalesce(${patch.providerSnapshot ? JSON.stringify(patch.providerSnapshot) : null}::jsonb, provider_snapshot),
       usage_snapshot = coalesce(${patch.usageSnapshot ? JSON.stringify(patch.usageSnapshot) : null}::jsonb, usage_snapshot),
       error_code = ${patch.errorCode || null},

@@ -38,7 +38,7 @@ assert.match(adminHtml, /Section Items[\s\S]*wizardFormTemplateSectionEditor\.ai
 assert.match(adminHtml, /AI 정책 저장/);
 assert.match(adminApp, /aiDesign:\s*\{[\s\S]*allowedLayoutVariants/);
 assert.doesNotMatch(templateSectionsApi, /ai_design\s*=/);
-assert.match(templateSectionsApi, /Component definitions cannot be changed from Template Management/);
+assert.match(templateSectionsApi, /Section definitions cannot be changed from Template Management/);
 assert.match(publicTemplateApi, /aiDesign: normalizeAiDesign\(membership\.aiDesign\)/);
 assert.match(publicTemplateApi, /JSON\.stringify\(section\.aiDesign\)/);
 assert.match(runs, /constraints\.enabled/);

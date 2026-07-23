@@ -1289,6 +1289,33 @@ async function generateSectionAiDesign(section, targetItemKey = "") {
   const previousTargetItemKey = previous?.constraintsSnapshot?.imageTarget?.type === "item"
     ? previous.constraintsSnapshot.imageTarget.itemKey
     : "";
+  const processAssetJobs = async (run) => {
+    const listed = await fetchJson(`/api/promo-section-design-assets?runId=${encodeURIComponent(run.id)}`);
+    let latestRun = run;
+    for (const asset of (listed.assets || []).filter((item) => ["queued", "failed"].includes(item.status))) {
+      const processedAsset = await fetchJson("/api/promo-section-design-asset-process", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId: asset.id }),
+      });
+      latestRun = processedAsset.run || latestRun;
+      saveSectionAiRun(sectionKey, latestRun, sectionInputs);
+      postWizardLayoutSnapshot();
+    }
+    return latestRun;
+  };
+  const canRetryPlannedAssets = previous?.id && previous?.effectivePatch
+    && previous?.status === "failed" && !sectionAiIsStale(sectionKey, previous);
+  if (canRetryPlannedAssets) {
+    postWizardLayoutSnapshot();
+    try {
+      const retried = await processAssetJobs(previous);
+      saveSectionAiRun(sectionKey, retried, sectionInputs);
+    } catch (error) {
+      contentState.sectionDesignRuns[sectionKey] = { ...previous, status: "failed", errorMessage: error.message || "섹션 이미지 재생성에 실패했습니다." };
+      saveWizardContent();
+    } finally { postWizardLayoutSnapshot(); }
+    return;
+  }
   const canRetryImage = previous?.status === "failed"
     && previous.layoutResult?.imageRequest
     && !sectionAiIsStale(sectionKey, previous)
@@ -1326,6 +1353,7 @@ async function generateSectionAiDesign(section, targetItemKey = "") {
         sectionKey,
         sectionInputs,
         targetItemKey: String(targetItemKey || "").trim() || null,
+        requestMode: "full",
         backgroundColor: wizardResolvedLayout?.theme?.backgroundColor || FALLBACK_LAYOUT.theme.backgroundColor,
       }),
     });
@@ -1334,19 +1362,15 @@ async function generateSectionAiDesign(section, targetItemKey = "") {
     if (["ready", "applied"].includes(created.run.status)) return;
     const processed = created.run.status === "generating_assets"
       ? created
-      : await fetchJson("/api/promo-section-design-process", {
+      : await fetchJson("/api/promo-section-design-plan-process", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ runId: created.run.id }),
       });
     saveSectionAiRun(sectionKey, processed.run, sectionInputs);
     if (processed.run.status === "generating_assets") {
-      const imaged = await fetchJson("/api/promo-section-design-image-process", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ runId: processed.run.id }),
-      });
-      saveSectionAiRun(sectionKey, imaged.run, sectionInputs);
+      const imagedRun = await processAssetJobs(processed.run);
+      saveSectionAiRun(sectionKey, imagedRun, sectionInputs);
     }
   } catch (error) {
     contentState.sectionDesignRuns[sectionKey] = {
@@ -1388,8 +1412,11 @@ async function applySectionAiDesign(section, saved) {
     Object.entries(patch.itemStyles || {}).forEach(([key, value]) => {
       wizardResolvedLayout.itemStyles[key] = { ...(wizardResolvedLayout.itemStyles[key] || {}), ...(value || {}) };
     });
-    if (appliedRun.imageResult?.proxyUrl) {
-      const imageTarget = appliedRun.imageResult.target || appliedRun.layoutResult?.imageRequest?.target;
+    const appliedImages = Array.isArray(appliedRun.imageResult?.assets)
+      ? appliedRun.imageResult.assets
+      : (appliedRun.imageResult?.proxyUrl ? [appliedRun.imageResult] : []);
+    for (const appliedImage of appliedImages) {
+      const imageTarget = appliedImage.target || appliedRun.layoutResult?.imageRequest?.target;
       if (imageTarget?.type === "item" && imageTarget.itemKey) {
         const targetItem = section.items?.find((item) => item.itemKey === imageTarget.itemKey && item.fieldKind === "image");
         if (!targetItem || targetItem.isLocked || !targetItem.image?.allowedSources?.includes("ai")) {
@@ -1397,8 +1424,8 @@ async function applySectionAiDesign(section, saved) {
         }
         setValueAtPath(contentState.sectionInputs, `${section.sectionKey}.${targetItem.itemKey}`, {
           source: "ai",
-          value: appliedRun.imageResult.proxyUrl,
-          description: appliedRun.layoutResult?.imageRequest?.prompt || "",
+          value: appliedImage.proxyUrl,
+          description: appliedImage.prompt || appliedRun.layoutResult?.imageRequest?.prompt || "",
           alt: targetItem.name || section.name || "AI generated promotion image",
         });
         const currentSectionStyle = { ...(wizardResolvedLayout.sectionStyles[section.sectionKey] || {}) };
@@ -1416,18 +1443,18 @@ async function applySectionAiDesign(section, saved) {
             ? "left-copy"
             : layoutVariant === "centered-hero"
               ? "center-copy"
-              : appliedRun.imageResult.safeArea || appliedRun.layoutResult?.imageRequest?.safeArea || "left-copy";
+              : appliedImage.safeArea || appliedRun.layoutResult?.imageRequest?.safeArea || "left-copy";
         const backgroundPosition = safeArea === "right-copy"
           ? "left center"
           : safeArea === "center-copy" ? "center center" : "right center";
         wizardResolvedLayout.sectionStyles[section.sectionKey] = {
           ...(wizardResolvedLayout.sectionStyles[section.sectionKey] || {}),
-          backgroundImage: appliedRun.imageResult.proxyUrl,
+          backgroundImage: appliedImage.proxyUrl,
           backgroundSize: "contain",
           backgroundPosition,
           backgroundRepeat: "no-repeat",
           backgroundFadeSafeArea: safeArea,
-          backgroundFadeColor: appliedRun.imageResult.backgroundColor
+          backgroundFadeColor: appliedImage.backgroundColor
             || wizardResolvedLayout?.theme?.backgroundColor
             || FALLBACK_LAYOUT.theme.backgroundColor,
         };

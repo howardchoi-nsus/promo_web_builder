@@ -8,7 +8,7 @@ const SECTION_STYLE_KEYS = new Set([
   "backgroundPosition",
   "backgroundRepeat",
 ]);
-const ITEM_STYLE_KEYS = new Set(["fontSize", "fontWeight", "textAlign", "positionMode", "xPct", "yPx"]);
+const ITEM_STYLE_KEYS = new Set(["color", "fontSize", "fontWeight", "textAlign", "positionMode", "xPct", "yPx"]);
 
 function stableValue(value) {
   if (Array.isArray(value)) return value.map(stableValue);
@@ -199,6 +199,89 @@ function validatePatch(section, generated, constraints) {
   return { ok: errors.length === 0, errors };
 }
 
+function validateDesignPlan(section, plan, constraints, tokenSet) {
+  const errors = [];
+  const itemByKey = new Map((section.items || []).map((item) => [item.itemKey, item]));
+  const allowedRegions = new Set(["brand", "copy-primary", "copy-secondary", "center", "media-primary", "media-secondary", "trust"]);
+  const tokenByKey = new Map((tokenSet?.values || []).map((token) => [token.tokenKey, token]));
+  if (!(constraints.allowedLayoutVariants || []).includes(plan?.layoutVariant)) errors.push("Layout variant is not allowed");
+  const seenItems = new Set();
+  (plan?.itemPlacements || []).forEach((placement) => {
+    const item = itemByKey.get(placement.itemKey);
+    if (!item) errors.push(`Unknown component instance: ${placement.itemKey}`);
+    if (seenItems.has(placement.itemKey)) errors.push(`Duplicate component placement: ${placement.itemKey}`);
+    seenItems.add(placement.itemKey);
+    if (!allowedRegions.has(placement.region)) errors.push(`Unsupported layout region: ${placement.region}`);
+    const componentRegions = item?.capabilities?.layoutRegions;
+    if (Array.isArray(componentRegions) && componentRegions.length && !componentRegions.includes(placement.region)) {
+      errors.push(`Component ${placement.itemKey} does not allow region ${placement.region}`);
+    }
+  });
+  (section.items || []).filter((item) => item.isVisibleInWizard !== false).forEach((item) => {
+    if (!seenItems.has(item.itemKey)) errors.push(`Visible component is not placed: ${item.itemKey}`);
+  });
+  (plan?.slotSelections || []).forEach((selection) => {
+    const item = itemByKey.get(selection.itemKey);
+    const slot = (item?.styleSlots || []).find((candidate) => candidate.slotKey === selection.slotKey);
+    const token = tokenByKey.get(selection.tokenKey);
+    if (!slot || slot.aiSelectable !== true) errors.push(`Style slot is not AI-selectable: ${selection.itemKey}.${selection.slotKey}`);
+    if (!token || token.aiSelectable !== true) errors.push(`Token is not AI-selectable: ${selection.tokenKey}`);
+    if (slot && token && slot.semanticRole !== token.semanticRole) errors.push(`Token semantic role mismatch: ${selection.tokenKey}`);
+  });
+  (plan?.assetRequests || []).forEach((asset) => {
+    if (asset.targetType === "item") {
+      const item = itemByKey.get(asset.itemKey);
+      if (!item || item.fieldKind !== "image" || item.capabilities?.aiImage !== true) errors.push(`Item image generation is not allowed: ${asset.itemKey}`);
+      if (constraints.imageTarget?.type !== "item"
+        || constraints.imageTarget.itemKey !== asset.itemKey
+        || !(constraints.imageTargetItemKeys || []).includes(asset.itemKey)) {
+        errors.push(`Item image target is outside the section policy: ${asset.itemKey}`);
+      }
+    } else if (asset.targetType !== "section-background") errors.push(`Unsupported asset target: ${asset.targetType}`);
+    else if (constraints.imageTarget?.type !== "section-background") errors.push("Section background generation is outside the section policy");
+  });
+  return { ok: errors.length === 0, errors };
+}
+
+function layoutPatchFromDesignPlan(section, plan, tokenSet) {
+  const sectionKey = section.sectionKey;
+  const tokenByKey = new Map((tokenSet?.values || []).map((token) => [token.tokenKey, token]));
+  const coordinates = {
+    brand: { xPct: 4, yPx: 12 }, "copy-primary": { xPct: 5, yPx: 80 },
+    "copy-secondary": { xPct: 52, yPx: 80 }, center: { xPct: 18, yPx: 80 },
+    "media-primary": { xPct: 55, yPx: 36 }, "media-secondary": { xPct: 5, yPx: 260 },
+    trust: { xPct: 5, yPx: 430 },
+  };
+  const itemStyles = {};
+  (plan.itemPlacements || []).forEach((placement) => {
+    const key = `${sectionKey}.${placement.itemKey}`;
+    itemStyles[key] = {
+      positionMode: "free", ...(coordinates[placement.region] || coordinates.center),
+      textAlign: placement.region === "center" ? "center" : "left",
+    };
+  });
+  (plan.slotSelections || []).forEach((selection) => {
+    const token = tokenByKey.get(selection.tokenKey);
+    const key = `${sectionKey}.${selection.itemKey}`;
+    if (!token || !itemStyles[key]) return;
+    if (["accent-color", "text-color", "muted-color"].includes(token.semanticRole)) itemStyles[key].color = token.value;
+    if (token.semanticRole === "title-size") {
+      const size = Number.parseFloat(token.value);
+      if (Number.isFinite(size)) itemStyles[key].fontSize = clamp(size, 10, 80);
+    }
+  });
+  return {
+    layoutVariant: plan.layoutVariant,
+    layoutPatch: { sectionStyles: { [sectionKey]: { minHeight: 520 } }, itemStyles },
+    tokenBindings: (plan.slotSelections || []).map((selection) => ({ ...selection })),
+    imageRequests: (plan.assetRequests || []).map((request) => ({
+      target: { type: request.targetType, sectionKey, itemKey: request.itemKey || null },
+      prompt: request.prompt, safeArea: request.safeArea,
+    })),
+    rationale: String(plan.rationale || ""),
+  };
+}
+
 module.exports = {
   LAYOUT_VARIANTS,
   inputHash,
@@ -211,4 +294,6 @@ module.exports = {
   safeAreaForVariant,
   layoutPatchFromResult,
   validatePatch,
+  validateDesignPlan,
+  layoutPatchFromDesignPlan,
 };

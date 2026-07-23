@@ -40,11 +40,14 @@ async function updateTemplate(req, res) {
       name = ${name},
       description = ${Object.prototype.hasOwnProperty.call(body, "description") ? String(body.description || "") : current.description || ""},
       is_default = ${Object.prototype.hasOwnProperty.call(body, "isDefault") ? normalizeBoolean(body.isDefault, current.is_default) : current.is_default},
+      design_token_set_version_id = ${Object.prototype.hasOwnProperty.call(body, "designTokenSetVersionId")
+        ? (String(body.designTokenSetVersionId || "").trim() || null)
+        : current.design_token_set_version_id}::uuid,
       change_note = ${String(body.changeNote || "Form template draft updated.")},
       updated_at = now()
     where id = ${id}::uuid
     returning id::text, template_key, name, description, status, version,
-      is_default, change_note, archived_at, created_at, updated_at
+      is_default, change_note, design_token_set_version_id::text, archived_at, created_at, updated_at
   `;
   return res.status(200).json({ ok: true, template: toFormTemplate(rows[0]) });
 }

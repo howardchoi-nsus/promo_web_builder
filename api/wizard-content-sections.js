@@ -67,30 +67,25 @@ async function createSection(req, res) {
     return res.status(400).json({ error: "sectionKey must start with a letter and contain only letters, numbers, and underscores" });
   }
 
-  const existing = await sql`select id::text from wizard_section_components where component_key = ${sectionKey} limit 1`;
+  const existing = await sql`select id::text from wizard_content_sections where section_key = ${sectionKey} limit 1`;
   if (existing.length) return res.status(409).json({ error: "sectionKey already exists" });
 
   const rows = await sql`
-    with component as (
-      insert into wizard_section_components (component_key)
-      values (${sectionKey})
-      returning id
-    )
     insert into wizard_content_sections (
-      component_id, section_key, name, description, is_required, order_change_allowed,
+      section_key, name, description, is_required, order_change_allowed,
       fixed_position, sort_order, is_visible_in_wizard, status, version, change_note,
       owner_form_template_id, ai_design
     )
-    select
-      component.id, ${sectionKey}, ${name}, ${String(body.description || "")},
+    values (
+      ${sectionKey}, ${name}, ${String(body.description || "")},
       ${normalizeBoolean(body.isRequired, false)}, ${normalizeBoolean(body.orderChangeAllowed, true)},
       ${body.fixedPosition === "top" || body.fixedPosition === "bottom" ? body.fixedPosition : null},
       ${normalizeNumber(body.sortOrder) ?? 0}, ${normalizeBoolean(body.isVisibleInWizard, true)},
       'draft', 1, ${String(body.changeNote || "Section component created from Admin Page.")},
       null, ${JSON.stringify(normalizeAiDesign(body.aiDesign))}::jsonb
-    from component
+    )
     returning
-      id::text, component_id::text, section_key, name, description, is_required, order_change_allowed,
+      id::text, section_key, name, description, is_required, order_change_allowed,
       fixed_position, sort_order, is_visible_in_wizard, status, version,
       change_note, ai_design, archived_at, created_at, updated_at
   `;

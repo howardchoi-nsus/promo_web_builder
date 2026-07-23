@@ -10,6 +10,25 @@ const LAYOUT_RESULT_SCHEMA = {
   },
 };
 
+const DESIGN_PLAN_SCHEMA = {
+  type: "object", additionalProperties: false,
+  required: ["layoutVariant", "itemPlacements", "slotSelections", "assetRequests", "rationale"],
+  properties: {
+    layoutVariant: { type: "string", enum: ["split-left", "split-right", "centered-hero"] },
+    itemPlacements: { type: "array", items: { type: "object", additionalProperties: false, required: ["itemKey", "region", "order"], properties: {
+      itemKey: { type: "string" }, region: { type: "string" }, order: { type: "integer", minimum: 0, maximum: 100 },
+    } } },
+    slotSelections: { type: "array", items: { type: "object", additionalProperties: false, required: ["itemKey", "slotKey", "tokenKey"], properties: {
+      itemKey: { type: "string" }, slotKey: { type: "string" }, tokenKey: { type: "string" },
+    } } },
+    assetRequests: { type: "array", items: { type: "object", additionalProperties: false, required: ["targetType", "itemKey", "prompt", "safeArea"], properties: {
+      targetType: { type: "string", enum: ["section-background", "item"] }, itemKey: { type: ["string", "null"] },
+      prompt: { type: "string" }, safeArea: { type: "string", enum: ["left-copy", "right-copy", "center-copy", "none"] },
+    } } },
+    rationale: { type: "string" },
+  },
+};
+
 function openAiHeaders() {
   const apiKey = String(process.env.OPENAI_API_KEY || "").trim();
   if (!apiKey) {
@@ -113,6 +132,30 @@ async function generateSectionLayout({ section, sectionInputs, constraints, sign
   };
 }
 
+async function generateSectionDesignPlan({ section, sectionInputs, constraints, tokenSet, requestMode = "full", signal }) {
+  const model = process.env.SECTION_LAYOUT_MODEL || "gpt-4.1-mini";
+  const prompt = [
+    "Plan one promotional web section using only the supplied component instances, layout regions, style slots and promo tokens.",
+    "Never invent item keys, regions, slots, tokens, CSS, selectors, HTML, or text rendered inside images.",
+    `Mode: ${requestMode}`,
+    `Section: ${JSON.stringify(section)}`,
+    `Content: ${JSON.stringify(sectionInputs)}`,
+    `Constraints: ${JSON.stringify(constraints)}`,
+    `Token set: ${JSON.stringify(tokenSet)}`,
+  ].join("\n");
+  const startedAt = Date.now();
+  const { payload, requestId } = await requestJson("https://api.openai.com/v1/responses", {
+    model, store: false, input: prompt,
+    text: { format: { type: "json_schema", name: "section_design_plan", strict: true, schema: DESIGN_PLAN_SCHEMA } },
+  }, openAiHeaders(), signal, Number(process.env.SECTION_LAYOUT_TIMEOUT_MS || 90000));
+  const output = responseOutputText(payload);
+  if (!output) throw Object.assign(new Error("Planner returned no structured output"), { code: "EMPTY_DESIGN_PLAN" });
+  return {
+    result: JSON.parse(output),
+    provider: { provider: "openai", model, requestId, latencyMs: Date.now() - startedAt }, usage: payload.usage || {},
+  };
+}
+
 async function generateOpenAiSectionImage({ prompt, signal }) {
   const model = process.env.SECTION_IMAGE_MODEL || "gpt-image-1";
   const startedAt = Date.now();
@@ -183,6 +226,7 @@ async function generateSectionImage(input) {
 
 module.exports = {
   generateSectionLayout,
+  generateSectionDesignPlan,
   generateSectionImage,
   generateOpenAiSectionImage,
   generateGeminiSectionImage,

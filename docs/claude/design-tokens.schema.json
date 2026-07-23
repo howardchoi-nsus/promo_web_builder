@@ -1,0 +1,1171 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema-note",
+  "meta": {
+    "version": 1,
+    "title": "앱 디자인 토큰 입력 스키마",
+    "description": "관리자 페이지에서 값을 채워 저장하면 :root / [data-theme=dark] CSS 커스텀 프로퍼티로 적용된다.",
+    "sourceOfTruth": "prototype/design-tokens.css",
+    "cssSelectors": {
+      "light": ":root, [data-theme=\"light\"]",
+      "dark": "[data-theme=\"dark\"]"
+    },
+    "inputTypes": {
+      "color": "색상 피커 + hex/rgba 입력",
+      "length": "숫자 입력 + 단위(px 등)",
+      "duration": "숫자 입력 + 단위(ms)",
+      "easing": "W3C <easing-function> 입력(cubic-bezier(...)/steps(...)/linear/ease 등)",
+      "number": "정수 입력(단위 없음)",
+      "fontFamily": "폰트 스택 텍스트 입력",
+      "shadow": "box-shadow 문자열 입력",
+      "gradient": "gradient 문자열 입력"
+    },
+    "note": "themeable=true 인 토큰만 dark 값을 별도로 받는다. dark 값이 null 이면 light 값을 상속한다.",
+    "cardinality": {
+      "single": "값 1개. value.light/value.dark 는 문자열.",
+      "list": "값 N개(레이어). value.light/value.dark 는 문자열 배열이며, CSS 생성 시 쉼표(', ')로 결합한다. 예: 여러 개의 background-image 레이어, 여러 개의 box-shadow, 여러 개의 transition."
+    },
+    "multiValueProperties": [
+      "background",
+      "background-image",
+      "background-color 는 단일(마지막 레이어 1개)",
+      "box-shadow",
+      "transition",
+      "mask",
+      "filter",
+      "animation",
+      "background-position",
+      "background-size"
+    ],
+    "listCssRule": "list 토큰은 각 레이어 값을 순서(value_index)대로 쉼표로 이어 붙인다. 예: box-shadow: layer0, layer1, layer2;",
+    "backgroundLayerNote": "배경이 N개 레이어일 때: background-image 는 여러 layer(gradient/url)를 쉼표로 쌓고, background-color 는 항상 마지막 fallback 단일 색이다. 따라서 배경은 'background-image 리스트 토큰 + background-color 단일 토큰' 조합으로 표현한다.",
+    "appliedTheme": {
+      "name": "GGPOKER StyleGuide (Guide 3.5)",
+      "source": "⭐[Guide 3.5]  GGPOKER StyleGuide.fig",
+      "extracted": "color/* variables (brand=red, neutral scale, semantic)",
+      "note": "brand/neutral/semantic 은 fig 직접 추출값. *-soft/*-line/일부 dark ink 는 base 색에서 파생."
+    }
+  },
+  "categories": [
+    {
+      "id": "color",
+      "label": "색상",
+      "tokens": [
+        {
+          "token": "--app-bg",
+          "label": "페이지 배경",
+          "type": "color",
+          "themeable": true,
+          "cssProperties": [
+            "background-color"
+          ],
+          "value": {
+            "light": "#F6F6F6",
+            "dark": "#000000"
+          }
+        },
+        {
+          "token": "--app-panel",
+          "label": "패널 배경",
+          "type": "color",
+          "themeable": true,
+          "cssProperties": [
+            "background-color"
+          ],
+          "value": {
+            "light": "#FFFFFF",
+            "dark": "#24242A"
+          }
+        },
+        {
+          "token": "--app-surface",
+          "label": "표면 배경",
+          "type": "color",
+          "themeable": true,
+          "cssProperties": [
+            "background-color"
+          ],
+          "value": {
+            "light": "#F6F6F6",
+            "dark": "#262626"
+          }
+        },
+        {
+          "token": "--app-ink",
+          "label": "본문 글자색",
+          "type": "color",
+          "themeable": true,
+          "cssProperties": [
+            "color"
+          ],
+          "value": {
+            "light": "#171717",
+            "dark": "#FFFFFF"
+          }
+        },
+        {
+          "token": "--app-ink-soft",
+          "label": "보조 글자색",
+          "type": "color",
+          "themeable": true,
+          "cssProperties": [
+            "color"
+          ],
+          "value": {
+            "light": "#404040",
+            "dark": "#CCCCCC"
+          }
+        },
+        {
+          "token": "--app-sub",
+          "label": "서브 글자색",
+          "type": "color",
+          "themeable": true,
+          "cssProperties": [
+            "color"
+          ],
+          "value": {
+            "light": "#525252",
+            "dark": "#969696"
+          }
+        },
+        {
+          "token": "--app-muted",
+          "label": "흐린 글자색",
+          "type": "color",
+          "themeable": true,
+          "cssProperties": [
+            "color"
+          ],
+          "value": {
+            "light": "#737373",
+            "dark": "#737373"
+          }
+        },
+        {
+          "token": "--app-line",
+          "label": "구분선",
+          "type": "color",
+          "themeable": true,
+          "cssProperties": [
+            "border-color"
+          ],
+          "value": {
+            "light": "#E5E5E5",
+            "dark": "#404040"
+          }
+        },
+        {
+          "token": "--app-line-strong",
+          "label": "강한 구분선",
+          "type": "color",
+          "themeable": true,
+          "cssProperties": [
+            "border-color"
+          ],
+          "value": {
+            "light": "#CCCCCC",
+            "dark": "#525252"
+          }
+        },
+        {
+          "token": "--app-focus",
+          "label": "포커스 링",
+          "type": "color",
+          "themeable": true,
+          "cssProperties": [
+            "outline-color",
+            "border-color"
+          ],
+          "value": {
+            "light": "#D30000",
+            "dark": "#FF2F2F"
+          }
+        },
+        {
+          "token": "--app-accent",
+          "label": "강조색",
+          "type": "color",
+          "themeable": true,
+          "cssProperties": [
+            "color",
+            "background-color",
+            "border-color"
+          ],
+          "value": {
+            "light": "#D30000",
+            "dark": "#FF2F2F"
+          }
+        },
+        {
+          "token": "--app-accent-soft",
+          "label": "강조 배경(연함)",
+          "type": "color",
+          "themeable": true,
+          "cssProperties": [
+            "background-color"
+          ],
+          "value": {
+            "light": "#FDECEC",
+            "dark": "rgba(211, 0, 0, 0.18)"
+          }
+        },
+        {
+          "token": "--app-success",
+          "label": "성공",
+          "type": "color",
+          "themeable": true,
+          "cssProperties": [
+            "color",
+            "background-color"
+          ],
+          "value": {
+            "light": "#039855",
+            "dark": "#12B76A"
+          }
+        },
+        {
+          "token": "--app-success-hover",
+          "label": "성공 hover",
+          "type": "color",
+          "themeable": true,
+          "cssProperties": [
+            "background-color"
+          ],
+          "value": {
+            "light": "#027A48",
+            "dark": "#039855"
+          }
+        },
+        {
+          "token": "--app-success-soft",
+          "label": "성공 배경(연함)",
+          "type": "color",
+          "themeable": true,
+          "cssProperties": [
+            "background-color"
+          ],
+          "value": {
+            "light": "#ECFDF3",
+            "dark": "rgba(18, 183, 106, 0.16)"
+          }
+        },
+        {
+          "token": "--app-danger",
+          "label": "위험",
+          "type": "color",
+          "themeable": true,
+          "cssProperties": [
+            "color",
+            "background-color"
+          ],
+          "value": {
+            "light": "#D92D20",
+            "dark": "#F04438"
+          }
+        },
+        {
+          "token": "--app-danger-soft",
+          "label": "위험 배경(연함)",
+          "type": "color",
+          "themeable": true,
+          "cssProperties": [
+            "background-color"
+          ],
+          "value": {
+            "light": "#FEF3F2",
+            "dark": "rgba(240, 68, 56, 0.16)"
+          }
+        },
+        {
+          "token": "--app-danger-ink",
+          "label": "위험 글자",
+          "type": "color",
+          "themeable": true,
+          "cssProperties": [
+            "color"
+          ],
+          "value": {
+            "light": "#B42318",
+            "dark": "#FDA29B"
+          }
+        },
+        {
+          "token": "--app-danger-line",
+          "label": "위험 구분선",
+          "type": "color",
+          "themeable": true,
+          "cssProperties": [
+            "border-color"
+          ],
+          "value": {
+            "light": "#FECDCA",
+            "dark": "rgba(240, 68, 56, 0.36)"
+          }
+        },
+        {
+          "token": "--app-warning",
+          "label": "경고",
+          "type": "color",
+          "themeable": true,
+          "cssProperties": [
+            "color",
+            "background-color"
+          ],
+          "value": {
+            "light": "#D28D08",
+            "dark": "#F7A609"
+          }
+        },
+        {
+          "token": "--app-warning-soft",
+          "label": "경고 배경(연함)",
+          "type": "color",
+          "themeable": true,
+          "cssProperties": [
+            "background-color"
+          ],
+          "value": {
+            "light": "#FFFAEB",
+            "dark": "rgba(247, 166, 9, 0.16)"
+          }
+        },
+        {
+          "token": "--app-warning-ink",
+          "label": "경고 글자",
+          "type": "color",
+          "themeable": true,
+          "cssProperties": [
+            "color"
+          ],
+          "value": {
+            "light": "#AF7606",
+            "dark": "#F7A609"
+          }
+        },
+        {
+          "token": "--app-warning-line",
+          "label": "경고 구분선",
+          "type": "color",
+          "themeable": true,
+          "cssProperties": [
+            "border-color"
+          ],
+          "value": {
+            "light": "#FEDF89",
+            "dark": "rgba(247, 166, 9, 0.34)"
+          }
+        },
+        {
+          "token": "--app-on-accent",
+          "label": "강조 위 글자색",
+          "type": "color",
+          "themeable": true,
+          "cssProperties": [
+            "color"
+          ],
+          "value": {
+            "light": "#FFFFFF",
+            "dark": "#FFFFFF"
+          }
+        },
+        {
+          "token": "--app-overlay",
+          "label": "오버레이",
+          "type": "color",
+          "themeable": true,
+          "cssProperties": [
+            "background-color"
+          ],
+          "value": {
+            "light": "rgba(0, 0, 0, 0.48)",
+            "dark": "rgba(0, 0, 0, 0.6)"
+          }
+        }
+      ]
+    },
+    {
+      "id": "effect",
+      "label": "그림자·그라디언트",
+      "tokens": [
+        {
+          "token": "--app-shadow",
+          "label": "패널 그림자",
+          "type": "shadow",
+          "cardinality": "list",
+          "themeable": true,
+          "cssProperties": [
+            "box-shadow"
+          ],
+          "value": {
+            "light": [
+              "0 14px 40px rgba(20, 35, 70, 0.08)"
+            ],
+            "dark": [
+              "0 18px 48px rgba(0, 0, 0, 0.38)"
+            ]
+          }
+        },
+        {
+          "token": "--app-sidebar-shadow",
+          "label": "사이드바 그림자",
+          "type": "shadow",
+          "cardinality": "list",
+          "themeable": true,
+          "cssProperties": [
+            "box-shadow"
+          ],
+          "value": {
+            "light": [
+              "8px 0 28px rgba(20, 35, 70, 0.04)"
+            ],
+            "dark": [
+              "8px 0 32px rgba(0, 0, 0, 0.32)"
+            ]
+          }
+        },
+        {
+          "token": "--app-theme-toggle-gradient",
+          "label": "테마 토글 그라디언트",
+          "type": "gradient",
+          "cardinality": "single",
+          "themeable": true,
+          "cssProperties": [
+            "background-image"
+          ],
+          "value": {
+            "light": "linear-gradient(135deg, #f8fafc 0 48%, #111827 50% 100%)",
+            "dark": "linear-gradient(135deg, #0c3b2e 0 48%, #28c39d 50% 100%)"
+          }
+        }
+      ]
+    },
+    {
+      "id": "background",
+      "label": "배경(다중 레이어)",
+      "note": "배경이 N개 레이어인 경우를 위한 예시. background-image 는 여러 레이어를 쌓는 list, background-color 는 항상 단일 fallback. 렌더 시 background: var(--app-hero-bg-image) ; background-color: var(--app-hero-bg-color); 또는 shorthand 로 결합.",
+      "tokens": [
+        {
+          "token": "--app-hero-bg-image",
+          "label": "히어로 배경 레이어",
+          "type": "gradient",
+          "cardinality": "list",
+          "themeable": true,
+          "cssProperties": [
+            "background-image"
+          ],
+          "value": {
+            "light": [
+              "linear-gradient(180deg, rgba(71,104,216,0.12) 0%, rgba(71,104,216,0) 60%)",
+              "radial-gradient(1200px 400px at 50% -10%, rgba(71,104,216,0.18), transparent)"
+            ],
+            "dark": [
+              "linear-gradient(180deg, rgba(40,195,157,0.14) 0%, rgba(40,195,157,0) 60%)",
+              "radial-gradient(1200px 400px at 50% -10%, rgba(40,195,157,0.20), transparent)"
+            ]
+          }
+        },
+        {
+          "token": "--app-hero-bg-color",
+          "label": "히어로 배경 fallback 색",
+          "type": "color",
+          "cardinality": "single",
+          "themeable": true,
+          "cssProperties": [
+            "background-color"
+          ],
+          "value": {
+            "light": "#f6f8fc",
+            "dark": "#0d0e10"
+          }
+        }
+      ]
+    },
+    {
+      "id": "radius",
+      "label": "모서리 반경",
+      "tokens": [
+        {
+          "token": "--app-radius",
+          "label": "기본 반경",
+          "type": "length",
+          "unit": "px",
+          "themeable": false,
+          "cssProperties": [
+            "border-radius"
+          ],
+          "value": {
+            "light": "10px",
+            "dark": null
+          }
+        },
+        {
+          "token": "--app-radius-small",
+          "label": "작은 반경",
+          "type": "length",
+          "unit": "px",
+          "themeable": false,
+          "cssProperties": [
+            "border-radius"
+          ],
+          "value": {
+            "light": "6px",
+            "dark": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "border",
+      "label": "테두리",
+      "tokens": [
+        {
+          "token": "--app-border-width",
+          "label": "기본 테두리 두께",
+          "type": "length",
+          "unit": "px",
+          "themeable": false,
+          "cssProperties": [
+            "border-width"
+          ],
+          "value": {
+            "light": "1px",
+            "dark": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "spacing",
+      "label": "간격",
+      "tokens": [
+        {
+          "token": "--app-space-1",
+          "label": "간격 1",
+          "type": "length",
+          "unit": "px",
+          "themeable": false,
+          "cssProperties": [
+            "margin",
+            "padding",
+            "gap"
+          ],
+          "value": {
+            "light": "4px",
+            "dark": null
+          }
+        },
+        {
+          "token": "--app-space-2",
+          "label": "간격 2",
+          "type": "length",
+          "unit": "px",
+          "themeable": false,
+          "cssProperties": [
+            "margin",
+            "padding",
+            "gap"
+          ],
+          "value": {
+            "light": "8px",
+            "dark": null
+          }
+        },
+        {
+          "token": "--app-space-3",
+          "label": "간격 3",
+          "type": "length",
+          "unit": "px",
+          "themeable": false,
+          "cssProperties": [
+            "margin",
+            "padding",
+            "gap"
+          ],
+          "value": {
+            "light": "12px",
+            "dark": null
+          }
+        },
+        {
+          "token": "--app-space-4",
+          "label": "간격 4",
+          "type": "length",
+          "unit": "px",
+          "themeable": false,
+          "cssProperties": [
+            "margin",
+            "padding",
+            "gap"
+          ],
+          "value": {
+            "light": "16px",
+            "dark": null
+          }
+        },
+        {
+          "token": "--app-space-5",
+          "label": "간격 5",
+          "type": "length",
+          "unit": "px",
+          "themeable": false,
+          "cssProperties": [
+            "margin",
+            "padding",
+            "gap"
+          ],
+          "value": {
+            "light": "20px",
+            "dark": null
+          }
+        },
+        {
+          "token": "--app-panel-gap",
+          "label": "패널 간격",
+          "type": "length",
+          "unit": "px",
+          "themeable": false,
+          "cssProperties": [
+            "gap"
+          ],
+          "value": {
+            "light": "12px",
+            "dark": null
+          }
+        },
+        {
+          "token": "--app-content-padding",
+          "label": "콘텐츠 여백",
+          "type": "length",
+          "unit": "px",
+          "themeable": false,
+          "cssProperties": [
+            "padding"
+          ],
+          "value": {
+            "light": "20px",
+            "dark": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "typography-size",
+      "label": "글자 크기",
+      "tokens": [
+        {
+          "token": "--app-font-size-xs",
+          "label": "아주 작게",
+          "type": "length",
+          "unit": "px",
+          "themeable": false,
+          "cssProperties": [
+            "font-size"
+          ],
+          "value": {
+            "light": "10px",
+            "dark": null
+          }
+        },
+        {
+          "token": "--app-font-size-small",
+          "label": "작게",
+          "type": "length",
+          "unit": "px",
+          "themeable": false,
+          "cssProperties": [
+            "font-size"
+          ],
+          "value": {
+            "light": "12px",
+            "dark": null
+          }
+        },
+        {
+          "token": "--app-font-size-control",
+          "label": "컨트롤",
+          "type": "length",
+          "unit": "px",
+          "themeable": false,
+          "cssProperties": [
+            "font-size"
+          ],
+          "value": {
+            "light": "13px",
+            "dark": null
+          }
+        },
+        {
+          "token": "--app-font-size-body",
+          "label": "본문",
+          "type": "length",
+          "unit": "px",
+          "themeable": false,
+          "cssProperties": [
+            "font-size"
+          ],
+          "value": {
+            "light": "14px",
+            "dark": null
+          }
+        },
+        {
+          "token": "--app-font-size-heading",
+          "label": "제목",
+          "type": "length",
+          "unit": "px",
+          "themeable": false,
+          "cssProperties": [
+            "font-size"
+          ],
+          "value": {
+            "light": "16px",
+            "dark": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "typography-weight",
+      "label": "글자 두께",
+      "tokens": [
+        {
+          "token": "--app-font-weight-label",
+          "label": "라벨",
+          "type": "number",
+          "themeable": false,
+          "cssProperties": [
+            "font-weight"
+          ],
+          "value": {
+            "light": "700",
+            "dark": null
+          }
+        },
+        {
+          "token": "--app-font-weight-strong",
+          "label": "강조",
+          "type": "number",
+          "themeable": false,
+          "cssProperties": [
+            "font-weight"
+          ],
+          "value": {
+            "light": "800",
+            "dark": null
+          }
+        },
+        {
+          "token": "--app-font-weight-heading",
+          "label": "제목",
+          "type": "number",
+          "themeable": false,
+          "cssProperties": [
+            "font-weight"
+          ],
+          "value": {
+            "light": "900",
+            "dark": null
+          }
+        },
+        {
+          "token": "--app-font-weight-title",
+          "label": "타이틀",
+          "type": "number",
+          "themeable": false,
+          "cssProperties": [
+            "font-weight"
+          ],
+          "value": {
+            "light": "950",
+            "dark": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "typography-family",
+      "label": "폰트 패밀리",
+      "tokens": [
+        {
+          "token": "--app-font-heading",
+          "label": "제목 폰트",
+          "type": "fontFamily",
+          "themeable": false,
+          "cssProperties": [
+            "font-family"
+          ],
+          "value": {
+            "light": "Inter, Pretendard, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+            "dark": null
+          }
+        },
+        {
+          "token": "--app-font-body",
+          "label": "본문 폰트",
+          "type": "fontFamily",
+          "themeable": false,
+          "cssProperties": [
+            "font-family"
+          ],
+          "value": {
+            "light": "Inter, Roboto, Pretendard, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+            "dark": null
+          }
+        },
+        {
+          "token": "--app-font-mono",
+          "label": "고정폭 폰트",
+          "type": "fontFamily",
+          "themeable": false,
+          "cssProperties": [
+            "font-family"
+          ],
+          "value": {
+            "light": "\"SFMono-Regular\", Consolas, \"Liberation Mono\", monospace",
+            "dark": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "transition",
+      "label": "전환(Transition)",
+      "w3cReference": "https://www.w3.org/TR/css-transitions-1/",
+      "note": "W3C CSS Transitions Level 1의 longhand 모델을 따른다. transition-property는 컴포넌트별 구조 값이라 토큰화하지 않는다. 단축형 = <property> var(--app-transition-duration-normal) var(--app-ease) var(--app-transition-delay).",
+      "tokens": [
+        {
+          "token": "--app-transition-duration-fast",
+          "label": "전환 시간(빠름)",
+          "type": "duration",
+          "unit": "ms",
+          "themeable": false,
+          "cssProperties": [
+            "transition-duration"
+          ],
+          "w3cProperty": "transition-duration",
+          "w3cInitial": "0s",
+          "value": {
+            "light": "160ms",
+            "dark": null
+          }
+        },
+        {
+          "token": "--app-transition-duration-normal",
+          "label": "전환 시간(보통)",
+          "type": "duration",
+          "unit": "ms",
+          "themeable": false,
+          "cssProperties": [
+            "transition-duration"
+          ],
+          "w3cProperty": "transition-duration",
+          "w3cInitial": "0s",
+          "value": {
+            "light": "200ms",
+            "dark": null
+          }
+        },
+        {
+          "token": "--app-transition-duration-slow",
+          "label": "전환 시간(느림)",
+          "type": "duration",
+          "unit": "ms",
+          "themeable": false,
+          "cssProperties": [
+            "transition-duration"
+          ],
+          "w3cProperty": "transition-duration",
+          "w3cInitial": "0s",
+          "value": {
+            "light": "320ms",
+            "dark": null
+          }
+        },
+        {
+          "token": "--app-transition-delay",
+          "label": "전환 지연",
+          "type": "duration",
+          "unit": "ms",
+          "themeable": false,
+          "cssProperties": [
+            "transition-delay"
+          ],
+          "w3cProperty": "transition-delay",
+          "w3cInitial": "0s",
+          "value": {
+            "light": "0ms",
+            "dark": null
+          }
+        },
+        {
+          "token": "--app-ease",
+          "label": "이징 기본(ease)",
+          "type": "easing",
+          "themeable": false,
+          "cssProperties": [
+            "transition-timing-function"
+          ],
+          "w3cProperty": "transition-timing-function",
+          "w3cInitial": "ease",
+          "value": {
+            "light": "cubic-bezier(0.25, 0.1, 0.25, 1)",
+            "dark": null
+          }
+        },
+        {
+          "token": "--app-ease-in",
+          "label": "이징 in(ease-in)",
+          "type": "easing",
+          "themeable": false,
+          "cssProperties": [
+            "transition-timing-function"
+          ],
+          "w3cProperty": "transition-timing-function",
+          "value": {
+            "light": "cubic-bezier(0.42, 0, 1, 1)",
+            "dark": null
+          }
+        },
+        {
+          "token": "--app-ease-out",
+          "label": "이징 out(ease-out)",
+          "type": "easing",
+          "themeable": false,
+          "cssProperties": [
+            "transition-timing-function"
+          ],
+          "w3cProperty": "transition-timing-function",
+          "value": {
+            "light": "cubic-bezier(0, 0, 0.58, 1)",
+            "dark": null
+          }
+        },
+        {
+          "token": "--app-ease-in-out",
+          "label": "이징 in-out",
+          "type": "easing",
+          "themeable": false,
+          "cssProperties": [
+            "transition-timing-function"
+          ],
+          "w3cProperty": "transition-timing-function",
+          "value": {
+            "light": "cubic-bezier(0.42, 0, 0.58, 1)",
+            "dark": null
+          }
+        },
+        {
+          "token": "--app-ease-linear",
+          "label": "이징 linear",
+          "type": "easing",
+          "themeable": false,
+          "cssProperties": [
+            "transition-timing-function"
+          ],
+          "w3cProperty": "transition-timing-function",
+          "value": {
+            "light": "linear",
+            "dark": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "sizing",
+      "label": "크기·레이아웃(고급)",
+      "advanced": true,
+      "tokens": [
+        {
+          "token": "--app-control-height",
+          "label": "컨트롤 높이",
+          "type": "length",
+          "unit": "px",
+          "themeable": false,
+          "cssProperties": [
+            "height",
+            "min-height"
+          ],
+          "value": {
+            "light": "38px",
+            "dark": null
+          }
+        },
+        {
+          "token": "--app-control-height-small",
+          "label": "작은 컨트롤 높이",
+          "type": "length",
+          "unit": "px",
+          "themeable": false,
+          "cssProperties": [
+            "height",
+            "min-height"
+          ],
+          "value": {
+            "light": "30px",
+            "dark": null
+          }
+        },
+        {
+          "token": "--app-button-height",
+          "label": "버튼 높이",
+          "type": "length",
+          "unit": "px",
+          "themeable": false,
+          "cssProperties": [
+            "height",
+            "min-height"
+          ],
+          "value": {
+            "light": "42px",
+            "dark": null
+          }
+        },
+        {
+          "token": "--app-content-max-width",
+          "label": "콘텐츠 최대 너비",
+          "type": "length",
+          "unit": "px",
+          "themeable": false,
+          "cssProperties": [
+            "max-width"
+          ],
+          "value": {
+            "light": "1600px",
+            "dark": null
+          }
+        },
+        {
+          "token": "--app-field-min-width",
+          "label": "필드 최소 너비",
+          "type": "length",
+          "unit": "px",
+          "themeable": false,
+          "cssProperties": [
+            "min-width"
+          ],
+          "value": {
+            "light": "180px",
+            "dark": null
+          }
+        },
+        {
+          "token": "--app-aside-min-width",
+          "label": "사이드 최소 너비",
+          "type": "length",
+          "unit": "px",
+          "themeable": false,
+          "cssProperties": [
+            "min-width"
+          ],
+          "value": {
+            "light": "300px",
+            "dark": null
+          }
+        },
+        {
+          "token": "--app-sidebar-width",
+          "label": "사이드바 너비",
+          "type": "length",
+          "unit": "px",
+          "themeable": false,
+          "cssProperties": [
+            "width"
+          ],
+          "value": {
+            "light": "208px",
+            "dark": null
+          }
+        },
+        {
+          "token": "--app-sidebar-width-compact",
+          "label": "사이드바 축소 너비",
+          "type": "length",
+          "unit": "px",
+          "themeable": false,
+          "cssProperties": [
+            "width"
+          ],
+          "value": {
+            "light": "176px",
+            "dark": null
+          }
+        },
+        {
+          "token": "--app-sidebar-width-min",
+          "label": "사이드바 최소 너비",
+          "type": "length",
+          "unit": "px",
+          "themeable": false,
+          "cssProperties": [
+            "width"
+          ],
+          "value": {
+            "light": "72px",
+            "dark": null
+          }
+        },
+        {
+          "token": "--app-utility-height",
+          "label": "유틸리티 바 높이",
+          "type": "length",
+          "unit": "px",
+          "themeable": false,
+          "cssProperties": [
+            "height"
+          ],
+          "value": {
+            "light": "60px",
+            "dark": null
+          }
+        },
+        {
+          "token": "--app-nav-item-height",
+          "label": "내비 항목 높이",
+          "type": "length",
+          "unit": "px",
+          "themeable": false,
+          "cssProperties": [
+            "height"
+          ],
+          "value": {
+            "light": "44px",
+            "dark": null
+          }
+        }
+      ]
+    },
+    {
+      "id": "zindex",
+      "label": "레이어(z-index)",
+      "advanced": true,
+      "tokens": [
+        {
+          "token": "--app-shell-z-sidebar",
+          "label": "사이드바 레이어",
+          "type": "number",
+          "themeable": false,
+          "cssProperties": [
+            "z-index"
+          ],
+          "value": {
+            "light": "40",
+            "dark": null
+          }
+        },
+        {
+          "token": "--app-shell-z-overlay",
+          "label": "오버레이 레이어",
+          "type": "number",
+          "themeable": false,
+          "cssProperties": [
+            "z-index"
+          ],
+          "value": {
+            "light": "30",
+            "dark": null
+          }
+        }
+      ]
+    }
+  ]
+}

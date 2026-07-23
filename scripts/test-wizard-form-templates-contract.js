@@ -11,7 +11,7 @@ assert.deepStrictEqual(store.toFormTemplate({
   id: "template-id", template_key: "aaa", name: "AAA", status: "draft", version: 2, is_default: false,
 }), {
   id: "template-id", templateKey: "aaa", name: "AAA", description: "", status: "draft",
-  version: 2, isDefault: false, changeNote: "", archivedAt: null, createdAt: null, updatedAt: null,
+  version: 2, isDefault: false, changeNote: "", designTokenSetVersionId: null, archivedAt: null, createdAt: null, updatedAt: null,
 });
 
 const root = path.resolve(__dirname, "..");
@@ -19,7 +19,7 @@ const read = (...parts) => fs.readFileSync(path.join(root, ...parts), "utf8");
 const migration17 = read("db", "migrations", "017_wizard_form_templates.sql");
 const migration18 = read("db", "migrations", "018_template_owned_sections_and_reorder.sql");
 const migration21 = read("db", "migrations", "021_fix_form_template_section_clone_links.sql");
-const migration28 = read("db", "migrations", "028_section_component_registry.sql");
+const migration29 = read("db", "migrations", "029_item_components_design_tokens_and_planner.sql");
 const activateApi = read("api", "wizard-form-template-activate.js");
 const sectionsApi = read("api", "wizard-form-template-sections.js");
 const orderApi = read("api", "wizard-form-template-sections-order.js");
@@ -39,16 +39,12 @@ assert.match(migration21, /user_reorder_allowed/);
 assert.match(migration21, /where ts\.section_id is null/);
 assert.match(activateApi, /validateTemplateDraft/);
 assert.doesNotMatch(activateApi, /activate_wizard_form_template_owned_sections/);
-assert.match(migration28, /create table if not exists wizard_section_components/);
-assert.match(migration28, /component_id uuid references wizard_section_components\(id\) on delete restrict/);
-assert.match(migration28, /template_key_snapshot/);
-assert.match(migration28, /on delete set null/);
-assert.match(migration28, /form_template_id, component_id, section_id, section_key/);
-assert.match(sectionsApi, /Create components in Component Management/);
+assert.match(migration29, /design_token_set_version_id/);
+assert.match(migration29, /form_template_id, section_id, section_key/);
+assert.match(sectionsApi, /Create and activate a section in Section Management/);
 assert.doesNotMatch(sectionsApi, /owner_form_template_id/);
 assert.match(sectionsApi, /userReorderAllowed/);
-assert.match(sectionsApi, /COMPONENT_DEFINITION_FIELDS/);
-assert.match(sectionsApi, /Component definitions cannot be changed from Template Management/);
+assert.match(sectionsApi, /Section definitions cannot be changed from Template Management/);
 assert.doesNotMatch(sectionsApi, /Template-owned draft created for editing/);
 assert.doesNotMatch(sectionsApi, /from wizard_content_section_items where section_id/);
 assert.match(orderApi, /Section order is stale/);
@@ -69,7 +65,7 @@ assert.match(adminSource, /draftItem.*candidate\.itemKey === item\.itemKey/);
 assert.match(adminSource, /draftByKey = new Map/);
 assert.match(adminSource, /dropWizardFormTemplateItem/);
 assert.match(adminHtml, /template-section-composer/);
-assert.match(adminHtml, /newWizardFormTemplateSectionForm\.componentId/);
+assert.match(adminHtml, /newWizardFormTemplateSectionForm\.sectionId/);
 assert.match(adminHtml, /availableWizardSectionsForTemplate/);
 assert.match(adminHtml, /t\('entity\.component\.manage'\)/);
 assert.match(adminHtml, /transition-group name="template-section-order"/);
