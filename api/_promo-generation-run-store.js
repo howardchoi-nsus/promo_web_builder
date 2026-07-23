@@ -138,6 +138,30 @@ function draftSummary(row) {
   };
 }
 
+function isSupportedBlobLocation(value) {
+  const location = String(value || "").trim();
+  if (!location) return false;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(location)) {
+    try {
+      const url = new URL(location);
+      return url.protocol === "https:" && url.hostname.endsWith(".blob.vercel-storage.com");
+    } catch {
+      return false;
+    }
+  }
+  if (location.startsWith("//") || location.includes("\\") || location.includes("\0")) return false;
+  const segments = location.replace(/^\/+/, "").split("/");
+  if (!segments.length || segments.some((segment) => !segment)) return false;
+  return segments.every((segment) => {
+    try {
+      const decoded = decodeURIComponent(segment);
+      return decoded !== "." && decoded !== ".." && !decoded.includes("/") && !decoded.includes("\\") && !decoded.includes("\0");
+    } catch {
+      return false;
+    }
+  });
+}
+
 function finalDesignSummary(row) {
   if (!row) return null;
   return {
@@ -146,6 +170,7 @@ function finalDesignSummary(row) {
     confirmedDraftId: row.confirmed_draft_id || "",
     status: row.status || "",
     finalImageUrl: row.final_image_url || "",
+    imageProxyAvailable: isSupportedBlobLocation(row.final_image_url),
     finalPrompt: row.final_prompt || "",
     promptMeta: row.prompt_meta || {},
     modelMeta: row.model_meta || {},
@@ -249,6 +274,7 @@ module.exports = {
   finalDesignSummary,
   getSql,
   integratedBriefSummary,
+  isSupportedBlobLocation,
   loadRunState,
   parseBody,
   payloadFromBody,

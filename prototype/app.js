@@ -4420,8 +4420,12 @@ const adminApp = createApp({
       const currentDraftReady = ["ready", "completed"].includes(String(currentDraft?.status || ""));
       const previewDraft = currentDraftReady ? currentDraft : readyDrafts[readyDrafts.length - 1] || null;
       const currentFinalDesign = finalDesigns[0] || null;
-      const currentFinalDesignReady = ["ready", "completed"].includes(String(currentFinalDesign?.status || ""));
-      const readyFinalDesigns = finalDesigns.filter((finalDesign) => ["ready", "completed"].includes(String(finalDesign.status || "")));
+      const currentFinalDesignReady = ["ready", "completed"].includes(String(currentFinalDesign?.status || ""))
+        && currentFinalDesign?.imageProxyAvailable !== false;
+      const readyFinalDesigns = finalDesigns.filter((finalDesign) => (
+        ["ready", "completed"].includes(String(finalDesign.status || ""))
+        && finalDesign.imageProxyAvailable !== false
+      ));
       const previewFinalDesign = currentFinalDesignReady ? currentFinalDesign : readyFinalDesigns[0] || null;
 
       Object.assign(page, {

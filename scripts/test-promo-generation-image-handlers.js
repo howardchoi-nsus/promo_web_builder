@@ -1,6 +1,9 @@
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 const finalImageModule = require("../api/promo-generation-final-design-image");
 const draftImageModule = require("../api/promo-generation-lofi-draft-image");
+const { finalDesignSummary, isSupportedBlobLocation } = require("../api/_promo-generation-run-store");
 
 function responseRecorder() {
   return {
@@ -68,6 +71,37 @@ async function verifyFinalDesignImage() {
   assert.equal(res.statusCode, 502);
   assert.equal(res.body, "Failed to read final design image");
   assert.equal(String(res.body).includes(privateUrl), false);
+
+  let externalFetchAttempted = false;
+  res = await execute(finalImageModule.createHandler({
+    getSql: () => sqlReturning([{
+      id: "legacy-fixture-id",
+      run_id: "run-id",
+      final_image_url: "https://example.com/test-final-design.png",
+    }]),
+    getPrivateBlob: async () => {
+      externalFetchAttempted = true;
+      return null;
+    },
+  }), { finalDesignId: "legacy-fixture-id" });
+  assert.equal(res.statusCode, 422);
+  assert.equal(res.body, "Unsupported final design image location");
+  assert.equal(externalFetchAttempted, false);
+  assert.equal(isSupportedBlobLocation(privateUrl), true);
+  assert.equal(isSupportedBlobLocation("promo-generation/final-designs/final-id/image.png"), true);
+  assert.equal(isSupportedBlobLocation("https://example.com/test-final-design.png"), false);
+  assert.equal(isSupportedBlobLocation("data:image/png;base64,AAAA"), false);
+  assert.equal(isSupportedBlobLocation("javascript:alert(1)"), false);
+  assert.equal(isSupportedBlobLocation("//example.com/test-final-design.png"), false);
+  assert.equal(isSupportedBlobLocation("promo-generation/../private/image.png"), false);
+  assert.equal(isSupportedBlobLocation("promo-generation/%2e%2e/private/image.png"), false);
+  assert.equal(isSupportedBlobLocation("promo-generation\\final-designs\\image.png"), false);
+  assert.equal(finalDesignSummary({
+    id: "legacy-fixture-id",
+    run_id: "run-id",
+    status: "ready",
+    final_image_url: "https://example.com/test-final-design.png",
+  }).imageProxyAvailable, false);
 }
 
 async function verifyLofiDraftImage() {
@@ -114,6 +148,9 @@ async function verifyLofiDraftImage() {
 }
 
 (async () => {
+  const adminApp = fs.readFileSync(path.resolve(__dirname, "../prototype/app.js"), "utf8");
+  assert.match(adminApp, /currentFinalDesign\?\.imageProxyAvailable !== false/);
+  assert.match(adminApp, /finalDesign\.imageProxyAvailable !== false/);
   await verifyFinalDesignImage();
   await verifyLofiDraftImage();
   console.log("Promo generation image handler tests passed.");

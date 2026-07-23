@@ -1,4 +1,4 @@
--- Repair environments where migration 029 was applied without migration 028.
+- Repair environments where migration 029 was applied without migration 028.
 -- Keep this migration idempotent because Production may already have received
 -- the template_key_snapshot column as an operator hotfix.
 

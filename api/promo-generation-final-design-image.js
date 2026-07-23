@@ -1,4 +1,4 @@
-const { getSql } = require("./_promo-generation-run-store");
+const { getSql, isSupportedBlobLocation } = require("./_promo-generation-run-store");
 
 async function getPrivateBlob(urlOrPathname, options) {
   const { get } = await import("@vercel/blob");
@@ -37,6 +37,9 @@ function createHandler(overrides = {}) {
       const finalDesign = rows[0] || {};
       if (!finalDesign.id) return res.status(404).send("Final design not found");
       if (!finalDesign.final_image_url) return res.status(404).send("Final design image not found");
+      if (!isSupportedBlobLocation(finalDesign.final_image_url)) {
+        return res.status(422).send("Unsupported final design image location");
+      }
 
       const blob = await dependencies.getPrivateBlob(finalDesign.final_image_url, {
         access: "private",
