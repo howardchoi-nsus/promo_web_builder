@@ -4052,8 +4052,10 @@ var qo = {
 			}
 		}
 		return Kn(() => {
-			window.PromoShell?.init(document), t.mode === "output" ? He() : O.value ? Re() : k.value ? (n.value = !0, window.addEventListener("message", Ve), window.parent.postMessage({ type: "promo-wizard-layout-ready" }, window.location.origin)) : Ie();
-		}), Yn(() => window.removeEventListener("message", Ve)), (t, i) => e.mode === "output" ? (Y(), X("div", qo, [Z("header", Jo, [Z("div", null, [i[31] ||= Z("span", null, "WEB OUTPUT", -1), Z("strong", null, I(ne.value?.content?.formTemplate?.name || "Visual Editor"), 1)]), i[32] ||= Z("a", { href: "/prototype/visual-editor.html" }, "Visual Editor로 돌아가기", -1)]), r.value ? (Y(), X("div", Yo, I(r.value), 1)) : ne.value ? (Y(), wi(Vo, {
+			j.value && (document.documentElement.classList.add("create-promo-editor-document"), document.body.classList.add("create-promo-editor-document")), window.PromoShell?.init(document), t.mode === "output" ? He() : O.value ? Re() : k.value ? (n.value = !0, window.addEventListener("message", Ve), window.parent.postMessage({ type: "promo-wizard-layout-ready" }, window.location.origin)) : Ie();
+		}), Yn(() => {
+			window.removeEventListener("message", Ve), document.documentElement.classList.remove("create-promo-editor-document"), document.body.classList.remove("create-promo-editor-document");
+		}), (t, i) => e.mode === "output" ? (Y(), X("div", qo, [Z("header", Jo, [Z("div", null, [i[31] ||= Z("span", null, "WEB OUTPUT", -1), Z("strong", null, I(ne.value?.content?.formTemplate?.name || "Visual Editor"), 1)]), i[32] ||= Z("a", { href: "/prototype/visual-editor.html" }, "Visual Editor로 돌아가기", -1)]), r.value ? (Y(), X("div", Yo, I(r.value), 1)) : ne.value ? (Y(), wi(Vo, {
 			key: 1,
 			content: ne.value.content,
 			"design-spec": ne.value.designSpec,
@@ -4064,7 +4066,10 @@ var qo = {
 			"assets"
 		])) : Q("", !0)])) : (Y(), X("main", {
 			key: 1,
-			class: F(["editor-shell", { "shell-frame": !k.value }]),
+			class: F(["editor-shell", {
+				"shell-frame": !k.value,
+				"editor-shell--embedded": j.value
+			}]),
 			"data-shell-frame": k.value ? null : ""
 		}, [
 			k.value ? Q("", !0) : (Y(), X("aside", Zo, [
@@ -4117,7 +4122,10 @@ var qo = {
 				"aria-controls": "visual-editor-global-navigation",
 				"aria-expanded": "false",
 				"aria-label": "메뉴 열기"
-			}, "메뉴", -1), Z("strong", null, I(O.value ? "Admin Template Layout" : "Visual Editor"), 1)]), Z("div", is, [Z("div", as, I(O.value ? `Layout revision ${v.value}` : "편집 준비"), 1)])])), Z("div", { class: F({ "shell-content": !k.value }) }, [
+			}, "메뉴", -1), Z("strong", null, I(O.value ? "Admin Template Layout" : "Visual Editor"), 1)]), Z("div", is, [Z("div", as, I(O.value ? `Layout revision ${v.value}` : "편집 준비"), 1)])])), Z("div", { class: F(["editor-content", {
+				"shell-content": !k.value,
+				"editor-content--embedded": j.value
+			}]) }, [
 				j.value ? Q("", !0) : (Y(), X("header", os, [Z("div", null, [
 					Z("span", null, I(O.value ? "ADMIN TEMPLATE LAYOUT" : k.value ? "WIZARD LAYOUT" : "VISUAL EDITOR"), 1),
 					Z("h2", null, I(a.value?.name || "Default Renderer"), 1),

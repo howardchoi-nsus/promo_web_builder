@@ -139,6 +139,20 @@ try {
   await assertPageText(page.locator('.content-substep[aria-current="step"] strong'), "템플릿 레이아웃");
   const editorFrame = page.frameLocator("iframe.wizard-layout-frame");
   await editorFrame.locator(".editor-workspace.is-create-promo-wizard").waitFor({ timeout: 10_000 });
+  assert.equal(await page.locator("iframe.wizard-layout-frame").getAttribute("scrolling"), "no");
+  const embeddedDocumentMetrics = await editorFrame.locator("html").evaluate((node) => {
+    const styles = getComputedStyle(node);
+    return {
+      overflowY: styles.overflowY,
+      clientHeight: node.clientHeight,
+      scrollHeight: node.scrollHeight,
+    };
+  });
+  assert.equal(embeddedDocumentMetrics.overflowY, "hidden");
+  assert.ok(
+    embeddedDocumentMetrics.scrollHeight <= embeddedDocumentMetrics.clientHeight,
+    "Embedded editor document must not create its own scrollbar",
+  );
   assert.equal(await editorFrame.locator("header.editor-header.editor-toolbar").count(), 0, "Create Promo must omit the embedded editor header");
   const createPromoWorkspaceStyles = await editorFrame.locator(".editor-workspace.is-create-promo-wizard").evaluate((node) => {
     const styles = getComputedStyle(node);
@@ -176,14 +190,31 @@ try {
     "auto",
     "Preview stage must scroll independently",
   );
-  const previewScrollRange = await editorFrame.locator(".preview-stage").evaluate((node) => {
+  const previewScrollMetrics = await editorFrame.locator(".preview-stage").evaluate((node) => {
+    const renderer = node.querySelector(".promo-renderer");
+    if (renderer) renderer.style.minHeight = "2400px";
     node.querySelectorAll(".rendered-section").forEach((section) => {
       section.style.minHeight = "480px";
     });
     node.scrollTop = node.scrollHeight;
-    return node.scrollHeight - node.clientHeight;
+    return {
+      clientHeight: node.clientHeight,
+      scrollHeight: node.scrollHeight,
+      scrollRange: node.scrollHeight - node.clientHeight,
+      panelHeight: node.closest(".preview-panel")?.clientHeight || 0,
+      workspaceHeight: node.closest(".editor-workspace")?.clientHeight || 0,
+      htmlHeight: document.documentElement.clientHeight,
+      bodyHeight: document.body.clientHeight,
+      shellHeight: document.querySelector(".editor-shell")?.clientHeight || 0,
+      shellClass: document.querySelector(".editor-shell")?.className || "",
+      shellComputedHeight: getComputedStyle(document.querySelector(".editor-shell")).height,
+      shellOverflow: getComputedStyle(document.querySelector(".editor-shell")).overflow,
+      embeddedMainHeight: document.querySelector(".editor-embedded-main")?.clientHeight || 0,
+      embeddedContentHeight: document.querySelector(".editor-content--embedded")?.clientHeight || 0,
+    };
   });
-  assert.ok(previewScrollRange > 0, "Fixture Preview must be tall enough to verify Section navigation");
+  const previewScrollRange = previewScrollMetrics.scrollRange;
+  assert.ok(previewScrollRange > 0, `Fixture Preview must be tall enough to verify Section navigation: ${JSON.stringify(previewScrollMetrics)}`);
   await editorFrame.locator(".section-trigger").filter({ hasText: "Hero Banner" }).click();
   for (let attempt = 0; attempt < 50; attempt += 1) {
     if (await editorFrame.locator(".preview-stage").evaluate((node) => node.scrollTop) < previewScrollRange / 2) break;

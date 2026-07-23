@@ -1735,6 +1735,7 @@ function renderContentStep() {
   const layoutFrame = document.createElement("iframe");
   layoutFrame.className = "wizard-layout-frame";
   layoutFrame.title = "Create Promo 템플릿 콘텐츠 및 레이아웃 편집기";
+  layoutFrame.setAttribute("scrolling", "no");
   layoutFrame.src = "/prototype/visual-editor.html?mode=wizard-layout&source=create-promo";
   layoutFrame.addEventListener("load", postWizardLayoutSnapshot);
   wizardLayoutFrame = layoutFrame;

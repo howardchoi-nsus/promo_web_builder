@@ -544,6 +544,10 @@ function loadOutput() {
 }
 
 onMounted(() => {
+  if (isCreatePromoWizardMode.value) {
+    document.documentElement.classList.add("create-promo-editor-document");
+    document.body.classList.add("create-promo-editor-document");
+  }
   window.PromoShell?.init(document);
   if (props.mode === "output") loadOutput();
   else if (isAdminLayoutMode.value) loadAdminLayout();
@@ -554,7 +558,11 @@ onMounted(() => {
   } else loadEditor();
 });
 
-onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage));
+onBeforeUnmount(() => {
+  window.removeEventListener("message", handleParentMessage);
+  document.documentElement.classList.remove("create-promo-editor-document");
+  document.body.classList.remove("create-promo-editor-document");
+});
 </script>
 
 <template>
@@ -578,7 +586,10 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
   <main
     v-else
     class="editor-shell"
-    :class="{ 'shell-frame': !isWizardLayoutMode }"
+    :class="{
+      'shell-frame': !isWizardLayoutMode,
+      'editor-shell--embedded': isCreatePromoWizardMode,
+    }"
     :data-shell-frame="!isWizardLayoutMode ? '' : null"
   >
     <aside v-if="!isWizardLayoutMode" class="shell-sidebar" id="visual-editor-global-navigation" data-shell-sidebar aria-label="전역 내비게이션">
@@ -621,7 +632,13 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
         </div>
       </header>
 
-      <div :class="{ 'shell-content': !isWizardLayoutMode }">
+      <div
+        class="editor-content"
+        :class="{
+          'shell-content': !isWizardLayoutMode,
+          'editor-content--embedded': isCreatePromoWizardMode,
+        }"
+      >
 
     <header v-if="!isCreatePromoWizardMode" class="editor-header editor-toolbar">
       <div>

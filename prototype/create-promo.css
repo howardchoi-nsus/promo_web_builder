@@ -1583,7 +1583,8 @@ a {
 .wizard-layout-frame {
   display: block;
   width: 100%;
-  min-height: 840px;
+  height: clamp(680px, 82dvh, 900px);
+  min-height: 0;
   border: 0;
   background: #f5f7fb;
 }
@@ -1680,7 +1681,8 @@ a {
   }
 
   .wizard-layout-frame {
-    min-height: 1120px;
+    height: 900px;
+    min-height: 0;
   }
 
   .lofi-run-summary,
