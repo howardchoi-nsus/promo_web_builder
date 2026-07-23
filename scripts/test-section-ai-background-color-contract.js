@@ -27,10 +27,10 @@ const backgroundColorFunction = rendererSource.match(
   /function effectiveSectionBackgroundColor\(style\) \{[\s\S]*?\n\}/
 )?.[0] || "";
 assert.doesNotMatch(backgroundColorFunction, /backgroundFadeColor/);
-assert.match(rendererSource, /function effectiveSectionFadeColor\(style, backgroundColor\)/);
 assert.match(
   rendererSource,
-  /backgroundFadeGradient\(normalizedFadeMode\(style\), fadeColor, style\.backgroundFadeStrength\)/
+  /backgroundFadeGradient\(normalizedFadeMode\(style\), backgroundColor, style\.backgroundFadeStrength\)/
 );
+assert.doesNotMatch(rendererSource, /function effectiveSectionFadeColor/);
 
 console.log("Section AI background color preservation contract tests passed.");

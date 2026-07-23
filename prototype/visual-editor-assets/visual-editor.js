@@ -3174,11 +3174,7 @@ var Eo = {
 			let r = String(n.designSpec?.theme?.backgroundColor || "").trim();
 			return /^#[0-9a-f]{6}$/i.test(r) ? r : "#f5f7fb";
 		}
-		function j(e, t) {
-			let n = String(e.backgroundFadeColor || "").trim();
-			return /^#[0-9a-f]{6}$/i.test(n) ? n : t;
-		}
-		function ee(e, t, n = "medium") {
+		function j(e, t, n = "medium") {
 			if (!/^#[0-9a-f]{6}$/i.test(String(t || ""))) return "";
 			let r = {
 				soft: {
@@ -3203,22 +3199,22 @@ var Eo = {
 			};
 			return e === "left" ? `linear-gradient(to right, ${t} 0%, ${t} ${r.solid}%, transparent ${r.clear}%)` : e === "right" ? `linear-gradient(to left, ${t} 0%, ${t} ${r.solid}%, transparent ${r.clear}%)` : e === "both" ? `linear-gradient(to right, ${t} 0%, transparent ${r.edge}%, transparent ${100 - r.edge}%, ${t} 100%)` : "";
 		}
-		function M(e) {
-			let t = h(e), n = t.minHeight || D(e), r = u(e), i = A(t), a = j(t, i), o = r ? ee(k(t), a, t.backgroundFadeStrength) : "";
+		function ee(e) {
+			let t = h(e), n = t.minHeight || D(e), r = u(e), i = A(t), a = r ? j(k(t), i, t.backgroundFadeStrength) : "";
 			return {
 				height: `${Math.max(50, n)}px`,
 				backgroundColor: i,
-				backgroundImage: r ? [o, `url(${JSON.stringify(r)})`].filter(Boolean).join(", ") : void 0,
-				backgroundSize: r ? o ? `100% 100%, ${t.backgroundSize || "contain"}` : t.backgroundSize || "contain" : void 0,
-				backgroundPosition: r ? o ? `center, ${t.backgroundPosition || "center center"}` : t.backgroundPosition || "center center" : void 0,
-				backgroundRepeat: r ? o ? `no-repeat, ${t.backgroundRepeat || "no-repeat"}` : t.backgroundRepeat || "no-repeat" : void 0
+				backgroundImage: r ? [a, `url(${JSON.stringify(r)})`].filter(Boolean).join(", ") : void 0,
+				backgroundSize: r ? a ? `100% 100%, ${t.backgroundSize || "contain"}` : t.backgroundSize || "contain" : void 0,
+				backgroundPosition: r ? a ? `center, ${t.backgroundPosition || "center center"}` : t.backgroundPosition || "center center" : void 0,
+				backgroundRepeat: r ? a ? `no-repeat, ${t.backgroundRepeat || "no-repeat"}` : t.backgroundRepeat || "no-repeat" : void 0
 			};
 		}
-		function N(e) {
+		function M(e) {
 			let t = h(e).minHeight || D(e);
 			return { height: `${Math.max(0, t - 76)}px` };
 		}
-		function P(e, t) {
+		function N(e, t) {
 			let n = m(e, t), r = n.positionMode === "free" ? n : O(e, t), i = t.fieldKind === "image", a = x(n.widthPct, 10, 100, 32), o = x(n.heightPx, 80, 900, void 0);
 			return {
 				left: `${r.xPct || 0}%`,
@@ -3236,14 +3232,14 @@ var Eo = {
 				aspectRatio: i && (!o || n.shape === "circle") ? C(t, n) : void 0
 			};
 		}
-		function te(e, t) {
+		function P(e, t) {
 			n.editable && r("select-item", e, t);
 		}
-		function ne(e, t, i) {
+		function te(e, t, i) {
 			if (!n.editable || i.isLocked || e.button !== 0 || e.target.closest(".image-resize-handle") || e.currentTarget.classList.contains("is-editing")) return;
 			let a = e.currentTarget, o = a.closest(".rendered-items");
 			if (!o) return;
-			e.preventDefault(), te(t, i), a.setPointerCapture(e.pointerId), a.classList.add("is-dragging");
+			e.preventDefault(), P(t, i), a.setPointerCapture(e.pointerId), a.classList.add("is-dragging");
 			let s = o.getBoundingClientRect(), c = a.getBoundingClientRect(), l = e.clientX, u = e.clientY, d = c.left - s.left, f = c.top - s.top, p = d, m = f, h = 0, g = (e) => {
 				p = Math.min(Math.max(0, s.width - a.offsetWidth), Math.max(0, d + e.clientX - l)), m = Math.min(Math.max(0, s.height - a.offsetHeight), Math.max(0, f + e.clientY - u)), !h && (h = requestAnimationFrame(() => {
 					h = 0, a.style.left = `${p}px`, a.style.top = `${m}px`;
@@ -3259,11 +3255,11 @@ var Eo = {
 			};
 			a.addEventListener("pointermove", g), a.addEventListener("pointerup", _), a.addEventListener("pointercancel", _);
 		}
-		function re(e, t, i, a = "se") {
+		function ne(e, t, i, a = "se") {
 			if (!n.editable || i.isLocked || i.fieldKind !== "image" || e.button !== 0) return;
 			let o = e.currentTarget, s = o.closest(".rendered-item"), c = s?.closest(".rendered-items");
 			if (!s || !c) return;
-			e.preventDefault(), e.stopPropagation(), te(t, i), o.setPointerCapture(e.pointerId), s.classList.add("is-resizing");
+			e.preventDefault(), e.stopPropagation(), P(t, i), o.setPointerCapture(e.pointerId), s.classList.add("is-resizing");
 			let l = c.getBoundingClientRect(), u = s.getBoundingClientRect(), d = e.clientX, f = e.clientY, p = u.width, h = u.height, g = u.left - l.left, _ = u.top - l.top, v = h ? p / h : 1, y = m(t, i), b = y.aspectRatioLocked !== !1, x = p, S = h, C = g, w = _, T = 0, E = (e) => {
 				let t = a.includes("w") || a.includes("e"), n = a.includes("n") || a.includes("s"), r = a.includes("w") ? -1 : 1, i = a.includes("n") ? -1 : 1, o = (e.clientX - d) * r, c = (e.clientY - f) * i, u = Math.max(80, a.includes("w") ? p + g : l.width - g), m = Math.max(80, a.includes("n") ? h + _ : l.height - _), E = t ? Math.min(u, Math.max(80, p + o)) : p, D = n ? Math.min(m, Math.max(80, h + c)) : h;
 				if (b || y.shape === "circle") {
@@ -3285,7 +3281,7 @@ var Eo = {
 			};
 			o.addEventListener("pointermove", E), o.addEventListener("pointerup", D), o.addEventListener("pointercancel", D);
 		}
-		function ae(e, t, i, a = "se") {
+		function re(e, t, i, a = "se") {
 			if (!n.editable || i.isLocked || i.fieldKind !== "image" || ![
 				"ArrowLeft",
 				"ArrowRight",
@@ -3301,9 +3297,9 @@ var Eo = {
 				heightPx: s || o.shape === "circle" ? void 0 : u ? x(g + f * c * 4, 80, 900, 240) : g
 			});
 		}
-		function oe(e, t, i) {
+		function ae(e, t, i) {
 			if (!n.editable || i.isLocked || i.fieldKind !== "text") return;
-			e.preventDefault(), e.stopPropagation(), te(t, i);
+			e.preventDefault(), e.stopPropagation(), P(t, i);
 			let o = e.currentTarget, s = o.querySelector(".rendered-text, .rendered-empty");
 			if (!s) return;
 			o.classList.add("is-editing"), s.classList.remove("rendered-empty"), s.classList.add("rendered-text"), s.contentEditable = "true", String(a(t, i) || "").trim() || (s.textContent = _o), s.focus();
@@ -3317,7 +3313,7 @@ var Eo = {
 			};
 			s.addEventListener("blur", u), s.addEventListener("keydown", d);
 		}
-		function se(e, t) {
+		function oe(e, t) {
 			if (!n.editable || e.button !== 0) return;
 			let i = e.currentTarget, a = i.closest(".rendered-section");
 			if (!a) return;
@@ -3365,7 +3361,7 @@ var Eo = {
 			key: t.sectionKey,
 			class: F(["rendered-section", `rendered-section--${t.sectionKey}`]),
 			"data-section-key": t.sectionKey,
-			style: ie(M(t)),
+			style: ie(ee(t)),
 			"aria-busy": y(t)?.kind === "processing" ? "true" : void 0
 		}, [
 			e.editable && y(t) ? (Y(), X("div", {
@@ -3377,7 +3373,7 @@ var Eo = {
 			}, [y(t).kind === "processing" ? (Y(), X("i", ko)) : Q("", !0), Z("span", null, I(y(t).label), 1)], 10, Oo)) : Q("", !0),
 			Z("div", Ao, [Z("div", {
 				class: "rendered-items",
-				style: ie(N(t))
+				style: ie(M(t))
 			}, [(Y(!0), X(J, null, nr(l(t), (n) => (Y(), X("article", {
 				key: n.itemKey,
 				class: F(["rendered-item", [`rendered-item--${n.fieldKind || "text"}`, {
@@ -3387,10 +3383,10 @@ var Eo = {
 				}]]),
 				"data-item-key": n.itemKey,
 				"data-style-key": p(t, n),
-				style: ie(P(t, n)),
-				onClick: ao((e) => te(t, n), ["stop"]),
-				onPointerdown: (e) => ne(e, t, n),
-				onDblclick: (e) => oe(e, t, n)
+				style: ie(N(t, n)),
+				onClick: ao((e) => P(t, n), ["stop"]),
+				onPointerdown: (e) => te(e, t, n),
+				onDblclick: (e) => ae(e, t, n)
 			}, [n.fieldKind === "cta" ? (Y(), X("a", {
 				key: 0,
 				class: "rendered-cta",
@@ -3418,8 +3414,8 @@ var Eo = {
 					type: "button",
 					class: F(["image-resize-handle", `image-resize-handle--${e}`]),
 					"aria-label": `${n.name} 이미지 ${e} 방향 크기 조절`,
-					onPointerdown: ao((r) => re(r, t, n, e), ["stop"]),
-					onKeydown: (r) => ae(r, t, n, e)
+					onPointerdown: ao((r) => ne(r, t, n, e), ["stop"]),
+					onKeydown: (r) => re(r, t, n, e)
 				}, null, 42, Lo))), 128)) : Q("", !0)
 			], 64)) : (Y(), X(J, { key: 2 }, [f(a(t, n)) ? (Y(), X("p", Ro, I(a(t, n)), 1)) : (Y(), X("p", zo, I(n.name), 1))], 64))], 46, jo))), 128))], 4)]),
 			e.editable && e.showGuides ? (Y(), X("button", {
@@ -3428,7 +3424,7 @@ var Eo = {
 				type: "button",
 				"aria-label": `${t.name} 섹션 높이 조절`,
 				title: `${t.name} 섹션 높이 조절`,
-				onPointerdown: (e) => se(e, t)
+				onPointerdown: (e) => oe(e, t)
 			}, null, 40, Bo)) : Q("", !0)
 		], 14, Do))), 128))], 6));
 	}

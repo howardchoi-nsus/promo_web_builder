@@ -93,6 +93,13 @@ assert.match(
   validatePatch(section, backgroundColorOverride, constraints).errors.join("; "),
   /Unsupported section style: backgroundColor/
 );
+const fadeColorOverride = structuredClone(generated);
+fadeColorOverride.layoutPatch.sectionStyles.heroBanner.backgroundFadeColor = "#ffffff";
+assert.equal(validatePatch(section, fadeColorOverride, constraints).ok, false);
+assert.match(
+  validatePatch(section, fadeColorOverride, constraints).errors.join("; "),
+  /Unsupported section style: backgroundFadeColor/
+);
 const selectedTargetGenerated = layoutPatchFromResult(section, {
   layoutVariant: "split-left",
   minHeight: 520,

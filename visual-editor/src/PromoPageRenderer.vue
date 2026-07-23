@@ -210,11 +210,6 @@ function effectiveSectionBackgroundColor(style) {
   return /^#[0-9a-f]{6}$/i.test(themeColor) ? themeColor : "#f5f7fb";
 }
 
-function effectiveSectionFadeColor(style, backgroundColor) {
-  const fadeColor = String(style.backgroundFadeColor || "").trim();
-  return /^#[0-9a-f]{6}$/i.test(fadeColor) ? fadeColor : backgroundColor;
-}
-
 function backgroundFadeGradient(mode, color, strength = "medium") {
   if (!/^#[0-9a-f]{6}$/i.test(String(color || ""))) return "";
   const stops = {
@@ -239,9 +234,8 @@ function inlineSectionStyle(section) {
   const canvasHeight = style.minHeight || defaultSectionHeight(section);
   const backgroundImage = sectionBackgroundUrl(section);
   const backgroundColor = effectiveSectionBackgroundColor(style);
-  const fadeColor = effectiveSectionFadeColor(style, backgroundColor);
   const fadeGradient = backgroundImage
-    ? backgroundFadeGradient(normalizedFadeMode(style), fadeColor, style.backgroundFadeStrength)
+    ? backgroundFadeGradient(normalizedFadeMode(style), backgroundColor, style.backgroundFadeStrength)
     : "";
   return {
     height: `${Math.max(50, canvasHeight)}px`,
