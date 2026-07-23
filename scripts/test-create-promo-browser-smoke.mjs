@@ -153,15 +153,47 @@ try {
   assert.equal(createPromoWorkspaceStyles.overflowY, "hidden");
   assert.equal(
     await editorFrame.locator(".section-rail").evaluate((node) => getComputedStyle(node).overflowY),
-    "auto",
-    "Section rail must scroll independently",
+    "hidden",
+    "Section rail shell must keep scrolling inside the Section list",
   );
   assert.equal(
     await editorFrame.locator(".property-panel").evaluate((node) => getComputedStyle(node).overflowY),
-    "auto",
-    "Property panel must scroll independently",
+    "hidden",
+    "Property panel shell must keep scrolling inside the property form",
   );
-  assert.equal(await editorFrame.locator(".section-ai-actions > .section-ai-action").count(), 2, "Section background AI actions must coexist with Item-target AI actions");
+  assert.equal(
+    await editorFrame.locator(".section-list").evaluate((node) => getComputedStyle(node).overflowY),
+    "auto",
+    "Section list must scroll independently",
+  );
+  assert.equal(
+    await editorFrame.locator(".property-form").evaluate((node) => getComputedStyle(node).overflowY),
+    "auto",
+    "Property form must scroll independently",
+  );
+  assert.equal(
+    await editorFrame.locator(".preview-stage").evaluate((node) => getComputedStyle(node).overflowY),
+    "auto",
+    "Preview stage must scroll independently",
+  );
+  const previewScrollRange = await editorFrame.locator(".preview-stage").evaluate((node) => {
+    node.querySelectorAll(".rendered-section").forEach((section) => {
+      section.style.minHeight = "480px";
+    });
+    node.scrollTop = node.scrollHeight;
+    return node.scrollHeight - node.clientHeight;
+  });
+  assert.ok(previewScrollRange > 0, "Fixture Preview must be tall enough to verify Section navigation");
+  await editorFrame.locator(".section-trigger").filter({ hasText: "Hero Banner" }).click();
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    if (await editorFrame.locator(".preview-stage").evaluate((node) => node.scrollTop) < previewScrollRange / 2) break;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  assert.ok(
+    await editorFrame.locator(".preview-stage").evaluate((node) => node.scrollTop) < previewScrollRange / 2,
+    "Selecting a Section must scroll the Preview stage to that Section",
+  );
+  assert.equal(await editorFrame.locator(".section-properties .section-ai-action").count(), 1, "Section background AI action must live inside Section properties");
   assert.equal(await editorFrame.locator(".section-ai-action:not([disabled])").count(), 0, "Structural image/CTA values must not enable AI generation");
   assert.equal(await editorFrame.locator(".section-ai-action").first().getAttribute("title"), "섹션 콘텐츠를 먼저 등록해 주세요.");
   await editorFrame.getByRole("button", { name: "자동등록" }).click();
@@ -178,10 +210,20 @@ try {
   assert.equal(sectionAiRunRequest?.sectionKey, "heroBanner");
   assert.equal(sectionAiRunRequest?.targetType, "section-background");
   assert.equal(sectionAiRunRequest?.sectionInputs?.title, "Browser Smoke Promotion");
+  let backgroundAppliedContent = null;
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    backgroundAppliedContent = await page.evaluate(() => JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null"));
+    if (backgroundAppliedContent?.sectionDesignRuns?.heroBanner?.status === "applied") break;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  assert.equal(backgroundAppliedContent?.sectionDesignRuns?.heroBanner?.status, "applied", "Ready Section background must apply automatically");
 
   sectionAiRunRequest = null;
   await editorFrame.locator(".section-trigger").filter({ hasText: "Feature Content" }).click();
-  await editorFrame.locator(".section-accordion__items button").filter({ hasText: "프로모션 이미지" }).click();
+  const imageComponentTrigger = editorFrame.locator(".component-property-trigger").filter({ hasText: "프로모션 이미지" });
+  if (await imageComponentTrigger.getAttribute("aria-expanded") !== "true") {
+    await imageComponentTrigger.click();
+  }
   const itemAiAction = editorFrame.locator(".item-ai-generation-action");
   await itemAiAction.waitFor();
   assert.equal(await itemAiAction.isDisabled(), false, "Allowed image Item AI action should be enabled when the Section has content");
@@ -195,11 +237,6 @@ try {
   assert.equal(sectionAiRunRequest?.sectionKey, "contentFeature");
   assert.equal(sectionAiRunRequest?.targetType, "item");
   assert.equal(sectionAiRunRequest?.targetItemKey, "image");
-  for (let attempt = 0; attempt < 50 && (await itemAiAction.textContent())?.trim() !== "AI 이미지 적용"; attempt += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 20));
-  }
-  assert.equal((await itemAiAction.textContent())?.trim(), "AI 이미지 적용");
-  await itemAiAction.click();
   let itemAppliedContent = null;
   for (let attempt = 0; attempt < 100; attempt += 1) {
     itemAppliedContent = await page.evaluate(() => JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null"));
@@ -207,6 +244,7 @@ try {
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
   assert.equal(itemAppliedContent?.sectionInputs?.contentFeature?.image?.source, "ai");
+  assert.equal(itemAppliedContent?.sectionDesignRuns?.contentFeature?.status, "applied", "Ready Item image must apply automatically");
   assert.match(itemAppliedContent?.sectionInputs?.contentFeature?.image?.value || "", /^\/api\/promo-section-design-image\?/);
   await editorFrame.locator(".rendered-image-frame").waitFor({ state: "attached" });
   assert.equal(
@@ -220,6 +258,11 @@ try {
     await itemImageFrame.evaluate((node) => getComputedStyle(node).backgroundImage),
     "none",
     "Item-target AI generation must render through the Image Frame background",
+  );
+  assert.equal(
+    await itemImageFrame.evaluate((node) => getComputedStyle(node).backgroundColor),
+    "rgba(0, 0, 0, 0)",
+    "Image Frame gaps must remain transparent while resizing",
   );
   const imageResizeModeButtons = editorFrame.locator(".image-resize-mode button");
   assert.equal(await imageResizeModeButtons.count(), 2);

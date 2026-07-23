@@ -84,7 +84,7 @@ function sectionStyle(section) {
 
 const AI_PROCESSING_STATUSES = new Set([
   "queued", "analyzing_content", "generating_layout", "validating_layout",
-  "generating_assets", "validating_assets",
+  "generating_assets", "validating_assets", "applying",
 ]);
 
 function sectionDesignRun(section) {
@@ -100,6 +100,7 @@ function aiStatusLabel(status, targetType) {
     validating_layout: "레이아웃 검증 중",
     generating_assets: `${targetLabel} 생성 중`,
     validating_assets: `${targetLabel} 검증 중`,
+    applying: `${targetLabel} 적용 중`,
   };
   return labels[status] || `${targetLabel} 처리 중`;
 }

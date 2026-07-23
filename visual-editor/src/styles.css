@@ -33,37 +33,28 @@ button, a { letter-spacing: 0; }
   grid-template-areas: "sections content preview";
   min-height: calc(100vh - 182px); margin-top: 12px;
 }
-.section-rail, .property-panel { min-width: 0; background: var(--app-surface); }
+.section-rail, .property-panel { display: flex; min-width: 0; min-height: 0; overflow: hidden; background: var(--app-surface); flex-direction: column; }
 .section-rail { grid-area: sections; border-right: 1px solid var(--app-line); }
 .property-panel { grid-area: content; border-right: 1px solid var(--app-line); }
-.panel-heading { display: flex; align-items: center; justify-content: space-between; min-height: 54px; padding: 0 14px; border-bottom: 1px solid var(--app-line); }
+.panel-heading { display: flex; align-items: center; justify-content: space-between; min-height: 54px; padding: 0 14px; border-bottom: 1px solid var(--app-line); flex: 0 0 auto; }
 .panel-heading strong { font-size: 13px; }
-.section-list { display: grid; padding: 8px; }
-.section-trigger-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; border-bottom: 1px solid var(--app-line); }
-.section-trigger, .section-accordion__items button {
+.section-list { display: grid; min-height: 0; padding: 8px; overflow: auto; align-content: start; flex: 1 1 auto; }
+.section-trigger {
   display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 42px;
   padding: 8px 10px; border: 0; background: transparent; color: var(--app-ink-soft);
   cursor: pointer; text-align: left;
 }
-.section-trigger.active, .section-accordion__items button.active { background: var(--app-accent-soft); color: var(--app-accent); font-weight: 750; }
+.section-trigger.active { background: var(--app-accent-soft); color: var(--app-accent); font-weight: 750; }
 .section-trigger span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.section-trigger small { margin-left: auto; color: var(--app-muted); font-size: 11px; white-space: nowrap; }
 .section-registration-icon { flex: 0 0 18px; width: 18px; height: 18px; margin-left: auto; overflow: visible; }
 .section-registration-icon circle { stroke: none; }
 .section-registration-icon path { fill: none; stroke: var(--app-panel); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .section-registration-icon.is-complete circle { fill: var(--app-success); }
 .section-registration-icon.is-incomplete circle { fill: var(--app-danger); }
-.section-trigger i { width: 7px; height: 7px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); transition: transform 180ms ease; }
 .section-ai-actions { display: grid; gap: 4px; padding: 4px 5px 4px 0; }
 .section-ai-action, .section-ai-remove, .image-remove-action { min-height: 28px; padding: 0 8px; border: 1px solid var(--app-accent); background: var(--app-panel); color: var(--app-accent); cursor: pointer; font-size: 10px; font-weight: 800; white-space: nowrap; }
 .section-ai-action:disabled { cursor: not-allowed; opacity: .45; }
 .section-ai-remove, .image-remove-action { border-color: var(--app-danger); color: var(--app-danger); }
-.section-accordion.open .section-trigger i { transform: rotate(225deg); }
-.section-accordion__body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 180ms ease; }
-.section-accordion.open .section-accordion__body { grid-template-rows: 1fr; }
-.section-accordion__items { min-height: 0; overflow: hidden; background: var(--app-bg); }
-.section-accordion__items button { min-height: 36px; padding-left: 20px; font-size: 12px; }
-.section-accordion__items > span { display: block; padding: 10px 20px; color: var(--app-muted); font-size: 11px; }
 
 .preview-panel { grid-area: preview; min-width: 0; background: color-mix(in srgb, var(--app-ink) 8%, var(--app-bg)); }
 
@@ -79,7 +70,7 @@ button, a { letter-spacing: 0; }
 .editor-workspace.is-create-promo-wizard > .section-rail,
 .editor-workspace.is-create-promo-wizard > .property-panel {
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
 }
 
 .editor-workspace.is-create-promo-wizard .section-rail {
@@ -125,13 +116,33 @@ button, a { letter-spacing: 0; }
 .preview-stage { width: 100%; min-height: calc(100vh - 154px); padding: 18px; overflow: auto; }
 .preview-stage--mobile .promo-renderer { width: min(375px, 100%); margin: 0 auto; }
 
-.property-form { display: grid; gap: 14px; padding: 14px; }
+.property-form { display: grid; min-height: 0; gap: 14px; padding: 14px; overflow: auto; align-content: start; flex: 1 1 auto; }
 .property-form label { display: grid; gap: 6px; }
 .property-form label > span { color: var(--app-sub); font-size: 12px; font-weight: 750; }
 .property-form input, .property-form textarea, .property-form select { width: 100%; border: 1px solid var(--app-line-strong); background: var(--app-panel); color: var(--app-ink); padding: 9px 10px; border-radius: 0; }
 .property-form textarea { resize: vertical; }
 .property-form input:focus, .property-form textarea:focus, .property-form select:focus { outline: 2px solid var(--app-focus); outline-offset: 0; border-color: var(--app-accent); }
 .property-form input:disabled, .property-form textarea:disabled, .property-form select:disabled { background: var(--app-bg); color: var(--app-muted); cursor: not-allowed; }
+.section-properties { display: grid; gap: 12px; padding: 12px; border: 1px solid var(--app-line); background: var(--app-panel); }
+.section-properties__heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.section-properties__heading strong { font-size: 13px; }
+.section-properties__heading small { color: var(--app-muted); font-size: 11px; }
+.section-properties .section-ai-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 0; }
+.section-properties .section-ai-action,
+.section-properties .section-ai-remove { min-height: 34px; }
+.component-property-list { display: grid; border: 1px solid var(--app-line); background: var(--app-panel); }
+.component-property-accordion + .component-property-accordion { border-top: 1px solid var(--app-line); }
+.component-property-trigger { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 8px 10px; border: 0; background: var(--app-panel); color: var(--app-ink-soft); cursor: pointer; text-align: left; }
+.component-property-trigger span { overflow: hidden; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
+.component-property-trigger small { color: var(--app-muted); font-size: 10px; text-transform: uppercase; }
+.component-property-trigger i { width: 7px; height: 7px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); transition: transform 180ms ease; }
+.component-property-accordion.open .component-property-trigger { background: var(--app-accent-soft); color: var(--app-accent); }
+.component-property-accordion.open .component-property-trigger i { transform: rotate(225deg); }
+.component-property-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 180ms ease; }
+.component-property-body > div { min-height: 0; overflow: hidden; }
+.component-property-accordion.open .component-property-body { grid-template-rows: 1fr; }
+.component-property-content { display: grid; gap: 14px; padding: 14px; border-top: 1px solid var(--app-line); }
+.component-property-empty { padding: 14px; color: var(--app-muted); font-size: 11px; }
 .image-remove-action { justify-self: start; min-height: 32px; font-size: 11px; }
 .section-background-alignment { display: grid; gap: 7px; padding-top: 12px; border-top: 1px solid var(--app-line); }
 .section-background-alignment > span { color: var(--app-sub); font-size: 12px; font-weight: 750; }

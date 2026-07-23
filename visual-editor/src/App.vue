@@ -25,7 +25,8 @@ const sectionInputs = ref({});
 const designSpec = ref(JSON.parse(JSON.stringify(DEFAULT_DESIGN_SPEC)));
 const selectedSectionKey = ref("");
 const selectedItemKey = ref("");
-const expandedSectionKey = ref("");
+const expandedComponentKey = ref("");
+const previewStageRef = ref(null);
 const viewport = ref("desktop");
 const guidesVisible = ref(true);
 const outputSaveError = ref("");
@@ -68,14 +69,35 @@ function selectItem(section, item) {
   selectedItemKey.value = item?.itemKey || "";
 }
 
-function toggleSection(section) {
+function componentKey(section, item) {
+  return section && item ? `${section.sectionKey}.${item.itemKey}` : "";
+}
+
+function scrollPreviewToSection(section) {
+  if (!section || !previewStageRef.value) return;
+  const target = previewStageRef.value.querySelector(`[data-section-key="${CSS.escape(section.sectionKey)}"]`);
+  if (!target) return;
+  const stageRect = previewStageRef.value.getBoundingClientRect();
+  const targetRect = target.getBoundingClientRect();
+  previewStageRef.value.scrollTo({
+    top: Math.max(0, previewStageRef.value.scrollTop + targetRect.top - stageRect.top),
+    behavior: "smooth",
+  });
+}
+
+async function selectSection(section) {
   if (!section) return;
-  if (expandedSectionKey.value === section.sectionKey) {
-    expandedSectionKey.value = "";
-    return;
-  }
-  expandedSectionKey.value = section.sectionKey;
-  selectItem(section, section.items?.[0]);
+  const item = section.items?.[0] || null;
+  selectItem(section, item);
+  expandedComponentKey.value = componentKey(section, item);
+  await nextTick();
+  scrollPreviewToSection(section);
+}
+
+function toggleComponent(section, item) {
+  const key = componentKey(section, item);
+  selectItem(section, item);
+  expandedComponentKey.value = expandedComponentKey.value === key ? "" : key;
 }
 
 function updateSelectedValue(value) {
@@ -136,7 +158,7 @@ function sectionAiIsStale(section) {
 }
 
 function sectionAiIsProcessing(section) {
-  return ["queued", "analyzing_content", "generating_layout", "validating_layout", "generating_assets", "validating_assets"]
+  return ["queued", "analyzing_content", "generating_layout", "validating_layout", "generating_assets", "validating_assets", "applying"]
     .includes(sectionAiRun(section)?.status);
 }
 
@@ -154,7 +176,7 @@ function sectionAiPrimaryAction(section) {
   const run = sectionAiRun(section);
   const matchesBackground = run?.constraintsSnapshot?.imageTarget?.type === "section-background";
   if (sectionAiIsProcessing(section)) return { action: "generate", label: "AI 생성 중", disabled: true };
-  if (matchesBackground && run?.status === "ready" && !sectionAiIsStale(section)) return { action: "apply", label: "AI 적용", disabled: false };
+  if (matchesBackground && run?.status === "ready" && !sectionAiIsStale(section)) return { action: "generate", label: "AI 적용 중", disabled: true };
   if (matchesBackground && run?.status === "applied") return { action: "generate", label: "AI 재생성", disabled: !sectionAiHasContent(section) };
   return { action: "generate", label: "AI 디자인", disabled: !sectionAiHasContent(section) };
 }
@@ -186,7 +208,7 @@ function sectionAiItemAction(section, item) {
   const matchesItem = sectionAiRunTargetItemKey(section) === item?.itemKey;
   if (sectionAiIsProcessing(section)) return { action: "generate", label: "AI 이미지 생성 중", disabled: true };
   if (matchesItem && run?.status === "ready" && !sectionAiIsStale(section)) {
-    return { action: "apply", label: "AI 이미지 적용", disabled: false };
+    return { action: "generate", label: "AI 이미지 적용 중", disabled: true };
   }
   if (matchesItem && run?.status === "applied") {
     return { action: "generate", label: "AI 이미지 재생성", disabled: !sectionAiHasContent(section) };
@@ -370,7 +392,7 @@ async function loadEditor() {
     sectionInputs.value = createSectionInputs(sections.value);
     selectedSectionKey.value = sections.value[0]?.sectionKey || "";
     selectedItemKey.value = sections.value[0]?.items?.[0]?.itemKey || "";
-    expandedSectionKey.value = sections.value[0]?.sectionKey || "";
+    expandedComponentKey.value = componentKey(sections.value[0], sections.value[0]?.items?.[0]);
   } catch (loadError) {
     error.value = loadError.message;
   } finally {
@@ -408,7 +430,7 @@ async function loadAdminLayout() {
     layoutId.value = result.layout?.id || null;
     selectedSectionKey.value = sections.value[0]?.sectionKey || "";
     selectedItemKey.value = sections.value[0]?.items?.[0]?.itemKey || "";
-    expandedSectionKey.value = sections.value[0]?.sectionKey || "";
+    expandedComponentKey.value = componentKey(sections.value[0], sections.value[0]?.items?.[0]);
   } catch (loadError) {
     error.value = loadError.message;
   } finally {
@@ -456,7 +478,7 @@ async function applyExternalSnapshot(snapshot) {
   if (!snapshot?.content) return;
   const previousSectionKey = selectedSection.value?.sectionKey || selectedSectionKey.value;
   const previousItemKey = selectedItem.value?.itemKey || selectedItemKey.value;
-  const previousExpandedSectionKey = expandedSectionKey.value;
+  const previousExpandedComponentKey = expandedComponentKey.value;
   applyingExternalSnapshot = true;
   template.value = snapshot.content.formTemplate || null;
   configRevision.value = snapshot.content.formTemplate?.configRevision || "";
@@ -471,9 +493,15 @@ async function applyExternalSnapshot(snapshot) {
   selectedItemKey.value = nextSelectedSection?.items?.some((item) => item.itemKey === previousItemKey)
     ? previousItemKey
     : nextSelectedSection?.items?.[0]?.itemKey || "";
-  expandedSectionKey.value = sections.value.some((section) => section.sectionKey === previousExpandedSectionKey)
-    ? previousExpandedSectionKey
-    : nextSelectedSection?.sectionKey || "";
+  const selectedComponentKey = componentKey(
+    nextSelectedSection,
+    nextSelectedSection?.items?.find((item) => item.itemKey === selectedItemKey.value),
+  );
+  expandedComponentKey.value = sections.value.some((section) => (
+    (section.items || []).some((item) => componentKey(section, item) === previousExpandedComponentKey)
+  ))
+    ? previousExpandedComponentKey
+    : selectedComponentKey;
   externalSnapshotReady.value = true;
   loading.value = false;
   error.value = "";
@@ -650,66 +678,27 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
           <strong>{{ sections.length }}</strong>
         </div>
         <div class="section-list">
-          <div
+          <button
             v-for="section in sections"
             :key="section.sectionKey"
-            class="section-accordion"
-            :class="{ open: section.sectionKey === expandedSectionKey }"
+            type="button"
+            class="section-trigger"
+            :class="{ active: section.sectionKey === selectedSection?.sectionKey }"
+            @click="selectSection(section)"
           >
-            <div class="section-trigger-row">
-            <button
-              type="button"
-              class="section-trigger"
-              :class="{ active: section.sectionKey === selectedSection?.sectionKey }"
-              :aria-expanded="section.sectionKey === expandedSectionKey"
-              @click="toggleSection(section)"
+            <span>{{ section.name }}</span>
+            <svg
+              class="section-registration-icon"
+              :class="sectionContentRegistered(section) ? 'is-complete' : 'is-incomplete'"
+              viewBox="0 0 20 20"
+              role="img"
+              :aria-label="sectionContentRegistered(section) ? `${section.name} 콘텐츠 등록 완료` : `${section.name} 콘텐츠 등록 필요`"
             >
-              <span>{{ section.name }}</span>
-              <svg
-                class="section-registration-icon"
-                :class="sectionContentRegistered(section) ? 'is-complete' : 'is-incomplete'"
-                viewBox="0 0 20 20"
-                role="img"
-                :aria-label="sectionContentRegistered(section) ? `${section.name} 콘텐츠 등록 완료` : `${section.name} 콘텐츠 등록 필요`"
-              >
-                <circle cx="10" cy="10" r="9"></circle>
-                <path v-if="sectionContentRegistered(section)" d="M5.8 10.2 8.6 13l5.8-6"></path>
-                <path v-else d="M10 5.5v6M10 14.5v.1"></path>
-              </svg>
-              <i aria-hidden="true"></i>
-            </button>
-              <div v-if="isCreatePromoWizardMode" class="section-ai-actions">
-                <button
-                  v-if="section.aiDesign?.enabled !== false && section.aiDesign?.allowSectionBackground !== false"
-                  type="button"
-                  class="section-ai-action"
-                  :disabled="sectionAiPrimaryAction(section).disabled"
-                  :title="sectionAiPrimaryAction(section).disabled && !sectionAiIsProcessing(section) ? '섹션 콘텐츠를 먼저 등록해 주세요.' : ''"
-                  @click="requestSectionAiAction(section, sectionAiPrimaryAction(section).action, '', 'section-background')"
-                >{{ sectionAiPrimaryAction(section).label }}</button>
-                <button
-                  v-if="sectionHasAiBackground(section)"
-                  type="button"
-                  class="section-ai-remove"
-                  @click="requestSectionAiAction(section, 'remove-background')"
-                >배경 삭제</button>
-              </div>
-            </div>
-            <div class="section-accordion__body">
-              <div class="section-accordion__items">
-                <button
-                  v-for="item in section.items || []"
-                  :key="item.itemKey"
-                  type="button"
-                  :class="{ active: section.sectionKey === selectedSection?.sectionKey && item.itemKey === selectedItem?.itemKey }"
-                  @click="selectItem(section, item)"
-                >
-                  {{ item.name }}
-                </button>
-                <span v-if="!section.items?.length">등록된 아이템 없음</span>
-              </div>
-            </div>
-          </div>
+              <circle cx="10" cy="10" r="9"></circle>
+              <path v-if="sectionContentRegistered(section)" d="M5.8 10.2 8.6 13l5.8-6"></path>
+              <path v-else d="M10 5.5v6M10 14.5v.1"></path>
+            </svg>
+          </button>
         </div>
       </aside>
 
@@ -742,7 +731,7 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
             </div>
           </div>
         </div>
-        <div class="preview-stage" :class="`preview-stage--${viewport}`">
+        <div ref="previewStageRef" class="preview-stage" :class="`preview-stage--${viewport}`">
           <PromoPageRenderer
             v-if="rendererSnapshot"
             :content="rendererSnapshot.content"
@@ -764,10 +753,112 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
       <aside class="property-panel">
         <div class="panel-heading">
           <span>CONTENT</span>
-          <strong>{{ selectedItem?.name || "항목 선택" }}</strong>
+          <strong>{{ selectedSection?.name || "섹션 선택" }}</strong>
         </div>
 
-        <div v-if="selectedItem" class="property-form">
+        <div v-if="selectedSection" class="property-form">
+          <section class="section-properties">
+            <div class="section-properties__heading">
+              <strong>섹션 속성</strong>
+              <small>{{ selectedSection.name }}</small>
+            </div>
+            <div v-if="isCreatePromoWizardMode" class="section-ai-actions">
+              <button
+                v-if="selectedSection.aiDesign?.enabled !== false && selectedSection.aiDesign?.allowSectionBackground !== false"
+                type="button"
+                class="section-ai-action"
+                :disabled="sectionAiPrimaryAction(selectedSection).disabled"
+                :title="sectionAiPrimaryAction(selectedSection).disabled && !sectionAiIsProcessing(selectedSection) ? '섹션 콘텐츠를 먼저 등록해 주세요.' : ''"
+                @click="requestSectionAiAction(selectedSection, sectionAiPrimaryAction(selectedSection).action, '', 'section-background')"
+              >{{ sectionAiPrimaryAction(selectedSection).label }}</button>
+              <button
+                v-if="sectionHasAiBackground(selectedSection)"
+                type="button"
+                class="section-ai-remove"
+                @click="requestSectionAiAction(selectedSection, 'remove-background')"
+              >배경 삭제</button>
+            </div>
+            <div v-if="sectionHasAiBackground(selectedSection)" class="section-background-alignment">
+              <span>배경 이미지 정렬</span>
+              <div role="group" aria-label="배경 이미지 가로 정렬">
+                <button
+                  v-for="option in [
+                    { value: 'left', label: '왼쪽' },
+                    { value: 'center', label: '중앙' },
+                    { value: 'right', label: '오른쪽' },
+                  ]"
+                  :key="option.value"
+                  type="button"
+                  :class="{ active: (selectedSectionStyle.backgroundPosition || 'center center') === `${option.value} center` }"
+                  @click="setSectionBackgroundAlignment(option.value)"
+                >
+                  {{ option.label }}
+                </button>
+              </div>
+            </div>
+            <div v-if="sectionHasAiBackground(selectedSection) || selectedSection.aiDesign?.enabled !== false" class="section-background-fade">
+              <label>
+                <span>배경 이미지 페이드</span>
+                <select
+                  :value="selectedSectionStyle.backgroundFadeMode || 'none'"
+                  @change="setSectionBackgroundFadeMode($event.target.value)"
+                >
+                  <option value="none">페이드 없음</option>
+                  <option value="left">왼쪽 페이드</option>
+                  <option value="right">오른쪽 페이드</option>
+                  <option value="both">양끝 페이드</option>
+                </select>
+              </label>
+              <label v-if="(selectedSectionStyle.backgroundFadeMode || 'none') !== 'none'">
+                <span>페이드 강도</span>
+                <select
+                  :value="selectedSectionStyle.backgroundFadeStrength || 'medium'"
+                  @change="updateSectionStyle(selectedSection.sectionKey, { backgroundFadeStrength: $event.target.value })"
+                >
+                  <option value="soft">약하게</option>
+                  <option value="medium">보통</option>
+                  <option value="strong">강하게</option>
+                </select>
+              </label>
+            </div>
+            <div class="section-size-control">
+              <div>
+                <span>섹션 높이</span>
+                <strong>{{ selectedSectionStyle.minHeight ? `${Math.round(selectedSectionStyle.minHeight)}px` : "자동" }}</strong>
+              </div>
+              <button
+                type="button"
+                :disabled="!selectedSectionStyle.minHeight"
+                @click="resetSectionHeight"
+              >
+                높이 초기화
+              </button>
+            </div>
+          </section>
+
+          <div class="component-property-list">
+            <section
+              v-for="item in selectedSection.items || []"
+              :key="item.itemKey"
+              class="component-property-accordion"
+              :class="{ open: expandedComponentKey === componentKey(selectedSection, item) }"
+            >
+              <button
+                type="button"
+                class="component-property-trigger"
+                :aria-expanded="expandedComponentKey === componentKey(selectedSection, item)"
+                @click="toggleComponent(selectedSection, item)"
+              >
+                <span>{{ item.name }}</span>
+                <small>{{ item.fieldKind }}</small>
+                <i aria-hidden="true"></i>
+              </button>
+              <div class="component-property-body">
+                <div>
+                  <div
+                    v-if="selectedItem && selectedItem.itemKey === item.itemKey"
+                    class="component-property-content"
+                  >
           <label v-if="selectedItem.fieldKind === 'cta'">
             <span>버튼 텍스트</span>
             <input :disabled="selectedItem.isLocked" :value="selectedValue?.label" @input="updateObjectField('label', $event.target.value)" />
@@ -1030,63 +1121,13 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
             >
               자동 배치로 복원
             </button>
-            <div v-if="sectionHasAiBackground(selectedSection)" class="section-background-alignment">
-              <span>배경 이미지 정렬</span>
-              <div role="group" aria-label="배경 이미지 가로 정렬">
-                <button
-                  v-for="option in [
-                    { value: 'left', label: '왼쪽' },
-                    { value: 'center', label: '중앙' },
-                    { value: 'right', label: '오른쪽' },
-                  ]"
-                  :key="option.value"
-                  type="button"
-                  :class="{ active: (selectedSectionStyle.backgroundPosition || 'center center') === `${option.value} center` }"
-                  @click="setSectionBackgroundAlignment(option.value)"
-                >
-                  {{ option.label }}
-                </button>
-              </div>
-            </div>
-            <div v-if="sectionHasAiBackground(selectedSection) || selectedSection?.aiDesign?.enabled !== false" class="section-background-fade">
-              <label>
-                <span>배경 이미지 페이드</span>
-                <select
-                  :value="selectedSectionStyle.backgroundFadeMode || 'none'"
-                  @change="setSectionBackgroundFadeMode($event.target.value)"
-                >
-                  <option value="none">페이드 없음</option>
-                  <option value="left">왼쪽 페이드</option>
-                  <option value="right">오른쪽 페이드</option>
-                  <option value="both">양끝 페이드</option>
-                </select>
-              </label>
-              <label v-if="(selectedSectionStyle.backgroundFadeMode || 'none') !== 'none'">
-                <span>페이드 강도</span>
-                <select
-                  :value="selectedSectionStyle.backgroundFadeStrength || 'medium'"
-                  @change="updateSectionStyle(selectedSection.sectionKey, { backgroundFadeStrength: $event.target.value })"
-                >
-                  <option value="soft">약하게</option>
-                  <option value="medium">보통</option>
-                  <option value="strong">강하게</option>
-                </select>
-              </label>
-            </div>
-            <div class="section-size-control">
-              <div>
-                <span>섹션 높이</span>
-                <strong>{{ selectedSectionStyle.minHeight ? `${Math.round(selectedSectionStyle.minHeight)}px` : "자동" }}</strong>
-              </div>
-              <button
-                type="button"
-                :disabled="!selectedSectionStyle.minHeight"
-                @click="resetSectionHeight"
-              >
-                높이 초기화
-              </button>
-            </div>
           </section>
+                  </div>
+                </div>
+              </div>
+            </section>
+            <span v-if="!selectedSection.items?.length" class="component-property-empty">등록된 컴포넌트 없음</span>
+          </div>
         </div>
       </aside>
     </section>

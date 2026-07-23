@@ -1317,6 +1317,7 @@ async function generateSectionAiDesign(section, targetType = "section-background
     try {
       const retried = await processAssetJobs(previous);
       saveSectionAiRun(sectionKey, retried, sectionInputs);
+      if (retried.status === "ready") await applySectionAiDesign(section, retried);
     } catch (error) {
       contentState.sectionDesignRuns[sectionKey] = { ...previous, status: "failed", errorMessage: error.message || "섹션 이미지 재생성에 실패했습니다." };
       saveWizardContent();
@@ -1337,6 +1338,7 @@ async function generateSectionAiDesign(section, targetType = "section-background
         body: JSON.stringify({ runId: previous.id }),
       });
       saveSectionAiRun(sectionKey, retried.run, sectionInputs);
+      if (retried.run?.status === "ready") await applySectionAiDesign(section, retried.run);
     } catch (error) {
       contentState.sectionDesignRuns[sectionKey] = {
         ...contentState.sectionDesignRuns[sectionKey],
@@ -1375,7 +1377,11 @@ async function generateSectionAiDesign(section, targetType = "section-background
     });
     saveSectionAiRun(sectionKey, created.run, sectionInputs);
     postWizardLayoutSnapshot();
-    if (["ready", "applied"].includes(created.run.status)) return;
+    if (created.run.status === "ready") {
+      await applySectionAiDesign(section, created.run);
+      return;
+    }
+    if (created.run.status === "applied") return;
     const processed = created.run.status === "generating_assets"
       ? created
       : await fetchJson("/api/promo-section-design-plan-process", {
@@ -1383,11 +1389,13 @@ async function generateSectionAiDesign(section, targetType = "section-background
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ runId: created.run.id }),
       });
-    saveSectionAiRun(sectionKey, processed.run, sectionInputs);
+    let completedRun = processed.run;
+    saveSectionAiRun(sectionKey, completedRun, sectionInputs);
     if (processed.run.status === "generating_assets") {
-      const imagedRun = await processAssetJobs(processed.run);
-      saveSectionAiRun(sectionKey, imagedRun, sectionInputs);
+      completedRun = await processAssetJobs(processed.run);
+      saveSectionAiRun(sectionKey, completedRun, sectionInputs);
     }
+    if (completedRun?.status === "ready") await applySectionAiDesign(section, completedRun);
   } catch (error) {
     contentState.sectionDesignRuns[sectionKey] = {
       ...contentState.sectionDesignRuns[sectionKey],
@@ -1407,6 +1415,8 @@ async function applySectionAiDesign(section, saved) {
     return;
   }
   try {
+    saveSectionAiRun(section.sectionKey, { ...saved, status: "applying" }, contentState.sectionInputs?.[section.sectionKey]);
+    postWizardLayoutSnapshot();
     const result = await fetchJson("/api/promo-section-design-apply", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1501,6 +1511,12 @@ async function applySectionAiDesign(section, saved) {
     saveSectionAiRun(section.sectionKey, appliedRun, contentState.sectionInputs?.[section.sectionKey]);
     postWizardLayoutSnapshot();
   } catch (error) {
+    saveSectionAiRun(section.sectionKey, {
+      ...saved,
+      status: "failed",
+      errorMessage: error.message || "AI 디자인을 적용하지 못했습니다.",
+    }, contentState.sectionInputs?.[section.sectionKey]);
+    postWizardLayoutSnapshot();
     window.alert(error.message || "AI 디자인을 적용하지 못했습니다.");
   }
 }
