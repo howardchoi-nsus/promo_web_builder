@@ -7,7 +7,6 @@ const SECTION_STYLE_KEYS = new Set([
   "backgroundSize",
   "backgroundPosition",
   "backgroundRepeat",
-  "backgroundColor",
   "backgroundFadeMode",
   "backgroundFadeColor",
   "backgroundFadeStrength",
@@ -223,7 +222,7 @@ function validatePatch(section, generated, constraints) {
       && !["soft", "medium", "strong"].includes(style.backgroundFadeStrength)) {
       errors.push(`Unsupported section fade strength: ${style.backgroundFadeStrength}`);
     }
-    for (const colorKey of ["backgroundColor", "backgroundFadeColor"]) {
+    for (const colorKey of ["backgroundFadeColor"]) {
       if (style?.[colorKey] !== undefined && !/^#[0-9a-f]{6}$/i.test(String(style[colorKey]))) {
         errors.push(`Unsupported section color: ${style[colorKey]}`);
       }

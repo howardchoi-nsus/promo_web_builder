@@ -206,10 +206,13 @@ function normalizedFadeMode(style) {
 function effectiveSectionBackgroundColor(style) {
   const sectionColor = String(style.backgroundColor || "").trim();
   if (/^#[0-9a-f]{6}$/i.test(sectionColor)) return sectionColor;
-  const fadeColor = String(style.backgroundFadeColor || "").trim();
-  if (/^#[0-9a-f]{6}$/i.test(fadeColor)) return fadeColor;
   const themeColor = String(props.designSpec?.theme?.backgroundColor || "").trim();
   return /^#[0-9a-f]{6}$/i.test(themeColor) ? themeColor : "#f5f7fb";
+}
+
+function effectiveSectionFadeColor(style, backgroundColor) {
+  const fadeColor = String(style.backgroundFadeColor || "").trim();
+  return /^#[0-9a-f]{6}$/i.test(fadeColor) ? fadeColor : backgroundColor;
 }
 
 function backgroundFadeGradient(mode, color, strength = "medium") {
@@ -236,8 +239,9 @@ function inlineSectionStyle(section) {
   const canvasHeight = style.minHeight || defaultSectionHeight(section);
   const backgroundImage = sectionBackgroundUrl(section);
   const backgroundColor = effectiveSectionBackgroundColor(style);
+  const fadeColor = effectiveSectionFadeColor(style, backgroundColor);
   const fadeGradient = backgroundImage
-    ? backgroundFadeGradient(normalizedFadeMode(style), backgroundColor, style.backgroundFadeStrength)
+    ? backgroundFadeGradient(normalizedFadeMode(style), fadeColor, style.backgroundFadeStrength)
     : "";
   return {
     height: `${Math.max(50, canvasHeight)}px`,

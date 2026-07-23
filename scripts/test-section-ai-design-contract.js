@@ -86,6 +86,13 @@ assert.equal(generated.imageRequest.itemKey, null);
 assert.equal(generated.imageRequest.target.type, "section-background");
 assert.equal(generated.imageRequest.safeArea, "left-copy");
 assert.equal(validatePatch(section, generated, constraints).ok, true);
+const backgroundColorOverride = structuredClone(generated);
+backgroundColorOverride.layoutPatch.sectionStyles.heroBanner.backgroundColor = "#ffffff";
+assert.equal(validatePatch(section, backgroundColorOverride, constraints).ok, false);
+assert.match(
+  validatePatch(section, backgroundColorOverride, constraints).errors.join("; "),
+  /Unsupported section style: backgroundColor/
+);
 const selectedTargetGenerated = layoutPatchFromResult(section, {
   layoutVariant: "split-left",
   minHeight: 520,

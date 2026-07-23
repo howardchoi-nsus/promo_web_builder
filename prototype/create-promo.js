@@ -1225,11 +1225,24 @@ function saveSectionAiRun(sectionKey, run, sourceInputs) {
   saveWizardContent();
 }
 
+function resolvedSectionBackgroundColor(sectionKey) {
+  const sectionColor = String(
+    wizardResolvedLayout?.sectionStyles?.[sectionKey]?.backgroundColor || ""
+  ).trim();
+  if (/^#[0-9a-f]{6}$/i.test(sectionColor)) return sectionColor.toLowerCase();
+  const themeColor = String(
+    wizardResolvedLayout?.theme?.backgroundColor || FALLBACK_LAYOUT.theme.backgroundColor
+  ).trim();
+  return /^#[0-9a-f]{6}$/i.test(themeColor)
+    ? themeColor.toLowerCase()
+    : FALLBACK_LAYOUT.theme.backgroundColor;
+}
+
 function sectionAiIsStale(sectionKey, saved = sectionAiRun(sectionKey)) {
   if (!saved?.sourceInputs) return false;
   const contentChanged = JSON.stringify(saved.sourceInputs) !== JSON.stringify(contentState.sectionInputs?.[sectionKey] || {});
   const generatedBackgroundColor = String(saved.inputSnapshot?.design?.backgroundColor || "").toLowerCase();
-  const currentBackgroundColor = String(wizardResolvedLayout?.theme?.backgroundColor || FALLBACK_LAYOUT.theme.backgroundColor).toLowerCase();
+  const currentBackgroundColor = resolvedSectionBackgroundColor(sectionKey);
   return contentChanged || Boolean(generatedBackgroundColor && generatedBackgroundColor !== currentBackgroundColor);
 }
 
@@ -1372,7 +1385,7 @@ async function generateSectionAiDesign(section, targetType = "section-background
         targetType: requestedTargetType,
         targetItemKey: String(targetItemKey || "").trim() || null,
         requestMode: "full",
-        backgroundColor: wizardResolvedLayout?.theme?.backgroundColor || FALLBACK_LAYOUT.theme.backgroundColor,
+        backgroundColor: resolvedSectionBackgroundColor(sectionKey),
       }),
     });
     saveSectionAiRun(sectionKey, created.run, sectionInputs);
@@ -1423,7 +1436,7 @@ async function applySectionAiDesign(section, saved) {
       body: JSON.stringify({
         runId: saved.id,
         sectionInputs: contentState.sectionInputs?.[section.sectionKey] || {},
-        backgroundColor: wizardResolvedLayout?.theme?.backgroundColor || FALLBACK_LAYOUT.theme.backgroundColor,
+        backgroundColor: resolvedSectionBackgroundColor(section.sectionKey),
       }),
     });
     const appliedRun = result.run;
@@ -1432,7 +1445,12 @@ async function applySectionAiDesign(section, saved) {
     wizardResolvedLayout = wizardResolvedLayout || JSON.parse(JSON.stringify(wizardBaseLayout || FALLBACK_LAYOUT));
     wizardResolvedLayout.sectionStyles = { ...(wizardResolvedLayout.sectionStyles || {}) };
     Object.entries(patch.sectionStyles || {}).forEach(([key, value]) => {
-      wizardResolvedLayout.sectionStyles[key] = { ...(wizardResolvedLayout.sectionStyles[key] || {}), ...(value || {}) };
+      const safePatch = { ...(value || {}) };
+      delete safePatch.backgroundColor;
+      wizardResolvedLayout.sectionStyles[key] = {
+        ...(wizardResolvedLayout.sectionStyles[key] || {}),
+        ...safePatch,
+      };
     });
     wizardResolvedLayout.itemStyles = { ...(wizardResolvedLayout.itemStyles || {}) };
     Object.entries(patch.itemStyles || {}).forEach(([key, value]) => {
@@ -1501,10 +1519,7 @@ async function applySectionAiDesign(section, saved) {
             ? currentSectionStyle.backgroundFadeMode
             : backgroundFadeMode,
           backgroundFadeStrength: currentSectionStyle.backgroundFadeStrength || "medium",
-          backgroundFadeColor: appliedImage.backgroundColor
-            || currentSectionStyle.backgroundColor
-            || wizardResolvedLayout?.theme?.backgroundColor
-            || FALLBACK_LAYOUT.theme.backgroundColor,
+          backgroundFadeColor: resolvedSectionBackgroundColor(section.sectionKey),
         };
       }
     }
