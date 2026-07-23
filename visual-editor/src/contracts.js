@@ -62,9 +62,25 @@ export function createSectionInputs(sections, previous = {}) {
     section.sectionKey,
     Object.fromEntries((section.items || []).map((item) => [
       item.itemKey,
-      previous?.[section.sectionKey]?.[item.itemKey] ?? createDefaultValue(item),
+      createComponentInputValue(item, previous?.[section.sectionKey]?.[item.itemKey]),
     ])),
   ]));
+}
+
+function createComponentInputValue(item, previousValue) {
+  const fields = Array.isArray(item?.fields) ? item.fields : [];
+  if (fields.length <= 1) {
+    return previousValue ?? createDefaultValue(fields[0] || item);
+  }
+  const previousFields = previousValue?.fields && typeof previousValue.fields === "object"
+    ? previousValue.fields
+    : {};
+  return {
+    fields: Object.fromEntries(fields.map((field) => [
+      field.fieldKey,
+      previousFields[field.fieldKey] ?? createDefaultValue(field),
+    ])),
+  };
 }
 
 export function createSnapshot({ template, configRevision, sections, sectionInputs, designSpec = DEFAULT_DESIGN_SPEC }) {

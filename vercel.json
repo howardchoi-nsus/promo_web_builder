@@ -7,6 +7,12 @@
     },
     "api/promo-section-design-image-process.js": {
       "maxDuration": 300
+    },
+    "api/promo-section-design-plan-process.js": {
+      "maxDuration": 120
+    },
+    "api/promo-section-design-asset-process.js": {
+      "maxDuration": 300
     }
   }
 }

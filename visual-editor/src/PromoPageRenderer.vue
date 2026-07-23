@@ -23,8 +23,15 @@ const orderedSections = computed(() => {
   ));
 });
 
-function valueFor(section, item) {
-  return props.content?.sectionInputs?.[section.sectionKey]?.[item.itemKey];
+function componentFields(item) {
+  const fields = Array.isArray(item?.fields) ? item.fields : [];
+  return fields.length ? fields : [item];
+}
+
+function valueFor(section, item, field = null) {
+  const value = props.content?.sectionInputs?.[section.sectionKey]?.[item.itemKey];
+  if (!field || componentFields(item).length <= 1) return value;
+  return value?.fields?.[field.fieldKey];
 }
 
 function imageUrl(value) {
@@ -105,11 +112,12 @@ function aiStatusLabel(status, targetType) {
   return labels[status] || `${targetLabel} 처리 중`;
 }
 
-function aiTargetState(section, item = null) {
+function aiTargetState(section, item = null, field = null) {
   const run = sectionDesignRun(section);
   const target = run?.constraintsSnapshot?.imageTarget;
   const matchesTarget = item
     ? target?.type === "item" && target.itemKey === item.itemKey
+      && (!field || !target.fieldKey || target.fieldKey === field.fieldKey)
     : target?.type === "section-background";
   if (!matchesTarget) return null;
   if (AI_PROCESSING_STATUSES.has(run.status)) {
@@ -162,6 +170,35 @@ function imageFrameStyle(section, item) {
   };
 }
 
+function fieldStyle(section, item, field) {
+  return props.designSpec?.itemStyles?.[`${styleKey(section, item)}.${field.fieldKey}`] || {};
+}
+
+function imageFieldFrameStyle(section, item, field) {
+  const style = fieldStyle(section, item, field);
+  const url = imageUrl(valueFor(section, item, field));
+  const shape = ["square", "rounded", "circle"].includes(style.shape) ? style.shape : "square";
+  return {
+    backgroundImage: url ? `url(${JSON.stringify(url)})` : undefined,
+    backgroundSize: ["contain", "cover"].includes(style.imageFit) ? style.imageFit : "contain",
+    backgroundPosition: style.imagePosition || "center center",
+    backgroundRepeat: "no-repeat",
+    aspectRatio: normalizedAspectRatio(style.aspectRatio || field.image?.aspectRatio, "1 / 1"),
+    borderRadius: shape === "circle" ? "50%" : shape === "rounded" ? "var(--promo-image-radius, 24px)" : "0",
+  };
+}
+
+function imageFieldAccessibility(section, item, field) {
+  const style = fieldStyle(section, item, field);
+  const value = valueFor(section, item, field);
+  if (style.decorative === true) return { ariaHidden: "true", role: undefined, label: undefined };
+  return {
+    ariaHidden: undefined,
+    role: "img",
+    label: String(style.accessibleLabel || value?.alt || value?.description || field.name || "Promotion image").trim(),
+  };
+}
+
 function imageFrameAccessibility(section, item) {
   const style = itemStyle(section, item);
   const value = valueFor(section, item);
@@ -174,6 +211,9 @@ function imageFrameAccessibility(section, item) {
 }
 
 function estimatedItemHeight(item) {
+  if (componentFields(item).length > 1) {
+    return componentFields(item).reduce((height, field) => height + estimatedItemHeight(field), 24);
+  }
   if (item.fieldKind === "image") return 250;
   if (item.fieldKind === "cta") return 64;
   return 86;
@@ -631,7 +671,40 @@ function startSectionResize(event, section) {
             @pointerdown="startDrag($event, section, item)"
             @dblclick="startTextEdit($event, section, item)"
           >
-            <template v-if="item.fieldKind === 'cta'">
+            <div v-if="componentFields(item).length > 1" class="rendered-component-fields">
+              <template v-for="field in componentFields(item)" :key="field.fieldKey">
+                <a
+                  v-if="field.fieldKind === 'cta'"
+                  class="rendered-cta rendered-component-field"
+                  :href="ctaUrl(valueFor(section, item, field))"
+                  :target="valueFor(section, item, field)?.target || '_self'"
+                  :rel="valueFor(section, item, field)?.target === '_blank' ? 'noopener noreferrer' : undefined"
+                >{{ valueFor(section, item, field)?.label || field.name }}</a>
+                <div v-else-if="field.fieldKind === 'image'" class="rendered-component-field">
+                  <div
+                    class="rendered-image-frame rendered-component-image-frame"
+                    :style="imageFieldFrameStyle(section, item, field)"
+                    :role="imageFieldAccessibility(section, item, field).role"
+                    :aria-label="imageFieldAccessibility(section, item, field).label"
+                    :aria-hidden="imageFieldAccessibility(section, item, field).ariaHidden"
+                    :aria-busy="aiTargetState(section, item, field)?.kind === 'processing' ? 'true' : undefined"
+                  >
+                    <div v-if="!imageUrl(valueFor(section, item, field))" class="rendered-image__placeholder">
+                      <span>{{ field.name }}</span>
+                      <small>이미지 준비 중</small>
+                    </div>
+                  </div>
+                  <div v-if="editable && aiTargetState(section, item, field)" class="item-ai-state" :class="`is-${aiTargetState(section, item, field).kind}`" role="status" aria-live="polite">
+                    <i v-if="aiTargetState(section, item, field).kind === 'processing'" aria-hidden="true"></i>
+                    <span>{{ aiTargetState(section, item, field).label }}</span>
+                  </div>
+                </div>
+                <p v-else-if="hasContent(valueFor(section, item, field))" class="rendered-text rendered-component-field">{{ valueFor(section, item, field) }}</p>
+                <p v-else class="rendered-empty rendered-component-field">{{ field.name }}</p>
+              </template>
+            </div>
+
+            <template v-else-if="item.fieldKind === 'cta'">
               <a
                 class="rendered-cta"
                 :href="ctaUrl(valueFor(section, item))"

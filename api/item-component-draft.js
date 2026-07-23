@@ -21,6 +21,7 @@ module.exports = async function handler(req, res) {
           where component_id = ${componentId}::uuid and status = 'draft'
         ) then 1 / 0 else 1 end as ok
       )
+      , inserted as (
       insert into wizard_item_component_versions (
         component_id, version, status, field_kind, text_type, editor_schema, default_value,
         capabilities, image_policy, cta_policy, style_slots, change_note
@@ -29,9 +30,24 @@ module.exports = async function handler(req, res) {
         'draft', source.field_kind, source.text_type, source.editor_schema, source.default_value,
         source.capabilities, source.image_policy, source.cta_policy, source.style_slots,
         ${String(body.changeNote || "Draft created.")}
-      from source cross join guard returning id::text
+      from source cross join guard returning id
+      )
+      select inserted.id::text, source.id::text as source_version_id
+      from inserted cross join source
     `;
     if (!rows.length) return res.status(404).json({ error: "Component not found" });
+    await sql`
+      insert into wizard_item_component_version_fields (
+        component_version_id, field_key, name, field_kind, text_type, sort_order,
+        is_required, is_locked, default_value, editor_schema, capabilities,
+        image_policy, cta_policy, style_slots
+      )
+      select ${rows[0].id}::uuid, field_key, name, field_kind, text_type, sort_order,
+        is_required, is_locked, default_value, editor_schema, capabilities,
+        image_policy, cta_policy, style_slots
+      from wizard_item_component_version_fields
+      where component_version_id = ${rows[0].source_version_id}::uuid
+    `;
     return res.status(201).json({ ok: true, component: await fetchComponent(sql, componentId, rows[0].id) });
   } catch (error) {
     const conflict = /division by zero/i.test(error.message || "");

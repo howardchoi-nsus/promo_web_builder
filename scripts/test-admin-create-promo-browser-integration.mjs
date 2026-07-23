@@ -63,20 +63,23 @@ try {
   assert.equal((await saveResponse.json()).layout.layoutRevision, 2);
 
   await page.goto(`${origin}/create-promo.html`, { waitUntil: "networkidle" });
-  await page.locator('[data-step="3"]').click();
+  await page.locator('[data-step="2"]').click();
   await page.locator('[data-field-key="title"] input').fill("Admin Layout Integration");
   await page.locator('[data-field-key="promotionPurpose"] select').selectOption("이벤트");
   await page.locator('[data-field-key="market"] input').fill("KR");
   await page.locator('[data-field-key="audience"] select').selectOption("신규");
   await page.locator('[data-field-key="campaignTone"] select').selectOption("활기찬");
-  await page.locator(".content-substep-actions .primary-action").click();
+  await page.locator("#next-step").click();
   await page.locator('.wizard-template-tile[aria-pressed="true"]').waitFor();
-  await page.locator(".content-substep-actions .primary-action").click();
+  await page.locator("#next-step").click();
 
   const editorFrame = page.frameLocator("iframe.wizard-layout-frame");
   await editorFrame.locator(".editor-workspace.is-create-promo-wizard").waitFor({ timeout: 10_000 });
-  await page.locator(".content-substep-actions .primary-action").click();
-  await page.locator("iframe.web-output-frame").waitFor({ timeout: 10_000 });
+  const outputPagePromise = context.waitForEvent("page");
+  await page.locator("#next-step").click();
+  const outputPage = await outputPagePromise;
+  await outputPage.locator(".promo-renderer").waitFor({ timeout: 10_000 });
+  await outputPage.close();
 
   const snapshot = await page.evaluate(() => JSON.parse(localStorage.getItem("promoVisualEditor.snapshot.v1") || "null"));
   assert.equal(snapshot?.layoutRevision, 2);

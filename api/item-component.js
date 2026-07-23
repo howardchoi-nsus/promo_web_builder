@@ -1,5 +1,5 @@
 const {
-  getSql, parseBody, validateDefinition, fetchComponent, fetchComponentVersions,
+  getSql, parseBody, validateDefinition, replaceVersionFields, fetchComponent, fetchComponentVersions,
 } = require("./_item-components-store");
 
 module.exports = async function handler(req, res) {
@@ -47,6 +47,7 @@ module.exports = async function handler(req, res) {
         change_note = ${String(body.changeNote || "Draft updated.")}, updated_at = now()
       where id = ${versionId}::uuid
     `;
+    await replaceVersionFields(sql, versionId, definition.fields);
     return res.status(200).json({ ok: true, component: await fetchComponent(sql, componentId, versionId) });
   } catch (error) {
     return res.status(error.statusCode || 500).json({ error: "Item component API failed", message: error.message });

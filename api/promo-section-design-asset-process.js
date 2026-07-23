@@ -1,5 +1,6 @@
 const { getSql, parseBody, fetchRun, transitionRun } = require("./_promo-section-design-store");
 const { generateSectionImage } = require("./_promo-section-design-provider");
+const { randomUUID } = require("node:crypto");
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") { res.setHeader("Allow", "POST"); return res.status(405).json({ error: "Method not allowed" }); }
@@ -8,11 +9,21 @@ module.exports = async function handler(req, res) {
   if (!jobId) return res.status(400).json({ error: "jobId is required" });
   const sql = getSql();
   let job;
+  const leaseToken = randomUUID();
   try {
     const rows = await sql`
       update promo_section_design_asset_jobs set status = 'processing', current_attempt = current_attempt + 1,
+        lease_token = ${leaseToken}::uuid, lease_expires_at = now() + interval '7 minutes',
+        heartbeat_at = now(), failure_stage = null,
         error_code = null, error_message = null, updated_at = now()
-      where id = ${jobId}::uuid and status in ('queued', 'failed') returning *
+      where id = ${jobId}::uuid
+        and current_attempt < max_attempts
+        and (next_retry_at is null or next_retry_at <= now())
+        and (
+          status in ('queued', 'failed')
+          or (status = 'processing' and lease_expires_at < now())
+        )
+      returning *
     `;
     if (!rows.length) {
       const current = await sql`select id::text, status, result_snapshot from promo_section_design_asset_jobs where id = ${jobId}::uuid limit 1`;
@@ -27,6 +38,9 @@ module.exports = async function handler(req, res) {
       prompt: request.prompt, safeArea: request.safeArea || "none",
       backgroundColor: run.inputSnapshot?.design?.backgroundColor,
       aspectRatio: request.aspectRatio || run.constraintsSnapshot?.imageAspectRatio,
+      provider: request.promptConfig?.provider,
+      model: request.promptConfig?.model,
+      modelOptions: request.promptConfig?.modelOptions,
     });
     if (image.bytes.length < 1024) throw Object.assign(new Error("Generated image is too small"), { code: "IMAGE_VALIDATION_FAILED" });
     const extension = image.mimeType === "image/jpeg" ? "jpg" : image.mimeType === "image/webp" ? "webp" : "png";
@@ -35,7 +49,12 @@ module.exports = async function handler(req, res) {
     const { put } = await import("@vercel/blob");
     const blob = await put(storageKey, image.bytes, { access: "private", contentType: image.mimeType });
     const result = {
-      target: { type: job.target_type, sectionKey: run.sectionKey, itemKey: job.target_item_key || null },
+      target: {
+        type: job.target_type, sectionKey: run.sectionKey, itemKey: job.target_item_key || null,
+        componentInstanceId: job.component_instance_id || null,
+        fieldKey: job.target_field_key || null,
+      },
+      targetFieldKey: job.target_field_key || null,
       storageKey, assetUrl: blob.url, proxyUrl: `/api/promo-section-design-asset-image?jobId=${encodeURIComponent(jobId)}`,
       mimeType: image.mimeType, width: image.width, height: image.height,
       safeArea: request.safeArea || "none", backgroundColor: run.inputSnapshot?.design?.backgroundColor,
@@ -43,7 +62,10 @@ module.exports = async function handler(req, res) {
     };
     await sql`
       update promo_section_design_asset_jobs set status = 'ready', result_snapshot = ${JSON.stringify(result)}::jsonb,
-        completed_at = now(), updated_at = now() where id = ${jobId}::uuid and status = 'processing'
+        provider_request_id = ${image.provider?.requestId || null}, storage_key = ${storageKey},
+        lease_token = null, lease_expires_at = null, heartbeat_at = now(), next_retry_at = null,
+        completed_at = now(), updated_at = now()
+      where id = ${jobId}::uuid and status = 'processing' and lease_token = ${leaseToken}::uuid
     `;
     const pending = await sql`
       select count(*) filter (where status <> 'ready')::integer as pending,
@@ -61,8 +83,12 @@ module.exports = async function handler(req, res) {
   } catch (error) {
     if (job) await sql`
       update promo_section_design_asset_jobs set status = 'failed', error_code = ${error.code || "SECTION_ASSET_FAILED"},
-        error_message = ${error.message}, completed_at = now(), updated_at = now()
-      where id = ${jobId}::uuid and status = 'processing'
+        error_message = ${error.message}, failure_stage = 'provider',
+        lease_token = null, lease_expires_at = null, heartbeat_at = now(),
+        next_retry_at = case when current_attempt < max_attempts
+          then now() + least(current_attempt, 5) * interval '15 seconds' else null end,
+        completed_at = now(), updated_at = now()
+      where id = ${jobId}::uuid and status = 'processing' and lease_token = ${leaseToken}::uuid
     `.catch(() => null);
     return res.status(error.statusCode >= 400 && error.statusCode < 500 ? error.statusCode : 502).json({ error: "Section design asset generation failed", message: error.message });
   }

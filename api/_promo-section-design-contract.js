@@ -47,7 +47,10 @@ function defaultConstraints(section, layout = {}) {
   const visibleItems = (section.items || []).filter((item) => item.isVisibleInWizard !== false);
   const lockedItems = visibleItems.filter((item) => item.isLocked).map((item) => item.itemKey);
   const imageItemKeys = new Set(visibleItems
-    .filter((item) => item.fieldKind === "image" && item.image?.allowedSources?.includes("ai"))
+    .filter((item) => (
+      (item.fieldKind === "image" && item.image?.allowedSources?.includes("ai"))
+      || (item.fields || []).some((field) => field.fieldKind === "image" && field.image?.allowedSources?.includes("ai"))
+    ))
     .map((item) => item.itemKey));
   const policy = section.aiDesign && typeof section.aiDesign === "object" ? section.aiDesign : {};
   const allowedLayoutVariants = [...new Set(
@@ -112,8 +115,26 @@ function resolveImageTarget(constraints, sectionKey, targetItemKey = "", targetT
 function analyzableSectionContent(section, sectionInputs) {
   const result = {};
   (section.items || []).forEach((item) => {
-    if (item.isVisibleInWizard === false || item.fieldKind === "image") return;
+    if (item.isVisibleInWizard === false) return;
     const value = sectionInputs?.[item.itemKey];
+    if (Array.isArray(item.fields) && item.fields.length > 1) {
+      const fieldValues = value?.fields || {};
+      const collected = {};
+      item.fields.forEach((field) => {
+        if (field.fieldKind === "image") return;
+        const fieldValue = fieldValues[field.fieldKey];
+        if (field.fieldKind === "cta") {
+          const label = String(fieldValue?.label || "").trim();
+          if (label) collected[field.fieldKey] = { label };
+        } else {
+          const text = String(fieldValue || "").trim();
+          if (text) collected[field.fieldKey] = text;
+        }
+      });
+      if (Object.keys(collected).length) result[item.itemKey] = { fields: collected };
+      return;
+    }
+    if (item.fieldKind === "image") return;
     if (item.fieldKind === "cta") {
       const label = String(value?.label || "").trim();
       if (label) result[item.itemKey] = { label };

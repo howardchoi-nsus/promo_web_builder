@@ -13,6 +13,10 @@ function toRun(row) {
     status: row.status,
     inputSnapshot: row.input_snapshot || {},
     inputHash: row.input_hash,
+    executionKey: row.execution_key || null,
+    hashContractVersion: Number(row.hash_contract_version || 1),
+    promptSnapshot: row.prompt_snapshot || {},
+    tokenValuesHash: row.token_values_hash || "",
     constraintsSnapshot: row.constraints_snapshot || {},
     requestMode: row.request_mode || "full",
     componentVersionsSnapshot: row.component_versions_snapshot || [],
@@ -31,44 +35,55 @@ function toRun(row) {
     updatedAt: row.updated_at || null,
     completedAt: row.completed_at || null,
     appliedAt: row.applied_at || null,
+    applyingExpiresAt: row.applying_expires_at || null,
   };
 }
 
 async function fetchRun(sql, id) {
   const rows = await sql`
     select id::text, promo_run_id::text, form_template_id::text, template_key_snapshot, template_version,
-      layout_revision, section_key, status, input_snapshot, input_hash, constraints_snapshot,
+      layout_revision, section_key, status, input_snapshot, input_hash, execution_key,
+      hash_contract_version, prompt_snapshot, token_values_hash, constraints_snapshot,
       request_mode, component_versions_snapshot, token_set_version_id::text, base_revision,
       design_plan, effective_patch,
       layout_result, image_result, provider_snapshot, usage_snapshot, current_attempt,
-      error_code, error_message, created_at, updated_at, completed_at, applied_at
+      error_code, error_message, created_at, updated_at, completed_at, applied_at, applying_expires_at
     from promo_section_design_runs where id = ${id}::uuid limit 1
   `;
   return toRun(rows[0]);
 }
 
 async function createRun(sql, input) {
-  const existing = await sql`
-    select id::text from promo_section_design_runs
-    where form_template_id = ${input.formTemplateId}::uuid
-      and section_key = ${input.sectionKey}
-      and input_hash = ${input.inputHash}
-      and template_version = ${input.templateVersion}
-      and layout_revision = ${input.layoutRevision}
-      and status in ('queued', 'analyzing_content', 'generating_layout', 'validating_layout',
-        'generating_assets', 'validating_assets', 'ready')
-    order by created_at desc limit 1
-  `;
+  const existing = input.executionKey ? await sql`
+      select id::text from promo_section_design_runs
+      where execution_key = ${input.executionKey}
+        and status in ('queued', 'analyzing_content', 'generating_layout', 'validating_layout',
+          'generating_assets', 'validating_assets', 'ready', 'applying')
+      order by created_at desc limit 1
+    ` : await sql`
+      select id::text from promo_section_design_runs
+      where form_template_id = ${input.formTemplateId}::uuid
+        and section_key = ${input.sectionKey}
+        and input_hash = ${input.inputHash}
+        and template_version = ${input.templateVersion}
+        and layout_revision = ${input.layoutRevision}
+        and status in ('queued', 'analyzing_content', 'generating_layout', 'validating_layout',
+          'generating_assets', 'validating_assets', 'ready')
+      order by created_at desc limit 1
+    `;
   if (existing[0]) return { run: await fetchRun(sql, existing[0].id), reused: true };
   const rows = await sql`
     insert into promo_section_design_runs (
       promo_run_id, form_template_id, template_key_snapshot, template_version, layout_revision, section_key,
-      input_snapshot, input_hash, constraints_snapshot, request_mode, component_versions_snapshot,
+      input_snapshot, input_hash, execution_key, hash_contract_version, prompt_snapshot,
+      token_values_hash, constraints_snapshot, request_mode, component_versions_snapshot,
       token_set_version_id, base_revision
     ) values (
       ${input.promoRunId || null}::uuid, ${input.formTemplateId}::uuid, ${input.templateKey}, ${input.templateVersion},
       ${input.layoutRevision}, ${input.sectionKey}, ${JSON.stringify(input.inputSnapshot)}::jsonb,
-      ${input.inputHash}, ${JSON.stringify(input.constraintsSnapshot)}::jsonb, ${input.requestMode || "full"},
+      ${input.inputHash}, ${input.executionKey || null}, ${input.hashContractVersion || 1},
+      ${JSON.stringify(input.promptSnapshot || {})}::jsonb, ${input.tokenValuesHash || ""},
+      ${JSON.stringify(input.constraintsSnapshot)}::jsonb, ${input.requestMode || "full"},
       ${JSON.stringify(input.componentVersionsSnapshot || [])}::jsonb,
       ${input.tokenSetVersionId || null}::uuid, ${JSON.stringify(input.baseRevision || {})}::jsonb
     ) returning id::text
@@ -95,6 +110,11 @@ async function transitionRun(sql, id, fromStatuses, status, patch = {}) {
         else completed_at
       end,
       applied_at = case when ${status} = 'applied' then now() else applied_at end,
+      applying_expires_at = case
+        when ${status} = 'applying' then now() + interval '2 minutes'
+        when ${status} in ('ready', 'applied', 'failed', 'cancelled') then null
+        else applying_expires_at
+      end,
       updated_at = now()
     where id = ${id}::uuid and status = any(${fromStatuses}::text[])
     returning id::text

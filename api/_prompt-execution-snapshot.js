@@ -127,6 +127,20 @@ function validateStageModelConfig(type, prompt) {
     if (responseFormat !== "image") fail("final_design responseFormat must be image");
     return true;
   }
+  if (type === "section_layout_planner") {
+    if (provider !== "openai") fail("section_layout_planner currently supports the openai provider only");
+    if (responseFormat !== "json_object") fail("section_layout_planner responseFormat must be json_object");
+    return true;
+  }
+  if (type === "section_background_image" || type === "component_image") {
+    const openAiImage = provider === "openai" && /^gpt-image-/i.test(model);
+    const geminiImage = provider === "google" && /^gemini-(?:2\.5-flash-image|3(?:\.1)?-(?:flash|pro)-image)$/i.test(model);
+    if (!openAiImage && !geminiImage) {
+      fail(`${type} requires an approved OpenAI GPT Image or Google Gemini image model`);
+    }
+    if (responseFormat !== "image") fail(`${type} responseFormat must be image`);
+    return true;
+  }
   fail(`Unsupported prompt execution stage: ${type}`);
 }
 

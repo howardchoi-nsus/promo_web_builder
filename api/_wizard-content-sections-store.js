@@ -1,5 +1,6 @@
 const { getDatabaseUrl } = require("./_db");
 const { neon } = require("@neondatabase/serverless");
+const { fetchVersionFields } = require("./_item-components-store");
 
 // Wizard Content Sections define what Promo Wizard Step 2 (Content Input)
 // renders. Rows are versioned the same way as prompt_templates: editing a
@@ -207,6 +208,41 @@ function toSectionItem(row) {
     lockedValue: row.locked_value ?? null,
     createdAt: row.created_at || null,
     updatedAt: row.updated_at || null,
+    fields: [],
+  };
+}
+
+function toSectionComponentField(field) {
+  const imagePolicy = field.imagePolicy || {};
+  const ctaPolicy = field.ctaPolicy || {};
+  return {
+    id: field.id,
+    fieldKey: field.fieldKey,
+    name: field.name,
+    fieldKind: field.fieldKind,
+    textType: field.textType,
+    sortOrder: field.sortOrder,
+    isRequired: field.isRequired,
+    isLocked: field.isLocked,
+    defaultValue: field.defaultValue,
+    editorSchema: field.editorSchema,
+    capabilities: field.capabilities,
+    styleSlots: field.styleSlots,
+    image: field.fieldKind === "image" ? {
+      allowedSources: Array.isArray(imagePolicy.allowedSources) ? imagePolicy.allowedSources : [],
+      promptText: imagePolicy.promptText || "",
+      descriptionEnabled: Boolean(imagePolicy.descriptionEnabled),
+      altTextRequired: Boolean(imagePolicy.altTextRequired),
+      aspectRatio: imagePolicy.aspectRatio || "",
+      maxSizeKb: imagePolicy.maxSizeKb == null ? null : Number(imagePolicy.maxSizeKb),
+    } : null,
+    ctaUtm: field.fieldKind === "cta" ? {
+      source: ctaPolicy.source || "",
+      medium: ctaPolicy.medium || "",
+      campaign: ctaPolicy.campaign || "",
+      content: ctaPolicy.content || "",
+      term: ctaPolicy.term || "",
+    } : null,
   };
 }
 
@@ -245,7 +281,12 @@ async function fetchItemRows(sql, sectionId) {
 
 async function fetchItemsForSection(sql, sectionId) {
   const rows = await fetchItemRows(sql, sectionId);
-  return rows.map(toSectionItem);
+  const items = rows.map(toSectionItem);
+  const fieldsByVersion = await fetchVersionFields(sql, items.map((item) => item.componentVersionId));
+  items.forEach((item) => {
+    item.fields = (fieldsByVersion.get(item.componentVersionId) || []).map(toSectionComponentField);
+  });
+  return items;
 }
 
 async function validateSectionDraft(sql, sectionId) {
@@ -265,7 +306,14 @@ async function validateSectionDraft(sql, sectionId) {
   }
   if (aiDesign.enabled && aiDesign.imageTarget === "item") {
     const visibleImageKeys = new Set(visibleItems
-      .filter((item) => item.fieldKind === "image" && item.image?.allowedSources?.includes("ai"))
+      .filter((item) => (
+        (item.fieldKind === "image" && item.image?.allowedSources?.includes("ai"))
+        || (item.fields || []).some((field) => (
+          field.fieldKind === "image"
+          && !field.isLocked
+          && field.image?.allowedSources?.includes("ai")
+        ))
+      ))
       .map((item) => item.itemKey));
     if (!aiDesign.imageTargetItemKeys.some((key) => visibleImageKeys.has(key))) {
       errors.push({ path: `${sectionRow.section_key}.aiDesign.imageTargetItemKeys`, code: "AI_IMAGE_TARGET_REQUIRED", message: "Select at least one visible image item that allows the AI source." });
@@ -290,6 +338,19 @@ async function validateSectionDraft(sql, sectionId) {
         errors.push({ path: `${sectionRow.section_key}.${item.itemKey}`, code: "INVALID_IMAGE_SIZE", message: "Image max size must be greater than zero." });
       }
     }
+    (item.fields || []).filter((field) => field.fieldKind === "image").forEach((field) => {
+      const sources = field.image?.allowedSources || [];
+      const fieldPath = `${sectionRow.section_key}.${item.itemKey}.fields.${field.fieldKey}`;
+      if (!sources.length) {
+        errors.push({ path: fieldPath, code: "IMAGE_SOURCE_REQUIRED", message: "Image component fields need at least one supported source." });
+      }
+      if (sources.includes("ai") && !String(field.image?.promptText || "").trim()) {
+        errors.push({ path: fieldPath, code: "IMAGE_PROMPT_REQUIRED", message: "AI image component fields require prompt text." });
+      }
+      if (field.image?.maxSizeKb !== null && Number(field.image.maxSizeKb) <= 0) {
+        errors.push({ path: fieldPath, code: "INVALID_IMAGE_SIZE", message: "Image max size must be greater than zero." });
+      }
+    });
   });
   return { section: toSection(sectionRow), items, errors };
 }

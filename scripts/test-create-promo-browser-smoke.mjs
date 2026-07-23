@@ -46,6 +46,7 @@ try {
     latestSectionAiRun = {
       id: `fixture-section-ai-run-${sectionAiRunRequest.sectionKey}`,
       status: "ready",
+      requestMode: sectionAiRunRequest.requestMode || "assets",
       inputHash: "fixture-hash",
       constraintsSnapshot: {
         imageTarget: target,
@@ -84,6 +85,13 @@ try {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
+      body: JSON.stringify({ ok: true, run: { ...latestSectionAiRun, status: "applying" } }),
+    });
+  });
+  await page.route("**/api/promo-section-design-apply-complete", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
       body: JSON.stringify({ ok: true, run: { ...latestSectionAiRun, status: "applied" } }),
     });
   });
@@ -109,7 +117,7 @@ try {
   });
 
   await page.goto(`${origin}/create-promo.html`, { waitUntil: "networkidle" });
-  await assertPageText(page.locator("#step-title"), "배경색 선택");
+  await assertPageText(page.locator("#step-title"), "배경 및 버튼 스타일 선택");
 
   await page.locator('[data-choice-group="background"][data-choice-value="midnight"]').click();
   assert.equal(
@@ -117,26 +125,23 @@ try {
     "true",
   );
 
-  await page.locator("#next-step").click();
-  await assertPageText(page.locator("#step-title"), "CTA 버튼 스타일 선택");
   await page.locator('[data-choice-group="cta-style"][data-choice-value="round-fill"]').click();
   await page.locator('[data-choice-group="cta-color"][data-choice-value="blue"]').click();
 
   await page.locator("#next-step").click();
-  await assertPageText(page.locator("#step-title"), "템플릿 및 콘텐츠 등록");
+  await assertPageText(page.locator("#step-title"), "프로모션 개요 등록");
   await page.locator('[data-field-key="title"] input').fill("Browser Smoke Promotion");
   await page.locator('[data-field-key="promotionPurpose"] select').selectOption("이벤트");
   await page.locator('[data-field-key="market"] input').fill("KR");
   await page.locator('[data-field-key="audience"] select').selectOption("신규");
   await page.locator('[data-field-key="campaignTone"] select').selectOption("활기찬");
 
-  await page.locator(".content-substep-actions .primary-action").click();
-  await page.locator('.content-substep[aria-current="step"] strong').waitFor();
-  await assertPageText(page.locator('.content-substep[aria-current="step"] strong'), "프로모션 템플릿 선택");
+  await page.locator("#next-step").click();
+  await assertPageText(page.locator("#step-title"), "프로모션 템플릿 선택");
   await page.locator('.wizard-template-tile[aria-pressed="true"]').waitFor();
 
-  await page.locator(".content-substep-actions .primary-action").click();
-  await assertPageText(page.locator('.content-substep[aria-current="step"] strong'), "템플릿 레이아웃");
+  await page.locator("#next-step").click();
+  await assertPageText(page.locator("#step-title"), "템플릿 레이아웃");
   const editorFrame = page.frameLocator("iframe.wizard-layout-frame");
   await editorFrame.locator(".editor-workspace.is-create-promo-wizard").waitFor({ timeout: 10_000 });
   assert.equal(await page.locator("iframe.wizard-layout-frame").getAttribute("scrolling"), "no");
@@ -230,13 +235,16 @@ try {
     await editorFrame.locator(".preview-stage").evaluate((node) => node.scrollTop) < previewScrollRange / 2,
     "Selecting a Section must scroll the Preview stage to that Section",
   );
-  assert.equal(await editorFrame.locator(".section-properties .section-ai-action").count(), 1, "Section background AI action must live inside Section properties");
+  assert.equal(await editorFrame.locator(".section-properties .section-ai-action").count(), 2, "Layout and background AI actions must live inside Section properties");
   assert.equal(await editorFrame.locator(".section-ai-action:not([disabled])").count(), 0, "Structural image/CTA values must not enable AI generation");
-  assert.equal(await editorFrame.locator(".section-ai-action").first().getAttribute("title"), "섹션 콘텐츠를 먼저 등록해 주세요.");
+  assert.equal(
+    await editorFrame.getByRole("button", { name: "AI 디자인", exact: true }).getAttribute("title"),
+    "섹션 콘텐츠를 먼저 등록해 주세요.",
+  );
   await editorFrame.getByRole("button", { name: "자동등록" }).click();
   await editorFrame.locator(".auto-register-message").waitFor({ timeout: 10_000 });
   sectionAiRunResponseDelayMs = 300;
-  await editorFrame.locator(".section-ai-action:not([disabled])").first().click();
+  await editorFrame.getByRole("button", { name: "AI 디자인", exact: true }).click();
   await editorFrame.locator('[data-section-key="heroBanner"] .section-ai-state.is-processing').waitFor({ timeout: 2_000 });
   sectionAiRunResponseDelayMs = 0;
   for (let attempt = 0; attempt < 50 && !sectionAiRunRequest; attempt += 1) {
@@ -277,7 +285,8 @@ try {
   let itemAppliedContent = null;
   for (let attempt = 0; attempt < 100; attempt += 1) {
     itemAppliedContent = await page.evaluate(() => JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null"));
-    if (itemAppliedContent?.sectionInputs?.contentFeature?.image?.source === "ai") break;
+    if (itemAppliedContent?.sectionInputs?.contentFeature?.image?.source === "ai"
+      && itemAppliedContent?.sectionDesignRuns?.contentFeature?.status === "applied") break;
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
   assert.equal(itemAppliedContent?.sectionInputs?.contentFeature?.image?.source, "ai");
@@ -331,10 +340,12 @@ try {
   }
   assert.equal(await itemImageFrame.evaluate((node) => getComputedStyle(node).backgroundImage), "none");
 
-  await page.locator(".content-substep-actions .primary-action").click();
-  await assertPageText(page.locator("#step-title"), "웹 출력");
-  const outputFrame = page.frameLocator("iframe.web-output-frame");
-  await outputFrame.locator(".promo-renderer").waitFor({ timeout: 10_000 });
+  const outputPagePromise = context.waitForEvent("page");
+  await page.locator("#next-step").click();
+  await assertPageText(page.locator("#step-title"), "웹 출력 미리보기");
+  const outputPage = await outputPagePromise;
+  await outputPage.locator(".promo-renderer").waitFor({ timeout: 10_000 });
+  await outputPage.close();
   const snapshot = await page.evaluate(() => JSON.parse(localStorage.getItem("promoVisualEditor.snapshot.v1") || "null"));
   const wizardContent = await page.evaluate(() => JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null"));
   assert.equal(wizardContent?.promo?.title, "Browser Smoke Promotion");

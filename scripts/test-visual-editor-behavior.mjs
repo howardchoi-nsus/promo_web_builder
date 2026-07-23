@@ -4,6 +4,7 @@ import {
   persistSnapshot,
   withoutFreePosition,
 } from "../visual-editor/src/editor-utils.mjs";
+import { createSectionInputs } from "../visual-editor/src/contracts.js";
 
 assert.equal(normalizeCtaUrl(" https://example.com/promo "), "https://example.com/promo");
 assert.equal(normalizeCtaUrl("HTTP://example.com"), "HTTP://example.com");
@@ -29,6 +30,25 @@ assert.deepEqual(
   { color: "#123456" },
 );
 assert.deepEqual(withoutFreePosition(), {});
+
+const compositeInputs = createSectionInputs([{
+  sectionKey: "hero",
+  items: [{
+    itemKey: "content",
+    fields: [
+      { fieldKey: "fld_title", fieldKind: "text", defaultValue: "Title" },
+      { fieldKey: "fld_body", fieldKind: "text", defaultValue: "Body" },
+      { fieldKey: "fld_image", fieldKind: "image", image: { allowedSources: ["ai"] } },
+    ],
+  }],
+}], {});
+assert.deepEqual(compositeInputs.hero.content, {
+  fields: {
+    fld_title: "Title",
+    fld_body: "Body",
+    fld_image: { source: "ai", value: "", description: "", alt: "" },
+  },
+});
 
 const stored = new Map();
 const successStorage = {

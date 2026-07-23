@@ -1,19 +1,23 @@
 const steps = [
   {
-    title: "배경색 선택",
-    copy: "프로모션의 기본 배경색을 고르세요. 선택 결과는 미리보기에 즉시 반영됩니다.",
+    title: "배경 및 버튼 스타일 선택",
+    copy: "프로모션의 기본 배경색과 버튼 스타일을 한 단계에서 설정합니다.",
   },
   {
-    title: "CTA 버튼 스타일 선택",
-    copy: "버튼 모양, 표현 방식, 색상을 선택하세요. 조합 결과를 미리보기에서 확인할 수 있습니다.",
+    title: "프로모션 개요 등록",
+    copy: "프로모션 제목, 목적, 대상 고객과 캠페인 톤을 등록합니다.",
   },
   {
-    title: "템플릿 및 콘텐츠 등록",
-    copy: "관리자에서 생성한 템플릿을 선택하고 프로모션 콘텐츠를 등록하는 단계입니다.",
+    title: "프로모션 템플릿 선택",
+    copy: "관리자가 활성화한 프로모션 템플릿을 선택합니다.",
   },
   {
-    title: "웹 출력",
-    copy: "선택한 스타일, 템플릿, 콘텐츠를 최종 웹 결과물로 출력하는 단계입니다.",
+    title: "템플릿 레이아웃",
+    copy: "선택한 템플릿의 콘텐츠와 섹션 레이아웃을 편집합니다.",
+  },
+  {
+    title: "웹 출력 미리보기",
+    copy: "완성된 프로모션을 별도 웹 출력 화면에서 확인합니다.",
   },
 ];
 
@@ -58,7 +62,7 @@ const storageKeys = {
   appearance: "promoPrototype.createPromo.appearance.v1",
 };
 
-const SECTION_INPUT_SCHEMA_VERSION = 2;
+const SECTION_INPUT_SCHEMA_VERSION = 3;
 const LAYOUT_CACHE_CONTRACT_VERSION = 2;
 const { appendTextElement, valueAtPath, setValueAtPath, fetchJson } = globalThis.PromoWizardCore || {};
 const {
@@ -74,6 +78,7 @@ const {
 } = globalThis.PromoWizardStorage || {};
 const WEB_OUTPUT_SNAPSHOT_STORAGE_KEY = "promoVisualEditor.snapshot.v1";
 const CONTENT_SUBSTEP_STORAGE_KEY = "promoPrototype.createPromo.contentSubstep.v1";
+const CURRENT_STEP_STORAGE_KEY = "promoPrototype.createPromo.currentStep.v2";
 const CONTENT_SUBSTEPS = ["overview", "template", "layout"];
 const {
   normalizeLayoutIdentity,
@@ -84,10 +89,13 @@ const {
   resolveSectionOrderCache,
 } = globalThis.CreatePromoLayoutCache || {};
 
-let currentStep = 0;
 let contentSubstep = CONTENT_SUBSTEPS.includes(sessionStorage.getItem(CONTENT_SUBSTEP_STORAGE_KEY))
   ? sessionStorage.getItem(CONTENT_SUBSTEP_STORAGE_KEY)
   : "overview";
+const storedCurrentStep = Number(sessionStorage.getItem(CURRENT_STEP_STORAGE_KEY));
+let currentStep = Number.isInteger(storedCurrentStep) && storedCurrentStep >= 0 && storedCurrentStep < steps.length
+  ? storedCurrentStep
+  : ({ overview: 1, template: 2, layout: 3 }[contentSubstep] ?? 0);
 let validationErrors = {};
 // Admin-managed Step 2 content sections (Admin Page "C. Wizard Content
 // Sections 관리"). Replaces the previously hardcoded 7-section structure.
@@ -319,6 +327,48 @@ function renderCtaStep() {
   controls.className = "appearance-controls appearance-controls--cta";
   controls.append(
     createChoiceGroup("버튼 스타일", "버튼 모양과 채움 방식을 하나의 조합으로 선택하세요.", CTA_STYLE_OPTIONS.map((option) => createChoiceButton({
+      group: "cta-style",
+      value: option.id,
+      label: option.name,
+      selected: appearanceState.ctaShape === option.shape && appearanceState.ctaVariant === option.variant,
+      ctaStylePreview: option,
+      onSelect: () => {
+        appearanceState.ctaShape = option.shape;
+        appearanceState.ctaVariant = option.variant;
+      },
+    }))),
+    createChoiceGroup("버튼 색상", "", CTA_COLORS.map((option) => createChoiceButton({
+      group: "cta-color",
+      value: option.id,
+      label: option.name,
+      selected: appearanceState.ctaColorId === option.id,
+      swatchColor: option.color,
+      onSelect: () => { appearanceState.ctaColorId = option.id; },
+    })))
+  );
+  placeholders.append(controls);
+}
+
+function renderAppearanceStep() {
+  placeholders.className = "appearance-layout";
+  placeholders.innerHTML = "";
+  placeholders.append(createAppearancePreview());
+  const controls = document.createElement("section");
+  controls.className = "appearance-controls appearance-controls--cta";
+  controls.append(
+    createChoiceGroup(
+      "배경색",
+      "프로모션에 적용할 기본 배경색을 선택하세요.",
+      BACKGROUND_OPTIONS.map((option) => createChoiceButton({
+        group: "background",
+        value: option.id,
+        label: option.name,
+        selected: appearanceState.backgroundId === option.id,
+        swatchColor: option.color,
+        onSelect: () => { appearanceState.backgroundId = option.id; },
+      }))
+    ),
+    createChoiceGroup("버튼 스타일", "버튼 모양과 표현 방식을 선택하세요.", CTA_STYLE_OPTIONS.map((option) => createChoiceButton({
       group: "cta-style",
       value: option.id,
       label: option.name,
@@ -779,7 +829,9 @@ window.addEventListener("message", (event) => {
     const saved = sectionAiRun(section.sectionKey);
     const targetType = event.data.targetType === "item" ? "item" : "section-background";
     const targetItemKey = String(event.data.targetItemKey || "").trim();
-    if (event.data.action === "generate") generateSectionAiDesign(section, targetType, targetItemKey);
+    const targetFieldKey = String(event.data.targetFieldKey || "").trim();
+    if (event.data.action === "generate-layout") generateSectionAiLayout(section);
+    else if (event.data.action === "generate") generateSectionAiDesign(section, targetType, targetItemKey, targetFieldKey);
     else if (event.data.action === "apply" && saved) {
       const savedTargetType = saved.constraintsSnapshot?.imageTarget?.type || "";
       const savedTargetItemKey = saved.constraintsSnapshot?.imageTarget?.type === "item"
@@ -798,9 +850,16 @@ window.addEventListener("message", (event) => {
     if (event.source !== wizardLayoutFrame?.contentWindow) return;
     const section = wizardSectionDefinitions.find((item) => item.sectionKey === event.data.sectionKey);
     const item = section?.items?.find((candidate) => candidate.itemKey === event.data.itemKey);
-    if (!section || !item || item.fieldKind !== "image" || item.isLocked) return;
-    setSectionValue(`${section.sectionKey}.${item.itemKey}`, {
-      source: item.image?.allowedSources?.[0] || "url",
+    const field = String(event.data.fieldKey || "").trim()
+      ? (item?.fields || []).find((candidate) => candidate.fieldKey === event.data.fieldKey)
+      : null;
+    const imageDefinition = field || item;
+    if (!section || !item || imageDefinition?.fieldKind !== "image" || item.isLocked || field?.isLocked) return;
+    const valuePath = field
+      ? `${section.sectionKey}.${item.itemKey}.fields.${field.fieldKey}`
+      : `${section.sectionKey}.${item.itemKey}`;
+    setSectionValue(valuePath, {
+      source: imageDefinition.image?.allowedSources?.[0] || "url",
       value: "",
       description: "",
       alt: "",
@@ -1184,6 +1243,10 @@ function createWebOutputSnapshot() {
   return { ...snapshot, contractVersion: 1, createdAt: new Date().toISOString() };
 }
 
+function openWebOutputWindow() {
+  return window.open("/prototype/visual-output.html", "_blank", "noopener");
+}
+
 function goToWebOutput() {
   if (pendingAdminLayoutUpdate) {
     wizardTemplateRefreshError = "관리자 레이아웃 변경 사항을 적용하거나 현재 작업 유지를 선택한 후 Web Output을 확인해 주세요.";
@@ -1194,6 +1257,7 @@ function goToWebOutput() {
   }
   if (!validateContentStep()) {
     contentSubstep = Object.keys(promotionOverviewErrors()).length ? "overview" : "layout";
+    currentStep = contentSubstep === "overview" ? 1 : 3;
     sessionStorage.setItem(CONTENT_SUBSTEP_STORAGE_KEY, contentSubstep);
     renderStep();
     return false;
@@ -1207,8 +1271,9 @@ function goToWebOutput() {
   }
   localStorage.setItem(WEB_OUTPUT_SNAPSHOT_STORAGE_KEY, JSON.stringify(snapshot));
   saveWizardContent();
-  currentStep = 3;
+  currentStep = 4;
   renderStep();
+  openWebOutputWindow();
   return true;
 }
 
@@ -1247,7 +1312,7 @@ function sectionAiIsStale(sectionKey, saved = sectionAiRun(sectionKey)) {
 }
 
 function sectionAiIsProcessing(saved) {
-  return ["queued", "analyzing_content", "generating_layout", "validating_layout", "generating_assets", "validating_assets"].includes(saved?.status);
+  return ["queued", "analyzing_content", "generating_layout", "validating_layout", "generating_assets", "validating_assets", "applying"].includes(saved?.status);
 }
 
 function isLegacySectionAiImage(value) {
@@ -1298,7 +1363,7 @@ function removeSectionAiBackground(section) {
   postWizardLayoutSnapshot();
 }
 
-async function generateSectionAiDesign(section, targetType = "section-background", targetItemKey = "") {
+async function generateSectionAiDesign(section, targetType = "section-background", targetItemKey = "", targetFieldKey = "") {
   const sectionKey = section.sectionKey;
   const requestedTargetType = targetType === "item" ? "item" : "section-background";
   const sectionInputs = JSON.parse(JSON.stringify(contentState.sectionInputs?.[sectionKey] || {}));
@@ -1307,10 +1372,21 @@ async function generateSectionAiDesign(section, targetType = "section-background
   const previousTargetItemKey = previous?.constraintsSnapshot?.imageTarget?.type === "item"
     ? previous.constraintsSnapshot.imageTarget.itemKey
     : "";
+  const previousTargetFieldKey = previous?.constraintsSnapshot?.imageTarget?.type === "item"
+    ? previous.constraintsSnapshot.imageTarget.fieldKey || ""
+    : "";
   const processAssetJobs = async (run) => {
     const listed = await fetchJson(`/api/promo-section-design-assets?runId=${encodeURIComponent(run.id)}`);
     let latestRun = run;
-    for (const asset of (listed.assets || []).filter((item) => ["queued", "failed"].includes(item.status))) {
+    for (const listedAsset of (listed.assets || []).filter((item) => item.status === "queued" || item.canRetry)) {
+      let asset = listedAsset;
+      if (asset.canRetry) {
+        const queued = await fetchJson("/api/promo-section-design-asset-retry", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ jobId: asset.id }),
+        });
+        asset = { ...asset, ...(queued.asset || {}), status: "queued" };
+      }
       const processedAsset = await fetchJson("/api/promo-section-design-asset-process", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ jobId: asset.id }),
@@ -1324,7 +1400,10 @@ async function generateSectionAiDesign(section, targetType = "section-background
   const canRetryPlannedAssets = previous?.id && previous?.effectivePatch
     && previous?.status === "failed" && !sectionAiIsStale(sectionKey, previous)
     && previousTargetType === requestedTargetType
-    && (requestedTargetType !== "item" || previousTargetItemKey === String(targetItemKey || "").trim());
+    && (requestedTargetType !== "item" || (
+      previousTargetItemKey === String(targetItemKey || "").trim()
+      && previousTargetFieldKey === String(targetFieldKey || "").trim()
+    ));
   if (canRetryPlannedAssets) {
     postWizardLayoutSnapshot();
     try {
@@ -1341,7 +1420,8 @@ async function generateSectionAiDesign(section, targetType = "section-background
     && previous.layoutResult?.imageRequest
     && !sectionAiIsStale(sectionKey, previous)
     && previousTargetType === requestedTargetType
-    && previousTargetItemKey === String(targetItemKey || "").trim();
+    && previousTargetItemKey === String(targetItemKey || "").trim()
+    && previousTargetFieldKey === String(targetFieldKey || "").trim();
   if (canRetryImage) {
     postWizardLayoutSnapshot();
     try {
@@ -1368,7 +1448,10 @@ async function generateSectionAiDesign(section, targetType = "section-background
     status: "queued",
     constraintsSnapshot: {
       imageTarget: requestedTargetType === "item"
-        ? { type: "item", sectionKey, itemKey: String(targetItemKey || "").trim() }
+        ? {
+          type: "item", sectionKey, itemKey: String(targetItemKey || "").trim(),
+          fieldKey: String(targetFieldKey || "").trim() || undefined,
+        }
         : { type: "section-background", sectionKey },
     },
   }, sectionInputs);
@@ -1384,8 +1467,12 @@ async function generateSectionAiDesign(section, targetType = "section-background
         sectionInputs,
         targetType: requestedTargetType,
         targetItemKey: String(targetItemKey || "").trim() || null,
-        requestMode: "full",
+        targetFieldKey: String(targetFieldKey || "").trim() || null,
+        requestMode: "assets",
         backgroundColor: resolvedSectionBackgroundColor(sectionKey),
+        fadeMode: requestedTargetType === "section-background"
+          ? (wizardResolvedLayout?.sectionStyles?.[sectionKey]?.backgroundFadeMode || "none")
+          : "none",
       }),
     });
     saveSectionAiRun(sectionKey, created.run, sectionInputs);
@@ -1422,7 +1509,7 @@ async function generateSectionAiDesign(section, targetType = "section-background
 }
 
 async function applySectionAiDesign(section, saved) {
-  if (!saved?.id || !saved.layoutResult?.layoutPatch) return;
+  if (!saved?.id || (saved.requestMode !== "assets" && !saved.layoutResult?.layoutPatch)) return;
   if (sectionAiIsStale(section.sectionKey, saved)) {
     window.alert("섹션 콘텐츠가 생성 시점과 달라졌습니다. AI 디자인을 다시 생성해 주세요.");
     return;
@@ -1440,8 +1527,10 @@ async function applySectionAiDesign(section, saved) {
       }),
     });
     const appliedRun = result.run;
-    if (!appliedRun?.layoutResult?.layoutPatch) throw new Error("서버가 검증된 섹션 레이아웃을 반환하지 않았습니다.");
-    const patch = appliedRun.layoutResult.layoutPatch;
+    if (appliedRun?.requestMode !== "assets" && !appliedRun?.layoutResult?.layoutPatch) {
+      throw new Error("서버가 검증된 섹션 레이아웃을 반환하지 않았습니다.");
+    }
+    const patch = appliedRun.layoutResult?.layoutPatch || { sectionStyles: {}, itemStyles: {} };
     wizardResolvedLayout = wizardResolvedLayout || JSON.parse(JSON.stringify(wizardBaseLayout || FALLBACK_LAYOUT));
     wizardResolvedLayout.sectionStyles = { ...(wizardResolvedLayout.sectionStyles || {}) };
     Object.entries(patch.sectionStyles || {}).forEach(([key, value]) => {
@@ -1463,26 +1552,42 @@ async function applySectionAiDesign(section, saved) {
       const imageTarget = appliedImage.target || appliedRun.layoutResult?.imageRequest?.target;
       if (imageTarget?.type === "item" && imageTarget.itemKey) {
         const targetItem = section.items?.find((item) => item.itemKey === imageTarget.itemKey && item.fieldKind === "image");
-        if (!targetItem || targetItem.isLocked || !targetItem.image?.allowedSources?.includes("ai")) {
+        const targetFieldKey = appliedImage.targetFieldKey
+          || appliedRun.effectivePatch?.assetRequests?.[0]?.targetFieldKey
+          || appliedRun.constraintsSnapshot?.imageTarget?.fieldKey
+          || "";
+        const targetField = targetFieldKey
+          ? (section.items?.find((item) => item.itemKey === imageTarget.itemKey)?.fields || [])
+            .find((field) => field.fieldKey === targetFieldKey)
+          : null;
+        const resolvedTargetItem = section.items?.find((item) => item.itemKey === imageTarget.itemKey);
+        const imageDefinition = targetField || targetItem;
+        if (!resolvedTargetItem || resolvedTargetItem.isLocked || imageDefinition?.fieldKind !== "image"
+          || !imageDefinition.image?.allowedSources?.includes("ai")) {
           throw new Error("관리자 정책에서 선택한 AI 이미지 Item을 현재 섹션에 적용할 수 없습니다.");
         }
-        setValueAtPath(contentState.sectionInputs, `${section.sectionKey}.${targetItem.itemKey}`, {
+        const valuePath = targetField
+          ? `${section.sectionKey}.${resolvedTargetItem.itemKey}.fields.${targetField.fieldKey}`
+          : `${section.sectionKey}.${resolvedTargetItem.itemKey}`;
+        setValueAtPath(contentState.sectionInputs, valuePath, {
           source: "ai",
           value: appliedImage.proxyUrl,
           description: appliedImage.prompt || appliedRun.layoutResult?.imageRequest?.prompt || "",
-          alt: targetItem.name || section.name || "AI generated promotion image",
+          alt: imageDefinition.name || section.name || "AI generated promotion image",
         });
-        const targetStyleKey = `${section.sectionKey}.${targetItem.itemKey}`;
+        const targetStyleKey = targetField
+          ? `${section.sectionKey}.${resolvedTargetItem.itemKey}.${targetField.fieldKey}`
+          : `${section.sectionKey}.${resolvedTargetItem.itemKey}`;
         const currentItemStyle = { ...(wizardResolvedLayout.itemStyles?.[targetStyleKey] || {}) };
         wizardResolvedLayout.itemStyles[targetStyleKey] = {
           widthPct: currentItemStyle.widthPct || 32,
-          aspectRatio: currentItemStyle.aspectRatio || targetItem.image?.aspectRatio || appliedRun.constraintsSnapshot?.imageAspectRatio || "1/1",
+          aspectRatio: currentItemStyle.aspectRatio || imageDefinition.image?.aspectRatio || appliedRun.constraintsSnapshot?.imageAspectRatio || "1/1",
           aspectRatioLocked: currentItemStyle.aspectRatioLocked !== false,
           imageFit: currentItemStyle.imageFit || "contain",
           imagePosition: currentItemStyle.imagePosition || "center center",
           shape: currentItemStyle.shape || "square",
           decorative: currentItemStyle.decorative === true,
-          accessibleLabel: currentItemStyle.accessibleLabel || targetItem.name || section.name || "Promotion image",
+          accessibleLabel: currentItemStyle.accessibleLabel || imageDefinition.name || section.name || "Promotion image",
           ...currentItemStyle,
         };
         const currentSectionStyle = { ...(wizardResolvedLayout.sectionStyles[section.sectionKey] || {}) };
@@ -1523,9 +1628,24 @@ async function applySectionAiDesign(section, saved) {
         };
       }
     }
-    saveSectionAiRun(section.sectionKey, appliedRun, contentState.sectionInputs?.[section.sectionKey]);
+    // Persist the local draft before acknowledging either layout or asset apply.
+    saveWizardContent();
+    const completed = await fetchJson("/api/promo-section-design-apply-complete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ runId: appliedRun.id, success: true }),
+    });
+    const completedRun = completed.run || appliedRun;
+    saveSectionAiRun(section.sectionKey, completedRun, contentState.sectionInputs?.[section.sectionKey]);
     postWizardLayoutSnapshot();
   } catch (error) {
+    if (saved?.id) {
+      await fetchJson("/api/promo-section-design-apply-complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ runId: saved.id, success: false, errorMessage: error.message }),
+      }).catch(() => null);
+    }
     saveSectionAiRun(section.sectionKey, {
       ...saved,
       status: "failed",
@@ -1533,6 +1653,48 @@ async function applySectionAiDesign(section, saved) {
     }, contentState.sectionInputs?.[section.sectionKey]);
     postWizardLayoutSnapshot();
     window.alert(error.message || "AI 디자인을 적용하지 못했습니다.");
+  }
+}
+
+async function generateSectionAiLayout(section) {
+  const sectionKey = section.sectionKey;
+  const sectionInputs = JSON.parse(JSON.stringify(contentState.sectionInputs?.[sectionKey] || {}));
+  saveSectionAiRun(sectionKey, {
+    status: "queued",
+    requestMode: "layout-style",
+  }, sectionInputs);
+  postWizardLayoutSnapshot();
+  try {
+    const created = await fetchJson("/api/promo-section-design-runs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        promoRunId: null,
+        formTemplateId: selectedWizardFormTemplate?.id,
+        sectionKey,
+        sectionInputs,
+        requestMode: "layout-style",
+        backgroundColor: resolvedSectionBackgroundColor(sectionKey),
+      }),
+    });
+    saveSectionAiRun(sectionKey, created.run, sectionInputs);
+    const planned = created.run.status === "ready"
+      ? created
+      : await fetchJson("/api/promo-section-design-plan-process", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ runId: created.run.id }),
+      });
+    saveSectionAiRun(sectionKey, planned.run, sectionInputs);
+    if (planned.run?.status === "ready") await applySectionAiDesign(section, planned.run);
+  } catch (error) {
+    saveSectionAiRun(sectionKey, {
+      ...sectionAiRun(sectionKey),
+      status: "failed",
+      errorMessage: error.message || "AI 레이아웃 제안에 실패했습니다.",
+    }, sectionInputs);
+  } finally {
+    postWizardLayoutSnapshot();
   }
 }
 
@@ -1728,7 +1890,7 @@ function renderContentStep() {
   const layoutHeading = document.createElement("div");
   appendTextElement(layoutHeading, "span", "eyebrow", "Template Layout");
   appendTextElement(layoutHeading, "strong", "", `${selectedWizardFormTemplate?.name || "Template"} · layout r${wizardLayoutRevision}`);
-  appendTextElement(layoutHeading, "small", "create-promo-appearance-note", "배경색과 CTA 스타일은 Step 1·2 설정으로 고정됩니다.");
+  appendTextElement(layoutHeading, "small", "create-promo-appearance-note", "배경색과 CTA 스타일은 Step 1 설정으로 고정됩니다.");
   const layoutActions = document.createElement("div");
   layoutActions.className = "wizard-layout-panel__actions";
   const layoutRefresh = document.createElement("button");
@@ -1797,61 +1959,15 @@ function renderContentStep() {
   }
   layoutPanel.append(layoutFrame);
 
-  const substepNav = document.createElement("nav");
-  substepNav.className = "content-substep-nav";
-  substepNav.setAttribute("aria-label", "Step 3 세부 단계");
-  [
-    ["overview", "1", "프로모션 개요 등록"],
-    ["template", "2", "프로모션 템플릿 선택"],
-    ["layout", "3", "템플릿 레이아웃"],
-  ].forEach(([key, number, label]) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = `content-substep${contentSubstep === key ? " is-active" : ""}`;
-    button.disabled = (key === "template" && Object.keys(promotionOverviewErrors()).length > 0)
-      || (key === "layout" && (!wizardSectionConfigurationReady() || Object.keys(promotionOverviewErrors()).length > 0));
-    if (contentSubstep === key) button.setAttribute("aria-current", "step");
-    appendTextElement(button, "span", "", number);
-    appendTextElement(button, "strong", "", label);
-    button.addEventListener("click", () => setContentSubstep(key));
-    substepNav.append(button);
-  });
-
-  const substepActions = document.createElement("div");
-  substepActions.className = "content-substep-actions";
-  if (contentSubstep !== "overview") {
-    const back = document.createElement("button");
-    back.type = "button";
-    back.className = "secondary-action";
-    back.textContent = "이전";
-    back.addEventListener("click", () => setContentSubstep(
-      CONTENT_SUBSTEPS[Math.max(0, CONTENT_SUBSTEPS.indexOf(contentSubstep) - 1)],
-      { validate: false }
-    ));
-    substepActions.append(back);
-  }
-  const forward = document.createElement("button");
-  forward.type = "button";
-  forward.className = "primary-action";
-  forward.textContent = contentSubstep === "layout" ? "Web Output" : "다음";
-  forward.disabled = contentSubstep === "template" && !wizardSectionConfigurationReady();
-  forward.addEventListener("click", () => {
-    if (contentSubstep === "layout") goToWebOutput();
-    else setContentSubstep(CONTENT_SUBSTEPS[CONTENT_SUBSTEPS.indexOf(contentSubstep) + 1]);
-  });
-  substepActions.append(forward);
-
-  placeholders.append(substepNav);
-  if (contentSubstep === "overview") placeholders.append(overview);
-  if (contentSubstep === "template") placeholders.append(templateSection);
-  if (contentSubstep === "layout") {
+  if (currentStep === 1) placeholders.append(overview);
+  if (currentStep === 2) placeholders.append(templateSection);
+  if (currentStep === 3) {
     const workspace = document.createElement("div");
     workspace.className = "template-layout-workspace";
     workspace.append(layoutPanel);
     placeholders.append(workspace);
     requestAnimationFrame(postWizardLayoutSnapshot);
   }
-  placeholders.append(substepActions);
 }
 
 function renderWebOutputStep() {
@@ -1874,33 +1990,38 @@ function renderWebOutputStep() {
     "",
     snapshot
       ? `Template v${snapshot.content?.formTemplate?.version || 1} · layout r${snapshot.layoutRevision || 1} · ${new Date(snapshot.createdAt).toLocaleString()}`
-      : "Step 3에서 필수 콘텐츠와 레이아웃을 확인한 후 Web Output을 생성해 주세요."
+      : "Step 4에서 필수 콘텐츠와 레이아웃을 확인한 후 Web Output을 생성해 주세요."
   );
   const actions = document.createElement("div");
   actions.className = "web-output-actions";
+  const openOutput = document.createElement("button");
+  openOutput.type = "button";
+  openOutput.className = "primary-action";
+  openOutput.textContent = "Web Output 새 창 열기";
+  openOutput.addEventListener("click", openWebOutputWindow);
+  const fallbackLink = document.createElement("a");
+  fallbackLink.className = "secondary-action";
+  fallbackLink.href = "/prototype/visual-output.html";
+  fallbackLink.textContent = "현재 탭에서 열기";
   const edit = document.createElement("button");
   edit.type = "button";
   edit.className = "secondary-action";
-  edit.textContent = "Step 3으로 돌아가 수정";
+  edit.textContent = "Step 4로 돌아가 수정";
   edit.addEventListener("click", () => {
-    currentStep = 2;
+    currentStep = 3;
     contentSubstep = "layout";
     sessionStorage.setItem(CONTENT_SUBSTEP_STORAGE_KEY, contentSubstep);
     renderStep();
   });
-  actions.append(edit);
+  actions.append(openOutput, fallbackLink, edit);
   header.append(actions);
   placeholders.append(header);
 
   if (!snapshot) return;
-  const frame = document.createElement("iframe");
-  frame.className = "web-output-frame";
-  frame.title = "Create Promo Web Output 읽기 전용 미리보기";
-  frame.src = "/prototype/visual-editor.html?mode=output&source=create-promo";
-  placeholders.append(frame);
 }
 
 function renderStep() {
+  sessionStorage.setItem(CURRENT_STEP_STORAGE_KEY, String(currentStep));
   const step = steps[currentStep];
   title.textContent = step.title;
   copy.textContent = step.copy;
@@ -1910,7 +2031,7 @@ function renderStep() {
   prev.disabled = currentStep === 0;
   next.disabled = currentStep === steps.length - 1
     || (currentStep === 2 && !wizardSectionConfigurationReady());
-  next.textContent = currentStep === 2 && contentSubstep === "layout" ? "Web Output" : "Next";
+  next.textContent = currentStep === 3 ? "Web Output" : "Next";
 
   stepButtons.forEach((button, index) => {
     button.classList.toggle("is-active", index === currentStep);
@@ -1918,21 +2039,29 @@ function renderStep() {
   });
 
   if (currentStep === 0) {
-    renderBackgroundStep();
+    renderAppearanceStep();
     return;
   }
 
   if (currentStep === 1) {
-    renderCtaStep();
+    contentSubstep = "overview";
+    renderContentStep();
     return;
   }
 
   if (currentStep === 2) {
+    contentSubstep = "template";
     renderContentStep();
     return;
   }
 
   if (currentStep === 3) {
+    contentSubstep = "layout";
+    renderContentStep();
+    return;
+  }
+
+  if (currentStep === 4) {
     renderWebOutputStep();
     return;
   }
@@ -1941,35 +2070,52 @@ function renderStep() {
 
 stepButtons.forEach((button, index) => {
   button.addEventListener("click", () => {
-    if (index === 3) {
+    if (index >= 2 && Object.keys(promotionOverviewErrors()).length) {
+      validationErrors = promotionOverviewErrors();
+      currentStep = 1;
+      renderStep();
+      return;
+    }
+    if (index >= 3 && !wizardSectionConfigurationReady()) {
+      validationErrors = { sectionConfiguration: true };
+      currentStep = 2;
+      renderStep();
+      return;
+    }
+    if (index === 4) {
       goToWebOutput();
       return;
     }
     currentStep = index;
     renderStep();
-    if (currentStep === 2) refreshActiveWizardTemplate();
+    if (currentStep === 3) refreshActiveWizardTemplate();
   });
 });
 
 prev.addEventListener("click", () => {
-  if (currentStep === 2 && contentSubstep !== "overview") {
-    setContentSubstep(CONTENT_SUBSTEPS[CONTENT_SUBSTEPS.indexOf(contentSubstep) - 1], { validate: false });
-    return;
-  }
   currentStep = Math.max(0, currentStep - 1);
   renderStep();
-  if (currentStep === 2) refreshActiveWizardTemplate();
+  if (currentStep === 3) refreshActiveWizardTemplate();
 });
 
 next.addEventListener("click", () => {
-  if (currentStep === 2) {
-    if (contentSubstep === "layout") goToWebOutput();
-    else setContentSubstep(CONTENT_SUBSTEPS[CONTENT_SUBSTEPS.indexOf(contentSubstep) + 1]);
+  if (currentStep === 1 && Object.keys(promotionOverviewErrors()).length) {
+    validationErrors = promotionOverviewErrors();
+    renderStep();
+    return;
+  }
+  if (currentStep === 2 && !wizardSectionConfigurationReady()) {
+    validationErrors = { sectionConfiguration: true };
+    renderStep();
+    return;
+  }
+  if (currentStep === 3) {
+    goToWebOutput();
     return;
   }
   currentStep = Math.min(steps.length - 1, currentStep + 1);
   renderStep();
-  if (currentStep === 2) refreshActiveWizardTemplate();
+  if (currentStep === 3) refreshActiveWizardTemplate();
 });
 
 renderStep();

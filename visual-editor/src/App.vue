@@ -73,6 +73,12 @@ function componentKey(section, item) {
   return section && item ? `${section.sectionKey}.${item.itemKey}` : "";
 }
 
+async function selectRendererItem(section, item) {
+  selectItem(section, item);
+  expandedComponentKey.value = componentKey(section, item);
+  await nextTick();
+}
+
 function scrollPreviewToSection(section) {
   if (!section || !previewStageRef.value) return;
   const target = previewStageRef.value.querySelector(`[data-section-key="${CSS.escape(section.sectionKey)}"]`);
@@ -115,6 +121,44 @@ function updateObjectField(key, value) {
   updateSelectedValue({ ...(selectedValue.value || {}), [key]: value });
 }
 
+function componentFields(item) {
+  const fields = Array.isArray(item?.fields) ? item.fields : [];
+  return fields.length ? fields : [item];
+}
+
+function fieldValue(item, field) {
+  const componentValue = sectionInputs.value?.[selectedSection.value?.sectionKey]?.[item?.itemKey];
+  if (componentFields(item).length <= 1) return componentValue;
+  return componentValue?.fields?.[field.fieldKey];
+}
+
+function updateFieldValue(item, field, value) {
+  if (!selectedSection.value || !item || !field || item.isLocked || field.isLocked) return;
+  if (componentFields(item).length <= 1) {
+    updateSelectedValue(value);
+    return;
+  }
+  const sectionKey = selectedSection.value.sectionKey;
+  const componentValue = sectionInputs.value?.[sectionKey]?.[item.itemKey] || {};
+  sectionInputs.value = {
+    ...sectionInputs.value,
+    [sectionKey]: {
+      ...sectionInputs.value[sectionKey],
+      [item.itemKey]: {
+        ...componentValue,
+        fields: {
+          ...(componentValue.fields || {}),
+          [field.fieldKey]: value,
+        },
+      },
+    },
+  };
+}
+
+function updateFieldObject(item, field, key, value) {
+  updateFieldValue(item, field, { ...(fieldValue(item, field) || {}), [key]: value });
+}
+
 function updateRendererContent(section, item, value) {
   selectItem(section, item);
   if (item.fieldKind !== "text" || item.isLocked) return;
@@ -123,6 +167,18 @@ function updateRendererContent(section, item, value) {
 
 function itemContentRegistered(section, item) {
   const value = sectionInputs.value?.[section.sectionKey]?.[item.itemKey];
+  if (componentFields(item).length > 1) {
+    const fields = componentFields(item);
+    const requiredFields = fields.filter((field) => field.isRequired || field.isLocked);
+    const candidates = requiredFields.length ? requiredFields : fields;
+    const matches = candidates.map((field) => {
+        const fieldContent = value?.fields?.[field.fieldKey];
+        if (field.fieldKind === "cta") return Boolean(String(fieldContent?.label || "").trim() && String(fieldContent?.link || "").trim());
+        if (field.fieldKind === "image") return Boolean(String(fieldContent?.value || "").trim());
+        return Boolean(String(fieldContent || "").trim());
+      });
+    return requiredFields.length ? matches.every(Boolean) : matches.some(Boolean);
+  }
   if (item.fieldKind === "cta") {
     return Boolean(String(value?.label || "").trim() && String(value?.link || "").trim());
   }
@@ -165,8 +221,17 @@ function sectionAiIsProcessing(section) {
 function sectionAiHasContent(section) {
   const inputs = sectionInputs.value?.[section.sectionKey] || {};
   return (section.items || []).some((item) => {
-    if (item.isVisibleInWizard === false || item.fieldKind === "image") return false;
+    if (item.isVisibleInWizard === false) return false;
     const value = inputs[item.itemKey];
+    if (componentFields(item).length > 1) {
+      return componentFields(item).some((field) => {
+        if (field.fieldKind === "image") return false;
+        const fieldContent = value?.fields?.[field.fieldKey];
+        const candidate = field.fieldKind === "cta" ? fieldContent?.label : fieldContent;
+        return String(candidate || "").trim().length >= 2;
+      });
+    }
+    if (item.fieldKind === "image") return false;
     const content = item.fieldKind === "cta" ? value?.label : value;
     return String(content || "").trim().length >= 2;
   });
@@ -187,13 +252,15 @@ function sectionAiAllowedItemKeys(section) {
     : [];
 }
 
-function sectionAiItemAllowed(section, item) {
+function sectionAiItemAllowed(section, item, field = null) {
+  const definition = field || item;
   return Boolean(
     section?.aiDesign?.enabled !== false
-      && item?.fieldKind === "image"
+      && definition?.fieldKind === "image"
       && item?.isVisibleInWizard !== false
       && !item?.isLocked
-      && item?.image?.allowedSources?.includes("ai")
+      && !definition?.isLocked
+      && definition?.image?.allowedSources?.includes("ai")
       && sectionAiAllowedItemKeys(section).includes(item.itemKey)
   );
 }
@@ -203,9 +270,11 @@ function sectionAiRunTargetItemKey(section) {
   return target?.type === "item" ? target.itemKey : "";
 }
 
-function sectionAiItemAction(section, item) {
+function sectionAiItemAction(section, item, field = null) {
   const run = sectionAiRun(section);
-  const matchesItem = sectionAiRunTargetItemKey(section) === item?.itemKey;
+  const target = run?.constraintsSnapshot?.imageTarget;
+  const matchesItem = sectionAiRunTargetItemKey(section) === item?.itemKey
+    && (!field || target?.fieldKey === field.fieldKey);
   if (sectionAiIsProcessing(section)) return { action: "generate", label: "AI 이미지 생성 중", disabled: true };
   if (matchesItem && run?.status === "ready" && !sectionAiIsStale(section)) {
     return { action: "generate", label: "AI 이미지 적용 중", disabled: true };
@@ -216,7 +285,7 @@ function sectionAiItemAction(section, item) {
   return { action: "generate", label: "AI 이미지 생성", disabled: !sectionAiHasContent(section) };
 }
 
-function requestSectionAiAction(section, action, targetItemKey = "", targetType = "") {
+function requestSectionAiAction(section, action, targetItemKey = "", targetType = "", targetFieldKey = "") {
   const resolvedTargetType = targetType || (targetItemKey ? "item" : "section-background");
   window.parent.postMessage({
     type: "create-promo-section-ai-action",
@@ -224,6 +293,7 @@ function requestSectionAiAction(section, action, targetItemKey = "", targetType 
     action,
     targetType: resolvedTargetType,
     targetItemKey: String(targetItemKey || "").trim() || null,
+    targetFieldKey: String(targetFieldKey || "").trim() || null,
   }, window.location.origin);
 }
 
@@ -231,13 +301,15 @@ function sectionHasAiBackground(section) {
   return Boolean(designSpec.value?.sectionStyles?.[section.sectionKey]?.backgroundImage);
 }
 
-function requestImageRemoval() {
+function requestImageRemoval(field = null) {
   if (!selectedSection.value || !selectedItem.value || selectedItem.value.isLocked) return;
-  if (!window.confirm(`${selectedItem.value.name} 이미지를 삭제할까요?`)) return;
+  if (field?.isLocked) return;
+  if (!window.confirm(`${field?.name || selectedItem.value.name} 이미지를 삭제할까요?`)) return;
   window.parent.postMessage({
     type: "create-promo-remove-image",
     sectionKey: selectedSection.value.sectionKey,
     itemKey: selectedItem.value.itemKey,
+    fieldKey: field?.fieldKey || null,
   }, window.location.origin);
 }
 
@@ -760,7 +832,7 @@ onBeforeUnmount(() => {
             editable
             :show-guides="guidesVisible"
             :selected-item-key="selectedStyleKey"
-            @select-item="selectItem"
+            @select-item="selectRendererItem"
             @update-item-style="updateItemStyle"
             @update-renderer-item-style="updateRendererItemStyle"
             @update-item-content="updateRendererContent"
@@ -782,6 +854,13 @@ onBeforeUnmount(() => {
               <small>{{ selectedSection.name }}</small>
             </div>
             <div v-if="isCreatePromoWizardMode" class="section-ai-actions">
+              <button
+                v-if="selectedSection.aiDesign?.enabled !== false"
+                type="button"
+                class="section-ai-action"
+                :disabled="sectionAiPrimaryAction(selectedSection).disabled"
+                @click="requestSectionAiAction(selectedSection, 'generate-layout', '', 'layout')"
+              >AI 레이아웃 제안</button>
               <button
                 v-if="selectedSection.aiDesign?.enabled !== false && selectedSection.aiDesign?.allowSectionBackground !== false"
                 type="button"
@@ -878,16 +957,48 @@ onBeforeUnmount(() => {
                     v-if="selectedItem && selectedItem.itemKey === item.itemKey"
                     class="component-property-content"
                   >
-          <label v-if="selectedItem.fieldKind === 'cta'">
+          <div v-if="componentFields(selectedItem).length > 1" class="component-field-property-list">
+            <section v-for="field in componentFields(selectedItem)" :key="field.fieldKey" class="component-field-property">
+              <header><strong>{{ field.name }}</strong><small>{{ field.fieldKind }} · {{ field.fieldKey }}</small></header>
+              <template v-if="field.fieldKind === 'cta'">
+                <label><span>버튼 텍스트</span><input :disabled="selectedItem.isLocked || field.isLocked" :value="fieldValue(selectedItem, field)?.label" @input="updateFieldObject(selectedItem, field, 'label', $event.target.value)" /></label>
+                <label><span>버튼 URL</span><input :disabled="selectedItem.isLocked || field.isLocked" type="url" :value="fieldValue(selectedItem, field)?.link" @input="updateFieldObject(selectedItem, field, 'link', $event.target.value)" /></label>
+              </template>
+              <template v-else-if="field.fieldKind === 'image'">
+                <button
+                  v-if="isCreatePromoWizardMode && sectionAiItemAllowed(selectedSection, selectedItem, field)"
+                  type="button"
+                  class="section-ai-action item-ai-generation-action"
+                  :disabled="sectionAiItemAction(selectedSection, selectedItem, field).disabled"
+                  @click="requestSectionAiAction(selectedSection, 'generate', selectedItem.itemKey, 'item', field.fieldKey)"
+                >{{ sectionAiItemAction(selectedSection, selectedItem, field).label }}</button>
+                <label><span>이미지 입력 방식</span><select :disabled="selectedItem.isLocked || field.isLocked" :value="fieldValue(selectedItem, field)?.source" @change="updateFieldObject(selectedItem, field, 'source', $event.target.value)"><option v-for="source in field.image?.allowedSources || ['url']" :key="source" :value="source">{{ source }}</option></select></label>
+                <label><span>URL 또는 이미지 설명</span><textarea :disabled="selectedItem.isLocked || field.isLocked" rows="4" :value="fieldValue(selectedItem, field)?.value" @input="updateFieldObject(selectedItem, field, 'value', $event.target.value)"></textarea></label>
+                <label v-if="field.image?.altTextRequired"><span>대체 텍스트</span><input :disabled="selectedItem.isLocked || field.isLocked" :value="fieldValue(selectedItem, field)?.alt" @input="updateFieldObject(selectedItem, field, 'alt', $event.target.value)" /></label>
+                <button
+                  v-if="!selectedItem.isLocked && !field.isLocked && fieldValue(selectedItem, field)?.value"
+                  type="button"
+                  class="image-remove-action"
+                  @click="requestImageRemoval(field)"
+                >이미지 삭제</button>
+              </template>
+              <label v-else>
+                <span>{{ field.textType === 'multi' ? '설명 텍스트' : '텍스트' }}</span>
+                <textarea :disabled="selectedItem.isLocked || field.isLocked" :rows="field.textType === 'multi' ? 8 : 3" :value="fieldValue(selectedItem, field)" @input="updateFieldValue(selectedItem, field, $event.target.value)" placeholder="Enter 키로 줄바꿈할 수 있습니다."></textarea>
+              </label>
+            </section>
+          </div>
+
+          <label v-if="componentFields(selectedItem).length <= 1 && selectedItem.fieldKind === 'cta'">
             <span>버튼 텍스트</span>
             <input :disabled="selectedItem.isLocked" :value="selectedValue?.label" @input="updateObjectField('label', $event.target.value)" />
           </label>
-          <label v-if="selectedItem.fieldKind === 'cta'">
+          <label v-if="componentFields(selectedItem).length <= 1 && selectedItem.fieldKind === 'cta'">
             <span>버튼 URL</span>
             <input :disabled="selectedItem.isLocked" type="url" :value="selectedValue?.link" @input="updateObjectField('link', $event.target.value)" />
           </label>
 
-          <template v-else-if="selectedItem.fieldKind === 'image'">
+          <template v-else-if="componentFields(selectedItem).length <= 1 && selectedItem.fieldKind === 'image'">
             <button
               v-if="isCreatePromoWizardMode && sectionAiItemAllowed(selectedSection, selectedItem)"
               type="button"
@@ -922,7 +1033,7 @@ onBeforeUnmount(() => {
             >이미지 삭제</button>
           </template>
 
-          <label v-else>
+          <label v-else-if="componentFields(selectedItem).length <= 1">
             <span>{{ selectedItem.textType === 'multi' ? '설명 텍스트' : '텍스트' }}</span>
             <textarea
               v-model="selectedValue"
@@ -938,7 +1049,7 @@ onBeforeUnmount(() => {
             <div><dt>고정</dt><dd>{{ selectedItem.isLocked ? "Y" : "N" }}</dd></div>
           </dl>
 
-          <section class="design-controls">
+          <section v-if="componentFields(selectedItem).length <= 1" class="design-controls">
             <div class="design-controls__heading">
               <strong>DESIGN</strong>
               <button type="button" :disabled="selectedItem.isLocked" @click="resetItemStyle">초기화</button>

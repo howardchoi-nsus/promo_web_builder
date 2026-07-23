@@ -1,5 +1,5 @@
 const {
-  getSql, parseBody, validateDefinition, fetchComponents, fetchComponent,
+  getSql, parseBody, validateDefinition, replaceVersionFields, fetchComponents, fetchComponent,
 } = require("./_item-components-store");
 
 module.exports = async function handler(req, res) {
@@ -37,6 +37,7 @@ module.exports = async function handler(req, res) {
         from component returning component_id, id
       ) select component_id::text, id::text as version_id from version
     `;
+    await replaceVersionFields(sql, rows[0].version_id, definition.fields);
     const component = await fetchComponent(sql, rows[0].component_id, rows[0].version_id);
     return res.status(201).json({ ok: true, component });
   } catch (error) {

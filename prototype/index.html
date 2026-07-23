@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="/prototype/styles.css?v=app-tokens-v1" />
     <script src="/prototype/vendor/lucide/lucide.min.js?v=1.8.0"></script>
     <script src="/prototype/i18n-runtime.js?v=i18n-runtime-v1"></script>
-    <script src="/prototype/shared-shell.js?v=app-shell-sidebar-v3"></script>
+    <script src="/prototype/shared-shell.js?v=app-shell-sidebar-v4"></script>
   </head>
   <body>
     <div id="app" class="app-shell shell-frame" data-shell-frame>
@@ -37,7 +37,7 @@
         <header class="shell-utility-bar">
           <div class="shell-page-identity">
             <button class="shell-menu-toggle" type="button" data-shell-menu-toggle aria-controls="global-navigation" aria-expanded="false" aria-label="메뉴 열기">메뉴</button>
-            <strong>{{ currentView === 'prompts' ? '관리자 페이지' : '프로모션 빌더' }}</strong>
+            <strong>{{ currentView === 'prompts' ? '설정' : '디자인 생성기' }}</strong>
             <div class="handoff-picker">
               <select v-model="selectedHandoffFile" :disabled="!handoffDocuments.length || handoffLoading" aria-label="handoff 문서 선택">
                 <option value="" disabled>handoff 문서</option>
@@ -136,7 +136,7 @@
           <section class="panel stack abc-panel" id="section-b">
             <div class="panel-header">
               <div>
-                <h2>B. 프로모션 빌더</h2>
+                <h2>B. 디자인 생성기</h2>
               </div>
               <span>{{ selectedDocument ? selectedDocument.brandName : '선택된 MD 없음' }}</span>
             </div>
@@ -202,7 +202,7 @@
             <dialog class="modal builder-modal" ref="promoBuilderModal" :key="promoBuilderSessionKey" autocomplete="off" @close="onPromoBuilderClosed" @cancel="onPromoBuilderClosed">
               <div class="modal-header">
                 <div>
-                  <h2>B. 프로모션 빌더</h2>
+                  <h2>B. 디자인 생성기</h2>
                 </div>
                 <button class="icon-button" type="button" aria-label="닫기" @click="closePromoBuilder">x</button>
               </div>
@@ -659,7 +659,7 @@
           <section class="panel stack">
             <div class="panel-header">
               <div>
-                <h2>관리자 페이지</h2>
+                <h2>설정</h2>
               </div>
             </div>
 
@@ -769,6 +769,9 @@
                     <option value="image_execution">이미지 생성</option>
                     <option value="lofi_draft">LO-FI 시안</option>
                     <option value="final_design">최종 디자인</option>
+                    <option value="section_layout_planner">섹션 레이아웃 계획</option>
+                    <option value="section_background_image">섹션 배경 이미지</option>
+                    <option value="component_image">컴포넌트 이미지</option>
                   </select>
                 </div>
                 <div class="prompt-admin-grid">
@@ -835,7 +838,7 @@
                     <select v-model="promptEditor.provider">
                       <option value="">설정 안 함</option>
                       <option value="openai">OpenAI / GPT</option>
-                      <option value="google" :disabled="['integrated_brief', 'lofi_draft'].includes(selectedPromptTemplate.type)">Google / Gemini</option>
+                      <option value="google" :disabled="['integrated_brief', 'lofi_draft', 'section_layout_planner'].includes(selectedPromptTemplate.type)">Google / Gemini</option>
                     </select>
                   </label>
                   <label class="field">
@@ -872,6 +875,12 @@
                 </div>
                 <div class="empty-state compact" v-else-if="selectedPromptTemplate.type === 'image_execution'">
                   이미지 생성 설정은 image_execution 타입을 호출하는 별도 Workflow에만 적용됩니다. LO-FI와 최종 디자인은 각각 전용 설정을 사용합니다.
+                </div>
+                <div class="empty-state compact" v-else-if="selectedPromptTemplate.type === 'section_layout_planner'">
+                  섹션 레이아웃 계획은 OpenAI JSON 응답 모델만 지원합니다.
+                </div>
+                <div class="empty-state compact" v-else-if="['section_background_image', 'component_image'].includes(selectedPromptTemplate.type)">
+                  섹션 AI 이미지 생성에 사용할 이미지 모델과 프롬프트를 관리합니다. 안전 정책은 서버에서 별도로 강제됩니다.
                 </div>
 
                 <label class="field">
@@ -1024,7 +1033,7 @@
                 <button v-for="component in itemComponents" :key="component.id" class="prompt-list-item" type="button"
                   :class="{ selected: selectedItemComponentId === component.id }" @click="selectItemComponent(component)">
                   <strong>{{ component.name }}</strong>
-                  <span>{{ component.fieldKind }} · v{{ component.version || '-' }}</span>
+                  <span>{{ component.fields?.length || 1 }}개 필드 · v{{ component.version || '-' }}</span>
                   <em :class="`status-${component.versionStatus || component.status}`">{{ wizardSectionStatusLabel(component.versionStatus || component.status) }}</em>
                 </button>
                 <div class="empty-state compact" v-if="!itemComponentsLoading && !itemComponents.length">등록된 컴포넌트가 없습니다.</div>
@@ -1043,9 +1052,38 @@
                 </div>
                 <label class="field"><span>컴포넌트 이름</span><input v-model="itemComponentEditor.name" type="text" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /></label>
                 <label class="field"><span>{{ t('common.field.description') }}</span><input v-model="itemComponentEditor.description" type="text" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /></label>
-                <div class="form-grid compact">
-                  <label class="field"><span>필드 유형</span><select v-model="itemComponentEditor.fieldKind" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'"><option value="text">텍스트</option><option value="image">이미지</option><option value="cta">CTA</option></select></label>
-                  <label class="field" v-if="itemComponentEditor.fieldKind === 'text'"><span>텍스트 유형</span><select v-model="itemComponentEditor.textType" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'"><option value="title">제목</option><option value="remark">보조 문구</option><option value="multi">본문</option></select></label>
+                <div class="subsection-title">
+                  <div><h3>컴포넌트 필드</h3><span>텍스트·이미지·CTA를 여러 개 조합할 수 있습니다.</span></div>
+                  <button class="tiny-button" type="button" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" @click="addItemComponentField">+ 필드 추가</button>
+                </div>
+                <div class="stack component-field-editor-list">
+                  <details class="template-basic-settings" v-for="(field, fieldIndex) in itemComponentEditor.fields" :key="field.fieldKey || fieldIndex" open>
+                    <summary>{{ field.name || `Field ${fieldIndex + 1}` }} · {{ fieldKindLabel(field.fieldKind) }}<small v-if="field.fieldKey"> {{ field.fieldKey }}</small></summary>
+                    <div class="template-basic-settings-body">
+                      <div class="form-grid compact">
+                        <label class="field"><span>필드 이름</span><input v-model="field.name" type="text" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /></label>
+                        <label class="field"><span>필드 유형</span><select v-model="field.fieldKind" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'"><option value="text">텍스트</option><option value="image">이미지</option><option value="cta">CTA</option></select></label>
+                        <label class="field" v-if="field.fieldKind === 'text'"><span>텍스트 유형</span><select v-model="field.textType" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'"><option value="title">제목</option><option value="remark">보조 문구</option><option value="multi">본문</option></select></label>
+                      </div>
+                      <div class="form-grid compact">
+                        <label class="switch-control"><input v-model="field.isRequired" type="checkbox" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /><span>필수 필드</span></label>
+                        <label class="switch-control"><input v-model="field.isLocked" type="checkbox" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /><span>관리자 값 잠금</span></label>
+                      </div>
+                      <template v-if="field.fieldKind === 'image'">
+                        <div class="field"><span>허용 이미지 소스</span><div class="subsection-actions"><label class="switch-control" v-for="source in ['url', 'file', 'ai']" :key="source"><input type="checkbox" :value="source" v-model="field.imagePolicy.allowedSources" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /><span>{{ imageSourceLabel(source) }}</span></label></div></div>
+                        <div class="form-grid compact">
+                          <label class="field"><span>AI 이미지 관리자 지침</span><textarea v-model="field.imagePolicy.promptText" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'"></textarea></label>
+                          <label class="field"><span>이미지 비율</span><select v-model="field.imagePolicy.aspectRatio" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'"><option value="">기본</option><option value="16:9">16:9</option><option value="4:3">4:3</option><option value="1:1">1:1</option><option value="3:4">3:4</option></select></label>
+                        </div>
+                      </template>
+                      <div class="action-row align-right">
+                        <button class="tiny-button" type="button" :disabled="(!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft') || fieldIndex === 0" @click="moveItemComponentField(fieldIndex, -1)">위로</button>
+                        <button class="tiny-button" type="button" :disabled="(!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft') || fieldIndex === itemComponentEditor.fields.length - 1" @click="moveItemComponentField(fieldIndex, 1)">아래로</button>
+                        <button class="tiny-button" type="button" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" @click="duplicateItemComponentField(fieldIndex)">복제</button>
+                        <button class="tiny-button danger" type="button" :disabled="(!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft') || itemComponentEditor.fields.length <= 1" @click="removeItemComponentField(fieldIndex)">필드 삭제</button>
+                      </div>
+                    </div>
+                  </details>
                 </div>
                 <div class="empty-state compact" v-if="selectedItemComponent">활성 버전은 읽기 전용입니다. 변경하려면 새 초안을 만든 뒤 활성화해야 합니다.</div>
               </section>
@@ -1449,7 +1487,7 @@
             <div class="form-grid compact" v-if="showNewWizardSectionForm">
               <label class="field compact-field">
                 <span>섹션 Key (영문/숫자/_)</span>
-                <input v-model="newWizardSectionForm.sectionKey" type="text" autocomplete="off" placeholder="예: promoBanner" />
+                <input value="자동 생성" type="text" disabled />
               </label>
               <label class="field compact-field">
                 <span>섹션 이름</span>
@@ -1460,7 +1498,7 @@
                 <input v-model="newWizardSectionForm.description" type="text" autocomplete="off" />
               </label>
               <div class="action-row align-right">
-                <button class="tiny-button primary" type="button" :disabled="wizardSectionSaving || !newWizardSectionForm.sectionKey || !newWizardSectionForm.name" @click="createWizardSection">섹션 추가</button>
+                <button class="tiny-button primary" type="button" :disabled="wizardSectionSaving || !newWizardSectionForm.name" @click="createWizardSection">섹션 추가</button>
               </div>
             </div>
 

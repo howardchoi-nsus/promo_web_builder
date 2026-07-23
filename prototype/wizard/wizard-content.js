@@ -1,7 +1,7 @@
 (function registerWizardContent(global) {
   function createDefaultWizardContent({ includeSectionDesignRuns = false } = {}) {
     const content = {
-      sectionInputSchemaVersion: 2,
+      sectionInputSchemaVersion: 3,
       promo: {
         title: "",
         template: "AI Auto",
@@ -78,9 +78,19 @@
 
   function defaultItemValue(item) {
     if (item.isLocked && item.lockedValue !== null && item.lockedValue !== undefined) return item.lockedValue;
-    if (item.fieldKind === "cta") return { label: "", link: "", target: "_blank" };
-    if (item.fieldKind === "image") {
-      const firstSource = Array.isArray(item.image?.allowedSources) ? item.image.allowedSources[0] : "";
+    const fields = Array.isArray(item.fields) ? item.fields : [];
+    if (fields.length > 1) {
+      return {
+        fields: Object.fromEntries(fields.map((field) => [field.fieldKey, defaultItemValue(field)])),
+      };
+    }
+    const definition = fields[0] || item;
+    if (definition.isLocked && definition.defaultValue !== null && definition.defaultValue !== undefined) {
+      return definition.defaultValue;
+    }
+    if (definition.fieldKind === "cta") return { label: "", link: "", target: "_blank" };
+    if (definition.fieldKind === "image") {
+      const firstSource = Array.isArray(definition.image?.allowedSources) ? definition.image.allowedSources[0] : "";
       return { source: firstSource || "url", value: "", description: "", alt: "" };
     }
     return "";

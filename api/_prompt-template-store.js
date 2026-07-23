@@ -103,6 +103,49 @@ const PROMPT_TYPES = {
     requiredVariables: ["integratedDesignBriefMarkdown", "confirmedDraftImageProxyUrl"],
     optionalVariables: ["confirmedDraftPrompt", "sectionContentMapping", "layoutFidelityPolicy"],
   },
+  section_layout_planner: {
+    name: "Section Layout Planner",
+    body: [
+      "Plan one promotional web section using only the supplied component instances, layout regions, style slots and promo tokens.",
+      "Never invent item keys, regions, slots, tokens, CSS, selectors, HTML, or text rendered inside images.",
+      "Section: {{sectionJson}}",
+      "Content: {{contentJson}}",
+      "Constraints: {{constraintsJson}}",
+      "Token set: {{tokenSetJson}}",
+    ].join("\n"),
+    requiredVariables: ["sectionJson", "contentJson", "constraintsJson", "tokenSetJson"],
+    optionalVariables: [],
+  },
+  section_background_image: {
+    name: "Section Background Image",
+    body: [
+      "Create a polished supporting background image for the promotional web section.",
+      "Base the visual concept only on the registered section content.",
+      "The main visual subject should occupy approximately 60 to 70 percent of the canvas.",
+      "Section: {{sectionName}}",
+      "Registered content: {{contentJson}}",
+      "Section background color: {{backgroundColor}}",
+      "Fade mode: {{fadeMode}}",
+      "Administrator guidance: {{adminGuidance}}",
+    ].join("\n"),
+    requiredVariables: ["sectionName", "contentJson", "backgroundColor"],
+    optionalVariables: ["fadeMode", "adminGuidance"],
+  },
+  component_image: {
+    name: "Component Field Image",
+    body: [
+      "Create a polished promotional image for one component field.",
+      "Base the visual concept only on the registered section content and component-field purpose.",
+      "Use the full canvas unless the administrator guidance requests another composition.",
+      "Section: {{sectionName}}",
+      "Component: {{componentName}}",
+      "Field: {{fieldName}}",
+      "Registered content: {{contentJson}}",
+      "Administrator guidance: {{adminGuidance}}",
+    ].join("\n"),
+    requiredVariables: ["sectionName", "componentName", "fieldName", "contentJson"],
+    optionalVariables: ["adminGuidance"],
+  },
 };
 
 const DEFAULT_MODEL_SETTINGS = {
@@ -136,6 +179,27 @@ const DEFAULT_MODEL_SETTINGS = {
     quality: "high",
     size: "1024x1536",
     inputFidelity: "high",
+  },
+  section_layout_planner: {
+    provider: "openai",
+    model: process.env.SECTION_LAYOUT_MODEL || "gpt-4.1-mini",
+    temperature: 0.2,
+    maxTokens: 6000,
+    responseFormat: "json_object",
+  },
+  section_background_image: {
+    provider: String(process.env.SECTION_IMAGE_PROVIDER || "gemini").toLowerCase() === "gemini" ? "google" : "openai",
+    model: process.env.SECTION_IMAGE_MODEL || "gemini-3.1-flash-image",
+    temperature: 0.4,
+    maxTokens: null,
+    responseFormat: "image",
+  },
+  component_image: {
+    provider: String(process.env.SECTION_IMAGE_PROVIDER || "gemini").toLowerCase() === "gemini" ? "google" : "openai",
+    model: process.env.SECTION_IMAGE_MODEL || "gemini-3.1-flash-image",
+    temperature: 0.4,
+    maxTokens: null,
+    responseFormat: "image",
   },
 };
 

@@ -17,11 +17,12 @@ module.exports = async function handler(req, res) {
     if (!run) return res.status(409).json({ error: "Run was claimed by another request" });
     await transitionRun(sql, runId, ["analyzing_content"], "generating_layout");
     const tokenSet = await fetchTokenVersion(sql, run.tokenSetVersionId);
-    if (!tokenSet || tokenSet.status !== "active") throw Object.assign(new Error("Pinned design token set is no longer active"), { code: "TOKEN_SET_NOT_ACTIVE" });
+    if (!tokenSet) throw Object.assign(new Error("Pinned design token set version was not found"), { code: "TOKEN_SET_NOT_FOUND" });
     const section = run.inputSnapshot.section;
     const generation = await generateSectionDesignPlan({
       section, sectionInputs: section.aiContent || section.sectionInputs,
       constraints: run.constraintsSnapshot, tokenSet, requestMode: run.requestMode,
+      promptConfig: run.promptSnapshot?.promptConfig,
     });
     await transitionRun(sql, runId, ["generating_layout"], "validating_layout");
     const validation = validateDesignPlan(section, generation.result, run.constraintsSnapshot, tokenSet);

@@ -2,15 +2,13 @@
   const STORAGE_KEY = "promoPrototype.themeMode";
   const SIDEBAR_MODE_STORAGE_KEY = "promoPrototype.sidebarMode";
   const NAV_ITEMS = Object.freeze([
-    { key: "builder", labelKey: "shell.nav.builder", label: "프로모션 빌더", href: "/prototype/index.html", icon: "layout-dashboard" },
-    { key: "admin", labelKey: "shell.nav.admin", label: "관리자 페이지", href: "/prototype/index.html?view=admin&tab=promo-form", icon: "settings" },
-    { key: "promo-wizard", labelKey: "shell.nav.promoWizard", label: "Promo Wizard", href: "/promo-wizard.html", icon: "wand-sparkles" },
-    { key: "create-promo", labelKey: "shell.nav.createPromo", label: "Create Promo", href: "/create-promo.html", icon: "megaphone" },
-    { key: "visual-editor", labelKey: "shell.nav.visualEditor", label: "Visual Editor", href: "/prototype/visual-editor.html", icon: "panels-top-left" },
-    { key: "generated", labelKey: "shell.nav.generated", label: "생성된 UI", href: "/prototype/generated.html", icon: "file-output" },
+    { key: "builder", label: "디자인 생성기", href: "/prototype/index.html", icon: "layout-dashboard" },
+    { key: "create-promo", label: "프로모션 빌더", href: "/create-promo.html", icon: "megaphone" },
+    { key: "admin", label: "설정", href: "/prototype/index.html?view=admin&tab=promo-form", icon: "settings" },
   ]);
 
   function translate(key, fallback) {
+    if (!key) return fallback;
     const value = global.PromoI18n?.t?.(key);
     return value && value !== key ? value : fallback;
   }

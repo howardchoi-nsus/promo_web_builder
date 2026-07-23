@@ -29,9 +29,13 @@ function createHandler(overrides = {}) {
     const id = String(body.runId || body.id || "").trim();
     if (!id) return res.status(400).json({ error: "runId is required" });
     const sql = dependencies.getSql();
-    const run = await dependencies.fetchRun(sql, id);
+    let run = await dependencies.fetchRun(sql, id);
     if (!run) return res.status(404).json({ error: "Section design run not found" });
     if (run.status === "applied") return res.status(200).json({ ok: true, run });
+    if (run.status === "applying" && run.applyingExpiresAt
+      && new Date(run.applyingExpiresAt).getTime() <= Date.now()) {
+      run = await dependencies.transitionRun(sql, id, ["applying"], "ready") || run;
+    }
     if (run.status !== "ready") return res.status(409).json({ error: "Only a ready run can be applied", run });
     const currentSectionInputs = body.sectionInputs && typeof body.sectionInputs === "object" ? body.sectionInputs : null;
     if (!currentSectionInputs) return res.status(400).json({ error: "sectionInputs is required" });
@@ -88,13 +92,20 @@ function createHandler(overrides = {}) {
       return res.status(409).json({ error: "Section component versions changed; regenerate the design", code: "COMPONENT_VERSION_MISMATCH" });
     }
     const savedImageTarget = run.constraintsSnapshot?.imageTarget;
-    const targetResolution = resolveImageTarget(
-      defaultConstraints(section, layout.layoutSpec),
-      run.sectionKey,
-      savedImageTarget?.type === "item" ? savedImageTarget.itemKey : "",
-      savedImageTarget?.type || ""
-    );
-    const currentConstraints = targetResolution.constraints;
+    const targetResolution = run.requestMode === "layout-style"
+      ? { ok: true, constraints: defaultConstraints(section, layout.layoutSpec) }
+      : resolveImageTarget(
+        defaultConstraints(section, layout.layoutSpec),
+        run.sectionKey,
+        savedImageTarget?.type === "item" ? savedImageTarget.itemKey : "",
+        savedImageTarget?.type || ""
+      );
+    const currentConstraints = run.requestMode !== "layout-style" && savedImageTarget?.fieldKey
+      ? {
+        ...targetResolution.constraints,
+        imageTarget: { ...targetResolution.constraints.imageTarget, fieldKey: savedImageTarget.fieldKey },
+      }
+      : targetResolution.constraints;
     if (!targetResolution.ok) {
       return res.status(409).json({ error: "Section AI image target changed; regenerate the design", code: "CONSTRAINTS_MISMATCH" });
     }
@@ -102,6 +113,18 @@ function createHandler(overrides = {}) {
       return res.status(409).json({ error: "Section AI policy changed; regenerate the design", code: "CONSTRAINTS_MISMATCH" });
     }
     const tokenSet = run.tokenSetVersionId ? await fetchTokenVersion(sql, run.tokenSetVersionId) : null;
+    if (run.requestMode === "assets") {
+      const assets = await sql`
+        select id::text, status, target_type, target_item_key, result_snapshot
+        from promo_section_design_asset_jobs where run_id = ${id}::uuid order by created_at
+      `;
+      if (!assets.length || assets.some((asset) => asset.status !== "ready")) {
+        return res.status(409).json({ error: "All required image assets must be ready before apply", code: "ASSETS_NOT_READY" });
+      }
+      const applying = await dependencies.transitionRun(sql, id, ["ready"], "applying");
+      if (!applying) return res.status(409).json({ error: "Section asset run changed before apply", code: "APPLY_STATE_CONFLICT" });
+      return res.status(200).json({ ok: true, run: applying, assetOnly: true });
+    }
     const validation = run.designPlan
       ? validateDesignPlan(section, run.designPlan, currentConstraints, tokenSet)
       : validatePatch(section, run.layoutResult || {}, currentConstraints);
@@ -112,9 +135,9 @@ function createHandler(overrides = {}) {
         validationErrors: validation.errors,
       });
     }
-    const applied = await dependencies.transitionRun(sql, id, ["ready"], "applied");
-    if (!applied) return res.status(409).json({ error: "Section design run changed before apply", code: "APPLY_STATE_CONFLICT" });
-    return res.status(200).json({ ok: true, run: applied });
+    const applying = await dependencies.transitionRun(sql, id, ["ready"], "applying");
+    if (!applying) return res.status(409).json({ error: "Section design run changed before apply", code: "APPLY_STATE_CONFLICT" });
+    return res.status(200).json({ ok: true, run: applying });
   } catch (error) {
     return res.status(error.statusCode || 500).json({ error: "Section design apply failed", message: error.message });
   }

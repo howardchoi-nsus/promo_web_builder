@@ -74,7 +74,7 @@ async function execute(handler, body = {
 (async () => {
   let res = await execute(handlerFor());
   assert.equal(res.statusCode, 200);
-  assert.equal(res.body.run.status, "applied");
+  assert.equal(res.body.run.status, "applying");
 
   const itemSection = {
     ...section,

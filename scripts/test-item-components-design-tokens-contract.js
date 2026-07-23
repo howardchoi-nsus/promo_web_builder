@@ -85,6 +85,7 @@ assert.deepEqual(componentWithDraft.activeVersion, {
   ctaPolicy: {},
   styleSlots: [],
   changeNote: "",
+  fields: [],
 });
 assert.equal(SAFE_CSS_PROPERTIES.has("background-color"), true);
 assert.equal(SAFE_CSS_PROPERTIES.has("background-image"), false);

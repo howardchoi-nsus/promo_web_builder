@@ -1183,6 +1183,12 @@ const adminApp = createApp({
         imagePolicy: { allowedSources: ["file", "url"], promptText: "", aspectRatio: "" },
         capabilities: { layoutRegions: ["copy-primary", "copy-secondary", "center"] },
         styleSlots: [], changeNote: "",
+        fields: [{
+          name: "Title", fieldKind: "text", textType: "title", sortOrder: 0,
+          isRequired: false, isLocked: false, defaultValue: null,
+          editorSchema: { multiline: true }, capabilities: {}, imagePolicy: {},
+          ctaPolicy: {}, styleSlots: [],
+        }],
       },
       designTokenSets: [],
       designTokenSetsLoading: false,
@@ -1701,6 +1707,7 @@ const adminApp = createApp({
           versionStatus: activeVersion.status,
           fieldKind: activeVersion.fieldKind,
           textType: activeVersion.textType,
+          fields: activeVersion.fields || [],
         }];
       });
     },
@@ -2093,6 +2100,12 @@ const adminApp = createApp({
         imagePolicy: { allowedSources: ["file", "url"], promptText: "", aspectRatio: "" },
         capabilities: { layoutRegions: ["copy-primary", "copy-secondary", "center"] },
         styleSlots: [], changeNote: "",
+        fields: [{
+          name: "Title", fieldKind: "text", textType: "title", sortOrder: 0,
+          isRequired: false, isLocked: false, defaultValue: null,
+          editorSchema: { multiline: true }, capabilities: {}, imagePolicy: {},
+          ctaPolicy: {}, styleSlots: [],
+        }],
       };
     },
 
@@ -2117,11 +2130,38 @@ const adminApp = createApp({
 
     selectItemComponent(component) {
       this.selectedItemComponentId = component.id;
+      const componentFields = Array.isArray(component.fields) && component.fields.length
+        ? component.fields
+        : [{
+          name: component.name || "Field",
+          fieldKind: component.fieldKind || "text",
+          textType: component.textType || "title",
+          sortOrder: 0,
+          isRequired: false,
+          isLocked: false,
+          defaultValue: component.defaultValue ?? null,
+          editorSchema: component.editorSchema || {},
+          capabilities: component.capabilities || {},
+          imagePolicy: component.imagePolicy || {},
+          ctaPolicy: {},
+          styleSlots: component.styleSlots || [],
+        }];
       this.itemComponentEditor = {
         name: component.name, description: component.description || "", fieldKind: component.fieldKind || "text",
         textType: component.textType || "title", editorSchema: component.editorSchema || {},
         defaultValue: component.defaultValue ?? null, imagePolicy: { ...(component.imagePolicy || {}) },
         capabilities: { ...(component.capabilities || {}) }, styleSlots: [...(component.styleSlots || [])], changeNote: "",
+        fields: componentFields.map((field) => ({
+          ...field,
+          editorSchema: { ...(field.editorSchema || {}) },
+          capabilities: { ...(field.capabilities || {}) },
+          imagePolicy: {
+            ...(field.imagePolicy || {}),
+            allowedSources: [...(field.imagePolicy?.allowedSources || [])],
+          },
+          ctaPolicy: { ...(field.ctaPolicy || {}) },
+          styleSlots: [...(field.styleSlots || [])],
+        })),
       };
       this.showNewItemComponentForm = false;
     },
@@ -2130,6 +2170,47 @@ const adminApp = createApp({
       this.selectedItemComponentId = "";
       this.resetItemComponentEditor();
       this.showNewItemComponentForm = true;
+    },
+
+    addItemComponentField() {
+      const fields = this.itemComponentEditor.fields || (this.itemComponentEditor.fields = []);
+      fields.push({
+        name: `Field ${fields.length + 1}`, fieldKind: "text", textType: "title",
+        sortOrder: fields.length * 10, isRequired: false, isLocked: false,
+        defaultValue: null, editorSchema: { multiline: true }, capabilities: {},
+        imagePolicy: { allowedSources: ["file", "url"], promptText: "", aspectRatio: "" },
+        ctaPolicy: {}, styleSlots: [],
+      });
+    },
+
+    removeItemComponentField(index) {
+      if ((this.itemComponentEditor.fields || []).length <= 1) {
+        this.setStatus("컴포넌트에는 필드가 하나 이상 필요합니다");
+        return;
+      }
+      this.itemComponentEditor.fields.splice(index, 1);
+      this.itemComponentEditor.fields.forEach((field, fieldIndex) => { field.sortOrder = fieldIndex * 10; });
+    },
+
+    duplicateItemComponentField(index) {
+      const fields = this.itemComponentEditor.fields || [];
+      const source = fields[index];
+      if (!source) return;
+      const duplicate = JSON.parse(JSON.stringify(source));
+      delete duplicate.id;
+      delete duplicate.fieldKey;
+      duplicate.name = `${source.name || `Field ${index + 1}`} 복사본`;
+      fields.splice(index + 1, 0, duplicate);
+      fields.forEach((field, fieldIndex) => { field.sortOrder = fieldIndex * 10; });
+    },
+
+    moveItemComponentField(index, direction) {
+      const fields = this.itemComponentEditor.fields || [];
+      const targetIndex = index + direction;
+      if (!fields[index] || targetIndex < 0 || targetIndex >= fields.length) return;
+      const [field] = fields.splice(index, 1);
+      fields.splice(targetIndex, 0, field);
+      fields.forEach((item, fieldIndex) => { item.sortOrder = fieldIndex * 10; });
     },
 
     async saveNewItemComponent() {
@@ -2337,6 +2418,9 @@ const adminApp = createApp({
         image_execution: "이미지 생성",
         lofi_draft: "LO-FI 시안",
         final_design: "최종 디자인",
+        section_layout_planner: "섹션 레이아웃 계획",
+        section_background_image: "섹션 배경 이미지",
+        component_image: "컴포넌트 이미지",
       })[type] || type || "알 수 없음";
     },
 

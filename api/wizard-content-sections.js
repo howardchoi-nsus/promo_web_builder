@@ -9,11 +9,12 @@ const {
   fetchPublicSectionsWithItems,
   cloneSectionAsDraft,
 } = require("./_wizard-content-sections-store");
+const { randomUUID } = require("crypto");
 
 // GET  ?scope=public         -> Wizard-facing read: active + visible sections with items.
 // GET  (default, admin)      -> all non-archived sections (draft/active/inactive), no items.
 // GET  ?includeArchived=true -> admin view including archived sections.
-// POST { sectionKey, ... }   -> create a brand-new section (version 1, draft).
+// POST { name, ... }         -> create a brand-new section with an immutable generated key.
 // POST { id }                -> clone an existing section's active/inactive version into a new draft.
 module.exports = async function handler(req, res) {
   try {
@@ -59,16 +60,9 @@ async function createSection(req, res) {
   }
 
   // New section -> version 1, draft (admin must explicitly activate it).
-  const sectionKey = String(body.sectionKey || "").trim();
+  const sectionKey = `sec_${randomUUID().replace(/-/g, "")}`;
   const name = String(body.name || "").trim();
-  if (!sectionKey) return res.status(400).json({ error: "sectionKey is required" });
   if (!name) return res.status(400).json({ error: "name is required" });
-  if (!/^[a-zA-Z][a-zA-Z0-9_]*$/.test(sectionKey)) {
-    return res.status(400).json({ error: "sectionKey must start with a letter and contain only letters, numbers, and underscores" });
-  }
-
-  const existing = await sql`select id::text from wizard_content_sections where section_key = ${sectionKey} limit 1`;
-  if (existing.length) return res.status(409).json({ error: "sectionKey already exists" });
 
   const rows = await sql`
     insert into wizard_content_sections (

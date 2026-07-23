@@ -88,7 +88,9 @@ function imagePromptForSafeArea(prompt, safeArea, backgroundColor = "#f5f7fb") {
     ? "Keep the right half as clean negative space for DOM copy and place the main visual subject on the left."
     : safeArea === "left-copy"
       ? "Keep the left half as clean negative space for DOM copy and place the main visual subject on the right."
-      : "Keep the center as clean negative space for centered DOM copy and place supporting visual detail around the outer edges.";
+      : safeArea === "center-copy"
+        ? "Keep the center as clean negative space for centered DOM copy and place supporting visual detail around the outer edges."
+        : "Use the full canvas for the visual subject; do not reserve artificial copy-safe negative space.";
   return [
     String(prompt || "").trim(),
     composition,
@@ -162,9 +164,9 @@ async function generateSectionLayout({ section, sectionInputs, constraints, sign
   };
 }
 
-async function generateSectionDesignPlan({ section, sectionInputs, constraints, tokenSet, requestMode = "full", signal }) {
-  const model = process.env.SECTION_LAYOUT_MODEL || "gpt-4.1-mini";
-  const prompt = [
+async function generateSectionDesignPlan({ section, sectionInputs, constraints, tokenSet, requestMode = "full", promptConfig, signal }) {
+  const model = promptConfig?.model || process.env.SECTION_LAYOUT_MODEL || "gpt-4.1-mini";
+  const prompt = promptConfig?.renderedPrompt || [
     "Plan one promotional web section using only the supplied component instances, layout regions, style slots and promo tokens.",
     "Never invent item keys, regions, slots, tokens, CSS, selectors, HTML, or text rendered inside images.",
     `Mode: ${requestMode}`,
@@ -186,14 +188,14 @@ async function generateSectionDesignPlan({ section, sectionInputs, constraints, 
   };
 }
 
-async function generateOpenAiSectionImage({ prompt, aspectRatio, signal }) {
-  const model = process.env.SECTION_IMAGE_MODEL || "gpt-image-1";
+async function generateOpenAiSectionImage({ prompt, aspectRatio, model: requestedModel, modelOptions, signal }) {
+  const model = requestedModel || process.env.SECTION_IMAGE_MODEL || "gpt-image-1";
   const startedAt = Date.now();
   const { payload, requestId } = await requestJson("https://api.openai.com/v1/images/generations", {
     model,
     prompt,
     size: openAiImageSize(aspectRatio),
-    quality: process.env.SECTION_IMAGE_QUALITY || "medium",
+    quality: modelOptions?.quality || process.env.SECTION_IMAGE_QUALITY || "medium",
     output_format: "webp",
   }, openAiHeaders(), signal, Number(process.env.SECTION_IMAGE_TIMEOUT_MS || 240000));
   const base64 = payload.data?.[0]?.b64_json;
@@ -208,9 +210,9 @@ async function generateOpenAiSectionImage({ prompt, aspectRatio, signal }) {
   };
 }
 
-async function generateGeminiSectionImage({ prompt, aspectRatio, signal }) {
-  const model = process.env.SECTION_IMAGE_MODEL || "gemini-3.1-flash-image";
-  const imageSize = process.env.SECTION_IMAGE_SIZE || "2K";
+async function generateGeminiSectionImage({ prompt, aspectRatio, model: requestedModel, modelOptions, signal }) {
+  const model = requestedModel || process.env.SECTION_IMAGE_MODEL || "gemini-3.1-flash-image";
+  const imageSize = modelOptions?.imageSize || process.env.SECTION_IMAGE_SIZE || "2K";
   const dimensions = geminiImageDimensions(imageSize, aspectRatio);
   const startedAt = Date.now();
   const { payload, requestId } = await requestJson(
@@ -245,7 +247,10 @@ async function generateGeminiSectionImage({ prompt, aspectRatio, signal }) {
 }
 
 async function generateSectionImage(input) {
-  const provider = String(process.env.SECTION_IMAGE_PROVIDER || "openai").trim().toLowerCase();
+  const configuredProvider = input.provider || process.env.SECTION_IMAGE_PROVIDER || "openai";
+  const provider = String(configuredProvider).trim().toLowerCase() === "google"
+    ? "gemini"
+    : String(configuredProvider).trim().toLowerCase();
   const request = {
     ...input,
     prompt: imagePromptForSafeArea(input.prompt, input.safeArea, input.backgroundColor),
