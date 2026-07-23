@@ -63,6 +63,20 @@ function validateDefinition(body) {
 }
 
 function toComponent(row) {
+  const activeVersion = row.active_version_id ? {
+    id: row.active_version_id,
+    version: Number(row.active_version),
+    status: row.active_version_status,
+    fieldKind: row.active_field_kind,
+    textType: row.active_text_type || null,
+    editorSchema: row.active_editor_schema || {},
+    defaultValue: row.active_default_value ?? null,
+    capabilities: row.active_capabilities || {},
+    imagePolicy: row.active_image_policy || {},
+    ctaPolicy: row.active_cta_policy || {},
+    styleSlots: row.active_style_slots || [],
+    changeNote: row.active_change_note || "",
+  } : null;
   return {
     id: row.id,
     componentKey: row.component_key,
@@ -82,6 +96,7 @@ function toComponent(row) {
     ctaPolicy: row.cta_policy || {},
     styleSlots: row.style_slots || [],
     changeNote: row.change_note || "",
+    activeVersion,
     createdAt: row.created_at || null,
     updatedAt: row.updated_at || null,
   };
@@ -94,7 +109,14 @@ async function fetchComponents(sql, { includeArchived = false } = {}) {
       version.id::text as version_id, version.version, version.status as version_status,
       version.field_kind, version.text_type, version.editor_schema, version.default_value,
       version.capabilities, version.image_policy, version.cta_policy, version.style_slots,
-      version.change_note, component.created_at, greatest(component.updated_at, version.updated_at) as updated_at
+      version.change_note,
+      active_version.id::text as active_version_id, active_version.version as active_version,
+      active_version.status as active_version_status, active_version.field_kind as active_field_kind,
+      active_version.text_type as active_text_type, active_version.editor_schema as active_editor_schema,
+      active_version.default_value as active_default_value, active_version.capabilities as active_capabilities,
+      active_version.image_policy as active_image_policy, active_version.cta_policy as active_cta_policy,
+      active_version.style_slots as active_style_slots, active_version.change_note as active_change_note,
+      component.created_at, greatest(component.updated_at, version.updated_at) as updated_at
     from wizard_item_components component
     left join lateral (
       select * from wizard_item_component_versions candidate
@@ -103,6 +125,12 @@ async function fetchComponents(sql, { includeArchived = false } = {}) {
         candidate.version desc
       limit 1
     ) version on true
+    left join lateral (
+      select * from wizard_item_component_versions candidate
+      where candidate.component_id = component.id and candidate.status = 'active'
+      order by candidate.version desc
+      limit 1
+    ) active_version on true
     order by component.name asc, component.created_at asc
   ` : sql`
     select component.id::text, component.component_key, component.system_seed_code,
@@ -110,7 +138,14 @@ async function fetchComponents(sql, { includeArchived = false } = {}) {
       version.id::text as version_id, version.version, version.status as version_status,
       version.field_kind, version.text_type, version.editor_schema, version.default_value,
       version.capabilities, version.image_policy, version.cta_policy, version.style_slots,
-      version.change_note, component.created_at, greatest(component.updated_at, version.updated_at) as updated_at
+      version.change_note,
+      active_version.id::text as active_version_id, active_version.version as active_version,
+      active_version.status as active_version_status, active_version.field_kind as active_field_kind,
+      active_version.text_type as active_text_type, active_version.editor_schema as active_editor_schema,
+      active_version.default_value as active_default_value, active_version.capabilities as active_capabilities,
+      active_version.image_policy as active_image_policy, active_version.cta_policy as active_cta_policy,
+      active_version.style_slots as active_style_slots, active_version.change_note as active_change_note,
+      component.created_at, greatest(component.updated_at, version.updated_at) as updated_at
     from wizard_item_components component
     left join lateral (
       select * from wizard_item_component_versions candidate
@@ -119,6 +154,12 @@ async function fetchComponents(sql, { includeArchived = false } = {}) {
         candidate.version desc
       limit 1
     ) version on true
+    left join lateral (
+      select * from wizard_item_component_versions candidate
+      where candidate.component_id = component.id and candidate.status = 'active'
+      order by candidate.version desc
+      limit 1
+    ) active_version on true
     where component.status <> 'archived'
     order by component.name asc, component.created_at asc
   `;

@@ -1678,7 +1678,29 @@ const adminApp = createApp({
     },
 
     activeItemComponents() {
-      return this.itemComponents.filter((component) => component.status === "active" && component.versionStatus === "active");
+      return this.itemComponents.flatMap((component) => {
+        if (component.status !== "active") return [];
+        const activeVersion = component.activeVersion || (
+          component.versionStatus === "active"
+            ? {
+              id: component.versionId,
+              version: component.version,
+              status: component.versionStatus,
+              fieldKind: component.fieldKind,
+              textType: component.textType,
+            }
+            : null
+        );
+        if (!activeVersion?.id || activeVersion.status !== "active") return [];
+        return [{
+          ...component,
+          versionId: activeVersion.id,
+          version: activeVersion.version,
+          versionStatus: activeVersion.status,
+          fieldKind: activeVersion.fieldKind,
+          textType: activeVersion.textType,
+        }];
+      });
     },
 
     selectedItemComponent() {

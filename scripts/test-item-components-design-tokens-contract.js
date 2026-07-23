@@ -3,11 +3,14 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { validateTokenValue, parseCsvRows, SAFE_CSS_PROPERTIES } = require("../api/_design-token-store");
 const { validateDesignPlan } = require("../api/_promo-section-design-contract");
+const { toComponent } = require("../api/_item-components-store");
 
 const root = path.resolve(__dirname, "..");
 const migration = fs.readFileSync(path.join(root, "db/migrations/029_item_components_design_tokens_and_planner.sql"), "utf8");
 const repairMigration = fs.readFileSync(path.join(root, "db/migrations/030_promo_section_design_run_snapshot_repair.sql"), "utf8");
 const resetScript = fs.readFileSync(path.join(root, "db/seeds/reset_legacy_template_configuration.sql"), "utf8");
+const componentStore = fs.readFileSync(path.join(root, "api/_item-components-store.js"), "utf8");
+const adminApp = fs.readFileSync(path.join(root, "prototype/app.js"), "utf8");
 assert.match(migration, /promo_design_token_definitions/);
 assert.match(migration, /promo_design_token_sets/);
 assert.match(migration, /promo_design_token_set_versions/);
@@ -44,6 +47,45 @@ assert.match(resetScript, /begin;[\s\S]*commit;/);
 assert.doesNotMatch(resetScript, /delete from promo_generation_runs/);
 assert.doesNotMatch(resetScript, /delete from promo_generation_final_designs/);
 assert.doesNotMatch(resetScript, /delete from locale_messages/);
+assert.match(componentStore, /candidate\.status = 'active'/);
+assert.match(componentStore, /active_version\.id::text as active_version_id/);
+assert.match(componentStore, /activeVersion,/);
+assert.match(adminApp, /const activeVersion = component\.activeVersion/);
+assert.match(adminApp, /versionId: activeVersion\.id/);
+assert.doesNotMatch(
+  adminApp,
+  /activeItemComponents\(\)\s*\{\s*return this\.itemComponents\.filter\(\(component\) => component\.status === "active" && component\.versionStatus === "active"\)/,
+);
+const componentWithDraft = toComponent({
+  id: "component-id",
+  component_key: "cmp_key",
+  name: "Content Image",
+  component_status: "active",
+  version_id: "draft-v2",
+  version: 2,
+  version_status: "draft",
+  field_kind: "image",
+  active_version_id: "active-v1",
+  active_version: 1,
+  active_version_status: "active",
+  active_field_kind: "image",
+});
+assert.equal(componentWithDraft.versionId, "draft-v2");
+assert.equal(componentWithDraft.versionStatus, "draft");
+assert.deepEqual(componentWithDraft.activeVersion, {
+  id: "active-v1",
+  version: 1,
+  status: "active",
+  fieldKind: "image",
+  textType: null,
+  editorSchema: {},
+  defaultValue: null,
+  capabilities: {},
+  imagePolicy: {},
+  ctaPolicy: {},
+  styleSlots: [],
+  changeNote: "",
+});
 assert.equal(SAFE_CSS_PROPERTIES.has("background-color"), true);
 assert.equal(SAFE_CSS_PROPERTIES.has("background-image"), false);
 assert.equal(validateTokenValue({ value_type: "color" }, "#AABBCC"), "");
