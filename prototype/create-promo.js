@@ -777,14 +777,16 @@ window.addEventListener("message", (event) => {
     const section = wizardSectionDefinitions.find((item) => item.sectionKey === event.data.sectionKey);
     if (!section) return;
     const saved = sectionAiRun(section.sectionKey);
+    const targetType = event.data.targetType === "item" ? "item" : "section-background";
     const targetItemKey = String(event.data.targetItemKey || "").trim();
-    if (event.data.action === "generate") generateSectionAiDesign(section, targetItemKey);
+    if (event.data.action === "generate") generateSectionAiDesign(section, targetType, targetItemKey);
     else if (event.data.action === "apply" && saved) {
+      const savedTargetType = saved.constraintsSnapshot?.imageTarget?.type || "";
       const savedTargetItemKey = saved.constraintsSnapshot?.imageTarget?.type === "item"
         ? saved.constraintsSnapshot.imageTarget.itemKey
         : "";
-      if (targetItemKey && savedTargetItemKey !== targetItemKey) {
-        window.alert("선택한 이미지 Item의 AI 생성 결과가 아닙니다. 다시 생성해 주세요.");
+      if (savedTargetType !== targetType || (targetType === "item" && savedTargetItemKey !== targetItemKey)) {
+        window.alert("선택한 이미지 대상의 AI 생성 결과가 아닙니다. 다시 생성해 주세요.");
         return;
       }
       applySectionAiDesign(section, saved);
@@ -1241,9 +1243,7 @@ function isLegacySectionAiImage(value) {
 }
 
 function clearLegacySectionAiImages(section) {
-  const configuredItemTargets = section.aiDesign?.imageTarget === "item"
-    ? new Set(section.aiDesign.imageTargetItemKeys || [])
-    : new Set();
+  const configuredItemTargets = new Set(section.aiDesign?.imageTargetItemKeys || []);
   (section.items || []).forEach((item) => {
     if (item.fieldKind !== "image" || item.isLocked) return;
     if (configuredItemTargets.has(item.itemKey)) return;
@@ -1285,10 +1285,12 @@ function removeSectionAiBackground(section) {
   postWizardLayoutSnapshot();
 }
 
-async function generateSectionAiDesign(section, targetItemKey = "") {
+async function generateSectionAiDesign(section, targetType = "section-background", targetItemKey = "") {
   const sectionKey = section.sectionKey;
+  const requestedTargetType = targetType === "item" ? "item" : "section-background";
   const sectionInputs = JSON.parse(JSON.stringify(contentState.sectionInputs?.[sectionKey] || {}));
   const previous = sectionAiRun(sectionKey);
+  const previousTargetType = previous?.constraintsSnapshot?.imageTarget?.type || "";
   const previousTargetItemKey = previous?.constraintsSnapshot?.imageTarget?.type === "item"
     ? previous.constraintsSnapshot.imageTarget.itemKey
     : "";
@@ -1307,7 +1309,9 @@ async function generateSectionAiDesign(section, targetItemKey = "") {
     return latestRun;
   };
   const canRetryPlannedAssets = previous?.id && previous?.effectivePatch
-    && previous?.status === "failed" && !sectionAiIsStale(sectionKey, previous);
+    && previous?.status === "failed" && !sectionAiIsStale(sectionKey, previous)
+    && previousTargetType === requestedTargetType
+    && (requestedTargetType !== "item" || previousTargetItemKey === String(targetItemKey || "").trim());
   if (canRetryPlannedAssets) {
     postWizardLayoutSnapshot();
     try {
@@ -1322,6 +1326,7 @@ async function generateSectionAiDesign(section, targetItemKey = "") {
   const canRetryImage = previous?.status === "failed"
     && previous.layoutResult?.imageRequest
     && !sectionAiIsStale(sectionKey, previous)
+    && previousTargetType === requestedTargetType
     && previousTargetItemKey === String(targetItemKey || "").trim();
   if (canRetryImage) {
     postWizardLayoutSnapshot();
@@ -1355,6 +1360,7 @@ async function generateSectionAiDesign(section, targetItemKey = "") {
         formTemplateId: selectedWizardFormTemplate?.id,
         sectionKey,
         sectionInputs,
+        targetType: requestedTargetType,
         targetItemKey: String(targetItemKey || "").trim() || null,
         requestMode: "full",
         backgroundColor: wizardResolvedLayout?.theme?.backgroundColor || FALLBACK_LAYOUT.theme.backgroundColor,

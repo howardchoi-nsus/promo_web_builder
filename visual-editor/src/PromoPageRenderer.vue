@@ -32,8 +32,7 @@ function imageUrl(value) {
 }
 
 function isConfiguredAiImageItem(section, item) {
-  return section?.aiDesign?.imageTarget === "item"
-    && Array.isArray(section.aiDesign.imageTargetItemKeys)
+  return Array.isArray(section?.aiDesign?.imageTargetItemKeys)
     && section.aiDesign.imageTargetItemKeys.includes(item?.itemKey);
 }
 

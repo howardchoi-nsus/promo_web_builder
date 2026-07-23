@@ -39,7 +39,7 @@ try {
   let latestSectionAiRun = null;
   await page.route("**/api/promo-section-design-runs", async (route) => {
     sectionAiRunRequest = route.request().postDataJSON();
-    const target = sectionAiRunRequest.targetItemKey
+    const target = sectionAiRunRequest.targetType === "item" && sectionAiRunRequest.targetItemKey
       ? { type: "item", sectionKey: sectionAiRunRequest.sectionKey, itemKey: sectionAiRunRequest.targetItemKey }
       : { type: "section-background", sectionKey: sectionAiRunRequest.sectionKey };
     latestSectionAiRun = {
@@ -135,7 +135,7 @@ try {
   await assertPageText(page.locator('.content-substep[aria-current="step"] strong'), "템플릿 레이아웃");
   const editorFrame = page.frameLocator("iframe.wizard-layout-frame");
   await editorFrame.locator(".editor-workspace.is-create-promo-wizard").waitFor({ timeout: 10_000 });
-  assert.equal(await editorFrame.locator(".section-ai-actions > .section-ai-action").count(), 1, "Item-target sections must not expose the Section background AI action");
+  assert.equal(await editorFrame.locator(".section-ai-actions > .section-ai-action").count(), 2, "Section background AI actions must coexist with Item-target AI actions");
   assert.equal(await editorFrame.locator(".section-ai-action:not([disabled])").count(), 0, "Structural image/CTA values must not enable AI generation");
   assert.equal(await editorFrame.locator(".section-ai-action").first().getAttribute("title"), "섹션 콘텐츠를 먼저 등록해 주세요.");
   await editorFrame.getByRole("button", { name: "자동등록" }).click();
@@ -147,6 +147,7 @@ try {
   assert.equal(sectionAiRunRequest?.promoRunId, null);
   assert.equal(sectionAiRunRequest?.formTemplateId, "visual-editor-preview-template");
   assert.equal(sectionAiRunRequest?.sectionKey, "heroBanner");
+  assert.equal(sectionAiRunRequest?.targetType, "section-background");
   assert.equal(sectionAiRunRequest?.sectionInputs?.title, "Browser Smoke Promotion");
 
   sectionAiRunRequest = null;
@@ -160,6 +161,7 @@ try {
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
   assert.equal(sectionAiRunRequest?.sectionKey, "contentFeature");
+  assert.equal(sectionAiRunRequest?.targetType, "item");
   assert.equal(sectionAiRunRequest?.targetItemKey, "image");
   for (let attempt = 0; attempt < 50 && (await itemAiAction.textContent())?.trim() !== "AI 이미지 적용"; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 20));

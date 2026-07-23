@@ -91,7 +91,8 @@ function createHandler(overrides = {}) {
     const targetResolution = resolveImageTarget(
       defaultConstraints(section, layout.layoutSpec),
       run.sectionKey,
-      savedImageTarget?.type === "item" ? savedImageTarget.itemKey : ""
+      savedImageTarget?.type === "item" ? savedImageTarget.itemKey : "",
+      savedImageTarget?.type || ""
     );
     const currentConstraints = targetResolution.constraints;
     if (!targetResolution.ok) {

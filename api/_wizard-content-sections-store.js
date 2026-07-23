@@ -18,6 +18,7 @@ const AI_IMAGE_TARGETS = ["section-background", "item"];
 const DEFAULT_AI_DESIGN = Object.freeze({
   enabled: true,
   allowedLayoutVariants: AI_LAYOUT_VARIANTS,
+  allowSectionBackground: true,
   imageTarget: "section-background",
   imageTargetItemKeys: [],
   imageAspectRatio: "16:9",
@@ -82,8 +83,9 @@ function normalizeAiDesign(value = {}) {
   return {
     enabled: normalizeBoolean(source.enabled, DEFAULT_AI_DESIGN.enabled),
     allowedLayoutVariants,
+    allowSectionBackground: normalizeBoolean(source.allowSectionBackground, DEFAULT_AI_DESIGN.allowSectionBackground),
     imageTarget,
-    imageTargetItemKeys: imageTarget === "item" ? imageTargetItemKeys : [],
+    imageTargetItemKeys,
     imageAspectRatio: String(source.imageAspectRatio || DEFAULT_AI_DESIGN.imageAspectRatio).trim() || DEFAULT_AI_DESIGN.imageAspectRatio,
   };
 }

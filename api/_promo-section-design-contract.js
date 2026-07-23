@@ -61,10 +61,12 @@ function defaultConstraints(section, layout = {}) {
       .filter((item) => imageItemKeys.has(item))
   )];
   const useItemTarget = policy.imageTarget === "item";
+  const allowSectionBackground = policy.allowSectionBackground !== false;
   const currentHeight = layout.sectionStyles?.[section.sectionKey]?.minHeight;
   return {
     enabled: policy.enabled !== false,
     allowedLayoutVariants,
+    allowSectionBackground,
     imageTargetItemKeys,
     imageTarget: useItemTarget
       ? (imageTargetItemKeys.length
@@ -77,21 +79,36 @@ function defaultConstraints(section, layout = {}) {
   };
 }
 
-function resolveImageTarget(constraints, sectionKey, targetItemKey = "") {
-  if (!constraints?.imageTarget) return { ok: false, constraints };
+function resolveImageTarget(constraints, sectionKey, targetItemKey = "", targetType = "") {
+  const requestedType = String(targetType || "").trim();
   const requestedItemKey = String(targetItemKey || "").trim();
-  if (!requestedItemKey) return { ok: true, constraints };
-  if (constraints.imageTarget.type !== "item"
-    || !(constraints.imageTargetItemKeys || []).includes(requestedItemKey)) {
+  if (requestedType === "section-background") {
+    if (constraints?.allowSectionBackground === false) return { ok: false, constraints };
+    return {
+      ok: true,
+      constraints: {
+        ...constraints,
+        imageTarget: { type: "section-background", sectionKey },
+      },
+    };
+  }
+  if (requestedType && requestedType !== "item") return { ok: false, constraints };
+  if (requestedItemKey) {
+    if (!(constraints?.imageTargetItemKeys || []).includes(requestedItemKey)) {
+      return { ok: false, constraints };
+    }
+    return {
+      ok: true,
+      constraints: {
+        ...constraints,
+        imageTarget: { type: "item", sectionKey, itemKey: requestedItemKey },
+      },
+    };
+  }
+  if (!constraints?.imageTarget) {
     return { ok: false, constraints };
   }
-  return {
-    ok: true,
-    constraints: {
-      ...constraints,
-      imageTarget: { type: "item", sectionKey, itemKey: requestedItemKey },
-    },
-  };
+  return { ok: true, constraints };
 }
 
 function analyzableSectionContent(section, sectionInputs) {
@@ -260,7 +277,7 @@ function validatePatch(section, generated, constraints) {
       errors.push(`Unsupported image target section: ${target.sectionKey}`);
     } else if (target.type === "item" && !(constraints.imageTargetItemKeys || []).includes(target.itemKey)) {
       errors.push(`Unsupported image target: ${target.itemKey}`);
-    } else if (target.type === "section-background" && (constraints.imageTargetItemKeys || []).length) {
+    } else if (target.type === "section-background" && constraints.allowSectionBackground === false) {
       errors.push("Section background is not the selected image target");
     }
   }
@@ -306,7 +323,7 @@ function validateDesignPlan(section, plan, constraints, tokenSet) {
         errors.push(`Item image target is outside the section policy: ${asset.itemKey}`);
       }
     } else if (asset.targetType !== "section-background") errors.push(`Unsupported asset target: ${asset.targetType}`);
-    else if (constraints.imageTarget?.type !== "section-background") errors.push("Section background generation is outside the section policy");
+    else if (constraints.allowSectionBackground === false) errors.push("Section background generation is outside the section policy");
   });
   return { ok: errors.length === 0, errors };
 }

@@ -39,10 +39,13 @@ module.exports = async function handler(req, res) {
     if (!constraints.enabled) return res.status(403).json({ error: "AI design generation is disabled for this section" });
     if (!constraints.allowedLayoutVariants.length) return res.status(422).json({ error: "No AI layout variant is allowed for this section" });
     const targetItemKey = String(body.targetItemKey || "").trim();
-    const targetResolution = resolveImageTarget(constraints, sectionKey, targetItemKey);
+    const targetType = String(body.targetType || "").trim();
+    const targetResolution = resolveImageTarget(constraints, sectionKey, targetItemKey, targetType);
     if (!targetResolution.ok) {
       return res.status(422).json({
-        error: targetItemKey
+        error: targetType === "section-background"
+          ? "Section background AI generation is not allowed for this section"
+          : targetItemKey
           ? "Requested AI image Item is not allowed for this section"
           : "No valid AI image target is configured for this section",
       });

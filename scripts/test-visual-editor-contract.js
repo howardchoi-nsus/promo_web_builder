@@ -157,6 +157,8 @@ assert.match(app, /sectionContentRegistered/);
 assert.match(app, /section-registration-icon/);
 assert.match(app, /create-promo-auto-register-request/);
 assert.match(app, /create-promo-section-ai-action/);
+assert.match(app, /targetType:\s*resolvedTargetType/);
+assert.match(app, /allowSectionBackground !== false/);
 assert.match(app, /create-promo-remove-image/);
 assert.match(app, /sectionAiPrimaryAction/);
 assert.match(app, /placeholder="Enter 키로 줄바꿈할 수 있습니다\."/);

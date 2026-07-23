@@ -37,6 +37,7 @@ const constraints = defaultConstraints(section, { sectionStyles: {} });
 assert.deepEqual(constraints.contentLocks, ["title"]);
 assert.deepEqual(constraints.imageTargetItemKeys, []);
 assert.deepEqual(constraints.imageTarget, { type: "section-background", sectionKey: "heroBanner" });
+assert.equal(constraints.allowSectionBackground, true);
 
 const managedConstraints = defaultConstraints({
   ...section,
@@ -56,6 +57,10 @@ const selectedTarget = resolveImageTarget(managedConstraints, "heroBanner", "sec
 assert.equal(selectedTarget.ok, true);
 assert.deepEqual(selectedTarget.constraints.imageTarget, { type: "item", sectionKey: "heroBanner", itemKey: "secondaryImage" });
 assert.equal(resolveImageTarget(managedConstraints, "heroBanner", "missingImage").ok, false);
+const selectedBackgroundTarget = resolveImageTarget(managedConstraints, "heroBanner", "", "section-background");
+assert.equal(selectedBackgroundTarget.ok, true);
+assert.deepEqual(selectedBackgroundTarget.constraints.imageTarget, { type: "section-background", sectionKey: "heroBanner" });
+assert.equal(resolveImageTarget({ ...managedConstraints, allowSectionBackground: false }, "heroBanner", "", "section-background").ok, false);
 
 const invalidItemConstraints = defaultConstraints({
   ...section,

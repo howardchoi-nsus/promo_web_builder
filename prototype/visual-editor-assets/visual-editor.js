@@ -3014,7 +3014,7 @@ var Eo = {
 			return /^(https?:\/\/|\/api\/)/i.test(t) ? t : "";
 		}
 		function s(e, t) {
-			return e?.aiDesign?.imageTarget === "item" && Array.isArray(e.aiDesign.imageTargetItemKeys) && e.aiDesign.imageTargetItemKeys.includes(t?.itemKey);
+			return Array.isArray(e?.aiDesign?.imageTargetItemKeys) && e.aiDesign.imageTargetItemKeys.includes(t?.itemKey);
 		}
 		function c(e, t, n) {
 			if (s(e, t)) return !1;
@@ -3657,16 +3657,16 @@ var Uo = {
 			});
 		}
 		function ge(e) {
-			let t = pe(e);
+			let t = pe(e), n = t?.constraintsSnapshot?.imageTarget?.type === "section-background";
 			return P(e) ? {
 				action: "generate",
 				label: "AI 생성 중",
 				disabled: !0
-			} : t?.status === "ready" && !me(e) ? {
+			} : n && t?.status === "ready" && !me(e) ? {
 				action: "apply",
 				label: "AI 적용",
 				disabled: !1
-			} : t?.status === "applied" ? {
+			} : n && t?.status === "applied" ? {
 				action: "generate",
 				label: "AI 재생성",
 				disabled: !he(e)
@@ -3680,7 +3680,7 @@ var Uo = {
 			return Array.isArray(e?.aiDesign?.imageTargetItemKeys) ? e.aiDesign.imageTargetItemKeys : [];
 		}
 		function ve(e, t) {
-			return !!(e?.aiDesign?.enabled !== !1 && e?.aiDesign?.imageTarget === "item" && t?.fieldKind === "image" && t?.isVisibleInWizard !== !1 && !t?.isLocked && t?.image?.allowedSources?.includes("ai") && _e(e).includes(t.itemKey));
+			return !!(e?.aiDesign?.enabled !== !1 && t?.fieldKind === "image" && t?.isVisibleInWizard !== !1 && !t?.isLocked && t?.image?.allowedSources?.includes("ai") && _e(e).includes(t.itemKey));
 		}
 		function I(e) {
 			let t = pe(e)?.constraintsSnapshot?.imageTarget;
@@ -3706,11 +3706,13 @@ var Uo = {
 				disabled: !he(e)
 			};
 		}
-		function be(e, t, n = "") {
+		function be(e, t, n = "", r = "") {
+			let i = r || (n ? "item" : "section-background");
 			window.parent.postMessage({
 				type: "create-promo-section-ai-action",
 				sectionKey: e.sectionKey,
 				action: t,
+				targetType: i,
 				targetItemKey: String(n || "").trim() || null
 			}, window.location.origin);
 		}
@@ -4055,13 +4057,13 @@ var Uo = {
 							r: "9"
 						}, null, -1), de(e) ? (Y(), X("path", xs)) : (Y(), X("path", Ss))], 10, bs)),
 						i[35] ||= Z("i", { "aria-hidden": "true" }, null, -1)
-					], 10, ys), O.value ? (Y(), X("div", Cs, [e.aiDesign?.enabled !== !1 && e.aiDesign?.imageTarget !== "item" ? (Y(), X("button", {
+					], 10, ys), O.value ? (Y(), X("div", Cs, [e.aiDesign?.enabled !== !1 && e.aiDesign?.allowSectionBackground !== !1 ? (Y(), X("button", {
 						key: 0,
 						type: "button",
 						class: "section-ai-action",
 						disabled: ge(e).disabled,
 						title: ge(e).disabled && !P(e) ? "섹션 콘텐츠를 먼저 등록해 주세요." : "",
-						onClick: (t) => be(e, ge(e).action)
+						onClick: (t) => be(e, ge(e).action, "", "section-background")
 					}, F(ge(e).label), 9, ws)) : Q("", !0), L(e) ? (Y(), X("button", {
 						key: 1,
 						type: "button",

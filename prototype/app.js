@@ -1205,6 +1205,7 @@ const adminApp = createApp({
         aiDesign: {
           enabled: true,
           allowedLayoutVariants: ["split-left", "split-right", "centered-hero"],
+          allowSectionBackground: true,
           imageTarget: "section-background",
           imageTargetItemKeys: [],
           imageAspectRatio: "16:9",
@@ -1250,6 +1251,7 @@ const adminApp = createApp({
         aiDesign: {
           enabled: true,
           allowedLayoutVariants: ["split-left", "split-right", "centered-hero"],
+          allowSectionBackground: true,
           imageTarget: "section-background",
           imageTargetItemKeys: [],
           imageAspectRatio: "16:9",
@@ -2753,6 +2755,7 @@ const adminApp = createApp({
           allowedLayoutVariants: Array.isArray(section.aiDesign?.allowedLayoutVariants)
             ? [...section.aiDesign.allowedLayoutVariants]
             : ["split-left", "split-right", "centered-hero"],
+          allowSectionBackground: section.aiDesign?.allowSectionBackground !== false,
           imageTarget: section.aiDesign?.imageTarget === "item" ? "item" : "section-background",
           imageTargetItemKeys: Array.isArray(section.aiDesign?.imageTargetItemKeys)
             ? [...section.aiDesign.imageTargetItemKeys]
@@ -3202,6 +3205,7 @@ const adminApp = createApp({
             allowedLayoutVariants: Array.isArray(result.section.aiDesign?.allowedLayoutVariants)
               ? [...result.section.aiDesign.allowedLayoutVariants]
               : ["split-left", "split-right", "centered-hero"],
+            allowSectionBackground: result.section.aiDesign?.allowSectionBackground !== false,
             imageTarget: result.section.aiDesign?.imageTarget === "item" ? "item" : "section-background",
             imageTargetItemKeys: Array.isArray(result.section.aiDesign?.imageTargetItemKeys)
               ? [...result.section.aiDesign.imageTargetItemKeys]

@@ -152,9 +152,10 @@ function sectionAiHasContent(section) {
 
 function sectionAiPrimaryAction(section) {
   const run = sectionAiRun(section);
+  const matchesBackground = run?.constraintsSnapshot?.imageTarget?.type === "section-background";
   if (sectionAiIsProcessing(section)) return { action: "generate", label: "AI 생성 중", disabled: true };
-  if (run?.status === "ready" && !sectionAiIsStale(section)) return { action: "apply", label: "AI 적용", disabled: false };
-  if (run?.status === "applied") return { action: "generate", label: "AI 재생성", disabled: !sectionAiHasContent(section) };
+  if (matchesBackground && run?.status === "ready" && !sectionAiIsStale(section)) return { action: "apply", label: "AI 적용", disabled: false };
+  if (matchesBackground && run?.status === "applied") return { action: "generate", label: "AI 재생성", disabled: !sectionAiHasContent(section) };
   return { action: "generate", label: "AI 디자인", disabled: !sectionAiHasContent(section) };
 }
 
@@ -167,7 +168,6 @@ function sectionAiAllowedItemKeys(section) {
 function sectionAiItemAllowed(section, item) {
   return Boolean(
     section?.aiDesign?.enabled !== false
-      && section?.aiDesign?.imageTarget === "item"
       && item?.fieldKind === "image"
       && item?.isVisibleInWizard !== false
       && !item?.isLocked
@@ -194,11 +194,13 @@ function sectionAiItemAction(section, item) {
   return { action: "generate", label: "AI 이미지 생성", disabled: !sectionAiHasContent(section) };
 }
 
-function requestSectionAiAction(section, action, targetItemKey = "") {
+function requestSectionAiAction(section, action, targetItemKey = "", targetType = "") {
+  const resolvedTargetType = targetType || (targetItemKey ? "item" : "section-background");
   window.parent.postMessage({
     type: "create-promo-section-ai-action",
     sectionKey: section.sectionKey,
     action,
+    targetType: resolvedTargetType,
     targetItemKey: String(targetItemKey || "").trim() || null,
   }, window.location.origin);
 }
@@ -660,12 +662,12 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
             </button>
               <div v-if="isCreatePromoWizardMode" class="section-ai-actions">
                 <button
-                  v-if="section.aiDesign?.enabled !== false && section.aiDesign?.imageTarget !== 'item'"
+                  v-if="section.aiDesign?.enabled !== false && section.aiDesign?.allowSectionBackground !== false"
                   type="button"
                   class="section-ai-action"
                   :disabled="sectionAiPrimaryAction(section).disabled"
                   :title="sectionAiPrimaryAction(section).disabled && !sectionAiIsProcessing(section) ? '섹션 콘텐츠를 먼저 등록해 주세요.' : ''"
-                  @click="requestSectionAiAction(section, sectionAiPrimaryAction(section).action)"
+                  @click="requestSectionAiAction(section, sectionAiPrimaryAction(section).action, '', 'section-background')"
                 >{{ sectionAiPrimaryAction(section).label }}</button>
                 <button
                   v-if="sectionHasAiBackground(section)"
