@@ -24,10 +24,27 @@
 .promo-renderer .rendered-image__placeholder small { overflow-wrap: anywhere; }
 .promo-renderer .image-resize-handle { position: absolute; z-index: 12; width: 14px; height: 14px; padding: 0; border: 2px solid var(--promo-accent); border-radius: 50%; background: #fff; touch-action: none; }
 .promo-renderer .image-resize-handle--nw { top: -8px; left: -8px; cursor: nwse-resize; }
+.promo-renderer .image-resize-handle--n { top: -8px; left: 50%; cursor: ns-resize; transform: translateX(-50%); }
 .promo-renderer .image-resize-handle--ne { top: -8px; right: -8px; cursor: nesw-resize; }
+.promo-renderer .image-resize-handle--e { top: 50%; right: -8px; cursor: ew-resize; transform: translateY(-50%); }
 .promo-renderer .image-resize-handle--se { right: -8px; bottom: -8px; cursor: nwse-resize; }
+.promo-renderer .image-resize-handle--s { bottom: -8px; left: 50%; cursor: ns-resize; transform: translateX(-50%); }
 .promo-renderer .image-resize-handle--sw { bottom: -8px; left: -8px; cursor: nesw-resize; }
+.promo-renderer .image-resize-handle--w { top: 50%; left: -8px; cursor: ew-resize; transform: translateY(-50%); }
 .promo-renderer .image-resize-handle:focus-visible { outline: 3px solid var(--promo-accent); outline-offset: 2px; }
+.promo-renderer .section-ai-state,
+.promo-renderer .item-ai-state { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--promo-accent); background: color-mix(in srgb, var(--promo-bg) 88%, transparent); color: var(--promo-ink); font-size: 12px; font-weight: 800; }
+.promo-renderer .section-ai-state { position: absolute; z-index: 15; top: 10px; right: 12px; min-height: 30px; padding: 0 10px; }
+.promo-renderer .item-ai-state { position: absolute; z-index: 11; inset: 0; justify-content: center; padding: 12px; background: color-mix(in srgb, var(--promo-bg) 82%, transparent); text-align: center; pointer-events: none; }
+.promo-renderer .section-ai-state.is-failed,
+.promo-renderer .item-ai-state.is-failed { border-color: #c43d4f; color: #9f2638; }
+.promo-renderer .section-ai-state i,
+.promo-renderer .item-ai-state i { width: 14px; height: 14px; border: 2px solid color-mix(in srgb, var(--promo-accent) 28%, transparent); border-top-color: var(--promo-accent); border-radius: 50%; animation: promo-ai-spin .8s linear infinite; }
+@keyframes promo-ai-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .promo-renderer .section-ai-state i,
+  .promo-renderer .item-ai-state i { animation: none; }
+}
 .promo-renderer .section-resize-handle { position: absolute; z-index: 8; left: 50%; bottom: -5px; width: 54px; height: 10px; padding: 0; border: 1px solid #9ba7b8; border-radius: 20px; background: #fff; cursor: ns-resize; transform: translateX(-50%); touch-action: none; }
 .promo-renderer .section-resize-handle:hover,
 .promo-renderer .rendered-section.is-resizing .section-resize-handle { border-color: var(--promo-accent); background: color-mix(in srgb, var(--promo-accent) 10%, #fff); }

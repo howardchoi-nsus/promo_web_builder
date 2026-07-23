@@ -1349,7 +1349,14 @@ async function generateSectionAiDesign(section, targetType = "section-background
     }
     return;
   }
-  saveSectionAiRun(sectionKey, { status: "queued" }, sectionInputs);
+  saveSectionAiRun(sectionKey, {
+    status: "queued",
+    constraintsSnapshot: {
+      imageTarget: requestedTargetType === "item"
+        ? { type: "item", sectionKey, itemKey: String(targetItemKey || "").trim() }
+        : { type: "section-background", sectionKey },
+    },
+  }, sectionInputs);
   postWizardLayoutSnapshot();
   try {
     const created = await fetchJson("/api/promo-section-design-runs", {

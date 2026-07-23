@@ -37,6 +37,7 @@ try {
   const page = await context.newPage();
   let sectionAiRunRequest = null;
   let latestSectionAiRun = null;
+  let sectionAiRunResponseDelayMs = 0;
   await page.route("**/api/promo-section-design-runs", async (route) => {
     sectionAiRunRequest = route.request().postDataJSON();
     const target = sectionAiRunRequest.targetType === "item" && sectionAiRunRequest.targetItemKey
@@ -66,6 +67,9 @@ try {
         proxyUrl: `/api/promo-section-design-image?runId=fixture-${sectionAiRunRequest.sectionKey}`,
       },
     };
+    if (sectionAiRunResponseDelayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, sectionAiRunResponseDelayMs));
+    }
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -135,12 +139,37 @@ try {
   await assertPageText(page.locator('.content-substep[aria-current="step"] strong'), "템플릿 레이아웃");
   const editorFrame = page.frameLocator("iframe.wizard-layout-frame");
   await editorFrame.locator(".editor-workspace.is-create-promo-wizard").waitFor({ timeout: 10_000 });
+  assert.equal(await editorFrame.locator("header.editor-header.editor-toolbar").count(), 0, "Create Promo must omit the embedded editor header");
+  const createPromoWorkspaceStyles = await editorFrame.locator(".editor-workspace.is-create-promo-wizard").evaluate((node) => {
+    const styles = getComputedStyle(node);
+    return {
+      gridTemplateAreas: styles.gridTemplateAreas,
+      overflowX: styles.overflowX,
+      overflowY: styles.overflowY,
+    };
+  });
+  assert.match(createPromoWorkspaceStyles.gridTemplateAreas, /sections preview content/);
+  assert.match(createPromoWorkspaceStyles.overflowX, /^(auto|hidden)$/);
+  assert.equal(createPromoWorkspaceStyles.overflowY, "hidden");
+  assert.equal(
+    await editorFrame.locator(".section-rail").evaluate((node) => getComputedStyle(node).overflowY),
+    "auto",
+    "Section rail must scroll independently",
+  );
+  assert.equal(
+    await editorFrame.locator(".property-panel").evaluate((node) => getComputedStyle(node).overflowY),
+    "auto",
+    "Property panel must scroll independently",
+  );
   assert.equal(await editorFrame.locator(".section-ai-actions > .section-ai-action").count(), 2, "Section background AI actions must coexist with Item-target AI actions");
   assert.equal(await editorFrame.locator(".section-ai-action:not([disabled])").count(), 0, "Structural image/CTA values must not enable AI generation");
   assert.equal(await editorFrame.locator(".section-ai-action").first().getAttribute("title"), "섹션 콘텐츠를 먼저 등록해 주세요.");
   await editorFrame.getByRole("button", { name: "자동등록" }).click();
   await editorFrame.locator(".auto-register-message").waitFor({ timeout: 10_000 });
+  sectionAiRunResponseDelayMs = 300;
   await editorFrame.locator(".section-ai-action:not([disabled])").first().click();
+  await editorFrame.locator('[data-section-key="heroBanner"] .section-ai-state.is-processing').waitFor({ timeout: 2_000 });
+  sectionAiRunResponseDelayMs = 0;
   for (let attempt = 0; attempt < 50 && !sectionAiRunRequest; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
@@ -156,7 +185,10 @@ try {
   const itemAiAction = editorFrame.locator(".item-ai-generation-action");
   await itemAiAction.waitFor();
   assert.equal(await itemAiAction.isDisabled(), false, "Allowed image Item AI action should be enabled when the Section has content");
+  sectionAiRunResponseDelayMs = 300;
   await itemAiAction.click();
+  await editorFrame.locator('[data-section-key="contentFeature"] [data-item-key="image"] .item-ai-state.is-processing').waitFor({ timeout: 2_000 });
+  sectionAiRunResponseDelayMs = 0;
   for (let attempt = 0; attempt < 50 && !sectionAiRunRequest; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
@@ -188,6 +220,20 @@ try {
     await itemImageFrame.evaluate((node) => getComputedStyle(node).backgroundImage),
     "none",
     "Item-target AI generation must render through the Image Frame background",
+  );
+  const imageResizeModeButtons = editorFrame.locator(".image-resize-mode button");
+  assert.equal(await imageResizeModeButtons.count(), 2);
+  await imageResizeModeButtons.nth(1).click();
+  assert.equal(
+    await editorFrame.locator('[data-section-key="contentFeature"] [data-item-key="image"] .image-resize-handle').count(),
+    8,
+    "Free resize mode must expose corner and edge handles",
+  );
+  await imageResizeModeButtons.nth(0).click();
+  assert.equal(
+    await editorFrame.locator('[data-section-key="contentFeature"] [data-item-key="image"] .image-resize-handle').count(),
+    4,
+    "Ratio-maintained mode must expose corner handles only",
   );
   const imageRemoveAction = editorFrame.locator(".image-remove-action");
   await imageRemoveAction.waitFor();

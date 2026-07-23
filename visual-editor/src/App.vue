@@ -324,6 +324,24 @@ function setImageShape(shape) {
     : { shape });
 }
 
+function setImageResizeMode(mode) {
+  if (!selectedStyleKey.value || selectedItem.value?.isLocked || !["locked", "free"].includes(mode)) return;
+  const nextStyles = { ...(designSpec.value.itemStyles || {}) };
+  const nextStyle = { ...selectedItemStyle.value };
+  if (mode === "locked" || nextStyle.shape === "circle") {
+    nextStyle.aspectRatioLocked = true;
+    nextStyle.aspectRatio = nextStyle.shape === "circle"
+      ? "1/1"
+      : (nextStyle.aspectRatio || selectedItem.value?.image?.aspectRatio || "1/1");
+    delete nextStyle.heightPx;
+  } else {
+    nextStyle.aspectRatioLocked = false;
+    nextStyle.heightPx = Number(nextStyle.heightPx || 240);
+  }
+  nextStyles[selectedStyleKey.value] = nextStyle;
+  designSpec.value = { ...designSpec.value, itemStyles: nextStyles };
+}
+
 function resetSectionHeight() {
   if (!selectedSection.value) return;
   const nextStyles = { ...(designSpec.value.sectionStyles || {}) };
@@ -577,7 +595,7 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
 
       <div :class="{ 'shell-content': !isWizardLayoutMode }">
 
-    <header class="editor-header editor-toolbar">
+    <header v-if="!isCreatePromoWizardMode" class="editor-header editor-toolbar">
       <div>
         <span>{{ isAdminLayoutMode ? "ADMIN TEMPLATE LAYOUT" : isWizardLayoutMode ? "WIZARD LAYOUT" : "VISUAL EDITOR" }}</span>
         <h2>{{ template?.name || "Default Renderer" }}</h2>
@@ -730,6 +748,7 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
             :content="rendererSnapshot.content"
             :design-spec="rendererSnapshot.designSpec"
             :assets="rendererSnapshot.assets"
+            :section-design-runs="sectionDesignRuns"
             editable
             :show-guides="guidesVisible"
             :selected-item-key="selectedStyleKey"
@@ -815,6 +834,24 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
               <button type="button" :disabled="selectedItem.isLocked" @click="resetItemStyle">초기화</button>
             </div>
             <div v-if="selectedItem.fieldKind === 'image'" class="image-frame-controls">
+              <div class="image-resize-mode">
+                <span>크기 조절 방식</span>
+                <div role="group" aria-label="이미지 크기 조절 방식">
+                  <button
+                    type="button"
+                    :class="{ active: selectedItemStyle.aspectRatioLocked !== false }"
+                    :disabled="selectedItem.isLocked"
+                    @click="setImageResizeMode('locked')"
+                  >비율 유지</button>
+                  <button
+                    type="button"
+                    :class="{ active: selectedItemStyle.aspectRatioLocked === false }"
+                    :disabled="selectedItem.isLocked || selectedItemStyle.shape === 'circle'"
+                    @click="setImageResizeMode('free')"
+                  >자유 조절</button>
+                </div>
+                <small v-if="selectedItemStyle.shape === 'circle'">원형 이미지는 1:1 비율로 고정됩니다.</small>
+              </div>
               <label>
                 <span>이미지 너비</span>
                 <div class="range-field">
@@ -827,7 +864,17 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
                     :value="selectedItemStyle.widthPct || 32"
                     @input="updateItemStyle({ widthPct: Number($event.target.value) })"
                   />
-                  <output>{{ Math.round(selectedItemStyle.widthPct || 32) }}%</output>
+                  <input
+                    class="dimension-input"
+                    type="number"
+                    min="10"
+                    max="100"
+                    step="1"
+                    :disabled="selectedItem.isLocked"
+                    :value="Math.round(selectedItemStyle.widthPct || 32)"
+                    aria-label="이미지 너비 퍼센트"
+                    @change="updateItemStyle({ widthPct: Math.min(100, Math.max(10, Number($event.target.value) || 32)) })"
+                  />
                 </div>
               </label>
               <label v-if="selectedItemStyle.shape !== 'circle' && selectedItemStyle.aspectRatioLocked === false">
@@ -842,17 +889,18 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
                     :value="selectedItemStyle.heightPx || 240"
                     @input="updateItemStyle({ heightPx: Number($event.target.value) })"
                   />
-                  <output>{{ Math.round(selectedItemStyle.heightPx || 240) }}px</output>
+                  <input
+                    class="dimension-input"
+                    type="number"
+                    min="80"
+                    max="900"
+                    step="10"
+                    :disabled="selectedItem.isLocked"
+                    :value="Math.round(selectedItemStyle.heightPx || 240)"
+                    aria-label="이미지 높이 픽셀"
+                    @change="updateItemStyle({ heightPx: Math.min(900, Math.max(80, Number($event.target.value) || 240)) })"
+                  />
                 </div>
-              </label>
-              <label class="toggle-field">
-                <input
-                  type="checkbox"
-                  :disabled="selectedItem.isLocked"
-                  :checked="selectedItemStyle.aspectRatioLocked !== false"
-                  @change="updateItemStyle({ aspectRatioLocked: $event.target.checked })"
-                />
-                <span>비율 고정</span>
               </label>
               <label>
                 <span>이미지 맞춤</span>

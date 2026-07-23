@@ -10,6 +10,7 @@ const props = defineProps({
   editable: { type: Boolean, default: false },
   showGuides: { type: Boolean, default: true },
   selectedItemKey: { type: String, default: "" },
+  sectionDesignRuns: { type: Object, default: () => ({}) },
 });
 const emit = defineEmits(["select-item", "update-item-style", "update-renderer-item-style", "update-item-content", "update-section-style"]);
 
@@ -79,6 +80,56 @@ function itemStyle(section, item) {
 
 function sectionStyle(section) {
   return props.designSpec?.sectionStyles?.[section.sectionKey] || {};
+}
+
+const AI_PROCESSING_STATUSES = new Set([
+  "queued", "analyzing_content", "generating_layout", "validating_layout",
+  "generating_assets", "validating_assets",
+]);
+
+function sectionDesignRun(section) {
+  return props.sectionDesignRuns?.[section.sectionKey] || null;
+}
+
+function aiStatusLabel(status, targetType) {
+  const targetLabel = targetType === "item" ? "AI 이미지" : "AI 배경";
+  const labels = {
+    queued: `${targetLabel} 생성 준비 중`,
+    analyzing_content: "콘텐츠 분석 중",
+    generating_layout: "레이아웃 생성 중",
+    validating_layout: "레이아웃 검증 중",
+    generating_assets: `${targetLabel} 생성 중`,
+    validating_assets: `${targetLabel} 검증 중`,
+  };
+  return labels[status] || `${targetLabel} 처리 중`;
+}
+
+function aiTargetState(section, item = null) {
+  const run = sectionDesignRun(section);
+  const target = run?.constraintsSnapshot?.imageTarget;
+  const matchesTarget = item
+    ? target?.type === "item" && target.itemKey === item.itemKey
+    : target?.type === "section-background";
+  if (!matchesTarget) return null;
+  if (AI_PROCESSING_STATUSES.has(run.status)) {
+    return { kind: "processing", label: aiStatusLabel(run.status, target.type) };
+  }
+  if (run.status === "failed") {
+    return {
+      kind: "failed",
+      label: target.type === "item" ? "AI 이미지 생성 실패" : "AI 배경 생성 실패",
+      detail: String(run.errorMessage || "").trim(),
+    };
+  }
+  return null;
+}
+
+function imageResizeHandles(section, item) {
+  const style = itemStyle(section, item);
+  if (style.shape === "circle" || style.aspectRatioLocked !== false) {
+    return ["nw", "ne", "se", "sw"];
+  }
+  return ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
 }
 
 function clamp(value, min, max, fallback) {
@@ -289,7 +340,7 @@ function startDrag(event, section, item) {
   target.addEventListener("pointercancel", end);
 }
 
-function startItemResize(event, section, item, corner = "se") {
+function startItemResize(event, section, item, handleDirection = "se") {
   if (!props.editable || item.isLocked || item.fieldKind !== "image" || event.button !== 0) return;
   const handle = event.currentTarget;
   const target = handle.closest(".rendered-item");
@@ -319,18 +370,24 @@ function startItemResize(event, section, item, corner = "se") {
   let animationFrame = 0;
 
   const move = (moveEvent) => {
-    const horizontalDirection = corner.includes("w") ? -1 : 1;
-    const verticalDirection = corner.includes("n") ? -1 : 1;
+    const horizontalActive = handleDirection.includes("w") || handleDirection.includes("e");
+    const verticalActive = handleDirection.includes("n") || handleDirection.includes("s");
+    const horizontalDirection = handleDirection.includes("w") ? -1 : 1;
+    const verticalDirection = handleDirection.includes("n") ? -1 : 1;
     const deltaX = (moveEvent.clientX - startX) * horizontalDirection;
     const deltaY = (moveEvent.clientY - startY) * verticalDirection;
-    const maxWidth = Math.max(80, corner.includes("w")
+    const maxWidth = Math.max(80, handleDirection.includes("w")
       ? startWidth + startLeft
       : containerRect.width - startLeft);
-    const maxHeight = Math.max(80, corner.includes("n")
+    const maxHeight = Math.max(80, handleDirection.includes("n")
       ? startHeight + startTop
       : containerRect.height - startTop);
-    const widthCandidate = Math.min(maxWidth, Math.max(80, startWidth + deltaX));
-    const heightCandidate = Math.min(maxHeight, Math.max(80, startHeight + deltaY));
+    const widthCandidate = horizontalActive
+      ? Math.min(maxWidth, Math.max(80, startWidth + deltaX))
+      : startWidth;
+    const heightCandidate = verticalActive
+      ? Math.min(maxHeight, Math.max(80, startHeight + deltaY))
+      : startHeight;
     if (locked || style.shape === "circle") {
       const lockedRatio = style.shape === "circle" ? 1 : ratio;
       if (Math.abs(deltaY) > Math.abs(deltaX)) {
@@ -346,8 +403,8 @@ function startItemResize(event, section, item, corner = "se") {
       nextWidth = widthCandidate;
       nextHeight = heightCandidate;
     }
-    nextLeft = corner.includes("w") ? startLeft + startWidth - nextWidth : startLeft;
-    nextTop = corner.includes("n") ? startTop + startHeight - nextHeight : startTop;
+    nextLeft = handleDirection.includes("w") ? startLeft + startWidth - nextWidth : startLeft;
+    nextTop = handleDirection.includes("n") ? startTop + startHeight - nextHeight : startTop;
     if (animationFrame) return;
     animationFrame = requestAnimationFrame(() => {
       animationFrame = 0;
@@ -383,7 +440,7 @@ function startItemResize(event, section, item, corner = "se") {
   handle.addEventListener("pointercancel", end);
 }
 
-function resizeItemByKeyboard(event, section, item) {
+function resizeItemByKeyboard(event, section, item, handleDirection = "se") {
   if (!props.editable || item.isLocked || item.fieldKind !== "image") return;
   if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) return;
   event.preventDefault();
@@ -391,14 +448,33 @@ function resizeItemByKeyboard(event, section, item) {
   const style = itemStyle(section, item);
   const locked = style.aspectRatioLocked !== false;
   const step = event.shiftKey ? 4 : 1;
-  const direction = ["ArrowRight", "ArrowDown"].includes(event.key) ? 1 : -1;
-  const widthPct = clamp((style.widthPct ?? 32) + (direction * step), 10, 100, 32);
+  const horizontalActive = handleDirection.includes("w") || handleDirection.includes("e");
+  const verticalActive = handleDirection.includes("n") || handleDirection.includes("s");
+  const horizontalDirection = !horizontalActive
+    ? 0
+    : handleDirection.includes("w")
+      ? (event.key === "ArrowLeft" ? 1 : event.key === "ArrowRight" ? -1 : 0)
+      : (event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0);
+  const verticalDirection = !verticalActive
+    ? 0
+    : handleDirection.includes("n")
+      ? (event.key === "ArrowUp" ? 1 : event.key === "ArrowDown" ? -1 : 0)
+      : (event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0);
+  const lockedDirection = horizontalDirection || verticalDirection;
+  if (locked && !lockedDirection) return;
+  if (!locked && !horizontalDirection && !verticalDirection) return;
+  const widthPct = clamp(
+    (style.widthPct ?? 32) + ((locked ? lockedDirection : horizontalDirection) * step),
+    10, 100, 32,
+  );
   const currentHeight = clamp(style.heightPx, 80, 900, 240);
   emit("update-renderer-item-style", section, item, {
     widthPct,
     heightPx: locked || style.shape === "circle"
       ? undefined
-      : clamp(currentHeight + (direction * step * 4), 80, 900, 240),
+      : verticalActive
+        ? clamp(currentHeight + (verticalDirection * step * 4), 80, 900, 240)
+        : currentHeight,
   });
 }
 
@@ -522,7 +598,19 @@ function startSectionResize(event, section) {
       :class="`rendered-section--${section.sectionKey}`"
       :data-section-key="section.sectionKey"
       :style="inlineSectionStyle(section)"
+      :aria-busy="aiTargetState(section)?.kind === 'processing' ? 'true' : undefined"
     >
+      <div
+        v-if="editable && aiTargetState(section)"
+        class="section-ai-state"
+        :class="`is-${aiTargetState(section).kind}`"
+        role="status"
+        aria-live="polite"
+        :title="aiTargetState(section).detail || undefined"
+      >
+        <i v-if="aiTargetState(section).kind === 'processing'" aria-hidden="true"></i>
+        <span>{{ aiTargetState(section).label }}</span>
+      </div>
       <div class="rendered-section__inner">
         <div class="rendered-items" :style="inlineCanvasStyle(section)">
           <article
@@ -563,22 +651,34 @@ function startSectionResize(event, section) {
                 :role="imageFrameAccessibility(section, item).role"
                 :aria-label="imageFrameAccessibility(section, item).label"
                 :aria-hidden="imageFrameAccessibility(section, item).ariaHidden"
+                :aria-busy="aiTargetState(section, item)?.kind === 'processing' ? 'true' : undefined"
               >
                 <div v-if="!imageUrl(valueFor(section, item))" class="rendered-image__placeholder">
                   <span>{{ item.name }}</span>
                   <small>{{ valueFor(section, item)?.value || '이미지 준비 중' }}</small>
                 </div>
               </div>
+              <div
+                v-if="editable && aiTargetState(section, item)"
+                class="item-ai-state"
+                :class="`is-${aiTargetState(section, item).kind}`"
+                role="status"
+                aria-live="polite"
+                :title="aiTargetState(section, item).detail || undefined"
+              >
+                <i v-if="aiTargetState(section, item).kind === 'processing'" aria-hidden="true"></i>
+                <span>{{ aiTargetState(section, item).label }}</span>
+              </div>
               <template v-if="editable && showGuides && !item.isLocked && selectedItemKey === styleKey(section, item)">
                 <button
-                  v-for="corner in ['nw', 'ne', 'se', 'sw']"
-                  :key="corner"
+                  v-for="handleDirection in imageResizeHandles(section, item)"
+                  :key="handleDirection"
                   type="button"
                   class="image-resize-handle"
-                  :class="`image-resize-handle--${corner}`"
-                  :aria-label="`${item.name} 이미지 크기 조절`"
-                  @pointerdown.stop="startItemResize($event, section, item, corner)"
-                  @keydown="resizeItemByKeyboard($event, section, item)"
+                  :class="`image-resize-handle--${handleDirection}`"
+                  :aria-label="`${item.name} 이미지 ${handleDirection} 방향 크기 조절`"
+                  @pointerdown.stop="startItemResize($event, section, item, handleDirection)"
+                  @keydown="resizeItemByKeyboard($event, section, item, handleDirection)"
                 ></button>
               </template>
             </template>
