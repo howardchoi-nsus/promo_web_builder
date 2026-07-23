@@ -62,23 +62,28 @@ process.env.SECTION_IMAGE_PROVIDER = "openai";
   assert.equal(requests[1].body.size, "1536x1024");
   assert.match(requests[1].body.prompt, /right half as clean negative space/);
   assert.match(requests[1].body.prompt, /main visual subject on the left/);
-  assert.match(requests[1].body.prompt, /exact solid background color #123e36/);
-  assert.match(requests[1].body.prompt, /do not fade to white, black, or transparency/);
+  assert.match(requests[1].body.prompt, /compatible with the solid section background color #123e36/);
+  assert.match(requests[1].body.prompt, /Do not bake a fade, gradient, vignette, transparency/);
+  assert.match(requests[1].body.prompt, /web renderer applies the requested fade with CSS/);
 
   process.env.SECTION_IMAGE_PROVIDER = "gemini";
   process.env.SECTION_IMAGE_MODEL = "gemini-3.1-flash-image";
-  const geminiImage = await generateSectionImage({ prompt: "Premium visual", safeArea: "left-copy" });
+  const geminiImage = await generateSectionImage({
+    prompt: "Premium visual",
+    safeArea: "left-copy",
+    aspectRatio: "1/1",
+  });
   assert.equal(geminiImage.bytes.length, 3072);
   assert.equal(geminiImage.mimeType, "image/jpeg");
   assert.equal(geminiImage.width, 2048);
-  assert.equal(geminiImage.height, 1152);
+  assert.equal(geminiImage.height, 2048);
   assert.equal(geminiImage.provider.provider, "gemini");
   assert.equal(geminiImage.provider.requestId, "gemini-image-request");
   assert.match(requests[2].url, /\/v1beta\/interactions$/);
   assert.equal(requests[2].body.model, "gemini-3.1-flash-image");
   assert.equal(requests[2].body.input[0].type, "text");
   assert.equal(requests[2].body.response_format.type, "image");
-  assert.equal(requests[2].body.response_format.aspect_ratio, "16:9");
+  assert.equal(requests[2].body.response_format.aspect_ratio, "1:1");
   assert.equal(requests[2].body.response_format.image_size, "2K");
   assert.match(requests[2].body.input[0].text, /left half as clean negative space/);
   assert.match(requests[2].body.input[0].text, /main visual subject on the right/);

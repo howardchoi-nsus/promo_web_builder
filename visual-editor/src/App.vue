@@ -256,7 +256,7 @@ function updateItemStyle(patch) {
 }
 
 function updateRendererItemStyle(section, item, patch) {
-  if (!section || !item) return;
+  if (!section || !item || item.isLocked) return;
   const key = `${section.sectionKey}.${item.itemKey}`;
   designSpec.value = {
     ...designSpec.value,
@@ -305,6 +305,21 @@ function setSectionBackgroundAlignment(alignment) {
   updateSectionStyle(selectedSection.value.sectionKey, {
     backgroundPosition: `${alignment} center`,
   });
+}
+
+function setSectionBackgroundFadeMode(mode) {
+  if (!selectedSection.value || !["none", "left", "right", "both"].includes(mode)) return;
+  updateSectionStyle(selectedSection.value.sectionKey, {
+    backgroundFadeMode: mode,
+    backgroundFadeStrength: selectedSectionStyle.value.backgroundFadeStrength || "medium",
+  });
+}
+
+function setImageShape(shape) {
+  if (!["square", "rounded", "circle"].includes(shape)) return;
+  updateItemStyle(shape === "circle"
+    ? { shape, aspectRatio: "1/1", aspectRatioLocked: true, heightPx: undefined }
+    : { shape });
 }
 
 function resetSectionHeight() {
@@ -797,55 +812,158 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
               <strong>DESIGN</strong>
               <button type="button" :disabled="selectedItem.isLocked" @click="resetItemStyle">초기화</button>
             </div>
-            <label>
-              <span>글자 색상</span>
-              <input
-                type="color"
-                :disabled="selectedItem.isLocked"
-                :value="selectedItemStyle.color || '#172033'"
-                @input="updateItemStyle({ color: $event.target.value })"
-              />
-            </label>
-            <label>
-              <span>폰트 크기</span>
-              <div class="range-field">
+            <div v-if="selectedItem.fieldKind === 'image'" class="image-frame-controls">
+              <label>
+                <span>이미지 너비</span>
+                <div class="range-field">
+                  <input
+                    type="range"
+                    min="10"
+                    max="100"
+                    step="1"
+                    :disabled="selectedItem.isLocked"
+                    :value="selectedItemStyle.widthPct || 32"
+                    @input="updateItemStyle({ widthPct: Number($event.target.value) })"
+                  />
+                  <output>{{ Math.round(selectedItemStyle.widthPct || 32) }}%</output>
+                </div>
+              </label>
+              <label v-if="selectedItemStyle.shape !== 'circle' && selectedItemStyle.aspectRatioLocked === false">
+                <span>이미지 높이</span>
+                <div class="range-field">
+                  <input
+                    type="range"
+                    min="80"
+                    max="900"
+                    step="10"
+                    :disabled="selectedItem.isLocked"
+                    :value="selectedItemStyle.heightPx || 240"
+                    @input="updateItemStyle({ heightPx: Number($event.target.value) })"
+                  />
+                  <output>{{ Math.round(selectedItemStyle.heightPx || 240) }}px</output>
+                </div>
+              </label>
+              <label class="toggle-field">
                 <input
-                  type="range"
-                  min="10"
-                  max="80"
-                  step="1"
+                  type="checkbox"
                   :disabled="selectedItem.isLocked"
-                  :value="selectedItemStyle.fontSize || 18"
-                  @input="updateItemStyle({ fontSize: Number($event.target.value) })"
+                  :checked="selectedItemStyle.aspectRatioLocked !== false"
+                  @change="updateItemStyle({ aspectRatioLocked: $event.target.checked })"
                 />
-                <output>{{ selectedItemStyle.fontSize || 18 }}px</output>
-              </div>
-            </label>
-            <label>
-              <span>폰트 굵기</span>
-              <select
-                :disabled="selectedItem.isLocked"
-                :value="selectedItemStyle.fontWeight || 400"
-                @change="updateItemStyle({ fontWeight: Number($event.target.value) })"
-              >
-                <option :value="400">Regular</option>
-                <option :value="500">Medium</option>
-                <option :value="700">Bold</option>
-                <option :value="800">Extra Bold</option>
-              </select>
-            </label>
-            <label>
-              <span>정렬</span>
-              <select
-                :disabled="selectedItem.isLocked"
-                :value="selectedItemStyle.textAlign || 'left'"
-                @change="updateItemStyle({ textAlign: $event.target.value })"
-              >
-                <option value="left">왼쪽</option>
-                <option value="center">가운데</option>
-                <option value="right">오른쪽</option>
-              </select>
-            </label>
+                <span>비율 고정</span>
+              </label>
+              <label>
+                <span>이미지 맞춤</span>
+                <select
+                  :disabled="selectedItem.isLocked"
+                  :value="selectedItemStyle.imageFit || 'contain'"
+                  @change="updateItemStyle({ imageFit: $event.target.value })"
+                >
+                  <option value="contain">전체 표시</option>
+                  <option value="cover">영역 채우기</option>
+                </select>
+              </label>
+              <label>
+                <span>이미지 초점</span>
+                <select
+                  :disabled="selectedItem.isLocked"
+                  :value="selectedItemStyle.imagePosition || 'center center'"
+                  @change="updateItemStyle({ imagePosition: $event.target.value })"
+                >
+                  <option value="left top">왼쪽 위</option>
+                  <option value="center top">중앙 위</option>
+                  <option value="right top">오른쪽 위</option>
+                  <option value="left center">왼쪽 중앙</option>
+                  <option value="center center">중앙</option>
+                  <option value="right center">오른쪽 중앙</option>
+                  <option value="left bottom">왼쪽 아래</option>
+                  <option value="center bottom">중앙 아래</option>
+                  <option value="right bottom">오른쪽 아래</option>
+                </select>
+              </label>
+              <label>
+                <span>이미지 형태</span>
+                <select
+                  :disabled="selectedItem.isLocked"
+                  :value="selectedItemStyle.shape || 'square'"
+                  @change="setImageShape($event.target.value)"
+                >
+                  <option value="square">사각형</option>
+                  <option value="rounded">둥근 사각형</option>
+                  <option value="circle">원형</option>
+                </select>
+              </label>
+              <label class="toggle-field">
+                <input
+                  type="checkbox"
+                  :disabled="selectedItem.isLocked"
+                  :checked="selectedItemStyle.decorative === true"
+                  @change="updateItemStyle({ decorative: $event.target.checked })"
+                />
+                <span>장식 이미지</span>
+              </label>
+              <label v-if="selectedItemStyle.decorative !== true">
+                <span>이미지 설명</span>
+                <input
+                  type="text"
+                  maxlength="240"
+                  :disabled="selectedItem.isLocked"
+                  :value="selectedItemStyle.accessibleLabel || selectedValue?.alt || selectedItem.name"
+                  @input="updateItemStyle({ accessibleLabel: $event.target.value })"
+                />
+              </label>
+            </div>
+            <template v-if="selectedItem.fieldKind !== 'image'">
+              <label>
+                <span>글자 색상</span>
+                <input
+                  type="color"
+                  :disabled="selectedItem.isLocked"
+                  :value="selectedItemStyle.color || '#172033'"
+                  @input="updateItemStyle({ color: $event.target.value })"
+                />
+              </label>
+              <label>
+                <span>폰트 크기</span>
+                <div class="range-field">
+                  <input
+                    type="range"
+                    min="10"
+                    max="80"
+                    step="1"
+                    :disabled="selectedItem.isLocked"
+                    :value="selectedItemStyle.fontSize || 18"
+                    @input="updateItemStyle({ fontSize: Number($event.target.value) })"
+                  />
+                  <output>{{ selectedItemStyle.fontSize || 18 }}px</output>
+                </div>
+              </label>
+              <label>
+                <span>폰트 굵기</span>
+                <select
+                  :disabled="selectedItem.isLocked"
+                  :value="selectedItemStyle.fontWeight || 400"
+                  @change="updateItemStyle({ fontWeight: Number($event.target.value) })"
+                >
+                  <option :value="400">Regular</option>
+                  <option :value="500">Medium</option>
+                  <option :value="700">Bold</option>
+                  <option :value="800">Extra Bold</option>
+                </select>
+              </label>
+              <label>
+                <span>정렬</span>
+                <select
+                  :disabled="selectedItem.isLocked"
+                  :value="selectedItemStyle.textAlign || 'left'"
+                  @change="updateItemStyle({ textAlign: $event.target.value })"
+                >
+                  <option value="left">왼쪽</option>
+                  <option value="center">가운데</option>
+                  <option value="right">오른쪽</option>
+                </select>
+              </label>
+            </template>
             <div class="position-status">
               <span>위치</span>
               <strong v-if="selectedItemStyle.positionMode === 'free'">
@@ -873,12 +991,37 @@ onBeforeUnmount(() => window.removeEventListener("message", handleParentMessage)
                   ]"
                   :key="option.value"
                   type="button"
-                  :class="{ active: (selectedSectionStyle.backgroundPosition || 'right center') === `${option.value} center` }"
+                  :class="{ active: (selectedSectionStyle.backgroundPosition || 'center center') === `${option.value} center` }"
                   @click="setSectionBackgroundAlignment(option.value)"
                 >
                   {{ option.label }}
                 </button>
               </div>
+            </div>
+            <div v-if="sectionHasAiBackground(selectedSection) || selectedSection?.aiDesign?.enabled !== false" class="section-background-fade">
+              <label>
+                <span>배경 이미지 페이드</span>
+                <select
+                  :value="selectedSectionStyle.backgroundFadeMode || 'none'"
+                  @change="setSectionBackgroundFadeMode($event.target.value)"
+                >
+                  <option value="none">페이드 없음</option>
+                  <option value="left">왼쪽 페이드</option>
+                  <option value="right">오른쪽 페이드</option>
+                  <option value="both">양끝 페이드</option>
+                </select>
+              </label>
+              <label v-if="(selectedSectionStyle.backgroundFadeMode || 'none') !== 'none'">
+                <span>페이드 강도</span>
+                <select
+                  :value="selectedSectionStyle.backgroundFadeStrength || 'medium'"
+                  @change="updateSectionStyle(selectedSection.sectionKey, { backgroundFadeStrength: $event.target.value })"
+                >
+                  <option value="soft">약하게</option>
+                  <option value="medium">보통</option>
+                  <option value="strong">강하게</option>
+                </select>
+              </label>
             </div>
             <div class="section-size-control">
               <div>

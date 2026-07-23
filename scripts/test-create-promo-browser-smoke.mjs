@@ -174,14 +174,19 @@ try {
   }
   assert.equal(itemAppliedContent?.sectionInputs?.contentFeature?.image?.source, "ai");
   assert.match(itemAppliedContent?.sectionInputs?.contentFeature?.image?.value || "", /^\/api\/promo-section-design-image\?/);
-  await editorFrame.locator(".rendered-image img").waitFor({ state: "attached" });
+  await editorFrame.locator(".rendered-image-frame").waitFor({ state: "attached" });
   assert.equal(
     Boolean(itemAppliedContent?.templateLayouts?.["default-preview"]?.resolvedLayout?.sectionStyles?.contentFeature?.backgroundImage),
     false,
     "Item-target AI generation must not create a Section background image",
   );
-  const itemImage = editorFrame.locator('[data-section-key="contentFeature"] [data-item-key="image"] .rendered-image img');
-  await itemImage.waitFor({ state: "attached" });
+  const itemImageFrame = editorFrame.locator('[data-section-key="contentFeature"] [data-item-key="image"] .rendered-image-frame');
+  await itemImageFrame.waitFor({ state: "attached" });
+  assert.notEqual(
+    await itemImageFrame.evaluate((node) => getComputedStyle(node).backgroundImage),
+    "none",
+    "Item-target AI generation must render through the Image Frame background",
+  );
   const imageRemoveAction = editorFrame.locator(".image-remove-action");
   await imageRemoveAction.waitFor();
   page.once("dialog", (dialog) => dialog.accept());
@@ -192,7 +197,11 @@ try {
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
   assert.equal(itemAppliedContent?.sectionInputs?.contentFeature?.image?.value, "");
-  await itemImage.waitFor({ state: "detached" });
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    if (await itemImageFrame.evaluate((node) => getComputedStyle(node).backgroundImage) === "none") break;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  assert.equal(await itemImageFrame.evaluate((node) => getComputedStyle(node).backgroundImage), "none");
 
   await page.locator(".content-substep-actions .primary-action").click();
   await assertPageText(page.locator("#step-title"), "웹 출력");

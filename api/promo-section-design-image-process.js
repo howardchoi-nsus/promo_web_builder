@@ -33,6 +33,7 @@ module.exports = async function handler(req, res) {
       prompt: request.prompt,
       safeArea: request.safeArea,
       backgroundColor: snapshot.design?.backgroundColor,
+      aspectRatio: request.aspectRatio || run.constraintsSnapshot?.imageAspectRatio,
     });
     if (image.bytes.length < 1024) throw Object.assign(new Error("Generated image is too small"), { code: "IMAGE_VALIDATION_FAILED" });
     const extension = image.mimeType === "image/jpeg" ? "jpg" : image.mimeType === "image/webp" ? "webp" : "png";

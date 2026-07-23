@@ -73,7 +73,7 @@ let fixtureLayout = {
     accentColor: "#156b5b",
     fontFamily: "Inter, Pretendard, sans-serif",
   },
-  responsive: { contentMaxWidth: 1440, contentMinWidth: 1140, mobileBreakpoint: 720 },
+  responsive: { contentMaxWidth: 1280, contentMinWidth: 1140, mobileBreakpoint: 720 },
   itemStyles: {},
   sectionStyles: {},
 };

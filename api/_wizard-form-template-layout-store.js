@@ -11,7 +11,7 @@ const DEFAULT_LAYOUT_SPEC = Object.freeze({
     fontFamily: "Inter, Pretendard, sans-serif",
   },
   responsive: {
-    contentMaxWidth: 1440,
+    contentMaxWidth: 1280,
     contentMinWidth: 1140,
     mobileBreakpoint: 720,
   },
@@ -52,6 +52,26 @@ function validateLayoutSpec(value, sections = []) {
     if (style?.minHeight !== undefined && (!Number.isFinite(height) || height < 50 || height > 1200)) {
       errors.push({ code: "INVALID_SECTION_HEIGHT", path: `sectionStyles.${key}.minHeight` });
     }
+    if (style?.backgroundSize !== undefined && style.backgroundSize !== "contain") {
+      errors.push({ code: "INVALID_SECTION_BACKGROUND_SIZE", path: `sectionStyles.${key}.backgroundSize` });
+    }
+    if (style?.backgroundPosition !== undefined
+      && !["left center", "center center", "right center"].includes(style.backgroundPosition)) {
+      errors.push({ code: "INVALID_SECTION_BACKGROUND_POSITION", path: `sectionStyles.${key}.backgroundPosition` });
+    }
+    if (style?.backgroundFadeMode !== undefined
+      && !["none", "left", "right", "both"].includes(style.backgroundFadeMode)) {
+      errors.push({ code: "INVALID_SECTION_FADE_MODE", path: `sectionStyles.${key}.backgroundFadeMode` });
+    }
+    if (style?.backgroundFadeStrength !== undefined
+      && !["soft", "medium", "strong"].includes(style.backgroundFadeStrength)) {
+      errors.push({ code: "INVALID_SECTION_FADE_STRENGTH", path: `sectionStyles.${key}.backgroundFadeStrength` });
+    }
+    for (const colorKey of ["backgroundColor", "backgroundFadeColor"]) {
+      if (style?.[colorKey] !== undefined && !/^#[0-9a-f]{6}$/i.test(String(style[colorKey]))) {
+        errors.push({ code: "INVALID_SECTION_COLOR", path: `sectionStyles.${key}.${colorKey}` });
+      }
+    }
   });
   Object.entries(spec.itemStyles).forEach(([key, style]) => {
     if (sections.length && !itemKeys.has(key)) warnings.push({ code: "UNKNOWN_LAYOUT_ITEM", path: key });
@@ -63,6 +83,36 @@ function validateLayoutSpec(value, sections = []) {
     }
     if (style?.fontSize !== undefined && (!Number.isFinite(Number(style.fontSize)) || Number(style.fontSize) < 10 || Number(style.fontSize) > 80)) {
       errors.push({ code: "INVALID_FONT_SIZE", path: `itemStyles.${key}.fontSize` });
+    }
+    if (style?.widthPct !== undefined && (!Number.isFinite(Number(style.widthPct)) || Number(style.widthPct) < 10 || Number(style.widthPct) > 100)) {
+      errors.push({ code: "INVALID_IMAGE_WIDTH", path: `itemStyles.${key}.widthPct` });
+    }
+    if (style?.heightPx !== undefined && (!Number.isFinite(Number(style.heightPx)) || Number(style.heightPx) < 80 || Number(style.heightPx) > 900)) {
+      errors.push({ code: "INVALID_IMAGE_HEIGHT", path: `itemStyles.${key}.heightPx` });
+    }
+    if (style?.imageFit !== undefined && !["contain", "cover"].includes(style.imageFit)) {
+      errors.push({ code: "INVALID_IMAGE_FIT", path: `itemStyles.${key}.imageFit` });
+    }
+    if (style?.imagePosition !== undefined && ![
+      "left top", "center top", "right top", "left center", "center center", "right center",
+      "left bottom", "center bottom", "right bottom",
+    ].includes(style.imagePosition)) {
+      errors.push({ code: "INVALID_IMAGE_POSITION", path: `itemStyles.${key}.imagePosition` });
+    }
+    if (style?.shape !== undefined && !["square", "rounded", "circle"].includes(style.shape)) {
+      errors.push({ code: "INVALID_IMAGE_SHAPE", path: `itemStyles.${key}.shape` });
+    }
+    if (style?.aspectRatio !== undefined && !/^\d+(?:\.\d+)?\s*[:/]\s*\d+(?:\.\d+)?$/.test(String(style.aspectRatio))) {
+      errors.push({ code: "INVALID_IMAGE_ASPECT_RATIO", path: `itemStyles.${key}.aspectRatio` });
+    }
+    if (style?.accessibleLabel !== undefined && String(style.accessibleLabel).length > 240) {
+      errors.push({ code: "INVALID_IMAGE_ACCESSIBLE_LABEL", path: `itemStyles.${key}.accessibleLabel` });
+    }
+    if (style?.aspectRatioLocked !== undefined && typeof style.aspectRatioLocked !== "boolean") {
+      errors.push({ code: "INVALID_IMAGE_ASPECT_RATIO_LOCK", path: `itemStyles.${key}.aspectRatioLocked` });
+    }
+    if (style?.decorative !== undefined && typeof style.decorative !== "boolean") {
+      errors.push({ code: "INVALID_IMAGE_DECORATIVE_STATE", path: `itemStyles.${key}.decorative` });
     }
   });
   return { ok: errors.length === 0, errors, warnings, spec };

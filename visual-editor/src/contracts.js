@@ -25,7 +25,7 @@ export const DEFAULT_DESIGN_SPEC = Object.freeze({
     fontFamily: "Inter, Pretendard, sans-serif",
   },
   responsive: {
-    contentMaxWidth: 1440,
+    contentMaxWidth: 1280,
     contentMinWidth: 1140,
     mobileBreakpoint: 720,
   },

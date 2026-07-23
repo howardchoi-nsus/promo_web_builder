@@ -128,7 +128,7 @@ const FALLBACK_LAYOUT = {
     accentColor: "#156b5b",
     fontFamily: "Inter, Pretendard, sans-serif",
   },
-  responsive: { contentMaxWidth: 1440, contentMinWidth: 1140, mobileBreakpoint: 720 },
+  responsive: { contentMaxWidth: 1280, contentMinWidth: 1140, mobileBreakpoint: 720 },
   itemStyles: {},
   sectionStyles: {},
 };
@@ -1274,7 +1274,10 @@ function removeSectionAiBackground(section) {
   wizardResolvedLayout = wizardResolvedLayout || JSON.parse(JSON.stringify(wizardBaseLayout || FALLBACK_LAYOUT));
   wizardResolvedLayout.sectionStyles = { ...(wizardResolvedLayout.sectionStyles || {}) };
   const current = { ...(wizardResolvedLayout.sectionStyles[section.sectionKey] || {}) };
-  ["backgroundImage", "backgroundSize", "backgroundPosition", "backgroundRepeat", "backgroundFadeSafeArea", "backgroundFadeColor"].forEach((key) => delete current[key]);
+  [
+    "backgroundImage", "backgroundSize", "backgroundPosition", "backgroundRepeat",
+    "backgroundFadeSafeArea",
+  ].forEach((key) => delete current[key]);
   if (Object.keys(current).length) wizardResolvedLayout.sectionStyles[section.sectionKey] = current;
   else delete wizardResolvedLayout.sectionStyles[section.sectionKey];
   clearLegacySectionAiImages(section);
@@ -1428,9 +1431,25 @@ async function applySectionAiDesign(section, saved) {
           description: appliedImage.prompt || appliedRun.layoutResult?.imageRequest?.prompt || "",
           alt: targetItem.name || section.name || "AI generated promotion image",
         });
+        const targetStyleKey = `${section.sectionKey}.${targetItem.itemKey}`;
+        const currentItemStyle = { ...(wizardResolvedLayout.itemStyles?.[targetStyleKey] || {}) };
+        wizardResolvedLayout.itemStyles[targetStyleKey] = {
+          widthPct: currentItemStyle.widthPct || 32,
+          aspectRatio: currentItemStyle.aspectRatio || targetItem.image?.aspectRatio || appliedRun.constraintsSnapshot?.imageAspectRatio || "1/1",
+          aspectRatioLocked: currentItemStyle.aspectRatioLocked !== false,
+          imageFit: currentItemStyle.imageFit || "contain",
+          imagePosition: currentItemStyle.imagePosition || "center center",
+          shape: currentItemStyle.shape || "square",
+          decorative: currentItemStyle.decorative === true,
+          accessibleLabel: currentItemStyle.accessibleLabel || targetItem.name || section.name || "Promotion image",
+          ...currentItemStyle,
+        };
         const currentSectionStyle = { ...(wizardResolvedLayout.sectionStyles[section.sectionKey] || {}) };
         if (String(currentSectionStyle.backgroundImage || "").startsWith("/api/promo-section-design-image?")) {
-          ["backgroundImage", "backgroundSize", "backgroundPosition", "backgroundRepeat", "backgroundFadeSafeArea", "backgroundFadeColor"]
+          [
+            "backgroundImage", "backgroundSize", "backgroundPosition", "backgroundRepeat",
+            "backgroundFadeSafeArea",
+          ]
             .forEach((key) => delete currentSectionStyle[key]);
           wizardResolvedLayout.sectionStyles[section.sectionKey] = currentSectionStyle;
         }
@@ -1444,17 +1463,23 @@ async function applySectionAiDesign(section, saved) {
             : layoutVariant === "centered-hero"
               ? "center-copy"
               : appliedImage.safeArea || appliedRun.layoutResult?.imageRequest?.safeArea || "left-copy";
-        const backgroundPosition = safeArea === "right-copy"
-          ? "left center"
-          : safeArea === "center-copy" ? "center center" : "right center";
+        const backgroundFadeMode = safeArea === "right-copy"
+          ? "right"
+          : safeArea === "center-copy" ? "both" : "left";
+        const currentSectionStyle = wizardResolvedLayout.sectionStyles[section.sectionKey] || {};
         wizardResolvedLayout.sectionStyles[section.sectionKey] = {
-          ...(wizardResolvedLayout.sectionStyles[section.sectionKey] || {}),
+          ...currentSectionStyle,
           backgroundImage: appliedImage.proxyUrl,
           backgroundSize: "contain",
-          backgroundPosition,
+          backgroundPosition: "center center",
           backgroundRepeat: "no-repeat",
           backgroundFadeSafeArea: safeArea,
+          backgroundFadeMode: ["none", "left", "right", "both"].includes(currentSectionStyle.backgroundFadeMode)
+            ? currentSectionStyle.backgroundFadeMode
+            : backgroundFadeMode,
+          backgroundFadeStrength: currentSectionStyle.backgroundFadeStrength || "medium",
           backgroundFadeColor: appliedImage.backgroundColor
+            || currentSectionStyle.backgroundColor
             || wizardResolvedLayout?.theme?.backgroundColor
             || FALLBACK_LAYOUT.theme.backgroundColor,
         };

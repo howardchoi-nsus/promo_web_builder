@@ -82,6 +82,46 @@ function sectionStyle(section) {
   return props.designSpec?.sectionStyles?.[section.sectionKey] || {};
 }
 
+function clamp(value, min, max, fallback) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
+}
+
+function normalizedAspectRatio(value, fallback = "1 / 1") {
+  const match = String(value || "").trim().match(/^(\d+(?:\.\d+)?)\s*[:/]\s*(\d+(?:\.\d+)?)$/);
+  if (!match || Number(match[1]) <= 0 || Number(match[2]) <= 0) return fallback;
+  return `${Number(match[1])} / ${Number(match[2])}`;
+}
+
+function imageFrameAspectRatio(item, style) {
+  if (style.shape === "circle") return "1 / 1";
+  return normalizedAspectRatio(style.aspectRatio || item.image?.aspectRatio, "1 / 1");
+}
+
+function imageFrameStyle(section, item) {
+  const style = itemStyle(section, item);
+  const url = imageUrl(valueFor(section, item));
+  const shape = ["square", "rounded", "circle"].includes(style.shape) ? style.shape : "square";
+  return {
+    backgroundImage: url ? `url(${JSON.stringify(url)})` : undefined,
+    backgroundSize: ["contain", "cover"].includes(style.imageFit) ? style.imageFit : "contain",
+    backgroundPosition: style.imagePosition || "center center",
+    backgroundRepeat: "no-repeat",
+    borderRadius: shape === "circle" ? "50%" : shape === "rounded" ? "var(--promo-image-radius, 24px)" : "0",
+  };
+}
+
+function imageFrameAccessibility(section, item) {
+  const style = itemStyle(section, item);
+  const value = valueFor(section, item);
+  if (style.decorative === true) return { ariaHidden: "true", role: undefined, label: undefined };
+  return {
+    ariaHidden: undefined,
+    role: "img",
+    label: String(style.accessibleLabel || value?.alt || value?.description || item.name || "Promotion image").trim(),
+  };
+}
+
 function estimatedItemHeight(item) {
   if (item.fieldKind === "image") return 250;
   if (item.fieldKind === "cta") return 64;
@@ -104,16 +144,38 @@ function defaultItemPosition(section, item) {
   };
 }
 
-function backgroundFadeGradient(safeArea, color) {
+function normalizedFadeMode(style) {
+  if (["none", "left", "right", "both"].includes(style.backgroundFadeMode)) return style.backgroundFadeMode;
+  if (style.backgroundFadeSafeArea === "left-copy") return "left";
+  if (style.backgroundFadeSafeArea === "right-copy") return "right";
+  if (style.backgroundFadeSafeArea === "center-copy") return "both";
+  return "none";
+}
+
+function effectiveSectionBackgroundColor(style) {
+  const sectionColor = String(style.backgroundColor || "").trim();
+  if (/^#[0-9a-f]{6}$/i.test(sectionColor)) return sectionColor;
+  const fadeColor = String(style.backgroundFadeColor || "").trim();
+  if (/^#[0-9a-f]{6}$/i.test(fadeColor)) return fadeColor;
+  const themeColor = String(props.designSpec?.theme?.backgroundColor || "").trim();
+  return /^#[0-9a-f]{6}$/i.test(themeColor) ? themeColor : "#f5f7fb";
+}
+
+function backgroundFadeGradient(mode, color, strength = "medium") {
   if (!/^#[0-9a-f]{6}$/i.test(String(color || ""))) return "";
-  if (safeArea === "left-copy") {
-    return `linear-gradient(to right, ${color} 0%, ${color} 18%, transparent 58%)`;
+  const stops = {
+    soft: { solid: 8, clear: 38, edge: 18 },
+    medium: { solid: 14, clear: 48, edge: 24 },
+    strong: { solid: 22, clear: 62, edge: 32 },
+  }[strength] || { solid: 14, clear: 48, edge: 24 };
+  if (mode === "left") {
+    return `linear-gradient(to right, ${color} 0%, ${color} ${stops.solid}%, transparent ${stops.clear}%)`;
   }
-  if (safeArea === "right-copy") {
-    return `linear-gradient(to left, ${color} 0%, ${color} 18%, transparent 58%)`;
+  if (mode === "right") {
+    return `linear-gradient(to left, ${color} 0%, ${color} ${stops.solid}%, transparent ${stops.clear}%)`;
   }
-  if (safeArea === "center-copy") {
-    return `radial-gradient(ellipse at center, ${color} 0%, ${color} 22%, transparent 64%)`;
+  if (mode === "both") {
+    return `linear-gradient(to right, ${color} 0%, transparent ${stops.edge}%, transparent ${100 - stops.edge}%, ${color} 100%)`;
   }
   return "";
 }
@@ -122,11 +184,13 @@ function inlineSectionStyle(section) {
   const style = sectionStyle(section);
   const canvasHeight = style.minHeight || defaultSectionHeight(section);
   const backgroundImage = sectionBackgroundUrl(section);
+  const backgroundColor = effectiveSectionBackgroundColor(style);
   const fadeGradient = backgroundImage
-    ? backgroundFadeGradient(style.backgroundFadeSafeArea, style.backgroundFadeColor || props.designSpec?.theme?.backgroundColor)
+    ? backgroundFadeGradient(normalizedFadeMode(style), backgroundColor, style.backgroundFadeStrength)
     : "";
   return {
     height: `${Math.max(50, canvasHeight)}px`,
+    backgroundColor,
     backgroundImage: backgroundImage
       ? [fadeGradient, `url(${JSON.stringify(backgroundImage)})`].filter(Boolean).join(", ")
       : undefined,
@@ -134,7 +198,7 @@ function inlineSectionStyle(section) {
       ? (fadeGradient ? `100% 100%, ${style.backgroundSize || "contain"}` : (style.backgroundSize || "contain"))
       : undefined,
     backgroundPosition: backgroundImage
-      ? (fadeGradient ? `center, ${style.backgroundPosition || "right center"}` : (style.backgroundPosition || "right center"))
+      ? (fadeGradient ? `center, ${style.backgroundPosition || "center center"}` : (style.backgroundPosition || "center center"))
       : undefined,
     backgroundRepeat: backgroundImage
       ? (fadeGradient ? `no-repeat, ${style.backgroundRepeat || "no-repeat"}` : (style.backgroundRepeat || "no-repeat"))
@@ -152,6 +216,9 @@ function inlineCanvasStyle(section) {
 function inlineItemStyle(section, item) {
   const style = itemStyle(section, item);
   const position = style.positionMode === "free" ? style : defaultItemPosition(section, item);
+  const isImage = item.fieldKind === "image";
+  const widthPct = clamp(style.widthPct, 10, 100, 32);
+  const heightPx = clamp(style.heightPx, 80, 900, undefined);
   const result = {
     left: `${position.xPct || 0}%`,
     top: style.yPx !== undefined ? `${style.yPx}px` : `${position.yPct || 0}%`,
@@ -163,6 +230,11 @@ function inlineItemStyle(section, item) {
     fontWeight: style.fontWeight,
     "--item-font-weight": style.fontWeight,
     textAlign: style.textAlign,
+    width: isImage ? `${widthPct}%` : undefined,
+    height: isImage && style.shape !== "circle" && heightPx ? `${heightPx}px` : undefined,
+    aspectRatio: isImage && (!heightPx || style.shape === "circle")
+      ? imageFrameAspectRatio(item, style)
+      : undefined,
   };
   return result;
 }
@@ -173,7 +245,9 @@ function selectRendererItem(section, item) {
 }
 
 function startDrag(event, section, item) {
-  if (!props.editable || item.isLocked || event.button !== 0 || event.currentTarget.classList.contains("is-editing")) return;
+  if (!props.editable || item.isLocked || event.button !== 0
+    || event.target.closest(".image-resize-handle")
+    || event.currentTarget.classList.contains("is-editing")) return;
   const target = event.currentTarget;
   const container = target.closest(".rendered-items");
   if (!container) return;
@@ -214,6 +288,119 @@ function startDrag(event, section, item) {
   target.addEventListener("pointermove", move);
   target.addEventListener("pointerup", end);
   target.addEventListener("pointercancel", end);
+}
+
+function startItemResize(event, section, item, corner = "se") {
+  if (!props.editable || item.isLocked || item.fieldKind !== "image" || event.button !== 0) return;
+  const handle = event.currentTarget;
+  const target = handle.closest(".rendered-item");
+  const container = target?.closest(".rendered-items");
+  if (!target || !container) return;
+  event.preventDefault();
+  event.stopPropagation();
+  selectRendererItem(section, item);
+  handle.setPointerCapture(event.pointerId);
+  target.classList.add("is-resizing");
+
+  const containerRect = container.getBoundingClientRect();
+  const itemRect = target.getBoundingClientRect();
+  const startX = event.clientX;
+  const startY = event.clientY;
+  const startWidth = itemRect.width;
+  const startHeight = itemRect.height;
+  const startLeft = itemRect.left - containerRect.left;
+  const startTop = itemRect.top - containerRect.top;
+  const ratio = startHeight ? startWidth / startHeight : 1;
+  const style = itemStyle(section, item);
+  const locked = style.aspectRatioLocked !== false;
+  let nextWidth = startWidth;
+  let nextHeight = startHeight;
+  let nextLeft = startLeft;
+  let nextTop = startTop;
+  let animationFrame = 0;
+
+  const move = (moveEvent) => {
+    const horizontalDirection = corner.includes("w") ? -1 : 1;
+    const verticalDirection = corner.includes("n") ? -1 : 1;
+    const deltaX = (moveEvent.clientX - startX) * horizontalDirection;
+    const deltaY = (moveEvent.clientY - startY) * verticalDirection;
+    const maxWidth = Math.max(80, corner.includes("w")
+      ? startWidth + startLeft
+      : containerRect.width - startLeft);
+    const maxHeight = Math.max(80, corner.includes("n")
+      ? startHeight + startTop
+      : containerRect.height - startTop);
+    const widthCandidate = Math.min(maxWidth, Math.max(80, startWidth + deltaX));
+    const heightCandidate = Math.min(maxHeight, Math.max(80, startHeight + deltaY));
+    if (locked || style.shape === "circle") {
+      const lockedRatio = style.shape === "circle" ? 1 : ratio;
+      if (Math.abs(deltaY) > Math.abs(deltaX)) {
+        nextHeight = heightCandidate;
+        nextWidth = Math.min(maxWidth, Math.max(80, nextHeight * lockedRatio));
+        nextHeight = nextWidth / lockedRatio;
+      } else {
+        nextWidth = widthCandidate;
+        nextHeight = Math.min(maxHeight, Math.max(80, nextWidth / lockedRatio));
+        nextWidth = nextHeight * lockedRatio;
+      }
+    } else {
+      nextWidth = widthCandidate;
+      nextHeight = heightCandidate;
+    }
+    nextLeft = corner.includes("w") ? startLeft + startWidth - nextWidth : startLeft;
+    nextTop = corner.includes("n") ? startTop + startHeight - nextHeight : startTop;
+    if (animationFrame) return;
+    animationFrame = requestAnimationFrame(() => {
+      animationFrame = 0;
+      target.style.left = `${nextLeft}px`;
+      target.style.top = `${nextTop}px`;
+      target.style.width = `${nextWidth}px`;
+      target.style.height = `${nextHeight}px`;
+      target.style.aspectRatio = "auto";
+    });
+  };
+  const end = () => {
+    if (animationFrame) cancelAnimationFrame(animationFrame);
+    emit("update-renderer-item-style", section, item, {
+      positionMode: "free",
+      xPct: containerRect.width ? (nextLeft / containerRect.width) * 100 : 0,
+      yPx: nextTop,
+      widthPct: containerRect.width ? (nextWidth / containerRect.width) * 100 : 32,
+      heightPx: locked || style.shape === "circle" ? undefined : nextHeight,
+      aspectRatio: `${Math.max(1, Math.round(nextWidth))}/${Math.max(1, Math.round(nextHeight))}`,
+    });
+    target.classList.remove("is-resizing");
+    target.style.removeProperty("width");
+    target.style.removeProperty("height");
+    target.style.removeProperty("aspect-ratio");
+    target.style.removeProperty("left");
+    target.style.removeProperty("top");
+    handle.removeEventListener("pointermove", move);
+    handle.removeEventListener("pointerup", end);
+    handle.removeEventListener("pointercancel", end);
+  };
+  handle.addEventListener("pointermove", move);
+  handle.addEventListener("pointerup", end);
+  handle.addEventListener("pointercancel", end);
+}
+
+function resizeItemByKeyboard(event, section, item) {
+  if (!props.editable || item.isLocked || item.fieldKind !== "image") return;
+  if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const style = itemStyle(section, item);
+  const locked = style.aspectRatioLocked !== false;
+  const step = event.shiftKey ? 4 : 1;
+  const direction = ["ArrowRight", "ArrowDown"].includes(event.key) ? 1 : -1;
+  const widthPct = clamp((style.widthPct ?? 32) + (direction * step), 10, 100, 32);
+  const currentHeight = clamp(style.heightPx, 80, 900, 240);
+  emit("update-renderer-item-style", section, item, {
+    widthPct,
+    heightPx: locked || style.shape === "circle"
+      ? undefined
+      : clamp(currentHeight + (direction * step * 4), 80, 900, 240),
+  });
 }
 
 function startTextEdit(event, section, item) {
@@ -324,7 +511,7 @@ function startSectionResize(event, section) {
       '--promo-cta-ink': designSpec.theme.ctaVariant === 'ghost' ? (designSpec.theme.ctaColor || designSpec.theme.accentColor) : '#ffffff',
       '--promo-cta-radius': designSpec.theme.ctaShape === 'round' ? '999px' : '2px',
       '--promo-font': designSpec.theme.fontFamily,
-      '--promo-width': `${designSpec.responsive.contentMaxWidth}px`,
+      '--promo-width': `${Math.min(1280, Number(designSpec.responsive.contentMaxWidth || 1280))}px`,
       '--promo-min-width': `${designSpec.responsive.contentMinWidth || 0}px`,
     }"
   >
@@ -370,14 +557,31 @@ function startSectionResize(event, section) {
             </template>
 
             <template v-else-if="item.fieldKind === 'image'">
-              <figure class="rendered-image">
-                <img v-if="imageUrl(valueFor(section, item))" :src="imageUrl(valueFor(section, item))" :alt="valueFor(section, item)?.alt || item.name" />
-                <div v-else class="rendered-image__placeholder">
+              <div
+                class="rendered-image-frame"
+                :class="`rendered-image-frame--${itemStyle(section, item).shape || 'square'}`"
+                :style="imageFrameStyle(section, item)"
+                :role="imageFrameAccessibility(section, item).role"
+                :aria-label="imageFrameAccessibility(section, item).label"
+                :aria-hidden="imageFrameAccessibility(section, item).ariaHidden"
+              >
+                <div v-if="!imageUrl(valueFor(section, item))" class="rendered-image__placeholder">
                   <span>{{ item.name }}</span>
                   <small>{{ valueFor(section, item)?.value || '이미지 준비 중' }}</small>
                 </div>
-                <figcaption v-if="item.image?.descriptionEnabled && valueFor(section, item)?.description">{{ valueFor(section, item).description }}</figcaption>
-              </figure>
+              </div>
+              <template v-if="editable && showGuides && !item.isLocked && selectedItemKey === styleKey(section, item)">
+                <button
+                  v-for="corner in ['nw', 'ne', 'se', 'sw']"
+                  :key="corner"
+                  type="button"
+                  class="image-resize-handle"
+                  :class="`image-resize-handle--${corner}`"
+                  :aria-label="`${item.name} 이미지 크기 조절`"
+                  @pointerdown.stop="startItemResize($event, section, item, corner)"
+                  @keydown="resizeItemByKeyboard($event, section, item)"
+                ></button>
+              </template>
             </template>
 
             <template v-else>

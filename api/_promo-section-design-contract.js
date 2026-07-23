@@ -7,8 +7,16 @@ const SECTION_STYLE_KEYS = new Set([
   "backgroundSize",
   "backgroundPosition",
   "backgroundRepeat",
+  "backgroundColor",
+  "backgroundFadeMode",
+  "backgroundFadeColor",
+  "backgroundFadeStrength",
 ]);
-const ITEM_STYLE_KEYS = new Set(["color", "fontSize", "fontWeight", "textAlign", "positionMode", "xPct", "yPx"]);
+const ITEM_STYLE_KEYS = new Set([
+  "color", "fontSize", "fontWeight", "textAlign", "positionMode", "xPct", "yPx", "zIndex",
+  "widthPct", "heightPx", "aspectRatio", "aspectRatioLocked", "imageFit", "imagePosition",
+  "shape", "borderRadiusToken", "decorative", "accessibleLabel",
+]);
 
 function stableValue(value) {
   if (Array.isArray(value)) return value.map(stableValue);
@@ -134,6 +142,14 @@ function layoutPatchFromResult(section, result, constraints) {
         positionMode: "flow",
         xPct: result.layoutVariant === "split-left" ? 0 : result.layoutVariant === "split-right" ? 58 : 10,
         yPx: 0,
+        widthPct: 32,
+        aspectRatio: String(item.image?.aspectRatio || constraints.imageAspectRatio || "1/1"),
+        aspectRatioLocked: true,
+        imageFit: "contain",
+        imagePosition: "center center",
+        shape: "square",
+        decorative: false,
+        accessibleLabel: item.name || "Promotion image",
       };
     } else if (item.fieldKind === "text" || item.fieldKind === "cta") {
       itemStyles[key] = {
@@ -175,12 +191,64 @@ function validatePatch(section, generated, constraints) {
       if (!SECTION_STYLE_KEYS.has(property)) errors.push(`Unsupported section style: ${property}`);
       if ((constraints.layoutLocks || []).includes(property)) errors.push(`Locked layout property: ${property}`);
     });
+    if (style?.backgroundSize !== undefined && style.backgroundSize !== "contain") {
+      errors.push(`Unsupported section background size: ${style.backgroundSize}`);
+    }
+    if (style?.backgroundPosition !== undefined
+      && !["left center", "center center", "right center"].includes(style.backgroundPosition)) {
+      errors.push(`Unsupported section background position: ${style.backgroundPosition}`);
+    }
+    if (style?.backgroundFadeMode !== undefined
+      && !["none", "left", "right", "both"].includes(style.backgroundFadeMode)) {
+      errors.push(`Unsupported section fade mode: ${style.backgroundFadeMode}`);
+    }
+    if (style?.backgroundFadeStrength !== undefined
+      && !["soft", "medium", "strong"].includes(style.backgroundFadeStrength)) {
+      errors.push(`Unsupported section fade strength: ${style.backgroundFadeStrength}`);
+    }
+    for (const colorKey of ["backgroundColor", "backgroundFadeColor"]) {
+      if (style?.[colorKey] !== undefined && !/^#[0-9a-f]{6}$/i.test(String(style[colorKey]))) {
+        errors.push(`Unsupported section color: ${style[colorKey]}`);
+      }
+    }
   });
   Object.entries(generated.layoutPatch?.itemStyles || {}).forEach(([key, style]) => {
     if (!itemKeys.has(key)) errors.push(`Unknown item: ${key}`);
     Object.keys(style || {}).forEach((property) => {
       if (!ITEM_STYLE_KEYS.has(property)) errors.push(`Unsupported item style: ${property}`);
     });
+    if (style?.widthPct !== undefined
+      && (!Number.isFinite(Number(style.widthPct)) || Number(style.widthPct) < 10 || Number(style.widthPct) > 100)) {
+      errors.push(`Unsupported image width: ${style.widthPct}`);
+    }
+    if (style?.heightPx !== undefined
+      && (!Number.isFinite(Number(style.heightPx)) || Number(style.heightPx) < 80 || Number(style.heightPx) > 900)) {
+      errors.push(`Unsupported image height: ${style.heightPx}`);
+    }
+    if (style?.imageFit !== undefined && !["contain", "cover"].includes(style.imageFit)) {
+      errors.push(`Unsupported image fit: ${style.imageFit}`);
+    }
+    if (style?.shape !== undefined && !["square", "rounded", "circle"].includes(style.shape)) {
+      errors.push(`Unsupported image shape: ${style.shape}`);
+    }
+    if (style?.imagePosition !== undefined && ![
+      "left top", "center top", "right top", "left center", "center center", "right center",
+      "left bottom", "center bottom", "right bottom",
+    ].includes(style.imagePosition)) {
+      errors.push(`Unsupported image position: ${style.imagePosition}`);
+    }
+    if (style?.aspectRatio !== undefined && !/^\d+(?:\.\d+)?\s*[:/]\s*\d+(?:\.\d+)?$/.test(String(style.aspectRatio))) {
+      errors.push(`Unsupported image aspect ratio: ${style.aspectRatio}`);
+    }
+    if (style?.aspectRatioLocked !== undefined && typeof style.aspectRatioLocked !== "boolean") {
+      errors.push(`Unsupported image aspect-ratio lock: ${style.aspectRatioLocked}`);
+    }
+    if (style?.decorative !== undefined && typeof style.decorative !== "boolean") {
+      errors.push(`Unsupported image decorative state: ${style.decorative}`);
+    }
+    if (style?.accessibleLabel !== undefined && String(style.accessibleLabel).length > 240) {
+      errors.push("Image accessibility label is too long");
+    }
   });
   if (generated.imageRequest) {
     const target = generated.imageRequest.target || (generated.imageRequest.itemKey
@@ -255,10 +323,24 @@ function layoutPatchFromDesignPlan(section, plan, tokenSet) {
   const itemStyles = {};
   (plan.itemPlacements || []).forEach((placement) => {
     const key = `${sectionKey}.${placement.itemKey}`;
+    const item = (section.items || []).find((candidate) => candidate.itemKey === placement.itemKey);
     itemStyles[key] = {
       positionMode: "free", ...(coordinates[placement.region] || coordinates.center),
       textAlign: placement.region === "center" ? "center" : "left",
     };
+    if (item?.fieldKind === "image") {
+      Object.assign(itemStyles[key], {
+        widthPct: 32,
+        aspectRatio: String(item.image?.aspectRatio || "1/1"),
+        aspectRatioLocked: true,
+        imageFit: "contain",
+        imagePosition: "center center",
+        shape: "square",
+        decorative: false,
+        accessibleLabel: item.name || "Promotion image",
+      });
+      delete itemStyles[key].textAlign;
+    }
   });
   (plan.slotSelections || []).forEach((selection) => {
     const token = tokenByKey.get(selection.tokenKey);
@@ -276,7 +358,11 @@ function layoutPatchFromDesignPlan(section, plan, tokenSet) {
     tokenBindings: (plan.slotSelections || []).map((selection) => ({ ...selection })),
     imageRequests: (plan.assetRequests || []).map((request) => ({
       target: { type: request.targetType, sectionKey, itemKey: request.itemKey || null },
-      prompt: request.prompt, safeArea: request.safeArea,
+      prompt: request.prompt,
+      safeArea: request.safeArea,
+      aspectRatio: request.targetType === "item"
+        ? String((section.items || []).find((item) => item.itemKey === request.itemKey)?.image?.aspectRatio || "1:1")
+        : "16:9",
     })),
     rationale: String(plan.rationale || ""),
   };

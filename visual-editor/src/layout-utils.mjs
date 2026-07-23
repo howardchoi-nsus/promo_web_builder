@@ -39,10 +39,38 @@ export function validateLayoutSpec(value = {}) {
   const spec = normalizeLayoutSpec(value);
   const errors = [];
   const allowedAlign = new Set(["left", "center", "right"]);
+  const allowedBackgroundSizes = new Set(["contain"]);
+  const allowedBackgroundPositions = new Set(["left center", "center center", "right center"]);
+  const allowedFadeModes = new Set(["none", "left", "right", "both"]);
+  const allowedFadeStrengths = new Set(["soft", "medium", "strong"]);
+  const allowedImageFits = new Set(["contain", "cover"]);
+  const allowedImagePositions = new Set([
+    "left top", "center top", "right top",
+    "left center", "center center", "right center",
+    "left bottom", "center bottom", "right bottom",
+  ]);
+  const allowedShapes = new Set(["square", "rounded", "circle"]);
   Object.entries(spec.sectionStyles).forEach(([key, style]) => {
     const height = Number(style?.minHeight);
     if (style?.minHeight !== undefined && (!Number.isFinite(height) || height < 50 || height > 1200)) {
       errors.push({ path: `sectionStyles.${key}.minHeight`, message: "Section height must be between 50 and 1200." });
+    }
+    if (style?.backgroundSize !== undefined && !allowedBackgroundSizes.has(style.backgroundSize)) {
+      errors.push({ path: `sectionStyles.${key}.backgroundSize`, message: "Unsupported section background size." });
+    }
+    if (style?.backgroundPosition !== undefined && !allowedBackgroundPositions.has(style.backgroundPosition)) {
+      errors.push({ path: `sectionStyles.${key}.backgroundPosition`, message: "Unsupported section background position." });
+    }
+    if (style?.backgroundFadeMode !== undefined && !allowedFadeModes.has(style.backgroundFadeMode)) {
+      errors.push({ path: `sectionStyles.${key}.backgroundFadeMode`, message: "Unsupported section background fade mode." });
+    }
+    if (style?.backgroundFadeStrength !== undefined && !allowedFadeStrengths.has(style.backgroundFadeStrength)) {
+      errors.push({ path: `sectionStyles.${key}.backgroundFadeStrength`, message: "Unsupported section background fade strength." });
+    }
+    for (const colorKey of ["backgroundColor", "backgroundFadeColor"]) {
+      if (style?.[colorKey] !== undefined && !/^#[0-9a-f]{6}$/i.test(String(style[colorKey]))) {
+        errors.push({ path: `sectionStyles.${key}.${colorKey}`, message: "Section colors must use six-digit hex values." });
+      }
     }
   });
   Object.entries(spec.itemStyles).forEach(([key, style]) => {
@@ -60,6 +88,35 @@ export function validateLayoutSpec(value = {}) {
     }
     if (style?.textAlign !== undefined && !allowedAlign.has(style.textAlign)) {
       errors.push({ path: `itemStyles.${key}.textAlign`, message: "Unsupported text alignment." });
+    }
+    const width = Number(style?.widthPct);
+    const height = Number(style?.heightPx);
+    if (style?.widthPct !== undefined && (!Number.isFinite(width) || width < 10 || width > 100)) {
+      errors.push({ path: `itemStyles.${key}.widthPct`, message: "Image width must be between 10 and 100 percent." });
+    }
+    if (style?.heightPx !== undefined && (!Number.isFinite(height) || height < 80 || height > 900)) {
+      errors.push({ path: `itemStyles.${key}.heightPx`, message: "Image height must be between 80 and 900." });
+    }
+    if (style?.imageFit !== undefined && !allowedImageFits.has(style.imageFit)) {
+      errors.push({ path: `itemStyles.${key}.imageFit`, message: "Unsupported image fit." });
+    }
+    if (style?.imagePosition !== undefined && !allowedImagePositions.has(style.imagePosition)) {
+      errors.push({ path: `itemStyles.${key}.imagePosition`, message: "Unsupported image position." });
+    }
+    if (style?.shape !== undefined && !allowedShapes.has(style.shape)) {
+      errors.push({ path: `itemStyles.${key}.shape`, message: "Unsupported image shape." });
+    }
+    if (style?.aspectRatio !== undefined && !/^\d+(?:\.\d+)?\s*[:/]\s*\d+(?:\.\d+)?$/.test(String(style.aspectRatio))) {
+      errors.push({ path: `itemStyles.${key}.aspectRatio`, message: "Unsupported image aspect ratio." });
+    }
+    if (style?.accessibleLabel !== undefined && String(style.accessibleLabel).length > 240) {
+      errors.push({ path: `itemStyles.${key}.accessibleLabel`, message: "Image accessibility label is too long." });
+    }
+    if (style?.aspectRatioLocked !== undefined && typeof style.aspectRatioLocked !== "boolean") {
+      errors.push({ path: `itemStyles.${key}.aspectRatioLocked`, message: "Image aspect-ratio lock must be boolean." });
+    }
+    if (style?.decorative !== undefined && typeof style.decorative !== "boolean") {
+      errors.push({ path: `itemStyles.${key}.decorative`, message: "Image decorative state must be boolean." });
     }
   });
   return { ok: errors.length === 0, errors, spec };

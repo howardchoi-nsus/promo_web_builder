@@ -92,10 +92,40 @@ function imagePromptForSafeArea(prompt, safeArea, backgroundColor = "#f5f7fb") {
   return [
     String(prompt || "").trim(),
     composition,
-    `Fade the image smoothly into the exact solid background color ${backgroundColor} on the copy-safe side; do not fade to white, black, or transparency.`,
-    "Use a broad, low-contrast transition zone so the image joins the surrounding section background without a visible edge.",
+    `Use edge colors that are visually compatible with the solid section background color ${backgroundColor}.`,
+    "Do not bake a fade, gradient, vignette, transparency, border, or masking effect into the image; the web renderer applies the requested fade with CSS.",
     "Do not render text, buttons, logos, badges, or legal copy inside the image.",
   ].filter(Boolean).join("\n");
+}
+
+function normalizedImageAspectRatio(value) {
+  const candidate = String(value || "").trim();
+  if (["1:1", "4:3", "3:4", "16:9", "9:16"].includes(candidate)) return candidate;
+  const match = candidate.match(/^(\d+(?:\.\d+)?)\s*[/]\s*(\d+(?:\.\d+)?)$/);
+  if (!match) return "16:9";
+  const ratio = Number(match[1]) / Number(match[2]);
+  if (ratio > 1.55) return "16:9";
+  if (ratio > 1.1) return "4:3";
+  if (ratio < 0.65) return "9:16";
+  if (ratio < 0.9) return "3:4";
+  return "1:1";
+}
+
+function openAiImageSize(aspectRatio) {
+  const ratio = normalizedImageAspectRatio(aspectRatio);
+  if (ratio === "1:1") return "1024x1024";
+  if (ratio === "3:4" || ratio === "9:16") return "1024x1536";
+  return "1536x1024";
+}
+
+function geminiImageDimensions(imageSize, aspectRatio) {
+  const longSide = imageSize === "4K" ? 4096 : imageSize === "2K" ? 2048 : 1024;
+  const ratio = normalizedImageAspectRatio(aspectRatio);
+  if (ratio === "1:1") return { width: longSide, height: longSide };
+  if (ratio === "4:3") return { width: longSide, height: Math.round(longSide * 3 / 4) };
+  if (ratio === "3:4") return { width: Math.round(longSide * 3 / 4), height: longSide };
+  if (ratio === "9:16") return { width: Math.round(longSide * 9 / 16), height: longSide };
+  return { width: longSide, height: Math.round(longSide * 9 / 16) };
 }
 
 async function generateSectionLayout({ section, sectionInputs, constraints, signal }) {
@@ -156,13 +186,13 @@ async function generateSectionDesignPlan({ section, sectionInputs, constraints, 
   };
 }
 
-async function generateOpenAiSectionImage({ prompt, signal }) {
+async function generateOpenAiSectionImage({ prompt, aspectRatio, signal }) {
   const model = process.env.SECTION_IMAGE_MODEL || "gpt-image-1";
   const startedAt = Date.now();
   const { payload, requestId } = await requestJson("https://api.openai.com/v1/images/generations", {
     model,
     prompt,
-    size: "1536x1024",
+    size: openAiImageSize(aspectRatio),
     quality: process.env.SECTION_IMAGE_QUALITY || "medium",
     output_format: "webp",
   }, openAiHeaders(), signal, Number(process.env.SECTION_IMAGE_TIMEOUT_MS || 240000));
@@ -171,16 +201,17 @@ async function generateOpenAiSectionImage({ prompt, signal }) {
   return {
     bytes: Buffer.from(base64, "base64"),
     mimeType: "image/webp",
-    width: 1536,
-    height: 1024,
+    width: openAiImageSize(aspectRatio).split("x").map(Number)[0],
+    height: openAiImageSize(aspectRatio).split("x").map(Number)[1],
     provider: { provider: "openai", model, requestId, latencyMs: Date.now() - startedAt },
     usage: payload.usage || {},
   };
 }
 
-async function generateGeminiSectionImage({ prompt, signal }) {
+async function generateGeminiSectionImage({ prompt, aspectRatio, signal }) {
   const model = process.env.SECTION_IMAGE_MODEL || "gemini-3.1-flash-image";
   const imageSize = process.env.SECTION_IMAGE_SIZE || "2K";
+  const dimensions = geminiImageDimensions(imageSize, aspectRatio);
   const startedAt = Date.now();
   const { payload, requestId } = await requestJson(
     "https://generativelanguage.googleapis.com/v1beta/interactions",
@@ -190,7 +221,7 @@ async function generateGeminiSectionImage({ prompt, signal }) {
       response_format: {
         type: "image",
         mime_type: "image/jpeg",
-        aspect_ratio: "16:9",
+        aspect_ratio: normalizedImageAspectRatio(aspectRatio),
         image_size: imageSize,
       },
     },
@@ -206,8 +237,8 @@ async function generateGeminiSectionImage({ prompt, signal }) {
   return {
     bytes: Buffer.from(outputImage.data, "base64"),
     mimeType,
-    width: imageSize === "4K" ? 4096 : imageSize === "2K" ? 2048 : 1024,
-    height: imageSize === "4K" ? 2304 : imageSize === "2K" ? 1152 : 576,
+    width: dimensions.width,
+    height: dimensions.height,
     provider: { provider: "gemini", model, requestId, latencyMs: Date.now() - startedAt },
     usage: payload.usageMetadata || payload.usage || {},
   };
@@ -231,4 +262,7 @@ module.exports = {
   generateOpenAiSectionImage,
   generateGeminiSectionImage,
   imagePromptForSafeArea,
+  normalizedImageAspectRatio,
+  openAiImageSize,
+  geminiImageDimensions,
 };

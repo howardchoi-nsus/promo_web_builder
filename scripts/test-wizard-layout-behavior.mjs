@@ -25,6 +25,34 @@ assert.equal(validateLayoutSpec(resolved).ok, true);
 assert.equal(validateLayoutSpec({ itemStyles: { bad: { xPct: 101 } } }).ok, false);
 assert.equal(validateLayoutSpec({ sectionStyles: { bad: { minHeight: 49 } } }).ok, false);
 assert.equal(validateLayoutSpec({ itemStyles: { bad: { fontSize: 81 } } }).ok, false);
+assert.equal(validateLayoutSpec({
+  sectionStyles: {
+    hero: {
+      backgroundSize: "contain",
+      backgroundPosition: "center center",
+      backgroundFadeMode: "both",
+      backgroundFadeStrength: "medium",
+    },
+  },
+  itemStyles: {
+    "hero.image": {
+      widthPct: 48,
+      heightPx: 360,
+      aspectRatio: "4/3",
+      imageFit: "cover",
+      imagePosition: "right center",
+      shape: "rounded",
+      accessibleLabel: "Promotional product",
+    },
+  },
+}).ok, true);
+assert.equal(validateLayoutSpec({ sectionStyles: { hero: { backgroundSize: "cover" } } }).ok, false);
+assert.equal(validateLayoutSpec({ sectionStyles: { hero: { backgroundFadeMode: "diagonal" } } }).ok, false);
+assert.equal(validateLayoutSpec({ sectionStyles: { hero: { backgroundFadeColor: "red" } } }).ok, false);
+assert.equal(validateLayoutSpec({ itemStyles: { "hero.image": { widthPct: 101 } } }).ok, false);
+assert.equal(validateLayoutSpec({ itemStyles: { "hero.image": { imageFit: "fill" } } }).ok, false);
+assert.equal(validateLayoutSpec({ itemStyles: { "hero.image": { shape: "triangle" } } }).ok, false);
+assert.equal(validateLayoutSpec({ itemStyles: { "hero.image": { decorative: "yes" } } }).ok, false);
 
 const snapshot = createLayoutSnapshot({
   baseLayout: base,

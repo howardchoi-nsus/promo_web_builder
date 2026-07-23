@@ -119,6 +119,11 @@ button, a { letter-spacing: 0; }
 .section-background-alignment button + button { border-left: 0; }
 .section-background-alignment button.active { border-color: var(--app-accent); background: var(--app-accent-soft); color: var(--app-accent); }
 .design-controls { display: grid; gap: 12px; padding-top: 14px; border-top: 1px solid var(--app-line); }
+.image-frame-controls, .section-background-fade { display: grid; gap: 12px; padding: 12px; border: 1px solid var(--app-line); background: var(--app-panel); }
+.image-frame-controls { border-color: var(--app-accent); }
+.toggle-field { grid-template-columns: auto 1fr; align-items: center; }
+.toggle-field input { width: 16px; height: 16px; padding: 0; accent-color: var(--app-accent); }
+.section-background-fade { border-top-color: var(--app-line-strong); }
 .design-controls__heading { display: flex; align-items: center; justify-content: space-between; }
 .design-controls__heading strong { color: var(--app-sub); font-size: 11px; }
 .design-controls__heading button, .secondary-control { min-height: 30px; border: 1px solid var(--app-line-strong); background: var(--app-panel); color: var(--app-ink-soft); cursor: pointer; font-size: 11px; font-weight: 700; }
