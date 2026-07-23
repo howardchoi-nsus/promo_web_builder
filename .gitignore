@@ -2,8 +2,5 @@ node_modules/
 
 .vercel
 .env*
-/docs/기획
-/docs/자료
-/docs/설계
-/docs/계획
+
 /claude
