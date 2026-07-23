@@ -154,6 +154,12 @@ try {
     "Embedded editor document must not create its own scrollbar",
   );
   assert.equal(await editorFrame.locator("header.editor-header.editor-toolbar").count(), 0, "Create Promo must omit the embedded editor header");
+  const separateOutputPagePromise = context.waitForEvent("page");
+  await editorFrame.getByRole("button", { name: "Web Output", exact: true }).click();
+  const separateOutputPage = await separateOutputPagePromise;
+  await separateOutputPage.locator(".promo-renderer").waitFor({ timeout: 10_000 });
+  assert.match(separateOutputPage.url(), /\/prototype\/visual-output\.html$/);
+  await separateOutputPage.close();
   const createPromoWorkspaceStyles = await editorFrame.locator(".editor-workspace.is-create-promo-wizard").evaluate((node) => {
     const styles = getComputedStyle(node);
     return {

@@ -3595,37 +3595,40 @@ var qo = {
 	"title",
 	"aria-label",
 	"onClick"
-], fs = { "aria-label": "Visual Editor navigation" }, ps = ["disabled"], ms = ["disabled"], hs = {
+], fs = {
+	key: 1,
+	"aria-label": "Visual Editor navigation"
+}, ps = ["disabled"], ms = {
 	key: 1,
 	class: "system-message"
-}, gs = {
+}, hs = {
 	key: 2,
 	class: "system-message system-message--error"
-}, _s = {
+}, gs = {
 	key: 3,
 	class: "system-message system-message--error",
 	role: "alert"
-}, vs = {
+}, _s = {
 	key: 4,
 	class: "system-message",
 	role: "status"
-}, ys = {
+}, vs = {
 	class: "section-rail",
 	"aria-label": "콘텐츠 섹션"
-}, bs = { class: "panel-heading" }, xs = { class: "section-list" }, Ss = ["onClick"], Cs = ["aria-label"], ws = {
+}, ys = { class: "panel-heading" }, bs = { class: "section-list" }, xs = ["onClick"], Ss = ["aria-label"], Cs = {
 	key: 0,
 	d: "M5.8 10.2 8.6 13l5.8-6"
-}, Ts = {
+}, ws = {
 	key: 1,
 	d: "M10 5.5v6M10 14.5v.1"
-}, Es = { class: "preview-panel" }, Ds = { class: "preview-toolbar" }, Os = { class: "preview-title-group" }, ks = ["disabled"], As = {
+}, Ts = { class: "preview-panel" }, Es = { class: "preview-toolbar" }, Ds = { class: "preview-title-group" }, Os = ["disabled"], ks = {
 	key: 1,
 	class: "preview-edit-hint"
-}, js = {
+}, As = {
 	key: 2,
 	class: "auto-register-message",
 	role: "status"
-}, Ms = { class: "preview-controls" }, Ns = { class: "guide-toggle" }, Ps = {
+}, js = { class: "preview-controls" }, Ms = ["disabled"], Ns = { class: "guide-toggle" }, Ps = {
 	class: "viewport-control",
 	"aria-label": "Preview viewport"
 }, Fs = { class: "property-panel" }, Is = { class: "panel-heading" }, Ls = {
@@ -4137,7 +4140,7 @@ var qo = {
 					title: `${e.name} ${e.value}`,
 					"aria-label": `${e.name} ${e.value}`,
 					onClick: (t) => Te(e)
-				}, [Z("i", { style: ie({ backgroundColor: e.value }) }, null, 4)], 10, ds))), 128))])])), Z("nav", fs, [O.value ? (Y(), X(J, { key: 0 }, [vn(Z("input", {
+				}, [Z("i", { style: ie({ backgroundColor: e.value }) }, null, 4)], 10, ds))), 128))])])), O.value ? (Y(), X("nav", fs, [vn(Z("input", {
 					"onUpdate:modelValue": i[0] ||= (e) => b.value = e,
 					type: "text",
 					placeholder: "변경 사유",
@@ -4146,20 +4149,15 @@ var qo = {
 					type: "button",
 					disabled: !te.value || x.value,
 					onClick: ze
-				}, I(x.value ? "저장 중" : "기본 레이아웃 저장"), 9, ps)], 64)) : k.value ? Q("", !0) : (Y(), X("button", {
-					key: 1,
-					type: "button",
-					disabled: !te.value,
-					onClick: Le
-				}, "Web Output 열기", 8, ms))])])])),
-				n.value ? (Y(), X("div", hs, "기본 Form Template을 불러오는 중입니다.")) : r.value ? (Y(), X("div", gs, I(r.value), 1)) : Q("", !0),
-				g.value ? (Y(), X("div", _s, I(g.value), 1)) : Q("", !0),
-				S.value ? (Y(), X("div", vs, I(S.value), 1)) : Q("", !0),
+				}, I(x.value ? "저장 중" : "기본 레이아웃 저장"), 9, ps)])) : Q("", !0)])])),
+				n.value ? (Y(), X("div", ms, "기본 Form Template을 불러오는 중입니다.")) : r.value ? (Y(), X("div", hs, I(r.value), 1)) : Q("", !0),
+				g.value ? (Y(), X("div", gs, I(g.value), 1)) : Q("", !0),
+				S.value ? (Y(), X("div", _s, I(S.value), 1)) : Q("", !0),
 				!n.value && !r.value ? (Y(), X("section", {
 					key: 5,
 					class: F(["editor-workspace", { "is-create-promo-wizard": j.value }])
 				}, [
-					Z("aside", ys, [Z("div", bs, [i[38] ||= Z("span", null, "SECTIONS", -1), Z("strong", null, I(s.value.length), 1)]), Z("div", xs, [(Y(!0), X(J, null, nr(s.value, (e) => (Y(), X("button", {
+					Z("aside", vs, [Z("div", ys, [i[38] ||= Z("span", null, "SECTIONS", -1), Z("strong", null, I(s.value.length), 1)]), Z("div", bs, [(Y(!0), X(J, null, nr(s.value, (e) => (Y(), X("button", {
 						key: e.sectionKey,
 						type: "button",
 						class: F(["section-trigger", { active: e.sectionKey === M.value?.sectionKey }]),
@@ -4173,8 +4171,8 @@ var qo = {
 						cx: "10",
 						cy: "10",
 						r: "9"
-					}, null, -1), pe(e) ? (Y(), X("path", ws)) : (Y(), X("path", Ts))], 10, Cs))], 10, Ss))), 128))])]),
-					Z("section", Es, [Z("div", Ds, [Z("div", Os, [
+					}, null, -1), pe(e) ? (Y(), X("path", Cs)) : (Y(), X("path", ws))], 10, Ss))], 10, xs))), 128))])]),
+					Z("section", Ts, [Z("div", Es, [Z("div", Ds, [
 						i[40] ||= Z("strong", null, "Live Preview", -1),
 						Z("small", null, I(a.value.templateKey) + " · v" + I(a.value.version), 1),
 						j.value ? (Y(), X("button", {
@@ -4183,25 +4181,35 @@ var qo = {
 							type: "button",
 							disabled: w.value,
 							onClick: me
-						}, I(w.value ? "등록 중" : "자동등록"), 9, ks)) : Q("", !0),
-						j.value ? (Y(), X("small", As, "미리보기 요소를 선택해 내용을 입력하세요.")) : Q("", !0),
-						T.value ? (Y(), X("small", js, I(T.value), 1)) : Q("", !0)
-					]), Z("div", Ms, [Z("label", Ns, [
-						vn(Z("input", {
-							"onUpdate:modelValue": i[1] ||= (e) => h.value = e,
-							type: "checkbox"
-						}, null, 512), [[$a, h.value]]),
-						i[41] ||= Z("span", null, "Guides", -1),
-						Z("strong", null, I(h.value ? "ON" : "OFF"), 1)
-					]), Z("div", Ps, [Z("button", {
-						type: "button",
-						class: F({ active: m.value === "desktop" }),
-						onClick: i[2] ||= (e) => m.value = "desktop"
-					}, "Desktop", 2), Z("button", {
-						type: "button",
-						class: F({ active: m.value === "mobile" }),
-						onClick: i[3] ||= (e) => m.value = "mobile"
-					}, "Mobile", 2)])])]), Z("div", {
+						}, I(w.value ? "등록 중" : "자동등록"), 9, Os)) : Q("", !0),
+						j.value ? (Y(), X("small", ks, "미리보기 요소를 선택해 내용을 입력하세요.")) : Q("", !0),
+						T.value ? (Y(), X("small", As, I(T.value), 1)) : Q("", !0)
+					]), Z("div", js, [
+						O.value ? Q("", !0) : (Y(), X("button", {
+							key: 0,
+							type: "button",
+							class: "web-output-action",
+							disabled: !te.value,
+							onClick: Le
+						}, "Web Output", 8, Ms)),
+						Z("label", Ns, [
+							vn(Z("input", {
+								"onUpdate:modelValue": i[1] ||= (e) => h.value = e,
+								type: "checkbox"
+							}, null, 512), [[$a, h.value]]),
+							i[41] ||= Z("span", null, "Guides", -1),
+							Z("strong", null, I(h.value ? "ON" : "OFF"), 1)
+						]),
+						Z("div", Ps, [Z("button", {
+							type: "button",
+							class: F({ active: m.value === "desktop" }),
+							onClick: i[2] ||= (e) => m.value = "desktop"
+						}, "Desktop", 2), Z("button", {
+							type: "button",
+							class: F({ active: m.value === "mobile" }),
+							onClick: i[3] ||= (e) => m.value = "mobile"
+						}, "Mobile", 2)])
+					])]), Z("div", {
 						ref_key: "previewStageRef",
 						ref: p,
 						class: F(["preview-stage", `preview-stage--${m.value}`])

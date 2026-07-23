@@ -665,16 +665,11 @@ onBeforeUnmount(() => {
             </button>
           </div>
         </fieldset>
-        <nav aria-label="Visual Editor navigation">
-          <template v-if="isAdminLayoutMode">
-            <input v-model="layoutChangeNote" type="text" placeholder="변경 사유" aria-label="레이아웃 변경 사유" />
-            <button type="button" :disabled="!editorSnapshot || layoutSaving" @click="saveAdminLayout">
-              {{ layoutSaving ? "저장 중" : "기본 레이아웃 저장" }}
-            </button>
-          </template>
-          <template v-else-if="!isWizardLayoutMode">
-            <button type="button" :disabled="!editorSnapshot" @click="openOutput">Web Output 열기</button>
-          </template>
+        <nav v-if="isAdminLayoutMode" aria-label="Visual Editor navigation">
+          <input v-model="layoutChangeNote" type="text" placeholder="변경 사유" aria-label="레이아웃 변경 사유" />
+          <button type="button" :disabled="!editorSnapshot || layoutSaving" @click="saveAdminLayout">
+            {{ layoutSaving ? "저장 중" : "기본 레이아웃 저장" }}
+          </button>
         </nav>
       </div>
     </header>
@@ -737,6 +732,13 @@ onBeforeUnmount(() => {
             <small v-if="autoRegisterMessage" class="auto-register-message" role="status">{{ autoRegisterMessage }}</small>
           </div>
           <div class="preview-controls">
+            <button
+              v-if="!isAdminLayoutMode"
+              type="button"
+              class="web-output-action"
+              :disabled="!editorSnapshot"
+              @click="openOutput"
+            >Web Output</button>
             <label class="guide-toggle">
               <input v-model="guidesVisible" type="checkbox" />
               <span>Guides</span>
