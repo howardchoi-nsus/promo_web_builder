@@ -180,6 +180,19 @@ try {
     false,
     "Item-target AI generation must not create a Section background image",
   );
+  const itemImage = editorFrame.locator('[data-section-key="contentFeature"] [data-item-key="image"] .rendered-image img');
+  await itemImage.waitFor({ state: "attached" });
+  const imageRemoveAction = editorFrame.locator(".image-remove-action");
+  await imageRemoveAction.waitFor();
+  page.once("dialog", (dialog) => dialog.accept());
+  await imageRemoveAction.click();
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    itemAppliedContent = await page.evaluate(() => JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null"));
+    if (!itemAppliedContent?.sectionInputs?.contentFeature?.image?.value) break;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  assert.equal(itemAppliedContent?.sectionInputs?.contentFeature?.image?.value, "");
+  await itemImage.waitFor({ state: "detached" });
 
   await page.locator(".content-substep-actions .primary-action").click();
   await assertPageText(page.locator("#step-title"), "웹 출력");

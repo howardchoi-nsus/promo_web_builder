@@ -6,11 +6,44 @@ const { validateDesignPlan } = require("../api/_promo-section-design-contract");
 
 const root = path.resolve(__dirname, "..");
 const migration = fs.readFileSync(path.join(root, "db/migrations/029_item_components_design_tokens_and_planner.sql"), "utf8");
+const repairMigration = fs.readFileSync(path.join(root, "db/migrations/030_promo_section_design_run_snapshot_repair.sql"), "utf8");
+const resetScript = fs.readFileSync(path.join(root, "db/seeds/reset_legacy_template_configuration.sql"), "utf8");
 assert.match(migration, /promo_design_token_definitions/);
 assert.match(migration, /promo_design_token_sets/);
 assert.match(migration, /promo_design_token_set_versions/);
 assert.match(migration, /promo_section_design_asset_jobs/);
+assert.match(migration, /add column if not exists template_key_snapshot text/);
+assert.match(migration, /alter column form_template_id drop not null/);
+assert.match(migration, /foreign key \(form_template_id\) references wizard_form_templates\(id\) on delete set null/);
+assert.match(migration, /create trigger wizard_template_active_section_run_delete_guard/);
 assert.match(migration, /request_mode text not null default 'full'/);
+assert.ok(
+  migration.indexOf("add column if not exists template_key_snapshot text")
+    < migration.indexOf("request_mode text not null default 'full'"),
+  "The 028-independent run snapshot contract must be established before planner metadata",
+);
+assert.match(repairMigration, /add column if not exists template_key_snapshot text/);
+assert.match(repairMigration, /alter column form_template_id drop not null/);
+assert.match(repairMigration, /foreign key \(form_template_id\) references wizard_form_templates\(id\) on delete set null/);
+assert.match(repairMigration, /create trigger wizard_template_active_section_run_delete_guard/);
+
+const resetRunIndex = resetScript.indexOf("delete from promo_section_design_runs;");
+const resetMembershipIndex = resetScript.indexOf("delete from wizard_form_template_sections;");
+const resetItemIndex = resetScript.indexOf("delete from wizard_content_section_items;");
+const resetSectionIndex = resetScript.indexOf("delete from wizard_content_sections;");
+const resetTemplateIndex = resetScript.indexOf("delete from wizard_form_templates;");
+assert.ok(resetRunIndex >= 0, "Reset script must remove legacy section AI runs");
+assert.ok(
+  resetRunIndex < resetMembershipIndex
+    && resetMembershipIndex < resetItemIndex
+    && resetItemIndex < resetSectionIndex
+    && resetSectionIndex < resetTemplateIndex,
+  "Audited child rows must be removed before their Section and Template parents",
+);
+assert.match(resetScript, /begin;[\s\S]*commit;/);
+assert.doesNotMatch(resetScript, /delete from promo_generation_runs/);
+assert.doesNotMatch(resetScript, /delete from promo_generation_final_designs/);
+assert.doesNotMatch(resetScript, /delete from locale_messages/);
 assert.equal(SAFE_CSS_PROPERTIES.has("background-color"), true);
 assert.equal(SAFE_CSS_PROPERTIES.has("background-image"), false);
 assert.equal(validateTokenValue({ value_type: "color" }, "#AABBCC"), "");

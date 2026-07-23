@@ -98,6 +98,10 @@ try {
 
   await page.goto(`${origin}/prototype/index.html?view=admin&tab=i18n`, { waitUntil: "networkidle" });
   await page.locator(".locale-manager").waitFor({ state: "visible" });
+  await page.getByRole("columnheader", { name: "한글 문구" }).waitFor();
+  await page.getByRole("columnheader", { name: "영문 문구" }).waitFor();
+  await page.getByText("저장 수정본", { exact: true }).waitFor();
+  await page.getByText("Save", { exact: true }).waitFor();
   assert.equal(await page.getByRole("columnheader", { name: "한글 문구" }).count(), 1);
   assert.equal(await page.getByRole("columnheader", { name: "영문 문구" }).count(), 1);
   assert.equal(await page.getByText("저장 수정본", { exact: true }).count(), 1);
