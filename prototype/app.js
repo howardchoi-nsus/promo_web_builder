@@ -4415,9 +4415,13 @@ const adminApp = createApp({
       const drafts = Array.isArray(state?.drafts) ? state.drafts : [];
       const finalDesigns = Array.isArray(state?.finalDesigns) ? state.finalDesigns : [];
       const confirmedDraft = state?.confirmedDraft || null;
-      const readyDrafts = drafts.filter((draft) => ["ready", "completed"].includes(String(draft.status || "")));
+      const readyDrafts = drafts.filter((draft) => (
+        ["ready", "completed"].includes(String(draft.status || ""))
+        && draft.imageProxyAvailable !== false
+      ));
       const currentDraft = confirmedDraft || readyDrafts[readyDrafts.length - 1] || drafts[drafts.length - 1] || null;
-      const currentDraftReady = ["ready", "completed"].includes(String(currentDraft?.status || ""));
+      const currentDraftReady = ["ready", "completed"].includes(String(currentDraft?.status || ""))
+        && currentDraft?.imageProxyAvailable !== false;
       const previewDraft = currentDraftReady ? currentDraft : readyDrafts[readyDrafts.length - 1] || null;
       const currentFinalDesign = finalDesigns[0] || null;
       const currentFinalDesignReady = ["ready", "completed"].includes(String(currentFinalDesign?.status || ""))

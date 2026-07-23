@@ -3,7 +3,11 @@ const fs = require("node:fs");
 const path = require("node:path");
 const finalImageModule = require("../api/promo-generation-final-design-image");
 const draftImageModule = require("../api/promo-generation-lofi-draft-image");
-const { finalDesignSummary, isSupportedBlobLocation } = require("../api/_promo-generation-run-store");
+const {
+  draftSummary,
+  finalDesignSummary,
+  isSupportedBlobLocation,
+} = require("../api/_promo-generation-run-store");
 
 function responseRecorder() {
   return {
@@ -145,12 +149,38 @@ async function verifyLofiDraftImage() {
   assert.equal(res.statusCode, 404);
   assert.equal(res.body, "LO-FI draft image not found");
   assert.equal(String(res.body).includes(privateUrl), false);
+
+  let externalFetchAttempted = false;
+  res = await execute(draftImageModule.createHandler({
+    getSql: () => sqlReturning([{
+      id: "legacy-draft-id",
+      run_id: "run-id",
+      draft_attempt: 1,
+      draft_image_url: "https://example.com/test-lofi-draft.png",
+    }]),
+    getPrivateBlob: async () => {
+      externalFetchAttempted = true;
+      return null;
+    },
+  }), { draftId: "legacy-draft-id" });
+  assert.equal(res.statusCode, 422);
+  assert.equal(res.body, "Unsupported LO-FI draft image location");
+  assert.equal(externalFetchAttempted, false);
+  assert.equal(draftSummary({
+    id: "legacy-draft-id",
+    run_id: "run-id",
+    status: "ready",
+    draft_image_url: "https://example.com/test-lofi-draft.png",
+  }).imageProxyAvailable, false);
 }
 
 (async () => {
   const adminApp = fs.readFileSync(path.resolve(__dirname, "../prototype/app.js"), "utf8");
+  const promoWizard = fs.readFileSync(path.resolve(__dirname, "../prototype/promo-wizard.js"), "utf8");
   assert.match(adminApp, /currentFinalDesign\?\.imageProxyAvailable !== false/);
   assert.match(adminApp, /finalDesign\.imageProxyAvailable !== false/);
+  assert.match(adminApp, /draft\.imageProxyAvailable !== false/);
+  assert.match(promoWizard, /draftImageProxyAvailable\(draft\)/);
   await verifyFinalDesignImage();
   await verifyLofiDraftImage();
   console.log("Promo generation image handler tests passed.");

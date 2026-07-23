@@ -1,4 +1,4 @@
-const { getSql } = require("./_promo-generation-run-store");
+const { getSql, isSupportedBlobLocation } = require("./_promo-generation-run-store");
 
 async function getPrivateBlob(urlOrPathname, options) {
   const { get } = await import("@vercel/blob");
@@ -38,6 +38,9 @@ function createHandler(overrides = {}) {
       const draft = rows[0] || {};
       if (!draft.id) return res.status(404).send("LO-FI draft not found");
       if (!draft.draft_image_url) return res.status(404).send("LO-FI draft image not found");
+      if (!isSupportedBlobLocation(draft.draft_image_url)) {
+        return res.status(422).send("Unsupported LO-FI draft image location");
+      }
 
       const blob = await dependencies.getPrivateBlob(draft.draft_image_url, {
         access: "private",

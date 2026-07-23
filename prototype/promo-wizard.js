@@ -1202,7 +1202,7 @@ function createLofiDraftCard(draft) {
 
   const thumbnail = document.createElement("div");
   thumbnail.className = "lofi-thumbnail";
-  if (draft.draftImageUrl || isReadyDraft(draft)) {
+  if ((draft.draftImageUrl || isReadyDraft(draft)) && draftImageProxyAvailable(draft)) {
     const image = document.createElement("img");
     image.alt = `LO-FI draft attempt ${draft.draftAttempt || ""}`;
     image.src = draftImageSrc(draft);
@@ -1254,7 +1254,7 @@ function createLofiLargePreview(draft, draftList) {
 
   const media = document.createElement("div");
   media.className = "lofi-large-preview-media";
-  if (draft?.draftImageUrl || (draft && isReadyDraft(draft))) {
+  if ((draft?.draftImageUrl || (draft && isReadyDraft(draft))) && draftImageProxyAvailable(draft)) {
     const image = document.createElement("img");
     image.alt = `LO-FI draft attempt ${draft.draftAttempt || ""}`;
     image.src = draftImageSrc(draft);
@@ -1343,10 +1343,12 @@ function renderLofiStep() {
   const drafts = Array.isArray(runState?.drafts) ? [...runState.drafts] : [];
   drafts.sort((a, b) => Number(a.draftAttempt || 0) - Number(b.draftAttempt || 0));
   const confirmed = runState?.confirmedDraft || drafts.find((draft) => draft.confirmedAt) || null;
-  const selectedDraft = drafts.find((draft) => draft.draftId === selectedLofiPreviewDraftId)
-    || confirmed
-    || drafts.find((draft) => isReadyDraft(draft))
-    || drafts[0]
+  const selectedDraft = drafts.find((draft) => (
+    draft.draftId === selectedLofiPreviewDraftId && draftImageProxyAvailable(draft)
+  ))
+    || (draftImageProxyAvailable(confirmed) ? confirmed : null)
+    || drafts.find((draft) => isReadyDraft(draft) && draftImageProxyAvailable(draft))
+    || drafts.find((draft) => draftImageProxyAvailable(draft))
     || null;
   selectedLofiPreviewDraftId = selectedDraft?.draftId || "";
 
@@ -1851,6 +1853,10 @@ function integratedBriefErrorMessage() {
 
 function draftImageSrc(draft) {
   return draft?.draftId ? `/api/promo-generation-lofi-draft-image?draftId=${encodeURIComponent(draft.draftId)}` : "";
+}
+
+function draftImageProxyAvailable(draft) {
+  return Boolean(draft && draft.imageProxyAvailable !== false);
 }
 
 function finalDesignImageSrc(finalDesign) {

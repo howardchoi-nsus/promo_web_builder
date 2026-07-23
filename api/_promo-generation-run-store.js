@@ -128,6 +128,7 @@ function draftSummary(row) {
     draftAttempt: Number(row.draft_attempt || 0),
     status: row.status || "",
     draftImageUrl: row.draft_image_url || "",
+    imageProxyAvailable: isSupportedBlobLocation(row.draft_image_url),
     draftPrompt: row.draft_prompt || "",
     promptMeta: row.prompt_meta || {},
     modelMeta: row.model_meta || {},
