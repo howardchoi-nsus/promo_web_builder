@@ -33,7 +33,7 @@ assert.match(createHtml, /wizard\/wizard-core\.js\?v=wizard-core-v1/);
 assert.match(createHtml, /wizard\/wizard-content\.js\?v=wizard-content-v1/);
 assert.match(createHtml, /wizard\/wizard-storage\.js\?v=wizard-storage-v1/);
 assert.match(createHtml, /create-promo-layout-cache\.js\?v=create-promo-light-v28/);
-assert.match(createHtml, /create-promo\.js\?v=create-promo-light-v33/);
+assert.match(createHtml, /create-promo\.js\?v=create-promo-light-v34/);
 assert.match(designTokensCss, /\[data-theme="light"\]\s*\{[\s\S]*?color-scheme:\s*light;/);
 assert.match(designTokensCss, /\[data-theme="dark"\]\s*\{[\s\S]*?color-scheme:\s*dark;/);
 assert.match(appComponentsCss, /--bg:\s*var\(--app-bg\)/);
@@ -138,6 +138,10 @@ assert.match(createJs, /resolveLayoutCache/);
 assert.match(createJs, /if \(!options\.fromRefresh\) wizardTemplateRefreshRequestId \+= 1/);
 assert.match(createJs, /fromRefresh:\s*true/);
 assert.match(createJs, /admin_layout_update_detected/);
+assert.match(
+  createJs,
+  /finally\s*\{\s*wizardTemplateRefreshPromise = null;\s*if \(currentStep === 3\) renderStep\(\);/s,
+);
 assert.match(createJs, /새 관리자 레이아웃 적용/);
 assert.match(createLayoutCache, /sameLayoutIdentity/);
 assert.match(createLayoutCache, /legacy_invalidated/);

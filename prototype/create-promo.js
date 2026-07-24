@@ -631,7 +631,7 @@ async function refreshActiveWizardTemplate() {
       return false;
     } finally {
       wizardTemplateRefreshPromise = null;
-      if (currentStep === 2) renderStep();
+      if (currentStep === 3) renderStep();
     }
   })();
   return wizardTemplateRefreshPromise;
