@@ -319,8 +319,8 @@ function inlineItemStyle(section, item) {
     zIndex: style.zIndex || 2,
     color: style.color,
     "--item-color": style.color,
-    fontSize: style.fontSize ? `${style.fontSize}px` : undefined,
-    "--item-font-size": style.fontSize ? `${style.fontSize}px` : undefined,
+    fontSize: style.fontSize !== undefined ? `${style.fontSize}px` : undefined,
+    "--item-font-size": style.fontSize !== undefined ? `${style.fontSize}px` : undefined,
     fontWeight: style.fontWeight,
     "--item-font-weight": style.fontWeight,
     width: style.widthPct !== undefined || isImage ? `${widthPct}%` : undefined,
@@ -416,7 +416,7 @@ function startItemResize(event, section, item, handleDirection = "se") {
     ? null
     : target.querySelector(".rendered-text, .rendered-empty, .rendered-cta");
   const renderedFontSize = textNode ? Number.parseFloat(getComputedStyle(textNode).fontSize) : 18;
-  const startFontSize = clamp(style.fontSize, 10, 80, renderedFontSize || 18);
+  const startFontSize = clamp(style.fontSize, 0, 80, renderedFontSize || 18);
   let nextWidth = startWidth;
   let nextHeight = startHeight;
   let nextFontSize = startFontSize;
@@ -464,7 +464,7 @@ function startItemResize(event, section, item, handleDirection = "se") {
         : horizontalActive
           ? widthScale
           : heightScale;
-      nextFontSize = roundedDimension(clamp(startFontSize * fontScale, 10, 80, startFontSize));
+      nextFontSize = roundedDimension(clamp(startFontSize * fontScale, 0, 80, startFontSize));
     }
     nextLeft = handleDirection.includes("w") ? startLeft + startWidth - nextWidth : startLeft;
     nextTop = handleDirection.includes("n") ? startTop + startHeight - nextHeight : startTop;
@@ -563,7 +563,7 @@ function resizeItemByKeyboard(event, section, item, handleDirection = "se") {
     widthPct,
     heightPx,
     ...(!isImage
-      ? { fontSize: roundedDimension(clamp((style.fontSize ?? 18) * fontScale, 10, 80, 18)) }
+      ? { fontSize: roundedDimension(clamp((style.fontSize ?? 18) * fontScale, 0, 80, 18)) }
       : {}),
   });
 }

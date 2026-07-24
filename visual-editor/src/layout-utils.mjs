@@ -85,8 +85,8 @@ export function validateLayoutSpec(value = {}) {
     if (style?.yPx !== undefined && (!Number.isFinite(y) || y < 0 || y > 1200)) {
       errors.push({ path: `itemStyles.${key}.yPx`, message: "yPx must be between 0 and 1200." });
     }
-    if (style?.fontSize !== undefined && (!Number.isFinite(size) || size < 10 || size > 80)) {
-      errors.push({ path: `itemStyles.${key}.fontSize`, message: "fontSize must be between 10 and 80." });
+    if (style?.fontSize !== undefined && (!Number.isFinite(size) || size < 0 || size > 80)) {
+      errors.push({ path: `itemStyles.${key}.fontSize`, message: "fontSize must be between 0 and 80." });
     }
     const width = Number(style?.widthPct);
     const height = Number(style?.heightPx);

@@ -418,6 +418,23 @@ try {
     resizedTextContent?.templateLayouts?.["default-preview"]?.resolvedLayout?.itemStyles?.["contentFeature.copy"]?.heightPx > textBoxAfter.height,
     "Text component height must persist in the layout snapshot",
   );
+  const fontSizeRange = editorFrame.locator('.design-controls input[type="range"][max="80"]');
+  await fontSizeRange.evaluate((node) => {
+    node.value = "1";
+    node.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await page.waitForTimeout(50);
+  assert.equal(
+    Number.parseFloat(await textContentNode.evaluate((node) => getComputedStyle(node).fontSize)),
+    1,
+    "Text font size must not be clamped to the former 10px minimum",
+  );
+  const tinyTextContent = await page.evaluate(() => JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null"));
+  assert.equal(
+    tinyTextContent?.templateLayouts?.["default-preview"]?.resolvedLayout?.itemStyles?.["contentFeature.copy"]?.fontSize,
+    1,
+    "A font size below 10px must persist in the layout snapshot",
+  );
   await itemImageFrame.click();
   const imageRemoveAction = editorFrame.locator(".image-remove-action");
   await imageRemoveAction.waitFor();

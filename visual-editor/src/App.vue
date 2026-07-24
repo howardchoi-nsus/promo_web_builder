@@ -1456,14 +1456,14 @@ onBeforeUnmount(() => {
                 <div class="range-field">
                   <input
                     type="range"
-                    min="10"
+                    min="0"
                     max="80"
                     step="1"
                     :disabled="selectedItem.isLocked"
-                    :value="selectedItemStyle.fontSize || 18"
+                    :value="selectedItemStyle.fontSize ?? 18"
                     @input="updateItemStyle({ fontSize: Number($event.target.value) })"
                   />
-                  <output>{{ selectedItemStyle.fontSize || 18 }}px</output>
+                  <output>{{ selectedItemStyle.fontSize ?? 18 }}px</output>
                 </div>
               </label>
               <label>

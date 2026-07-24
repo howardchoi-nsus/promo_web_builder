@@ -3301,8 +3301,8 @@ var Do = {
 				zIndex: n.zIndex || 2,
 				color: n.color,
 				"--item-color": n.color,
-				fontSize: n.fontSize ? `${n.fontSize}px` : void 0,
-				"--item-font-size": n.fontSize ? `${n.fontSize}px` : void 0,
+				fontSize: n.fontSize === void 0 ? void 0 : `${n.fontSize}px`,
+				"--item-font-size": n.fontSize === void 0 ? void 0 : `${n.fontSize}px`,
 				fontWeight: n.fontWeight,
 				"--item-font-weight": n.fontWeight,
 				width: n.widthPct !== void 0 || i ? `${a}%` : void 0,
@@ -3338,7 +3338,7 @@ var Do = {
 			let o = e.currentTarget, s = o.closest(".rendered-item"), c = s?.closest(".rendered-items");
 			if (!s || !c) return;
 			e.preventDefault(), e.stopPropagation(), P(t, i), o.setPointerCapture(e.pointerId), s.classList.add("is-resizing");
-			let l = c.getBoundingClientRect(), u = s.getBoundingClientRect(), d = e.clientX, f = e.clientY, p = u.width, m = u.height, _ = u.left - l.left, v = u.top - l.top, y = m ? p / m : 1, b = h(t, i), x = i.fieldKind === "image", w = x && b.aspectRatioLocked !== !1, T = a.includes("w") || a.includes("e"), ee = a.includes("n") || a.includes("s"), te = x ? null : s.querySelector(".rendered-text, .rendered-empty, .rendered-cta"), E = te ? Number.parseFloat(getComputedStyle(te).fontSize) : 18, D = S(b.fontSize, 10, 80, E || 18), O = p, k = m, A = D, re = _, j = v, ie = 0, M = (e) => {
+			let l = c.getBoundingClientRect(), u = s.getBoundingClientRect(), d = e.clientX, f = e.clientY, p = u.width, m = u.height, _ = u.left - l.left, v = u.top - l.top, y = m ? p / m : 1, b = h(t, i), x = i.fieldKind === "image", w = x && b.aspectRatioLocked !== !1, T = a.includes("w") || a.includes("e"), ee = a.includes("n") || a.includes("s"), te = x ? null : s.querySelector(".rendered-text, .rendered-empty, .rendered-cta"), E = te ? Number.parseFloat(getComputedStyle(te).fontSize) : 18, D = S(b.fontSize, 0, 80, E || 18), O = p, k = m, A = D, re = _, j = v, ie = 0, M = (e) => {
 				let t = a.includes("w") ? -1 : 1, n = a.includes("n") ? -1 : 1, r = (e.clientX - d) * t, i = (e.clientY - f) * n, o = Math.max(80, a.includes("w") ? p + _ : l.width - _), c = Math.max(80, a.includes("n") ? m + v : 1124 - v), u = T ? Math.min(o, Math.max(80, p + r)) : p, h = ee ? Math.min(c, Math.max(80, m + i)) : m;
 				if (w || x && b.shape === "circle") {
 					let e = b.shape === "circle" ? 1 : y;
@@ -3346,7 +3346,7 @@ var Do = {
 				} else O = u, k = h;
 				if (!x) {
 					let e = p ? O / p : 1, t = m ? k / m : 1, n = T && ee ? Math.sqrt(e * t) : T ? e : t;
-					A = C(S(D * n, 10, 80, D));
+					A = C(S(D * n, 0, 80, D));
 				}
 				re = a.includes("w") ? _ + p - O : _, j = a.includes("n") ? v + m - k : v, !ie && (ie = requestAnimationFrame(() => {
 					ie = 0, s.style.left = `${re}px`, s.style.top = `${j}px`, (T || w) && (s.style.width = `${O}px`), (ee || w) && (s.style.height = `${k}px`), x ? s.style.aspectRatio = "auto" : s.style.setProperty("--item-font-size", `${A}px`);
@@ -3379,7 +3379,7 @@ var Do = {
 			r("update-renderer-item-style", t, i, {
 				widthPct: g,
 				heightPx: v,
-				...s ? {} : { fontSize: C(S((o.fontSize ?? 18) * x, 10, 80, 18)) }
+				...s ? {} : { fontSize: C(S((o.fontSize ?? 18) * x, 0, 80, 18)) }
 			});
 		}
 		function ue(e, t, i) {
@@ -3618,9 +3618,9 @@ function ns(e = {}) {
 		}), t?.yPx !== void 0 && (!Number.isFinite(i) || i < 0 || i > 1200) && n.push({
 			path: `itemStyles.${e}.yPx`,
 			message: "yPx must be between 0 and 1200."
-		}), t?.fontSize !== void 0 && (!Number.isFinite(a) || a < 10 || a > 80) && n.push({
+		}), t?.fontSize !== void 0 && (!Number.isFinite(a) || a < 0 || a > 80) && n.push({
 			path: `itemStyles.${e}.fontSize`,
-			message: "fontSize must be between 10 and 80."
+			message: "fontSize must be between 0 and 80."
 		});
 		let o = Number(t?.widthPct), u = Number(t?.heightPx);
 		t?.widthPct !== void 0 && (!Number.isFinite(o) || o < 10 || o > 100) && n.push({
@@ -5123,13 +5123,13 @@ var ps = {
 									}, null, 40, Bl)]),
 									Q("label", null, [i[89] ||= Q("span", null, "폰트 크기", -1), Q("div", Vl, [Q("input", {
 										type: "range",
-										min: "10",
+										min: "0",
 										max: "80",
 										step: "1",
 										disabled: P.value.isLocked,
-										value: H.value.fontSize || 18,
+										value: H.value.fontSize ?? 18,
 										onInput: i[34] ||= (e) => W({ fontSize: Number(e.target.value) })
-									}, null, 40, Hl), Q("output", null, I(H.value.fontSize || 18) + "px", 1)])]),
+									}, null, 40, Hl), Q("output", null, I(H.value.fontSize ?? 18) + "px", 1)])]),
 									Q("label", null, [i[91] ||= Q("span", null, "폰트 굵기", -1), Q("select", {
 										disabled: P.value.isLocked,
 										value: H.value.fontWeight || 400,

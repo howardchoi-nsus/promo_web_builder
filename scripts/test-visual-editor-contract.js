@@ -214,6 +214,8 @@ assert.match(renderer, /function itemResizeHandles\(section, item\)/);
 assert.match(renderer, /class="item-resize-handle component-resize-handle"/);
 assert.match(renderer, /function startItemResize[\s\S]*if \(!props\.editable \|\| item\.isLocked \|\| event\.button !== 0\) return/);
 assert.match(renderer, /fontScale[\s\S]*fontSize:\s*nextFontSize/);
+assert.match(renderer, /clamp\(style\.fontSize,\s*0,\s*80/);
+assert.match(app, /min="0"[\s\S]*max="80"[\s\S]*selectedItemStyle\.fontSize \?\? 18/);
 assert.doesNotMatch(renderer, /textAlign:\s*style\.textAlign/);
 assert.doesNotMatch(app, /selectedItemStyle\.textAlign/);
 assert.match(app, /class="component-frame-controls"/);
