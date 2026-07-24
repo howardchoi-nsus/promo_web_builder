@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="/prototype/design-tokens.css?v=app-tokens-v1" />
     <link rel="stylesheet" href="/prototype/app-shell.css?v=app-shell-sidebar-v3" />
     <link rel="stylesheet" href="/prototype/app-components.css?v=app-components-v1" />
-    <link rel="stylesheet" href="/prototype/styles.css?v=admin-template-manager-v4" />
+    <link rel="stylesheet" href="/prototype/styles.css?v=admin-template-manager-v5" />
     <script src="/prototype/vendor/lucide/lucide.min.js?v=1.8.0"></script>
     <script src="/prototype/i18n-runtime.js?v=i18n-runtime-v1"></script>
     <script src="/prototype/shared-shell.js?v=app-shell-sidebar-v4"></script>
@@ -1226,13 +1226,6 @@
 
                 <div class="form-template-editor-panels">
                 <section class="prompt-editor-panel" v-if="wizardFormTemplateDetail">
-                  <div class="prompt-editor-header">
-                    <div>
-                      <strong>{{ wizardFormTemplateDetail.template.name }}</strong>
-                      <span>{{ wizardFormTemplateDetail.template.templateKey }} · v{{ wizardFormTemplateDetail.template.version }} · {{ wizardSectionStatusLabel(wizardFormTemplateDetail.template.status) }}</span>
-                    </div>
-                  </div>
-
                   <div id="template-component-manager-target" class="template-component-manager-target"></div>
                   <div class="subsection template-section-composer">
                     <div class="subsection-title">
@@ -1424,8 +1417,7 @@
             </section>
 
             <teleport to="#template-component-manager-target" v-if="wizardFormTemplateDetail">
-            <details class="section-library-manager" open>
-              <summary>{{ t('entity.component.manage') }}</summary>
+            <section class="section-library-manager">
               <div class="section-library-manager-body">
             <div class="panel-header">
               <div>
@@ -1705,7 +1697,7 @@
               </section>
             </div>
               </div>
-            </details>
+            </section>
             </teleport>
           </section>
           <section class="panel stack section-audit-manager" v-show="adminTab === 'audit'">
