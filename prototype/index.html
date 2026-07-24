@@ -877,6 +877,15 @@
                     <span>응답 형식</span>
                     <input v-model="promptEditor.responseFormat" type="text" autocomplete="off" placeholder="json_object / text / image" />
                   </label>
+                  <label class="field" v-if="promptSupportsImageSize(selectedPromptTemplate)">
+                    <span>{{ t('admin.prompt.imageSize') }}</span>
+                    <select v-model="promptEditor.imageSize">
+                      <option value="1K">1K · 1024px</option>
+                      <option value="2K">2K · 2048px</option>
+                      <option value="4K">4K · 4096px</option>
+                    </select>
+                    <small>{{ t('admin.prompt.imageSizeHelp') }}</small>
+                  </label>
                 </div>
 
                 <label class="field">

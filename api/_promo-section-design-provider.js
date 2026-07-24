@@ -163,6 +163,11 @@ function geminiImageDimensions(imageSize, aspectRatio) {
   return { width: longSide, height: Math.round(longSide * 9 / 16) };
 }
 
+function normalizedGeminiImageSize(value) {
+  const imageSize = String(value || "").trim().toUpperCase();
+  return ["1K", "2K", "4K"].includes(imageSize) ? imageSize : "2K";
+}
+
 async function generateSectionLayout({ section, sectionInputs, constraints, signal }) {
   const model = process.env.SECTION_LAYOUT_MODEL || "gpt-4.1-mini";
   const prompt = [
@@ -272,7 +277,7 @@ async function generateOpenAiSectionImage({ prompt, aspectRatio, model: requeste
 
 async function generateGeminiSectionImage({ prompt, aspectRatio, model: requestedModel, modelOptions, signal }) {
   const model = requestedModel || process.env.SECTION_IMAGE_MODEL || "gemini-3.1-flash-image";
-  const imageSize = modelOptions?.imageSize || process.env.SECTION_IMAGE_SIZE || "2K";
+  const imageSize = normalizedGeminiImageSize(modelOptions?.imageSize || process.env.SECTION_IMAGE_SIZE);
   const dimensions = geminiImageDimensions(imageSize, aspectRatio);
   const startedAt = Date.now();
   const { payload, requestId } = await requestJson(

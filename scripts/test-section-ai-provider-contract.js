@@ -89,6 +89,16 @@ process.env.SECTION_IMAGE_PROVIDER = "openai";
   assert.match(requests[2].body.input[0].text, /main visual subject on the right/);
   assert.match(imagePromptForSafeArea("Centered visual", "center-copy"), /center as clean negative space/);
 
+  const gemini4kImage = await generateSectionImage({
+    prompt: "Wide premium visual",
+    safeArea: "none",
+    aspectRatio: "16:9",
+    modelOptions: { imageSize: "4K" },
+  });
+  assert.equal(gemini4kImage.width, 4096);
+  assert.equal(gemini4kImage.height, 2304);
+  assert.equal(requests[3].body.response_format.image_size, "4K");
+
   console.log("Section AI provider contract tests passed.");
 })().finally(() => {
   global.fetch = previousFetch;

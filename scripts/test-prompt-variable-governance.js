@@ -8,6 +8,7 @@ const {
   validatePromptExecutionVariables,
   validatePromptTemplateContract,
 } = require("../api/_prompt-template-store");
+const { validateStageModelConfig } = require("../api/_prompt-execution-snapshot");
 
 assert.deepEqual(mergePromptTemplatePatch({
   name: "Current",
@@ -73,6 +74,18 @@ assert.throws(() => validatePromptExecutionVariables("section_background_image",
   backgroundColor: "transparent",
   fadeMode: "none",
 }), /backgroundColor/);
+assert.doesNotThrow(() => validateStageModelConfig("section_background_image", {
+  provider: "google",
+  model: "gemini-3.1-flash-image",
+  responseFormat: "image",
+  modelOptions: { imageSize: "2K" },
+}));
+assert.throws(() => validateStageModelConfig("section_background_image", {
+  provider: "google",
+  model: "gemini-3.1-flash-image",
+  responseFormat: "image",
+  modelOptions: { imageSize: "1920px" },
+}), /imageSize must be one of/);
 
 const root = path.resolve(__dirname, "..");
 const updateRoute = fs.readFileSync(path.join(root, "api", "prompt-template.js"), "utf8");

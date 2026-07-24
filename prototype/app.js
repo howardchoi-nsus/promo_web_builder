@@ -1295,6 +1295,7 @@ const adminApp = createApp({
         temperature: "",
         maxTokens: "",
         responseFormat: "",
+        imageSize: "2K",
         modelOptionsText: "{}",
         changeNote: "",
       },
@@ -2497,6 +2498,11 @@ const adminApp = createApp({
           temperature: detail.temperature ?? "",
           maxTokens: detail.maxTokens ?? "",
           responseFormat: detail.responseFormat || "",
+          imageSize: ["1K", "2K", "4K"].includes(String(
+            detail.modelOptions?.imageSize || detail.modelOptions?.image_size || ""
+          ).toUpperCase())
+            ? String(detail.modelOptions?.imageSize || detail.modelOptions?.image_size).toUpperCase()
+            : "2K",
           modelOptionsText: JSON.stringify(detail.modelOptions || {}, null, 2),
           changeNote: "",
         };
@@ -2524,6 +2530,22 @@ const adminApp = createApp({
       }
     },
 
+    promptSupportsImageSize(prompt = this.selectedPromptTemplate) {
+      return this.promptEditor.provider === "google"
+        && ["image_execution", "final_design", "section_background_image", "component_image"].includes(prompt?.type);
+    },
+
+    promptModelOptionsForSave(prompt) {
+      const modelOptions = this.parseModelOptionsText(this.promptEditor.modelOptionsText);
+      if (this.promptSupportsImageSize(prompt)) {
+        modelOptions.imageSize = ["1K", "2K", "4K"].includes(this.promptEditor.imageSize)
+          ? this.promptEditor.imageSize
+          : "2K";
+        delete modelOptions.image_size;
+      }
+      return modelOptions;
+    },
+
     async savePromptTemplate() {
       const prompt = this.selectedPromptTemplate;
       if (!prompt || this.promptSaving) return;
@@ -2547,7 +2569,7 @@ const adminApp = createApp({
             temperature: this.promptEditor.temperature === "" ? null : Number(this.promptEditor.temperature),
             maxTokens: this.promptEditor.maxTokens === "" ? null : Number(this.promptEditor.maxTokens),
             responseFormat: this.promptEditor.responseFormat,
-            modelOptions: this.parseModelOptionsText(this.promptEditor.modelOptionsText),
+            modelOptions: this.promptModelOptionsForSave(prompt),
             changeNote: this.promptEditor.changeNote || "관리자 페이지에서 프롬프트를 변경했습니다.",
           }),
         });

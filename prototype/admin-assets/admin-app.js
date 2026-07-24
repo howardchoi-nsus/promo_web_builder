@@ -8739,6 +8739,7 @@ var Ih = /*#__PURE__*/ Ch(wh, [["render", Fh]]), Lh = /* @__PURE__ */ o((() => {
 					temperature: "",
 					maxTokens: "",
 					responseFormat: "",
+					imageSize: "2K",
 					modelOptionsText: "{}",
 					changeNote: ""
 				},
@@ -9860,6 +9861,11 @@ var Ih = /*#__PURE__*/ Ch(wh, [["render", Fh]]), Lh = /* @__PURE__ */ o((() => {
 						temperature: a.temperature ?? "",
 						maxTokens: a.maxTokens ?? "",
 						responseFormat: a.responseFormat || "",
+						imageSize: [
+							"1K",
+							"2K",
+							"4K"
+						].includes(String(a.modelOptions?.imageSize || a.modelOptions?.image_size || "").toUpperCase()) ? String(a.modelOptions?.imageSize || a.modelOptions?.image_size).toUpperCase() : "2K",
 						modelOptionsText: JSON.stringify(a.modelOptions || {}, null, 2),
 						changeNote: ""
 					}, t.silent || this.setStatus(`${a.name} 프롬프트를 열었습니다`);
@@ -9879,6 +9885,22 @@ var Ih = /*#__PURE__*/ Ch(wh, [["render", Fh]]), Lh = /* @__PURE__ */ o((() => {
 				} catch (e) {
 					throw Error(`모델 상세 옵션 JSON 형식이 올바르지 않습니다: ${e.message}`);
 				}
+			},
+			promptSupportsImageSize(e = this.selectedPromptTemplate) {
+				return this.promptEditor.provider === "google" && [
+					"image_execution",
+					"final_design",
+					"section_background_image",
+					"component_image"
+				].includes(e?.type);
+			},
+			promptModelOptionsForSave(e) {
+				let t = this.parseModelOptionsText(this.promptEditor.modelOptionsText);
+				return this.promptSupportsImageSize(e) && (t.imageSize = [
+					"1K",
+					"2K",
+					"4K"
+				].includes(this.promptEditor.imageSize) ? this.promptEditor.imageSize : "2K", delete t.image_size), t;
 			},
 			async savePromptTemplate() {
 				let e = this.selectedPromptTemplate;
@@ -9903,7 +9925,7 @@ var Ih = /*#__PURE__*/ Ch(wh, [["render", Fh]]), Lh = /* @__PURE__ */ o((() => {
 								temperature: this.promptEditor.temperature === "" ? null : Number(this.promptEditor.temperature),
 								maxTokens: this.promptEditor.maxTokens === "" ? null : Number(this.promptEditor.maxTokens),
 								responseFormat: this.promptEditor.responseFormat,
-								modelOptions: this.parseModelOptionsText(this.promptEditor.modelOptionsText),
+								modelOptions: this.promptModelOptionsForSave(e),
 								changeNote: this.promptEditor.changeNote || "관리자 페이지에서 프롬프트를 변경했습니다."
 							})
 						}), n = await t.json().catch(() => ({}));

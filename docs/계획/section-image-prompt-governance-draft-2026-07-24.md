@@ -240,6 +240,9 @@
 - 새 초안 생성, 계약 검증, 활성화, 보관, 이전 버전 롤백 API 추가
 - 상태 변경과 History 기록을 조건부 데이터 변경 CTE로 원자화
 - 관리자 화면에 `새 초안 만들기 → 저장 → 초안 검증 → 활성화` 흐름과 즉시 롤백 추가
+- Google/Gemini 이미지 프롬프트에 `1K / 2K / 4K` 해상도 선택 추가
+- 선택 해상도는 Prompt Version의 `modelOptions.imageSize`에 저장하고 새 실행 Snapshot부터 적용
+- 허용되지 않은 해상도는 검증·활성화 전에 차단
 - 기존 Prompt 행과 History는 삭제하지 않음
 
 운영 적용 전제:

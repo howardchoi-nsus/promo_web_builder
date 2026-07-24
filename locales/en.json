@@ -132,6 +132,8 @@
   "admin.templateLayout.openEditor": "Open layout editor",
   "admin.templateLayout.readOnlyHelp": "Active versions are read-only. Create a new draft first.",
   "admin.templateLayout.draftHelp": "Edits apply only to the draft and become available in Promotion Builder after template activation.",
+  "admin.prompt.imageSize": "Image resolution",
+  "admin.prompt.imageSizeHelp": "Long-edge resolution for Gemini images. Applies to new runs.",
   "builder.title": "Promotion page builder",
   "builder.step.designMode": "Select creation method",
   "builder.step.input": "Enter promotion details",

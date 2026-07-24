@@ -56,7 +56,7 @@
 - `admin.templateLayout.*` 메시지 키를 한국어·영어 Baseline에 추가
 - 부모 Admin App의 `t` 함수를 SFC에 전달
 - Template ID 기반 고유 Heading ID 적용
-- Locale Baseline 계약 테스트 기준 메시지 수: 140개
+- Locale Baseline 계약 테스트 기준 메시지 수: 142개
 
 ### 2.4 Prompt PATCH 필드 보존
 
@@ -108,6 +108,14 @@
 - 저장과 모든 상태 변경을 조건부 데이터 변경 CTE로 묶어 동시 요청의 부분 성공 차단
 - 관리자 Prompt Editor를 운영본 읽기 전용 및 단계형 작업 흐름으로 변경
 - 기존 Prompt와 History 데이터는 유지
+
+### 2.8 관리자 이미지 해상도 운영 설정
+
+- Google/Gemini 이미지 프롬프트에 `1K`, `2K`, `4K` 선택 항목 추가
+- 관리자 선택값을 `modelOptions.imageSize`로 저장해 Vercel 환경변수 변경 없이 버전별 운영 가능
+- Prompt 설정값, `SECTION_IMAGE_SIZE`, 소스 기본값 `2K` 순으로 적용
+- 서버에서 허용값을 검증하고 잘못된 해상도의 활성화 차단
+- Gemini 섹션 이미지의 예상 Pixel 크기와 Provider 요청값을 계약 테스트로 검증
 
 ## 3. 검증 결과
 

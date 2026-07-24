@@ -45,6 +45,7 @@ module.exports = async function handler(req, res) {
       provider: current.provider,
       model: current.model,
       responseFormat: current.response_format,
+      modelOptions: current.model_options,
     });
 
     const updatedRows = await sql`

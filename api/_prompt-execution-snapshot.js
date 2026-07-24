@@ -104,6 +104,7 @@ function validateStageModelConfig(type, prompt) {
   const provider = String(prompt?.provider || "").trim().toLowerCase();
   const model = String(prompt?.model || "").trim();
   const responseFormat = String(prompt?.responseFormat || "").trim().toLowerCase();
+  const imageSize = String(prompt?.modelOptions?.imageSize || "").trim().toUpperCase();
   const fail = (message) => {
     const error = new Error(message);
     error.statusCode = 409;
@@ -129,6 +130,9 @@ function validateStageModelConfig(type, prompt) {
       fail("final_design requires an approved OpenAI GPT Image or Google Gemini image-edit model");
     }
     if (responseFormat !== "image") fail("final_design responseFormat must be image");
+    if (provider === "google" && imageSize && !["1K", "2K", "4K"].includes(imageSize)) {
+      fail("final_design imageSize must be one of: 1K, 2K, 4K");
+    }
     return true;
   }
   if (type === "image_execution") {
@@ -136,6 +140,9 @@ function validateStageModelConfig(type, prompt) {
     const geminiImage = provider === "google" && /^gemini-(?:2\.5-flash-image|3(?:\.1)?-(?:flash|pro)-image)$/i.test(model);
     if (!openAiImage && !geminiImage) fail("image_execution requires an approved OpenAI GPT Image or Google Gemini image model");
     if (responseFormat !== "image") fail("image_execution responseFormat must be image");
+    if (provider === "google" && imageSize && !["1K", "2K", "4K"].includes(imageSize)) {
+      fail("image_execution imageSize must be one of: 1K, 2K, 4K");
+    }
     return true;
   }
   if (type === "section_layout_planner" || type === "multi_component_layout_planner") {
@@ -150,6 +157,9 @@ function validateStageModelConfig(type, prompt) {
       fail(`${type} requires an approved OpenAI GPT Image or Google Gemini image model`);
     }
     if (responseFormat !== "image") fail(`${type} responseFormat must be image`);
+    if (provider === "google" && imageSize && !["1K", "2K", "4K"].includes(imageSize)) {
+      fail(`${type} imageSize must be one of: 1K, 2K, 4K`);
+    }
     return true;
   }
   fail(`Unsupported prompt execution stage: ${type}`);
