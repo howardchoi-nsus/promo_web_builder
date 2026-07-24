@@ -1419,42 +1419,13 @@
             <teleport to="#template-component-manager-target" v-if="wizardFormTemplateDetail">
             <section class="section-library-manager">
               <div class="section-library-manager-body">
-            <div class="panel-header">
-              <div>
-                <h2>{{ t('entity.section.manage') }}</h2>
-              </div>
-              <div class="subsection-actions">
-                <span v-if="wizardSectionsLoading">불러오는 중</span>
-                <span v-else>{{ groupedWizardSections.length }}개 섹션</span>
-                <button class="tiny-button" type="button" :disabled="wizardSectionsLoading" @click="loadWizardSections({ fresh: true })">{{ t('common.action.refresh') }}</button>
-                <button class="tiny-button primary" type="button" @click="toggleNewWizardSectionForm">{{ showNewWizardSectionForm ? t('common.action.cancel') : `+ ${t('entity.section.add')}` }}</button>
-              </div>
-            </div>
-
             <div class="outline-item danger-state" v-if="wizardSectionsError">
               <strong>섹션 목록 오류</strong>
               <span>{{ wizardSectionsError }}</span>
             </div>
 
-            <div class="form-grid compact" v-if="showNewWizardSectionForm">
-              <label class="field compact-field">
-                <span>{{ t('entity.section.key') }}</span>
-                <input value="자동 생성" type="text" disabled />
-              </label>
-              <label class="field compact-field">
-                <span>섹션 이름</span>
-                <input v-model="newWizardSectionForm.name" type="text" autocomplete="off" />
-              </label>
-              <label class="field compact-field">
-                <span>{{ t('common.field.description') }}</span>
-                <input v-model="newWizardSectionForm.description" type="text" autocomplete="off" />
-              </label>
-              <div class="action-row align-right">
-                <button class="tiny-button primary" type="button" :disabled="wizardSectionSaving || !newWizardSectionForm.name" @click="createWizardSection">섹션 추가</button>
-              </div>
-            </div>
-
             <div class="prompt-admin-grid">
+              <div class="section-library-list-column">
               <transition-group name="section-order-list" tag="aside" class="prompt-list-panel">
                 <button
                   v-for="group in groupedWizardSections"
@@ -1494,6 +1465,27 @@
                   순서 저장 중...
                 </div>
               </transition-group>
+              <div class="section-library-add">
+                <button class="tiny-button primary" type="button" @click="toggleNewWizardSectionForm">{{ showNewWizardSectionForm ? t('common.action.cancel') : `+ ${t('entity.section.add')}` }}</button>
+              </div>
+              <div class="form-grid compact section-library-create" v-if="showNewWizardSectionForm">
+                <label class="field compact-field">
+                  <span>{{ t('entity.section.key') }}</span>
+                  <input value="자동 생성" type="text" disabled />
+                </label>
+                <label class="field compact-field">
+                  <span>섹션 이름</span>
+                  <input v-model="newWizardSectionForm.name" type="text" autocomplete="off" />
+                </label>
+                <label class="field compact-field">
+                  <span>{{ t('common.field.description') }}</span>
+                  <input v-model="newWizardSectionForm.description" type="text" autocomplete="off" />
+                </label>
+                <div class="action-row align-right">
+                  <button class="tiny-button primary" type="button" :disabled="wizardSectionSaving || !newWizardSectionForm.name" @click="createWizardSection">섹션 추가</button>
+                </div>
+              </div>
+              </div>
 
               <section class="prompt-editor-panel" v-if="wizardSectionDetail">
                 <div class="prompt-editor-header">

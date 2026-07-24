@@ -2788,6 +2788,25 @@ body.is-resizing {
   padding: 8px 0 4px;
 }
 
+.section-library-list-column {
+  display: grid;
+  align-content: start;
+  min-width: 0;
+  gap: var(--app-space-2);
+}
+
+.section-library-add {
+  display: grid;
+}
+
+.section-library-add .tiny-button {
+  width: 100%;
+}
+
+.section-library-create {
+  min-width: 0;
+}
+
 .form-template-create,
 .form-template-duplicate {
   display: grid;

@@ -15,10 +15,19 @@ assert.match(html, /locale-manager-grid/);
 assert.match(html, /activateSelectedLocaleMessages/);
 assert.match(html, /admin\.i18n\.koreanText/);
 assert.match(html, /admin\.i18n\.englishText/);
-assert.match(html, /<h2>\{\{ t\('entity\.section\.manage'\) \}\}<\/h2>/);
+assert.match(html, /<section class="section-library-manager">/);
 assert.match(html, /t\('entity\.template\.sectionConfig'\)/);
 assert.match(html, /t\('entity\.component\.fieldLabel'\)/);
 assert.match(html, /프로모션 빌더에서 사용할 섹션 구성과 최초 노출 레이아웃/);
+assert.match(html, /class="section-library-list-column"/);
+assert.ok(
+  html.indexOf('class="section-library-add"') > html.indexOf('name="section-order-list"'),
+  "섹션 추가 버튼은 섹션 목록 아래에 있어야 합니다."
+);
+const sectionManagerStart = html.indexOf('<section class="section-library-manager">');
+const sectionManagerEnd = html.indexOf('</teleport>', sectionManagerStart);
+const sectionManagerHtml = html.slice(sectionManagerStart, sectionManagerEnd);
+assert.doesNotMatch(sectionManagerHtml, /class="panel-header"/);
 assert.doesNotMatch(html, /섹션 CRUD|보관\(삭제\)|필수 Section|노출할 Section/);
 assert.match(app, /loadLocaleMessages/);
 assert.match(app, /localeMessagesByLocale/);

@@ -109,18 +109,21 @@ Promo Web Builder (단일 App Shell)
 
 ## 5. 현재 구현 현황
 
-DB 마이그레이션은 `030`까지 진행됐고, 초기 기획의 상당 부분이 실제 구현되었다.
+DB 마이그레이션은 `032`까지 진행됐고, 초기 기획의 상당 부분이 실제 구현되었다(2026-07-24 소스 대조).
 
 | 영역 | 현황 | 근거 |
 |---|---|---|
 | DB 기반 템플릿/섹션/아이템 | **구현** | 016~018, 022, 023 |
-| 아이템 컴포넌트 + 디자인 토큰 | **구현** | 028, 029, 관리자 `components` 탭 |
-| 섹션 AI 디자인(레이아웃·이미지, 다이렉트 LLM) | **구현** | 025, 026, `promo-section-design-*` |
+| 아이템 컴포넌트 + 디자인 토큰 세트 | **구현** | 028, 029(`promo_design_token_set_versions`/`_values`, `ai_selectable`·`semantic_role`), 관리자 `components` 탭 |
+| **다중 필드 컴포넌트** | **구현** | 031 `wizard_item_component_version_fields`(`fld_*`, `style_slots`, `image_policy`, `is_locked`) |
+| **Section AI V2 파이프라인** | **구현** | 029 `design_plan`/`effective_patch`/`request_mode`, 031 상태머신·`execution_key`·`prompt_snapshot`·asset job lease/retry·`component_instance_id`+`target_field_key`, 032 템플릿 버전별 `ai_design`·multi-layout |
+| 섹션 AI 디자인(레이아웃·이미지, 다이렉트 LLM) | **구현** | 025·026·`promo-section-design-*`, `promo-multi-component-layout-plan` |
 | Visual Editor / Web Output (Vue 렌더러, `--promo-*`) | **구현** | `visual-editor.html`, `visual-output.html` |
 | i18n(다국어) 메시지 | **백엔드 구현** | 027, `locale-*` API (관리자 탭 노출은 미완) |
 | 디자인 토큰 2계층 | **구현/진행** | `design-tokens.css`, CSV/스키마 |
 | 단일 글로벌 네비 | **구현** | `shared-shell.js` |
-| 생성 이력 DB 저장 | **구현** | `promo_section_design_runs` (025, 030) |
+| 생성 이력·스냅샷 DB 저장 | **구현** | `promo_section_design_runs` (025·030·031 스냅샷·hash) |
+| **StyleProfile / CompositionSpec(섹션 AI 자동 디자인)** | **미구현(계획)** | `계획/ai-section-auto-design-development-plan-2026-07-23.md`(v2), 마이그레이션 033 제안 |
 
 ## 6. 남은 격차 (우선순위)
 
@@ -129,6 +132,7 @@ DB 마이그레이션은 `030`까지 진행됐고, 초기 기획의 상당 부�
 3. **정보구조 통합 완성.** 경로 평탄화(`/prototype/*` 제거), Create Promo + Promo Wizard 단일화, Promo Builder의 Admin 흡수.
 4. **AI 추천 다양성 엔진 고도화 + MD의 생성 검증 조건화.** Design Concept 추천을 강화하고, `layoutPhilosophy`·`componentStyle`·`dos/donts`를 생성 결과 검증 규칙으로 사용.
 5. **진행 중 체계 안정화·이관.** 아이템 컴포넌트·디자인 토큰(028·029) 배포, i18n 관리자 탭 노출·전면 라벨 전환.
+6. **섹션 AI 자동 디자인(StyleProfile·CompositionSpec).** 컴포넌트 콘텐츠만 등록하면 타이포·색·배열·배경을 자동 구성. Section AI V2 파이프라인은 있으나 StyleProfile·레이아웃 인지 배경(focal/safe)·Composition Calculator·region 매핑은 미구현 — `계획/ai-section-auto-design-development-plan-2026-07-23.md`(v2)로 착수 예정.
 
 ## 7. 결론
 
