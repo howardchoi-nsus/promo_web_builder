@@ -54,6 +54,11 @@ const {
   resolveActiveTemplate,
 } = globalThis.PromoWizardCore || {};
 const {
+  listPublicTemplates,
+  loadPublicTemplate,
+  resolveTemplate,
+} = globalThis.PromoWizardTemplateService || {};
+const {
   createDefaultWizardContent,
   migrateLegacySectionInputs,
   defaultSectionInputsFromDefinitions,
@@ -183,10 +188,9 @@ async function loadWizardSectionDefinitions() {
   wizardSectionDefinitionsLoading = true;
   wizardSectionDefinitionsError = "";
   try {
-    const result = await fetchJson("/api/wizard-form-templates-public");
-    wizardFormTemplates = Array.isArray(result.templates) ? result.templates : [];
+    wizardFormTemplates = await listPublicTemplates();
     if (!wizardFormTemplates.length) throw new Error("활성화된 프로모션 템플릿이 없습니다.");
-    const target = resolveActiveTemplate(wizardFormTemplates, contentState.formTemplate);
+    const target = resolveTemplate(wizardFormTemplates, contentState.formTemplate);
     if (!target) throw new Error("선택할 수 있는 활성 프로모션 템플릿이 없습니다.");
     await selectWizardFormTemplate(target.id, { skipConfirmation: true });
   } catch (error) {
@@ -212,7 +216,7 @@ async function selectWizardFormTemplate(templateId, options = {}) {
   if (selectedWizardFormTemplate?.templateKey) {
     contentState.templateInputs[selectedWizardFormTemplate.templateKey] = contentState.sectionInputs;
   }
-  const result = await fetchJson(`/api/wizard-form-template-public?id=${encodeURIComponent(templateId)}`);
+  const result = await loadPublicTemplate(templateId);
   const nextDefinitions = Array.isArray(result.sections) ? result.sections : [];
   if (!nextDefinitions.length || !nextDefinitions.some((section) => (section.items || []).length)) {
     throw new Error("선택한 템플릿에 Wizard 입력 항목이 없습니다. 관리자에게 템플릿 구성을 요청해 주세요.");

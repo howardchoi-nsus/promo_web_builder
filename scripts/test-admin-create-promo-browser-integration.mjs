@@ -189,7 +189,14 @@ try {
   });
 
   await page.locator(".wizard-layout-panel__actions button").first().click();
-  await editorFrame.locator('[data-section-key="heroBanner"]').waitFor({ timeout: 10_000 });
+  try {
+    await editorFrame.locator('[data-section-key="heroBanner"]').waitFor({ timeout: 10_000 });
+  } catch (error) {
+    throw new Error(
+      `Refreshed Admin layout did not render heroBanner.\nBrowser errors:\n${pageErrors.join("\n") || "(none)"}`,
+      { cause: error },
+    );
+  }
   await editorFrame.locator('[data-section-key="adminAddedSection"]').waitFor({ timeout: 10_000 });
   let refreshedSectionStyle = null;
   for (let attempt = 0; attempt < 40; attempt += 1) {

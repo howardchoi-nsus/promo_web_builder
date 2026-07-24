@@ -23,5 +23,7 @@ assert.doesNotMatch(html, /unpkg\.com\/vue/);
 assert.equal(packageJson.scripts["build:admin"], "vite build --config admin-app/vite.config.js");
 assert.equal(vercelConfig.outputDirectory, ".");
 assert.match(viteConfig, /codeSplitting:\s*false/);
+assert.match(viteConfig, /@vitejs\/plugin-vue/);
+assert.match(viteConfig, /plugins:\s*\[vue\(\)\]/);
 
 console.log("Admin Vite shell contract test passed");

@@ -4,6 +4,8 @@ const {
   sha256,
   toPromptTemplate,
   unresolvedVariables,
+  validatePromptExecutionVariables,
+  validatePromptTemplateContract,
 } = require("./_prompt-template-store");
 const { fitFinalDesignPromptVariables } = require("./_final-design-prompt-budget");
 const { normalizeExecutionModelOptions } = require("./_worker-execution-contract");
@@ -52,6 +54,8 @@ async function createPromptExecutionSnapshot(sql, type, variables = {}) {
   }
 
   const prompt = toPromptTemplate(rows[0]);
+  validatePromptTemplateContract(prompt.type, prompt);
+  validatePromptExecutionVariables(type, variables);
   validateStageModelConfig(type, prompt);
   const missingRequired = prompt.requiredVariables.filter((key) => !hasPromptValue(variables[key]));
   if (missingRequired.length) {

@@ -6,6 +6,8 @@ const {
   sha256,
   toPromptTemplate,
   unresolvedVariables,
+  validatePromptExecutionVariables,
+  validatePromptTemplateContract,
 } = require("./_prompt-template-store");
 const { fitFinalDesignPromptVariables } = require("./_final-design-prompt-budget");
 
@@ -52,6 +54,8 @@ module.exports = async function handler(req, res) {
     if (!rows.length) return res.status(404).json({ error: "Active prompt template not found", type });
 
     const prompt = toPromptTemplate(rows[0]);
+    validatePromptTemplateContract(prompt.type, prompt);
+    validatePromptExecutionVariables(prompt.type, variables);
     const missingRequired = prompt.requiredVariables.filter((key) => {
       const value = variables[key];
       return value === null || value === undefined || String(value).trim() === "";

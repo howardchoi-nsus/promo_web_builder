@@ -6,6 +6,7 @@ const {
   normalizeNumber,
   parseBody,
   toPromptTemplate,
+  validatePromptTemplateContract,
 } = require("./_prompt-template-store");
 const { validateStageModelConfig } = require("./_prompt-execution-snapshot");
 
@@ -173,6 +174,11 @@ async function updatePrompt(req, res) {
   if (current.status === "active") {
     validateStageModelConfig(current.type, { provider, model, responseFormat });
   }
+  validatePromptTemplateContract(current.type, {
+    body: nextBody,
+    requiredVariables,
+    optionalVariables,
+  });
   const updatedRows = await sql`
     update prompt_templates
     set

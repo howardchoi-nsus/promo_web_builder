@@ -1,7 +1,6 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import PromoPageRenderer from "./PromoPageRenderer.vue";
-import SectionProperties from "./SectionProperties.vue";
 import { withoutFreePosition } from "./editor-utils.mjs";
 import { createEditorContext } from "./editor-context.mjs";
 import { normalizeLayoutSpec, validateLayoutSpec } from "./layout-utils.mjs";
@@ -14,7 +13,10 @@ import {
 import { createOutputAdapter } from "./platform/adapters/output-adapter.mjs";
 import { createEditorStore } from "./platform/editor-core/create-editor-store.mjs";
 import { EditorCommandType, editorCommand } from "./platform/editor-core/editor-commands.mjs";
-import EditorPreviewControls from "./platform/editor-ui/EditorPreviewControls.vue";
+import PreviewPanel from "./platform/editor-ui/PreviewPanel.vue";
+import SectionPanel from "./platform/editor-ui/SectionPanel.vue";
+import AiLayoutControls from "./platform/editor-ui/AiLayoutControls.vue";
+import PropertyPanel from "./platform/editor-ui/PropertyPanel.vue";
 import {
   DESIGN_COLOR_TOKENS,
   DEFAULT_DESIGN_SPEC,
@@ -39,7 +41,7 @@ const selectedSectionKey = ref("");
 const selectedItemKey = ref("");
 const selectedItemKeys = ref([]);
 const expandedComponentKey = ref("");
-const previewStageRef = ref(null);
+const previewPanelRef = ref(null);
 const viewport = ref("desktop");
 const guidesVisible = ref(true);
 const outputSaveError = ref("");
@@ -171,15 +173,8 @@ async function selectRendererItem(section, item, selection = {}) {
 }
 
 function scrollPreviewToSection(section) {
-  if (!section || !previewStageRef.value) return;
-  const target = previewStageRef.value.querySelector(`[data-section-key="${CSS.escape(section.sectionKey)}"]`);
-  if (!target) return;
-  const stageRect = previewStageRef.value.getBoundingClientRect();
-  const targetRect = target.getBoundingClientRect();
-  previewStageRef.value.scrollTo({
-    top: Math.max(0, previewStageRef.value.scrollTop + targetRect.top - stageRect.top),
-    behavior: "smooth",
-  });
+  if (!section) return;
+  previewPanelRef.value?.scrollToSection(section.sectionKey);
 }
 
 async function selectSection(section) {
@@ -236,8 +231,9 @@ function layoutOperationLabel(operation) {
 }
 
 function captureMultiLayoutGeometry(section) {
-  if (!section || !previewStageRef.value) throw new Error("미리보기 영역을 찾지 못했습니다.");
-  const sectionElement = previewStageRef.value.querySelector(`[data-section-key="${CSS.escape(section.sectionKey)}"]`);
+  const previewStage = previewPanelRef.value?.getStageElement();
+  if (!section || !previewStage) throw new Error("미리보기 영역을 찾지 못했습니다.");
+  const sectionElement = previewStage.querySelector(`[data-section-key="${CSS.escape(section.sectionKey)}"]`);
   const canvas = sectionElement?.querySelector(".rendered-items");
   if (!canvas) throw new Error("선택한 섹션의 레이아웃 영역을 찾지 못했습니다.");
   const canvasRect = canvas.getBoundingClientRect();
@@ -999,194 +995,77 @@ onBeforeUnmount(() => {
         'is-admin-layout-workspace': isAdminLayoutMode,
       }"
     >
-      <aside class="section-rail" aria-label="콘텐츠 섹션">
-        <div class="panel-heading">
-          <span>SECTIONS</span>
-          <strong>{{ sections.length }}</strong>
-        </div>
-        <div class="section-list">
-          <section
-            v-for="section in sections"
-            :key="section.sectionKey"
-            class="section-nav-item"
-            :class="{ active: section.sectionKey === selectedSection?.sectionKey }"
-          >
-            <button
-              type="button"
-              class="section-trigger"
-              :class="{ active: section.sectionKey === selectedSection?.sectionKey }"
-              :aria-expanded="section.sectionKey === selectedSection?.sectionKey"
-              :aria-controls="`section-properties-${section.sectionKey}`"
-              @click="selectSection(section)"
-            >
-              <span>{{ section.name }}</span>
-              <svg
-                class="section-registration-icon"
-                :class="sectionContentRegistered(section) ? 'is-complete' : 'is-incomplete'"
-                viewBox="0 0 20 20"
-                role="img"
-                :aria-label="sectionContentRegistered(section) ? `${section.name} 콘텐츠 등록 완료` : `${section.name} 콘텐츠 등록 필요`"
-              >
-                <circle cx="10" cy="10" r="9"></circle>
-                <path v-if="sectionContentRegistered(section)" d="M5.8 10.2 8.6 13l5.8-6"></path>
-                <path v-else d="M10 5.5v6M10 14.5v.1"></path>
-              </svg>
-            </button>
-            <div
-              v-if="section.sectionKey === selectedSection?.sectionKey"
-              :id="`section-properties-${section.sectionKey}`"
-              class="section-property-accordion"
-            >
-              <SectionProperties
-                :section="section"
-                :section-style="selectedSectionStyle"
-                :can-run-section-ai="capabilities.canRunSectionAi"
-                :primary-action="sectionAiPrimaryAction(section)"
-                :has-ai-background="sectionHasAiBackground(section)"
-                :ai-processing="sectionAiIsProcessing(section)"
-                @ai-action="(action, targetItemKey, targetType) => requestSectionAiAction(section, action, targetItemKey, targetType)"
-                @background-alignment="setSectionBackgroundAlignment"
-                @background-fade="setSectionBackgroundFadeMode"
-                @update-style="(patch) => updateSectionStyle(section.sectionKey, patch)"
-                @reset-height="resetSectionHeight"
-              />
-            </div>
-          </section>
-        </div>
-      </aside>
+      <SectionPanel
+        :sections="sections"
+        :selected-section="selectedSection"
+        :selected-section-style="selectedSectionStyle"
+        :capabilities="capabilities"
+        :section-content-registered="sectionContentRegistered"
+        :section-ai-primary-action="sectionAiPrimaryAction"
+        :section-has-ai-background="sectionHasAiBackground"
+        :section-ai-is-processing="sectionAiIsProcessing"
+        @select-section="selectSection"
+        @section-ai-action="(section, action, targetItemKey, targetType) => requestSectionAiAction(section, action, targetItemKey, targetType)"
+        @background-alignment="setSectionBackgroundAlignment"
+        @background-fade="setSectionBackgroundFadeMode"
+        @update-section-style="updateSectionStyle"
+        @reset-section-height="resetSectionHeight"
+      />
 
-      <section class="preview-panel">
-        <div class="preview-toolbar">
-          <div class="preview-title-group">
-            <strong>Live Preview</strong>
-            <small>{{ templateIdentityLabel }}</small>
-            <button
-              v-if="capabilities.canEditPromoContent"
-              class="auto-register-action"
-              type="button"
-              :disabled="autoRegisterPending"
-              @click="requestAutoRegister"
-            >
-              {{ autoRegisterPending ? "등록 중" : "자동등록" }}
-            </button>
-            <small v-if="capabilities.canEditPromoContent" class="preview-edit-hint">미리보기 요소를 선택해 내용을 입력하세요.</small>
-            <small v-if="autoRegisterMessage" class="auto-register-message" role="status">{{ autoRegisterMessage }}</small>
-          </div>
-          <EditorPreviewControls
-            v-model:guides-visible="guidesVisible"
-            v-model:viewport="viewport"
-            :can-undo="editorHistory.canUndo"
-            :can-redo="editorHistory.canRedo"
-            @undo="undoEditorCommand"
-            @redo="redoEditorCommand"
-          >
-            <template #tokens>
-              <fieldset v-if="capabilities.canEditTemplateDefaults" class="global-token-menu">
-                <legend>페이지 배경</legend>
-                <div class="global-token-swatches">
-                  <button
-                    v-for="token in DESIGN_COLOR_TOKENS"
-                    :key="token.key"
-                    type="button"
-                    :class="{ active: designSpec.theme.backgroundColor === token.value }"
-                    :title="`${token.name} ${token.value}`"
-                    :aria-label="`${token.name} ${token.value}`"
-                    @click="updateBackgroundToken(token)"
-                  >
-                    <i :style="{ backgroundColor: token.value }"></i>
-                  </button>
-                </div>
-              </fieldset>
-            </template>
-            <template #host-actions>
-              <div v-if="capabilities.canSaveTemplateLayout" class="admin-layout-actions">
-                <input v-model="layoutChangeNote" type="text" placeholder="변경 사유" aria-label="레이아웃 변경 사유" />
-                <button
-                  type="button"
-                  :disabled="!editorSnapshot || layoutSaving || template.status !== 'draft'"
-                  @click="saveAdminLayout()"
-                >{{ layoutSaving ? "저장 중" : "초안 저장" }}</button>
-                <button
-                  type="button"
-                  class="is-primary"
-                  :disabled="!editorSnapshot || layoutSaving || template.status !== 'draft'"
-                  @click="saveAdminLayout({ activate: true })"
-                >저장 후 활성화</button>
-              </div>
-              <button
-                v-if="capabilities.canOpenWebOutput"
-                type="button"
-                class="web-output-action"
-                :disabled="!editorSnapshot"
-                @click="openOutput"
-              >Web Output</button>
-            </template>
-          </EditorPreviewControls>
-        </div>
-        <div ref="previewStageRef" class="preview-stage" :class="`preview-stage--${viewport}`">
-          <PromoPageRenderer
-            v-if="rendererSnapshot"
-            :content="rendererSnapshot.content"
-            :design-spec="rendererSnapshot.designSpec"
-            :assets="rendererSnapshot.assets"
-            :section-design-runs="sectionDesignRuns"
-            editable
-            :show-guides="guidesVisible"
-            :selected-item-key="selectedStyleKey"
-            :selected-item-keys="selectedItemKeys.map((itemKey) => `${selectedSection?.sectionKey}.${itemKey}`)"
-            @select-item="selectRendererItem"
-            @update-item-style="updateItemStyle"
-            @update-renderer-item-style="updateRendererItemStyle"
-            @update-item-content="updateRendererContent"
-            @update-section-style="updateSectionStyle"
+      <PreviewPanel
+        ref="previewPanelRef"
+        :renderer-snapshot="rendererSnapshot"
+        :section-design-runs="sectionDesignRuns"
+        :guides-visible="guidesVisible"
+        :viewport="viewport"
+        :template-identity-label="templateIdentityLabel"
+        :capabilities="capabilities"
+        :auto-register-pending="autoRegisterPending"
+        :auto-register-message="autoRegisterMessage"
+        :editor-history="editorHistory"
+        :design-spec="designSpec"
+        :design-color-tokens="DESIGN_COLOR_TOKENS"
+        :layout-change-note="layoutChangeNote"
+        :layout-saving="layoutSaving"
+        :editor-snapshot="editorSnapshot"
+        :template="template"
+        :selected-style-key="selectedStyleKey"
+        :selected-item-keys="selectedItemKeys"
+        :selected-section="selectedSection"
+        @update:guides-visible="guidesVisible = $event"
+        @update:viewport="viewport = $event"
+        @update:layout-change-note="layoutChangeNote = $event"
+        @request-auto-register="requestAutoRegister"
+        @undo="undoEditorCommand"
+        @redo="redoEditorCommand"
+        @update-background-token="updateBackgroundToken"
+        @save-admin-layout="(activate) => saveAdminLayout({ activate })"
+        @open-output="openOutput"
+        @select-item="selectRendererItem"
+        @update-item-style="updateItemStyle"
+        @update-renderer-item-style="updateRendererItemStyle"
+        @update-item-content="updateRendererContent"
+        @update-section-style="updateSectionStyle"
+      />
+
+      <PropertyPanel :selected-section="selectedSection">
+        <template #ai-controls>
+          <AiLayoutControls
+            v-if="capabilities.canRunMultiLayoutAi"
+            :selected-count="selectedItemKeys.length"
+            :revision="multiLayoutRevision"
+            :planning="multiLayoutPlanning"
+            :error="multiLayoutError"
+            :suggestion="multiLayoutSuggestion"
+            :undo-count="multiLayoutUndoStack.length"
+            :operation-label="layoutOperationLabel"
+            @clear-selection="clearMultiSelection"
+            @request-suggestion="requestMultiLayoutSuggestion"
+            @undo="undoMultiLayout"
+            @apply-suggestion="applyMultiLayoutSuggestion"
+            @dismiss-suggestion="multiLayoutSuggestion = null"
           />
-        </div>
-      </section>
-
-      <aside class="property-panel">
-        <div class="panel-heading">
-          <span>COMPONENTS</span>
-          <strong>{{ selectedSection?.name || "섹션 선택" }}</strong>
-        </div>
-
-        <div v-if="selectedSection" class="property-form">
-          <section v-if="capabilities.canRunMultiLayoutAi" class="multi-layout-panel">
-            <div class="multi-layout-panel__heading">
-              <div>
-                <strong>AI 다중 정렬</strong>
-                <small>{{ selectedItemKeys.length }}개 컴포넌트 선택 · revision {{ multiLayoutRevision }}</small>
-              </div>
-              <button type="button" :disabled="selectedItemKeys.length <= 1" @click="clearMultiSelection">선택 초기화</button>
-            </div>
-            <p>아래 체크박스 또는 Ctrl/Cmd+미리보기 클릭으로 같은 섹션의 컴포넌트를 2개 이상 선택하세요.</p>
-            <div class="multi-layout-panel__actions">
-              <button
-                type="button"
-                class="section-ai-action"
-                :disabled="selectedItemKeys.length < 2 || multiLayoutPlanning"
-                @click="requestMultiLayoutSuggestion"
-              >{{ multiLayoutPlanning ? "AI 제안 생성 중" : "AI 정렬 제안" }}</button>
-              <button type="button" :disabled="!multiLayoutUndoStack.length" @click="undoMultiLayout">마지막 적용 취소</button>
-            </div>
-            <p v-if="multiLayoutError" class="multi-layout-error" role="alert">{{ multiLayoutError }}</p>
-            <div v-if="multiLayoutSuggestion" class="multi-layout-preview">
-              <strong>{{ layoutOperationLabel(multiLayoutSuggestion.operation) }}</strong>
-              <span>{{ multiLayoutSuggestion.rationale }}</span>
-              <span v-if="multiLayoutSuggestion.adjusted" class="multi-layout-adjustment">{{ multiLayoutSuggestion.adjustmentReason }}</span>
-              <small v-if="multiLayoutSuggestion.gapToken">간격: {{ multiLayoutSuggestion.gapToken }}</small>
-              <div class="multi-layout-preview__comparison">
-                <div v-for="before in multiLayoutSuggestion.before" :key="before.itemKey">
-                  <b>{{ before.itemKey }}</b>
-                  <span>전 X {{ Math.round(before.xPct) }}% · Y {{ Math.round(before.yPx) }}px</span>
-                  <span>후 X {{ Math.round(multiLayoutSuggestion.after.find((item) => item.itemKey === before.itemKey)?.xPct || 0) }}% · Y {{ Math.round(multiLayoutSuggestion.after.find((item) => item.itemKey === before.itemKey)?.yPx || 0) }}px</span>
-                </div>
-              </div>
-              <div class="multi-layout-panel__actions">
-                <button type="button" class="section-ai-action" @click="applyMultiLayoutSuggestion">제안 적용</button>
-                <button type="button" @click="multiLayoutSuggestion = null">취소</button>
-              </div>
-            </div>
-          </section>
+        </template>
 
           <div class="component-property-list">
             <section
@@ -1565,8 +1444,7 @@ onBeforeUnmount(() => {
             </section>
             <span v-if="!selectedSection.items?.length" class="component-property-empty">등록된 컴포넌트 없음</span>
           </div>
-        </div>
-      </aside>
+      </PropertyPanel>
     </section>
       </div>
     </div>

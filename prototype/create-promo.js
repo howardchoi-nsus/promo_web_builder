@@ -1,25 +1,10 @@
-const steps = [
-  {
-    title: "배경 및 버튼 스타일 선택",
-    copy: "프로모션의 기본 배경색과 버튼 스타일을 한 단계에서 설정합니다.",
-  },
-  {
-    title: "프로모션 개요 등록",
-    copy: "프로모션 제목, 목적, 대상 고객과 캠페인 톤을 등록합니다.",
-  },
-  {
-    title: "프로모션 템플릿 선택",
-    copy: "관리자가 활성화한 프로모션 템플릿을 선택합니다.",
-  },
-  {
-    title: "템플릿 레이아웃",
-    copy: "선택한 템플릿의 콘텐츠와 섹션 레이아웃을 편집합니다.",
-  },
-  {
-    title: "웹 출력 미리보기",
-    copy: "완성된 프로모션을 별도 웹 출력 화면에서 확인합니다.",
-  },
-];
+const {
+  STEPS: steps,
+  CONTENT_SUBSTEPS,
+  resolveInitialStep,
+  previousStep,
+  nextStep,
+} = globalThis.PromoCreateFlow || {};
 
 const BACKGROUND_OPTIONS = [
   { id: "warm-white", name: "웜 화이트", color: "#f7f3ed", textColor: "#1c2330" },
@@ -72,6 +57,11 @@ const {
   resolveActiveTemplate,
 } = globalThis.PromoWizardCore || {};
 const {
+  listPublicTemplates,
+  loadPublicTemplate,
+  resolveTemplate,
+} = globalThis.PromoWizardTemplateService || {};
+const {
   createDefaultWizardContent,
   migrateLegacySectionInputs,
   defaultSectionInputsFromDefinitions,
@@ -91,7 +81,6 @@ const {
 const WEB_OUTPUT_SNAPSHOT_STORAGE_KEY = "promoVisualEditor.snapshot.v1";
 const CONTENT_SUBSTEP_STORAGE_KEY = "promoPrototype.createPromo.contentSubstep.v1";
 const CURRENT_STEP_STORAGE_KEY = "promoPrototype.createPromo.currentStep.v2";
-const CONTENT_SUBSTEPS = ["overview", "template", "layout"];
 const {
   normalizeLayoutIdentity,
   sameLayoutIdentity,
@@ -104,10 +93,8 @@ const {
 let contentSubstep = CONTENT_SUBSTEPS.includes(sessionStorage.getItem(CONTENT_SUBSTEP_STORAGE_KEY))
   ? sessionStorage.getItem(CONTENT_SUBSTEP_STORAGE_KEY)
   : "overview";
-const storedCurrentStep = Number(sessionStorage.getItem(CURRENT_STEP_STORAGE_KEY));
-let currentStep = Number.isInteger(storedCurrentStep) && storedCurrentStep >= 0 && storedCurrentStep < steps.length
-  ? storedCurrentStep
-  : ({ overview: 1, template: 2, layout: 3 }[contentSubstep] ?? 0);
+const storedCurrentStep = sessionStorage.getItem(CURRENT_STEP_STORAGE_KEY);
+let currentStep = resolveInitialStep(storedCurrentStep, contentSubstep);
 let validationErrors = {};
 // Admin-managed Step 2 content sections (Admin Page "C. Wizard Content
 // Sections 관리"). Replaces the previously hardcoded 7-section structure.
@@ -427,10 +414,9 @@ async function loadWizardSectionDefinitions() {
   wizardSectionDefinitionsLoading = true;
   wizardSectionDefinitionsError = "";
   try {
-    const result = await fetchJson("/api/wizard-form-templates-public", { cache: "no-store" });
-    wizardFormTemplates = Array.isArray(result.templates) ? result.templates : [];
+    wizardFormTemplates = await listPublicTemplates();
     if (!wizardFormTemplates.length) throw new Error("활성화된 프로모션 템플릿이 없습니다.");
-    const target = resolveActiveTemplate(wizardFormTemplates, contentState.formTemplate);
+    const target = resolveTemplate(wizardFormTemplates, contentState.formTemplate);
     if (!target) throw new Error("선택할 수 있는 활성 프로모션 템플릿이 없습니다.");
     await selectWizardFormTemplate(target.id, { skipConfirmation: true });
   } catch (error) {
@@ -487,10 +473,7 @@ async function selectWizardFormTemplate(templateId, options = {}) {
   if (selectedWizardFormTemplate?.templateKey) {
     contentState.templateInputs[selectedWizardFormTemplate.templateKey] = contentState.sectionInputs;
   }
-  const result = options.prefetchedResult || await fetchJson(
-    `/api/wizard-form-template-public?id=${encodeURIComponent(templateId)}`,
-    { cache: "no-store" }
-  );
+  const result = options.prefetchedResult || await loadPublicTemplate(templateId);
   const nextDefinitions = Array.isArray(result.sections) ? result.sections : [];
   if (!nextDefinitions.length || !nextDefinitions.some((section) => (section.items || []).length)) {
     throw new Error("선택한 템플릿에 Wizard 입력 항목이 없습니다. 관리자에게 템플릿 구성을 요청해 주세요.");
@@ -584,17 +567,13 @@ async function refreshActiveWizardTemplate() {
   const requestId = ++wizardTemplateRefreshRequestId;
   wizardTemplateRefreshPromise = (async () => {
     try {
-      const catalogResult = await fetchJson("/api/wizard-form-templates-public", { cache: "no-store" });
+      const activeTemplates = await listPublicTemplates();
       if (requestId !== wizardTemplateRefreshRequestId) return false;
-      const activeTemplates = Array.isArray(catalogResult.templates) ? catalogResult.templates : [];
       if (!activeTemplates.length) throw new Error("활성화된 프로모션 템플릿이 없습니다.");
       wizardFormTemplates = activeTemplates;
-      const target = resolveActiveTemplate(activeTemplates, selectedWizardFormTemplate);
+      const target = resolveTemplate(activeTemplates, selectedWizardFormTemplate);
       if (!target) throw new Error("선택할 수 있는 활성 프로모션 템플릿이 없습니다.");
-      const detail = await fetchJson(
-        `/api/wizard-form-template-public?id=${encodeURIComponent(target.id)}`,
-        { cache: "no-store" }
-      );
+      const detail = await loadPublicTemplate(target.id);
       if (requestId !== wizardTemplateRefreshRequestId) return false;
       const nextIdentity = layoutIdentityFromTemplateResult(detail);
       if (sameLayoutIdentity(wizardLayoutIdentity, nextIdentity)) {
@@ -2103,7 +2082,7 @@ stepButtons.forEach((button, index) => {
 });
 
 prev.addEventListener("click", () => {
-  currentStep = Math.max(0, currentStep - 1);
+  currentStep = previousStep(currentStep);
   renderStep();
   if (currentStep === 3) refreshActiveWizardTemplate();
 });
@@ -2123,7 +2102,7 @@ next.addEventListener("click", () => {
     goToWebOutput();
     return;
   }
-  currentStep = Math.min(steps.length - 1, currentStep + 1);
+  currentStep = nextStep(currentStep);
   renderStep();
   if (currentStep === 3) refreshActiveWizardTemplate();
 });

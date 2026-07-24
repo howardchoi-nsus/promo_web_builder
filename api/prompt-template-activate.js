@@ -3,6 +3,7 @@ const {
   getSql,
   parseBody,
   toPromptTemplate,
+  validatePromptTemplateContract,
 } = require("./_prompt-template-store");
 const { validateStageModelConfig } = require("./_prompt-execution-snapshot");
 
@@ -21,7 +22,8 @@ module.exports = async function handler(req, res) {
     const sql = getSql();
     await ensureDefaultPromptTemplates(sql);
     const rows = await sql`
-      select id::text, type, body, status, version, provider, model, response_format, model_options
+      select id::text, type, body, status, version, required_variables, optional_variables,
+        provider, model, response_format, model_options
       from prompt_templates
       where id = ${id}::uuid
       limit 1
@@ -31,6 +33,11 @@ module.exports = async function handler(req, res) {
     if (target.status === "archived") {
       return res.status(409).json({ error: "Archived prompt templates cannot be activated" });
     }
+    validatePromptTemplateContract(target.type, {
+      body: target.body,
+      requiredVariables: target.required_variables,
+      optionalVariables: target.optional_variables,
+    });
     validateStageModelConfig(target.type, {
       provider: target.provider,
       model: target.model,

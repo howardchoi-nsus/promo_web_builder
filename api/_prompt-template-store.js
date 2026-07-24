@@ -347,6 +347,84 @@ function normalizeNumber(value) {
   return Number.isFinite(number) ? number : null;
 }
 
+function extractPromptVariables(body) {
+  const matches = String(body || "").matchAll(/{{\s*([a-zA-Z0-9_]+)\s*}}/g);
+  return Array.from(new Set(Array.from(matches, (match) => match[1])));
+}
+
+function promptVariableContract(type) {
+  const config = PROMPT_TYPES[String(type || "").trim()];
+  if (!config) {
+    const error = new Error(`Unsupported prompt template type: ${type}`);
+    error.statusCode = 422;
+    throw error;
+  }
+  return {
+    requiredVariables: normalizeVariables(config.requiredVariables),
+    optionalVariables: normalizeVariables(config.optionalVariables),
+  };
+}
+
+function validatePromptTemplateContract(type, template = {}) {
+  const contract = promptVariableContract(type);
+  const requiredVariables = normalizeVariables(template.requiredVariables);
+  const optionalVariables = normalizeVariables(template.optionalVariables);
+  const declared = new Set([...requiredVariables, ...optionalVariables]);
+  const allowed = new Set([...contract.requiredVariables, ...contract.optionalVariables]);
+  const placeholders = extractPromptVariables(template.body);
+  const duplicateDeclarations = requiredVariables.filter((key) => optionalVariables.includes(key));
+  const unknownDeclarations = Array.from(declared).filter((key) => !allowed.has(key));
+  const unknownPlaceholders = placeholders.filter((key) => !allowed.has(key));
+  const undeclaredPlaceholders = placeholders.filter((key) => !declared.has(key));
+  const missingRequiredDeclarations = contract.requiredVariables.filter((key) => !requiredVariables.includes(key));
+  const missingRequiredPlaceholders = contract.requiredVariables.filter((key) => !placeholders.includes(key));
+  const problems = [
+    duplicateDeclarations.length ? `variables declared as both required and optional: ${duplicateDeclarations.join(", ")}` : "",
+    unknownDeclarations.length ? `unsupported declared variables: ${unknownDeclarations.join(", ")}` : "",
+    unknownPlaceholders.length ? `unsupported placeholders: ${unknownPlaceholders.join(", ")}` : "",
+    undeclaredPlaceholders.length ? `undeclared placeholders: ${undeclaredPlaceholders.join(", ")}` : "",
+    missingRequiredDeclarations.length ? `required variable declarations are missing: ${missingRequiredDeclarations.join(", ")}` : "",
+    missingRequiredPlaceholders.length ? `required placeholders are missing: ${missingRequiredPlaceholders.join(", ")}` : "",
+  ].filter(Boolean);
+  if (problems.length) {
+    const error = new Error(`Invalid ${type} prompt variable contract: ${problems.join("; ")}`);
+    error.statusCode = 422;
+    error.code = "PROMPT_VARIABLE_CONTRACT_INVALID";
+    throw error;
+  }
+  return {
+    requiredVariables,
+    optionalVariables,
+    placeholders,
+  };
+}
+
+function validatePromptExecutionVariables(type, variables = {}) {
+  if (type !== "section_background_image") return true;
+  const fadeMode = String(variables.fadeMode || "none").trim().toLowerCase();
+  if (!["none", "left", "right", "both"].includes(fadeMode)) {
+    const error = new Error("section_background_image fadeMode must be one of: none, left, right, both");
+    error.statusCode = 422;
+    error.code = "PROMPT_VARIABLE_VALUE_INVALID";
+    throw error;
+  }
+  const backgroundColor = String(variables.backgroundColor || "").trim();
+  if (!/^#[0-9a-f]{6}$/i.test(backgroundColor)) {
+    const error = new Error("section_background_image backgroundColor must be a six-digit hex color");
+    error.statusCode = 422;
+    error.code = "PROMPT_VARIABLE_VALUE_INVALID";
+    throw error;
+  }
+  const aspectRatio = String(variables.aspectRatio || "").trim();
+  if (aspectRatio && !/^\d{1,2}:\d{1,2}$/.test(aspectRatio)) {
+    const error = new Error("section_background_image aspectRatio must use W:H format");
+    error.statusCode = 422;
+    error.code = "PROMPT_VARIABLE_VALUE_INVALID";
+    throw error;
+  }
+  return true;
+}
+
 function renderPrompt(body, variables = {}) {
   // Unknown placeholders are intentionally preserved so prompt QA can report
   // unresolved variables instead of silently sending incomplete instructions.
@@ -392,6 +470,7 @@ function toPromptTemplate(row) {
 module.exports = {
   PROMPT_TYPES,
   ensureDefaultPromptTemplates,
+  extractPromptVariables,
   getSql,
   normalizeModelOptions,
   normalizeNumber,
@@ -401,4 +480,6 @@ module.exports = {
   sha256,
   toPromptTemplate,
   unresolvedVariables,
+  validatePromptExecutionVariables,
+  validatePromptTemplateContract,
 };
