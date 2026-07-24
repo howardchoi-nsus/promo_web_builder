@@ -46,7 +46,13 @@ const storageKeys = {
 };
 
 const SECTION_INPUT_SCHEMA_VERSION = 2;
-const { appendTextElement, valueAtPath, setValueAtPath, fetchJson } = globalThis.PromoWizardCore || {};
+const {
+  appendTextElement,
+  valueAtPath,
+  setValueAtPath,
+  fetchJson,
+  resolveActiveTemplate,
+} = globalThis.PromoWizardCore || {};
 const {
   createDefaultWizardContent,
   migrateLegacySectionInputs,
@@ -172,10 +178,8 @@ async function loadWizardSectionDefinitions() {
     const result = await fetchJson("/api/wizard-form-templates-public");
     wizardFormTemplates = Array.isArray(result.templates) ? result.templates : [];
     if (!wizardFormTemplates.length) throw new Error("활성화된 프로모션 템플릿이 없습니다.");
-    const savedId = contentState.formTemplate?.id;
-    const target = wizardFormTemplates.find((template) => template.id === savedId)
-      || wizardFormTemplates.find((template) => template.isDefault)
-      || wizardFormTemplates[0];
+    const target = resolveActiveTemplate(wizardFormTemplates, contentState.formTemplate);
+    if (!target) throw new Error("선택할 수 있는 활성 프로모션 템플릿이 없습니다.");
     await selectWizardFormTemplate(target.id, { skipConfirmation: true });
   } catch (error) {
     wizardSectionDefinitionsError = error.message || "콘텐츠 섹션 구성을 불러오지 못했습니다.";

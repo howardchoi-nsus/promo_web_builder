@@ -148,7 +148,7 @@ const PROMPT_TYPES = {
       "Administrator guidance: {{adminGuidance}}",
     ].join("\n"),
     requiredVariables: ["sectionName", "contentJson", "backgroundColor"],
-    optionalVariables: ["fadeMode", "adminGuidance"],
+    optionalVariables: ["fadeMode", "adminGuidance", "brandPalette", "aspectRatio"],
   },
   component_image: {
     name: "Component Field Image",

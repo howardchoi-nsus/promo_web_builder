@@ -64,7 +64,13 @@ const storageKeys = {
 
 const SECTION_INPUT_SCHEMA_VERSION = 3;
 const LAYOUT_CACHE_CONTRACT_VERSION = 2;
-const { appendTextElement, valueAtPath, setValueAtPath, fetchJson } = globalThis.PromoWizardCore || {};
+const {
+  appendTextElement,
+  valueAtPath,
+  setValueAtPath,
+  fetchJson,
+  resolveActiveTemplate,
+} = globalThis.PromoWizardCore || {};
 const {
   createDefaultWizardContent,
   migrateLegacySectionInputs,
@@ -123,6 +129,7 @@ let wizardTemplateRefreshRequestId = 0;
 let wizardTemplateRefreshError = "";
 let wizardLayoutFrame = null;
 let wizardLayoutLogTimer = null;
+let wizardSnapshotRevision = 0;
 const wizardSessionId = sessionStorage.getItem(storageKeys.wizardSessionId)
   || (globalThis.crypto?.randomUUID?.() || `create-promo-${Date.now()}-${Math.random().toString(16).slice(2)}`);
 sessionStorage.setItem(storageKeys.wizardSessionId, wizardSessionId);
@@ -414,10 +421,8 @@ async function loadWizardSectionDefinitions() {
     const result = await fetchJson("/api/wizard-form-templates-public", { cache: "no-store" });
     wizardFormTemplates = Array.isArray(result.templates) ? result.templates : [];
     if (!wizardFormTemplates.length) throw new Error("활성화된 프로모션 템플릿이 없습니다.");
-    const savedId = contentState.formTemplate?.id;
-    const target = wizardFormTemplates.find((template) => template.id === savedId)
-      || wizardFormTemplates.find((template) => template.isDefault)
-      || wizardFormTemplates[0];
+    const target = resolveActiveTemplate(wizardFormTemplates, contentState.formTemplate);
+    if (!target) throw new Error("선택할 수 있는 활성 프로모션 템플릿이 없습니다.");
     await selectWizardFormTemplate(target.id, { skipConfirmation: true });
   } catch (error) {
     wizardSectionDefinitionsError = error.message || "콘텐츠 섹션 구성을 불러오지 못했습니다.";
@@ -575,10 +580,8 @@ async function refreshActiveWizardTemplate() {
       const activeTemplates = Array.isArray(catalogResult.templates) ? catalogResult.templates : [];
       if (!activeTemplates.length) throw new Error("활성화된 프로모션 템플릿이 없습니다.");
       wizardFormTemplates = activeTemplates;
-      const target = activeTemplates.find((template) => template.id === selectedWizardFormTemplate.id)
-        || activeTemplates.find((template) => template.templateKey === selectedWizardFormTemplate.templateKey)
-        || activeTemplates.find((template) => template.isDefault)
-        || activeTemplates[0];
+      const target = resolveActiveTemplate(activeTemplates, selectedWizardFormTemplate);
+      if (!target) throw new Error("선택할 수 있는 활성 프로모션 템플릿이 없습니다.");
       const detail = await fetchJson(
         `/api/wizard-form-template-public?id=${encodeURIComponent(target.id)}`,
         { cache: "no-store" }
@@ -707,7 +710,7 @@ function saveWizardContent() {
 
 function wizardLayoutSnapshot() {
   if (!selectedWizardFormTemplate || !wizardResolvedLayout) return null;
-  return createLayoutSnapshot({
+  const snapshot = createLayoutSnapshot({
     layoutRevision: wizardLayoutRevision,
     layoutIdentity: wizardLayoutIdentity,
     formTemplate: contentState.formTemplate,
@@ -716,9 +719,12 @@ function wizardLayoutSnapshot() {
     sectionDesignRuns: contentState.sectionDesignRuns,
     designSpec: applyCreatePromoAppearance(wizardResolvedLayout),
   });
+  snapshot.snapshotRevision = wizardSnapshotRevision;
+  return snapshot;
 }
 
 function postWizardLayoutSnapshot() {
+  wizardSnapshotRevision += 1;
   const snapshot = wizardLayoutSnapshot();
   if (!snapshot || !wizardLayoutFrame?.contentWindow) return;
   wizardLayoutFrame.contentWindow.postMessage({
@@ -868,6 +874,8 @@ window.addEventListener("message", (event) => {
     return;
   }
   if (event.data?.type !== "promo-wizard-layout-change" || !event.data.designSpec) return;
+  const incomingSnapshotRevision = Number(event.data.snapshotRevision || 0);
+  if (incomingSnapshotRevision && incomingSnapshotRevision < wizardSnapshotRevision) return;
   const previousTheme = wizardResolvedLayout?.theme || FALLBACK_LAYOUT.theme;
   const incomingLayout = JSON.parse(JSON.stringify(event.data.designSpec));
   wizardResolvedLayout = {

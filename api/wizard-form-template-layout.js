@@ -1,6 +1,6 @@
 const { getSql, parseBody, fetchTemplateRow, toFormTemplate } = require("./_wizard-form-templates-store");
 const {
-  fetchLayoutRow, toLayout, fetchTemplateWithItems, ensureLayout, validateLayoutSpec,
+  fetchLayoutRow, toLayout, fetchTemplateWithItems, ensureLayout, validateLayoutSpec, createLayoutIdentity,
 } = require("./_wizard-form-template-layout-store");
 
 module.exports = async function handler(req, res) {
@@ -21,11 +21,14 @@ async function getLayout(req, res) {
   const detail = await fetchTemplateWithItems(sql, templateId);
   if (!detail) return res.status(404).json({ error: "Form template not found" });
   const row = await ensureLayout(sql, templateId);
+  const template = toFormTemplate(detail.template);
+  const layout = toLayout(row);
   return res.status(200).json({
     ok: true,
-    template: toFormTemplate(detail.template),
+    template,
     sections: detail.sections,
-    layout: toLayout(row),
+    layout,
+    layoutIdentity: createLayoutIdentity(template, layout),
   });
 }
 
@@ -76,5 +79,12 @@ async function updateLayout(req, res) {
       ${String(body.changeNote || "Template default layout updated.")}
     )
   `;
-  return res.status(200).json({ ok: true, layout: toLayout(rows[0]) });
+  const updatedLayout = toLayout(rows[0]);
+  const publicTemplate = toFormTemplate(template);
+  return res.status(200).json({
+    ok: true,
+    template: publicTemplate,
+    layout: updatedLayout,
+    layoutIdentity: createLayoutIdentity(publicTemplate, updatedLayout),
+  });
 }

@@ -62,6 +62,18 @@ try {
   assert.equal(saveResponse.ok(), true, "Admin layout save should succeed");
   assert.equal((await saveResponse.json()).layout.layoutRevision, 2);
 
+  const adminEditorPage = await context.newPage();
+  await adminEditorPage.goto(
+    `${origin}/prototype/visual-editor.html?mode=admin-layout&templateId=visual-editor-preview-template`,
+    { waitUntil: "networkidle" },
+  );
+  await adminEditorPage.locator(".editor-workspace.is-builder-workspace.is-admin-layout-workspace").waitFor();
+  assert.equal(await adminEditorPage.getByRole("button", { name: "초안 저장" }).count(), 1);
+  assert.equal(await adminEditorPage.getByRole("button", { name: "저장 후 활성화" }).count(), 1);
+  assert.equal(await adminEditorPage.locator(".section-property-accordion").count(), 1);
+  assert.equal(await adminEditorPage.locator(".property-panel .section-properties").count(), 0);
+  await adminEditorPage.close();
+
   await page.goto(`${origin}/create-promo.html`, { waitUntil: "networkidle" });
   await page.locator('[data-step="2"]').click();
   await page.locator('[data-field-key="title"] input').fill("Admin Layout Integration");
@@ -75,6 +87,11 @@ try {
 
   const editorFrame = page.frameLocator("iframe.wizard-layout-frame");
   await editorFrame.locator(".editor-workspace.is-create-promo-wizard").waitFor({ timeout: 10_000 });
+  assert.equal(await editorFrame.locator(".editor-workspace.is-builder-workspace").count(), 1);
+  const sectionTriggers = editorFrame.locator(".section-trigger");
+  if (await sectionTriggers.count() > 1) await sectionTriggers.nth(1).click();
+  assert.equal(await editorFrame.locator(".section-property-accordion").count(), 1);
+  assert.equal(await editorFrame.locator(".property-panel .section-properties").count(), 0);
   const refreshedLayout = {
     ...adminLayout,
     sectionStyles: {

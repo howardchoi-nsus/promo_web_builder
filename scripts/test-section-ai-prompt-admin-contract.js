@@ -11,6 +11,8 @@ const admin = read("prototype", "app.js");
 const html = read("prototype", "index.html");
 const promptUpdate = read("api", "prompt-template.js");
 const promptActivate = read("api", "prompt-template-activate.js");
+const runs = read("api", "promo-section-design-runs.js");
+const { PROMPT_TYPES, renderPrompt, unresolvedVariables } = require("../api/_prompt-template-store");
 const { validateStageModelConfig } = require("../api/_prompt-execution-snapshot");
 
 assert.match(sectionStore, /backgroundPromptText:\s*String\(source\.backgroundPromptText/);
@@ -22,6 +24,23 @@ assert.match(admin, /body:\s*JSON\.stringify\(\{\s*id:\s*section\.id,\s*\.\.\.th
 assert.match(html, /섹션 배경 이미지 관리자 지침/);
 assert.match(promptUpdate, /if \(current\.status === "active"\)/);
 assert.match(promptActivate, /validateStageModelConfig\(target\.type/);
+assert.deepEqual(PROMPT_TYPES.section_background_image.optionalVariables, [
+  "fadeMode", "adminGuidance", "brandPalette", "aspectRatio",
+]);
+assert.match(runs, /brandPalette:\s*promptVariable\(body\.brandPalette\)/);
+assert.match(runs, /aspectRatio:\s*String\(constraints\.imageAspectRatio \|\| "16:9"\)/);
+assert.deepEqual(unresolvedVariables(renderPrompt(
+  "{{sectionName}} {{contentJson}} {{backgroundColor}} {{fadeMode}} {{adminGuidance}} {{brandPalette}} {{aspectRatio}}",
+  {
+    sectionName: "Hero",
+    contentJson: "{}",
+    backgroundColor: "#000000",
+    fadeMode: "left",
+    adminGuidance: "",
+    brandPalette: "",
+    aspectRatio: "16:9",
+  }
+)), []);
 assert.equal(validateStageModelConfig("section_background_image", {
   provider: "google", model: "gemini-3.1-flash-image", responseFormat: "image",
 }), true);

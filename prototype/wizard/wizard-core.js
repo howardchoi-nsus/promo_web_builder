@@ -40,10 +40,22 @@
     return payload;
   }
 
+  function resolveActiveTemplate(templates = [], savedTemplate = {}) {
+    const activeTemplates = Array.isArray(templates) ? templates : [];
+    const savedId = String(savedTemplate?.id || "").trim();
+    const savedTemplateKey = String(savedTemplate?.templateKey || "").trim();
+    return activeTemplates.find((template) => template.id === savedId)
+      || activeTemplates.find((template) => savedTemplateKey && template.templateKey === savedTemplateKey)
+      || activeTemplates.find((template) => template.isDefault)
+      || activeTemplates[0]
+      || null;
+  }
+
   global.PromoWizardCore = Object.freeze({
     appendTextElement,
     valueAtPath,
     setValueAtPath,
     fetchJson,
+    resolveActiveTemplate,
   });
 })(globalThis);

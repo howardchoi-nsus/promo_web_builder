@@ -17,6 +17,11 @@ function fadeModeToSafeArea(value) {
   return "none";
 }
 
+function promptVariable(value) {
+  if (value === null || value === undefined) return "";
+  return typeof value === "string" ? value : JSON.stringify(value);
+}
+
 module.exports = async function handler(req, res) {
   try {
     res.setHeader("Cache-Control", "no-store");
@@ -130,6 +135,8 @@ module.exports = async function handler(req, res) {
       backgroundColor,
       fadeMode,
       adminGuidance: String(section.aiDesign?.backgroundPromptText || ""),
+      brandPalette: promptVariable(body.brandPalette),
+      aspectRatio: String(constraints.imageAspectRatio || "16:9"),
     };
     const promptSnapshot = await createPromptExecutionSnapshot(sql, promptType, promptVariables);
     const tokenValuesHash = inputHash(tokenSet.values || []);
