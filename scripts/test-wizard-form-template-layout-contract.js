@@ -18,6 +18,7 @@ const admin = read("prototype/index.html");
 const adminLayoutManager = read("prototype/admin/template-layout-manager.js");
 const adminStyles = read("prototype/styles.css");
 const editor = read("visual-editor/src/App.vue");
+const promoBuilderAdapter = read("visual-editor/src/platform/adapters/promo-builder-adapter.mjs");
 const layoutStore = require("../api/_wizard-form-template-layout-store");
 
 assert.match(migration, /create table if not exists wizard_form_template_layouts/);
@@ -67,7 +68,7 @@ assert.match(admin, /<teleport to="#template-component-manager-target"/);
 assert.match(adminStyles, /\.form-template-editor-panels\s*\{[\s\S]*?display:\s*grid;[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\);/);
 assert.match(adminStyles, /\.form-template-editor-panels\s*\{[\s\S]*?padding:\s*10px;[\s\S]*?border:\s*1px solid var\(--line\);[\s\S]*?border-radius:\s*var\(--radius\);/);
 assert.match(editor, /admin-layout/);
-assert.match(editor, /wizard-layout/);
+assert.match(promoBuilderAdapter, /wizard-layout/);
 assert.match(wizard, /promo-wizard-layout-change/);
 assert.match(wizard, /layoutSnapshot/);
 assert.match(wizard, /관리자 기본 레이아웃으로 초기화/);

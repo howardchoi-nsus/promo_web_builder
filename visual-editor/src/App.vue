@@ -2,10 +2,16 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import PromoPageRenderer from "./PromoPageRenderer.vue";
 import SectionProperties from "./SectionProperties.vue";
-import { persistSnapshot, withoutFreePosition } from "./editor-utils.mjs";
+import { withoutFreePosition } from "./editor-utils.mjs";
 import { createEditorContext } from "./editor-context.mjs";
 import { normalizeLayoutSpec, validateLayoutSpec } from "./layout-utils.mjs";
 import { geometryToItemStylePatches, resolveSafeMultiLayoutOperation } from "./multi-layout.mjs";
+import { createAdminTemplateAdapter } from "./platform/adapters/admin-template-adapter.mjs";
+import {
+  PromoBuilderMessageType,
+  createPromoBuilderAdapter,
+} from "./platform/adapters/promo-builder-adapter.mjs";
+import { createOutputAdapter } from "./platform/adapters/output-adapter.mjs";
 import { createEditorStore } from "./platform/editor-core/create-editor-store.mjs";
 import { EditorCommandType, editorCommand } from "./platform/editor-core/editor-commands.mjs";
 import {
@@ -57,8 +63,12 @@ const editorCore = createEditorStore({
   layout: JSON.parse(JSON.stringify(DEFAULT_DESIGN_SPEC)),
   content: {},
 });
+const adminTemplateAdapter = createAdminTemplateAdapter();
+const promoBuilderAdapter = createPromoBuilderAdapter();
+const outputAdapter = createOutputAdapter({ storageKey: SNAPSHOT_STORAGE_KEY });
 let applyingExternalSnapshot = false;
 let lastExternalSnapshotRevision = 0;
+let disconnectPromoBuilder = null;
 
 const wizardSource = new URLSearchParams(window.location.search).get("source") || "";
 const editorContext = computed(() => createEditorContext(props.mode, wizardSource));
@@ -409,10 +419,7 @@ function requestAutoRegister() {
   if (!isCreatePromoWizardMode.value || autoRegisterPending.value) return;
   autoRegisterPending.value = true;
   autoRegisterMessage.value = "";
-  window.parent.postMessage({
-    type: "create-promo-auto-register-request",
-    sectionInputs: JSON.parse(JSON.stringify(sectionInputs.value)),
-  }, window.location.origin);
+  promoBuilderAdapter.requestAutoRegister(sectionInputs.value);
 }
 
 function sectionAiRun(section) {
@@ -499,14 +506,13 @@ function sectionAiItemAction(section, item, field = null) {
 
 function requestSectionAiAction(section, action, targetItemKey = "", targetType = "", targetFieldKey = "") {
   const resolvedTargetType = targetType || (targetItemKey ? "item" : "section-background");
-  window.parent.postMessage({
-    type: "create-promo-section-ai-action",
+  promoBuilderAdapter.requestSectionAiAction({
     sectionKey: section.sectionKey,
     action,
     targetType: resolvedTargetType,
-    targetItemKey: String(targetItemKey || "").trim() || null,
-    targetFieldKey: String(targetFieldKey || "").trim() || null,
-  }, window.location.origin);
+    targetItemKey,
+    targetFieldKey,
+  });
 }
 
 function sectionHasAiBackground(section) {
@@ -517,12 +523,11 @@ function requestImageRemoval(field = null) {
   if (!selectedSection.value || !selectedItem.value || selectedItem.value.isLocked) return;
   if (field?.isLocked) return;
   if (!window.confirm(`${field?.name || selectedItem.value.name} 이미지를 삭제할까요?`)) return;
-  window.parent.postMessage({
-    type: "create-promo-remove-image",
+  promoBuilderAdapter.requestImageRemoval({
     sectionKey: selectedSection.value.sectionKey,
     itemKey: selectedItem.value.itemKey,
     fieldKey: field?.fieldKey || null,
-  }, window.location.origin);
+  });
 }
 
 function updateBackgroundToken(token) {
@@ -683,12 +688,12 @@ async function loadEditor() {
 function openOutput() {
   if (!editorSnapshot.value) return;
   outputSaveError.value = "";
-  const result = persistSnapshot(localStorage, SNAPSHOT_STORAGE_KEY, editorSnapshot.value);
+  const result = outputAdapter.save(editorSnapshot.value);
   if (!result.ok) {
     outputSaveError.value = result.message;
     return;
   }
-  window.open("/prototype/visual-output.html", "_blank", "noopener");
+  outputAdapter.open();
 }
 
 async function loadAdminLayout() {
@@ -699,9 +704,7 @@ async function loadAdminLayout() {
     return;
   }
   try {
-    const response = await fetch(`/api/wizard-form-template-layout?templateId=${encodeURIComponent(templateId)}`);
-    const result = await response.json();
-    if (!response.ok) throw new Error(result.message || result.error || "기본 레이아웃을 불러오지 못했습니다.");
+    const result = await adminTemplateAdapter.loadLayout(templateId);
     template.value = result.template;
     sections.value = result.sections || [];
     sectionInputs.value = createSectionInputs(sections.value);
@@ -731,20 +734,14 @@ async function saveAdminLayout({ activate = false } = {}) {
   }
   layoutSaving.value = true;
   try {
-    const response = await fetch("/api/wizard-form-template-layout", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        templateId: template.value.id,
-        expectedRevision: layoutRevision.value,
-        rendererKey: "default-promo-renderer",
-        rendererVersion: 1,
-        layoutSpec: validation.spec,
-        changeNote: layoutChangeNote.value || "Admin Layout Editor에서 기본 레이아웃을 저장했습니다.",
-      }),
+    const result = await adminTemplateAdapter.saveLayout({
+      templateId: template.value.id,
+      expectedRevision: layoutRevision.value,
+      rendererKey: "default-promo-renderer",
+      rendererVersion: 1,
+      layoutSpec: validation.spec,
+      changeNote: layoutChangeNote.value || "Admin Layout Editor에서 기본 레이아웃을 저장했습니다.",
     });
-    const result = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(result.message || result.error || `레이아웃 저장 오류(${response.status})`);
     designSpec.value = normalizeLayoutSpec(result.layout.layoutSpec);
     layoutRevision.value = Number(result.layout.layoutRevision || layoutRevision.value + 1);
     layoutId.value = result.layout.id || layoutId.value;
@@ -757,18 +754,10 @@ async function saveAdminLayout({ activate = false } = {}) {
       return;
     }
 
-    const activateResponse = await fetch("/api/wizard-form-template-activate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        id: template.value.id,
-        changeNote: "Admin Layout Editor에서 기본 레이아웃 저장 후 활성화했습니다.",
-      }),
+    const activateResult = await adminTemplateAdapter.activateTemplate({
+      id: template.value.id,
+      changeNote: "Admin Layout Editor에서 기본 레이아웃 저장 후 활성화했습니다.",
     });
-    const activateResult = await activateResponse.json().catch(() => ({}));
-    if (!activateResponse.ok) {
-      throw new Error(`초안 저장은 완료됐지만 활성화하지 못했습니다: ${activateResult.message || activateResult.error || activateResponse.status}`);
-    }
     if (Number(activateResult.layoutIdentity?.layoutRevision || 0) !== layoutRevision.value) {
       throw new Error("활성화 결과의 Layout revision이 방금 저장한 초안과 일치하지 않습니다.");
     }
@@ -825,36 +814,33 @@ async function applyExternalSnapshot(snapshot) {
   applyingExternalSnapshot = false;
 }
 
-function handleParentMessage(event) {
-  if (!isWizardLayoutMode.value || event.origin !== window.location.origin) return;
-  if (event.data?.type === "create-promo-auto-register-result") {
+function handleParentMessage(message) {
+  if (!isWizardLayoutMode.value) return;
+  if (message?.type === PromoBuilderMessageType.AUTO_REGISTER_RESULT) {
     autoRegisterPending.value = false;
-    const count = Number(event.data.registeredCount || 0);
+    const count = Number(message.registeredCount || 0);
     autoRegisterMessage.value = count
       ? `${count}개 항목을 자동 등록했습니다.`
       : "자동 등록할 빈 항목이 없습니다.";
     return;
   }
-  if (event.data?.type === "promo-wizard-layout-snapshot") {
-    applyExternalSnapshot(event.data.snapshot);
+  if (message?.type === PromoBuilderMessageType.SNAPSHOT) {
+    applyExternalSnapshot(message.snapshot);
   }
 }
 
 watch([designSpec, sectionInputs], () => {
   if (!isWizardLayoutMode.value || !externalSnapshotReady.value || applyingExternalSnapshot) return;
-  window.parent.postMessage({
-    type: "promo-wizard-layout-change",
+  promoBuilderAdapter.notifyChange({
     snapshotRevision: lastExternalSnapshotRevision,
-    designSpec: JSON.parse(JSON.stringify(designSpec.value)),
-    sectionInputs: JSON.parse(JSON.stringify(sectionInputs.value)),
-  }, window.location.origin);
+    designSpec: designSpec.value,
+    sectionInputs: sectionInputs.value,
+  });
 }, { deep: true });
 
 function loadOutput() {
   try {
-    const stored = localStorage.getItem(SNAPSHOT_STORAGE_KEY);
-    if (!stored) throw new Error("Visual Editor에서 확정한 Snapshot이 없습니다.");
-    outputSnapshot.value = JSON.parse(stored);
+    outputSnapshot.value = outputAdapter.load();
   } catch (loadError) {
     error.value = loadError.message;
   }
@@ -874,13 +860,14 @@ onMounted(() => {
   else if (isAdminLayoutMode.value) loadAdminLayout();
   else if (isWizardLayoutMode.value) {
     loading.value = true;
-    window.addEventListener("message", handleParentMessage);
-    window.parent.postMessage({ type: "promo-wizard-layout-ready" }, window.location.origin);
+    disconnectPromoBuilder = promoBuilderAdapter.connect(handleParentMessage);
+    promoBuilderAdapter.notifyReady();
   } else loadEditor();
 });
 
 onBeforeUnmount(() => {
-  window.removeEventListener("message", handleParentMessage);
+  disconnectPromoBuilder?.();
+  disconnectPromoBuilder = null;
   document.documentElement.classList.remove("layout-editor-document");
   document.body.classList.remove("layout-editor-document");
   document.documentElement.classList.remove("create-promo-editor-document");
