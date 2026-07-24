@@ -1,0 +1,73 @@
+export const DESIGN_CANVAS_WIDTH = 1280;
+export const DEFAULT_COMPONENT_WIDTH_PCT = 32;
+export const DEFAULT_TEXT_COMPONENT_HEIGHT = 86;
+export const DEFAULT_CTA_COMPONENT_HEIGHT = 64;
+export const DEFAULT_IMAGE_COMPONENT_HEIGHT = 250;
+export const DEFAULT_FONT_SIZE = 18;
+
+export function clampNumber(value, min, max, fallback) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
+}
+
+export function roundedGeometryValue(value) {
+  return Math.round(Number(value) * 100) / 100;
+}
+
+export function defaultComponentHeight(item = {}) {
+  const fields = Array.isArray(item.fields) ? item.fields : [];
+  if (fields.length > 1) {
+    return fields.reduce((height, field) => height + defaultComponentHeight(field), 24);
+  }
+  if (item.fieldKind === "image") return DEFAULT_IMAGE_COMPONENT_HEIGHT;
+  if (item.fieldKind === "cta") return DEFAULT_CTA_COMPONENT_HEIGHT;
+  return DEFAULT_TEXT_COMPONENT_HEIGHT;
+}
+
+export function normalizeComponentGeometry({
+  item = {},
+  style = {},
+  canvasWidth,
+  fallbackX = 0,
+  fallbackY = 0,
+} = {}) {
+  const resolvedCanvasWidth = Math.max(1, Number(canvasWidth) || DESIGN_CANVAS_WIDTH);
+  const isImage = item.fieldKind === "image";
+  const minimumWidthPct = isImage ? 10 : 0.01;
+  const minimumHeight = isImage ? 80 : 1;
+  const widthPct = clampNumber(
+    style.widthPct,
+    minimumWidthPct,
+    100,
+    DEFAULT_COMPONENT_WIDTH_PCT,
+  );
+  const height = clampNumber(
+    style.heightPx,
+    minimumHeight,
+    900,
+    defaultComponentHeight(item),
+  );
+  return {
+    x: (clampNumber(style.xPct, 0, 100, fallbackX) / 100) * resolvedCanvasWidth,
+    y: clampNumber(style.yPx, 0, 1200, fallbackY),
+    width: (widthPct / 100) * resolvedCanvasWidth,
+    height,
+    widthPct,
+    fontSize: clampNumber(style.fontSize, 0, 80, DEFAULT_FONT_SIZE),
+  };
+}
+
+export function geometryToLayoutStyle(geometry, canvasWidth, {
+  includeHeight = true,
+  includeFontSize = true,
+} = {}) {
+  const resolvedCanvasWidth = Math.max(1, Number(canvasWidth) || DESIGN_CANVAS_WIDTH);
+  return {
+    positionMode: "free",
+    xPct: roundedGeometryValue((geometry.x / resolvedCanvasWidth) * 100),
+    yPx: roundedGeometryValue(geometry.y),
+    widthPct: roundedGeometryValue((geometry.width / resolvedCanvasWidth) * 100),
+    ...(includeHeight ? { heightPx: roundedGeometryValue(geometry.height) } : {}),
+    ...(includeFontSize ? { fontSize: roundedGeometryValue(geometry.fontSize) } : {}),
+  };
+}

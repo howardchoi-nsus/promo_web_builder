@@ -2,6 +2,12 @@
 import { computed } from "vue";
 import { DEFAULT_LOREM_IPSUM } from "./contracts";
 import { normalizeCtaUrl } from "./editor-utils.mjs";
+import {
+  defaultComponentHeight,
+  geometryToLayoutStyle,
+  normalizeComponentGeometry,
+} from "./platform/layout-engine/geometry.mjs";
+import { resizeComponentGeometry } from "./platform/layout-engine/resize.mjs";
 
 const props = defineProps({
   content: { type: Object, required: true },
@@ -147,10 +153,6 @@ function clamp(value, min, max, fallback) {
   return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
 }
 
-function roundedDimension(value) {
-  return Math.round(Number(value) * 100) / 100;
-}
-
 function normalizedAspectRatio(value, fallback = "1 / 1") {
   const match = String(value || "").trim().match(/^(\d+(?:\.\d+)?)\s*[:/]\s*(\d+(?:\.\d+)?)$/);
   if (!match || Number(match[1]) <= 0 || Number(match[2]) <= 0) return fallback;
@@ -216,12 +218,7 @@ function imageFrameAccessibility(section, item) {
 }
 
 function estimatedItemHeight(item) {
-  if (componentFields(item).length > 1) {
-    return componentFields(item).reduce((height, field) => height + estimatedItemHeight(field), 24);
-  }
-  if (item.fieldKind === "image") return 250;
-  if (item.fieldKind === "cta") return 64;
-  return 86;
+  return defaultComponentHeight(item);
 }
 
 function defaultSectionHeight(section) {
@@ -312,7 +309,12 @@ function inlineItemStyle(section, item) {
   const position = style.positionMode === "free" ? style : defaultItemPosition(section, item);
   const isImage = item.fieldKind === "image";
   const widthPct = clamp(style.widthPct, isImage ? 10 : 0.01, 100, 32);
-  const heightPx = clamp(style.heightPx, isImage ? 80 : 1, 900, undefined);
+  const heightPx = clamp(
+    style.heightPx,
+    isImage ? 80 : 1,
+    900,
+    isImage ? undefined : defaultComponentHeight(item),
+  );
   const result = {
     left: `${position.xPct || 0}%`,
     top: style.yPx !== undefined ? `${style.yPx}px` : `${position.yPct || 0}%`,
@@ -323,7 +325,7 @@ function inlineItemStyle(section, item) {
     "--item-font-size": style.fontSize !== undefined ? `${style.fontSize}px` : undefined,
     fontWeight: style.fontWeight,
     "--item-font-weight": style.fontWeight,
-    width: style.widthPct !== undefined || isImage ? `${widthPct}%` : undefined,
+    width: `${widthPct}%`,
     height: heightPx && (!isImage || style.shape !== "circle") ? `${heightPx}px` : undefined,
     aspectRatio: isImage && (!heightPx || style.shape === "circle")
       ? imageFrameAspectRatio(item, style)
@@ -402,114 +404,76 @@ function startItemResize(event, section, item, handleDirection = "se") {
   const itemRect = target.getBoundingClientRect();
   const startX = event.clientX;
   const startY = event.clientY;
-  const startWidth = itemRect.width;
-  const startHeight = itemRect.height;
-  const startLeft = itemRect.left - containerRect.left;
-  const startTop = itemRect.top - containerRect.top;
-  const ratio = startHeight ? startWidth / startHeight : 1;
   const style = itemStyle(section, item);
   const isImage = item.fieldKind === "image";
   const locked = isImage && style.aspectRatioLocked !== false;
   const minimumItemSizePx = isImage ? 80 : 1;
   const horizontalActive = handleDirection.includes("w") || handleDirection.includes("e");
   const verticalActive = handleDirection.includes("n") || handleDirection.includes("s");
-  const textNode = isImage
-    ? null
-    : target.querySelector(".rendered-text, .rendered-empty, .rendered-cta");
-  const renderedFontSize = textNode ? Number.parseFloat(getComputedStyle(textNode).fontSize) : 18;
-  const startFontSize = clamp(style.fontSize, 0, 80, renderedFontSize || 18);
-  let nextWidth = startWidth;
-  let nextHeight = startHeight;
-  let nextFontSize = startFontSize;
-  let nextLeft = startLeft;
-  let nextTop = startTop;
+  const automaticPosition = defaultItemPosition(section, item);
+  const canvasHeight = Math.max(50, (sectionStyle(section).minHeight || defaultSectionHeight(section)) - 76);
+  const startGeometry = normalizeComponentGeometry({
+    item,
+    style,
+    canvasWidth: containerRect.width,
+    fallbackX: automaticPosition.xPct || 0,
+    fallbackY: ((automaticPosition.yPct || 0) / 100) * canvasHeight,
+  });
+  if (isImage && style.heightPx === undefined) startGeometry.height = itemRect.height;
+  const ratio = startGeometry.height ? startGeometry.width / startGeometry.height : 1;
+  let nextGeometry = { ...startGeometry };
   let animationFrame = 0;
 
   const move = (moveEvent) => {
-    const horizontalDirection = handleDirection.includes("w") ? -1 : 1;
-    const verticalDirection = handleDirection.includes("n") ? -1 : 1;
-    const deltaX = (moveEvent.clientX - startX) * horizontalDirection;
-    const deltaY = (moveEvent.clientY - startY) * verticalDirection;
     const maxWidth = Math.max(minimumItemSizePx, handleDirection.includes("w")
-      ? startWidth + startLeft
-      : containerRect.width - startLeft);
+      ? startGeometry.width + startGeometry.x
+      : containerRect.width - startGeometry.x);
     const maxHeight = Math.max(minimumItemSizePx, handleDirection.includes("n")
-      ? startHeight + startTop
-      : 1124 - startTop);
-    const widthCandidate = horizontalActive
-      ? Math.min(maxWidth, Math.max(minimumItemSizePx, startWidth + deltaX))
-      : startWidth;
-    const heightCandidate = verticalActive
-      ? Math.min(maxHeight, Math.max(minimumItemSizePx, startHeight + deltaY))
-      : startHeight;
-    if (locked || (isImage && style.shape === "circle")) {
-      const lockedRatio = style.shape === "circle" ? 1 : ratio;
-      if (Math.abs(deltaY) > Math.abs(deltaX)) {
-        nextHeight = heightCandidate;
-        nextWidth = Math.min(maxWidth, Math.max(minimumItemSizePx, nextHeight * lockedRatio));
-        nextHeight = nextWidth / lockedRatio;
-      } else {
-        nextWidth = widthCandidate;
-        nextHeight = Math.min(maxHeight, Math.max(minimumItemSizePx, nextWidth / lockedRatio));
-        nextWidth = nextHeight * lockedRatio;
-      }
-    } else {
-      nextWidth = widthCandidate;
-      nextHeight = heightCandidate;
-    }
-    if (!isImage) {
-      const widthScale = startWidth ? nextWidth / startWidth : 1;
-      const heightScale = startHeight ? nextHeight / startHeight : 1;
-      const fontScale = horizontalActive && verticalActive
-        ? Math.sqrt(widthScale * heightScale)
-        : horizontalActive
-          ? widthScale
-          : heightScale;
-      const expansionPx = Math.max(
-        horizontalActive ? nextWidth - startWidth : 0,
-        verticalActive ? nextHeight - startHeight : 0,
-        0,
-      );
-      const scaledFontSize = startFontSize === 0
-        ? expansionPx / 4
-        : startFontSize * fontScale;
-      nextFontSize = roundedDimension(clamp(scaledFontSize, 0, 80, startFontSize));
-    }
-    nextLeft = handleDirection.includes("w") ? startLeft + startWidth - nextWidth : startLeft;
-    nextTop = handleDirection.includes("n") ? startTop + startHeight - nextHeight : startTop;
+      ? startGeometry.height + startGeometry.y
+      : 1124 - startGeometry.y);
+    nextGeometry = resizeComponentGeometry({
+      geometry: startGeometry,
+      deltaX: moveEvent.clientX - startX,
+      deltaY: moveEvent.clientY - startY,
+      direction: handleDirection,
+      minimumWidth: minimumItemSizePx,
+      minimumHeight: minimumItemSizePx,
+      maximumWidth: maxWidth,
+      maximumHeight: maxHeight,
+      aspectRatioLocked: locked || (isImage && style.shape === "circle"),
+      aspectRatio: style.shape === "circle" ? 1 : ratio,
+      scaleFont: !isImage,
+    });
     if (animationFrame) return;
     animationFrame = requestAnimationFrame(() => {
       animationFrame = 0;
-      target.style.left = `${nextLeft}px`;
-      target.style.top = `${nextTop}px`;
-      if (horizontalActive || locked) target.style.width = `${nextWidth}px`;
-      if (verticalActive || locked) target.style.height = `${nextHeight}px`;
+      target.style.left = `${nextGeometry.x}px`;
+      target.style.top = `${nextGeometry.y}px`;
+      if (horizontalActive || locked) target.style.width = `${nextGeometry.width}px`;
+      if (verticalActive || locked) target.style.height = `${nextGeometry.height}px`;
       if (isImage) target.style.aspectRatio = "auto";
-      else target.style.setProperty("--item-font-size", `${nextFontSize}px`);
+      else target.style.setProperty("--item-font-size", `${nextGeometry.fontSize}px`);
     });
   };
   const end = () => {
     if (animationFrame) cancelAnimationFrame(animationFrame);
-    const requiredSectionHeight = Math.ceil(nextTop + nextHeight + 76);
+    const requiredSectionHeight = Math.ceil(nextGeometry.y + nextGeometry.height + 76);
     const currentSectionHeight = sectionStyle(section).minHeight || defaultSectionHeight(section);
     if (requiredSectionHeight > currentSectionHeight) {
       emit("update-section-style", section.sectionKey, {
         minHeight: Math.min(1200, requiredSectionHeight),
       });
     }
+    const layoutStyle = geometryToLayoutStyle(nextGeometry, containerRect.width, {
+      includeHeight: verticalActive && !locked && !(isImage && style.shape === "circle"),
+      includeFontSize: !isImage,
+    });
     emit("update-renderer-item-style", section, item, {
-      positionMode: "free",
-      xPct: containerRect.width ? (nextLeft / containerRect.width) * 100 : 0,
-      yPx: nextTop,
-      widthPct: containerRect.width ? (nextWidth / containerRect.width) * 100 : 32,
-      heightPx: locked || (isImage && style.shape === "circle")
-        ? undefined
-        : verticalActive
-          ? nextHeight
-          : style.heightPx,
+      ...layoutStyle,
+      ...(!verticalActive && !locked ? { heightPx: style.heightPx } : {}),
       ...(isImage
-        ? { aspectRatio: `${Math.max(1, Math.round(nextWidth))}/${Math.max(1, Math.round(nextHeight))}` }
-        : { fontSize: nextFontSize }),
+        ? { aspectRatio: `${Math.max(1, Math.round(nextGeometry.width))}/${Math.max(1, Math.round(nextGeometry.height))}` }
+        : {}),
     });
     target.classList.remove("is-resizing");
     target.style.removeProperty("width");
@@ -535,51 +499,50 @@ function resizeItemByKeyboard(event, section, item, handleDirection = "se") {
   const style = itemStyle(section, item);
   const isImage = item.fieldKind === "image";
   const locked = isImage && style.aspectRatioLocked !== false;
-  const minimumWidthPct = isImage ? 10 : 0.01;
-  const minimumHeightPx = isImage ? 80 : 1;
   const step = event.shiftKey ? 4 : 1;
   const horizontalActive = handleDirection.includes("w") || handleDirection.includes("e");
   const verticalActive = handleDirection.includes("n") || handleDirection.includes("s");
-  const horizontalDirection = !horizontalActive
-    ? 0
-    : handleDirection.includes("w")
-      ? (event.key === "ArrowLeft" ? 1 : event.key === "ArrowRight" ? -1 : 0)
-      : (event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0);
-  const verticalDirection = !verticalActive
-    ? 0
-    : handleDirection.includes("n")
-      ? (event.key === "ArrowUp" ? 1 : event.key === "ArrowDown" ? -1 : 0)
-      : (event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0);
-  const lockedDirection = horizontalDirection || verticalDirection;
-  if (locked && !lockedDirection) return;
-  if (!locked && !horizontalDirection && !verticalDirection) return;
-  const widthPct = clamp(
-    (style.widthPct ?? 32) + ((locked ? lockedDirection : horizontalDirection) * step),
-    minimumWidthPct, 100, 32,
-  );
-  const currentHeight = clamp(style.heightPx, minimumHeightPx, 900, isImage ? 240 : 120);
-  const heightPx = locked || (isImage && style.shape === "circle")
-    ? undefined
-    : verticalActive
-      ? clamp(currentHeight + (verticalDirection * step * 4), minimumHeightPx, 900, isImage ? 240 : 120)
-      : currentHeight;
-  const widthScale = widthPct / (style.widthPct ?? 32);
-  const heightScale = heightPx ? heightPx / currentHeight : 1;
-  const fontScale = horizontalActive && verticalActive
-    ? Math.sqrt(widthScale * heightScale)
-    : horizontalActive
-      ? widthScale
-      : heightScale;
-  const currentFontSize = style.fontSize ?? 18;
-  const nextFontSize = currentFontSize === 0 && fontScale > 1
-    ? step
-    : currentFontSize * fontScale;
+  const handle = event.currentTarget;
+  const container = handle.closest(".rendered-items");
+  if (!container) return;
+  const containerWidth = Math.max(1, container.getBoundingClientRect().width);
+  const horizontalDelta = horizontalActive
+    ? event.key === "ArrowRight" ? (containerWidth * step) / 100 : event.key === "ArrowLeft" ? (-containerWidth * step) / 100 : 0
+    : 0;
+  const verticalDelta = verticalActive
+    ? event.key === "ArrowDown" ? step * 4 : event.key === "ArrowUp" ? step * -4 : 0
+    : 0;
+  if (!horizontalDelta && !verticalDelta) return;
+  const automaticPosition = defaultItemPosition(section, item);
+  const canvasHeight = Math.max(50, (sectionStyle(section).minHeight || defaultSectionHeight(section)) - 76);
+  const geometry = normalizeComponentGeometry({
+    item,
+    style,
+    canvasWidth: containerWidth,
+    fallbackX: automaticPosition.xPct || 0,
+    fallbackY: ((automaticPosition.yPct || 0) / 100) * canvasHeight,
+  });
+  const resized = resizeComponentGeometry({
+    geometry,
+    deltaX: horizontalDelta,
+    deltaY: verticalDelta,
+    direction: handleDirection,
+    minimumWidth: isImage ? containerWidth * 0.1 : containerWidth * 0.0001,
+    minimumHeight: isImage ? 80 : 1,
+    maximumWidth: handleDirection.includes("w")
+      ? geometry.width + geometry.x
+      : containerWidth - geometry.x,
+    maximumHeight: 900,
+    aspectRatioLocked: locked || (isImage && style.shape === "circle"),
+    aspectRatio: style.shape === "circle" ? 1 : geometry.width / geometry.height,
+    scaleFont: !isImage,
+  });
   emit("update-renderer-item-style", section, item, {
-    widthPct,
-    heightPx,
-    ...(!isImage
-      ? { fontSize: roundedDimension(clamp(nextFontSize, 0, 80, currentFontSize)) }
-      : {}),
+    ...geometryToLayoutStyle(resized, containerWidth, {
+      includeHeight: verticalActive && !locked && !(isImage && style.shape === "circle"),
+      includeFontSize: !isImage,
+    }),
+    ...(!verticalActive && !locked ? { heightPx: style.heightPx } : {}),
   });
 }
 
