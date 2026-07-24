@@ -3,7 +3,7 @@
 - 작성일: 2026-07-22
 - 대상: 관리자 / Promo Builder UI의 `index.html`, `app.js`, 관리자 모듈, 공통 셸 및 사용자 노출 오류 문구
 - 목적: 하드코딩된 라벨을 일반적인 한국어 서비스·업무 도구에서 이해하기 쉬운 표현으로 정규화하고, 다국어 메시지 키로 전환하기 위한 기준 사전
-- 상태: 일반 사용자 중심 워딩 검토 반영 / 소스코드 미반영
+- 상태: 일반 사용자 중심 워딩 검토 반영 / 2026-07-24 관리자 컴포넌트 구조 보완
 - 전제 결정
   - 사용자 노출 라벨은 메시지 키로 추출해 locale 파일로 관리한다.
   - 언어 구분은 **ISO 639-1**(2자리) 기준: `ko`, `en`. 지역 구분이 필요하면 **BCP 47**로 확장한다(`ko-KR`, `en-US`).
@@ -29,7 +29,7 @@
 
 1. **한 개념 = 한 메시지 키**. 표기만 다른 동의어는 정규 개념 하나로 합친다.
 2. **의미가 다른 단어는 합치지 않는다**. 데이터와 설정 변경은 `수정`, 문서·콘텐츠·레이아웃 작업은 `편집`으로 구분한다.
-3. **엔티티 명칭은 언어별로 분리**한다. `ko`는 한글(섹션/항목/템플릿), `en`은 영문(Section/Item/Template)을 사용한다.
+3. **엔티티 명칭은 언어별로 분리**한다. `ko`는 한글(템플릿/섹션/컴포넌트/컴포넌트 요소), `en`은 영문(Template/Section/Component/Component field)을 사용한다. `항목(Item)`은 이전 구조 호환 문구에서만 유지한다.
 4. 사용자 화면의 식별자 필드는 `식별자`로 표기한다(`entity.section.key` → ko: `섹션 식별자`, en: `Section ID`). 형식 안내는 별도 도움말 키에서 `Key` 의미를 설명할 수 있다.
 5. **내부 개발 용어보다 사용자의 행동과 결과를 표현**한다. `CRUD 로그`는 `작업 이력`, `LLM 관리`는 `AI 설정`, `MD 관리`는 `디자인 문서 관리`로 표현한다.
 6. 동의어는 대표어로 통일한다. 예: `타입`→`유형`, `아이템`→`항목`.
@@ -43,7 +43,8 @@ common.action.*     저장/취소/삭제 등 범용 동작
 common.state.*      활성/보관/전체 등 범용 상태
 common.field.*      이름/설명/유형 등 범용 필드 라벨
 entity.section.*    섹션 도메인
-entity.item.*       항목 도메인
+entity.component.*  재사용 컴포넌트 및 컴포넌트 요소 도메인
+entity.item.*       이전 항목 구조 호환 도메인(신규 관리자 UI 사용 금지)
 entity.template.*   템플릿 도메인
 admin.prompt.*      AI 설정/프롬프트 관리
 admin.design.*      디자인 문서/설정/방향
@@ -73,18 +74,44 @@ locale 파일 구조(예, `ko.json`):
 | `entity.section.aiAllow` | AI 디자인 생성 허용 | Allow AI design generation | `이 Section에서 AI 디자인 생성 허용` |
 | `entity.section.changeHistory` | 섹션 변경 이력 | Section change history | `Section 변경 로그`, `B Section Log` |
 | `entity.section.activityHistory` | 섹션 작업 이력 | Section activity history | `Section CRUD 로그` |
+| `entity.section.manage` | 섹션 관리 | Section management | 섹션을 관리하면서 `컴포넌트 관리`로 표시하는 잘못된 명칭 |
+| `entity.section.usage` | 사용 중인 템플릿 {count}개 | Used by {count} templates | 섹션 사용처에 `컴포넌트 사용처` 키를 재사용하는 표기 |
 | `entity.item.label` | 항목 | Item | `아이템`, `Item` |
 | `entity.item.name` | 항목 이름 | Item name | `아이템 이름`, `Item 이름` |
 | `entity.item.key` | 항목 식별자 | Item ID | `아이템 Key`, `Item Key` |
 | `entity.item.add` | 항목 추가 | Add item | `Item 추가`, `+ Item 추가`, `+ 아이템 추가` |
 | `entity.item.imageItem` | 이미지 항목 | Image item | `이미지 아이템`, `이미지 Item` |
 | `entity.item.emptyInSection` | 선택한 섹션에 항목이 없습니다. | No items in the selected section. | `선택 Section에 등록된 Item이 없습니다.` |
+| `entity.component.label` | 컴포넌트 | Component | 섹션 자체를 컴포넌트라고 부르는 표기 |
+| `entity.component.name` | 컴포넌트 이름 | Component name | `아이템 이름`, `Item 이름` |
+| `entity.component.key` | 컴포넌트 식별자 | Component ID | `Component Key`, `아이템 Key`, `자동 생성 Key` |
+| `entity.component.manage` | 컴포넌트 관리 | Component management | 섹션 관리 화면에 사용된 동일 라벨 |
+| `entity.component.add` | 컴포넌트 추가 | Add component | `아이템 추가`, `Item 추가` |
+| `entity.component.fieldLabel` | 컴포넌트 요소 | Component field | `컴포넌트 필드`, `Field` |
+| `entity.component.fieldName` | 요소 이름 | Field name | `필드 이름`, `Field name` |
+| `entity.component.fieldKey` | 요소 식별자 | Field ID | `Field Key` |
+| `entity.component.fieldAdd` | 요소 추가 | Add field | `필드 추가`, `+ Field` |
 | `entity.template.label` | 템플릿 | Template | `Template` |
 | `entity.template.name` | 템플릿 이름 | Template name | `새 템플릿 이름` |
 | `entity.template.key` | 템플릿 식별자 | Template ID | `새 Template Key`, `Template Key` |
 | `entity.template.sectionConfig` | 템플릿 섹션 구성 | Template section config | `템플릿 Section 구성` |
 
-> 핵심: 한국어 화면에서는 `섹션`, `항목`, `템플릿`, `식별자`를 사용한다. 영문 화면에서는 `Section`, `Item`, `Template`, `ID`를 사용하고 소스의 혼합 표기는 메시지 키로 대체한다.
+> 핵심: 신규 관리자 화면에서는 `템플릿`, `섹션`, `컴포넌트`, `컴포넌트 요소`, `식별자`를 사용한다. `항목(Item)`은 이전 프로모션 입력 구조와의 호환 문구에만 남기고 신규 컴포넌트 조립 UI에는 사용하지 않는다.
+
+### 3.1 관리자 구성 계층
+
+```
+템플릿
+└─ 섹션
+   └─ 컴포넌트
+      └─ 컴포넌트 요소
+```
+
+- **템플릿**: 프로모션 페이지에서 사용할 섹션과 순서를 구성한다.
+- **섹션**: 페이지의 구조적 영역이며 여러 컴포넌트를 배치한다.
+- **컴포넌트**: 섹션에서 재사용하는 버전 관리 콘텐츠 블록이다.
+- **컴포넌트 요소**: 컴포넌트 내부의 텍스트·이미지·CTA 입력 단위다.
+- 내부 DB/API의 `item`, `itemKey`, `field` 명칭은 호환을 위해 유지할 수 있지만 사용자 화면에는 각각 `컴포넌트`, `컴포넌트 식별자`, `컴포넌트 요소`로 표시한다.
 
 ## 4. 개념 충돌 (동의어 → 대표어 통일)
 

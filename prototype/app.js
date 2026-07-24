@@ -2183,7 +2183,7 @@ const adminApp = createApp({
 
     removeItemComponentField(index) {
       if ((this.itemComponentEditor.fields || []).length <= 1) {
-        this.setStatus("컴포넌트에는 필드가 하나 이상 필요합니다");
+        this.setStatus("컴포넌트에는 요소가 하나 이상 필요합니다");
         return;
       }
       this.itemComponentEditor.fields.splice(index, 1);
@@ -2310,7 +2310,7 @@ const adminApp = createApp({
         if (this.wizardSectionAuditFilters.action) params.set("action", this.wizardSectionAuditFilters.action);
         const response = await fetch(`/api/wizard-section-audit-logs?${params}`);
         const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.message || result.error || `Section 로그 요청 오류(${response.status})`);
+        if (!response.ok) throw new Error(result.message || result.error || `섹션 작업 이력 요청 오류(${response.status})`);
         this.wizardSectionAuditLogs = Array.isArray(result.logs) ? result.logs : [];
       } catch (error) {
         this.wizardSectionAuditLogs = [];
@@ -2320,8 +2320,9 @@ const adminApp = createApp({
       }
     },
 
-    wizardSectionAuditActionLabel(action) {
-      return ({ create: "생성", update: "수정", delete: "삭제", reorder: "순서 변경", draft: "Draft 생성", activate: "활성화" })[action] || action;
+    wizardSectionAuditActionLabel(action, entityType = "") {
+      if (action === "delete") return entityType === "section" ? "보관" : "삭제";
+      return ({ create: "생성", update: "수정", reorder: "순서 변경", draft: "초안 생성", activate: "활성화" })[action] || action;
     },
 
     formatAuditDate(value) {
@@ -2609,7 +2610,7 @@ const adminApp = createApp({
       try {
         const response = await fetch("/api/wizard-form-templates?includeArchived=true");
         const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.message || result.error || `폼 템플릿 목록 요청 오류(${response.status})`);
+        if (!response.ok) throw new Error(result.message || result.error || `템플릿 목록 요청 오류(${response.status})`);
         this.wizardFormTemplates = Array.isArray(result.templates) ? result.templates : [];
         if (!this.groupedWizardFormTemplates.some((group) => group.templateKey === this.selectedWizardFormTemplateKey)) {
           this.selectedWizardFormTemplateKey = this.groupedWizardFormTemplates[0]?.templateKey || "";
@@ -2621,7 +2622,7 @@ const adminApp = createApp({
         }
       } catch (error) {
         this.wizardFormTemplatesError = error.message;
-        this.setStatus(`폼 템플릿 목록을 불러오지 못했습니다: ${error.message}`);
+        this.setStatus(`템플릿 목록을 불러오지 못했습니다: ${error.message}`);
       } finally {
         this.wizardFormTemplatesLoading = false;
       }
@@ -2645,7 +2646,7 @@ const adminApp = createApp({
       try {
         const response = await fetch(`/api/wizard-form-template?id=${encodeURIComponent(id)}`);
         const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.message || result.error || `폼 템플릿 상세 요청 오류(${response.status})`);
+        if (!response.ok) throw new Error(result.message || result.error || `템플릿 상세 요청 오류(${response.status})`);
         this.wizardFormTemplateDetail = { template: result.template, sections: result.sections || [] };
         this.wizardFormTemplateEditor = {
           name: result.template.name,
@@ -2664,7 +2665,7 @@ const adminApp = createApp({
           this.wizardFormTemplateSectionItems = [];
         }
       } catch (error) {
-        if (!options.silent) this.setStatus(`폼 템플릿 상세를 불러오지 못했습니다: ${error.message}`);
+        if (!options.silent) this.setStatus(`템플릿 상세를 불러오지 못했습니다: ${error.message}`);
       }
     },
 
@@ -2708,13 +2709,13 @@ const adminApp = createApp({
           }),
         });
         const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.message || result.error || `폼 템플릿 생성 오류(${response.status})`);
+        if (!response.ok) throw new Error(result.message || result.error || `템플릿 생성 오류(${response.status})`);
         this.showNewWizardFormTemplateForm = false;
         this.selectedWizardFormTemplateKey = result.template.templateKey;
         await this.loadWizardFormTemplates({ fresh: true });
-        this.setStatus("폼 템플릿 초안을 생성했습니다");
+        this.setStatus("템플릿 초안을 생성했습니다");
       } catch (error) {
-        this.setStatus(`폼 템플릿 생성 실패: ${error.message}`);
+        this.setStatus(`템플릿 생성 실패: ${error.message}`);
       } finally {
         this.wizardFormTemplateSaving = false;
       }
@@ -2738,14 +2739,14 @@ const adminApp = createApp({
           }),
         });
         const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.message || result.error || `폼 템플릿 복제 오류(${response.status})`);
+        if (!response.ok) throw new Error(result.message || result.error || `템플릿 복사본 생성 오류(${response.status})`);
         this.showDuplicateWizardFormTemplateForm = false;
         this.selectedWizardFormTemplateKey = result.template.templateKey;
         await this.loadWizardFormTemplates({ fresh: true });
-        this.setStatus("폼 템플릿을 새 초안으로 복제했습니다");
+        this.setStatus("템플릿 복사본을 새 초안으로 만들었습니다");
       } catch (error) {
         this.duplicateWizardFormTemplateError = error.message;
-        this.setStatus(`폼 템플릿 복제 실패: ${error.message}`);
+        this.setStatus(`템플릿 복사본 생성 실패: ${error.message}`);
       } finally {
         this.wizardFormTemplateSaving = false;
       }
@@ -2762,12 +2763,12 @@ const adminApp = createApp({
           body: JSON.stringify({ id: source.id, changeNote: "관리자 페이지에서 새 초안을 만들었습니다." }),
         });
         const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.message || result.error || `폼 템플릿 초안 생성 오류(${response.status})`);
+        if (!response.ok) throw new Error(result.message || result.error || `템플릿 초안 생성 오류(${response.status})`);
         await this.loadWizardFormTemplates({ fresh: true });
         await this.loadWizardFormTemplateDetail(result.template.id);
-        this.setStatus("폼 템플릿 새 초안을 만들었습니다");
+        this.setStatus("템플릿 새 초안을 만들었습니다");
       } catch (error) {
-        this.setStatus(`폼 템플릿 초안 생성 실패: ${error.message}`);
+        this.setStatus(`템플릿 초안 생성 실패: ${error.message}`);
       } finally {
         this.wizardFormTemplateSaving = false;
       }
@@ -2796,12 +2797,12 @@ const adminApp = createApp({
           body: JSON.stringify({ id: template.id, ...this.wizardFormTemplateEditor }),
         });
         const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.message || result.error || `폼 템플릿 저장 오류(${response.status})`);
+        if (!response.ok) throw new Error(result.message || result.error || `템플릿 저장 오류(${response.status})`);
         await this.loadWizardFormTemplates({ fresh: true });
         await this.loadWizardFormTemplateDetail(result.template.id);
-        this.setStatus("폼 템플릿 정보를 저장했습니다");
+        this.setStatus("템플릿 정보를 저장했습니다");
       } catch (error) {
-        this.setStatus(`폼 템플릿 저장 실패: ${error.message}`);
+        this.setStatus(`템플릿 저장 실패: ${error.message}`);
       } finally {
         this.wizardFormTemplateSaving = false;
       }
@@ -2815,15 +2816,15 @@ const adminApp = createApp({
         const response = await fetch("/api/wizard-form-template-activate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: template.id, changeNote: "관리자 페이지에서 폼 템플릿을 활성화했습니다." }),
+          body: JSON.stringify({ id: template.id, changeNote: "관리자 페이지에서 템플릿을 활성화했습니다." }),
         });
         const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.message || result.error || `폼 템플릿 활성화 오류(${response.status})`);
+        if (!response.ok) throw new Error(result.message || result.error || `템플릿 활성화 오류(${response.status})`);
         await this.loadWizardFormTemplates({ fresh: true });
         const layoutRevision = Number(result.layoutIdentity?.layoutRevision || 1);
-        this.setStatus(`폼 템플릿 v${result.template?.version || template.version} · Layout r${layoutRevision}을 활성화했습니다`);
+        this.setStatus(`템플릿 v${result.template?.version || template.version} · 레이아웃 r${layoutRevision}을 활성화했습니다`);
       } catch (error) {
-        this.setStatus(`폼 템플릿 활성화 실패: ${error.message}`);
+        this.setStatus(`템플릿 활성화 실패: ${error.message}`);
       } finally {
         this.wizardFormTemplateSaving = false;
       }
@@ -2837,14 +2838,14 @@ const adminApp = createApp({
         const response = await fetch("/api/wizard-form-template-deactivate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: template.id, changeNote: "관리자 페이지에서 폼 템플릿을 비활성화했습니다." }),
+          body: JSON.stringify({ id: template.id, changeNote: "관리자 페이지에서 템플릿을 비활성화했습니다." }),
         });
         const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.message || result.error || `폼 템플릿 비활성화 오류(${response.status})`);
+        if (!response.ok) throw new Error(result.message || result.error || `템플릿 비활성화 오류(${response.status})`);
         await this.loadWizardFormTemplates({ fresh: true });
-        this.setStatus(`폼 템플릿 v${result.template?.version || template.version}을 비활성화했습니다`);
+        this.setStatus(`템플릿 v${result.template?.version || template.version}을 비활성화했습니다`);
       } catch (error) {
-        this.setStatus(`폼 템플릿 비활성화 실패: ${error.message}`);
+        this.setStatus(`템플릿 비활성화 실패: ${error.message}`);
       } finally {
         this.wizardFormTemplateSaving = false;
       }
@@ -2875,12 +2876,12 @@ const adminApp = createApp({
           body: JSON.stringify({ id: target.id, changeNote: "관리자 페이지 템플릿 목록에서 삭제(보관)했습니다." }),
         });
         const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.message || result.error || `폼 템플릿 삭제 오류(${response.status})`);
+        if (!response.ok) throw new Error(result.message || result.error || `템플릿 보관 오류(${response.status})`);
         this.expandedWizardFormTemplateSettingsKey = "";
         await this.loadWizardFormTemplates({ fresh: true });
-        this.setStatus("폼 템플릿 버전을 삭제(보관)했습니다");
+        this.setStatus("템플릿 버전을 보관했습니다");
       } catch (error) {
-        this.setStatus(`폼 템플릿 삭제 실패: ${error.message}`);
+        this.setStatus(`템플릿 보관 실패: ${error.message}`);
       } finally {
         this.wizardFormTemplateSaving = false;
       }
@@ -2894,14 +2895,14 @@ const adminApp = createApp({
         const response = await fetch("/api/wizard-form-template-archive", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: template.id, changeNote: "관리자 페이지에서 폼 템플릿을 보관했습니다." }),
+          body: JSON.stringify({ id: template.id, changeNote: "관리자 페이지에서 템플릿을 보관했습니다." }),
         });
         const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.message || result.error || `폼 템플릿 보관 오류(${response.status})`);
+        if (!response.ok) throw new Error(result.message || result.error || `템플릿 보관 오류(${response.status})`);
         await this.loadWizardFormTemplates({ fresh: true });
-        this.setStatus("폼 템플릿 버전을 보관했습니다");
+        this.setStatus("템플릿 버전을 보관했습니다");
       } catch (error) {
-        this.setStatus(`폼 템플릿 보관 실패: ${error.message}`);
+        this.setStatus(`템플릿 보관 실패: ${error.message}`);
       } finally {
         this.wizardFormTemplateSaving = false;
       }
@@ -3220,18 +3221,18 @@ const adminApp = createApp({
           }),
         });
         const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.message || result.error || `아이템 저장 오류(${response.status})`);
+        if (!response.ok) throw new Error(result.message || result.error || `컴포넌트 저장 오류(${response.status})`);
         await this.loadWizardFormTemplateSectionItems();
         if (isNewItem) {
           this.openNewWizardFormTemplateItemEditor();
-          this.setStatus("섹션 아이템을 저장했습니다. 다음 아이템을 계속 추가할 수 있습니다");
+          this.setStatus("섹션 컴포넌트를 저장했습니다. 다음 컴포넌트를 계속 추가할 수 있습니다");
         } else {
           this.wizardFormTemplateItemEditorOpenId = "";
           this.wizardFormTemplateItemEditor = null;
-          this.setStatus("섹션 아이템 수정사항을 저장했습니다");
+          this.setStatus("섹션 컴포넌트 변경사항을 저장했습니다");
         }
       } catch (error) {
-        this.setStatus(`아이템 저장 실패: ${error.message}`);
+        this.setStatus(`컴포넌트 저장 실패: ${error.message}`);
       } finally {
         this.wizardFormTemplateSectionSaving = false;
       }
@@ -3246,12 +3247,12 @@ const adminApp = createApp({
         if (!draftItem) throw new Error("삭제할 아이템을 편집용 Section에서 찾을 수 없습니다");
         const response = await fetch(`/api/wizard-content-section-items?id=${encodeURIComponent(draftItem.id)}&sectionId=${encodeURIComponent(draft.sectionId)}`, { method: "DELETE" });
         const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.message || result.error || `아이템 삭제 오류(${response.status})`);
+        if (!response.ok) throw new Error(result.message || result.error || `컴포넌트 삭제 오류(${response.status})`);
         await this.loadWizardFormTemplateSectionItems();
         this.wizardFormTemplateItemEditorOpenId = "";
-        this.setStatus("섹션 아이템을 삭제했습니다");
+        this.setStatus("섹션 컴포넌트를 삭제했습니다");
       } catch (error) {
-        this.setStatus(`아이템 삭제 실패: ${error.message}`);
+        this.setStatus(`컴포넌트 삭제 실패: ${error.message}`);
       } finally {
         this.wizardFormTemplateSectionSaving = false;
       }
@@ -3712,12 +3713,12 @@ const adminApp = createApp({
           }),
         });
         const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.message || result.error || `아이템 저장 오류(${response.status})`);
+        if (!response.ok) throw new Error(result.message || result.error || `컴포넌트 저장 오류(${response.status})`);
         await this.loadWizardSectionDetail(section.id);
         this.wizardItemEditorOpenId = "";
-        this.setStatus("섹션 아이템을 저장했습니다");
+        this.setStatus("섹션 컴포넌트를 저장했습니다");
       } catch (error) {
-        this.setStatus(`아이템 저장 실패: ${error.message}`);
+        this.setStatus(`컴포넌트 저장 실패: ${error.message}`);
       } finally {
         this.wizardSectionSaving = false;
       }
@@ -3732,11 +3733,11 @@ const adminApp = createApp({
           method: "DELETE",
         });
         const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.message || result.error || `아이템 삭제 오류(${response.status})`);
+        if (!response.ok) throw new Error(result.message || result.error || `컴포넌트 삭제 오류(${response.status})`);
         await this.loadWizardSectionDetail(section.id);
-        this.setStatus("섹션 아이템을 삭제했습니다");
+        this.setStatus("섹션 컴포넌트를 삭제했습니다");
       } catch (error) {
-        this.setStatus(`아이템 삭제 실패: ${error.message}`);
+        this.setStatus(`컴포넌트 삭제 실패: ${error.message}`);
       } finally {
         this.wizardSectionSaving = false;
       }

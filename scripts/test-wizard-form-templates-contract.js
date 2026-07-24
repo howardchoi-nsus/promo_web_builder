@@ -91,7 +91,7 @@ assert.match(adminHtml, /class="template-active-switch"/);
 assert.match(adminHtml, /@click="editWizardFormTemplate\(group\)"/);
 assert.match(adminHtml, /@click="openDuplicateWizardFormTemplate\(group\)"/);
 assert.match(adminHtml, /@click="deleteWizardFormTemplate\(group\)"/);
-assert.match(adminHtml, /Template Key는 생성 시 자동으로 부여됩니다/);
+assert.match(adminHtml, /t\('entity\.template\.key'\)/);
 assert.doesNotMatch(adminHtml, /v-model="newWizardFormTemplateForm\.templateKey"/);
 assert.doesNotMatch(adminHtml, /v-model="duplicateWizardFormTemplateForm\.templateKey"/);
 assert.doesNotMatch(adminHtml, /v-model="wizardItemEditor\.itemKey"/);

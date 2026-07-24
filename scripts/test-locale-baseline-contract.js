@@ -37,14 +37,20 @@ koKeys.forEach((key) => {
 
 [
   "entity.section.key",
+  "entity.section.manage",
   "entity.item.label",
+  "entity.component.key",
+  "entity.component.fieldLabel",
   "common.action.update",
   "common.action.edit",
   "admin.i18n.title",
 ].forEach((key) => assert(koKeys.includes(key), `required terminology key is missing: ${key}`));
 
 assert.equal(ko["entity.section.key"], "섹션 식별자");
+assert.equal(ko["entity.section.manage"], "섹션 관리");
 assert.equal(ko["entity.item.label"], "항목");
+assert.equal(ko["entity.component.key"], "컴포넌트 식별자");
+assert.equal(ko["entity.component.fieldLabel"], "컴포넌트 요소");
 assert.equal(ko["common.action.update"], "수정");
 assert.equal(ko["common.action.edit"], "편집");
 

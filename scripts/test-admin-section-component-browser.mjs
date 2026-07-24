@@ -83,9 +83,9 @@ try {
 
   await page.goto(`${origin}/prototype/index.html?view=admin&tab=components`, { waitUntil: "networkidle" });
   await page.getByText("Hero Title", { exact: true }).first().waitFor({ state: "visible" });
-  assert.equal(await page.getByText(`자동 생성 Key: ${component.componentKey}`, { exact: true }).count(), 1);
+  assert.equal(await page.getByText(`컴포넌트 식별자: ${component.componentKey}`, { exact: true }).count(), 1);
   await page.getByRole("tab", { name: "템플릿·레이아웃 관리" }).click();
-  await page.getByRole("button", { name: "+ 아이템 추가" }).click();
+  await page.getByRole("button", { name: "+ 컴포넌트 추가" }).click();
   const activeComponentOption = page.locator(`select option[value="${activeComponentVersionId}"]`);
   assert.equal(await activeComponentOption.count(), 1);
   assert.match(await activeComponentOption.textContent(), /Hero Title.*v1/);
@@ -104,7 +104,7 @@ try {
   assert.equal(await page.locator(".form-template-editor-panels > .prompt-editor-panel > .template-layout-settings").count(), 0);
   assert.equal(await page.locator("#template-component-manager-target .section-library-manager").count(), 1);
 
-  await templateCard.getByRole("button", { name: "복제", exact: true }).click();
+  await templateCard.getByRole("button", { name: "복사본 만들기", exact: true }).click();
   await page.locator(".form-template-duplicate").waitFor({ state: "visible" });
   assert.equal(await page.locator(".form-template-duplicate input").count(), 2);
   assert.equal(await page.locator(".form-template-duplicate input").evaluateAll((inputs) => inputs.some((input) => /key/i.test(input.name || input.placeholder || ""))), false);
@@ -121,7 +121,7 @@ try {
   assert.equal(await templateCard.locator(".template-active-switch input").isChecked(), true);
   assert.deepEqual(activateBody, {
     id: template.id,
-    changeNote: "관리자 페이지에서 폼 템플릿을 활성화했습니다.",
+    changeNote: "관리자 페이지에서 템플릿을 활성화했습니다.",
   });
   assert.deepEqual(pageErrors, []);
   console.log("Admin item component and section composition browser test passed");

@@ -50,17 +50,17 @@
         <div class="template-layout-settings-copy">
           <span class="template-layout-settings-eyebrow">WIZARD STEP 2 DEFAULT</span>
           <h3 id="template-layout-manager-title">템플릿 기본 레이아웃</h3>
-          <p>Wizard의 배경, 섹션 높이, Item 위치와 글자 스타일을 설정합니다. 사용자 작업별 변경은 관리자 템플릿에 역반영되지 않습니다.</p>
+          <p>프로모션 빌더의 배경, 섹션 높이, 컴포넌트 위치와 글자 스타일을 설정합니다. 사용자 작업별 변경은 관리자 템플릿에 역반영되지 않습니다.</p>
           <span class="template-layout-settings-state" :class="'status-' + template.status">
-            v{{ template.version }} · {{ statusLabel(template.status) }}<template v-if="layoutRevision"> · Layout r{{ layoutRevision }}</template>
+            v{{ template.version }} · {{ statusLabel(template.status) }}<template v-if="layoutRevision"> · 레이아웃 r{{ layoutRevision }}</template>
           </span>
-          <small v-if="loading">Layout 정보를 확인하는 중입니다.</small>
+          <small v-if="loading">레이아웃 정보를 확인하는 중입니다.</small>
           <small class="field-error" v-else-if="error">{{ error }}</small>
         </div>
         <div class="template-layout-settings-actions">
           <button class="tiny-button primary template-layout-settings-button" type="button" :disabled="template.status !== 'draft'" @click="openEditor">레이아웃 편집 열기</button>
           <small v-if="template.status !== 'draft'">활성 버전은 읽기 전용입니다. 먼저 새 초안을 만들어 주세요.</small>
-          <small v-else>편집 내용은 Draft에만 반영되며 템플릿 활성화 후 Create Promo에서 사용됩니다.</small>
+          <small v-else>편집 내용은 초안에만 반영되며 템플릿 활성화 후 프로모션 빌더에서 사용됩니다.</small>
         </div>
       </section>
     `,

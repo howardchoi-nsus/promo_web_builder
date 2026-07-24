@@ -771,7 +771,7 @@
               <section class="admin-panel admin-panel-b" v-show="adminTab === 'llm'">
                 <div class="subsection-title">
                   <h3>LLM 및 프롬프트 관리</h3>
-                  <select v-model="promptTypeFilter" aria-label="프롬프트 타입 필터">
+                  <select v-model="promptTypeFilter" aria-label="프롬프트 유형 필터">
                     <option value="">전체</option>
                     <option value="integrated_brief">통합 디자인 브리프</option>
                     <option value="image_execution">이미지 생성</option>
@@ -826,7 +826,7 @@
                     <input v-model="promptEditor.name" type="text" autocomplete="off" />
                   </label>
                   <label class="field">
-                    <span>타입</span>
+                    <span>{{ t('common.field.type') }}</span>
                     <input :value="promptTypeLabel(selectedPromptTemplate.type)" type="text" disabled />
                   </label>
                 </div>
@@ -1030,10 +1030,10 @@
 
           <section class="panel stack" v-show="adminTab === 'components'">
             <div class="subsection-title">
-              <div><h2>컴포넌트 관리</h2><span>섹션에서 재사용할 입력·출력 항목을 독립적으로 버전 관리합니다.</span></div>
+              <div><h2>{{ t('entity.component.manage') }}</h2><span>섹션에서 재사용할 콘텐츠 블록을 독립적으로 버전 관리합니다.</span></div>
               <div class="subsection-actions">
                 <button class="tiny-button" type="button" :disabled="itemComponentsLoading" @click="loadItemComponents">{{ t('common.action.refresh') }}</button>
-                <button class="tiny-button primary" type="button" @click="openNewItemComponentForm">+ 컴포넌트 추가</button>
+                <button class="tiny-button primary" type="button" @click="openNewItemComponentForm">+ {{ t('entity.component.add') }}</button>
               </div>
             </div>
             <div class="outline-item danger-state" v-if="itemComponentsError"><strong>컴포넌트 목록 오류</strong><span>{{ itemComponentsError }}</span></div>
@@ -1042,7 +1042,7 @@
                 <button v-for="component in itemComponents" :key="component.id" class="prompt-list-item" type="button"
                   :class="{ selected: selectedItemComponentId === component.id }" @click="selectItemComponent(component)">
                   <strong>{{ component.name }}</strong>
-                  <span>{{ component.fields?.length || 1 }}개 필드 · v{{ component.version || '-' }}</span>
+                  <span>{{ component.fields?.length || 1 }}개 요소 · v{{ component.version || '-' }}</span>
                   <em :class="`status-${component.versionStatus || component.status}`">{{ wizardSectionStatusLabel(component.versionStatus || component.status) }}</em>
                 </button>
                 <div class="empty-state compact" v-if="!itemComponentsLoading && !itemComponents.length">등록된 컴포넌트가 없습니다.</div>
@@ -1051,7 +1051,7 @@
                 <div class="prompt-editor-header">
                   <div>
                     <strong>{{ showNewItemComponentForm ? '새 컴포넌트' : selectedItemComponent.name }}</strong>
-                    <span v-if="selectedItemComponent">자동 생성 Key: {{ selectedItemComponent.componentKey }}</span>
+                    <span v-if="selectedItemComponent">{{ t('entity.component.key') }}: {{ selectedItemComponent.componentKey }}</span>
                   </div>
                   <div class="subsection-actions">
                     <button v-if="showNewItemComponentForm" class="tiny-button primary" type="button" :disabled="itemComponentSaving || !itemComponentEditor.name" @click="saveNewItemComponent">초안 생성</button>
@@ -1059,23 +1059,23 @@
                     <button v-else class="tiny-button" type="button" :disabled="itemComponentSaving" @click="createItemComponentDraft(selectedItemComponent)">새 초안 만들기</button>
                   </div>
                 </div>
-                <label class="field"><span>컴포넌트 이름</span><input v-model="itemComponentEditor.name" type="text" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /></label>
+                <label class="field"><span>{{ t('entity.component.name') }}</span><input v-model="itemComponentEditor.name" type="text" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /></label>
                 <label class="field"><span>{{ t('common.field.description') }}</span><input v-model="itemComponentEditor.description" type="text" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /></label>
                 <div class="subsection-title">
-                  <div><h3>컴포넌트 필드</h3><span>텍스트·이미지·CTA를 여러 개 조합할 수 있습니다.</span></div>
-                  <button class="tiny-button" type="button" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" @click="addItemComponentField">+ 필드 추가</button>
+                  <div><h3>{{ t('entity.component.fieldLabel') }}</h3><span>텍스트·이미지·CTA 요소를 여러 개 조합할 수 있습니다.</span></div>
+                  <button class="tiny-button" type="button" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" @click="addItemComponentField">+ {{ t('entity.component.fieldAdd') }}</button>
                 </div>
                 <div class="stack component-field-editor-list">
                   <details class="template-basic-settings" v-for="(field, fieldIndex) in itemComponentEditor.fields" :key="field.fieldKey || fieldIndex" open>
-                    <summary>{{ field.name || `Field ${fieldIndex + 1}` }} · {{ fieldKindLabel(field.fieldKind) }}<small v-if="field.fieldKey"> {{ field.fieldKey }}</small></summary>
+                    <summary>{{ field.name || `요소 ${fieldIndex + 1}` }} · {{ fieldKindLabel(field.fieldKind) }}<small v-if="field.fieldKey"> {{ field.fieldKey }}</small></summary>
                     <div class="template-basic-settings-body">
                       <div class="form-grid compact">
-                        <label class="field"><span>필드 이름</span><input v-model="field.name" type="text" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /></label>
-                        <label class="field"><span>필드 유형</span><select v-model="field.fieldKind" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'"><option value="text">텍스트</option><option value="image">이미지</option><option value="cta">CTA</option></select></label>
+                        <label class="field"><span>{{ t('entity.component.fieldName') }}</span><input v-model="field.name" type="text" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /></label>
+                        <label class="field"><span>요소 유형</span><select v-model="field.fieldKind" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'"><option value="text">텍스트</option><option value="image">이미지</option><option value="cta">CTA</option></select></label>
                         <label class="field" v-if="field.fieldKind === 'text'"><span>텍스트 유형</span><select v-model="field.textType" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'"><option value="title">제목</option><option value="remark">보조 문구</option><option value="multi">본문</option></select></label>
                       </div>
                       <div class="form-grid compact">
-                        <label class="switch-control"><input v-model="field.isRequired" type="checkbox" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /><span>필수 필드</span></label>
+                        <label class="switch-control"><input v-model="field.isRequired" type="checkbox" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /><span>필수 요소</span></label>
                         <label class="switch-control"><input v-model="field.isLocked" type="checkbox" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /><span>관리자 값 잠금</span></label>
                       </div>
                       <template v-if="field.fieldKind === 'image'">
@@ -1088,8 +1088,8 @@
                       <div class="action-row align-right">
                         <button class="tiny-button" type="button" :disabled="(!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft') || fieldIndex === 0" @click="moveItemComponentField(fieldIndex, -1)">위로</button>
                         <button class="tiny-button" type="button" :disabled="(!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft') || fieldIndex === itemComponentEditor.fields.length - 1" @click="moveItemComponentField(fieldIndex, 1)">아래로</button>
-                        <button class="tiny-button" type="button" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" @click="duplicateItemComponentField(fieldIndex)">복제</button>
-                        <button class="tiny-button danger" type="button" :disabled="(!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft') || itemComponentEditor.fields.length <= 1" @click="removeItemComponentField(fieldIndex)">필드 삭제</button>
+                        <button class="tiny-button" type="button" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" @click="duplicateItemComponentField(fieldIndex)">{{ t('common.action.duplicate') }}</button>
+                        <button class="tiny-button danger" type="button" :disabled="(!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft') || itemComponentEditor.fields.length <= 1" @click="removeItemComponentField(fieldIndex)">요소 삭제</button>
                       </div>
                     </div>
                   </details>
@@ -1104,7 +1104,7 @@
               <div class="subsection-title">
                 <div>
                   <h2>폼 템플릿 및 기본 레이아웃</h2>
-                  <span>Wizard 2단계에서 사용할 입력 항목과 최초 노출 레이아웃을 함께 관리합니다.</span>
+                  <span>프로모션 빌더에서 사용할 섹션 구성과 최초 노출 레이아웃을 함께 관리합니다.</span>
                 </div>
                 <div class="subsection-actions">
                   <button class="tiny-button" type="button" :disabled="wizardFormTemplatesLoading" @click="loadWizardFormTemplates({ fresh: true })">{{ t('common.action.refresh') }}</button>
@@ -1155,11 +1155,11 @@
                       </label>
                       <div class="template-list-card__actions">
                         <button class="tiny-button" type="button" :disabled="wizardFormTemplateSaving" @click="editWizardFormTemplate(group)">수정</button>
-                        <button class="tiny-button" type="button" :disabled="wizardFormTemplateSaving" @click="openDuplicateWizardFormTemplate(group)">복제</button>
-                        <button class="tiny-button danger" type="button" :disabled="wizardFormTemplateSaving || (!group.draft && !group.inactive)" @click="deleteWizardFormTemplate(group)">삭제</button>
+                        <button class="tiny-button" type="button" :disabled="wizardFormTemplateSaving" @click="openDuplicateWizardFormTemplate(group)">{{ t('common.action.duplicate') }}</button>
+                        <button class="tiny-button danger" type="button" :disabled="wizardFormTemplateSaving || (!group.draft && !group.inactive)" @click="deleteWizardFormTemplate(group)">{{ t('common.action.archive') }}</button>
                       </div>
                       <label class="field compact-field">
-                        <span>Template Key</span>
+                        <span>{{ t('entity.template.key') }}</span>
                         <input :value="group.templateKey" type="text" readonly />
                       </label>
                       <label class="field compact-field" v-if="group.versions.length > 1">
@@ -1200,26 +1200,26 @@
                       <button class="tiny-button primary" type="button" v-if="wizardFormTemplateDetail.template.status === 'draft'" :disabled="wizardFormTemplateSaving || !wizardFormTemplateEditor.name || !wizardFormTemplateEditor.designTokenSetVersionId" @click="saveWizardFormTemplate">{{ t('common.action.save') }}</button>
                     </div>
                   </article>
-                  <div class="empty-state compact" v-if="!wizardFormTemplatesLoading && !groupedWizardFormTemplates.length">등록된 폼 템플릿이 없습니다.</div>
+                  <div class="empty-state compact" v-if="!wizardFormTemplatesLoading && !groupedWizardFormTemplates.length">등록된 템플릿이 없습니다.</div>
                   <div class="template-list-global-actions">
                     <button class="tiny-button primary" type="button" @click="toggleNewWizardFormTemplateForm">{{ showNewWizardFormTemplateForm ? t('common.action.cancel') : `+ ${t('entity.template.add')}` }}</button>
                   </div>
                   <div class="form-template-create" v-if="showNewWizardFormTemplateForm">
-                    <small>Template Key는 생성 시 자동으로 부여됩니다.</small>
-                    <label class="field compact-field"><span>템플릿 이름</span><input v-model="newWizardFormTemplateForm.name" type="text" autocomplete="off" /></label>
+                    <small>템플릿 식별자는 생성 시 자동으로 부여됩니다.</small>
+                    <label class="field compact-field"><span>{{ t('entity.template.name') }}</span><input v-model="newWizardFormTemplateForm.name" type="text" autocomplete="off" /></label>
                     <label class="field compact-field"><span>{{ t('common.field.description') }}</span><input v-model="newWizardFormTemplateForm.description" type="text" autocomplete="off" /></label>
                     <label class="field compact-field"><span>디자인 토큰 세트</span><select v-model="newWizardFormTemplateForm.designTokenSetVersionId"><option value="">선택하세요</option><option v-for="tokenSet in designTokenSets.filter(item => item.versionStatus === 'active')" :key="tokenSet.versionId" :value="tokenSet.versionId">{{ tokenSet.name }} · v{{ tokenSet.version }}</option></select></label>
                     <button class="tiny-button primary" type="button" :disabled="wizardFormTemplateSaving || !newWizardFormTemplateForm.name || !newWizardFormTemplateForm.designTokenSetVersionId" @click="createWizardFormTemplate">템플릿 생성</button>
                   </div>
                   <div class="form-template-duplicate" v-if="showDuplicateWizardFormTemplateForm">
-                    <strong>새 템플릿으로 복제</strong>
-                    <small>새 Template Key는 자동으로 생성됩니다.</small>
-                    <div class="outline-item danger-state" v-if="duplicateWizardFormTemplateError"><strong>복제 실패</strong><span>{{ duplicateWizardFormTemplateError }}</span></div>
-                    <label class="field compact-field"><span>새 템플릿 이름</span><input v-model="duplicateWizardFormTemplateForm.name" type="text" autocomplete="off" /></label>
+                    <strong>템플릿 복사본 만들기</strong>
+                    <small>새 템플릿 식별자는 자동으로 생성됩니다.</small>
+                    <div class="outline-item danger-state" v-if="duplicateWizardFormTemplateError"><strong>복사본 생성 실패</strong><span>{{ duplicateWizardFormTemplateError }}</span></div>
+                    <label class="field compact-field"><span>{{ t('entity.template.name') }}</span><input v-model="duplicateWizardFormTemplateForm.name" type="text" autocomplete="off" /></label>
                     <label class="field compact-field"><span>{{ t('common.field.description') }}</span><input v-model="duplicateWizardFormTemplateForm.description" type="text" autocomplete="off" /></label>
                     <div class="action-row align-right">
                       <button class="tiny-button" type="button" @click="showDuplicateWizardFormTemplateForm = false">{{ t('common.action.cancel') }}</button>
-                      <button class="tiny-button primary" type="button" :disabled="wizardFormTemplateSaving || !duplicateWizardFormTemplateForm.name" @click="duplicateWizardFormTemplate">복제</button>
+                      <button class="tiny-button primary" type="button" :disabled="wizardFormTemplateSaving || !duplicateWizardFormTemplateForm.name" @click="duplicateWizardFormTemplate">{{ t('common.action.duplicate') }}</button>
                     </div>
                   </div>
                 </aside>
@@ -1229,7 +1229,7 @@
                   <div id="template-component-manager-target" class="template-component-manager-target"></div>
                   <div class="subsection template-section-composer">
                     <div class="subsection-title">
-                      <h3>템플릿 Section 구성</h3>
+                      <h3>{{ t('entity.template.sectionConfig') }}</h3>
                     </div>
                     <transition-group name="template-section-order" tag="div" class="template-section-list" v-if="wizardFormTemplateDetail.sections.length">
                       <div
@@ -1259,28 +1259,28 @@
                         </button>
                         <button class="section-expand-button" type="button"
                           :aria-expanded="expandedWizardFormTemplateSectionId === section.id"
-                          :aria-label="expandedWizardFormTemplateSectionId === section.id ? 'Section 닫기' : 'Section 열기'"
-                          :title="expandedWizardFormTemplateSectionId === section.id ? 'Section 닫기' : 'Section 열기'"
+                      :aria-label="expandedWizardFormTemplateSectionId === section.id ? '섹션 닫기' : '섹션 열기'"
+                      :title="expandedWizardFormTemplateSectionId === section.id ? '섹션 닫기' : '섹션 열기'"
                           @click.stop="toggleWizardFormTemplateSection(section)"
                         >{{ expandedWizardFormTemplateSectionId === section.id ? '▾' : '▸' }}</button>
                         <transition name="section-expand">
                         <div class="template-section-expanded" v-if="expandedWizardFormTemplateSectionId === section.id">
-                          <div class="field compact-field"><span>{{ t('entity.component.label') }}</span><strong>{{ section.sectionName || section.sectionKey }}</strong><small>{{ section.sectionKey }} · v{{ section.sectionVersion }}</small></div>
+                          <div class="field compact-field"><span>{{ t('entity.section.label') }}</span><strong>{{ section.sectionName || section.sectionKey }}</strong><small>{{ section.sectionKey }} · v{{ section.sectionVersion }}</small></div>
                           <div class="form-grid compact">
-                            <label class="switch-control"><input v-model="wizardFormTemplateSectionEditor.isRequired" type="checkbox" :disabled="!wizardFormTemplateCanEdit" /><span>필수 Section</span></label>
-                            <label class="switch-control"><input v-model="wizardFormTemplateSectionEditor.isVisible" type="checkbox" :disabled="!wizardFormTemplateCanEdit" /><span>Wizard 노출</span></label>
-                            <label class="switch-control"><input v-model="wizardFormTemplateSectionEditor.userReorderAllowed" type="checkbox" :disabled="!wizardFormTemplateCanEdit || Boolean(wizardFormTemplateSectionEditor.fixedPosition)" /><span>Wizard 사용자 순서 변경 허용</span></label>
+                            <label class="switch-control"><input v-model="wizardFormTemplateSectionEditor.isRequired" type="checkbox" :disabled="!wizardFormTemplateCanEdit" /><span>필수 섹션</span></label>
+                            <label class="switch-control"><input v-model="wizardFormTemplateSectionEditor.isVisible" type="checkbox" :disabled="!wizardFormTemplateCanEdit" /><span>프로모션 빌더에 노출</span></label>
+                            <label class="switch-control"><input v-model="wizardFormTemplateSectionEditor.userReorderAllowed" type="checkbox" :disabled="!wizardFormTemplateCanEdit || Boolean(wizardFormTemplateSectionEditor.fixedPosition)" /><span>사용자 순서 변경 허용</span></label>
                           </div>
                           <label class="field compact-field"><span>고정 위치</span><select v-model="wizardFormTemplateSectionEditor.fixedPosition" :disabled="!wizardFormTemplateCanEdit"><option value="">고정하지 않음</option><option value="top">상단</option><option value="bottom">하단</option></select></label>
                           <div class="action-row align-right">
                             <button class="tiny-button danger" type="button" :disabled="!wizardFormTemplateCanEdit || wizardFormTemplateSectionSaving" @click="removeWizardFormTemplateSection">{{ t('common.action.delete') }}</button>
-                            <button class="tiny-button primary" type="button" :disabled="!wizardFormTemplateCanEdit || wizardFormTemplateSectionSaving" @click="saveWizardFormTemplateSection">수정 저장</button>
+                            <button class="tiny-button primary" type="button" :disabled="!wizardFormTemplateCanEdit || wizardFormTemplateSectionSaving" @click="saveWizardFormTemplateSection">{{ t('common.action.saveChanges') }}</button>
                           </div>
                         </div>
                         </transition>
                       </div>
                     </transition-group>
-                    <div class="empty-state compact danger-state" v-else>활성화하려면 노출할 Section을 하나 이상 추가해야 합니다.</div>
+                    <div class="empty-state compact danger-state" v-else>활성화하려면 노출할 섹션을 하나 이상 추가해야 합니다.</div>
 
                     <div class="template-section-add">
                       <button class="tiny-button primary" type="button" :disabled="!wizardFormTemplateCanEdit" @click="showNewWizardFormTemplateSectionForm = !showNewWizardFormTemplateSectionForm">{{ showNewWizardFormTemplateSectionForm ? t('common.action.cancel') : `+ ${t('entity.section.add')}` }}</button>
@@ -1294,7 +1294,7 @@
                   </div>
                 </section>
 
-                <section class="prompt-editor-panel empty-state" v-else>폼 템플릿을 선택해 주세요.</section>
+                  <section class="prompt-editor-panel empty-state" v-else>템플릿을 선택하세요.</section>
 
                 <aside class="template-section-items-panel" v-if="false && wizardFormTemplateDetail">
                   <div class="subsection-title">
@@ -1421,7 +1421,7 @@
               <div class="section-library-manager-body">
             <div class="panel-header">
               <div>
-                <h2>{{ t('entity.component.manage') }}</h2>
+                <h2>{{ t('entity.section.manage') }}</h2>
               </div>
               <div class="subsection-actions">
                 <span v-if="wizardSectionsLoading">불러오는 중</span>
@@ -1438,7 +1438,7 @@
 
             <div class="form-grid compact" v-if="showNewWizardSectionForm">
               <label class="field compact-field">
-                <span>섹션 Key (영문/숫자/_)</span>
+                <span>{{ t('entity.section.key') }}</span>
                 <input value="자동 생성" type="text" disabled />
               </label>
               <label class="field compact-field">
@@ -1528,14 +1528,14 @@
                       type="button"
                       :disabled="wizardSectionSaving || ['active', 'archived'].includes(wizardSectionDetail.section.status)"
                       @click="archiveWizardSection(wizardSectionDetail.section.id)"
-                    >보관(삭제)</button>
+                    >{{ t('common.action.archive') }}</button>
                   </div>
                 </div>
 
                 <div class="outline-item" v-if="wizardSectionUsageLoading || wizardSectionUsage.length">
-                  <strong>{{ wizardSectionUsageLoading ? t('entity.component.usageLoading') : t('entity.component.usage', { count: wizardSectionUsage.length }) }}</strong>
+                  <strong>{{ wizardSectionUsageLoading ? t('entity.section.usageLoading') : t('entity.section.usage', { count: wizardSectionUsage.length }) }}</strong>
                   <span v-if="wizardSectionUsage.length">{{ wizardSectionUsage.map(template => `${template.name} v${template.version} (${wizardSectionStatusLabel(template.status)})`).join(', ') }}</span>
-                  <span v-else>{{ t('entity.component.usageLoading') }}</span>
+                  <span v-else>{{ t('entity.section.usageLoading') }}</span>
                 </div>
 
                 <div class="empty-state compact" v-if="wizardSectionDetail.section.status !== 'draft'">
@@ -1561,7 +1561,7 @@
                   </label>
                   <label class="switch-control">
                     <input type="checkbox" v-model="wizardSectionFieldsEditor.isVisibleInWizard" :disabled="wizardSectionDetail.section.status !== 'draft'" />
-                    <span>Wizard 노출</span>
+                  <span>프로모션 빌더에 노출</span>
                   </label>
                 </div>
                 <div class="subsection">
@@ -1587,7 +1587,7 @@
                       <input type="checkbox" :value="item.itemKey" v-model="wizardSectionFieldsEditor.aiDesign.imageTargetItemKeys" :disabled="wizardSectionDetail.section.status !== 'draft' || !wizardSectionFieldsEditor.aiDesign.enabled" />
                       <span>{{ item.name }} ({{ item.itemKey }})</span>
                     </label>
-                    <div class="empty-state compact" v-if="!wizardSectionDetail.items.some((entry) => entry.fieldKind === 'image' && entry.isVisibleInWizard && entry.image?.allowedSources?.includes('ai'))">AI 소스를 허용한 이미지 Item이 없습니다.</div>
+                    <div class="empty-state compact" v-if="!wizardSectionDetail.items.some((entry) => entry.fieldKind === 'image' && entry.isVisibleInWizard && entry.image?.allowedSources?.includes('ai'))">AI 소스를 허용한 이미지 컴포넌트가 없습니다.</div>
                   </div>
                   <label class="field compact-field">
                     <span>이미지 비율</span>
@@ -1615,30 +1615,30 @@
 
                 <div class="subsection">
                   <div class="subsection-title">
-                    <h3>섹션 아이템</h3>
+                    <h3>섹션 컴포넌트</h3>
                     <button
                       class="tiny-button primary"
                       type="button"
                       :disabled="wizardSectionDetail.section.status !== 'draft'"
                       @click="openNewWizardItemEditor"
-                    >+ 아이템 추가</button>
+                    >+ {{ t('entity.component.add') }}</button>
                   </div>
 
                   <div class="history-list">
                     <div v-for="item in wizardSectionDetail.items" :key="item.id" class="history-item">
                       <strong>{{ item.name }}<em v-if="item.isLocked" class="status-active">고정됨</em></strong>
-                      <span>{{ item.itemKey }} · {{ fieldKindLabel(item.fieldKind) }}{{ item.image?.descriptionEnabled ? ' + 설명' : '' }}{{ item.textType ? ' · ' + textTypeLabel(item.textType) : '' }} · {{ item.isRequired ? '필수' : '선택' }} · {{ item.isVisibleInWizard ? 'Wizard 노출' : 'Wizard 숨김' }}</span>
+                    <span>{{ item.itemKey }} · {{ fieldKindLabel(item.fieldKind) }}{{ item.image?.descriptionEnabled ? ' + 설명' : '' }}{{ item.textType ? ' · ' + textTypeLabel(item.textType) : '' }} · {{ item.isRequired ? '필수' : '선택' }} · {{ item.isVisibleInWizard ? '프로모션 빌더 노출' : '프로모션 빌더 숨김' }}</span>
                       <div class="action-row align-right">
                         <button class="tiny-button" type="button" :disabled="wizardSectionDetail.section.status !== 'draft'" @click="openWizardItemEditor(item)">편집</button>
                         <button class="tiny-button danger" type="button" :disabled="wizardSectionDetail.section.status !== 'draft'" @click="deleteWizardItem(item)">{{ t('common.action.delete') }}</button>
                       </div>
                     </div>
-                    <div class="empty-state compact" v-if="!wizardSectionDetail.items.length">아이템이 없습니다.</div>
+                    <div class="empty-state compact" v-if="!wizardSectionDetail.items.length">등록된 컴포넌트가 없습니다.</div>
                   </div>
 
                   <div class="subsection" v-if="wizardItemEditorOpenId">
                     <div class="subsection-title">
-                      <h3>{{ wizardItemEditorOpenId === 'new' ? '아이템 추가' : '아이템 편집' }}</h3>
+                      <h3>{{ wizardItemEditorOpenId === 'new' ? '컴포넌트 추가' : '컴포넌트 수정' }}</h3>
                     </div>
 
                     <div class="form-grid compact">
@@ -1646,16 +1646,16 @@
                         <span>컴포넌트</span>
                         <select v-model="wizardItemEditor.componentVersionId">
                           <option value="">활성 컴포넌트를 선택하세요</option>
-                          <option v-for="component in activeItemComponents" :key="component.versionId" :value="component.versionId">{{ component.name }} · {{ component.fieldKind }} · v{{ component.version }}</option>
+                      <option v-for="component in activeItemComponents" :key="component.versionId" :value="component.versionId">{{ component.name }} · {{ fieldKindLabel(component.fieldKind) }} · v{{ component.version }}</option>
                         </select>
                       </label>
                       <label class="field compact-field">
-                        <span>아이템 이름</span>
+                        <span>{{ t('entity.component.name') }}</span>
                         <input v-model="wizardItemEditor.name" type="text" autocomplete="off" />
                       </label>
                     </div>
-                    <small v-if="wizardItemEditorOpenId === 'new'">아이템 Key는 저장 시 자동으로 생성됩니다.</small>
-                    <small v-else>아이템 Key: {{ wizardItemEditor.itemKey }}</small>
+                    <small v-if="wizardItemEditorOpenId === 'new'">컴포넌트 식별자는 저장 시 자동으로 생성됩니다.</small>
+                    <small v-else>{{ t('entity.component.key') }}: {{ wizardItemEditor.itemKey }}</small>
 
                     <div class="form-grid compact">
                       <label class="field compact-field">
@@ -1663,16 +1663,16 @@
                         <input v-model.number="wizardItemEditor.sortOrder" type="number" />
                       </label>
                     </div>
-                    <div class="empty-state compact">필드 유형, 이미지 정책, CTA 정책과 스타일 슬롯은 선택한 컴포넌트 버전에서 상속됩니다.</div>
+                  <div class="empty-state compact">요소 유형, 이미지 정책, CTA 정책과 스타일 슬롯은 선택한 컴포넌트 버전에서 상속됩니다.</div>
 
                     <div class="form-grid compact">
                       <label class="switch-control">
                         <input type="checkbox" v-model="wizardItemEditor.isRequired" />
-                        <span>필수 아이템</span>
+                        <span>필수 컴포넌트</span>
                       </label>
                       <label class="switch-control">
                         <input type="checkbox" v-model="wizardItemEditor.isVisibleInWizard" />
-                        <span>Wizard 노출</span>
+                      <span>프로모션 빌더에 노출</span>
                       </label>
                       <label class="switch-control">
                         <input type="checkbox" v-model="wizardItemEditor.isLocked" />
@@ -1702,7 +1702,7 @@
           </section>
           <section class="panel stack section-audit-manager" v-show="adminTab === 'audit'">
             <div class="panel-header">
-              <div><h2>섹션 및 컴포넌트 변경 이력</h2><p>섹션 CRUD와 구성 변경을 별도 화면에서 조회합니다.</p></div>
+              <div><h2>섹션 및 컴포넌트 변경 이력</h2><p>섹션 생성·수정·보관과 구성 변경을 별도 화면에서 조회합니다.</p></div>
               <div class="subsection-actions">
                 <span>{{ wizardSectionAuditLogs.length }}건</span>
                 <button class="tiny-button" type="button" :disabled="wizardSectionAuditLoading" @click="loadWizardSectionAuditLogs">{{ t('common.action.refresh') }}</button>
@@ -1710,13 +1710,13 @@
             </div>
             <div class="form-grid compact section-audit-filters">
               <label class="field compact-field"><span>템플릿</span><select v-model="wizardSectionAuditFilters.templateKey" @change="loadWizardSectionAuditLogs"><option value="">전체</option><option v-for="group in groupedWizardFormTemplates" :key="group.templateKey" :value="group.templateKey">{{ group.primary?.name || group.templateKey }}</option></select></label>
-              <label class="field compact-field"><span>{{ t('common.field.changeType') }}</span><select v-model="wizardSectionAuditFilters.action" @change="loadWizardSectionAuditLogs"><option value="">{{ t('common.state.all') }}</option><option value="create">생성</option><option value="update">{{ t('common.action.update') }}</option><option value="delete">{{ t('common.action.delete') }}</option><option value="reorder">{{ t('common.action.reorder') }}</option><option value="draft">Draft 생성</option><option value="activate">{{ t('common.action.activate') }}</option></select></label>
+              <label class="field compact-field"><span>{{ t('common.field.changeType') }}</span><select v-model="wizardSectionAuditFilters.action" @change="loadWizardSectionAuditLogs"><option value="">{{ t('common.state.all') }}</option><option value="create">생성</option><option value="update">{{ t('common.action.update') }}</option><option value="delete">삭제·보관</option><option value="reorder">{{ t('common.action.reorder') }}</option><option value="draft">{{ t('common.state.draft') }} 생성</option><option value="activate">{{ t('common.action.activate') }}</option></select></label>
             </div>
             <div class="outline-item danger-state" v-if="wizardSectionAuditError"><strong>로그 조회 오류</strong><span>{{ wizardSectionAuditError }}</span></div>
             <div class="empty-state compact" v-if="wizardSectionAuditLoading">변경 이력을 불러오는 중입니다.</div>
             <div class="history-list section-audit-list" v-else-if="wizardSectionAuditLogs.length">
               <details class="history-item section-audit-row" v-for="log in wizardSectionAuditLogs" :key="log.id">
-                <summary><strong>{{ wizardSectionAuditActionLabel(log.action) }} · {{ log.entityType === 'item' ? '컴포넌트' : '섹션' }}</strong><span>{{ log.formTemplateKey || '공통' }} · {{ log.sectionKey || '-' }}{{ log.itemKey ? ' · ' + log.itemKey : '' }}</span><em>{{ formatAuditDate(log.createdAt) }}</em></summary>
+                <summary><strong>{{ wizardSectionAuditActionLabel(log.action, log.entityType) }} · {{ log.entityType === 'item' ? '컴포넌트' : '섹션' }}</strong><span>{{ log.formTemplateKey || '공통' }} · {{ log.sectionKey || '-' }}{{ log.itemKey ? ' · ' + log.itemKey : '' }}</span><em>{{ formatAuditDate(log.createdAt) }}</em></summary>
                 <div class="section-audit-detail"><p>{{ log.summary }}</p><div class="section-audit-states"><div><strong>변경 전</strong><pre>{{ formatAuditState(log.previousState) }}</pre></div><div><strong>변경 후</strong><pre>{{ formatAuditState(log.newState) }}</pre></div></div></div>
               </details>
             </div>
