@@ -60,6 +60,7 @@ const isAdminLayoutMode = computed(() => editorContext.value.isAdminLayout);
 const isWizardLayoutMode = computed(() => editorContext.value.isWizardLayout);
 const isCreatePromoWizardMode = computed(() => editorContext.value.isCreatePromo);
 const isBuilderWorkspaceMode = computed(() => editorContext.value.isBuilderWorkspace);
+const usesEmbeddedEngineShell = computed(() => editorContext.value.capabilities.isEmbedded);
 const shellNavItems = window.PromoShell?.navItems || [];
 
 const selectedSection = computed(() => sections.value.find((section) => section.sectionKey === selectedSectionKey.value) || sections.value[0]);
@@ -816,6 +817,10 @@ function loadOutput() {
 }
 
 onMounted(() => {
+  if (usesEmbeddedEngineShell.value) {
+    document.documentElement.classList.add("layout-editor-document");
+    document.body.classList.add("layout-editor-document");
+  }
   if (isCreatePromoWizardMode.value) {
     document.documentElement.classList.add("create-promo-editor-document");
     document.body.classList.add("create-promo-editor-document");
@@ -832,6 +837,8 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener("message", handleParentMessage);
+  document.documentElement.classList.remove("layout-editor-document");
+  document.body.classList.remove("layout-editor-document");
   document.documentElement.classList.remove("create-promo-editor-document");
   document.body.classList.remove("create-promo-editor-document");
 });
@@ -859,12 +866,12 @@ onBeforeUnmount(() => {
     v-else
     class="editor-shell"
     :class="{
-      'shell-frame': !isWizardLayoutMode,
-      'editor-shell--embedded': isCreatePromoWizardMode,
+      'shell-frame': !usesEmbeddedEngineShell,
+      'editor-shell--embedded': usesEmbeddedEngineShell,
     }"
-    :data-shell-frame="!isWizardLayoutMode ? '' : null"
+    :data-shell-frame="!usesEmbeddedEngineShell ? '' : null"
   >
-    <aside v-if="!isWizardLayoutMode" class="shell-sidebar" id="visual-editor-global-navigation" data-shell-sidebar aria-label="전역 내비게이션">
+    <aside v-if="!usesEmbeddedEngineShell" class="shell-sidebar" id="visual-editor-global-navigation" data-shell-sidebar aria-label="전역 내비게이션">
       <button class="shell-sidebar__close" type="button" data-shell-sidebar-close aria-label="메뉴 닫기">닫기</button>
       <div class="shell-sidebar__brand">
         <span class="shell-sidebar__brand-mark" aria-hidden="true"><i data-lucide="panels-top-left"></i></span>
@@ -893,8 +900,8 @@ onBeforeUnmount(() => {
       </div>
     </aside>
 
-    <div :class="!isWizardLayoutMode ? 'shell-main' : 'editor-embedded-main'">
-      <header v-if="!isWizardLayoutMode" class="shell-utility-bar editor-shell-header">
+    <div :class="!usesEmbeddedEngineShell ? 'shell-main' : 'editor-embedded-main'">
+      <header v-if="!usesEmbeddedEngineShell" class="shell-utility-bar editor-shell-header">
         <div class="shell-page-identity">
           <button class="shell-menu-toggle" type="button" data-shell-menu-toggle aria-controls="visual-editor-global-navigation" aria-expanded="false" aria-label="메뉴 열기">메뉴</button>
           <strong>{{ isAdminLayoutMode ? "Admin Template Layout" : "Visual Editor" }}</strong>
@@ -907,8 +914,8 @@ onBeforeUnmount(() => {
       <div
         class="editor-content"
         :class="{
-          'shell-content': !isWizardLayoutMode,
-          'editor-content--embedded': isCreatePromoWizardMode,
+          'shell-content': !usesEmbeddedEngineShell,
+          'editor-content--embedded': usesEmbeddedEngineShell,
         }"
       >
 
@@ -1529,6 +1536,6 @@ onBeforeUnmount(() => {
     </section>
       </div>
     </div>
-    <button v-if="!isWizardLayoutMode" class="shell-overlay" type="button" data-shell-overlay aria-label="메뉴 닫기"></button>
+    <button v-if="!usesEmbeddedEngineShell" class="shell-overlay" type="button" data-shell-overlay aria-label="메뉴 닫기"></button>
   </main>
 </template>

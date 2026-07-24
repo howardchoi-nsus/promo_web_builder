@@ -68,8 +68,11 @@ try {
     { waitUntil: "networkidle" },
   );
   await adminEditorPage.locator(".editor-workspace.is-builder-workspace.is-admin-layout-workspace").waitFor();
+  assert.equal(await adminEditorPage.locator(".editor-shell--embedded").count(), 1);
+  assert.equal(await adminEditorPage.locator(".shell-sidebar").count(), 0);
   assert.equal(await adminEditorPage.getByRole("button", { name: "초안 저장" }).count(), 1);
   assert.equal(await adminEditorPage.getByRole("button", { name: "저장 후 활성화" }).count(), 1);
+  assert.equal(await adminEditorPage.getByText("AI 다중 정렬", { exact: true }).count(), 1);
   assert.equal(await adminEditorPage.locator(".section-property-accordion").count(), 1);
   assert.equal(await adminEditorPage.locator(".property-panel .section-properties").count(), 0);
   await adminEditorPage.close();
@@ -88,6 +91,8 @@ try {
   const editorFrame = page.frameLocator("iframe.wizard-layout-frame");
   await editorFrame.locator(".editor-workspace.is-create-promo-wizard").waitFor({ timeout: 10_000 });
   assert.equal(await editorFrame.locator(".editor-workspace.is-builder-workspace").count(), 1);
+  assert.equal(await editorFrame.locator(".editor-shell--embedded").count(), 1);
+  assert.equal(await editorFrame.locator(".shell-sidebar").count(), 0);
   const sectionTriggers = editorFrame.locator(".section-trigger");
   if (await sectionTriggers.count() > 1) await sectionTriggers.nth(1).click();
   assert.equal(await editorFrame.locator(".section-property-accordion").count(), 1);

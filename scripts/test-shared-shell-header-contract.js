@@ -69,7 +69,7 @@ assert.match(wizardScript, /shellStatus\.textContent = `Step/);
 
 assert.match(editorHtml, /app-shell\.css\?v=app-shell-sidebar-v3/);
 assert.match(editorHtml, /shared-shell\.js/);
-assert.match(editorApp, /v-if="!isWizardLayoutMode" class="shell-sidebar"/);
+assert.match(editorApp, /v-if="!usesEmbeddedEngineShell" class="shell-sidebar"/);
 assert.match(editorApp, /class="shell-utility-bar editor-shell-header"/);
 assert.match(editorApp, /class="editor-header editor-toolbar"/);
 assert.match(editorApp, /v-for="item in shellNavItems"/);

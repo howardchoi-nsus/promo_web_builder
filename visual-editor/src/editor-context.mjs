@@ -5,6 +5,7 @@ export function createEditorContext(mode = "editor", source = "") {
   const isBuilderWorkspace = isAdminLayout || isCreatePromo;
 
   return Object.freeze({
+    engineKey: "promo-live-preview",
     mode,
     source,
     surface: isAdminLayout ? "template-default" : isCreatePromo ? "promo-instance" : "standalone",
@@ -17,12 +18,12 @@ export function createEditorContext(mode = "editor", source = "") {
       canEditPromoContent: isCreatePromo,
       canRunSectionAi: isCreatePromo,
       canRunComponentImageAi: isCreatePromo,
-      canRunMultiLayoutAi: isCreatePromo,
+      canRunMultiLayoutAi: isBuilderWorkspace,
       canSaveTemplateLayout: isAdminLayout,
       canSavePromoOverrides: isCreatePromo,
-      canOpenWebOutput: !isAdminLayout,
+      canOpenWebOutput: true,
       showsTemplateStatus: isBuilderWorkspace,
-      isEmbedded: isCreatePromo,
+      isEmbedded: isBuilderWorkspace || isWizardLayout,
     }),
   });
 }
