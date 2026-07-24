@@ -40,9 +40,9 @@ async function addSection(req, res) {
   await requireDraftTemplate(sql, templateId);
   const sourceRows = await sql`
     select id::text, section_key, is_required, order_change_allowed, fixed_position, is_visible_in_wizard, ai_design
-    from wizard_content_sections where id = ${sectionId}::uuid and status = 'active' limit 1
+    from wizard_content_sections where id = ${sectionId}::uuid and status in ('draft', 'active') limit 1
   `;
-  if (!sourceRows.length) return res.status(422).json({ error: "sectionId must reference an active section version" });
+  if (!sourceRows.length) return res.status(422).json({ error: "sectionId must reference a draft or active section version" });
   const source = sourceRows[0];
   const duplicate = await sql`
     select id::text from wizard_form_template_sections

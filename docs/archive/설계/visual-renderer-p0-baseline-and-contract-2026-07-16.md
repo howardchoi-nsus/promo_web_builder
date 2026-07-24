@@ -2,8 +2,10 @@
 
 - 작성일: 2026-07-16
 - 상태: P0 완료, P1 착수 기준
-- 관련 계획: `visual-template-editor-development-plan-2026-07-16.md`
+- 관련 계획: `visual-template-editor-development-plan-2026-07-16.md`(현재 `계획/`로 이동)
 - 소스 구현: P1부터 진행
+
+> **현행화 메모(2026-07-23)**: 이 문서는 07-16 기준선이며, 이후 렌더러·생성 파이프라인이 **Section AI V2(마이그레이션 029·031·032)** 로 확장됐다. 현행 계약(run·`design_plan`/`effective_patch`·asset job·다중 필드 컴포넌트·StyleProfile/Composition 예정)은 `계획/ai-section-auto-design-development-plan-2026-07-23.md`(v2)를 정본으로 본다. 본 문서는 초기 렌더러 기준선의 역사적 계약으로 유지한다.
 
 서비스 구분:
 

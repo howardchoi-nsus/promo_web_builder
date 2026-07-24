@@ -1682,6 +1682,14 @@ const adminApp = createApp({
         .filter((group) => !includedSectionKeys.has(group.sectionKey));
     },
 
+    wizardSectionsForCurrentTemplate() {
+      const groupsByKey = new Map(this.groupedWizardSections.map((group) => [group.sectionKey, group]));
+      return (this.wizardFormTemplateDetail?.sections || []).flatMap((membership) => {
+        const group = groupsByKey.get(membership.sectionKey);
+        return group ? [{ ...group, templateMembership: membership }] : [];
+      });
+    },
+
     activeItemComponents() {
       return this.itemComponents.flatMap((component) => {
         if (component.status !== "active") return [];
@@ -3521,6 +3529,11 @@ const adminApp = createApp({
 
     async createWizardSection() {
       if (this.wizardSectionSaving) return;
+      const template = this.wizardFormTemplateDetail?.template;
+      if (!template || template.status !== "draft") {
+        this.setStatus("섹션을 추가하려면 템플릿 수정 버튼을 눌러 초안을 먼저 만들어 주세요.");
+        return;
+      }
       this.wizardSectionSaving = true;
       try {
         const response = await fetch("/api/wizard-content-sections", {
@@ -3531,10 +3544,25 @@ const adminApp = createApp({
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `섹션 생성 오류(${response.status})`);
         const createdSection = result.section;
+        const membershipResponse = await fetch("/api/wizard-form-template-sections", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            templateId: template.id,
+            sectionId: createdSection.id,
+          }),
+        });
+        const membershipResult = await membershipResponse.json().catch(() => ({}));
+        if (!membershipResponse.ok) {
+          throw new Error(`섹션은 생성됐지만 템플릿 추가에 실패했습니다: ${
+            membershipResult.message || membershipResult.error || `오류(${membershipResponse.status})`
+          }`);
+        }
         await this.loadWizardSections({ fresh: true });
         await this.selectWizardSection(createdSection.sectionKey);
+        await this.loadWizardFormTemplateDetail(template.id, { silent: true });
         this.newWizardSectionForm = { sectionKey: "", name: "", description: "" };
-        this.setStatus(`"${createdSection.name}" 섹션을 생성했습니다. 다른 섹션을 계속 추가할 수 있습니다.`);
+        this.setStatus(`"${createdSection.name}" 섹션을 생성하고 현재 템플릿 초안에 추가했습니다.`);
       } catch (error) {
         this.setStatus(`섹션 생성 실패: ${error.message}`);
       } finally {
@@ -3599,6 +3627,9 @@ const adminApp = createApp({
         if (!response.ok) throw new Error(result.message || result.error || `섹션 활성화 오류(${response.status})`);
         await this.loadWizardSections({ fresh: true });
         await this.loadWizardSectionDetail(id);
+        if (this.wizardFormTemplateDetail?.template?.id) {
+          await this.loadWizardFormTemplateDetail(this.wizardFormTemplateDetail.template.id, { silent: true });
+        }
         this.setStatus("섹션을 활성 버전으로 지정했습니다. Wizard에 즉시 반영됩니다.");
       } catch (error) {
         this.setStatus(`섹션 활성화 실패: ${error.message}`);

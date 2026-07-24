@@ -116,12 +116,16 @@ async function fetchTemplateSections(sql, templateId) {
     select ts.id::text, ts.form_template_id::text, source_section.id::text as section_id,
       ts.section_key,
       source_section.name as section_name, source_section.description as section_description, source_section.version as section_version,
-      source_section.status as section_status, coalesce(ts.ai_design, source_section.ai_design) as ai_design,
-      ts.sort_order, ts.is_required, ts.is_visible, ts.order_change_allowed,
-      ts.user_reorder_allowed, ts.fixed_position, ts.created_at, ts.updated_at
+      source_section.status as section_status, source_section.ai_design,
+      ts.sort_order, source_section.is_required,
+      source_section.is_visible_in_wizard as is_visible,
+      source_section.order_change_allowed,
+      case when source_section.fixed_position is not null then false else source_section.order_change_allowed end as user_reorder_allowed,
+      source_section.fixed_position, ts.created_at, ts.updated_at
     from wizard_form_template_sections ts
     left join lateral (
-      select s.id, s.name, s.description, s.version, s.status, s.ai_design
+      select s.id, s.name, s.description, s.version, s.status, s.ai_design,
+        s.is_required, s.is_visible_in_wizard, s.order_change_allowed, s.fixed_position
       from wizard_content_sections s
       where (ts.section_id is not null and s.id = ts.section_id)
         or (ts.section_id is null and s.section_key = ts.section_key and s.status = 'active')
@@ -156,7 +160,7 @@ async function validateTemplateDraft(sql, templateId) {
     errors.push({ code: "VISIBLE_SECTION_REQUIRED", message: "At least one visible section is required." });
   }
   for (const section of sections) {
-    if (!section.sectionVersion) {
+    if (!section.sectionVersion || section.sectionStatus !== "active") {
       errors.push({ code: "ACTIVE_SECTION_REQUIRED", path: section.sectionKey, message: "The section needs an active version." });
     }
     if (section.sectionId) {

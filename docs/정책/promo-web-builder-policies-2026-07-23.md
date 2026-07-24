@@ -54,6 +54,10 @@
 - **MUST NOT** 다음을 허용: `@import`, `javascript:` URL, 임의 외부 URL, 앱 Shell 선택자, `html/body/:root` 수정, 무제한 `position: fixed`, 과도한 z-index, 관리자 잠금 속성 우회, `.promo-renderer` 범위를 벗어나는 선택자.
 - **MUST** Layer B 정적 CSS의 최상위 선택자는 `.promo-renderer` 또는 그 하위(`.rendered-*`, `[data-section-key]`, `[data-item-key]`)로 시작한다.
 - 런타임 인스턴스 값(`--promo-bg`, `--promo-accent` 등)은 계약·allowlist를 거쳐야 하며 하드코딩 검사 대상에서 제외한다.
+- **MUST**(Section AI V2) LLM은 **허용 카탈로그(region·style slot·token·asset target)에서 선택만** 하고, 색/폰트/간격은 `ai_selectable=true` 디자인 토큰만 쓴다.
+- **MUST NOT** LLM이 좌표(`xPct/yPx/widthPct/heightPx`)나 임의 CSS를 직접 만든다. **좌표는 결정론적 Executor 또는 사용자 드래그 편집으로만** 생성한다.
+- **MUST** LLM 출력(예: `design_plan`/`SectionDesignSpec`)은 **Validator를 통과하기 전** 저장·적용하지 않는다.
+- **MUST** 배경/컴포넌트 이미지 프롬프트는 서버에서 조립하고, 브랜드명·HEX·재질을 시스템 프롬프트에 하드코딩하지 않는다. 이미지에 페이드·그라데이션·마스크를 굽지 않고 Renderer가 CSS로 처리한다.
 
 ## 4. 컴포넌트·템플릿 정책
 
@@ -64,6 +68,8 @@
 - **MUST NOT** 사용 중인 컴포넌트·섹션을 하드 삭제한다(archive/참조 차단만).
 - **MUST** 컴포넌트·섹션·템플릿·프롬프트·메시지 등 관리 대상은 draft→active→archived 버전과 감사 이력을 따른다.
 - **MUST** 상태별 active는 1건만 유지한다(DB partial unique).
+- **MUST**(다중 필드 컴포넌트) 하나의 컴포넌트 버전은 여러 타입 필드(`fld_*`)를 가질 수 있고, 이미지 작업의 실제 주소는 **`componentInstanceId + fieldKey`** 다(`itemKey`는 호환용).
+- **MUST NOT** 콘텐츠 잠금(`is_locked`)과 스타일 잠금을 하나로 해석한다. 스타일 잠금이 필요하면 콘텐츠 잠금과 분리된 `styleLock` 계약을 별도로 둔다.
 
 ## 5. i18n·콘텐츠 경계 정책
 

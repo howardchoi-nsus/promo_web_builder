@@ -48,6 +48,7 @@ const component = {
 let browser;
 let addBody;
 let activateBody;
+let createdSectionBody;
 try {
   await waitForServer();
   browser = await chromium.launch({ headless: true });
@@ -74,6 +75,20 @@ try {
       template = { ...template, status: "active" };
       return reply({ ok: true, template, layoutIdentity: { layoutRevision: 1 } });
     }
+    if (url.pathname === "/api/wizard-content-sections" && request.method() === "POST") {
+      createdSectionBody = request.postDataJSON();
+      return reply({
+        ok: true,
+        section: {
+          id: "99999999-9999-4999-8999-999999999999",
+          sectionKey: "sec_created",
+          name: createdSectionBody.name,
+          description: createdSectionBody.description || "",
+          status: "draft",
+          version: 1,
+        },
+      }, 201);
+    }
     if (url.pathname === "/api/wizard-content-sections") return reply({ ok: true, sections: [sectionA, sectionB] });
     if (url.pathname === "/api/wizard-content-section") return reply({ ok: true, section: sectionA, items: [], histories: [] });
     if (url.pathname === "/api/wizard-content-section-usage") return reply({ ok: true, templates: [template] });
@@ -89,12 +104,21 @@ try {
   const activeComponentOption = page.locator(`select option[value="${activeComponentVersionId}"]`);
   assert.equal(await activeComponentOption.count(), 1);
   assert.match(await activeComponentOption.textContent(), /Hero Title.*v1/);
-  await page.locator(".template-section-add button").click();
-  const select = page.locator(".template-section-create select");
-  await select.selectOption(sectionB.id);
-  await page.locator(".template-section-create .action-row button").click();
+  await page.locator(".section-library-add button").click();
+  await page.locator(".section-library-create input").nth(1).fill("New Promotion Section");
+  await page.locator(".section-library-create input").nth(2).fill("Created in the template section manager");
+  await page.locator(".section-library-create .action-row button").click();
   await page.waitForTimeout(50);
-  assert.deepEqual(addBody, { templateId: template.id, sectionId: sectionB.id });
+  assert.deepEqual(createdSectionBody, {
+    sectionKey: "",
+    name: "New Promotion Section",
+    description: "Created in the template section manager",
+  });
+  assert.deepEqual(addBody, {
+    templateId: template.id,
+    sectionId: "99999999-9999-4999-8999-999999999999",
+  });
+  assert.equal(await page.locator(".template-section-composer").count(), 0);
 
   const templateCard = page.locator(".template-list-card").first();
   await templateCard.locator(".template-settings-toggle").click();

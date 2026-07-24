@@ -245,3 +245,17 @@ locale 파일 구조(예, `ko.json`):
 4. 하드코딩 라벨을 도메인 단위로 메시지 키로 치환한다.
 5. 영문 혼합 라벨(`Section 이름`, `Item Key` 등)과 내부 개발 용어(`CRUD`, `LLM`, `MD`)가 사용자 화면에 남지 않는지 회귀 테스트한다.
 6. `수정/편집`, `변경 이력/작업 이력`, `보관/삭제`가 용도에 맞게 구분되는지 브라우저 테스트한다.
+
+## 12. 컴포넌트 계층 용어 (2026-07-23 추가)
+
+Section AI V2·다중 필드 컴포넌트(마이그레이션 029·031) 도입으로 아래 계층 용어를 사용자 화면 기준으로 확정한다. 내부 DB/API의 `item`/`itemKey`/`fieldKey`는 호환용으로 유지하되 화면에는 노출하지 않는다.
+
+| 사용자 화면(ko) | en | 내부 식별 | 설명 |
+|---|---|---|---|
+| 컴포넌트 | Component | `component_key` | 재사용 콘텐츠 블록(버전 관리) |
+| 컴포넌트 인스턴스 | Component instance | `componentInstanceId` | 특정 섹션에 배치된 컴포넌트 |
+| 컴포넌트 요소 | Component element | `fieldKey`(`fld_*`) | 컴포넌트 내부 텍스트·이미지·CTA 입력 단위 |
+| 컴포넌트 식별자 | Component ID | `component_key` | 화면 표시 식별자 |
+
+- **주의**: 기존 `entity.item.label`(항목/Item)은 위저드 입력 단위 라벨로 유지하되, 컴포넌트 모델에서는 "컴포넌트 요소"가 정식 명칭이다. 이미지 작업의 실제 주소는 `componentInstanceId + fieldKey`다(`itemKey`는 호환).
+- 상세 정의는 `docs/claude/section-component-terminology-glossary-2026-07-23.md` 및 `계획/ai-section-auto-design-development-plan-2026-07-23.md` §3 참조.

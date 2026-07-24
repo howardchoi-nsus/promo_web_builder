@@ -14,10 +14,11 @@ const promptActivate = read("api", "prompt-template-activate.js");
 const { validateStageModelConfig } = require("../api/_prompt-execution-snapshot");
 
 assert.match(sectionStore, /backgroundPromptText:\s*String\(source\.backgroundPromptText/);
-assert.match(templateStore, /coalesce\(ts\.ai_design,\s*source_section\.ai_design\)/);
+assert.match(templateStore, /source_section\.status as section_status,\s*source_section\.ai_design/);
+assert.doesNotMatch(templateStore, /coalesce\(ts\.ai_design,\s*source_section\.ai_design\)/);
 assert.match(templateSections, /ai_design\s*=\s*\$\{JSON\.stringify/);
 assert.match(admin, /backgroundPromptText:\s*section\.aiDesign\?\.backgroundPromptText/);
-assert.match(admin, /aiDesign:\s*this\.wizardFormTemplateSectionEditor\.aiDesign/);
+assert.match(admin, /body:\s*JSON\.stringify\(\{\s*id:\s*section\.id,\s*\.\.\.this\.wizardSectionFieldsEditor\s*\}\)/);
 assert.match(html, /섹션 배경 이미지 관리자 지침/);
 assert.match(promptUpdate, /if \(current\.status === "active"\)/);
 assert.match(promptActivate, /validateStageModelConfig\(target\.type/);

@@ -35,6 +35,14 @@ module.exports = async function handler(req, res) {
     }
 
     await sql`select activate_wizard_content_section(${id}::uuid, ${changeNote})`;
+    await sql`
+      update wizard_form_template_sections membership
+      set section_id = ${id}::uuid, updated_at = now()
+      from wizard_form_templates template
+      where membership.form_template_id = template.id
+        and template.status = 'draft'
+        and membership.section_key = ${target.section_key}
+    `;
     const updated = await fetchSectionRow(sql, id);
     return res.status(200).json({ ok: true, section: toSection(updated) });
   } catch (error) {

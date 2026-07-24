@@ -2,8 +2,10 @@
 
 - 작성일: 2026-07-16
 - 상태: 서비스 설계안
-- 개발 기준: `visual-template-editor-development-plan-2026-07-16.md`
+- 개발 기준: `visual-template-editor-development-plan-2026-07-16.md`(현재 `계획/`로 이동)
 - 운영 원칙: n8n 유지, 기존 이미지 생성 파이프라인 병행
+
+> **현행화 메모(2026-07-23)**: 07-16 서비스 설계안이다. 이후 섹션 AI 생성은 **다이렉트 LLM 기반 Section AI V2**(`promo-section-design-*`, `promo-multi-component-layout-plan`, 마이그레이션 029·031·032)로 구현됐고, n8n 경유는 축소 방향이다(정책·기획서 참조). 현행 파이프라인은 `계획/ai-section-auto-design-development-plan-2026-07-23.md`(v2)를 정본으로 본다.
 
 서비스 구분:
 

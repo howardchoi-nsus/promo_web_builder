@@ -16,7 +16,7 @@ assert.match(html, /activateSelectedLocaleMessages/);
 assert.match(html, /admin\.i18n\.koreanText/);
 assert.match(html, /admin\.i18n\.englishText/);
 assert.match(html, /<section class="section-library-manager">/);
-assert.match(html, /t\('entity\.template\.sectionConfig'\)/);
+assert.doesNotMatch(html, /t\('entity\.template\.sectionConfig'\)/);
 assert.match(html, /t\('entity\.component\.fieldLabel'\)/);
 assert.match(html, /프로모션 빌더에서 사용할 섹션 구성과 최초 노출 레이아웃/);
 assert.match(html, /class="section-library-list-column"/);

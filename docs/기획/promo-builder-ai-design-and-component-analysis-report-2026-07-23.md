@@ -11,6 +11,21 @@
   - `docs/계획/section-background-and-image-frame-development-plan-2026-07-23.md`
   - `docs/계획/component-template-separation-development-plan-2026-07-22.md`
 
+## 0.1 현행화 메모 (2026-07-24, 소스 대조)
+
+이 리포트는 마이그레이션 `030` 이전 기준으로 작성됐다. 이후 **`031_section_ai_v2_and_multi_field_components` · `032_template_ai_policy_and_multi_layout`** 가 적용되어, 아래 P0/P1 지적 중 다수가 **DB·백엔드에서 구현**됐다. (UI 연결·회귀는 별도 확인 필요.)
+
+| 리포트 지적 | 현행 상태 | 근거 |
+|---|---|---|
+| §5.5 복합(다중 필드) 컴포넌트 — 미구현 | **구현** | 031 `wizard_item_component_version_fields`(`fld_*`, `field_kind`, `style_slots`, `image_policy`, `is_locked`) |
+| §5.2 stuck asset job 복구·재시도 — 부분 | **구현** | 031 `lease_token/lease_expires_at/heartbeat_at/next_retry_at/max_attempts/failure_stage` + `api/promo-section-design-asset-retry.js` |
+| §5.3 prompt/policy 스냅샷 실행 기록 — 미구현 | **구현** | 031 `prompt_snapshot`·`token_values_hash`·`execution_key` |
+| 이미지 생성 vs 레이아웃 분리(requestMode) — 미구현 | **계약 구현(부분)** | 029 `request_mode`(`full/layout-style/assets`) — UI 버튼 연결 확인 필요 |
+| 상태머신(`processing` stuck) | **정비됨** | 031 `queued→…→applied/failed/cancelled` + active execution unique |
+| 이미지 작업 필드 단위 주소 | **구현** | 031 asset job `component_instance_id`+`target_field_key` |
+
+아직 남은 것(확인 필요): §5.3 **관리자 프롬프트 → provider 연결**(코드가 관리자 프롬프트 DB를 조회하는지), §5.1 배경/레이아웃 실행 경계의 **UI 버튼 분리**, §5.4 `contain`/`60%` 정책 확정, §5.6~5.7 편집기 스크롤·프리뷰 연동, 5단계 개편. 아래 §5·§7·§8은 이 델타를 감안해 읽는다.
+
 ## 1. 결론
 
 현재 시스템은 섹션 배경 이미지와 컴포넌트 이미지 생성, 3단 레이아웃, 컴포넌트 아코디언, Web Output 새 창 열기 등 주요 UI 기반은 갖추고 있다. 그러나 다음 세 가지 구조적 문제가 남아 있다.
@@ -295,10 +310,10 @@ Web Output은 이미 새 창으로 열 수 있으나 동일 기능 버튼이 여
 | AI 생성 완료 후 자동 적용 | 코드 반영 | 성공·실패·취소 상태 회귀 필요 |
 | AI 생성 진행 표시 | 코드 존재 | 실제 비동기 실행 시 시각 검증 필요 |
 | 배경 페이드와 배경색 일치 | 코드 반영 | 색 변경 후 재적용까지 회귀 필요 |
-| 배경 이미지 실패 재시도 | 부분 구현 | stuck `processing` 복구 불가 |
-| 관리자 이미지 프롬프트 관리 | 미구현 | 범용 Prompt Manager와 provider 미연결 |
-| 이미지 생성과 레이아웃 생성 분리 | 미구현 | 레이아웃 붕괴의 주요 원인 |
-| 복합 컴포넌트 | 미구현 | DB 구조 변경 필요 |
+| 배경 이미지 실패 재시도 | **구현(031)** | lease/heartbeat/retry + `asset-retry` API, UI 회귀 확인 필요 |
+| 관리자 이미지 프롬프트 관리 | 부분 | 실행 `prompt_snapshot`은 추가(031), provider의 관리자 프롬프트 조회 연결은 확인 필요 |
+| 이미지 생성과 레이아웃 생성 분리 | 부분 구현 | `request_mode`(029) 계약 존재, 실행 버튼 분리(UI) 확인 필요 |
+| 복합 컴포넌트 | **구현(031)** | `wizard_item_component_version_fields`, 관리자 UI 반영 확인 필요 |
 | 다중 선택 AI 정렬 | 미구현 | P2 권장 |
 | 섹션 key 자동 생성 | 미구현 | DB 생성·읽기 전용 UI 권장 |
 | 섹션 CRUD 로그 별도 화면 | 미구현 | P2 권장 |
@@ -307,11 +322,13 @@ Web Output은 이미 새 창으로 열 수 있으나 동일 기능 버튼이 여
 
 ### P0 — 다음 기능 개발 전에 해결
 
-1. 배경 이미지 생성과 레이아웃 생성을 분리한다.
+> 현행화(2026-07-24): 3·5는 031로 **구현 완료**, 1은 `request_mode`(029) 계약으로 **부분 구현**(UI 분리 확인 필요), 4는 **부분**(prompt_snapshot 추가, provider 연결 확인 필요). 아래는 원본 우선순위이며 실제 잔여는 §0.1 참조.
+
+1. 배경 이미지 생성과 레이아웃 생성을 분리한다. — 부분(request_mode 존재, UI 분리 확인)
 2. 레이아웃 패치를 delta로 제한하고 revision·잠금을 재검증한다.
-3. stuck asset job 복구와 이미지 단계 재시도를 구현한다.
-4. 관리자 프롬프트·컴포넌트 이미지 정책을 실제 호출에 연결한다.
-5. prompt와 policy 스냅샷을 실행 이력에 기록한다.
+3. stuck asset job 복구와 이미지 단계 재시도를 구현한다. — **완료(031)**
+4. 관리자 프롬프트·컴포넌트 이미지 정책을 실제 호출에 연결한다. — 부분(provider 연결 확인)
+5. prompt와 policy 스냅샷을 실행 이력에 기록한다. — **완료(031)**
 
 ### P1 — 안정화 직후
 
