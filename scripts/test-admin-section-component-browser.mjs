@@ -47,6 +47,7 @@ const component = {
 
 let browser;
 let addBody;
+let activateBody;
 try {
   await waitForServer();
   browser = await chromium.launch({ headless: true });
@@ -67,6 +68,10 @@ try {
     if (url.pathname === "/api/wizard-form-template-sections" && request.method() === "POST") {
       addBody = request.postDataJSON();
       return reply({ ok: true, section: { ...membership, id: "new-membership", sectionId: sectionB.id, sectionKey: sectionB.sectionKey } }, 201);
+    }
+    if (url.pathname === "/api/wizard-form-template-activate" && request.method() === "POST") {
+      activateBody = request.postDataJSON();
+      return reply({ ok: true, template: { ...template, status: "active" }, layoutIdentity: { layoutRevision: 1 } });
     }
     if (url.pathname === "/api/wizard-content-sections") return reply({ ok: true, sections: [sectionA, sectionB] });
     if (url.pathname === "/api/wizard-content-section") return reply({ ok: true, section: sectionA, items: [], histories: [] });
@@ -89,6 +94,30 @@ try {
   await page.locator(".template-section-create .action-row button").click();
   await page.waitForTimeout(50);
   assert.deepEqual(addBody, { templateId: template.id, sectionId: sectionB.id });
+
+  const templateCard = page.locator(".template-list-card").first();
+  await templateCard.locator(".template-settings-toggle").click();
+  await templateCard.locator(".template-list-settings").waitFor({ state: "visible" });
+  assert.equal(await templateCard.locator('input[readonly][value="default"]').count(), 1);
+
+  await templateCard.getByRole("button", { name: "복제", exact: true }).click();
+  await page.locator(".form-template-duplicate").waitFor({ state: "visible" });
+  assert.equal(await page.locator(".form-template-duplicate input").count(), 2);
+  assert.equal(await page.locator(".form-template-duplicate input").evaluateAll((inputs) => inputs.some((input) => /key/i.test(input.name || input.placeholder || ""))), false);
+  await page.locator(".form-template-duplicate .action-row button").first().click();
+
+  await page.locator(".template-list-global-actions button").click();
+  await page.locator(".form-template-create").waitFor({ state: "visible" });
+  assert.equal(await page.locator(".form-template-create input").count(), 2);
+  assert.equal(await page.locator(".form-template-create input").evaluateAll((inputs) => inputs.some((input) => /key/i.test(input.name || input.placeholder || ""))), false);
+  await page.locator(".template-list-global-actions button").click();
+
+  await templateCard.locator(".template-active-switch input").check();
+  await page.waitForTimeout(50);
+  assert.deepEqual(activateBody, {
+    id: template.id,
+    changeNote: "관리자 페이지에서 폼 템플릿을 활성화했습니다.",
+  });
   assert.deepEqual(pageErrors, []);
   console.log("Admin item component and section composition browser test passed");
   await context.close();

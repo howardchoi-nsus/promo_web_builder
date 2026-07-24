@@ -1,5 +1,5 @@
 const {
-  getSql, parseBody, fetchTemplates, fetchTemplateRow, toFormTemplate,
+  getSql, parseBody, createTemplateKey, fetchTemplates, fetchTemplateRow, toFormTemplate,
 } = require("./_wizard-form-templates-store");
 const { ensureLayout, cloneLayout } = require("./_wizard-form-template-layout-store");
 
@@ -27,9 +27,8 @@ async function createTemplate(req, res) {
   const sql = getSql();
   const duplicateSourceId = String(body.sourceId || "").trim();
   if (duplicateSourceId) {
-    const templateKey = String(body.templateKey || "").trim();
+    const templateKey = String(body.templateKey || "").trim() || createTemplateKey();
     const name = String(body.name || "").trim();
-    if (!templateKey) return res.status(400).json({ error: "templateKey is required" });
     if (!name) return res.status(400).json({ error: "name is required" });
     if (!/^[a-zA-Z][a-zA-Z0-9_]*$/.test(templateKey)) {
       return res.status(400).json({ error: "templateKey must start with a letter and contain only letters, numbers, and underscores" });
@@ -68,9 +67,8 @@ async function createTemplate(req, res) {
     return res.status(201).json({ ok: true, template: toFormTemplate(row) });
   }
 
-  const templateKey = String(body.templateKey || "").trim();
+  const templateKey = String(body.templateKey || "").trim() || createTemplateKey();
   const name = String(body.name || "").trim();
-  if (!templateKey) return res.status(400).json({ error: "templateKey is required" });
   if (!name) return res.status(400).json({ error: "name is required" });
   if (!/^[a-zA-Z][a-zA-Z0-9_]*$/.test(templateKey)) {
     return res.status(400).json({ error: "templateKey must start with a letter and contain only letters, numbers, and underscores" });

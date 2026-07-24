@@ -1197,12 +1197,13 @@ const adminApp = createApp({
       wizardFormTemplatesError: "",
       wizardFormTemplateSaving: false,
       selectedWizardFormTemplateKey: "",
+      expandedWizardFormTemplateSettingsKey: "",
       wizardFormTemplateDetail: null,
       wizardFormTemplateEditor: { name: "", description: "", isDefault: false, designTokenSetVersionId: "", changeNote: "" },
       showNewWizardFormTemplateForm: false,
-      newWizardFormTemplateForm: { templateKey: "", name: "", description: "", designTokenSetVersionId: "" },
+      newWizardFormTemplateForm: { name: "", description: "", designTokenSetVersionId: "" },
       showDuplicateWizardFormTemplateForm: false,
-      duplicateWizardFormTemplateForm: { templateKey: "", name: "", description: "" },
+      duplicateWizardFormTemplateForm: { sourceId: "", name: "", description: "" },
       duplicateWizardFormTemplateError: "",
       selectedWizardFormTemplateSectionId: "",
       expandedWizardFormTemplateSectionId: "",
@@ -1636,12 +1637,16 @@ const adminApp = createApp({
       return Array.from(groups.values())
         .map((group) => {
           const versions = [...group.versions].sort((a, b) => b.version - a.version);
-          const primary = versions.find((version) => version.status === "active")
-            || versions.find((version) => version.status === "draft")
+          const draft = versions.find((version) => version.status === "draft") || null;
+          const active = versions.find((version) => version.status === "active") || null;
+          const inactive = versions.find((version) => version.status === "inactive") || null;
+          const primary = draft
+            || active
+            || inactive
             || versions[0];
-          return { ...group, versions, primary };
+          return { ...group, versions, primary, draft, active, inactive };
         })
-        .sort((a, b) => Number(Boolean(b.primary?.isDefault)) - Number(Boolean(a.primary?.isDefault))
+        .sort((a, b) => Number(Boolean(b.active?.isDefault || b.primary?.isDefault)) - Number(Boolean(a.active?.isDefault || a.primary?.isDefault))
           || String(a.primary?.name || "").localeCompare(String(b.primary?.name || "")));
     },
 
@@ -1651,16 +1656,6 @@ const adminApp = createApp({
 
     selectedWizardFormTemplateHasDraft() {
       return Boolean(this.selectedWizardFormTemplateGroup?.versions.some((version) => version.status === "draft"));
-    },
-
-    newWizardFormTemplateKeyExists() {
-      const key = String(this.newWizardFormTemplateForm.templateKey || "").trim();
-      return Boolean(key && this.wizardFormTemplates.some((template) => template.templateKey === key));
-    },
-
-    duplicateWizardFormTemplateKeyExists() {
-      const key = String(this.duplicateWizardFormTemplateForm.templateKey || "").trim();
-      return Boolean(key && this.wizardFormTemplates.some((template) => template.templateKey === key));
     },
 
     wizardFormTemplateCanEdit() {
@@ -2676,20 +2671,27 @@ const adminApp = createApp({
     toggleNewWizardFormTemplateForm() {
       this.showNewWizardFormTemplateForm = !this.showNewWizardFormTemplateForm;
       this.showDuplicateWizardFormTemplateForm = false;
-      this.newWizardFormTemplateForm = { templateKey: "", name: "", description: "", designTokenSetVersionId: "" };
+      this.newWizardFormTemplateForm = { name: "", description: "", designTokenSetVersionId: "" };
     },
 
-    toggleDuplicateWizardFormTemplateForm() {
-      const source = this.wizardFormTemplateDetail?.template;
+    openDuplicateWizardFormTemplate(group = this.selectedWizardFormTemplateGroup) {
+      const source = group?.active || group?.draft || group?.primary || this.wizardFormTemplateDetail?.template;
       if (!source) return;
-      this.showDuplicateWizardFormTemplateForm = !this.showDuplicateWizardFormTemplateForm;
+      this.selectedWizardFormTemplateKey = group?.templateKey || source.templateKey;
+      this.showDuplicateWizardFormTemplateForm = true;
       this.duplicateWizardFormTemplateError = "";
       this.showNewWizardFormTemplateForm = false;
       this.duplicateWizardFormTemplateForm = {
-        templateKey: "",
+        sourceId: source.id,
         name: `${source.name} Copy`,
         description: source.description || "",
       };
+    },
+
+    toggleWizardFormTemplateSettings(group) {
+      const opening = this.expandedWizardFormTemplateSettingsKey !== group.templateKey;
+      this.expandedWizardFormTemplateSettingsKey = opening ? group.templateKey : "";
+      if (opening) this.selectWizardFormTemplate(group.templateKey, { silent: true });
     },
 
     async createWizardFormTemplate() {
@@ -2699,7 +2701,11 @@ const adminApp = createApp({
         const response = await fetch("/api/wizard-form-templates", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(this.newWizardFormTemplateForm),
+          body: JSON.stringify({
+            name: this.newWizardFormTemplateForm.name,
+            description: this.newWizardFormTemplateForm.description,
+            designTokenSetVersionId: this.newWizardFormTemplateForm.designTokenSetVersionId,
+          }),
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `폼 템플릿 생성 오류(${response.status})`);
@@ -2715,7 +2721,9 @@ const adminApp = createApp({
     },
 
     async duplicateWizardFormTemplate() {
-      const source = this.wizardFormTemplateDetail?.template;
+      const source = this.wizardFormTemplates.find(
+        (template) => template.id === this.duplicateWizardFormTemplateForm.sourceId
+      ) || this.wizardFormTemplateDetail?.template;
       if (!source || this.wizardFormTemplateSaving) return;
       this.duplicateWizardFormTemplateError = "";
       this.wizardFormTemplateSaving = true;
@@ -2723,7 +2731,11 @@ const adminApp = createApp({
         const response = await fetch("/api/wizard-form-templates", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sourceId: source.id, ...this.duplicateWizardFormTemplateForm }),
+          body: JSON.stringify({
+            sourceId: source.id,
+            name: this.duplicateWizardFormTemplateForm.name,
+            description: this.duplicateWizardFormTemplateForm.description,
+          }),
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `폼 템플릿 복제 오류(${response.status})`);
@@ -2732,17 +2744,15 @@ const adminApp = createApp({
         await this.loadWizardFormTemplates({ fresh: true });
         this.setStatus("폼 템플릿을 새 초안으로 복제했습니다");
       } catch (error) {
-        this.duplicateWizardFormTemplateError = error.message === "templateKey already exists"
-          ? "이미 사용 중인 Template Key입니다. 다른 Key를 입력해 주세요."
-          : error.message;
+        this.duplicateWizardFormTemplateError = error.message;
         this.setStatus(`폼 템플릿 복제 실패: ${error.message}`);
       } finally {
         this.wizardFormTemplateSaving = false;
       }
     },
 
-    async createWizardFormTemplateDraft() {
-      const source = this.wizardFormTemplateDetail?.template;
+    async createWizardFormTemplateDraft(sourceTemplate = this.wizardFormTemplateDetail?.template) {
+      const source = sourceTemplate;
       if (!source || this.wizardFormTemplateSaving) return;
       this.wizardFormTemplateSaving = true;
       try {
@@ -2761,6 +2771,18 @@ const adminApp = createApp({
       } finally {
         this.wizardFormTemplateSaving = false;
       }
+    },
+
+    async editWizardFormTemplate(group) {
+      if (!group || this.wizardFormTemplateSaving) return;
+      this.selectedWizardFormTemplateKey = group.templateKey;
+      this.expandedWizardFormTemplateSettingsKey = group.templateKey;
+      if (group.draft) {
+        await this.loadWizardFormTemplateDetail(group.draft.id);
+        return;
+      }
+      const source = group.active || group.inactive || group.primary;
+      if (source) await this.createWizardFormTemplateDraft(source);
     },
 
     async saveWizardFormTemplate() {
@@ -2785,8 +2807,8 @@ const adminApp = createApp({
       }
     },
 
-    async activateWizardFormTemplate() {
-      const template = this.wizardFormTemplateDetail?.template;
+    async activateWizardFormTemplate(templateOverride = null) {
+      const template = templateOverride || this.wizardFormTemplateDetail?.template;
       if (!template || this.wizardFormTemplateSaving) return;
       this.wizardFormTemplateSaving = true;
       try {
@@ -2802,6 +2824,63 @@ const adminApp = createApp({
         this.setStatus(`폼 템플릿 v${result.template?.version || template.version} · Layout r${layoutRevision}을 활성화했습니다`);
       } catch (error) {
         this.setStatus(`폼 템플릿 활성화 실패: ${error.message}`);
+      } finally {
+        this.wizardFormTemplateSaving = false;
+      }
+    },
+
+    async deactivateWizardFormTemplate(templateOverride = null) {
+      const template = templateOverride || this.wizardFormTemplateDetail?.template;
+      if (!template || template.status !== "active" || this.wizardFormTemplateSaving) return;
+      this.wizardFormTemplateSaving = true;
+      try {
+        const response = await fetch("/api/wizard-form-template-deactivate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: template.id, changeNote: "관리자 페이지에서 폼 템플릿을 비활성화했습니다." }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `폼 템플릿 비활성화 오류(${response.status})`);
+        await this.loadWizardFormTemplates({ fresh: true });
+        this.setStatus(`폼 템플릿 v${result.template?.version || template.version}을 비활성화했습니다`);
+      } catch (error) {
+        this.setStatus(`폼 템플릿 비활성화 실패: ${error.message}`);
+      } finally {
+        this.wizardFormTemplateSaving = false;
+      }
+    },
+
+    async toggleWizardFormTemplateActive(group, enabled) {
+      if (!group || this.wizardFormTemplateSaving) return;
+      if (enabled) {
+        const target = group.draft || group.inactive || group.primary;
+        if (target) await this.activateWizardFormTemplate(target);
+        return;
+      }
+      if (group.active) await this.deactivateWizardFormTemplate(group.active);
+    },
+
+    async deleteWizardFormTemplate(group) {
+      const target = group?.draft || group?.inactive || null;
+      if (!target || this.wizardFormTemplateSaving) {
+        this.setStatus("활성 템플릿은 삭제할 수 없습니다. 먼저 다른 버전을 활성화하거나 비활성화해 주세요.");
+        return;
+      }
+      if (!window.confirm(`${target.name} v${target.version}을 삭제(보관)할까요?`)) return;
+      this.wizardFormTemplateSaving = true;
+      try {
+        const response = await fetch("/api/wizard-form-template-archive", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: target.id, changeNote: "관리자 페이지 템플릿 목록에서 삭제(보관)했습니다." }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `폼 템플릿 삭제 오류(${response.status})`);
+        this.expandedWizardFormTemplateSettingsKey = "";
+        await this.loadWizardFormTemplates({ fresh: true });
+        this.setStatus("폼 템플릿 버전을 삭제(보관)했습니다");
+      } catch (error) {
+        this.setStatus(`폼 템플릿 삭제 실패: ${error.message}`);
       } finally {
         this.wizardFormTemplateSaving = false;
       }
@@ -3623,7 +3702,7 @@ const adminApp = createApp({
             id: this.wizardItemEditor.id || undefined,
             sectionId: section.id,
             componentVersionId: this.wizardItemEditor.componentVersionId,
-            itemKey: this.wizardItemEditor.itemKey,
+            ...(this.wizardItemEditor.id ? { itemKey: this.wizardItemEditor.itemKey } : {}),
             name: this.wizardItemEditor.name,
             isVisibleInWizard: this.wizardItemEditor.isVisibleInWizard,
             isRequired: this.wizardItemEditor.isRequired,

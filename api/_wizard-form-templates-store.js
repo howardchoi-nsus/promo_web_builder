@@ -1,7 +1,12 @@
 const { getDatabaseUrl } = require("./_db");
 const { neon } = require("@neondatabase/serverless");
+const { randomUUID } = require("crypto");
 
 const TEMPLATE_STATUSES = ["draft", "active", "inactive", "archived"];
+
+function createTemplateKey() {
+  return `tpl_${randomUUID().replace(/-/g, "")}`;
+}
 
 function getSql() {
   const databaseUrl = getDatabaseUrl();
@@ -170,6 +175,7 @@ async function validateTemplateDraft(sql, templateId) {
 
 module.exports = {
   TEMPLATE_STATUSES,
+  createTemplateKey,
   getSql,
   parseBody,
   normalizeBoolean,

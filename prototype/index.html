@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="/prototype/design-tokens.css?v=app-tokens-v1" />
     <link rel="stylesheet" href="/prototype/app-shell.css?v=app-shell-sidebar-v3" />
     <link rel="stylesheet" href="/prototype/app-components.css?v=app-components-v1" />
-    <link rel="stylesheet" href="/prototype/styles.css?v=app-tokens-v1" />
+    <link rel="stylesheet" href="/prototype/styles.css?v=admin-template-manager-v1" />
     <script src="/prototype/vendor/lucide/lucide.min.js?v=1.8.0"></script>
     <script src="/prototype/i18n-runtime.js?v=i18n-runtime-v1"></script>
     <script src="/prototype/shared-shell.js?v=app-shell-sidebar-v4"></script>
@@ -1116,45 +1116,111 @@
                 <span>{{ wizardFormTemplatesError }}</span>
               </div>
 
-              <div class="form-template-create" v-if="showNewWizardFormTemplateForm">
-                <label class="field compact-field">
-                  <span>Template Key</span>
-                  <input v-model="newWizardFormTemplateForm.templateKey" type="text" autocomplete="off" placeholder="예: aaa" />
-                  <small class="field-error" v-if="newWizardFormTemplateKeyExists">이미 사용 중인 Template Key입니다.</small>
-                </label>
-                <label class="field compact-field">
-                  <span>템플릿 이름</span>
-                  <input v-model="newWizardFormTemplateForm.name" type="text" autocomplete="off" />
-                </label>
-                <label class="field compact-field">
-                  <span>{{ t('common.field.description') }}</span>
-                  <input v-model="newWizardFormTemplateForm.description" type="text" autocomplete="off" />
-                </label>
-                <label class="field compact-field">
-                  <span>디자인 토큰 세트</span>
-                  <select v-model="newWizardFormTemplateForm.designTokenSetVersionId"><option value="">선택하세요</option><option v-for="tokenSet in designTokenSets.filter(item => item.versionStatus === 'active')" :key="tokenSet.versionId" :value="tokenSet.versionId">{{ tokenSet.name }} · v{{ tokenSet.version }}</option></select>
-                </label>
-                <div class="action-row align-right">
-                  <button class="tiny-button primary" type="button" :disabled="wizardFormTemplateSaving || !newWizardFormTemplateForm.templateKey || !newWizardFormTemplateForm.name || !newWizardFormTemplateForm.designTokenSetVersionId || newWizardFormTemplateKeyExists" @click="createWizardFormTemplate">템플릿 생성</button>
-                </div>
-              </div>
-
               <div class="form-template-admin-grid">
-                <aside class="prompt-list-panel">
-                  <button
+                <aside class="prompt-list-panel template-management-list">
+                  <article
                     v-for="group in groupedWizardFormTemplates"
                     :key="group.templateKey"
-                    class="prompt-list-item"
-                    type="button"
+                    class="template-list-card"
                     :class="{ selected: selectedWizardFormTemplateKey === group.templateKey }"
-                    @click="selectWizardFormTemplate(group.templateKey)"
                   >
-                    <strong>{{ group.primary?.name }}</strong>
-                    <span>{{ group.templateKey }} · v{{ group.primary?.version }} · {{ group.versions.length }}개 버전</span>
-                    <em :class="`status-${group.primary?.status}`">{{ group.primary?.isDefault ? '기본' : wizardSectionStatusLabel(group.primary?.status) }}</em>
-                  </button>
+                    <div class="template-list-card__header">
+                      <button
+                        class="prompt-list-item template-list-select"
+                        type="button"
+                        :class="{ selected: selectedWizardFormTemplateKey === group.templateKey }"
+                        @click="selectWizardFormTemplate(group.templateKey)"
+                      >
+                        <strong>{{ group.primary?.name }}</strong>
+                        <span>{{ group.templateKey }} · v{{ group.primary?.version }} · {{ group.versions.length }}개 버전</span>
+                        <em :class="`status-${group.primary?.status}`">{{ group.primary?.isDefault ? '기본' : wizardSectionStatusLabel(group.primary?.status) }}</em>
+                      </button>
+                      <button
+                        class="template-settings-toggle"
+                        type="button"
+                        :aria-expanded="expandedWizardFormTemplateSettingsKey === group.templateKey"
+                        :aria-label="`${group.primary?.name || group.templateKey} 설정`"
+                        title="템플릿 설정"
+                        @click="toggleWizardFormTemplateSettings(group)"
+                      >⚙</button>
+                    </div>
+                    <div class="template-list-card__actions">
+                      <button class="tiny-button" type="button" :disabled="wizardFormTemplateSaving" @click="editWizardFormTemplate(group)">수정</button>
+                      <button class="tiny-button" type="button" :disabled="wizardFormTemplateSaving" @click="openDuplicateWizardFormTemplate(group)">복제</button>
+                      <button class="tiny-button danger" type="button" :disabled="wizardFormTemplateSaving || (!group.draft && !group.inactive)" @click="deleteWizardFormTemplate(group)">삭제</button>
+                      <label class="template-active-switch" :title="group.primary?.isDefault && group.primary?.status === 'active' ? '기본 템플릿은 다른 기본 템플릿을 활성화하기 전까지 비활성화할 수 없습니다.' : '템플릿 활성 상태'">
+                        <input
+                          type="checkbox"
+                          :checked="group.primary?.status === 'active'"
+                          :disabled="wizardFormTemplateSaving || (group.primary?.isDefault && group.primary?.status === 'active')"
+                          @change="toggleWizardFormTemplateActive(group, $event.target.checked)"
+                        />
+                        <span>{{ group.primary?.status === 'active' ? '활성' : '비활성' }}</span>
+                      </label>
+                    </div>
+                    <div
+                      class="template-list-settings"
+                      v-if="expandedWizardFormTemplateSettingsKey === group.templateKey && wizardFormTemplateDetail?.template?.templateKey === group.templateKey"
+                    >
+                      <label class="field compact-field">
+                        <span>Template Key</span>
+                        <input :value="group.templateKey" type="text" readonly />
+                      </label>
+                      <label class="field compact-field" v-if="group.versions.length > 1">
+                        <span>버전 보기</span>
+                        <select :value="wizardFormTemplateDetail.template.id" @change="loadWizardFormTemplateDetail($event.target.value)">
+                          <option v-for="version in group.versions" :key="version.id" :value="version.id">v{{ version.version }} · {{ wizardSectionStatusLabel(version.status) }}</option>
+                        </select>
+                      </label>
+                      <div class="empty-state compact" v-if="wizardFormTemplateDetail.template.status !== 'draft'">활성·비활성 버전은 읽기 전용입니다. 수정 버튼을 누르면 초안이 열립니다.</div>
+                      <label class="field compact-field">
+                        <span>템플릿 이름</span>
+                        <input v-model="wizardFormTemplateEditor.name" type="text" :disabled="wizardFormTemplateDetail.template.status !== 'draft'" autocomplete="off" />
+                      </label>
+                      <label class="field compact-field">
+                        <span>{{ t('common.field.description') }}</span>
+                        <input v-model="wizardFormTemplateEditor.description" type="text" :disabled="wizardFormTemplateDetail.template.status !== 'draft'" autocomplete="off" />
+                      </label>
+                      <label class="field compact-field">
+                        <span>디자인 토큰 세트</span>
+                        <select v-model="wizardFormTemplateEditor.designTokenSetVersionId" :disabled="wizardFormTemplateDetail.template.status !== 'draft'">
+                          <option value="">선택하세요</option>
+                          <option v-for="tokenSet in designTokenSets.filter(item => item.versionStatus === 'active')" :key="tokenSet.versionId" :value="tokenSet.versionId">{{ tokenSet.name }} · v{{ tokenSet.version }}</option>
+                        </select>
+                      </label>
+                      <label class="switch-control">
+                        <input v-model="wizardFormTemplateEditor.isDefault" type="checkbox" :disabled="wizardFormTemplateDetail.template.status !== 'draft'" />
+                        <span>기본 템플릿으로 지정</span>
+                      </label>
+                      <label class="field compact-field" v-if="wizardFormTemplateDetail.template.status === 'draft'">
+                        <span>{{ t('common.field.changeReason') }}</span>
+                        <input v-model="wizardFormTemplateEditor.changeNote" type="text" autocomplete="off" />
+                      </label>
+                      <button class="tiny-button primary" type="button" v-if="wizardFormTemplateDetail.template.status === 'draft'" :disabled="wizardFormTemplateSaving || !wizardFormTemplateEditor.name || !wizardFormTemplateEditor.designTokenSetVersionId" @click="saveWizardFormTemplate">{{ t('common.action.save') }}</button>
+                    </div>
+                  </article>
                   <div class="empty-state compact" v-if="!wizardFormTemplatesLoading && !groupedWizardFormTemplates.length">등록된 폼 템플릿이 없습니다.</div>
-                  <button class="tiny-button primary template-list-add" type="button" @click="toggleNewWizardFormTemplateForm">{{ showNewWizardFormTemplateForm ? t('common.action.cancel') : `+ ${t('entity.template.add')}` }}</button>
+                  <div class="template-list-global-actions">
+                    <button class="tiny-button primary" type="button" @click="toggleNewWizardFormTemplateForm">{{ showNewWizardFormTemplateForm ? t('common.action.cancel') : `+ ${t('entity.template.add')}` }}</button>
+                  </div>
+                  <div class="form-template-create" v-if="showNewWizardFormTemplateForm">
+                    <small>Template Key는 생성 시 자동으로 부여됩니다.</small>
+                    <label class="field compact-field"><span>템플릿 이름</span><input v-model="newWizardFormTemplateForm.name" type="text" autocomplete="off" /></label>
+                    <label class="field compact-field"><span>{{ t('common.field.description') }}</span><input v-model="newWizardFormTemplateForm.description" type="text" autocomplete="off" /></label>
+                    <label class="field compact-field"><span>디자인 토큰 세트</span><select v-model="newWizardFormTemplateForm.designTokenSetVersionId"><option value="">선택하세요</option><option v-for="tokenSet in designTokenSets.filter(item => item.versionStatus === 'active')" :key="tokenSet.versionId" :value="tokenSet.versionId">{{ tokenSet.name }} · v{{ tokenSet.version }}</option></select></label>
+                    <button class="tiny-button primary" type="button" :disabled="wizardFormTemplateSaving || !newWizardFormTemplateForm.name || !newWizardFormTemplateForm.designTokenSetVersionId" @click="createWizardFormTemplate">템플릿 생성</button>
+                  </div>
+                  <div class="form-template-duplicate" v-if="showDuplicateWizardFormTemplateForm">
+                    <strong>새 템플릿으로 복제</strong>
+                    <small>새 Template Key는 자동으로 생성됩니다.</small>
+                    <div class="outline-item danger-state" v-if="duplicateWizardFormTemplateError"><strong>복제 실패</strong><span>{{ duplicateWizardFormTemplateError }}</span></div>
+                    <label class="field compact-field"><span>새 템플릿 이름</span><input v-model="duplicateWizardFormTemplateForm.name" type="text" autocomplete="off" /></label>
+                    <label class="field compact-field"><span>{{ t('common.field.description') }}</span><input v-model="duplicateWizardFormTemplateForm.description" type="text" autocomplete="off" /></label>
+                    <div class="action-row align-right">
+                      <button class="tiny-button" type="button" @click="showDuplicateWizardFormTemplateForm = false">{{ t('common.action.cancel') }}</button>
+                      <button class="tiny-button primary" type="button" :disabled="wizardFormTemplateSaving || !duplicateWizardFormTemplateForm.name" @click="duplicateWizardFormTemplate">복제</button>
+                    </div>
+                  </div>
                 </aside>
 
                 <div class="form-template-editor-panels">
@@ -1164,99 +1230,12 @@
                       <strong>{{ wizardFormTemplateDetail.template.name }}</strong>
                       <span>{{ wizardFormTemplateDetail.template.templateKey }} · v{{ wizardFormTemplateDetail.template.version }} · {{ wizardSectionStatusLabel(wizardFormTemplateDetail.template.status) }}</span>
                     </div>
-                    <div class="subsection-actions">
-                      <button class="tiny-button" type="button" @click="toggleDuplicateWizardFormTemplateForm">복제</button>
-                      <button
-                        class="tiny-button"
-                        type="button"
-                        v-if="wizardFormTemplateDetail.template.status !== 'draft'"
-                        :disabled="wizardFormTemplateSaving || selectedWizardFormTemplateHasDraft"
-                        @click="createWizardFormTemplateDraft"
-                      >새 초안 만들기</button>
-                      <button class="tiny-button primary" type="button" v-if="wizardFormTemplateDetail.template.status === 'draft'" :disabled="wizardFormTemplateSaving" @click="saveWizardFormTemplate">{{ t('common.action.save') }}</button>
-                      <button
-                        class="tiny-button"
-                        type="button"
-                        v-if="wizardFormTemplateDetail.template.status === 'draft'"
-                        :disabled="wizardFormTemplateSaving || !wizardFormTemplateDetail.sections.some(section => section.isVisible)"
-                        :title="wizardFormTemplateDetail.sections.some(section => section.isVisible) ? '폼 템플릿 활성화' : '노출할 섹션을 먼저 구성해야 합니다'"
-                        @click="activateWizardFormTemplate"
-                      >{{ t('common.action.activate') }}</button>
-                      <button class="tiny-button danger" type="button" :disabled="wizardFormTemplateSaving || ['active', 'archived'].includes(wizardFormTemplateDetail.template.status)" @click="archiveWizardFormTemplate">{{ t('common.action.archive') }}</button>
-                    </div>
                   </div>
 
                   <template-layout-manager
                     :template="wizardFormTemplateDetail.template"
                     :status-label="wizardSectionStatusLabel"
                   ></template-layout-manager>
-                  <div class="form-template-duplicate" v-if="showDuplicateWizardFormTemplateForm">
-                    <strong>새 템플릿으로 복제</strong>
-                    <div class="outline-item danger-state" v-if="duplicateWizardFormTemplateError">
-                      <strong>복제 실패</strong>
-                      <span>{{ duplicateWizardFormTemplateError }}</span>
-                    </div>
-                    <label class="field compact-field">
-                      <span>새 Template Key</span>
-                      <input v-model="duplicateWizardFormTemplateForm.templateKey" type="text" autocomplete="off" placeholder="예: bbb" />
-                      <small class="field-error" v-if="duplicateWizardFormTemplateKeyExists">이미 사용 중인 Template Key입니다.</small>
-                    </label>
-                    <label class="field compact-field">
-                      <span>새 템플릿 이름</span>
-                      <input v-model="duplicateWizardFormTemplateForm.name" type="text" autocomplete="off" />
-                    </label>
-                    <label class="field compact-field">
-                      <span>{{ t('common.field.description') }}</span>
-                      <input v-model="duplicateWizardFormTemplateForm.description" type="text" autocomplete="off" />
-                    </label>
-                    <div class="action-row align-right">
-                      <button class="tiny-button" type="button" @click="showDuplicateWizardFormTemplateForm = false">{{ t('common.action.cancel') }}</button>
-                      <button class="tiny-button primary" type="button" :disabled="wizardFormTemplateSaving || !duplicateWizardFormTemplateForm.templateKey || !duplicateWizardFormTemplateForm.name || duplicateWizardFormTemplateKeyExists" @click="duplicateWizardFormTemplate">복제</button>
-                    </div>
-                  </div>
-
-                  <details class="template-basic-settings">
-                    <summary>템플릿 기본 설정</summary>
-                    <div class="template-basic-settings-body">
-                  <label class="field compact-field" v-if="selectedWizardFormTemplateGroup?.versions.length > 1">
-                    <span>버전 보기</span>
-                    <select :value="wizardFormTemplateDetail.template.id" @change="loadWizardFormTemplateDetail($event.target.value)">
-                      <option v-for="version in selectedWizardFormTemplateGroup.versions" :key="version.id" :value="version.id">v{{ version.version }} · {{ wizardSectionStatusLabel(version.status) }}</option>
-                    </select>
-                  </label>
-
-                  <div class="empty-state compact" v-if="wizardFormTemplateDetail.template.status !== 'draft'">활성·비활성 버전은 읽기 전용입니다. 수정하려면 새 초안을 만드세요.</div>
-
-                  <label class="field">
-                    <span>템플릿 이름</span>
-                    <input v-model="wizardFormTemplateEditor.name" type="text" :disabled="wizardFormTemplateDetail.template.status !== 'draft'" autocomplete="off" />
-                  </label>
-                  <label class="field">
-                    <span>{{ t('common.field.description') }}</span>
-                    <input v-model="wizardFormTemplateEditor.description" type="text" :disabled="wizardFormTemplateDetail.template.status !== 'draft'" autocomplete="off" />
-                  </label>
-                  <label class="field">
-                    <span>디자인 토큰 세트</span>
-                    <select v-model="wizardFormTemplateEditor.designTokenSetVersionId" :disabled="wizardFormTemplateDetail.template.status !== 'draft'">
-                      <option value="">선택하세요</option>
-                      <option v-for="tokenSet in designTokenSets.filter(item => item.versionStatus === 'active')" :key="tokenSet.versionId" :value="tokenSet.versionId">{{ tokenSet.name }} · v{{ tokenSet.version }}</option>
-                    </select>
-                  </label>
-                  <label class="switch-control">
-                    <input v-model="wizardFormTemplateEditor.isDefault" type="checkbox" :disabled="wizardFormTemplateDetail.template.status !== 'draft'" />
-                    <span>기본 템플릿으로 지정</span>
-                  </label>
-                  <label class="field compact-field" v-if="wizardFormTemplateDetail.template.status === 'draft'">
-                    <span>{{ t('common.field.changeReason') }}</span>
-                    <input v-model="wizardFormTemplateEditor.changeNote" type="text" autocomplete="off" />
-                  </label>
-                  <div class="form-template-summary">
-                    <span>포함된 섹션</span>
-                    <strong>{{ wizardFormTemplateDetail.sections.length }}개</strong>
-                  </div>
-                    </div>
-                  </details>
-
                   <div class="subsection template-section-composer">
                     <div class="subsection-title">
                       <h3>템플릿 Section 구성</h3>
@@ -1691,14 +1670,12 @@
                         </select>
                       </label>
                       <label class="field compact-field">
-                        <span>아이템 Key</span>
-                        <input v-model="wizardItemEditor.itemKey" type="text" :disabled="wizardItemEditorOpenId !== 'new'" autocomplete="off" placeholder="예: title" />
-                      </label>
-                      <label class="field compact-field">
                         <span>아이템 이름</span>
                         <input v-model="wizardItemEditor.name" type="text" autocomplete="off" />
                       </label>
                     </div>
+                    <small v-if="wizardItemEditorOpenId === 'new'">아이템 Key는 저장 시 자동으로 생성됩니다.</small>
+                    <small v-else>아이템 Key: {{ wizardItemEditor.itemKey }}</small>
 
                     <div class="form-grid compact">
                       <label class="field compact-field">
@@ -2030,6 +2007,6 @@
 
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script src="/prototype/admin/template-layout-manager.js?v=admin-module-v1"></script>
-    <script src="/prototype/app.js?v=shared-shell-header-v16"></script>
+    <script src="/prototype/app.js?v=admin-template-manager-v1"></script>
   </body>
 </html>
