@@ -14,6 +14,7 @@ import {
 import { createOutputAdapter } from "./platform/adapters/output-adapter.mjs";
 import { createEditorStore } from "./platform/editor-core/create-editor-store.mjs";
 import { EditorCommandType, editorCommand } from "./platform/editor-core/editor-commands.mjs";
+import EditorPreviewControls from "./platform/editor-ui/EditorPreviewControls.vue";
 import {
   DESIGN_COLOR_TOKENS,
   DEFAULT_DESIGN_SPEC,
@@ -1071,68 +1072,56 @@ onBeforeUnmount(() => {
             <small v-if="capabilities.canEditPromoContent" class="preview-edit-hint">미리보기 요소를 선택해 내용을 입력하세요.</small>
             <small v-if="autoRegisterMessage" class="auto-register-message" role="status">{{ autoRegisterMessage }}</small>
           </div>
-          <div class="preview-controls">
-            <div class="editor-history-actions" aria-label="편집 기록">
-              <button
-                type="button"
-                class="secondary-control"
-                :disabled="!editorHistory.canUndo"
-                @click="undoEditorCommand"
-              >실행 취소</button>
-              <button
-                type="button"
-                class="secondary-control"
-                :disabled="!editorHistory.canRedo"
-                @click="redoEditorCommand"
-              >다시 실행</button>
-            </div>
-            <fieldset v-if="capabilities.canEditTemplateDefaults" class="global-token-menu">
-              <legend>페이지 배경</legend>
-              <div class="global-token-swatches">
+          <EditorPreviewControls
+            v-model:guides-visible="guidesVisible"
+            v-model:viewport="viewport"
+            :can-undo="editorHistory.canUndo"
+            :can-redo="editorHistory.canRedo"
+            @undo="undoEditorCommand"
+            @redo="redoEditorCommand"
+          >
+            <template #tokens>
+              <fieldset v-if="capabilities.canEditTemplateDefaults" class="global-token-menu">
+                <legend>페이지 배경</legend>
+                <div class="global-token-swatches">
+                  <button
+                    v-for="token in DESIGN_COLOR_TOKENS"
+                    :key="token.key"
+                    type="button"
+                    :class="{ active: designSpec.theme.backgroundColor === token.value }"
+                    :title="`${token.name} ${token.value}`"
+                    :aria-label="`${token.name} ${token.value}`"
+                    @click="updateBackgroundToken(token)"
+                  >
+                    <i :style="{ backgroundColor: token.value }"></i>
+                  </button>
+                </div>
+              </fieldset>
+            </template>
+            <template #host-actions>
+              <div v-if="capabilities.canSaveTemplateLayout" class="admin-layout-actions">
+                <input v-model="layoutChangeNote" type="text" placeholder="변경 사유" aria-label="레이아웃 변경 사유" />
                 <button
-                  v-for="token in DESIGN_COLOR_TOKENS"
-                  :key="token.key"
                   type="button"
-                  :class="{ active: designSpec.theme.backgroundColor === token.value }"
-                  :title="`${token.name} ${token.value}`"
-                  :aria-label="`${token.name} ${token.value}`"
-                  @click="updateBackgroundToken(token)"
-                >
-                  <i :style="{ backgroundColor: token.value }"></i>
-                </button>
+                  :disabled="!editorSnapshot || layoutSaving || template.status !== 'draft'"
+                  @click="saveAdminLayout()"
+                >{{ layoutSaving ? "저장 중" : "초안 저장" }}</button>
+                <button
+                  type="button"
+                  class="is-primary"
+                  :disabled="!editorSnapshot || layoutSaving || template.status !== 'draft'"
+                  @click="saveAdminLayout({ activate: true })"
+                >저장 후 활성화</button>
               </div>
-            </fieldset>
-            <div v-if="capabilities.canSaveTemplateLayout" class="admin-layout-actions">
-              <input v-model="layoutChangeNote" type="text" placeholder="변경 사유" aria-label="레이아웃 변경 사유" />
               <button
+                v-if="capabilities.canOpenWebOutput"
                 type="button"
-                :disabled="!editorSnapshot || layoutSaving || template.status !== 'draft'"
-                @click="saveAdminLayout()"
-              >{{ layoutSaving ? "저장 중" : "초안 저장" }}</button>
-              <button
-                type="button"
-                class="is-primary"
-                :disabled="!editorSnapshot || layoutSaving || template.status !== 'draft'"
-                @click="saveAdminLayout({ activate: true })"
-              >저장 후 활성화</button>
-            </div>
-            <button
-              v-if="capabilities.canOpenWebOutput"
-              type="button"
-              class="web-output-action"
-              :disabled="!editorSnapshot"
-              @click="openOutput"
-            >Web Output</button>
-            <label class="guide-toggle">
-              <input v-model="guidesVisible" type="checkbox" />
-              <span>Guides</span>
-              <strong>{{ guidesVisible ? "ON" : "OFF" }}</strong>
-            </label>
-            <div class="viewport-control" aria-label="Preview viewport">
-              <button type="button" :class="{ active: viewport === 'desktop' }" @click="viewport = 'desktop'">Desktop</button>
-              <button type="button" :class="{ active: viewport === 'mobile' }" @click="viewport = 'mobile'">Mobile</button>
-            </div>
-          </div>
+                class="web-output-action"
+                :disabled="!editorSnapshot"
+                @click="openOutput"
+              >Web Output</button>
+            </template>
+          </EditorPreviewControls>
         </div>
         <div ref="previewStageRef" class="preview-stage" :class="`preview-stage--${viewport}`">
           <PromoPageRenderer
