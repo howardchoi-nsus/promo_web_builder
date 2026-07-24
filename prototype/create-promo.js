@@ -82,6 +82,12 @@ const {
   persistWizardContent,
   createLayoutSnapshot,
 } = globalThis.PromoWizardStorage || {};
+const {
+  clone: cloneEditorValue,
+  shouldAcceptRevision,
+  createBridgeSnapshot,
+  normalizeEditorChange,
+} = globalThis.PromoEditorSnapshotContract || {};
 const WEB_OUTPUT_SNAPSHOT_STORAGE_KEY = "promoVisualEditor.snapshot.v1";
 const CONTENT_SUBSTEP_STORAGE_KEY = "promoPrototype.createPromo.contentSubstep.v1";
 const CURRENT_STEP_STORAGE_KEY = "promoPrototype.createPromo.currentStep.v2";
@@ -719,8 +725,7 @@ function wizardLayoutSnapshot() {
     sectionDesignRuns: contentState.sectionDesignRuns,
     designSpec: applyCreatePromoAppearance(wizardResolvedLayout),
   });
-  snapshot.snapshotRevision = wizardSnapshotRevision;
-  return snapshot;
+  return createBridgeSnapshot(snapshot, wizardSnapshotRevision);
 }
 
 function postWizardLayoutSnapshot() {
@@ -734,7 +739,7 @@ function postWizardLayoutSnapshot() {
 }
 
 function resetWizardLayout() {
-  wizardResolvedLayout = JSON.parse(JSON.stringify(wizardBaseLayout || FALLBACK_LAYOUT));
+  wizardResolvedLayout = cloneEditorValue(wizardBaseLayout || FALLBACK_LAYOUT);
   const byKey = new Map(wizardSectionDefinitions.map((section) => [section.sectionKey, section]));
   wizardSectionDefinitions = wizardBaseSectionOrder.map((key) => byKey.get(key)).filter(Boolean);
   byKey.forEach((section, key) => {
@@ -874,10 +879,10 @@ window.addEventListener("message", (event) => {
     return;
   }
   if (event.data?.type !== "promo-wizard-layout-change" || !event.data.designSpec) return;
-  const incomingSnapshotRevision = Number(event.data.snapshotRevision || 0);
-  if (incomingSnapshotRevision && incomingSnapshotRevision < wizardSnapshotRevision) return;
+  const change = normalizeEditorChange(event.data);
+  if (!change || !shouldAcceptRevision(change.snapshotRevision, wizardSnapshotRevision)) return;
   const previousTheme = wizardResolvedLayout?.theme || FALLBACK_LAYOUT.theme;
-  const incomingLayout = JSON.parse(JSON.stringify(event.data.designSpec));
+  const incomingLayout = change.designSpec;
   wizardResolvedLayout = {
     ...incomingLayout,
     theme: {
@@ -889,8 +894,8 @@ window.addEventListener("message", (event) => {
   delete wizardResolvedLayout.theme.ctaColor;
   delete wizardResolvedLayout.theme.ctaShape;
   delete wizardResolvedLayout.theme.ctaVariant;
-  if (event.data.sectionInputs && typeof event.data.sectionInputs === "object") {
-    contentState.sectionInputs = event.data.sectionInputs;
+  if (change.sectionInputs) {
+    contentState.sectionInputs = change.sectionInputs;
   }
   saveWizardContent();
   clearTimeout(wizardLayoutLogTimer);

@@ -64,6 +64,11 @@ const {
   persistWizardContent,
   createLayoutSnapshot,
 } = globalThis.PromoWizardStorage || {};
+const {
+  clone: cloneEditorValue,
+  createBridgeSnapshot,
+  normalizeEditorChange,
+} = globalThis.PromoEditorSnapshotContract || {};
 
 let currentStep = 0;
 let designDocuments = [];
@@ -272,13 +277,13 @@ function saveWizardContent() {
 
 function wizardLayoutSnapshot() {
   if (!selectedWizardFormTemplate || !wizardResolvedLayout) return null;
-  return createLayoutSnapshot({
+  return createBridgeSnapshot(createLayoutSnapshot({
     layoutRevision: wizardLayoutRevision,
     formTemplate: contentState.formTemplate,
     sections: wizardSectionDefinitions,
     sectionInputs: contentState.sectionInputs,
     designSpec: wizardResolvedLayout,
-  });
+  }));
 }
 
 function postWizardLayoutSnapshot() {
@@ -291,7 +296,7 @@ function postWizardLayoutSnapshot() {
 }
 
 function resetWizardLayout() {
-  wizardResolvedLayout = JSON.parse(JSON.stringify(wizardBaseLayout || FALLBACK_LAYOUT));
+  wizardResolvedLayout = cloneEditorValue(wizardBaseLayout || FALLBACK_LAYOUT);
   saveWizardContent();
   postWizardLayoutSnapshot();
   logWizardLayoutEvent("layout_reset");
@@ -325,9 +330,11 @@ window.addEventListener("message", (event) => {
     return;
   }
   if (event.data?.type !== "promo-wizard-layout-change" || !event.data.designSpec) return;
-  wizardResolvedLayout = JSON.parse(JSON.stringify(event.data.designSpec));
-  if (event.data.sectionInputs && typeof event.data.sectionInputs === "object") {
-    contentState.sectionInputs = event.data.sectionInputs;
+  const change = normalizeEditorChange(event.data);
+  if (!change) return;
+  wizardResolvedLayout = change.designSpec;
+  if (change.sectionInputs) {
+    contentState.sectionInputs = change.sectionInputs;
   }
   saveWizardContent();
   clearTimeout(wizardLayoutLogTimer);
