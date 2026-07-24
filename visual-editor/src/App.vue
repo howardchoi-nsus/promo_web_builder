@@ -6,6 +6,8 @@ import { persistSnapshot, withoutFreePosition } from "./editor-utils.mjs";
 import { createEditorContext } from "./editor-context.mjs";
 import { normalizeLayoutSpec, validateLayoutSpec } from "./layout-utils.mjs";
 import { geometryToItemStylePatches, resolveSafeMultiLayoutOperation } from "./multi-layout.mjs";
+import { createEditorStore } from "./platform/editor-core/create-editor-store.mjs";
+import { EditorCommandType, editorCommand } from "./platform/editor-core/editor-commands.mjs";
 import {
   DESIGN_COLOR_TOKENS,
   DEFAULT_DESIGN_SPEC,
@@ -50,6 +52,11 @@ const multiLayoutError = ref("");
 const multiLayoutSuggestion = ref(null);
 const multiLayoutUndoStack = ref([]);
 const multiLayoutRevision = ref(0);
+const editorHistory = ref({ undoCount: 0, redoCount: 0, canUndo: false, canRedo: false });
+const editorCore = createEditorStore({
+  layout: JSON.parse(JSON.stringify(DEFAULT_DESIGN_SPEC)),
+  content: {},
+});
 let applyingExternalSnapshot = false;
 let lastExternalSnapshotRevision = 0;
 
@@ -85,6 +92,46 @@ const templateIdentityLabel = computed(() => {
   const shortId = String(template.value.id || "").slice(0, 8);
   return `${template.value.templateKey} · v${template.value.version || 1} · ${status} · layout r${layoutRevision.value}${shortId ? ` · ${shortId}` : ""}`;
 });
+
+function editorDocumentFromRefs() {
+  return {
+    layout: designSpec.value,
+    content: sectionInputs.value,
+    metadata: {
+      surface: editorContext.value.surface,
+      layoutRevision: layoutRevision.value,
+    },
+  };
+}
+
+function updateEditorHistory() {
+  editorHistory.value = editorCore.getHistoryState();
+}
+
+function hydrateEditorCore({ resetHistory = true } = {}) {
+  editorCore.replaceDocument(editorDocumentFromRefs(), { resetHistory });
+  updateEditorHistory();
+}
+
+function applyEditorCoreResult(result) {
+  if (!result?.ok) return false;
+  designSpec.value = result.state.document.layout;
+  sectionInputs.value = result.state.document.content;
+  editorHistory.value = result.history || editorCore.getHistoryState();
+  return true;
+}
+
+function executeEditorCommand(type, payload, { source = "ui", label = type } = {}) {
+  return applyEditorCoreResult(editorCore.execute(editorCommand(type, payload, { source, label })));
+}
+
+function undoEditorCommand() {
+  applyEditorCoreResult(editorCore.undo());
+}
+
+function redoEditorCommand() {
+  applyEditorCoreResult(editorCore.redo());
+}
 
 function selectItem(section, item, { preserveMulti = false } = {}) {
   if (!section) return;
@@ -241,7 +288,6 @@ async function requestMultiLayoutSuggestion() {
 function applyMultiLayoutSuggestion() {
   const suggestion = multiLayoutSuggestion.value;
   if (!suggestion || suggestion.sectionKey !== selectedSection.value?.sectionKey) return;
-  const beforeSpec = JSON.parse(JSON.stringify(designSpec.value));
   const patches = geometryToItemStylePatches(suggestion.after);
   const nextItemStyles = { ...(designSpec.value.itemStyles || {}) };
   Object.entries(patches).forEach(([itemKey, patch]) => {
@@ -250,9 +296,11 @@ function applyMultiLayoutSuggestion() {
   });
   multiLayoutUndoStack.value = [
     ...multiLayoutUndoStack.value.slice(-19),
-    { designSpec: beforeSpec, revision: multiLayoutRevision.value, label: layoutOperationLabel(suggestion.operation) },
+    { revision: multiLayoutRevision.value, label: layoutOperationLabel(suggestion.operation) },
   ];
-  designSpec.value = { ...designSpec.value, itemStyles: nextItemStyles };
+  executeEditorCommand(EditorCommandType.LAYOUT_REPLACE, {
+    layout: { ...designSpec.value, itemStyles: nextItemStyles },
+  }, { source: "ai", label: layoutOperationLabel(suggestion.operation) });
   multiLayoutRevision.value += 1;
   multiLayoutSuggestion.value = null;
   multiLayoutError.value = "";
@@ -261,7 +309,7 @@ function applyMultiLayoutSuggestion() {
 function undoMultiLayout() {
   const previous = multiLayoutUndoStack.value.at(-1);
   if (!previous) return;
-  designSpec.value = JSON.parse(JSON.stringify(previous.designSpec));
+  undoEditorCommand();
   multiLayoutRevision.value = previous.revision;
   multiLayoutUndoStack.value = multiLayoutUndoStack.value.slice(0, -1);
   multiLayoutSuggestion.value = null;
@@ -276,13 +324,11 @@ function toggleComponent(section, item) {
 
 function updateSelectedValue(value) {
   if (!selectedSection.value || !selectedItem.value) return;
-  sectionInputs.value = {
-    ...sectionInputs.value,
-    [selectedSection.value.sectionKey]: {
-      ...sectionInputs.value[selectedSection.value.sectionKey],
-      [selectedItem.value.itemKey]: value,
-    },
-  };
+  executeEditorCommand(EditorCommandType.CONTENT_VALUE_SET, {
+    sectionKey: selectedSection.value.sectionKey,
+    itemKey: selectedItem.value.itemKey,
+    value,
+  }, { label: "콘텐츠 변경" });
 }
 
 function updateObjectField(key, value) {
@@ -308,19 +354,17 @@ function updateFieldValue(item, field, value) {
   }
   const sectionKey = selectedSection.value.sectionKey;
   const componentValue = sectionInputs.value?.[sectionKey]?.[item.itemKey] || {};
-  sectionInputs.value = {
-    ...sectionInputs.value,
-    [sectionKey]: {
-      ...sectionInputs.value[sectionKey],
-      [item.itemKey]: {
-        ...componentValue,
-        fields: {
-          ...(componentValue.fields || {}),
-          [field.fieldKey]: value,
-        },
+  executeEditorCommand(EditorCommandType.CONTENT_VALUE_SET, {
+    sectionKey,
+    itemKey: item.itemKey,
+    value: {
+      ...componentValue,
+      fields: {
+        ...(componentValue.fields || {}),
+        [field.fieldKey]: value,
       },
     },
-  };
+  }, { label: `${field.name || field.fieldKey} 콘텐츠 변경` });
 }
 
 function updateFieldObject(item, field, key, value) {
@@ -482,15 +526,13 @@ function requestImageRemoval(field = null) {
 }
 
 function updateBackgroundToken(token) {
-  designSpec.value = {
-    ...designSpec.value,
-    theme: {
-      ...designSpec.value.theme,
+  executeEditorCommand(EditorCommandType.THEME_STYLE_PATCH, {
+    patch: {
       backgroundColor: token.value,
       backgroundToken: token.key,
       textColor: token.textColor,
     },
-  };
+  }, { label: "배경 토큰 변경" });
 }
 
 const selectedStyleKey = computed(() => (
@@ -507,61 +549,49 @@ const selectedSectionStyle = computed(() => (
 
 function updateItemStyle(patch) {
   if (!selectedStyleKey.value || selectedItem.value?.isLocked) return;
-  designSpec.value = {
-    ...designSpec.value,
-    itemStyles: {
-      ...(designSpec.value.itemStyles || {}),
-      [selectedStyleKey.value]: {
-        ...selectedItemStyle.value,
-        ...patch,
-      },
-    },
-  };
+  executeEditorCommand(EditorCommandType.ITEM_STYLE_PATCH, {
+    styleKey: selectedStyleKey.value,
+    patch,
+  }, { label: "컴포넌트 스타일 변경" });
 }
 
 function updateRendererItemStyle(section, item, patch) {
   if (!section || !item || item.isLocked) return;
   const key = `${section.sectionKey}.${item.itemKey}`;
-  designSpec.value = {
-    ...designSpec.value,
-    itemStyles: {
-      ...(designSpec.value.itemStyles || {}),
-      [key]: {
-        ...(designSpec.value.itemStyles?.[key] || {}),
-        ...patch,
-      },
-    },
-  };
+  executeEditorCommand(EditorCommandType.ITEM_STYLE_PATCH, {
+    styleKey: key,
+    patch,
+  }, { source: "pointer", label: "컴포넌트 위치·크기 변경" });
 }
 
 function resetItemStyle() {
   if (!selectedStyleKey.value || selectedItem.value?.isLocked) return;
-  const nextStyles = { ...(designSpec.value.itemStyles || {}) };
-  delete nextStyles[selectedStyleKey.value];
-  designSpec.value = { ...designSpec.value, itemStyles: nextStyles };
+  executeEditorCommand(EditorCommandType.ITEM_STYLE_REMOVE, {
+    styleKey: selectedStyleKey.value,
+  }, { label: "컴포넌트 스타일 초기화" });
 }
 
 function restoreAutomaticPosition() {
   if (!selectedStyleKey.value || selectedItem.value?.isLocked) return;
-  const nextStyles = { ...(designSpec.value.itemStyles || {}) };
-  const nextStyle = withoutFreePosition(nextStyles[selectedStyleKey.value]);
-  if (Object.keys(nextStyle).length) nextStyles[selectedStyleKey.value] = nextStyle;
-  else delete nextStyles[selectedStyleKey.value];
-  designSpec.value = { ...designSpec.value, itemStyles: nextStyles };
+  const nextStyle = withoutFreePosition(designSpec.value.itemStyles?.[selectedStyleKey.value]);
+  if (Object.keys(nextStyle).length) {
+    executeEditorCommand(EditorCommandType.ITEM_STYLE_REPLACE, {
+      styleKey: selectedStyleKey.value,
+      style: nextStyle,
+    }, { label: "자동 위치 복원" });
+  } else {
+    executeEditorCommand(EditorCommandType.ITEM_STYLE_REMOVE, {
+      styleKey: selectedStyleKey.value,
+    }, { label: "자동 위치 복원" });
+  }
 }
 
 function updateSectionStyle(sectionKey, patch) {
   if (!sectionKey) return;
-  designSpec.value = {
-    ...designSpec.value,
-    sectionStyles: {
-      ...(designSpec.value.sectionStyles || {}),
-      [sectionKey]: {
-        ...(designSpec.value.sectionStyles?.[sectionKey] || {}),
-        ...patch,
-      },
-    },
-  };
+  executeEditorCommand(EditorCommandType.SECTION_STYLE_PATCH, {
+    sectionKey,
+    patch,
+  }, { label: "섹션 스타일 변경" });
 }
 
 function setSectionBackgroundAlignment(alignment) {
@@ -588,7 +618,6 @@ function setImageShape(shape) {
 
 function setImageResizeMode(mode) {
   if (!selectedStyleKey.value || selectedItem.value?.isLocked || !["locked", "free"].includes(mode)) return;
-  const nextStyles = { ...(designSpec.value.itemStyles || {}) };
   const nextStyle = { ...selectedItemStyle.value };
   if (mode === "locked" || nextStyle.shape === "circle") {
     nextStyle.aspectRatioLocked = true;
@@ -600,18 +629,27 @@ function setImageResizeMode(mode) {
     nextStyle.aspectRatioLocked = false;
     nextStyle.heightPx = Number(nextStyle.heightPx || 240);
   }
-  nextStyles[selectedStyleKey.value] = nextStyle;
-  designSpec.value = { ...designSpec.value, itemStyles: nextStyles };
+  executeEditorCommand(EditorCommandType.ITEM_STYLE_REPLACE, {
+    styleKey: selectedStyleKey.value,
+    style: nextStyle,
+  }, { label: "이미지 크기 조절 방식 변경" });
 }
 
 function resetSectionHeight() {
   if (!selectedSection.value) return;
-  const nextStyles = { ...(designSpec.value.sectionStyles || {}) };
-  const nextSectionStyle = { ...(nextStyles[selectedSection.value.sectionKey] || {}) };
+  const sectionKey = selectedSection.value.sectionKey;
+  const nextSectionStyle = { ...(designSpec.value.sectionStyles?.[sectionKey] || {}) };
   delete nextSectionStyle.minHeight;
-  if (Object.keys(nextSectionStyle).length) nextStyles[selectedSection.value.sectionKey] = nextSectionStyle;
-  else delete nextStyles[selectedSection.value.sectionKey];
-  designSpec.value = { ...designSpec.value, sectionStyles: nextStyles };
+  if (Object.keys(nextSectionStyle).length) {
+    executeEditorCommand(EditorCommandType.SECTION_STYLE_REPLACE, {
+      sectionKey,
+      style: nextSectionStyle,
+    }, { label: "섹션 높이 초기화" });
+  } else {
+    executeEditorCommand(EditorCommandType.SECTION_STYLE_REMOVE, {
+      sectionKey,
+    }, { label: "섹션 높이 초기화" });
+  }
 }
 
 async function loadEditor() {
@@ -634,6 +672,7 @@ async function loadEditor() {
     selectedItemKey.value = sections.value[0]?.items?.[0]?.itemKey || "";
     selectedItemKeys.value = selectedItemKey.value ? [selectedItemKey.value] : [];
     expandedComponentKey.value = componentKey(sections.value[0], sections.value[0]?.items?.[0]);
+    hydrateEditorCore();
   } catch (loadError) {
     error.value = loadError.message;
   } finally {
@@ -674,6 +713,7 @@ async function loadAdminLayout() {
     selectedItemKey.value = sections.value[0]?.items?.[0]?.itemKey || "";
     selectedItemKeys.value = selectedItemKey.value ? [selectedItemKey.value] : [];
     expandedComponentKey.value = componentKey(sections.value[0], sections.value[0]?.items?.[0]);
+    hydrateEditorCore();
   } catch (loadError) {
     error.value = loadError.message;
   } finally {
@@ -709,6 +749,8 @@ async function saveAdminLayout({ activate = false } = {}) {
     layoutRevision.value = Number(result.layout.layoutRevision || layoutRevision.value + 1);
     layoutId.value = result.layout.id || layoutId.value;
     layoutIdentity.value = result.layoutIdentity || layoutIdentity.value;
+    editorCore.replaceDocument(editorDocumentFromRefs(), { resetHistory: false, dirty: false });
+    updateEditorHistory();
     layoutChangeNote.value = "";
     if (!activate) {
       layoutSaveMessage.value = `초안 v${template.value.version || 1} · layout r${layoutRevision.value} 저장 완료 · 프로모션 빌더 반영을 위해 템플릿을 활성화하세요.`;
@@ -749,6 +791,7 @@ async function applyExternalSnapshot(snapshot) {
   const previousItemKey = selectedItem.value?.itemKey || selectedItemKey.value;
   const previousExpandedComponentKey = expandedComponentKey.value;
   applyingExternalSnapshot = true;
+  const resetEditorHistory = !externalSnapshotReady.value;
   template.value = snapshot.content.formTemplate || null;
   configRevision.value = snapshot.content.formTemplate?.configRevision || "";
   sections.value = snapshot.content.sectionSnapshot || [];
@@ -775,6 +818,7 @@ async function applyExternalSnapshot(snapshot) {
     ? previousExpandedComponentKey
     : selectedComponentKey;
   externalSnapshotReady.value = true;
+  hydrateEditorCore({ resetHistory: resetEditorHistory });
   loading.value = false;
   error.value = "";
   await nextTick();
@@ -1041,6 +1085,20 @@ onBeforeUnmount(() => {
             <small v-if="autoRegisterMessage" class="auto-register-message" role="status">{{ autoRegisterMessage }}</small>
           </div>
           <div class="preview-controls">
+            <div class="editor-history-actions" aria-label="편집 기록">
+              <button
+                type="button"
+                class="secondary-control"
+                :disabled="!editorHistory.canUndo"
+                @click="undoEditorCommand"
+              >실행 취소</button>
+              <button
+                type="button"
+                class="secondary-control"
+                :disabled="!editorHistory.canRedo"
+                @click="redoEditorCommand"
+              >다시 실행</button>
+            </div>
             <fieldset v-if="capabilities.canEditTemplateDefaults" class="global-token-menu">
               <legend>페이지 배경</legend>
               <div class="global-token-swatches">

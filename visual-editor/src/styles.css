@@ -119,6 +119,9 @@ button, a { letter-spacing: 0; }
 .preview-edit-hint, .auto-register-message { grid-column: 1 / -1; }
 .auto-register-message { color: var(--app-accent) !important; font-weight: 750; }
 .preview-controls { display: flex; align-items: center; gap: 10px; }
+.editor-history-actions { display: flex; align-items: center; gap: 6px; }
+.editor-history-actions .secondary-control { padding: 0 10px; }
+.editor-history-actions .secondary-control:disabled { cursor: not-allowed; opacity: .45; }
 .admin-layout-actions { display: flex; align-items: center; gap: 6px; }
 .admin-layout-actions input { width: min(180px, 18vw); min-height: 32px; padding: 0 9px; border: 1px solid var(--app-line-strong); background: var(--app-panel); color: var(--app-ink); }
 .admin-layout-actions button { min-height: 32px; padding: 0 10px; border: 1px solid var(--app-line-strong); background: var(--app-panel); color: var(--app-ink-soft); cursor: pointer; font-size: 11px; font-weight: 800; }
