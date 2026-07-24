@@ -814,12 +814,20 @@
                         <span>{{ selectedPromptTemplate.name }} · {{ promptTypeLabel(selectedPromptTemplate.type) }} · v{{ selectedPromptTemplate.version }} · {{ promptStatusLabel(selectedPromptTemplate.status) }}</span>
                       </div>
                       <div class="subsection-actions">
-                      <button class="tiny-button primary" type="button" :disabled="promptSaving" @click="savePromptTemplate">{{ t('common.action.save') }}</button>
-                        <button class="tiny-button" type="button" :disabled="promptSaving || selectedPromptTemplate.status === 'active'" @click="activatePromptTemplate">활성 프롬프트로 지정</button>
+                        <button class="tiny-button primary" type="button" :disabled="promptSaving || promptEditorReadOnly" @click="savePromptTemplate">{{ t('common.action.save') }}</button>
+                        <button class="tiny-button" type="button" v-if="!['draft', 'validated'].includes(selectedPromptTemplate.status)" :disabled="promptSaving" @click="createPromptDraft">새 초안 만들기</button>
+                        <button class="tiny-button" type="button" v-if="selectedPromptTemplate.status === 'draft'" :disabled="promptSaving" @click="validatePromptTemplate">초안 검증</button>
+                        <button class="tiny-button" type="button" v-if="selectedPromptTemplate.status === 'validated'" :disabled="promptSaving" @click="activatePromptTemplate">활성 프롬프트로 지정</button>
+                        <button class="tiny-button" type="button" v-if="['inactive', 'archived'].includes(selectedPromptTemplate.status)" :disabled="promptSaving" @click="rollbackPromptTemplate">이 버전으로 롤백</button>
                         <button class="tiny-button danger" type="button" :disabled="promptSaving || selectedPromptTemplate.status === 'active' || selectedPromptTemplate.status === 'archived'" @click="archivePromptTemplate">{{ t('common.action.archive') }}</button>
                       </div>
                     </div>
 
+                <div class="empty-state compact" v-if="promptEditorReadOnly">
+                  이 버전은 읽기 전용입니다. 운영 프롬프트를 변경하려면 새 초안을 만든 뒤 검증하고 활성화하세요.
+                </div>
+
+                <fieldset class="prompt-editor-fields" :disabled="promptEditorReadOnly">
                 <div class="form-grid compact">
                   <label class="field">
                     <span>프롬프트 이름</span>
@@ -901,6 +909,7 @@
                   <span>프롬프트 본문</span>
                   <textarea v-model="promptEditor.body" class="prompt-body-editor" rows="24" spellcheck="false"></textarea>
                 </label>
+                </fieldset>
 
                 <div class="subsection">
                   <div class="subsection-title">

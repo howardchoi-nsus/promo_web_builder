@@ -9046,6 +9046,9 @@ var Ih = /*#__PURE__*/ Ch(wh, [["render", Fh]]), Lh = /* @__PURE__ */ o((() => {
 			selectedPromptTemplate() {
 				return this.promptTemplates.find((e) => e.id === this.selectedPromptTemplateId) || null;
 			},
+			promptEditorReadOnly() {
+				return this.selectedPromptTemplate?.status !== "draft";
+			},
 			selectedPromptEditorTitle() {
 				return this.selectedPromptTemplate ? `${this.promptTypeLabel(this.selectedPromptTemplate.type)} 프롬프트` : "프롬프트 편집기";
 			},
@@ -9737,7 +9740,7 @@ var Ih = /*#__PURE__*/ Ch(wh, [["render", Fh]]), Lh = /* @__PURE__ */ o((() => {
 				if (!(this.promptTemplatesLoading && !e.fresh)) {
 					this.promptTemplatesLoading = !0, this.promptTemplatesError = "";
 					try {
-						let e = await fetch("/api/prompt-templates"), t = await e.json().catch(() => ({}));
+						let e = await fetch("/api/prompt-templates?includeArchived=true"), t = await e.json().catch(() => ({}));
 						if (!e.ok) throw Error(t.message || t.error || `프롬프트 목록 요청 오류(${e.status})`);
 						if (this.promptTemplates = Array.isArray(t.prompts) ? t.prompts : [], !this.selectedPromptTemplateId || !this.promptTemplates.some((e) => e.id === this.selectedPromptTemplateId)) {
 							let e = this.promptTemplates.find((e) => e.type === "image_execution" && e.status === "active") || this.promptTemplates.find((e) => e.status === "active");
@@ -9808,6 +9811,7 @@ var Ih = /*#__PURE__*/ Ch(wh, [["render", Fh]]), Lh = /* @__PURE__ */ o((() => {
 			promptStatusLabel(e) {
 				return {
 					draft: "초안",
+					validated: "검증 완료",
 					active: "활성",
 					inactive: "비활성",
 					archived: "보관됨"
@@ -9879,6 +9883,10 @@ var Ih = /*#__PURE__*/ Ch(wh, [["render", Fh]]), Lh = /* @__PURE__ */ o((() => {
 			async savePromptTemplate() {
 				let e = this.selectedPromptTemplate;
 				if (!(!e || this.promptSaving)) {
+					if (e.status !== "draft") {
+						this.setStatus("활성·검증 완료·이전 버전은 직접 수정할 수 없습니다. 새 초안을 만들어 주세요.");
+						return;
+					}
 					this.promptSaving = !0;
 					try {
 						let t = await fetch("/api/prompt-template", {
@@ -9900,9 +9908,53 @@ var Ih = /*#__PURE__*/ Ch(wh, [["render", Fh]]), Lh = /* @__PURE__ */ o((() => {
 							})
 						}), n = await t.json().catch(() => ({}));
 						if (!t.ok) throw Error(n.message || n.error || `프롬프트 저장 오류(${t.status})`);
-						await this.loadPromptTemplates({ fresh: !0 }), this.selectedPromptTemplateId = n.prompt?.id || e.id, await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: !0 }), this.setStatus("프롬프트를 업데이트하고 변경 이력을 생성했습니다");
+						await this.loadPromptTemplates({ fresh: !0 }), this.selectedPromptTemplateId = n.prompt?.id || e.id, await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: !0 }), this.setStatus("프롬프트 초안을 저장하고 변경 이력을 생성했습니다");
 					} catch (e) {
 						this.setStatus(`프롬프트 저장 실패: ${e.message}`);
+					} finally {
+						this.promptSaving = !1;
+					}
+				}
+			},
+			async createPromptDraft() {
+				let e = this.selectedPromptTemplate;
+				if (!(!e || this.promptSaving || ["draft", "validated"].includes(e.status))) {
+					this.promptSaving = !0;
+					try {
+						let t = await fetch("/api/prompt-template-draft", {
+							method: "POST",
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify({
+								id: e.id,
+								changeNote: `관리자 페이지에서 v${e.version}을 기준으로 새 초안을 만들었습니다.`
+							})
+						}), n = await t.json().catch(() => ({}));
+						if (!t.ok) throw n.promptId && (this.selectedPromptTemplateId = n.promptId, await this.loadPromptTemplates({ fresh: !0 })), Error(n.message || n.error || `프롬프트 초안 생성 오류(${t.status})`);
+						await this.loadPromptTemplates({ fresh: !0 }), this.selectedPromptTemplateId = n.prompt?.id || "", await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: !0 }), this.setStatus(`v${n.prompt?.version || ""} 프롬프트 초안을 만들었습니다`);
+					} catch (e) {
+						this.setStatus(`프롬프트 초안 생성 실패: ${e.message}`);
+					} finally {
+						this.promptSaving = !1;
+					}
+				}
+			},
+			async validatePromptTemplate() {
+				let e = this.selectedPromptTemplate;
+				if (!(!e || this.promptSaving || e.status !== "draft")) {
+					this.promptSaving = !0;
+					try {
+						let t = await fetch("/api/prompt-template-validate", {
+							method: "POST",
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify({
+								id: e.id,
+								changeNote: "관리자 페이지에서 프롬프트 변수와 모델 계약을 검증했습니다."
+							})
+						}), n = await t.json().catch(() => ({}));
+						if (!t.ok) throw Error(n.message || n.error || `프롬프트 검증 오류(${t.status})`);
+						await this.loadPromptTemplates({ fresh: !0 }), this.selectedPromptTemplateId = n.prompt?.id || e.id, await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: !0 }), this.setStatus("프롬프트 검증을 완료했습니다. 활성화할 수 있습니다.");
+					} catch (e) {
+						this.setStatus(`프롬프트 검증 실패: ${e.message}`);
 					} finally {
 						this.promptSaving = !1;
 					}
@@ -9951,6 +10003,28 @@ var Ih = /*#__PURE__*/ Ch(wh, [["render", Fh]]), Lh = /* @__PURE__ */ o((() => {
 						this.selectedPromptTemplateId = "", await this.loadPromptTemplates({ fresh: !0 }), this.setStatus("프롬프트를 보관했습니다");
 					} catch (e) {
 						this.setStatus(`프롬프트 보관 실패: ${e.message}`);
+					} finally {
+						this.promptSaving = !1;
+					}
+				}
+			},
+			async rollbackPromptTemplate() {
+				let e = this.selectedPromptTemplate;
+				if (!(!e || this.promptSaving || !["inactive", "archived"].includes(e.status))) {
+					this.promptSaving = !0;
+					try {
+						let t = await fetch("/api/prompt-template-rollback", {
+							method: "POST",
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify({
+								id: e.id,
+								changeNote: `관리자 페이지에서 v${e.version} 프롬프트로 롤백했습니다.`
+							})
+						}), n = await t.json().catch(() => ({}));
+						if (!t.ok) throw Error(n.message || n.error || `프롬프트 롤백 오류(${t.status})`);
+						await this.loadPromptTemplates({ fresh: !0 }), this.selectedPromptTemplateId = n.prompt?.id || e.id, await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: !0 }), this.setStatus(`v${n.prompt?.version || e.version} 프롬프트로 롤백했습니다`);
+					} catch (e) {
+						this.setStatus(`프롬프트 롤백 실패: ${e.message}`);
 					} finally {
 						this.promptSaving = !1;
 					}

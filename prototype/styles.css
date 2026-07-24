@@ -3527,6 +3527,11 @@ body.is-resizing {
   color: var(--success);
 }
 
+.prompt-list-item em.status-validated {
+  border-color: var(--warning);
+  color: var(--warning);
+}
+
 .prompt-list-item em.status-archived {
   color: var(--muted);
 }
@@ -3554,6 +3559,15 @@ body.is-resizing {
 .prompt-editor-header span {
   color: var(--sub);
   font-size: 12px;
+}
+
+.prompt-editor-fields {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 
 .prompt-body-editor {

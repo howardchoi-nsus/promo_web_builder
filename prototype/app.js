@@ -1621,6 +1621,10 @@ const adminApp = createApp({
       return this.promptTemplates.find((prompt) => prompt.id === this.selectedPromptTemplateId) || null;
     },
 
+    promptEditorReadOnly() {
+      return this.selectedPromptTemplate?.status !== "draft";
+    },
+
     selectedPromptEditorTitle() {
       if (!this.selectedPromptTemplate) return "프롬프트 편집기";
       return `${this.promptTypeLabel(this.selectedPromptTemplate.type)} 프롬프트`;
@@ -2347,7 +2351,7 @@ const adminApp = createApp({
       this.promptTemplatesLoading = true;
       this.promptTemplatesError = "";
       try {
-        const response = await fetch("/api/prompt-templates");
+        const response = await fetch("/api/prompt-templates?includeArchived=true");
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `프롬프트 목록 요청 오류(${response.status})`);
         this.promptTemplates = Array.isArray(result.prompts) ? result.prompts : [];
@@ -2435,6 +2439,7 @@ const adminApp = createApp({
     promptStatusLabel(status) {
       return ({
         draft: "초안",
+        validated: "검증 완료",
         active: "활성",
         inactive: "비활성",
         archived: "보관됨",
@@ -2522,6 +2527,10 @@ const adminApp = createApp({
     async savePromptTemplate() {
       const prompt = this.selectedPromptTemplate;
       if (!prompt || this.promptSaving) return;
+      if (prompt.status !== "draft") {
+        this.setStatus("활성·검증 완료·이전 버전은 직접 수정할 수 없습니다. 새 초안을 만들어 주세요.");
+        return;
+      }
       this.promptSaving = true;
       try {
         const response = await fetch("/api/prompt-template", {
@@ -2547,9 +2556,67 @@ const adminApp = createApp({
         await this.loadPromptTemplates({ fresh: true });
         this.selectedPromptTemplateId = result.prompt?.id || prompt.id;
         await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: true });
-        this.setStatus("프롬프트를 업데이트하고 변경 이력을 생성했습니다");
+        this.setStatus("프롬프트 초안을 저장하고 변경 이력을 생성했습니다");
       } catch (error) {
         this.setStatus(`프롬프트 저장 실패: ${error.message}`);
+      } finally {
+        this.promptSaving = false;
+      }
+    },
+
+    async createPromptDraft() {
+      const prompt = this.selectedPromptTemplate;
+      if (!prompt || this.promptSaving || ["draft", "validated"].includes(prompt.status)) return;
+      this.promptSaving = true;
+      try {
+        const response = await fetch("/api/prompt-template-draft", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: prompt.id,
+            changeNote: `관리자 페이지에서 v${prompt.version}을 기준으로 새 초안을 만들었습니다.`,
+          }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          if (result.promptId) {
+            this.selectedPromptTemplateId = result.promptId;
+            await this.loadPromptTemplates({ fresh: true });
+          }
+          throw new Error(result.message || result.error || `프롬프트 초안 생성 오류(${response.status})`);
+        }
+        await this.loadPromptTemplates({ fresh: true });
+        this.selectedPromptTemplateId = result.prompt?.id || "";
+        await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: true });
+        this.setStatus(`v${result.prompt?.version || ""} 프롬프트 초안을 만들었습니다`);
+      } catch (error) {
+        this.setStatus(`프롬프트 초안 생성 실패: ${error.message}`);
+      } finally {
+        this.promptSaving = false;
+      }
+    },
+
+    async validatePromptTemplate() {
+      const prompt = this.selectedPromptTemplate;
+      if (!prompt || this.promptSaving || prompt.status !== "draft") return;
+      this.promptSaving = true;
+      try {
+        const response = await fetch("/api/prompt-template-validate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: prompt.id,
+            changeNote: "관리자 페이지에서 프롬프트 변수와 모델 계약을 검증했습니다.",
+          }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `프롬프트 검증 오류(${response.status})`);
+        await this.loadPromptTemplates({ fresh: true });
+        this.selectedPromptTemplateId = result.prompt?.id || prompt.id;
+        await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: true });
+        this.setStatus("프롬프트 검증을 완료했습니다. 활성화할 수 있습니다.");
+      } catch (error) {
+        this.setStatus(`프롬프트 검증 실패: ${error.message}`);
       } finally {
         this.promptSaving = false;
       }
@@ -2605,6 +2672,32 @@ const adminApp = createApp({
         this.setStatus("프롬프트를 보관했습니다");
       } catch (error) {
         this.setStatus(`프롬프트 보관 실패: ${error.message}`);
+      } finally {
+        this.promptSaving = false;
+      }
+    },
+
+    async rollbackPromptTemplate() {
+      const prompt = this.selectedPromptTemplate;
+      if (!prompt || this.promptSaving || !["inactive", "archived"].includes(prompt.status)) return;
+      this.promptSaving = true;
+      try {
+        const response = await fetch("/api/prompt-template-rollback", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: prompt.id,
+            changeNote: `관리자 페이지에서 v${prompt.version} 프롬프트로 롤백했습니다.`,
+          }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `프롬프트 롤백 오류(${response.status})`);
+        await this.loadPromptTemplates({ fresh: true });
+        this.selectedPromptTemplateId = result.prompt?.id || prompt.id;
+        await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: true });
+        this.setStatus(`v${result.prompt?.version || prompt.version} 프롬프트로 롤백했습니다`);
+      } catch (error) {
+        this.setStatus(`프롬프트 롤백 실패: ${error.message}`);
       } finally {
         this.promptSaving = false;
       }

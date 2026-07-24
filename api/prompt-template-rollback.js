@@ -16,49 +16,26 @@ module.exports = async function handler(req, res) {
   try {
     const body = parseBody(req.body);
     const id = String(body.id || req.query.id || "").trim();
-    const changeNote = String(body.changeNote || body.change_note || "Prompt activated.").trim();
+    const changeNote = String(body.changeNote || body.change_note || "Rolled back to a previous prompt version.").trim();
     if (!id) return res.status(400).json({ error: "id is required" });
 
     const sql = getSql();
     await ensureDefaultPromptTemplates(sql);
     const rows = await sql`
-      select
-        id::text,
-        type,
-        name,
-        body,
-        status,
-        version,
-        lineage_id::text,
-        source_prompt_template_id::text,
-        validated_at,
-        required_variables,
-        optional_variables,
-        provider,
-        model,
-        temperature,
-        max_tokens,
-        response_format,
-        model_options,
-        change_note,
-        archived_at,
-        created_at,
-        updated_at
+      select *
       from prompt_templates
       where id = ${id}::uuid
       limit 1
     `;
     if (!rows.length) return res.status(404).json({ error: "Prompt template not found" });
     const target = rows[0];
-    if (target.status === "active") {
-      return res.status(200).json({ ok: true, prompt: toPromptTemplate(target) });
-    }
-    if (target.status !== "validated") {
+    if (!["inactive", "archived"].includes(target.status)) {
       return res.status(409).json({
-        error: "Only validated prompt templates can be activated",
-        code: "PROMPT_VALIDATION_REQUIRED",
+        error: "Only inactive or archived prompt versions can be restored",
+        code: "PROMPT_ROLLBACK_TARGET_INVALID",
       });
     }
+
     validatePromptTemplateContract(target.type, {
       body: target.body,
       requiredVariables: target.required_variables,
@@ -81,46 +58,31 @@ module.exports = async function handler(req, res) {
       ),
       deactivated_history as (
         insert into prompt_template_histories (
-          prompt_template_id,
-          prompt_type,
-          previous_body,
-          new_body,
-          previous_version,
-          new_version,
-          previous_status,
-          new_status,
-          change_note,
-          previous_provider,
-          new_provider,
-          previous_model,
-          new_model,
-          previous_model_options,
-          new_model_options
+          prompt_template_id, prompt_type, previous_body, new_body,
+          previous_version, new_version, previous_status, new_status, change_note,
+          previous_provider, new_provider, previous_model, new_model,
+          previous_model_options, new_model_options
         )
         select
-          deactivated.id,
-          deactivated.type,
-          deactivated.body,
-          deactivated.body,
-          deactivated.version,
-          deactivated.version,
-          'active',
-          'inactive',
-          ${`Superseded by prompt ${id}.`},
-          deactivated.provider,
-          deactivated.provider,
-          deactivated.model,
-          deactivated.model,
-          deactivated.model_options,
-          deactivated.model_options
+          deactivated.id, deactivated.type, deactivated.body, deactivated.body,
+          deactivated.version, deactivated.version,
+          'active', 'inactive', ${`Rolled back to prompt ${id}.`},
+          deactivated.provider, deactivated.provider,
+          deactivated.model, deactivated.model,
+          deactivated.model_options, deactivated.model_options
         from deactivated
         returning id
       ),
       activated as (
         update prompt_templates
-        set status = 'active', change_note = ${changeNote}, updated_at = now()
+        set
+          status = 'active',
+          archived_at = null,
+          validated_at = coalesce(validated_at, now()),
+          change_note = ${changeNote},
+          updated_at = now()
         where id = ${id}::uuid
-          and status = 'validated'
+          and status = ${target.status}
           and not exists (
             select 1
             from prompt_templates active_prompt
@@ -133,38 +95,18 @@ module.exports = async function handler(req, res) {
       ),
       activated_history as (
         insert into prompt_template_histories (
-        prompt_template_id,
-        prompt_type,
-        previous_body,
-        new_body,
-        previous_version,
-        new_version,
-        previous_status,
-        new_status,
-        change_note,
-        previous_provider,
-        new_provider,
-        previous_model,
-        new_model,
-        previous_model_options,
-        new_model_options
-      )
+          prompt_template_id, prompt_type, previous_body, new_body,
+          previous_version, new_version, previous_status, new_status, change_note,
+          previous_provider, new_provider, previous_model, new_model,
+          previous_model_options, new_model_options
+        )
         select
-          activated.id,
-          activated.type,
-          activated.body,
-          activated.body,
-          activated.version,
-          activated.version,
-          'validated',
-          'active',
-          ${changeNote},
-          activated.provider,
-          activated.provider,
-          activated.model,
-          activated.model,
-          activated.model_options,
-          activated.model_options
+          activated.id, activated.type, activated.body, activated.body,
+          activated.version, activated.version,
+          ${target.status || ""}, 'active', ${changeNote},
+          activated.provider, activated.provider,
+          activated.model, activated.model,
+          activated.model_options, activated.model_options
         from activated
         returning id
       )
@@ -194,16 +136,19 @@ module.exports = async function handler(req, res) {
     `;
     if (!updatedRows.length) {
       return res.status(409).json({
-        error: "Prompt status changed before activation completed",
-        code: "PROMPT_VALIDATION_REQUIRED",
+        error: "Prompt status changed before rollback completed",
+        code: "PROMPT_ROLLBACK_TARGET_INVALID",
       });
     }
-
-    return res.status(200).json({ ok: true, prompt: toPromptTemplate(updatedRows[0]) });
+    return res.status(200).json({
+      ok: true,
+      prompt: toPromptTemplate(updatedRows[0]),
+    });
   } catch (error) {
     return res.status(error.statusCode || 500).json({
-      error: "Prompt activation failed",
+      error: "Prompt rollback failed",
       message: error.message,
+      code: error.code,
     });
   }
 };

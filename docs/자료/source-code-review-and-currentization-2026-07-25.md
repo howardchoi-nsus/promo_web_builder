@@ -1,15 +1,17 @@
 # 소스코드 정밀 검토 및 문서 현행화 보고서
 
 - 검토일: 2026-07-25
-- 검토 기준 커밋: `fcce7c6`
+- 검토 기준 커밋: `8ee7523` 이후 Prompt 운영 P1 작업 트리
 - 대상: Admin, Create Promo, Visual Editor, Prompt Governance, 관련 테스트와 문서
 - 제외: `docs/handoff`, `docs/claude`, `.claude`
 
 ## 1. 결론
 
-최근 P0~P2 반영의 주요 실행 경로와 빌드는 정상이다. 전체 테스트 58개 파일과 Admin/Create Promo 브라우저 통합 테스트가 통과했다.
+최근 P0~P2 및 Prompt 운영 P1 반영의 주요 실행 경로와 빌드는 정상이다. 전체 테스트 59개 파일과 Admin/Create Promo 브라우저 통합 테스트가 통과했다.
 
 다만 정적 테스트가 구형 관리자 Template Layout Manager를 계속 검사하던 문제, 템플릿 전환 시 비동기 응답 경합, 신규 SFC 문구 하드코딩, Prompt PATCH 필드 보존과 History 원자성 문제가 발견돼 소스를 보완했다.
+
+후속 Prompt 운영 P1도 소스에 반영했다. 활성본 직접 수정 제거, 불변 버전 행, 검증 완료 상태, 새 Draft 생성과 이전 버전 롤백을 추가했으며 전체 테스트는 59개 파일로 증가했다.
 
 ## 2. 발견 및 수정 사항
 
@@ -89,9 +91,27 @@
 
 - Create Promo와 구형 Promo Wizard에서 공통 Template Service 전환 후 남은 `resolveActiveTemplate` 직접 import를 제거했다.
 
+### 2.7 Prompt 운영 P1 버전 수명주기
+
+문제:
+
+- 활성 Prompt도 같은 행에서 직접 수정할 수 있었다.
+- 저장할 때 같은 행의 `version`만 증가해 과거 버전 본문을 독립적으로 활성화할 수 없었다.
+- 변수·모델 계약 검증 완료 상태와 즉시 Rollback 경로가 없었다.
+
+수정:
+
+- Migration 033에서 `lineage_id`, `source_prompt_template_id`, `validated_at` 추가
+- `(lineage_id, version)` 유일성과 계보별 Candidate 단일성 보장
+- Draft 행만 수정할 수 있고 저장으로 Version 번호가 바뀌지 않도록 변경
+- 새 Draft 생성, Draft 검증, 검증본 활성화, 비활성·보관 버전 Rollback API 추가
+- 저장과 모든 상태 변경을 조건부 데이터 변경 CTE로 묶어 동시 요청의 부분 성공 차단
+- 관리자 Prompt Editor를 운영본 읽기 전용 및 단계형 작업 흐름으로 변경
+- 기존 Prompt와 History 데이터는 유지
+
 ## 3. 검증 결과
 
-- 전체 테스트: 58개 파일 통과
+- 전체 테스트: 59개 파일 통과
 - Admin Layout → Create Promo 브라우저 통합 테스트 통과
 - Admin i18n 브라우저 테스트 통과
 - Admin Component/Section 브라우저 테스트 통과
@@ -108,10 +128,9 @@
 
 ### 높은 우선순위
 
-1. Prompt 활성본 직접 수정 제거와 새 Draft Version 생성 방식 도입
-2. Prompt 이전 버전 Rollback API와 관리자 UI 추가
-3. Prompt P2 잠금 블록과 관리자 변경 가능 블록 분리
-4. 위 선행조건 완료 후 P3 활성본·초안 시험 생성 비교 진행
+1. Migration 033의 대상 Neon DB 적용과 Prompt 상태 전이 Smoke Test
+2. Prompt P2 잠금 블록과 관리자 변경 가능 블록 분리
+3. 위 선행조건 완료 후 P3 활성본·초안 시험 생성 비교 진행
 
 ### 구조 개선
 
@@ -123,7 +142,7 @@
 ### 운영 검증
 
 1. Vercel Production에서 Admin Template 전환 경합 Smoke Test
-2. 실제 Neon DB에서 Prompt Transaction과 History 동시 반영 확인
+2. 실제 Neon DB에서 Prompt Draft·검증·활성화·Rollback과 History 동시 반영 확인
 3. 실제 Gemini 이미지 생성에서 Prompt 변수 계약과 실패 복구 확인
 4. Node.js 22 환경 CI Gate 고정
 

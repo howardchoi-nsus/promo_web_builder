@@ -27,6 +27,9 @@ module.exports = async function handler(req, res) {
           body,
           status,
           version,
+          lineage_id::text,
+          source_prompt_template_id::text,
+          validated_at,
           required_variables,
           optional_variables,
           provider,
@@ -43,7 +46,7 @@ module.exports = async function handler(req, res) {
         where type = ${type}
           and (${includeArchived}::boolean or status <> 'archived')
         order by
-          case status when 'active' then 0 when 'draft' then 1 when 'inactive' then 2 else 3 end,
+          case status when 'active' then 0 when 'validated' then 1 when 'draft' then 2 when 'inactive' then 3 else 4 end,
           updated_at desc
       `
       : await sql`
@@ -54,6 +57,9 @@ module.exports = async function handler(req, res) {
           body,
           status,
           version,
+          lineage_id::text,
+          source_prompt_template_id::text,
+          validated_at,
           required_variables,
           optional_variables,
           provider,
@@ -70,7 +76,7 @@ module.exports = async function handler(req, res) {
         where ${includeArchived}::boolean or status <> 'archived'
         order by
           type asc,
-          case status when 'active' then 0 when 'draft' then 1 when 'inactive' then 2 else 3 end,
+          case status when 'active' then 0 when 'validated' then 1 when 'draft' then 2 when 'inactive' then 3 else 4 end,
           updated_at desc
       `;
 

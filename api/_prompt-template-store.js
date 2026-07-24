@@ -259,6 +259,7 @@ async function ensureDefaultPromptTemplates(sql) {
         body,
         status,
         version,
+        lineage_id,
         required_variables,
         optional_variables,
         change_note,
@@ -269,12 +270,13 @@ async function ensureDefaultPromptTemplates(sql) {
         response_format,
         model_options
       )
-      values (
+      select
         ${type},
         ${config.name},
         ${body},
         ${initialStatus},
         1,
+        md5(${type} || E'\x1f' || ${config.name})::uuid,
         ${JSON.stringify(config.requiredVariables || [])}::jsonb,
         ${JSON.stringify(config.optionalVariables || [])}::jsonb,
         'Initial prompt imported from repository default.',
@@ -284,8 +286,12 @@ async function ensureDefaultPromptTemplates(sql) {
         ${DEFAULT_MODEL_SETTINGS[type]?.maxTokens ?? null},
         ${DEFAULT_MODEL_SETTINGS[type]?.responseFormat || ""},
         ${JSON.stringify(DEFAULT_MODEL_SETTINGS[type] || {})}::jsonb
+      where not exists (
+        select 1
+        from prompt_templates
+        where type = ${type}
       )
-      on conflict (type, name) do nothing
+      on conflict do nothing
     `;
   }
 }
@@ -467,6 +473,9 @@ function toPromptTemplate(row) {
     body: row.body || "",
     status: row.status,
     version: Number(row.version || 1),
+    lineageId: row.lineage_id || null,
+    sourcePromptTemplateId: row.source_prompt_template_id || null,
+    validatedAt: row.validated_at || null,
     requiredVariables: Array.isArray(row.required_variables) ? row.required_variables : [],
     optionalVariables: Array.isArray(row.optional_variables) ? row.optional_variables : [],
     provider: row.provider || "",

@@ -3,7 +3,9 @@ const {
   getSql,
   parseBody,
   toPromptTemplate,
+  validatePromptTemplateContract,
 } = require("./_prompt-template-store");
+const { validateStageModelConfig } = require("./_prompt-execution-snapshot");
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
@@ -14,37 +16,47 @@ module.exports = async function handler(req, res) {
   try {
     const body = parseBody(req.body);
     const id = String(body.id || req.query.id || "").trim();
-    const changeNote = String(body.changeNote || body.change_note || "Prompt archived.").trim();
+    const changeNote = String(body.changeNote || body.change_note || "Prompt contracts validated.").trim();
     if (!id) return res.status(400).json({ error: "id is required" });
 
     const sql = getSql();
     await ensureDefaultPromptTemplates(sql);
     const rows = await sql`
-      select id::text, type, body, status, version, provider, model, model_options
+      select *
       from prompt_templates
       where id = ${id}::uuid
       limit 1
     `;
     if (!rows.length) return res.status(404).json({ error: "Prompt template not found" });
-
     const current = rows[0];
-    if (current.status === "active") {
-      return res.status(409).json({ error: "Active prompt templates cannot be archived" });
+    if (current.status !== "draft") {
+      return res.status(409).json({
+        error: "Only draft prompt templates can be validated",
+        code: "PROMPT_DRAFT_REQUIRED",
+      });
     }
-    if (current.status === "archived") {
-      return res.status(409).json({ error: "Prompt template is already archived" });
-    }
+
+    validatePromptTemplateContract(current.type, {
+      body: current.body,
+      requiredVariables: current.required_variables,
+      optionalVariables: current.optional_variables,
+    });
+    validateStageModelConfig(current.type, {
+      provider: current.provider,
+      model: current.model,
+      responseFormat: current.response_format,
+    });
 
     const updatedRows = await sql`
       with updated as (
         update prompt_templates
         set
-          status = 'archived',
-          archived_at = now(),
+          status = 'validated',
+          validated_at = now(),
           change_note = ${changeNote},
           updated_at = now()
         where id = ${id}::uuid
-          and status = ${current.status}
+          and status = 'draft'
         returning *
       ),
       history as (
@@ -72,8 +84,8 @@ module.exports = async function handler(req, res) {
           updated.body,
           updated.version,
           updated.version,
-          ${current.status || ""},
-          'archived',
+          'draft',
+          'validated',
           ${changeNote},
           updated.provider,
           updated.provider,
@@ -109,14 +121,18 @@ module.exports = async function handler(req, res) {
       from updated
     `;
     if (!updatedRows.length) {
-      return res.status(409).json({ error: "Prompt status changed before archive completed" });
+      return res.status(409).json({
+        error: "Prompt draft status changed before validation completed",
+        code: "PROMPT_DRAFT_REQUIRED",
+      });
     }
 
     return res.status(200).json({ ok: true, prompt: toPromptTemplate(updatedRows[0]) });
   } catch (error) {
     return res.status(error.statusCode || 500).json({
-      error: "Prompt archive failed",
+      error: "Prompt validation failed",
       message: error.message,
+      code: error.code,
     });
   }
 };

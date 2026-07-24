@@ -8,11 +8,9 @@ const {
   toPromptTemplate,
   validatePromptTemplateContract,
 } = require("./_prompt-template-store");
-const { validateStageModelConfig } = require("./_prompt-execution-snapshot");
 
-// Prompt edits are versioned in place instead of creating a new row per save.
-// Activation/archiving APIs decide which row is live; this endpoint preserves
-// the review trail for copy/model changes made from the Admin Page.
+// Only draft rows are mutable. A version is assigned when the draft row is
+// created and never changes afterwards.
 module.exports = async function handler(req, res) {
   try {
     if (req.method === "GET") return await getPrompt(req, res);
@@ -42,6 +40,9 @@ async function getPrompt(req, res) {
       body,
       status,
       version,
+      lineage_id::text,
+      source_prompt_template_id::text,
+      validated_at,
       required_variables,
       optional_variables,
       provider,
@@ -128,6 +129,9 @@ async function updatePrompt(req, res) {
       body,
       status,
       version,
+      lineage_id::text,
+      source_prompt_template_id::text,
+      validated_at,
       required_variables,
       optional_variables,
       provider,
@@ -147,8 +151,11 @@ async function updatePrompt(req, res) {
   if (!rows.length) return res.status(404).json({ error: "Prompt template not found" });
 
   const current = rows[0];
-  if (current.status === "archived") {
-    return res.status(409).json({ error: "Archived prompt templates cannot be updated" });
+  if (current.status !== "draft") {
+    return res.status(409).json({
+      error: "Only draft prompt templates can be updated",
+      code: "PROMPT_DRAFT_REQUIRED",
+    });
   }
   const {
     body: nextBody,
@@ -159,9 +166,6 @@ async function updatePrompt(req, res) {
   if (!nextBody.trim()) return res.status(400).json({ error: "body is required" });
   if (!nextName) return res.status(400).json({ error: "name is required" });
 
-  // Every save increments the visible version even when status stays the same,
-  // so reviewers can compare Admin Page history with actual prompt executions.
-  const nextVersion = Number(current.version || 1) + 1;
   const provider = hasProvider ? String(body.provider || "").trim() : current.provider || "";
   const model = hasModel ? String(body.model || "").trim() : current.model || "";
   const temperature = hasTemperature ? normalizeNumber(body.temperature) : current.temperature;
@@ -172,9 +176,6 @@ async function updatePrompt(req, res) {
   const modelOptions = hasModelOptions
     ? normalizeModelOptions(body.modelOptions || body.model_options)
     : current.model_options || {};
-  if (current.status === "active") {
-    validateStageModelConfig(current.type, { provider, model, responseFormat });
-  }
   validatePromptTemplateContract(current.type, {
     body: nextBody,
     requiredVariables,
@@ -183,13 +184,12 @@ async function updatePrompt(req, res) {
   // Updating the prompt and appending its audit history must succeed or fail
   // together. A partial write would make production behavior impossible to
   // trace back to the Admin Page change that caused it.
-  const [updatedRows] = await sql.transaction([
-    sql`
+  const updatedRows = await sql`
+    with updated as (
       update prompt_templates
       set
         name = ${nextName},
         body = ${nextBody},
-        version = ${nextVersion},
         required_variables = ${JSON.stringify(requiredVariables)}::jsonb,
         optional_variables = ${JSON.stringify(optionalVariables)}::jsonb,
         provider = ${provider},
@@ -199,29 +199,13 @@ async function updatePrompt(req, res) {
         response_format = ${responseFormat},
         model_options = ${JSON.stringify(modelOptions)}::jsonb,
         change_note = ${changeNote},
+        validated_at = null,
         updated_at = now()
       where id = ${id}::uuid
-      returning
-        id::text,
-        type,
-        name,
-        body,
-        status,
-        version,
-        required_variables,
-        optional_variables,
-        provider,
-        model,
-        temperature,
-        max_tokens,
-        response_format,
-        model_options,
-        change_note,
-        archived_at,
-        created_at,
-        updated_at
-    `,
-    sql`
+        and status = 'draft'
+      returning *
+    ),
+    history as (
       insert into prompt_template_histories (
         prompt_template_id,
         prompt_type,
@@ -239,25 +223,55 @@ async function updatePrompt(req, res) {
         previous_model_options,
         new_model_options
       )
-      values (
-        ${id}::uuid,
-        ${current.type},
+      select
+        updated.id,
+        updated.type,
         ${current.body || ""},
-        ${nextBody},
-        ${Number(current.version || 1)},
-        ${nextVersion},
-        ${current.status || ""},
-        ${current.status || ""},
+        updated.body,
+        updated.version,
+        updated.version,
+        'draft',
+        'draft',
         ${changeNote},
         ${current.provider || ""},
-        ${provider},
+        updated.provider,
         ${current.model || ""},
-        ${model},
+        updated.model,
         ${JSON.stringify(current.model_options || {})}::jsonb,
-        ${JSON.stringify(modelOptions)}::jsonb
-      )
-    `,
-  ]);
+        updated.model_options
+      from updated
+      returning id
+    )
+    select
+      updated.id::text,
+      updated.type,
+      updated.name,
+      updated.body,
+      updated.status,
+      updated.version,
+      updated.lineage_id::text,
+      updated.source_prompt_template_id::text,
+      updated.validated_at,
+      updated.required_variables,
+      updated.optional_variables,
+      updated.provider,
+      updated.model,
+      updated.temperature,
+      updated.max_tokens,
+      updated.response_format,
+      updated.model_options,
+      updated.change_note,
+      updated.archived_at,
+      updated.created_at,
+      updated.updated_at
+    from updated
+  `;
+  if (!updatedRows.length) {
+    return res.status(409).json({
+      error: "Prompt draft status changed before the update completed",
+      code: "PROMPT_DRAFT_REQUIRED",
+    });
+  }
 
   return res.status(200).json({
     ok: true,
