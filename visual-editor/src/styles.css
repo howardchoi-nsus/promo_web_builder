@@ -170,6 +170,7 @@ button, a { letter-spacing: 0; }
 .multi-layout-error { color: var(--app-danger-ink) !important; }
 .multi-layout-preview { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--app-accent); background: var(--app-panel); }
 .multi-layout-preview > span { color: var(--app-ink-soft); font-size: 12px; line-height: 1.45; }
+.multi-layout-preview .multi-layout-adjustment { padding: 7px; background: var(--app-warning-soft); color: var(--app-warning); font-weight: 700; }
 .multi-layout-preview__comparison { display: grid; gap: 5px; max-height: 180px; overflow: auto; }
 .multi-layout-preview__comparison > div { display: grid; grid-template-columns: minmax(80px, .8fr) 1fr 1fr; gap: 6px; padding: 5px 0; border-top: 1px solid var(--app-line); font-size: 10px; }
 .image-remove-action { justify-self: start; min-height: 32px; font-size: 11px; }

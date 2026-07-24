@@ -5,6 +5,7 @@ import { createRequire } from "node:module";
 import {
   executeMultiLayoutOperation,
   geometryToItemStylePatches,
+  resolveSafeMultiLayoutOperation,
 } from "../visual-editor/src/multi-layout.mjs";
 
 const require = createRequire(import.meta.url);
@@ -66,6 +67,22 @@ assert.throws(() => executeMultiLayoutOperation([
   targetItemKeys: ["a", "b"],
   gapToken: "space-4",
 }, { canvasHeightPx: 500 }), /새 충돌|경계/);
+
+const threeItems = [
+  { itemKey: "title", xPct: 0, yPx: 0, widthPct: 38, heightPx: 100 },
+  { itemKey: "description", xPct: 42, yPx: 0, widthPct: 38, heightPx: 100 },
+  { itemKey: "cta", xPct: 0, yPx: 180, widthPct: 20, heightPx: 80 },
+];
+const adjusted = resolveSafeMultiLayoutOperation(threeItems, {
+  operation: "align-left",
+  targetItemKeys: ["title", "description", "cta"],
+  axis: null,
+  gapToken: "space-4",
+}, { canvasWidthPx: 1280, canvasHeightPx: 700 });
+assert.equal(adjusted.adjusted, true);
+assert.equal(adjusted.plan.operation, "group-stack-vertical");
+assert.equal(adjusted.geometry[1].yPx, 116);
+assert.equal(adjusted.geometry[2].yPx, 232);
 
 assert.deepEqual(endpoint.normalizeGeometry(geometry, ["title", "image"]), geometry);
 assert.throws(() => endpoint.normalizeGeometry([geometry[0]], ["title", "image"]), /every selected component/);

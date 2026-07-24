@@ -3,7 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import PromoPageRenderer from "./PromoPageRenderer.vue";
 import { persistSnapshot, withoutFreePosition } from "./editor-utils.mjs";
 import { normalizeLayoutSpec, validateLayoutSpec } from "./layout-utils.mjs";
-import { executeMultiLayoutOperation, geometryToItemStylePatches } from "./multi-layout.mjs";
+import { geometryToItemStylePatches, resolveSafeMultiLayoutOperation } from "./multi-layout.mjs";
 import {
   DESIGN_COLOR_TOKENS,
   DEFAULT_DESIGN_SPEC,
@@ -202,12 +202,15 @@ async function requestMultiLayoutSuggestion() {
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(result.message || result.error || `AI 정렬 요청 오류(${response.status})`);
-    const after = executeMultiLayoutOperation(captured.geometry, result.suggestion, captured);
+    const resolved = resolveSafeMultiLayoutOperation(captured.geometry, result.suggestion, captured);
     multiLayoutSuggestion.value = {
-      ...result.suggestion,
+      ...resolved.plan,
+      requestedOperation: result.suggestion.operation,
+      adjusted: resolved.adjusted,
+      adjustmentReason: resolved.adjustmentReason,
       sectionKey: selectedSection.value.sectionKey,
       before: captured.geometry,
-      after,
+      after: resolved.geometry,
     };
   } catch (planningError) {
     multiLayoutError.value = planningError.message;
@@ -1107,6 +1110,7 @@ onBeforeUnmount(() => {
             <div v-if="multiLayoutSuggestion" class="multi-layout-preview">
               <strong>{{ layoutOperationLabel(multiLayoutSuggestion.operation) }}</strong>
               <span>{{ multiLayoutSuggestion.rationale }}</span>
+              <span v-if="multiLayoutSuggestion.adjusted" class="multi-layout-adjustment">{{ multiLayoutSuggestion.adjustmentReason }}</span>
               <small v-if="multiLayoutSuggestion.gapToken">간격: {{ multiLayoutSuggestion.gapToken }}</small>
               <div class="multi-layout-preview__comparison">
                 <div v-for="before in multiLayoutSuggestion.before" :key="before.itemKey">

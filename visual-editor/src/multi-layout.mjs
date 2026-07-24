@@ -169,3 +169,42 @@ export function geometryToItemStylePatches(geometry) {
     },
   ]));
 }
+
+export function resolveSafeMultiLayoutOperation(geometry, plan, options = {}) {
+  try {
+    return {
+      geometry: executeMultiLayoutOperation(geometry, plan, options),
+      plan,
+      adjusted: false,
+      adjustmentReason: "",
+    };
+  } catch (error) {
+    const message = String(error?.message || "");
+    if (!/새 충돌|경계를 벗어|공간이 부족/.test(message)) throw error;
+    const gapToken = plan?.gapToken || "space-4";
+    const prefersHorizontalFallback = ["align-top", "align-middle", "align-bottom"].includes(plan?.operation);
+    const fallbackOperations = prefersHorizontalFallback
+      ? ["group-stack-horizontal", "group-stack-vertical"]
+      : ["group-stack-vertical", "group-stack-horizontal"];
+    let lastError = error;
+    for (const operation of fallbackOperations) {
+      const fallbackPlan = {
+        ...plan,
+        operation,
+        axis: operation.endsWith("horizontal") ? "horizontal" : "vertical",
+        gapToken,
+      };
+      try {
+        return {
+          geometry: executeMultiLayoutOperation(geometry, fallbackPlan, options),
+          plan: fallbackPlan,
+          adjusted: true,
+          adjustmentReason: `${message} 충돌을 피하기 위해 ${operation} 명령으로 자동 보정했습니다.`,
+        };
+      } catch (fallbackError) {
+        lastError = fallbackError;
+      }
+    }
+    throw lastError;
+  }
+}
