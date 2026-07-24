@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="/prototype/design-tokens.css?v=app-tokens-v1" />
     <link rel="stylesheet" href="/prototype/app-shell.css?v=app-shell-sidebar-v3" />
     <link rel="stylesheet" href="/prototype/app-components.css?v=app-components-v1" />
-    <link rel="stylesheet" href="/prototype/styles.css?v=admin-template-manager-v1" />
+    <link rel="stylesheet" href="/prototype/styles.css?v=admin-template-manager-v2" />
     <script src="/prototype/vendor/lucide/lucide.min.js?v=1.8.0"></script>
     <script src="/prototype/i18n-runtime.js?v=i18n-runtime-v1"></script>
     <script src="/prototype/shared-shell.js?v=app-shell-sidebar-v4"></script>
@@ -1124,44 +1124,40 @@
                     class="template-list-card"
                     :class="{ selected: selectedWizardFormTemplateKey === group.templateKey }"
                   >
-                    <div class="template-list-card__header">
-                      <button
-                        class="prompt-list-item template-list-select"
-                        type="button"
-                        :class="{ selected: selectedWizardFormTemplateKey === group.templateKey }"
-                        @click="selectWizardFormTemplate(group.templateKey)"
-                      >
+                    <button
+                      class="template-settings-toggle"
+                      type="button"
+                      :class="{ selected: selectedWizardFormTemplateKey === group.templateKey }"
+                      :aria-expanded="expandedWizardFormTemplateSettingsKey === group.templateKey"
+                      :aria-label="`${group.primary?.name || group.templateKey} 설정`"
+                      @click="toggleWizardFormTemplateSettings(group)"
+                    >
+                      <span class="template-list-select">
                         <strong>{{ group.primary?.name }}</strong>
                         <span>{{ group.templateKey }} · v{{ group.primary?.version }} · {{ group.versions.length }}개 버전</span>
                         <em :class="`status-${group.primary?.status}`">{{ group.primary?.isDefault ? '기본' : wizardSectionStatusLabel(group.primary?.status) }}</em>
-                      </button>
-                      <button
-                        class="template-settings-toggle"
-                        type="button"
-                        :aria-expanded="expandedWizardFormTemplateSettingsKey === group.templateKey"
-                        :aria-label="`${group.primary?.name || group.templateKey} 설정`"
-                        title="템플릿 설정"
-                        @click="toggleWizardFormTemplateSettings(group)"
-                      >⚙</button>
-                    </div>
-                    <div class="template-list-card__actions">
-                      <button class="tiny-button" type="button" :disabled="wizardFormTemplateSaving" @click="editWizardFormTemplate(group)">수정</button>
-                      <button class="tiny-button" type="button" :disabled="wizardFormTemplateSaving" @click="openDuplicateWizardFormTemplate(group)">복제</button>
-                      <button class="tiny-button danger" type="button" :disabled="wizardFormTemplateSaving || (!group.draft && !group.inactive)" @click="deleteWizardFormTemplate(group)">삭제</button>
+                      </span>
+                      <span class="template-settings-icon" aria-hidden="true">⚙</span>
+                    </button>
+                    <div
+                      class="template-list-settings"
+                      v-if="expandedWizardFormTemplateSettingsKey === group.templateKey && wizardFormTemplateDetail?.template?.templateKey === group.templateKey"
+                    >
                       <label class="template-active-switch" :title="group.primary?.isDefault && group.primary?.status === 'active' ? '기본 템플릿은 다른 기본 템플릿을 활성화하기 전까지 비활성화할 수 없습니다.' : '템플릿 활성 상태'">
+                        <span class="template-active-switch__label">{{ group.primary?.status === 'active' ? '활성' : '비활성' }}</span>
                         <input
                           type="checkbox"
                           :checked="group.primary?.status === 'active'"
                           :disabled="wizardFormTemplateSaving || (group.primary?.isDefault && group.primary?.status === 'active')"
                           @change="toggleWizardFormTemplateActive(group, $event.target.checked)"
                         />
-                        <span>{{ group.primary?.status === 'active' ? '활성' : '비활성' }}</span>
+                        <span class="template-active-switch__track" aria-hidden="true"></span>
                       </label>
-                    </div>
-                    <div
-                      class="template-list-settings"
-                      v-if="expandedWizardFormTemplateSettingsKey === group.templateKey && wizardFormTemplateDetail?.template?.templateKey === group.templateKey"
-                    >
+                      <div class="template-list-card__actions">
+                        <button class="tiny-button" type="button" :disabled="wizardFormTemplateSaving" @click="editWizardFormTemplate(group)">수정</button>
+                        <button class="tiny-button" type="button" :disabled="wizardFormTemplateSaving" @click="openDuplicateWizardFormTemplate(group)">복제</button>
+                        <button class="tiny-button danger" type="button" :disabled="wizardFormTemplateSaving || (!group.draft && !group.inactive)" @click="deleteWizardFormTemplate(group)">삭제</button>
+                      </div>
                       <label class="field compact-field">
                         <span>Template Key</span>
                         <input :value="group.templateKey" type="text" readonly />

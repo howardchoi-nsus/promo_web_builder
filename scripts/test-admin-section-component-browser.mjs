@@ -21,7 +21,7 @@ async function waitForServer() {
 }
 
 const tokenVersionId = "77777777-7777-4777-8777-777777777777";
-const template = { id: "11111111-1111-4111-8111-111111111111", templateKey: "default", name: "Default", status: "draft", version: 1, designTokenSetVersionId: tokenVersionId };
+let template = { id: "11111111-1111-4111-8111-111111111111", templateKey: "default", name: "Default", status: "draft", version: 1, designTokenSetVersionId: tokenVersionId };
 const sectionA = { id: "22222222-2222-4222-8222-222222222222", sectionKey: "promotionIntro", name: "Promotion Intro", status: "draft", version: 2, aiDesign: { enabled: true } };
 const sectionB = { id: "33333333-3333-4333-8333-333333333333", sectionKey: "benefits", name: "Benefits", status: "active", version: 1, aiDesign: { enabled: true } };
 const membership = { id: "44444444-4444-4444-8444-444444444444", formTemplateId: template.id, sectionId: sectionA.id, sectionKey: sectionA.sectionKey, sectionName: sectionA.name, sectionVersion: 1, isVisible: true, isRequired: true, userReorderAllowed: true };
@@ -71,7 +71,8 @@ try {
     }
     if (url.pathname === "/api/wizard-form-template-activate" && request.method() === "POST") {
       activateBody = request.postDataJSON();
-      return reply({ ok: true, template: { ...template, status: "active" }, layoutIdentity: { layoutRevision: 1 } });
+      template = { ...template, status: "active" };
+      return reply({ ok: true, template, layoutIdentity: { layoutRevision: 1 } });
     }
     if (url.pathname === "/api/wizard-content-sections") return reply({ ok: true, sections: [sectionA, sectionB] });
     if (url.pathname === "/api/wizard-content-section") return reply({ ok: true, section: sectionA, items: [], histories: [] });
@@ -112,8 +113,9 @@ try {
   assert.equal(await page.locator(".form-template-create input").evaluateAll((inputs) => inputs.some((input) => /key/i.test(input.name || input.placeholder || ""))), false);
   await page.locator(".template-list-global-actions button").click();
 
-  await templateCard.locator(".template-active-switch input").check();
+  await templateCard.locator(".template-active-switch__track").click();
   await page.waitForTimeout(50);
+  assert.equal(await templateCard.locator(".template-active-switch input").isChecked(), true);
   assert.deepEqual(activateBody, {
     id: template.id,
     changeNote: "관리자 페이지에서 폼 템플릿을 활성화했습니다.",
