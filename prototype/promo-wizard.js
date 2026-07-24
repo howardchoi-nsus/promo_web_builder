@@ -102,6 +102,9 @@ let wizardResolvedLayout = null;
 let wizardLayoutRevision = 1;
 let wizardRenderer = { key: "default-promo-renderer", version: 1 };
 let wizardLayoutFrame = null;
+const wizardEditorBridge = globalThis.PromoEditorBridge?.createEditorBridge({
+  getFrame: () => wizardLayoutFrame,
+});
 let wizardLayoutLogTimer = null;
 const wizardSessionId = sessionStorage.getItem(storageKeys.wizardSessionId)
   || (globalThis.crypto?.randomUUID?.() || `wizard-${Date.now()}-${Math.random().toString(16).slice(2)}`);
@@ -288,11 +291,7 @@ function wizardLayoutSnapshot() {
 
 function postWizardLayoutSnapshot() {
   const snapshot = wizardLayoutSnapshot();
-  if (!snapshot || !wizardLayoutFrame?.contentWindow) return;
-  wizardLayoutFrame.contentWindow.postMessage({
-    type: "promo-wizard-layout-snapshot",
-    snapshot,
-  }, window.location.origin);
+  wizardEditorBridge?.postSnapshot(snapshot);
 }
 
 function resetWizardLayout() {
@@ -324,7 +323,7 @@ function logWizardLayoutEvent(eventName, changeSummary = {}, targetKey = "") {
 }
 
 window.addEventListener("message", (event) => {
-  if (event.origin !== window.location.origin) return;
+  if (!wizardEditorBridge?.isTrustedEvent(event)) return;
   if (event.data?.type === "promo-wizard-layout-ready") {
     postWizardLayoutSnapshot();
     return;

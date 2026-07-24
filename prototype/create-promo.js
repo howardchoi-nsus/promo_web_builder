@@ -134,6 +134,9 @@ let wizardTemplateRefreshPromise = null;
 let wizardTemplateRefreshRequestId = 0;
 let wizardTemplateRefreshError = "";
 let wizardLayoutFrame = null;
+const wizardEditorBridge = globalThis.PromoEditorBridge?.createEditorBridge({
+  getFrame: () => wizardLayoutFrame,
+});
 let wizardLayoutLogTimer = null;
 let wizardSnapshotRevision = 0;
 const wizardSessionId = sessionStorage.getItem(storageKeys.wizardSessionId)
@@ -731,11 +734,7 @@ function wizardLayoutSnapshot() {
 function postWizardLayoutSnapshot() {
   wizardSnapshotRevision += 1;
   const snapshot = wizardLayoutSnapshot();
-  if (!snapshot || !wizardLayoutFrame?.contentWindow) return;
-  wizardLayoutFrame.contentWindow.postMessage({
-    type: "promo-wizard-layout-snapshot",
-    snapshot,
-  }, window.location.origin);
+  wizardEditorBridge?.postSnapshot(snapshot);
 }
 
 function resetWizardLayout() {
@@ -817,7 +816,7 @@ function autoRegisterPromoOverview() {
 }
 
 window.addEventListener("message", (event) => {
-  if (event.origin !== window.location.origin) return;
+  if (!wizardEditorBridge?.isTrustedEvent(event)) return;
   if (event.data?.type === "promo-wizard-layout-ready") {
     postWizardLayoutSnapshot();
     return;
@@ -827,14 +826,13 @@ window.addEventListener("message", (event) => {
       contentState.sectionInputs = mergeSectionInputs(event.data.sectionInputs);
     }
     const registeredCount = autoRegisterPromoOverview();
-    wizardLayoutFrame?.contentWindow?.postMessage({
+    wizardEditorBridge.post({
       type: "create-promo-auto-register-result",
       registeredCount,
-    }, window.location.origin);
+    });
     return;
   }
   if (event.data?.type === "create-promo-section-ai-action") {
-    if (event.source !== wizardLayoutFrame?.contentWindow) return;
     const section = wizardSectionDefinitions.find((item) => item.sectionKey === event.data.sectionKey);
     if (!section) return;
     const saved = sectionAiRun(section.sectionKey);
@@ -858,7 +856,6 @@ window.addEventListener("message", (event) => {
     return;
   }
   if (event.data?.type === "create-promo-remove-image") {
-    if (event.source !== wizardLayoutFrame?.contentWindow) return;
     const section = wizardSectionDefinitions.find((item) => item.sectionKey === event.data.sectionKey);
     const item = section?.items?.find((candidate) => candidate.itemKey === event.data.itemKey);
     const field = String(event.data.fieldKey || "").trim()
