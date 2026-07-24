@@ -23,6 +23,7 @@ const DEFAULT_AI_DESIGN = Object.freeze({
   imageTarget: "section-background",
   imageTargetItemKeys: [],
   imageAspectRatio: "16:9",
+  backgroundPromptText: "",
 });
 
 function getSql() {
@@ -88,6 +89,7 @@ function normalizeAiDesign(value = {}) {
     imageTarget,
     imageTargetItemKeys,
     imageAspectRatio: String(source.imageAspectRatio || DEFAULT_AI_DESIGN.imageAspectRatio).trim() || DEFAULT_AI_DESIGN.imageAspectRatio,
+    backgroundPromptText: String(source.backgroundPromptText || "").trim(),
   };
 }
 

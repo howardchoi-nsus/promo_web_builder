@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import PromoPageRenderer from "./PromoPageRenderer.vue";
 import { persistSnapshot, withoutFreePosition } from "./editor-utils.mjs";
 import { normalizeLayoutSpec, validateLayoutSpec } from "./layout-utils.mjs";
+import { executeMultiLayoutOperation, geometryToItemStylePatches } from "./multi-layout.mjs";
 import {
   DESIGN_COLOR_TOKENS,
   DEFAULT_DESIGN_SPEC,
@@ -25,6 +26,7 @@ const sectionInputs = ref({});
 const designSpec = ref(JSON.parse(JSON.stringify(DEFAULT_DESIGN_SPEC)));
 const selectedSectionKey = ref("");
 const selectedItemKey = ref("");
+const selectedItemKeys = ref([]);
 const expandedComponentKey = ref("");
 const previewStageRef = ref(null);
 const viewport = ref("desktop");
@@ -40,6 +42,11 @@ const externalSnapshotReady = ref(false);
 const autoRegisterPending = ref(false);
 const autoRegisterMessage = ref("");
 const sectionDesignRuns = ref({});
+const multiLayoutPlanning = ref(false);
+const multiLayoutError = ref("");
+const multiLayoutSuggestion = ref(null);
+const multiLayoutUndoStack = ref([]);
+const multiLayoutRevision = ref(0);
 let applyingExternalSnapshot = false;
 
 const isAdminLayoutMode = computed(() => props.mode === "admin-layout");
@@ -63,18 +70,28 @@ const editorSnapshot = computed(() => template.value ? createSnapshot({
 }) : null);
 const rendererSnapshot = computed(() => props.mode === "output" ? outputSnapshot.value : editorSnapshot.value);
 
-function selectItem(section, item) {
+function selectItem(section, item, { preserveMulti = false } = {}) {
   if (!section) return;
+  const sectionChanged = selectedSectionKey.value && selectedSectionKey.value !== section.sectionKey;
   selectedSectionKey.value = section.sectionKey;
   selectedItemKey.value = item?.itemKey || "";
+  if (!preserveMulti || sectionChanged) selectedItemKeys.value = item?.itemKey ? [item.itemKey] : [];
 }
 
 function componentKey(section, item) {
   return section && item ? `${section.sectionKey}.${item.itemKey}` : "";
 }
 
-async function selectRendererItem(section, item) {
-  selectItem(section, item);
+async function selectRendererItem(section, item, selection = {}) {
+  if (selection.additive && !item?.isLocked && selectedSectionKey.value === section.sectionKey) {
+    const keys = new Set(selectedItemKeys.value);
+    if (keys.has(item.itemKey)) keys.delete(item.itemKey);
+    else keys.add(item.itemKey);
+    selectedItemKeys.value = [...keys];
+    selectItem(section, item, { preserveMulti: true });
+  } else {
+    selectItem(section, item);
+  }
   expandedComponentKey.value = componentKey(section, item);
   await nextTick();
 }
@@ -100,9 +117,138 @@ async function selectSection(section) {
   scrollPreviewToSection(section);
 }
 
+function multiItemSelected(item) {
+  return Boolean(item?.itemKey && selectedItemKeys.value.includes(item.itemKey));
+}
+
+function toggleMultiItem(section, item) {
+  if (!section || !item || item.isLocked) return;
+  if (selectedSectionKey.value !== section.sectionKey) selectedItemKeys.value = [];
+  const keys = new Set(selectedItemKeys.value);
+  if (keys.has(item.itemKey)) keys.delete(item.itemKey);
+  else keys.add(item.itemKey);
+  selectedItemKeys.value = [...keys];
+  selectItem(section, item, { preserveMulti: true });
+  expandedComponentKey.value = componentKey(section, item);
+  multiLayoutSuggestion.value = null;
+  multiLayoutError.value = "";
+}
+
+function clearMultiSelection() {
+  selectedItemKeys.value = selectedItem.value?.itemKey ? [selectedItem.value.itemKey] : [];
+  multiLayoutSuggestion.value = null;
+  multiLayoutError.value = "";
+}
+
+function layoutOperationLabel(operation) {
+  return ({
+    "align-left": "왼쪽 정렬",
+    "align-center": "가운데 정렬",
+    "align-right": "오른쪽 정렬",
+    "align-top": "위쪽 정렬",
+    "align-middle": "세로 중앙 정렬",
+    "align-bottom": "아래쪽 정렬",
+    "distribute-horizontal": "가로 균등 배치",
+    "distribute-vertical": "세로 균등 배치",
+    "equal-width": "동일 너비",
+    "equal-height": "동일 높이",
+    "set-gap": "지정 간격 적용",
+    "group-stack-horizontal": "가로 스택",
+    "group-stack-vertical": "세로 스택",
+  })[operation] || operation;
+}
+
+function captureMultiLayoutGeometry(section) {
+  if (!section || !previewStageRef.value) throw new Error("미리보기 영역을 찾지 못했습니다.");
+  const sectionElement = previewStageRef.value.querySelector(`[data-section-key="${CSS.escape(section.sectionKey)}"]`);
+  const canvas = sectionElement?.querySelector(".rendered-items");
+  if (!canvas) throw new Error("선택한 섹션의 레이아웃 영역을 찾지 못했습니다.");
+  const canvasRect = canvas.getBoundingClientRect();
+  if (!canvasRect.width || !canvasRect.height) throw new Error("레이아웃 영역 크기를 계산하지 못했습니다.");
+  const itemElements = [...canvas.querySelectorAll("[data-style-key]")];
+  const geometry = selectedItemKeys.value.map((itemKey) => {
+    const styleKey = `${section.sectionKey}.${itemKey}`;
+    const element = itemElements.find((candidate) => candidate.dataset.styleKey === styleKey);
+    if (!element) throw new Error(`${itemKey} 컴포넌트 위치를 찾지 못했습니다.`);
+    const rect = element.getBoundingClientRect();
+    return {
+      itemKey,
+      xPct: ((rect.left - canvasRect.left) / canvasRect.width) * 100,
+      yPx: rect.top - canvasRect.top,
+      widthPct: (rect.width / canvasRect.width) * 100,
+      heightPx: Math.max(80, rect.height),
+    };
+  });
+  return { geometry, canvasWidthPx: canvasRect.width, canvasHeightPx: canvasRect.height };
+}
+
+async function requestMultiLayoutSuggestion() {
+  if (!selectedSection.value || selectedItemKeys.value.length < 2 || multiLayoutPlanning.value) return;
+  multiLayoutPlanning.value = true;
+  multiLayoutError.value = "";
+  multiLayoutSuggestion.value = null;
+  try {
+    const captured = captureMultiLayoutGeometry(selectedSection.value);
+    const response = await fetch("/api/promo-multi-component-layout-plan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        formTemplateId: template.value?.id,
+        sectionKey: selectedSection.value.sectionKey,
+        selectedItemKeys: selectedItemKeys.value,
+        geometry: captured.geometry,
+        sectionInputs: sectionInputs.value?.[selectedSection.value.sectionKey] || {},
+      }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.message || result.error || `AI 정렬 요청 오류(${response.status})`);
+    const after = executeMultiLayoutOperation(captured.geometry, result.suggestion, captured);
+    multiLayoutSuggestion.value = {
+      ...result.suggestion,
+      sectionKey: selectedSection.value.sectionKey,
+      before: captured.geometry,
+      after,
+    };
+  } catch (planningError) {
+    multiLayoutError.value = planningError.message;
+  } finally {
+    multiLayoutPlanning.value = false;
+  }
+}
+
+function applyMultiLayoutSuggestion() {
+  const suggestion = multiLayoutSuggestion.value;
+  if (!suggestion || suggestion.sectionKey !== selectedSection.value?.sectionKey) return;
+  const beforeSpec = JSON.parse(JSON.stringify(designSpec.value));
+  const patches = geometryToItemStylePatches(suggestion.after);
+  const nextItemStyles = { ...(designSpec.value.itemStyles || {}) };
+  Object.entries(patches).forEach(([itemKey, patch]) => {
+    const key = `${suggestion.sectionKey}.${itemKey}`;
+    nextItemStyles[key] = { ...(nextItemStyles[key] || {}), ...patch };
+  });
+  multiLayoutUndoStack.value = [
+    ...multiLayoutUndoStack.value.slice(-19),
+    { designSpec: beforeSpec, revision: multiLayoutRevision.value, label: layoutOperationLabel(suggestion.operation) },
+  ];
+  designSpec.value = { ...designSpec.value, itemStyles: nextItemStyles };
+  multiLayoutRevision.value += 1;
+  multiLayoutSuggestion.value = null;
+  multiLayoutError.value = "";
+}
+
+function undoMultiLayout() {
+  const previous = multiLayoutUndoStack.value.at(-1);
+  if (!previous) return;
+  designSpec.value = JSON.parse(JSON.stringify(previous.designSpec));
+  multiLayoutRevision.value = previous.revision;
+  multiLayoutUndoStack.value = multiLayoutUndoStack.value.slice(0, -1);
+  multiLayoutSuggestion.value = null;
+  multiLayoutError.value = "";
+}
+
 function toggleComponent(section, item) {
   const key = componentKey(section, item);
-  selectItem(section, item);
+  selectItem(section, item, { preserveMulti: selectedItemKeys.value.includes(item.itemKey) });
   expandedComponentKey.value = expandedComponentKey.value === key ? "" : key;
 }
 
@@ -464,6 +610,7 @@ async function loadEditor() {
     sectionInputs.value = createSectionInputs(sections.value);
     selectedSectionKey.value = sections.value[0]?.sectionKey || "";
     selectedItemKey.value = sections.value[0]?.items?.[0]?.itemKey || "";
+    selectedItemKeys.value = selectedItemKey.value ? [selectedItemKey.value] : [];
     expandedComponentKey.value = componentKey(sections.value[0], sections.value[0]?.items?.[0]);
   } catch (loadError) {
     error.value = loadError.message;
@@ -502,6 +649,7 @@ async function loadAdminLayout() {
     layoutId.value = result.layout?.id || null;
     selectedSectionKey.value = sections.value[0]?.sectionKey || "";
     selectedItemKey.value = sections.value[0]?.items?.[0]?.itemKey || "";
+    selectedItemKeys.value = selectedItemKey.value ? [selectedItemKey.value] : [];
     expandedComponentKey.value = componentKey(sections.value[0], sections.value[0]?.items?.[0]);
   } catch (loadError) {
     error.value = loadError.message;
@@ -565,6 +713,8 @@ async function applyExternalSnapshot(snapshot) {
   selectedItemKey.value = nextSelectedSection?.items?.some((item) => item.itemKey === previousItemKey)
     ? previousItemKey
     : nextSelectedSection?.items?.[0]?.itemKey || "";
+  selectedItemKeys.value = selectedItemKey.value ? [selectedItemKey.value] : [];
+  multiLayoutSuggestion.value = null;
   const selectedComponentKey = componentKey(
     nextSelectedSection,
     nextSelectedSection?.items?.find((item) => item.itemKey === selectedItemKey.value),
@@ -832,6 +982,7 @@ onBeforeUnmount(() => {
             editable
             :show-guides="guidesVisible"
             :selected-item-key="selectedStyleKey"
+            :selected-item-keys="selectedItemKeys.map((itemKey) => `${selectedSection?.sectionKey}.${itemKey}`)"
             @select-item="selectRendererItem"
             @update-item-style="updateItemStyle"
             @update-renderer-item-style="updateRendererItemStyle"
@@ -934,6 +1085,43 @@ onBeforeUnmount(() => {
             </div>
           </section>
 
+          <section v-if="isCreatePromoWizardMode" class="multi-layout-panel">
+            <div class="multi-layout-panel__heading">
+              <div>
+                <strong>AI 다중 정렬</strong>
+                <small>{{ selectedItemKeys.length }}개 컴포넌트 선택 · revision {{ multiLayoutRevision }}</small>
+              </div>
+              <button type="button" :disabled="selectedItemKeys.length <= 1" @click="clearMultiSelection">선택 초기화</button>
+            </div>
+            <p>아래 체크박스 또는 Ctrl/Cmd+미리보기 클릭으로 같은 섹션의 컴포넌트를 2개 이상 선택하세요.</p>
+            <div class="multi-layout-panel__actions">
+              <button
+                type="button"
+                class="section-ai-action"
+                :disabled="selectedItemKeys.length < 2 || multiLayoutPlanning"
+                @click="requestMultiLayoutSuggestion"
+              >{{ multiLayoutPlanning ? "AI 제안 생성 중" : "AI 정렬 제안" }}</button>
+              <button type="button" :disabled="!multiLayoutUndoStack.length" @click="undoMultiLayout">마지막 적용 취소</button>
+            </div>
+            <p v-if="multiLayoutError" class="multi-layout-error" role="alert">{{ multiLayoutError }}</p>
+            <div v-if="multiLayoutSuggestion" class="multi-layout-preview">
+              <strong>{{ layoutOperationLabel(multiLayoutSuggestion.operation) }}</strong>
+              <span>{{ multiLayoutSuggestion.rationale }}</span>
+              <small v-if="multiLayoutSuggestion.gapToken">간격: {{ multiLayoutSuggestion.gapToken }}</small>
+              <div class="multi-layout-preview__comparison">
+                <div v-for="before in multiLayoutSuggestion.before" :key="before.itemKey">
+                  <b>{{ before.itemKey }}</b>
+                  <span>전 X {{ Math.round(before.xPct) }}% · Y {{ Math.round(before.yPx) }}px</span>
+                  <span>후 X {{ Math.round(multiLayoutSuggestion.after.find((item) => item.itemKey === before.itemKey)?.xPct || 0) }}% · Y {{ Math.round(multiLayoutSuggestion.after.find((item) => item.itemKey === before.itemKey)?.yPx || 0) }}px</span>
+                </div>
+              </div>
+              <div class="multi-layout-panel__actions">
+                <button type="button" class="section-ai-action" @click="applyMultiLayoutSuggestion">제안 적용</button>
+                <button type="button" @click="multiLayoutSuggestion = null">취소</button>
+              </div>
+            </div>
+          </section>
+
           <div class="component-property-list">
             <section
               v-for="item in selectedSection.items || []"
@@ -941,16 +1129,27 @@ onBeforeUnmount(() => {
               class="component-property-accordion"
               :class="{ open: expandedComponentKey === componentKey(selectedSection, item) }"
             >
-              <button
-                type="button"
-                class="component-property-trigger"
-                :aria-expanded="expandedComponentKey === componentKey(selectedSection, item)"
-                @click="toggleComponent(selectedSection, item)"
-              >
-                <span>{{ item.name }}</span>
-                <small>{{ item.fieldKind }}</small>
-                <i aria-hidden="true"></i>
-              </button>
+              <div class="component-property-header">
+                <label v-if="isCreatePromoWizardMode" class="component-multi-select" :title="item.isLocked ? '잠긴 컴포넌트는 다중 정렬할 수 없습니다.' : '다중 정렬 대상 선택'">
+                  <input
+                    type="checkbox"
+                    :checked="multiItemSelected(item)"
+                    :disabled="item.isLocked"
+                    :aria-label="`${item.name} 다중 정렬 대상 선택`"
+                    @change="toggleMultiItem(selectedSection, item)"
+                  />
+                </label>
+                <button
+                  type="button"
+                  class="component-property-trigger"
+                  :aria-expanded="expandedComponentKey === componentKey(selectedSection, item)"
+                  @click="toggleComponent(selectedSection, item)"
+                >
+                  <span>{{ item.name }}</span>
+                  <small>{{ item.fieldKind }}</small>
+                  <i aria-hidden="true"></i>
+                </button>
+              </div>
               <div class="component-property-body">
                 <div>
                   <div

@@ -111,7 +111,7 @@ async function fetchTemplateSections(sql, templateId) {
     select ts.id::text, ts.form_template_id::text, source_section.id::text as section_id,
       ts.section_key,
       source_section.name as section_name, source_section.description as section_description, source_section.version as section_version,
-      source_section.status as section_status, source_section.ai_design,
+      source_section.status as section_status, coalesce(ts.ai_design, source_section.ai_design) as ai_design,
       ts.sort_order, ts.is_required, ts.is_visible, ts.order_change_allowed,
       ts.user_reorder_allowed, ts.fixed_position, ts.created_at, ts.updated_at
     from wizard_form_template_sections ts

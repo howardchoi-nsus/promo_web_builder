@@ -31,13 +31,11 @@ module.exports = async function handler(req, res) {
     if (target.status === "archived") {
       return res.status(409).json({ error: "Archived prompt templates cannot be activated" });
     }
-    if (["integrated_brief", "lofi_draft", "final_design"].includes(target.type)) {
-      validateStageModelConfig(target.type, {
-        provider: target.provider,
-        model: target.model,
-        responseFormat: target.response_format,
-      });
-    }
+    validateStageModelConfig(target.type, {
+      provider: target.provider,
+      model: target.model,
+      responseFormat: target.response_format,
+    });
 
     const oldActiveRows = await sql`
       select id::text, type, body, status, version, provider, model, model_options

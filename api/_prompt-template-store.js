@@ -116,6 +116,25 @@ const PROMPT_TYPES = {
     requiredVariables: ["sectionJson", "contentJson", "constraintsJson", "tokenSetJson"],
     optionalVariables: [],
   },
+  multi_component_layout_planner: {
+    name: "Multi-component Layout Planner",
+    body: [
+      "Choose one safe layout operation for the selected component instances.",
+      "Return only an allowlisted operation, the supplied target item keys, an approved gap token or null, and a concise rationale.",
+      "Never return CSS, HTML, selectors, raw coordinates, widths, heights, transforms, or invented item keys.",
+      "Section: {{sectionJson}}",
+      "Selected components: {{selectionJson}}",
+      "Current geometry: {{geometryJson}}",
+      "Registered content: {{contentJson}}",
+      "Allowed operations: {{allowedOperationsJson}}",
+      "Approved gap tokens: {{gapTokensJson}}",
+    ].join("\n"),
+    requiredVariables: [
+      "sectionJson", "selectionJson", "geometryJson", "contentJson",
+      "allowedOperationsJson", "gapTokensJson",
+    ],
+    optionalVariables: [],
+  },
   section_background_image: {
     name: "Section Background Image",
     body: [
@@ -185,6 +204,13 @@ const DEFAULT_MODEL_SETTINGS = {
     model: process.env.SECTION_LAYOUT_MODEL || "gpt-4.1-mini",
     temperature: 0.2,
     maxTokens: 6000,
+    responseFormat: "json_object",
+  },
+  multi_component_layout_planner: {
+    provider: "openai",
+    model: process.env.SECTION_LAYOUT_MODEL || "gpt-4.1-mini",
+    temperature: 0.2,
+    maxTokens: 2000,
     responseFormat: "json_object",
   },
   section_background_image: {

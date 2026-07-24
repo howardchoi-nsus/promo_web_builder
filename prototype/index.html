@@ -704,6 +704,14 @@
                 :aria-selected="adminTab === 'i18n'"
                 @click="selectAdminTab('i18n')"
               >{{ t('admin.i18n.title') }}</button>
+              <button
+                class="admin-tab"
+                :class="{ active: adminTab === 'audit' }"
+                type="button"
+                role="tab"
+                :aria-selected="adminTab === 'audit'"
+                @click="selectAdminTab('audit')"
+              >변경 이력</button>
             </nav>
 
             <div
@@ -770,6 +778,7 @@
                     <option value="lofi_draft">LO-FI 시안</option>
                     <option value="final_design">최종 디자인</option>
                     <option value="section_layout_planner">섹션 레이아웃 계획</option>
+                    <option value="multi_component_layout_planner">다중 컴포넌트 정렬 계획</option>
                     <option value="section_background_image">섹션 배경 이미지</option>
                     <option value="component_image">컴포넌트 이미지</option>
                   </select>
@@ -838,7 +847,7 @@
                     <select v-model="promptEditor.provider">
                       <option value="">설정 안 함</option>
                       <option value="openai">OpenAI / GPT</option>
-                      <option value="google" :disabled="['integrated_brief', 'lofi_draft', 'section_layout_planner'].includes(selectedPromptTemplate.type)">Google / Gemini</option>
+                      <option value="google" :disabled="['integrated_brief', 'lofi_draft', 'section_layout_planner', 'multi_component_layout_planner'].includes(selectedPromptTemplate.type)">Google / Gemini</option>
                     </select>
                   </label>
                   <label class="field">
@@ -876,8 +885,8 @@
                 <div class="empty-state compact" v-else-if="selectedPromptTemplate.type === 'image_execution'">
                   이미지 생성 설정은 image_execution 타입을 호출하는 별도 Workflow에만 적용됩니다. LO-FI와 최종 디자인은 각각 전용 설정을 사용합니다.
                 </div>
-                <div class="empty-state compact" v-else-if="selectedPromptTemplate.type === 'section_layout_planner'">
-                  섹션 레이아웃 계획은 OpenAI JSON 응답 모델만 지원합니다.
+                <div class="empty-state compact" v-else-if="['section_layout_planner', 'multi_component_layout_planner'].includes(selectedPromptTemplate.type)">
+                  섹션 레이아웃 계획은 OpenAI JSON 응답 모델만 지원합니다. 모델은 허용된 명령만 선택하며 실제 좌표는 결정론적 엔진이 계산합니다.
                 </div>
                 <div class="empty-state compact" v-else-if="['section_background_image', 'component_image'].includes(selectedPromptTemplate.type)">
                   섹션 AI 이미지 생성에 사용할 이미지 모델과 프롬프트를 관리합니다. 안전 정책은 서버에서 별도로 강제됩니다.
@@ -1353,6 +1362,15 @@
                         <option value="16:9">16:9</option><option value="4:3">4:3</option><option value="1:1">1:1</option><option value="3:4">3:4</option>
                       </select>
                     </label>
+                    <label class="field compact-field">
+                      <span>섹션 배경 이미지 관리자 지침</span>
+                      <textarea
+                        v-model="wizardFormTemplateSectionEditor.aiDesign.backgroundPromptText"
+                        rows="4"
+                        :disabled="!wizardFormTemplateCanEdit || !wizardFormTemplateSectionEditor.aiDesign.enabled"
+                        placeholder="예: 주요 피사체는 오른쪽에 배치하고 브랜드 로고와 문자는 생성하지 마세요."
+                      ></textarea>
+                    </label>
                     <div class="action-row align-right">
                       <button class="tiny-button primary" type="button" :disabled="!wizardFormTemplateCanEdit || wizardFormTemplateSectionSaving" @click="saveWizardFormTemplateSection">AI 정책 저장</button>
                     </div>
@@ -1439,31 +1457,6 @@
               </div>
             </section>
 
-            <details class="section-library-manager" open>
-              <summary>Section CRUD 로그</summary>
-              <div class="section-library-manager-body section-audit-manager">
-                <div class="panel-header">
-                  <div><h2>Section 변경 로그</h2></div>
-                  <div class="subsection-actions">
-                    <span>{{ wizardSectionAuditLogs.length }}건</span>
-                    <button class="tiny-button" type="button" :disabled="wizardSectionAuditLoading" @click="loadWizardSectionAuditLogs">{{ t('common.action.refresh') }}</button>
-                  </div>
-                </div>
-                <div class="form-grid compact section-audit-filters">
-                  <label class="field compact-field"><span>템플릿</span><select v-model="wizardSectionAuditFilters.templateKey" @change="loadWizardSectionAuditLogs"><option value="">전체</option><option v-for="group in groupedWizardFormTemplates" :key="group.templateKey" :value="group.templateKey">{{ group.primary?.name || group.templateKey }}</option></select></label>
-                  <label class="field compact-field"><span>{{ t('common.field.changeType') }}</span><select v-model="wizardSectionAuditFilters.action" @change="loadWizardSectionAuditLogs"><option value="">{{ t('common.state.all') }}</option><option value="create">생성</option><option value="update">{{ t('common.action.update') }}</option><option value="delete">{{ t('common.action.delete') }}</option><option value="reorder">{{ t('common.action.reorder') }}</option><option value="draft">Draft 생성</option><option value="activate">{{ t('common.action.activate') }}</option></select></label>
-                </div>
-                <div class="outline-item danger-state" v-if="wizardSectionAuditError"><strong>로그 조회 오류</strong><span>{{ wizardSectionAuditError }}</span></div>
-                <div class="empty-state compact" v-if="wizardSectionAuditLoading">Section 변경 로그를 불러오는 중입니다.</div>
-                <div class="history-list section-audit-list" v-else-if="wizardSectionAuditLogs.length">
-                  <details class="history-item section-audit-row" v-for="log in wizardSectionAuditLogs" :key="log.id">
-                    <summary><strong>{{ wizardSectionAuditActionLabel(log.action) }} · {{ log.entityType === 'item' ? 'Item' : 'Section' }}</strong><span>{{ log.formTemplateKey || '공통' }} · {{ log.sectionKey || '-' }}{{ log.itemKey ? ' · ' + log.itemKey : '' }}</span><em>{{ formatAuditDate(log.createdAt) }}</em></summary>
-                    <div class="section-audit-detail"><p>{{ log.summary }}</p><div class="section-audit-states"><div><strong>변경 전</strong><pre>{{ formatAuditState(log.previousState) }}</pre></div><div><strong>변경 후</strong><pre>{{ formatAuditState(log.newState) }}</pre></div></div></div>
-                  </details>
-                </div>
-                <div class="empty-state compact" v-else>기록된 Section 변경 로그가 없습니다.</div>
-              </div>
-            </details>
             <details class="section-library-manager" open>
               <summary>{{ t('entity.component.manage') }}</summary>
               <div class="section-library-manager-body">
@@ -1646,6 +1639,15 @@
                       <option value="3:4">3:4</option>
                     </select>
                   </label>
+                  <label class="field compact-field">
+                    <span>섹션 배경 이미지 관리자 지침</span>
+                    <textarea
+                      v-model="wizardSectionFieldsEditor.aiDesign.backgroundPromptText"
+                      rows="4"
+                      :disabled="wizardSectionDetail.section.status !== 'draft' || !wizardSectionFieldsEditor.aiDesign.enabled"
+                      placeholder="예: 주요 피사체는 오른쪽에 배치하고 브랜드 로고와 문자는 생성하지 마세요."
+                    ></textarea>
+                  </label>
                 </div>
                 <label class="field compact-field" v-if="wizardSectionDetail.section.status === 'draft'">
                   <span>{{ t('common.field.changeReason') }}</span>
@@ -1739,6 +1741,28 @@
             </div>
               </div>
             </details>
+          </section>
+          <section class="panel stack section-audit-manager" v-show="adminTab === 'audit'">
+            <div class="panel-header">
+              <div><h2>섹션 및 컴포넌트 변경 이력</h2><p>섹션 CRUD와 구성 변경을 별도 화면에서 조회합니다.</p></div>
+              <div class="subsection-actions">
+                <span>{{ wizardSectionAuditLogs.length }}건</span>
+                <button class="tiny-button" type="button" :disabled="wizardSectionAuditLoading" @click="loadWizardSectionAuditLogs">{{ t('common.action.refresh') }}</button>
+              </div>
+            </div>
+            <div class="form-grid compact section-audit-filters">
+              <label class="field compact-field"><span>템플릿</span><select v-model="wizardSectionAuditFilters.templateKey" @change="loadWizardSectionAuditLogs"><option value="">전체</option><option v-for="group in groupedWizardFormTemplates" :key="group.templateKey" :value="group.templateKey">{{ group.primary?.name || group.templateKey }}</option></select></label>
+              <label class="field compact-field"><span>{{ t('common.field.changeType') }}</span><select v-model="wizardSectionAuditFilters.action" @change="loadWizardSectionAuditLogs"><option value="">{{ t('common.state.all') }}</option><option value="create">생성</option><option value="update">{{ t('common.action.update') }}</option><option value="delete">{{ t('common.action.delete') }}</option><option value="reorder">{{ t('common.action.reorder') }}</option><option value="draft">Draft 생성</option><option value="activate">{{ t('common.action.activate') }}</option></select></label>
+            </div>
+            <div class="outline-item danger-state" v-if="wizardSectionAuditError"><strong>로그 조회 오류</strong><span>{{ wizardSectionAuditError }}</span></div>
+            <div class="empty-state compact" v-if="wizardSectionAuditLoading">변경 이력을 불러오는 중입니다.</div>
+            <div class="history-list section-audit-list" v-else-if="wizardSectionAuditLogs.length">
+              <details class="history-item section-audit-row" v-for="log in wizardSectionAuditLogs" :key="log.id">
+                <summary><strong>{{ wizardSectionAuditActionLabel(log.action) }} · {{ log.entityType === 'item' ? '컴포넌트' : '섹션' }}</strong><span>{{ log.formTemplateKey || '공통' }} · {{ log.sectionKey || '-' }}{{ log.itemKey ? ' · ' + log.itemKey : '' }}</span><em>{{ formatAuditDate(log.createdAt) }}</em></summary>
+                <div class="section-audit-detail"><p>{{ log.summary }}</p><div class="section-audit-states"><div><strong>변경 전</strong><pre>{{ formatAuditState(log.previousState) }}</pre></div><div><strong>변경 후</strong><pre>{{ formatAuditState(log.newState) }}</pre></div></div></div>
+              </details>
+            </div>
+            <div class="empty-state compact" v-else>기록된 변경 이력이 없습니다.</div>
           </section>
         </section>
       </main>

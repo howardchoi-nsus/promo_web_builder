@@ -11,6 +11,9 @@
     "api/promo-section-design-plan-process.js": {
       "maxDuration": 120
     },
+    "api/promo-multi-component-layout-plan.js": {
+      "maxDuration": 120
+    },
     "api/promo-section-design-asset-process.js": {
       "maxDuration": 300
     }

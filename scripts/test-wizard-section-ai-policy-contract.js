@@ -10,6 +10,7 @@ assert.deepEqual(normalizeAiDesign(), {
   imageTarget: "section-background",
   imageTargetItemKeys: [],
   imageAspectRatio: "16:9",
+  backgroundPromptText: "",
 });
 assert.deepEqual(normalizeAiDesign({
   enabled: false,
@@ -24,6 +25,7 @@ assert.deepEqual(normalizeAiDesign({
   imageTarget: "item",
   imageTargetItemKeys: ["heroImage"],
   imageAspectRatio: "4:3",
+  backgroundPromptText: "",
 });
 
 const root = path.resolve(__dirname, "..");
@@ -41,8 +43,8 @@ assert.match(adminHtml, /AI 정책 저장/);
 assert.match(adminApp, /aiDesign:\s*\{[\s\S]*allowedLayoutVariants/);
 assert.match(adminHtml, /aiDesign\.allowSectionBackground/);
 assert.match(adminHtml, /섹션 배경 AI 생성 허용/);
-assert.doesNotMatch(templateSectionsApi, /ai_design\s*=/);
-assert.match(templateSectionsApi, /Section definitions cannot be changed from Template Management/);
+assert.match(templateSectionsApi, /ai_design\s*=/);
+assert.doesNotMatch(templateSectionsApi, /"aiDesign"\]\s*\.filter/);
 assert.match(publicTemplateApi, /aiDesign: normalizeAiDesign\(membership\.aiDesign\)/);
 assert.match(publicTemplateApi, /JSON\.stringify\(section\.aiDesign\)/);
 assert.match(runs, /constraints\.enabled/);

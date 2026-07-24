@@ -2,6 +2,7 @@ const {
   getSql, parseBody, normalizeBoolean, normalizeNumber,
   fetchTemplateRow, fetchTemplateSections,
 } = require("./_wizard-form-templates-store");
+const { normalizeAiDesign } = require("./_wizard-content-sections-store");
 
 async function requireDraftTemplate(sql, templateId) {
   const template = await fetchTemplateRow(sql, templateId);
@@ -38,7 +39,7 @@ async function addSection(req, res) {
   const sql = getSql();
   await requireDraftTemplate(sql, templateId);
   const sourceRows = await sql`
-    select id::text, section_key, is_required, order_change_allowed, fixed_position, is_visible_in_wizard
+    select id::text, section_key, is_required, order_change_allowed, fixed_position, is_visible_in_wizard, ai_design
     from wizard_content_sections where id = ${sectionId}::uuid and status = 'active' limit 1
   `;
   if (!sourceRows.length) return res.status(422).json({ error: "sectionId must reference an active section version" });
@@ -53,12 +54,13 @@ async function addSection(req, res) {
   const rows = await sql`
     insert into wizard_form_template_sections (
       form_template_id, section_id, section_key, sort_order, is_required, is_visible,
-      order_change_allowed, user_reorder_allowed, fixed_position
+      order_change_allowed, user_reorder_allowed, fixed_position, ai_design
     ) values (
       ${templateId}::uuid, ${sectionId}::uuid, ${source.section_key},
       ${Object.prototype.hasOwnProperty.call(body, "sortOrder") ? normalizeNumber(body.sortOrder) : Number(maxRows[0].value) + 10},
       ${normalizeBoolean(body.isRequired, source.is_required)}, ${normalizeBoolean(body.isVisible, source.is_visible_in_wizard)},
-      true, ${fixedPosition ? false : normalizeBoolean(body.userReorderAllowed, source.order_change_allowed)}, ${fixedPosition}
+      true, ${fixedPosition ? false : normalizeBoolean(body.userReorderAllowed, source.order_change_allowed)}, ${fixedPosition},
+      ${JSON.stringify(normalizeAiDesign(source.ai_design))}::jsonb
     ) returning id::text
   `;
   const sections = await fetchTemplateSections(sql, templateId);
@@ -69,7 +71,7 @@ async function updateMembership(req, res) {
   const body = parseBody(req.body);
   const id = String(body.id || req.query.id || "").trim();
   if (!id) return res.status(400).json({ error: "id is required" });
-  const forbidden = ["componentId", "componentVersionId", "sectionId", "sectionKey", "items", "name", "description", "aiDesign"]
+  const forbidden = ["componentId", "componentVersionId", "sectionId", "sectionKey", "items", "name", "description"]
     .filter((key) => Object.prototype.hasOwnProperty.call(body, key));
   if (forbidden.length) return res.status(400).json({ error: "Section definitions cannot be changed from Template Management", fields: forbidden });
   const sql = getSql();
@@ -82,6 +84,9 @@ async function updateMembership(req, res) {
       is_required = ${Object.prototype.hasOwnProperty.call(body, "isRequired") ? normalizeBoolean(body.isRequired, current[0].is_required) : current[0].is_required},
       is_visible = ${Object.prototype.hasOwnProperty.call(body, "isVisible") ? normalizeBoolean(body.isVisible, current[0].is_visible) : current[0].is_visible},
       user_reorder_allowed = ${fixedPosition ? false : (Object.prototype.hasOwnProperty.call(body, "userReorderAllowed") ? normalizeBoolean(body.userReorderAllowed, current[0].user_reorder_allowed) : current[0].user_reorder_allowed)},
+      ai_design = ${JSON.stringify(Object.prototype.hasOwnProperty.call(body, "aiDesign")
+        ? normalizeAiDesign(body.aiDesign)
+        : normalizeAiDesign(current[0].ai_design))}::jsonb,
       updated_at = now() where id = ${id}::uuid
   `;
   const sections = await fetchTemplateSections(sql, current[0].form_template_id);

@@ -10,6 +10,7 @@ const props = defineProps({
   editable: { type: Boolean, default: false },
   showGuides: { type: Boolean, default: true },
   selectedItemKey: { type: String, default: "" },
+  selectedItemKeys: { type: Array, default: () => [] },
   sectionDesignRuns: { type: Object, default: () => ({}) },
 });
 const emit = defineEmits(["select-item", "update-item-style", "update-renderer-item-style", "update-item-content", "update-section-style"]);
@@ -319,8 +320,8 @@ function inlineItemStyle(section, item) {
     fontWeight: style.fontWeight,
     "--item-font-weight": style.fontWeight,
     textAlign: style.textAlign,
-    width: isImage ? `${widthPct}%` : undefined,
-    height: isImage && style.shape !== "circle" && heightPx ? `${heightPx}px` : undefined,
+    width: style.widthPct !== undefined || isImage ? `${widthPct}%` : undefined,
+    height: heightPx && (!isImage || style.shape !== "circle") ? `${heightPx}px` : undefined,
     aspectRatio: isImage && (!heightPx || style.shape === "circle")
       ? imageFrameAspectRatio(item, style)
       : undefined,
@@ -328,13 +329,16 @@ function inlineItemStyle(section, item) {
   return result;
 }
 
-function selectRendererItem(section, item) {
+function selectRendererItem(section, item, event = null) {
   if (!props.editable) return;
-  emit("select-item", section, item);
+  emit("select-item", section, item, {
+    additive: Boolean(event?.ctrlKey || event?.metaKey || event?.shiftKey),
+  });
 }
 
 function startDrag(event, section, item) {
   if (!props.editable || item.isLocked || event.button !== 0
+    || event.ctrlKey || event.metaKey || event.shiftKey
     || event.target.closest(".image-resize-handle")
     || event.currentTarget.classList.contains("is-editing")) return;
   const target = event.currentTarget;
@@ -660,14 +664,17 @@ function startSectionResize(event, section) {
               `rendered-item--${item.fieldKind || 'text'}`,
               {
                 'is-editable': editable && !item.isLocked,
-                'is-selected': editable && selectedItemKey === styleKey(section, item),
+                'is-selected': editable && (
+                  selectedItemKey === styleKey(section, item)
+                  || selectedItemKeys.includes(styleKey(section, item))
+                ),
                 'is-free-positioned': true,
               },
             ]"
             :data-item-key="item.itemKey"
             :data-style-key="styleKey(section, item)"
             :style="inlineItemStyle(section, item)"
-            @click.stop="selectRendererItem(section, item)"
+            @click.stop="selectRendererItem(section, item, $event)"
             @pointerdown="startDrag($event, section, item)"
             @dblclick="startTextEdit($event, section, item)"
           >

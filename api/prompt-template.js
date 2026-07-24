@@ -170,7 +170,7 @@ async function updatePrompt(req, res) {
   const modelOptions = hasModelOptions
     ? normalizeModelOptions(body.modelOptions || body.model_options)
     : current.model_options || {};
-  if (current.status === "active" && ["integrated_brief", "lofi_draft", "final_design"].includes(current.type)) {
+  if (current.status === "active") {
     validateStageModelConfig(current.type, { provider, model, responseFormat });
   }
   const updatedRows = await sql`

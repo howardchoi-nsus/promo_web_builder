@@ -1090,7 +1090,7 @@ const { createApp } = Vue;
 const initialSearchParams = new URLSearchParams(window.location.search);
 const initialView = initialSearchParams.get("view") === "admin" ? "prompts" : "builder";
 const requestedAdminTab = initialSearchParams.get("tab");
-const initialAdminTab = ["webhook", "llm", "components", "promo-form", "i18n"].includes(requestedAdminTab)
+const initialAdminTab = ["webhook", "llm", "components", "promo-form", "i18n", "audit"].includes(requestedAdminTab)
   ? requestedAdminTab
   : "promo-form";
 
@@ -1215,6 +1215,7 @@ const adminApp = createApp({
           imageTarget: "section-background",
           imageTargetItemKeys: [],
           imageAspectRatio: "16:9",
+          backgroundPromptText: "",
         },
       },
       wizardFormTemplateSectionSaving: false,
@@ -1261,6 +1262,7 @@ const adminApp = createApp({
           imageTarget: "section-background",
           imageTargetItemKeys: [],
           imageAspectRatio: "16:9",
+          backgroundPromptText: "",
         },
         changeNote: "",
       },
@@ -2083,10 +2085,11 @@ const adminApp = createApp({
     },
 
     selectAdminTab(tab) {
-      if (!["webhook", "llm", "components", "promo-form", "i18n"].includes(tab)) return;
+      if (!["webhook", "llm", "components", "promo-form", "i18n", "audit"].includes(tab)) return;
       this.adminTab = tab;
       if (tab === "i18n") this.loadLocales();
       if (tab === "components") this.loadItemComponents();
+      if (tab === "audit") this.loadWizardSectionAuditLogs();
       const url = new URL(window.location.href);
       url.searchParams.set("view", "admin");
       url.searchParams.set("tab", tab);
@@ -2419,6 +2422,7 @@ const adminApp = createApp({
         lofi_draft: "LO-FI 시안",
         final_design: "최종 디자인",
         section_layout_planner: "섹션 레이아웃 계획",
+        multi_component_layout_planner: "다중 컴포넌트 정렬 계획",
         section_background_image: "섹션 배경 이미지",
         component_image: "컴포넌트 이미지",
       })[type] || type || "알 수 없음";
@@ -2845,6 +2849,7 @@ const adminApp = createApp({
             ? [...section.aiDesign.imageTargetItemKeys]
             : [],
           imageAspectRatio: section.aiDesign?.imageAspectRatio || "16:9",
+          backgroundPromptText: section.aiDesign?.backgroundPromptText || "",
         },
       };
       this.wizardFormTemplateItemEditorOpenId = "";
@@ -2925,6 +2930,7 @@ const adminApp = createApp({
             isVisible: this.wizardFormTemplateSectionEditor.isVisible,
             userReorderAllowed: this.wizardFormTemplateSectionEditor.userReorderAllowed,
             fixedPosition: this.wizardFormTemplateSectionEditor.fixedPosition,
+            aiDesign: this.wizardFormTemplateSectionEditor.aiDesign,
           }),
         });
         const result = await response.json().catch(() => ({}));
@@ -3295,6 +3301,7 @@ const adminApp = createApp({
               ? [...result.section.aiDesign.imageTargetItemKeys]
               : [],
             imageAspectRatio: result.section.aiDesign?.imageAspectRatio || "16:9",
+            backgroundPromptText: result.section.aiDesign?.backgroundPromptText || "",
           },
           changeNote: "",
         };

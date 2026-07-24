@@ -29,6 +29,39 @@ const DESIGN_PLAN_SCHEMA = {
   },
 };
 
+const MULTI_COMPONENT_LAYOUT_PLAN_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["operation", "targetItemKeys", "axis", "gapToken", "rationale"],
+  properties: {
+    operation: {
+      type: "string",
+      enum: [
+        "align-left", "align-center", "align-right",
+        "align-top", "align-middle", "align-bottom",
+        "distribute-horizontal", "distribute-vertical",
+        "equal-width", "equal-height", "set-gap",
+        "group-stack-horizontal", "group-stack-vertical",
+      ],
+    },
+    targetItemKeys: {
+      type: "array",
+      minItems: 2,
+      maxItems: 12,
+      items: { type: "string" },
+    },
+    axis: {
+      type: ["string", "null"],
+      enum: [null, "horizontal", "vertical"],
+    },
+    gapToken: {
+      type: ["string", "null"],
+      enum: [null, "space-2", "space-3", "space-4", "space-6", "space-8"],
+    },
+    rationale: { type: "string", minLength: 1, maxLength: 600 },
+  },
+};
+
 function openAiHeaders() {
   const apiKey = String(process.env.OPENAI_API_KEY || "").trim();
   if (!apiKey) {
@@ -188,6 +221,33 @@ async function generateSectionDesignPlan({ section, sectionInputs, constraints, 
   };
 }
 
+async function generateMultiComponentLayoutPlan({ promptConfig, signal }) {
+  const model = promptConfig?.model || process.env.SECTION_LAYOUT_MODEL || "gpt-4.1-mini";
+  const prompt = String(promptConfig?.renderedPrompt || "").trim();
+  if (!prompt) throw Object.assign(new Error("Multi-component layout prompt is required"), { code: "LAYOUT_PROMPT_REQUIRED" });
+  const startedAt = Date.now();
+  const { payload, requestId } = await requestJson("https://api.openai.com/v1/responses", {
+    model,
+    store: false,
+    input: prompt,
+    text: {
+      format: {
+        type: "json_schema",
+        name: "multi_component_layout_plan",
+        strict: true,
+        schema: MULTI_COMPONENT_LAYOUT_PLAN_SCHEMA,
+      },
+    },
+  }, openAiHeaders(), signal, Number(process.env.SECTION_LAYOUT_TIMEOUT_MS || 90000));
+  const output = responseOutputText(payload);
+  if (!output) throw Object.assign(new Error("Multi-component planner returned no structured output"), { code: "EMPTY_MULTI_LAYOUT_PLAN" });
+  return {
+    result: JSON.parse(output),
+    provider: { provider: "openai", model, requestId, latencyMs: Date.now() - startedAt },
+    usage: payload.usage || {},
+  };
+}
+
 async function generateOpenAiSectionImage({ prompt, aspectRatio, model: requestedModel, modelOptions, signal }) {
   const model = requestedModel || process.env.SECTION_IMAGE_MODEL || "gpt-image-1";
   const startedAt = Date.now();
@@ -263,6 +323,7 @@ async function generateSectionImage(input) {
 module.exports = {
   generateSectionLayout,
   generateSectionDesignPlan,
+  generateMultiComponentLayoutPlan,
   generateSectionImage,
   generateOpenAiSectionImage,
   generateGeminiSectionImage,
