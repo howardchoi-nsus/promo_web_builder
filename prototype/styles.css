@@ -2724,6 +2724,40 @@ body.is-resizing {
   line-height: 1.45;
 }
 
+.template-list-settings .template-layout-settings--compact {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  margin: 0;
+  padding: 10px;
+  background: var(--panel);
+}
+
+.template-list-settings .template-layout-settings--compact .template-layout-settings-eyebrow,
+.template-list-settings .template-layout-settings--compact p {
+  display: none;
+}
+
+.template-list-settings .template-layout-settings--compact h3 {
+  font-size: 13px;
+}
+
+.template-list-settings .template-layout-settings--compact .template-layout-settings-actions {
+  width: 100%;
+}
+
+.template-list-settings .template-layout-settings--compact .template-layout-settings-button {
+  width: 100%;
+}
+
+.template-component-manager-target {
+  display: grid;
+  min-width: 0;
+}
+
+.template-component-manager-target .section-library-manager {
+  margin-top: 0;
+}
+
 .template-basic-settings,
 .section-library-manager {
   border-top: 1px solid var(--line);

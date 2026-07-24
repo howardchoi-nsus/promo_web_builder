@@ -100,6 +100,9 @@ try {
   await templateCard.locator(".template-settings-toggle").click();
   await templateCard.locator(".template-list-settings").waitFor({ state: "visible" });
   assert.equal(await templateCard.locator('input[readonly][value="default"]').count(), 1);
+  assert.equal(await templateCard.locator(".template-layout-settings").count(), 1);
+  assert.equal(await page.locator(".form-template-editor-panels > .prompt-editor-panel > .template-layout-settings").count(), 0);
+  assert.equal(await page.locator("#template-component-manager-target .section-library-manager").count(), 1);
 
   await templateCard.getByRole("button", { name: "복제", exact: true }).click();
   await page.locator(".form-template-duplicate").waitFor({ state: "visible" });

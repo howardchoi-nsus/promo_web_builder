@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="/prototype/design-tokens.css?v=app-tokens-v1" />
     <link rel="stylesheet" href="/prototype/app-shell.css?v=app-shell-sidebar-v3" />
     <link rel="stylesheet" href="/prototype/app-components.css?v=app-components-v1" />
-    <link rel="stylesheet" href="/prototype/styles.css?v=admin-template-manager-v2" />
+    <link rel="stylesheet" href="/prototype/styles.css?v=admin-template-manager-v3" />
     <script src="/prototype/vendor/lucide/lucide.min.js?v=1.8.0"></script>
     <script src="/prototype/i18n-runtime.js?v=i18n-runtime-v1"></script>
     <script src="/prototype/shared-shell.js?v=app-shell-sidebar-v4"></script>
@@ -1168,6 +1168,11 @@
                           <option v-for="version in group.versions" :key="version.id" :value="version.id">v{{ version.version }} · {{ wizardSectionStatusLabel(version.status) }}</option>
                         </select>
                       </label>
+                      <template-layout-manager
+                        class="template-layout-settings--compact"
+                        :template="wizardFormTemplateDetail.template"
+                        :status-label="wizardSectionStatusLabel"
+                      ></template-layout-manager>
                       <div class="empty-state compact" v-if="wizardFormTemplateDetail.template.status !== 'draft'">활성·비활성 버전은 읽기 전용입니다. 수정 버튼을 누르면 초안이 열립니다.</div>
                       <label class="field compact-field">
                         <span>템플릿 이름</span>
@@ -1228,10 +1233,7 @@
                     </div>
                   </div>
 
-                  <template-layout-manager
-                    :template="wizardFormTemplateDetail.template"
-                    :status-label="wizardSectionStatusLabel"
-                  ></template-layout-manager>
+                  <div id="template-component-manager-target" class="template-component-manager-target"></div>
                   <div class="subsection template-section-composer">
                     <div class="subsection-title">
                       <h3>템플릿 Section 구성</h3>
@@ -1432,6 +1434,7 @@
               </div>
             </section>
 
+            <teleport to="#template-component-manager-target" v-if="wizardFormTemplateDetail">
             <details class="section-library-manager" open>
               <summary>{{ t('entity.component.manage') }}</summary>
               <div class="section-library-manager-body">
@@ -1714,6 +1717,7 @@
             </div>
               </div>
             </details>
+            </teleport>
           </section>
           <section class="panel stack section-audit-manager" v-show="adminTab === 'audit'">
             <div class="panel-header">
