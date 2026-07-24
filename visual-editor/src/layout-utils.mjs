@@ -90,11 +90,11 @@ export function validateLayoutSpec(value = {}) {
     }
     const width = Number(style?.widthPct);
     const height = Number(style?.heightPx);
-    if (style?.widthPct !== undefined && (!Number.isFinite(width) || width < 10 || width > 100)) {
-      errors.push({ path: `itemStyles.${key}.widthPct`, message: "Component width must be between 10 and 100 percent." });
+    if (style?.widthPct !== undefined && (!Number.isFinite(width) || width < 0.01 || width > 100)) {
+      errors.push({ path: `itemStyles.${key}.widthPct`, message: "Component width must be between 0.01 and 100 percent." });
     }
-    if (style?.heightPx !== undefined && (!Number.isFinite(height) || height < 80 || height > 900)) {
-      errors.push({ path: `itemStyles.${key}.heightPx`, message: "Component height must be between 80 and 900." });
+    if (style?.heightPx !== undefined && (!Number.isFinite(height) || height < 1 || height > 900)) {
+      errors.push({ path: `itemStyles.${key}.heightPx`, message: "Component height must be between 1 and 900." });
     }
     if (style?.imageFit !== undefined && !allowedImageFits.has(style.imageFit)) {
       errors.push({ path: `itemStyles.${key}.imageFit`, message: "Unsupported image fit." });

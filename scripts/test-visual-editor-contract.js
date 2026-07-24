@@ -216,6 +216,8 @@ assert.match(renderer, /function startItemResize[\s\S]*if \(!props\.editable \|\
 assert.match(renderer, /fontScale[\s\S]*fontSize:\s*nextFontSize/);
 assert.match(renderer, /clamp\(style\.fontSize,\s*0,\s*80/);
 assert.match(app, /min="0"[\s\S]*max="80"[\s\S]*selectedItemStyle\.fontSize \?\? 18/);
+assert.match(rendererStyles, /\.rendered-component-fields\s*\{[^}]*min-width:\s*0/s);
+assert.doesNotMatch(rendererStyles, /\.rendered-component-fields\s*\{[^}]*min-width:\s*180px/s);
 assert.doesNotMatch(renderer, /textAlign:\s*style\.textAlign/);
 assert.doesNotMatch(app, /selectedItemStyle\.textAlign/);
 assert.match(app, /class="component-frame-controls"/);

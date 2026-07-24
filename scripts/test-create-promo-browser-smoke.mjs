@@ -402,15 +402,33 @@ try {
     textFontSizeAfterShrink < textFontSizeAfterVerticalResize,
     "Shrinking a text component edge must reduce its font size",
   );
+  const textRightHandleForMinimumCheck = textComponent.locator(".component-resize-handle--e");
+  const textRightHandleForMinimumCheckBox = await textRightHandleForMinimumCheck.boundingBox();
+  assert.ok(textRightHandleForMinimumCheckBox, "Minimum-free text resize geometry must be measurable");
+  await page.mouse.move(
+    textRightHandleForMinimumCheckBox.x + textRightHandleForMinimumCheckBox.width / 2,
+    textRightHandleForMinimumCheckBox.y + textRightHandleForMinimumCheckBox.height / 2,
+  );
+  await page.mouse.down();
+  await page.mouse.move(
+    Math.max(1, textRightHandleForMinimumCheckBox.x - 1_000),
+    textRightHandleForMinimumCheckBox.y + textRightHandleForMinimumCheckBox.height / 2,
+  );
+  await page.mouse.up();
+  await page.waitForTimeout(50);
+  const textBoxAtTechnicalMinimum = await textComponent.boundingBox();
+  const textFontSizeAtTechnicalMinimum = Number.parseFloat(await textContentNode.evaluate((node) => getComputedStyle(node).fontSize));
+  assert.ok(textBoxAtTechnicalMinimum.width < 5, "Text component width must shrink below the former 80px minimum");
+  assert.ok(textFontSizeAtTechnicalMinimum < 10, "Drag resizing must shrink text below the former 10px minimum");
   const resizedTextContent = await page.evaluate(() => JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null"));
   assert.ok(
-    resizedTextContent?.templateLayouts?.["default-preview"]?.resolvedLayout?.itemStyles?.["contentFeature.copy"]?.widthPct > 10,
-    "Text component width must persist in the layout snapshot",
+    resizedTextContent?.templateLayouts?.["default-preview"]?.resolvedLayout?.itemStyles?.["contentFeature.copy"]?.widthPct < 1,
+    "A text component width below 1 percent must persist in the layout snapshot",
   );
   assert.ok(
     Math.abs(
       resizedTextContent?.templateLayouts?.["default-preview"]?.resolvedLayout?.itemStyles?.["contentFeature.copy"]?.fontSize
-        - textFontSizeAfterShrink,
+        - textFontSizeAtTechnicalMinimum,
     ) < 0.2,
     "The latest scaled text size must persist in the layout snapshot",
   );
@@ -420,20 +438,45 @@ try {
   );
   const fontSizeRange = editorFrame.locator('.design-controls input[type="range"][max="80"]');
   await fontSizeRange.evaluate((node) => {
-    node.value = "1";
+    node.value = "0";
     node.dispatchEvent(new Event("input", { bubbles: true }));
   });
   await page.waitForTimeout(50);
   assert.equal(
     Number.parseFloat(await textContentNode.evaluate((node) => getComputedStyle(node).fontSize)),
-    1,
+    0,
     "Text font size must not be clamped to the former 10px minimum",
   );
   const tinyTextContent = await page.evaluate(() => JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null"));
   assert.equal(
     tinyTextContent?.templateLayouts?.["default-preview"]?.resolvedLayout?.itemStyles?.["contentFeature.copy"]?.fontSize,
-    1,
+    0,
     "A font size below 10px must persist in the layout snapshot",
+  );
+  const zeroFontRightHandle = textComponent.locator(".component-resize-handle--e");
+  const zeroFontRightHandleBox = await zeroFontRightHandle.boundingBox();
+  assert.ok(zeroFontRightHandleBox, "Zero-font resize geometry must be measurable");
+  await page.mouse.move(
+    zeroFontRightHandleBox.x + zeroFontRightHandleBox.width / 2,
+    zeroFontRightHandleBox.y + zeroFontRightHandleBox.height / 2,
+  );
+  await page.mouse.down();
+  await page.mouse.move(
+    zeroFontRightHandleBox.x + zeroFontRightHandleBox.width / 2 + 60,
+    zeroFontRightHandleBox.y + zeroFontRightHandleBox.height / 2,
+  );
+  await page.mouse.up();
+  let restoredFontSize = 0;
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    restoredFontSize = Number.parseFloat(await textContentNode.evaluate((node) => getComputedStyle(node).fontSize));
+    if (restoredFontSize > 0) break;
+    await page.waitForTimeout(25);
+  }
+  const zeroExpandedContent = await page.evaluate(() => JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null"));
+  const zeroExpandedStyle = zeroExpandedContent?.templateLayouts?.["default-preview"]?.resolvedLayout?.itemStyles?.["contentFeature.copy"];
+  assert.ok(
+    restoredFontSize > 0,
+    `Expanding a zero-font text component must restore a visible font size (received ${restoredFontSize}; style ${JSON.stringify(zeroExpandedStyle)})`,
   );
   await itemImageFrame.click();
   const imageRemoveAction = editorFrame.locator(".image-remove-action");

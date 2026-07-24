@@ -25,7 +25,7 @@ function normalizeGeometry(value, selectedKeys) {
     const heightPx = Number(entry?.heightPx);
     if (!selected.has(itemKey) || seen.has(itemKey)) throw Object.assign(new Error("Geometry contains an unknown or duplicate item key"), { statusCode: 422 });
     if (![xPct, yPx, widthPct, heightPx].every(Number.isFinite)) throw Object.assign(new Error("Geometry values must be finite numbers"), { statusCode: 422 });
-    if (xPct < 0 || yPx < 0 || widthPct < 1 || heightPx < 1 || xPct + widthPct > 100.01 || yPx > 1200) {
+    if (xPct < 0 || yPx < 0 || widthPct < 0.01 || heightPx < 1 || xPct + widthPct > 100.01 || yPx > 1200) {
       throw Object.assign(new Error("Geometry is outside the supported section bounds"), { statusCode: 422 });
     }
     seen.add(itemKey);

@@ -31,6 +31,8 @@ assert.equal(validateLayoutSpec({ sectionStyles: { bad: { minHeight: 49 } } }).o
 assert.equal(validateLayoutSpec({ itemStyles: { bad: { fontSize: 81 } } }).ok, false);
 assert.equal(validateLayoutSpec({ itemStyles: { tiny: { fontSize: 1 } } }).ok, true);
 assert.equal(validateLayoutSpec({ itemStyles: { bad: { fontSize: -1 } } }).ok, false);
+assert.equal(validateLayoutSpec({ itemStyles: { tiny: { widthPct: 0.1, heightPx: 1 } } }).ok, true);
+assert.equal(validateLayoutSpec({ itemStyles: { bad: { widthPct: 0, heightPx: 0 } } }).ok, false);
 assert.equal(validateLayoutSpec({
   sectionStyles: {
     hero: {

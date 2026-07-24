@@ -221,6 +221,7 @@ function validatePatch(section, generated, constraints) {
   const errors = [];
   const sectionKey = section.sectionKey;
   const itemKeys = new Set((section.items || []).map((item) => `${sectionKey}.${item.itemKey}`));
+  const itemByKey = new Map((section.items || []).map((item) => [`${sectionKey}.${item.itemKey}`, item]));
   Object.entries(generated.layoutPatch?.sectionStyles || {}).forEach(([key, style]) => {
     if (key !== sectionKey) errors.push(`Unknown section: ${key}`);
     Object.keys(style || {}).forEach((property) => {
@@ -245,15 +246,18 @@ function validatePatch(section, generated, constraints) {
   });
   Object.entries(generated.layoutPatch?.itemStyles || {}).forEach(([key, style]) => {
     if (!itemKeys.has(key)) errors.push(`Unknown item: ${key}`);
+    const isImage = itemByKey.get(key)?.fieldKind === "image";
+    const minimumWidthPct = isImage ? 10 : 0.01;
+    const minimumHeightPx = isImage ? 80 : 1;
     Object.keys(style || {}).forEach((property) => {
       if (!ITEM_STYLE_KEYS.has(property)) errors.push(`Unsupported item style: ${property}`);
     });
     if (style?.widthPct !== undefined
-      && (!Number.isFinite(Number(style.widthPct)) || Number(style.widthPct) < 10 || Number(style.widthPct) > 100)) {
+      && (!Number.isFinite(Number(style.widthPct)) || Number(style.widthPct) < minimumWidthPct || Number(style.widthPct) > 100)) {
       errors.push(`Unsupported image width: ${style.widthPct}`);
     }
     if (style?.heightPx !== undefined
-      && (!Number.isFinite(Number(style.heightPx)) || Number(style.heightPx) < 80 || Number(style.heightPx) > 900)) {
+      && (!Number.isFinite(Number(style.heightPx)) || Number(style.heightPx) < minimumHeightPx || Number(style.heightPx) > 900)) {
       errors.push(`Unsupported image height: ${style.heightPx}`);
     }
     if (style?.imageFit !== undefined && !["contain", "cover"].includes(style.imageFit)) {
@@ -380,7 +384,7 @@ function layoutPatchFromDesignPlan(section, plan, tokenSet) {
     if (["accent-color", "text-color", "muted-color"].includes(token.semanticRole)) itemStyles[key].color = token.value;
     if (token.semanticRole === "title-size") {
       const size = Number.parseFloat(token.value);
-      if (Number.isFinite(size)) itemStyles[key].fontSize = clamp(size, 10, 80);
+      if (Number.isFinite(size)) itemStyles[key].fontSize = clamp(size, 0, 80);
     }
   });
   return {

@@ -85,6 +85,9 @@ assert.equal(adjusted.geometry[1].yPx, 116);
 assert.equal(adjusted.geometry[2].yPx, 232);
 
 assert.deepEqual(endpoint.normalizeGeometry(geometry, ["title", "image"]), geometry);
+assert.equal(endpoint.normalizeGeometry([
+  { itemKey: "tiny", xPct: 0, yPx: 0, widthPct: 0.1, heightPx: 1 },
+], ["tiny"])[0].widthPct, 0.1);
 assert.throws(() => endpoint.normalizeGeometry([geometry[0]], ["title", "image"]), /every selected component/);
 assert(endpoint.ALLOWED_OPERATIONS.includes("distribute-horizontal"));
 assert(endpoint.GAP_TOKENS.includes("space-4"));

@@ -176,7 +176,7 @@ function captureMultiLayoutGeometry(section) {
       xPct: ((rect.left - canvasRect.left) / canvasRect.width) * 100,
       yPx: rect.top - canvasRect.top,
       widthPct: (rect.width / canvasRect.width) * 100,
-      heightPx: Math.max(80, rect.height),
+      heightPx: Math.max(1, rect.height),
     };
   });
   return { geometry, canvasWidthPx: canvasRect.width, canvasHeightPx: canvasRect.height };
@@ -1395,9 +1395,9 @@ onBeforeUnmount(() => {
                 <div class="range-field">
                   <input
                     type="range"
-                    min="10"
+                    min="0.01"
                     max="100"
-                    step="1"
+                    step="0.1"
                     :disabled="selectedItem.isLocked"
                     :value="selectedItemStyle.widthPct || 32"
                     @input="updateItemStyle({ widthPct: Number($event.target.value) })"
@@ -1405,13 +1405,13 @@ onBeforeUnmount(() => {
                   <input
                     class="dimension-input"
                     type="number"
-                    min="10"
+                    min="0.01"
                     max="100"
-                    step="1"
+                    step="0.1"
                     :disabled="selectedItem.isLocked"
                     :value="Math.round(selectedItemStyle.widthPct || 32)"
                     aria-label="컴포넌트 너비 퍼센트"
-                    @change="updateItemStyle({ widthPct: Math.min(100, Math.max(10, Number($event.target.value) || 32)) })"
+                    @change="updateItemStyle({ widthPct: Math.min(100, Math.max(0.01, Number($event.target.value) || 32)) })"
                   />
                 </div>
               </label>
@@ -1420,9 +1420,9 @@ onBeforeUnmount(() => {
                 <div class="range-field">
                   <input
                     type="range"
-                    min="80"
+                    min="1"
                     max="900"
-                    step="10"
+                    step="1"
                     :disabled="selectedItem.isLocked"
                     :value="selectedItemStyle.heightPx || 120"
                     @input="updateItemStyle({ heightPx: Number($event.target.value) })"
@@ -1430,13 +1430,13 @@ onBeforeUnmount(() => {
                   <input
                     class="dimension-input"
                     type="number"
-                    min="80"
+                    min="1"
                     max="900"
-                    step="10"
+                    step="1"
                     :disabled="selectedItem.isLocked"
                     :value="Math.round(selectedItemStyle.heightPx || 120)"
                     aria-label="컴포넌트 높이 픽셀"
-                    @change="updateItemStyle({ heightPx: Math.min(900, Math.max(80, Number($event.target.value) || 120)) })"
+                    @change="updateItemStyle({ heightPx: Math.min(900, Math.max(1, Number($event.target.value) || 120)) })"
                   />
                 </div>
               </label>

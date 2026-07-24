@@ -311,8 +311,8 @@ function inlineItemStyle(section, item) {
   const style = itemStyle(section, item);
   const position = style.positionMode === "free" ? style : defaultItemPosition(section, item);
   const isImage = item.fieldKind === "image";
-  const widthPct = clamp(style.widthPct, 10, 100, 32);
-  const heightPx = clamp(style.heightPx, 80, 900, undefined);
+  const widthPct = clamp(style.widthPct, isImage ? 10 : 0.01, 100, 32);
+  const heightPx = clamp(style.heightPx, isImage ? 80 : 1, 900, undefined);
   const result = {
     left: `${position.xPct || 0}%`,
     top: style.yPx !== undefined ? `${style.yPx}px` : `${position.yPct || 0}%`,
@@ -410,6 +410,7 @@ function startItemResize(event, section, item, handleDirection = "se") {
   const style = itemStyle(section, item);
   const isImage = item.fieldKind === "image";
   const locked = isImage && style.aspectRatioLocked !== false;
+  const minimumItemSizePx = isImage ? 80 : 1;
   const horizontalActive = handleDirection.includes("w") || handleDirection.includes("e");
   const verticalActive = handleDirection.includes("n") || handleDirection.includes("s");
   const textNode = isImage
@@ -429,27 +430,27 @@ function startItemResize(event, section, item, handleDirection = "se") {
     const verticalDirection = handleDirection.includes("n") ? -1 : 1;
     const deltaX = (moveEvent.clientX - startX) * horizontalDirection;
     const deltaY = (moveEvent.clientY - startY) * verticalDirection;
-    const maxWidth = Math.max(80, handleDirection.includes("w")
+    const maxWidth = Math.max(minimumItemSizePx, handleDirection.includes("w")
       ? startWidth + startLeft
       : containerRect.width - startLeft);
-    const maxHeight = Math.max(80, handleDirection.includes("n")
+    const maxHeight = Math.max(minimumItemSizePx, handleDirection.includes("n")
       ? startHeight + startTop
       : 1124 - startTop);
     const widthCandidate = horizontalActive
-      ? Math.min(maxWidth, Math.max(80, startWidth + deltaX))
+      ? Math.min(maxWidth, Math.max(minimumItemSizePx, startWidth + deltaX))
       : startWidth;
     const heightCandidate = verticalActive
-      ? Math.min(maxHeight, Math.max(80, startHeight + deltaY))
+      ? Math.min(maxHeight, Math.max(minimumItemSizePx, startHeight + deltaY))
       : startHeight;
     if (locked || (isImage && style.shape === "circle")) {
       const lockedRatio = style.shape === "circle" ? 1 : ratio;
       if (Math.abs(deltaY) > Math.abs(deltaX)) {
         nextHeight = heightCandidate;
-        nextWidth = Math.min(maxWidth, Math.max(80, nextHeight * lockedRatio));
+        nextWidth = Math.min(maxWidth, Math.max(minimumItemSizePx, nextHeight * lockedRatio));
         nextHeight = nextWidth / lockedRatio;
       } else {
         nextWidth = widthCandidate;
-        nextHeight = Math.min(maxHeight, Math.max(80, nextWidth / lockedRatio));
+        nextHeight = Math.min(maxHeight, Math.max(minimumItemSizePx, nextWidth / lockedRatio));
         nextWidth = nextHeight * lockedRatio;
       }
     } else {
@@ -464,7 +465,15 @@ function startItemResize(event, section, item, handleDirection = "se") {
         : horizontalActive
           ? widthScale
           : heightScale;
-      nextFontSize = roundedDimension(clamp(startFontSize * fontScale, 0, 80, startFontSize));
+      const expansionPx = Math.max(
+        horizontalActive ? nextWidth - startWidth : 0,
+        verticalActive ? nextHeight - startHeight : 0,
+        0,
+      );
+      const scaledFontSize = startFontSize === 0
+        ? expansionPx / 4
+        : startFontSize * fontScale;
+      nextFontSize = roundedDimension(clamp(scaledFontSize, 0, 80, startFontSize));
     }
     nextLeft = handleDirection.includes("w") ? startLeft + startWidth - nextWidth : startLeft;
     nextTop = handleDirection.includes("n") ? startTop + startHeight - nextHeight : startTop;
@@ -526,6 +535,8 @@ function resizeItemByKeyboard(event, section, item, handleDirection = "se") {
   const style = itemStyle(section, item);
   const isImage = item.fieldKind === "image";
   const locked = isImage && style.aspectRatioLocked !== false;
+  const minimumWidthPct = isImage ? 10 : 0.01;
+  const minimumHeightPx = isImage ? 80 : 1;
   const step = event.shiftKey ? 4 : 1;
   const horizontalActive = handleDirection.includes("w") || handleDirection.includes("e");
   const verticalActive = handleDirection.includes("n") || handleDirection.includes("s");
@@ -544,13 +555,13 @@ function resizeItemByKeyboard(event, section, item, handleDirection = "se") {
   if (!locked && !horizontalDirection && !verticalDirection) return;
   const widthPct = clamp(
     (style.widthPct ?? 32) + ((locked ? lockedDirection : horizontalDirection) * step),
-    10, 100, 32,
+    minimumWidthPct, 100, 32,
   );
-  const currentHeight = clamp(style.heightPx, 80, 900, 240);
+  const currentHeight = clamp(style.heightPx, minimumHeightPx, 900, isImage ? 240 : 120);
   const heightPx = locked || (isImage && style.shape === "circle")
     ? undefined
     : verticalActive
-      ? clamp(currentHeight + (verticalDirection * step * 4), 80, 900, 240)
+      ? clamp(currentHeight + (verticalDirection * step * 4), minimumHeightPx, 900, isImage ? 240 : 120)
       : currentHeight;
   const widthScale = widthPct / (style.widthPct ?? 32);
   const heightScale = heightPx ? heightPx / currentHeight : 1;
@@ -559,11 +570,15 @@ function resizeItemByKeyboard(event, section, item, handleDirection = "se") {
     : horizontalActive
       ? widthScale
       : heightScale;
+  const currentFontSize = style.fontSize ?? 18;
+  const nextFontSize = currentFontSize === 0 && fontScale > 1
+    ? step
+    : currentFontSize * fontScale;
   emit("update-renderer-item-style", section, item, {
     widthPct,
     heightPx,
     ...(!isImage
-      ? { fontSize: roundedDimension(clamp((style.fontSize ?? 18) * fontScale, 0, 80, 18)) }
+      ? { fontSize: roundedDimension(clamp(nextFontSize, 0, 80, currentFontSize)) }
       : {}),
   });
 }

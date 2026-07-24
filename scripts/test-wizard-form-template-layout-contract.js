@@ -18,11 +18,30 @@ const admin = read("prototype/index.html");
 const adminLayoutManager = read("prototype/admin/template-layout-manager.js");
 const adminStyles = read("prototype/styles.css");
 const editor = read("visual-editor/src/App.vue");
+const layoutStore = require("../api/_wizard-form-template-layout-store");
 
 assert.match(migration, /create table if not exists wizard_form_template_layouts/);
 assert.match(migration, /wizard_form_template_layout_histories/);
 assert.match(migration, /wizard_layout_usage_events/);
 assert.match(store, /validateLayoutSpec/);
+assert.equal(
+  layoutStore.validateLayoutSpec({
+    itemStyles: { "hero.title": { fontSize: 1, widthPct: 0.1, heightPx: 1 } },
+  }, [{
+    sectionKey: "hero",
+    items: [{ itemKey: "title", fieldKind: "text" }, { itemKey: "image", fieldKind: "image" }],
+  }]).errors.length,
+  0,
+);
+assert.deepEqual(
+  layoutStore.validateLayoutSpec({
+    itemStyles: { "hero.image": { widthPct: 0.1, heightPx: 1 } },
+  }, [{
+    sectionKey: "hero",
+    items: [{ itemKey: "title", fieldKind: "text" }, { itemKey: "image", fieldKind: "image" }],
+  }]).errors.map((error) => error.code),
+  ["INVALID_IMAGE_WIDTH", "INVALID_IMAGE_HEIGHT"],
+);
 assert.match(store, /cloneLayout/);
 assert.match(api, /Only draft form template layouts can be edited/);
 assert.match(api, /Layout revision conflict/);

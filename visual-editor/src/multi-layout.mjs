@@ -54,8 +54,8 @@ function overlapPairs(geometry) {
 function assertBounds(geometry, canvasHeightPx) {
   geometry.forEach((entry) => {
     if (entry.xPct < -0.001 || entry.yPx < -0.001
-      || entry.widthPct < 10 || entry.widthPct > 100
-      || entry.heightPx < 80 || entry.heightPx > 900
+      || entry.widthPct < 0.01 || entry.widthPct > 100
+      || entry.heightPx < 1 || entry.heightPx > 900
       || entry.xPct + entry.widthPct > 100.001
       || entry.yPx + entry.heightPx > canvasHeightPx + 0.001) {
       throw new Error(`${entry.itemKey} 결과가 섹션 경계를 벗어납니다.`);
