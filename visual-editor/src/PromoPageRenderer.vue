@@ -134,9 +134,9 @@ function aiTargetState(section, item = null, field = null) {
   return null;
 }
 
-function imageResizeHandles(section, item) {
+function itemResizeHandles(section, item) {
   const style = itemStyle(section, item);
-  if (style.shape === "circle" || style.aspectRatioLocked !== false) {
+  if (item.fieldKind === "image" && (style.shape === "circle" || style.aspectRatioLocked !== false)) {
     return ["nw", "ne", "se", "sw"];
   }
   return ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
@@ -339,7 +339,7 @@ function selectRendererItem(section, item, event = null) {
 function startDrag(event, section, item) {
   if (!props.editable || item.isLocked || event.button !== 0
     || event.ctrlKey || event.metaKey || event.shiftKey
-    || event.target.closest(".image-resize-handle")
+    || event.target.closest(".item-resize-handle")
     || event.currentTarget.classList.contains("is-editing")) return;
   const target = event.currentTarget;
   const container = target.closest(".rendered-items");
@@ -384,7 +384,7 @@ function startDrag(event, section, item) {
 }
 
 function startItemResize(event, section, item, handleDirection = "se") {
-  if (!props.editable || item.isLocked || item.fieldKind !== "image" || event.button !== 0) return;
+  if (!props.editable || item.isLocked || event.button !== 0) return;
   const handle = event.currentTarget;
   const target = handle.closest(".rendered-item");
   const container = target?.closest(".rendered-items");
@@ -405,7 +405,10 @@ function startItemResize(event, section, item, handleDirection = "se") {
   const startTop = itemRect.top - containerRect.top;
   const ratio = startHeight ? startWidth / startHeight : 1;
   const style = itemStyle(section, item);
-  const locked = style.aspectRatioLocked !== false;
+  const isImage = item.fieldKind === "image";
+  const locked = isImage && style.aspectRatioLocked !== false;
+  const horizontalActive = handleDirection.includes("w") || handleDirection.includes("e");
+  const verticalActive = handleDirection.includes("n") || handleDirection.includes("s");
   let nextWidth = startWidth;
   let nextHeight = startHeight;
   let nextLeft = startLeft;
@@ -413,8 +416,6 @@ function startItemResize(event, section, item, handleDirection = "se") {
   let animationFrame = 0;
 
   const move = (moveEvent) => {
-    const horizontalActive = handleDirection.includes("w") || handleDirection.includes("e");
-    const verticalActive = handleDirection.includes("n") || handleDirection.includes("s");
     const horizontalDirection = handleDirection.includes("w") ? -1 : 1;
     const verticalDirection = handleDirection.includes("n") ? -1 : 1;
     const deltaX = (moveEvent.clientX - startX) * horizontalDirection;
@@ -431,7 +432,7 @@ function startItemResize(event, section, item, handleDirection = "se") {
     const heightCandidate = verticalActive
       ? Math.min(maxHeight, Math.max(80, startHeight + deltaY))
       : startHeight;
-    if (locked || style.shape === "circle") {
+    if (locked || (isImage && style.shape === "circle")) {
       const lockedRatio = style.shape === "circle" ? 1 : ratio;
       if (Math.abs(deltaY) > Math.abs(deltaX)) {
         nextHeight = heightCandidate;
@@ -453,9 +454,9 @@ function startItemResize(event, section, item, handleDirection = "se") {
       animationFrame = 0;
       target.style.left = `${nextLeft}px`;
       target.style.top = `${nextTop}px`;
-      target.style.width = `${nextWidth}px`;
-      target.style.height = `${nextHeight}px`;
-      target.style.aspectRatio = "auto";
+      if (horizontalActive || locked) target.style.width = `${nextWidth}px`;
+      if (verticalActive || locked) target.style.height = `${nextHeight}px`;
+      if (isImage) target.style.aspectRatio = "auto";
     });
   };
   const end = () => {
@@ -465,8 +466,14 @@ function startItemResize(event, section, item, handleDirection = "se") {
       xPct: containerRect.width ? (nextLeft / containerRect.width) * 100 : 0,
       yPx: nextTop,
       widthPct: containerRect.width ? (nextWidth / containerRect.width) * 100 : 32,
-      heightPx: locked || style.shape === "circle" ? undefined : nextHeight,
-      aspectRatio: `${Math.max(1, Math.round(nextWidth))}/${Math.max(1, Math.round(nextHeight))}`,
+      heightPx: locked || (isImage && style.shape === "circle")
+        ? undefined
+        : verticalActive
+          ? nextHeight
+          : style.heightPx,
+      ...(isImage
+        ? { aspectRatio: `${Math.max(1, Math.round(nextWidth))}/${Math.max(1, Math.round(nextHeight))}` }
+        : {}),
     });
     target.classList.remove("is-resizing");
     target.style.removeProperty("width");
@@ -484,12 +491,13 @@ function startItemResize(event, section, item, handleDirection = "se") {
 }
 
 function resizeItemByKeyboard(event, section, item, handleDirection = "se") {
-  if (!props.editable || item.isLocked || item.fieldKind !== "image") return;
+  if (!props.editable || item.isLocked) return;
   if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) return;
   event.preventDefault();
   event.stopPropagation();
   const style = itemStyle(section, item);
-  const locked = style.aspectRatioLocked !== false;
+  const isImage = item.fieldKind === "image";
+  const locked = isImage && style.aspectRatioLocked !== false;
   const step = event.shiftKey ? 4 : 1;
   const horizontalActive = handleDirection.includes("w") || handleDirection.includes("e");
   const verticalActive = handleDirection.includes("n") || handleDirection.includes("s");
@@ -513,7 +521,7 @@ function resizeItemByKeyboard(event, section, item, handleDirection = "se") {
   const currentHeight = clamp(style.heightPx, 80, 900, 240);
   emit("update-renderer-item-style", section, item, {
     widthPct,
-    heightPx: locked || style.shape === "circle"
+    heightPx: locked || (isImage && style.shape === "circle")
       ? undefined
       : verticalActive
         ? clamp(currentHeight + (verticalDirection * step * 4), 80, 900, 240)
@@ -750,11 +758,11 @@ function startSectionResize(event, section) {
               </div>
               <template v-if="editable && showGuides && !item.isLocked && selectedItemKey === styleKey(section, item)">
                 <button
-                  v-for="handleDirection in imageResizeHandles(section, item)"
+                  v-for="handleDirection in itemResizeHandles(section, item)"
                   :key="handleDirection"
                   type="button"
-                  class="image-resize-handle"
-                  :class="`image-resize-handle--${handleDirection}`"
+                  class="item-resize-handle image-resize-handle"
+                  :class="[`item-resize-handle--${handleDirection}`, `image-resize-handle--${handleDirection}`]"
                   :aria-label="`${item.name} 이미지 ${handleDirection} 방향 크기 조절`"
                   @pointerdown.stop="startItemResize($event, section, item, handleDirection)"
                   @keydown="resizeItemByKeyboard($event, section, item, handleDirection)"
@@ -765,6 +773,22 @@ function startSectionResize(event, section) {
             <template v-else>
               <p v-if="hasContent(valueFor(section, item))" class="rendered-text">{{ valueFor(section, item) }}</p>
               <p v-else class="rendered-empty">{{ item.name }}</p>
+            </template>
+            <template
+              v-if="editable && showGuides && !item.isLocked
+                && item.fieldKind !== 'image'
+                && selectedItemKey === styleKey(section, item)"
+            >
+              <button
+                v-for="handleDirection in itemResizeHandles(section, item)"
+                :key="handleDirection"
+                type="button"
+                class="item-resize-handle component-resize-handle"
+                :class="[`item-resize-handle--${handleDirection}`, `component-resize-handle--${handleDirection}`]"
+                :aria-label="`${item.name} ${handleDirection} 방향 크기 조절`"
+                @pointerdown.stop="startItemResize($event, section, item, handleDirection)"
+                @keydown="resizeItemByKeyboard($event, section, item, handleDirection)"
+              ></button>
             </template>
           </article>
         </div>

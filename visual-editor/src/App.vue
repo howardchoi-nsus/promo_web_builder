@@ -1252,7 +1252,7 @@ onBeforeUnmount(() => {
             <div><dt>고정</dt><dd>{{ selectedItem.isLocked ? "Y" : "N" }}</dd></div>
           </dl>
 
-          <section v-if="componentFields(selectedItem).length <= 1" class="design-controls">
+          <section class="design-controls">
             <div class="design-controls__heading">
               <strong>DESIGN</strong>
               <button type="button" :disabled="selectedItem.isLocked" @click="resetItemStyle">초기화</button>
@@ -1387,6 +1387,60 @@ onBeforeUnmount(() => {
                 />
               </label>
             </div>
+            <div v-else class="component-frame-controls">
+              <strong>컴포넌트 영역 크기</strong>
+              <small>프리뷰의 모서리와 변을 드래그하거나 아래 값을 직접 변경할 수 있습니다.</small>
+              <label>
+                <span>컴포넌트 너비</span>
+                <div class="range-field">
+                  <input
+                    type="range"
+                    min="10"
+                    max="100"
+                    step="1"
+                    :disabled="selectedItem.isLocked"
+                    :value="selectedItemStyle.widthPct || 32"
+                    @input="updateItemStyle({ widthPct: Number($event.target.value) })"
+                  />
+                  <input
+                    class="dimension-input"
+                    type="number"
+                    min="10"
+                    max="100"
+                    step="1"
+                    :disabled="selectedItem.isLocked"
+                    :value="Math.round(selectedItemStyle.widthPct || 32)"
+                    aria-label="컴포넌트 너비 퍼센트"
+                    @change="updateItemStyle({ widthPct: Math.min(100, Math.max(10, Number($event.target.value) || 32)) })"
+                  />
+                </div>
+              </label>
+              <label>
+                <span>컴포넌트 높이</span>
+                <div class="range-field">
+                  <input
+                    type="range"
+                    min="80"
+                    max="900"
+                    step="10"
+                    :disabled="selectedItem.isLocked"
+                    :value="selectedItemStyle.heightPx || 120"
+                    @input="updateItemStyle({ heightPx: Number($event.target.value) })"
+                  />
+                  <input
+                    class="dimension-input"
+                    type="number"
+                    min="80"
+                    max="900"
+                    step="10"
+                    :disabled="selectedItem.isLocked"
+                    :value="Math.round(selectedItemStyle.heightPx || 120)"
+                    aria-label="컴포넌트 높이 픽셀"
+                    @change="updateItemStyle({ heightPx: Math.min(900, Math.max(80, Number($event.target.value) || 120)) })"
+                  />
+                </div>
+              </label>
+            </div>
             <template v-if="selectedItem.fieldKind !== 'image'">
               <label>
                 <span>글자 색상</span>
@@ -1426,7 +1480,7 @@ onBeforeUnmount(() => {
                 </select>
               </label>
               <label>
-                <span>정렬</span>
+                <span>텍스트 정렬</span>
                 <select
                   :disabled="selectedItem.isLocked"
                   :value="selectedItemStyle.textAlign || 'left'"

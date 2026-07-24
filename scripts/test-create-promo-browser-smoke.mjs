@@ -324,6 +324,33 @@ try {
     4,
     "Ratio-maintained mode must expose corner handles only",
   );
+  const textComponent = editorFrame.locator('[data-section-key="contentFeature"] [data-item-key="copy"]');
+  await textComponent.click();
+  assert.equal(
+    await textComponent.locator(".component-resize-handle").count(),
+    8,
+    "Text component containers must expose corner and edge handles",
+  );
+  const textRightHandle = textComponent.locator(".component-resize-handle--e");
+  const textBoxBefore = await textComponent.boundingBox();
+  const textHandleBox = await textRightHandle.boundingBox();
+  assert.ok(textBoxBefore && textHandleBox, "Text component resize geometry must be measurable");
+  await page.mouse.move(textHandleBox.x + textHandleBox.width / 2, textHandleBox.y + textHandleBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(textHandleBox.x + textHandleBox.width / 2 + 60, textHandleBox.y + textHandleBox.height / 2);
+  await page.mouse.up();
+  await page.waitForTimeout(50);
+  const textBoxAfter = await textComponent.boundingBox();
+  assert.ok(
+    textBoxAfter.width > textBoxBefore.width + 30,
+    "Dragging a text component edge handle must increase its article width",
+  );
+  const resizedTextContent = await page.evaluate(() => JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null"));
+  assert.ok(
+    resizedTextContent?.templateLayouts?.["default-preview"]?.resolvedLayout?.itemStyles?.["contentFeature.copy"]?.widthPct > 10,
+    "Text component width must persist in the layout snapshot",
+  );
+  await itemImageFrame.click();
   const imageRemoveAction = editorFrame.locator(".image-remove-action");
   await imageRemoveAction.waitFor();
   page.once("dialog", (dialog) => dialog.accept());
