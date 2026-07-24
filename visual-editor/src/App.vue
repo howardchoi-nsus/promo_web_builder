@@ -1389,7 +1389,7 @@ onBeforeUnmount(() => {
             </div>
             <div v-else class="component-frame-controls">
               <strong>컴포넌트 영역 크기</strong>
-              <small>프리뷰의 모서리와 변을 드래그하거나 아래 값을 직접 변경할 수 있습니다.</small>
+              <small>프리뷰의 모서리와 변을 드래그하면 영역과 글자 크기가 함께 변경됩니다.</small>
               <label>
                 <span>컴포넌트 너비</span>
                 <div class="range-field">
@@ -1477,18 +1477,6 @@ onBeforeUnmount(() => {
                   <option :value="500">Medium</option>
                   <option :value="700">Bold</option>
                   <option :value="800">Extra Bold</option>
-                </select>
-              </label>
-              <label>
-                <span>텍스트 정렬</span>
-                <select
-                  :disabled="selectedItem.isLocked"
-                  :value="selectedItemStyle.textAlign || 'left'"
-                  @change="updateItemStyle({ textAlign: $event.target.value })"
-                >
-                  <option value="left">왼쪽</option>
-                  <option value="center">가운데</option>
-                  <option value="right">오른쪽</option>
                 </select>
               </label>
             </template>

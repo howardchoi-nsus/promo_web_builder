@@ -332,8 +332,10 @@ try {
     "Text component containers must expose corner and edge handles",
   );
   const textRightHandle = textComponent.locator(".component-resize-handle--e");
+  const textContentNode = textComponent.locator(".rendered-text, .rendered-empty").first();
   const textBoxBefore = await textComponent.boundingBox();
   const textHandleBox = await textRightHandle.boundingBox();
+  const textFontSizeBefore = Number.parseFloat(await textContentNode.evaluate((node) => getComputedStyle(node).fontSize));
   assert.ok(textBoxBefore && textHandleBox, "Text component resize geometry must be measurable");
   await page.mouse.move(textHandleBox.x + textHandleBox.width / 2, textHandleBox.y + textHandleBox.height / 2);
   await page.mouse.down();
@@ -341,14 +343,80 @@ try {
   await page.mouse.up();
   await page.waitForTimeout(50);
   const textBoxAfter = await textComponent.boundingBox();
+  const textFontSizeAfter = Number.parseFloat(await textContentNode.evaluate((node) => getComputedStyle(node).fontSize));
   assert.ok(
     textBoxAfter.width > textBoxBefore.width + 30,
     "Dragging a text component edge handle must increase its article width",
+  );
+  assert.ok(
+    textFontSizeAfter > textFontSizeBefore,
+    "Dragging a text component edge handle must scale its font size",
+  );
+  const textBottomHandle = textComponent.locator(".component-resize-handle--s");
+  const textBottomHandleBox = await textBottomHandle.boundingBox();
+  const sectionNode = editorFrame.locator('[data-section-key="contentFeature"]');
+  const sectionBoxBefore = await sectionNode.boundingBox();
+  assert.ok(textBottomHandleBox && sectionBoxBefore, "Vertical text resize geometry must be measurable");
+  await page.mouse.move(textBottomHandleBox.x + textBottomHandleBox.width / 2, textBottomHandleBox.y + textBottomHandleBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(textBottomHandleBox.x + textBottomHandleBox.width / 2, textBottomHandleBox.y + textBottomHandleBox.height / 2 + 60);
+  await page.mouse.up();
+  await page.waitForTimeout(100);
+  const textBoxAfterVerticalResize = await textComponent.boundingBox();
+  const textFontSizeAfterVerticalResize = Number.parseFloat(await textContentNode.evaluate((node) => getComputedStyle(node).fontSize));
+  const sectionBoxAfter = await sectionNode.boundingBox();
+  assert.ok(
+    textBoxAfterVerticalResize.height > textBoxAfter.height + 30,
+    "Dragging a text component bottom handle must increase its article height",
+  );
+  assert.ok(
+    textFontSizeAfterVerticalResize > textFontSizeAfter,
+    "Vertical text component resize must scale its font size",
+  );
+  assert.ok(
+    sectionBoxAfter.height >= sectionBoxBefore.height
+      && textBoxAfterVerticalResize.y + textBoxAfterVerticalResize.height <= sectionBoxAfter.y + sectionBoxAfter.height,
+    "The Section must expand when a resized component needs more vertical space",
+  );
+  const textRightHandleAfterExpansion = textComponent.locator(".component-resize-handle--e");
+  const textRightHandleAfterExpansionBox = await textRightHandleAfterExpansion.boundingBox();
+  assert.ok(textRightHandleAfterExpansionBox, "Text component shrink geometry must be measurable");
+  await page.mouse.move(
+    textRightHandleAfterExpansionBox.x + textRightHandleAfterExpansionBox.width / 2,
+    textRightHandleAfterExpansionBox.y + textRightHandleAfterExpansionBox.height / 2,
+  );
+  await page.mouse.down();
+  await page.mouse.move(
+    textRightHandleAfterExpansionBox.x + textRightHandleAfterExpansionBox.width / 2 - 40,
+    textRightHandleAfterExpansionBox.y + textRightHandleAfterExpansionBox.height / 2,
+  );
+  await page.mouse.up();
+  await page.waitForTimeout(50);
+  const textBoxAfterShrink = await textComponent.boundingBox();
+  const textFontSizeAfterShrink = Number.parseFloat(await textContentNode.evaluate((node) => getComputedStyle(node).fontSize));
+  assert.ok(
+    textBoxAfterShrink.width < textBoxAfterVerticalResize.width - 20,
+    "Shrinking a text component edge must reduce its article width",
+  );
+  assert.ok(
+    textFontSizeAfterShrink < textFontSizeAfterVerticalResize,
+    "Shrinking a text component edge must reduce its font size",
   );
   const resizedTextContent = await page.evaluate(() => JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null"));
   assert.ok(
     resizedTextContent?.templateLayouts?.["default-preview"]?.resolvedLayout?.itemStyles?.["contentFeature.copy"]?.widthPct > 10,
     "Text component width must persist in the layout snapshot",
+  );
+  assert.ok(
+    Math.abs(
+      resizedTextContent?.templateLayouts?.["default-preview"]?.resolvedLayout?.itemStyles?.["contentFeature.copy"]?.fontSize
+        - textFontSizeAfterShrink,
+    ) < 0.2,
+    "The latest scaled text size must persist in the layout snapshot",
+  );
+  assert.ok(
+    resizedTextContent?.templateLayouts?.["default-preview"]?.resolvedLayout?.itemStyles?.["contentFeature.copy"]?.heightPx > textBoxAfter.height,
+    "Text component height must persist in the layout snapshot",
   );
   await itemImageFrame.click();
   const imageRemoveAction = editorFrame.locator(".image-remove-action");

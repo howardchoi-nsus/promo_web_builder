@@ -147,6 +147,10 @@ function clamp(value, min, max, fallback) {
   return Number.isFinite(number) ? Math.min(max, Math.max(min, number)) : fallback;
 }
 
+function roundedDimension(value) {
+  return Math.round(Number(value) * 100) / 100;
+}
+
 function normalizedAspectRatio(value, fallback = "1 / 1") {
   const match = String(value || "").trim().match(/^(\d+(?:\.\d+)?)\s*[:/]\s*(\d+(?:\.\d+)?)$/);
   if (!match || Number(match[1]) <= 0 || Number(match[2]) <= 0) return fallback;
@@ -319,7 +323,6 @@ function inlineItemStyle(section, item) {
     "--item-font-size": style.fontSize ? `${style.fontSize}px` : undefined,
     fontWeight: style.fontWeight,
     "--item-font-weight": style.fontWeight,
-    textAlign: style.textAlign,
     width: style.widthPct !== undefined || isImage ? `${widthPct}%` : undefined,
     height: heightPx && (!isImage || style.shape !== "circle") ? `${heightPx}px` : undefined,
     aspectRatio: isImage && (!heightPx || style.shape === "circle")
@@ -409,8 +412,14 @@ function startItemResize(event, section, item, handleDirection = "se") {
   const locked = isImage && style.aspectRatioLocked !== false;
   const horizontalActive = handleDirection.includes("w") || handleDirection.includes("e");
   const verticalActive = handleDirection.includes("n") || handleDirection.includes("s");
+  const textNode = isImage
+    ? null
+    : target.querySelector(".rendered-text, .rendered-empty, .rendered-cta");
+  const renderedFontSize = textNode ? Number.parseFloat(getComputedStyle(textNode).fontSize) : 18;
+  const startFontSize = clamp(style.fontSize, 10, 80, renderedFontSize || 18);
   let nextWidth = startWidth;
   let nextHeight = startHeight;
+  let nextFontSize = startFontSize;
   let nextLeft = startLeft;
   let nextTop = startTop;
   let animationFrame = 0;
@@ -425,7 +434,7 @@ function startItemResize(event, section, item, handleDirection = "se") {
       : containerRect.width - startLeft);
     const maxHeight = Math.max(80, handleDirection.includes("n")
       ? startHeight + startTop
-      : containerRect.height - startTop);
+      : 1124 - startTop);
     const widthCandidate = horizontalActive
       ? Math.min(maxWidth, Math.max(80, startWidth + deltaX))
       : startWidth;
@@ -447,6 +456,16 @@ function startItemResize(event, section, item, handleDirection = "se") {
       nextWidth = widthCandidate;
       nextHeight = heightCandidate;
     }
+    if (!isImage) {
+      const widthScale = startWidth ? nextWidth / startWidth : 1;
+      const heightScale = startHeight ? nextHeight / startHeight : 1;
+      const fontScale = horizontalActive && verticalActive
+        ? Math.sqrt(widthScale * heightScale)
+        : horizontalActive
+          ? widthScale
+          : heightScale;
+      nextFontSize = roundedDimension(clamp(startFontSize * fontScale, 10, 80, startFontSize));
+    }
     nextLeft = handleDirection.includes("w") ? startLeft + startWidth - nextWidth : startLeft;
     nextTop = handleDirection.includes("n") ? startTop + startHeight - nextHeight : startTop;
     if (animationFrame) return;
@@ -457,10 +476,18 @@ function startItemResize(event, section, item, handleDirection = "se") {
       if (horizontalActive || locked) target.style.width = `${nextWidth}px`;
       if (verticalActive || locked) target.style.height = `${nextHeight}px`;
       if (isImage) target.style.aspectRatio = "auto";
+      else target.style.setProperty("--item-font-size", `${nextFontSize}px`);
     });
   };
   const end = () => {
     if (animationFrame) cancelAnimationFrame(animationFrame);
+    const requiredSectionHeight = Math.ceil(nextTop + nextHeight + 76);
+    const currentSectionHeight = sectionStyle(section).minHeight || defaultSectionHeight(section);
+    if (requiredSectionHeight > currentSectionHeight) {
+      emit("update-section-style", section.sectionKey, {
+        minHeight: Math.min(1200, requiredSectionHeight),
+      });
+    }
     emit("update-renderer-item-style", section, item, {
       positionMode: "free",
       xPct: containerRect.width ? (nextLeft / containerRect.width) * 100 : 0,
@@ -473,12 +500,13 @@ function startItemResize(event, section, item, handleDirection = "se") {
           : style.heightPx,
       ...(isImage
         ? { aspectRatio: `${Math.max(1, Math.round(nextWidth))}/${Math.max(1, Math.round(nextHeight))}` }
-        : {}),
+        : { fontSize: nextFontSize }),
     });
     target.classList.remove("is-resizing");
     target.style.removeProperty("width");
     target.style.removeProperty("height");
     target.style.removeProperty("aspect-ratio");
+    target.style.removeProperty("--item-font-size");
     target.style.removeProperty("left");
     target.style.removeProperty("top");
     handle.removeEventListener("pointermove", move);
@@ -519,13 +547,24 @@ function resizeItemByKeyboard(event, section, item, handleDirection = "se") {
     10, 100, 32,
   );
   const currentHeight = clamp(style.heightPx, 80, 900, 240);
+  const heightPx = locked || (isImage && style.shape === "circle")
+    ? undefined
+    : verticalActive
+      ? clamp(currentHeight + (verticalDirection * step * 4), 80, 900, 240)
+      : currentHeight;
+  const widthScale = widthPct / (style.widthPct ?? 32);
+  const heightScale = heightPx ? heightPx / currentHeight : 1;
+  const fontScale = horizontalActive && verticalActive
+    ? Math.sqrt(widthScale * heightScale)
+    : horizontalActive
+      ? widthScale
+      : heightScale;
   emit("update-renderer-item-style", section, item, {
     widthPct,
-    heightPx: locked || (isImage && style.shape === "circle")
-      ? undefined
-      : verticalActive
-        ? clamp(currentHeight + (verticalDirection * step * 4), 80, 900, 240)
-        : currentHeight,
+    heightPx,
+    ...(!isImage
+      ? { fontSize: roundedDimension(clamp((style.fontSize ?? 18) * fontScale, 10, 80, 18)) }
+      : {}),
   });
 }
 

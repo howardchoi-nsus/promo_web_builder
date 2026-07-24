@@ -213,6 +213,9 @@ assert.match(rendererStyles, /\.item-resize-handle--w\s*\{[^}]*cursor:\s*ew-resi
 assert.match(renderer, /function itemResizeHandles\(section, item\)/);
 assert.match(renderer, /class="item-resize-handle component-resize-handle"/);
 assert.match(renderer, /function startItemResize[\s\S]*if \(!props\.editable \|\| item\.isLocked \|\| event\.button !== 0\) return/);
+assert.match(renderer, /fontScale[\s\S]*fontSize:\s*nextFontSize/);
+assert.doesNotMatch(renderer, /textAlign:\s*style\.textAlign/);
+assert.doesNotMatch(app, /selectedItemStyle\.textAlign/);
 assert.match(app, /class="component-frame-controls"/);
 assert.match(app, /aria-label="컴포넌트 너비 퍼센트"/);
 assert.match(app, /aria-label="컴포넌트 높이 픽셀"/);

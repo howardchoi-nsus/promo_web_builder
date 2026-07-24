@@ -20,6 +20,10 @@ assert.equal(resolved.sectionStyles.hero.minHeight, 560);
 assert.equal(resolved.itemStyles["hero.title"].fontSize, 44);
 assert.equal(resolved.itemStyles["hero.title"].xPct, 12);
 assert.equal(resolved.itemStyles["hero.title"].yPx, 80);
+assert.equal(
+  normalizeLayoutSpec({ itemStyles: { "hero.title": { textAlign: "center" } } }).itemStyles["hero.title"].textAlign,
+  undefined,
+);
 
 assert.equal(validateLayoutSpec(resolved).ok, true);
 assert.equal(validateLayoutSpec({ itemStyles: { bad: { xPct: 101 } } }).ok, false);

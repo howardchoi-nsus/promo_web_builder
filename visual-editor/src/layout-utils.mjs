@@ -31,6 +31,9 @@ export function mergeLayoutSpec(base = DEFAULT_DESIGN_SPEC, override = {}) {
   delete merged.theme.backgroundImageName;
   merged.responsive = merged.responsive || {};
   merged.itemStyles = merged.itemStyles || {};
+  Object.values(merged.itemStyles).forEach((style) => {
+    if (style && typeof style === "object") delete style.textAlign;
+  });
   merged.sectionStyles = merged.sectionStyles || {};
   return merged;
 }
@@ -38,7 +41,6 @@ export function mergeLayoutSpec(base = DEFAULT_DESIGN_SPEC, override = {}) {
 export function validateLayoutSpec(value = {}) {
   const spec = normalizeLayoutSpec(value);
   const errors = [];
-  const allowedAlign = new Set(["left", "center", "right"]);
   const allowedBackgroundSizes = new Set(["contain"]);
   const allowedBackgroundPositions = new Set(["left center", "center center", "right center"]);
   const allowedFadeModes = new Set(["none", "left", "right", "both"]);
@@ -85,9 +87,6 @@ export function validateLayoutSpec(value = {}) {
     }
     if (style?.fontSize !== undefined && (!Number.isFinite(size) || size < 10 || size > 80)) {
       errors.push({ path: `itemStyles.${key}.fontSize`, message: "fontSize must be between 10 and 80." });
-    }
-    if (style?.textAlign !== undefined && !allowedAlign.has(style.textAlign)) {
-      errors.push({ path: `itemStyles.${key}.textAlign`, message: "Unsupported text alignment." });
     }
     const width = Number(style?.widthPct);
     const height = Number(style?.heightPx);
