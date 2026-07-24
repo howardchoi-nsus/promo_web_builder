@@ -7,7 +7,10 @@
   },
   "scripts": {
     "test": "node scripts/run-tests.js",
+    "build": "pnpm run build:admin && pnpm run build:visual-editor",
+    "build:admin": "vite build --config admin-app/vite.config.js",
     "build:visual-editor": "vite build --config visual-editor/vite.config.js",
+    "dev:admin": "vite --config admin-app/vite.config.js",
     "dev:visual-editor": "vite --config visual-editor/vite.config.js",
     "check": "node --check prototype/app.js && node --check prototype/generated.js && node --check prototype/promo-wizard.js && node --check prototype/create-promo.js",
     "test:design-prompt-md": "node scripts/test-design-prompt-md.js",
