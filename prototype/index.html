@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="/prototype/design-tokens.css?v=app-tokens-v1" />
     <link rel="stylesheet" href="/prototype/app-shell.css?v=app-shell-sidebar-v3" />
     <link rel="stylesheet" href="/prototype/app-components.css?v=app-components-v1" />
-    <link rel="stylesheet" href="/prototype/styles.css?v=admin-template-manager-v3" />
+    <link rel="stylesheet" href="/prototype/styles.css?v=admin-template-manager-v4" />
     <script src="/prototype/vendor/lucide/lucide.min.js?v=1.8.0"></script>
     <script src="/prototype/i18n-runtime.js?v=i18n-runtime-v1"></script>
     <script src="/prototype/shared-shell.js?v=app-shell-sidebar-v4"></script>
@@ -1418,17 +1418,6 @@
                     <div class="action-row align-right"><button class="tiny-button" type="button" @click="wizardFormTemplateItemEditorOpenId = ''">{{ t('common.action.cancel') }}</button><button class="tiny-button primary" type="button" :disabled="!wizardFormTemplateItemEditor.name || wizardFormTemplateSectionSaving" @click="saveWizardFormTemplateItem">{{ t('common.action.saveContinue') }}</button></div>
                   </div>
                   <div class="empty-state compact" v-if="!selectedWizardFormTemplateSection">Section을 선택해 주세요.</div>
-                </aside>
-                <aside class="template-section-items-panel" v-if="wizardFormTemplateDetail">
-                  <div class="subsection-title"><div><h3>{{ t('entity.component.info') }}</h3><span>{{ t('entity.component.editNotice') }}</span></div></div>
-                  <div class="subsection" v-if="selectedWizardFormTemplateSection">
-                    <strong>{{ selectedWizardFormTemplateSection.sectionName || selectedWizardFormTemplateSection.sectionKey }}</strong>
-                    <p>{{ selectedWizardFormTemplateSection.sectionDescription || '설명이 없습니다.' }}</p>
-                    <div class="form-template-summary"><span>{{ t('entity.component.activeVersion') }}</span><strong>v{{ selectedWizardFormTemplateSection.sectionVersion }}</strong></div>
-                    <div class="form-template-summary"><span>Item</span><strong>{{ wizardFormTemplateSectionItems.length }}개</strong></div>
-                    <div class="empty-state compact">{{ t('entity.component.editDetailNotice') }}</div>
-                  </div>
-                  <div class="empty-state compact" v-else>{{ t('entity.component.selectPrompt') }}</div>
                 </aside>
                 </div>
               </div>
