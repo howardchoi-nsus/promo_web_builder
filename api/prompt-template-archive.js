@@ -35,71 +35,72 @@ module.exports = async function handler(req, res) {
       return res.status(409).json({ error: "Prompt template is already archived" });
     }
 
-    const updatedRows = await sql`
-      update prompt_templates
-      set
-        status = 'archived',
-        archived_at = now(),
-        change_note = ${changeNote},
-        updated_at = now()
-      where id = ${id}::uuid
-      returning
-        id::text,
-        type,
-        name,
-        body,
-        status,
-        version,
-        required_variables,
-        optional_variables,
-        provider,
-        model,
-        temperature,
-        max_tokens,
-        response_format,
-        model_options,
-        change_note,
-        archived_at,
-        created_at,
-        updated_at
-    `;
-
-    await sql`
-      insert into prompt_template_histories (
-        prompt_template_id,
-        prompt_type,
-        previous_body,
-        new_body,
-        previous_version,
-        new_version,
-        previous_status,
-        new_status,
-        change_note,
-        previous_provider,
-        new_provider,
-        previous_model,
-        new_model,
-        previous_model_options,
-        new_model_options
-      )
-      values (
-        ${id}::uuid,
-        ${current.type},
-        ${current.body || ""},
-        ${current.body || ""},
-        ${Number(current.version || 1)},
-        ${Number(current.version || 1)},
-        ${current.status || ""},
-        'archived',
-        ${changeNote},
-        ${current.provider || ""},
-        ${current.provider || ""},
-        ${current.model || ""},
-        ${current.model || ""},
-        ${JSON.stringify(current.model_options || {})}::jsonb,
-        ${JSON.stringify(current.model_options || {})}::jsonb
-      )
-    `;
+    const [updatedRows] = await sql.transaction([
+      sql`
+        update prompt_templates
+        set
+          status = 'archived',
+          archived_at = now(),
+          change_note = ${changeNote},
+          updated_at = now()
+        where id = ${id}::uuid
+        returning
+          id::text,
+          type,
+          name,
+          body,
+          status,
+          version,
+          required_variables,
+          optional_variables,
+          provider,
+          model,
+          temperature,
+          max_tokens,
+          response_format,
+          model_options,
+          change_note,
+          archived_at,
+          created_at,
+          updated_at
+      `,
+      sql`
+        insert into prompt_template_histories (
+          prompt_template_id,
+          prompt_type,
+          previous_body,
+          new_body,
+          previous_version,
+          new_version,
+          previous_status,
+          new_status,
+          change_note,
+          previous_provider,
+          new_provider,
+          previous_model,
+          new_model,
+          previous_model_options,
+          new_model_options
+        )
+        values (
+          ${id}::uuid,
+          ${current.type},
+          ${current.body || ""},
+          ${current.body || ""},
+          ${Number(current.version || 1)},
+          ${Number(current.version || 1)},
+          ${current.status || ""},
+          'archived',
+          ${changeNote},
+          ${current.provider || ""},
+          ${current.provider || ""},
+          ${current.model || ""},
+          ${current.model || ""},
+          ${JSON.stringify(current.model_options || {})}::jsonb,
+          ${JSON.stringify(current.model_options || {})}::jsonb
+        )
+      `,
+    ]);
 
     return res.status(200).json({ ok: true, prompt: toPromptTemplate(updatedRows[0]) });
   } catch (error) {

@@ -52,13 +52,14 @@ module.exports = async function handler(req, res) {
         and id <> ${id}::uuid
     `;
 
+    const mutationQueries = [];
     for (const oldActive of oldActiveRows) {
-      await sql`
+      mutationQueries.push(sql`
         update prompt_templates
         set status = 'inactive', updated_at = now()
         where id = ${oldActive.id}::uuid
-      `;
-      await sql`
+      `);
+      mutationQueries.push(sql`
         insert into prompt_template_histories (
           prompt_template_id,
           prompt_type,
@@ -93,10 +94,11 @@ module.exports = async function handler(req, res) {
           ${JSON.stringify(oldActive.model_options || {})}::jsonb,
           ${JSON.stringify(oldActive.model_options || {})}::jsonb
         )
-      `;
+      `);
     }
 
-    const updatedRows = await sql`
+    const targetUpdateIndex = mutationQueries.length;
+    mutationQueries.push(sql`
       update prompt_templates
       set status = 'active', change_note = ${changeNote}, updated_at = now()
       where id = ${id}::uuid
@@ -119,9 +121,9 @@ module.exports = async function handler(req, res) {
         archived_at,
         created_at,
         updated_at
-    `;
+    `);
 
-    await sql`
+    mutationQueries.push(sql`
       insert into prompt_template_histories (
         prompt_template_id,
         prompt_type,
@@ -156,7 +158,9 @@ module.exports = async function handler(req, res) {
         ${JSON.stringify(target.model_options || {})}::jsonb,
         ${JSON.stringify(target.model_options || {})}::jsonb
       )
-    `;
+    `);
+    const mutationResults = await sql.transaction(mutationQueries);
+    const updatedRows = mutationResults[targetUpdateIndex];
 
     return res.status(200).json({ ok: true, prompt: toPromptTemplate(updatedRows[0]) });
   } catch (error) {

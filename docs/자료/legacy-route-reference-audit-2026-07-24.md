@@ -17,8 +17,9 @@ Promo Wizard, Generated UI, Visual Editor를 현재 시점에 파일 단위로 �
 
 - `prototype/create-promo.js`
   - Create Promo의 템플릿 레이아웃 편집 iframe으로 Visual Editor 사용
-- `prototype/admin/template-layout-manager.js`
+- `admin-app/src/components/TemplateLayoutManager.vue`
   - 관리자 기본 레이아웃 편집기로 Visual Editor 사용
+  - 구형 `prototype/admin/template-layout-manager.js`는 SFC 전환 완료 후 2026-07-25 삭제
 - `prototype/app.js`
   - 생성 결과 확인 시 Generated UI 사용
 - `prototype/promo-wizard.js`
@@ -39,3 +40,10 @@ Promo Wizard, Generated UI, Visual Editor를 현재 시점에 파일 단위로 �
 ## 이번 작업에서 삭제하지 않은 이유
 
 Visual Editor는 이름과 달리 현재 Create Promo와 관리자 레이아웃 편집기의 실제 렌더링 엔진이다. Generated UI도 디자인 생성기의 결과 열기 동작에서 사용 중이다. 파일을 바로 삭제하면 사용자 경로가 끊기므로, 메뉴 비노출과 파일 제거를 구분해 관리한다.
+
+## 2026-07-25 현행화
+
+- 관리자 Template Layout Manager는 Vite가 직접 import하는 Vue SFC와 Service로 전환됐다.
+- 테스트와 관리자 문구 추출 도구도 신규 SFC를 정본으로 사용한다.
+- 런타임에서 사용하지 않던 구형 Template Layout Manager 파일은 제거했다.
+- Promo Wizard, Generated UI, Visual Editor, Visual Output 경로의 유지 판단은 변경하지 않는다.

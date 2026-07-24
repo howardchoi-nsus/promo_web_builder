@@ -347,6 +347,23 @@ function normalizeNumber(value) {
   return Number.isFinite(number) ? number : null;
 }
 
+function mergePromptTemplatePatch(current = {}, patch = {}) {
+  const has = (camelKey, snakeKey = camelKey) => (
+    Object.prototype.hasOwnProperty.call(patch, camelKey)
+    || Object.prototype.hasOwnProperty.call(patch, snakeKey)
+  );
+  return {
+    name: has("name") ? String(patch.name || "").trim() : String(current.name || "").trim(),
+    body: has("body") ? String(patch.body || "") : String(current.body || ""),
+    requiredVariables: has("requiredVariables", "required_variables")
+      ? normalizeVariables(patch.requiredVariables ?? patch.required_variables)
+      : normalizeVariables(current.required_variables ?? current.requiredVariables),
+    optionalVariables: has("optionalVariables", "optional_variables")
+      ? normalizeVariables(patch.optionalVariables ?? patch.optional_variables)
+      : normalizeVariables(current.optional_variables ?? current.optionalVariables),
+  };
+}
+
 function extractPromptVariables(body) {
   const matches = String(body || "").matchAll(/{{\s*([a-zA-Z0-9_]+)\s*}}/g);
   return Array.from(new Set(Array.from(matches, (match) => match[1])));
@@ -472,6 +489,7 @@ module.exports = {
   ensureDefaultPromptTemplates,
   extractPromptVariables,
   getSql,
+  mergePromptTemplatePatch,
   normalizeModelOptions,
   normalizeNumber,
   normalizeVariables,

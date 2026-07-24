@@ -6,7 +6,7 @@ const targets = [
   "prototype/index.html",
   "prototype/app.js",
   "prototype/shared-shell.js",
-  "prototype/admin/template-layout-manager.js",
+  "admin-app/src/components/TemplateLayoutManager.vue",
 ];
 const koreanPattern = /[가-힣][가-힣\s·/(){}:+&.,!?0-9A-Za-z_-]*/g;
 const labels = new Map();

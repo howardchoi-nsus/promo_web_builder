@@ -20,10 +20,19 @@ assert.match(serviceSource, /requestTemplateLayout/);
 assert.match(componentSource, /name: "TemplateLayoutManager"/);
 assert.match(componentSource, /templateLayoutService\.requestLayout/);
 assert.match(componentSource, /templateLayoutService\.editorUrl/);
+assert.match(componentSource, /requestRevision !== this\.requestRevision/);
+assert.match(componentSource, /admin\.templateLayout\.title/);
+assert.doesNotMatch(componentSource, /템플릿 기본 레이아웃|레이아웃 편집 열기/);
 assert.match(adminHtml, /<template-layout-manager/);
+assert.match(adminHtml, /:translate="t"/);
 assert.match(adminHtml, /admin-assets\/admin-app\.js/);
 assert.match(adminEntry, /import TemplateLayoutManager/);
 assert.match(adminEntry, /globalThis\.PromoAdminTemplateLayout = Object\.freeze/);
 assert.match(adminApp, /adminApp\.component\("template-layout-manager"/);
+assert.equal(
+  fs.existsSync(path.join(root, "prototype/admin/template-layout-manager.js")),
+  false,
+  "legacy TemplateLayoutManager implementation must not remain after the SFC cutover",
+);
 
 console.log("Admin TemplateLayoutManager module contract test passed.");

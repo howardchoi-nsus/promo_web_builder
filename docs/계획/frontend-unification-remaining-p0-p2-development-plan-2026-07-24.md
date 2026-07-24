@@ -44,11 +44,13 @@
 - `prototype/create-promo.js`
   - API, 저장소, 단계 제어, DOM 렌더링, iframe 통신 책임이 혼재한다.
 - `admin-app/src/main.js`
-  - Vite 진입점은 마련됐지만 기존 `prototype/app.js`와 `template-layout-manager.js`를 로드하는 전환 구조다.
+  - Vite 진입점은 기존 `prototype/app.js`를 전환 레이어로 유지한다.
+  - Template Layout Manager는 `admin-app/src/components/TemplateLayoutManager.vue`와 Service를 직접 import하며 구형 모듈은 제거됐다.
 - `prototype/promo-wizard.html/js`
   - Create Promo와 기능이 중복되지만 실제 사용처 감사 전에는 제거할 수 없다.
 - 이미지 프롬프트
-  - 즉시 오류 복구는 완료됐지만 변수 계약, 버전 검증, 시험 생성, 롤백 운영 구조는 미완료다.
+  - 즉시 오류 복구와 변수 계약·활성화 검증·쓰기 이력 트랜잭션은 완료됐다.
+  - 활성본 직접 수정 제거, 새 Draft Version, 시험 생성, 승인 비교, 즉시 롤백 운영 구조는 미완료다.
 
 ## 2. 목표
 
@@ -520,17 +522,17 @@ draft → validated → active → archived
 
 - [ ] Create Promo 핵심 5단계가 Vue 컴포넌트와 공통 Domain을 사용한다.
 - [ ] 관리자 핵심 Template·Component·Section 관리가 기능 단위 SFC를 사용한다.
-- [ ] 관리자 저장·활성화 결과가 Create Promo에 정상 반영된다.
-- [ ] 기존 URL, API, localStorage, Snapshot 호환이 유지된다.
+- [x] 관리자 저장·활성화 결과가 Create Promo에 정상 반영된다.
+- [x] 기존 URL, API, localStorage, Snapshot 호환이 유지된다.
 
 ### P2
 
-- [ ] Promo Wizard의 유지·통합·제거 대상이 확정됐다.
+- [x] Promo Wizard의 유지·통합·제거 대상이 감사 문서로 분류됐다.
 - [ ] 승인된 Legacy만 제거되고 기존 URL 호환이 보장된다.
-- [ ] 이미지 프롬프트 변수 계약과 활성화 검증이 적용됐다.
+- [x] 이미지 프롬프트 변수 계약과 활성화 검증이 적용됐다.
 - [ ] Draft·Active·Archived와 롤백이 동작한다.
 - [ ] Section Background와 Component Image 시험 생성이 통과한다.
-- [ ] 전체 테스트, 브라우저 테스트, Admin·Visual Editor Build가 통과한다.
+- [x] 전체 테스트, 브라우저 테스트, Admin·Visual Editor Build가 통과한다.
 
 ## 11. P2 이후 To-Be
 
@@ -562,6 +564,15 @@ draft → validated → active → archived
 - 프롬프트 저장·활성화 시 허용 변수, 필수 변수, 선언과 Placeholder 정합성을 검증한다.
 - 섹션 배경 이미지 실행 시 `fadeMode`, 6자리 배경색, `W:H` 비율 형식을 검증한다.
 - 기존 Draft·Active·Archived·History DB 구조는 유지했으며 DB Migration은 추가하지 않았다.
+
+### 2026-07-25 소스 감사 보완
+
+- 관리자 Template Layout Manager의 구형 중복 구현을 제거하고 SFC를 단일 정본으로 확정했다.
+- 템플릿 전환 중 이전 Layout API 응답이 최신 revision을 덮지 않도록 요청 revision 검증을 추가했다.
+- 신규 관리자 SFC 문구를 `locales/ko.json`, `locales/en.json` 키로 이동했다.
+- Prompt PATCH에서 생략된 변수 선언을 기존 값으로 보존하도록 수정했다.
+- Prompt 수정·활성화·보관과 History 기록을 각각 단일 Neon HTTP Transaction으로 묶었다.
+- Prompt Rollback API와 시험 생성 비교 화면은 아직 구현되지 않았으므로 완료 처리하지 않는다.
 
 ### 최종 검증
 

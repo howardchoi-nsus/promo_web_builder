@@ -1172,6 +1172,7 @@
                         class="template-layout-settings--compact"
                         :template="wizardFormTemplateDetail.template"
                         :status-label="wizardSectionStatusLabel"
+                        :translate="t"
                       ></template-layout-manager>
                       <div class="empty-state compact" v-if="wizardFormTemplateDetail.template.status !== 'draft'">활성·비활성 버전은 읽기 전용입니다. 수정 버튼을 누르면 초안이 열립니다.</div>
                       <label class="field compact-field">

@@ -51,7 +51,6 @@ const {
   valueAtPath,
   setValueAtPath,
   fetchJson,
-  resolveActiveTemplate,
 } = globalThis.PromoWizardCore || {};
 const {
   listPublicTemplates,

@@ -6,9 +6,15 @@ export default {
   props: {
     template: { type: Object, required: true },
     statusLabel: { type: Function, required: true },
+    translate: { type: Function, required: true },
   },
   data() {
-    return { layoutRevision: null, loading: false, error: "" };
+    return { layoutRevision: null, loading: false, error: "", requestRevision: 0 };
+  },
+  computed: {
+    headingId() {
+      return `template-layout-manager-${String(this.template?.id || "none").replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+    },
   },
   watch: {
     "template.id": {
@@ -18,18 +24,28 @@ export default {
       },
     },
   },
+  beforeUnmount() {
+    this.requestRevision += 1;
+  },
   methods: {
     async loadLayout() {
-      if (!this.template?.id) return;
-      this.loading = true;
+      const requestRevision = ++this.requestRevision;
+      this.layoutRevision = null;
       this.error = "";
+      if (!this.template?.id) {
+        this.loading = false;
+        return;
+      }
+      this.loading = true;
       try {
         const result = await templateLayoutService.requestLayout(this.template.id);
+        if (requestRevision !== this.requestRevision) return;
         this.layoutRevision = Number(result.layout?.layoutRevision || 1);
       } catch (error) {
+        if (requestRevision !== this.requestRevision) return;
         this.error = error.message;
       } finally {
-        this.loading = false;
+        if (requestRevision === this.requestRevision) this.loading = false;
       }
     },
     openEditor() {
@@ -41,15 +57,15 @@ export default {
 </script>
 
 <template>
-  <section class="template-layout-settings" aria-labelledby="template-layout-manager-title">
+  <section class="template-layout-settings" :aria-labelledby="headingId">
     <div class="template-layout-settings-copy">
-      <span class="template-layout-settings-eyebrow">WIZARD STEP 2 DEFAULT</span>
-      <h3 id="template-layout-manager-title">템플릿 기본 레이아웃</h3>
-      <p>프로모션 빌더의 배경, 섹션 높이, 컴포넌트 위치와 글자 스타일을 설정합니다. 사용자 작업별 변경은 관리자 템플릿에 역반영되지 않습니다.</p>
+      <span class="template-layout-settings-eyebrow">{{ translate("admin.templateLayout.eyebrow") }}</span>
+      <h3 :id="headingId">{{ translate("admin.templateLayout.title") }}</h3>
+      <p>{{ translate("admin.templateLayout.description") }}</p>
       <span class="template-layout-settings-state" :class="'status-' + template.status">
-        v{{ template.version }} · {{ statusLabel(template.status) }}<template v-if="layoutRevision"> · 레이아웃 r{{ layoutRevision }}</template>
+        v{{ template.version }} · {{ statusLabel(template.status) }}<template v-if="layoutRevision"> · {{ translate("admin.templateLayout.revision") }} r{{ layoutRevision }}</template>
       </span>
-      <small v-if="loading">레이아웃 정보를 확인하는 중입니다.</small>
+      <small v-if="loading">{{ translate("admin.templateLayout.loading") }}</small>
       <small v-else-if="error" class="field-error">{{ error }}</small>
     </div>
     <div class="template-layout-settings-actions">
@@ -58,9 +74,9 @@ export default {
         type="button"
         :disabled="template.status !== 'draft'"
         @click="openEditor"
-      >레이아웃 편집 열기</button>
-      <small v-if="template.status !== 'draft'">활성 버전은 읽기 전용입니다. 먼저 새 초안을 만들어 주세요.</small>
-      <small v-else>편집 내용은 초안에만 반영되며 템플릿 활성화 후 프로모션 빌더에서 사용됩니다.</small>
+      >{{ translate("admin.templateLayout.openEditor") }}</button>
+      <small v-if="template.status !== 'draft'">{{ translate("admin.templateLayout.readOnlyHelp") }}</small>
+      <small v-else>{{ translate("admin.templateLayout.draftHelp") }}</small>
     </div>
   </section>
 </template>

@@ -384,7 +384,8 @@ Item geometry, Section 순서, Section 높이 및 관리자 잠금값은 Appeara
 - `prototype/create-promo.js`
 - `prototype/create-promo-layout-cache.js`
 - `prototype/wizard/wizard-core.js`
-- `prototype/admin/template-layout-manager.js`
+- `admin-app/src/components/TemplateLayoutManager.vue`
+- `admin-app/src/services/template-layout-service.mjs`
 - `visual-editor/src/App.vue`
 - `api/wizard-form-template-layout.js`
 - `api/wizard-form-template-activate.js`
@@ -556,7 +557,8 @@ const editorContext = {
 - 신규 Editor Context 또는 Capability 모듈
 - 신규 Persistence Adapter 모듈
 - `prototype/create-promo.js`
-- `prototype/admin/template-layout-manager.js`
+- `admin-app/src/components/TemplateLayoutManager.vue`
+- `admin-app/src/services/template-layout-service.mjs`
 - `prototype/visual-editor.html`
 - Visual Editor build 산출물
 
@@ -876,7 +878,8 @@ P2:
 - 신규 Component Property Accordion 또는 기존 코드 추출
 - `prototype/create-promo.js`
 - `prototype/create-promo-layout-cache.js`
-- `prototype/admin/template-layout-manager.js`
+- `admin-app/src/components/TemplateLayoutManager.vue`
+- `admin-app/src/services/template-layout-service.mjs`
 - `prototype/visual-editor.html`
 
 ### Backend

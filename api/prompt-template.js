@@ -1,7 +1,7 @@
 const {
   ensureDefaultPromptTemplates,
   getSql,
-  normalizeVariables,
+  mergePromptTemplatePatch,
   normalizeModelOptions,
   normalizeNumber,
   parseBody,
@@ -107,11 +107,7 @@ async function updatePrompt(req, res) {
   const id = String(body.id || req.query.id || "").trim();
   if (!id) return res.status(400).json({ error: "id is required" });
 
-  const nextBody = String(body.body || "");
-  const nextName = String(body.name || "").trim();
   const changeNote = String(body.changeNote || body.change_note || "Prompt updated.").trim();
-  const requiredVariables = normalizeVariables(body.requiredVariables || body.required_variables);
-  const optionalVariables = normalizeVariables(body.optionalVariables || body.optional_variables);
   const hasProvider = Object.prototype.hasOwnProperty.call(body, "provider");
   const hasModel = Object.prototype.hasOwnProperty.call(body, "model");
   const hasTemperature = Object.prototype.hasOwnProperty.call(body, "temperature");
@@ -121,9 +117,6 @@ async function updatePrompt(req, res) {
     || Object.prototype.hasOwnProperty.call(body, "response_format");
   const hasModelOptions = Object.prototype.hasOwnProperty.call(body, "modelOptions")
     || Object.prototype.hasOwnProperty.call(body, "model_options");
-
-  if (!nextBody.trim()) return res.status(400).json({ error: "body is required" });
-  if (!nextName) return res.status(400).json({ error: "name is required" });
 
   const sql = getSql();
   await ensureDefaultPromptTemplates(sql);
@@ -157,6 +150,14 @@ async function updatePrompt(req, res) {
   if (current.status === "archived") {
     return res.status(409).json({ error: "Archived prompt templates cannot be updated" });
   }
+  const {
+    body: nextBody,
+    name: nextName,
+    requiredVariables,
+    optionalVariables,
+  } = mergePromptTemplatePatch(current, body);
+  if (!nextBody.trim()) return res.status(400).json({ error: "body is required" });
+  if (!nextName) return res.status(400).json({ error: "name is required" });
 
   // Every save increments the visible version even when status stays the same,
   // so reviewers can compare Admin Page history with actual prompt executions.
@@ -179,82 +180,84 @@ async function updatePrompt(req, res) {
     requiredVariables,
     optionalVariables,
   });
-  const updatedRows = await sql`
-    update prompt_templates
-    set
-      name = ${nextName},
-      body = ${nextBody},
-      version = ${nextVersion},
-      required_variables = ${JSON.stringify(requiredVariables)}::jsonb,
-      optional_variables = ${JSON.stringify(optionalVariables)}::jsonb,
-      provider = ${provider},
-      model = ${model},
-      temperature = ${temperature},
-      max_tokens = ${maxTokens},
-      response_format = ${responseFormat},
-      model_options = ${JSON.stringify(modelOptions)}::jsonb,
-      change_note = ${changeNote},
-      updated_at = now()
-    where id = ${id}::uuid
-    returning
-      id::text,
-      type,
-      name,
-      body,
-      status,
-      version,
-      required_variables,
-      optional_variables,
-      provider,
-      model,
-      temperature,
-      max_tokens,
-      response_format,
-      model_options,
-      change_note,
-      archived_at,
-      created_at,
-      updated_at
-  `;
-
-  // Store full previous/new bodies in history because prompt wording changes are
-  // often the root cause when downstream image generation behavior shifts.
-  await sql`
-    insert into prompt_template_histories (
-      prompt_template_id,
-      prompt_type,
-      previous_body,
-      new_body,
-      previous_version,
-      new_version,
-      previous_status,
-      new_status,
-      change_note,
-      previous_provider,
-      new_provider,
-      previous_model,
-      new_model,
-      previous_model_options,
-      new_model_options
-    )
-    values (
-      ${id}::uuid,
-      ${current.type},
-      ${current.body || ""},
-      ${nextBody},
-      ${Number(current.version || 1)},
-      ${nextVersion},
-      ${current.status || ""},
-      ${current.status || ""},
-      ${changeNote},
-      ${current.provider || ""},
-      ${provider},
-      ${current.model || ""},
-      ${model},
-      ${JSON.stringify(current.model_options || {})}::jsonb,
-      ${JSON.stringify(modelOptions)}::jsonb
-    )
-  `;
+  // Updating the prompt and appending its audit history must succeed or fail
+  // together. A partial write would make production behavior impossible to
+  // trace back to the Admin Page change that caused it.
+  const [updatedRows] = await sql.transaction([
+    sql`
+      update prompt_templates
+      set
+        name = ${nextName},
+        body = ${nextBody},
+        version = ${nextVersion},
+        required_variables = ${JSON.stringify(requiredVariables)}::jsonb,
+        optional_variables = ${JSON.stringify(optionalVariables)}::jsonb,
+        provider = ${provider},
+        model = ${model},
+        temperature = ${temperature},
+        max_tokens = ${maxTokens},
+        response_format = ${responseFormat},
+        model_options = ${JSON.stringify(modelOptions)}::jsonb,
+        change_note = ${changeNote},
+        updated_at = now()
+      where id = ${id}::uuid
+      returning
+        id::text,
+        type,
+        name,
+        body,
+        status,
+        version,
+        required_variables,
+        optional_variables,
+        provider,
+        model,
+        temperature,
+        max_tokens,
+        response_format,
+        model_options,
+        change_note,
+        archived_at,
+        created_at,
+        updated_at
+    `,
+    sql`
+      insert into prompt_template_histories (
+        prompt_template_id,
+        prompt_type,
+        previous_body,
+        new_body,
+        previous_version,
+        new_version,
+        previous_status,
+        new_status,
+        change_note,
+        previous_provider,
+        new_provider,
+        previous_model,
+        new_model,
+        previous_model_options,
+        new_model_options
+      )
+      values (
+        ${id}::uuid,
+        ${current.type},
+        ${current.body || ""},
+        ${nextBody},
+        ${Number(current.version || 1)},
+        ${nextVersion},
+        ${current.status || ""},
+        ${current.status || ""},
+        ${changeNote},
+        ${current.provider || ""},
+        ${provider},
+        ${current.model || ""},
+        ${model},
+        ${JSON.stringify(current.model_options || {})}::jsonb,
+        ${JSON.stringify(modelOptions)}::jsonb
+      )
+    `,
+  ]);
 
   return res.status(200).json({
     ok: true,
