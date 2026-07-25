@@ -30,6 +30,14 @@ const orderedSections = computed(() => {
   ));
 });
 
+const managedTokenStyle = computed(() => {
+  const values = props.content?.formTemplate?.designTokens?.values;
+  if (!values || typeof values !== "object" || Array.isArray(values)) return {};
+  return Object.fromEntries(Object.entries(values).filter(([key, value]) => (
+    /^--promo-[a-z0-9-]+$/.test(key) && typeof value === "string"
+  )));
+});
+
 function componentFields(item) {
   const fields = Array.isArray(item?.fields) ? item.fields : [];
   return fields.length ? fields : [item];
@@ -646,8 +654,8 @@ function startSectionResize(event, section) {
     class="promo-renderer"
     :class="{ 'is-editor-preview': editable, 'has-editor-guides': editable && showGuides }"
     :style="{
-      '--promo-bg': designSpec.theme.backgroundColor,
-      '--promo-ink': designSpec.theme.textColor,
+      '--promo-bg': `var(--promo-surface, ${designSpec.theme.backgroundColor})`,
+      '--promo-ink': `var(--promo-text, ${designSpec.theme.textColor})`,
       '--promo-accent': designSpec.theme.accentColor,
       '--promo-cta': designSpec.theme.ctaColor || designSpec.theme.accentColor,
       '--promo-cta-bg': designSpec.theme.ctaVariant === 'ghost' ? 'transparent' : (designSpec.theme.ctaColor || designSpec.theme.accentColor),
@@ -656,6 +664,7 @@ function startSectionResize(event, section) {
       '--promo-font': designSpec.theme.fontFamily,
       '--promo-width': `${Math.min(1280, Number(designSpec.responsive.contentMaxWidth || 1280))}px`,
       '--promo-min-width': `${designSpec.responsive.contentMinWidth || 0}px`,
+      ...managedTokenStyle,
     }"
   >
     <div v-if="editable && showGuides" class="content-width-guide" aria-hidden="true"></div>
@@ -731,7 +740,11 @@ function startSectionResize(event, section) {
                     <span>{{ aiTargetState(section, item, field).label }}</span>
                   </div>
                 </div>
-                <p v-else-if="hasContent(valueFor(section, item, field))" class="rendered-text rendered-component-field">{{ valueFor(section, item, field) }}</p>
+                <p
+                  v-else-if="hasContent(valueFor(section, item, field))"
+                  class="rendered-text rendered-component-field"
+                  :class="{ 'rendered-text--title': field.textType === 'title' }"
+                >{{ valueFor(section, item, field) }}</p>
                 <p v-else class="rendered-empty rendered-component-field">{{ field.name }}</p>
               </template>
             </div>
@@ -788,7 +801,11 @@ function startSectionResize(event, section) {
             </template>
 
             <template v-else>
-              <p v-if="hasContent(valueFor(section, item))" class="rendered-text">{{ valueFor(section, item) }}</p>
+              <p
+                v-if="hasContent(valueFor(section, item))"
+                class="rendered-text"
+                :class="{ 'rendered-text--title': item.textType === 'title' }"
+              >{{ valueFor(section, item) }}</p>
               <p v-else class="rendered-empty">{{ item.name }}</p>
             </template>
             <template

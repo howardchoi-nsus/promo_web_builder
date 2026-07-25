@@ -142,13 +142,88 @@ with baseline(locale, messages) as (
   "shell.theme.toDark": "다크 모드로 변경",
   "admin.i18n.loadFailed": "언어 문구를 불러오지 못했습니다.",
   "admin.i18n.saveFailed": "언어 문구를 저장하지 못했습니다.",
+  "admin.templateLayout.eyebrow": "프로모션 빌더 기본값",
+  "admin.templateLayout.title": "템플릿 기본 레이아웃",
+  "admin.templateLayout.description": "프로모션 빌더의 배경, 섹션 높이, 컴포넌트 위치와 글자 스타일을 설정합니다. 사용자 작업별 변경은 관리자 템플릿에 역반영되지 않습니다.",
+  "admin.templateLayout.revision": "레이아웃",
+  "admin.templateLayout.loading": "레이아웃 정보를 확인하는 중입니다.",
+  "admin.templateLayout.openEditor": "레이아웃 편집 열기",
+  "admin.templateLayout.readOnlyHelp": "활성 버전은 읽기 전용입니다. 먼저 새 초안을 만들어 주세요.",
+  "admin.templateLayout.draftHelp": "편집 내용은 초안에만 반영되며 템플릿 활성화 후 프로모션 빌더에서 사용됩니다.",
+  "admin.prompt.imageSize": "이미지 해상도",
+  "admin.prompt.imageSizeHelp": "Gemini 이미지의 긴 변 기준 해상도입니다. 새 실행부터 적용됩니다.",
   "builder.title": "프로모션 페이지 제작",
   "builder.step.designMode": "제작 방식 선택",
   "builder.step.input": "프로모션 정보 입력",
   "builder.step.generate": "디자인 생성",
   "builder.mode.ai": "AI로 만들기",
   "builder.mode.advanced": "직접 설정",
-  "builder.sectionCount": "{count}개 섹션"
+  "builder.sectionCount": "{count}개 섹션",
+  "common.action.create": "생성",
+  "admin.designToken.title": "디자인 토큰 관리",
+  "admin.designToken.scopeNotice": "프로모션 결과물에 적용되는 --promo-* 토큰 세트와 버전을 관리합니다. 관리자 화면용 --app-* 토큰과는 분리됩니다.",
+  "admin.designToken.addSet": "토큰 세트 추가",
+  "admin.designToken.setList": "토큰 세트",
+  "admin.designToken.emptySets": "등록된 토큰 세트가 없습니다.",
+  "admin.designToken.name": "토큰 세트 이름",
+  "admin.designToken.description": "설명",
+  "admin.designToken.settings": "토큰 세트 설정",
+  "admin.designToken.changeNote": "변경 사유",
+  "admin.designToken.version": "버전",
+  "admin.designToken.versionCount": "버전 {count}개",
+  "admin.designToken.createDraft": "새 초안 만들기",
+  "admin.designToken.validate": "검증",
+  "admin.designToken.csvImport": "CSV 가져오기",
+  "admin.designToken.sourceName": "원본 파일명",
+  "admin.designToken.csv": "CSV 내용",
+  "admin.designToken.dryRun": "가져오기 전 검증",
+  "admin.designToken.import": "초안으로 가져오기",
+  "admin.designToken.validationErrors": "검증 오류",
+  "admin.designToken.preview": "적용 미리보기",
+  "admin.designToken.previewEyebrow": "이벤트 프로모션",
+  "admin.designToken.previewTitle": "특별한 혜택을 확인하세요",
+  "admin.designToken.previewBody": "선택한 토큰의 색상, 글자 크기, 간격과 모서리 스타일을 실제 CSS 변수로 확인합니다.",
+  "admin.designToken.previewButton": "참여하기",
+  "admin.designToken.usage": "사용 현황",
+  "admin.designToken.templateUsage": "연결된 템플릿 {count}개",
+  "admin.designToken.aiRunUsage": "AI 디자인 실행 이력 {count}개",
+  "admin.designToken.templateGuidance": "템플릿에 적용하려면 템플릿·레이아웃 관리에서 초안 템플릿의 디자인 토큰 버전을 선택한 뒤 활성화하세요.",
+  "admin.designToken.history": "변경 이력",
+  "admin.designToken.emptyHistory": "변경 이력이 없습니다.",
+  "admin.designToken.created": "디자인 토큰 세트를 생성했습니다.",
+  "admin.designToken.metadataSaved": "디자인 토큰 세트 정보를 저장했습니다.",
+  "admin.designToken.draftCreated": "새 디자인 토큰 초안을 생성했습니다.",
+  "admin.designToken.draftSaved": "디자인 토큰 초안을 저장했습니다.",
+  "admin.designToken.validated": "디자인 토큰 검증을 완료했습니다.",
+  "admin.designToken.activated": "활성 디자인 토큰 버전으로 지정했습니다.",
+  "admin.designToken.imported": "CSV 내용을 디자인 토큰 초안에 반영했습니다.",
+  "admin.designToken.importValidated": "CSV 가져오기 전 검증을 완료했습니다.",
+  "admin.designToken.archived": "디자인 토큰 세트를 보관했습니다.",
+  "admin.designToken.history.setCreated": "토큰 세트 생성",
+  "admin.designToken.history.setUpdated": "토큰 세트 수정",
+  "admin.designToken.history.setCloned": "토큰 세트 복제",
+  "admin.designToken.history.setArchived": "토큰 세트 보관",
+  "admin.designToken.history.draftCreated": "초안 생성",
+  "admin.designToken.history.draftUpdated": "초안 수정",
+  "admin.designToken.history.imported": "CSV 가져오기",
+  "admin.designToken.history.validated": "검증",
+  "admin.designToken.history.activated": "활성화",
+  "admin.designToken.history.rollbackDraftCreated": "과거 버전 기반 초안 생성"
+  ,"admin.designToken.cloneName": "복제할 토큰 세트 이름"
+  ,"admin.designToken.cloned": "디자인 토큰 세트를 복제했습니다."
+  ,"admin.designToken.compare": "버전 비교"
+  ,"admin.designToken.compareWith": "비교할 버전"
+  ,"admin.designToken.selectVersion": "버전을 선택하세요"
+  ,"admin.designToken.noDifferences": "변경된 토큰이 없습니다."
+  ,"admin.designToken.comparePreview": "비교 버전"
+  ,"admin.designToken.desktop": "데스크톱"
+  ,"admin.designToken.mobile": "모바일"
+  ,"admin.designToken.applyTemplate": "적용할 초안 템플릿"
+  ,"admin.designToken.selectTemplate": "초안 템플릿을 선택하세요"
+  ,"admin.designToken.applyToDraft": "초안 템플릿에 적용"
+  ,"admin.designToken.templateApplied": "선택한 초안 템플릿에 디자인 토큰 버전을 적용했습니다."
+  ,"admin.designToken.unsavedConfirm": "저장하지 않은 토큰 값 변경이 있습니다. 이동할까요?"
+  ,"admin.designToken.aiSelectable": "AI 선택 가능"
 }$ko_baseline$::jsonb),
     ('en', $en_baseline${
   "common.action.save": "Save",
@@ -276,13 +351,88 @@ with baseline(locale, messages) as (
   "shell.theme.toDark": "Switch to dark mode",
   "admin.i18n.loadFailed": "Could not load language messages.",
   "admin.i18n.saveFailed": "Could not save the language message.",
+  "admin.templateLayout.eyebrow": "Promotion Builder defaults",
+  "admin.templateLayout.title": "Default template layout",
+  "admin.templateLayout.description": "Configure the Promotion Builder background, section height, component placement, and typography. User-specific changes are not written back to the admin template.",
+  "admin.templateLayout.revision": "Layout",
+  "admin.templateLayout.loading": "Loading layout information.",
+  "admin.templateLayout.openEditor": "Open layout editor",
+  "admin.templateLayout.readOnlyHelp": "Active versions are read-only. Create a new draft first.",
+  "admin.templateLayout.draftHelp": "Edits apply only to the draft and become available in Promotion Builder after template activation.",
+  "admin.prompt.imageSize": "Image resolution",
+  "admin.prompt.imageSizeHelp": "Long-edge resolution for Gemini images. Applies to new runs.",
   "builder.title": "Promotion page builder",
   "builder.step.designMode": "Select creation method",
   "builder.step.input": "Enter promotion details",
   "builder.step.generate": "Generate design",
   "builder.mode.ai": "Create with AI",
   "builder.mode.advanced": "Custom settings",
-  "builder.sectionCount": "{count} sections"
+  "builder.sectionCount": "{count} sections",
+  "common.action.create": "Create",
+  "admin.designToken.title": "Design tokens",
+  "admin.designToken.scopeNotice": "Manage --promo-* token sets and versions used in promotion output. These are separate from the admin interface --app-* tokens.",
+  "admin.designToken.addSet": "Add token set",
+  "admin.designToken.setList": "Token sets",
+  "admin.designToken.emptySets": "No token sets are registered.",
+  "admin.designToken.name": "Token set name",
+  "admin.designToken.description": "Description",
+  "admin.designToken.settings": "Token set settings",
+  "admin.designToken.changeNote": "Change note",
+  "admin.designToken.version": "Version",
+  "admin.designToken.versionCount": "{count} versions",
+  "admin.designToken.createDraft": "Create draft",
+  "admin.designToken.validate": "Validate",
+  "admin.designToken.csvImport": "Import CSV",
+  "admin.designToken.sourceName": "Source filename",
+  "admin.designToken.csv": "CSV content",
+  "admin.designToken.dryRun": "Validate before import",
+  "admin.designToken.import": "Import as draft",
+  "admin.designToken.validationErrors": "Validation errors",
+  "admin.designToken.preview": "Applied preview",
+  "admin.designToken.previewEyebrow": "Event promotion",
+  "admin.designToken.previewTitle": "Discover a special offer",
+  "admin.designToken.previewBody": "Preview the selected token colors, typography, spacing, and corner styles through real CSS variables.",
+  "admin.designToken.previewButton": "Join now",
+  "admin.designToken.usage": "Usage",
+  "admin.designToken.templateUsage": "{count} linked templates",
+  "admin.designToken.aiRunUsage": "{count} AI design runs",
+  "admin.designToken.templateGuidance": "To apply this set, select its token version on a draft in Template & Layout Management, then activate the template.",
+  "admin.designToken.history": "History",
+  "admin.designToken.emptyHistory": "No history is available.",
+  "admin.designToken.created": "Design token set created.",
+  "admin.designToken.metadataSaved": "Design token set details saved.",
+  "admin.designToken.draftCreated": "Design token draft created.",
+  "admin.designToken.draftSaved": "Design token draft saved.",
+  "admin.designToken.validated": "Design token validation completed.",
+  "admin.designToken.activated": "Design token version activated.",
+  "admin.designToken.imported": "CSV content imported into the design token draft.",
+  "admin.designToken.importValidated": "CSV pre-import validation completed.",
+  "admin.designToken.archived": "Design token set archived.",
+  "admin.designToken.history.setCreated": "Token set created",
+  "admin.designToken.history.setUpdated": "Token set updated",
+  "admin.designToken.history.setCloned": "Token set cloned",
+  "admin.designToken.history.setArchived": "Token set archived",
+  "admin.designToken.history.draftCreated": "Draft created",
+  "admin.designToken.history.draftUpdated": "Draft updated",
+  "admin.designToken.history.imported": "CSV imported",
+  "admin.designToken.history.validated": "Validated",
+  "admin.designToken.history.activated": "Activated",
+  "admin.designToken.history.rollbackDraftCreated": "Rollback draft created"
+  ,"admin.designToken.cloneName": "Cloned token set name"
+  ,"admin.designToken.cloned": "Design token set cloned."
+  ,"admin.designToken.compare": "Compare versions"
+  ,"admin.designToken.compareWith": "Compare with"
+  ,"admin.designToken.selectVersion": "Select a version"
+  ,"admin.designToken.noDifferences": "No token values changed."
+  ,"admin.designToken.comparePreview": "Comparison version"
+  ,"admin.designToken.desktop": "Desktop"
+  ,"admin.designToken.mobile": "Mobile"
+  ,"admin.designToken.applyTemplate": "Draft template to update"
+  ,"admin.designToken.selectTemplate": "Select a draft template"
+  ,"admin.designToken.applyToDraft": "Apply to draft template"
+  ,"admin.designToken.templateApplied": "Design token version applied to the selected draft template."
+  ,"admin.designToken.unsavedConfirm": "You have unsaved token value changes. Leave this version?"
+  ,"admin.designToken.aiSelectable": "AI selectable"
 }$en_baseline$::jsonb)
 )
 insert into locale_message_keys (message_key, namespace)
@@ -419,13 +569,88 @@ with baseline(locale, messages) as (
   "shell.theme.toDark": "다크 모드로 변경",
   "admin.i18n.loadFailed": "언어 문구를 불러오지 못했습니다.",
   "admin.i18n.saveFailed": "언어 문구를 저장하지 못했습니다.",
+  "admin.templateLayout.eyebrow": "프로모션 빌더 기본값",
+  "admin.templateLayout.title": "템플릿 기본 레이아웃",
+  "admin.templateLayout.description": "프로모션 빌더의 배경, 섹션 높이, 컴포넌트 위치와 글자 스타일을 설정합니다. 사용자 작업별 변경은 관리자 템플릿에 역반영되지 않습니다.",
+  "admin.templateLayout.revision": "레이아웃",
+  "admin.templateLayout.loading": "레이아웃 정보를 확인하는 중입니다.",
+  "admin.templateLayout.openEditor": "레이아웃 편집 열기",
+  "admin.templateLayout.readOnlyHelp": "활성 버전은 읽기 전용입니다. 먼저 새 초안을 만들어 주세요.",
+  "admin.templateLayout.draftHelp": "편집 내용은 초안에만 반영되며 템플릿 활성화 후 프로모션 빌더에서 사용됩니다.",
+  "admin.prompt.imageSize": "이미지 해상도",
+  "admin.prompt.imageSizeHelp": "Gemini 이미지의 긴 변 기준 해상도입니다. 새 실행부터 적용됩니다.",
   "builder.title": "프로모션 페이지 제작",
   "builder.step.designMode": "제작 방식 선택",
   "builder.step.input": "프로모션 정보 입력",
   "builder.step.generate": "디자인 생성",
   "builder.mode.ai": "AI로 만들기",
   "builder.mode.advanced": "직접 설정",
-  "builder.sectionCount": "{count}개 섹션"
+  "builder.sectionCount": "{count}개 섹션",
+  "common.action.create": "생성",
+  "admin.designToken.title": "디자인 토큰 관리",
+  "admin.designToken.scopeNotice": "프로모션 결과물에 적용되는 --promo-* 토큰 세트와 버전을 관리합니다. 관리자 화면용 --app-* 토큰과는 분리됩니다.",
+  "admin.designToken.addSet": "토큰 세트 추가",
+  "admin.designToken.setList": "토큰 세트",
+  "admin.designToken.emptySets": "등록된 토큰 세트가 없습니다.",
+  "admin.designToken.name": "토큰 세트 이름",
+  "admin.designToken.description": "설명",
+  "admin.designToken.settings": "토큰 세트 설정",
+  "admin.designToken.changeNote": "변경 사유",
+  "admin.designToken.version": "버전",
+  "admin.designToken.versionCount": "버전 {count}개",
+  "admin.designToken.createDraft": "새 초안 만들기",
+  "admin.designToken.validate": "검증",
+  "admin.designToken.csvImport": "CSV 가져오기",
+  "admin.designToken.sourceName": "원본 파일명",
+  "admin.designToken.csv": "CSV 내용",
+  "admin.designToken.dryRun": "가져오기 전 검증",
+  "admin.designToken.import": "초안으로 가져오기",
+  "admin.designToken.validationErrors": "검증 오류",
+  "admin.designToken.preview": "적용 미리보기",
+  "admin.designToken.previewEyebrow": "이벤트 프로모션",
+  "admin.designToken.previewTitle": "특별한 혜택을 확인하세요",
+  "admin.designToken.previewBody": "선택한 토큰의 색상, 글자 크기, 간격과 모서리 스타일을 실제 CSS 변수로 확인합니다.",
+  "admin.designToken.previewButton": "참여하기",
+  "admin.designToken.usage": "사용 현황",
+  "admin.designToken.templateUsage": "연결된 템플릿 {count}개",
+  "admin.designToken.aiRunUsage": "AI 디자인 실행 이력 {count}개",
+  "admin.designToken.templateGuidance": "템플릿에 적용하려면 템플릿·레이아웃 관리에서 초안 템플릿의 디자인 토큰 버전을 선택한 뒤 활성화하세요.",
+  "admin.designToken.history": "변경 이력",
+  "admin.designToken.emptyHistory": "변경 이력이 없습니다.",
+  "admin.designToken.created": "디자인 토큰 세트를 생성했습니다.",
+  "admin.designToken.metadataSaved": "디자인 토큰 세트 정보를 저장했습니다.",
+  "admin.designToken.draftCreated": "새 디자인 토큰 초안을 생성했습니다.",
+  "admin.designToken.draftSaved": "디자인 토큰 초안을 저장했습니다.",
+  "admin.designToken.validated": "디자인 토큰 검증을 완료했습니다.",
+  "admin.designToken.activated": "활성 디자인 토큰 버전으로 지정했습니다.",
+  "admin.designToken.imported": "CSV 내용을 디자인 토큰 초안에 반영했습니다.",
+  "admin.designToken.importValidated": "CSV 가져오기 전 검증을 완료했습니다.",
+  "admin.designToken.archived": "디자인 토큰 세트를 보관했습니다.",
+  "admin.designToken.history.setCreated": "토큰 세트 생성",
+  "admin.designToken.history.setUpdated": "토큰 세트 수정",
+  "admin.designToken.history.setCloned": "토큰 세트 복제",
+  "admin.designToken.history.setArchived": "토큰 세트 보관",
+  "admin.designToken.history.draftCreated": "초안 생성",
+  "admin.designToken.history.draftUpdated": "초안 수정",
+  "admin.designToken.history.imported": "CSV 가져오기",
+  "admin.designToken.history.validated": "검증",
+  "admin.designToken.history.activated": "활성화",
+  "admin.designToken.history.rollbackDraftCreated": "과거 버전 기반 초안 생성"
+  ,"admin.designToken.cloneName": "복제할 토큰 세트 이름"
+  ,"admin.designToken.cloned": "디자인 토큰 세트를 복제했습니다."
+  ,"admin.designToken.compare": "버전 비교"
+  ,"admin.designToken.compareWith": "비교할 버전"
+  ,"admin.designToken.selectVersion": "버전을 선택하세요"
+  ,"admin.designToken.noDifferences": "변경된 토큰이 없습니다."
+  ,"admin.designToken.comparePreview": "비교 버전"
+  ,"admin.designToken.desktop": "데스크톱"
+  ,"admin.designToken.mobile": "모바일"
+  ,"admin.designToken.applyTemplate": "적용할 초안 템플릿"
+  ,"admin.designToken.selectTemplate": "초안 템플릿을 선택하세요"
+  ,"admin.designToken.applyToDraft": "초안 템플릿에 적용"
+  ,"admin.designToken.templateApplied": "선택한 초안 템플릿에 디자인 토큰 버전을 적용했습니다."
+  ,"admin.designToken.unsavedConfirm": "저장하지 않은 토큰 값 변경이 있습니다. 이동할까요?"
+  ,"admin.designToken.aiSelectable": "AI 선택 가능"
 }$ko_baseline$::jsonb),
     ('en', $en_baseline${
   "common.action.save": "Save",
@@ -553,13 +778,88 @@ with baseline(locale, messages) as (
   "shell.theme.toDark": "Switch to dark mode",
   "admin.i18n.loadFailed": "Could not load language messages.",
   "admin.i18n.saveFailed": "Could not save the language message.",
+  "admin.templateLayout.eyebrow": "Promotion Builder defaults",
+  "admin.templateLayout.title": "Default template layout",
+  "admin.templateLayout.description": "Configure the Promotion Builder background, section height, component placement, and typography. User-specific changes are not written back to the admin template.",
+  "admin.templateLayout.revision": "Layout",
+  "admin.templateLayout.loading": "Loading layout information.",
+  "admin.templateLayout.openEditor": "Open layout editor",
+  "admin.templateLayout.readOnlyHelp": "Active versions are read-only. Create a new draft first.",
+  "admin.templateLayout.draftHelp": "Edits apply only to the draft and become available in Promotion Builder after template activation.",
+  "admin.prompt.imageSize": "Image resolution",
+  "admin.prompt.imageSizeHelp": "Long-edge resolution for Gemini images. Applies to new runs.",
   "builder.title": "Promotion page builder",
   "builder.step.designMode": "Select creation method",
   "builder.step.input": "Enter promotion details",
   "builder.step.generate": "Generate design",
   "builder.mode.ai": "Create with AI",
   "builder.mode.advanced": "Custom settings",
-  "builder.sectionCount": "{count} sections"
+  "builder.sectionCount": "{count} sections",
+  "common.action.create": "Create",
+  "admin.designToken.title": "Design tokens",
+  "admin.designToken.scopeNotice": "Manage --promo-* token sets and versions used in promotion output. These are separate from the admin interface --app-* tokens.",
+  "admin.designToken.addSet": "Add token set",
+  "admin.designToken.setList": "Token sets",
+  "admin.designToken.emptySets": "No token sets are registered.",
+  "admin.designToken.name": "Token set name",
+  "admin.designToken.description": "Description",
+  "admin.designToken.settings": "Token set settings",
+  "admin.designToken.changeNote": "Change note",
+  "admin.designToken.version": "Version",
+  "admin.designToken.versionCount": "{count} versions",
+  "admin.designToken.createDraft": "Create draft",
+  "admin.designToken.validate": "Validate",
+  "admin.designToken.csvImport": "Import CSV",
+  "admin.designToken.sourceName": "Source filename",
+  "admin.designToken.csv": "CSV content",
+  "admin.designToken.dryRun": "Validate before import",
+  "admin.designToken.import": "Import as draft",
+  "admin.designToken.validationErrors": "Validation errors",
+  "admin.designToken.preview": "Applied preview",
+  "admin.designToken.previewEyebrow": "Event promotion",
+  "admin.designToken.previewTitle": "Discover a special offer",
+  "admin.designToken.previewBody": "Preview the selected token colors, typography, spacing, and corner styles through real CSS variables.",
+  "admin.designToken.previewButton": "Join now",
+  "admin.designToken.usage": "Usage",
+  "admin.designToken.templateUsage": "{count} linked templates",
+  "admin.designToken.aiRunUsage": "{count} AI design runs",
+  "admin.designToken.templateGuidance": "To apply this set, select its token version on a draft in Template & Layout Management, then activate the template.",
+  "admin.designToken.history": "History",
+  "admin.designToken.emptyHistory": "No history is available.",
+  "admin.designToken.created": "Design token set created.",
+  "admin.designToken.metadataSaved": "Design token set details saved.",
+  "admin.designToken.draftCreated": "Design token draft created.",
+  "admin.designToken.draftSaved": "Design token draft saved.",
+  "admin.designToken.validated": "Design token validation completed.",
+  "admin.designToken.activated": "Design token version activated.",
+  "admin.designToken.imported": "CSV content imported into the design token draft.",
+  "admin.designToken.importValidated": "CSV pre-import validation completed.",
+  "admin.designToken.archived": "Design token set archived.",
+  "admin.designToken.history.setCreated": "Token set created",
+  "admin.designToken.history.setUpdated": "Token set updated",
+  "admin.designToken.history.setCloned": "Token set cloned",
+  "admin.designToken.history.setArchived": "Token set archived",
+  "admin.designToken.history.draftCreated": "Draft created",
+  "admin.designToken.history.draftUpdated": "Draft updated",
+  "admin.designToken.history.imported": "CSV imported",
+  "admin.designToken.history.validated": "Validated",
+  "admin.designToken.history.activated": "Activated",
+  "admin.designToken.history.rollbackDraftCreated": "Rollback draft created"
+  ,"admin.designToken.cloneName": "Cloned token set name"
+  ,"admin.designToken.cloned": "Design token set cloned."
+  ,"admin.designToken.compare": "Compare versions"
+  ,"admin.designToken.compareWith": "Compare with"
+  ,"admin.designToken.selectVersion": "Select a version"
+  ,"admin.designToken.noDifferences": "No token values changed."
+  ,"admin.designToken.comparePreview": "Comparison version"
+  ,"admin.designToken.desktop": "Desktop"
+  ,"admin.designToken.mobile": "Mobile"
+  ,"admin.designToken.applyTemplate": "Draft template to update"
+  ,"admin.designToken.selectTemplate": "Select a draft template"
+  ,"admin.designToken.applyToDraft": "Apply to draft template"
+  ,"admin.designToken.templateApplied": "Design token version applied to the selected draft template."
+  ,"admin.designToken.unsavedConfirm": "You have unsaved token value changes. Leave this version?"
+  ,"admin.designToken.aiSelectable": "AI selectable"
 }$en_baseline$::jsonb)
 ), source as (
   select baseline.locale, entry.key as message_key, entry.value

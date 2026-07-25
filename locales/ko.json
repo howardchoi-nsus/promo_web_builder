@@ -140,5 +140,70 @@
   "builder.step.generate": "디자인 생성",
   "builder.mode.ai": "AI로 만들기",
   "builder.mode.advanced": "직접 설정",
-  "builder.sectionCount": "{count}개 섹션"
+  "builder.sectionCount": "{count}개 섹션",
+  "common.action.create": "생성",
+  "admin.designToken.title": "디자인 토큰 관리",
+  "admin.designToken.scopeNotice": "프로모션 결과물에 적용되는 --promo-* 토큰 세트와 버전을 관리합니다. 관리자 화면용 --app-* 토큰과는 분리됩니다.",
+  "admin.designToken.addSet": "토큰 세트 추가",
+  "admin.designToken.setList": "토큰 세트",
+  "admin.designToken.emptySets": "등록된 토큰 세트가 없습니다.",
+  "admin.designToken.name": "토큰 세트 이름",
+  "admin.designToken.description": "설명",
+  "admin.designToken.settings": "토큰 세트 설정",
+  "admin.designToken.changeNote": "변경 사유",
+  "admin.designToken.version": "버전",
+  "admin.designToken.versionCount": "버전 {count}개",
+  "admin.designToken.createDraft": "새 초안 만들기",
+  "admin.designToken.validate": "검증",
+  "admin.designToken.csvImport": "CSV 가져오기",
+  "admin.designToken.sourceName": "원본 파일명",
+  "admin.designToken.csv": "CSV 내용",
+  "admin.designToken.dryRun": "가져오기 전 검증",
+  "admin.designToken.import": "초안으로 가져오기",
+  "admin.designToken.validationErrors": "검증 오류",
+  "admin.designToken.preview": "적용 미리보기",
+  "admin.designToken.previewEyebrow": "이벤트 프로모션",
+  "admin.designToken.previewTitle": "특별한 혜택을 확인하세요",
+  "admin.designToken.previewBody": "선택한 토큰의 색상, 글자 크기, 간격과 모서리 스타일을 실제 CSS 변수로 확인합니다.",
+  "admin.designToken.previewButton": "참여하기",
+  "admin.designToken.usage": "사용 현황",
+  "admin.designToken.templateUsage": "연결된 템플릿 {count}개",
+  "admin.designToken.aiRunUsage": "AI 디자인 실행 이력 {count}개",
+  "admin.designToken.templateGuidance": "템플릿에 적용하려면 템플릿·레이아웃 관리에서 초안 템플릿의 디자인 토큰 버전을 선택한 뒤 활성화하세요.",
+  "admin.designToken.history": "변경 이력",
+  "admin.designToken.emptyHistory": "변경 이력이 없습니다.",
+  "admin.designToken.created": "디자인 토큰 세트를 생성했습니다.",
+  "admin.designToken.metadataSaved": "디자인 토큰 세트 정보를 저장했습니다.",
+  "admin.designToken.draftCreated": "새 디자인 토큰 초안을 생성했습니다.",
+  "admin.designToken.draftSaved": "디자인 토큰 초안을 저장했습니다.",
+  "admin.designToken.validated": "디자인 토큰 검증을 완료했습니다.",
+  "admin.designToken.activated": "활성 디자인 토큰 버전으로 지정했습니다.",
+  "admin.designToken.imported": "CSV 내용을 디자인 토큰 초안에 반영했습니다.",
+  "admin.designToken.importValidated": "CSV 가져오기 전 검증을 완료했습니다.",
+  "admin.designToken.archived": "디자인 토큰 세트를 보관했습니다.",
+  "admin.designToken.history.setCreated": "토큰 세트 생성",
+  "admin.designToken.history.setUpdated": "토큰 세트 수정",
+  "admin.designToken.history.setCloned": "토큰 세트 복제",
+  "admin.designToken.history.setArchived": "토큰 세트 보관",
+  "admin.designToken.history.draftCreated": "초안 생성",
+  "admin.designToken.history.draftUpdated": "초안 수정",
+  "admin.designToken.history.imported": "CSV 가져오기",
+  "admin.designToken.history.validated": "검증",
+  "admin.designToken.history.activated": "활성화",
+  "admin.designToken.history.rollbackDraftCreated": "과거 버전 기반 초안 생성"
+  ,"admin.designToken.cloneName": "복제할 토큰 세트 이름"
+  ,"admin.designToken.cloned": "디자인 토큰 세트를 복제했습니다."
+  ,"admin.designToken.compare": "버전 비교"
+  ,"admin.designToken.compareWith": "비교할 버전"
+  ,"admin.designToken.selectVersion": "버전을 선택하세요"
+  ,"admin.designToken.noDifferences": "변경된 토큰이 없습니다."
+  ,"admin.designToken.comparePreview": "비교 버전"
+  ,"admin.designToken.desktop": "데스크톱"
+  ,"admin.designToken.mobile": "모바일"
+  ,"admin.designToken.applyTemplate": "적용할 초안 템플릿"
+  ,"admin.designToken.selectTemplate": "초안 템플릿을 선택하세요"
+  ,"admin.designToken.applyToDraft": "초안 템플릿에 적용"
+  ,"admin.designToken.templateApplied": "선택한 초안 템플릿에 디자인 토큰 버전을 적용했습니다."
+  ,"admin.designToken.unsavedConfirm": "저장하지 않은 토큰 값 변경이 있습니다. 이동할까요?"
+  ,"admin.designToken.aiSelectable": "AI 선택 가능"
 }

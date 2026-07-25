@@ -18,6 +18,7 @@
 .promo-renderer .rendered-component-field { min-width: 0; }
 .promo-renderer .rendered-component-image-frame { width: 100%; min-height: 180px; }
 .promo-renderer .rendered-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--item-font-size, clamp(16px, 2vw, 22px)); line-height: 1.45; }
+.promo-renderer .rendered-text--title { font-size: var(--item-font-size, var(--promo-title-size, clamp(28px, 5vw, 72px))); }
 .promo-renderer .rendered-empty { margin: 0; color: color-mix(in srgb, var(--promo-ink) 42%, transparent); }
 .promo-renderer .rendered-cta { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 18px; border: 2px solid var(--promo-cta, var(--promo-accent)); border-radius: var(--promo-cta-radius, 2px); background: var(--promo-cta-bg, var(--promo-accent)); color: var(--item-color, var(--promo-cta-ink, #fff)); text-decoration: none; font-size: var(--item-font-size, 16px); font-weight: var(--item-font-weight, 800); }
 .promo-renderer .rendered-item--image { min-width: 80px; min-height: 80px; max-width: 100%; }

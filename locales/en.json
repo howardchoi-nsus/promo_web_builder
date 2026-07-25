@@ -140,5 +140,70 @@
   "builder.step.generate": "Generate design",
   "builder.mode.ai": "Create with AI",
   "builder.mode.advanced": "Custom settings",
-  "builder.sectionCount": "{count} sections"
+  "builder.sectionCount": "{count} sections",
+  "common.action.create": "Create",
+  "admin.designToken.title": "Design tokens",
+  "admin.designToken.scopeNotice": "Manage --promo-* token sets and versions used in promotion output. These are separate from the admin interface --app-* tokens.",
+  "admin.designToken.addSet": "Add token set",
+  "admin.designToken.setList": "Token sets",
+  "admin.designToken.emptySets": "No token sets are registered.",
+  "admin.designToken.name": "Token set name",
+  "admin.designToken.description": "Description",
+  "admin.designToken.settings": "Token set settings",
+  "admin.designToken.changeNote": "Change note",
+  "admin.designToken.version": "Version",
+  "admin.designToken.versionCount": "{count} versions",
+  "admin.designToken.createDraft": "Create draft",
+  "admin.designToken.validate": "Validate",
+  "admin.designToken.csvImport": "Import CSV",
+  "admin.designToken.sourceName": "Source filename",
+  "admin.designToken.csv": "CSV content",
+  "admin.designToken.dryRun": "Validate before import",
+  "admin.designToken.import": "Import as draft",
+  "admin.designToken.validationErrors": "Validation errors",
+  "admin.designToken.preview": "Applied preview",
+  "admin.designToken.previewEyebrow": "Event promotion",
+  "admin.designToken.previewTitle": "Discover a special offer",
+  "admin.designToken.previewBody": "Preview the selected token colors, typography, spacing, and corner styles through real CSS variables.",
+  "admin.designToken.previewButton": "Join now",
+  "admin.designToken.usage": "Usage",
+  "admin.designToken.templateUsage": "{count} linked templates",
+  "admin.designToken.aiRunUsage": "{count} AI design runs",
+  "admin.designToken.templateGuidance": "To apply this set, select its token version on a draft in Template & Layout Management, then activate the template.",
+  "admin.designToken.history": "History",
+  "admin.designToken.emptyHistory": "No history is available.",
+  "admin.designToken.created": "Design token set created.",
+  "admin.designToken.metadataSaved": "Design token set details saved.",
+  "admin.designToken.draftCreated": "Design token draft created.",
+  "admin.designToken.draftSaved": "Design token draft saved.",
+  "admin.designToken.validated": "Design token validation completed.",
+  "admin.designToken.activated": "Design token version activated.",
+  "admin.designToken.imported": "CSV content imported into the design token draft.",
+  "admin.designToken.importValidated": "CSV pre-import validation completed.",
+  "admin.designToken.archived": "Design token set archived.",
+  "admin.designToken.history.setCreated": "Token set created",
+  "admin.designToken.history.setUpdated": "Token set updated",
+  "admin.designToken.history.setCloned": "Token set cloned",
+  "admin.designToken.history.setArchived": "Token set archived",
+  "admin.designToken.history.draftCreated": "Draft created",
+  "admin.designToken.history.draftUpdated": "Draft updated",
+  "admin.designToken.history.imported": "CSV imported",
+  "admin.designToken.history.validated": "Validated",
+  "admin.designToken.history.activated": "Activated",
+  "admin.designToken.history.rollbackDraftCreated": "Rollback draft created"
+  ,"admin.designToken.cloneName": "Cloned token set name"
+  ,"admin.designToken.cloned": "Design token set cloned."
+  ,"admin.designToken.compare": "Compare versions"
+  ,"admin.designToken.compareWith": "Compare with"
+  ,"admin.designToken.selectVersion": "Select a version"
+  ,"admin.designToken.noDifferences": "No token values changed."
+  ,"admin.designToken.comparePreview": "Comparison version"
+  ,"admin.designToken.desktop": "Desktop"
+  ,"admin.designToken.mobile": "Mobile"
+  ,"admin.designToken.applyTemplate": "Draft template to update"
+  ,"admin.designToken.selectTemplate": "Select a draft template"
+  ,"admin.designToken.applyToDraft": "Apply to draft template"
+  ,"admin.designToken.templateApplied": "Design token version applied to the selected draft template."
+  ,"admin.designToken.unsavedConfirm": "You have unsaved token value changes. Leave this version?"
+  ,"admin.designToken.aiSelectable": "AI selectable"
 }

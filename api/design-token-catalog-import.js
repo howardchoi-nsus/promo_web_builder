@@ -1,7 +1,30 @@
-const { getSql, parseBody, parseCsvRows, VALUE_TYPES, SAFE_CSS_PROPERTIES } = require("./_design-token-store");
+const {
+  getSql, parseBody, parseCsvRows, VALUE_TYPES, SAFE_CSS_PROPERTIES, fetchTokenDefinitions,
+} = require("./_design-token-store");
 
 module.exports = async function handler(req, res) {
-  if (req.method !== "POST") { res.setHeader("Allow", "POST"); return res.status(405).json({ error: "Method not allowed" }); }
+  if (req.method === "GET") {
+    try {
+      const definitions = await fetchTokenDefinitions(getSql());
+      return res.status(200).json({
+        ok: true,
+        definitions: definitions.map((definition) => ({
+          tokenKey: definition.token_key,
+          category: definition.category,
+          valueType: definition.value_type,
+          semanticRole: definition.semantic_role,
+          cssProperty: definition.css_property,
+          allowedValues: definition.allowed_values || [],
+          required: Boolean(definition.required),
+          aiSelectable: Boolean(definition.ai_selectable),
+          editable: Boolean(definition.editable),
+        })),
+      });
+    } catch (error) {
+      return res.status(error.statusCode || 500).json({ error: "Design token catalog API failed", message: error.message });
+    }
+  }
+  if (req.method !== "POST") { res.setHeader("Allow", "GET, POST"); return res.status(405).json({ error: "Method not allowed" }); }
   try {
     const body = parseBody(req.body);
     const rows = Array.isArray(body.definitions) ? body.definitions : parseCsvRows(body.csvText);

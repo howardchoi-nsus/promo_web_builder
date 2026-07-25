@@ -110,6 +110,7 @@ let expandedTemplateSectionKeys = new Set();
 let draggedTemplateSectionKey = "";
 let wizardBaseLayout = null;
 let wizardResolvedLayout = null;
+let wizardDesignTokens = null;
 let wizardLayoutRevision = 1;
 let wizardRenderer = { key: "default-promo-renderer", version: 1 };
 let wizardLayoutIdentity = null;
@@ -500,6 +501,7 @@ async function selectWizardFormTemplate(templateId, options = {}) {
   wizardSectionConfigRevision = String(result.configRevision || "");
   wizardLayoutRevision = Number(result.layoutRevision || 1);
   wizardRenderer = result.renderer || { key: "default-promo-renderer", version: 1 };
+  wizardDesignTokens = result.designTokens || null;
   wizardLayoutIdentity = nextIdentity;
   wizardBaseSectionOrder = adminSectionOrder;
   wizardBaseLayout = JSON.parse(JSON.stringify(result.defaultLayout || FALLBACK_LAYOUT));
@@ -512,6 +514,7 @@ async function selectWizardFormTemplate(templateId, options = {}) {
   wizardResolvedLayout = cacheResolution.resolvedLayout;
   contentState.formTemplate = {
     ...result.template,
+    designTokens: wizardDesignTokens,
     configRevision: wizardSectionConfigRevision,
     layoutRevision: wizardLayoutRevision,
     renderer: wizardRenderer,

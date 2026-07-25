@@ -1090,7 +1090,7 @@ const { createApp } = Vue;
 const initialSearchParams = new URLSearchParams(window.location.search);
 const initialView = initialSearchParams.get("view") === "admin" ? "prompts" : "builder";
 const requestedAdminTab = initialSearchParams.get("tab");
-const initialAdminTab = ["webhook", "llm", "components", "promo-form", "i18n", "audit"].includes(requestedAdminTab)
+const initialAdminTab = ["webhook", "llm", "components", "promo-form", "design-tokens", "i18n", "audit"].includes(requestedAdminTab)
   ? requestedAdminTab
   : "promo-form";
 
@@ -2093,7 +2093,7 @@ const adminApp = createApp({
     },
 
     selectAdminTab(tab) {
-      if (!["webhook", "llm", "components", "promo-form", "i18n", "audit"].includes(tab)) return;
+      if (!["webhook", "llm", "components", "promo-form", "design-tokens", "i18n", "audit"].includes(tab)) return;
       this.adminTab = tab;
       if (tab === "i18n") this.loadLocales();
       if (tab === "components") this.loadItemComponents();
@@ -6044,5 +6044,6 @@ const adminApp = createApp({
   },
 });
 adminApp.component("template-layout-manager", window.PromoAdminTemplateLayout.component);
+adminApp.component("design-token-manager", window.PromoAdminDesignTokens.component);
 const localeReady = window.PromoI18n?.init?.() || Promise.resolve();
 localeReady.finally(() => adminApp.mount("#app"));
