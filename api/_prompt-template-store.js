@@ -248,6 +248,8 @@ const DEFAULT_MODEL_SETTINGS = {
     temperature: 0.4,
     maxTokens: null,
     responseFormat: "image",
+    imageSize: "2K",
+    quality: "medium",
   },
   component_image: {
     provider: String(process.env.SECTION_IMAGE_PROVIDER || "gemini").toLowerCase() === "gemini" ? "google" : "openai",
@@ -255,8 +257,105 @@ const DEFAULT_MODEL_SETTINGS = {
     temperature: 0.4,
     maxTokens: null,
     responseFormat: "image",
+    imageSize: "2K",
+    quality: "medium",
   },
 };
+
+const CONTROLLED_PROMPT_TYPES = new Set([
+  "section_layout_planner",
+  "multi_component_layout_planner",
+  "section_composition_planner",
+  "section_background_image",
+  "component_image",
+]);
+
+const DEFAULT_IMAGE_HARNESS_CONFIG = Object.freeze({
+  version: 1,
+  safeAreaInstructions: {
+    none: "Use the full canvas for the visual subject; do not reserve artificial copy-safe negative space.",
+    "left-copy": "Keep the left half as clean negative space for DOM copy and place the main visual subject on the right.",
+    "right-copy": "Keep the right half as clean negative space for DOM copy and place the main visual subject on the left.",
+    "center-copy": "Keep the center as clean negative space for centered DOM copy and place supporting visual detail around the outer edges.",
+  },
+  sectionBackgroundRules: [
+    "OUTPUT CONTRACT — FULL-BLEED WEB SECTION BACKGROUND (highest priority):",
+    "Compose directly on the entire {{aspectRatio}} output canvas and cover every pixel from edge to edge.",
+    "The scene must continue naturally through all four outer edges and all four corners.",
+    "Do not place the scene inside a card, panel, poster, browser mockup, inset canvas, floating surface, or smaller artboard.",
+    "Do not add any outer margin, padding, matte, whitespace, transparent edge, letterbox, pillarbox, border, stroke, frame, keyline, rounded outer canvas corner, drop shadow, or outer glow.",
+    "The supplied section background color is only a color-matching reference. Never draw it as a surrounding frame or margin.",
+  ],
+  componentImageRules: [
+    "Compose the image for the component field area and use the complete canvas.",
+  ],
+  negativeRules: [
+    "Use edge colors that are visually compatible with the solid section background color {{backgroundColor}}.",
+    "Do not bake a fade, gradient, vignette, transparency, border, or masking effect into the image; the web renderer applies the requested fade with CSS.",
+    "Do not render text, buttons, logos, badges, or legal copy inside the image.",
+  ],
+});
+
+function defaultPromptControlPlane(type) {
+  if (!CONTROLLED_PROMPT_TYPES.has(type)) return {};
+  const isImage = type === "section_background_image" || type === "component_image";
+  return {
+    executionSnapshotVersion: 2,
+    harnessConfig: isImage
+      ? JSON.parse(JSON.stringify(DEFAULT_IMAGE_HARNESS_CONFIG))
+      : { version: 1, additionalInstructions: [] },
+    runtimeConfig: isImage
+      ? {
+        timeoutMs: 240000,
+        maxAttempts: 3,
+        retryBaseMs: 15000,
+        retryMaxMs: 75000,
+        outputMimeType: "image/jpeg",
+        minimumImagePolicy: "requested-tier",
+      }
+      : {
+        timeoutMs: 90000,
+        maxAttempts: 1,
+        retryBaseMs: 0,
+        retryMaxMs: 0,
+      },
+    modelCapabilitySnapshot: isImage
+      ? {
+        imageSizes: ["1K", "2K", "4K"],
+        aspectRatios: ["1:1", "4:3", "3:4", "16:9", "9:16"],
+        minimumLongSideByTier: { "1K": 900, "2K": 1800, "4K": 3600 },
+      }
+      : {
+        structuredOutput: true,
+        temperature: true,
+        maxOutputTokens: true,
+      },
+    safetyContract: {
+      key: isImage ? "section-image-v1" : "section-layout-v1",
+      version: 1,
+    },
+  };
+}
+
+function normalizePromptControlPlaneOptions(type, value, { includeDefaults = false } = {}) {
+  const source = normalizeModelOptions(value);
+  if (!CONTROLLED_PROMPT_TYPES.has(type)) return { ...source };
+  const defaults = includeDefaults ? defaultPromptControlPlane(type) : {};
+  const objectValue = (key) => {
+    const candidate = source[key];
+    if (candidate && typeof candidate === "object" && !Array.isArray(candidate)) return candidate;
+    return defaults[key] || {};
+  };
+  const version = Number(source.executionSnapshotVersion ?? defaults.executionSnapshotVersion);
+  return {
+    ...source,
+    ...(Number.isInteger(version) && version > 0 ? { executionSnapshotVersion: version } : {}),
+    harnessConfig: objectValue("harnessConfig"),
+    runtimeConfig: objectValue("runtimeConfig"),
+    modelCapabilitySnapshot: objectValue("modelCapabilitySnapshot"),
+    safetyContract: objectValue("safetyContract"),
+  };
+}
 
 function getSql() {
   const databaseUrl = getDatabaseUrl();
@@ -281,6 +380,14 @@ async function ensureDefaultPromptTemplates(sql) {
     // Keep exactly one active default per type on first install. Later repository
     // default changes should not overwrite admin-edited prompts during deployment.
     const initialStatus = activeRows.length ? "draft" : "active";
+    const {
+      provider: _provider,
+      model: _model,
+      temperature: _temperature,
+      maxTokens: _maxTokens,
+      responseFormat: _responseFormat,
+      ...providerOptions
+    } = DEFAULT_MODEL_SETTINGS[type] || {};
     await sql`
       insert into prompt_templates (
         type,
@@ -314,7 +421,10 @@ async function ensureDefaultPromptTemplates(sql) {
         ${DEFAULT_MODEL_SETTINGS[type]?.temperature ?? null},
         ${DEFAULT_MODEL_SETTINGS[type]?.maxTokens ?? null},
         ${DEFAULT_MODEL_SETTINGS[type]?.responseFormat || ""},
-        ${JSON.stringify(DEFAULT_MODEL_SETTINGS[type] || {})}::jsonb
+        ${JSON.stringify({
+          ...providerOptions,
+          ...defaultPromptControlPlane(type),
+        })}::jsonb
       where not exists (
         select 1
         from prompt_templates
@@ -495,6 +605,10 @@ function sha256(value) {
 }
 
 function toPromptTemplate(row) {
+  const modelOptions = normalizePromptControlPlaneOptions(row.type, row.model_options, {
+    includeDefaults: CONTROLLED_PROMPT_TYPES.has(row.type),
+  });
+  const storedOptions = normalizeModelOptions(row.model_options);
   return {
     id: row.id,
     type: row.type,
@@ -512,9 +626,15 @@ function toPromptTemplate(row) {
     temperature: row.temperature === null || row.temperature === undefined ? null : Number(row.temperature),
     maxTokens: row.max_tokens === null || row.max_tokens === undefined ? null : Number(row.max_tokens),
     responseFormat: row.response_format || "",
-    modelOptions: row.model_options && typeof row.model_options === "object" && !Array.isArray(row.model_options)
-      ? row.model_options
-      : {},
+    modelOptions,
+    harnessConfig: modelOptions.harnessConfig || {},
+    runtimeConfig: modelOptions.runtimeConfig || {},
+    modelCapabilitySnapshot: modelOptions.modelCapabilitySnapshot || {},
+    safetyContract: modelOptions.safetyContract || {},
+    executionSnapshotVersion: Number(modelOptions.executionSnapshotVersion || 1),
+    controlPlaneReady: !CONTROLLED_PROMPT_TYPES.has(row.type)
+      || ["harnessConfig", "runtimeConfig", "modelCapabilitySnapshot", "safetyContract", "executionSnapshotVersion"]
+        .every((key) => Object.prototype.hasOwnProperty.call(storedOptions, key)),
     changeNote: row.change_note || "",
     archivedAt: row.archived_at || null,
     createdAt: row.created_at || null,
@@ -523,15 +643,20 @@ function toPromptTemplate(row) {
 }
 
 module.exports = {
+  CONTROLLED_PROMPT_TYPES,
+  DEFAULT_IMAGE_HARNESS_CONFIG,
   PROMPT_TYPES,
+  defaultPromptControlPlane,
   ensureDefaultPromptTemplates,
   extractPromptVariables,
   getSql,
   mergePromptTemplatePatch,
   normalizeModelOptions,
+  normalizePromptControlPlaneOptions,
   normalizeNumber,
   normalizeVariables,
   parseBody,
+  promptVariableContract,
   renderPrompt,
   sha256,
   toPromptTemplate,

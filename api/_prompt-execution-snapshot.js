@@ -9,6 +9,10 @@ const {
 } = require("./_prompt-template-store");
 const { fitFinalDesignPromptVariables } = require("./_final-design-prompt-budget");
 const { normalizeExecutionModelOptions } = require("./_worker-execution-contract");
+const {
+  normalizeControlPlanePromptConfig,
+  validateControlPlaneConfig,
+} = require("./_section-ai-control-plane");
 
 const INTEGRATED_BRIEF_OUTPUT_GUARD = [
   "",
@@ -67,9 +71,26 @@ async function createPromptExecutionSnapshot(sql, type, variables = {}) {
   const fitted = type === "final_design"
     ? fitFinalDesignPromptVariables(prompt.body, variables, renderPrompt)
     : { variables, renderedPrompt: renderPrompt(prompt.body, variables), lengthGuard: null };
-  const renderedPrompt = type === "integrated_brief"
+  let renderedPrompt = type === "integrated_brief"
     ? `${fitted.renderedPrompt.trim()}\n${INTEGRATED_BRIEF_OUTPUT_GUARD}`
     : fitted.renderedPrompt;
+  const snapshotModelOptions = prompt.controlPlaneReady
+    ? prompt.modelOptions
+    : { ...(prompt.modelOptions || {}), executionSnapshotVersion: 1 };
+  const controlPlane = normalizeControlPlanePromptConfig(type, {
+    temperature: prompt.temperature,
+    maxTokens: prompt.maxTokens,
+    responseFormat: prompt.responseFormat,
+    modelOptions: snapshotModelOptions,
+  });
+  if ([
+    "section_layout_planner",
+    "multi_component_layout_planner",
+    "section_composition_planner",
+  ].includes(type)) {
+    const instructions = controlPlane.harnessConfig.additionalInstructions || [];
+    if (instructions.length) renderedPrompt = `${renderedPrompt.trim()}\n${instructions.join("\n")}`;
+  }
   const unresolved = unresolvedVariables(renderedPrompt);
   if (unresolved.length) {
     const error = new Error(`Rendered ${type} prompt contains unresolved variables: ${unresolved.join(", ")}`);
@@ -78,20 +99,30 @@ async function createPromptExecutionSnapshot(sql, type, variables = {}) {
   }
 
   const modelOptions = normalizeExecutionModelOptions({
-    ...(prompt.modelOptions || {}),
+    ...snapshotModelOptions,
     temperature: prompt.temperature,
     maxTokens: prompt.maxTokens,
     responseFormat: prompt.responseFormat,
   });
   return {
+    snapshotVersion: controlPlane.snapshotVersion,
     promptConfig: {
+      snapshotVersion: controlPlane.snapshotVersion,
       promptId: prompt.id,
       promptType: prompt.type,
       promptName: prompt.name,
       promptVersion: prompt.version,
       provider: prompt.provider,
       model: prompt.model,
+      temperature: prompt.temperature,
+      maxTokens: prompt.maxTokens,
+      responseFormat: prompt.responseFormat,
       modelOptions,
+      runtimeConfig: controlPlane.runtimeConfig,
+      harnessConfig: controlPlane.harnessConfig,
+      modelCapabilitySnapshot: controlPlane.modelCapabilitySnapshot,
+      safetyContract: controlPlane.safetyContract,
+      controlPlaneReady: prompt.controlPlaneReady,
       renderedPrompt,
       renderedPromptHash: sha256(renderedPrompt),
       variableHash: sha256(JSON.stringify(fitted.variables)),
@@ -112,6 +143,7 @@ function validateStageModelConfig(type, prompt) {
   };
 
   if (!provider || !model) fail(`${type} provider and model are required`);
+  validateControlPlaneConfig(type, prompt);
   if (type === "integrated_brief") {
     if (provider !== "openai") fail("integrated_brief currently supports the openai provider only");
     if (responseFormat !== "json_object") fail("integrated_brief responseFormat must be json_object");

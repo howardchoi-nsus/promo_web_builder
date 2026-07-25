@@ -1,14 +1,9 @@
-const LAYOUT_RESULT_SCHEMA = {
-  type: "object",
-  additionalProperties: false,
-  required: ["layoutVariant", "minHeight", "imagePrompt", "rationale"],
-  properties: {
-    layoutVariant: { type: "string", enum: ["split-left", "split-right", "centered-hero"] },
-    minHeight: { type: "integer", minimum: 240, maximum: 900 },
-    imagePrompt: { type: "string" },
-    rationale: { type: "string" },
-  },
-};
+const {
+  buildImageHarnessPrompt,
+  imageMetadata,
+  normalizeControlPlanePromptConfig,
+  validateRequestedImageResolution,
+} = require("./_section-ai-control-plane");
 
 const DESIGN_PLAN_SCHEMA = {
   type: "object", additionalProperties: false,
@@ -221,29 +216,13 @@ function imagePromptForSafeArea(
   targetType = "section-background",
   aspectRatio = "16:9"
 ) {
-  const composition = safeArea === "right-copy"
-    ? "Keep the right half as clean negative space for DOM copy and place the main visual subject on the left."
-    : safeArea === "left-copy"
-      ? "Keep the left half as clean negative space for DOM copy and place the main visual subject on the right."
-      : safeArea === "center-copy"
-        ? "Keep the center as clean negative space for centered DOM copy and place supporting visual detail around the outer edges."
-        : "Use the full canvas for the visual subject; do not reserve artificial copy-safe negative space.";
-  const sectionBackgroundRules = targetType === "section-background" ? [
-    "OUTPUT CONTRACT — FULL-BLEED WEB SECTION BACKGROUND (highest priority):",
-    `Compose directly on the entire ${normalizedImageAspectRatio(aspectRatio)} output canvas and cover every pixel from edge to edge.`,
-    "The scene must continue naturally through all four outer edges and all four corners.",
-    "Do not place the scene inside a card, panel, poster, browser mockup, inset canvas, floating surface, or smaller artboard.",
-    "Do not add any outer margin, padding, matte, whitespace, transparent edge, letterbox, pillarbox, border, stroke, frame, keyline, rounded outer canvas corner, drop shadow, or outer glow.",
-    "The supplied section background color is only a color-matching reference. Never draw it as a surrounding frame or margin.",
-  ] : [];
-  return [
-    String(prompt || "").trim(),
-    composition,
-    ...sectionBackgroundRules,
-    `Use edge colors that are visually compatible with the solid section background color ${backgroundColor}.`,
-    "Do not bake a fade, gradient, vignette, transparency, border, or masking effect into the image; the web renderer applies the requested fade with CSS.",
-    "Do not render text, buttons, logos, badges, or legal copy inside the image.",
-  ].filter(Boolean).join("\n");
+  return buildImageHarnessPrompt({
+    prompt,
+    safeArea,
+    backgroundColor,
+    targetType,
+    aspectRatio: normalizedImageAspectRatio(aspectRatio),
+  });
 }
 
 function normalizedImageAspectRatio(value) {
@@ -281,41 +260,20 @@ function normalizedGeminiImageSize(value) {
   return ["1K", "2K", "4K"].includes(imageSize) ? imageSize : "2K";
 }
 
-async function generateSectionLayout({ section, sectionInputs, constraints, signal }) {
-  const model = process.env.SECTION_LAYOUT_MODEL || "gpt-4.1-mini";
-  const prompt = [
-    "Design one responsive promotional web section.",
-    "Select only one allowed layout variant and describe one supporting image without embedding any text, CTA, logo, badge, or legal copy in the image.",
-    "The image prompt must preserve negative space for DOM copy.",
-    `Section: ${section.name || section.sectionKey} (${section.sectionKey})`,
-    `Allowed variants: ${(constraints.allowedLayoutVariants || []).join(", ")}`,
-    `Locked content keys: ${(constraints.contentLocks || []).join(", ") || "none"}`,
-    `Content: ${JSON.stringify(sectionInputs)}`,
-  ].join("\n");
-  const startedAt = Date.now();
-  const { payload, requestId } = await requestJson("https://api.openai.com/v1/responses", {
-    model,
-    store: false,
-    input: prompt,
-    text: {
-      format: {
-        type: "json_schema",
-        name: "section_layout_result",
-        strict: true,
-        schema: LAYOUT_RESULT_SCHEMA,
-      },
-    },
-  }, openAiHeaders(), signal, Number(process.env.SECTION_LAYOUT_TIMEOUT_MS || 90000));
-  const text = responseOutputText(payload);
-  if (!text) throw Object.assign(new Error("Layout model returned no structured output"), { code: "EMPTY_LAYOUT_RESULT" });
+function plannerRequestConfig(type, promptConfig = {}) {
+  const config = normalizeControlPlanePromptConfig(type, promptConfig);
   return {
-    result: JSON.parse(text),
-    provider: { provider: "openai", model, requestId, latencyMs: Date.now() - startedAt },
-    usage: payload.usage || {},
+    config,
+    timeoutMs: config.runtimeConfig.timeoutMs,
+    requestFields: {
+      ...(config.temperature === null ? {} : { temperature: config.temperature }),
+      ...(config.maxTokens === null ? {} : { max_output_tokens: config.maxTokens }),
+    },
   };
 }
 
 async function generateSectionDesignPlan({ section, sectionInputs, constraints, tokenSet, requestMode = "full", promptConfig, signal }) {
+  const execution = plannerRequestConfig("section_layout_planner", promptConfig);
   const model = promptConfig?.model || process.env.SECTION_LAYOUT_MODEL || "gpt-4.1-mini";
   const prompt = promptConfig?.renderedPrompt || [
     "Plan one promotional web section using only the supplied component instances, layout regions, style slots and promo tokens.",
@@ -328,9 +286,9 @@ async function generateSectionDesignPlan({ section, sectionInputs, constraints, 
   ].join("\n");
   const startedAt = Date.now();
   const { payload, requestId } = await requestJson("https://api.openai.com/v1/responses", {
-    model, store: false, input: prompt,
+    model, store: false, input: prompt, ...execution.requestFields,
     text: { format: { type: "json_schema", name: "section_design_plan", strict: true, schema: DESIGN_PLAN_SCHEMA } },
-  }, openAiHeaders(), signal, Number(process.env.SECTION_LAYOUT_TIMEOUT_MS || 90000));
+  }, openAiHeaders(), signal, execution.timeoutMs);
   const output = responseOutputText(payload);
   if (!output) throw Object.assign(new Error("Planner returned no structured output"), { code: "EMPTY_DESIGN_PLAN" });
   return {
@@ -340,6 +298,7 @@ async function generateSectionDesignPlan({ section, sectionInputs, constraints, 
 }
 
 async function generateMultiComponentLayoutPlan({ promptConfig, signal }) {
+  const execution = plannerRequestConfig("multi_component_layout_planner", promptConfig);
   const model = promptConfig?.model || process.env.SECTION_LAYOUT_MODEL || "gpt-4.1-mini";
   const prompt = String(promptConfig?.renderedPrompt || "").trim();
   if (!prompt) throw Object.assign(new Error("Multi-component layout prompt is required"), { code: "LAYOUT_PROMPT_REQUIRED" });
@@ -348,6 +307,7 @@ async function generateMultiComponentLayoutPlan({ promptConfig, signal }) {
     model,
     store: false,
     input: prompt,
+    ...execution.requestFields,
     text: {
       format: {
         type: "json_schema",
@@ -356,7 +316,7 @@ async function generateMultiComponentLayoutPlan({ promptConfig, signal }) {
         schema: MULTI_COMPONENT_LAYOUT_PLAN_SCHEMA,
       },
     },
-  }, openAiHeaders(), signal, Number(process.env.SECTION_LAYOUT_TIMEOUT_MS || 90000));
+  }, openAiHeaders(), signal, execution.timeoutMs);
   const output = responseOutputText(payload);
   if (!output) throw Object.assign(new Error("Multi-component planner returned no structured output"), { code: "EMPTY_MULTI_LAYOUT_PLAN" });
   return {
@@ -367,6 +327,7 @@ async function generateMultiComponentLayoutPlan({ promptConfig, signal }) {
 }
 
 async function generateSectionCompositionPlan({ promptConfig, signal }) {
+  const execution = plannerRequestConfig("section_composition_planner", promptConfig);
   const model = promptConfig?.model || process.env.SECTION_LAYOUT_MODEL || "gpt-4.1-mini";
   const prompt = String(promptConfig?.renderedPrompt || "").trim();
   if (!prompt) throw Object.assign(new Error("Section composition prompt is required"), { code: "COMPOSITION_PROMPT_REQUIRED" });
@@ -375,6 +336,7 @@ async function generateSectionCompositionPlan({ promptConfig, signal }) {
     model,
     store: false,
     input: prompt,
+    ...execution.requestFields,
     text: {
       format: {
         type: "json_schema",
@@ -383,7 +345,7 @@ async function generateSectionCompositionPlan({ promptConfig, signal }) {
         schema: SECTION_COMPOSITION_PLAN_SCHEMA,
       },
     },
-  }, openAiHeaders(), signal, Number(process.env.SECTION_LAYOUT_TIMEOUT_MS || 90000));
+  }, openAiHeaders(), signal, execution.timeoutMs);
   const output = responseOutputText(payload);
   if (!output) throw Object.assign(new Error("Section composition planner returned no structured output"), { code: "EMPTY_COMPOSITION_PLAN" });
   return {
@@ -393,32 +355,54 @@ async function generateSectionCompositionPlan({ promptConfig, signal }) {
   };
 }
 
-async function generateOpenAiSectionImage({ prompt, aspectRatio, model: requestedModel, modelOptions, signal }) {
+async function generateOpenAiSectionImage({ prompt, aspectRatio, model: requestedModel, modelOptions, promptConfig, signal }) {
+  const execution = normalizeControlPlanePromptConfig(
+    promptConfig?.promptType || "component_image",
+    { ...promptConfig, modelOptions }
+  );
   const model = requestedModel || process.env.SECTION_IMAGE_MODEL || "gpt-image-1";
+  const outputMimeType = execution.runtimeConfig.outputMimeType || "image/webp";
+  const outputFormat = outputMimeType === "image/jpeg" ? "jpeg"
+    : outputMimeType === "image/png" ? "png" : "webp";
   const startedAt = Date.now();
   const { payload, requestId } = await requestJson("https://api.openai.com/v1/images/generations", {
     model,
     prompt,
-    size: openAiImageSize(aspectRatio),
-    quality: modelOptions?.quality || process.env.SECTION_IMAGE_QUALITY || "medium",
-    output_format: "webp",
-  }, openAiHeaders(), signal, Number(process.env.SECTION_IMAGE_TIMEOUT_MS || 240000));
+    size: execution.modelOptions?.size || openAiImageSize(aspectRatio),
+    quality: execution.modelOptions?.quality || process.env.SECTION_IMAGE_QUALITY || "medium",
+    output_format: outputFormat,
+  }, openAiHeaders(), signal, execution.runtimeConfig.timeoutMs);
   const base64 = payload.data?.[0]?.b64_json;
   if (!base64) throw Object.assign(new Error("Image model returned no image data"), { code: "EMPTY_IMAGE_RESULT" });
+  const bytes = Buffer.from(base64, "base64");
+  const metadata = imageMetadata(bytes, outputMimeType);
+  if (!metadata?.width || !metadata?.height) {
+    throw Object.assign(new Error("OpenAI returned image data with unreadable dimensions"), { code: "IMAGE_METADATA_INVALID" });
+  }
+  if (metadata.mimeType !== outputMimeType) {
+    throw Object.assign(new Error(`OpenAI image MIME mismatch: expected ${outputMimeType}, received ${metadata.mimeType}`), {
+      code: "IMAGE_MIME_MISMATCH",
+    });
+  }
+  validateRequestedImageResolution(metadata, execution);
   return {
-    bytes: Buffer.from(base64, "base64"),
-    mimeType: "image/webp",
-    width: openAiImageSize(aspectRatio).split("x").map(Number)[0],
-    height: openAiImageSize(aspectRatio).split("x").map(Number)[1],
+    bytes,
+    mimeType: metadata.mimeType || outputMimeType,
+    width: metadata.width,
+    height: metadata.height,
     provider: { provider: "openai", model, requestId, latencyMs: Date.now() - startedAt },
     usage: payload.usage || {},
   };
 }
 
-async function generateGeminiSectionImage({ prompt, aspectRatio, model: requestedModel, modelOptions, signal }) {
+async function generateGeminiSectionImage({ prompt, aspectRatio, model: requestedModel, modelOptions, promptConfig, signal }) {
+  const execution = normalizeControlPlanePromptConfig(
+    promptConfig?.promptType || "component_image",
+    { ...promptConfig, modelOptions }
+  );
   const model = requestedModel || process.env.SECTION_IMAGE_MODEL || "gemini-3.1-flash-image";
-  const imageSize = normalizedGeminiImageSize(modelOptions?.imageSize || process.env.SECTION_IMAGE_SIZE);
-  const dimensions = geminiImageDimensions(imageSize, aspectRatio);
+  const imageSize = normalizedGeminiImageSize(execution.modelOptions?.imageSize || process.env.SECTION_IMAGE_SIZE);
+  const outputMimeType = execution.runtimeConfig.outputMimeType || "image/jpeg";
   const startedAt = Date.now();
   const { payload, requestId } = await requestJson(
     "https://generativelanguage.googleapis.com/v1beta/interactions",
@@ -427,44 +411,71 @@ async function generateGeminiSectionImage({ prompt, aspectRatio, model: requeste
       input: [{ type: "text", text: prompt }],
       response_format: {
         type: "image",
-        mime_type: "image/jpeg",
+        mime_type: outputMimeType,
         aspect_ratio: normalizedImageAspectRatio(aspectRatio),
         image_size: imageSize,
       },
     },
     geminiHeaders(),
     signal,
-    Number(process.env.SECTION_IMAGE_TIMEOUT_MS || 240000)
+    execution.runtimeConfig.timeoutMs
   );
-  const stepImage = (payload.steps || []).flatMap((step) => step.content || [])
-    .find((content) => content.type === "image" && content.data);
-  const outputImage = payload.output_image || stepImage;
+  const stepImages = (payload.steps || []).flatMap((step) => step.content || [])
+    .filter((content) => content.type === "image" && content.data);
+  const outputImage = payload.output_image || stepImages.at(-1);
   if (!outputImage?.data) throw Object.assign(new Error("Gemini image model returned no inline image data"), { code: "EMPTY_IMAGE_RESULT" });
-  const mimeType = outputImage.mime_type || outputImage.mimeType || "image/jpeg";
+  const bytes = Buffer.from(outputImage.data, "base64");
+  const mimeType = outputImage.mime_type || outputImage.mimeType || outputMimeType;
+  if (mimeType !== outputMimeType) {
+    throw Object.assign(new Error(`Gemini image MIME mismatch: requested ${outputMimeType}, declared ${mimeType}`), {
+      code: "IMAGE_MIME_MISMATCH",
+    });
+  }
+  const metadata = imageMetadata(bytes, mimeType);
+  if (!metadata?.width || !metadata?.height) {
+    throw Object.assign(new Error("Gemini returned image data with unreadable dimensions"), { code: "IMAGE_METADATA_INVALID" });
+  }
+  if (metadata.mimeType !== mimeType) {
+    throw Object.assign(new Error(`Gemini image MIME mismatch: declared ${mimeType}, received ${metadata.mimeType}`), {
+      code: "IMAGE_MIME_MISMATCH",
+    });
+  }
+  validateRequestedImageResolution(metadata, execution);
   return {
-    bytes: Buffer.from(outputImage.data, "base64"),
-    mimeType,
-    width: dimensions.width,
-    height: dimensions.height,
+    bytes,
+    mimeType: metadata.mimeType || mimeType,
+    width: metadata.width,
+    height: metadata.height,
     provider: { provider: "gemini", model, requestId, latencyMs: Date.now() - startedAt },
     usage: payload.usageMetadata || payload.usage || {},
   };
 }
 
 async function generateSectionImage(input) {
-  const configuredProvider = input.provider || process.env.SECTION_IMAGE_PROVIDER || "openai";
+  const promptType = (input.targetType || "section-background") === "section-background"
+    ? "section_background_image"
+    : "component_image";
+  const promptConfig = normalizeControlPlanePromptConfig(promptType, {
+    ...(input.promptConfig || {}),
+    modelOptions: input.modelOptions || input.promptConfig?.modelOptions,
+  });
+  const configuredProvider = input.provider || promptConfig.provider || process.env.SECTION_IMAGE_PROVIDER || "openai";
   const provider = String(configuredProvider).trim().toLowerCase() === "google"
     ? "gemini"
     : String(configuredProvider).trim().toLowerCase();
   const request = {
     ...input,
-    prompt: imagePromptForSafeArea(
-      input.prompt,
-      input.safeArea,
-      input.backgroundColor,
-      input.targetType || "section-background",
-      input.aspectRatio
-    ),
+    model: input.model || promptConfig.model,
+    promptConfig,
+    modelOptions: promptConfig.modelOptions,
+    prompt: buildImageHarnessPrompt({
+      prompt: input.prompt,
+      harnessConfig: promptConfig.harnessConfig,
+      safeArea: input.safeArea,
+      backgroundColor: input.backgroundColor,
+      targetType: input.targetType || "section-background",
+      aspectRatio: normalizedImageAspectRatio(input.aspectRatio),
+    }),
   };
   if (provider === "gemini") return generateGeminiSectionImage(request);
   if (provider === "openai") return generateOpenAiSectionImage(request);
@@ -472,7 +483,6 @@ async function generateSectionImage(input) {
 }
 
 module.exports = {
-  generateSectionLayout,
   generateSectionDesignPlan,
   generateMultiComponentLayoutPlan,
   generateSectionCompositionPlan,

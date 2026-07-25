@@ -5,6 +5,7 @@ const {
   normalizeModelOptions,
   normalizeNumber,
   parseBody,
+  promptVariableContract,
   toPromptTemplate,
   validatePromptTemplateContract,
 } = require("./_prompt-template-store");
@@ -160,9 +161,11 @@ async function updatePrompt(req, res) {
   const {
     body: nextBody,
     name: nextName,
+  } = mergePromptTemplatePatch(current, body);
+  const {
     requiredVariables,
     optionalVariables,
-  } = mergePromptTemplatePatch(current, body);
+  } = promptVariableContract(current.type);
   if (!nextBody.trim()) return res.status(400).json({ error: "body is required" });
   if (!nextName) return res.status(400).json({ error: "name is required" });
 
@@ -176,6 +179,12 @@ async function updatePrompt(req, res) {
   const modelOptions = hasModelOptions
     ? normalizeModelOptions(body.modelOptions || body.model_options)
     : current.model_options || {};
+  for (const duplicateKey of [
+    "provider", "model", "temperature", "maxTokens", "max_tokens",
+    "responseFormat", "response_format",
+  ]) {
+    delete modelOptions[duplicateKey];
+  }
   validatePromptTemplateContract(current.type, {
     body: nextBody,
     requiredVariables,

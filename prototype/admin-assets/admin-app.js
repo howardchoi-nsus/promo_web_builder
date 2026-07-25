@@ -9377,6 +9377,15 @@ var n_ = /*#__PURE__*/ Ch(Bh, [["render", t_], ["__scopeId", "data-v-f140278f"]]
 					maxTokens: "",
 					responseFormat: "",
 					imageSize: "2K",
+					executionSnapshotVersion: 2,
+					timeoutMs: "",
+					maxAttempts: "",
+					retryBaseMs: "",
+					retryMaxMs: "",
+					outputMimeType: "",
+					harnessConfigText: "{}",
+					modelCapabilitySnapshotText: "{}",
+					safetyContractText: "{}",
 					modelOptionsText: "{}",
 					changeNote: ""
 				},
@@ -10490,7 +10499,15 @@ var n_ = /*#__PURE__*/ Ch(Bh, [["render", t_], ["__scopeId", "data-v-f140278f"]]
 					let r = await fetch(`/api/prompt-template?id=${encodeURIComponent(e)}`), i = await r.json().catch(() => ({}));
 					if (!r.ok) throw Error(i.message || i.error || `프롬프트 요청 오류(${r.status})`);
 					let a = i.prompt || n, o = this.promptTemplates.findIndex((t) => t.id === e);
-					o >= 0 && this.promptTemplates.splice(o, 1, a), this.promptHistories = Array.isArray(i.histories) ? i.histories : [], this.promptEditor = {
+					o >= 0 && this.promptTemplates.splice(o, 1, a), this.promptHistories = Array.isArray(i.histories) ? i.histories : [];
+					let s = /* @__PURE__ */ new Set([
+						"executionSnapshotVersion",
+						"harnessConfig",
+						"runtimeConfig",
+						"modelCapabilitySnapshot",
+						"safetyContract"
+					]), c = Object.fromEntries(Object.entries(a.modelOptions || {}).filter(([e]) => !s.has(e)));
+					this.promptEditor = {
 						name: a.name || "",
 						body: a.body || "",
 						requiredVariablesText: (a.requiredVariables || []).join(", "),
@@ -10505,7 +10522,16 @@ var n_ = /*#__PURE__*/ Ch(Bh, [["render", t_], ["__scopeId", "data-v-f140278f"]]
 							"2K",
 							"4K"
 						].includes(String(a.modelOptions?.imageSize || a.modelOptions?.image_size || "").toUpperCase()) ? String(a.modelOptions?.imageSize || a.modelOptions?.image_size).toUpperCase() : "2K",
-						modelOptionsText: JSON.stringify(a.modelOptions || {}, null, 2),
+						executionSnapshotVersion: Number(a.executionSnapshotVersion || a.modelOptions?.executionSnapshotVersion || 2),
+						timeoutMs: a.runtimeConfig?.timeoutMs ?? a.modelOptions?.runtimeConfig?.timeoutMs ?? "",
+						maxAttempts: a.runtimeConfig?.maxAttempts ?? a.modelOptions?.runtimeConfig?.maxAttempts ?? "",
+						retryBaseMs: a.runtimeConfig?.retryBaseMs ?? a.modelOptions?.runtimeConfig?.retryBaseMs ?? "",
+						retryMaxMs: a.runtimeConfig?.retryMaxMs ?? a.modelOptions?.runtimeConfig?.retryMaxMs ?? "",
+						outputMimeType: a.runtimeConfig?.outputMimeType ?? a.modelOptions?.runtimeConfig?.outputMimeType ?? "",
+						harnessConfigText: JSON.stringify(a.harnessConfig || a.modelOptions?.harnessConfig || {}, null, 2),
+						modelCapabilitySnapshotText: JSON.stringify(a.modelCapabilitySnapshot || a.modelOptions?.modelCapabilitySnapshot || {}, null, 2),
+						safetyContractText: JSON.stringify(a.safetyContract || a.modelOptions?.safetyContract || {}, null, 2),
+						modelOptionsText: JSON.stringify(c, null, 2),
 						changeNote: ""
 					}, t.silent || this.setStatus(`${a.name} 프롬프트를 열었습니다`);
 				} catch (e) {
@@ -10533,13 +10559,29 @@ var n_ = /*#__PURE__*/ Ch(Bh, [["render", t_], ["__scopeId", "data-v-f140278f"]]
 					"component_image"
 				].includes(e?.type);
 			},
+			promptUsesSectionAiControlPlane(e = this.selectedPromptTemplate) {
+				return [
+					"section_layout_planner",
+					"multi_component_layout_planner",
+					"section_composition_planner",
+					"section_background_image",
+					"component_image"
+				].includes(e?.type);
+			},
 			promptModelOptionsForSave(e) {
 				let t = this.parseModelOptionsText(this.promptEditor.modelOptionsText);
 				return this.promptSupportsImageSize(e) && (t.imageSize = [
 					"1K",
 					"2K",
 					"4K"
-				].includes(this.promptEditor.imageSize) ? this.promptEditor.imageSize : "2K", delete t.image_size), t;
+				].includes(this.promptEditor.imageSize) ? this.promptEditor.imageSize : "2K", delete t.image_size), this.promptUsesSectionAiControlPlane(e) && (t.executionSnapshotVersion = Number(this.promptEditor.executionSnapshotVersion || 2), t.runtimeConfig = {
+					timeoutMs: Number(this.promptEditor.timeoutMs),
+					maxAttempts: Number(this.promptEditor.maxAttempts),
+					retryBaseMs: Number(this.promptEditor.retryBaseMs),
+					retryMaxMs: Number(this.promptEditor.retryMaxMs),
+					...this.promptEditor.outputMimeType ? { outputMimeType: this.promptEditor.outputMimeType } : {},
+					...this.promptSupportsImageSize(e) ? { minimumImagePolicy: "requested-tier" } : {}
+				}, t.harnessConfig = this.parseModelOptionsText(this.promptEditor.harnessConfigText), t.modelCapabilitySnapshot = this.parseModelOptionsText(this.promptEditor.modelCapabilitySnapshotText), t.safetyContract = this.parseModelOptionsText(this.promptEditor.safetyContractText)), t;
 			},
 			async savePromptTemplate() {
 				let e = this.selectedPromptTemplate;

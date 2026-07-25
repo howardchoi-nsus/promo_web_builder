@@ -221,23 +221,33 @@ module.exports = async function handler(req, res) {
         componentInstanceId: imageTarget.type === "item" ? targetItem?.id || null : null,
         targetFieldKey: imageTarget.type === "item" ? targetField?.fieldKey || imageTarget.itemKey : null,
         promptConfig: {
+          snapshotVersion: promptSnapshot.promptConfig.snapshotVersion,
+          promptType: promptSnapshot.promptConfig.promptType,
           promptId: promptSnapshot.promptConfig.promptId,
           promptVersion: promptSnapshot.promptConfig.promptVersion,
           renderedPromptHash: promptSnapshot.promptConfig.renderedPromptHash,
           provider: promptSnapshot.promptConfig.provider,
           model: promptSnapshot.promptConfig.model,
           modelOptions: promptSnapshot.promptConfig.modelOptions,
+          temperature: promptSnapshot.promptConfig.temperature,
+          maxTokens: promptSnapshot.promptConfig.maxTokens,
+          responseFormat: promptSnapshot.promptConfig.responseFormat,
+          runtimeConfig: promptSnapshot.promptConfig.runtimeConfig,
+          harnessConfig: promptSnapshot.promptConfig.harnessConfig,
+          modelCapabilitySnapshot: promptSnapshot.promptConfig.modelCapabilitySnapshot,
+          safetyContract: promptSnapshot.promptConfig.safetyContract,
         },
       };
       await sql`
         insert into promo_section_design_asset_jobs (
           run_id, target_type, target_item_key, component_instance_id, target_field_key,
-          request_snapshot, next_retry_at
+          request_snapshot, next_retry_at, max_attempts
         ) values (
           ${run.id}::uuid, ${imageTarget.type}, ${imageTarget.type === "item" ? imageTarget.itemKey : null},
           ${imageTarget.type === "item" ? targetItem?.id || null : null}::uuid,
           ${imageTarget.type === "item" ? targetField?.fieldKey || imageTarget.itemKey : null},
-          ${JSON.stringify(requestSnapshot)}::jsonb, now()
+          ${JSON.stringify(requestSnapshot)}::jsonb, now(),
+          ${Number(promptSnapshot.promptConfig.runtimeConfig?.maxAttempts || 3)}
         ) on conflict do nothing
       `;
       run = await transitionRun(sql, run.id, ["queued"], "generating_assets", {

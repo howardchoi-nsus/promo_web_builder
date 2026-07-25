@@ -788,6 +788,7 @@
                     <option value="final_design">최종 디자인</option>
                     <option value="section_layout_planner">섹션 레이아웃 계획</option>
                     <option value="multi_component_layout_planner">다중 컴포넌트 정렬 계획</option>
+                    <option value="section_composition_planner">섹션 자연어 구성 계획</option>
                     <option value="section_background_image">섹션 배경 이미지</option>
                     <option value="component_image">컴포넌트 이미지</option>
                   </select>
@@ -850,12 +851,13 @@
 
                 <label class="field">
                   <span>필수 변수</span>
-                  <input v-model="promptEditor.requiredVariablesText" type="text" autocomplete="off" />
+                  <input v-model="promptEditor.requiredVariablesText" type="text" readonly />
+                  <small>실행 코드가 공급하는 고정 계약입니다. 새 변수가 필요하면 서버 계약을 먼저 개발해야 합니다.</small>
                 </label>
 
                 <label class="field">
                   <span>선택 변수</span>
-                  <input v-model="promptEditor.optionalVariablesText" type="text" autocomplete="off" />
+                  <input v-model="promptEditor.optionalVariablesText" type="text" readonly />
                 </label>
 
                 <div class="form-grid compact">
@@ -864,7 +866,7 @@
                     <select v-model="promptEditor.provider">
                       <option value="">설정 안 함</option>
                       <option value="openai">OpenAI / GPT</option>
-                      <option value="google" :disabled="['integrated_brief', 'lofi_draft', 'section_layout_planner', 'multi_component_layout_planner'].includes(selectedPromptTemplate.type)">Google / Gemini</option>
+                      <option value="google" :disabled="['integrated_brief', 'lofi_draft', 'section_layout_planner', 'multi_component_layout_planner', 'section_composition_planner'].includes(selectedPromptTemplate.type)">Google / Gemini</option>
                     </select>
                   </label>
                   <label class="field">
@@ -889,18 +891,69 @@
                   <label class="field" v-if="promptSupportsImageSize(selectedPromptTemplate)">
                     <span>{{ t('admin.prompt.imageSize') }}</span>
                     <select v-model="promptEditor.imageSize">
-                      <option value="1K">1K · 1024px</option>
-                      <option value="2K">2K · 2048px</option>
-                      <option value="4K">4K · 4096px</option>
+                      <option value="1K">1K · 기본 해상도</option>
+                      <option value="2K">2K · 고해상도</option>
+                      <option value="4K">4K · 초고해상도</option>
                     </select>
                     <small>{{ t('admin.prompt.imageSizeHelp') }}</small>
                   </label>
                 </div>
 
                 <label class="field">
-                  <span>모델 상세 옵션(JSON)</span>
+                  <span>Provider 상세 옵션(JSON)</span>
                   <textarea v-model="promptEditor.modelOptionsText" rows="5" spellcheck="false"></textarea>
                 </label>
+
+                <div class="subsection" v-if="promptUsesSectionAiControlPlane(selectedPromptTemplate)">
+                  <div class="subsection-title">
+                    <h3>실행 Harness</h3>
+                    <span>이 Prompt Version과 함께 검증·활성화됩니다.</span>
+                  </div>
+                  <div class="form-grid compact">
+                    <label class="field">
+                      <span>실행 Snapshot 버전</span>
+                      <input v-model="promptEditor.executionSnapshotVersion" type="number" min="2" step="1" />
+                    </label>
+                    <label class="field">
+                      <span>제한 시간(ms)</span>
+                      <input v-model="promptEditor.timeoutMs" type="number" min="1000" :max="['section_background_image', 'component_image'].includes(selectedPromptTemplate.type) ? 240000 : 90000" step="1000" />
+                    </label>
+                    <label class="field">
+                      <span>최대 시도 횟수</span>
+                      <input v-model="promptEditor.maxAttempts" type="number" min="1" max="5" step="1" />
+                    </label>
+                    <label class="field">
+                      <span>재시도 기본 대기(ms)</span>
+                      <input v-model="promptEditor.retryBaseMs" type="number" min="0" max="300000" step="1000" />
+                    </label>
+                    <label class="field">
+                      <span>재시도 최대 대기(ms)</span>
+                      <input v-model="promptEditor.retryMaxMs" type="number" min="0" max="300000" step="1000" />
+                    </label>
+                    <label class="field" v-if="['section_background_image', 'component_image'].includes(selectedPromptTemplate.type)">
+                      <span>출력 이미지 형식</span>
+                      <select v-model="promptEditor.outputMimeType">
+                        <option value="image/jpeg">JPEG</option>
+                        <option value="image/png">PNG</option>
+                        <option value="image/webp">WebP</option>
+                      </select>
+                    </label>
+                  </div>
+                  <label class="field">
+                    <span>Harness 지침(JSON)</span>
+                    <textarea v-model="promptEditor.harnessConfigText" rows="12" spellcheck="false"></textarea>
+                    <small>안전 영역, 전체 배경, 금지 요소 등 Prompt 뒤에 조립되는 운영 지침입니다.</small>
+                  </label>
+                  <label class="field">
+                    <span>모델 Capability Snapshot(JSON)</span>
+                    <textarea v-model="promptEditor.modelCapabilitySnapshotText" rows="7" spellcheck="false"></textarea>
+                  </label>
+                  <label class="field">
+                    <span>서버 안전 계약(JSON)</span>
+                    <textarea v-model="promptEditor.safetyContractText" rows="4" spellcheck="false"></textarea>
+                    <small>안전 계약의 구현은 서버에 남고, 여기서는 적용할 계약 Key와 Version만 선택합니다.</small>
+                  </label>
+                </div>
 
                 <div class="empty-state compact" v-if="['integrated_brief', 'lofi_draft'].includes(selectedPromptTemplate.type)">
                   현재 {{ promptTypeLabel(selectedPromptTemplate.type) }} Worker는 OpenAI만 지원합니다. 저장한 프롬프트·모델·옵션은 새로 Queue되는 작업의 실행 snapshot에 고정되며, 이미 대기 또는 실행 중인 작업에는 영향을 주지 않습니다.
@@ -911,7 +964,7 @@
                 <div class="empty-state compact" v-else-if="selectedPromptTemplate.type === 'image_execution'">
                   이미지 생성 설정은 image_execution 타입을 호출하는 별도 Workflow에만 적용됩니다. LO-FI와 최종 디자인은 각각 전용 설정을 사용합니다.
                 </div>
-                <div class="empty-state compact" v-else-if="['section_layout_planner', 'multi_component_layout_planner'].includes(selectedPromptTemplate.type)">
+                <div class="empty-state compact" v-else-if="['section_layout_planner', 'multi_component_layout_planner', 'section_composition_planner'].includes(selectedPromptTemplate.type)">
                   섹션 레이아웃 계획은 OpenAI JSON 응답 모델만 지원합니다. 모델은 허용된 명령만 선택하며 실제 좌표는 결정론적 엔진이 계산합니다.
                 </div>
                 <div class="empty-state compact" v-else-if="['section_background_image', 'component_image'].includes(selectedPromptTemplate.type)">

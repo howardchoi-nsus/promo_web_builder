@@ -42,6 +42,7 @@ module.exports = async function handler(req, res) {
       provider: request.promptConfig?.provider,
       model: request.promptConfig?.model,
       modelOptions: request.promptConfig?.modelOptions,
+      promptConfig: request.promptConfig,
     });
     if (image.bytes.length < 1024) throw Object.assign(new Error("Generated image is too small"), { code: "IMAGE_VALIDATION_FAILED" });
     const extension = image.mimeType === "image/jpeg" ? "jpg" : image.mimeType === "image/webp" ? "webp" : "png";
@@ -82,15 +83,21 @@ module.exports = async function handler(req, res) {
     }
     return res.status(200).json({ ok: true, asset: result, run: updatedRun });
   } catch (error) {
-    if (job) await sql`
+    if (job) {
+      const runtime = job.request_snapshot?.promptConfig?.runtimeConfig || {};
+      const retryBaseMs = Math.max(0, Number(runtime.retryBaseMs || 15000));
+      const retryMaxMs = Math.max(retryBaseMs, Number(runtime.retryMaxMs || 75000));
+      const retryDelayMs = Math.min(retryMaxMs, retryBaseMs * Math.max(1, Number(job.current_attempt || 1)));
+      await sql`
       update promo_section_design_asset_jobs set status = 'failed', error_code = ${error.code || "SECTION_ASSET_FAILED"},
         error_message = ${error.message}, failure_stage = 'provider',
         lease_token = null, lease_expires_at = null, heartbeat_at = now(),
         next_retry_at = case when current_attempt < max_attempts
-          then now() + least(current_attempt, 5) * interval '15 seconds' else null end,
+          then now() + ${retryDelayMs} * interval '1 millisecond' else null end,
         completed_at = now(), updated_at = now()
       where id = ${jobId}::uuid and status = 'processing' and lease_token = ${leaseToken}::uuid
-    `.catch(() => null);
+      `.catch(() => null);
+    }
     return res.status(error.statusCode >= 400 && error.statusCode < 500 ? error.statusCode : 502).json({ error: "Section design asset generation failed", message: error.message });
   }
 };

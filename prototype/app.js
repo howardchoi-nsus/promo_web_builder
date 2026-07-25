@@ -1296,6 +1296,15 @@ const adminApp = createApp({
         maxTokens: "",
         responseFormat: "",
         imageSize: "2K",
+        executionSnapshotVersion: 2,
+        timeoutMs: "",
+        maxAttempts: "",
+        retryBaseMs: "",
+        retryMaxMs: "",
+        outputMimeType: "",
+        harnessConfigText: "{}",
+        modelCapabilitySnapshotText: "{}",
+        safetyContractText: "{}",
         modelOptionsText: "{}",
         changeNote: "",
       },
@@ -2489,6 +2498,16 @@ const adminApp = createApp({
         const index = this.promptTemplates.findIndex((item) => item.id === id);
         if (index >= 0) this.promptTemplates.splice(index, 1, detail);
         this.promptHistories = Array.isArray(result.histories) ? result.histories : [];
+        const reservedModelOptionKeys = new Set([
+          "executionSnapshotVersion",
+          "harnessConfig",
+          "runtimeConfig",
+          "modelCapabilitySnapshot",
+          "safetyContract",
+        ]);
+        const providerOptions = Object.fromEntries(
+          Object.entries(detail.modelOptions || {}).filter(([key]) => !reservedModelOptionKeys.has(key))
+        );
         this.promptEditor = {
           name: detail.name || "",
           body: detail.body || "",
@@ -2504,7 +2523,20 @@ const adminApp = createApp({
           ).toUpperCase())
             ? String(detail.modelOptions?.imageSize || detail.modelOptions?.image_size).toUpperCase()
             : "2K",
-          modelOptionsText: JSON.stringify(detail.modelOptions || {}, null, 2),
+          executionSnapshotVersion: Number(detail.executionSnapshotVersion || detail.modelOptions?.executionSnapshotVersion || 2),
+          timeoutMs: detail.runtimeConfig?.timeoutMs ?? detail.modelOptions?.runtimeConfig?.timeoutMs ?? "",
+          maxAttempts: detail.runtimeConfig?.maxAttempts ?? detail.modelOptions?.runtimeConfig?.maxAttempts ?? "",
+          retryBaseMs: detail.runtimeConfig?.retryBaseMs ?? detail.modelOptions?.runtimeConfig?.retryBaseMs ?? "",
+          retryMaxMs: detail.runtimeConfig?.retryMaxMs ?? detail.modelOptions?.runtimeConfig?.retryMaxMs ?? "",
+          outputMimeType: detail.runtimeConfig?.outputMimeType ?? detail.modelOptions?.runtimeConfig?.outputMimeType ?? "",
+          harnessConfigText: JSON.stringify(detail.harnessConfig || detail.modelOptions?.harnessConfig || {}, null, 2),
+          modelCapabilitySnapshotText: JSON.stringify(
+            detail.modelCapabilitySnapshot || detail.modelOptions?.modelCapabilitySnapshot || {},
+            null,
+            2
+          ),
+          safetyContractText: JSON.stringify(detail.safetyContract || detail.modelOptions?.safetyContract || {}, null, 2),
+          modelOptionsText: JSON.stringify(providerOptions, null, 2),
           changeNote: "",
         };
         if (!options.silent) this.setStatus(`${detail.name} 프롬프트를 열었습니다`);
@@ -2536,6 +2568,16 @@ const adminApp = createApp({
         && ["image_execution", "final_design", "section_background_image", "component_image"].includes(prompt?.type);
     },
 
+    promptUsesSectionAiControlPlane(prompt = this.selectedPromptTemplate) {
+      return [
+        "section_layout_planner",
+        "multi_component_layout_planner",
+        "section_composition_planner",
+        "section_background_image",
+        "component_image",
+      ].includes(prompt?.type);
+    },
+
     promptModelOptionsForSave(prompt) {
       const modelOptions = this.parseModelOptionsText(this.promptEditor.modelOptionsText);
       if (this.promptSupportsImageSize(prompt)) {
@@ -2543,6 +2585,24 @@ const adminApp = createApp({
           ? this.promptEditor.imageSize
           : "2K";
         delete modelOptions.image_size;
+      }
+      if (this.promptUsesSectionAiControlPlane(prompt)) {
+        modelOptions.executionSnapshotVersion = Number(this.promptEditor.executionSnapshotVersion || 2);
+        modelOptions.runtimeConfig = {
+          timeoutMs: Number(this.promptEditor.timeoutMs),
+          maxAttempts: Number(this.promptEditor.maxAttempts),
+          retryBaseMs: Number(this.promptEditor.retryBaseMs),
+          retryMaxMs: Number(this.promptEditor.retryMaxMs),
+          ...(this.promptEditor.outputMimeType
+            ? { outputMimeType: this.promptEditor.outputMimeType }
+            : {}),
+          ...(this.promptSupportsImageSize(prompt) ? { minimumImagePolicy: "requested-tier" } : {}),
+        };
+        modelOptions.harnessConfig = this.parseModelOptionsText(this.promptEditor.harnessConfigText);
+        modelOptions.modelCapabilitySnapshot = this.parseModelOptionsText(
+          this.promptEditor.modelCapabilitySnapshotText
+        );
+        modelOptions.safetyContract = this.parseModelOptionsText(this.promptEditor.safetyContractText);
       }
       return modelOptions;
     },
