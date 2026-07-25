@@ -524,7 +524,7 @@ var at = class {
 		if (t === "__v_isReactive") return !r;
 		if (t === "__v_isReadonly") return r;
 		if (t === "__v_isShallow") return i;
-		if (t === "__v_raw") return n === (r ? i ? H : xt : i ? V : bt).get(e) || Object.getPrototypeOf(e) === Object.getPrototypeOf(n) ? e : void 0;
+		if (t === "__v_raw") return n === (r ? i ? St : V : i ? xt : bt).get(e) || Object.getPrototypeOf(e) === Object.getPrototypeOf(n) ? e : void 0;
 		let a = d(e);
 		if (!r) {
 			let e;
@@ -657,8 +657,8 @@ function gt(e, t) {
 	let n = ht(e, t);
 	return (t, r, i) => r === "__v_isReactive" ? !e : r === "__v_isReadonly" ? e : r === "__v_raw" ? t : Reflect.get(u(n, r) && r in t ? n : t, r, i);
 }
-var _t = { get: /* @__PURE__ */ gt(!1, !1) }, vt = { get: /* @__PURE__ */ gt(!1, !0) }, yt = { get: /* @__PURE__ */ gt(!0, !1) }, bt = /* @__PURE__ */ new WeakMap(), V = /* @__PURE__ */ new WeakMap(), xt = /* @__PURE__ */ new WeakMap(), H = /* @__PURE__ */ new WeakMap();
-function St(e) {
+var _t = { get: /* @__PURE__ */ gt(!1, !1) }, vt = { get: /* @__PURE__ */ gt(!1, !0) }, yt = { get: /* @__PURE__ */ gt(!0, !1) }, bt = /* @__PURE__ */ new WeakMap(), xt = /* @__PURE__ */ new WeakMap(), V = /* @__PURE__ */ new WeakMap(), St = /* @__PURE__ */ new WeakMap();
+function H(e) {
 	switch (e) {
 		case "Object":
 		case "Array": return 1;
@@ -675,17 +675,17 @@ function Ct(e) {
 }
 // @__NO_SIDE_EFFECTS__
 function wt(e) {
-	return Et(e, !1, ut, vt, V);
+	return Et(e, !1, ut, vt, xt);
 }
 // @__NO_SIDE_EFFECTS__
 function Tt(e) {
-	return Et(e, !0, lt, yt, xt);
+	return Et(e, !0, lt, yt, V);
 }
 function Et(e, t, n, r, i) {
 	if (!v(e) || e.__v_raw && !(t && e.__v_isReactive) || e.__v_skip || !Object.isExtensible(e)) return e;
 	let a = i.get(e);
 	if (a) return a;
-	let o = St(S(e));
+	let o = H(S(e));
 	if (o === 0) return e;
 	let s = new Proxy(e, o === 2 ? r : n);
 	return i.set(e, s), s;
@@ -5203,7 +5203,7 @@ var Ps = { class: "preview-controls" }, Fs = {
 			content: {}
 		}), fe = ys(), pe = Ss(), me = Cs({ storageKey: fo }), he = !1, ge = 0, _e = null, ve = new URLSearchParams(window.location.search).get("source") || "", F = Q(() => ts(t.mode, ve)), ye = Q(() => F.value.capabilities), be = Q(() => F.value.isAdminLayout), I = Q(() => F.value.isWizardLayout), xe = Q(() => F.value.isCreatePromo), Se = Q(() => F.value.isBuilderWorkspace), Ce = Q(() => F.value.capabilities.isEmbedded), we = window.PromoShell?.navItems || [], L = Q(() => s.value.find((e) => e.sectionKey === u.value) || s.value[0]), R = Q(() => L.value?.items?.find((e) => e.itemKey === d.value) || null), Te = Q({
 			get: () => c.value?.[L.value?.sectionKey]?.[R.value?.itemKey],
-			set: (e) => Ze(e)
+			set: (e) => Qe(e)
 		}), Ee = Q(() => a.value ? bo({
 			template: a.value,
 			configRevision: o.value,
@@ -5379,22 +5379,30 @@ var Ps = { class: "preview-controls" }, Fs = {
 			let e = A.value.at(-1);
 			e && (Ne(), j.value = e.revision, A.value = A.value.slice(0, -1), k.value = null, O.value = "");
 		}
-		function qe() {
+		function qe(e) {
+			return {
+				sectionStyle: l.value.sectionStyles?.[e] || {},
+				itemStyles: Object.fromEntries(Object.entries(l.value.itemStyles || {}).filter(([t]) => t === e || t.startsWith(`${e}.`)))
+			};
+		}
+		function Je() {
+			let e = L.value?.sectionKey;
 			return {
 				formTemplateId: a.value?.id,
-				sectionKey: L.value?.sectionKey,
+				sectionKey: e,
 				instruction: ne.value,
-				sectionInputs: c.value?.[L.value?.sectionKey] || {},
+				sectionInputs: c.value?.[e] || {},
+				currentLayout: qe(e),
 				generateBackgroundImage: M.value,
 				imageGuidance: re.value,
 				fadeMode: ie.value
 			};
 		}
-		async function Je() {
+		async function Ye() {
 			if (!(!L.value || ne.value.trim().length < 3 || ae.value)) {
 				ae.value = !0, ce.value = "", le.value = null;
 				try {
-					let e = qe(), t = await fetch("/api/promo-section-composition-plan", {
+					let e = Je(), t = await fetch("/api/promo-section-composition-plan", {
 						method: "POST",
 						headers: { "Content-Type": "application/json" },
 						body: JSON.stringify(e)
@@ -5411,7 +5419,7 @@ var Ps = { class: "preview-controls" }, Fs = {
 				}
 			}
 		}
-		async function Ye() {
+		async function Xe() {
 			let e = le.value;
 			if (!(!e?.rawPlan || !L.value || se.value)) {
 				se.value = !0, ce.value = "";
@@ -5422,8 +5430,10 @@ var Ps = { class: "preview-controls" }, Fs = {
 						body: JSON.stringify({
 							...e.requestPayload,
 							sectionInputs: c.value?.[e.requestPayload.sectionKey] || {},
+							currentLayout: qe(e.requestPayload.sectionKey),
 							fingerprint: e.fingerprint,
 							inputFingerprint: e.inputFingerprint,
+							layoutFingerprint: e.layoutFingerprint,
 							rawPlan: e.rawPlan
 						})
 					}), n = await t.json().catch(() => ({}));
@@ -5458,7 +5468,7 @@ var Ps = { class: "preview-controls" }, Fs = {
 					}, {
 						source: "ai",
 						label: "AI 섹션 구성 적용"
-					}), le.value = null, await an(), r.backgroundImage?.requested && gt(L.value, "generate", "", "section-background", "", r.backgroundImage.guidance, r.backgroundImage.safeArea);
+					}), le.value = null, await an(), r.backgroundImage?.requested && _t(L.value, "generate", "", "section-background", "", r.backgroundImage.guidance, r.backgroundImage.safeArea);
 				} catch (e) {
 					ce.value = e.message;
 				} finally {
@@ -5466,35 +5476,35 @@ var Ps = { class: "preview-controls" }, Fs = {
 				}
 			}
 		}
-		function Xe(e, t) {
+		function Ze(e, t) {
 			let n = Ie(e, t);
 			Fe(e, t, { preserveMulti: f.value.includes(t.itemKey) }), p.value = p.value === n ? "" : n;
 		}
-		function Ze(e) {
+		function Qe(e) {
 			!L.value || !R.value || z($.CONTENT_VALUE_SET, {
 				sectionKey: L.value.sectionKey,
 				itemKey: R.value.itemKey,
 				value: e
 			}, { label: "콘텐츠 변경" });
 		}
-		function Qe(e, t) {
-			Ze({
+		function $e(e, t) {
+			Qe({
 				...Te.value || {},
 				[e]: t
 			});
 		}
-		function $e(e) {
+		function et(e) {
 			let t = Array.isArray(e?.fields) ? e.fields : [];
 			return t.length ? t : [e];
 		}
-		function et(e, t) {
+		function tt(e, t) {
 			let n = c.value?.[L.value?.sectionKey]?.[e?.itemKey];
-			return $e(e).length <= 1 ? n : n?.fields?.[t.fieldKey];
+			return et(e).length <= 1 ? n : n?.fields?.[t.fieldKey];
 		}
-		function tt(e, t, n) {
+		function nt(e, t, n) {
 			if (!L.value || !e || !t || e.isLocked || t.isLocked) return;
-			if ($e(e).length <= 1) {
-				Ze(n);
+			if (et(e).length <= 1) {
+				Qe(n);
 				return;
 			}
 			let r = L.value.sectionKey, i = c.value?.[r]?.[e.itemKey] || {};
@@ -5510,19 +5520,19 @@ var Ps = { class: "preview-controls" }, Fs = {
 				}
 			}, { label: `${t.name || t.fieldKey} 콘텐츠 변경` });
 		}
-		function nt(e, t, n, r) {
-			tt(e, t, {
-				...et(e, t) || {},
+		function rt(e, t, n, r) {
+			nt(e, t, {
+				...tt(e, t) || {},
 				[n]: r
 			});
 		}
-		function rt(e, t, n) {
-			Fe(e, t), !(t.fieldKind !== "text" || t.isLocked) && Ze(n);
+		function it(e, t, n) {
+			Fe(e, t), !(t.fieldKind !== "text" || t.isLocked) && Qe(n);
 		}
-		function it(e, t) {
+		function at(e, t) {
 			let n = c.value?.[e.sectionKey]?.[t.itemKey];
-			if ($e(t).length > 1) {
-				let e = $e(t), r = e.filter((e) => e.isRequired || e.isLocked), i = (r.length ? r : e).map((e) => {
+			if (et(t).length > 1) {
+				let e = et(t), r = e.filter((e) => e.isRequired || e.isLocked), i = (r.length ? r : e).map((e) => {
 					let t = n?.fields?.[e.fieldKey];
 					return e.fieldKind === "cta" ? !!(String(t?.label || "").trim() && String(t?.link || "").trim()) : e.fieldKind === "image" ? !!String(t?.value || "").trim() : !!String(t || "").trim();
 				});
@@ -5530,21 +5540,21 @@ var Ps = { class: "preview-controls" }, Fs = {
 			}
 			return t.fieldKind === "cta" ? !!(String(n?.label || "").trim() && String(n?.link || "").trim()) : t.fieldKind === "image" ? !!String(n?.value || "").trim() : !!String(n || "").trim();
 		}
-		function at(e) {
+		function ot(e) {
 			let t = e.items || [], n = t.filter((e) => e.isRequired || e.isLocked);
-			return n.length ? n.every((t) => it(e, t)) : t.some((t) => it(e, t));
+			return n.length ? n.every((t) => at(e, t)) : t.some((t) => at(e, t));
 		}
-		function ot() {
+		function st() {
 			!xe.value || E.value || (E.value = !0, ee.value = "", pe.requestAutoRegister(c.value));
 		}
-		function st(e) {
+		function ct(e) {
 			return D.value?.[e.sectionKey] || null;
 		}
-		function ct(e) {
-			let t = st(e);
+		function lt(e) {
+			let t = ct(e);
 			return t?.sourceInputs ? JSON.stringify(t.sourceInputs) !== JSON.stringify(c.value?.[e.sectionKey] || {}) : !1;
 		}
-		function lt(e) {
+		function ut(e) {
 			return [
 				"queued",
 				"analyzing_content",
@@ -5553,14 +5563,14 @@ var Ps = { class: "preview-controls" }, Fs = {
 				"generating_assets",
 				"validating_assets",
 				"applying"
-			].includes(st(e)?.status);
+			].includes(ct(e)?.status);
 		}
-		function ut(e) {
+		function dt(e) {
 			let t = c.value?.[e.sectionKey] || {};
 			return (e.items || []).some((e) => {
 				if (e.isVisibleInWizard === !1) return !1;
 				let n = t[e.itemKey];
-				if ($e(e).length > 1) return $e(e).some((e) => {
+				if (et(e).length > 1) return et(e).some((e) => {
 					if (e.fieldKind === "image") return !1;
 					let t = n?.fields?.[e.fieldKey], r = e.fieldKind === "cta" ? t?.label : t;
 					return String(r || "").trim().length >= 2;
@@ -5570,58 +5580,58 @@ var Ps = { class: "preview-controls" }, Fs = {
 				return String(r || "").trim().length >= 2;
 			});
 		}
-		function dt(e) {
-			let t = st(e), n = t?.constraintsSnapshot?.imageTarget?.type === "section-background";
-			return lt(e) ? {
+		function ft(e) {
+			let t = ct(e), n = t?.constraintsSnapshot?.imageTarget?.type === "section-background";
+			return ut(e) ? {
 				action: "generate",
 				label: "AI 생성 중",
 				disabled: !0
-			} : n && t?.status === "ready" && !ct(e) ? {
+			} : n && t?.status === "ready" && !lt(e) ? {
 				action: "generate",
 				label: "AI 적용 중",
 				disabled: !0
 			} : n && t?.status === "applied" ? {
 				action: "generate",
 				label: "AI 재생성",
-				disabled: !ut(e)
+				disabled: !dt(e)
 			} : {
 				action: "generate",
 				label: "AI 디자인",
-				disabled: !ut(e)
+				disabled: !dt(e)
 			};
 		}
-		function ft(e) {
+		function pt(e) {
 			return Array.isArray(e?.aiDesign?.imageTargetItemKeys) ? e.aiDesign.imageTargetItemKeys : [];
 		}
-		function pt(e, t, n = null) {
+		function mt(e, t, n = null) {
 			let r = n || t;
-			return !!(e?.aiDesign?.enabled !== !1 && r?.fieldKind === "image" && t?.isVisibleInWizard !== !1 && !t?.isLocked && !r?.isLocked && r?.image?.allowedSources?.includes("ai") && ft(e).includes(t.itemKey));
+			return !!(e?.aiDesign?.enabled !== !1 && r?.fieldKind === "image" && t?.isVisibleInWizard !== !1 && !t?.isLocked && !r?.isLocked && r?.image?.allowedSources?.includes("ai") && pt(e).includes(t.itemKey));
 		}
-		function mt(e) {
-			let t = st(e)?.constraintsSnapshot?.imageTarget;
+		function ht(e) {
+			let t = ct(e)?.constraintsSnapshot?.imageTarget;
 			return t?.type === "item" ? t.itemKey : "";
 		}
-		function ht(e, t, n = null) {
-			let r = st(e), i = r?.constraintsSnapshot?.imageTarget, a = mt(e) === t?.itemKey && (!n || i?.fieldKey === n.fieldKey);
-			return lt(e) ? {
+		function gt(e, t, n = null) {
+			let r = ct(e), i = r?.constraintsSnapshot?.imageTarget, a = ht(e) === t?.itemKey && (!n || i?.fieldKey === n.fieldKey);
+			return ut(e) ? {
 				action: "generate",
 				label: "AI 이미지 생성 중",
 				disabled: !0
-			} : a && r?.status === "ready" && !ct(e) ? {
+			} : a && r?.status === "ready" && !lt(e) ? {
 				action: "generate",
 				label: "AI 이미지 적용 중",
 				disabled: !0
 			} : a && r?.status === "applied" ? {
 				action: "generate",
 				label: "AI 이미지 재생성",
-				disabled: !ut(e)
+				disabled: !dt(e)
 			} : {
 				action: "generate",
 				label: "AI 이미지 생성",
-				disabled: !ut(e)
+				disabled: !dt(e)
 			};
 		}
-		function gt(e, t, n = "", r = "", i = "", a = "", o = "") {
+		function _t(e, t, n = "", r = "", i = "", a = "", o = "") {
 			let s = r || (n ? "item" : "section-background");
 			pe.requestSectionAiAction({
 				sectionKey: e.sectionKey,
@@ -5633,31 +5643,31 @@ var Ps = { class: "preview-controls" }, Fs = {
 				imageSafeArea: o
 			});
 		}
-		function _t(e) {
+		function vt(e) {
 			return !!l.value?.sectionStyles?.[e.sectionKey]?.backgroundImage;
 		}
-		function vt(e = null) {
+		function yt(e = null) {
 			!L.value || !R.value || R.value.isLocked || e?.isLocked || window.confirm(`${e?.name || R.value.name} 이미지를 삭제할까요?`) && pe.requestImageRemoval({
 				sectionKey: L.value.sectionKey,
 				itemKey: R.value.itemKey,
 				fieldKey: e?.fieldKey || null
 			});
 		}
-		function yt(e) {
+		function bt(e) {
 			z($.THEME_STYLE_PATCH, { patch: {
 				backgroundColor: e.value,
 				backgroundToken: e.key,
 				textColor: e.textColor
 			} }, { label: "배경 토큰 변경" });
 		}
-		let bt = Q(() => L.value && R.value ? `${L.value.sectionKey}.${R.value.itemKey}` : ""), V = Q(() => l.value.itemStyles?.[bt.value] || {}), xt = Q(() => L.value && l.value.sectionStyles?.[L.value.sectionKey] || {});
+		let xt = Q(() => L.value && R.value ? `${L.value.sectionKey}.${R.value.itemKey}` : ""), V = Q(() => l.value.itemStyles?.[xt.value] || {}), St = Q(() => L.value && l.value.sectionStyles?.[L.value.sectionKey] || {});
 		function H(e) {
-			!bt.value || R.value?.isLocked || z($.ITEM_STYLE_PATCH, {
-				styleKey: bt.value,
+			!xt.value || R.value?.isLocked || z($.ITEM_STYLE_PATCH, {
+				styleKey: xt.value,
 				patch: e
 			}, { label: "컴포넌트 스타일 변경" });
 		}
-		function St(e, t, n) {
+		function Ct(e, t, n) {
 			if (!e || !t || t.isLocked) return;
 			let r = `${e.sectionKey}.${t.itemKey}`;
 			z($.ITEM_STYLE_PATCH, {
@@ -5668,42 +5678,42 @@ var Ps = { class: "preview-controls" }, Fs = {
 				label: "컴포넌트 위치·크기 변경"
 			});
 		}
-		function Ct() {
-			!bt.value || R.value?.isLocked || z($.ITEM_STYLE_REMOVE, { styleKey: bt.value }, { label: "컴포넌트 스타일 초기화" });
-		}
 		function wt() {
-			if (!bt.value || R.value?.isLocked) return;
-			let e = Co(l.value.itemStyles?.[bt.value]);
-			Object.keys(e).length ? z($.ITEM_STYLE_REPLACE, {
-				styleKey: bt.value,
-				style: e
-			}, { label: "자동 위치 복원" }) : z($.ITEM_STYLE_REMOVE, { styleKey: bt.value }, { label: "자동 위치 복원" });
+			!xt.value || R.value?.isLocked || z($.ITEM_STYLE_REMOVE, { styleKey: xt.value }, { label: "컴포넌트 스타일 초기화" });
 		}
-		function Tt(e, t) {
+		function Tt() {
+			if (!xt.value || R.value?.isLocked) return;
+			let e = Co(l.value.itemStyles?.[xt.value]);
+			Object.keys(e).length ? z($.ITEM_STYLE_REPLACE, {
+				styleKey: xt.value,
+				style: e
+			}, { label: "자동 위치 복원" }) : z($.ITEM_STYLE_REMOVE, { styleKey: xt.value }, { label: "자동 위치 복원" });
+		}
+		function Et(e, t) {
 			e && z($.SECTION_STYLE_PATCH, {
 				sectionKey: e,
 				patch: t
 			}, { label: "섹션 스타일 변경" });
 		}
-		function Et(e) {
+		function Dt(e) {
 			!L.value || ![
 				"left",
 				"center",
 				"right"
-			].includes(e) || Tt(L.value.sectionKey, { backgroundPosition: `${e} center` });
+			].includes(e) || Et(L.value.sectionKey, { backgroundPosition: `${e} center` });
 		}
-		function Dt(e) {
+		function Ot(e) {
 			!L.value || ![
 				"none",
 				"left",
 				"right",
 				"both"
-			].includes(e) || Tt(L.value.sectionKey, {
+			].includes(e) || Et(L.value.sectionKey, {
 				backgroundFadeMode: e,
-				backgroundFadeStrength: xt.value.backgroundFadeStrength || "medium"
+				backgroundFadeStrength: St.value.backgroundFadeStrength || "medium"
 			});
 		}
-		function Ot(e) {
+		function kt(e) {
 			[
 				"square",
 				"rounded",
@@ -5715,15 +5725,15 @@ var Ps = { class: "preview-controls" }, Fs = {
 				heightPx: void 0
 			} : { shape: e });
 		}
-		function kt(e) {
-			if (!bt.value || R.value?.isLocked || !["locked", "free"].includes(e)) return;
+		function At(e) {
+			if (!xt.value || R.value?.isLocked || !["locked", "free"].includes(e)) return;
 			let t = { ...V.value };
 			e === "locked" || t.shape === "circle" ? (t.aspectRatioLocked = !0, t.aspectRatio = t.shape === "circle" ? "1/1" : t.aspectRatio || R.value?.image?.aspectRatio || "1/1", delete t.heightPx) : (t.aspectRatioLocked = !1, t.heightPx = Number(t.heightPx || 240)), z($.ITEM_STYLE_REPLACE, {
-				styleKey: bt.value,
+				styleKey: xt.value,
 				style: t
 			}, { label: "이미지 크기 조절 방식 변경" });
 		}
-		function At() {
+		function U() {
 			if (!L.value) return;
 			let e = L.value.sectionKey, t = { ...l.value.sectionStyles?.[e] || {} };
 			delete t.minHeight, Object.keys(t).length ? z($.SECTION_STYLE_REPLACE, {
@@ -5731,7 +5741,7 @@ var Ps = { class: "preview-controls" }, Fs = {
 				style: t
 			}, { label: "섹션 높이 초기화" }) : z($.SECTION_STYLE_REMOVE, { sectionKey: e }, { label: "섹션 높이 초기화" });
 		}
-		async function U() {
+		async function jt() {
 			try {
 				let e = await fetch("/api/wizard-form-templates-public"), t = await e.json();
 				if (!e.ok) throw Error(t.message || t.error || "템플릿 목록을 불러오지 못했습니다.");
@@ -5747,7 +5757,7 @@ var Ps = { class: "preview-controls" }, Fs = {
 				n.value = !1;
 			}
 		}
-		function jt() {
+		function Mt() {
 			if (!Ee.value) return;
 			_.value = "";
 			let e = me.save(Ee.value);
@@ -5757,7 +5767,7 @@ var Ps = { class: "preview-controls" }, Fs = {
 			}
 			me.open();
 		}
-		async function Mt() {
+		async function Nt() {
 			let e = new URLSearchParams(window.location.search).get("templateId");
 			if (!e) {
 				r.value = "templateId가 필요합니다.", n.value = !1;
@@ -5772,7 +5782,7 @@ var Ps = { class: "preview-controls" }, Fs = {
 				n.value = !1;
 			}
 		}
-		async function Nt({ activate: e = !1 } = {}) {
+		async function W({ activate: e = !1 } = {}) {
 			if (!a.value?.id || C.value) return;
 			w.value = "";
 			let t = os(l.value);
@@ -5813,7 +5823,7 @@ var Ps = { class: "preview-controls" }, Fs = {
 				C.value = !1;
 			}
 		}
-		async function W(e) {
+		async function Pt(e) {
 			if (!e?.content) return;
 			let t = Number(e.snapshotRevision || 0);
 			if (t && t < ge) return;
@@ -5827,7 +5837,7 @@ var Ps = { class: "preview-controls" }, Fs = {
 			let v = Ie(_, _?.items?.find((e) => e.itemKey === d.value));
 			p.value = s.value.some((e) => (e.items || []).some((t) => Ie(e, t) === h)) ? h : v, T.value = !0, je({ resetHistory: g }), n.value = !1, r.value = "", await an(), he = !1;
 		}
-		function Pt(e) {
+		function Ft(e) {
 			if (I.value) {
 				if (e?.type === bs.AUTO_REGISTER_RESULT) {
 					E.value = !1;
@@ -5835,7 +5845,7 @@ var Ps = { class: "preview-controls" }, Fs = {
 					ee.value = t ? `${t}개 항목을 자동 등록했습니다.` : "자동 등록할 빈 항목이 없습니다.";
 					return;
 				}
-				e?.type === bs.SNAPSHOT && W(e.snapshot);
+				e?.type === bs.SNAPSHOT && Pt(e.snapshot);
 			}
 		}
 		wn([l, c], () => {
@@ -5845,7 +5855,7 @@ var Ps = { class: "preview-controls" }, Fs = {
 				sectionInputs: c.value
 			});
 		}, { deep: !0 });
-		function Ft() {
+		function Lt() {
 			try {
 				v.value = me.load();
 			} catch (e) {
@@ -5853,7 +5863,7 @@ var Ps = { class: "preview-controls" }, Fs = {
 			}
 		}
 		return Kn(() => {
-			Ce.value && (document.documentElement.classList.add("layout-editor-document"), document.body.classList.add("layout-editor-document")), xe.value && (document.documentElement.classList.add("create-promo-editor-document"), document.body.classList.add("create-promo-editor-document")), window.PromoShell?.init(document), t.mode === "output" ? Ft() : be.value ? Mt() : I.value ? (n.value = !0, _e = pe.connect(Pt), pe.notifyReady()) : U();
+			Ce.value && (document.documentElement.classList.add("layout-editor-document"), document.body.classList.add("layout-editor-document")), xe.value && (document.documentElement.classList.add("create-promo-editor-document"), document.body.classList.add("create-promo-editor-document")), window.PromoShell?.init(document), t.mode === "output" ? Lt() : be.value ? Nt() : I.value ? (n.value = !0, _e = pe.connect(Ft), pe.notifyReady()) : jt();
 		}), Yn(() => {
 			_e?.(), _e = null, document.documentElement.classList.remove("layout-editor-document"), document.body.classList.remove("layout-editor-document"), document.documentElement.classList.remove("create-promo-editor-document"), document.body.classList.remove("create-promo-editor-document");
 		}), (t, i) => e.mode === "output" ? (J(), Y("div", il, [X("header", al, [X("div", null, [i[38] ||= X("span", null, "WEB OUTPUT", -1), X("strong", null, P(De.value?.content?.formTemplate?.name || "Visual Editor"), 1)]), i[39] ||= X("a", { href: "/prototype/visual-editor.html" }, "Visual Editor로 돌아가기", -1)]), r.value ? (J(), Y("div", ol, P(r.value), 1)) : De.value ? (J(), Ei(es, {
@@ -5937,7 +5947,7 @@ var Ps = { class: "preview-controls" }, Fs = {
 					class: N({ active: l.value.theme.backgroundColor === e.value }),
 					title: `${e.name} ${e.value}`,
 					"aria-label": `${e.name} ${e.value}`,
-					onClick: (t) => yt(e)
+					onClick: (t) => bt(e)
 				}, [X("i", { style: oe({ backgroundColor: e.value }) }, null, 4)], 10, Sl))), 128))])])), be.value ? (J(), Y("nav", Cl, [vn(X("input", {
 					"onUpdate:modelValue": i[0] ||= (e) => S.value = e,
 					type: "text",
@@ -5946,7 +5956,7 @@ var Ps = { class: "preview-controls" }, Fs = {
 				}, null, 512), [[eo, S.value]]), X("button", {
 					type: "button",
 					disabled: !Ee.value || C.value,
-					onClick: Nt
+					onClick: W
 				}, P(C.value ? "저장 중" : "기본 레이아웃 저장"), 9, wl)])) : Z("", !0)])])),
 				n.value ? (J(), Y("div", Tl, "기본 Form Template을 불러오는 중입니다.")) : r.value ? (J(), Y("div", El, P(r.value), 1)) : Z("", !0),
 				_.value ? (J(), Y("div", Dl, P(_.value), 1)) : Z("", !0),
@@ -5962,18 +5972,18 @@ var Ps = { class: "preview-controls" }, Fs = {
 					ji(Ec, {
 						sections: s.value,
 						"selected-section": L.value,
-						"selected-section-style": xt.value,
+						"selected-section-style": St.value,
 						capabilities: ye.value,
-						"section-content-registered": at,
-						"section-ai-primary-action": dt,
-						"section-has-ai-background": _t,
-						"section-ai-is-processing": lt,
+						"section-content-registered": ot,
+						"section-ai-primary-action": ft,
+						"section-has-ai-background": vt,
+						"section-ai-is-processing": ut,
 						onSelectSection: ze,
-						onSectionAiAction: i[1] ||= (e, t, n, r) => gt(e, t, n, r),
-						onBackgroundAlignment: Et,
-						onBackgroundFade: Dt,
-						onUpdateSectionStyle: Tt,
-						onResetSectionHeight: At
+						onSectionAiAction: i[1] ||= (e, t, n, r) => _t(e, t, n, r),
+						onBackgroundAlignment: Dt,
+						onBackgroundFade: Ot,
+						onUpdateSectionStyle: Et,
+						onResetSectionHeight: U
 					}, null, 8, [
 						"sections",
 						"selected-section",
@@ -5998,23 +6008,23 @@ var Ps = { class: "preview-controls" }, Fs = {
 						"layout-saving": C.value,
 						"editor-snapshot": Ee.value,
 						template: a.value,
-						"selected-style-key": bt.value,
+						"selected-style-key": xt.value,
 						"selected-item-keys": f.value,
 						"selected-section": L.value,
 						"onUpdate:guidesVisible": i[2] ||= (e) => g.value = e,
 						"onUpdate:viewport": i[3] ||= (e) => h.value = e,
 						"onUpdate:layoutChangeNote": i[4] ||= (e) => S.value = e,
-						onRequestAutoRegister: ot,
+						onRequestAutoRegister: st,
 						onUndo: Ne,
 						onRedo: Pe,
-						onUpdateBackgroundToken: yt,
-						onSaveAdminLayout: i[5] ||= (e) => Nt({ activate: e }),
-						onOpenOutput: jt,
+						onUpdateBackgroundToken: bt,
+						onSaveAdminLayout: i[5] ||= (e) => W({ activate: e }),
+						onOpenOutput: Mt,
 						onSelectItem: Le,
 						onUpdateItemStyle: H,
-						onUpdateRendererItemStyle: St,
-						onUpdateItemContent: rt,
-						onUpdateSectionStyle: Tt
+						onUpdateRendererItemStyle: Ct,
+						onUpdateItemContent: it,
+						onUpdateSectionStyle: Et
 					}, null, 8, [
 						"renderer-snapshot",
 						"section-design-runs",
@@ -6050,8 +6060,8 @@ var Ps = { class: "preview-controls" }, Fs = {
 							"onUpdate:generateBackgroundImage": i[7] ||= (e) => M.value = e,
 							"onUpdate:imageGuidance": i[8] ||= (e) => re.value = e,
 							"onUpdate:fadeMode": i[9] ||= (e) => ie.value = e,
-							onRequestPlan: Je,
-							onApply: Ye,
+							onRequestPlan: Ye,
+							onApply: Xe,
 							onDismiss: i[10] ||= (e) => le.value = null
 						}, null, 8, [
 							"instruction",
@@ -6101,36 +6111,36 @@ var Ps = { class: "preview-controls" }, Fs = {
 							type: "button",
 							class: "component-property-trigger",
 							"aria-expanded": p.value === Ie(L.value, e),
-							onClick: (t) => Xe(L.value, e)
+							onClick: (t) => Ze(L.value, e)
 						}, [
 							X("span", null, P(e.name), 1),
 							X("small", null, P(e.fieldKind), 1),
 							i[45] ||= X("i", { "aria-hidden": "true" }, null, -1)
 						], 8, Nl)]), X("div", Pl, [X("div", null, [R.value && R.value.itemKey === e.itemKey ? (J(), Y("div", Fl, [
-							$e(R.value).length > 1 ? (J(), Y("div", Il, [(J(!0), Y(q, null, K($e(R.value), (e) => (J(), Y("section", {
+							et(R.value).length > 1 ? (J(), Y("div", Il, [(J(!0), Y(q, null, K(et(R.value), (e) => (J(), Y("section", {
 								key: e.fieldKey,
 								class: "component-field-property"
 							}, [X("header", null, [X("strong", null, P(e.name), 1), X("small", null, P(e.fieldKind) + " · " + P(e.fieldKey), 1)]), e.fieldKind === "cta" ? (J(), Y(q, { key: 0 }, [X("label", null, [i[46] ||= X("span", null, "버튼 텍스트", -1), X("input", {
 								disabled: R.value.isLocked || e.isLocked,
-								value: et(R.value, e)?.label,
-								onInput: (t) => nt(R.value, e, "label", t.target.value)
+								value: tt(R.value, e)?.label,
+								onInput: (t) => rt(R.value, e, "label", t.target.value)
 							}, null, 40, Ll)]), X("label", null, [i[47] ||= X("span", null, "버튼 URL", -1), X("input", {
 								disabled: R.value.isLocked || e.isLocked,
 								type: "url",
-								value: et(R.value, e)?.link,
-								onInput: (t) => nt(R.value, e, "link", t.target.value)
+								value: tt(R.value, e)?.link,
+								onInput: (t) => rt(R.value, e, "link", t.target.value)
 							}, null, 40, Rl)])], 64)) : e.fieldKind === "image" ? (J(), Y(q, { key: 1 }, [
-								ye.value.canRunComponentImageAi && pt(L.value, R.value, e) ? (J(), Y("button", {
+								ye.value.canRunComponentImageAi && mt(L.value, R.value, e) ? (J(), Y("button", {
 									key: 0,
 									type: "button",
 									class: "section-ai-action item-ai-generation-action",
-									disabled: ht(L.value, R.value, e).disabled,
-									onClick: (t) => gt(L.value, "generate", R.value.itemKey, "item", e.fieldKey)
-								}, P(ht(L.value, R.value, e).label), 9, zl)) : Z("", !0),
+									disabled: gt(L.value, R.value, e).disabled,
+									onClick: (t) => _t(L.value, "generate", R.value.itemKey, "item", e.fieldKey)
+								}, P(gt(L.value, R.value, e).label), 9, zl)) : Z("", !0),
 								X("label", null, [i[48] ||= X("span", null, "이미지 입력 방식", -1), X("select", {
 									disabled: R.value.isLocked || e.isLocked,
-									value: et(R.value, e)?.source,
-									onChange: (t) => nt(R.value, e, "source", t.target.value)
+									value: tt(R.value, e)?.source,
+									onChange: (t) => rt(R.value, e, "source", t.target.value)
 								}, [(J(!0), Y(q, null, K(e.image?.allowedSources || ["url"], (e) => (J(), Y("option", {
 									key: e,
 									value: e
@@ -6138,50 +6148,50 @@ var Ps = { class: "preview-controls" }, Fs = {
 								X("label", null, [i[49] ||= X("span", null, "URL 또는 이미지 설명", -1), X("textarea", {
 									disabled: R.value.isLocked || e.isLocked,
 									rows: "4",
-									value: et(R.value, e)?.value,
-									onInput: (t) => nt(R.value, e, "value", t.target.value)
+									value: tt(R.value, e)?.value,
+									onInput: (t) => rt(R.value, e, "value", t.target.value)
 								}, null, 40, Hl)]),
 								e.image?.altTextRequired ? (J(), Y("label", Ul, [i[50] ||= X("span", null, "대체 텍스트", -1), X("input", {
 									disabled: R.value.isLocked || e.isLocked,
-									value: et(R.value, e)?.alt,
-									onInput: (t) => nt(R.value, e, "alt", t.target.value)
+									value: tt(R.value, e)?.alt,
+									onInput: (t) => rt(R.value, e, "alt", t.target.value)
 								}, null, 40, Wl)])) : Z("", !0),
-								!R.value.isLocked && !e.isLocked && et(R.value, e)?.value ? (J(), Y("button", {
+								!R.value.isLocked && !e.isLocked && tt(R.value, e)?.value ? (J(), Y("button", {
 									key: 2,
 									type: "button",
 									class: "image-remove-action",
-									onClick: (t) => vt(e)
+									onClick: (t) => yt(e)
 								}, "이미지 삭제", 8, Gl)) : Z("", !0)
 							], 64)) : (J(), Y("label", Kl, [X("span", null, P(e.textType === "multi" ? "설명 텍스트" : "텍스트"), 1), X("textarea", {
 								disabled: R.value.isLocked || e.isLocked,
 								rows: e.textType === "multi" ? 8 : 3,
-								value: et(R.value, e),
-								onInput: (t) => tt(R.value, e, t.target.value),
+								value: tt(R.value, e),
+								onInput: (t) => nt(R.value, e, t.target.value),
 								placeholder: "Enter 키로 줄바꿈할 수 있습니다."
 							}, null, 40, ql)]))]))), 128))])) : Z("", !0),
-							$e(R.value).length <= 1 && R.value.fieldKind === "cta" ? (J(), Y("label", Jl, [i[51] ||= X("span", null, "버튼 텍스트", -1), X("input", {
+							et(R.value).length <= 1 && R.value.fieldKind === "cta" ? (J(), Y("label", Jl, [i[51] ||= X("span", null, "버튼 텍스트", -1), X("input", {
 								disabled: R.value.isLocked,
 								value: Te.value?.label,
-								onInput: i[12] ||= (e) => Qe("label", e.target.value)
+								onInput: i[12] ||= (e) => $e("label", e.target.value)
 							}, null, 40, Yl)])) : Z("", !0),
-							$e(R.value).length <= 1 && R.value.fieldKind === "cta" ? (J(), Y("label", Xl, [i[52] ||= X("span", null, "버튼 URL", -1), X("input", {
+							et(R.value).length <= 1 && R.value.fieldKind === "cta" ? (J(), Y("label", Xl, [i[52] ||= X("span", null, "버튼 URL", -1), X("input", {
 								disabled: R.value.isLocked,
 								type: "url",
 								value: Te.value?.link,
-								onInput: i[13] ||= (e) => Qe("link", e.target.value)
-							}, null, 40, Zl)])) : $e(R.value).length <= 1 && R.value.fieldKind === "image" ? (J(), Y(q, { key: 3 }, [
-								ye.value.canRunComponentImageAi && pt(L.value, R.value) ? (J(), Y("button", {
+								onInput: i[13] ||= (e) => $e("link", e.target.value)
+							}, null, 40, Zl)])) : et(R.value).length <= 1 && R.value.fieldKind === "image" ? (J(), Y(q, { key: 3 }, [
+								ye.value.canRunComponentImageAi && mt(L.value, R.value) ? (J(), Y("button", {
 									key: 0,
 									type: "button",
 									class: "section-ai-action item-ai-generation-action",
-									disabled: ht(L.value, R.value).disabled,
-									title: ht(L.value, R.value).disabled && !lt(L.value) ? "섹션 콘텐츠를 먼저 등록해 주세요." : "",
-									onClick: i[14] ||= (e) => gt(L.value, ht(L.value, R.value).action, R.value.itemKey)
-								}, P(ht(L.value, R.value).label), 9, Ql)) : Z("", !0),
+									disabled: gt(L.value, R.value).disabled,
+									title: gt(L.value, R.value).disabled && !ut(L.value) ? "섹션 콘텐츠를 먼저 등록해 주세요." : "",
+									onClick: i[14] ||= (e) => _t(L.value, gt(L.value, R.value).action, R.value.itemKey)
+								}, P(gt(L.value, R.value).label), 9, Ql)) : Z("", !0),
 								X("label", null, [i[53] ||= X("span", null, "이미지 입력 방식", -1), X("select", {
 									disabled: R.value.isLocked,
 									value: Te.value?.source,
-									onChange: i[15] ||= (e) => Qe("source", e.target.value)
+									onChange: i[15] ||= (e) => $e("source", e.target.value)
 								}, [(J(!0), Y(q, null, K(R.value.image?.allowedSources || ["url"], (e) => (J(), Y("option", {
 									key: e,
 									value: e
@@ -6190,26 +6200,26 @@ var Ps = { class: "preview-controls" }, Fs = {
 									disabled: R.value.isLocked,
 									rows: "4",
 									value: Te.value?.value,
-									onInput: i[16] ||= (e) => Qe("value", e.target.value)
+									onInput: i[16] ||= (e) => $e("value", e.target.value)
 								}, null, 40, tu)]),
 								R.value.image?.descriptionEnabled ? (J(), Y("label", nu, [i[55] ||= X("span", null, "설명", -1), X("textarea", {
 									disabled: R.value.isLocked,
 									rows: "3",
 									value: Te.value?.description,
-									onInput: i[17] ||= (e) => Qe("description", e.target.value)
+									onInput: i[17] ||= (e) => $e("description", e.target.value)
 								}, null, 40, ru)])) : Z("", !0),
 								R.value.image?.altTextRequired ? (J(), Y("label", iu, [i[56] ||= X("span", null, "대체 텍스트", -1), X("input", {
 									disabled: R.value.isLocked,
 									value: Te.value?.alt,
-									onInput: i[18] ||= (e) => Qe("alt", e.target.value)
+									onInput: i[18] ||= (e) => $e("alt", e.target.value)
 								}, null, 40, au)])) : Z("", !0),
 								!R.value.isLocked && Te.value?.value ? (J(), Y("button", {
 									key: 3,
 									type: "button",
 									class: "image-remove-action",
-									onClick: vt
+									onClick: yt
 								}, "이미지 삭제")) : Z("", !0)
-							], 64)) : $e(R.value).length <= 1 ? (J(), Y("label", ou, [X("span", null, P(R.value.textType === "multi" ? "설명 텍스트" : "텍스트"), 1), vn(X("textarea", {
+							], 64)) : et(R.value).length <= 1 ? (J(), Y("label", ou, [X("span", null, P(R.value.textType === "multi" ? "설명 텍스트" : "텍스트"), 1), vn(X("textarea", {
 								"onUpdate:modelValue": i[19] ||= (e) => Te.value = e,
 								disabled: R.value.isLocked,
 								rows: R.value.textType === "multi" ? 8 : 3,
@@ -6224,7 +6234,7 @@ var Ps = { class: "preview-controls" }, Fs = {
 								X("div", uu, [i[60] ||= X("strong", null, "DESIGN", -1), X("button", {
 									type: "button",
 									disabled: R.value.isLocked,
-									onClick: Ct
+									onClick: wt
 								}, "초기화", 8, du)]),
 								R.value.fieldKind === "image" ? (J(), Y("div", fu, [
 									X("div", pu, [
@@ -6233,12 +6243,12 @@ var Ps = { class: "preview-controls" }, Fs = {
 											type: "button",
 											class: N({ active: V.value.aspectRatioLocked !== !1 }),
 											disabled: R.value.isLocked,
-											onClick: i[20] ||= (e) => kt("locked")
+											onClick: i[20] ||= (e) => At("locked")
 										}, "비율 유지", 10, hu), X("button", {
 											type: "button",
 											class: N({ active: V.value.aspectRatioLocked === !1 }),
 											disabled: R.value.isLocked || V.value.shape === "circle",
-											onClick: i[21] ||= (e) => kt("free")
+											onClick: i[21] ||= (e) => At("free")
 										}, "자유 조절", 10, gu)]),
 										V.value.shape === "circle" ? (J(), Y("small", _u, "원형 이미지는 1:1 비율로 고정됩니다.")) : Z("", !0)
 									]),
@@ -6303,7 +6313,7 @@ var Ps = { class: "preview-controls" }, Fs = {
 									X("label", null, [i[69] ||= X("span", null, "이미지 형태", -1), X("select", {
 										disabled: R.value.isLocked,
 										value: V.value.shape || "square",
-										onChange: i[28] ||= (e) => Ot(e.target.value)
+										onChange: i[28] ||= (e) => kt(e.target.value)
 									}, [...i[68] ||= [
 										X("option", { value: "square" }, "사각형", -1),
 										X("option", { value: "rounded" }, "둥근 사각형", -1),
@@ -6397,7 +6407,7 @@ var Ps = { class: "preview-controls" }, Fs = {
 									class: "secondary-control",
 									type: "button",
 									disabled: R.value.isLocked,
-									onClick: wt
+									onClick: Tt
 								}, " 자동 배치로 복원 ", 8, Ku)) : Z("", !0)
 							])
 						])) : Z("", !0)])])], 2))), 128)), L.value.items?.length ? Z("", !0) : (J(), Y("span", qu, "등록된 컴포넌트 없음"))])]),

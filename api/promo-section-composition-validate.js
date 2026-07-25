@@ -19,10 +19,13 @@ module.exports = async function handler(req, res) {
     const instruction = String(body.instruction || "").trim();
     const fingerprint = String(body.fingerprint || "").trim();
     const inputFingerprint = String(body.inputFingerprint || "").trim();
+    const layoutFingerprint = String(body.layoutFingerprint || "").trim();
     const rawPlan = body.rawPlan && typeof body.rawPlan === "object" && !Array.isArray(body.rawPlan) ? body.rawPlan : null;
     const sectionInputs = body.sectionInputs && typeof body.sectionInputs === "object" && !Array.isArray(body.sectionInputs)
       ? body.sectionInputs : {};
-    if (!formTemplateId || !sectionKey || !fingerprint || !inputFingerprint || !rawPlan) {
+    const currentLayout = body.currentLayout && typeof body.currentLayout === "object" && !Array.isArray(body.currentLayout)
+      ? body.currentLayout : {};
+    if (!formTemplateId || !sectionKey || !fingerprint || !inputFingerprint || !layoutFingerprint || !rawPlan) {
       return res.status(400).json({ error: "formTemplateId, sectionKey, fingerprints, and rawPlan are required" });
     }
     const context = await loadCompositionContext(getSql(), formTemplateId, sectionKey);
@@ -36,6 +39,12 @@ module.exports = async function handler(req, res) {
       return res.status(409).json({
         error: "Section content changed after the proposal was generated. Generate a new proposal.",
         code: "COMPOSITION_INPUT_CHANGED",
+      });
+    }
+    if (stableFingerprint(currentLayout) !== layoutFingerprint) {
+      return res.status(409).json({
+        error: "Section layout changed after the proposal was generated. Generate a new proposal.",
+        code: "COMPOSITION_LAYOUT_CHANGED",
       });
     }
     const proposal = normalizeCompositionPlan({

@@ -128,13 +128,23 @@ assert.throws(() => normalizeCompositionPlan({
   tokenSet,
 }), /not explicitly supplied/);
 
-assert.throws(() => normalizeCompositionPlan({
+const partialPlacement = normalizeCompositionPlan({
   plan: { ...plan, itemPlacements: plan.itemPlacements.slice(0, 2) },
   instruction: "구성해줘",
   section,
   sectionInputs: current,
   tokenSet,
-}), /every visible component/);
+});
+assert.equal(partialPlacement.layoutPatch.itemStyles["promotionIntro.locked"], undefined);
+assert.equal(partialPlacement.layoutPatch.sectionStyles.promotionIntro, undefined);
+
+assert.throws(() => normalizeCompositionPlan({
+  plan: { ...plan, itemPlacements: [plan.itemPlacements[0], plan.itemPlacements[0]] },
+  instruction: "구성해줘",
+  section,
+  sectionInputs: current,
+  tokenSet,
+}), /duplicate component placement/);
 
 const provider = fs.readFileSync(path.join(__dirname, "../api/_promo-section-design-provider.js"), "utf8");
 const promptStore = fs.readFileSync(path.join(__dirname, "../api/_prompt-template-store.js"), "utf8");

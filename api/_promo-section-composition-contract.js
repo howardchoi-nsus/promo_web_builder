@@ -211,9 +211,8 @@ function normalizeCompositionPlan({
 
   const placements = Array.isArray(plan.itemPlacements) ? plan.itemPlacements : [];
   const placementKeys = placements.map((placement) => String(placement?.itemKey || ""));
-  if (new Set(placementKeys).size !== items.length
-    || items.some((item) => !placementKeys.includes(item.itemKey))) {
-    fail("Planner must place every visible component exactly once");
+  if (new Set(placementKeys).size !== placementKeys.length) {
+    fail("Planner returned a duplicate component placement");
   }
   const regionConfig = {
     left: { xPct: 0, widthPct: 46 },
@@ -273,14 +272,7 @@ function normalizeCompositionPlan({
     sectionKey: section.sectionKey,
     content: nextInputs,
     contentChanges,
-    layoutPatch: {
-      itemStyles,
-      sectionStyles: {
-        [section.sectionKey]: {
-          minHeight: Math.min(1200, Math.max(360, 160 + Math.max(0, ...Object.values(regionCounts)) * 150)),
-        },
-      },
-    },
+    layoutPatch: { itemStyles, sectionStyles: {} },
     tokenBindings,
     backgroundImage: {
       requested,

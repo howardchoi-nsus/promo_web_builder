@@ -338,12 +338,23 @@ function undoMultiLayout() {
   multiLayoutError.value = "";
 }
 
+function currentCompositionLayout(sectionKey) {
+  return {
+    sectionStyle: designSpec.value.sectionStyles?.[sectionKey] || {},
+    itemStyles: Object.fromEntries(Object.entries(designSpec.value.itemStyles || {}).filter(([key]) => (
+      key === sectionKey || key.startsWith(`${sectionKey}.`)
+    ))),
+  };
+}
+
 function compositionRequestPayload() {
+  const sectionKey = selectedSection.value?.sectionKey;
   return {
     formTemplateId: template.value?.id,
-    sectionKey: selectedSection.value?.sectionKey,
+    sectionKey,
     instruction: compositionInstruction.value,
-    sectionInputs: sectionInputs.value?.[selectedSection.value?.sectionKey] || {},
+    sectionInputs: sectionInputs.value?.[sectionKey] || {},
+    currentLayout: currentCompositionLayout(sectionKey),
     generateBackgroundImage: compositionGenerateBackground.value,
     imageGuidance: compositionImageGuidance.value,
     fadeMode: compositionFadeMode.value,
@@ -384,8 +395,10 @@ async function applySectionComposition() {
       body: JSON.stringify({
         ...planned.requestPayload,
         sectionInputs: sectionInputs.value?.[planned.requestPayload.sectionKey] || {},
+        currentLayout: currentCompositionLayout(planned.requestPayload.sectionKey),
         fingerprint: planned.fingerprint,
         inputFingerprint: planned.inputFingerprint,
+        layoutFingerprint: planned.layoutFingerprint,
         rawPlan: planned.rawPlan,
       }),
     });

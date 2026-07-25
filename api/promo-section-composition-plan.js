@@ -21,6 +21,8 @@ module.exports = async function handler(req, res) {
     const instruction = String(body.instruction || "").trim();
     const sectionInputs = body.sectionInputs && typeof body.sectionInputs === "object" && !Array.isArray(body.sectionInputs)
       ? body.sectionInputs : {};
+    const currentLayout = body.currentLayout && typeof body.currentLayout === "object" && !Array.isArray(body.currentLayout)
+      ? body.currentLayout : {};
     if (!formTemplateId || !sectionKey) return res.status(400).json({ error: "formTemplateId and sectionKey are required" });
     if (instruction.length < 3 || instruction.length > 4000) {
       return res.status(422).json({ error: "Instruction must be between 3 and 4000 characters" });
@@ -31,14 +33,14 @@ module.exports = async function handler(req, res) {
     const constraints = {
       existingComponentsOnly: true,
       preserveLockedValues: true,
-      requireAllVisiblePlacements: true,
+      preserveUnmentionedComponents: true,
       allowedRegions: ["left", "center", "right"],
       allowArbitraryCss: false,
       allowInventedUrls: false,
     };
     const promptSnapshot = await createPromptExecutionSnapshot(sql, "section_composition_planner", {
       instruction,
-      sectionJson: JSON.stringify(context.sectionContract),
+      sectionJson: JSON.stringify({ ...context.sectionContract, currentLayout }),
       contentJson: JSON.stringify(sectionInputs),
       constraintsJson: JSON.stringify(constraints),
       tokenSetJson: JSON.stringify(context.tokens),
@@ -58,6 +60,7 @@ module.exports = async function handler(req, res) {
       ok: true,
       fingerprint: context.fingerprint,
       inputFingerprint: stableFingerprint(sectionInputs),
+      layoutFingerprint: stableFingerprint(currentLayout),
       rawPlan: generation.result,
       proposal,
       prompt: {
