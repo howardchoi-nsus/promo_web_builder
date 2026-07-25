@@ -61,6 +61,7 @@ const emit = defineEmits([
           :id="`section-properties-${section.sectionKey}`"
           class="section-property-accordion"
         >
+          <slot name="section-composition" :section="section"></slot>
           <SectionProperties
             :section="section"
             :section-style="selectedSectionStyle"

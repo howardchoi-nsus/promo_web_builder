@@ -146,6 +146,7 @@ button, a { letter-spacing: 0; }
 .property-form input:disabled, .property-form textarea:disabled, .property-form select:disabled { background: var(--app-bg); color: var(--app-muted); cursor: not-allowed; }
 .section-properties { display: grid; gap: 12px; padding: 12px; border: 1px solid var(--app-line); background: var(--app-panel); }
 .section-property-accordion { padding: 8px; border-top: 1px solid var(--app-line); }
+.section-property-accordion .section-composition-panel { margin-bottom: 8px; }
 .section-property-accordion .section-properties { padding: 10px; }
 .section-properties label { display: grid; gap: 6px; }
 .section-properties label > span { color: var(--app-sub); font-size: 11px; font-weight: 750; }

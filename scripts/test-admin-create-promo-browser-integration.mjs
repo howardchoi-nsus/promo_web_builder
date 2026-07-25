@@ -93,7 +93,8 @@ try {
   assert.equal(await editorFrame.locator(".editor-workspace.is-builder-workspace").count(), 1);
   assert.equal(await editorFrame.locator(".editor-shell--embedded").count(), 1);
   assert.equal(await editorFrame.locator(".shell-sidebar").count(), 0);
-  assert.equal(await editorFrame.locator(".section-composition-panel").count(), 1);
+  assert.equal(await editorFrame.locator(".section-rail .section-property-accordion .section-composition-panel").count(), 1);
+  assert.equal(await editorFrame.locator(".property-panel .section-composition-panel").count(), 0);
   assert.equal(await editorFrame.getByRole("button", { name: "구성 제안" }).count(), 1);
   const sectionTriggers = editorFrame.locator(".section-trigger");
   if (await sectionTriggers.count() > 1) await sectionTriggers.nth(1).click();

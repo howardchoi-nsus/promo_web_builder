@@ -81,6 +81,7 @@ const outputAdapter = createOutputAdapter({ storageKey: SNAPSHOT_STORAGE_KEY });
 let applyingExternalSnapshot = false;
 let lastExternalSnapshotRevision = 0;
 let disconnectPromoBuilder = null;
+let compositionRequestSequence = 0;
 
 const wizardSource = new URLSearchParams(window.location.search).get("source") || "";
 const editorContext = computed(() => createEditorContext(props.mode, wizardSource));
@@ -167,10 +168,21 @@ function componentKey(section, item) {
   return section && item ? `${section.sectionKey}.${item.itemKey}` : "";
 }
 
+function resetSectionComposition() {
+  compositionRequestSequence += 1;
+  compositionInstruction.value = "";
+  compositionGenerateBackground.value = false;
+  compositionImageGuidance.value = "";
+  compositionFadeMode.value = "none";
+  compositionPlanning.value = false;
+  compositionApplying.value = false;
+  compositionError.value = "";
+  compositionResult.value = null;
+}
+
 async function selectRendererItem(section, item, selection = {}) {
   if (selectedSectionKey.value && selectedSectionKey.value !== section.sectionKey) {
-    compositionResult.value = null;
-    compositionError.value = "";
+    resetSectionComposition();
   }
   if (selection.additive && !item?.isLocked && selectedSectionKey.value === section.sectionKey) {
     const keys = new Set(selectedItemKeys.value);
@@ -192,14 +204,14 @@ function scrollPreviewToSection(section) {
 
 async function selectSection(section) {
   if (!section) return;
+  const sectionChanged = selectedSectionKey.value && selectedSectionKey.value !== section.sectionKey;
+  if (sectionChanged) resetSectionComposition();
   selectedSectionKey.value = section.sectionKey;
   selectedItemKey.value = "";
   selectedItemKeys.value = [];
   expandedComponentKey.value = "";
   multiLayoutSuggestion.value = null;
   multiLayoutError.value = "";
-  compositionResult.value = null;
-  compositionError.value = "";
   await nextTick();
   scrollPreviewToSection(section);
 }
@@ -366,6 +378,7 @@ async function requestSectionComposition() {
   compositionPlanning.value = true;
   compositionError.value = "";
   compositionResult.value = null;
+  const requestSequence = ++compositionRequestSequence;
   try {
     const requestPayload = compositionRequestPayload();
     const response = await fetch("/api/promo-section-composition-plan", {
@@ -375,11 +388,14 @@ async function requestSectionComposition() {
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(result.message || result.error || `AI 섹션 구성 요청 오류(${response.status})`);
-    compositionResult.value = { ...result, requestPayload };
+    if (requestSequence === compositionRequestSequence
+      && selectedSectionKey.value === requestPayload.sectionKey) {
+      compositionResult.value = { ...result, requestPayload };
+    }
   } catch (planningError) {
-    compositionError.value = planningError.message;
+    if (requestSequence === compositionRequestSequence) compositionError.value = planningError.message;
   } finally {
-    compositionPlanning.value = false;
+    if (requestSequence === compositionRequestSequence) compositionPlanning.value = false;
   }
 }
 
@@ -388,6 +404,8 @@ async function applySectionComposition() {
   if (!planned?.rawPlan || !selectedSection.value || compositionApplying.value) return;
   compositionApplying.value = true;
   compositionError.value = "";
+  const requestSequence = compositionRequestSequence;
+  const plannedSectionKey = planned.requestPayload?.sectionKey;
   try {
     const response = await fetch("/api/promo-section-composition-validate", {
       method: "POST",
@@ -404,6 +422,7 @@ async function applySectionComposition() {
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(result.message || result.error || `AI 섹션 구성 검증 오류(${response.status})`);
+    if (requestSequence !== compositionRequestSequence || selectedSectionKey.value !== plannedSectionKey) return;
     const proposal = result.proposal;
     const sectionKey = selectedSection.value.sectionKey;
     const nextItemStyles = { ...(designSpec.value.itemStyles || {}) };
@@ -446,9 +465,9 @@ async function applySectionComposition() {
       );
     }
   } catch (applyError) {
-    compositionError.value = applyError.message;
+    if (requestSequence === compositionRequestSequence) compositionError.value = applyError.message;
   } finally {
-    compositionApplying.value = false;
+    if (requestSequence === compositionRequestSequence) compositionApplying.value = false;
   }
 }
 
@@ -1144,7 +1163,28 @@ onBeforeUnmount(() => {
         @background-fade="setSectionBackgroundFadeMode"
         @update-section-style="updateSectionStyle"
         @reset-section-height="resetSectionHeight"
-      />
+      >
+        <template #section-composition>
+          <SectionCompositionControls
+            v-if="capabilities.canRunSectionAi"
+            :instruction="compositionInstruction"
+            :generate-background-image="compositionGenerateBackground"
+            :image-guidance="compositionImageGuidance"
+            :fade-mode="compositionFadeMode"
+            :planning="compositionPlanning"
+            :applying="compositionApplying"
+            :error="compositionError"
+            :proposal="compositionResult?.proposal || null"
+            @update:instruction="compositionInstruction = $event"
+            @update:generate-background-image="compositionGenerateBackground = $event"
+            @update:image-guidance="compositionImageGuidance = $event"
+            @update:fade-mode="compositionFadeMode = $event"
+            @request-plan="requestSectionComposition"
+            @apply="applySectionComposition"
+            @dismiss="compositionResult = null"
+          />
+        </template>
+      </SectionPanel>
 
       <PreviewPanel
         ref="previewPanelRef"
@@ -1184,24 +1224,6 @@ onBeforeUnmount(() => {
 
       <PropertyPanel :selected-section="selectedSection">
         <template #ai-controls>
-          <SectionCompositionControls
-            v-if="capabilities.canRunSectionAi"
-            :instruction="compositionInstruction"
-            :generate-background-image="compositionGenerateBackground"
-            :image-guidance="compositionImageGuidance"
-            :fade-mode="compositionFadeMode"
-            :planning="compositionPlanning"
-            :applying="compositionApplying"
-            :error="compositionError"
-            :proposal="compositionResult?.proposal || null"
-            @update:instruction="compositionInstruction = $event"
-            @update:generate-background-image="compositionGenerateBackground = $event"
-            @update:image-guidance="compositionImageGuidance = $event"
-            @update:fade-mode="compositionFadeMode = $event"
-            @request-plan="requestSectionComposition"
-            @apply="applySectionComposition"
-            @dismiss="compositionResult = null"
-          />
           <AiLayoutControls
             v-if="capabilities.canRunMultiLayoutAi"
             :selected-count="selectedItemKeys.length"
