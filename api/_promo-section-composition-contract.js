@@ -208,11 +208,15 @@ function normalizeCompositionPlan({
         after = textWithLimit(patch.textValue, field.editorSchema);
       } else if (field.fieldKind === "cta") {
         const current = before && typeof before === "object" ? before : {};
-        if (!urlExplicitlyAllowed(patch.ctaUrl, instruction)) fail(`CTA URL for ${itemKey} was not explicitly supplied`);
+        const currentUrl = String(current.link || "").trim();
+        const proposedUrl = String(patch.ctaUrl || "").trim();
+        if (proposedUrl && proposedUrl !== currentUrl && !urlExplicitlyAllowed(proposedUrl, instruction)) {
+          fail(`CTA URL for ${itemKey} was not explicitly supplied`);
+        }
         after = {
           ...current,
           label: patch.ctaLabel === null ? current.label || "" : textWithLimit(patch.ctaLabel, field.editorSchema),
-          link: patch.ctaUrl === null ? current.link || "" : String(patch.ctaUrl).trim(),
+          link: proposedUrl || currentUrl,
         };
       } else if (field.fieldKind !== "image"
         && (patch.textValue !== null || patch.ctaLabel !== null || patch.ctaUrl !== null)) {

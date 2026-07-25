@@ -110,6 +110,45 @@ assert.equal(normalized.layoutPatch.itemStyles["promotionIntro.action"].borderRa
 assert.equal(normalized.backgroundImage.requested, true);
 assert.equal(normalized.backgroundImage.fadeMode, "both");
 
+const repeatedCurrentUrl = normalizeCompositionPlan({
+  plan: {
+    ...plan,
+    componentSelections: plan.componentSelections.map((selection) => selection.itemKey === "action"
+      ? {
+        ...selection,
+        fields: [{
+          fieldKey: null,
+          textValue: null,
+          ctaLabel: "Join",
+          ctaUrl: "https://example.com/current",
+        }],
+      }
+      : selection),
+  },
+  instruction: "버튼을 구성해줘",
+  section,
+  sectionInputs: current,
+  tokenSet,
+});
+assert.equal(repeatedCurrentUrl.content.action.link, "https://example.com/current");
+
+const blankUrl = normalizeCompositionPlan({
+  plan: {
+    ...plan,
+    componentSelections: plan.componentSelections.map((selection) => selection.itemKey === "action"
+      ? {
+        ...selection,
+        fields: [{ fieldKey: null, textValue: null, ctaLabel: "Join", ctaUrl: "" }],
+      }
+      : selection),
+  },
+  instruction: "버튼을 구성해줘",
+  section,
+  sectionInputs: current,
+  tokenSet,
+});
+assert.equal(blankUrl.content.action.link, "https://example.com/current");
+
 const correctedToken = normalizeCompositionPlan({
   plan: {
     ...plan,
