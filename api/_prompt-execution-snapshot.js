@@ -145,7 +145,9 @@ function validateStageModelConfig(type, prompt) {
     }
     return true;
   }
-  if (type === "section_layout_planner" || type === "multi_component_layout_planner") {
+  if (type === "section_layout_planner"
+    || type === "multi_component_layout_planner"
+    || type === "section_composition_planner") {
     if (provider !== "openai") fail(`${type} currently supports the openai provider only`);
     if (responseFormat !== "json_object") fail(`${type} responseFormat must be json_object`);
     return true;

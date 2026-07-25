@@ -115,6 +115,10 @@ module.exports = async function handler(req, res) {
     const tokenSet = await fetchTokenVersion(sql, template.designTokenSetVersionId);
     if (!tokenSet) return res.status(422).json({ error: "Template design token set version was not found" });
     const fadeMode = ["none", "left", "right", "both"].includes(body.fadeMode) ? body.fadeMode : "none";
+    const imageGuidance = String(body.imageGuidance || "").trim().slice(0, 1800);
+    const requestedSafeArea = ["left-copy", "right-copy", "center-copy", "none"].includes(body.safeArea)
+      ? body.safeArea
+      : fadeModeToSafeArea(fadeMode);
     const promptType = requestMode === "assets"
       ? (targetResolution.constraints.imageTarget?.type === "item" ? "component_image" : "section_background_image")
       : "section_layout_planner";
@@ -128,13 +132,19 @@ module.exports = async function handler(req, res) {
       componentName: targetItem?.name || targetItem?.componentKey || targetItemKey,
       fieldName: targetField?.name || targetItem?.name || targetItemKey,
       contentJson: JSON.stringify(aiContent),
-      adminGuidance: targetField?.image?.promptText || targetItem?.image?.promptText || "",
+      adminGuidance: [
+        targetField?.image?.promptText || targetItem?.image?.promptText || "",
+        imageGuidance,
+      ].filter(Boolean).join("\n"),
     } : {
       sectionName: snapshot.section.name,
       contentJson: JSON.stringify(aiContent),
       backgroundColor,
       fadeMode,
-      adminGuidance: String(section.aiDesign?.backgroundPromptText || ""),
+      adminGuidance: [
+        String(section.aiDesign?.backgroundPromptText || ""),
+        imageGuidance,
+      ].filter(Boolean).join("\n"),
       brandPalette: promptVariable(body.brandPalette),
       aspectRatio: String(constraints.imageAspectRatio || "16:9"),
     };
@@ -163,6 +173,7 @@ module.exports = async function handler(req, res) {
       options: {
         backgroundColor,
         fadeMode,
+        safeArea: requestedSafeArea,
         aspectRatio: targetField?.image?.aspectRatio || targetItem?.image?.aspectRatio || constraints.imageAspectRatio || "16:9",
         backgroundSize: "contain",
       },
@@ -200,7 +211,7 @@ module.exports = async function handler(req, res) {
       const imageTarget = constraints.imageTarget;
       const requestSnapshot = {
         prompt: promptSnapshot.promptConfig.renderedPrompt,
-        safeArea: imageTarget.type === "item" ? "none" : fadeModeToSafeArea(fadeMode),
+        safeArea: imageTarget.type === "item" ? "none" : requestedSafeArea,
         fadeMode,
         aspectRatio: imageTarget.type === "item"
           ? String(targetField?.image?.aspectRatio || targetItem?.image?.aspectRatio || "1:1")

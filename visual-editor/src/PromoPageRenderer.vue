@@ -717,6 +717,7 @@ function startSectionResize(event, section) {
                 <a
                   v-if="field.fieldKind === 'cta'"
                   class="rendered-cta rendered-component-field"
+                  :style="fieldStyle(section, item, field)"
                   :href="ctaUrl(valueFor(section, item, field))"
                   :target="valueFor(section, item, field)?.target || '_self'"
                   :rel="valueFor(section, item, field)?.target === '_blank' ? 'noopener noreferrer' : undefined"
@@ -744,6 +745,7 @@ function startSectionResize(event, section) {
                   v-else-if="hasContent(valueFor(section, item, field))"
                   class="rendered-text rendered-component-field"
                   :class="{ 'rendered-text--title': field.textType === 'title' }"
+                  :style="fieldStyle(section, item, field)"
                 >{{ valueFor(section, item, field) }}</p>
                 <p v-else class="rendered-empty rendered-component-field">{{ field.name }}</p>
               </template>

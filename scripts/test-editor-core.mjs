@@ -41,6 +41,17 @@ assert.equal(result.history.canRedo, true);
 result = store.redo();
 assert.equal(result.state.document.content.hero.title, "After");
 
+result = store.execute(editorCommand(EditorCommandType.DOCUMENT_PATCH, {
+  layout: { itemStyles: { "hero.title": { color: "#ff0000" } }, sectionStyles: {} },
+  content: { hero: { title: "AI composed" } },
+}));
+assert.equal(result.ok, true);
+assert.equal(result.state.document.content.hero.title, "AI composed");
+assert.equal(result.state.document.layout.itemStyles["hero.title"].color, "#ff0000");
+result = store.undo();
+assert.equal(result.state.document.content.hero.title, "After");
+assert.equal(result.state.document.layout.itemStyles["hero.title"].color, undefined);
+
 store.replaceDocument({
   layout: { itemStyles: { "hero.title": { fontSize: 30 } } },
   content: { hero: { title: "Reloaded" } },

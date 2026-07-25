@@ -820,8 +820,12 @@ window.addEventListener("message", (event) => {
     const targetType = event.data.targetType === "item" ? "item" : "section-background";
     const targetItemKey = String(event.data.targetItemKey || "").trim();
     const targetFieldKey = String(event.data.targetFieldKey || "").trim();
+    const imageGuidance = String(event.data.imageGuidance || "").trim();
+    const imageSafeArea = String(event.data.imageSafeArea || "").trim();
     if (event.data.action === "generate-layout") generateSectionAiLayout(section);
-    else if (event.data.action === "generate") generateSectionAiDesign(section, targetType, targetItemKey, targetFieldKey);
+    else if (event.data.action === "generate") {
+      generateSectionAiDesign(section, targetType, targetItemKey, targetFieldKey, imageGuidance, imageSafeArea);
+    }
     else if (event.data.action === "apply" && saved) {
       const savedTargetType = saved.constraintsSnapshot?.imageTarget?.type || "";
       const savedTargetItemKey = saved.constraintsSnapshot?.imageTarget?.type === "item"
@@ -1354,7 +1358,10 @@ function removeSectionAiBackground(section) {
   postWizardLayoutSnapshot();
 }
 
-async function generateSectionAiDesign(section, targetType = "section-background", targetItemKey = "", targetFieldKey = "") {
+async function generateSectionAiDesign(
+  section, targetType = "section-background", targetItemKey = "", targetFieldKey = "",
+  imageGuidance = "", imageSafeArea = "",
+) {
   const sectionKey = section.sectionKey;
   const requestedTargetType = targetType === "item" ? "item" : "section-background";
   const sectionInputs = JSON.parse(JSON.stringify(contentState.sectionInputs?.[sectionKey] || {}));
@@ -1390,6 +1397,7 @@ async function generateSectionAiDesign(section, targetType = "section-background
   };
   const canRetryPlannedAssets = previous?.id && previous?.effectivePatch
     && previous?.status === "failed" && !sectionAiIsStale(sectionKey, previous)
+    && !String(imageGuidance || "").trim()
     && previousTargetType === requestedTargetType
     && (requestedTargetType !== "item" || (
       previousTargetItemKey === String(targetItemKey || "").trim()
@@ -1410,6 +1418,7 @@ async function generateSectionAiDesign(section, targetType = "section-background
   const canRetryImage = previous?.status === "failed"
     && previous.layoutResult?.imageRequest
     && !sectionAiIsStale(sectionKey, previous)
+    && !String(imageGuidance || "").trim()
     && previousTargetType === requestedTargetType
     && previousTargetItemKey === String(targetItemKey || "").trim()
     && previousTargetFieldKey === String(targetFieldKey || "").trim();
@@ -1460,6 +1469,8 @@ async function generateSectionAiDesign(section, targetType = "section-background
         targetItemKey: String(targetItemKey || "").trim() || null,
         targetFieldKey: String(targetFieldKey || "").trim() || null,
         requestMode: "assets",
+        imageGuidance: String(imageGuidance || "").trim().slice(0, 1800),
+        safeArea: String(imageSafeArea || "").trim(),
         backgroundColor: resolvedSectionBackgroundColor(sectionKey),
         fadeMode: requestedTargetType === "section-background"
           ? (wizardResolvedLayout?.sectionStyles?.[sectionKey]?.backgroundFadeMode || "none")

@@ -135,6 +135,25 @@ const PROMPT_TYPES = {
     ],
     optionalVariables: [],
   },
+  section_composition_planner: {
+    name: "Natural-language Section Composition Planner",
+    body: [
+      "Compose one promotional section from the user's natural-language instruction.",
+      "Use only the supplied existing component instances, fields, layout regions, style slots, and design tokens.",
+      "Never invent component keys, field keys, URLs, regions, slots, tokens, CSS, HTML, selectors, or image text.",
+      "Preserve locked content and locked components. Return every visible component in itemPlacements.",
+      "When a CTA URL is not explicitly present in the instruction, return null so the current URL is preserved.",
+      "User instruction: {{instruction}}",
+      "Section: {{sectionJson}}",
+      "Current content: {{contentJson}}",
+      "Allowed contract: {{constraintsJson}}",
+      "Selectable design tokens: {{tokenSetJson}}",
+      "Background image requested: {{generateBackgroundImage}}",
+      "Background image guidance: {{imageGuidance}}",
+    ].join("\n"),
+    requiredVariables: ["instruction", "sectionJson", "contentJson", "constraintsJson", "tokenSetJson"],
+    optionalVariables: ["generateBackgroundImage", "imageGuidance"],
+  },
   section_background_image: {
     name: "Section Background Image",
     body: [
@@ -213,6 +232,13 @@ const DEFAULT_MODEL_SETTINGS = {
     model: process.env.SECTION_LAYOUT_MODEL || "gpt-4.1-mini",
     temperature: 0.2,
     maxTokens: 2000,
+    responseFormat: "json_object",
+  },
+  section_composition_planner: {
+    provider: "openai",
+    model: process.env.SECTION_LAYOUT_MODEL || "gpt-4.1-mini",
+    temperature: 0.2,
+    maxTokens: 6000,
     responseFormat: "json_object",
   },
   section_background_image: {

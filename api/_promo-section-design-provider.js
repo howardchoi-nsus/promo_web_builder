@@ -62,6 +62,104 @@ const MULTI_COMPONENT_LAYOUT_PLAN_SCHEMA = {
   },
 };
 
+const SECTION_COMPOSITION_PLAN_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "sectionIntent", "componentSelections", "itemPlacements", "tokenBindings",
+    "backgroundImage", "missingInputs", "adjustments", "rationale",
+  ],
+  properties: {
+    sectionIntent: { type: "string", minLength: 1, maxLength: 600 },
+    componentSelections: {
+      type: "array",
+      maxItems: 30,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["itemKey", "role", "fields"],
+        properties: {
+          itemKey: { type: "string" },
+          role: {
+            type: "string",
+            enum: ["eyebrow", "primary-title", "supporting-copy", "primary-action", "visual", "supporting"],
+          },
+          fields: {
+            type: "array",
+            maxItems: 30,
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: ["fieldKey", "textValue", "ctaLabel", "ctaUrl"],
+              properties: {
+                fieldKey: { type: ["string", "null"] },
+                textValue: { type: ["string", "null"] },
+                ctaLabel: { type: ["string", "null"] },
+                ctaUrl: { type: ["string", "null"] },
+              },
+            },
+          },
+        },
+      },
+    },
+    itemPlacements: {
+      type: "array",
+      maxItems: 30,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["itemKey", "region", "order"],
+        properties: {
+          itemKey: { type: "string" },
+          region: { type: "string", enum: ["left", "center", "right"] },
+          order: { type: "integer", minimum: 0, maximum: 100 },
+        },
+      },
+    },
+    tokenBindings: {
+      type: "array",
+      maxItems: 60,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["itemKey", "fieldKey", "slotKey", "tokenKey"],
+        properties: {
+          itemKey: { type: "string" },
+          fieldKey: { type: ["string", "null"] },
+          slotKey: { type: "string" },
+          tokenKey: { type: "string" },
+        },
+      },
+    },
+    backgroundImage: {
+      type: "object",
+      additionalProperties: false,
+      required: ["requested", "concept", "safeArea", "fadeMode"],
+      properties: {
+        requested: { type: "boolean" },
+        concept: { type: "string", maxLength: 1200 },
+        safeArea: { type: "string", enum: ["left-copy", "right-copy", "center-copy", "none"] },
+        fadeMode: { type: "string", enum: ["none", "left", "right", "both"] },
+      },
+    },
+    missingInputs: {
+      type: "array",
+      maxItems: 20,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["field", "reason"],
+        properties: {
+          field: { type: "string" },
+          reason: { type: "string" },
+        },
+      },
+    },
+    adjustments: { type: "array", maxItems: 30, items: { type: "string" } },
+    rationale: { type: "string", minLength: 1, maxLength: 1200 },
+  },
+};
+
 function openAiHeaders() {
   const apiKey = String(process.env.OPENAI_API_KEY || "").trim();
   if (!apiKey) {
@@ -268,6 +366,33 @@ async function generateMultiComponentLayoutPlan({ promptConfig, signal }) {
   };
 }
 
+async function generateSectionCompositionPlan({ promptConfig, signal }) {
+  const model = promptConfig?.model || process.env.SECTION_LAYOUT_MODEL || "gpt-4.1-mini";
+  const prompt = String(promptConfig?.renderedPrompt || "").trim();
+  if (!prompt) throw Object.assign(new Error("Section composition prompt is required"), { code: "COMPOSITION_PROMPT_REQUIRED" });
+  const startedAt = Date.now();
+  const { payload, requestId } = await requestJson("https://api.openai.com/v1/responses", {
+    model,
+    store: false,
+    input: prompt,
+    text: {
+      format: {
+        type: "json_schema",
+        name: "section_composition_plan",
+        strict: true,
+        schema: SECTION_COMPOSITION_PLAN_SCHEMA,
+      },
+    },
+  }, openAiHeaders(), signal, Number(process.env.SECTION_LAYOUT_TIMEOUT_MS || 90000));
+  const output = responseOutputText(payload);
+  if (!output) throw Object.assign(new Error("Section composition planner returned no structured output"), { code: "EMPTY_COMPOSITION_PLAN" });
+  return {
+    result: JSON.parse(output),
+    provider: { provider: "openai", model, requestId, latencyMs: Date.now() - startedAt },
+    usage: payload.usage || {},
+  };
+}
+
 async function generateOpenAiSectionImage({ prompt, aspectRatio, model: requestedModel, modelOptions, signal }) {
   const model = requestedModel || process.env.SECTION_IMAGE_MODEL || "gpt-image-1";
   const startedAt = Date.now();
@@ -350,6 +475,7 @@ module.exports = {
   generateSectionLayout,
   generateSectionDesignPlan,
   generateMultiComponentLayoutPlan,
+  generateSectionCompositionPlan,
   generateSectionImage,
   generateOpenAiSectionImage,
   generateGeminiSectionImage,

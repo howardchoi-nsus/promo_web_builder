@@ -115,6 +115,16 @@ export function reduceEditorCommand(currentState, command) {
         layout: payload.layout || {},
       });
       break;
+    case EditorCommandType.DOCUMENT_PATCH:
+      if (!payload.layout || !payload.content) {
+        return { ok: false, state: currentState, error: "Document layout and content are required." };
+      }
+      state.document = createEditorDocument({
+        ...state.document,
+        layout: payload.layout,
+        content: payload.content,
+      });
+      break;
     default:
       return { ok: false, state: currentState, error: `Unsupported editor command: ${command?.type || "unknown"}` };
   }

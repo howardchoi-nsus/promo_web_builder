@@ -16,6 +16,7 @@ import { EditorCommandType, editorCommand } from "./platform/editor-core/editor-
 import PreviewPanel from "./platform/editor-ui/PreviewPanel.vue";
 import SectionPanel from "./platform/editor-ui/SectionPanel.vue";
 import AiLayoutControls from "./platform/editor-ui/AiLayoutControls.vue";
+import SectionCompositionControls from "./platform/editor-ui/SectionCompositionControls.vue";
 import PropertyPanel from "./platform/editor-ui/PropertyPanel.vue";
 import {
   DESIGN_COLOR_TOKENS,
@@ -61,6 +62,14 @@ const multiLayoutError = ref("");
 const multiLayoutSuggestion = ref(null);
 const multiLayoutUndoStack = ref([]);
 const multiLayoutRevision = ref(0);
+const compositionInstruction = ref("");
+const compositionGenerateBackground = ref(false);
+const compositionImageGuidance = ref("");
+const compositionFadeMode = ref("none");
+const compositionPlanning = ref(false);
+const compositionApplying = ref(false);
+const compositionError = ref("");
+const compositionResult = ref(null);
 const editorHistory = ref({ undoCount: 0, redoCount: 0, canUndo: false, canRedo: false });
 const editorCore = createEditorStore({
   layout: JSON.parse(JSON.stringify(DEFAULT_DESIGN_SPEC)),
@@ -159,6 +168,10 @@ function componentKey(section, item) {
 }
 
 async function selectRendererItem(section, item, selection = {}) {
+  if (selectedSectionKey.value && selectedSectionKey.value !== section.sectionKey) {
+    compositionResult.value = null;
+    compositionError.value = "";
+  }
   if (selection.additive && !item?.isLocked && selectedSectionKey.value === section.sectionKey) {
     const keys = new Set(selectedItemKeys.value);
     if (keys.has(item.itemKey)) keys.delete(item.itemKey);
@@ -185,6 +198,8 @@ async function selectSection(section) {
   expandedComponentKey.value = "";
   multiLayoutSuggestion.value = null;
   multiLayoutError.value = "";
+  compositionResult.value = null;
+  compositionError.value = "";
   await nextTick();
   scrollPreviewToSection(section);
 }
@@ -321,6 +336,107 @@ function undoMultiLayout() {
   multiLayoutUndoStack.value = multiLayoutUndoStack.value.slice(0, -1);
   multiLayoutSuggestion.value = null;
   multiLayoutError.value = "";
+}
+
+function compositionRequestPayload() {
+  return {
+    formTemplateId: template.value?.id,
+    sectionKey: selectedSection.value?.sectionKey,
+    instruction: compositionInstruction.value,
+    sectionInputs: sectionInputs.value?.[selectedSection.value?.sectionKey] || {},
+    generateBackgroundImage: compositionGenerateBackground.value,
+    imageGuidance: compositionImageGuidance.value,
+    fadeMode: compositionFadeMode.value,
+  };
+}
+
+async function requestSectionComposition() {
+  if (!selectedSection.value || compositionInstruction.value.trim().length < 3 || compositionPlanning.value) return;
+  compositionPlanning.value = true;
+  compositionError.value = "";
+  compositionResult.value = null;
+  try {
+    const requestPayload = compositionRequestPayload();
+    const response = await fetch("/api/promo-section-composition-plan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestPayload),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.message || result.error || `AI 섹션 구성 요청 오류(${response.status})`);
+    compositionResult.value = { ...result, requestPayload };
+  } catch (planningError) {
+    compositionError.value = planningError.message;
+  } finally {
+    compositionPlanning.value = false;
+  }
+}
+
+async function applySectionComposition() {
+  const planned = compositionResult.value;
+  if (!planned?.rawPlan || !selectedSection.value || compositionApplying.value) return;
+  compositionApplying.value = true;
+  compositionError.value = "";
+  try {
+    const response = await fetch("/api/promo-section-composition-validate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...planned.requestPayload,
+        sectionInputs: sectionInputs.value?.[planned.requestPayload.sectionKey] || {},
+        fingerprint: planned.fingerprint,
+        inputFingerprint: planned.inputFingerprint,
+        rawPlan: planned.rawPlan,
+      }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.message || result.error || `AI 섹션 구성 검증 오류(${response.status})`);
+    const proposal = result.proposal;
+    const sectionKey = selectedSection.value.sectionKey;
+    const nextItemStyles = { ...(designSpec.value.itemStyles || {}) };
+    Object.entries(proposal.layoutPatch?.itemStyles || {}).forEach(([styleKey, patch]) => {
+      nextItemStyles[styleKey] = { ...(nextItemStyles[styleKey] || {}), ...patch };
+    });
+    const nextSectionStyles = { ...(designSpec.value.sectionStyles || {}) };
+    Object.entries(proposal.layoutPatch?.sectionStyles || {}).forEach(([styleKey, patch]) => {
+      nextSectionStyles[styleKey] = { ...(nextSectionStyles[styleKey] || {}), ...patch };
+    });
+    if (proposal.backgroundImage?.requested) {
+      nextSectionStyles[sectionKey] = {
+        ...(nextSectionStyles[sectionKey] || {}),
+        backgroundFadeMode: proposal.backgroundImage.fadeMode,
+        backgroundFadeSafeArea: proposal.backgroundImage.safeArea,
+      };
+    }
+    executeEditorCommand(EditorCommandType.DOCUMENT_PATCH, {
+      content: {
+        ...sectionInputs.value,
+        [sectionKey]: proposal.content,
+      },
+      layout: {
+        ...designSpec.value,
+        itemStyles: nextItemStyles,
+        sectionStyles: nextSectionStyles,
+      },
+    }, { source: "ai", label: "AI 섹션 구성 적용" });
+    compositionResult.value = null;
+    await nextTick();
+    if (proposal.backgroundImage?.requested) {
+      requestSectionAiAction(
+        selectedSection.value,
+        "generate",
+        "",
+        "section-background",
+        "",
+        proposal.backgroundImage.guidance,
+        proposal.backgroundImage.safeArea,
+      );
+    }
+  } catch (applyError) {
+    compositionError.value = applyError.message;
+  } finally {
+    compositionApplying.value = false;
+  }
 }
 
 function toggleComponent(section, item) {
@@ -501,7 +617,10 @@ function sectionAiItemAction(section, item, field = null) {
   return { action: "generate", label: "AI 이미지 생성", disabled: !sectionAiHasContent(section) };
 }
 
-function requestSectionAiAction(section, action, targetItemKey = "", targetType = "", targetFieldKey = "") {
+function requestSectionAiAction(
+  section, action, targetItemKey = "", targetType = "", targetFieldKey = "",
+  imageGuidance = "", imageSafeArea = "",
+) {
   const resolvedTargetType = targetType || (targetItemKey ? "item" : "section-background");
   promoBuilderAdapter.requestSectionAiAction({
     sectionKey: section.sectionKey,
@@ -509,6 +628,8 @@ function requestSectionAiAction(section, action, targetItemKey = "", targetType 
     targetType: resolvedTargetType,
     targetItemKey,
     targetFieldKey,
+    imageGuidance,
+    imageSafeArea,
   });
 }
 
@@ -1050,6 +1171,24 @@ onBeforeUnmount(() => {
 
       <PropertyPanel :selected-section="selectedSection">
         <template #ai-controls>
+          <SectionCompositionControls
+            v-if="capabilities.canRunSectionAi"
+            :instruction="compositionInstruction"
+            :generate-background-image="compositionGenerateBackground"
+            :image-guidance="compositionImageGuidance"
+            :fade-mode="compositionFadeMode"
+            :planning="compositionPlanning"
+            :applying="compositionApplying"
+            :error="compositionError"
+            :proposal="compositionResult?.proposal || null"
+            @update:instruction="compositionInstruction = $event"
+            @update:generate-background-image="compositionGenerateBackground = $event"
+            @update:image-guidance="compositionImageGuidance = $event"
+            @update:fade-mode="compositionFadeMode = $event"
+            @request-plan="requestSectionComposition"
+            @apply="applySectionComposition"
+            @dismiss="compositionResult = null"
+          />
           <AiLayoutControls
             v-if="capabilities.canRunMultiLayoutAi"
             :selected-count="selectedItemKeys.length"

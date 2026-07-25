@@ -8,6 +8,7 @@ export const EditorCommandType = Object.freeze({
   SECTION_STYLE_REMOVE: "SECTION_STYLE_REMOVE",
   THEME_STYLE_PATCH: "THEME_STYLE_PATCH",
   LAYOUT_REPLACE: "LAYOUT_REPLACE",
+  DOCUMENT_PATCH: "DOCUMENT_PATCH",
 });
 
 export function editorCommand(type, payload = {}, meta = {}) {

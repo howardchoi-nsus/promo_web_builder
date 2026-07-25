@@ -60,7 +60,9 @@ export function createPromoBuilderAdapter({
       }, allowedOrigin);
     },
 
-    requestSectionAiAction({ sectionKey, action, targetType, targetItemKey, targetFieldKey }) {
+    requestSectionAiAction({
+      sectionKey, action, targetType, targetItemKey, targetFieldKey, imageGuidance, imageSafeArea,
+    }) {
       hostWindow.parent.postMessage({
         type: PromoBuilderMessageType.SECTION_AI_ACTION,
         sectionKey,
@@ -68,6 +70,8 @@ export function createPromoBuilderAdapter({
         targetType,
         targetItemKey: String(targetItemKey || "").trim() || null,
         targetFieldKey: String(targetFieldKey || "").trim() || null,
+        imageGuidance: String(imageGuidance || "").trim() || null,
+        imageSafeArea: String(imageSafeArea || "").trim() || null,
       }, allowedOrigin);
     },
 
