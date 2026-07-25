@@ -233,7 +233,7 @@ async function fetchTokenSetUsage(sql, tokenSetId) {
   const runs = await sql`
     select
       count(*)::integer as total,
-      count(*) filter (where status in (
+      count(*) filter (where run.status in (
         'queued', 'analyzing_content', 'generating_layout', 'validating_layout',
         'generating_assets', 'validating_assets', 'ready', 'applying'
       ))::integer as active

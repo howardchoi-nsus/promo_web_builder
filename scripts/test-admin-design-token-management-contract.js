@@ -20,6 +20,8 @@ assert.match(store, /normalizeTokenEntries/);
 assert.match(store, /SAFE_CSS_PROPERTIES/);
 assert.match(store, /fetchManagedTokenSets/);
 assert.match(store, /fetchTokenSetUsage/);
+assert.match(store, /count\(\*\) filter \(where run\.status in/);
+assert.doesNotMatch(store, /count\(\*\) filter \(where status in/);
 
 const importHandler = read("api/design-token-set-import.js");
 assert.match(importHandler, /normalizeTokenEntries/);
