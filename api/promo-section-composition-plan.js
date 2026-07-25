@@ -5,6 +5,7 @@ const {
   normalizeCompositionPlan,
   stableFingerprint,
   compositionOptionsFromBody,
+  allowedTokenBindings,
 } = require("./_promo-section-composition-contract");
 const { loadCompositionContext } = require("./_promo-section-composition-context");
 
@@ -37,6 +38,7 @@ module.exports = async function handler(req, res) {
       allowedRegions: ["left", "center", "right"],
       allowArbitraryCss: false,
       allowInventedUrls: false,
+      allowedTokenBindings: allowedTokenBindings(context.section, context.tokenSet),
     };
     const promptSnapshot = await createPromptExecutionSnapshot(sql, "section_composition_planner", {
       instruction,

@@ -5,6 +5,7 @@ const {
   publicSectionContract,
   selectableTokens,
   compositionFingerprint,
+  allowedTokenBindings,
   normalizeCompositionPlan,
 } = require("../api/_promo-section-composition-contract");
 
@@ -79,6 +80,13 @@ const plan = {
 
 assert.equal(publicSectionContract(section).items.length, 3);
 assert.deepEqual(selectableTokens(tokenSet).map((token) => token.tokenKey), ["--promo-accent", "--promo-radius"]);
+assert.deepEqual(allowedTokenBindings(section, tokenSet)[0], {
+  itemKey: "title",
+  fieldKey: null,
+  slotKey: "titleColor",
+  semanticRole: "accent-color",
+  allowedTokenKeys: ["--promo-accent"],
+});
 assert.equal(
   compositionFingerprint({ template, section, tokenSet }),
   compositionFingerprint({ template, section, tokenSet }),
@@ -101,6 +109,21 @@ assert.equal(normalized.layoutPatch.itemStyles["promotionIntro.title"].color, "#
 assert.equal(normalized.layoutPatch.itemStyles["promotionIntro.action"].borderRadius, "24px");
 assert.equal(normalized.backgroundImage.requested, true);
 assert.equal(normalized.backgroundImage.fadeMode, "both");
+
+const correctedToken = normalizeCompositionPlan({
+  plan: {
+    ...plan,
+    tokenBindings: [
+      { itemKey: "title", fieldKey: null, slotKey: "titleColor", tokenKey: "--promo-radius" },
+    ],
+  },
+  instruction: "구성해줘",
+  section,
+  sectionInputs: current,
+  tokenSet,
+});
+assert.equal(correctedToken.tokenBindings[0].tokenKey, "--promo-accent");
+assert.match(correctedToken.adjustments.join("\n"), /보정했습니다/);
 
 assert.throws(() => normalizeCompositionPlan({
   plan: {

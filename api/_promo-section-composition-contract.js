@@ -33,6 +33,13 @@ function currentFieldValue(sectionInputs, item, field) {
   return value?.fields?.[field.fieldKey];
 }
 
+function styleSlotsFor(item, field) {
+  return [...new Map(
+    [...(item.styleSlots || []), ...(field.styleSlots || [])]
+      .map((slot) => [slot.slotKey, slot]),
+  ).values()];
+}
+
 function publicSectionContract(section) {
   return {
     sectionKey: section.sectionKey,
@@ -67,6 +74,23 @@ function selectableTokens(tokenSet) {
     value: token.value,
     semanticRole: token.semanticRole,
     cssProperty: token.cssProperty,
+  }));
+}
+
+function allowedTokenBindings(section, tokenSet) {
+  const tokens = selectableTokens(tokenSet);
+  return visibleItems(section).flatMap((item) => componentFields(item).flatMap((field) => {
+    const isMulti = componentFields(item).length > 1;
+    const slots = styleSlotsFor(item, field);
+    return slots.filter((slot) => slot.aiSelectable !== false).map((slot) => ({
+      itemKey: item.itemKey,
+      fieldKey: isMulti ? field.fieldKey : null,
+      slotKey: slot.slotKey,
+      semanticRole: slot.semanticRole,
+      allowedTokenKeys: tokens
+        .filter((token) => token.semanticRole === slot.semanticRole)
+        .map((token) => token.tokenKey),
+    }));
   }));
 }
 
@@ -236,6 +260,7 @@ function normalizeCompositionPlan({
   const tokenByKey = new Map(selectableTokens(tokenSet).map((token) => [token.tokenKey, token]));
   const tokenBindings = [];
   const seenTokenBindings = new Set();
+  const normalizationAdjustments = [];
   for (const binding of Array.isArray(plan.tokenBindings) ? plan.tokenBindings : []) {
     const item = itemByKey.get(String(binding?.itemKey || ""));
     if (!item || item.isLocked) fail("Token binding targets an unknown or locked component");
@@ -244,11 +269,29 @@ function normalizeCompositionPlan({
       ? (fields.length === 1 ? fields[0] : null)
       : fields.find((candidate) => candidate.fieldKey === binding.fieldKey);
     if (!field || field.isLocked) fail("Token binding targets an unknown or locked field");
-    const slots = [...(item.styleSlots || []), ...(field.styleSlots || [])];
+    const slots = styleSlotsFor(item, field);
     const slot = slots.find((candidate) => candidate.slotKey === binding.slotKey && candidate.aiSelectable !== false);
-    const token = tokenByKey.get(binding.tokenKey);
-    if (!slot || !token || slot.semanticRole !== token.semanticRole) {
-      fail("Token binding does not match an allowed style slot");
+    if (!slot) {
+      normalizationAdjustments.push(
+        `${item.itemKey}.${binding.slotKey} 스타일 슬롯은 허용되지 않아 적용하지 않았습니다.`,
+      );
+      continue;
+    }
+    let token = tokenByKey.get(binding.tokenKey);
+    if (!token || slot.semanticRole !== token.semanticRole) {
+      const fallbackToken = [...tokenByKey.values()].find((candidate) => (
+        candidate.semanticRole === slot.semanticRole
+      ));
+      if (!fallbackToken) {
+        normalizationAdjustments.push(
+          `${item.itemKey}.${slot.slotKey}에 적용할 수 있는 ${slot.semanticRole} 토큰이 없어 스타일을 유지했습니다.`,
+        );
+        continue;
+      }
+      normalizationAdjustments.push(
+        `${binding.tokenKey || "선택된 토큰"}은 ${slot.slotKey}과 호환되지 않아 ${fallbackToken.tokenKey}으로 보정했습니다.`,
+      );
+      token = fallbackToken;
     }
     const bindingKey = `${item.itemKey}.${fields.length === 1 ? "" : field.fieldKey}.${slot.slotKey}`;
     if (seenTokenBindings.has(bindingKey)) fail("Planner returned a duplicate style-slot binding");
@@ -285,7 +328,10 @@ function normalizeCompositionPlan({
         : "",
     },
     missingInputs: Array.isArray(plan.missingInputs) ? plan.missingInputs.slice(0, 20) : [],
-    adjustments: Array.isArray(plan.adjustments) ? plan.adjustments.slice(0, 30) : [],
+    adjustments: [
+      ...(Array.isArray(plan.adjustments) ? plan.adjustments : []),
+      ...normalizationAdjustments,
+    ].slice(0, 30),
     rationale: String(plan.rationale || "").trim().slice(0, 1200),
   };
 }
@@ -295,6 +341,7 @@ module.exports = {
   SAFE_TOKEN_PROPERTIES,
   publicSectionContract,
   selectableTokens,
+  allowedTokenBindings,
   compositionFingerprint,
   compositionOptionsFromBody,
   stableFingerprint,
