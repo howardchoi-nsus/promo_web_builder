@@ -38,6 +38,7 @@ module.exports = async function handler(req, res) {
       prompt: request.prompt, safeArea: request.safeArea || "none",
       backgroundColor: run.inputSnapshot?.design?.backgroundColor,
       aspectRatio: request.aspectRatio || run.constraintsSnapshot?.imageAspectRatio,
+      targetType: job.target_type,
       provider: request.promptConfig?.provider,
       model: request.promptConfig?.model,
       modelOptions: request.promptConfig?.modelOptions,

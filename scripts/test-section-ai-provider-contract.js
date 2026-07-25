@@ -65,6 +65,11 @@ process.env.SECTION_IMAGE_PROVIDER = "openai";
   assert.match(requests[1].body.prompt, /compatible with the solid section background color #123e36/);
   assert.match(requests[1].body.prompt, /Do not bake a fade, gradient, vignette, transparency/);
   assert.match(requests[1].body.prompt, /web renderer applies the requested fade with CSS/);
+  assert.match(requests[1].body.prompt, /FULL-BLEED WEB SECTION BACKGROUND/);
+  assert.match(requests[1].body.prompt, /cover every pixel from edge to edge/);
+  assert.match(requests[1].body.prompt, /Do not place the scene inside a card, panel, poster/);
+  assert.match(requests[1].body.prompt, /Do not add any outer margin, padding, matte, whitespace/);
+  assert.match(requests[1].body.prompt, /Never draw it as a surrounding frame or margin/);
 
   process.env.SECTION_IMAGE_PROVIDER = "gemini";
   process.env.SECTION_IMAGE_MODEL = "gemini-3.1-flash-image";
@@ -88,6 +93,10 @@ process.env.SECTION_IMAGE_PROVIDER = "openai";
   assert.match(requests[2].body.input[0].text, /left half as clean negative space/);
   assert.match(requests[2].body.input[0].text, /main visual subject on the right/);
   assert.match(imagePromptForSafeArea("Centered visual", "center-copy"), /center as clean negative space/);
+  assert.doesNotMatch(
+    imagePromptForSafeArea("Component visual", "none", "#ffffff", "item", "1:1"),
+    /FULL-BLEED WEB SECTION BACKGROUND/
+  );
 
   const gemini4kImage = await generateSectionImage({
     prompt: "Wide premium visual",

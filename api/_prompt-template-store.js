@@ -141,6 +141,8 @@ const PROMPT_TYPES = {
       "Create a polished supporting background image for the promotional web section.",
       "Base the visual concept only on the registered section content.",
       "The main visual subject should occupy approximately 60 to 70 percent of the canvas.",
+      "Create a full-bleed edge-to-edge background, not artwork displayed inside a card, poster, panel, frame, or smaller canvas.",
+      "Do not add outer whitespace, matte, letterboxing, borders, rounded outer corners, drop shadows, or transparent edges.",
       "Section: {{sectionName}}",
       "Registered content: {{contentJson}}",
       "Section background color: {{backgroundColor}}",

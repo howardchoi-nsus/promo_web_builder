@@ -116,7 +116,13 @@ function responseOutputText(payload) {
     .find((part) => part.type === "output_text")?.text || "";
 }
 
-function imagePromptForSafeArea(prompt, safeArea, backgroundColor = "#f5f7fb") {
+function imagePromptForSafeArea(
+  prompt,
+  safeArea,
+  backgroundColor = "#f5f7fb",
+  targetType = "section-background",
+  aspectRatio = "16:9"
+) {
   const composition = safeArea === "right-copy"
     ? "Keep the right half as clean negative space for DOM copy and place the main visual subject on the left."
     : safeArea === "left-copy"
@@ -124,9 +130,18 @@ function imagePromptForSafeArea(prompt, safeArea, backgroundColor = "#f5f7fb") {
       : safeArea === "center-copy"
         ? "Keep the center as clean negative space for centered DOM copy and place supporting visual detail around the outer edges."
         : "Use the full canvas for the visual subject; do not reserve artificial copy-safe negative space.";
+  const sectionBackgroundRules = targetType === "section-background" ? [
+    "OUTPUT CONTRACT — FULL-BLEED WEB SECTION BACKGROUND (highest priority):",
+    `Compose directly on the entire ${normalizedImageAspectRatio(aspectRatio)} output canvas and cover every pixel from edge to edge.`,
+    "The scene must continue naturally through all four outer edges and all four corners.",
+    "Do not place the scene inside a card, panel, poster, browser mockup, inset canvas, floating surface, or smaller artboard.",
+    "Do not add any outer margin, padding, matte, whitespace, transparent edge, letterbox, pillarbox, border, stroke, frame, keyline, rounded outer canvas corner, drop shadow, or outer glow.",
+    "The supplied section background color is only a color-matching reference. Never draw it as a surrounding frame or margin.",
+  ] : [];
   return [
     String(prompt || "").trim(),
     composition,
+    ...sectionBackgroundRules,
     `Use edge colors that are visually compatible with the solid section background color ${backgroundColor}.`,
     "Do not bake a fade, gradient, vignette, transparency, border, or masking effect into the image; the web renderer applies the requested fade with CSS.",
     "Do not render text, buttons, logos, badges, or legal copy inside the image.",
@@ -318,7 +333,13 @@ async function generateSectionImage(input) {
     : String(configuredProvider).trim().toLowerCase();
   const request = {
     ...input,
-    prompt: imagePromptForSafeArea(input.prompt, input.safeArea, input.backgroundColor),
+    prompt: imagePromptForSafeArea(
+      input.prompt,
+      input.safeArea,
+      input.backgroundColor,
+      input.targetType || "section-background",
+      input.aspectRatio
+    ),
   };
   if (provider === "gemini") return generateGeminiSectionImage(request);
   if (provider === "openai") return generateOpenAiSectionImage(request);
