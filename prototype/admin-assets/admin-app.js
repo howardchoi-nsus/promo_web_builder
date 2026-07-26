@@ -9383,6 +9383,9 @@ var n_ = /*#__PURE__*/ Ch(Bh, [["render", t_], ["__scopeId", "data-v-f140278f"]]
 					retryBaseMs: "",
 					retryMaxMs: "",
 					outputMimeType: "",
+					generationPolicyText: "{}",
+					renderPolicyText: "{}",
+					validationPolicyText: "{}",
 					harnessConfigText: "{}",
 					modelCapabilitySnapshotText: "{}",
 					safetyContractText: "{}",
@@ -10505,7 +10508,11 @@ var n_ = /*#__PURE__*/ Ch(Bh, [["render", t_], ["__scopeId", "data-v-f140278f"]]
 						"harnessConfig",
 						"runtimeConfig",
 						"modelCapabilitySnapshot",
-						"safetyContract"
+						"safetyContract",
+						"policySchemaVersion",
+						"generationPolicy",
+						"renderPolicy",
+						"validationPolicy"
 					]), c = Object.fromEntries(Object.entries(a.modelOptions || {}).filter(([e]) => !s.has(e)));
 					this.promptEditor = {
 						name: a.name || "",
@@ -10521,13 +10528,16 @@ var n_ = /*#__PURE__*/ Ch(Bh, [["render", t_], ["__scopeId", "data-v-f140278f"]]
 							"1K",
 							"2K",
 							"4K"
-						].includes(String(a.modelOptions?.imageSize || a.modelOptions?.image_size || "").toUpperCase()) ? String(a.modelOptions?.imageSize || a.modelOptions?.image_size).toUpperCase() : "2K",
+						].includes(String(a.generationPolicy?.requestedTier || a.modelOptions?.generationPolicy?.requestedTier || a.modelOptions?.imageSize || a.modelOptions?.image_size || "").toUpperCase()) ? String(a.generationPolicy?.requestedTier || a.modelOptions?.generationPolicy?.requestedTier || a.modelOptions?.imageSize || a.modelOptions?.image_size).toUpperCase() : "2K",
 						executionSnapshotVersion: Number(a.executionSnapshotVersion || a.modelOptions?.executionSnapshotVersion || 2),
 						timeoutMs: a.runtimeConfig?.timeoutMs ?? a.modelOptions?.runtimeConfig?.timeoutMs ?? "",
 						maxAttempts: a.runtimeConfig?.maxAttempts ?? a.modelOptions?.runtimeConfig?.maxAttempts ?? "",
 						retryBaseMs: a.runtimeConfig?.retryBaseMs ?? a.modelOptions?.runtimeConfig?.retryBaseMs ?? "",
 						retryMaxMs: a.runtimeConfig?.retryMaxMs ?? a.modelOptions?.runtimeConfig?.retryMaxMs ?? "",
-						outputMimeType: a.runtimeConfig?.outputMimeType ?? a.modelOptions?.runtimeConfig?.outputMimeType ?? "",
+						outputMimeType: a.generationPolicy?.outputMimeType ?? a.modelOptions?.generationPolicy?.outputMimeType ?? a.runtimeConfig?.outputMimeType ?? a.modelOptions?.runtimeConfig?.outputMimeType ?? "",
+						generationPolicyText: JSON.stringify(a.generationPolicy || a.modelOptions?.generationPolicy || {}, null, 2),
+						renderPolicyText: JSON.stringify(a.renderPolicy || a.modelOptions?.renderPolicy || {}, null, 2),
+						validationPolicyText: JSON.stringify(a.validationPolicy || a.modelOptions?.validationPolicy || {}, null, 2),
 						harnessConfigText: JSON.stringify(a.harnessConfig || a.modelOptions?.harnessConfig || {}, null, 2),
 						modelCapabilitySnapshotText: JSON.stringify(a.modelCapabilitySnapshot || a.modelOptions?.modelCapabilitySnapshot || {}, null, 2),
 						safetyContractText: JSON.stringify(a.safetyContract || a.modelOptions?.safetyContract || {}, null, 2),
@@ -10568,20 +10578,37 @@ var n_ = /*#__PURE__*/ Ch(Bh, [["render", t_], ["__scopeId", "data-v-f140278f"]]
 					"component_image"
 				].includes(e?.type);
 			},
+			promptUsesSectionImagePolicy(e = this.selectedPromptTemplate) {
+				return ["section_background_image", "component_image"].includes(e?.type);
+			},
 			promptModelOptionsForSave(e) {
 				let t = this.parseModelOptionsText(this.promptEditor.modelOptionsText);
-				return this.promptSupportsImageSize(e) && (t.imageSize = [
+				if (this.promptSupportsImageSize(e) && (t.imageSize = [
 					"1K",
 					"2K",
 					"4K"
-				].includes(this.promptEditor.imageSize) ? this.promptEditor.imageSize : "2K", delete t.image_size), this.promptUsesSectionAiControlPlane(e) && (t.executionSnapshotVersion = Number(this.promptEditor.executionSnapshotVersion || 2), t.runtimeConfig = {
-					timeoutMs: Number(this.promptEditor.timeoutMs),
-					maxAttempts: Number(this.promptEditor.maxAttempts),
-					retryBaseMs: Number(this.promptEditor.retryBaseMs),
-					retryMaxMs: Number(this.promptEditor.retryMaxMs),
-					...this.promptEditor.outputMimeType ? { outputMimeType: this.promptEditor.outputMimeType } : {},
-					...this.promptSupportsImageSize(e) ? { minimumImagePolicy: "requested-tier" } : {}
-				}, t.harnessConfig = this.parseModelOptionsText(this.promptEditor.harnessConfigText), t.modelCapabilitySnapshot = this.parseModelOptionsText(this.promptEditor.modelCapabilitySnapshotText), t.safetyContract = this.parseModelOptionsText(this.promptEditor.safetyContractText)), t;
+				].includes(this.promptEditor.imageSize) ? this.promptEditor.imageSize : "2K", delete t.image_size), this.promptUsesSectionAiControlPlane(e)) {
+					let n = this.promptUsesSectionImagePolicy(e);
+					if (t.executionSnapshotVersion = n ? Math.max(3, Number(this.promptEditor.executionSnapshotVersion || 3)) : Number(this.promptEditor.executionSnapshotVersion || 2), t.runtimeConfig = {
+						timeoutMs: Number(this.promptEditor.timeoutMs),
+						maxAttempts: Number(this.promptEditor.maxAttempts),
+						retryBaseMs: Number(this.promptEditor.retryBaseMs),
+						retryMaxMs: Number(this.promptEditor.retryMaxMs)
+					}, t.harnessConfig = this.parseModelOptionsText(this.promptEditor.harnessConfigText), t.modelCapabilitySnapshot = this.parseModelOptionsText(this.promptEditor.modelCapabilitySnapshotText), t.safetyContract = this.parseModelOptionsText(this.promptEditor.safetyContractText), n) {
+						t.policySchemaVersion = 1;
+						let e = this.parseModelOptionsText(this.promptEditor.generationPolicyText);
+						t.generationPolicy = {
+							...e,
+							requestedTier: [
+								"1K",
+								"2K",
+								"4K"
+							].includes(this.promptEditor.imageSize) ? this.promptEditor.imageSize : "2K",
+							outputMimeType: this.promptEditor.outputMimeType || e.outputMimeType || "image/jpeg"
+						}, t.renderPolicy = this.parseModelOptionsText(this.promptEditor.renderPolicyText), t.validationPolicy = this.parseModelOptionsText(this.promptEditor.validationPolicyText), delete t.imageSize, delete t.image_size, delete t.quality, delete t.runtimeConfig.outputMimeType, delete t.runtimeConfig.minimumImagePolicy;
+					}
+				}
+				return t;
 			},
 			async savePromptTemplate() {
 				let e = this.selectedPromptTemplate;

@@ -4,6 +4,11 @@ const { getSql, parseBody, fetchRun, createRun, transitionRun } = require("./_pr
 const { fetchTokenVersion } = require("./_design-token-store");
 const { createPromptExecutionSnapshot } = require("./_prompt-execution-snapshot");
 const {
+  backgroundSizeForFitMode,
+  normalizeTargetGeometry,
+  resolveEffectiveAspectRatio,
+} = require("./_section-ai-control-plane");
+const {
   inputHash, hasAnalyzableContent, analyzableSectionContent, defaultConstraints, normalizeBackgroundColor,
   resolveImageTarget,
 } = require("./_promo-section-design-contract");
@@ -122,6 +127,12 @@ module.exports = async function handler(req, res) {
     const promptType = requestMode === "assets"
       ? (targetResolution.constraints.imageTarget?.type === "item" ? "component_image" : "section_background_image")
       : "section_layout_planner";
+    const layoutSectionStyle = layout.layoutSpec?.sectionStyles?.[sectionKey] || {};
+    const targetGeometry = normalizeTargetGeometry(body.targetGeometry, {
+      width: Number(layout.layoutSpec?.responsive?.contentMaxWidth || 1280),
+      height: Number(layoutSectionStyle.minHeight || 520),
+      viewport: "desktop",
+    });
     const promptVariables = promptType === "section_layout_planner" ? {
       sectionJson: JSON.stringify(snapshot.section),
       contentJson: JSON.stringify(aiContent),
@@ -149,6 +160,50 @@ module.exports = async function handler(req, res) {
       aspectRatio: String(constraints.imageAspectRatio || "16:9"),
     };
     const promptSnapshot = await createPromptExecutionSnapshot(sql, promptType, promptVariables);
+    const generationPolicy = promptSnapshot.promptConfig.generationPolicy || {};
+    const effectiveAspectRatio = requestMode === "assets"
+      ? resolveEffectiveAspectRatio(
+        generationPolicy,
+        targetGeometry,
+        targetField?.image?.aspectRatio || targetItem?.image?.aspectRatio || "",
+        promptSnapshot.promptConfig.modelCapabilitySnapshot?.aspectRatios
+      )
+      : String(constraints.imageAspectRatio || "16:9");
+    const renderPolicy = promptSnapshot.promptConfig.renderPolicy || {};
+    const targetRenderPolicy = targetResolution.constraints.imageTarget?.type === "item"
+      ? renderPolicy.componentImage || {}
+      : renderPolicy.sectionBackground || {};
+    const allowedFitModes = Array.isArray(targetRenderPolicy.allowedFitModes)
+      ? targetRenderPolicy.allowedFitModes
+      : ["cover"];
+    const requestedFitMode = String(body.renderOverrides?.fitMode || "");
+    const effectiveFitMode = allowedFitModes.includes(requestedFitMode)
+      ? requestedFitMode
+      : (allowedFitModes.includes(targetRenderPolicy.fitMode) ? targetRenderPolicy.fitMode : allowedFitModes[0] || "cover");
+    const allowedFadeModes = renderPolicy.fade?.allowedModes || ["none"];
+    const effectiveFadeMode = allowedFadeModes.includes(fadeMode)
+      ? fadeMode
+      : (renderPolicy.fade?.defaultMode || "none");
+    const allowedPositions = [
+      "left top", "center top", "right top",
+      "left center", "center center", "right center",
+      "left bottom", "center bottom", "right bottom",
+    ];
+    const requestedPosition = String(body.renderOverrides?.position || "");
+    const effectiveRenderPolicy = {
+      fitMode: effectiveFitMode,
+      backgroundSize: backgroundSizeForFitMode(effectiveFitMode),
+      position: allowedPositions.includes(requestedPosition)
+        ? requestedPosition
+        : String(targetRenderPolicy.position || "center center"),
+      repeat: String(targetRenderPolicy.repeat || "no-repeat"),
+      focalPoint: targetRenderPolicy.focalPoint || { x: 50, y: 50 },
+      fadeMode: effectiveFadeMode,
+      fadeStrength: String(body.renderOverrides?.fadeStrength || renderPolicy.fade?.defaultStrength || "medium"),
+      fadeStops: renderPolicy.fade?.stops || {},
+      allowedFitModes,
+      allowedFadeModes,
+    };
     const tokenValuesHash = inputHash(tokenSet.values || []);
     const executionContract = {
       hashContractVersion: HASH_CONTRACT_VERSION,
@@ -174,8 +229,10 @@ module.exports = async function handler(req, res) {
         backgroundColor,
         fadeMode,
         safeArea: requestedSafeArea,
-        aspectRatio: targetField?.image?.aspectRatio || targetItem?.image?.aspectRatio || constraints.imageAspectRatio || "16:9",
-        backgroundSize: "contain",
+        aspectRatio: effectiveAspectRatio,
+        sourceGeometry: body.targetGeometry || null,
+        effectiveGeometry: targetGeometry,
+        renderPolicy: effectiveRenderPolicy,
       },
       sectionInputs,
     };
@@ -213,9 +270,10 @@ module.exports = async function handler(req, res) {
         prompt: promptSnapshot.promptConfig.renderedPrompt,
         safeArea: imageTarget.type === "item" ? "none" : requestedSafeArea,
         fadeMode,
-        aspectRatio: imageTarget.type === "item"
-          ? String(targetField?.image?.aspectRatio || targetItem?.image?.aspectRatio || "1:1")
-          : String(constraints.imageAspectRatio || "16:9"),
+        aspectRatio: effectiveAspectRatio,
+        sourceGeometry: body.targetGeometry || null,
+        effectiveGeometry: targetGeometry,
+        effectiveRenderPolicy,
         targetType: imageTarget.type,
         itemKey: imageTarget.type === "item" ? imageTarget.itemKey : null,
         componentInstanceId: imageTarget.type === "item" ? targetItem?.id || null : null,
@@ -236,6 +294,11 @@ module.exports = async function handler(req, res) {
           harnessConfig: promptSnapshot.promptConfig.harnessConfig,
           modelCapabilitySnapshot: promptSnapshot.promptConfig.modelCapabilitySnapshot,
           safetyContract: promptSnapshot.promptConfig.safetyContract,
+          policySchemaVersion: promptSnapshot.promptConfig.policySchemaVersion,
+          generationPolicy: promptSnapshot.promptConfig.generationPolicy,
+          renderPolicy: promptSnapshot.promptConfig.renderPolicy,
+          validationPolicy: promptSnapshot.promptConfig.validationPolicy,
+          effectiveAspectRatio,
         },
       };
       await sql`

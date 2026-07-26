@@ -5,10 +5,13 @@ const SECTION_STYLE_KEYS = new Set([
   "minHeight",
   "backgroundImage",
   "backgroundSize",
+  "backgroundFitMode",
+  "backgroundAllowedFitModes",
   "backgroundPosition",
   "backgroundRepeat",
   "backgroundFadeMode",
   "backgroundFadeStrength",
+  "backgroundFadeStops",
 ]);
 const ITEM_STYLE_KEYS = new Set([
   "color", "fontSize", "fontWeight", "textAlign", "positionMode", "xPct", "yPx", "zIndex",
@@ -228,8 +231,12 @@ function validatePatch(section, generated, constraints) {
       if (!SECTION_STYLE_KEYS.has(property)) errors.push(`Unsupported section style: ${property}`);
       if ((constraints.layoutLocks || []).includes(property)) errors.push(`Locked layout property: ${property}`);
     });
-    if (style?.backgroundSize !== undefined && style.backgroundSize !== "contain") {
+    if (style?.backgroundSize !== undefined && !["contain", "cover", "100% auto"].includes(style.backgroundSize)) {
       errors.push(`Unsupported section background size: ${style.backgroundSize}`);
+    }
+    if (style?.backgroundFitMode !== undefined
+      && !["contain", "cover", "width-fill"].includes(style.backgroundFitMode)) {
+      errors.push(`Unsupported section background fit mode: ${style.backgroundFitMode}`);
     }
     if (style?.backgroundPosition !== undefined
       && !["left center", "center center", "right center"].includes(style.backgroundPosition)) {

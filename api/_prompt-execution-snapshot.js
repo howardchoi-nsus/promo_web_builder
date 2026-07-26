@@ -122,6 +122,12 @@ async function createPromptExecutionSnapshot(sql, type, variables = {}) {
       harnessConfig: controlPlane.harnessConfig,
       modelCapabilitySnapshot: controlPlane.modelCapabilitySnapshot,
       safetyContract: controlPlane.safetyContract,
+      ...(controlPlane.snapshotVersion >= 3 ? {
+        policySchemaVersion: controlPlane.policySchemaVersion,
+        generationPolicy: controlPlane.generationPolicy,
+        renderPolicy: controlPlane.renderPolicy,
+        validationPolicy: controlPlane.validationPolicy,
+      } : {}),
       controlPlaneReady: prompt.controlPlaneReady,
       renderedPrompt,
       renderedPromptHash: sha256(renderedPrompt),

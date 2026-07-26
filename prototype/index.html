@@ -939,6 +939,27 @@
                       </select>
                     </label>
                   </div>
+                  <div v-if="promptUsesSectionImagePolicy(selectedPromptTemplate)" class="subsection">
+                    <div class="subsection-title">
+                      <h3>Image generation and rendering policy (V3)</h3>
+                      <span>Draft, validate, and activate these settings without a source-code deployment.</span>
+                    </div>
+                    <label class="field">
+                      <span>Generation policy (JSON)</span>
+                      <textarea v-model="promptEditor.generationPolicyText" rows="10" spellcheck="false"></textarea>
+                      <small>Controls tier, aspect-ratio strategy, quality, output MIME type, and subject scale.</small>
+                    </label>
+                    <label class="field">
+                      <span>Render policy (JSON)</span>
+                      <textarea v-model="promptEditor.renderPolicyText" rows="14" spellcheck="false"></textarea>
+                      <small>Controls cover, contain, width-fill, position, focal point, and fade defaults.</small>
+                    </label>
+                    <label class="field">
+                      <span>Validation policy (JSON)</span>
+                      <textarea v-model="promptEditor.validationPolicyText" rows="14" spellcheck="false"></textarea>
+                      <small>For strict 2K landscape output, set minimumLandscapeWidth to 2048.</small>
+                    </label>
+                  </div>
                   <label class="field">
                     <span>Harness 지침(JSON)</span>
                     <textarea v-model="promptEditor.harnessConfigText" rows="12" spellcheck="false"></textarea>

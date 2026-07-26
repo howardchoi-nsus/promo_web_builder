@@ -41,7 +41,8 @@ export function mergeLayoutSpec(base = DEFAULT_DESIGN_SPEC, override = {}) {
 export function validateLayoutSpec(value = {}) {
   const spec = normalizeLayoutSpec(value);
   const errors = [];
-  const allowedBackgroundSizes = new Set(["contain"]);
+  const allowedBackgroundSizes = new Set(["contain", "cover", "100% auto"]);
+  const allowedBackgroundFitModes = new Set(["contain", "cover", "width-fill"]);
   const allowedBackgroundPositions = new Set(["left center", "center center", "right center"]);
   const allowedFadeModes = new Set(["none", "left", "right", "both"]);
   const allowedFadeStrengths = new Set(["soft", "medium", "strong"]);
@@ -59,6 +60,9 @@ export function validateLayoutSpec(value = {}) {
     }
     if (style?.backgroundSize !== undefined && !allowedBackgroundSizes.has(style.backgroundSize)) {
       errors.push({ path: `sectionStyles.${key}.backgroundSize`, message: "Unsupported section background size." });
+    }
+    if (style?.backgroundFitMode !== undefined && !allowedBackgroundFitModes.has(style.backgroundFitMode)) {
+      errors.push({ path: `sectionStyles.${key}.backgroundFitMode`, message: "Unsupported section background fit mode." });
     }
     if (style?.backgroundPosition !== undefined && !allowedBackgroundPositions.has(style.backgroundPosition)) {
       errors.push({ path: `sectionStyles.${key}.backgroundPosition`, message: "Unsupported section background position." });

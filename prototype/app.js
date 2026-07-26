@@ -1302,6 +1302,9 @@ const adminApp = createApp({
         retryBaseMs: "",
         retryMaxMs: "",
         outputMimeType: "",
+        generationPolicyText: "{}",
+        renderPolicyText: "{}",
+        validationPolicyText: "{}",
         harnessConfigText: "{}",
         modelCapabilitySnapshotText: "{}",
         safetyContractText: "{}",
@@ -2504,6 +2507,10 @@ const adminApp = createApp({
           "runtimeConfig",
           "modelCapabilitySnapshot",
           "safetyContract",
+          "policySchemaVersion",
+          "generationPolicy",
+          "renderPolicy",
+          "validationPolicy",
         ]);
         const providerOptions = Object.fromEntries(
           Object.entries(detail.modelOptions || {}).filter(([key]) => !reservedModelOptionKeys.has(key))
@@ -2519,16 +2526,40 @@ const adminApp = createApp({
           maxTokens: detail.maxTokens ?? "",
           responseFormat: detail.responseFormat || "",
           imageSize: ["1K", "2K", "4K"].includes(String(
-            detail.modelOptions?.imageSize || detail.modelOptions?.image_size || ""
+            detail.generationPolicy?.requestedTier
+              || detail.modelOptions?.generationPolicy?.requestedTier
+              || detail.modelOptions?.imageSize
+              || detail.modelOptions?.image_size
+              || ""
           ).toUpperCase())
-            ? String(detail.modelOptions?.imageSize || detail.modelOptions?.image_size).toUpperCase()
+            ? String(
+              detail.generationPolicy?.requestedTier
+                || detail.modelOptions?.generationPolicy?.requestedTier
+                || detail.modelOptions?.imageSize
+                || detail.modelOptions?.image_size
+            ).toUpperCase()
             : "2K",
           executionSnapshotVersion: Number(detail.executionSnapshotVersion || detail.modelOptions?.executionSnapshotVersion || 2),
           timeoutMs: detail.runtimeConfig?.timeoutMs ?? detail.modelOptions?.runtimeConfig?.timeoutMs ?? "",
           maxAttempts: detail.runtimeConfig?.maxAttempts ?? detail.modelOptions?.runtimeConfig?.maxAttempts ?? "",
           retryBaseMs: detail.runtimeConfig?.retryBaseMs ?? detail.modelOptions?.runtimeConfig?.retryBaseMs ?? "",
           retryMaxMs: detail.runtimeConfig?.retryMaxMs ?? detail.modelOptions?.runtimeConfig?.retryMaxMs ?? "",
-          outputMimeType: detail.runtimeConfig?.outputMimeType ?? detail.modelOptions?.runtimeConfig?.outputMimeType ?? "",
+          outputMimeType: detail.generationPolicy?.outputMimeType
+            ?? detail.modelOptions?.generationPolicy?.outputMimeType
+            ?? detail.runtimeConfig?.outputMimeType
+            ?? detail.modelOptions?.runtimeConfig?.outputMimeType
+            ?? "",
+          generationPolicyText: JSON.stringify(
+            detail.generationPolicy || detail.modelOptions?.generationPolicy || {},
+            null,
+            2
+          ),
+          renderPolicyText: JSON.stringify(detail.renderPolicy || detail.modelOptions?.renderPolicy || {}, null, 2),
+          validationPolicyText: JSON.stringify(
+            detail.validationPolicy || detail.modelOptions?.validationPolicy || {},
+            null,
+            2
+          ),
           harnessConfigText: JSON.stringify(detail.harnessConfig || detail.modelOptions?.harnessConfig || {}, null, 2),
           modelCapabilitySnapshotText: JSON.stringify(
             detail.modelCapabilitySnapshot || detail.modelOptions?.modelCapabilitySnapshot || {},
@@ -2578,6 +2609,10 @@ const adminApp = createApp({
       ].includes(prompt?.type);
     },
 
+    promptUsesSectionImagePolicy(prompt = this.selectedPromptTemplate) {
+      return ["section_background_image", "component_image"].includes(prompt?.type);
+    },
+
     promptModelOptionsForSave(prompt) {
       const modelOptions = this.parseModelOptionsText(this.promptEditor.modelOptionsText);
       if (this.promptSupportsImageSize(prompt)) {
@@ -2587,22 +2622,39 @@ const adminApp = createApp({
         delete modelOptions.image_size;
       }
       if (this.promptUsesSectionAiControlPlane(prompt)) {
-        modelOptions.executionSnapshotVersion = Number(this.promptEditor.executionSnapshotVersion || 2);
+        const usesImagePolicy = this.promptUsesSectionImagePolicy(prompt);
+        modelOptions.executionSnapshotVersion = usesImagePolicy
+          ? Math.max(3, Number(this.promptEditor.executionSnapshotVersion || 3))
+          : Number(this.promptEditor.executionSnapshotVersion || 2);
         modelOptions.runtimeConfig = {
           timeoutMs: Number(this.promptEditor.timeoutMs),
           maxAttempts: Number(this.promptEditor.maxAttempts),
           retryBaseMs: Number(this.promptEditor.retryBaseMs),
           retryMaxMs: Number(this.promptEditor.retryMaxMs),
-          ...(this.promptEditor.outputMimeType
-            ? { outputMimeType: this.promptEditor.outputMimeType }
-            : {}),
-          ...(this.promptSupportsImageSize(prompt) ? { minimumImagePolicy: "requested-tier" } : {}),
         };
         modelOptions.harnessConfig = this.parseModelOptionsText(this.promptEditor.harnessConfigText);
         modelOptions.modelCapabilitySnapshot = this.parseModelOptionsText(
           this.promptEditor.modelCapabilitySnapshotText
         );
         modelOptions.safetyContract = this.parseModelOptionsText(this.promptEditor.safetyContractText);
+        if (usesImagePolicy) {
+          modelOptions.policySchemaVersion = 1;
+          const generationPolicy = this.parseModelOptionsText(this.promptEditor.generationPolicyText);
+          modelOptions.generationPolicy = {
+            ...generationPolicy,
+            requestedTier: ["1K", "2K", "4K"].includes(this.promptEditor.imageSize)
+              ? this.promptEditor.imageSize
+              : "2K",
+            outputMimeType: this.promptEditor.outputMimeType || generationPolicy.outputMimeType || "image/jpeg",
+          };
+          modelOptions.renderPolicy = this.parseModelOptionsText(this.promptEditor.renderPolicyText);
+          modelOptions.validationPolicy = this.parseModelOptionsText(this.promptEditor.validationPolicyText);
+          delete modelOptions.imageSize;
+          delete modelOptions.image_size;
+          delete modelOptions.quality;
+          delete modelOptions.runtimeConfig.outputMimeType;
+          delete modelOptions.runtimeConfig.minimumImagePolicy;
+        }
       }
       return modelOptions;
     },

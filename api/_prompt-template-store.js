@@ -300,7 +300,8 @@ function defaultPromptControlPlane(type) {
   if (!CONTROLLED_PROMPT_TYPES.has(type)) return {};
   const isImage = type === "section_background_image" || type === "component_image";
   return {
-    executionSnapshotVersion: 2,
+    executionSnapshotVersion: isImage ? 3 : 2,
+    ...(isImage ? { policySchemaVersion: 1 } : {}),
     harnessConfig: isImage
       ? JSON.parse(JSON.stringify(DEFAULT_IMAGE_HARNESS_CONFIG))
       : { version: 1, additionalInstructions: [] },
@@ -310,8 +311,6 @@ function defaultPromptControlPlane(type) {
         maxAttempts: 3,
         retryBaseMs: 15000,
         retryMaxMs: 75000,
-        outputMimeType: "image/jpeg",
-        minimumImagePolicy: "requested-tier",
       }
       : {
         timeoutMs: 90000,
@@ -334,6 +333,56 @@ function defaultPromptControlPlane(type) {
       key: isImage ? "section-image-v1" : "section-layout-v1",
       version: 1,
     },
+    ...(isImage ? {
+      generationPolicy: {
+        requestedTier: "2K",
+        aspectRatioStrategy: type === "section_background_image" ? "nearest-supported" : "target",
+        fixedAspectRatio: type === "section_background_image" ? "16:9" : "1:1",
+        fallbackAspectRatio: type === "section_background_image" ? "16:9" : "1:1",
+        quality: "medium",
+        outputMimeType: "image/jpeg",
+        backgroundColorStrategy: "section",
+        subjectScale: { minimumPercent: 55, maximumPercent: 75 },
+      },
+      renderPolicy: {
+        sectionBackground: {
+          fitMode: "cover",
+          allowedFitModes: ["cover", "contain", "width-fill"],
+          position: "center center",
+          repeat: "no-repeat",
+          focalPoint: { x: 50, y: 50 },
+        },
+        componentImage: {
+          fitMode: "contain",
+          allowedFitModes: ["contain", "cover"],
+          position: "center center",
+          transparentFrame: true,
+        },
+        fade: {
+          allowedModes: ["none", "left", "right", "both"],
+          defaultMode: "none",
+          defaultStrength: "medium",
+          stops: {
+            soft: { solid: 8, clear: 38, edge: 18 },
+            medium: { solid: 14, clear: 48, edge: 24 },
+            strong: { solid: 22, clear: 62, edge: 32 },
+          },
+        },
+      },
+      validationPolicy: {
+        rejectUnreadableMetadata: true,
+        rejectMimeMismatch: true,
+        rejectLowResolution: true,
+        resolutionRules: {
+          "1K": { minimumLandscapeWidth: 1024, minimumPortraitHeight: 1024, minimumSquareSide: 1024 },
+          "2K": { minimumLandscapeWidth: 2048, minimumPortraitHeight: 2048, minimumSquareSide: 2048 },
+          "4K": { minimumLandscapeWidth: 3840, minimumPortraitHeight: 3840, minimumSquareSide: 3840 },
+        },
+        aspectRatioTolerancePercent: 8,
+        minimumByteLength: 1024,
+        edgeFrameDetection: { enabled: false, uniformEdgeThreshold: 0.92, minimumBandPercent: 4 },
+      },
+    } : {}),
   };
 }
 
@@ -354,7 +403,17 @@ function normalizePromptControlPlaneOptions(type, value, { includeDefaults = fal
     runtimeConfig: objectValue("runtimeConfig"),
     modelCapabilitySnapshot: objectValue("modelCapabilitySnapshot"),
     safetyContract: objectValue("safetyContract"),
+    ...(Number(version) >= 3 && isImagePromptType(type) ? {
+      policySchemaVersion: Number(source.policySchemaVersion ?? defaults.policySchemaVersion ?? 1),
+      generationPolicy: objectValue("generationPolicy"),
+      renderPolicy: objectValue("renderPolicy"),
+      validationPolicy: objectValue("validationPolicy"),
+    } : {}),
   };
+}
+
+function isImagePromptType(type) {
+  return type === "section_background_image" || type === "component_image";
 }
 
 function getSql() {
@@ -632,8 +691,17 @@ function toPromptTemplate(row) {
     modelCapabilitySnapshot: modelOptions.modelCapabilitySnapshot || {},
     safetyContract: modelOptions.safetyContract || {},
     executionSnapshotVersion: Number(modelOptions.executionSnapshotVersion || 1),
+    policySchemaVersion: Number(modelOptions.policySchemaVersion || 0),
+    generationPolicy: modelOptions.generationPolicy || {},
+    renderPolicy: modelOptions.renderPolicy || {},
+    validationPolicy: modelOptions.validationPolicy || {},
     controlPlaneReady: !CONTROLLED_PROMPT_TYPES.has(row.type)
-      || ["harnessConfig", "runtimeConfig", "modelCapabilitySnapshot", "safetyContract", "executionSnapshotVersion"]
+      || [
+        "harnessConfig", "runtimeConfig", "modelCapabilitySnapshot", "safetyContract", "executionSnapshotVersion",
+        ...(Number(storedOptions.executionSnapshotVersion || 1) >= 3 && isImagePromptType(row.type)
+          ? ["policySchemaVersion", "generationPolicy", "renderPolicy", "validationPolicy"]
+          : []),
+      ]
         .every((key) => Object.prototype.hasOwnProperty.call(storedOptions, key)),
     changeNote: row.change_note || "",
     archivedAt: row.archived_at || null,

@@ -5,6 +5,9 @@ const {
   buildImageHarnessPrompt,
   imageMetadata,
   normalizeControlPlanePromptConfig,
+  backgroundSizeForFitMode,
+  normalizeTargetGeometry,
+  resolveEffectiveAspectRatio,
   validateControlPlaneConfig,
   validateRequestedImageResolution,
 } = require("../api/_section-ai-control-plane");
@@ -21,12 +24,32 @@ const assetHandler = read("api", "promo-section-design-asset-process.js");
 const admin = read("prototype", "app.js");
 const html = read("prototype", "index.html");
 const migration = read("db", "migrations", "035_llm_prompt_control_plane_backfill.sql");
+const policyMigration = read("db", "migrations", "036_section_ai_image_policy_v3_drafts.sql");
 
 const backgroundDefaults = defaultPromptControlPlane("section_background_image");
-assert.equal(backgroundDefaults.executionSnapshotVersion, 2);
+assert.equal(backgroundDefaults.executionSnapshotVersion, 3);
+assert.equal(backgroundDefaults.generationPolicy.requestedTier, "2K");
+assert.equal(backgroundDefaults.renderPolicy.sectionBackground.fitMode, "cover");
+assert.equal(backgroundDefaults.validationPolicy.resolutionRules["2K"].minimumLandscapeWidth, 2048);
 assert.equal(backgroundDefaults.runtimeConfig.timeoutMs, 240000);
 assert.equal(backgroundDefaults.runtimeConfig.maxAttempts, 3);
 assert.equal(backgroundDefaults.modelCapabilitySnapshot.minimumLongSideByTier["2K"], 1800);
+assert.equal(backgroundSizeForFitMode("width-fill"), "100% auto");
+assert.deepEqual(normalizeTargetGeometry({ width: 9999, height: 20 }), {
+  width: 3840, height: 120, viewport: "desktop",
+});
+assert.equal(resolveEffectiveAspectRatio(
+  { aspectRatioStrategy: "nearest-supported", fallbackAspectRatio: "16:9" },
+  { width: 1280, height: 520 },
+  "",
+  ["16:9", "4:3"]
+), "16:9");
+assert.equal(resolveEffectiveAspectRatio(
+  { aspectRatioStrategy: "section", fallbackAspectRatio: "16:9" },
+  { width: 1280, height: 520 },
+  "",
+  ["16:9", "4:3"]
+), "16:9");
 
 const config = normalizeControlPlanePromptConfig("section_background_image", {
   temperature: 0.35,
@@ -103,5 +126,9 @@ assert.match(html, /Harness 지침\(JSON\)/);
 assert.match(html, /requiredVariablesText[^>]+readonly/);
 assert.match(migration, /executionSnapshotVersion/);
 assert.match(migration, /minimumLongSideByTier/);
+assert.match(policyMigration, /status = 'active'/);
+assert.match(policyMigration, /'draft'/);
+assert.match(policyMigration, /minimumLandscapeWidth', 2048/);
+assert.doesNotMatch(policyMigration, /update\s+prompt_templates\s+set/i);
 
 console.log("Section AI Control Plane contract tests passed.");

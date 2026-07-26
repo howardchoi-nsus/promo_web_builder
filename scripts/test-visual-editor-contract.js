@@ -120,7 +120,8 @@ assert.match(renderer, /if \(isConfiguredAiImageItem\(section, item\)\) return f
 assert.match(renderer, /v-for="item in renderedItems\(section\)"/);
 assert.match(renderer, /configured \|\| String\(legacyAiImage\?\.value/);
 assert.match(renderer, /backgroundSize/);
-assert.match(renderer, /style\.backgroundSize \|\| "contain"/);
+assert.match(renderer, /fitMode === "width-fill"/);
+assert.match(renderer, /"100% auto"/);
 assert.match(renderer, /style\.backgroundPosition \|\| "center center"/);
 assert.match(renderer, /class="rendered-image-frame"/);
 assert.match(renderer, /imageFrameStyle/);

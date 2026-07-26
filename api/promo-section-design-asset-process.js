@@ -38,13 +38,19 @@ module.exports = async function handler(req, res) {
       prompt: request.prompt, safeArea: request.safeArea || "none",
       backgroundColor: run.inputSnapshot?.design?.backgroundColor,
       aspectRatio: request.aspectRatio || run.constraintsSnapshot?.imageAspectRatio,
+      effectiveAspectRatio: request.aspectRatio || run.constraintsSnapshot?.imageAspectRatio,
       targetType: job.target_type,
       provider: request.promptConfig?.provider,
       model: request.promptConfig?.model,
       modelOptions: request.promptConfig?.modelOptions,
       promptConfig: request.promptConfig,
     });
-    if (image.bytes.length < 1024) throw Object.assign(new Error("Generated image is too small"), { code: "IMAGE_VALIDATION_FAILED" });
+    const minimumByteLength = Number(request.promptConfig?.validationPolicy?.minimumByteLength || 1024);
+    if (image.bytes.length < minimumByteLength) {
+      throw Object.assign(new Error(`Generated image is below the minimum byte length ${minimumByteLength}`), {
+        code: "IMAGE_VALIDATION_FAILED",
+      });
+    }
     const extension = image.mimeType === "image/jpeg" ? "jpg" : image.mimeType === "image/webp" ? "webp" : "png";
     const targetKey = job.target_type === "item" ? job.target_item_key : `${run.sectionKey}-background`;
     const storageKey = `section-ai/${run.id}/${targetKey}-${Date.now()}.${extension}`;
@@ -60,6 +66,26 @@ module.exports = async function handler(req, res) {
       storageKey, assetUrl: blob.url, proxyUrl: `/api/promo-section-design-asset-image?jobId=${encodeURIComponent(jobId)}`,
       mimeType: image.mimeType, width: image.width, height: image.height,
       safeArea: request.safeArea || "none", backgroundColor: run.inputSnapshot?.design?.backgroundColor,
+      renderPolicy: request.effectiveRenderPolicy || null,
+      sourceGeometry: request.sourceGeometry || null,
+      effectiveGeometry: request.effectiveGeometry || null,
+      requested: {
+        tier: request.promptConfig?.generationPolicy?.requestedTier
+          || request.promptConfig?.modelOptions?.imageSize
+          || null,
+        aspectRatio: request.aspectRatio || null,
+        mimeType: request.promptConfig?.generationPolicy?.outputMimeType
+          || request.promptConfig?.runtimeConfig?.outputMimeType
+          || null,
+      },
+      actual: {
+        width: image.width,
+        height: image.height,
+        aspectRatio: Number((image.width / image.height).toFixed(4)),
+        mimeType: image.mimeType,
+        byteLength: image.bytes.length,
+      },
+      validation: { passed: true, warnings: [] },
       provider: image.provider, usage: image.usage,
     };
     await sql`

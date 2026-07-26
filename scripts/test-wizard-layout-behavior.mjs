@@ -54,7 +54,8 @@ assert.equal(validateLayoutSpec({
     },
   },
 }).ok, true);
-assert.equal(validateLayoutSpec({ sectionStyles: { hero: { backgroundSize: "cover" } } }).ok, false);
+assert.equal(validateLayoutSpec({ sectionStyles: { hero: { backgroundSize: "cover" } } }).ok, true);
+assert.equal(validateLayoutSpec({ sectionStyles: { hero: { backgroundSize: "stretch" } } }).ok, false);
 assert.equal(validateLayoutSpec({ sectionStyles: { hero: { backgroundFadeMode: "diagonal" } } }).ok, false);
 assert.equal(validateLayoutSpec({ sectionStyles: { hero: { backgroundFadeColor: "red" } } }).ok, false);
 assert.equal(validateLayoutSpec({ itemStyles: { "hero.image": { widthPct: 101 } } }).ok, false);

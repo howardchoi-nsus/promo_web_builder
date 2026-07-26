@@ -1349,7 +1349,7 @@ function removeSectionAiBackground(section) {
   const current = { ...(wizardResolvedLayout.sectionStyles[section.sectionKey] || {}) };
   [
     "backgroundImage", "backgroundSize", "backgroundPosition", "backgroundRepeat",
-    "backgroundFadeSafeArea",
+    "backgroundFadeSafeArea", "backgroundFitMode", "backgroundAllowedFitModes", "backgroundFadeStops",
   ].forEach((key) => delete current[key]);
   if (Object.keys(current).length) wizardResolvedLayout.sectionStyles[section.sectionKey] = current;
   else delete wizardResolvedLayout.sectionStyles[section.sectionKey];
@@ -1475,6 +1475,17 @@ async function generateSectionAiDesign(
         fadeMode: requestedTargetType === "section-background"
           ? (wizardResolvedLayout?.sectionStyles?.[sectionKey]?.backgroundFadeMode || "none")
           : "none",
+        targetGeometry: {
+          width: Number(wizardResolvedLayout?.responsive?.contentMaxWidth || 1280),
+          height: Number(wizardResolvedLayout?.sectionStyles?.[sectionKey]?.minHeight || 520),
+          viewport: "desktop",
+        },
+        renderOverrides: requestedTargetType === "section-background" ? {
+          fitMode: wizardResolvedLayout?.sectionStyles?.[sectionKey]?.backgroundFitMode || "",
+          position: wizardResolvedLayout?.sectionStyles?.[sectionKey]?.backgroundPosition || "",
+          fadeMode: wizardResolvedLayout?.sectionStyles?.[sectionKey]?.backgroundFadeMode || "none",
+          fadeStrength: wizardResolvedLayout?.sectionStyles?.[sectionKey]?.backgroundFadeStrength || "medium",
+        } : {},
       }),
     });
     saveSectionAiRun(sectionKey, created.run, sectionInputs);
@@ -1596,7 +1607,7 @@ async function applySectionAiDesign(section, saved) {
         if (String(currentSectionStyle.backgroundImage || "").startsWith("/api/promo-section-design-image?")) {
           [
             "backgroundImage", "backgroundSize", "backgroundPosition", "backgroundRepeat",
-            "backgroundFadeSafeArea",
+            "backgroundFadeSafeArea", "backgroundFitMode", "backgroundAllowedFitModes", "backgroundFadeStops",
           ]
             .forEach((key) => delete currentSectionStyle[key]);
           wizardResolvedLayout.sectionStyles[section.sectionKey] = currentSectionStyle;
@@ -1615,17 +1626,31 @@ async function applySectionAiDesign(section, saved) {
           ? "right"
           : safeArea === "center-copy" ? "both" : "left";
         const currentSectionStyle = wizardResolvedLayout.sectionStyles[section.sectionKey] || {};
+        const renderPolicy = appliedImage.renderPolicy
+          || appliedRun.effectivePatch?.assetRequests?.[0]?.effectiveRenderPolicy
+          || {};
+        const backgroundFitMode = ["cover", "contain", "width-fill"].includes(renderPolicy.fitMode)
+          ? renderPolicy.fitMode
+          : "cover";
         wizardResolvedLayout.sectionStyles[section.sectionKey] = {
           ...currentSectionStyle,
           backgroundImage: appliedImage.proxyUrl,
-          backgroundSize: "contain",
-          backgroundPosition: "center center",
-          backgroundRepeat: "no-repeat",
+          backgroundFitMode,
+          backgroundAllowedFitModes: Array.isArray(renderPolicy.allowedFitModes)
+            ? renderPolicy.allowedFitModes
+            : ["cover", "contain", "width-fill"],
+          backgroundSize: renderPolicy.backgroundSize
+            || (backgroundFitMode === "width-fill" ? "100% auto" : backgroundFitMode),
+          backgroundPosition: renderPolicy.position || "center center",
+          backgroundRepeat: renderPolicy.repeat || "no-repeat",
           backgroundFadeSafeArea: safeArea,
-          backgroundFadeMode: ["none", "left", "right", "both"].includes(currentSectionStyle.backgroundFadeMode)
+          backgroundFadeMode: ["none", "left", "right", "both"].includes(renderPolicy.fadeMode)
+            ? renderPolicy.fadeMode
+            : ["none", "left", "right", "both"].includes(currentSectionStyle.backgroundFadeMode)
             ? currentSectionStyle.backgroundFadeMode
             : backgroundFadeMode,
-          backgroundFadeStrength: currentSectionStyle.backgroundFadeStrength || "medium",
+          backgroundFadeStrength: renderPolicy.fadeStrength || currentSectionStyle.backgroundFadeStrength || "medium",
+          backgroundFadeStops: renderPolicy.fadeStops || currentSectionStyle.backgroundFadeStops || {},
           backgroundFadeColor: resolvedSectionBackgroundColor(section.sectionKey),
         };
       }

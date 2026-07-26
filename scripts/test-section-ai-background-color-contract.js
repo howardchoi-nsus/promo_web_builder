@@ -29,7 +29,7 @@ const backgroundColorFunction = rendererSource.match(
 assert.doesNotMatch(backgroundColorFunction, /backgroundFadeColor/);
 assert.match(
   rendererSource,
-  /backgroundFadeGradient\(normalizedFadeMode\(style\), backgroundColor, style\.backgroundFadeStrength\)/
+  /backgroundFadeGradient\([\s\S]*?normalizedFadeMode\(style\),[\s\S]*?backgroundColor,[\s\S]*?style\.backgroundFadeStrength,[\s\S]*?style\.backgroundFadeStops/
 );
 assert.doesNotMatch(rendererSource, /function effectiveSectionFadeColor/);
 

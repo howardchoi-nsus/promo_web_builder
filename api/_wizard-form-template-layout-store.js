@@ -55,8 +55,12 @@ function validateLayoutSpec(value, sections = []) {
     if (style?.minHeight !== undefined && (!Number.isFinite(height) || height < 50 || height > 1200)) {
       errors.push({ code: "INVALID_SECTION_HEIGHT", path: `sectionStyles.${key}.minHeight` });
     }
-    if (style?.backgroundSize !== undefined && style.backgroundSize !== "contain") {
+    if (style?.backgroundSize !== undefined && !["contain", "cover", "100% auto"].includes(style.backgroundSize)) {
       errors.push({ code: "INVALID_SECTION_BACKGROUND_SIZE", path: `sectionStyles.${key}.backgroundSize` });
+    }
+    if (style?.backgroundFitMode !== undefined
+      && !["contain", "cover", "width-fill"].includes(style.backgroundFitMode)) {
+      errors.push({ code: "INVALID_SECTION_BACKGROUND_FIT_MODE", path: `sectionStyles.${key}.backgroundFitMode` });
     }
     if (style?.backgroundPosition !== undefined
       && !["left center", "center center", "right center"].includes(style.backgroundPosition)) {

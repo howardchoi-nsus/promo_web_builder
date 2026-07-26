@@ -260,9 +260,9 @@ function effectiveSectionBackgroundColor(style) {
   return /^#[0-9a-f]{6}$/i.test(themeColor) ? themeColor : "#f5f7fb";
 }
 
-function backgroundFadeGradient(mode, color, strength = "medium") {
+function backgroundFadeGradient(mode, color, strength = "medium", configuredStops = {}) {
   if (!/^#[0-9a-f]{6}$/i.test(String(color || ""))) return "";
-  const stops = {
+  const stops = configuredStops?.[strength] || {
     soft: { solid: 8, clear: 38, edge: 18 },
     medium: { solid: 14, clear: 48, edge: 24 },
     strong: { solid: 22, clear: 62, edge: 32 },
@@ -285,8 +285,18 @@ function inlineSectionStyle(section) {
   const backgroundImage = sectionBackgroundUrl(section);
   const backgroundColor = effectiveSectionBackgroundColor(style);
   const fadeGradient = backgroundImage
-    ? backgroundFadeGradient(normalizedFadeMode(style), backgroundColor, style.backgroundFadeStrength)
+    ? backgroundFadeGradient(
+      normalizedFadeMode(style),
+      backgroundColor,
+      style.backgroundFadeStrength,
+      style.backgroundFadeStops,
+    )
     : "";
+  const fitMode = style.backgroundFitMode
+    || (style.backgroundSize === "100% auto" ? "width-fill" : style.backgroundSize);
+  const backgroundSize = fitMode === "width-fill"
+    ? "100% auto"
+    : (["contain", "cover"].includes(fitMode) ? fitMode : "cover");
   return {
     height: `${Math.max(50, canvasHeight)}px`,
     backgroundColor,
@@ -294,7 +304,7 @@ function inlineSectionStyle(section) {
       ? [fadeGradient, `url(${JSON.stringify(backgroundImage)})`].filter(Boolean).join(", ")
       : undefined,
     backgroundSize: backgroundImage
-      ? (fadeGradient ? `100% 100%, ${style.backgroundSize || "contain"}` : (style.backgroundSize || "contain"))
+      ? (fadeGradient ? `100% 100%, ${backgroundSize}` : backgroundSize)
       : undefined,
     backgroundPosition: backgroundImage
       ? (fadeGradient ? `center, ${style.backgroundPosition || "center center"}` : (style.backgroundPosition || "center center"))

@@ -46,6 +46,24 @@ defineEmits([
         @click="$emit('ai-action', 'remove-background')"
       >배경 삭제</button>
     </div>
+    <div v-if="hasAiBackground" class="section-background-fit">
+      <label>
+        <span>Background fit</span>
+        <select
+          :value="sectionStyle.backgroundFitMode || (sectionStyle.backgroundSize === '100% auto' ? 'width-fill' : sectionStyle.backgroundSize) || 'cover'"
+          @change="$emit('update-style', {
+            backgroundFitMode: $event.target.value,
+            backgroundSize: $event.target.value === 'width-fill' ? '100% auto' : $event.target.value,
+          })"
+        >
+          <option
+            v-for="mode in (sectionStyle.backgroundAllowedFitModes || ['cover', 'contain', 'width-fill'])"
+            :key="mode"
+            :value="mode"
+          >{{ mode }}</option>
+        </select>
+      </label>
+    </div>
     <div v-if="hasAiBackground" class="section-background-alignment">
       <span>배경 이미지 정렬</span>
       <div role="group" aria-label="배경 이미지 가로 정렬">

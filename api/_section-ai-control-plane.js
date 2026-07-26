@@ -34,7 +34,141 @@ function normalizeRuntimeConfig(type, value = {}) {
     retryBaseMs: integerInRange(source.retryBaseMs, defaults.retryBaseMs || 0, 0, RUNTIME_LIMITS.retryMaxMs),
     retryMaxMs: integerInRange(source.retryMaxMs, defaults.retryMaxMs || 0, 0, RUNTIME_LIMITS.retryMaxMs),
     ...(outputMimeType ? { outputMimeType } : {}),
-    ...(source.minimumImagePolicy ? { minimumImagePolicy: String(source.minimumImagePolicy) } : {}),
+  };
+}
+
+const IMAGE_TIERS = Object.freeze(["1K", "2K", "4K"]);
+const IMAGE_MIME_TYPES = Object.freeze(["image/jpeg", "image/png", "image/webp"]);
+const IMAGE_FIT_MODES = Object.freeze(["cover", "contain", "width-fill"]);
+const IMAGE_FADE_MODES = Object.freeze(["none", "left", "right", "both"]);
+const ASPECT_RATIO_STRATEGIES = Object.freeze(["fixed", "section", "nearest-supported", "target"]);
+
+function plainObject(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+
+function enumValue(value, allowed, fallback) {
+  const candidate = String(value || "").trim();
+  return allowed.includes(candidate) ? candidate : fallback;
+}
+
+function normalizeGenerationPolicy(type, value = {}) {
+  const defaults = defaultPromptControlPlane(type).generationPolicy || {};
+  const source = plainObject(value);
+  const subjectScale = plainObject(source.subjectScale);
+  return {
+    requestedTier: enumValue(String(source.requestedTier || "").toUpperCase(), IMAGE_TIERS, defaults.requestedTier || "2K"),
+    aspectRatioStrategy: enumValue(source.aspectRatioStrategy, ASPECT_RATIO_STRATEGIES, defaults.aspectRatioStrategy || "nearest-supported"),
+    fixedAspectRatio: String(source.fixedAspectRatio || defaults.fixedAspectRatio || "16:9"),
+    fallbackAspectRatio: String(source.fallbackAspectRatio || defaults.fallbackAspectRatio || "16:9"),
+    quality: enumValue(source.quality, ["low", "medium", "high"], defaults.quality || "medium"),
+    outputMimeType: enumValue(String(source.outputMimeType || "").toLowerCase(), IMAGE_MIME_TYPES, defaults.outputMimeType || "image/jpeg"),
+    backgroundColorStrategy: enumValue(source.backgroundColorStrategy, ["section", "transparent", "provider-default"], defaults.backgroundColorStrategy || "section"),
+    subjectScale: {
+      minimumPercent: integerInRange(subjectScale.minimumPercent, defaults.subjectScale?.minimumPercent || 55, 1, 100),
+      maximumPercent: integerInRange(subjectScale.maximumPercent, defaults.subjectScale?.maximumPercent || 75, 1, 100),
+    },
+  };
+}
+
+function normalizeRenderPolicy(type, value = {}) {
+  const defaults = defaultPromptControlPlane(type).renderPolicy || {};
+  const source = plainObject(value);
+  const sectionSource = plainObject(source.sectionBackground);
+  const componentSource = plainObject(source.componentImage);
+  const fadeSource = plainObject(source.fade);
+  const normalizeAllowed = (candidate, allowed, fallback) => {
+    const values = Array.isArray(candidate) ? candidate.filter((item) => allowed.includes(item)) : [];
+    return values.length ? [...new Set(values)] : [...fallback];
+  };
+  const sectionAllowed = normalizeAllowed(
+    sectionSource.allowedFitModes,
+    IMAGE_FIT_MODES,
+    defaults.sectionBackground?.allowedFitModes || IMAGE_FIT_MODES
+  );
+  const componentAllowed = normalizeAllowed(
+    componentSource.allowedFitModes,
+    ["contain", "cover"],
+    defaults.componentImage?.allowedFitModes || ["contain", "cover"]
+  );
+  const allowedFadeModes = normalizeAllowed(
+    fadeSource.allowedModes,
+    IMAGE_FADE_MODES,
+    defaults.fade?.allowedModes || IMAGE_FADE_MODES
+  );
+  const defaultStops = defaults.fade?.stops || {};
+  const sourceStops = plainObject(fadeSource.stops);
+  const stops = {};
+  ["soft", "medium", "strong"].forEach((strength) => {
+    const fallback = plainObject(defaultStops[strength]);
+    const configured = plainObject(sourceStops[strength]);
+    stops[strength] = {
+      solid: integerInRange(configured.solid, fallback.solid || 14, 0, 100),
+      clear: integerInRange(configured.clear, fallback.clear || 48, 0, 100),
+      edge: integerInRange(configured.edge, fallback.edge || 24, 0, 50),
+    };
+  });
+  return {
+    sectionBackground: {
+      fitMode: enumValue(sectionSource.fitMode, sectionAllowed, defaults.sectionBackground?.fitMode || "cover"),
+      allowedFitModes: sectionAllowed,
+      position: enumValue(
+        sectionSource.position,
+        ["left top", "center top", "right top", "left center", "center center", "right center", "left bottom", "center bottom", "right bottom"],
+        defaults.sectionBackground?.position || "center center"
+      ),
+      repeat: enumValue(sectionSource.repeat, ["no-repeat", "repeat", "repeat-x", "repeat-y"], defaults.sectionBackground?.repeat || "no-repeat"),
+      focalPoint: {
+        x: integerInRange(sectionSource.focalPoint?.x, defaults.sectionBackground?.focalPoint?.x || 50, 0, 100),
+        y: integerInRange(sectionSource.focalPoint?.y, defaults.sectionBackground?.focalPoint?.y || 50, 0, 100),
+      },
+    },
+    componentImage: {
+      fitMode: enumValue(componentSource.fitMode, componentAllowed, defaults.componentImage?.fitMode || "contain"),
+      allowedFitModes: componentAllowed,
+      position: enumValue(
+        componentSource.position,
+        ["left top", "center top", "right top", "left center", "center center", "right center", "left bottom", "center bottom", "right bottom"],
+        defaults.componentImage?.position || "center center"
+      ),
+      transparentFrame: componentSource.transparentFrame !== false,
+    },
+    fade: {
+      allowedModes: allowedFadeModes,
+      defaultMode: enumValue(fadeSource.defaultMode, allowedFadeModes, defaults.fade?.defaultMode || "none"),
+      defaultStrength: enumValue(fadeSource.defaultStrength, ["soft", "medium", "strong"], defaults.fade?.defaultStrength || "medium"),
+      stops,
+    },
+  };
+}
+
+function normalizeValidationPolicy(type, value = {}) {
+  const defaults = defaultPromptControlPlane(type).validationPolicy || {};
+  const source = plainObject(value);
+  const defaultRules = defaults.resolutionRules || {};
+  const sourceRules = plainObject(source.resolutionRules);
+  const resolutionRules = {};
+  IMAGE_TIERS.forEach((tier) => {
+    const fallback = defaultRules[tier] || {};
+    const rule = plainObject(sourceRules[tier]);
+    resolutionRules[tier] = {
+      minimumLandscapeWidth: integerInRange(rule.minimumLandscapeWidth, fallback.minimumLandscapeWidth || 1024, 1, 8192),
+      minimumPortraitHeight: integerInRange(rule.minimumPortraitHeight, fallback.minimumPortraitHeight || 1024, 1, 8192),
+      minimumSquareSide: integerInRange(rule.minimumSquareSide, fallback.minimumSquareSide || 1024, 1, 8192),
+    };
+  });
+  return {
+    rejectUnreadableMetadata: source.rejectUnreadableMetadata !== false,
+    rejectMimeMismatch: source.rejectMimeMismatch !== false,
+    rejectLowResolution: source.rejectLowResolution !== false,
+    resolutionRules,
+    aspectRatioTolerancePercent: integerInRange(source.aspectRatioTolerancePercent, defaults.aspectRatioTolerancePercent || 8, 0, 50),
+    minimumByteLength: integerInRange(source.minimumByteLength, defaults.minimumByteLength || 1024, 1, 10000000),
+    edgeFrameDetection: {
+      ...plainObject(defaults.edgeFrameDetection),
+      ...plainObject(source.edgeFrameDetection),
+      enabled: plainObject(source.edgeFrameDetection).enabled === true,
+    },
   };
 }
 
@@ -83,6 +217,19 @@ function normalizeControlPlanePromptConfig(type, promptConfig = {}) {
       || {}
     ),
     safetyContract: promptConfig.safetyContract || modelOptions.safetyContract || {},
+    ...(Number(promptConfig.snapshotVersion || modelOptions.executionSnapshotVersion || 2) >= 3
+      && (type === "section_background_image" || type === "component_image") ? {
+      policySchemaVersion: Number(promptConfig.policySchemaVersion || modelOptions.policySchemaVersion || 1),
+      generationPolicy: normalizeGenerationPolicy(type, {
+        ...(modelOptions.generationPolicy || {}),
+        ...(modelOptions.imageSize && !modelOptions.generationPolicy?.requestedTier
+          ? { requestedTier: modelOptions.imageSize }
+          : {}),
+        ...(promptConfig.generationPolicy || {}),
+      }),
+      renderPolicy: normalizeRenderPolicy(type, promptConfig.renderPolicy || modelOptions.renderPolicy),
+      validationPolicy: normalizeValidationPolicy(type, promptConfig.validationPolicy || modelOptions.validationPolicy),
+    } : {}),
     modelOptions,
   };
 }
@@ -93,7 +240,12 @@ function validateControlPlaneConfig(type, promptConfig = {}) {
     : {};
   const version = Number(source.executionSnapshotVersion || promptConfig.executionSnapshotVersion || 1);
   if (version < 2) return true;
-  const requiredObjects = ["harnessConfig", "runtimeConfig", "modelCapabilitySnapshot", "safetyContract"];
+  const requiredObjects = [
+    "harnessConfig", "runtimeConfig", "modelCapabilitySnapshot", "safetyContract",
+    ...(version >= 3 && (type === "section_background_image" || type === "component_image")
+      ? ["generationPolicy", "renderPolicy", "validationPolicy"]
+      : []),
+  ];
   const invalidObject = requiredObjects.find((key) => (
     !source[key] || typeof source[key] !== "object" || Array.isArray(source[key])
   ));
@@ -120,7 +272,7 @@ function validateControlPlaneConfig(type, promptConfig = {}) {
     error.code = "CONTROL_PLANE_CONFIG_INVALID";
     throw error;
   }
-  if (isImage) {
+  if (isImage && version < 3) {
     const mimeType = String(rawRuntime.outputMimeType || "").toLowerCase();
     if (!["image/jpeg", "image/png", "image/webp"].includes(mimeType)) {
       const error = new Error(`${type} runtimeConfig.outputMimeType must be image/jpeg, image/png, or image/webp`);
@@ -128,6 +280,17 @@ function validateControlPlaneConfig(type, promptConfig = {}) {
       error.code = "CONTROL_PLANE_CONFIG_INVALID";
       throw error;
     }
+  }
+  if (isImage && version >= 3) {
+    const generation = normalizeGenerationPolicy(type, source.generationPolicy);
+    if (generation.subjectScale.minimumPercent > generation.subjectScale.maximumPercent) {
+      const error = new Error(`${type} generationPolicy.subjectScale minimumPercent cannot exceed maximumPercent`);
+      error.statusCode = 422;
+      error.code = "CONTROL_PLANE_CONFIG_INVALID";
+      throw error;
+    }
+    normalizeRenderPolicy(type, source.renderPolicy);
+    normalizeValidationPolicy(type, source.validationPolicy);
   }
   return true;
 }
@@ -225,8 +388,42 @@ function imageMetadata(bytes, fallbackMimeType = "") {
 }
 
 function validateRequestedImageResolution(metadata, promptConfig = {}) {
-  const imageSize = String(promptConfig.modelOptions?.imageSize || "").trim().toUpperCase();
+  const imageSize = String(
+    promptConfig.generationPolicy?.requestedTier
+    || promptConfig.modelOptions?.imageSize
+    || ""
+  ).trim().toUpperCase();
   if (!imageSize || !metadata?.width || !metadata?.height) return true;
+  if (Number(promptConfig.snapshotVersion || 1) >= 3 && promptConfig.validationPolicy) {
+    const policy = promptConfig.validationPolicy;
+    if (policy.rejectLowResolution === false) return true;
+    const rule = policy.resolutionRules?.[imageSize] || {};
+    const requestedRatio = ratioNumber(promptConfig.effectiveAspectRatio);
+    const actualRatio = metadata.width / metadata.height;
+    const orientation = requestedRatio
+      ? (requestedRatio > 1.05 ? "landscape" : requestedRatio < 0.95 ? "portrait" : "square")
+      : (actualRatio > 1.05 ? "landscape" : actualRatio < 0.95 ? "portrait" : "square");
+    const tolerance = Number(policy.aspectRatioTolerancePercent || 0) / 100;
+    if (requestedRatio && Math.abs(actualRatio - requestedRatio) / requestedRatio > tolerance) {
+      const error = new Error(`Generated image aspect ratio ${actualRatio.toFixed(4)} does not match ${promptConfig.effectiveAspectRatio}`);
+      error.code = "IMAGE_ASPECT_RATIO_MISMATCH";
+      error.statusCode = 422;
+      throw error;
+    }
+    const actual = orientation === "landscape" ? metadata.width
+      : orientation === "portrait" ? metadata.height : Math.min(metadata.width, metadata.height);
+    const minimum = Number(
+      orientation === "landscape" ? rule.minimumLandscapeWidth
+        : orientation === "portrait" ? rule.minimumPortraitHeight : rule.minimumSquareSide
+    );
+    if (minimum && actual < minimum) {
+      const error = new Error(`Generated ${orientation} image resolution ${metadata.width}x${metadata.height} is below the ${imageSize} minimum ${minimum}px`);
+      error.code = "IMAGE_RESOLUTION_BELOW_REQUEST";
+      error.statusCode = 422;
+      throw error;
+    }
+    return true;
+  }
   const capability = promptConfig.modelCapabilitySnapshot || {};
   const thresholds = capability.minimumLongSideByTier || { "1K": 900, "2K": 1800, "4K": 3600 };
   const minimum = Number(thresholds[imageSize] || 0);
@@ -241,13 +438,54 @@ function validateRequestedImageResolution(metadata, promptConfig = {}) {
   return true;
 }
 
+function ratioNumber(value) {
+  const match = String(value || "").match(/^(\d+(?:\.\d+)?):(\d+(?:\.\d+)?)$/);
+  return match ? Number(match[1]) / Number(match[2]) : 0;
+}
+
+function normalizeTargetGeometry(value = {}, fallback = {}) {
+  const source = plainObject(value);
+  const backup = plainObject(fallback);
+  return {
+    width: integerInRange(source.width, backup.width || 1280, 320, 3840),
+    height: integerInRange(source.height, backup.height || 520, 120, 2160),
+    viewport: enumValue(source.viewport, ["desktop", "tablet", "mobile"], backup.viewport || "desktop"),
+  };
+}
+
+function resolveEffectiveAspectRatio(generationPolicy = {}, geometry = {}, targetAspectRatio = "", supported = []) {
+  const strategy = generationPolicy.aspectRatioStrategy || "nearest-supported";
+  const rawRatio = strategy === "fixed" ? generationPolicy.fixedAspectRatio
+    : strategy === "target" ? targetAspectRatio
+      : `${geometry.width || 1280}:${geometry.height || 520}`;
+  const fallback = generationPolicy.fallbackAspectRatio || "16:9";
+  const candidate = ratioNumber(rawRatio) ? rawRatio : fallback;
+  const supportedRatios = Array.isArray(supported) && supported.length ? supported : ["1:1", "4:3", "3:4", "16:9", "9:16"];
+  if (supportedRatios.includes(candidate)) return candidate;
+  const requested = ratioNumber(candidate);
+  return supportedRatios.reduce((best, ratio) => (
+    Math.abs(ratioNumber(ratio) - requested) < Math.abs(ratioNumber(best) - requested) ? ratio : best
+  ), supportedRatios[0] || fallback);
+}
+
+function backgroundSizeForFitMode(value) {
+  if (value === "width-fill") return "100% auto";
+  return value === "contain" ? "contain" : "cover";
+}
+
 module.exports = {
   RUNTIME_LIMITS,
   buildImageHarnessPrompt,
   imageMetadata,
   normalizeControlPlanePromptConfig,
+  normalizeGenerationPolicy,
   normalizeHarnessConfig,
+  normalizeRenderPolicy,
   normalizeRuntimeConfig,
+  normalizeTargetGeometry,
+  normalizeValidationPolicy,
+  resolveEffectiveAspectRatio,
+  backgroundSizeForFitMode,
   validateControlPlaneConfig,
   validateRequestedImageResolution,
 };

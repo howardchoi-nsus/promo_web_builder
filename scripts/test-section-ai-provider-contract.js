@@ -134,6 +134,14 @@ process.env.SECTION_IMAGE_PROVIDER = "openai";
     prompt: "Premium visual, no text",
     safeArea: "right-copy",
     backgroundColor: "#123e36",
+    promptConfig: {
+      promptType: "section_background_image",
+      snapshotVersion: 2,
+      modelOptions: {
+        executionSnapshotVersion: 2,
+        runtimeConfig: { timeoutMs: 240000, maxAttempts: 3, outputMimeType: "image/jpeg" },
+      },
+    },
   });
   assert.equal(image.bytes.length, 4096);
   assert.equal(image.mimeType, "image/jpeg");
@@ -183,7 +191,14 @@ process.env.SECTION_IMAGE_PROVIDER = "openai";
     prompt: "Wide premium visual",
     safeArea: "none",
     aspectRatio: "16:9",
-    modelOptions: { imageSize: "4K" },
+    promptConfig: {
+      promptType: "section_background_image",
+      snapshotVersion: 3,
+      modelOptions: {
+        executionSnapshotVersion: 3,
+        generationPolicy: { requestedTier: "4K", outputMimeType: "image/jpeg" },
+      },
+    },
   });
   assert.equal(gemini4kImage.width, 4096);
   assert.equal(gemini4kImage.height, 2304);
@@ -196,6 +211,8 @@ process.env.SECTION_IMAGE_PROVIDER = "openai";
     provider: "openai",
     promptConfig: {
       promptType: "component_image",
+      snapshotVersion: 2,
+      modelOptions: { executionSnapshotVersion: 2 },
       runtimeConfig: { timeoutMs: 30000, maxAttempts: 2, outputMimeType: "image/webp" },
       harnessConfig: {
         version: 1,

@@ -361,7 +361,9 @@ async function generateOpenAiSectionImage({ prompt, aspectRatio, model: requeste
     { ...promptConfig, modelOptions }
   );
   const model = requestedModel || process.env.SECTION_IMAGE_MODEL || "gpt-image-1";
-  const outputMimeType = execution.runtimeConfig.outputMimeType || "image/webp";
+  const outputMimeType = execution.generationPolicy?.outputMimeType
+    || execution.runtimeConfig.outputMimeType
+    || "image/webp";
   const outputFormat = outputMimeType === "image/jpeg" ? "jpeg"
     : outputMimeType === "image/png" ? "png" : "webp";
   const startedAt = Date.now();
@@ -369,17 +371,20 @@ async function generateOpenAiSectionImage({ prompt, aspectRatio, model: requeste
     model,
     prompt,
     size: execution.modelOptions?.size || openAiImageSize(aspectRatio),
-    quality: execution.modelOptions?.quality || process.env.SECTION_IMAGE_QUALITY || "medium",
+    quality: execution.generationPolicy?.quality
+      || execution.modelOptions?.quality
+      || process.env.SECTION_IMAGE_QUALITY
+      || "medium",
     output_format: outputFormat,
   }, openAiHeaders(), signal, execution.runtimeConfig.timeoutMs);
   const base64 = payload.data?.[0]?.b64_json;
   if (!base64) throw Object.assign(new Error("Image model returned no image data"), { code: "EMPTY_IMAGE_RESULT" });
   const bytes = Buffer.from(base64, "base64");
   const metadata = imageMetadata(bytes, outputMimeType);
-  if (!metadata?.width || !metadata?.height) {
+  if ((!metadata?.width || !metadata?.height) && execution.validationPolicy?.rejectUnreadableMetadata !== false) {
     throw Object.assign(new Error("OpenAI returned image data with unreadable dimensions"), { code: "IMAGE_METADATA_INVALID" });
   }
-  if (metadata.mimeType !== outputMimeType) {
+  if (metadata?.mimeType !== outputMimeType && execution.validationPolicy?.rejectMimeMismatch !== false) {
     throw Object.assign(new Error(`OpenAI image MIME mismatch: expected ${outputMimeType}, received ${metadata.mimeType}`), {
       code: "IMAGE_MIME_MISMATCH",
     });
@@ -387,9 +392,9 @@ async function generateOpenAiSectionImage({ prompt, aspectRatio, model: requeste
   validateRequestedImageResolution(metadata, execution);
   return {
     bytes,
-    mimeType: metadata.mimeType || outputMimeType,
-    width: metadata.width,
-    height: metadata.height,
+    mimeType: metadata?.mimeType || outputMimeType,
+    width: metadata?.width || 0,
+    height: metadata?.height || 0,
     provider: { provider: "openai", model, requestId, latencyMs: Date.now() - startedAt },
     usage: payload.usage || {},
   };
@@ -401,8 +406,14 @@ async function generateGeminiSectionImage({ prompt, aspectRatio, model: requeste
     { ...promptConfig, modelOptions }
   );
   const model = requestedModel || process.env.SECTION_IMAGE_MODEL || "gemini-3.1-flash-image";
-  const imageSize = normalizedGeminiImageSize(execution.modelOptions?.imageSize || process.env.SECTION_IMAGE_SIZE);
-  const outputMimeType = execution.runtimeConfig.outputMimeType || "image/jpeg";
+  const imageSize = normalizedGeminiImageSize(
+    execution.generationPolicy?.requestedTier
+    || execution.modelOptions?.imageSize
+    || process.env.SECTION_IMAGE_SIZE
+  );
+  const outputMimeType = execution.generationPolicy?.outputMimeType
+    || execution.runtimeConfig.outputMimeType
+    || "image/jpeg";
   const startedAt = Date.now();
   const { payload, requestId } = await requestJson(
     "https://generativelanguage.googleapis.com/v1beta/interactions",
@@ -426,16 +437,16 @@ async function generateGeminiSectionImage({ prompt, aspectRatio, model: requeste
   if (!outputImage?.data) throw Object.assign(new Error("Gemini image model returned no inline image data"), { code: "EMPTY_IMAGE_RESULT" });
   const bytes = Buffer.from(outputImage.data, "base64");
   const mimeType = outputImage.mime_type || outputImage.mimeType || outputMimeType;
-  if (mimeType !== outputMimeType) {
+  if (mimeType !== outputMimeType && execution.validationPolicy?.rejectMimeMismatch !== false) {
     throw Object.assign(new Error(`Gemini image MIME mismatch: requested ${outputMimeType}, declared ${mimeType}`), {
       code: "IMAGE_MIME_MISMATCH",
     });
   }
   const metadata = imageMetadata(bytes, mimeType);
-  if (!metadata?.width || !metadata?.height) {
+  if ((!metadata?.width || !metadata?.height) && execution.validationPolicy?.rejectUnreadableMetadata !== false) {
     throw Object.assign(new Error("Gemini returned image data with unreadable dimensions"), { code: "IMAGE_METADATA_INVALID" });
   }
-  if (metadata.mimeType !== mimeType) {
+  if (metadata?.mimeType !== mimeType && execution.validationPolicy?.rejectMimeMismatch !== false) {
     throw Object.assign(new Error(`Gemini image MIME mismatch: declared ${mimeType}, received ${metadata.mimeType}`), {
       code: "IMAGE_MIME_MISMATCH",
     });
@@ -443,9 +454,9 @@ async function generateGeminiSectionImage({ prompt, aspectRatio, model: requeste
   validateRequestedImageResolution(metadata, execution);
   return {
     bytes,
-    mimeType: metadata.mimeType || mimeType,
-    width: metadata.width,
-    height: metadata.height,
+    mimeType: metadata?.mimeType || mimeType,
+    width: metadata?.width || 0,
+    height: metadata?.height || 0,
     provider: { provider: "gemini", model, requestId, latencyMs: Date.now() - startedAt },
     usage: payload.usageMetadata || payload.usage || {},
   };
@@ -459,23 +470,30 @@ async function generateSectionImage(input) {
     ...(input.promptConfig || {}),
     modelOptions: input.modelOptions || input.promptConfig?.modelOptions,
   });
+  promptConfig.effectiveAspectRatio = normalizedImageAspectRatio(
+    input.effectiveAspectRatio || input.aspectRatio
+  );
   const configuredProvider = input.provider || promptConfig.provider || process.env.SECTION_IMAGE_PROVIDER || "openai";
   const provider = String(configuredProvider).trim().toLowerCase() === "google"
     ? "gemini"
     : String(configuredProvider).trim().toLowerCase();
+  const subjectScale = promptConfig.generationPolicy?.subjectScale;
+  const generatedPrompt = buildImageHarnessPrompt({
+    prompt: input.prompt,
+    harnessConfig: promptConfig.harnessConfig,
+    safeArea: input.safeArea,
+    backgroundColor: input.backgroundColor,
+    targetType: input.targetType || "section-background",
+    aspectRatio: normalizedImageAspectRatio(input.aspectRatio),
+  });
   const request = {
     ...input,
     model: input.model || promptConfig.model,
     promptConfig,
     modelOptions: promptConfig.modelOptions,
-    prompt: buildImageHarnessPrompt({
-      prompt: input.prompt,
-      harnessConfig: promptConfig.harnessConfig,
-      safeArea: input.safeArea,
-      backgroundColor: input.backgroundColor,
-      targetType: input.targetType || "section-background",
-      aspectRatio: normalizedImageAspectRatio(input.aspectRatio),
-    }),
+    prompt: subjectScale
+      ? `${generatedPrompt}\nKeep the principal visual subject between ${subjectScale.minimumPercent}% and ${subjectScale.maximumPercent}% of the usable canvas.`
+      : generatedPrompt,
   };
   if (provider === "gemini") return generateGeminiSectionImage(request);
   if (provider === "openai") return generateOpenAiSectionImage(request);
