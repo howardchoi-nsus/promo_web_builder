@@ -6,8 +6,15 @@ const {
   selectableTokens,
   compositionFingerprint,
   allowedTokenBindings,
+  stableFingerprint,
   normalizeCompositionPlan,
 } = require("../api/_promo-section-composition-contract");
+
+assert.equal(
+  stableFingerprint({ sectionStyle: { backgroundColor: "#000", padding: "10px" }, itemStyles: { "intro.title": { width: 320, x: 10 } } }),
+  stableFingerprint({ itemStyles: { "intro.title": { x: 10, width: 320 } }, sectionStyle: { padding: "10px", backgroundColor: "#000" } }),
+  "layout fingerprint must ignore object key order while preserving layout values",
+);
 
 const section = {
   sectionKey: "promotionIntro",

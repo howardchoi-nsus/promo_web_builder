@@ -14,8 +14,20 @@ function fail(message, code = "INVALID_COMPOSITION_PLAN") {
   throw error;
 }
 
+function canonicalizeForFingerprint(value) {
+  if (Array.isArray(value)) return value.map(canonicalizeForFingerprint);
+  if (value && typeof value === "object") {
+    return Object.keys(value).sort().reduce((result, key) => {
+      const nextValue = value[key];
+      if (typeof nextValue !== "undefined") result[key] = canonicalizeForFingerprint(nextValue);
+      return result;
+    }, {});
+  }
+  return value;
+}
+
 function stableFingerprint(value) {
-  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
+  return createHash("sha256").update(JSON.stringify(canonicalizeForFingerprint(value))).digest("hex");
 }
 
 function visibleItems(section) {
@@ -343,6 +355,7 @@ function normalizeCompositionPlan({
 module.exports = {
   ALLOWED_REGIONS,
   SAFE_TOKEN_PROPERTIES,
+  canonicalizeForFingerprint,
   publicSectionContract,
   selectableTokens,
   allowedTokenBindings,
