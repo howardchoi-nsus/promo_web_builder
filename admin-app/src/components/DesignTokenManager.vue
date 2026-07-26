@@ -529,7 +529,7 @@ export default {
 .design-token-check { display: inline-flex; gap: var(--app-space-2); align-items: center; white-space: nowrap; }
 .design-token-table-wrap { overflow: auto; border: var(--app-border-width) solid var(--app-line); border-radius: var(--app-radius-small); }
 .design-token-table { width: 100%; border-collapse: collapse; }
-.design-token-table th, .design-token-table td { padding: var(--app-space-2); border-bottom: var(--app-border-width) solid var(--app-line); text-align: left; vertical-align: middle; }
+.design-token-table th, .design-token-table td { padding: var(--app-space-2); border: var(--app-border-width) solid var(--app-line); text-align: left; vertical-align: middle; }
 .design-token-table th { position: sticky; top: 0; z-index: 1; background: var(--app-panel-subtle, var(--app-panel)); }
 .design-token-value.changed { background: var(--app-warning-soft, var(--app-accent-soft)); }
 .design-token-value-control { display: block; min-width: 10rem; }

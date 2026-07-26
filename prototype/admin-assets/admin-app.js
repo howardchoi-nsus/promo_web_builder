@@ -8156,7 +8156,7 @@ function Jg(e, t, n, r, i, a) {
 		])
 	]);
 }
-var Yg = /*#__PURE__*/ Ch(qh, [["render", Jg], ["__scopeId", "data-v-bcd04bc7"]]), Xg = /* @__PURE__ */ o((() => {
+var Yg = /*#__PURE__*/ Ch(qh, [["render", Jg], ["__scopeId", "data-v-dcf67420"]]), Xg = /* @__PURE__ */ o((() => {
 	var e = {
 		documents: "promoPrototype.documents.abc",
 		generatedPages: "promoPrototype.generatedPages.abc",
