@@ -3,6 +3,8 @@ import { computed } from "vue";
 import { DEFAULT_LOREM_IPSUM } from "./contracts";
 import { normalizeCtaUrl } from "./editor-utils.mjs";
 import {
+  MINIMUM_COMPONENT_HEIGHT_PX,
+  MINIMUM_COMPONENT_WIDTH_PCT,
   defaultComponentHeight,
   geometryToLayoutStyle,
   normalizeComponentGeometry,
@@ -326,10 +328,10 @@ function inlineItemStyle(section, item) {
   const style = itemStyle(section, item);
   const position = style.positionMode === "free" ? style : defaultItemPosition(section, item);
   const isImage = item.fieldKind === "image";
-  const widthPct = clamp(style.widthPct, isImage ? 10 : 0.01, 100, 32);
+  const widthPct = clamp(style.widthPct, MINIMUM_COMPONENT_WIDTH_PCT, 100, 32);
   const heightPx = clamp(
     style.heightPx,
-    isImage ? 80 : 1,
+    MINIMUM_COMPONENT_HEIGHT_PX,
     900,
     isImage ? undefined : defaultComponentHeight(item),
   );
@@ -425,7 +427,7 @@ function startItemResize(event, section, item, handleDirection = "se") {
   const style = itemStyle(section, item);
   const isImage = item.fieldKind === "image";
   const locked = isImage && style.aspectRatioLocked !== false;
-  const minimumItemSizePx = isImage ? 80 : 1;
+  const minimumItemSizePx = MINIMUM_COMPONENT_HEIGHT_PX;
   const horizontalActive = handleDirection.includes("w") || handleDirection.includes("e");
   const verticalActive = handleDirection.includes("n") || handleDirection.includes("s");
   const automaticPosition = defaultItemPosition(section, item);
@@ -545,8 +547,8 @@ function resizeItemByKeyboard(event, section, item, handleDirection = "se") {
     deltaX: horizontalDelta,
     deltaY: verticalDelta,
     direction: handleDirection,
-    minimumWidth: isImage ? containerWidth * 0.1 : containerWidth * 0.0001,
-    minimumHeight: isImage ? 80 : 1,
+    minimumWidth: containerWidth * (MINIMUM_COMPONENT_WIDTH_PCT / 100),
+    minimumHeight: MINIMUM_COMPONENT_HEIGHT_PX,
     maximumWidth: handleDirection.includes("w")
       ? geometry.width + geometry.x
       : containerWidth - geometry.x,

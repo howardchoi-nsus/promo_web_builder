@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import {
   DEFAULT_COMPONENT_WIDTH_PCT,
+  MINIMUM_COMPONENT_HEIGHT_PX,
+  MINIMUM_COMPONENT_WIDTH_PCT,
   defaultComponentHeight,
   geometryToLayoutStyle,
   normalizeComponentGeometry,
@@ -22,6 +24,14 @@ const longContentGeometry = normalizeComponentGeometry({
 assert.deepEqual(shortContentGeometry, longContentGeometry);
 assert.equal(shortContentGeometry.widthPct, DEFAULT_COMPONENT_WIDTH_PCT);
 assert.equal(shortContentGeometry.height, defaultComponentHeight(textItem));
+
+const tinyImageGeometry = normalizeComponentGeometry({
+  item: { itemKey: "visual", fieldKind: "image" },
+  style: { widthPct: 0.01, heightPx: 1 },
+  canvasWidth: 1280,
+});
+assert.equal(tinyImageGeometry.widthPct, MINIMUM_COMPONENT_WIDTH_PCT);
+assert.equal(tinyImageGeometry.height, MINIMUM_COMPONENT_HEIGHT_PX);
 
 const start = normalizeComponentGeometry({
   item: textItem,

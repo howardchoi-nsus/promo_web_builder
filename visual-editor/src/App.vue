@@ -13,6 +13,10 @@ import {
 import { createOutputAdapter } from "./platform/adapters/output-adapter.mjs";
 import { createEditorStore } from "./platform/editor-core/create-editor-store.mjs";
 import { EditorCommandType, editorCommand } from "./platform/editor-core/editor-commands.mjs";
+import {
+  MINIMUM_COMPONENT_HEIGHT_PX,
+  MINIMUM_COMPONENT_WIDTH_PCT,
+} from "./platform/layout-engine/geometry.mjs";
 import PreviewPanel from "./platform/editor-ui/PreviewPanel.vue";
 import SectionPanel from "./platform/editor-ui/SectionPanel.vue";
 import AiLayoutControls from "./platform/editor-ui/AiLayoutControls.vue";
@@ -1396,9 +1400,9 @@ onBeforeUnmount(() => {
                 <div class="range-field">
                   <input
                     type="range"
-                    min="10"
+                    :min="MINIMUM_COMPONENT_WIDTH_PCT"
                     max="100"
-                    step="1"
+                    step="0.01"
                     :disabled="selectedItem.isLocked"
                     :value="selectedItemStyle.widthPct || 32"
                     @input="updateItemStyle({ widthPct: Number($event.target.value) })"
@@ -1406,13 +1410,13 @@ onBeforeUnmount(() => {
                   <input
                     class="dimension-input"
                     type="number"
-                    min="10"
+                    :min="MINIMUM_COMPONENT_WIDTH_PCT"
                     max="100"
-                    step="1"
+                    step="0.01"
                     :disabled="selectedItem.isLocked"
-                    :value="Math.round(selectedItemStyle.widthPct || 32)"
+                    :value="Number((selectedItemStyle.widthPct || 32).toFixed(2))"
                     aria-label="이미지 너비 퍼센트"
-                    @change="updateItemStyle({ widthPct: Math.min(100, Math.max(10, Number($event.target.value) || 32)) })"
+                    @change="updateItemStyle({ widthPct: Math.min(100, Math.max(MINIMUM_COMPONENT_WIDTH_PCT, Number($event.target.value) || 32)) })"
                   />
                 </div>
               </label>
@@ -1421,9 +1425,9 @@ onBeforeUnmount(() => {
                 <div class="range-field">
                   <input
                     type="range"
-                    min="80"
+                    :min="MINIMUM_COMPONENT_HEIGHT_PX"
                     max="900"
-                    step="10"
+                    step="1"
                     :disabled="selectedItem.isLocked"
                     :value="selectedItemStyle.heightPx || 240"
                     @input="updateItemStyle({ heightPx: Number($event.target.value) })"
@@ -1431,13 +1435,13 @@ onBeforeUnmount(() => {
                   <input
                     class="dimension-input"
                     type="number"
-                    min="80"
+                    :min="MINIMUM_COMPONENT_HEIGHT_PX"
                     max="900"
-                    step="10"
+                    step="1"
                     :disabled="selectedItem.isLocked"
                     :value="Math.round(selectedItemStyle.heightPx || 240)"
                     aria-label="이미지 높이 픽셀"
-                    @change="updateItemStyle({ heightPx: Math.min(900, Math.max(80, Number($event.target.value) || 240)) })"
+                    @change="updateItemStyle({ heightPx: Math.min(900, Math.max(MINIMUM_COMPONENT_HEIGHT_PX, Number($event.target.value) || 240)) })"
                   />
                 </div>
               </label>

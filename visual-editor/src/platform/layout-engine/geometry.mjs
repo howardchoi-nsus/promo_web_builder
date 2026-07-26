@@ -4,6 +4,8 @@ export const DEFAULT_TEXT_COMPONENT_HEIGHT = 86;
 export const DEFAULT_CTA_COMPONENT_HEIGHT = 64;
 export const DEFAULT_IMAGE_COMPONENT_HEIGHT = 250;
 export const DEFAULT_FONT_SIZE = 18;
+export const MINIMUM_COMPONENT_WIDTH_PCT = 0.01;
+export const MINIMUM_COMPONENT_HEIGHT_PX = 1;
 
 export function clampNumber(value, min, max, fallback) {
   const number = Number(value);
@@ -32,18 +34,15 @@ export function normalizeComponentGeometry({
   fallbackY = 0,
 } = {}) {
   const resolvedCanvasWidth = Math.max(1, Number(canvasWidth) || DESIGN_CANVAS_WIDTH);
-  const isImage = item.fieldKind === "image";
-  const minimumWidthPct = isImage ? 10 : 0.01;
-  const minimumHeight = isImage ? 80 : 1;
   const widthPct = clampNumber(
     style.widthPct,
-    minimumWidthPct,
+    MINIMUM_COMPONENT_WIDTH_PCT,
     100,
     DEFAULT_COMPONENT_WIDTH_PCT,
   );
   const height = clampNumber(
     style.heightPx,
-    minimumHeight,
+    MINIMUM_COMPONENT_HEIGHT_PX,
     900,
     defaultComponentHeight(item),
   );
