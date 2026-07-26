@@ -48,8 +48,9 @@ module.exports = async function handler(req, res) {
       templates: Array.isArray(result.templates) ? result.templates : [],
     });
   } catch (error) {
+    const validation = /Required design tokens are missing/i.test(error.message);
     const conflict = /changed|draft already exists|no longer available|not active/i.test(error.message);
-    return res.status(error.statusCode || (conflict ? 409 : 500)).json({
+    return res.status(error.statusCode || (validation ? 422 : conflict ? 409 : 500)).json({
       error: "Design token publish failed",
       message: error.message,
     });

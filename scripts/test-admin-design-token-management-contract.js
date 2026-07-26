@@ -43,6 +43,16 @@ assert.match(publishMigration, /wizard_form_template_layouts/);
 assert.match(publishMigration, /select version into v_draft_version/);
 assert.match(publishHandler, /normalizeTokenEntries/);
 assert.match(publishHandler, /publish_promo_design_token_version/);
+assert.match(publishHandler, /validation \? 422/);
+
+const aliasActivationMigration = read("db/migrations/039_design_token_app_alias_activation.sql");
+assert.match(aliasActivationMigration, /when '--promo-surface' then '--app-surface'/);
+assert.match(aliasActivationMigration, /when '--promo-text' then '--app-ink'/);
+assert.match(aliasActivationMigration, /when '--promo-muted' then '--app-muted'/);
+assert.match(aliasActivationMigration, /when '--promo-accent' then '--app-accent'/);
+assert.match(aliasActivationMigration, /when '--promo-radius' then '--app-radius'/);
+assert.match(aliasActivationMigration, /when '--promo-shadow' then '--app-shadow'/);
+assert.match(aliasActivationMigration, /token_key = '--promo-title-size'/);
 
 const setHandler = read("api/design-token-sets.js");
 assert.match(setHandler, /createTokenSetKey\(name\)/);

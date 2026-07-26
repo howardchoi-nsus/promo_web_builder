@@ -52,5 +52,6 @@ assert.equal(appStyle["--promo-ink"], "#ffffff");
 assert.equal(appStyle["--promo-accent"], "#ff2f2f");
 assert.equal(appStyle["--promo-cta-radius"], "10px");
 assert.equal(appStyle["--promo-transition-duration"], "200ms");
+assert.equal(appStyle["--promo-title-size"], "clamp(28px, 5vw, 72px)");
 
 console.log("Promo token runtime tests passed.");

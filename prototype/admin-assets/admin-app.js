@@ -7504,6 +7504,7 @@ function zh(e, t = {}) {
 		"--promo-space-4": n["--app-space-4"] || "18px",
 		"--promo-border-width": n["--app-border-width"] || "2px",
 		"--promo-font-size-body": n["--app-font-size-body"] || "16px",
+		"--promo-title-size": n["--promo-title-size"] || t.titleSize || "clamp(28px, 5vw, 72px)",
 		"--promo-font-weight-strong": n["--app-font-weight-strong"] || "800",
 		"--promo-transition-duration": n["--app-transition-duration-normal"] || "200ms",
 		"--promo-transition-delay": n["--app-transition-delay"] || "0ms",
