@@ -56,6 +56,8 @@ assert.match(aliasActivationMigration, /token_key = '--promo-title-size'/);
 
 const setHandler = read("api/design-token-sets.js");
 assert.match(setHandler, /createTokenSetKey\(name\)/);
+assert.match(setHandler, /status = 'active' and is_default = true/);
+assert.match(setHandler, /isDefault:\s*tokenSet\.versionId === defaultVersionId/);
 assert.doesNotMatch(setHandler, /body\.setKey/);
 
 [

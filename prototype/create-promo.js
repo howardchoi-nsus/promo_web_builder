@@ -234,7 +234,10 @@ async function loadWizardSectionDefinitions() {
     if (!wizardDesignTokenSets.some((tokenSet) => (
       tokenSet.versionId === contentState.designTokenSetVersionId
     ))) {
-      contentState.designTokenSetVersionId = wizardDesignTokenSets[0]?.versionId || "";
+      contentState.designTokenSetVersionId = (
+        wizardDesignTokenSets.find((tokenSet) => tokenSet.isDefault)
+        || wizardDesignTokenSets[0]
+      )?.versionId || "";
     }
     if (!wizardFormTemplates.length) throw new Error("활성화된 프로모션 템플릿이 없습니다.");
     const target = resolveTemplate(wizardFormTemplates, contentState.formTemplate);

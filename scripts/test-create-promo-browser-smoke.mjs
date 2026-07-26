@@ -42,11 +42,21 @@ try {
       body: JSON.stringify({
         ok: true,
         tokenSets: [{
+          id: "fixture-rounded-set",
+          setKey: "fixture-rounded",
+          name: "Fixture Rounded",
+          versionId: "fixture-rounded-version",
+          version: 1,
+          isDefault: false,
+          values: { "--app-accent": "#6d5dfb" },
+          sourceValues: [],
+        }, {
           id: "fixture-token-set",
           setKey: "fixture-dark",
           name: "Fixture Dark",
           versionId: "fixture-token-version",
           version: 1,
+          isDefault: true,
           values: {
             "--app-accent": "#d30000",
             "--app-font-size-body": "16px",
@@ -152,9 +162,9 @@ try {
 
   await page.goto(`${origin}/create-promo.html`, { waitUntil: "networkidle" });
   await assertPageText(page.locator("#step-title"), "디자인 토큰 선택");
-  await page.locator('.appearance-choice[role="radio"]').click();
+  const defaultTokenChoice = page.locator('.appearance-choice[role="radio"]', { hasText: "Fixture Dark" });
   assert.equal(
-    await page.locator('.appearance-choice[role="radio"]').getAttribute("aria-checked"),
+    await defaultTokenChoice.getAttribute("aria-checked"),
     "true",
   );
 
