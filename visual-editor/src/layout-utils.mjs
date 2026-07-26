@@ -35,6 +35,10 @@ export function mergeLayoutSpec(base = DEFAULT_DESIGN_SPEC, override = {}) {
     if (style && typeof style === "object") delete style.textAlign;
   });
   merged.sectionStyles = merged.sectionStyles || {};
+  merged.visibility = {
+    items: merged.visibility?.items || {},
+    fields: merged.visibility?.fields || {},
+  };
   return merged;
 }
 
@@ -53,6 +57,17 @@ export function validateLayoutSpec(value = {}) {
     "left bottom", "center bottom", "right bottom",
   ]);
   const allowedShapes = new Set(["square", "rounded", "circle"]);
+  for (const [targetType, values] of Object.entries(spec.visibility || {})) {
+    if (!["items", "fields"].includes(targetType) || !values || typeof values !== "object") {
+      errors.push({ path: `visibility.${targetType}`, message: "Unsupported visibility target." });
+      continue;
+    }
+    Object.entries(values).forEach(([key, visible]) => {
+      if (typeof visible !== "boolean") {
+        errors.push({ path: `visibility.${targetType}.${key}`, message: "Visibility must be boolean." });
+      }
+    });
+  }
   Object.entries(spec.sectionStyles).forEach(([key, style]) => {
     const height = Number(style?.minHeight);
     if (style?.minHeight !== undefined && (!Number.isFinite(height) || height < 50 || height > 1200)) {
@@ -83,6 +98,12 @@ export function validateLayoutSpec(value = {}) {
     const x = Number(style?.xPct);
     const y = Number(style?.yPx);
     const size = Number(style?.fontSize);
+    for (const tokenProperty of ["colorToken", "fontSizeToken"]) {
+      if (style?.[tokenProperty] !== undefined
+        && !/^--(?:promo|app)-[a-z0-9-]+$/.test(String(style[tokenProperty]))) {
+        errors.push({ path: `itemStyles.${key}.${tokenProperty}`, message: "Managed design token key is required." });
+      }
+    }
     if (style?.xPct !== undefined && (!Number.isFinite(x) || x < 0 || x > 100)) {
       errors.push({ path: `itemStyles.${key}.xPct`, message: "xPct must be between 0 and 100." });
     }

@@ -1,7 +1,8 @@
 (function registerWizardContent(global) {
   function createDefaultWizardContent({ includeSectionDesignRuns = false } = {}) {
     const content = {
-      sectionInputSchemaVersion: 3,
+      sectionInputSchemaVersion: 4,
+      designTokenSetVersionId: "",
       promo: {
         title: "",
         template: "AI Auto",

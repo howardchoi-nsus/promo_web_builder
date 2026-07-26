@@ -2,8 +2,8 @@
   const STEPS = Object.freeze([
     Object.freeze({
       key: "style",
-      title: "배경 및 버튼 스타일 선택",
-      copy: "프로모션의 기본 배경색과 버튼 스타일을 한 단계에서 설정합니다.",
+      title: "디자인 토큰 선택",
+      copy: "프로모션에 적용할 색상, 글꼴, 간격과 컴포넌트 스타일 세트를 선택합니다.",
     }),
     Object.freeze({
       key: "overview",

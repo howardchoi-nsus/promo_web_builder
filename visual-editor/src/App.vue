@@ -119,6 +119,28 @@ const templateIdentityLabel = computed(() => {
   const shortId = String(template.value.id || "").slice(0, 8);
   return `${template.value.templateKey} · v${template.value.version || 1} · ${status} · layout r${layoutRevision.value}${shortId ? ` · ${shortId}` : ""}`;
 });
+const selectedDesignTokenValues = computed(() => (
+  Array.isArray(template.value?.designTokens?.sourceValues)
+    ? template.value.designTokens.sourceValues
+    : []
+));
+const colorTokenOptions = computed(() => selectedDesignTokenValues.value.filter((token) => (
+  token.valueType === "color"
+  || (token.cssProperties || []).some((property) => ["color", "background-color"].includes(property))
+)).map((token) => ({
+  key: token.tokenKey,
+  label: token.label || token.tokenKey,
+  value: token.value,
+})));
+const fontSizeTokenOptions = computed(() => selectedDesignTokenValues.value.filter((token) => (
+  token.valueType === "length"
+  && (token.cssProperties || []).includes("font-size")
+)).map((token) => ({
+  key: token.tokenKey,
+  label: token.label || token.tokenKey,
+  value: token.value,
+  px: Number.parseFloat(token.value),
+})).filter((token) => Number.isFinite(token.px)));
 
 function editorDocumentFromRefs() {
   return {
@@ -170,6 +192,55 @@ function selectItem(section, item, { preserveMulti = false } = {}) {
 
 function componentKey(section, item) {
   return section && item ? `${section.sectionKey}.${item.itemKey}` : "";
+}
+
+function itemVisible(section, item) {
+  if (item?.isRequired || item?.isLocked) return true;
+  return designSpec.value.visibility?.items?.[componentKey(section, item)] !== false;
+}
+
+function fieldVisibilityKey(section, item, field) {
+  return `${componentKey(section, item)}.${field.fieldKey}`;
+}
+
+function fieldVisible(section, item, field) {
+  if (field?.isRequired || field?.isLocked) return true;
+  return designSpec.value.visibility?.fields?.[fieldVisibilityKey(section, item, field)] !== false;
+}
+
+function setItemVisible(section, item, visible) {
+  if (!section || !item || item.isRequired || item.isLocked) return;
+  executeEditorCommand(EditorCommandType.VISIBILITY_SET, {
+    targetType: "item",
+    targetKey: componentKey(section, item),
+    visible,
+  }, { label: "컴포넌트 노출 변경" });
+  if (!visible) selectedItemKeys.value = selectedItemKeys.value.filter((key) => key !== item.itemKey);
+}
+
+function setFieldVisible(section, item, field, visible) {
+  if (!section || !item || !field || field.isRequired || field.isLocked) return;
+  executeEditorCommand(EditorCommandType.VISIBILITY_SET, {
+    targetType: "field",
+    targetKey: fieldVisibilityKey(section, item, field),
+    visible,
+  }, { label: "컴포넌트 필드 노출 변경" });
+}
+
+function applyColorToken(tokenKey) {
+  const token = colorTokenOptions.value.find((candidate) => candidate.key === tokenKey);
+  updateItemStyle({
+    colorToken: token?.key,
+    color: undefined,
+  });
+}
+
+function applyFontSizeToken(tokenKey) {
+  const token = fontSizeTokenOptions.value.find((candidate) => candidate.key === tokenKey);
+  updateItemStyle({
+    fontSizeToken: token?.key,
+    fontSize: token?.px,
+  });
 }
 
 function resetSectionComposition() {
@@ -722,9 +793,24 @@ function updateItemStyle(patch) {
 function updateRendererItemStyle(section, item, patch) {
   if (!section || !item || item.isLocked) return;
   const key = `${section.sectionKey}.${item.itemKey}`;
+  const nextPatch = { ...patch };
+  if (nextPatch.fontSize !== undefined) {
+    const requestedSize = Number(nextPatch.fontSize);
+    const closestToken = fontSizeTokenOptions.value.reduce((closest, token) => (
+      !closest || Math.abs(token.px - requestedSize) < Math.abs(closest.px - requestedSize)
+        ? token
+        : closest
+    ), null);
+    if (closestToken) {
+      nextPatch.fontSize = closestToken.px;
+      nextPatch.fontSizeToken = closestToken.key;
+    } else {
+      delete nextPatch.fontSize;
+    }
+  }
   executeEditorCommand(EditorCommandType.ITEM_STYLE_PATCH, {
     styleKey: key,
-    patch,
+    patch: nextPatch,
   }, { source: "pointer", label: "컴포넌트 위치·크기 변경" });
 }
 
@@ -828,7 +914,10 @@ async function loadEditor() {
     const detailResponse = await fetch(`/api/wizard-form-template-public?id=${encodeURIComponent(defaultTemplate.id)}`);
     const detailResult = await detailResponse.json();
     if (!detailResponse.ok) throw new Error(detailResult.message || detailResult.error || "템플릿 구성을 불러오지 못했습니다.");
-    template.value = detailResult.template;
+    template.value = {
+      ...detailResult.template,
+      designTokens: detailResult.designTokens || null,
+    };
     configRevision.value = detailResult.configRevision || "";
     sections.value = detailResult.sections || [];
     sectionInputs.value = createSectionInputs(sections.value);
@@ -1258,6 +1347,20 @@ onBeforeUnmount(() => {
               :class="{ open: expandedComponentKey === componentKey(selectedSection, item) }"
             >
               <div class="component-property-header">
+                <label
+                  v-if="!item.isRequired && !item.isLocked"
+                  class="component-visibility-toggle"
+                  :title="itemVisible(selectedSection, item) ? '웹 출력에 노출 중' : '웹 출력에서 숨김'"
+                  @click.stop
+                >
+                  <input
+                    type="checkbox"
+                    :checked="itemVisible(selectedSection, item)"
+                    :aria-label="`${item.name} 노출`"
+                    @change="setItemVisible(selectedSection, item, $event.target.checked)"
+                  />
+                  <span>노출</span>
+                </label>
                 <label v-if="capabilities.canRunMultiLayoutAi" class="component-multi-select" :title="item.isLocked ? '잠긴 컴포넌트는 다중 정렬할 수 없습니다.' : '다중 정렬 대상 선택'">
                   <input
                     type="checkbox"
@@ -1286,7 +1389,23 @@ onBeforeUnmount(() => {
                   >
           <div v-if="componentFields(selectedItem).length > 1" class="component-field-property-list">
             <section v-for="field in componentFields(selectedItem)" :key="field.fieldKey" class="component-field-property">
-              <header><strong>{{ field.name }}</strong><small>{{ field.fieldKind }} · {{ field.fieldKey }}</small></header>
+              <header>
+                <strong>{{ field.name }}</strong>
+                <small>{{ field.fieldKind }} · {{ field.fieldKey }}</small>
+                <label
+                  v-if="!field.isRequired && !field.isLocked"
+                  class="component-visibility-toggle"
+                  :title="fieldVisible(selectedSection, selectedItem, field) ? '웹 출력에 노출 중' : '웹 출력에서 숨김'"
+                >
+                  <input
+                    type="checkbox"
+                    :checked="fieldVisible(selectedSection, selectedItem, field)"
+                    :aria-label="`${field.name} 노출`"
+                    @change="setFieldVisible(selectedSection, selectedItem, field, $event.target.checked)"
+                  />
+                  <span>노출</span>
+                </label>
+              </header>
               <template v-if="field.fieldKind === 'cta'">
                 <label><span>버튼 텍스트</span><input :disabled="selectedItem.isLocked || field.isLocked" :value="fieldValue(selectedItem, field)?.label" @input="updateFieldObject(selectedItem, field, 'label', $event.target.value)" /></label>
                 <label><span>버튼 URL</span><input :disabled="selectedItem.isLocked || field.isLocked" type="url" :value="fieldValue(selectedItem, field)?.link" @input="updateFieldObject(selectedItem, field, 'link', $event.target.value)" /></label>
@@ -1568,27 +1687,29 @@ onBeforeUnmount(() => {
             <template v-if="selectedItem.fieldKind !== 'image'">
               <label>
                 <span>글자 색상</span>
-                <input
-                  type="color"
+                <select
                   :disabled="selectedItem.isLocked"
-                  :value="selectedItemStyle.color || '#172033'"
-                  @input="updateItemStyle({ color: $event.target.value })"
-                />
+                  :value="selectedItemStyle.colorToken || ''"
+                  @change="applyColorToken($event.target.value)"
+                >
+                  <option value="">디자인 토큰 기본값</option>
+                  <option v-for="token in colorTokenOptions" :key="token.key" :value="token.key">
+                    {{ token.label }} · {{ token.value }}
+                  </option>
+                </select>
               </label>
               <label>
                 <span>폰트 크기</span>
-                <div class="range-field">
-                  <input
-                    type="range"
-                    min="0"
-                    max="80"
-                    step="1"
-                    :disabled="selectedItem.isLocked"
-                    :value="selectedItemStyle.fontSize ?? 18"
-                    @input="updateItemStyle({ fontSize: Number($event.target.value) })"
-                  />
-                  <output>{{ selectedItemStyle.fontSize ?? 18 }}px</output>
-                </div>
+                <select
+                  :disabled="selectedItem.isLocked"
+                  :value="selectedItemStyle.fontSizeToken || ''"
+                  @change="applyFontSizeToken($event.target.value)"
+                >
+                  <option value="">디자인 토큰 기본값</option>
+                  <option v-for="token in fontSizeTokenOptions" :key="token.key" :value="token.key">
+                    {{ token.label }} · {{ token.value }}
+                  </option>
+                </select>
               </label>
               <label>
                 <span>폰트 굵기</span>

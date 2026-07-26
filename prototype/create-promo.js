@@ -6,48 +6,13 @@ const {
   nextStep,
 } = globalThis.PromoCreateFlow || {};
 
-const BACKGROUND_OPTIONS = [
-  { id: "warm-white", name: "웜 화이트", color: "#f7f3ed", textColor: "#1c2330" },
-  { id: "sand", name: "샌드", color: "#e7d8bd", textColor: "#1c2330" },
-  { id: "coral", name: "코랄", color: "#d94841", textColor: "#ffffff" },
-  { id: "royal-blue", name: "로열 블루", color: "#2155cd", textColor: "#ffffff" },
-  { id: "forest", name: "포레스트", color: "#174f3a", textColor: "#ffffff" },
-  { id: "midnight", name: "미드나이트", color: "#111827", textColor: "#ffffff" },
-];
-
-const CTA_SHAPES = [
-  { id: "square", name: "각진 버튼" },
-  { id: "round", name: "라운드 버튼" },
-];
-
-const CTA_VARIANTS = [
-  { id: "fill", name: "채움" },
-  { id: "ghost", name: "고스트" },
-];
-
-const CTA_STYLE_OPTIONS = [
-  { id: "square-ghost", name: "각진 버튼 · 고스트", shape: "square", variant: "ghost" },
-  { id: "square-fill", name: "각진 버튼 · 채움", shape: "square", variant: "fill" },
-  { id: "round-ghost", name: "둥근 버튼 · 고스트", shape: "round", variant: "ghost" },
-  { id: "round-fill", name: "둥근 버튼 · 채움", shape: "round", variant: "fill" },
-];
-
-const CTA_COLORS = [
-  { id: "red", name: "레드", color: "#e23c34" },
-  { id: "blue", name: "블루", color: "#3478f6" },
-  { id: "green", name: "그린", color: "#18a66a" },
-  { id: "orange", name: "오렌지", color: "#f2762e" },
-  { id: "black", name: "블랙", color: "#141923" },
-];
-
 const storageKeys = {
   wizardContent: "promoPrototype.createPromo.content.v1",
   wizardContentLegacyBackup: "promoPrototype.createPromo.content.legacyBackup.v1",
   wizardSessionId: "promoPrototype.createPromo.sessionId.v1",
-  appearance: "promoPrototype.createPromo.appearance.v1",
 };
 
-const SECTION_INPUT_SCHEMA_VERSION = 3;
+const SECTION_INPUT_SCHEMA_VERSION = 4;
 const LAYOUT_CACHE_CONTRACT_VERSION = 2;
 const {
   appendTextElement,
@@ -111,6 +76,7 @@ let draggedTemplateSectionKey = "";
 let wizardBaseLayout = null;
 let wizardResolvedLayout = null;
 let wizardDesignTokens = null;
+let wizardDesignTokenSets = [];
 let wizardLayoutRevision = 1;
 let wizardRenderer = { key: "default-promo-renderer", version: 1 };
 let wizardLayoutIdentity = null;
@@ -145,7 +111,32 @@ const FALLBACK_LAYOUT = {
 };
 
 const contentState = loadWizardContent();
-const appearanceState = loadAppearanceState();
+
+function selectedDesignTokenSet() {
+  return wizardDesignTokenSets.find((tokenSet) => (
+    tokenSet.versionId === contentState.designTokenSetVersionId
+  )) || null;
+}
+
+function designTokenValue(tokenSet, keys, fallback) {
+  for (const key of keys) {
+    const value = String(tokenSet?.values?.[key] || "").trim();
+    if (value) return value;
+  }
+  return fallback;
+}
+
+function toWizardDesignTokens(tokenSet) {
+  if (!tokenSet) return null;
+  return {
+    setKey: tokenSet.setKey,
+    name: tokenSet.name,
+    version: tokenSet.version,
+    versionId: tokenSet.versionId,
+    values: tokenSet.values || {},
+    sourceValues: tokenSet.sourceValues || [],
+  };
+}
 
 const stepButtons = Array.from(document.querySelectorAll(".step"));
 const title = document.getElementById("step-title");
@@ -157,240 +148,60 @@ const shellStatus = document.getElementById("wizard-shell-status");
 const prev = document.getElementById("prev-step");
 const next = document.getElementById("next-step");
 
-function loadAppearanceState() {
-  const fallback = {
-    backgroundId: BACKGROUND_OPTIONS[0].id,
-    ctaShape: CTA_SHAPES[1].id,
-    ctaVariant: CTA_VARIANTS[0].id,
-    ctaColorId: CTA_COLORS[0].id,
-  };
-  try {
-    const saved = JSON.parse(localStorage.getItem(storageKeys.appearance) || "null");
-    return {
-      backgroundId: BACKGROUND_OPTIONS.some((option) => option.id === saved?.backgroundId)
-        ? saved.backgroundId : fallback.backgroundId,
-      ctaShape: CTA_SHAPES.some((option) => option.id === saved?.ctaShape)
-        ? saved.ctaShape : fallback.ctaShape,
-      ctaVariant: CTA_VARIANTS.some((option) => option.id === saved?.ctaVariant)
-        ? saved.ctaVariant : fallback.ctaVariant,
-      ctaColorId: CTA_COLORS.some((option) => option.id === saved?.ctaColorId)
-        ? saved.ctaColorId : fallback.ctaColorId,
-    };
-  } catch {
-    return fallback;
-  }
-}
-
-function saveAppearanceState() {
-  localStorage.setItem(storageKeys.appearance, JSON.stringify(appearanceState));
-}
-
-function selectedBackground() {
-  return BACKGROUND_OPTIONS.find((option) => option.id === appearanceState.backgroundId)
-    || BACKGROUND_OPTIONS[0];
-}
-
-function selectedCtaColor() {
-  return CTA_COLORS.find((option) => option.id === appearanceState.ctaColorId)
-    || CTA_COLORS[0];
-}
-
 function applyCreatePromoAppearance(layout = FALLBACK_LAYOUT) {
-  const background = selectedBackground();
-  const ctaColor = selectedCtaColor();
-  const source = JSON.parse(JSON.stringify(layout || FALLBACK_LAYOUT));
-  return {
-    ...source,
-    theme: {
-      ...(source.theme || {}),
-      backgroundColor: background.color,
-      textColor: background.textColor,
-      ctaColor: ctaColor.color,
-      ctaShape: appearanceState.ctaShape,
-      ctaVariant: appearanceState.ctaVariant,
-    },
-  };
-}
-
-function createAppearancePreview() {
-  const background = selectedBackground();
-  const ctaColor = selectedCtaColor();
-  const preview = document.createElement("section");
-  preview.className = "appearance-preview";
-  preview.style.setProperty("--preview-background", background.color);
-  preview.style.setProperty("--preview-text", background.textColor);
-  preview.style.setProperty("--preview-cta", ctaColor.color);
-
-  const label = appendTextElement(preview, "span", "appearance-preview__label", "LIVE PREVIEW");
-  label.setAttribute("aria-hidden", "true");
-  const content = document.createElement("div");
-  content.className = "appearance-preview__content";
-  appendTextElement(content, "p", "appearance-preview__eyebrow", "LIMITED PROMOTION");
-  appendTextElement(content, "h3", "", "Create your next promotion");
-  appendTextElement(content, "p", "appearance-preview__copy", "선택한 배경색과 CTA 스타일을 실시간으로 확인하세요.");
-
-  const cta = document.createElement("button");
-  cta.type = "button";
-  cta.className = `appearance-preview__cta is-${appearanceState.ctaShape} is-${appearanceState.ctaVariant}`;
-  cta.textContent = "Get Started";
-  cta.tabIndex = -1;
-  content.append(cta);
-  preview.append(content);
-  return preview;
-}
-
-function createChoiceButton({
-  group,
-  value,
-  label,
-  selected,
-  swatchColor,
-  ctaStylePreview = null,
-  onSelect,
-}) {
-  const hasCtaPreview = Boolean(ctaStylePreview);
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = `appearance-choice${hasCtaPreview ? " appearance-choice--cta-preview" : ""}${selected ? " is-selected" : ""}`;
-  button.setAttribute("role", "radio");
-  button.setAttribute("aria-checked", String(selected));
-  if (hasCtaPreview) button.setAttribute("aria-label", label);
-  button.dataset.choiceGroup = group;
-  button.dataset.choiceValue = value;
-  if (swatchColor) {
-    const swatch = document.createElement("span");
-    swatch.className = "appearance-choice__swatch";
-    swatch.style.backgroundColor = swatchColor;
-    swatch.setAttribute("aria-hidden", "true");
-    button.append(swatch);
-  }
-  if (hasCtaPreview) {
-    const previewShape = ctaStylePreview.shape;
-    const previewVariant = ctaStylePreview.variant;
-    const sample = appendTextElement(button, "span", `appearance-choice__cta-sample is-${previewShape} is-${previewVariant}`, "CTA");
-    sample.style.setProperty("--choice-cta-color", selectedCtaColor().color);
-    sample.setAttribute("aria-hidden", "true");
-  } else {
-    appendTextElement(button, "strong", "", label);
-  }
-  const check = appendTextElement(button, "span", "appearance-choice__check", selected ? "✓" : "");
-  check.setAttribute("aria-hidden", "true");
-  button.addEventListener("click", () => {
-    onSelect();
-    saveAppearanceState();
-    renderStep();
-    requestAnimationFrame(() => {
-      document.querySelector(`[data-choice-group="${group}"][data-choice-value="${value}"]`)?.focus();
-    });
-  });
-  return button;
-}
-
-function createChoiceGroup(titleText, description, buttons) {
-  const fieldset = document.createElement("fieldset");
-  fieldset.className = "appearance-fieldset";
-  const legend = document.createElement("legend");
-  legend.textContent = titleText;
-  fieldset.append(legend);
-  if (description) appendTextElement(fieldset, "p", "appearance-fieldset__description", description);
-  const choices = document.createElement("div");
-  choices.className = "appearance-choices";
-  choices.setAttribute("role", "radiogroup");
-  buttons.forEach((button) => choices.append(button));
-  fieldset.append(choices);
-  return fieldset;
-}
-
-function renderBackgroundStep() {
-  placeholders.className = "appearance-layout";
-  placeholders.innerHTML = "";
-  placeholders.append(createAppearancePreview());
-  const controls = document.createElement("section");
-  controls.className = "appearance-controls";
-  controls.append(createChoiceGroup(
-    "배경색",
-    "어두운 배경을 선택하면 읽기 쉽도록 미리보기 텍스트가 자동으로 밝게 바뀝니다.",
-    BACKGROUND_OPTIONS.map((option) => createChoiceButton({
-      group: "background",
-      value: option.id,
-      label: option.name,
-      selected: appearanceState.backgroundId === option.id,
-      swatchColor: option.color,
-      onSelect: () => { appearanceState.backgroundId = option.id; },
-    }))
-  ));
-  placeholders.append(controls);
-}
-
-function renderCtaStep() {
-  placeholders.className = "appearance-layout";
-  placeholders.innerHTML = "";
-  placeholders.append(createAppearancePreview());
-  const controls = document.createElement("section");
-  controls.className = "appearance-controls appearance-controls--cta";
-  controls.append(
-    createChoiceGroup("버튼 스타일", "버튼 모양과 채움 방식을 하나의 조합으로 선택하세요.", CTA_STYLE_OPTIONS.map((option) => createChoiceButton({
-      group: "cta-style",
-      value: option.id,
-      label: option.name,
-      selected: appearanceState.ctaShape === option.shape && appearanceState.ctaVariant === option.variant,
-      ctaStylePreview: option,
-      onSelect: () => {
-        appearanceState.ctaShape = option.shape;
-        appearanceState.ctaVariant = option.variant;
-      },
-    }))),
-    createChoiceGroup("버튼 색상", "", CTA_COLORS.map((option) => createChoiceButton({
-      group: "cta-color",
-      value: option.id,
-      label: option.name,
-      selected: appearanceState.ctaColorId === option.id,
-      swatchColor: option.color,
-      onSelect: () => { appearanceState.ctaColorId = option.id; },
-    })))
-  );
-  placeholders.append(controls);
+  return JSON.parse(JSON.stringify(layout || FALLBACK_LAYOUT));
 }
 
 function renderAppearanceStep() {
   placeholders.className = "appearance-layout";
   placeholders.innerHTML = "";
-  placeholders.append(createAppearancePreview());
   const controls = document.createElement("section");
-  controls.className = "appearance-controls appearance-controls--cta";
-  controls.append(
-    createChoiceGroup(
-      "배경색",
-      "프로모션에 적용할 기본 배경색을 선택하세요.",
-      BACKGROUND_OPTIONS.map((option) => createChoiceButton({
-        group: "background",
-        value: option.id,
-        label: option.name,
-        selected: appearanceState.backgroundId === option.id,
-        swatchColor: option.color,
-        onSelect: () => { appearanceState.backgroundId = option.id; },
-      }))
-    ),
-    createChoiceGroup("버튼 스타일", "버튼 모양과 표현 방식을 선택하세요.", CTA_STYLE_OPTIONS.map((option) => createChoiceButton({
-      group: "cta-style",
-      value: option.id,
-      label: option.name,
-      selected: appearanceState.ctaShape === option.shape && appearanceState.ctaVariant === option.variant,
-      ctaStylePreview: option,
-      onSelect: () => {
-        appearanceState.ctaShape = option.shape;
-        appearanceState.ctaVariant = option.variant;
-      },
-    }))),
-    createChoiceGroup("버튼 색상", "", CTA_COLORS.map((option) => createChoiceButton({
-      group: "cta-color",
-      value: option.id,
-      label: option.name,
-      selected: appearanceState.ctaColorId === option.id,
-      swatchColor: option.color,
-      onSelect: () => { appearanceState.ctaColorId = option.id; },
-    })))
+  controls.className = "appearance-controls";
+  appendTextElement(controls, "h3", "", "디자인 토큰");
+  appendTextElement(
+    controls,
+    "p",
+    "appearance-fieldset__description",
+    "선택한 디자인 토큰의 색상, 글꼴, 간격과 컴포넌트 스타일이 이후 단계와 웹 출력에 적용됩니다."
   );
+  const choices = document.createElement("div");
+  choices.className = "appearance-choices";
+  choices.setAttribute("role", "radiogroup");
+  wizardDesignTokenSets.forEach((tokenSet) => {
+    const selected = tokenSet.versionId === contentState.designTokenSetVersionId;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `appearance-choice${selected ? " is-selected" : ""}`;
+    button.setAttribute("role", "radio");
+    button.setAttribute("aria-checked", String(selected));
+    const swatch = document.createElement("span");
+    swatch.className = "appearance-choice__swatch";
+    swatch.style.backgroundColor = designTokenValue(
+      tokenSet,
+      ["--promo-accent", "--app-accent"],
+      "#2563eb"
+    );
+    button.append(swatch);
+    appendTextElement(button, "strong", "", tokenSet.name || tokenSet.setKey);
+    appendTextElement(button, "small", "", `v${tokenSet.version || 1}`);
+    button.addEventListener("click", () => {
+      contentState.designTokenSetVersionId = tokenSet.versionId;
+      wizardDesignTokens = toWizardDesignTokens(tokenSet);
+      if (contentState.formTemplate) contentState.formTemplate.designTokens = wizardDesignTokens;
+      saveWizardContent();
+      renderStep();
+    });
+    choices.append(button);
+  });
+  controls.append(choices);
+  if (!wizardDesignTokenSets.length) {
+    appendTextElement(
+      controls,
+      "p",
+      "error-copy",
+      "활성화된 디자인 토큰이 없습니다. 설정에서 디자인 토큰을 먼저 활성화해 주세요."
+    );
+  }
   placeholders.append(controls);
 }
 
@@ -414,7 +225,17 @@ async function loadWizardSectionDefinitions() {
   wizardSectionDefinitionsLoading = true;
   wizardSectionDefinitionsError = "";
   try {
-    wizardFormTemplates = await listPublicTemplates();
+    const [templatesResult, tokenResult] = await Promise.all([
+      listPublicTemplates(),
+      fetchJson("/api/design-token-sets?scope=public"),
+    ]);
+    wizardFormTemplates = templatesResult;
+    wizardDesignTokenSets = Array.isArray(tokenResult?.tokenSets) ? tokenResult.tokenSets : [];
+    if (!wizardDesignTokenSets.some((tokenSet) => (
+      tokenSet.versionId === contentState.designTokenSetVersionId
+    ))) {
+      contentState.designTokenSetVersionId = wizardDesignTokenSets[0]?.versionId || "";
+    }
     if (!wizardFormTemplates.length) throw new Error("활성화된 프로모션 템플릿이 없습니다.");
     const target = resolveTemplate(wizardFormTemplates, contentState.formTemplate);
     if (!target) throw new Error("선택할 수 있는 활성 프로모션 템플릿이 없습니다.");
@@ -501,7 +322,7 @@ async function selectWizardFormTemplate(templateId, options = {}) {
   wizardSectionConfigRevision = String(result.configRevision || "");
   wizardLayoutRevision = Number(result.layoutRevision || 1);
   wizardRenderer = result.renderer || { key: "default-promo-renderer", version: 1 };
-  wizardDesignTokens = result.designTokens || null;
+  wizardDesignTokens = toWizardDesignTokens(selectedDesignTokenSet()) || result.designTokens || null;
   wizardLayoutIdentity = nextIdentity;
   wizardBaseSectionOrder = adminSectionOrder;
   wizardBaseLayout = JSON.parse(JSON.stringify(result.defaultLayout || FALLBACK_LAYOUT));
@@ -1917,7 +1738,7 @@ function renderContentStep() {
   const layoutHeading = document.createElement("div");
   appendTextElement(layoutHeading, "span", "eyebrow", "Template Layout");
   appendTextElement(layoutHeading, "strong", "", `${selectedWizardFormTemplate?.name || "Template"} · layout r${wizardLayoutRevision}`);
-  appendTextElement(layoutHeading, "small", "create-promo-appearance-note", "배경색과 CTA 스타일은 Step 1 설정으로 고정됩니다.");
+  appendTextElement(layoutHeading, "small", "create-promo-appearance-note", "색상, 글꼴과 컴포넌트 스타일은 Step 1에서 선택한 디자인 토큰을 기준으로 적용됩니다.");
   const layoutActions = document.createElement("div");
   layoutActions.className = "wizard-layout-panel__actions";
   const layoutRefresh = document.createElement("button");
@@ -2057,6 +1878,7 @@ function renderStep() {
   if (shellStatus) shellStatus.textContent = `Step ${currentStep + 1} / ${steps.length}`;
   prev.disabled = currentStep === 0;
   next.disabled = currentStep === steps.length - 1
+    || (currentStep === 0 && !selectedDesignTokenSet())
     || (currentStep === 2 && !wizardSectionConfigurationReady());
   next.textContent = currentStep === 3 ? "Web Output" : "Next";
 

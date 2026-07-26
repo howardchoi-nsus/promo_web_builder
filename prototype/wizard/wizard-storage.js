@@ -24,6 +24,7 @@
         sectionInputSchemaVersion: schemaVersion,
         promo: { ...fallback.promo, ...(saved?.promo || {}) },
         simpleBrief: { ...fallback.simpleBrief, ...(saved?.simpleBrief || {}) },
+        designTokenSetVersionId: String(saved?.designTokenSetVersionId || ""),
         formTemplate: saved?.formTemplate || null,
         sectionInputs: needsMigration
           ? migrateSectionInputs(saved.sectionInputs || {})

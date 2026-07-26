@@ -109,6 +109,21 @@ export function reduceEditorCommand(currentState, command) {
         }),
       };
       break;
+    case EditorCommandType.VISIBILITY_SET: {
+      const targetType = payload.targetType === "field" ? "fields" : "items";
+      if (!payload.targetKey) return { ok: false, state: currentState, error: "Visibility target is required." };
+      state.document.layout = {
+        ...layout,
+        visibility: {
+          ...(layout.visibility || {}),
+          [targetType]: {
+            ...(layout.visibility?.[targetType] || {}),
+            [payload.targetKey]: payload.visible !== false,
+          },
+        },
+      };
+      break;
+    }
     case EditorCommandType.LAYOUT_REPLACE:
       state.document = createEditorDocument({
         ...state.document,

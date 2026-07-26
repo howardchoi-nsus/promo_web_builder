@@ -9,7 +9,8 @@ vm.runInNewContext(source, context);
 const content = context.globalThis.PromoWizardContent;
 
 const defaults = content.createDefaultWizardContent({ includeSectionDesignRuns: true });
-assert.equal(defaults.sectionInputSchemaVersion, 3);
+assert.equal(defaults.sectionInputSchemaVersion, 4);
+assert.equal(defaults.designTokenSetVersionId, "");
 assert.deepEqual(JSON.parse(JSON.stringify(defaults.sectionDesignRuns)), {});
 
 const definitions = [{

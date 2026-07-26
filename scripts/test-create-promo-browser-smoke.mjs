@@ -35,6 +35,40 @@ try {
   browser = await chromium.launch({ headless: true });
   const context = await browser.newContext();
   const page = await context.newPage();
+  await page.route("**/api/design-token-sets?scope=public", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ok: true,
+        tokenSets: [{
+          id: "fixture-token-set",
+          setKey: "fixture-dark",
+          name: "Fixture Dark",
+          versionId: "fixture-token-version",
+          version: 1,
+          values: {
+            "--app-accent": "#d30000",
+            "--app-font-size-body": "16px",
+            "--promo-font-size-lg": "24px",
+            "--promo-font-size-xl": "32px",
+            "--promo-font-size-2xl": "48px",
+            "--promo-font-size-3xl": "64px",
+            "--promo-font-size-4xl": "80px",
+          },
+          sourceValues: [
+            { tokenKey: "--app-accent", label: "Accent", value: "#d30000", valueType: "color", cssProperties: ["color"] },
+            { tokenKey: "--app-font-size-body", label: "Body", value: "16px", valueType: "length", cssProperties: ["font-size"] },
+            { tokenKey: "--promo-font-size-lg", label: "Large", value: "24px", valueType: "length", cssProperties: ["font-size"] },
+            { tokenKey: "--promo-font-size-xl", label: "Extra Large", value: "32px", valueType: "length", cssProperties: ["font-size"] },
+            { tokenKey: "--promo-font-size-2xl", label: "2X Large", value: "48px", valueType: "length", cssProperties: ["font-size"] },
+            { tokenKey: "--promo-font-size-3xl", label: "3X Large", value: "64px", valueType: "length", cssProperties: ["font-size"] },
+            { tokenKey: "--promo-font-size-4xl", label: "4X Large", value: "80px", valueType: "length", cssProperties: ["font-size"] },
+          ],
+        }],
+      }),
+    });
+  });
   let sectionAiRunRequest = null;
   let latestSectionAiRun = null;
   let sectionAiRunResponseDelayMs = 0;
@@ -117,16 +151,12 @@ try {
   });
 
   await page.goto(`${origin}/create-promo.html`, { waitUntil: "networkidle" });
-  await assertPageText(page.locator("#step-title"), "배경 및 버튼 스타일 선택");
-
-  await page.locator('[data-choice-group="background"][data-choice-value="midnight"]').click();
+  await assertPageText(page.locator("#step-title"), "디자인 토큰 선택");
+  await page.locator('.appearance-choice[role="radio"]').click();
   assert.equal(
-    await page.locator('[data-choice-group="background"][data-choice-value="midnight"]').getAttribute("aria-checked"),
+    await page.locator('.appearance-choice[role="radio"]').getAttribute("aria-checked"),
     "true",
   );
-
-  await page.locator('[data-choice-group="cta-style"][data-choice-value="round-fill"]').click();
-  await page.locator('[data-choice-group="cta-color"][data-choice-value="blue"]').click();
 
   await page.locator("#next-step").click();
   await assertPageText(page.locator("#step-title"), "프로모션 개요 등록");
@@ -379,7 +409,7 @@ try {
   assert.ok(textBottomHandleBox && sectionBoxBefore, "Vertical text resize geometry must be measurable");
   await page.mouse.move(textBottomHandleBox.x + textBottomHandleBox.width / 2, textBottomHandleBox.y + textBottomHandleBox.height / 2);
   await page.mouse.down();
-  await page.mouse.move(textBottomHandleBox.x + textBottomHandleBox.width / 2, textBottomHandleBox.y + textBottomHandleBox.height / 2 + 60);
+  await page.mouse.move(textBottomHandleBox.x + textBottomHandleBox.width / 2, textBottomHandleBox.y + textBottomHandleBox.height / 2 + 160);
   await page.mouse.up();
   await page.waitForTimeout(100);
   const textBoxAfterVerticalResize = await textComponent.boundingBox();
@@ -407,7 +437,7 @@ try {
   );
   await page.mouse.down();
   await page.mouse.move(
-    textRightHandleAfterExpansionBox.x + textRightHandleAfterExpansionBox.width / 2 - 40,
+    textRightHandleAfterExpansionBox.x + textRightHandleAfterExpansionBox.width / 2 - 120,
     textRightHandleAfterExpansionBox.y + textRightHandleAfterExpansionBox.height / 2,
   );
   await page.mouse.up();
@@ -439,7 +469,7 @@ try {
   const textBoxAtTechnicalMinimum = await textComponent.boundingBox();
   const textFontSizeAtTechnicalMinimum = Number.parseFloat(await textContentNode.evaluate((node) => getComputedStyle(node).fontSize));
   assert.ok(textBoxAtTechnicalMinimum.width < 5, "Text component width must shrink below the former 80px minimum");
-  assert.ok(textFontSizeAtTechnicalMinimum < 10, "Drag resizing must shrink text below the former 10px minimum");
+  assert.equal(textFontSizeAtTechnicalMinimum, 16, "Drag resizing must snap to the smallest selected design-token size");
   const resizedTextContent = await page.evaluate(() => JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null"));
   assert.ok(
     resizedTextContent?.templateLayouts?.["default-preview"]?.resolvedLayout?.itemStyles?.["contentFeature.copy"]?.widthPct < 1,
@@ -456,47 +486,19 @@ try {
     resizedTextContent?.templateLayouts?.["default-preview"]?.resolvedLayout?.itemStyles?.["contentFeature.copy"]?.heightPx > textBoxAfter.height,
     "Text component height must persist in the layout snapshot",
   );
-  const fontSizeRange = editorFrame.locator('.design-controls input[type="range"][max="80"]');
-  await fontSizeRange.evaluate((node) => {
-    node.value = "0";
-    node.dispatchEvent(new Event("input", { bubbles: true }));
-  });
+  const fontSizeSelect = editorFrame.locator('.design-controls select:has(option[value="--promo-font-size-xl"])');
+  await fontSizeSelect.selectOption("--promo-font-size-xl");
   await page.waitForTimeout(50);
   assert.equal(
     Number.parseFloat(await textContentNode.evaluate((node) => getComputedStyle(node).fontSize)),
-    0,
-    "Text font size must not be clamped to the former 10px minimum",
+    32,
+    "Text font size must use the selected design-token step",
   );
-  const tinyTextContent = await page.evaluate(() => JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null"));
+  const tokenSizedContent = await page.evaluate(() => JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null"));
   assert.equal(
-    tinyTextContent?.templateLayouts?.["default-preview"]?.resolvedLayout?.itemStyles?.["contentFeature.copy"]?.fontSize,
-    0,
-    "A font size below 10px must persist in the layout snapshot",
-  );
-  const zeroFontRightHandle = textComponent.locator(".component-resize-handle--e");
-  const zeroFontRightHandleBox = await zeroFontRightHandle.boundingBox();
-  assert.ok(zeroFontRightHandleBox, "Zero-font resize geometry must be measurable");
-  await page.mouse.move(
-    zeroFontRightHandleBox.x + zeroFontRightHandleBox.width / 2,
-    zeroFontRightHandleBox.y + zeroFontRightHandleBox.height / 2,
-  );
-  await page.mouse.down();
-  await page.mouse.move(
-    zeroFontRightHandleBox.x + zeroFontRightHandleBox.width / 2 + 60,
-    zeroFontRightHandleBox.y + zeroFontRightHandleBox.height / 2,
-  );
-  await page.mouse.up();
-  let restoredFontSize = 0;
-  for (let attempt = 0; attempt < 20; attempt += 1) {
-    restoredFontSize = Number.parseFloat(await textContentNode.evaluate((node) => getComputedStyle(node).fontSize));
-    if (restoredFontSize > 0) break;
-    await page.waitForTimeout(25);
-  }
-  const zeroExpandedContent = await page.evaluate(() => JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null"));
-  const zeroExpandedStyle = zeroExpandedContent?.templateLayouts?.["default-preview"]?.resolvedLayout?.itemStyles?.["contentFeature.copy"];
-  assert.ok(
-    restoredFontSize > 0,
-    `Expanding a zero-font text component must restore a visible font size (received ${restoredFontSize}; style ${JSON.stringify(zeroExpandedStyle)})`,
+    tokenSizedContent?.templateLayouts?.["default-preview"]?.resolvedLayout?.itemStyles?.["contentFeature.copy"]?.fontSizeToken,
+    "--promo-font-size-xl",
+    "The selected font-size token must persist in the layout snapshot",
   );
   await itemImageFrame.click();
   const imageRemoveAction = editorFrame.locator(".image-remove-action");
@@ -515,20 +517,35 @@ try {
   }
   assert.equal(await itemImageFrame.evaluate((node) => getComputedStyle(node).backgroundImage), "none");
 
+  const optionalVisibilityToggle = editorFrame.locator(".component-visibility-toggle input").first();
+  await optionalVisibilityToggle.waitFor();
+  const previewItemCountBeforeHide = await editorFrame.locator(".rendered-item").count();
+  await optionalVisibilityToggle.uncheck();
+  await page.waitForTimeout(50);
+  const previewItemCountAfterHide = await editorFrame.locator(".rendered-item").count();
+  assert.ok(
+    previewItemCountAfterHide < previewItemCountBeforeHide,
+    "Turning off an optional component must hide it from Live Preview",
+  );
+
   const outputPagePromise = context.waitForEvent("page");
   await page.locator("#next-step").click();
   await assertPageText(page.locator("#step-title"), "웹 출력 미리보기");
   const outputPage = await outputPagePromise;
   await outputPage.locator(".promo-renderer").waitFor({ timeout: 10_000 });
+  assert.equal(
+    await outputPage.locator(".rendered-item").count(),
+    previewItemCountAfterHide,
+    "Web Output must honor the same optional component visibility state",
+  );
   await outputPage.close();
   const snapshot = await page.evaluate(() => JSON.parse(localStorage.getItem("promoVisualEditor.snapshot.v1") || "null"));
   const wizardContent = await page.evaluate(() => JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null"));
   assert.equal(wizardContent?.promo?.title, "Browser Smoke Promotion");
   assert.equal(snapshot?.content?.formTemplate?.templateKey, "default-preview");
-  assert.equal(snapshot?.designSpec?.theme?.backgroundColor, "#111827");
-  assert.equal(snapshot?.designSpec?.theme?.ctaColor, "#3478f6");
-  assert.equal(snapshot?.designSpec?.theme?.ctaShape, "round");
-  assert.equal(snapshot?.designSpec?.theme?.ctaVariant, "fill");
+  assert.equal(wizardContent?.designTokenSetVersionId, "fixture-token-version");
+  assert.equal(snapshot?.content?.formTemplate?.designTokens?.versionId, "fixture-token-version");
+  assert.equal(snapshot?.content?.formTemplate?.designTokens?.values?.["--app-accent"], "#d30000");
 
   assert.deepEqual(pageErrors, [], `Browser page errors:\n${pageErrors.join("\n")}`);
   assert.deepEqual(failedRequests, [], `Failed browser requests:\n${failedRequests.join("\n")}`);

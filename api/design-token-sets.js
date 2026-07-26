@@ -1,5 +1,6 @@
 const {
-  getSql, parseBody, createTokenSetKey, fetchTokenSets, fetchManagedTokenSets,
+  getSql, parseBody, createTokenSetKey, fetchTokenSets, fetchTokenVersion,
+  fetchManagedTokenSets, toRuntimeTokenMap,
 } = require("./_design-token-store");
 
 module.exports = async function handler(req, res) {
@@ -7,7 +8,17 @@ module.exports = async function handler(req, res) {
     if (req.method === "GET") {
       const sql = getSql();
       if (String(req.query.scope || "") === "public") {
-        return res.status(200).json({ ok: true, tokenSets: await fetchTokenSets(sql, { activeOnly: true }) });
+        res.setHeader("Cache-Control", "no-store");
+        const tokenSets = await fetchTokenSets(sql, { activeOnly: true });
+        const publicTokenSets = await Promise.all(tokenSets.map(async (tokenSet) => {
+          const version = tokenSet.versionId ? await fetchTokenVersion(sql, tokenSet.versionId) : null;
+          return {
+            ...tokenSet,
+            values: toRuntimeTokenMap(version?.values || []),
+            sourceValues: version?.values || [],
+          };
+        }));
+        return res.status(200).json({ ok: true, tokenSets: publicTokenSets });
       }
       return res.status(200).json({
         ok: true,

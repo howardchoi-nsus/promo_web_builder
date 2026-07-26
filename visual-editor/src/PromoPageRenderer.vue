@@ -51,6 +51,28 @@ function componentFields(item) {
   return fields.length ? fields : [item];
 }
 
+function itemVisibilityKey(section, item) {
+  return `${section.sectionKey}.${item.itemKey}`;
+}
+
+function fieldVisibilityKey(section, item, field) {
+  return `${itemVisibilityKey(section, item)}.${field.fieldKey}`;
+}
+
+function isItemVisible(section, item) {
+  if (item?.isRequired || item?.isLocked) return true;
+  return props.designSpec?.visibility?.items?.[itemVisibilityKey(section, item)] !== false;
+}
+
+function isFieldVisible(section, item, field) {
+  if (field?.isRequired || field?.isLocked) return true;
+  return props.designSpec?.visibility?.fields?.[fieldVisibilityKey(section, item, field)] !== false;
+}
+
+function renderedFields(section, item) {
+  return componentFields(item).filter((field) => isFieldVisible(section, item, field));
+}
+
 function valueFor(section, item, field = null) {
   const value = props.content?.sectionInputs?.[section.sectionKey]?.[item.itemKey];
   if (!field || componentFields(item).length <= 1) return value;
@@ -75,7 +97,9 @@ function isLegacyAiImageValue(section, item, value) {
 
 function renderedItems(section) {
   return (section.items || []).filter((item) => (
-    item.fieldKind !== "image" || !isLegacyAiImageValue(section, item, valueFor(section, item))
+    isItemVisible(section, item)
+    && (item.fieldKind !== "image" || !isLegacyAiImageValue(section, item, valueFor(section, item)))
+    && (componentFields(item).length <= 1 || renderedFields(section, item).length > 0)
   ));
 }
 
@@ -357,10 +381,14 @@ function inlineItemStyle(section, item) {
     left: `${position.xPct || 0}%`,
     top: style.yPx !== undefined ? `${style.yPx}px` : `${position.yPct || 0}%`,
     zIndex: style.zIndex || 2,
-    color: style.color,
-    "--item-color": style.color,
-    fontSize: style.fontSize !== undefined ? `${style.fontSize}px` : undefined,
-    "--item-font-size": style.fontSize !== undefined ? `${style.fontSize}px` : undefined,
+    color: style.colorToken ? `var(${style.colorToken})` : style.color,
+    "--item-color": style.colorToken ? `var(${style.colorToken})` : style.color,
+    fontSize: style.fontSizeToken
+      ? `var(${style.fontSizeToken})`
+      : (style.fontSize !== undefined ? `${style.fontSize}px` : undefined),
+    "--item-font-size": style.fontSizeToken
+      ? `var(${style.fontSizeToken})`
+      : (style.fontSize !== undefined ? `${style.fontSize}px` : undefined),
     fontWeight: style.fontWeight,
     "--item-font-weight": style.fontWeight,
     width: `${widthPct}%`,
@@ -765,7 +793,7 @@ function startSectionResize(event, section) {
             @pointerdown="startDrag($event, section, item)"
           >
             <div v-if="componentFields(item).length > 1" class="rendered-component-fields">
-              <template v-for="field in componentFields(item)" :key="field.fieldKey">
+              <template v-for="field in renderedFields(section, item)" :key="field.fieldKey">
                 <a
                   v-if="field.fieldKind === 'cta'"
                   class="rendered-cta rendered-component-field"
