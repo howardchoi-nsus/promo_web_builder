@@ -50,6 +50,8 @@ assert.doesNotMatch(resetScript, /delete from locale_messages/);
 assert.match(componentStore, /candidate\.status = 'active'/);
 assert.match(componentStore, /active_version\.id::text as active_version_id/);
 assert.match(componentStore, /activeVersion,/);
+assert.match(componentStore, /description: String\(row\.editor_schema\?\.description/);
+assert.match(componentStore, /normalizedEditorSchema\.description = description/);
 assert.match(adminApp, /const activeVersion = component\.activeVersion/);
 assert.match(adminApp, /versionId: activeVersion\.id/);
 assert.doesNotMatch(

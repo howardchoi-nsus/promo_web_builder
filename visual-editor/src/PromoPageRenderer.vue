@@ -1,6 +1,5 @@
 <script setup>
 import { computed } from "vue";
-import { DEFAULT_LOREM_IPSUM } from "./contracts";
 import { normalizeCtaUrl } from "./editor-utils.mjs";
 import {
   MINIMUM_COMPONENT_HEIGHT_PX,
@@ -92,6 +91,16 @@ function hasContent(value) {
     return Boolean(value.value || value.label || value.description);
   }
   return Boolean(String(value || "").trim());
+}
+
+function textFieldDescription(item, field = null) {
+  const target = field || item;
+  return String(
+    target?.description
+    || target?.editorSchema?.description
+    || (!field ? item?.description : "")
+    || "내용을 입력하세요",
+  ).trim();
 }
 
 function styleKey(section, item) {
@@ -356,8 +365,11 @@ function inlineItemStyle(section, item) {
 
 function selectRendererItem(section, item, event = null) {
   if (!props.editable) return;
+  const additive = Boolean(event?.ctrlKey || event?.metaKey || event?.shiftKey);
+  const key = styleKey(section, item);
+  if (!additive && (props.selectedItemKey === key || props.selectedItemKeys.includes(key))) return;
   emit("select-item", section, item, {
-    additive: Boolean(event?.ctrlKey || event?.metaKey || event?.shiftKey),
+    additive,
   });
 }
 
@@ -383,8 +395,13 @@ function startDrag(event, section, item) {
   let nextX = startLeft;
   let nextY = startTop;
   let animationFrame = 0;
+  let moved = false;
 
   const move = (moveEvent) => {
+    if (!moved && Math.abs(moveEvent.clientX - startX) < 3 && Math.abs(moveEvent.clientY - startY) < 3) {
+      return;
+    }
+    moved = true;
     nextX = Math.min(Math.max(0, rect.width - target.offsetWidth), Math.max(0, startLeft + moveEvent.clientX - startX));
     nextY = Math.min(Math.max(0, rect.height - target.offsetHeight), Math.max(0, startTop + moveEvent.clientY - startY));
     if (animationFrame) return;
@@ -396,8 +413,10 @@ function startDrag(event, section, item) {
   };
   const end = () => {
     if (animationFrame) cancelAnimationFrame(animationFrame);
-    const xPct = rect.width ? (nextX / rect.width) * 100 : 0;
-    emit("update-item-style", { positionMode: "free", xPct, yPx: nextY });
+    if (moved) {
+      const xPct = rect.width ? (nextX / rect.width) * 100 : 0;
+      emit("update-item-style", { positionMode: "free", xPct, yPx: nextY });
+    }
     target.classList.remove("is-dragging");
     target.removeEventListener("pointermove", move);
     target.removeEventListener("pointerup", end);
@@ -566,22 +585,25 @@ function resizeItemByKeyboard(event, section, item, handleDirection = "se") {
   });
 }
 
-function startTextEdit(event, section, item) {
-  if (!props.editable || item.isLocked || item.fieldKind !== "text") return;
+function startTextEdit(event, section, item, field = null) {
+  if (!props.editable || item.isLocked) return;
+  const textNode = event.currentTarget;
+  const article = textNode.closest(".rendered-item");
+  if (!article) return;
+  const textTarget = field || item;
+  if (textTarget.fieldKind !== "text" || textTarget.isLocked) return;
   event.preventDefault();
   event.stopPropagation();
   selectRendererItem(section, item);
-  const article = event.currentTarget;
-  const textNode = article.querySelector(".rendered-text, .rendered-empty");
-  if (!textNode) return;
+  const currentValue = valueFor(section, item, field);
+  const wasEmpty = !hasContent(currentValue);
+  const fieldDescription = textFieldDescription(item, field);
 
   article.classList.add("is-editing");
   textNode.classList.remove("rendered-empty");
   textNode.classList.add("rendered-text");
   textNode.contentEditable = "true";
-  if (!String(valueFor(section, item) || "").trim()) {
-    textNode.textContent = DEFAULT_LOREM_IPSUM;
-  }
+  if (wasEmpty) textNode.textContent = fieldDescription;
   textNode.focus();
 
   const selection = window.getSelection();
@@ -591,8 +613,15 @@ function startTextEdit(event, section, item) {
   selection.addRange(range);
 
   const finish = () => {
-    const nextValue = textNode.innerText.replace(/\r\n?/g, "\n").trim() || DEFAULT_LOREM_IPSUM;
-    emit("update-item-content", section, item, nextValue);
+    const nextValue = textNode.innerText.replace(/\r\n?/g, "\n").trim();
+    const unchangedPlaceholder = wasEmpty && nextValue === fieldDescription;
+    if (!unchangedPlaceholder) {
+      emit("update-item-content", section, item, nextValue, field);
+    } else {
+      textNode.classList.remove("rendered-text");
+      textNode.classList.add("rendered-empty");
+      textNode.textContent = fieldDescription;
+    }
     textNode.contentEditable = "false";
     article.classList.remove("is-editing");
     textNode.removeEventListener("blur", finish);
@@ -722,7 +751,6 @@ function startSectionResize(event, section) {
             :style="inlineItemStyle(section, item)"
             @click.stop="selectRendererItem(section, item, $event)"
             @pointerdown="startDrag($event, section, item)"
-            @dblclick="startTextEdit($event, section, item)"
           >
             <div v-if="componentFields(item).length > 1" class="rendered-component-fields">
               <template v-for="field in componentFields(item)" :key="field.fieldKey">
@@ -758,8 +786,15 @@ function startSectionResize(event, section) {
                   class="rendered-text rendered-component-field"
                   :class="{ 'rendered-text--title': field.textType === 'title' }"
                   :style="fieldStyle(section, item, field)"
+                  :data-field-key="field.fieldKey"
+                  @dblclick.stop="startTextEdit($event, section, item, field)"
                 >{{ valueFor(section, item, field) }}</p>
-                <p v-else class="rendered-empty rendered-component-field">{{ field.name }}</p>
+                <p
+                  v-else
+                  class="rendered-empty rendered-component-field"
+                  :data-field-key="field.fieldKey"
+                  @dblclick.stop="startTextEdit($event, section, item, field)"
+                >{{ textFieldDescription(item, field) }}</p>
               </template>
             </div>
 
@@ -819,8 +854,9 @@ function startSectionResize(event, section) {
                 v-if="hasContent(valueFor(section, item))"
                 class="rendered-text"
                 :class="{ 'rendered-text--title': item.textType === 'title' }"
+                @dblclick.stop="startTextEdit($event, section, item)"
               >{{ valueFor(section, item) }}</p>
-              <p v-else class="rendered-empty">{{ item.name }}</p>
+              <p v-else class="rendered-empty" @dblclick.stop="startTextEdit($event, section, item)">{{ textFieldDescription(item) }}</p>
             </template>
             <template
               v-if="editable && showGuides && !item.isLocked

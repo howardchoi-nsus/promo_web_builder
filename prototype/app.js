@@ -1184,7 +1184,7 @@ const adminApp = createApp({
         capabilities: { layoutRegions: ["copy-primary", "copy-secondary", "center"] },
         styleSlots: [], changeNote: "",
         fields: [{
-          name: "Title", fieldKind: "text", textType: "title", sortOrder: 0,
+          name: "Title", description: "", fieldKind: "text", textType: "title", sortOrder: 0,
           isRequired: false, isLocked: false, defaultValue: null,
           editorSchema: { multiline: true }, capabilities: {}, imagePolicy: {},
           ctaPolicy: {}, styleSlots: [],
@@ -2128,7 +2128,7 @@ const adminApp = createApp({
         capabilities: { layoutRegions: ["copy-primary", "copy-secondary", "center"] },
         styleSlots: [], changeNote: "",
         fields: [{
-          name: "Title", fieldKind: "text", textType: "title", sortOrder: 0,
+          name: "Title", description: "", fieldKind: "text", textType: "title", sortOrder: 0,
           isRequired: false, isLocked: false, defaultValue: null,
           editorSchema: { multiline: true }, capabilities: {}, imagePolicy: {},
           ctaPolicy: {}, styleSlots: [],
@@ -2161,6 +2161,7 @@ const adminApp = createApp({
         ? component.fields
         : [{
           name: component.name || "Field",
+          description: component.description || "",
           fieldKind: component.fieldKind || "text",
           textType: component.textType || "title",
           sortOrder: 0,
@@ -2202,7 +2203,7 @@ const adminApp = createApp({
     addItemComponentField() {
       const fields = this.itemComponentEditor.fields || (this.itemComponentEditor.fields = []);
       fields.push({
-        name: `Field ${fields.length + 1}`, fieldKind: "text", textType: "title",
+        name: `Field ${fields.length + 1}`, description: "", fieldKind: "text", textType: "title",
         sortOrder: fields.length * 10, isRequired: false, isLocked: false,
         defaultValue: null, editorSchema: { multiline: true }, capabilities: {},
         imagePolicy: { allowedSources: ["file", "url"], promptText: "", aspectRatio: "" },

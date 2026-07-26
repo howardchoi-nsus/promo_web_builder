@@ -156,7 +156,13 @@ assert.match(read("prototype", "visual-editor.html"), /\/prototype\/visual-edito
 assert.match(read("prototype", "visual-output.html"), /\/prototype\/visual-editor-assets\/visual-editor\.js/);
 assert.doesNotMatch(rendererStyles, /background-image:\s*var\(--promo-bg-image\)/);
 assert.match(app, /global-token-menu/);
-assert.match(renderer, /DEFAULT_LOREM_IPSUM/);
+assert.doesNotMatch(renderer, /DEFAULT_LOREM_IPSUM|Lorem ipsum/);
+assert.match(renderer, /function textFieldDescription\(item, field = null\)/);
+assert.match(renderer, /const fieldDescription = textFieldDescription\(item, field\)/);
+assert.match(renderer, /emit\("update-item-content", section, item, nextValue, field\)/);
+assert.match(renderer, /:data-field-key="field\.fieldKey"/);
+assert.match(renderer, /if \(moved\) \{[\s\S]*emit\("update-item-style"/);
+assert.match(app, /function updateRendererContent\(section, item, value, field = null\)/);
 assert.match(renderer, /startTextEdit/);
 assert.match(renderer, /startSectionResize/);
 assert.match(renderer, /const resizeHandle = event\.currentTarget/);

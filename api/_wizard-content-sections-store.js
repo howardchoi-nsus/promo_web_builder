@@ -180,6 +180,7 @@ function toSectionItem(row) {
     componentVersion: row.component_version == null ? null : Number(row.component_version),
     itemKey: row.item_key,
     name: row.name,
+    description: String(instanceConfig.description || row.component_description || row.editor_schema?.description || "").trim(),
     isVisibleInWizard: Boolean(row.is_visible_in_wizard),
     isRequired: Boolean(row.is_required),
     userReorderAllowed: row.user_reorder_allowed === undefined ? true : Boolean(row.user_reorder_allowed),
@@ -221,6 +222,7 @@ function toSectionComponentField(field) {
     id: field.id,
     fieldKey: field.fieldKey,
     name: field.name,
+    description: String(field.description || field.editorSchema?.description || "").trim(),
     fieldKind: field.fieldKind,
     textType: field.textType,
     sortOrder: field.sortOrder,
@@ -270,6 +272,7 @@ async function fetchItemRows(sql, sectionId) {
       instance.sort_order, instance.is_locked, instance.locked_value, instance.instance_config,
       instance.created_at, instance.updated_at,
       component.id::text as item_component_id, component.component_key,
+      component.description as component_description,
       version.id::text as component_version_id, version.version as component_version,
       version.field_kind, version.text_type, version.editor_schema, version.default_value,
       version.capabilities, version.image_policy, version.cta_policy, version.style_slots

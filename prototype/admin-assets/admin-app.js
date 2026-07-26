@@ -9211,6 +9211,7 @@ var n_ = /*#__PURE__*/ Ch(Bh, [["render", t_], ["__scopeId", "data-v-f140278f"]]
 					changeNote: "",
 					fields: [{
 						name: "Title",
+						description: "",
 						fieldKind: "text",
 						textType: "title",
 						sortOrder: 0,
@@ -10144,6 +10145,7 @@ var n_ = /*#__PURE__*/ Ch(Bh, [["render", t_], ["__scopeId", "data-v-f140278f"]]
 					changeNote: "",
 					fields: [{
 						name: "Title",
+						description: "",
 						fieldKind: "text",
 						textType: "title",
 						sortOrder: 0,
@@ -10176,6 +10178,7 @@ var n_ = /*#__PURE__*/ Ch(Bh, [["render", t_], ["__scopeId", "data-v-f140278f"]]
 				this.selectedItemComponentId = e.id;
 				let t = Array.isArray(e.fields) && e.fields.length ? e.fields : [{
 					name: e.name || "Field",
+					description: e.description || "",
 					fieldKind: e.fieldKind || "text",
 					textType: e.textType || "title",
 					sortOrder: 0,
@@ -10219,6 +10222,7 @@ var n_ = /*#__PURE__*/ Ch(Bh, [["render", t_], ["__scopeId", "data-v-f140278f"]]
 				let e = this.itemComponentEditor.fields || (this.itemComponentEditor.fields = []);
 				e.push({
 					name: `Field ${e.length + 1}`,
+					description: "",
 					fieldKind: "text",
 					textType: "title",
 					sortOrder: e.length * 10,

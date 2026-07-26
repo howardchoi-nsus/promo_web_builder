@@ -33,8 +33,6 @@ export const DEFAULT_DESIGN_SPEC = Object.freeze({
   sectionStyles: {},
 });
 
-export const DEFAULT_LOREM_IPSUM = "Lorem ipsum dolor sit amet, consectetur adipiscing elit.";
-
 function cloneJson(value) {
   return JSON.parse(JSON.stringify(value));
 }

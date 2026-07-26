@@ -530,8 +530,13 @@ function updateFieldObject(item, field, key, value) {
   updateFieldValue(item, field, { ...(fieldValue(item, field) || {}), [key]: value });
 }
 
-function updateRendererContent(section, item, value) {
+function updateRendererContent(section, item, value, field = null) {
   selectItem(section, item);
+  if (field) {
+    if (field.fieldKind !== "text" || field.isLocked) return;
+    updateFieldValue(item, field, value);
+    return;
+  }
   if (item.fieldKind !== "text" || item.isLocked) return;
   updateSelectedValue(value);
 }

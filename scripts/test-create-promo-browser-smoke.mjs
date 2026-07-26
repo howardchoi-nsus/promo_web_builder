@@ -326,6 +326,26 @@ try {
   );
   const textComponent = editorFrame.locator('[data-section-key="contentFeature"] [data-item-key="copy"]');
   await textComponent.click();
+  const textPropertyInput = editorFrame.locator(".component-property-content textarea").first();
+  await textPropertyInput.fill("");
+  const emptyTextField = textComponent.locator(".rendered-empty");
+  await emptyTextField.waitFor({ state: "visible" });
+  assert.equal(await emptyTextField.textContent(), "상세 내용을 입력하세요");
+  await emptyTextField.dispatchEvent("dblclick");
+  await page.waitForTimeout(50);
+  assert.deepEqual(pageErrors, []);
+  const editingTextField = textComponent.locator(".rendered-text, .rendered-empty").first();
+  assert.equal(
+    await editingTextField.getAttribute("contenteditable"),
+    "true",
+    await editingTextField.evaluate((node) => node.closest(".rendered-item")?.outerHTML || node.outerHTML),
+  );
+  assert.equal(await editingTextField.textContent(), "상세 내용을 입력하세요");
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(50);
+  const emptyTextContent = await page.evaluate(() => JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null"));
+  assert.equal(emptyTextContent?.sectionInputs?.contentFeature?.copy, "");
+  assert.doesNotMatch(JSON.stringify(emptyTextContent), /Lorem ipsum/);
   assert.equal(
     await textComponent.locator(".component-resize-handle").count(),
     8,

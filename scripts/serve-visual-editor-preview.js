@@ -58,7 +58,7 @@ const sections = [
     },
     items: [
       { id: "content-image", itemKey: "image", name: "프로모션 이미지", fieldKind: "image", isRequired: false, isLocked: false, isVisibleInWizard: true, image: { allowedSources: ["url", "file", "ai"], descriptionEnabled: true, altTextRequired: false } },
-      { id: "content-copy", itemKey: "copy", name: "상세 설명", fieldKind: "text", textType: "multi", isRequired: false, isLocked: false, isVisibleInWizard: true, defaultValue: "Every content field remains editable and is rendered as real DOM." },
+      { id: "content-copy", itemKey: "copy", name: "상세 설명", description: "상세 내용을 입력하세요", fieldKind: "text", textType: "multi", isRequired: false, isLocked: false, isVisibleInWizard: true, defaultValue: "Every content field remains editable and is rendered as real DOM." },
     ],
   },
 ];

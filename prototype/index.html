@@ -1180,6 +1180,7 @@
                     <div class="template-basic-settings-body">
                       <div class="form-grid compact">
                         <label class="field"><span>{{ t('entity.component.fieldName') }}</span><input v-model="field.name" type="text" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /></label>
+                        <label class="field"><span>필드 설명</span><input v-model="field.description" type="text" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" placeholder="내용이 없을 때 레이아웃 편집기에 표시할 안내 문구" /></label>
                         <label class="field"><span>요소 유형</span><select v-model="field.fieldKind" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'"><option value="text">텍스트</option><option value="image">이미지</option><option value="cta">CTA</option></select></label>
                         <label class="field" v-if="field.fieldKind === 'text'"><span>텍스트 유형</span><select v-model="field.textType" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'"><option value="title">제목</option><option value="remark">보조 문구</option><option value="multi">본문</option></select></label>
                       </div>

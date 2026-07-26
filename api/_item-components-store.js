@@ -51,6 +51,10 @@ function validateFieldDefinition(body, index = 0) {
     throw error;
   }
   const editorSchema = asObject(body.editorSchema);
+  const description = String(body.description ?? editorSchema.description ?? "").trim();
+  const normalizedEditorSchema = { ...editorSchema };
+  if (description) normalizedEditorSchema.description = description;
+  else delete normalizedEditorSchema.description;
   const capabilities = asObject(body.capabilities);
   const imagePolicy = fieldKind === "image" ? asObject(body.imagePolicy) : {};
   const ctaPolicy = fieldKind === "cta" ? asObject(body.ctaPolicy) : {};
@@ -66,7 +70,8 @@ function validateFieldDefinition(body, index = 0) {
     id: String(body.id || "").trim() || null,
     fieldKey: fieldKey || null,
     name: String(body.name || "").trim() || `Field ${index + 1}`,
-    fieldKind, textType, editorSchema, capabilities, imagePolicy, ctaPolicy, styleSlots,
+    description,
+    fieldKind, textType, editorSchema: normalizedEditorSchema, capabilities, imagePolicy, ctaPolicy, styleSlots,
     defaultValue: body.defaultValue ?? null,
     sortOrder: Number.isFinite(Number(body.sortOrder)) ? Number(body.sortOrder) : index * 10,
     isRequired: body.isRequired === true,
@@ -78,6 +83,7 @@ function validateDefinition(body) {
   const sourceFields = asArray(body.fields);
   const fields = (sourceFields.length ? sourceFields : [{
     name: body.fieldName || body.name || "Component field",
+    description: body.fieldDescription || body.description || "",
     fieldKind: body.fieldKind,
     textType: body.textType,
     editorSchema: body.editorSchema,
@@ -109,6 +115,7 @@ function toComponentField(row) {
     componentVersionId: row.component_version_id,
     fieldKey: row.field_key,
     name: row.name,
+    description: String(row.editor_schema?.description || "").trim(),
     fieldKind: row.field_kind,
     textType: row.text_type || null,
     sortOrder: Number(row.sort_order || 0),
