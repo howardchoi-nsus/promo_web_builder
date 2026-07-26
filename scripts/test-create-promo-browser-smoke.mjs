@@ -527,10 +527,10 @@ try {
   }
   assert.equal(await itemImageFrame.evaluate((node) => getComputedStyle(node).backgroundImage), "none");
 
-  const optionalVisibilityToggle = editorFrame.locator(".component-visibility-toggle input").first();
+  const optionalVisibilityToggle = editorFrame.locator(".component-visibility-toggle").first();
   await optionalVisibilityToggle.waitFor();
   const previewItemCountBeforeHide = await editorFrame.locator(".rendered-item").count();
-  await optionalVisibilityToggle.uncheck();
+  await optionalVisibilityToggle.click();
   await page.waitForTimeout(50);
   const previewItemCountAfterHide = await editorFrame.locator(".rendered-item").count();
   assert.ok(

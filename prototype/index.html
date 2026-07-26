@@ -1294,13 +1294,6 @@
                         <span>{{ t('common.field.description') }}</span>
                         <input v-model="wizardFormTemplateEditor.description" type="text" :disabled="wizardFormTemplateDetail.template.status !== 'draft'" autocomplete="off" />
                       </label>
-                      <label class="field compact-field">
-                        <span>디자인 토큰 세트</span>
-                        <select v-model="wizardFormTemplateEditor.designTokenSetVersionId" :disabled="wizardFormTemplateDetail.template.status !== 'draft'">
-                          <option value="">선택하세요</option>
-                          <option v-for="tokenSet in designTokenSets.filter(item => item.versionStatus === 'active')" :key="tokenSet.versionId" :value="tokenSet.versionId">{{ tokenSet.name }} · v{{ tokenSet.version }}</option>
-                        </select>
-                      </label>
                       <label class="switch-control">
                         <input v-model="wizardFormTemplateEditor.isDefault" type="checkbox" :disabled="wizardFormTemplateDetail.template.status !== 'draft'" />
                         <span>기본 템플릿으로 지정</span>
@@ -1309,7 +1302,7 @@
                         <span>{{ t('common.field.changeReason') }}</span>
                         <input v-model="wizardFormTemplateEditor.changeNote" type="text" autocomplete="off" />
                       </label>
-                      <button class="tiny-button primary" type="button" v-if="wizardFormTemplateDetail.template.status === 'draft'" :disabled="wizardFormTemplateSaving || !wizardFormTemplateEditor.name || !wizardFormTemplateEditor.designTokenSetVersionId" @click="saveWizardFormTemplate">{{ t('common.action.save') }}</button>
+                      <button class="tiny-button primary" type="button" v-if="wizardFormTemplateDetail.template.status === 'draft'" :disabled="wizardFormTemplateSaving || !wizardFormTemplateEditor.name" @click="saveWizardFormTemplate">{{ t('common.action.save') }}</button>
                     </div>
                   </article>
                   <div class="empty-state compact" v-if="!wizardFormTemplatesLoading && !groupedWizardFormTemplates.length">등록된 템플릿이 없습니다.</div>
@@ -1320,8 +1313,7 @@
                     <small>템플릿 식별자는 생성 시 자동으로 부여됩니다.</small>
                     <label class="field compact-field"><span>{{ t('entity.template.name') }}</span><input v-model="newWizardFormTemplateForm.name" type="text" autocomplete="off" /></label>
                     <label class="field compact-field"><span>{{ t('common.field.description') }}</span><input v-model="newWizardFormTemplateForm.description" type="text" autocomplete="off" /></label>
-                    <label class="field compact-field"><span>디자인 토큰 세트</span><select v-model="newWizardFormTemplateForm.designTokenSetVersionId"><option value="">선택하세요</option><option v-for="tokenSet in designTokenSets.filter(item => item.versionStatus === 'active')" :key="tokenSet.versionId" :value="tokenSet.versionId">{{ tokenSet.name }} · v{{ tokenSet.version }}</option></select></label>
-                    <button class="tiny-button primary" type="button" :disabled="wizardFormTemplateSaving || !newWizardFormTemplateForm.name || !newWizardFormTemplateForm.designTokenSetVersionId" @click="createWizardFormTemplate">템플릿 생성</button>
+                    <button class="tiny-button primary" type="button" :disabled="wizardFormTemplateSaving || !newWizardFormTemplateForm.name" @click="createWizardFormTemplate">템플릿 생성</button>
                   </div>
                   <div class="form-template-duplicate" v-if="showDuplicateWizardFormTemplateForm">
                     <strong>템플릿 복사본 만들기</strong>

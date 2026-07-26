@@ -15,7 +15,6 @@ defineProps({
   editorHistory: { type: Object, required: true },
   designTokenSets: { type: Array, default: () => [] },
   selectedDesignTokenVersionId: { type: String, default: "" },
-  designTokenSaving: { type: Boolean, default: false },
   layoutChangeNote: { type: String, default: "" },
   layoutSaving: { type: Boolean, default: false },
   editorSnapshot: { type: Object, default: null },
@@ -94,11 +93,11 @@ defineExpose({ getStageElement, scrollToSection });
       >
         <template #tokens>
           <fieldset v-if="capabilities.canEditTemplateDefaults" class="global-token-menu">
-            <legend>디자인 토큰</legend>
+            <legend>미리보기 디자인 토큰</legend>
             <select
               class="global-token-select"
               :value="selectedDesignTokenVersionId"
-              :disabled="designTokenSaving || template?.status !== 'draft' || !designTokenSets.length"
+              :disabled="!designTokenSets.length"
               aria-label="템플릿 디자인 토큰"
               @change="emit('update-design-token', $event.target.value)"
             >
@@ -124,13 +123,13 @@ defineExpose({ getStageElement, scrollToSection });
             />
             <button
               type="button"
-              :disabled="!editorSnapshot || layoutSaving || designTokenSaving || template?.status !== 'draft'"
+              :disabled="!editorSnapshot || layoutSaving || template?.status !== 'draft'"
               @click="emit('save-admin-layout', false)"
             >{{ layoutSaving ? "저장 중" : "초안 저장" }}</button>
             <button
               type="button"
               class="is-primary"
-              :disabled="!editorSnapshot || layoutSaving || designTokenSaving || template?.status !== 'draft'"
+              :disabled="!editorSnapshot || layoutSaving || template?.status !== 'draft'"
               @click="emit('save-admin-layout', true)"
             >저장 후 활성화</button>
           </div>

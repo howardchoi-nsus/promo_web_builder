@@ -35,7 +35,6 @@ export default {
       error: "",
       tokenSets: [],
       definitions: [],
-      templates: [],
       selectedSetId: "",
       selectedVersionId: "",
       detail: null,
@@ -50,7 +49,6 @@ export default {
       searchTerm: "",
       categoryFilter: "",
       changedOnly: false,
-      selectedTemplateIds: [],
       csvSourceName: "",
       importErrors: [],
       validationErrors: [],
@@ -83,9 +81,6 @@ export default {
     },
     isDirty() {
       return this.editorValues.some((item) => this.isTokenChanged(item));
-    },
-    activeTemplates() {
-      return this.templates.filter((template) => template.status === "active");
     },
     previewStyle() {
       return {
@@ -131,14 +126,12 @@ export default {
       this.loading = true;
       this.error = "";
       try {
-        const [setsResult, catalogResult, templatesResult] = await Promise.all([
+        const [setsResult, catalogResult] = await Promise.all([
           designTokenService.list(),
           designTokenService.catalog(),
-          designTokenService.listTemplates(),
         ]);
         this.tokenSets = setsResult.tokenSets || [];
         this.definitions = catalogResult.definitions || [];
-        this.templates = templatesResult.templates || [];
         this.selectedSetId = this.tokenSets.some((set) => set.id === preferredSetId)
           ? preferredSetId
           : (this.tokenSets[0]?.id || "");
@@ -160,7 +153,6 @@ export default {
         description: set?.description || "",
         changeNote: "",
       };
-      this.selectedTemplateIds = [];
       const versionId = set?.draftVersion?.id || set?.activeVersion?.id || set?.versions?.[0]?.id || "";
       if (versionId) await this.selectVersion(versionId);
       else this.clearDetail();
@@ -223,12 +215,7 @@ export default {
         ? (item.valueLight || item.valueDark)
         : (item.valueDark || item.valueLight);
     },
-    hasTemplateDraft(template) {
-      return this.templates.some((candidate) => (
-        candidate.templateKey === template.templateKey && candidate.status === "draft"
-      ));
-    },
-    async publish(templateIds) {
+    async publish() {
       this.validationErrors = [];
       try {
         const result = await this.run(() => designTokenService.publish({
@@ -236,27 +223,17 @@ export default {
           sourceVersionId: this.activeVersionId,
           workingVersionId: this.workingVersionId,
           tokens: this.tokenPayload(),
-          templateIds,
           sourceName: this.csvSourceName,
           changeNote: this.metadata.changeNote,
         }));
         await this.reload(this.selectedSetId);
-        this.notify(templateIds.length
-          ? "admin.designToken.saveApplySuccess"
-          : "admin.designToken.saveSuccess", { count: result.templates?.length || 0 });
+        this.notify("admin.designToken.saveSuccess");
       } catch (error) {
         this.validationErrors = error.details?.errors || [];
       }
     },
     save() {
-      return this.publish([]);
-    },
-    saveAndApply() {
-      if (!this.selectedTemplateIds.length) {
-        this.error = this.t("admin.designToken.selectTemplateRequired");
-        return;
-      }
-      return this.publish(this.selectedTemplateIds);
+      return this.publish();
     },
     async onCsvFile(event) {
       this.importErrors = [];
@@ -456,7 +433,6 @@ export default {
             <button class="tiny-button" type="button" @click="exportCsv">{{ t("admin.designToken.csvExport") }}</button>
             <span v-if="csvSourceName" class="source-name">{{ csvSourceName }}</span>
             <button class="tiny-button" type="button" :disabled="saving || !isDirty" @click="save">{{ t("common.action.save") }}</button>
-            <button class="tiny-button primary" type="button" :disabled="saving || !selectedTemplateIds.length" @click="saveAndApply">{{ t("admin.designToken.saveAndApply") }}</button>
           </div>
         </template>
       </main>
@@ -481,15 +457,6 @@ export default {
                 </section>
               </div>
             </div>
-          </section>
-
-          <section class="design-token-section">
-            <h3>{{ t("admin.designToken.applyTemplates") }}</h3>
-            <label v-for="template in activeTemplates" :key="template.id" class="template-choice" :class="{ disabled: hasTemplateDraft(template) }">
-              <input v-model="selectedTemplateIds" type="checkbox" :value="template.id" :disabled="hasTemplateDraft(template)">
-              <span>{{ template.name }} <small>v{{ template.version }}</small></span>
-              <small v-if="hasTemplateDraft(template)">{{ t("admin.designToken.templateDraftConflict") }}</small>
-            </label>
           </section>
 
           <details class="design-token-section">

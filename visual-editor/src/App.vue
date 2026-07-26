@@ -57,7 +57,7 @@ const layoutChangeNote = ref("");
 const layoutSaving = ref(false);
 const layoutSaveMessage = ref("");
 const designTokenSets = ref([]);
-const designTokenSaving = ref(false);
+const previewDesignTokenVersionId = ref("");
 const externalSnapshotReady = ref(false);
 const autoRegisterPending = ref(false);
 const autoRegisterMessage = ref("");
@@ -439,6 +439,7 @@ function compositionRequestPayload() {
   const sectionKey = selectedSection.value?.sectionKey;
   return {
     formTemplateId: template.value?.id,
+    designTokenSetVersionId: template.value?.designTokens?.versionId || "",
     sectionKey,
     instruction: compositionInstruction.value,
     sectionInputs: sectionInputs.value?.[sectionKey] || {},
@@ -761,16 +762,13 @@ function requestImageRemoval(field = null) {
   });
 }
 
-async function updateDesignToken(versionId) {
-  if (!isAdminLayoutMode.value || !template.value?.id || template.value.status !== "draft") return;
+function updateDesignToken(versionId) {
+  if (!isAdminLayoutMode.value || !template.value?.id) return;
   const tokenSet = designTokenSets.value.find((candidate) => candidate.versionId === versionId);
-  if (!tokenSet || designTokenSaving.value) return;
-  const previousTemplate = template.value;
-  designTokenSaving.value = true;
-  layoutSaveMessage.value = "";
+  if (!tokenSet) return;
+  previewDesignTokenVersionId.value = tokenSet.versionId;
   template.value = {
     ...template.value,
-    designTokenSetVersionId: tokenSet.versionId,
     designTokens: {
       setKey: tokenSet.setKey,
       version: tokenSet.version,
@@ -779,20 +777,7 @@ async function updateDesignToken(versionId) {
       sourceValues: tokenSet.sourceValues || [],
     },
   };
-  try {
-    const result = await adminTemplateAdapter.updateDesignToken(template.value.id, tokenSet.versionId);
-    template.value = {
-      ...template.value,
-      ...(result.template || {}),
-      designTokens: template.value.designTokens,
-    };
-    layoutSaveMessage.value = `${tokenSet.name} v${tokenSet.version} 디자인 토큰을 템플릿에 적용했습니다.`;
-  } catch (tokenError) {
-    template.value = previousTemplate;
-    layoutSaveMessage.value = tokenError.message;
-  } finally {
-    designTokenSaving.value = false;
-  }
+  layoutSaveMessage.value = `${tokenSet.name} v${tokenSet.version} 토큰으로 미리보는 중입니다. 템플릿에는 저장되지 않습니다.`;
 }
 
 const selectedStyleKey = computed(() => (
@@ -983,6 +968,22 @@ async function loadAdminLayout() {
     ]);
     designTokenSets.value = availableTokenSets;
     template.value = result.template;
+    const previewTokenSet = availableTokenSets.find((candidate) => candidate.isDefault)
+      || availableTokenSets[0]
+      || null;
+    if (previewTokenSet) {
+      previewDesignTokenVersionId.value = previewTokenSet.versionId;
+      template.value = {
+        ...template.value,
+        designTokens: {
+          setKey: previewTokenSet.setKey,
+          version: previewTokenSet.version,
+          versionId: previewTokenSet.versionId,
+          values: previewTokenSet.values || {},
+          sourceValues: previewTokenSet.sourceValues || [],
+        },
+      };
+    }
     sections.value = result.sections || [];
     sectionInputs.value = createSectionInputs(sections.value);
     designSpec.value = normalizeLayoutSpec(result.layout?.layoutSpec);
@@ -1310,8 +1311,7 @@ onBeforeUnmount(() => {
         :editor-history="editorHistory"
         :design-spec="designSpec"
         :design-token-sets="designTokenSets"
-        :selected-design-token-version-id="template?.designTokenSetVersionId || ''"
-        :design-token-saving="designTokenSaving"
+        :selected-design-token-version-id="previewDesignTokenVersionId"
         :layout-change-note="layoutChangeNote"
         :layout-saving="layoutSaving"
         :editor-snapshot="editorSnapshot"

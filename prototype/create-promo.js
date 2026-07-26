@@ -325,7 +325,7 @@ async function selectWizardFormTemplate(templateId, options = {}) {
   wizardSectionConfigRevision = String(result.configRevision || "");
   wizardLayoutRevision = Number(result.layoutRevision || 1);
   wizardRenderer = result.renderer || { key: "default-promo-renderer", version: 1 };
-  wizardDesignTokens = toWizardDesignTokens(selectedDesignTokenSet()) || result.designTokens || null;
+  wizardDesignTokens = toWizardDesignTokens(selectedDesignTokenSet());
   wizardLayoutIdentity = nextIdentity;
   wizardBaseSectionOrder = adminSectionOrder;
   wizardBaseLayout = JSON.parse(JSON.stringify(result.defaultLayout || FALLBACK_LAYOUT));
@@ -1287,6 +1287,7 @@ async function generateSectionAiDesign(
       body: JSON.stringify({
         promoRunId: null,
         formTemplateId: selectedWizardFormTemplate?.id,
+        designTokenSetVersionId: contentState.designTokenSetVersionId,
         sectionKey,
         sectionInputs,
         targetType: requestedTargetType,
@@ -1359,6 +1360,7 @@ async function applySectionAiDesign(section, saved) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         runId: saved.id,
+        designTokenSetVersionId: contentState.designTokenSetVersionId,
         sectionInputs: contentState.sectionInputs?.[section.sectionKey] || {},
         backgroundColor: resolvedSectionBackgroundColor(section.sectionKey),
       }),
@@ -1522,6 +1524,7 @@ async function generateSectionAiLayout(section) {
       body: JSON.stringify({
         promoRunId: null,
         formTemplateId: selectedWizardFormTemplate?.id,
+        designTokenSetVersionId: contentState.designTokenSetVersionId,
         sectionKey,
         sectionInputs,
         requestMode: "layout-style",

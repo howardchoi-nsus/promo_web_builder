@@ -1,7 +1,6 @@
 const { getSql, fetchTemplateRow, fetchTemplateSections, toFormTemplate } = require("./_wizard-form-templates-store");
 const { fetchItemsForSection, normalizeAiDesign } = require("./_wizard-content-sections-store");
 const { fetchLayoutRow, toLayout, createLayoutIdentity } = require("./_wizard-form-template-layout-store");
-const { fetchTokenVersion, toRuntimeTokenMap } = require("./_design-token-store");
 
 module.exports = async function handler(req, res) {
   if (req.method !== "GET") {
@@ -47,9 +46,6 @@ module.exports = async function handler(req, res) {
       ...section.items.map((item) => `${item.id}:${item.componentVersionId}:${item.updatedAt || ""}`),
     ])].join("|");
     const layout = toLayout(await fetchLayoutRow(sql, id));
-    const designTokenSet = template.designTokenSetVersionId
-      ? await fetchTokenVersion(sql, template.designTokenSetVersionId)
-      : null;
     return res.status(200).json({
       ok: true,
       template: {
@@ -59,20 +55,12 @@ module.exports = async function handler(req, res) {
         description: template.description,
         version: template.version,
         isDefault: template.isDefault,
-        designTokenSetVersionId: template.designTokenSetVersionId,
       },
       configRevision: revision,
       layoutRevision: layout.layoutRevision,
       renderer: { key: layout.rendererKey, version: layout.rendererVersion },
       layoutIdentity: createLayoutIdentity(template, layout, revision),
       defaultLayout: layout.layoutSpec,
-      designTokens: designTokenSet ? {
-        setKey: designTokenSet.setKey,
-        version: designTokenSet.version,
-        versionId: designTokenSet.id,
-        values: toRuntimeTokenMap(designTokenSet.values),
-        sourceValues: designTokenSet.values,
-      } : null,
       sections,
       configurationWarnings,
     });

@@ -25,23 +25,6 @@ export function createAdminTemplateAdapter({ fetchImpl = globalThis.fetch } = {}
       return result.tokenSets || [];
     },
 
-    async updateDesignToken(templateId, designTokenSetVersionId) {
-      if (!templateId) throw new Error("templateId is required.");
-      if (!designTokenSetVersionId) throw new Error("Select a design token set.");
-      const response = await fetchImpl("/api/wizard-form-template", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: templateId,
-          designTokenSetVersionId,
-          changeNote: "Design token changed in the layout editor.",
-        }),
-      });
-      const result = await readJson(response);
-      if (!response.ok) throw responseError(result, "Failed to update the design token.", response.status);
-      return result;
-    },
-
     async saveLayout(payload) {
       const response = await fetchImpl("/api/wizard-form-template-layout", {
         method: "PATCH",

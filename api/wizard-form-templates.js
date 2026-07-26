@@ -62,6 +62,11 @@ async function createTemplate(req, res) {
         ${String(body.changeNote || "Draft created from Admin Page.").trim()}
       )::text as id
     `;
+    await sql`
+      update wizard_form_templates
+      set design_token_set_version_id = null, updated_at = now()
+      where id = ${rows[0]?.id}::uuid
+    `;
     const row = await fetchTemplateRow(sql, rows[0]?.id);
     await cloneLayout(sql, sourceId, row.id);
     return res.status(201).json({ ok: true, template: toFormTemplate(row) });
@@ -78,11 +83,10 @@ async function createTemplate(req, res) {
 
   const rows = await sql`
     insert into wizard_form_templates (
-      template_key, name, description, status, version, is_default, change_note, design_token_set_version_id
+      template_key, name, description, status, version, is_default, change_note
     ) values (
       ${templateKey}, ${name}, ${String(body.description || "")}, 'draft', 1, false,
-      ${String(body.changeNote || "Form template created from Admin Page.")},
-      ${String(body.designTokenSetVersionId || "").trim() || null}::uuid
+      ${String(body.changeNote || "Form template created from Admin Page.")}
     )
     returning id::text, template_key, name, description, status, version,
       is_default, change_note, design_token_set_version_id::text, archived_at, created_at, updated_at

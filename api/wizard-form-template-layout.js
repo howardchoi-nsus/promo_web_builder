@@ -2,7 +2,6 @@ const { getSql, parseBody, fetchTemplateRow, toFormTemplate } = require("./_wiza
 const {
   fetchLayoutRow, toLayout, fetchTemplateWithItems, ensureLayout, validateLayoutSpec, createLayoutIdentity,
 } = require("./_wizard-form-template-layout-store");
-const { fetchTokenVersion, toRuntimeTokenMap } = require("./_design-token-store");
 
 module.exports = async function handler(req, res) {
   try {
@@ -23,22 +22,10 @@ async function getLayout(req, res) {
   if (!detail) return res.status(404).json({ error: "Form template not found" });
   const row = await ensureLayout(sql, templateId);
   const template = toFormTemplate(detail.template);
-  const tokenVersion = template.designTokenSetVersionId
-    ? await fetchTokenVersion(sql, template.designTokenSetVersionId)
-    : null;
   const layout = toLayout(row);
   return res.status(200).json({
     ok: true,
-    template: {
-      ...template,
-      designTokens: tokenVersion ? {
-        setKey: tokenVersion.setKey,
-        version: tokenVersion.version,
-        versionId: tokenVersion.id,
-        values: toRuntimeTokenMap(tokenVersion.values),
-        sourceValues: tokenVersion.values,
-      } : null,
-    },
+    template,
     sections: detail.sections,
     layout,
     layoutIdentity: createLayoutIdentity(template, layout),

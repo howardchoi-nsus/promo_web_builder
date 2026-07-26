@@ -28,7 +28,12 @@ module.exports = async function handler(req, res) {
     if (!formTemplateId || !sectionKey || !fingerprint || !inputFingerprint || !layoutFingerprint || !rawPlan) {
       return res.status(400).json({ error: "formTemplateId, sectionKey, fingerprints, and rawPlan are required" });
     }
-    const context = await loadCompositionContext(getSql(), formTemplateId, sectionKey);
+    const context = await loadCompositionContext(
+      getSql(),
+      formTemplateId,
+      sectionKey,
+      String(body.designTokenSetVersionId || "").trim()
+    );
     if (context.fingerprint !== fingerprint) {
       return res.status(409).json({
         error: "Template, component, or design token configuration changed. Generate a new proposal.",

@@ -133,14 +133,14 @@ async function fetchTokenDefinitions(sql) {
 
 async function fetchTokenSets(sql, { activeOnly = false } = {}) {
   const rows = activeOnly ? await sql`
-    select token_set.id::text, token_set.set_key, token_set.name, token_set.description, token_set.status,
+    select token_set.id::text, token_set.set_key, token_set.name, token_set.description, token_set.status, token_set.is_default,
       version.id::text as version_id, version.version, version.status as version_status,
       version.source_name, version.source_hash, version.change_note, version.updated_at
     from promo_design_token_sets token_set
     join promo_design_token_set_versions version on version.token_set_id = token_set.id and version.status = 'active'
     where token_set.status = 'active' order by token_set.name
   ` : await sql`
-    select token_set.id::text, token_set.set_key, token_set.name, token_set.description, token_set.status,
+    select token_set.id::text, token_set.set_key, token_set.name, token_set.description, token_set.status, token_set.is_default,
       version.id::text as version_id, version.version, version.status as version_status,
       version.source_name, version.source_hash, version.change_note, version.updated_at
     from promo_design_token_sets token_set
@@ -151,6 +151,7 @@ async function fetchTokenSets(sql, { activeOnly = false } = {}) {
   `;
   return rows.map((row) => ({
     id: row.id, setKey: row.set_key, name: row.name, description: row.description || "", status: row.status,
+    isDefault: Boolean(row.is_default),
     versionId: row.version_id || null, version: row.version == null ? null : Number(row.version),
     versionStatus: row.version_status || null, sourceName: row.source_name || "", sourceHash: row.source_hash || "",
     changeNote: row.change_note || "", updatedAt: row.updated_at || null,
@@ -203,10 +204,10 @@ async function fetchTokenVersion(sql, versionId) {
 
 async function fetchManagedTokenSets(sql, { includeArchived = false } = {}) {
   const sets = includeArchived ? await sql`
-    select id::text, set_key, name, description, status, created_at, updated_at
+    select id::text, set_key, name, description, status, is_default, created_at, updated_at
     from promo_design_token_sets order by name, created_at
   ` : await sql`
-    select id::text, set_key, name, description, status, created_at, updated_at
+    select id::text, set_key, name, description, status, is_default, created_at, updated_at
     from promo_design_token_sets where status <> 'archived' order by name, created_at
   `;
   if (!sets.length) return [];
@@ -251,6 +252,7 @@ async function fetchManagedTokenSets(sql, { includeArchived = false } = {}) {
       name: set.name,
       description: set.description || "",
       status: set.status,
+      isDefault: Boolean(set.is_default),
       versionId: representative?.id || null,
       version: representative?.version ?? null,
       versionStatus: representative?.status || null,

@@ -86,6 +86,8 @@ assert.match(createJs, /promoPrototype\.createPromo\.sessionId\.v1/);
 assert.match(createJs, /function renderAppearanceStep\b/);
 assert.match(createJs, /type:\s*"textarea",\s*\n\s*rows:\s*item\.textType === "multi" \? 4 : 3/);
 assert.match(createJs, /designTokenSetVersionId/);
+assert.match(createJs, /designTokenSetVersionId:\s*contentState\.designTokenSetVersionId/);
+assert.doesNotMatch(createJs, /result\.designTokens/);
 assert.match(createJs, /\/api\/design-token-sets\?scope=public/);
 assert.match(createJs, /toWizardDesignTokens/);
 assert.match(createJs, /1\. 프로모션 개요/);

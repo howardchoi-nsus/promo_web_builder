@@ -1199,9 +1199,9 @@ const adminApp = createApp({
       selectedWizardFormTemplateKey: "",
       expandedWizardFormTemplateSettingsKey: "",
       wizardFormTemplateDetail: null,
-      wizardFormTemplateEditor: { name: "", description: "", isDefault: false, designTokenSetVersionId: "", changeNote: "" },
+      wizardFormTemplateEditor: { name: "", description: "", isDefault: false, changeNote: "" },
       showNewWizardFormTemplateForm: false,
-      newWizardFormTemplateForm: { name: "", description: "", designTokenSetVersionId: "" },
+      newWizardFormTemplateForm: { name: "", description: "" },
       showDuplicateWizardFormTemplateForm: false,
       duplicateWizardFormTemplateForm: { sourceId: "", name: "", description: "" },
       duplicateWizardFormTemplateError: "",
@@ -2893,7 +2893,6 @@ const adminApp = createApp({
           name: result.template.name,
           description: result.template.description,
           isDefault: result.template.isDefault,
-          designTokenSetVersionId: result.template.designTokenSetVersionId || "",
           changeNote: "",
         };
         const selectedSection = this.wizardFormTemplateDetail.sections.find(
@@ -2913,7 +2912,7 @@ const adminApp = createApp({
     toggleNewWizardFormTemplateForm() {
       this.showNewWizardFormTemplateForm = !this.showNewWizardFormTemplateForm;
       this.showDuplicateWizardFormTemplateForm = false;
-      this.newWizardFormTemplateForm = { name: "", description: "", designTokenSetVersionId: "" };
+      this.newWizardFormTemplateForm = { name: "", description: "" };
     },
 
     openDuplicateWizardFormTemplate(group = this.selectedWizardFormTemplateGroup) {
@@ -2946,7 +2945,6 @@ const adminApp = createApp({
           body: JSON.stringify({
             name: this.newWizardFormTemplateForm.name,
             description: this.newWizardFormTemplateForm.description,
-            designTokenSetVersionId: this.newWizardFormTemplateForm.designTokenSetVersionId,
           }),
         });
         const result = await response.json().catch(() => ({}));

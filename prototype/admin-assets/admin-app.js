@@ -7483,7 +7483,7 @@ function Rh(e) {
 	return !e || typeof e != "object" ? {} : Object.fromEntries(Object.entries(e).map(([e, t]) => [String(e).trim(), String(t ?? "").trim()]).filter(([e, t]) => Lh.test(e) && t));
 }
 function zh(e, t = {}) {
-	let n = Rh(e), r = String(t.background || "#f5f7fb"), i = String(t.text || "#172033"), a = String(t.muted || "#64748b"), o = String(t.accent || "#2563eb"), s = String(t.cta || o), c = String(t.ctaInk || "#ffffff"), l = String(t.radius || "2px"), u = String(t.shadow || "0 10px 32px rgba(33, 43, 61, .12)"), d = n["--promo-surface"] || n["--app-surface"], f = n["--promo-text"] || n["--app-ink"], p = n["--promo-muted"] || n["--app-muted"], m = n["--promo-accent"] || n["--app-accent"], h = n["--promo-radius"] || n["--app-radius"], g = n["--promo-shadow"] || n["--app-shadow"];
+	let n = Rh(e), r = String(t.background || "#f5f7fb"), i = String(t.text || "#172033"), a = String(t.muted || "#64748b"), o = String(t.accent || "#2563eb"), s = String(t.cta || o), c = String(t.ctaInk || "#ffffff"), l = String(t.radius || "2px"), u = String(t.shadow || "0 10px 32px rgba(33, 43, 61, .12)"), d = n["--promo-bg"] || n["--app-bg"] || n["--promo-surface"] || n["--app-surface"], f = n["--promo-text"] || n["--app-ink"], p = n["--promo-muted"] || n["--app-muted"], m = n["--promo-accent"] || n["--app-accent"], h = n["--promo-radius"] || n["--app-radius"], g = n["--promo-shadow"] || n["--app-shadow"];
 	return {
 		"--promo-bg": d || r,
 		"--promo-ink": f || i,
@@ -7546,9 +7546,7 @@ var Vh = (e, t) => ({
 	validate: (e) => Bh("/api/design-token-set-validate", Vh("POST", e)),
 	activate: (e) => Bh("/api/design-token-set-activate", Vh("POST", e)),
 	publish: (e) => Bh("/api/design-token-set-publish", Vh("POST", e)),
-	archive: (e) => Bh("/api/design-token-set-archive", Vh("POST", e)),
-	listTemplates: () => Bh("/api/wizard-form-templates"),
-	applyToTemplate: (e) => Bh("/api/wizard-form-template", Vh("PATCH", e))
+	archive: (e) => Bh("/api/design-token-set-archive", Vh("POST", e))
 }), Uh = 2 * 1024 * 1024;
 function Wh(e) {
 	let t = String(e ?? "");
@@ -7579,7 +7577,6 @@ var qh = {
 			error: "",
 			tokenSets: [],
 			definitions: [],
-			templates: [],
 			selectedSetId: "",
 			selectedVersionId: "",
 			detail: null,
@@ -7604,7 +7601,6 @@ var qh = {
 			searchTerm: "",
 			categoryFilter: "",
 			changedOnly: !1,
-			selectedTemplateIds: [],
 			csvSourceName: "",
 			importErrors: [],
 			validationErrors: [],
@@ -7642,9 +7638,6 @@ var qh = {
 		},
 		isDirty() {
 			return this.editorValues.some((e) => this.isTokenChanged(e));
-		},
-		activeTemplates() {
-			return this.templates.filter((e) => e.status === "active");
 		},
 		previewStyle() {
 			return {
@@ -7686,12 +7679,8 @@ var qh = {
 		async reload(e = this.selectedSetId) {
 			this.loading = !0, this.error = "";
 			try {
-				let [t, n, r] = await Promise.all([
-					Hh.list(),
-					Hh.catalog(),
-					Hh.listTemplates()
-				]);
-				this.tokenSets = t.tokenSets || [], this.definitions = n.definitions || [], this.templates = r.templates || [], this.selectedSetId = this.tokenSets.some((t) => t.id === e) ? e : this.tokenSets[0]?.id || "", await this.selectSet(this.selectedSetId, !0), this.$emit("token-sets-changed");
+				let [t, n] = await Promise.all([Hh.list(), Hh.catalog()]);
+				this.tokenSets = t.tokenSets || [], this.definitions = n.definitions || [], this.selectedSetId = this.tokenSets.some((t) => t.id === e) ? e : this.tokenSets[0]?.id || "", await this.selectSet(this.selectedSetId, !0), this.$emit("token-sets-changed");
 			} catch (e) {
 				this.error = e.message;
 			} finally {
@@ -7706,7 +7695,7 @@ var qh = {
 				name: n?.name || "",
 				description: n?.description || "",
 				changeNote: ""
-			}, this.selectedTemplateIds = [];
+			};
 			let r = n?.draftVersion?.id || n?.activeVersion?.id || n?.versions?.[0]?.id || "";
 			r ? await this.selectVersion(r) : this.clearDetail();
 		},
@@ -7778,35 +7767,23 @@ var qh = {
 		updateResolvedValue(e) {
 			e.value = e.activeTheme === "light" ? e.valueLight || e.valueDark : e.valueDark || e.valueLight;
 		},
-		hasTemplateDraft(e) {
-			return this.templates.some((t) => t.templateKey === e.templateKey && t.status === "draft");
-		},
-		async publish(e) {
+		async publish() {
 			this.validationErrors = [];
 			try {
-				let t = await this.run(() => Hh.publish({
+				await this.run(() => Hh.publish({
 					tokenSetId: this.selectedSetId,
 					sourceVersionId: this.activeVersionId,
 					workingVersionId: this.workingVersionId,
 					tokens: this.tokenPayload(),
-					templateIds: e,
 					sourceName: this.csvSourceName,
 					changeNote: this.metadata.changeNote
-				}));
-				await this.reload(this.selectedSetId), this.notify(e.length ? "admin.designToken.saveApplySuccess" : "admin.designToken.saveSuccess", { count: t.templates?.length || 0 });
+				})), await this.reload(this.selectedSetId), this.notify("admin.designToken.saveSuccess");
 			} catch (e) {
 				this.validationErrors = e.details?.errors || [];
 			}
 		},
 		save() {
-			return this.publish([]);
-		},
-		saveAndApply() {
-			if (!this.selectedTemplateIds.length) {
-				this.error = this.t("admin.designToken.selectTemplateRequired");
-				return;
-			}
-			return this.publish(this.selectedTemplateIds);
+			return this.publish();
 		},
 		async onCsvFile(e) {
 			this.importErrors = [];
@@ -7918,8 +7895,8 @@ var qh = {
 }, Sg = { class: "design-token-actions sticky-actions" }, Cg = { class: "tiny-button file-button" }, wg = {
 	key: 0,
 	class: "source-name"
-}, Tg = ["disabled"], Eg = ["disabled"], Dg = { class: "design-token-column design-token-inspector" }, Og = { class: "design-token-section" }, kg = { class: "design-token-actions" }, Ag = { class: "rendered-section" }, jg = { class: "rendered-section__inner" }, Mg = { class: "rendered-empty" }, Ng = { class: "rendered-text rendered-text--title" }, Pg = { class: "rendered-cta" }, Fg = { class: "design-token-section" }, Ig = ["value", "disabled"], Lg = { key: 0 }, Rg = { class: "design-token-section" }, zg = { class: "field" }, Bg = { class: "field" }, Vg = { class: "field" }, Hg = { class: "design-token-actions" }, Ug = ["disabled"], Wg = ["disabled"], Gg = { class: "field" }, Kg = { class: "field" }, qg = ["disabled"];
-function Jg(e, t, n, r, i, a) {
+}, Tg = ["disabled"], Eg = { class: "design-token-column design-token-inspector" }, Dg = { class: "design-token-section" }, Og = { class: "design-token-actions" }, kg = { class: "rendered-section" }, Ag = { class: "rendered-section__inner" }, jg = { class: "rendered-empty" }, Mg = { class: "rendered-text rendered-text--title" }, Ng = { class: "rendered-cta" }, Pg = { class: "design-token-section" }, Fg = { class: "field" }, Ig = { class: "field" }, Lg = { class: "field" }, Rg = { class: "design-token-actions" }, zg = ["disabled"], Bg = ["disabled"], Vg = { class: "field" }, Hg = { class: "field" }, Ug = ["disabled"];
+function Wg(e, t, n, r, i, a) {
 	return V(), H("section", Jh, [
 		U("div", Yh, [U("div", null, [U("h2", null, N(a.t("admin.designToken.title")), 1), U("p", null, N(a.t("admin.designToken.scopeNotice")), 1)]), U("div", Xh, [U("button", {
 			class: "tiny-button",
@@ -8004,8 +7981,8 @@ function Jg(e, t, n, r, i, a) {
 					U("th", null, N(a.t("admin.designToken.category")), 1),
 					U("th", null, N(a.t("admin.designToken.token")), 1),
 					U("th", null, N(a.t("admin.designToken.type")), 1),
-					t[25] ||= U("th", null, "Light", -1),
-					t[26] ||= U("th", null, "Dark", -1),
+					t[23] ||= U("th", null, "Light", -1),
+					t[24] ||= U("th", null, "Dark", -1),
 					U("th", null, N(a.t("admin.designToken.value")), 1),
 					U("th", null, N(a.t("admin.designToken.status")), 1)
 				])]), U("tbody", null, [(V(!0), H(z, null, Oa(a.filteredValues, (e) => (V(), H("tr", {
@@ -8054,109 +8031,87 @@ function Jg(e, t, n, r, i, a) {
 						type: "button",
 						disabled: i.saving || !a.isDirty,
 						onClick: t[11] ||= (...e) => a.save && a.save(...e)
-					}, N(a.t("common.action.save")), 9, Tg),
-					U("button", {
-						class: "tiny-button primary",
-						type: "button",
-						disabled: i.saving || !i.selectedTemplateIds.length,
-						onClick: t[12] ||= (...e) => a.saveAndApply && a.saveAndApply(...e)
-					}, N(a.t("admin.designToken.saveAndApply")), 9, Eg)
+					}, N(a.t("common.action.save")), 9, Tg)
 				])
 			], 64)) : Bs("", !0)]),
-			U("aside", Dg, [a.selectedSet && i.detail ? (V(), H(z, { key: 0 }, [
-				U("section", Og, [
-					U("h3", null, N(a.t("admin.designToken.preview")), 1),
-					U("div", kg, [U("button", {
-						class: Ee(["tiny-button", { primary: i.previewViewport === "desktop" }]),
+			U("aside", Eg, [a.selectedSet && i.detail ? (V(), H(z, { key: 0 }, [U("section", Dg, [
+				U("h3", null, N(a.t("admin.designToken.preview")), 1),
+				U("div", Og, [U("button", {
+					class: Ee(["tiny-button", { primary: i.previewViewport === "desktop" }]),
+					type: "button",
+					onClick: t[12] ||= (e) => i.previewViewport = "desktop"
+				}, N(a.t("admin.designToken.desktop")), 3), U("button", {
+					class: Ee(["tiny-button", { primary: i.previewViewport === "mobile" }]),
+					type: "button",
+					onClick: t[13] ||= (e) => i.previewViewport = "mobile"
+				}, N(a.t("admin.designToken.mobile")), 3)]),
+				U("div", { class: Ee(["design-token-preview-stage", `is-${i.previewViewport}`]) }, [U("div", {
+					class: "promo-renderer",
+					style: xe(a.previewStyle)
+				}, [U("section", kg, [U("div", Ag, [
+					U("small", jg, N(a.t("admin.designToken.previewEyebrow")), 1),
+					U("h4", Mg, N(a.t("admin.designToken.previewTitle")), 1),
+					U("p", null, N(a.t("admin.designToken.previewBody")), 1),
+					U("a", Ng, N(a.t("admin.designToken.previewButton")), 1)
+				])])], 4)], 2)
+			]), U("details", Pg, [
+				U("summary", null, N(a.t("admin.designToken.settings")), 1),
+				U("label", Fg, [U("span", null, N(a.t("admin.designToken.name")), 1), jr(U("input", { "onUpdate:modelValue": t[14] ||= (e) => i.metadata.name = e }, null, 512), [[su, i.metadata.name]])]),
+				U("label", Ig, [U("span", null, N(a.t("admin.designToken.description")), 1), jr(U("textarea", {
+					"onUpdate:modelValue": t[15] ||= (e) => i.metadata.description = e,
+					rows: "2"
+				}, null, 512), [[su, i.metadata.description]])]),
+				U("label", Lg, [U("span", null, N(a.t("admin.designToken.changeNote")), 1), jr(U("input", { "onUpdate:modelValue": t[16] ||= (e) => i.metadata.changeNote = e }, null, 512), [[su, i.metadata.changeNote]])]),
+				U("div", Rg, [
+					U("button", {
+						class: "tiny-button",
 						type: "button",
-						onClick: t[13] ||= (e) => i.previewViewport = "desktop"
-					}, N(a.t("admin.designToken.desktop")), 3), U("button", {
-						class: Ee(["tiny-button", { primary: i.previewViewport === "mobile" }]),
+						disabled: i.saving,
+						onClick: t[17] ||= (...e) => a.saveMetadata && a.saveMetadata(...e)
+					}, N(a.t("common.action.save")), 9, zg),
+					U("button", {
+						class: "tiny-button",
 						type: "button",
-						onClick: t[14] ||= (e) => i.previewViewport = "mobile"
-					}, N(a.t("admin.designToken.mobile")), 3)]),
-					U("div", { class: Ee(["design-token-preview-stage", `is-${i.previewViewport}`]) }, [U("div", {
-						class: "promo-renderer",
-						style: xe(a.previewStyle)
-					}, [U("section", Ag, [U("div", jg, [
-						U("small", Mg, N(a.t("admin.designToken.previewEyebrow")), 1),
-						U("h4", Ng, N(a.t("admin.designToken.previewTitle")), 1),
-						U("p", null, N(a.t("admin.designToken.previewBody")), 1),
-						U("a", Pg, N(a.t("admin.designToken.previewButton")), 1)
-					])])], 4)], 2)
+						onClick: t[18] ||= (e) => i.showClone = !i.showClone
+					}, N(a.t("common.action.duplicate")), 1),
+					U("button", {
+						class: "tiny-button danger",
+						type: "button",
+						disabled: i.saving || i.usage.templates.length || i.usage.aiRuns.active,
+						onClick: t[19] ||= (...e) => a.archiveSet && a.archiveSet(...e)
+					}, N(a.t("common.action.archive")), 9, Bg)
 				]),
-				U("section", Fg, [U("h3", null, N(a.t("admin.designToken.applyTemplates")), 1), (V(!0), H(z, null, Oa(a.activeTemplates, (e) => (V(), H("label", {
-					key: e.id,
-					class: Ee(["template-choice", { disabled: a.hasTemplateDraft(e) }])
+				i.showClone ? (V(), H("form", {
+					key: 0,
+					class: "design-token-clone",
+					onSubmit: t[22] ||= xu((...e) => a.cloneSet && a.cloneSet(...e), ["prevent"])
 				}, [
-					jr(U("input", {
-						"onUpdate:modelValue": t[15] ||= (e) => i.selectedTemplateIds = e,
-						type: "checkbox",
-						value: e.id,
-						disabled: a.hasTemplateDraft(e)
-					}, null, 8, Ig), [[cu, i.selectedTemplateIds]]),
-					U("span", null, [Rs(N(e.name) + " ", 1), U("small", null, "v" + N(e.version), 1)]),
-					a.hasTemplateDraft(e) ? (V(), H("small", Lg, N(a.t("admin.designToken.templateDraftConflict")), 1)) : Bs("", !0)
-				], 2))), 128))]),
-				U("details", Rg, [
-					U("summary", null, N(a.t("admin.designToken.settings")), 1),
-					U("label", zg, [U("span", null, N(a.t("admin.designToken.name")), 1), jr(U("input", { "onUpdate:modelValue": t[16] ||= (e) => i.metadata.name = e }, null, 512), [[su, i.metadata.name]])]),
-					U("label", Bg, [U("span", null, N(a.t("admin.designToken.description")), 1), jr(U("textarea", {
-						"onUpdate:modelValue": t[17] ||= (e) => i.metadata.description = e,
-						rows: "2"
-					}, null, 512), [[su, i.metadata.description]])]),
-					U("label", Vg, [U("span", null, N(a.t("admin.designToken.changeNote")), 1), jr(U("input", { "onUpdate:modelValue": t[18] ||= (e) => i.metadata.changeNote = e }, null, 512), [[su, i.metadata.changeNote]])]),
-					U("div", Hg, [
-						U("button", {
-							class: "tiny-button",
-							type: "button",
-							disabled: i.saving,
-							onClick: t[19] ||= (...e) => a.saveMetadata && a.saveMetadata(...e)
-						}, N(a.t("common.action.save")), 9, Ug),
-						U("button", {
-							class: "tiny-button",
-							type: "button",
-							onClick: t[20] ||= (e) => i.showClone = !i.showClone
-						}, N(a.t("common.action.duplicate")), 1),
-						U("button", {
-							class: "tiny-button danger",
-							type: "button",
-							disabled: i.saving || i.usage.templates.length || i.usage.aiRuns.active,
-							onClick: t[21] ||= (...e) => a.archiveSet && a.archiveSet(...e)
-						}, N(a.t("common.action.archive")), 9, Wg)
-					]),
-					i.showClone ? (V(), H("form", {
-						key: 0,
-						class: "design-token-clone",
-						onSubmit: t[24] ||= xu((...e) => a.cloneSet && a.cloneSet(...e), ["prevent"])
-					}, [
-						U("label", Gg, [U("span", null, N(a.t("admin.designToken.cloneName")), 1), jr(U("input", {
-							"onUpdate:modelValue": t[22] ||= (e) => i.cloneForm.name = e,
-							required: ""
-						}, null, 512), [[
-							su,
-							i.cloneForm.name,
-							void 0,
-							{ trim: !0 }
-						]])]),
-						U("label", Kg, [U("span", null, N(a.t("admin.designToken.description")), 1), jr(U("input", { "onUpdate:modelValue": t[23] ||= (e) => i.cloneForm.description = e }, null, 512), [[
-							su,
-							i.cloneForm.description,
-							void 0,
-							{ trim: !0 }
-						]])]),
-						U("button", {
-							class: "tiny-button primary",
-							type: "submit",
-							disabled: i.saving
-						}, N(a.t("common.action.duplicate")), 9, qg)
-					], 32)) : Bs("", !0)
-				])
-			], 64)) : Bs("", !0)])
+					U("label", Vg, [U("span", null, N(a.t("admin.designToken.cloneName")), 1), jr(U("input", {
+						"onUpdate:modelValue": t[20] ||= (e) => i.cloneForm.name = e,
+						required: ""
+					}, null, 512), [[
+						su,
+						i.cloneForm.name,
+						void 0,
+						{ trim: !0 }
+					]])]),
+					U("label", Hg, [U("span", null, N(a.t("admin.designToken.description")), 1), jr(U("input", { "onUpdate:modelValue": t[21] ||= (e) => i.cloneForm.description = e }, null, 512), [[
+						su,
+						i.cloneForm.description,
+						void 0,
+						{ trim: !0 }
+					]])]),
+					U("button", {
+						class: "tiny-button primary",
+						type: "submit",
+						disabled: i.saving
+					}, N(a.t("common.action.duplicate")), 9, Ug)
+				], 32)) : Bs("", !0)
+			])], 64)) : Bs("", !0)])
 		])
 	]);
 }
-var Yg = /*#__PURE__*/ Ch(qh, [["render", Jg], ["__scopeId", "data-v-dcf67420"]]), Xg = /* @__PURE__ */ o((() => {
+var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]), Kg = /* @__PURE__ */ o((() => {
 	var e = {
 		documents: "promoPrototype.documents.abc",
 		generatedPages: "promoPrototype.generatedPages.abc",
@@ -9290,14 +9245,12 @@ var Yg = /*#__PURE__*/ Ch(qh, [["render", Jg], ["__scopeId", "data-v-dcf67420"]]
 					name: "",
 					description: "",
 					isDefault: !1,
-					designTokenSetVersionId: "",
 					changeNote: ""
 				},
 				showNewWizardFormTemplateForm: !1,
 				newWizardFormTemplateForm: {
 					name: "",
-					description: "",
-					designTokenSetVersionId: ""
+					description: ""
 				},
 				showDuplicateWizardFormTemplateForm: !1,
 				duplicateWizardFormTemplateForm: {
@@ -10854,7 +10807,6 @@ var Yg = /*#__PURE__*/ Ch(qh, [["render", Jg], ["__scopeId", "data-v-dcf67420"]]
 						name: n.template.name,
 						description: n.template.description,
 						isDefault: n.template.isDefault,
-						designTokenSetVersionId: n.template.designTokenSetVersionId || "",
 						changeNote: ""
 					};
 					let r = this.wizardFormTemplateDetail.sections.find((e) => e.id === this.selectedWizardFormTemplateSectionId) || this.wizardFormTemplateDetail.sections[0] || null;
@@ -10866,8 +10818,7 @@ var Yg = /*#__PURE__*/ Ch(qh, [["render", Jg], ["__scopeId", "data-v-dcf67420"]]
 			toggleNewWizardFormTemplateForm() {
 				this.showNewWizardFormTemplateForm = !this.showNewWizardFormTemplateForm, this.showDuplicateWizardFormTemplateForm = !1, this.newWizardFormTemplateForm = {
 					name: "",
-					description: "",
-					designTokenSetVersionId: ""
+					description: ""
 				};
 			},
 			openDuplicateWizardFormTemplate(e = this.selectedWizardFormTemplateGroup) {
@@ -10891,8 +10842,7 @@ var Yg = /*#__PURE__*/ Ch(qh, [["render", Jg], ["__scopeId", "data-v-dcf67420"]]
 							headers: { "Content-Type": "application/json" },
 							body: JSON.stringify({
 								name: this.newWizardFormTemplateForm.name,
-								description: this.newWizardFormTemplateForm.description,
-								designTokenSetVersionId: this.newWizardFormTemplateForm.designTokenSetVersionId
+								description: this.newWizardFormTemplateForm.description
 							})
 						}), t = await e.json().catch(() => ({}));
 						if (!e.ok) throw Error(t.message || t.error || `템플릿 생성 오류(${e.status})`);
@@ -13403,6 +13353,6 @@ yh(document), globalThis.Vue = gh, globalThis.PromoAdminTemplateLayout = Object.
 	component: Ih
 }), globalThis.PromoAdminDesignTokens = Object.freeze({
 	service: Hh,
-	component: Yg
-}), await Promise.resolve().then(() => /* @__PURE__ */ l(Xg()));
+	component: Gg
+}), await Promise.resolve().then(() => /* @__PURE__ */ l(Kg()));
 //#endregion

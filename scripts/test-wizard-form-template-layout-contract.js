@@ -46,6 +46,8 @@ assert.deepEqual(
 assert.match(store, /cloneLayout/);
 assert.match(api, /Only draft form template layouts can be edited/);
 assert.match(api, /Layout revision conflict/);
+assert.doesNotMatch(api, /fetchTokenVersion/);
+assert.doesNotMatch(api, /designTokens:/);
 assert.match(publicApi, /defaultLayout/);
 assert.match(publicApi, /layoutRevision/);
 assert.match(publicApi, /layoutIdentity:\s*createLayoutIdentity/);

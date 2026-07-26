@@ -7,7 +7,7 @@ const {
   compositionFingerprint,
 } = require("./_promo-section-composition-contract");
 
-async function loadCompositionContext(sql, formTemplateId, sectionKey) {
+async function loadCompositionContext(sql, formTemplateId, sectionKey, designTokenSetVersionId) {
   const templateData = await fetchTemplateWithItems(sql, formTemplateId);
   if (!templateData || !["active", "draft"].includes(templateData.template.status)) {
     const error = new Error("Form template not found");
@@ -23,12 +23,13 @@ async function loadCompositionContext(sql, formTemplateId, sectionKey) {
     error.statusCode = 404;
     throw error;
   }
-  if (!template.designTokenSetVersionId) {
-    const error = new Error("Template needs an active design token set version");
+  const selectedTokenVersionId = String(designTokenSetVersionId || "").trim();
+  if (!selectedTokenVersionId) {
+    const error = new Error("Select a design token before AI section composition");
     error.statusCode = 422;
     throw error;
   }
-  const tokenSet = await fetchTokenVersion(sql, template.designTokenSetVersionId);
+  const tokenSet = await fetchTokenVersion(sql, selectedTokenVersionId);
   if (!tokenSet || tokenSet.status !== "active") {
     const error = new Error("Active design token set version was not found");
     error.statusCode = 422;

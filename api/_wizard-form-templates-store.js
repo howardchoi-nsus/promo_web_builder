@@ -147,15 +147,6 @@ async function validateTemplateDraft(sql, templateId) {
   if (!row) return [{ code: "TEMPLATE_NOT_FOUND", message: "Form template not found." }];
   const sections = await fetchTemplateSections(sql, templateId);
   const errors = [];
-  if (!row.design_token_set_version_id) {
-    errors.push({ code: "DESIGN_TOKEN_SET_REQUIRED", message: "An active design token set version is required." });
-  } else {
-    const tokenRows = await sql`
-      select id::text from promo_design_token_set_versions
-      where id = ${row.design_token_set_version_id}::uuid and status = 'active' limit 1
-    `;
-    if (!tokenRows.length) errors.push({ code: "ACTIVE_DESIGN_TOKEN_SET_REQUIRED", message: "The pinned design token set version must be active." });
-  }
   if (!sections.some((section) => section.isVisible)) {
     errors.push({ code: "VISIBLE_SECTION_REQUIRED", message: "At least one visible section is required." });
   }

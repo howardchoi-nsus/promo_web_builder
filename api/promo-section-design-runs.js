@@ -55,7 +55,10 @@ module.exports = async function handler(req, res) {
     if (!hasAnalyzableContent(aiContent)) return res.status(400).json({ error: "Section text or CTA content is required before AI generation" });
     const layout = toLayout(await fetchLayoutRow(sql, formTemplateId));
     const template = toFormTemplate(templateData.template);
-    if (!template.designTokenSetVersionId) return res.status(422).json({ error: "Template needs an active design token set version before AI design generation" });
+    const designTokenSetVersionId = String(body.designTokenSetVersionId || "").trim();
+    if (!designTokenSetVersionId) {
+      return res.status(422).json({ error: "Select a design token before AI design generation" });
+    }
     let constraints = defaultConstraints(section, layout.layoutSpec);
     if (!constraints.enabled) return res.status(403).json({ error: "AI design generation is disabled for this section" });
     if (!constraints.allowedLayoutVariants.length) return res.status(422).json({ error: "No AI layout variant is allowed for this section" });
@@ -117,8 +120,10 @@ module.exports = async function handler(req, res) {
         aiContent,
       },
     };
-    const tokenSet = await fetchTokenVersion(sql, template.designTokenSetVersionId);
-    if (!tokenSet) return res.status(422).json({ error: "Template design token set version was not found" });
+    const tokenSet = await fetchTokenVersion(sql, designTokenSetVersionId);
+    if (!tokenSet || tokenSet.status !== "active") {
+      return res.status(422).json({ error: "Selected active design token set version was not found" });
+    }
     const fadeMode = ["none", "left", "right", "both"].includes(body.fadeMode) ? body.fadeMode : "none";
     const imageGuidance = String(body.imageGuidance || "").trim().slice(0, 1800);
     const requestedSafeArea = ["left-copy", "right-copy", "center-copy", "none"].includes(body.safeArea)
@@ -223,7 +228,7 @@ module.exports = async function handler(req, res) {
         version: promptSnapshot.promptConfig.promptVersion,
         hash: promptSnapshot.promptConfig.renderedPromptHash,
       },
-      tokenSetVersionId: template.designTokenSetVersionId,
+      tokenSetVersionId: designTokenSetVersionId,
       tokenValuesHash,
       options: {
         backgroundColor,
@@ -257,10 +262,10 @@ module.exports = async function handler(req, res) {
         itemKey: item.itemKey, componentId: item.componentId,
         componentVersionId: item.componentVersionId, version: item.componentVersion,
       })),
-      tokenSetVersionId: template.designTokenSetVersionId,
+      tokenSetVersionId: designTokenSetVersionId,
       baseRevision: {
         templateVersion: template.version, sectionVersion: section.sectionVersion,
-        layoutRevision: layout.layoutRevision, tokenSetVersionId: template.designTokenSetVersionId,
+        layoutRevision: layout.layoutRevision, tokenSetVersionId: designTokenSetVersionId,
       },
     });
     let run = result.run;

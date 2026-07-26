@@ -25,6 +25,7 @@ const run = {
   layoutRevision: 8,
   sectionKey: "heroBanner",
   status: "ready",
+  tokenSetVersionId: "token-version-id",
   inputSnapshot: {
     design: { backgroundColor: "#f5f7fb" },
     section: { sectionInputs: { title: "Welcome" } },
@@ -54,6 +55,7 @@ function handlerFor(overrides = {}) {
       sections: [structuredClone(section)],
     }),
     fetchLayoutRow: async () => structuredClone(layout),
+    fetchTokenVersion: async () => ({ id: "token-version-id", values: [] }),
     toLayout: (value) => value,
     toFormTemplate: (value) => value,
     transitionRun: async (_sql, _id, _from, status) => ({ ...run, status }),
@@ -65,6 +67,7 @@ async function execute(handler, body = {
   runId: "run-id",
   sectionInputs: { title: "Welcome" },
   backgroundColor: "#f5f7fb",
+  designTokenSetVersionId: "token-version-id",
 }) {
   const res = responseRecorder();
   await handler({ method: "POST", body }, res);

@@ -29,7 +29,12 @@ module.exports = async function handler(req, res) {
       return res.status(422).json({ error: "Instruction must be between 3 and 4000 characters" });
     }
     const sql = getSql();
-    const context = await loadCompositionContext(sql, formTemplateId, sectionKey);
+    const context = await loadCompositionContext(
+      sql,
+      formTemplateId,
+      sectionKey,
+      String(body.designTokenSetVersionId || "").trim()
+    );
     const options = compositionOptionsFromBody(body);
     const constraints = {
       existingComponentsOnly: true,

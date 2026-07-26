@@ -211,9 +211,13 @@ assert.throws(() => normalizeCompositionPlan({
 const provider = fs.readFileSync(path.join(__dirname, "../api/_promo-section-design-provider.js"), "utf8");
 const promptStore = fs.readFileSync(path.join(__dirname, "../api/_prompt-template-store.js"), "utf8");
 const app = fs.readFileSync(path.join(__dirname, "../visual-editor/src/App.vue"), "utf8");
+const context = fs.readFileSync(path.join(__dirname, "../api/_promo-section-composition-context.js"), "utf8");
 assert.match(provider, /SECTION_COMPOSITION_PLAN_SCHEMA/);
 assert.match(promptStore, /section_composition_planner/);
 assert.match(app, /promo-section-composition-validate/);
+assert.match(app, /designTokenSetVersionId:\s*template\.value\?\.designTokens\?\.versionId/);
+assert.match(context, /fetchTokenVersion\(sql,\s*selectedTokenVersionId\)/);
+assert.doesNotMatch(context, /template\.designTokenSetVersionId/);
 assert.match(app, /EditorCommandType\.DOCUMENT_PATCH/);
 
 console.log("Natural-language section composition contract tests passed.");

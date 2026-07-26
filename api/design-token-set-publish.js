@@ -13,9 +13,6 @@ module.exports = async function handler(req, res) {
     const tokenSetId = String(body.tokenSetId || "").trim();
     const sourceVersionId = String(body.sourceVersionId || "").trim();
     const workingVersionId = String(body.workingVersionId || "").trim();
-    const templateIds = [...new Set((Array.isArray(body.templateIds) ? body.templateIds : [])
-      .map((id) => String(id || "").trim())
-      .filter(Boolean))];
     if (!tokenSetId || !Array.isArray(body.tokens)) {
       return res.status(400).json({ error: "tokenSetId and tokens are required" });
     }
@@ -34,7 +31,7 @@ module.exports = async function handler(req, res) {
         ${sourceVersionId || null}::uuid,
         ${workingVersionId || null}::uuid,
         ${JSON.stringify(normalized)}::jsonb,
-        ${templateIds}::uuid[],
+        ${[]}::uuid[],
         ${String(body.sourceName || "")},
         ${hash},
         ${String(body.changeNote || "Design token values saved and activated.")}

@@ -10,14 +10,10 @@ module.exports = async function handler(req, res) {
       if (String(req.query.scope || "") === "public") {
         res.setHeader("Cache-Control", "no-store");
         const tokenSets = await fetchTokenSets(sql, { activeOnly: true });
-        const defaultTemplateRows = await sql`
-          select design_token_set_version_id::text as version_id
-          from wizard_form_templates
-          where status = 'active' and is_default = true
-          order by updated_at desc
-          limit 1
-        `;
-        const defaultVersionId = defaultTemplateRows[0]?.version_id || "";
+        const defaultVersionId = (
+          tokenSets.find((tokenSet) => tokenSet.isDefault)
+          || tokenSets[0]
+        )?.versionId || "";
         const publicTokenSets = await Promise.all(tokenSets.map(async (tokenSet) => {
           const version = tokenSet.versionId ? await fetchTokenVersion(sql, tokenSet.versionId) : null;
           return {

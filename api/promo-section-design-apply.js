@@ -15,6 +15,7 @@ const defaultDependencies = {
   fetchLayoutRow,
   toLayout,
   toFormTemplate,
+  fetchTokenVersion,
 };
 
 function createHandler(overrides = {}) {
@@ -65,8 +66,9 @@ function createHandler(overrides = {}) {
         currentVersion: template.version,
       });
     }
-    if (run.tokenSetVersionId && template.designTokenSetVersionId !== run.tokenSetVersionId) {
-      return res.status(409).json({ error: "Template design token set changed; regenerate the design", code: "TOKEN_SET_VERSION_MISMATCH" });
+    const designTokenSetVersionId = String(body.designTokenSetVersionId || "").trim();
+    if (run.tokenSetVersionId && designTokenSetVersionId !== run.tokenSetVersionId) {
+      return res.status(409).json({ error: "Promotion design token changed; regenerate the design", code: "TOKEN_SET_VERSION_MISMATCH" });
     }
     const layout = dependencies.toLayout(await dependencies.fetchLayoutRow(sql, run.formTemplateId));
     if (layout.layoutRevision !== run.layoutRevision) {
@@ -112,7 +114,9 @@ function createHandler(overrides = {}) {
     if (inputHash(currentConstraints) !== inputHash(run.constraintsSnapshot || {})) {
       return res.status(409).json({ error: "Section AI policy changed; regenerate the design", code: "CONSTRAINTS_MISMATCH" });
     }
-    const tokenSet = run.tokenSetVersionId ? await fetchTokenVersion(sql, run.tokenSetVersionId) : null;
+    const tokenSet = run.tokenSetVersionId
+      ? await dependencies.fetchTokenVersion(sql, run.tokenSetVersionId)
+      : null;
     if (run.requestMode === "assets") {
       const assets = await sql`
         select id::text, status, target_type, target_item_key, result_snapshot
