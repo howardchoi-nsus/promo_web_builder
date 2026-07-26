@@ -60,6 +60,16 @@ assert.match(setHandler, /status = 'active' and is_default = true/);
 assert.match(setHandler, /isDefault:\s*tokenSet\.versionId === defaultVersionId/);
 assert.doesNotMatch(setHandler, /body\.setKey/);
 
+const tokenCatalog = read("docs/claude/design-tokens.csv");
+[
+  ["--app-font-weight-label", "700"],
+  ["--app-font-weight-strong", "800"],
+  ["--app-font-weight-heading", "900"],
+  ["--app-font-weight-title", "950"],
+].forEach(([tokenKey, value]) => {
+  assert.match(tokenCatalog, new RegExp(`${tokenKey}[^\\n]*font-weight,${value},`));
+});
+
 [
   "api/design-token-set-metadata.js",
   "api/design-token-set-draft.js",

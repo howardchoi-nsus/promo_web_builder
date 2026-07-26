@@ -31,11 +31,19 @@ const definitions = [
   { tokenKey: "--promo-surface", category: "color", valueType: "color", semanticRole: "surface-color", cssProperty: "background-color", required: true, aiSelectable: true, editable: true },
   { tokenKey: "--promo-text", category: "color", valueType: "color", semanticRole: "text-color", cssProperty: "color", required: true, aiSelectable: true, editable: true },
   { tokenKey: "--promo-accent", category: "color", valueType: "color", semanticRole: "accent-color", cssProperty: "background-color", required: true, aiSelectable: true, editable: true },
+  { tokenKey: "--app-font-weight-label", category: "typography-weight", categoryLabel: "글자 두께", label: "라벨", valueType: "number", semanticRole: "라벨", cssProperty: "font-weight", required: false, aiSelectable: false, editable: true },
+  { tokenKey: "--app-font-weight-strong", category: "typography-weight", categoryLabel: "글자 두께", label: "강조", valueType: "number", semanticRole: "강조", cssProperty: "font-weight", required: false, aiSelectable: false, editable: true },
+  { tokenKey: "--app-font-weight-heading", category: "typography-weight", categoryLabel: "글자 두께", label: "제목", valueType: "number", semanticRole: "제목", cssProperty: "font-weight", required: false, aiSelectable: false, editable: true },
+  { tokenKey: "--app-font-weight-title", category: "typography-weight", categoryLabel: "글자 두께", label: "타이틀", valueType: "number", semanticRole: "타이틀", cssProperty: "font-weight", required: false, aiSelectable: false, editable: true },
 ];
 let values = [
   { ...definitions[0], value: "#F8FAFC", metadata: {} },
   { ...definitions[1], value: "#111827", metadata: {} },
   { ...definitions[2], value: "#6D5DFB", metadata: {} },
+  { ...definitions[3], value: "700", metadata: {} },
+  { ...definitions[4], value: "800", metadata: {} },
+  { ...definitions[5], value: "900", metadata: {} },
+  { ...definitions[6], value: "950", metadata: {} },
 ];
 const tokenSet = {
   id: setId,
@@ -126,6 +134,24 @@ try {
   await page.goto(`${origin}/prototype/index.html?view=admin&tab=design-tokens`, { waitUntil: "networkidle" });
   await page.getByRole("heading", { name: "디자인 토큰 관리" }).waitFor();
   await page.getByText("Rounded Style", { exact: true }).first().waitFor();
+  assert.equal(
+    await page.locator(".design-token-table th").first().evaluate((node) => getComputedStyle(node).borderTopWidth),
+    "1px",
+    "Design token table headers must render a visible one-pixel border",
+  );
+  assert.equal(
+    await page.locator(".design-token-table td").first().evaluate((node) => getComputedStyle(node).borderLeftWidth),
+    "1px",
+    "Design token table cells must render a visible one-pixel border",
+  );
+  for (const tokenKey of [
+    "--app-font-weight-label",
+    "--app-font-weight-strong",
+    "--app-font-weight-heading",
+    "--app-font-weight-title",
+  ]) {
+    assert.equal(await page.locator(".design-token-value").filter({ hasText: tokenKey }).count(), 1);
+  }
   const accentInput = page.locator(".design-token-value").filter({ hasText: "--promo-accent" }).locator('input[type="text"]:enabled');
   await page.locator('.file-button input[type="file"]').setInputFiles({
     name: "rounded-style.csv",
