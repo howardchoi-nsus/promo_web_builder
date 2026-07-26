@@ -32,6 +32,7 @@ export const designTokenService = Object.freeze({
   importCsv: (body) => requestJson("/api/design-token-set-import", json("POST", body)),
   validate: (body) => requestJson("/api/design-token-set-validate", json("POST", body)),
   activate: (body) => requestJson("/api/design-token-set-activate", json("POST", body)),
+  publish: (body) => requestJson("/api/design-token-set-publish", json("POST", body)),
   archive: (body) => requestJson("/api/design-token-set-archive", json("POST", body)),
   listTemplates: () => requestJson("/api/wizard-form-templates"),
   applyToTemplate: (body) => requestJson("/api/wizard-form-template", json("PATCH", body)),

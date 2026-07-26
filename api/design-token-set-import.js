@@ -18,7 +18,13 @@ module.exports = async function handler(req, res) {
     const sql = getSql();
     const definitions = await fetchTokenDefinitions(sql);
     const { normalized, errors } = normalizeTokenEntries(tokens, definitions);
-    if (errors.length || body.dryRun === true) return res.status(errors.length ? 422 : 200).json({ ok: errors.length === 0, dryRun: true, tokenCount: normalized.length, errors });
+    if (errors.length || body.dryRun === true) return res.status(errors.length ? 422 : 200).json({
+      ok: errors.length === 0,
+      dryRun: true,
+      tokenCount: normalized.length,
+      tokens: normalized,
+      errors,
+    });
     const setRows = await sql`select id::text from promo_design_token_sets where id = ${tokenSetId}::uuid and status = 'active' limit 1`;
     if (!setRows.length) return res.status(404).json({ error: "Active token set not found" });
     const hash = crypto.createHash("sha256").update(JSON.stringify(normalized)).digest("hex");

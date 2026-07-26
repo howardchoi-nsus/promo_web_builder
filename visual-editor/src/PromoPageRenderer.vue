@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from "vue";
+import { createPromoTokenRuntimeStyle, normalizePromoTokenValues } from "../../shared/promo-token-runtime.mjs";
 import { normalizeCtaUrl } from "./editor-utils.mjs";
 import {
   MINIMUM_COMPONENT_HEIGHT_PX,
@@ -32,13 +33,18 @@ const orderedSections = computed(() => {
   ));
 });
 
-const managedTokenStyle = computed(() => {
-  const values = props.content?.formTemplate?.designTokens?.values;
-  if (!values || typeof values !== "object" || Array.isArray(values)) return {};
-  return Object.fromEntries(Object.entries(values).filter(([key, value]) => (
-    /^--promo-[a-z0-9-]+$/.test(key) && typeof value === "string"
-  )));
-});
+const managedTokens = computed(() => normalizePromoTokenValues(
+  props.content?.formTemplate?.designTokens?.values,
+));
+
+const managedTokenStyle = computed(() => createPromoTokenRuntimeStyle(managedTokens.value, {
+  background: props.designSpec?.theme?.backgroundColor,
+  text: props.designSpec?.theme?.textColor,
+  accent: props.designSpec?.theme?.accentColor,
+  cta: props.designSpec?.theme?.ctaColor || props.designSpec?.theme?.accentColor,
+  ctaTransparent: props.designSpec?.theme?.ctaVariant === "ghost",
+  radius: props.designSpec?.theme?.ctaShape === "round" ? "999px" : "2px",
+}));
 
 function componentFields(item) {
   const fields = Array.isArray(item?.fields) ? item.fields : [];
@@ -268,6 +274,8 @@ function normalizedFadeMode(style) {
 function effectiveSectionBackgroundColor(style) {
   const sectionColor = String(style.backgroundColor || "").trim();
   if (/^#[0-9a-f]{6}$/i.test(sectionColor)) return sectionColor;
+  const tokenColor = String(managedTokens.value["--promo-surface"] || "").trim();
+  if (/^#[0-9a-f]{6}$/i.test(tokenColor)) return tokenColor;
   const themeColor = String(props.designSpec?.theme?.backgroundColor || "").trim();
   return /^#[0-9a-f]{6}$/i.test(themeColor) ? themeColor : "#f5f7fb";
 }
@@ -706,13 +714,6 @@ function startSectionResize(event, section) {
     class="promo-renderer"
     :class="{ 'is-editor-preview': editable, 'has-editor-guides': editable && showGuides }"
     :style="{
-      '--promo-bg': `var(--promo-surface, ${designSpec.theme.backgroundColor})`,
-      '--promo-ink': `var(--promo-text, ${designSpec.theme.textColor})`,
-      '--promo-accent': designSpec.theme.accentColor,
-      '--promo-cta': designSpec.theme.ctaColor || designSpec.theme.accentColor,
-      '--promo-cta-bg': designSpec.theme.ctaVariant === 'ghost' ? 'transparent' : (designSpec.theme.ctaColor || designSpec.theme.accentColor),
-      '--promo-cta-ink': designSpec.theme.ctaVariant === 'ghost' ? (designSpec.theme.ctaColor || designSpec.theme.accentColor) : '#ffffff',
-      '--promo-cta-radius': designSpec.theme.ctaShape === 'round' ? '999px' : '2px',
       '--promo-font': designSpec.theme.fontFamily,
       '--promo-width': `${Math.min(1280, Number(designSpec.responsive.contentMaxWidth || 1280))}px`,
       '--promo-min-width': `${designSpec.responsive.contentMinWidth || 0}px`,

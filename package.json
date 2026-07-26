@@ -25,6 +25,7 @@
     "test:wizard-public-form-template-contract": "node scripts/test-wizard-public-form-template-contract.js",
     "test:visual-editor-contract": "node scripts/test-visual-editor-contract.js",
     "test:visual-editor-behavior": "node scripts/test-visual-editor-behavior.mjs",
+    "test:promo-token-runtime": "node scripts/test-promo-token-runtime.mjs",
     "test:wizard-layout-behavior": "node scripts/test-wizard-layout-behavior.mjs",
     "test:wizard-form-template-layout-contract": "node scripts/test-wizard-form-template-layout-contract.js",
     "test:shared-shell-header-contract": "node scripts/test-shared-shell-header-contract.js",

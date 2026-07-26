@@ -1,5 +1,13 @@
 <script>
+import { createPromoTokenRuntimeStyle } from "../../../shared/promo-token-runtime.mjs";
 import { designTokenService } from "../services/design-token-service.mjs";
+
+const MAX_CSV_SIZE = 2 * 1024 * 1024;
+
+function csvCell(value) {
+  const text = String(value ?? "");
+  return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
+}
 
 export default {
   name: "DesignTokenManager",
@@ -14,82 +22,69 @@ export default {
       error: "",
       tokenSets: [],
       definitions: [],
+      templates: [],
       selectedSetId: "",
       selectedVersionId: "",
       detail: null,
-      usage: { templates: [], aiRuns: { total: 0, active: 0 } },
-      histories: [],
       editorValues: [],
+      originalValues: {},
       metadata: { name: "", description: "", changeNote: "" },
       createForm: { name: "", description: "" },
-      showCreate: false,
-      showClone: false,
       cloneForm: { name: "", description: "" },
-      csvText: "",
+      showCreate: false,
+      showSettings: false,
+      showClone: false,
+      searchTerm: "",
+      categoryFilter: "",
+      changedOnly: false,
+      selectedTemplateIds: [],
       csvSourceName: "",
       importErrors: [],
       validationErrors: [],
-      templates: [],
-      selectedTemplateId: "",
-      compareVersionId: "",
-      compareDetail: null,
       previewViewport: "desktop",
-      originalValuesJson: "[]",
+      usage: { templates: [], aiRuns: { total: 0, active: 0 } },
+      histories: [],
     };
   },
   computed: {
     selectedSet() {
       return this.tokenSets.find((item) => item.id === this.selectedSetId) || null;
     },
-    selectedVersion() {
-      return this.selectedSet?.versions?.find((item) => item.id === this.selectedVersionId) || null;
+    activeVersionId() {
+      return this.selectedSet?.activeVersion?.id || "";
     },
-    isDraft() {
-      return this.detail?.status === "draft";
+    workingVersionId() {
+      return this.detail?.status === "draft" ? this.detail.id : "";
     },
-    groupedValues() {
-      const groups = new Map();
-      this.editorValues.forEach((item) => {
-        const category = item.category || "general";
-        if (!groups.has(category)) groups.set(category, []);
-        groups.get(category).push(item);
+    categories() {
+      return [...new Set(this.editorValues.map((item) => item.category || "general"))].sort();
+    },
+    filteredValues() {
+      const query = this.searchTerm.trim().toLowerCase();
+      return this.editorValues.filter((item) => {
+        if (this.categoryFilter && item.category !== this.categoryFilter) return false;
+        if (this.changedOnly && !this.isTokenChanged(item)) return false;
+        return !query || [item.tokenKey, item.semanticRole, item.category]
+          .some((value) => String(value || "").toLowerCase().includes(query));
       });
-      return [...groups.entries()].map(([category, values]) => ({ category, values }));
-    },
-    previewStyle() {
-      const tokens = Object.fromEntries(this.editorValues
-        .filter((item) => /^--promo-[a-z0-9-]+$/.test(item.tokenKey) && item.value)
-        .map((item) => [item.tokenKey, item.value]));
-      return {
-        "--promo-bg": "var(--promo-surface, var(--app-surface))",
-        "--promo-ink": "var(--promo-text, var(--app-ink))",
-        "--promo-cta": "var(--promo-accent)",
-        "--promo-cta-bg": "var(--promo-accent)",
-        "--promo-cta-ink": "var(--app-on-accent)",
-        "--promo-cta-radius": "var(--promo-radius)",
-        "--promo-width": "1280px",
-        ...tokens,
-      };
-    },
-    comparisonStyle() {
-      const values = this.compareDetail?.values || [];
-      const tokens = Object.fromEntries(values
-        .filter((item) => /^--promo-[a-z0-9-]+$/.test(item.tokenKey) && item.value)
-        .map((item) => [item.tokenKey, item.value]));
-      return { ...this.previewStyle, ...tokens };
-    },
-    comparisonRows() {
-      if (!this.compareDetail) return [];
-      const previous = new Map(this.compareDetail.values.map((item) => [item.tokenKey, item.value]));
-      return this.editorValues
-        .map((item) => ({ tokenKey: item.tokenKey, current: item.value, previous: previous.get(item.tokenKey) || "" }))
-        .filter((item) => item.current !== item.previous);
     },
     isDirty() {
-      return this.isDraft && JSON.stringify(this.tokenPayload()) !== this.originalValuesJson;
+      return this.editorValues.some((item) => this.isTokenChanged(item));
     },
-    draftTemplates() {
-      return this.templates.filter((template) => template.status === "draft");
+    activeTemplates() {
+      return this.templates.filter((template) => template.status === "active");
+    },
+    previewStyle() {
+      return {
+        ...createPromoTokenRuntimeStyle(this.tokenPayload(), {
+          background: "var(--app-surface)",
+          text: "var(--app-ink)",
+          muted: "var(--app-muted)",
+          accent: "var(--app-accent)",
+          radius: "var(--app-radius-small)",
+        }),
+        "--promo-width": "1280px",
+      };
     },
   },
   mounted() {
@@ -103,8 +98,8 @@ export default {
     t(key, params) {
       return this.translate(key, params);
     },
-    notify(key) {
-      this.$emit("status", this.t(key));
+    notify(key, params) {
+      this.$emit("status", this.t(key, params));
     },
     async run(action) {
       this.saving = true;
@@ -133,7 +128,7 @@ export default {
         this.selectedSetId = this.tokenSets.some((set) => set.id === preferredSetId)
           ? preferredSetId
           : (this.tokenSets[0]?.id || "");
-        await this.selectSet(this.selectedSetId);
+        await this.selectSet(this.selectedSetId, true);
         this.$emit("token-sets-changed");
       } catch (error) {
         this.error = error.message;
@@ -141,8 +136,8 @@ export default {
         this.loading = false;
       }
     },
-    async selectSet(setId) {
-      if (setId !== this.selectedSetId && this.isDirty
+    async selectSet(setId, force = false) {
+      if (!force && setId !== this.selectedSetId && this.isDirty
         && !globalThis.confirm(this.t("admin.designToken.unsavedConfirm"))) return;
       this.selectedSetId = setId;
       const set = this.selectedSet;
@@ -151,6 +146,7 @@ export default {
         description: set?.description || "",
         changeNote: "",
       };
+      this.selectedTemplateIds = [];
       const versionId = set?.draftVersion?.id || set?.activeVersion?.id || set?.versions?.[0]?.id || "";
       if (versionId) await this.selectVersion(versionId);
       else this.clearDetail();
@@ -159,35 +155,129 @@ export default {
       this.selectedVersionId = "";
       this.detail = null;
       this.editorValues = this.definitions.map((definition) => ({ ...definition, value: "", metadata: {} }));
+      this.originalValues = Object.fromEntries(this.editorValues.map((item) => [item.tokenKey, item.value]));
       this.usage = { templates: [], aiRuns: { total: 0, active: 0 } };
       this.histories = [];
-      this.validationErrors = [];
-      this.originalValuesJson = "[]";
     },
     async selectVersion(versionId) {
-      if (versionId !== this.selectedVersionId && this.isDirty
-        && !globalThis.confirm(this.t("admin.designToken.unsavedConfirm"))) return;
       this.selectedVersionId = versionId;
-      this.error = "";
+      const result = await designTokenService.detail(versionId);
+      this.detail = result.tokenSet;
+      this.usage = result.usage || { templates: [], aiRuns: { total: 0, active: 0 } };
+      this.histories = result.histories || [];
+      const values = new Map((this.detail.values || []).map((item) => [item.tokenKey, item]));
+      this.editorValues = this.definitions.map((definition) => ({
+        ...definition,
+        ...(values.get(definition.tokenKey) || {}),
+        value: values.get(definition.tokenKey)?.value || "",
+        metadata: values.get(definition.tokenKey)?.metadata || {},
+      }));
+      this.originalValues = Object.fromEntries(this.editorValues.map((item) => [item.tokenKey, item.value]));
+      this.importErrors = [];
+      this.validationErrors = [];
+    },
+    tokenPayload() {
+      return this.editorValues.map((item) => ({
+        tokenKey: item.tokenKey,
+        value: item.value,
+        metadata: item.metadata || {},
+      }));
+    },
+    isTokenChanged(item) {
+      return String(item.value || "") !== String(this.originalValues[item.tokenKey] || "");
+    },
+    restoreToken(item) {
+      item.value = this.originalValues[item.tokenKey] || "";
+    },
+    restoreAll() {
+      this.editorValues.forEach(this.restoreToken);
+    },
+    fieldType(item) {
+      return item.valueType === "color" ? "color" : "text";
+    },
+    hasTemplateDraft(template) {
+      return this.templates.some((candidate) => (
+        candidate.templateKey === template.templateKey && candidate.status === "draft"
+      ));
+    },
+    async publish(templateIds) {
+      this.validationErrors = [];
       try {
-        const result = await designTokenService.detail(versionId);
-        this.detail = result.tokenSet;
-        this.usage = result.usage || { templates: [], aiRuns: { total: 0, active: 0 } };
-        this.histories = result.histories || [];
-        const valueByKey = new Map((this.detail.values || []).map((value) => [value.tokenKey, value]));
-        this.editorValues = this.definitions.map((definition) => ({
-          ...definition,
-          ...(valueByKey.get(definition.tokenKey) || {}),
-          value: valueByKey.get(definition.tokenKey)?.value || "",
-          metadata: valueByKey.get(definition.tokenKey)?.metadata || {},
+        const result = await this.run(() => designTokenService.publish({
+          tokenSetId: this.selectedSetId,
+          sourceVersionId: this.activeVersionId,
+          workingVersionId: this.workingVersionId,
+          tokens: this.tokenPayload(),
+          templateIds,
+          sourceName: this.csvSourceName,
+          changeNote: this.metadata.changeNote,
         }));
-        this.originalValuesJson = JSON.stringify(this.tokenPayload());
-        this.compareVersionId = "";
-        this.compareDetail = null;
-        this.validationErrors = [];
+        await this.reload(this.selectedSetId);
+        this.notify(templateIds.length
+          ? "admin.designToken.saveApplySuccess"
+          : "admin.designToken.saveSuccess", { count: result.templates?.length || 0 });
       } catch (error) {
-        this.error = error.message;
+        this.validationErrors = error.details?.errors || [];
       }
+    },
+    save() {
+      return this.publish([]);
+    },
+    saveAndApply() {
+      if (!this.selectedTemplateIds.length) {
+        this.error = this.t("admin.designToken.selectTemplateRequired");
+        return;
+      }
+      return this.publish(this.selectedTemplateIds);
+    },
+    async onCsvFile(event) {
+      this.importErrors = [];
+      const file = event.target.files?.[0];
+      event.target.value = "";
+      if (!file) return;
+      if (!/\.csv$/i.test(file.name) && file.type !== "text/csv") {
+        this.error = this.t("admin.designToken.csvTypeError");
+        return;
+      }
+      if (file.size > MAX_CSV_SIZE) {
+        this.error = this.t("admin.designToken.csvSizeError");
+        return;
+      }
+      this.csvSourceName = file.name;
+      try {
+        const csvText = (await file.text()).replace(/^\uFEFF/, "");
+        const result = await this.run(() => designTokenService.importCsv({
+          tokenSetId: this.selectedSetId,
+          csvText,
+          sourceName: file.name,
+          dryRun: true,
+        }));
+        const imported = new Map((result.tokens || []).map((item) => [item.tokenKey, item]));
+        this.editorValues.forEach((item) => {
+          if (imported.has(item.tokenKey)) {
+            item.value = imported.get(item.tokenKey).value;
+            item.metadata = imported.get(item.tokenKey).metadata || {};
+          }
+        });
+        this.notify("admin.designToken.importValidated");
+      } catch (error) {
+        this.importErrors = error.details?.errors || [];
+      }
+    },
+    exportCsv() {
+      const lines = [
+        ["token", "value", "label", "category"],
+        ...this.editorValues.map((item) => [
+          item.tokenKey, item.value, item.semanticRole || "", item.category || "",
+        ]),
+      ].map((row) => row.map(csvCell).join(","));
+      const blob = new Blob([`\uFEFF${lines.join("\r\n")}`], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${this.selectedSet?.setKey || "promo-design-tokens"}.csv`;
+      anchor.click();
+      URL.revokeObjectURL(url);
     },
     async createSet() {
       const result = await this.run(() => designTokenService.createSet(this.createForm));
@@ -214,104 +304,15 @@ export default {
       await this.reload(result.tokenSet.tokenSetId);
       this.notify("admin.designToken.cloned");
     },
-    async createDraft(sourceVersionId = this.selectedSet?.activeVersion?.id || "") {
-      const result = await this.run(() => designTokenService.createDraft({
-        tokenSetId: this.selectedSetId,
-        sourceVersionId,
-      }));
-      await this.reload(this.selectedSetId);
-      await this.selectVersion(result.tokenSet.id);
-      this.notify("admin.designToken.draftCreated");
-    },
-    tokenPayload() {
-      return this.editorValues.map((item) => ({
-        tokenKey: item.tokenKey,
-        value: item.value,
-        metadata: item.metadata || {},
-      }));
-    },
-    async saveDraft() {
-      const result = await this.run(() => designTokenService.saveVersion({
-        versionId: this.selectedVersionId,
-        tokens: this.tokenPayload(),
-        changeNote: this.metadata.changeNote,
-      }));
-      await this.selectVersion(result.tokenSet.id);
-      this.notify("admin.designToken.draftSaved");
-    },
-    async validateVersion() {
-      this.validationErrors = [];
-      try {
-        await this.run(() => designTokenService.validate({ versionId: this.selectedVersionId }));
-        this.notify("admin.designToken.validated");
-      } catch (error) {
-        this.validationErrors = error.details?.errors || [];
-      }
-    },
-    async activateVersion() {
-      this.validationErrors = [];
-      try {
-        await this.run(() => designTokenService.activate({
-          versionId: this.selectedVersionId,
-          changeNote: this.metadata.changeNote,
-        }));
-        await this.reload(this.selectedSetId);
-        this.notify("admin.designToken.activated");
-      } catch (error) {
-        this.validationErrors = error.details?.errors || [];
-      }
-    },
-    async importCsv(dryRun) {
-      this.importErrors = [];
-      try {
-        const result = await this.run(() => designTokenService.importCsv({
-          tokenSetId: this.selectedSetId,
-          csvText: this.csvText,
-          sourceName: this.csvSourceName,
-          dryRun,
-        }));
-        this.importErrors = result.errors || [];
-        if (!dryRun) {
-          await this.reload(this.selectedSetId);
-          this.notify("admin.designToken.imported");
-        } else {
-          this.notify("admin.designToken.importValidated");
-        }
-      } catch (error) {
-        this.importErrors = error.details?.errors || [];
-      }
-    },
     async archiveSet() {
       await this.run(() => designTokenService.archive({ tokenSetId: this.selectedSetId }));
       await this.reload("");
       this.notify("admin.designToken.archived");
     },
-    async loadComparison() {
-      this.compareDetail = this.compareVersionId
-        ? (await designTokenService.detail(this.compareVersionId)).tokenSet
-        : null;
-    },
-    async applyToTemplate() {
-      if (!this.selectedTemplateId || this.detail?.status !== "active") return;
-      await this.run(() => designTokenService.applyToTemplate({
-        id: this.selectedTemplateId,
-        designTokenSetVersionId: this.selectedVersionId,
-        changeNote: "Design token version applied from Design Token Management.",
-      }));
-      await this.reload(this.selectedSetId);
-      this.notify("admin.designToken.templateApplied");
-    },
     preventUnsavedExit(event) {
       if (!this.isDirty) return;
       event.preventDefault();
       event.returnValue = "";
-    },
-    fieldType(item) {
-      return item.valueType === "color" ? "color" : "text";
-    },
-    historyLabel(action) {
-      const key = String(action || "").replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
-      return this.t(`admin.designToken.history.${key}`);
     },
   },
 };
@@ -350,122 +351,72 @@ export default {
         >
           <span>{{ set.name }}</span>
           <small>{{ set.setKey }}</small>
-          <small>{{ t("admin.designToken.versionCount", { count: set.versions.length }) }}</small>
+          <small>v{{ set.draftVersion?.version || set.activeVersion?.version || set.version }}</small>
         </button>
         <div v-if="!loading && !tokenSets.length" class="empty-state">{{ t("admin.designToken.emptySets") }}</div>
       </aside>
 
       <main class="design-token-column design-token-editor">
-        <template v-if="selectedSet">
-          <details open class="design-token-section">
-            <summary>{{ t("admin.designToken.settings") }}</summary>
-            <label class="field"><span>{{ t("admin.designToken.name") }}</span><input v-model="metadata.name"></label>
-            <label class="field"><span>{{ t("admin.designToken.description") }}</span><textarea v-model="metadata.description" rows="2"></textarea></label>
-            <label class="field"><span>{{ t("admin.designToken.changeNote") }}</span><input v-model="metadata.changeNote"></label>
-            <div class="design-token-actions">
-              <button class="tiny-button" type="button" :disabled="saving" @click="saveMetadata">{{ t("common.action.save") }}</button>
-              <button class="tiny-button" type="button" :disabled="saving || !selectedVersionId" @click="showClone = !showClone">{{ t("common.action.duplicate") }}</button>
-              <button class="tiny-button danger" type="button" :disabled="saving || usage.templates.length || usage.aiRuns.active" @click="archiveSet">{{ t("common.action.archive") }}</button>
-            </div>
-            <form v-if="showClone" class="design-token-clone" @submit.prevent="cloneSet">
-              <label class="field"><span>{{ t("admin.designToken.cloneName") }}</span><input v-model.trim="cloneForm.name" required></label>
-              <label class="field"><span>{{ t("admin.designToken.description") }}</span><input v-model.trim="cloneForm.description"></label>
-              <button class="tiny-button primary" type="submit" :disabled="saving">{{ t("common.action.duplicate") }}</button>
-            </form>
-          </details>
-
-          <div class="design-token-version-bar">
-            <label class="field compact-field">
-              <span>{{ t("admin.designToken.version") }}</span>
-              <select v-model="selectedVersionId" @change="selectVersion(selectedVersionId)">
-                <option v-for="version in selectedSet.versions" :key="version.id" :value="version.id">
-                  v{{ version.version }} · {{ t(`common.state.${version.status}`) }}
-                </option>
-              </select>
-            </label>
-            <button v-if="!selectedSet.draftVersion && selectedVersion?.status !== 'inactive'" class="tiny-button primary" type="button" :disabled="saving" @click="createDraft()">
-              {{ t("admin.designToken.createDraft") }}
-            </button>
-            <button
-              v-if="!selectedSet.draftVersion && selectedVersion?.status === 'inactive'"
-              class="tiny-button"
-              type="button"
-              :disabled="saving"
-              @click="createDraft(selectedVersionId)"
-            >{{ t("common.action.rollback") }}</button>
+        <template v-if="selectedSet && detail">
+          <div class="design-token-table-toolbar">
+            <input v-model.trim="searchTerm" type="search" :placeholder="t('admin.designToken.search')">
+            <select v-model="categoryFilter">
+              <option value="">{{ t("admin.designToken.allCategories") }}</option>
+              <option v-for="category in categories" :key="category" :value="category">{{ category }}</option>
+            </select>
+            <label class="design-token-check"><input v-model="changedOnly" type="checkbox"> {{ t("admin.designToken.changedOnly") }}</label>
+            <button class="tiny-button" type="button" :disabled="!isDirty" @click="restoreAll">{{ t("common.action.reset") }}</button>
           </div>
 
-          <template v-if="detail">
-            <div v-for="group in groupedValues" :key="group.category" class="design-token-section">
-              <h3>{{ group.category }}</h3>
-              <label v-for="item in group.values" :key="item.tokenKey" class="design-token-value">
-                <span>
-                  <code>{{ item.tokenKey }}</code>
-                  <small>{{ item.semanticRole }}</small>
-                  <small>
-                    <b v-if="item.required">{{ t("common.state.required") }}</b>
-                    <b v-if="item.aiSelectable">{{ t("admin.designToken.aiSelectable") }}</b>
-                  </small>
-                </span>
-                <span class="design-token-value-control">
-                  <input
-                    v-if="fieldType(item) === 'color'"
-                    v-model="item.value"
-                    type="color"
-                    :disabled="!isDraft || !item.editable"
-                  >
-                  <input v-model="item.value" type="text" :disabled="!isDraft || !item.editable">
-                </span>
-              </label>
-            </div>
-            <div class="design-token-actions sticky-actions">
-              <button class="tiny-button" type="button" :disabled="saving || !isDraft" @click="saveDraft">{{ t("common.action.save") }}</button>
-              <button class="tiny-button" type="button" :disabled="saving || !isDraft" @click="validateVersion">{{ t("admin.designToken.validate") }}</button>
-              <button class="tiny-button primary" type="button" :disabled="saving || !isDraft" @click="activateVersion">{{ t("common.action.activate") }}</button>
-            </div>
-          </template>
+          <div class="design-token-table-wrap">
+            <table class="design-token-table">
+              <thead><tr>
+                <th>{{ t("admin.designToken.category") }}</th>
+                <th>{{ t("admin.designToken.token") }}</th>
+                <th>{{ t("admin.designToken.type") }}</th>
+                <th>{{ t("admin.designToken.value") }}</th>
+                <th>{{ t("admin.designToken.status") }}</th>
+              </tr></thead>
+              <tbody>
+                <tr v-for="item in filteredValues" :key="item.tokenKey" class="design-token-value" :class="{ changed: isTokenChanged(item) }">
+                  <td>{{ item.category }}</td>
+                  <td><code>{{ item.tokenKey }}</code><small>{{ item.semanticRole }}</small></td>
+                  <td>{{ item.valueType }}</td>
+                  <td>
+                    <span class="design-token-value-control">
+                      <input v-if="fieldType(item) === 'color'" v-model="item.value" type="color" :disabled="!item.editable">
+                      <input v-model="item.value" type="text" :disabled="!item.editable">
+                    </span>
+                  </td>
+                  <td>
+                    <span>{{ t(isTokenChanged(item) ? "admin.designToken.changed" : "admin.designToken.normal") }}</span>
+                    <button v-if="isTokenChanged(item)" class="text-button" type="button" @click="restoreToken(item)">{{ t("common.action.reset") }}</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
 
-          <details class="design-token-section">
-            <summary>{{ t("admin.designToken.csvImport") }}</summary>
-            <label class="field"><span>{{ t("admin.designToken.sourceName") }}</span><input v-model="csvSourceName"></label>
-            <label class="field"><span>{{ t("admin.designToken.csv") }}</span><textarea v-model="csvText" rows="8"></textarea></label>
-            <div class="design-token-actions">
-              <button class="tiny-button" type="button" :disabled="saving || !csvText" @click="importCsv(true)">{{ t("admin.designToken.dryRun") }}</button>
-              <button class="tiny-button primary" type="button" :disabled="saving || !csvText" @click="importCsv(false)">{{ t("admin.designToken.import") }}</button>
-            </div>
-          </details>
-
-          <details class="design-token-section">
-            <summary>{{ t("admin.designToken.compare") }}</summary>
-            <label class="field compact-field">
-              <span>{{ t("admin.designToken.compareWith") }}</span>
-              <select v-model="compareVersionId" @change="loadComparison">
-                <option value="">{{ t("admin.designToken.selectVersion") }}</option>
-                <option v-for="version in selectedSet.versions.filter(item => item.id !== selectedVersionId)" :key="version.id" :value="version.id">
-                  v{{ version.version }} · {{ t(`common.state.${version.status}`) }}
-                </option>
-              </select>
-            </label>
-            <div v-for="row in comparisonRows" :key="row.tokenKey" class="design-token-diff">
-              <code>{{ row.tokenKey }}</code>
-              <span>{{ row.previous }}</span>
-              <span>→</span>
-              <strong>{{ row.current }}</strong>
-            </div>
-            <div v-if="compareDetail && !comparisonRows.length" class="empty-state">{{ t("admin.designToken.noDifferences") }}</div>
-          </details>
-
-          <div v-if="validationErrors.length || importErrors.length" class="outline-item danger-state">
+          <div v-if="validationErrors.length || importErrors.length" class="design-token-errors">
             <strong>{{ t("admin.designToken.validationErrors") }}</strong>
-            <span v-for="issue in [...validationErrors, ...importErrors]" :key="`${issue.tokenKey}-${issue.message}`">
-              {{ issue.tokenKey }}: {{ issue.message }}
-            </span>
+            <span v-for="item in [...validationErrors, ...importErrors]" :key="`${item.tokenKey}-${item.message}`">{{ item.tokenKey }}: {{ item.message }}</span>
+          </div>
+
+          <div class="design-token-actions sticky-actions">
+            <label class="tiny-button file-button">
+              {{ t("admin.designToken.csvImport") }}
+              <input type="file" accept=".csv,text/csv" @change="onCsvFile">
+            </label>
+            <button class="tiny-button" type="button" @click="exportCsv">{{ t("admin.designToken.csvExport") }}</button>
+            <span v-if="csvSourceName" class="source-name">{{ csvSourceName }}</span>
+            <button class="tiny-button" type="button" :disabled="saving || !isDirty" @click="save">{{ t("common.action.save") }}</button>
+            <button class="tiny-button primary" type="button" :disabled="saving || !selectedTemplateIds.length" @click="saveAndApply">{{ t("admin.designToken.saveAndApply") }}</button>
           </div>
         </template>
       </main>
 
       <aside class="design-token-column design-token-inspector">
-        <template v-if="selectedSet">
+        <template v-if="selectedSet && detail">
           <section class="design-token-section">
             <h3>{{ t("admin.designToken.preview") }}</h3>
             <div class="design-token-actions">
@@ -476,20 +427,8 @@ export default {
               <div class="promo-renderer" :style="previewStyle">
                 <section class="rendered-section">
                   <div class="rendered-section__inner">
-                    <small>{{ t("admin.designToken.previewEyebrow") }}</small>
-                    <h4 class="rendered-text rendered-text--title design-token-preview-title">{{ t("admin.designToken.previewTitle") }}</h4>
-                    <p>{{ t("admin.designToken.previewBody") }}</p>
-                    <a class="rendered-cta">{{ t("admin.designToken.previewButton") }}</a>
-                  </div>
-                </section>
-              </div>
-            </div>
-            <div v-if="compareDetail" class="design-token-preview-stage" :class="`is-${previewViewport}`">
-              <div class="promo-renderer" :style="comparisonStyle">
-                <section class="rendered-section">
-                  <div class="rendered-section__inner">
-                    <small>{{ t("admin.designToken.comparePreview") }}</small>
-                    <h4 class="rendered-text rendered-text--title design-token-preview-title">{{ t("admin.designToken.previewTitle") }}</h4>
+                    <small class="rendered-empty">{{ t("admin.designToken.previewEyebrow") }}</small>
+                    <h4 class="rendered-text rendered-text--title">{{ t("admin.designToken.previewTitle") }}</h4>
                     <p>{{ t("admin.designToken.previewBody") }}</p>
                     <a class="rendered-cta">{{ t("admin.designToken.previewButton") }}</a>
                   </div>
@@ -497,35 +436,32 @@ export default {
               </div>
             </div>
           </section>
+
           <section class="design-token-section">
-            <h3>{{ t("admin.designToken.usage") }}</h3>
-            <p>{{ t("admin.designToken.templateUsage", { count: usage.templates.length }) }}</p>
-            <p>{{ t("admin.designToken.aiRunUsage", { count: usage.aiRuns.total }) }}</p>
-            <div v-for="template in usage.templates" :key="template.id" class="design-token-usage">
-              <strong>{{ template.name }}</strong>
-              <small>v{{ template.version }} · {{ t(`common.state.${template.status}`) }}</small>
-            </div>
-            <small>{{ t("admin.designToken.templateGuidance") }}</small>
-            <label class="field compact-field">
-              <span>{{ t("admin.designToken.applyTemplate") }}</span>
-              <select v-model="selectedTemplateId">
-                <option value="">{{ t("admin.designToken.selectTemplate") }}</option>
-                <option v-for="template in draftTemplates" :key="template.id" :value="template.id">{{ template.name }} · v{{ template.version }}</option>
-              </select>
+            <h3>{{ t("admin.designToken.applyTemplates") }}</h3>
+            <label v-for="template in activeTemplates" :key="template.id" class="template-choice" :class="{ disabled: hasTemplateDraft(template) }">
+              <input v-model="selectedTemplateIds" type="checkbox" :value="template.id" :disabled="hasTemplateDraft(template)">
+              <span>{{ template.name }} <small>v{{ template.version }}</small></span>
+              <small v-if="hasTemplateDraft(template)">{{ t("admin.designToken.templateDraftConflict") }}</small>
             </label>
-            <button class="tiny-button primary" type="button" :disabled="saving || detail?.status !== 'active' || !selectedTemplateId" @click="applyToTemplate">
-              {{ t("admin.designToken.applyToDraft") }}
-            </button>
           </section>
-          <section class="design-token-section">
-            <h3>{{ t("admin.designToken.history") }}</h3>
-            <div v-for="history in histories" :key="history.id" class="design-token-history">
-              <strong>{{ historyLabel(history.action) }}</strong>
-              <span>{{ history.changeNote }}</span>
-              <small>{{ history.createdAt }}</small>
+
+          <details class="design-token-section">
+            <summary>{{ t("admin.designToken.settings") }}</summary>
+            <label class="field"><span>{{ t("admin.designToken.name") }}</span><input v-model="metadata.name"></label>
+            <label class="field"><span>{{ t("admin.designToken.description") }}</span><textarea v-model="metadata.description" rows="2"></textarea></label>
+            <label class="field"><span>{{ t("admin.designToken.changeNote") }}</span><input v-model="metadata.changeNote"></label>
+            <div class="design-token-actions">
+              <button class="tiny-button" type="button" :disabled="saving" @click="saveMetadata">{{ t("common.action.save") }}</button>
+              <button class="tiny-button" type="button" @click="showClone = !showClone">{{ t("common.action.duplicate") }}</button>
+              <button class="tiny-button danger" type="button" :disabled="saving || usage.templates.length || usage.aiRuns.active" @click="archiveSet">{{ t("common.action.archive") }}</button>
             </div>
-            <div v-if="!histories.length" class="empty-state">{{ t("admin.designToken.emptyHistory") }}</div>
-          </section>
+            <form v-if="showClone" class="design-token-clone" @submit.prevent="cloneSet">
+              <label class="field"><span>{{ t("admin.designToken.cloneName") }}</span><input v-model.trim="cloneForm.name" required></label>
+              <label class="field"><span>{{ t("admin.designToken.description") }}</span><input v-model.trim="cloneForm.description"></label>
+              <button class="tiny-button primary" type="submit" :disabled="saving">{{ t("common.action.duplicate") }}</button>
+            </form>
+          </details>
         </template>
       </aside>
     </div>
@@ -534,31 +470,42 @@ export default {
 
 <style scoped>
 .design-token-manager { display: grid; gap: var(--app-space-4); min-height: 0; }
-.design-token-toolbar, .design-token-actions, .design-token-version-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--app-space-3); }
+.design-token-toolbar, .design-token-actions { display: flex; align-items: center; justify-content: space-between; gap: var(--app-space-3); flex-wrap: wrap; }
 .design-token-toolbar p { margin: var(--app-space-1) 0 0; color: var(--app-sub); }
 .design-token-create { display: grid; grid-template-columns: minmax(12rem, 1fr) minmax(18rem, 2fr) auto; gap: var(--app-space-3); align-items: end; }
-.design-token-grid { display: grid; grid-template-columns: minmax(13rem, 0.75fr) minmax(25rem, 1.7fr) minmax(17rem, 1fr); gap: var(--app-panel-gap); min-height: 40rem; }
+.design-token-grid { display: grid; grid-template-columns: minmax(13rem, .65fr) minmax(34rem, 2fr) minmax(19rem, .9fr); gap: var(--app-panel-gap); min-height: 42rem; }
 .design-token-column { min-width: 0; overflow: auto; border: var(--app-border-width) solid var(--app-line); border-radius: var(--app-radius); padding: var(--app-space-3); background: var(--app-panel); }
-.design-token-list { display: flex; flex-direction: column; align-items: stretch; gap: var(--app-space-2); }
+.design-token-list, .design-token-editor, .design-token-inspector { display: flex; flex-direction: column; gap: var(--app-space-3); }
 .design-token-set { display: grid; gap: var(--app-space-1); padding: var(--app-space-3); text-align: left; border: var(--app-border-width) solid var(--app-line); border-radius: var(--app-radius-small); background: transparent; color: var(--app-ink); }
 .design-token-set.active { border-color: var(--app-accent); background: var(--app-accent-soft); }
-.design-token-set small, .design-token-value small { color: var(--app-muted); }
-.design-token-editor, .design-token-inspector { display: flex; flex-direction: column; gap: var(--app-space-3); }
+.design-token-set small, .design-token-value small { display: block; color: var(--app-muted); }
+.design-token-table-toolbar { display: grid; grid-template-columns: minmax(12rem, 1fr) minmax(10rem, auto) auto auto; gap: var(--app-space-2); align-items: center; }
+.design-token-check { display: inline-flex; gap: var(--app-space-2); align-items: center; white-space: nowrap; }
+.design-token-table-wrap { overflow: auto; border: var(--app-border-width) solid var(--app-line); border-radius: var(--app-radius-small); }
+.design-token-table { width: 100%; border-collapse: collapse; }
+.design-token-table th, .design-token-table td { padding: var(--app-space-2); border-bottom: var(--app-border-width) solid var(--app-line); text-align: left; vertical-align: middle; }
+.design-token-table th { position: sticky; top: 0; z-index: 1; background: var(--app-panel-subtle, var(--app-panel)); }
+.design-token-value.changed { background: var(--app-warning-soft, var(--app-accent-soft)); }
+.design-token-value-control { display: grid; grid-template-columns: auto minmax(9rem, 1fr); gap: var(--app-space-2); }
+.design-token-value-control input[type="color"] { width: 2.75rem; padding: 0; }
+.text-button { margin-left: var(--app-space-1); border: 0; background: transparent; color: var(--app-accent); text-decoration: underline; }
+.sticky-actions { position: sticky; z-index: 2; bottom: 0; padding: var(--app-space-2); background: var(--app-panel); border-top: var(--app-border-width) solid var(--app-line); }
+.file-button { position: relative; overflow: hidden; cursor: pointer; }
+.file-button input { position: absolute; inline-size: 1px; block-size: 1px; opacity: 0; }
+.source-name { color: var(--app-muted); font-size: var(--app-font-size-small); }
+.design-token-errors { display: grid; gap: var(--app-space-1); color: var(--app-danger); }
 .design-token-section { display: grid; gap: var(--app-space-2); padding: var(--app-space-3); border: var(--app-border-width) solid var(--app-line); border-radius: var(--app-radius-small); }
 .design-token-section h3, .design-token-section summary { margin: 0; font-weight: var(--app-font-weight-strong); }
-.design-token-value { display: grid; grid-template-columns: minmax(12rem, 1fr) minmax(10rem, 1fr); gap: var(--app-space-3); align-items: center; }
-.design-token-value > span:first-child { display: grid; gap: var(--app-space-1); }
-.design-token-value-control { display: grid; grid-template-columns: auto 1fr; gap: var(--app-space-2); }
-.design-token-value-control input[type="color"] { width: 2.75rem; padding: 0; }
-.sticky-actions { position: sticky; bottom: 0; z-index: 2; background: var(--app-panel); }
 .design-token-preview-stage { width: 100%; overflow: auto; }
 .design-token-preview-stage.is-mobile .promo-renderer { width: min(23.4375rem, 100%); margin-inline: auto; }
-.design-token-preview-title { margin-block: var(--app-space-2); color: var(--promo-text); }
-.design-token-diff { display: grid; grid-template-columns: minmax(10rem, 1fr) 1fr auto 1fr; gap: var(--app-space-2); align-items: center; }
-.design-token-usage, .design-token-history { display: grid; gap: var(--app-space-1); padding-block: var(--app-space-2); border-bottom: var(--app-border-width) solid var(--app-line); }
+.promo-renderer { min-height: 20rem; }
+.rendered-section__inner { padding: var(--app-space-4); }
+.rendered-text--title { margin-block: var(--app-space-2); font-size: var(--promo-title-size); color: var(--promo-ink); }
+.template-choice { display: grid; grid-template-columns: auto 1fr; gap: var(--app-space-2); align-items: start; }
+.template-choice > small { grid-column: 2; color: var(--app-warning-ink, var(--app-muted)); }
+.template-choice.disabled { opacity: .64; }
 @media (max-width: 1023px) {
-  .design-token-grid { grid-template-columns: 1fr; }
+  .design-token-grid, .design-token-create, .design-token-table-toolbar { grid-template-columns: 1fr; }
   .design-token-column { max-height: none; }
-  .design-token-create { grid-template-columns: 1fr; }
 }
 </style>

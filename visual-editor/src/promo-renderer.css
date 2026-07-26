@@ -1,5 +1,5 @@
 /* Layer B only: isolated promo template rendering rules. */
-.promo-renderer { position: relative; width: 100%; min-height: 100%; overflow: hidden; border-radius: 15px; background-color: var(--promo-bg); color: var(--promo-ink); font-family: var(--promo-font); box-shadow: 0 10px 32px rgba(33, 43, 61, .12); }
+.promo-renderer { position: relative; width: 100%; min-height: 100%; overflow: hidden; border-radius: var(--promo-radius, 15px); background-color: var(--promo-bg); color: var(--promo-ink); font-family: var(--promo-font); box-shadow: var(--promo-shadow, 0 10px 32px rgba(33, 43, 61, .12)); }
 .promo-renderer .content-width-guide { position: absolute; z-index: 20; top: 0; bottom: 0; left: 50%; width: min(var(--promo-width), 100%); border-right: 1px dotted color-mix(in srgb, var(--promo-accent) 72%, transparent); border-left: 1px dotted color-mix(in srgb, var(--promo-accent) 72%, transparent); pointer-events: none; transform: translateX(-50%); }
 .promo-renderer .rendered-section { position: relative; width: 100%; min-height: 50px; }
 .promo-renderer.has-editor-guides .rendered-section { border-bottom: 1px dotted color-mix(in srgb, var(--promo-accent) 58%, transparent); }
@@ -19,10 +19,10 @@
 .promo-renderer .rendered-component-image-frame { width: 100%; min-height: 0; }
 .promo-renderer .rendered-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--item-font-size, clamp(16px, 2vw, 22px)); line-height: 1.45; }
 .promo-renderer .rendered-text--title { font-size: var(--item-font-size, var(--promo-title-size, clamp(28px, 5vw, 72px))); }
-.promo-renderer .rendered-empty { margin: 0; color: color-mix(in srgb, var(--promo-ink) 42%, transparent); }
+.promo-renderer .rendered-empty { margin: 0; color: var(--promo-muted-ink, color-mix(in srgb, var(--promo-ink) 42%, transparent)); }
 .promo-renderer .rendered-cta { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 18px; border: 2px solid var(--promo-cta, var(--promo-accent)); border-radius: var(--promo-cta-radius, 2px); background: var(--promo-cta-bg, var(--promo-accent)); color: var(--item-color, var(--promo-cta-ink, #fff)); text-decoration: none; font-size: var(--item-font-size, 16px); font-weight: var(--item-font-weight, 800); }
 .promo-renderer .rendered-item--image { min-width: 0; min-height: 0; max-width: 100%; }
-.promo-renderer .rendered-image-frame { width: 100%; height: 100%; min-height: 0; overflow: hidden; background-color: transparent; }
+.promo-renderer .rendered-image-frame { width: 100%; height: 100%; min-height: 0; overflow: hidden; border-radius: var(--promo-image-radius, 0); background-color: transparent; }
 .promo-renderer .rendered-image-frame--circle { aspect-ratio: 1 / 1; }
 .promo-renderer .rendered-image__placeholder { display: grid; width: 100%; height: 100%; min-height: 80px; place-content: center; gap: 6px; padding: 20px; background: #d9e0e7; color: #475569; text-align: center; }
 .promo-renderer .rendered-image__placeholder small { overflow-wrap: anywhere; }
