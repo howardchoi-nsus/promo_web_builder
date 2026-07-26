@@ -14,11 +14,17 @@ const admin = createAdminTemplateAdapter({
   },
 });
 await admin.loadLayout("template A");
+await admin.loadDesignTokenSets();
+await admin.updateDesignToken("template-A", "token-version-A");
 await admin.saveLayout({ templateId: "template-A" });
 await admin.activateTemplate({ id: "template-A" });
 assert.equal(fetchCalls[0].url, "/api/wizard-form-template-layout?templateId=template%20A");
-assert.equal(fetchCalls[1].options.method, "PATCH");
-assert.equal(fetchCalls[2].options.method, "POST");
+assert.equal(fetchCalls[1].url, "/api/design-token-sets?scope=public");
+assert.equal(fetchCalls[2].url, "/api/wizard-form-template");
+assert.equal(fetchCalls[2].options.method, "PATCH");
+assert.equal(JSON.parse(fetchCalls[2].options.body).designTokenSetVersionId, "token-version-A");
+assert.equal(fetchCalls[3].options.method, "PATCH");
+assert.equal(fetchCalls[4].options.method, "POST");
 
 const sentMessages = [];
 const eventListeners = new Map();

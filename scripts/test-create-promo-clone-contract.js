@@ -122,7 +122,7 @@ assert.match(createJs, /create-promo-auto-register-request/);
 assert.match(createJs, /workspace\.append\(layoutPanel\)/);
 assert.doesNotMatch(createJs, /contentColumn\.append\(dynamicSectionsWrapper, coverage\)/);
 assert.match(editorApp, /isCreatePromoWizardMode/);
-assert.match(editorApp, /v-if="!isCreatePromoWizardMode" class="global-token-menu"/);
+assert.doesNotMatch(editorApp, /DESIGN_COLOR_TOKENS/);
 assert.doesNotMatch(editorApp, /background-image-control/);
 assert.match(promoBuilderAdapter, /create-promo-auto-register-request/);
 assert.match(promoBuilderAdapter, /create-promo-section-ai-action/);

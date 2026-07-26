@@ -13,8 +13,9 @@ defineProps({
   autoRegisterPending: { type: Boolean, default: false },
   autoRegisterMessage: { type: String, default: "" },
   editorHistory: { type: Object, required: true },
-  designSpec: { type: Object, required: true },
-  designColorTokens: { type: Array, default: () => [] },
+  designTokenSets: { type: Array, default: () => [] },
+  selectedDesignTokenVersionId: { type: String, default: "" },
+  designTokenSaving: { type: Boolean, default: false },
   layoutChangeNote: { type: String, default: "" },
   layoutSaving: { type: Boolean, default: false },
   editorSnapshot: { type: Object, default: null },
@@ -31,7 +32,7 @@ const emit = defineEmits([
   "request-auto-register",
   "undo",
   "redo",
-  "update-background-token",
+  "update-design-token",
   "save-admin-layout",
   "open-output",
   "select-item",
@@ -93,20 +94,23 @@ defineExpose({ getStageElement, scrollToSection });
       >
         <template #tokens>
           <fieldset v-if="capabilities.canEditTemplateDefaults" class="global-token-menu">
-            <legend>페이지 배경</legend>
-            <div class="global-token-swatches">
-              <button
-                v-for="token in designColorTokens"
-                :key="token.key"
-                type="button"
-                :class="{ active: designSpec.theme.backgroundColor === token.value }"
-                :title="`${token.name} ${token.value}`"
-                :aria-label="`${token.name} ${token.value}`"
-                @click="emit('update-background-token', token)"
+            <legend>디자인 토큰</legend>
+            <select
+              class="global-token-select"
+              :value="selectedDesignTokenVersionId"
+              :disabled="designTokenSaving || template?.status !== 'draft' || !designTokenSets.length"
+              aria-label="템플릿 디자인 토큰"
+              @change="emit('update-design-token', $event.target.value)"
+            >
+              <option value="" disabled>디자인 토큰을 선택하세요</option>
+              <option
+                v-for="tokenSet in designTokenSets"
+                :key="tokenSet.versionId"
+                :value="tokenSet.versionId"
               >
-                <i :style="{ backgroundColor: token.value }"></i>
-              </button>
-            </div>
+                {{ tokenSet.name }} · v{{ tokenSet.version }}{{ tokenSet.sourceValues?.[0]?.activeTheme ? ` · ${tokenSet.sourceValues[0].activeTheme === "dark" ? "Dark" : "Light"}` : "" }}{{ tokenSet.isDefault ? " · 기본" : "" }}
+              </option>
+            </select>
           </fieldset>
         </template>
         <template #host-actions>
@@ -120,13 +124,13 @@ defineExpose({ getStageElement, scrollToSection });
             />
             <button
               type="button"
-              :disabled="!editorSnapshot || layoutSaving || template?.status !== 'draft'"
+              :disabled="!editorSnapshot || layoutSaving || designTokenSaving || template?.status !== 'draft'"
               @click="emit('save-admin-layout', false)"
             >{{ layoutSaving ? "저장 중" : "초안 저장" }}</button>
             <button
               type="button"
               class="is-primary"
-              :disabled="!editorSnapshot || layoutSaving || template?.status !== 'draft'"
+              :disabled="!editorSnapshot || layoutSaving || designTokenSaving || template?.status !== 'draft'"
               @click="emit('save-admin-layout', true)"
             >저장 후 활성화</button>
           </div>

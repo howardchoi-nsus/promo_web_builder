@@ -35,14 +35,33 @@ async function updateTemplate(req, res) {
 
   const name = Object.prototype.hasOwnProperty.call(body, "name") ? String(body.name || "").trim() : current.name;
   if (!name) return res.status(400).json({ error: "name is required" });
+  const hasDesignTokenUpdate = Object.prototype.hasOwnProperty.call(body, "designTokenSetVersionId");
+  const designTokenSetVersionId = hasDesignTokenUpdate
+    ? String(body.designTokenSetVersionId || "").trim()
+    : current.design_token_set_version_id;
+  if (hasDesignTokenUpdate && !designTokenSetVersionId) {
+    return res.status(400).json({ error: "designTokenSetVersionId is required" });
+  }
+  if (hasDesignTokenUpdate) {
+    const activeTokenVersions = await sql`
+      select version.id::text
+      from promo_design_token_set_versions version
+      join promo_design_token_sets token_set on token_set.id = version.token_set_id
+      where version.id = ${designTokenSetVersionId}::uuid
+        and version.status = 'active'
+        and token_set.status = 'active'
+      limit 1
+    `;
+    if (!activeTokenVersions.length) {
+      return res.status(422).json({ error: "Only an active design token version can be assigned" });
+    }
+  }
   const rows = await sql`
     update wizard_form_templates set
       name = ${name},
       description = ${Object.prototype.hasOwnProperty.call(body, "description") ? String(body.description || "") : current.description || ""},
       is_default = ${Object.prototype.hasOwnProperty.call(body, "isDefault") ? normalizeBoolean(body.isDefault, current.is_default) : current.is_default},
-      design_token_set_version_id = ${Object.prototype.hasOwnProperty.call(body, "designTokenSetVersionId")
-        ? (String(body.designTokenSetVersionId || "").trim() || null)
-        : current.design_token_set_version_id}::uuid,
+      design_token_set_version_id = ${designTokenSetVersionId}::uuid,
       change_note = ${String(body.changeNote || "Form template draft updated.")},
       updated_at = now()
     where id = ${id}::uuid

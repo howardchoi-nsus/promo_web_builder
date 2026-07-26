@@ -23,7 +23,6 @@ import AiLayoutControls from "./platform/editor-ui/AiLayoutControls.vue";
 import SectionCompositionControls from "./platform/editor-ui/SectionCompositionControls.vue";
 import PropertyPanel from "./platform/editor-ui/PropertyPanel.vue";
 import {
-  DESIGN_COLOR_TOKENS,
   DEFAULT_DESIGN_SPEC,
   SNAPSHOT_STORAGE_KEY,
   createSectionInputs,
@@ -57,6 +56,8 @@ const layoutIdentity = ref(null);
 const layoutChangeNote = ref("");
 const layoutSaving = ref(false);
 const layoutSaveMessage = ref("");
+const designTokenSets = ref([]);
+const designTokenSaving = ref(false);
 const externalSnapshotReady = ref(false);
 const autoRegisterPending = ref(false);
 const autoRegisterMessage = ref("");
@@ -760,14 +761,38 @@ function requestImageRemoval(field = null) {
   });
 }
 
-function updateBackgroundToken(token) {
-  executeEditorCommand(EditorCommandType.THEME_STYLE_PATCH, {
-    patch: {
-      backgroundColor: token.value,
-      backgroundToken: token.key,
-      textColor: token.textColor,
+async function updateDesignToken(versionId) {
+  if (!isAdminLayoutMode.value || !template.value?.id || template.value.status !== "draft") return;
+  const tokenSet = designTokenSets.value.find((candidate) => candidate.versionId === versionId);
+  if (!tokenSet || designTokenSaving.value) return;
+  const previousTemplate = template.value;
+  designTokenSaving.value = true;
+  layoutSaveMessage.value = "";
+  template.value = {
+    ...template.value,
+    designTokenSetVersionId: tokenSet.versionId,
+    designTokens: {
+      setKey: tokenSet.setKey,
+      version: tokenSet.version,
+      versionId: tokenSet.versionId,
+      values: tokenSet.values || {},
+      sourceValues: tokenSet.sourceValues || [],
     },
-  }, { label: "배경 토큰 변경" });
+  };
+  try {
+    const result = await adminTemplateAdapter.updateDesignToken(template.value.id, tokenSet.versionId);
+    template.value = {
+      ...template.value,
+      ...(result.template || {}),
+      designTokens: template.value.designTokens,
+    };
+    layoutSaveMessage.value = `${tokenSet.name} v${tokenSet.version} 디자인 토큰을 템플릿에 적용했습니다.`;
+  } catch (tokenError) {
+    template.value = previousTemplate;
+    layoutSaveMessage.value = tokenError.message;
+  } finally {
+    designTokenSaving.value = false;
+  }
 }
 
 const selectedStyleKey = computed(() => (
@@ -952,7 +977,11 @@ async function loadAdminLayout() {
     return;
   }
   try {
-    const result = await adminTemplateAdapter.loadLayout(templateId);
+    const [result, availableTokenSets] = await Promise.all([
+      adminTemplateAdapter.loadLayout(templateId),
+      adminTemplateAdapter.loadDesignTokenSets(),
+    ]);
+    designTokenSets.value = availableTokenSets;
     template.value = result.template;
     sections.value = result.sections || [];
     sectionInputs.value = createSectionInputs(sections.value);
@@ -1207,22 +1236,6 @@ onBeforeUnmount(() => {
         </small>
       </div>
       <div class="editor-global-actions">
-        <fieldset v-if="!isCreatePromoWizardMode" class="global-token-menu">
-          <legend>페이지 배경</legend>
-          <div class="global-token-swatches">
-            <button
-              v-for="token in DESIGN_COLOR_TOKENS"
-              :key="token.key"
-              type="button"
-              :class="{ active: designSpec.theme.backgroundColor === token.value }"
-              :title="`${token.name} ${token.value}`"
-              :aria-label="`${token.name} ${token.value}`"
-              @click="updateBackgroundToken(token)"
-            >
-              <i :style="{ backgroundColor: token.value }"></i>
-            </button>
-          </div>
-        </fieldset>
         <nav v-if="isAdminLayoutMode" aria-label="Visual Editor navigation">
           <input v-model="layoutChangeNote" type="text" placeholder="변경 사유" aria-label="레이아웃 변경 사유" />
           <button type="button" :disabled="!editorSnapshot || layoutSaving" @click="saveAdminLayout">
@@ -1296,7 +1309,9 @@ onBeforeUnmount(() => {
         :auto-register-message="autoRegisterMessage"
         :editor-history="editorHistory"
         :design-spec="designSpec"
-        :design-color-tokens="DESIGN_COLOR_TOKENS"
+        :design-token-sets="designTokenSets"
+        :selected-design-token-version-id="template?.designTokenSetVersionId || ''"
+        :design-token-saving="designTokenSaving"
         :layout-change-note="layoutChangeNote"
         :layout-saving="layoutSaving"
         :editor-snapshot="editorSnapshot"
@@ -1310,7 +1325,7 @@ onBeforeUnmount(() => {
         @request-auto-register="requestAutoRegister"
         @undo="undoEditorCommand"
         @redo="redoEditorCommand"
-        @update-background-token="updateBackgroundToken"
+        @update-design-token="updateDesignToken"
         @save-admin-layout="(activate) => saveAdminLayout({ activate })"
         @open-output="openOutput"
         @select-item="selectRendererItem"

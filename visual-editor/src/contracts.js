@@ -3,15 +3,6 @@ export const RENDERER_KEY = "default-promo-renderer";
 export const RENDERER_VERSION = 1;
 export const SNAPSHOT_STORAGE_KEY = "promoVisualEditor.snapshot.v1";
 
-export const DESIGN_COLOR_TOKENS = Object.freeze([
-  { key: "canvas-light", name: "Canvas Light", value: "#f5f7fb", textColor: "#172033" },
-  { key: "surface-light", name: "Surface Light", value: "#ffffff", textColor: "#172033" },
-  { key: "canvas-dark", name: "Canvas Dark", value: "#0b0f17", textColor: "#f5f7fb" },
-  { key: "surface-dark", name: "Surface Dark", value: "#171d29", textColor: "#f5f7fb" },
-  { key: "brand-forest", name: "Brand Forest", value: "#123e36", textColor: "#ffffff" },
-  { key: "brand-red", name: "Brand Red", value: "#8f1d2c", textColor: "#ffffff" },
-]);
-
 export const DEFAULT_DESIGN_SPEC = Object.freeze({
   contractVersion: 1,
   specKey: "default",
