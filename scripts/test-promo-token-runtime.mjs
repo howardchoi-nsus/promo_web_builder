@@ -39,6 +39,7 @@ assert.equal(style["--promo-title-size"], "80px");
 assert.equal(style["--promo-accent"], "#dd0000");
 
 const appStyle = createPromoTokenRuntimeStyle([
+  { tokenKey: "--app-bg", value: "#000000" },
   { tokenKey: "--app-surface", value: "#262626" },
   { tokenKey: "--app-ink", value: "#ffffff" },
   { tokenKey: "--app-muted", value: "#737373" },
@@ -47,7 +48,7 @@ const appStyle = createPromoTokenRuntimeStyle([
   { tokenKey: "--app-transition-duration-normal", value: "200ms" },
   { tokenKey: "--app-ease", value: "cubic-bezier(0.25, 0.1, 0.25, 1)" },
 ]);
-assert.equal(appStyle["--promo-bg"], "#262626");
+assert.equal(appStyle["--promo-bg"], "#000000");
 assert.equal(appStyle["--promo-ink"], "#ffffff");
 assert.equal(appStyle["--promo-accent"], "#ff2f2f");
 assert.equal(appStyle["--promo-cta-radius"], "10px");

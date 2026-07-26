@@ -35,7 +35,8 @@ export function createPromoTokenRuntimeStyle(input, fallbacks = {}) {
   const ctaInk = String(fallbacks.ctaInk || "#ffffff");
   const radius = String(fallbacks.radius || "2px");
   const shadow = String(fallbacks.shadow || "0 10px 32px rgba(33, 43, 61, .12)");
-  const surfaceToken = tokens["--promo-surface"] || tokens["--app-surface"];
+  const backgroundToken = tokens["--promo-bg"] || tokens["--app-bg"]
+    || tokens["--promo-surface"] || tokens["--app-surface"];
   const textToken = tokens["--promo-text"] || tokens["--app-ink"];
   const mutedToken = tokens["--promo-muted"] || tokens["--app-muted"];
   const accentToken = tokens["--promo-accent"] || tokens["--app-accent"];
@@ -43,7 +44,7 @@ export function createPromoTokenRuntimeStyle(input, fallbacks = {}) {
   const shadowToken = tokens["--promo-shadow"] || tokens["--app-shadow"];
 
   return {
-    "--promo-bg": surfaceToken || background,
+    "--promo-bg": backgroundToken || background,
     "--promo-ink": textToken || text,
     "--promo-muted-ink": mutedToken || muted,
     "--promo-accent": accentToken || accent,

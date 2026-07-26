@@ -298,7 +298,13 @@ function normalizedFadeMode(style) {
 function effectiveSectionBackgroundColor(style) {
   const sectionColor = String(style.backgroundColor || "").trim();
   if (/^#[0-9a-f]{6}$/i.test(sectionColor)) return sectionColor;
-  const tokenColor = String(managedTokens.value["--promo-surface"] || "").trim();
+  const tokenColor = String(
+    managedTokens.value["--promo-bg"]
+    || managedTokens.value["--app-bg"]
+    || managedTokens.value["--promo-surface"]
+    || managedTokens.value["--app-surface"]
+    || "",
+  ).trim();
   if (/^#[0-9a-f]{6}$/i.test(tokenColor)) return tokenColor;
   const themeColor = String(props.designSpec?.theme?.backgroundColor || "").trim();
   return /^#[0-9a-f]{6}$/i.test(themeColor) ? themeColor : "#f5f7fb";

@@ -1362,20 +1362,6 @@ onBeforeUnmount(() => {
               :class="{ open: expandedComponentKey === componentKey(selectedSection, item) }"
             >
               <div class="component-property-header">
-                <label
-                  v-if="!item.isRequired && !item.isLocked"
-                  class="component-visibility-toggle"
-                  :title="itemVisible(selectedSection, item) ? '웹 출력에 노출 중' : '웹 출력에서 숨김'"
-                  @click.stop
-                >
-                  <input
-                    type="checkbox"
-                    :checked="itemVisible(selectedSection, item)"
-                    :aria-label="`${item.name} 노출`"
-                    @change="setItemVisible(selectedSection, item, $event.target.checked)"
-                  />
-                  <span>노출</span>
-                </label>
                 <label v-if="capabilities.canRunMultiLayoutAi" class="component-multi-select" :title="item.isLocked ? '잠긴 컴포넌트는 다중 정렬할 수 없습니다.' : '다중 정렬 대상 선택'">
                   <input
                     type="checkbox"
@@ -1395,6 +1381,21 @@ onBeforeUnmount(() => {
                   <small>{{ item.fieldKind }}</small>
                   <i aria-hidden="true"></i>
                 </button>
+                <label
+                  v-if="!item.isRequired && !item.isLocked"
+                  class="component-visibility-toggle"
+                  :title="itemVisible(selectedSection, item) ? '웹 출력에 노출 중' : '웹 출력에서 숨김'"
+                  @click.stop
+                >
+                  <input
+                    type="checkbox"
+                    :checked="itemVisible(selectedSection, item)"
+                    :aria-label="`${item.name} 노출`"
+                    @change="setItemVisible(selectedSection, item, $event.target.checked)"
+                  />
+                  <i aria-hidden="true"></i>
+                  <span>노출</span>
+                </label>
               </div>
               <div class="component-property-body">
                 <div>
@@ -1418,6 +1419,7 @@ onBeforeUnmount(() => {
                     :aria-label="`${field.name} 노출`"
                     @change="setFieldVisible(selectedSection, selectedItem, field, $event.target.checked)"
                   />
+                  <i aria-hidden="true"></i>
                   <span>노출</span>
                 </label>
               </header>
