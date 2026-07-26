@@ -80,7 +80,7 @@ a {
   background: transparent;
   box-shadow: none;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0;
   min-height: 92px;
   padding: 18px 0 24px;
@@ -1631,7 +1631,7 @@ a {
   }
 
   .wizard-progress {
-    grid-template-columns: repeat(4, minmax(150px, 1fr));
+    grid-template-columns: repeat(5, minmax(150px, 1fr));
     overflow-x: auto;
   }
 

@@ -52,6 +52,10 @@ assert.match(createHtml, /<strong>Overview<\/strong>/);
 assert.match(createHtml, /<strong>Template<\/strong>/);
 assert.match(createHtml, /<strong>Layout<\/strong>/);
 assert.match(createHtml, /<strong>Web Output<\/strong>/);
+assert.equal(
+  (createCss.match(/grid-template-columns:\s*repeat\(5,\s*minmax\((?:0|150px),\s*1fr\)\)/g) || []).length,
+  2,
+);
 assert.match(rootRedirect, /\/prototype\/create-promo\.html/);
 assert.match(wizardContent, /global\.PromoWizardContent = Object\.freeze/);
 assert.match(wizardStorage, /global\.PromoWizardStorage = Object\.freeze/);
