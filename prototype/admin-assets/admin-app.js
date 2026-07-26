@@ -9301,9 +9301,13 @@ var n_ = /*#__PURE__*/ Ch(Bh, [["render", t_], ["__scopeId", "data-v-f140278f"]]
 				wizardSectionsError: "",
 				wizardSectionSaving: !1,
 				wizardSectionOrderSaving: !1,
+				wizardSectionComponentOrderSaving: !1,
 				draggedWizardSectionKey: "",
 				wizardSectionDropTargetKey: "",
 				wizardSectionDropPosition: "",
+				draggedWizardSectionComponentId: "",
+				wizardSectionComponentDropTargetId: "",
+				wizardSectionComponentDropPosition: "",
 				selectedWizardSectionKey: "",
 				wizardSectionDetail: null,
 				wizardSectionDetailLoading: !1,
@@ -11627,7 +11631,7 @@ var n_ = /*#__PURE__*/ Ch(Bh, [["render", t_], ["__scopeId", "data-v-f140278f"]]
 					name: "",
 					isVisibleInWizard: !0,
 					isRequired: !1,
-					sortOrder: (this.wizardSectionDetail?.items?.length || 0) * 10,
+					sortOrder: Math.max(-10, ...(this.wizardSectionDetail?.items || []).map((e) => Number(e.sortOrder) || 0)) + 10,
 					fieldKind: "text",
 					textType: "title",
 					image: {
@@ -11688,6 +11692,59 @@ var n_ = /*#__PURE__*/ Ch(Bh, [["render", t_], ["__scopeId", "data-v-f140278f"]]
 			toggleWizardItemImageSource(e) {
 				let t = this.wizardItemEditor.image.allowedSources, n = t.indexOf(e);
 				n >= 0 ? t.splice(n, 1) : t.push(e);
+			},
+			wizardSectionComponentCanReorder() {
+				return this.wizardSectionDetail?.section?.status === "draft" && !this.wizardSectionSaving && !this.wizardSectionComponentOrderSaving;
+			},
+			startWizardSectionComponentDrag(e, t) {
+				if (!this.wizardSectionComponentCanReorder()) {
+					t.preventDefault();
+					return;
+				}
+				this.draggedWizardSectionComponentId = e.id, t.dataTransfer.effectAllowed = "move", t.dataTransfer.setData("text/plain", e.id);
+			},
+			dragOverWizardSectionComponent(e, t) {
+				if (!this.draggedWizardSectionComponentId || this.draggedWizardSectionComponentId === e.id || !this.wizardSectionComponentCanReorder()) return;
+				let n = t.currentTarget.getBoundingClientRect();
+				this.wizardSectionComponentDropTargetId = e.id, this.wizardSectionComponentDropPosition = t.clientY < n.top + n.height / 2 ? "before" : "after", t.dataTransfer.dropEffect = "move";
+			},
+			stopWizardSectionComponentDrag() {
+				this.draggedWizardSectionComponentId = "", this.wizardSectionComponentDropTargetId = "", this.wizardSectionComponentDropPosition = "";
+			},
+			async saveWizardSectionComponentOrder(e, t) {
+				let n = this.wizardSectionDetail?.section;
+				if (!n || n.status !== "draft" || this.wizardSectionComponentOrderSaving) return;
+				let r = n.id;
+				this.wizardSectionDetail.items = e, this.wizardSectionComponentOrderSaving = !0, this.setStatus("섹션 컴포넌트 순서를 저장하는 중입니다");
+				try {
+					let t = await fetch("/api/wizard-content-section-items-order", {
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({
+							sectionId: r,
+							itemIds: e.map((e) => e.id)
+						})
+					}), n = await t.json().catch(() => ({}));
+					if (!t.ok) throw Error(n.message || n.error || `컴포넌트 순서 오류(${t.status})`);
+					this.wizardSectionDetail?.section?.id === r && (this.wizardSectionDetail.items = Array.isArray(n.items) ? n.items : e), this.setStatus("섹션 컴포넌트 순서를 초안에 저장했습니다. 프로모션 빌더에 반영하려면 섹션을 활성화하세요");
+				} catch (e) {
+					this.wizardSectionDetail?.section?.id === r && (this.wizardSectionDetail.items = t), this.setStatus(`컴포넌트 순서 저장 실패: ${e.message}`);
+				} finally {
+					this.wizardSectionComponentOrderSaving = !1;
+				}
+			},
+			async dropWizardSectionComponent(e) {
+				let t = this.draggedWizardSectionComponentId, n = this.wizardSectionComponentDropPosition || "before";
+				if (this.stopWizardSectionComponentDrag(), !t || t === e?.id || !this.wizardSectionComponentCanReorder()) return;
+				let r = [...this.wizardSectionDetail?.items || []], i = r.find((e) => e.id === t), a = r.filter((e) => e.id !== t), o = a.findIndex((t) => t.id === e.id);
+				!i || o < 0 || (a.splice(o + +(n === "after"), 0, i), !a.every((e, t) => e.id === r[t]?.id) && await this.saveWizardSectionComponentOrder(a, r));
+			},
+			async moveWizardSectionComponent(e, t) {
+				if (!this.wizardSectionComponentCanReorder()) return;
+				let n = [...this.wizardSectionDetail?.items || []], r = n.findIndex((t) => t.id === e.id), i = r + t;
+				if (r < 0 || i < 0 || i >= n.length) return;
+				let a = [...n], [o] = a.splice(r, 1);
+				a.splice(i, 0, o), await this.saveWizardSectionComponentOrder(a, n);
 			},
 			async saveWizardItem() {
 				let e = this.wizardSectionDetail?.section;

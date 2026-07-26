@@ -26,6 +26,36 @@ const sectionA = { id: "22222222-2222-4222-8222-222222222222", sectionKey: "prom
 const sectionB = { id: "33333333-3333-4333-8333-333333333333", sectionKey: "benefits", name: "Benefits", status: "active", version: 1, aiDesign: { enabled: true } };
 const membership = { id: "44444444-4444-4444-8444-444444444444", formTemplateId: template.id, sectionId: sectionA.id, sectionKey: sectionA.sectionKey, sectionName: sectionA.name, sectionVersion: 1, isVisible: true, isRequired: true, userReorderAllowed: true };
 const activeComponentVersionId = "66666666-6666-4666-8666-666666666666";
+let sectionItems = [
+  {
+    id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    sectionId: sectionA.id,
+    componentVersionId: activeComponentVersionId,
+    itemKey: "title",
+    name: "Title",
+    isVisibleInWizard: true,
+    isRequired: true,
+    userReorderAllowed: true,
+    sortOrder: 0,
+    fieldKind: "text",
+    textType: "title",
+    isLocked: false,
+  },
+  {
+    id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+    sectionId: sectionA.id,
+    componentVersionId: activeComponentVersionId,
+    itemKey: "description",
+    name: "Description",
+    isVisibleInWizard: true,
+    isRequired: false,
+    userReorderAllowed: true,
+    sortOrder: 10,
+    fieldKind: "text",
+    textType: "multi",
+    isLocked: false,
+  },
+];
 const component = {
   id: "55555555-5555-4555-8555-555555555555",
   componentKey: "cmp_1234567890abcdef1234567890abcdef",
@@ -49,6 +79,8 @@ let browser;
 let addBody;
 let activateBody;
 let createdSectionBody;
+let componentOrderBody;
+let rejectComponentOrder = false;
 try {
   await waitForServer();
   browser = await chromium.launch({ headless: true });
@@ -90,7 +122,17 @@ try {
       }, 201);
     }
     if (url.pathname === "/api/wizard-content-sections") return reply({ ok: true, sections: [sectionA, sectionB] });
-    if (url.pathname === "/api/wizard-content-section") return reply({ ok: true, section: sectionA, items: [], histories: [] });
+    if (url.pathname === "/api/wizard-content-section-items-order" && request.method() === "POST") {
+      componentOrderBody = request.postDataJSON();
+      if (rejectComponentOrder) return reply({ error: "Simulated stale order" }, 409);
+      const byId = new Map(sectionItems.map((item) => [item.id, item]));
+      sectionItems = componentOrderBody.itemIds.map((id, index) => ({
+        ...byId.get(id),
+        sortOrder: index * 10,
+      }));
+      return reply({ ok: true, items: sectionItems });
+    }
+    if (url.pathname === "/api/wizard-content-section") return reply({ ok: true, section: sectionA, items: sectionItems, histories: [] });
     if (url.pathname === "/api/wizard-content-section-usage") return reply({ ok: true, templates: [template] });
     if (url.pathname === "/api/wizard-form-template-layout") return reply({ ok: true, layout: { id: "layout", layoutRevision: 1, layoutSpec: { theme: {}, responsive: {}, itemStyles: {}, sectionStyles: {} }, validationResult: { ok: true, errors: [] } } });
     return reply({ ok: true, templates: [], sections: [], logs: [], settings: [] });
@@ -104,6 +146,35 @@ try {
   const activeComponentOption = page.locator(`select option[value="${activeComponentVersionId}"]`);
   assert.equal(await activeComponentOption.count(), 1);
   assert.match(await activeComponentOption.textContent(), /Hero Title.*v1/);
+  const sectionComponentRows = page.locator(".section-component-order-row");
+  assert.equal(await sectionComponentRows.count(), 2);
+  const componentDropTargetBox = await sectionComponentRows.nth(1).boundingBox();
+  assert.ok(componentDropTargetBox);
+  await sectionComponentRows.nth(0).locator(".section-drag-handle").dragTo(
+    sectionComponentRows.nth(1),
+    { targetPosition: { x: componentDropTargetBox.width / 2, y: componentDropTargetBox.height - 2 } },
+  );
+  await page.waitForTimeout(50);
+  assert.deepEqual(componentOrderBody, {
+    sectionId: sectionA.id,
+    itemIds: [
+      "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+    ],
+  });
+  assert.equal(
+    await sectionComponentRows.nth(0).locator(".section-component-order-row__content strong").textContent(),
+    "Description",
+  );
+  rejectComponentOrder = true;
+  await sectionComponentRows.nth(0).getByRole("button", { name: "Description 아래로 이동" }).click();
+  await page.waitForTimeout(50);
+  assert.equal(
+    await sectionComponentRows.nth(0).locator(".section-component-order-row__content strong").textContent(),
+    "Description",
+  );
+  assert.match(await page.locator(".shell-status").textContent(), /컴포넌트 순서 저장 실패/);
+  rejectComponentOrder = false;
   await page.locator(".section-library-add button").click();
   await page.locator(".section-library-create input").nth(1).fill("New Promotion Section");
   await page.locator(".section-library-create input").nth(2).fill("Created in the template section manager");

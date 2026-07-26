@@ -3148,6 +3148,54 @@ body.is-resizing {
 .template-item-row.drop-before::before { top: -6px; }
 .template-item-row.drop-after::after { bottom: -6px; }
 
+.section-component-order-row {
+  position: relative;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  transition: transform 160ms ease, opacity 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.section-component-order-row.dragging {
+  opacity: 0.55;
+  transform: scale(0.98);
+}
+
+.section-component-order-row.drop-before::before,
+.section-component-order-row.drop-after::after {
+  content: "";
+  position: absolute;
+  right: 4px;
+  left: 4px;
+  height: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.section-component-order-row.drop-before::before { top: -6px; }
+.section-component-order-row.drop-after::after { bottom: -6px; }
+
+.section-component-order-row__content {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.section-component-order-row__content > strong {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.section-component-order-row__content > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.section-component-order-row__actions {
+  flex-wrap: nowrap;
+}
+
 .template-section-row {
   position: relative;
   display: grid;

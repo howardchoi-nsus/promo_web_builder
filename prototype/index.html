@@ -1663,22 +1663,66 @@
                     <button
                       class="tiny-button primary"
                       type="button"
-                      :disabled="wizardSectionDetail.section.status !== 'draft'"
+                      :disabled="wizardSectionDetail.section.status !== 'draft' || wizardSectionComponentOrderSaving"
                       @click="openNewWizardItemEditor"
                     >+ {{ t('entity.component.add') }}</button>
                   </div>
 
-                  <div class="history-list">
-                    <div v-for="item in wizardSectionDetail.items" :key="item.id" class="history-item">
-                      <strong>{{ item.name }}<em v-if="item.isLocked" class="status-active">고정됨</em></strong>
-                    <span>{{ item.itemKey }} · {{ fieldKindLabel(item.fieldKind) }}{{ item.image?.descriptionEnabled ? ' + 설명' : '' }}{{ item.textType ? ' · ' + textTypeLabel(item.textType) : '' }} · {{ item.isRequired ? '필수' : '선택' }} · {{ item.isVisibleInWizard ? '프로모션 빌더 노출' : '프로모션 빌더 숨김' }}</span>
-                      <div class="action-row align-right">
-                        <button class="tiny-button" type="button" :disabled="wizardSectionDetail.section.status !== 'draft'" @click="openWizardItemEditor(item)">편집</button>
-                        <button class="tiny-button danger" type="button" :disabled="wizardSectionDetail.section.status !== 'draft'" @click="deleteWizardItem(item)">{{ t('common.action.delete') }}</button>
+                  <transition-group name="template-item-order" tag="div" class="history-list">
+                    <div
+                      v-for="(item, itemIndex) in wizardSectionDetail.items"
+                      :key="item.id"
+                      class="history-item section-component-order-row"
+                      :class="{
+                        dragging: draggedWizardSectionComponentId === item.id,
+                        'drop-before': wizardSectionComponentDropTargetId === item.id && wizardSectionComponentDropPosition === 'before',
+                        'drop-after': wizardSectionComponentDropTargetId === item.id && wizardSectionComponentDropPosition === 'after'
+                      }"
+                      @dragover.prevent="dragOverWizardSectionComponent(item, $event)"
+                      @drop.prevent.stop="dropWizardSectionComponent(item)"
+                    >
+                      <span
+                        class="section-drag-handle"
+                        :class="{ disabled: !wizardSectionComponentCanReorder() }"
+                        :draggable="wizardSectionComponentCanReorder()"
+                        :tabindex="wizardSectionComponentCanReorder() ? 0 : -1"
+                        role="button"
+                        :aria-label="`${item.name} 순서 변경. 위아래 방향키를 사용할 수 있습니다.`"
+                        :title="wizardSectionComponentCanReorder() ? '드래그해서 컴포넌트 순서 변경' : '초안 섹션에서만 순서를 변경할 수 있습니다'"
+                        @dragstart.stop="startWizardSectionComponentDrag(item, $event)"
+                        @dragend.stop="stopWizardSectionComponentDrag"
+                        @keydown.up.prevent="moveWizardSectionComponent(item, -1)"
+                        @keydown.down.prevent="moveWizardSectionComponent(item, 1)"
+                      >{{ wizardSectionComponentCanReorder() ? '⋮⋮' : '고정' }}</span>
+                      <div class="section-component-order-row__content">
+                        <strong>{{ item.name }}<em v-if="item.isLocked" class="status-active">고정됨</em></strong>
+                        <span>{{ item.itemKey }} · {{ fieldKindLabel(item.fieldKind) }}{{ item.image?.descriptionEnabled ? ' + 설명' : '' }}{{ item.textType ? ' · ' + textTypeLabel(item.textType) : '' }} · {{ item.isRequired ? '필수' : '선택' }} · {{ item.isVisibleInWizard ? '프로모션 빌더 노출' : '프로모션 빌더 숨김' }}</span>
+                      </div>
+                      <div class="action-row align-right section-component-order-row__actions">
+                        <button
+                          class="tiny-button"
+                          type="button"
+                          :disabled="!wizardSectionComponentCanReorder() || itemIndex === 0"
+                          :aria-label="`${item.name} 위로 이동`"
+                          @click="moveWizardSectionComponent(item, -1)"
+                        >↑</button>
+                        <button
+                          class="tiny-button"
+                          type="button"
+                          :disabled="!wizardSectionComponentCanReorder() || itemIndex === wizardSectionDetail.items.length - 1"
+                          :aria-label="`${item.name} 아래로 이동`"
+                          @click="moveWizardSectionComponent(item, 1)"
+                        >↓</button>
+                        <button class="tiny-button" type="button" :disabled="wizardSectionDetail.section.status !== 'draft' || wizardSectionComponentOrderSaving" @click="openWizardItemEditor(item)">편집</button>
+                        <button class="tiny-button danger" type="button" :disabled="wizardSectionDetail.section.status !== 'draft' || wizardSectionComponentOrderSaving" @click="deleteWizardItem(item)">{{ t('common.action.delete') }}</button>
                       </div>
                     </div>
                     <div class="empty-state compact" v-if="!wizardSectionDetail.items.length">등록된 컴포넌트가 없습니다.</div>
-                  </div>
+                    <div class="section-order-saving" v-if="wizardSectionComponentOrderSaving">
+                      <span class="section-order-spinner" aria-hidden="true"></span>
+                      컴포넌트 순서 저장 중...
+                    </div>
+                  </transition-group>
 
                   <div class="subsection" v-if="wizardItemEditorOpenId">
                     <div class="subsection-title">
@@ -1701,12 +1745,6 @@
                     <small v-if="wizardItemEditorOpenId === 'new'">컴포넌트 식별자는 저장 시 자동으로 생성됩니다.</small>
                     <small v-else>{{ t('entity.component.key') }}: {{ wizardItemEditor.itemKey }}</small>
 
-                    <div class="form-grid compact">
-                      <label class="field compact-field">
-                        <span>순서(sortOrder)</span>
-                        <input v-model.number="wizardItemEditor.sortOrder" type="number" />
-                      </label>
-                    </div>
                   <div class="empty-state compact">요소 유형, 이미지 정책, CTA 정책과 스타일 슬롯은 선택한 컴포넌트 버전에서 상속됩니다.</div>
 
                     <div class="form-grid compact">
@@ -1731,7 +1769,7 @@
 
                     <div class="action-row align-right">
                       <button class="tiny-button" type="button" @click="closeWizardItemEditor">{{ t('common.action.cancel') }}</button>
-                      <button class="tiny-button primary" type="button" :disabled="wizardSectionSaving || !wizardItemEditor.componentVersionId || !wizardItemEditor.name" @click="saveWizardItem">{{ t('common.action.save') }}</button>
+                      <button class="tiny-button primary" type="button" :disabled="wizardSectionSaving || wizardSectionComponentOrderSaving || !wizardItemEditor.componentVersionId || !wizardItemEditor.name" @click="saveWizardItem">{{ t('common.action.save') }}</button>
                     </div>
                   </div>
                 </div>
