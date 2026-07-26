@@ -21,6 +21,7 @@ const props = defineProps({
   sectionDesignRuns: { type: Object, default: () => ({}) },
 });
 const emit = defineEmits(["select-item", "update-item-style", "update-renderer-item-style", "update-item-content", "update-section-style"]);
+const SECTION_VERTICAL_PADDING_PX = 20;
 
 const orderedSections = computed(() => {
   const definitions = props.content?.sectionSnapshot || [];
@@ -249,7 +250,7 @@ function defaultItemPosition(section, item) {
   const index = Math.max(0, items.findIndex((candidate) => candidate.itemKey === item.itemKey));
   const precedingHeight = items.slice(0, index).reduce((height, candidate) => height + estimatedItemHeight(candidate), 0);
   const sectionHeight = sectionStyle(section).minHeight || defaultSectionHeight(section);
-  const canvasHeight = Math.max(50, sectionHeight - 76);
+  const canvasHeight = Math.max(50, sectionHeight - SECTION_VERTICAL_PADDING_PX);
   return {
     xPct: 0,
     yPct: canvasHeight ? (precedingHeight / canvasHeight) * 100 : 0,
@@ -329,7 +330,7 @@ function inlineSectionStyle(section) {
 function inlineCanvasStyle(section) {
   const height = sectionStyle(section).minHeight || defaultSectionHeight(section);
   return {
-    height: `${Math.max(0, height - 76)}px`,
+    height: `${Math.max(0, height - SECTION_VERTICAL_PADDING_PX)}px`,
   };
 }
 
@@ -450,7 +451,10 @@ function startItemResize(event, section, item, handleDirection = "se") {
   const horizontalActive = handleDirection.includes("w") || handleDirection.includes("e");
   const verticalActive = handleDirection.includes("n") || handleDirection.includes("s");
   const automaticPosition = defaultItemPosition(section, item);
-  const canvasHeight = Math.max(50, (sectionStyle(section).minHeight || defaultSectionHeight(section)) - 76);
+  const canvasHeight = Math.max(
+    50,
+    (sectionStyle(section).minHeight || defaultSectionHeight(section)) - SECTION_VERTICAL_PADDING_PX,
+  );
   const startGeometry = normalizeComponentGeometry({
     item,
     style,
@@ -496,7 +500,9 @@ function startItemResize(event, section, item, handleDirection = "se") {
   };
   const end = () => {
     if (animationFrame) cancelAnimationFrame(animationFrame);
-    const requiredSectionHeight = Math.ceil(nextGeometry.y + nextGeometry.height + 76);
+    const requiredSectionHeight = Math.ceil(
+      nextGeometry.y + nextGeometry.height + SECTION_VERTICAL_PADDING_PX,
+    );
     const currentSectionHeight = sectionStyle(section).minHeight || defaultSectionHeight(section);
     if (requiredSectionHeight > currentSectionHeight) {
       emit("update-section-style", section.sectionKey, {
@@ -553,7 +559,10 @@ function resizeItemByKeyboard(event, section, item, handleDirection = "se") {
     : 0;
   if (!horizontalDelta && !verticalDelta) return;
   const automaticPosition = defaultItemPosition(section, item);
-  const canvasHeight = Math.max(50, (sectionStyle(section).minHeight || defaultSectionHeight(section)) - 76);
+  const canvasHeight = Math.max(
+    50,
+    (sectionStyle(section).minHeight || defaultSectionHeight(section)) - SECTION_VERTICAL_PADDING_PX,
+  );
   const geometry = normalizeComponentGeometry({
     item,
     style,
@@ -664,7 +673,9 @@ function startSectionResize(event, section) {
       });
     });
   }
-  const verticalPadding = canvasRect ? Math.max(0, startHeight - canvasRect.height) : 76;
+  const verticalPadding = canvasRect
+    ? Math.max(0, startHeight - canvasRect.height)
+    : SECTION_VERTICAL_PADDING_PX;
   const minimumCanvasHeight = canvasNode
     ? [...canvasNode.querySelectorAll(".rendered-item")].reduce((requiredHeight, itemNode) => {
       const itemRect = itemNode.getBoundingClientRect();
