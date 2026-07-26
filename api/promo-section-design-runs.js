@@ -45,6 +45,7 @@ module.exports = async function handler(req, res) {
     const sectionKey = String(body.sectionKey || "").trim();
     const sectionInputs = body.sectionInputs && typeof body.sectionInputs === "object" ? body.sectionInputs : {};
     const requestMode = ["full", "layout-style", "assets"].includes(body.requestMode) ? body.requestMode : "full";
+    const generationRequestId = String(body.generationRequestId || "").trim().slice(0, 160);
     if (!formTemplateId || !sectionKey) return res.status(400).json({ error: "formTemplateId and sectionKey are required" });
     const sql = getSql();
     const templateData = await fetchTemplateWithItems(sql, formTemplateId);
@@ -231,6 +232,7 @@ module.exports = async function handler(req, res) {
       tokenSetVersionId: designTokenSetVersionId,
       tokenValuesHash,
       options: {
+        generationRequestId,
         backgroundColor,
         fadeMode,
         safeArea: requestedSafeArea,

@@ -681,6 +681,8 @@ window.addEventListener("message", (event) => {
       description: "",
       alt: "",
     });
+    if (contentState.sectionDesignRuns) delete contentState.sectionDesignRuns[section.sectionKey];
+    saveWizardContent();
     postWizardLayoutSnapshot();
     return;
   }
@@ -1178,8 +1180,14 @@ function removeSectionAiBackground(section) {
   if (Object.keys(current).length) wizardResolvedLayout.sectionStyles[section.sectionKey] = current;
   else delete wizardResolvedLayout.sectionStyles[section.sectionKey];
   clearLegacySectionAiImages(section);
+  if (contentState.sectionDesignRuns) delete contentState.sectionDesignRuns[section.sectionKey];
   saveWizardContent();
   postWizardLayoutSnapshot();
+}
+
+function createSectionAiGenerationRequestId() {
+  return globalThis.crypto?.randomUUID?.()
+    || `section-ai-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 async function generateSectionAiDesign(
@@ -1311,6 +1319,7 @@ async function generateSectionAiDesign(
           fadeMode: wizardResolvedLayout?.sectionStyles?.[sectionKey]?.backgroundFadeMode || "none",
           fadeStrength: wizardResolvedLayout?.sectionStyles?.[sectionKey]?.backgroundFadeStrength || "medium",
         } : {},
+        generationRequestId: createSectionAiGenerationRequestId(),
       }),
     });
     saveSectionAiRun(sectionKey, created.run, sectionInputs);

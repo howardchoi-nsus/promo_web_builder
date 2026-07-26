@@ -289,6 +289,22 @@ button, a { letter-spacing: 0; }
 }
 .toggle-field { grid-template-columns: auto 1fr; align-items: center; }
 .toggle-field input { width: 16px; height: 16px; padding: 0; accent-color: var(--app-accent); }
+.token-value-preview { display: flex; align-items: center; gap: 7px; min-width: 0; padding: 7px; border: 1px solid var(--app-line); background: var(--app-bg); color: var(--app-ink); }
+.token-value-preview code { margin-left: auto; color: var(--app-muted); font-size: 10px; white-space: nowrap; }
+.token-value-preview--color i { flex: 0 0 22px; width: 22px; height: 22px; border: 1px solid var(--app-line-strong); border-radius: 50%; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--app-panel) 45%, transparent); }
+.token-value-preview--font { display: grid; align-items: start; max-width: 100%; overflow: auto; }
+.token-value-preview--font > span { display: block; width: max-content; min-width: 100%; line-height: 1.15; white-space: nowrap; }
+.token-value-preview--font code { margin-left: 0; }
+.token-option-menu { min-width: 0; border: 1px solid var(--app-line); background: var(--app-panel); }
+.token-option-menu > summary { padding: 7px; color: var(--app-ink-soft); cursor: pointer; font-size: 11px; font-weight: 750; }
+.token-option-list { display: grid; max-height: 220px; padding: 6px; overflow: auto; border-top: 1px solid var(--app-line); }
+.token-option-list > div { display: grid; min-width: 0; padding: 7px; border: 1px solid transparent; background: transparent; color: var(--app-ink); text-align: left; }
+.token-option-list > div.active { border-color: var(--app-accent); background: var(--app-accent-soft); }
+.token-option-list code { color: var(--app-muted); font-size: 10px; }
+.token-option-list--color > div { grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 7px; }
+.token-option-list--color i { width: 22px; height: 22px; border: 1px solid var(--app-line-strong); border-radius: 50%; }
+.token-option-list--font > div { gap: 5px; overflow: auto; }
+.token-option-list--font span { display: block; width: max-content; line-height: 1.15; white-space: nowrap; }
 .section-background-fade { border-top-color: var(--app-line-strong); }
 .design-controls__heading { display: flex; align-items: center; justify-content: space-between; }
 .design-controls__heading strong { color: var(--app-sub); font-size: 11px; }

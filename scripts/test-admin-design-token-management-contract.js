@@ -69,6 +69,17 @@ const tokenCatalog = read("docs/claude/design-tokens.csv");
 ].forEach(([tokenKey, value]) => {
   assert.match(tokenCatalog, new RegExp(`${tokenKey}[^\\n]*font-weight,${value},`));
 });
+[
+  ["--promo-font-size-main-title", "68px"],
+  ["--promo-font-size-lead-title", "40px"],
+  ["--promo-font-size-subtitle", "23px"],
+].forEach(([tokenKey, value]) => {
+  assert.match(tokenCatalog, new RegExp(`${tokenKey}[^\\n]*font-size,${value},${value}`));
+});
+const promoTypographyMigration = read("db/migrations/041_promo_typography_size_tokens.sql");
+assert.match(promoTypographyMigration, /--promo-font-size-main-title/);
+assert.match(promoTypographyMigration, /--promo-font-size-lead-title/);
+assert.match(promoTypographyMigration, /--promo-font-size-subtitle/);
 
 [
   "api/design-token-set-metadata.js",

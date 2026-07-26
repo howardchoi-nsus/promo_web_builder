@@ -786,6 +786,12 @@ const selectedStyleKey = computed(() => (
     : ""
 ));
 const selectedItemStyle = computed(() => designSpec.value.itemStyles?.[selectedStyleKey.value] || {});
+const selectedColorTokenOption = computed(() => colorTokenOptions.value.find(
+  (token) => token.key === selectedItemStyle.value.colorToken
+) || null);
+const selectedFontSizeTokenOption = computed(() => fontSizeTokenOptions.value.find(
+  (token) => token.key === selectedItemStyle.value.fontSizeToken
+) || null);
 const selectedSectionStyle = computed(() => (
   selectedSection.value
     ? designSpec.value.sectionStyles?.[selectedSection.value.sectionKey] || {}
@@ -1714,6 +1720,25 @@ onBeforeUnmount(() => {
                     {{ token.label }} · {{ token.value }}
                   </option>
                 </select>
+                <div v-if="selectedColorTokenOption" class="token-value-preview token-value-preview--color">
+                  <i :style="{ backgroundColor: selectedColorTokenOption.value }" aria-hidden="true"></i>
+                  <span>{{ selectedColorTokenOption.label }}</span>
+                  <code>{{ selectedColorTokenOption.value }}</code>
+                </div>
+                <details v-if="colorTokenOptions.length" class="token-option-menu">
+                  <summary>실제 색상 보기</summary>
+                  <div class="token-option-list token-option-list--color">
+                    <div
+                      v-for="token in colorTokenOptions"
+                      :key="token.key"
+                      :class="{ active: token.key === selectedItemStyle.colorToken }"
+                    >
+                      <i :style="{ backgroundColor: token.value }" aria-hidden="true"></i>
+                      <span>{{ token.label }}</span>
+                      <code>{{ token.value }}</code>
+                    </div>
+                  </div>
+                </details>
               </label>
               <label>
                 <span>폰트 크기</span>
@@ -1727,6 +1752,23 @@ onBeforeUnmount(() => {
                     {{ token.label }} · {{ token.value }}
                   </option>
                 </select>
+                <div v-if="selectedFontSizeTokenOption" class="token-value-preview token-value-preview--font">
+                  <span :style="{ fontSize: selectedFontSizeTokenOption.value }">가나다 Aa</span>
+                  <code>{{ selectedFontSizeTokenOption.label }} · {{ selectedFontSizeTokenOption.value }}</code>
+                </div>
+                <details v-if="fontSizeTokenOptions.length" class="token-option-menu">
+                  <summary>실제 크기 보기</summary>
+                  <div class="token-option-list token-option-list--font">
+                    <div
+                      v-for="token in fontSizeTokenOptions"
+                      :key="token.key"
+                      :class="{ active: token.key === selectedItemStyle.fontSizeToken }"
+                    >
+                      <span :style="{ fontSize: token.value }">가나다 Aa</span>
+                      <code>{{ token.label }} · {{ token.value }}</code>
+                    </div>
+                  </div>
+                </details>
               </label>
               <label>
                 <span>폰트 굵기</span>

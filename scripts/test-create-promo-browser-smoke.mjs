@@ -295,6 +295,8 @@ try {
   assert.equal(sectionAiRunRequest?.sectionKey, "heroBanner");
   assert.equal(sectionAiRunRequest?.targetType, "section-background");
   assert.equal(sectionAiRunRequest?.sectionInputs?.title, "Browser Smoke Promotion");
+  assert.ok(sectionAiRunRequest?.generationRequestId);
+  const firstBackgroundGenerationRequestId = sectionAiRunRequest.generationRequestId;
   let backgroundAppliedContent = null;
   for (let attempt = 0; attempt < 100; attempt += 1) {
     backgroundAppliedContent = await page.evaluate(() => JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null"));
@@ -302,6 +304,24 @@ try {
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
   assert.equal(backgroundAppliedContent?.sectionDesignRuns?.heroBanner?.status, "applied", "Ready Section background must apply automatically");
+
+  page.once("dialog", (dialog) => dialog.accept());
+  await editorFrame.locator(".section-ai-remove").click();
+  await page.waitForFunction(() => {
+    const content = JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null");
+    return !content?.sectionDesignRuns?.heroBanner;
+  });
+  sectionAiRunRequest = null;
+  await editorFrame.getByRole("button", { name: "AI 디자인", exact: true }).click();
+  for (let attempt = 0; attempt < 50 && !sectionAiRunRequest; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  assert.ok(sectionAiRunRequest?.generationRequestId);
+  assert.notEqual(
+    sectionAiRunRequest.generationRequestId,
+    firstBackgroundGenerationRequestId,
+    "Deleting and regenerating a Section background must create a fresh execution",
+  );
 
   sectionAiRunRequest = null;
   await editorFrame.locator(".section-trigger").filter({ hasText: "Feature Content" }).click();
@@ -496,6 +516,13 @@ try {
     resizedTextContent?.templateLayouts?.["default-preview"]?.resolvedLayout?.itemStyles?.["contentFeature.copy"]?.heightPx > textBoxAfter.height,
     "Text component height must persist in the layout snapshot",
   );
+  const colorTokenSelect = editorFrame.locator('.design-controls select:has(option[value="--app-accent"])');
+  await colorTokenSelect.selectOption("--app-accent");
+  assert.equal(
+    await editorFrame.locator(".token-value-preview--color i").evaluate((node) => getComputedStyle(node).backgroundColor),
+    "rgb(211, 0, 0)",
+    "Color token controls must preview the selected real color",
+  );
   const fontSizeSelect = editorFrame.locator('.design-controls select:has(option[value="--promo-font-size-xl"])');
   await fontSizeSelect.selectOption("--promo-font-size-xl");
   await page.waitForTimeout(50);
@@ -503,6 +530,17 @@ try {
     Number.parseFloat(await textContentNode.evaluate((node) => getComputedStyle(node).fontSize)),
     32,
     "Text font size must use the selected design-token step",
+  );
+  assert.equal(
+    Number.parseFloat(await editorFrame.locator(".token-value-preview--font > span").evaluate((node) => getComputedStyle(node).fontSize)),
+    32,
+    "Font token controls must preview the selected real size",
+  );
+  await editorFrame.locator(".token-option-menu").filter({ hasText: "실제 크기 보기" }).locator("summary").click();
+  assert.equal(
+    Number.parseFloat(await editorFrame.locator(".token-option-list--font > div").filter({ hasText: "80px" }).locator("span").evaluate((node) => getComputedStyle(node).fontSize)),
+    80,
+    "Font token option previews must render each available token at its real size",
   );
   const tokenSizedContent = await page.evaluate(() => JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null"));
   assert.equal(

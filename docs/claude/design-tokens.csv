@@ -45,6 +45,9 @@ typography-size,글자 크기,--app-font-size-small,작게,length,px,false,singl
 typography-size,글자 크기,--app-font-size-control,컨트롤,length,px,false,single,0,font-size,13px,
 typography-size,글자 크기,--app-font-size-body,본문,length,px,false,single,0,font-size,14px,
 typography-size,글자 크기,--app-font-size-heading,제목,length,px,false,single,0,font-size,16px,
+typography-size,글자 크기,--promo-font-size-main-title,메인 타이틀,length,px,false,single,0,font-size,68px,68px
+typography-size,글자 크기,--promo-font-size-lead-title,리드 타이틀,length,px,false,single,0,font-size,40px,40px
+typography-size,글자 크기,--promo-font-size-subtitle,서브 타이틀,length,px,false,single,0,font-size,23px,23px
 typography-weight,글자 두께,--app-font-weight-label,라벨,number,,false,single,0,font-weight,700,
 typography-weight,글자 두께,--app-font-weight-strong,강조,number,,false,single,0,font-weight,800,
 typography-weight,글자 두께,--app-font-weight-heading,제목,number,,false,single,0,font-weight,900,
