@@ -32,7 +32,7 @@ const definitions = [
   { tokenKey: "--promo-text", category: "color", valueType: "color", semanticRole: "text-color", cssProperty: "color", required: true, aiSelectable: true, editable: true },
   { tokenKey: "--promo-accent", category: "color", valueType: "color", semanticRole: "accent-color", cssProperty: "background-color", required: true, aiSelectable: true, editable: true },
 ];
-const values = [
+let values = [
   { ...definitions[0], value: "#F8FAFC", metadata: {} },
   { ...definitions[1], value: "#111827", metadata: {} },
   { ...definitions[2], value: "#6D5DFB", metadata: {} },
@@ -91,13 +91,16 @@ try {
       });
     }
     if (url.pathname === "/api/design-token-set-import" && request.method() === "POST") {
+      values = values.map((item) => (
+        item.tokenKey === "--promo-accent"
+          ? { ...item, value: "#123456", valueLight: "#123456", valueDark: "" }
+          : item
+      ));
       return fulfill({
         ok: true,
-        dryRun: true,
+        dryRun: false,
         tokenCount: values.length,
-        tokens: values.map((item) => (
-          item.tokenKey === "--promo-accent" ? { ...item, value: "#123456" } : item
-        )),
+        tokenSet: { ...tokenSet, tokenSetId: setId, id: versionId, status: "draft", values },
         errors: [],
       });
     }
@@ -123,13 +126,19 @@ try {
   await page.goto(`${origin}/prototype/index.html?view=admin&tab=design-tokens`, { waitUntil: "networkidle" });
   await page.getByRole("heading", { name: "디자인 토큰 관리" }).waitFor();
   await page.getByText("Rounded Style", { exact: true }).first().waitFor();
-  const accentInput = page.locator(".design-token-value").filter({ hasText: "--promo-accent" }).locator('input[type="text"]');
+  const accentInput = page.locator(".design-token-value").filter({ hasText: "--promo-accent" }).locator('input[type="text"]:enabled');
   await page.locator('.file-button input[type="file"]').setInputFiles({
     name: "rounded-style.csv",
     mimeType: "text/csv",
     buffer: Buffer.from("token,value\n--promo-accent,#123456", "utf8"),
   });
   await assert.doesNotReject(() => accentInput.waitFor());
+  await page.waitForFunction(() => (
+    document.querySelector(".design-token-value input[type='text']:enabled") !== null
+    && [...document.querySelectorAll(".design-token-value")]
+      .find((row) => row.textContent.includes("--promo-accent"))
+      ?.querySelector("input[type='text']:enabled")?.value === "#123456"
+  ));
   assert.equal(await accentInput.inputValue(), "#123456");
   await accentInput.fill("#FF0000");
   await page.locator(".sticky-actions").getByRole("button", { name: "저장", exact: true }).click();

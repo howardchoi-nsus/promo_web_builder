@@ -2765,26 +2765,47 @@ function lo(e) {
 }
 //#endregion
 //#region shared/promo-token-runtime.mjs
-var uo = /^--promo-[a-z0-9-]+$/;
+var uo = /^--(?:promo|app)-[a-z0-9-]+$/;
 function fo(e) {
-	return Array.isArray(e) ? Object.fromEntries(e.map((e) => [String(e?.tokenKey || e?.token_key || "").trim(), String(e?.value ?? e?.tokenValue ?? e?.token_value ?? "").trim()]).filter(([e, t]) => uo.test(e) && t)) : !e || typeof e != "object" ? {} : Object.fromEntries(Object.entries(e).map(([e, t]) => [String(e).trim(), String(t ?? "").trim()]).filter(([e, t]) => uo.test(e) && t));
+	if (Array.isArray(e)) {
+		let t = /* @__PURE__ */ new Map();
+		return e.forEach((e) => {
+			let n = String(e?.tokenKey || e?.token_key || "").trim(), r = String(e?.value ?? e?.tokenValue ?? e?.token_value ?? "").trim();
+			!uo.test(n) || !r || (t.has(n) || t.set(n, []), t.get(n).push({
+				value: r,
+				valueIndex: Math.max(0, Number.parseInt(e?.valueIndex ?? e?.value_index ?? 0, 10) || 0)
+			}));
+		}), Object.fromEntries([...t.entries()].map(([e, t]) => [e, t.sort((e, t) => e.valueIndex - t.valueIndex).map((e) => e.value).join(", ")]));
+	}
+	return !e || typeof e != "object" ? {} : Object.fromEntries(Object.entries(e).map(([e, t]) => [String(e).trim(), String(t ?? "").trim()]).filter(([e, t]) => uo.test(e) && t));
 }
 function po(e, t = {}) {
-	let n = fo(e), r = String(t.background || "#f5f7fb"), i = String(t.text || "#172033"), a = String(t.muted || "#64748b"), o = String(t.accent || "#2563eb"), s = String(t.cta || o), c = String(t.ctaInk || "#ffffff"), l = String(t.radius || "2px"), u = String(t.shadow || "0 10px 32px rgba(33, 43, 61, .12)");
+	let n = fo(e), r = String(t.background || "#f5f7fb"), i = String(t.text || "#172033"), a = String(t.muted || "#64748b"), o = String(t.accent || "#2563eb"), s = String(t.cta || o), c = String(t.ctaInk || "#ffffff"), l = String(t.radius || "2px"), u = String(t.shadow || "0 10px 32px rgba(33, 43, 61, .12)"), d = n["--promo-surface"] || n["--app-surface"], f = n["--promo-text"] || n["--app-ink"], p = n["--promo-muted"] || n["--app-muted"], m = n["--promo-accent"] || n["--app-accent"], h = n["--promo-radius"] || n["--app-radius"], g = n["--promo-shadow"] || n["--app-shadow"];
 	return {
-		"--promo-bg": `var(--promo-surface, ${r})`,
-		"--promo-ink": `var(--promo-text, ${i})`,
-		"--promo-muted-ink": `var(--promo-muted, ${a})`,
-		"--promo-accent": `var(--promo-accent-token, ${o})`,
+		"--promo-bg": d || r,
+		"--promo-ink": f || i,
+		"--promo-muted-ink": p || a,
+		"--promo-accent": m || o,
 		"--promo-cta": `var(--promo-accent, ${s})`,
 		"--promo-cta-bg": t.ctaTransparent === !0 ? "transparent" : `var(--promo-accent, ${s})`,
 		"--promo-cta-ink": t.ctaTransparent === !0 ? `var(--promo-accent, ${s})` : c,
-		"--promo-cta-radius": `var(--promo-radius, ${l})`,
-		"--promo-image-radius": `var(--promo-radius, ${l})`,
-		"--promo-component-radius": `var(--promo-radius, ${l})`,
-		"--promo-component-shadow": `var(--promo-shadow, ${u})`,
-		...n,
-		...n["--promo-accent"] ? { "--promo-accent-token": n["--promo-accent"] } : {}
+		"--promo-cta-radius": h || l,
+		"--promo-image-radius": h || l,
+		"--promo-component-radius": h || l,
+		"--promo-component-shadow": g || u,
+		"--promo-font": n["--app-font-body"] || n["--promo-font"] || t.font || "",
+		"--promo-radius": h || l,
+		"--promo-shadow": g || u,
+		"--promo-hero-bg-image": n["--app-hero-bg-image"] || "none",
+		"--promo-button-height": n["--app-button-height"] || "44px",
+		"--promo-space-4": n["--app-space-4"] || "18px",
+		"--promo-border-width": n["--app-border-width"] || "2px",
+		"--promo-font-size-body": n["--app-font-size-body"] || "16px",
+		"--promo-font-weight-strong": n["--app-font-weight-strong"] || "800",
+		"--promo-transition-duration": n["--app-transition-duration-normal"] || "200ms",
+		"--promo-transition-delay": n["--app-transition-delay"] || "0ms",
+		"--promo-transition-ease": n["--app-ease"] || "ease",
+		...n
 	};
 }
 //#endregion

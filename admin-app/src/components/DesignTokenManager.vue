@@ -9,6 +9,19 @@ function csvCell(value) {
   return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 }
 
+function tokenIdentity(item) {
+  return `${item.tokenKey}:${Number(item.valueIndex || 0)}`;
+}
+
+function tokenSnapshot(item) {
+  return JSON.stringify({
+    value: String(item.value || ""),
+    valueLight: String(item.valueLight || ""),
+    valueDark: String(item.valueDark || ""),
+    activeTheme: String(item.activeTheme || "dark"),
+  });
+}
+
 export default {
   name: "DesignTokenManager",
   props: {
@@ -95,6 +108,7 @@ export default {
     globalThis.removeEventListener("beforeunload", this.preventUnsavedExit);
   },
   methods: {
+    tokenIdentity,
     t(key, params) {
       return this.translate(key, params);
     },
@@ -154,8 +168,11 @@ export default {
     clearDetail() {
       this.selectedVersionId = "";
       this.detail = null;
-      this.editorValues = this.definitions.map((definition) => ({ ...definition, value: "", metadata: {} }));
-      this.originalValues = Object.fromEntries(this.editorValues.map((item) => [item.tokenKey, item.value]));
+      this.editorValues = this.definitions.map((definition) => ({
+        ...definition, valueIndex: 0, value: "", valueLight: "", valueDark: "",
+        activeTheme: "dark", metadata: {},
+      }));
+      this.originalValues = Object.fromEntries(this.editorValues.map((item) => [tokenIdentity(item), tokenSnapshot(item)]));
       this.usage = { templates: [], aiRuns: { total: 0, active: 0 } };
       this.histories = [];
     },
@@ -165,35 +182,46 @@ export default {
       this.detail = result.tokenSet;
       this.usage = result.usage || { templates: [], aiRuns: { total: 0, active: 0 } };
       this.histories = result.histories || [];
-      const values = new Map((this.detail.values || []).map((item) => [item.tokenKey, item]));
-      this.editorValues = this.definitions.map((definition) => ({
-        ...definition,
-        ...(values.get(definition.tokenKey) || {}),
-        value: values.get(definition.tokenKey)?.value || "",
-        metadata: values.get(definition.tokenKey)?.metadata || {},
-      }));
-      this.originalValues = Object.fromEntries(this.editorValues.map((item) => [item.tokenKey, item.value]));
+      const definitions = new Map(this.definitions.map((item) => [item.tokenKey, item]));
+      const values = this.detail.values || [];
+      this.editorValues = values.length
+        ? values.map((item) => ({ ...(definitions.get(item.tokenKey) || {}), ...item }))
+        : this.definitions.map((definition) => ({
+          ...definition, valueIndex: 0, value: "", valueLight: "", valueDark: "",
+          activeTheme: "dark", metadata: {},
+        }));
+      this.originalValues = Object.fromEntries(this.editorValues.map((item) => [tokenIdentity(item), tokenSnapshot(item)]));
       this.importErrors = [];
       this.validationErrors = [];
     },
     tokenPayload() {
       return this.editorValues.map((item) => ({
         tokenKey: item.tokenKey,
+        valueIndex: Number(item.valueIndex || 0),
         value: item.value,
+        valueLight: item.valueLight || item.value,
+        valueDark: item.valueDark || "",
+        activeTheme: item.activeTheme || "dark",
         metadata: item.metadata || {},
       }));
     },
     isTokenChanged(item) {
-      return String(item.value || "") !== String(this.originalValues[item.tokenKey] || "");
+      return tokenSnapshot(item) !== String(this.originalValues[tokenIdentity(item)] || "");
     },
     restoreToken(item) {
-      item.value = this.originalValues[item.tokenKey] || "";
+      const original = JSON.parse(this.originalValues[tokenIdentity(item)] || "{}");
+      Object.assign(item, original);
     },
     restoreAll() {
-      this.editorValues.forEach(this.restoreToken);
+      this.editorValues.forEach((item) => this.restoreToken(item));
     },
     fieldType(item) {
       return item.valueType === "color" ? "color" : "text";
+    },
+    updateResolvedValue(item) {
+      item.value = item.activeTheme === "light"
+        ? (item.valueLight || item.valueDark)
+        : (item.valueDark || item.valueLight);
     },
     hasTemplateDraft(template) {
       return this.templates.some((candidate) => (
@@ -250,15 +278,12 @@ export default {
           tokenSetId: this.selectedSetId,
           csvText,
           sourceName: file.name,
-          dryRun: true,
+          dryRun: false,
+          registerCatalog: true,
+          activeTheme: "dark",
+          changeNote: "CSV 전체 토큰을 Dark 기준 초안으로 가져왔습니다.",
         }));
-        const imported = new Map((result.tokens || []).map((item) => [item.tokenKey, item]));
-        this.editorValues.forEach((item) => {
-          if (imported.has(item.tokenKey)) {
-            item.value = imported.get(item.tokenKey).value;
-            item.metadata = imported.get(item.tokenKey).metadata || {};
-          }
-        });
+        await this.reload(this.selectedSetId);
         this.notify("admin.designToken.importValidated");
       } catch (error) {
         this.importErrors = error.details?.errors || [];
@@ -266,9 +291,20 @@ export default {
     },
     exportCsv() {
       const lines = [
-        ["token", "value", "label", "category"],
+        [
+          "category", "category_label", "token", "label", "type", "unit",
+          "themeable", "cardinality", "value_index", "css_properties",
+          "value_light", "value_dark",
+        ],
         ...this.editorValues.map((item) => [
-          item.tokenKey, item.value, item.semanticRole || "", item.category || "",
+          item.category || "", item.categoryLabel || item.metadata?.categoryLabel || "",
+          item.tokenKey, item.label || item.metadata?.label || item.semanticRole || "",
+          item.valueType || item.metadata?.type || "", item.unit || item.metadata?.unit || "",
+          item.themeable === true || item.metadata?.themeable === true ? "TRUE" : "FALSE",
+          item.cardinality || item.metadata?.cardinality || "single",
+          Number(item.valueIndex || 0),
+          (item.cssProperties || item.metadata?.cssProperties || [item.cssProperty]).filter(Boolean).join(";"),
+          item.valueLight || "", item.valueDark || "",
         ]),
       ].map((row) => row.map(csvCell).join(","));
       const blob = new Blob([`\uFEFF${lines.join("\r\n")}`], { type: "text/csv;charset=utf-8" });
@@ -374,20 +410,30 @@ export default {
                 <th>{{ t("admin.designToken.category") }}</th>
                 <th>{{ t("admin.designToken.token") }}</th>
                 <th>{{ t("admin.designToken.type") }}</th>
+                <th>Light</th>
+                <th>Dark</th>
                 <th>{{ t("admin.designToken.value") }}</th>
                 <th>{{ t("admin.designToken.status") }}</th>
               </tr></thead>
               <tbody>
-                <tr v-for="item in filteredValues" :key="item.tokenKey" class="design-token-value" :class="{ changed: isTokenChanged(item) }">
-                  <td>{{ item.category }}</td>
-                  <td><code>{{ item.tokenKey }}</code><small>{{ item.semanticRole }}</small></td>
-                  <td>{{ item.valueType }}</td>
+                <tr v-for="item in filteredValues" :key="tokenIdentity(item)" class="design-token-value" :class="{ changed: isTokenChanged(item) }">
+                  <td>{{ item.categoryLabel || item.category }}<small>{{ item.category }}</small></td>
+                  <td>
+                    <code>{{ item.tokenKey }}</code>
+                    <small>{{ item.label || item.semanticRole }}<template v-if="item.cardinality === 'list'"> · #{{ item.valueIndex }}</template></small>
+                  </td>
+                  <td>{{ item.valueType }}<small v-if="item.unit">{{ item.unit }}</small></td>
                   <td>
                     <span class="design-token-value-control">
-                      <input v-if="fieldType(item) === 'color'" v-model="item.value" type="color" :disabled="!item.editable">
-                      <input v-model="item.value" type="text" :disabled="!item.editable">
+                      <input v-model="item.valueLight" type="text" :disabled="!item.editable" @input="updateResolvedValue(item)">
                     </span>
                   </td>
+                  <td>
+                    <span class="design-token-value-control">
+                      <input v-model="item.valueDark" type="text" :disabled="!item.editable || !item.themeable" :placeholder="item.themeable ? '' : 'Light 공통 사용'" @input="updateResolvedValue(item)">
+                    </span>
+                  </td>
+                  <td><code>{{ item.value }}</code><small>{{ item.activeTheme === "dark" ? "Dark 기준" : "Light 기준" }}</small></td>
                   <td>
                     <span>{{ t(isTokenChanged(item) ? "admin.designToken.changed" : "admin.designToken.normal") }}</span>
                     <button v-if="isTokenChanged(item)" class="text-button" type="button" @click="restoreToken(item)">{{ t("common.action.reset") }}</button>
@@ -486,7 +532,8 @@ export default {
 .design-token-table th, .design-token-table td { padding: var(--app-space-2); border-bottom: var(--app-border-width) solid var(--app-line); text-align: left; vertical-align: middle; }
 .design-token-table th { position: sticky; top: 0; z-index: 1; background: var(--app-panel-subtle, var(--app-panel)); }
 .design-token-value.changed { background: var(--app-warning-soft, var(--app-accent-soft)); }
-.design-token-value-control { display: grid; grid-template-columns: auto minmax(9rem, 1fr); gap: var(--app-space-2); }
+.design-token-value-control { display: block; min-width: 10rem; }
+.design-token-value-control input { width: 100%; }
 .design-token-value-control input[type="color"] { width: 2.75rem; padding: 0; }
 .text-button { margin-left: var(--app-space-1); border: 0; background: transparent; color: var(--app-accent); text-decoration: underline; }
 .sticky-actions { position: sticky; z-index: 2; bottom: 0; padding: var(--app-space-2); background: var(--app-panel); border-top: var(--app-border-width) solid var(--app-line); }

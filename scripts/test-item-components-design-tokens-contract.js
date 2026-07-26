@@ -90,7 +90,7 @@ assert.deepEqual(componentWithDraft.activeVersion, {
   fields: [],
 });
 assert.equal(SAFE_CSS_PROPERTIES.has("background-color"), true);
-assert.equal(SAFE_CSS_PROPERTIES.has("background-image"), false);
+assert.equal(SAFE_CSS_PROPERTIES.has("background-image"), true);
 assert.equal(validateTokenValue({ value_type: "color" }, "#AABBCC"), "");
 assert.match(validateTokenValue({ value_type: "color" }, "red"), /hex/);
 assert.match(validateTokenValue({ value_type: "length" }, "10;display:none"), /unit|unsafe/);

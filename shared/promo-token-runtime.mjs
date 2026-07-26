@@ -1,18 +1,28 @@
-const PROMO_TOKEN_KEY = /^--promo-[a-z0-9-]+$/;
+const MANAGED_TOKEN_KEY = /^--(?:promo|app)-[a-z0-9-]+$/;
 
 export function normalizePromoTokenValues(input) {
   if (Array.isArray(input)) {
-    return Object.fromEntries(input
-      .map((entry) => [
-        String(entry?.tokenKey || entry?.token_key || "").trim(),
-        String(entry?.value ?? entry?.tokenValue ?? entry?.token_value ?? "").trim(),
-      ])
-      .filter(([key, value]) => PROMO_TOKEN_KEY.test(key) && value));
+    const grouped = new Map();
+    input.forEach((entry) => {
+      const key = String(entry?.tokenKey || entry?.token_key || "").trim();
+      const value = String(entry?.value ?? entry?.tokenValue ?? entry?.token_value ?? "").trim();
+      if (!MANAGED_TOKEN_KEY.test(key) || !value) return;
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key).push({
+        value,
+        valueIndex: Math.max(0, Number.parseInt(entry?.valueIndex ?? entry?.value_index ?? 0, 10) || 0),
+      });
+    });
+    return Object.fromEntries([...grouped.entries()].map(([key, entries]) => [
+      key,
+      entries.sort((left, right) => left.valueIndex - right.valueIndex)
+        .map((entry) => entry.value).join(", "),
+    ]));
   }
   if (!input || typeof input !== "object") return {};
   return Object.fromEntries(Object.entries(input)
     .map(([key, value]) => [String(key).trim(), String(value ?? "").trim()])
-    .filter(([key, value]) => PROMO_TOKEN_KEY.test(key) && value));
+    .filter(([key, value]) => MANAGED_TOKEN_KEY.test(key) && value));
 }
 
 export function createPromoTokenRuntimeStyle(input, fallbacks = {}) {
@@ -25,21 +35,37 @@ export function createPromoTokenRuntimeStyle(input, fallbacks = {}) {
   const ctaInk = String(fallbacks.ctaInk || "#ffffff");
   const radius = String(fallbacks.radius || "2px");
   const shadow = String(fallbacks.shadow || "0 10px 32px rgba(33, 43, 61, .12)");
+  const surfaceToken = tokens["--promo-surface"] || tokens["--app-surface"];
+  const textToken = tokens["--promo-text"] || tokens["--app-ink"];
+  const mutedToken = tokens["--promo-muted"] || tokens["--app-muted"];
+  const accentToken = tokens["--promo-accent"] || tokens["--app-accent"];
+  const radiusToken = tokens["--promo-radius"] || tokens["--app-radius"];
+  const shadowToken = tokens["--promo-shadow"] || tokens["--app-shadow"];
 
   return {
-    "--promo-bg": `var(--promo-surface, ${background})`,
-    "--promo-ink": `var(--promo-text, ${text})`,
-    "--promo-muted-ink": `var(--promo-muted, ${muted})`,
-    "--promo-accent": `var(--promo-accent-token, ${accent})`,
+    "--promo-bg": surfaceToken || background,
+    "--promo-ink": textToken || text,
+    "--promo-muted-ink": mutedToken || muted,
+    "--promo-accent": accentToken || accent,
     "--promo-cta": `var(--promo-accent, ${cta})`,
     "--promo-cta-bg": fallbacks.ctaTransparent === true ? "transparent" : `var(--promo-accent, ${cta})`,
     "--promo-cta-ink": fallbacks.ctaTransparent === true ? `var(--promo-accent, ${cta})` : ctaInk,
-    "--promo-cta-radius": `var(--promo-radius, ${radius})`,
-    "--promo-image-radius": `var(--promo-radius, ${radius})`,
-    "--promo-component-radius": `var(--promo-radius, ${radius})`,
-    "--promo-component-shadow": `var(--promo-shadow, ${shadow})`,
+    "--promo-cta-radius": radiusToken || radius,
+    "--promo-image-radius": radiusToken || radius,
+    "--promo-component-radius": radiusToken || radius,
+    "--promo-component-shadow": shadowToken || shadow,
+    "--promo-font": tokens["--app-font-body"] || tokens["--promo-font"] || fallbacks.font || "",
+    "--promo-radius": radiusToken || radius,
+    "--promo-shadow": shadowToken || shadow,
+    "--promo-hero-bg-image": tokens["--app-hero-bg-image"] || "none",
+    "--promo-button-height": tokens["--app-button-height"] || "44px",
+    "--promo-space-4": tokens["--app-space-4"] || "18px",
+    "--promo-border-width": tokens["--app-border-width"] || "2px",
+    "--promo-font-size-body": tokens["--app-font-size-body"] || "16px",
+    "--promo-font-weight-strong": tokens["--app-font-weight-strong"] || "800",
+    "--promo-transition-duration": tokens["--app-transition-duration-normal"] || "200ms",
+    "--promo-transition-delay": tokens["--app-transition-delay"] || "0ms",
+    "--promo-transition-ease": tokens["--app-ease"] || "ease",
     ...tokens,
-    ...(tokens["--promo-accent"] ? { "--promo-accent-token": tokens["--promo-accent"] } : {}),
   };
 }
-

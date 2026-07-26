@@ -1,7 +1,7 @@
 const { getSql, fetchTemplateRow, fetchTemplateSections, toFormTemplate } = require("./_wizard-form-templates-store");
 const { fetchItemsForSection, normalizeAiDesign } = require("./_wizard-content-sections-store");
 const { fetchLayoutRow, toLayout, createLayoutIdentity } = require("./_wizard-form-template-layout-store");
-const { fetchTokenVersion } = require("./_design-token-store");
+const { fetchTokenVersion, toRuntimeTokenMap } = require("./_design-token-store");
 
 module.exports = async function handler(req, res) {
   if (req.method !== "GET") {
@@ -70,7 +70,8 @@ module.exports = async function handler(req, res) {
         setKey: designTokenSet.setKey,
         version: designTokenSet.version,
         versionId: designTokenSet.id,
-        values: Object.fromEntries(designTokenSet.values.map((token) => [token.tokenKey, token.value])),
+        values: toRuntimeTokenMap(designTokenSet.values),
+        sourceValues: designTokenSet.values,
       } : null,
       sections,
       configurationWarnings,

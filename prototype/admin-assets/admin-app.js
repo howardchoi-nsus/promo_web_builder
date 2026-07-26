@@ -7468,26 +7468,47 @@ function Fh(e, t, n, r, i, a) {
 		onClick: t[0] ||= (...e) => a.openEditor && a.openEditor(...e)
 	}, N(n.translate("admin.templateLayout.openEditor")), 9, Mh), n.template.status === "draft" ? (V(), H("small", Ph, N(n.translate("admin.templateLayout.draftHelp")), 1)) : (V(), H("small", Nh, N(n.translate("admin.templateLayout.readOnlyHelp")), 1))])], 8, Th);
 }
-var Ih = /*#__PURE__*/ Ch(wh, [["render", Fh]]), Lh = /^--promo-[a-z0-9-]+$/;
+var Ih = /*#__PURE__*/ Ch(wh, [["render", Fh]]), Lh = /^--(?:promo|app)-[a-z0-9-]+$/;
 function Rh(e) {
-	return Array.isArray(e) ? Object.fromEntries(e.map((e) => [String(e?.tokenKey || e?.token_key || "").trim(), String(e?.value ?? e?.tokenValue ?? e?.token_value ?? "").trim()]).filter(([e, t]) => Lh.test(e) && t)) : !e || typeof e != "object" ? {} : Object.fromEntries(Object.entries(e).map(([e, t]) => [String(e).trim(), String(t ?? "").trim()]).filter(([e, t]) => Lh.test(e) && t));
+	if (Array.isArray(e)) {
+		let t = /* @__PURE__ */ new Map();
+		return e.forEach((e) => {
+			let n = String(e?.tokenKey || e?.token_key || "").trim(), r = String(e?.value ?? e?.tokenValue ?? e?.token_value ?? "").trim();
+			!Lh.test(n) || !r || (t.has(n) || t.set(n, []), t.get(n).push({
+				value: r,
+				valueIndex: Math.max(0, Number.parseInt(e?.valueIndex ?? e?.value_index ?? 0, 10) || 0)
+			}));
+		}), Object.fromEntries([...t.entries()].map(([e, t]) => [e, t.sort((e, t) => e.valueIndex - t.valueIndex).map((e) => e.value).join(", ")]));
+	}
+	return !e || typeof e != "object" ? {} : Object.fromEntries(Object.entries(e).map(([e, t]) => [String(e).trim(), String(t ?? "").trim()]).filter(([e, t]) => Lh.test(e) && t));
 }
 function zh(e, t = {}) {
-	let n = Rh(e), r = String(t.background || "#f5f7fb"), i = String(t.text || "#172033"), a = String(t.muted || "#64748b"), o = String(t.accent || "#2563eb"), s = String(t.cta || o), c = String(t.ctaInk || "#ffffff"), l = String(t.radius || "2px"), u = String(t.shadow || "0 10px 32px rgba(33, 43, 61, .12)");
+	let n = Rh(e), r = String(t.background || "#f5f7fb"), i = String(t.text || "#172033"), a = String(t.muted || "#64748b"), o = String(t.accent || "#2563eb"), s = String(t.cta || o), c = String(t.ctaInk || "#ffffff"), l = String(t.radius || "2px"), u = String(t.shadow || "0 10px 32px rgba(33, 43, 61, .12)"), d = n["--promo-surface"] || n["--app-surface"], f = n["--promo-text"] || n["--app-ink"], p = n["--promo-muted"] || n["--app-muted"], m = n["--promo-accent"] || n["--app-accent"], h = n["--promo-radius"] || n["--app-radius"], g = n["--promo-shadow"] || n["--app-shadow"];
 	return {
-		"--promo-bg": `var(--promo-surface, ${r})`,
-		"--promo-ink": `var(--promo-text, ${i})`,
-		"--promo-muted-ink": `var(--promo-muted, ${a})`,
-		"--promo-accent": `var(--promo-accent-token, ${o})`,
+		"--promo-bg": d || r,
+		"--promo-ink": f || i,
+		"--promo-muted-ink": p || a,
+		"--promo-accent": m || o,
 		"--promo-cta": `var(--promo-accent, ${s})`,
 		"--promo-cta-bg": t.ctaTransparent === !0 ? "transparent" : `var(--promo-accent, ${s})`,
 		"--promo-cta-ink": t.ctaTransparent === !0 ? `var(--promo-accent, ${s})` : c,
-		"--promo-cta-radius": `var(--promo-radius, ${l})`,
-		"--promo-image-radius": `var(--promo-radius, ${l})`,
-		"--promo-component-radius": `var(--promo-radius, ${l})`,
-		"--promo-component-shadow": `var(--promo-shadow, ${u})`,
-		...n,
-		...n["--promo-accent"] ? { "--promo-accent-token": n["--promo-accent"] } : {}
+		"--promo-cta-radius": h || l,
+		"--promo-image-radius": h || l,
+		"--promo-component-radius": h || l,
+		"--promo-component-shadow": g || u,
+		"--promo-font": n["--app-font-body"] || n["--promo-font"] || t.font || "",
+		"--promo-radius": h || l,
+		"--promo-shadow": g || u,
+		"--promo-hero-bg-image": n["--app-hero-bg-image"] || "none",
+		"--promo-button-height": n["--app-button-height"] || "44px",
+		"--promo-space-4": n["--app-space-4"] || "18px",
+		"--promo-border-width": n["--app-border-width"] || "2px",
+		"--promo-font-size-body": n["--app-font-size-body"] || "16px",
+		"--promo-font-weight-strong": n["--app-font-weight-strong"] || "800",
+		"--promo-transition-duration": n["--app-transition-duration-normal"] || "200ms",
+		"--promo-transition-delay": n["--app-transition-delay"] || "0ms",
+		"--promo-transition-ease": n["--app-ease"] || "ease",
+		...n
 	};
 }
 //#endregion
@@ -7532,7 +7553,18 @@ function Wh(e) {
 	let t = String(e ?? "");
 	return /[",\r\n]/.test(t) ? `"${t.replaceAll("\"", "\"\"")}"` : t;
 }
-var Gh = {
+function Gh(e) {
+	return `${e.tokenKey}:${Number(e.valueIndex || 0)}`;
+}
+function Kh(e) {
+	return JSON.stringify({
+		value: String(e.value || ""),
+		valueLight: String(e.valueLight || ""),
+		valueDark: String(e.valueDark || ""),
+		activeTheme: String(e.activeTheme || "dark")
+	});
+}
+var qh = {
 	name: "DesignTokenManager",
 	props: { translate: {
 		type: Function,
@@ -7633,6 +7665,7 @@ var Gh = {
 		globalThis.removeEventListener("beforeunload", this.preventUnsavedExit);
 	},
 	methods: {
+		tokenIdentity: Gh,
 		t(e, t) {
 			return this.translate(e, t);
 		},
@@ -7679,9 +7712,13 @@ var Gh = {
 		clearDetail() {
 			this.selectedVersionId = "", this.detail = null, this.editorValues = this.definitions.map((e) => ({
 				...e,
+				valueIndex: 0,
 				value: "",
+				valueLight: "",
+				valueDark: "",
+				activeTheme: "dark",
 				metadata: {}
-			})), this.originalValues = Object.fromEntries(this.editorValues.map((e) => [e.tokenKey, e.value])), this.usage = {
+			})), this.originalValues = Object.fromEntries(this.editorValues.map((e) => [Gh(e), Kh(e)])), this.usage = {
 				templates: [],
 				aiRuns: {
 					total: 0,
@@ -7699,32 +7736,46 @@ var Gh = {
 					active: 0
 				}
 			}, this.histories = t.histories || [];
-			let n = new Map((this.detail.values || []).map((e) => [e.tokenKey, e]));
-			this.editorValues = this.definitions.map((e) => ({
-				...e,
+			let n = new Map(this.definitions.map((e) => [e.tokenKey, e])), r = this.detail.values || [];
+			this.editorValues = r.length ? r.map((e) => ({
 				...n.get(e.tokenKey) || {},
-				value: n.get(e.tokenKey)?.value || "",
-				metadata: n.get(e.tokenKey)?.metadata || {}
-			})), this.originalValues = Object.fromEntries(this.editorValues.map((e) => [e.tokenKey, e.value])), this.importErrors = [], this.validationErrors = [];
+				...e
+			})) : this.definitions.map((e) => ({
+				...e,
+				valueIndex: 0,
+				value: "",
+				valueLight: "",
+				valueDark: "",
+				activeTheme: "dark",
+				metadata: {}
+			})), this.originalValues = Object.fromEntries(this.editorValues.map((e) => [Gh(e), Kh(e)])), this.importErrors = [], this.validationErrors = [];
 		},
 		tokenPayload() {
 			return this.editorValues.map((e) => ({
 				tokenKey: e.tokenKey,
+				valueIndex: Number(e.valueIndex || 0),
 				value: e.value,
+				valueLight: e.valueLight || e.value,
+				valueDark: e.valueDark || "",
+				activeTheme: e.activeTheme || "dark",
 				metadata: e.metadata || {}
 			}));
 		},
 		isTokenChanged(e) {
-			return String(e.value || "") !== String(this.originalValues[e.tokenKey] || "");
+			return Kh(e) !== String(this.originalValues[Gh(e)] || "");
 		},
 		restoreToken(e) {
-			e.value = this.originalValues[e.tokenKey] || "";
+			let t = JSON.parse(this.originalValues[Gh(e)] || "{}");
+			Object.assign(e, t);
 		},
 		restoreAll() {
-			this.editorValues.forEach(this.restoreToken);
+			this.editorValues.forEach((e) => this.restoreToken(e));
 		},
 		fieldType(e) {
 			return e.valueType === "color" ? "color" : "text";
+		},
+		updateResolvedValue(e) {
+			e.value = e.activeTheme === "light" ? e.valueLight || e.valueDark : e.valueDark || e.valueLight;
 		},
 		hasTemplateDraft(e) {
 			return this.templates.some((t) => t.templateKey === e.templateKey && t.status === "draft");
@@ -7770,15 +7821,16 @@ var Gh = {
 				}
 				this.csvSourceName = t.name;
 				try {
-					let e = (await t.text()).replace(/^\uFEFF/, ""), n = await this.run(() => Hh.importCsv({
+					let e = (await t.text()).replace(/^\uFEFF/, "");
+					await this.run(() => Hh.importCsv({
 						tokenSetId: this.selectedSetId,
 						csvText: e,
 						sourceName: t.name,
-						dryRun: !0
-					})), r = new Map((n.tokens || []).map((e) => [e.tokenKey, e]));
-					this.editorValues.forEach((e) => {
-						r.has(e.tokenKey) && (e.value = r.get(e.tokenKey).value, e.metadata = r.get(e.tokenKey).metadata || {});
-					}), this.notify("admin.designToken.importValidated");
+						dryRun: !1,
+						registerCatalog: !0,
+						activeTheme: "dark",
+						changeNote: "CSV 전체 토큰을 Dark 기준 초안으로 가져왔습니다."
+					})), await this.reload(this.selectedSetId), this.notify("admin.designToken.importValidated");
 				} catch (e) {
 					this.importErrors = e.details?.errors || [];
 				}
@@ -7786,15 +7838,31 @@ var Gh = {
 		},
 		exportCsv() {
 			let e = [[
+				"category",
+				"category_label",
 				"token",
-				"value",
 				"label",
-				"category"
+				"type",
+				"unit",
+				"themeable",
+				"cardinality",
+				"value_index",
+				"css_properties",
+				"value_light",
+				"value_dark"
 			], ...this.editorValues.map((e) => [
+				e.category || "",
+				e.categoryLabel || e.metadata?.categoryLabel || "",
 				e.tokenKey,
-				e.value,
-				e.semanticRole || "",
-				e.category || ""
+				e.label || e.metadata?.label || e.semanticRole || "",
+				e.valueType || e.metadata?.type || "",
+				e.unit || e.metadata?.unit || "",
+				e.themeable === !0 || e.metadata?.themeable === !0 ? "TRUE" : "FALSE",
+				e.cardinality || e.metadata?.cardinality || "single",
+				Number(e.valueIndex || 0),
+				(e.cssProperties || e.metadata?.cssProperties || [e.cssProperty]).filter(Boolean).join(";"),
+				e.valueLight || "",
+				e.valueDark || ""
 			])].map((e) => e.map(Wh).join(",")), t = new Blob([`\uFEFF${e.join("\r\n")}`], { type: "text/csv;charset=utf-8" }), n = URL.createObjectURL(t), r = document.createElement("a");
 			r.href = n, r.download = `${this.selectedSet?.setKey || "promo-design-tokens"}.csv`, r.click(), URL.revokeObjectURL(n);
 		},
@@ -7828,38 +7896,47 @@ var Gh = {
 			this.isDirty && (e.preventDefault(), e.returnValue = "");
 		}
 	}
-}, Kh = { class: "design-token-manager" }, qh = { class: "design-token-toolbar" }, Jh = { class: "design-token-actions" }, Yh = ["disabled"], Xh = {
+}, Jh = { class: "design-token-manager" }, Yh = { class: "design-token-toolbar" }, Xh = { class: "design-token-actions" }, Zh = ["disabled"], Qh = {
 	key: 0,
 	class: "outline-item danger-state"
-}, Zh = { class: "field" }, Qh = { class: "field" }, $h = ["disabled"], eg = { class: "design-token-grid" }, tg = { class: "design-token-column design-token-list" }, ng = ["onClick"], rg = {
+}, $h = { class: "field" }, eg = { class: "field" }, tg = ["disabled"], ng = { class: "design-token-grid" }, rg = { class: "design-token-column design-token-list" }, ig = ["onClick"], ag = {
 	key: 0,
 	class: "empty-state"
-}, ig = { class: "design-token-column design-token-editor" }, ag = { class: "design-token-table-toolbar" }, og = ["placeholder"], sg = { value: "" }, cg = ["value"], lg = { class: "design-token-check" }, ug = ["disabled"], dg = { class: "design-token-table-wrap" }, fg = { class: "design-token-table" }, pg = { class: "design-token-value-control" }, mg = ["onUpdate:modelValue", "disabled"], hg = ["onUpdate:modelValue", "disabled"], gg = ["onClick"], _g = {
+}, og = { class: "design-token-column design-token-editor" }, sg = { class: "design-token-table-toolbar" }, cg = ["placeholder"], lg = { value: "" }, ug = ["value"], dg = { class: "design-token-check" }, fg = ["disabled"], pg = { class: "design-token-table-wrap" }, mg = { class: "design-token-table" }, hg = { key: 0 }, gg = { class: "design-token-value-control" }, _g = [
+	"onUpdate:modelValue",
+	"disabled",
+	"onInput"
+], vg = { class: "design-token-value-control" }, yg = [
+	"onUpdate:modelValue",
+	"disabled",
+	"placeholder",
+	"onInput"
+], bg = ["onClick"], xg = {
 	key: 0,
 	class: "design-token-errors"
-}, vg = { class: "design-token-actions sticky-actions" }, yg = { class: "tiny-button file-button" }, bg = {
+}, Sg = { class: "design-token-actions sticky-actions" }, Cg = { class: "tiny-button file-button" }, wg = {
 	key: 0,
 	class: "source-name"
-}, xg = ["disabled"], Sg = ["disabled"], Cg = { class: "design-token-column design-token-inspector" }, wg = { class: "design-token-section" }, Tg = { class: "design-token-actions" }, Eg = { class: "rendered-section" }, Dg = { class: "rendered-section__inner" }, Og = { class: "rendered-empty" }, kg = { class: "rendered-text rendered-text--title" }, Ag = { class: "rendered-cta" }, jg = { class: "design-token-section" }, Mg = ["value", "disabled"], Ng = { key: 0 }, Pg = { class: "design-token-section" }, Fg = { class: "field" }, Ig = { class: "field" }, Lg = { class: "field" }, Rg = { class: "design-token-actions" }, zg = ["disabled"], Bg = ["disabled"], Vg = { class: "field" }, Hg = { class: "field" }, Ug = ["disabled"];
-function Wg(e, t, n, r, i, a) {
-	return V(), H("section", Kh, [
-		U("div", qh, [U("div", null, [U("h2", null, N(a.t("admin.designToken.title")), 1), U("p", null, N(a.t("admin.designToken.scopeNotice")), 1)]), U("div", Jh, [U("button", {
+}, Tg = ["disabled"], Eg = ["disabled"], Dg = { class: "design-token-column design-token-inspector" }, Og = { class: "design-token-section" }, kg = { class: "design-token-actions" }, Ag = { class: "rendered-section" }, jg = { class: "rendered-section__inner" }, Mg = { class: "rendered-empty" }, Ng = { class: "rendered-text rendered-text--title" }, Pg = { class: "rendered-cta" }, Fg = { class: "design-token-section" }, Ig = ["value", "disabled"], Lg = { key: 0 }, Rg = { class: "design-token-section" }, zg = { class: "field" }, Bg = { class: "field" }, Vg = { class: "field" }, Hg = { class: "design-token-actions" }, Ug = ["disabled"], Wg = ["disabled"], Gg = { class: "field" }, Kg = { class: "field" }, qg = ["disabled"];
+function Jg(e, t, n, r, i, a) {
+	return V(), H("section", Jh, [
+		U("div", Yh, [U("div", null, [U("h2", null, N(a.t("admin.designToken.title")), 1), U("p", null, N(a.t("admin.designToken.scopeNotice")), 1)]), U("div", Xh, [U("button", {
 			class: "tiny-button",
 			type: "button",
 			disabled: i.loading,
 			onClick: t[0] ||= (e) => a.reload()
-		}, N(a.t("common.action.refresh")), 9, Yh), U("button", {
+		}, N(a.t("common.action.refresh")), 9, Zh), U("button", {
 			class: "tiny-button primary",
 			type: "button",
 			onClick: t[1] ||= (e) => i.showCreate = !i.showCreate
 		}, N(a.t("admin.designToken.addSet")), 1)])]),
-		i.error ? (V(), H("div", Xh, N(i.error), 1)) : Bs("", !0),
+		i.error ? (V(), H("div", Qh, N(i.error), 1)) : Bs("", !0),
 		i.showCreate ? (V(), H("form", {
 			key: 1,
 			class: "design-token-create",
 			onSubmit: t[4] ||= xu((...e) => a.createSet && a.createSet(...e), ["prevent"])
 		}, [
-			U("label", Zh, [U("span", null, N(a.t("admin.designToken.name")), 1), jr(U("input", {
+			U("label", $h, [U("span", null, N(a.t("admin.designToken.name")), 1), jr(U("input", {
 				"onUpdate:modelValue": t[2] ||= (e) => i.createForm.name = e,
 				required: ""
 			}, null, 512), [[
@@ -7868,7 +7945,7 @@ function Wg(e, t, n, r, i, a) {
 				void 0,
 				{ trim: !0 }
 			]])]),
-			U("label", Qh, [U("span", null, N(a.t("admin.designToken.description")), 1), jr(U("input", { "onUpdate:modelValue": t[3] ||= (e) => i.createForm.description = e }, null, 512), [[
+			U("label", eg, [U("span", null, N(a.t("admin.designToken.description")), 1), jr(U("input", { "onUpdate:modelValue": t[3] ||= (e) => i.createForm.description = e }, null, 512), [[
 				su,
 				i.createForm.description,
 				void 0,
@@ -7878,10 +7955,10 @@ function Wg(e, t, n, r, i, a) {
 				class: "tiny-button primary",
 				type: "submit",
 				disabled: i.saving
-			}, N(a.t("common.action.create")), 9, $h)
+			}, N(a.t("common.action.create")), 9, tg)
 		], 32)) : Bs("", !0),
-		U("div", eg, [
-			U("aside", tg, [
+		U("div", ng, [
+			U("aside", rg, [
 				U("strong", null, N(a.t("admin.designToken.setList")), 1),
 				(V(!0), H(z, null, Oa(i.tokenSets, (e) => (V(), H("button", {
 					key: e.id,
@@ -7892,26 +7969,26 @@ function Wg(e, t, n, r, i, a) {
 					U("span", null, N(e.name), 1),
 					U("small", null, N(e.setKey), 1),
 					U("small", null, "v" + N(e.draftVersion?.version || e.activeVersion?.version || e.version), 1)
-				], 10, ng))), 128)),
-				!i.loading && !i.tokenSets.length ? (V(), H("div", rg, N(a.t("admin.designToken.emptySets")), 1)) : Bs("", !0)
+				], 10, ig))), 128)),
+				!i.loading && !i.tokenSets.length ? (V(), H("div", ag, N(a.t("admin.designToken.emptySets")), 1)) : Bs("", !0)
 			]),
-			U("main", ig, [a.selectedSet && i.detail ? (V(), H(z, { key: 0 }, [
-				U("div", ag, [
+			U("main", og, [a.selectedSet && i.detail ? (V(), H(z, { key: 0 }, [
+				U("div", sg, [
 					jr(U("input", {
 						"onUpdate:modelValue": t[5] ||= (e) => i.searchTerm = e,
 						type: "search",
 						placeholder: a.t("admin.designToken.search")
-					}, null, 8, og), [[
+					}, null, 8, cg), [[
 						su,
 						i.searchTerm,
 						void 0,
 						{ trim: !0 }
 					]]),
-					jr(U("select", { "onUpdate:modelValue": t[6] ||= (e) => i.categoryFilter = e }, [U("option", sg, N(a.t("admin.designToken.allCategories")), 1), (V(!0), H(z, null, Oa(a.categories, (e) => (V(), H("option", {
+					jr(U("select", { "onUpdate:modelValue": t[6] ||= (e) => i.categoryFilter = e }, [U("option", lg, N(a.t("admin.designToken.allCategories")), 1), (V(!0), H(z, null, Oa(a.categories, (e) => (V(), H("option", {
 						key: e,
 						value: e
-					}, N(e), 9, cg))), 128))], 512), [[du, i.categoryFilter]]),
-					U("label", lg, [jr(U("input", {
+					}, N(e), 9, ug))), 128))], 512), [[du, i.categoryFilter]]),
+					U("label", dg, [jr(U("input", {
 						"onUpdate:modelValue": t[7] ||= (e) => i.changedOnly = e,
 						type: "checkbox"
 					}, null, 512), [[cu, i.changedOnly]]), Rs(" " + N(a.t("admin.designToken.changedOnly")), 1)]),
@@ -7920,41 +7997,47 @@ function Wg(e, t, n, r, i, a) {
 						type: "button",
 						disabled: !a.isDirty,
 						onClick: t[8] ||= (...e) => a.restoreAll && a.restoreAll(...e)
-					}, N(a.t("common.action.reset")), 9, ug)
+					}, N(a.t("common.action.reset")), 9, fg)
 				]),
-				U("div", dg, [U("table", fg, [U("thead", null, [U("tr", null, [
+				U("div", pg, [U("table", mg, [U("thead", null, [U("tr", null, [
 					U("th", null, N(a.t("admin.designToken.category")), 1),
 					U("th", null, N(a.t("admin.designToken.token")), 1),
 					U("th", null, N(a.t("admin.designToken.type")), 1),
+					t[25] ||= U("th", null, "Light", -1),
+					t[26] ||= U("th", null, "Dark", -1),
 					U("th", null, N(a.t("admin.designToken.value")), 1),
 					U("th", null, N(a.t("admin.designToken.status")), 1)
 				])]), U("tbody", null, [(V(!0), H(z, null, Oa(a.filteredValues, (e) => (V(), H("tr", {
-					key: e.tokenKey,
+					key: a.tokenIdentity(e),
 					class: Ee(["design-token-value", { changed: a.isTokenChanged(e) }])
 				}, [
-					U("td", null, N(e.category), 1),
-					U("td", null, [U("code", null, N(e.tokenKey), 1), U("small", null, N(e.semanticRole), 1)]),
-					U("td", null, N(e.valueType), 1),
-					U("td", null, [U("span", pg, [a.fieldType(e) === "color" ? jr((V(), H("input", {
-						key: 0,
-						"onUpdate:modelValue": (t) => e.value = t,
-						type: "color",
-						disabled: !e.editable
-					}, null, 8, mg)), [[su, e.value]]) : Bs("", !0), jr(U("input", {
-						"onUpdate:modelValue": (t) => e.value = t,
+					U("td", null, [Rs(N(e.categoryLabel || e.category), 1), U("small", null, N(e.category), 1)]),
+					U("td", null, [U("code", null, N(e.tokenKey), 1), U("small", null, [Rs(N(e.label || e.semanticRole), 1), e.cardinality === "list" ? (V(), H(z, { key: 0 }, [Rs(" · #" + N(e.valueIndex), 1)], 64)) : Bs("", !0)])]),
+					U("td", null, [Rs(N(e.valueType), 1), e.unit ? (V(), H("small", hg, N(e.unit), 1)) : Bs("", !0)]),
+					U("td", null, [U("span", gg, [jr(U("input", {
+						"onUpdate:modelValue": (t) => e.valueLight = t,
 						type: "text",
-						disabled: !e.editable
-					}, null, 8, hg), [[su, e.value]])])]),
+						disabled: !e.editable,
+						onInput: (t) => a.updateResolvedValue(e)
+					}, null, 40, _g), [[su, e.valueLight]])])]),
+					U("td", null, [U("span", vg, [jr(U("input", {
+						"onUpdate:modelValue": (t) => e.valueDark = t,
+						type: "text",
+						disabled: !e.editable || !e.themeable,
+						placeholder: e.themeable ? "" : "Light 공통 사용",
+						onInput: (t) => a.updateResolvedValue(e)
+					}, null, 40, yg), [[su, e.valueDark]])])]),
+					U("td", null, [U("code", null, N(e.value), 1), U("small", null, N(e.activeTheme === "dark" ? "Dark 기준" : "Light 기준"), 1)]),
 					U("td", null, [U("span", null, N(a.t(a.isTokenChanged(e) ? "admin.designToken.changed" : "admin.designToken.normal")), 1), a.isTokenChanged(e) ? (V(), H("button", {
 						key: 0,
 						class: "text-button",
 						type: "button",
 						onClick: (t) => a.restoreToken(e)
-					}, N(a.t("common.action.reset")), 9, gg)) : Bs("", !0)])
+					}, N(a.t("common.action.reset")), 9, bg)) : Bs("", !0)])
 				], 2))), 128))])])]),
-				i.validationErrors.length || i.importErrors.length ? (V(), H("div", _g, [U("strong", null, N(a.t("admin.designToken.validationErrors")), 1), (V(!0), H(z, null, Oa([...i.validationErrors, ...i.importErrors], (e) => (V(), H("span", { key: `${e.tokenKey}-${e.message}` }, N(e.tokenKey) + ": " + N(e.message), 1))), 128))])) : Bs("", !0),
-				U("div", vg, [
-					U("label", yg, [Rs(N(a.t("admin.designToken.csvImport")) + " ", 1), U("input", {
+				i.validationErrors.length || i.importErrors.length ? (V(), H("div", xg, [U("strong", null, N(a.t("admin.designToken.validationErrors")), 1), (V(!0), H(z, null, Oa([...i.validationErrors, ...i.importErrors], (e) => (V(), H("span", { key: `${e.tokenKey}-${e.message}` }, N(e.tokenKey) + ": " + N(e.message), 1))), 128))])) : Bs("", !0),
+				U("div", Sg, [
+					U("label", Cg, [Rs(N(a.t("admin.designToken.csvImport")) + " ", 1), U("input", {
 						type: "file",
 						accept: ".csv,text/csv",
 						onChange: t[9] ||= (...e) => a.onCsvFile && a.onCsvFile(...e)
@@ -7964,25 +8047,25 @@ function Wg(e, t, n, r, i, a) {
 						type: "button",
 						onClick: t[10] ||= (...e) => a.exportCsv && a.exportCsv(...e)
 					}, N(a.t("admin.designToken.csvExport")), 1),
-					i.csvSourceName ? (V(), H("span", bg, N(i.csvSourceName), 1)) : Bs("", !0),
+					i.csvSourceName ? (V(), H("span", wg, N(i.csvSourceName), 1)) : Bs("", !0),
 					U("button", {
 						class: "tiny-button",
 						type: "button",
 						disabled: i.saving || !a.isDirty,
 						onClick: t[11] ||= (...e) => a.save && a.save(...e)
-					}, N(a.t("common.action.save")), 9, xg),
+					}, N(a.t("common.action.save")), 9, Tg),
 					U("button", {
 						class: "tiny-button primary",
 						type: "button",
 						disabled: i.saving || !i.selectedTemplateIds.length,
 						onClick: t[12] ||= (...e) => a.saveAndApply && a.saveAndApply(...e)
-					}, N(a.t("admin.designToken.saveAndApply")), 9, Sg)
+					}, N(a.t("admin.designToken.saveAndApply")), 9, Eg)
 				])
 			], 64)) : Bs("", !0)]),
-			U("aside", Cg, [a.selectedSet && i.detail ? (V(), H(z, { key: 0 }, [
-				U("section", wg, [
+			U("aside", Dg, [a.selectedSet && i.detail ? (V(), H(z, { key: 0 }, [
+				U("section", Og, [
 					U("h3", null, N(a.t("admin.designToken.preview")), 1),
-					U("div", Tg, [U("button", {
+					U("div", kg, [U("button", {
 						class: Ee(["tiny-button", { primary: i.previewViewport === "desktop" }]),
 						type: "button",
 						onClick: t[13] ||= (e) => i.previewViewport = "desktop"
@@ -7994,14 +8077,14 @@ function Wg(e, t, n, r, i, a) {
 					U("div", { class: Ee(["design-token-preview-stage", `is-${i.previewViewport}`]) }, [U("div", {
 						class: "promo-renderer",
 						style: xe(a.previewStyle)
-					}, [U("section", Eg, [U("div", Dg, [
-						U("small", Og, N(a.t("admin.designToken.previewEyebrow")), 1),
-						U("h4", kg, N(a.t("admin.designToken.previewTitle")), 1),
+					}, [U("section", Ag, [U("div", jg, [
+						U("small", Mg, N(a.t("admin.designToken.previewEyebrow")), 1),
+						U("h4", Ng, N(a.t("admin.designToken.previewTitle")), 1),
 						U("p", null, N(a.t("admin.designToken.previewBody")), 1),
-						U("a", Ag, N(a.t("admin.designToken.previewButton")), 1)
+						U("a", Pg, N(a.t("admin.designToken.previewButton")), 1)
 					])])], 4)], 2)
 				]),
-				U("section", jg, [U("h3", null, N(a.t("admin.designToken.applyTemplates")), 1), (V(!0), H(z, null, Oa(a.activeTemplates, (e) => (V(), H("label", {
+				U("section", Fg, [U("h3", null, N(a.t("admin.designToken.applyTemplates")), 1), (V(!0), H(z, null, Oa(a.activeTemplates, (e) => (V(), H("label", {
 					key: e.id,
 					class: Ee(["template-choice", { disabled: a.hasTemplateDraft(e) }])
 				}, [
@@ -8010,25 +8093,25 @@ function Wg(e, t, n, r, i, a) {
 						type: "checkbox",
 						value: e.id,
 						disabled: a.hasTemplateDraft(e)
-					}, null, 8, Mg), [[cu, i.selectedTemplateIds]]),
+					}, null, 8, Ig), [[cu, i.selectedTemplateIds]]),
 					U("span", null, [Rs(N(e.name) + " ", 1), U("small", null, "v" + N(e.version), 1)]),
-					a.hasTemplateDraft(e) ? (V(), H("small", Ng, N(a.t("admin.designToken.templateDraftConflict")), 1)) : Bs("", !0)
+					a.hasTemplateDraft(e) ? (V(), H("small", Lg, N(a.t("admin.designToken.templateDraftConflict")), 1)) : Bs("", !0)
 				], 2))), 128))]),
-				U("details", Pg, [
+				U("details", Rg, [
 					U("summary", null, N(a.t("admin.designToken.settings")), 1),
-					U("label", Fg, [U("span", null, N(a.t("admin.designToken.name")), 1), jr(U("input", { "onUpdate:modelValue": t[16] ||= (e) => i.metadata.name = e }, null, 512), [[su, i.metadata.name]])]),
-					U("label", Ig, [U("span", null, N(a.t("admin.designToken.description")), 1), jr(U("textarea", {
+					U("label", zg, [U("span", null, N(a.t("admin.designToken.name")), 1), jr(U("input", { "onUpdate:modelValue": t[16] ||= (e) => i.metadata.name = e }, null, 512), [[su, i.metadata.name]])]),
+					U("label", Bg, [U("span", null, N(a.t("admin.designToken.description")), 1), jr(U("textarea", {
 						"onUpdate:modelValue": t[17] ||= (e) => i.metadata.description = e,
 						rows: "2"
 					}, null, 512), [[su, i.metadata.description]])]),
-					U("label", Lg, [U("span", null, N(a.t("admin.designToken.changeNote")), 1), jr(U("input", { "onUpdate:modelValue": t[18] ||= (e) => i.metadata.changeNote = e }, null, 512), [[su, i.metadata.changeNote]])]),
-					U("div", Rg, [
+					U("label", Vg, [U("span", null, N(a.t("admin.designToken.changeNote")), 1), jr(U("input", { "onUpdate:modelValue": t[18] ||= (e) => i.metadata.changeNote = e }, null, 512), [[su, i.metadata.changeNote]])]),
+					U("div", Hg, [
 						U("button", {
 							class: "tiny-button",
 							type: "button",
 							disabled: i.saving,
 							onClick: t[19] ||= (...e) => a.saveMetadata && a.saveMetadata(...e)
-						}, N(a.t("common.action.save")), 9, zg),
+						}, N(a.t("common.action.save")), 9, Ug),
 						U("button", {
 							class: "tiny-button",
 							type: "button",
@@ -8039,14 +8122,14 @@ function Wg(e, t, n, r, i, a) {
 							type: "button",
 							disabled: i.saving || i.usage.templates.length || i.usage.aiRuns.active,
 							onClick: t[21] ||= (...e) => a.archiveSet && a.archiveSet(...e)
-						}, N(a.t("common.action.archive")), 9, Bg)
+						}, N(a.t("common.action.archive")), 9, Wg)
 					]),
 					i.showClone ? (V(), H("form", {
 						key: 0,
 						class: "design-token-clone",
 						onSubmit: t[24] ||= xu((...e) => a.cloneSet && a.cloneSet(...e), ["prevent"])
 					}, [
-						U("label", Vg, [U("span", null, N(a.t("admin.designToken.cloneName")), 1), jr(U("input", {
+						U("label", Gg, [U("span", null, N(a.t("admin.designToken.cloneName")), 1), jr(U("input", {
 							"onUpdate:modelValue": t[22] ||= (e) => i.cloneForm.name = e,
 							required: ""
 						}, null, 512), [[
@@ -8055,7 +8138,7 @@ function Wg(e, t, n, r, i, a) {
 							void 0,
 							{ trim: !0 }
 						]])]),
-						U("label", Hg, [U("span", null, N(a.t("admin.designToken.description")), 1), jr(U("input", { "onUpdate:modelValue": t[23] ||= (e) => i.cloneForm.description = e }, null, 512), [[
+						U("label", Kg, [U("span", null, N(a.t("admin.designToken.description")), 1), jr(U("input", { "onUpdate:modelValue": t[23] ||= (e) => i.cloneForm.description = e }, null, 512), [[
 							su,
 							i.cloneForm.description,
 							void 0,
@@ -8065,14 +8148,14 @@ function Wg(e, t, n, r, i, a) {
 							class: "tiny-button primary",
 							type: "submit",
 							disabled: i.saving
-						}, N(a.t("common.action.duplicate")), 9, Ug)
+						}, N(a.t("common.action.duplicate")), 9, qg)
 					], 32)) : Bs("", !0)
 				])
 			], 64)) : Bs("", !0)])
 		])
 	]);
 }
-var Gg = /*#__PURE__*/ Ch(Gh, [["render", Wg], ["__scopeId", "data-v-b5b2b97d"]]), Kg = /* @__PURE__ */ o((() => {
+var Yg = /*#__PURE__*/ Ch(qh, [["render", Jg], ["__scopeId", "data-v-bcd04bc7"]]), Xg = /* @__PURE__ */ o((() => {
 	var e = {
 		documents: "promoPrototype.documents.abc",
 		generatedPages: "promoPrototype.generatedPages.abc",
@@ -13319,6 +13402,6 @@ yh(document), globalThis.Vue = gh, globalThis.PromoAdminTemplateLayout = Object.
 	component: Ih
 }), globalThis.PromoAdminDesignTokens = Object.freeze({
 	service: Hh,
-	component: Gg
-}), await Promise.resolve().then(() => /* @__PURE__ */ l(Kg()));
+	component: Yg
+}), await Promise.resolve().then(() => /* @__PURE__ */ l(Xg()));
 //#endregion

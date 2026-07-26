@@ -2,7 +2,7 @@ const { getSql, parseBody, fetchTemplateRow, toFormTemplate } = require("./_wiza
 const {
   fetchLayoutRow, toLayout, fetchTemplateWithItems, ensureLayout, validateLayoutSpec, createLayoutIdentity,
 } = require("./_wizard-form-template-layout-store");
-const { fetchTokenVersion } = require("./_design-token-store");
+const { fetchTokenVersion, toRuntimeTokenMap } = require("./_design-token-store");
 
 module.exports = async function handler(req, res) {
   try {
@@ -35,7 +35,8 @@ async function getLayout(req, res) {
         setKey: tokenVersion.setKey,
         version: tokenVersion.version,
         versionId: tokenVersion.id,
-        values: Object.fromEntries(tokenVersion.values.map((token) => [token.tokenKey, token.value])),
+        values: toRuntimeTokenMap(tokenVersion.values),
+        sourceValues: tokenVersion.values,
       } : null,
     },
     sections: detail.sections,

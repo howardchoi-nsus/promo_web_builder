@@ -2,12 +2,18 @@ const { getDatabaseUrl } = require("./_db");
 const { neon } = require("@neondatabase/serverless");
 const { randomUUID } = require("node:crypto");
 
-const VALUE_TYPES = ["color", "length", "number", "font", "shadow", "enum"];
+const VALUE_TYPES = [
+  "color", "length", "number", "font", "fontFamily", "shadow", "gradient",
+  "duration", "easing", "enum",
+];
 const SAFE_CSS_PROPERTIES = new Set([
   "color", "background-color", "border-color", "border-radius", "border-width",
   "box-shadow", "font-family", "font-size", "font-weight", "line-height",
-  "letter-spacing", "padding", "gap", "max-width", "min-height",
+  "letter-spacing", "padding", "gap", "margin", "width", "height", "max-width",
+  "min-width", "min-height", "outline-color", "background-image", "z-index",
+  "transition-duration", "transition-delay", "transition-timing-function",
 ]);
+const TOKEN_KEY_PATTERN = /^--(?:promo|app)-[a-z0-9-]+$/;
 
 function getSql() {
   const url = getDatabaseUrl();
@@ -34,9 +40,19 @@ function createTokenSetKey(name) {
 function validateTokenValue(definition, value) {
   const text = String(value ?? "").trim();
   if (!text) return "token value is required";
-  if (definition.value_type === "color" && !/^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(text)) return "color must be a 6 or 8 digit hex value";
+  if (definition.value_type === "color"
+    && !/^(?:#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?|rgba?\(\s*(?:\d+|\d*\.\d+)(?:\s*,\s*(?:\d+|\d*\.\d+)){2}(?:\s*,\s*(?:\d+|\d*\.\d+))?\s*\))$/.test(text)) {
+    return "color must be a hex, rgb, or rgba value";
+  }
   if (definition.value_type === "length" && !/^-?(?:\d+|\d*\.\d+)(?:px|rem|em|%|vh|vw)$/.test(text)) return "length requires an allowed CSS unit";
+  if (definition.value_type === "duration" && !/^(?:\d+|\d*\.\d+)(?:ms|s)$/.test(text)) return "duration requires ms or s";
   if (definition.value_type === "number" && !Number.isFinite(Number(text))) return "number is invalid";
+  if (definition.value_type === "easing"
+    && !/^(?:linear|ease|ease-in|ease-out|ease-in-out|cubic-bezier\(\s*-?(?:\d+|\d*\.\d+)\s*,\s*-?(?:\d+|\d*\.\d+)\s*,\s*-?(?:\d+|\d*\.\d+)\s*,\s*-?(?:\d+|\d*\.\d+)\s*\))$/.test(text)) {
+    return "easing value is invalid";
+  }
+  if (definition.value_type === "gradient"
+    && !/^(?:linear|radial|conic)-gradient\(.+\)$/i.test(text)) return "gradient value is invalid";
   if (definition.value_type === "enum" && Array.isArray(definition.allowed_values)
     && definition.allowed_values.length && !definition.allowed_values.includes(text)) return "enum value is not allowed";
   if (/url\s*\(|expression\s*\(|[;{}]/i.test(text)) return "unsafe CSS token value";
@@ -71,26 +87,40 @@ function normalizeTokenEntries(entries, definitions) {
   const seen = new Set();
   (Array.isArray(entries) ? entries : []).forEach((entry, index) => {
     const tokenKey = String(entry?.tokenKey || entry?.token_key || "").trim();
+    const valueIndex = Math.max(0, Number.parseInt(entry?.valueIndex ?? entry?.value_index ?? 0, 10) || 0);
+    const identity = `${tokenKey}:${valueIndex}`;
     const definition = byKey.get(tokenKey);
     if (!tokenKey) errors.push({ index, tokenKey, message: "token key is required" });
-    else if (seen.has(tokenKey)) errors.push({ index, tokenKey, message: "duplicate token key" });
+    else if (!TOKEN_KEY_PATTERN.test(tokenKey)) errors.push({ index, tokenKey, message: "token key namespace is not allowed" });
+    else if (seen.has(identity)) errors.push({ index, tokenKey, valueIndex, message: "duplicate token key and value index" });
     else if (!definition) errors.push({ index, tokenKey, message: "token is not registered in the promo catalog" });
-    else if (!SAFE_CSS_PROPERTIES.has(definition.css_property)) errors.push({ index, tokenKey, message: "CSS property is not allowed" });
+    else if (!(Array.isArray(definition.css_properties) && definition.css_properties.length
+      ? definition.css_properties
+      : [definition.css_property]).every((property) => SAFE_CSS_PROPERTIES.has(property))) {
+      errors.push({ index, tokenKey, message: "CSS property is not allowed" });
+    }
     else {
       const message = validateTokenValue(definition, entry?.value);
       if (message) errors.push({ index, tokenKey, message });
     }
-    seen.add(tokenKey);
+    seen.add(identity);
     normalized.push({
       tokenKey,
+      valueIndex,
       value: String(entry?.value ?? "").trim(),
+      valueLight: String(entry?.valueLight ?? entry?.value_light ?? entry?.value ?? "").trim(),
+      valueDark: String(entry?.valueDark ?? entry?.value_dark ?? "").trim(),
+      activeTheme: String(entry?.activeTheme || entry?.active_theme || "dark").trim() === "light" ? "light" : "dark",
       metadata: entry?.metadata && typeof entry.metadata === "object" && !Array.isArray(entry.metadata)
         ? entry.metadata
         : {},
     });
   });
+  const namespacesPresent = new Set(normalized.map((entry) => entry.tokenKey.split("-")[2]).filter(Boolean));
   (definitions || []).filter((definition) => definition.required).forEach((definition) => {
-    if (!seen.has(definition.token_key)) {
+    const namespace = String(definition.token_key || "").split("-")[2];
+    if (!namespacesPresent.has(namespace)) return;
+    if (![...seen].some((identity) => identity.startsWith(`${definition.token_key}:`))) {
       errors.push({ tokenKey: definition.token_key, message: "required token is missing" });
     }
   });
@@ -138,12 +168,16 @@ async function fetchTokenVersion(sql, versionId) {
   `;
   if (!rows.length) return null;
   const values = await sql`
-    select value.token_key, value.token_value, value.metadata, definition.category,
+    select value.token_key, value.value_index, value.token_value, value.value_light,
+      value.value_dark, value.active_theme, value.metadata, definition.category,
       definition.value_type, definition.semantic_role, definition.css_property,
-      definition.required, definition.ai_selectable, definition.editable
+      definition.css_properties, definition.category_label, definition.label,
+      definition.unit, definition.themeable, definition.cardinality,
+      definition.source_metadata, definition.required, definition.ai_selectable, definition.editable
     from promo_design_token_values value
     join promo_design_token_definitions definition on definition.token_key = value.token_key
-    where value.token_set_version_id = ${versionId}::uuid order by definition.category, value.token_key
+    where value.token_set_version_id = ${versionId}::uuid
+    order by definition.category, value.token_key, value.value_index
   `;
   const row = rows[0];
   return {
@@ -151,8 +185,17 @@ async function fetchTokenVersion(sql, versionId) {
     description: row.description || "", version: Number(row.version), status: row.status,
     sourceName: row.source_name || "", sourceHash: row.source_hash || "", changeNote: row.change_note || "",
     values: values.map((value) => ({
-      tokenKey: value.token_key, value: value.token_value, metadata: value.metadata || {}, category: value.category,
-      valueType: value.value_type, semanticRole: value.semantic_role, cssProperty: value.css_property,
+      tokenKey: value.token_key, valueIndex: Number(value.value_index || 0),
+      value: value.token_value, valueLight: value.value_light || "",
+      valueDark: value.value_dark || "", activeTheme: value.active_theme || "dark",
+      metadata: value.metadata || {}, category: value.category,
+      categoryLabel: value.category_label || "", label: value.label || "",
+      unit: value.unit || "", themeable: Boolean(value.themeable),
+      cardinality: value.cardinality || "single",
+      valueType: value.value_type, semanticRole: value.semantic_role,
+      cssProperty: value.css_property,
+      cssProperties: Array.isArray(value.css_properties) ? value.css_properties : [value.css_property].filter(Boolean),
+      sourceMetadata: value.source_metadata || {},
       required: Boolean(value.required), aiSelectable: Boolean(value.ai_selectable), editable: Boolean(value.editable),
     })), createdAt: row.created_at, updatedAt: row.updated_at,
   };
@@ -255,9 +298,29 @@ async function fetchTokenSetUsage(sql, tokenSetId) {
   };
 }
 
+function toRuntimeTokenMap(values) {
+  const grouped = new Map();
+  (Array.isArray(values) ? values : []).forEach((entry) => {
+    const key = String(entry?.tokenKey || entry?.token_key || "").trim();
+    const value = String(entry?.value ?? entry?.tokenValue ?? entry?.token_value ?? "").trim();
+    if (!TOKEN_KEY_PATTERN.test(key) || !value) return;
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key).push({
+      value,
+      valueIndex: Math.max(0, Number.parseInt(entry?.valueIndex ?? entry?.value_index ?? 0, 10) || 0),
+    });
+  });
+  return Object.fromEntries([...grouped.entries()].map(([key, entries]) => [
+    key,
+    entries.sort((left, right) => left.valueIndex - right.valueIndex)
+      .map((entry) => entry.value).join(", "),
+  ]));
+}
+
 module.exports = {
   VALUE_TYPES,
   SAFE_CSS_PROPERTIES,
+  TOKEN_KEY_PATTERN,
   getSql,
   parseBody,
   createTokenSetKey,
@@ -269,4 +332,5 @@ module.exports = {
   fetchTokenVersion,
   fetchManagedTokenSets,
   fetchTokenSetUsage,
+  toRuntimeTokenMap,
 };
