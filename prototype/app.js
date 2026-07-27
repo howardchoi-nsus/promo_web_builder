@@ -1150,6 +1150,8 @@ const adminApp = createApp({
       promptTemplatesError: "",
       selectedPromptTemplateId: "",
       promptTypeFilter: "",
+      expandedPromptLineageIds: [],
+      promptArchivedVisibilityByLineage: {},
       promptSaving: false,
       promptHistories: [],
       locales: [],
@@ -1580,6 +1582,17 @@ const adminApp = createApp({
       return this.promptTemplates.filter((prompt) => prompt.type === this.promptTypeFilter);
     },
 
+    promptTemplateGroups() {
+      return window.PromoAdminPromptGroups.groupPromptTemplates(this.promptTemplates);
+    },
+
+    filteredPromptTemplateGroups() {
+      return window.PromoAdminPromptGroups.filterPromptGroups(
+        this.promptTemplateGroups,
+        this.promptTypeFilter
+      );
+    },
+
     localeNamespaces() {
       const messages = Object.values(this.localeMessagesByLocale).flat();
       return [...new Set(messages.map((message) => message.namespace).filter(Boolean))].sort();
@@ -1636,6 +1649,13 @@ const adminApp = createApp({
 
     selectedPromptTemplate() {
       return this.promptTemplates.find((prompt) => prompt.id === this.selectedPromptTemplateId) || null;
+    },
+
+    selectedPromptTemplateGroup() {
+      return window.PromoAdminPromptGroups.findPromptGroup(
+        this.promptTemplateGroups,
+        this.selectedPromptTemplateId
+      );
     },
 
     promptEditorReadOnly() {
@@ -1801,6 +1821,9 @@ const adminApp = createApp({
       handler() {
         this.clearResolvedValidationErrors();
       },
+    },
+    promptTypeFilter() {
+      this.ensureFilteredPromptSelection();
     },
   },
 
@@ -2364,6 +2387,83 @@ const adminApp = createApp({
       return value ? JSON.stringify(value, null, 2) : "없음";
     },
 
+    promptGroupPanelId(group) {
+      return `prompt-versions-${String(group?.lineageId || "unknown").replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+    },
+
+    promptGroupExpanded(group) {
+      return this.expandedPromptLineageIds.includes(group?.lineageId);
+    },
+
+    promptGroupContainsSelection(group) {
+      return Boolean(group?.versions?.some((prompt) => prompt.id === this.selectedPromptTemplateId));
+    },
+
+    togglePromptGroup(group) {
+      const lineageId = group?.lineageId;
+      if (!lineageId) return;
+      const expanded = this.expandedPromptLineageIds.includes(lineageId);
+      this.expandedPromptLineageIds = expanded
+        ? this.expandedPromptLineageIds.filter((id) => id !== lineageId)
+        : [...this.expandedPromptLineageIds, lineageId];
+    },
+
+    expandPromptGroupForPromptId(promptId) {
+      const group = window.PromoAdminPromptGroups.findPromptGroup(
+        this.promptTemplateGroups,
+        promptId
+      );
+      if (group && !this.expandedPromptLineageIds.includes(group.lineageId)) {
+        this.expandedPromptLineageIds = [...this.expandedPromptLineageIds, group.lineageId];
+      }
+    },
+
+    promptGroupArchivedVisible(group) {
+      return Boolean(this.promptArchivedVisibilityByLineage[group?.lineageId]);
+    },
+
+    togglePromptGroupArchived(group) {
+      const lineageId = group?.lineageId;
+      if (!lineageId) return;
+      this.promptArchivedVisibilityByLineage = {
+        ...this.promptArchivedVisibilityByLineage,
+        [lineageId]: !this.promptGroupArchivedVisible(group),
+      };
+    },
+
+    promptGroupVisibleVersions(group) {
+      const versions = Array.isArray(group?.versions) ? group.versions : [];
+      if (this.promptGroupArchivedVisible(group)) return versions;
+      return versions.filter((prompt) => prompt.status !== "archived");
+    },
+
+    promptGroupProviderSummary(group) {
+      const prompt = group?.active || group?.primary;
+      return [prompt?.provider, prompt?.model].filter(Boolean).join(" · ") || "모델 설정 없음";
+    },
+
+    formatPromptDate(value) {
+      if (!value) return "-";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "-";
+      return new Intl.DateTimeFormat("ko-KR", {
+        dateStyle: "short",
+        timeStyle: "short",
+      }).format(date);
+    },
+
+    ensureFilteredPromptSelection() {
+      const groups = this.filteredPromptTemplateGroups;
+      if (!groups.length) return;
+      const selectedVisible = groups.some((group) => this.promptGroupContainsSelection(group));
+      if (selectedVisible) {
+        this.expandPromptGroupForPromptId(this.selectedPromptTemplateId);
+        return;
+      }
+      const prompt = groups.find((group) => group.active)?.active || groups[0]?.primary;
+      if (prompt) this.selectPromptTemplate(prompt.id, { silent: true });
+    },
+
     async loadPromptTemplates(options = {}) {
       if (this.promptTemplatesLoading && !options.fresh) return;
       this.promptTemplatesLoading = true;
@@ -2373,13 +2473,13 @@ const adminApp = createApp({
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `프롬프트 목록 요청 오류(${response.status})`);
         this.promptTemplates = Array.isArray(result.prompts) ? result.prompts : [];
-        if (!this.selectedPromptTemplateId || !this.promptTemplates.some((prompt) => prompt.id === this.selectedPromptTemplateId)) {
-          const activeImageExecution = this.promptTemplates.find(
-            (prompt) => prompt.type === "image_execution" && prompt.status === "active"
-          );
-          const active = activeImageExecution || this.promptTemplates.find((prompt) => prompt.status === "active");
-          this.selectedPromptTemplateId = active?.id || this.promptTemplates[0]?.id || "";
-        }
+        const groups = window.PromoAdminPromptGroups.groupPromptTemplates(this.promptTemplates);
+        const selected = window.PromoAdminPromptGroups.resolvePromptSelection(
+          groups,
+          this.selectedPromptTemplateId
+        );
+        this.selectedPromptTemplateId = selected?.id || "";
+        this.expandPromptGroupForPromptId(this.selectedPromptTemplateId);
         if (this.selectedPromptTemplateId) await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: true });
       } catch (error) {
         this.promptTemplatesError = error.message;
@@ -2496,6 +2596,7 @@ const adminApp = createApp({
 
     async selectPromptTemplate(id, options = {}) {
       this.selectedPromptTemplateId = id;
+      this.expandPromptGroupForPromptId(id);
       const prompt = this.promptTemplates.find((item) => item.id === id);
       if (!prompt) return;
       try {
@@ -2693,9 +2794,8 @@ const adminApp = createApp({
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `프롬프트 저장 오류(${response.status})`);
-        await this.loadPromptTemplates({ fresh: true });
         this.selectedPromptTemplateId = result.prompt?.id || prompt.id;
-        await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: true });
+        await this.loadPromptTemplates({ fresh: true });
         this.setStatus("프롬프트 초안을 저장하고 변경 이력을 생성했습니다");
       } catch (error) {
         this.setStatus(`프롬프트 저장 실패: ${error.message}`);
@@ -2725,9 +2825,8 @@ const adminApp = createApp({
           }
           throw new Error(result.message || result.error || `프롬프트 초안 생성 오류(${response.status})`);
         }
-        await this.loadPromptTemplates({ fresh: true });
         this.selectedPromptTemplateId = result.prompt?.id || "";
-        await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: true });
+        await this.loadPromptTemplates({ fresh: true });
         this.setStatus(`v${result.prompt?.version || ""} 프롬프트 초안을 만들었습니다`);
       } catch (error) {
         this.setStatus(`프롬프트 초안 생성 실패: ${error.message}`);
@@ -2751,9 +2850,8 @@ const adminApp = createApp({
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `프롬프트 검증 오류(${response.status})`);
-        await this.loadPromptTemplates({ fresh: true });
         this.selectedPromptTemplateId = result.prompt?.id || prompt.id;
-        await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: true });
+        await this.loadPromptTemplates({ fresh: true });
         this.setStatus("프롬프트 검증을 완료했습니다. 활성화할 수 있습니다.");
       } catch (error) {
         this.setStatus(`프롬프트 검증 실패: ${error.message}`);
@@ -2777,9 +2875,8 @@ const adminApp = createApp({
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `프롬프트 활성화 오류(${response.status})`);
-        await this.loadPromptTemplates({ fresh: true });
         this.selectedPromptTemplateId = result.prompt?.id || prompt.id;
-        await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: true });
+        await this.loadPromptTemplates({ fresh: true });
         this.setStatus("활성 프롬프트로 지정했습니다");
       } catch (error) {
         this.setStatus(`활성 프롬프트 지정 실패: ${error.message}`);
@@ -2832,9 +2929,8 @@ const adminApp = createApp({
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `프롬프트 롤백 오류(${response.status})`);
-        await this.loadPromptTemplates({ fresh: true });
         this.selectedPromptTemplateId = result.prompt?.id || prompt.id;
-        await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: true });
+        await this.loadPromptTemplates({ fresh: true });
         this.setStatus(`v${result.prompt?.version || prompt.version} 프롬프트로 롤백했습니다`);
       } catch (error) {
         this.setStatus(`프롬프트 롤백 실패: ${error.message}`);

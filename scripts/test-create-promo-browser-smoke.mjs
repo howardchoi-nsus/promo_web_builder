@@ -161,7 +161,7 @@ try {
   });
 
   await page.goto(`${origin}/create-promo.html`, { waitUntil: "networkidle" });
-  await assertPageText(page.locator("#step-title"), "디자인 토큰 선택");
+  await assertPageText(page.locator(".step.is-active strong"), "Design Token");
   const defaultTokenChoice = page.locator('.appearance-choice[role="radio"]', { hasText: "Fixture Dark" });
   assert.equal(
     await defaultTokenChoice.getAttribute("aria-checked"),
@@ -169,7 +169,7 @@ try {
   );
 
   await page.locator("#next-step").click();
-  await assertPageText(page.locator("#step-title"), "프로모션 개요 등록");
+  await assertPageText(page.locator(".step.is-active strong"), "Overview");
   await page.locator('[data-field-key="title"] input').fill("Browser Smoke Promotion");
   await page.locator('[data-field-key="promotionPurpose"] select').selectOption("이벤트");
   await page.locator('[data-field-key="market"] input').fill("KR");
@@ -177,11 +177,11 @@ try {
   await page.locator('[data-field-key="campaignTone"] select').selectOption("활기찬");
 
   await page.locator("#next-step").click();
-  await assertPageText(page.locator("#step-title"), "프로모션 템플릿 선택");
+  await assertPageText(page.locator(".step.is-active strong"), "Template");
   await page.locator('.wizard-template-tile[aria-pressed="true"]').waitFor();
 
   await page.locator("#next-step").click();
-  await assertPageText(page.locator("#step-title"), "템플릿 레이아웃");
+  await assertPageText(page.locator(".step.is-active strong"), "Layout");
   const editorFrame = page.frameLocator("iframe.wizard-layout-frame");
   await editorFrame.locator(".editor-workspace.is-create-promo-wizard").waitFor({ timeout: 10_000 });
   assert.equal(await page.locator("iframe.wizard-layout-frame").getAttribute("scrolling"), "no");
@@ -578,7 +578,7 @@ try {
 
   const outputPagePromise = context.waitForEvent("page");
   await page.locator("#next-step").click();
-  await assertPageText(page.locator("#step-title"), "웹 출력 미리보기");
+  await assertPageText(page.locator(".step.is-active strong"), "Web Output");
   const outputPage = await outputPagePromise;
   await outputPage.locator(".promo-renderer").waitFor({ timeout: 10_000 });
   assert.equal(

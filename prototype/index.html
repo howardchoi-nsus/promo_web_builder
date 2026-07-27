@@ -800,19 +800,74 @@
                       <strong>로딩 오류</strong>
                       <span>{{ promptTemplatesError }}</span>
                     </div>
-                    <button
-                      v-for="prompt in filteredPromptTemplates"
-                      :key="prompt.id"
-                      class="prompt-list-item"
-                      type="button"
-                      :class="{ selected: selectedPromptTemplateId === prompt.id }"
-                      @click="selectPromptTemplate(prompt.id)"
+                    <article
+                      v-for="group in filteredPromptTemplateGroups"
+                      :key="group.lineageId"
+                      class="prompt-group"
+                      :class="{ selected: promptGroupContainsSelection(group) }"
                     >
-                      <strong>{{ prompt.name }}</strong>
-                      <span>{{ promptTypeLabel(prompt.type) }} · v{{ prompt.version }}</span>
-                      <em :class="`status-${prompt.status}`">{{ promptStatusLabel(prompt.status) }}</em>
-                    </button>
-                    <div class="empty-state compact" v-if="!promptTemplatesLoading && !filteredPromptTemplates.length">
+                      <div class="prompt-group-header">
+                        <button
+                          class="prompt-group-toggle"
+                          type="button"
+                          :aria-expanded="String(promptGroupExpanded(group))"
+                          :aria-controls="promptGroupPanelId(group)"
+                          :aria-label="`${group.name} 버전 ${promptGroupExpanded(group) ? '접기' : '펼치기'}`"
+                          @click="togglePromptGroup(group)"
+                        >
+                          <span aria-hidden="true">{{ promptGroupExpanded(group) ? '−' : '+' }}</span>
+                        </button>
+                        <button
+                          class="prompt-group-primary"
+                          type="button"
+                          :class="{ selected: selectedPromptTemplateId === group.primary?.id }"
+                          @click="selectPromptTemplate(group.primary.id)"
+                        >
+                          <strong>{{ group.name || promptTypeLabel(group.type) }}</strong>
+                          <span>{{ promptTypeLabel(group.type) }} · {{ promptGroupProviderSummary(group) }}</span>
+                          <small>최종 수정 {{ formatPromptDate(group.updatedAt) }}</small>
+                        </button>
+                        <div class="prompt-group-badges" aria-label="프롬프트 상태">
+                          <em v-if="group.active" class="status-active">활성 v{{ group.active.version }}</em>
+                          <em v-else class="status-missing">활성 없음</em>
+                          <em v-if="group.validated" class="status-validated">검증 v{{ group.validated.version }}</em>
+                          <em v-if="group.draft" class="status-draft">초안 v{{ group.draft.version }}</em>
+                        </div>
+                      </div>
+
+                      <div
+                        v-show="promptGroupExpanded(group)"
+                        :id="promptGroupPanelId(group)"
+                        class="prompt-version-list"
+                      >
+                        <button
+                          v-for="prompt in promptGroupVisibleVersions(group)"
+                          :key="prompt.id"
+                          class="prompt-version-item"
+                          type="button"
+                          :class="{ selected: selectedPromptTemplateId === prompt.id }"
+                          :aria-current="selectedPromptTemplateId === prompt.id ? 'true' : undefined"
+                          @click="selectPromptTemplate(prompt.id)"
+                        >
+                          <span class="prompt-version-number">v{{ prompt.version }}</span>
+                          <span class="prompt-version-copy">
+                            <strong>{{ prompt.name }}</strong>
+                            <small>{{ [prompt.provider, prompt.model].filter(Boolean).join(' · ') || '모델 설정 없음' }} · {{ formatPromptDate(prompt.updatedAt) }}</small>
+                          </span>
+                          <em :class="`status-${prompt.status}`">{{ promptStatusLabel(prompt.status) }}</em>
+                        </button>
+                        <button
+                          v-if="group.archivedCount"
+                          class="prompt-archived-toggle"
+                          type="button"
+                          :aria-pressed="String(promptGroupArchivedVisible(group))"
+                          @click="togglePromptGroupArchived(group)"
+                        >
+                          {{ promptGroupArchivedVisible(group) ? '보관 버전 숨기기' : `보관 버전 ${group.archivedCount}개 보기` }}
+                        </button>
+                      </div>
+                    </article>
+                    <div class="empty-state compact" v-if="!promptTemplatesLoading && !filteredPromptTemplateGroups.length">
                       표시할 프롬프트가 없습니다.
                     </div>
                   </aside>

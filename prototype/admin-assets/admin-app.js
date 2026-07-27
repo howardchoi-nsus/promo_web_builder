@@ -8111,7 +8111,80 @@ function Wg(e, t, n, r, i, a) {
 		])
 	]);
 }
-var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]), Kg = /* @__PURE__ */ o((() => {
+var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-acbbfd35"]]);
+Object.freeze({
+	active: 0,
+	validated: 1,
+	draft: 2,
+	inactive: 3,
+	archived: 4
+});
+function Kg(e) {
+	let t = Number(e?.version);
+	return Number.isFinite(t) ? t : 0;
+}
+function qg(e) {
+	let t = Date.parse(e?.updatedAt || "");
+	return Number.isFinite(t) ? t : 0;
+}
+function Jg(e, t) {
+	return Kg(t) - Kg(e) || qg(t) - qg(e) || String(e?.id || "").localeCompare(String(t?.id || ""));
+}
+function Yg(e) {
+	return String(e?.lineageId || "").trim() || `legacy:${String(e?.type || "unknown")}:${String(e?.id || "unknown")}`;
+}
+function Xg(e) {
+	return e && (e.active || e.validated || e.draft || e.latestInactive || e.latestArchived || e.versions?.[0]) || null;
+}
+function Zg(e = []) {
+	let t = /* @__PURE__ */ new Map();
+	return e.filter((e) => e && typeof e == "object").forEach((e) => {
+		let n = Yg(e);
+		t.has(n) || t.set(n, {
+			lineageId: n,
+			versions: []
+		}), t.get(n).versions.push(e);
+	}), [...t.values()].map((e) => {
+		let t = [...e.versions].sort(Jg), n = t.find((e) => e.status === "active") || null, r = t.find((e) => e.status === "validated") || null, i = t.find((e) => e.status === "draft") || null, a = t.find((e) => e.status === "inactive") || null, o = t.find((e) => e.status === "archived") || null, s = {
+			...e,
+			versions: t,
+			active: n,
+			validated: r,
+			draft: i,
+			latestInactive: a,
+			latestArchived: o,
+			archivedCount: t.filter((e) => e.status === "archived").length,
+			hasCandidate: !!(r || i)
+		}, c = Xg(s);
+		return {
+			...s,
+			primary: c,
+			type: c?.type || t[0]?.type || "",
+			name: c?.name || t[0]?.name || "",
+			updatedAt: t.reduce((e, t) => qg(t) > qg(e) ? t : e, t[0] || null)?.updatedAt || null
+		};
+	}).sort((e, t) => String(e.type || "").localeCompare(String(t.type || "")) || String(e.name || "").localeCompare(String(t.name || "")) || String(e.lineageId).localeCompare(String(t.lineageId)));
+}
+function Qg(e = [], t = "") {
+	let n = String(t || "").trim();
+	return n ? e.filter((e) => e.type === n) : e;
+}
+function $g(e = [], t = "") {
+	let n = String(t || "");
+	return e.find((e) => e.versions.some((e) => e.id === n)) || null;
+}
+function e_(e = [], t = "", n = "image_execution") {
+	let r = $g(e, t);
+	return r ? r.versions.find((e) => e.id === t) || r.primary || null : e.find((e) => e.type === n && e.active)?.active || e.find((e) => e.active)?.active || e[0]?.primary || null;
+}
+var t_ = Object.freeze({
+	filterPromptGroups: Qg,
+	findPromptGroup: $g,
+	groupPromptTemplates: Zg,
+	promptLineageId: Yg,
+	resolvePromptSelection: e_,
+	selectPromptGroupPrimary: Xg
+}), n_ = /* @__PURE__ */ o((() => {
 	var e = {
 		documents: "promoPrototype.documents.abc",
 		generatedPages: "promoPrototype.generatedPages.abc",
@@ -9165,6 +9238,8 @@ var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]
 				promptTemplatesError: "",
 				selectedPromptTemplateId: "",
 				promptTypeFilter: "",
+				expandedPromptLineageIds: [],
+				promptArchivedVisibilityByLineage: {},
 				promptSaving: !1,
 				promptHistories: [],
 				locales: [],
@@ -9655,6 +9730,12 @@ var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]
 			filteredPromptTemplates() {
 				return this.promptTypeFilter ? this.promptTemplates.filter((e) => e.type === this.promptTypeFilter) : this.promptTemplates;
 			},
+			promptTemplateGroups() {
+				return window.PromoAdminPromptGroups.groupPromptTemplates(this.promptTemplates);
+			},
+			filteredPromptTemplateGroups() {
+				return window.PromoAdminPromptGroups.filterPromptGroups(this.promptTemplateGroups, this.promptTypeFilter);
+			},
 			localeNamespaces() {
 				let e = Object.values(this.localeMessagesByLocale).flat();
 				return [...new Set(e.map((e) => e.namespace).filter(Boolean))].sort();
@@ -9705,6 +9786,9 @@ var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]
 			},
 			selectedPromptTemplate() {
 				return this.promptTemplates.find((e) => e.id === this.selectedPromptTemplateId) || null;
+			},
+			selectedPromptTemplateGroup() {
+				return window.PromoAdminPromptGroups.findPromptGroup(this.promptTemplateGroups, this.selectedPromptTemplateId);
 			},
 			promptEditorReadOnly() {
 				return this.selectedPromptTemplate?.status !== "draft";
@@ -9832,6 +9916,9 @@ var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]
 				handler() {
 					this.clearResolvedValidationErrors();
 				}
+			},
+			promptTypeFilter() {
+				this.ensureFilteredPromptSelection();
 			}
 		},
 		mounted() {
@@ -10400,17 +10487,70 @@ var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]
 			formatAuditState(e) {
 				return e ? JSON.stringify(e, null, 2) : "없음";
 			},
+			promptGroupPanelId(e) {
+				return `prompt-versions-${String(e?.lineageId || "unknown").replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+			},
+			promptGroupExpanded(e) {
+				return this.expandedPromptLineageIds.includes(e?.lineageId);
+			},
+			promptGroupContainsSelection(e) {
+				return !!e?.versions?.some((e) => e.id === this.selectedPromptTemplateId);
+			},
+			togglePromptGroup(e) {
+				let t = e?.lineageId;
+				if (!t) return;
+				let n = this.expandedPromptLineageIds.includes(t);
+				this.expandedPromptLineageIds = n ? this.expandedPromptLineageIds.filter((e) => e !== t) : [...this.expandedPromptLineageIds, t];
+			},
+			expandPromptGroupForPromptId(e) {
+				let t = window.PromoAdminPromptGroups.findPromptGroup(this.promptTemplateGroups, e);
+				t && !this.expandedPromptLineageIds.includes(t.lineageId) && (this.expandedPromptLineageIds = [...this.expandedPromptLineageIds, t.lineageId]);
+			},
+			promptGroupArchivedVisible(e) {
+				return !!this.promptArchivedVisibilityByLineage[e?.lineageId];
+			},
+			togglePromptGroupArchived(e) {
+				let t = e?.lineageId;
+				t && (this.promptArchivedVisibilityByLineage = {
+					...this.promptArchivedVisibilityByLineage,
+					[t]: !this.promptGroupArchivedVisible(e)
+				});
+			},
+			promptGroupVisibleVersions(e) {
+				let t = Array.isArray(e?.versions) ? e.versions : [];
+				return this.promptGroupArchivedVisible(e) ? t : t.filter((e) => e.status !== "archived");
+			},
+			promptGroupProviderSummary(e) {
+				let t = e?.active || e?.primary;
+				return [t?.provider, t?.model].filter(Boolean).join(" · ") || "모델 설정 없음";
+			},
+			formatPromptDate(e) {
+				if (!e) return "-";
+				let t = new Date(e);
+				return Number.isNaN(t.getTime()) ? "-" : new Intl.DateTimeFormat("ko-KR", {
+					dateStyle: "short",
+					timeStyle: "short"
+				}).format(t);
+			},
+			ensureFilteredPromptSelection() {
+				let e = this.filteredPromptTemplateGroups;
+				if (!e.length) return;
+				if (e.some((e) => this.promptGroupContainsSelection(e))) {
+					this.expandPromptGroupForPromptId(this.selectedPromptTemplateId);
+					return;
+				}
+				let t = e.find((e) => e.active)?.active || e[0]?.primary;
+				t && this.selectPromptTemplate(t.id, { silent: !0 });
+			},
 			async loadPromptTemplates(e = {}) {
 				if (!(this.promptTemplatesLoading && !e.fresh)) {
 					this.promptTemplatesLoading = !0, this.promptTemplatesError = "";
 					try {
 						let e = await fetch("/api/prompt-templates?includeArchived=true"), t = await e.json().catch(() => ({}));
 						if (!e.ok) throw Error(t.message || t.error || `프롬프트 목록 요청 오류(${e.status})`);
-						if (this.promptTemplates = Array.isArray(t.prompts) ? t.prompts : [], !this.selectedPromptTemplateId || !this.promptTemplates.some((e) => e.id === this.selectedPromptTemplateId)) {
-							let e = this.promptTemplates.find((e) => e.type === "image_execution" && e.status === "active") || this.promptTemplates.find((e) => e.status === "active");
-							this.selectedPromptTemplateId = e?.id || this.promptTemplates[0]?.id || "";
-						}
-						this.selectedPromptTemplateId && await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: !0 });
+						this.promptTemplates = Array.isArray(t.prompts) ? t.prompts : [];
+						let n = window.PromoAdminPromptGroups.groupPromptTemplates(this.promptTemplates), r = window.PromoAdminPromptGroups.resolvePromptSelection(n, this.selectedPromptTemplateId);
+						this.selectedPromptTemplateId = r?.id || "", this.expandPromptGroupForPromptId(this.selectedPromptTemplateId), this.selectedPromptTemplateId && await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: !0 });
 					} catch (e) {
 						this.promptTemplatesError = e.message, this.setStatus(`프롬프트 목록을 불러오지 못했습니다: ${e.message}`);
 					} finally {
@@ -10509,7 +10649,7 @@ var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]
 				}
 			},
 			async selectPromptTemplate(e, t = {}) {
-				this.selectedPromptTemplateId = e;
+				this.selectedPromptTemplateId = e, this.expandPromptGroupForPromptId(e);
 				let n = this.promptTemplates.find((t) => t.id === e);
 				if (n) try {
 					let r = await fetch(`/api/prompt-template?id=${encodeURIComponent(e)}`), i = await r.json().catch(() => ({}));
@@ -10651,7 +10791,7 @@ var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]
 							})
 						}), n = await t.json().catch(() => ({}));
 						if (!t.ok) throw Error(n.message || n.error || `프롬프트 저장 오류(${t.status})`);
-						await this.loadPromptTemplates({ fresh: !0 }), this.selectedPromptTemplateId = n.prompt?.id || e.id, await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: !0 }), this.setStatus("프롬프트 초안을 저장하고 변경 이력을 생성했습니다");
+						this.selectedPromptTemplateId = n.prompt?.id || e.id, await this.loadPromptTemplates({ fresh: !0 }), this.setStatus("프롬프트 초안을 저장하고 변경 이력을 생성했습니다");
 					} catch (e) {
 						this.setStatus(`프롬프트 저장 실패: ${e.message}`);
 					} finally {
@@ -10673,7 +10813,7 @@ var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]
 							})
 						}), n = await t.json().catch(() => ({}));
 						if (!t.ok) throw n.promptId && (this.selectedPromptTemplateId = n.promptId, await this.loadPromptTemplates({ fresh: !0 })), Error(n.message || n.error || `프롬프트 초안 생성 오류(${t.status})`);
-						await this.loadPromptTemplates({ fresh: !0 }), this.selectedPromptTemplateId = n.prompt?.id || "", await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: !0 }), this.setStatus(`v${n.prompt?.version || ""} 프롬프트 초안을 만들었습니다`);
+						this.selectedPromptTemplateId = n.prompt?.id || "", await this.loadPromptTemplates({ fresh: !0 }), this.setStatus(`v${n.prompt?.version || ""} 프롬프트 초안을 만들었습니다`);
 					} catch (e) {
 						this.setStatus(`프롬프트 초안 생성 실패: ${e.message}`);
 					} finally {
@@ -10695,7 +10835,7 @@ var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]
 							})
 						}), n = await t.json().catch(() => ({}));
 						if (!t.ok) throw Error(n.message || n.error || `프롬프트 검증 오류(${t.status})`);
-						await this.loadPromptTemplates({ fresh: !0 }), this.selectedPromptTemplateId = n.prompt?.id || e.id, await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: !0 }), this.setStatus("프롬프트 검증을 완료했습니다. 활성화할 수 있습니다.");
+						this.selectedPromptTemplateId = n.prompt?.id || e.id, await this.loadPromptTemplates({ fresh: !0 }), this.setStatus("프롬프트 검증을 완료했습니다. 활성화할 수 있습니다.");
 					} catch (e) {
 						this.setStatus(`프롬프트 검증 실패: ${e.message}`);
 					} finally {
@@ -10717,7 +10857,7 @@ var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]
 							})
 						}), n = await t.json().catch(() => ({}));
 						if (!t.ok) throw Error(n.message || n.error || `프롬프트 활성화 오류(${t.status})`);
-						await this.loadPromptTemplates({ fresh: !0 }), this.selectedPromptTemplateId = n.prompt?.id || e.id, await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: !0 }), this.setStatus("활성 프롬프트로 지정했습니다");
+						this.selectedPromptTemplateId = n.prompt?.id || e.id, await this.loadPromptTemplates({ fresh: !0 }), this.setStatus("활성 프롬프트로 지정했습니다");
 					} catch (e) {
 						this.setStatus(`활성 프롬프트 지정 실패: ${e.message}`);
 					} finally {
@@ -10765,7 +10905,7 @@ var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]
 							})
 						}), n = await t.json().catch(() => ({}));
 						if (!t.ok) throw Error(n.message || n.error || `프롬프트 롤백 오류(${t.status})`);
-						await this.loadPromptTemplates({ fresh: !0 }), this.selectedPromptTemplateId = n.prompt?.id || e.id, await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: !0 }), this.setStatus(`v${n.prompt?.version || e.version} 프롬프트로 롤백했습니다`);
+						this.selectedPromptTemplateId = n.prompt?.id || e.id, await this.loadPromptTemplates({ fresh: !0 }), this.setStatus(`v${n.prompt?.version || e.version} 프롬프트로 롤백했습니다`);
 					} catch (e) {
 						this.setStatus(`프롬프트 롤백 실패: ${e.message}`);
 					} finally {
@@ -13354,5 +13494,5 @@ yh(document), globalThis.Vue = gh, globalThis.PromoAdminTemplateLayout = Object.
 }), globalThis.PromoAdminDesignTokens = Object.freeze({
 	service: Hh,
 	component: Gg
-}), await Promise.resolve().then(() => /* @__PURE__ */ l(Kg()));
+}), globalThis.PromoAdminPromptGroups = t_, await Promise.resolve().then(() => /* @__PURE__ */ l(n_()));
 //#endregion

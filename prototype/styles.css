@@ -3418,6 +3418,212 @@ body.is-resizing {
   font-size: 11px;
 }
 
+.prompt-group {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+
+.prompt-group.selected {
+  border-color: var(--accent);
+}
+
+.prompt-group-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px;
+}
+
+.prompt-group-toggle {
+  display: inline-flex;
+  width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--sub);
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.prompt-group-toggle:hover,
+.prompt-group-toggle:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.prompt-group-primary {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  padding: 4px;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+
+.prompt-group-primary:hover,
+.prompt-group-primary:focus-visible,
+.prompt-group-primary.selected {
+  background: var(--accent-soft);
+}
+
+.prompt-group-primary strong,
+.prompt-group-primary span,
+.prompt-group-primary small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prompt-group-primary strong {
+  font-size: 13px;
+}
+
+.prompt-group-primary span {
+  color: var(--sub);
+  font-size: 11px;
+}
+
+.prompt-group-primary small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.prompt-group-badges {
+  display: flex;
+  max-width: 132px;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-end;
+}
+
+.prompt-group-badges em,
+.prompt-version-item > em {
+  padding: 2px 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--sub);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.prompt-group-badges .status-active,
+.prompt-version-item > em.status-active {
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.prompt-group-badges .status-validated,
+.prompt-version-item > em.status-validated {
+  border-color: var(--warning);
+  color: var(--warning);
+}
+
+.prompt-group-badges .status-draft,
+.prompt-version-item > em.status-draft {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.prompt-group-badges .status-missing {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.prompt-version-list {
+  display: grid;
+  gap: 4px;
+  padding: 6px 8px 8px 46px;
+  border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel) 92%, var(--accent-soft));
+}
+
+.prompt-version-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  padding: 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+
+.prompt-version-item:hover,
+.prompt-version-item:focus-visible {
+  border-color: var(--line);
+  background: var(--panel);
+}
+
+.prompt-version-item.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.prompt-version-number {
+  color: var(--sub);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.prompt-version-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.prompt-version-copy strong,
+.prompt-version-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prompt-version-copy strong {
+  font-size: 11px;
+}
+
+.prompt-version-copy small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.prompt-version-item > em.status-archived {
+  color: var(--muted);
+}
+
+.prompt-archived-toggle {
+  justify-self: start;
+  padding: 5px 8px;
+  border: 0;
+  background: transparent;
+  color: var(--sub);
+  cursor: pointer;
+  font-size: 10px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.prompt-archived-toggle:hover,
+.prompt-archived-toggle:focus-visible {
+  color: var(--accent);
+}
+
 .prompt-list-item {
   position: relative;
   display: grid;
@@ -3587,6 +3793,22 @@ body.is-resizing {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+@media (max-width: 680px) {
+  .prompt-group-header {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .prompt-group-badges {
+    grid-column: 2;
+    max-width: none;
+    justify-content: flex-start;
+  }
+
+  .prompt-version-list {
+    padding-left: 8px;
+  }
 }
 
 .prompt-editor-header {
