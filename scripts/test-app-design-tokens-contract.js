@@ -49,7 +49,7 @@ assert.doesNotMatch(builderCss, /\[data-theme="dark"\]\s*\{[\s\S]*?--bg:/);
 assert.match(shellCss, /--shell-bg:\s*var\(--app-panel\)/);
 assert.match(shellCss, /--shell-accent:\s*var\(--app-accent\)/);
 assert.doesNotMatch(shellCss, /\[data-theme="dark"\]\s*\{/);
-assert.match(legacyShellCss, /app-shell\.css\?v=app-shell-v1/);
+assert.match(legacyShellCss, /app-shell\.css\?v=app-shell-sidebar-v4/);
 [createPromoCss, promoWizardCss].forEach((css) => {
   assert.match(css, /font-family:\s*var\(--app-font-body\)/);
   assert.doesNotMatch(css, /^:root\s*\{/m);
@@ -80,7 +80,7 @@ htmlFiles.forEach((file) => {
 
 ["index.html", "create-promo.html", "promo-wizard.html", "visual-editor.html"].forEach((file) => {
   const html = fs.readFileSync(path.join(root, "prototype", file), "utf8");
-  assert.match(html, /app-shell\.css\?v=app-shell-sidebar-v3/);
+  assert.match(html, /app-shell\.css\?v=app-shell-sidebar-v4/);
   assert.doesNotMatch(html, /shared-shell-header\.css/);
 });
 

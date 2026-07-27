@@ -44,7 +44,7 @@ assert.match(adminHtmlSource, /transition-group name="section-order-list"/);
 assert.match(adminHtmlSource, /section-component-order-row/);
 assert.match(adminHtmlSource, /@drop\.prevent\.stop="dropWizardSectionComponent\(item\)"/);
 assert.match(adminHtmlSource, /@keydown\.up\.prevent="moveWizardSectionComponent\(item, -1\)"/);
-assert.match(adminHtmlSource, /app-shell\.css\?v=app-shell-sidebar-v3/);
+assert.match(adminHtmlSource, /app-shell\.css\?v=app-shell-sidebar-v4/);
 assert.match(adminHtmlSource, /app\.js/);
 assert.doesNotMatch(adminHtmlSource, /value="image_description"/);
 assert.match(adminHtmlSource, /설명 입력 허용/);

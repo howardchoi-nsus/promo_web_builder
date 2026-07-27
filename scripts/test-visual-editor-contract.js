@@ -56,7 +56,7 @@ assert.match(app, /:data-shell-frame="!usesEmbeddedEngineShell/);
 assert.match(app, /const shellNavItems = window\.PromoShell\?\.navItems/);
 assert.match(app, /v-for="item in shellNavItems"/);
 assert.match(app, /item\.key === 'visual-editor'/);
-assert.match(editorHtml, /app-shell\.css\?v=app-shell-sidebar-v3/);
+assert.match(editorHtml, /app-shell\.css\?v=app-shell-sidebar-v4/);
 assert.match(editorHtml, /visual-editor-assets\/visual-editor\.css\?v=visual-editor-v4/);
 assert.match(editorHtml, /visual-editor-assets\/promo-renderer\.css\?v=promo-renderer-v3/);
 assert.match(outputHtml, /visual-editor-assets\/visual-output\.css\?v=visual-output-v1/);

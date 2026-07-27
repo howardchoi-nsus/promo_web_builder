@@ -19,7 +19,7 @@ assert.match(store, /order by created_at desc/);
 assert.match(app, /loadWizardSectionAuditLogs/);
 assert.match(html, /adminTab === 'audit'/);
 assert.match(html, /섹션 및 컴포넌트 변경 이력/);
-assert.match(html, /app-shell\.css\?v=app-shell-sidebar-v3/);
+assert.match(html, /app-shell\.css\?v=app-shell-sidebar-v4/);
 assert.match(html, /app\.js/);
 assert.doesNotMatch(html, /<summary>공통 Section 원본 관리<\/summary>/);
 
