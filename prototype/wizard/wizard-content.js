@@ -3,6 +3,21 @@
     const content = {
       sectionInputSchemaVersion: 4,
       designTokenSetVersionId: "",
+      promotionOverview: {
+        schemaVersion: 2,
+        inputMode: "structured",
+        rawNaturalLanguage: "",
+        title: "",
+        promotionPurpose: "",
+        promotionPurposeOther: "",
+        market: "",
+        audience: "",
+        campaignTone: "",
+        mainOffer: "",
+        primaryAction: { label: "", url: "" },
+      },
+      templateRecommendation: null,
+      templateCompositionProposal: null,
       promo: {
         title: "",
         template: "AI Auto",

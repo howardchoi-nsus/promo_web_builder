@@ -1,6 +1,7 @@
 const {
   getSql, parseBody, normalizeBoolean, fetchTemplateRow,
-  fetchTemplateSections, toFormTemplate,
+  fetchTemplateSections, toFormTemplate, normalizeRecommendationProfile,
+  recommendationProfileColumnAvailable,
 } = require("./_wizard-form-templates-store");
 
 module.exports = async function handler(req, res) {
@@ -35,6 +36,13 @@ async function updateTemplate(req, res) {
 
   const name = Object.prototype.hasOwnProperty.call(body, "name") ? String(body.name || "").trim() : current.name;
   if (!name) return res.status(400).json({ error: "name is required" });
+  const updatesRecommendationProfile = Object.prototype.hasOwnProperty.call(body, "recommendationProfile");
+  if (updatesRecommendationProfile && !await recommendationProfileColumnAvailable(sql)) {
+    return res.status(409).json({
+      error: "Template recommendation migration is required",
+      code: "TEMPLATE_RECOMMENDATION_MIGRATION_REQUIRED",
+    });
+  }
   const rows = await sql`
     update wizard_form_templates set
       name = ${name},
@@ -46,5 +54,14 @@ async function updateTemplate(req, res) {
     returning id::text, template_key, name, description, status, version,
       is_default, change_note, design_token_set_version_id::text, archived_at, created_at, updated_at
   `;
-  return res.status(200).json({ ok: true, template: toFormTemplate(rows[0]) });
+  if (updatesRecommendationProfile) {
+    const profile = normalizeRecommendationProfile(body.recommendationProfile);
+    await sql`
+      update wizard_form_templates
+      set recommendation_profile = ${JSON.stringify(profile)}::jsonb, updated_at = now()
+      where id = ${id}::uuid
+    `;
+  }
+  const updated = await fetchTemplateRow(sql, rows[0].id);
+  return res.status(200).json({ ok: true, template: toFormTemplate(updated) });
 }

@@ -1201,7 +1201,10 @@ const adminApp = createApp({
       selectedWizardFormTemplateKey: "",
       expandedWizardFormTemplateSettingsKey: "",
       wizardFormTemplateDetail: null,
-      wizardFormTemplateEditor: { name: "", description: "", isDefault: false, changeNote: "" },
+      wizardFormTemplateEditor: {
+        name: "", description: "", isDefault: false, changeNote: "",
+        recommendationProfileText: "{}",
+      },
       showNewWizardFormTemplateForm: false,
       newWizardFormTemplateForm: { name: "", description: "" },
       showDuplicateWizardFormTemplateForm: false,
@@ -2990,6 +2993,7 @@ const adminApp = createApp({
           description: result.template.description,
           isDefault: result.template.isDefault,
           changeNote: "",
+          recommendationProfileText: JSON.stringify(result.template.recommendationProfile || {}, null, 2),
         };
         const selectedSection = this.wizardFormTemplateDetail.sections.find(
           (section) => section.id === this.selectedWizardFormTemplateSectionId
@@ -3126,10 +3130,23 @@ const adminApp = createApp({
       if (!template || template.status !== "draft" || this.wizardFormTemplateSaving) return;
       this.wizardFormTemplateSaving = true;
       try {
+        let recommendationProfile = {};
+        try {
+          recommendationProfile = JSON.parse(this.wizardFormTemplateEditor.recommendationProfileText || "{}");
+        } catch {
+          throw new Error("추천 메타데이터는 올바른 JSON 형식이어야 합니다.");
+        }
         const response = await fetch("/api/wizard-form-template", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: template.id, ...this.wizardFormTemplateEditor }),
+          body: JSON.stringify({
+            id: template.id,
+            name: this.wizardFormTemplateEditor.name,
+            description: this.wizardFormTemplateEditor.description,
+            isDefault: this.wizardFormTemplateEditor.isDefault,
+            changeNote: this.wizardFormTemplateEditor.changeNote,
+            recommendationProfile,
+          }),
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `템플릿 저장 오류(${response.status})`);

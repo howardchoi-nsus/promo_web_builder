@@ -9320,7 +9320,8 @@ var t_ = Object.freeze({
 					name: "",
 					description: "",
 					isDefault: !1,
-					changeNote: ""
+					changeNote: "",
+					recommendationProfileText: "{}"
 				},
 				showNewWizardFormTemplateForm: !1,
 				newWizardFormTemplateForm: {
@@ -10947,7 +10948,8 @@ var t_ = Object.freeze({
 						name: n.template.name,
 						description: n.template.description,
 						isDefault: n.template.isDefault,
-						changeNote: ""
+						changeNote: "",
+						recommendationProfileText: JSON.stringify(n.template.recommendationProfile || {}, null, 2)
 					};
 					let r = this.wizardFormTemplateDetail.sections.find((e) => e.id === this.selectedWizardFormTemplateSectionId) || this.wizardFormTemplateDetail.sections[0] || null;
 					r ? await this.selectWizardFormTemplateSection(r) : (this.selectedWizardFormTemplateSectionId = "", this.wizardFormTemplateSectionItems = []);
@@ -11053,16 +11055,26 @@ var t_ = Object.freeze({
 				if (!(!e || e.status !== "draft" || this.wizardFormTemplateSaving)) {
 					this.wizardFormTemplateSaving = !0;
 					try {
-						let t = await fetch("/api/wizard-form-template", {
+						let t = {};
+						try {
+							t = JSON.parse(this.wizardFormTemplateEditor.recommendationProfileText || "{}");
+						} catch {
+							throw Error("추천 메타데이터는 올바른 JSON 형식이어야 합니다.");
+						}
+						let n = await fetch("/api/wizard-form-template", {
 							method: "PATCH",
 							headers: { "Content-Type": "application/json" },
 							body: JSON.stringify({
 								id: e.id,
-								...this.wizardFormTemplateEditor
+								name: this.wizardFormTemplateEditor.name,
+								description: this.wizardFormTemplateEditor.description,
+								isDefault: this.wizardFormTemplateEditor.isDefault,
+								changeNote: this.wizardFormTemplateEditor.changeNote,
+								recommendationProfile: t
 							})
-						}), n = await t.json().catch(() => ({}));
-						if (!t.ok) throw Error(n.message || n.error || `템플릿 저장 오류(${t.status})`);
-						await this.loadWizardFormTemplates({ fresh: !0 }), await this.loadWizardFormTemplateDetail(n.template.id), this.setStatus("템플릿 정보를 저장했습니다");
+						}), r = await n.json().catch(() => ({}));
+						if (!n.ok) throw Error(r.message || r.error || `템플릿 저장 오류(${n.status})`);
+						await this.loadWizardFormTemplates({ fresh: !0 }), await this.loadWizardFormTemplateDetail(r.template.id), this.setStatus("템플릿 정보를 저장했습니다");
 					} catch (e) {
 						this.setStatus(`템플릿 저장 실패: ${e.message}`);
 					} finally {

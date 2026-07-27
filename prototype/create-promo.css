@@ -75,7 +75,7 @@ a {
   background: transparent;
   box-shadow: none;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0;
   height: 92px;
   min-height: 92px;
@@ -402,6 +402,111 @@ a {
   letter-spacing: 0;
 }
 
+.overview-mode {
+  display: grid;
+  gap: 12px;
+}
+
+.overview-mode__tabs {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  justify-self: start;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.overview-mode__tab {
+  min-height: 38px;
+  padding: 7px 14px;
+  border: 0;
+  border-radius: calc(var(--radius) - 2px);
+  background: transparent;
+  color: var(--sub);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.overview-mode__tab.is-active {
+  background: var(--accent);
+  color: var(--accent-ink, #fff);
+}
+
+.overview-nlp-panel__description {
+  margin: -4px 0 0;
+  color: var(--sub);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.overview-nlp-input {
+  width: 100%;
+  min-height: 180px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--ink);
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.overview-nlp-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.overview-analysis {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+
+.overview-analysis h4,
+.overview-analysis p {
+  margin: 0;
+}
+
+.overview-analysis__confidence {
+  justify-self: start;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.overview-analysis-grid {
+  display: grid;
+  grid-template-columns: minmax(100px, 160px) minmax(0, 1fr);
+  gap: 8px 12px;
+  margin: 0;
+}
+
+.overview-analysis-grid dt {
+  color: var(--sub);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.overview-analysis-grid dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.overview-analysis-warning,
+.overview-analysis-error {
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .content-substep-nav {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -518,6 +623,82 @@ a {
   gap: 12px;
 }
 
+.template-recommendation-summary {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+
+.template-recommendation-summary__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.template-recommendation-summary__header > div {
+  display: grid;
+  gap: 3px;
+}
+
+.template-recommendation-summary__header small {
+  color: var(--sub);
+}
+
+.template-composition-panel {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.template-composition-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.template-composition-panel__header > div {
+  display: grid;
+  gap: 3px;
+}
+
+.template-composition-panel__header small {
+  color: var(--sub);
+}
+
+.template-composition-panel > p {
+  margin: 0;
+}
+
+.template-composition-sections {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding-left: 22px;
+  color: var(--sub);
+  font-size: 12px;
+}
+
+.template-composition-applied {
+  color: var(--accent);
+  font-weight: 800;
+}
+
+.template-recommendation-warning,
+.wizard-template-warning {
+  margin: 0;
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .wizard-template-tile {
   display: grid;
   min-height: 132px;
@@ -531,6 +712,25 @@ a {
   text-align: left;
   cursor: pointer;
   transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.wizard-template-tile.is-recommended {
+  border-color: var(--accent);
+}
+
+.wizard-template-recommended {
+  margin-left: 6px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink, #fff);
+  font-size: 10px;
+  font-style: normal;
+}
+
+.wizard-template-reason {
+  color: var(--accent);
+  font-weight: 800;
 }
 
 .wizard-template-tile:hover,
@@ -1615,7 +1815,7 @@ a {
   }
 
   .wizard-progress {
-    grid-template-columns: repeat(5, minmax(150px, 1fr));
+    grid-template-columns: repeat(4, minmax(150px, 1fr));
     overflow-x: auto;
   }
 

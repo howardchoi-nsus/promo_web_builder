@@ -1349,6 +1349,17 @@
                         <span>{{ t('common.field.description') }}</span>
                         <input v-model="wizardFormTemplateEditor.description" type="text" :disabled="wizardFormTemplateDetail.template.status !== 'draft'" autocomplete="off" />
                       </label>
+                      <label class="field compact-field">
+                        <span>추천 메타데이터 (JSON)</span>
+                        <textarea
+                          v-model="wizardFormTemplateEditor.recommendationProfileText"
+                          :disabled="wizardFormTemplateDetail.template.status !== 'draft'"
+                          rows="8"
+                          spellcheck="false"
+                          placeholder='{"promotionTypes":[],"markets":[],"audiences":[],"tones":[],"supportedComponentRoles":[],"requiredInputs":[],"requiredNotices":[],"tags":[]}'
+                        ></textarea>
+                        <small>활성 템플릿 추천에 사용할 목적, 마켓, 대상, 톤, 역할, 필수 입력과 태그를 배열로 관리합니다.</small>
+                      </label>
                       <label class="switch-control">
                         <input v-model="wizardFormTemplateEditor.isDefault" type="checkbox" :disabled="wizardFormTemplateDetail.template.status !== 'draft'" />
                         <span>기본 템플릿으로 지정</span>

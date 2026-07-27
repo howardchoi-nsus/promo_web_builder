@@ -1,24 +1,19 @@
 (function registerCreatePromoFlow(global) {
   const STEPS = Object.freeze([
     Object.freeze({
-      key: "style",
-      title: "디자인 토큰 선택",
-      copy: "프로모션에 적용할 색상, 글꼴, 간격과 컴포넌트 스타일 세트를 선택합니다.",
-    }),
-    Object.freeze({
       key: "overview",
-      title: "프로모션 개요 등록",
-      copy: "프로모션 제목, 목적, 대상 고객과 캠페인 톤을 등록합니다.",
+      title: "프로모션 개요",
+      copy: "프로모션 목적, 대상 고객, 혜택과 캠페인 톤을 등록합니다.",
     }),
     Object.freeze({
       key: "template",
-      title: "프로모션 템플릿 선택",
-      copy: "관리자가 활성화한 프로모션 템플릿을 선택합니다.",
+      title: "프로모션 템플릿",
+      copy: "프로모션 개요에 적합한 활성 템플릿을 선택합니다.",
     }),
     Object.freeze({
       key: "layout",
-      title: "템플릿 레이아웃",
-      copy: "선택한 템플릿의 콘텐츠와 섹션 레이아웃을 편집합니다.",
+      title: "레이아웃 및 디자인",
+      copy: "디자인 토큰을 선택하고 콘텐츠와 섹션 레이아웃을 편집합니다.",
     }),
     Object.freeze({
       key: "output",
@@ -27,36 +22,56 @@
     }),
   ]);
 
+  const STEP_KEYS = Object.freeze(STEPS.map((step) => step.key));
   const CONTENT_SUBSTEPS = Object.freeze(["overview", "template", "layout"]);
 
-  function normalizeStep(value, fallback = 0) {
-    const numeric = Number(value);
-    return Number.isInteger(numeric) && numeric >= 0 && numeric < STEPS.length
-      ? numeric
-      : fallback;
+  function normalizeStep(value, fallback = "overview") {
+    const raw = String(value || "").trim();
+    return STEP_KEYS.includes(raw) ? raw : (STEP_KEYS.includes(fallback) ? fallback : "overview");
+  }
+
+  function migrateLegacyStep(value) {
+    const raw = String(value ?? "").trim();
+    if (!raw) return "";
+    const numeric = Number(raw);
+    if (!Number.isInteger(numeric)) return "";
+    if (numeric <= 1) return "overview";
+    if (numeric === 2) return "template";
+    if (numeric === 3) return "layout";
+    if (numeric >= 4) return "output";
+    return "";
   }
 
   function stepForContentSubstep(value) {
-    return ({ overview: 1, template: 2, layout: 3 })[value] ?? 0;
+    return CONTENT_SUBSTEPS.includes(value) ? value : "overview";
   }
 
-  function resolveInitialStep(storedStep, contentSubstep) {
-    return normalizeStep(storedStep, stepForContentSubstep(contentSubstep));
+  function stepIndex(value) {
+    return Math.max(0, STEP_KEYS.indexOf(normalizeStep(value)));
+  }
+
+  function resolveInitialStep(storedStep, contentSubstep, legacyStep = "") {
+    const stored = String(storedStep || "").trim();
+    if (STEP_KEYS.includes(stored)) return stored;
+    return migrateLegacyStep(legacyStep) || stepForContentSubstep(contentSubstep);
   }
 
   function previousStep(current) {
-    return Math.max(0, normalizeStep(current) - 1);
+    return STEP_KEYS[Math.max(0, stepIndex(current) - 1)];
   }
 
   function nextStep(current) {
-    return Math.min(STEPS.length - 1, normalizeStep(current) + 1);
+    return STEP_KEYS[Math.min(STEPS.length - 1, stepIndex(current) + 1)];
   }
 
   global.PromoCreateFlow = Object.freeze({
     STEPS,
+    STEP_KEYS,
     CONTENT_SUBSTEPS,
     normalizeStep,
+    migrateLegacyStep,
     stepForContentSubstep,
+    stepIndex,
     resolveInitialStep,
     previousStep,
     nextStep,

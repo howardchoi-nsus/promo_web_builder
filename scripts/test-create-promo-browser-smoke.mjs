@@ -79,6 +79,105 @@ try {
       }),
     });
   });
+  let overviewParseRequest = null;
+  await page.route("**/api/promo-overview-parse", async (route) => {
+    overviewParseRequest = route.request().postDataJSON();
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ok: true,
+        overview: {
+          schemaVersion: 2,
+          inputMode: "natural-language",
+          rawNaturalLanguage: overviewParseRequest.naturalLanguage,
+          title: "Browser Smoke Promotion",
+          promotionPurpose: "이벤트",
+          promotionPurposeOther: "",
+          market: "KR",
+          audience: "신규",
+          campaignTone: "활기찬",
+          mainOffer: "첫 충전 100% 보너스",
+          primaryAction: { label: "게임 참가", url: "" },
+        },
+        missingInputs: ["primaryAction.url"],
+        uncertainInputs: [],
+        summary: "한국 신규 고객 대상 첫 충전 이벤트",
+        confidence: 0.92,
+        overviewFingerprint: "fixture-overview-fingerprint",
+      }),
+    });
+  });
+  let templateRecommendationRequest = null;
+  await page.route("**/api/promo-template-recommendations", async (route) => {
+    templateRecommendationRequest = route.request().postDataJSON();
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ok: true,
+        overviewFingerprint: templateRecommendationRequest.overviewFingerprint,
+        recommendations: [{
+          templateId: "visual-editor-preview-template",
+          templateKey: "default-preview",
+          templateVersion: 1,
+          templateName: "Default Preview Template",
+          score: 88,
+          reasons: ["프로모션 목적 적합", "대상 고객 적합"],
+          warnings: [],
+          requiredConfirmations: [],
+        }],
+        fallbackTemplateId: "visual-editor-preview-template",
+        source: "rule-base",
+        warnings: [],
+      }),
+    });
+  });
+  let templateCompositionRequest = null;
+  await page.route("**/api/promo-template-composition-plan", async (route) => {
+    templateCompositionRequest = route.request().postDataJSON();
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ok: true,
+        proposal: {
+          requestId: templateCompositionRequest.requestId,
+          overviewFingerprint: templateCompositionRequest.overviewFingerprint,
+          source: "ai-composition",
+          status: "ready",
+          createdAt: new Date().toISOString(),
+          templateId: "visual-editor-preview-template",
+          templateKey: "default-preview",
+          templateVersion: 1,
+          templateName: "Default Preview Template",
+          sections: [{
+            sectionId: "hero",
+            sectionKey: "heroBanner",
+            sectionName: "Hero Banner",
+            componentVersionIds: ["fixture-title", "fixture-cta"],
+            contentMappings: [
+              { itemKey: "title", sourceOverviewPath: "title" },
+              { itemKey: "button", sourceOverviewPath: "primaryAction.label" },
+            ],
+            layoutCommands: [],
+          }, {
+            sectionId: "content",
+            sectionKey: "contentFeature",
+            sectionName: "Content Feature",
+            componentVersionIds: ["fixture-copy"],
+            contentMappings: [{ itemKey: "copy", sourceOverviewPath: "mainOffer" }],
+            layoutCommands: [],
+          }],
+          missingInputs: ["primaryAction.url"],
+          warnings: [],
+          summary: "프로모션 개요를 Hero와 상세 콘텐츠에 배치합니다.",
+          templateSnapshot: [],
+          promptExecutionSnapshot: {},
+        },
+      }),
+    });
+  });
   let sectionAiRunRequest = null;
   let latestSectionAiRun = null;
   let sectionAiRunResponseDelayMs = 0;
@@ -161,27 +260,34 @@ try {
   });
 
   await page.goto(`${origin}/create-promo.html`, { waitUntil: "networkidle" });
-  await assertPageText(page.locator(".step.is-active strong"), "Design Token");
+  await assertPageText(page.locator(".step.is-active strong"), "Overview");
+  await page.getByRole("tab", { name: "자연어 입력" }).click();
+  await page.locator(".overview-nlp-input").fill(
+    "한국 신규 고객에게 첫 충전 100% 보너스를 제공하는 활기찬 이벤트이며 게임 참가 버튼이 필요합니다."
+  );
+  await page.getByRole("button", { name: "AI로 개요 분석" }).click();
+  await page.getByRole("button", { name: "분석 결과 적용" }).waitFor();
+  assert.equal(overviewParseRequest.currentOverview.schemaVersion, 2);
+  await page.getByRole("button", { name: "분석 결과 적용" }).click();
+
+  await page.locator("#next-step").click();
+  await assertPageText(page.locator(".step.is-active strong"), "Template");
+  await page.locator(".wizard-template-recommended").waitFor();
+  assert.equal(templateRecommendationRequest.overview.title, "Browser Smoke Promotion");
+  await page.getByRole("button", { name: "AI 구성 초안 생성" }).click();
+  await page.getByRole("button", { name: "이 구성 초안 적용" }).waitFor();
+  assert.deepEqual(templateCompositionRequest.candidateTemplateIds, ["visual-editor-preview-template"]);
+  await page.getByRole("button", { name: "이 구성 초안 적용" }).click();
+  await page.getByText("현재 프로모션에 구성 초안을 적용했습니다.").waitFor();
+  await page.locator('.wizard-template-tile[aria-pressed="true"]').waitFor();
+
+  await page.locator("#next-step").click();
+  await assertPageText(page.locator(".step.is-active strong"), "Layout & Design");
   const defaultTokenChoice = page.locator('.appearance-choice[role="radio"]', { hasText: "Fixture Dark" });
   assert.equal(
     await defaultTokenChoice.getAttribute("aria-checked"),
     "true",
   );
-
-  await page.locator("#next-step").click();
-  await assertPageText(page.locator(".step.is-active strong"), "Overview");
-  await page.locator('[data-field-key="title"] input').fill("Browser Smoke Promotion");
-  await page.locator('[data-field-key="promotionPurpose"] select').selectOption("이벤트");
-  await page.locator('[data-field-key="market"] input').fill("KR");
-  await page.locator('[data-field-key="audience"] select').selectOption("신규");
-  await page.locator('[data-field-key="campaignTone"] select').selectOption("활기찬");
-
-  await page.locator("#next-step").click();
-  await assertPageText(page.locator(".step.is-active strong"), "Template");
-  await page.locator('.wizard-template-tile[aria-pressed="true"]').waitFor();
-
-  await page.locator("#next-step").click();
-  await assertPageText(page.locator(".step.is-active strong"), "Layout");
   const editorFrame = page.frameLocator("iframe.wizard-layout-frame");
   await editorFrame.locator(".editor-workspace.is-create-promo-wizard").waitFor({ timeout: 10_000 });
   assert.equal(await page.locator("iframe.wizard-layout-frame").getAttribute("scrolling"), "no");
@@ -276,10 +382,10 @@ try {
     "Selecting a Section must scroll the Preview stage to that Section",
   );
   assert.equal(await editorFrame.locator(".section-properties .section-ai-action").count(), 2, "Layout and background AI actions must live inside Section properties");
-  assert.equal(await editorFrame.locator(".section-ai-action:not([disabled])").count(), 0, "Structural image/CTA values must not enable AI generation");
   assert.equal(
-    await editorFrame.getByRole("button", { name: "AI 디자인", exact: true }).getAttribute("title"),
-    "섹션 콘텐츠를 먼저 등록해 주세요.",
+    await editorFrame.locator(".section-ai-action:not([disabled])").count(),
+    2,
+    "Applied AI composition content must enable the Section AI actions"
   );
   await editorFrame.getByRole("button", { name: "자동등록" }).click();
   await editorFrame.locator(".auto-register-message").waitFor({ timeout: 10_000 });

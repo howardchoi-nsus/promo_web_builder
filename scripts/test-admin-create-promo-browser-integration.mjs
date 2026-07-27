@@ -37,6 +37,30 @@ try {
   const page = await context.newPage();
   const pageErrors = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
+  await page.route("**/api/promo-template-recommendations", async (route) => {
+    const request = route.request().postDataJSON();
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ok: true,
+        overviewFingerprint: request.overviewFingerprint,
+        recommendations: [{
+          templateId: "visual-editor-preview-template",
+          templateKey: "default-preview",
+          templateVersion: 1,
+          templateName: "Default Promotion Page",
+          score: 80,
+          reasons: ["Fixture recommendation"],
+          warnings: [],
+          requiredConfirmations: [],
+        }],
+        fallbackTemplateId: "visual-editor-preview-template",
+        source: "rule-base",
+        warnings: [],
+      }),
+    });
+  });
 
   const layoutResponse = await page.request.get(`${origin}/api/wizard-form-template-layout?templateId=visual-editor-preview-template`);
   assert.equal(layoutResponse.ok(), true, "Admin layout fixture should load");
@@ -94,12 +118,12 @@ try {
   await adminEditorPage.close();
 
   await page.goto(`${origin}/create-promo.html`, { waitUntil: "networkidle" });
-  await page.locator('[data-step="2"]').click();
   await page.locator('[data-field-key="title"] input').fill("Admin Layout Integration");
   await page.locator('[data-field-key="promotionPurpose"] select').selectOption("이벤트");
   await page.locator('[data-field-key="market"] input').fill("KR");
   await page.locator('[data-field-key="audience"] select').selectOption("신규");
   await page.locator('[data-field-key="campaignTone"] select').selectOption("활기찬");
+  await page.locator('[data-field-key="mainOffer"] textarea').fill("Admin layout integration offer");
   await page.locator("#next-step").click();
   await page.locator('.wizard-template-tile[aria-pressed="true"]').waitFor();
   await page.locator("#next-step").click();

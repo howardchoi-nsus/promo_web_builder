@@ -38,6 +38,46 @@ function normalizeNumber(value, fallback = 0) {
   return Number.isFinite(number) ? Math.trunc(number) : fallback;
 }
 
+const RECOMMENDATION_PROFILE_KEYS = [
+  "promotionTypes", "markets", "audiences", "tones", "supportedComponentRoles",
+  "requiredInputs", "requiredNotices", "tags",
+];
+
+function normalizeRecommendationProfile(value = {}) {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  return Object.fromEntries(RECOMMENDATION_PROFILE_KEYS.map((key) => [
+    key,
+    Array.from(new Set(
+      (Array.isArray(source[key]) ? source[key] : [])
+        .map((item) => String(item || "").trim()).filter(Boolean)
+    )).slice(0, 100),
+  ]));
+}
+
+async function recommendationProfileColumnAvailable(sql) {
+  const rows = await sql`
+    select exists (
+      select 1 from information_schema.columns
+      where table_schema = current_schema()
+        and table_name = 'wizard_form_templates'
+        and column_name = 'recommendation_profile'
+    ) as available
+  `;
+  return Boolean(rows[0]?.available);
+}
+
+async function attachRecommendationProfiles(sql, rows) {
+  if (!rows.length || !await recommendationProfileColumnAvailable(sql)) return rows;
+  const ids = rows.map((row) => row.id);
+  const profiles = await sql`
+    select id::text, recommendation_profile
+    from wizard_form_templates
+    where id = any(${ids}::uuid[])
+  `;
+  const byId = new Map(profiles.map((row) => [row.id, row.recommendation_profile]));
+  return rows.map((row) => ({ ...row, recommendation_profile: byId.get(row.id) || {} }));
+}
+
 function toFormTemplate(row) {
   return {
     id: row.id,
@@ -48,6 +88,7 @@ function toFormTemplate(row) {
     version: Number(row.version || 1),
     isDefault: Boolean(row.is_default),
     changeNote: row.change_note || "",
+    recommendationProfile: normalizeRecommendationProfile(row.recommendation_profile),
     designTokenSetVersionId: row.design_token_set_version_id || null,
     archivedAt: row.archived_at || null,
     createdAt: row.created_at || null,
@@ -84,7 +125,7 @@ async function fetchTemplateRow(sql, id) {
       archived_at, created_at, updated_at
     from wizard_form_templates where id = ${id}::uuid limit 1
   `;
-  return rows[0] || null;
+  return (await attachRecommendationProfiles(sql, rows))[0] || null;
 }
 
 async function fetchTemplates(sql, { includeArchived = false, activeOnly = false } = {}) {
@@ -108,7 +149,7 @@ async function fetchTemplates(sql, { includeArchived = false, activeOnly = false
         from wizard_form_templates where status <> 'archived'
         order by is_default desc, name asc, version desc
       `;
-  return rows.map(toFormTemplate);
+  return (await attachRecommendationProfiles(sql, rows)).map(toFormTemplate);
 }
 
 async function fetchTemplateSections(sql, templateId) {
@@ -175,6 +216,8 @@ module.exports = {
   parseBody,
   normalizeBoolean,
   normalizeNumber,
+  normalizeRecommendationProfile,
+  recommendationProfileColumnAvailable,
   toFormTemplate,
   toTemplateSection,
   fetchTemplateRow,

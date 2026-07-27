@@ -14,7 +14,12 @@ assert.deepStrictEqual(store.toFormTemplate({
   id: "template-id", template_key: "aaa", name: "AAA", status: "draft", version: 2, is_default: false,
 }), {
   id: "template-id", templateKey: "aaa", name: "AAA", description: "", status: "draft",
-  version: 2, isDefault: false, changeNote: "", designTokenSetVersionId: null, archivedAt: null, createdAt: null, updatedAt: null,
+  version: 2, isDefault: false, changeNote: "",
+  recommendationProfile: {
+    promotionTypes: [], markets: [], audiences: [], tones: [],
+    supportedComponentRoles: [], requiredInputs: [], requiredNotices: [], tags: [],
+  },
+  designTokenSetVersionId: null, archivedAt: null, createdAt: null, updatedAt: null,
 });
 
 const root = path.resolve(__dirname, "..");
@@ -24,6 +29,7 @@ const migration18 = read("db", "migrations", "018_template_owned_sections_and_re
 const migration21 = read("db", "migrations", "021_fix_form_template_section_clone_links.sql");
 const migration29 = read("db", "migrations", "029_item_components_design_tokens_and_planner.sql");
 const migration40 = read("db", "migrations", "040_decouple_template_design_tokens.sql");
+const migration43 = read("db", "migrations", "043_promo_template_recommendation.sql");
 const templatesApi = read("api", "wizard-form-templates.js");
 const templateApi = read("api", "wizard-form-template.js");
 const activateApi = read("api", "wizard-form-template-activate.js");
@@ -58,6 +64,9 @@ assert.match(migration29, /design_token_set_version_id/);
 assert.match(migration40, /set design_token_set_version_id = null/);
 assert.match(migration40, /add column if not exists is_default/);
 assert.match(migration40, /promo_design_token_sets_default_uidx/);
+assert.match(migration43, /recommendation_profile jsonb/);
+assert.match(templateApi, /recommendationProfile/);
+assert.match(adminHtml, /추천 메타데이터 \(JSON\)/);
 assert.doesNotMatch(templatesApi, /body\.designTokenSetVersionId/);
 assert.doesNotMatch(templateApi, /body\.designTokenSetVersionId/);
 assert.doesNotMatch(store.validateTemplateDraft.toString(), /DESIGN_TOKEN_SET_REQUIRED/);
