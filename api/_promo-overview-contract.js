@@ -1,5 +1,3 @@
-const { createHash } = require("node:crypto");
-
 const PROMOTION_PURPOSES = ["할인쿠폰", "경품", "이벤트", "기타"];
 const AUDIENCES = ["신규", "기존고객", "일반고객"];
 const CAMPAIGN_TONES = ["활기찬", "진중함", "럭셔리", "프리미엄", "긴급함", "친근함"];
@@ -133,9 +131,22 @@ function normalizeParsedOverview({ result = {}, instruction = "", currentOvervie
   };
 }
 
+function stableStringify(value) {
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
 function overviewFingerprint(value) {
-  const normalized = normalizeOverview(value);
-  return createHash("sha256").update(JSON.stringify(normalized)).digest("hex");
+  const input = stableStringify(normalizeOverview(value));
+  let hash = 2166136261;
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= input.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `overview-${(hash >>> 0).toString(16).padStart(8, "0")}`;
 }
 
 module.exports = {

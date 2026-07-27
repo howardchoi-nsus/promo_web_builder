@@ -10,6 +10,7 @@ const source = fs.readFileSync(
 const context = { globalThis: {} };
 vm.runInNewContext(source, context);
 const overview = context.globalThis.PromoPromotionOverview;
+const { overviewFingerprint: serverOverviewFingerprint } = require("../api/_promo-overview-contract");
 
 const content = {
   promo: {
@@ -48,5 +49,10 @@ assert.equal(content.promo.ctaLabel, "쿠폰 받기");
 assert.equal(overview.fingerprint(content.promotionOverview), overview.fingerprint({
   ...content.promotionOverview,
 }));
+assert.equal(
+  overview.fingerprint(content.promotionOverview),
+  serverOverviewFingerprint(content.promotionOverview),
+  "Browser and server must use the same Overview fingerprint contract"
+);
 
 console.log("promotion overview browser module tests passed");
