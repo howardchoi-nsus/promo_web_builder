@@ -131,9 +131,6 @@ const FALLBACK_LAYOUT = {
 const contentState = loadWizardContent();
 
 const stepButtons = Array.from(document.querySelectorAll(".step"));
-const title = document.getElementById("step-title");
-const copy = document.getElementById("step-copy");
-const eyebrow = document.getElementById("step-eyebrow");
 const placeholders = document.getElementById("step-placeholders");
 const status = document.getElementById("step-status");
 const shellStatus = document.getElementById("wizard-shell-status");
@@ -2177,9 +2174,6 @@ async function loadDesignDocuments(options = {}) {
 
 function renderStep() {
   const step = steps[currentStep];
-  title.textContent = step.title;
-  copy.textContent = step.copy;
-  eyebrow.textContent = `Step ${currentStep + 1}`;
   status.textContent = `Step ${currentStep + 1} / ${steps.length}`;
   if (shellStatus) shellStatus.textContent = `Step ${currentStep + 1} / ${steps.length}`;
   prev.disabled = currentStep === 0;
