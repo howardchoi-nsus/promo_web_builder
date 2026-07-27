@@ -1,23 +1,41 @@
 (function registerPromotionOverview(global) {
+  const PROMOTION_PURPOSES = ["할인쿠폰", "경품", "이벤트", "기타"];
+  const AUDIENCES = ["신규", "기존고객", "일반고객"];
+  const CAMPAIGN_TONES = ["활기찬", "진중함", "럭셔리", "프리미엄", "긴급함", "친근함"];
+
   function text(value, maxLength = 2000) {
     return String(value || "").trim().slice(0, maxLength);
   }
 
+  function normalizedUrl(value) {
+    const raw = text(value, 2000);
+    if (!raw) return "";
+    try {
+      const parsed = new URL(raw);
+      return ["http:", "https:"].includes(parsed.protocol) ? parsed.toString() : "";
+    } catch {
+      return "";
+    }
+  }
+
   function normalize(value = {}) {
+    const promotionPurpose = PROMOTION_PURPOSES.includes(value.promotionPurpose)
+      ? value.promotionPurpose : "";
     return {
       schemaVersion: 2,
       inputMode: value.inputMode === "natural-language" ? "natural-language" : "structured",
       rawNaturalLanguage: text(value.rawNaturalLanguage, 4000),
       title: text(value.title, 200),
-      promotionPurpose: text(value.promotionPurpose, 100),
-      promotionPurposeOther: text(value.promotionPurposeOther, 200),
+      promotionPurpose,
+      promotionPurposeOther: promotionPurpose === "기타"
+        ? text(value.promotionPurposeOther, 200) : "",
       market: text(value.market, 200),
-      audience: text(value.audience, 100),
-      campaignTone: text(value.campaignTone, 100),
+      audience: AUDIENCES.includes(value.audience) ? value.audience : "",
+      campaignTone: CAMPAIGN_TONES.includes(value.campaignTone) ? value.campaignTone : "",
       mainOffer: text(value.mainOffer, 1000),
       primaryAction: {
         label: text(value.primaryAction?.label, 120),
-        url: text(value.primaryAction?.url, 2000),
+        url: normalizedUrl(value.primaryAction?.url),
       },
     };
   }

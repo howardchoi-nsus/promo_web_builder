@@ -7,7 +7,7 @@ const source = fs.readFileSync(
   path.join(__dirname, "..", "prototype", "wizard", "promotion-overview.js"),
   "utf8"
 );
-const context = { globalThis: {} };
+const context = { globalThis: {}, URL };
 vm.runInNewContext(source, context);
 const overview = context.globalThis.PromoPromotionOverview;
 const { overviewFingerprint: serverOverviewFingerprint } = require("../api/_promo-overview-contract");
@@ -54,5 +54,19 @@ assert.equal(
   serverOverviewFingerprint(content.promotionOverview),
   "Browser and server must use the same Overview fingerprint contract"
 );
+
+const normalizationEdgeCase = {
+  ...content.promotionOverview,
+  promotionPurpose: "이벤트",
+  promotionPurposeOther: "이 값은 기타 목적이 아니므로 제거되어야 함",
+  primaryAction: { label: "참가", url: "https://promo.example" },
+};
+assert.equal(
+  overview.fingerprint(normalizationEdgeCase),
+  serverOverviewFingerprint(normalizationEdgeCase),
+  "Browser and server normalization must match for stale other-purpose values and canonical URLs"
+);
+assert.equal(overview.normalize(normalizationEdgeCase).promotionPurposeOther, "");
+assert.equal(overview.normalize(normalizationEdgeCase).primaryAction.url, "https://promo.example/");
 
 console.log("promotion overview browser module tests passed");
