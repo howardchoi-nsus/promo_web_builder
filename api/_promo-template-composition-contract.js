@@ -53,7 +53,12 @@ function compositionSchema(candidateStructures) {
             layoutCommands: {
               type: "array",
               maxItems: 0,
-              items: { type: "object" },
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {},
+                required: [],
+              },
             },
           },
         },

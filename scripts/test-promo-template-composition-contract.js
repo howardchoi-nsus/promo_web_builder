@@ -32,6 +32,11 @@ const candidates = [{
 const schema = compositionSchema(candidates);
 assert.deepEqual(schema.properties.templateId.enum, ["template-active"]);
 assert.equal(schema.properties.sections.items.properties.layoutCommands.maxItems, 0);
+assert.equal(
+  schema.properties.sections.items.properties.layoutCommands.items.additionalProperties,
+  false,
+  "Strict response schemas must close nested object items"
+);
 
 const validated = validateCompositionProposal({
   templateId: "template-active",
