@@ -1545,7 +1545,7 @@
                   }"
                   @dragover.prevent="dragOverWizardFormTemplateSection(group.templateMembership, $event)"
                   @drop.prevent.stop="dropWizardFormTemplateSection(group.templateMembership)"
-                  @click="selectWizardSection(group.sectionKey)"
+                  @click="selectWizardSection(group.sectionKey, { sectionId: group.templateMembership?.sectionId })"
                 >
                   <strong>
                     <span
@@ -1557,10 +1557,10 @@
                       @dragend.stop="stopWizardFormTemplateSectionDrag"
                       @click.stop
                     >{{ wizardFormTemplateSectionCanReorder(group.templateMembership) ? '⋮⋮' : '고정' }}</span>
-                    {{ group.primary?.name }}
+                    {{ group.templateMembership?.sectionName || group.primary?.name }}
                   </strong>
-                  <span>{{ group.sectionKey }} · v{{ group.primary?.version }}{{ group.versions.length > 1 ? ` (버전 ${group.versions.length}개)` : '' }}</span>
-                  <em :class="`status-${group.primary?.status}`">{{ wizardSectionStatusLabel(group.primary?.status) }}</em>
+                  <span>{{ group.sectionKey }} · v{{ group.templateMembership?.sectionVersion || group.primary?.version }}{{ group.versions.length > 1 ? ` (버전 ${group.versions.length}개)` : '' }}</span>
+                  <em :class="`status-${group.templateMembership?.sectionStatus || group.primary?.status}`">{{ wizardSectionStatusLabel(group.templateMembership?.sectionStatus || group.primary?.status) }}</em>
                 </button>
                 <div class="empty-state compact" v-if="!wizardSectionsLoading && !wizardSectionsForCurrentTemplate.length" key="wizard-sections-empty">
                   등록된 섹션이 없습니다. "+ 섹션 추가"로 새로 만들어 보세요.

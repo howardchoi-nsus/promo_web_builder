@@ -89,6 +89,9 @@ assert.match(adminSource, /addWizardFormTemplateSection/);
 assert.match(adminSource, /섹션은 생성됐지만 템플릿 추가에 실패했습니다/);
 assert.match(adminSource, /섹션을 생성하고 현재 템플릿 초안에 추가했습니다/);
 assert.match(adminSource, /wizardSectionsForCurrentTemplate/);
+assert.match(adminSource, /group\.versions\.find\(\(version\) => version\.id === membership\.sectionId\)/);
+assert.match(adminSource, /const requestedSectionId = String\(options\.sectionId \|\| ""\)\.trim\(\)/);
+assert.match(adminSource, /Form template validation failed.*sectionErrors\.join/s);
 assert.match(adminSource, /dropWizardFormTemplateSection/);
 assert.match(adminSource, /const previousSections = \[\.\.\.this\.wizardFormTemplateDetail\.sections\]/);
 assert.match(adminSource, /this\.wizardFormTemplateDetail\.sections = previousSections/);
@@ -127,6 +130,8 @@ assert.doesNotMatch(adminHtml, /transition-group name="template-section-order"/)
 assert.doesNotMatch(adminHtml, /class="template-section-add"/);
 assert.match(adminHtml, /새 섹션을 만들고 현재 템플릿 초안에 추가합니다/);
 assert.match(adminHtml, /v-for="group in wizardSectionsForCurrentTemplate"/);
+assert.match(adminHtml, /selectWizardSection\(group\.sectionKey, \{ sectionId: group\.templateMembership\?\.sectionId \}\)/);
+assert.match(adminHtml, /group\.templateMembership\?\.sectionStatus \|\| group\.primary\?\.status/);
 assert.match(adminHtml, /dropWizardFormTemplateSection\(group\.templateMembership\)/);
 assert.match(adminHtml, /transition-group name="template-item-order"/);
 assert.match(adminHtml, /class="template-item-expanded"/);

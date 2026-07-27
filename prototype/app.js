@@ -1730,7 +1730,24 @@ const adminApp = createApp({
       const groupsByKey = new Map(this.groupedWizardSections.map((group) => [group.sectionKey, group]));
       return (this.wizardFormTemplateDetail?.sections || []).flatMap((membership) => {
         const group = groupsByKey.get(membership.sectionKey);
-        return group ? [{ ...group, templateMembership: membership }] : [];
+        if (!group) return [];
+        const linkedVersion = group.versions.find((version) => version.id === membership.sectionId) || {
+          id: membership.sectionId,
+          sectionKey: membership.sectionKey,
+          name: membership.sectionName,
+          description: membership.sectionDescription,
+          version: membership.sectionVersion,
+          status: membership.sectionStatus,
+          sortOrder: membership.sortOrder,
+          fixedPosition: membership.fixedPosition,
+          orderChangeAllowed: membership.orderChangeAllowed,
+        };
+        return [{
+          ...group,
+          logicalPrimary: group.primary,
+          primary: linkedVersion,
+          templateMembership: membership,
+        }];
       });
     },
 
@@ -3171,7 +3188,22 @@ const adminApp = createApp({
           body: JSON.stringify({ id: template.id, changeNote: "관리자 페이지에서 템플릿을 활성화했습니다." }),
         });
         const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.message || result.error || `템플릿 활성화 오류(${response.status})`);
+        if (!response.ok) {
+          const sectionErrors = (Array.isArray(result.errors) ? result.errors : []).map((error) => {
+            const membership = this.wizardFormTemplateDetail?.sections?.find(
+              (section) => section.sectionKey === error.path
+            );
+            const sectionLabel = membership
+              ? `${membership.sectionName || membership.sectionKey} v${membership.sectionVersion || "?"} · ${this.wizardSectionStatusLabel(membership.sectionStatus)}`
+              : error.path || "Section";
+            return `${sectionLabel}: ${error.message || error.code}`;
+          });
+          throw new Error(
+            sectionErrors.length
+              ? `${result.error || "Form template validation failed"} — ${sectionErrors.join(" / ")}`
+              : result.message || result.error || `템플릿 활성화 오류(${response.status})`
+          );
+        }
         await this.loadWizardFormTemplates({ fresh: true });
         const layoutRevision = Number(result.layoutIdentity?.layoutRevision || 1);
         this.setStatus(`템플릿 v${result.template?.version || template.version} · 레이아웃 r${layoutRevision}을 활성화했습니다`);
@@ -3699,7 +3731,10 @@ const adminApp = createApp({
     async selectWizardSection(sectionKey, options = {}) {
       this.selectedWizardSectionKey = sectionKey;
       const group = this.groupedWizardSections.find((item) => item.sectionKey === sectionKey);
-      const target = group?.versions.find((version) => version.status === "draft") || group?.primary;
+      const requestedSectionId = String(options.sectionId || "").trim();
+      const target = requestedSectionId
+        ? group?.versions.find((version) => version.id === requestedSectionId)
+        : group?.versions.find((version) => version.status === "draft") || group?.primary;
       if (!target) {
         this.wizardSectionDetail = null;
         return;

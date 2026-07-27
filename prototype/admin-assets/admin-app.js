@@ -9840,10 +9840,24 @@ var t_ = Object.freeze({
 				let e = new Map(this.groupedWizardSections.map((e) => [e.sectionKey, e]));
 				return (this.wizardFormTemplateDetail?.sections || []).flatMap((t) => {
 					let n = e.get(t.sectionKey);
-					return n ? [{
+					if (!n) return [];
+					let r = n.versions.find((e) => e.id === t.sectionId) || {
+						id: t.sectionId,
+						sectionKey: t.sectionKey,
+						name: t.sectionName,
+						description: t.sectionDescription,
+						version: t.sectionVersion,
+						status: t.sectionStatus,
+						sortOrder: t.sortOrder,
+						fixedPosition: t.fixedPosition,
+						orderChangeAllowed: t.orderChangeAllowed
+					};
+					return [{
 						...n,
+						logicalPrimary: n.primary,
+						primary: r,
 						templateMembership: t
-					}] : [];
+					}];
 				});
 			},
 			activeItemComponents() {
@@ -11095,7 +11109,13 @@ var t_ = Object.freeze({
 								changeNote: "관리자 페이지에서 템플릿을 활성화했습니다."
 							})
 						}), n = await e.json().catch(() => ({}));
-						if (!e.ok) throw Error(n.message || n.error || `템플릿 활성화 오류(${e.status})`);
+						if (!e.ok) {
+							let t = (Array.isArray(n.errors) ? n.errors : []).map((e) => {
+								let t = this.wizardFormTemplateDetail?.sections?.find((t) => t.sectionKey === e.path);
+								return `${t ? `${t.sectionName || t.sectionKey} v${t.sectionVersion || "?"} · ${this.wizardSectionStatusLabel(t.sectionStatus)}` : e.path || "Section"}: ${e.message || e.code}`;
+							});
+							throw Error(t.length ? `${n.error || "Form template validation failed"} — ${t.join(" / ")}` : n.message || n.error || `템플릿 활성화 오류(${e.status})`);
+						}
 						await this.loadWizardFormTemplates({ fresh: !0 });
 						let r = Number(n.layoutIdentity?.layoutRevision || 1);
 						this.setStatus(`템플릿 v${n.template?.version || t.version} · 레이아웃 r${r}을 활성화했습니다`);
@@ -11523,12 +11543,12 @@ var t_ = Object.freeze({
 			},
 			async selectWizardSection(e, t = {}) {
 				this.selectedWizardSectionKey = e;
-				let n = this.groupedWizardSections.find((t) => t.sectionKey === e), r = n?.versions.find((e) => e.status === "draft") || n?.primary;
-				if (!r) {
+				let n = this.groupedWizardSections.find((t) => t.sectionKey === e), r = String(t.sectionId || "").trim(), i = r ? n?.versions.find((e) => e.id === r) : n?.versions.find((e) => e.status === "draft") || n?.primary;
+				if (!i) {
 					this.wizardSectionDetail = null;
 					return;
 				}
-				await this.loadWizardSectionDetail(r.id, t);
+				await this.loadWizardSectionDetail(i.id, t);
 			},
 			async loadWizardSectionDetail(e, t = {}) {
 				this.wizardSectionDetailLoading = !0;
