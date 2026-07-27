@@ -1621,9 +1621,9 @@
                       @click="saveWizardSectionFields"
                     >{{ t('common.action.save') }}</button>
                     <button
-                      class="tiny-button"
+                      class="tiny-button section-activate-button"
                       type="button"
-                      v-if="wizardSectionDetail.section.status === 'draft'"
+                      v-if="['draft', 'inactive'].includes(wizardSectionDetail.section.status)"
                       :disabled="wizardSectionSaving"
                       @click="activateWizardSection(wizardSectionDetail.section.id)"
                     >{{ t('common.action.activate') }}</button>

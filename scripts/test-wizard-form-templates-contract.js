@@ -132,6 +132,7 @@ assert.match(adminHtml, /새 섹션을 만들고 현재 템플릿 초안에 추�
 assert.match(adminHtml, /v-for="group in wizardSectionsForCurrentTemplate"/);
 assert.match(adminHtml, /selectWizardSection\(group\.sectionKey, \{ sectionId: group\.templateMembership\?\.sectionId \}\)/);
 assert.match(adminHtml, /group\.templateMembership\?\.sectionStatus \|\| group\.primary\?\.status/);
+assert.match(adminHtml, /class="tiny-button section-activate-button"[\s\S]*?\['draft', 'inactive'\]\.includes\(wizardSectionDetail\.section\.status\)/);
 assert.match(adminHtml, /dropWizardFormTemplateSection\(group\.templateMembership\)/);
 assert.match(adminHtml, /transition-group name="template-item-order"/);
 assert.match(adminHtml, /class="template-item-expanded"/);
