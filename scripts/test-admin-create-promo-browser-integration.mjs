@@ -52,15 +52,31 @@ try {
       },
     },
   };
+  const adminDefaultContent = {
+    heroBanner: {
+      title: "Admin preset title",
+    },
+    contentFeature: {
+      image: {
+        source: "url",
+        value: "https://example.com/admin-logo.png",
+        description: "",
+        alt: "Admin logo",
+      },
+    },
+  };
   const saveResponse = await page.request.patch(`${origin}/api/wizard-form-template-layout`, {
     data: {
       templateId: "visual-editor-preview-template",
       expectedRevision: current.layout.layoutRevision,
       layoutSpec: adminLayout,
+      defaultContent: adminDefaultContent,
     },
   });
   assert.equal(saveResponse.ok(), true, "Admin layout save should succeed");
   assert.equal((await saveResponse.json()).layout.layoutRevision, 2);
+  const savedAdminLayout = await page.request.get(`${origin}/api/wizard-form-template-layout?templateId=visual-editor-preview-template`);
+  assert.equal((await savedAdminLayout.json()).layout.defaultContent.contentFeature.image.value, "https://example.com/admin-logo.png");
 
   const adminEditorPage = await context.newPage();
   await adminEditorPage.goto(
@@ -90,6 +106,18 @@ try {
 
   const editorFrame = page.frameLocator("iframe.wizard-layout-frame");
   await editorFrame.locator(".editor-workspace.is-create-promo-wizard").waitFor({ timeout: 10_000 });
+  assert.equal(
+    await editorFrame.locator('[data-section-key="heroBanner"] [data-item-key="title"]').textContent(),
+    "Admin preset title",
+    "Admin template text defaults must initialize Create Promo",
+  );
+  const presetImageFrame = editorFrame.locator('[data-section-key="contentFeature"] [data-item-key="image"] .rendered-image-frame');
+  await presetImageFrame.waitFor();
+  assert.match(
+    await presetImageFrame.evaluate((node) => getComputedStyle(node).backgroundImage),
+    /admin-logo\.png/,
+    "Admin template image defaults must render in Create Promo",
+  );
   assert.equal(await editorFrame.locator(".editor-workspace.is-builder-workspace").count(), 1);
   assert.equal(await editorFrame.locator(".editor-shell--embedded").count(), 1);
   assert.equal(await editorFrame.locator(".shell-sidebar").count(), 0);

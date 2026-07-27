@@ -61,6 +61,7 @@ module.exports = async function handler(req, res) {
       renderer: { key: layout.rendererKey, version: layout.rendererVersion },
       layoutIdentity: createLayoutIdentity(template, layout, revision),
       defaultLayout: layout.layoutSpec,
+      defaultContent: layout.defaultContent,
       sections,
       configurationWarnings,
     });

@@ -37,6 +37,23 @@ function normalizeLayoutSpec(value) {
   };
 }
 
+function normalizeDefaultContent(value, sections = []) {
+  const candidate = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  if (!sections.length) return clone(candidate);
+  const result = {};
+  sections.forEach((section) => {
+    const sectionValue = candidate[section.sectionKey];
+    if (!sectionValue || typeof sectionValue !== "object" || Array.isArray(sectionValue)) return;
+    const itemValues = {};
+    (section.items || []).forEach((item) => {
+      if (!Object.prototype.hasOwnProperty.call(sectionValue, item.itemKey)) return;
+      itemValues[item.itemKey] = clone(sectionValue[item.itemKey]);
+    });
+    if (Object.keys(itemValues).length) result[section.sectionKey] = itemValues;
+  });
+  return result;
+}
+
 function validateLayoutSpec(value, sections = []) {
   const spec = normalizeLayoutSpec(value);
   const errors = [];
@@ -129,7 +146,7 @@ function validateLayoutSpec(value, sections = []) {
 async function fetchLayoutRow(sql, templateId) {
   const rows = await sql`
     select id::text, form_template_id::text, renderer_key, renderer_version,
-      contract_version, layout_revision, layout_spec, validation_result,
+      contract_version, layout_revision, layout_spec, default_content, validation_result,
       change_note, created_at, updated_at
     from wizard_form_template_layouts
     where form_template_id = ${templateId}::uuid
@@ -146,6 +163,7 @@ function toLayout(row) {
     contractVersion: 1,
     layoutRevision: 1,
     layoutSpec: clone(DEFAULT_LAYOUT_SPEC),
+    defaultContent: {},
     validationResult: { ok: true, errors: [], warnings: [] },
     changeNote: "",
     createdAt: null,
@@ -159,6 +177,7 @@ function toLayout(row) {
     contractVersion: Number(row.contract_version || 1),
     layoutRevision: Number(row.layout_revision || 1),
     layoutSpec: normalizeLayoutSpec(row.layout_spec),
+    defaultContent: clone(row.default_content || {}),
     validationResult: row.validation_result || {},
     changeNote: row.change_note || "",
     createdAt: row.created_at || null,
@@ -202,16 +221,16 @@ async function ensureLayout(sql, templateId) {
   const rows = await sql`
     insert into wizard_form_template_layouts (
       form_template_id, renderer_key, renderer_version, contract_version,
-      layout_revision, layout_spec, validation_result, change_note
+      layout_revision, layout_spec, default_content, validation_result, change_note
     ) values (
       ${templateId}::uuid, 'default-promo-renderer', 1, 1, 1,
-      ${JSON.stringify(DEFAULT_LAYOUT_SPEC)}::jsonb,
+      ${JSON.stringify(DEFAULT_LAYOUT_SPEC)}::jsonb, '{}'::jsonb,
       '{"ok":true,"errors":[],"warnings":[]}'::jsonb,
       'Default layout initialized.'
     )
     on conflict (form_template_id) do update set form_template_id = excluded.form_template_id
     returning id::text, form_template_id::text, renderer_key, renderer_version,
-      contract_version, layout_revision, layout_spec, validation_result,
+      contract_version, layout_revision, layout_spec, default_content, validation_result,
       change_note, created_at, updated_at
   `;
   return rows[0];
@@ -222,10 +241,11 @@ async function cloneLayout(sql, sourceTemplateId, targetTemplateId) {
   const rows = await sql`
     insert into wizard_form_template_layouts (
       form_template_id, renderer_key, renderer_version, contract_version,
-      layout_revision, layout_spec, validation_result, change_note
+      layout_revision, layout_spec, default_content, validation_result, change_note
     ) values (
       ${targetTemplateId}::uuid, ${source.rendererKey}, ${source.rendererVersion},
       ${source.contractVersion}, 1, ${JSON.stringify(source.layoutSpec)}::jsonb,
+      ${JSON.stringify(source.defaultContent)}::jsonb,
       ${JSON.stringify(source.validationResult)}::jsonb, 'Layout cloned with form template.'
     )
     on conflict (form_template_id) do update set
@@ -233,6 +253,7 @@ async function cloneLayout(sql, sourceTemplateId, targetTemplateId) {
       renderer_version = excluded.renderer_version,
       contract_version = excluded.contract_version,
       layout_spec = excluded.layout_spec,
+      default_content = excluded.default_content,
       validation_result = excluded.validation_result,
       change_note = excluded.change_note,
       updated_at = now()
@@ -247,6 +268,7 @@ async function remapLayoutSectionKey(sql, templateId, previousKey, nextKey) {
   if (!row) return null;
   const layout = toLayout(row);
   const spec = clone(layout.layoutSpec);
+  const defaultContent = clone(layout.defaultContent);
   if (Object.prototype.hasOwnProperty.call(spec.sectionStyles || {}, previousKey)) {
     spec.sectionStyles[nextKey] = spec.sectionStyles[previousKey];
     delete spec.sectionStyles[previousKey];
@@ -256,10 +278,15 @@ async function remapLayoutSectionKey(sql, templateId, previousKey, nextKey) {
     spec.itemStyles[`${nextKey}.${key.slice(previousKey.length + 1)}`] = spec.itemStyles[key];
     delete spec.itemStyles[key];
   });
+  if (Object.prototype.hasOwnProperty.call(defaultContent, previousKey)) {
+    defaultContent[nextKey] = defaultContent[previousKey];
+    delete defaultContent[previousKey];
+  }
   const rows = await sql`
     update wizard_form_template_layouts set
       layout_revision = layout_revision + 1,
       layout_spec = ${JSON.stringify(spec)}::jsonb,
+      default_content = ${JSON.stringify(defaultContent)}::jsonb,
       change_note = ${`Layout keys remapped from ${previousKey} to ${nextKey}.`},
       updated_at = now()
     where form_template_id = ${templateId}::uuid
@@ -271,6 +298,7 @@ async function remapLayoutSectionKey(sql, templateId, previousKey, nextKey) {
 module.exports = {
   DEFAULT_LAYOUT_SPEC,
   normalizeLayoutSpec,
+  normalizeDefaultContent,
   validateLayoutSpec,
   fetchLayoutRow,
   toLayout,

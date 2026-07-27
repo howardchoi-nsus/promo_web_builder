@@ -217,7 +217,7 @@ function loadWizardContent() {
     schemaVersion: SECTION_INPUT_SCHEMA_VERSION,
     createDefault: defaultWizardContent,
     migrateSectionInputs: migrateLegacySectionInputs,
-    objectKeys: ["templateInputs", "templateSectionOrders", "templateLayouts", "sectionDesignRuns"],
+    objectKeys: ["templateInputs", "templateDefaultContents", "templateSectionOrders", "templateLayouts", "sectionDesignRuns"],
   });
 }
 
@@ -346,8 +346,11 @@ async function selectWizardFormTemplate(templateId, options = {}) {
   };
   contentState.sectionInputs = mergeSectionInputs(
     contentState.templateInputs[result.template.templateKey] || {},
-    wizardSectionDefinitions
+    wizardSectionDefinitions,
+    result.defaultContent || {},
+    contentState.templateDefaultContents[result.template.templateKey] || {}
   );
+  contentState.templateDefaultContents[result.template.templateKey] = result.defaultContent || {};
   contentState.templateInputs[result.template.templateKey] = contentState.sectionInputs;
   contentState.templateLayouts[result.template.templateKey] = {
     contractVersion: LAYOUT_CACHE_CONTRACT_VERSION,

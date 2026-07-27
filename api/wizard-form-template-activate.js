@@ -50,11 +50,13 @@ module.exports = async function handler(req, res) {
       insert into wizard_form_template_layout_histories (
         form_template_id, template_key, template_version, layout_id,
         previous_revision, new_revision, action, previous_spec, new_spec,
+        previous_content, new_content,
         validation_result, change_note
       ) values (
         ${id}::uuid, ${updated.template_key}, ${Number(updated.version || 1)},
         ${layout.id}::uuid, ${layout.layoutRevision}, ${layout.layoutRevision}, 'activate',
         ${JSON.stringify(layout.layoutSpec)}::jsonb, ${JSON.stringify(layout.layoutSpec)}::jsonb,
+        ${JSON.stringify(layout.defaultContent)}::jsonb, ${JSON.stringify(layout.defaultContent)}::jsonb,
         ${JSON.stringify(layoutValidation)}::jsonb,
         ${String(body.changeNote || "Form template and default layout activated.")}
       )

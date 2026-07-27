@@ -64,6 +64,7 @@ const sections = [
 ];
 
 let fixtureLayoutRevision = 1;
+let fixtureDefaultContent = {};
 let fixtureLayout = {
   contractVersion: 1,
   specKey: "admin-default",
@@ -134,6 +135,7 @@ const server = http.createServer(async (req, res) => {
         rendererVersion: 1,
       },
       defaultLayout: fixtureLayout,
+      defaultContent: fixtureDefaultContent,
       sections,
       configurationWarnings: [],
     });
@@ -149,6 +151,7 @@ const server = http.createServer(async (req, res) => {
         rendererKey: "default-promo-renderer",
         rendererVersion: 1,
         layoutSpec: fixtureLayout,
+        defaultContent: fixtureDefaultContent,
       },
     });
   }
@@ -158,6 +161,7 @@ const server = http.createServer(async (req, res) => {
       return json(res, { error: "Layout revision conflict", currentRevision: fixtureLayoutRevision }, 409);
     }
     fixtureLayout = body.layoutSpec || fixtureLayout;
+    fixtureDefaultContent = body.defaultContent || fixtureDefaultContent;
     fixtureLayoutRevision += 1;
     return json(res, {
       ok: true,
@@ -167,6 +171,7 @@ const server = http.createServer(async (req, res) => {
         rendererKey: "default-promo-renderer",
         rendererVersion: 1,
         layoutSpec: fixtureLayout,
+        defaultContent: fixtureDefaultContent,
       },
     });
   }

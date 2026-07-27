@@ -936,7 +936,7 @@ async function loadEditor() {
     };
     configRevision.value = detailResult.configRevision || "";
     sections.value = detailResult.sections || [];
-    sectionInputs.value = createSectionInputs(sections.value);
+    sectionInputs.value = createSectionInputs(sections.value, detailResult.defaultContent || {});
     selectedSectionKey.value = sections.value[0]?.sectionKey || "";
     selectedItemKey.value = sections.value[0]?.items?.[0]?.itemKey || "";
     selectedItemKeys.value = selectedItemKey.value ? [selectedItemKey.value] : [];
@@ -991,7 +991,7 @@ async function loadAdminLayout() {
       };
     }
     sections.value = result.sections || [];
-    sectionInputs.value = createSectionInputs(sections.value);
+    sectionInputs.value = createSectionInputs(sections.value, result.layout?.defaultContent || {});
     designSpec.value = normalizeLayoutSpec(result.layout?.layoutSpec);
     layoutRevision.value = Number(result.layout?.layoutRevision || 1);
     layoutId.value = result.layout?.id || null;
@@ -1024,6 +1024,7 @@ async function saveAdminLayout({ activate = false } = {}) {
       rendererKey: "default-promo-renderer",
       rendererVersion: 1,
       layoutSpec: validation.spec,
+      defaultContent: sectionInputs.value,
       changeNote: layoutChangeNote.value || "Admin Layout Editor에서 기본 레이아웃을 저장했습니다.",
     });
     designSpec.value = normalizeLayoutSpec(result.layout.layoutSpec);

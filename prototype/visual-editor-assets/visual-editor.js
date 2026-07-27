@@ -5967,7 +5967,7 @@ var zs = { class: "preview-controls" }, Bs = {
 				a.value = {
 					...l.template,
 					designTokens: l.designTokens || null
-				}, o.value = l.configRevision || "", s.value = l.sections || [], c.value = is(s.value), u.value = s.value[0]?.sectionKey || "", d.value = s.value[0]?.items?.[0]?.itemKey || "", f.value = d.value ? [d.value] : [], p.value = R(s.value[0], s.value[0]?.items?.[0]), Re();
+				}, o.value = l.configRevision || "", s.value = l.sections || [], c.value = is(s.value, l.defaultContent || {}), u.value = s.value[0]?.sectionKey || "", d.value = s.value[0]?.items?.[0]?.itemKey || "", f.value = d.value ? [d.value] : [], p.value = R(s.value[0], s.value[0]?.items?.[0]), Re();
 			} catch (e) {
 				r.value = e.message;
 			} finally {
@@ -6003,7 +6003,7 @@ var zs = { class: "preview-controls" }, Bs = {
 						values: r.values || {},
 						sourceValues: r.sourceValues || []
 					}
-				}), s.value = t.sections || [], c.value = is(s.value), l.value = ls(t.layout?.layoutSpec), y.value = Number(t.layout?.layoutRevision || 1), b.value = t.layout?.id || null, x.value = t.layoutIdentity || null, u.value = s.value[0]?.sectionKey || "", d.value = s.value[0]?.items?.[0]?.itemKey || "", f.value = d.value ? [d.value] : [], p.value = R(s.value[0], s.value[0]?.items?.[0]), Re();
+				}), s.value = t.sections || [], c.value = is(s.value, t.layout?.defaultContent || {}), l.value = ls(t.layout?.layoutSpec), y.value = Number(t.layout?.layoutRevision || 1), b.value = t.layout?.id || null, x.value = t.layoutIdentity || null, u.value = s.value[0]?.sectionKey || "", d.value = s.value[0]?.items?.[0]?.itemKey || "", f.value = d.value ? [d.value] : [], p.value = R(s.value[0], s.value[0]?.items?.[0]), Re();
 			} catch (e) {
 				r.value = e.message;
 			} finally {
@@ -6026,6 +6026,7 @@ var zs = { class: "preview-controls" }, Bs = {
 					rendererKey: "default-promo-renderer",
 					rendererVersion: 1,
 					layoutSpec: t.spec,
+					defaultContent: c.value,
 					changeNote: S.value || "Admin Layout Editor에서 기본 레이아웃을 저장했습니다."
 				});
 				if (l.value = ls(n.layout.layoutSpec), y.value = Number(n.layout.layoutRevision || y.value + 1), b.value = n.layout.id || b.value, x.value = n.layoutIdentity || x.value, he.replaceDocument(Ie(), {
