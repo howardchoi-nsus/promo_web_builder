@@ -34,14 +34,15 @@ assert.equal(
   }]).errors.length,
   0,
 );
-assert.deepEqual(
+assert.equal(
   layoutStore.validateLayoutSpec({
     itemStyles: { "hero.image": { widthPct: 0.1, heightPx: 1 } },
   }, [{
     sectionKey: "hero",
     items: [{ itemKey: "title", fieldKind: "text" }, { itemKey: "image", fieldKind: "image" }],
-  }]).errors.map((error) => error.code),
-  ["INVALID_IMAGE_WIDTH", "INVALID_IMAGE_HEIGHT"],
+  }]).errors.length,
+  0,
+  "small image geometry accepted by the editor must also activate successfully",
 );
 assert.match(store, /cloneLayout/);
 assert.match(api, /Only draft form template layouts can be edited/);

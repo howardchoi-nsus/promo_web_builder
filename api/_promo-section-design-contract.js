@@ -253,9 +253,10 @@ function validatePatch(section, generated, constraints) {
   });
   Object.entries(generated.layoutPatch?.itemStyles || {}).forEach(([key, style]) => {
     if (!itemKeys.has(key)) errors.push(`Unknown item: ${key}`);
-    const isImage = itemByKey.get(key)?.fieldKind === "image";
-    const minimumWidthPct = isImage ? 10 : 0.01;
-    const minimumHeightPx = isImage ? 80 : 1;
+    // Section-AI patches use the same free-resize limits as the editor and
+    // persisted template layouts; badges and compact decorative images are valid.
+    const minimumWidthPct = 0.01;
+    const minimumHeightPx = 1;
     Object.keys(style || {}).forEach((property) => {
       if (!ITEM_STYLE_KEYS.has(property)) errors.push(`Unsupported item style: ${property}`);
     });

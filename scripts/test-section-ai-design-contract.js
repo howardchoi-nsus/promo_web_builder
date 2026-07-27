@@ -91,7 +91,7 @@ tinyTextPatch.layoutPatch.itemStyles["heroBanner.description"] = { widthPct: 0.1
 assert.equal(validatePatch(section, tinyTextPatch, constraints).ok, true);
 const tinyImagePatch = structuredClone(generated);
 tinyImagePatch.layoutPatch.itemStyles["heroBanner.heroImage"] = { widthPct: 0.1, heightPx: 1 };
-assert.equal(validatePatch(section, tinyImagePatch, constraints).ok, false);
+assert.equal(validatePatch(section, tinyImagePatch, constraints).ok, true);
 const backgroundColorOverride = structuredClone(generated);
 backgroundColorOverride.layoutPatch.sectionStyles.heroBanner.backgroundColor = "#ffffff";
 assert.equal(validatePatch(section, backgroundColorOverride, constraints).ok, false);

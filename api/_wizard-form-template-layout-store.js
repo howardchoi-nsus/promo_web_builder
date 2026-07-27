@@ -46,9 +46,6 @@ function validateLayoutSpec(value, sections = []) {
   const itemKeys = new Set(sections.flatMap((section) => (
     (section.items || []).map((item) => `${section.sectionKey}.${item.itemKey}`)
   )));
-  const itemByKey = new Map(sections.flatMap((section) => (
-    (section.items || []).map((item) => [`${section.sectionKey}.${item.itemKey}`, item])
-  )));
   Object.entries(spec.sectionStyles).forEach(([key, style]) => {
     if (sections.length && !sectionKeys.has(key)) warnings.push({ code: "UNKNOWN_LAYOUT_SECTION", path: key });
     const height = Number(style?.minHeight);
@@ -82,9 +79,10 @@ function validateLayoutSpec(value, sections = []) {
   });
   Object.entries(spec.itemStyles).forEach(([key, style]) => {
     if (sections.length && !itemKeys.has(key)) warnings.push({ code: "UNKNOWN_LAYOUT_ITEM", path: key });
-    const isImage = itemByKey.get(key)?.fieldKind === "image";
-    const minimumWidthPct = isImage ? 10 : 0.01;
-    const minimumHeightPx = isImage ? 80 : 1;
+    // Keep persisted-layout validation aligned with the editor's free-resize
+    // geometry. Small logos, badges, and decorative images are valid items.
+    const minimumWidthPct = 0.01;
+    const minimumHeightPx = 1;
     if (style?.xPct !== undefined && (!Number.isFinite(Number(style.xPct)) || Number(style.xPct) < 0 || Number(style.xPct) > 100)) {
       errors.push({ code: "INVALID_ITEM_X", path: `itemStyles.${key}.xPct` });
     }
