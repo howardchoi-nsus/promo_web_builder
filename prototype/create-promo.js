@@ -1023,6 +1023,7 @@ function contentErrors() {
   if (!wizardSectionConfigurationReady()) errors.sectionConfiguration = true;
   const required = [
     ["title", contentState.promo.title],
+    ["leadText", contentState.promo.leadText],
     ["promotionPurpose", contentState.promo.promotionPurpose],
     ["market", contentState.promo.market],
     ["audience", contentState.simpleBrief.audience],
@@ -1053,6 +1054,7 @@ function promotionOverviewErrors() {
   const errors = {};
   [
     ["title", contentState.promo.title],
+    ["leadText", contentState.promo.leadText],
     ["promotionPurpose", contentState.promo.promotionPurpose],
     ["market", contentState.promo.market],
     ["audience", contentState.simpleBrief.audience],
@@ -1622,6 +1624,7 @@ function setOverviewInputMode(mode) {
 function overviewAnalysisFieldRows(overview = {}) {
   return [
     ["title", "프로모션 제목", overview.title],
+    ["leadText", "리드 텍스트", overview.leadText],
     ["promotionPurpose", "프로모션 목적", overview.promotionPurpose === "기타"
       ? overview.promotionPurposeOther : overview.promotionPurpose],
     ["market", "마켓 / 지역", overview.market],
@@ -2158,6 +2161,7 @@ function renderContentStep() {
 
   const overview = createContentSection("1. 프로모션 개요", [
     { group: "promo", key: "title", label: "프로모션 제목", required: true },
+    { group: "promo", key: "leadText", label: "리드 텍스트", required: true },
     { group: "promo", key: "promotionPurpose", label: "프로모션 목적", required: true, options: ["할인쿠폰", "경품", "이벤트", "기타"] },
     { group: "promo", key: "promotionPurposeOther", label: "기타 목적", required: contentState.promo.promotionPurpose === "기타" },
     { group: "promo", key: "market", label: "마켓 / 지역", required: true, placeholder: "Global, KR, Ontario..." },

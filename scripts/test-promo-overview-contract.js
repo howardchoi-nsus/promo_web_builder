@@ -8,6 +8,7 @@ const {
 
 const baseOverview = {
   title: "첫 충전 프로모션",
+  leadText: "신규 고객을 위한 첫 충전 혜택",
   promotionPurpose: "이벤트",
   market: "KR",
   audience: "신규",
@@ -17,7 +18,8 @@ const baseOverview = {
 };
 
 const normalized = normalizeOverview(baseOverview);
-assert.equal(normalized.schemaVersion, 3);
+assert.equal(normalized.schemaVersion, 4);
+assert.equal(normalized.leadText, "신규 고객을 위한 첫 충전 혜택");
 assert.equal(Object.hasOwn(normalized, "primaryAction"), false);
 
 const generatedDraft = normalizeParsedOverview({
@@ -29,6 +31,7 @@ const generatedDraft = normalizeParsedOverview({
   result: {
     overview: {
       title: "첫 만남 충전 보너스",
+      leadText: "첫 충전부터 특별하게",
       promotionPurpose: "이벤트",
       promotionPurposeOther: "",
       market: "",
@@ -60,6 +63,7 @@ const generatedDraft = normalizeParsedOverview({
   },
 });
 assert.equal(generatedDraft.overview.title, "첫 만남 충전 보너스");
+assert.equal(generatedDraft.overview.leadText, "첫 충전부터 특별하게");
 assert.notEqual(generatedDraft.overview.title, "이전 정형 입력 제목");
 assert.ok(generatedDraft.missingCriticalInputs.includes("market"));
 assert.equal(generatedDraft.fieldDecisions[0].origin, "generated");
@@ -72,7 +76,7 @@ assert.equal(
     ...baseOverview,
     primaryAction: { label: "다른 CTA", url: "https://other.example" },
   }),
-  "CTA changes must not alter the Overview v3 fingerprint"
+  "CTA changes must not alter the Overview v4 fingerprint"
 );
 assert.notEqual(
   overviewFingerprint(baseOverview),

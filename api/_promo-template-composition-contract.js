@@ -1,5 +1,6 @@
 const ALLOWED_OVERVIEW_PATHS = Object.freeze([
   "title",
+  "leadText",
   "promotionPurpose",
   "promotionPurposeOther",
   "market",
@@ -7,6 +8,53 @@ const ALLOWED_OVERVIEW_PATHS = Object.freeze([
   "campaignTone",
   "mainOffer",
 ]);
+
+const CONTENT_MAPPING_ALIASES = Object.freeze({
+  title: new Set(["title", "headline", "maintitle", "primarytitle"]),
+  leadText: new Set([
+    "lead", "leadtext", "eyebrow", "kicker", "subtitle", "subline", "supportingtitle",
+  ]),
+  mainOffer: new Set([
+    "description", "copy", "body", "bodytext", "mainoffer", "offer", "detail", "details",
+  ]),
+});
+
+function semanticKey(value) {
+  return String(value || "").trim().toLocaleLowerCase().replace(/[\s_-]+/g, "");
+}
+
+function inferredOverviewPath(item = {}) {
+  const itemKey = semanticKey(item.itemKey);
+  for (const [path, aliases] of Object.entries(CONTENT_MAPPING_ALIASES)) {
+    if (aliases.has(itemKey)) return path;
+  }
+  if (item.textType === "title") return "title";
+  if (item.textType === "multi") return "mainOffer";
+  return null;
+}
+
+function completeContentMappings(sections, template) {
+  const usedSources = new Set(
+    sections.flatMap((section) => section.contentMappings.map((mapping) => mapping.sourceOverviewPath))
+  );
+  return sections.map((section) => {
+    const allowed = template.sections.find((candidate) => candidate.sectionId === section.sectionId);
+    const mappedItemKeys = new Set(section.contentMappings.map((mapping) => mapping.itemKey));
+    const inferred = [];
+    (allowed?.items || []).forEach((item) => {
+      if (item.isLocked || item.fieldKind !== "text" || mappedItemKeys.has(item.itemKey)) return;
+      const sourceOverviewPath = inferredOverviewPath(item);
+      if (!sourceOverviewPath || usedSources.has(sourceOverviewPath)) return;
+      inferred.push({ itemKey: item.itemKey, sourceOverviewPath });
+      mappedItemKeys.add(item.itemKey);
+      usedSources.add(sourceOverviewPath);
+    });
+    return {
+      ...section,
+      contentMappings: [...section.contentMappings, ...inferred],
+    };
+  });
+}
 
 function compositionSchema(candidateStructures) {
   const templateIds = candidateStructures.map((template) => template.templateId);
@@ -119,12 +167,13 @@ function validateCompositionProposal(proposal, candidateStructures) {
     }
   });
   if (!sections.length) throw new Error("Composition requires at least one section");
+  const completedSections = completeContentMappings(sections, template);
   return {
     templateId: template.templateId,
     templateKey: template.templateKey,
     templateVersion: template.templateVersion,
     templateName: template.templateName,
-    sections,
+    sections: completedSections,
     missingInputs: Array.isArray(proposal.missingInputs) ? proposal.missingInputs.slice(0, 30) : [],
     warnings: Array.isArray(proposal.warnings) ? proposal.warnings.slice(0, 30) : [],
     summary: String(proposal.summary || "").trim().slice(0, 800),
@@ -133,6 +182,7 @@ function validateCompositionProposal(proposal, candidateStructures) {
 
 module.exports = {
   ALLOWED_OVERVIEW_PATHS,
+  completeContentMappings,
   compositionSchema,
   validateCompositionProposal,
 };

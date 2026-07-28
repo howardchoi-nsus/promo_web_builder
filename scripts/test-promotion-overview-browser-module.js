@@ -18,6 +18,7 @@ const {
 const content = {
   promo: {
     title: "신규 이벤트",
+    leadText: "신규 고객 한정 혜택",
     promotionPurpose: "이벤트",
     promotionPurposeOther: "",
     market: "KR",
@@ -32,13 +33,15 @@ const content = {
 };
 
 const canonical = overview.syncFromLegacy(content);
-assert.equal(canonical.schemaVersion, 3);
+assert.equal(canonical.schemaVersion, 4);
 assert.equal(canonical.title, "신규 이벤트");
+assert.equal(canonical.leadText, "신규 고객 한정 혜택");
 assert.equal(canonical.mainOffer, "100% 보너스");
 assert.equal(Object.hasOwn(canonical, "primaryAction"), false);
 
 overview.applyToLegacy(content, {
   title: "기존 고객 이벤트",
+  leadText: "다시 만나는 특별한 혜택",
   promotionPurpose: "할인쿠폰",
   market: "Global",
   audience: "기존고객",
@@ -47,8 +50,9 @@ overview.applyToLegacy(content, {
   primaryAction: { label: "무시할 CTA", url: "" },
 });
 assert.equal(content.promo.title, "기존 고객 이벤트");
+assert.equal(content.promo.leadText, "다시 만나는 특별한 혜택");
 assert.equal(content.simpleBrief.mainOffer, "20% 할인");
-assert.equal(content.promo.ctaLabel, "참가", "Legacy CTA content must be preserved but excluded from Overview v3");
+assert.equal(content.promo.ctaLabel, "참가", "Legacy CTA content must be preserved but excluded from Overview v4");
 assert.equal(content.promo.ctaUrl, "https://promo.example/start");
 
 assert.equal(overview.fingerprint(content.promotionOverview), overview.fingerprint({

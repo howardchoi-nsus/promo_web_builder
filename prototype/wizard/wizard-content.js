@@ -4,10 +4,11 @@
       sectionInputSchemaVersion: 4,
       designTokenSetVersionId: "",
       promotionOverview: {
-        schemaVersion: 3,
+        schemaVersion: 4,
         inputMode: "structured",
         rawNaturalLanguage: "",
         title: "",
+        leadText: "",
         promotionPurpose: "",
         promotionPurposeOther: "",
         market: "",

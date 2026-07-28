@@ -3,6 +3,7 @@ const AUDIENCES = ["신규", "기존고객", "일반고객"];
 const CAMPAIGN_TONES = ["활기찬", "진중함", "럭셔리", "프리미엄", "긴급함", "친근함"];
 const OVERVIEW_FIELDS = Object.freeze([
   "title",
+  "leadText",
   "promotionPurpose",
   "promotionPurposeOther",
   "market",
@@ -36,6 +37,7 @@ const OVERVIEW_PARSE_SCHEMA = {
       required: OVERVIEW_FIELDS,
       properties: {
         title: { type: "string", maxLength: 200 },
+        leadText: { type: "string", maxLength: 240 },
         promotionPurpose: { type: "string", enum: PROMOTION_PURPOSES },
         promotionPurposeOther: { type: "string", maxLength: 200 },
         market: { type: "string", maxLength: 200 },
@@ -88,10 +90,11 @@ function normalizeOverview(value = {}) {
   const purpose = PROMOTION_PURPOSES.includes(value.promotionPurpose)
     ? value.promotionPurpose : "";
   return {
-    schemaVersion: 3,
+    schemaVersion: 4,
     inputMode: value.inputMode === "natural-language" ? "natural-language" : "structured",
     rawNaturalLanguage: text(value.rawNaturalLanguage, 4000),
     title: text(value.title, 200),
+    leadText: text(value.leadText, 240),
     promotionPurpose: purpose,
     promotionPurposeOther: purpose === "기타" ? text(value.promotionPurposeOther, 200) : "",
     market: text(value.market, 200),

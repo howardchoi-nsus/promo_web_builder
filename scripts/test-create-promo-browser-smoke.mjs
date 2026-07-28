@@ -108,10 +108,11 @@ try {
         draftId: "fixture-overview-draft",
         createdAt: new Date().toISOString(),
         overview: {
-          schemaVersion: 3,
+          schemaVersion: 4,
           inputMode: "natural-language",
           rawNaturalLanguage: overviewParseRequest.naturalLanguage,
           title: "Browser Smoke Promotion",
+          leadText: "신규 고객을 위한 첫 충전 혜택",
           promotionPurpose: "이벤트",
           promotionPurposeOther: "",
           market: "KR",
@@ -312,6 +313,7 @@ try {
   const autoComposedContent = await page.evaluate(() => (
     JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null")
   ));
+  assert.equal(autoComposedContent?.promotionOverview?.leadText, "신규 고객을 위한 첫 충전 혜택");
   assert.equal(autoComposedContent?.sectionInputs?.heroBanner?.title, "Browser Smoke Promotion");
   assert.equal(autoComposedContent?.sectionInputs?.contentFeature?.copy, "첫 충전 100% 보너스");
   await page.locator('.step[data-step="template"]').click();

@@ -48,7 +48,7 @@ function scoreTemplateRecommendation(template, overviewValue) {
   });
 
   const searchable = normalizedText([
-    overview.title, overview.mainOffer, overview.promotionPurposeOther,
+    overview.title, overview.leadText, overview.mainOffer, overview.promotionPurposeOther,
     template.name, template.description,
   ].join(" "));
   const matchingTags = profile.tags.filter((tag) => searchable.includes(normalizedText(tag)));

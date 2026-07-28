@@ -119,6 +119,7 @@ try {
 
   await page.goto(`${origin}/create-promo.html`, { waitUntil: "networkidle" });
   await page.locator('[data-field-key="title"] input').fill("Admin Layout Integration");
+  await page.locator('[data-field-key="leadText"] input').fill("Admin layout integration lead");
   await page.locator('[data-field-key="promotionPurpose"] select').selectOption("이벤트");
   await page.locator('[data-field-key="market"] input').fill("KR");
   await page.locator('[data-field-key="audience"] select').selectOption("신규");

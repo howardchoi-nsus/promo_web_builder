@@ -21,9 +21,17 @@ const candidates = [{
     sectionKey: "hero",
     sectionName: "Hero",
     fixedPosition: null,
-    componentVersionIds: ["component-title", "component-cta"],
+    componentVersionIds: ["component-title", "component-lead", "component-description", "component-cta"],
     items: [
-      { itemKey: "title", componentVersionId: "component-title" },
+      {
+        itemKey: "title", componentVersionId: "component-title", fieldKind: "text", textType: "title", isLocked: false,
+      },
+      {
+        itemKey: "leadText", componentVersionId: "component-lead", fieldKind: "text", textType: "remark", isLocked: false,
+      },
+      {
+        itemKey: "description", componentVersionId: "component-description", fieldKind: "text", textType: "multi", isLocked: false,
+      },
       { itemKey: "cta", componentVersionId: "component-cta" },
     ],
   }],
@@ -59,6 +67,11 @@ const validated = validateCompositionProposal({
 }, candidates);
 assert.equal(validated.templateKey, "active");
 assert.deepEqual(validated.sections.map((section) => section.sectionKey), ["header", "hero"]);
+assert.deepEqual(validated.sections[1].contentMappings, [
+  { itemKey: "title", sourceOverviewPath: "title" },
+  { itemKey: "leadText", sourceOverviewPath: "leadText" },
+  { itemKey: "description", sourceOverviewPath: "mainOffer" },
+]);
 
 assert.throws(() => validateCompositionProposal({
   templateId: "template-active",
