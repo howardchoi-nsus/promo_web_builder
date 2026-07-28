@@ -6,8 +6,6 @@ const ALLOWED_OVERVIEW_PATHS = Object.freeze([
   "audience",
   "campaignTone",
   "mainOffer",
-  "primaryAction.label",
-  "primaryAction.url",
 ]);
 
 function compositionSchema(candidateStructures) {

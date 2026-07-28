@@ -47,6 +47,17 @@ for (const [type, config] of Object.entries(PROMPT_TYPES)) {
   }));
 }
 
+assert.deepEqual(PROMPT_TYPES.promo_overview_parser.requiredVariables, [
+  "naturalLanguage",
+  "allowedValuesJson",
+]);
+assert.deepEqual(PROMPT_TYPES.promo_overview_parser.optionalVariables, [
+  "generationMode",
+  "currentOverviewJson",
+]);
+assert.match(PROMPT_TYPES.promo_overview_parser.body, /new promotion overview draft/i);
+assert.match(PROMPT_TYPES.promo_overview_parser.body, /Never merge or reuse/i);
+
 assert.deepEqual(extractPromptVariables("{{sectionName}} {{ sectionName }} {{contentJson}}"), [
   "sectionName",
   "contentJson",

@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { createRequire } from "node:module";
 import { chromium } from "playwright";
 
+const require = createRequire(import.meta.url);
+const { overviewRequestFingerprint } = require("../api/_promo-overview-contract");
 const port = Number(process.env.CREATE_PROMO_SMOKE_PORT || 4178);
 const origin = `http://127.0.0.1:${port}`;
 const server = spawn(process.execPath, ["scripts/serve-visual-editor-preview.js"], {
@@ -87,8 +90,10 @@ try {
       contentType: "application/json",
       body: JSON.stringify({
         ok: true,
+        draftId: "fixture-overview-draft",
+        createdAt: new Date().toISOString(),
         overview: {
-          schemaVersion: 2,
+          schemaVersion: 3,
           inputMode: "natural-language",
           rawNaturalLanguage: overviewParseRequest.naturalLanguage,
           title: "Browser Smoke Promotion",
@@ -98,13 +103,23 @@ try {
           audience: "신규",
           campaignTone: "활기찬",
           mainOffer: "첫 충전 100% 보너스",
-          primaryAction: { label: "게임 참가", url: "" },
         },
-        missingInputs: ["primaryAction.url"],
-        uncertainInputs: [],
+        fieldDecisions: [
+          {
+            field: "title",
+            origin: "generated",
+            confidence: 0.92,
+            reason: "간단한 설명을 바탕으로 제목을 생성했습니다.",
+            requiresConfirmation: false,
+          },
+        ],
+        assumptions: [],
+        missingCriticalInputs: [],
+        warnings: [],
         summary: "한국 신규 고객 대상 첫 충전 이벤트",
         confidence: 0.92,
         overviewFingerprint: "fixture-overview-fingerprint",
+        requestFingerprint: overviewRequestFingerprint(overviewParseRequest.naturalLanguage),
       }),
     });
   });
@@ -158,7 +173,6 @@ try {
             componentVersionIds: ["fixture-title", "fixture-cta"],
             contentMappings: [
               { itemKey: "title", sourceOverviewPath: "title" },
-              { itemKey: "button", sourceOverviewPath: "primaryAction.label" },
             ],
             layoutCommands: [],
           }, {
@@ -169,7 +183,7 @@ try {
             contentMappings: [{ itemKey: "copy", sourceOverviewPath: "mainOffer" }],
             layoutCommands: [],
           }],
-          missingInputs: ["primaryAction.url"],
+          missingInputs: [],
           warnings: [],
           summary: "프로모션 개요를 Hero와 상세 콘텐츠에 배치합니다.",
           templateSnapshot: [],
@@ -263,11 +277,12 @@ try {
   await assertPageText(page.locator(".step.is-active strong"), "Overview");
   await page.getByRole("tab", { name: "자연어 입력" }).click();
   await page.locator(".overview-nlp-input").fill(
-    "한국 신규 고객에게 첫 충전 100% 보너스를 제공하는 활기찬 이벤트이며 게임 참가 버튼이 필요합니다."
+    "여름에 신규 고객이 관심을 가질 만한 충전 이벤트를 만들고 싶어요."
   );
   await page.getByRole("button", { name: "AI로 개요 분석" }).click();
   await page.getByRole("button", { name: "분석 결과 적용" }).waitFor();
-  assert.equal(overviewParseRequest.currentOverview.schemaVersion, 2);
+  assert.equal(Object.hasOwn(overviewParseRequest, "currentOverview"), false);
+  assert.equal(overviewParseRequest.generationMode, "new-draft");
   await page.getByRole("button", { name: "분석 결과 적용" }).click();
 
   await page.locator("#next-step").click();

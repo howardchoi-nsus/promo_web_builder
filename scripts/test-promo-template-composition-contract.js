@@ -50,16 +50,30 @@ const validated = validateCompositionProposal({
     componentVersionIds: ["component-title", "component-cta"],
     contentMappings: [
       { itemKey: "title", sourceOverviewPath: "title" },
-      { itemKey: "cta", sourceOverviewPath: "primaryAction.label" },
     ],
     layoutCommands: [],
   }],
-  missingInputs: ["primaryAction.url"],
+  missingInputs: [],
   warnings: [],
   summary: "Hero 중심 구성",
 }, candidates);
 assert.equal(validated.templateKey, "active");
 assert.deepEqual(validated.sections.map((section) => section.sectionKey), ["header", "hero"]);
+
+assert.throws(() => validateCompositionProposal({
+  templateId: "template-active",
+  sections: [{
+    sectionId: "section-header",
+    componentVersionIds: ["component-logo"],
+    contentMappings: [],
+    layoutCommands: [],
+  }, {
+    sectionId: "section-hero",
+    componentVersionIds: ["component-title", "component-cta"],
+    contentMappings: [{ itemKey: "cta", sourceOverviewPath: "primaryAction.label" }],
+    layoutCommands: [],
+  }],
+}, candidates), /invalid content mapping/i);
 
 assert.throws(() => validateCompositionProposal({
   templateId: "template-active",

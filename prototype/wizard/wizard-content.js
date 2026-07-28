@@ -4,7 +4,7 @@
       sectionInputSchemaVersion: 4,
       designTokenSetVersionId: "",
       promotionOverview: {
-        schemaVersion: 2,
+        schemaVersion: 3,
         inputMode: "structured",
         rawNaturalLanguage: "",
         title: "",
@@ -14,8 +14,8 @@
         audience: "",
         campaignTone: "",
         mainOffer: "",
-        primaryAction: { label: "", url: "" },
       },
+      promotionOverviewDraft: {},
       templateRecommendation: null,
       templateCompositionProposal: null,
       promo: {

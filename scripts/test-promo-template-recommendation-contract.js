@@ -12,7 +12,6 @@ const overview = {
   audience: "신규",
   campaignTone: "프리미엄",
   mainOffer: "100% 보너스",
-  primaryAction: { label: "참가", url: "" },
 };
 const templates = [{
   id: "template-best",
@@ -58,7 +57,8 @@ const templates = [{
 const ranked = rankTemplateRecommendations(templates, overview, 3);
 assert.deepEqual(ranked.map((item) => item.templateId), ["template-best", "template-generic"]);
 assert.ok(ranked[0].score > ranked[1].score);
-assert.deepEqual(ranked[0].requiredConfirmations, ["primaryAction.url"]);
+assert.deepEqual(ranked[0].requiredConfirmations, []);
+assert.equal(ranked[0].warnings.some((warning) => warning.includes("primaryAction")), false);
 assert.equal(ranked.some((item) => item.templateId === "template-other-market"), false);
 assert.equal(recommendationFingerprint(overview), recommendationFingerprint({ ...overview }));
 

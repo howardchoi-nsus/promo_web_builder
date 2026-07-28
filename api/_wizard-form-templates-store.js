@@ -49,7 +49,11 @@ function normalizeRecommendationProfile(value = {}) {
     key,
     Array.from(new Set(
       (Array.isArray(source[key]) ? source[key] : [])
-        .map((item) => String(item || "").trim()).filter(Boolean)
+        .map((item) => String(item || "").trim())
+        .filter((item) => item && (
+          key !== "requiredInputs"
+          || !["primaryAction.label", "primaryAction.url"].includes(item)
+        ))
     )).slice(0, 100),
   ]));
 }

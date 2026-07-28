@@ -7,10 +7,13 @@ const source = fs.readFileSync(
   path.join(__dirname, "..", "prototype", "wizard", "promotion-overview.js"),
   "utf8"
 );
-const context = { globalThis: {}, URL };
+const context = { globalThis: {} };
 vm.runInNewContext(source, context);
 const overview = context.globalThis.PromoPromotionOverview;
-const { overviewFingerprint: serverOverviewFingerprint } = require("../api/_promo-overview-contract");
+const {
+  overviewFingerprint: serverOverviewFingerprint,
+  overviewRequestFingerprint: serverOverviewRequestFingerprint,
+} = require("../api/_promo-overview-contract");
 
 const content = {
   promo: {
@@ -29,9 +32,10 @@ const content = {
 };
 
 const canonical = overview.syncFromLegacy(content);
+assert.equal(canonical.schemaVersion, 3);
 assert.equal(canonical.title, "신규 이벤트");
 assert.equal(canonical.mainOffer, "100% 보너스");
-assert.equal(canonical.primaryAction.url, "https://promo.example/start");
+assert.equal(Object.hasOwn(canonical, "primaryAction"), false);
 
 overview.applyToLegacy(content, {
   title: "기존 고객 이벤트",
@@ -40,11 +44,12 @@ overview.applyToLegacy(content, {
   audience: "기존고객",
   campaignTone: "친근함",
   mainOffer: "20% 할인",
-  primaryAction: { label: "쿠폰 받기", url: "" },
+  primaryAction: { label: "무시할 CTA", url: "" },
 });
 assert.equal(content.promo.title, "기존 고객 이벤트");
 assert.equal(content.simpleBrief.mainOffer, "20% 할인");
-assert.equal(content.promo.ctaLabel, "쿠폰 받기");
+assert.equal(content.promo.ctaLabel, "참가", "Legacy CTA content must be preserved but excluded from Overview v3");
+assert.equal(content.promo.ctaUrl, "https://promo.example/start");
 
 assert.equal(overview.fingerprint(content.promotionOverview), overview.fingerprint({
   ...content.promotionOverview,
@@ -64,9 +69,13 @@ const normalizationEdgeCase = {
 assert.equal(
   overview.fingerprint(normalizationEdgeCase),
   serverOverviewFingerprint(normalizationEdgeCase),
-  "Browser and server normalization must match for stale other-purpose values and canonical URLs"
+  "Browser and server normalization must ignore legacy CTA values"
 );
 assert.equal(overview.normalize(normalizationEdgeCase).promotionPurposeOther, "");
-assert.equal(overview.normalize(normalizationEdgeCase).primaryAction.url, "https://promo.example/");
+assert.equal(Object.hasOwn(overview.normalize(normalizationEdgeCase), "primaryAction"), false);
+assert.equal(
+  overview.requestFingerprint(" 간단한 설명 "),
+  serverOverviewRequestFingerprint("간단한 설명")
+);
 
 console.log("promotion overview browser module tests passed");

@@ -36,6 +36,7 @@ const {
   syncFromLegacy: syncPromotionOverviewFromLegacy,
   applyToLegacy: applyPromotionOverviewToLegacy,
   fingerprint: promotionOverviewFingerprint,
+  requestFingerprint: promotionOverviewRequestFingerprint,
 } = globalThis.PromoPromotionOverview || {};
 const {
   loadWizardContent: loadWizardContentFromStorage,
@@ -122,7 +123,9 @@ const contentState = loadWizardContent();
 contentState.promotionOverview = syncPromotionOverviewFromLegacy(contentState);
 let overviewInputMode = contentState.promotionOverview.inputMode || "structured";
 let overviewNaturalLanguage = contentState.promotionOverview.rawNaturalLanguage || "";
-let overviewAnalysis = null;
+let overviewAnalysis = contentState.promotionOverviewDraft?.requestFingerprint
+  === promotionOverviewRequestFingerprint(overviewNaturalLanguage)
+  ? contentState.promotionOverviewDraft : null;
 let overviewAnalysisLoading = false;
 let overviewAnalysisError = "";
 let overviewAnalysisRequestId = 0;
@@ -238,7 +241,7 @@ function loadWizardContent() {
     createDefault: defaultWizardContent,
     migrateSectionInputs: migrateLegacySectionInputs,
     objectKeys: [
-      "promotionOverview", "templateRecommendation", "templateCompositionProposal",
+      "promotionOverview", "promotionOverviewDraft", "templateRecommendation", "templateCompositionProposal",
       "templateInputs", "templateDefaultContents",
       "templateSectionOrders", "templateLayouts", "sectionDesignRuns",
     ],
@@ -1618,16 +1621,27 @@ function setOverviewInputMode(mode) {
 
 function overviewAnalysisFieldRows(overview = {}) {
   return [
-    ["프로모션 제목", overview.title],
-    ["프로모션 목적", overview.promotionPurpose === "기타"
+    ["title", "프로모션 제목", overview.title],
+    ["promotionPurpose", "프로모션 목적", overview.promotionPurpose === "기타"
       ? overview.promotionPurposeOther : overview.promotionPurpose],
-    ["마켓 / 지역", overview.market],
-    ["대상 고객", overview.audience],
-    ["캠페인 톤", overview.campaignTone],
-    ["핵심 혜택", overview.mainOffer],
-    ["CTA 문구", overview.primaryAction?.label],
-    ["CTA URL", overview.primaryAction?.url],
-  ].filter(([, value]) => String(value || "").trim());
+    ["market", "마켓 / 지역", overview.market],
+    ["audience", "대상 고객", overview.audience],
+    ["campaignTone", "캠페인 톤", overview.campaignTone],
+    ["mainOffer", "핵심 혜택", overview.mainOffer],
+  ];
+}
+
+function overviewDecisionForField(field) {
+  return overviewAnalysis?.fieldDecisions?.find((decision) => decision.field === field) || null;
+}
+
+function overviewDecisionLabel(decision) {
+  return {
+    provided: "사용자 입력",
+    generated: "AI 생성",
+    inferred: "AI 추론",
+    "needs-confirmation": "확인 필요",
+  }[decision?.origin] || "";
 }
 
 async function analyzeNaturalLanguageOverview() {
@@ -1642,6 +1656,8 @@ async function analyzeNaturalLanguageOverview() {
   overviewAnalysisLoading = true;
   overviewAnalysisError = "";
   overviewAnalysis = null;
+  contentState.promotionOverviewDraft = {};
+  saveWizardContent();
   renderStep();
   try {
     const result = await fetchJson("/api/promo-overview-parse", {
@@ -1649,11 +1665,14 @@ async function analyzeNaturalLanguageOverview() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         naturalLanguage: instruction,
-        currentOverview: syncPromotionOverviewFromLegacy(contentState),
+        generationMode: "new-draft",
       }),
     });
-    if (requestId !== overviewAnalysisRequestId) return;
+    if (requestId !== overviewAnalysisRequestId
+      || result.requestFingerprint !== promotionOverviewRequestFingerprint(overviewNaturalLanguage)) return;
     overviewAnalysis = result;
+    contentState.promotionOverviewDraft = result;
+    saveWizardContent();
   } catch (error) {
     if (requestId !== overviewAnalysisRequestId) return;
     overviewAnalysisError = error.message || "프로모션 개요를 분석하지 못했습니다.";
@@ -1667,6 +1686,15 @@ async function analyzeNaturalLanguageOverview() {
 
 function applyOverviewAnalysis() {
   if (!overviewAnalysis?.overview) return;
+  if (overviewAnalysis.requestFingerprint
+    !== promotionOverviewRequestFingerprint(overviewNaturalLanguage)) {
+    overviewAnalysisError = "입력 내용이 변경되었습니다. AI 개요를 다시 생성해 주세요.";
+    overviewAnalysis = null;
+    contentState.promotionOverviewDraft = {};
+    saveWizardContent();
+    renderStep();
+    return;
+  }
   const approved = {
     ...overviewAnalysis.overview,
     inputMode: "natural-language",
@@ -1675,11 +1703,12 @@ function applyOverviewAnalysis() {
   contentState.promotionOverview = applyPromotionOverviewToLegacy(contentState, approved);
   overviewInputMode = "natural-language";
   validationErrors = {};
-  saveWizardContent();
   overviewAnalysis = {
     ...overviewAnalysis,
     appliedFingerprint: promotionOverviewFingerprint(contentState.promotionOverview),
   };
+  contentState.promotionOverviewDraft = overviewAnalysis;
+  saveWizardContent();
   renderStep();
 }
 
@@ -1852,6 +1881,7 @@ async function applyTemplateCompositionProposal() {
       const section = sectionsById.get(planned.sectionId);
       const itemsByKey = new Map((section?.items || []).map((item) => [item.itemKey, item]));
       planned.contentMappings.forEach((mapping) => {
+        if (String(mapping.sourceOverviewPath || "").startsWith("primaryAction.")) return;
         const item = itemsByKey.get(mapping.itemKey);
         if (!item || item.isLocked) return;
         const value = overviewValueForComposition(mapping.sourceOverviewPath);
@@ -1864,13 +1894,10 @@ async function applyTemplateCompositionProposal() {
         if (item.fieldKind === "cta") {
           if (!isUnchangedTemplateDefault
             && (String(current?.label || "").trim() || String(current?.link || "").trim())) return;
-          const overview = syncPromotionOverviewFromLegacy(contentState);
           setValueAtPath(contentState.sectionInputs, path, {
             ...(current && typeof current === "object" ? current : {}),
-            label: mapping.sourceOverviewPath === "primaryAction.label"
-              ? value : (current?.label || value),
-            link: mapping.sourceOverviewPath === "primaryAction.url"
-              ? value : (current?.link || overview.primaryAction.url || ""),
+            label: current?.label || value,
+            link: current?.link || "",
             target: current?.target || "_self",
           });
         } else if (item.fieldKind === "text"
@@ -1990,18 +2017,21 @@ function createOverviewInputPanel(structuredForm) {
     nlpPanel,
     "p",
     "overview-nlp-panel__description",
-    "프로모션 목적, 대상, 혜택, 분위기와 필요한 CTA를 자유롭게 입력하세요. 분석 결과는 확인 후 적용됩니다."
+    "정리되지 않은 짧은 아이디어만 입력해도 AI가 제목, 목적, 대상, 분위기와 핵심 혜택을 포함한 새 개요 초안을 만듭니다. 결과는 확인 후 적용됩니다."
   );
   const input = document.createElement("textarea");
   input.className = "overview-nlp-input";
   input.rows = 8;
   input.maxLength = 4000;
-  input.placeholder = "예: 한국 신규 고객을 대상으로 100% 첫 충전 보너스를 제공하는 프리미엄 프로모션입니다. 게임 참가 버튼이 필요합니다.";
+  input.placeholder = "예: 여름에 신규 고객이 관심을 가질 만한 충전 이벤트를 만들고 싶어요.";
   input.value = overviewNaturalLanguage;
   input.addEventListener("input", () => {
     overviewNaturalLanguage = input.value;
+    overviewAnalysisRequestId += 1;
+    overviewAnalysisLoading = false;
     contentState.promotionOverview.rawNaturalLanguage = overviewNaturalLanguage;
     overviewAnalysis = null;
+    contentState.promotionOverviewDraft = {};
     overviewAnalysisError = "";
     saveWizardContent();
   });
@@ -2034,27 +2064,44 @@ function createOverviewInputPanel(structuredForm) {
     );
     const grid = document.createElement("dl");
     grid.className = "overview-analysis-grid";
-    overviewAnalysisFieldRows(overviewAnalysis.overview).forEach(([label, value]) => {
+    overviewAnalysisFieldRows(overviewAnalysis.overview).forEach(([field, label, value]) => {
       appendTextElement(grid, "dt", "", label);
-      appendTextElement(grid, "dd", "", value);
+      const fieldValue = document.createElement("dd");
+      appendTextElement(fieldValue, "span", "overview-analysis__value", value || "입력 필요");
+      const decision = overviewDecisionForField(field);
+      if (decision) {
+        appendTextElement(
+          fieldValue,
+          "span",
+          `overview-analysis__origin overview-analysis__origin--${decision.origin}`,
+          overviewDecisionLabel(decision)
+        );
+        if (decision.reason) {
+          appendTextElement(fieldValue, "small", "overview-analysis__reason", decision.reason);
+        }
+      }
+      grid.append(fieldValue);
     });
     result.append(grid);
-    if (overviewAnalysis.missingInputs?.length) {
+    if (overviewAnalysis.assumptions?.length) {
       appendTextElement(
         result,
         "p",
         "overview-analysis-warning",
-        `추가 입력 필요: ${overviewAnalysis.missingInputs.join(", ")}`
+        `AI 가정: ${overviewAnalysis.assumptions.join(" · ")}`
       );
     }
-    if (overviewAnalysis.uncertainInputs?.length) {
+    if (overviewAnalysis.missingCriticalInputs?.length) {
       appendTextElement(
         result,
         "p",
         "overview-analysis-warning",
-        `확인 필요: ${overviewAnalysis.uncertainInputs.map((item) => `${item.field} (${item.reason})`).join(", ")}`
+        `적용 후 확인할 필수 항목: ${overviewAnalysis.missingCriticalInputs.join(", ")}`
       );
     }
+    overviewAnalysis.warnings?.forEach((warning) => {
+      appendTextElement(result, "p", "overview-analysis-warning", warning);
+    });
     const apply = document.createElement("button");
     apply.type = "button";
     apply.className = "primary-action";
@@ -2080,8 +2127,6 @@ function renderContentStep() {
     { group: "simpleBrief", key: "audience", label: "대상 고객", required: true, options: ["신규", "기존고객", "일반고객"] },
     { group: "simpleBrief", key: "campaignTone", label: "캠페인 톤", required: true, options: ["활기찬", "진중함", "럭셔리", "프리미엄", "긴급함", "친근함"] },
     { group: "simpleBrief", key: "mainOffer", label: "핵심 혜택", type: "textarea", required: true },
-    { group: "promo", key: "ctaLabel", label: "CTA 문구" },
-    { group: "promo", key: "ctaUrl", label: "CTA URL", type: "url", placeholder: "https://..." },
   ]);
 
   if (contentState.promo.promotionPurpose !== "기타") {

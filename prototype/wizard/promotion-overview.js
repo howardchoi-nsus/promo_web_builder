@@ -7,22 +7,11 @@
     return String(value || "").trim().slice(0, maxLength);
   }
 
-  function normalizedUrl(value) {
-    const raw = text(value, 2000);
-    if (!raw) return "";
-    try {
-      const parsed = new URL(raw);
-      return ["http:", "https:"].includes(parsed.protocol) ? parsed.toString() : "";
-    } catch {
-      return "";
-    }
-  }
-
   function normalize(value = {}) {
     const promotionPurpose = PROMOTION_PURPOSES.includes(value.promotionPurpose)
       ? value.promotionPurpose : "";
     return {
-      schemaVersion: 2,
+      schemaVersion: 3,
       inputMode: value.inputMode === "natural-language" ? "natural-language" : "structured",
       rawNaturalLanguage: text(value.rawNaturalLanguage, 4000),
       title: text(value.title, 200),
@@ -33,10 +22,6 @@
       audience: AUDIENCES.includes(value.audience) ? value.audience : "",
       campaignTone: CAMPAIGN_TONES.includes(value.campaignTone) ? value.campaignTone : "",
       mainOffer: text(value.mainOffer, 1000),
-      primaryAction: {
-        label: text(value.primaryAction?.label, 120),
-        url: normalizedUrl(value.primaryAction?.url),
-      },
     };
   }
 
@@ -51,10 +36,6 @@
       audience: content.simpleBrief?.audience || saved.audience,
       campaignTone: content.simpleBrief?.campaignTone || saved.campaignTone,
       mainOffer: content.simpleBrief?.mainOffer || saved.mainOffer,
-      primaryAction: {
-        label: content.promo?.ctaLabel || saved.primaryAction?.label,
-        url: content.promo?.ctaUrl || saved.primaryAction?.url,
-      },
     });
   }
 
@@ -68,8 +49,6 @@
     content.promo.promotionPurposeOther = overview.promotionPurpose === "기타"
       ? overview.promotionPurposeOther : "";
     content.promo.market = overview.market;
-    content.promo.ctaLabel = overview.primaryAction.label;
-    content.promo.ctaUrl = overview.primaryAction.url;
     content.simpleBrief.audience = overview.audience;
     content.simpleBrief.campaignTone = overview.campaignTone;
     content.simpleBrief.mainOffer = overview.mainOffer;
@@ -89,14 +68,21 @@
     return JSON.stringify(value);
   }
 
-  function fingerprint(value) {
-    const input = stableStringify(normalize(value));
+  function fnvFingerprint(prefix, input) {
     let hash = 2166136261;
     for (let index = 0; index < input.length; index += 1) {
       hash ^= input.charCodeAt(index);
       hash = Math.imul(hash, 16777619);
     }
-    return `overview-${(hash >>> 0).toString(16).padStart(8, "0")}`;
+    return `${prefix}-${(hash >>> 0).toString(16).padStart(8, "0")}`;
+  }
+
+  function fingerprint(value) {
+    return fnvFingerprint("overview", stableStringify(normalize(value)));
+  }
+
+  function requestFingerprint(value) {
+    return fnvFingerprint("overview-request", text(value, 4000));
   }
 
   global.PromoPromotionOverview = Object.freeze({
@@ -105,5 +91,6 @@
     applyToLegacy,
     syncFromLegacy,
     fingerprint,
+    requestFingerprint,
   });
 })(globalThis);

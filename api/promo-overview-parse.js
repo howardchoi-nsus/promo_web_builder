@@ -1,4 +1,5 @@
 const { getSql, parseBody } = require("./_promo-section-design-store");
+const { randomUUID } = require("node:crypto");
 const { createPromptExecutionSnapshot } = require("./_prompt-execution-snapshot");
 const { generateStructuredPlannerResult } = require("./_promo-section-design-provider");
 const {
@@ -6,9 +7,9 @@ const {
   AUDIENCES,
   CAMPAIGN_TONES,
   OVERVIEW_PARSE_SCHEMA,
-  normalizeOverview,
   normalizeParsedOverview,
   overviewFingerprint,
+  overviewRequestFingerprint,
 } = require("./_promo-overview-contract");
 
 module.exports = async function handler(req, res) {
@@ -20,10 +21,13 @@ module.exports = async function handler(req, res) {
     res.setHeader("Cache-Control", "no-store");
     const body = parseBody(req.body);
     const instruction = String(body.naturalLanguage || "").trim();
+    const generationMode = String(body.generationMode || "new-draft").trim();
     if (instruction.length < 10 || instruction.length > 4000) {
       return res.status(422).json({ error: "Natural-language overview must be between 10 and 4000 characters" });
     }
-    const currentOverview = normalizeOverview(body.currentOverview || {});
+    if (generationMode !== "new-draft") {
+      return res.status(422).json({ error: "Unsupported promotion overview generation mode" });
+    }
     const allowedValues = {
       promotionPurposes: PROMOTION_PURPOSES,
       audiences: AUDIENCES,
@@ -32,8 +36,9 @@ module.exports = async function handler(req, res) {
     const sql = getSql();
     const promptSnapshot = await createPromptExecutionSnapshot(sql, "promo_overview_parser", {
       naturalLanguage: instruction,
-      currentOverviewJson: JSON.stringify(currentOverview),
+      currentOverviewJson: "{}",
       allowedValuesJson: JSON.stringify(allowedValues),
+      generationMode: "new-draft",
     });
     const generation = await generateStructuredPlannerResult({
       type: "promo_overview_parser",
@@ -44,12 +49,14 @@ module.exports = async function handler(req, res) {
     const parsed = normalizeParsedOverview({
       result: generation.result,
       instruction,
-      currentOverview,
     });
     return res.status(200).json({
       ok: true,
+      draftId: randomUUID(),
+      createdAt: new Date().toISOString(),
       ...parsed,
       overviewFingerprint: overviewFingerprint(parsed.overview),
+      requestFingerprint: overviewRequestFingerprint(instruction),
       prompt: {
         id: promptSnapshot.promptConfig.promptId,
         version: promptSnapshot.promptConfig.promptVersion,
