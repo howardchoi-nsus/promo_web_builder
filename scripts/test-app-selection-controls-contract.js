@@ -40,5 +40,10 @@ assert.doesNotMatch(adminCss, /\.template-active-switch/, "The page-specific tem
 assert.doesNotMatch(editorCss, /\.component-visibility-toggle\s*>\s*i/, "Editor switch track styling must live in the shared component layer");
 assert.doesNotMatch(editorCss, /\.guide-toggle\s+input/, "Guide switch input styling must live in the shared component layer");
 assert.doesNotMatch(adminMarkup, /class="switch-control"/, "Legacy checkbox markup must include the shared app-checkbox class");
+assert.match(
+  editorCss,
+  /\.component-visibility-toggle\s*\{[\s\S]*?display:\s*inline-flex;[\s\S]*?flex:\s*0 0 auto;/,
+  "Editor visibility switches must remain one-line flex controls inside grid-based property forms."
+);
 
 console.log("Shared selection control contract test passed");
