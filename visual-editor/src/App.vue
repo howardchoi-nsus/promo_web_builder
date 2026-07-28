@@ -1390,18 +1390,20 @@ onBeforeUnmount(() => {
                 </button>
                 <label
                   v-if="!item.isRequired && !item.isLocked"
-                  class="component-visibility-toggle"
+                  class="app-switch app-switch--small component-visibility-toggle"
                   :title="itemVisible(selectedSection, item) ? '웹 출력에 노출 중' : '웹 출력에서 숨김'"
                   @click.stop
                 >
                   <input
+                    class="app-switch__input"
                     type="checkbox"
+                    role="switch"
                     :checked="itemVisible(selectedSection, item)"
                     :aria-label="`${item.name} 노출`"
                     @change="setItemVisible(selectedSection, item, $event.target.checked)"
                   />
-                  <i aria-hidden="true"></i>
-                  <span>노출</span>
+                  <span class="app-switch__track" aria-hidden="true"></span>
+                  <span class="app-switch__label">노출</span>
                 </label>
               </div>
               <div class="component-property-body">
@@ -1417,17 +1419,19 @@ onBeforeUnmount(() => {
                 <small>{{ field.fieldKind }} · {{ field.fieldKey }}</small>
                 <label
                   v-if="!field.isRequired && !field.isLocked"
-                  class="component-visibility-toggle"
+                  class="app-switch app-switch--small component-visibility-toggle"
                   :title="fieldVisible(selectedSection, selectedItem, field) ? '웹 출력에 노출 중' : '웹 출력에서 숨김'"
                 >
                   <input
+                    class="app-switch__input"
                     type="checkbox"
+                    role="switch"
                     :checked="fieldVisible(selectedSection, selectedItem, field)"
                     :aria-label="`${field.name} 노출`"
                     @change="setFieldVisible(selectedSection, selectedItem, field, $event.target.checked)"
                   />
-                  <i aria-hidden="true"></i>
-                  <span>노출</span>
+                  <span class="app-switch__track" aria-hidden="true"></span>
+                  <span class="app-switch__label">노출</span>
                 </label>
               </header>
               <template v-if="field.fieldKind === 'cta'">
@@ -1634,7 +1638,7 @@ onBeforeUnmount(() => {
                   <option value="circle">원형</option>
                 </select>
               </label>
-              <label class="toggle-field">
+              <label class="app-checkbox toggle-field">
                 <input
                   type="checkbox"
                   :disabled="selectedItem.isLocked"

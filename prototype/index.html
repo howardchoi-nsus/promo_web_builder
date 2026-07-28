@@ -355,13 +355,16 @@
                       <strong>{{ section.name }}</strong>
                       <span>{{ sectionStatusLabel(section) }} · {{ sectionRequiredLabel(section) }}</span>
                     </div>
-                    <label class="switch-control" @click.stop>
+                    <label class="app-switch" @click.stop>
                       <input
+                        class="app-switch__input"
                         type="checkbox"
+                        role="switch"
                         :checked="section.visible"
                         @change="setSectionVisible(section.sectionId, $event.target.checked)"
                       />
-                      <span>사용</span>
+                      <span class="app-switch__track" aria-hidden="true"></span>
+                      <span class="app-switch__label">사용</span>
                     </label>
                   </summary>
 
@@ -385,13 +388,16 @@
                             class="section-item-row repeat-item-row"
                             :class="{ inactive: !repeatItemVisible(section.sectionId, setIndex, item), 'has-image-setting': item.imageGenerationRequest }"
                           >
-                            <label class="switch-control">
+                            <label class="app-switch app-switch--small">
                               <input
+                                class="app-switch__input"
                                 type="checkbox"
+                                role="switch"
                                 :checked="repeatItemVisible(section.sectionId, setIndex, item)"
                                 @change="setRepeatItemVisible(section.sectionId, setIndex, item.itemId, $event.target.checked)"
                               />
-                              <span>{{ repeatItemVisible(section.sectionId, setIndex, item) ? '사용' : '미사용' }}</span>
+                              <span class="app-switch__track" aria-hidden="true"></span>
+                              <span class="app-switch__label">{{ repeatItemVisible(section.sectionId, setIndex, item) ? '사용' : '미사용' }}</span>
                             </label>
                             <div class="section-item-summary">
                               <strong>{{ item.label }}</strong>
@@ -416,14 +422,17 @@
                                 @input="setSectionInputValue(repeatItemInputPath(section.sectionId, setIndex, item), $event.target.value)"
                               />
                             </label>
-                            <label class="switch-control section-image-setting" v-if="item.imageGenerationRequest">
+                            <label class="app-switch app-switch--small section-image-setting" v-if="item.imageGenerationRequest">
                               <input
+                                class="app-switch__input"
                                 type="checkbox"
+                                role="switch"
                                 :checked="repeatImageGenerationMode(section.sectionId, setIndex, item) === 'generate'"
                                 :disabled="!repeatItemVisible(section.sectionId, setIndex, item)"
                                 @change="setRepeatImageGenerationMode(section.sectionId, setIndex, item.itemId, $event.target.checked ? 'generate' : 'none')"
                               />
-                              <span>AI 이미지 생성</span>
+                              <span class="app-switch__track" aria-hidden="true"></span>
+                              <span class="app-switch__label">AI 이미지 생성</span>
                             </label>
                           </div>
                         </div>
@@ -437,14 +446,17 @@
                         class="section-item-row"
                         :class="{ inactive: !item.visible, 'has-image-setting': item.imageGenerationRequest }"
                       >
-                        <label class="switch-control">
+                        <label class="app-switch app-switch--small">
                           <input
+                            class="app-switch__input"
                             type="checkbox"
+                            role="switch"
                             :checked="item.visible"
                             :disabled="item.required && section.visible"
                             @change="setItemVisible(section.sectionId, item.itemId, $event.target.checked)"
                           />
-                          <span>{{ item.required ? '필수' : (item.visible ? '사용' : '미사용') }}</span>
+                          <span class="app-switch__track" aria-hidden="true"></span>
+                          <span class="app-switch__label">{{ item.required ? '필수' : (item.visible ? '사용' : '미사용') }}</span>
                         </label>
                         <div class="section-item-summary">
                           <strong>{{ item.label }}</strong>
@@ -469,14 +481,17 @@
                             @input="setSectionInputValue(item.inputPath, $event.target.value)"
                           />
                         </label>
-                        <label class="switch-control section-image-setting" v-if="item.imageGenerationRequest">
+                        <label class="app-switch app-switch--small section-image-setting" v-if="item.imageGenerationRequest">
                           <input
+                            class="app-switch__input"
                             type="checkbox"
+                            role="switch"
                             :checked="item.imageGenerationMode === 'generate'"
                             :disabled="!section.visible || !item.visible"
                             @change="setImageGenerationMode(section.sectionId, item.itemId, $event.target.checked ? 'generate' : 'none')"
                           />
-                          <span>AI 이미지 생성</span>
+                          <span class="app-switch__track" aria-hidden="true"></span>
+                          <span class="app-switch__label">AI 이미지 생성</span>
                         </label>
                       </div>
                     </template>
@@ -748,9 +763,10 @@
                         <strong>{{ workerStageLabel(setting.stage, setting.label) }}</strong>
                         <span>{{ setting.maskedWebhookUrl || setting.envName || '설정되지 않음' }}</span>
                       </div>
-                      <label class="switch-control">
-                        <input type="checkbox" v-model="workerWebhookEditor(setting.stage).isActive" />
-                        <span>활성</span>
+                      <label class="app-switch">
+                        <input class="app-switch__input" type="checkbox" role="switch" v-model="workerWebhookEditor(setting.stage).isActive" />
+                        <span class="app-switch__track" aria-hidden="true"></span>
+                        <span class="app-switch__label">활성</span>
                       </label>
                     </div>
                     <label class="field compact-field">
@@ -1241,11 +1257,11 @@
                         <label class="field" v-if="field.fieldKind === 'text'"><span>텍스트 유형</span><select v-model="field.textType" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'"><option value="title">제목</option><option value="remark">보조 문구</option><option value="multi">본문</option></select></label>
                       </div>
                       <div class="form-grid compact">
-                        <label class="switch-control"><input v-model="field.isRequired" type="checkbox" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /><span>필수 요소</span></label>
-                        <label class="switch-control"><input v-model="field.isLocked" type="checkbox" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /><span>관리자 값 잠금</span></label>
+                        <label class="app-checkbox switch-control"><input v-model="field.isRequired" type="checkbox" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /><span>필수 요소</span></label>
+                        <label class="app-checkbox switch-control"><input v-model="field.isLocked" type="checkbox" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /><span>관리자 값 잠금</span></label>
                       </div>
                       <template v-if="field.fieldKind === 'image'">
-                        <div class="field"><span>허용 이미지 소스</span><div class="subsection-actions"><label class="switch-control" v-for="source in ['url', 'file', 'ai']" :key="source"><input type="checkbox" :value="source" v-model="field.imagePolicy.allowedSources" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /><span>{{ imageSourceLabel(source) }}</span></label></div></div>
+                        <div class="field"><span>허용 이미지 소스</span><div class="subsection-actions"><label class="app-checkbox switch-control" v-for="source in ['url', 'file', 'ai']" :key="source"><input type="checkbox" :value="source" v-model="field.imagePolicy.allowedSources" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /><span>{{ imageSourceLabel(source) }}</span></label></div></div>
                         <div class="form-grid compact">
                           <label class="field"><span>AI 이미지 관리자 지침</span><textarea v-model="field.imagePolicy.promptText" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'"></textarea></label>
                           <label class="field"><span>이미지 비율</span><select v-model="field.imagePolicy.aspectRatio" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'"><option value="">기본</option><option value="16:9">16:9</option><option value="4:3">4:3</option><option value="1:1">1:1</option><option value="3:4">3:4</option></select></label>
@@ -1309,15 +1325,18 @@
                       class="template-list-settings"
                       v-if="expandedWizardFormTemplateSettingsKey === group.templateKey && wizardFormTemplateDetail?.template?.templateKey === group.templateKey"
                     >
-                      <label class="template-active-switch" :title="group.primary?.isDefault && group.primary?.status === 'active' ? '기본 템플릿은 다른 기본 템플릿을 활성화하기 전까지 비활성화할 수 없습니다.' : '템플릿 활성 상태'">
-                        <span class="template-active-switch__label">{{ group.primary?.status === 'active' ? '활성' : '비활성' }}</span>
+                      <label class="app-switch" :aria-busy="wizardFormTemplateSaving ? 'true' : 'false'" :title="group.primary?.isDefault && group.primary?.status === 'active' ? '기본 템플릿은 다른 기본 템플릿을 활성화하기 전까지 비활성화할 수 없습니다.' : '템플릿 활성 상태'">
                         <input
+                          class="app-switch__input"
                           type="checkbox"
+                          role="switch"
                           :checked="group.primary?.status === 'active'"
                           :disabled="wizardFormTemplateSaving || (group.primary?.isDefault && group.primary?.status === 'active')"
+                          :aria-label="`템플릿 ${group.primary?.status === 'active' ? '활성' : '비활성'}`"
                           @change="toggleWizardFormTemplateActive(group, $event.target.checked)"
                         />
-                        <span class="template-active-switch__track" aria-hidden="true"></span>
+                        <span class="app-switch__track" aria-hidden="true"></span>
+                        <span class="app-switch__label">{{ wizardFormTemplateSaving ? '저장 중' : (group.primary?.status === 'active' ? '활성' : '비활성') }}</span>
                       </label>
                       <div class="template-list-card__actions">
                         <button class="tiny-button" type="button" :disabled="wizardFormTemplateSaving" @click="editWizardFormTemplate(group)">수정</button>
@@ -1360,7 +1379,7 @@
                         ></textarea>
                         <small>활성 템플릿 추천에 사용할 목적, 마켓, 대상, 톤, 역할, 필수 입력과 태그를 배열로 관리합니다.</small>
                       </label>
-                      <label class="switch-control">
+                      <label class="app-checkbox switch-control">
                         <input v-model="wizardFormTemplateEditor.isDefault" type="checkbox" :disabled="wizardFormTemplateDetail.template.status !== 'draft'" />
                         <span>기본 템플릿으로 지정</span>
                       </label>
@@ -1410,22 +1429,23 @@
                   </div>
                   <div class="subsection" v-if="selectedWizardFormTemplateSection">
                     <div class="subsection-title"><h3>AI 디자인 정책</h3></div>
-                    <label class="switch-control">
-                      <input type="checkbox" v-model="wizardFormTemplateSectionEditor.aiDesign.enabled" :disabled="!wizardFormTemplateCanEdit" />
-                      <span>이 Section에서 AI 디자인 생성 허용</span>
+                    <label class="app-switch">
+                      <input class="app-switch__input" type="checkbox" role="switch" v-model="wizardFormTemplateSectionEditor.aiDesign.enabled" :disabled="!wizardFormTemplateCanEdit" />
+                      <span class="app-switch__track" aria-hidden="true"></span>
+                      <span class="app-switch__label">이 Section에서 AI 디자인 생성 허용</span>
                     </label>
                     <div class="form-grid compact">
-                      <label class="switch-control" v-for="variant in ['split-left', 'split-right', 'centered-hero']" :key="variant">
+                      <label class="app-checkbox switch-control" v-for="variant in ['split-left', 'split-right', 'centered-hero']" :key="variant">
                         <input type="checkbox" :value="variant" v-model="wizardFormTemplateSectionEditor.aiDesign.allowedLayoutVariants" :disabled="!wizardFormTemplateCanEdit || !wizardFormTemplateSectionEditor.aiDesign.enabled" />
                         <span>{{ variant }}</span>
                       </label>
                     </div>
-                    <label class="switch-control">
+                    <label class="app-checkbox switch-control">
                       <input type="checkbox" v-model="wizardFormTemplateSectionEditor.aiDesign.allowSectionBackground" :disabled="!wizardFormTemplateCanEdit || !wizardFormTemplateSectionEditor.aiDesign.enabled" />
                       <span>섹션 배경 AI 생성 허용</span>
                     </label>
                     <div class="form-grid compact">
-                      <label class="switch-control" v-for="item in wizardFormTemplateSectionItems.filter((entry) => entry.fieldKind === 'image' && entry.isVisibleInWizard && entry.image?.allowedSources?.includes('ai'))" :key="item.itemKey">
+                      <label class="app-checkbox switch-control" v-for="item in wizardFormTemplateSectionItems.filter((entry) => entry.fieldKind === 'image' && entry.isVisibleInWizard && entry.image?.allowedSources?.includes('ai'))" :key="item.itemKey">
                         <input type="checkbox" :value="item.itemKey" v-model="wizardFormTemplateSectionEditor.aiDesign.imageTargetItemKeys" :disabled="!wizardFormTemplateCanEdit || !wizardFormTemplateSectionEditor.aiDesign.enabled" />
                         <span>{{ item.name }}</span>
                       </label>
@@ -1485,12 +1505,12 @@
                           <label class="field compact-field"><span>{{ t('common.field.type') }}</span><select v-model="wizardFormTemplateItemEditor.fieldKind"><option value="text">텍스트</option><option value="image">이미지</option><option value="cta">CTA 버튼</option></select></label>
                           <label class="field compact-field" v-if="wizardFormTemplateItemEditor.fieldKind === 'text'"><span>텍스트 유형</span><select v-model="wizardFormTemplateItemEditor.textType"><option value="title">Title</option><option value="remark">remark</option><option value="multi">Multi</option></select></label>
                           <div class="form-grid compact">
-                            <label class="switch-control"><input v-model="wizardFormTemplateItemEditor.isRequired" type="checkbox" /><span>필수</span></label>
-                            <label class="switch-control"><input v-model="wizardFormTemplateItemEditor.isVisibleInWizard" type="checkbox" /><span>Wizard 노출</span></label>
-                            <label class="switch-control"><input v-model="wizardFormTemplateItemEditor.userReorderAllowed" type="checkbox" /><span>Wizard 사용자 순서 변경 허용</span></label>
-                            <label class="switch-control"><input v-model="wizardFormTemplateItemEditor.isLocked" type="checkbox" /><span>내용 고정</span></label>
+                            <label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.isRequired" type="checkbox" /><span>필수</span></label>
+                            <label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.isVisibleInWizard" type="checkbox" /><span>Wizard 노출</span></label>
+                            <label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.userReorderAllowed" type="checkbox" /><span>Wizard 사용자 순서 변경 허용</span></label>
+                            <label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.isLocked" type="checkbox" /><span>내용 고정</span></label>
                           </div>
-                          <div class="field" v-if="wizardFormTemplateItemEditor.fieldKind === 'image'"><span>Wizard 이미지 입력 방식 허용</span><div class="subsection-actions"><label v-for="source in ['url', 'file', 'ai']" :key="source" class="switch-control"><input type="checkbox" :checked="wizardFormTemplateItemEditor.image.allowedSources.includes(source)" @change="toggleWizardFormTemplateItemImageSource(source)" /><span>{{ imageSourceLabel(source) }}</span></label><label class="switch-control"><input v-model="wizardFormTemplateItemEditor.image.descriptionEnabled" type="checkbox" /><span>설명 입력 허용</span></label></div></div>
+                          <div class="field" v-if="wizardFormTemplateItemEditor.fieldKind === 'image'"><span>Wizard 이미지 입력 방식 허용</span><div class="subsection-actions"><label v-for="source in ['url', 'file', 'ai']" :key="source" class="app-checkbox switch-control"><input type="checkbox" :checked="wizardFormTemplateItemEditor.image.allowedSources.includes(source)" @change="toggleWizardFormTemplateItemImageSource(source)" /><span>{{ imageSourceLabel(source) }}</span></label><label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.image.descriptionEnabled" type="checkbox" /><span>설명 입력 허용</span></label></div></div>
                           <div class="form-grid compact" v-if="wizardFormTemplateItemEditor.fieldKind === 'cta'"><label class="field compact-field"><span>UTM Source</span><input v-model="wizardFormTemplateItemEditor.ctaUtm.source" type="text" /></label><label class="field compact-field"><span>UTM Medium</span><input v-model="wizardFormTemplateItemEditor.ctaUtm.medium" type="text" /></label><label class="field compact-field"><span>UTM Campaign</span><input v-model="wizardFormTemplateItemEditor.ctaUtm.campaign" type="text" /></label></div>
                           <label class="field" v-if="wizardFormTemplateItemEditor.isLocked"><span>고정 내용 (JSON)</span><textarea v-model="wizardFormTemplateItemEditor.lockedValueText" rows="3"></textarea></label>
                           <div class="action-row align-right"><button class="tiny-button danger" type="button" :disabled="wizardFormTemplateSectionSaving" @click="deleteWizardFormTemplateItem(item)">{{ t('common.action.delete') }}</button><button class="tiny-button" type="button" @click="wizardFormTemplateItemEditorOpenId = ''">{{ t('common.action.cancel') }}</button><button class="tiny-button primary" type="button" :disabled="!wizardFormTemplateItemEditor.name || wizardFormTemplateSectionSaving" @click="saveWizardFormTemplateItem">{{ t('common.action.saveChanges') }}</button></div>
@@ -1505,12 +1525,12 @@
                     <label class="field compact-field"><span>{{ t('common.field.type') }}</span><select v-model="wizardFormTemplateItemEditor.fieldKind"><option value="text">텍스트</option><option value="image">이미지</option><option value="cta">CTA 버튼</option></select></label>
                     <label class="field compact-field" v-if="wizardFormTemplateItemEditor.fieldKind === 'text'"><span>텍스트 유형</span><select v-model="wizardFormTemplateItemEditor.textType"><option value="title">Title</option><option value="remark">remark</option><option value="multi">Multi</option></select></label>
                     <div class="form-grid compact">
-                      <label class="switch-control"><input v-model="wizardFormTemplateItemEditor.isRequired" type="checkbox" /><span>필수</span></label>
-                      <label class="switch-control"><input v-model="wizardFormTemplateItemEditor.isVisibleInWizard" type="checkbox" /><span>Wizard 노출</span></label>
-                      <label class="switch-control"><input v-model="wizardFormTemplateItemEditor.userReorderAllowed" type="checkbox" /><span>Wizard 사용자 순서 변경 허용</span></label>
-                      <label class="switch-control"><input v-model="wizardFormTemplateItemEditor.isLocked" type="checkbox" /><span>내용 고정</span></label>
+                      <label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.isRequired" type="checkbox" /><span>필수</span></label>
+                      <label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.isVisibleInWizard" type="checkbox" /><span>Wizard 노출</span></label>
+                      <label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.userReorderAllowed" type="checkbox" /><span>Wizard 사용자 순서 변경 허용</span></label>
+                      <label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.isLocked" type="checkbox" /><span>내용 고정</span></label>
                     </div>
-                    <div class="field" v-if="wizardFormTemplateItemEditor.fieldKind === 'image'"><span>Wizard 이미지 입력 방식 허용</span><div class="subsection-actions"><label v-for="source in ['url', 'file', 'ai']" :key="source" class="switch-control"><input type="checkbox" :checked="wizardFormTemplateItemEditor.image.allowedSources.includes(source)" @change="toggleWizardFormTemplateItemImageSource(source)" /><span>{{ imageSourceLabel(source) }}</span></label><label class="switch-control"><input v-model="wizardFormTemplateItemEditor.image.descriptionEnabled" type="checkbox" /><span>설명 입력 허용</span></label></div></div>
+                    <div class="field" v-if="wizardFormTemplateItemEditor.fieldKind === 'image'"><span>Wizard 이미지 입력 방식 허용</span><div class="subsection-actions"><label v-for="source in ['url', 'file', 'ai']" :key="source" class="app-checkbox switch-control"><input type="checkbox" :checked="wizardFormTemplateItemEditor.image.allowedSources.includes(source)" @change="toggleWizardFormTemplateItemImageSource(source)" /><span>{{ imageSourceLabel(source) }}</span></label><label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.image.descriptionEnabled" type="checkbox" /><span>설명 입력 허용</span></label></div></div>
                     <div class="form-grid compact" v-if="wizardFormTemplateItemEditor.fieldKind === 'cta'"><label class="field compact-field"><span>UTM Source</span><input v-model="wizardFormTemplateItemEditor.ctaUtm.source" type="text" /></label><label class="field compact-field"><span>UTM Medium</span><input v-model="wizardFormTemplateItemEditor.ctaUtm.medium" type="text" /></label><label class="field compact-field"><span>UTM Campaign</span><input v-model="wizardFormTemplateItemEditor.ctaUtm.campaign" type="text" /></label></div>
                     <label class="field" v-if="wizardFormTemplateItemEditor.isLocked"><span>고정 내용 (JSON)</span><textarea v-model="wizardFormTemplateItemEditor.lockedValueText" rows="3"></textarea></label>
                     <div class="action-row align-right"><button class="tiny-button" type="button" @click="wizardFormTemplateItemEditorOpenId = ''">{{ t('common.action.cancel') }}</button><button class="tiny-button primary" type="button" :disabled="!wizardFormTemplateItemEditor.name || wizardFormTemplateSectionSaving" @click="saveWizardFormTemplateItem">{{ t('common.action.saveContinue') }}</button></div>
@@ -1655,15 +1675,15 @@
                   <input v-model="wizardSectionFieldsEditor.description" type="text" :disabled="wizardSectionDetail.section.status !== 'draft'" autocomplete="off" />
                 </label>
                 <div class="form-grid compact">
-                  <label class="switch-control">
+                  <label class="app-checkbox switch-control">
                     <input type="checkbox" v-model="wizardSectionFieldsEditor.isRequired" :disabled="wizardSectionDetail.section.status !== 'draft'" />
                     <span>필수 섹션</span>
                   </label>
-                  <label class="switch-control">
+                  <label class="app-checkbox switch-control">
                     <input type="checkbox" v-model="wizardSectionFieldsEditor.orderChangeAllowed" :disabled="wizardSectionDetail.section.status !== 'draft'" />
                     <span>순서변경 허용</span>
                   </label>
-                  <label class="switch-control">
+                  <label class="app-checkbox switch-control">
                     <input type="checkbox" v-model="wizardSectionFieldsEditor.isVisibleInWizard" :disabled="wizardSectionDetail.section.status !== 'draft'" />
                   <span>프로모션 빌더에 노출</span>
                   </label>
@@ -1672,22 +1692,23 @@
                   <div class="subsection-title">
                     <h3>AI 디자인 정책</h3>
                   </div>
-                  <label class="switch-control">
-                    <input type="checkbox" v-model="wizardSectionFieldsEditor.aiDesign.enabled" :disabled="wizardSectionDetail.section.status !== 'draft'" />
-                    <span>이 섹션에서 AI 디자인 생성 허용</span>
+                  <label class="app-switch">
+                    <input class="app-switch__input" type="checkbox" role="switch" v-model="wizardSectionFieldsEditor.aiDesign.enabled" :disabled="wizardSectionDetail.section.status !== 'draft'" />
+                    <span class="app-switch__track" aria-hidden="true"></span>
+                    <span class="app-switch__label">이 섹션에서 AI 디자인 생성 허용</span>
                   </label>
                   <div class="form-grid compact">
-                    <label class="switch-control" v-for="variant in ['split-left', 'split-right', 'centered-hero']" :key="variant">
+                    <label class="app-checkbox switch-control" v-for="variant in ['split-left', 'split-right', 'centered-hero']" :key="variant">
                       <input type="checkbox" :value="variant" v-model="wizardSectionFieldsEditor.aiDesign.allowedLayoutVariants" :disabled="wizardSectionDetail.section.status !== 'draft' || !wizardSectionFieldsEditor.aiDesign.enabled" />
                       <span>{{ variant }}</span>
                     </label>
                   </div>
-                  <label class="switch-control">
+                  <label class="app-checkbox switch-control">
                     <input type="checkbox" v-model="wizardSectionFieldsEditor.aiDesign.allowSectionBackground" :disabled="wizardSectionDetail.section.status !== 'draft' || !wizardSectionFieldsEditor.aiDesign.enabled" />
                     <span>섹션 배경 AI 생성 허용</span>
                   </label>
                   <div class="form-grid compact">
-                    <label class="switch-control" v-for="item in wizardSectionDetail.items.filter((entry) => entry.fieldKind === 'image' && entry.isVisibleInWizard && entry.image?.allowedSources?.includes('ai'))" :key="item.itemKey">
+                    <label class="app-checkbox switch-control" v-for="item in wizardSectionDetail.items.filter((entry) => entry.fieldKind === 'image' && entry.isVisibleInWizard && entry.image?.allowedSources?.includes('ai'))" :key="item.itemKey">
                       <input type="checkbox" :value="item.itemKey" v-model="wizardSectionFieldsEditor.aiDesign.imageTargetItemKeys" :disabled="wizardSectionDetail.section.status !== 'draft' || !wizardSectionFieldsEditor.aiDesign.enabled" />
                       <span>{{ item.name }} ({{ item.itemKey }})</span>
                     </label>
@@ -1808,15 +1829,15 @@
                   <div class="empty-state compact">요소 유형, 이미지 정책, CTA 정책과 스타일 슬롯은 선택한 컴포넌트 버전에서 상속됩니다.</div>
 
                     <div class="form-grid compact">
-                      <label class="switch-control">
+                      <label class="app-checkbox switch-control">
                         <input type="checkbox" v-model="wizardItemEditor.isRequired" />
                         <span>필수 컴포넌트</span>
                       </label>
-                      <label class="switch-control">
+                      <label class="app-checkbox switch-control">
                         <input type="checkbox" v-model="wizardItemEditor.isVisibleInWizard" />
                       <span>프로모션 빌더에 노출</span>
                       </label>
-                      <label class="switch-control">
+                      <label class="app-checkbox switch-control">
                         <input type="checkbox" v-model="wizardItemEditor.isLocked" />
                         <span>내용 고정</span>
                       </label>

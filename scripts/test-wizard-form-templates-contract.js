@@ -114,7 +114,7 @@ assert.doesNotMatch(adminSource, /duplicateWizardFormTemplateForm:\s*\{\s*templa
 assert.doesNotMatch(adminHtml, /template-section-composer/);
 assert.match(adminHtml, /class="template-list-card"/);
 assert.match(adminHtml, /class="template-settings-toggle"/);
-assert.match(adminHtml, /class="template-active-switch"/);
+assert.match(adminHtml, /class="app-switch"[\s\S]*?role="switch"[\s\S]*?class="app-switch__track"/);
 assert.match(adminHtml, /@click="editWizardFormTemplate\(group\)"/);
 assert.match(adminHtml, /@click="openDuplicateWizardFormTemplate\(group\)"/);
 assert.match(adminHtml, /@click="deleteWizardFormTemplate\(group\)"/);

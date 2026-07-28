@@ -34,7 +34,7 @@ const emit = defineEmits([
         @input="emit('update:instruction', $event.target.value)"
       ></textarea>
     </label>
-    <label class="toggle-field">
+    <label class="app-checkbox toggle-field">
       <input
         type="checkbox"
         :checked="generateBackgroundImage"

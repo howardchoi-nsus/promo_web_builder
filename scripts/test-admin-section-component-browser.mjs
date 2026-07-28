@@ -231,9 +231,9 @@ try {
   assert.equal(await page.locator(".form-template-create input").evaluateAll((inputs) => inputs.some((input) => /key/i.test(input.name || input.placeholder || ""))), false);
   await page.locator(".template-list-global-actions button").click();
 
-  await templateCard.locator(".template-active-switch__track").click();
+  await templateCard.locator(".app-switch__track").click();
   await page.waitForTimeout(50);
-  assert.equal(await templateCard.locator(".template-active-switch input").isChecked(), true);
+  assert.equal(await templateCard.locator(".app-switch__input").isChecked(), true);
   assert.deepEqual(activateBody, {
     id: template.id,
     changeNote: "관리자 페이지에서 템플릿을 활성화했습니다.",

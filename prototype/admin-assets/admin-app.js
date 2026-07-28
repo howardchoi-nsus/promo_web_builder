@@ -7880,7 +7880,7 @@ var qh = {
 }, $h = { class: "field" }, eg = { class: "field" }, tg = ["disabled"], ng = { class: "design-token-grid" }, rg = { class: "design-token-column design-token-list" }, ig = ["onClick"], ag = {
 	key: 0,
 	class: "empty-state"
-}, og = { class: "design-token-column design-token-editor" }, sg = { class: "design-token-table-toolbar" }, cg = ["placeholder"], lg = { value: "" }, ug = ["value"], dg = { class: "design-token-check" }, fg = ["disabled"], pg = { class: "design-token-table-wrap" }, mg = { class: "design-token-table" }, hg = { key: 0 }, gg = { class: "design-token-value-control" }, _g = [
+}, og = { class: "design-token-column design-token-editor" }, sg = { class: "design-token-table-toolbar" }, cg = ["placeholder"], lg = { value: "" }, ug = ["value"], dg = { class: "app-checkbox design-token-check" }, fg = ["disabled"], pg = { class: "design-token-table-wrap" }, mg = { class: "design-token-table" }, hg = { key: 0 }, gg = { class: "design-token-value-control" }, _g = [
 	"onUpdate:modelValue",
 	"disabled",
 	"onInput"
@@ -8111,7 +8111,7 @@ function Wg(e, t, n, r, i, a) {
 		])
 	]);
 }
-var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-acbbfd35"]]);
+var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-edc6f31f"]]);
 Object.freeze({
 	active: 0,
 	validated: 1,

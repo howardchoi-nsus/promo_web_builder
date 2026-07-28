@@ -1587,12 +1587,14 @@ body.is-resizing {
   min-width: 0;
 }
 
-.section-item-row > .switch-control {
+.section-item-row > .switch-control,
+.section-item-row > .app-switch {
   min-height: var(--control-height);
   justify-content: flex-start;
 }
 
-.section-item-row > .switch-control span {
+.section-item-row > .switch-control span,
+.section-item-row > .app-switch .app-switch__label {
   display: inline;
   margin-top: 0;
 }
@@ -1623,44 +1625,27 @@ body.is-resizing {
   align-items: center;
   justify-content: flex-end;
   gap: var(--space-2);
+  min-height: var(--app-control-height-small);
   color: var(--muted);
   font-size: 11px;
-  font-weight: 900;
+  font-weight: var(--app-font-weight-label);
   white-space: nowrap;
-}
-
-.switch-control input {
-  position: relative;
-  width: 36px;
-  height: 20px;
-  margin: 0;
-  border: 1px solid var(--line-strong);
-  border-radius: 0;
-  background: var(--surface-2);
-  appearance: none;
   cursor: pointer;
 }
 
-.switch-control input::after {
-  content: "";
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 14px;
-  height: 14px;
-  border-radius: 0;
-  background: var(--muted);
-  transition: transform 0.18s ease, background 0.18s ease;
+.switch-control input {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--app-accent);
+  cursor: pointer;
 }
 
-.switch-control input:checked {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-}
-
-.switch-control input:checked::after {
-  background: var(--accent);
-  transform: translateX(16px);
+.switch-control input:focus-visible {
+  outline: 2px solid var(--app-focus);
+  outline-offset: 2px;
 }
 
 .switch-control input:disabled {
@@ -2938,68 +2923,6 @@ body.is-resizing {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 5px;
-}
-
-.template-active-switch {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 32px;
-  padding: 5px 0;
-  color: var(--sub);
-  cursor: pointer;
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.template-active-switch input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.template-active-switch__track {
-  position: relative;
-  width: 36px;
-  height: 20px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--muted);
-  transition: background var(--app-motion-fast), border-color var(--app-motion-fast);
-}
-
-.template-active-switch__track::after {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 14px;
-  height: 14px;
-  border-radius: var(--radius);
-  background: var(--panel);
-  box-shadow: var(--shadow);
-  content: "";
-  transition: transform var(--app-motion-fast);
-}
-
-.template-active-switch input:checked + .template-active-switch__track {
-  border-color: var(--accent);
-  background: var(--accent);
-}
-
-.template-active-switch input:checked + .template-active-switch__track::after {
-  transform: translateX(16px);
-}
-
-.template-active-switch input:focus-visible + .template-active-switch__track {
-  box-shadow: 0 0 0 2px var(--accent-soft);
-}
-
-.template-active-switch input:disabled + .template-active-switch__track {
-  cursor: not-allowed;
-  opacity: 0.55;
 }
 
 .template-list-settings {

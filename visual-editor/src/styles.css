@@ -129,9 +129,7 @@ button, a { letter-spacing: 0; }
 .admin-layout-actions button:disabled { cursor: not-allowed; opacity: .45; }
 .web-output-action { min-height: 32px; padding: 0 12px; border: 1px solid var(--app-accent); background: var(--app-accent); color: var(--app-panel); cursor: pointer; font-size: 11px; font-weight: 800; }
 .web-output-action:disabled { cursor: not-allowed; opacity: .5; }
-.guide-toggle { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 9px; border: 1px solid var(--app-line-strong); background: var(--app-panel); color: var(--app-ink-soft); cursor: pointer; font-size: 11px; }
-.guide-toggle input { width: 14px; height: 14px; margin: 0; accent-color: var(--app-accent); }
-.guide-toggle strong { min-width: 22px; color: var(--app-accent); font-size: 10px; text-align: right; }
+.guide-toggle { padding: 0 9px; border: 1px solid var(--app-line-strong); background: var(--app-panel); }
 .viewport-control { display: flex; }
 .viewport-control button.active { border-color: var(--app-accent); background: var(--app-accent-soft); color: var(--app-accent); }
 .preview-stage { width: 100%; min-height: calc(100vh - 154px); padding: 18px; overflow: auto; }
@@ -233,62 +231,12 @@ button, a { letter-spacing: 0; }
 .image-resize-mode button:disabled { cursor: not-allowed; opacity: .45; }
 .image-resize-mode small { color: var(--app-muted); font-size: 11px; }
 .component-visibility-toggle {
-  display: inline-flex !important;
-  align-items: center;
   align-self: center;
-  gap: 5px !important;
   margin: 0 8px;
-  color: var(--app-muted);
-  font-size: 11px;
   white-space: nowrap;
-  cursor: pointer;
 }
-.component-visibility-toggle input {
-  position: absolute;
-  width: 1px !important;
-  height: 1px !important;
-  margin: -1px !important;
-  padding: 0 !important;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-  border: 0;
-}
-.component-visibility-toggle > i {
-  position: relative;
-  flex: 0 0 28px;
-  width: 28px;
-  height: 16px;
-  border: 1px solid var(--app-line-strong);
-  border-radius: 999px;
-  background: var(--app-bg);
-  transition: background-color var(--app-transition-duration-fast) var(--app-ease);
-}
-.component-visibility-toggle > i::after {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--app-muted);
-  content: "";
-  transition: transform var(--app-transition-duration-fast) var(--app-ease);
-}
-.component-visibility-toggle input:checked + i {
-  border-color: var(--app-accent);
-  background: var(--app-accent);
-}
-.component-visibility-toggle input:checked + i::after {
-  background: var(--app-on-accent, var(--app-panel));
-  transform: translateX(12px);
-}
-.component-visibility-toggle input:focus-visible + i {
-  outline: 2px solid var(--app-focus);
-  outline-offset: 2px;
-}
-.toggle-field { grid-template-columns: auto 1fr; align-items: center; }
-.toggle-field input { width: 16px; height: 16px; padding: 0; accent-color: var(--app-accent); }
+.property-form .app-checkbox,
+.section-composition-panel .app-checkbox { display: inline-flex; justify-self: start; }
 .token-value-preview { display: flex; align-items: center; gap: 7px; min-width: 0; padding: 7px; border: 1px solid var(--app-line); background: var(--app-bg); color: var(--app-ink); }
 .token-value-preview code { margin-left: auto; color: var(--app-muted); font-size: 10px; white-space: nowrap; }
 .token-value-preview--color i { flex: 0 0 22px; width: 22px; height: 22px; border: 1px solid var(--app-line-strong); border-radius: 50%; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--app-panel) 45%, transparent); }
