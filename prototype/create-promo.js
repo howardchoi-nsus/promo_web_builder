@@ -1913,20 +1913,14 @@ async function applyTemplateCompositionProposal({ autoAdvance = false } = {}) {
         if (!String(value || "").trim()) return;
         const path = `${section.sectionKey}.${item.itemKey}`;
         const current = valueAtPath(contentState.sectionInputs, path);
-        const templateDefaults = contentState.templateDefaultContents?.[proposal.templateKey] || {};
-        const defaultValue = valueAtPath(templateDefaults, path);
-        const isUnchangedTemplateDefault = JSON.stringify(current) === JSON.stringify(defaultValue);
         if (item.fieldKind === "cta") {
-          if (!isUnchangedTemplateDefault
-            && (String(current?.label || "").trim() || String(current?.link || "").trim())) return;
           setValueAtPath(contentState.sectionInputs, path, {
             ...(current && typeof current === "object" ? current : {}),
             label: current?.label || value,
             link: current?.link || "",
             target: current?.target || "_self",
           });
-        } else if (item.fieldKind === "text"
-          && (!String(current || "").trim() || isUnchangedTemplateDefault)) {
+        } else if (item.fieldKind === "text") {
           setValueAtPath(contentState.sectionInputs, path, value);
         }
       });

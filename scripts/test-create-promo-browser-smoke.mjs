@@ -38,6 +38,21 @@ try {
   browser = await chromium.launch({ headless: true });
   const context = await browser.newContext();
   const page = await context.newPage();
+  await page.addInitScript(() => {
+    if (window.top !== window) return;
+    localStorage.setItem("promoPrototype.createPromo.content.v1", JSON.stringify({
+      sectionInputSchemaVersion: 4,
+      templateInputs: {
+        "default-preview": {
+          heroBanner: {
+            title: "Existing user title",
+            description: "Existing user description",
+          },
+        },
+      },
+      templateDefaultContents: { "default-preview": {} },
+    }));
+  });
   await page.route("**/api/design-token-sets?scope=public", async (route) => {
     await route.fulfill({
       status: 200,
@@ -294,6 +309,11 @@ try {
   await page.locator('.step[data-step="layout"].is-active').waitFor();
   await assertPageText(page.locator(".step.is-active strong"), "Layout & Design");
   await page.getByText("Default Preview Template과 AI 섹션 구성을 적용했습니다.").waitFor();
+  const autoComposedContent = await page.evaluate(() => (
+    JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null")
+  ));
+  assert.equal(autoComposedContent?.sectionInputs?.heroBanner?.title, "Browser Smoke Promotion");
+  assert.equal(autoComposedContent?.sectionInputs?.contentFeature?.copy, "첫 충전 100% 보너스");
   await page.locator('.step[data-step="template"]').click();
   templateCompositionReviewRequired = true;
   await page.getByRole("button", { name: "AI로 구성하고 다음" }).click();
