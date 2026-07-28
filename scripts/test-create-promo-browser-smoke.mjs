@@ -677,9 +677,21 @@ try {
   await optionalVisibilityToggle.click();
   await page.waitForTimeout(50);
   const previewItemCountAfterHide = await editorFrame.locator(".rendered-item").count();
-  assert.ok(
-    previewItemCountAfterHide < previewItemCountBeforeHide,
-    "Turning off an optional component must hide it from Live Preview",
+  const hiddenPreviewItemCount = await editorFrame.locator(".rendered-item.is-hidden-in-output").count();
+  assert.equal(
+    previewItemCountAfterHide,
+    previewItemCountBeforeHide,
+    "Turning off an optional component must preserve its editing geometry in Live Preview",
+  );
+  assert.equal(
+    hiddenPreviewItemCount,
+    1,
+    "A component hidden from output must remain as one marked editing placeholder",
+  );
+  assert.equal(
+    await editorFrame.locator(".output-hidden-badge").count(),
+    1,
+    "The hidden editing placeholder must explain that the component is excluded from output",
   );
 
   const outputPagePromise = context.waitForEvent("page");
@@ -689,9 +701,10 @@ try {
   await outputPage.locator(".promo-renderer").waitFor({ timeout: 10_000 });
   assert.equal(
     await outputPage.locator(".rendered-item").count(),
-    previewItemCountAfterHide,
-    "Web Output must honor the same optional component visibility state",
+    previewItemCountAfterHide - hiddenPreviewItemCount,
+    "Web Output must remove components marked as hidden in the editor",
   );
+  assert.equal(await outputPage.locator(".is-hidden-in-output").count(), 0);
   await outputPage.close();
   const snapshot = await page.evaluate(() => JSON.parse(localStorage.getItem("promoVisualEditor.snapshot.v1") || "null"));
   const wizardContent = await page.evaluate(() => JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null"));

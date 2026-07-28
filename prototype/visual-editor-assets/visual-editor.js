@@ -2921,15 +2921,15 @@ var Eo = {
 	"onPointerdown"
 ], Mo = {
 	key: 0,
+	class: "output-hidden-badge"
+}, No = {
+	key: 1,
 	class: "rendered-component-fields"
-}, No = [
+}, Po = [
 	"href",
 	"target",
 	"rel"
-], Po = {
-	key: 1,
-	class: "rendered-component-field"
-}, Fo = [
+], Fo = [
 	"role",
 	"aria-label",
 	"aria-hidden",
@@ -3039,7 +3039,7 @@ var Eo = {
 			return r?.isRequired || r?.isLocked ? !0 : n.designSpec?.visibility?.fields?.[l(e, t, r)] !== !1;
 		}
 		function f(e, t) {
-			return s(t).filter((n) => d(e, t, n));
+			return s(t).filter((r) => n.editable || d(e, t, r));
 		}
 		function p(e, t, r = null) {
 			let i = n.content?.sectionInputs?.[e.sectionKey]?.[t.itemKey];
@@ -3058,7 +3058,7 @@ var Eo = {
 			return n?.source === "ai" || r.startsWith("/api/promo-section-design-image?");
 		}
 		function _(e) {
-			return (e.items || []).filter((t) => u(e, t) && (t.fieldKind !== "image" || !g(e, t, p(e, t))) && (s(t).length <= 1 || f(e, t).length > 0));
+			return (e.items || []).filter((t) => (n.editable || u(e, t)) && (t.fieldKind !== "image" || !g(e, t, p(e, t))) && (s(t).length <= 1 || f(e, t).length > 0));
 		}
 		function v(e) {
 			let t = String(w(e).backgroundImage || "").trim(), n = (e.items || []).filter((e) => e.fieldKind === "image").map((t) => ({
@@ -3483,6 +3483,7 @@ var Eo = {
 				class: j(["rendered-item", [`rendered-item--${r.fieldKind || "text"}`, {
 					"is-editable": e.editable && !r.isLocked,
 					"is-selected": e.editable && (e.selectedItemKey === S(t, r) || e.selectedItemKeys.includes(S(t, r))),
+					"is-hidden-in-output": e.editable && !u(t, r),
 					"is-free-positioned": !0
 				}]]),
 				"data-item-key": r.itemKey,
@@ -3490,82 +3491,92 @@ var Eo = {
 				style: A(ge(t, r)),
 				onClick: ro((e) => M(t, r, e), ["stop"]),
 				onPointerdown: (e) => _e(e, t, r)
-			}, [s(r).length > 1 ? (J(), Y("div", Mo, [(J(!0), Y(q, null, K(f(t, r), (i) => (J(), Y(q, { key: i.fieldKey }, [i.fieldKind === "cta" ? (J(), Y("a", {
-				key: 0,
-				class: "rendered-cta rendered-component-field",
-				style: A(ae(t, r, i)),
-				href: y(p(t, r, i)),
-				target: p(t, r, i)?.target || "_self",
-				rel: p(t, r, i)?.target === "_blank" ? "noopener noreferrer" : void 0
-			}, N(p(t, r, i)?.label || i.name), 13, No)) : i.fieldKind === "image" ? (J(), Y("div", Po, [X("div", {
-				class: "rendered-image-frame rendered-component-image-frame",
-				style: A(k(t, r, i)),
-				role: oe(t, r, i).role,
-				"aria-label": oe(t, r, i).label,
-				"aria-hidden": oe(t, r, i).ariaHidden,
-				"aria-busy": E(t, r, i)?.kind === "processing" ? "true" : void 0
-			}, [m(p(t, r, i)) ? Z("", !0) : (J(), Y("div", Io, [X("span", null, N(i.name), 1), n[0] ||= X("small", null, "이미지 준비 중", -1)]))], 12, Fo), e.editable && E(t, r, i) ? (J(), Y("div", {
-				key: 0,
-				class: j(["item-ai-state", `is-${E(t, r, i).kind}`]),
-				role: "status",
-				"aria-live": "polite"
-			}, [E(t, r, i).kind === "processing" ? (J(), Y("i", Lo)) : Z("", !0), X("span", null, N(E(t, r, i).label), 1)], 2)) : Z("", !0)])) : b(p(t, r, i)) ? (J(), Y("p", {
-				key: 2,
-				class: j(["rendered-text rendered-component-field", { "rendered-text--title": i.textType === "title" }]),
-				style: A(ae(t, r, i)),
-				"data-field-key": i.fieldKey,
-				onDblclick: ro((e) => P(e, t, r, i), ["stop"])
-			}, N(p(t, r, i)), 47, Ro)) : (J(), Y("p", {
-				key: 3,
-				class: "rendered-empty rendered-component-field",
-				"data-field-key": i.fieldKey,
-				onDblclick: ro((e) => P(e, t, r, i), ["stop"])
-			}, N(x(r, i)), 41, zo))], 64))), 128))])) : r.fieldKind === "cta" ? (J(), Y("a", {
-				key: 1,
-				class: "rendered-cta",
-				href: y(p(t, r)),
-				target: p(t, r)?.target || "_self",
-				rel: p(t, r)?.target === "_blank" ? "noopener noreferrer" : void 0
-			}, N(p(t, r)?.label || r.name), 9, Bo)) : r.fieldKind === "image" ? (J(), Y(q, { key: 2 }, [
-				X("div", {
-					class: j(["rendered-image-frame", `rendered-image-frame--${C(t, r).shape || "square"}`]),
-					style: A(O(t, r)),
-					role: se(t, r).role,
-					"aria-label": se(t, r).label,
-					"aria-hidden": se(t, r).ariaHidden,
-					"aria-busy": E(t, r)?.kind === "processing" ? "true" : void 0
-				}, [m(p(t, r)) ? Z("", !0) : (J(), Y("div", Ho, [X("span", null, N(r.name), 1), X("small", null, N(p(t, r)?.value || "이미지 준비 중"), 1)]))], 14, Vo),
-				e.editable && E(t, r) ? (J(), Y("div", {
+			}, [
+				e.editable && !u(t, r) ? (J(), Y("span", Mo, "비노출")) : Z("", !0),
+				s(r).length > 1 ? (J(), Y("div", No, [(J(!0), Y(q, null, K(f(t, r), (i) => (J(), Y(q, { key: i.fieldKey }, [i.fieldKind === "cta" ? (J(), Y("a", {
 					key: 0,
-					class: j(["item-ai-state", `is-${E(t, r).kind}`]),
+					class: j(["rendered-cta rendered-component-field", { "is-hidden-in-output": e.editable && !d(t, r, i) }]),
+					style: A(ae(t, r, i)),
+					href: y(p(t, r, i)),
+					target: p(t, r, i)?.target || "_self",
+					rel: p(t, r, i)?.target === "_blank" ? "noopener noreferrer" : void 0
+				}, N(p(t, r, i)?.label || i.name), 15, Po)) : i.fieldKind === "image" ? (J(), Y("div", {
+					key: 1,
+					class: j(["rendered-component-field", { "is-hidden-in-output": e.editable && !d(t, r, i) }])
+				}, [X("div", {
+					class: "rendered-image-frame rendered-component-image-frame",
+					style: A(k(t, r, i)),
+					role: oe(t, r, i).role,
+					"aria-label": oe(t, r, i).label,
+					"aria-hidden": oe(t, r, i).ariaHidden,
+					"aria-busy": E(t, r, i)?.kind === "processing" ? "true" : void 0
+				}, [m(p(t, r, i)) ? Z("", !0) : (J(), Y("div", Io, [X("span", null, N(i.name), 1), n[0] ||= X("small", null, "이미지 준비 중", -1)]))], 12, Fo), e.editable && E(t, r, i) ? (J(), Y("div", {
+					key: 0,
+					class: j(["item-ai-state", `is-${E(t, r, i).kind}`]),
 					role: "status",
-					"aria-live": "polite",
-					title: E(t, r).detail || void 0
-				}, [E(t, r).kind === "processing" ? (J(), Y("i", Wo)) : Z("", !0), X("span", null, N(E(t, r).label), 1)], 10, Uo)) : Z("", !0),
-				e.editable && e.showGuides && !r.isLocked && e.selectedItemKey === S(t, r) ? (J(!0), Y(q, { key: 1 }, K(ne(t, r), (e) => (J(), Y("button", {
+					"aria-live": "polite"
+				}, [E(t, r, i).kind === "processing" ? (J(), Y("i", Lo)) : Z("", !0), X("span", null, N(E(t, r, i).label), 1)], 2)) : Z("", !0)], 2)) : b(p(t, r, i)) ? (J(), Y("p", {
+					key: 2,
+					class: j(["rendered-text rendered-component-field", {
+						"rendered-text--title": i.textType === "title",
+						"is-hidden-in-output": e.editable && !d(t, r, i)
+					}]),
+					style: A(ae(t, r, i)),
+					"data-field-key": i.fieldKey,
+					onDblclick: ro((e) => P(e, t, r, i), ["stop"])
+				}, N(p(t, r, i)), 47, Ro)) : (J(), Y("p", {
+					key: 3,
+					class: j(["rendered-empty rendered-component-field", { "is-hidden-in-output": e.editable && !d(t, r, i) }]),
+					"data-field-key": i.fieldKey,
+					onDblclick: ro((e) => P(e, t, r, i), ["stop"])
+				}, N(x(r, i)), 43, zo))], 64))), 128))])) : r.fieldKind === "cta" ? (J(), Y("a", {
+					key: 2,
+					class: "rendered-cta",
+					href: y(p(t, r)),
+					target: p(t, r)?.target || "_self",
+					rel: p(t, r)?.target === "_blank" ? "noopener noreferrer" : void 0
+				}, N(p(t, r)?.label || r.name), 9, Bo)) : r.fieldKind === "image" ? (J(), Y(q, { key: 3 }, [
+					X("div", {
+						class: j(["rendered-image-frame", `rendered-image-frame--${C(t, r).shape || "square"}`]),
+						style: A(O(t, r)),
+						role: se(t, r).role,
+						"aria-label": se(t, r).label,
+						"aria-hidden": se(t, r).ariaHidden,
+						"aria-busy": E(t, r)?.kind === "processing" ? "true" : void 0
+					}, [m(p(t, r)) ? Z("", !0) : (J(), Y("div", Ho, [X("span", null, N(r.name), 1), X("small", null, N(p(t, r)?.value || "이미지 준비 중"), 1)]))], 14, Vo),
+					e.editable && E(t, r) ? (J(), Y("div", {
+						key: 0,
+						class: j(["item-ai-state", `is-${E(t, r).kind}`]),
+						role: "status",
+						"aria-live": "polite",
+						title: E(t, r).detail || void 0
+					}, [E(t, r).kind === "processing" ? (J(), Y("i", Wo)) : Z("", !0), X("span", null, N(E(t, r).label), 1)], 10, Uo)) : Z("", !0),
+					e.editable && e.showGuides && !r.isLocked && e.selectedItemKey === S(t, r) ? (J(!0), Y(q, { key: 1 }, K(ne(t, r), (e) => (J(), Y("button", {
+						key: e,
+						type: "button",
+						class: j(["item-resize-handle image-resize-handle", [`item-resize-handle--${e}`, `image-resize-handle--${e}`]]),
+						"aria-label": `${r.name} 이미지 ${e} 방향 크기 조절`,
+						onPointerdown: ro((n) => ve(n, t, r, e), ["stop"]),
+						onKeydown: (n) => ye(n, t, r, e)
+					}, null, 42, Go))), 128)) : Z("", !0)
+				], 64)) : (J(), Y(q, { key: 4 }, [b(p(t, r)) ? (J(), Y("p", {
+					key: 0,
+					class: j(["rendered-text", { "rendered-text--title": r.textType === "title" }]),
+					onDblclick: ro((e) => P(e, t, r), ["stop"])
+				}, N(p(t, r)), 43, Ko)) : (J(), Y("p", {
+					key: 1,
+					class: "rendered-empty",
+					onDblclick: ro((e) => P(e, t, r), ["stop"])
+				}, N(x(r)), 41, qo))], 64)),
+				e.editable && e.showGuides && !r.isLocked && r.fieldKind !== "image" && e.selectedItemKey === S(t, r) ? (J(!0), Y(q, { key: 5 }, K(ne(t, r), (e) => (J(), Y("button", {
 					key: e,
 					type: "button",
-					class: j(["item-resize-handle image-resize-handle", [`item-resize-handle--${e}`, `image-resize-handle--${e}`]]),
-					"aria-label": `${r.name} 이미지 ${e} 방향 크기 조절`,
+					class: j(["item-resize-handle component-resize-handle", [`item-resize-handle--${e}`, `component-resize-handle--${e}`]]),
+					"aria-label": `${r.name} ${e} 방향 크기 조절`,
 					onPointerdown: ro((n) => ve(n, t, r, e), ["stop"]),
 					onKeydown: (n) => ye(n, t, r, e)
-				}, null, 42, Go))), 128)) : Z("", !0)
-			], 64)) : (J(), Y(q, { key: 3 }, [b(p(t, r)) ? (J(), Y("p", {
-				key: 0,
-				class: j(["rendered-text", { "rendered-text--title": r.textType === "title" }]),
-				onDblclick: ro((e) => P(e, t, r), ["stop"])
-			}, N(p(t, r)), 43, Ko)) : (J(), Y("p", {
-				key: 1,
-				class: "rendered-empty",
-				onDblclick: ro((e) => P(e, t, r), ["stop"])
-			}, N(x(r)), 41, qo))], 64)), e.editable && e.showGuides && !r.isLocked && r.fieldKind !== "image" && e.selectedItemKey === S(t, r) ? (J(!0), Y(q, { key: 4 }, K(ne(t, r), (e) => (J(), Y("button", {
-				key: e,
-				type: "button",
-				class: j(["item-resize-handle component-resize-handle", [`item-resize-handle--${e}`, `component-resize-handle--${e}`]]),
-				"aria-label": `${r.name} ${e} 방향 크기 조절`,
-				onPointerdown: ro((n) => ve(n, t, r, e), ["stop"]),
-				onKeydown: (n) => ye(n, t, r, e)
-			}, null, 42, Jo))), 128)) : Z("", !0)], 46, jo))), 128))], 4)]),
+				}, null, 42, Jo))), 128)) : Z("", !0)
+			], 46, jo))), 128))], 4)]),
 			e.editable && e.showGuides ? (J(), Y("button", {
 				key: 1,
 				class: "section-resize-handle",

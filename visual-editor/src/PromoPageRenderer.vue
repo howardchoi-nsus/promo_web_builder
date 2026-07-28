@@ -70,7 +70,9 @@ function isFieldVisible(section, item, field) {
 }
 
 function renderedFields(section, item) {
-  return componentFields(item).filter((field) => isFieldVisible(section, item, field));
+  return componentFields(item).filter((field) => (
+    props.editable || isFieldVisible(section, item, field)
+  ));
 }
 
 function valueFor(section, item, field = null) {
@@ -97,7 +99,7 @@ function isLegacyAiImageValue(section, item, value) {
 
 function renderedItems(section) {
   return (section.items || []).filter((item) => (
-    isItemVisible(section, item)
+    (props.editable || isItemVisible(section, item))
     && (item.fieldKind !== "image" || !isLegacyAiImageValue(section, item, valueFor(section, item)))
     && (componentFields(item).length <= 1 || renderedFields(section, item).length > 0)
   ));
@@ -789,6 +791,7 @@ function startSectionResize(event, section) {
                   selectedItemKey === styleKey(section, item)
                   || selectedItemKeys.includes(styleKey(section, item))
                 ),
+                'is-hidden-in-output': editable && !isItemVisible(section, item),
                 'is-free-positioned': true,
               },
             ]"
@@ -798,17 +801,26 @@ function startSectionResize(event, section) {
             @click.stop="selectRendererItem(section, item, $event)"
             @pointerdown="startDrag($event, section, item)"
           >
+            <span
+              v-if="editable && !isItemVisible(section, item)"
+              class="output-hidden-badge"
+            >비노출</span>
             <div v-if="componentFields(item).length > 1" class="rendered-component-fields">
               <template v-for="field in renderedFields(section, item)" :key="field.fieldKey">
                 <a
                   v-if="field.fieldKind === 'cta'"
                   class="rendered-cta rendered-component-field"
+                  :class="{ 'is-hidden-in-output': editable && !isFieldVisible(section, item, field) }"
                   :style="fieldStyle(section, item, field)"
                   :href="ctaUrl(valueFor(section, item, field))"
                   :target="valueFor(section, item, field)?.target || '_self'"
                   :rel="valueFor(section, item, field)?.target === '_blank' ? 'noopener noreferrer' : undefined"
                 >{{ valueFor(section, item, field)?.label || field.name }}</a>
-                <div v-else-if="field.fieldKind === 'image'" class="rendered-component-field">
+                <div
+                  v-else-if="field.fieldKind === 'image'"
+                  class="rendered-component-field"
+                  :class="{ 'is-hidden-in-output': editable && !isFieldVisible(section, item, field) }"
+                >
                   <div
                     class="rendered-image-frame rendered-component-image-frame"
                     :style="imageFieldFrameStyle(section, item, field)"
@@ -830,7 +842,10 @@ function startSectionResize(event, section) {
                 <p
                   v-else-if="hasContent(valueFor(section, item, field))"
                   class="rendered-text rendered-component-field"
-                  :class="{ 'rendered-text--title': field.textType === 'title' }"
+                  :class="{
+                    'rendered-text--title': field.textType === 'title',
+                    'is-hidden-in-output': editable && !isFieldVisible(section, item, field),
+                  }"
                   :style="fieldStyle(section, item, field)"
                   :data-field-key="field.fieldKey"
                   @dblclick.stop="startTextEdit($event, section, item, field)"
@@ -838,6 +853,7 @@ function startSectionResize(event, section) {
                 <p
                   v-else
                   class="rendered-empty rendered-component-field"
+                  :class="{ 'is-hidden-in-output': editable && !isFieldVisible(section, item, field) }"
                   :data-field-key="field.fieldKey"
                   @dblclick.stop="startTextEdit($event, section, item, field)"
                 >{{ textFieldDescription(item, field) }}</p>
