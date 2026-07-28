@@ -1829,6 +1829,13 @@ function templateCompositionIsStale() {
   );
 }
 
+function templateCompositionRequiresReview(proposal = {}) {
+  return Boolean(
+    (Array.isArray(proposal.missingInputs) && proposal.missingInputs.length)
+    || (Array.isArray(proposal.warnings) && proposal.warnings.length)
+  );
+}
+
 async function generateTemplateCompositionProposal() {
   const overviewFingerprint = currentOverviewFingerprint();
   const requestId = globalThis.crypto?.randomUUID?.()
@@ -1856,6 +1863,9 @@ async function generateTemplateCompositionProposal() {
     templateCompositionProposal = result.proposal;
     contentState.templateCompositionProposal = templateCompositionProposal;
     saveWizardContent();
+    if (!templateCompositionRequiresReview(templateCompositionProposal)) {
+      await applyTemplateCompositionProposal({ autoAdvance: true });
+    }
   } catch (error) {
     if (localRequestId !== templateCompositionRequestId) return;
     templateCompositionError = error.message || "AI 구성 초안을 생성하지 못했습니다.";
@@ -1874,7 +1884,7 @@ function overviewValueForComposition(path) {
   );
 }
 
-async function applyTemplateCompositionProposal() {
+async function applyTemplateCompositionProposal({ autoAdvance = false } = {}) {
   const proposal = templateCompositionProposal;
   if (!proposal || templateCompositionIsStale()) {
     templateCompositionError = "프로모션 개요가 변경되었습니다. AI 구성 초안을 다시 생성해 주세요.";
@@ -1925,8 +1935,14 @@ async function applyTemplateCompositionProposal() {
       ...proposal,
       status: "applied",
       appliedAt: new Date().toISOString(),
+      autoApplied: autoAdvance,
     };
     contentState.templateCompositionProposal = templateCompositionProposal;
+    if (autoAdvance) {
+      currentStep = "layout";
+      contentSubstep = "layout";
+      sessionStorage.setItem(CONTENT_SUBSTEP_STORAGE_KEY, contentSubstep);
+    }
     saveWizardContent();
   } catch (error) {
     templateCompositionError = error.message || "AI 구성 초안을 적용하지 못했습니다.";
@@ -1948,7 +1964,7 @@ function createTemplateCompositionPanel() {
   generate.type = "button";
   generate.className = "secondary-action";
   generate.disabled = templateCompositionLoading;
-  generate.textContent = templateCompositionLoading ? "초안 생성 중..." : "AI 구성 초안 생성";
+  generate.textContent = templateCompositionLoading ? "구성 중..." : "AI로 구성하고 다음";
   generate.addEventListener("click", generateTemplateCompositionProposal);
   header.append(copy, generate);
   panel.append(header);
@@ -1984,6 +2000,18 @@ function createTemplateCompositionPanel() {
   templateCompositionProposal.warnings?.forEach((warning) => {
     appendTextElement(panel, "p", "template-recommendation-warning", warning);
   });
+  templateCompositionProposal.missingInputs?.forEach((input) => {
+    appendTextElement(panel, "p", "template-recommendation-warning", `추가 확인 필요: ${input}`);
+  });
+  if (templateCompositionRequiresReview(templateCompositionProposal)
+    && templateCompositionProposal.status !== "applied") {
+    appendTextElement(
+      panel,
+      "p",
+      "template-recommendation-warning",
+      "확인 항목이 있어 자동 적용하지 않았습니다. 내용을 검토한 뒤 직접 적용해 주세요."
+    );
+  }
   if (templateCompositionProposal.status !== "applied") {
     const apply = document.createElement("button");
     apply.type = "button";
@@ -2361,6 +2389,19 @@ function renderContentStep() {
   layoutFrame.addEventListener("load", postWizardLayoutSnapshot);
   wizardLayoutFrame = layoutFrame;
   layoutPanel.append(designTokenControls, layoutHeader);
+  if (templateCompositionProposal?.status === "applied"
+    && templateCompositionProposal?.autoApplied) {
+    const compositionBanner = document.createElement("div");
+    compositionBanner.className = "admin-layout-update-banner";
+    compositionBanner.setAttribute("role", "status");
+    appendTextElement(
+      compositionBanner,
+      "span",
+      "",
+      `${templateCompositionProposal.templateName || "추천 템플릿"}과 AI 섹션 구성을 적용했습니다.`
+    );
+    layoutPanel.append(compositionBanner);
+  }
   if (pendingAdminLayoutUpdate) {
     const updateBanner = document.createElement("div");
     updateBanner.className = "admin-layout-update-banner";

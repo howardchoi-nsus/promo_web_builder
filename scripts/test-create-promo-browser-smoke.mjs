@@ -149,6 +149,7 @@ try {
     });
   });
   let templateCompositionRequest = null;
+  let templateCompositionReviewRequired = false;
   await page.route("**/api/promo-template-composition-plan", async (route) => {
     templateCompositionRequest = route.request().postDataJSON();
     await route.fulfill({
@@ -183,8 +184,8 @@ try {
             contentMappings: [{ itemKey: "copy", sourceOverviewPath: "mainOffer" }],
             layoutCommands: [],
           }],
-          missingInputs: [],
-          warnings: [],
+          missingInputs: templateCompositionReviewRequired ? ["market"] : [],
+          warnings: templateCompositionReviewRequired ? ["마켓 확인이 필요합니다."] : [],
           summary: "프로모션 개요를 Hero와 상세 콘텐츠에 배치합니다.",
           templateSnapshot: [],
           promptExecutionSnapshot: {},
@@ -288,14 +289,19 @@ try {
   await assertPageText(page.locator(".step.is-active strong"), "Template");
   await page.locator(".wizard-template-recommended").waitFor();
   assert.equal(templateRecommendationRequest.overview.title, "Browser Smoke Promotion");
-  await page.getByRole("button", { name: "AI 구성 초안 생성" }).click();
-  await page.getByRole("button", { name: "이 구성 초안 적용" }).waitFor();
+  await page.getByRole("button", { name: "AI로 구성하고 다음" }).click();
   assert.deepEqual(templateCompositionRequest.candidateTemplateIds, ["visual-editor-preview-template"]);
-  await page.getByRole("button", { name: "이 구성 초안 적용" }).click();
-  await page.getByText("현재 프로모션에 구성 초안을 적용했습니다.").waitFor();
-  await page.locator('.wizard-template-tile[aria-pressed="true"]').waitFor();
-
-  await page.locator("#next-step").click();
+  await page.locator('.step[data-step="layout"].is-active').waitFor();
+  await assertPageText(page.locator(".step.is-active strong"), "Layout & Design");
+  await page.getByText("Default Preview Template과 AI 섹션 구성을 적용했습니다.").waitFor();
+  await page.locator('.step[data-step="template"]').click();
+  templateCompositionReviewRequired = true;
+  await page.getByRole("button", { name: "AI로 구성하고 다음" }).click();
+  await page.getByText("확인 항목이 있어 자동 적용하지 않았습니다. 내용을 검토한 뒤 직접 적용해 주세요.").waitFor();
+  await page.getByRole("button", { name: "이 구성 초안 적용" }).waitFor();
+  await assertPageText(page.locator(".step.is-active strong"), "Template");
+  await page.locator('.step[data-step="layout"]').click();
+  await page.locator('.step[data-step="layout"].is-active').waitFor();
   await assertPageText(page.locator(".step.is-active strong"), "Layout & Design");
   const defaultTokenChoice = page.locator('.appearance-choice[role="radio"]', { hasText: "Fixture Dark" });
   assert.equal(

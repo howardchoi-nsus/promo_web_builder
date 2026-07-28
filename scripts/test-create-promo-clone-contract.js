@@ -44,7 +44,7 @@ assert.match(createHtml, /wizard\/wizard-content\.js\?v=wizard-content-v4/);
 assert.match(createHtml, /wizard\/promotion-overview\.js\?v=promotion-overview-v3/);
 assert.match(createHtml, /wizard\/wizard-storage\.js\?v=wizard-storage-v2/);
 assert.match(createHtml, /create-promo-layout-cache\.js\?v=create-promo-light-v28/);
-assert.match(createHtml, /create-promo\.js\?v=create-promo-light-v38/);
+assert.match(createHtml, /create-promo\.js\?v=create-promo-light-v39/);
 assert.match(designTokensCss, /\[data-theme="light"\]\s*\{[\s\S]*?color-scheme:\s*light;/);
 assert.match(designTokensCss, /\[data-theme="dark"\]\s*\{[\s\S]*?color-scheme:\s*dark;/);
 assert.match(appComponentsCss, /--bg:\s*var\(--app-bg\)/);
