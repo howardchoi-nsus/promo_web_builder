@@ -285,7 +285,6 @@ try {
   assert.equal(overviewParseRequest.generationMode, "new-draft");
   await page.getByRole("button", { name: "분석 결과 적용" }).click();
 
-  await page.locator("#next-step").click();
   await assertPageText(page.locator(".step.is-active strong"), "Template");
   await page.locator(".wizard-template-recommended").waitFor();
   assert.equal(templateRecommendationRequest.overview.title, "Browser Smoke Promotion");

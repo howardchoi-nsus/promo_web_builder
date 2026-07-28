@@ -1708,6 +1708,21 @@ function applyOverviewAnalysis() {
     appliedFingerprint: promotionOverviewFingerprint(contentState.promotionOverview),
   };
   contentState.promotionOverviewDraft = overviewAnalysis;
+  validationErrors = promotionOverviewErrors();
+  if (Object.keys(validationErrors).length) {
+    overviewInputMode = "structured";
+    contentState.promotionOverview.inputMode = overviewInputMode;
+    saveWizardContent();
+    renderStep();
+    return;
+  }
+  templateRecommendationState = null;
+  templateCompositionProposal = null;
+  contentState.templateRecommendation = null;
+  contentState.templateCompositionProposal = null;
+  currentStep = "template";
+  contentSubstep = "template";
+  sessionStorage.setItem(CONTENT_SUBSTEP_STORAGE_KEY, contentSubstep);
   saveWizardContent();
   renderStep();
 }
