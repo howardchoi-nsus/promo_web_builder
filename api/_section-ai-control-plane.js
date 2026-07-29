@@ -3,6 +3,9 @@ const {
   defaultPromptControlPlane,
   normalizePromptControlPlaneOptions,
 } = require("./_prompt-template-store");
+const {
+  keyVisualTextPromptInstruction,
+} = require("./_section-key-visual-contract");
 
 const RUNTIME_LIMITS = Object.freeze({
   plannerTimeoutMs: 90000,
@@ -308,6 +311,7 @@ function buildImageHarnessPrompt({
   backgroundColor = "#f5f7fb",
   targetType = "section-background",
   aspectRatio = "16:9",
+  keyVisualTextPolicy = { mode: "none", text: "" },
 }) {
   const harness = normalizeHarnessConfig(
     targetType === "section-background" ? "section_background_image" : "component_image",
@@ -322,9 +326,17 @@ function buildImageHarnessPrompt({
     : harness.componentImageRules;
   return [
     String(prompt || "").trim(),
+    ...(targetType === "section-background" ? [
+      "CREATIVE INTENT — PROMOTIONAL SECTION KEY VISUAL (higher priority than earlier background/supporting language):",
+      "Create a compelling promotional key visual with one clear campaign-relevant focal motif. Do not reduce the result to a generic texture, ambient backdrop, empty gradient, or decorative lighting study.",
+      "The artwork is delivered full-bleed and will be applied behind separately rendered DOM content; background placement is an implementation detail, not the creative purpose.",
+    ] : []),
     safeAreaInstruction,
     ...targetRules,
     ...harness.negativeRules,
+    ...(targetType === "section-background"
+      ? [keyVisualTextPromptInstruction(keyVisualTextPolicy)]
+      : []),
   ].filter(Boolean).map((line) => renderHarnessLine(line, variables)).join("\n");
 }
 

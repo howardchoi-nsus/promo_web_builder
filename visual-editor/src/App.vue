@@ -71,6 +71,8 @@ const compositionInstruction = ref("");
 const compositionGenerateBackground = ref(false);
 const compositionImageGuidance = ref("");
 const compositionFadeMode = ref("none");
+const compositionKeyVisualTextMode = ref("none");
+const compositionKeyVisualText = ref("");
 const compositionPlanning = ref(false);
 const compositionApplying = ref(false);
 const compositionError = ref("");
@@ -447,6 +449,10 @@ function compositionRequestPayload() {
     generateBackgroundImage: compositionGenerateBackground.value,
     imageGuidance: compositionImageGuidance.value,
     fadeMode: compositionFadeMode.value,
+    keyVisualTextMode: compositionKeyVisualTextMode.value,
+    keyVisualText: compositionKeyVisualTextMode.value === "explicit"
+      ? compositionKeyVisualText.value.trim()
+      : "",
   };
 }
 
@@ -539,6 +545,10 @@ async function applySectionComposition() {
         "",
         proposal.backgroundImage.guidance,
         proposal.backgroundImage.safeArea,
+        {
+          keyVisualTextMode: planned.requestPayload?.keyVisualTextMode || "none",
+          keyVisualText: planned.requestPayload?.keyVisualText || "",
+        },
       );
     }
   } catch (applyError) {
@@ -686,10 +696,10 @@ function sectionAiHasContent(section) {
 function sectionAiPrimaryAction(section) {
   const run = sectionAiRun(section);
   const matchesBackground = run?.constraintsSnapshot?.imageTarget?.type === "section-background";
-  if (sectionAiIsProcessing(section)) return { action: "generate", label: "AI 생성 중", disabled: true };
-  if (matchesBackground && run?.status === "ready" && !sectionAiIsStale(section)) return { action: "generate", label: "AI 적용 중", disabled: true };
-  if (matchesBackground && run?.status === "applied") return { action: "generate", label: "AI 재생성", disabled: !sectionAiHasContent(section) };
-  return { action: "generate", label: "AI 디자인", disabled: !sectionAiHasContent(section) };
+  if (sectionAiIsProcessing(section)) return { action: "generate", label: "키비주얼 생성 중", disabled: true };
+  if (matchesBackground && run?.status === "ready" && !sectionAiIsStale(section)) return { action: "generate", label: "키비주얼 적용 중", disabled: true };
+  if (matchesBackground && run?.status === "applied") return { action: "generate", label: "AI 키비주얼 재생성", disabled: !sectionAiHasContent(section) };
+  return { action: "generate", label: "AI 키비주얼 생성", disabled: !sectionAiHasContent(section) };
 }
 
 function sectionAiAllowedItemKeys(section) {
@@ -733,7 +743,7 @@ function sectionAiItemAction(section, item, field = null) {
 
 function requestSectionAiAction(
   section, action, targetItemKey = "", targetType = "", targetFieldKey = "",
-  imageGuidance = "", imageSafeArea = "",
+  imageGuidance = "", imageSafeArea = "", keyVisualOptions = {},
 ) {
   const resolvedTargetType = targetType || (targetItemKey ? "item" : "section-background");
   promoBuilderAdapter.requestSectionAiAction({
@@ -744,6 +754,8 @@ function requestSectionAiAction(
     targetFieldKey,
     imageGuidance,
     imageSafeArea,
+    keyVisualTextMode: keyVisualOptions.keyVisualTextMode || "none",
+    keyVisualText: keyVisualOptions.keyVisualText || "",
   });
 }
 
@@ -1277,7 +1289,7 @@ onBeforeUnmount(() => {
         :section-has-ai-background="sectionHasAiBackground"
         :section-ai-is-processing="sectionAiIsProcessing"
         @select-section="selectSection"
-        @section-ai-action="(section, action, targetItemKey, targetType) => requestSectionAiAction(section, action, targetItemKey, targetType)"
+        @section-ai-action="(section, action, targetItemKey, targetType, options) => requestSectionAiAction(section, action, targetItemKey, targetType, '', '', '', options)"
         @background-alignment="setSectionBackgroundAlignment"
         @background-fade="setSectionBackgroundFadeMode"
         @update-section-style="updateSectionStyle"
@@ -1290,6 +1302,8 @@ onBeforeUnmount(() => {
             :generate-background-image="compositionGenerateBackground"
             :image-guidance="compositionImageGuidance"
             :fade-mode="compositionFadeMode"
+            :key-visual-text-mode="compositionKeyVisualTextMode"
+            :key-visual-text="compositionKeyVisualText"
             :planning="compositionPlanning"
             :applying="compositionApplying"
             :error="compositionError"
@@ -1298,6 +1312,8 @@ onBeforeUnmount(() => {
             @update:generate-background-image="compositionGenerateBackground = $event"
             @update:image-guidance="compositionImageGuidance = $event"
             @update:fade-mode="compositionFadeMode = $event"
+            @update:key-visual-text-mode="compositionKeyVisualTextMode = $event"
+            @update:key-visual-text="compositionKeyVisualText = $event"
             @request-plan="requestSectionComposition"
             @apply="applySectionComposition"
             @dismiss="compositionResult = null"

@@ -12,6 +12,9 @@ const {
   inputHash, hasAnalyzableContent, analyzableSectionContent, defaultConstraints, normalizeBackgroundColor,
   resolveImageTarget,
 } = require("./_promo-section-design-contract");
+const {
+  normalizeKeyVisualTextPolicy,
+} = require("./_section-key-visual-contract");
 
 const HASH_CONTRACT_VERSION = 2;
 
@@ -99,6 +102,14 @@ module.exports = async function handler(req, res) {
         imageTarget: { ...constraints.imageTarget, fieldKey: targetFieldKey },
       };
     }
+    const keyVisualTextPolicy = normalizeKeyVisualTextPolicy(
+      {
+        keyVisualTextMode: body.keyVisualTextMode,
+        keyVisualText: body.keyVisualText,
+      },
+      aiContent,
+      targetResolution.constraints.imageTarget?.type
+    );
     const backgroundColor = normalizeBackgroundColor(
       body.backgroundColor,
       normalizeBackgroundColor(layout.layoutSpec?.theme?.backgroundColor)
@@ -106,7 +117,7 @@ module.exports = async function handler(req, res) {
     const snapshot = {
       template: { id: template.id, templateKey: template.templateKey, version: template.version },
       layoutRevision: layout.layoutRevision,
-      design: { backgroundColor },
+      design: { backgroundColor, keyVisualTextPolicy },
       section: {
         sectionKey,
         name: section.name || section.sectionName || sectionKey,
@@ -236,6 +247,7 @@ module.exports = async function handler(req, res) {
         backgroundColor,
         fadeMode,
         safeArea: requestedSafeArea,
+        keyVisualTextPolicy,
         aspectRatio: effectiveAspectRatio,
         sourceGeometry: body.targetGeometry || null,
         effectiveGeometry: targetGeometry,
@@ -285,6 +297,7 @@ module.exports = async function handler(req, res) {
         itemKey: imageTarget.type === "item" ? imageTarget.itemKey : null,
         componentInstanceId: imageTarget.type === "item" ? targetItem?.id || null : null,
         targetFieldKey: imageTarget.type === "item" ? targetField?.fieldKey || imageTarget.itemKey : null,
+        keyVisualTextPolicy,
         promptConfig: {
           snapshotVersion: promptSnapshot.promptConfig.snapshotVersion,
           promptType: promptSnapshot.promptConfig.promptType,

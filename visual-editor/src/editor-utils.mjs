@@ -43,7 +43,7 @@ export function persistSnapshot(storage, key, snapshot) {
       ok: false,
       code: isQuotaError ? "quota-exceeded" : "storage-failed",
       message: isQuotaError
-        ? "브라우저 저장 공간이 부족합니다. 배경 이미지 용량을 줄이거나 제거한 뒤 다시 시도해주세요."
+        ? "브라우저 저장 공간이 부족합니다. 키비주얼 이미지 용량을 줄이거나 제거한 뒤 다시 시도해주세요."
         : "Web Output Snapshot을 저장하지 못했습니다. 다시 시도해주세요.",
     };
   }

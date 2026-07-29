@@ -432,7 +432,7 @@ try {
   await editorFrame.getByRole("button", { name: "자동등록" }).click();
   await editorFrame.locator(".auto-register-message").waitFor({ timeout: 10_000 });
   sectionAiRunResponseDelayMs = 300;
-  await editorFrame.getByRole("button", { name: "AI 디자인", exact: true }).click();
+  await editorFrame.getByRole("button", { name: "AI 키비주얼 생성", exact: true }).click();
   await editorFrame.locator('[data-section-key="heroBanner"] .section-ai-state.is-processing').waitFor({ timeout: 2_000 });
   sectionAiRunResponseDelayMs = 0;
   for (let attempt = 0; attempt < 50 && !sectionAiRunRequest; attempt += 1) {
@@ -443,6 +443,8 @@ try {
   assert.equal(sectionAiRunRequest?.sectionKey, "heroBanner");
   assert.equal(sectionAiRunRequest?.targetType, "section-background");
   assert.equal(sectionAiRunRequest?.sectionInputs?.title, "Browser Smoke Promotion");
+  assert.equal(sectionAiRunRequest?.keyVisualTextMode, "none");
+  assert.equal(sectionAiRunRequest?.keyVisualText, "");
   assert.ok(sectionAiRunRequest?.generationRequestId);
   const firstBackgroundGenerationRequestId = sectionAiRunRequest.generationRequestId;
   let backgroundAppliedContent = null;
@@ -460,11 +462,15 @@ try {
     return !content?.sectionDesignRuns?.heroBanner;
   });
   sectionAiRunRequest = null;
-  await editorFrame.getByRole("button", { name: "AI 디자인", exact: true }).click();
+  await editorFrame.locator(".key-visual-text-policy select").selectOption("explicit");
+  await editorFrame.locator(".key-visual-text-policy input").fill("SUMMER DROP");
+  await editorFrame.getByRole("button", { name: "AI 키비주얼 생성", exact: true }).click();
   for (let attempt = 0; attempt < 50 && !sectionAiRunRequest; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
   assert.ok(sectionAiRunRequest?.generationRequestId);
+  assert.equal(sectionAiRunRequest?.keyVisualTextMode, "explicit");
+  assert.equal(sectionAiRunRequest?.keyVisualText, "SUMMER DROP");
   assert.notEqual(
     sectionAiRunRequest.generationRequestId,
     firstBackgroundGenerationRequestId,

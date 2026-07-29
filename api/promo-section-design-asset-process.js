@@ -40,6 +40,7 @@ module.exports = async function handler(req, res) {
       aspectRatio: request.aspectRatio || run.constraintsSnapshot?.imageAspectRatio,
       effectiveAspectRatio: request.aspectRatio || run.constraintsSnapshot?.imageAspectRatio,
       targetType: job.target_type,
+      keyVisualTextPolicy: request.keyVisualTextPolicy,
       provider: request.promptConfig?.provider,
       model: request.promptConfig?.model,
       modelOptions: request.promptConfig?.modelOptions,

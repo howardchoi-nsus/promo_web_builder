@@ -158,7 +158,7 @@ function sectionDesignRun(section) {
 }
 
 function aiStatusLabel(status, targetType) {
-  const targetLabel = targetType === "item" ? "AI 이미지" : "AI 배경";
+  const targetLabel = targetType === "item" ? "AI 이미지" : "AI 키비주얼";
   const labels = {
     queued: `${targetLabel} 생성 준비 중`,
     analyzing_content: "콘텐츠 분석 중",
@@ -185,7 +185,7 @@ function aiTargetState(section, item = null, field = null) {
   if (run.status === "failed") {
     return {
       kind: "failed",
-      label: target.type === "item" ? "AI 이미지 생성 실패" : "AI 배경 생성 실패",
+      label: target.type === "item" ? "AI 이미지 생성 실패" : "AI 키비주얼 생성 실패",
       detail: String(run.errorMessage || "").trim(),
     };
   }

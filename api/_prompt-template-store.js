@@ -207,10 +207,12 @@ const PROMPT_TYPES = {
     optionalVariables: [],
   },
   section_background_image: {
-    name: "Section Background Image",
+    name: "Section Key Visual",
     body: [
-      "Create a polished supporting background image for the promotional web section.",
-      "Base the visual concept only on the registered section content.",
+      "Create a polished promotional key visual for this web section.",
+      "Express the campaign concept through one clear, compelling focal motif based only on the registered section content.",
+      "Do not reduce the result to a generic texture, ambient backdrop, empty gradient, or decorative lighting study.",
+      "The artwork will be applied as a full-bleed layer behind separately rendered DOM content.",
       "The main visual subject should occupy approximately 60 to 70 percent of the canvas.",
       "Create a full-bleed edge-to-edge background, not artwork displayed inside a card, poster, panel, frame, or smaller canvas.",
       "Do not add outer whitespace, matte, letterboxing, borders, rounded outer corners, drop shadows, or transparent edges.",
@@ -354,7 +356,7 @@ const DEFAULT_IMAGE_HARNESS_CONFIG = Object.freeze({
     "center-copy": "Keep the center as clean negative space for centered DOM copy and place supporting visual detail around the outer edges.",
   },
   sectionBackgroundRules: [
-    "OUTPUT CONTRACT — FULL-BLEED WEB SECTION BACKGROUND (highest priority):",
+    "OUTPUT CONTRACT — FULL-BLEED WEB SECTION KEY VISUAL (highest priority):",
     "Compose directly on the entire {{aspectRatio}} output canvas and cover every pixel from edge to edge.",
     "The scene must continue naturally through all four outer edges and all four corners.",
     "Do not place the scene inside a card, panel, poster, browser mockup, inset canvas, floating surface, or smaller artboard.",

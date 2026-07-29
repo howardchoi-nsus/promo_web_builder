@@ -1,20 +1,36 @@
 <script setup>
-defineProps({
+import { computed, ref } from "vue";
+
+const props = defineProps({
   section: { type: Object, required: true },
   sectionStyle: { type: Object, default: () => ({}) },
   canRunSectionAi: { type: Boolean, default: false },
-  primaryAction: { type: Object, default: () => ({ action: "generate", label: "AI 배경 이미지 생성", disabled: false }) },
+  primaryAction: { type: Object, default: () => ({ action: "generate", label: "AI 키비주얼 생성", disabled: false }) },
   hasAiBackground: { type: Boolean, default: false },
   aiProcessing: { type: Boolean, default: false },
 });
 
-defineEmits([
+const emit = defineEmits([
   "ai-action",
   "background-alignment",
   "background-fade",
   "update-style",
   "reset-height",
 ]);
+
+const keyVisualTextMode = ref("none");
+const keyVisualText = ref("");
+const keyVisualTextInvalid = computed(() => (
+  keyVisualTextMode.value === "explicit" && !keyVisualText.value.trim()
+));
+
+function requestKeyVisual() {
+  if (props.primaryAction.disabled || keyVisualTextInvalid.value) return;
+  emit("ai-action", props.primaryAction.action, "", "section-background", {
+    keyVisualTextMode: keyVisualTextMode.value,
+    keyVisualText: keyVisualTextMode.value === "explicit" ? keyVisualText.value.trim() : "",
+  });
+}
 </script>
 
 <template>
@@ -35,20 +51,42 @@ defineEmits([
         v-if="section.aiDesign?.enabled !== false && section.aiDesign?.allowSectionBackground !== false"
         type="button"
         class="section-ai-action"
-        :disabled="primaryAction.disabled"
-        :title="primaryAction.disabled && !aiProcessing ? '섹션 콘텐츠를 먼저 등록해 주세요.' : ''"
-        @click="$emit('ai-action', primaryAction.action, '', 'section-background')"
+        :disabled="primaryAction.disabled || keyVisualTextInvalid"
+        :title="primaryAction.disabled && !aiProcessing ? '섹션 콘텐츠를 먼저 등록해 주세요.' : keyVisualTextInvalid ? '키비주얼 문구를 입력해 주세요.' : ''"
+        @click="requestKeyVisual"
       >{{ primaryAction.label }}</button>
       <button
         v-if="hasAiBackground"
         type="button"
         class="section-ai-remove"
         @click="$emit('ai-action', 'remove-background')"
-      >배경 삭제</button>
+      >키비주얼 삭제</button>
+    </div>
+    <div
+      v-if="section.aiDesign?.enabled !== false && section.aiDesign?.allowSectionBackground !== false"
+      class="key-visual-text-policy"
+    >
+      <label>
+        <span>키비주얼 텍스트</span>
+        <select v-model="keyVisualTextMode">
+          <option value="none">텍스트 없음</option>
+          <option value="explicit">승인 문구 사용</option>
+        </select>
+      </label>
+      <label v-if="keyVisualTextMode === 'explicit'">
+        <span>승인 문구</span>
+        <input
+          v-model="keyVisualText"
+          type="text"
+          maxlength="40"
+          placeholder="예: SUMMER DROP"
+        />
+      </label>
+      <small>메인 타이틀·리드·설명·CTA는 이미지에 포함되지 않습니다. 승인 문구는 최대 4단어입니다.</small>
     </div>
     <div v-if="hasAiBackground" class="section-background-fit">
       <label>
-        <span>Background fit</span>
+        <span>키비주얼 채우기</span>
         <select
           :value="sectionStyle.backgroundFitMode || (sectionStyle.backgroundSize === '100% auto' ? 'width-fill' : sectionStyle.backgroundSize) || 'cover'"
           @change="$emit('update-style', {
@@ -65,8 +103,8 @@ defineEmits([
       </label>
     </div>
     <div v-if="hasAiBackground" class="section-background-alignment">
-      <span>배경 이미지 정렬</span>
-      <div role="group" aria-label="배경 이미지 가로 정렬">
+      <span>키비주얼 정렬</span>
+      <div role="group" aria-label="키비주얼 가로 정렬">
         <button
           v-for="option in [
             { value: 'left', label: '왼쪽' },
@@ -84,7 +122,7 @@ defineEmits([
     </div>
     <div v-if="hasAiBackground || section.aiDesign?.enabled !== false" class="section-background-fade">
       <label>
-        <span>배경 이미지 페이드</span>
+        <span>키비주얼 페이드</span>
         <select
           :value="sectionStyle.backgroundFadeMode || 'none'"
           @change="$emit('background-fade', $event.target.value)"

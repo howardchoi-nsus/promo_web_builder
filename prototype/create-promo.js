@@ -679,9 +679,14 @@ window.addEventListener("message", (event) => {
     const targetFieldKey = String(event.data.targetFieldKey || "").trim();
     const imageGuidance = String(event.data.imageGuidance || "").trim();
     const imageSafeArea = String(event.data.imageSafeArea || "").trim();
+    const keyVisualTextMode = event.data.keyVisualTextMode === "explicit" ? "explicit" : "none";
+    const keyVisualText = String(event.data.keyVisualText || "").replace(/\s+/g, " ").trim();
     if (event.data.action === "generate-layout") generateSectionAiLayout(section);
     else if (event.data.action === "generate") {
-      generateSectionAiDesign(section, targetType, targetItemKey, targetFieldKey, imageGuidance, imageSafeArea);
+      generateSectionAiDesign(
+        section, targetType, targetItemKey, targetFieldKey, imageGuidance, imageSafeArea,
+        keyVisualTextMode, keyVisualText,
+      );
     }
     else if (event.data.action === "apply" && saved) {
       const savedTargetType = saved.constraintsSnapshot?.imageTarget?.type || "";
@@ -1209,7 +1214,7 @@ function sectionAiHasAppliedBackground(section) {
 }
 
 function removeSectionAiBackground(section) {
-  if (!window.confirm(`${section.name || section.sectionKey}의 AI 배경 이미지를 삭제할까요?`)) return;
+  if (!window.confirm(`${section.name || section.sectionKey}의 AI 키비주얼을 삭제할까요?`)) return;
   wizardResolvedLayout = wizardResolvedLayout || JSON.parse(JSON.stringify(wizardBaseLayout || FALLBACK_LAYOUT));
   wizardResolvedLayout.sectionStyles = { ...(wizardResolvedLayout.sectionStyles || {}) };
   const current = { ...(wizardResolvedLayout.sectionStyles[section.sectionKey] || {}) };
@@ -1233,6 +1238,7 @@ function createSectionAiGenerationRequestId() {
 async function generateSectionAiDesign(
   section, targetType = "section-background", targetItemKey = "", targetFieldKey = "",
   imageGuidance = "", imageSafeArea = "",
+  keyVisualTextMode = "none", keyVisualText = "",
 ) {
   const sectionKey = section.sectionKey;
   const requestedTargetType = targetType === "item" ? "item" : "section-background";
@@ -1245,6 +1251,20 @@ async function generateSectionAiDesign(
   const previousTargetFieldKey = previous?.constraintsSnapshot?.imageTarget?.type === "item"
     ? previous.constraintsSnapshot.imageTarget.fieldKey || ""
     : "";
+  const requestedKeyVisualTextPolicy = requestedTargetType === "section-background"
+    ? {
+      mode: keyVisualTextMode === "explicit" ? "explicit" : "none",
+      text: keyVisualTextMode === "explicit"
+        ? String(keyVisualText || "").replace(/\s+/g, " ").trim()
+        : "",
+    }
+    : { mode: "none", text: "" };
+  const previousKeyVisualTextPolicy = previous?.inputSnapshot?.design?.keyVisualTextPolicy
+    || { mode: "none", text: "" };
+  const keyVisualPolicyMatchesPrevious = (
+    previousKeyVisualTextPolicy.mode === requestedKeyVisualTextPolicy.mode
+    && String(previousKeyVisualTextPolicy.text || "") === requestedKeyVisualTextPolicy.text
+  );
   const processAssetJobs = async (run) => {
     const listed = await fetchJson(`/api/promo-section-design-assets?runId=${encodeURIComponent(run.id)}`);
     let latestRun = run;
@@ -1270,6 +1290,7 @@ async function generateSectionAiDesign(
   const canRetryPlannedAssets = previous?.id && previous?.effectivePatch
     && previous?.status === "failed" && !sectionAiIsStale(sectionKey, previous)
     && !String(imageGuidance || "").trim()
+    && keyVisualPolicyMatchesPrevious
     && previousTargetType === requestedTargetType
     && (requestedTargetType !== "item" || (
       previousTargetItemKey === String(targetItemKey || "").trim()
@@ -1291,6 +1312,7 @@ async function generateSectionAiDesign(
     && previous.layoutResult?.imageRequest
     && !sectionAiIsStale(sectionKey, previous)
     && !String(imageGuidance || "").trim()
+    && keyVisualPolicyMatchesPrevious
     && previousTargetType === requestedTargetType
     && previousTargetItemKey === String(targetItemKey || "").trim()
     && previousTargetFieldKey === String(targetFieldKey || "").trim();
@@ -1344,6 +1366,8 @@ async function generateSectionAiDesign(
         requestMode: "assets",
         imageGuidance: String(imageGuidance || "").trim().slice(0, 1800),
         safeArea: String(imageSafeArea || "").trim(),
+        keyVisualTextMode: requestedKeyVisualTextPolicy.mode,
+        keyVisualText: requestedKeyVisualTextPolicy.text,
         backgroundColor: resolvedSectionBackgroundColor(sectionKey),
         fadeMode: requestedTargetType === "section-background"
           ? (wizardResolvedLayout?.sectionStyles?.[sectionKey]?.backgroundFadeMode || "none")

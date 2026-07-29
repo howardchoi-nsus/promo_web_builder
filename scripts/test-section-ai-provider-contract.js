@@ -154,7 +154,7 @@ process.env.SECTION_IMAGE_PROVIDER = "openai";
   assert.match(requests[2].body.prompt, /compatible with the solid section background color #123e36/);
   assert.match(requests[2].body.prompt, /Do not bake a fade, gradient, vignette, transparency/);
   assert.match(requests[2].body.prompt, /web renderer applies the requested fade with CSS/);
-  assert.match(requests[2].body.prompt, /FULL-BLEED WEB SECTION BACKGROUND/);
+  assert.match(requests[2].body.prompt, /FULL-BLEED WEB SECTION KEY VISUAL/);
   assert.match(requests[2].body.prompt, /cover every pixel from edge to edge/);
   assert.match(requests[2].body.prompt, /Do not place the scene inside a card, panel, poster/);
   assert.match(requests[2].body.prompt, /Do not add any outer margin, padding, matte, whitespace/);

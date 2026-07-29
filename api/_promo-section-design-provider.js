@@ -520,6 +520,7 @@ async function generateSectionImage(input) {
     backgroundColor: input.backgroundColor,
     targetType: input.targetType || "section-background",
     aspectRatio: normalizedImageAspectRatio(input.aspectRatio),
+    keyVisualTextPolicy: input.keyVisualTextPolicy,
   });
   const request = {
     ...input,

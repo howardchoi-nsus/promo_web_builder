@@ -69,7 +69,7 @@ const emit = defineEmits([
             :primary-action="sectionAiPrimaryAction(section)"
             :has-ai-background="sectionHasAiBackground(section)"
             :ai-processing="sectionAiIsProcessing(section)"
-            @ai-action="(action, targetItemKey, targetType) => emit('section-ai-action', section, action, targetItemKey, targetType)"
+            @ai-action="(action, targetItemKey, targetType, options) => emit('section-ai-action', section, action, targetItemKey, targetType, options)"
             @background-alignment="(value) => emit('background-alignment', value)"
             @background-fade="(value) => emit('background-fade', value)"
             @update-style="(patch) => emit('update-section-style', section.sectionKey, patch)"

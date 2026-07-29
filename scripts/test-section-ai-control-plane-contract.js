@@ -95,7 +95,10 @@ const customPrompt = buildImageHarnessPrompt({
     negativeRules: ["COLOR {{backgroundColor}}"],
   },
 });
-assert.equal(customPrompt, "BASE\nSAFE\nRATIO 16:9\nCOLOR #112233");
+assert.match(customPrompt, /^BASE\nCREATIVE INTENT — PROMOTIONAL SECTION KEY VISUAL/);
+assert.match(customPrompt, /\nSAFE\nRATIO 16:9\nCOLOR #112233\n/);
+assert.match(customPrompt, /KEY VISUAL TEXT CONTRACT/);
+assert.match(customPrompt, /Render no visible text/);
 
 const png = Buffer.alloc(24);
 Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]).copy(png);
