@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import {
   filterPromptGroups,
   findPromptGroup,
+  groupPromptTemplateSections,
   groupPromptTemplates,
+  promptTypeMeta,
+  promptWorkflowGroupMeta,
   resolvePromptSelection,
 } from "../admin-app/src/services/prompt-template-group-service.mjs";
 
@@ -107,5 +110,54 @@ assert.match(findPromptGroup(groups, "legacy-v1").lineageId, /^legacy:section_la
 const immutableInput = Object.freeze([...prompts]);
 assert.doesNotThrow(() => groupPromptTemplates(immutableInput));
 assert.deepEqual(groupPromptTemplates([]), []);
+
+const workflowGroups = groupPromptTemplates([
+  {
+    id: "final-v1",
+    lineageId: "final",
+    type: "final_design",
+    name: "Final",
+    status: "active",
+    version: 1,
+  },
+  {
+    id: "overview-v1",
+    lineageId: "overview",
+    type: "promo_overview_parser",
+    name: "Overview",
+    status: "active",
+    version: 1,
+  },
+  {
+    id: "section-image-v1",
+    lineageId: "section-image",
+    type: "section_background_image",
+    name: "Section image",
+    status: "active",
+    version: 1,
+  },
+  {
+    id: "component-image-v1",
+    lineageId: "component-image",
+    type: "component_image",
+    name: "Component image",
+    status: "active",
+    version: 1,
+  },
+]);
+const workflowSections = groupPromptTemplateSections(workflowGroups);
+assert.deepEqual(
+  workflowSections.map((section) => section.key),
+  ["promotion-overview", "promotion-image", "design-generator"],
+  "prompt list must follow workflow groups without exposing a sequential stage number",
+);
+assert.deepEqual(
+  workflowSections.find((section) => section.key === "promotion-image").promptGroups.map((group) => group.type),
+  ["section_background_image", "component_image"],
+);
+assert.equal(promptTypeMeta("promo_template_recommender").label, "프로모션 템플릿 추천");
+assert.equal(promptTypeMeta("section_background_image").executionMode, "선택 실행");
+assert.equal(promptWorkflowGroupMeta("promotion-image").label, "프로모션 이미지");
+assert.equal(promptTypeMeta("unknown_prompt_type").group, "other");
 
 console.log("Prompt template grouping tests passed");

@@ -799,15 +799,18 @@
                   <h3>LLM 및 프롬프트 관리</h3>
                   <select v-model="promptTypeFilter" aria-label="프롬프트 유형 필터">
                     <option value="">전체</option>
+                    <option value="promo_overview_parser">프로모션 개요 분석</option>
+                    <option value="promo_template_recommender">프로모션 템플릿 추천</option>
+                    <option value="promo_template_composer">템플릿 구성 계획</option>
                     <option value="integrated_brief">통합 디자인 브리프</option>
-                    <option value="image_execution">이미지 생성</option>
+                    <option value="image_execution">이미지 실행 프롬프트</option>
                     <option value="lofi_draft">LO-FI 시안</option>
                     <option value="final_design">최종 디자인</option>
                     <option value="section_layout_planner">섹션 레이아웃 계획</option>
                     <option value="multi_component_layout_planner">다중 컴포넌트 정렬 계획</option>
-                    <option value="section_composition_planner">섹션 자연어 구성 계획</option>
-                    <option value="section_background_image">섹션 배경 이미지</option>
-                    <option value="component_image">컴포넌트 이미지</option>
+                    <option value="section_composition_planner">자연어 섹션 구성 계획</option>
+                    <option value="section_background_image">섹션 키비주얼 생성</option>
+                    <option value="component_image">컴포넌트 이미지 생성</option>
                   </select>
                 </div>
                 <div class="prompt-admin-grid">
@@ -816,12 +819,21 @@
                       <strong>로딩 오류</strong>
                       <span>{{ promptTemplatesError }}</span>
                     </div>
-                    <article
-                      v-for="group in filteredPromptTemplateGroups"
-                      :key="group.lineageId"
-                      class="prompt-group"
-                      :class="{ selected: promptGroupContainsSelection(group) }"
+                    <section
+                      v-for="workflow in filteredPromptTemplateSections"
+                      :key="workflow.key"
+                      class="prompt-workflow-group"
                     >
+                      <header class="prompt-workflow-header">
+                        <h4>{{ workflow.label }}</h4>
+                        <p>{{ workflow.description }}</p>
+                      </header>
+                      <article
+                        v-for="group in workflow.promptGroups"
+                        :key="group.lineageId"
+                        class="prompt-group"
+                        :class="{ selected: promptGroupContainsSelection(group) }"
+                      >
                       <div class="prompt-group-header">
                         <button
                           class="prompt-group-toggle"
@@ -839,8 +851,9 @@
                           :class="{ selected: selectedPromptTemplateId === group.primary?.id }"
                           @click="selectPromptTemplate(group.primary.id)"
                         >
-                          <strong>{{ group.name || promptTypeLabel(group.type) }}</strong>
-                          <span>{{ promptTypeLabel(group.type) }} · {{ promptGroupProviderSummary(group) }}</span>
+                          <strong>{{ promptTypeLabel(group.type) }}</strong>
+                          <span>{{ promptExecutionModeLabel(group.type) }} · {{ promptGroupProviderSummary(group) }}</span>
+                          <small class="prompt-group-purpose">{{ promptTypeDescription(group.type) }}</small>
                           <small>최종 수정 {{ formatPromptDate(group.updatedAt) }}</small>
                         </button>
                         <div class="prompt-group-badges" aria-label="프롬프트 상태">
@@ -882,7 +895,8 @@
                           {{ promptGroupArchivedVisible(group) ? '보관 버전 숨기기' : `보관 버전 ${group.archivedCount}개 보기` }}
                         </button>
                       </div>
-                    </article>
+                      </article>
+                    </section>
                     <div class="empty-state compact" v-if="!promptTemplatesLoading && !filteredPromptTemplateGroups.length">
                       표시할 프롬프트가 없습니다.
                     </div>
@@ -894,6 +908,11 @@
                       <div>
                         <strong>{{ selectedPromptEditorTitle }}</strong>
                         <span>{{ selectedPromptTemplate.name }} · {{ promptTypeLabel(selectedPromptTemplate.type) }} · v{{ selectedPromptTemplate.version }} · {{ promptStatusLabel(selectedPromptTemplate.status) }}</span>
+                        <div class="prompt-editor-context">
+                          <em>{{ promptWorkflowGroupLabel(selectedPromptTemplate.type) }}</em>
+                          <em>{{ promptExecutionModeLabel(selectedPromptTemplate.type) }}</em>
+                        </div>
+                        <p>{{ promptTypeDescription(selectedPromptTemplate.type) }}</p>
                       </div>
                       <div class="subsection-actions">
                         <button class="tiny-button primary" type="button" :disabled="promptSaving || promptEditorReadOnly" @click="savePromptTemplate">{{ t('common.action.save') }}</button>
@@ -914,10 +933,12 @@
                   <label class="field">
                     <span>프롬프트 이름</span>
                     <input v-model="promptEditor.name" type="text" autocomplete="off" />
+                    <small>관리 화면과 변경 이력에서 이 프롬프트를 구분할 이름입니다.</small>
                   </label>
                   <label class="field">
                     <span>{{ t('common.field.type') }}</span>
                     <input :value="promptTypeLabel(selectedPromptTemplate.type)" type="text" disabled />
+                    <small>실행 API와 변수 계약을 결정하는 고정 유형입니다.</small>
                   </label>
                 </div>
 
@@ -930,6 +951,7 @@
                 <label class="field">
                   <span>선택 변수</span>
                   <input v-model="promptEditor.optionalVariablesText" type="text" readonly />
+                  <small>값이 없더라도 실행할 수 있으며 필요한 경우에만 전달되는 변수입니다.</small>
                 </label>
 
                 <div class="form-grid compact">
@@ -940,10 +962,12 @@
                       <option value="openai">OpenAI / GPT</option>
                       <option value="google" :disabled="['integrated_brief', 'lofi_draft', 'section_layout_planner', 'multi_component_layout_planner', 'section_composition_planner'].includes(selectedPromptTemplate.type)">Google / Gemini</option>
                     </select>
+                    <small>프롬프트 실행에 사용할 AI 서비스 제공자를 선택합니다.</small>
                   </label>
                   <label class="field">
                     <span>모델</span>
                     <input v-model="promptEditor.model" type="text" autocomplete="off" placeholder="gpt-4o-mini" />
+                    <small>선택한 제공자가 지원하는 정확한 모델 ID를 입력합니다.</small>
                   </label>
                 </div>
 
@@ -951,14 +975,17 @@
                   <label class="field">
                     <span>창의성 수치(Temperature)</span>
                     <input v-model="promptEditor.temperature" type="number" min="0" max="2" step="0.1" />
+                    <small>낮을수록 일관되고 높을수록 다양한 결과를 생성합니다.</small>
                   </label>
                   <label class="field">
                     <span>최대 토큰 수</span>
                     <input v-model="promptEditor.maxTokens" type="number" min="1" step="1" />
+                    <small>텍스트 또는 구조화 응답이 사용할 수 있는 최대 출력량입니다.</small>
                   </label>
                   <label class="field">
                     <span>응답 형식</span>
                     <input v-model="promptEditor.responseFormat" type="text" autocomplete="off" placeholder="json_object / text / image" />
+                    <small>실행 계약이 기대하는 JSON, 텍스트 또는 이미지 형식입니다.</small>
                   </label>
                   <label class="field" v-if="promptSupportsImageSize(selectedPromptTemplate)">
                     <span>{{ t('admin.prompt.imageSize') }}</span>
@@ -974,6 +1001,7 @@
                 <label class="field">
                   <span>Provider 상세 옵션(JSON)</span>
                   <textarea v-model="promptEditor.modelOptionsText" rows="5" spellcheck="false"></textarea>
+                  <small>모델 제공자에만 적용되는 고급 옵션입니다. 올바른 JSON 형식으로 입력하세요.</small>
                 </label>
 
                 <div class="subsection" v-if="promptUsesSectionAiControlPlane(selectedPromptTemplate)">
@@ -985,22 +1013,27 @@
                     <label class="field">
                       <span>실행 Snapshot 버전</span>
                       <input v-model="promptEditor.executionSnapshotVersion" type="number" min="2" step="1" />
+                      <small>실행 시 고정해 저장할 Harness 설정 구조의 버전입니다.</small>
                     </label>
                     <label class="field">
                       <span>제한 시간(ms)</span>
                       <input v-model="promptEditor.timeoutMs" type="number" min="1000" :max="['section_background_image', 'component_image'].includes(selectedPromptTemplate.type) ? 240000 : 90000" step="1000" />
+                      <small>한 번의 AI 호출을 기다릴 최대 시간입니다.</small>
                     </label>
                     <label class="field">
                       <span>최대 시도 횟수</span>
                       <input v-model="promptEditor.maxAttempts" type="number" min="1" max="5" step="1" />
+                      <small>일시적인 오류가 발생했을 때 포함되는 총 실행 횟수입니다.</small>
                     </label>
                     <label class="field">
                       <span>재시도 기본 대기(ms)</span>
                       <input v-model="promptEditor.retryBaseMs" type="number" min="0" max="300000" step="1000" />
+                      <small>첫 재시도 전에 기다리는 기본 시간입니다.</small>
                     </label>
                     <label class="field">
                       <span>재시도 최대 대기(ms)</span>
                       <input v-model="promptEditor.retryMaxMs" type="number" min="0" max="300000" step="1000" />
+                      <small>재시도 간 대기 시간이 넘을 수 없는 상한입니다.</small>
                     </label>
                     <label class="field" v-if="['section_background_image', 'component_image'].includes(selectedPromptTemplate.type)">
                       <span>출력 이미지 형식</span>
@@ -1009,6 +1042,7 @@
                         <option value="image/png">PNG</option>
                         <option value="image/webp">WebP</option>
                       </select>
+                      <small>생성 결과를 저장할 이미지 파일 형식입니다.</small>
                     </label>
                   </div>
                   <div v-if="promptUsesSectionImagePolicy(selectedPromptTemplate)" class="subsection">
@@ -1040,6 +1074,7 @@
                   <label class="field">
                     <span>모델 Capability Snapshot(JSON)</span>
                     <textarea v-model="promptEditor.modelCapabilitySnapshotText" rows="7" spellcheck="false"></textarea>
+                    <small>검증 시점에 확인된 모델 기능과 제한을 실행 설정에 고정합니다.</small>
                   </label>
                   <label class="field">
                     <span>서버 안전 계약(JSON)</span>
@@ -1067,11 +1102,13 @@
                 <label class="field">
                   <span>{{ t('common.field.changeReason') }}</span>
                   <input v-model="promptEditor.changeNote" type="text" placeholder="변경 내용을 간단히 입력" autocomplete="off" />
+                  <small>저장, 검증과 활성화 변경 이력에 남길 관리자 메모입니다.</small>
                 </label>
 
                 <label class="field">
                   <span>프롬프트 본문</span>
                   <textarea v-model="promptEditor.body" class="prompt-body-editor" rows="24" spellcheck="false"></textarea>
+                  <small>모델에 전달할 핵심 지침입니다. 위에 표시된 필수·선택 변수만 사용할 수 있습니다.</small>
                 </label>
                 </fieldset>
 

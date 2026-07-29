@@ -1596,6 +1596,12 @@ const adminApp = createApp({
       );
     },
 
+    filteredPromptTemplateSections() {
+      return window.PromoAdminPromptGroups.groupPromptTemplateSections(
+        this.filteredPromptTemplateGroups
+      );
+    },
+
     localeNamespaces() {
       const messages = Object.values(this.localeMessagesByLocale).flat();
       return [...new Set(messages.map((message) => message.namespace).filter(Boolean))].sort();
@@ -1667,7 +1673,7 @@ const adminApp = createApp({
 
     selectedPromptEditorTitle() {
       if (!this.selectedPromptTemplate) return "프롬프트 편집기";
-      return `${this.promptTypeLabel(this.selectedPromptTemplate.type)} 프롬프트`;
+      return this.promptTypeLabel(this.selectedPromptTemplate.type);
     },
 
     groupedWizardFormTemplates() {
@@ -2562,17 +2568,20 @@ const adminApp = createApp({
     },
 
     promptTypeLabel(type) {
-      return ({
-        integrated_brief: "통합 디자인 브리프",
-        image_execution: "이미지 생성",
-        lofi_draft: "LO-FI 시안",
-        final_design: "최종 디자인",
-        section_layout_planner: "섹션 레이아웃 계획",
-        multi_component_layout_planner: "다중 컴포넌트 정렬 계획",
-        section_composition_planner: "섹션 자연어 구성 계획",
-        section_background_image: "섹션 키비주얼",
-        component_image: "컴포넌트 이미지",
-      })[type] || type || "알 수 없음";
+      return window.PromoAdminPromptGroups.promptTypeMeta(type).label;
+    },
+
+    promptTypeDescription(type) {
+      return window.PromoAdminPromptGroups.promptTypeMeta(type).description;
+    },
+
+    promptExecutionModeLabel(type) {
+      return window.PromoAdminPromptGroups.promptTypeMeta(type).executionMode;
+    },
+
+    promptWorkflowGroupLabel(type) {
+      const meta = window.PromoAdminPromptGroups.promptTypeMeta(type);
+      return window.PromoAdminPromptGroups.promptWorkflowGroupMeta(meta.group).label;
     },
 
     promptStatusLabel(status) {

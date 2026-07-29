@@ -125,6 +125,10 @@ try {
   await page.getByRole("heading", { name: "LLM 및 프롬프트 관리" }).waitFor();
   await page.locator(".prompt-group").first().waitFor();
   assert.equal(await page.locator(".prompt-group").count(), 2, "versions must collapse into lineage groups");
+  assert.equal(await page.locator(".prompt-workflow-group").count(), 1, "related image prompts must share one workflow group");
+  await page.getByRole("heading", { name: "프로모션 이미지" }).waitFor();
+  await page.getByText("섹션 콘텐츠와 배경색을 바탕으로 프로모션 키비주얼을 생성합니다.", { exact: true }).first().waitFor();
+  await page.getByText("선택 실행", { exact: true }).first().waitFor();
 
   await page.locator('select[aria-label="프롬프트 유형 필터"]').selectOption("section_background_image");
   await page.waitForFunction(() => document.querySelectorAll(".prompt-group").length === 1);

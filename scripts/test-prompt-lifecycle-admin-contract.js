@@ -12,6 +12,7 @@ const groupService = read("admin-app", "src", "services", "prompt-template-group
 
 assert.match(admin, /promptEditorReadOnly\(\)/);
 assert.match(admin, /filteredPromptTemplateGroups\(\)/);
+assert.match(admin, /filteredPromptTemplateSections\(\)/);
 assert.match(admin, /expandedPromptLineageIds/);
 assert.match(admin, /promptArchivedVisibilityByLineage/);
 assert.match(admin, /expandPromptGroupForPromptId/);
@@ -27,7 +28,10 @@ assert.match(html, /초안 검증/);
 assert.match(html, /이 버전으로 롤백/);
 assert.match(html, /:disabled="promptEditorReadOnly"/);
 assert.match(html, /admin\.prompt\.imageSize/);
-assert.match(html, /v-for="group in filteredPromptTemplateGroups"/);
+assert.match(html, /v-for="workflow in filteredPromptTemplateSections"/);
+assert.match(html, /v-for="group in workflow\.promptGroups"/);
+assert.match(html, /class="prompt-workflow-header"/);
+assert.match(html, /promptTypeDescription\(selectedPromptTemplate\.type\)/);
 assert.match(html, /class="prompt-group-toggle"/);
 assert.match(html, /class="prompt-version-item"/);
 assert.match(html, /보관 버전/);
@@ -35,6 +39,8 @@ assert.match(store, /lineageId: row\.lineage_id/);
 assert.match(store, /sourcePromptTemplateId: row\.source_prompt_template_id/);
 assert.match(listRoute, /case status when 'active' then 0 when 'validated' then 1/);
 assert.match(groupService, /groupPromptTemplates/);
+assert.match(groupService, /groupPromptTemplateSections/);
+assert.match(groupService, /PROMPT_TYPE_CATALOG/);
 assert.match(groupService, /active\s*\|\|\s*group\.validated/);
 
 console.log("Prompt lifecycle Admin contract tests passed");

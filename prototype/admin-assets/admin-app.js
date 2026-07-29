@@ -8119,33 +8119,175 @@ Object.freeze({
 	inactive: 3,
 	archived: 4
 });
-function Kg(e) {
+var Kg = Object.freeze([
+	{
+		key: "promotion-overview",
+		label: "프로모션 개요",
+		description: "사용자의 자연어 요청을 프로모션 기획 정보로 구조화합니다.",
+		order: 10
+	},
+	{
+		key: "template-selection",
+		label: "템플릿 선택 및 구성",
+		description: "개요에 맞는 템플릿을 추천하고 섹션·컴포넌트 구성을 계획합니다.",
+		order: 20
+	},
+	{
+		key: "section-layout",
+		label: "섹션 구성 및 레이아웃",
+		description: "섹션의 컴포넌트 구성, 레이아웃과 다중 선택 정렬을 계획합니다.",
+		order: 30
+	},
+	{
+		key: "promotion-image",
+		label: "프로모션 이미지",
+		description: "섹션 키비주얼과 컴포넌트 필드 이미지를 필요할 때 생성합니다.",
+		order: 40
+	},
+	{
+		key: "design-generator",
+		label: "디자인 생성기",
+		description: "통합 브리프부터 LO-FI 시안과 최종 디자인까지 생성합니다.",
+		order: 50
+	},
+	{
+		key: "shared-execution",
+		label: "독립·공통 실행",
+		description: "특정 화면 흐름과 분리되어 독립적으로 호출되는 실행 프롬프트입니다.",
+		order: 60
+	},
+	{
+		key: "other",
+		label: "기타",
+		description: "아직 관리 그룹이 지정되지 않은 프롬프트입니다.",
+		order: 999
+	}
+]), qg = Object.freeze({
+	promo_overview_parser: {
+		group: "promotion-overview",
+		order: 10,
+		label: "프로모션 개요 분석",
+		description: "간단한 자연어 요청을 제목, 목적, 대상, 톤과 주요 혜택으로 구조화합니다.",
+		executionMode: "사용자 요청"
+	},
+	promo_template_recommender: {
+		group: "template-selection",
+		order: 10,
+		label: "프로모션 템플릿 추천",
+		description: "확정된 프로모션 개요에 적합한 활성 템플릿 후보를 추천합니다.",
+		executionMode: "사용자 요청"
+	},
+	promo_template_composer: {
+		group: "template-selection",
+		order: 20,
+		label: "템플릿 구성 계획",
+		description: "선택한 템플릿의 섹션과 컴포넌트에 프로모션 콘텐츠를 매핑합니다.",
+		executionMode: "사용자 요청"
+	},
+	section_composition_planner: {
+		group: "section-layout",
+		order: 10,
+		label: "자연어 섹션 구성 계획",
+		description: "자연어 요청을 바탕으로 섹션 컴포넌트, 콘텐츠와 디자인 토큰을 제안합니다.",
+		executionMode: "선택 실행"
+	},
+	section_layout_planner: {
+		group: "section-layout",
+		order: 20,
+		label: "섹션 레이아웃 계획",
+		description: "섹션 전체의 허용 레이아웃과 스타일 슬롯을 안전한 명령으로 계획합니다.",
+		executionMode: "선택 실행"
+	},
+	multi_component_layout_planner: {
+		group: "section-layout",
+		order: 30,
+		label: "다중 컴포넌트 정렬 계획",
+		description: "선택한 여러 컴포넌트의 정렬, 간격과 배치를 안전한 명령으로 제안합니다.",
+		executionMode: "선택 실행"
+	},
+	section_background_image: {
+		group: "promotion-image",
+		order: 10,
+		label: "섹션 키비주얼 생성",
+		description: "섹션 콘텐츠와 배경색을 바탕으로 프로모션 키비주얼을 생성합니다.",
+		executionMode: "선택 실행"
+	},
+	component_image: {
+		group: "promotion-image",
+		order: 20,
+		label: "컴포넌트 이미지 생성",
+		description: "특정 컴포넌트 이미지 필드의 목적에 맞는 이미지를 생성합니다.",
+		executionMode: "선택 실행"
+	},
+	integrated_brief: {
+		group: "design-generator",
+		order: 10,
+		label: "통합 디자인 브리프",
+		description: "프로모션 입력과 선택 문서를 통합해 디자인 생성 기준을 구성합니다.",
+		executionMode: "자동 실행"
+	},
+	lofi_draft: {
+		group: "design-generator",
+		order: 20,
+		label: "LO-FI 시안 생성",
+		description: "통합 디자인 브리프를 바탕으로 검토용 저충실도 시안을 생성합니다.",
+		executionMode: "자동 실행"
+	},
+	final_design: {
+		group: "design-generator",
+		order: 30,
+		label: "최종 디자인 생성",
+		description: "승인된 LO-FI 시안과 브리프를 바탕으로 최종 디자인을 생성합니다.",
+		executionMode: "사용자 요청"
+	},
+	image_execution: {
+		group: "shared-execution",
+		order: 10,
+		label: "이미지 실행 프롬프트",
+		description: "LO-FI·최종 디자인 흐름과 분리된 독립 이미지 생성 요청에 사용합니다.",
+		executionMode: "독립 실행"
+	}
+});
+function Jg(e) {
+	let t = String(e || "").trim();
+	return qg[t] || {
+		group: "other",
+		order: 999,
+		label: t || "알 수 없음",
+		description: "이 프롬프트 유형의 관리 설명이 아직 등록되지 않았습니다.",
+		executionMode: "실행 방식 미지정"
+	};
+}
+function Yg(e) {
+	return Kg.find((t) => t.key === e) || Kg[Kg.length - 1];
+}
+function Xg(e) {
 	let t = Number(e?.version);
 	return Number.isFinite(t) ? t : 0;
 }
-function qg(e) {
+function Zg(e) {
 	let t = Date.parse(e?.updatedAt || "");
 	return Number.isFinite(t) ? t : 0;
 }
-function Jg(e, t) {
-	return Kg(t) - Kg(e) || qg(t) - qg(e) || String(e?.id || "").localeCompare(String(t?.id || ""));
+function Qg(e, t) {
+	return Xg(t) - Xg(e) || Zg(t) - Zg(e) || String(e?.id || "").localeCompare(String(t?.id || ""));
 }
-function Yg(e) {
+function $g(e) {
 	return String(e?.lineageId || "").trim() || `legacy:${String(e?.type || "unknown")}:${String(e?.id || "unknown")}`;
 }
-function Xg(e) {
+function e_(e) {
 	return e && (e.active || e.validated || e.draft || e.latestInactive || e.latestArchived || e.versions?.[0]) || null;
 }
-function Zg(e = []) {
+function t_(e = []) {
 	let t = /* @__PURE__ */ new Map();
 	return e.filter((e) => e && typeof e == "object").forEach((e) => {
-		let n = Yg(e);
+		let n = $g(e);
 		t.has(n) || t.set(n, {
 			lineageId: n,
 			versions: []
 		}), t.get(n).versions.push(e);
 	}), [...t.values()].map((e) => {
-		let t = [...e.versions].sort(Jg), n = t.find((e) => e.status === "active") || null, r = t.find((e) => e.status === "validated") || null, i = t.find((e) => e.status === "draft") || null, a = t.find((e) => e.status === "inactive") || null, o = t.find((e) => e.status === "archived") || null, s = {
+		let t = [...e.versions].sort(Qg), n = t.find((e) => e.status === "active") || null, r = t.find((e) => e.status === "validated") || null, i = t.find((e) => e.status === "draft") || null, a = t.find((e) => e.status === "inactive") || null, o = t.find((e) => e.status === "archived") || null, s = {
 			...e,
 			versions: t,
 			active: n,
@@ -8155,36 +8297,52 @@ function Zg(e = []) {
 			latestArchived: o,
 			archivedCount: t.filter((e) => e.status === "archived").length,
 			hasCandidate: !!(r || i)
-		}, c = Xg(s);
+		}, c = e_(s);
 		return {
 			...s,
 			primary: c,
 			type: c?.type || t[0]?.type || "",
 			name: c?.name || t[0]?.name || "",
-			updatedAt: t.reduce((e, t) => qg(t) > qg(e) ? t : e, t[0] || null)?.updatedAt || null
+			updatedAt: t.reduce((e, t) => Zg(t) > Zg(e) ? t : e, t[0] || null)?.updatedAt || null
 		};
-	}).sort((e, t) => String(e.type || "").localeCompare(String(t.type || "")) || String(e.name || "").localeCompare(String(t.name || "")) || String(e.lineageId).localeCompare(String(t.lineageId)));
+	}).sort((e, t) => Yg(Jg(e.type).group).order - Yg(Jg(t.type).group).order || Jg(e.type).order - Jg(t.type).order || String(e.name || "").localeCompare(String(t.name || "")) || String(e.lineageId).localeCompare(String(t.lineageId)));
 }
-function Qg(e = [], t = "") {
+function n_(e = [], t = "") {
 	let n = String(t || "").trim();
 	return n ? e.filter((e) => e.type === n) : e;
 }
-function $g(e = [], t = "") {
+function r_(e = [], t = "") {
 	let n = String(t || "");
 	return e.find((e) => e.versions.some((e) => e.id === n)) || null;
 }
-function e_(e = [], t = "", n = "image_execution") {
-	let r = $g(e, t);
+function i_(e = []) {
+	let t = /* @__PURE__ */ new Map();
+	return e.forEach((e) => {
+		let n = Yg(Jg(e?.type).group);
+		t.has(n.key) || t.set(n.key, {
+			...n,
+			promptGroups: []
+		}), t.get(n.key).promptGroups.push(e);
+	}), [...t.values()].map((e) => ({
+		...e,
+		promptGroups: [...e.promptGroups].sort((e, t) => Jg(e?.type).order - Jg(t?.type).order || String(e?.name || "").localeCompare(String(t?.name || "")))
+	})).sort((e, t) => e.order - t.order);
+}
+function a_(e = [], t = "", n = "image_execution") {
+	let r = r_(e, t);
 	return r ? r.versions.find((e) => e.id === t) || r.primary || null : e.find((e) => e.type === n && e.active)?.active || e.find((e) => e.active)?.active || e[0]?.primary || null;
 }
-var t_ = Object.freeze({
-	filterPromptGroups: Qg,
-	findPromptGroup: $g,
-	groupPromptTemplates: Zg,
-	promptLineageId: Yg,
-	resolvePromptSelection: e_,
-	selectPromptGroupPrimary: Xg
-}), n_ = /* @__PURE__ */ o((() => {
+var o_ = Object.freeze({
+	filterPromptGroups: n_,
+	findPromptGroup: r_,
+	groupPromptTemplateSections: i_,
+	groupPromptTemplates: t_,
+	promptLineageId: $g,
+	promptTypeMeta: Jg,
+	promptWorkflowGroupMeta: Yg,
+	resolvePromptSelection: a_,
+	selectPromptGroupPrimary: e_
+}), s_ = /* @__PURE__ */ o((() => {
 	var e = {
 		documents: "promoPrototype.documents.abc",
 		generatedPages: "promoPrototype.generatedPages.abc",
@@ -9737,6 +9895,9 @@ var t_ = Object.freeze({
 			filteredPromptTemplateGroups() {
 				return window.PromoAdminPromptGroups.filterPromptGroups(this.promptTemplateGroups, this.promptTypeFilter);
 			},
+			filteredPromptTemplateSections() {
+				return window.PromoAdminPromptGroups.groupPromptTemplateSections(this.filteredPromptTemplateGroups);
+			},
 			localeNamespaces() {
 				let e = Object.values(this.localeMessagesByLocale).flat();
 				return [...new Set(e.map((e) => e.namespace).filter(Boolean))].sort();
@@ -9795,7 +9956,7 @@ var t_ = Object.freeze({
 				return this.selectedPromptTemplate?.status !== "draft";
 			},
 			selectedPromptEditorTitle() {
-				return this.selectedPromptTemplate ? `${this.promptTypeLabel(this.selectedPromptTemplate.type)} 프롬프트` : "프롬프트 편집기";
+				return this.selectedPromptTemplate ? this.promptTypeLabel(this.selectedPromptTemplate.type) : "프롬프트 편집기";
 			},
 			groupedWizardFormTemplates() {
 				let e = /* @__PURE__ */ new Map();
@@ -10616,17 +10777,17 @@ var t_ = Object.freeze({
 				}[e] || t || e;
 			},
 			promptTypeLabel(e) {
-				return {
-					integrated_brief: "통합 디자인 브리프",
-					image_execution: "이미지 생성",
-					lofi_draft: "LO-FI 시안",
-					final_design: "최종 디자인",
-					section_layout_planner: "섹션 레이아웃 계획",
-					multi_component_layout_planner: "다중 컴포넌트 정렬 계획",
-					section_composition_planner: "섹션 자연어 구성 계획",
-					section_background_image: "섹션 배경 이미지",
-					component_image: "컴포넌트 이미지"
-				}[e] || e || "알 수 없음";
+				return window.PromoAdminPromptGroups.promptTypeMeta(e).label;
+			},
+			promptTypeDescription(e) {
+				return window.PromoAdminPromptGroups.promptTypeMeta(e).description;
+			},
+			promptExecutionModeLabel(e) {
+				return window.PromoAdminPromptGroups.promptTypeMeta(e).executionMode;
+			},
+			promptWorkflowGroupLabel(e) {
+				let t = window.PromoAdminPromptGroups.promptTypeMeta(e);
+				return window.PromoAdminPromptGroups.promptWorkflowGroupMeta(t.group).label;
 			},
 			promptStatusLabel(e) {
 				return {
@@ -13526,5 +13687,5 @@ yh(document), globalThis.Vue = gh, globalThis.PromoAdminTemplateLayout = Object.
 }), globalThis.PromoAdminDesignTokens = Object.freeze({
 	service: Hh,
 	component: Gg
-}), globalThis.PromoAdminPromptGroups = t_, await Promise.resolve().then(() => /* @__PURE__ */ l(n_()));
+}), globalThis.PromoAdminPromptGroups = o_, await Promise.resolve().then(() => /* @__PURE__ */ l(s_()));
 //#endregion
