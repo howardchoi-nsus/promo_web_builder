@@ -36,6 +36,10 @@ assert.match(html, /class="prompt-workflow-header"/);
 assert.match(html, /class="prompt-workflow-toggle"/);
 assert.match(html, /:aria-expanded="String\(promptWorkflowExpanded\(workflow\)\)"/);
 assert.match(html, /promptTypeDescription\(selectedPromptTemplate\.type\)/);
+assert.match(
+  html,
+  /<strong>\{\{ selectedPromptEditorTitle \}\}<\/strong>\s*<p>\{\{ promptTypeDescription\(selectedPromptTemplate\.type\) \}\}<\/p>/,
+);
 assert.match(html, /class="prompt-group-toggle"/);
 assert.match(html, /class="prompt-version-item"/);
 assert.match(html, /보관 버전/);

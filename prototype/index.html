@@ -926,12 +926,12 @@
                     <div class="prompt-editor-header">
                       <div>
                         <strong>{{ selectedPromptEditorTitle }}</strong>
+                        <p>{{ promptTypeDescription(selectedPromptTemplate.type) }}</p>
                         <span>{{ selectedPromptTemplate.name }} · {{ promptTypeLabel(selectedPromptTemplate.type) }} · v{{ selectedPromptTemplate.version }} · {{ promptStatusLabel(selectedPromptTemplate.status) }}</span>
                         <div class="prompt-editor-context">
                           <em>{{ promptWorkflowGroupLabel(selectedPromptTemplate.type) }}</em>
                           <em>{{ promptExecutionModeLabel(selectedPromptTemplate.type) }}</em>
                         </div>
-                        <p>{{ promptTypeDescription(selectedPromptTemplate.type) }}</p>
                       </div>
                       <div class="subsection-actions">
                         <button class="tiny-button primary" type="button" :disabled="promptSaving || promptEditorReadOnly" @click="savePromptTemplate">{{ t('common.action.save') }}</button>
