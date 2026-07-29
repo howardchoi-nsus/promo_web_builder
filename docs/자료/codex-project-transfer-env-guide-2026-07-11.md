@@ -178,9 +178,10 @@ Admin Page DB 설정:
 - `api/_worker-webhook-settings-store.js`
 - `api/generate-ui-design.js`
 
-### 4. Worker Security / Allowlist
+### 4. Worker and Design Asset Security
 
-production 환경에서 request body로 전달된 worker URL을 사용할 경우 host allowlist 검증이 걸릴 수 있다.
+Worker URL은 Production/Preview/개발 환경에서 동일한 host allowlist 검증을 받는다.
+운영 계열 URL은 HTTPS와 기본 443 포트만 허용한다.
 
 ```text
 N8N_WORKER_WEBHOOK_ALLOWLIST
@@ -193,26 +194,24 @@ N8N_PROMO_UI_DESIGN_WEBHOOK_ALLOWLIST
 N8N_WORKER_WEBHOOK_ALLOWLIST=example.app.n8n.cloud,n8n.company.com
 ```
 
-관련 runtime env:
+Promo UI 디자인 결과 저장 API의 POST 요청은 실행별 HMAC 서명 또는 Bearer token을 요구한다.
+32자 이상의 임의 비밀값을 Vercel 환경변수로 등록한다.
 
 ```text
-VERCEL_ENV
-NODE_ENV
+PROMO_DESIGN_ASSET_WRITE_TOKEN=<32자 이상의 임의 비밀값>
 ```
 
-production 판정:
+서버가 원격 이미지 URL을 가져와야 하는 경우 허용할 이미지 호스트를 명시한다.
+값이 비어 있으면 원격 URL 입력은 거부되며, base64/data URL 입력만 사용할 수 있다.
 
 ```text
-VERCEL_ENV=production
-```
-
-또는:
-
-```text
-NODE_ENV=production
+PROMO_DESIGN_IMAGE_HOST_ALLOWLIST=cdn.example.com,images.example.com
 ```
 
 주의:
+
+- Worker/이미지 URL은 각 redirect 위치에서도 다시 검증한다.
+- 로컬 HTTP Worker가 꼭 필요할 때만 비호스팅 개발 환경에서 `ALLOW_INSECURE_WORKER_WEBHOOKS=true`를 사용한다.
 
 - Admin/DB에 등록된 webhook URL은 env URL처럼 운영 설정으로 취급된다.
 - request body override는 production에서 allowlist가 없으면 막힐 수 있다.
@@ -498,6 +497,8 @@ N8N_PROMO_UI_DESIGN_WEBHOOK_URL=
 N8N_WORKER_WEBHOOK_ALLOWLIST=
 N8N_PROMO_UI_DESIGN_WEBHOOK_ALLOWLIST=
 N8N_WORKER_TRIGGER_ACK_TIMEOUT_MS=2000
+PROMO_DESIGN_ASSET_WRITE_TOKEN=
+PROMO_DESIGN_IMAGE_HOST_ALLOWLIST=
 
 # Runtime
 NODE_ENV=development

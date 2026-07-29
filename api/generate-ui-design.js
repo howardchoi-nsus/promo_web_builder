@@ -1,10 +1,14 @@
 import { createRequire } from "node:module";
+import crypto from "node:crypto";
 
 const require = createRequire(import.meta.url);
 const {
   ensureWorkerWebhookSettings,
   getSql,
 } = require("./_worker-webhook-settings-store");
+const {
+  createAssetWriteAuth,
+} = require("./_promo-design-asset-auth");
 
 export const config = {
   maxDuration: 300,
@@ -28,6 +32,20 @@ export default async function handler(req, res) {
 
   try {
     const requestBody = parseRequestBody(req.body);
+    requestBody.id = String(requestBody.id || crypto.randomUUID()).trim();
+    const assetWriteAuth = createAssetWriteAuth(requestBody.id);
+    if (!assetWriteAuth) {
+      return res.status(503).json({
+        error: "Promo design asset write authentication is not configured",
+        code: "ASSET_WRITE_AUTH_NOT_CONFIGURED",
+      });
+    }
+    requestBody.sectionConfig = {
+      ...(requestBody.sectionConfig && typeof requestBody.sectionConfig === "object"
+        ? requestBody.sectionConfig
+        : {}),
+      assetWriteAuth,
+    };
     const proto = req.headers["x-forwarded-proto"] || "https";
     const host = req.headers["x-forwarded-host"] || req.headers.host;
     const promptUrl = String(requestBody.promptUrl || "").trim();

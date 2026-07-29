@@ -49,14 +49,33 @@ async function resolveWorkerUrl(stage, overrideUrl = "", sql = null) {
 
   try {
     const parsed = new URL(selectedUrl);
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    const source = configured.url ? "settings" : envUrl ? "env" : "request";
+    const allowInsecureLocal = !isHostedRuntime()
+      && String(process.env.ALLOW_INSECURE_WORKER_WEBHOOKS || "").toLowerCase() === "true";
+    if (parsed.protocol !== "https:" && !(allowInsecureLocal && parsed.protocol === "http:")) {
       return {
         ok: false,
-        error: "Worker URL must use http or https",
+        error: "Worker URL must use HTTPS",
         envName: WORKER_URL_ENV[stage] || "",
       };
     }
-    if (!envUrl && bodyUrl && isProductionRuntime() && !workerHostAllowed(parsed.hostname)) {
+    if (parsed.username || parsed.password) {
+      return {
+        ok: false,
+        error: "Worker URL must not include credentials",
+        envName: WORKER_URL_ENV[stage] || "",
+      };
+    }
+    if (parsed.port && parsed.port !== "443" && !allowInsecureLocal) {
+      return {
+        ok: false,
+        error: "Worker URL must use the standard HTTPS port",
+        envName: WORKER_URL_ENV[stage] || "",
+      };
+    }
+    // Apply the same host policy to settings, environment variables, and request
+    // fallbacks. Preview/local runtimes must not become SSRF bypasses.
+    if (!workerHostAllowed(parsed.hostname)) {
       return {
         ok: false,
         error: "Worker URL host is not allowed",
@@ -67,7 +86,7 @@ async function resolveWorkerUrl(stage, overrideUrl = "", sql = null) {
       ok: true,
       url: parsed.toString(),
       envName: configured.envName || WORKER_URL_ENV[stage] || "",
-      source: configured.url ? "settings" : envUrl ? "env" : "request",
+      source,
       settingId: configured.settingId || "",
     };
   } catch (error) {
@@ -102,8 +121,10 @@ async function loadConfiguredWorkerUrl(stage, sql) {
   }
 }
 
-function isProductionRuntime() {
-  return process.env.VERCEL_ENV === "production" || process.env.NODE_ENV === "production";
+function isHostedRuntime() {
+  return Boolean(process.env.VERCEL)
+    || ["production", "preview"].includes(String(process.env.VERCEL_ENV || "").toLowerCase())
+    || process.env.NODE_ENV === "production";
 }
 
 function workerHostAllowed(hostname) {
@@ -145,6 +166,7 @@ async function triggerWorker({ stage, payload, workerUrl = "", timeoutMs = null,
   try {
     const response = await fetch(resolved.url, {
       method: "POST",
+      redirect: "manual",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
       signal: controller.signal,
@@ -184,7 +206,9 @@ async function triggerWorker({ stage, payload, workerUrl = "", timeoutMs = null,
 
 module.exports = {
   buildWorkerPayload,
+  resolveWorkerUrl,
   shouldTriggerWorker,
   triggerWorker,
   triggerAckTimeoutMs,
+  workerHostAllowed,
 };

@@ -16,9 +16,10 @@ const migration = fs.readFileSync(path.join(root, "db/migrations/031_section_ai_
 const createPromo = fs.readFileSync(path.join(root, "prototype/create-promo.js"), "utf8");
 const visualEditor = fs.readFileSync(path.join(root, "visual-editor/src/App.vue"), "utf8");
 
-assert.doesNotMatch(layoutHandler, /generateSectionImage/);
-assert.match(layoutHandler, /nextStage:\s*"image"/);
-assert.match(layoutHandler, /"generating_assets"/);
+assert.doesNotMatch(layoutHandler, /generateSectionLayout|transitionRun|fetchRun/);
+assert.match(layoutHandler, /status\(410\)/);
+assert.match(layoutHandler, /SECTION_DESIGN_PROCESS_RETIRED/);
+assert.match(layoutHandler, /promo-section-design-plan-process/);
 assert.match(imageHandler, /generateSectionImage/);
 assert.match(imageHandler, /run\.status === "failed"/);
 assert.match(imageHandler, /clearCompletedAt:\s*true/);
