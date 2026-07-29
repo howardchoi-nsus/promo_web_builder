@@ -9397,6 +9397,15 @@ var o_ = Object.freeze({
 				selectedPromptTemplateId: "",
 				promptTypeFilter: "",
 				expandedPromptLineageIds: [],
+				expandedPromptWorkflowKeys: [
+					"promotion-overview",
+					"template-selection",
+					"section-layout",
+					"promotion-image",
+					"design-generator",
+					"shared-execution",
+					"other"
+				],
 				promptArchivedVisibilityByLineage: {},
 				promptSaving: !1,
 				promptHistories: [],
@@ -10666,6 +10675,22 @@ var o_ = Object.freeze({
 			promptGroupPanelId(e) {
 				return `prompt-versions-${String(e?.lineageId || "unknown").replace(/[^a-zA-Z0-9_-]/g, "-")}`;
 			},
+			promptWorkflowPanelId(e) {
+				return `prompt-workflow-${String(e?.key || "other").replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+			},
+			promptWorkflowExpanded(e) {
+				return this.expandedPromptWorkflowKeys.includes(e?.key);
+			},
+			togglePromptWorkflow(e) {
+				let t = e?.key;
+				if (!t) return;
+				let n = this.expandedPromptWorkflowKeys.includes(t);
+				this.expandedPromptWorkflowKeys = n ? this.expandedPromptWorkflowKeys.filter((e) => e !== t) : [...this.expandedPromptWorkflowKeys, t];
+			},
+			expandPromptWorkflowForType(e) {
+				let t = window.PromoAdminPromptGroups.promptTypeMeta(e).group;
+				t && !this.expandedPromptWorkflowKeys.includes(t) && (this.expandedPromptWorkflowKeys = [...this.expandedPromptWorkflowKeys, t]);
+			},
 			promptGroupExpanded(e) {
 				return this.expandedPromptLineageIds.includes(e?.lineageId);
 			},
@@ -10680,7 +10705,7 @@ var o_ = Object.freeze({
 			},
 			expandPromptGroupForPromptId(e) {
 				let t = window.PromoAdminPromptGroups.findPromptGroup(this.promptTemplateGroups, e);
-				t && !this.expandedPromptLineageIds.includes(t.lineageId) && (this.expandedPromptLineageIds = [...this.expandedPromptLineageIds, t.lineageId]);
+				t && this.expandPromptWorkflowForType(t.type), t && !this.expandedPromptLineageIds.includes(t.lineageId) && (this.expandedPromptLineageIds = [...this.expandedPromptLineageIds, t.lineageId]);
 			},
 			promptGroupArchivedVisible(e) {
 				return !!this.promptArchivedVisibilityByLineage[e?.lineageId];

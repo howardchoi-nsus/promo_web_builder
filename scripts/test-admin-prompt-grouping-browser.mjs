@@ -129,6 +129,13 @@ try {
   await page.getByRole("heading", { name: "프로모션 이미지" }).waitFor();
   await page.getByText("섹션 콘텐츠와 배경색을 바탕으로 프로모션 키비주얼을 생성합니다.", { exact: true }).first().waitFor();
   await page.getByText("선택 실행", { exact: true }).first().waitFor();
+  const workflowToggle = page.locator(".prompt-workflow-toggle");
+  assert.equal(await workflowToggle.getAttribute("aria-expanded"), "true");
+  await workflowToggle.click();
+  assert.equal(await page.locator(".prompt-group").first().isVisible(), false, "collapsed workflow must hide its prompts");
+  assert.equal(await workflowToggle.getAttribute("aria-expanded"), "false");
+  await workflowToggle.click();
+  assert.equal(await page.locator(".prompt-group").first().isVisible(), true, "expanded workflow must restore its prompts");
 
   await page.locator('select[aria-label="프롬프트 유형 필터"]').selectOption("section_background_image");
   await page.waitForFunction(() => document.querySelectorAll(".prompt-group").length === 1);

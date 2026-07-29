@@ -1151,6 +1151,15 @@ const adminApp = createApp({
       selectedPromptTemplateId: "",
       promptTypeFilter: "",
       expandedPromptLineageIds: [],
+      expandedPromptWorkflowKeys: [
+        "promotion-overview",
+        "template-selection",
+        "section-layout",
+        "promotion-image",
+        "design-generator",
+        "shared-execution",
+        "other",
+      ],
       promptArchivedVisibilityByLineage: {},
       promptSaving: false,
       promptHistories: [],
@@ -2417,6 +2426,31 @@ const adminApp = createApp({
       return `prompt-versions-${String(group?.lineageId || "unknown").replace(/[^a-zA-Z0-9_-]/g, "-")}`;
     },
 
+    promptWorkflowPanelId(workflow) {
+      return `prompt-workflow-${String(workflow?.key || "other").replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+    },
+
+    promptWorkflowExpanded(workflow) {
+      return this.expandedPromptWorkflowKeys.includes(workflow?.key);
+    },
+
+    togglePromptWorkflow(workflow) {
+      const workflowKey = workflow?.key;
+      if (!workflowKey) return;
+      const expanded = this.expandedPromptWorkflowKeys.includes(workflowKey);
+      this.expandedPromptWorkflowKeys = expanded
+        ? this.expandedPromptWorkflowKeys.filter((key) => key !== workflowKey)
+        : [...this.expandedPromptWorkflowKeys, workflowKey];
+    },
+
+    expandPromptWorkflowForType(type) {
+      const promptMeta = window.PromoAdminPromptGroups.promptTypeMeta(type);
+      const workflowKey = promptMeta.group;
+      if (workflowKey && !this.expandedPromptWorkflowKeys.includes(workflowKey)) {
+        this.expandedPromptWorkflowKeys = [...this.expandedPromptWorkflowKeys, workflowKey];
+      }
+    },
+
     promptGroupExpanded(group) {
       return this.expandedPromptLineageIds.includes(group?.lineageId);
     },
@@ -2439,6 +2473,7 @@ const adminApp = createApp({
         this.promptTemplateGroups,
         promptId
       );
+      if (group) this.expandPromptWorkflowForType(group.type);
       if (group && !this.expandedPromptLineageIds.includes(group.lineageId)) {
         this.expandedPromptLineageIds = [...this.expandedPromptLineageIds, group.lineageId];
       }

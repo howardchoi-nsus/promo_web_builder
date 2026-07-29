@@ -825,15 +825,33 @@
                       class="prompt-workflow-group"
                     >
                       <header class="prompt-workflow-header">
-                        <h4>{{ workflow.label }}</h4>
-                        <p>{{ workflow.description }}</p>
+                        <button
+                          class="prompt-workflow-toggle"
+                          type="button"
+                          :aria-expanded="String(promptWorkflowExpanded(workflow))"
+                          :aria-controls="promptWorkflowPanelId(workflow)"
+                          @click="togglePromptWorkflow(workflow)"
+                        >
+                          <span class="prompt-workflow-copy">
+                            <h4>{{ workflow.label }}</h4>
+                            <p>{{ workflow.description }}</p>
+                          </span>
+                          <span class="prompt-workflow-toggle-icon" aria-hidden="true">
+                            {{ promptWorkflowExpanded(workflow) ? '−' : '+' }}
+                          </span>
+                        </button>
                       </header>
-                      <article
-                        v-for="group in workflow.promptGroups"
-                        :key="group.lineageId"
-                        class="prompt-group"
-                        :class="{ selected: promptGroupContainsSelection(group) }"
+                      <div
+                        v-show="promptWorkflowExpanded(workflow)"
+                        :id="promptWorkflowPanelId(workflow)"
+                        class="prompt-workflow-prompt-list"
                       >
+                        <article
+                          v-for="group in workflow.promptGroups"
+                          :key="group.lineageId"
+                          class="prompt-group"
+                          :class="{ selected: promptGroupContainsSelection(group) }"
+                        >
                       <div class="prompt-group-header">
                         <button
                           class="prompt-group-toggle"
@@ -895,7 +913,8 @@
                           {{ promptGroupArchivedVisible(group) ? '보관 버전 숨기기' : `보관 버전 ${group.archivedCount}개 보기` }}
                         </button>
                       </div>
-                      </article>
+                        </article>
+                      </div>
                     </section>
                     <div class="empty-state compact" v-if="!promptTemplatesLoading && !filteredPromptTemplateGroups.length">
                       표시할 프롬프트가 없습니다.

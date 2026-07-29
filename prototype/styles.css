@@ -3314,9 +3314,7 @@ body.is-resizing {
 }
 
 .prompt-workflow-header {
-  display: grid;
-  gap: 3px;
-  padding: 2px 2px 0;
+  min-width: 0;
 }
 
 .prompt-workflow-header h4,
@@ -3333,6 +3331,50 @@ body.is-resizing {
   color: var(--sub);
   font-size: 11px;
   line-height: 1.45;
+}
+
+.prompt-workflow-toggle {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 6px 4px;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.prompt-workflow-toggle:hover,
+.prompt-workflow-toggle:focus-visible {
+  background: var(--accent-soft);
+}
+
+.prompt-workflow-copy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.prompt-workflow-toggle-icon {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--sub);
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.prompt-workflow-prompt-list {
+  display: grid;
+  gap: 8px;
 }
 
 .worker-webhook-list {
