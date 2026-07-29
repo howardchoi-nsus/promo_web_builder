@@ -1235,7 +1235,41 @@ function createSectionAiGenerationRequestId() {
     || `section-ai-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-async function generateSectionAiDesign(
+const sectionAiDesignInFlight = new Map();
+
+function waitForSectionAiAsset(delayMs) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, Math.max(250, Number(delayMs || 0)));
+  });
+}
+
+function sectionAiAssetErrorMessage(asset = {}, error = null) {
+  const payload = error?.payload || {};
+  const provider = payload.provider || {};
+  const providerName = provider.name || asset.request?.promptConfig?.provider || "";
+  const model = provider.model || asset.request?.promptConfig?.model || "";
+  const code = payload.code || error?.code || asset.errorCode || "";
+  const message = error?.message || asset.errorMessage || "섹션 이미지 생성에 실패했습니다.";
+  const context = [code, [providerName, model].filter(Boolean).join("/")].filter(Boolean).join(", ");
+  return context ? `${message} (${context})` : message;
+}
+
+async function generateSectionAiDesign(...args) {
+  const sectionKey = String(args[0]?.sectionKey || "").trim();
+  if (!sectionKey) return Promise.resolve();
+  const activeRequest = sectionAiDesignInFlight.get(sectionKey);
+  if (activeRequest) return activeRequest;
+  const request = runSectionAiDesign(...args)
+    .finally(() => {
+      if (sectionAiDesignInFlight.get(sectionKey) === request) {
+        sectionAiDesignInFlight.delete(sectionKey);
+      }
+    });
+  sectionAiDesignInFlight.set(sectionKey, request);
+  return request;
+}
+
+async function runSectionAiDesign(
   section, targetType = "section-background", targetItemKey = "", targetFieldKey = "",
   imageGuidance = "", imageSafeArea = "",
   keyVisualTextMode = "none", keyVisualText = "",
@@ -1266,26 +1300,60 @@ async function generateSectionAiDesign(
     && String(previousKeyVisualTextPolicy.text || "") === requestedKeyVisualTextPolicy.text
   );
   const processAssetJobs = async (run) => {
-    const listed = await fetchJson(`/api/promo-section-design-assets?runId=${encodeURIComponent(run.id)}`);
+    const deadline = Date.now() + (9 * 60 * 1000);
     let latestRun = run;
-    for (const listedAsset of (listed.assets || []).filter((item) => item.status === "queued" || item.canRetry)) {
-      let asset = listedAsset;
-      if (asset.canRetry) {
-        const queued = await fetchJson("/api/promo-section-design-asset-retry", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ jobId: asset.id }),
-        });
-        asset = { ...asset, ...(queued.asset || {}), status: "queued" };
+    while (Date.now() < deadline) {
+      const listed = await fetchJson(`/api/promo-section-design-assets?runId=${encodeURIComponent(run.id)}`);
+      const assets = listed.assets || [];
+      if (!assets.length) throw new Error("생성할 이미지 작업을 찾을 수 없습니다.");
+      if (assets.every((asset) => asset.status === "ready")) {
+        if (latestRun?.status !== "ready") {
+          const latest = await fetchJson(`/api/promo-section-design-runs?runId=${encodeURIComponent(run.id)}`);
+          latestRun = latest.run || latestRun;
+        }
+        return latestRun;
       }
-      const processedAsset = await fetchJson("/api/promo-section-design-asset-process", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobId: asset.id }),
-      });
-      latestRun = processedAsset.run || latestRun;
-      saveSectionAiRun(sectionKey, latestRun, sectionInputs);
-      postWizardLayoutSnapshot();
+
+      for (const listedAsset of assets) {
+        if (
+          listedAsset.status === "ready"
+          || (listedAsset.status === "processing" && !listedAsset.canRetry)
+        ) continue;
+        let asset = listedAsset;
+        if (asset.status === "failed" || (asset.status === "processing" && asset.canRetry)) {
+          if (!asset.canRetry) {
+            throw new Error(sectionAiAssetErrorMessage(asset));
+          }
+          if (asset.retryAfterMs > 0) {
+            await waitForSectionAiAsset(Math.min(asset.retryAfterMs, 5000));
+            continue;
+          }
+          const queued = await fetchJson("/api/promo-section-design-asset-retry", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ jobId: asset.id }),
+          });
+          asset = { ...asset, ...(queued.asset || {}), status: "queued" };
+          latestRun = queued.run || latestRun;
+        }
+        if (asset.status !== "queued") continue;
+        try {
+          const processedAsset = await fetchJson("/api/promo-section-design-asset-process", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ jobId: asset.id }),
+          });
+          latestRun = processedAsset.run || latestRun;
+        } catch (error) {
+          if (!error.retryable) {
+            throw new Error(sectionAiAssetErrorMessage(asset, error));
+          }
+          await waitForSectionAiAsset(Math.min(error.retryAfterMs || 1500, 5000));
+        }
+        saveSectionAiRun(sectionKey, latestRun, sectionInputs);
+        postWizardLayoutSnapshot();
+      }
+      await waitForSectionAiAsset(1500);
     }
-    return latestRun;
+    throw new Error("섹션 이미지 생성 상태 확인 시간이 초과되었습니다. 다시 시도해 주세요.");
   };
   const canRetryPlannedAssets = previous?.id && previous?.effectivePatch
     && previous?.status === "failed" && !sectionAiIsStale(sectionKey, previous)

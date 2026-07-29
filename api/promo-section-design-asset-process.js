@@ -26,9 +26,48 @@ module.exports = async function handler(req, res) {
       returning *
     `;
     if (!rows.length) {
-      const current = await sql`select id::text, status, result_snapshot from promo_section_design_asset_jobs where id = ${jobId}::uuid limit 1`;
+      const current = await sql`
+        select id::text, run_id::text, status, result_snapshot, current_attempt, max_attempts,
+          lease_expires_at, next_retry_at, error_code, error_message
+        from promo_section_design_asset_jobs where id = ${jobId}::uuid limit 1
+      `;
       if (!current.length) return res.status(404).json({ error: "Asset job not found" });
-      return res.status(current[0].status === "ready" ? 200 : 409).json({ ok: current[0].status === "ready", asset: current[0] });
+      const asset = current[0];
+      const run = await fetchRun(sql, asset.run_id);
+      if (asset.status === "ready") {
+        return res.status(200).json({ ok: true, asset, run });
+      }
+      if (asset.status === "processing") {
+        const retryAfterMs = asset.lease_expires_at
+          ? Math.max(1000, new Date(asset.lease_expires_at).getTime() - Date.now())
+          : 2000;
+        return res.status(202).json({
+          ok: true,
+          processing: true,
+          retryAfterMs,
+          asset,
+          run,
+        });
+      }
+      if (
+        asset.status === "failed"
+        && Number(asset.current_attempt) < Number(asset.max_attempts)
+        && asset.next_retry_at
+      ) {
+        return res.status(202).json({
+          ok: true,
+          waitingRetry: true,
+          retryAfterMs: Math.max(0, new Date(asset.next_retry_at).getTime() - Date.now()),
+          asset,
+          run,
+        });
+      }
+      return res.status(409).json({
+        error: "Asset job is not processable",
+        code: "ASSET_JOB_CONFLICT",
+        asset,
+        run,
+      });
     }
     job = rows[0];
     const run = await fetchRun(sql, job.run_id);
@@ -110,13 +149,28 @@ module.exports = async function handler(req, res) {
     }
     return res.status(200).json({ ok: true, asset: result, run: updatedRun });
   } catch (error) {
+    let retryDelayMs = 0;
+    const providerStatus = Number(error.statusCode || 0);
+    const retryableProviderError = (
+      providerStatus === 0
+      || providerStatus === 404
+      || providerStatus === 408
+      || providerStatus === 409
+      || providerStatus === 425
+      || providerStatus === 429
+      || providerStatus >= 500
+      || error.code === "PROVIDER_TIMEOUT"
+    );
+    const errorCode = providerStatus === 404
+      ? "PROVIDER_ENTITY_NOT_FOUND"
+      : error.code || "SECTION_ASSET_FAILED";
     if (job) {
       const runtime = job.request_snapshot?.promptConfig?.runtimeConfig || {};
       const retryBaseMs = Math.max(0, Number(runtime.retryBaseMs || 15000));
       const retryMaxMs = Math.max(retryBaseMs, Number(runtime.retryMaxMs || 75000));
-      const retryDelayMs = Math.min(retryMaxMs, retryBaseMs * Math.max(1, Number(job.current_attempt || 1)));
+      retryDelayMs = Math.min(retryMaxMs, retryBaseMs * Math.max(1, Number(job.current_attempt || 1)));
       await sql`
-      update promo_section_design_asset_jobs set status = 'failed', error_code = ${error.code || "SECTION_ASSET_FAILED"},
+      update promo_section_design_asset_jobs set status = 'failed', error_code = ${errorCode},
         error_message = ${error.message}, failure_stage = 'provider',
         lease_token = null, lease_expires_at = null, heartbeat_at = now(),
         next_retry_at = case when current_attempt < max_attempts
@@ -125,6 +179,23 @@ module.exports = async function handler(req, res) {
       where id = ${jobId}::uuid and status = 'processing' and lease_token = ${leaseToken}::uuid
       `.catch(() => null);
     }
-    return res.status(error.statusCode >= 400 && error.statusCode < 500 ? error.statusCode : 502).json({ error: "Section design asset generation failed", message: error.message });
+    const hasRetry = Boolean(job && Number(job.current_attempt || 0) < Number(job.max_attempts || 0));
+    const retryable = retryableProviderError && hasRetry;
+    const responseStatus = retryable
+      ? 503
+      : providerStatus >= 400 && providerStatus < 500
+        ? providerStatus
+        : 502;
+    return res.status(responseStatus).json({
+      error: "Section design asset generation failed",
+      message: error.message,
+      code: errorCode,
+      retryable,
+      retryAfterMs: retryable ? retryDelayMs : 0,
+      provider: {
+        name: job?.request_snapshot?.promptConfig?.provider || "",
+        model: job?.request_snapshot?.promptConfig?.model || "",
+      },
+    });
   }
 };
