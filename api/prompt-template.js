@@ -167,6 +167,12 @@ async function updatePrompt(req, res) {
     optionalVariables,
   } = promptVariableContract(current.type);
   if (!nextBody.trim()) return res.status(400).json({ error: "body is required" });
+  if (/[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(nextBody)) {
+    return res.status(422).json({
+      error: "Prompt body must be written in English",
+      code: "PROMPT_BODY_ENGLISH_REQUIRED",
+    });
+  }
   if (!nextName) return res.status(400).json({ error: "name is required" });
 
   const provider = hasProvider ? String(body.provider || "").trim() : current.provider || "";

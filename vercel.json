@@ -14,6 +14,9 @@
     },
     "api/promo-section-design-asset-process.js": {
       "maxDuration": 300
+    },
+    "api/prompt-template-translate.js": {
+      "maxDuration": 60
     }
   }
 }

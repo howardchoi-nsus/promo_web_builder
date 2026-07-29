@@ -3879,6 +3879,82 @@ body.is-resizing {
   white-space: pre;
 }
 
+.prompt-body-section {
+  display: grid;
+  gap: 10px;
+}
+
+.prompt-body-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.prompt-body-heading > div {
+  display: grid;
+  gap: 3px;
+}
+
+.prompt-body-heading small {
+  color: var(--sub);
+}
+
+.prompt-copy-button {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--sub);
+  cursor: pointer;
+}
+
+.prompt-copy-button svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.prompt-copy-button:hover,
+.prompt-copy-button:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.prompt-copy-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.prompt-body-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  min-width: 0;
+}
+
+.prompt-body-translation {
+  background: var(--surface-2);
+}
+
+.prompt-translation-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.prompt-translation-label .tiny-button {
+  flex: 0 0 auto;
+}
+
 .history-list {
   display: grid;
   gap: 8px;
@@ -3992,6 +4068,10 @@ body.is-resizing {
   .prompt-editor-header {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .prompt-body-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .history-item {

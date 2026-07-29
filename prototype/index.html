@@ -1123,13 +1123,68 @@
                   <input v-model="promptEditor.changeNote" type="text" placeholder="변경 내용을 간단히 입력" autocomplete="off" />
                   <small>저장, 검증과 활성화 변경 이력에 남길 관리자 메모입니다.</small>
                 </label>
-
-                <label class="field">
-                  <span>프롬프트 본문</span>
-                  <textarea v-model="promptEditor.body" class="prompt-body-editor" rows="24" spellcheck="false"></textarea>
-                  <small>모델에 전달할 핵심 지침입니다. 위에 표시된 필수·선택 변수만 사용할 수 있습니다.</small>
-                </label>
                 </fieldset>
+
+                <section class="prompt-body-section" aria-labelledby="prompt-body-heading">
+                  <div class="prompt-body-heading">
+                    <div>
+                      <strong id="prompt-body-heading">프롬프트 본문</strong>
+                      <small>영문 원문만 저장·실행되며 한글은 관리자 확인용 번역입니다.</small>
+                    </div>
+                    <button
+                      class="prompt-copy-button"
+                      type="button"
+                      title="영문 프롬프트 복사"
+                      aria-label="영문 프롬프트 본문 복사"
+                      :disabled="!promptEditor.body"
+                      @click="copyPromptBody"
+                    >
+                      <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16">
+                        <rect x="8" y="8" width="11" height="11" rx="2"></rect>
+                        <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"></path>
+                      </svg>
+                    </button>
+                  </div>
+                  <div class="prompt-body-grid">
+                    <label class="field">
+                      <span>영문 원문</span>
+                      <textarea
+                        v-model="promptEditor.body"
+                        class="prompt-body-editor"
+                        rows="24"
+                        lang="en"
+                        spellcheck="false"
+                        :readonly="promptEditorReadOnly"
+                        @input="handlePromptBodyInput"
+                      ></textarea>
+                      <small v-if="promptBodyLanguageError" class="field-error">{{ promptBodyLanguageError }}</small>
+                      <small v-else>모델에 전달되는 영문 원문입니다. 필수·선택 변수 표기를 그대로 유지하세요.</small>
+                    </label>
+                    <label class="field">
+                      <span class="prompt-translation-label">
+                        <span>한글 번역</span>
+                        <button
+                          class="tiny-button"
+                          type="button"
+                          :disabled="promptBodyTranslationLoading || !promptEditor.body"
+                          @click.prevent="translatePromptBody({ force: true })"
+                        >
+                          {{ promptBodyTranslationLoading ? '번역 중…' : '번역 새로고침' }}
+                        </button>
+                      </span>
+                      <textarea
+                        :value="promptBodyTranslationKo"
+                        class="prompt-body-editor prompt-body-translation"
+                        rows="24"
+                        lang="ko"
+                        readonly
+                        :placeholder="promptBodyTranslationLoading ? '한글 번역을 생성하고 있습니다…' : '영문 원문의 한글 번역이 표시됩니다.'"
+                      ></textarea>
+                      <small v-if="promptBodyTranslationError" class="field-error">번역 실패: {{ promptBodyTranslationError }}</small>
+                      <small v-else>실행에는 사용되지 않는 읽기 전용 참고 번역입니다.</small>
+                    </label>
+                  </div>
+                </section>
 
                 <div class="subsection">
                   <div class="subsection-title">

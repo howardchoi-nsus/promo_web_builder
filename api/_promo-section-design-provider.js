@@ -209,6 +209,59 @@ function responseOutputText(payload) {
     .find((part) => part.type === "output_text")?.text || "";
 }
 
+function promptPlaceholders(value) {
+  return [...String(value || "").matchAll(/\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g)]
+    .map((match) => match[1])
+    .sort();
+}
+
+async function generatePromptKoreanTranslation({ text, signal }) {
+  const source = String(text || "").trim();
+  if (!source) return { translation: "", provider: null, usage: {} };
+  const model = String(
+    process.env.ADMIN_PROMPT_TRANSLATION_MODEL
+      || process.env.SECTION_LAYOUT_MODEL
+      || "gpt-4.1-mini"
+  ).trim();
+  const startedAt = Date.now();
+  const instruction = [
+    "Translate the following AI prompt from English into clear Korean for an administrator's read-only reference.",
+    "Preserve line breaks, list structure, JSON, Markdown, punctuation, identifiers, model names, URLs, and every {{placeholder}} exactly.",
+    "Do not add explanations, headings, code fences, summaries, or omitted-content markers.",
+    "Return only the Korean translation.",
+    "",
+    "<prompt>",
+    source,
+    "</prompt>",
+  ].join("\n");
+  const { payload, requestId } = await requestJson("https://api.openai.com/v1/responses", {
+    model,
+    store: false,
+    input: instruction,
+    temperature: 0,
+    max_output_tokens: 16000,
+  }, openAiHeaders(), signal, 60000);
+  const translation = responseOutputText(payload).trim();
+  if (!translation) {
+    throw Object.assign(new Error("Prompt translation returned no output"), { code: "EMPTY_PROMPT_TRANSLATION" });
+  }
+  if (JSON.stringify(promptPlaceholders(source)) !== JSON.stringify(promptPlaceholders(translation))) {
+    throw Object.assign(new Error("Prompt translation changed the variable placeholders"), {
+      code: "PROMPT_TRANSLATION_PLACEHOLDER_MISMATCH",
+    });
+  }
+  return {
+    translation,
+    provider: {
+      provider: "openai",
+      model,
+      requestId,
+      latencyMs: Date.now() - startedAt,
+    },
+    usage: payload.usage || {},
+  };
+}
+
 function imagePromptForSafeArea(
   prompt,
   safeArea,
@@ -537,6 +590,7 @@ async function generateSectionImage(input) {
 }
 
 module.exports = {
+  generatePromptKoreanTranslation,
   generateSectionDesignPlan,
   generateMultiComponentLayoutPlan,
   generateSectionCompositionPlan,

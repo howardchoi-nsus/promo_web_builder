@@ -1163,6 +1163,13 @@ const adminApp = createApp({
       promptArchivedVisibilityByLineage: {},
       promptSaving: false,
       promptHistories: [],
+      promptBodyTranslationKo: "",
+      promptBodyTranslationSource: "",
+      promptBodyTranslationLoading: false,
+      promptBodyTranslationError: "",
+      promptBodyTranslationTimer: null,
+      promptBodyLanguageError: "",
+      promptBodyTranslationCache: {},
       locales: [],
       localesLoading: false,
       localeMessages: [],
@@ -2661,6 +2668,11 @@ const adminApp = createApp({
     async selectPromptTemplate(id, options = {}) {
       this.selectedPromptTemplateId = id;
       this.expandPromptGroupForPromptId(id);
+      this.promptBodyTranslationKo = "";
+      this.promptBodyTranslationSource = "";
+      this.promptBodyTranslationError = "";
+      this.promptBodyTranslationLoading = false;
+      this.promptBodyLanguageError = "";
       const prompt = this.promptTemplates.find((item) => item.id === id);
       if (!prompt) return;
       try {
@@ -2740,6 +2752,10 @@ const adminApp = createApp({
           modelOptionsText: JSON.stringify(providerOptions, null, 2),
           changeNote: "",
         };
+        this.promptBodyLanguageError = this.promptBodyContainsKorean(detail.body)
+          ? "영문 원문에는 한글을 입력할 수 없습니다."
+          : "";
+        this.translatePromptBody();
         if (!options.silent) this.setStatus(`${detail.name} 프롬프트를 열었습니다`);
       } catch (error) {
         this.setStatus(`프롬프트 상세를 불러오지 못했습니다: ${error.message}`);
@@ -2761,6 +2777,104 @@ const adminApp = createApp({
         return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
       } catch (error) {
         throw new Error(`모델 상세 옵션 JSON 형식이 올바르지 않습니다: ${error.message}`);
+      }
+    },
+
+    schedulePromptBodyTranslation() {
+      if (this.promptBodyTranslationTimer) clearTimeout(this.promptBodyTranslationTimer);
+      this.promptBodyTranslationError = "";
+      this.promptBodyTranslationTimer = setTimeout(() => {
+        this.promptBodyTranslationTimer = null;
+        this.translatePromptBody();
+      }, 900);
+    },
+
+    promptBodyContainsKorean(value) {
+      return /[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(String(value || ""));
+    },
+
+    handlePromptBodyInput() {
+      this.promptBodyLanguageError = this.promptBodyContainsKorean(this.promptEditor.body)
+        ? "영문 원문에는 한글을 입력할 수 없습니다."
+        : "";
+      this.schedulePromptBodyTranslation();
+    },
+
+    async translatePromptBody(options = {}) {
+      const source = String(this.promptEditor.body || "");
+      if (!source.trim()) {
+        this.promptBodyTranslationKo = "";
+        this.promptBodyTranslationSource = "";
+        this.promptBodyTranslationError = "";
+        this.promptBodyTranslationLoading = false;
+        return;
+      }
+      if (!options.force && source === this.promptBodyTranslationSource && this.promptBodyTranslationKo) return;
+      const selectedPromptId = this.selectedPromptTemplateId;
+      const cached = this.promptBodyTranslationCache[selectedPromptId];
+      if (!options.force && cached?.source === source && cached.translation) {
+        this.promptBodyTranslationKo = cached.translation;
+        this.promptBodyTranslationSource = source;
+        this.promptBodyTranslationLoading = false;
+        return;
+      }
+      this.promptBodyTranslationLoading = true;
+      this.promptBodyTranslationError = "";
+      try {
+        const response = await fetch("/api/prompt-template-translate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: source }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(result.message || result.error || `프롬프트 번역 오류(${response.status})`);
+        }
+        if (selectedPromptId !== this.selectedPromptTemplateId || source !== this.promptEditor.body) return;
+        this.promptBodyTranslationKo = String(result.translation || "");
+        this.promptBodyTranslationSource = source;
+        this.promptBodyTranslationCache = {
+          ...this.promptBodyTranslationCache,
+          [selectedPromptId]: {
+            source,
+            translation: this.promptBodyTranslationKo,
+          },
+        };
+      } catch (error) {
+        if (selectedPromptId !== this.selectedPromptTemplateId || source !== this.promptEditor.body) return;
+        this.promptBodyTranslationKo = "";
+        this.promptBodyTranslationSource = "";
+        this.promptBodyTranslationError = error.message;
+      } finally {
+        if (selectedPromptId === this.selectedPromptTemplateId && source === this.promptEditor.body) {
+          this.promptBodyTranslationLoading = false;
+        }
+      }
+    },
+
+    async copyPromptBody() {
+      const text = String(this.promptEditor.body || "");
+      if (!text) {
+        this.setStatus("복사할 영문 프롬프트가 없습니다.");
+        return;
+      }
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          const textarea = document.createElement("textarea");
+          textarea.value = text;
+          textarea.setAttribute("readonly", "");
+          textarea.style.position = "fixed";
+          textarea.style.opacity = "0";
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand("copy");
+          textarea.remove();
+        }
+        this.setStatus("영문 프롬프트 본문을 복사했습니다.");
+      } catch (error) {
+        this.setStatus(`프롬프트 복사 실패: ${error.message}`);
       }
     },
 
@@ -2834,6 +2948,11 @@ const adminApp = createApp({
       if (!prompt || this.promptSaving) return;
       if (prompt.status !== "draft") {
         this.setStatus("활성·검증 완료·이전 버전은 직접 수정할 수 없습니다. 새 초안을 만들어 주세요.");
+        return;
+      }
+      if (this.promptBodyContainsKorean(this.promptEditor.body)) {
+        this.promptBodyLanguageError = "영문 원문에는 한글을 입력할 수 없습니다.";
+        this.setStatus(this.promptBodyLanguageError);
         return;
       }
       this.promptSaving = true;

@@ -9409,6 +9409,13 @@ var o_ = Object.freeze({
 				promptArchivedVisibilityByLineage: {},
 				promptSaving: !1,
 				promptHistories: [],
+				promptBodyTranslationKo: "",
+				promptBodyTranslationSource: "",
+				promptBodyTranslationLoading: !1,
+				promptBodyTranslationError: "",
+				promptBodyTranslationTimer: null,
+				promptBodyLanguageError: "",
+				promptBodyTranslationCache: {},
 				locales: [],
 				localesLoading: !1,
 				localeMessages: [],
@@ -10850,7 +10857,7 @@ var o_ = Object.freeze({
 				}
 			},
 			async selectPromptTemplate(e, t = {}) {
-				this.selectedPromptTemplateId = e, this.expandPromptGroupForPromptId(e);
+				this.selectedPromptTemplateId = e, this.expandPromptGroupForPromptId(e), this.promptBodyTranslationKo = "", this.promptBodyTranslationSource = "", this.promptBodyTranslationError = "", this.promptBodyTranslationLoading = !1, this.promptBodyLanguageError = "";
 				let n = this.promptTemplates.find((t) => t.id === e);
 				if (n) try {
 					let r = await fetch(`/api/prompt-template?id=${encodeURIComponent(e)}`), i = await r.json().catch(() => ({}));
@@ -10897,7 +10904,7 @@ var o_ = Object.freeze({
 						safetyContractText: JSON.stringify(a.safetyContract || a.modelOptions?.safetyContract || {}, null, 2),
 						modelOptionsText: JSON.stringify(c, null, 2),
 						changeNote: ""
-					}, t.silent || this.setStatus(`${a.name} 프롬프트를 열었습니다`);
+					}, this.promptBodyLanguageError = this.promptBodyContainsKorean(a.body) ? "영문 원문에는 한글을 입력할 수 없습니다." : "", this.translatePromptBody(), t.silent || this.setStatus(`${a.name} 프롬프트를 열었습니다`);
 				} catch (e) {
 					this.setStatus(`프롬프트 상세를 불러오지 못했습니다: ${e.message}`);
 				}
@@ -10913,6 +10920,69 @@ var o_ = Object.freeze({
 					return e && typeof e == "object" && !Array.isArray(e) ? e : {};
 				} catch (e) {
 					throw Error(`모델 상세 옵션 JSON 형식이 올바르지 않습니다: ${e.message}`);
+				}
+			},
+			schedulePromptBodyTranslation() {
+				this.promptBodyTranslationTimer && clearTimeout(this.promptBodyTranslationTimer), this.promptBodyTranslationError = "", this.promptBodyTranslationTimer = setTimeout(() => {
+					this.promptBodyTranslationTimer = null, this.translatePromptBody();
+				}, 900);
+			},
+			promptBodyContainsKorean(e) {
+				return /[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(String(e || ""));
+			},
+			handlePromptBodyInput() {
+				this.promptBodyLanguageError = this.promptBodyContainsKorean(this.promptEditor.body) ? "영문 원문에는 한글을 입력할 수 없습니다." : "", this.schedulePromptBodyTranslation();
+			},
+			async translatePromptBody(e = {}) {
+				let t = String(this.promptEditor.body || "");
+				if (!t.trim()) {
+					this.promptBodyTranslationKo = "", this.promptBodyTranslationSource = "", this.promptBodyTranslationError = "", this.promptBodyTranslationLoading = !1;
+					return;
+				}
+				if (!e.force && t === this.promptBodyTranslationSource && this.promptBodyTranslationKo) return;
+				let n = this.selectedPromptTemplateId, r = this.promptBodyTranslationCache[n];
+				if (!e.force && r?.source === t && r.translation) {
+					this.promptBodyTranslationKo = r.translation, this.promptBodyTranslationSource = t, this.promptBodyTranslationLoading = !1;
+					return;
+				}
+				this.promptBodyTranslationLoading = !0, this.promptBodyTranslationError = "";
+				try {
+					let e = await fetch("/api/prompt-template-translate", {
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({ text: t })
+					}), r = await e.json().catch(() => ({}));
+					if (!e.ok) throw Error(r.message || r.error || `프롬프트 번역 오류(${e.status})`);
+					if (n !== this.selectedPromptTemplateId || t !== this.promptEditor.body) return;
+					this.promptBodyTranslationKo = String(r.translation || ""), this.promptBodyTranslationSource = t, this.promptBodyTranslationCache = {
+						...this.promptBodyTranslationCache,
+						[n]: {
+							source: t,
+							translation: this.promptBodyTranslationKo
+						}
+					};
+				} catch (e) {
+					if (n !== this.selectedPromptTemplateId || t !== this.promptEditor.body) return;
+					this.promptBodyTranslationKo = "", this.promptBodyTranslationSource = "", this.promptBodyTranslationError = e.message;
+				} finally {
+					n === this.selectedPromptTemplateId && t === this.promptEditor.body && (this.promptBodyTranslationLoading = !1);
+				}
+			},
+			async copyPromptBody() {
+				let e = String(this.promptEditor.body || "");
+				if (!e) {
+					this.setStatus("복사할 영문 프롬프트가 없습니다.");
+					return;
+				}
+				try {
+					if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(e);
+					else {
+						let t = document.createElement("textarea");
+						t.value = e, t.setAttribute("readonly", ""), t.style.position = "fixed", t.style.opacity = "0", document.body.appendChild(t), t.select(), document.execCommand("copy"), t.remove();
+					}
+					this.setStatus("영문 프롬프트 본문을 복사했습니다.");
+				} catch (e) {
+					this.setStatus(`프롬프트 복사 실패: ${e.message}`);
 				}
 			},
 			promptSupportsImageSize(e = this.selectedPromptTemplate) {
@@ -10969,6 +11039,10 @@ var o_ = Object.freeze({
 				if (!(!e || this.promptSaving)) {
 					if (e.status !== "draft") {
 						this.setStatus("활성·검증 완료·이전 버전은 직접 수정할 수 없습니다. 새 초안을 만들어 주세요.");
+						return;
+					}
+					if (this.promptBodyContainsKorean(this.promptEditor.body)) {
+						this.promptBodyLanguageError = "영문 원문에는 한글을 입력할 수 없습니다.", this.setStatus(this.promptBodyLanguageError);
 						return;
 					}
 					this.promptSaving = !0;

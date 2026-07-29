@@ -68,7 +68,9 @@ let browser;
 try {
   await waitForServer();
   browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext();
+  const context = await browser.newContext({
+    permissions: ["clipboard-read", "clipboard-write"],
+  });
   const page = await context.newPage();
   const pageErrors = [];
   const consoleErrors = [];
@@ -96,6 +98,10 @@ try {
     if (url.pathname === "/api/prompt-template" && request.method() === "GET") {
       const selected = prompts.find((item) => item.id === url.searchParams.get("id"));
       return fulfill({ ok: true, prompt: selected, histories: [] });
+    }
+    if (url.pathname === "/api/prompt-template-translate" && request.method() === "POST") {
+      const text = String(request.postDataJSON().text || "");
+      return fulfill({ ok: true, translation: `한글 번역\n${text}`, provider: { provider: "openai" } });
     }
     if (url.pathname === "/api/prompt-template-validate" && request.method() === "POST") {
       const id = request.postDataJSON().id;
@@ -129,6 +135,18 @@ try {
   await page.getByRole("heading", { name: "프로모션 이미지" }).waitFor();
   await page.getByText("섹션 콘텐츠와 배경색을 바탕으로 프로모션 키비주얼을 생성합니다.", { exact: true }).first().waitFor();
   await page.getByText("선택 실행", { exact: true }).first().waitFor();
+  await page.locator(".prompt-body-grid").waitFor();
+  assert.equal(await page.locator(".prompt-body-grid textarea").count(), 2);
+  assert.equal(await page.locator(".prompt-body-grid textarea").nth(0).getAttribute("lang"), "en");
+  assert.equal(await page.locator(".prompt-body-grid textarea").nth(1).getAttribute("lang"), "ko");
+  assert.notEqual(await page.locator(".prompt-body-grid textarea").nth(0).getAttribute("readonly"), null);
+  await page.locator(".prompt-body-translation").waitFor();
+  await page.waitForFunction(() => document.querySelector(".prompt-body-translation")?.value.startsWith("한글 번역"));
+  await page.getByRole("button", { name: "영문 프롬프트 본문 복사" }).click();
+  assert.equal(
+    (await page.evaluate(() => navigator.clipboard.readText())).replace(/\r\n/g, "\n"),
+    (await page.locator(".prompt-body-grid textarea").nth(0).inputValue()).replace(/\r\n/g, "\n"),
+  );
   const workflowToggle = page.locator(".prompt-workflow-toggle");
   assert.equal(await workflowToggle.getAttribute("aria-expanded"), "true");
   await workflowToggle.click();
@@ -147,6 +165,13 @@ try {
   await backgroundGroup.getByRole("button", { name: "보관 버전 1개 보기" }).click();
   assert.equal(await backgroundGroup.locator(".prompt-version-item").count(), 4);
   await backgroundGroup.locator(".prompt-version-item").filter({ hasText: "v15" }).click();
+  const englishPromptEditor = page.locator(".prompt-body-grid textarea").nth(0);
+  assert.equal(await englishPromptEditor.getAttribute("readonly"), null);
+  const originalPromptBody = await englishPromptEditor.inputValue();
+  await englishPromptEditor.fill(`${originalPromptBody}\n한글 입력`);
+  await page.getByText("영문 원문에는 한글을 입력할 수 없습니다.", { exact: true }).waitFor();
+  await englishPromptEditor.fill(originalPromptBody);
+  assert.equal(await page.getByText("영문 원문에는 한글을 입력할 수 없습니다.", { exact: true }).count(), 0);
   await page.getByRole("button", { name: "초안 검증" }).click();
   await backgroundGroup.getByText("검증 v15", { exact: true }).waitFor();
   assert.equal(await backgroundGroup.getByText("초안 v15", { exact: true }).count(), 0);
