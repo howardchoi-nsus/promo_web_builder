@@ -26,7 +26,7 @@ assert.match(app, /builderDocumentId/);
 assert.match(app, /mode", "output"/);
 assert.match(documentsApi, /if \(req\.method === "PATCH"\)/);
 assert.match(documentsApi, /createDocumentRevision/);
-assert.match(documentsApi, /source: "visual-editor"/);
+assert.match(documentsApi, /source: "manual"/);
 assert.match(documentsApi, /assets: currentSnapshot\.assets/);
 assert.match(documentsApi, /motionSpec: currentSnapshot\.motionSpec/);
 assert.match(composition, /buildDefaultItemStyles/);

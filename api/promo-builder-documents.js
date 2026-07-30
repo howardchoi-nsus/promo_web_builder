@@ -181,7 +181,7 @@ module.exports = async function handler(req, res) {
         ownerSubject: owner.ownerSubject,
         baseDocumentRevision,
         snapshot,
-        source: "visual-editor",
+        source: "manual",
         changeNote: String(body.changeNote || "Visual Editor changes saved.").slice(0, 500),
       });
       return res.status(200).json({
