@@ -172,6 +172,23 @@
   margin-left: auto;
 }
 
+.ai-builder-warning {
+  display: flex;
+  width: min(1120px, 100%);
+  margin: 0 auto 16px;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 16px;
+  border: 1px solid var(--app-warning-line, #e7c46a);
+  border-radius: 8px;
+  background: var(--app-warning-soft, #fff8df);
+  color: var(--app-warning-ink, #6f5000);
+}
+
+.ai-builder-warning button {
+  margin-left: auto;
+}
+
 .ai-operation-form {
   position: fixed;
   z-index: 100;

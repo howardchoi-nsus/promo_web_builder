@@ -31,6 +31,7 @@ export function createAiBuilderState(overrides = {}) {
     proposal: null,
     snapshot: null,
     assetJobs: {},
+    warning: null,
     error: null,
     ...overrides,
   };

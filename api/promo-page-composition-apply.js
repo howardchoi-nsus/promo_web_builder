@@ -8,8 +8,7 @@ const {
 } = require("./_promo-builder-document-store");
 const { fetchPageCompositionCandidates } = require("./_promo-page-composition-candidates");
 const {
-  enqueueBuilderAssetJobs,
-  scheduleBuilderAssetJobs,
+  enqueueAndScheduleBuilderAssetJobs,
 } = require("./_promo-builder-assets");
 const { requireBuilderFlag } = require("./_promo-builder-flags");
 
@@ -60,18 +59,19 @@ module.exports = async function handler(req, res) {
       snapshot: proposal.snapshot,
       changeNote: "AI page composition applied.",
     });
-    const assetJobs = await enqueueBuilderAssetJobs(sql, {
+    const { assetJobs, assetWarning } = await enqueueAndScheduleBuilderAssetJobs(sql, {
       documentId,
       documentRevision: applied.revision,
       snapshot: applied.snapshot,
     });
-    scheduleBuilderAssetJobs(assetJobs);
     return res.status(200).json({
       ok: true,
       documentId,
       revision: applied.revision,
       snapshot: applied.snapshot,
       assetJobs,
+      assetWarning,
+      warnings: assetWarning ? [assetWarning] : [],
     });
   } catch (error) {
     const status = /access denied/i.test(error.message) ? 403

@@ -1,6 +1,8 @@
 const { createHash } = require("node:crypto");
 const { createPromptExecutionSnapshot } = require("./_prompt-execution-snapshot");
 
+const SECTION_DESIGN_ASSET_REQUEST_MODE = "assets";
+
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
@@ -124,7 +126,7 @@ async function enqueueBuilderAssetJobs(sql, {
             fieldKey: request.fieldKey || null,
           },
         })}::jsonb,
-        'image-only',
+        ${SECTION_DESIGN_ASSET_REQUEST_MODE},
         ${JSON.stringify([component?.componentVersionId].filter(Boolean))}::jsonb,
         ${snapshot.appearance?.designTokenSetVersionId || null}::uuid,
         ${JSON.stringify({ documentRevision })}::jsonb,
@@ -236,6 +238,32 @@ function scheduleBuilderAssetJobs(jobs) {
   return true;
 }
 
+async function enqueueAndScheduleBuilderAssetJobs(sql, options, dependencies = {}) {
+  const enqueue = dependencies.enqueue || enqueueBuilderAssetJobs;
+  const schedule = dependencies.schedule || scheduleBuilderAssetJobs;
+  const reportError = dependencies.reportError || console.error;
+  try {
+    const assetJobs = await enqueue(sql, options);
+    schedule(assetJobs);
+    return { assetJobs, assetWarning: null };
+  } catch (error) {
+    reportError("Builder composition applied but asset enqueue failed", {
+      code: error.code || null,
+      message: error.message,
+      documentId: options?.documentId || null,
+      documentRevision: options?.documentRevision || null,
+    });
+    return {
+      assetJobs: [],
+      assetWarning: {
+        code: "ASSET_ENQUEUE_FAILED",
+        detailCode: error.code || null,
+        message: "프로모션 구성은 적용되었지만 이미지 생성을 시작하지 못했습니다. 이미지 생성을 다시 요청해 주세요.",
+      },
+    };
+  }
+}
+
 async function hydrateBuilderAssetResults(sql, documentId, snapshot) {
   if (!snapshot?.assets?.requests?.length) return snapshot;
   const requestIds = snapshot.assets.requests.map((request) => request.assetRequestId);
@@ -292,7 +320,9 @@ async function hydrateBuilderAssetResults(sql, documentId, snapshot) {
 }
 
 module.exports = {
+  SECTION_DESIGN_ASSET_REQUEST_MODE,
   enqueueBuilderAssetJobs,
+  enqueueAndScheduleBuilderAssetJobs,
   scheduleBuilderAssetJobs,
   hydrateBuilderAssetResults,
 };
