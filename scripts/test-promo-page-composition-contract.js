@@ -4,6 +4,9 @@ const {
   validatePageCompositionProposal,
   normalizePageComposition,
 } = require("../api/_promo-page-composition-contract");
+const {
+  generateValidatedComposition,
+} = require("../api/_promo-page-composition-service");
 
 const candidates = {
   candidateFingerprint: "candidate-hash",
@@ -109,4 +112,93 @@ assert.throws(() => validatePageCompositionProposal({
   sections: [],
 }, candidates), /Required section|at least one section/);
 
-console.log("Promo page composition contract tests passed");
+const duplicateValidated = validatePageCompositionProposal({
+  ...result,
+  sections: [result.sections[0], result.sections[0]],
+}, candidates);
+assert.equal(duplicateValidated.sections.length, 1);
+assert.match(duplicateValidated.warnings[0], /Duplicate section was removed/);
+
+const secondComponent = {
+  ...candidates.templates[0].sections[0].components[0],
+  componentInstanceId: "instance-2",
+  itemKey: "description",
+  isRequired: false,
+};
+const scopedCandidates = {
+  ...candidates,
+  templates: [{
+    ...candidates.templates[0],
+    sections: [
+      {
+        ...candidates.templates[0].sections[0],
+        components: candidates.templates[0].sections[0].components,
+      },
+      {
+        ...candidates.templates[0].sections[0],
+        sectionId: "section-2",
+        sectionKey: "details",
+        isRequired: false,
+        resolvedRequired: false,
+        components: [secondComponent],
+      },
+    ],
+  }],
+};
+
+assert.throws(() => validatePageCompositionProposal({
+  ...result,
+  sections: [{
+    ...result.sections[0],
+    components: [{
+      componentInstanceId: "instance-2",
+      visible: true,
+      contentBindings: [],
+    }],
+  }],
+}, scopedCandidates), (error) => error.code === "COMPONENT_NOT_IN_SECTION");
+
+const retryCandidates = {
+  ...candidates,
+  templates: [
+    candidates.templates[0],
+    {
+      ...candidates.templates[0],
+      templateId: "template-2",
+      templateKey: "alternate",
+      sections: [{
+        ...candidates.templates[0].sections[0],
+        sectionId: "section-other",
+        sectionKey: "other",
+      }],
+    },
+  ],
+};
+let generationAttempts = 0;
+const retryResult = generateValidatedComposition({
+  candidates: retryCandidates,
+  promptConfig: { renderedPrompt: "Build the promotion", model: "test-model" },
+  generate: async ({ schema, promptConfig }) => {
+    generationAttempts += 1;
+    if (generationAttempts === 1) {
+      return {
+        result: {
+          ...result,
+          sections: [{ ...result.sections[0], sectionId: "section-other" }],
+        },
+      };
+    }
+    assert.deepEqual(schema.properties.templateId.enum, ["template-1"]);
+    assert.match(promptConfig.renderedPrompt, /Use only templateId template-1/);
+    return { result };
+  },
+});
+
+retryResult.then(({ validated: retried }) => {
+  assert.equal(generationAttempts, 2);
+  assert.equal(retried.template.templateId, "template-1");
+  console.log("Promo page composition contract tests passed");
+}).catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

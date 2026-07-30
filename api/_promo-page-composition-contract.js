@@ -111,10 +111,20 @@ function validatePageCompositionProposal(result, candidates) {
   const allowedSections = new Map(template.sections.map((section) => [section.sectionId, section]));
   const seenSections = new Set();
   const sections = [];
+  const warnings = Array.isArray(result.warnings)
+    ? result.warnings.map(String).slice(0, 30)
+    : [];
   for (const planned of Array.isArray(result.sections) ? result.sections : []) {
     const section = allowedSections.get(planned.sectionId);
-    if (!section || seenSections.has(planned.sectionId)) {
-      throw Object.assign(new Error("Planner returned a duplicate or unavailable section"), { code: "INVALID_SECTION" });
+    if (!section) {
+      throw Object.assign(
+        new Error("Planner returned a section that is not available in the selected template"),
+        { code: "SECTION_NOT_IN_TEMPLATE", retryable: true },
+      );
+    }
+    if (seenSections.has(planned.sectionId)) {
+      warnings.push(`Duplicate section was removed: ${planned.sectionId}`);
+      continue;
     }
     seenSections.add(planned.sectionId);
     const allowedComponents = new Map(
@@ -124,24 +134,35 @@ function validatePageCompositionProposal(result, candidates) {
     const components = [];
     for (const plannedComponent of Array.isArray(planned.components) ? planned.components : []) {
       const component = allowedComponents.get(plannedComponent.componentInstanceId);
-      if (!component || seenComponents.has(plannedComponent.componentInstanceId)) {
-        throw Object.assign(new Error("Planner returned a duplicate or unavailable component"), { code: "INVALID_COMPONENT" });
+      if (!component) {
+        throw Object.assign(
+          new Error("Planner returned a component that is not available in its section"),
+          { code: "COMPONENT_NOT_IN_SECTION", retryable: true },
+        );
+      }
+      if (seenComponents.has(plannedComponent.componentInstanceId)) {
+        warnings.push(`Duplicate component was removed: ${plannedComponent.componentInstanceId}`);
+        continue;
       }
       seenComponents.add(plannedComponent.componentInstanceId);
       const allowedFields = new Set(component.fields.map((field) => field.fieldKey));
       const seenFields = new Set();
-      const contentBindings = (plannedComponent.contentBindings || []).map((binding) => {
+      const contentBindings = [];
+      for (const binding of plannedComponent.contentBindings || []) {
         if (!allowedFields.has(binding.fieldKey)
-          || !OVERVIEW_FIELDS.includes(binding.sourceOverviewPath)
-          || seenFields.has(binding.fieldKey)) {
+          || !OVERVIEW_FIELDS.includes(binding.sourceOverviewPath)) {
           throw Object.assign(new Error("Planner returned an invalid content binding"), { code: "INVALID_CONTENT_BINDING" });
         }
+        if (seenFields.has(binding.fieldKey)) {
+          warnings.push(`Duplicate content binding was removed: ${plannedComponent.componentInstanceId}.${binding.fieldKey}`);
+          continue;
+        }
         seenFields.add(binding.fieldKey);
-        return {
+        contentBindings.push({
           fieldKey: binding.fieldKey,
           sourceOverviewPath: binding.sourceOverviewPath,
-        };
-      });
+        });
+      }
       if (component.isRequired && plannedComponent.visible === false) {
         throw Object.assign(new Error("Required component cannot be hidden"), { code: "REQUIRED_COMPONENT_HIDDEN" });
       }
@@ -187,7 +208,7 @@ function validatePageCompositionProposal(result, candidates) {
     template,
     tokenSet,
     sections: sections.sort((left, right) => left.sortOrder - right.sortOrder),
-    warnings: Array.isArray(result.warnings) ? result.warnings.map(String).slice(0, 30) : [],
+    warnings: warnings.slice(0, 30),
     summary: String(result.summary || "").trim().slice(0, 1000),
   };
 }
