@@ -164,15 +164,21 @@ try {
       },
     },
   };
+  const beforeRefreshResponse = await page.request.get(
+    `${origin}/api/wizard-form-template-layout?templateId=visual-editor-preview-template`,
+  );
+  assert.equal(beforeRefreshResponse.ok(), true, "Current Admin layout revision should load before refresh");
+  const beforeRefresh = await beforeRefreshResponse.json();
+  const expectedRefreshRevision = Number(beforeRefresh.layout.layoutRevision);
   const refreshSaveResponse = await page.request.patch(`${origin}/api/wizard-form-template-layout`, {
     data: {
       templateId: "visual-editor-preview-template",
-      expectedRevision: 2,
+      expectedRevision: expectedRefreshRevision,
       layoutSpec: refreshedLayout,
     },
   });
   assert.equal(refreshSaveResponse.ok(), true, "A newer Admin layout save should succeed while Create Promo is open");
-  assert.equal((await refreshSaveResponse.json()).layout.layoutRevision, 3);
+  assert.equal((await refreshSaveResponse.json()).layout.layoutRevision, expectedRefreshRevision + 1);
 
   const currentPublicResponse = await page.request.get(
     `${origin}/api/wizard-form-template-public?id=visual-editor-preview-template`,
