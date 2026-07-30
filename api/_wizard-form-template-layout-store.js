@@ -54,6 +54,51 @@ function normalizeDefaultContent(value, sections = []) {
   return result;
 }
 
+function normalizeCompositionSnapshot(value, fallback = []) {
+  const source = Array.isArray(value) ? value : fallback;
+  if (!Array.isArray(source) || source.length > 100) {
+    const error = new Error("Template composition snapshot is invalid");
+    error.statusCode = 422;
+    error.code = "INVALID_COMPOSITION_SNAPSHOT";
+    throw error;
+  }
+  const snapshot = clone(source);
+  const sectionKeys = new Set();
+  snapshot.forEach((section) => {
+    const sectionKey = String(section?.sectionKey || "").trim();
+    if (!sectionKey || sectionKey.length > 128 || sectionKeys.has(sectionKey)) {
+      const error = new Error("Template composition section keys must be unique");
+      error.statusCode = 422;
+      error.code = "INVALID_COMPOSITION_SNAPSHOT";
+      throw error;
+    }
+    sectionKeys.add(sectionKey);
+    section.sectionKey = sectionKey;
+    const items = Array.isArray(section.items) ? section.items : [];
+    const itemKeys = new Set();
+    if (items.length > 200) {
+      const error = new Error("Template composition section has too many components");
+      error.statusCode = 422;
+      error.code = "INVALID_COMPOSITION_SNAPSHOT";
+      throw error;
+    }
+    items.forEach((item) => {
+      const itemKey = String(item?.itemKey || "").trim();
+      if (!itemKey || itemKey.length > 128 || itemKeys.has(itemKey)) {
+        const error = new Error("Template composition component keys must be unique in a section");
+        error.statusCode = 422;
+        error.code = "INVALID_COMPOSITION_SNAPSHOT";
+        throw error;
+      }
+      itemKeys.add(itemKey);
+      item.itemKey = itemKey;
+      item.fields = Array.isArray(item.fields) ? item.fields.slice(0, 100) : [];
+    });
+    section.items = items;
+  });
+  return snapshot;
+}
+
 function validateLayoutSpec(value, sections = []) {
   const spec = normalizeLayoutSpec(value);
   const errors = [];
@@ -152,7 +197,7 @@ function validateLayoutSpec(value, sections = []) {
 async function fetchLayoutRow(sql, templateId) {
   const rows = await sql`
     select id::text, form_template_id::text, renderer_key, renderer_version,
-      contract_version, layout_revision, layout_spec, default_content, validation_result,
+      contract_version, layout_revision, layout_spec, default_content, composition_snapshot, validation_result,
       change_note, created_at, updated_at
     from wizard_form_template_layouts
     where form_template_id = ${templateId}::uuid
@@ -170,6 +215,7 @@ function toLayout(row) {
     layoutRevision: 1,
     layoutSpec: clone(DEFAULT_LAYOUT_SPEC),
     defaultContent: {},
+    compositionSnapshot: [],
     validationResult: { ok: true, errors: [], warnings: [] },
     changeNote: "",
     createdAt: null,
@@ -184,6 +230,7 @@ function toLayout(row) {
     layoutRevision: Number(row.layout_revision || 1),
     layoutSpec: normalizeLayoutSpec(row.layout_spec),
     defaultContent: clone(row.default_content || {}),
+    compositionSnapshot: Array.isArray(row.composition_snapshot) ? clone(row.composition_snapshot) : [],
     validationResult: row.validation_result || {},
     changeNote: row.change_note || "",
     createdAt: row.created_at || null,
@@ -227,16 +274,16 @@ async function ensureLayout(sql, templateId) {
   const rows = await sql`
     insert into wizard_form_template_layouts (
       form_template_id, renderer_key, renderer_version, contract_version,
-      layout_revision, layout_spec, default_content, validation_result, change_note
+      layout_revision, layout_spec, default_content, composition_snapshot, validation_result, change_note
     ) values (
       ${templateId}::uuid, 'default-promo-renderer', 1, 1, 1,
-      ${JSON.stringify(DEFAULT_LAYOUT_SPEC)}::jsonb, '{}'::jsonb,
+      ${JSON.stringify(DEFAULT_LAYOUT_SPEC)}::jsonb, '{}'::jsonb, '[]'::jsonb,
       '{"ok":true,"errors":[],"warnings":[]}'::jsonb,
       'Default layout initialized.'
     )
     on conflict (form_template_id) do update set form_template_id = excluded.form_template_id
     returning id::text, form_template_id::text, renderer_key, renderer_version,
-      contract_version, layout_revision, layout_spec, default_content, validation_result,
+      contract_version, layout_revision, layout_spec, default_content, composition_snapshot, validation_result,
       change_note, created_at, updated_at
   `;
   return rows[0];
@@ -247,11 +294,11 @@ async function cloneLayout(sql, sourceTemplateId, targetTemplateId) {
   const rows = await sql`
     insert into wizard_form_template_layouts (
       form_template_id, renderer_key, renderer_version, contract_version,
-      layout_revision, layout_spec, default_content, validation_result, change_note
+      layout_revision, layout_spec, default_content, composition_snapshot, validation_result, change_note
     ) values (
       ${targetTemplateId}::uuid, ${source.rendererKey}, ${source.rendererVersion},
       ${source.contractVersion}, 1, ${JSON.stringify(source.layoutSpec)}::jsonb,
-      ${JSON.stringify(source.defaultContent)}::jsonb,
+      ${JSON.stringify(source.defaultContent)}::jsonb, ${JSON.stringify(source.compositionSnapshot)}::jsonb,
       ${JSON.stringify(source.validationResult)}::jsonb, 'Layout cloned with form template.'
     )
     on conflict (form_template_id) do update set
@@ -260,6 +307,7 @@ async function cloneLayout(sql, sourceTemplateId, targetTemplateId) {
       contract_version = excluded.contract_version,
       layout_spec = excluded.layout_spec,
       default_content = excluded.default_content,
+      composition_snapshot = excluded.composition_snapshot,
       validation_result = excluded.validation_result,
       change_note = excluded.change_note,
       updated_at = now()
@@ -275,6 +323,11 @@ async function remapLayoutSectionKey(sql, templateId, previousKey, nextKey) {
   const layout = toLayout(row);
   const spec = clone(layout.layoutSpec);
   const defaultContent = clone(layout.defaultContent);
+  const compositionSnapshot = clone(layout.compositionSnapshot).map((section) => (
+    section.sectionKey === previousKey
+      ? { ...section, sectionKey: nextKey }
+      : section
+  ));
   if (Object.prototype.hasOwnProperty.call(spec.sectionStyles || {}, previousKey)) {
     spec.sectionStyles[nextKey] = spec.sectionStyles[previousKey];
     delete spec.sectionStyles[previousKey];
@@ -293,6 +346,7 @@ async function remapLayoutSectionKey(sql, templateId, previousKey, nextKey) {
       layout_revision = layout_revision + 1,
       layout_spec = ${JSON.stringify(spec)}::jsonb,
       default_content = ${JSON.stringify(defaultContent)}::jsonb,
+      composition_snapshot = ${JSON.stringify(compositionSnapshot)}::jsonb,
       change_note = ${`Layout keys remapped from ${previousKey} to ${nextKey}.`},
       updated_at = now()
     where form_template_id = ${templateId}::uuid
@@ -305,6 +359,7 @@ module.exports = {
   DEFAULT_LAYOUT_SPEC,
   normalizeLayoutSpec,
   normalizeDefaultContent,
+  normalizeCompositionSnapshot,
   validateLayoutSpec,
   fetchLayoutRow,
   toLayout,

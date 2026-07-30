@@ -43,6 +43,7 @@
       templateInputs: {},
       templateDefaultContents: {},
       templateSectionOrders: {},
+      templateSectionDefinitions: {},
       templateLayouts: {},
       sectionInputs: {},
     };

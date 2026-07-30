@@ -1,0 +1,1339 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>GG Summer Series 2026 — $100,000,000 GTD | GGPoker</title>
+<meta name="description" content="GG Summer Series 2026. 312 events, $100,000,000 guaranteed. July 5 – August 2, 2026." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+/* ============================================================
+   Design tokens — mirrors the project's --promo-* vocabulary
+   (shared/promo-token-runtime.mjs) with the GGPoker dark theme.
+   ============================================================ */
+:root {
+  --promo-bg:              #000000;
+  --promo-surface:         #0E0E12;
+  --promo-surface-raised:  #16161C;
+  --promo-surface-sunken:  #08080A;
+  --promo-line:            #26262E;
+  --promo-line-strong:     #63636F; /* >=3:1 on --promo-bg for interactive borders (WCAG 1.4.11) */
+
+  --promo-ink:             #FFFFFF;
+  --promo-ink-soft:        #C6C6CF;
+  --promo-ink-fade:        #9A9AA6;
+  --promo-muted:           #82828E;
+
+  --promo-accent:          #FF2F2F;
+  --promo-accent-deep:     #D30000;
+  --promo-accent-ink:      #FF6B6B;
+  --promo-accent-soft:     rgba(255, 47, 47, 0.14);
+  --promo-gold:            #F7A609;
+  --promo-success:         #12B76A;
+
+  /* CTA uses the deeper brand red so #FFFFFF label text clears 4.5:1 (5.57:1). */
+  --promo-cta-bg:          #D30000;
+  --promo-cta-bg-hover:    #E01414;
+  --promo-cta-ink:         #FFFFFF;
+  --promo-cta-radius:      6px;
+
+  --promo-radius:          10px;
+  --promo-radius-small:    6px;
+  --promo-radius-pill:     999px;
+  --promo-border-width:    1px;
+  --promo-component-shadow: 0 18px 48px rgba(0, 0, 0, 0.55);
+  --promo-glow:            0 0 0 1px rgba(255, 47, 47, 0.28), 0 18px 60px rgba(255, 47, 47, 0.18);
+
+  --promo-font:            "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --promo-font-mono:       "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --promo-font-size-main-title: 68px;
+  --promo-font-size-lead-title: 40px;
+  --promo-font-size-subtitle:   23px;
+  --promo-font-size-body:       16px;
+  --promo-font-size-small:      13px;
+  --promo-font-size-xs:         11px;
+
+  --promo-font-weight-strong: 800;
+  --promo-font-weight-title:  900;
+
+  --promo-space-1: 4px;
+  --promo-space-2: 8px;
+  --promo-space-3: 12px;
+  --promo-space-4: 16px;
+  --promo-space-5: 24px;
+  --promo-space-6: 40px;
+  --promo-space-7: 64px;
+  --promo-space-8: 96px;
+
+  --promo-button-height: 52px;
+  --promo-page-width: 1200px;
+
+  --promo-transition-duration: 200ms;
+  --promo-transition-ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+/* ---------- base ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; scroll-padding-top: 84px; }
+
+body {
+  margin: 0;
+  background: var(--promo-bg);
+  color: var(--promo-ink);
+  font-family: var(--promo-font);
+  font-size: var(--promo-font-size-body);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+img { max-width: 100%; display: block; }
+a { color: inherit; }
+
+h1, h2, h3, h4 { margin: 0; line-height: 1.08; letter-spacing: -0.02em; }
+p { margin: 0; }
+ul, ol { margin: 0; padding: 0; list-style: none; }
+
+:focus-visible {
+  outline: 2px solid var(--promo-accent);
+  outline-offset: 3px;
+  border-radius: var(--promo-radius-small);
+}
+
+.num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+
+.shell {
+  width: 100%;
+  max-width: var(--promo-page-width);
+  margin-inline: auto;
+  padding-inline: var(--promo-space-5);
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  background: var(--promo-accent);
+  color: #fff;
+  padding: 12px 20px;
+  font-weight: 700;
+}
+.skip-link:focus { left: 12px; top: 12px; }
+
+/* ---------- shared atoms ---------- */
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--promo-space-2);
+  font-size: var(--promo-font-size-xs);
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--promo-accent);
+}
+.eyebrow::before {
+  content: "";
+  width: 22px;
+  height: 2px;
+  background: var(--promo-accent);
+}
+
+.section-title {
+  font-size: var(--promo-font-size-lead-title);
+  font-weight: var(--promo-font-weight-title);
+  letter-spacing: -0.03em;
+}
+
+.section-lede {
+  color: var(--promo-muted);
+  max-width: 60ch;
+  font-size: var(--promo-font-size-body);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--promo-space-2);
+  min-height: var(--promo-button-height);
+  padding: 0 var(--promo-space-6);
+  border: var(--promo-border-width) solid transparent;
+  border-radius: var(--promo-cta-radius);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform var(--promo-transition-duration) var(--promo-transition-ease),
+              background-color var(--promo-transition-duration) var(--promo-transition-ease),
+              border-color var(--promo-transition-duration) var(--promo-transition-ease);
+}
+.btn--primary {
+  background: var(--promo-cta-bg);
+  color: var(--promo-cta-ink);
+  box-shadow: 0 12px 32px rgba(211, 0, 0, 0.32);
+}
+.btn--primary:hover { background: var(--promo-cta-bg-hover); transform: translateY(-2px); }
+.btn--ghost {
+  background: transparent;
+  color: var(--promo-ink);
+  border-color: var(--promo-line-strong);
+}
+.btn--ghost:hover { border-color: var(--promo-ink); transform: translateY(-2px); }
+.btn--sm { min-height: 40px; padding: 0 var(--promo-space-5); font-size: 13px; }
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: var(--promo-radius-pill);
+  font-size: var(--promo-font-size-xs);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.tag--accent { background: var(--promo-accent-soft); color: var(--promo-accent-ink); }
+.tag--gold   { background: rgba(247, 166, 9, 0.15); color: var(--promo-gold); }
+.tag--live   { background: rgba(18, 183, 106, 0.16); color: var(--promo-success); }
+.tag--neutral{ background: rgba(255,255,255,0.07); color: var(--promo-ink-soft); }
+
+/* ---------- header ---------- */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(14px);
+  border-bottom: var(--promo-border-width) solid var(--promo-line);
+}
+.site-header__inner {
+  display: flex;
+  align-items: center;
+  gap: var(--promo-space-6);
+  height: 72px;
+}
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-weight: 900;
+  font-size: 21px;
+  letter-spacing: -0.04em;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+.brand__gg {
+  color: var(--promo-accent);
+  font-size: 25px;
+  letter-spacing: -0.06em;
+}
+.site-nav { display: flex; gap: var(--promo-space-6); margin-left: auto; }
+.site-nav a {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--promo-ink-soft);
+  text-decoration: none;
+  transition: color var(--promo-transition-duration);
+}
+.site-nav a:hover { color: var(--promo-ink); }
+
+/* ---------- hero ---------- */
+.hero {
+  position: relative;
+  overflow: hidden;
+  border-bottom: var(--promo-border-width) solid var(--promo-line);
+  padding-block: var(--promo-space-8) var(--promo-space-7);
+}
+.hero__glow {
+  position: absolute;
+  inset: -40% 10% auto -10%;
+  height: 720px;
+  background: radial-gradient(50% 50% at 30% 40%, rgba(255, 47, 47, 0.30) 0%, rgba(255, 47, 47, 0) 70%);
+  pointer-events: none;
+}
+.hero__grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(255,255,255,0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.045) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: radial-gradient(80% 60% at 50% 30%, #000 30%, transparent 100%);
+  pointer-events: none;
+}
+.hero__inner { position: relative; }
+
+.hero__dates {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--promo-space-3);
+  margin-top: var(--promo-space-4);
+  padding: 8px 16px;
+  border: var(--promo-border-width) solid var(--promo-line-strong);
+  border-radius: var(--promo-radius-pill);
+  font-size: var(--promo-font-size-small);
+  font-weight: 600;
+  color: var(--promo-ink-soft);
+}
+.hero__dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--promo-success);
+  box-shadow: 0 0 0 4px rgba(18, 183, 106, 0.18);
+}
+
+.hero__title {
+  margin-top: var(--promo-space-5);
+  font-size: var(--promo-font-size-main-title);
+  font-weight: var(--promo-font-weight-title);
+  letter-spacing: -0.045em;
+  line-height: 0.94;
+  text-transform: uppercase;
+  max-width: 13ch;
+}
+.hero__title em {
+  font-style: normal;
+  color: var(--promo-accent);
+}
+
+.hero__gtd {
+  margin-top: var(--promo-space-6);
+  display: flex;
+  align-items: flex-end;
+  gap: var(--promo-space-4);
+  flex-wrap: wrap;
+}
+.hero__gtd-amount {
+  font-family: var(--promo-font);
+  font-size: clamp(52px, 8vw, 104px);
+  font-weight: 900;
+  letter-spacing: -0.055em;
+  line-height: 0.9;
+  background: linear-gradient(180deg, var(--promo-ink) 30%, var(--promo-ink-fade) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.hero__gtd-label {
+  padding-bottom: 10px;
+  font-size: var(--promo-font-size-subtitle);
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  color: var(--promo-accent);
+}
+
+.hero__lede {
+  margin-top: var(--promo-space-5);
+  max-width: 54ch;
+  font-size: 18px;
+  color: var(--promo-ink-soft);
+}
+
+.hero__actions {
+  margin-top: var(--promo-space-6);
+  display: flex;
+  gap: var(--promo-space-3);
+  flex-wrap: wrap;
+}
+
+.hero__meta {
+  margin-top: var(--promo-space-4);
+  font-size: var(--promo-font-size-small);
+  color: var(--promo-muted);
+}
+
+/* ---------- stat strip ---------- */
+.stats {
+  border-bottom: var(--promo-border-width) solid var(--promo-line);
+  background: var(--promo-surface-sunken);
+}
+.stats__grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+.stats__item {
+  padding: var(--promo-space-6) var(--promo-space-5);
+  border-left: var(--promo-border-width) solid var(--promo-line);
+}
+.stats__item:first-child { border-left: 0; }
+.stats__value {
+  font-size: 34px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+.stats__value span { color: var(--promo-accent); }
+.stats__label {
+  margin-top: var(--promo-space-2);
+  font-size: var(--promo-font-size-xs);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--promo-muted);
+}
+
+/* ---------- generic section ---------- */
+.section { padding-block: var(--promo-space-8); }
+.section--alt { background: var(--promo-surface); border-block: var(--promo-border-width) solid var(--promo-line); }
+.section__head { max-width: 720px; }
+.section__head .section-title { margin-top: var(--promo-space-3); }
+.section__head .section-lede { margin-top: var(--promo-space-4); }
+
+/* ---------- highlight cards ---------- */
+.cards {
+  margin-top: var(--promo-space-7);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--promo-space-4);
+}
+.card {
+  position: relative;
+  padding: var(--promo-space-5);
+  background: var(--promo-surface-raised);
+  border: var(--promo-border-width) solid var(--promo-line);
+  border-radius: var(--promo-radius);
+  transition: border-color var(--promo-transition-duration) var(--promo-transition-ease),
+              transform var(--promo-transition-duration) var(--promo-transition-ease);
+}
+.card:hover { border-color: var(--promo-line-strong); transform: translateY(-3px); }
+.card__title {
+  margin-top: var(--promo-space-4);
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.card__amount {
+  margin-top: var(--promo-space-2);
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: var(--promo-ink);
+}
+.card__text {
+  margin-top: var(--promo-space-3);
+  font-size: 14px;
+  color: var(--promo-muted);
+}
+.card__meta {
+  margin-top: var(--promo-space-4);
+  padding-top: var(--promo-space-4);
+  border-top: var(--promo-border-width) solid var(--promo-line);
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--promo-font-size-small);
+  color: var(--promo-ink-soft);
+}
+
+/* ---------- main event feature ---------- */
+.feature {
+  margin-top: var(--promo-space-7);
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 0;
+  border: var(--promo-border-width) solid var(--promo-line);
+  border-radius: var(--promo-radius);
+  overflow: hidden;
+  background: var(--promo-surface-raised);
+}
+.feature__body { padding: var(--promo-space-7); }
+.feature__title {
+  margin-top: var(--promo-space-4);
+  font-size: 42px;
+  font-weight: 900;
+  letter-spacing: -0.035em;
+  line-height: 1.02;
+}
+.feature__text { margin-top: var(--promo-space-4); color: var(--promo-ink-soft); }
+.feature__list { margin-top: var(--promo-space-5); display: grid; gap: var(--promo-space-3); }
+.feature__list li {
+  display: flex;
+  gap: var(--promo-space-3);
+  align-items: baseline;
+  font-size: 15px;
+  color: var(--promo-ink-soft);
+}
+.feature__list li::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--promo-accent);
+  transform: translateY(-2px);
+}
+.feature__aside {
+  padding: var(--promo-space-7);
+  background:
+    radial-gradient(90% 70% at 80% 10%, rgba(255,47,47,0.20) 0%, rgba(255,47,47,0) 65%),
+    var(--promo-surface-sunken);
+  border-left: var(--promo-border-width) solid var(--promo-line);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--promo-space-5);
+}
+.feature__stat-value {
+  font-size: 46px;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+.feature__stat-label {
+  margin-top: 6px;
+  font-size: var(--promo-font-size-xs);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--promo-muted);
+}
+
+/* ---------- schedule ---------- */
+.filters {
+  margin-top: var(--promo-space-6);
+  display: flex;
+  gap: var(--promo-space-2);
+  flex-wrap: wrap;
+}
+.filter {
+  padding: 9px 18px;
+  background: transparent;
+  border: var(--promo-border-width) solid var(--promo-line-strong);
+  border-radius: var(--promo-radius-pill);
+  color: var(--promo-ink-soft);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--promo-transition-duration) var(--promo-transition-ease);
+}
+.filter:hover { border-color: var(--promo-ink); color: var(--promo-ink); }
+.filter[aria-pressed="true"] {
+  background: var(--promo-cta-bg);
+  border-color: var(--promo-cta-bg);
+  color: var(--promo-cta-ink);
+}
+
+.table-wrap {
+  margin-top: var(--promo-space-5);
+  border: var(--promo-border-width) solid var(--promo-line);
+  border-radius: var(--promo-radius);
+  overflow: hidden;
+  background: var(--promo-surface-raised);
+}
+table.schedule {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+.schedule thead th {
+  padding: 14px var(--promo-space-5);
+  text-align: left;
+  background: var(--promo-surface-sunken);
+  border-bottom: var(--promo-border-width) solid var(--promo-line);
+  font-size: var(--promo-font-size-xs);
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--promo-muted);
+  white-space: nowrap;
+}
+.schedule tbody tr {
+  border-bottom: var(--promo-border-width) solid var(--promo-line);
+  transition: background-color var(--promo-transition-duration);
+}
+.schedule tbody tr:last-child { border-bottom: 0; }
+.schedule tbody tr:hover { background: rgba(255,255,255,0.028); }
+.schedule td {
+  padding: 16px var(--promo-space-5);
+  vertical-align: middle;
+}
+.schedule .col-date { color: var(--promo-muted); font-family: var(--promo-font-mono); font-size: 13px; white-space: nowrap; }
+.schedule .col-event { font-weight: 700; }
+.schedule .col-event small { display: block; margin-top: 3px; font-weight: 500; color: var(--promo-muted); font-size: 12.5px; }
+.schedule .col-buyin { font-family: var(--promo-font-mono); font-weight: 500; white-space: nowrap; }
+.schedule .col-gtd { font-family: var(--promo-font-mono); font-weight: 700; color: var(--promo-gold); white-space: nowrap; }
+.schedule .col-time { font-family: var(--promo-font-mono); font-size: 13px; color: var(--promo-ink-soft); white-space: nowrap; }
+.schedule tr[hidden] { display: none; }
+
+.table-note {
+  margin-top: var(--promo-space-4);
+  font-size: var(--promo-font-size-small);
+  color: var(--promo-muted);
+}
+
+/* ---------- steps ---------- */
+.steps {
+  margin-top: var(--promo-space-7);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--promo-space-5);
+  counter-reset: step;
+}
+.step {
+  position: relative;
+  padding-top: var(--promo-space-5);
+  border-top: 2px solid var(--promo-line-strong);
+}
+.step::before {
+  counter-increment: step;
+  content: "0" counter(step);
+  display: block;
+  font-family: var(--promo-font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--promo-accent);
+}
+.step h3 {
+  margin-top: var(--promo-space-3);
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.step p { margin-top: var(--promo-space-3); color: var(--promo-muted); font-size: 15px; }
+
+/* ---------- satellites ---------- */
+.sat-grid {
+  margin-top: var(--promo-space-7);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--promo-space-4);
+}
+.sat {
+  padding: var(--promo-space-5);
+  border: var(--promo-border-width) solid var(--promo-line);
+  border-radius: var(--promo-radius);
+  background: var(--promo-surface-raised);
+  display: flex;
+  flex-direction: column;
+  gap: var(--promo-space-3);
+}
+.sat--flagship {
+  border-color: rgba(255, 47, 47, 0.5);
+  box-shadow: var(--promo-glow);
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(255,47,47,0.12) 0%, rgba(255,47,47,0) 60%),
+    var(--promo-surface-raised);
+}
+.sat__buyin {
+  font-family: var(--promo-font-mono);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.sat__name { font-size: 14px; font-weight: 700; color: var(--promo-ink-soft); }
+.sat__detail { font-size: 13px; color: var(--promo-muted); margin-top: auto; }
+
+/* ---------- FAQ ---------- */
+.faq { margin-top: var(--promo-space-7); border-top: var(--promo-border-width) solid var(--promo-line); }
+.faq details {
+  border-bottom: var(--promo-border-width) solid var(--promo-line);
+}
+.faq summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--promo-space-4);
+  padding: var(--promo-space-5) 0;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  list-style: none;
+}
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after {
+  content: "+";
+  flex: 0 0 auto;
+  font-family: var(--promo-font-mono);
+  font-size: 22px;
+  font-weight: 400;
+  color: var(--promo-accent);
+  transition: transform var(--promo-transition-duration) var(--promo-transition-ease);
+}
+.faq details[open] summary::after { transform: rotate(45deg); }
+.faq p {
+  padding: 0 0 var(--promo-space-5);
+  max-width: 78ch;
+  color: var(--promo-muted);
+  font-size: 15px;
+}
+
+/* ---------- final CTA ---------- */
+.final-cta {
+  position: relative;
+  overflow: hidden;
+  padding-block: var(--promo-space-8);
+  text-align: center;
+  border-top: var(--promo-border-width) solid var(--promo-line);
+  background: var(--promo-surface-sunken);
+}
+.final-cta__glow {
+  position: absolute;
+  inset: auto 0 -60% 0;
+  height: 560px;
+  background: radial-gradient(50% 50% at 50% 50%, rgba(255,47,47,0.24) 0%, rgba(255,47,47,0) 70%);
+  pointer-events: none;
+}
+.final-cta__inner { position: relative; }
+.final-cta h2 {
+  font-size: clamp(34px, 5vw, 56px);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+}
+.final-cta p { margin: var(--promo-space-4) auto 0; max-width: 52ch; color: var(--promo-ink-soft); }
+.final-cta .btn { margin-top: var(--promo-space-6); }
+
+/* ---------- terms & footer ---------- */
+.terms { padding-block: var(--promo-space-7); border-top: var(--promo-border-width) solid var(--promo-line); }
+.terms h2 {
+  font-size: var(--promo-font-size-xs);
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--promo-muted);
+}
+.terms ol {
+  margin-top: var(--promo-space-4);
+  display: grid;
+  gap: var(--promo-space-2);
+  counter-reset: term;
+  columns: 2;
+  column-gap: var(--promo-space-7);
+}
+.terms li {
+  counter-increment: term;
+  display: flex;
+  gap: var(--promo-space-3);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--promo-muted);
+  break-inside: avoid;
+}
+.terms li::before {
+  content: counter(term) ".";
+  flex: 0 0 auto;
+  font-family: var(--promo-font-mono);
+  color: var(--promo-muted);
+}
+
+.site-footer {
+  padding-block: var(--promo-space-6);
+  border-top: var(--promo-border-width) solid var(--promo-line);
+  background: var(--promo-bg);
+}
+.site-footer__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--promo-space-5);
+  flex-wrap: wrap;
+}
+.site-footer__legal { font-size: 12.5px; color: var(--promo-muted); max-width: 62ch; }
+.rg {
+  display: flex;
+  align-items: center;
+  gap: var(--promo-space-3);
+  flex-shrink: 0;
+}
+.rg__badge {
+  display: grid;
+  place-items: center;
+  width: 40px; height: 40px;
+  border: 2px solid var(--promo-line-strong);
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 900;
+  color: var(--promo-ink-soft);
+}
+.rg__text { font-size: 12px; color: var(--promo-muted); max-width: 22ch; line-height: 1.4; }
+
+/* ---------- responsive ---------- */
+@media (max-width: 1024px) {
+  :root { --promo-font-size-main-title: 52px; --promo-font-size-lead-title: 34px; --promo-space-8: 72px; }
+  .site-nav { display: none; }
+  .cards { grid-template-columns: repeat(2, 1fr); }
+  .sat-grid { grid-template-columns: repeat(2, 1fr); }
+  .feature { grid-template-columns: 1fr; }
+  .feature__aside { border-left: 0; border-top: var(--promo-border-width) solid var(--promo-line); flex-direction: row; flex-wrap: wrap; gap: var(--promo-space-6); }
+  .feature__body, .feature__aside { padding: var(--promo-space-6); }
+  .stats__grid { grid-template-columns: repeat(2, 1fr); }
+  .stats__item:nth-child(3) { border-left: 0; }
+  .stats__item:nth-child(n+3) { border-top: var(--promo-border-width) solid var(--promo-line); }
+  .steps { grid-template-columns: 1fr; gap: var(--promo-space-6); }
+  .terms ol { columns: 1; }
+}
+
+@media (max-width: 720px) {
+  :root { --promo-font-size-main-title: 40px; --promo-space-8: 56px; --promo-space-7: 44px; }
+  .hero__title { max-width: none; }
+  .cards, .sat-grid { grid-template-columns: 1fr; }
+  .btn { width: 100%; }
+  .hero__actions { flex-direction: column; }
+
+  /* schedule table → stacked cards */
+  .table-wrap { border: 0; background: transparent; border-radius: 0; }
+  .schedule thead { display: none; }
+  .schedule, .schedule tbody, .schedule tr, .schedule td { display: block; width: 100%; }
+  .schedule tbody tr {
+    margin-bottom: var(--promo-space-3);
+    border: var(--promo-border-width) solid var(--promo-line);
+    border-radius: var(--promo-radius);
+    background: var(--promo-surface-raised);
+    padding: var(--promo-space-4);
+  }
+  .schedule td { padding: 4px 0; }
+  .schedule td::before {
+    content: attr(data-label);
+    display: block;
+    font-size: var(--promo-font-size-xs);
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--promo-muted);
+    margin-bottom: 2px;
+  }
+  .schedule .col-event::before { display: none; }
+  .schedule .col-event { font-size: 17px; margin-bottom: var(--promo-space-3); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  * { transition-duration: 1ms !important; animation-duration: 1ms !important; }
+}
+</style>
+</head>
+<body>
+
+<a class="skip-link" href="#main">Skip to main content</a>
+
+<header class="site-header">
+  <div class="shell site-header__inner">
+    <a class="brand" href="#top"><span class="brand__gg">GG</span>POKER</a>
+    <nav class="site-nav" aria-label="Section navigation">
+      <a href="#highlights">Highlights</a>
+      <a href="#main-event">Main Event</a>
+      <a href="#schedule">Schedule</a>
+      <a href="#satellites">Satellites</a>
+      <a href="#how-to">How to Join</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <a class="btn btn--primary btn--sm" href="#register">Play Now</a>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero" id="top">
+    <div class="hero__glow" aria-hidden="true"></div>
+    <div class="hero__grid" aria-hidden="true"></div>
+    <div class="shell hero__inner">
+      <p class="eyebrow">Online Tournament Series</p>
+
+      <div class="hero__dates">
+        <span class="hero__dot" aria-hidden="true"></span>
+        <span>July 5 &ndash; August 2, 2026</span>
+        <span aria-hidden="true" style="color:var(--promo-line-strong)">|</span>
+        <span>312 Events</span>
+      </div>
+
+      <h1 class="hero__title">GG Summer<br /><em>Series</em> 2026</h1>
+
+      <div class="hero__gtd">
+        <span class="hero__gtd-amount num">$100,000,000</span>
+        <span class="hero__gtd-label">GTD</span>
+      </div>
+
+      <p class="hero__lede">
+        Four weeks. Three hundred and twelve events. The largest guaranteed prize pool
+        in GGPoker&rsquo;s summer calendar &mdash; with buy-ins starting from $1.05.
+      </p>
+
+      <div class="hero__actions">
+        <a class="btn btn--primary" href="#register">Register Now</a>
+        <a class="btn btn--ghost" href="#schedule">View Full Schedule</a>
+      </div>
+
+      <p class="hero__meta">18+ only. Play responsibly. Terms &amp; conditions apply.</p>
+    </div>
+  </section>
+
+  <!-- ============ STAT STRIP ============ -->
+  <section class="stats" aria-label="Series at a glance">
+    <div class="shell">
+      <div class="stats__grid">
+        <div class="stats__item">
+          <p class="stats__value num">312</p>
+          <p class="stats__label">Total Events</p>
+        </div>
+        <div class="stats__item">
+          <p class="stats__value num">$1.05</p>
+          <p class="stats__label">Lowest Buy-in</p>
+        </div>
+        <div class="stats__item">
+          <p class="stats__value num">29 <span>Days</span></p>
+          <p class="stats__label">Series Length</p>
+        </div>
+        <div class="stats__item">
+          <p class="stats__value num">$20M</p>
+          <p class="stats__label">Main Event GTD</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ HIGHLIGHTS ============ -->
+  <section class="section" id="highlights">
+    <div class="shell">
+      <div class="section__head">
+        <p class="eyebrow">Flagship Events</p>
+        <h2 class="section-title">Three ways to chase a career score</h2>
+        <p class="section-lede">
+          Every tier of the series has its own headline event. Pick the one that matches
+          your bankroll &mdash; or satellite your way into all three.
+        </p>
+      </div>
+
+      <div class="cards">
+        <article class="card">
+          <span class="tag tag--accent">Low Stakes</span>
+          <h3 class="card__title">Summer Mini Main</h3>
+          <p class="card__amount num">$2,000,000</p>
+          <p class="card__text">
+            A four-day Mini Main Event with a $55 buy-in and unlimited re-entry
+            through late registration.
+          </p>
+          <div class="card__meta">
+            <span>Buy-in <strong class="num">$55</strong></span>
+            <span>Aug 2, 18:00 UTC</span>
+          </div>
+        </article>
+
+        <article class="card">
+          <span class="tag tag--gold">Headline</span>
+          <h3 class="card__title">Summer Main Event</h3>
+          <p class="card__amount num">$20,000,000</p>
+          <p class="card__text">
+            The series centerpiece. Three starting flights, a guaranteed
+            eight-figure prize pool, and a $3M+ first prize.
+          </p>
+          <div class="card__meta">
+            <span>Buy-in <strong class="num">$1,050</strong></span>
+            <span>Aug 2, 18:00 UTC</span>
+          </div>
+        </article>
+
+        <article class="card">
+          <span class="tag tag--neutral">High Roller</span>
+          <h3 class="card__title">Super High Roller</h3>
+          <p class="card__amount num">$5,000,000</p>
+          <p class="card__text">
+            A single-day, single re-entry event for the highest stakes on the
+            schedule. Final table streamed with hole cards.
+          </p>
+          <div class="card__meta">
+            <span>Buy-in <strong class="num">$25,500</strong></span>
+            <span>Jul 26, 17:00 UTC</span>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MAIN EVENT ============ -->
+  <section class="section section--alt" id="main-event">
+    <div class="shell">
+      <div class="section__head">
+        <p class="eyebrow">The Main Event</p>
+        <h2 class="section-title">$20M guaranteed. Three flights. One champion.</h2>
+      </div>
+
+      <div class="feature">
+        <div class="feature__body">
+          <span class="tag tag--gold">Event #300</span>
+          <h3 class="feature__title">Summer Series<br />Main Event</h3>
+          <p class="feature__text">
+            Three Day 1 flights across the final weekend, all converging into a single
+            Day 2. Survive your flight and your stack carries forward &mdash; play more
+            than one and keep your biggest.
+          </p>
+          <ul class="feature__list">
+            <li>Day 1A &middot; Jul 31, 18:00 UTC &mdash; Day 1B &middot; Aug 1, 18:00 UTC &mdash; Day 1C &middot; Aug 2, 18:00 UTC</li>
+            <li>Late registration open through Level 18 on every flight</li>
+            <li>Unlimited re-entry per flight; best stack advances to Day 2</li>
+            <li>Day 2 begins Aug 3, 18:00 UTC and plays to a winner</li>
+            <li>Direct satellites from $5.50 running daily through the series</li>
+          </ul>
+        </div>
+        <aside class="feature__aside">
+          <div>
+            <p class="feature__stat-value num">$20,000,000</p>
+            <p class="feature__stat-label">Guaranteed Prize Pool</p>
+          </div>
+          <div>
+            <p class="feature__stat-value num">$1,050</p>
+            <p class="feature__stat-label">Buy-in</p>
+          </div>
+          <div>
+            <p class="feature__stat-value num">$3,000,000+</p>
+            <p class="feature__stat-label">Estimated First Prize</p>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SCHEDULE ============ -->
+  <section class="section" id="schedule">
+    <div class="shell">
+      <div class="section__head">
+        <p class="eyebrow">Schedule</p>
+        <h2 class="section-title">Featured events</h2>
+        <p class="section-lede">
+          A selection of the 312 events on the calendar. Filter by week, or open the
+          client for the full schedule with satellites and side events.
+        </p>
+      </div>
+
+      <div class="filters" role="group" aria-label="Filter events by week">
+        <button class="filter" type="button" data-filter="all" aria-pressed="true">All events</button>
+        <button class="filter" type="button" data-filter="w1" aria-pressed="false">Week 1</button>
+        <button class="filter" type="button" data-filter="w2" aria-pressed="false">Week 2</button>
+        <button class="filter" type="button" data-filter="w3" aria-pressed="false">Week 3</button>
+        <button class="filter" type="button" data-filter="w4" aria-pressed="false">Week 4</button>
+      </div>
+
+      <div class="table-wrap">
+        <table class="schedule">
+          <caption class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);">
+            Featured events of the GG Summer Series 2026
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Date</th>
+              <th scope="col">Event</th>
+              <th scope="col">Buy-in</th>
+              <th scope="col">Guarantee</th>
+              <th scope="col">Start</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr data-week="w1">
+              <td class="col-date num" data-label="Date">Jul 5</td>
+              <td class="col-event" data-label="Event">Opening Event <small>#1 &middot; NLH, 8-Max, Re-entry</small></td>
+              <td class="col-buyin num" data-label="Buy-in">$105</td>
+              <td class="col-gtd num" data-label="Guarantee">$1,500,000</td>
+              <td class="col-time num" data-label="Start">18:00 UTC</td>
+            </tr>
+            <tr data-week="w1">
+              <td class="col-date num" data-label="Date">Jul 7</td>
+              <td class="col-event" data-label="Event">Bounty Hunters Special <small>#14 &middot; PKO, 6-Max</small></td>
+              <td class="col-buyin num" data-label="Buy-in">$52.50</td>
+              <td class="col-gtd num" data-label="Guarantee">$750,000</td>
+              <td class="col-time num" data-label="Start">19:00 UTC</td>
+            </tr>
+            <tr data-week="w1">
+              <td class="col-date num" data-label="Date">Jul 10</td>
+              <td class="col-event" data-label="Event">Micro Marathon <small>#31 &middot; NLH, Deepstack</small></td>
+              <td class="col-buyin num" data-label="Buy-in">$1.05</td>
+              <td class="col-gtd num" data-label="Guarantee">$100,000</td>
+              <td class="col-time num" data-label="Start">17:00 UTC</td>
+            </tr>
+            <tr data-week="w2">
+              <td class="col-date num" data-label="Date">Jul 12</td>
+              <td class="col-event" data-label="Event">Sunday Monster Stack <small>#68 &middot; NLH, 8-Max</small></td>
+              <td class="col-buyin num" data-label="Buy-in">$210</td>
+              <td class="col-gtd num" data-label="Guarantee">$2,000,000</td>
+              <td class="col-time num" data-label="Start">18:00 UTC</td>
+            </tr>
+            <tr data-week="w2">
+              <td class="col-date num" data-label="Date">Jul 15</td>
+              <td class="col-event" data-label="Event">PLO Championship <small>#97 &middot; Pot-Limit Omaha, 6-Max</small></td>
+              <td class="col-buyin num" data-label="Buy-in">$525</td>
+              <td class="col-gtd num" data-label="Guarantee">$1,000,000</td>
+              <td class="col-time num" data-label="Start">19:00 UTC</td>
+            </tr>
+            <tr data-week="w2">
+              <td class="col-date num" data-label="Date">Jul 18</td>
+              <td class="col-event" data-label="Event">Mystery Bounty <small>#122 &middot; NLH, Two-Day</small></td>
+              <td class="col-buyin num" data-label="Buy-in">$315</td>
+              <td class="col-gtd num" data-label="Guarantee">$3,000,000</td>
+              <td class="col-time num" data-label="Start">18:00 UTC</td>
+            </tr>
+            <tr data-week="w3">
+              <td class="col-date num" data-label="Date">Jul 21</td>
+              <td class="col-event" data-label="Event">Global MILLION$ <small>#158 &middot; NLH, Two-Day</small></td>
+              <td class="col-buyin num" data-label="Buy-in">$1,050</td>
+              <td class="col-gtd num" data-label="Guarantee">$5,000,000</td>
+              <td class="col-time num" data-label="Start">18:00 UTC</td>
+            </tr>
+            <tr data-week="w3">
+              <td class="col-date num" data-label="Date">Jul 24</td>
+              <td class="col-event" data-label="Event">Short Deck Championship <small>#186 &middot; Short Deck Ante-Only</small></td>
+              <td class="col-buyin num" data-label="Buy-in">$1,050</td>
+              <td class="col-gtd num" data-label="Guarantee">$500,000</td>
+              <td class="col-time num" data-label="Start">17:00 UTC</td>
+            </tr>
+            <tr data-week="w3">
+              <td class="col-date num" data-label="Date">Jul 26</td>
+              <td class="col-event" data-label="Event">Super High Roller <small>#204 &middot; NLH, Single Re-entry</small></td>
+              <td class="col-buyin num" data-label="Buy-in">$25,500</td>
+              <td class="col-gtd num" data-label="Guarantee">$5,000,000</td>
+              <td class="col-time num" data-label="Start">17:00 UTC</td>
+            </tr>
+            <tr data-week="w4">
+              <td class="col-date num" data-label="Date">Jul 31</td>
+              <td class="col-event" data-label="Event">Main Event &mdash; Day 1A <small>#300 &middot; NLH, Unlimited Re-entry</small></td>
+              <td class="col-buyin num" data-label="Buy-in">$1,050</td>
+              <td class="col-gtd num" data-label="Guarantee">$20,000,000</td>
+              <td class="col-time num" data-label="Start">18:00 UTC</td>
+            </tr>
+            <tr data-week="w4">
+              <td class="col-date num" data-label="Date">Aug 2</td>
+              <td class="col-event" data-label="Event">Mini Main Event <small>#308 &middot; NLH, Unlimited Re-entry</small></td>
+              <td class="col-buyin num" data-label="Buy-in">$55</td>
+              <td class="col-gtd num" data-label="Guarantee">$2,000,000</td>
+              <td class="col-time num" data-label="Start">18:00 UTC</td>
+            </tr>
+            <tr data-week="w4">
+              <td class="col-date num" data-label="Date">Aug 2</td>
+              <td class="col-event" data-label="Event">Closing Event <small>#312 &middot; NLH, Turbo, 8-Max</small></td>
+              <td class="col-buyin num" data-label="Buy-in">$210</td>
+              <td class="col-gtd num" data-label="Guarantee">$1,000,000</td>
+              <td class="col-time num" data-label="Start">21:00 UTC</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="table-note" id="filter-status" role="status">
+        Showing all 12 featured events. All times shown in UTC.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ SATELLITES ============ -->
+  <section class="section section--alt" id="satellites">
+    <div class="shell">
+      <div class="section__head">
+        <p class="eyebrow">Satellites</p>
+        <h2 class="section-title">Turn $5.50 into a Main Event seat</h2>
+        <p class="section-lede">
+          Satellites run around the clock throughout the series. Win a ticket at any
+          tier and step up to the next one for free.
+        </p>
+      </div>
+
+      <div class="sat-grid">
+        <article class="sat">
+          <span class="tag tag--neutral">Step 1</span>
+          <p class="sat__buyin">$5.50</p>
+          <p class="sat__name">Feeder Satellite</p>
+          <p class="sat__detail">Runs every 15 minutes. Top 10% win a Step 2 ticket.</p>
+        </article>
+        <article class="sat">
+          <span class="tag tag--neutral">Step 2</span>
+          <p class="sat__buyin">$27</p>
+          <p class="sat__name">Mid Satellite</p>
+          <p class="sat__detail">Runs hourly. Top 12% win a Step 3 ticket.</p>
+        </article>
+        <article class="sat">
+          <span class="tag tag--neutral">Step 3</span>
+          <p class="sat__buyin">$109</p>
+          <p class="sat__name">Direct Satellite</p>
+          <p class="sat__detail">Three times daily. Top 15% win a Main Event seat.</p>
+        </article>
+        <article class="sat sat--flagship">
+          <span class="tag tag--accent">Mega</span>
+          <p class="sat__buyin">$215</p>
+          <p class="sat__name">Mega Satellite</p>
+          <p class="sat__detail">Sundays only. 200+ Main Event seats guaranteed each week.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ HOW TO JOIN ============ -->
+  <section class="section" id="how-to">
+    <div class="shell">
+      <div class="section__head">
+        <p class="eyebrow">How to Join</p>
+        <h2 class="section-title">Three steps to the felt</h2>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <h3>Create your account</h3>
+          <p>
+            Sign up and complete verification. It takes a few minutes and only needs
+            to be done once.
+          </p>
+        </div>
+        <div class="step">
+          <h3>Fund your balance</h3>
+          <p>
+            Deposit with any supported method, or bring in a ticket you already won
+            from a satellite.
+          </p>
+        </div>
+        <div class="step">
+          <h3>Register and play</h3>
+          <p>
+            Open the Tournaments lobby, filter by &ldquo;Summer Series&rdquo;, and register
+            for any event on the schedule.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FAQ ============ -->
+  <section class="section section--alt" id="faq">
+    <div class="shell">
+      <div class="section__head">
+        <p class="eyebrow">FAQ</p>
+        <h2 class="section-title">Before you register</h2>
+      </div>
+
+      <div class="faq">
+        <details open>
+          <summary>Do I need a separate ticket for each Main Event flight?</summary>
+          <p>
+            No. Each flight is a separate buy-in, but you can play as many flights as
+            you like. If you make Day 2 from more than one flight, only your largest
+            stack carries forward and the smaller ones are refunded at the buy-in value.
+          </p>
+        </details>
+        <details>
+          <summary>What happens if an event does not reach its guarantee?</summary>
+          <p>
+            The guarantee stands. If entries fall short of the guaranteed prize pool,
+            the difference is added as overlay and paid out in full according to the
+            published payout structure.
+          </p>
+        </details>
+        <details>
+          <summary>Can I use a satellite ticket for a different event?</summary>
+          <p>
+            Tickets are valid for the event tier printed on them. A Main Event ticket
+            cannot be split or exchanged for cash, but unused tickets can be applied to
+            any equivalent-value event within the series before it ends.
+          </p>
+        </details>
+        <details>
+          <summary>Are the times on this page in my local timezone?</summary>
+          <p>
+            All times on this page are shown in UTC. The tournament lobby in the client
+            displays start times converted to your device&rsquo;s local timezone.
+          </p>
+        </details>
+        <details>
+          <summary>Is late registration available on every event?</summary>
+          <p>
+            Most events allow late registration for a set number of levels, typically
+            between Level 12 and Level 18. The exact window is listed on each
+            event&rsquo;s detail panel in the lobby.
+          </p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FINAL CTA ============ -->
+  <section class="final-cta" id="register">
+    <div class="final-cta__glow" aria-hidden="true"></div>
+    <div class="shell final-cta__inner">
+      <h2>The series starts July 5</h2>
+      <p>
+        $100,000,000 guaranteed across 312 events. Satellites are already running &mdash;
+        your seat could cost $5.50.
+      </p>
+      <a class="btn btn--primary" href="#top">Register Now</a>
+    </div>
+  </section>
+
+  <!-- ============ TERMS ============ -->
+  <section class="terms">
+    <div class="shell">
+      <h2>Terms &amp; Conditions</h2>
+      <ol>
+        <li>The GG Summer Series 2026 runs from 00:00 UTC on July 5, 2026 to 23:59 UTC on August 3, 2026.</li>
+        <li>Open to players aged 18 or over who hold a verified account in an eligible jurisdiction.</li>
+        <li>Advertised guarantees apply to the total prize pool of each event and include any overlay.</li>
+        <li>Satellite tickets have no cash value and cannot be transferred between accounts.</li>
+        <li>Unused series tickets expire at 23:59 UTC on August 3, 2026.</li>
+        <li>Late registration windows, re-entry limits, and payout structures are published per event in the tournament lobby.</li>
+        <li>Schedule, buy-ins, and guarantees may change; any change will be announced in the client before the affected event opens.</li>
+        <li>Standard site terms, bonus policy, and responsible gaming rules apply at all times.</li>
+      </ol>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="shell site-footer__inner">
+    <p class="site-footer__legal">
+      Sample landing page produced for the promo_web_builder PoC. Event names, dates,
+      buy-ins, and guarantees on this page are illustrative and do not represent a live
+      promotion.
+    </p>
+    <div class="rg">
+      <span class="rg__badge" aria-hidden="true">18+</span>
+      <p class="rg__text">Gambling can be addictive. Please play responsibly.</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  var filters = Array.prototype.slice.call(document.querySelectorAll(".filter"));
+  var rows = Array.prototype.slice.call(document.querySelectorAll(".schedule tbody tr"));
+  var status = document.getElementById("filter-status");
+
+  var LABELS = {
+    all: "all",
+    w1: "Week 1",
+    w2: "Week 2",
+    w3: "Week 3",
+    w4: "Week 4"
+  };
+
+  function applyFilter(key) {
+    var shown = 0;
+
+    rows.forEach(function (row) {
+      var match = key === "all" || row.getAttribute("data-week") === key;
+      row.hidden = !match;
+      if (match) shown += 1;
+    });
+
+    filters.forEach(function (button) {
+      button.setAttribute("aria-pressed", String(button.getAttribute("data-filter") === key));
+    });
+
+    if (status) {
+      status.textContent = key === "all"
+        ? "Showing all " + shown + " featured events. All times shown in UTC."
+        : "Showing " + shown + " event" + (shown === 1 ? "" : "s") + " in " + LABELS[key] + ". All times shown in UTC.";
+    }
+  }
+
+  filters.forEach(function (button) {
+    button.addEventListener("click", function () {
+      applyFilter(button.getAttribute("data-filter"));
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

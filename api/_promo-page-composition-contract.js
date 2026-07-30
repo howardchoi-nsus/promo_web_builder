@@ -10,6 +10,7 @@ const OPERATION_TYPES = Object.freeze([
   "change-token-binding",
   "change-motion-preset",
   "request-asset-regeneration",
+  "remove-asset",
 ]);
 
 function unique(values) {

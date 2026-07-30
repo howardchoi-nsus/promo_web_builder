@@ -27,6 +27,54 @@ function normalizedSectionOrder(candidate, sections) {
     : allowed;
 }
 
+<<<<<<< HEAD
+=======
+function normalizeSectionSnapshot(candidate, fallback = []) {
+  const source = Array.isArray(candidate) ? candidate : fallback;
+  if (!Array.isArray(source) || source.length > 100) {
+    throw Object.assign(new Error("Builder document section snapshot is invalid"), {
+      statusCode: 422,
+      code: "INVALID_SECTION_SNAPSHOT",
+    });
+  }
+  const sections = JSON.parse(JSON.stringify(source));
+  const sectionKeys = new Set();
+  sections.forEach((section) => {
+    const sectionKey = String(section?.sectionKey || "").trim();
+    if (!sectionKey || sectionKey.length > 128 || sectionKeys.has(sectionKey)) {
+      throw Object.assign(new Error("Builder document section keys must be unique"), {
+        statusCode: 422,
+        code: "INVALID_SECTION_SNAPSHOT",
+      });
+    }
+    sectionKeys.add(sectionKey);
+    section.sectionKey = sectionKey;
+    const items = Array.isArray(section.items) ? section.items : [];
+    if (items.length > 200) {
+      throw Object.assign(new Error("Builder document section has too many components"), {
+        statusCode: 422,
+        code: "INVALID_SECTION_SNAPSHOT",
+      });
+    }
+    const itemKeys = new Set();
+    items.forEach((item) => {
+      const itemKey = String(item?.itemKey || "").trim();
+      if (!itemKey || itemKey.length > 128 || itemKeys.has(itemKey)) {
+        throw Object.assign(new Error("Builder document component keys must be unique in a section"), {
+          statusCode: 422,
+          code: "INVALID_SECTION_SNAPSHOT",
+        });
+      }
+      itemKeys.add(itemKey);
+      item.itemKey = itemKey;
+      item.fields = Array.isArray(item.fields) ? item.fields.slice(0, 100) : [];
+    });
+    section.items = items;
+  });
+  return sections;
+}
+
+>>>>>>> codex/ai-builder-all-stages-2026-07-30
 async function normalizeEditorSnapshot(sql, currentSnapshot, incomingSnapshot, designTokenSetVersionId) {
   if (!currentSnapshot?.content || !currentSnapshot?.designSpec) {
     throw Object.assign(new Error("Builder document does not have an editable snapshot"), {
@@ -34,7 +82,14 @@ async function normalizeEditorSnapshot(sql, currentSnapshot, incomingSnapshot, d
       code: "BUILDER_SNAPSHOT_NOT_READY",
     });
   }
+<<<<<<< HEAD
   const sections = currentSnapshot.content.sectionSnapshot || [];
+=======
+  const sections = normalizeSectionSnapshot(
+    incomingSnapshot?.content?.sectionSnapshot,
+    currentSnapshot.content.sectionSnapshot || [],
+  );
+>>>>>>> codex/ai-builder-all-stages-2026-07-30
   const incomingDesignSpec = {
     ...(incomingSnapshot?.designSpec || currentSnapshot.designSpec),
     contractVersion: 1,
@@ -118,6 +173,10 @@ async function normalizeEditorSnapshot(sql, currentSnapshot, incomingSnapshot, d
         incomingSnapshot?.content?.sectionInputs || currentSnapshot.content.sectionInputs,
         sections,
       ),
+<<<<<<< HEAD
+=======
+      sectionSnapshot: sections,
+>>>>>>> codex/ai-builder-all-stages-2026-07-30
       sectionOrder: normalizedSectionOrder(
         incomingSnapshot?.content?.sectionOrder,
         sections,
@@ -207,3 +266,7 @@ module.exports = async function handler(req, res) {
 };
 
 module.exports.normalizeEditorSnapshot = normalizeEditorSnapshot;
+<<<<<<< HEAD
+=======
+module.exports.normalizeSectionSnapshot = normalizeSectionSnapshot;
+>>>>>>> codex/ai-builder-all-stages-2026-07-30

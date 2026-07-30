@@ -416,7 +416,7 @@ try {
   });
   const previewScrollRange = previewScrollMetrics.scrollRange;
   assert.ok(previewScrollRange > 0, `Fixture Preview must be tall enough to verify Section navigation: ${JSON.stringify(previewScrollMetrics)}`);
-  await editorFrame.locator(".section-trigger").filter({ hasText: "Hero Banner" }).click();
+  await editorFrame.locator(".page-tree__section .page-tree__select").filter({ hasText: "Hero Banner" }).click();
   for (let attempt = 0; attempt < 50; attempt += 1) {
     if (await editorFrame.locator(".preview-stage").evaluate((node) => node.scrollTop) < previewScrollRange / 2) break;
     await new Promise((resolve) => setTimeout(resolve, 20));
@@ -480,7 +480,7 @@ try {
   );
 
   sectionAiRunRequest = null;
-  await editorFrame.locator(".section-trigger").filter({ hasText: "Feature Content" }).click();
+  await editorFrame.locator(".page-tree__section .page-tree__select").filter({ hasText: "Feature Content" }).click();
   const imageComponentTrigger = editorFrame.locator(".component-property-trigger").filter({ hasText: "프로모션 이미지" });
   if (await imageComponentTrigger.getAttribute("aria-expanded") !== "true") {
     await imageComponentTrigger.click();

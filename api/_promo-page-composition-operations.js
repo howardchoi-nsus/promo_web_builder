@@ -99,6 +99,13 @@ function validateCompositionOperations(result, snapshot, motionPresets = []) {
         throw Object.assign(new Error("Field is unavailable or locked"), { code: "LOCKED_FIELD" });
       }
     }
+    if ((type === "request-asset-regeneration" || type === "remove-asset") && component) {
+      const fieldTarget = targets.fields.get(`${targetInstanceId}.${candidate.fieldKey}`);
+      if (!fieldTarget || fieldTarget.field.fieldKind !== "image"
+        || fieldTarget.field.isLocked || fieldTarget.item.isLocked) {
+        throw Object.assign(new Error("Image field is unavailable or locked"), { code: "LOCKED_FIELD" });
+      }
+    }
     if (type === "set-visibility") {
       const target = section || component?.item;
       if (target.isRequired || target.isLocked || target.fixedPosition) {
@@ -226,6 +233,7 @@ function applyCompositionOperations(snapshot, operations) {
           pageComponentInstanceId: operation.targetInstanceId,
           fieldKey: operation.fieldKey,
         } : {}),
+        guidance: operation.valueText || "",
         status: "pending",
       };
       next.assets.requests = [
@@ -237,6 +245,40 @@ function applyCompositionOperations(snapshot, operations) {
         )),
         request,
       ];
+    } else if (operation.type === "remove-asset") {
+      if (section) {
+        const sectionKey = section.pageSectionInstanceId || section.sectionKey;
+        if (next.designSpec.sectionStyles?.[sectionKey]) {
+          delete next.designSpec.sectionStyles[sectionKey].backgroundImage;
+        }
+        next.assets.requests = (next.assets.requests || []).filter((request) => !(
+          request.targetType === "section-key-visual"
+          && request.pageSectionInstanceId === sectionKey
+        ));
+      } else if (component) {
+        const sectionKey = component.section.pageSectionInstanceId || component.section.sectionKey;
+        const componentKey = component.item.id || component.item.itemKey;
+        const current = next.content.sectionInputs?.[sectionKey]?.[componentKey];
+        if (Array.isArray(component.item.fields) && component.item.fields.length > 1) {
+          next.content.sectionInputs[sectionKey][componentKey] = {
+            ...(current || {}),
+            fields: {
+              ...(current?.fields || {}),
+              [operation.fieldKey]: { source: "url", value: "", description: "", alt: "" },
+            },
+          };
+        } else {
+          next.content.sectionInputs[sectionKey][componentKey] = {
+            source: "url", value: "", description: "", alt: "",
+          };
+        }
+        next.assets.requests = (next.assets.requests || []).filter((request) => !(
+          request.targetType === "component-field-image"
+          && request.pageSectionInstanceId === sectionKey
+          && request.pageComponentInstanceId === componentKey
+          && request.fieldKey === operation.fieldKey
+        ));
+      }
     }
   }
   return next;

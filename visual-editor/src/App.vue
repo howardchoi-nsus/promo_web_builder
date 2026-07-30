@@ -7,6 +7,10 @@ import { normalizeLayoutSpec, validateLayoutSpec } from "./layout-utils.mjs";
 import { geometryToItemStylePatches, resolveSafeMultiLayoutOperation } from "./multi-layout.mjs";
 import { createAdminTemplateAdapter } from "./platform/adapters/admin-template-adapter.mjs";
 import { createAiDocumentAdapter } from "./platform/adapters/ai-document-adapter.mjs";
+<<<<<<< HEAD
+=======
+import { createEditorLibraryAdapter } from "./platform/adapters/editor-library-adapter.mjs";
+>>>>>>> codex/ai-builder-all-stages-2026-07-30
 import {
   PromoBuilderMessageType,
   createPromoBuilderAdapter,
@@ -15,11 +19,18 @@ import { createOutputAdapter } from "./platform/adapters/output-adapter.mjs";
 import { createEditorStore } from "./platform/editor-core/create-editor-store.mjs";
 import { EditorCommandType, editorCommand } from "./platform/editor-core/editor-commands.mjs";
 import {
+  activeComponentDefinitions,
+  activeSectionPresets,
+  createBlankSectionInstance,
+  createComponentInstanceFromDefinition,
+  createSectionInstanceFromPreset,
+} from "./platform/editor-core/composition-structure.mjs";
+import {
   MINIMUM_COMPONENT_HEIGHT_PX,
   MINIMUM_COMPONENT_WIDTH_PCT,
 } from "./platform/layout-engine/geometry.mjs";
 import PreviewPanel from "./platform/editor-ui/PreviewPanel.vue";
-import SectionPanel from "./platform/editor-ui/SectionPanel.vue";
+import StructurePanel from "./platform/editor-ui/StructurePanel.vue";
 import AiLayoutControls from "./platform/editor-ui/AiLayoutControls.vue";
 import SectionCompositionControls from "./platform/editor-ui/SectionCompositionControls.vue";
 import PropertyPanel from "./platform/editor-ui/PropertyPanel.vue";
@@ -83,6 +94,10 @@ const compositionPlanning = ref(false);
 const compositionApplying = ref(false);
 const compositionError = ref("");
 const compositionResult = ref(null);
+const componentLibrary = ref([]);
+const sectionPresets = ref([]);
+const editorLibraryLoading = ref(false);
+const structureMessage = ref("");
 const editorHistory = ref({ undoCount: 0, redoCount: 0, canUndo: false, canRedo: false });
 const editorCore = createEditorStore({
   layout: JSON.parse(JSON.stringify(DEFAULT_DESIGN_SPEC)),
@@ -90,6 +105,10 @@ const editorCore = createEditorStore({
 });
 const adminTemplateAdapter = createAdminTemplateAdapter();
 const aiDocumentAdapter = createAiDocumentAdapter();
+<<<<<<< HEAD
+=======
+const editorLibraryAdapter = createEditorLibraryAdapter();
+>>>>>>> codex/ai-builder-all-stages-2026-07-30
 const promoBuilderAdapter = createPromoBuilderAdapter();
 const outputAdapter = createOutputAdapter({ storageKey: SNAPSHOT_STORAGE_KEY });
 let applyingExternalSnapshot = false;
@@ -128,8 +147,12 @@ const editorSnapshot = computed(() => {
         formTemplate: { ...aiDocumentSnapshot.value.content.formTemplate, ...template.value },
         sectionSnapshot: JSON.parse(JSON.stringify(sections.value)),
         sectionInputs: JSON.parse(JSON.stringify(sectionInputs.value)),
+<<<<<<< HEAD
         sectionOrder: aiDocumentSnapshot.value.content?.sectionOrder
           || sections.value.map((section) => section.sectionKey),
+=======
+        sectionOrder: sections.value.map((section) => section.sectionKey),
+>>>>>>> codex/ai-builder-all-stages-2026-07-30
       },
       designSpec: JSON.parse(JSON.stringify(designSpec.value)),
       assets: JSON.parse(JSON.stringify(
@@ -177,11 +200,14 @@ const fontSizeTokenOptions = computed(() => selectedDesignTokenValues.value.filt
   value: token.value,
   px: Number.parseFloat(token.value),
 })).filter((token) => Number.isFinite(token.px)));
+const availableComponents = computed(() => activeComponentDefinitions(componentLibrary.value));
+const availableSectionPresets = computed(() => activeSectionPresets(sectionPresets.value));
 
 function editorDocumentFromRefs() {
   return {
     layout: designSpec.value,
     content: sectionInputs.value,
+    sections: sections.value,
     metadata: {
       surface: editorContext.value.surface,
       layoutRevision: layoutRevision.value,
@@ -202,6 +228,7 @@ function applyEditorCoreResult(result) {
   if (!result?.ok) return false;
   designSpec.value = result.state.document.layout;
   sectionInputs.value = result.state.document.content;
+  sections.value = result.state.document.sections;
   editorHistory.value = result.history || editorCore.getHistoryState();
   return true;
 }
@@ -325,6 +352,146 @@ async function selectSection(section) {
   multiLayoutError.value = "";
   await nextTick();
   scrollPreviewToSection(section);
+}
+
+function sectionIndexFromDrop(sourceKey, targetKey, position = "before") {
+  const sourceIndex = sections.value.findIndex((section) => section.sectionKey === sourceKey);
+  const targetIndex = sections.value.findIndex((section) => section.sectionKey === targetKey);
+  if (sourceIndex < 0 || targetIndex < 0) return -1;
+  const nextKeys = sections.value.map((section) => section.sectionKey);
+  nextKeys.splice(sourceIndex, 1);
+  let insertionIndex = nextKeys.indexOf(targetKey);
+  if (position === "after") insertionIndex += 1;
+  nextKeys.splice(Math.max(0, insertionIndex), 0, sourceKey);
+  return nextKeys;
+}
+
+async function moveSection(sourceKey, targetKey, position = "before") {
+  if (!capabilities.value.canComposeStructure || sourceKey === targetKey) return;
+  const sectionKeys = sectionIndexFromDrop(sourceKey, targetKey, position);
+  if (!Array.isArray(sectionKeys)) return;
+  if (!executeEditorCommand(EditorCommandType.SECTION_INSTANCE_REORDER, { sectionKeys }, {
+    label: "섹션 순서 변경",
+  })) return;
+  await nextTick();
+  scrollPreviewToSection(sections.value.find((section) => section.sectionKey === sourceKey));
+}
+
+function componentTargetIndex(section, sourceItemKey, targetItemKey, position = "before") {
+  const keys = (section?.items || []).map((item) => item.itemKey)
+    .filter((itemKey) => itemKey !== sourceItemKey);
+  if (!targetItemKey) return keys.length;
+  let index = keys.indexOf(targetItemKey);
+  if (index < 0) return keys.length;
+  if (position === "after") index += 1;
+  return index;
+}
+
+async function moveComponent(sourceSectionKey, itemKey, targetSectionKey, targetItemKey, position = "before") {
+  if (!capabilities.value.canComposeStructure) return;
+  const sourceSection = sections.value.find((section) => section.sectionKey === sourceSectionKey);
+  const targetSection = sections.value.find((section) => section.sectionKey === targetSectionKey);
+  const item = sourceSection?.items?.find((candidate) => candidate.itemKey === itemKey);
+  if (!sourceSection || !targetSection || !item) return;
+  const targetIndex = componentTargetIndex(targetSection, itemKey, targetItemKey, position);
+  const type = sourceSectionKey === targetSectionKey
+    ? EditorCommandType.COMPONENT_INSTANCE_REORDER
+    : EditorCommandType.COMPONENT_INSTANCE_MOVE_SECTION;
+  const payload = sourceSectionKey === targetSectionKey
+    ? {
+        sectionKey: sourceSectionKey,
+        itemKeys: (() => {
+          const keys = (sourceSection.items || []).map((candidate) => candidate.itemKey)
+            .filter((candidateKey) => candidateKey !== itemKey);
+          keys.splice(targetIndex, 0, itemKey);
+          return keys;
+        })(),
+      }
+    : {
+        sourceSectionKey,
+        targetSectionKey,
+        itemKey,
+        targetIndex,
+      };
+  if (!executeEditorCommand(type, payload, { label: "컴포넌트 이동" })) return;
+  const movedSection = sections.value.find((section) => section.sectionKey === targetSectionKey);
+  const movedItem = movedSection?.items?.find((candidate) => candidate.itemKey === itemKey);
+  if (movedSection) selectItem(movedSection, movedItem || null);
+}
+
+async function createBlankSection() {
+  if (!capabilities.value.canCreateSections) return;
+  const section = createBlankSectionInstance({ index: sections.value.length });
+  if (!executeEditorCommand(EditorCommandType.SECTION_INSTANCE_CREATE, {
+    section,
+    content: createSectionInputs([section])[section.sectionKey],
+  }, { label: "빈 섹션 추가" })) return;
+  structureMessage.value = "빈 섹션을 추가했습니다.";
+  await selectSection(section);
+}
+
+async function createSectionFromPreset(presetOrKey) {
+  if (!capabilities.value.canCreateSections) return;
+  const presetKey = typeof presetOrKey === "string"
+    ? presetOrKey
+    : presetOrKey?.sectionKey || presetOrKey?.id;
+  const preset = availableSectionPresets.value.find((candidate) => (
+    candidate.sectionKey === presetKey || candidate.id === presetKey
+  ));
+  if (!preset) return;
+  const section = createSectionInstanceFromPreset(preset, {
+    index: sections.value.length,
+    preserveKeys: !sections.value.some((candidate) => candidate.sectionKey === preset.sectionKey),
+  });
+  if (!executeEditorCommand(EditorCommandType.SECTION_INSTANCE_CREATE, {
+    section,
+    content: createSectionInputs([section])[section.sectionKey],
+  }, { label: "섹션 Preset 추가" })) return;
+  structureMessage.value = `${preset.name} 섹션을 추가했습니다.`;
+  await selectSection(section);
+}
+
+async function addComponent(componentOrKey, sectionKey = selectedSection.value?.sectionKey) {
+  if (!capabilities.value.canManageComponents || !sectionKey) return;
+  const componentKey = typeof componentOrKey === "string"
+    ? componentOrKey
+    : componentOrKey?.componentKey;
+  const component = availableComponents.value.find((candidate) => candidate.componentKey === componentKey);
+  const section = sections.value.find((candidate) => candidate.sectionKey === sectionKey);
+  if (!component || !section) return;
+  const item = createComponentInstanceFromDefinition(component);
+  const value = createSectionInputs([{ ...section, items: [item] }])?.[sectionKey]?.[item.itemKey];
+  if (!executeEditorCommand(EditorCommandType.COMPONENT_INSTANCE_CREATE, {
+    sectionKey,
+    item,
+    value,
+  }, { label: "컴포넌트 추가" })) return;
+  const nextSection = sections.value.find((candidate) => candidate.sectionKey === sectionKey);
+  selectItem(nextSection, nextSection?.items?.find((candidate) => candidate.itemKey === item.itemKey));
+  expandedComponentKey.value = `${sectionKey}.${item.itemKey}`;
+  structureMessage.value = `${component.name} 컴포넌트를 추가했습니다.`;
+}
+
+function removeSection(sectionOrKey) {
+  if (!capabilities.value.canComposeStructure) return;
+  const sectionKey = typeof sectionOrKey === "string" ? sectionOrKey : sectionOrKey?.sectionKey;
+  if (!sectionKey) return;
+  if (!executeEditorCommand(EditorCommandType.SECTION_INSTANCE_REMOVE, { sectionKey }, {
+    label: "섹션 삭제",
+  })) return;
+  selectedSectionKey.value = sections.value[0]?.sectionKey || "";
+  selectedItemKey.value = "";
+  selectedItemKeys.value = [];
+}
+
+function removeComponent(section, item) {
+  if (!capabilities.value.canManageComponents || !section || !item) return;
+  if (!executeEditorCommand(EditorCommandType.COMPONENT_INSTANCE_REMOVE, {
+    sectionKey: section.sectionKey,
+    itemKey: item.itemKey,
+  }, { label: "컴포넌트 삭제" })) return;
+  selectedItemKey.value = "";
+  selectedItemKeys.value = [];
 }
 
 function multiItemSelected(item) {
@@ -774,11 +941,79 @@ function sectionAiItemAction(section, item, field = null) {
   return { action: "generate", label: "AI 이미지 생성", disabled: !sectionAiHasContent(section) };
 }
 
-function requestSectionAiAction(
+async function requestSectionAiAction(
   section, action, targetItemKey = "", targetType = "", targetFieldKey = "",
   imageGuidance = "", imageSafeArea = "", keyVisualOptions = {},
 ) {
   const resolvedTargetType = targetType || (targetItemKey ? "item" : "section-background");
+  if (isAiDocumentMode.value) {
+    if (!["generate", "remove-background"].includes(action) || !section || aiDocumentSaving.value) return;
+    const removing = action === "remove-background";
+    structureMessage.value = removing ? "키비주얼을 삭제하고 있습니다." : "AI 이미지 요청을 준비하고 있습니다.";
+    if (editorCore.getState().dirty) {
+      const saved = await saveAiDocument();
+      if (!saved) {
+        structureMessage.value = "먼저 AI 문서 변경 내용을 저장해야 합니다.";
+        return;
+      }
+    }
+    const item = targetItemKey
+      ? section.items?.find((candidate) => candidate.itemKey === targetItemKey)
+      : null;
+    const resolvedFieldKey = String(
+      targetFieldKey
+      || item?.fields?.[0]?.fieldKey
+      || item?.sourceItemKey
+      || item?.itemKey
+      || "",
+    );
+    const targetInstanceId = item
+      ? item.id || item.itemKey
+      : section.pageSectionInstanceId || section.sectionKey;
+    try {
+      const result = await aiDocumentAdapter.applyOperations({
+        documentId: aiDocumentId.value,
+        baseDocumentRevision: aiDocumentRevision.value,
+        operations: [{
+          operationId: `asset:${targetInstanceId}:${Date.now()}`,
+          type: removing ? "remove-asset" : "request-asset-regeneration",
+          targetInstanceId,
+          fieldKey: item ? resolvedFieldKey : "",
+          valueText: String(imageGuidance || ""),
+          visible: true,
+          position: 0,
+          layoutVariant: "",
+          tokenKey: "",
+          motionPresetVersionId: "",
+          reason: imageGuidance || (removing
+            ? "Visual Editor section key visual removal."
+            : "Visual Editor AI image generation request."),
+        }],
+        summary: removing
+          ? "Visual Editor에서 섹션 키비주얼을 삭제했습니다."
+          : resolvedTargetType === "item"
+          ? "Visual Editor에서 컴포넌트 이미지를 생성합니다."
+          : "Visual Editor에서 섹션 키비주얼을 생성합니다.",
+      });
+      aiDocumentRevision.value = Number(result.revision || aiDocumentRevision.value);
+      aiDocumentSnapshot.value = {
+        ...aiDocumentSnapshot.value,
+        ...result.snapshot,
+        assets: result.snapshot?.assets || aiDocumentSnapshot.value?.assets,
+      };
+      if (removing) {
+        designSpec.value = normalizeLayoutSpec(result.snapshot?.designSpec || designSpec.value);
+        hydrateEditorCore({ resetHistory: false });
+        structureMessage.value = "키비주얼을 삭제했습니다.";
+      } else {
+        structureMessage.value = "AI 이미지 생성 요청을 접수했습니다.";
+        refreshAiDocumentAssetsUntilSettled();
+      }
+    } catch (assetError) {
+      structureMessage.value = assetError.message;
+    }
+    return;
+  }
   promoBuilderAdapter.requestSectionAiAction({
     sectionKey: section.sectionKey,
     action,
@@ -796,10 +1031,51 @@ function sectionHasAiBackground(section) {
   return Boolean(designSpec.value?.sectionStyles?.[section.sectionKey]?.backgroundImage);
 }
 
-function requestImageRemoval(field = null) {
+async function requestImageRemoval(field = null) {
   if (!selectedSection.value || !selectedItem.value || selectedItem.value.isLocked) return;
   if (field?.isLocked) return;
   if (!window.confirm(`${field?.name || selectedItem.value.name} 이미지를 삭제할까요?`)) return;
+  if (isAiDocumentMode.value) {
+    if (editorCore.getState().dirty && !await saveAiDocument()) return;
+    const section = selectedSection.value;
+    const item = selectedItem.value;
+    const targetInstanceId = item.id || item.itemKey;
+    try {
+      const result = await aiDocumentAdapter.applyOperations({
+        documentId: aiDocumentId.value,
+        baseDocumentRevision: aiDocumentRevision.value,
+        operations: [{
+          operationId: `remove-asset:${targetInstanceId}:${Date.now()}`,
+          type: "remove-asset",
+          targetInstanceId,
+          fieldKey: String(
+            field?.fieldKey
+            || item.fields?.[0]?.fieldKey
+            || item.sourceItemKey
+            || item.itemKey,
+          ),
+          valueText: "",
+          visible: true,
+          position: 0,
+          layoutVariant: "",
+          tokenKey: "",
+          motionPresetVersionId: "",
+          reason: "Visual Editor image removal.",
+        }],
+        summary: "Visual Editor에서 컴포넌트 이미지를 삭제했습니다.",
+      });
+      aiDocumentRevision.value = Number(result.revision || aiDocumentRevision.value);
+      aiDocumentSnapshot.value = result.snapshot;
+      sections.value = result.snapshot?.content?.sectionSnapshot || sections.value;
+      sectionInputs.value = result.snapshot?.content?.sectionInputs || sectionInputs.value;
+      designSpec.value = normalizeLayoutSpec(result.snapshot?.designSpec || designSpec.value);
+      hydrateEditorCore({ resetHistory: false });
+      structureMessage.value = "이미지를 삭제했습니다.";
+    } catch (removeError) {
+      structureMessage.value = removeError.message;
+    }
+    return;
+  }
   promoBuilderAdapter.requestImageRemoval({
     sectionKey: selectedSection.value.sectionKey,
     itemKey: selectedItem.value.itemKey,
@@ -1065,10 +1341,45 @@ async function refreshAiDocumentAssetsUntilSettled() {
     try {
       const loaded = await aiDocumentAdapter.load(aiDocumentId.value);
       if (loaded.snapshot?.assets) {
+<<<<<<< HEAD
         aiDocumentSnapshot.value = {
           ...aiDocumentSnapshot.value,
           assets: loaded.snapshot.assets,
         };
+=======
+        const loadedSnapshot = loaded.snapshot;
+        const nextLayout = JSON.parse(JSON.stringify(designSpec.value));
+        const nextContent = JSON.parse(JSON.stringify(sectionInputs.value));
+        (loadedSnapshot.assets.requests || []).forEach((request) => {
+          if (request.status !== "ready") return;
+          const sectionKey = request.pageSectionInstanceId;
+          if (request.targetType === "section-key-visual") {
+            const backgroundImage = loadedSnapshot.designSpec?.sectionStyles?.[sectionKey]?.backgroundImage;
+            if (!backgroundImage) return;
+            nextLayout.sectionStyles ||= {};
+            nextLayout.sectionStyles[sectionKey] = {
+              ...(nextLayout.sectionStyles[sectionKey] || {}),
+              backgroundImage,
+            };
+            return;
+          }
+          if (request.targetType === "component-field-image" && request.pageComponentInstanceId) {
+            const componentValue = loadedSnapshot.content?.sectionInputs
+              ?.[sectionKey]?.[request.pageComponentInstanceId];
+            if (componentValue === undefined) return;
+            nextContent[sectionKey] ||= {};
+            nextContent[sectionKey][request.pageComponentInstanceId] = componentValue;
+          }
+        });
+        designSpec.value = nextLayout;
+        sectionInputs.value = nextContent;
+        aiDocumentSnapshot.value = {
+          ...aiDocumentSnapshot.value,
+          assets: loadedSnapshot.assets,
+        };
+        editorCore.replaceDocument(editorDocumentFromRefs(), { resetHistory: false, dirty: false });
+        updateEditorHistory();
+>>>>>>> codex/ai-builder-all-stages-2026-07-30
       }
     } catch {
       return;
@@ -1195,6 +1506,7 @@ async function saveAdminLayout({ activate = false } = {}) {
       rendererVersion: 1,
       layoutSpec: validation.spec,
       defaultContent: sectionInputs.value,
+      compositionSnapshot: sections.value,
       changeNote: layoutChangeNote.value || "Admin Layout Editor에서 기본 레이아웃을 저장했습니다.",
     });
     designSpec.value = normalizeLayoutSpec(result.layout.layoutSpec);
@@ -1284,14 +1596,29 @@ function handleParentMessage(message) {
   }
 }
 
-watch([designSpec, sectionInputs], () => {
+watch([designSpec, sectionInputs, sections], () => {
   if (!isWizardLayoutMode.value || !externalSnapshotReady.value || applyingExternalSnapshot) return;
   promoBuilderAdapter.notifyChange({
     snapshotRevision: lastExternalSnapshotRevision,
     designSpec: designSpec.value,
     sectionInputs: sectionInputs.value,
+    sections: sections.value,
   });
 }, { deep: true });
+
+async function loadEditorLibraries() {
+  if (!isBuilderWorkspaceMode.value) return;
+  editorLibraryLoading.value = true;
+  try {
+    const result = await editorLibraryAdapter.load();
+    componentLibrary.value = result.components;
+    sectionPresets.value = result.sectionPresets;
+  } catch (libraryError) {
+    structureMessage.value = libraryError.message;
+  } finally {
+    editorLibraryLoading.value = false;
+  }
+}
 
 async function loadOutput() {
   try {
@@ -1327,6 +1654,7 @@ onMounted(() => {
     document.body.classList.add("create-promo-editor-document");
   }
   window.PromoShell?.init(document);
+  loadEditorLibraries();
   if (props.mode === "output") loadOutput();
   else if (isAiDocumentMode.value) loadAiDocument();
   else if (isAdminLayoutMode.value) loadAdminLayout();
@@ -1447,6 +1775,10 @@ onBeforeUnmount(() => {
     <div v-if="outputSaveError" class="system-message system-message--error" role="alert">{{ outputSaveError }}</div>
     <div v-if="layoutSaveMessage" class="system-message" role="status">{{ layoutSaveMessage }}</div>
     <div v-if="aiDocumentSaveMessage" class="system-message" role="status">{{ aiDocumentSaveMessage }}</div>
+<<<<<<< HEAD
+=======
+    <div v-if="structureMessage" class="system-message" role="status">{{ structureMessage }}</div>
+>>>>>>> codex/ai-builder-all-stages-2026-07-30
 
     <section
       v-if="!loading && !error"
@@ -1458,25 +1790,37 @@ onBeforeUnmount(() => {
         'is-ai-document-workspace': isAiDocumentMode,
       }"
     >
-      <SectionPanel
+      <StructurePanel
         :sections="sections"
         :selected-section="selectedSection"
+        :selected-item-key="selectedItemKey"
         :selected-section-style="selectedSectionStyle"
         :capabilities="capabilities"
+        :component-library="availableComponents"
+        :section-presets="availableSectionPresets"
+        :library-loading="editorLibraryLoading"
         :section-content-registered="sectionContentRegistered"
         :section-ai-primary-action="sectionAiPrimaryAction"
         :section-has-ai-background="sectionHasAiBackground"
         :section-ai-is-processing="sectionAiIsProcessing"
         @select-section="selectSection"
+        @select-item="selectRendererItem"
         @section-ai-action="(section, action, targetItemKey, targetType, options) => requestSectionAiAction(section, action, targetItemKey, targetType, '', '', '', options)"
         @background-alignment="setSectionBackgroundAlignment"
         @background-fade="setSectionBackgroundFadeMode"
         @update-section-style="updateSectionStyle"
         @reset-section-height="resetSectionHeight"
+        @create-blank-section="createBlankSection"
+        @create-section-from-preset="createSectionFromPreset"
+        @add-component="addComponent"
+        @move-section="moveSection"
+        @move-component="moveComponent"
+        @remove-section="removeSection"
+        @remove-component="removeComponent"
       >
-        <template #section-composition>
+        <template #section-composition="{ section }">
           <SectionCompositionControls
-            v-if="capabilities.canRunSectionAi"
+            v-if="capabilities.canRunSectionAi && section?.sectionKey === selectedSection?.sectionKey"
             :instruction="compositionInstruction"
             :generate-background-image="compositionGenerateBackground"
             :image-guidance="compositionImageGuidance"
@@ -1498,7 +1842,7 @@ onBeforeUnmount(() => {
             @dismiss="compositionResult = null"
           />
         </template>
-      </SectionPanel>
+      </StructurePanel>
 
       <PreviewPanel
         ref="previewPanelRef"
@@ -1538,6 +1882,7 @@ onBeforeUnmount(() => {
         @update-renderer-item-style="updateRendererItemStyle"
         @update-item-content="updateRendererContent"
         @update-section-style="updateSectionStyle"
+        @drop-library-component="addComponent"
       />
 
       <PropertyPanel :selected-section="selectedSection">

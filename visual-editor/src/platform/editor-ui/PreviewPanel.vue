@@ -3,7 +3,7 @@ import { ref } from "vue";
 import PromoPageRenderer from "../../PromoPageRenderer.vue";
 import EditorPreviewControls from "./EditorPreviewControls.vue";
 
-defineProps({
+const props = defineProps({
   rendererSnapshot: { type: Object, default: null },
   sectionDesignRuns: { type: Object, default: () => ({}) },
   guidesVisible: { type: Boolean, default: true },
@@ -42,6 +42,7 @@ const emit = defineEmits([
   "update-renderer-item-style",
   "update-item-content",
   "update-section-style",
+  "drop-library-component",
 ]);
 
 const previewStageRef = ref(null);
@@ -61,6 +62,35 @@ function scrollToSection(sectionKey, behavior = "smooth") {
 
 function getStageElement() {
   return previewStageRef.value;
+}
+
+function libraryComponentKey(event) {
+  const raw = event.dataTransfer?.getData("application/x-promo-component-definition");
+  if (!raw) return "";
+  try {
+    return String(JSON.parse(raw)?.componentKey || "");
+  } catch {
+    return String(raw || "");
+  }
+}
+
+function handlePreviewDragOver(event) {
+  if (![...(event.dataTransfer?.types || [])].includes("application/x-promo-component-definition")) return;
+  event.preventDefault();
+  event.dataTransfer.dropEffect = "copy";
+}
+
+function handlePreviewDrop(event) {
+  const componentKey = libraryComponentKey(event);
+  if (!componentKey) return;
+  event.preventDefault();
+  const sectionElement = event.target instanceof Element
+    ? event.target.closest("[data-section-key]")
+    : null;
+  const sectionKey = sectionElement?.getAttribute("data-section-key")
+    || props.selectedSection?.sectionKey
+    || "";
+  if (sectionKey) emit("drop-library-component", componentKey, sectionKey);
 }
 
 defineExpose({ getStageElement, scrollToSection });
@@ -153,7 +183,13 @@ defineExpose({ getStageElement, scrollToSection });
         </template>
       </EditorPreviewControls>
     </div>
-    <div ref="previewStageRef" class="preview-stage" :class="`preview-stage--${viewport}`">
+    <div
+      ref="previewStageRef"
+      class="preview-stage"
+      :class="`preview-stage--${viewport}`"
+      @dragover="handlePreviewDragOver"
+      @drop="handlePreviewDrop"
+    >
       <PromoPageRenderer
         v-if="rendererSnapshot"
         :content="rendererSnapshot.content"

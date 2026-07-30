@@ -24,10 +24,73 @@ function setNestedContent(content, sectionKey, itemKey, value) {
   };
 }
 
+function insertAt(items, item, index) {
+  const next = [...items];
+  const targetIndex = Number.isInteger(index)
+    ? Math.max(0, Math.min(index, next.length))
+    : next.length;
+  next.splice(targetIndex, 0, item);
+  return next;
+}
+
+function reorderedByKeys(items, orderedKeys, keyName) {
+  if (!Array.isArray(orderedKeys) || orderedKeys.length !== items.length) return null;
+  const byKey = new Map(items.map((item) => [item?.[keyName], item]));
+  if (byKey.size !== items.length || orderedKeys.some((key) => !byKey.has(key))) return null;
+  if (new Set(orderedKeys).size !== items.length) return null;
+  return orderedKeys.map((key) => byKey.get(key));
+}
+
+function removeStyleKeys(layout, prefix) {
+  const itemStyles = Object.fromEntries(Object.entries(layout.itemStyles || {}).filter(
+    ([key]) => key !== prefix && !key.startsWith(`${prefix}.`),
+  ));
+  const visibility = {
+    ...(layout.visibility || {}),
+    items: Object.fromEntries(Object.entries(layout.visibility?.items || {}).filter(
+      ([key]) => key !== prefix && !key.startsWith(`${prefix}.`),
+    )),
+    fields: Object.fromEntries(Object.entries(layout.visibility?.fields || {}).filter(
+      ([key]) => key !== prefix && !key.startsWith(`${prefix}.`),
+    )),
+  };
+  return { ...layout, itemStyles, visibility };
+}
+
+function moveStyleKeys(layout, previousPrefix, nextPrefix) {
+  const itemStyles = {};
+  Object.entries(layout.itemStyles || {}).forEach(([key, value]) => {
+    const nextKey = key === previousPrefix
+      ? nextPrefix
+      : key.startsWith(`${previousPrefix}.`)
+        ? `${nextPrefix}${key.slice(previousPrefix.length)}`
+        : key;
+    itemStyles[nextKey] = value;
+  });
+  const moveVisibility = (record = {}) => Object.fromEntries(Object.entries(record).map(([key, value]) => {
+    const nextKey = key === previousPrefix
+      ? nextPrefix
+      : key.startsWith(`${previousPrefix}.`)
+        ? `${nextPrefix}${key.slice(previousPrefix.length)}`
+        : key;
+    return [nextKey, value];
+  }));
+  return {
+    ...layout,
+    itemStyles,
+    visibility: {
+      ...(layout.visibility || {}),
+      items: moveVisibility(layout.visibility?.items),
+      fields: moveVisibility(layout.visibility?.fields),
+    },
+  };
+}
+
 export function reduceEditorCommand(currentState, command) {
   const state = cloneEditorState(currentState);
   const layout = state.document.layout || {};
   const content = state.document.content || {};
+  const sections = Array.isArray(state.document.sections) ? state.document.sections : [];
   const payload = command?.payload || {};
 
   switch (command?.type) {
@@ -124,6 +187,168 @@ export function reduceEditorCommand(currentState, command) {
       };
       break;
     }
+    case EditorCommandType.SECTION_INSTANCE_CREATE: {
+      const section = payload.section && typeof payload.section === "object"
+        ? JSON.parse(JSON.stringify(payload.section))
+        : null;
+      if (!section?.sectionKey) {
+        return { ok: false, state: currentState, error: "Section instance is required." };
+      }
+      if (sections.some((candidate) => candidate.sectionKey === section.sectionKey)) {
+        return { ok: false, state: currentState, error: "Section key must be unique." };
+      }
+      section.items = Array.isArray(section.items) ? section.items : [];
+      state.document.sections = insertAt(sections, section, payload.index);
+      state.document.content = {
+        ...content,
+        [section.sectionKey]: payload.content && typeof payload.content === "object"
+          ? JSON.parse(JSON.stringify(payload.content))
+          : {},
+      };
+      break;
+    }
+    case EditorCommandType.SECTION_INSTANCE_REMOVE: {
+      const section = sections.find((candidate) => candidate.sectionKey === payload.sectionKey);
+      if (!section) return { ok: false, state: currentState, error: "Section instance was not found." };
+      if (!payload.force && (section.isRequired || section.fixedPosition || section.isLocked)) {
+        return { ok: false, state: currentState, error: "Required or fixed sections cannot be removed." };
+      }
+      state.document.sections = sections.filter((candidate) => candidate.sectionKey !== payload.sectionKey);
+      const nextContent = { ...content };
+      delete nextContent[payload.sectionKey];
+      state.document.content = nextContent;
+      const sectionStyles = { ...(layout.sectionStyles || {}) };
+      delete sectionStyles[payload.sectionKey];
+      state.document.layout = {
+        ...removeStyleKeys(layout, payload.sectionKey),
+        sectionStyles,
+      };
+      break;
+    }
+    case EditorCommandType.SECTION_INSTANCE_REORDER: {
+      const reordered = reorderedByKeys(sections, payload.sectionKeys, "sectionKey");
+      if (!reordered) return { ok: false, state: currentState, error: "Section order is invalid." };
+      const fixedTop = reordered.filter((section) => section.fixedPosition === "top");
+      const fixedBottom = reordered.filter((section) => section.fixedPosition === "bottom");
+      const movable = reordered.filter((section) => !section.fixedPosition);
+      state.document.sections = [...fixedTop, ...movable, ...fixedBottom];
+      break;
+    }
+    case EditorCommandType.COMPONENT_INSTANCE_CREATE: {
+      const sectionIndex = sections.findIndex((candidate) => candidate.sectionKey === payload.sectionKey);
+      const item = payload.item && typeof payload.item === "object"
+        ? JSON.parse(JSON.stringify(payload.item))
+        : null;
+      if (sectionIndex < 0 || !item?.itemKey) {
+        return { ok: false, state: currentState, error: "Component target is required." };
+      }
+      const section = sections[sectionIndex];
+      const items = Array.isArray(section.items) ? section.items : [];
+      if (items.some((candidate) => candidate.itemKey === item.itemKey)) {
+        return { ok: false, state: currentState, error: "Component item key must be unique in a section." };
+      }
+      const nextSections = [...sections];
+      nextSections[sectionIndex] = {
+        ...section,
+        items: insertAt(items, item, payload.index),
+      };
+      state.document.sections = nextSections;
+      state.document.content = setNestedContent(
+        content,
+        payload.sectionKey,
+        item.itemKey,
+        payload.value ?? "",
+      );
+      if (payload.style && typeof payload.style === "object") {
+        const styleKey = `${payload.sectionKey}.${item.itemKey}`;
+        state.document.layout = {
+          ...layout,
+          itemStyles: {
+            ...(layout.itemStyles || {}),
+            [styleKey]: withoutUndefined(payload.style),
+          },
+        };
+      }
+      break;
+    }
+    case EditorCommandType.COMPONENT_INSTANCE_REMOVE: {
+      const sectionIndex = sections.findIndex((candidate) => candidate.sectionKey === payload.sectionKey);
+      if (sectionIndex < 0) return { ok: false, state: currentState, error: "Component section was not found." };
+      const section = sections[sectionIndex];
+      const item = (section.items || []).find((candidate) => candidate.itemKey === payload.itemKey);
+      if (!item) return { ok: false, state: currentState, error: "Component instance was not found." };
+      if (!payload.force && (item.isRequired || item.isLocked)) {
+        return { ok: false, state: currentState, error: "Required or locked components cannot be removed." };
+      }
+      const nextSections = [...sections];
+      nextSections[sectionIndex] = {
+        ...section,
+        items: (section.items || []).filter((candidate) => candidate.itemKey !== payload.itemKey),
+      };
+      state.document.sections = nextSections;
+      const sectionContent = { ...(content[payload.sectionKey] || {}) };
+      delete sectionContent[payload.itemKey];
+      state.document.content = { ...content, [payload.sectionKey]: sectionContent };
+      state.document.layout = removeStyleKeys(layout, `${payload.sectionKey}.${payload.itemKey}`);
+      break;
+    }
+    case EditorCommandType.COMPONENT_INSTANCE_REORDER: {
+      const sectionIndex = sections.findIndex((candidate) => candidate.sectionKey === payload.sectionKey);
+      if (sectionIndex < 0) return { ok: false, state: currentState, error: "Component section was not found." };
+      const section = sections[sectionIndex];
+      const reordered = reorderedByKeys(section.items || [], payload.itemKeys, "itemKey");
+      if (!reordered) return { ok: false, state: currentState, error: "Component order is invalid." };
+      const nextSections = [...sections];
+      nextSections[sectionIndex] = { ...section, items: reordered };
+      state.document.sections = nextSections;
+      break;
+    }
+    case EditorCommandType.COMPONENT_INSTANCE_MOVE_SECTION: {
+      const sourceIndex = sections.findIndex((candidate) => candidate.sectionKey === payload.sourceSectionKey);
+      const targetIndex = sections.findIndex((candidate) => candidate.sectionKey === payload.targetSectionKey);
+      if (sourceIndex < 0 || targetIndex < 0) {
+        return { ok: false, state: currentState, error: "Component source and target sections are required." };
+      }
+      const sourceSection = sections[sourceIndex];
+      const targetSection = sections[targetIndex];
+      const item = (sourceSection.items || []).find((candidate) => candidate.itemKey === payload.itemKey);
+      if (!item) return { ok: false, state: currentState, error: "Component instance was not found." };
+      if (item.isLocked || item.userReorderAllowed === false) {
+        return { ok: false, state: currentState, error: "Locked components cannot be moved." };
+      }
+      const targetItemKey = String(payload.targetItemKey || item.itemKey);
+      if ((targetSection.items || []).some((candidate) => candidate.itemKey === targetItemKey)) {
+        return { ok: false, state: currentState, error: "Target section already contains the component item key." };
+      }
+      const movedItem = { ...item, itemKey: targetItemKey, sectionId: targetSection.sectionId || null };
+      const nextSections = [...sections];
+      nextSections[sourceIndex] = {
+        ...sourceSection,
+        items: (sourceSection.items || []).filter((candidate) => candidate.itemKey !== item.itemKey),
+      };
+      nextSections[targetIndex] = {
+        ...targetSection,
+        items: insertAt(targetSection.items || [], movedItem, payload.targetIndex),
+      };
+      state.document.sections = nextSections;
+      const sourceContent = { ...(content[payload.sourceSectionKey] || {}) };
+      const movedValue = sourceContent[item.itemKey];
+      delete sourceContent[item.itemKey];
+      state.document.content = {
+        ...content,
+        [payload.sourceSectionKey]: sourceContent,
+        [payload.targetSectionKey]: {
+          ...(content[payload.targetSectionKey] || {}),
+          [targetItemKey]: movedValue,
+        },
+      };
+      state.document.layout = moveStyleKeys(
+        layout,
+        `${payload.sourceSectionKey}.${item.itemKey}`,
+        `${payload.targetSectionKey}.${targetItemKey}`,
+      );
+      break;
+    }
     case EditorCommandType.LAYOUT_REPLACE:
       state.document = createEditorDocument({
         ...state.document,
@@ -138,6 +363,7 @@ export function reduceEditorCommand(currentState, command) {
         ...state.document,
         layout: payload.layout,
         content: payload.content,
+        sections: Array.isArray(payload.sections) ? payload.sections : state.document.sections,
       });
       break;
     default:

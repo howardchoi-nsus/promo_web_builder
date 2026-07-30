@@ -58,7 +58,7 @@ async function enqueueBuilderAssetJobs(sql, {
       componentName: component.name || component.sourceItemKey || "Visual",
       fieldName: field.name || field.fieldKey || "Visual",
       contentJson: JSON.stringify(sectionContent),
-      adminGuidance: String(field.image?.promptText || ""),
+      adminGuidance: [field.image?.promptText, request.guidance].filter(Boolean).join("\n"),
     } : {
       sectionName: section.name || section.sourceSectionKey || "Promotion section",
       contentJson: JSON.stringify(sectionContent),
@@ -67,7 +67,7 @@ async function enqueueBuilderAssetJobs(sql, {
         snapshot.designSpec?.sectionStyles?.[request.pageSectionInstanceId]?.backgroundFadeMode
         || "none",
       ),
-      adminGuidance: String(section.aiDesign?.backgroundPromptText || ""),
+      adminGuidance: [section.aiDesign?.backgroundPromptText, request.guidance].filter(Boolean).join("\n"),
       aspectRatio: String(section.aiDesign?.imageAspectRatio || "16:9"),
     };
     const promptSnapshot = await createPromptExecutionSnapshot(sql, promptType, promptVariables);

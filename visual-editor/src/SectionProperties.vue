@@ -5,6 +5,7 @@ const props = defineProps({
   section: { type: Object, required: true },
   sectionStyle: { type: Object, default: () => ({}) },
   canRunSectionAi: { type: Boolean, default: false },
+  canRunSectionLayoutAi: { type: Boolean, default: true },
   primaryAction: { type: Object, default: () => ({ action: "generate", label: "AI 키비주얼 생성", disabled: false }) },
   hasAiBackground: { type: Boolean, default: false },
   aiProcessing: { type: Boolean, default: false },
@@ -41,7 +42,7 @@ function requestKeyVisual() {
     </div>
     <div v-if="canRunSectionAi" class="section-ai-actions">
       <button
-        v-if="section.aiDesign?.enabled !== false"
+        v-if="canRunSectionLayoutAi && section.aiDesign?.enabled !== false"
         type="button"
         class="section-ai-action"
         :disabled="primaryAction.disabled"

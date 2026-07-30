@@ -37,7 +37,10 @@ module.exports = async function handler(req, res) {
     const errors = await validateTemplateDraft(sql, id);
     const detail = await fetchTemplateWithItems(sql, id);
     const layout = toLayout(await ensureLayout(sql, id));
-    const layoutValidation = validateLayoutSpec(layout.layoutSpec, detail?.sections || []);
+    const layoutSections = layout.compositionSnapshot.length
+      ? layout.compositionSnapshot
+      : detail?.sections || [];
+    const layoutValidation = validateLayoutSpec(layout.layoutSpec, layoutSections);
     if (!layoutValidation.ok) {
       return res.status(422).json({ error: "Form template layout validation failed", validation: layoutValidation });
     }
