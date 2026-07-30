@@ -33,5 +33,7 @@ export const designTokenService = Object.freeze({
   validate: (body) => requestJson("/api/design-token-set-validate", json("POST", body)),
   activate: (body) => requestJson("/api/design-token-set-activate", json("POST", body)),
   publish: (body) => requestJson("/api/design-token-set-publish", json("POST", body)),
+  updateStatus: (body) => requestJson("/api/design-token-set-status", json("POST", body)),
+  deleteSet: (body) => requestJson("/api/design-token-set-delete", json("POST", body)),
   archive: (body) => requestJson("/api/design-token-set-archive", json("POST", body)),
 });

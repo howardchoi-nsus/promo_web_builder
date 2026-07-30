@@ -1,6 +1,7 @@
 const crypto = require("node:crypto");
 const {
   getSql, parseBody, fetchTokenDefinitions, fetchTokenVersion, normalizeTokenEntries,
+  isDarkOnlyTokenSet, normalizeDarkOnlyTokenEntries,
 } = require("./_design-token-store");
 
 module.exports = async function handler(req, res) {
@@ -18,8 +19,20 @@ module.exports = async function handler(req, res) {
     }
 
     const sql = getSql();
+    const setRows = await sql`
+      select id::text, set_key, name, status
+      from promo_design_token_sets
+      where id = ${tokenSetId}::uuid
+      limit 1
+    `;
+    if (!setRows.length || setRows[0].status !== "active") {
+      return res.status(409).json({ error: "Only active design token sets can be published" });
+    }
     const definitions = await fetchTokenDefinitions(sql);
-    const { normalized, errors } = normalizeTokenEntries(body.tokens, definitions);
+    const inputTokens = isDarkOnlyTokenSet(setRows[0])
+      ? normalizeDarkOnlyTokenEntries(body.tokens)
+      : body.tokens;
+    const { normalized, errors } = normalizeTokenEntries(inputTokens, definitions);
     if (errors.length) {
       return res.status(422).json({ error: "Design token validation failed", errors });
     }

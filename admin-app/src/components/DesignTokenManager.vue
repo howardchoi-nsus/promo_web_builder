@@ -67,6 +67,13 @@ export default {
     workingVersionId() {
       return this.detail?.status === "draft" ? this.detail.id : "";
     },
+    isDarkOnlySet() {
+      return `${this.selectedSet?.setKey || ""} ${this.selectedSet?.name || ""}`
+        .toLowerCase().includes("ggpoker");
+    },
+    setIsActive() {
+      return this.selectedSet?.status === "active";
+    },
     categories() {
       return [...new Set(this.editorValues.map((item) => item.category || "general"))].sort();
     },
@@ -182,6 +189,18 @@ export default {
           ...definition, valueIndex: 0, value: "", valueLight: "", valueDark: "",
           activeTheme: "dark", metadata: {},
         }));
+      if (this.isDarkOnlySet) {
+        this.editorValues = this.editorValues.map((item) => {
+          const darkValue = String(item.valueDark || item.valueLight || item.value || "").trim();
+          return {
+            ...item,
+            value: darkValue,
+            valueLight: "",
+            valueDark: darkValue,
+            activeTheme: "dark",
+          };
+        });
+      }
       this.originalValues = Object.fromEntries(this.editorValues.map((item) => [tokenIdentity(item), tokenSnapshot(item)]));
       this.importErrors = [];
       this.validationErrors = [];
@@ -190,10 +209,10 @@ export default {
       return this.editorValues.map((item) => ({
         tokenKey: item.tokenKey,
         valueIndex: Number(item.valueIndex || 0),
-        value: item.value,
-        valueLight: item.valueLight || item.value,
-        valueDark: item.valueDark || "",
-        activeTheme: item.activeTheme || "dark",
+        value: this.isDarkOnlySet ? (item.valueDark || item.value) : item.value,
+        valueLight: this.isDarkOnlySet ? "" : (item.valueLight || item.value),
+        valueDark: this.isDarkOnlySet ? (item.valueDark || item.value) : (item.valueDark || ""),
+        activeTheme: this.isDarkOnlySet ? "dark" : (item.activeTheme || "dark"),
         metadata: item.metadata || {},
       }));
     },
@@ -211,9 +230,15 @@ export default {
       return item.valueType === "color" ? "color" : "text";
     },
     updateResolvedValue(item) {
-      item.value = item.activeTheme === "light"
+      item.value = this.isDarkOnlySet
+        ? (item.valueDark || item.valueLight)
+        : item.activeTheme === "light"
         ? (item.valueLight || item.valueDark)
         : (item.valueDark || item.valueLight);
+      if (this.isDarkOnlySet) {
+        item.valueLight = "";
+        item.activeTheme = "dark";
+      }
     },
     async publish() {
       this.validationErrors = [];
@@ -318,9 +343,22 @@ export default {
       this.notify("admin.designToken.cloned");
     },
     async archiveSet() {
-      await this.run(() => designTokenService.archive({ tokenSetId: this.selectedSetId }));
+      if (!globalThis.confirm(this.t("admin.designToken.deleteConfirm"))) return;
+      await this.run(() => designTokenService.deleteSet({ tokenSetId: this.selectedSetId }));
       await this.reload("");
-      this.notify("admin.designToken.archived");
+      this.notify("admin.designToken.deleted");
+    },
+    async updateSetStatus(action) {
+      await this.run(() => designTokenService.updateStatus({
+        tokenSetId: this.selectedSetId,
+        action,
+      }));
+      await this.reload(this.selectedSetId);
+      this.notify(action === "activate"
+        ? "admin.designToken.setActivated"
+        : action === "deactivate"
+          ? "admin.designToken.setDeactivated"
+          : "admin.designToken.defaultChanged");
     },
     preventUnsavedExit(event) {
       if (!this.isDirty) return;
@@ -363,7 +401,10 @@ export default {
           @click="selectSet(set.id)"
         >
           <span>{{ set.name }}</span>
-          <small>{{ set.setKey }}</small>
+          <small>
+            {{ set.setKey }} · {{ t(set.status === "inactive" ? "common.state.inactive" : "common.state.active") }}
+            <template v-if="set.isDefault"> · {{ t("admin.designToken.defaultBadge") }}</template>
+          </small>
           <small>v{{ set.draftVersion?.version || set.activeVersion?.version || set.version }}</small>
         </button>
         <div v-if="!loading && !tokenSets.length" class="empty-state">{{ t("admin.designToken.emptySets") }}</div>
@@ -387,8 +428,8 @@ export default {
                 <th>{{ t("admin.designToken.category") }}</th>
                 <th>{{ t("admin.designToken.token") }}</th>
                 <th>{{ t("admin.designToken.type") }}</th>
-                <th>Light</th>
-                <th>Dark</th>
+                <th v-if="!isDarkOnlySet">Light</th>
+                <th>{{ isDarkOnlySet ? "Dark (Default)" : "Dark" }}</th>
                 <th>{{ t("admin.designToken.value") }}</th>
                 <th>{{ t("admin.designToken.status") }}</th>
               </tr></thead>
@@ -400,17 +441,23 @@ export default {
                     <small>{{ item.label || item.semanticRole }}<template v-if="item.cardinality === 'list'"> · #{{ item.valueIndex }}</template></small>
                   </td>
                   <td>{{ item.valueType }}<small v-if="item.unit">{{ item.unit }}</small></td>
-                  <td>
+                  <td v-if="!isDarkOnlySet">
                     <span class="design-token-value-control">
-                      <input v-model="item.valueLight" type="text" :disabled="!item.editable" @input="updateResolvedValue(item)">
+                      <input v-model="item.valueLight" type="text" :disabled="!item.editable || !setIsActive" @input="updateResolvedValue(item)">
                     </span>
                   </td>
                   <td>
                     <span class="design-token-value-control">
-                      <input v-model="item.valueDark" type="text" :disabled="!item.editable || !item.themeable" :placeholder="item.themeable ? '' : 'Light 공통 사용'" @input="updateResolvedValue(item)">
+                      <input
+                        v-model="item.valueDark"
+                        type="text"
+                        :disabled="!item.editable || !setIsActive || (!isDarkOnlySet && !item.themeable)"
+                        :placeholder="!isDarkOnlySet && !item.themeable ? 'Light 공통 사용' : ''"
+                        @input="updateResolvedValue(item)"
+                      >
                     </span>
                   </td>
-                  <td><code>{{ item.value }}</code><small>{{ item.activeTheme === "dark" ? "Dark 기준" : "Light 기준" }}</small></td>
+                  <td><code>{{ item.value }}</code><small>{{ isDarkOnlySet || item.activeTheme === "dark" ? "Dark 기준" : "Light 기준" }}</small></td>
                   <td>
                     <span>{{ t(isTokenChanged(item) ? "admin.designToken.changed" : "admin.designToken.normal") }}</span>
                     <button v-if="isTokenChanged(item)" class="text-button" type="button" @click="restoreToken(item)">{{ t("common.action.reset") }}</button>
@@ -428,11 +475,11 @@ export default {
           <div class="design-token-actions sticky-actions">
             <label class="tiny-button file-button">
               {{ t("admin.designToken.csvImport") }}
-              <input type="file" accept=".csv,text/csv" @change="onCsvFile">
+              <input type="file" accept=".csv,text/csv" :disabled="!setIsActive" @change="onCsvFile">
             </label>
             <button class="tiny-button" type="button" @click="exportCsv">{{ t("admin.designToken.csvExport") }}</button>
             <span v-if="csvSourceName" class="source-name">{{ csvSourceName }}</span>
-            <button class="tiny-button" type="button" :disabled="saving || !isDirty" @click="save">{{ t("common.action.save") }}</button>
+            <button class="tiny-button" type="button" :disabled="saving || !setIsActive || !isDirty" @click="save">{{ t("common.action.save") }}</button>
           </div>
         </template>
       </main>
@@ -466,8 +513,36 @@ export default {
             <label class="field"><span>{{ t("admin.designToken.changeNote") }}</span><input v-model="metadata.changeNote"></label>
             <div class="design-token-actions">
               <button class="tiny-button" type="button" :disabled="saving" @click="saveMetadata">{{ t("common.action.save") }}</button>
-              <button class="tiny-button" type="button" @click="showClone = !showClone">{{ t("common.action.duplicate") }}</button>
-              <button class="tiny-button danger" type="button" :disabled="saving || usage.templates.length || usage.aiRuns.active" @click="archiveSet">{{ t("common.action.archive") }}</button>
+              <button class="tiny-button" type="button" :disabled="!setIsActive" @click="showClone = !showClone">{{ t("common.action.duplicate") }}</button>
+              <button
+                v-if="setIsActive && !selectedSet.isDefault"
+                class="tiny-button"
+                type="button"
+                :disabled="saving"
+                @click="updateSetStatus('set-default')"
+              >{{ t("admin.designToken.setDefault") }}</button>
+              <button
+                v-if="setIsActive"
+                class="tiny-button"
+                type="button"
+                :disabled="saving || selectedSet.isDefault"
+                :title="selectedSet.isDefault ? t('admin.designToken.defaultDeactivateHint') : ''"
+                @click="updateSetStatus('deactivate')"
+              >{{ t("common.action.deactivate") }}</button>
+              <button
+                v-else-if="selectedSet.status === 'inactive'"
+                class="tiny-button"
+                type="button"
+                :disabled="saving"
+                @click="updateSetStatus('activate')"
+              >{{ t("common.action.activate") }}</button>
+              <button
+                v-if="selectedSet.status === 'inactive'"
+                class="tiny-button danger"
+                type="button"
+                :disabled="saving || usage.templates.length || usage.aiRuns.active"
+                @click="archiveSet"
+              >{{ t("common.action.delete") }}</button>
             </div>
             <form v-if="showClone" class="design-token-clone" @submit.prevent="cloneSet">
               <label class="field"><span>{{ t("admin.designToken.cloneName") }}</span><input v-model.trim="cloneForm.name" required></label>

@@ -127,6 +127,34 @@ function normalizeTokenEntries(entries, definitions) {
   return { normalized, errors };
 }
 
+function isDarkOnlyTokenSet(tokenSet) {
+  const identity = `${tokenSet?.set_key || tokenSet?.setKey || ""} ${tokenSet?.name || ""}`.toLowerCase();
+  return identity.includes("ggpoker");
+}
+
+function normalizeDarkOnlyTokenEntries(entries) {
+  return (Array.isArray(entries) ? entries : []).map((entry) => {
+    const darkValue = String(
+      entry?.valueDark
+      ?? entry?.value_dark
+      ?? "",
+    ).trim();
+    const lightValue = String(
+      entry?.valueLight
+      ?? entry?.value_light
+      ?? "",
+    ).trim();
+    const resolvedValue = darkValue || lightValue || String(entry?.value ?? "").trim();
+    return {
+      ...entry,
+      value: resolvedValue,
+      valueLight: "",
+      valueDark: resolvedValue,
+      activeTheme: "dark",
+    };
+  });
+}
+
 async function fetchTokenDefinitions(sql) {
   return sql`select * from promo_design_token_definitions order by category, token_key`;
 }
@@ -334,5 +362,7 @@ module.exports = {
   fetchTokenVersion,
   fetchManagedTokenSets,
   fetchTokenSetUsage,
+  isDarkOnlyTokenSet,
+  normalizeDarkOnlyTokenEntries,
   toRuntimeTokenMap,
 };

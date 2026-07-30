@@ -22,6 +22,28 @@ assert.match(store, /fetchManagedTokenSets/);
 assert.match(store, /fetchTokenSetUsage/);
 assert.match(store, /count\(\*\) filter \(where run\.status in/);
 assert.doesNotMatch(store, /count\(\*\) filter \(where status in/);
+assert.match(store, /isDarkOnlyTokenSet/);
+assert.match(store, /normalizeDarkOnlyTokenEntries/);
+
+const {
+  isDarkOnlyTokenSet,
+  normalizeDarkOnlyTokenEntries,
+} = require("../api/_design-token-store");
+assert.equal(isDarkOnlyTokenSet({ setKey: "ggpoker-web", name: "GGPoker Web" }), true);
+assert.equal(isDarkOnlyTokenSet({ setKey: "generic", name: "Generic" }), false);
+assert.deepEqual(normalizeDarkOnlyTokenEntries([{
+  tokenKey: "--app-space-4",
+  value: "12px",
+  valueLight: "16px",
+  valueDark: "",
+  activeTheme: "light",
+}])[0], {
+  tokenKey: "--app-space-4",
+  value: "16px",
+  valueLight: "",
+  valueDark: "16px",
+  activeTheme: "dark",
+});
 
 const importHandler = read("api/design-token-set-import.js");
 assert.match(importHandler, /normalizeTokenEntries/);
@@ -44,6 +66,13 @@ assert.match(publishMigration, /select version into v_draft_version/);
 assert.match(publishHandler, /normalizeTokenEntries/);
 assert.match(publishHandler, /publish_promo_design_token_version/);
 assert.match(publishHandler, /validation \? 422/);
+
+const lifecycleMigration = read("db/migrations/045_design_token_set_lifecycle_and_ggpoker_dark.sql");
+assert.match(lifecycleMigration, /status in \('active', 'inactive', 'archived'\)/);
+assert.match(lifecycleMigration, /value_dark = coalesce/);
+assert.match(lifecycleMigration, /value_light = ''/);
+assert.match(lifecycleMigration, /active_theme = 'dark'/);
+assert.match(lifecycleMigration, /lower\(token_set\.set_key\) like '%ggpoker%'/);
 
 const aliasActivationMigration = read("db/migrations/039_design_token_app_alias_activation.sql");
 assert.match(aliasActivationMigration, /when '--promo-surface' then '--app-surface'/);
@@ -88,11 +117,13 @@ assert.match(promoTypographyMigration, /--promo-font-size-subtitle/);
   "api/design-token-set-validate.js",
   "api/design-token-set-usage.js",
   "api/design-token-set-archive.js",
+  "api/design-token-set-status.js",
   "api/design-token-set-clone.js",
 ].forEach((file) => {
   assert.equal(fs.existsSync(path.join(root, file)), true, `${file} must exist`);
   assert.match(read(file), /Method not allowed/);
 });
+assert.match(read("api/design-token-set-delete.js"), /design-token-set-archive/);
 
 const main = read("admin-app/src/main.js");
 const component = read("admin-app/src/components/DesignTokenManager.vue");
@@ -123,6 +154,12 @@ assert.match(component, /beforeunload/);
 assert.match(service, /\/api\/design-token-set-clone/);
 assert.doesNotMatch(service, /\/api\/wizard-form-template/);
 assert.match(service, /\/api\/design-token-set-publish/);
+assert.match(service, /\/api\/design-token-set-status/);
+assert.match(service, /\/api\/design-token-set-delete/);
+assert.match(component, /updateSetStatus\('deactivate'\)/);
+assert.match(component, /selectedSet\.status === 'inactive'/);
+assert.match(component, /isDarkOnlySet/);
+assert.match(component, /v-if="!isDarkOnlySet">Light/);
 assert.doesNotMatch(read("api/design-token-sets.js"), /wizard_form_templates/);
 assert.match(read("prototype/create-promo.js"), /designTokens: wizardDesignTokens/);
 assert.match(read("visual-editor/src/PromoPageRenderer.vue"), /managedTokenStyle/);
@@ -130,5 +167,7 @@ assert.doesNotMatch(read("api/wizard-form-template-layout.js"), /designTokens:/)
 assert.match(read("visual-editor/src/promo-renderer.css"), /rendered-text--title/);
 assert.equal(ko["admin.designToken.title"], "디자인 토큰 관리");
 assert.equal(typeof en["admin.designToken.title"], "string");
+assert.equal(ko["admin.designToken.setDeactivated"], "디자인 토큰 세트를 비활성화했습니다.");
+assert.equal(typeof en["admin.designToken.deleteConfirm"], "string");
 
 console.log("admin design token management contract passed");
