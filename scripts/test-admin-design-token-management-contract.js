@@ -128,7 +128,11 @@ assert.match(promoTypographyMigration, /--promo-font-size-subtitle/);
   assert.equal(fs.existsSync(path.join(root, file)), true, `${file} must exist`);
   assert.match(read(file), /Method not allowed/);
 });
+const archiveApi = read("api/design-token-set-archive.js");
 assert.match(read("api/design-token-set-delete.js"), /design-token-set-archive/);
+assert.match(archiveApi, /if \(usage\.templates\.length\)/);
+assert.doesNotMatch(archiveApi, /usage\.templates\.length \|\| usage\.aiRuns\.active/);
+assert.match(archiveApi, /preservedUsage: usage/);
 
 const main = read("admin-app/src/main.js");
 const component = read("admin-app/src/components/DesignTokenManager.vue");

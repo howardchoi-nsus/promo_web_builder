@@ -27,7 +27,7 @@ module.exports = async function handler(req, res) {
       return res.status(409).json({ error: "Default design token set cannot be deleted" });
     }
     const usage = await fetchTokenSetUsage(sql, tokenSetId);
-    if (usage.templates.length || usage.aiRuns.active) {
+    if (usage.templates.length) {
       return res.status(409).json({ error: "Design token set is in use", usage });
     }
     const rows = await sql`
@@ -53,7 +53,11 @@ module.exports = async function handler(req, res) {
       select id::text from updated
     `;
     if (!rows.length) return res.status(409).json({ error: "Design token set status changed before deletion" });
-    return res.status(200).json({ ok: true });
+    return res.status(200).json({
+      ok: true,
+      archived: true,
+      preservedUsage: usage,
+    });
   } catch (error) {
     return res.status(error.statusCode || 500).json({ error: "Design token archive failed", message: error.message });
   }
