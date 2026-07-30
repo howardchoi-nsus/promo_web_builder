@@ -27,8 +27,6 @@ function normalizedSectionOrder(candidate, sections) {
     : allowed;
 }
 
-<<<<<<< HEAD
-=======
 function normalizeSectionSnapshot(candidate, fallback = []) {
   const source = Array.isArray(candidate) ? candidate : fallback;
   if (!Array.isArray(source) || source.length > 100) {
@@ -74,7 +72,6 @@ function normalizeSectionSnapshot(candidate, fallback = []) {
   return sections;
 }
 
->>>>>>> codex/ai-builder-all-stages-2026-07-30
 async function normalizeEditorSnapshot(sql, currentSnapshot, incomingSnapshot, designTokenSetVersionId) {
   if (!currentSnapshot?.content || !currentSnapshot?.designSpec) {
     throw Object.assign(new Error("Builder document does not have an editable snapshot"), {
@@ -82,14 +79,10 @@ async function normalizeEditorSnapshot(sql, currentSnapshot, incomingSnapshot, d
       code: "BUILDER_SNAPSHOT_NOT_READY",
     });
   }
-<<<<<<< HEAD
-  const sections = currentSnapshot.content.sectionSnapshot || [];
-=======
   const sections = normalizeSectionSnapshot(
     incomingSnapshot?.content?.sectionSnapshot,
     currentSnapshot.content.sectionSnapshot || [],
   );
->>>>>>> codex/ai-builder-all-stages-2026-07-30
   const incomingDesignSpec = {
     ...(incomingSnapshot?.designSpec || currentSnapshot.designSpec),
     contractVersion: 1,
@@ -173,10 +166,7 @@ async function normalizeEditorSnapshot(sql, currentSnapshot, incomingSnapshot, d
         incomingSnapshot?.content?.sectionInputs || currentSnapshot.content.sectionInputs,
         sections,
       ),
-<<<<<<< HEAD
-=======
       sectionSnapshot: sections,
->>>>>>> codex/ai-builder-all-stages-2026-07-30
       sectionOrder: normalizedSectionOrder(
         incomingSnapshot?.content?.sectionOrder,
         sections,
@@ -266,7 +256,4 @@ module.exports = async function handler(req, res) {
 };
 
 module.exports.normalizeEditorSnapshot = normalizeEditorSnapshot;
-<<<<<<< HEAD
-=======
 module.exports.normalizeSectionSnapshot = normalizeSectionSnapshot;
->>>>>>> codex/ai-builder-all-stages-2026-07-30

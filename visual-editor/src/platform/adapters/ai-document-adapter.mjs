@@ -52,8 +52,6 @@ export function createAiDocumentAdapter({ fetchImpl = globalThis.fetch } = {}) {
       });
       return responseJson(response, "AI 프로모션 문서를 저장하지 못했습니다.");
     },
-<<<<<<< HEAD
-=======
 
     async applyOperations({
       documentId,
@@ -77,6 +75,5 @@ export function createAiDocumentAdapter({ fetchImpl = globalThis.fetch } = {}) {
       });
       return responseJson(response, "AI 문서 자산 요청을 처리하지 못했습니다.");
     },
->>>>>>> codex/ai-builder-all-stages-2026-07-30
   });
 }

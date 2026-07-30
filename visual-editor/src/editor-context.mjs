@@ -22,14 +22,9 @@ export function createEditorContext(mode = "editor", source = "") {
       canEditPromoContent: isCreatePromo || isAiDocument,
       canEditDesignTokens: isAdminLayout || isAiDocument,
       canAutoRegister: isCreatePromo,
-<<<<<<< HEAD
-      canRunSectionAi: isCreatePromo,
-      canRunComponentImageAi: isCreatePromo,
-=======
       canRunSectionAi: isCreatePromo || isAiDocument,
       canRunSectionLayoutAi: isCreatePromo,
       canRunComponentImageAi: isCreatePromo || isAiDocument,
->>>>>>> codex/ai-builder-all-stages-2026-07-30
       canRunMultiLayoutAi: isBuilderWorkspace,
       canComposeStructure: isBuilderWorkspace,
       canCreateSections: isBuilderWorkspace,

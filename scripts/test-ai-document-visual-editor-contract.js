@@ -12,18 +12,12 @@ const builder = read("visual-editor/src/builder/AiBuilderApp.vue");
 const documentsApi = read("api/promo-builder-documents.js");
 const renderer = read("visual-editor/src/PromoPageRenderer.vue");
 const composition = read("api/_promo-page-composition-contract.js");
-<<<<<<< HEAD
-=======
 const { normalizeSectionSnapshot } = require("../api/promo-builder-documents");
->>>>>>> codex/ai-builder-all-stages-2026-07-30
 
 assert.match(context, /mode === "ai-document"/);
 assert.match(context, /canSaveAiDocument: isAiDocument/);
 assert.match(context, /canEditDesignTokens: isAdminLayout \|\| isAiDocument/);
-<<<<<<< HEAD
-=======
 assert.match(context, /canComposeStructure: isBuilderWorkspace/);
->>>>>>> codex/ai-builder-all-stages-2026-07-30
 assert.match(builder, /searchParams\.set\("mode", "ai-document"\)/);
 assert.match(builder, /window\.location\.assign\(url\)/);
 assert.doesNotMatch(builder, /refreshAssetsUntilSettled/);
@@ -37,8 +31,6 @@ assert.match(documentsApi, /createDocumentRevision/);
 assert.match(documentsApi, /source: "manual"/);
 assert.match(documentsApi, /assets: currentSnapshot\.assets/);
 assert.match(documentsApi, /motionSpec: currentSnapshot\.motionSpec/);
-<<<<<<< HEAD
-=======
 assert.match(documentsApi, /sectionSnapshot: sections/);
 assert.deepEqual(normalizeSectionSnapshot([
   { sectionKey: "sec_demo", items: [{ itemKey: "title" }] },
@@ -50,7 +42,6 @@ assert.throws(
   ]),
   (error) => error.code === "INVALID_SECTION_SNAPSHOT",
 );
->>>>>>> codex/ai-builder-all-stages-2026-07-30
 assert.match(composition, /buildDefaultItemStyles/);
 assert.match(composition, /--promo-font-size-main-title/);
 assert.match(renderer, /style\.fontWeightToken \? `var\(\$\{style\.fontWeightToken\}\)`/);

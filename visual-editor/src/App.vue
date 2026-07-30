@@ -7,10 +7,7 @@ import { normalizeLayoutSpec, validateLayoutSpec } from "./layout-utils.mjs";
 import { geometryToItemStylePatches, resolveSafeMultiLayoutOperation } from "./multi-layout.mjs";
 import { createAdminTemplateAdapter } from "./platform/adapters/admin-template-adapter.mjs";
 import { createAiDocumentAdapter } from "./platform/adapters/ai-document-adapter.mjs";
-<<<<<<< HEAD
-=======
 import { createEditorLibraryAdapter } from "./platform/adapters/editor-library-adapter.mjs";
->>>>>>> codex/ai-builder-all-stages-2026-07-30
 import {
   PromoBuilderMessageType,
   createPromoBuilderAdapter,
@@ -105,10 +102,7 @@ const editorCore = createEditorStore({
 });
 const adminTemplateAdapter = createAdminTemplateAdapter();
 const aiDocumentAdapter = createAiDocumentAdapter();
-<<<<<<< HEAD
-=======
 const editorLibraryAdapter = createEditorLibraryAdapter();
->>>>>>> codex/ai-builder-all-stages-2026-07-30
 const promoBuilderAdapter = createPromoBuilderAdapter();
 const outputAdapter = createOutputAdapter({ storageKey: SNAPSHOT_STORAGE_KEY });
 let applyingExternalSnapshot = false;
@@ -147,12 +141,7 @@ const editorSnapshot = computed(() => {
         formTemplate: { ...aiDocumentSnapshot.value.content.formTemplate, ...template.value },
         sectionSnapshot: JSON.parse(JSON.stringify(sections.value)),
         sectionInputs: JSON.parse(JSON.stringify(sectionInputs.value)),
-<<<<<<< HEAD
-        sectionOrder: aiDocumentSnapshot.value.content?.sectionOrder
-          || sections.value.map((section) => section.sectionKey),
-=======
         sectionOrder: sections.value.map((section) => section.sectionKey),
->>>>>>> codex/ai-builder-all-stages-2026-07-30
       },
       designSpec: JSON.parse(JSON.stringify(designSpec.value)),
       assets: JSON.parse(JSON.stringify(
@@ -1341,12 +1330,6 @@ async function refreshAiDocumentAssetsUntilSettled() {
     try {
       const loaded = await aiDocumentAdapter.load(aiDocumentId.value);
       if (loaded.snapshot?.assets) {
-<<<<<<< HEAD
-        aiDocumentSnapshot.value = {
-          ...aiDocumentSnapshot.value,
-          assets: loaded.snapshot.assets,
-        };
-=======
         const loadedSnapshot = loaded.snapshot;
         const nextLayout = JSON.parse(JSON.stringify(designSpec.value));
         const nextContent = JSON.parse(JSON.stringify(sectionInputs.value));
@@ -1379,7 +1362,6 @@ async function refreshAiDocumentAssetsUntilSettled() {
         };
         editorCore.replaceDocument(editorDocumentFromRefs(), { resetHistory: false, dirty: false });
         updateEditorHistory();
->>>>>>> codex/ai-builder-all-stages-2026-07-30
       }
     } catch {
       return;
@@ -1775,10 +1757,7 @@ onBeforeUnmount(() => {
     <div v-if="outputSaveError" class="system-message system-message--error" role="alert">{{ outputSaveError }}</div>
     <div v-if="layoutSaveMessage" class="system-message" role="status">{{ layoutSaveMessage }}</div>
     <div v-if="aiDocumentSaveMessage" class="system-message" role="status">{{ aiDocumentSaveMessage }}</div>
-<<<<<<< HEAD
-=======
     <div v-if="structureMessage" class="system-message" role="status">{{ structureMessage }}</div>
->>>>>>> codex/ai-builder-all-stages-2026-07-30
 
     <section
       v-if="!loading && !error"
