@@ -243,7 +243,7 @@ function loadWizardContent() {
     objectKeys: [
       "promotionOverview", "promotionOverviewDraft", "templateRecommendation", "templateCompositionProposal",
       "templateInputs", "templateDefaultContents",
-      "templateSectionOrders", "templateLayouts", "sectionDesignRuns",
+      "templateSectionOrders", "templateSectionDefinitions", "templateLayouts", "sectionDesignRuns",
     ],
   });
 }
@@ -333,19 +333,26 @@ async function selectWizardFormTemplate(templateId, options = {}) {
   const adminSectionOrder = nextDefinitions.map((section) => section.sectionKey);
   const savedSectionOrder = contentState.templateSectionOrders[result.template.templateKey];
   const nextIdentity = layoutIdentityFromTemplateResult(result);
+  const savedDefinitions = contentState.templateSectionDefinitions?.[result.template.templateKey];
+  const effectiveDefinitions = (
+    savedDefinitions
+    && layoutIdentityKey(savedDefinitions.layoutIdentity) === layoutIdentityKey(nextIdentity)
+    && Array.isArray(savedDefinitions.sections)
+    && savedDefinitions.sections.length
+  ) ? savedDefinitions.sections : nextDefinitions;
   const sectionOrderResolution = resolveSectionOrderCache({
     savedOrder: savedSectionOrder,
     incomingIdentity: nextIdentity,
     defaultOrder: adminSectionOrder,
   });
   const savedOrder = sectionOrderResolution.resolvedOrder;
-  const byKey = new Map(nextDefinitions.map((section) => [section.sectionKey, section]));
+  const byKey = new Map(effectiveDefinitions.map((section) => [section.sectionKey, section]));
   const savedMovable = savedOrder.map((key) => byKey.get(key)).filter(templateSectionCanReorder);
   const movableQueue = [
     ...savedMovable,
-    ...nextDefinitions.filter((section) => templateSectionCanReorder(section) && !savedOrder.includes(section.sectionKey)),
+    ...effectiveDefinitions.filter((section) => templateSectionCanReorder(section) && !savedOrder.includes(section.sectionKey)),
   ];
-  wizardSectionDefinitions = nextDefinitions.map((section) => (
+  wizardSectionDefinitions = effectiveDefinitions.map((section) => (
     templateSectionCanReorder(section) ? movableQueue.shift() : section
   ));
   expandedTemplateSectionKeys = new Set(wizardSectionDefinitions.slice(0, 1).map((section) => section.sectionKey));
@@ -535,6 +542,7 @@ function saveWizardContent() {
   contentState.promotionOverview = syncPromotionOverviewFromLegacy(contentState);
   contentState.promotionOverview.inputMode = overviewInputMode;
   contentState.promotionOverview.rawNaturalLanguage = overviewNaturalLanguage;
+  contentState.templateSectionDefinitions ||= {};
   if (selectedWizardFormTemplate?.templateKey) {
     contentState.templateInputs[selectedWizardFormTemplate.templateKey] = contentState.sectionInputs;
     contentState.templateSectionOrders[selectedWizardFormTemplate.templateKey] = {
@@ -542,6 +550,11 @@ function saveWizardContent() {
       layoutIdentity: wizardLayoutIdentity,
       baseOrder: [...wizardBaseSectionOrder],
       resolvedOrder: wizardSectionDefinitions.map((section) => section.sectionKey),
+    };
+    contentState.templateSectionDefinitions[selectedWizardFormTemplate.templateKey] = {
+      contractVersion: LAYOUT_CACHE_CONTRACT_VERSION,
+      layoutIdentity: wizardLayoutIdentity,
+      sections: JSON.parse(JSON.stringify(wizardSectionDefinitions)),
     };
     contentState.templateLayouts[selectedWizardFormTemplate.templateKey] = {
       contractVersion: LAYOUT_CACHE_CONTRACT_VERSION,
@@ -742,6 +755,22 @@ window.addEventListener("message", (event) => {
   delete wizardResolvedLayout.theme.ctaVariant;
   if (change.sectionInputs) {
     contentState.sectionInputs = change.sectionInputs;
+  }
+  if (change.sectionSnapshot) {
+    wizardSectionDefinitions = change.sectionSnapshot;
+    if (change.sectionOrder?.length) {
+      const bySectionKey = new Map(wizardSectionDefinitions.map((section) => [section.sectionKey, section]));
+      wizardSectionDefinitions = [
+        ...change.sectionOrder.map((sectionKey) => bySectionKey.get(sectionKey)).filter(Boolean),
+        ...wizardSectionDefinitions.filter((section) => !change.sectionOrder.includes(section.sectionKey)),
+      ];
+    }
+    contentState.sectionInputs = mergeSectionInputs(
+      contentState.sectionInputs,
+      wizardSectionDefinitions,
+      {},
+      {},
+    );
   }
   saveWizardContent();
   clearTimeout(wizardLayoutLogTimer);

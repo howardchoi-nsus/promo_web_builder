@@ -427,8 +427,8 @@ function inlineItemStyle(section, item) {
     "--item-font-size": style.fontSizeToken
       ? `var(${style.fontSizeToken})`
       : (style.fontSize !== undefined ? `${style.fontSize}px` : undefined),
-    fontWeight: style.fontWeight,
-    "--item-font-weight": style.fontWeight,
+    fontWeight: style.fontWeightToken ? `var(${style.fontWeightToken})` : style.fontWeight,
+    "--item-font-weight": style.fontWeightToken ? `var(${style.fontWeightToken})` : style.fontWeight,
     width: `${widthPct}%`,
     height: heightPx && (!isImage || style.shape !== "circle") ? `${heightPx}px` : undefined,
     aspectRatio: isImage && (!heightPx || style.shape === "circle")

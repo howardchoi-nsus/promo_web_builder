@@ -55,4 +55,11 @@ assert.equal(appStyle["--promo-cta-radius"], "10px");
 assert.equal(appStyle["--promo-transition-duration"], "200ms");
 assert.equal(appStyle["--promo-title-size"], "clamp(28px, 5vw, 72px)");
 
+const ggpokerStyle = createPromoTokenRuntimeStyle({
+  "--app-font-body": "Inter, Pretendard, sans-serif",
+  "--promo-font-size-main-title": "68px",
+});
+assert.equal(ggpokerStyle["--promo-font"], "Inter, Pretendard, sans-serif");
+assert.equal(ggpokerStyle["--promo-title-size"], "68px");
+
 console.log("Promo token runtime tests passed.");

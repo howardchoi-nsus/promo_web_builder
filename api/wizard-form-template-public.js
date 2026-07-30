@@ -41,11 +41,14 @@ module.exports = async function handler(req, res) {
         items,
       });
     }
-    const revision = [template.id, template.version, template.updatedAt, ...sections.flatMap((section) => [
+    const layout = toLayout(await fetchLayoutRow(sql, id));
+    const resolvedSections = layout.compositionSnapshot.length
+      ? layout.compositionSnapshot
+      : sections;
+    const revision = [template.id, template.version, template.updatedAt, ...resolvedSections.flatMap((section) => [
       section.sectionId, section.sectionKey, JSON.stringify(section.aiDesign),
       ...section.items.map((item) => `${item.id}:${item.componentVersionId}:${item.updatedAt || ""}`),
     ])].join("|");
-    const layout = toLayout(await fetchLayoutRow(sql, id));
     return res.status(200).json({
       ok: true,
       template: {
@@ -62,7 +65,7 @@ module.exports = async function handler(req, res) {
       layoutIdentity: createLayoutIdentity(template, layout, revision),
       defaultLayout: layout.layoutSpec,
       defaultContent: layout.defaultContent,
-      sections,
+      sections: resolvedSections,
       configurationWarnings,
     });
   } catch (error) {

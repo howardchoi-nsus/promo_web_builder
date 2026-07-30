@@ -14,7 +14,6 @@ import {
   createCompositionProposal,
   ensureBuilderSession,
   loadCompositionProposal,
-  loadBuilderDocument,
   loadBuilderCapabilities,
   recordBuilderEvent,
   rollbackComposition,
@@ -91,22 +90,17 @@ async function pollProposal(proposalId) {
   throw Object.assign(new Error("구성 생성 대기 시간이 초과되었습니다."), { code: "POLL_TIMEOUT" });
 }
 
-async function refreshAssetsUntilSettled() {
-  for (let count = 0; count < 200; count += 1) {
-    const requests = store.snapshot?.assets?.requests || [];
-    if (!requests.some((request) => ["pending", "queued", "processing"].includes(request.status))) return;
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    try {
-      const loaded = await loadBuilderDocument(store.documentId);
-      if (loaded.snapshot) store.snapshot = loaded.snapshot;
-    } catch {
-      return;
-    }
-  }
+function openVisualEditor() {
+  const url = new URL("/prototype/visual-editor.html", window.location.origin);
+  url.searchParams.set("mode", "ai-document");
+  url.searchParams.set("builderDocumentId", store.documentId);
+  url.searchParams.set("revision", String(store.documentRevision));
+  window.location.assign(url);
 }
 
 async function compose() {
   clearBuilderError(store);
+  store.warning = null;
   store.stage = "resolving_policy";
   const startedAt = performance.now();
   try {
@@ -136,8 +130,8 @@ async function compose() {
     store.documentRevision = applied.revision;
     store.snapshot = applied.snapshot;
     store.assetJobs = Object.fromEntries((applied.assetJobs || []).map((job) => [job.id, job]));
+    store.warning = applied.assetWarning || applied.warnings?.[0] || null;
     store.stage = "render_ready";
-    refreshAssetsUntilSettled();
     recordBuilderEvent({
       eventName: "composition_applied",
       documentId: store.documentId,
@@ -145,6 +139,7 @@ async function compose() {
       durationMs: performance.now() - startedAt,
       metadata: { assetJobCount: Object.keys(store.assetJobs).length },
     });
+    openVisualEditor();
   } catch (error) {
     setBuilderError(store, error);
   }
@@ -167,6 +162,7 @@ async function rollback() {
 }
 
 async function editNaturalLanguage(instruction) {
+  store.warning = null;
   try {
     const response = await submitCompositionOperation({
       action: "propose",
@@ -192,6 +188,8 @@ async function editNaturalLanguage(instruction) {
       });
       store.documentRevision = applied.revision;
       store.snapshot = applied.snapshot;
+      store.assetJobs = Object.fromEntries((applied.assetJobs || []).map((job) => [job.id, job]));
+      store.warning = applied.assetWarning || applied.warnings?.[0] || null;
       recordBuilderEvent({
         eventName: "composition_operation_applied",
         documentId: store.documentId,
@@ -240,6 +238,11 @@ onMounted(async () => {
         <strong>{{ store.error.code }}</strong>
         <span>{{ store.error.message }}</span>
         <button type="button" @click="store.stage = store.overviewDraft ? 'reviewing_overview' : 'idle'; clearBuilderError(store)">닫기</button>
+      </div>
+      <div v-if="store.warning" class="ai-builder-warning" role="status">
+        <strong>{{ store.warning.code }}</strong>
+        <span>{{ store.warning.message }}</span>
+        <button type="button" @click="store.warning = null">닫기</button>
       </div>
       <AiBriefPanel
         v-if="store.stage === 'idle' || store.stage === 'analyzing_overview' || store.stage === 'failed' && !store.overviewDraft"

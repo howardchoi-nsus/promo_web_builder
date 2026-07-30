@@ -2,11 +2,17 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value ?? null));
 }
 
-export function createEditorDocument({ layout = {}, content = {}, metadata = {} } = {}) {
+export function createEditorDocument({
+  layout = {},
+  content = {},
+  sections = [],
+  metadata = {},
+} = {}) {
   return {
-    contractVersion: 1,
+    contractVersion: 2,
     layout: clone(layout) || {},
     content: clone(content) || {},
+    sections: Array.isArray(sections) ? clone(sections) : [],
     metadata: clone(metadata) || {},
   };
 }

@@ -43,6 +43,12 @@
       sectionInputs: message.sectionInputs && typeof message.sectionInputs === "object"
         ? clone(message.sectionInputs)
         : null,
+      sectionSnapshot: Array.isArray(message.sectionSnapshot)
+        ? clone(message.sectionSnapshot)
+        : null,
+      sectionOrder: Array.isArray(message.sectionOrder)
+        ? message.sectionOrder.map((sectionKey) => String(sectionKey || "")).filter(Boolean)
+        : null,
     };
   }
 

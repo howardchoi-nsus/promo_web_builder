@@ -2,6 +2,7 @@ const crypto = require("node:crypto");
 const {
   getSql, parseBody, parseCsvRows, normalizeTokenEntries,
   fetchTokenDefinitions, fetchTokenVersion,
+  isDarkOnlyTokenSet, normalizeDarkOnlyTokenEntries,
 } = require("./_design-token-store");
 const { normalizeDefinitions } = require("./design-token-catalog-import");
 
@@ -40,11 +41,23 @@ module.exports = async function handler(req, res) {
     const tokenSetId = String(body.tokenSetId || "").trim();
     const csvRows = Array.isArray(body.tokens) ? [] : parseCsvRows(body.csvText);
     const activeTheme = String(body.activeTheme || "dark").trim() === "light" ? "light" : "dark";
-    const tokens = Array.isArray(body.tokens)
+    let tokens = Array.isArray(body.tokens)
       ? body.tokens
       : csvRows.map((row) => tokenFromCsvRow(row, activeTheme));
     if (!tokenSetId || !tokens.length) return res.status(400).json({ error: "tokenSetId and tokens are required" });
     const sql = getSql();
+    const setRows = await sql`
+      select id::text, set_key, name, status
+      from promo_design_token_sets
+      where id = ${tokenSetId}::uuid
+      limit 1
+    `;
+    if (!setRows.length || setRows[0].status !== "active") {
+      return res.status(404).json({ error: "Active token set not found" });
+    }
+    if (isDarkOnlyTokenSet(setRows[0])) {
+      tokens = normalizeDarkOnlyTokenEntries(tokens);
+    }
     const catalog = csvRows.length ? normalizeDefinitions(csvRows) : { definitions: [], errors: [] };
     if (catalog.errors.length) {
       return res.status(422).json({ error: "Design token catalog validation failed", errors: catalog.errors });
@@ -100,8 +113,6 @@ module.exports = async function handler(req, res) {
       tokens: normalized,
       errors,
     });
-    const setRows = await sql`select id::text from promo_design_token_sets where id = ${tokenSetId}::uuid and status = 'active' limit 1`;
-    if (!setRows.length) return res.status(404).json({ error: "Active token set not found" });
     const hash = crypto.createHash("sha256").update(JSON.stringify(normalized)).digest("hex");
     const existingDraft = await sql`
       select id::text from promo_design_token_set_versions

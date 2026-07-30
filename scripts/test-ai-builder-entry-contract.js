@@ -13,6 +13,8 @@ assert.match(html, /data-template-builder-root/);
 assert.match(html, /builder-bootstrap\.js/);
 assert.doesNotMatch(html, /<script src="create-promo\.js/);
 assert.match(bootstrap, /mode === "template"/);
+assert.match(bootstrap, /function loadStylesheet/);
+assert.match(bootstrap, /visual-editor-assets\/ai-builder\.css/);
 assert.match(bootstrap, /visual-editor-assets\/ai-builder\.js/);
 assert.match(vite, /"ai-builder": resolve/);
 assert.match(app, /BuilderModeSelector/);

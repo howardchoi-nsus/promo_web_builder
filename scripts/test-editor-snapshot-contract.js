@@ -26,9 +26,13 @@ const change = contract.normalizeEditorChange({
   snapshotRevision: "5",
   designSpec: { theme: { backgroundColor: "#fff" } },
   sectionInputs: { hero: { title: "Title" } },
+  sectionSnapshot: [{ sectionKey: "hero", items: [{ itemKey: "title" }] }],
+  sectionOrder: ["hero"],
 });
 assert.equal(change.snapshotRevision, 5);
 assert.notEqual(change.designSpec, sourceSnapshot);
+assert.deepEqual(JSON.parse(JSON.stringify(change.sectionOrder)), ["hero"]);
+assert.equal(change.sectionSnapshot[0].items[0].itemKey, "title");
 assert.equal(contract.normalizeEditorChange({}), null);
 
 console.log("Editor snapshot contract tests passed");

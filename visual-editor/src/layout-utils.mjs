@@ -98,7 +98,7 @@ export function validateLayoutSpec(value = {}) {
     const x = Number(style?.xPct);
     const y = Number(style?.yPx);
     const size = Number(style?.fontSize);
-    for (const tokenProperty of ["colorToken", "fontSizeToken"]) {
+    for (const tokenProperty of ["colorToken", "fontSizeToken", "fontWeightToken"]) {
       if (style?.[tokenProperty] !== undefined
         && !/^--(?:promo|app)-[a-z0-9-]+$/.test(String(style[tokenProperty]))) {
         errors.push({ path: `itemStyles.${key}.${tokenProperty}`, message: "Managed design token key is required." });

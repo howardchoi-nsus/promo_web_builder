@@ -127,6 +127,34 @@ function normalizeTokenEntries(entries, definitions) {
   return { normalized, errors };
 }
 
+function isDarkOnlyTokenSet(tokenSet) {
+  const identity = `${tokenSet?.set_key || tokenSet?.setKey || ""} ${tokenSet?.name || ""}`.toLowerCase();
+  return identity.includes("ggpoker");
+}
+
+function normalizeDarkOnlyTokenEntries(entries) {
+  return (Array.isArray(entries) ? entries : []).map((entry) => {
+    const darkValue = String(
+      entry?.valueDark
+      ?? entry?.value_dark
+      ?? "",
+    ).trim();
+    const lightValue = String(
+      entry?.valueLight
+      ?? entry?.value_light
+      ?? "",
+    ).trim();
+    const resolvedValue = darkValue || lightValue || String(entry?.value ?? "").trim();
+    return {
+      ...entry,
+      value: resolvedValue,
+      valueLight: "",
+      valueDark: resolvedValue,
+      activeTheme: "dark",
+    };
+  });
+}
+
 async function fetchTokenDefinitions(sql) {
   return sql`select * from promo_design_token_definitions order by category, token_key`;
 }
@@ -280,7 +308,7 @@ async function fetchTokenSetUsage(sql, tokenSetId) {
       count(*)::integer as total,
       count(*) filter (where run.status in (
         'queued', 'analyzing_content', 'generating_layout', 'validating_layout',
-        'generating_assets', 'validating_assets', 'ready', 'applying'
+        'generating_assets', 'validating_assets', 'applying'
       ))::integer as active
     from promo_section_design_runs run
     join promo_design_token_set_versions version on version.id = run.token_set_version_id
@@ -334,5 +362,7 @@ module.exports = {
   fetchTokenVersion,
   fetchManagedTokenSets,
   fetchTokenSetUsage,
+  isDarkOnlyTokenSet,
+  normalizeDarkOnlyTokenEntries,
   toRuntimeTokenMap,
 };

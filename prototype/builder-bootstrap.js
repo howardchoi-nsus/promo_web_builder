@@ -15,6 +15,26 @@
     });
   }
 
+  function loadStylesheet(href) {
+    return new Promise((resolve, reject) => {
+      const existing = document.querySelector(`link[rel="stylesheet"][href="${href}"]`);
+      if (existing) {
+        if (existing.sheet) resolve();
+        else {
+          existing.addEventListener("load", resolve, { once: true });
+          existing.addEventListener("error", reject, { once: true });
+        }
+        return;
+      }
+      const stylesheet = document.createElement("link");
+      stylesheet.rel = "stylesheet";
+      stylesheet.href = href;
+      stylesheet.addEventListener("load", resolve, { once: true });
+      stylesheet.addEventListener("error", reject, { once: true });
+      document.head.append(stylesheet);
+    });
+  }
+
   if (mode === "template") {
     if (legacyRoot) legacyRoot.hidden = false;
     if (aiRoot) aiRoot.hidden = true;
@@ -27,9 +47,11 @@
 
   if (legacyRoot) legacyRoot.hidden = true;
   if (aiRoot) aiRoot.hidden = false;
-  loadScript("visual-editor-assets/ai-builder.js?v=ai-builder-v1", "module").catch(() => {
-    if (aiRoot) {
-      aiRoot.innerHTML = '<p role="alert">AI 빌더를 불러오지 못했습니다. 템플릿 모드로 이동해 주세요.</p>';
-    }
-  });
+  loadStylesheet("visual-editor-assets/ai-builder.css?v=ai-builder-v1")
+    .then(() => loadScript("visual-editor-assets/ai-builder.js?v=ai-builder-v1", "module"))
+    .catch(() => {
+      if (aiRoot) {
+        aiRoot.innerHTML = '<p role="alert">AI 빌더를 불러오지 못했습니다. 템플릿 모드로 이동해 주세요.</p>';
+      }
+    });
 })(globalThis);

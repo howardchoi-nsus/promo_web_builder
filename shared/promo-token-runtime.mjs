@@ -55,7 +55,8 @@ export function createPromoTokenRuntimeStyle(input, fallbacks = {}) {
     "--promo-image-radius": radiusToken || radius,
     "--promo-component-radius": radiusToken || radius,
     "--promo-component-shadow": shadowToken || shadow,
-    "--promo-font": tokens["--app-font-body"] || tokens["--promo-font"] || fallbacks.font || "",
+    "--promo-font": tokens["--app-font-body"] || tokens["--app-font-family"]
+      || tokens["--promo-font"] || fallbacks.font || "",
     "--promo-radius": radiusToken || radius,
     "--promo-shadow": shadowToken || shadow,
     "--promo-hero-bg-image": tokens["--app-hero-bg-image"] || "none",
@@ -63,7 +64,8 @@ export function createPromoTokenRuntimeStyle(input, fallbacks = {}) {
     "--promo-space-4": tokens["--app-space-4"] || "18px",
     "--promo-border-width": tokens["--app-border-width"] || "2px",
     "--promo-font-size-body": tokens["--app-font-size-body"] || "16px",
-    "--promo-title-size": tokens["--promo-title-size"] || fallbacks.titleSize || "clamp(28px, 5vw, 72px)",
+    "--promo-title-size": tokens["--promo-font-size-main-title"]
+      || tokens["--promo-title-size"] || fallbacks.titleSize || "clamp(28px, 5vw, 72px)",
     "--promo-font-weight-strong": tokens["--app-font-weight-strong"] || "800",
     "--promo-transition-duration": tokens["--app-transition-duration-normal"] || "200ms",
     "--promo-transition-delay": tokens["--app-transition-delay"] || "0ms",

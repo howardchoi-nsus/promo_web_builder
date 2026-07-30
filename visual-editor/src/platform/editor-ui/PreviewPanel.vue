@@ -3,7 +3,7 @@ import { ref } from "vue";
 import PromoPageRenderer from "../../PromoPageRenderer.vue";
 import EditorPreviewControls from "./EditorPreviewControls.vue";
 
-defineProps({
+const props = defineProps({
   rendererSnapshot: { type: Object, default: null },
   sectionDesignRuns: { type: Object, default: () => ({}) },
   guidesVisible: { type: Boolean, default: true },
@@ -17,6 +17,8 @@ defineProps({
   selectedDesignTokenVersionId: { type: String, default: "" },
   layoutChangeNote: { type: String, default: "" },
   layoutSaving: { type: Boolean, default: false },
+  aiDocumentSaving: { type: Boolean, default: false },
+  aiDocumentSaveMessage: { type: String, default: "" },
   editorSnapshot: { type: Object, default: null },
   template: { type: Object, default: null },
   selectedStyleKey: { type: String, default: "" },
@@ -33,12 +35,14 @@ const emit = defineEmits([
   "redo",
   "update-design-token",
   "save-admin-layout",
+  "save-ai-document",
   "open-output",
   "select-item",
   "update-item-style",
   "update-renderer-item-style",
   "update-item-content",
   "update-section-style",
+  "drop-library-component",
 ]);
 
 const previewStageRef = ref(null);
@@ -60,6 +64,35 @@ function getStageElement() {
   return previewStageRef.value;
 }
 
+function libraryComponentKey(event) {
+  const raw = event.dataTransfer?.getData("application/x-promo-component-definition");
+  if (!raw) return "";
+  try {
+    return String(JSON.parse(raw)?.componentKey || "");
+  } catch {
+    return String(raw || "");
+  }
+}
+
+function handlePreviewDragOver(event) {
+  if (![...(event.dataTransfer?.types || [])].includes("application/x-promo-component-definition")) return;
+  event.preventDefault();
+  event.dataTransfer.dropEffect = "copy";
+}
+
+function handlePreviewDrop(event) {
+  const componentKey = libraryComponentKey(event);
+  if (!componentKey) return;
+  event.preventDefault();
+  const sectionElement = event.target instanceof Element
+    ? event.target.closest("[data-section-key]")
+    : null;
+  const sectionKey = sectionElement?.getAttribute("data-section-key")
+    || props.selectedSection?.sectionKey
+    || "";
+  if (sectionKey) emit("drop-library-component", componentKey, sectionKey);
+}
+
 defineExpose({ getStageElement, scrollToSection });
 </script>
 
@@ -70,7 +103,7 @@ defineExpose({ getStageElement, scrollToSection });
         <strong>Live Preview</strong>
         <small>{{ templateIdentityLabel }}</small>
         <button
-          v-if="capabilities.canEditPromoContent"
+          v-if="capabilities.canAutoRegister"
           class="auto-register-action"
           type="button"
           :disabled="autoRegisterPending"
@@ -92,7 +125,7 @@ defineExpose({ getStageElement, scrollToSection });
         @redo="emit('redo')"
       >
         <template #tokens>
-          <fieldset v-if="capabilities.canEditTemplateDefaults" class="global-token-menu">
+          <fieldset v-if="capabilities.canEditDesignTokens" class="global-token-menu">
             <legend>미리보기 디자인 토큰</legend>
             <select
               class="global-token-select"
@@ -134,6 +167,13 @@ defineExpose({ getStageElement, scrollToSection });
             >저장 후 활성화</button>
           </div>
           <button
+            v-if="capabilities.canSaveAiDocument"
+            type="button"
+            class="is-primary"
+            :disabled="!editorSnapshot || aiDocumentSaving"
+            @click="emit('save-ai-document')"
+          >{{ aiDocumentSaving ? "저장 중" : "AI 문서 저장" }}</button>
+          <button
             v-if="capabilities.canOpenWebOutput"
             type="button"
             class="web-output-action"
@@ -143,12 +183,19 @@ defineExpose({ getStageElement, scrollToSection });
         </template>
       </EditorPreviewControls>
     </div>
-    <div ref="previewStageRef" class="preview-stage" :class="`preview-stage--${viewport}`">
+    <div
+      ref="previewStageRef"
+      class="preview-stage"
+      :class="`preview-stage--${viewport}`"
+      @dragover="handlePreviewDragOver"
+      @drop="handlePreviewDrop"
+    >
       <PromoPageRenderer
         v-if="rendererSnapshot"
         :content="rendererSnapshot.content"
         :design-spec="rendererSnapshot.designSpec"
         :assets="rendererSnapshot.assets"
+        :motion-spec="rendererSnapshot.motionSpec"
         :section-design-runs="sectionDesignRuns"
         editable
         :show-guides="guidesVisible"

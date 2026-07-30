@@ -44,12 +44,16 @@ export function createPromoBuilderAdapter({
       hostWindow.parent.postMessage({ type: PromoBuilderMessageType.READY }, allowedOrigin);
     },
 
-    notifyChange({ snapshotRevision, designSpec, sectionInputs }) {
+    notifyChange({ snapshotRevision, designSpec, sectionInputs, sections }) {
       hostWindow.parent.postMessage({
         type: PromoBuilderMessageType.CHANGE,
         snapshotRevision,
         designSpec: clonePayload(designSpec),
         sectionInputs: clonePayload(sectionInputs),
+        sectionSnapshot: clonePayload(sections),
+        sectionOrder: Array.isArray(sections)
+          ? sections.map((section) => section.sectionKey)
+          : [],
       }, allowedOrigin);
     },
 

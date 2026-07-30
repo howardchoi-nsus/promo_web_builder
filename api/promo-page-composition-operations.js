@@ -13,8 +13,7 @@ const {
   applyCompositionOperations,
 } = require("./_promo-page-composition-operations");
 const {
-  enqueueBuilderAssetJobs,
-  scheduleBuilderAssetJobs,
+  enqueueAndScheduleBuilderAssetJobs,
 } = require("./_promo-builder-assets");
 const { requireBuilderFlag } = require("./_promo-builder-flags");
 
@@ -108,12 +107,11 @@ module.exports = async function handler(req, res) {
       operations: validated.operations,
       changeNote: validated.summary || "Natural-language composition edit applied.",
     });
-    const assetJobs = await enqueueBuilderAssetJobs(sql, {
+    const { assetJobs, assetWarning } = await enqueueAndScheduleBuilderAssetJobs(sql, {
       documentId,
       documentRevision: applied.revision,
       snapshot: applied.snapshot,
     });
-    scheduleBuilderAssetJobs(assetJobs);
     return res.status(200).json({
       ok: true,
       action: "apply",
@@ -122,6 +120,8 @@ module.exports = async function handler(req, res) {
       snapshot: applied.snapshot,
       operations: validated.operations,
       assetJobs,
+      assetWarning,
+      warnings: assetWarning ? [assetWarning] : [],
     });
   } catch (error) {
     const status = /access denied/i.test(error.message) ? 403

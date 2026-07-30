@@ -10,6 +10,7 @@ const OPERATION_TYPES = Object.freeze([
   "change-token-binding",
   "change-motion-preset",
   "request-asset-regeneration",
+  "remove-asset",
 ]);
 
 function unique(values) {
@@ -111,10 +112,20 @@ function validatePageCompositionProposal(result, candidates) {
   const allowedSections = new Map(template.sections.map((section) => [section.sectionId, section]));
   const seenSections = new Set();
   const sections = [];
+  const warnings = Array.isArray(result.warnings)
+    ? result.warnings.map(String).slice(0, 30)
+    : [];
   for (const planned of Array.isArray(result.sections) ? result.sections : []) {
     const section = allowedSections.get(planned.sectionId);
-    if (!section || seenSections.has(planned.sectionId)) {
-      throw Object.assign(new Error("Planner returned a duplicate or unavailable section"), { code: "INVALID_SECTION" });
+    if (!section) {
+      throw Object.assign(
+        new Error("Planner returned a section that is not available in the selected template"),
+        { code: "SECTION_NOT_IN_TEMPLATE", retryable: true },
+      );
+    }
+    if (seenSections.has(planned.sectionId)) {
+      warnings.push(`Duplicate section was removed: ${planned.sectionId}`);
+      continue;
     }
     seenSections.add(planned.sectionId);
     const allowedComponents = new Map(
@@ -124,24 +135,35 @@ function validatePageCompositionProposal(result, candidates) {
     const components = [];
     for (const plannedComponent of Array.isArray(planned.components) ? planned.components : []) {
       const component = allowedComponents.get(plannedComponent.componentInstanceId);
-      if (!component || seenComponents.has(plannedComponent.componentInstanceId)) {
-        throw Object.assign(new Error("Planner returned a duplicate or unavailable component"), { code: "INVALID_COMPONENT" });
+      if (!component) {
+        throw Object.assign(
+          new Error("Planner returned a component that is not available in its section"),
+          { code: "COMPONENT_NOT_IN_SECTION", retryable: true },
+        );
+      }
+      if (seenComponents.has(plannedComponent.componentInstanceId)) {
+        warnings.push(`Duplicate component was removed: ${plannedComponent.componentInstanceId}`);
+        continue;
       }
       seenComponents.add(plannedComponent.componentInstanceId);
       const allowedFields = new Set(component.fields.map((field) => field.fieldKey));
       const seenFields = new Set();
-      const contentBindings = (plannedComponent.contentBindings || []).map((binding) => {
+      const contentBindings = [];
+      for (const binding of plannedComponent.contentBindings || []) {
         if (!allowedFields.has(binding.fieldKey)
-          || !OVERVIEW_FIELDS.includes(binding.sourceOverviewPath)
-          || seenFields.has(binding.fieldKey)) {
+          || !OVERVIEW_FIELDS.includes(binding.sourceOverviewPath)) {
           throw Object.assign(new Error("Planner returned an invalid content binding"), { code: "INVALID_CONTENT_BINDING" });
         }
+        if (seenFields.has(binding.fieldKey)) {
+          warnings.push(`Duplicate content binding was removed: ${plannedComponent.componentInstanceId}.${binding.fieldKey}`);
+          continue;
+        }
         seenFields.add(binding.fieldKey);
-        return {
+        contentBindings.push({
           fieldKey: binding.fieldKey,
           sourceOverviewPath: binding.sourceOverviewPath,
-        };
-      });
+        });
+      }
       if (component.isRequired && plannedComponent.visible === false) {
         throw Object.assign(new Error("Required component cannot be hidden"), { code: "REQUIRED_COMPONENT_HIDDEN" });
       }
@@ -187,7 +209,7 @@ function validatePageCompositionProposal(result, candidates) {
     template,
     tokenSet,
     sections: sections.sort((left, right) => left.sortOrder - right.sortOrder),
-    warnings: Array.isArray(result.warnings) ? result.warnings.map(String).slice(0, 30) : [],
+    warnings: warnings.slice(0, 30),
     summary: String(result.summary || "").trim().slice(0, 1000),
   };
 }
@@ -208,6 +230,60 @@ function boundValue(field, binding, overview) {
     return { label: String(value || ""), link: "", target: "_self" };
   }
   return String(value || "");
+}
+
+function firstAvailableToken(tokenValues, candidates) {
+  return candidates.find((tokenKey) => tokenValues[tokenKey]) || "";
+}
+
+function defaultItemTokenStyle(item, tokenValues = {}) {
+  const fields = Array.isArray(item?.fields) && item.fields.length ? item.fields : [item];
+  const identity = fields.map((field) => [
+    field?.fieldKey,
+    field?.itemKey,
+    field?.name,
+    field?.textType,
+    field?.fieldKind,
+  ].filter(Boolean).join(" ")).join(" ").toLowerCase();
+  const isCta = fields.some((field) => field?.fieldKind === "cta");
+  const isLead = /\b(lead|eyebrow|kicker|overline)\b/.test(identity);
+  const isSubtitle = /\b(subtitle|subline|description|body|remark|copy)\b/.test(identity);
+  const isTitle = !isLead && !isSubtitle && /\b(title|headline|heading)\b/.test(identity);
+  const colorToken = firstAvailableToken(tokenValues, isLead
+    ? ["--app-accent", "--app-ink"]
+    : isCta
+      ? ["--app-on-accent", "--app-ink"]
+      : isSubtitle
+        ? ["--app-ink-soft", "--app-ink"]
+        : ["--app-ink", "--app-text"]);
+  const fontSizeToken = firstAvailableToken(tokenValues, isTitle
+    ? ["--promo-font-size-main-title", "--promo-title-size", "--app-font-size-heading"]
+    : isLead
+      ? ["--promo-font-size-lead-title", "--app-font-size-heading"]
+      : isSubtitle
+        ? ["--promo-font-size-subtitle", "--app-font-size-body"]
+        : ["--app-font-size-body"]);
+  const fontWeightToken = firstAvailableToken(tokenValues, isTitle
+    ? ["--app-font-weight-title", "--app-font-weight-heading", "--app-font-weight-strong"]
+    : isLead
+      ? ["--app-font-weight-heading", "--app-font-weight-strong"]
+      : isCta
+        ? ["--app-font-weight-strong", "--app-font-weight-label"]
+        : ["--app-font-weight-label"]);
+  return {
+    ...(colorToken ? { colorToken } : {}),
+    ...(fontSizeToken ? { fontSizeToken } : {}),
+    ...(fontWeightToken ? { fontWeightToken } : {}),
+  };
+}
+
+function buildDefaultItemStyles(sections, tokenValues = {}) {
+  return Object.fromEntries((sections || []).flatMap((section) => (
+    (section.items || []).map((item) => [
+      `${section.sectionKey}.${item.itemKey}`,
+      defaultItemTokenStyle(item, tokenValues),
+    ])
+  )).filter(([, style]) => Object.keys(style).length));
 }
 
 function normalizePageComposition({
@@ -370,16 +446,18 @@ function normalizePageComposition({
       contractVersion: 2,
       specKey: "ai-composition",
       theme: {
-        backgroundColor: tokenValues["--app-background"] || "#f5f7fb",
-        textColor: tokenValues["--app-text"] || "#172033",
+        backgroundColor: tokenValues["--app-bg"] || tokenValues["--app-surface"] || "#f5f7fb",
+        textColor: tokenValues["--app-ink"] || tokenValues["--app-text"] || "#172033",
         accentColor: tokenValues["--app-accent"] || "#156b5b",
         ctaColor: tokenValues["--app-cta-background"] || tokenValues["--app-accent"] || "#156b5b",
         ctaShape: "round",
         ctaVariant: "fill",
-        fontFamily: tokenValues["--app-font-family"] || "Inter, Pretendard, sans-serif",
+        fontFamily: tokenValues["--app-font-body"]
+          || tokenValues["--app-font-family"]
+          || "Inter, Pretendard, sans-serif",
       },
       responsive: { contentMaxWidth: 1280, contentMinWidth: 1140, mobileBreakpoint: 720 },
-      itemStyles: {},
+      itemStyles: buildDefaultItemStyles(sectionSnapshot, tokenValues),
       sectionStyles,
       visibility: { items: itemVisibility, fields: fieldVisibility },
     },
@@ -394,4 +472,5 @@ module.exports = {
   pageCompositionSchema,
   validatePageCompositionProposal,
   normalizePageComposition,
+  buildDefaultItemStyles,
 };
