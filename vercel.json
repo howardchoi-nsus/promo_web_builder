@@ -3,9 +3,6 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "functions": {
-    "api/promo-section-design-process.js": {
-      "maxDuration": 120
-    },
     "api/promo-section-design-image-process.js": {
       "maxDuration": 300
     },
@@ -16,6 +13,21 @@
       "maxDuration": 120
     },
     "api/promo-section-design-asset-process.js": {
+      "maxDuration": 300
+    },
+    "api/prompt-template-translate.js": {
+      "maxDuration": 60
+    },
+    "api/promo-page-composition-proposals.js": {
+      "maxDuration": 120
+    },
+    "api/promo-page-composition-process.js": {
+      "maxDuration": 120
+    },
+    "api/promo-page-composition-apply.js": {
+      "maxDuration": 300
+    },
+    "api/promo-page-composition-operations.js": {
       "maxDuration": 300
     }
   }

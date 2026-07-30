@@ -17,7 +17,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 	enumerable: !0
 }) : a, n));
 //#endregion
-//#region node_modules/.pnpm/@vue+shared@3.5.39/node_modules/@vue/shared/dist/shared.esm-bundler.js
+//#region ../../../../../../AI_WORKSPACE/promo/promo_web_builder/node_modules/.pnpm/@vue+shared@3.5.39/node_modules/@vue/shared/dist/shared.esm-bundler.js
 // @__NO_SIDE_EFFECTS__
 function u(e) {
 	let t = /* @__PURE__ */ Object.create(null);
@@ -119,7 +119,7 @@ function Ge(e) {
 	return e == null ? "initial" : typeof e == "string" ? e === "" ? " " : e : String(e);
 }
 //#endregion
-//#region node_modules/.pnpm/@vue+reactivity@3.5.39/node_modules/@vue/reactivity/dist/reactivity.esm-bundler.js
+//#region ../../../../../../AI_WORKSPACE/promo/promo_web_builder/node_modules/.pnpm/@vue+reactivity@3.5.39/node_modules/@vue/reactivity/dist/reactivity.esm-bundler.js
 var P, Ke = class {
 	constructor(e = !1) {
 		this.detached = e, this._active = !0, this._on = 0, this.effects = [], this.cleanups = [], this._isPaused = !1, this._warnOnRun = !0, this.__v_skip = !0, !e && P && (P.active ? (this.parent = P, this.index = (P.scopes ||= []).push(this) - 1) : (this._active = !1, this._warnOnRun = !1));
@@ -1011,7 +1011,7 @@ function Jn(e, t = Infinity, n) {
 	return e;
 }
 //#endregion
-//#region node_modules/.pnpm/@vue+runtime-core@3.5.39/node_modules/@vue/runtime-core/dist/runtime-core.esm-bundler.js
+//#region ../../../../../../AI_WORKSPACE/promo/promo_web_builder/node_modules/.pnpm/@vue+runtime-core@3.5.39/node_modules/@vue/runtime-core/dist/runtime-core.esm-bundler.js
 var Yn = [];
 function Xn(e) {
 	Yn.push(e);
@@ -7161,7 +7161,7 @@ function hh(e, t = {}) {
 	}));
 }
 //#endregion
-//#region node_modules/.pnpm/vue@3.5.39/node_modules/vue/dist/vue.esm-bundler.js
+//#region ../../../../../../AI_WORKSPACE/promo/promo_web_builder/node_modules/.pnpm/vue@3.5.39/node_modules/vue/dist/vue.esm-bundler.js
 var gh = /* @__PURE__ */ s({
 	BaseTransition: () => pi,
 	BaseTransitionPropsValidators: () => li,
@@ -7880,7 +7880,7 @@ var qh = {
 }, $h = { class: "field" }, eg = { class: "field" }, tg = ["disabled"], ng = { class: "design-token-grid" }, rg = { class: "design-token-column design-token-list" }, ig = ["onClick"], ag = {
 	key: 0,
 	class: "empty-state"
-}, og = { class: "design-token-column design-token-editor" }, sg = { class: "design-token-table-toolbar" }, cg = ["placeholder"], lg = { value: "" }, ug = ["value"], dg = { class: "design-token-check" }, fg = ["disabled"], pg = { class: "design-token-table-wrap" }, mg = { class: "design-token-table" }, hg = { key: 0 }, gg = { class: "design-token-value-control" }, _g = [
+}, og = { class: "design-token-column design-token-editor" }, sg = { class: "design-token-table-toolbar" }, cg = ["placeholder"], lg = { value: "" }, ug = ["value"], dg = { class: "app-checkbox design-token-check" }, fg = ["disabled"], pg = { class: "design-token-table-wrap" }, mg = { class: "design-token-table" }, hg = { key: 0 }, gg = { class: "design-token-value-control" }, _g = [
 	"onUpdate:modelValue",
 	"disabled",
 	"onInput"
@@ -8111,7 +8111,238 @@ function Wg(e, t, n, r, i, a) {
 		])
 	]);
 }
-var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]), Kg = /* @__PURE__ */ o((() => {
+var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-edc6f31f"]]);
+Object.freeze({
+	active: 0,
+	validated: 1,
+	draft: 2,
+	inactive: 3,
+	archived: 4
+});
+var Kg = Object.freeze([
+	{
+		key: "promotion-overview",
+		label: "프로모션 개요",
+		description: "사용자의 자연어 요청을 프로모션 기획 정보로 구조화합니다.",
+		order: 10
+	},
+	{
+		key: "template-selection",
+		label: "템플릿 선택 및 구성",
+		description: "개요에 맞는 템플릿을 추천하고 섹션·컴포넌트 구성을 계획합니다.",
+		order: 20
+	},
+	{
+		key: "section-layout",
+		label: "섹션 구성 및 레이아웃",
+		description: "섹션의 컴포넌트 구성, 레이아웃과 다중 선택 정렬을 계획합니다.",
+		order: 30
+	},
+	{
+		key: "promotion-image",
+		label: "프로모션 이미지",
+		description: "섹션 키비주얼과 컴포넌트 필드 이미지를 필요할 때 생성합니다.",
+		order: 40
+	},
+	{
+		key: "design-generator",
+		label: "디자인 생성기",
+		description: "통합 브리프부터 LO-FI 시안과 최종 디자인까지 생성합니다.",
+		order: 50
+	},
+	{
+		key: "shared-execution",
+		label: "독립·공통 실행",
+		description: "특정 화면 흐름과 분리되어 독립적으로 호출되는 실행 프롬프트입니다.",
+		order: 60
+	},
+	{
+		key: "other",
+		label: "기타",
+		description: "아직 관리 그룹이 지정되지 않은 프롬프트입니다.",
+		order: 999
+	}
+]), qg = Object.freeze({
+	promo_overview_parser: {
+		group: "promotion-overview",
+		order: 10,
+		label: "프로모션 개요 분석",
+		description: "간단한 자연어 요청을 제목, 목적, 대상, 톤과 주요 혜택으로 구조화합니다.",
+		executionMode: "사용자 요청"
+	},
+	promo_template_recommender: {
+		group: "template-selection",
+		order: 10,
+		label: "프로모션 템플릿 추천",
+		description: "확정된 프로모션 개요에 적합한 활성 템플릿 후보를 추천합니다.",
+		executionMode: "사용자 요청"
+	},
+	promo_template_composer: {
+		group: "template-selection",
+		order: 20,
+		label: "템플릿 구성 계획",
+		description: "선택한 템플릿의 섹션과 컴포넌트에 프로모션 콘텐츠를 매핑합니다.",
+		executionMode: "사용자 요청"
+	},
+	section_composition_planner: {
+		group: "section-layout",
+		order: 10,
+		label: "자연어 섹션 구성 계획",
+		description: "자연어 요청을 바탕으로 섹션 컴포넌트, 콘텐츠와 디자인 토큰을 제안합니다.",
+		executionMode: "선택 실행"
+	},
+	section_layout_planner: {
+		group: "section-layout",
+		order: 20,
+		label: "섹션 레이아웃 계획",
+		description: "섹션 전체의 허용 레이아웃과 스타일 슬롯을 안전한 명령으로 계획합니다.",
+		executionMode: "선택 실행"
+	},
+	multi_component_layout_planner: {
+		group: "section-layout",
+		order: 30,
+		label: "다중 컴포넌트 정렬 계획",
+		description: "선택한 여러 컴포넌트의 정렬, 간격과 배치를 안전한 명령으로 제안합니다.",
+		executionMode: "선택 실행"
+	},
+	section_background_image: {
+		group: "promotion-image",
+		order: 10,
+		label: "섹션 키비주얼 생성",
+		description: "섹션 콘텐츠와 배경색을 바탕으로 프로모션 키비주얼을 생성합니다.",
+		executionMode: "선택 실행"
+	},
+	component_image: {
+		group: "promotion-image",
+		order: 20,
+		label: "컴포넌트 이미지 생성",
+		description: "특정 컴포넌트 이미지 필드의 목적에 맞는 이미지를 생성합니다.",
+		executionMode: "선택 실행"
+	},
+	integrated_brief: {
+		group: "design-generator",
+		order: 10,
+		label: "통합 디자인 브리프",
+		description: "프로모션 입력과 선택 문서를 통합해 디자인 생성 기준을 구성합니다.",
+		executionMode: "자동 실행"
+	},
+	lofi_draft: {
+		group: "design-generator",
+		order: 20,
+		label: "LO-FI 시안 생성",
+		description: "통합 디자인 브리프를 바탕으로 검토용 저충실도 시안을 생성합니다.",
+		executionMode: "자동 실행"
+	},
+	final_design: {
+		group: "design-generator",
+		order: 30,
+		label: "최종 디자인 생성",
+		description: "승인된 LO-FI 시안과 브리프를 바탕으로 최종 디자인을 생성합니다.",
+		executionMode: "사용자 요청"
+	},
+	image_execution: {
+		group: "shared-execution",
+		order: 10,
+		label: "이미지 실행 프롬프트",
+		description: "LO-FI·최종 디자인 흐름과 분리된 독립 이미지 생성 요청에 사용합니다.",
+		executionMode: "독립 실행"
+	}
+});
+function Jg(e) {
+	let t = String(e || "").trim();
+	return qg[t] || {
+		group: "other",
+		order: 999,
+		label: t || "알 수 없음",
+		description: "이 프롬프트 유형의 관리 설명이 아직 등록되지 않았습니다.",
+		executionMode: "실행 방식 미지정"
+	};
+}
+function Yg(e) {
+	return Kg.find((t) => t.key === e) || Kg[Kg.length - 1];
+}
+function Xg(e) {
+	let t = Number(e?.version);
+	return Number.isFinite(t) ? t : 0;
+}
+function Zg(e) {
+	let t = Date.parse(e?.updatedAt || "");
+	return Number.isFinite(t) ? t : 0;
+}
+function Qg(e, t) {
+	return Xg(t) - Xg(e) || Zg(t) - Zg(e) || String(e?.id || "").localeCompare(String(t?.id || ""));
+}
+function $g(e) {
+	return String(e?.lineageId || "").trim() || `legacy:${String(e?.type || "unknown")}:${String(e?.id || "unknown")}`;
+}
+function e_(e) {
+	return e && (e.active || e.validated || e.draft || e.latestInactive || e.latestArchived || e.versions?.[0]) || null;
+}
+function t_(e = []) {
+	let t = /* @__PURE__ */ new Map();
+	return e.filter((e) => e && typeof e == "object").forEach((e) => {
+		let n = $g(e);
+		t.has(n) || t.set(n, {
+			lineageId: n,
+			versions: []
+		}), t.get(n).versions.push(e);
+	}), [...t.values()].map((e) => {
+		let t = [...e.versions].sort(Qg), n = t.find((e) => e.status === "active") || null, r = t.find((e) => e.status === "validated") || null, i = t.find((e) => e.status === "draft") || null, a = t.find((e) => e.status === "inactive") || null, o = t.find((e) => e.status === "archived") || null, s = {
+			...e,
+			versions: t,
+			active: n,
+			validated: r,
+			draft: i,
+			latestInactive: a,
+			latestArchived: o,
+			archivedCount: t.filter((e) => e.status === "archived").length,
+			hasCandidate: !!(r || i)
+		}, c = e_(s);
+		return {
+			...s,
+			primary: c,
+			type: c?.type || t[0]?.type || "",
+			name: c?.name || t[0]?.name || "",
+			updatedAt: t.reduce((e, t) => Zg(t) > Zg(e) ? t : e, t[0] || null)?.updatedAt || null
+		};
+	}).sort((e, t) => Yg(Jg(e.type).group).order - Yg(Jg(t.type).group).order || Jg(e.type).order - Jg(t.type).order || String(e.name || "").localeCompare(String(t.name || "")) || String(e.lineageId).localeCompare(String(t.lineageId)));
+}
+function n_(e = [], t = "") {
+	let n = String(t || "").trim();
+	return n ? e.filter((e) => e.type === n) : e;
+}
+function r_(e = [], t = "") {
+	let n = String(t || "");
+	return e.find((e) => e.versions.some((e) => e.id === n)) || null;
+}
+function i_(e = []) {
+	let t = /* @__PURE__ */ new Map();
+	return e.forEach((e) => {
+		let n = Yg(Jg(e?.type).group);
+		t.has(n.key) || t.set(n.key, {
+			...n,
+			promptGroups: []
+		}), t.get(n.key).promptGroups.push(e);
+	}), [...t.values()].map((e) => ({
+		...e,
+		promptGroups: [...e.promptGroups].sort((e, t) => Jg(e?.type).order - Jg(t?.type).order || String(e?.name || "").localeCompare(String(t?.name || "")))
+	})).sort((e, t) => e.order - t.order);
+}
+function a_(e = [], t = "", n = "image_execution") {
+	let r = r_(e, t);
+	return r ? r.versions.find((e) => e.id === t) || r.primary || null : e.find((e) => e.type === n && e.active)?.active || e.find((e) => e.active)?.active || e[0]?.primary || null;
+}
+var o_ = Object.freeze({
+	filterPromptGroups: n_,
+	findPromptGroup: r_,
+	groupPromptTemplateSections: i_,
+	groupPromptTemplates: t_,
+	promptLineageId: $g,
+	promptTypeMeta: Jg,
+	promptWorkflowGroupMeta: Yg,
+	resolvePromptSelection: a_,
+	selectPromptGroupPrimary: e_
+}), s_ = /* @__PURE__ */ o((() => {
 	var e = {
 		documents: "promoPrototype.documents.abc",
 		generatedPages: "promoPrototype.generatedPages.abc",
@@ -9165,8 +9396,26 @@ var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]
 				promptTemplatesError: "",
 				selectedPromptTemplateId: "",
 				promptTypeFilter: "",
+				expandedPromptLineageIds: [],
+				expandedPromptWorkflowKeys: [
+					"promotion-overview",
+					"template-selection",
+					"section-layout",
+					"promotion-image",
+					"design-generator",
+					"shared-execution",
+					"other"
+				],
+				promptArchivedVisibilityByLineage: {},
 				promptSaving: !1,
 				promptHistories: [],
+				promptBodyTranslationKo: "",
+				promptBodyTranslationSource: "",
+				promptBodyTranslationLoading: !1,
+				promptBodyTranslationError: "",
+				promptBodyTranslationTimer: null,
+				promptBodyLanguageError: "",
+				promptBodyTranslationCache: {},
 				locales: [],
 				localesLoading: !1,
 				localeMessages: [],
@@ -9245,7 +9494,8 @@ var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]
 					name: "",
 					description: "",
 					isDefault: !1,
-					changeNote: ""
+					changeNote: "",
+					recommendationProfileText: "{}"
 				},
 				showNewWizardFormTemplateForm: !1,
 				newWizardFormTemplateForm: {
@@ -9326,6 +9576,20 @@ var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]
 					orderChangeAllowed: !0,
 					fixedPosition: "",
 					isVisibleInWizard: !0,
+					compositionScope: "template",
+					sectionRole: "content",
+					compositionPolicy: {
+						selectionPolicy: "optional",
+						allowedMarkets: [],
+						allowedPromotionPurposes: [],
+						aiEditable: !0,
+						contentLocked: !1,
+						layoutLocked: !1,
+						duplicatePolicy: "forbidden",
+						maxInstances: 1,
+						allowedLayoutVariants: [],
+						allowedMotionPresets: []
+					},
 					aiDesign: {
 						enabled: !0,
 						allowedLayoutVariants: [
@@ -9655,6 +9919,15 @@ var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]
 			filteredPromptTemplates() {
 				return this.promptTypeFilter ? this.promptTemplates.filter((e) => e.type === this.promptTypeFilter) : this.promptTemplates;
 			},
+			promptTemplateGroups() {
+				return window.PromoAdminPromptGroups.groupPromptTemplates(this.promptTemplates);
+			},
+			filteredPromptTemplateGroups() {
+				return window.PromoAdminPromptGroups.filterPromptGroups(this.promptTemplateGroups, this.promptTypeFilter);
+			},
+			filteredPromptTemplateSections() {
+				return window.PromoAdminPromptGroups.groupPromptTemplateSections(this.filteredPromptTemplateGroups);
+			},
 			localeNamespaces() {
 				let e = Object.values(this.localeMessagesByLocale).flat();
 				return [...new Set(e.map((e) => e.namespace).filter(Boolean))].sort();
@@ -9706,11 +9979,14 @@ var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]
 			selectedPromptTemplate() {
 				return this.promptTemplates.find((e) => e.id === this.selectedPromptTemplateId) || null;
 			},
+			selectedPromptTemplateGroup() {
+				return window.PromoAdminPromptGroups.findPromptGroup(this.promptTemplateGroups, this.selectedPromptTemplateId);
+			},
 			promptEditorReadOnly() {
 				return this.selectedPromptTemplate?.status !== "draft";
 			},
 			selectedPromptEditorTitle() {
-				return this.selectedPromptTemplate ? `${this.promptTypeLabel(this.selectedPromptTemplate.type)} 프롬프트` : "프롬프트 편집기";
+				return this.selectedPromptTemplate ? this.promptTypeLabel(this.selectedPromptTemplate.type) : "프롬프트 편집기";
 			},
 			groupedWizardFormTemplates() {
 				let e = /* @__PURE__ */ new Map();
@@ -9755,10 +10031,24 @@ var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]
 				let e = new Map(this.groupedWizardSections.map((e) => [e.sectionKey, e]));
 				return (this.wizardFormTemplateDetail?.sections || []).flatMap((t) => {
 					let n = e.get(t.sectionKey);
-					return n ? [{
+					if (!n) return [];
+					let r = n.versions.find((e) => e.id === t.sectionId) || {
+						id: t.sectionId,
+						sectionKey: t.sectionKey,
+						name: t.sectionName,
+						description: t.sectionDescription,
+						version: t.sectionVersion,
+						status: t.sectionStatus,
+						sortOrder: t.sortOrder,
+						fixedPosition: t.fixedPosition,
+						orderChangeAllowed: t.orderChangeAllowed
+					};
+					return [{
 						...n,
+						logicalPrimary: n.primary,
+						primary: r,
 						templateMembership: t
-					}] : [];
+					}];
 				});
 			},
 			activeItemComponents() {
@@ -9832,6 +10122,9 @@ var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]
 				handler() {
 					this.clearResolvedValidationErrors();
 				}
+			},
+			promptTypeFilter() {
+				this.ensureFilteredPromptSelection();
 			}
 		},
 		mounted() {
@@ -10400,17 +10693,86 @@ var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]
 			formatAuditState(e) {
 				return e ? JSON.stringify(e, null, 2) : "없음";
 			},
+			promptGroupPanelId(e) {
+				return `prompt-versions-${String(e?.lineageId || "unknown").replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+			},
+			promptWorkflowPanelId(e) {
+				return `prompt-workflow-${String(e?.key || "other").replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+			},
+			promptWorkflowExpanded(e) {
+				return this.expandedPromptWorkflowKeys.includes(e?.key);
+			},
+			togglePromptWorkflow(e) {
+				let t = e?.key;
+				if (!t) return;
+				let n = this.expandedPromptWorkflowKeys.includes(t);
+				this.expandedPromptWorkflowKeys = n ? this.expandedPromptWorkflowKeys.filter((e) => e !== t) : [...this.expandedPromptWorkflowKeys, t];
+			},
+			expandPromptWorkflowForType(e) {
+				let t = window.PromoAdminPromptGroups.promptTypeMeta(e).group;
+				t && !this.expandedPromptWorkflowKeys.includes(t) && (this.expandedPromptWorkflowKeys = [...this.expandedPromptWorkflowKeys, t]);
+			},
+			promptGroupExpanded(e) {
+				return this.expandedPromptLineageIds.includes(e?.lineageId);
+			},
+			promptGroupContainsSelection(e) {
+				return !!e?.versions?.some((e) => e.id === this.selectedPromptTemplateId);
+			},
+			togglePromptGroup(e) {
+				let t = e?.lineageId;
+				if (!t) return;
+				let n = this.expandedPromptLineageIds.includes(t);
+				this.expandedPromptLineageIds = n ? this.expandedPromptLineageIds.filter((e) => e !== t) : [...this.expandedPromptLineageIds, t];
+			},
+			expandPromptGroupForPromptId(e) {
+				let t = window.PromoAdminPromptGroups.findPromptGroup(this.promptTemplateGroups, e);
+				t && this.expandPromptWorkflowForType(t.type), t && !this.expandedPromptLineageIds.includes(t.lineageId) && (this.expandedPromptLineageIds = [...this.expandedPromptLineageIds, t.lineageId]);
+			},
+			promptGroupArchivedVisible(e) {
+				return !!this.promptArchivedVisibilityByLineage[e?.lineageId];
+			},
+			togglePromptGroupArchived(e) {
+				let t = e?.lineageId;
+				t && (this.promptArchivedVisibilityByLineage = {
+					...this.promptArchivedVisibilityByLineage,
+					[t]: !this.promptGroupArchivedVisible(e)
+				});
+			},
+			promptGroupVisibleVersions(e) {
+				let t = Array.isArray(e?.versions) ? e.versions : [];
+				return this.promptGroupArchivedVisible(e) ? t : t.filter((e) => e.status !== "archived");
+			},
+			promptGroupProviderSummary(e) {
+				let t = e?.active || e?.primary;
+				return [t?.provider, t?.model].filter(Boolean).join(" · ") || "모델 설정 없음";
+			},
+			formatPromptDate(e) {
+				if (!e) return "-";
+				let t = new Date(e);
+				return Number.isNaN(t.getTime()) ? "-" : new Intl.DateTimeFormat("ko-KR", {
+					dateStyle: "short",
+					timeStyle: "short"
+				}).format(t);
+			},
+			ensureFilteredPromptSelection() {
+				let e = this.filteredPromptTemplateGroups;
+				if (!e.length) return;
+				if (e.some((e) => this.promptGroupContainsSelection(e))) {
+					this.expandPromptGroupForPromptId(this.selectedPromptTemplateId);
+					return;
+				}
+				let t = e.find((e) => e.active)?.active || e[0]?.primary;
+				t && this.selectPromptTemplate(t.id, { silent: !0 });
+			},
 			async loadPromptTemplates(e = {}) {
 				if (!(this.promptTemplatesLoading && !e.fresh)) {
 					this.promptTemplatesLoading = !0, this.promptTemplatesError = "";
 					try {
 						let e = await fetch("/api/prompt-templates?includeArchived=true"), t = await e.json().catch(() => ({}));
 						if (!e.ok) throw Error(t.message || t.error || `프롬프트 목록 요청 오류(${e.status})`);
-						if (this.promptTemplates = Array.isArray(t.prompts) ? t.prompts : [], !this.selectedPromptTemplateId || !this.promptTemplates.some((e) => e.id === this.selectedPromptTemplateId)) {
-							let e = this.promptTemplates.find((e) => e.type === "image_execution" && e.status === "active") || this.promptTemplates.find((e) => e.status === "active");
-							this.selectedPromptTemplateId = e?.id || this.promptTemplates[0]?.id || "";
-						}
-						this.selectedPromptTemplateId && await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: !0 });
+						this.promptTemplates = Array.isArray(t.prompts) ? t.prompts : [];
+						let n = window.PromoAdminPromptGroups.groupPromptTemplates(this.promptTemplates), r = window.PromoAdminPromptGroups.resolvePromptSelection(n, this.selectedPromptTemplateId);
+						this.selectedPromptTemplateId = r?.id || "", this.expandPromptGroupForPromptId(this.selectedPromptTemplateId), this.selectedPromptTemplateId && await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: !0 });
 					} catch (e) {
 						this.promptTemplatesError = e.message, this.setStatus(`프롬프트 목록을 불러오지 못했습니다: ${e.message}`);
 					} finally {
@@ -10461,17 +10823,17 @@ var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]
 				}[e] || t || e;
 			},
 			promptTypeLabel(e) {
-				return {
-					integrated_brief: "통합 디자인 브리프",
-					image_execution: "이미지 생성",
-					lofi_draft: "LO-FI 시안",
-					final_design: "최종 디자인",
-					section_layout_planner: "섹션 레이아웃 계획",
-					multi_component_layout_planner: "다중 컴포넌트 정렬 계획",
-					section_composition_planner: "섹션 자연어 구성 계획",
-					section_background_image: "섹션 배경 이미지",
-					component_image: "컴포넌트 이미지"
-				}[e] || e || "알 수 없음";
+				return window.PromoAdminPromptGroups.promptTypeMeta(e).label;
+			},
+			promptTypeDescription(e) {
+				return window.PromoAdminPromptGroups.promptTypeMeta(e).description;
+			},
+			promptExecutionModeLabel(e) {
+				return window.PromoAdminPromptGroups.promptTypeMeta(e).executionMode;
+			},
+			promptWorkflowGroupLabel(e) {
+				let t = window.PromoAdminPromptGroups.promptTypeMeta(e);
+				return window.PromoAdminPromptGroups.promptWorkflowGroupMeta(t.group).label;
 			},
 			promptStatusLabel(e) {
 				return {
@@ -10509,7 +10871,7 @@ var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]
 				}
 			},
 			async selectPromptTemplate(e, t = {}) {
-				this.selectedPromptTemplateId = e;
+				this.selectedPromptTemplateId = e, this.expandPromptGroupForPromptId(e), this.promptBodyTranslationKo = "", this.promptBodyTranslationSource = "", this.promptBodyTranslationError = "", this.promptBodyTranslationLoading = !1, this.promptBodyLanguageError = "";
 				let n = this.promptTemplates.find((t) => t.id === e);
 				if (n) try {
 					let r = await fetch(`/api/prompt-template?id=${encodeURIComponent(e)}`), i = await r.json().catch(() => ({}));
@@ -10556,7 +10918,7 @@ var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]
 						safetyContractText: JSON.stringify(a.safetyContract || a.modelOptions?.safetyContract || {}, null, 2),
 						modelOptionsText: JSON.stringify(c, null, 2),
 						changeNote: ""
-					}, t.silent || this.setStatus(`${a.name} 프롬프트를 열었습니다`);
+					}, this.promptBodyLanguageError = this.promptBodyContainsKorean(a.body) ? "영문 원문에는 한글을 입력할 수 없습니다." : "", this.translatePromptBody(), t.silent || this.setStatus(`${a.name} 프롬프트를 열었습니다`);
 				} catch (e) {
 					this.setStatus(`프롬프트 상세를 불러오지 못했습니다: ${e.message}`);
 				}
@@ -10572,6 +10934,69 @@ var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]
 					return e && typeof e == "object" && !Array.isArray(e) ? e : {};
 				} catch (e) {
 					throw Error(`모델 상세 옵션 JSON 형식이 올바르지 않습니다: ${e.message}`);
+				}
+			},
+			schedulePromptBodyTranslation() {
+				this.promptBodyTranslationTimer && clearTimeout(this.promptBodyTranslationTimer), this.promptBodyTranslationError = "", this.promptBodyTranslationTimer = setTimeout(() => {
+					this.promptBodyTranslationTimer = null, this.translatePromptBody();
+				}, 900);
+			},
+			promptBodyContainsKorean(e) {
+				return /[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(String(e || ""));
+			},
+			handlePromptBodyInput() {
+				this.promptBodyLanguageError = this.promptBodyContainsKorean(this.promptEditor.body) ? "영문 원문에는 한글을 입력할 수 없습니다." : "", this.schedulePromptBodyTranslation();
+			},
+			async translatePromptBody(e = {}) {
+				let t = String(this.promptEditor.body || "");
+				if (!t.trim()) {
+					this.promptBodyTranslationKo = "", this.promptBodyTranslationSource = "", this.promptBodyTranslationError = "", this.promptBodyTranslationLoading = !1;
+					return;
+				}
+				if (!e.force && t === this.promptBodyTranslationSource && this.promptBodyTranslationKo) return;
+				let n = this.selectedPromptTemplateId, r = this.promptBodyTranslationCache[n];
+				if (!e.force && r?.source === t && r.translation) {
+					this.promptBodyTranslationKo = r.translation, this.promptBodyTranslationSource = t, this.promptBodyTranslationLoading = !1;
+					return;
+				}
+				this.promptBodyTranslationLoading = !0, this.promptBodyTranslationError = "";
+				try {
+					let e = await fetch("/api/prompt-template-translate", {
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({ text: t })
+					}), r = await e.json().catch(() => ({}));
+					if (!e.ok) throw Error(r.message || r.error || `프롬프트 번역 오류(${e.status})`);
+					if (n !== this.selectedPromptTemplateId || t !== this.promptEditor.body) return;
+					this.promptBodyTranslationKo = String(r.translation || ""), this.promptBodyTranslationSource = t, this.promptBodyTranslationCache = {
+						...this.promptBodyTranslationCache,
+						[n]: {
+							source: t,
+							translation: this.promptBodyTranslationKo
+						}
+					};
+				} catch (e) {
+					if (n !== this.selectedPromptTemplateId || t !== this.promptEditor.body) return;
+					this.promptBodyTranslationKo = "", this.promptBodyTranslationSource = "", this.promptBodyTranslationError = e.message;
+				} finally {
+					n === this.selectedPromptTemplateId && t === this.promptEditor.body && (this.promptBodyTranslationLoading = !1);
+				}
+			},
+			async copyPromptBody() {
+				let e = String(this.promptEditor.body || "");
+				if (!e) {
+					this.setStatus("복사할 영문 프롬프트가 없습니다.");
+					return;
+				}
+				try {
+					if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(e);
+					else {
+						let t = document.createElement("textarea");
+						t.value = e, t.setAttribute("readonly", ""), t.style.position = "fixed", t.style.opacity = "0", document.body.appendChild(t), t.select(), document.execCommand("copy"), t.remove();
+					}
+					this.setStatus("영문 프롬프트 본문을 복사했습니다.");
+				} catch (e) {
+					this.setStatus(`프롬프트 복사 실패: ${e.message}`);
 				}
 			},
 			promptSupportsImageSize(e = this.selectedPromptTemplate) {
@@ -10630,6 +11055,10 @@ var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]
 						this.setStatus("활성·검증 완료·이전 버전은 직접 수정할 수 없습니다. 새 초안을 만들어 주세요.");
 						return;
 					}
+					if (this.promptBodyContainsKorean(this.promptEditor.body)) {
+						this.promptBodyLanguageError = "영문 원문에는 한글을 입력할 수 없습니다.", this.setStatus(this.promptBodyLanguageError);
+						return;
+					}
 					this.promptSaving = !0;
 					try {
 						let t = await fetch("/api/prompt-template", {
@@ -10651,7 +11080,7 @@ var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]
 							})
 						}), n = await t.json().catch(() => ({}));
 						if (!t.ok) throw Error(n.message || n.error || `프롬프트 저장 오류(${t.status})`);
-						await this.loadPromptTemplates({ fresh: !0 }), this.selectedPromptTemplateId = n.prompt?.id || e.id, await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: !0 }), this.setStatus("프롬프트 초안을 저장하고 변경 이력을 생성했습니다");
+						this.selectedPromptTemplateId = n.prompt?.id || e.id, await this.loadPromptTemplates({ fresh: !0 }), this.setStatus("프롬프트 초안을 저장하고 변경 이력을 생성했습니다");
 					} catch (e) {
 						this.setStatus(`프롬프트 저장 실패: ${e.message}`);
 					} finally {
@@ -10673,7 +11102,7 @@ var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]
 							})
 						}), n = await t.json().catch(() => ({}));
 						if (!t.ok) throw n.promptId && (this.selectedPromptTemplateId = n.promptId, await this.loadPromptTemplates({ fresh: !0 })), Error(n.message || n.error || `프롬프트 초안 생성 오류(${t.status})`);
-						await this.loadPromptTemplates({ fresh: !0 }), this.selectedPromptTemplateId = n.prompt?.id || "", await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: !0 }), this.setStatus(`v${n.prompt?.version || ""} 프롬프트 초안을 만들었습니다`);
+						this.selectedPromptTemplateId = n.prompt?.id || "", await this.loadPromptTemplates({ fresh: !0 }), this.setStatus(`v${n.prompt?.version || ""} 프롬프트 초안을 만들었습니다`);
 					} catch (e) {
 						this.setStatus(`프롬프트 초안 생성 실패: ${e.message}`);
 					} finally {
@@ -10695,7 +11124,7 @@ var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]
 							})
 						}), n = await t.json().catch(() => ({}));
 						if (!t.ok) throw Error(n.message || n.error || `프롬프트 검증 오류(${t.status})`);
-						await this.loadPromptTemplates({ fresh: !0 }), this.selectedPromptTemplateId = n.prompt?.id || e.id, await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: !0 }), this.setStatus("프롬프트 검증을 완료했습니다. 활성화할 수 있습니다.");
+						this.selectedPromptTemplateId = n.prompt?.id || e.id, await this.loadPromptTemplates({ fresh: !0 }), this.setStatus("프롬프트 검증을 완료했습니다. 활성화할 수 있습니다.");
 					} catch (e) {
 						this.setStatus(`프롬프트 검증 실패: ${e.message}`);
 					} finally {
@@ -10717,7 +11146,7 @@ var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]
 							})
 						}), n = await t.json().catch(() => ({}));
 						if (!t.ok) throw Error(n.message || n.error || `프롬프트 활성화 오류(${t.status})`);
-						await this.loadPromptTemplates({ fresh: !0 }), this.selectedPromptTemplateId = n.prompt?.id || e.id, await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: !0 }), this.setStatus("활성 프롬프트로 지정했습니다");
+						this.selectedPromptTemplateId = n.prompt?.id || e.id, await this.loadPromptTemplates({ fresh: !0 }), this.setStatus("활성 프롬프트로 지정했습니다");
 					} catch (e) {
 						this.setStatus(`활성 프롬프트 지정 실패: ${e.message}`);
 					} finally {
@@ -10765,7 +11194,7 @@ var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]
 							})
 						}), n = await t.json().catch(() => ({}));
 						if (!t.ok) throw Error(n.message || n.error || `프롬프트 롤백 오류(${t.status})`);
-						await this.loadPromptTemplates({ fresh: !0 }), this.selectedPromptTemplateId = n.prompt?.id || e.id, await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: !0 }), this.setStatus(`v${n.prompt?.version || e.version} 프롬프트로 롤백했습니다`);
+						this.selectedPromptTemplateId = n.prompt?.id || e.id, await this.loadPromptTemplates({ fresh: !0 }), this.setStatus(`v${n.prompt?.version || e.version} 프롬프트로 롤백했습니다`);
 					} catch (e) {
 						this.setStatus(`프롬프트 롤백 실패: ${e.message}`);
 					} finally {
@@ -10807,7 +11236,8 @@ var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]
 						name: n.template.name,
 						description: n.template.description,
 						isDefault: n.template.isDefault,
-						changeNote: ""
+						changeNote: "",
+						recommendationProfileText: JSON.stringify(n.template.recommendationProfile || {}, null, 2)
 					};
 					let r = this.wizardFormTemplateDetail.sections.find((e) => e.id === this.selectedWizardFormTemplateSectionId) || this.wizardFormTemplateDetail.sections[0] || null;
 					r ? await this.selectWizardFormTemplateSection(r) : (this.selectedWizardFormTemplateSectionId = "", this.wizardFormTemplateSectionItems = []);
@@ -10913,16 +11343,26 @@ var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]
 				if (!(!e || e.status !== "draft" || this.wizardFormTemplateSaving)) {
 					this.wizardFormTemplateSaving = !0;
 					try {
-						let t = await fetch("/api/wizard-form-template", {
+						let t = {};
+						try {
+							t = JSON.parse(this.wizardFormTemplateEditor.recommendationProfileText || "{}");
+						} catch {
+							throw Error("추천 메타데이터는 올바른 JSON 형식이어야 합니다.");
+						}
+						let n = await fetch("/api/wizard-form-template", {
 							method: "PATCH",
 							headers: { "Content-Type": "application/json" },
 							body: JSON.stringify({
 								id: e.id,
-								...this.wizardFormTemplateEditor
+								name: this.wizardFormTemplateEditor.name,
+								description: this.wizardFormTemplateEditor.description,
+								isDefault: this.wizardFormTemplateEditor.isDefault,
+								changeNote: this.wizardFormTemplateEditor.changeNote,
+								recommendationProfile: t
 							})
-						}), n = await t.json().catch(() => ({}));
-						if (!t.ok) throw Error(n.message || n.error || `템플릿 저장 오류(${t.status})`);
-						await this.loadWizardFormTemplates({ fresh: !0 }), await this.loadWizardFormTemplateDetail(n.template.id), this.setStatus("템플릿 정보를 저장했습니다");
+						}), r = await n.json().catch(() => ({}));
+						if (!n.ok) throw Error(r.message || r.error || `템플릿 저장 오류(${n.status})`);
+						await this.loadWizardFormTemplates({ fresh: !0 }), await this.loadWizardFormTemplateDetail(r.template.id), this.setStatus("템플릿 정보를 저장했습니다");
 					} catch (e) {
 						this.setStatus(`템플릿 저장 실패: ${e.message}`);
 					} finally {
@@ -10943,7 +11383,13 @@ var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]
 								changeNote: "관리자 페이지에서 템플릿을 활성화했습니다."
 							})
 						}), n = await e.json().catch(() => ({}));
-						if (!e.ok) throw Error(n.message || n.error || `템플릿 활성화 오류(${e.status})`);
+						if (!e.ok) {
+							let t = (Array.isArray(n.errors) ? n.errors : []).map((e) => {
+								let t = this.wizardFormTemplateDetail?.sections?.find((t) => t.sectionKey === e.path);
+								return `${t ? `${t.sectionName || t.sectionKey} v${t.sectionVersion || "?"} · ${this.wizardSectionStatusLabel(t.sectionStatus)}` : e.path || "Section"}: ${e.message || e.code}`;
+							});
+							throw Error(t.length ? `${n.error || "Form template validation failed"} — ${t.join(" / ")}` : n.message || n.error || `템플릿 활성화 오류(${e.status})`);
+						}
 						await this.loadWizardFormTemplates({ fresh: !0 });
 						let r = Number(n.layoutIdentity?.layoutRevision || 1);
 						this.setStatus(`템플릿 v${n.template?.version || t.version} · 레이아웃 r${r}을 활성화했습니다`);
@@ -11371,12 +11817,12 @@ var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]
 			},
 			async selectWizardSection(e, t = {}) {
 				this.selectedWizardSectionKey = e;
-				let n = this.groupedWizardSections.find((t) => t.sectionKey === e), r = n?.versions.find((e) => e.status === "draft") || n?.primary;
-				if (!r) {
+				let n = this.groupedWizardSections.find((t) => t.sectionKey === e), r = String(t.sectionId || "").trim(), i = r ? n?.versions.find((e) => e.id === r) : n?.versions.find((e) => e.status === "draft") || n?.primary;
+				if (!i) {
 					this.wizardSectionDetail = null;
 					return;
 				}
-				await this.loadWizardSectionDetail(r.id, t);
+				await this.loadWizardSectionDetail(i.id, t);
 			},
 			async loadWizardSectionDetail(e, t = {}) {
 				this.wizardSectionDetailLoading = !0;
@@ -11394,6 +11840,20 @@ var Gg = /*#__PURE__*/ Ch(qh, [["render", Wg], ["__scopeId", "data-v-2343282e"]]
 						orderChangeAllowed: n.section.orderChangeAllowed,
 						fixedPosition: n.section.fixedPosition || "",
 						isVisibleInWizard: n.section.isVisibleInWizard,
+						compositionScope: n.section.compositionScope || "template",
+						sectionRole: n.section.sectionRole || "content",
+						compositionPolicy: {
+							selectionPolicy: n.section.compositionPolicy?.selectionPolicy || "optional",
+							allowedMarkets: [...n.section.compositionPolicy?.allowedMarkets || []],
+							allowedPromotionPurposes: [...n.section.compositionPolicy?.allowedPromotionPurposes || []],
+							aiEditable: n.section.compositionPolicy?.aiEditable !== !1,
+							contentLocked: n.section.compositionPolicy?.contentLocked === !0,
+							layoutLocked: n.section.compositionPolicy?.layoutLocked === !0,
+							duplicatePolicy: n.section.compositionPolicy?.duplicatePolicy === "limited" ? "limited" : "forbidden",
+							maxInstances: Number(n.section.compositionPolicy?.maxInstances || 1),
+							allowedLayoutVariants: [...n.section.compositionPolicy?.allowedLayoutVariants || []],
+							allowedMotionPresets: [...n.section.compositionPolicy?.allowedMotionPresets || []]
+						},
 						aiDesign: {
 							enabled: n.section.aiDesign?.enabled !== !1,
 							allowedLayoutVariants: Array.isArray(n.section.aiDesign?.allowedLayoutVariants) ? [...n.section.aiDesign.allowedLayoutVariants] : [
@@ -13354,5 +13814,5 @@ yh(document), globalThis.Vue = gh, globalThis.PromoAdminTemplateLayout = Object.
 }), globalThis.PromoAdminDesignTokens = Object.freeze({
 	service: Hh,
 	component: Gg
-}), await Promise.resolve().then(() => /* @__PURE__ */ l(Kg()));
+}), globalThis.PromoAdminPromptGroups = o_, await Promise.resolve().then(() => /* @__PURE__ */ l(s_()));
 //#endregion

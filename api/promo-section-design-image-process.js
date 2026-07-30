@@ -36,6 +36,8 @@ module.exports = async function handler(req, res) {
       backgroundColor: snapshot.design?.backgroundColor,
       aspectRatio: request.aspectRatio || run.constraintsSnapshot?.imageAspectRatio,
       targetType: request.target?.type || "section-background",
+      keyVisualTextPolicy: request.keyVisualTextPolicy
+        || snapshot.design?.keyVisualTextPolicy,
       provider: promptConfig.provider,
       model: promptConfig.model,
       modelOptions: promptConfig.modelOptions,

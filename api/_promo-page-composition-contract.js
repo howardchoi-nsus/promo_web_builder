@@ -1,0 +1,397 @@
+const { randomUUID } = require("node:crypto");
+const { OVERVIEW_FIELDS } = require("./_promo-overview-contract");
+
+const OPERATION_TYPES = Object.freeze([
+  "update-field",
+  "set-visibility",
+  "move-section",
+  "move-component",
+  "change-layout-variant",
+  "change-token-binding",
+  "change-motion-preset",
+  "request-asset-regeneration",
+]);
+
+function unique(values) {
+  return Array.from(new Set(values.filter(Boolean)));
+}
+
+function pageCompositionSchema(candidates) {
+  const templates = candidates.templates || [];
+  const sectionIds = unique(templates.flatMap((template) => template.sections.map((section) => section.sectionId)));
+  const componentIds = unique(templates.flatMap((template) => (
+    template.sections.flatMap((section) => section.components.map((component) => component.componentInstanceId))
+  )));
+  const fieldKeys = unique(templates.flatMap((template) => template.sections.flatMap((section) => (
+    section.components.flatMap((component) => component.fields.map((field) => field.fieldKey))
+  ))));
+  const layoutVariants = unique([
+    "default",
+    ...templates.flatMap((template) => (
+      template.sections.flatMap((section) => section.allowedLayoutVariants || [])
+    )),
+  ]);
+  const motionKeys = unique(["none", ...(candidates.motionPresets || []).map((item) => item.presetKey)]);
+  const tokenVersionIds = unique((candidates.tokenSets || []).map((item) => item.tokenSetVersionId));
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["templateId", "designTokenSetVersionId", "sections", "warnings", "summary"],
+    properties: {
+      templateId: { type: "string", enum: templates.map((item) => item.templateId) },
+      designTokenSetVersionId: {
+        type: "string",
+        enum: tokenVersionIds.length ? tokenVersionIds : [""],
+      },
+      sections: {
+        type: "array",
+        minItems: 1,
+        maxItems: 30,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: [
+            "sectionId", "visible", "sortOrder", "layoutVariant",
+            "motionPresetKey", "components",
+          ],
+          properties: {
+            sectionId: { type: "string", enum: sectionIds },
+            visible: { type: "boolean" },
+            sortOrder: { type: "integer", minimum: 0, maximum: 10000 },
+            layoutVariant: { type: "string", enum: layoutVariants },
+            motionPresetKey: { type: "string", enum: motionKeys },
+            components: {
+              type: "array",
+              maxItems: 60,
+              items: {
+                type: "object",
+                additionalProperties: false,
+                required: ["componentInstanceId", "visible", "contentBindings"],
+                properties: {
+                  componentInstanceId: { type: "string", enum: componentIds },
+                  visible: { type: "boolean" },
+                  contentBindings: {
+                    type: "array",
+                    maxItems: 30,
+                    items: {
+                      type: "object",
+                      additionalProperties: false,
+                      required: ["fieldKey", "sourceOverviewPath"],
+                      properties: {
+                        fieldKey: { type: "string", enum: fieldKeys },
+                        sourceOverviewPath: { type: "string", enum: OVERVIEW_FIELDS },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      warnings: {
+        type: "array",
+        maxItems: 30,
+        items: { type: "string", maxLength: 300 },
+      },
+      summary: { type: "string", maxLength: 1000 },
+    },
+  };
+}
+
+function validatePageCompositionProposal(result, candidates) {
+  const template = candidates.templates.find((item) => item.templateId === result?.templateId);
+  if (!template) throw Object.assign(new Error("Planner selected an unavailable template"), { code: "INVALID_TEMPLATE" });
+  const tokenSet = (candidates.tokenSets || []).find(
+    (item) => item.tokenSetVersionId === result.designTokenSetVersionId,
+  ) || null;
+  if ((candidates.tokenSets || []).length && !tokenSet) {
+    throw Object.assign(new Error("Planner selected an unavailable design token set"), { code: "INVALID_TOKEN_SET" });
+  }
+  const allowedSections = new Map(template.sections.map((section) => [section.sectionId, section]));
+  const seenSections = new Set();
+  const sections = [];
+  for (const planned of Array.isArray(result.sections) ? result.sections : []) {
+    const section = allowedSections.get(planned.sectionId);
+    if (!section || seenSections.has(planned.sectionId)) {
+      throw Object.assign(new Error("Planner returned a duplicate or unavailable section"), { code: "INVALID_SECTION" });
+    }
+    seenSections.add(planned.sectionId);
+    const allowedComponents = new Map(
+      section.components.map((component) => [component.componentInstanceId, component]),
+    );
+    const seenComponents = new Set();
+    const components = [];
+    for (const plannedComponent of Array.isArray(planned.components) ? planned.components : []) {
+      const component = allowedComponents.get(plannedComponent.componentInstanceId);
+      if (!component || seenComponents.has(plannedComponent.componentInstanceId)) {
+        throw Object.assign(new Error("Planner returned a duplicate or unavailable component"), { code: "INVALID_COMPONENT" });
+      }
+      seenComponents.add(plannedComponent.componentInstanceId);
+      const allowedFields = new Set(component.fields.map((field) => field.fieldKey));
+      const seenFields = new Set();
+      const contentBindings = (plannedComponent.contentBindings || []).map((binding) => {
+        if (!allowedFields.has(binding.fieldKey)
+          || !OVERVIEW_FIELDS.includes(binding.sourceOverviewPath)
+          || seenFields.has(binding.fieldKey)) {
+          throw Object.assign(new Error("Planner returned an invalid content binding"), { code: "INVALID_CONTENT_BINDING" });
+        }
+        seenFields.add(binding.fieldKey);
+        return {
+          fieldKey: binding.fieldKey,
+          sourceOverviewPath: binding.sourceOverviewPath,
+        };
+      });
+      if (component.isRequired && plannedComponent.visible === false) {
+        throw Object.assign(new Error("Required component cannot be hidden"), { code: "REQUIRED_COMPONENT_HIDDEN" });
+      }
+      components.push({
+        component,
+        visible: plannedComponent.visible !== false,
+        contentBindings,
+      });
+    }
+    section.components.filter((component) => component.isRequired).forEach((component) => {
+      if (!seenComponents.has(component.componentInstanceId)) {
+        throw Object.assign(new Error("Required component is missing"), { code: "REQUIRED_COMPONENT_MISSING" });
+      }
+    });
+    if (section.fixedPosition && planned.visible === false) {
+      throw Object.assign(new Error("Fixed-position section cannot be hidden"), { code: "FIXED_SECTION_HIDDEN" });
+    }
+    if (!(section.allowedLayoutVariants || ["default"]).includes(planned.layoutVariant)) {
+      throw Object.assign(new Error("Section layout variant is not allowed"), { code: "INVALID_LAYOUT_VARIANT" });
+    }
+    const motion = (candidates.motionPresets || []).find(
+      (item) => item.presetKey === planned.motionPresetKey,
+    ) || null;
+    if (planned.motionPresetKey !== "none" && !motion) {
+      throw Object.assign(new Error("Motion preset is not allowed"), { code: "INVALID_MOTION_PRESET" });
+    }
+    sections.push({
+      section,
+      visible: planned.visible !== false,
+      sortOrder: Number(planned.sortOrder || section.sortOrder || 0),
+      layoutVariant: planned.layoutVariant,
+      motion,
+      components,
+    });
+  }
+  template.sections.filter((section) => section.resolvedRequired).forEach((section) => {
+    if (!seenSections.has(section.sectionId)) {
+      throw Object.assign(new Error(`Required section is missing: ${section.sectionKey}`), { code: "REQUIRED_SECTION_MISSING" });
+    }
+  });
+  if (!sections.length) throw Object.assign(new Error("Composition requires at least one section"), { code: "SECTION_REQUIRED" });
+  return {
+    template,
+    tokenSet,
+    sections: sections.sort((left, right) => left.sortOrder - right.sortOrder),
+    warnings: Array.isArray(result.warnings) ? result.warnings.map(String).slice(0, 30) : [],
+    summary: String(result.summary || "").trim().slice(0, 1000),
+  };
+}
+
+function defaultValue(field) {
+  if (field.isLocked) return field.lockedValue ?? field.defaultValue ?? "";
+  if (field.fieldKind === "cta") return { label: "", link: "", target: "_self" };
+  if (field.fieldKind === "image") {
+    return { source: field.image?.allowedSources?.[0] || "url", value: "", description: "", alt: "" };
+  }
+  return field.defaultValue || "";
+}
+
+function boundValue(field, binding, overview) {
+  if (!binding) return defaultValue(field);
+  const value = overview[binding.sourceOverviewPath];
+  if (field.fieldKind === "cta") {
+    return { label: String(value || ""), link: "", target: "_self" };
+  }
+  return String(value || "");
+}
+
+function normalizePageComposition({
+  validated,
+  overview,
+  documentId,
+  documentRevision = 0,
+  proposalId,
+  overviewFingerprint,
+  candidateFingerprint,
+  promptExecutionSnapshot = {},
+}) {
+  const sectionSnapshot = [];
+  const sectionInputs = {};
+  const sectionOrder = [];
+  const provenance = {};
+  const itemVisibility = {};
+  const fieldVisibility = {};
+  const sectionStyles = {};
+  const motionSections = {};
+  const motionItems = {};
+  const assetRequests = [];
+
+  validated.sections.forEach((plannedSection) => {
+    const pageSectionInstanceId = `sec_${randomUUID().replace(/-/g, "")}`;
+    const section = plannedSection.section;
+    const items = [];
+    sectionInputs[pageSectionInstanceId] = {};
+    sectionOrder.push(pageSectionInstanceId);
+    sectionStyles[pageSectionInstanceId] = {
+      layoutVariant: plannedSection.layoutVariant,
+    };
+    if (plannedSection.motion) {
+      motionSections[pageSectionInstanceId] = {
+        presetVersionId: plannedSection.motion.presetVersionId,
+        className: plannedSection.motion.config.className || "",
+        durationToken: plannedSection.motion.config.durationToken || "0ms",
+        easingToken: plannedSection.motion.config.easingToken || "linear",
+        delayToken: plannedSection.motion.config.delayToken || "0ms",
+      };
+    }
+    plannedSection.components.forEach((plannedComponent) => {
+      const source = plannedComponent.component;
+      const pageComponentInstanceId = `cmp_${randomUUID().replace(/-/g, "")}`;
+      const fields = source.fields.map((field) => ({ ...field }));
+      const definition = {
+        ...source.definition,
+        id: pageComponentInstanceId,
+        itemKey: pageComponentInstanceId,
+        sourceDefinitionInstanceId: source.componentInstanceId,
+        sourceItemKey: source.itemKey,
+        componentVersionId: source.componentVersionId,
+        fields,
+      };
+      items.push(definition);
+      itemVisibility[`${pageSectionInstanceId}.${pageComponentInstanceId}`] = plannedComponent.visible;
+      const values = {};
+      fields.forEach((field) => {
+        const binding = plannedComponent.contentBindings.find((item) => item.fieldKey === field.fieldKey);
+        values[field.fieldKey] = boundValue(field, binding, overview);
+        fieldVisibility[`${pageSectionInstanceId}.${pageComponentInstanceId}.${field.fieldKey}`] = true;
+        if (binding) {
+          provenance[`${pageSectionInstanceId}.${pageComponentInstanceId}.${field.fieldKey}`] = {
+            source: "ai-generated",
+            sourceOverviewPath: binding.sourceOverviewPath,
+            confirmationRequired: false,
+          };
+        }
+        if (field.fieldKind === "image" && field.image?.allowedSources?.includes("ai")) {
+          assetRequests.push({
+            assetRequestId: randomUUID(),
+            targetType: "component-field-image",
+            pageSectionInstanceId,
+            pageComponentInstanceId,
+            fieldKey: field.fieldKey,
+            status: "pending",
+          });
+        }
+      });
+      sectionInputs[pageSectionInstanceId][pageComponentInstanceId] = fields.length > 1
+        ? { fields: values }
+        : values[fields[0]?.fieldKey];
+    });
+    if (section.aiDesign?.enabled && section.aiDesign?.allowSectionBackground !== false) {
+      assetRequests.push({
+        assetRequestId: randomUUID(),
+        targetType: "section-key-visual",
+        pageSectionInstanceId,
+        status: "pending",
+      });
+    }
+    sectionSnapshot.push({
+      id: pageSectionInstanceId,
+      sectionKey: pageSectionInstanceId,
+      pageSectionInstanceId,
+      sourceSectionId: section.sectionId,
+      sourceSectionVersion: section.version,
+      sourceSectionKey: section.sectionKey,
+      name: section.name,
+      description: section.description,
+      sectionRole: section.sectionRole,
+      compositionPolicy: section.compositionPolicy,
+      fixedPosition: section.fixedPosition,
+      isRequired: section.isRequired,
+      isVisibleInWizard: plannedSection.visible,
+      sortOrder: plannedSection.sortOrder,
+      aiDesign: section.aiDesign,
+      items,
+    });
+  });
+
+  const tokenValues = validated.tokenSet?.runtimeValues || {};
+  return {
+    contractVersion: 2,
+    documentRevision,
+    layoutRevision: 0,
+    layoutIdentity: {
+      contractVersion: 2,
+      templateId: validated.template.templateId,
+      templateKey: validated.template.templateKey,
+      templateVersion: validated.template.templateVersion,
+      layoutId: "",
+      layoutRevision: 0,
+      configRevision: candidateFingerprint,
+      rendererKey: "default-promo-renderer",
+      rendererVersion: 1,
+    },
+    compositionMeta: {
+      compositionId: randomUUID(),
+      documentId,
+      mode: "library-based",
+      overviewFingerprint,
+      candidateFingerprint,
+      proposalId,
+      sourceTemplateId: validated.template.templateId,
+      sourceTemplateVersion: validated.template.templateVersion,
+      promptTemplateVersionId: String(promptExecutionSnapshot.promptId || ""),
+      model: String(promptExecutionSnapshot.model || ""),
+      reasoningSummary: validated.summary,
+    },
+    appearance: {
+      designTokenSetVersionId: validated.tokenSet?.tokenSetVersionId || "",
+      motionEnabled: Object.keys(motionSections).length > 0,
+    },
+    content: {
+      contractVersion: 2,
+      formTemplate: {
+        id: validated.template.templateId,
+        templateKey: validated.template.templateKey,
+        version: validated.template.templateVersion,
+        designTokenSetVersionId: validated.tokenSet?.tokenSetVersionId || "",
+        designTokens: { values: tokenValues },
+      },
+      sectionSnapshot,
+      sectionInputs,
+      sectionOrder,
+    },
+    provenance,
+    designSpec: {
+      contractVersion: 2,
+      specKey: "ai-composition",
+      theme: {
+        backgroundColor: tokenValues["--app-background"] || "#f5f7fb",
+        textColor: tokenValues["--app-text"] || "#172033",
+        accentColor: tokenValues["--app-accent"] || "#156b5b",
+        ctaColor: tokenValues["--app-cta-background"] || tokenValues["--app-accent"] || "#156b5b",
+        ctaShape: "round",
+        ctaVariant: "fill",
+        fontFamily: tokenValues["--app-font-family"] || "Inter, Pretendard, sans-serif",
+      },
+      responsive: { contentMaxWidth: 1280, contentMinWidth: 1140, mobileBreakpoint: 720 },
+      itemStyles: {},
+      sectionStyles,
+      visibility: { items: itemVisibility, fields: fieldVisibility },
+    },
+    motionSpec: { sections: motionSections, items: motionItems },
+    assets: { contractVersion: 1, items: {}, requests: assetRequests },
+    validation: { ok: true, errors: [], warnings: validated.warnings },
+  };
+}
+
+module.exports = {
+  OPERATION_TYPES,
+  pageCompositionSchema,
+  validatePageCompositionProposal,
+  normalizePageComposition,
+};

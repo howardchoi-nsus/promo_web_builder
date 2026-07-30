@@ -4,6 +4,7 @@ import TemplateLayoutManager from "./components/TemplateLayoutManager.vue";
 import { templateLayoutService } from "./services/template-layout-service.mjs";
 import DesignTokenManager from "./components/DesignTokenManager.vue";
 import { designTokenService } from "./services/design-token-service.mjs";
+import { promptTemplateGroupService } from "./services/prompt-template-group-service.mjs";
 
 resolveAdminShell(document);
 globalThis.Vue = VueRuntime;
@@ -15,5 +16,6 @@ globalThis.PromoAdminDesignTokens = Object.freeze({
   service: designTokenService,
   component: DesignTokenManager,
 });
+globalThis.PromoAdminPromptGroups = promptTemplateGroupService;
 
 await import("../../prototype/app.js");

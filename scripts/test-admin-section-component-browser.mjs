@@ -23,8 +23,20 @@ async function waitForServer() {
 const tokenVersionId = "77777777-7777-4777-8777-777777777777";
 let template = { id: "11111111-1111-4111-8111-111111111111", templateKey: "default", name: "Default", status: "draft", version: 1, designTokenSetVersionId: tokenVersionId };
 const sectionA = { id: "22222222-2222-4222-8222-222222222222", sectionKey: "promotionIntro", name: "Promotion Intro", status: "draft", version: 2, aiDesign: { enabled: true } };
+const sectionAActive = { id: "22222222-2222-4222-8222-222222222223", sectionKey: "promotionIntro", name: "Promotion Intro", status: "active", version: 1, aiDesign: { enabled: true } };
 const sectionB = { id: "33333333-3333-4333-8333-333333333333", sectionKey: "benefits", name: "Benefits", status: "active", version: 1, aiDesign: { enabled: true } };
-const membership = { id: "44444444-4444-4444-8444-444444444444", formTemplateId: template.id, sectionId: sectionA.id, sectionKey: sectionA.sectionKey, sectionName: sectionA.name, sectionVersion: 1, isVisible: true, isRequired: true, userReorderAllowed: true };
+const membership = {
+  id: "44444444-4444-4444-8444-444444444444",
+  formTemplateId: template.id,
+  sectionId: sectionA.id,
+  sectionKey: sectionA.sectionKey,
+  sectionName: sectionA.name,
+  sectionVersion: sectionA.version,
+  sectionStatus: sectionA.status,
+  isVisible: true,
+  isRequired: true,
+  userReorderAllowed: true,
+};
 const activeComponentVersionId = "66666666-6666-4666-8666-666666666666";
 let sectionItems = [
   {
@@ -121,7 +133,7 @@ try {
         },
       }, 201);
     }
-    if (url.pathname === "/api/wizard-content-sections") return reply({ ok: true, sections: [sectionA, sectionB] });
+    if (url.pathname === "/api/wizard-content-sections") return reply({ ok: true, sections: [sectionA, sectionAActive, sectionB] });
     if (url.pathname === "/api/wizard-content-section-items-order" && request.method() === "POST") {
       componentOrderBody = request.postDataJSON();
       if (rejectComponentOrder) return reply({ error: "Simulated stale order" }, 409);
@@ -198,6 +210,14 @@ try {
   assert.equal(await templateCard.locator(".template-layout-settings").count(), 1);
   assert.equal(await page.locator(".form-template-editor-panels > .prompt-editor-panel > .template-layout-settings").count(), 0);
   assert.equal(await page.locator("#template-component-manager-target .section-library-manager").count(), 1);
+  const linkedSectionRow = page.locator("#template-component-manager-target .prompt-list-item").filter({ hasText: "Promotion Intro" });
+  assert.equal(await linkedSectionRow.locator(".status-draft").count(), 1, "Template Section list must show the linked draft status, not another active version");
+  await linkedSectionRow.click();
+  assert.match(
+    await page.locator("#template-component-manager-target .prompt-editor-header").textContent(),
+    /v2/,
+    "Selecting a Template Section must open the version linked by the membership",
+  );
 
   await templateCard.getByRole("button", { name: "복사본 만들기", exact: true }).click();
   await page.locator(".form-template-duplicate").waitFor({ state: "visible" });
@@ -211,9 +231,9 @@ try {
   assert.equal(await page.locator(".form-template-create input").evaluateAll((inputs) => inputs.some((input) => /key/i.test(input.name || input.placeholder || ""))), false);
   await page.locator(".template-list-global-actions button").click();
 
-  await templateCard.locator(".template-active-switch__track").click();
+  await templateCard.locator(".app-switch__track").click();
   await page.waitForTimeout(50);
-  assert.equal(await templateCard.locator(".template-active-switch input").isChecked(), true);
+  assert.equal(await templateCard.locator(".app-switch__input").isChecked(), true);
   assert.deepEqual(activateBody, {
     id: template.id,
     changeNote: "관리자 페이지에서 템플릿을 활성화했습니다.",

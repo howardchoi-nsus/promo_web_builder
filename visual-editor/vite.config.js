@@ -60,11 +60,17 @@ export default defineConfig({
   build: {
     outDir: resolve(__dirname, "../prototype/visual-editor-assets"),
     emptyOutDir: true,
-    lib: {
-      entry: resolve(__dirname, "src/main.js"),
-      formats: ["es"],
-      fileName: () => "visual-editor.js",
-      cssFileName: "visual-editor",
+    cssCodeSplit: true,
+    rollupOptions: {
+      input: {
+        "visual-editor": resolve(__dirname, "src/main.js"),
+        "ai-builder": resolve(__dirname, "src/builder/main.js"),
+      },
+      output: {
+        entryFileNames: "[name].js",
+        chunkFileNames: "chunks/[name]-[hash].js",
+        assetFileNames: "[name][extname]",
+      },
     },
   },
 });

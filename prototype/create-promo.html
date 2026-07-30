@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>프로모션 빌더</title>
     <link rel="stylesheet" href="design-tokens.css?v=app-tokens-v1" />
-    <link rel="stylesheet" href="app-shell.css?v=app-shell-sidebar-v3" />
+    <link rel="stylesheet" href="app-shell.css?v=app-shell-sidebar-v4" />
     <link rel="stylesheet" href="app-components.css?v=app-components-v1" />
-    <link rel="stylesheet" href="create-promo.css?v=app-tokens-v1" />
+    <link rel="stylesheet" href="create-promo.css?v=create-promo-overview-v2" />
     <script src="vendor/lucide/lucide.min.js?v=1.8.0"></script>
     <script src="/prototype/i18n-runtime.js?v=i18n-runtime-v1"></script>
     <script src="shared-shell.js?v=app-shell-sidebar-v4"></script>
@@ -38,62 +38,55 @@
             <button class="shell-menu-toggle" type="button" data-shell-menu-toggle aria-controls="global-navigation" aria-expanded="false" aria-label="메뉴 열기">메뉴</button>
             <strong>프로모션 빌더</strong>
           </div>
-          <div class="shell-page-actions"><div class="shell-status" id="wizard-shell-status" role="status">Step 1 / 5</div></div>
+          <div class="shell-page-actions"><div class="shell-status" id="wizard-shell-status" role="status">Step 1 / 4</div></div>
         </header>
         <main class="workspace shell-content">
+      <div id="ai-builder-app" hidden></div>
+      <div data-template-builder-root hidden>
 
       <section class="wizard-progress" aria-label="Create Promo steps">
-        <button class="step is-active" type="button" data-step="1">
+        <button class="step is-active" type="button" data-step="overview">
           <span>1</span>
-          <strong>Design Token</strong>
-        </button>
-        <button class="step" type="button" data-step="2">
-          <span>2</span>
           <strong>Overview</strong>
         </button>
-        <button class="step" type="button" data-step="3">
-          <span>3</span>
+        <button class="step" type="button" data-step="template">
+          <span>2</span>
           <strong>Template</strong>
         </button>
-        <button class="step" type="button" data-step="4">
-          <span>4</span>
-          <strong>Layout</strong>
+        <button class="step" type="button" data-step="layout">
+          <span>3</span>
+          <strong>Layout &amp; Design</strong>
         </button>
-        <button class="step" type="button" data-step="5">
-          <span>5</span>
+        <button class="step" type="button" data-step="output">
+          <span>4</span>
           <strong>Web Output</strong>
         </button>
       </section>
 
       <section class="wizard-panel" id="wizard-panel" aria-live="polite">
-        <div class="step-title">
-          <p class="eyebrow" id="step-eyebrow">Step 1</p>
-          <h2 id="step-title">디자인 토큰 선택</h2>
-          <p id="step-copy">
-            프로모션에 적용할 디자인 토큰 세트를 선택하세요.
-          </p>
-        </div>
         <div class="placeholder-grid" id="step-placeholders"></div>
       </section>
 
       <footer class="wizard-footer">
         <button class="secondary-action" type="button" id="prev-step">Previous</button>
-        <span id="step-status">Step 1 / 5</span>
+        <span id="step-status">Step 1 / 4</span>
         <button class="primary-action" type="button" id="next-step">Next</button>
       </footer>
+      </div>
         </main>
       </div>
       <button class="shell-overlay" type="button" data-shell-overlay aria-label="메뉴 닫기"></button>
     </div>
 
     <script src="wizard/wizard-core.js?v=wizard-core-v2"></script>
-    <script src="wizard/wizard-flow.js?v=wizard-flow-v2"></script>
+    <script src="wizard/wizard-flow.js?v=wizard-flow-v3"></script>
     <script src="wizard/wizard-template-service.js?v=wizard-template-service-v1"></script>
-    <script src="wizard/wizard-content.js?v=wizard-content-v2"></script>
+    <script src="wizard/wizard-content.js?v=wizard-content-v5"></script>
+    <script src="wizard/promotion-overview.js?v=promotion-overview-v4"></script>
     <script src="wizard/editor-snapshot-contract.js?v=editor-snapshot-contract-v1"></script>
     <script src="wizard/editor-bridge.js?v=editor-bridge-v1"></script>
     <script src="wizard/wizard-storage.js?v=wizard-storage-v2"></script>
     <script src="create-promo-layout-cache.js?v=create-promo-light-v28"></script>
-    <script src="create-promo.js?v=create-promo-light-v35"></script>
+    <script src="builder-bootstrap.js?v=ai-builder-bootstrap-v1"></script>
   </body>
 </html>

@@ -71,6 +71,8 @@ const compositionInstruction = ref("");
 const compositionGenerateBackground = ref(false);
 const compositionImageGuidance = ref("");
 const compositionFadeMode = ref("none");
+const compositionKeyVisualTextMode = ref("none");
+const compositionKeyVisualText = ref("");
 const compositionPlanning = ref(false);
 const compositionApplying = ref(false);
 const compositionError = ref("");
@@ -447,6 +449,10 @@ function compositionRequestPayload() {
     generateBackgroundImage: compositionGenerateBackground.value,
     imageGuidance: compositionImageGuidance.value,
     fadeMode: compositionFadeMode.value,
+    keyVisualTextMode: compositionKeyVisualTextMode.value,
+    keyVisualText: compositionKeyVisualTextMode.value === "explicit"
+      ? compositionKeyVisualText.value.trim()
+      : "",
   };
 }
 
@@ -539,6 +545,10 @@ async function applySectionComposition() {
         "",
         proposal.backgroundImage.guidance,
         proposal.backgroundImage.safeArea,
+        {
+          keyVisualTextMode: planned.requestPayload?.keyVisualTextMode || "none",
+          keyVisualText: planned.requestPayload?.keyVisualText || "",
+        },
       );
     }
   } catch (applyError) {
@@ -686,10 +696,10 @@ function sectionAiHasContent(section) {
 function sectionAiPrimaryAction(section) {
   const run = sectionAiRun(section);
   const matchesBackground = run?.constraintsSnapshot?.imageTarget?.type === "section-background";
-  if (sectionAiIsProcessing(section)) return { action: "generate", label: "AI 생성 중", disabled: true };
-  if (matchesBackground && run?.status === "ready" && !sectionAiIsStale(section)) return { action: "generate", label: "AI 적용 중", disabled: true };
-  if (matchesBackground && run?.status === "applied") return { action: "generate", label: "AI 재생성", disabled: !sectionAiHasContent(section) };
-  return { action: "generate", label: "AI 디자인", disabled: !sectionAiHasContent(section) };
+  if (sectionAiIsProcessing(section)) return { action: "generate", label: "키비주얼 생성 중", disabled: true };
+  if (matchesBackground && run?.status === "ready" && !sectionAiIsStale(section)) return { action: "generate", label: "키비주얼 적용 중", disabled: true };
+  if (matchesBackground && run?.status === "applied") return { action: "generate", label: "AI 키비주얼 재생성", disabled: !sectionAiHasContent(section) };
+  return { action: "generate", label: "AI 키비주얼 생성", disabled: !sectionAiHasContent(section) };
 }
 
 function sectionAiAllowedItemKeys(section) {
@@ -733,7 +743,7 @@ function sectionAiItemAction(section, item, field = null) {
 
 function requestSectionAiAction(
   section, action, targetItemKey = "", targetType = "", targetFieldKey = "",
-  imageGuidance = "", imageSafeArea = "",
+  imageGuidance = "", imageSafeArea = "", keyVisualOptions = {},
 ) {
   const resolvedTargetType = targetType || (targetItemKey ? "item" : "section-background");
   promoBuilderAdapter.requestSectionAiAction({
@@ -744,6 +754,8 @@ function requestSectionAiAction(
     targetFieldKey,
     imageGuidance,
     imageSafeArea,
+    keyVisualTextMode: keyVisualOptions.keyVisualTextMode || "none",
+    keyVisualText: keyVisualOptions.keyVisualText || "",
   });
 }
 
@@ -936,7 +948,7 @@ async function loadEditor() {
     };
     configRevision.value = detailResult.configRevision || "";
     sections.value = detailResult.sections || [];
-    sectionInputs.value = createSectionInputs(sections.value);
+    sectionInputs.value = createSectionInputs(sections.value, detailResult.defaultContent || {});
     selectedSectionKey.value = sections.value[0]?.sectionKey || "";
     selectedItemKey.value = sections.value[0]?.items?.[0]?.itemKey || "";
     selectedItemKeys.value = selectedItemKey.value ? [selectedItemKey.value] : [];
@@ -991,7 +1003,7 @@ async function loadAdminLayout() {
       };
     }
     sections.value = result.sections || [];
-    sectionInputs.value = createSectionInputs(sections.value);
+    sectionInputs.value = createSectionInputs(sections.value, result.layout?.defaultContent || {});
     designSpec.value = normalizeLayoutSpec(result.layout?.layoutSpec);
     layoutRevision.value = Number(result.layout?.layoutRevision || 1);
     layoutId.value = result.layout?.id || null;
@@ -1024,6 +1036,7 @@ async function saveAdminLayout({ activate = false } = {}) {
       rendererKey: "default-promo-renderer",
       rendererVersion: 1,
       layoutSpec: validation.spec,
+      defaultContent: sectionInputs.value,
       changeNote: layoutChangeNote.value || "Admin Layout Editor에서 기본 레이아웃을 저장했습니다.",
     });
     designSpec.value = normalizeLayoutSpec(result.layout.layoutSpec);
@@ -1122,11 +1135,27 @@ watch([designSpec, sectionInputs], () => {
   });
 }, { deep: true });
 
-function loadOutput() {
+async function loadOutput() {
   try {
+    const builderDocumentId = new URLSearchParams(window.location.search).get("builderDocumentId");
+    if (builderDocumentId) {
+      loading.value = true;
+      const response = await fetch(
+        `/api/promo-builder-documents?documentId=${encodeURIComponent(builderDocumentId)}`,
+        { credentials: "same-origin", cache: "no-store" },
+      );
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.message || result.error || "Builder 문서를 불러오지 못했습니다.");
+      }
+      outputSnapshot.value = result.snapshot;
+      return;
+    }
     outputSnapshot.value = outputAdapter.load();
   } catch (loadError) {
     error.value = loadError.message;
+  } finally {
+    loading.value = false;
   }
 }
 
@@ -1276,7 +1305,7 @@ onBeforeUnmount(() => {
         :section-has-ai-background="sectionHasAiBackground"
         :section-ai-is-processing="sectionAiIsProcessing"
         @select-section="selectSection"
-        @section-ai-action="(section, action, targetItemKey, targetType) => requestSectionAiAction(section, action, targetItemKey, targetType)"
+        @section-ai-action="(section, action, targetItemKey, targetType, options) => requestSectionAiAction(section, action, targetItemKey, targetType, '', '', '', options)"
         @background-alignment="setSectionBackgroundAlignment"
         @background-fade="setSectionBackgroundFadeMode"
         @update-section-style="updateSectionStyle"
@@ -1289,6 +1318,8 @@ onBeforeUnmount(() => {
             :generate-background-image="compositionGenerateBackground"
             :image-guidance="compositionImageGuidance"
             :fade-mode="compositionFadeMode"
+            :key-visual-text-mode="compositionKeyVisualTextMode"
+            :key-visual-text="compositionKeyVisualText"
             :planning="compositionPlanning"
             :applying="compositionApplying"
             :error="compositionError"
@@ -1297,6 +1328,8 @@ onBeforeUnmount(() => {
             @update:generate-background-image="compositionGenerateBackground = $event"
             @update:image-guidance="compositionImageGuidance = $event"
             @update:fade-mode="compositionFadeMode = $event"
+            @update:key-visual-text-mode="compositionKeyVisualTextMode = $event"
+            @update:key-visual-text="compositionKeyVisualText = $event"
             @request-plan="requestSectionComposition"
             @apply="applySectionComposition"
             @dismiss="compositionResult = null"
@@ -1389,18 +1422,20 @@ onBeforeUnmount(() => {
                 </button>
                 <label
                   v-if="!item.isRequired && !item.isLocked"
-                  class="component-visibility-toggle"
+                  class="app-switch app-switch--small component-visibility-toggle"
                   :title="itemVisible(selectedSection, item) ? '웹 출력에 노출 중' : '웹 출력에서 숨김'"
                   @click.stop
                 >
                   <input
+                    class="app-switch__input"
                     type="checkbox"
+                    role="switch"
                     :checked="itemVisible(selectedSection, item)"
                     :aria-label="`${item.name} 노출`"
                     @change="setItemVisible(selectedSection, item, $event.target.checked)"
                   />
-                  <i aria-hidden="true"></i>
-                  <span>노출</span>
+                  <span class="app-switch__track" aria-hidden="true"></span>
+                  <span class="app-switch__label">노출</span>
                 </label>
               </div>
               <div class="component-property-body">
@@ -1416,17 +1451,19 @@ onBeforeUnmount(() => {
                 <small>{{ field.fieldKind }} · {{ field.fieldKey }}</small>
                 <label
                   v-if="!field.isRequired && !field.isLocked"
-                  class="component-visibility-toggle"
+                  class="app-switch app-switch--small component-visibility-toggle"
                   :title="fieldVisible(selectedSection, selectedItem, field) ? '웹 출력에 노출 중' : '웹 출력에서 숨김'"
                 >
                   <input
+                    class="app-switch__input"
                     type="checkbox"
+                    role="switch"
                     :checked="fieldVisible(selectedSection, selectedItem, field)"
                     :aria-label="`${field.name} 노출`"
                     @change="setFieldVisible(selectedSection, selectedItem, field, $event.target.checked)"
                   />
-                  <i aria-hidden="true"></i>
-                  <span>노출</span>
+                  <span class="app-switch__track" aria-hidden="true"></span>
+                  <span class="app-switch__label">노출</span>
                 </label>
               </header>
               <template v-if="field.fieldKind === 'cta'">
@@ -1633,7 +1670,7 @@ onBeforeUnmount(() => {
                   <option value="circle">원형</option>
                 </select>
               </label>
-              <label class="toggle-field">
+              <label class="app-checkbox toggle-field">
                 <input
                   type="checkbox"
                   :disabled="selectedItem.isLocked"

@@ -4,6 +4,8 @@ const {
   normalizeBoolean,
   normalizeNumber,
   normalizeAiDesign,
+  normalizeCompositionPolicy,
+  SECTION_ROLES,
   toSection,
   fetchSectionRow,
   fetchItemsForSection,
@@ -84,6 +86,9 @@ async function updateSection(req, res) {
   const hasSortOrder = Object.prototype.hasOwnProperty.call(body, "sortOrder");
   const hasVisible = Object.prototype.hasOwnProperty.call(body, "isVisibleInWizard");
   const hasAiDesign = Object.prototype.hasOwnProperty.call(body, "aiDesign");
+  const hasCompositionScope = Object.prototype.hasOwnProperty.call(body, "compositionScope");
+  const hasSectionRole = Object.prototype.hasOwnProperty.call(body, "sectionRole");
+  const hasCompositionPolicy = Object.prototype.hasOwnProperty.call(body, "compositionPolicy");
   const changeNote = String(body.changeNote || "Section draft updated.").trim();
 
   const name = hasName ? String(body.name || "").trim() : current.name;
@@ -92,6 +97,16 @@ async function updateSection(req, res) {
   const fixedPosition = hasFixedPosition
     ? (body.fixedPosition === "top" || body.fixedPosition === "bottom" ? body.fixedPosition : null)
     : current.fixed_position;
+  const compositionScope = hasCompositionScope && body.compositionScope === "shared"
+    ? "shared"
+    : hasCompositionScope ? "template" : current.composition_scope || "template";
+  const sectionRole = hasSectionRole && SECTION_ROLES.includes(body.sectionRole)
+    ? body.sectionRole
+    : current.section_role || "content";
+  const compositionPolicy = normalizeCompositionPolicy(
+    hasCompositionPolicy ? body.compositionPolicy : current.composition_policy,
+    { fixedPosition },
+  );
 
   const rows = await sql`
     update wizard_content_sections
@@ -104,13 +119,17 @@ async function updateSection(req, res) {
       sort_order = ${hasSortOrder ? (normalizeNumber(body.sortOrder) ?? current.sort_order) : current.sort_order},
       is_visible_in_wizard = ${hasVisible ? normalizeBoolean(body.isVisibleInWizard, current.is_visible_in_wizard) : current.is_visible_in_wizard},
       ai_design = ${JSON.stringify(hasAiDesign ? normalizeAiDesign(body.aiDesign) : normalizeAiDesign(current.ai_design))}::jsonb,
+      composition_scope = ${compositionScope},
+      section_role = ${sectionRole},
+      composition_policy = ${JSON.stringify(compositionPolicy)}::jsonb,
       change_note = ${changeNote},
       updated_at = now()
     where id = ${id}::uuid
     returning
       id::text, section_key, name, description, is_required, order_change_allowed,
       fixed_position, sort_order, is_visible_in_wizard, status, version,
-      change_note, ai_design, archived_at, created_at, updated_at
+      change_note, ai_design, composition_scope, section_role, composition_policy,
+      archived_at, created_at, updated_at
   `;
 
   return res.status(200).json({ ok: true, section: toSection(rows[0]) });

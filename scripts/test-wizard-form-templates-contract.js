@@ -14,7 +14,12 @@ assert.deepStrictEqual(store.toFormTemplate({
   id: "template-id", template_key: "aaa", name: "AAA", status: "draft", version: 2, is_default: false,
 }), {
   id: "template-id", templateKey: "aaa", name: "AAA", description: "", status: "draft",
-  version: 2, isDefault: false, changeNote: "", designTokenSetVersionId: null, archivedAt: null, createdAt: null, updatedAt: null,
+  version: 2, isDefault: false, changeNote: "",
+  recommendationProfile: {
+    promotionTypes: [], markets: [], audiences: [], tones: [],
+    supportedComponentRoles: [], requiredInputs: [], requiredNotices: [], tags: [],
+  },
+  designTokenSetVersionId: null, archivedAt: null, createdAt: null, updatedAt: null,
 });
 
 const root = path.resolve(__dirname, "..");
@@ -24,6 +29,7 @@ const migration18 = read("db", "migrations", "018_template_owned_sections_and_re
 const migration21 = read("db", "migrations", "021_fix_form_template_section_clone_links.sql");
 const migration29 = read("db", "migrations", "029_item_components_design_tokens_and_planner.sql");
 const migration40 = read("db", "migrations", "040_decouple_template_design_tokens.sql");
+const migration43 = read("db", "migrations", "043_promo_template_recommendation.sql");
 const templatesApi = read("api", "wizard-form-templates.js");
 const templateApi = read("api", "wizard-form-template.js");
 const activateApi = read("api", "wizard-form-template-activate.js");
@@ -58,6 +64,9 @@ assert.match(migration29, /design_token_set_version_id/);
 assert.match(migration40, /set design_token_set_version_id = null/);
 assert.match(migration40, /add column if not exists is_default/);
 assert.match(migration40, /promo_design_token_sets_default_uidx/);
+assert.match(migration43, /recommendation_profile jsonb/);
+assert.match(templateApi, /recommendationProfile/);
+assert.match(adminHtml, /추천 메타데이터 \(JSON\)/);
 assert.doesNotMatch(templatesApi, /body\.designTokenSetVersionId/);
 assert.doesNotMatch(templateApi, /body\.designTokenSetVersionId/);
 assert.doesNotMatch(store.validateTemplateDraft.toString(), /DESIGN_TOKEN_SET_REQUIRED/);
@@ -80,6 +89,9 @@ assert.match(adminSource, /addWizardFormTemplateSection/);
 assert.match(adminSource, /섹션은 생성됐지만 템플릿 추가에 실패했습니다/);
 assert.match(adminSource, /섹션을 생성하고 현재 템플릿 초안에 추가했습니다/);
 assert.match(adminSource, /wizardSectionsForCurrentTemplate/);
+assert.match(adminSource, /group\.versions\.find\(\(version\) => version\.id === membership\.sectionId\)/);
+assert.match(adminSource, /const requestedSectionId = String\(options\.sectionId \|\| ""\)\.trim\(\)/);
+assert.match(adminSource, /Form template validation failed.*sectionErrors\.join/s);
 assert.match(adminSource, /dropWizardFormTemplateSection/);
 assert.match(adminSource, /const previousSections = \[\.\.\.this\.wizardFormTemplateDetail\.sections\]/);
 assert.match(adminSource, /this\.wizardFormTemplateDetail\.sections = previousSections/);
@@ -102,7 +114,7 @@ assert.doesNotMatch(adminSource, /duplicateWizardFormTemplateForm:\s*\{\s*templa
 assert.doesNotMatch(adminHtml, /template-section-composer/);
 assert.match(adminHtml, /class="template-list-card"/);
 assert.match(adminHtml, /class="template-settings-toggle"/);
-assert.match(adminHtml, /class="template-active-switch"/);
+assert.match(adminHtml, /class="app-switch"[\s\S]*?role="switch"[\s\S]*?class="app-switch__track"/);
 assert.match(adminHtml, /@click="editWizardFormTemplate\(group\)"/);
 assert.match(adminHtml, /@click="openDuplicateWizardFormTemplate\(group\)"/);
 assert.match(adminHtml, /@click="deleteWizardFormTemplate\(group\)"/);
@@ -118,6 +130,9 @@ assert.doesNotMatch(adminHtml, /transition-group name="template-section-order"/)
 assert.doesNotMatch(adminHtml, /class="template-section-add"/);
 assert.match(adminHtml, /새 섹션을 만들고 현재 템플릿 초안에 추가합니다/);
 assert.match(adminHtml, /v-for="group in wizardSectionsForCurrentTemplate"/);
+assert.match(adminHtml, /selectWizardSection\(group\.sectionKey, \{ sectionId: group\.templateMembership\?\.sectionId \}\)/);
+assert.match(adminHtml, /group\.templateMembership\?\.sectionStatus \|\| group\.primary\?\.status/);
+assert.match(adminHtml, /class="tiny-button section-activate-button"[\s\S]*?\['draft', 'inactive'\]\.includes\(wizardSectionDetail\.section\.status\)/);
 assert.match(adminHtml, /dropWizardFormTemplateSection\(group\.templateMembership\)/);
 assert.match(adminHtml, /transition-group name="template-item-order"/);
 assert.match(adminHtml, /class="template-item-expanded"/);

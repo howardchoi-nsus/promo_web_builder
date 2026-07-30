@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>프로모션 UI 디자인 빌더</title>
     <link rel="stylesheet" href="/prototype/design-tokens.css?v=app-tokens-v1" />
-    <link rel="stylesheet" href="/prototype/app-shell.css?v=app-shell-sidebar-v3" />
+    <link rel="stylesheet" href="/prototype/app-shell.css?v=app-shell-sidebar-v4" />
     <link rel="stylesheet" href="/prototype/app-components.css?v=app-components-v1" />
     <link rel="stylesheet" href="/prototype/styles.css?v=admin-template-manager-v5" />
     <link rel="stylesheet" href="/prototype/visual-editor-assets/promo-renderer.css?v=promo-renderer-v3" />
@@ -355,13 +355,16 @@
                       <strong>{{ section.name }}</strong>
                       <span>{{ sectionStatusLabel(section) }} · {{ sectionRequiredLabel(section) }}</span>
                     </div>
-                    <label class="switch-control" @click.stop>
+                    <label class="app-switch" @click.stop>
                       <input
+                        class="app-switch__input"
                         type="checkbox"
+                        role="switch"
                         :checked="section.visible"
                         @change="setSectionVisible(section.sectionId, $event.target.checked)"
                       />
-                      <span>사용</span>
+                      <span class="app-switch__track" aria-hidden="true"></span>
+                      <span class="app-switch__label">사용</span>
                     </label>
                   </summary>
 
@@ -385,13 +388,16 @@
                             class="section-item-row repeat-item-row"
                             :class="{ inactive: !repeatItemVisible(section.sectionId, setIndex, item), 'has-image-setting': item.imageGenerationRequest }"
                           >
-                            <label class="switch-control">
+                            <label class="app-switch app-switch--small">
                               <input
+                                class="app-switch__input"
                                 type="checkbox"
+                                role="switch"
                                 :checked="repeatItemVisible(section.sectionId, setIndex, item)"
                                 @change="setRepeatItemVisible(section.sectionId, setIndex, item.itemId, $event.target.checked)"
                               />
-                              <span>{{ repeatItemVisible(section.sectionId, setIndex, item) ? '사용' : '미사용' }}</span>
+                              <span class="app-switch__track" aria-hidden="true"></span>
+                              <span class="app-switch__label">{{ repeatItemVisible(section.sectionId, setIndex, item) ? '사용' : '미사용' }}</span>
                             </label>
                             <div class="section-item-summary">
                               <strong>{{ item.label }}</strong>
@@ -416,14 +422,17 @@
                                 @input="setSectionInputValue(repeatItemInputPath(section.sectionId, setIndex, item), $event.target.value)"
                               />
                             </label>
-                            <label class="switch-control section-image-setting" v-if="item.imageGenerationRequest">
+                            <label class="app-switch app-switch--small section-image-setting" v-if="item.imageGenerationRequest">
                               <input
+                                class="app-switch__input"
                                 type="checkbox"
+                                role="switch"
                                 :checked="repeatImageGenerationMode(section.sectionId, setIndex, item) === 'generate'"
                                 :disabled="!repeatItemVisible(section.sectionId, setIndex, item)"
                                 @change="setRepeatImageGenerationMode(section.sectionId, setIndex, item.itemId, $event.target.checked ? 'generate' : 'none')"
                               />
-                              <span>AI 이미지 생성</span>
+                              <span class="app-switch__track" aria-hidden="true"></span>
+                              <span class="app-switch__label">AI 이미지 생성</span>
                             </label>
                           </div>
                         </div>
@@ -437,14 +446,17 @@
                         class="section-item-row"
                         :class="{ inactive: !item.visible, 'has-image-setting': item.imageGenerationRequest }"
                       >
-                        <label class="switch-control">
+                        <label class="app-switch app-switch--small">
                           <input
+                            class="app-switch__input"
                             type="checkbox"
+                            role="switch"
                             :checked="item.visible"
                             :disabled="item.required && section.visible"
                             @change="setItemVisible(section.sectionId, item.itemId, $event.target.checked)"
                           />
-                          <span>{{ item.required ? '필수' : (item.visible ? '사용' : '미사용') }}</span>
+                          <span class="app-switch__track" aria-hidden="true"></span>
+                          <span class="app-switch__label">{{ item.required ? '필수' : (item.visible ? '사용' : '미사용') }}</span>
                         </label>
                         <div class="section-item-summary">
                           <strong>{{ item.label }}</strong>
@@ -469,14 +481,17 @@
                             @input="setSectionInputValue(item.inputPath, $event.target.value)"
                           />
                         </label>
-                        <label class="switch-control section-image-setting" v-if="item.imageGenerationRequest">
+                        <label class="app-switch app-switch--small section-image-setting" v-if="item.imageGenerationRequest">
                           <input
+                            class="app-switch__input"
                             type="checkbox"
+                            role="switch"
                             :checked="item.imageGenerationMode === 'generate'"
                             :disabled="!section.visible || !item.visible"
                             @change="setImageGenerationMode(section.sectionId, item.itemId, $event.target.checked ? 'generate' : 'none')"
                           />
-                          <span>AI 이미지 생성</span>
+                          <span class="app-switch__track" aria-hidden="true"></span>
+                          <span class="app-switch__label">AI 이미지 생성</span>
                         </label>
                       </div>
                     </template>
@@ -748,9 +763,10 @@
                         <strong>{{ workerStageLabel(setting.stage, setting.label) }}</strong>
                         <span>{{ setting.maskedWebhookUrl || setting.envName || '설정되지 않음' }}</span>
                       </div>
-                      <label class="switch-control">
-                        <input type="checkbox" v-model="workerWebhookEditor(setting.stage).isActive" />
-                        <span>활성</span>
+                      <label class="app-switch">
+                        <input class="app-switch__input" type="checkbox" role="switch" v-model="workerWebhookEditor(setting.stage).isActive" />
+                        <span class="app-switch__track" aria-hidden="true"></span>
+                        <span class="app-switch__label">활성</span>
                       </label>
                     </div>
                     <label class="field compact-field">
@@ -783,15 +799,18 @@
                   <h3>LLM 및 프롬프트 관리</h3>
                   <select v-model="promptTypeFilter" aria-label="프롬프트 유형 필터">
                     <option value="">전체</option>
+                    <option value="promo_overview_parser">프로모션 개요 분석</option>
+                    <option value="promo_template_recommender">프로모션 템플릿 추천</option>
+                    <option value="promo_template_composer">템플릿 구성 계획</option>
                     <option value="integrated_brief">통합 디자인 브리프</option>
-                    <option value="image_execution">이미지 생성</option>
+                    <option value="image_execution">이미지 실행 프롬프트</option>
                     <option value="lofi_draft">LO-FI 시안</option>
                     <option value="final_design">최종 디자인</option>
                     <option value="section_layout_planner">섹션 레이아웃 계획</option>
                     <option value="multi_component_layout_planner">다중 컴포넌트 정렬 계획</option>
-                    <option value="section_composition_planner">섹션 자연어 구성 계획</option>
-                    <option value="section_background_image">섹션 배경 이미지</option>
-                    <option value="component_image">컴포넌트 이미지</option>
+                    <option value="section_composition_planner">자연어 섹션 구성 계획</option>
+                    <option value="section_background_image">섹션 키비주얼 생성</option>
+                    <option value="component_image">컴포넌트 이미지 생성</option>
                   </select>
                 </div>
                 <div class="prompt-admin-grid">
@@ -800,19 +819,104 @@
                       <strong>로딩 오류</strong>
                       <span>{{ promptTemplatesError }}</span>
                     </div>
-                    <button
-                      v-for="prompt in filteredPromptTemplates"
-                      :key="prompt.id"
-                      class="prompt-list-item"
-                      type="button"
-                      :class="{ selected: selectedPromptTemplateId === prompt.id }"
-                      @click="selectPromptTemplate(prompt.id)"
+                    <section
+                      v-for="workflow in filteredPromptTemplateSections"
+                      :key="workflow.key"
+                      class="prompt-workflow-group"
                     >
-                      <strong>{{ prompt.name }}</strong>
-                      <span>{{ promptTypeLabel(prompt.type) }} · v{{ prompt.version }}</span>
-                      <em :class="`status-${prompt.status}`">{{ promptStatusLabel(prompt.status) }}</em>
-                    </button>
-                    <div class="empty-state compact" v-if="!promptTemplatesLoading && !filteredPromptTemplates.length">
+                      <header class="prompt-workflow-header">
+                        <button
+                          class="prompt-workflow-toggle"
+                          type="button"
+                          :aria-expanded="String(promptWorkflowExpanded(workflow))"
+                          :aria-controls="promptWorkflowPanelId(workflow)"
+                          @click="togglePromptWorkflow(workflow)"
+                        >
+                          <span class="prompt-workflow-copy">
+                            <h4>{{ workflow.label }}</h4>
+                            <p>{{ workflow.description }}</p>
+                          </span>
+                          <span class="prompt-workflow-toggle-icon" aria-hidden="true">
+                            {{ promptWorkflowExpanded(workflow) ? '−' : '+' }}
+                          </span>
+                        </button>
+                      </header>
+                      <div
+                        v-show="promptWorkflowExpanded(workflow)"
+                        :id="promptWorkflowPanelId(workflow)"
+                        class="prompt-workflow-prompt-list"
+                      >
+                        <article
+                          v-for="group in workflow.promptGroups"
+                          :key="group.lineageId"
+                          class="prompt-group"
+                          :class="{ selected: promptGroupContainsSelection(group) }"
+                        >
+                      <div class="prompt-group-header">
+                        <button
+                          class="prompt-group-toggle"
+                          type="button"
+                          :aria-expanded="String(promptGroupExpanded(group))"
+                          :aria-controls="promptGroupPanelId(group)"
+                          :aria-label="`${group.name} 버전 ${promptGroupExpanded(group) ? '접기' : '펼치기'}`"
+                          @click="togglePromptGroup(group)"
+                        >
+                          <span aria-hidden="true">{{ promptGroupExpanded(group) ? '−' : '+' }}</span>
+                        </button>
+                        <button
+                          class="prompt-group-primary"
+                          type="button"
+                          :class="{ selected: selectedPromptTemplateId === group.primary?.id }"
+                          @click="selectPromptTemplate(group.primary.id)"
+                        >
+                          <strong>{{ promptTypeLabel(group.type) }}</strong>
+                          <span>{{ promptExecutionModeLabel(group.type) }} · {{ promptGroupProviderSummary(group) }}</span>
+                          <small class="prompt-group-purpose">{{ promptTypeDescription(group.type) }}</small>
+                          <small>최종 수정 {{ formatPromptDate(group.updatedAt) }}</small>
+                        </button>
+                        <div class="prompt-group-badges" aria-label="프롬프트 상태">
+                          <em v-if="group.active" class="status-active">활성 v{{ group.active.version }}</em>
+                          <em v-else class="status-missing">활성 없음</em>
+                          <em v-if="group.validated" class="status-validated">검증 v{{ group.validated.version }}</em>
+                          <em v-if="group.draft" class="status-draft">초안 v{{ group.draft.version }}</em>
+                        </div>
+                      </div>
+
+                      <div
+                        v-show="promptGroupExpanded(group)"
+                        :id="promptGroupPanelId(group)"
+                        class="prompt-version-list"
+                      >
+                        <button
+                          v-for="prompt in promptGroupVisibleVersions(group)"
+                          :key="prompt.id"
+                          class="prompt-version-item"
+                          type="button"
+                          :class="{ selected: selectedPromptTemplateId === prompt.id }"
+                          :aria-current="selectedPromptTemplateId === prompt.id ? 'true' : undefined"
+                          @click="selectPromptTemplate(prompt.id)"
+                        >
+                          <span class="prompt-version-number">v{{ prompt.version }}</span>
+                          <span class="prompt-version-copy">
+                            <strong>{{ prompt.name }}</strong>
+                            <small>{{ [prompt.provider, prompt.model].filter(Boolean).join(' · ') || '모델 설정 없음' }} · {{ formatPromptDate(prompt.updatedAt) }}</small>
+                          </span>
+                          <em :class="`status-${prompt.status}`">{{ promptStatusLabel(prompt.status) }}</em>
+                        </button>
+                        <button
+                          v-if="group.archivedCount"
+                          class="prompt-archived-toggle"
+                          type="button"
+                          :aria-pressed="String(promptGroupArchivedVisible(group))"
+                          @click="togglePromptGroupArchived(group)"
+                        >
+                          {{ promptGroupArchivedVisible(group) ? '보관 버전 숨기기' : `보관 버전 ${group.archivedCount}개 보기` }}
+                        </button>
+                      </div>
+                        </article>
+                      </div>
+                    </section>
+                    <div class="empty-state compact" v-if="!promptTemplatesLoading && !filteredPromptTemplateGroups.length">
                       표시할 프롬프트가 없습니다.
                     </div>
                   </aside>
@@ -822,7 +926,12 @@
                     <div class="prompt-editor-header">
                       <div>
                         <strong>{{ selectedPromptEditorTitle }}</strong>
+                        <p>{{ promptTypeDescription(selectedPromptTemplate.type) }}</p>
                         <span>{{ selectedPromptTemplate.name }} · {{ promptTypeLabel(selectedPromptTemplate.type) }} · v{{ selectedPromptTemplate.version }} · {{ promptStatusLabel(selectedPromptTemplate.status) }}</span>
+                        <div class="prompt-editor-context">
+                          <em>{{ promptWorkflowGroupLabel(selectedPromptTemplate.type) }}</em>
+                          <em>{{ promptExecutionModeLabel(selectedPromptTemplate.type) }}</em>
+                        </div>
                       </div>
                       <div class="subsection-actions">
                         <button class="tiny-button primary" type="button" :disabled="promptSaving || promptEditorReadOnly" @click="savePromptTemplate">{{ t('common.action.save') }}</button>
@@ -843,10 +952,12 @@
                   <label class="field">
                     <span>프롬프트 이름</span>
                     <input v-model="promptEditor.name" type="text" autocomplete="off" />
+                    <small>관리 화면과 변경 이력에서 이 프롬프트를 구분할 이름입니다.</small>
                   </label>
                   <label class="field">
                     <span>{{ t('common.field.type') }}</span>
                     <input :value="promptTypeLabel(selectedPromptTemplate.type)" type="text" disabled />
+                    <small>실행 API와 변수 계약을 결정하는 고정 유형입니다.</small>
                   </label>
                 </div>
 
@@ -859,6 +970,7 @@
                 <label class="field">
                   <span>선택 변수</span>
                   <input v-model="promptEditor.optionalVariablesText" type="text" readonly />
+                  <small>값이 없더라도 실행할 수 있으며 필요한 경우에만 전달되는 변수입니다.</small>
                 </label>
 
                 <div class="form-grid compact">
@@ -869,10 +981,12 @@
                       <option value="openai">OpenAI / GPT</option>
                       <option value="google" :disabled="['integrated_brief', 'lofi_draft', 'section_layout_planner', 'multi_component_layout_planner', 'section_composition_planner'].includes(selectedPromptTemplate.type)">Google / Gemini</option>
                     </select>
+                    <small>프롬프트 실행에 사용할 AI 서비스 제공자를 선택합니다.</small>
                   </label>
                   <label class="field">
                     <span>모델</span>
                     <input v-model="promptEditor.model" type="text" autocomplete="off" placeholder="gpt-4o-mini" />
+                    <small>선택한 제공자가 지원하는 정확한 모델 ID를 입력합니다.</small>
                   </label>
                 </div>
 
@@ -880,14 +994,17 @@
                   <label class="field">
                     <span>창의성 수치(Temperature)</span>
                     <input v-model="promptEditor.temperature" type="number" min="0" max="2" step="0.1" />
+                    <small>낮을수록 일관되고 높을수록 다양한 결과를 생성합니다.</small>
                   </label>
                   <label class="field">
                     <span>최대 토큰 수</span>
                     <input v-model="promptEditor.maxTokens" type="number" min="1" step="1" />
+                    <small>텍스트 또는 구조화 응답이 사용할 수 있는 최대 출력량입니다.</small>
                   </label>
                   <label class="field">
                     <span>응답 형식</span>
                     <input v-model="promptEditor.responseFormat" type="text" autocomplete="off" placeholder="json_object / text / image" />
+                    <small>실행 계약이 기대하는 JSON, 텍스트 또는 이미지 형식입니다.</small>
                   </label>
                   <label class="field" v-if="promptSupportsImageSize(selectedPromptTemplate)">
                     <span>{{ t('admin.prompt.imageSize') }}</span>
@@ -903,6 +1020,7 @@
                 <label class="field">
                   <span>Provider 상세 옵션(JSON)</span>
                   <textarea v-model="promptEditor.modelOptionsText" rows="5" spellcheck="false"></textarea>
+                  <small>모델 제공자에만 적용되는 고급 옵션입니다. 올바른 JSON 형식으로 입력하세요.</small>
                 </label>
 
                 <div class="subsection" v-if="promptUsesSectionAiControlPlane(selectedPromptTemplate)">
@@ -914,22 +1032,27 @@
                     <label class="field">
                       <span>실행 Snapshot 버전</span>
                       <input v-model="promptEditor.executionSnapshotVersion" type="number" min="2" step="1" />
+                      <small>실행 시 고정해 저장할 Harness 설정 구조의 버전입니다.</small>
                     </label>
                     <label class="field">
                       <span>제한 시간(ms)</span>
                       <input v-model="promptEditor.timeoutMs" type="number" min="1000" :max="['section_background_image', 'component_image'].includes(selectedPromptTemplate.type) ? 240000 : 90000" step="1000" />
+                      <small>한 번의 AI 호출을 기다릴 최대 시간입니다.</small>
                     </label>
                     <label class="field">
                       <span>최대 시도 횟수</span>
                       <input v-model="promptEditor.maxAttempts" type="number" min="1" max="5" step="1" />
+                      <small>일시적인 오류가 발생했을 때 포함되는 총 실행 횟수입니다.</small>
                     </label>
                     <label class="field">
                       <span>재시도 기본 대기(ms)</span>
                       <input v-model="promptEditor.retryBaseMs" type="number" min="0" max="300000" step="1000" />
+                      <small>첫 재시도 전에 기다리는 기본 시간입니다.</small>
                     </label>
                     <label class="field">
                       <span>재시도 최대 대기(ms)</span>
                       <input v-model="promptEditor.retryMaxMs" type="number" min="0" max="300000" step="1000" />
+                      <small>재시도 간 대기 시간이 넘을 수 없는 상한입니다.</small>
                     </label>
                     <label class="field" v-if="['section_background_image', 'component_image'].includes(selectedPromptTemplate.type)">
                       <span>출력 이미지 형식</span>
@@ -938,6 +1061,7 @@
                         <option value="image/png">PNG</option>
                         <option value="image/webp">WebP</option>
                       </select>
+                      <small>생성 결과를 저장할 이미지 파일 형식입니다.</small>
                     </label>
                   </div>
                   <div v-if="promptUsesSectionImagePolicy(selectedPromptTemplate)" class="subsection">
@@ -969,6 +1093,7 @@
                   <label class="field">
                     <span>모델 Capability Snapshot(JSON)</span>
                     <textarea v-model="promptEditor.modelCapabilitySnapshotText" rows="7" spellcheck="false"></textarea>
+                    <small>검증 시점에 확인된 모델 기능과 제한을 실행 설정에 고정합니다.</small>
                   </label>
                   <label class="field">
                     <span>서버 안전 계약(JSON)</span>
@@ -996,13 +1121,70 @@
                 <label class="field">
                   <span>{{ t('common.field.changeReason') }}</span>
                   <input v-model="promptEditor.changeNote" type="text" placeholder="변경 내용을 간단히 입력" autocomplete="off" />
-                </label>
-
-                <label class="field">
-                  <span>프롬프트 본문</span>
-                  <textarea v-model="promptEditor.body" class="prompt-body-editor" rows="24" spellcheck="false"></textarea>
+                  <small>저장, 검증과 활성화 변경 이력에 남길 관리자 메모입니다.</small>
                 </label>
                 </fieldset>
+
+                <section class="prompt-body-section" aria-labelledby="prompt-body-heading">
+                  <div class="prompt-body-heading">
+                    <div>
+                      <strong id="prompt-body-heading">프롬프트 본문</strong>
+                      <small>영문 원문만 저장·실행되며 한글은 관리자 확인용 번역입니다.</small>
+                    </div>
+                    <button
+                      class="prompt-copy-button"
+                      type="button"
+                      title="영문 프롬프트 복사"
+                      aria-label="영문 프롬프트 본문 복사"
+                      :disabled="!promptEditor.body"
+                      @click="copyPromptBody"
+                    >
+                      <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16">
+                        <rect x="8" y="8" width="11" height="11" rx="2"></rect>
+                        <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"></path>
+                      </svg>
+                    </button>
+                  </div>
+                  <div class="prompt-body-grid">
+                    <label class="field">
+                      <span>영문 원문</span>
+                      <textarea
+                        v-model="promptEditor.body"
+                        class="prompt-body-editor"
+                        rows="24"
+                        lang="en"
+                        spellcheck="false"
+                        :readonly="promptEditorReadOnly"
+                        @input="handlePromptBodyInput"
+                      ></textarea>
+                      <small v-if="promptBodyLanguageError" class="field-error">{{ promptBodyLanguageError }}</small>
+                      <small v-else>모델에 전달되는 영문 원문입니다. 필수·선택 변수 표기를 그대로 유지하세요.</small>
+                    </label>
+                    <label class="field">
+                      <span class="prompt-translation-label">
+                        <span>한글 번역</span>
+                        <button
+                          class="tiny-button"
+                          type="button"
+                          :disabled="promptBodyTranslationLoading || !promptEditor.body"
+                          @click.prevent="translatePromptBody({ force: true })"
+                        >
+                          {{ promptBodyTranslationLoading ? '번역 중…' : '번역 새로고침' }}
+                        </button>
+                      </span>
+                      <textarea
+                        :value="promptBodyTranslationKo"
+                        class="prompt-body-editor prompt-body-translation"
+                        rows="24"
+                        lang="ko"
+                        readonly
+                        :placeholder="promptBodyTranslationLoading ? '한글 번역을 생성하고 있습니다…' : '영문 원문의 한글 번역이 표시됩니다.'"
+                      ></textarea>
+                      <small v-if="promptBodyTranslationError" class="field-error">번역 실패: {{ promptBodyTranslationError }}</small>
+                      <small v-else>실행에는 사용되지 않는 읽기 전용 참고 번역입니다.</small>
+                    </label>
+                  </div>
+                </section>
 
                 <div class="subsection">
                   <div class="subsection-title">
@@ -1186,11 +1368,11 @@
                         <label class="field" v-if="field.fieldKind === 'text'"><span>텍스트 유형</span><select v-model="field.textType" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'"><option value="title">제목</option><option value="remark">보조 문구</option><option value="multi">본문</option></select></label>
                       </div>
                       <div class="form-grid compact">
-                        <label class="switch-control"><input v-model="field.isRequired" type="checkbox" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /><span>필수 요소</span></label>
-                        <label class="switch-control"><input v-model="field.isLocked" type="checkbox" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /><span>관리자 값 잠금</span></label>
+                        <label class="app-checkbox switch-control"><input v-model="field.isRequired" type="checkbox" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /><span>필수 요소</span></label>
+                        <label class="app-checkbox switch-control"><input v-model="field.isLocked" type="checkbox" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /><span>관리자 값 잠금</span></label>
                       </div>
                       <template v-if="field.fieldKind === 'image'">
-                        <div class="field"><span>허용 이미지 소스</span><div class="subsection-actions"><label class="switch-control" v-for="source in ['url', 'file', 'ai']" :key="source"><input type="checkbox" :value="source" v-model="field.imagePolicy.allowedSources" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /><span>{{ imageSourceLabel(source) }}</span></label></div></div>
+                        <div class="field"><span>허용 이미지 소스</span><div class="subsection-actions"><label class="app-checkbox switch-control" v-for="source in ['url', 'file', 'ai']" :key="source"><input type="checkbox" :value="source" v-model="field.imagePolicy.allowedSources" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /><span>{{ imageSourceLabel(source) }}</span></label></div></div>
                         <div class="form-grid compact">
                           <label class="field"><span>AI 이미지 관리자 지침</span><textarea v-model="field.imagePolicy.promptText" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'"></textarea></label>
                           <label class="field"><span>이미지 비율</span><select v-model="field.imagePolicy.aspectRatio" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'"><option value="">기본</option><option value="16:9">16:9</option><option value="4:3">4:3</option><option value="1:1">1:1</option><option value="3:4">3:4</option></select></label>
@@ -1254,15 +1436,18 @@
                       class="template-list-settings"
                       v-if="expandedWizardFormTemplateSettingsKey === group.templateKey && wizardFormTemplateDetail?.template?.templateKey === group.templateKey"
                     >
-                      <label class="template-active-switch" :title="group.primary?.isDefault && group.primary?.status === 'active' ? '기본 템플릿은 다른 기본 템플릿을 활성화하기 전까지 비활성화할 수 없습니다.' : '템플릿 활성 상태'">
-                        <span class="template-active-switch__label">{{ group.primary?.status === 'active' ? '활성' : '비활성' }}</span>
+                      <label class="app-switch" :aria-busy="wizardFormTemplateSaving ? 'true' : 'false'" :title="group.primary?.isDefault && group.primary?.status === 'active' ? '기본 템플릿은 다른 기본 템플릿을 활성화하기 전까지 비활성화할 수 없습니다.' : '템플릿 활성 상태'">
                         <input
+                          class="app-switch__input"
                           type="checkbox"
+                          role="switch"
                           :checked="group.primary?.status === 'active'"
                           :disabled="wizardFormTemplateSaving || (group.primary?.isDefault && group.primary?.status === 'active')"
+                          :aria-label="`템플릿 ${group.primary?.status === 'active' ? '활성' : '비활성'}`"
                           @change="toggleWizardFormTemplateActive(group, $event.target.checked)"
                         />
-                        <span class="template-active-switch__track" aria-hidden="true"></span>
+                        <span class="app-switch__track" aria-hidden="true"></span>
+                        <span class="app-switch__label">{{ wizardFormTemplateSaving ? '저장 중' : (group.primary?.status === 'active' ? '활성' : '비활성') }}</span>
                       </label>
                       <div class="template-list-card__actions">
                         <button class="tiny-button" type="button" :disabled="wizardFormTemplateSaving" @click="editWizardFormTemplate(group)">수정</button>
@@ -1294,7 +1479,18 @@
                         <span>{{ t('common.field.description') }}</span>
                         <input v-model="wizardFormTemplateEditor.description" type="text" :disabled="wizardFormTemplateDetail.template.status !== 'draft'" autocomplete="off" />
                       </label>
-                      <label class="switch-control">
+                      <label class="field compact-field">
+                        <span>추천 메타데이터 (JSON)</span>
+                        <textarea
+                          v-model="wizardFormTemplateEditor.recommendationProfileText"
+                          :disabled="wizardFormTemplateDetail.template.status !== 'draft'"
+                          rows="8"
+                          spellcheck="false"
+                          placeholder='{"promotionTypes":[],"markets":[],"audiences":[],"tones":[],"supportedComponentRoles":[],"requiredInputs":[],"requiredNotices":[],"tags":[]}'
+                        ></textarea>
+                        <small>활성 템플릿 추천에 사용할 목적, 마켓, 대상, 톤, 역할, 필수 입력과 태그를 배열로 관리합니다.</small>
+                      </label>
+                      <label class="app-checkbox switch-control">
                         <input v-model="wizardFormTemplateEditor.isDefault" type="checkbox" :disabled="wizardFormTemplateDetail.template.status !== 'draft'" />
                         <span>기본 템플릿으로 지정</span>
                       </label>
@@ -1344,22 +1540,23 @@
                   </div>
                   <div class="subsection" v-if="selectedWizardFormTemplateSection">
                     <div class="subsection-title"><h3>AI 디자인 정책</h3></div>
-                    <label class="switch-control">
-                      <input type="checkbox" v-model="wizardFormTemplateSectionEditor.aiDesign.enabled" :disabled="!wizardFormTemplateCanEdit" />
-                      <span>이 Section에서 AI 디자인 생성 허용</span>
+                    <label class="app-switch">
+                      <input class="app-switch__input" type="checkbox" role="switch" v-model="wizardFormTemplateSectionEditor.aiDesign.enabled" :disabled="!wizardFormTemplateCanEdit" />
+                      <span class="app-switch__track" aria-hidden="true"></span>
+                      <span class="app-switch__label">이 Section에서 AI 디자인 생성 허용</span>
                     </label>
                     <div class="form-grid compact">
-                      <label class="switch-control" v-for="variant in ['split-left', 'split-right', 'centered-hero']" :key="variant">
+                      <label class="app-checkbox switch-control" v-for="variant in ['split-left', 'split-right', 'centered-hero']" :key="variant">
                         <input type="checkbox" :value="variant" v-model="wizardFormTemplateSectionEditor.aiDesign.allowedLayoutVariants" :disabled="!wizardFormTemplateCanEdit || !wizardFormTemplateSectionEditor.aiDesign.enabled" />
                         <span>{{ variant }}</span>
                       </label>
                     </div>
-                    <label class="switch-control">
+                    <label class="app-checkbox switch-control">
                       <input type="checkbox" v-model="wizardFormTemplateSectionEditor.aiDesign.allowSectionBackground" :disabled="!wizardFormTemplateCanEdit || !wizardFormTemplateSectionEditor.aiDesign.enabled" />
                       <span>섹션 배경 AI 생성 허용</span>
                     </label>
                     <div class="form-grid compact">
-                      <label class="switch-control" v-for="item in wizardFormTemplateSectionItems.filter((entry) => entry.fieldKind === 'image' && entry.isVisibleInWizard && entry.image?.allowedSources?.includes('ai'))" :key="item.itemKey">
+                      <label class="app-checkbox switch-control" v-for="item in wizardFormTemplateSectionItems.filter((entry) => entry.fieldKind === 'image' && entry.isVisibleInWizard && entry.image?.allowedSources?.includes('ai'))" :key="item.itemKey">
                         <input type="checkbox" :value="item.itemKey" v-model="wizardFormTemplateSectionEditor.aiDesign.imageTargetItemKeys" :disabled="!wizardFormTemplateCanEdit || !wizardFormTemplateSectionEditor.aiDesign.enabled" />
                         <span>{{ item.name }}</span>
                       </label>
@@ -1372,7 +1569,7 @@
                       </select>
                     </label>
                     <label class="field compact-field">
-                      <span>섹션 배경 이미지 관리자 지침</span>
+                      <span>섹션 키비주얼 관리자 지침</span>
                       <textarea
                         v-model="wizardFormTemplateSectionEditor.aiDesign.backgroundPromptText"
                         rows="4"
@@ -1419,12 +1616,12 @@
                           <label class="field compact-field"><span>{{ t('common.field.type') }}</span><select v-model="wizardFormTemplateItemEditor.fieldKind"><option value="text">텍스트</option><option value="image">이미지</option><option value="cta">CTA 버튼</option></select></label>
                           <label class="field compact-field" v-if="wizardFormTemplateItemEditor.fieldKind === 'text'"><span>텍스트 유형</span><select v-model="wizardFormTemplateItemEditor.textType"><option value="title">Title</option><option value="remark">remark</option><option value="multi">Multi</option></select></label>
                           <div class="form-grid compact">
-                            <label class="switch-control"><input v-model="wizardFormTemplateItemEditor.isRequired" type="checkbox" /><span>필수</span></label>
-                            <label class="switch-control"><input v-model="wizardFormTemplateItemEditor.isVisibleInWizard" type="checkbox" /><span>Wizard 노출</span></label>
-                            <label class="switch-control"><input v-model="wizardFormTemplateItemEditor.userReorderAllowed" type="checkbox" /><span>Wizard 사용자 순서 변경 허용</span></label>
-                            <label class="switch-control"><input v-model="wizardFormTemplateItemEditor.isLocked" type="checkbox" /><span>내용 고정</span></label>
+                            <label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.isRequired" type="checkbox" /><span>필수</span></label>
+                            <label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.isVisibleInWizard" type="checkbox" /><span>Wizard 노출</span></label>
+                            <label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.userReorderAllowed" type="checkbox" /><span>Wizard 사용자 순서 변경 허용</span></label>
+                            <label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.isLocked" type="checkbox" /><span>내용 고정</span></label>
                           </div>
-                          <div class="field" v-if="wizardFormTemplateItemEditor.fieldKind === 'image'"><span>Wizard 이미지 입력 방식 허용</span><div class="subsection-actions"><label v-for="source in ['url', 'file', 'ai']" :key="source" class="switch-control"><input type="checkbox" :checked="wizardFormTemplateItemEditor.image.allowedSources.includes(source)" @change="toggleWizardFormTemplateItemImageSource(source)" /><span>{{ imageSourceLabel(source) }}</span></label><label class="switch-control"><input v-model="wizardFormTemplateItemEditor.image.descriptionEnabled" type="checkbox" /><span>설명 입력 허용</span></label></div></div>
+                          <div class="field" v-if="wizardFormTemplateItemEditor.fieldKind === 'image'"><span>Wizard 이미지 입력 방식 허용</span><div class="subsection-actions"><label v-for="source in ['url', 'file', 'ai']" :key="source" class="app-checkbox switch-control"><input type="checkbox" :checked="wizardFormTemplateItemEditor.image.allowedSources.includes(source)" @change="toggleWizardFormTemplateItemImageSource(source)" /><span>{{ imageSourceLabel(source) }}</span></label><label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.image.descriptionEnabled" type="checkbox" /><span>설명 입력 허용</span></label></div></div>
                           <div class="form-grid compact" v-if="wizardFormTemplateItemEditor.fieldKind === 'cta'"><label class="field compact-field"><span>UTM Source</span><input v-model="wizardFormTemplateItemEditor.ctaUtm.source" type="text" /></label><label class="field compact-field"><span>UTM Medium</span><input v-model="wizardFormTemplateItemEditor.ctaUtm.medium" type="text" /></label><label class="field compact-field"><span>UTM Campaign</span><input v-model="wizardFormTemplateItemEditor.ctaUtm.campaign" type="text" /></label></div>
                           <label class="field" v-if="wizardFormTemplateItemEditor.isLocked"><span>고정 내용 (JSON)</span><textarea v-model="wizardFormTemplateItemEditor.lockedValueText" rows="3"></textarea></label>
                           <div class="action-row align-right"><button class="tiny-button danger" type="button" :disabled="wizardFormTemplateSectionSaving" @click="deleteWizardFormTemplateItem(item)">{{ t('common.action.delete') }}</button><button class="tiny-button" type="button" @click="wizardFormTemplateItemEditorOpenId = ''">{{ t('common.action.cancel') }}</button><button class="tiny-button primary" type="button" :disabled="!wizardFormTemplateItemEditor.name || wizardFormTemplateSectionSaving" @click="saveWizardFormTemplateItem">{{ t('common.action.saveChanges') }}</button></div>
@@ -1439,12 +1636,12 @@
                     <label class="field compact-field"><span>{{ t('common.field.type') }}</span><select v-model="wizardFormTemplateItemEditor.fieldKind"><option value="text">텍스트</option><option value="image">이미지</option><option value="cta">CTA 버튼</option></select></label>
                     <label class="field compact-field" v-if="wizardFormTemplateItemEditor.fieldKind === 'text'"><span>텍스트 유형</span><select v-model="wizardFormTemplateItemEditor.textType"><option value="title">Title</option><option value="remark">remark</option><option value="multi">Multi</option></select></label>
                     <div class="form-grid compact">
-                      <label class="switch-control"><input v-model="wizardFormTemplateItemEditor.isRequired" type="checkbox" /><span>필수</span></label>
-                      <label class="switch-control"><input v-model="wizardFormTemplateItemEditor.isVisibleInWizard" type="checkbox" /><span>Wizard 노출</span></label>
-                      <label class="switch-control"><input v-model="wizardFormTemplateItemEditor.userReorderAllowed" type="checkbox" /><span>Wizard 사용자 순서 변경 허용</span></label>
-                      <label class="switch-control"><input v-model="wizardFormTemplateItemEditor.isLocked" type="checkbox" /><span>내용 고정</span></label>
+                      <label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.isRequired" type="checkbox" /><span>필수</span></label>
+                      <label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.isVisibleInWizard" type="checkbox" /><span>Wizard 노출</span></label>
+                      <label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.userReorderAllowed" type="checkbox" /><span>Wizard 사용자 순서 변경 허용</span></label>
+                      <label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.isLocked" type="checkbox" /><span>내용 고정</span></label>
                     </div>
-                    <div class="field" v-if="wizardFormTemplateItemEditor.fieldKind === 'image'"><span>Wizard 이미지 입력 방식 허용</span><div class="subsection-actions"><label v-for="source in ['url', 'file', 'ai']" :key="source" class="switch-control"><input type="checkbox" :checked="wizardFormTemplateItemEditor.image.allowedSources.includes(source)" @change="toggleWizardFormTemplateItemImageSource(source)" /><span>{{ imageSourceLabel(source) }}</span></label><label class="switch-control"><input v-model="wizardFormTemplateItemEditor.image.descriptionEnabled" type="checkbox" /><span>설명 입력 허용</span></label></div></div>
+                    <div class="field" v-if="wizardFormTemplateItemEditor.fieldKind === 'image'"><span>Wizard 이미지 입력 방식 허용</span><div class="subsection-actions"><label v-for="source in ['url', 'file', 'ai']" :key="source" class="app-checkbox switch-control"><input type="checkbox" :checked="wizardFormTemplateItemEditor.image.allowedSources.includes(source)" @change="toggleWizardFormTemplateItemImageSource(source)" /><span>{{ imageSourceLabel(source) }}</span></label><label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.image.descriptionEnabled" type="checkbox" /><span>설명 입력 허용</span></label></div></div>
                     <div class="form-grid compact" v-if="wizardFormTemplateItemEditor.fieldKind === 'cta'"><label class="field compact-field"><span>UTM Source</span><input v-model="wizardFormTemplateItemEditor.ctaUtm.source" type="text" /></label><label class="field compact-field"><span>UTM Medium</span><input v-model="wizardFormTemplateItemEditor.ctaUtm.medium" type="text" /></label><label class="field compact-field"><span>UTM Campaign</span><input v-model="wizardFormTemplateItemEditor.ctaUtm.campaign" type="text" /></label></div>
                     <label class="field" v-if="wizardFormTemplateItemEditor.isLocked"><span>고정 내용 (JSON)</span><textarea v-model="wizardFormTemplateItemEditor.lockedValueText" rows="3"></textarea></label>
                     <div class="action-row align-right"><button class="tiny-button" type="button" @click="wizardFormTemplateItemEditorOpenId = ''">{{ t('common.action.cancel') }}</button><button class="tiny-button primary" type="button" :disabled="!wizardFormTemplateItemEditor.name || wizardFormTemplateSectionSaving" @click="saveWizardFormTemplateItem">{{ t('common.action.saveContinue') }}</button></div>
@@ -1479,7 +1676,7 @@
                   }"
                   @dragover.prevent="dragOverWizardFormTemplateSection(group.templateMembership, $event)"
                   @drop.prevent.stop="dropWizardFormTemplateSection(group.templateMembership)"
-                  @click="selectWizardSection(group.sectionKey)"
+                  @click="selectWizardSection(group.sectionKey, { sectionId: group.templateMembership?.sectionId })"
                 >
                   <strong>
                     <span
@@ -1491,10 +1688,10 @@
                       @dragend.stop="stopWizardFormTemplateSectionDrag"
                       @click.stop
                     >{{ wizardFormTemplateSectionCanReorder(group.templateMembership) ? '⋮⋮' : '고정' }}</span>
-                    {{ group.primary?.name }}
+                    {{ group.templateMembership?.sectionName || group.primary?.name }}
                   </strong>
-                  <span>{{ group.sectionKey }} · v{{ group.primary?.version }}{{ group.versions.length > 1 ? ` (버전 ${group.versions.length}개)` : '' }}</span>
-                  <em :class="`status-${group.primary?.status}`">{{ wizardSectionStatusLabel(group.primary?.status) }}</em>
+                  <span>{{ group.sectionKey }} · v{{ group.templateMembership?.sectionVersion || group.primary?.version }}{{ group.versions.length > 1 ? ` (버전 ${group.versions.length}개)` : '' }}</span>
+                  <em :class="`status-${group.templateMembership?.sectionStatus || group.primary?.status}`">{{ wizardSectionStatusLabel(group.templateMembership?.sectionStatus || group.primary?.status) }}</em>
                 </button>
                 <div class="empty-state compact" v-if="!wizardSectionsLoading && !wizardSectionsForCurrentTemplate.length" key="wizard-sections-empty">
                   등록된 섹션이 없습니다. "+ 섹션 추가"로 새로 만들어 보세요.
@@ -1555,9 +1752,9 @@
                       @click="saveWizardSectionFields"
                     >{{ t('common.action.save') }}</button>
                     <button
-                      class="tiny-button"
+                      class="tiny-button section-activate-button"
                       type="button"
-                      v-if="wizardSectionDetail.section.status === 'draft'"
+                      v-if="['draft', 'inactive'].includes(wizardSectionDetail.section.status)"
                       :disabled="wizardSectionSaving"
                       @click="activateWizardSection(wizardSectionDetail.section.id)"
                     >{{ t('common.action.activate') }}</button>
@@ -1589,39 +1786,117 @@
                   <input v-model="wizardSectionFieldsEditor.description" type="text" :disabled="wizardSectionDetail.section.status !== 'draft'" autocomplete="off" />
                 </label>
                 <div class="form-grid compact">
-                  <label class="switch-control">
+                  <label class="app-checkbox switch-control">
                     <input type="checkbox" v-model="wizardSectionFieldsEditor.isRequired" :disabled="wizardSectionDetail.section.status !== 'draft'" />
                     <span>필수 섹션</span>
                   </label>
-                  <label class="switch-control">
+                  <label class="app-checkbox switch-control">
                     <input type="checkbox" v-model="wizardSectionFieldsEditor.orderChangeAllowed" :disabled="wizardSectionDetail.section.status !== 'draft'" />
                     <span>순서변경 허용</span>
                   </label>
-                  <label class="switch-control">
+                  <label class="app-checkbox switch-control">
                     <input type="checkbox" v-model="wizardSectionFieldsEditor.isVisibleInWizard" :disabled="wizardSectionDetail.section.status !== 'draft'" />
                   <span>프로모션 빌더에 노출</span>
                   </label>
                 </div>
                 <div class="subsection">
                   <div class="subsection-title">
+                    <h3>AI 페이지 구성 정책</h3>
+                  </div>
+                  <div class="form-grid compact">
+                    <label class="field compact-field">
+                      <span>섹션 범위</span>
+                      <select v-model="wizardSectionFieldsEditor.compositionScope" :disabled="wizardSectionDetail.section.status !== 'draft'">
+                        <option value="template">템플릿 전용</option>
+                        <option value="shared">공용 섹션</option>
+                      </select>
+                    </label>
+                    <label class="field compact-field">
+                      <span>섹션 역할</span>
+                      <select v-model="wizardSectionFieldsEditor.sectionRole" :disabled="wizardSectionDetail.section.status !== 'draft'">
+                        <option v-for="role in ['header','footer','terms','legal','responsible-gaming','hero','benefit','content','cta','notice']" :key="role" :value="role">{{ role }}</option>
+                      </select>
+                    </label>
+                    <label class="field compact-field">
+                      <span>선택 정책</span>
+                      <select v-model="wizardSectionFieldsEditor.compositionPolicy.selectionPolicy" :disabled="wizardSectionDetail.section.status !== 'draft' || !!wizardSectionFieldsEditor.fixedPosition">
+                        <option value="required">필수</option>
+                        <option value="required-by-market">마켓별 필수</option>
+                        <option value="required-by-purpose">목적별 필수</option>
+                        <option value="recommended">권장</option>
+                        <option value="optional">선택</option>
+                      </select>
+                    </label>
+                    <label class="field compact-field">
+                      <span>최대 반복 수</span>
+                      <input v-model.number="wizardSectionFieldsEditor.compositionPolicy.maxInstances" type="number" min="1" max="20" :disabled="wizardSectionDetail.section.status !== 'draft' || wizardSectionFieldsEditor.compositionPolicy.duplicatePolicy === 'forbidden'" />
+                    </label>
+                  </div>
+                  <div class="form-grid compact">
+                    <label class="app-checkbox switch-control">
+                      <input type="checkbox" v-model="wizardSectionFieldsEditor.compositionPolicy.aiEditable" :disabled="wizardSectionDetail.section.status !== 'draft'" />
+                      <span>AI 콘텐츠 수정 허용</span>
+                    </label>
+                    <label class="app-checkbox switch-control">
+                      <input type="checkbox" v-model="wizardSectionFieldsEditor.compositionPolicy.contentLocked" :disabled="wizardSectionDetail.section.status !== 'draft'" />
+                      <span>콘텐츠 잠금</span>
+                    </label>
+                    <label class="app-checkbox switch-control">
+                      <input type="checkbox" v-model="wizardSectionFieldsEditor.compositionPolicy.layoutLocked" :disabled="wizardSectionDetail.section.status !== 'draft'" />
+                      <span>레이아웃 잠금</span>
+                    </label>
+                    <label class="app-checkbox switch-control">
+                      <input
+                        type="checkbox"
+                        :checked="wizardSectionFieldsEditor.compositionPolicy.duplicatePolicy === 'limited'"
+                        :disabled="wizardSectionDetail.section.status !== 'draft'"
+                        @change="wizardSectionFieldsEditor.compositionPolicy.duplicatePolicy = $event.target.checked ? 'limited' : 'forbidden'; if (!$event.target.checked) wizardSectionFieldsEditor.compositionPolicy.maxInstances = 1"
+                      />
+                      <span>섹션 반복 허용</span>
+                    </label>
+                  </div>
+                  <div class="form-grid compact">
+                    <label class="field compact-field">
+                      <span>적용 마켓 (쉼표 구분)</span>
+                      <input
+                        type="text"
+                        :value="wizardSectionFieldsEditor.compositionPolicy.allowedMarkets.join(', ')"
+                        :disabled="wizardSectionDetail.section.status !== 'draft'"
+                        @input="wizardSectionFieldsEditor.compositionPolicy.allowedMarkets = $event.target.value.split(',').map(value => value.trim()).filter(Boolean)"
+                      />
+                    </label>
+                    <label class="field compact-field">
+                      <span>적용 프로모션 목적 (쉼표 구분)</span>
+                      <input
+                        type="text"
+                        :value="wizardSectionFieldsEditor.compositionPolicy.allowedPromotionPurposes.join(', ')"
+                        :disabled="wizardSectionDetail.section.status !== 'draft'"
+                        @input="wizardSectionFieldsEditor.compositionPolicy.allowedPromotionPurposes = $event.target.value.split(',').map(value => value.trim()).filter(Boolean)"
+                      />
+                    </label>
+                  </div>
+                </div>
+                <div class="subsection">
+                  <div class="subsection-title">
                     <h3>AI 디자인 정책</h3>
                   </div>
-                  <label class="switch-control">
-                    <input type="checkbox" v-model="wizardSectionFieldsEditor.aiDesign.enabled" :disabled="wizardSectionDetail.section.status !== 'draft'" />
-                    <span>이 섹션에서 AI 디자인 생성 허용</span>
+                  <label class="app-switch">
+                    <input class="app-switch__input" type="checkbox" role="switch" v-model="wizardSectionFieldsEditor.aiDesign.enabled" :disabled="wizardSectionDetail.section.status !== 'draft'" />
+                    <span class="app-switch__track" aria-hidden="true"></span>
+                    <span class="app-switch__label">이 섹션에서 AI 디자인 생성 허용</span>
                   </label>
                   <div class="form-grid compact">
-                    <label class="switch-control" v-for="variant in ['split-left', 'split-right', 'centered-hero']" :key="variant">
+                    <label class="app-checkbox switch-control" v-for="variant in ['split-left', 'split-right', 'centered-hero']" :key="variant">
                       <input type="checkbox" :value="variant" v-model="wizardSectionFieldsEditor.aiDesign.allowedLayoutVariants" :disabled="wizardSectionDetail.section.status !== 'draft' || !wizardSectionFieldsEditor.aiDesign.enabled" />
                       <span>{{ variant }}</span>
                     </label>
                   </div>
-                  <label class="switch-control">
+                  <label class="app-checkbox switch-control">
                     <input type="checkbox" v-model="wizardSectionFieldsEditor.aiDesign.allowSectionBackground" :disabled="wizardSectionDetail.section.status !== 'draft' || !wizardSectionFieldsEditor.aiDesign.enabled" />
                     <span>섹션 배경 AI 생성 허용</span>
                   </label>
                   <div class="form-grid compact">
-                    <label class="switch-control" v-for="item in wizardSectionDetail.items.filter((entry) => entry.fieldKind === 'image' && entry.isVisibleInWizard && entry.image?.allowedSources?.includes('ai'))" :key="item.itemKey">
+                    <label class="app-checkbox switch-control" v-for="item in wizardSectionDetail.items.filter((entry) => entry.fieldKind === 'image' && entry.isVisibleInWizard && entry.image?.allowedSources?.includes('ai'))" :key="item.itemKey">
                       <input type="checkbox" :value="item.itemKey" v-model="wizardSectionFieldsEditor.aiDesign.imageTargetItemKeys" :disabled="wizardSectionDetail.section.status !== 'draft' || !wizardSectionFieldsEditor.aiDesign.enabled" />
                       <span>{{ item.name }} ({{ item.itemKey }})</span>
                     </label>
@@ -1637,7 +1912,7 @@
                     </select>
                   </label>
                   <label class="field compact-field">
-                    <span>섹션 배경 이미지 관리자 지침</span>
+                    <span>섹션 키비주얼 관리자 지침</span>
                     <textarea
                       v-model="wizardSectionFieldsEditor.aiDesign.backgroundPromptText"
                       rows="4"
@@ -1742,15 +2017,15 @@
                   <div class="empty-state compact">요소 유형, 이미지 정책, CTA 정책과 스타일 슬롯은 선택한 컴포넌트 버전에서 상속됩니다.</div>
 
                     <div class="form-grid compact">
-                      <label class="switch-control">
+                      <label class="app-checkbox switch-control">
                         <input type="checkbox" v-model="wizardItemEditor.isRequired" />
                         <span>필수 컴포넌트</span>
                       </label>
-                      <label class="switch-control">
+                      <label class="app-checkbox switch-control">
                         <input type="checkbox" v-model="wizardItemEditor.isVisibleInWizard" />
                       <span>프로모션 빌더에 노출</span>
                       </label>
-                      <label class="switch-control">
+                      <label class="app-checkbox switch-control">
                         <input type="checkbox" v-model="wizardItemEditor.isLocked" />
                         <span>내용 고정</span>
                       </label>

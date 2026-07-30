@@ -2,6 +2,7 @@ const {
   STEPS: steps,
   CONTENT_SUBSTEPS,
   resolveInitialStep,
+  stepIndex,
   previousStep,
   nextStep,
 } = globalThis.PromoCreateFlow || {};
@@ -32,6 +33,12 @@ const {
   mergeSectionInputs,
 } = globalThis.PromoWizardContent || {};
 const {
+  syncFromLegacy: syncPromotionOverviewFromLegacy,
+  applyToLegacy: applyPromotionOverviewToLegacy,
+  fingerprint: promotionOverviewFingerprint,
+  requestFingerprint: promotionOverviewRequestFingerprint,
+} = globalThis.PromoPromotionOverview || {};
+const {
   loadWizardContent: loadWizardContentFromStorage,
   persistWizardContent,
   createLayoutSnapshot,
@@ -44,7 +51,8 @@ const {
 } = globalThis.PromoEditorSnapshotContract || {};
 const WEB_OUTPUT_SNAPSHOT_STORAGE_KEY = "promoVisualEditor.snapshot.v1";
 const CONTENT_SUBSTEP_STORAGE_KEY = "promoPrototype.createPromo.contentSubstep.v1";
-const CURRENT_STEP_STORAGE_KEY = "promoPrototype.createPromo.currentStep.v2";
+const CURRENT_STEP_STORAGE_KEY = "promoPrototype.createPromo.currentStep.v3";
+const LEGACY_CURRENT_STEP_STORAGE_KEY = "promoPrototype.createPromo.currentStep.v2";
 const {
   normalizeLayoutIdentity,
   sameLayoutIdentity,
@@ -58,7 +66,8 @@ let contentSubstep = CONTENT_SUBSTEPS.includes(sessionStorage.getItem(CONTENT_SU
   ? sessionStorage.getItem(CONTENT_SUBSTEP_STORAGE_KEY)
   : "overview";
 const storedCurrentStep = sessionStorage.getItem(CURRENT_STEP_STORAGE_KEY);
-let currentStep = resolveInitialStep(storedCurrentStep, contentSubstep);
+const legacyCurrentStep = sessionStorage.getItem(LEGACY_CURRENT_STEP_STORAGE_KEY);
+let currentStep = resolveInitialStep(storedCurrentStep, contentSubstep, legacyCurrentStep);
 let validationErrors = {};
 // Admin-managed Step 2 content sections (Admin Page "C. Wizard Content
 // Sections 관리"). Replaces the previously hardcoded 7-section structure.
@@ -111,6 +120,25 @@ const FALLBACK_LAYOUT = {
 };
 
 const contentState = loadWizardContent();
+contentState.promotionOverview = syncPromotionOverviewFromLegacy(contentState);
+let overviewInputMode = contentState.promotionOverview.inputMode || "structured";
+let overviewNaturalLanguage = contentState.promotionOverview.rawNaturalLanguage || "";
+let overviewAnalysis = contentState.promotionOverviewDraft?.requestFingerprint
+  === promotionOverviewRequestFingerprint(overviewNaturalLanguage)
+  ? contentState.promotionOverviewDraft : null;
+let overviewAnalysisLoading = false;
+let overviewAnalysisError = "";
+let overviewAnalysisRequestId = 0;
+let templateRecommendationState = contentState.templateRecommendation?.overviewFingerprint
+  ? contentState.templateRecommendation : null;
+let templateRecommendationLoading = false;
+let templateRecommendationError = "";
+let templateRecommendationRequestId = 0;
+let templateCompositionProposal = contentState.templateCompositionProposal?.requestId
+  ? contentState.templateCompositionProposal : null;
+let templateCompositionLoading = false;
+let templateCompositionError = "";
+let templateCompositionRequestId = 0;
 
 function selectedDesignTokenSet() {
   return wizardDesignTokenSets.find((tokenSet) => (
@@ -139,9 +167,6 @@ function toWizardDesignTokens(tokenSet) {
 }
 
 const stepButtons = Array.from(document.querySelectorAll(".step"));
-const title = document.getElementById("step-title");
-const copy = document.getElementById("step-copy");
-const eyebrow = document.getElementById("step-eyebrow");
 const placeholders = document.getElementById("step-placeholders");
 const status = document.getElementById("step-status");
 const shellStatus = document.getElementById("wizard-shell-status");
@@ -152,11 +177,9 @@ function applyCreatePromoAppearance(layout = FALLBACK_LAYOUT) {
   return JSON.parse(JSON.stringify(layout || FALLBACK_LAYOUT));
 }
 
-function renderAppearanceStep() {
-  placeholders.className = "appearance-layout";
-  placeholders.innerHTML = "";
+function createAppearanceControls() {
   const controls = document.createElement("section");
-  controls.className = "appearance-controls";
+  controls.className = "appearance-controls layout-design-token-controls";
   appendTextElement(controls, "h3", "", "디자인 토큰");
   appendTextElement(
     controls,
@@ -202,7 +225,7 @@ function renderAppearanceStep() {
       "활성화된 디자인 토큰이 없습니다. 설정에서 디자인 토큰을 먼저 활성화해 주세요."
     );
   }
-  placeholders.append(controls);
+  return controls;
 }
 
 function defaultWizardContent() {
@@ -217,7 +240,11 @@ function loadWizardContent() {
     schemaVersion: SECTION_INPUT_SCHEMA_VERSION,
     createDefault: defaultWizardContent,
     migrateSectionInputs: migrateLegacySectionInputs,
-    objectKeys: ["templateInputs", "templateSectionOrders", "templateLayouts", "sectionDesignRuns"],
+    objectKeys: [
+      "promotionOverview", "promotionOverviewDraft", "templateRecommendation", "templateCompositionProposal",
+      "templateInputs", "templateDefaultContents",
+      "templateSectionOrders", "templateLayouts", "sectionDesignRuns",
+    ],
   });
 }
 
@@ -346,8 +373,11 @@ async function selectWizardFormTemplate(templateId, options = {}) {
   };
   contentState.sectionInputs = mergeSectionInputs(
     contentState.templateInputs[result.template.templateKey] || {},
-    wizardSectionDefinitions
+    wizardSectionDefinitions,
+    result.defaultContent || {},
+    contentState.templateDefaultContents[result.template.templateKey] || {}
   );
+  contentState.templateDefaultContents[result.template.templateKey] = result.defaultContent || {};
   contentState.templateInputs[result.template.templateKey] = contentState.sectionInputs;
   contentState.templateLayouts[result.template.templateKey] = {
     contractVersion: LAYOUT_CACHE_CONTRACT_VERSION,
@@ -448,7 +478,7 @@ async function refreshActiveWizardTemplate() {
       return false;
     } finally {
       wizardTemplateRefreshPromise = null;
-      if (currentStep === 3) renderStep();
+      if (currentStep === "layout") renderStep();
     }
   })();
   return wizardTemplateRefreshPromise;
@@ -502,6 +532,9 @@ function wizardSectionConfigurationReady() {
 }
 
 function saveWizardContent() {
+  contentState.promotionOverview = syncPromotionOverviewFromLegacy(contentState);
+  contentState.promotionOverview.inputMode = overviewInputMode;
+  contentState.promotionOverview.rawNaturalLanguage = overviewNaturalLanguage;
   if (selectedWizardFormTemplate?.templateKey) {
     contentState.templateInputs[selectedWizardFormTemplate.templateKey] = contentState.sectionInputs;
     contentState.templateSectionOrders[selectedWizardFormTemplate.templateKey] = {
@@ -646,9 +679,14 @@ window.addEventListener("message", (event) => {
     const targetFieldKey = String(event.data.targetFieldKey || "").trim();
     const imageGuidance = String(event.data.imageGuidance || "").trim();
     const imageSafeArea = String(event.data.imageSafeArea || "").trim();
+    const keyVisualTextMode = event.data.keyVisualTextMode === "explicit" ? "explicit" : "none";
+    const keyVisualText = String(event.data.keyVisualText || "").replace(/\s+/g, " ").trim();
     if (event.data.action === "generate-layout") generateSectionAiLayout(section);
     else if (event.data.action === "generate") {
-      generateSectionAiDesign(section, targetType, targetItemKey, targetFieldKey, imageGuidance, imageSafeArea);
+      generateSectionAiDesign(
+        section, targetType, targetItemKey, targetFieldKey, imageGuidance, imageSafeArea,
+        keyVisualTextMode, keyVisualText,
+      );
     }
     else if (event.data.action === "apply" && saved) {
       const savedTargetType = saved.constraintsSnapshot?.imageTarget?.type || "";
@@ -781,6 +819,9 @@ function setFieldValue(group, key, value) {
     contentState.promo.promotionPurposeOther = "";
     delete validationErrors.promotionPurposeOther;
   }
+  contentState.promotionOverview.inputMode = overviewInputMode;
+  contentState.promotionOverview.rawNaturalLanguage = overviewNaturalLanguage;
+  syncPromotionOverviewFromLegacy(contentState);
   saveWizardContent();
 }
 
@@ -987,10 +1028,12 @@ function contentErrors() {
   if (!wizardSectionConfigurationReady()) errors.sectionConfiguration = true;
   const required = [
     ["title", contentState.promo.title],
+    ["leadText", contentState.promo.leadText],
     ["promotionPurpose", contentState.promo.promotionPurpose],
     ["market", contentState.promo.market],
     ["audience", contentState.simpleBrief.audience],
     ["campaignTone", contentState.simpleBrief.campaignTone],
+    ["mainOffer", contentState.simpleBrief.mainOffer],
   ];
   if (contentState.promo.promotionPurpose === "기타") {
     required.push(["promotionPurposeOther", contentState.promo.promotionPurposeOther]);
@@ -1016,10 +1059,12 @@ function promotionOverviewErrors() {
   const errors = {};
   [
     ["title", contentState.promo.title],
+    ["leadText", contentState.promo.leadText],
     ["promotionPurpose", contentState.promo.promotionPurpose],
     ["market", contentState.promo.market],
     ["audience", contentState.simpleBrief.audience],
     ["campaignTone", contentState.simpleBrief.campaignTone],
+    ["mainOffer", contentState.simpleBrief.mainOffer],
   ].forEach(([key, value]) => {
     if (!String(value || "").trim()) errors[key] = true;
   });
@@ -1078,7 +1123,7 @@ function goToWebOutput() {
   }
   if (!validateContentStep()) {
     contentSubstep = Object.keys(promotionOverviewErrors()).length ? "overview" : "layout";
-    currentStep = contentSubstep === "overview" ? 1 : 3;
+    currentStep = contentSubstep === "overview" ? "overview" : "layout";
     sessionStorage.setItem(CONTENT_SUBSTEP_STORAGE_KEY, contentSubstep);
     renderStep();
     return false;
@@ -1092,7 +1137,7 @@ function goToWebOutput() {
   }
   localStorage.setItem(WEB_OUTPUT_SNAPSHOT_STORAGE_KEY, JSON.stringify(snapshot));
   saveWizardContent();
-  currentStep = 4;
+  currentStep = "output";
   renderStep();
   openWebOutputWindow();
   return true;
@@ -1169,7 +1214,7 @@ function sectionAiHasAppliedBackground(section) {
 }
 
 function removeSectionAiBackground(section) {
-  if (!window.confirm(`${section.name || section.sectionKey}의 AI 배경 이미지를 삭제할까요?`)) return;
+  if (!window.confirm(`${section.name || section.sectionKey}의 AI 키비주얼을 삭제할까요?`)) return;
   wizardResolvedLayout = wizardResolvedLayout || JSON.parse(JSON.stringify(wizardBaseLayout || FALLBACK_LAYOUT));
   wizardResolvedLayout.sectionStyles = { ...(wizardResolvedLayout.sectionStyles || {}) };
   const current = { ...(wizardResolvedLayout.sectionStyles[section.sectionKey] || {}) };
@@ -1190,9 +1235,44 @@ function createSectionAiGenerationRequestId() {
     || `section-ai-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-async function generateSectionAiDesign(
+const sectionAiDesignInFlight = new Map();
+
+function waitForSectionAiAsset(delayMs) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, Math.max(250, Number(delayMs || 0)));
+  });
+}
+
+function sectionAiAssetErrorMessage(asset = {}, error = null) {
+  const payload = error?.payload || {};
+  const provider = payload.provider || {};
+  const providerName = provider.name || asset.request?.promptConfig?.provider || "";
+  const model = provider.model || asset.request?.promptConfig?.model || "";
+  const code = payload.code || error?.code || asset.errorCode || "";
+  const message = error?.message || asset.errorMessage || "섹션 이미지 생성에 실패했습니다.";
+  const context = [code, [providerName, model].filter(Boolean).join("/")].filter(Boolean).join(", ");
+  return context ? `${message} (${context})` : message;
+}
+
+async function generateSectionAiDesign(...args) {
+  const sectionKey = String(args[0]?.sectionKey || "").trim();
+  if (!sectionKey) return Promise.resolve();
+  const activeRequest = sectionAiDesignInFlight.get(sectionKey);
+  if (activeRequest) return activeRequest;
+  const request = runSectionAiDesign(...args)
+    .finally(() => {
+      if (sectionAiDesignInFlight.get(sectionKey) === request) {
+        sectionAiDesignInFlight.delete(sectionKey);
+      }
+    });
+  sectionAiDesignInFlight.set(sectionKey, request);
+  return request;
+}
+
+async function runSectionAiDesign(
   section, targetType = "section-background", targetItemKey = "", targetFieldKey = "",
   imageGuidance = "", imageSafeArea = "",
+  keyVisualTextMode = "none", keyVisualText = "",
 ) {
   const sectionKey = section.sectionKey;
   const requestedTargetType = targetType === "item" ? "item" : "section-background";
@@ -1205,31 +1285,80 @@ async function generateSectionAiDesign(
   const previousTargetFieldKey = previous?.constraintsSnapshot?.imageTarget?.type === "item"
     ? previous.constraintsSnapshot.imageTarget.fieldKey || ""
     : "";
-  const processAssetJobs = async (run) => {
-    const listed = await fetchJson(`/api/promo-section-design-assets?runId=${encodeURIComponent(run.id)}`);
-    let latestRun = run;
-    for (const listedAsset of (listed.assets || []).filter((item) => item.status === "queued" || item.canRetry)) {
-      let asset = listedAsset;
-      if (asset.canRetry) {
-        const queued = await fetchJson("/api/promo-section-design-asset-retry", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ jobId: asset.id }),
-        });
-        asset = { ...asset, ...(queued.asset || {}), status: "queued" };
-      }
-      const processedAsset = await fetchJson("/api/promo-section-design-asset-process", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobId: asset.id }),
-      });
-      latestRun = processedAsset.run || latestRun;
-      saveSectionAiRun(sectionKey, latestRun, sectionInputs);
-      postWizardLayoutSnapshot();
+  const requestedKeyVisualTextPolicy = requestedTargetType === "section-background"
+    ? {
+      mode: keyVisualTextMode === "explicit" ? "explicit" : "none",
+      text: keyVisualTextMode === "explicit"
+        ? String(keyVisualText || "").replace(/\s+/g, " ").trim()
+        : "",
     }
-    return latestRun;
+    : { mode: "none", text: "" };
+  const previousKeyVisualTextPolicy = previous?.inputSnapshot?.design?.keyVisualTextPolicy
+    || { mode: "none", text: "" };
+  const keyVisualPolicyMatchesPrevious = (
+    previousKeyVisualTextPolicy.mode === requestedKeyVisualTextPolicy.mode
+    && String(previousKeyVisualTextPolicy.text || "") === requestedKeyVisualTextPolicy.text
+  );
+  const processAssetJobs = async (run) => {
+    const deadline = Date.now() + (9 * 60 * 1000);
+    let latestRun = run;
+    while (Date.now() < deadline) {
+      const listed = await fetchJson(`/api/promo-section-design-assets?runId=${encodeURIComponent(run.id)}`);
+      const assets = listed.assets || [];
+      if (!assets.length) throw new Error("생성할 이미지 작업을 찾을 수 없습니다.");
+      if (assets.every((asset) => asset.status === "ready")) {
+        if (latestRun?.status !== "ready") {
+          const latest = await fetchJson(`/api/promo-section-design-runs?runId=${encodeURIComponent(run.id)}`);
+          latestRun = latest.run || latestRun;
+        }
+        return latestRun;
+      }
+
+      for (const listedAsset of assets) {
+        if (
+          listedAsset.status === "ready"
+          || (listedAsset.status === "processing" && !listedAsset.canRetry)
+        ) continue;
+        let asset = listedAsset;
+        if (asset.status === "failed" || (asset.status === "processing" && asset.canRetry)) {
+          if (!asset.canRetry) {
+            throw new Error(sectionAiAssetErrorMessage(asset));
+          }
+          if (asset.retryAfterMs > 0) {
+            await waitForSectionAiAsset(Math.min(asset.retryAfterMs, 5000));
+            continue;
+          }
+          const queued = await fetchJson("/api/promo-section-design-asset-retry", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ jobId: asset.id }),
+          });
+          asset = { ...asset, ...(queued.asset || {}), status: "queued" };
+          latestRun = queued.run || latestRun;
+        }
+        if (asset.status !== "queued") continue;
+        try {
+          const processedAsset = await fetchJson("/api/promo-section-design-asset-process", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ jobId: asset.id }),
+          });
+          latestRun = processedAsset.run || latestRun;
+        } catch (error) {
+          if (!error.retryable) {
+            throw new Error(sectionAiAssetErrorMessage(asset, error));
+          }
+          await waitForSectionAiAsset(Math.min(error.retryAfterMs || 1500, 5000));
+        }
+        saveSectionAiRun(sectionKey, latestRun, sectionInputs);
+        postWizardLayoutSnapshot();
+      }
+      await waitForSectionAiAsset(1500);
+    }
+    throw new Error("섹션 이미지 생성 상태 확인 시간이 초과되었습니다. 다시 시도해 주세요.");
   };
   const canRetryPlannedAssets = previous?.id && previous?.effectivePatch
     && previous?.status === "failed" && !sectionAiIsStale(sectionKey, previous)
     && !String(imageGuidance || "").trim()
+    && keyVisualPolicyMatchesPrevious
     && previousTargetType === requestedTargetType
     && (requestedTargetType !== "item" || (
       previousTargetItemKey === String(targetItemKey || "").trim()
@@ -1251,6 +1380,7 @@ async function generateSectionAiDesign(
     && previous.layoutResult?.imageRequest
     && !sectionAiIsStale(sectionKey, previous)
     && !String(imageGuidance || "").trim()
+    && keyVisualPolicyMatchesPrevious
     && previousTargetType === requestedTargetType
     && previousTargetItemKey === String(targetItemKey || "").trim()
     && previousTargetFieldKey === String(targetFieldKey || "").trim();
@@ -1304,6 +1434,8 @@ async function generateSectionAiDesign(
         requestMode: "assets",
         imageGuidance: String(imageGuidance || "").trim().slice(0, 1800),
         safeArea: String(imageSafeArea || "").trim(),
+        keyVisualTextMode: requestedKeyVisualTextPolicy.mode,
+        keyVisualText: requestedKeyVisualTextPolicy.text,
         backgroundColor: resolvedSectionBackgroundColor(sectionKey),
         fadeMode: requestedTargetType === "section-background"
           ? (wizardResolvedLayout?.sectionStyles?.[sectionKey]?.backgroundFadeMode || "none")
@@ -1573,17 +1705,561 @@ function createContentSection(titleText, fields) {
   return section;
 }
 
+function setOverviewInputMode(mode) {
+  overviewInputMode = mode === "natural-language" ? "natural-language" : "structured";
+  contentState.promotionOverview.inputMode = overviewInputMode;
+  contentState.promotionOverview.rawNaturalLanguage = overviewNaturalLanguage;
+  saveWizardContent();
+  renderStep();
+}
+
+function overviewAnalysisFieldRows(overview = {}) {
+  return [
+    ["title", "프로모션 제목", overview.title],
+    ["leadText", "리드 텍스트", overview.leadText],
+    ["promotionPurpose", "프로모션 목적", overview.promotionPurpose === "기타"
+      ? overview.promotionPurposeOther : overview.promotionPurpose],
+    ["market", "마켓 / 지역", overview.market],
+    ["audience", "대상 고객", overview.audience],
+    ["campaignTone", "캠페인 톤", overview.campaignTone],
+    ["mainOffer", "핵심 혜택", overview.mainOffer],
+  ];
+}
+
+function overviewDecisionForField(field) {
+  return overviewAnalysis?.fieldDecisions?.find((decision) => decision.field === field) || null;
+}
+
+function overviewDecisionLabel(decision) {
+  return {
+    provided: "사용자 입력",
+    generated: "AI 생성",
+    inferred: "AI 추론",
+    "needs-confirmation": "확인 필요",
+  }[decision?.origin] || "";
+}
+
+async function analyzeNaturalLanguageOverview() {
+  const instruction = String(overviewNaturalLanguage || "").trim();
+  if (instruction.length < 10) {
+    overviewAnalysisError = "자연어 설명을 10자 이상 입력해 주세요.";
+    overviewAnalysis = null;
+    renderStep();
+    return;
+  }
+  const requestId = ++overviewAnalysisRequestId;
+  overviewAnalysisLoading = true;
+  overviewAnalysisError = "";
+  overviewAnalysis = null;
+  contentState.promotionOverviewDraft = {};
+  saveWizardContent();
+  renderStep();
+  try {
+    const result = await fetchJson("/api/promo-overview-parse", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        naturalLanguage: instruction,
+        generationMode: "new-draft",
+      }),
+    });
+    if (requestId !== overviewAnalysisRequestId
+      || result.requestFingerprint !== promotionOverviewRequestFingerprint(overviewNaturalLanguage)) return;
+    overviewAnalysis = result;
+    contentState.promotionOverviewDraft = result;
+    saveWizardContent();
+  } catch (error) {
+    if (requestId !== overviewAnalysisRequestId) return;
+    overviewAnalysisError = error.message || "프로모션 개요를 분석하지 못했습니다.";
+  } finally {
+    if (requestId === overviewAnalysisRequestId) {
+      overviewAnalysisLoading = false;
+      renderStep();
+    }
+  }
+}
+
+function applyOverviewAnalysis() {
+  if (!overviewAnalysis?.overview) return;
+  if (overviewAnalysis.requestFingerprint
+    !== promotionOverviewRequestFingerprint(overviewNaturalLanguage)) {
+    overviewAnalysisError = "입력 내용이 변경되었습니다. AI 개요를 다시 생성해 주세요.";
+    overviewAnalysis = null;
+    contentState.promotionOverviewDraft = {};
+    saveWizardContent();
+    renderStep();
+    return;
+  }
+  const approved = {
+    ...overviewAnalysis.overview,
+    inputMode: "natural-language",
+    rawNaturalLanguage: overviewNaturalLanguage,
+  };
+  contentState.promotionOverview = applyPromotionOverviewToLegacy(contentState, approved);
+  overviewInputMode = "natural-language";
+  validationErrors = {};
+  overviewAnalysis = {
+    ...overviewAnalysis,
+    appliedFingerprint: promotionOverviewFingerprint(contentState.promotionOverview),
+  };
+  contentState.promotionOverviewDraft = overviewAnalysis;
+  validationErrors = promotionOverviewErrors();
+  if (Object.keys(validationErrors).length) {
+    overviewInputMode = "structured";
+    contentState.promotionOverview.inputMode = overviewInputMode;
+    saveWizardContent();
+    renderStep();
+    return;
+  }
+  templateRecommendationState = null;
+  templateCompositionProposal = null;
+  contentState.templateRecommendation = null;
+  contentState.templateCompositionProposal = null;
+  currentStep = "template";
+  contentSubstep = "template";
+  sessionStorage.setItem(CONTENT_SUBSTEP_STORAGE_KEY, contentSubstep);
+  saveWizardContent();
+  renderStep();
+}
+
+function currentOverviewFingerprint() {
+  return promotionOverviewFingerprint(syncPromotionOverviewFromLegacy(contentState));
+}
+
+function templateRecommendationsAreStale() {
+  return Boolean(
+    templateRecommendationState?.overviewFingerprint
+    && templateRecommendationState.overviewFingerprint !== currentOverviewFingerprint()
+  );
+}
+
+async function loadTemplateRecommendations({ force = false } = {}) {
+  const overviewFingerprint = currentOverviewFingerprint();
+  if (!force && templateRecommendationState?.overviewFingerprint === overviewFingerprint) return;
+  const requestId = ++templateRecommendationRequestId;
+  templateRecommendationLoading = true;
+  templateRecommendationError = "";
+  if (currentStep === "template") renderStep();
+  try {
+    const result = await fetchJson("/api/promo-template-recommendations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        overview: syncPromotionOverviewFromLegacy(contentState),
+        overviewFingerprint,
+        limit: 3,
+      }),
+    });
+    if (requestId !== templateRecommendationRequestId
+      || result.overviewFingerprint !== currentOverviewFingerprint()) return;
+    templateRecommendationState = {
+      overviewFingerprint: result.overviewFingerprint,
+      recommendations: Array.isArray(result.recommendations) ? result.recommendations : [],
+      fallbackTemplateId: result.fallbackTemplateId || "",
+      source: result.source || "rule-base",
+      warnings: Array.isArray(result.warnings) ? result.warnings : [],
+      createdAt: new Date().toISOString(),
+    };
+    contentState.templateRecommendation = templateRecommendationState;
+    saveWizardContent();
+  } catch (error) {
+    if (requestId !== templateRecommendationRequestId) return;
+    templateRecommendationError = error.message || "템플릿 추천을 불러오지 못했습니다.";
+  } finally {
+    if (requestId === templateRecommendationRequestId) {
+      templateRecommendationLoading = false;
+      if (currentStep === "template") renderStep();
+    }
+  }
+}
+
+function createTemplateRecommendationSummary() {
+  const summary = document.createElement("section");
+  summary.className = "template-recommendation-summary";
+  const header = document.createElement("div");
+  header.className = "template-recommendation-summary__header";
+  const copy = document.createElement("div");
+  appendTextElement(copy, "strong", "", "추천 템플릿");
+  appendTextElement(copy, "small", "", "확정된 프로모션 개요를 기준으로 활성 템플릿을 비교합니다.");
+  const refresh = document.createElement("button");
+  refresh.type = "button";
+  refresh.className = "secondary-action";
+  refresh.disabled = templateRecommendationLoading;
+  refresh.textContent = templateRecommendationLoading ? "추천 중..." : "다시 추천";
+  refresh.addEventListener("click", () => loadTemplateRecommendations({ force: true }));
+  header.append(copy, refresh);
+  summary.append(header);
+
+  if (templateRecommendationsAreStale()) {
+    appendTextElement(
+      summary,
+      "p",
+      "template-recommendation-warning",
+      "프로모션 개요가 변경되어 이전 추천을 적용할 수 없습니다. 다시 추천해 주세요."
+    );
+    return summary;
+  }
+  if (templateRecommendationError) {
+    appendTextElement(summary, "p", "template-recommendation-warning", templateRecommendationError);
+    appendTextElement(summary, "small", "", "아래 전체 템플릿 목록에서 직접 선택할 수 있습니다.");
+    return summary;
+  }
+  if (templateRecommendationLoading && !templateRecommendationState) {
+    appendTextElement(summary, "p", "", "추천 후보를 분석하고 있습니다.");
+    return summary;
+  }
+  templateRecommendationState?.warnings?.forEach((warning) => {
+    appendTextElement(summary, "p", "template-recommendation-warning", warning);
+  });
+  if (!templateRecommendationState?.recommendations?.length && !templateRecommendationLoading) {
+    appendTextElement(summary, "p", "", "추천 결과가 없습니다. 아래 전체 템플릿에서 직접 선택해 주세요.");
+  }
+  return summary;
+}
+
+function templateCompositionIsStale() {
+  return Boolean(
+    templateCompositionProposal?.overviewFingerprint
+    && templateCompositionProposal.overviewFingerprint !== currentOverviewFingerprint()
+  );
+}
+
+function templateCompositionRequiresReview(proposal = {}) {
+  return Boolean(
+    (Array.isArray(proposal.missingInputs) && proposal.missingInputs.length)
+    || (Array.isArray(proposal.warnings) && proposal.warnings.length)
+  );
+}
+
+async function generateTemplateCompositionProposal() {
+  const overviewFingerprint = currentOverviewFingerprint();
+  const requestId = globalThis.crypto?.randomUUID?.()
+    || `template-composition-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const localRequestId = ++templateCompositionRequestId;
+  templateCompositionLoading = true;
+  templateCompositionError = "";
+  renderStep();
+  try {
+    const candidateTemplateIds = (templateRecommendationsAreStale()
+      ? [] : (templateRecommendationState?.recommendations || []))
+      .map((item) => item.templateId);
+    const result = await fetchJson("/api/promo-template-composition-plan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        requestId,
+        overview: syncPromotionOverviewFromLegacy(contentState),
+        overviewFingerprint,
+        candidateTemplateIds,
+      }),
+    });
+    if (localRequestId !== templateCompositionRequestId
+      || result.proposal?.overviewFingerprint !== currentOverviewFingerprint()) return;
+    templateCompositionProposal = result.proposal;
+    contentState.templateCompositionProposal = templateCompositionProposal;
+    saveWizardContent();
+    if (!templateCompositionRequiresReview(templateCompositionProposal)) {
+      await applyTemplateCompositionProposal({ autoAdvance: true });
+    }
+  } catch (error) {
+    if (localRequestId !== templateCompositionRequestId) return;
+    templateCompositionError = error.message || "AI 구성 초안을 생성하지 못했습니다.";
+  } finally {
+    if (localRequestId === templateCompositionRequestId) {
+      templateCompositionLoading = false;
+      if (currentStep === "template") renderStep();
+    }
+  }
+}
+
+function overviewValueForComposition(path) {
+  return String(path || "").split(".").reduce(
+    (value, key) => value?.[key],
+    syncPromotionOverviewFromLegacy(contentState)
+  );
+}
+
+async function applyTemplateCompositionProposal({ autoAdvance = false } = {}) {
+  const proposal = templateCompositionProposal;
+  if (!proposal || templateCompositionIsStale()) {
+    templateCompositionError = "프로모션 개요가 변경되었습니다. AI 구성 초안을 다시 생성해 주세요.";
+    renderStep();
+    return;
+  }
+  templateCompositionLoading = true;
+  templateCompositionError = "";
+  renderStep();
+  try {
+    await selectWizardFormTemplate(proposal.templateId, { skipConfirmation: true });
+    const sectionsById = new Map(wizardSectionDefinitions.map((section) => [section.sectionId, section]));
+    const plannedSections = proposal.sections.map((planned) => sectionsById.get(planned.sectionId)).filter(Boolean);
+    if (plannedSections.length !== proposal.sections.length) {
+      throw new Error("구성 초안의 섹션 버전이 현재 활성 템플릿과 일치하지 않습니다.");
+    }
+    wizardSectionDefinitions = plannedSections;
+    proposal.sections.forEach((planned) => {
+      const section = sectionsById.get(planned.sectionId);
+      const itemsByKey = new Map((section?.items || []).map((item) => [item.itemKey, item]));
+      planned.contentMappings.forEach((mapping) => {
+        if (String(mapping.sourceOverviewPath || "").startsWith("primaryAction.")) return;
+        const item = itemsByKey.get(mapping.itemKey);
+        if (!item || item.isLocked) return;
+        const value = overviewValueForComposition(mapping.sourceOverviewPath);
+        if (!String(value || "").trim()) return;
+        const path = `${section.sectionKey}.${item.itemKey}`;
+        const current = valueAtPath(contentState.sectionInputs, path);
+        if (item.fieldKind === "cta") {
+          setValueAtPath(contentState.sectionInputs, path, {
+            ...(current && typeof current === "object" ? current : {}),
+            label: current?.label || value,
+            link: current?.link || "",
+            target: current?.target || "_self",
+          });
+        } else if (item.fieldKind === "text") {
+          setValueAtPath(contentState.sectionInputs, path, value);
+        }
+      });
+    });
+    templateCompositionProposal = {
+      ...proposal,
+      status: "applied",
+      appliedAt: new Date().toISOString(),
+      autoApplied: autoAdvance,
+    };
+    contentState.templateCompositionProposal = templateCompositionProposal;
+    if (autoAdvance) {
+      currentStep = "layout";
+      contentSubstep = "layout";
+      sessionStorage.setItem(CONTENT_SUBSTEP_STORAGE_KEY, contentSubstep);
+    }
+    saveWizardContent();
+  } catch (error) {
+    templateCompositionError = error.message || "AI 구성 초안을 적용하지 못했습니다.";
+  } finally {
+    templateCompositionLoading = false;
+    renderStep();
+  }
+}
+
+function createTemplateCompositionPanel() {
+  const panel = document.createElement("section");
+  panel.className = "template-composition-panel";
+  const header = document.createElement("div");
+  header.className = "template-composition-panel__header";
+  const copy = document.createElement("div");
+  appendTextElement(copy, "strong", "", "AI 구성 초안");
+  appendTextElement(copy, "small", "", "관리자 템플릿은 변경하지 않고 현재 프로모션 세션에만 섹션 구성과 콘텐츠 매핑을 제안합니다.");
+  const generate = document.createElement("button");
+  generate.type = "button";
+  generate.className = "secondary-action";
+  generate.disabled = templateCompositionLoading;
+  generate.textContent = templateCompositionLoading ? "구성 중..." : "AI로 구성하고 다음";
+  generate.addEventListener("click", generateTemplateCompositionProposal);
+  header.append(copy, generate);
+  panel.append(header);
+
+  if (templateCompositionError) {
+    appendTextElement(panel, "p", "template-recommendation-warning", templateCompositionError);
+  }
+  if (templateCompositionIsStale()) {
+    appendTextElement(
+      panel,
+      "p",
+      "template-recommendation-warning",
+      "Overview 변경으로 기존 구성 초안이 오래된 상태입니다. 새 초안을 생성해 주세요."
+    );
+    return panel;
+  }
+  if (!templateCompositionProposal) return panel;
+  appendTextElement(panel, "p", "", templateCompositionProposal.summary || "AI 구성 초안이 준비되었습니다.");
+  appendTextElement(
+    panel,
+    "strong",
+    "template-composition-template",
+    `${templateCompositionProposal.templateName} · 섹션 ${templateCompositionProposal.sections?.length || 0}개`
+  );
+  const list = document.createElement("ol");
+  list.className = "template-composition-sections";
+  templateCompositionProposal.sections?.forEach((section) => {
+    const item = document.createElement("li");
+    item.textContent = `${section.sectionName || section.sectionKey} · 콘텐츠 매핑 ${section.contentMappings?.length || 0}개`;
+    list.append(item);
+  });
+  panel.append(list);
+  templateCompositionProposal.warnings?.forEach((warning) => {
+    appendTextElement(panel, "p", "template-recommendation-warning", warning);
+  });
+  templateCompositionProposal.missingInputs?.forEach((input) => {
+    appendTextElement(panel, "p", "template-recommendation-warning", `추가 확인 필요: ${input}`);
+  });
+  if (templateCompositionRequiresReview(templateCompositionProposal)
+    && templateCompositionProposal.status !== "applied") {
+    appendTextElement(
+      panel,
+      "p",
+      "template-recommendation-warning",
+      "확인 항목이 있어 자동 적용하지 않았습니다. 내용을 검토한 뒤 직접 적용해 주세요."
+    );
+  }
+  if (templateCompositionProposal.status !== "applied") {
+    const apply = document.createElement("button");
+    apply.type = "button";
+    apply.className = "primary-action";
+    apply.textContent = "이 구성 초안 적용";
+    apply.disabled = templateCompositionLoading;
+    apply.addEventListener("click", applyTemplateCompositionProposal);
+    panel.append(apply);
+  } else {
+    appendTextElement(panel, "p", "template-composition-applied", "현재 프로모션에 구성 초안을 적용했습니다.");
+  }
+  return panel;
+}
+
+function createOverviewInputPanel(structuredForm) {
+  const panel = document.createElement("section");
+  panel.className = "overview-mode";
+
+  const tabs = document.createElement("div");
+  tabs.className = "overview-mode__tabs";
+  tabs.setAttribute("role", "tablist");
+  [
+    ["structured", "정형 입력"],
+    ["natural-language", "자연어 입력"],
+  ].forEach(([mode, label]) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `overview-mode__tab${overviewInputMode === mode ? " is-active" : ""}`;
+    button.setAttribute("role", "tab");
+    button.setAttribute("aria-selected", String(overviewInputMode === mode));
+    button.textContent = label;
+    button.addEventListener("click", () => setOverviewInputMode(mode));
+    tabs.append(button);
+  });
+  panel.append(tabs);
+
+  if (overviewInputMode === "structured") {
+    panel.append(structuredForm);
+    return panel;
+  }
+
+  const nlpPanel = document.createElement("article");
+  nlpPanel.className = "content-form-section overview-nlp-panel";
+  appendTextElement(nlpPanel, "h3", "", "프로모션 내용 입력");
+  appendTextElement(
+    nlpPanel,
+    "p",
+    "overview-nlp-panel__description",
+    "정리되지 않은 짧은 아이디어만 입력해도 AI가 제목, 목적, 대상, 분위기와 핵심 혜택을 포함한 새 개요 초안을 만듭니다. 결과는 확인 후 적용됩니다."
+  );
+  const input = document.createElement("textarea");
+  input.className = "overview-nlp-input";
+  input.rows = 8;
+  input.maxLength = 4000;
+  input.placeholder = "예: 여름에 신규 고객이 관심을 가질 만한 충전 이벤트를 만들고 싶어요.";
+  input.value = overviewNaturalLanguage;
+  input.addEventListener("input", () => {
+    overviewNaturalLanguage = input.value;
+    overviewAnalysisRequestId += 1;
+    overviewAnalysisLoading = false;
+    contentState.promotionOverview.rawNaturalLanguage = overviewNaturalLanguage;
+    overviewAnalysis = null;
+    contentState.promotionOverviewDraft = {};
+    overviewAnalysisError = "";
+    saveWizardContent();
+  });
+  nlpPanel.append(input);
+
+  const actions = document.createElement("div");
+  actions.className = "overview-nlp-actions";
+  const analyze = document.createElement("button");
+  analyze.type = "button";
+  analyze.className = "secondary-action is-primary";
+  analyze.disabled = overviewAnalysisLoading;
+  analyze.textContent = overviewAnalysisLoading ? "분석 중..." : "AI로 개요 분석";
+  analyze.addEventListener("click", analyzeNaturalLanguageOverview);
+  actions.append(analyze);
+  nlpPanel.append(actions);
+
+  if (overviewAnalysisError) {
+    appendTextElement(nlpPanel, "p", "overview-analysis-error", overviewAnalysisError);
+  }
+  if (overviewAnalysis) {
+    const result = document.createElement("section");
+    result.className = "overview-analysis";
+    appendTextElement(result, "h4", "", "분석 결과");
+    appendTextElement(result, "p", "", overviewAnalysis.summary || "입력 내용을 구조화했습니다.");
+    appendTextElement(
+      result,
+      "span",
+      "overview-analysis__confidence",
+      `신뢰도 ${Math.round((Number(overviewAnalysis.confidence) || 0) * 100)}%`
+    );
+    const grid = document.createElement("dl");
+    grid.className = "overview-analysis-grid";
+    overviewAnalysisFieldRows(overviewAnalysis.overview).forEach(([field, label, value]) => {
+      appendTextElement(grid, "dt", "", label);
+      const fieldValue = document.createElement("dd");
+      appendTextElement(fieldValue, "span", "overview-analysis__value", value || "입력 필요");
+      const decision = overviewDecisionForField(field);
+      if (decision) {
+        appendTextElement(
+          fieldValue,
+          "span",
+          `overview-analysis__origin overview-analysis__origin--${decision.origin}`,
+          overviewDecisionLabel(decision)
+        );
+        if (decision.reason) {
+          appendTextElement(fieldValue, "small", "overview-analysis__reason", decision.reason);
+        }
+      }
+      grid.append(fieldValue);
+    });
+    result.append(grid);
+    if (overviewAnalysis.assumptions?.length) {
+      appendTextElement(
+        result,
+        "p",
+        "overview-analysis-warning",
+        `AI 가정: ${overviewAnalysis.assumptions.join(" · ")}`
+      );
+    }
+    if (overviewAnalysis.missingCriticalInputs?.length) {
+      appendTextElement(
+        result,
+        "p",
+        "overview-analysis-warning",
+        `적용 후 확인할 필수 항목: ${overviewAnalysis.missingCriticalInputs.join(", ")}`
+      );
+    }
+    overviewAnalysis.warnings?.forEach((warning) => {
+      appendTextElement(result, "p", "overview-analysis-warning", warning);
+    });
+    const apply = document.createElement("button");
+    apply.type = "button";
+    apply.className = "primary-action";
+    apply.textContent = "분석 결과 적용";
+    apply.addEventListener("click", applyOverviewAnalysis);
+    result.append(apply);
+    nlpPanel.append(result);
+  }
+
+  panel.append(nlpPanel);
+  return panel;
+}
+
 function renderContentStep() {
   placeholders.className = "content-form-layout create-promo-content-layout";
   placeholders.innerHTML = "";
 
   const overview = createContentSection("1. 프로모션 개요", [
     { group: "promo", key: "title", label: "프로모션 제목", required: true },
+    { group: "promo", key: "leadText", label: "리드 텍스트", required: true },
     { group: "promo", key: "promotionPurpose", label: "프로모션 목적", required: true, options: ["할인쿠폰", "경품", "이벤트", "기타"] },
     { group: "promo", key: "promotionPurposeOther", label: "기타 목적", required: contentState.promo.promotionPurpose === "기타" },
     { group: "promo", key: "market", label: "마켓 / 지역", required: true, placeholder: "Global, KR, Ontario..." },
     { group: "simpleBrief", key: "audience", label: "대상 고객", required: true, options: ["신규", "기존고객", "일반고객"] },
     { group: "simpleBrief", key: "campaignTone", label: "캠페인 톤", required: true, options: ["활기찬", "진중함", "럭셔리", "프리미엄", "긴급함", "친근함"] },
+    { group: "simpleBrief", key: "mainOffer", label: "핵심 혜택", type: "textarea", required: true },
   ]);
 
   if (contentState.promo.promotionPurpose !== "기타") {
@@ -1594,20 +2270,42 @@ function renderContentStep() {
   const templateSection = document.createElement("article");
   templateSection.className = "content-form-section";
   appendTextElement(templateSection, "h3", "", "2. 프로모션 템플릿 선택");
+  templateSection.append(createTemplateRecommendationSummary());
+  templateSection.append(createTemplateCompositionPanel());
   const templateTiles = document.createElement("div");
   templateTiles.className = "wizard-template-tiles";
+  const activeRecommendations = templateRecommendationsAreStale()
+    ? [] : (templateRecommendationState?.recommendations || []);
+  const recommendationById = new Map(activeRecommendations.map((item, index) => [
+    item.templateId, { ...item, rank: index + 1 },
+  ]));
   wizardFormTemplates.forEach((template) => {
+    const recommendation = recommendationById.get(template.id);
     const tile = document.createElement("button");
     tile.type = "button";
-    tile.className = `wizard-template-tile${selectedWizardFormTemplate?.id === template.id ? " is-selected" : ""}`;
+    tile.className = `wizard-template-tile${selectedWizardFormTemplate?.id === template.id ? " is-selected" : ""}${recommendation ? " is-recommended" : ""}`;
     tile.disabled = wizardSectionDefinitionsLoading;
     tile.setAttribute("aria-pressed", String(selectedWizardFormTemplate?.id === template.id));
     tile.setAttribute("aria-busy", String(wizardTemplateSwitchTargetId === template.id));
     const heading = document.createElement("span");
     appendTextElement(heading, "strong", "", template.name);
     if (template.isDefault) appendTextElement(heading, "em", "wizard-template-default", "기본");
+    if (recommendation) {
+      appendTextElement(
+        heading,
+        "em",
+        "wizard-template-recommended",
+        `추천 ${recommendation.rank} · ${recommendation.score}점`
+      );
+    }
     tile.append(heading);
     appendTextElement(tile, "small", "", template.description || "프로모션 콘텐츠 템플릿");
+    if (recommendation) {
+      appendTextElement(tile, "small", "wizard-template-reason", recommendation.reasons?.join(" · ") || "추천 템플릿");
+      recommendation.warnings?.forEach((warning) => {
+        appendTextElement(tile, "small", "wizard-template-warning", warning);
+      });
+    }
     appendTextElement(tile, "code", "", `${template.templateKey} · v${template.version}`);
     tile.addEventListener("click", async () => {
       if (wizardSectionDefinitionsLoading || selectedWizardFormTemplate?.id === template.id) return;
@@ -1748,6 +2446,7 @@ function renderContentStep() {
 
   const layoutPanel = document.createElement("section");
   layoutPanel.className = "wizard-layout-panel";
+  const designTokenControls = createAppearanceControls();
   const layoutHeader = document.createElement("div");
   layoutHeader.className = "wizard-layout-panel__header";
   const layoutHeading = document.createElement("div");
@@ -1779,7 +2478,20 @@ function renderContentStep() {
   layoutFrame.src = "/prototype/visual-editor.html?mode=wizard-layout&source=create-promo";
   layoutFrame.addEventListener("load", postWizardLayoutSnapshot);
   wizardLayoutFrame = layoutFrame;
-  layoutPanel.append(layoutHeader);
+  layoutPanel.append(designTokenControls, layoutHeader);
+  if (templateCompositionProposal?.status === "applied"
+    && templateCompositionProposal?.autoApplied) {
+    const compositionBanner = document.createElement("div");
+    compositionBanner.className = "admin-layout-update-banner";
+    compositionBanner.setAttribute("role", "status");
+    appendTextElement(
+      compositionBanner,
+      "span",
+      "",
+      `${templateCompositionProposal.templateName || "추천 템플릿"}과 AI 섹션 구성을 적용했습니다.`
+    );
+    layoutPanel.append(compositionBanner);
+  }
   if (pendingAdminLayoutUpdate) {
     const updateBanner = document.createElement("div");
     updateBanner.className = "admin-layout-update-banner";
@@ -1822,9 +2534,9 @@ function renderContentStep() {
   }
   layoutPanel.append(layoutFrame);
 
-  if (currentStep === 1) placeholders.append(overview);
-  if (currentStep === 2) placeholders.append(templateSection);
-  if (currentStep === 3) {
+  if (currentStep === "overview") placeholders.append(createOverviewInputPanel(overview));
+  if (currentStep === "template") placeholders.append(templateSection);
+  if (currentStep === "layout") {
     const workspace = document.createElement("div");
     workspace.className = "template-layout-workspace";
     workspace.append(layoutPanel);
@@ -1871,7 +2583,7 @@ function renderWebOutputStep() {
   edit.className = "secondary-action";
   edit.textContent = "Step 4로 돌아가 수정";
   edit.addEventListener("click", () => {
-    currentStep = 3;
+    currentStep = "layout";
     contentSubstep = "layout";
     sessionStorage.setItem(CONTENT_SUBSTEP_STORAGE_KEY, contentSubstep);
     renderStep();
@@ -1884,48 +2596,43 @@ function renderWebOutputStep() {
 }
 
 function renderStep() {
-  sessionStorage.setItem(CURRENT_STEP_STORAGE_KEY, String(currentStep));
-  const step = steps[currentStep];
-  title.textContent = step.title;
-  copy.textContent = step.copy;
-  eyebrow.textContent = `Step ${currentStep + 1}`;
-  status.textContent = `Step ${currentStep + 1} / ${steps.length}`;
-  if (shellStatus) shellStatus.textContent = `Step ${currentStep + 1} / ${steps.length}`;
-  prev.disabled = currentStep === 0;
-  next.disabled = currentStep === steps.length - 1
-    || (currentStep === 0 && !selectedDesignTokenSet())
-    || (currentStep === 2 && !wizardSectionConfigurationReady());
-  next.textContent = currentStep === 3 ? "Web Output" : "Next";
+  sessionStorage.setItem(CURRENT_STEP_STORAGE_KEY, currentStep);
+  const currentIndex = stepIndex(currentStep);
+  const step = steps[currentIndex];
+  status.textContent = `Step ${currentIndex + 1} / ${steps.length}`;
+  if (shellStatus) shellStatus.textContent = `Step ${currentIndex + 1} / ${steps.length}`;
+  prev.disabled = currentStep === "overview";
+  next.disabled = currentStep === "output"
+    || (currentStep === "layout" && (!selectedDesignTokenSet() || !wizardSectionConfigurationReady()));
+  next.textContent = currentStep === "layout" ? "Web Output" : "Next";
 
   stepButtons.forEach((button, index) => {
-    button.classList.toggle("is-active", index === currentStep);
-    button.classList.toggle("is-complete", index < currentStep);
+    button.classList.toggle("is-active", index === currentIndex);
+    button.classList.toggle("is-complete", index < currentIndex);
   });
 
-  if (currentStep === 0) {
-    renderAppearanceStep();
-    return;
-  }
-
-  if (currentStep === 1) {
+  if (currentStep === "overview") {
     contentSubstep = "overview";
     renderContentStep();
     return;
   }
 
-  if (currentStep === 2) {
+  if (currentStep === "template") {
     contentSubstep = "template";
     renderContentStep();
+    if (!templateRecommendationState && !templateRecommendationLoading && !templateRecommendationError) {
+      queueMicrotask(() => loadTemplateRecommendations());
+    }
     return;
   }
 
-  if (currentStep === 3) {
+  if (currentStep === "layout") {
     contentSubstep = "layout";
     renderContentStep();
     return;
   }
 
-  if (currentStep === 4) {
+  if (currentStep === "output") {
     renderWebOutputStep();
     return;
   }
@@ -1934,52 +2641,54 @@ function renderStep() {
 
 stepButtons.forEach((button, index) => {
   button.addEventListener("click", () => {
-    if (index >= 2 && Object.keys(promotionOverviewErrors()).length) {
+    const targetStep = button.dataset.step;
+    const targetIndex = stepIndex(targetStep);
+    if (targetIndex >= stepIndex("template") && Object.keys(promotionOverviewErrors()).length) {
       validationErrors = promotionOverviewErrors();
-      currentStep = 1;
+      currentStep = "overview";
       renderStep();
       return;
     }
-    if (index >= 3 && !wizardSectionConfigurationReady()) {
+    if (targetIndex >= stepIndex("layout") && !wizardSectionConfigurationReady()) {
       validationErrors = { sectionConfiguration: true };
-      currentStep = 2;
+      currentStep = "template";
       renderStep();
       return;
     }
-    if (index === 4) {
+    if (targetStep === "output") {
       goToWebOutput();
       return;
     }
-    currentStep = index;
+    currentStep = targetStep;
     renderStep();
-    if (currentStep === 3) refreshActiveWizardTemplate();
+    if (currentStep === "layout") refreshActiveWizardTemplate();
   });
 });
 
 prev.addEventListener("click", () => {
   currentStep = previousStep(currentStep);
   renderStep();
-  if (currentStep === 3) refreshActiveWizardTemplate();
+  if (currentStep === "layout") refreshActiveWizardTemplate();
 });
 
 next.addEventListener("click", () => {
-  if (currentStep === 1 && Object.keys(promotionOverviewErrors()).length) {
+  if (currentStep === "overview" && Object.keys(promotionOverviewErrors()).length) {
     validationErrors = promotionOverviewErrors();
     renderStep();
     return;
   }
-  if (currentStep === 2 && !wizardSectionConfigurationReady()) {
+  if (currentStep === "template" && !wizardSectionConfigurationReady()) {
     validationErrors = { sectionConfiguration: true };
     renderStep();
     return;
   }
-  if (currentStep === 3) {
+  if (currentStep === "layout") {
     goToWebOutput();
     return;
   }
   currentStep = nextStep(currentStep);
   renderStep();
-  if (currentStep === 3) refreshActiveWizardTemplate();
+  if (currentStep === "layout") refreshActiveWizardTemplate();
 });
 
 renderStep();

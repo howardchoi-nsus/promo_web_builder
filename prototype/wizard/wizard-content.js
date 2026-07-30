@@ -3,6 +3,22 @@
     const content = {
       sectionInputSchemaVersion: 4,
       designTokenSetVersionId: "",
+      promotionOverview: {
+        schemaVersion: 4,
+        inputMode: "structured",
+        rawNaturalLanguage: "",
+        title: "",
+        leadText: "",
+        promotionPurpose: "",
+        promotionPurposeOther: "",
+        market: "",
+        audience: "",
+        campaignTone: "",
+        mainOffer: "",
+      },
+      promotionOverviewDraft: {},
+      templateRecommendation: null,
+      templateCompositionProposal: null,
       promo: {
         title: "",
         template: "AI Auto",
@@ -25,6 +41,7 @@
       },
       formTemplate: null,
       templateInputs: {},
+      templateDefaultContents: {},
       templateSectionOrders: {},
       templateLayouts: {},
       sectionInputs: {},
@@ -109,17 +126,36 @@
     return result;
   }
 
-  function mergeSectionInputs(saved = {}, definitions = []) {
+  function valuesEqual(left, right) {
+    return JSON.stringify(left) === JSON.stringify(right);
+  }
+
+  function mergeSectionInputs(saved = {}, definitions = [], templateDefaults = {}, previousTemplateDefaults = {}) {
     const fallback = defaultSectionInputsFromDefinitions(definitions);
     const merged = {};
     Object.keys(fallback).forEach((sectionKey) => {
       const savedSection = (saved && typeof saved === "object" ? saved[sectionKey] : null) || {};
+      const defaultSection = (templateDefaults && typeof templateDefaults === "object"
+        ? templateDefaults[sectionKey] : null) || {};
+      const previousDefaultSection = (previousTemplateDefaults && typeof previousTemplateDefaults === "object"
+        ? previousTemplateDefaults[sectionKey] : null) || {};
       merged[sectionKey] = { ...fallback[sectionKey] };
       Object.keys(fallback[sectionKey]).forEach((itemKey) => {
         const item = (definitions.find((section) => section.sectionKey === sectionKey)?.items || [])
           .find((candidate) => candidate.itemKey === itemKey);
         if (item?.isLocked) return;
-        if (savedSection[itemKey] !== undefined) merged[sectionKey][itemKey] = savedSection[itemKey];
+        const hasSaved = savedSection[itemKey] !== undefined;
+        const hasDefault = defaultSection[itemKey] !== undefined;
+        const hasPreviousDefault = previousDefaultSection[itemKey] !== undefined;
+        const savedMatchesPreviousDefault = hasSaved && hasPreviousDefault
+          && valuesEqual(savedSection[itemKey], previousDefaultSection[itemKey]);
+        const savedMatchesLegacyFallback = hasSaved && !hasPreviousDefault
+          && valuesEqual(savedSection[itemKey], fallback[sectionKey][itemKey]);
+        if (hasSaved && !savedMatchesPreviousDefault && !savedMatchesLegacyFallback) {
+          merged[sectionKey][itemKey] = savedSection[itemKey];
+        } else if (hasDefault) {
+          merged[sectionKey][itemKey] = defaultSection[itemKey];
+        }
       });
       if (Array.isArray(savedSection.legacyItems)) merged[sectionKey].legacyItems = savedSection.legacyItems;
     });
@@ -131,6 +167,7 @@
     migrateLegacySectionInputs,
     defaultItemValue,
     defaultSectionInputsFromDefinitions,
+    valuesEqual,
     mergeSectionInputs,
   });
 })(globalThis);

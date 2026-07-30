@@ -5,6 +5,14 @@ const {
   buildPromoInputMarkdown,
   formatTimestamp,
 } = require("./_promo-markdown-builders");
+const {
+  stripAssetWriteAuth,
+  verifyAssetWriteRequest,
+} = require("./_promo-design-asset-auth");
+const {
+  RemoteImageError,
+  fetchRemoteImage,
+} = require("./_safe-remote-image");
 
 const MAX_IMAGE_BYTES = 24 * 1024 * 1024;
 const DEFAULT_RESULTS_RESET_AT = "2026-07-02T10:10:55+09:00";
@@ -198,6 +206,13 @@ async function saveAsset(req, res) {
   if (!databaseUrl) return res.status(500).json({ error: "DATABASE_URL is not configured" });
 
   const body = parseBody(req.body);
+  const authorization = verifyAssetWriteRequest(req, body);
+  if (!authorization.ok) {
+    return res.status(authorization.status).json({
+      error: authorization.error,
+      code: authorization.code,
+    });
+  }
   const runKey = String(body.runKey || body.id || body.payload?.id || "").trim();
   if (!runKey) return res.status(400).json({ error: "runKey is required" });
 
@@ -205,10 +220,11 @@ async function saveAsset(req, res) {
   try {
     imageInput = await resolveImageInput(body);
   } catch (error) {
-    if (error instanceof InvalidImageInputError) {
+    if (error instanceof InvalidImageInputError || error instanceof RemoteImageError) {
       return res.status(400).json({
         error: "Invalid image data",
         message: error.message,
+        code: error.code || "INVALID_IMAGE_DATA",
       });
     }
     throw error;
@@ -232,7 +248,7 @@ async function saveAsset(req, res) {
     contentType: imageInput.mimeType,
   });
 
-  const payload = body.payload || {};
+  const payload = stripAssetWriteAuth(body.payload || {});
   const promo = payload.promo || body.promo || {};
   const md = payload.md || body.md || {};
   const template = payload.template || body.template || {};
@@ -740,11 +756,14 @@ async function resolveImageInput(body) {
   const imageUrl = String(body.imageUrl || "").trim();
   if (!imageUrl) return null;
 
-  const response = await fetch(imageUrl);
-  if (!response.ok) throw new Error(`Failed to fetch source image: ${response.status}`);
-  const mimeType = response.headers.get("content-type") || "image/png";
-  const bytes = Buffer.from(await response.arrayBuffer());
-  return { bytes, mimeType: validateImageBytes(bytes, mimeType), sourceUrl: imageUrl };
+  const remoteImage = await fetchRemoteImage(imageUrl, {
+    maxBytes: MAX_IMAGE_BYTES,
+  });
+  return {
+    bytes: remoteImage.bytes,
+    mimeType: validateImageBytes(remoteImage.bytes, remoteImage.contentType),
+    sourceUrl: remoteImage.sourceUrl,
+  };
 }
 
 class InvalidImageInputError extends Error {}

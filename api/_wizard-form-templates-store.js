@@ -38,6 +38,50 @@ function normalizeNumber(value, fallback = 0) {
   return Number.isFinite(number) ? Math.trunc(number) : fallback;
 }
 
+const RECOMMENDATION_PROFILE_KEYS = [
+  "promotionTypes", "markets", "audiences", "tones", "supportedComponentRoles",
+  "requiredInputs", "requiredNotices", "tags",
+];
+
+function normalizeRecommendationProfile(value = {}) {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  return Object.fromEntries(RECOMMENDATION_PROFILE_KEYS.map((key) => [
+    key,
+    Array.from(new Set(
+      (Array.isArray(source[key]) ? source[key] : [])
+        .map((item) => String(item || "").trim())
+        .filter((item) => item && (
+          key !== "requiredInputs"
+          || !["primaryAction.label", "primaryAction.url"].includes(item)
+        ))
+    )).slice(0, 100),
+  ]));
+}
+
+async function recommendationProfileColumnAvailable(sql) {
+  const rows = await sql`
+    select exists (
+      select 1 from information_schema.columns
+      where table_schema = current_schema()
+        and table_name = 'wizard_form_templates'
+        and column_name = 'recommendation_profile'
+    ) as available
+  `;
+  return Boolean(rows[0]?.available);
+}
+
+async function attachRecommendationProfiles(sql, rows) {
+  if (!rows.length || !await recommendationProfileColumnAvailable(sql)) return rows;
+  const ids = rows.map((row) => row.id);
+  const profiles = await sql`
+    select id::text, recommendation_profile
+    from wizard_form_templates
+    where id = any(${ids}::uuid[])
+  `;
+  const byId = new Map(profiles.map((row) => [row.id, row.recommendation_profile]));
+  return rows.map((row) => ({ ...row, recommendation_profile: byId.get(row.id) || {} }));
+}
+
 function toFormTemplate(row) {
   return {
     id: row.id,
@@ -48,6 +92,7 @@ function toFormTemplate(row) {
     version: Number(row.version || 1),
     isDefault: Boolean(row.is_default),
     changeNote: row.change_note || "",
+    recommendationProfile: normalizeRecommendationProfile(row.recommendation_profile),
     designTokenSetVersionId: row.design_token_set_version_id || null,
     archivedAt: row.archived_at || null,
     createdAt: row.created_at || null,
@@ -72,6 +117,9 @@ function toTemplateSection(row) {
     orderChangeAllowed: Boolean(row.order_change_allowed),
     userReorderAllowed: row.user_reorder_allowed === undefined ? Boolean(row.order_change_allowed) : Boolean(row.user_reorder_allowed),
     fixedPosition: row.fixed_position || null,
+    compositionScope: row.composition_scope === "shared" ? "shared" : "template",
+    sectionRole: row.section_role || "content",
+    compositionPolicy: row.composition_policy || {},
     createdAt: row.created_at || null,
     updatedAt: row.updated_at || null,
   };
@@ -84,7 +132,7 @@ async function fetchTemplateRow(sql, id) {
       archived_at, created_at, updated_at
     from wizard_form_templates where id = ${id}::uuid limit 1
   `;
-  return rows[0] || null;
+  return (await attachRecommendationProfiles(sql, rows))[0] || null;
 }
 
 async function fetchTemplates(sql, { includeArchived = false, activeOnly = false } = {}) {
@@ -108,7 +156,7 @@ async function fetchTemplates(sql, { includeArchived = false, activeOnly = false
         from wizard_form_templates where status <> 'archived'
         order by is_default desc, name asc, version desc
       `;
-  return rows.map(toFormTemplate);
+  return (await attachRecommendationProfiles(sql, rows)).map(toFormTemplate);
 }
 
 async function fetchTemplateSections(sql, templateId) {
@@ -117,6 +165,7 @@ async function fetchTemplateSections(sql, templateId) {
       ts.section_key,
       source_section.name as section_name, source_section.description as section_description, source_section.version as section_version,
       source_section.status as section_status, source_section.ai_design,
+      source_section.composition_scope, source_section.section_role, source_section.composition_policy,
       ts.sort_order, source_section.is_required,
       source_section.is_visible_in_wizard as is_visible,
       source_section.order_change_allowed,
@@ -125,6 +174,7 @@ async function fetchTemplateSections(sql, templateId) {
     from wizard_form_template_sections ts
     left join lateral (
       select s.id, s.name, s.description, s.version, s.status, s.ai_design,
+        s.composition_scope, s.section_role, s.composition_policy,
         s.is_required, s.is_visible_in_wizard, s.order_change_allowed, s.fixed_position
       from wizard_content_sections s
       where (ts.section_id is not null and s.id = ts.section_id)
@@ -175,6 +225,8 @@ module.exports = {
   parseBody,
   normalizeBoolean,
   normalizeNumber,
+  normalizeRecommendationProfile,
+  recommendationProfileColumnAvailable,
   toFormTemplate,
   toTemplateSection,
   fetchTemplateRow,

@@ -37,6 +37,30 @@ try {
   const page = await context.newPage();
   const pageErrors = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
+  await page.route("**/api/promo-template-recommendations", async (route) => {
+    const request = route.request().postDataJSON();
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ok: true,
+        overviewFingerprint: request.overviewFingerprint,
+        recommendations: [{
+          templateId: "visual-editor-preview-template",
+          templateKey: "default-preview",
+          templateVersion: 1,
+          templateName: "Default Promotion Page",
+          score: 80,
+          reasons: ["Fixture recommendation"],
+          warnings: [],
+          requiredConfirmations: [],
+        }],
+        fallbackTemplateId: "visual-editor-preview-template",
+        source: "rule-base",
+        warnings: [],
+      }),
+    });
+  });
 
   const layoutResponse = await page.request.get(`${origin}/api/wizard-form-template-layout?templateId=visual-editor-preview-template`);
   assert.equal(layoutResponse.ok(), true, "Admin layout fixture should load");
@@ -52,15 +76,31 @@ try {
       },
     },
   };
+  const adminDefaultContent = {
+    heroBanner: {
+      title: "Admin preset title",
+    },
+    contentFeature: {
+      image: {
+        source: "url",
+        value: "https://example.com/admin-logo.png",
+        description: "",
+        alt: "Admin logo",
+      },
+    },
+  };
   const saveResponse = await page.request.patch(`${origin}/api/wizard-form-template-layout`, {
     data: {
       templateId: "visual-editor-preview-template",
       expectedRevision: current.layout.layoutRevision,
       layoutSpec: adminLayout,
+      defaultContent: adminDefaultContent,
     },
   });
   assert.equal(saveResponse.ok(), true, "Admin layout save should succeed");
   assert.equal((await saveResponse.json()).layout.layoutRevision, 2);
+  const savedAdminLayout = await page.request.get(`${origin}/api/wizard-form-template-layout?templateId=visual-editor-preview-template`);
+  assert.equal((await savedAdminLayout.json()).layout.defaultContent.contentFeature.image.value, "https://example.com/admin-logo.png");
 
   const adminEditorPage = await context.newPage();
   await adminEditorPage.goto(
@@ -77,19 +117,32 @@ try {
   assert.equal(await adminEditorPage.locator(".property-panel .section-properties").count(), 0);
   await adminEditorPage.close();
 
-  await page.goto(`${origin}/create-promo.html`, { waitUntil: "networkidle" });
-  await page.locator('[data-step="2"]').click();
+  await page.goto(`${origin}/create-promo.html?mode=template`, { waitUntil: "networkidle" });
   await page.locator('[data-field-key="title"] input').fill("Admin Layout Integration");
+  await page.locator('[data-field-key="leadText"] input').fill("Admin layout integration lead");
   await page.locator('[data-field-key="promotionPurpose"] select').selectOption("이벤트");
   await page.locator('[data-field-key="market"] input').fill("KR");
   await page.locator('[data-field-key="audience"] select').selectOption("신규");
   await page.locator('[data-field-key="campaignTone"] select').selectOption("활기찬");
+  await page.locator('[data-field-key="mainOffer"] textarea').fill("Admin layout integration offer");
   await page.locator("#next-step").click();
   await page.locator('.wizard-template-tile[aria-pressed="true"]').waitFor();
   await page.locator("#next-step").click();
 
   const editorFrame = page.frameLocator("iframe.wizard-layout-frame");
   await editorFrame.locator(".editor-workspace.is-create-promo-wizard").waitFor({ timeout: 10_000 });
+  assert.equal(
+    await editorFrame.locator('[data-section-key="heroBanner"] [data-item-key="title"]').textContent(),
+    "Admin preset title",
+    "Admin template text defaults must initialize Create Promo",
+  );
+  const presetImageFrame = editorFrame.locator('[data-section-key="contentFeature"] [data-item-key="image"] .rendered-image-frame');
+  await presetImageFrame.waitFor();
+  assert.match(
+    await presetImageFrame.evaluate((node) => getComputedStyle(node).backgroundImage),
+    /admin-logo\.png/,
+    "Admin template image defaults must render in Create Promo",
+  );
   assert.equal(await editorFrame.locator(".editor-workspace.is-builder-workspace").count(), 1);
   assert.equal(await editorFrame.locator(".editor-shell--embedded").count(), 1);
   assert.equal(await editorFrame.locator(".shell-sidebar").count(), 0);

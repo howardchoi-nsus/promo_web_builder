@@ -20,6 +20,7 @@ const props = defineProps({
   selectedItemKey: { type: String, default: "" },
   selectedItemKeys: { type: Array, default: () => [] },
   sectionDesignRuns: { type: Object, default: () => ({}) },
+  motionSpec: { type: Object, default: () => ({ sections: {}, items: {} }) },
 });
 const emit = defineEmits(["select-item", "update-item-style", "update-renderer-item-style", "update-item-content", "update-section-style"]);
 const SECTION_VERTICAL_PADDING_PX = 20;
@@ -70,7 +71,9 @@ function isFieldVisible(section, item, field) {
 }
 
 function renderedFields(section, item) {
-  return componentFields(item).filter((field) => isFieldVisible(section, item, field));
+  return componentFields(item).filter((field) => (
+    props.editable || isFieldVisible(section, item, field)
+  ));
 }
 
 function valueFor(section, item, field = null) {
@@ -97,7 +100,7 @@ function isLegacyAiImageValue(section, item, value) {
 
 function renderedItems(section) {
   return (section.items || []).filter((item) => (
-    isItemVisible(section, item)
+    (props.editable || isItemVisible(section, item))
     && (item.fieldKind !== "image" || !isLegacyAiImageValue(section, item, valueFor(section, item)))
     && (componentFields(item).length <= 1 || renderedFields(section, item).length > 0)
   ));
@@ -146,6 +149,35 @@ function sectionStyle(section) {
   return props.designSpec?.sectionStyles?.[section.sectionKey] || {};
 }
 
+function motionBinding(targetType, targetKey) {
+  const bindings = targetType === "section"
+    ? props.motionSpec?.sections
+    : props.motionSpec?.items;
+  return bindings?.[targetKey] || null;
+}
+
+function motionClass(targetType, targetKey) {
+  const binding = motionBinding(targetType, targetKey);
+  if (!binding?.presetVersionId) return "";
+  if (["motion-fade-up", "motion-fade-in", "motion-scale-in"].includes(binding.className)) {
+    return binding.className;
+  }
+  if (String(binding.presetVersionId).includes("fade-up")) return "motion-fade-up";
+  if (String(binding.presetVersionId).includes("fade-in")) return "motion-fade-in";
+  if (String(binding.presetVersionId).includes("scale-in")) return "motion-scale-in";
+  return "motion-fade-in";
+}
+
+function motionStyle(targetType, targetKey) {
+  const binding = motionBinding(targetType, targetKey);
+  if (!binding) return {};
+  return {
+    "--motion-duration": binding.durationToken || "360ms",
+    "--motion-easing": binding.easingToken || "ease-out",
+    "--motion-delay": binding.delayToken || "0ms",
+  };
+}
+
 const AI_PROCESSING_STATUSES = new Set([
   "queued", "analyzing_content", "generating_layout", "validating_layout",
   "generating_assets", "validating_assets", "applying",
@@ -156,7 +188,7 @@ function sectionDesignRun(section) {
 }
 
 function aiStatusLabel(status, targetType) {
-  const targetLabel = targetType === "item" ? "AI 이미지" : "AI 배경";
+  const targetLabel = targetType === "item" ? "AI 이미지" : "AI 키비주얼";
   const labels = {
     queued: `${targetLabel} 생성 준비 중`,
     analyzing_content: "콘텐츠 분석 중",
@@ -183,7 +215,7 @@ function aiTargetState(section, item = null, field = null) {
   if (run.status === "failed") {
     return {
       kind: "failed",
-      label: target.type === "item" ? "AI 이미지 생성 실패" : "AI 배경 생성 실패",
+      label: target.type === "item" ? "AI 이미지 생성 실패" : "AI 키비주얼 생성 실패",
       detail: String(run.errorMessage || "").trim(),
     };
   }
@@ -759,9 +791,9 @@ function startSectionResize(event, section) {
       v-for="section in orderedSections"
       :key="section.sectionKey"
       class="rendered-section"
-      :class="`rendered-section--${section.sectionKey}`"
+      :class="[`rendered-section--${section.sectionKey}`, motionClass('section', section.sectionKey)]"
       :data-section-key="section.sectionKey"
-      :style="inlineSectionStyle(section)"
+      :style="{ ...inlineSectionStyle(section), ...motionStyle('section', section.sectionKey) }"
       :aria-busy="aiTargetState(section)?.kind === 'processing' ? 'true' : undefined"
     >
       <div
@@ -783,32 +815,43 @@ function startSectionResize(event, section) {
             class="rendered-item"
             :class="[
               `rendered-item--${item.fieldKind || 'text'}`,
+              motionClass('item', item.itemKey),
               {
                 'is-editable': editable && !item.isLocked,
                 'is-selected': editable && (
                   selectedItemKey === styleKey(section, item)
                   || selectedItemKeys.includes(styleKey(section, item))
                 ),
+                'is-hidden-in-output': editable && !isItemVisible(section, item),
                 'is-free-positioned': true,
               },
             ]"
             :data-item-key="item.itemKey"
             :data-style-key="styleKey(section, item)"
-            :style="inlineItemStyle(section, item)"
+            :style="{ ...inlineItemStyle(section, item), ...motionStyle('item', item.itemKey) }"
             @click.stop="selectRendererItem(section, item, $event)"
             @pointerdown="startDrag($event, section, item)"
           >
+            <span
+              v-if="editable && !isItemVisible(section, item)"
+              class="output-hidden-badge"
+            >비노출</span>
             <div v-if="componentFields(item).length > 1" class="rendered-component-fields">
               <template v-for="field in renderedFields(section, item)" :key="field.fieldKey">
                 <a
                   v-if="field.fieldKind === 'cta'"
                   class="rendered-cta rendered-component-field"
+                  :class="{ 'is-hidden-in-output': editable && !isFieldVisible(section, item, field) }"
                   :style="fieldStyle(section, item, field)"
                   :href="ctaUrl(valueFor(section, item, field))"
                   :target="valueFor(section, item, field)?.target || '_self'"
                   :rel="valueFor(section, item, field)?.target === '_blank' ? 'noopener noreferrer' : undefined"
                 >{{ valueFor(section, item, field)?.label || field.name }}</a>
-                <div v-else-if="field.fieldKind === 'image'" class="rendered-component-field">
+                <div
+                  v-else-if="field.fieldKind === 'image'"
+                  class="rendered-component-field"
+                  :class="{ 'is-hidden-in-output': editable && !isFieldVisible(section, item, field) }"
+                >
                   <div
                     class="rendered-image-frame rendered-component-image-frame"
                     :style="imageFieldFrameStyle(section, item, field)"
@@ -830,7 +873,10 @@ function startSectionResize(event, section) {
                 <p
                   v-else-if="hasContent(valueFor(section, item, field))"
                   class="rendered-text rendered-component-field"
-                  :class="{ 'rendered-text--title': field.textType === 'title' }"
+                  :class="{
+                    'rendered-text--title': field.textType === 'title',
+                    'is-hidden-in-output': editable && !isFieldVisible(section, item, field),
+                  }"
                   :style="fieldStyle(section, item, field)"
                   :data-field-key="field.fieldKey"
                   @dblclick.stop="startTextEdit($event, section, item, field)"
@@ -838,6 +884,7 @@ function startSectionResize(event, section) {
                 <p
                   v-else
                   class="rendered-empty rendered-component-field"
+                  :class="{ 'is-hidden-in-output': editable && !isFieldVisible(section, item, field) }"
                   :data-field-key="field.fieldKey"
                   @dblclick.stop="startTextEdit($event, section, item, field)"
                 >{{ textFieldDescription(item, field) }}</p>

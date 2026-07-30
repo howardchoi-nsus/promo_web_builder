@@ -1,2 +1,2 @@
 /* Backward-compatible entry point. New pages load app-shell.css directly. */
-@import url("./app-shell.css?v=app-shell-v1");
+@import url("./app-shell.css?v=app-shell-sidebar-v4");

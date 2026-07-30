@@ -21,7 +21,7 @@ assert.doesNotMatch(templateStore, /coalesce\(ts\.ai_design,\s*source_section\.a
 assert.match(templateSections, /ai_design\s*=\s*\$\{JSON\.stringify/);
 assert.match(admin, /backgroundPromptText:\s*section\.aiDesign\?\.backgroundPromptText/);
 assert.match(admin, /body:\s*JSON\.stringify\(\{\s*id:\s*section\.id,\s*\.\.\.this\.wizardSectionFieldsEditor\s*\}\)/);
-assert.match(html, /섹션 배경 이미지 관리자 지침/);
+assert.match(html, /섹션 키비주얼 관리자 지침/);
 assert.match(promptUpdate, /if \(current\.status !== "draft"\)/);
 assert.match(promptActivate, /validateStageModelConfig\(target\.type/);
 assert.deepEqual(PROMPT_TYPES.section_background_image.optionalVariables, [

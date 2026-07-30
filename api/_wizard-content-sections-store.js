@@ -25,6 +25,49 @@ const DEFAULT_AI_DESIGN = Object.freeze({
   imageAspectRatio: "16:9",
   backgroundPromptText: "",
 });
+const SECTION_ROLES = Object.freeze([
+  "header", "footer", "terms", "legal", "responsible-gaming",
+  "hero", "benefit", "content", "cta", "notice",
+]);
+const SECTION_SELECTION_POLICIES = Object.freeze([
+  "required", "required-by-market", "required-by-purpose", "recommended", "optional",
+]);
+
+function normalizeStringList(value, limit = 100) {
+  return Array.from(new Set(
+    (Array.isArray(value) ? value : [])
+      .map((item) => String(item || "").trim())
+      .filter(Boolean),
+  )).slice(0, limit);
+}
+
+function normalizeCompositionPolicy(value = {}, section = {}) {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const fixedPosition = section.fixedPosition || section.fixed_position || null;
+  const selectionPolicy = fixedPosition
+    ? "required"
+    : SECTION_SELECTION_POLICIES.includes(source.selectionPolicy)
+      ? source.selectionPolicy
+      : "optional";
+  const duplicatePolicy = source.duplicatePolicy === "limited" ? "limited" : "forbidden";
+  const requestedMaxInstances = Number(source.maxInstances);
+  const maxInstances = Math.max(1, Math.min(
+    duplicatePolicy === "limited" ? 20 : 1,
+    Number.isFinite(requestedMaxInstances) ? requestedMaxInstances : 1,
+  ));
+  return {
+    selectionPolicy,
+    allowedMarkets: normalizeStringList(source.allowedMarkets),
+    allowedPromotionPurposes: normalizeStringList(source.allowedPromotionPurposes),
+    aiEditable: normalizeBoolean(source.aiEditable, true),
+    contentLocked: normalizeBoolean(source.contentLocked, false),
+    layoutLocked: fixedPosition ? true : normalizeBoolean(source.layoutLocked, false),
+    duplicatePolicy,
+    maxInstances,
+    allowedLayoutVariants: normalizeStringList(source.allowedLayoutVariants, 30),
+    allowedMotionPresets: normalizeStringList(source.allowedMotionPresets, 30),
+  };
+}
 
 function getSql() {
   const databaseUrl = getDatabaseUrl();
@@ -147,6 +190,7 @@ function validateLockedValue(fieldKind, value) {
 }
 
 function toSection(row) {
+  const fixedPosition = row.fixed_position || null;
   return {
     id: row.id,
     sectionKey: row.section_key,
@@ -154,13 +198,16 @@ function toSection(row) {
     description: row.description || "",
     isRequired: Boolean(row.is_required),
     orderChangeAllowed: Boolean(row.order_change_allowed),
-    fixedPosition: row.fixed_position || null,
+    fixedPosition,
     sortOrder: Number(row.sort_order || 0),
     isVisibleInWizard: Boolean(row.is_visible_in_wizard),
     status: row.status,
     version: Number(row.version || 1),
     changeNote: row.change_note || "",
     aiDesign: normalizeAiDesign(row.ai_design),
+    compositionScope: row.composition_scope === "shared" ? "shared" : "template",
+    sectionRole: SECTION_ROLES.includes(row.section_role) ? row.section_role : "content",
+    compositionPolicy: normalizeCompositionPolicy(row.composition_policy, { fixedPosition }),
     archivedAt: row.archived_at || null,
     createdAt: row.created_at || null,
     updatedAt: row.updated_at || null,
@@ -255,7 +302,8 @@ async function fetchSectionRow(sql, id) {
     select
       id::text, section_key, name, description, is_required, order_change_allowed,
       fixed_position, sort_order, is_visible_in_wizard, status, version,
-      change_note, ai_design, archived_at, created_at, updated_at
+      change_note, ai_design, composition_scope, section_role, composition_policy,
+      archived_at, created_at, updated_at
     from wizard_content_sections
     where id = ${id}::uuid
     limit 1
@@ -366,7 +414,8 @@ async function fetchAllSections(sql, { includeArchived = false } = {}) {
       select
         id::text, section_key, name, description, is_required, order_change_allowed,
         fixed_position, sort_order, is_visible_in_wizard, status, version,
-        change_note, ai_design, archived_at, created_at, updated_at
+        change_note, ai_design, composition_scope, section_role, composition_policy,
+        archived_at, created_at, updated_at
       from wizard_content_sections
       order by sort_order asc, section_key asc, version desc
     `
@@ -374,7 +423,8 @@ async function fetchAllSections(sql, { includeArchived = false } = {}) {
       select
         id::text, section_key, name, description, is_required, order_change_allowed,
         fixed_position, sort_order, is_visible_in_wizard, status, version,
-        change_note, ai_design, archived_at, created_at, updated_at
+        change_note, ai_design, composition_scope, section_role, composition_policy,
+        archived_at, created_at, updated_at
       from wizard_content_sections
       where status <> 'archived'
       order by sort_order asc, section_key asc, version desc
@@ -390,7 +440,8 @@ async function fetchPublicSectionsWithItems(sql) {
     select
       id::text, section_key, name, description, is_required, order_change_allowed,
       fixed_position, sort_order, is_visible_in_wizard, status, version,
-      change_note, ai_design, archived_at, created_at, updated_at
+      change_note, ai_design, composition_scope, section_role, composition_policy,
+      archived_at, created_at, updated_at
     from wizard_content_sections
     where status = 'active' and is_visible_in_wizard = true
     order by
@@ -455,12 +506,15 @@ module.exports = {
   AI_LAYOUT_VARIANTS,
   AI_IMAGE_TARGETS,
   DEFAULT_AI_DESIGN,
+  SECTION_ROLES,
+  SECTION_SELECTION_POLICIES,
   getSql,
   parseBody,
   normalizeBoolean,
   normalizeNumber,
   normalizeImageSources,
   normalizeAiDesign,
+  normalizeCompositionPolicy,
   normalizeUtm,
   validateFieldKind,
   validateTextType,

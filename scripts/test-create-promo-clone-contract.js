@@ -11,10 +11,12 @@ const designTokensCss = read("prototype", "design-tokens.css");
 const appComponentsCss = read("prototype", "app-components.css");
 const createJs = read("prototype", "create-promo.js");
 const createLayoutCache = read("prototype", "create-promo-layout-cache.js");
+const builderBootstrap = read("prototype", "builder-bootstrap.js");
 const wizardCore = read("prototype", "wizard", "wizard-core.js");
 const wizardFlow = read("prototype", "wizard", "wizard-flow.js");
 const wizardTemplateService = read("prototype", "wizard", "wizard-template-service.js");
 const wizardContent = read("prototype", "wizard", "wizard-content.js");
+const promotionOverview = read("prototype", "wizard", "promotion-overview.js");
 const wizardStorage = read("prototype", "wizard", "wizard-storage.js");
 const editorBridge = read("prototype", "wizard", "editor-bridge.js");
 const wizardJs = read("prototype", "promo-wizard.js");
@@ -36,29 +38,31 @@ const sharedShell = read("prototype", "shared-shell.js");
 assert.match(createHtml, /<title>프로모션 빌더<\/title>/);
 assert.match(createHtml, /data-shell-nav data-shell-active="create-promo"/);
 assert.doesNotMatch(createHtml, /class="active" href="\/promo-wizard\.html"/);
-assert.match(createHtml, /create-promo\.css\?v=app-tokens-v1/);
+assert.match(createHtml, /create-promo\.css\?v=create-promo-overview-v2/);
 assert.match(createHtml, /app-components\.css\?v=app-components-v1/);
 assert.match(createHtml, /wizard\/wizard-core\.js\?v=wizard-core-v2/);
-assert.match(createHtml, /wizard\/wizard-content\.js\?v=wizard-content-v2/);
+assert.match(createHtml, /wizard\/wizard-content\.js\?v=wizard-content-v5/);
+assert.match(createHtml, /wizard\/promotion-overview\.js\?v=promotion-overview-v4/);
 assert.match(createHtml, /wizard\/wizard-storage\.js\?v=wizard-storage-v2/);
 assert.match(createHtml, /create-promo-layout-cache\.js\?v=create-promo-light-v28/);
-assert.match(createHtml, /create-promo\.js\?v=create-promo-light-v35/);
+assert.match(createHtml, /builder-bootstrap\.js\?v=ai-builder-bootstrap-v1/);
+assert.match(builderBootstrap, /create-promo\.js\?v=create-promo-light-v41/);
 assert.match(designTokensCss, /\[data-theme="light"\]\s*\{[\s\S]*?color-scheme:\s*light;/);
 assert.match(designTokensCss, /\[data-theme="dark"\]\s*\{[\s\S]*?color-scheme:\s*dark;/);
 assert.match(appComponentsCss, /--bg:\s*var\(--app-bg\)/);
 assert.match(appComponentsCss, /--accent:\s*var\(--app-accent\)/);
 assert.doesNotMatch(createCss, /^:root\s*\{/m);
-assert.match(createHtml, /<strong>Design Token<\/strong>/);
 assert.match(createHtml, /<strong>Overview<\/strong>/);
 assert.match(createHtml, /<strong>Template<\/strong>/);
-assert.match(createHtml, /<strong>Layout<\/strong>/);
+assert.match(createHtml, /<strong>Layout &amp; Design<\/strong>/);
 assert.match(createHtml, /<strong>Web Output<\/strong>/);
 assert.equal(
-  (createCss.match(/grid-template-columns:\s*repeat\(5,\s*minmax\((?:0|150px),\s*1fr\)\)/g) || []).length,
+  (createCss.match(/grid-template-columns:\s*repeat\(4,\s*minmax\((?:0|150px),\s*1fr\)\)/g) || []).length,
   2,
 );
 assert.match(rootRedirect, /\/prototype\/create-promo\.html/);
 assert.match(wizardContent, /global\.PromoWizardContent = Object\.freeze/);
+assert.match(promotionOverview, /global\.PromoPromotionOverview = Object\.freeze/);
 assert.match(wizardStorage, /global\.PromoWizardStorage = Object\.freeze/);
 assert.match(wizardCore, /function resolveActiveTemplate\b/);
 assert.match(wizardTemplateService, /global\.PromoWizardTemplateService = Object\.freeze/);
@@ -83,7 +87,24 @@ assert.match(createCss, /\.section-ai-design-panel/);
 
 assert.match(createJs, /promoPrototype\.createPromo\.content\.v1/);
 assert.match(createJs, /promoPrototype\.createPromo\.sessionId\.v1/);
-assert.match(createJs, /function renderAppearanceStep\b/);
+assert.match(createJs, /function createAppearanceControls\b/);
+assert.match(createJs, /function createOverviewInputPanel\b/);
+assert.match(createJs, /async function analyzeNaturalLanguageOverview\b/);
+assert.match(createJs, /function applyOverviewAnalysis\b/);
+assert.match(createJs, /\/api\/promo-overview-parse/);
+assert.match(createJs, /분석 결과 적용/);
+assert.match(createJs, /\/api\/promo-template-recommendations/);
+assert.match(createJs, /function createTemplateRecommendationSummary\b/);
+assert.match(createJs, /\/api\/promo-template-composition-plan/);
+assert.match(createJs, /function createTemplateCompositionPanel\b/);
+assert.match(createJs, /function applyTemplateCompositionProposal\b/);
+assert.match(createJs, /if \(!item \|\| item\.isLocked\) return;/);
+assert.match(createJs, /else if \(item\.fieldKind === "text"\)\s*\{\s*setValueAtPath/);
+assert.doesNotMatch(createJs, /isUnchangedTemplateDefault/);
+assert.match(createCss, /\.overview-mode__tabs/);
+assert.match(createCss, /\.overview-analysis-grid/);
+assert.match(createCss, /\.template-composition-panel/);
+assert.match(createJs, /layoutPanel\.append\(designTokenControls, layoutHeader\)/);
 assert.match(createJs, /type:\s*"textarea",\s*\n\s*rows:\s*item\.textType === "multi" \? 4 : 3/);
 assert.match(createJs, /designTokenSetVersionId/);
 assert.match(createJs, /designTokenSetVersionId:\s*contentState\.designTokenSetVersionId/);
@@ -149,7 +170,7 @@ assert.match(editorCss, /\.section-registration-icon\.is-incomplete circle/);
 assert.match(createCss, /\.appearance-choice__cta-sample\.is-round/);
 assert.match(createCss, /\.appearance-choice__cta-sample\.is-square/);
 assert.match(createJs, /function applyCreatePromoAppearance\b/);
-assert.match(createJs, /if \(currentStep === 3\) \{[\s\S]*?renderContentStep\(\)/);
+assert.match(createJs, /if \(currentStep === "layout"\) \{[\s\S]*?renderContentStep\(\)/);
 assert.match(createJs, /designSpec: applyCreatePromoAppearance\(wizardResolvedLayout\)/);
 assert.match(createJs, /layoutIdentityFromTemplateResult/);
 assert.match(createJs, /layoutIdentityEventSummary/);
@@ -159,7 +180,7 @@ assert.match(createJs, /fromRefresh:\s*true/);
 assert.match(createJs, /admin_layout_update_detected/);
 assert.match(
   createJs,
-  /finally\s*\{\s*wizardTemplateRefreshPromise = null;\s*if \(currentStep === 3\) renderStep\(\);/s,
+  /finally\s*\{\s*wizardTemplateRefreshPromise = null;\s*if \(currentStep === "layout"\) renderStep\(\);/s,
 );
 assert.match(createJs, /새 관리자 레이아웃 적용/);
 assert.match(createLayoutCache, /sameLayoutIdentity/);

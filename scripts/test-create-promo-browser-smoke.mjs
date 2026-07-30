@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { createRequire } from "node:module";
 import { chromium } from "playwright";
 
+const require = createRequire(import.meta.url);
+const { overviewRequestFingerprint } = require("../api/_promo-overview-contract");
 const port = Number(process.env.CREATE_PROMO_SMOKE_PORT || 4178);
 const origin = `http://127.0.0.1:${port}`;
 const server = spawn(process.execPath, ["scripts/serve-visual-editor-preview.js"], {
@@ -35,6 +38,21 @@ try {
   browser = await chromium.launch({ headless: true });
   const context = await browser.newContext();
   const page = await context.newPage();
+  await page.addInitScript(() => {
+    if (window.top !== window) return;
+    localStorage.setItem("promoPrototype.createPromo.content.v1", JSON.stringify({
+      sectionInputSchemaVersion: 4,
+      templateInputs: {
+        "default-preview": {
+          heroBanner: {
+            title: "Existing user title",
+            description: "Existing user description",
+          },
+        },
+      },
+      templateDefaultContents: { "default-preview": {} },
+    }));
+  });
   await page.route("**/api/design-token-sets?scope=public", async (route) => {
     await route.fulfill({
       status: 200,
@@ -76,6 +94,118 @@ try {
             { tokenKey: "--promo-font-size-4xl", label: "4X Large", value: "80px", valueType: "length", cssProperties: ["font-size"] },
           ],
         }],
+      }),
+    });
+  });
+  let overviewParseRequest = null;
+  await page.route("**/api/promo-overview-parse", async (route) => {
+    overviewParseRequest = route.request().postDataJSON();
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ok: true,
+        draftId: "fixture-overview-draft",
+        createdAt: new Date().toISOString(),
+        overview: {
+          schemaVersion: 4,
+          inputMode: "natural-language",
+          rawNaturalLanguage: overviewParseRequest.naturalLanguage,
+          title: "Browser Smoke Promotion",
+          leadText: "신규 고객을 위한 첫 충전 혜택",
+          promotionPurpose: "이벤트",
+          promotionPurposeOther: "",
+          market: "KR",
+          audience: "신규",
+          campaignTone: "활기찬",
+          mainOffer: "첫 충전 100% 보너스",
+        },
+        fieldDecisions: [
+          {
+            field: "title",
+            origin: "generated",
+            confidence: 0.92,
+            reason: "간단한 설명을 바탕으로 제목을 생성했습니다.",
+            requiresConfirmation: false,
+          },
+        ],
+        assumptions: [],
+        missingCriticalInputs: [],
+        warnings: [],
+        summary: "한국 신규 고객 대상 첫 충전 이벤트",
+        confidence: 0.92,
+        overviewFingerprint: "fixture-overview-fingerprint",
+        requestFingerprint: overviewRequestFingerprint(overviewParseRequest.naturalLanguage),
+      }),
+    });
+  });
+  let templateRecommendationRequest = null;
+  await page.route("**/api/promo-template-recommendations", async (route) => {
+    templateRecommendationRequest = route.request().postDataJSON();
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ok: true,
+        overviewFingerprint: templateRecommendationRequest.overviewFingerprint,
+        recommendations: [{
+          templateId: "visual-editor-preview-template",
+          templateKey: "default-preview",
+          templateVersion: 1,
+          templateName: "Default Preview Template",
+          score: 88,
+          reasons: ["프로모션 목적 적합", "대상 고객 적합"],
+          warnings: [],
+          requiredConfirmations: [],
+        }],
+        fallbackTemplateId: "visual-editor-preview-template",
+        source: "rule-base",
+        warnings: [],
+      }),
+    });
+  });
+  let templateCompositionRequest = null;
+  let templateCompositionReviewRequired = false;
+  await page.route("**/api/promo-template-composition-plan", async (route) => {
+    templateCompositionRequest = route.request().postDataJSON();
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ok: true,
+        proposal: {
+          requestId: templateCompositionRequest.requestId,
+          overviewFingerprint: templateCompositionRequest.overviewFingerprint,
+          source: "ai-composition",
+          status: "ready",
+          createdAt: new Date().toISOString(),
+          templateId: "visual-editor-preview-template",
+          templateKey: "default-preview",
+          templateVersion: 1,
+          templateName: "Default Preview Template",
+          sections: [{
+            sectionId: "hero",
+            sectionKey: "heroBanner",
+            sectionName: "Hero Banner",
+            componentVersionIds: ["fixture-title", "fixture-cta"],
+            contentMappings: [
+              { itemKey: "title", sourceOverviewPath: "title" },
+            ],
+            layoutCommands: [],
+          }, {
+            sectionId: "content",
+            sectionKey: "contentFeature",
+            sectionName: "Content Feature",
+            componentVersionIds: ["fixture-copy"],
+            contentMappings: [{ itemKey: "copy", sourceOverviewPath: "mainOffer" }],
+            layoutCommands: [],
+          }],
+          missingInputs: templateCompositionReviewRequired ? ["market"] : [],
+          warnings: templateCompositionReviewRequired ? ["마켓 확인이 필요합니다."] : [],
+          summary: "프로모션 개요를 Hero와 상세 콘텐츠에 배치합니다.",
+          templateSnapshot: [],
+          promptExecutionSnapshot: {},
+        },
       }),
     });
   });
@@ -160,28 +290,48 @@ try {
     failedRequests.push(`${request.method()} ${request.url()}: ${reason}`);
   });
 
-  await page.goto(`${origin}/create-promo.html`, { waitUntil: "networkidle" });
-  await assertPageText(page.locator("#step-title"), "디자인 토큰 선택");
+  // The Builder now has an explicit mode-selection entry. This regression
+  // scenario verifies the unchanged legacy template host.
+  await page.goto(`${origin}/create-promo.html?mode=template`, { waitUntil: "networkidle" });
+  await assertPageText(page.locator(".step.is-active strong"), "Overview");
+  await page.getByRole("tab", { name: "자연어 입력" }).click();
+  await page.locator(".overview-nlp-input").fill(
+    "여름에 신규 고객이 관심을 가질 만한 충전 이벤트를 만들고 싶어요."
+  );
+  await page.getByRole("button", { name: "AI로 개요 분석" }).click();
+  await page.getByRole("button", { name: "분석 결과 적용" }).waitFor();
+  assert.equal(Object.hasOwn(overviewParseRequest, "currentOverview"), false);
+  assert.equal(overviewParseRequest.generationMode, "new-draft");
+  await page.getByRole("button", { name: "분석 결과 적용" }).click();
+
+  await assertPageText(page.locator(".step.is-active strong"), "Template");
+  await page.locator(".wizard-template-recommended").waitFor();
+  assert.equal(templateRecommendationRequest.overview.title, "Browser Smoke Promotion");
+  await page.getByRole("button", { name: "AI로 구성하고 다음" }).click();
+  assert.deepEqual(templateCompositionRequest.candidateTemplateIds, ["visual-editor-preview-template"]);
+  await page.locator('.step[data-step="layout"].is-active').waitFor();
+  await assertPageText(page.locator(".step.is-active strong"), "Layout & Design");
+  await page.getByText("Default Preview Template과 AI 섹션 구성을 적용했습니다.").waitFor();
+  const autoComposedContent = await page.evaluate(() => (
+    JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null")
+  ));
+  assert.equal(autoComposedContent?.promotionOverview?.leadText, "신규 고객을 위한 첫 충전 혜택");
+  assert.equal(autoComposedContent?.sectionInputs?.heroBanner?.title, "Browser Smoke Promotion");
+  assert.equal(autoComposedContent?.sectionInputs?.contentFeature?.copy, "첫 충전 100% 보너스");
+  await page.locator('.step[data-step="template"]').click();
+  templateCompositionReviewRequired = true;
+  await page.getByRole("button", { name: "AI로 구성하고 다음" }).click();
+  await page.getByText("확인 항목이 있어 자동 적용하지 않았습니다. 내용을 검토한 뒤 직접 적용해 주세요.").waitFor();
+  await page.getByRole("button", { name: "이 구성 초안 적용" }).waitFor();
+  await assertPageText(page.locator(".step.is-active strong"), "Template");
+  await page.locator('.step[data-step="layout"]').click();
+  await page.locator('.step[data-step="layout"].is-active').waitFor();
+  await assertPageText(page.locator(".step.is-active strong"), "Layout & Design");
   const defaultTokenChoice = page.locator('.appearance-choice[role="radio"]', { hasText: "Fixture Dark" });
   assert.equal(
     await defaultTokenChoice.getAttribute("aria-checked"),
     "true",
   );
-
-  await page.locator("#next-step").click();
-  await assertPageText(page.locator("#step-title"), "프로모션 개요 등록");
-  await page.locator('[data-field-key="title"] input').fill("Browser Smoke Promotion");
-  await page.locator('[data-field-key="promotionPurpose"] select').selectOption("이벤트");
-  await page.locator('[data-field-key="market"] input').fill("KR");
-  await page.locator('[data-field-key="audience"] select').selectOption("신규");
-  await page.locator('[data-field-key="campaignTone"] select').selectOption("활기찬");
-
-  await page.locator("#next-step").click();
-  await assertPageText(page.locator("#step-title"), "프로모션 템플릿 선택");
-  await page.locator('.wizard-template-tile[aria-pressed="true"]').waitFor();
-
-  await page.locator("#next-step").click();
-  await assertPageText(page.locator("#step-title"), "템플릿 레이아웃");
   const editorFrame = page.frameLocator("iframe.wizard-layout-frame");
   await editorFrame.locator(".editor-workspace.is-create-promo-wizard").waitFor({ timeout: 10_000 });
   assert.equal(await page.locator("iframe.wizard-layout-frame").getAttribute("scrolling"), "no");
@@ -276,15 +426,15 @@ try {
     "Selecting a Section must scroll the Preview stage to that Section",
   );
   assert.equal(await editorFrame.locator(".section-properties .section-ai-action").count(), 2, "Layout and background AI actions must live inside Section properties");
-  assert.equal(await editorFrame.locator(".section-ai-action:not([disabled])").count(), 0, "Structural image/CTA values must not enable AI generation");
   assert.equal(
-    await editorFrame.getByRole("button", { name: "AI 디자인", exact: true }).getAttribute("title"),
-    "섹션 콘텐츠를 먼저 등록해 주세요.",
+    await editorFrame.locator(".section-ai-action:not([disabled])").count(),
+    2,
+    "Applied AI composition content must enable the Section AI actions"
   );
   await editorFrame.getByRole("button", { name: "자동등록" }).click();
   await editorFrame.locator(".auto-register-message").waitFor({ timeout: 10_000 });
   sectionAiRunResponseDelayMs = 300;
-  await editorFrame.getByRole("button", { name: "AI 디자인", exact: true }).click();
+  await editorFrame.getByRole("button", { name: "AI 키비주얼 생성", exact: true }).click();
   await editorFrame.locator('[data-section-key="heroBanner"] .section-ai-state.is-processing').waitFor({ timeout: 2_000 });
   sectionAiRunResponseDelayMs = 0;
   for (let attempt = 0; attempt < 50 && !sectionAiRunRequest; attempt += 1) {
@@ -295,6 +445,8 @@ try {
   assert.equal(sectionAiRunRequest?.sectionKey, "heroBanner");
   assert.equal(sectionAiRunRequest?.targetType, "section-background");
   assert.equal(sectionAiRunRequest?.sectionInputs?.title, "Browser Smoke Promotion");
+  assert.equal(sectionAiRunRequest?.keyVisualTextMode, "none");
+  assert.equal(sectionAiRunRequest?.keyVisualText, "");
   assert.ok(sectionAiRunRequest?.generationRequestId);
   const firstBackgroundGenerationRequestId = sectionAiRunRequest.generationRequestId;
   let backgroundAppliedContent = null;
@@ -312,11 +464,15 @@ try {
     return !content?.sectionDesignRuns?.heroBanner;
   });
   sectionAiRunRequest = null;
-  await editorFrame.getByRole("button", { name: "AI 디자인", exact: true }).click();
+  await editorFrame.locator(".key-visual-text-policy select").selectOption("explicit");
+  await editorFrame.locator(".key-visual-text-policy input").fill("SUMMER DROP");
+  await editorFrame.getByRole("button", { name: "AI 키비주얼 생성", exact: true }).click();
   for (let attempt = 0; attempt < 50 && !sectionAiRunRequest; attempt += 1) {
     await new Promise((resolve) => setTimeout(resolve, 20));
   }
   assert.ok(sectionAiRunRequest?.generationRequestId);
+  assert.equal(sectionAiRunRequest?.keyVisualTextMode, "explicit");
+  assert.equal(sectionAiRunRequest?.keyVisualText, "SUMMER DROP");
   assert.notEqual(
     sectionAiRunRequest.generationRequestId,
     firstBackgroundGenerationRequestId,
@@ -571,21 +727,34 @@ try {
   await optionalVisibilityToggle.click();
   await page.waitForTimeout(50);
   const previewItemCountAfterHide = await editorFrame.locator(".rendered-item").count();
-  assert.ok(
-    previewItemCountAfterHide < previewItemCountBeforeHide,
-    "Turning off an optional component must hide it from Live Preview",
+  const hiddenPreviewItemCount = await editorFrame.locator(".rendered-item.is-hidden-in-output").count();
+  assert.equal(
+    previewItemCountAfterHide,
+    previewItemCountBeforeHide,
+    "Turning off an optional component must preserve its editing geometry in Live Preview",
+  );
+  assert.equal(
+    hiddenPreviewItemCount,
+    1,
+    "A component hidden from output must remain as one marked editing placeholder",
+  );
+  assert.equal(
+    await editorFrame.locator(".output-hidden-badge").count(),
+    1,
+    "The hidden editing placeholder must explain that the component is excluded from output",
   );
 
   const outputPagePromise = context.waitForEvent("page");
   await page.locator("#next-step").click();
-  await assertPageText(page.locator("#step-title"), "웹 출력 미리보기");
+  await assertPageText(page.locator(".step.is-active strong"), "Web Output");
   const outputPage = await outputPagePromise;
   await outputPage.locator(".promo-renderer").waitFor({ timeout: 10_000 });
   assert.equal(
     await outputPage.locator(".rendered-item").count(),
-    previewItemCountAfterHide,
-    "Web Output must honor the same optional component visibility state",
+    previewItemCountAfterHide - hiddenPreviewItemCount,
+    "Web Output must remove components marked as hidden in the editor",
   );
+  assert.equal(await outputPage.locator(".is-hidden-in-output").count(), 0);
   await outputPage.close();
   const snapshot = await page.evaluate(() => JSON.parse(localStorage.getItem("promoVisualEditor.snapshot.v1") || "null"));
   const wizardContent = await page.evaluate(() => JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null"));

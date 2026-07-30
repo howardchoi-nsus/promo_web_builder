@@ -30,12 +30,16 @@ vm.runInContext(read("prototype", "wizard", "wizard-flow.js"), context);
 vm.runInContext(read("prototype", "wizard", "wizard-template-service.js"), context);
 
 const flow = context.PromoCreateFlow;
-assert.equal(flow.STEPS.length, 5);
-assert.equal(flow.resolveInitialStep("3", "overview"), 3);
-assert.equal(flow.resolveInitialStep("invalid", "template"), 2);
-assert.equal(flow.previousStep(0), 0);
-assert.equal(flow.nextStep(4), 4);
-assert.equal(flow.nextStep(2), 3);
+assert.equal(flow.STEPS.length, 4);
+assert.equal(flow.resolveInitialStep("layout", "overview"), "layout");
+assert.equal(flow.resolveInitialStep("invalid", "template"), "template");
+assert.equal(flow.resolveInitialStep("", "overview", "0"), "overview");
+assert.equal(flow.resolveInitialStep("", "overview", "2"), "template");
+assert.equal(flow.resolveInitialStep("", "overview", "3"), "layout");
+assert.equal(flow.resolveInitialStep("", "overview", "4"), "output");
+assert.equal(flow.previousStep("overview"), "overview");
+assert.equal(flow.nextStep("output"), "output");
+assert.equal(flow.nextStep("template"), "layout");
 
 (async () => {
   const service = context.PromoWizardTemplateService;

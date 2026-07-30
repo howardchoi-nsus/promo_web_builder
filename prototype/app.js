@@ -1150,8 +1150,26 @@ const adminApp = createApp({
       promptTemplatesError: "",
       selectedPromptTemplateId: "",
       promptTypeFilter: "",
+      expandedPromptLineageIds: [],
+      expandedPromptWorkflowKeys: [
+        "promotion-overview",
+        "template-selection",
+        "section-layout",
+        "promotion-image",
+        "design-generator",
+        "shared-execution",
+        "other",
+      ],
+      promptArchivedVisibilityByLineage: {},
       promptSaving: false,
       promptHistories: [],
+      promptBodyTranslationKo: "",
+      promptBodyTranslationSource: "",
+      promptBodyTranslationLoading: false,
+      promptBodyTranslationError: "",
+      promptBodyTranslationTimer: null,
+      promptBodyLanguageError: "",
+      promptBodyTranslationCache: {},
       locales: [],
       localesLoading: false,
       localeMessages: [],
@@ -1199,7 +1217,10 @@ const adminApp = createApp({
       selectedWizardFormTemplateKey: "",
       expandedWizardFormTemplateSettingsKey: "",
       wizardFormTemplateDetail: null,
-      wizardFormTemplateEditor: { name: "", description: "", isDefault: false, changeNote: "" },
+      wizardFormTemplateEditor: {
+        name: "", description: "", isDefault: false, changeNote: "",
+        recommendationProfileText: "{}",
+      },
       showNewWizardFormTemplateForm: false,
       newWizardFormTemplateForm: { name: "", description: "" },
       showDuplicateWizardFormTemplateForm: false,
@@ -1260,6 +1281,20 @@ const adminApp = createApp({
         orderChangeAllowed: true,
         fixedPosition: "",
         isVisibleInWizard: true,
+        compositionScope: "template",
+        sectionRole: "content",
+        compositionPolicy: {
+          selectionPolicy: "optional",
+          allowedMarkets: [],
+          allowedPromotionPurposes: [],
+          aiEditable: true,
+          contentLocked: false,
+          layoutLocked: false,
+          duplicatePolicy: "forbidden",
+          maxInstances: 1,
+          allowedLayoutVariants: [],
+          allowedMotionPresets: [],
+        },
         aiDesign: {
           enabled: true,
           allowedLayoutVariants: ["split-left", "split-right", "centered-hero"],
@@ -1580,6 +1615,23 @@ const adminApp = createApp({
       return this.promptTemplates.filter((prompt) => prompt.type === this.promptTypeFilter);
     },
 
+    promptTemplateGroups() {
+      return window.PromoAdminPromptGroups.groupPromptTemplates(this.promptTemplates);
+    },
+
+    filteredPromptTemplateGroups() {
+      return window.PromoAdminPromptGroups.filterPromptGroups(
+        this.promptTemplateGroups,
+        this.promptTypeFilter
+      );
+    },
+
+    filteredPromptTemplateSections() {
+      return window.PromoAdminPromptGroups.groupPromptTemplateSections(
+        this.filteredPromptTemplateGroups
+      );
+    },
+
     localeNamespaces() {
       const messages = Object.values(this.localeMessagesByLocale).flat();
       return [...new Set(messages.map((message) => message.namespace).filter(Boolean))].sort();
@@ -1638,13 +1690,20 @@ const adminApp = createApp({
       return this.promptTemplates.find((prompt) => prompt.id === this.selectedPromptTemplateId) || null;
     },
 
+    selectedPromptTemplateGroup() {
+      return window.PromoAdminPromptGroups.findPromptGroup(
+        this.promptTemplateGroups,
+        this.selectedPromptTemplateId
+      );
+    },
+
     promptEditorReadOnly() {
       return this.selectedPromptTemplate?.status !== "draft";
     },
 
     selectedPromptEditorTitle() {
       if (!this.selectedPromptTemplate) return "프롬프트 편집기";
-      return `${this.promptTypeLabel(this.selectedPromptTemplate.type)} 프롬프트`;
+      return this.promptTypeLabel(this.selectedPromptTemplate.type);
     },
 
     groupedWizardFormTemplates() {
@@ -1707,7 +1766,24 @@ const adminApp = createApp({
       const groupsByKey = new Map(this.groupedWizardSections.map((group) => [group.sectionKey, group]));
       return (this.wizardFormTemplateDetail?.sections || []).flatMap((membership) => {
         const group = groupsByKey.get(membership.sectionKey);
-        return group ? [{ ...group, templateMembership: membership }] : [];
+        if (!group) return [];
+        const linkedVersion = group.versions.find((version) => version.id === membership.sectionId) || {
+          id: membership.sectionId,
+          sectionKey: membership.sectionKey,
+          name: membership.sectionName,
+          description: membership.sectionDescription,
+          version: membership.sectionVersion,
+          status: membership.sectionStatus,
+          sortOrder: membership.sortOrder,
+          fixedPosition: membership.fixedPosition,
+          orderChangeAllowed: membership.orderChangeAllowed,
+        };
+        return [{
+          ...group,
+          logicalPrimary: group.primary,
+          primary: linkedVersion,
+          templateMembership: membership,
+        }];
       });
     },
 
@@ -1801,6 +1877,9 @@ const adminApp = createApp({
       handler() {
         this.clearResolvedValidationErrors();
       },
+    },
+    promptTypeFilter() {
+      this.ensureFilteredPromptSelection();
     },
   },
 
@@ -2364,6 +2443,109 @@ const adminApp = createApp({
       return value ? JSON.stringify(value, null, 2) : "없음";
     },
 
+    promptGroupPanelId(group) {
+      return `prompt-versions-${String(group?.lineageId || "unknown").replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+    },
+
+    promptWorkflowPanelId(workflow) {
+      return `prompt-workflow-${String(workflow?.key || "other").replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+    },
+
+    promptWorkflowExpanded(workflow) {
+      return this.expandedPromptWorkflowKeys.includes(workflow?.key);
+    },
+
+    togglePromptWorkflow(workflow) {
+      const workflowKey = workflow?.key;
+      if (!workflowKey) return;
+      const expanded = this.expandedPromptWorkflowKeys.includes(workflowKey);
+      this.expandedPromptWorkflowKeys = expanded
+        ? this.expandedPromptWorkflowKeys.filter((key) => key !== workflowKey)
+        : [...this.expandedPromptWorkflowKeys, workflowKey];
+    },
+
+    expandPromptWorkflowForType(type) {
+      const promptMeta = window.PromoAdminPromptGroups.promptTypeMeta(type);
+      const workflowKey = promptMeta.group;
+      if (workflowKey && !this.expandedPromptWorkflowKeys.includes(workflowKey)) {
+        this.expandedPromptWorkflowKeys = [...this.expandedPromptWorkflowKeys, workflowKey];
+      }
+    },
+
+    promptGroupExpanded(group) {
+      return this.expandedPromptLineageIds.includes(group?.lineageId);
+    },
+
+    promptGroupContainsSelection(group) {
+      return Boolean(group?.versions?.some((prompt) => prompt.id === this.selectedPromptTemplateId));
+    },
+
+    togglePromptGroup(group) {
+      const lineageId = group?.lineageId;
+      if (!lineageId) return;
+      const expanded = this.expandedPromptLineageIds.includes(lineageId);
+      this.expandedPromptLineageIds = expanded
+        ? this.expandedPromptLineageIds.filter((id) => id !== lineageId)
+        : [...this.expandedPromptLineageIds, lineageId];
+    },
+
+    expandPromptGroupForPromptId(promptId) {
+      const group = window.PromoAdminPromptGroups.findPromptGroup(
+        this.promptTemplateGroups,
+        promptId
+      );
+      if (group) this.expandPromptWorkflowForType(group.type);
+      if (group && !this.expandedPromptLineageIds.includes(group.lineageId)) {
+        this.expandedPromptLineageIds = [...this.expandedPromptLineageIds, group.lineageId];
+      }
+    },
+
+    promptGroupArchivedVisible(group) {
+      return Boolean(this.promptArchivedVisibilityByLineage[group?.lineageId]);
+    },
+
+    togglePromptGroupArchived(group) {
+      const lineageId = group?.lineageId;
+      if (!lineageId) return;
+      this.promptArchivedVisibilityByLineage = {
+        ...this.promptArchivedVisibilityByLineage,
+        [lineageId]: !this.promptGroupArchivedVisible(group),
+      };
+    },
+
+    promptGroupVisibleVersions(group) {
+      const versions = Array.isArray(group?.versions) ? group.versions : [];
+      if (this.promptGroupArchivedVisible(group)) return versions;
+      return versions.filter((prompt) => prompt.status !== "archived");
+    },
+
+    promptGroupProviderSummary(group) {
+      const prompt = group?.active || group?.primary;
+      return [prompt?.provider, prompt?.model].filter(Boolean).join(" · ") || "모델 설정 없음";
+    },
+
+    formatPromptDate(value) {
+      if (!value) return "-";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "-";
+      return new Intl.DateTimeFormat("ko-KR", {
+        dateStyle: "short",
+        timeStyle: "short",
+      }).format(date);
+    },
+
+    ensureFilteredPromptSelection() {
+      const groups = this.filteredPromptTemplateGroups;
+      if (!groups.length) return;
+      const selectedVisible = groups.some((group) => this.promptGroupContainsSelection(group));
+      if (selectedVisible) {
+        this.expandPromptGroupForPromptId(this.selectedPromptTemplateId);
+        return;
+      }
+      const prompt = groups.find((group) => group.active)?.active || groups[0]?.primary;
+      if (prompt) this.selectPromptTemplate(prompt.id, { silent: true });
+    },
+
     async loadPromptTemplates(options = {}) {
       if (this.promptTemplatesLoading && !options.fresh) return;
       this.promptTemplatesLoading = true;
@@ -2373,13 +2555,13 @@ const adminApp = createApp({
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `프롬프트 목록 요청 오류(${response.status})`);
         this.promptTemplates = Array.isArray(result.prompts) ? result.prompts : [];
-        if (!this.selectedPromptTemplateId || !this.promptTemplates.some((prompt) => prompt.id === this.selectedPromptTemplateId)) {
-          const activeImageExecution = this.promptTemplates.find(
-            (prompt) => prompt.type === "image_execution" && prompt.status === "active"
-          );
-          const active = activeImageExecution || this.promptTemplates.find((prompt) => prompt.status === "active");
-          this.selectedPromptTemplateId = active?.id || this.promptTemplates[0]?.id || "";
-        }
+        const groups = window.PromoAdminPromptGroups.groupPromptTemplates(this.promptTemplates);
+        const selected = window.PromoAdminPromptGroups.resolvePromptSelection(
+          groups,
+          this.selectedPromptTemplateId
+        );
+        this.selectedPromptTemplateId = selected?.id || "";
+        this.expandPromptGroupForPromptId(this.selectedPromptTemplateId);
         if (this.selectedPromptTemplateId) await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: true });
       } catch (error) {
         this.promptTemplatesError = error.message;
@@ -2442,17 +2624,20 @@ const adminApp = createApp({
     },
 
     promptTypeLabel(type) {
-      return ({
-        integrated_brief: "통합 디자인 브리프",
-        image_execution: "이미지 생성",
-        lofi_draft: "LO-FI 시안",
-        final_design: "최종 디자인",
-        section_layout_planner: "섹션 레이아웃 계획",
-        multi_component_layout_planner: "다중 컴포넌트 정렬 계획",
-        section_composition_planner: "섹션 자연어 구성 계획",
-        section_background_image: "섹션 배경 이미지",
-        component_image: "컴포넌트 이미지",
-      })[type] || type || "알 수 없음";
+      return window.PromoAdminPromptGroups.promptTypeMeta(type).label;
+    },
+
+    promptTypeDescription(type) {
+      return window.PromoAdminPromptGroups.promptTypeMeta(type).description;
+    },
+
+    promptExecutionModeLabel(type) {
+      return window.PromoAdminPromptGroups.promptTypeMeta(type).executionMode;
+    },
+
+    promptWorkflowGroupLabel(type) {
+      const meta = window.PromoAdminPromptGroups.promptTypeMeta(type);
+      return window.PromoAdminPromptGroups.promptWorkflowGroupMeta(meta.group).label;
     },
 
     promptStatusLabel(status) {
@@ -2496,6 +2681,12 @@ const adminApp = createApp({
 
     async selectPromptTemplate(id, options = {}) {
       this.selectedPromptTemplateId = id;
+      this.expandPromptGroupForPromptId(id);
+      this.promptBodyTranslationKo = "";
+      this.promptBodyTranslationSource = "";
+      this.promptBodyTranslationError = "";
+      this.promptBodyTranslationLoading = false;
+      this.promptBodyLanguageError = "";
       const prompt = this.promptTemplates.find((item) => item.id === id);
       if (!prompt) return;
       try {
@@ -2575,6 +2766,10 @@ const adminApp = createApp({
           modelOptionsText: JSON.stringify(providerOptions, null, 2),
           changeNote: "",
         };
+        this.promptBodyLanguageError = this.promptBodyContainsKorean(detail.body)
+          ? "영문 원문에는 한글을 입력할 수 없습니다."
+          : "";
+        this.translatePromptBody();
         if (!options.silent) this.setStatus(`${detail.name} 프롬프트를 열었습니다`);
       } catch (error) {
         this.setStatus(`프롬프트 상세를 불러오지 못했습니다: ${error.message}`);
@@ -2596,6 +2791,104 @@ const adminApp = createApp({
         return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
       } catch (error) {
         throw new Error(`모델 상세 옵션 JSON 형식이 올바르지 않습니다: ${error.message}`);
+      }
+    },
+
+    schedulePromptBodyTranslation() {
+      if (this.promptBodyTranslationTimer) clearTimeout(this.promptBodyTranslationTimer);
+      this.promptBodyTranslationError = "";
+      this.promptBodyTranslationTimer = setTimeout(() => {
+        this.promptBodyTranslationTimer = null;
+        this.translatePromptBody();
+      }, 900);
+    },
+
+    promptBodyContainsKorean(value) {
+      return /[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(String(value || ""));
+    },
+
+    handlePromptBodyInput() {
+      this.promptBodyLanguageError = this.promptBodyContainsKorean(this.promptEditor.body)
+        ? "영문 원문에는 한글을 입력할 수 없습니다."
+        : "";
+      this.schedulePromptBodyTranslation();
+    },
+
+    async translatePromptBody(options = {}) {
+      const source = String(this.promptEditor.body || "");
+      if (!source.trim()) {
+        this.promptBodyTranslationKo = "";
+        this.promptBodyTranslationSource = "";
+        this.promptBodyTranslationError = "";
+        this.promptBodyTranslationLoading = false;
+        return;
+      }
+      if (!options.force && source === this.promptBodyTranslationSource && this.promptBodyTranslationKo) return;
+      const selectedPromptId = this.selectedPromptTemplateId;
+      const cached = this.promptBodyTranslationCache[selectedPromptId];
+      if (!options.force && cached?.source === source && cached.translation) {
+        this.promptBodyTranslationKo = cached.translation;
+        this.promptBodyTranslationSource = source;
+        this.promptBodyTranslationLoading = false;
+        return;
+      }
+      this.promptBodyTranslationLoading = true;
+      this.promptBodyTranslationError = "";
+      try {
+        const response = await fetch("/api/prompt-template-translate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: source }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(result.message || result.error || `프롬프트 번역 오류(${response.status})`);
+        }
+        if (selectedPromptId !== this.selectedPromptTemplateId || source !== this.promptEditor.body) return;
+        this.promptBodyTranslationKo = String(result.translation || "");
+        this.promptBodyTranslationSource = source;
+        this.promptBodyTranslationCache = {
+          ...this.promptBodyTranslationCache,
+          [selectedPromptId]: {
+            source,
+            translation: this.promptBodyTranslationKo,
+          },
+        };
+      } catch (error) {
+        if (selectedPromptId !== this.selectedPromptTemplateId || source !== this.promptEditor.body) return;
+        this.promptBodyTranslationKo = "";
+        this.promptBodyTranslationSource = "";
+        this.promptBodyTranslationError = error.message;
+      } finally {
+        if (selectedPromptId === this.selectedPromptTemplateId && source === this.promptEditor.body) {
+          this.promptBodyTranslationLoading = false;
+        }
+      }
+    },
+
+    async copyPromptBody() {
+      const text = String(this.promptEditor.body || "");
+      if (!text) {
+        this.setStatus("복사할 영문 프롬프트가 없습니다.");
+        return;
+      }
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          const textarea = document.createElement("textarea");
+          textarea.value = text;
+          textarea.setAttribute("readonly", "");
+          textarea.style.position = "fixed";
+          textarea.style.opacity = "0";
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand("copy");
+          textarea.remove();
+        }
+        this.setStatus("영문 프롬프트 본문을 복사했습니다.");
+      } catch (error) {
+        this.setStatus(`프롬프트 복사 실패: ${error.message}`);
       }
     },
 
@@ -2671,6 +2964,11 @@ const adminApp = createApp({
         this.setStatus("활성·검증 완료·이전 버전은 직접 수정할 수 없습니다. 새 초안을 만들어 주세요.");
         return;
       }
+      if (this.promptBodyContainsKorean(this.promptEditor.body)) {
+        this.promptBodyLanguageError = "영문 원문에는 한글을 입력할 수 없습니다.";
+        this.setStatus(this.promptBodyLanguageError);
+        return;
+      }
       this.promptSaving = true;
       try {
         const response = await fetch("/api/prompt-template", {
@@ -2693,9 +2991,8 @@ const adminApp = createApp({
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `프롬프트 저장 오류(${response.status})`);
-        await this.loadPromptTemplates({ fresh: true });
         this.selectedPromptTemplateId = result.prompt?.id || prompt.id;
-        await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: true });
+        await this.loadPromptTemplates({ fresh: true });
         this.setStatus("프롬프트 초안을 저장하고 변경 이력을 생성했습니다");
       } catch (error) {
         this.setStatus(`프롬프트 저장 실패: ${error.message}`);
@@ -2725,9 +3022,8 @@ const adminApp = createApp({
           }
           throw new Error(result.message || result.error || `프롬프트 초안 생성 오류(${response.status})`);
         }
-        await this.loadPromptTemplates({ fresh: true });
         this.selectedPromptTemplateId = result.prompt?.id || "";
-        await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: true });
+        await this.loadPromptTemplates({ fresh: true });
         this.setStatus(`v${result.prompt?.version || ""} 프롬프트 초안을 만들었습니다`);
       } catch (error) {
         this.setStatus(`프롬프트 초안 생성 실패: ${error.message}`);
@@ -2751,9 +3047,8 @@ const adminApp = createApp({
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `프롬프트 검증 오류(${response.status})`);
-        await this.loadPromptTemplates({ fresh: true });
         this.selectedPromptTemplateId = result.prompt?.id || prompt.id;
-        await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: true });
+        await this.loadPromptTemplates({ fresh: true });
         this.setStatus("프롬프트 검증을 완료했습니다. 활성화할 수 있습니다.");
       } catch (error) {
         this.setStatus(`프롬프트 검증 실패: ${error.message}`);
@@ -2777,9 +3072,8 @@ const adminApp = createApp({
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `프롬프트 활성화 오류(${response.status})`);
-        await this.loadPromptTemplates({ fresh: true });
         this.selectedPromptTemplateId = result.prompt?.id || prompt.id;
-        await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: true });
+        await this.loadPromptTemplates({ fresh: true });
         this.setStatus("활성 프롬프트로 지정했습니다");
       } catch (error) {
         this.setStatus(`활성 프롬프트 지정 실패: ${error.message}`);
@@ -2832,9 +3126,8 @@ const adminApp = createApp({
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `프롬프트 롤백 오류(${response.status})`);
-        await this.loadPromptTemplates({ fresh: true });
         this.selectedPromptTemplateId = result.prompt?.id || prompt.id;
-        await this.selectPromptTemplate(this.selectedPromptTemplateId, { silent: true });
+        await this.loadPromptTemplates({ fresh: true });
         this.setStatus(`v${result.prompt?.version || prompt.version} 프롬프트로 롤백했습니다`);
       } catch (error) {
         this.setStatus(`프롬프트 롤백 실패: ${error.message}`);
@@ -2894,6 +3187,7 @@ const adminApp = createApp({
           description: result.template.description,
           isDefault: result.template.isDefault,
           changeNote: "",
+          recommendationProfileText: JSON.stringify(result.template.recommendationProfile || {}, null, 2),
         };
         const selectedSection = this.wizardFormTemplateDetail.sections.find(
           (section) => section.id === this.selectedWizardFormTemplateSectionId
@@ -3030,10 +3324,23 @@ const adminApp = createApp({
       if (!template || template.status !== "draft" || this.wizardFormTemplateSaving) return;
       this.wizardFormTemplateSaving = true;
       try {
+        let recommendationProfile = {};
+        try {
+          recommendationProfile = JSON.parse(this.wizardFormTemplateEditor.recommendationProfileText || "{}");
+        } catch {
+          throw new Error("추천 메타데이터는 올바른 JSON 형식이어야 합니다.");
+        }
         const response = await fetch("/api/wizard-form-template", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: template.id, ...this.wizardFormTemplateEditor }),
+          body: JSON.stringify({
+            id: template.id,
+            name: this.wizardFormTemplateEditor.name,
+            description: this.wizardFormTemplateEditor.description,
+            isDefault: this.wizardFormTemplateEditor.isDefault,
+            changeNote: this.wizardFormTemplateEditor.changeNote,
+            recommendationProfile,
+          }),
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `템플릿 저장 오류(${response.status})`);
@@ -3058,7 +3365,22 @@ const adminApp = createApp({
           body: JSON.stringify({ id: template.id, changeNote: "관리자 페이지에서 템플릿을 활성화했습니다." }),
         });
         const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.message || result.error || `템플릿 활성화 오류(${response.status})`);
+        if (!response.ok) {
+          const sectionErrors = (Array.isArray(result.errors) ? result.errors : []).map((error) => {
+            const membership = this.wizardFormTemplateDetail?.sections?.find(
+              (section) => section.sectionKey === error.path
+            );
+            const sectionLabel = membership
+              ? `${membership.sectionName || membership.sectionKey} v${membership.sectionVersion || "?"} · ${this.wizardSectionStatusLabel(membership.sectionStatus)}`
+              : error.path || "Section";
+            return `${sectionLabel}: ${error.message || error.code}`;
+          });
+          throw new Error(
+            sectionErrors.length
+              ? `${result.error || "Form template validation failed"} — ${sectionErrors.join(" / ")}`
+              : result.message || result.error || `템플릿 활성화 오류(${response.status})`
+          );
+        }
         await this.loadWizardFormTemplates({ fresh: true });
         const layoutRevision = Number(result.layoutIdentity?.layoutRevision || 1);
         this.setStatus(`템플릿 v${result.template?.version || template.version} · 레이아웃 r${layoutRevision}을 활성화했습니다`);
@@ -3586,7 +3908,10 @@ const adminApp = createApp({
     async selectWizardSection(sectionKey, options = {}) {
       this.selectedWizardSectionKey = sectionKey;
       const group = this.groupedWizardSections.find((item) => item.sectionKey === sectionKey);
-      const target = group?.versions.find((version) => version.status === "draft") || group?.primary;
+      const requestedSectionId = String(options.sectionId || "").trim();
+      const target = requestedSectionId
+        ? group?.versions.find((version) => version.id === requestedSectionId)
+        : group?.versions.find((version) => version.status === "draft") || group?.primary;
       if (!target) {
         this.wizardSectionDetail = null;
         return;
@@ -3609,6 +3934,20 @@ const adminApp = createApp({
           orderChangeAllowed: result.section.orderChangeAllowed,
           fixedPosition: result.section.fixedPosition || "",
           isVisibleInWizard: result.section.isVisibleInWizard,
+          compositionScope: result.section.compositionScope || "template",
+          sectionRole: result.section.sectionRole || "content",
+          compositionPolicy: {
+            selectionPolicy: result.section.compositionPolicy?.selectionPolicy || "optional",
+            allowedMarkets: [...(result.section.compositionPolicy?.allowedMarkets || [])],
+            allowedPromotionPurposes: [...(result.section.compositionPolicy?.allowedPromotionPurposes || [])],
+            aiEditable: result.section.compositionPolicy?.aiEditable !== false,
+            contentLocked: result.section.compositionPolicy?.contentLocked === true,
+            layoutLocked: result.section.compositionPolicy?.layoutLocked === true,
+            duplicatePolicy: result.section.compositionPolicy?.duplicatePolicy === "limited" ? "limited" : "forbidden",
+            maxInstances: Number(result.section.compositionPolicy?.maxInstances || 1),
+            allowedLayoutVariants: [...(result.section.compositionPolicy?.allowedLayoutVariants || [])],
+            allowedMotionPresets: [...(result.section.compositionPolicy?.allowedMotionPresets || [])],
+          },
           aiDesign: {
             enabled: result.section.aiDesign?.enabled !== false,
             allowedLayoutVariants: Array.isArray(result.section.aiDesign?.allowedLayoutVariants)

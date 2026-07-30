@@ -1,0 +1,197 @@
+.ai-builder-shell {
+  min-height: calc(100vh - 64px);
+  padding: 32px;
+  background: var(--app-background, #f4f6f5);
+  color: var(--app-text, #17201c);
+}
+
+.ai-builder-card,
+.ai-mode-selector,
+.ai-builder-result {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  padding: 28px;
+  border: 1px solid var(--app-border, #d5dcd8);
+  border-radius: var(--app-radius-panel, 12px);
+  background: var(--app-surface, #fff);
+}
+
+.ai-mode-selector {
+  margin-top: min(12vh, 96px);
+}
+
+.ai-builder-eyebrow {
+  margin: 0 0 8px;
+  color: var(--app-accent, #176b4d);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.ai-builder-card h1,
+.ai-mode-selector h1 {
+  margin: 0 0 12px;
+  font-size: clamp(28px, 4vw, 44px);
+}
+
+.ai-mode-grid,
+.ai-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.ai-mode-grid button {
+  display: grid;
+  min-height: 180px;
+  gap: 12px;
+  align-content: center;
+  padding: 24px;
+  border: 1px solid var(--app-border, #d5dcd8);
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ai-mode-grid button:hover,
+.ai-mode-grid button:focus-visible {
+  border-color: var(--app-accent, #176b4d);
+  outline: 2px solid color-mix(in srgb, var(--app-accent, #176b4d) 20%, transparent);
+}
+
+.ai-mode-grid strong {
+  font-size: 22px;
+}
+
+.ai-builder-field {
+  display: grid;
+  gap: 8px;
+  margin-top: 20px;
+  font-weight: 700;
+}
+
+.ai-builder-field input,
+.ai-builder-field textarea,
+.ai-operation-form textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--app-border, #cbd4cf);
+  border-radius: 8px;
+  background: var(--app-input, #fff);
+  color: inherit;
+  font: inherit;
+  resize: vertical;
+}
+
+.ai-builder-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.ai-builder-primary,
+.ai-builder-secondary {
+  min-height: 42px;
+  padding: 0 18px;
+  border-radius: 8px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.ai-builder-primary {
+  border: 1px solid var(--app-accent, #176b4d);
+  background: var(--app-accent, #176b4d);
+  color: #fff;
+}
+
+.ai-builder-secondary {
+  border: 1px solid var(--app-border, #cbd4cf);
+  background: transparent;
+  color: inherit;
+}
+
+.ai-builder-primary:disabled {
+  cursor: wait;
+  opacity: .55;
+}
+
+.ai-composition-progress {
+  margin-top: min(12vh, 96px);
+  text-align: center;
+}
+
+.ai-spinner {
+  display: inline-block;
+  width: 36px;
+  height: 36px;
+  margin-bottom: 20px;
+  border: 3px solid var(--app-border, #d5dcd8);
+  border-top-color: var(--app-accent, #176b4d);
+  border-radius: 50%;
+  animation: ai-builder-spin .8s linear infinite;
+}
+
+.ai-builder-result {
+  padding: 0;
+  overflow: hidden;
+}
+
+.ai-builder-result__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--app-border, #d5dcd8);
+}
+
+.ai-builder-preview {
+  max-height: calc(100vh - 190px);
+  overflow: auto;
+}
+
+.ai-builder-error {
+  display: flex;
+  width: min(1120px, 100%);
+  margin: 0 auto 16px;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 16px;
+  border: 1px solid var(--app-danger-line, #efb5b5);
+  border-radius: 8px;
+  background: var(--app-danger-soft, #fff0f0);
+  color: var(--app-danger-ink, #8b1f1f);
+}
+
+.ai-builder-error button {
+  margin-left: auto;
+}
+
+.ai-operation-form {
+  position: fixed;
+  z-index: 100;
+  right: 24px;
+  bottom: 24px;
+  width: min(560px, calc(100vw - 48px));
+  box-shadow: 0 24px 64px rgb(0 0 0 / 18%);
+}
+
+@keyframes ai-builder-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 760px) {
+  .ai-builder-shell { padding: 16px; }
+  .ai-mode-grid,
+  .ai-overview-grid { grid-template-columns: 1fr; }
+  .ai-builder-result__toolbar { align-items: flex-start; flex-direction: column; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-spinner { animation-duration: 2s; }
+}

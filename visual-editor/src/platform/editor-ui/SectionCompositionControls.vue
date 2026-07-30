@@ -4,6 +4,8 @@ defineProps({
   generateBackgroundImage: { type: Boolean, default: false },
   imageGuidance: { type: String, default: "" },
   fadeMode: { type: String, default: "none" },
+  keyVisualTextMode: { type: String, default: "none" },
+  keyVisualText: { type: String, default: "" },
   planning: { type: Boolean, default: false },
   applying: { type: Boolean, default: false },
   error: { type: String, default: "" },
@@ -12,7 +14,8 @@ defineProps({
 
 const emit = defineEmits([
   "update:instruction", "update:generate-background-image", "update:image-guidance",
-  "update:fade-mode", "request-plan", "apply", "dismiss",
+  "update:fade-mode", "update:key-visual-text-mode", "update:key-visual-text",
+  "request-plan", "apply", "dismiss",
 ]);
 </script>
 
@@ -34,23 +37,44 @@ const emit = defineEmits([
         @input="emit('update:instruction', $event.target.value)"
       ></textarea>
     </label>
-    <label class="toggle-field">
+    <label class="app-checkbox toggle-field">
       <input
         type="checkbox"
         :checked="generateBackgroundImage"
         @change="emit('update:generate-background-image', $event.target.checked)"
       />
-      <span>섹션 배경 이미지도 생성</span>
+      <span>섹션 키비주얼도 생성</span>
     </label>
     <template v-if="generateBackgroundImage">
       <label>
-        <span>배경 이미지 추가 지침</span>
+        <span>키비주얼 추가 지침</span>
         <textarea
           :value="imageGuidance"
           rows="2"
           maxlength="1200"
           @input="emit('update:image-guidance', $event.target.value)"
         ></textarea>
+      </label>
+      <label>
+        <span>키비주얼 텍스트</span>
+        <select
+          :value="keyVisualTextMode"
+          @change="emit('update:key-visual-text-mode', $event.target.value)"
+        >
+          <option value="none">텍스트 없음</option>
+          <option value="explicit">승인 문구 사용</option>
+        </select>
+      </label>
+      <label v-if="keyVisualTextMode === 'explicit'">
+        <span>승인 문구</span>
+        <input
+          :value="keyVisualText"
+          type="text"
+          maxlength="40"
+          placeholder="예: SUMMER DROP"
+          @input="emit('update:key-visual-text', $event.target.value)"
+        />
+        <small>메인 타이틀·리드·설명·CTA와 다른 문구만 사용할 수 있습니다.</small>
       </label>
       <label>
         <span>페이드</span>
@@ -66,7 +90,7 @@ const emit = defineEmits([
     <button
       type="button"
       class="section-composition-request"
-      :disabled="planning || applying || instruction.trim().length < 3"
+      :disabled="planning || applying || instruction.trim().length < 3 || (generateBackgroundImage && keyVisualTextMode === 'explicit' && !keyVisualText.trim())"
       @click="emit('request-plan')"
     >{{ planning ? "구성 제안 생성 중…" : "구성 제안" }}</button>
 
@@ -76,7 +100,7 @@ const emit = defineEmits([
       <dl>
         <div><dt>콘텐츠 변경</dt><dd>{{ proposal.contentChanges?.length || 0 }}개</dd></div>
         <div><dt>토큰 적용</dt><dd>{{ proposal.tokenBindings?.length || 0 }}개</dd></div>
-        <div><dt>배경 생성</dt><dd>{{ proposal.backgroundImage?.requested ? "포함" : "없음" }}</dd></div>
+        <div><dt>키비주얼 생성</dt><dd>{{ proposal.backgroundImage?.requested ? "포함" : "없음" }}</dd></div>
       </dl>
       <ul v-if="proposal.contentChanges?.length">
         <li v-for="change in proposal.contentChanges" :key="`${change.itemKey}.${change.fieldKey || ''}`">

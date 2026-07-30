@@ -10,8 +10,10 @@ module.exports = async function handler(req, res) {
     const templates = await fetchTemplates(getSql(), { activeOnly: true });
     return res.status(200).json({
       ok: true,
-      templates: templates.map(({ id, templateKey, name, description, version, isDefault, updatedAt }) => (
-        { id, templateKey, name, description, version, isDefault, updatedAt }
+      templates: templates.map(({
+        id, templateKey, name, description, version, isDefault, updatedAt, recommendationProfile,
+      }) => (
+        { id, templateKey, name, description, version, isDefault, updatedAt, recommendationProfile }
       )),
     });
   } catch (error) {

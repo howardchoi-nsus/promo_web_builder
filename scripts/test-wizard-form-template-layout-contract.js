@@ -6,6 +6,7 @@ const root = path.resolve(__dirname, "..");
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 
 const migration = read("db/migrations/023_wizard_form_template_layouts.sql");
+const defaultContentMigration = read("db/migrations/042_template_default_content.sql");
 const store = read("api/_wizard-form-template-layout-store.js");
 const api = read("api/wizard-form-template-layout.js");
 const publicApi = read("api/wizard-form-template-public.js");
@@ -22,6 +23,10 @@ const promoBuilderAdapter = read("visual-editor/src/platform/adapters/promo-buil
 const layoutStore = require("../api/_wizard-form-template-layout-store");
 
 assert.match(migration, /create table if not exists wizard_form_template_layouts/);
+assert.match(defaultContentMigration, /add column if not exists default_content jsonb/);
+assert.match(store, /normalizeDefaultContent/);
+assert.match(api, /default_content =/);
+assert.match(publicApi, /defaultContent:\s*layout\.defaultContent/);
 assert.match(migration, /wizard_form_template_layout_histories/);
 assert.match(migration, /wizard_layout_usage_events/);
 assert.match(store, /validateLayoutSpec/);

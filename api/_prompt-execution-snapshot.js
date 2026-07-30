@@ -87,6 +87,11 @@ async function createPromptExecutionSnapshot(sql, type, variables = {}) {
     "section_layout_planner",
     "multi_component_layout_planner",
     "section_composition_planner",
+    "promo_overview_parser",
+    "promo_template_recommender",
+    "promo_template_composer",
+    "promo_page_composer",
+    "promo_composition_editor",
   ].includes(type)) {
     const instructions = controlPlane.harnessConfig.additionalInstructions || [];
     if (instructions.length) renderedPrompt = `${renderedPrompt.trim()}\n${instructions.join("\n")}`;
@@ -185,7 +190,12 @@ function validateStageModelConfig(type, prompt) {
   }
   if (type === "section_layout_planner"
     || type === "multi_component_layout_planner"
-    || type === "section_composition_planner") {
+    || type === "section_composition_planner"
+    || type === "promo_overview_parser"
+    || type === "promo_template_recommender"
+    || type === "promo_template_composer"
+    || type === "promo_page_composer"
+    || type === "promo_composition_editor") {
     if (provider !== "openai") fail(`${type} currently supports the openai provider only`);
     if (responseFormat !== "json_object") fail(`${type} responseFormat must be json_object`);
     return true;

@@ -377,7 +377,7 @@ export default {
               <option value="">{{ t("admin.designToken.allCategories") }}</option>
               <option v-for="category in categories" :key="category" :value="category">{{ category }}</option>
             </select>
-            <label class="design-token-check"><input v-model="changedOnly" type="checkbox"> {{ t("admin.designToken.changedOnly") }}</label>
+            <label class="app-checkbox design-token-check"><input v-model="changedOnly" type="checkbox"> {{ t("admin.designToken.changedOnly") }}</label>
             <button class="tiny-button" type="button" :disabled="!isDirty" @click="restoreAll">{{ t("common.action.reset") }}</button>
           </div>
 

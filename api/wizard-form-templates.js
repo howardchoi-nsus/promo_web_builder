@@ -1,7 +1,18 @@
 const {
   getSql, parseBody, createTemplateKey, fetchTemplates, fetchTemplateRow, toFormTemplate,
+  normalizeRecommendationProfile, recommendationProfileColumnAvailable,
 } = require("./_wizard-form-templates-store");
 const { ensureLayout, cloneLayout } = require("./_wizard-form-template-layout-store");
+
+async function saveRecommendationProfile(sql, templateId, profile) {
+  if (!await recommendationProfileColumnAvailable(sql)) return;
+  const normalized = normalizeRecommendationProfile(profile);
+  await sql`
+    update wizard_form_templates
+    set recommendation_profile = ${JSON.stringify(normalized)}::jsonb, updated_at = now()
+    where id = ${templateId}::uuid
+  `;
+}
 
 module.exports = async function handler(req, res) {
   try {
@@ -37,7 +48,8 @@ async function createTemplate(req, res) {
       select id::text from wizard_form_templates where template_key = ${templateKey} limit 1
     `;
     if (duplicateKeyRows.length) return res.status(409).json({ error: "templateKey already exists" });
-    if (!await fetchTemplateRow(sql, duplicateSourceId)) {
+    const sourceTemplate = await fetchTemplateRow(sql, duplicateSourceId);
+    if (!sourceTemplate) {
       return res.status(404).json({ error: "Source form template not found" });
     }
     const rows = await sql`
@@ -47,13 +59,15 @@ async function createTemplate(req, res) {
       )::text as id
     `;
     const row = await fetchTemplateRow(sql, rows[0]?.id);
+    await saveRecommendationProfile(sql, row.id, sourceTemplate.recommendation_profile);
     await cloneLayout(sql, duplicateSourceId, row.id);
-    return res.status(201).json({ ok: true, template: toFormTemplate(row) });
+    return res.status(201).json({ ok: true, template: toFormTemplate(await fetchTemplateRow(sql, row.id)) });
   }
 
   const sourceId = String(body.id || "").trim();
   if (sourceId) {
-    if (!await fetchTemplateRow(sql, sourceId)) {
+    const sourceTemplate = await fetchTemplateRow(sql, sourceId);
+    if (!sourceTemplate) {
       return res.status(404).json({ error: "Source form template not found" });
     }
     const rows = await sql`
@@ -68,8 +82,9 @@ async function createTemplate(req, res) {
       where id = ${rows[0]?.id}::uuid
     `;
     const row = await fetchTemplateRow(sql, rows[0]?.id);
+    await saveRecommendationProfile(sql, row.id, sourceTemplate.recommendation_profile);
     await cloneLayout(sql, sourceId, row.id);
-    return res.status(201).json({ ok: true, template: toFormTemplate(row) });
+    return res.status(201).json({ ok: true, template: toFormTemplate(await fetchTemplateRow(sql, row.id)) });
   }
 
   const templateKey = String(body.templateKey || "").trim() || createTemplateKey();
@@ -92,5 +107,6 @@ async function createTemplate(req, res) {
       is_default, change_note, design_token_set_version_id::text, archived_at, created_at, updated_at
   `;
   await ensureLayout(sql, rows[0].id);
-  return res.status(201).json({ ok: true, template: toFormTemplate(rows[0]) });
+  await saveRecommendationProfile(sql, rows[0].id, body.recommendationProfile);
+  return res.status(201).json({ ok: true, template: toFormTemplate(await fetchTemplateRow(sql, rows[0].id)) });
 }

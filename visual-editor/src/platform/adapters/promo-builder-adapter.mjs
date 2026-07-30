@@ -62,6 +62,7 @@ export function createPromoBuilderAdapter({
 
     requestSectionAiAction({
       sectionKey, action, targetType, targetItemKey, targetFieldKey, imageGuidance, imageSafeArea,
+      keyVisualTextMode, keyVisualText,
     }) {
       hostWindow.parent.postMessage({
         type: PromoBuilderMessageType.SECTION_AI_ACTION,
@@ -72,6 +73,8 @@ export function createPromoBuilderAdapter({
         targetFieldKey: String(targetFieldKey || "").trim() || null,
         imageGuidance: String(imageGuidance || "").trim() || null,
         imageSafeArea: String(imageSafeArea || "").trim() || null,
+        keyVisualTextMode: String(keyVisualTextMode || "none").trim(),
+        keyVisualText: String(keyVisualText || "").trim() || null,
       }, allowedOrigin);
     },
 

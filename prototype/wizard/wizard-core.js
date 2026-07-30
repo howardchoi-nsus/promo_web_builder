@@ -35,7 +35,14 @@
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new Error(payload.message || payload.error || payload.workerTrigger?.error || `HTTP ${response.status}`);
+      const error = new Error(payload.message || payload.error || payload.workerTrigger?.error || `HTTP ${response.status}`);
+      error.status = response.status;
+      error.statusCode = response.status;
+      error.code = payload.code || "";
+      error.retryable = payload.retryable === true;
+      error.retryAfterMs = Math.max(0, Number(payload.retryAfterMs || 0));
+      error.payload = payload;
+      throw error;
     }
     return payload;
   }

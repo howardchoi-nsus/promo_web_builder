@@ -72,9 +72,66 @@
     };
   }
 
+  function createCompositionSnapshot({
+    documentId = "",
+    documentRevision = 0,
+    bridgeRevision = 0,
+    compositionMeta = {},
+    appearance = {},
+    provenance = {},
+    motionSpec = {},
+    validation = {},
+    ...layout
+  }) {
+    const snapshot = createLayoutSnapshot(layout);
+    const contract = global.PromoEditorSnapshotContract;
+    if (!contract?.upgradeToCompositionContractV2) {
+      throw new Error("PromoEditorSnapshotContract v2 is required");
+    }
+    return contract.upgradeToCompositionContractV2(snapshot, {
+      documentId,
+      documentRevision,
+      bridgeRevision,
+      compositionMeta: {
+        compositionId: "",
+        documentId,
+        mode: "ai-base-preset",
+        overviewFingerprint: "",
+        candidateFingerprint: "",
+        proposalId: "",
+        sourceTemplateId: String(layout.formTemplate?.id || ""),
+        sourceTemplateVersion: Number(layout.formTemplate?.version || 1),
+        promptTemplateVersionId: "",
+        model: "",
+        reasoningSummary: "",
+        ...compositionMeta,
+      },
+      appearance: {
+        designTokenSetVersionId: String(
+          layout.formTemplate?.designTokenSetVersionId || "",
+        ),
+        motionEnabled: false,
+        ...appearance,
+      },
+      provenance,
+      motionSpec: {
+        sections: {},
+        items: {},
+        ...motionSpec,
+      },
+      validation: {
+        ok: true,
+        errors: [],
+        warnings: [],
+        ...validation,
+      },
+    });
+  }
+
   global.PromoWizardStorage = Object.freeze({
     loadWizardContent,
     persistWizardContent,
     createLayoutSnapshot,
+    createCompositionSnapshot,
   });
 })(globalThis);
