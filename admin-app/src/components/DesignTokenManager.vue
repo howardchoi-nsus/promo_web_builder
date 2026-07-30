@@ -540,7 +540,7 @@ export default {
                 v-if="selectedSet.status === 'inactive'"
                 class="tiny-button danger"
                 type="button"
-                :disabled="saving || usage.templates.length || usage.aiRuns.active"
+                :disabled="saving"
                 @click="archiveSet"
               >{{ t("common.action.delete") }}</button>
             </div>

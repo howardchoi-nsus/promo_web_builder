@@ -8124,7 +8124,7 @@ function Zg(e, t, n, r, i, a) {
 						key: 3,
 						class: "tiny-button danger",
 						type: "button",
-						disabled: i.saving || i.usage.templates.length || i.usage.aiRuns.active,
+						disabled: i.saving,
 						onClick: t[22] ||= (...e) => a.archiveSet && a.archiveSet(...e)
 					}, N(a.t("common.action.delete")), 9, qg)) : W("", !0)
 				]),
@@ -8158,7 +8158,7 @@ function Zg(e, t, n, r, i, a) {
 		])
 	]);
 }
-var Qg = /*#__PURE__*/ Ch(qh, [["render", Zg], ["__scopeId", "data-v-78dfd2b8"]]);
+var Qg = /*#__PURE__*/ Ch(qh, [["render", Zg], ["__scopeId", "data-v-e204417f"]]);
 Object.freeze({
 	active: 0,
 	validated: 1,
