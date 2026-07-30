@@ -20,6 +20,11 @@ assert.match(store, /normalizeTokenEntries/);
 assert.match(store, /SAFE_CSS_PROPERTIES/);
 assert.match(store, /fetchManagedTokenSets/);
 assert.match(store, /fetchTokenSetUsage/);
+assert.match(store, /'generating_assets', 'validating_assets', 'applying'/);
+assert.doesNotMatch(
+  store,
+  /count\(\*\) filter[\s\S]*?'ready'[\s\S]*?\)::integer as active/,
+);
 assert.match(store, /count\(\*\) filter \(where run\.status in/);
 assert.doesNotMatch(store, /count\(\*\) filter \(where status in/);
 assert.match(store, /isDarkOnlyTokenSet/);

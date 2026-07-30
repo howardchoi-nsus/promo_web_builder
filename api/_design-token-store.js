@@ -308,7 +308,7 @@ async function fetchTokenSetUsage(sql, tokenSetId) {
       count(*)::integer as total,
       count(*) filter (where run.status in (
         'queued', 'analyzing_content', 'generating_layout', 'validating_layout',
-        'generating_assets', 'validating_assets', 'ready', 'applying'
+        'generating_assets', 'validating_assets', 'applying'
       ))::integer as active
     from promo_section_design_runs run
     join promo_design_token_set_versions version on version.id = run.token_set_version_id
