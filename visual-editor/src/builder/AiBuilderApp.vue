@@ -14,7 +14,6 @@ import {
   createCompositionProposal,
   ensureBuilderSession,
   loadCompositionProposal,
-  loadBuilderDocument,
   loadBuilderCapabilities,
   recordBuilderEvent,
   rollbackComposition,
@@ -91,18 +90,12 @@ async function pollProposal(proposalId) {
   throw Object.assign(new Error("구성 생성 대기 시간이 초과되었습니다."), { code: "POLL_TIMEOUT" });
 }
 
-async function refreshAssetsUntilSettled() {
-  for (let count = 0; count < 200; count += 1) {
-    const requests = store.snapshot?.assets?.requests || [];
-    if (!requests.some((request) => ["pending", "queued", "processing"].includes(request.status))) return;
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    try {
-      const loaded = await loadBuilderDocument(store.documentId);
-      if (loaded.snapshot) store.snapshot = loaded.snapshot;
-    } catch {
-      return;
-    }
-  }
+function openVisualEditor() {
+  const url = new URL("/prototype/visual-editor.html", window.location.origin);
+  url.searchParams.set("mode", "ai-document");
+  url.searchParams.set("builderDocumentId", store.documentId);
+  url.searchParams.set("revision", String(store.documentRevision));
+  window.location.assign(url);
 }
 
 async function compose() {
@@ -139,7 +132,6 @@ async function compose() {
     store.assetJobs = Object.fromEntries((applied.assetJobs || []).map((job) => [job.id, job]));
     store.warning = applied.assetWarning || applied.warnings?.[0] || null;
     store.stage = "render_ready";
-    refreshAssetsUntilSettled();
     recordBuilderEvent({
       eventName: "composition_applied",
       documentId: store.documentId,
@@ -147,6 +139,7 @@ async function compose() {
       durationMs: performance.now() - startedAt,
       metadata: { assetJobCount: Object.keys(store.assetJobs).length },
     });
+    openVisualEditor();
   } catch (error) {
     setBuilderError(store, error);
   }

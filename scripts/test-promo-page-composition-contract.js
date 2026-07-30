@@ -13,7 +13,12 @@ const candidates = {
   tokenSets: [{
     tokenSetId: "tokens",
     tokenSetVersionId: "tokens-v1",
-    runtimeValues: { "--app-background": "#000000", "--app-text": "#ffffff" },
+    runtimeValues: {
+      "--app-bg": "#000000",
+      "--app-ink": "#ffffff",
+      "--promo-font-size-main-title": "68px",
+      "--app-font-weight-title": "950",
+    },
   }],
   motionPresets: [{
     presetKey: "fade-up",
@@ -106,6 +111,13 @@ const sectionKey = snapshot.content.sectionOrder[0];
 const itemKey = snapshot.content.sectionSnapshot[0].items[0].itemKey;
 assert.equal(snapshot.content.sectionInputs[sectionKey][itemKey], "Summer promotion");
 assert.equal(snapshot.motionSpec.sections[sectionKey].presetVersionId, "motion-v1");
+assert.equal(snapshot.designSpec.theme.backgroundColor, "#000000");
+assert.equal(snapshot.designSpec.theme.textColor, "#ffffff");
+assert.deepEqual(snapshot.designSpec.itemStyles[`${sectionKey}.${itemKey}`], {
+  colorToken: "--app-ink",
+  fontSizeToken: "--promo-font-size-main-title",
+  fontWeightToken: "--app-font-weight-title",
+});
 
 assert.throws(() => validatePageCompositionProposal({
   ...result,

@@ -231,6 +231,60 @@ function boundValue(field, binding, overview) {
   return String(value || "");
 }
 
+function firstAvailableToken(tokenValues, candidates) {
+  return candidates.find((tokenKey) => tokenValues[tokenKey]) || "";
+}
+
+function defaultItemTokenStyle(item, tokenValues = {}) {
+  const fields = Array.isArray(item?.fields) && item.fields.length ? item.fields : [item];
+  const identity = fields.map((field) => [
+    field?.fieldKey,
+    field?.itemKey,
+    field?.name,
+    field?.textType,
+    field?.fieldKind,
+  ].filter(Boolean).join(" ")).join(" ").toLowerCase();
+  const isCta = fields.some((field) => field?.fieldKind === "cta");
+  const isLead = /\b(lead|eyebrow|kicker|overline)\b/.test(identity);
+  const isSubtitle = /\b(subtitle|subline|description|body|remark|copy)\b/.test(identity);
+  const isTitle = !isLead && !isSubtitle && /\b(title|headline|heading)\b/.test(identity);
+  const colorToken = firstAvailableToken(tokenValues, isLead
+    ? ["--app-accent", "--app-ink"]
+    : isCta
+      ? ["--app-on-accent", "--app-ink"]
+      : isSubtitle
+        ? ["--app-ink-soft", "--app-ink"]
+        : ["--app-ink", "--app-text"]);
+  const fontSizeToken = firstAvailableToken(tokenValues, isTitle
+    ? ["--promo-font-size-main-title", "--promo-title-size", "--app-font-size-heading"]
+    : isLead
+      ? ["--promo-font-size-lead-title", "--app-font-size-heading"]
+      : isSubtitle
+        ? ["--promo-font-size-subtitle", "--app-font-size-body"]
+        : ["--app-font-size-body"]);
+  const fontWeightToken = firstAvailableToken(tokenValues, isTitle
+    ? ["--app-font-weight-title", "--app-font-weight-heading", "--app-font-weight-strong"]
+    : isLead
+      ? ["--app-font-weight-heading", "--app-font-weight-strong"]
+      : isCta
+        ? ["--app-font-weight-strong", "--app-font-weight-label"]
+        : ["--app-font-weight-label"]);
+  return {
+    ...(colorToken ? { colorToken } : {}),
+    ...(fontSizeToken ? { fontSizeToken } : {}),
+    ...(fontWeightToken ? { fontWeightToken } : {}),
+  };
+}
+
+function buildDefaultItemStyles(sections, tokenValues = {}) {
+  return Object.fromEntries((sections || []).flatMap((section) => (
+    (section.items || []).map((item) => [
+      `${section.sectionKey}.${item.itemKey}`,
+      defaultItemTokenStyle(item, tokenValues),
+    ])
+  )).filter(([, style]) => Object.keys(style).length));
+}
+
 function normalizePageComposition({
   validated,
   overview,
@@ -391,16 +445,18 @@ function normalizePageComposition({
       contractVersion: 2,
       specKey: "ai-composition",
       theme: {
-        backgroundColor: tokenValues["--app-background"] || "#f5f7fb",
-        textColor: tokenValues["--app-text"] || "#172033",
+        backgroundColor: tokenValues["--app-bg"] || tokenValues["--app-surface"] || "#f5f7fb",
+        textColor: tokenValues["--app-ink"] || tokenValues["--app-text"] || "#172033",
         accentColor: tokenValues["--app-accent"] || "#156b5b",
         ctaColor: tokenValues["--app-cta-background"] || tokenValues["--app-accent"] || "#156b5b",
         ctaShape: "round",
         ctaVariant: "fill",
-        fontFamily: tokenValues["--app-font-family"] || "Inter, Pretendard, sans-serif",
+        fontFamily: tokenValues["--app-font-body"]
+          || tokenValues["--app-font-family"]
+          || "Inter, Pretendard, sans-serif",
       },
       responsive: { contentMaxWidth: 1280, contentMinWidth: 1140, mobileBreakpoint: 720 },
-      itemStyles: {},
+      itemStyles: buildDefaultItemStyles(sectionSnapshot, tokenValues),
       sectionStyles,
       visibility: { items: itemVisibility, fields: fieldVisibility },
     },
@@ -415,4 +471,5 @@ module.exports = {
   pageCompositionSchema,
   validatePageCompositionProposal,
   normalizePageComposition,
+  buildDefaultItemStyles,
 };

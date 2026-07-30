@@ -6,6 +6,7 @@ import { createEditorContext } from "./editor-context.mjs";
 import { normalizeLayoutSpec, validateLayoutSpec } from "./layout-utils.mjs";
 import { geometryToItemStylePatches, resolveSafeMultiLayoutOperation } from "./multi-layout.mjs";
 import { createAdminTemplateAdapter } from "./platform/adapters/admin-template-adapter.mjs";
+import { createAiDocumentAdapter } from "./platform/adapters/ai-document-adapter.mjs";
 import {
   PromoBuilderMessageType,
   createPromoBuilderAdapter,
@@ -56,6 +57,11 @@ const layoutIdentity = ref(null);
 const layoutChangeNote = ref("");
 const layoutSaving = ref(false);
 const layoutSaveMessage = ref("");
+const aiDocumentSnapshot = ref(null);
+const aiDocumentId = ref("");
+const aiDocumentRevision = ref(0);
+const aiDocumentSaving = ref(false);
+const aiDocumentSaveMessage = ref("");
 const designTokenSets = ref([]);
 const previewDesignTokenVersionId = ref("");
 const externalSnapshotReady = ref(false);
@@ -83,17 +89,20 @@ const editorCore = createEditorStore({
   content: {},
 });
 const adminTemplateAdapter = createAdminTemplateAdapter();
+const aiDocumentAdapter = createAiDocumentAdapter();
 const promoBuilderAdapter = createPromoBuilderAdapter();
 const outputAdapter = createOutputAdapter({ storageKey: SNAPSHOT_STORAGE_KEY });
 let applyingExternalSnapshot = false;
 let lastExternalSnapshotRevision = 0;
 let disconnectPromoBuilder = null;
 let compositionRequestSequence = 0;
+let aiDocumentPollingCancelled = false;
 
 const wizardSource = new URLSearchParams(window.location.search).get("source") || "";
 const editorContext = computed(() => createEditorContext(props.mode, wizardSource));
 const capabilities = computed(() => editorContext.value.capabilities);
 const isAdminLayoutMode = computed(() => editorContext.value.isAdminLayout);
+const isAiDocumentMode = computed(() => editorContext.value.isAiDocument);
 const isWizardLayoutMode = computed(() => editorContext.value.isWizardLayout);
 const isCreatePromoWizardMode = computed(() => editorContext.value.isCreatePromo);
 const isBuilderWorkspaceMode = computed(() => editorContext.value.isBuilderWorkspace);
@@ -108,13 +117,37 @@ const selectedValue = computed({
   get: () => sectionInputs.value?.[selectedSection.value?.sectionKey]?.[selectedItem.value?.itemKey],
   set: (value) => updateSelectedValue(value),
 });
-const editorSnapshot = computed(() => template.value ? createSnapshot({
-  template: template.value,
-  configRevision: configRevision.value,
-  sections: sections.value,
-  sectionInputs: sectionInputs.value,
-  designSpec: designSpec.value,
-}) : null);
+const editorSnapshot = computed(() => {
+  if (!template.value) return null;
+  if (isAiDocumentMode.value && aiDocumentSnapshot.value) {
+    return {
+      ...aiDocumentSnapshot.value,
+      documentRevision: aiDocumentRevision.value,
+      content: {
+        ...aiDocumentSnapshot.value.content,
+        formTemplate: { ...aiDocumentSnapshot.value.content.formTemplate, ...template.value },
+        sectionSnapshot: JSON.parse(JSON.stringify(sections.value)),
+        sectionInputs: JSON.parse(JSON.stringify(sectionInputs.value)),
+        sectionOrder: aiDocumentSnapshot.value.content?.sectionOrder
+          || sections.value.map((section) => section.sectionKey),
+      },
+      designSpec: JSON.parse(JSON.stringify(designSpec.value)),
+      assets: JSON.parse(JSON.stringify(
+        aiDocumentSnapshot.value.assets || { contractVersion: 1, items: {}, requests: [] },
+      )),
+      motionSpec: JSON.parse(JSON.stringify(
+        aiDocumentSnapshot.value.motionSpec || { sections: {}, items: {} },
+      )),
+    };
+  }
+  return createSnapshot({
+    template: template.value,
+    configRevision: configRevision.value,
+    sections: sections.value,
+    sectionInputs: sectionInputs.value,
+    designSpec: designSpec.value,
+  });
+});
 const rendererSnapshot = computed(() => props.mode === "output" ? outputSnapshot.value : editorSnapshot.value);
 const templateIdentityLabel = computed(() => {
   if (!template.value) return "템플릿 없음";
@@ -775,12 +808,13 @@ function requestImageRemoval(field = null) {
 }
 
 function updateDesignToken(versionId) {
-  if (!isAdminLayoutMode.value || !template.value?.id) return;
+  if ((!isAdminLayoutMode.value && !isAiDocumentMode.value) || !template.value?.id) return;
   const tokenSet = designTokenSets.value.find((candidate) => candidate.versionId === versionId);
   if (!tokenSet) return;
   previewDesignTokenVersionId.value = tokenSet.versionId;
   template.value = {
     ...template.value,
+    designTokenSetVersionId: tokenSet.versionId,
     designTokens: {
       setKey: tokenSet.setKey,
       version: tokenSet.version,
@@ -789,7 +823,11 @@ function updateDesignToken(versionId) {
       sourceValues: tokenSet.sourceValues || [],
     },
   };
-  layoutSaveMessage.value = `${tokenSet.name} v${tokenSet.version} 토큰으로 미리보는 중입니다. 템플릿에는 저장되지 않습니다.`;
+  if (isAiDocumentMode.value) {
+    aiDocumentSaveMessage.value = `${tokenSet.name} v${tokenSet.version} 토큰을 적용했습니다. 저장하면 AI 문서와 Web Output에 반영됩니다.`;
+  } else {
+    layoutSaveMessage.value = `${tokenSet.name} v${tokenSet.version} 토큰으로 미리보는 중입니다. 템플릿에는 저장되지 않습니다.`;
+  }
 }
 
 const selectedStyleKey = computed(() => (
@@ -961,8 +999,128 @@ async function loadEditor() {
   }
 }
 
-function openOutput() {
+async function loadAiDocument() {
+  const documentId = new URLSearchParams(window.location.search).get("builderDocumentId");
+  if (!documentId) {
+    error.value = "builderDocumentId가 필요합니다.";
+    loading.value = false;
+    return;
+  }
+  try {
+    const [result, availableTokenSets] = await Promise.all([
+      aiDocumentAdapter.load(documentId),
+      aiDocumentAdapter.loadDesignTokenSets(),
+    ]);
+    if (!result.snapshot) throw new Error("AI 프로모션 구성이 아직 준비되지 않았습니다.");
+    aiDocumentId.value = documentId;
+    aiDocumentRevision.value = Number(result.document?.currentDocumentRevision || result.snapshot.documentRevision || 0);
+    aiDocumentSnapshot.value = result.snapshot;
+    designTokenSets.value = availableTokenSets;
+    const selectedTokenVersionId = result.snapshot.appearance?.designTokenSetVersionId
+      || result.snapshot.content?.formTemplate?.designTokenSetVersionId
+      || "";
+    const selectedTokenSet = availableTokenSets.find(
+      (candidate) => candidate.versionId === selectedTokenVersionId,
+    ) || availableTokenSets.find((candidate) => candidate.isDefault) || availableTokenSets[0] || null;
+    previewDesignTokenVersionId.value = selectedTokenSet?.versionId || selectedTokenVersionId;
+    template.value = {
+      ...result.snapshot.content.formTemplate,
+      ...(selectedTokenSet ? {
+        designTokenSetVersionId: selectedTokenSet.versionId,
+        designTokens: {
+          setKey: selectedTokenSet.setKey,
+          name: selectedTokenSet.name,
+          version: selectedTokenSet.version,
+          versionId: selectedTokenSet.versionId,
+          values: selectedTokenSet.values || {},
+          sourceValues: selectedTokenSet.sourceValues || [],
+        },
+      } : {}),
+    };
+    configRevision.value = result.snapshot.layoutIdentity?.configRevision || "";
+    sections.value = result.snapshot.content.sectionSnapshot || [];
+    sectionInputs.value = result.snapshot.content.sectionInputs || {};
+    designSpec.value = normalizeLayoutSpec(result.snapshot.designSpec);
+    layoutRevision.value = Number(result.snapshot.layoutRevision || 0);
+    layoutIdentity.value = result.snapshot.layoutIdentity || null;
+    selectedSectionKey.value = sections.value[0]?.sectionKey || "";
+    selectedItemKey.value = sections.value[0]?.items?.[0]?.itemKey || "";
+    selectedItemKeys.value = selectedItemKey.value ? [selectedItemKey.value] : [];
+    expandedComponentKey.value = componentKey(sections.value[0], sections.value[0]?.items?.[0]);
+    hydrateEditorCore();
+    refreshAiDocumentAssetsUntilSettled();
+  } catch (loadError) {
+    error.value = loadError.message;
+  } finally {
+    loading.value = false;
+  }
+}
+
+async function refreshAiDocumentAssetsUntilSettled() {
+  for (let count = 0; count < 200 && !aiDocumentPollingCancelled; count += 1) {
+    const requests = aiDocumentSnapshot.value?.assets?.requests || [];
+    if (!requests.some((request) => ["pending", "queued", "processing"].includes(request.status))) return;
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    if (aiDocumentPollingCancelled) return;
+    try {
+      const loaded = await aiDocumentAdapter.load(aiDocumentId.value);
+      if (loaded.snapshot?.assets) {
+        aiDocumentSnapshot.value = {
+          ...aiDocumentSnapshot.value,
+          assets: loaded.snapshot.assets,
+        };
+      }
+    } catch {
+      return;
+    }
+  }
+}
+
+async function saveAiDocument() {
+  if (!isAiDocumentMode.value || !editorSnapshot.value || aiDocumentSaving.value) return false;
+  const validation = validateLayoutSpec(designSpec.value);
+  if (!validation.ok) {
+    aiDocumentSaveMessage.value = `레이아웃 검증 실패: ${validation.errors[0]?.path || "unknown"}`;
+    return false;
+  }
+  aiDocumentSaving.value = true;
+  aiDocumentSaveMessage.value = "";
+  try {
+    const saved = await aiDocumentAdapter.save({
+      documentId: aiDocumentId.value,
+      baseDocumentRevision: aiDocumentRevision.value,
+      snapshot: editorSnapshot.value,
+      designTokenSetVersionId: previewDesignTokenVersionId.value,
+      changeNote: "Visual Editor에서 AI 프로모션 문서를 저장했습니다.",
+    });
+    aiDocumentRevision.value = Number(saved.revision);
+    aiDocumentSnapshot.value = saved.snapshot;
+    designSpec.value = normalizeLayoutSpec(saved.snapshot.designSpec);
+    layoutRevision.value = Number(saved.snapshot.layoutRevision || layoutRevision.value);
+    editorCore.replaceDocument(editorDocumentFromRefs(), { resetHistory: false, dirty: false });
+    updateEditorHistory();
+    aiDocumentSaveMessage.value = `AI 프로모션 문서 revision ${saved.revision} 저장 완료`;
+    return true;
+  } catch (saveError) {
+    aiDocumentSaveMessage.value = saveError.message;
+    return false;
+  } finally {
+    aiDocumentSaving.value = false;
+  }
+}
+
+async function openOutput() {
   if (!editorSnapshot.value) return;
+  if (isAiDocumentMode.value) {
+    const saved = await saveAiDocument();
+    if (!saved) return;
+    const url = new URL("/prototype/visual-editor.html", window.location.origin);
+    url.searchParams.set("mode", "output");
+    url.searchParams.set("builderDocumentId", aiDocumentId.value);
+    url.searchParams.set("revision", String(aiDocumentRevision.value));
+    window.open(url, "_blank", "noopener,noreferrer");
+    return;
+  }
   outputSaveError.value = "";
   const result = outputAdapter.save(editorSnapshot.value);
   if (!result.ok) {
@@ -1170,6 +1328,7 @@ onMounted(() => {
   }
   window.PromoShell?.init(document);
   if (props.mode === "output") loadOutput();
+  else if (isAiDocumentMode.value) loadAiDocument();
   else if (isAdminLayoutMode.value) loadAdminLayout();
   else if (isWizardLayoutMode.value) {
     loading.value = true;
@@ -1179,6 +1338,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  aiDocumentPollingCancelled = true;
   disconnectPromoBuilder?.();
   disconnectPromoBuilder = null;
   document.documentElement.classList.remove("layout-editor-document");
@@ -1203,6 +1363,7 @@ onBeforeUnmount(() => {
       :content="rendererSnapshot.content"
       :design-spec="rendererSnapshot.designSpec"
       :assets="rendererSnapshot.assets"
+      :motion-spec="rendererSnapshot.motionSpec"
     />
   </div>
 
@@ -1248,10 +1409,10 @@ onBeforeUnmount(() => {
       <header v-if="!usesEmbeddedEngineShell" class="shell-utility-bar editor-shell-header">
         <div class="shell-page-identity">
           <button class="shell-menu-toggle" type="button" data-shell-menu-toggle aria-controls="visual-editor-global-navigation" aria-expanded="false" aria-label="메뉴 열기">메뉴</button>
-          <strong>{{ isAdminLayoutMode ? "Admin Template Layout" : "Visual Editor" }}</strong>
+          <strong>{{ isAdminLayoutMode ? "Admin Template Layout" : isAiDocumentMode ? "AI Promotion Visual Editor" : "Visual Editor" }}</strong>
         </div>
         <div class="shell-page-actions">
-        <div class="shell-status" role="status">{{ isAdminLayoutMode ? `Layout revision ${layoutRevision}` : "편집 준비" }}</div>
+        <div class="shell-status" role="status">{{ isAdminLayoutMode ? `Layout revision ${layoutRevision}` : isAiDocumentMode ? `Document revision ${aiDocumentRevision}` : "편집 준비" }}</div>
         </div>
       </header>
 
@@ -1281,10 +1442,11 @@ onBeforeUnmount(() => {
       </div>
     </header>
 
-    <div v-if="loading" class="system-message">기본 Form Template을 불러오는 중입니다.</div>
+    <div v-if="loading" class="system-message">{{ isAiDocumentMode ? "AI 프로모션 문서를 불러오는 중입니다." : "기본 Form Template을 불러오는 중입니다." }}</div>
     <div v-else-if="error" class="system-message system-message--error">{{ error }}</div>
     <div v-if="outputSaveError" class="system-message system-message--error" role="alert">{{ outputSaveError }}</div>
     <div v-if="layoutSaveMessage" class="system-message" role="status">{{ layoutSaveMessage }}</div>
+    <div v-if="aiDocumentSaveMessage" class="system-message" role="status">{{ aiDocumentSaveMessage }}</div>
 
     <section
       v-if="!loading && !error"
@@ -1293,6 +1455,7 @@ onBeforeUnmount(() => {
         'is-builder-workspace': isBuilderWorkspaceMode,
         'is-create-promo-wizard': isCreatePromoWizardMode,
         'is-admin-layout-workspace': isAdminLayoutMode,
+        'is-ai-document-workspace': isAiDocumentMode,
       }"
     >
       <SectionPanel
@@ -1353,6 +1516,8 @@ onBeforeUnmount(() => {
         :selected-design-token-version-id="previewDesignTokenVersionId"
         :layout-change-note="layoutChangeNote"
         :layout-saving="layoutSaving"
+        :ai-document-saving="aiDocumentSaving"
+        :ai-document-save-message="aiDocumentSaveMessage"
         :editor-snapshot="editorSnapshot"
         :template="template"
         :selected-style-key="selectedStyleKey"
@@ -1366,6 +1531,7 @@ onBeforeUnmount(() => {
         @redo="redoEditorCommand"
         @update-design-token="updateDesignToken"
         @save-admin-layout="(activate) => saveAdminLayout({ activate })"
+        @save-ai-document="saveAiDocument"
         @open-output="openOutput"
         @select-item="selectRendererItem"
         @update-item-style="updateItemStyle"

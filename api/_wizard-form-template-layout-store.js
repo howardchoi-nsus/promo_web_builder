@@ -96,6 +96,12 @@ function validateLayoutSpec(value, sections = []) {
   });
   Object.entries(spec.itemStyles).forEach(([key, style]) => {
     if (sections.length && !itemKeys.has(key)) warnings.push({ code: "UNKNOWN_LAYOUT_ITEM", path: key });
+    for (const tokenProperty of ["colorToken", "fontSizeToken", "fontWeightToken"]) {
+      if (style?.[tokenProperty] !== undefined
+        && !/^--(?:promo|app)-[a-z0-9-]+$/.test(String(style[tokenProperty]))) {
+        errors.push({ code: "INVALID_ITEM_TOKEN", path: `itemStyles.${key}.${tokenProperty}` });
+      }
+    }
     // Keep persisted-layout validation aligned with the editor's free-resize
     // geometry. Small logos, badges, and decorative images are valid items.
     const minimumWidthPct = 0.01;
