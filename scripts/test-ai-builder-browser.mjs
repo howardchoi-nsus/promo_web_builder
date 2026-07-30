@@ -65,6 +65,18 @@ try {
   assert.equal(await page.getByRole("button", { name: /AI 모드/ }).isEnabled(), true);
   await page.getByRole("button", { name: /AI 모드/ }).click();
   await page.getByRole("heading", { name: "어떤 프로모션을 만들까요?" }).waitFor();
+  assert.equal(await page.locator('link[href*="visual-editor-assets/ai-builder.css"]').count(), 1);
+  const cardStyles = await page.locator(".ai-builder-card").evaluate((element) => {
+    const styles = getComputedStyle(element);
+    return {
+      padding: styles.padding,
+      borderWidth: styles.borderTopWidth,
+      borderRadius: styles.borderRadius,
+    };
+  });
+  assert.notEqual(cardStyles.padding, "0px");
+  assert.notEqual(cardStyles.borderWidth, "0px");
+  assert.notEqual(cardStyles.borderRadius, "0px");
   await page.getByLabel("프로모션 설명").fill("여름 신규 고객 충전 이벤트");
   assert.equal(await page.getByRole("button", { name: "AI 개요 분석" }).isEnabled(), true);
   assert.deepEqual(errors, []);
