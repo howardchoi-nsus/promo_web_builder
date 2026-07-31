@@ -73,7 +73,8 @@ export function validateLayoutSpec(value = {}) {
   const allowedTextAlignments = new Set(["left", "center", "right"]);
   const managedTokenProperties = [
     "colorToken", "fontFamilyToken", "fontSizeToken", "fontWeightToken",
-    "lineHeightToken", "letterSpacingToken", "maxWidthToken",
+    "lineHeightToken", "letterSpacingToken", "maxWidthToken", "textStyleToken",
+    "textGradientToken", "textBackgroundToken",
   ];
   function validateTextLayoutStyle(style, path) {
     for (const tokenProperty of managedTokenProperties) {
@@ -105,6 +106,9 @@ export function validateLayoutSpec(value = {}) {
     }
     if (style?.textDecoration !== undefined && style.textDecoration !== "underline") {
       errors.push({ path: `${path}.textDecoration`, message: "Unsupported text decoration." });
+    }
+    if (style?.listType !== undefined && !["bullet", "number"].includes(style.listType)) {
+      errors.push({ path: `${path}.listType`, message: "Unsupported text list type." });
     }
     for (const offsetProperty of ["offsetX", "offsetY"]) {
       const offset = Number(style?.[offsetProperty]);

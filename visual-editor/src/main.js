@@ -1,6 +1,8 @@
 import { createApp } from "vue";
 import App from "./App.vue";
 import SectionPresetEditor from "./SectionPresetEditor.vue";
+import "@fortawesome/fontawesome-free/css/fontawesome.min.css";
+import "@fortawesome/fontawesome-free/css/solid.min.css";
 import "./styles.css";
 
 const root = document.querySelector("#visual-editor-app");

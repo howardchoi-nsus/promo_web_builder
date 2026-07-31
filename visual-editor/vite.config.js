@@ -44,6 +44,7 @@ function localRouteAliases() {
 
 export default defineConfig({
   root: resolve(__dirname, "../prototype"),
+  base: "/prototype/visual-editor-assets/",
   plugins: [localRouteAliases(), vue(), emitStandaloneCssAssets()],
   define: {
     "process.env.NODE_ENV": JSON.stringify("production"),

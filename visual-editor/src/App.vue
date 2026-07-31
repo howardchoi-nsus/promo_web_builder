@@ -182,7 +182,36 @@ const colorTokenOptions = computed(() => selectedDesignTokenValues.value.filter(
   key: token.tokenKey,
   label: token.label || token.tokenKey,
   value: token.value,
+  semanticRole: token.semanticRole || "",
+  cssProperties: token.cssProperties || [],
 })));
+const fontColorTokenOptions = computed(() => colorTokenOptions.value.filter((token) => (
+  token.cssProperties.includes("color")
+)));
+const backgroundColorTokenOptions = computed(() => colorTokenOptions.value.filter((token) => (
+  token.cssProperties.includes("background-color")
+)));
+const gradientTokenOptions = computed(() => {
+  const grouped = new Map();
+  selectedDesignTokenValues.value.filter((token) => (
+    token.valueType === "gradient"
+    || (token.cssProperties || []).includes("background-image")
+  )).forEach((token) => {
+    const current = grouped.get(token.tokenKey);
+    if (current) {
+      current.values.push(token.value);
+      current.value = current.values.filter(Boolean).join(", ");
+      return;
+    }
+    grouped.set(token.tokenKey, {
+      key: token.tokenKey,
+      label: token.label || token.tokenKey,
+      value: token.value,
+      values: [token.value],
+    });
+  });
+  return [...grouped.values()];
+});
 const fontSizeTokenOptions = computed(() => selectedDesignTokenValues.value.filter((token) => (
   token.valueType === "length"
   && (token.cssProperties || []).includes("font-size")
@@ -191,6 +220,8 @@ const fontSizeTokenOptions = computed(() => selectedDesignTokenValues.value.filt
   label: token.label || token.tokenKey,
   value: token.value,
   px: Number.parseFloat(token.value),
+  semanticRole: token.semanticRole || "",
+  category: token.category || "",
 })).filter((token) => Number.isFinite(token.px)));
 function tokenOptionsForCssProperty(property) {
   return selectedDesignTokenValues.value.filter((token) => (
@@ -200,12 +231,56 @@ function tokenOptionsForCssProperty(property) {
     label: token.label || token.tokenKey,
     value: token.value,
     number: Number.parseFloat(token.value),
+    semanticRole: token.semanticRole || "",
+    category: token.category || "",
   }));
 }
 const fontFamilyTokenOptions = computed(() => tokenOptionsForCssProperty("font-family"));
 const fontWeightTokenOptions = computed(() => tokenOptionsForCssProperty("font-weight"));
 const lineHeightTokenOptions = computed(() => tokenOptionsForCssProperty("line-height"));
 const letterSpacingTokenOptions = computed(() => tokenOptionsForCssProperty("letter-spacing"));
+function typographyRoleStem(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/-(?:font-)?(?:size|weight|line-height|letter-spacing)$/u, "")
+    .replace(/-(?:size|weight|leading|tracking)$/u, "");
+}
+function relatedTypographyToken(options, sizeToken) {
+  const stem = typographyRoleStem(sizeToken.semanticRole);
+  if (stem) {
+    const related = options.find((entry) => typographyRoleStem(entry.semanticRole) === stem);
+    if (related) return related;
+  }
+  const titleLike = /title|heading|display|hero|lead/i.test(`${sizeToken.semanticRole} ${sizeToken.label}`);
+  if (options === fontWeightTokenOptions.value) {
+    const targetWeight = titleLike ? 700 : 400;
+    return options
+      .filter((entry) => Number.isFinite(Number(entry.number)))
+      .sort((a, b) => Math.abs(Number(a.number) - targetWeight) - Math.abs(Number(b.number) - targetWeight))[0]
+      || options[0];
+  }
+  return options.find((entry) => (
+    titleLike ? /title|heading|display|hero|lead/i.test(`${entry.semanticRole} ${entry.label}`) : true
+  )) || options[0];
+}
+const textStyleTokenOptions = computed(() => fontSizeTokenOptions.value.map((sizeToken) => {
+  const family = fontFamilyTokenOptions.value[0];
+  const weight = relatedTypographyToken(fontWeightTokenOptions.value, sizeToken);
+  const lineHeight = relatedTypographyToken(lineHeightTokenOptions.value, sizeToken);
+  const letterSpacing = relatedTypographyToken(letterSpacingTokenOptions.value, sizeToken);
+  return {
+    key: sizeToken.key,
+    label: sizeToken.label,
+    patch: {
+      fontSizeToken: sizeToken.key,
+      fontSize: undefined,
+      ...(family ? { fontFamilyToken: family.key, fontFamily: undefined } : {}),
+      ...(weight ? { fontWeightToken: weight.key, fontWeight: undefined } : {}),
+      ...(lineHeight ? { lineHeightToken: lineHeight.key, lineHeight: undefined } : {}),
+      ...(letterSpacing ? { letterSpacingToken: letterSpacing.key, letterSpacing: undefined } : {}),
+    },
+  };
+}));
 const availableComponents = computed(() => activeComponentDefinitions(componentLibrary.value));
 const availableSectionPresets = computed(() => activeSectionPresets(sectionPresets.value));
 
@@ -2098,6 +2173,10 @@ onBeforeUnmount(() => {
         :selected-item="selectedItem"
         :selected-item-style="selectedItemStyle"
         :color-token-options="colorTokenOptions"
+        :font-color-token-options="fontColorTokenOptions"
+        :gradient-token-options="gradientTokenOptions"
+        :background-color-token-options="backgroundColorTokenOptions"
+        :text-style-token-options="textStyleTokenOptions"
         :font-family-token-options="fontFamilyTokenOptions"
         :font-size-token-options="fontSizeTokenOptions"
         :font-weight-token-options="fontWeightTokenOptions"

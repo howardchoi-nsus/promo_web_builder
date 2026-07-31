@@ -130,7 +130,11 @@ async function normalizeEditorSnapshot(sql, currentSnapshot, incomingSnapshot, d
     layoutValidation.spec.itemStyles || {},
   ).map(([styleKey, style]) => {
     const nextStyle = { ...(style || {}) };
-    ["colorToken", "fontSizeToken", "fontWeightToken"].forEach((property) => {
+    [
+      "colorToken", "fontFamilyToken", "fontSizeToken", "fontWeightToken",
+      "lineHeightToken", "letterSpacingToken", "maxWidthToken", "textStyleToken",
+      "textGradientToken", "textBackgroundToken",
+    ].forEach((property) => {
       if (nextStyle[property] && !tokenKeys.has(nextStyle[property])) delete nextStyle[property];
     });
     return [styleKey, nextStyle];

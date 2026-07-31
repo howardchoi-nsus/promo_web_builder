@@ -475,6 +475,8 @@ function inlineItemStyle(section, item) {
       : (style.fontSize !== undefined ? `${style.fontSize}px` : undefined),
     fontWeight: style.fontWeightToken ? `var(${style.fontWeightToken})` : style.fontWeight,
     "--item-font-weight": style.fontWeightToken ? `var(${style.fontWeightToken})` : style.fontWeight,
+    "--item-text-gradient": style.textGradientToken ? `var(${style.textGradientToken})` : undefined,
+    "--item-text-background": style.textBackgroundToken ? `var(${style.textBackgroundToken})` : style.textBackground,
     lineHeight: style.lineHeightToken ? `var(${style.lineHeightToken})` : style.lineHeight,
     letterSpacing: style.letterSpacingToken ? `var(${style.letterSpacingToken})` : style.letterSpacing,
     fontStyle: style.fontStyle,
@@ -490,6 +492,17 @@ function inlineItemStyle(section, item) {
       : undefined,
   };
   return result;
+}
+
+function textListTag(section, item) {
+  return itemStyle(section, item).listType === "number" ? "ol" : "ul";
+}
+
+function textListItems(value) {
+  return String(value ?? "")
+    .split(/\r?\n/u)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
 }
 
 function selectRendererItem(section, item, event = null) {
@@ -934,6 +947,8 @@ function startSectionResize(event, section) {
                 'is-empty': editable && itemIsEmpty(section, item),
                 'is-free-positioned': itemStyle(section, item).positionMode !== 'anchored',
                 'is-anchored-positioned': itemStyle(section, item).positionMode === 'anchored',
+                'has-text-gradient': Boolean(itemStyle(section, item).textGradientToken),
+                'has-text-background': Boolean(itemStyle(section, item).textBackgroundToken || itemStyle(section, item).textBackground),
               },
             ]"
             :data-item-key="item.itemKey"
@@ -990,6 +1005,22 @@ function startSectionResize(event, section) {
                     <span>{{ aiTargetState(section, item, field).label }}</span>
                   </div>
                 </div>
+                <component
+                  :is="textListTag(section, item)"
+                  v-else-if="hasContent(valueFor(section, item, field)) && itemStyle(section, item).listType"
+                  class="rendered-text rendered-component-field"
+                  :class="{
+                    'rendered-text--title': field.textType === 'title',
+                    'is-hidden-in-output': editable && !isFieldVisible(section, item, field),
+                  }"
+                  :style="fieldStyle(section, item, field)"
+                  :data-field-key="field.fieldKey"
+                  @dblclick.stop="startTextEdit($event, section, item, field)"
+                >
+                  <li v-for="(line, index) in textListItems(valueFor(section, item, field))" :key="`${field.fieldKey}-${index}`">
+                    <span class="rendered-text__content">{{ line }}</span>
+                  </li>
+                </component>
                 <p
                   v-else-if="hasContent(valueFor(section, item, field))"
                   class="rendered-text rendered-component-field"
@@ -1000,7 +1031,7 @@ function startSectionResize(event, section) {
                   :style="fieldStyle(section, item, field)"
                   :data-field-key="field.fieldKey"
                   @dblclick.stop="startTextEdit($event, section, item, field)"
-                >{{ valueFor(section, item, field) }}</p>
+                ><span class="rendered-text__content">{{ valueFor(section, item, field) }}</span></p>
                 <p
                   v-else
                   class="rendered-empty rendered-component-field"
@@ -1063,12 +1094,23 @@ function startSectionResize(event, section) {
             </template>
 
             <template v-else>
-              <p
-                v-if="hasContent(valueFor(section, item))"
+              <component
+                :is="textListTag(section, item)"
+                v-if="hasContent(valueFor(section, item)) && itemStyle(section, item).listType"
                 class="rendered-text"
                 :class="{ 'rendered-text--title': item.textType === 'title' }"
                 @dblclick.stop="startTextEdit($event, section, item)"
-              >{{ valueFor(section, item) }}</p>
+              >
+                <li v-for="(line, index) in textListItems(valueFor(section, item))" :key="`${item.itemKey}-${index}`">
+                  <span class="rendered-text__content">{{ line }}</span>
+                </li>
+              </component>
+              <p
+                v-else-if="hasContent(valueFor(section, item))"
+                class="rendered-text"
+                :class="{ 'rendered-text--title': item.textType === 'title' }"
+                @dblclick.stop="startTextEdit($event, section, item)"
+              ><span class="rendered-text__content">{{ valueFor(section, item) }}</span></p>
               <p v-else class="rendered-empty" @dblclick.stop="startTextEdit($event, section, item)">{{ textFieldDescription(item) }}</p>
             </template>
             <template

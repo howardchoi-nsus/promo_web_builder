@@ -28,6 +28,10 @@ const props = defineProps({
   selectedItem: { type: Object, default: null },
   selectedItemStyle: { type: Object, default: () => ({}) },
   colorTokenOptions: { type: Array, default: () => [] },
+  fontColorTokenOptions: { type: Array, default: () => [] },
+  gradientTokenOptions: { type: Array, default: () => [] },
+  backgroundColorTokenOptions: { type: Array, default: () => [] },
+  textStyleTokenOptions: { type: Array, default: () => [] },
   fontFamilyTokenOptions: { type: Array, default: () => [] },
   fontSizeTokenOptions: { type: Array, default: () => [] },
   fontWeightTokenOptions: { type: Array, default: () => [] },
@@ -132,12 +136,8 @@ defineExpose({ getStageElement, scrollToSection });
       <EditorPreviewControls
         :guide-mode="guideMode"
         :viewport="viewport"
-        :can-undo="editorHistory.canUndo"
-        :can-redo="editorHistory.canRedo"
         @update:guide-mode="(value) => emit('update:guide-mode', value)"
         @update:viewport="(value) => emit('update:viewport', value)"
-        @undo="emit('undo')"
-        @redo="emit('redo')"
       >
         <template #tokens>
           <fieldset v-if="capabilities.canEditDesignTokens" class="global-token-menu">
@@ -201,12 +201,19 @@ defineExpose({ getStageElement, scrollToSection });
     <TextEditorControls
       :item="selectedItem"
       :item-style="selectedItemStyle"
-      :color-tokens="colorTokenOptions"
+      :can-undo="editorHistory.canUndo"
+      :can-redo="editorHistory.canRedo"
+      :color-tokens="fontColorTokenOptions"
+      :gradient-tokens="gradientTokenOptions"
+      :background-color-tokens="backgroundColorTokenOptions"
+      :text-style-tokens="textStyleTokenOptions"
       :font-family-tokens="fontFamilyTokenOptions"
       :font-size-tokens="fontSizeTokenOptions"
       :font-weight-tokens="fontWeightTokenOptions"
       :line-height-tokens="lineHeightTokenOptions"
       :letter-spacing-tokens="letterSpacingTokenOptions"
+      @undo="emit('undo')"
+      @redo="emit('redo')"
       @patch-style="emit('patch-selected-text-style', $event)"
       @set-anchor="(...args) => emit('set-item-anchor', ...args)"
       @restore-automatic-position="emit('restore-automatic-position')"

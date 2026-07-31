@@ -11,11 +11,29 @@ const rendererCss = read("visual-editor", "src", "promo-renderer.css");
 const previewPanel = read("visual-editor", "src", "platform", "editor-ui", "PreviewPanel.vue");
 const textControls = read("visual-editor", "src", "platform", "editor-ui", "TextEditorControls.vue");
 const commands = read("visual-editor", "src", "platform", "editor-core", "editor-commands.mjs");
+const main = read("visual-editor", "src", "main.js");
+const apiLayoutStore = read("api", "_wizard-form-template-layout-store.js");
+const viteConfig = read("visual-editor", "vite.config.js");
 
 assert.match(previewPanel, /<TextEditorControls/);
 assert.match(textControls, /role="toolbar"/);
+assert.doesNotMatch(textControls, /text-editor-controls__identity/);
+assert.match(main, /@fortawesome\/fontawesome-free\/css\/fontawesome\.min\.css/);
+assert.match(main, /@fortawesome\/fontawesome-free\/css\/solid\.min\.css/);
+assert.match(viteConfig, /base:\s*"\/prototype\/visual-editor-assets\/"/);
+assert.match(textControls, /fa-arrow-rotate-left/);
+assert.match(textControls, /fa-arrow-rotate-right/);
+assert.match(textControls, /fa-bold/);
+assert.match(textControls, /fa-italic/);
+assert.match(textControls, /fa-highlighter/);
+assert.match(textControls, /fa-list-ul/);
+assert.match(textControls, /fa-list-ol/);
 assert.match(textControls, /fontFamilyToken/);
 assert.match(textControls, /fontWeightToken/);
+assert.match(textControls, /textStyleToken/);
+assert.match(textControls, /textGradientToken/);
+assert.match(textControls, /textBackgroundToken/);
+assert.match(textControls, /listType/);
 assert.match(textControls, /lineHeightToken/);
 assert.match(textControls, /letterSpacingToken/);
 assert.match(textControls, /horizontalAnchor/);
@@ -26,7 +44,14 @@ assert.match(commands, /RESPONSIVE_ITEM_STYLE_PATCH/);
 assert.match(renderer, /positionMode === "anchored"/);
 assert.match(renderer, /scaleFont:\s*false/);
 assert.match(renderer, /heightMode === "auto"/);
+assert.match(renderer, /textListItems/);
+assert.match(renderer, /has-text-gradient/);
+assert.match(rendererCss, /--item-text-background/);
+assert.match(rendererCss, /background-clip:\s*text/);
 assert.match(rendererCss, /\.is-outline-mode \.rendered-item/);
+assert.match(apiLayoutStore, /"textGradientToken"/);
+assert.match(apiLayoutStore, /"textBackgroundToken"/);
+assert.match(apiLayoutStore, /"listType"/);
 
 const valid = validateLayoutSpec({
   itemStyles: {
@@ -40,6 +65,10 @@ const valid = validateLayoutSpec({
       fontWeightToken: "--promo-font-weight-bold",
       lineHeightToken: "--promo-line-height-title",
       letterSpacingToken: "--promo-letter-spacing-title",
+      textStyleToken: "--promo-font-size-main-title",
+      textGradientToken: "--app-theme-toggle-gradient",
+      textBackgroundToken: "--app-accent-soft",
+      listType: "bullet",
       textAlign: "center",
     },
   },
@@ -70,5 +99,11 @@ const invalid = validateLayoutSpec({
 assert.equal(invalid.ok, false);
 assert(invalid.errors.some((entry) => entry.path.endsWith("horizontalAnchor")));
 assert(invalid.errors.some((entry) => entry.path.endsWith("heightMode")));
+
+const invalidList = validateLayoutSpec({
+  itemStyles: { "hero.title": { listType: "checklist" } },
+});
+assert.equal(invalidList.ok, false);
+assert(invalidList.errors.some((entry) => entry.path.endsWith("listType")));
 
 console.log("Text editor controls, outline, auto-size, and section anchor contract tests passed.");

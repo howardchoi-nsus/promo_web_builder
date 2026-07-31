@@ -110,7 +110,8 @@ function validateLayoutSpec(value, sections = []) {
   const warnings = [];
   const managedTokenProperties = [
     "colorToken", "fontFamilyToken", "fontSizeToken", "fontWeightToken",
-    "lineHeightToken", "letterSpacingToken", "maxWidthToken",
+    "lineHeightToken", "letterSpacingToken", "maxWidthToken", "textStyleToken",
+    "textGradientToken", "textBackgroundToken",
   ];
   function validateExtendedItemStyle(style, path) {
     for (const tokenProperty of managedTokenProperties) {
@@ -128,6 +129,7 @@ function validateLayoutSpec(value, sections = []) {
       ["textAlign", ["left", "center", "right"], "INVALID_TEXT_ALIGN"],
       ["fontStyle", ["italic"], "INVALID_FONT_STYLE"],
       ["textDecoration", ["underline"], "INVALID_TEXT_DECORATION"],
+      ["listType", ["bullet", "number"], "INVALID_LIST_TYPE"],
     ];
     enums.forEach(([property, allowed, code]) => {
       if (style?.[property] !== undefined && !allowed.includes(style[property])) {

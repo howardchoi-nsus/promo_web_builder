@@ -15,6 +15,8 @@ const SECTION_STYLE_KEYS = new Set([
 ]);
 const ITEM_STYLE_KEYS = new Set([
   "color", "fontSize", "fontWeight", "textAlign", "positionMode", "xPct", "yPx", "zIndex",
+  "colorToken", "fontFamilyToken", "fontSizeToken", "fontWeightToken", "lineHeightToken",
+  "letterSpacingToken", "textStyleToken", "textGradientToken", "textBackgroundToken", "listType",
   "widthPct", "heightPx", "aspectRatio", "aspectRatioLocked", "imageFit", "imagePosition",
   "shape", "borderRadiusToken", "decorative", "accessibleLabel",
 ]);
