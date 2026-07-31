@@ -26,6 +26,12 @@ export function defaultComponentHeight(item = {}) {
   return DEFAULT_TEXT_COMPONENT_HEIGHT;
 }
 
+export function usesAutomaticComponentHeight(item = {}, style = {}) {
+  if (item.fieldKind === "image") return false;
+  if (style.heightMode === "auto") return true;
+  return item.fieldKind === "text" && style.heightMode !== "fixed";
+}
+
 export function normalizeComponentGeometry({
   item = {},
   style = {},

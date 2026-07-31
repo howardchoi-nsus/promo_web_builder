@@ -6,10 +6,16 @@ import {
   defaultComponentHeight,
   geometryToLayoutStyle,
   normalizeComponentGeometry,
+  usesAutomaticComponentHeight,
 } from "../visual-editor/src/platform/layout-engine/geometry.mjs";
 import { resizeComponentGeometry } from "../visual-editor/src/platform/layout-engine/resize.mjs";
 
 const textItem = { itemKey: "title", fieldKind: "text" };
+assert.equal(usesAutomaticComponentHeight(textItem, {}), true);
+assert.equal(usesAutomaticComponentHeight(textItem, { heightMode: "auto" }), true);
+assert.equal(usesAutomaticComponentHeight(textItem, { heightMode: "fixed" }), false);
+assert.equal(usesAutomaticComponentHeight({ fieldKind: "cta" }, {}), false);
+assert.equal(usesAutomaticComponentHeight({ fieldKind: "image" }, { heightMode: "auto" }), false);
 const shortContentGeometry = normalizeComponentGeometry({
   item: textItem,
   style: {},

@@ -26,6 +26,7 @@ import {
 import {
   MINIMUM_COMPONENT_HEIGHT_PX,
   MINIMUM_COMPONENT_WIDTH_PCT,
+  usesAutomaticComponentHeight,
 } from "./platform/layout-engine/geometry.mjs";
 import { resolveSectionPresetLayoutPatch } from "./platform/layout-engine/section-preset-resolver.mjs";
 import PreviewPanel from "./platform/editor-ui/PreviewPanel.vue";
@@ -1510,7 +1511,6 @@ function resetSelectedItemOffset() {
 function enableAutomaticTextSize() {
   if (selectedItem.value?.fieldKind === "image") return;
   updateItemStyle({
-    widthMode: "fit-content",
     heightMode: "auto",
     heightPx: undefined,
   });
@@ -2749,13 +2749,13 @@ onBeforeUnmount(() => {
                 <div>
                   <button
                     type="button"
-                    :class="{ active: selectedItemStyle.heightMode === 'auto' || selectedItemStyle.widthMode === 'fit-content' }"
+                    :class="{ active: usesAutomaticComponentHeight(selectedItem, selectedItemStyle) }"
                     :disabled="selectedItem.isLocked"
                     @click="enableAutomaticTextSize"
                   >자동</button>
                   <button
                     type="button"
-                    :class="{ active: selectedItemStyle.heightMode !== 'auto' && selectedItemStyle.widthMode !== 'fit-content' }"
+                    :class="{ active: !usesAutomaticComponentHeight(selectedItem, selectedItemStyle) }"
                     :disabled="selectedItem.isLocked"
                     @click="enableFixedTextSize"
                   >고정</button>
@@ -2786,7 +2786,7 @@ onBeforeUnmount(() => {
                   />
                 </div>
               </label>
-              <label v-if="selectedItemStyle.heightMode !== 'auto'">
+              <label v-if="!usesAutomaticComponentHeight(selectedItem, selectedItemStyle)">
                 <span>컴포넌트 높이</span>
                 <div class="range-field">
                   <input

@@ -8,6 +8,7 @@ import {
   defaultComponentHeight,
   geometryToLayoutStyle,
   normalizeComponentGeometry,
+  usesAutomaticComponentHeight,
 } from "./platform/layout-engine/geometry.mjs";
 import { resizeComponentGeometry } from "./platform/layout-engine/resize.mjs";
 
@@ -305,7 +306,7 @@ function itemResizeHandles(section, item) {
   if (item.fieldKind === "image" && (style.shape === "circle" || style.aspectRatioLocked !== false)) {
     return ["nw", "ne", "se", "sw"];
   }
-  if (item.fieldKind !== "image" && style.heightMode === "auto") return ["e", "w"];
+  if (usesAutomaticComponentHeight(item, style)) return ["e", "w"];
   return ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
 }
 
@@ -489,7 +490,7 @@ function inlineItemStyle(section, item) {
   const position = style.positionMode === "free" ? style : defaultItemPosition(section, item);
   const isImage = item.fieldKind === "image";
   const widthPct = clamp(style.widthPct, MINIMUM_COMPONENT_WIDTH_PCT, 100, 32);
-  const autoHeight = !isImage && style.heightMode === "auto";
+  const autoHeight = usesAutomaticComponentHeight(item, style);
   const fitContent = !isImage && style.widthMode === "fit-content";
   const heightPx = clamp(
     style.heightPx,
@@ -659,7 +660,7 @@ function startItemResize(event, section, item, handleDirection = "se") {
   const startY = event.clientY;
   const style = itemStyle(section, item);
   const isImage = item.fieldKind === "image";
-  const autoHeight = !isImage && style.heightMode === "auto";
+  const autoHeight = usesAutomaticComponentHeight(item, style);
   const anchored = style.positionMode === "anchored";
   const locked = isImage && style.aspectRatioLocked !== false;
   const minimumItemSizePx = MINIMUM_COMPONENT_HEIGHT_PX;
@@ -770,7 +771,7 @@ function resizeItemByKeyboard(event, section, item, handleDirection = "se") {
   event.stopPropagation();
   const style = itemStyle(section, item);
   const isImage = item.fieldKind === "image";
-  const autoHeight = !isImage && style.heightMode === "auto";
+  const autoHeight = usesAutomaticComponentHeight(item, style);
   const anchored = style.positionMode === "anchored";
   const locked = isImage && style.aspectRatioLocked !== false;
   const step = event.shiftKey ? 4 : 1;

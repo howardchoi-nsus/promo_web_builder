@@ -9,7 +9,7 @@
 .promo-renderer .rendered-item { position: absolute; width: fit-content; min-width: 0; will-change: left, top; transition: color var(--promo-transition-duration, 200ms) var(--promo-transition-ease, ease) var(--promo-transition-delay, 0ms), background-color var(--promo-transition-duration, 200ms) var(--promo-transition-ease, ease) var(--promo-transition-delay, 0ms), border-color var(--promo-transition-duration, 200ms) var(--promo-transition-ease, ease) var(--promo-transition-delay, 0ms), transform var(--promo-transition-duration, 200ms) var(--promo-transition-ease, ease) var(--promo-transition-delay, 0ms); }
 .promo-renderer .rendered-item.is-editable { cursor: grab; touch-action: none; }
 .promo-renderer .rendered-item.is-editable:hover { outline: 1px dashed color-mix(in srgb, var(--promo-accent) 72%, transparent); outline-offset: 4px; }
-.promo-renderer .rendered-item.is-selected { outline: 2px solid var(--promo-accent); outline-offset: 5px; }
+.promo-renderer .rendered-item.is-selected { outline: 2px solid var(--promo-accent); outline-offset: 0; }
 .promo-renderer.is-editor-preview .rendered-item.is-hidden-in-output { outline: 1px dashed color-mix(in srgb, var(--promo-muted-ink, var(--promo-ink)) 72%, transparent); outline-offset: 4px; }
 .promo-renderer.is-editor-preview .rendered-item.is-hidden-in-output > :not(.output-hidden-badge):not(.item-resize-handle),
 .promo-renderer.is-editor-preview .rendered-component-field.is-hidden-in-output { opacity: .36; }
