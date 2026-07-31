@@ -1201,6 +1201,16 @@ const adminApp = createApp({
         imagePolicy: { allowedSources: ["file", "url"], promptText: "", aspectRatio: "" },
         capabilities: { layoutRegions: ["copy-primary", "copy-secondary", "center"] },
         styleSlots: [], changeNote: "",
+        libraryPresentation: { category: "text", iconKey: "heading", displayOrder: 100, isFeatured: false },
+        libraryKeywords: "",
+        placementPolicy: {
+          allowedSectionRoles: [], deniedSectionRoles: [], maxInstancesPerSection: null,
+          requiresParentCapabilities: [],
+          defaultGeometry: {
+            desktop: { widthPct: 44, heightPx: 120 },
+            mobile: { widthPct: 90, heightPx: 120 },
+          },
+        },
         fields: [{
           name: "Title", description: "", fieldKind: "text", textType: "title", sortOrder: 0,
           isRequired: false, isLocked: false, defaultValue: null,
@@ -2258,6 +2268,29 @@ const adminApp = createApp({
         textType: component.textType || "title", editorSchema: component.editorSchema || {},
         defaultValue: component.defaultValue ?? null, imagePolicy: { ...(component.imagePolicy || {}) },
         capabilities: { ...(component.capabilities || {}) }, styleSlots: [...(component.styleSlots || [])], changeNote: "",
+        libraryPresentation: {
+          category: component.libraryPresentation?.category || "",
+          iconKey: component.libraryPresentation?.iconKey || "",
+          displayOrder: component.libraryPresentation?.displayOrder ?? 100,
+          isFeatured: component.libraryPresentation?.isFeatured === true,
+        },
+        libraryKeywords: (component.libraryPresentation?.keywords || []).join(", "),
+        placementPolicy: {
+          allowedSectionRoles: [...(component.placementPolicy?.allowedSectionRoles || [])],
+          deniedSectionRoles: [...(component.placementPolicy?.deniedSectionRoles || [])],
+          maxInstancesPerSection: component.placementPolicy?.maxInstancesPerSection ?? null,
+          requiresParentCapabilities: [...(component.placementPolicy?.requiresParentCapabilities || [])],
+          defaultGeometry: {
+            desktop: {
+              widthPct: component.placementPolicy?.defaultGeometry?.desktop?.widthPct ?? 44,
+              heightPx: component.placementPolicy?.defaultGeometry?.desktop?.heightPx ?? 120,
+            },
+            mobile: {
+              widthPct: component.placementPolicy?.defaultGeometry?.mobile?.widthPct ?? 90,
+              heightPx: component.placementPolicy?.defaultGeometry?.mobile?.heightPx ?? 120,
+            },
+          },
+        },
         fields: componentFields.map((field) => ({
           ...field,
           editorSchema: { ...(field.editorSchema || {}) },
@@ -2324,9 +2357,16 @@ const adminApp = createApp({
       if (!this.itemComponentEditor.name || this.itemComponentSaving) return;
       this.itemComponentSaving = true;
       try {
+        const payload = {
+          ...this.itemComponentEditor,
+          libraryPresentation: {
+            ...this.itemComponentEditor.libraryPresentation,
+            keywords: String(this.itemComponentEditor.libraryKeywords || "").split(",").map((value) => value.trim()).filter(Boolean),
+          },
+        };
         const response = await fetch("/api/item-components", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(this.itemComponentEditor),
+          body: JSON.stringify(payload),
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `컴포넌트 생성 오류(${response.status})`);
@@ -2381,9 +2421,17 @@ const adminApp = createApp({
       if (!component?.id || component.versionStatus !== "draft" || this.itemComponentSaving) return;
       this.itemComponentSaving = true;
       try {
+        const payload = {
+          ...this.itemComponentEditor,
+          libraryPresentation: {
+            ...this.itemComponentEditor.libraryPresentation,
+            keywords: String(this.itemComponentEditor.libraryKeywords || "").split(",").map((value) => value.trim()).filter(Boolean),
+          },
+          versionId: component.versionId,
+        };
         const response = await fetch(`/api/item-component?componentId=${encodeURIComponent(component.id)}`, {
           method: "PATCH", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...this.itemComponentEditor, versionId: component.versionId }),
+          body: JSON.stringify(payload),
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `컴포넌트 저장 오류(${response.status})`);

@@ -1353,6 +1353,31 @@
                 </div>
                 <label class="field"><span>{{ t('entity.component.name') }}</span><input v-model="itemComponentEditor.name" type="text" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /></label>
                 <label class="field"><span>{{ t('common.field.description') }}</span><input v-model="itemComponentEditor.description" type="text" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /></label>
+                <details class="template-basic-settings" open>
+                  <summary>컴포넌트 Library 표시</summary>
+                  <div class="template-basic-settings-body">
+                    <div class="form-grid compact">
+                      <label class="field"><span>카테고리</span><select v-model="itemComponentEditor.libraryPresentation.category" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'"><option value="">자동 분류</option><option value="layout">Layout</option><option value="text">Text</option><option value="media">Media</option><option value="action">Action</option><option value="promo">Promo</option></select></label>
+                      <label class="field"><span>아이콘</span><select v-model="itemComponentEditor.libraryPresentation.iconKey" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'"><option value="">자동 선택</option><option v-for="iconKey in ['component-generic','heading','text','image','button','logo','badge','divider','spacer','layout']" :key="iconKey" :value="iconKey">{{ iconKey }}</option></select></label>
+                      <label class="field"><span>검색 키워드</span><input v-model="itemComponentEditor.libraryKeywords" type="text" placeholder="logo, brand, header" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /></label>
+                      <label class="field"><span>표시 순서</span><input v-model.number="itemComponentEditor.libraryPresentation.displayOrder" type="number" min="0" max="9999" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /></label>
+                    </div>
+                    <label class="app-checkbox switch-control"><input v-model="itemComponentEditor.libraryPresentation.isFeatured" type="checkbox" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /><span>추천 컴포넌트</span></label>
+                  </div>
+                </details>
+                <details class="template-basic-settings">
+                  <summary>배치 정책</summary>
+                  <div class="template-basic-settings-body">
+                    <div class="field"><span>허용 Section 역할 (미선택 시 전체)</span><div class="subsection-actions"><label class="app-checkbox switch-control" v-for="role in ['header','hero','benefit','content','cta','notice','terms','legal','footer']" :key="role"><input v-model="itemComponentEditor.placementPolicy.allowedSectionRoles" type="checkbox" :value="role" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /><span>{{ role }}</span></label></div></div>
+                    <div class="form-grid compact">
+                      <label class="field"><span>Section당 최대 개수</span><input v-model.number="itemComponentEditor.placementPolicy.maxInstancesPerSection" type="number" min="1" max="100" placeholder="제한 없음" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /></label>
+                      <label class="field"><span>Desktop 너비 (%)</span><input v-model.number="itemComponentEditor.placementPolicy.defaultGeometry.desktop.widthPct" type="number" min="1" max="100" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /></label>
+                      <label class="field"><span>Desktop 높이 (px)</span><input v-model.number="itemComponentEditor.placementPolicy.defaultGeometry.desktop.heightPx" type="number" min="1" max="2000" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /></label>
+                      <label class="field"><span>Mobile 너비 (%)</span><input v-model.number="itemComponentEditor.placementPolicy.defaultGeometry.mobile.widthPct" type="number" min="1" max="100" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /></label>
+                      <label class="field"><span>Mobile 높이 (px)</span><input v-model.number="itemComponentEditor.placementPolicy.defaultGeometry.mobile.heightPx" type="number" min="1" max="2000" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /></label>
+                    </div>
+                  </div>
+                </details>
                 <div class="subsection-title">
                   <div><h3>{{ t('entity.component.fieldLabel') }}</h3><span>텍스트·이미지·CTA 요소를 여러 개 조합할 수 있습니다.</span></div>
                   <button class="tiny-button" type="button" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" @click="addItemComponentField">+ {{ t('entity.component.fieldAdd') }}</button>

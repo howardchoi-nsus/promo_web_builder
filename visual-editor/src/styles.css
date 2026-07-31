@@ -441,13 +441,54 @@ button, a { letter-spacing: 0; }
 .component-library-panel { display: grid; gap: 10px; }
 .component-library-panel__search { display: grid; gap: 4px; color: var(--app-sub); font-size: 11px; }
 .component-library-panel > p { margin: 0; color: var(--app-muted); font-size: 11px; line-height: 1.5; }
-.component-library-panel__list { display: grid; gap: 6px; }
-.component-library-card { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px; border: 1px solid var(--app-line); border-radius: 8px; background: var(--app-panel); }
-.component-library-card > div { display: grid; gap: 3px; min-width: 0; }
+.component-library-panel__categories { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 2px; }
+.component-library-panel__categories button {
+  flex: 0 0 auto;
+  min-height: 28px;
+  border: 1px solid var(--app-line);
+  border-radius: 999px;
+  background: var(--app-panel);
+  color: var(--app-sub);
+  padding: 0 9px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 700;
+}
+.component-library-panel__categories button.active {
+  border-color: var(--app-accent);
+  background: var(--app-accent-soft);
+  color: var(--app-accent);
+}
+.component-library-panel__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.component-library-card { display: grid; gap: 7px; min-width: 0; padding: 8px; border: 1px solid var(--app-line); border-radius: 8px; background: var(--app-panel); cursor: grab; }
+.component-library-card:active { cursor: grabbing; }
+.component-library-card:hover { border-color: var(--app-line-strong); background: var(--app-panel); }
+.component-library-card__identity { display: grid; justify-items: center; gap: 4px; min-width: 0; text-align: center; }
+.component-library-card__icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--app-accent-soft);
+  color: var(--app-accent);
+}
+.component-library-icon {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+.component-library-card > button { width: 100%; }
 .component-library-card strong,
 .component-library-card small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .component-library-card small,
 .component-library-panel__empty { color: var(--app-muted); font-size: 10px; }
+.component-library-panel__empty { grid-column: 1 / -1; padding: 12px 4px; line-height: 1.5; }
 /* End Visual Editor Layer A. */
 @media (min-width: 1140px) {
   .preview-stage--desktop .promo-renderer {

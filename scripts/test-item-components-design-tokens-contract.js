@@ -86,6 +86,7 @@ assert.deepEqual(componentWithDraft.activeVersion, {
   imagePolicy: {},
   ctaPolicy: {},
   styleSlots: [],
+  placementPolicy: {},
   changeNote: "",
   fields: [],
 });

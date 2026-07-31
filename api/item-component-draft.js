@@ -24,11 +24,11 @@ module.exports = async function handler(req, res) {
       , inserted as (
       insert into wizard_item_component_versions (
         component_id, version, status, field_kind, text_type, editor_schema, default_value,
-        capabilities, image_policy, cta_policy, style_slots, change_note
+        capabilities, image_policy, cta_policy, style_slots, placement_policy, change_note
       ) select source.component_id,
         (select coalesce(max(v.version), 0) + 1 from wizard_item_component_versions v where v.component_id = source.component_id),
         'draft', source.field_kind, source.text_type, source.editor_schema, source.default_value,
-        source.capabilities, source.image_policy, source.cta_policy, source.style_slots,
+        source.capabilities, source.image_policy, source.cta_policy, source.style_slots, source.placement_policy,
         ${String(body.changeNote || "Draft created.")}
       from source cross join guard returning id
       )

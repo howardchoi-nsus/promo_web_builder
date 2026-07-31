@@ -1,5 +1,6 @@
 const {
-  getSql, parseBody, validateDefinition, replaceVersionFields, fetchComponents, fetchComponent,
+  getSql, parseBody, validateDefinition, validateLibraryPresentation, validatePlacementPolicy,
+  replaceVersionFields, fetchComponents, fetchComponent,
 } = require("./_item-components-store");
 
 module.exports = async function handler(req, res) {
@@ -20,19 +21,22 @@ module.exports = async function handler(req, res) {
     const name = String(body.name || "").trim();
     if (!name) return res.status(400).json({ error: "name is required" });
     const definition = validateDefinition(body);
+    const libraryPresentation = validateLibraryPresentation(body.libraryPresentation);
+    const placementPolicy = validatePlacementPolicy(body.placementPolicy);
     const sql = getSql();
     const rows = await sql`
       with component as (
-        insert into wizard_item_components (name, description)
-        values (${name}, ${String(body.description || "")}) returning id
+        insert into wizard_item_components (name, description, library_presentation)
+        values (${name}, ${String(body.description || "")}, ${JSON.stringify(libraryPresentation)}::jsonb) returning id
       ), version as (
         insert into wizard_item_component_versions (
           component_id, version, status, field_kind, text_type, editor_schema, default_value,
-          capabilities, image_policy, cta_policy, style_slots, change_note
+          capabilities, image_policy, cta_policy, style_slots, placement_policy, change_note
         ) select component.id, 1, 'draft', ${definition.fieldKind}, ${definition.textType},
           ${JSON.stringify(definition.editorSchema)}::jsonb, ${JSON.stringify(definition.defaultValue)}::jsonb,
           ${JSON.stringify(definition.capabilities)}::jsonb, ${JSON.stringify(definition.imagePolicy)}::jsonb,
           ${JSON.stringify(definition.ctaPolicy)}::jsonb, ${JSON.stringify(definition.styleSlots)}::jsonb,
+          ${JSON.stringify(placementPolicy)}::jsonb,
           ${String(body.changeNote || "Component created.")}
         from component returning component_id, id
       ) select component_id::text, id::text as version_id from version

@@ -9808,6 +9808,29 @@ var B_ = /*#__PURE__*/ Ch(v_, [["render", z_], ["__scopeId", "data-v-d128f75e"]]
 					] },
 					styleSlots: [],
 					changeNote: "",
+					libraryPresentation: {
+						category: "text",
+						iconKey: "heading",
+						displayOrder: 100,
+						isFeatured: !1
+					},
+					libraryKeywords: "",
+					placementPolicy: {
+						allowedSectionRoles: [],
+						deniedSectionRoles: [],
+						maxInstancesPerSection: null,
+						requiresParentCapabilities: [],
+						defaultGeometry: {
+							desktop: {
+								widthPct: 44,
+								heightPx: 120
+							},
+							mobile: {
+								widthPct: 90,
+								heightPx: 120
+							}
+						}
+					},
 					fields: [{
 						name: "Title",
 						description: "",
@@ -10843,6 +10866,29 @@ var B_ = /*#__PURE__*/ Ch(v_, [["render", z_], ["__scopeId", "data-v-d128f75e"]]
 					capabilities: { ...e.capabilities || {} },
 					styleSlots: [...e.styleSlots || []],
 					changeNote: "",
+					libraryPresentation: {
+						category: e.libraryPresentation?.category || "",
+						iconKey: e.libraryPresentation?.iconKey || "",
+						displayOrder: e.libraryPresentation?.displayOrder ?? 100,
+						isFeatured: e.libraryPresentation?.isFeatured === !0
+					},
+					libraryKeywords: (e.libraryPresentation?.keywords || []).join(", "),
+					placementPolicy: {
+						allowedSectionRoles: [...e.placementPolicy?.allowedSectionRoles || []],
+						deniedSectionRoles: [...e.placementPolicy?.deniedSectionRoles || []],
+						maxInstancesPerSection: e.placementPolicy?.maxInstancesPerSection ?? null,
+						requiresParentCapabilities: [...e.placementPolicy?.requiresParentCapabilities || []],
+						defaultGeometry: {
+							desktop: {
+								widthPct: e.placementPolicy?.defaultGeometry?.desktop?.widthPct ?? 44,
+								heightPx: e.placementPolicy?.defaultGeometry?.desktop?.heightPx ?? 120
+							},
+							mobile: {
+								widthPct: e.placementPolicy?.defaultGeometry?.mobile?.widthPct ?? 90,
+								heightPx: e.placementPolicy?.defaultGeometry?.mobile?.heightPx ?? 120
+							}
+						}
+					},
 					fields: t.map((e) => ({
 						...e,
 						editorSchema: { ...e.editorSchema || {} },
@@ -10910,13 +10956,19 @@ var B_ = /*#__PURE__*/ Ch(v_, [["render", z_], ["__scopeId", "data-v-d128f75e"]]
 				if (!(!this.itemComponentEditor.name || this.itemComponentSaving)) {
 					this.itemComponentSaving = !0;
 					try {
-						let e = await fetch("/api/item-components", {
+						let e = {
+							...this.itemComponentEditor,
+							libraryPresentation: {
+								...this.itemComponentEditor.libraryPresentation,
+								keywords: String(this.itemComponentEditor.libraryKeywords || "").split(",").map((e) => e.trim()).filter(Boolean)
+							}
+						}, t = await fetch("/api/item-components", {
 							method: "POST",
 							headers: { "Content-Type": "application/json" },
-							body: JSON.stringify(this.itemComponentEditor)
-						}), t = await e.json().catch(() => ({}));
-						if (!e.ok) throw Error(t.message || t.error || `컴포넌트 생성 오류(${e.status})`);
-						this.showNewItemComponentForm = !1, this.selectedItemComponentId = t.component.id, await this.loadItemComponents(), this.setStatus("컴포넌트 초안을 생성했습니다");
+							body: JSON.stringify(e)
+						}), n = await t.json().catch(() => ({}));
+						if (!t.ok) throw Error(n.message || n.error || `컴포넌트 생성 오류(${t.status})`);
+						this.showNewItemComponentForm = !1, this.selectedItemComponentId = n.component.id, await this.loadItemComponents(), this.setStatus("컴포넌트 초안을 생성했습니다");
 					} catch (e) {
 						this.setStatus(`컴포넌트 생성 실패: ${e.message}`);
 					} finally {
@@ -10971,16 +11023,20 @@ var B_ = /*#__PURE__*/ Ch(v_, [["render", z_], ["__scopeId", "data-v-d128f75e"]]
 				if (!(!e?.id || e.versionStatus !== "draft" || this.itemComponentSaving)) {
 					this.itemComponentSaving = !0;
 					try {
-						let t = await fetch(`/api/item-component?componentId=${encodeURIComponent(e.id)}`, {
+						let t = {
+							...this.itemComponentEditor,
+							libraryPresentation: {
+								...this.itemComponentEditor.libraryPresentation,
+								keywords: String(this.itemComponentEditor.libraryKeywords || "").split(",").map((e) => e.trim()).filter(Boolean)
+							},
+							versionId: e.versionId
+						}, n = await fetch(`/api/item-component?componentId=${encodeURIComponent(e.id)}`, {
 							method: "PATCH",
 							headers: { "Content-Type": "application/json" },
-							body: JSON.stringify({
-								...this.itemComponentEditor,
-								versionId: e.versionId
-							})
-						}), n = await t.json().catch(() => ({}));
-						if (!t.ok) throw Error(n.message || n.error || `컴포넌트 저장 오류(${t.status})`);
-						await this.loadItemComponents(), this.selectItemComponent(n.component), this.setStatus("컴포넌트 초안을 저장했습니다");
+							body: JSON.stringify(t)
+						}), r = await n.json().catch(() => ({}));
+						if (!n.ok) throw Error(r.message || r.error || `컴포넌트 저장 오류(${n.status})`);
+						await this.loadItemComponents(), this.selectItemComponent(r.component), this.setStatus("컴포넌트 초안을 저장했습니다");
 					} catch (e) {
 						this.setStatus(`컴포넌트 저장 실패: ${e.message}`);
 					} finally {

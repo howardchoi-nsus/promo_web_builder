@@ -4,6 +4,12 @@ const { neon } = require("@neondatabase/serverless");
 const FIELD_KINDS = ["text", "image", "cta"];
 const TEXT_TYPES = ["title", "remark", "multi"];
 const VERSION_STATUSES = ["draft", "active", "inactive", "archived"];
+const LIBRARY_CATEGORIES = ["layout", "text", "media", "action", "promo"];
+const COMPONENT_ICON_KEYS = [
+  "component-generic", "heading", "text", "image", "button",
+  "logo", "badge", "divider", "spacer", "layout",
+];
+const SECTION_ROLES = ["header", "hero", "benefit", "content", "cta", "notice", "terms", "legal", "footer"];
 
 function getSql() {
   const databaseUrl = getDatabaseUrl();
@@ -29,6 +35,82 @@ function asObject(value, fallback = {}) {
 
 function asArray(value) {
   return Array.isArray(value) ? value : [];
+}
+
+function badRequest(message) {
+  const error = new Error(message);
+  error.statusCode = 400;
+  throw error;
+}
+
+function validateLibraryPresentation(value) {
+  const source = asObject(value);
+  const category = String(source.category || "").trim();
+  const iconKey = String(source.iconKey || "").trim();
+  if (category && !LIBRARY_CATEGORIES.includes(category)) {
+    badRequest(`libraryPresentation.category must be one of: ${LIBRARY_CATEGORIES.join(", ")}`);
+  }
+  if (iconKey && !COMPONENT_ICON_KEYS.includes(iconKey)) {
+    badRequest(`libraryPresentation.iconKey must be one of: ${COMPONENT_ICON_KEYS.join(", ")}`);
+  }
+  const keywords = [...new Set(asArray(source.keywords)
+    .map((keyword) => String(keyword || "").trim().toLowerCase())
+    .filter(Boolean))];
+  if (keywords.length > 20 || keywords.some((keyword) => keyword.length > 40)) {
+    badRequest("libraryPresentation.keywords supports up to 20 values of 40 characters");
+  }
+  const displayOrder = source.displayOrder == null || source.displayOrder === ""
+    ? 100
+    : Number(source.displayOrder);
+  if (!Number.isInteger(displayOrder) || displayOrder < 0 || displayOrder > 9999) {
+    badRequest("libraryPresentation.displayOrder must be an integer between 0 and 9999");
+  }
+  return { category, iconKey, keywords, displayOrder, isFeatured: source.isFeatured === true };
+}
+
+function validateGeometry(value, viewport) {
+  const source = asObject(value);
+  if (!Object.keys(source).length) return {};
+  const widthPct = Number(source.widthPct);
+  const heightPx = Number(source.heightPx);
+  if (!Number.isFinite(widthPct) || widthPct <= 0 || widthPct > 100) {
+    badRequest(`placementPolicy.defaultGeometry.${viewport}.widthPct must be greater than 0 and at most 100`);
+  }
+  if (!Number.isFinite(heightPx) || heightPx < 1 || heightPx > 2000) {
+    badRequest(`placementPolicy.defaultGeometry.${viewport}.heightPx must be between 1 and 2000`);
+  }
+  return { widthPct, heightPx };
+}
+
+function validatePlacementPolicy(value) {
+  const source = asObject(value);
+  const normalizeRoles = (roles, key) => [...new Set(asArray(roles).map((role) => String(role || "").trim()).filter(Boolean))]
+    .map((role) => {
+      if (!SECTION_ROLES.includes(role)) badRequest(`placementPolicy.${key} contains unsupported role: ${role}`);
+      return role;
+    });
+  const allowedSectionRoles = normalizeRoles(source.allowedSectionRoles, "allowedSectionRoles");
+  const deniedSectionRoles = normalizeRoles(source.deniedSectionRoles, "deniedSectionRoles");
+  if (allowedSectionRoles.some((role) => deniedSectionRoles.includes(role))) {
+    badRequest("placementPolicy cannot allow and deny the same Section role");
+  }
+  const maxInstancesPerSection = source.maxInstancesPerSection == null || source.maxInstancesPerSection === ""
+    ? null
+    : Number(source.maxInstancesPerSection);
+  if (maxInstancesPerSection != null && (!Number.isInteger(maxInstancesPerSection) || maxInstancesPerSection < 1 || maxInstancesPerSection > 100)) {
+    badRequest("placementPolicy.maxInstancesPerSection must be an integer between 1 and 100");
+  }
+  return {
+    allowedSectionRoles,
+    deniedSectionRoles,
+    maxInstancesPerSection,
+    requiresParentCapabilities: [...new Set(asArray(source.requiresParentCapabilities)
+      .map((capability) => String(capability || "").trim()).filter(Boolean))],
+    defaultGeometry: {
+      desktop: validateGeometry(source.defaultGeometry?.desktop, "desktop"),
+      mobile: validateGeometry(source.defaultGeometry?.mobile, "mobile"),
+    },
+  };
 }
 
 function validateFieldDefinition(body, index = 0) {
@@ -226,6 +308,7 @@ function toComponent(row) {
     imagePolicy: row.active_image_policy || {},
     ctaPolicy: row.active_cta_policy || {},
     styleSlots: row.active_style_slots || [],
+    placementPolicy: row.active_placement_policy || {},
     changeNote: row.active_change_note || "",
     fields: [],
   } : null;
@@ -235,6 +318,7 @@ function toComponent(row) {
     systemSeedCode: row.system_seed_code || null,
     name: row.name,
     description: row.description || "",
+    libraryPresentation: row.library_presentation || {},
     status: row.component_status,
     versionId: row.version_id || null,
     version: row.version == null ? null : Number(row.version),
@@ -247,6 +331,7 @@ function toComponent(row) {
     imagePolicy: row.image_policy || {},
     ctaPolicy: row.cta_policy || {},
     styleSlots: row.style_slots || [],
+    placementPolicy: row.placement_policy || {},
     changeNote: row.change_note || "",
     fields: [],
     activeVersion,
@@ -258,17 +343,18 @@ function toComponent(row) {
 async function fetchComponents(sql, { includeArchived = false } = {}) {
   const selectRows = () => includeArchived ? sql`
     select component.id::text, component.component_key, component.system_seed_code,
-      component.name, component.description, component.status as component_status,
+      component.name, component.description, component.library_presentation, component.status as component_status,
       version.id::text as version_id, version.version, version.status as version_status,
       version.field_kind, version.text_type, version.editor_schema, version.default_value,
       version.capabilities, version.image_policy, version.cta_policy, version.style_slots,
-      version.change_note,
+      version.placement_policy, version.change_note,
       active_version.id::text as active_version_id, active_version.version as active_version,
       active_version.status as active_version_status, active_version.field_kind as active_field_kind,
       active_version.text_type as active_text_type, active_version.editor_schema as active_editor_schema,
       active_version.default_value as active_default_value, active_version.capabilities as active_capabilities,
       active_version.image_policy as active_image_policy, active_version.cta_policy as active_cta_policy,
-      active_version.style_slots as active_style_slots, active_version.change_note as active_change_note,
+      active_version.style_slots as active_style_slots, active_version.placement_policy as active_placement_policy,
+      active_version.change_note as active_change_note,
       component.created_at, greatest(component.updated_at, version.updated_at) as updated_at
     from wizard_item_components component
     left join lateral (
@@ -287,17 +373,18 @@ async function fetchComponents(sql, { includeArchived = false } = {}) {
     order by component.name asc, component.created_at asc
   ` : sql`
     select component.id::text, component.component_key, component.system_seed_code,
-      component.name, component.description, component.status as component_status,
+      component.name, component.description, component.library_presentation, component.status as component_status,
       version.id::text as version_id, version.version, version.status as version_status,
       version.field_kind, version.text_type, version.editor_schema, version.default_value,
       version.capabilities, version.image_policy, version.cta_policy, version.style_slots,
-      version.change_note,
+      version.placement_policy, version.change_note,
       active_version.id::text as active_version_id, active_version.version as active_version,
       active_version.status as active_version_status, active_version.field_kind as active_field_kind,
       active_version.text_type as active_text_type, active_version.editor_schema as active_editor_schema,
       active_version.default_value as active_default_value, active_version.capabilities as active_capabilities,
       active_version.image_policy as active_image_policy, active_version.cta_policy as active_cta_policy,
-      active_version.style_slots as active_style_slots, active_version.change_note as active_change_note,
+      active_version.style_slots as active_style_slots, active_version.placement_policy as active_placement_policy,
+      active_version.change_note as active_change_note,
       component.created_at, greatest(component.updated_at, version.updated_at) as updated_at
     from wizard_item_components component
     left join lateral (
@@ -323,22 +410,24 @@ async function fetchComponents(sql, { includeArchived = false } = {}) {
 async function fetchComponent(sql, componentId, versionId = "") {
   const rows = versionId ? await sql`
     select component.id::text, component.component_key, component.system_seed_code,
-      component.name, component.description, component.status as component_status,
+      component.name, component.description, component.library_presentation, component.status as component_status,
       version.id::text as version_id, version.version, version.status as version_status,
       version.field_kind, version.text_type, version.editor_schema, version.default_value,
       version.capabilities, version.image_policy, version.cta_policy, version.style_slots,
-      version.change_note, component.created_at, greatest(component.updated_at, version.updated_at) as updated_at
+      version.placement_policy, version.change_note,
+      component.created_at, greatest(component.updated_at, version.updated_at) as updated_at
     from wizard_item_components component
     left join wizard_item_component_versions version on version.id = ${versionId}::uuid
     where component.id = ${componentId}::uuid and version.component_id = component.id
     limit 1
   ` : await sql`
     select component.id::text, component.component_key, component.system_seed_code,
-      component.name, component.description, component.status as component_status,
+      component.name, component.description, component.library_presentation, component.status as component_status,
       version.id::text as version_id, version.version, version.status as version_status,
       version.field_kind, version.text_type, version.editor_schema, version.default_value,
       version.capabilities, version.image_policy, version.cta_policy, version.style_slots,
-      version.change_note, component.created_at, greatest(component.updated_at, version.updated_at) as updated_at
+      version.placement_policy, version.change_note,
+      component.created_at, greatest(component.updated_at, version.updated_at) as updated_at
     from wizard_item_components component
     left join lateral (
       select * from wizard_item_component_versions candidate
@@ -355,7 +444,7 @@ async function fetchComponent(sql, componentId, versionId = "") {
 async function fetchComponentVersions(sql, componentId) {
   const rows = await sql`
     select id::text, component_id::text, version, status, field_kind, text_type,
-      editor_schema, default_value, capabilities, image_policy, cta_policy, style_slots,
+      editor_schema, default_value, capabilities, image_policy, cta_policy, style_slots, placement_policy,
       change_note, created_at, updated_at
     from wizard_item_component_versions
     where component_id = ${componentId}::uuid
@@ -366,6 +455,7 @@ async function fetchComponentVersions(sql, componentId) {
     fieldKind: row.field_kind, textType: row.text_type || null, editorSchema: row.editor_schema || {},
     defaultValue: row.default_value ?? null, capabilities: row.capabilities || {},
     imagePolicy: row.image_policy || {}, ctaPolicy: row.cta_policy || {}, styleSlots: row.style_slots || [],
+    placementPolicy: row.placement_policy || {},
     changeNote: row.change_note || "", createdAt: row.created_at, updatedAt: row.updated_at,
     fields: [],
   }));
@@ -375,7 +465,8 @@ async function fetchComponentVersions(sql, componentId) {
 }
 
 module.exports = {
-  FIELD_KINDS, TEXT_TYPES, VERSION_STATUSES, getSql, parseBody, validateDefinition,
+  FIELD_KINDS, TEXT_TYPES, VERSION_STATUSES, LIBRARY_CATEGORIES, COMPONENT_ICON_KEYS, SECTION_ROLES,
+  getSql, parseBody, validateDefinition, validateLibraryPresentation, validatePlacementPolicy,
   toComponent, toComponentField, fetchVersionFields, replaceVersionFields,
   fetchComponents, fetchComponent, fetchComponentVersions,
 };

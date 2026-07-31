@@ -1,5 +1,6 @@
 const {
-  getSql, parseBody, validateDefinition, replaceVersionFields, fetchComponent, fetchComponentVersions,
+  getSql, parseBody, validateDefinition, validateLibraryPresentation, validatePlacementPolicy,
+  replaceVersionFields, fetchComponent, fetchComponentVersions,
 } = require("./_item-components-store");
 
 module.exports = async function handler(req, res) {
@@ -29,10 +30,13 @@ module.exports = async function handler(req, res) {
     if (!currentRows.length) return res.status(404).json({ error: "Component version not found" });
     if (currentRows[0].status !== "draft") return res.status(409).json({ error: "Only draft component versions can be edited" });
     const definition = validateDefinition(body);
+    const libraryPresentation = validateLibraryPresentation(body.libraryPresentation);
+    const placementPolicy = validatePlacementPolicy(body.placementPolicy);
     await sql`
       update wizard_item_components set
         name = ${String(body.name || "").trim() || "Untitled component"},
-        description = ${String(body.description || "")}, updated_at = now()
+        description = ${String(body.description || "")},
+        library_presentation = ${JSON.stringify(libraryPresentation)}::jsonb, updated_at = now()
       where id = ${componentId}::uuid
     `;
     await sql`
@@ -44,6 +48,7 @@ module.exports = async function handler(req, res) {
         image_policy = ${JSON.stringify(definition.imagePolicy)}::jsonb,
         cta_policy = ${JSON.stringify(definition.ctaPolicy)}::jsonb,
         style_slots = ${JSON.stringify(definition.styleSlots)}::jsonb,
+        placement_policy = ${JSON.stringify(placementPolicy)}::jsonb,
         change_note = ${String(body.changeNote || "Draft updated.")}, updated_at = now()
       where id = ${versionId}::uuid
     `;
