@@ -88,6 +88,7 @@ export function createSectionInstanceFromPreset(preset, { index = 0, preserveKey
       id: null,
       sectionId: null,
       sourceItemId: String(item.id || ""),
+      sourceItemKey: String(item.itemKey || ""),
       itemKey: preserveKeys
         ? String(item.itemKey)
         : createItemKey(item.componentKey || item.itemKey || "component"),

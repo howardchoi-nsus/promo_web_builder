@@ -17,7 +17,7 @@ var e = Object.create, t = Object.defineProperty, n = Object.getOwnPropertyDescr
 	enumerable: !0
 }) : a, n));
 //#endregion
-//#region ../../../../../../AI_WORKSPACE/promo/promo_web_builder/node_modules/.pnpm/@vue+shared@3.5.39/node_modules/@vue/shared/dist/shared.esm-bundler.js
+//#region node_modules/.pnpm/@vue+shared@3.5.39/node_modules/@vue/shared/dist/shared.esm-bundler.js
 // @__NO_SIDE_EFFECTS__
 function u(e) {
 	let t = /* @__PURE__ */ Object.create(null);
@@ -119,7 +119,7 @@ function Ge(e) {
 	return e == null ? "initial" : typeof e == "string" ? e === "" ? " " : e : String(e);
 }
 //#endregion
-//#region ../../../../../../AI_WORKSPACE/promo/promo_web_builder/node_modules/.pnpm/@vue+reactivity@3.5.39/node_modules/@vue/reactivity/dist/reactivity.esm-bundler.js
+//#region node_modules/.pnpm/@vue+reactivity@3.5.39/node_modules/@vue/reactivity/dist/reactivity.esm-bundler.js
 var Ke, qe = class {
 	constructor(e = !1) {
 		this.detached = e, this._active = !0, this._on = 0, this.effects = [], this.cleanups = [], this._isPaused = !1, this._warnOnRun = !0, this.__v_skip = !0, !e && Ke && (Ke.active ? (this.parent = Ke, this.index = (Ke.scopes ||= []).push(this) - 1) : (this._active = !1, this._warnOnRun = !1));
@@ -1011,7 +1011,7 @@ function Yn(e, t = Infinity, n) {
 	return e;
 }
 //#endregion
-//#region ../../../../../../AI_WORKSPACE/promo/promo_web_builder/node_modules/.pnpm/@vue+runtime-core@3.5.39/node_modules/@vue/runtime-core/dist/runtime-core.esm-bundler.js
+//#region node_modules/.pnpm/@vue+runtime-core@3.5.39/node_modules/@vue/runtime-core/dist/runtime-core.esm-bundler.js
 var Xn = [];
 function Zn(e) {
 	Xn.push(e);
@@ -7161,7 +7161,7 @@ function hh(e, t = {}) {
 	}));
 }
 //#endregion
-//#region ../../../../../../AI_WORKSPACE/promo/promo_web_builder/node_modules/.pnpm/vue@3.5.39/node_modules/vue/dist/vue.esm-bundler.js
+//#region node_modules/.pnpm/vue@3.5.39/node_modules/vue/dist/vue.esm-bundler.js
 var gh = /* @__PURE__ */ s({
 	BaseTransition: () => mi,
 	BaseTransitionPropsValidators: () => ui,
@@ -7496,7 +7496,7 @@ function zh(e, t = {}) {
 		"--promo-image-radius": h || l,
 		"--promo-component-radius": h || l,
 		"--promo-component-shadow": g || u,
-		"--promo-font": n["--app-font-body"] || n["--promo-font"] || t.font || "",
+		"--promo-font": n["--app-font-body"] || n["--app-font-family"] || n["--promo-font"] || t.font || "",
 		"--promo-radius": h || l,
 		"--promo-shadow": g || u,
 		"--promo-hero-bg-image": n["--app-hero-bg-image"] || "none",
@@ -7504,7 +7504,7 @@ function zh(e, t = {}) {
 		"--promo-space-4": n["--app-space-4"] || "18px",
 		"--promo-border-width": n["--app-border-width"] || "2px",
 		"--promo-font-size-body": n["--app-font-size-body"] || "16px",
-		"--promo-title-size": n["--promo-title-size"] || t.titleSize || "clamp(28px, 5vw, 72px)",
+		"--promo-title-size": n["--promo-font-size-main-title"] || n["--promo-title-size"] || t.titleSize || "clamp(28px, 5vw, 72px)",
 		"--promo-font-weight-strong": n["--app-font-weight-strong"] || "800",
 		"--promo-transition-duration": n["--app-transition-duration-normal"] || "200ms",
 		"--promo-transition-delay": n["--app-transition-delay"] || "0ms",
@@ -8389,7 +8389,303 @@ var p_ = Object.freeze({
 	promptWorkflowGroupMeta: n_,
 	resolvePromptSelection: f_,
 	selectPromptGroupPrimary: s_
-}), m_ = /* @__PURE__ */ o((() => {
+});
+//#endregion
+//#region admin-app/src/services/section-layout-preset-service.mjs
+async function m_(e, t = {}, n = globalThis.fetch) {
+	let r = await n(e, {
+		cache: "no-store",
+		...t,
+		headers: {
+			"Content-Type": "application/json",
+			...t.headers || {}
+		}
+	}), i = await r.json().catch(() => ({}));
+	if (!r.ok) {
+		let e = Error(i.message || i.error || `Request failed (${r.status})`);
+		throw e.validationErrors = i.errors || [], e;
+	}
+	return i;
+}
+function h_(e = []) {
+	let t = e.filter((e) => e.isVisibleInWizard !== !1), n = (e) => Object.fromEntries(t.map((t, n) => [t.itemKey, {
+		positionMode: "free",
+		xPct: e === "mobile" ? 5 : 4 + n % 2 * 48,
+		yPx: 16 + Math.floor(n / (e === "mobile" ? 1 : 2)) * 72,
+		widthPct: e === "mobile" ? 90 : 44,
+		heightPx: 52,
+		zIndex: 1
+	}]));
+	return {
+		contractVersion: 1,
+		layoutMode: "free",
+		sectionStyle: {
+			minHeight: Math.max(160, 40 + Math.ceil(t.length / 2) * 72, 40 + t.length * 72),
+			backgroundColor: "#0B0D12"
+		},
+		viewports: {
+			desktop: {
+				items: n("desktop"),
+				visibility: { items: {} }
+			},
+			mobile: {
+				items: n("mobile"),
+				visibility: { items: {} }
+			}
+		}
+	};
+}
+function g_(e, t, n = globalThis.location?.origin) {
+	let r = new URL("/prototype/visual-editor.html", n);
+	return r.searchParams.set("mode", "section-preset"), r.searchParams.set("sectionId", e), r.searchParams.set("layoutKey", t), r.toString();
+}
+var __ = Object.freeze({
+	list(e, t) {
+		return m_(`/api/wizard-content-section-layouts?sectionId=${encodeURIComponent(e)}`, {}, t);
+	},
+	create(e, t) {
+		return m_("/api/wizard-content-section-layouts", {
+			method: "POST",
+			body: JSON.stringify(e)
+		}, t);
+	},
+	remove(e, t, n) {
+		return m_(`/api/wizard-content-section-layout?id=${encodeURIComponent(e)}&sectionId=${encodeURIComponent(t)}`, { method: "DELETE" }, n);
+	},
+	setDefault(e, t, n) {
+		return m_("/api/wizard-content-section-layout-default", {
+			method: "POST",
+			body: JSON.stringify({
+				id: e,
+				sectionId: t
+			})
+		}, n);
+	},
+	updateAiLayoutVariants(e, t, n) {
+		return m_("/api/wizard-content-section", {
+			method: "PATCH",
+			body: JSON.stringify({
+				id: e.id,
+				aiDesign: {
+					...e.aiDesign || {},
+					allowedLayoutVariants: t
+				},
+				changeNote: "Layout Preset의 AI 사용 정책 변경."
+			})
+		}, n);
+	},
+	editorUrl: g_
+}), v_ = {
+	name: "SectionLayoutPresetManager",
+	props: {
+		section: {
+			type: Object,
+			required: !0
+		},
+		items: {
+			type: Array,
+			default: () => []
+		}
+	},
+	emits: ["section-updated"],
+	data() {
+		return {
+			loading: !1,
+			saving: !1,
+			error: "",
+			layouts: [],
+			showCreate: !1,
+			createForm: {
+				name: "",
+				description: ""
+			},
+			requestRevision: 0
+		};
+	},
+	computed: { editable() {
+		return this.section?.status === "draft";
+	} },
+	watch: { "section.id": {
+		immediate: !0,
+		handler() {
+			this.load();
+		}
+	} },
+	beforeUnmount() {
+		this.requestRevision += 1;
+	},
+	methods: {
+		async load() {
+			let e = ++this.requestRevision;
+			this.loading = !0, this.error = "";
+			try {
+				let t = await __.list(this.section.id);
+				e === this.requestRevision && (this.layouts = t.layouts || []);
+			} catch (t) {
+				e === this.requestRevision && (this.error = t.message);
+			} finally {
+				e === this.requestRevision && (this.loading = !1);
+			}
+		},
+		async createPreset() {
+			let e = this.createForm.name.trim();
+			if (!(!e || !this.editable || this.saving)) {
+				this.saving = !0, this.error = "";
+				try {
+					let t = await __.create({
+						sectionId: this.section.id,
+						name: e,
+						description: this.createForm.description.trim(),
+						isDefault: this.layouts.length === 0,
+						layoutSnapshot: h_(this.items),
+						changeNote: "Admin에서 Layout Preset 생성."
+					});
+					this.createForm = {
+						name: "",
+						description: ""
+					}, this.showCreate = !1, await this.load(), this.openEditor(t.layout);
+				} catch (e) {
+					this.error = e.validationErrors?.[0]?.message || e.message;
+				} finally {
+					this.saving = !1;
+				}
+			}
+		},
+		openEditor(e) {
+			globalThis.open(__.editorUrl(this.section.id, e.layoutKey), "_blank", "noopener");
+		},
+		async setDefault(e) {
+			if (!(!this.editable || e.isDefault || this.saving)) {
+				this.saving = !0, this.error = "";
+				try {
+					await __.setDefault(e.id, this.section.id), await this.load();
+				} catch (e) {
+					this.error = e.message;
+				} finally {
+					this.saving = !1;
+				}
+			}
+		},
+		async remove(e) {
+			if (!(!this.editable || this.saving)) {
+				if (this.aiAllows(e)) {
+					this.error = "AI 허용을 먼저 해제한 뒤 Layout Preset을 삭제하세요.";
+					return;
+				}
+				if (globalThis.confirm(`"${e.name}" Layout Preset을 삭제할까요?`)) {
+					this.saving = !0, this.error = "";
+					try {
+						await __.remove(e.id, this.section.id), await this.load();
+					} catch (e) {
+						this.error = e.message;
+					} finally {
+						this.saving = !1;
+					}
+				}
+			}
+		},
+		aiAllows(e) {
+			return (this.section.aiDesign?.allowedLayoutVariants || []).includes(e.layoutKey);
+		},
+		async toggleAiLayout(e) {
+			if (!this.editable || this.saving) return;
+			let t = new Set(this.layouts.map((e) => e.layoutKey)), n = new Set((this.section.aiDesign?.allowedLayoutVariants || []).filter((e) => t.has(e)));
+			n.has(e.layoutKey) ? n.delete(e.layoutKey) : n.add(e.layoutKey), this.saving = !0, this.error = "";
+			try {
+				await __.updateAiLayoutVariants(this.section, [...n]), this.$emit("section-updated");
+			} catch (e) {
+				this.error = e.message;
+			} finally {
+				this.saving = !1;
+			}
+		}
+	}
+}, y_ = { class: "section-layout-manager" }, b_ = { class: "subsection-title" }, x_ = { class: "action-row" }, S_ = ["disabled"], C_ = ["disabled"], w_ = {
+	key: 0,
+	class: "empty-state compact"
+}, T_ = {
+	key: 1,
+	class: "field-error"
+}, E_ = {
+	key: 2,
+	class: "section-layout-create"
+}, D_ = { class: "field compact-field" }, O_ = { class: "field compact-field" }, k_ = ["disabled"], A_ = {
+	key: 3,
+	class: "empty-state compact"
+}, j_ = {
+	key: 4,
+	class: "history-list"
+}, M_ = {
+	key: 0,
+	class: "status-active"
+}, N_ = { class: "action-row align-right" }, P_ = ["onClick"], F_ = ["disabled", "onClick"], I_ = ["disabled", "onClick"], L_ = ["disabled", "onClick"], R_ = {
+	key: 0,
+	class: "empty-state compact"
+};
+function z_(e, t, n, r, i, a) {
+	return B(), V("section", y_, [
+		H("div", b_, [t[5] ||= H("div", null, [H("h3", null, "Layout Preset"), H("small", null, "섹션을 추가할 때 적용할 Desktop/Mobile 배치를 미리 설정합니다.")], -1), H("div", x_, [H("button", {
+			class: "tiny-button",
+			type: "button",
+			disabled: i.loading,
+			onClick: t[0] ||= (...e) => a.load && a.load(...e)
+		}, "새로고침", 8, S_), H("button", {
+			class: "tiny-button primary",
+			type: "button",
+			disabled: !a.editable || i.saving,
+			onClick: t[1] ||= (e) => i.showCreate = !i.showCreate
+		}, "+ Preset", 8, C_)])]),
+		a.editable ? W("", !0) : (B(), V("div", w_, "활성·비활성 버전의 Layout은 읽기 전용입니다. 초안을 만든 후 편집하세요.")),
+		i.error ? (B(), V("div", T_, N(i.error), 1)) : W("", !0),
+		i.showCreate && a.editable ? (B(), V("div", E_, [
+			H("label", D_, [t[6] ||= H("span", null, "이름", -1), Mr(H("input", {
+				"onUpdate:modelValue": t[2] ||= (e) => i.createForm.name = e,
+				type: "text",
+				placeholder: "예: Standard Header"
+			}, null, 512), [[su, i.createForm.name]])]),
+			H("label", O_, [t[7] ||= H("span", null, "설명", -1), Mr(H("input", {
+				"onUpdate:modelValue": t[3] ||= (e) => i.createForm.description = e,
+				type: "text",
+				placeholder: "사용 목적"
+			}, null, 512), [[su, i.createForm.description]])]),
+			H("button", {
+				class: "tiny-button primary",
+				type: "button",
+				disabled: !i.createForm.name.trim() || i.saving,
+				onClick: t[4] ||= (...e) => a.createPreset && a.createPreset(...e)
+			}, "생성 후 편집", 8, k_)
+		])) : W("", !0),
+		i.loading ? (B(), V("div", A_, "Layout Preset을 불러오는 중...")) : (B(), V("div", j_, [(B(!0), V(R, null, ka(i.layouts, (e) => (B(), V("div", {
+			key: e.id,
+			class: "history-item section-layout-row"
+		}, [H("div", null, [H("strong", null, [zs(N(e.name) + " ", 1), e.isDefault ? (B(), V("em", M_, "기본")) : W("", !0)]), H("span", null, N(e.layoutKey) + " · " + N(e.description || "설명 없음"), 1)]), H("div", N_, [
+			H("button", {
+				class: "tiny-button",
+				type: "button",
+				onClick: (t) => a.openEditor(e)
+			}, N(a.editable ? "편집" : "보기"), 9, P_),
+			H("button", {
+				class: "tiny-button",
+				type: "button",
+				disabled: !a.editable || e.isDefault || i.saving,
+				onClick: (t) => a.setDefault(e)
+			}, "기본값", 8, F_),
+			H("button", {
+				class: "tiny-button",
+				type: "button",
+				disabled: !a.editable || i.saving,
+				onClick: (t) => a.toggleAiLayout(e)
+			}, N(a.aiAllows(e) ? "AI 허용됨" : "AI 허용"), 9, I_),
+			H("button", {
+				class: "tiny-button danger",
+				type: "button",
+				disabled: !a.editable || i.saving || a.aiAllows(e),
+				onClick: (t) => a.remove(e)
+			}, "삭제", 8, L_)
+		])]))), 128)), i.layouts.length ? W("", !0) : (B(), V("div", R_, "등록된 Layout Preset이 없습니다. 기존 자동 배치가 계속 사용됩니다."))]))
+	]);
+}
+var B_ = /*#__PURE__*/ Ch(v_, [["render", z_], ["__scopeId", "data-v-d128f75e"]]), V_ = /* @__PURE__ */ o((() => {
 	var e = {
 		documents: "promoPrototype.documents.abc",
 		generatedPages: "promoPrototype.generatedPages.abc",
@@ -13853,7 +14149,7 @@ var p_ = Object.freeze({
 			}
 		}
 	});
-	me.component("template-layout-manager", window.PromoAdminTemplateLayout.component), me.component("design-token-manager", window.PromoAdminDesignTokens.component), (window.PromoI18n?.init?.() || Promise.resolve()).finally(() => me.mount("#app"));
+	me.component("template-layout-manager", window.PromoAdminTemplateLayout.component), me.component("section-layout-preset-manager", window.PromoAdminSectionLayouts.component), me.component("design-token-manager", window.PromoAdminDesignTokens.component), (window.PromoI18n?.init?.() || Promise.resolve()).finally(() => me.mount("#app"));
 }));
 yh(document), globalThis.Vue = gh, globalThis.PromoAdminTemplateLayout = Object.freeze({
 	service: Sh,
@@ -13861,5 +14157,8 @@ yh(document), globalThis.Vue = gh, globalThis.PromoAdminTemplateLayout = Object.
 }), globalThis.PromoAdminDesignTokens = Object.freeze({
 	service: Hh,
 	component: Qg
-}), globalThis.PromoAdminPromptGroups = p_, await Promise.resolve().then(() => /* @__PURE__ */ l(m_()));
+}), globalThis.PromoAdminPromptGroups = p_, globalThis.PromoAdminSectionLayouts = Object.freeze({
+	service: __,
+	component: B_
+}), await Promise.resolve().then(() => /* @__PURE__ */ l(V_()));
 //#endregion

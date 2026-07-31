@@ -5,6 +5,8 @@ import { templateLayoutService } from "./services/template-layout-service.mjs";
 import DesignTokenManager from "./components/DesignTokenManager.vue";
 import { designTokenService } from "./services/design-token-service.mjs";
 import { promptTemplateGroupService } from "./services/prompt-template-group-service.mjs";
+import SectionLayoutPresetManager from "./components/SectionLayoutPresetManager.vue";
+import { sectionLayoutPresetService } from "./services/section-layout-preset-service.mjs";
 
 resolveAdminShell(document);
 globalThis.Vue = VueRuntime;
@@ -17,5 +19,9 @@ globalThis.PromoAdminDesignTokens = Object.freeze({
   component: DesignTokenManager,
 });
 globalThis.PromoAdminPromptGroups = promptTemplateGroupService;
+globalThis.PromoAdminSectionLayouts = Object.freeze({
+  service: sectionLayoutPresetService,
+  component: SectionLayoutPresetManager,
+});
 
 await import("../../prototype/app.js");

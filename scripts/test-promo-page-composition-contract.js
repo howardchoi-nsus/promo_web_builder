@@ -119,6 +119,58 @@ assert.deepEqual(snapshot.designSpec.itemStyles[`${sectionKey}.${itemKey}`], {
   fontWeightToken: "--app-font-weight-title",
 });
 
+const layoutPreset = {
+  layoutKey: "hero-standard",
+  name: "Hero Standard",
+  isDefault: true,
+  layoutSnapshot: {
+    contractVersion: 1,
+    layoutMode: "free",
+    sectionStyle: { minHeight: 480, backgroundColor: "#101820" },
+    viewports: {
+      desktop: {
+        items: {
+          title: { positionMode: "free", xPct: 8, yPx: 80, widthPct: 54, heightPx: 110, zIndex: 2 },
+        },
+        visibility: { items: {} },
+      },
+      mobile: {
+        items: {
+          title: { positionMode: "free", xPct: 6, yPx: 48, widthPct: 88, heightPx: 96, zIndex: 2 },
+        },
+        visibility: { items: {} },
+      },
+    },
+  },
+};
+const presetCandidates = JSON.parse(JSON.stringify(candidates));
+presetCandidates.templates[0].sections[0].allowedLayoutVariants = ["hero-standard"];
+presetCandidates.templates[0].sections[0].layoutPresets = [layoutPreset];
+presetCandidates.templates[0].sections[0].aiDesign = {
+  enabled: true,
+  allowedLayoutVariants: ["hero-standard"],
+};
+const presetValidated = validatePageCompositionProposal({
+  ...result,
+  sections: [{ ...result.sections[0], layoutVariant: "hero-standard" }],
+}, presetCandidates);
+const presetSnapshot = normalizePageComposition({
+  validated: presetValidated,
+  overview: { title: "Preset promotion" },
+  documentId: "document-preset",
+  proposalId: "proposal-preset",
+  overviewFingerprint: "overview-preset",
+  candidateFingerprint: "candidate-preset",
+});
+const presetSectionKey = presetSnapshot.content.sectionOrder[0];
+const presetItemKey = presetSnapshot.content.sectionSnapshot[0].items[0].itemKey;
+const presetStyleKey = `${presetSectionKey}.${presetItemKey}`;
+assert.equal(presetSnapshot.designSpec.sectionStyles[presetSectionKey].minHeight, 480);
+assert.equal(presetSnapshot.designSpec.itemStyles[presetStyleKey].xPct, 8);
+assert.equal(presetSnapshot.designSpec.itemStyles[presetStyleKey].colorToken, "--app-ink");
+assert.equal(presetSnapshot.designSpec.responsiveLayouts.mobile.itemStyles[presetStyleKey].xPct, 6);
+assert.equal(presetSnapshot.content.sectionSnapshot[0].selectedLayoutKey, "hero-standard");
+
 assert.throws(() => validatePageCompositionProposal({
   ...result,
   sections: [],

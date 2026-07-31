@@ -1,5 +1,8 @@
 const { createHash } = require("node:crypto");
 const { createPromptExecutionSnapshot } = require("./_prompt-execution-snapshot");
+const {
+  buildSectionImagePromptVariables,
+} = require("./_section-image-prompt-variables");
 
 const SECTION_DESIGN_ASSET_REQUEST_MODE = "assets";
 
@@ -53,23 +56,22 @@ async function enqueueBuilderAssetJobs(sql, {
     const field = isComponent ? fieldByKey(component, request.fieldKey) : null;
     if (isComponent && (!component || !field || field.fieldKind !== "image")) continue;
     const promptType = isComponent ? "component_image" : "section_background_image";
-    const promptVariables = isComponent ? {
-      sectionName: section.name || section.sourceSectionKey || "Promotion section",
-      componentName: component.name || component.sourceItemKey || "Visual",
-      fieldName: field.name || field.fieldKey || "Visual",
-      contentJson: JSON.stringify(sectionContent),
-      adminGuidance: [field.image?.promptText, request.guidance].filter(Boolean).join("\n"),
-    } : {
-      sectionName: section.name || section.sourceSectionKey || "Promotion section",
-      contentJson: JSON.stringify(sectionContent),
+    const promptVariables = buildSectionImagePromptVariables({
+      promptType,
+      section,
+      component,
+      field,
+      sectionContent,
+      designSpec: snapshot.designSpec,
+      designTokenValues: snapshot.content.formTemplate.designTokens?.values || {},
+      request,
       backgroundColor,
-      fadeMode: String(
-        snapshot.designSpec?.sectionStyles?.[request.pageSectionInstanceId]?.backgroundFadeMode
+      fadeMode: snapshot.designSpec?.sectionStyles?.[request.pageSectionInstanceId]?.backgroundFadeMode
         || "none",
-      ),
-      adminGuidance: [section.aiDesign?.backgroundPromptText, request.guidance].filter(Boolean).join("\n"),
-      aspectRatio: String(section.aiDesign?.imageAspectRatio || "16:9"),
-    };
+      aspectRatio: isComponent
+        ? field.image?.aspectRatio || "1:1"
+        : section.aiDesign?.imageAspectRatio || "16:9",
+    });
     const promptSnapshot = await createPromptExecutionSnapshot(sql, promptType, promptVariables);
     const targetType = isComponent ? "item" : "section-background";
     const targetItemKey = isComponent ? request.pageComponentInstanceId : null;

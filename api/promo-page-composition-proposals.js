@@ -2,7 +2,10 @@ const { randomUUID } = require("node:crypto");
 const { parseBody } = require("./_wizard-form-templates-store");
 const { normalizeOverview, overviewFingerprint } = require("./_promo-overview-contract");
 const { createPromptExecutionSnapshot } = require("./_prompt-execution-snapshot");
-const { fetchPageCompositionCandidates } = require("./_promo-page-composition-candidates");
+const {
+  fetchPageCompositionCandidates,
+  plannerCandidateSnapshot,
+} = require("./_promo-page-composition-candidates");
 const { resolveBuilderOwner } = require("./_promo-builder-auth");
 const {
   getSql,
@@ -88,7 +91,7 @@ module.exports = async function handler(req, res) {
     }
     const promptExecutionSnapshot = await createPromptExecutionSnapshot(sql, "promo_page_composer", {
       overviewJson: JSON.stringify(overview),
-      candidateSnapshotJson: JSON.stringify(candidates),
+      candidateSnapshotJson: JSON.stringify(plannerCandidateSnapshot(candidates)),
       constraintsJson: JSON.stringify({
         allowHtml: false,
         allowCss: false,

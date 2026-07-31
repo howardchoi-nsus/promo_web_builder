@@ -1993,6 +1993,12 @@
                     </div>
                   </transition-group>
 
+                  <section-layout-preset-manager
+                    :section="wizardSectionDetail.section"
+                    :items="wizardSectionDetail.items"
+                    @section-updated="loadWizardSectionDetail(wizardSectionDetail.section.id)"
+                  ></section-layout-preset-manager>
+
                   <div class="subsection" v-if="wizardItemEditorOpenId">
                     <div class="subsection-title">
                       <h3>{{ wizardItemEditorOpenId === 'new' ? '컴포넌트 추가' : '컴포넌트 수정' }}</h3>

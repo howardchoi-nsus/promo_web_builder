@@ -15,6 +15,9 @@ const {
 const {
   normalizeKeyVisualTextPolicy,
 } = require("./_section-key-visual-contract");
+const {
+  buildSectionImagePromptVariables,
+} = require("./_section-image-prompt-variables");
 
 const HASH_CONTRACT_VERSION = 2;
 
@@ -23,11 +26,6 @@ function fadeModeToSafeArea(value) {
   if (value === "right") return "right-copy";
   if (value === "both") return "center-copy";
   return "none";
-}
-
-function promptVariable(value) {
-  if (value === null || value === undefined) return "";
-  return typeof value === "string" ? value : JSON.stringify(value);
 }
 
 module.exports = async function handler(req, res) {
@@ -155,27 +153,23 @@ module.exports = async function handler(req, res) {
       contentJson: JSON.stringify(aiContent),
       constraintsJson: JSON.stringify(constraints),
       tokenSetJson: JSON.stringify(tokenSet),
-    } : promptType === "component_image" ? {
-      sectionName: snapshot.section.name,
-      componentName: targetItem?.name || targetItem?.componentKey || targetItemKey,
-      fieldName: targetField?.name || targetItem?.name || targetItemKey,
-      contentJson: JSON.stringify(aiContent),
-      adminGuidance: [
-        targetField?.image?.promptText || targetItem?.image?.promptText || "",
-        imageGuidance,
-      ].filter(Boolean).join("\n"),
-    } : {
-      sectionName: snapshot.section.name,
-      contentJson: JSON.stringify(aiContent),
+    } : buildSectionImagePromptVariables({
+      promptType,
+      section: {
+        ...snapshot.section,
+        aiDesign: section.aiDesign,
+      },
+      component: targetItem,
+      field: targetField || targetItem,
+      sectionContent: aiContent,
+      designSpec: layout.layoutSpec,
+      designTokenValues: tokenSet.values,
+      request: { guidance: imageGuidance },
       backgroundColor,
       fadeMode,
-      adminGuidance: [
-        String(section.aiDesign?.backgroundPromptText || ""),
-        imageGuidance,
-      ].filter(Boolean).join("\n"),
-      brandPalette: promptVariable(body.brandPalette),
+      brandPalette: body.brandPalette,
       aspectRatio: String(constraints.imageAspectRatio || "16:9"),
-    };
+    });
     const promptSnapshot = await createPromptExecutionSnapshot(sql, promptType, promptVariables);
     const generationPolicy = promptSnapshot.promptConfig.generationPolicy || {};
     const effectiveAspectRatio = requestMode === "assets"

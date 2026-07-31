@@ -14,13 +14,13 @@ assert.deepEqual(normalizeAiDesign(), {
 });
 assert.deepEqual(normalizeAiDesign({
   enabled: false,
-  allowedLayoutVariants: ["split-left", "invalid", "split-left"],
+  allowedLayoutVariants: ["split-left", "standard-header", "bad key", "split-left"],
   imageTarget: "item",
   imageTargetItemKeys: ["heroImage", "", "heroImage"],
   imageAspectRatio: "4:3",
 }), {
   enabled: false,
-  allowedLayoutVariants: ["split-left"],
+  allowedLayoutVariants: ["split-left", "standard-header"],
   allowSectionBackground: true,
   imageTarget: "item",
   imageTargetItemKeys: ["heroImage"],

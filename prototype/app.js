@@ -6601,6 +6601,7 @@ const adminApp = createApp({
   },
 });
 adminApp.component("template-layout-manager", window.PromoAdminTemplateLayout.component);
+adminApp.component("section-layout-preset-manager", window.PromoAdminSectionLayouts.component);
 adminApp.component("design-token-manager", window.PromoAdminDesignTokens.component);
 const localeReady = window.PromoI18n?.init?.() || Promise.resolve();
 localeReady.finally(() => adminApp.mount("#app"));

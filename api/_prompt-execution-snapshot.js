@@ -24,6 +24,14 @@ const INTEGRATED_BRIEF_OUTPUT_GUARD = [
   "- Do not omit these final sections when the response is long. Compress earlier prose before removing either section.",
 ].join("\n");
 
+function completeDeclaredPromptVariables(prompt, variables = {}) {
+  const completed = { ...variables };
+  for (const key of prompt?.optionalVariables || []) {
+    if (!Object.prototype.hasOwnProperty.call(completed, key)) completed[key] = "";
+  }
+  return completed;
+}
+
 async function createPromptExecutionSnapshot(sql, type, variables = {}) {
   await ensureDefaultPromptTemplates(sql);
   const rows = await sql`
@@ -59,9 +67,10 @@ async function createPromptExecutionSnapshot(sql, type, variables = {}) {
 
   const prompt = toPromptTemplate(rows[0]);
   validatePromptTemplateContract(prompt.type, prompt);
-  validatePromptExecutionVariables(type, variables);
+  const completedVariables = completeDeclaredPromptVariables(prompt, variables);
+  validatePromptExecutionVariables(type, completedVariables);
   validateStageModelConfig(type, prompt);
-  const missingRequired = prompt.requiredVariables.filter((key) => !hasPromptValue(variables[key]));
+  const missingRequired = prompt.requiredVariables.filter((key) => !hasPromptValue(completedVariables[key]));
   if (missingRequired.length) {
     const error = new Error(`Required ${type} prompt variables are missing: ${missingRequired.join(", ")}`);
     error.statusCode = 409;
@@ -69,8 +78,12 @@ async function createPromptExecutionSnapshot(sql, type, variables = {}) {
   }
 
   const fitted = type === "final_design"
-    ? fitFinalDesignPromptVariables(prompt.body, variables, renderPrompt)
-    : { variables, renderedPrompt: renderPrompt(prompt.body, variables), lengthGuard: null };
+    ? fitFinalDesignPromptVariables(prompt.body, completedVariables, renderPrompt)
+    : {
+        variables: completedVariables,
+        renderedPrompt: renderPrompt(prompt.body, completedVariables),
+        lengthGuard: null,
+      };
   let renderedPrompt = type === "integrated_brief"
     ? `${fitted.renderedPrompt.trim()}\n${INTEGRATED_BRIEF_OUTPUT_GUARD}`
     : fitted.renderedPrompt;
@@ -222,6 +235,7 @@ function hasPromptValue(value) {
 }
 
 module.exports = {
+  completeDeclaredPromptVariables,
   createPromptExecutionSnapshot,
   validateStageModelConfig,
 };

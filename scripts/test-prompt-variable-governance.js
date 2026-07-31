@@ -130,6 +130,7 @@ assert.match(rollbackRoute, /with deactivated as \(/);
 assert.match(rollbackRoute, /and status = \$\{target\.status\}/);
 assert.match(lifecycleMigration, /prompt_templates_lineage_version_uidx/);
 assert.match(lifecycleMigration, /status in \('draft', 'validated'\)/);
-assert.match(executionSnapshot, /validatePromptExecutionVariables\(type, variables\)/);
+assert.match(executionSnapshot, /completeDeclaredPromptVariables\(prompt, variables\)/);
+assert.match(executionSnapshot, /validatePromptExecutionVariables\(type, completedVariables\)/);
 
 console.log("Prompt variable governance tests passed");

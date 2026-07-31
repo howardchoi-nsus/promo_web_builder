@@ -1,0 +1,93 @@
+const assert = require("assert");
+const fs = require("fs");
+const path = require("path");
+const {
+  normalizeLayoutSnapshot,
+  LAYOUT_CONTRACT_VERSION,
+  LAYOUT_MODE,
+} = require("../api/_wizard-content-section-layouts-store");
+const { normalizeAiDesign } = require("../api/_wizard-content-sections-store");
+
+const validSnapshot = {
+  contractVersion: 1,
+  layoutMode: "free",
+  sectionStyle: { minHeight: 88, backgroundColor: "#0b0d12" },
+  viewports: {
+    desktop: {
+      items: {
+        logo: { positionMode: "free", xPct: 0, yPx: 10, widthPct: 18, heightPx: 44, zIndex: 2 },
+        badges: { positionMode: "free", xPct: 86, yPx: 16, widthPct: 12, heightPx: 32 },
+      },
+      visibility: { items: { badges: true } },
+    },
+    mobile: {
+      items: {
+        logo: { positionMode: "free", xPct: 0, yPx: 8, widthPct: 34, heightPx: 36 },
+        badges: { positionMode: "free", xPct: 74, yPx: 12, widthPct: 24, heightPx: 28 },
+      },
+      visibility: { items: { badges: false } },
+    },
+  },
+};
+
+assert.strictEqual(LAYOUT_CONTRACT_VERSION, 1);
+assert.strictEqual(LAYOUT_MODE, "free");
+assert.deepStrictEqual(
+  normalizeAiDesign({ allowedLayoutVariants: ["standard-header", "compact_header", "bad key"] }).allowedLayoutVariants,
+  ["standard-header", "compact_header"],
+);
+
+const valid = normalizeLayoutSnapshot(validSnapshot, ["logo", "badges"]);
+assert.deepStrictEqual(valid.errors, []);
+assert.strictEqual(valid.snapshot.sectionStyle.backgroundColor, "#0B0D12");
+assert.strictEqual(valid.snapshot.viewports.mobile.visibility.items.badges, false);
+
+const unknownKey = normalizeLayoutSnapshot({
+  ...validSnapshot,
+  viewports: {
+    ...validSnapshot.viewports,
+    desktop: {
+      ...validSnapshot.viewports.desktop,
+      items: {
+        ...validSnapshot.viewports.desktop.items,
+        navigation: { positionMode: "free", xPct: 10, yPx: 10, widthPct: 20, heightPx: 20 },
+      },
+    },
+  },
+}, ["logo", "badges"]);
+assert(unknownKey.errors.some((error) => error.code === "UNKNOWN_ITEM_KEY"));
+
+const overflow = normalizeLayoutSnapshot({
+  ...validSnapshot,
+  viewports: {
+    ...validSnapshot.viewports,
+    desktop: {
+      ...validSnapshot.viewports.desktop,
+      items: {
+        ...validSnapshot.viewports.desktop.items,
+        logo: { positionMode: "free", xPct: 90, yPx: 10, widthPct: 20, heightPx: 44 },
+      },
+    },
+  },
+}, ["logo", "badges"]);
+assert(overflow.errors.some((error) => error.code === "GEOMETRY_OVERFLOW"));
+
+const migration = fs.readFileSync(
+  path.join(__dirname, "../db/migrations/047_wizard_content_section_layout_presets.sql"),
+  "utf8",
+);
+assert(migration.includes("create table if not exists wizard_content_section_layouts"));
+assert(migration.includes("wizard_content_section_layouts_one_default_idx"));
+assert(migration.includes("insert into wizard_content_section_layouts"));
+assert(migration.includes("set_wizard_content_section_default_layout"));
+assert(migration.includes("wizard_content_section_layout_histories"));
+
+[
+  "wizard-content-section-layouts.js",
+  "wizard-content-section-layout.js",
+  "wizard-content-section-layout-default.js",
+].forEach((filename) => {
+  assert(fs.existsSync(path.join(__dirname, `../api/${filename}`)), `${filename} must exist`);
+});
+
+console.log("Wizard content section layout contract tests passed.");

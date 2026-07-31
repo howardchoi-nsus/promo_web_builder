@@ -1,4 +1,5 @@
 const { randomUUID } = require("node:crypto");
+const { resolveSectionLayoutPreset } = require("./_section-layout-preset-resolver");
 const { OPERATION_TYPES } = require("./_promo-page-composition-contract");
 
 function collectTargets(snapshot) {
@@ -119,8 +120,15 @@ function validateCompositionOperations(result, snapshot, motionPresets = []) {
       throw Object.assign(new Error("Component order is locked"), { code: "LOCKED_COMPONENT_ORDER" });
     }
     if (type === "change-layout-variant") {
-      const allowed = section?.compositionPolicy?.allowedLayoutVariants || [];
-      if (!section || (allowed.length && !allowed.includes(candidate.layoutVariant))) {
+      const presetKeys = new Set((section?.layoutPresets || []).map((layout) => layout.layoutKey));
+      const configuredPresetKeys = (section?.aiDesign?.allowedLayoutVariants || [])
+        .filter((layoutKey) => presetKeys.has(layoutKey));
+      const allowed = presetKeys.size
+        ? configuredPresetKeys
+        : section?.compositionPolicy?.allowedLayoutVariants || [];
+      if (!section || (presetKeys.size
+        ? !allowed.includes(candidate.layoutVariant)
+        : (allowed.length && !allowed.includes(candidate.layoutVariant)))) {
         throw Object.assign(new Error("Layout variant is not allowed"), { code: "INVALID_LAYOUT_VARIANT" });
       }
     }
@@ -198,10 +206,58 @@ function applyCompositionOperations(snapshot, operations) {
         list.splice(Math.min(operation.position, list.length), 0, moved);
       }
     } else if (operation.type === "change-layout-variant") {
+      const preset = (section.layoutPresets || []).find(
+        (layout) => layout.layoutKey === operation.layoutVariant,
+      );
+      const resolved = resolveSectionLayoutPreset(
+        operation.targetInstanceId,
+        section.items,
+        preset,
+      );
+      Object.keys(next.designSpec.itemStyles || {}).forEach((styleKey) => {
+        if (styleKey.startsWith(`${operation.targetInstanceId}.`)) {
+          const style = { ...(next.designSpec.itemStyles[styleKey] || {}) };
+          ["positionMode", "xPct", "yPx", "widthPct", "heightPx", "zIndex"].forEach(
+            (property) => delete style[property],
+          );
+          next.designSpec.itemStyles[styleKey] = style;
+        }
+      });
+      Object.keys(next.designSpec.visibility?.items || {}).forEach((styleKey) => {
+        if (styleKey.startsWith(`${operation.targetInstanceId}.`)) {
+          delete next.designSpec.visibility.items[styleKey];
+        }
+      });
       next.designSpec.sectionStyles[operation.targetInstanceId] = {
         ...(next.designSpec.sectionStyles[operation.targetInstanceId] || {}),
-        layoutVariant: operation.layoutVariant,
+        ...(resolved?.sectionStyle || { layoutVariant: operation.layoutVariant }),
       };
+      Object.assign(next.designSpec.itemStyles, resolved?.itemStyles || {});
+      Object.assign(next.designSpec.visibility.items, resolved?.visibilityItems || {});
+      next.designSpec.responsiveLayouts ||= {};
+      next.designSpec.responsiveLayouts.mobile ||= { itemStyles: {}, visibility: { items: {} } };
+      next.designSpec.responsiveLayouts.mobile.itemStyles ||= {};
+      next.designSpec.responsiveLayouts.mobile.visibility ||= { items: {} };
+      next.designSpec.responsiveLayouts.mobile.visibility.items ||= {};
+      Object.keys(next.designSpec.responsiveLayouts.mobile.itemStyles).forEach((styleKey) => {
+        if (styleKey.startsWith(`${operation.targetInstanceId}.`)) {
+          delete next.designSpec.responsiveLayouts.mobile.itemStyles[styleKey];
+        }
+      });
+      Object.keys(next.designSpec.responsiveLayouts.mobile.visibility.items).forEach((styleKey) => {
+        if (styleKey.startsWith(`${operation.targetInstanceId}.`)) {
+          delete next.designSpec.responsiveLayouts.mobile.visibility.items[styleKey];
+        }
+      });
+      Object.assign(
+        next.designSpec.responsiveLayouts.mobile.itemStyles,
+        resolved?.responsiveLayouts?.mobile?.itemStyles || {},
+      );
+      Object.assign(
+        next.designSpec.responsiveLayouts.mobile.visibility.items,
+        resolved?.responsiveLayouts?.mobile?.visibility?.items || {},
+      );
+      section.selectedLayoutKey = resolved?.layoutKey || operation.layoutVariant;
     } else if (operation.type === "change-token-binding") {
       next.designSpec.itemStyles[operation.targetInstanceId] = {
         ...(next.designSpec.itemStyles[operation.targetInstanceId] || {}),

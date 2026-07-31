@@ -34,6 +34,11 @@ function normalizeLayoutSpec(value) {
     responsive: { ...DEFAULT_LAYOUT_SPEC.responsive, ...(candidate.responsive || {}) },
     itemStyles: candidate.itemStyles && typeof candidate.itemStyles === "object" ? candidate.itemStyles : {},
     sectionStyles: candidate.sectionStyles && typeof candidate.sectionStyles === "object" ? candidate.sectionStyles : {},
+    responsiveLayouts: candidate.responsiveLayouts
+      && typeof candidate.responsiveLayouts === "object"
+      && !Array.isArray(candidate.responsiveLayouts)
+      ? candidate.responsiveLayouts
+      : {},
   };
 }
 
@@ -103,6 +108,12 @@ function validateLayoutSpec(value, sections = []) {
   const spec = normalizeLayoutSpec(value);
   const errors = [];
   const warnings = [];
+  if (value?.responsiveLayouts !== undefined
+    && (!value.responsiveLayouts
+      || typeof value.responsiveLayouts !== "object"
+      || Array.isArray(value.responsiveLayouts))) {
+    errors.push({ code: "INVALID_RESPONSIVE_LAYOUTS", path: "responsiveLayouts" });
+  }
   if (spec.contractVersion !== 1) errors.push({ code: "UNSUPPORTED_LAYOUT_CONTRACT", path: "contractVersion" });
   const sectionKeys = new Set(sections.map((section) => section.sectionKey));
   const itemKeys = new Set(sections.flatMap((section) => (
@@ -191,6 +202,57 @@ function validateLayoutSpec(value, sections = []) {
       errors.push({ code: "INVALID_IMAGE_DECORATIVE_STATE", path: `itemStyles.${key}.decorative` });
     }
   });
+  const mobile = spec.responsiveLayouts?.mobile;
+  if (mobile !== undefined && (!mobile || typeof mobile !== "object" || Array.isArray(mobile))) {
+    errors.push({ code: "INVALID_RESPONSIVE_LAYOUT", path: "responsiveLayouts.mobile" });
+  } else if (mobile) {
+    const mobileItemStyles = mobile.itemStyles;
+    if (mobileItemStyles !== undefined
+      && (!mobileItemStyles || typeof mobileItemStyles !== "object" || Array.isArray(mobileItemStyles))) {
+      errors.push({ code: "INVALID_RESPONSIVE_ITEM_STYLES", path: "responsiveLayouts.mobile.itemStyles" });
+    } else {
+      Object.entries(mobileItemStyles || {}).forEach(([key, style]) => {
+        if (sections.length && !itemKeys.has(key)) warnings.push({ code: "UNKNOWN_RESPONSIVE_LAYOUT_ITEM", path: key });
+        const x = Number(style?.xPct);
+        const y = Number(style?.yPx);
+        const width = Number(style?.widthPct);
+        const height = Number(style?.heightPx);
+        const zIndex = Number(style?.zIndex);
+        if (style?.positionMode !== undefined && style.positionMode !== "free") {
+          errors.push({ code: "INVALID_RESPONSIVE_POSITION_MODE", path: `responsiveLayouts.mobile.itemStyles.${key}.positionMode` });
+        }
+        if (style?.xPct !== undefined && (!Number.isFinite(x) || x < 0 || x > 100)) {
+          errors.push({ code: "INVALID_RESPONSIVE_ITEM_X", path: `responsiveLayouts.mobile.itemStyles.${key}.xPct` });
+        }
+        if (style?.yPx !== undefined && (!Number.isFinite(y) || y < 0 || y > 1200)) {
+          errors.push({ code: "INVALID_RESPONSIVE_ITEM_Y", path: `responsiveLayouts.mobile.itemStyles.${key}.yPx` });
+        }
+        if (style?.widthPct !== undefined && (!Number.isFinite(width) || width < 0.01 || width > 100)) {
+          errors.push({ code: "INVALID_RESPONSIVE_ITEM_WIDTH", path: `responsiveLayouts.mobile.itemStyles.${key}.widthPct` });
+        }
+        if (style?.heightPx !== undefined && (!Number.isFinite(height) || height < 1 || height > 900)) {
+          errors.push({ code: "INVALID_RESPONSIVE_ITEM_HEIGHT", path: `responsiveLayouts.mobile.itemStyles.${key}.heightPx` });
+        }
+        if (style?.zIndex !== undefined && (!Number.isInteger(zIndex) || zIndex < 0 || zIndex > 100)) {
+          errors.push({ code: "INVALID_RESPONSIVE_ITEM_Z_INDEX", path: `responsiveLayouts.mobile.itemStyles.${key}.zIndex` });
+        }
+        if (Number.isFinite(x) && Number.isFinite(width) && x + width > 100) {
+          errors.push({ code: "RESPONSIVE_ITEM_OVERFLOW", path: `responsiveLayouts.mobile.itemStyles.${key}` });
+        }
+      });
+    }
+    const mobileVisibility = mobile.visibility?.items;
+    if (mobileVisibility !== undefined
+      && (!mobileVisibility || typeof mobileVisibility !== "object" || Array.isArray(mobileVisibility))) {
+      errors.push({ code: "INVALID_RESPONSIVE_VISIBILITY", path: "responsiveLayouts.mobile.visibility.items" });
+    } else {
+      Object.entries(mobileVisibility || {}).forEach(([key, visible]) => {
+        if (typeof visible !== "boolean") {
+          errors.push({ code: "INVALID_RESPONSIVE_VISIBILITY", path: `responsiveLayouts.mobile.visibility.items.${key}` });
+        }
+      });
+    }
+  }
   return { ok: errors.length === 0, errors, warnings, spec };
 }
 

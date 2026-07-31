@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { createPromoTokenRuntimeStyle, normalizePromoTokenValues } from "../../shared/promo-token-runtime.mjs";
 import { normalizeCtaUrl } from "./editor-utils.mjs";
 import {
@@ -21,9 +21,21 @@ const props = defineProps({
   selectedItemKeys: { type: Array, default: () => [] },
   sectionDesignRuns: { type: Object, default: () => ({}) },
   motionSpec: { type: Object, default: () => ({ sections: {}, items: {} }) },
+  viewportOverride: { type: String, default: "" },
 });
 const emit = defineEmits(["select-item", "update-item-style", "update-renderer-item-style", "update-item-content", "update-section-style"]);
 const SECTION_VERTICAL_PADDING_PX = 20;
+const viewportWidth = ref(typeof globalThis.innerWidth === "number" ? globalThis.innerWidth : 1280);
+function updateViewportWidth() {
+  viewportWidth.value = globalThis.innerWidth || 1280;
+}
+onMounted(() => globalThis.addEventListener("resize", updateViewportWidth));
+onBeforeUnmount(() => globalThis.removeEventListener("resize", updateViewportWidth));
+const mobileLayoutActive = computed(() => (
+  props.viewportOverride
+    ? props.viewportOverride === "mobile"
+    : viewportWidth.value <= Number(props.designSpec?.responsive?.mobileBreakpoint || 720)
+));
 
 const orderedSections = computed(() => {
   const definitions = props.content?.sectionSnapshot || [];
@@ -62,7 +74,11 @@ function fieldVisibilityKey(section, item, field) {
 
 function isItemVisible(section, item) {
   if (item?.isRequired || item?.isLocked) return true;
-  return props.designSpec?.visibility?.items?.[itemVisibilityKey(section, item)] !== false;
+  const key = itemVisibilityKey(section, item);
+  const responsive = mobileLayoutActive.value
+    ? props.designSpec?.responsiveLayouts?.mobile?.visibility?.items?.[key]
+    : undefined;
+  return (responsive ?? props.designSpec?.visibility?.items?.[key]) !== false;
 }
 
 function isFieldVisible(section, item, field) {
@@ -142,7 +158,13 @@ function styleKey(section, item) {
 }
 
 function itemStyle(section, item) {
-  return props.designSpec?.itemStyles?.[styleKey(section, item)] || {};
+  const key = styleKey(section, item);
+  const base = props.designSpec?.itemStyles?.[key] || {};
+  if (!mobileLayoutActive.value) return base;
+  return {
+    ...base,
+    ...(props.designSpec?.responsiveLayouts?.mobile?.itemStyles?.[key] || {}),
+  };
 }
 
 function sectionStyle(section) {

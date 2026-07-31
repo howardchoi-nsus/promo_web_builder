@@ -1,5 +1,6 @@
 const { randomUUID } = require("node:crypto");
 const { OVERVIEW_FIELDS } = require("./_promo-overview-contract");
+const { resolveSectionLayoutPreset } = require("./_section-layout-preset-resolver");
 
 const OPERATION_TYPES = Object.freeze([
   "update-field",
@@ -303,6 +304,9 @@ function normalizePageComposition({
   const itemVisibility = {};
   const fieldVisibility = {};
   const sectionStyles = {};
+  const presetItemStyles = {};
+  const mobileItemStyles = {};
+  const mobileItemVisibility = {};
   const motionSections = {};
   const motionItems = {};
   const assetRequests = [];
@@ -313,9 +317,6 @@ function normalizePageComposition({
     const items = [];
     sectionInputs[pageSectionInstanceId] = {};
     sectionOrder.push(pageSectionInstanceId);
-    sectionStyles[pageSectionInstanceId] = {
-      layoutVariant: plannedSection.layoutVariant,
-    };
     if (plannedSection.motion) {
       motionSections[pageSectionInstanceId] = {
         presetVersionId: plannedSection.motion.presetVersionId,
@@ -367,6 +368,24 @@ function normalizePageComposition({
         ? { fields: values }
         : values[fields[0]?.fieldKey];
     });
+    const selectedLayoutPreset = (section.layoutPresets || []).find(
+      (preset) => preset.layoutKey === plannedSection.layoutVariant,
+    ) || null;
+    const resolvedPreset = resolveSectionLayoutPreset(
+      pageSectionInstanceId,
+      items,
+      selectedLayoutPreset,
+    );
+    sectionStyles[pageSectionInstanceId] = resolvedPreset?.sectionStyle || {
+      layoutVariant: plannedSection.layoutVariant,
+    };
+    Object.assign(presetItemStyles, resolvedPreset?.itemStyles || {});
+    Object.assign(itemVisibility, resolvedPreset?.visibilityItems || {});
+    Object.assign(mobileItemStyles, resolvedPreset?.responsiveLayouts?.mobile?.itemStyles || {});
+    Object.assign(
+      mobileItemVisibility,
+      resolvedPreset?.responsiveLayouts?.mobile?.visibility?.items || {},
+    );
     if (section.aiDesign?.enabled && section.aiDesign?.allowSectionBackground !== false) {
       assetRequests.push({
         assetRequestId: randomUUID(),
@@ -391,11 +410,14 @@ function normalizePageComposition({
       isVisibleInWizard: plannedSection.visible,
       sortOrder: plannedSection.sortOrder,
       aiDesign: section.aiDesign,
+      layoutPresets: section.layoutPresets || [],
+      selectedLayoutKey: resolvedPreset?.layoutKey || plannedSection.layoutVariant,
       items,
     });
   });
 
   const tokenValues = validated.tokenSet?.runtimeValues || {};
+  const defaultItemStyles = buildDefaultItemStyles(sectionSnapshot, tokenValues);
   return {
     contractVersion: 2,
     documentRevision,
@@ -457,9 +479,24 @@ function normalizePageComposition({
           || "Inter, Pretendard, sans-serif",
       },
       responsive: { contentMaxWidth: 1280, contentMinWidth: 1140, mobileBreakpoint: 720 },
-      itemStyles: buildDefaultItemStyles(sectionSnapshot, tokenValues),
+      itemStyles: Object.fromEntries(Array.from(new Set([
+        ...Object.keys(defaultItemStyles),
+        ...Object.keys(presetItemStyles),
+      ])).map((styleKey) => [
+        styleKey,
+        {
+          ...(defaultItemStyles[styleKey] || {}),
+          ...(presetItemStyles[styleKey] || {}),
+        },
+      ])),
       sectionStyles,
       visibility: { items: itemVisibility, fields: fieldVisibility },
+      responsiveLayouts: {
+        mobile: {
+          itemStyles: mobileItemStyles,
+          visibility: { items: mobileItemVisibility },
+        },
+      },
     },
     motionSpec: { sections: motionSections, items: motionItems },
     assets: { contractVersion: 1, items: {}, requests: assetRequests },

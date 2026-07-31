@@ -62,6 +62,27 @@ assert.equal(validateLayoutSpec({ itemStyles: { "hero.image": { widthPct: 101 } 
 assert.equal(validateLayoutSpec({ itemStyles: { "hero.image": { imageFit: "fill" } } }).ok, false);
 assert.equal(validateLayoutSpec({ itemStyles: { "hero.image": { shape: "triangle" } } }).ok, false);
 assert.equal(validateLayoutSpec({ itemStyles: { "hero.image": { decorative: "yes" } } }).ok, false);
+assert.equal(validateLayoutSpec({
+  responsiveLayouts: {
+    mobile: {
+      itemStyles: {
+        "hero.title": { positionMode: "free", xPct: 90, yPx: 10, widthPct: 20, heightPx: 40 },
+      },
+      visibility: { items: { "hero.title": true } },
+    },
+  },
+}).ok, false);
+assert.equal(validateLayoutSpec({
+  responsiveLayouts: {
+    mobile: {
+      itemStyles: {
+        "hero.title": { positionMode: "free", xPct: 10, yPx: 10, widthPct: 80, heightPx: 40 },
+      },
+      visibility: { items: { "hero.title": "yes" } },
+    },
+  },
+}).ok, false);
+assert.equal(validateLayoutSpec({ responsiveLayouts: "mobile" }).ok, false);
 
 const snapshot = createLayoutSnapshot({
   baseLayout: base,

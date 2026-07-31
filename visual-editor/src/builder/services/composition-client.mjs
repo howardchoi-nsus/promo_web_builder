@@ -80,3 +80,10 @@ export function submitCompositionOperation(payload) {
     body: JSON.stringify(payload),
   });
 }
+
+export function retryBuilderAssets(payload) {
+  return request("/api/promo-builder-assets-retry", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}

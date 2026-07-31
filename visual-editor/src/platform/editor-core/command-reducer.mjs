@@ -205,6 +205,44 @@ export function reduceEditorCommand(currentState, command) {
           ? JSON.parse(JSON.stringify(payload.content))
           : {},
       };
+      if (payload.layoutPatch && typeof payload.layoutPatch === "object") {
+        state.document.layout = {
+          ...layout,
+          sectionStyles: {
+            ...(layout.sectionStyles || {}),
+            ...(payload.layoutPatch.sectionStyles || {}),
+          },
+          itemStyles: {
+            ...(layout.itemStyles || {}),
+            ...(payload.layoutPatch.itemStyles || {}),
+          },
+          visibility: {
+            ...(layout.visibility || {}),
+            items: {
+              ...(layout.visibility?.items || {}),
+              ...(payload.layoutPatch.visibility?.items || {}),
+            },
+          },
+          responsiveLayouts: {
+            ...(layout.responsiveLayouts || {}),
+            mobile: {
+              ...(layout.responsiveLayouts?.mobile || {}),
+              ...(payload.layoutPatch.responsiveLayouts?.mobile || {}),
+              itemStyles: {
+                ...(layout.responsiveLayouts?.mobile?.itemStyles || {}),
+                ...(payload.layoutPatch.responsiveLayouts?.mobile?.itemStyles || {}),
+              },
+              visibility: {
+                ...(layout.responsiveLayouts?.mobile?.visibility || {}),
+                items: {
+                  ...(layout.responsiveLayouts?.mobile?.visibility?.items || {}),
+                  ...(payload.layoutPatch.responsiveLayouts?.mobile?.visibility?.items || {}),
+                },
+              },
+            },
+          },
+        };
+      }
       break;
     }
     case EditorCommandType.SECTION_INSTANCE_REMOVE: {
@@ -219,9 +257,25 @@ export function reduceEditorCommand(currentState, command) {
       state.document.content = nextContent;
       const sectionStyles = { ...(layout.sectionStyles || {}) };
       delete sectionStyles[payload.sectionKey];
+      const mobileLayout = layout.responsiveLayouts?.mobile || {};
       state.document.layout = {
         ...removeStyleKeys(layout, payload.sectionKey),
         sectionStyles,
+        responsiveLayouts: {
+          ...(layout.responsiveLayouts || {}),
+          mobile: {
+            ...mobileLayout,
+            itemStyles: Object.fromEntries(Object.entries(mobileLayout.itemStyles || {}).filter(
+              ([key]) => !key.startsWith(`${payload.sectionKey}.`),
+            )),
+            visibility: {
+              ...(mobileLayout.visibility || {}),
+              items: Object.fromEntries(Object.entries(mobileLayout.visibility?.items || {}).filter(
+                ([key]) => !key.startsWith(`${payload.sectionKey}.`),
+              )),
+            },
+          },
+        },
       };
       break;
     }

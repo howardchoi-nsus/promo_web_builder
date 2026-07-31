@@ -39,12 +39,23 @@ export function mergeLayoutSpec(base = DEFAULT_DESIGN_SPEC, override = {}) {
     items: merged.visibility?.items || {},
     fields: merged.visibility?.fields || {},
   };
+  merged.responsiveLayouts = merged.responsiveLayouts
+    && typeof merged.responsiveLayouts === "object"
+    && !Array.isArray(merged.responsiveLayouts)
+    ? merged.responsiveLayouts
+    : {};
   return merged;
 }
 
 export function validateLayoutSpec(value = {}) {
   const spec = normalizeLayoutSpec(value);
   const errors = [];
+  if (value?.responsiveLayouts !== undefined
+    && (!value.responsiveLayouts
+      || typeof value.responsiveLayouts !== "object"
+      || Array.isArray(value.responsiveLayouts))) {
+    errors.push({ path: "responsiveLayouts", message: "Responsive layouts must be an object." });
+  }
   const allowedBackgroundSizes = new Set(["contain", "cover", "100% auto"]);
   const allowedBackgroundFitModes = new Set(["contain", "cover", "width-fill"]);
   const allowedBackgroundPositions = new Set(["left center", "center center", "right center"]);
@@ -143,6 +154,55 @@ export function validateLayoutSpec(value = {}) {
       errors.push({ path: `itemStyles.${key}.decorative`, message: "Image decorative state must be boolean." });
     }
   });
+  const mobile = spec.responsiveLayouts?.mobile;
+  if (mobile !== undefined && (!mobile || typeof mobile !== "object" || Array.isArray(mobile))) {
+    errors.push({ path: "responsiveLayouts.mobile", message: "Mobile responsive layout must be an object." });
+  } else if (mobile) {
+    if (mobile.itemStyles !== undefined
+      && (!mobile.itemStyles || typeof mobile.itemStyles !== "object" || Array.isArray(mobile.itemStyles))) {
+      errors.push({ path: "responsiveLayouts.mobile.itemStyles", message: "Mobile item styles must be an object." });
+    } else {
+      Object.entries(mobile.itemStyles || {}).forEach(([key, style]) => {
+        const x = Number(style?.xPct);
+        const y = Number(style?.yPx);
+        const width = Number(style?.widthPct);
+        const height = Number(style?.heightPx);
+        const zIndex = Number(style?.zIndex);
+        if (style?.positionMode !== undefined && style.positionMode !== "free") {
+          errors.push({ path: `responsiveLayouts.mobile.itemStyles.${key}.positionMode`, message: "Only free mobile positioning is supported." });
+        }
+        if (style?.xPct !== undefined && (!Number.isFinite(x) || x < 0 || x > 100)) {
+          errors.push({ path: `responsiveLayouts.mobile.itemStyles.${key}.xPct`, message: "Mobile xPct must be between 0 and 100." });
+        }
+        if (style?.yPx !== undefined && (!Number.isFinite(y) || y < 0 || y > 1200)) {
+          errors.push({ path: `responsiveLayouts.mobile.itemStyles.${key}.yPx`, message: "Mobile yPx must be between 0 and 1200." });
+        }
+        if (style?.widthPct !== undefined && (!Number.isFinite(width) || width < 0.01 || width > 100)) {
+          errors.push({ path: `responsiveLayouts.mobile.itemStyles.${key}.widthPct`, message: "Mobile widthPct must be between 0.01 and 100." });
+        }
+        if (style?.heightPx !== undefined && (!Number.isFinite(height) || height < 1 || height > 900)) {
+          errors.push({ path: `responsiveLayouts.mobile.itemStyles.${key}.heightPx`, message: "Mobile heightPx must be between 1 and 900." });
+        }
+        if (style?.zIndex !== undefined && (!Number.isInteger(zIndex) || zIndex < 0 || zIndex > 100)) {
+          errors.push({ path: `responsiveLayouts.mobile.itemStyles.${key}.zIndex`, message: "Mobile zIndex must be an integer between 0 and 100." });
+        }
+        if (Number.isFinite(x) && Number.isFinite(width) && x + width > 100) {
+          errors.push({ path: `responsiveLayouts.mobile.itemStyles.${key}`, message: "Mobile item cannot overflow the section width." });
+        }
+      });
+    }
+    const mobileVisibility = mobile.visibility?.items;
+    if (mobileVisibility !== undefined
+      && (!mobileVisibility || typeof mobileVisibility !== "object" || Array.isArray(mobileVisibility))) {
+      errors.push({ path: "responsiveLayouts.mobile.visibility.items", message: "Mobile visibility must be an object." });
+    } else {
+      Object.entries(mobileVisibility || {}).forEach(([key, visible]) => {
+        if (typeof visible !== "boolean") {
+          errors.push({ path: `responsiveLayouts.mobile.visibility.items.${key}`, message: "Mobile visibility must be boolean." });
+        }
+      });
+    }
+  }
   return { ok: errors.length === 0, errors, spec };
 }
 

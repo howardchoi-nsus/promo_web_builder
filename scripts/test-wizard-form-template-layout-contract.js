@@ -49,6 +49,20 @@ assert.equal(
   0,
   "small image geometry accepted by the editor must also activate successfully",
 );
+assert.equal(
+  layoutStore.validateLayoutSpec({
+    responsiveLayouts: {
+      mobile: {
+        itemStyles: {
+          "hero.title": { positionMode: "free", xPct: 90, yPx: 10, widthPct: 20, heightPx: 40 },
+        },
+        visibility: { items: { "hero.title": true } },
+      },
+    },
+  }).ok,
+  false,
+);
+assert.equal(layoutStore.validateLayoutSpec({ responsiveLayouts: "mobile" }).ok, false);
 assert.match(store, /cloneLayout/);
 assert.match(api, /Only draft form template layouts can be edited/);
 assert.match(api, /Layout revision conflict/);

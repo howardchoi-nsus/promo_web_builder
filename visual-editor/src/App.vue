@@ -26,6 +26,7 @@ import {
   MINIMUM_COMPONENT_HEIGHT_PX,
   MINIMUM_COMPONENT_WIDTH_PCT,
 } from "./platform/layout-engine/geometry.mjs";
+import { resolveSectionPresetLayoutPatch } from "./platform/layout-engine/section-preset-resolver.mjs";
 import PreviewPanel from "./platform/editor-ui/PreviewPanel.vue";
 import StructurePanel from "./platform/editor-ui/StructurePanel.vue";
 import AiLayoutControls from "./platform/editor-ui/AiLayoutControls.vue";
@@ -432,11 +433,29 @@ async function createSectionFromPreset(presetOrKey) {
     index: sections.value.length,
     preserveKeys: !sections.value.some((candidate) => candidate.sectionKey === preset.sectionKey),
   });
+  let layoutPatch = null;
+  let layoutWarning = "";
+  try {
+    const response = await fetch(`/api/wizard-content-section-layouts?sectionId=${encodeURIComponent(preset.sectionId || preset.id)}`, {
+      cache: "no-store",
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.message || result.error || "Layout Preset을 불러오지 못했습니다.");
+    const selectedLayout = (result.layouts || []).find((entry) => entry.isDefault) || null;
+    layoutPatch = resolveSectionPresetLayoutPatch(section, selectedLayout);
+    if (selectedLayout) {
+      section.selectedLayoutKey = selectedLayout.layoutKey;
+      section.layoutPresets = result.layouts || [];
+    }
+  } catch (layoutError) {
+    layoutWarning = `${preset.name} Layout Preset을 불러오지 못해 기존 자동 배치를 사용합니다: ${layoutError.message}`;
+  }
   if (!executeEditorCommand(EditorCommandType.SECTION_INSTANCE_CREATE, {
     section,
     content: createSectionInputs([section])[section.sectionKey],
+    layoutPatch,
   }, { label: "섹션 Preset 추가" })) return;
-  structureMessage.value = `${preset.name} 섹션을 추가했습니다.`;
+  structureMessage.value = layoutWarning || `${preset.name} 섹션을 추가했습니다.`;
   await selectSection(section);
 }
 
@@ -990,6 +1009,11 @@ async function requestSectionAiAction(
         ...result.snapshot,
         assets: result.snapshot?.assets || aiDocumentSnapshot.value?.assets,
       };
+      if (result.assetWarning) {
+        structureMessage.value = result.assetWarning.message
+          || "AI 이미지 생성 작업을 시작하지 못했습니다. 다시 시도해 주세요.";
+        return;
+      }
       if (removing) {
         designSpec.value = normalizeLayoutSpec(result.snapshot?.designSpec || designSpec.value);
         hydrateEditorCore({ resetHistory: false });

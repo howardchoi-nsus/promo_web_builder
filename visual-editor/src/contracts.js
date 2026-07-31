@@ -26,6 +26,12 @@ export const DEFAULT_DESIGN_SPEC = Object.freeze({
     items: {},
     fields: {},
   },
+  responsiveLayouts: {
+    mobile: {
+      itemStyles: {},
+      visibility: { items: {} },
+    },
+  },
 });
 
 function cloneJson(value) {

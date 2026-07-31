@@ -16,6 +16,7 @@ import {
   loadCompositionProposal,
   loadBuilderCapabilities,
   recordBuilderEvent,
+  retryBuilderAssets,
   rollbackComposition,
   submitCompositionOperation,
 } from "./services/composition-client.mjs";
@@ -26,6 +27,7 @@ const props = defineProps({
 const store = createAiBuilderStore();
 const selectedMode = ref(props.initialMode);
 const operationOpen = ref(false);
+const assetRetrying = ref(false);
 const capabilities = ref({ aiMode: true });
 const busy = computed(() => [
   "analyzing_overview", "resolving_policy", "queued", "processing", "applying",
@@ -98,6 +100,24 @@ function openVisualEditor() {
   window.location.assign(url);
 }
 
+async function retryAssets() {
+  if (!store.documentId || !store.documentRevision || assetRetrying.value) return;
+  assetRetrying.value = true;
+  try {
+    const response = await retryBuilderAssets({
+      documentId: store.documentId,
+      documentRevision: store.documentRevision,
+    });
+    store.assetJobs = Object.fromEntries((response.assetJobs || []).map((job) => [job.id, job]));
+    store.warning = null;
+    openVisualEditor();
+  } catch (error) {
+    setBuilderError(store, error);
+  } finally {
+    assetRetrying.value = false;
+  }
+}
+
 async function compose() {
   clearBuilderError(store);
   store.warning = null;
@@ -139,7 +159,7 @@ async function compose() {
       durationMs: performance.now() - startedAt,
       metadata: { assetJobCount: Object.keys(store.assetJobs).length },
     });
-    openVisualEditor();
+    if (!store.warning) openVisualEditor();
   } catch (error) {
     setBuilderError(store, error);
   }
@@ -242,6 +262,17 @@ onMounted(async () => {
       <div v-if="store.warning" class="ai-builder-warning" role="status">
         <strong>{{ store.warning.code }}</strong>
         <span>{{ store.warning.message }}</span>
+        <button
+          v-if="store.snapshot"
+          type="button"
+          :disabled="assetRetrying"
+          @click="retryAssets"
+        >{{ assetRetrying ? "이미지 생성 재시도 중…" : "이미지 생성 다시 시도" }}</button>
+        <button
+          v-if="store.snapshot"
+          type="button"
+          @click="openVisualEditor"
+        >이미지 없이 편집 계속</button>
         <button type="button" @click="store.warning = null">닫기</button>
       </div>
       <AiBriefPanel

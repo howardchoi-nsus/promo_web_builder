@@ -1,6 +1,12 @@
 const { getDatabaseUrl } = require("./_db");
 const { neon } = require("@neondatabase/serverless");
 const { fetchVersionFields } = require("./_item-components-store");
+const {
+  normalizeLayoutSnapshot,
+  validateHeaderLayoutPolicy,
+  fetchLayoutRows,
+  fetchLayoutsForSection,
+} = require("./_wizard-content-section-layouts-store");
 
 // Wizard Content Sections define what Promo Wizard Step 2 (Content Input)
 // renders. Rows are versioned the same way as prompt_templates: editing a
@@ -117,7 +123,7 @@ function normalizeAiDesign(value = {}) {
   const allowedLayoutVariants = [...new Set(
     (Array.isArray(source.allowedLayoutVariants) ? source.allowedLayoutVariants : DEFAULT_AI_DESIGN.allowedLayoutVariants)
       .map((item) => String(item || "").trim())
-      .filter((item) => AI_LAYOUT_VARIANTS.includes(item))
+      .filter((item) => /^[a-zA-Z][a-zA-Z0-9_-]{0,79}$/.test(item))
   )];
   const imageTarget = AI_IMAGE_TARGETS.includes(source.imageTarget) ? source.imageTarget : DEFAULT_AI_DESIGN.imageTarget;
   const imageTargetItemKeys = [...new Set(
@@ -405,6 +411,41 @@ async function validateSectionDraft(sql, sectionId) {
       }
     });
   });
+
+  const layoutRows = await fetchLayoutRows(sql, sectionId);
+  if (layoutRows.length) {
+    const defaultCount = layoutRows.filter((layout) => layout.is_default).length;
+    if (defaultCount !== 1) {
+      errors.push({
+        path: `${sectionRow.section_key}.layouts`,
+        code: "DEFAULT_LAYOUT_REQUIRED",
+        message: "A section with layout presets needs exactly one default layout.",
+      });
+    }
+    const itemKeys = items.map((item) => item.itemKey);
+    const layoutKeys = new Set(layoutRows.map((layout) => layout.layout_key));
+    if (aiDesign.enabled) {
+      aiDesign.allowedLayoutVariants
+        .filter((layoutKey) => !layoutKeys.has(layoutKey))
+        .forEach((layoutKey) => {
+          errors.push({
+            path: `${sectionRow.section_key}.aiDesign.allowedLayoutVariants.${layoutKey}`,
+            code: "UNKNOWN_LAYOUT_VARIANT",
+            message: `AI layout variant must reference a saved section layout: ${layoutKey}.`,
+          });
+        });
+    }
+    layoutRows.forEach((layout) => {
+      const validation = normalizeLayoutSnapshot(layout.layout_snapshot, itemKeys);
+      validation.errors.forEach((error) => {
+        errors.push({
+          ...error,
+          path: `${sectionRow.section_key}.layouts.${layout.layout_key}.${error.path}`,
+        });
+      });
+    });
+  }
+  errors.push(...validateHeaderLayoutPolicy(sectionRow, items, layoutRows));
   return { section: toSection(sectionRow), items, errors };
 }
 
@@ -452,7 +493,13 @@ async function fetchPublicSectionsWithItems(sql) {
   for (const row of sectionRows) {
     const section = toSection(row);
     const items = (await fetchItemsForSection(sql, row.id)).filter((item) => item.isVisibleInWizard);
-    sections.push({ ...section, items });
+    const layouts = await fetchLayoutsForSection(sql, row.id, { includeSnapshot: false });
+    sections.push({
+      ...section,
+      items,
+      layouts,
+      defaultLayoutKey: layouts.find((layout) => layout.isDefault)?.layoutKey || null,
+    });
   }
   return sections;
 }

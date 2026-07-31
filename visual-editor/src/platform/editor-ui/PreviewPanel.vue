@@ -197,6 +197,7 @@ defineExpose({ getStageElement, scrollToSection });
         :assets="rendererSnapshot.assets"
         :motion-spec="rendererSnapshot.motionSpec"
         :section-design-runs="sectionDesignRuns"
+        :viewport-override="viewport"
         editable
         :show-guides="guidesVisible"
         :selected-item-key="selectedStyleKey"

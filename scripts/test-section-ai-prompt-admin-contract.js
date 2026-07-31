@@ -13,7 +13,14 @@ const promptUpdate = read("api", "prompt-template.js");
 const promptActivate = read("api", "prompt-template-activate.js");
 const runs = read("api", "promo-section-design-runs.js");
 const { PROMPT_TYPES, renderPrompt, unresolvedVariables } = require("../api/_prompt-template-store");
-const { validateStageModelConfig } = require("../api/_prompt-execution-snapshot");
+const {
+  completeDeclaredPromptVariables,
+  validateStageModelConfig,
+} = require("../api/_prompt-execution-snapshot");
+const {
+  brandPaletteFromTokenValues,
+  buildSectionImagePromptVariables,
+} = require("../api/_section-image-prompt-variables");
 
 assert.match(sectionStore, /backgroundPromptText:\s*String\(source\.backgroundPromptText/);
 assert.match(templateStore, /source_section\.status as section_status,\s*source_section\.ai_design/);
@@ -27,8 +34,36 @@ assert.match(promptActivate, /validateStageModelConfig\(target\.type/);
 assert.deepEqual(PROMPT_TYPES.section_background_image.optionalVariables, [
   "fadeMode", "adminGuidance", "brandPalette", "aspectRatio",
 ]);
-assert.match(runs, /brandPalette:\s*promptVariable\(body\.brandPalette\)/);
+assert.match(runs, /buildSectionImagePromptVariables/);
+assert.match(runs, /brandPalette:\s*body\.brandPalette/);
 assert.match(runs, /aspectRatio:\s*String\(constraints\.imageAspectRatio \|\| "16:9"\)/);
+assert.deepEqual(completeDeclaredPromptVariables({
+  optionalVariables: ["fadeMode", "adminGuidance", "brandPalette", "aspectRatio"],
+}, {
+  fadeMode: "left",
+  aspectRatio: "16:9",
+}), {
+  fadeMode: "left",
+  aspectRatio: "16:9",
+  adminGuidance: "",
+  brandPalette: "",
+});
+assert.equal(brandPaletteFromTokenValues({
+  "--app-bg": "#0B0D12",
+  "--app-accent": "#FFB800",
+}), "Background #0B0D12\nAccent #FFB800");
+const builderVariables = buildSectionImagePromptVariables({
+  promptType: "section_background_image",
+  section: { name: "Hero", aiDesign: { imageAspectRatio: "16:9" } },
+  sectionContent: { title: "Summer" },
+  designSpec: { theme: { backgroundColor: "#0B0D12" } },
+  designTokenValues: { "--app-bg": "#0B0D12", "--app-accent": "#FFB800" },
+});
+assert.equal(builderVariables.brandPalette, "Background #0B0D12\nAccent #FFB800");
+assert.deepEqual(unresolvedVariables(renderPrompt(
+  "{{sectionName}} {{contentJson}} {{backgroundColor}} {{fadeMode}} {{adminGuidance}} {{brandPalette}} {{aspectRatio}}",
+  builderVariables,
+)), []);
 assert.deepEqual(unresolvedVariables(renderPrompt(
   "{{sectionName}} {{contentJson}} {{backgroundColor}} {{fadeMode}} {{adminGuidance}} {{brandPalette}} {{aspectRatio}}",
   {

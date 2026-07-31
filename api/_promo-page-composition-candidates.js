@@ -5,8 +5,10 @@ const {
 } = require("./_wizard-form-templates-store");
 const {
   fetchItemsForSection,
+  normalizeAiDesign,
   normalizeCompositionPolicy,
 } = require("./_wizard-content-sections-store");
+const { fetchLayoutsForSection } = require("./_wizard-content-section-layouts-store");
 const {
   fetchTokenSets,
   fetchTokenVersion,
@@ -64,6 +66,15 @@ async function fetchPageCompositionCandidates(sql, {
         membership.compositionPolicy,
         membership,
       );
+      const aiDesign = normalizeAiDesign(membership.aiDesign);
+      const layoutPresets = await fetchLayoutsForSection(sql, membership.sectionId);
+      const savedLayoutKeys = new Set(layoutPresets.map((layout) => layout.layoutKey));
+      const configuredLayoutKeys = aiDesign.allowedLayoutVariants
+        .filter((layoutKey) => savedLayoutKeys.has(layoutKey));
+      const defaultLayoutKey = layoutPresets.find((layout) => layout.isDefault)?.layoutKey || "";
+      const allowedLayoutVariants = layoutPresets.length
+        ? (configuredLayoutKeys.length ? configuredLayoutKeys : [defaultLayoutKey].filter(Boolean))
+        : (policy.allowedLayoutVariants.length ? policy.allowedLayoutVariants : ["default"]);
       sections.push({
         sectionId: membership.sectionId,
         sectionKey: membership.sectionKey,
@@ -76,14 +87,15 @@ async function fetchPageCompositionCandidates(sql, {
         compositionScope: membership.compositionScope || "template",
         sectionRole: membership.sectionRole || "content",
         compositionPolicy: policy,
+        aiDesign,
         resolvedRequired: policyRequiresSection(
           { ...membership, compositionPolicy: policy },
           overview,
           selectedIds,
         ),
-        allowedLayoutVariants: policy.allowedLayoutVariants.length
-          ? policy.allowedLayoutVariants
-          : ["default"],
+        allowedLayoutVariants,
+        defaultLayoutKey: defaultLayoutKey || null,
+        layoutPresets,
         components: items.map((item) => ({
           componentInstanceId: item.id,
           itemKey: item.itemKey,
@@ -186,8 +198,28 @@ async function fetchPageCompositionCandidates(sql, {
   };
 }
 
+function plannerCandidateSnapshot(candidates) {
+  return {
+    ...candidates,
+    templates: (candidates.templates || []).map((template) => ({
+      ...template,
+      sections: (template.sections || []).map((section) => ({
+        ...section,
+        layoutPresets: (section.layoutPresets || []).map((layout) => ({
+          layoutKey: layout.layoutKey,
+          name: layout.name,
+          description: layout.description,
+          isDefault: layout.isDefault,
+          supportedViewports: ["desktop", "mobile"],
+        })),
+      })),
+    })),
+  };
+}
+
 module.exports = {
   fingerprint,
   policyRequiresSection,
   fetchPageCompositionCandidates,
+  plannerCandidateSnapshot,
 };
