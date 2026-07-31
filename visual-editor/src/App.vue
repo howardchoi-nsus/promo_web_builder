@@ -5,6 +5,7 @@ import { withoutFreePosition } from "./editor-utils.mjs";
 import { createEditorContext } from "./editor-context.mjs";
 import { normalizeLayoutSpec, validateLayoutSpec } from "./layout-utils.mjs";
 import { geometryToItemStylePatches, resolveSafeMultiLayoutOperation } from "./multi-layout.mjs";
+import { rebaseDocumentSnapshot } from "./revision-rebase.mjs";
 import { createAdminTemplateAdapter } from "./platform/adapters/admin-template-adapter.mjs";
 import { createAiDocumentAdapter } from "./platform/adapters/ai-document-adapter.mjs";
 import { createEditorLibraryAdapter } from "./platform/adapters/editor-library-adapter.mjs";
@@ -71,6 +72,7 @@ const aiDocumentId = ref("");
 const aiDocumentRevision = ref(0);
 const aiDocumentSaving = ref(false);
 const aiDocumentSaveMessage = ref("");
+const aiDocumentConflict = ref(null);
 const designTokenSets = ref([]);
 const previewDesignTokenVersionId = ref("");
 const externalSnapshotReady = ref(false);
@@ -223,8 +225,8 @@ function updateEditorHistory() {
   editorHistory.value = editorCore.getHistoryState();
 }
 
-function hydrateEditorCore({ resetHistory = true } = {}) {
-  editorCore.replaceDocument(editorDocumentFromRefs(), { resetHistory });
+function hydrateEditorCore({ resetHistory = true, dirty = false } = {}) {
+  editorCore.replaceDocument(editorDocumentFromRefs(), { resetHistory, dirty });
   updateEditorHistory();
 }
 
@@ -1419,6 +1421,7 @@ async function loadAiDocument() {
     aiDocumentId.value = documentId;
     aiDocumentRevision.value = Number(result.document?.currentDocumentRevision || result.snapshot.documentRevision || 0);
     aiDocumentSnapshot.value = result.snapshot;
+    aiDocumentConflict.value = null;
     designTokenSets.value = availableTokenSets;
     const selectedTokenVersionId = result.snapshot.appearance?.designTokenSetVersionId
       || result.snapshot.content?.formTemplate?.designTokenSetVersionId
@@ -1527,6 +1530,7 @@ async function saveAiDocument() {
     });
     aiDocumentRevision.value = Number(saved.revision);
     aiDocumentSnapshot.value = saved.snapshot;
+    aiDocumentConflict.value = null;
     designSpec.value = normalizeLayoutSpec(saved.snapshot.designSpec);
     layoutRevision.value = Number(saved.snapshot.layoutRevision || layoutRevision.value);
     editorCore.replaceDocument(editorDocumentFromRefs(), { resetHistory: false, dirty: false });
@@ -1534,10 +1538,93 @@ async function saveAiDocument() {
     aiDocumentSaveMessage.value = `AI 프로모션 문서 revision ${saved.revision} 저장 완료`;
     return true;
   } catch (saveError) {
+    if (saveError.code === "DOCUMENT_REVISION_MISMATCH") {
+      aiDocumentConflict.value = {
+        currentRevision: Number(saveError.currentDocumentRevision || 0),
+        conflicts: [],
+        busy: false,
+      };
+      aiDocumentSaveMessage.value = "다른 작업에서 문서가 먼저 저장되었습니다. 현재 변경을 최신 버전에 재적용해 주세요.";
+      return false;
+    }
     aiDocumentSaveMessage.value = saveError.message;
     return false;
   } finally {
     aiDocumentSaving.value = false;
+  }
+}
+
+function applyAiDocumentWorkingSnapshot(snapshot, { baseSnapshot, revision, dirty }) {
+  const previousSectionKey = selectedSectionKey.value;
+  const previousItemKey = selectedItemKey.value;
+  aiDocumentRevision.value = Number(revision || snapshot.documentRevision || 0);
+  aiDocumentSnapshot.value = baseSnapshot;
+  sections.value = snapshot.content?.sectionSnapshot || [];
+  sectionInputs.value = snapshot.content?.sectionInputs || {};
+  designSpec.value = normalizeLayoutSpec(snapshot.designSpec || designSpec.value);
+  layoutRevision.value = Number(snapshot.layoutRevision || layoutRevision.value);
+  layoutIdentity.value = snapshot.layoutIdentity || layoutIdentity.value;
+  template.value = {
+    ...(template.value || {}),
+    ...(snapshot.content?.formTemplate || {}),
+  };
+  const nextSection = sections.value.find((section) => section.sectionKey === previousSectionKey) || sections.value[0] || null;
+  const nextItem = nextSection?.items?.find((item) => item.itemKey === previousItemKey) || nextSection?.items?.[0] || null;
+  selectedSectionKey.value = nextSection?.sectionKey || "";
+  selectedItemKey.value = nextItem?.itemKey || "";
+  selectedItemKeys.value = nextItem?.itemKey ? [nextItem.itemKey] : [];
+  expandedComponentKey.value = componentKey(nextSection, nextItem);
+  hydrateEditorCore({ resetHistory: false, dirty });
+}
+
+async function rebaseAiDocumentChanges() {
+  if (!aiDocumentConflict.value || aiDocumentConflict.value.busy) return;
+  aiDocumentConflict.value = { ...aiDocumentConflict.value, busy: true, conflicts: [] };
+  try {
+    const localSnapshot = JSON.parse(JSON.stringify(editorSnapshot.value));
+    const baseSnapshot = JSON.parse(JSON.stringify(aiDocumentSnapshot.value));
+    const loaded = await aiDocumentAdapter.load(aiDocumentId.value);
+    if (!loaded.snapshot) throw new Error("최신 AI 프로모션 문서를 불러오지 못했습니다.");
+    const rebased = rebaseDocumentSnapshot(baseSnapshot, localSnapshot, loaded.snapshot);
+    if (rebased.conflicts.length) {
+      aiDocumentConflict.value = {
+        currentRevision: Number(loaded.document?.currentDocumentRevision || 0),
+        conflicts: rebased.conflicts,
+        busy: false,
+      };
+      aiDocumentSaveMessage.value = `동일한 항목이 양쪽에서 변경되어 자동 병합하지 않았습니다. 충돌 ${rebased.conflicts.length}건을 확인해 주세요.`;
+      return;
+    }
+    applyAiDocumentWorkingSnapshot(rebased.snapshot, {
+      baseSnapshot: loaded.snapshot,
+      revision: loaded.document?.currentDocumentRevision,
+      dirty: true,
+    });
+    aiDocumentConflict.value = null;
+    aiDocumentSaveMessage.value = "현재 변경을 최신 문서에 재적용했습니다. 저장 버튼을 다시 눌러 확정해 주세요.";
+  } catch (rebaseError) {
+    aiDocumentConflict.value = { ...aiDocumentConflict.value, busy: false };
+    aiDocumentSaveMessage.value = rebaseError.message;
+  }
+}
+
+async function reloadLatestAiDocument() {
+  if (!aiDocumentConflict.value || aiDocumentConflict.value.busy) return;
+  if (editorCore.getState().dirty && !window.confirm("저장되지 않은 현재 편집을 버리고 최신 문서를 불러올까요?")) return;
+  aiDocumentConflict.value = { ...aiDocumentConflict.value, busy: true };
+  try {
+    const loaded = await aiDocumentAdapter.load(aiDocumentId.value);
+    if (!loaded.snapshot) throw new Error("최신 AI 프로모션 문서를 불러오지 못했습니다.");
+    applyAiDocumentWorkingSnapshot(loaded.snapshot, {
+      baseSnapshot: loaded.snapshot,
+      revision: loaded.document?.currentDocumentRevision,
+      dirty: false,
+    });
+    aiDocumentConflict.value = null;
+    aiDocumentSaveMessage.value = `최신 문서 revision ${aiDocumentRevision.value}을 불러왔습니다.`;
+  } catch (reloadError) {
+    aiDocumentConflict.value = { ...aiDocumentConflict.value, busy: false };
+    aiDocumentSaveMessage.value = reloadError.message;
   }
 }
 
@@ -1896,6 +1983,21 @@ onBeforeUnmount(() => {
     <div v-if="outputSaveError" class="system-message system-message--error" role="alert">{{ outputSaveError }}</div>
     <div v-if="layoutSaveMessage" class="system-message" role="status">{{ layoutSaveMessage }}</div>
     <div v-if="aiDocumentSaveMessage" class="system-message" role="status">{{ aiDocumentSaveMessage }}</div>
+    <section v-if="aiDocumentConflict" class="system-message revision-conflict" role="alert">
+      <div>
+        <strong>새 문서 revision이 감지되었습니다.</strong>
+        <span v-if="aiDocumentConflict.currentRevision">최신 revision {{ aiDocumentConflict.currentRevision }}</span>
+        <small v-if="aiDocumentConflict.conflicts.length">
+          자동 병합 충돌: {{ aiDocumentConflict.conflicts.slice(0, 3).join(", ") }}<template v-if="aiDocumentConflict.conflicts.length > 3"> 외 {{ aiDocumentConflict.conflicts.length - 3 }}건</template>
+        </small>
+      </div>
+      <div class="revision-conflict__actions">
+        <button type="button" :disabled="aiDocumentConflict.busy" @click="rebaseAiDocumentChanges">
+          {{ aiDocumentConflict.busy ? "처리 중" : "현재 변경을 최신본에 재적용" }}
+        </button>
+        <button type="button" :disabled="aiDocumentConflict.busy" @click="reloadLatestAiDocument">최신본으로 다시 불러오기</button>
+      </div>
+    </section>
     <div v-if="structureMessage" class="system-message" role="status">{{ structureMessage }}</div>
 
     <section

@@ -5,6 +5,7 @@ async function responseJson(response, fallback) {
     error.code = payload.code || `HTTP_${response.status}`;
     error.status = response.status;
     error.details = payload.validation || payload.details || null;
+    error.currentDocumentRevision = Number(payload.currentDocumentRevision || 0);
     throw error;
   }
   return payload;

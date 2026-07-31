@@ -316,6 +316,13 @@ button, a { letter-spacing: 0; }
 
 .system-message { margin: 12px 0; padding: 16px; border: 1px solid var(--app-line-strong); background: var(--app-panel); }
 .system-message--error { border-color: var(--app-danger); background: var(--app-danger-soft); color: var(--app-danger); }
+.revision-conflict { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-color: var(--app-warning-line); background: var(--app-warning-soft); }
+.revision-conflict > div:first-child { display: grid; gap: 3px; }
+.revision-conflict span, .revision-conflict small { color: var(--app-sub); }
+.revision-conflict__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.revision-conflict__actions button { min-height: 34px; padding: 0 12px; border: 1px solid var(--app-line-strong); background: var(--app-panel); color: var(--app-ink); cursor: pointer; font-weight: 750; }
+.revision-conflict__actions button:first-child { border-color: var(--app-accent); background: var(--app-accent); color: var(--app-panel); }
+.revision-conflict__actions button:disabled { cursor: wait; opacity: .55; }
 
 @media (max-width: 980px) {
   .editor-workspace {
