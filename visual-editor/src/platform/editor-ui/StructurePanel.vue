@@ -4,10 +4,12 @@ import SectionProperties from "../../SectionProperties.vue";
 import ComponentLibraryPanel from "./ComponentLibraryPanel.vue";
 import PageTree from "./PageTree.vue";
 import SectionPresetPicker from "./SectionPresetPicker.vue";
+import SectionTransitionControls from "./SectionTransitionControls.vue";
 
 defineProps({
   sections: { type: Array, default: () => [] },
   selectedSection: { type: Object, default: null },
+  expandedSectionKey: { type: String, default: "" },
   selectedItemKey: { type: String, default: "" },
   selectedSectionStyle: { type: Object, default: () => ({}) },
   capabilities: { type: Object, required: true },
@@ -18,10 +20,12 @@ defineProps({
   sectionAiPrimaryAction: { type: Function, required: true },
   sectionHasAiBackground: { type: Function, required: true },
   sectionAiIsProcessing: { type: Function, required: true },
+  sectionMotion: { type: Object, default: () => ({}) },
 });
 
 const emit = defineEmits([
   "select-section",
+  "toggle-section-expansion",
   "select-item",
   "section-ai-action",
   "background-alignment",
@@ -35,6 +39,8 @@ const emit = defineEmits([
   "move-component",
   "remove-section",
   "remove-component",
+  "update-section-motion",
+  "replay-motion",
 ]);
 
 const activeTab = ref("tree");
@@ -76,10 +82,12 @@ const activeTab = ref("tree");
         v-if="activeTab === 'tree'"
         :sections="sections"
         :selected-section="selectedSection"
+        :expanded-section-key="expandedSectionKey"
         :selected-item-key="selectedItemKey"
         :can-compose-structure="capabilities.canComposeStructure"
         :section-content-registered="sectionContentRegistered"
         @select-section="emit('select-section', $event)"
+        @toggle-section-expansion="emit('toggle-section-expansion', $event)"
         @select-item="(section, item) => emit('select-item', section, item)"
         @move-section="(sourceKey, targetKey, position) => emit('move-section', sourceKey, targetKey, position)"
         @move-component="(sourceSectionKey, itemKey, targetSectionKey, targetItemKey, position) => emit('move-component', sourceSectionKey, itemKey, targetSectionKey, targetItemKey, position)"
@@ -103,6 +111,12 @@ const activeTab = ref("tree");
               @background-fade="emit('background-fade', $event)"
               @update-style="(patch) => emit('update-section-style', section.sectionKey, patch)"
               @reset-height="emit('reset-section-height')"
+            />
+            <SectionTransitionControls
+              v-if="section.sectionKey === selectedSection?.sectionKey"
+              :binding="sectionMotion"
+              @update="emit('update-section-motion', $event)"
+              @replay="emit('replay-motion')"
             />
           </div>
         </template>

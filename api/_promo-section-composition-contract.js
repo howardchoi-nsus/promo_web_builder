@@ -120,10 +120,19 @@ function compositionFingerprint({ template, section, tokenSet }) {
 }
 
 function compositionOptionsFromBody(body = {}) {
+  const requestedScope = body.scope && typeof body.scope === "object" && !Array.isArray(body.scope)
+    ? body.scope : {};
   return {
     generateBackgroundImage: Boolean(body.generateBackgroundImage),
     imageGuidance: String(body.imageGuidance || "").trim().slice(0, 1200),
     fadeMode: ["none", "left", "right", "both"].includes(body.fadeMode) ? body.fadeMode : "none",
+    scope: {
+      layout: requestedScope.layout !== false,
+      tokens: requestedScope.tokens !== false,
+      keyVisual: requestedScope.keyVisual !== false,
+      motion: requestedScope.motion === true,
+      preserveContent: requestedScope.preserveContent === true,
+    },
   };
 }
 
@@ -175,9 +184,18 @@ function tokenStyle(token) {
   return { [propertyMap[token.cssProperty] || token.cssProperty]: value };
 }
 
+function requestedMotionPreset(instruction) {
+  const request = String(instruction || "").toLowerCase();
+  if (/(scale|확대|zoom)/.test(request)) return { presetVersionId: "motion-scale-in", className: "motion-scale-in" };
+  if (/(fade[ -]?in|페이드 ?인|투명)/.test(request) && !/(up|위로|아래에서)/.test(request)) {
+    return { presetVersionId: "motion-fade-in", className: "motion-fade-in" };
+  }
+  return { presetVersionId: "motion-fade-up", className: "motion-fade-up" };
+}
+
 function normalizeCompositionPlan({
   plan, instruction, section, sectionInputs, tokenSet, generateBackgroundImage = false,
-  imageGuidance = "", fadeMode = "none",
+  imageGuidance = "", fadeMode = "none", scope = {},
 }) {
   if (!plan || typeof plan !== "object" || Array.isArray(plan)) fail("Planner returned an invalid plan");
   const items = visibleItems(section);
@@ -216,7 +234,9 @@ function normalizeCompositionPlan({
         continue;
       }
       let after = before;
-      if (field.fieldKind === "text" && patch.textValue !== null) {
+      if (scope.preserveContent === true) {
+        after = before;
+      } else if (field.fieldKind === "text" && patch.textValue !== null) {
         after = textWithLimit(patch.textValue, field.editorSchema);
       } else if (field.fieldKind === "cta") {
         const current = before && typeof before === "object" ? before : {};
@@ -249,7 +269,8 @@ function normalizeCompositionPlan({
     if (isMulti) nextInputs[itemKey] = nextComponent;
   }
 
-  const placements = Array.isArray(plan.itemPlacements) ? plan.itemPlacements : [];
+  const placements = scope.layout === false
+    ? [] : (Array.isArray(plan.itemPlacements) ? plan.itemPlacements : []);
   const placementKeys = placements.map((placement) => String(placement?.itemKey || ""));
   if (new Set(placementKeys).size !== placementKeys.length) {
     fail("Planner returned a duplicate component placement");
@@ -277,7 +298,9 @@ function normalizeCompositionPlan({
   const tokenBindings = [];
   const seenTokenBindings = new Set();
   const normalizationAdjustments = [];
-  for (const binding of Array.isArray(plan.tokenBindings) ? plan.tokenBindings : []) {
+  const requestedTokenBindings = scope.tokens === false
+    ? [] : (Array.isArray(plan.tokenBindings) ? plan.tokenBindings : []);
+  for (const binding of requestedTokenBindings) {
     const item = itemByKey.get(String(binding?.itemKey || ""));
     if (!item || item.isLocked) fail("Token binding targets an unknown or locked component");
     const fields = componentFields(item);
@@ -325,7 +348,7 @@ function normalizeCompositionPlan({
     });
   }
 
-  const requested = Boolean(generateBackgroundImage && plan.backgroundImage?.requested);
+  const requested = Boolean(scope.keyVisual !== false && generateBackgroundImage && plan.backgroundImage?.requested);
   const normalizedFade = ["none", "left", "right", "both"].includes(fadeMode) ? fadeMode : "none";
   return {
     sectionKey: section.sectionKey,
@@ -343,12 +366,34 @@ function normalizeCompositionPlan({
         ? [String(imageGuidance || "").trim(), String(plan.backgroundImage?.concept || "").trim()].filter(Boolean).join("\n").slice(0, 1800)
         : "",
     },
+    motionPatch: scope.motion === true ? {
+      sections: {
+        [section.sectionKey]: {
+          ...requestedMotionPreset(instruction),
+          trigger: "viewport-enter",
+          playMode: "once",
+          durationToken: "360ms",
+          easingToken: "ease-out",
+          delayToken: "0ms",
+          childrenMode: "together",
+          staggerToken: "0ms",
+        },
+      },
+      items: {},
+    } : null,
     missingInputs: Array.isArray(plan.missingInputs) ? plan.missingInputs.slice(0, 20) : [],
     adjustments: [
       ...(Array.isArray(plan.adjustments) ? plan.adjustments : []),
       ...normalizationAdjustments,
     ].slice(0, 30),
     rationale: String(plan.rationale || "").trim().slice(0, 1200),
+    appliedScope: {
+      layout: scope.layout !== false,
+      tokens: scope.tokens !== false,
+      keyVisual: scope.keyVisual !== false && Boolean(generateBackgroundImage),
+      motion: scope.motion === true,
+      preserveContent: scope.preserveContent === true,
+    },
   };
 }
 

@@ -133,7 +133,7 @@ assert.match(renderer, /sectionBackgroundUrl/);
 assert.match(renderer, /isLegacyAiImageValue/);
 assert.match(renderer, /isConfiguredAiImageItem/);
 assert.match(renderer, /if \(isConfiguredAiImageItem\(section, item\)\) return false/);
-assert.match(renderer, /v-for="item in renderedItems\(section\)"/);
+assert.match(renderer, /v-for="(?:item|\(item, itemIndex\)) in renderedItems\(section\)"/);
 assert.match(renderer, /configured \|\| String\(legacyAiImage\?\.value/);
 assert.match(renderer, /backgroundSize/);
 assert.match(renderer, /fitMode === "width-fill"/);

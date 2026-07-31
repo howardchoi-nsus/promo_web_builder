@@ -32,7 +32,10 @@ import PreviewPanel from "./platform/editor-ui/PreviewPanel.vue";
 import StructurePanel from "./platform/editor-ui/StructurePanel.vue";
 import AiLayoutControls from "./platform/editor-ui/AiLayoutControls.vue";
 import SectionCompositionControls from "./platform/editor-ui/SectionCompositionControls.vue";
+import AiSectionCompositionPanel from "./platform/editor-ui/AiSectionCompositionPanel.vue";
 import PropertyPanel from "./platform/editor-ui/PropertyPanel.vue";
+import ComponentTransitionControls from "./platform/editor-ui/ComponentTransitionControls.vue";
+import { createItemMotionBinding, createSectionMotionBinding, normalizeMotionSpec } from "./platform/editor-core/motion-spec.mjs";
 import {
   DEFAULT_DESIGN_SPEC,
   SNAPSHOT_STORAGE_KEY,
@@ -53,6 +56,7 @@ const sections = ref([]);
 const sectionInputs = ref({});
 const designSpec = ref(JSON.parse(JSON.stringify(DEFAULT_DESIGN_SPEC)));
 const selectedSectionKey = ref("");
+const expandedSectionKey = ref("");
 const selectedItemKey = ref("");
 const selectedItemKeys = ref([]);
 const expandedComponentKey = ref("");
@@ -86,6 +90,10 @@ const multiLayoutUndoStack = ref([]);
 const multiLayoutRevision = ref(0);
 const compositionInstruction = ref("");
 const compositionGenerateBackground = ref(false);
+const compositionApplyLayout = ref(true);
+const compositionApplyTokens = ref(true);
+const compositionApplyMotion = ref(false);
+const compositionPreserveContent = ref(true);
 const compositionImageGuidance = ref("");
 const compositionFadeMode = ref("none");
 const compositionKeyVisualTextMode = ref("none");
@@ -94,6 +102,12 @@ const compositionPlanning = ref(false);
 const compositionApplying = ref(false);
 const compositionError = ref("");
 const compositionResult = ref(null);
+const structurePurpose = ref("");
+const structurePlanning = ref(false);
+const structureApplying = ref(false);
+const structureError = ref("");
+const structureResult = ref(null);
+const motionReplayKey = ref(0);
 const componentLibrary = ref([]);
 const sectionPresets = ref([]);
 const editorLibraryLoading = ref(false);
@@ -114,6 +128,14 @@ let disconnectPromoBuilder = null;
 let compositionRequestSequence = 0;
 let aiDocumentPollingCancelled = false;
 
+watch(selectedSectionKey, (nextKey, previousKey) => {
+  if (!nextKey) {
+    expandedSectionKey.value = "";
+    return;
+  }
+  if (nextKey !== previousKey) expandedSectionKey.value = nextKey;
+});
+
 const wizardSource = new URLSearchParams(window.location.search).get("source") || "";
 const editorContext = computed(() => createEditorContext(props.mode, wizardSource));
 const capabilities = computed(() => editorContext.value.capabilities);
@@ -129,6 +151,13 @@ const selectedSection = computed(() => sections.value.find((section) => section.
 const selectedItem = computed(() => (
   selectedSection.value?.items?.find((item) => item.itemKey === selectedItemKey.value) || null
 ));
+const motionSpec = computed(() => normalizeMotionSpec(
+  designSpec.value.motionSpec || aiDocumentSnapshot.value?.motionSpec || {},
+));
+const selectedSectionMotion = computed(() => motionSpec.value.sections[selectedSection.value?.sectionKey] || {});
+const selectedItemMotion = computed(() => motionSpec.value.items[
+  selectedSection.value && selectedItem.value ? `${selectedSection.value.sectionKey}.${selectedItem.value.itemKey}` : ""
+] || { inherit: true });
 const selectedValue = computed({
   get: () => sectionInputs.value?.[selectedSection.value?.sectionKey]?.[selectedItem.value?.itemKey],
   set: (value) => updateSelectedValue(value),
@@ -150,9 +179,7 @@ const editorSnapshot = computed(() => {
       assets: JSON.parse(JSON.stringify(
         aiDocumentSnapshot.value.assets || { contractVersion: 1, items: {}, requests: [] },
       )),
-      motionSpec: JSON.parse(JSON.stringify(
-        aiDocumentSnapshot.value.motionSpec || { sections: {}, items: {} },
-      )),
+      motionSpec: JSON.parse(JSON.stringify(motionSpec.value)),
     };
   }
   return createSnapshot({
@@ -161,6 +188,7 @@ const editorSnapshot = computed(() => {
     sections: sections.value,
     sectionInputs: sectionInputs.value,
     designSpec: designSpec.value,
+    motionSpec: motionSpec.value,
   });
 });
 const rendererSnapshot = computed(() => props.mode === "output" ? outputSnapshot.value : editorSnapshot.value);
@@ -391,12 +419,21 @@ function resetSectionComposition() {
   compositionRequestSequence += 1;
   compositionInstruction.value = "";
   compositionGenerateBackground.value = false;
+  compositionApplyLayout.value = true;
+  compositionApplyTokens.value = true;
+  compositionApplyMotion.value = false;
+  compositionPreserveContent.value = true;
   compositionImageGuidance.value = "";
   compositionFadeMode.value = "none";
   compositionPlanning.value = false;
   compositionApplying.value = false;
   compositionError.value = "";
   compositionResult.value = null;
+  structurePurpose.value = "";
+  structurePlanning.value = false;
+  structureApplying.value = false;
+  structureError.value = "";
+  structureResult.value = null;
 }
 
 async function selectRendererItem(section, item, selection = {}) {
@@ -426,6 +463,7 @@ async function selectSection(section) {
   const sectionChanged = selectedSectionKey.value && selectedSectionKey.value !== section.sectionKey;
   if (sectionChanged) resetSectionComposition();
   selectedSectionKey.value = section.sectionKey;
+  expandedSectionKey.value = section.sectionKey;
   selectedItemKey.value = "";
   selectedItemKeys.value = [];
   expandedComponentKey.value = "";
@@ -433,6 +471,16 @@ async function selectSection(section) {
   multiLayoutError.value = "";
   await nextTick();
   scrollPreviewToSection(section);
+}
+
+async function toggleSectionExpansion(section) {
+  if (!section) return;
+  if (expandedSectionKey.value === section.sectionKey) {
+    expandedSectionKey.value = "";
+    return;
+  }
+  if (selectedSectionKey.value !== section.sectionKey) await selectSection(section);
+  expandedSectionKey.value = section.sectionKey;
 }
 
 function sectionIndexFromDrop(sourceKey, targetKey, position = "before") {
@@ -591,6 +639,43 @@ function removeComponent(section, item) {
   }, { label: "컴포넌트 삭제" })) return;
   selectedItemKey.value = "";
   selectedItemKeys.value = [];
+}
+
+function commitMotionSpec(nextMotionSpec, label) {
+  executeEditorCommand(EditorCommandType.DOCUMENT_PATCH, {
+    sections: sections.value,
+    content: sectionInputs.value,
+    layout: { ...designSpec.value, motionSpec: normalizeMotionSpec(nextMotionSpec) },
+  }, { label });
+}
+
+function updateSectionMotion(patch) {
+  if (!selectedSection.value) return;
+  const key = selectedSection.value.sectionKey;
+  const binding = createSectionMotionBinding({ ...(motionSpec.value.sections[key] || {}), ...patch });
+  commitMotionSpec({
+    ...motionSpec.value,
+    sections: { ...motionSpec.value.sections, [key]: binding },
+  }, "섹션 트랜지션 변경");
+  motionReplayKey.value += 1;
+}
+
+function updateItemMotion(patch) {
+  if (!selectedSection.value || !selectedItem.value || selectedItem.value.isLocked) return;
+  const key = `${selectedSection.value.sectionKey}.${selectedItem.value.itemKey}`;
+  const previous = motionSpec.value.items[key] || { inherit: true };
+  const binding = patch.inherit === true
+    ? { inherit: true }
+    : createItemMotionBinding({ ...previous, ...patch });
+  commitMotionSpec({
+    ...motionSpec.value,
+    items: { ...motionSpec.value.items, [key]: binding },
+  }, "컴포넌트 트랜지션 변경");
+  motionReplayKey.value += 1;
+}
+
+function replayMotion() {
+  motionReplayKey.value += 1;
 }
 
 function multiItemSelected(item) {
@@ -752,7 +837,106 @@ function compositionRequestPayload() {
     keyVisualText: compositionKeyVisualTextMode.value === "explicit"
       ? compositionKeyVisualText.value.trim()
       : "",
+    scope: {
+      layout: compositionApplyLayout.value,
+      tokens: compositionApplyTokens.value,
+      keyVisual: compositionGenerateBackground.value,
+      motion: compositionApplyMotion.value,
+      preserveContent: compositionPreserveContent.value,
+    },
   };
+}
+
+function structureCandidates() {
+  return availableComponents.value.map((component) => ({
+    componentKey: component.componentKey,
+    componentVersionId: component.activeVersion?.id,
+    name: component.name,
+    description: component.description || component.activeVersion?.editorSchema?.description || "",
+    fieldKind: component.activeVersion?.fieldKind || component.activeVersion?.fields?.[0]?.fieldKind || "text",
+    maxInstances: component.activeVersion?.editorSchema?.maxInstances || 3,
+  })).filter((candidate) => candidate.componentVersionId);
+}
+
+async function requestSectionStructurePlan() {
+  if (!selectedSection.value || selectedSection.value.items?.length || structurePurpose.value.trim().length < 3) return;
+  structurePlanning.value = true;
+  structureError.value = "";
+  structureResult.value = null;
+  try {
+    const payload = {
+      sectionKey: selectedSection.value.sectionKey,
+      sectionPurpose: structurePurpose.value,
+      candidates: structureCandidates(),
+      baseDocumentRevision: editorCore.getState().revision,
+      idempotencyKey: globalThis.crypto?.randomUUID?.() || `${Date.now()}`,
+    };
+    const response = await fetch("/api/promo-section-structure-plan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.message || result.error || `AI 섹션 구성 요청 오류(${response.status})`);
+    if (selectedSection.value?.sectionKey === payload.sectionKey && !selectedSection.value.items?.length) {
+      structureResult.value = { ...result, requestPayload: payload };
+    }
+  } catch (requestError) {
+    structureError.value = requestError.message;
+  } finally {
+    structurePlanning.value = false;
+  }
+}
+
+async function applySectionStructurePlan() {
+  const planned = structureResult.value;
+  const section = selectedSection.value;
+  if (!planned?.proposal || !section || section.items?.length || structureApplying.value) return;
+  structureApplying.value = true;
+  structureError.value = "";
+  try {
+    const response = await fetch("/api/promo-section-structure-validate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...planned.requestPayload,
+        proposal: planned.proposal,
+        candidateFingerprint: planned.candidateFingerprint,
+        currentDocumentRevision: editorCore.getState().revision,
+        candidates: structureCandidates(),
+      }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.message || result.error || `AI 섹션 구성 검증 오류(${response.status})`);
+    const definitions = new Map(availableComponents.value.map((component) => [component.activeVersion?.id, component]));
+    const items = result.proposal.componentSelections.flatMap((selection) => {
+      const definition = definitions.get(selection.componentVersionId);
+      return definition
+        ? Array.from({ length: selection.instanceCount }, () => createComponentInstanceFromDefinition(definition))
+        : [];
+    }).map((item, index) => ({ ...item, sortOrder: index * 10 }));
+    if (!items.length) throw new Error("적용할 수 있는 컴포넌트가 없습니다.");
+    const nextSection = { ...section, items };
+    const nextSections = sections.value.map((candidate) => candidate.sectionKey === section.sectionKey ? nextSection : candidate);
+    const nextContent = {
+      ...sectionInputs.value,
+      [section.sectionKey]: createSectionInputs([nextSection])[section.sectionKey],
+    };
+    if (!executeEditorCommand(EditorCommandType.DOCUMENT_PATCH, {
+      sections: nextSections,
+      content: nextContent,
+      layout: designSpec.value,
+    }, { source: "ai", label: "AI 섹션 구조 구성" })) return;
+    structureResult.value = null;
+    structureMessage.value = `${items.length}개 컴포넌트를 구성했습니다.`;
+    await nextTick();
+    const appliedSection = sections.value.find((candidate) => candidate.sectionKey === section.sectionKey);
+    selectItem(appliedSection, appliedSection?.items?.[0] || null);
+  } catch (applyError) {
+    structureError.value = applyError.message;
+  } finally {
+    structureApplying.value = false;
+  }
 }
 
 async function requestSectionComposition() {
@@ -822,6 +1006,13 @@ async function applySectionComposition() {
         backgroundFadeSafeArea: proposal.backgroundImage.safeArea,
       };
     }
+    const nextMotionSpec = proposal.motionPatch
+      ? normalizeMotionSpec({
+          ...motionSpec.value,
+          sections: { ...motionSpec.value.sections, ...(proposal.motionPatch.sections || {}) },
+          items: { ...motionSpec.value.items, ...(proposal.motionPatch.items || {}) },
+        })
+      : motionSpec.value;
     executeEditorCommand(EditorCommandType.DOCUMENT_PATCH, {
       content: {
         ...sectionInputs.value,
@@ -831,6 +1022,7 @@ async function applySectionComposition() {
         ...designSpec.value,
         itemStyles: nextItemStyles,
         sectionStyles: nextSectionStyles,
+        motionSpec: nextMotionSpec,
       },
     }, { source: "ai", label: "AI 섹션 구성 적용" });
     compositionResult.value = null;
@@ -2088,6 +2280,7 @@ onBeforeUnmount(() => {
       <StructurePanel
         :sections="sections"
         :selected-section="selectedSection"
+        :expanded-section-key="expandedSectionKey"
         :selected-item="selectedItem"
         :selected-item-style="selectedItemStyle"
         :color-token-options="colorTokenOptions"
@@ -2106,7 +2299,9 @@ onBeforeUnmount(() => {
         :section-ai-primary-action="sectionAiPrimaryAction"
         :section-has-ai-background="sectionHasAiBackground"
         :section-ai-is-processing="sectionAiIsProcessing"
+        :section-motion="selectedSectionMotion"
         @select-section="selectSection"
+        @toggle-section-expansion="toggleSectionExpansion"
         @select-item="selectRendererItem"
         @section-ai-action="(section, action, targetItemKey, targetType, options) => requestSectionAiAction(section, action, targetItemKey, targetType, '', '', '', options)"
         @background-alignment="setSectionBackgroundAlignment"
@@ -2120,12 +2315,31 @@ onBeforeUnmount(() => {
         @move-component="moveComponent"
         @remove-section="removeSection"
         @remove-component="removeComponent"
+        @update-section-motion="updateSectionMotion"
+        @replay-motion="replayMotion"
       >
         <template #section-composition="{ section }">
+          <AiSectionCompositionPanel
+            v-if="capabilities.canManageComponents && section?.sectionKey === selectedSection?.sectionKey && !section.items?.length"
+            :purpose="structurePurpose"
+            :planning="structurePlanning"
+            :applying="structureApplying"
+            :error="structureError"
+            :proposal="structureResult?.proposal || null"
+            :has-candidates="availableComponents.length > 0"
+            @update:purpose="structurePurpose = $event"
+            @request-plan="requestSectionStructurePlan"
+            @apply="applySectionStructurePlan"
+            @dismiss="structureResult = null"
+          />
           <SectionCompositionControls
-            v-if="capabilities.canRunSectionAi && section?.sectionKey === selectedSection?.sectionKey"
+            v-else-if="capabilities.canRunSectionAi && section?.sectionKey === selectedSection?.sectionKey"
             :instruction="compositionInstruction"
             :generate-background-image="compositionGenerateBackground"
+            :apply-layout="compositionApplyLayout"
+            :apply-tokens="compositionApplyTokens"
+            :apply-motion="compositionApplyMotion"
+            :preserve-content="compositionPreserveContent"
             :image-guidance="compositionImageGuidance"
             :fade-mode="compositionFadeMode"
             :key-visual-text-mode="compositionKeyVisualTextMode"
@@ -2136,6 +2350,10 @@ onBeforeUnmount(() => {
             :proposal="compositionResult?.proposal || null"
             @update:instruction="compositionInstruction = $event"
             @update:generate-background-image="compositionGenerateBackground = $event"
+            @update:apply-layout="compositionApplyLayout = $event"
+            @update:apply-tokens="compositionApplyTokens = $event"
+            @update:apply-motion="compositionApplyMotion = $event"
+            @update:preserve-content="compositionPreserveContent = $event"
             @update:image-guidance="compositionImageGuidance = $event"
             @update:fade-mode="compositionFadeMode = $event"
             @update:key-visual-text-mode="compositionKeyVisualTextMode = $event"
@@ -2149,6 +2367,7 @@ onBeforeUnmount(() => {
 
       <PreviewPanel
         ref="previewPanelRef"
+        :motion-replay-key="motionReplayKey"
         :renderer-snapshot="rendererSnapshot"
         :section-design-runs="sectionDesignRuns"
         :guide-mode="previewGuideMode"
@@ -2696,6 +2915,13 @@ onBeforeUnmount(() => {
             </section>
             <span v-if="!selectedSection.items?.length" class="component-property-empty">등록된 컴포넌트 없음</span>
           </div>
+        <ComponentTransitionControls
+          v-if="selectedItem"
+          :binding="selectedItemMotion"
+          :disabled="selectedItem.isLocked"
+          @update="updateItemMotion"
+          @replay="replayMotion"
+        />
       </PropertyPanel>
     </section>
       </div>

@@ -54,7 +54,14 @@ function removeStyleKeys(layout, prefix) {
       ([key]) => key !== prefix && !key.startsWith(`${prefix}.`),
     )),
   };
-  return { ...layout, itemStyles, visibility };
+  const motionSpec = layout.motionSpec && typeof layout.motionSpec === "object" ? {
+    ...layout.motionSpec,
+    sections: Object.fromEntries(Object.entries(layout.motionSpec.sections || {}).filter(([key]) => key !== prefix)),
+    items: Object.fromEntries(Object.entries(layout.motionSpec.items || {}).filter(
+      ([key]) => key !== prefix && !key.startsWith(`${prefix}.`),
+    )),
+  } : layout.motionSpec;
+  return { ...layout, itemStyles, visibility, ...(motionSpec ? { motionSpec } : {}) };
 }
 
 function moveStyleKeys(layout, previousPrefix, nextPrefix) {
@@ -75,6 +82,14 @@ function moveStyleKeys(layout, previousPrefix, nextPrefix) {
         : key;
     return [nextKey, value];
   }));
+  const moveMotionItems = (record = {}) => Object.fromEntries(Object.entries(record).map(([key, value]) => {
+    const nextKey = key === previousPrefix
+      ? nextPrefix
+      : key.startsWith(`${previousPrefix}.`)
+        ? `${nextPrefix}${key.slice(previousPrefix.length)}`
+        : key;
+    return [nextKey, value];
+  }));
   return {
     ...layout,
     itemStyles,
@@ -83,6 +98,12 @@ function moveStyleKeys(layout, previousPrefix, nextPrefix) {
       items: moveVisibility(layout.visibility?.items),
       fields: moveVisibility(layout.visibility?.fields),
     },
+    ...(layout.motionSpec ? {
+      motionSpec: {
+        ...layout.motionSpec,
+        items: moveMotionItems(layout.motionSpec.items),
+      },
+    } : {}),
   };
 }
 

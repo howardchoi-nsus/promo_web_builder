@@ -2,6 +2,10 @@
 defineProps({
   instruction: { type: String, default: "" },
   generateBackgroundImage: { type: Boolean, default: false },
+  applyLayout: { type: Boolean, default: true },
+  applyTokens: { type: Boolean, default: true },
+  applyMotion: { type: Boolean, default: false },
+  preserveContent: { type: Boolean, default: true },
   imageGuidance: { type: String, default: "" },
   fadeMode: { type: String, default: "none" },
   keyVisualTextMode: { type: String, default: "none" },
@@ -14,6 +18,7 @@ defineProps({
 
 const emit = defineEmits([
   "update:instruction", "update:generate-background-image", "update:image-guidance",
+  "update:apply-layout", "update:apply-tokens", "update:apply-motion", "update:preserve-content",
   "update:fade-mode", "update:key-visual-text-mode", "update:key-visual-text",
   "request-plan", "apply", "dismiss",
 ]);
@@ -23,20 +28,39 @@ const emit = defineEmits([
   <section class="section-composition-panel">
     <header>
       <div>
-        <strong>AI 섹션 구성</strong>
-        <small>현재 섹션의 기존 컴포넌트만 사용합니다.</small>
+        <strong>AI 디자인 생성</strong>
+        <small>현재 섹션의 컴포넌트는 유지하고 디자인을 제안합니다.</small>
       </div>
     </header>
     <label>
-      <span>구성 요청</span>
+      <span>디자인 요청사항</span>
       <textarea
         :value="instruction"
         rows="4"
         maxlength="4000"
-        placeholder="예: 100% 이벤트 타이틀과 안내 문구, 참여 버튼을 강조해서 구성해줘."
+        placeholder="예: 타이틀과 참여 버튼이 강조되는 역동적인 이벤트 디자인으로 만들어줘."
         @input="emit('update:instruction', $event.target.value)"
       ></textarea>
     </label>
+    <fieldset class="section-composition-scope">
+      <legend>적용 범위</legend>
+      <label class="app-checkbox toggle-field">
+        <input type="checkbox" :checked="applyLayout" @change="emit('update:apply-layout', $event.target.checked)" />
+        <span>레이아웃</span>
+      </label>
+      <label class="app-checkbox toggle-field">
+        <input type="checkbox" :checked="applyTokens" @change="emit('update:apply-tokens', $event.target.checked)" />
+        <span>디자인 토큰</span>
+      </label>
+      <label class="app-checkbox toggle-field">
+        <input type="checkbox" :checked="applyMotion" @change="emit('update:apply-motion', $event.target.checked)" />
+        <span>트랜지션</span>
+      </label>
+      <label class="app-checkbox toggle-field">
+        <input type="checkbox" :checked="preserveContent" @change="emit('update:preserve-content', $event.target.checked)" />
+        <span>현재 문구·링크 유지</span>
+      </label>
+    </fieldset>
     <label class="app-checkbox toggle-field">
       <input
         type="checkbox"
@@ -92,13 +116,13 @@ const emit = defineEmits([
       class="section-composition-request"
       :disabled="planning || applying || instruction.trim().length < 3 || (generateBackgroundImage && keyVisualTextMode === 'explicit' && !keyVisualText.trim())"
       @click="emit('request-plan')"
-    >{{ planning ? "구성 제안 생성 중…" : "구성 제안" }}</button>
+    >{{ planning ? "디자인 제안 생성 중…" : "디자인 제안" }}</button>
 
     <div v-if="proposal" class="section-composition-preview">
       <strong>적용 전 확인</strong>
       <p>{{ proposal.rationale }}</p>
       <dl>
-        <div><dt>콘텐츠 변경</dt><dd>{{ proposal.contentChanges?.length || 0 }}개</dd></div>
+        <div><dt>콘텐츠</dt><dd>{{ preserveContent ? "유지" : `${proposal.contentChanges?.length || 0}개 변경` }}</dd></div>
         <div><dt>토큰 적용</dt><dd>{{ proposal.tokenBindings?.length || 0 }}개</dd></div>
         <div><dt>키비주얼 생성</dt><dd>{{ proposal.backgroundImage?.requested ? "포함" : "없음" }}</dd></div>
       </dl>

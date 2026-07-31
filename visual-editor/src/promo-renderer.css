@@ -103,6 +103,13 @@
 .motion-fade-in { animation-name: promo-motion-fade-in; }
 .motion-scale-in { animation-name: promo-motion-scale-in; }
 
+.promo-renderer.is-outline-mode .motion-fade-up,
+.promo-renderer.is-outline-mode .motion-fade-in,
+.promo-renderer.is-outline-mode .motion-scale-in,
+.promo-renderer.is-dragging .motion-fade-up,
+.promo-renderer.is-dragging .motion-fade-in,
+.promo-renderer.is-dragging .motion-scale-in { animation: none; transform: none; }
+
 @media (prefers-reduced-motion: reduce) {
   .motion-fade-up,
   .motion-fade-in,

@@ -82,7 +82,7 @@ function createComponentInputValue(item, previousValue) {
   };
 }
 
-export function createSnapshot({ template, configRevision, sections, sectionInputs, designSpec = DEFAULT_DESIGN_SPEC }) {
+export function createSnapshot({ template, configRevision, sections, sectionInputs, designSpec = DEFAULT_DESIGN_SPEC, motionSpec = null }) {
   return {
     snapshotVersion: SNAPSHOT_VERSION,
     renderer: {
@@ -101,6 +101,7 @@ export function createSnapshot({ template, configRevision, sections, sectionInpu
       sectionOrder: sections.map((section) => section.sectionKey),
     },
     designSpec: cloneJson(designSpec),
+    motionSpec: cloneJson(motionSpec || designSpec.motionSpec || { contractVersion: 2, sections: {}, items: {} }),
     assets: {
       contractVersion: 1,
       items: {},

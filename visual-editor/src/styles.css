@@ -243,6 +243,8 @@ button, a { letter-spacing: 0; }
 .section-composition-panel header > div { display: grid; gap: 2px; }
 .section-composition-panel header small, .section-composition-panel > p { color: var(--app-muted); font-size: 11px; }
 .section-composition-panel > p { margin: 0; line-height: 1.5; }
+.section-composition-scope { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin: 0; padding: 9px; border: 1px solid var(--app-line); }
+.section-composition-scope legend { padding: 0 5px; color: var(--app-sub); font-size: 11px; font-weight: 750; }
 .section-composition-request, .section-composition-actions button { min-height: 34px; border: 1px solid var(--app-accent); background: var(--app-accent); color: var(--app-panel); cursor: pointer; font-weight: 750; }
 .section-composition-request:disabled, .section-composition-actions button:disabled { cursor: not-allowed; opacity: .5; }
 .section-composition-error { color: var(--app-danger-ink) !important; }
@@ -258,6 +260,13 @@ button, a { letter-spacing: 0; }
 .section-composition-warning { padding: 6px; background: var(--app-warning-soft); color: var(--app-warning) !important; font-weight: 700; }
 .section-composition-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
 .section-composition-actions button:first-child { border-color: var(--app-line-strong); background: var(--app-panel); color: var(--app-ink); }
+.transition-controls { display: grid; padding: 10px; border: 1px solid var(--app-line); background: var(--app-panel); }
+.transition-controls > summary { cursor: pointer; color: var(--app-ink); font-size: 12px; font-weight: 800; text-transform: uppercase; }
+.transition-controls[open] > summary { margin-bottom: 10px; }
+.transition-controls label { display: grid; gap: 5px; margin-top: 8px; }
+.transition-controls label > span { color: var(--app-sub); font-size: 11px; font-weight: 750; }
+.transition-controls select, .transition-controls input { width: 100%; min-height: 34px; padding: 7px; border: 1px solid var(--app-line-strong); background: var(--app-panel); color: var(--app-ink); }
+.transition-controls > button { min-height: 34px; margin-top: 10px; border: 1px solid var(--app-accent); background: var(--app-accent); color: var(--app-panel); cursor: pointer; }
 .image-remove-action { justify-self: start; min-height: 32px; font-size: 11px; }
 .section-background-alignment { display: grid; gap: 7px; padding-top: 12px; border-top: 1px solid var(--app-line); }
 .section-background-alignment > span { color: var(--app-sub); font-size: 12px; font-weight: 750; }
@@ -392,6 +401,7 @@ button, a { letter-spacing: 0; }
 .section-preset-picker button,
 .page-tree__actions button,
 .page-tree__handle,
+.page-tree__disclosure,
 .component-library-card button {
   min-height: 30px;
   border: 1px solid var(--app-line);
@@ -453,7 +463,7 @@ button, a { letter-spacing: 0; }
 .page-tree__component {
   position: relative;
   display: grid;
-  grid-template-columns: 26px minmax(0, 1fr) auto auto;
+  grid-template-columns: 24px 26px minmax(0, 1fr) auto auto;
   gap: 4px;
   align-items: center;
   padding: 5px;
@@ -479,6 +489,13 @@ button, a { letter-spacing: 0; }
 .page-tree__select small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .page-tree__select small { color: var(--app-sub); font-size: 10px; }
 .page-tree__handle { min-height: 26px; padding: 0; }
+.page-tree__disclosure {
+  min-width: 24px;
+  min-height: 26px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+}
 .page-tree__actions { display: flex; gap: 2px; }
 .page-tree__actions button { min-width: 24px; min-height: 24px; padding: 0; }
 .page-tree__status { width: 8px; height: 8px; border-radius: 999px; background: var(--app-warning); }

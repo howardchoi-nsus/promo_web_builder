@@ -27,6 +27,7 @@ const props = defineProps({
   selectedSection: { type: Object, default: null },
   selectedItem: { type: Object, default: null },
   selectedItemStyle: { type: Object, default: () => ({}) },
+  motionReplayKey: { type: Number, default: 0 },
   colorTokenOptions: { type: Array, default: () => [] },
   fontColorTokenOptions: { type: Array, default: () => [] },
   gradientTokenOptions: { type: Array, default: () => [] },
@@ -230,6 +231,7 @@ defineExpose({ getStageElement, scrollToSection });
     >
       <PromoPageRenderer
         v-if="rendererSnapshot"
+        :key="motionReplayKey"
         :content="rendererSnapshot.content"
         :design-spec="rendererSnapshot.designSpec"
         :assets="rendererSnapshot.assets"

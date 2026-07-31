@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import { createPromoTokenRuntimeStyle, normalizePromoTokenValues } from "../../shared/promo-token-runtime.mjs";
 import { normalizeCtaUrl } from "./editor-utils.mjs";
 import {
@@ -28,11 +28,31 @@ const emit = defineEmits(["select-item", "update-item-style", "update-renderer-i
 const SECTION_VERTICAL_PADDING_PX = 20;
 const DRAG_ACTIVATION_DISTANCE_PX = 7;
 const viewportWidth = ref(typeof globalThis.innerWidth === "number" ? globalThis.innerWidth : 1280);
+const rendererRoot = ref(null);
+const activeMotionTargets = ref(new Set());
+let motionObserver = null;
 function updateViewportWidth() {
   viewportWidth.value = globalThis.innerWidth || 1280;
 }
-onMounted(() => globalThis.addEventListener("resize", updateViewportWidth));
-onBeforeUnmount(() => globalThis.removeEventListener("resize", updateViewportWidth));
+onMounted(async () => {
+  globalThis.addEventListener("resize", updateViewportWidth);
+  if (props.editable || typeof IntersectionObserver === "undefined") return;
+  await nextTick();
+  motionObserver = new IntersectionObserver((entries) => {
+    const next = new Set(activeMotionTargets.value);
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      next.add(entry.target.dataset.motionTarget);
+      motionObserver?.unobserve(entry.target);
+    });
+    activeMotionTargets.value = next;
+  }, { threshold: 0.15, rootMargin: "0px 0px -10% 0px" });
+  rendererRoot.value?.querySelectorAll("[data-motion-target]").forEach((element) => motionObserver.observe(element));
+});
+onBeforeUnmount(() => {
+  globalThis.removeEventListener("resize", updateViewportWidth);
+  motionObserver?.disconnect();
+});
 const mobileLayoutActive = computed(() => (
   props.viewportOverride
     ? props.viewportOverride === "mobile"
@@ -181,12 +201,12 @@ function motionBinding(targetType, targetKey) {
   const bindings = targetType === "section"
     ? props.motionSpec?.sections
     : props.motionSpec?.items;
-  return bindings?.[targetKey] || null;
+  return bindings?.[targetKey] || (targetType === "item" ? bindings?.[String(targetKey).split(".").at(-1)] : null) || null;
 }
 
-function motionClass(targetType, targetKey) {
-  const binding = motionBinding(targetType, targetKey);
+function motionClassForBinding(binding, targetKey) {
   if (!binding?.presetVersionId) return "";
+  if (!props.editable && binding.trigger === "viewport-enter" && !activeMotionTargets.value.has(targetKey)) return "";
   if (["motion-fade-up", "motion-fade-in", "motion-scale-in"].includes(binding.className)) {
     return binding.className;
   }
@@ -196,8 +216,38 @@ function motionClass(targetType, targetKey) {
   return "motion-fade-in";
 }
 
+function motionClass(targetType, targetKey) {
+  return motionClassForBinding(motionBinding(targetType, targetKey), `${targetType}:${targetKey}`);
+}
+
 function motionStyle(targetType, targetKey) {
   const binding = motionBinding(targetType, targetKey);
+  if (!binding) return {};
+  return {
+    "--motion-duration": binding.durationToken || "360ms",
+    "--motion-easing": binding.easingToken || "ease-out",
+    "--motion-delay": binding.delayToken || "0ms",
+  };
+}
+
+function itemMotionBinding(section, item, itemIndex) {
+  const key = styleKey(section, item);
+  const own = motionBinding("item", key);
+  if (own?.inherit === false) return own;
+  const sectionBinding = motionBinding("section", section.sectionKey);
+  if (!sectionBinding?.presetVersionId || sectionBinding.childrenMode !== "stagger") return null;
+  const staggerMs = Math.max(0, Math.min(160, Number.parseInt(sectionBinding.staggerToken, 10) || 0));
+  const baseDelayMs = Math.max(0, Number.parseInt(sectionBinding.delayToken, 10) || 0);
+  const order = Number.isFinite(Number(own?.motionOrder)) ? Number(own.motionOrder) : itemIndex;
+  return { ...sectionBinding, delayToken: `${Math.min(800, baseDelayMs + (staggerMs * order))}ms` };
+}
+
+function itemMotionClass(section, item, itemIndex) {
+  return motionClassForBinding(itemMotionBinding(section, item, itemIndex), `item:${styleKey(section, item)}`);
+}
+
+function itemMotionStyle(section, item, itemIndex) {
+  const binding = itemMotionBinding(section, item, itemIndex);
   if (!binding) return {};
   return {
     "--motion-duration": binding.durationToken || "360ms",
@@ -889,6 +939,7 @@ function startSectionResize(event, section) {
 
 <template>
   <div
+    ref="rendererRoot"
     class="promo-renderer"
     :class="{
       'is-editor-preview': editable,
@@ -913,6 +964,7 @@ function startSectionResize(event, section) {
         { 'is-outline-section': editable && outlineMode },
       ]"
       :data-section-key="section.sectionKey"
+      :data-motion-target="motionBinding('section', section.sectionKey)?.trigger === 'viewport-enter' ? `section:${section.sectionKey}` : null"
       :style="{ ...inlineSectionStyle(section), ...motionStyle('section', section.sectionKey) }"
       :aria-busy="aiTargetState(section)?.kind === 'processing' ? 'true' : undefined"
     >
@@ -930,12 +982,12 @@ function startSectionResize(event, section) {
       <div class="rendered-section__inner">
         <div class="rendered-items" :style="inlineCanvasStyle(section)">
           <article
-            v-for="item in renderedItems(section)"
+            v-for="(item, itemIndex) in renderedItems(section)"
             :key="item.itemKey"
             class="rendered-item"
             :class="[
               `rendered-item--${item.fieldKind || 'text'}`,
-              motionClass('item', item.itemKey),
+              itemMotionClass(section, item, itemIndex),
               {
                 'is-editable': editable && !item.isLocked,
                 'is-selected': editable && (
@@ -953,7 +1005,8 @@ function startSectionResize(event, section) {
             ]"
             :data-item-key="item.itemKey"
             :data-style-key="styleKey(section, item)"
-            :style="{ ...inlineItemStyle(section, item), ...motionStyle('item', item.itemKey) }"
+            :data-motion-target="itemMotionBinding(section, item, itemIndex)?.trigger === 'viewport-enter' ? `item:${styleKey(section, item)}` : null"
+            :style="{ ...inlineItemStyle(section, item), ...itemMotionStyle(section, item, itemIndex) }"
             @click.stop="selectRendererItem(section, item, $event)"
             @pointerdown="startDrag($event, section, item)"
           >

@@ -8,6 +8,7 @@ const {
   allowedTokenBindings,
   stableFingerprint,
   normalizeCompositionPlan,
+  compositionOptionsFromBody,
 } = require("../api/_promo-section-composition-contract");
 
 assert.equal(
@@ -116,6 +117,46 @@ assert.equal(normalized.layoutPatch.itemStyles["promotionIntro.title"].color, "#
 assert.equal(normalized.layoutPatch.itemStyles["promotionIntro.action"].borderRadius, "24px");
 assert.equal(normalized.backgroundImage.requested, true);
 assert.equal(normalized.backgroundImage.fadeMode, "both");
+
+const designOnly = normalizeCompositionPlan({
+  plan,
+  instruction: "디자인만 변경해줘",
+  section,
+  sectionInputs: current,
+  tokenSet,
+  generateBackgroundImage: true,
+  scope: { layout: true, tokens: true, keyVisual: false, preserveContent: true },
+});
+assert.deepEqual(designOnly.content, current);
+assert.equal(designOnly.contentChanges.length, 0);
+assert.equal(designOnly.backgroundImage.requested, false);
+assert.equal(designOnly.appliedScope.preserveContent, true);
+assert.equal(designOnly.motionPatch, null);
+const withMotion = normalizeCompositionPlan({
+  plan,
+  instruction: "아래에서 부드럽게 등장",
+  section,
+  sectionInputs: current,
+  tokenSet,
+  scope: { motion: true, preserveContent: true },
+});
+assert.equal(withMotion.motionPatch.sections.promotionIntro.presetVersionId, "motion-fade-up");
+const withScaleMotion = normalizeCompositionPlan({
+  plan,
+  instruction: "살짝 확대되는 scale 효과",
+  section,
+  sectionInputs: current,
+  tokenSet,
+  scope: { motion: true, preserveContent: true },
+});
+assert.equal(withScaleMotion.motionPatch.sections.promotionIntro.presetVersionId, "motion-scale-in");
+assert.deepEqual(compositionOptionsFromBody({ scope: { layout: false, motion: true } }).scope, {
+  layout: false,
+  tokens: true,
+  keyVisual: true,
+  motion: true,
+  preserveContent: false,
+});
 
 const repeatedCurrentUrl = normalizeCompositionPlan({
   plan: {
@@ -226,5 +267,6 @@ assert.match(app, /designTokenSetVersionId:\s*template\.value\?\.designTokens\?\
 assert.match(context, /fetchTokenVersion\(sql,\s*selectedTokenVersionId\)/);
 assert.doesNotMatch(context, /template\.designTokenSetVersionId/);
 assert.match(app, /EditorCommandType\.DOCUMENT_PATCH/);
+assert.match(app, /preserveContent:\s*compositionPreserveContent\.value/);
 
 console.log("Natural-language section composition contract tests passed.");

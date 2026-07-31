@@ -4,6 +4,7 @@ import { ref } from "vue";
 const props = defineProps({
   sections: { type: Array, default: () => [] },
   selectedSection: { type: Object, default: null },
+  expandedSectionKey: { type: String, default: "" },
   selectedItemKey: { type: String, default: "" },
   canComposeStructure: { type: Boolean, default: false },
   sectionContentRegistered: { type: Function, required: true },
@@ -11,6 +12,7 @@ const props = defineProps({
 
 const emit = defineEmits([
   "select-section",
+  "toggle-section-expansion",
   "select-item",
   "move-section",
   "move-component",
@@ -136,7 +138,7 @@ function dropOnComponent(section, item, event) {
         }"
         role="treeitem"
         aria-level="2"
-        :aria-expanded="section.sectionKey === selectedSection?.sectionKey"
+        :aria-expanded="section.sectionKey === expandedSectionKey"
         :draggable="movableSection(section)"
         @dragstart="startSectionDrag(section, $event)"
         @dragover="dragOverSection(section, $event)"
@@ -144,6 +146,20 @@ function dropOnComponent(section, item, event) {
         @drop="dropOnSection(section, $event)"
       >
         <div class="page-tree__row">
+          <button
+            type="button"
+            class="page-tree__disclosure"
+            :aria-expanded="section.sectionKey === expandedSectionKey"
+            :aria-controls="`page-tree-section-${section.sectionKey}`"
+            :aria-label="`${section.name} 섹션 ${section.sectionKey === expandedSectionKey ? '닫기' : '열기'}`"
+            @click="emit('toggle-section-expansion', section)"
+          >
+            <i
+              class="fa-solid"
+              :class="section.sectionKey === expandedSectionKey ? 'fa-chevron-down' : 'fa-chevron-right'"
+              aria-hidden="true"
+            ></i>
+          </button>
           <button
             type="button"
             class="page-tree__handle"
@@ -186,9 +202,13 @@ function dropOnComponent(section, item, event) {
           </div>
         </div>
 
-        <div v-if="section.sectionKey === selectedSection?.sectionKey" role="group">
+        <div
+          v-if="section.sectionKey === expandedSectionKey"
+          :id="`page-tree-section-${section.sectionKey}`"
+          role="group"
+        >
           <div
-            v-for="(item, itemIndex) in section.items || []"
+            v-for="item in section.items || []"
             :key="item.itemKey"
             class="page-tree__component"
             :class="{
@@ -220,18 +240,6 @@ function dropOnComponent(section, item, event) {
               <small>{{ item.fieldKind }}</small>
             </button>
             <div v-if="canComposeStructure" class="page-tree__actions">
-              <button
-                type="button"
-                :disabled="!movableComponent(item) || itemIndex === 0"
-                :aria-label="`${item.name} 컴포넌트 위로 이동`"
-                @click="emit('move-component', section.sectionKey, item.itemKey, section.sectionKey, section.items[itemIndex - 1]?.itemKey, 'before')"
-              >↑</button>
-              <button
-                type="button"
-                :disabled="!movableComponent(item) || itemIndex === section.items.length - 1"
-                :aria-label="`${item.name} 컴포넌트 아래로 이동`"
-                @click="emit('move-component', section.sectionKey, item.itemKey, section.sectionKey, section.items[itemIndex + 1]?.itemKey, 'after')"
-              >↓</button>
               <button
                 type="button"
                 :disabled="item.isRequired || item.isLocked"
