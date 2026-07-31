@@ -133,6 +133,63 @@ export function reduceEditorCommand(currentState, command) {
       state.document.layout = { ...layout, itemStyles };
       break;
     }
+    case EditorCommandType.RESPONSIVE_ITEM_STYLE_PATCH: {
+      if (payload.viewport !== "mobile" || !payload.styleKey) {
+        return { ok: false, state: currentState, error: "Responsive mobile item style target is required." };
+      }
+      const mobile = layout.responsiveLayouts?.mobile || {};
+      const previous = mobile.itemStyles?.[payload.styleKey] || {};
+      state.document.layout = {
+        ...layout,
+        responsiveLayouts: {
+          ...(layout.responsiveLayouts || {}),
+          mobile: {
+            ...mobile,
+            itemStyles: {
+              ...(mobile.itemStyles || {}),
+              [payload.styleKey]: patchRecord(previous, payload.patch),
+            },
+          },
+        },
+      };
+      break;
+    }
+    case EditorCommandType.RESPONSIVE_ITEM_STYLE_REPLACE: {
+      if (payload.viewport !== "mobile" || !payload.styleKey) {
+        return { ok: false, state: currentState, error: "Responsive mobile item style target is required." };
+      }
+      const mobile = layout.responsiveLayouts?.mobile || {};
+      state.document.layout = {
+        ...layout,
+        responsiveLayouts: {
+          ...(layout.responsiveLayouts || {}),
+          mobile: {
+            ...mobile,
+            itemStyles: {
+              ...(mobile.itemStyles || {}),
+              [payload.styleKey]: withoutUndefined(payload.style || {}),
+            },
+          },
+        },
+      };
+      break;
+    }
+    case EditorCommandType.RESPONSIVE_ITEM_STYLE_REMOVE: {
+      if (payload.viewport !== "mobile" || !payload.styleKey) {
+        return { ok: false, state: currentState, error: "Responsive mobile item style target is required." };
+      }
+      const mobile = layout.responsiveLayouts?.mobile || {};
+      const itemStyles = { ...(mobile.itemStyles || {}) };
+      delete itemStyles[payload.styleKey];
+      state.document.layout = {
+        ...layout,
+        responsiveLayouts: {
+          ...(layout.responsiveLayouts || {}),
+          mobile: { ...mobile, itemStyles },
+        },
+      };
+      break;
+    }
     case EditorCommandType.SECTION_STYLE_PATCH: {
       if (!payload.sectionKey) return { ok: false, state: currentState, error: "Section key is required." };
       const previous = layout.sectionStyles?.[payload.sectionKey] || {};

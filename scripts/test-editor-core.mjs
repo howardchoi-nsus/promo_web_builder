@@ -52,6 +52,32 @@ result = store.undo();
 assert.equal(result.state.document.content.hero.title, "After");
 assert.equal(result.state.document.layout.itemStyles["hero.title"].color, undefined);
 
+result = store.execute(editorCommand(EditorCommandType.RESPONSIVE_ITEM_STYLE_PATCH, {
+  viewport: "mobile",
+  styleKey: "hero.title",
+  patch: {
+    positionMode: "anchored",
+    horizontalAnchor: "center",
+    verticalAnchor: "top",
+    heightMode: "auto",
+  },
+}));
+assert.equal(result.ok, true);
+assert.deepEqual(result.state.document.layout.responsiveLayouts.mobile.itemStyles["hero.title"], {
+  positionMode: "anchored",
+  horizontalAnchor: "center",
+  verticalAnchor: "top",
+  heightMode: "auto",
+});
+result = store.execute(editorCommand(EditorCommandType.RESPONSIVE_ITEM_STYLE_REMOVE, {
+  viewport: "mobile",
+  styleKey: "hero.title",
+}));
+assert.equal(result.ok, true);
+assert.equal(result.state.document.layout.responsiveLayouts.mobile.itemStyles["hero.title"], undefined);
+result = store.undo();
+assert.equal(result.state.document.layout.responsiveLayouts.mobile.itemStyles["hero.title"].positionMode, "anchored");
+
 store.replaceDocument({
   layout: { itemStyles: { "hero.title": { fontSize: 30 } } },
   content: { hero: { title: "Reloaded" } },

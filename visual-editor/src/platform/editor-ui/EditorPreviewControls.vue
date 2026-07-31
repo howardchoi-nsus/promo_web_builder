@@ -2,14 +2,14 @@
 defineProps({
   canUndo: { type: Boolean, default: false },
   canRedo: { type: Boolean, default: false },
-  guidesVisible: { type: Boolean, default: true },
+  guideMode: { type: String, default: "selection" },
   viewport: { type: String, default: "desktop" },
 });
 
 const emit = defineEmits([
   "undo",
   "redo",
-  "update:guidesVisible",
+  "update:guideMode",
   "update:viewport",
 ]);
 </script>
@@ -22,18 +22,20 @@ const emit = defineEmits([
     </div>
     <slot name="tokens" />
     <slot name="host-actions" />
-    <label class="app-switch app-switch--small guide-toggle">
-      <input
-        class="app-switch__input"
-        :checked="guidesVisible"
-        type="checkbox"
-        role="switch"
-        aria-label="미리보기 가이드 표시"
-        @change="emit('update:guidesVisible', $event.target.checked)"
-      />
-      <span class="app-switch__track" aria-hidden="true"></span>
-      <span class="app-switch__label">Guides {{ guidesVisible ? "ON" : "OFF" }}</span>
-    </label>
+    <div class="guide-mode-control" role="group" aria-label="미리보기 표시 모드">
+      <button
+        v-for="mode in [
+          { key: 'normal', label: 'Normal' },
+          { key: 'selection', label: 'Selection' },
+          { key: 'outline', label: 'Outline' },
+        ]"
+        :key="mode.key"
+        type="button"
+        :class="{ active: guideMode === mode.key }"
+        :aria-pressed="guideMode === mode.key"
+        @click="emit('update:guideMode', mode.key)"
+      >{{ mode.label }}</button>
+    </div>
     <div class="viewport-control" aria-label="Preview viewport">
       <button type="button" :class="{ active: viewport === 'desktop' }" @click="emit('update:viewport', 'desktop')">Desktop</button>
       <button type="button" :class="{ active: viewport === 'mobile' }" @click="emit('update:viewport', 'mobile')">Mobile</button>

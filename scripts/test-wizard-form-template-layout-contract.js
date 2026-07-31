@@ -62,6 +62,37 @@ assert.equal(
   }).ok,
   false,
 );
+assert.equal(
+  layoutStore.validateLayoutSpec({
+    itemStyles: {
+      "hero.title": {
+        positionMode: "anchored",
+        horizontalAnchor: "center",
+        verticalAnchor: "middle",
+        widthMode: "fit-content",
+        heightMode: "auto",
+        fontFamilyToken: "--promo-font-family-body",
+      },
+    },
+    responsiveLayouts: {
+      mobile: {
+        itemStyles: {
+          "hero.title": {
+            positionMode: "anchored",
+            horizontalAnchor: "center",
+            verticalAnchor: "top",
+            offsetY: 24,
+          },
+        },
+      },
+    },
+  }, [{
+    sectionKey: "hero",
+    items: [{ itemKey: "title", fieldKind: "text" }],
+  }]).ok,
+  true,
+  "section-anchored text styles must persist for desktop and mobile",
+);
 assert.equal(layoutStore.validateLayoutSpec({ responsiveLayouts: "mobile" }).ok, false);
 assert.match(store, /cloneLayout/);
 assert.match(api, /Only draft form template layouts can be edited/);

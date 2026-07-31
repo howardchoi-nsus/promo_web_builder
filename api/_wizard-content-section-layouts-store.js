@@ -35,9 +35,10 @@ function normalizeSectionStyle(value, errors) {
 
 function normalizeGeometry(value, path, errors) {
   const source = plainObject(value);
-  const geometry = { positionMode: "free" };
-  if (source.positionMode !== undefined && source.positionMode !== "free") {
-    errors.push({ path: `${path}.positionMode`, code: "UNSUPPORTED_POSITION_MODE", message: "Only free positionMode is supported by contract v1." });
+  const positionMode = source.positionMode === "anchored" ? "anchored" : "free";
+  const geometry = { positionMode };
+  if (source.positionMode !== undefined && !["free", "anchored"].includes(source.positionMode)) {
+    errors.push({ path: `${path}.positionMode`, code: "UNSUPPORTED_POSITION_MODE", message: "positionMode must be free or anchored." });
   }
   const fields = [
     ["xPct", 0, 100],
@@ -47,6 +48,8 @@ function normalizeGeometry(value, path, errors) {
   ];
   fields.forEach(([key, min, max]) => {
     const number = finiteNumber(source[key]);
+    const required = positionMode === "free";
+    if (!required && source[key] === undefined) return;
     if (number === null || number < min || number > max) {
       errors.push({ path: `${path}.${key}`, code: "INVALID_GEOMETRY", message: `${key} must be between ${min} and ${max}.` });
     } else {
@@ -63,6 +66,42 @@ function normalizeGeometry(value, path, errors) {
     } else {
       geometry.zIndex = zIndex;
     }
+  }
+  if (positionMode === "anchored") {
+    const horizontalAnchor = String(source.horizontalAnchor || "center");
+    const verticalAnchor = String(source.verticalAnchor || "middle");
+    if (!["left", "center", "right"].includes(horizontalAnchor)) {
+      errors.push({ path: `${path}.horizontalAnchor`, code: "INVALID_HORIZONTAL_ANCHOR", message: "horizontalAnchor must be left, center, or right." });
+    } else {
+      geometry.horizontalAnchor = horizontalAnchor;
+    }
+    if (!["top", "middle", "bottom"].includes(verticalAnchor)) {
+      errors.push({ path: `${path}.verticalAnchor`, code: "INVALID_VERTICAL_ANCHOR", message: "verticalAnchor must be top, middle, or bottom." });
+    } else {
+      geometry.verticalAnchor = verticalAnchor;
+    }
+    for (const offsetProperty of ["offsetX", "offsetY"]) {
+      if (source[offsetProperty] === undefined) continue;
+      const offset = finiteNumber(source[offsetProperty]);
+      if (offset === null || offset < -1200 || offset > 1200) {
+        errors.push({ path: `${path}.${offsetProperty}`, code: "INVALID_ANCHOR_OFFSET", message: `${offsetProperty} must be between -1200 and 1200.` });
+      } else {
+        geometry[offsetProperty] = offset;
+      }
+    }
+    const optionalEnums = [
+      ["widthMode", ["fit-content", "fixed", "fill"]],
+      ["heightMode", ["auto", "fixed"]],
+      ["textAlign", ["left", "center", "right"]],
+    ];
+    optionalEnums.forEach(([property, allowed]) => {
+      if (source[property] === undefined) return;
+      if (!allowed.includes(source[property])) {
+        errors.push({ path: `${path}.${property}`, code: "INVALID_ANCHOR_STYLE", message: `Unsupported ${property}.` });
+      } else {
+        geometry[property] = source[property];
+      }
+    });
   }
   return geometry;
 }

@@ -25,7 +25,11 @@ assert.match(previewPanel, /defineExpose\(\{ getStageElement, scrollToSection \}
 assert.match(controls, /class="editor-history-actions"/);
 assert.match(controls, /emit\('undo'\)/);
 assert.match(controls, /emit\('redo'\)/);
-assert.match(controls, /update:guidesVisible/);
+assert.match(controls, /update:guideMode/);
+assert.match(controls, /guideMode/);
+assert.match(controls, /Normal/);
+assert.match(controls, /Selection/);
+assert.match(controls, /Outline/);
 assert.match(controls, /update:viewport/);
 assert.match(controls, /class="viewport-control"/);
 assert.match(app, /import StructurePanel/);

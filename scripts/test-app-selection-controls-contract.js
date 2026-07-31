@@ -27,18 +27,20 @@ for (const selector of [
 assert.match(adminMarkup, /class="app-switch"/, "Admin must use the shared switch contract");
 assert.match(adminMarkup, /class="app-checkbox switch-control"/, "Legacy Admin checkbox locations must opt into the shared checkbox contract");
 assert.match(editorMarkup, /class="app-switch app-switch--small component-visibility-toggle"/, "Editor visibility controls must use the shared switch");
-assert.match(previewControls, /class="app-switch app-switch--small guide-toggle"/, "Guide visibility must use the shared switch");
+assert.match(previewControls, /class="guide-mode-control"/, "Preview guide mode must use an explicit segmented mode control");
+assert.match(previewControls, /role="group"/, "Preview guide mode must expose grouped-control semantics");
+assert.match(previewControls, /:aria-pressed="guideMode === mode\.key"/, "Preview guide mode buttons must expose their selected state");
 assert.match(compositionControls, /class="app-checkbox toggle-field"/, "Composition options must use the shared checkbox");
 assert.match(designTokenManager, /class="app-checkbox design-token-check"/, "Design token filters must use the shared checkbox");
 
-for (const source of [adminMarkup, editorMarkup, previewControls]) {
+for (const source of [adminMarkup, editorMarkup]) {
   assert.match(source, /role="switch"/, "Binary switches must expose switch semantics");
 }
 
 assert.doesNotMatch(adminMarkup, /template-active-switch/, "The page-specific template switch markup must be removed");
 assert.doesNotMatch(adminCss, /\.template-active-switch/, "The page-specific template switch CSS must be removed");
 assert.doesNotMatch(editorCss, /\.component-visibility-toggle\s*>\s*i/, "Editor switch track styling must live in the shared component layer");
-assert.doesNotMatch(editorCss, /\.guide-toggle\s+input/, "Guide switch input styling must live in the shared component layer");
+assert.doesNotMatch(editorCss, /\.guide-toggle\s+input/, "The retired binary guide switch must not retain page-specific styling");
 assert.doesNotMatch(adminMarkup, /class="switch-control"/, "Legacy checkbox markup must include the shared app-checkbox class");
 assert.match(
   editorCss,

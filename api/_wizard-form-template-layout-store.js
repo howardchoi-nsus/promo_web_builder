@@ -108,6 +108,40 @@ function validateLayoutSpec(value, sections = []) {
   const spec = normalizeLayoutSpec(value);
   const errors = [];
   const warnings = [];
+  const managedTokenProperties = [
+    "colorToken", "fontFamilyToken", "fontSizeToken", "fontWeightToken",
+    "lineHeightToken", "letterSpacingToken", "maxWidthToken",
+  ];
+  function validateExtendedItemStyle(style, path) {
+    for (const tokenProperty of managedTokenProperties) {
+      if (style?.[tokenProperty] !== undefined
+        && !/^--(?:promo|app)-[a-z0-9-]+$/.test(String(style[tokenProperty]))) {
+        errors.push({ code: "INVALID_ITEM_TOKEN", path: `${path}.${tokenProperty}` });
+      }
+    }
+    const enums = [
+      ["positionMode", ["free", "anchored"], "INVALID_POSITION_MODE"],
+      ["horizontalAnchor", ["left", "center", "right"], "INVALID_HORIZONTAL_ANCHOR"],
+      ["verticalAnchor", ["top", "middle", "bottom"], "INVALID_VERTICAL_ANCHOR"],
+      ["widthMode", ["fit-content", "fixed", "fill"], "INVALID_WIDTH_MODE"],
+      ["heightMode", ["auto", "fixed"], "INVALID_HEIGHT_MODE"],
+      ["textAlign", ["left", "center", "right"], "INVALID_TEXT_ALIGN"],
+      ["fontStyle", ["italic"], "INVALID_FONT_STYLE"],
+      ["textDecoration", ["underline"], "INVALID_TEXT_DECORATION"],
+    ];
+    enums.forEach(([property, allowed, code]) => {
+      if (style?.[property] !== undefined && !allowed.includes(style[property])) {
+        errors.push({ code, path: `${path}.${property}` });
+      }
+    });
+    for (const offsetProperty of ["offsetX", "offsetY"]) {
+      const offset = Number(style?.[offsetProperty]);
+      if (style?.[offsetProperty] !== undefined
+        && (!Number.isFinite(offset) || offset < -1200 || offset > 1200)) {
+        errors.push({ code: "INVALID_ANCHOR_OFFSET", path: `${path}.${offsetProperty}` });
+      }
+    }
+  }
   if (value?.responsiveLayouts !== undefined
     && (!value.responsiveLayouts
       || typeof value.responsiveLayouts !== "object"
@@ -152,12 +186,7 @@ function validateLayoutSpec(value, sections = []) {
   });
   Object.entries(spec.itemStyles).forEach(([key, style]) => {
     if (sections.length && !itemKeys.has(key)) warnings.push({ code: "UNKNOWN_LAYOUT_ITEM", path: key });
-    for (const tokenProperty of ["colorToken", "fontSizeToken", "fontWeightToken"]) {
-      if (style?.[tokenProperty] !== undefined
-        && !/^--(?:promo|app)-[a-z0-9-]+$/.test(String(style[tokenProperty]))) {
-        errors.push({ code: "INVALID_ITEM_TOKEN", path: `itemStyles.${key}.${tokenProperty}` });
-      }
-    }
+    validateExtendedItemStyle(style, `itemStyles.${key}`);
     // Keep persisted-layout validation aligned with the editor's free-resize
     // geometry. Small logos, badges, and decorative images are valid items.
     const minimumWidthPct = 0.01;
@@ -218,9 +247,7 @@ function validateLayoutSpec(value, sections = []) {
         const width = Number(style?.widthPct);
         const height = Number(style?.heightPx);
         const zIndex = Number(style?.zIndex);
-        if (style?.positionMode !== undefined && style.positionMode !== "free") {
-          errors.push({ code: "INVALID_RESPONSIVE_POSITION_MODE", path: `responsiveLayouts.mobile.itemStyles.${key}.positionMode` });
-        }
+        validateExtendedItemStyle(style, `responsiveLayouts.mobile.itemStyles.${key}`);
         if (style?.xPct !== undefined && (!Number.isFinite(x) || x < 0 || x > 100)) {
           errors.push({ code: "INVALID_RESPONSIVE_ITEM_X", path: `responsiveLayouts.mobile.itemStyles.${key}.xPct` });
         }

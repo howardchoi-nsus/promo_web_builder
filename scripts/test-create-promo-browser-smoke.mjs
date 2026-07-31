@@ -334,6 +334,14 @@ try {
   );
   const editorFrame = page.frameLocator("iframe.wizard-layout-frame");
   await editorFrame.locator(".editor-workspace.is-create-promo-wizard").waitFor({ timeout: 10_000 });
+  await editorFrame.getByRole("button", { name: "Outline", exact: true }).click();
+  await editorFrame.locator(".promo-renderer.is-outline-mode").waitFor();
+  assert.ok(
+    await editorFrame.locator(".item-outline-label").count() > 0,
+    "Outline mode must label component boundaries, including hidden or overlapping items",
+  );
+  await editorFrame.getByRole("button", { name: "Selection", exact: true }).click();
+  assert.equal(await editorFrame.locator(".promo-renderer.is-outline-mode").count(), 0);
   assert.equal(await page.locator("iframe.wizard-layout-frame").getAttribute("scrolling"), "no");
   const embeddedDocumentMetrics = await editorFrame.locator("html").evaluate((node) => {
     const styles = getComputedStyle(node);
@@ -542,6 +550,8 @@ try {
   );
   const textComponent = editorFrame.locator('[data-section-key="contentFeature"] [data-item-key="copy"]');
   await textComponent.click();
+  const textEditorToolbar = editorFrame.locator(".text-editor-controls");
+  await textEditorToolbar.waitFor({ state: "visible" });
   const textPropertyInput = editorFrame.locator(".component-property-content textarea").first();
   await textPropertyInput.fill("");
   const emptyTextField = textComponent.locator(".rendered-empty");
@@ -585,8 +595,8 @@ try {
     "Dragging a text component edge handle must increase its article width",
   );
   assert.ok(
-    textFontSizeAfter > textFontSizeBefore,
-    "Dragging a text component edge handle must scale its font size",
+    Math.abs(textFontSizeAfter - textFontSizeBefore) < 0.1,
+    "Dragging a text component edge handle must not change its font size",
   );
   const textBottomHandle = textComponent.locator(".component-resize-handle--s");
   const textBottomHandleBox = await textBottomHandle.boundingBox();
@@ -606,8 +616,8 @@ try {
     "Dragging a text component bottom handle must increase its article height",
   );
   assert.ok(
-    textFontSizeAfterVerticalResize > textFontSizeAfter,
-    "Vertical text component resize must scale its font size",
+    Math.abs(textFontSizeAfterVerticalResize - textFontSizeAfter) < 0.1,
+    "Vertical text component resize must not change its font size",
   );
   assert.ok(
     sectionBoxAfter.height >= sectionBoxBefore.height
@@ -635,8 +645,8 @@ try {
     "Shrinking a text component edge must reduce its article width",
   );
   assert.ok(
-    textFontSizeAfterShrink < textFontSizeAfterVerticalResize,
-    "Shrinking a text component edge must reduce its font size",
+    Math.abs(textFontSizeAfterShrink - textFontSizeAfterVerticalResize) < 0.1,
+    "Shrinking a text component edge must not change its font size",
   );
   const textRightHandleForMinimumCheck = textComponent.locator(".component-resize-handle--e");
   const textRightHandleForMinimumCheckBox = await textRightHandleForMinimumCheck.boundingBox();
@@ -655,23 +665,45 @@ try {
   const textBoxAtTechnicalMinimum = await textComponent.boundingBox();
   const textFontSizeAtTechnicalMinimum = Number.parseFloat(await textContentNode.evaluate((node) => getComputedStyle(node).fontSize));
   assert.ok(textBoxAtTechnicalMinimum.width < 5, "Text component width must shrink below the former 80px minimum");
-  assert.equal(textFontSizeAtTechnicalMinimum, 16, "Drag resizing must snap to the smallest selected design-token size");
+  assert.ok(
+    Math.abs(textFontSizeAtTechnicalMinimum - textFontSizeBefore) < 0.1,
+    "Drag resizing must preserve the selected design-token font size",
+  );
   const resizedTextContent = await page.evaluate(() => JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null"));
   assert.ok(
     resizedTextContent?.templateLayouts?.["default-preview"]?.resolvedLayout?.itemStyles?.["contentFeature.copy"]?.widthPct < 1,
     "A text component width below 1 percent must persist in the layout snapshot",
   );
+  const persistedFontSize = resizedTextContent?.templateLayouts?.["default-preview"]?.resolvedLayout
+    ?.itemStyles?.["contentFeature.copy"]?.fontSize;
   assert.ok(
-    Math.abs(
-      resizedTextContent?.templateLayouts?.["default-preview"]?.resolvedLayout?.itemStyles?.["contentFeature.copy"]?.fontSize
-        - textFontSizeAtTechnicalMinimum,
-    ) < 0.2,
-    "The latest scaled text size must persist in the layout snapshot",
+    persistedFontSize === undefined || Math.abs(persistedFontSize - textFontSizeAtTechnicalMinimum) < 0.2,
+    "Text resize must not persist a different font size",
   );
   assert.ok(
     resizedTextContent?.templateLayouts?.["default-preview"]?.resolvedLayout?.itemStyles?.["contentFeature.copy"]?.heightPx > textBoxAfter.height,
     "Text component height must persist in the layout snapshot",
   );
+  const anchoredTextComponent = editorFrame.locator('[data-section-key="heroBanner"] [data-item-key="title"]');
+  await anchoredTextComponent.click();
+  await textEditorToolbar.waitFor({ state: "visible" });
+  await textEditorToolbar.getByRole("button", { name: "섹션 기준 가로 중앙 정렬", exact: true }).click();
+  await textEditorToolbar.getByRole("button", { name: "섹션 기준 세로 상 정렬", exact: true }).click();
+  await page.waitForTimeout(50);
+  assert.equal(await anchoredTextComponent.getAttribute("class").then((value) => value.includes("is-anchored-positioned")), true);
+  assert.equal(
+    await anchoredTextComponent.evaluate((node) => getComputedStyle(node).textAlign),
+    "center",
+    "Section-centered text must derive centered paragraph alignment",
+  );
+  const anchoredTextContent = await page.evaluate(() => JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null"));
+  assert.equal(
+    anchoredTextContent?.templateLayouts?.["default-preview"]?.resolvedLayout?.itemStyles?.["heroBanner.title"]?.positionMode,
+    "anchored",
+    "Section anchor intent must persist in the layout snapshot",
+  );
+  await textComponent.click();
+  await textEditorToolbar.waitFor({ state: "visible" });
   const colorTokenSelect = editorFrame.locator('.design-controls select:has(option[value="--app-accent"])');
   await colorTokenSelect.selectOption("--app-accent");
   assert.equal(

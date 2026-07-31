@@ -119,6 +119,25 @@ button, a { letter-spacing: 0; }
 .preview-edit-hint, .auto-register-message { grid-column: 1 / -1; }
 .auto-register-message { color: var(--app-accent) !important; font-weight: 750; }
 .preview-controls { display: flex; align-items: center; gap: 10px; }
+.text-editor-controls { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 7px 12px; border-bottom: 1px solid var(--app-line); background: var(--app-surface); }
+.text-editor-controls__identity { display: grid; flex: 0 0 auto; min-width: 110px; gap: 1px; }
+.text-editor-controls__identity strong { overflow: hidden; color: var(--app-ink); text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+.text-editor-controls__identity small { color: var(--app-muted); font-size: 9px; }
+.text-editor-toolbar, .section-anchor-toolbar { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.text-editor-toolbar { flex: 1 1 auto; overflow-x: auto; }
+.text-editor-toolbar label { display: grid; flex: 0 0 auto; gap: 2px; color: var(--app-sub); font-size: 9px; font-weight: 750; }
+.text-editor-toolbar select { min-width: 82px; max-width: 132px; min-height: 29px; border: 1px solid var(--app-line-strong); background: var(--app-panel); color: var(--app-ink); padding: 0 22px 0 7px; font-size: 10px; }
+.text-mark-controls, .section-anchor-toolbar > div { display: inline-flex; align-items: center; }
+.text-mark-controls button, .section-anchor-toolbar button, .text-editor-more > summary { min-width: 30px; min-height: 30px; border: 1px solid var(--app-line-strong); background: var(--app-panel); color: var(--app-ink-soft); cursor: pointer; font-size: 10px; font-weight: 800; }
+.text-mark-controls button + button, .section-anchor-toolbar > div button + button { border-left: 0; }
+.text-mark-controls button.active, .section-anchor-toolbar button.active { border-color: var(--app-accent); background: var(--app-accent-soft); color: var(--app-accent); }
+.text-mark-controls button:focus-visible, .section-anchor-toolbar button:focus-visible, .text-editor-toolbar select:focus-visible, .text-editor-more > summary:focus-visible { outline: 2px solid var(--app-focus); outline-offset: 1px; }
+.text-editor-more { position: relative; flex: 0 0 auto; }
+.text-editor-more > summary { display: inline-flex; align-items: center; justify-content: center; padding: 0 8px; list-style: none; }
+.text-editor-more[open] { display: flex; align-items: end; gap: 5px; }
+.text-editor-more[open] > summary { order: 3; }
+.section-anchor-toolbar { flex: 0 0 auto; padding-left: 8px; border-left: 1px solid var(--app-line); }
+.section-anchor-toolbar > button { padding: 0 8px; white-space: nowrap; }
 .editor-history-actions { display: flex; align-items: center; gap: 6px; }
 .editor-history-actions .secondary-control { padding: 0 10px; }
 .editor-history-actions .secondary-control:disabled { cursor: not-allowed; opacity: .45; }
@@ -129,7 +148,11 @@ button, a { letter-spacing: 0; }
 .admin-layout-actions button:disabled { cursor: not-allowed; opacity: .45; }
 .web-output-action { min-height: 32px; padding: 0 12px; border: 1px solid var(--app-accent); background: var(--app-accent); color: var(--app-panel); cursor: pointer; font-size: 11px; font-weight: 800; }
 .web-output-action:disabled { cursor: not-allowed; opacity: .5; }
-.guide-toggle { padding: 0 9px; border: 1px solid var(--app-line-strong); background: var(--app-panel); }
+.guide-mode-control { display: inline-flex; align-items: center; border: 1px solid var(--app-line-strong); background: var(--app-panel); }
+.guide-mode-control button { min-height: 32px; padding: 0 8px; border: 0; border-left: 1px solid var(--app-line); background: transparent; color: var(--app-sub); cursor: pointer; font-size: 10px; font-weight: 800; }
+.guide-mode-control button:first-child { border-left: 0; }
+.guide-mode-control button.active { background: var(--app-accent-soft); color: var(--app-accent); }
+.guide-mode-control button:focus-visible { outline: 2px solid var(--app-focus); outline-offset: -2px; }
 .viewport-control { display: flex; }
 .viewport-control button.active { border-color: var(--app-accent); background: var(--app-accent-soft); color: var(--app-accent); }
 .preview-stage { width: 100%; min-height: calc(100vh - 154px); padding: 18px; overflow: auto; }
@@ -316,6 +339,9 @@ button, a { letter-spacing: 0; }
   .global-token-menu { flex-wrap: wrap; }
   .editor-header nav { justify-content: flex-start; }
   .preview-toolbar, .preview-controls { align-items: flex-start; flex-direction: column; }
+  .text-editor-controls { align-items: flex-start; flex-direction: column; }
+  .text-editor-toolbar, .section-anchor-toolbar { width: 100%; overflow-x: auto; }
+  .section-anchor-toolbar { padding-top: 6px; padding-left: 0; border-top: 1px solid var(--app-line); border-left: 0; }
   .editor-workspace { display: flex; flex-direction: column; }
   .section-rail { border-right: 0; border-bottom: 1px solid var(--app-line); }
   .property-panel { border-right: 0; border-bottom: 1px solid var(--app-line); }

@@ -31,9 +31,6 @@ export function mergeLayoutSpec(base = DEFAULT_DESIGN_SPEC, override = {}) {
   delete merged.theme.backgroundImageName;
   merged.responsive = merged.responsive || {};
   merged.itemStyles = merged.itemStyles || {};
-  Object.values(merged.itemStyles).forEach((style) => {
-    if (style && typeof style === "object") delete style.textAlign;
-  });
   merged.sectionStyles = merged.sectionStyles || {};
   merged.visibility = {
     items: merged.visibility?.items || {},
@@ -68,6 +65,55 @@ export function validateLayoutSpec(value = {}) {
     "left bottom", "center bottom", "right bottom",
   ]);
   const allowedShapes = new Set(["square", "rounded", "circle"]);
+  const allowedPositionModes = new Set(["free", "anchored"]);
+  const allowedHorizontalAnchors = new Set(["left", "center", "right"]);
+  const allowedVerticalAnchors = new Set(["top", "middle", "bottom"]);
+  const allowedWidthModes = new Set(["fit-content", "fixed", "fill"]);
+  const allowedHeightModes = new Set(["auto", "fixed"]);
+  const allowedTextAlignments = new Set(["left", "center", "right"]);
+  const managedTokenProperties = [
+    "colorToken", "fontFamilyToken", "fontSizeToken", "fontWeightToken",
+    "lineHeightToken", "letterSpacingToken", "maxWidthToken",
+  ];
+  function validateTextLayoutStyle(style, path) {
+    for (const tokenProperty of managedTokenProperties) {
+      if (style?.[tokenProperty] !== undefined
+        && !/^--(?:promo|app)-[a-z0-9-]+$/.test(String(style[tokenProperty]))) {
+        errors.push({ path: `${path}.${tokenProperty}`, message: "Managed design token key is required." });
+      }
+    }
+    if (style?.positionMode !== undefined && !allowedPositionModes.has(style.positionMode)) {
+      errors.push({ path: `${path}.positionMode`, message: "Unsupported component position mode." });
+    }
+    if (style?.horizontalAnchor !== undefined && !allowedHorizontalAnchors.has(style.horizontalAnchor)) {
+      errors.push({ path: `${path}.horizontalAnchor`, message: "Unsupported horizontal anchor." });
+    }
+    if (style?.verticalAnchor !== undefined && !allowedVerticalAnchors.has(style.verticalAnchor)) {
+      errors.push({ path: `${path}.verticalAnchor`, message: "Unsupported vertical anchor." });
+    }
+    if (style?.widthMode !== undefined && !allowedWidthModes.has(style.widthMode)) {
+      errors.push({ path: `${path}.widthMode`, message: "Unsupported component width mode." });
+    }
+    if (style?.heightMode !== undefined && !allowedHeightModes.has(style.heightMode)) {
+      errors.push({ path: `${path}.heightMode`, message: "Unsupported component height mode." });
+    }
+    if (style?.textAlign !== undefined && !allowedTextAlignments.has(style.textAlign)) {
+      errors.push({ path: `${path}.textAlign`, message: "Unsupported text alignment." });
+    }
+    if (style?.fontStyle !== undefined && style.fontStyle !== "italic") {
+      errors.push({ path: `${path}.fontStyle`, message: "Unsupported font style." });
+    }
+    if (style?.textDecoration !== undefined && style.textDecoration !== "underline") {
+      errors.push({ path: `${path}.textDecoration`, message: "Unsupported text decoration." });
+    }
+    for (const offsetProperty of ["offsetX", "offsetY"]) {
+      const offset = Number(style?.[offsetProperty]);
+      if (style?.[offsetProperty] !== undefined
+        && (!Number.isFinite(offset) || offset < -1200 || offset > 1200)) {
+        errors.push({ path: `${path}.${offsetProperty}`, message: "Anchor offset must be between -1200 and 1200." });
+      }
+    }
+  }
   for (const [targetType, values] of Object.entries(spec.visibility || {})) {
     if (!["items", "fields"].includes(targetType) || !values || typeof values !== "object") {
       errors.push({ path: `visibility.${targetType}`, message: "Unsupported visibility target." });
@@ -109,12 +155,7 @@ export function validateLayoutSpec(value = {}) {
     const x = Number(style?.xPct);
     const y = Number(style?.yPx);
     const size = Number(style?.fontSize);
-    for (const tokenProperty of ["colorToken", "fontSizeToken", "fontWeightToken"]) {
-      if (style?.[tokenProperty] !== undefined
-        && !/^--(?:promo|app)-[a-z0-9-]+$/.test(String(style[tokenProperty]))) {
-        errors.push({ path: `itemStyles.${key}.${tokenProperty}`, message: "Managed design token key is required." });
-      }
-    }
+    validateTextLayoutStyle(style, `itemStyles.${key}`);
     if (style?.xPct !== undefined && (!Number.isFinite(x) || x < 0 || x > 100)) {
       errors.push({ path: `itemStyles.${key}.xPct`, message: "xPct must be between 0 and 100." });
     }
@@ -168,9 +209,7 @@ export function validateLayoutSpec(value = {}) {
         const width = Number(style?.widthPct);
         const height = Number(style?.heightPx);
         const zIndex = Number(style?.zIndex);
-        if (style?.positionMode !== undefined && style.positionMode !== "free") {
-          errors.push({ path: `responsiveLayouts.mobile.itemStyles.${key}.positionMode`, message: "Only free mobile positioning is supported." });
-        }
+        validateTextLayoutStyle(style, `responsiveLayouts.mobile.itemStyles.${key}`);
         if (style?.xPct !== undefined && (!Number.isFinite(x) || x < 0 || x > 100)) {
           errors.push({ path: `responsiveLayouts.mobile.itemStyles.${key}.xPct`, message: "Mobile xPct must be between 0 and 100." });
         }

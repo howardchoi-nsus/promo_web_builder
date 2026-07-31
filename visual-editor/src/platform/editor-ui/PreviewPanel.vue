@@ -2,11 +2,12 @@
 import { ref } from "vue";
 import PromoPageRenderer from "../../PromoPageRenderer.vue";
 import EditorPreviewControls from "./EditorPreviewControls.vue";
+import TextEditorControls from "./TextEditorControls.vue";
 
 const props = defineProps({
   rendererSnapshot: { type: Object, default: null },
   sectionDesignRuns: { type: Object, default: () => ({}) },
-  guidesVisible: { type: Boolean, default: true },
+  guideMode: { type: String, default: "selection" },
   viewport: { type: String, default: "desktop" },
   templateIdentityLabel: { type: String, default: "" },
   capabilities: { type: Object, required: true },
@@ -24,10 +25,18 @@ const props = defineProps({
   selectedStyleKey: { type: String, default: "" },
   selectedItemKeys: { type: Array, default: () => [] },
   selectedSection: { type: Object, default: null },
+  selectedItem: { type: Object, default: null },
+  selectedItemStyle: { type: Object, default: () => ({}) },
+  colorTokenOptions: { type: Array, default: () => [] },
+  fontFamilyTokenOptions: { type: Array, default: () => [] },
+  fontSizeTokenOptions: { type: Array, default: () => [] },
+  fontWeightTokenOptions: { type: Array, default: () => [] },
+  lineHeightTokenOptions: { type: Array, default: () => [] },
+  letterSpacingTokenOptions: { type: Array, default: () => [] },
 });
 
 const emit = defineEmits([
-  "update:guides-visible",
+  "update:guide-mode",
   "update:viewport",
   "update:layout-change-note",
   "request-auto-register",
@@ -43,6 +52,12 @@ const emit = defineEmits([
   "update-item-content",
   "update-section-style",
   "drop-library-component",
+  "patch-selected-text-style",
+  "set-item-anchor",
+  "restore-automatic-position",
+  "reset-selected-item-offset",
+  "enable-automatic-text-size",
+  "enable-fixed-text-size",
 ]);
 
 const previewStageRef = ref(null);
@@ -115,11 +130,11 @@ defineExpose({ getStageElement, scrollToSection });
         <small v-if="autoRegisterMessage" class="auto-register-message" role="status">{{ autoRegisterMessage }}</small>
       </div>
       <EditorPreviewControls
-        :guides-visible="guidesVisible"
+        :guide-mode="guideMode"
         :viewport="viewport"
         :can-undo="editorHistory.canUndo"
         :can-redo="editorHistory.canRedo"
-        @update:guides-visible="(value) => emit('update:guides-visible', value)"
+        @update:guide-mode="(value) => emit('update:guide-mode', value)"
         @update:viewport="(value) => emit('update:viewport', value)"
         @undo="emit('undo')"
         @redo="emit('redo')"
@@ -183,6 +198,22 @@ defineExpose({ getStageElement, scrollToSection });
         </template>
       </EditorPreviewControls>
     </div>
+    <TextEditorControls
+      :item="selectedItem"
+      :item-style="selectedItemStyle"
+      :color-tokens="colorTokenOptions"
+      :font-family-tokens="fontFamilyTokenOptions"
+      :font-size-tokens="fontSizeTokenOptions"
+      :font-weight-tokens="fontWeightTokenOptions"
+      :line-height-tokens="lineHeightTokenOptions"
+      :letter-spacing-tokens="letterSpacingTokenOptions"
+      @patch-style="emit('patch-selected-text-style', $event)"
+      @set-anchor="(...args) => emit('set-item-anchor', ...args)"
+      @restore-automatic-position="emit('restore-automatic-position')"
+      @reset-offset="emit('reset-selected-item-offset')"
+      @enable-auto-size="emit('enable-automatic-text-size')"
+      @enable-fixed-size="emit('enable-fixed-text-size')"
+    />
     <div
       ref="previewStageRef"
       class="preview-stage"
@@ -199,7 +230,8 @@ defineExpose({ getStageElement, scrollToSection });
         :section-design-runs="sectionDesignRuns"
         :viewport-override="viewport"
         editable
-        :show-guides="guidesVisible"
+        :show-guides="guideMode !== 'normal'"
+        :outline-mode="guideMode === 'outline'"
         :selected-item-key="selectedStyleKey"
         :selected-item-keys="selectedItemKeys.map((itemKey) => `${selectedSection?.sectionKey}.${itemKey}`)"
         @select-item="(...args) => emit('select-item', ...args)"

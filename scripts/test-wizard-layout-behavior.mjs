@@ -22,8 +22,9 @@ assert.equal(resolved.itemStyles["hero.title"].xPct, 12);
 assert.equal(resolved.itemStyles["hero.title"].yPx, 80);
 assert.equal(
   normalizeLayoutSpec({ itemStyles: { "hero.title": { textAlign: "center" } } }).itemStyles["hero.title"].textAlign,
-  undefined,
+  "center",
 );
+assert.equal(validateLayoutSpec({ itemStyles: { bad: { textAlign: "diagonal" } } }).ok, false);
 
 assert.equal(validateLayoutSpec(resolved).ok, true);
 assert.equal(validateLayoutSpec({ itemStyles: { bad: { xPct: 101 } } }).ok, false);

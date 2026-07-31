@@ -17,6 +17,7 @@ const props = defineProps({
   assets: { type: Object, required: true },
   editable: { type: Boolean, default: false },
   showGuides: { type: Boolean, default: true },
+  outlineMode: { type: Boolean, default: false },
   selectedItemKey: { type: String, default: "" },
   selectedItemKeys: { type: Array, default: () => [] },
   sectionDesignRuns: { type: Object, default: () => ({}) },
@@ -120,6 +121,10 @@ function renderedItems(section) {
     && (item.fieldKind !== "image" || !isLegacyAiImageValue(section, item, valueFor(section, item)))
     && (componentFields(item).length <= 1 || renderedFields(section, item).length > 0)
   ));
+}
+
+function itemIsEmpty(section, item) {
+  return componentFields(item).every((field) => !hasContent(valueFor(section, item, field)));
 }
 
 function sectionBackgroundUrl(section) {
@@ -249,6 +254,7 @@ function itemResizeHandles(section, item) {
   if (item.fieldKind === "image" && (style.shape === "circle" || style.aspectRatioLocked !== false)) {
     return ["nw", "ne", "se", "sw"];
   }
+  if (item.fieldKind !== "image" && style.heightMode === "auto") return ["e", "w"];
   return ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
 }
 
@@ -428,21 +434,38 @@ function inlineCanvasStyle(section) {
 
 function inlineItemStyle(section, item) {
   const style = itemStyle(section, item);
+  const anchored = style.positionMode === "anchored";
   const position = style.positionMode === "free" ? style : defaultItemPosition(section, item);
   const isImage = item.fieldKind === "image";
   const widthPct = clamp(style.widthPct, MINIMUM_COMPONENT_WIDTH_PCT, 100, 32);
+  const autoHeight = !isImage && style.heightMode === "auto";
+  const fitContent = !isImage && style.widthMode === "fit-content";
   const heightPx = clamp(
     style.heightPx,
     MINIMUM_COMPONENT_HEIGHT_PX,
     900,
-    isImage ? undefined : defaultComponentHeight(item),
+    isImage || autoHeight ? undefined : defaultComponentHeight(item),
   );
+  const horizontalAnchor = ["left", "center", "right"].includes(style.horizontalAnchor)
+    ? style.horizontalAnchor
+    : "center";
+  const verticalAnchor = ["top", "middle", "bottom"].includes(style.verticalAnchor)
+    ? style.verticalAnchor
+    : "middle";
+  const anchorLeft = { left: "0%", center: "50%", right: "100%" }[horizontalAnchor];
+  const anchorTop = { top: "0%", middle: "50%", bottom: "100%" }[verticalAnchor];
+  const anchorTranslateX = { left: "0%", center: "-50%", right: "-100%" }[horizontalAnchor];
+  const anchorTranslateY = { top: "0%", middle: "-50%", bottom: "-100%" }[verticalAnchor];
   const result = {
-    left: `${position.xPct || 0}%`,
-    top: style.yPx !== undefined ? `${style.yPx}px` : `${position.yPct || 0}%`,
+    left: anchored ? anchorLeft : `${position.xPct || 0}%`,
+    top: anchored ? anchorTop : (style.yPx !== undefined ? `${style.yPx}px` : `${position.yPct || 0}%`),
+    transform: anchored
+      ? `translate(${anchorTranslateX}, ${anchorTranslateY}) translate(${Number(style.offsetX) || 0}px, ${Number(style.offsetY) || 0}px)`
+      : undefined,
     zIndex: style.zIndex || 2,
     color: style.colorToken ? `var(${style.colorToken})` : style.color,
     "--item-color": style.colorToken ? `var(${style.colorToken})` : style.color,
+    fontFamily: style.fontFamilyToken ? `var(${style.fontFamilyToken})` : style.fontFamily,
     fontSize: style.fontSizeToken
       ? `var(${style.fontSizeToken})`
       : (style.fontSize !== undefined ? `${style.fontSize}px` : undefined),
@@ -451,7 +474,15 @@ function inlineItemStyle(section, item) {
       : (style.fontSize !== undefined ? `${style.fontSize}px` : undefined),
     fontWeight: style.fontWeightToken ? `var(${style.fontWeightToken})` : style.fontWeight,
     "--item-font-weight": style.fontWeightToken ? `var(${style.fontWeightToken})` : style.fontWeight,
-    width: `${widthPct}%`,
+    lineHeight: style.lineHeightToken ? `var(${style.lineHeightToken})` : style.lineHeight,
+    letterSpacing: style.letterSpacingToken ? `var(${style.letterSpacingToken})` : style.letterSpacing,
+    fontStyle: style.fontStyle,
+    textDecoration: style.textDecoration,
+    textAlign: style.textAlign || (anchored ? horizontalAnchor : undefined),
+    width: fitContent ? "fit-content" : style.widthMode === "fill" ? "100%" : `${widthPct}%`,
+    maxWidth: fitContent
+      ? (style.maxWidthToken ? `var(${style.maxWidthToken})` : `${clamp(style.maxWidthPct, 10, 100, 80)}%`)
+      : undefined,
     height: heightPx && (!isImage || style.shape !== "circle") ? `${heightPx}px` : undefined,
     aspectRatio: isImage && (!heightPx || style.shape === "circle")
       ? imageFrameAspectRatio(item, style)
@@ -489,6 +520,9 @@ function startDrag(event, section, item) {
   const startY = event.clientY;
   const startLeft = itemRect.left - rect.left;
   const startTop = itemRect.top - rect.top;
+  target.style.transform = "none";
+  target.style.left = `${startLeft}px`;
+  target.style.top = `${startTop}px`;
   let nextX = startLeft;
   let nextY = startTop;
   let animationFrame = 0;
@@ -515,6 +549,9 @@ function startDrag(event, section, item) {
       emit("update-item-style", { positionMode: "free", xPct, yPx: nextY });
     }
     target.classList.remove("is-dragging");
+    target.style.removeProperty("transform");
+    target.style.removeProperty("left");
+    target.style.removeProperty("top");
     target.removeEventListener("pointermove", move);
     target.removeEventListener("pointerup", end);
     target.removeEventListener("pointercancel", end);
@@ -542,6 +579,8 @@ function startItemResize(event, section, item, handleDirection = "se") {
   const startY = event.clientY;
   const style = itemStyle(section, item);
   const isImage = item.fieldKind === "image";
+  const autoHeight = !isImage && style.heightMode === "auto";
+  const anchored = style.positionMode === "anchored";
   const locked = isImage && style.aspectRatioLocked !== false;
   const minimumItemSizePx = MINIMUM_COMPONENT_HEIGHT_PX;
   const horizontalActive = handleDirection.includes("w") || handleDirection.includes("e");
@@ -558,7 +597,14 @@ function startItemResize(event, section, item, handleDirection = "se") {
     fallbackX: automaticPosition.xPct || 0,
     fallbackY: ((automaticPosition.yPct || 0) / 100) * canvasHeight,
   });
-  if (isImage && style.heightPx === undefined) startGeometry.height = itemRect.height;
+  if (anchored) {
+    startGeometry.x = itemRect.left - containerRect.left;
+    startGeometry.y = itemRect.top - containerRect.top;
+    target.style.transform = "none";
+    target.style.left = `${startGeometry.x}px`;
+    target.style.top = `${startGeometry.y}px`;
+  }
+  if ((isImage && style.heightPx === undefined) || autoHeight) startGeometry.height = itemRect.height;
   const ratio = startGeometry.height ? startGeometry.width / startGeometry.height : 1;
   let nextGeometry = { ...startGeometry };
   let animationFrame = 0;
@@ -581,7 +627,7 @@ function startItemResize(event, section, item, handleDirection = "se") {
       maximumHeight: maxHeight,
       aspectRatioLocked: locked || (isImage && style.shape === "circle"),
       aspectRatio: style.shape === "circle" ? 1 : ratio,
-      scaleFont: !isImage,
+      scaleFont: false,
     });
     if (animationFrame) return;
     animationFrame = requestAnimationFrame(() => {
@@ -591,7 +637,6 @@ function startItemResize(event, section, item, handleDirection = "se") {
       if (horizontalActive || locked) target.style.width = `${nextGeometry.width}px`;
       if (verticalActive || locked) target.style.height = `${nextGeometry.height}px`;
       if (isImage) target.style.aspectRatio = "auto";
-      else target.style.setProperty("--item-font-size", `${nextGeometry.fontSize}px`);
     });
   };
   const end = () => {
@@ -606,11 +651,17 @@ function startItemResize(event, section, item, handleDirection = "se") {
       });
     }
     const layoutStyle = geometryToLayoutStyle(nextGeometry, containerRect.width, {
-      includeHeight: verticalActive && !locked && !(isImage && style.shape === "circle"),
-      includeFontSize: !isImage,
+      includeHeight: verticalActive && !locked && !autoHeight && !(isImage && style.shape === "circle"),
+      includeFontSize: false,
     });
+    if (anchored) {
+      delete layoutStyle.positionMode;
+      delete layoutStyle.xPct;
+      delete layoutStyle.yPx;
+    }
     emit("update-renderer-item-style", section, item, {
       ...layoutStyle,
+      ...(horizontalActive && !isImage ? { widthMode: "fixed" } : {}),
       ...(!verticalActive && !locked ? { heightPx: style.heightPx } : {}),
       ...(isImage
         ? { aspectRatio: `${Math.max(1, Math.round(nextGeometry.width))}/${Math.max(1, Math.round(nextGeometry.height))}` }
@@ -620,9 +671,9 @@ function startItemResize(event, section, item, handleDirection = "se") {
     target.style.removeProperty("width");
     target.style.removeProperty("height");
     target.style.removeProperty("aspect-ratio");
-    target.style.removeProperty("--item-font-size");
     target.style.removeProperty("left");
     target.style.removeProperty("top");
+    target.style.removeProperty("transform");
     handle.removeEventListener("pointermove", move);
     handle.removeEventListener("pointerup", end);
     handle.removeEventListener("pointercancel", end);
@@ -639,6 +690,8 @@ function resizeItemByKeyboard(event, section, item, handleDirection = "se") {
   event.stopPropagation();
   const style = itemStyle(section, item);
   const isImage = item.fieldKind === "image";
+  const autoHeight = !isImage && style.heightMode === "auto";
+  const anchored = style.positionMode === "anchored";
   const locked = isImage && style.aspectRatioLocked !== false;
   const step = event.shiftKey ? 4 : 1;
   const horizontalActive = handleDirection.includes("w") || handleDirection.includes("e");
@@ -679,13 +732,20 @@ function resizeItemByKeyboard(event, section, item, handleDirection = "se") {
     maximumHeight: 900,
     aspectRatioLocked: locked || (isImage && style.shape === "circle"),
     aspectRatio: style.shape === "circle" ? 1 : geometry.width / geometry.height,
-    scaleFont: !isImage,
+    scaleFont: false,
   });
+  const layoutStyle = geometryToLayoutStyle(resized, containerWidth, {
+      includeHeight: verticalActive && !locked && !autoHeight && !(isImage && style.shape === "circle"),
+      includeFontSize: false,
+    });
+  if (anchored) {
+    delete layoutStyle.positionMode;
+    delete layoutStyle.xPct;
+    delete layoutStyle.yPx;
+  }
   emit("update-renderer-item-style", section, item, {
-    ...geometryToLayoutStyle(resized, containerWidth, {
-      includeHeight: verticalActive && !locked && !(isImage && style.shape === "circle"),
-      includeFontSize: !isImage,
-    }),
+    ...layoutStyle,
+    ...(horizontalActive && !isImage ? { widthMode: "fixed" } : {}),
     ...(!verticalActive && !locked ? { heightPx: style.heightPx } : {}),
   });
 }
@@ -800,7 +860,11 @@ function startSectionResize(event, section) {
 <template>
   <div
     class="promo-renderer"
-    :class="{ 'is-editor-preview': editable, 'has-editor-guides': editable && showGuides }"
+    :class="{
+      'is-editor-preview': editable,
+      'has-editor-guides': editable && showGuides,
+      'is-outline-mode': editable && outlineMode,
+    }"
     :style="{
       '--promo-font': designSpec.theme.fontFamily,
       '--promo-width': `${Math.min(1280, Number(designSpec.responsive.contentMaxWidth || 1280))}px`,
@@ -813,7 +877,11 @@ function startSectionResize(event, section) {
       v-for="section in orderedSections"
       :key="section.sectionKey"
       class="rendered-section"
-      :class="[`rendered-section--${section.sectionKey}`, motionClass('section', section.sectionKey)]"
+      :class="[
+        `rendered-section--${section.sectionKey}`,
+        motionClass('section', section.sectionKey),
+        { 'is-outline-section': editable && outlineMode },
+      ]"
       :data-section-key="section.sectionKey"
       :style="{ ...inlineSectionStyle(section), ...motionStyle('section', section.sectionKey) }"
       :aria-busy="aiTargetState(section)?.kind === 'processing' ? 'true' : undefined"
@@ -845,7 +913,10 @@ function startSectionResize(event, section) {
                   || selectedItemKeys.includes(styleKey(section, item))
                 ),
                 'is-hidden-in-output': editable && !isItemVisible(section, item),
-                'is-free-positioned': true,
+                'is-locked': editable && item.isLocked,
+                'is-empty': editable && itemIsEmpty(section, item),
+                'is-free-positioned': itemStyle(section, item).positionMode !== 'anchored',
+                'is-anchored-positioned': itemStyle(section, item).positionMode === 'anchored',
               },
             ]"
             :data-item-key="item.itemKey"
@@ -858,6 +929,16 @@ function startSectionResize(event, section) {
               v-if="editable && !isItemVisible(section, item)"
               class="output-hidden-badge"
             >비노출</span>
+            <span
+              v-if="editable && outlineMode"
+              class="item-outline-label"
+              aria-hidden="true"
+            >
+              {{ item.name || item.itemKey }}
+              <small>{{ item.fieldKind || 'text' }}</small>
+              <em v-if="item.isLocked">잠금</em>
+              <em v-if="itemIsEmpty(section, item)">비어 있음</em>
+            </span>
             <div v-if="componentFields(item).length > 1" class="rendered-component-fields">
               <template v-for="field in renderedFields(section, item)" :key="field.fieldKey">
                 <a

@@ -72,6 +72,40 @@ const overflow = normalizeLayoutSnapshot({
 }, ["logo", "badges"]);
 assert(overflow.errors.some((error) => error.code === "GEOMETRY_OVERFLOW"));
 
+const anchored = normalizeLayoutSnapshot({
+  ...validSnapshot,
+  viewports: {
+    desktop: {
+      items: {
+        logo: {
+          positionMode: "anchored",
+          horizontalAnchor: "center",
+          verticalAnchor: "middle",
+          widthMode: "fit-content",
+          heightMode: "auto",
+        },
+      },
+      visibility: { items: {} },
+    },
+    mobile: {
+      items: {
+        logo: {
+          positionMode: "anchored",
+          horizontalAnchor: "center",
+          verticalAnchor: "top",
+          offsetY: 24,
+          widthMode: "fit-content",
+          heightMode: "auto",
+        },
+      },
+      visibility: { items: {} },
+    },
+  },
+}, ["logo"]);
+assert.deepStrictEqual(anchored.errors, []);
+assert.strictEqual(anchored.snapshot.viewports.mobile.items.logo.positionMode, "anchored");
+assert.strictEqual(anchored.snapshot.viewports.mobile.items.logo.offsetY, 24);
+
 const migration = fs.readFileSync(
   path.join(__dirname, "../db/migrations/047_wizard_content_section_layout_presets.sql"),
   "utf8",

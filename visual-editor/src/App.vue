@@ -57,7 +57,7 @@ const selectedItemKeys = ref([]);
 const expandedComponentKey = ref("");
 const previewPanelRef = ref(null);
 const viewport = ref("desktop");
-const guidesVisible = ref(true);
+const previewGuideMode = ref("selection");
 const outputSaveError = ref("");
 const outputSnapshot = ref(null);
 const layoutRevision = ref(1);
@@ -190,6 +190,20 @@ const fontSizeTokenOptions = computed(() => selectedDesignTokenValues.value.filt
   value: token.value,
   px: Number.parseFloat(token.value),
 })).filter((token) => Number.isFinite(token.px)));
+function tokenOptionsForCssProperty(property) {
+  return selectedDesignTokenValues.value.filter((token) => (
+    (token.cssProperties || []).includes(property)
+  )).map((token) => ({
+    key: token.tokenKey,
+    label: token.label || token.tokenKey,
+    value: token.value,
+    number: Number.parseFloat(token.value),
+  }));
+}
+const fontFamilyTokenOptions = computed(() => tokenOptionsForCssProperty("font-family"));
+const fontWeightTokenOptions = computed(() => tokenOptionsForCssProperty("font-weight"));
+const lineHeightTokenOptions = computed(() => tokenOptionsForCssProperty("line-height"));
+const letterSpacingTokenOptions = computed(() => tokenOptionsForCssProperty("letter-spacing"));
 const availableComponents = computed(() => activeComponentDefinitions(componentLibrary.value));
 const availableSectionPresets = computed(() => activeSectionPresets(sectionPresets.value));
 
@@ -1124,7 +1138,15 @@ const selectedStyleKey = computed(() => (
     ? `${selectedSection.value.sectionKey}.${selectedItem.value.itemKey}`
     : ""
 ));
-const selectedItemStyle = computed(() => designSpec.value.itemStyles?.[selectedStyleKey.value] || {});
+const selectedDesktopItemStyle = computed(() => designSpec.value.itemStyles?.[selectedStyleKey.value] || {});
+const selectedMobileItemStyle = computed(() => (
+  designSpec.value.responsiveLayouts?.mobile?.itemStyles?.[selectedStyleKey.value] || {}
+));
+const selectedItemStyle = computed(() => (
+  viewport.value === "mobile"
+    ? { ...selectedDesktopItemStyle.value, ...selectedMobileItemStyle.value }
+    : selectedDesktopItemStyle.value
+));
 const selectedColorTokenOption = computed(() => colorTokenOptions.value.find(
   (token) => token.key === selectedItemStyle.value.colorToken
 ) || null);
@@ -1139,10 +1161,104 @@ const selectedSectionStyle = computed(() => (
 
 function updateItemStyle(patch) {
   if (!selectedStyleKey.value || selectedItem.value?.isLocked) return;
-  executeEditorCommand(EditorCommandType.ITEM_STYLE_PATCH, {
-    styleKey: selectedStyleKey.value,
-    patch,
-  }, { label: "컴포넌트 스타일 변경" });
+  const responsive = viewport.value === "mobile";
+  executeEditorCommand(
+    responsive ? EditorCommandType.RESPONSIVE_ITEM_STYLE_PATCH : EditorCommandType.ITEM_STYLE_PATCH,
+    {
+      ...(responsive ? { viewport: "mobile" } : {}),
+      styleKey: selectedStyleKey.value,
+      patch,
+    },
+    { label: responsive ? "모바일 컴포넌트 스타일 변경" : "컴포넌트 스타일 변경" },
+  );
+}
+
+function setItemAnchor(axis, value) {
+  if (!selectedItem.value || selectedItem.value.isLocked) return;
+  if (axis === "horizontal" && !["left", "center", "right"].includes(value)) return;
+  if (axis === "vertical" && !["top", "middle", "bottom"].includes(value)) return;
+  const horizontalAnchor = axis === "horizontal"
+    ? value
+    : (selectedItemStyle.value.horizontalAnchor || "center");
+  const verticalAnchor = axis === "vertical"
+    ? value
+    : (selectedItemStyle.value.verticalAnchor || "middle");
+  updateItemStyle({
+    positionMode: "anchored",
+    horizontalAnchor,
+    verticalAnchor,
+    textAlign: horizontalAnchor,
+    xPct: undefined,
+    yPx: undefined,
+  });
+}
+
+function rawSelectedViewportStyle() {
+  return viewport.value === "mobile" ? selectedMobileItemStyle.value : selectedDesktopItemStyle.value;
+}
+
+function replaceSelectedViewportStyle(style, label) {
+  const responsive = viewport.value === "mobile";
+  if (Object.keys(style).length) {
+    executeEditorCommand(
+      responsive ? EditorCommandType.RESPONSIVE_ITEM_STYLE_REPLACE : EditorCommandType.ITEM_STYLE_REPLACE,
+      {
+        ...(responsive ? { viewport: "mobile" } : {}),
+        styleKey: selectedStyleKey.value,
+        style,
+      },
+      { label },
+    );
+  } else {
+    executeEditorCommand(
+      responsive ? EditorCommandType.RESPONSIVE_ITEM_STYLE_REMOVE : EditorCommandType.ITEM_STYLE_REMOVE,
+      {
+        ...(responsive ? { viewport: "mobile" } : {}),
+        styleKey: selectedStyleKey.value,
+      },
+      { label },
+    );
+  }
+}
+
+function applyRendererStylePatch(styleKey, patch, label) {
+  const responsive = viewport.value === "mobile";
+  executeEditorCommand(
+    responsive ? EditorCommandType.RESPONSIVE_ITEM_STYLE_PATCH : EditorCommandType.ITEM_STYLE_PATCH,
+    {
+      ...(responsive ? { viewport: "mobile" } : {}),
+      styleKey,
+      patch,
+    },
+    { source: "pointer", label },
+  );
+}
+
+function resetSelectedItemOffset() {
+  updateItemStyle({ offsetX: undefined, offsetY: undefined });
+}
+
+function enableAutomaticTextSize() {
+  if (selectedItem.value?.fieldKind === "image") return;
+  updateItemStyle({
+    widthMode: "fit-content",
+    heightMode: "auto",
+    heightPx: undefined,
+  });
+}
+
+function enableFixedTextSize() {
+  if (selectedItem.value?.fieldKind === "image") return;
+  updateItemStyle({
+    widthMode: "fixed",
+    heightMode: "fixed",
+    widthPct: selectedItemStyle.value.widthPct || 32,
+    heightPx: selectedItemStyle.value.heightPx || 86,
+  });
+}
+
+function patchSelectedTextStyle(patch) {
+  updateItemStyle(patch);
 }
 
 function updateRendererItemStyle(section, item, patch) {
@@ -1163,32 +1279,31 @@ function updateRendererItemStyle(section, item, patch) {
       delete nextPatch.fontSize;
     }
   }
-  executeEditorCommand(EditorCommandType.ITEM_STYLE_PATCH, {
-    styleKey: key,
-    patch: nextPatch,
-  }, { source: "pointer", label: "컴포넌트 위치·크기 변경" });
+  applyRendererStylePatch(key, nextPatch, "컴포넌트 위치·크기 변경");
 }
 
 function resetItemStyle() {
   if (!selectedStyleKey.value || selectedItem.value?.isLocked) return;
-  executeEditorCommand(EditorCommandType.ITEM_STYLE_REMOVE, {
-    styleKey: selectedStyleKey.value,
-  }, { label: "컴포넌트 스타일 초기화" });
+  const responsive = viewport.value === "mobile";
+  executeEditorCommand(
+    responsive ? EditorCommandType.RESPONSIVE_ITEM_STYLE_REMOVE : EditorCommandType.ITEM_STYLE_REMOVE,
+    {
+      ...(responsive ? { viewport: "mobile" } : {}),
+      styleKey: selectedStyleKey.value,
+    },
+    { label: responsive ? "모바일 컴포넌트 스타일 초기화" : "컴포넌트 스타일 초기화" },
+  );
 }
 
 function restoreAutomaticPosition() {
   if (!selectedStyleKey.value || selectedItem.value?.isLocked) return;
-  const nextStyle = withoutFreePosition(designSpec.value.itemStyles?.[selectedStyleKey.value]);
-  if (Object.keys(nextStyle).length) {
-    executeEditorCommand(EditorCommandType.ITEM_STYLE_REPLACE, {
-      styleKey: selectedStyleKey.value,
-      style: nextStyle,
-    }, { label: "자동 위치 복원" });
-  } else {
-    executeEditorCommand(EditorCommandType.ITEM_STYLE_REMOVE, {
-      styleKey: selectedStyleKey.value,
-    }, { label: "자동 위치 복원" });
-  }
+  const nextStyle = withoutFreePosition(rawSelectedViewportStyle());
+  delete nextStyle.horizontalAnchor;
+  delete nextStyle.verticalAnchor;
+  delete nextStyle.offsetX;
+  delete nextStyle.offsetY;
+  delete nextStyle.textAlign;
+  replaceSelectedViewportStyle(nextStyle, "자동 위치 복원");
 }
 
 function updateSectionStyle(sectionKey, patch) {
@@ -1796,6 +1911,14 @@ onBeforeUnmount(() => {
       <StructurePanel
         :sections="sections"
         :selected-section="selectedSection"
+        :selected-item="selectedItem"
+        :selected-item-style="selectedItemStyle"
+        :color-token-options="colorTokenOptions"
+        :font-family-token-options="fontFamilyTokenOptions"
+        :font-size-token-options="fontSizeTokenOptions"
+        :font-weight-token-options="fontWeightTokenOptions"
+        :line-height-token-options="lineHeightTokenOptions"
+        :letter-spacing-token-options="letterSpacingTokenOptions"
         :selected-item-key="selectedItemKey"
         :selected-section-style="selectedSectionStyle"
         :capabilities="capabilities"
@@ -1851,7 +1974,7 @@ onBeforeUnmount(() => {
         ref="previewPanelRef"
         :renderer-snapshot="rendererSnapshot"
         :section-design-runs="sectionDesignRuns"
-        :guides-visible="guidesVisible"
+        :guide-mode="previewGuideMode"
         :viewport="viewport"
         :template-identity-label="templateIdentityLabel"
         :capabilities="capabilities"
@@ -1870,7 +1993,15 @@ onBeforeUnmount(() => {
         :selected-style-key="selectedStyleKey"
         :selected-item-keys="selectedItemKeys"
         :selected-section="selectedSection"
-        @update:guides-visible="guidesVisible = $event"
+        :selected-item="selectedItem"
+        :selected-item-style="selectedItemStyle"
+        :color-token-options="colorTokenOptions"
+        :font-family-token-options="fontFamilyTokenOptions"
+        :font-size-token-options="fontSizeTokenOptions"
+        :font-weight-token-options="fontWeightTokenOptions"
+        :line-height-token-options="lineHeightTokenOptions"
+        :letter-spacing-token-options="letterSpacingTokenOptions"
+        @update:guide-mode="previewGuideMode = $event"
         @update:viewport="viewport = $event"
         @update:layout-change-note="layoutChangeNote = $event"
         @request-auto-register="requestAutoRegister"
@@ -1886,6 +2017,12 @@ onBeforeUnmount(() => {
         @update-item-content="updateRendererContent"
         @update-section-style="updateSectionStyle"
         @drop-library-component="addComponent"
+        @patch-selected-text-style="patchSelectedTextStyle"
+        @set-item-anchor="setItemAnchor"
+        @restore-automatic-position="restoreAutomaticPosition"
+        @reset-selected-item-offset="resetSelectedItemOffset"
+        @enable-automatic-text-size="enableAutomaticTextSize"
+        @enable-fixed-text-size="enableFixedTextSize"
       />
 
       <PropertyPanel :selected-section="selectedSection">
@@ -2206,7 +2343,24 @@ onBeforeUnmount(() => {
             </div>
             <div v-else class="component-frame-controls">
               <strong>컴포넌트 영역 크기</strong>
-              <small>프리뷰의 모서리와 변을 드래그하면 영역과 글자 크기가 함께 변경됩니다.</small>
+              <small>영역 크기와 글자 크기는 별도로 변경됩니다. 자동 크기는 실제 텍스트 높이를 사용합니다.</small>
+              <div class="image-resize-mode" aria-label="텍스트 영역 크기 모드">
+                <span>크기 모드</span>
+                <div>
+                  <button
+                    type="button"
+                    :class="{ active: selectedItemStyle.heightMode === 'auto' || selectedItemStyle.widthMode === 'fit-content' }"
+                    :disabled="selectedItem.isLocked"
+                    @click="enableAutomaticTextSize"
+                  >자동</button>
+                  <button
+                    type="button"
+                    :class="{ active: selectedItemStyle.heightMode !== 'auto' && selectedItemStyle.widthMode !== 'fit-content' }"
+                    :disabled="selectedItem.isLocked"
+                    @click="enableFixedTextSize"
+                  >고정</button>
+                </div>
+              </div>
               <label>
                 <span>컴포넌트 너비</span>
                 <div class="range-field">
@@ -2232,7 +2386,7 @@ onBeforeUnmount(() => {
                   />
                 </div>
               </label>
-              <label>
+              <label v-if="selectedItemStyle.heightMode !== 'auto'">
                 <span>컴포넌트 높이</span>
                 <div class="range-field">
                   <input
@@ -2340,10 +2494,13 @@ onBeforeUnmount(() => {
               <strong v-if="selectedItemStyle.positionMode === 'free'">
                 X {{ Math.round(selectedItemStyle.xPct || 0) }}% · Y {{ Math.round(selectedItemStyle.yPx || 0) }}px
               </strong>
+              <strong v-else-if="selectedItemStyle.positionMode === 'anchored'">
+                {{ selectedItemStyle.horizontalAnchor || 'center' }} · {{ selectedItemStyle.verticalAnchor || 'middle' }}
+              </strong>
               <strong v-else>자동 배치</strong>
             </div>
             <button
-              v-if="selectedItemStyle.positionMode === 'free'"
+              v-if="selectedItemStyle.positionMode === 'free' || selectedItemStyle.positionMode === 'anchored'"
               class="secondary-control"
               type="button"
               :disabled="selectedItem.isLocked"
