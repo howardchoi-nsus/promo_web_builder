@@ -549,7 +549,26 @@ try {
     "Ratio-maintained mode must expose corner handles only",
   );
   const textComponent = editorFrame.locator('[data-section-key="contentFeature"] [data-item-key="copy"]');
-  await textComponent.click();
+  const textStyleBeforeSelection = await page.evaluate(() => {
+    const content = JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null");
+    return content?.templateLayouts?.["default-preview"]?.resolvedLayout?.itemStyles?.["contentFeature.copy"] || null;
+  });
+  const textSelectionBox = await textComponent.boundingBox();
+  assert.ok(textSelectionBox, "Text component selection geometry must be measurable");
+  await page.mouse.move(textSelectionBox.x + 12, textSelectionBox.y + 12);
+  await page.mouse.down();
+  await page.mouse.move(textSelectionBox.x + 16, textSelectionBox.y + 14);
+  await page.mouse.up();
+  await page.waitForTimeout(50);
+  const textStyleAfterSelection = await page.evaluate(() => {
+    const content = JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null");
+    return content?.templateLayouts?.["default-preview"]?.resolvedLayout?.itemStyles?.["contentFeature.copy"] || null;
+  });
+  assert.deepEqual(
+    textStyleAfterSelection,
+    textStyleBeforeSelection,
+    "Selecting text with minor pointer jitter must preserve its default layout style",
+  );
   const textEditorToolbar = editorFrame.locator(".text-editor-controls");
   await textEditorToolbar.waitFor({ state: "visible" });
   const textPropertyInput = editorFrame.locator(".component-property-content textarea").first();

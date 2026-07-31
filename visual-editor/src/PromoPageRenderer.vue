@@ -26,6 +26,7 @@ const props = defineProps({
 });
 const emit = defineEmits(["select-item", "update-item-style", "update-renderer-item-style", "update-item-content", "update-section-style"]);
 const SECTION_VERTICAL_PADDING_PX = 20;
+const DRAG_ACTIVATION_DISTANCE_PX = 7;
 const viewportWidth = ref(typeof globalThis.innerWidth === "number" ? globalThis.innerWidth : 1280);
 function updateViewportWidth() {
   viewportWidth.value = globalThis.innerWidth || 1280;
@@ -512,29 +513,42 @@ function startDrag(event, section, item) {
   event.preventDefault();
   selectRendererItem(section, item);
   target.setPointerCapture(event.pointerId);
-  target.classList.add("is-dragging");
 
-  const rect = container.getBoundingClientRect();
-  const itemRect = target.getBoundingClientRect();
   const startX = event.clientX;
   const startY = event.clientY;
-  const startLeft = itemRect.left - rect.left;
-  const startTop = itemRect.top - rect.top;
-  target.style.transform = "none";
-  target.style.left = `${startLeft}px`;
-  target.style.top = `${startTop}px`;
-  let nextX = startLeft;
-  let nextY = startTop;
+  let rect = null;
+  let startLeft = 0;
+  let startTop = 0;
+  let nextX = 0;
+  let nextY = 0;
   let animationFrame = 0;
   let moved = false;
 
   const move = (moveEvent) => {
-    if (!moved && Math.abs(moveEvent.clientX - startX) < 3 && Math.abs(moveEvent.clientY - startY) < 3) {
-      return;
+    const deltaX = moveEvent.clientX - startX;
+    const deltaY = moveEvent.clientY - startY;
+    if (!moved) {
+      if (Math.hypot(deltaX, deltaY) < DRAG_ACTIVATION_DISTANCE_PX) return;
+      rect = container.getBoundingClientRect();
+      const itemRect = target.getBoundingClientRect();
+      startLeft = itemRect.left - rect.left;
+      startTop = itemRect.top - rect.top;
+      nextX = startLeft;
+      nextY = startTop;
+      target.style.transform = "none";
+      target.style.left = `${startLeft}px`;
+      target.style.top = `${startTop}px`;
+      target.classList.add("is-dragging");
+      moved = true;
     }
-    moved = true;
-    nextX = Math.min(Math.max(0, rect.width - target.offsetWidth), Math.max(0, startLeft + moveEvent.clientX - startX));
-    nextY = Math.min(Math.max(0, rect.height - target.offsetHeight), Math.max(0, startTop + moveEvent.clientY - startY));
+    const horizontalLimit = rect.width - target.offsetWidth;
+    const verticalLimit = rect.height - target.offsetHeight;
+    const minimumX = Math.min(0, horizontalLimit);
+    const maximumX = Math.max(0, horizontalLimit);
+    const minimumY = Math.min(0, verticalLimit);
+    const maximumY = Math.max(0, verticalLimit);
+    nextX = Math.min(maximumX, Math.max(minimumX, startLeft + deltaX));
+    nextY = Math.min(maximumY, Math.max(minimumY, startTop + deltaY));
     if (animationFrame) return;
     animationFrame = requestAnimationFrame(() => {
       animationFrame = 0;
@@ -544,10 +558,11 @@ function startDrag(event, section, item) {
   };
   const end = () => {
     if (animationFrame) cancelAnimationFrame(animationFrame);
-    if (moved) {
+    if (moved && rect) {
       const xPct = rect.width ? (nextX / rect.width) * 100 : 0;
       emit("update-item-style", { positionMode: "free", xPct, yPx: nextY });
     }
+    if (target.hasPointerCapture(event.pointerId)) target.releasePointerCapture(event.pointerId);
     target.classList.remove("is-dragging");
     target.style.removeProperty("transform");
     target.style.removeProperty("left");
