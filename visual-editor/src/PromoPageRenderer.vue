@@ -564,9 +564,11 @@ function startDrag(event, section, item) {
     }
     if (target.hasPointerCapture(event.pointerId)) target.releasePointerCapture(event.pointerId);
     target.classList.remove("is-dragging");
-    target.style.removeProperty("transform");
-    target.style.removeProperty("left");
-    target.style.removeProperty("top");
+    if (moved) {
+      target.style.removeProperty("transform");
+      target.style.removeProperty("left");
+      target.style.removeProperty("top");
+    }
     target.removeEventListener("pointermove", move);
     target.removeEventListener("pointerup", end);
     target.removeEventListener("pointercancel", end);

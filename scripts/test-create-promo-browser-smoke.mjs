@@ -553,6 +553,11 @@ try {
     const content = JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null");
     return content?.templateLayouts?.["default-preview"]?.resolvedLayout?.itemStyles?.["contentFeature.copy"] || null;
   });
+  const textDomPositionBeforeSelection = await textComponent.evaluate((node) => ({
+    left: node.style.left,
+    top: node.style.top,
+    transform: node.style.transform,
+  }));
   const textSelectionBox = await textComponent.boundingBox();
   assert.ok(textSelectionBox, "Text component selection geometry must be measurable");
   await page.mouse.move(textSelectionBox.x + 12, textSelectionBox.y + 12);
@@ -568,6 +573,16 @@ try {
     textStyleAfterSelection,
     textStyleBeforeSelection,
     "Selecting text with minor pointer jitter must preserve its default layout style",
+  );
+  const textDomPositionAfterSelection = await textComponent.evaluate((node) => ({
+    left: node.style.left,
+    top: node.style.top,
+    transform: node.style.transform,
+  }));
+  assert.deepEqual(
+    textDomPositionAfterSelection,
+    textDomPositionBeforeSelection,
+    "Selecting text without dragging must preserve its rendered DOM position",
   );
   const textEditorToolbar = editorFrame.locator(".text-editor-controls");
   await textEditorToolbar.waitFor({ state: "visible" });
