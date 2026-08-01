@@ -438,6 +438,7 @@ button, a { letter-spacing: 0; }
 .page-tree__root { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; color: var(--app-ink); }
 .page-tree__root small { color: var(--app-sub); }
 .page-tree__section {
+  margin: 0 0 10px 0;
   position: relative;
   min-width: 0;
   border: 1px solid var(--app-line);
