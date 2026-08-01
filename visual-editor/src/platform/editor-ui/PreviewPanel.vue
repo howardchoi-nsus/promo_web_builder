@@ -51,6 +51,7 @@ const emit = defineEmits([
   "save-admin-layout",
   "save-ai-document",
   "open-output",
+  "clear-selection",
   "select-item",
   "update-item-style",
   "update-renderer-item-style",
@@ -74,7 +75,14 @@ watch(() => props.selectedStyleKey, () => {
 
 function updateSelectedTextLines(section, item, selection) {
   if (`${section?.sectionKey}.${item?.itemKey}` !== props.selectedStyleKey) return;
-  selectedTextLines.value = selection;
+  selectedTextLines.value = selection?.indexes?.length ? selection : null;
+}
+
+function clearPreviewSelection(event) {
+  if (event.target instanceof Element && event.target.closest(".rendered-item, .item-resize-handle, .section-resize-handle")) return;
+  previewStageRef.value?.querySelector('[contenteditable="true"]')?.blur();
+  selectedTextLines.value = null;
+  emit("clear-selection");
 }
 
 function scrollToSection(sectionKey, behavior = "smooth") {
@@ -92,6 +100,10 @@ function scrollToSection(sectionKey, behavior = "smooth") {
 
 function getStageElement() {
   return previewStageRef.value;
+}
+
+function finishTextEdit() {
+  previewStageRef.value?.querySelector('[contenteditable="true"]')?.blur();
 }
 
 function libraryComponentKey(event) {
@@ -123,7 +135,7 @@ function handlePreviewDrop(event) {
   if (sectionKey) emit("drop-library-component", componentKey, sectionKey);
 }
 
-defineExpose({ getStageElement, scrollToSection });
+defineExpose({ finishTextEdit, getStageElement, scrollToSection });
 </script>
 
 <template>
@@ -237,6 +249,7 @@ defineExpose({ getStageElement, scrollToSection });
       ref="previewStageRef"
       class="preview-stage"
       :class="`preview-stage--${viewport}`"
+      @click="clearPreviewSelection"
       @dragover="handlePreviewDragOver"
       @drop="handlePreviewDrop"
     >

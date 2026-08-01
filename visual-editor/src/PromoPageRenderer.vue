@@ -31,14 +31,39 @@ const DRAG_ACTIVATION_DISTANCE_PX = 7;
 const viewportWidth = ref(typeof globalThis.innerWidth === "number" ? globalThis.innerWidth : 1280);
 const rendererRoot = ref(null);
 const activeMotionTargets = ref(new Set());
+const measuredItemHeights = ref({});
 let motionObserver = null;
+let itemResizeObserver = null;
+let activeDragCleanup = null;
+
+function syncMeasuredItemHeights() {
+  if (!rendererRoot.value) return;
+  const next = { ...measuredItemHeights.value };
+  let changed = false;
+  rendererRoot.value.querySelectorAll(".rendered-item[data-style-key]").forEach((element) => {
+    itemResizeObserver?.observe(element);
+    const key = element.dataset.styleKey;
+    const height = element.getBoundingClientRect().height;
+    if (!key || !Number.isFinite(height) || height <= 0) return;
+    if (Math.abs(Number(next[key] || 0) - height) < 0.5) return;
+    next[key] = height;
+    changed = true;
+  });
+  if (changed) measuredItemHeights.value = next;
+}
+
 function updateViewportWidth() {
   viewportWidth.value = globalThis.innerWidth || 1280;
 }
 onMounted(async () => {
   globalThis.addEventListener("resize", updateViewportWidth);
-  if (props.editable || typeof IntersectionObserver === "undefined") return;
   await nextTick();
+  syncMeasuredItemHeights();
+  if (typeof ResizeObserver !== "undefined") {
+    itemResizeObserver = new ResizeObserver(syncMeasuredItemHeights);
+    rendererRoot.value?.querySelectorAll(".rendered-item[data-style-key]").forEach((element) => itemResizeObserver.observe(element));
+  }
+  if (props.editable || typeof IntersectionObserver === "undefined") return;
   motionObserver = new IntersectionObserver((entries) => {
     const next = new Set(activeMotionTargets.value);
     entries.forEach((entry) => {
@@ -52,6 +77,9 @@ onMounted(async () => {
 });
 onBeforeUnmount(() => {
   globalThis.removeEventListener("resize", updateViewportWidth);
+  activeDragCleanup?.();
+  activeDragCleanup = null;
+  itemResizeObserver?.disconnect();
   motionObserver?.disconnect();
 });
 const mobileLayoutActive = computed(() => (
@@ -383,15 +411,23 @@ function estimatedItemHeight(item) {
   return defaultComponentHeight(item);
 }
 
+function renderedItemHeight(section, item) {
+  return measuredItemHeights.value[styleKey(section, item)] || estimatedItemHeight(item);
+}
+
 function defaultSectionHeight(section) {
-  return Math.max(180, (section.items || []).reduce((height, item) => height + estimatedItemHeight(item), 0) + 52);
+  return Math.max(180, (section.items || []).reduce((height, item) => height + renderedItemHeight(section, item), 0) + 52);
+}
+
+function resolvedSectionHeight(section) {
+  return Math.max(Number(sectionStyle(section).minHeight) || 0, defaultSectionHeight(section));
 }
 
 function defaultItemPosition(section, item) {
   const items = section.items || [];
   const index = Math.max(0, items.findIndex((candidate) => candidate.itemKey === item.itemKey));
-  const precedingHeight = items.slice(0, index).reduce((height, candidate) => height + estimatedItemHeight(candidate), 0);
-  const sectionHeight = sectionStyle(section).minHeight || defaultSectionHeight(section);
+  const precedingHeight = items.slice(0, index).reduce((height, candidate) => height + renderedItemHeight(section, candidate), 0);
+  const sectionHeight = resolvedSectionHeight(section);
   const canvasHeight = Math.max(50, sectionHeight - SECTION_VERTICAL_PADDING_PX);
   return {
     xPct: 0,
@@ -443,7 +479,7 @@ function backgroundFadeGradient(mode, color, strength = "medium", configuredStop
 
 function inlineSectionStyle(section) {
   const style = sectionStyle(section);
-  const canvasHeight = style.minHeight || defaultSectionHeight(section);
+  const canvasHeight = resolvedSectionHeight(section);
   const backgroundImage = sectionBackgroundUrl(section);
   const backgroundColor = effectiveSectionBackgroundColor(style);
   const fadeGradient = backgroundImage
@@ -478,7 +514,7 @@ function inlineSectionStyle(section) {
 }
 
 function inlineCanvasStyle(section) {
-  const height = sectionStyle(section).minHeight || defaultSectionHeight(section);
+  const height = resolvedSectionHeight(section);
   return {
     height: `${Math.max(0, height - SECTION_VERTICAL_PADDING_PX)}px`,
   };
@@ -632,6 +668,7 @@ function startDrag(event, section, item) {
   const target = event.currentTarget;
   const container = target.closest(".rendered-items");
   if (!container) return;
+  activeDragCleanup?.();
   selectRendererItem(section, item);
 
   const startX = event.clientX;
@@ -643,14 +680,25 @@ function startDrag(event, section, item) {
   let nextY = 0;
   let animationFrame = 0;
   let moved = false;
+  let finished = false;
 
   const move = (moveEvent) => {
+    if (moveEvent.pointerId !== event.pointerId || finished) return;
+    if ((moveEvent.buttons & 1) !== 1) {
+      end();
+      return;
+    }
     const deltaX = moveEvent.clientX - startX;
     const deltaY = moveEvent.clientY - startY;
     if (!moved) {
       if (Math.hypot(deltaX, deltaY) < DRAG_ACTIVATION_DISTANCE_PX) return;
-      moveEvent.preventDefault();
-      target.setPointerCapture(moveEvent.pointerId);
+      if (moveEvent.cancelable) moveEvent.preventDefault();
+      try {
+        target.setPointerCapture(moveEvent.pointerId);
+      } catch {
+        end();
+        return;
+      }
       rect = container.getBoundingClientRect();
       const itemRect = target.getBoundingClientRect();
       startLeft = itemRect.left - rect.left;
@@ -678,26 +726,41 @@ function startDrag(event, section, item) {
       target.style.top = `${nextY}px`;
     });
   };
+  const handleVisibilityChange = () => {
+    if (document.visibilityState === "hidden") end();
+  };
   const end = () => {
+    if (finished) return;
+    finished = true;
     if (animationFrame) cancelAnimationFrame(animationFrame);
     if (moved && rect) {
       const xPct = rect.width ? (nextX / rect.width) * 100 : 0;
       emit("update-item-style", { positionMode: "free", xPct, yPx: nextY });
     }
-    if (target.hasPointerCapture(event.pointerId)) target.releasePointerCapture(event.pointerId);
+    if (target.hasPointerCapture(event.pointerId)) {
+      try { target.releasePointerCapture(event.pointerId); } catch { /* Pointer already ended. */ }
+    }
     target.classList.remove("is-dragging");
     if (moved) {
       target.style.removeProperty("transform");
       target.style.removeProperty("left");
       target.style.removeProperty("top");
     }
-    target.removeEventListener("pointermove", move);
-    target.removeEventListener("pointerup", end);
-    target.removeEventListener("pointercancel", end);
+    globalThis.removeEventListener("pointermove", move);
+    globalThis.removeEventListener("pointerup", end);
+    globalThis.removeEventListener("pointercancel", end);
+    globalThis.removeEventListener("blur", end);
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
+    target.removeEventListener("lostpointercapture", end);
+    if (activeDragCleanup === end) activeDragCleanup = null;
   };
-  target.addEventListener("pointermove", move);
-  target.addEventListener("pointerup", end);
-  target.addEventListener("pointercancel", end);
+  activeDragCleanup = end;
+  globalThis.addEventListener("pointermove", move, { passive: false });
+  globalThis.addEventListener("pointerup", end);
+  globalThis.addEventListener("pointercancel", end);
+  globalThis.addEventListener("blur", end);
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+  target.addEventListener("lostpointercapture", end);
 }
 
 function startItemResize(event, section, item, handleDirection = "se") {
@@ -932,14 +995,18 @@ function startTextEdit(event, section, item, field = null, explicitTextNode = nu
   const textNode = explicitTextNode || event.currentTarget;
   const article = textNode.closest(".rendered-item");
   if (!article) return;
+  if (article.classList.contains("is-editing")) return;
   const textTarget = field || item;
   if (textTarget.isLocked) return;
   event.preventDefault();
   event.stopPropagation();
   selectRendererItem(section, item);
   const currentValue = valueFor(section, item, field);
+  const originalValue = String(currentValue ?? "").replace(/\r\n?/g, "\n");
   const wasEmpty = !hasContent(currentValue);
   const fieldDescription = textFieldDescription(item, field);
+  let cancelled = false;
+  let finished = false;
 
   article.classList.add("is-editing");
   textNode.classList.remove("rendered-empty");
@@ -956,7 +1023,6 @@ function startTextEdit(event, section, item, field = null, explicitTextNode = nu
 
   const emitLineSelection = () => {
     const indexes = selectedTextLineIndexes(textNode);
-    if (!indexes.length) return;
     emit("select-text-lines", section, item, {
       scopeKey: lineStyleScopeKey(field),
       indexes,
@@ -966,9 +1032,19 @@ function startTextEdit(event, section, item, field = null, explicitTextNode = nu
   document.addEventListener("selectionchange", emitLineSelection);
 
   const finish = () => {
-    const nextValue = textNode.innerText.replace(/\r\n?/g, "\n").trim();
+    if (finished) return;
+    finished = true;
+    const nextValue = textNode.innerText.replace(/\r\n?/g, "\n");
     const unchangedPlaceholder = wasEmpty && nextValue === fieldDescription;
-    if (!unchangedPlaceholder) {
+    if (cancelled) {
+      if (wasEmpty) {
+        textNode.classList.remove("rendered-text");
+        textNode.classList.add("rendered-empty");
+        textNode.textContent = fieldDescription;
+      } else {
+        textNode.textContent = originalValue;
+      }
+    } else if (!unchangedPlaceholder) {
       emit("update-item-content", section, item, nextValue, field);
     } else {
       textNode.classList.remove("rendered-text");
@@ -980,11 +1056,14 @@ function startTextEdit(event, section, item, field = null, explicitTextNode = nu
     textNode.removeEventListener("blur", finish);
     textNode.removeEventListener("keydown", onKeydown);
     document.removeEventListener("selectionchange", emitLineSelection);
+    emit("select-text-lines", section, item, null);
   };
   const onKeydown = (keyEvent) => {
     if (keyEvent.key === "Escape") {
       keyEvent.preventDefault();
+      cancelled = true;
       textNode.blur();
+      if (!finished) finish();
     }
   };
   textNode.addEventListener("blur", finish);
@@ -1003,7 +1082,6 @@ function handleTextClick(event, section, item, field = null) {
     }
     return;
   }
-  if (event.detail >= 2) startTextEdit(event, section, item, field);
 }
 
 function startArticleTextEdit(event, section, item) {

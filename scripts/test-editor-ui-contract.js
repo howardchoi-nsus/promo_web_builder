@@ -22,7 +22,7 @@ assert.match(previewPanel, /import EditorPreviewControls/);
 assert.match(previewPanel, /<EditorPreviewControls/);
 assert.match(previewPanel, /#tokens/);
 assert.match(previewPanel, /#host-actions/);
-assert.match(previewPanel, /defineExpose\(\{ getStageElement, scrollToSection \}\)/);
+assert.match(previewPanel, /defineExpose\(\{ finishTextEdit, getStageElement, scrollToSection \}\)/);
 assert.match(textEditorControls, /text-history-controls/);
 assert.match(textEditorControls, /emit\('undo'\)/);
 assert.match(textEditorControls, /emit\('redo'\)/);

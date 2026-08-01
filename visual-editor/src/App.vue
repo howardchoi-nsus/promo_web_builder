@@ -357,6 +357,9 @@ function redoEditorCommand() {
 
 function selectItem(section, item, { preserveMulti = false } = {}) {
   if (!section) return;
+  const selectionChanged = selectedSectionKey.value !== section.sectionKey
+    || selectedItemKey.value !== (item?.itemKey || "");
+  if (selectionChanged) previewPanelRef.value?.finishTextEdit();
   const sectionChanged = selectedSectionKey.value && selectedSectionKey.value !== section.sectionKey;
   selectedSectionKey.value = section.sectionKey;
   selectedItemKey.value = item?.itemKey || "";
@@ -698,6 +701,14 @@ function toggleMultiItem(section, item) {
 
 function clearMultiSelection() {
   selectedItemKeys.value = selectedItem.value?.itemKey ? [selectedItem.value.itemKey] : [];
+  multiLayoutSuggestion.value = null;
+  multiLayoutError.value = "";
+}
+
+function clearEditorSelection() {
+  selectedItemKey.value = "";
+  selectedItemKeys.value = [];
+  expandedComponentKey.value = "";
   multiLayoutSuggestion.value = null;
   multiLayoutError.value = "";
 }
@@ -2411,6 +2422,7 @@ onBeforeUnmount(() => {
         @save-admin-layout="(activate) => saveAdminLayout({ activate })"
         @save-ai-document="saveAiDocument"
         @open-output="openOutput"
+        @clear-selection="clearEditorSelection"
         @select-item="selectRendererItem"
         @update-item-style="updateItemStyle"
         @update-renderer-item-style="updateRendererItemStyle"
