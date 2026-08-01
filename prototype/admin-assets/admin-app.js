@@ -7848,7 +7848,7 @@ var Yh = {
 			if (!n) return e;
 			let r = Number(n[1]), i = (e) => Number(e.toFixed(4));
 			if (t === "rem") return `${i(r / 16)}rem`;
-			let a = r <= 20 ? Math.max(14, r * .875) : r * .75, o = r * 1.125, s = (o - a) / 1065 * 100, c = a - s * 375 / 100;
+			let a = r <= 20 ? Math.min(r, Math.max(10, r * .875)) : r * .75, o = r * 1.125, s = (o - a) / 1065 * 100, c = a - s * 375 / 100;
 			return `clamp(${i(a / 16)}rem, calc(${i(c / 16)}rem + ${i(s)}vw), ${i(o / 16)}rem)`;
 		},
 		convertFontSize(e, t) {
@@ -8198,12 +8198,12 @@ function v_(e, t, n, r, i, a) {
 							void 0,
 							{ trim: !0 }
 						]])]),
-						H("label", bg, [t[42] ||= H("span", null, "값 유형", -1), I(H("select", { "onUpdate:modelValue": t[13] ||= (e) => i.tokenForm.valueType = e }, [...t[41] ||= [Bs("<option value=\"length\" data-v-e8497526>length</option><option value=\"color\" data-v-e8497526>color</option><option value=\"number\" data-v-e8497526>number</option><option value=\"gradient\" data-v-e8497526>gradient</option><option value=\"shadow\" data-v-e8497526>shadow</option><option value=\"font\" data-v-e8497526>font</option>", 6)]], 512), [[uu, i.tokenForm.valueType]])]),
+						H("label", bg, [t[42] ||= H("span", null, "값 유형", -1), I(H("select", { "onUpdate:modelValue": t[13] ||= (e) => i.tokenForm.valueType = e }, [...t[41] ||= [Bs("<option value=\"length\" data-v-4ec3e48c>length</option><option value=\"color\" data-v-4ec3e48c>color</option><option value=\"number\" data-v-4ec3e48c>number</option><option value=\"gradient\" data-v-4ec3e48c>gradient</option><option value=\"shadow\" data-v-4ec3e48c>shadow</option><option value=\"font\" data-v-4ec3e48c>font</option>", 6)]], 512), [[uu, i.tokenForm.valueType]])]),
 						H("label", xg, [t[43] ||= H("span", null, "CSS 속성", -1), I(H("select", { "onUpdate:modelValue": t[14] ||= (e) => i.tokenForm.cssProperty = e }, [(B(!0), V(R, null, ka(i.tokenCssProperties, (e) => (B(), V("option", {
 							key: e,
 							value: e
 						}, M(e), 9, Sg))), 128))], 512), [[uu, i.tokenForm.cssProperty]])]),
-						H("label", Cg, [t[45] ||= H("span", null, "권장 단위", -1), I(H("select", { "onUpdate:modelValue": t[15] ||= (e) => i.tokenForm.unit = e }, [...t[44] ||= [Bs("<option value=\"rem\" data-v-e8497526>rem</option><option value=\"responsive\" data-v-e8497526>clamp / calc</option><option value=\"vw\" data-v-e8497526>vw</option><option value=\"vh\" data-v-e8497526>vh</option><option value=\"px\" data-v-e8497526>px</option><option value=\"\" data-v-e8497526>해당 없음</option>", 6)]], 512), [[uu, i.tokenForm.unit]])]),
+						H("label", Cg, [t[45] ||= H("span", null, "권장 단위", -1), I(H("select", { "onUpdate:modelValue": t[15] ||= (e) => i.tokenForm.unit = e }, [...t[44] ||= [Bs("<option value=\"rem\" data-v-4ec3e48c>rem</option><option value=\"responsive\" data-v-4ec3e48c>clamp / calc</option><option value=\"vw\" data-v-4ec3e48c>vw</option><option value=\"vh\" data-v-4ec3e48c>vh</option><option value=\"px\" data-v-4ec3e48c>px</option><option value=\"\" data-v-4ec3e48c>해당 없음</option>", 6)]], 512), [[uu, i.tokenForm.unit]])]),
 						H("label", wg, [H("span", null, M(a.isDarkOnlySet ? "Dark (Default) 값" : "Light 값"), 1), I(H("input", {
 							"onUpdate:modelValue": t[16] ||= (e) => i.tokenForm.valueLight = e,
 							required: "",
@@ -8420,7 +8420,7 @@ function v_(e, t, n, r, i, a) {
 		])
 	]);
 }
-var y_ = /*#__PURE__*/ Ch(Yh, [["render", v_], ["__scopeId", "data-v-e8497526"]]);
+var y_ = /*#__PURE__*/ Ch(Yh, [["render", v_], ["__scopeId", "data-v-4ec3e48c"]]);
 Object.freeze({
 	active: 0,
 	validated: 1,
@@ -11095,7 +11095,7 @@ var sv = /*#__PURE__*/ Ch(z_, [["render", ov], ["__scopeId", "data-v-d128f75e"]]
 				if (!this.itemComponentsLoading) {
 					this.itemComponentsLoading = !0, this.itemComponentsError = "";
 					try {
-						let e = await fetch("/api/item-components?includeArchived=true"), t = await e.json().catch(() => ({}));
+						let e = await fetch("/api/item-components"), t = await e.json().catch(() => ({}));
 						if (!e.ok) throw Error(t.message || t.error || `컴포넌트 목록 요청 오류(${e.status})`);
 						this.itemComponents = Array.isArray(t.components) ? t.components : [], this.itemComponents.some((e) => e.id === this.selectedItemComponentId) ? this.selectedItemComponentId && this.loadItemComponentUsage(this.selectedItemComponentId) : (this.selectedItemComponentId = this.itemComponents[0]?.id || "", this.itemComponents[0] && this.selectItemComponent(this.itemComponents[0]));
 					} catch (e) {

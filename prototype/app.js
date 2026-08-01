@@ -2232,7 +2232,7 @@ const adminApp = createApp({
       this.itemComponentsLoading = true;
       this.itemComponentsError = "";
       try {
-        const response = await fetch("/api/item-components?includeArchived=true");
+        const response = await fetch("/api/item-components");
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `컴포넌트 목록 요청 오류(${response.status})`);
         this.itemComponents = Array.isArray(result.components) ? result.components : [];

@@ -298,7 +298,7 @@ export default {
       const px = Number(match[1]);
       const round = (number) => Number(number.toFixed(4));
       if (mode === "rem") return `${round(px / 16)}rem`;
-      const minPx = px <= 20 ? Math.max(14, px * 0.875) : px * 0.75;
+      const minPx = px <= 20 ? Math.min(px, Math.max(10, px * 0.875)) : px * 0.75;
       const maxPx = px * 1.125;
       const slope = ((maxPx - minPx) / (1440 - 375)) * 100;
       const interceptPx = minPx - (slope * 375) / 100;
@@ -766,8 +766,13 @@ export default {
 .template-choice { display: grid; grid-template-columns: auto 1fr; gap: var(--app-space-2); align-items: start; }
 .template-choice > small { grid-column: 2; color: var(--app-warning-ink, var(--app-muted)); }
 .template-choice.disabled { opacity: .64; }
+@media (max-width: 1439px) {
+  .design-token-grid { grid-template-columns: minmax(12rem, .55fr) minmax(30rem, 2fr); }
+  .design-token-inspector { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(18rem, 1fr) minmax(18rem, 1fr); align-items: start; }
+}
 @media (max-width: 1023px) {
   .design-token-grid, .design-token-create, .design-token-table-toolbar { grid-template-columns: 1fr; }
   .design-token-column { max-height: none; }
+  .design-token-inspector { display: flex; grid-column: auto; }
 }
 </style>

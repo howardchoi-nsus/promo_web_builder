@@ -130,6 +130,7 @@ const componentArchiveApi = fs.readFileSync(path.join(root, "api/item-component-
 assert.match(adminApp, /loadItemComponentUsage/);
 assert.match(adminApp, /archiveItemComponent/);
 assert.match(adminApp, /\/api\/item-component-archive/);
+assert.doesNotMatch(adminApp, /item-components\?includeArchived=true/);
 assert.match(componentHtml, /컴포넌트 보관/);
 assert.match(componentHtml, /itemComponentUsage\.usageCount > 0/);
 assert.match(componentUsageApi, /section\.status in \('draft', 'active'\)/);
