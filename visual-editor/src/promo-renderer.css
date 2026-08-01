@@ -8,6 +8,8 @@
 .promo-renderer .rendered-items { position: relative; width: 100%; height: 100%; min-height: 0; }
 .promo-renderer .rendered-item { position: absolute; width: fit-content; min-width: 0; will-change: left, top; transition: color var(--promo-transition-duration, 200ms) var(--promo-transition-ease, ease) var(--promo-transition-delay, 0ms), background-color var(--promo-transition-duration, 200ms) var(--promo-transition-ease, ease) var(--promo-transition-delay, 0ms), border-color var(--promo-transition-duration, 200ms) var(--promo-transition-ease, ease) var(--promo-transition-delay, 0ms), transform var(--promo-transition-duration, 200ms) var(--promo-transition-ease, ease) var(--promo-transition-delay, 0ms); }
 .promo-renderer .rendered-item.is-editable { cursor: grab; touch-action: none; }
+.promo-renderer .rendered-item.is-editable:not(.is-editing) .rendered-text,
+.promo-renderer .rendered-item.is-editable:not(.is-editing) .rendered-empty { cursor: text; user-select: none; }
 .promo-renderer .rendered-item.is-editable:hover { outline: 1px dashed color-mix(in srgb, var(--promo-accent) 72%, transparent); outline-offset: 4px; }
 .promo-renderer .rendered-item.is-selected { outline: 2px solid var(--promo-accent); outline-offset: 0; }
 .promo-renderer.is-editor-preview .rendered-item.is-hidden-in-output { outline: 1px dashed color-mix(in srgb, var(--promo-muted-ink, var(--promo-ink)) 72%, transparent); outline-offset: 4px; }
@@ -32,7 +34,7 @@
 .promo-renderer .rendered-component-field { min-width: 0; }
 .promo-renderer .rendered-component-image-frame { width: 100%; min-height: 0; }
 .promo-renderer .rendered-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--item-font-size, clamp(16px, 2vw, 22px)); line-height: 1.45; }
-.promo-renderer ul.rendered-text, .promo-renderer ol.rendered-text { padding-inline-start: 1.35em; white-space: normal; }
+.promo-renderer ul.rendered-text, .promo-renderer ol.rendered-text { padding-inline-start: var(--item-list-padding, 1.35em); white-space: normal; }
 .promo-renderer .rendered-text__content { box-decoration-break: clone; -webkit-box-decoration-break: clone; background-color: var(--item-text-background, transparent); }
 .promo-renderer .rendered-item.has-text-gradient .rendered-text__content { background-image: var(--item-text-gradient); background-clip: text; -webkit-background-clip: text; color: transparent; -webkit-text-fill-color: transparent; }
 .promo-renderer .rendered-text--title { font-size: var(--item-font-size, var(--promo-title-size, clamp(28px, 5vw, 72px))); }

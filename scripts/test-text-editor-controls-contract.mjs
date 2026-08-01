@@ -28,12 +28,15 @@ assert.match(textControls, /fa-italic/);
 assert.match(textControls, /fa-highlighter/);
 assert.match(textControls, /fa-list-ul/);
 assert.match(textControls, /fa-list-ol/);
+assert.match(textControls, /fa-outdent/);
+assert.match(textControls, /fa-indent/);
 assert.match(textControls, /fontFamilyToken/);
 assert.match(textControls, /fontWeightToken/);
 assert.match(textControls, /textStyleToken/);
 assert.match(textControls, /textGradientToken/);
 assert.match(textControls, /textBackgroundToken/);
 assert.match(textControls, /listType/);
+assert.match(textControls, /changeListIndent/);
 assert.match(textControls, /lineHeightToken/);
 assert.match(textControls, /letterSpacingToken/);
 assert.match(textControls, /horizontalAnchor/);
@@ -43,8 +46,9 @@ assert.match(app, /RESPONSIVE_ITEM_STYLE_PATCH/);
 assert.match(commands, /RESPONSIVE_ITEM_STYLE_PATCH/);
 assert.match(renderer, /positionMode === "anchored"/);
 assert.match(renderer, /scaleFont:\s*false/);
-assert.match(renderer, /heightMode === "auto"/);
+assert.match(renderer, /usesAutomaticComponentHeight/);
 assert.match(renderer, /textListItems/);
+assert.match(renderer, /--item-list-padding/);
 assert.match(renderer, /has-text-gradient/);
 assert.match(rendererCss, /--item-text-background/);
 assert.match(rendererCss, /background-clip:\s*text/);
@@ -52,6 +56,7 @@ assert.match(rendererCss, /\.is-outline-mode \.rendered-item/);
 assert.match(apiLayoutStore, /"textGradientToken"/);
 assert.match(apiLayoutStore, /"textBackgroundToken"/);
 assert.match(apiLayoutStore, /"listType"/);
+assert.match(apiLayoutStore, /INVALID_LIST_INDENT/);
 
 const valid = validateLayoutSpec({
   itemStyles: {
@@ -69,6 +74,7 @@ const valid = validateLayoutSpec({
       textGradientToken: "--app-theme-toggle-gradient",
       textBackgroundToken: "--app-accent-soft",
       listType: "bullet",
+      listIndent: 2,
       textAlign: "center",
     },
   },
@@ -105,5 +111,11 @@ const invalidList = validateLayoutSpec({
 });
 assert.equal(invalidList.ok, false);
 assert(invalidList.errors.some((entry) => entry.path.endsWith("listType")));
+
+const invalidListIndent = validateLayoutSpec({
+  itemStyles: { "hero.title": { listType: "bullet", listIndent: 7 } },
+});
+assert.equal(invalidListIndent.ok, false);
+assert(invalidListIndent.errors.some((entry) => entry.path.endsWith("listIndent")));
 
 console.log("Text editor controls, outline, auto-size, and section anchor contract tests passed.");

@@ -110,6 +110,11 @@ export function validateLayoutSpec(value = {}) {
     if (style?.listType !== undefined && !["bullet", "number"].includes(style.listType)) {
       errors.push({ path: `${path}.listType`, message: "Unsupported text list type." });
     }
+    const listIndent = Number(style?.listIndent);
+    if (style?.listIndent !== undefined
+      && (!Number.isInteger(listIndent) || listIndent < 0 || listIndent > 6)) {
+      errors.push({ path: `${path}.listIndent`, message: "List indent must be an integer between 0 and 6." });
+    }
     for (const offsetProperty of ["offsetX", "offsetY"]) {
       const offset = Number(style?.[offsetProperty]);
       if (style?.[offsetProperty] !== undefined

@@ -184,6 +184,16 @@ assert.match(renderer, /if \(moved && rect\) \{[\s\S]*emit\("update-item-style"/
 assert.match(renderer, /const itemRect = target\.getBoundingClientRect\(\);[\s\S]*target\.style\.transform = "none"/);
 assert.match(app, /function updateRendererContent\(section, item, value, field = null\)/);
 assert.match(renderer, /startTextEdit/);
+assert.match(renderer, /function handleTextClick\(event, section, item, field = null\)/);
+assert.match(renderer, /if \(event\.detail >= 2\) startTextEdit\(event, section, item, field\)/);
+assert.match(renderer, /@click\.stop="handleTextClick\(\$event, section, item/);
+assert.match(renderer, /function startArticleTextEdit\(event, section, item\)/);
+assert.match(renderer, /@dblclick\.capture="startArticleTextEdit\(\$event, section, item\)"/);
+assert.doesNotMatch(renderer, /if \(!container\) return;\s*event\.preventDefault\(\);\s*selectRendererItem\(section, item\)/);
+assert.match(renderer, /if \(Math\.hypot\(deltaX, deltaY\) < DRAG_ACTIVATION_DISTANCE_PX\) return;\s*moveEvent\.preventDefault\(\)/);
+assert.match(renderer, /moveEvent\.preventDefault\(\);\s*target\.setPointerCapture\(moveEvent\.pointerId\)/);
+assert.doesNotMatch(renderer, /selectRendererItem\(section, item\);\s*target\.setPointerCapture\(event\.pointerId\)/);
+assert.match(rendererStyles, /is-editable:not\(\.is-editing\) \.rendered-text[^}]*user-select:\s*none/);
 assert.match(renderer, /startSectionResize/);
 assert.match(renderer, /const resizeHandle = event\.currentTarget/);
 assert.doesNotMatch(renderer, /event\.currentTarget\.removeEventListener/);

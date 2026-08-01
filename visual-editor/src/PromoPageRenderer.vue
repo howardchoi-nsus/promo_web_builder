@@ -528,6 +528,7 @@ function inlineItemStyle(section, item) {
     "--item-font-weight": style.fontWeightToken ? `var(${style.fontWeightToken})` : style.fontWeight,
     "--item-text-gradient": style.textGradientToken ? `var(${style.textGradientToken})` : undefined,
     "--item-text-background": style.textBackgroundToken ? `var(${style.textBackgroundToken})` : style.textBackground,
+    "--item-list-padding": `${1.35 + (clamp(style.listIndent, 0, 6, 0) * 1.5)}em`,
     lineHeight: style.lineHeightToken ? `var(${style.lineHeightToken})` : style.lineHeight,
     letterSpacing: style.letterSpacingToken ? `var(${style.letterSpacingToken})` : style.letterSpacing,
     fontStyle: style.fontStyle,
@@ -574,9 +575,7 @@ function startDrag(event, section, item) {
   const target = event.currentTarget;
   const container = target.closest(".rendered-items");
   if (!container) return;
-  event.preventDefault();
   selectRendererItem(section, item);
-  target.setPointerCapture(event.pointerId);
 
   const startX = event.clientX;
   const startY = event.clientY;
@@ -593,6 +592,8 @@ function startDrag(event, section, item) {
     const deltaY = moveEvent.clientY - startY;
     if (!moved) {
       if (Math.hypot(deltaX, deltaY) < DRAG_ACTIVATION_DISTANCE_PX) return;
+      moveEvent.preventDefault();
+      target.setPointerCapture(moveEvent.pointerId);
       rect = container.getBoundingClientRect();
       const itemRect = target.getBoundingClientRect();
       startLeft = itemRect.left - rect.left;
@@ -831,13 +832,13 @@ function resizeItemByKeyboard(event, section, item, handleDirection = "se") {
   });
 }
 
-function startTextEdit(event, section, item, field = null) {
+function startTextEdit(event, section, item, field = null, explicitTextNode = null) {
   if (!props.editable || item.isLocked) return;
-  const textNode = event.currentTarget;
+  const textNode = explicitTextNode || event.currentTarget;
   const article = textNode.closest(".rendered-item");
   if (!article) return;
   const textTarget = field || item;
-  if (textTarget.fieldKind !== "text" || textTarget.isLocked) return;
+  if (textTarget.isLocked) return;
   event.preventDefault();
   event.stopPropagation();
   selectRendererItem(section, item);
@@ -881,6 +882,26 @@ function startTextEdit(event, section, item, field = null) {
   };
   textNode.addEventListener("blur", finish);
   textNode.addEventListener("keydown", onKeydown);
+}
+
+function handleTextClick(event, section, item, field = null) {
+  selectRendererItem(section, item, event);
+  if (event.detail >= 2) startTextEdit(event, section, item, field);
+}
+
+function startArticleTextEdit(event, section, item) {
+  if (!props.editable || item.isLocked) return;
+  const article = event.currentTarget;
+  const eventTextNode = event.target.closest?.(".rendered-text, .rendered-empty");
+  const textNode = eventTextNode && article.contains(eventTextNode)
+    ? eventTextNode
+    : article.querySelector(".rendered-text, .rendered-empty");
+  if (!textNode) return;
+  const fieldKey = textNode.dataset.fieldKey;
+  const field = fieldKey
+    ? componentFields(item).find((entry) => entry.fieldKey === fieldKey) || null
+    : null;
+  startTextEdit(event, section, item, field, textNode);
 }
 
 function startSectionResize(event, section) {
@@ -1009,6 +1030,7 @@ function startSectionResize(event, section) {
             :data-motion-target="itemMotionBinding(section, item, itemIndex)?.trigger === 'viewport-enter' ? `item:${styleKey(section, item)}` : null"
             :style="{ ...inlineItemStyle(section, item), ...itemMotionStyle(section, item, itemIndex) }"
             @click.stop="selectRendererItem(section, item, $event)"
+            @dblclick.capture="startArticleTextEdit($event, section, item)"
             @pointerdown="startDrag($event, section, item)"
           >
             <span
@@ -1069,6 +1091,7 @@ function startSectionResize(event, section) {
                   }"
                   :style="fieldStyle(section, item, field)"
                   :data-field-key="field.fieldKey"
+                  @click.stop="handleTextClick($event, section, item, field)"
                   @dblclick.stop="startTextEdit($event, section, item, field)"
                 >
                   <li v-for="(line, index) in textListItems(valueFor(section, item, field))" :key="`${field.fieldKey}-${index}`">
@@ -1084,6 +1107,7 @@ function startSectionResize(event, section) {
                   }"
                   :style="fieldStyle(section, item, field)"
                   :data-field-key="field.fieldKey"
+                  @click.stop="handleTextClick($event, section, item, field)"
                   @dblclick.stop="startTextEdit($event, section, item, field)"
                 ><span class="rendered-text__content">{{ valueFor(section, item, field) }}</span></p>
                 <p
@@ -1091,6 +1115,7 @@ function startSectionResize(event, section) {
                   class="rendered-empty rendered-component-field"
                   :class="{ 'is-hidden-in-output': editable && !isFieldVisible(section, item, field) }"
                   :data-field-key="field.fieldKey"
+                  @click.stop="handleTextClick($event, section, item, field)"
                   @dblclick.stop="startTextEdit($event, section, item, field)"
                 >{{ textFieldDescription(item, field) }}</p>
               </template>
@@ -1153,6 +1178,7 @@ function startSectionResize(event, section) {
                 v-if="hasContent(valueFor(section, item)) && itemStyle(section, item).listType"
                 class="rendered-text"
                 :class="{ 'rendered-text--title': item.textType === 'title' }"
+                @click.stop="handleTextClick($event, section, item)"
                 @dblclick.stop="startTextEdit($event, section, item)"
               >
                 <li v-for="(line, index) in textListItems(valueFor(section, item))" :key="`${item.itemKey}-${index}`">
@@ -1163,9 +1189,15 @@ function startSectionResize(event, section) {
                 v-else-if="hasContent(valueFor(section, item))"
                 class="rendered-text"
                 :class="{ 'rendered-text--title': item.textType === 'title' }"
+                @click.stop="handleTextClick($event, section, item)"
                 @dblclick.stop="startTextEdit($event, section, item)"
               ><span class="rendered-text__content">{{ valueFor(section, item) }}</span></p>
-              <p v-else class="rendered-empty" @dblclick.stop="startTextEdit($event, section, item)">{{ textFieldDescription(item) }}</p>
+              <p
+                v-else
+                class="rendered-empty"
+                @click.stop="handleTextClick($event, section, item)"
+                @dblclick.stop="startTextEdit($event, section, item)"
+              >{{ textFieldDescription(item) }}</p>
             </template>
             <template
               v-if="editable && showGuides && !item.isLocked

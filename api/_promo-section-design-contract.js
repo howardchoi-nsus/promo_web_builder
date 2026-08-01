@@ -16,7 +16,7 @@ const SECTION_STYLE_KEYS = new Set([
 const ITEM_STYLE_KEYS = new Set([
   "color", "fontSize", "fontWeight", "textAlign", "positionMode", "xPct", "yPx", "zIndex",
   "colorToken", "fontFamilyToken", "fontSizeToken", "fontWeightToken", "lineHeightToken",
-  "letterSpacingToken", "textStyleToken", "textGradientToken", "textBackgroundToken", "listType",
+  "letterSpacingToken", "textStyleToken", "textGradientToken", "textBackgroundToken", "listType", "listIndent",
   "widthPct", "heightPx", "aspectRatio", "aspectRatioLocked", "imageFit", "imagePosition",
   "shape", "borderRadiusToken", "decorative", "accessibleLabel",
 ]);
@@ -269,6 +269,10 @@ function validatePatch(section, generated, constraints) {
     if (style?.heightPx !== undefined
       && (!Number.isFinite(Number(style.heightPx)) || Number(style.heightPx) < minimumHeightPx || Number(style.heightPx) > 900)) {
       errors.push(`Unsupported image height: ${style.heightPx}`);
+    }
+    if (style?.listIndent !== undefined
+      && (!Number.isInteger(Number(style.listIndent)) || Number(style.listIndent) < 0 || Number(style.listIndent) > 6)) {
+      errors.push(`Unsupported list indent: ${style.listIndent}`);
     }
     if (style?.imageFit !== undefined && !["contain", "cover"].includes(style.imageFit)) {
       errors.push(`Unsupported image fit: ${style.imageFit}`);

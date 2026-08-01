@@ -93,7 +93,18 @@ function applyTextFill(type, tokenKey) {
 }
 
 function toggleList(type) {
-  emit("patch-style", { listType: props.itemStyle.listType === type ? undefined : type });
+  const removing = props.itemStyle.listType === type;
+  emit("patch-style", {
+    listType: removing ? undefined : type,
+    ...(removing ? { listIndent: undefined } : {}),
+  });
+}
+
+function changeListIndent(delta) {
+  if (!props.itemStyle.listType) return;
+  const current = Math.max(0, Math.min(6, Number(props.itemStyle.listIndent) || 0));
+  const next = Math.max(0, Math.min(6, current + delta));
+  emit("patch-style", { listIndent: next || undefined });
 }
 </script>
 
@@ -242,6 +253,20 @@ function toggleList(type) {
           aria-label="넘버 리스트"
           @click="toggleList('number')"
         ><i class="fa-solid fa-list-ol" aria-hidden="true"></i></button>
+        <button
+          type="button"
+          :disabled="!itemStyle.listType || !(Number(itemStyle.listIndent) > 0)"
+          title="내어쓰기"
+          aria-label="내어쓰기"
+          @click="changeListIndent(-1)"
+        ><i class="fa-solid fa-outdent" aria-hidden="true"></i></button>
+        <button
+          type="button"
+          :disabled="!itemStyle.listType || Number(itemStyle.listIndent || 0) >= 6"
+          title="들여쓰기"
+          aria-label="들여쓰기"
+          @click="changeListIndent(1)"
+        ><i class="fa-solid fa-indent" aria-hidden="true"></i></button>
       </div>
 
       <details class="text-editor-more">

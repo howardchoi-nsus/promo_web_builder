@@ -136,6 +136,11 @@ function validateLayoutSpec(value, sections = []) {
         errors.push({ code, path: `${path}.${property}` });
       }
     });
+    const listIndent = Number(style?.listIndent);
+    if (style?.listIndent !== undefined
+      && (!Number.isInteger(listIndent) || listIndent < 0 || listIndent > 6)) {
+      errors.push({ code: "INVALID_LIST_INDENT", path: `${path}.listIndent` });
+    }
     for (const offsetProperty of ["offsetX", "offsetY"]) {
       const offset = Number(style?.[offsetProperty]);
       if (style?.[offsetProperty] !== undefined
