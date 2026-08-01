@@ -433,60 +433,14 @@ try {
     await editorFrame.locator(".preview-stage").evaluate((node) => node.scrollTop) < previewScrollRange / 2,
     "Selecting a Section must scroll the Preview stage to that Section",
   );
-  assert.equal(await editorFrame.locator(".section-properties .section-ai-action").count(), 2, "Layout and background AI actions must live inside Section properties");
   assert.equal(
-    await editorFrame.locator(".section-ai-action:not([disabled])").count(),
-    2,
-    "Applied AI composition content must enable the Section AI actions"
+    await editorFrame.locator(".section-properties .section-ai-action").count(),
+    0,
+    "Section properties must not expose layout or key visual generation actions",
   );
+  assert.equal(await editorFrame.locator(".key-visual-text-policy").count(), 0, "Generation-only key visual inputs must not remain in Section properties");
   await editorFrame.getByRole("button", { name: "자동등록" }).click();
   await editorFrame.locator(".auto-register-message").waitFor({ timeout: 10_000 });
-  sectionAiRunResponseDelayMs = 300;
-  await editorFrame.getByRole("button", { name: "AI 키비주얼 생성", exact: true }).click();
-  await editorFrame.locator('[data-section-key="heroBanner"] .section-ai-state.is-processing').waitFor({ timeout: 2_000 });
-  sectionAiRunResponseDelayMs = 0;
-  for (let attempt = 0; attempt < 50 && !sectionAiRunRequest; attempt += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 20));
-  }
-  assert.equal(sectionAiRunRequest?.promoRunId, null);
-  assert.equal(sectionAiRunRequest?.formTemplateId, "visual-editor-preview-template");
-  assert.equal(sectionAiRunRequest?.sectionKey, "heroBanner");
-  assert.equal(sectionAiRunRequest?.targetType, "section-background");
-  assert.equal(sectionAiRunRequest?.sectionInputs?.title, "Browser Smoke Promotion");
-  assert.equal(sectionAiRunRequest?.keyVisualTextMode, "none");
-  assert.equal(sectionAiRunRequest?.keyVisualText, "");
-  assert.ok(sectionAiRunRequest?.generationRequestId);
-  const firstBackgroundGenerationRequestId = sectionAiRunRequest.generationRequestId;
-  let backgroundAppliedContent = null;
-  for (let attempt = 0; attempt < 100; attempt += 1) {
-    backgroundAppliedContent = await page.evaluate(() => JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null"));
-    if (backgroundAppliedContent?.sectionDesignRuns?.heroBanner?.status === "applied") break;
-    await new Promise((resolve) => setTimeout(resolve, 20));
-  }
-  assert.equal(backgroundAppliedContent?.sectionDesignRuns?.heroBanner?.status, "applied", "Ready Section background must apply automatically");
-
-  page.once("dialog", (dialog) => dialog.accept());
-  await editorFrame.locator(".section-ai-remove").click();
-  await page.waitForFunction(() => {
-    const content = JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null");
-    return !content?.sectionDesignRuns?.heroBanner;
-  });
-  sectionAiRunRequest = null;
-  await editorFrame.locator(".key-visual-text-policy select").selectOption("explicit");
-  await editorFrame.locator(".key-visual-text-policy input").fill("SUMMER DROP");
-  await editorFrame.getByRole("button", { name: "AI 키비주얼 생성", exact: true }).click();
-  for (let attempt = 0; attempt < 50 && !sectionAiRunRequest; attempt += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 20));
-  }
-  assert.ok(sectionAiRunRequest?.generationRequestId);
-  assert.equal(sectionAiRunRequest?.keyVisualTextMode, "explicit");
-  assert.equal(sectionAiRunRequest?.keyVisualText, "SUMMER DROP");
-  assert.notEqual(
-    sectionAiRunRequest.generationRequestId,
-    firstBackgroundGenerationRequestId,
-    "Deleting and regenerating a Section background must create a fresh execution",
-  );
-
   sectionAiRunRequest = null;
   await editorFrame.locator(".page-tree__section .page-tree__select").filter({ hasText: "Feature Content" }).click();
   const imageComponentTrigger = editorFrame.locator(".component-property-trigger").filter({ hasText: "프로모션 이미지" });

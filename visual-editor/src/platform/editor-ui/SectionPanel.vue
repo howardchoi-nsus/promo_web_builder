@@ -5,11 +5,8 @@ defineProps({
   sections: { type: Array, default: () => [] },
   selectedSection: { type: Object, default: null },
   selectedSectionStyle: { type: Object, default: () => ({}) },
-  capabilities: { type: Object, required: true },
   sectionContentRegistered: { type: Function, required: true },
-  sectionAiPrimaryAction: { type: Function, required: true },
   sectionHasAiBackground: { type: Function, required: true },
-  sectionAiIsProcessing: { type: Function, required: true },
 });
 
 const emit = defineEmits([
@@ -65,10 +62,7 @@ const emit = defineEmits([
           <SectionProperties
             :section="section"
             :section-style="selectedSectionStyle"
-            :can-run-section-ai="capabilities.canRunSectionAi"
-            :primary-action="sectionAiPrimaryAction(section)"
             :has-ai-background="sectionHasAiBackground(section)"
-            :ai-processing="sectionAiIsProcessing(section)"
             @ai-action="(action, targetItemKey, targetType, options) => emit('section-ai-action', section, action, targetItemKey, targetType, options)"
             @background-alignment="(value) => emit('background-alignment', value)"
             @background-fade="(value) => emit('background-fade', value)"

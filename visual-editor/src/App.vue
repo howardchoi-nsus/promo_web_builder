@@ -1203,15 +1203,6 @@ function sectionAiHasContent(section) {
   });
 }
 
-function sectionAiPrimaryAction(section) {
-  const run = sectionAiRun(section);
-  const matchesBackground = run?.constraintsSnapshot?.imageTarget?.type === "section-background";
-  if (sectionAiIsProcessing(section)) return { action: "generate", label: "키비주얼 생성 중", disabled: true };
-  if (matchesBackground && run?.status === "ready" && !sectionAiIsStale(section)) return { action: "generate", label: "키비주얼 적용 중", disabled: true };
-  if (matchesBackground && run?.status === "applied") return { action: "generate", label: "AI 키비주얼 재생성", disabled: !sectionAiHasContent(section) };
-  return { action: "generate", label: "AI 키비주얼 생성", disabled: !sectionAiHasContent(section) };
-}
-
 function sectionAiAllowedItemKeys(section) {
   return Array.isArray(section?.aiDesign?.imageTargetItemKeys)
     ? section.aiDesign.imageTargetItemKeys
@@ -2338,9 +2329,7 @@ onBeforeUnmount(() => {
         :section-presets="availableSectionPresets"
         :library-loading="editorLibraryLoading"
         :section-content-registered="sectionContentRegistered"
-        :section-ai-primary-action="sectionAiPrimaryAction"
         :section-has-ai-background="sectionHasAiBackground"
-        :section-ai-is-processing="sectionAiIsProcessing"
         :section-motion="selectedSectionMotion"
         @select-section="selectSection"
         @toggle-section-expansion="toggleSectionExpansion"
