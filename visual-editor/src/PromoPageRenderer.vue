@@ -38,14 +38,27 @@ let motionObserver = null;
 let itemResizeObserver = null;
 let activeDragCleanup = null;
 let activeResizeCleanup = null;
+let activeInteractionKind = "idle";
+let measurementFrame = 0;
+let rendererUnmounted = false;
+const observedMeasureElements = new Set();
 const resizeAnnouncement = ref("");
 
 function syncMeasuredItemHeights() {
-  if (!rendererRoot.value) return;
+  if (!rendererRoot.value || activeInteractionKind !== "idle") return;
+  const measurableElements = new Set(
+    rendererRoot.value.querySelectorAll('[data-auto-height-measure="true"]'),
+  );
+  observedMeasureElements.forEach((element) => {
+    if (measurableElements.has(element)) return;
+    itemResizeObserver?.unobserve(element);
+    observedMeasureElements.delete(element);
+  });
   const next = { ...measuredItemHeights.value };
   let changed = false;
-  rendererRoot.value.querySelectorAll(".rendered-item[data-style-key]").forEach((element) => {
+  measurableElements.forEach((element) => {
     itemResizeObserver?.observe(element);
+    observedMeasureElements.add(element);
     const key = element.dataset.styleKey;
     const height = element.getBoundingClientRect().height;
     if (!key || !Number.isFinite(height) || height <= 0) return;
@@ -56,17 +69,39 @@ function syncMeasuredItemHeights() {
   if (changed) measuredItemHeights.value = next;
 }
 
+function scheduleMeasuredItemHeightSync() {
+  if (rendererUnmounted) return;
+  if (measurementFrame) cancelAnimationFrame(measurementFrame);
+  nextTick(() => {
+    if (rendererUnmounted) return;
+    measurementFrame = requestAnimationFrame(() => {
+      measurementFrame = 0;
+      syncMeasuredItemHeights();
+    });
+  });
+}
+
+function beginInteraction(kind) {
+  activeInteractionKind = kind;
+}
+
+function endInteraction(kind) {
+  if (activeInteractionKind !== kind) return;
+  activeInteractionKind = "idle";
+  scheduleMeasuredItemHeightSync();
+}
+
 function updateViewportWidth() {
   viewportWidth.value = globalThis.innerWidth || 1280;
 }
 onMounted(async () => {
+  rendererUnmounted = false;
   globalThis.addEventListener("resize", updateViewportWidth);
   await nextTick();
-  syncMeasuredItemHeights();
   if (typeof ResizeObserver !== "undefined") {
     itemResizeObserver = new ResizeObserver(syncMeasuredItemHeights);
-    rendererRoot.value?.querySelectorAll(".rendered-item[data-style-key]").forEach((element) => itemResizeObserver.observe(element));
   }
+  syncMeasuredItemHeights();
   if (props.editable || typeof IntersectionObserver === "undefined") return;
   motionObserver = new IntersectionObserver((entries) => {
     const next = new Set(activeMotionTargets.value);
@@ -80,11 +115,15 @@ onMounted(async () => {
   rendererRoot.value?.querySelectorAll("[data-motion-target]").forEach((element) => motionObserver.observe(element));
 });
 onBeforeUnmount(() => {
+  rendererUnmounted = true;
   globalThis.removeEventListener("resize", updateViewportWidth);
   activeDragCleanup?.();
   activeDragCleanup = null;
   activeResizeCleanup?.();
   activeResizeCleanup = null;
+  if (measurementFrame) cancelAnimationFrame(measurementFrame);
+  measurementFrame = 0;
+  observedMeasureElements.clear();
   itemResizeObserver?.disconnect();
   motionObserver?.disconnect();
 });
@@ -454,8 +493,11 @@ function estimatedItemHeight(item) {
 }
 
 function renderedItemHeight(section, item) {
-  if (item.fieldKind === "image") return estimatedItemHeight(item);
-  return measuredItemHeights.value[styleKey(section, item)] || estimatedItemHeight(item);
+  const style = itemStyle(section, item);
+  if (item.fieldKind === "text" && usesAutomaticComponentHeight(item, style)) {
+    return measuredItemHeights.value[styleKey(section, item)] || estimatedItemHeight(item);
+  }
+  return estimatedItemHeight(item);
 }
 
 function defaultSectionHeight(section) {
@@ -709,6 +751,10 @@ function handleCtaClick(event) {
   if (props.editable) event.preventDefault();
 }
 
+function handleCtaDragStart(event) {
+  if (props.editable) event.preventDefault();
+}
+
 function startDrag(event, section, item) {
   if (!props.editable || item.isLocked || event.button !== 0
     || event.ctrlKey || event.metaKey || event.shiftKey
@@ -759,6 +805,7 @@ function startDrag(event, section, item) {
       target.style.left = `${startLeft}px`;
       target.style.top = `${startTop}px`;
       target.classList.add("is-dragging");
+      beginInteraction("component-drag");
       moved = true;
     }
     const horizontalLimit = rect.width - target.offsetWidth;
@@ -803,6 +850,7 @@ function startDrag(event, section, item) {
     document.removeEventListener("visibilitychange", handleVisibilityChange);
     target.removeEventListener("lostpointercapture", end);
     if (activeDragCleanup === end) activeDragCleanup = null;
+    if (moved) endInteraction("component-drag");
   };
   activeDragCleanup = end;
   globalThis.addEventListener("pointermove", move, { passive: false });
@@ -820,7 +868,7 @@ function startItemResize(event, section, item, handleDirection = "se") {
   const handle = event.currentTarget;
   const target = handle.closest(".rendered-item");
   const container = target?.closest(".rendered-items");
-  if (!target || !container) return;
+  if (!target || !container || target.classList.contains("is-editing")) return;
   event.preventDefault();
   event.stopPropagation();
   selectRendererItem(section, item);
@@ -830,6 +878,7 @@ function startItemResize(event, section, item, handleDirection = "se") {
     return;
   }
   target.classList.add("is-resizing");
+  beginInteraction("component-resize");
 
   const containerRect = container.getBoundingClientRect();
   const itemRect = target.getBoundingClientRect();
@@ -965,6 +1014,7 @@ function startItemResize(event, section, item, handleDirection = "se") {
     document.removeEventListener("visibilitychange", handleVisibilityChange);
     handle.removeEventListener("lostpointercapture", handleLostPointerCapture);
     if (activeResizeCleanup === cancelResize) activeResizeCleanup = null;
+    endInteraction("component-resize");
   };
   const handlePointerUp = (upEvent) => {
     if (upEvent.pointerId === event.pointerId) finish(true);
@@ -1130,6 +1180,7 @@ function startTextEdit(event, section, item, field = null, explicitTextNode = nu
   let cancelled = false;
   let finished = false;
 
+  beginInteraction("text-edit");
   article.classList.add("is-editing");
   textNode.classList.remove("rendered-empty");
   textNode.classList.add("rendered-text");
@@ -1179,6 +1230,7 @@ function startTextEdit(event, section, item, field = null, explicitTextNode = nu
     textNode.removeEventListener("keydown", onKeydown);
     document.removeEventListener("selectionchange", emitLineSelection);
     emit("select-text-lines", section, item, null);
+    endInteraction("text-edit");
   };
   const onKeydown = (keyEvent) => {
     if (keyEvent.key === "Escape") {
@@ -1238,6 +1290,7 @@ function startSectionResize(event, section) {
     return;
   }
   sectionNode.classList.add("is-resizing");
+  beginInteraction("section-resize");
   const startY = event.clientY;
   const startHeight = sectionNode.getBoundingClientRect().height;
   const canvasRect = canvasNode?.getBoundingClientRect();
@@ -1294,6 +1347,7 @@ function startSectionResize(event, section) {
     document.removeEventListener("visibilitychange", handleVisibilityChange);
     resizeHandle.removeEventListener("lostpointercapture", finish);
     if (activeResizeCleanup === finish) activeResizeCleanup = null;
+    endInteraction("section-resize");
   };
   const handlePointerEnd = (endEvent) => {
     if (endEvent.pointerId === event.pointerId) finish();
@@ -1378,6 +1432,7 @@ function startSectionResize(event, section) {
             ]"
             :data-item-key="item.itemKey"
             :data-style-key="styleKey(section, item)"
+            :data-auto-height-measure="item.fieldKind === 'text' && usesAutomaticComponentHeight(item, itemStyle(section, item)) ? 'true' : null"
             :data-motion-target="itemMotionBinding(section, item, itemIndex)?.trigger === 'viewport-enter' ? `item:${styleKey(section, item)}` : null"
             :style="{ ...inlineItemStyle(section, item), ...itemMotionStyle(section, item, itemIndex) }"
             @click.stop="selectRendererItem(section, item, $event)"
@@ -1408,7 +1463,9 @@ function startSectionResize(event, section) {
                   :href="ctaUrl(valueFor(section, item, field))"
                   :target="valueFor(section, item, field)?.target || '_self'"
                   :rel="valueFor(section, item, field)?.target === '_blank' ? 'noopener noreferrer' : undefined"
+                  :draggable="editable ? false : undefined"
                   @click="handleCtaClick"
+                  @dragstart="handleCtaDragStart"
                 >{{ valueFor(section, item, field)?.label || field.name }}</a>
                 <div
                   v-else-if="field.fieldKind === 'image'"
@@ -1499,7 +1556,9 @@ function startSectionResize(event, section) {
                 :href="ctaUrl(valueFor(section, item))"
                 :target="valueFor(section, item)?.target || '_self'"
                 :rel="valueFor(section, item)?.target === '_blank' ? 'noopener noreferrer' : undefined"
+                :draggable="editable ? false : undefined"
                 @click="handleCtaClick"
+                @dragstart="handleCtaDragStart"
               >
                 {{ valueFor(section, item)?.label || item.name }}
               </a>

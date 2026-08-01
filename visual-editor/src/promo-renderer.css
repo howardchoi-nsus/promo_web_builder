@@ -18,6 +18,8 @@
 .promo-renderer.is-editor-preview .rendered-component-field.is-hidden-in-output { outline: 1px dashed color-mix(in srgb, var(--promo-muted-ink, var(--promo-ink)) 58%, transparent); outline-offset: 2px; }
 .promo-renderer .output-hidden-badge { position: absolute; z-index: 14; top: 0; right: 0; display: inline-flex; align-items: center; min-height: 20px; padding: 0 6px; border: 1px solid var(--promo-line, currentColor); background: var(--promo-bg); color: var(--promo-muted-ink, var(--promo-ink)); font-size: 10px; font-weight: 800; line-height: 1; pointer-events: none; }
 .promo-renderer .rendered-item.is-dragging { cursor: grabbing; opacity: .86; }
+.promo-renderer .rendered-item.is-dragging,
+.promo-renderer .rendered-item.is-resizing { transition: none !important; }
 .promo-renderer .rendered-item.is-editing { cursor: text; outline: 2px dashed var(--promo-accent); }
 .promo-renderer .rendered-item.is-editing .rendered-text { cursor: text; user-select: text; }
 .promo-renderer .rendered-item.is-free-positioned { margin: 0; }

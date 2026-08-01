@@ -209,12 +209,14 @@ button, a { letter-spacing: 0; }
 .component-property-header { display: flex; align-items: stretch; min-width: 0; }
 .component-multi-select { display: grid !important; width: 34px; place-items: center; border-right: 1px solid var(--app-line); background: var(--app-bg); }
 .component-multi-select input { width: 16px; height: 16px; margin: 0; accent-color: var(--app-accent); }
-.component-property-trigger { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; flex: 1 1 auto; gap: 8px; width: auto; min-width: 0; min-height: 44px; padding: 8px 10px; border: 0; background: var(--app-panel); color: var(--app-ink-soft); cursor: pointer; text-align: left; }
+.component-property-trigger { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; flex: 1 1 auto; gap: 8px; width: auto; min-width: 0; min-height: 44px; padding: 8px 10px; border: 0; background: var(--app-panel); color: var(--app-ink-soft); cursor: pointer; text-align: left; }
 .component-property-trigger span { overflow: hidden; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
 .component-property-trigger small { color: var(--app-muted); font-size: 10px; text-transform: uppercase; }
-.component-property-trigger i { width: 7px; height: 7px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); transition: transform 180ms ease; }
 .component-property-accordion.open .component-property-trigger { background: var(--app-accent-soft); color: var(--app-accent); }
-.component-property-accordion.open .component-property-trigger i { transform: rotate(225deg); }
+.component-property-toggle { display: grid; flex: 0 0 44px; width: 44px; min-height: 44px; padding: 0; place-items: center; border: 0; border-left: 1px solid var(--app-line); background: var(--app-panel); color: var(--app-ink-soft); cursor: pointer; }
+.component-property-toggle i { width: 7px; height: 7px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(45deg); transition: transform 180ms ease; }
+.component-property-accordion.open .component-property-toggle { background: var(--app-accent-soft); color: var(--app-accent); }
+.component-property-accordion.open .component-property-toggle i { transform: rotate(225deg); }
 .component-property-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 180ms ease; }
 .component-property-body > div { min-height: 0; overflow: hidden; }
 .component-property-accordion.open .component-property-body { grid-template-rows: 1fr; }

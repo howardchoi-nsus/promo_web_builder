@@ -218,3 +218,27 @@ Desktop/Mobile 전환 정상, console error/warning 없음
 - 같은 과정에서 Feature Content 섹션 높이 `461.453125px`로 고정
 - 포인터 종료 후 `is-resizing = 0`
 - 브라우저 console warning/error 없음
+
+## 2026-08-01 slow drag flicker·CTA·Text 후속 수정
+
+최종 geometry만 정상이고 drag 중간에 Component가 번쩍이던 현상을 frame 단위로 다시 측정했다. 직접 원인은 모든 `.rendered-item`을 관찰하던 `ResizeObserver`가 임시 px geometry를 측정값으로 기록하고 Vue 재렌더를 일으키던 feedback loop였다. anchored Component의 transform transition도 resize 좌표 전환과 겹쳤다.
+
+수정 내용:
+
+1. observer 대상을 자동 높이 Text로 제한하고 active interaction 중 측정 write를 중단했다.
+2. drag/resize/text edit/section resize session을 명시적으로 분리하고 종료 다음 frame에만 재측정한다.
+3. Image, CTA, 고정 Text를 자동 Section 실측 합산에서 제외했다.
+4. drag/resize 중 Component transition을 제거했다.
+5. CTA native anchor drag를 편집 모드에서 차단했다.
+6. Property Panel 선택과 accordion toggle을 별도 버튼으로 분리했다.
+
+중간 frame 실측:
+
+- Image 확대: `143.75 → 162.75 → 180.75 → 199.75px`
+- Image 축소: `195.72 → 184.72 → 163.72px`
+- 확대·축소 전 frame Section 높이: `461.453125px`
+- CTA 북쪽 resize: `64 → 94px`, Section 높이 `956.921875px` 유지
+- Text 너비 resize: `142.75 → 161.75 → 185.75px` 단조 증가
+- Desktop/Mobile image geometry 분리 유지
+
+남은 검증은 실제 API save/reopen, Undo/Redo command 수, pointercancel/lostpointercapture 자동 E2E다. 핵심 flicker, CTA 이동, Property Panel 선택, Text 편집 해제 경로는 로컬 브라우저에서 통과했다.

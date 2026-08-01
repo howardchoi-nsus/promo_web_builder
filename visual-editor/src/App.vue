@@ -1063,9 +1063,14 @@ async function applySectionComposition() {
   }
 }
 
-function toggleComponent(section, item) {
+function selectComponent(section, item) {
   const key = componentKey(section, item);
-  selectItem(section, item, { preserveMulti: selectedItemKeys.value.includes(item.itemKey) });
+  selectItem(section, item);
+  expandedComponentKey.value = key;
+}
+
+function toggleComponentExpansion(section, item) {
+  const key = componentKey(section, item);
   expandedComponentKey.value = expandedComponentKey.value === key ? "" : key;
 }
 
@@ -2503,10 +2508,18 @@ onBeforeUnmount(() => {
                   type="button"
                   class="component-property-trigger"
                   :aria-expanded="expandedComponentKey === componentKey(selectedSection, item)"
-                  @click="toggleComponent(selectedSection, item)"
+                  @click="selectComponent(selectedSection, item)"
                 >
                   <span>{{ item.name }}</span>
                   <small>{{ item.fieldKind }}</small>
+                </button>
+                <button
+                  type="button"
+                  class="component-property-toggle"
+                  :aria-label="`${item.name} 속성 ${expandedComponentKey === componentKey(selectedSection, item) ? '닫기' : '열기'}`"
+                  :aria-expanded="expandedComponentKey === componentKey(selectedSection, item)"
+                  @click="toggleComponentExpansion(selectedSection, item)"
+                >
                   <i aria-hidden="true"></i>
                 </button>
                 <label
