@@ -1,6 +1,7 @@
 # Promo Web Builder 통합 정책서
 
 - 작성일: 2026-07-23
+- 최종 갱신일: 2026-08-01
 - 대상 프로젝트: `promo_web_builder`
 - 문서 성격: 정책(가드레일·규칙·거버넌스·소유권·경계)을 한 곳으로 취합
 - 강제 수준: **MUST**(반드시) / **MUST NOT**(절대 금지) / **SHOULD**(특별 사유 없으면 준수) / **MAY**(선택)
@@ -10,6 +11,9 @@
   - `계획/component-template-separation-*` (컴포넌트·템플릿, AI patch)
   - `계획/admin-i18n-locale-management-*`, `설계/admin-page-terminology-dictionary-*` (i18n·콘텐츠 경계)
   - `자료/기획-source/ai-design-recommendation-workflow-proposal-*`, `기획/promo-web-builder-product-plan-2026-07-23.md` (브랜드·법무 가드레일, Rule Base)
+  - `계획/live-preview-outline-editor-text-alignment-development-plan-2026-07-31.md` (Live Preview·텍스트 배치)
+  - `계획/visual-editor-structure-ai-design-transition-development-plan-2026-07-31.md` (구조 패널·AI 역할·Motion)
+  - `설계/visual-editor-live-preview-rich-text-design-2026-08-01.md` (현행 Live Preview·라인 편집 계약)
 
 ---
 
@@ -113,6 +117,111 @@
   - **MUST** 서버에서 `[공통 스타일 토큰] + 유형 템플릿 + 검증된 변수 + 네거티브`로만 프롬프트를 조립한다(자유 프롬프트 그대로 전달 금지).
   - **MUST NOT** 실존 인물(예: 앰배서더 실명·실인물)·타사 로고·미성년 묘사를 생성한다.
 
+## 10. Visual Editor Live Preview 정책
+
+### 10.1 Preview 표시 상태
+
+- Preview 표시 상태는 `normal / selection / outline`으로 구분한다.
+- **MUST** Outline을 Editor 전용 진단 상태로 취급한다. Template Layout, Builder Document, Page Output, AI Prompt에는 저장하거나 전달하지 않는다.
+- **MUST** Outline에서 Section·Component 경계와 hidden·locked·empty·selected 상태를 Layout Shift 없이 구분할 수 있어야 한다.
+- **MUST NOT** 경계 표시를 위해 실제 Component의 크기·padding·배치를 바꾸는 border를 사용한다.
+- **MUST** Outline label과 guide는 Preview 콘텐츠의 클릭·드래그·텍스트 선택을 가로채지 않아야 한다.
+- **MUST** Motion 측정 및 구조 확인 시 Outline 상태가 Component transform이나 저장된 motionSpec을 변경하지 않도록 한다.
+
+### 10.2 선택 영역과 텍스트 실측
+
+- **MUST** 텍스트 Component의 선택 영역은 `.rendered-item`의 임의 고정 높이가 아니라 실제 렌더링된 `.rendered-text` 영역과 일치해야 한다.
+- **MUST** Auto-height 텍스트는 줄 수, 폰트, line-height, 줄바꿈이 바뀌면 실제 DOM 크기를 기준으로 선택 영역을 갱신한다.
+- **MUST NOT** Component Box resize가 Font Size 변경을 암묵적으로 유발하게 한다. Box geometry와 Typography는 별도 명령으로 변경한다.
+- 기존 fixed-height 문서는 명시적 전환 전까지 기존 값을 보존하고, 신규·auto-height 텍스트에만 실측 정책을 적용한다.
+
+### 10.3 직접 편집과 Drag 충돌 방지
+
+- **MUST** 편집 가능한 텍스트를 Preview에서 더블클릭하면 현재 위치와 스타일을 유지한 채 직접 편집할 수 있어야 한다.
+- **MUST NOT** 단순 클릭·더블클릭 시 Component 좌표를 기본값이나 Section 좌측 상단으로 재계산한다.
+- Drag는 pointer 이동이 임계값을 넘은 뒤에만 활성화하고, pointer capture와 `preventDefault()`도 Drag 활성화 이후에 수행한다.
+- 텍스트 편집 중 클릭·드래그는 문자 또는 라인 선택으로 해석하며 Component Drag를 시작하지 않는다.
+- `Escape`는 편집 전 값으로 취소하고, blur 또는 확정 동작은 개행을 보존한 문자열로 저장한다.
+
+## 11. 텍스트 편집·서식 정책
+
+### 11.1 콘텐츠와 서식 저장 경계
+
+- **MUST** 텍스트 콘텐츠를 개행으로 구분된 plain string으로 유지한다. 사용자 HTML, 임의 inline style, script를 저장하지 않는다.
+- **MUST** 라인 단위 서식은 콘텐츠와 분리된 `itemStyle.lineStyles` 메타데이터에 저장한다.
+- 다중 필드 Component의 서식 주소는 `fieldKey`, 단일 텍스트 Item은 예약 scope인 `$item`을 사용한다.
+- 라인 주소는 0부터 시작하는 숫자 인덱스 문자열이며 허용 범위는 `0..999`다.
+- **MUST** lineStyles의 scope, line index, property, token reference, enum, numeric range를 Client와 API 양쪽에서 검증한다.
+- **MUST NOT** Section AI Design이 임의 `lineStyles`를 생성하도록 허용한다. 라인 서식은 명시적인 사용자 편집 결과로만 저장한다.
+
+표준 저장 예:
+
+```json
+{
+  "lineStyles": {
+    "$item": {
+      "0": { "fontWeight": 700, "listType": "bullet", "listIndent": 1 },
+      "1": { "colorToken": "--promo-color-text" }
+    },
+    "fld_description": {
+      "2": { "fontStyle": "italic" }
+    }
+  }
+}
+```
+
+### 11.2 적용 범위
+
+- **MUST** Font Family, Font Size, Text Style, Bold, Italic, Font Color/Gradient, Background Color, Line Height, Letter Spacing, Bullet, Number, Indent, Outdent를 현재 선택된 라인에만 적용·해제한다.
+- 선택 범위가 여러 라인에 걸치면 포함된 모든 라인에 한 번의 원자적 patch를 적용한다.
+- 라인 선택 또는 caret 위치가 확인되지 않은 상태에서는 라인 서식 컨트롤을 비활성화한다.
+- Undo/Redo, Section 기준 배치, Component size·position은 라인 서식이 아닌 Document/Component 범위로 유지한다.
+- 여러 라인의 값이 다른 경우 Toolbar는 mixed state를 표시하거나 공통값이 없음을 나타내야 하며, 한 라인의 값을 다른 라인 값으로 오인해 덮어쓰지 않는다.
+
+### 11.3 Toolbar와 디자인 토큰
+
+- **MUST** Toolbar의 글꼴·크기·Text Style·Font Color/Gradient는 활성 Design Token 목록을 단일 출처로 사용한다.
+- **MUST** 시스템 배경색 palette와 Promo Content Token palette를 UI에서 구분한다.
+- **MUST** Undo, Redo, Bold, Italic, Bullet, Number, Indent, Outdent 등 토글/동작 컨트롤은 Font Awesome icon과 접근 가능한 이름(`title`, `aria-label`, `aria-pressed`)을 제공한다.
+- Bold 해제는 상속값 제거만으로 끝내지 않고 정상 굵기 token 또는 `400`을 명시해 선택 라인에서 확실히 해제한다.
+- Bullet/Number를 다시 누르면 선택 라인에서만 list를 해제하며 `listIndent`는 0으로 정규화한다.
+- 들여쓰기·내어쓰기는 list가 적용된 라인에만 허용하고 `0..6` 범위로 제한한다.
+
+### 11.4 텍스트 정렬과 Component 배치
+
+- 텍스트 내부 정렬과 Component Box 위치를 별도 개념으로 관리한다.
+- 기본 사용자 동작은 Section Content Bounds 기준 Component 배치다. `left / center / right`, `top / middle / bottom` anchor를 사용한다.
+- Horizontal Anchor는 기본적으로 해당 텍스트의 내부 `text-align`과 연동할 수 있으나, Component 위치와 내부 글자 정렬의 저장 의미를 혼합하지 않는다.
+- 자유 Drag를 시작하면 해당 viewport의 `positionMode`를 `free`로 전환하고, anchor 복원 동작을 별도로 제공한다.
+- Desktop/Mobile override는 독립적으로 저장하며 한 viewport의 편집이 다른 viewport 값을 자동 덮어쓰지 않는다.
+
+## 12. 구조 패널·AI 역할·Motion 정책
+
+### 12.1 구조 패널과 AI 기능 분리
+
+- **MUST** 선택된 Section과 펼쳐진 Section 상태를 분리한다. 같은 Section의 disclosure를 다시 누르면 선택을 잃지 않고 하위 내용을 닫을 수 있어야 한다.
+- Component 상·하 화살표는 기본 구조 패널에 노출하지 않는다. 화면 위치는 Preview Drag/Anchor, 겹침은 Layer 명령, 읽기 순서는 별도 고급 기능으로 구분한다.
+- `AI 디자인 생성`은 기존 Component 구조를 유지한 채 사용자 요구사항을 받아 Layout, Token, Key Visual, 허용 Motion을 제안한다.
+- `AI 섹션 구성`은 신규·빈 Section에 등록된 Component 조합을 제안하는 기능이다. 미등록 Component ID나 임의 HTML을 만들 수 없다.
+- **MUST** AI 제안은 Preview·검증 후 원자적으로 적용하며 `baseRevision` 불일치 시 덮어쓰지 않는다.
+
+### 12.2 Motion
+
+- **MUST** Section·Component Motion은 활성화된 Motion Preset ID만 사용하며 임의 CSS keyframe·JavaScript를 저장하지 않는다.
+- **MUST** Editor Preview와 Web Output이 동일한 `motionSpec`과 preset registry를 사용한다.
+- **MUST** `prefers-reduced-motion: reduce`에서 애니메이션을 제거하고 콘텐츠를 즉시 노출한다.
+- **MUST** Runtime 초기화 또는 JavaScript 실행이 실패해도 콘텐츠가 숨은 상태로 남지 않게 한다.
+- Motion 변경은 Undo/Redo와 revision 계약에 포함한다. Outline toggle과 같은 Editor 표시 상태는 포함하지 않는다.
+- Desktop/Mobile별 Motion override 계약이 도입되기 전까지 Motion은 공통 적용으로 명시한다.
+
 ## 부록. 강제 수준 표기·출처
 
 각 정책의 상세 배경·구현 지침은 취합 출처 문서에 있다. 본 정책서는 흩어진 규칙을 한 곳에서 참조·강제하기 위한 단일 기준이며, 개별 계획서가 갱신되면 해당 정책 항목도 함께 갱신한다.
+
+### 2026-08-01 갱신 요약
+
+- Live Preview의 Normal/Selection/Outline 정책과 실측 Selection Box 규칙을 추가했다.
+- Preview 직접 텍스트 편집과 Drag pointer capture 충돌 방지 규칙을 추가했다.
+- 기존 계획에서 제외했던 라인 단위 서식을 `lineStyles` 제한 계약으로 현행화했다.
+- Font Awesome Toolbar, Design Token, List/Indent, Section Anchor의 적용 범위를 확정했다.
+- 구조 패널, AI 디자인/구성 역할 분리, Motion preset·Reduced Motion 정책을 통합했다.
