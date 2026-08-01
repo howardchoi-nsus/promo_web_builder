@@ -3,6 +3,8 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import { createPromoTokenRuntimeStyle, normalizePromoTokenValues } from "../../shared/promo-token-runtime.mjs";
 import { normalizeCtaUrl } from "./editor-utils.mjs";
 import {
+  MAXIMUM_COMPONENT_HEIGHT_PX,
+  MAXIMUM_SECTION_HEIGHT_PX,
   MINIMUM_COMPONENT_HEIGHT_PX,
   MINIMUM_COMPONENT_WIDTH_PCT,
   defaultComponentHeight,
@@ -35,6 +37,8 @@ const measuredItemHeights = ref({});
 let motionObserver = null;
 let itemResizeObserver = null;
 let activeDragCleanup = null;
+let activeResizeCleanup = null;
+const resizeAnnouncement = ref("");
 
 function syncMeasuredItemHeights() {
   if (!rendererRoot.value) return;
@@ -79,6 +83,8 @@ onBeforeUnmount(() => {
   globalThis.removeEventListener("resize", updateViewportWidth);
   activeDragCleanup?.();
   activeDragCleanup = null;
+  activeResizeCleanup?.();
+  activeResizeCleanup = null;
   itemResizeObserver?.disconnect();
   motionObserver?.disconnect();
 });
@@ -336,6 +342,42 @@ function itemResizeHandles(section, item) {
   }
   if (usesAutomaticComponentHeight(item, style)) return ["e", "w"];
   return ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
+}
+
+const RESIZE_DIRECTION_LABELS = {
+  nw: "왼쪽 위",
+  n: "위",
+  ne: "오른쪽 위",
+  e: "오른쪽",
+  se: "오른쪽 아래",
+  s: "아래",
+  sw: "왼쪽 아래",
+  w: "왼쪽",
+};
+
+function itemResizeHandleLabel(item, direction) {
+  const target = item.fieldKind === "image" ? "이미지" : "컴포넌트";
+  return `${item.name} ${target} ${RESIZE_DIRECTION_LABELS[direction] || direction} 방향 크기 조절`;
+}
+
+function anchoredLayoutPatch(style, geometry, containerWidth, containerHeight) {
+  const horizontalAnchor = ["left", "center", "right"].includes(style.horizontalAnchor)
+    ? style.horizontalAnchor
+    : "center";
+  const verticalAnchor = ["top", "middle", "bottom"].includes(style.verticalAnchor)
+    ? style.verticalAnchor
+    : "middle";
+  const horizontalFactor = { left: 0, center: 0.5, right: 1 }[horizontalAnchor];
+  const verticalFactor = { top: 0, middle: 0.5, bottom: 1 }[verticalAnchor];
+  return {
+    offsetX: Math.round((geometry.x - (containerWidth * horizontalFactor) + (geometry.width * horizontalFactor)) * 100) / 100,
+    offsetY: Math.round((geometry.y - (containerHeight * verticalFactor) + (geometry.height * verticalFactor)) * 100) / 100,
+  };
+}
+
+function announceResize(item, geometry, containerWidth) {
+  const widthPct = containerWidth ? Math.round((geometry.width / containerWidth) * 10000) / 100 : 0;
+  resizeAnnouncement.value = `${item.name} 너비 ${widthPct}%, 높이 ${Math.round(geometry.height)}픽셀`;
 }
 
 function clamp(value, min, max, fallback) {
@@ -668,6 +710,7 @@ function startDrag(event, section, item) {
   const target = event.currentTarget;
   const container = target.closest(".rendered-items");
   if (!container) return;
+  activeResizeCleanup?.();
   activeDragCleanup?.();
   selectRendererItem(section, item);
 
@@ -765,6 +808,8 @@ function startDrag(event, section, item) {
 
 function startItemResize(event, section, item, handleDirection = "se") {
   if (!props.editable || item.isLocked || event.button !== 0) return;
+  activeDragCleanup?.();
+  activeResizeCleanup?.();
   const handle = event.currentTarget;
   const target = handle.closest(".rendered-item");
   const container = target?.closest(".rendered-items");
@@ -772,7 +817,11 @@ function startItemResize(event, section, item, handleDirection = "se") {
   event.preventDefault();
   event.stopPropagation();
   selectRendererItem(section, item);
-  handle.setPointerCapture(event.pointerId);
+  try {
+    handle.setPointerCapture(event.pointerId);
+  } catch {
+    return;
+  }
   target.classList.add("is-resizing");
 
   const containerRect = container.getBoundingClientRect();
@@ -784,7 +833,11 @@ function startItemResize(event, section, item, handleDirection = "se") {
   const autoHeight = usesAutomaticComponentHeight(item, style);
   const anchored = style.positionMode === "anchored";
   const locked = isImage && style.aspectRatioLocked !== false;
-  const minimumItemSizePx = MINIMUM_COMPONENT_HEIGHT_PX;
+  const minimumItemWidthPx = Math.max(
+    MINIMUM_COMPONENT_HEIGHT_PX,
+    containerRect.width * (MINIMUM_COMPONENT_WIDTH_PCT / 100),
+  );
+  const minimumItemHeightPx = MINIMUM_COMPONENT_HEIGHT_PX;
   const horizontalActive = handleDirection.includes("w") || handleDirection.includes("e");
   const verticalActive = handleDirection.includes("n") || handleDirection.includes("s");
   const automaticPosition = defaultItemPosition(section, item);
@@ -799,32 +852,46 @@ function startItemResize(event, section, item, handleDirection = "se") {
     fallbackX: automaticPosition.xPct || 0,
     fallbackY: ((automaticPosition.yPct || 0) / 100) * canvasHeight,
   });
+  startGeometry.x = itemRect.left - containerRect.left;
+  startGeometry.y = itemRect.top - containerRect.top;
+  startGeometry.width = itemRect.width;
+  startGeometry.height = itemRect.height;
   if (anchored) {
-    startGeometry.x = itemRect.left - containerRect.left;
-    startGeometry.y = itemRect.top - containerRect.top;
     target.style.transform = "none";
     target.style.left = `${startGeometry.x}px`;
     target.style.top = `${startGeometry.y}px`;
   }
-  if ((isImage && style.heightPx === undefined) || autoHeight) startGeometry.height = itemRect.height;
   const ratio = startGeometry.height ? startGeometry.width / startGeometry.height : 1;
   let nextGeometry = { ...startGeometry };
   let animationFrame = 0;
+  let moved = false;
+  let finished = false;
 
   const move = (moveEvent) => {
-    const maxWidth = Math.max(minimumItemSizePx, handleDirection.includes("w")
+    if (finished || moveEvent.pointerId !== event.pointerId) return;
+    if ((moveEvent.buttons & 1) !== 1) {
+      finish(moved);
+      return;
+    }
+    const deltaX = moveEvent.clientX - startX;
+    const deltaY = moveEvent.clientY - startY;
+    if (!moved && Math.hypot(deltaX, deltaY) < 0.5) return;
+    moved = true;
+    if (moveEvent.cancelable) moveEvent.preventDefault();
+    const maxWidth = Math.max(minimumItemWidthPx, handleDirection.includes("w")
       ? startGeometry.width + startGeometry.x
       : containerRect.width - startGeometry.x);
-    const maxHeight = Math.max(minimumItemSizePx, handleDirection.includes("n")
+    const availableHeight = Math.max(minimumItemHeightPx, handleDirection.includes("n")
       ? startGeometry.height + startGeometry.y
-      : 1124 - startGeometry.y);
+      : MAXIMUM_SECTION_HEIGHT_PX - SECTION_VERTICAL_PADDING_PX - startGeometry.y);
+    const maxHeight = Math.min(MAXIMUM_COMPONENT_HEIGHT_PX, availableHeight);
     nextGeometry = resizeComponentGeometry({
       geometry: startGeometry,
-      deltaX: moveEvent.clientX - startX,
-      deltaY: moveEvent.clientY - startY,
+      deltaX,
+      deltaY,
       direction: handleDirection,
-      minimumWidth: minimumItemSizePx,
-      minimumHeight: minimumItemSizePx,
+      minimumWidth: minimumItemWidthPx,
+      minimumHeight: minimumItemHeightPx,
       maximumWidth: maxWidth,
       maximumHeight: maxHeight,
       aspectRatioLocked: locked || (isImage && style.shape === "circle"),
@@ -841,34 +908,51 @@ function startItemResize(event, section, item, handleDirection = "se") {
       if (isImage) target.style.aspectRatio = "auto";
     });
   };
-  const end = () => {
+  const handleVisibilityChange = () => {
+    if (document.visibilityState === "hidden") finish(false);
+  };
+  const finish = (commit) => {
+    if (finished) return;
+    finished = true;
     if (animationFrame) cancelAnimationFrame(animationFrame);
-    const requiredSectionHeight = Math.ceil(
-      nextGeometry.y + nextGeometry.height + SECTION_VERTICAL_PADDING_PX,
-    );
-    const currentSectionHeight = sectionStyle(section).minHeight || defaultSectionHeight(section);
-    if (requiredSectionHeight > currentSectionHeight) {
-      emit("update-section-style", section.sectionKey, {
-        minHeight: Math.min(1200, requiredSectionHeight),
+    if (commit && moved) {
+      const requiredSectionHeight = Math.ceil(
+        nextGeometry.y + nextGeometry.height + SECTION_VERTICAL_PADDING_PX,
+      );
+      const currentSectionHeight = sectionStyle(section).minHeight || defaultSectionHeight(section);
+      if (requiredSectionHeight > currentSectionHeight) {
+        emit("update-section-style", section.sectionKey, {
+          minHeight: Math.min(MAXIMUM_SECTION_HEIGHT_PX, requiredSectionHeight),
+        });
+      }
+      const layoutStyle = geometryToLayoutStyle(nextGeometry, containerRect.width, {
+        includeHeight: verticalActive && !locked && !autoHeight && !(isImage && style.shape === "circle"),
+        includeFontSize: false,
       });
+      if (anchored) {
+        delete layoutStyle.positionMode;
+        delete layoutStyle.xPct;
+        delete layoutStyle.yPx;
+        Object.assign(layoutStyle, anchoredLayoutPatch(
+          style,
+          nextGeometry,
+          containerRect.width,
+          containerRect.height,
+        ));
+      }
+      emit("update-renderer-item-style", section, item, {
+        ...layoutStyle,
+        ...(horizontalActive && !isImage ? { widthMode: "fixed" } : {}),
+        ...(!verticalActive && !locked ? { heightPx: style.heightPx } : {}),
+        ...(isImage
+          ? { aspectRatio: `${Math.max(1, Math.round(nextGeometry.width))}/${Math.max(1, Math.round(nextGeometry.height))}` }
+          : {}),
+      });
+      announceResize(item, nextGeometry, containerRect.width);
     }
-    const layoutStyle = geometryToLayoutStyle(nextGeometry, containerRect.width, {
-      includeHeight: verticalActive && !locked && !autoHeight && !(isImage && style.shape === "circle"),
-      includeFontSize: false,
-    });
-    if (anchored) {
-      delete layoutStyle.positionMode;
-      delete layoutStyle.xPct;
-      delete layoutStyle.yPx;
+    if (handle.hasPointerCapture(event.pointerId)) {
+      try { handle.releasePointerCapture(event.pointerId); } catch { /* Pointer already ended. */ }
     }
-    emit("update-renderer-item-style", section, item, {
-      ...layoutStyle,
-      ...(horizontalActive && !isImage ? { widthMode: "fixed" } : {}),
-      ...(!verticalActive && !locked ? { heightPx: style.heightPx } : {}),
-      ...(isImage
-        ? { aspectRatio: `${Math.max(1, Math.round(nextGeometry.width))}/${Math.max(1, Math.round(nextGeometry.height))}` }
-        : {}),
-    });
     target.classList.remove("is-resizing");
     target.style.removeProperty("width");
     target.style.removeProperty("height");
@@ -876,13 +960,30 @@ function startItemResize(event, section, item, handleDirection = "se") {
     target.style.removeProperty("left");
     target.style.removeProperty("top");
     target.style.removeProperty("transform");
-    handle.removeEventListener("pointermove", move);
-    handle.removeEventListener("pointerup", end);
-    handle.removeEventListener("pointercancel", end);
+    globalThis.removeEventListener("pointermove", move);
+    globalThis.removeEventListener("pointerup", handlePointerUp);
+    globalThis.removeEventListener("pointercancel", handlePointerCancel);
+    globalThis.removeEventListener("blur", handleWindowBlur);
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
+    handle.removeEventListener("lostpointercapture", handleLostPointerCapture);
+    if (activeResizeCleanup === cancelResize) activeResizeCleanup = null;
   };
-  handle.addEventListener("pointermove", move);
-  handle.addEventListener("pointerup", end);
-  handle.addEventListener("pointercancel", end);
+  const handlePointerUp = (upEvent) => {
+    if (upEvent.pointerId === event.pointerId) finish(true);
+  };
+  const handlePointerCancel = (cancelEvent) => {
+    if (cancelEvent.pointerId === event.pointerId) finish(false);
+  };
+  const handleWindowBlur = () => finish(false);
+  const handleLostPointerCapture = () => finish(false);
+  const cancelResize = () => finish(false);
+  activeResizeCleanup = cancelResize;
+  globalThis.addEventListener("pointermove", move, { passive: false });
+  globalThis.addEventListener("pointerup", handlePointerUp);
+  globalThis.addEventListener("pointercancel", handlePointerCancel);
+  globalThis.addEventListener("blur", handleWindowBlur);
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+  handle.addEventListener("lostpointercapture", handleLostPointerCapture);
 }
 
 function resizeItemByKeyboard(event, section, item, handleDirection = "se") {
@@ -900,8 +1001,11 @@ function resizeItemByKeyboard(event, section, item, handleDirection = "se") {
   const verticalActive = handleDirection.includes("n") || handleDirection.includes("s");
   const handle = event.currentTarget;
   const container = handle.closest(".rendered-items");
-  if (!container) return;
-  const containerWidth = Math.max(1, container.getBoundingClientRect().width);
+  const target = handle.closest(".rendered-item");
+  if (!container || !target) return;
+  const containerRect = container.getBoundingClientRect();
+  const itemRect = target.getBoundingClientRect();
+  const containerWidth = Math.max(1, containerRect.width);
   const horizontalDelta = horizontalActive
     ? event.key === "ArrowRight" ? (containerWidth * step) / 100 : event.key === "ArrowLeft" ? (-containerWidth * step) / 100 : 0
     : 0;
@@ -921,17 +1025,30 @@ function resizeItemByKeyboard(event, section, item, handleDirection = "se") {
     fallbackX: automaticPosition.xPct || 0,
     fallbackY: ((automaticPosition.yPct || 0) / 100) * canvasHeight,
   });
+  geometry.x = itemRect.left - containerRect.left;
+  geometry.y = itemRect.top - containerRect.top;
+  geometry.width = itemRect.width;
+  geometry.height = itemRect.height;
+  const availableHeight = Math.max(
+    MINIMUM_COMPONENT_HEIGHT_PX,
+    handleDirection.includes("n")
+      ? geometry.height + geometry.y
+      : MAXIMUM_SECTION_HEIGHT_PX - SECTION_VERTICAL_PADDING_PX - geometry.y,
+  );
   const resized = resizeComponentGeometry({
     geometry,
     deltaX: horizontalDelta,
     deltaY: verticalDelta,
     direction: handleDirection,
-    minimumWidth: containerWidth * (MINIMUM_COMPONENT_WIDTH_PCT / 100),
+    minimumWidth: Math.max(
+      MINIMUM_COMPONENT_HEIGHT_PX,
+      containerWidth * (MINIMUM_COMPONENT_WIDTH_PCT / 100),
+    ),
     minimumHeight: MINIMUM_COMPONENT_HEIGHT_PX,
     maximumWidth: handleDirection.includes("w")
       ? geometry.width + geometry.x
       : containerWidth - geometry.x,
-    maximumHeight: 900,
+    maximumHeight: Math.min(MAXIMUM_COMPONENT_HEIGHT_PX, availableHeight),
     aspectRatioLocked: locked || (isImage && style.shape === "circle"),
     aspectRatio: style.shape === "circle" ? 1 : geometry.width / geometry.height,
     scaleFont: false,
@@ -940,16 +1057,30 @@ function resizeItemByKeyboard(event, section, item, handleDirection = "se") {
       includeHeight: verticalActive && !locked && !autoHeight && !(isImage && style.shape === "circle"),
       includeFontSize: false,
     });
+  const requiredSectionHeight = Math.ceil(resized.y + resized.height + SECTION_VERTICAL_PADDING_PX);
+  const currentSectionHeight = sectionStyle(section).minHeight || defaultSectionHeight(section);
+  if (requiredSectionHeight > currentSectionHeight) {
+    emit("update-section-style", section.sectionKey, {
+      minHeight: Math.min(MAXIMUM_SECTION_HEIGHT_PX, requiredSectionHeight),
+    });
+  }
   if (anchored) {
     delete layoutStyle.positionMode;
     delete layoutStyle.xPct;
     delete layoutStyle.yPx;
+    Object.assign(layoutStyle, anchoredLayoutPatch(
+      style,
+      resized,
+      containerRect.width,
+      containerRect.height,
+    ));
   }
   emit("update-renderer-item-style", section, item, {
     ...layoutStyle,
     ...(horizontalActive && !isImage ? { widthMode: "fixed" } : {}),
     ...(!verticalActive && !locked ? { heightPx: style.heightPx } : {}),
   });
+  announceResize(item, resized, containerWidth);
 }
 
 function selectionBoundaryOffset(root, node, offset) {
@@ -1101,6 +1232,8 @@ function startArticleTextEdit(event, section, item) {
 
 function startSectionResize(event, section) {
   if (!props.editable || event.button !== 0) return;
+  activeDragCleanup?.();
+  activeResizeCleanup?.();
   const resizeHandle = event.currentTarget;
   const sectionNode = resizeHandle.closest(".rendered-section");
   if (!sectionNode) return;
@@ -1108,7 +1241,11 @@ function startSectionResize(event, section) {
   event.preventDefault();
   event.stopPropagation();
   if (section.items?.[0]) emit("select-item", section, section.items[0]);
-  resizeHandle.setPointerCapture(event.pointerId);
+  try {
+    resizeHandle.setPointerCapture(event.pointerId);
+  } catch {
+    return;
+  }
   sectionNode.classList.add("is-resizing");
   const startY = event.clientY;
   const startHeight = sectionNode.getBoundingClientRect().height;
@@ -1136,21 +1273,47 @@ function startSectionResize(event, section) {
     }, 0)
     : 0;
   const minHeight = Math.max(50, Math.ceil(minimumCanvasHeight + verticalPadding));
-  const maxHeight = 1200;
+  const maxHeight = MAXIMUM_SECTION_HEIGHT_PX;
 
+  let finished = false;
   const move = (moveEvent) => {
+    if (finished || moveEvent.pointerId !== event.pointerId) return;
+    if ((moveEvent.buttons & 1) !== 1) {
+      finish();
+      return;
+    }
+    if (moveEvent.cancelable) moveEvent.preventDefault();
     const nextHeight = Math.min(maxHeight, Math.max(minHeight, startHeight + moveEvent.clientY - startY));
     emit("update-section-style", section.sectionKey, { minHeight: nextHeight });
   };
-  const end = () => {
-    sectionNode.classList.remove("is-resizing");
-    resizeHandle.removeEventListener("pointermove", move);
-    resizeHandle.removeEventListener("pointerup", end);
-    resizeHandle.removeEventListener("pointercancel", end);
+  const handleVisibilityChange = () => {
+    if (document.visibilityState === "hidden") finish();
   };
-  resizeHandle.addEventListener("pointermove", move);
-  resizeHandle.addEventListener("pointerup", end);
-  resizeHandle.addEventListener("pointercancel", end);
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    if (resizeHandle.hasPointerCapture(event.pointerId)) {
+      try { resizeHandle.releasePointerCapture(event.pointerId); } catch { /* Pointer already ended. */ }
+    }
+    sectionNode.classList.remove("is-resizing");
+    globalThis.removeEventListener("pointermove", move);
+    globalThis.removeEventListener("pointerup", handlePointerEnd);
+    globalThis.removeEventListener("pointercancel", handlePointerEnd);
+    globalThis.removeEventListener("blur", finish);
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
+    resizeHandle.removeEventListener("lostpointercapture", finish);
+    if (activeResizeCleanup === finish) activeResizeCleanup = null;
+  };
+  const handlePointerEnd = (endEvent) => {
+    if (endEvent.pointerId === event.pointerId) finish();
+  };
+  activeResizeCleanup = finish;
+  globalThis.addEventListener("pointermove", move, { passive: false });
+  globalThis.addEventListener("pointerup", handlePointerEnd);
+  globalThis.addEventListener("pointercancel", handlePointerEnd);
+  globalThis.addEventListener("blur", finish);
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+  resizeHandle.addEventListener("lostpointercapture", finish);
 }
 </script>
 
@@ -1171,6 +1334,7 @@ function startSectionResize(event, section) {
     }"
   >
     <div v-if="editable && showGuides" class="content-width-guide" aria-hidden="true"></div>
+    <p v-if="editable" class="promo-resize-announcement" aria-live="polite">{{ resizeAnnouncement }}</p>
     <section
       v-for="section in orderedSections"
       :key="section.sectionKey"
@@ -1216,6 +1380,7 @@ function startSectionResize(event, section) {
                 'is-empty': editable && itemIsEmpty(section, item),
                 'is-free-positioned': itemStyle(section, item).positionMode !== 'anchored',
                 'is-anchored-positioned': itemStyle(section, item).positionMode === 'anchored',
+                'is-fixed-height': item.fieldKind === 'text' && !usesAutomaticComponentHeight(item, itemStyle(section, item)),
                 'has-text-gradient': Boolean(itemStyle(section, item).textGradientToken),
                 'has-text-background': Boolean(itemStyle(section, item).textBackgroundToken || itemStyle(section, item).textBackground),
               },
@@ -1380,7 +1545,7 @@ function startSectionResize(event, section) {
                   type="button"
                   class="item-resize-handle image-resize-handle"
                   :class="[`item-resize-handle--${handleDirection}`, `image-resize-handle--${handleDirection}`]"
-                  :aria-label="`${item.name} 이미지 ${handleDirection} 방향 크기 조절`"
+                  :aria-label="itemResizeHandleLabel(item, handleDirection)"
                   @pointerdown.stop="startItemResize($event, section, item, handleDirection)"
                   @keydown="resizeItemByKeyboard($event, section, item, handleDirection)"
                 ></button>
@@ -1441,7 +1606,7 @@ function startSectionResize(event, section) {
                 type="button"
                 class="item-resize-handle component-resize-handle"
                 :class="[`item-resize-handle--${handleDirection}`, `component-resize-handle--${handleDirection}`]"
-                :aria-label="`${item.name} ${handleDirection} 방향 크기 조절`"
+                :aria-label="itemResizeHandleLabel(item, handleDirection)"
                 @pointerdown.stop="startItemResize($event, section, item, handleDirection)"
                 @keydown="resizeItemByKeyboard($event, section, item, handleDirection)"
               ></button>

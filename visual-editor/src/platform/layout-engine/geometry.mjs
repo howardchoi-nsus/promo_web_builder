@@ -4,8 +4,10 @@ export const DEFAULT_TEXT_COMPONENT_HEIGHT = 86;
 export const DEFAULT_CTA_COMPONENT_HEIGHT = 64;
 export const DEFAULT_IMAGE_COMPONENT_HEIGHT = 250;
 export const DEFAULT_FONT_SIZE = 18;
-export const MINIMUM_COMPONENT_WIDTH_PCT = 0.01;
-export const MINIMUM_COMPONENT_HEIGHT_PX = 1;
+export const MINIMUM_COMPONENT_WIDTH_PCT = 4;
+export const MINIMUM_COMPONENT_HEIGHT_PX = 24;
+export const MAXIMUM_COMPONENT_HEIGHT_PX = 900;
+export const MAXIMUM_SECTION_HEIGHT_PX = 1200;
 
 export function clampNumber(value, min, max, fallback) {
   const number = Number(value);
@@ -49,7 +51,7 @@ export function normalizeComponentGeometry({
   const height = clampNumber(
     style.heightPx,
     MINIMUM_COMPONENT_HEIGHT_PX,
-    900,
+    MAXIMUM_COMPONENT_HEIGHT_PX,
     defaultComponentHeight(item),
   );
   return {

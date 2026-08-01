@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import {
   DEFAULT_COMPONENT_WIDTH_PCT,
+  MAXIMUM_COMPONENT_HEIGHT_PX,
+  MAXIMUM_SECTION_HEIGHT_PX,
   MINIMUM_COMPONENT_HEIGHT_PX,
   MINIMUM_COMPONENT_WIDTH_PCT,
   defaultComponentHeight,
@@ -11,6 +13,10 @@ import {
 import { resizeComponentGeometry } from "../visual-editor/src/platform/layout-engine/resize.mjs";
 
 const textItem = { itemKey: "title", fieldKind: "text" };
+assert.equal(MINIMUM_COMPONENT_WIDTH_PCT, 4);
+assert.equal(MINIMUM_COMPONENT_HEIGHT_PX, 24);
+assert.equal(MAXIMUM_COMPONENT_HEIGHT_PX, 900);
+assert.equal(MAXIMUM_SECTION_HEIGHT_PX, 1200);
 assert.equal(usesAutomaticComponentHeight(textItem, {}), true);
 assert.equal(usesAutomaticComponentHeight(textItem, { heightMode: "auto" }), true);
 assert.equal(usesAutomaticComponentHeight(textItem, { heightMode: "fixed" }), false);

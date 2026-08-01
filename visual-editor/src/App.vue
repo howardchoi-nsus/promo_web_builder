@@ -24,8 +24,10 @@ import {
   createSectionInstanceFromPreset,
 } from "./platform/editor-core/composition-structure.mjs";
 import {
+  MAXIMUM_COMPONENT_HEIGHT_PX,
   MINIMUM_COMPONENT_HEIGHT_PX,
   MINIMUM_COMPONENT_WIDTH_PCT,
+  defaultComponentHeight,
   usesAutomaticComponentHeight,
 } from "./platform/layout-engine/geometry.mjs";
 import { resolveSectionPresetLayoutPatch } from "./platform/layout-engine/section-preset-resolver.mjs";
@@ -1529,11 +1531,18 @@ function enableAutomaticTextSize() {
 
 function enableFixedTextSize() {
   if (selectedItem.value?.fieldKind === "image") return;
+  const renderedHeight = selectedRenderedItemRect()?.height;
   updateItemStyle({
     widthMode: "fixed",
     heightMode: "fixed",
     widthPct: selectedItemStyle.value.widthPct || 32,
-    heightPx: selectedItemStyle.value.heightPx || 86,
+    heightPx: Math.min(
+      MAXIMUM_COMPONENT_HEIGHT_PX,
+      Math.max(
+        MINIMUM_COMPONENT_HEIGHT_PX,
+        Number(selectedItemStyle.value.heightPx || renderedHeight || defaultComponentHeight(selectedItem.value)),
+      ),
+    ),
   });
 }
 
@@ -1616,23 +1625,40 @@ function setImageShape(shape) {
     : { shape });
 }
 
+function selectedRenderedItemRect() {
+  const stage = previewPanelRef.value?.getStageElement?.();
+  if (!stage || !selectedStyleKey.value) return null;
+  const element = [...stage.querySelectorAll(".rendered-item[data-style-key]")]
+    .find((candidate) => candidate.dataset.styleKey === selectedStyleKey.value);
+  return element?.getBoundingClientRect() || null;
+}
+
 function setImageResizeMode(mode) {
   if (!selectedStyleKey.value || selectedItem.value?.isLocked || !["locked", "free"].includes(mode)) return;
   const nextStyle = { ...selectedItemStyle.value };
+  const renderedRect = selectedRenderedItemRect();
+  const renderedRatio = renderedRect?.width > 0 && renderedRect?.height > 0
+    ? `${Math.max(1, Math.round(renderedRect.width))}/${Math.max(1, Math.round(renderedRect.height))}`
+    : "";
+  const nextPatch = {};
   if (mode === "locked" || nextStyle.shape === "circle") {
-    nextStyle.aspectRatioLocked = true;
-    nextStyle.aspectRatio = nextStyle.shape === "circle"
+    nextPatch.aspectRatioLocked = true;
+    nextPatch.aspectRatio = nextStyle.shape === "circle"
       ? "1/1"
-      : (nextStyle.aspectRatio || selectedItem.value?.image?.aspectRatio || "1/1");
-    delete nextStyle.heightPx;
+      : (renderedRatio || nextStyle.aspectRatio || selectedItem.value?.image?.aspectRatio || "1/1");
+    nextPatch.heightPx = undefined;
   } else {
-    nextStyle.aspectRatioLocked = false;
-    nextStyle.heightPx = Number(nextStyle.heightPx || 240);
+    nextPatch.aspectRatioLocked = false;
+    nextPatch.heightPx = Math.min(
+      MAXIMUM_COMPONENT_HEIGHT_PX,
+      Math.max(
+        MINIMUM_COMPONENT_HEIGHT_PX,
+        Number(renderedRect?.height || nextStyle.heightPx || defaultComponentHeight(selectedItem.value)),
+      ),
+    );
+    if (renderedRatio) nextPatch.aspectRatio = renderedRatio;
   }
-  executeEditorCommand(EditorCommandType.ITEM_STYLE_REPLACE, {
-    styleKey: selectedStyleKey.value,
-    style: nextStyle,
-  }, { label: "이미지 크기 조절 방식 변경" });
+  updateItemStyle(nextPatch);
 }
 
 function resetSectionHeight() {
@@ -2673,22 +2699,22 @@ onBeforeUnmount(() => {
                   <input
                     type="range"
                     :min="MINIMUM_COMPONENT_HEIGHT_PX"
-                    max="900"
+                    :max="MAXIMUM_COMPONENT_HEIGHT_PX"
                     step="1"
                     :disabled="selectedItem.isLocked"
-                    :value="selectedItemStyle.heightPx || 240"
+                    :value="selectedItemStyle.heightPx || defaultComponentHeight(selectedItem)"
                     @input="updateItemStyle({ heightPx: Number($event.target.value) })"
                   />
                   <input
                     class="dimension-input"
                     type="number"
                     :min="MINIMUM_COMPONENT_HEIGHT_PX"
-                    max="900"
+                    :max="MAXIMUM_COMPONENT_HEIGHT_PX"
                     step="1"
                     :disabled="selectedItem.isLocked"
-                    :value="Math.round(selectedItemStyle.heightPx || 240)"
+                    :value="Math.round(selectedItemStyle.heightPx || defaultComponentHeight(selectedItem))"
                     aria-label="이미지 높이 픽셀"
-                    @change="updateItemStyle({ heightPx: Math.min(900, Math.max(MINIMUM_COMPONENT_HEIGHT_PX, Number($event.target.value) || 240)) })"
+                    @change="updateItemStyle({ heightPx: Math.min(MAXIMUM_COMPONENT_HEIGHT_PX, Math.max(MINIMUM_COMPONENT_HEIGHT_PX, Number($event.target.value) || defaultComponentHeight(selectedItem))) })"
                   />
                 </div>
               </label>
@@ -2778,7 +2804,7 @@ onBeforeUnmount(() => {
                 <div class="range-field">
                   <input
                     type="range"
-                    min="0.01"
+                    :min="MINIMUM_COMPONENT_WIDTH_PCT"
                     max="100"
                     step="0.1"
                     :disabled="selectedItem.isLocked"
@@ -2788,13 +2814,13 @@ onBeforeUnmount(() => {
                   <input
                     class="dimension-input"
                     type="number"
-                    min="0.01"
+                    :min="MINIMUM_COMPONENT_WIDTH_PCT"
                     max="100"
                     step="0.1"
                     :disabled="selectedItem.isLocked"
                     :value="Math.round(selectedItemStyle.widthPct || 32)"
                     aria-label="컴포넌트 너비 퍼센트"
-                    @change="updateItemStyle({ widthPct: Math.min(100, Math.max(0.01, Number($event.target.value) || 32)) })"
+                    @change="updateItemStyle({ widthPct: Math.min(100, Math.max(MINIMUM_COMPONENT_WIDTH_PCT, Number($event.target.value) || 32)) })"
                   />
                 </div>
               </label>
@@ -2803,26 +2829,29 @@ onBeforeUnmount(() => {
                 <div class="range-field">
                   <input
                     type="range"
-                    min="1"
-                    max="900"
+                    :min="MINIMUM_COMPONENT_HEIGHT_PX"
+                    :max="MAXIMUM_COMPONENT_HEIGHT_PX"
                     step="1"
                     :disabled="selectedItem.isLocked"
-                    :value="selectedItemStyle.heightPx || 120"
+                    :value="selectedItemStyle.heightPx || defaultComponentHeight(selectedItem)"
                     @input="updateItemStyle({ heightPx: Number($event.target.value) })"
                   />
                   <input
                     class="dimension-input"
                     type="number"
-                    min="1"
-                    max="900"
+                    :min="MINIMUM_COMPONENT_HEIGHT_PX"
+                    :max="MAXIMUM_COMPONENT_HEIGHT_PX"
                     step="1"
                     :disabled="selectedItem.isLocked"
-                    :value="Math.round(selectedItemStyle.heightPx || 120)"
+                    :value="Math.round(selectedItemStyle.heightPx || defaultComponentHeight(selectedItem))"
                     aria-label="컴포넌트 높이 픽셀"
-                    @change="updateItemStyle({ heightPx: Math.min(900, Math.max(1, Number($event.target.value) || 120)) })"
+                    @change="updateItemStyle({ heightPx: Math.min(MAXIMUM_COMPONENT_HEIGHT_PX, Math.max(MINIMUM_COMPONENT_HEIGHT_PX, Number($event.target.value) || defaultComponentHeight(selectedItem))) })"
                   />
                 </div>
               </label>
+              <small v-if="!usesAutomaticComponentHeight(selectedItem, selectedItemStyle)">
+                고정 영역을 넘는 내용은 미리보기와 출력에서 잘립니다.
+              </small>
             </div>
             <template v-if="selectedItem.fieldKind !== 'image'">
               <label>

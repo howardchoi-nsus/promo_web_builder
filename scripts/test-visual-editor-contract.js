@@ -272,6 +272,12 @@ assert.match(sectionProperties, /class="section-background-fade"/);
 assert.match(app, /class="image-frame-controls"/);
 assert.match(app, /function setImageShape/);
 assert.match(app, /function setImageResizeMode/);
+const imageResizeModeSource = app.slice(
+  app.indexOf("function setImageResizeMode"),
+  app.indexOf("function resetSectionHeight"),
+);
+assert.match(imageResizeModeSource, /updateItemStyle\(nextPatch\)/);
+assert.doesNotMatch(imageResizeModeSource, /EditorCommandType\.ITEM_STYLE_REPLACE/);
 assert.match(app, />비율 유지<\/button>/);
 assert.match(app, />자유 조절<\/button>/);
 assert.match(app, /aria-label="이미지 너비 퍼센트"/);
@@ -284,6 +290,22 @@ assert.match(renderer, /function itemResizeHandles\(section, item\)/);
 assert.match(renderer, /class="item-resize-handle component-resize-handle"/);
 assert.match(renderer, /function startItemResize[\s\S]*if \(!props\.editable \|\| item\.isLocked \|\| event\.button !== 0\) return/);
 assert.match(renderer, /resizeComponentGeometry/);
+assert.match(renderer, /activeResizeCleanup/);
+assert.match(renderer, /function startDrag[\s\S]*activeResizeCleanup\?\.\(\)/);
+assert.match(renderer, /function startItemResize[\s\S]*activeDragCleanup\?\.\(\)/);
+assert.match(renderer, /globalThis\.addEventListener\("pointerup", handlePointerUp\)/);
+assert.match(renderer, /handle\.addEventListener\("lostpointercapture", handleLostPointerCapture\)/);
+assert.match(renderer, /document\.addEventListener\("visibilitychange", handleVisibilityChange\)/);
+assert.match(renderer, /if \(finished \|\| moveEvent\.pointerId !== event\.pointerId\) return/);
+assert.match(renderer, /if \(\(moveEvent\.buttons & 1\) !== 1\)/);
+assert.match(renderer, /function anchoredLayoutPatch/);
+assert.match(renderer, /promo-resize-announcement/);
+assert.match(rendererStyles, /\.rendered-item--cta > \.rendered-cta\s*\{[^}]*width:\s*100%[^}]*height:\s*100%/s);
+assert.match(rendererStyles, /\.rendered-item--cta > \.rendered-cta\s*\{[^}]*min-height:\s*0/s);
+assert.match(renderer, /function startSectionResize[\s\S]*globalThis\.addEventListener\("pointerup", handlePointerEnd\)/);
+assert.match(renderer, /function startSectionResize[\s\S]*resizeHandle\.addEventListener\("lostpointercapture", finish\)/);
+assert.match(rendererStyles, /\.rendered-item--text\.is-fixed-height > \.rendered-text/);
+assert.match(rendererStyles, /\.item-resize-handle::before\s*\{[^}]*inset:\s*-5px/s);
 assert.match(renderer, /normalizeComponentGeometry/);
 assert.match(renderer, /usesAutomaticComponentHeight/);
 assert.match(app, /usesAutomaticComponentHeight/);

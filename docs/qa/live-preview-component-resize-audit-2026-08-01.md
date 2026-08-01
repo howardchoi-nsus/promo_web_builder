@@ -6,7 +6,31 @@
 - 기준: `main` / `17d4068`
 - 대상: Live Preview의 텍스트, 이미지, CTA 선택·이동·포인터/키보드 리사이즈
 - 환경: `scripts/serve-visual-editor-preview.js` fixture, Codex in-app Browser
-- 성격: 진단과 의견 정리이며 제품 소스는 수정하지 않았다.
+- 성격: 최초 감사는 진단으로 수행했고, 아래 수정 반영 결과에 후속 개발 내용을 기록했다.
+
+## 수정 반영 결과
+
+- 반영일: 2026-08-01
+- resize session을 단일 lifecycle로 통합하고 pointer id/buttons, global pointer 종료, capture 손실, window blur, visibility change, unmount cleanup을 적용했다.
+- pointer cancel과 강제 cleanup은 geometry를 저장하지 않고 원래 상태로 복원한다.
+- 이미지 비율 유지/자유 조절 전환 시 현재 렌더 너비·높이를 보존한다.
+- CTA frame과 실제 버튼을 `width/height: 100%`로 일치시켜 pointer·keyboard 리사이즈가 실제 버튼 크기에 반영된다.
+- 텍스트 고정 모드 전환 시 현재 실측 높이를 보존하고, 이후 고정 영역을 줄이면 overflow를 명시적으로 잘라 인접 Component hit area를 침범하지 않게 했다.
+- 공통 최소값을 너비 4%, 높이 24px로 조정하고 최대 Component 900px, Section 1200px 정책을 공통 상수로 통합했다.
+- 14px handle의 시각 크기는 유지하면서 24px pointer hit area를 확보했다.
+- 방향 aria-label을 한국어로 바꾸고 keyboard resize 결과를 `aria-live`로 안내한다.
+
+브라우저 회귀 실측:
+
+```text
+Text fixed 전환: item 690.16px → 690.16px, 즉시 축소 없음
+CTA 초기: frame 169.27×64px, button 169.27×64px
+CTA keyboard resize: frame/button 높이 모두 80px
+Image locked → free: 169.27×169.27px 유지
+Image pointer resize: 169.27×169.27px → 251.27×228.27px
+Image pointerup 후 is-resizing=false, 추가 mousemove에도 크기 불변
+Desktop/Mobile 전환 정상, console error/warning 없음
+```
 
 ## 종합 의견
 
@@ -154,3 +178,25 @@
 - 실제 업로드, AI 이미지 생성, 운영 DB 저장 및 Web Output persistence는 확인하지 않았다.
 - 스크린샷과 DOM/geometry 실측으로 UX와 구조 위험을 확인했으며 전체 WCAG 준수를 의미하지 않는다.
 
+## 2026-08-01 디버깅 추가 결과
+
+개발 반영분을 다시 추적한 결과 아래 4개 결함을 추가로 확인하고 수정했다.
+
+1. 모바일에서 이미지의 `비율 유지 / 자유 조절`을 바꾸는 코드가 항상 데스크톱 `ITEM_STYLE_REPLACE`를 실행했다. 이미지 모드 전환도 공통 `updateItemStyle()` 경로를 사용하도록 바꿔 현재 viewport만 패치한다.
+2. CTA frame은 `24px`까지 줄어드는데 실제 CTA의 토큰 기반 `min-height`는 기본 `44px`로 남아 frame 밖으로 넘칠 수 있었다. resizable CTA의 직접 자식은 frame 높이를 그대로 사용하도록 `min-height: 0`을 적용했다.
+3. 포인터와 키보드 resize의 최소 너비 계산이 각각 `24px`, `4%`로 달랐다. 두 경로 모두 `max(24px, canvas width의 4%)`를 사용한다.
+4. 섹션 resize가 handle에만 종료 listener를 등록해 pointer capture 상실, 창 blur, 탭 숨김에서 `is-resizing`이 남을 수 있었다. drag/component resize/section resize를 상호 배타적인 단일 interaction session으로 만들고 전역 종료·취소 정리를 추가했다.
+
+브라우저 실측:
+
+- 모바일 이미지에서 `자유 조절` 전환 후 높이 입력 `114px`가 나타났고, Desktop으로 돌아오면 기존 `비율 유지`가 유지되며 높이 입력은 나타나지 않았다.
+- CTA를 최소 높이로 줄였을 때 item과 실제 CTA가 모두 `141.75 × 24px`로 일치했다.
+- 포인터 drag가 중간에 끊긴 상태에서도 다음 `buttons === 0` pointer move에서 `is-resizing`이 `1 → 0`으로 정리됐다.
+- 정리 후 추가 mouse move에서도 CTA geometry가 `155 × 34.08px`로 고정되어 포인터를 따라가지 않았다.
+- 브라우저 console warning/error는 없었다.
+
+회귀 검증:
+
+- 관련 Node contract/behavior/layout/core 테스트 7개 통과
+- Vite production build 통과
+- `git diff --check` 통과
