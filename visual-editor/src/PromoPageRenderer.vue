@@ -502,7 +502,9 @@ function renderedItemHeight(section, item) {
 }
 
 function defaultSectionHeight(section) {
-  return Math.max(180, (section.items || []).reduce((height, item) => height + renderedItemHeight(section, item), 0) + 52);
+  const items = section.items || [];
+  const contentHeight = items.reduce((height, item) => height + renderedItemHeight(section, item), 0);
+  return Math.max(50, contentHeight + (items.length ? 52 : 0));
 }
 
 function resolvedSectionHeight(section) {
