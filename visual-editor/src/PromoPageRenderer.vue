@@ -10,6 +10,7 @@ import {
   defaultComponentHeight,
   geometryToLayoutStyle,
   normalizeComponentGeometry,
+  resolveSectionHeight,
   usesAutomaticComponentHeight,
 } from "./platform/layout-engine/geometry.mjs";
 import { resizeComponentGeometry } from "./platform/layout-engine/resize.mjs";
@@ -505,7 +506,7 @@ function defaultSectionHeight(section) {
 }
 
 function resolvedSectionHeight(section) {
-  return Math.max(Number(sectionStyle(section).minHeight) || 0, defaultSectionHeight(section));
+  return resolveSectionHeight(sectionStyle(section).minHeight, defaultSectionHeight(section));
 }
 
 function defaultItemPosition(section, item) {

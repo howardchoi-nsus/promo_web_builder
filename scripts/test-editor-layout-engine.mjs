@@ -8,6 +8,7 @@ import {
   defaultComponentHeight,
   geometryToLayoutStyle,
   normalizeComponentGeometry,
+  resolveSectionHeight,
   usesAutomaticComponentHeight,
 } from "../visual-editor/src/platform/layout-engine/geometry.mjs";
 import { resizeComponentGeometry } from "../visual-editor/src/platform/layout-engine/resize.mjs";
@@ -17,6 +18,10 @@ assert.equal(MINIMUM_COMPONENT_WIDTH_PCT, 4);
 assert.equal(MINIMUM_COMPONENT_HEIGHT_PX, 24);
 assert.equal(MAXIMUM_COMPONENT_HEIGHT_PX, 900);
 assert.equal(MAXIMUM_SECTION_HEIGHT_PX, 1200);
+assert.equal(resolveSectionHeight(undefined, 460), 460);
+assert.equal(resolveSectionHeight(240, 460), 240);
+assert.equal(resolveSectionHeight(20, 460), 50);
+assert.equal(resolveSectionHeight(1400, 460), MAXIMUM_SECTION_HEIGHT_PX);
 assert.equal(usesAutomaticComponentHeight(textItem, {}), true);
 assert.equal(usesAutomaticComponentHeight(textItem, { heightMode: "auto" }), true);
 assert.equal(usesAutomaticComponentHeight(textItem, { heightMode: "fixed" }), false);

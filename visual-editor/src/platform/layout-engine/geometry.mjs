@@ -18,6 +18,14 @@ export function roundedGeometryValue(value) {
   return Math.round(Number(value) * 100) / 100;
 }
 
+export function resolveSectionHeight(configuredHeight, automaticHeight) {
+  const configured = Number(configuredHeight);
+  if (Number.isFinite(configured) && configured > 0) {
+    return clampNumber(configured, 50, MAXIMUM_SECTION_HEIGHT_PX, 50);
+  }
+  return clampNumber(automaticHeight, 50, MAXIMUM_SECTION_HEIGHT_PX, 50);
+}
+
 export function defaultComponentHeight(item = {}) {
   const fields = Array.isArray(item.fields) ? item.fields : [];
   if (fields.length > 1) {

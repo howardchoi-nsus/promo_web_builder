@@ -213,6 +213,8 @@ assert.doesNotMatch(renderer, /selectRendererItem\(section, item\);\s*target\.se
 assert.match(previewPanel, /@click="clearPreviewSelection"/);
 assert.match(app, /function clearEditorSelection\(\)/);
 assert.match(renderer, /function resolvedSectionHeight\(section\)/);
+assert.match(renderer, /return resolveSectionHeight\(sectionStyle\(section\)\.minHeight, defaultSectionHeight\(section\)\)/);
+assert.doesNotMatch(renderer, /Math\.max\(Number\(sectionStyle\(section\)\.minHeight\) \|\| 0, defaultSectionHeight\(section\)\)/);
 assert.match(renderer, /ResizeObserver/);
 assert.match(rendererStyles, /is-editable:not\(\.is-editing\) \.rendered-text[^}]*user-select:\s*none/);
 assert.match(renderer, /startSectionResize/);
