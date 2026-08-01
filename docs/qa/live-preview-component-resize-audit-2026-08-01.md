@@ -200,3 +200,21 @@ Desktop/Mobile 전환 정상, console error/warning 없음
 - 관련 Node contract/behavior/layout/core 테스트 7개 통과
 - Vite production build 통과
 - `git diff --check` 통과
+
+## 2026-08-01 컴포넌트 클릭·이미지/섹션 연동 재점검
+
+추가 제보를 기준으로 클릭 선택과 이미지 resize를 다시 재현해 아래 원인을 수정했다.
+
+1. 다중 선택에 포함된 컴포넌트를 일반 클릭하면 `selectedItemKeys.includes(key)` 조건에서 선택 이벤트가 종료돼 단일 선택으로 축소되지 않았다. 현재 항목이 유일한 선택일 때만 조기 종료하도록 변경했다.
+2. 편집 모드 CTA도 실제 링크 기본 동작을 실행했다. 편집 모드에서만 링크 이동을 막고 상위 컴포넌트 선택 이벤트는 유지한다.
+3. 이미지 resize 완료 시 `update-section-style`로 섹션 높이를 직접 늘렸고, ResizeObserver 측정 이미지 높이도 자동 섹션 높이에 포함됐다. 이미지 높이를 자동 섹션 높이 계산에서 분리하고 item resize의 섹션 스타일 갱신을 제거했다.
+4. 이미지의 resize 최대 높이를 `1200px` 섹션 상한이 아니라 현재 section canvas 하단으로 제한했다. 이미지와 섹션은 독립적으로 조절하며, 섹션 크기가 더 필요할 때는 섹션 handle을 사용한다.
+
+브라우저 실측:
+
+- CTA 클릭 전후 URL 유지, CTA 선택 handle 정상 표시
+- 미리보기 다중 선택 `heroBanner.title + heroBanner.description`에서 title 일반 클릭 후 `heroBanner.title`만 선택
+- 이미지 높이 `141.75 → 157.75 → 167.75px`로 키보드·포인터 확대
+- 같은 과정에서 Feature Content 섹션 높이 `461.453125px`로 고정
+- 포인터 종료 후 `is-resizing = 0`
+- 브라우저 console warning/error 없음

@@ -454,6 +454,7 @@ function estimatedItemHeight(item) {
 }
 
 function renderedItemHeight(section, item) {
+  if (item.fieldKind === "image") return estimatedItemHeight(item);
   return measuredItemHeights.value[styleKey(section, item)] || estimatedItemHeight(item);
 }
 
@@ -696,10 +697,16 @@ function selectRendererItem(section, item, event = null) {
   if (!props.editable) return;
   const additive = Boolean(event?.ctrlKey || event?.metaKey || event?.shiftKey);
   const key = styleKey(section, item);
-  if (!additive && (props.selectedItemKey === key || props.selectedItemKeys.includes(key))) return;
+  const alreadyExclusive = props.selectedItemKey === key
+    && props.selectedItemKeys.length <= 1;
+  if (!additive && alreadyExclusive) return;
   emit("select-item", section, item, {
     additive,
   });
+}
+
+function handleCtaClick(event) {
+  if (props.editable) event.preventDefault();
 }
 
 function startDrag(event, section, item) {
@@ -883,7 +890,7 @@ function startItemResize(event, section, item, handleDirection = "se") {
       : containerRect.width - startGeometry.x);
     const availableHeight = Math.max(minimumItemHeightPx, handleDirection.includes("n")
       ? startGeometry.height + startGeometry.y
-      : MAXIMUM_SECTION_HEIGHT_PX - SECTION_VERTICAL_PADDING_PX - startGeometry.y);
+      : containerRect.height - startGeometry.y);
     const maxHeight = Math.min(MAXIMUM_COMPONENT_HEIGHT_PX, availableHeight);
     nextGeometry = resizeComponentGeometry({
       geometry: startGeometry,
@@ -916,15 +923,6 @@ function startItemResize(event, section, item, handleDirection = "se") {
     finished = true;
     if (animationFrame) cancelAnimationFrame(animationFrame);
     if (commit && moved) {
-      const requiredSectionHeight = Math.ceil(
-        nextGeometry.y + nextGeometry.height + SECTION_VERTICAL_PADDING_PX,
-      );
-      const currentSectionHeight = sectionStyle(section).minHeight || defaultSectionHeight(section);
-      if (requiredSectionHeight > currentSectionHeight) {
-        emit("update-section-style", section.sectionKey, {
-          minHeight: Math.min(MAXIMUM_SECTION_HEIGHT_PX, requiredSectionHeight),
-        });
-      }
       const layoutStyle = geometryToLayoutStyle(nextGeometry, containerRect.width, {
         includeHeight: verticalActive && !locked && !autoHeight && !(isImage && style.shape === "circle"),
         includeFontSize: false,
@@ -1033,7 +1031,7 @@ function resizeItemByKeyboard(event, section, item, handleDirection = "se") {
     MINIMUM_COMPONENT_HEIGHT_PX,
     handleDirection.includes("n")
       ? geometry.height + geometry.y
-      : MAXIMUM_SECTION_HEIGHT_PX - SECTION_VERTICAL_PADDING_PX - geometry.y,
+      : containerRect.height - geometry.y,
   );
   const resized = resizeComponentGeometry({
     geometry,
@@ -1057,13 +1055,6 @@ function resizeItemByKeyboard(event, section, item, handleDirection = "se") {
       includeHeight: verticalActive && !locked && !autoHeight && !(isImage && style.shape === "circle"),
       includeFontSize: false,
     });
-  const requiredSectionHeight = Math.ceil(resized.y + resized.height + SECTION_VERTICAL_PADDING_PX);
-  const currentSectionHeight = sectionStyle(section).minHeight || defaultSectionHeight(section);
-  if (requiredSectionHeight > currentSectionHeight) {
-    emit("update-section-style", section.sectionKey, {
-      minHeight: Math.min(MAXIMUM_SECTION_HEIGHT_PX, requiredSectionHeight),
-    });
-  }
   if (anchored) {
     delete layoutStyle.positionMode;
     delete layoutStyle.xPct;
@@ -1417,6 +1408,7 @@ function startSectionResize(event, section) {
                   :href="ctaUrl(valueFor(section, item, field))"
                   :target="valueFor(section, item, field)?.target || '_self'"
                   :rel="valueFor(section, item, field)?.target === '_blank' ? 'noopener noreferrer' : undefined"
+                  @click="handleCtaClick"
                 >{{ valueFor(section, item, field)?.label || field.name }}</a>
                 <div
                   v-else-if="field.fieldKind === 'image'"
@@ -1507,6 +1499,7 @@ function startSectionResize(event, section) {
                 :href="ctaUrl(valueFor(section, item))"
                 :target="valueFor(section, item)?.target || '_self'"
                 :rel="valueFor(section, item)?.target === '_blank' ? 'noopener noreferrer' : undefined"
+                @click="handleCtaClick"
               >
                 {{ valueFor(section, item)?.label || item.name }}
               </a>
