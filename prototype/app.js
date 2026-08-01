@@ -1195,6 +1195,8 @@ const adminApp = createApp({
       itemComponentsError: "",
       selectedItemComponentId: "",
       itemComponentSaving: false,
+      itemComponentUsageLoading: false,
+      itemComponentUsage: { usageCount: 0, sections: [] },
       showNewItemComponentForm: false,
       itemComponentEditor: {
         name: "", description: "", fieldKind: "text", textType: "title",
@@ -2236,6 +2238,9 @@ const adminApp = createApp({
         this.itemComponents = Array.isArray(result.components) ? result.components : [];
         if (!this.itemComponents.some((component) => component.id === this.selectedItemComponentId)) {
           this.selectedItemComponentId = this.itemComponents[0]?.id || "";
+          if (this.itemComponents[0]) this.selectItemComponent(this.itemComponents[0]);
+        } else if (this.selectedItemComponentId) {
+          this.loadItemComponentUsage(this.selectedItemComponentId);
         }
       } catch (error) {
         this.itemComponentsError = error.message;
@@ -2246,6 +2251,7 @@ const adminApp = createApp({
 
     selectItemComponent(component) {
       this.selectedItemComponentId = component.id;
+      this.itemComponentUsage = { usageCount: 0, sections: [] };
       const componentFields = Array.isArray(component.fields) && component.fields.length
         ? component.fields
         : [{
@@ -2304,6 +2310,61 @@ const adminApp = createApp({
         })),
       };
       this.showNewItemComponentForm = false;
+      this.loadItemComponentUsage(component.id);
+    },
+
+    async loadItemComponentUsage(componentId = this.selectedItemComponentId) {
+      if (!componentId) return;
+      this.itemComponentUsageLoading = true;
+      try {
+        const response = await fetch(`/api/item-component-usage?componentId=${encodeURIComponent(componentId)}`);
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `컴포넌트 사용처 조회 오류(${response.status})`);
+        if (componentId === this.selectedItemComponentId) {
+          this.itemComponentUsage = {
+            usageCount: Number(result.usageCount || 0),
+            sections: Array.isArray(result.sections) ? result.sections : [],
+          };
+        }
+      } catch (error) {
+        if (componentId === this.selectedItemComponentId) {
+          this.itemComponentUsage = { usageCount: 0, sections: [], error: error.message };
+        }
+      } finally {
+        this.itemComponentUsageLoading = false;
+      }
+    },
+
+    async archiveItemComponent(component) {
+      if (!component?.id || component.status === "archived" || this.itemComponentSaving) return;
+      await this.loadItemComponentUsage(component.id);
+      if (this.itemComponentUsage.usageCount > 0) {
+        this.setStatus(`사용 중인 컴포넌트는 보관할 수 없습니다 (${this.itemComponentUsage.usageCount}개 사용처)`);
+        return;
+      }
+      if (!window.confirm(`${component.name} 컴포넌트를 보관할까요? 보관 후 새 섹션에서 사용할 수 없습니다.`)) return;
+      this.itemComponentSaving = true;
+      try {
+        const response = await fetch("/api/item-component-archive", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ componentId: component.id }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          if (response.status === 409) await this.loadItemComponentUsage(component.id);
+          throw new Error(result.message || result.error || `컴포넌트 보관 오류(${response.status})`);
+        }
+        this.selectedItemComponentId = "";
+        this.itemComponentUsage = { usageCount: 0, sections: [] };
+        await this.loadItemComponents();
+        const next = this.itemComponents.find((item) => item.status !== "archived");
+        if (next) this.selectItemComponent(next);
+        this.setStatus("컴포넌트를 보관했습니다");
+      } catch (error) {
+        this.setStatus(`컴포넌트 보관 실패: ${error.message}`);
+      } finally {
+        this.itemComponentSaving = false;
+      }
     },
 
     openNewItemComponentForm() {

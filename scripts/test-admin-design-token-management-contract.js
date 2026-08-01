@@ -33,6 +33,7 @@ assert.match(store, /normalizeDarkOnlyTokenEntries/);
 const {
   isDarkOnlyTokenSet,
   normalizeDarkOnlyTokenEntries,
+  validateTokenValue,
 } = require("../api/_design-token-store");
 assert.equal(isDarkOnlyTokenSet({ setKey: "ggpoker-web", name: "GGPoker Web" }), true);
 assert.equal(isDarkOnlyTokenSet({ setKey: "generic", name: "Generic" }), false);
@@ -155,6 +156,15 @@ assert.match(component, /previewStyle/);
 assert.match(component, /usage: \{ templates: \[\], aiRuns:/);
 assert.match(component, /histories/);
 assert.match(component, /design-token-table/);
+assert.match(component, /design-token-actual-preview/);
+assert.match(component, /tokenVisualStyle/);
+assert.match(component, /isFixedFontSize/);
+assert.match(component, /convertFontSize/);
+assert.match(component, /유동형 clamp/);
+assert.match(component, /\+ 토큰 추가/);
+assert.match(component, /pendingDefinitions/);
+assert.match(service, /registerDefinitions/);
+assert.match(service, /\/api\/design-token-catalog-import/);
 assert.match(component, /type="file"/);
 assert.match(component, /exportCsv/);
 assert.doesNotMatch(component, /saveAndApply/);
@@ -179,5 +189,6 @@ assert.equal(ko["admin.designToken.title"], "디자인 토큰 관리");
 assert.equal(typeof en["admin.designToken.title"], "string");
 assert.equal(ko["admin.designToken.setDeactivated"], "디자인 토큰 세트를 비활성화했습니다.");
 assert.equal(typeof en["admin.designToken.deleteConfirm"], "string");
+assert.equal(validateTokenValue({ value_type: "length" }, "clamp(1rem, calc(0.5rem + 1vw), 2rem)"), "");
 
 console.log("admin design token management contract passed");

@@ -22,6 +22,7 @@ const json = (method, body) => ({ method, body: JSON.stringify(body) });
 export const designTokenService = Object.freeze({
   list: () => requestJson("/api/design-token-sets"),
   catalog: () => requestJson("/api/design-token-catalog-import"),
+  registerDefinitions: (body) => requestJson("/api/design-token-catalog-import", json("POST", body)),
   detail: (versionId) => requestJson(`/api/design-token-set?versionId=${encodeURIComponent(versionId)}`),
   usage: (tokenSetId) => requestJson(`/api/design-token-set-usage?tokenSetId=${encodeURIComponent(tokenSetId)}`),
   createSet: (body) => requestJson("/api/design-token-sets", json("POST", body)),

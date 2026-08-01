@@ -15,7 +15,7 @@ module.exports = async function handler(req, res) {
       from wizard_content_section_component_instances instance
       join wizard_item_component_versions version on version.id = instance.component_version_id
       join wizard_content_sections section on section.id = instance.section_id
-      where version.component_id = ${componentId}::uuid and section.status <> 'archived'
+      where version.component_id = ${componentId}::uuid and section.status in ('draft', 'active')
       order by section.name, section.version desc, instance.sort_order
     `;
     return res.status(200).json({ ok: true, componentId, usageCount: rows.length, sections: rows.map((row) => ({

@@ -1332,7 +1332,7 @@
             <div class="prompt-admin-grid">
               <aside class="prompt-list-panel">
                 <button v-for="component in itemComponents" :key="component.id" class="prompt-list-item" type="button"
-                  :class="{ selected: selectedItemComponentId === component.id }" @click="selectItemComponent(component)">
+                  :class="{ selected: selectedItemComponentId === component.id, archived: component.status === 'archived' }" @click="selectItemComponent(component)">
                   <strong>{{ component.name }}</strong>
                   <span>{{ component.fields?.length || 1 }}개 요소 · v{{ component.version || '-' }}</span>
                   <em :class="`status-${component.versionStatus || component.status}`">{{ wizardSectionStatusLabel(component.versionStatus || component.status) }}</em>
@@ -1347,9 +1347,27 @@
                   </div>
                   <div class="subsection-actions">
                     <button v-if="showNewItemComponentForm" class="tiny-button primary" type="button" :disabled="itemComponentSaving || !itemComponentEditor.name" @click="saveNewItemComponent">초안 생성</button>
-                    <template v-else-if="selectedItemComponent.versionStatus === 'draft'"><button class="tiny-button" type="button" :disabled="itemComponentSaving" @click="saveItemComponentDraft(selectedItemComponent)">{{ t('common.action.save') }}</button><button class="tiny-button primary" type="button" :disabled="itemComponentSaving" @click="activateItemComponent(selectedItemComponent)">{{ t('common.action.activate') }}</button></template>
-                    <button v-else class="tiny-button" type="button" :disabled="itemComponentSaving" @click="createItemComponentDraft(selectedItemComponent)">새 초안 만들기</button>
+                    <template v-else-if="selectedItemComponent.status !== 'archived' && selectedItemComponent.versionStatus === 'draft'"><button class="tiny-button" type="button" :disabled="itemComponentSaving" @click="saveItemComponentDraft(selectedItemComponent)">{{ t('common.action.save') }}</button><button class="tiny-button primary" type="button" :disabled="itemComponentSaving" @click="activateItemComponent(selectedItemComponent)">{{ t('common.action.activate') }}</button></template>
+                    <button v-else-if="selectedItemComponent.status !== 'archived'" class="tiny-button" type="button" :disabled="itemComponentSaving" @click="createItemComponentDraft(selectedItemComponent)">새 초안 만들기</button>
+                    <button
+                      v-if="selectedItemComponent.status !== 'archived'"
+                      class="tiny-button danger"
+                      type="button"
+                      :disabled="itemComponentSaving || itemComponentUsageLoading || itemComponentUsage.usageCount > 0"
+                      :title="itemComponentUsage.usageCount > 0 ? '활성·초안 섹션에서 사용 중이라 보관할 수 없습니다.' : '컴포넌트를 보관합니다.'"
+                      @click="archiveItemComponent(selectedItemComponent)"
+                    >컴포넌트 보관</button>
                   </div>
+                </div>
+                <div v-if="selectedItemComponent.status !== 'archived'" class="outline-item" :class="{ 'danger-state': itemComponentUsage.error }">
+                  <strong>컴포넌트 사용처</strong>
+                  <span v-if="itemComponentUsageLoading">사용처를 확인하는 중입니다.</span>
+                  <span v-else-if="itemComponentUsage.error">{{ itemComponentUsage.error }}</span>
+                  <span v-else-if="itemComponentUsage.usageCount">활성·초안 섹션 {{ itemComponentUsage.usageCount }}곳에서 사용 중이므로 보관할 수 없습니다.</span>
+                  <span v-else>사용 중인 활성·초안 섹션이 없어 안전하게 보관할 수 있습니다.</span>
+                  <small v-for="usage in itemComponentUsage.sections" :key="`${usage.id}-${usage.itemKey}`">
+                    {{ usage.name }} v{{ usage.sectionVersion }} · {{ usage.itemKey }}
+                  </small>
                 </div>
                 <label class="field"><span>{{ t('entity.component.name') }}</span><input v-model="itemComponentEditor.name" type="text" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /></label>
                 <label class="field"><span>{{ t('common.field.description') }}</span><input v-model="itemComponentEditor.description" type="text" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /></label>

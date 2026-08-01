@@ -37,14 +37,31 @@ function createTokenSetKey(name) {
   return `${base}-${randomUUID().replace(/-/g, "").slice(0, 8)}`;
 }
 
+function isSafeLengthValue(value) {
+  const text = String(value ?? "").trim();
+  if (/^-?(?:\d+|\d*\.\d+)(?:px|rem|em|%|vh|vw|vmin|vmax|ch|ex)$/.test(text) || text === "0") return true;
+  if (!/^(?:clamp|calc|min|max)\(.+\)$/.test(text)) return false;
+  if (!/^[\d\sa-zA-Z+\-*/().,%]+$/.test(text)) return false;
+  const words = text.match(/[a-zA-Z]+/g) || [];
+  if (words.some((word) => !["clamp", "calc", "min", "max", "px", "rem", "em", "vh", "vw", "vmin", "vmax", "ch", "ex"].includes(word))) return false;
+  let depth = 0;
+  for (const character of text) {
+    if (character === "(") depth += 1;
+    if (character === ")") depth -= 1;
+    if (depth < 0) return false;
+  }
+  return depth === 0;
+}
+
 function validateTokenValue(definition, value) {
   const text = String(value ?? "").trim();
   if (!text) return "token value is required";
+  if (/url\s*\(|expression\s*\(|[;{}]/i.test(text)) return "unsafe CSS token value";
   if (definition.value_type === "color"
     && !/^(?:#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?|rgba?\(\s*(?:\d+|\d*\.\d+)(?:\s*,\s*(?:\d+|\d*\.\d+)){2}(?:\s*,\s*(?:\d+|\d*\.\d+))?\s*\))$/.test(text)) {
     return "color must be a hex, rgb, or rgba value";
   }
-  if (definition.value_type === "length" && !/^-?(?:\d+|\d*\.\d+)(?:px|rem|em|%|vh|vw)$/.test(text)) return "length requires an allowed CSS unit";
+  if (definition.value_type === "length" && !isSafeLengthValue(text)) return "length requires an allowed responsive CSS unit or function";
   if (definition.value_type === "duration" && !/^(?:\d+|\d*\.\d+)(?:ms|s)$/.test(text)) return "duration requires ms or s";
   if (definition.value_type === "number" && !Number.isFinite(Number(text))) return "number is invalid";
   if (definition.value_type === "easing"
@@ -55,7 +72,6 @@ function validateTokenValue(definition, value) {
     && !/^(?:linear|radial|conic)-gradient\(.+\)$/i.test(text)) return "gradient value is invalid";
   if (definition.value_type === "enum" && Array.isArray(definition.allowed_values)
     && definition.allowed_values.length && !definition.allowed_values.includes(text)) return "enum value is not allowed";
-  if (/url\s*\(|expression\s*\(|[;{}]/i.test(text)) return "unsafe CSS token value";
   return "";
 }
 
@@ -355,6 +371,7 @@ module.exports = {
   parseBody,
   createTokenSetKey,
   validateTokenValue,
+  isSafeLengthValue,
   parseCsvRows,
   normalizeTokenEntries,
   fetchTokenDefinitions,

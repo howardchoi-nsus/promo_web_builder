@@ -94,7 +94,12 @@ assert.equal(SAFE_CSS_PROPERTIES.has("background-color"), true);
 assert.equal(SAFE_CSS_PROPERTIES.has("background-image"), true);
 assert.equal(validateTokenValue({ value_type: "color" }, "#AABBCC"), "");
 assert.match(validateTokenValue({ value_type: "color" }, "red"), /hex/);
+assert.equal(validateTokenValue({ value_type: "length" }, "1rem"), "");
+assert.equal(validateTokenValue({ value_type: "length" }, "12vh"), "");
+assert.equal(validateTokenValue({ value_type: "length" }, "clamp(0.875rem, calc(0.75rem + 0.5vw), 1.125rem)"), "");
+assert.equal(validateTokenValue({ value_type: "length" }, "min(100%, 80rem)"), "");
 assert.match(validateTokenValue({ value_type: "length" }, "10;display:none"), /unit|unsafe/);
+assert.match(validateTokenValue({ value_type: "length" }, "calc(1rem + url(https://invalid))"), /unsafe/);
 assert.deepEqual(parseCsvRows('token,value\n--promo-accent,"#AABBCC"\n'), [{ token: "--promo-accent", value: "#AABBCC" }]);
 
 const section = {
@@ -118,5 +123,16 @@ const invalid = validateDesignPlan(section, {
 }, { allowedLayoutVariants: ["split-right"] }, tokenSet);
 assert.equal(invalid.ok, false);
 assert.match(invalid.errors.join("; "), /does not allow region|not AI-selectable|not placed/);
+
+const componentHtml = fs.readFileSync(path.join(root, "prototype/index.html"), "utf8");
+const componentUsageApi = fs.readFileSync(path.join(root, "api/item-component-usage.js"), "utf8");
+const componentArchiveApi = fs.readFileSync(path.join(root, "api/item-component-archive.js"), "utf8");
+assert.match(adminApp, /loadItemComponentUsage/);
+assert.match(adminApp, /archiveItemComponent/);
+assert.match(adminApp, /\/api\/item-component-archive/);
+assert.match(componentHtml, /컴포넌트 보관/);
+assert.match(componentHtml, /itemComponentUsage\.usageCount > 0/);
+assert.match(componentUsageApi, /section\.status in \('draft', 'active'\)/);
+assert.match(componentArchiveApi, /status in \('draft', 'active'\)/);
 
 console.log("Item component, design token and planner contract tests passed");

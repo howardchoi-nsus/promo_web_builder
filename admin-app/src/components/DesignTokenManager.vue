@@ -3,6 +3,12 @@ import { createPromoTokenRuntimeStyle } from "../../../shared/promo-token-runtim
 import { designTokenService } from "../services/design-token-service.mjs";
 
 const MAX_CSV_SIZE = 2 * 1024 * 1024;
+const FONT_SIZE_PROPERTIES = new Set(["font-size"]);
+const TOKEN_CSS_PROPERTIES = [
+  "font-size", "font-weight", "line-height", "letter-spacing", "color",
+  "background-color", "background-image", "border-color", "border-radius",
+  "box-shadow", "gap", "padding", "margin", "width", "height",
+];
 
 function csvCell(value) {
   const text = String(value ?? "");
@@ -46,6 +52,14 @@ export default {
       showCreate: false,
       showSettings: false,
       showClone: false,
+      showAddToken: false,
+      addTokenError: "",
+      tokenForm: {
+        tokenKey: "--promo-font-size-", label: "", category: "typography",
+        valueType: "length", cssProperty: "font-size", unit: "rem",
+        valueLight: "1rem", valueDark: "1rem", themeable: false,
+      },
+      tokenCssProperties: TOKEN_CSS_PROPERTIES,
       searchTerm: "",
       categoryFilter: "",
       changedOnly: false,
@@ -224,6 +238,7 @@ export default {
       Object.assign(item, original);
     },
     restoreAll() {
+      this.editorValues = this.editorValues.filter((item) => !this.isNewToken(item));
       this.editorValues.forEach((item) => this.restoreToken(item));
     },
     fieldType(item) {
@@ -240,9 +255,128 @@ export default {
         item.activeTheme = "dark";
       }
     },
+    isNewToken(item) {
+      return !this.definitions.some((definition) => definition.tokenKey === item.tokenKey);
+    },
+    currentTokenValue(item) {
+      return String(item.value || item.valueDark || item.valueLight || "").trim();
+    },
+    isFontSizeToken(item) {
+      const properties = item.cssProperties || [item.cssProperty].filter(Boolean);
+      return properties.some((property) => FONT_SIZE_PROPERTIES.has(property));
+    },
+    isFixedFontSize(item) {
+      return this.isFontSizeToken(item) && /^-?(?:\d+|\d*\.\d+)px$/i.test(this.currentTokenValue(item));
+    },
+    tokenVisualKind(item) {
+      const properties = item.cssProperties || [item.cssProperty].filter(Boolean);
+      if (item.valueType === "color") return "color";
+      if (item.valueType === "gradient") return "gradient";
+      if (properties.includes("font-size")) return "font-size";
+      if (properties.includes("font-weight")) return "font-weight";
+      if (properties.includes("border-radius")) return "radius";
+      if (properties.includes("box-shadow")) return "shadow";
+      if (properties.some((property) => ["gap", "padding", "margin", "width", "height"].includes(property))) return "length";
+      return "text";
+    },
+    tokenVisualStyle(item) {
+      const value = this.currentTokenValue(item);
+      if (!value || /url\s*\(|expression\s*\(|[;{}]/i.test(value)) return {};
+      const kind = this.tokenVisualKind(item);
+      if (kind === "color") return { backgroundColor: value };
+      if (kind === "gradient") return { backgroundImage: value };
+      if (kind === "font-size") return { fontSize: value };
+      if (kind === "font-weight") return { fontWeight: value };
+      if (kind === "radius") return { borderRadius: value };
+      if (kind === "shadow") return { boxShadow: value };
+      if (kind === "length") return { width: `min(${value}, 4rem)` };
+      return {};
+    },
+    convertPxValue(value, mode) {
+      const match = String(value || "").trim().match(/^(-?(?:\d+|\d*\.\d+))px$/i);
+      if (!match) return value;
+      const px = Number(match[1]);
+      const round = (number) => Number(number.toFixed(4));
+      if (mode === "rem") return `${round(px / 16)}rem`;
+      const minPx = px <= 20 ? Math.max(14, px * 0.875) : px * 0.75;
+      const maxPx = px * 1.125;
+      const slope = ((maxPx - minPx) / (1440 - 375)) * 100;
+      const interceptPx = minPx - (slope * 375) / 100;
+      return `clamp(${round(minPx / 16)}rem, calc(${round(interceptPx / 16)}rem + ${round(slope)}vw), ${round(maxPx / 16)}rem)`;
+    },
+    convertFontSize(item, mode) {
+      item.valueLight = this.convertPxValue(item.valueLight || item.value, mode);
+      if (item.themeable || this.isDarkOnlySet) item.valueDark = this.convertPxValue(item.valueDark || item.value, mode);
+      this.updateResolvedValue(item);
+    },
+    resetTokenForm() {
+      this.tokenForm = {
+        tokenKey: "--promo-font-size-", label: "", category: "typography",
+        valueType: "length", cssProperty: "font-size", unit: "rem",
+        valueLight: "1rem", valueDark: "1rem", themeable: false,
+      };
+      this.addTokenError = "";
+    },
+    addToken() {
+      this.addTokenError = "";
+      const form = { ...this.tokenForm };
+      if (!/^(?:--promo-|--app-)[a-z0-9-]+$/.test(form.tokenKey)) {
+        this.addTokenError = "토큰 키는 --promo-* 또는 --app-* 형식이어야 합니다.";
+        return;
+      }
+      if (this.editorValues.some((item) => item.tokenKey === form.tokenKey)) {
+        this.addTokenError = "이미 등록된 토큰 키입니다.";
+        return;
+      }
+      if (!form.label.trim() || !form.valueLight.trim()) {
+        this.addTokenError = "이름과 Light 값을 입력하세요.";
+        return;
+      }
+      const darkValue = this.isDarkOnlySet
+        ? form.valueLight
+        : form.themeable ? (form.valueDark || form.valueLight) : "";
+      const value = this.isDarkOnlySet ? darkValue : form.valueLight;
+      this.editorValues.push({
+        tokenKey: form.tokenKey, label: form.label.trim(), semanticRole: form.label.trim(),
+        category: form.category.trim() || "general", categoryLabel: form.category.trim() || "general",
+        valueType: form.valueType, cssProperty: form.cssProperty, cssProperties: [form.cssProperty],
+        unit: form.unit.trim(), themeable: this.isDarkOnlySet ? false : form.themeable,
+        cardinality: "single", required: false, aiSelectable: false, editable: true,
+        valueIndex: 0, value, valueLight: this.isDarkOnlySet ? "" : form.valueLight,
+        valueDark: darkValue, activeTheme: this.isDarkOnlySet ? "dark" : "light", metadata: {},
+      });
+      this.showAddToken = false;
+      this.resetTokenForm();
+    },
+    removeNewToken(item) {
+      this.editorValues = this.editorValues.filter((candidate) => tokenIdentity(candidate) !== tokenIdentity(item));
+    },
+    pendingDefinitions() {
+      return this.editorValues.filter((item) => this.isNewToken(item)).map((item) => ({
+        tokenKey: item.tokenKey,
+        category: item.category || "general",
+        categoryLabel: item.categoryLabel || item.category || "general",
+        label: item.label || item.semanticRole || item.tokenKey,
+        valueType: item.valueType,
+        semanticRole: item.semanticRole || item.label || item.tokenKey,
+        cssProperty: item.cssProperty,
+        cssProperties: item.cssProperties || [item.cssProperty].filter(Boolean),
+        unit: item.unit || "",
+        themeable: item.themeable === true,
+        cardinality: item.cardinality || "single",
+        allowedValues: item.allowedValues || [],
+        required: false,
+        aiSelectable: item.aiSelectable === true,
+        editable: true,
+      }));
+    },
     async publish() {
       this.validationErrors = [];
       try {
+        const definitions = this.pendingDefinitions();
+        if (definitions.length) {
+          await this.run(() => designTokenService.registerDefinitions({ definitions }));
+        }
         const result = await this.run(() => designTokenService.publish({
           tokenSetId: this.selectedSetId,
           sourceVersionId: this.activeVersionId,
@@ -420,7 +554,25 @@ export default {
             </select>
             <label class="app-checkbox design-token-check"><input v-model="changedOnly" type="checkbox"> {{ t("admin.designToken.changedOnly") }}</label>
             <button class="tiny-button" type="button" :disabled="!isDirty" @click="restoreAll">{{ t("common.action.reset") }}</button>
+            <button class="tiny-button primary" type="button" :disabled="!setIsActive" @click="showAddToken = !showAddToken">+ 토큰 추가</button>
           </div>
+
+          <form v-if="showAddToken" class="design-token-add-form" @submit.prevent="addToken">
+            <div class="form-grid compact">
+              <label class="field"><span>토큰 키</span><input v-model.trim="tokenForm.tokenKey" required placeholder="--promo-font-size-caption"></label>
+              <label class="field"><span>표시 이름</span><input v-model.trim="tokenForm.label" required placeholder="캡션 글자 크기"></label>
+              <label class="field"><span>분류</span><input v-model.trim="tokenForm.category" placeholder="typography"></label>
+              <label class="field"><span>값 유형</span><select v-model="tokenForm.valueType"><option value="length">length</option><option value="color">color</option><option value="number">number</option><option value="gradient">gradient</option><option value="shadow">shadow</option><option value="font">font</option></select></label>
+              <label class="field"><span>CSS 속성</span><select v-model="tokenForm.cssProperty"><option v-for="property in tokenCssProperties" :key="property" :value="property">{{ property }}</option></select></label>
+              <label class="field"><span>권장 단위</span><select v-model="tokenForm.unit"><option value="rem">rem</option><option value="responsive">clamp / calc</option><option value="vw">vw</option><option value="vh">vh</option><option value="px">px</option><option value="">해당 없음</option></select></label>
+              <label class="field"><span>{{ isDarkOnlySet ? "Dark (Default) 값" : "Light 값" }}</span><input v-model.trim="tokenForm.valueLight" required placeholder="1rem 또는 clamp(...)"></label>
+              <label v-if="!isDarkOnlySet" class="field"><span>Dark 값</span><input v-model.trim="tokenForm.valueDark" :disabled="!tokenForm.themeable" :placeholder="tokenForm.themeable ? '1rem' : 'Light 공통 사용'"></label>
+            </div>
+            <label v-if="!isDarkOnlySet" class="app-checkbox design-token-check"><input v-model="tokenForm.themeable" type="checkbox"> Light/Dark 개별 값 사용</label>
+            <small>글꼴 크기는 `rem` 또는 `clamp(최소, 유동값, 최대)` 사용을 권장합니다. `vh` 단독 사용은 화면 높이에 따라 과도하게 변할 수 있습니다.</small>
+            <span v-if="addTokenError" class="danger-state">{{ addTokenError }}</span>
+            <div class="design-token-actions"><button class="tiny-button" type="button" @click="showAddToken = false; resetTokenForm()">취소</button><button class="tiny-button primary" type="submit">목록에 추가</button></div>
+          </form>
 
           <div class="design-token-table-wrap">
             <table class="design-token-table">
@@ -457,10 +609,21 @@ export default {
                       >
                     </span>
                   </td>
-                  <td><code>{{ item.value }}</code><small>{{ isDarkOnlySet || item.activeTheme === "dark" ? "Dark 기준" : "Light 기준" }}</small></td>
+                  <td>
+                    <div class="design-token-actual-preview" :class="`is-${tokenVisualKind(item)}`">
+                      <span class="design-token-sample" :style="tokenVisualStyle(item)">{{ ["font-size", "font-weight"].includes(tokenVisualKind(item)) ? "Aa" : "" }}</span>
+                      <span><code>{{ currentTokenValue(item) }}</code><small>{{ isDarkOnlySet || item.activeTheme === "dark" ? "Dark 기준" : "Light 기준" }}</small></span>
+                    </div>
+                    <div v-if="isFixedFontSize(item)" class="design-token-responsive-warning">
+                      <small>고정 px · 반응형 전환 권장</small>
+                      <button class="text-button" type="button" @click="convertFontSize(item, 'rem')">rem 변환</button>
+                      <button class="text-button" type="button" @click="convertFontSize(item, 'fluid')">유동형 clamp</button>
+                    </div>
+                  </td>
                   <td>
                     <span>{{ t(isTokenChanged(item) ? "admin.designToken.changed" : "admin.designToken.normal") }}</span>
-                    <button v-if="isTokenChanged(item)" class="text-button" type="button" @click="restoreToken(item)">{{ t("common.action.reset") }}</button>
+                    <button v-if="isNewToken(item)" class="text-button danger" type="button" @click="removeNewToken(item)">추가 취소</button>
+                    <button v-else-if="isTokenChanged(item)" class="text-button" type="button" @click="restoreToken(item)">{{ t("common.action.reset") }}</button>
                   </td>
                 </tr>
               </tbody>
@@ -567,7 +730,9 @@ export default {
 .design-token-set { display: grid; gap: var(--app-space-1); padding: var(--app-space-3); text-align: left; border: var(--app-border-width) solid var(--app-line); border-radius: var(--app-radius-small); background: transparent; color: var(--app-ink); }
 .design-token-set.active { border-color: var(--app-accent); background: var(--app-accent-soft); }
 .design-token-set small, .design-token-value small { display: block; color: var(--app-muted); }
-.design-token-table-toolbar { display: grid; grid-template-columns: minmax(12rem, 1fr) minmax(10rem, auto) auto auto; gap: var(--app-space-2); align-items: center; }
+.design-token-table-toolbar { display: grid; grid-template-columns: minmax(12rem, 1fr) minmax(10rem, auto) repeat(3, auto); gap: var(--app-space-2); align-items: center; }
+.design-token-add-form { display: grid; gap: var(--app-space-3); padding: var(--app-space-3); border: var(--app-border-width) solid var(--app-accent); border-radius: var(--app-radius-small); background: var(--app-accent-soft); }
+.design-token-add-form > small { color: var(--app-muted); }
 .design-token-check { display: inline-flex; gap: var(--app-space-2); align-items: center; white-space: nowrap; }
 .design-token-table-wrap { overflow: auto; border: var(--app-border-width) solid var(--app-line); border-radius: var(--app-radius-small); }
 .design-token-table { width: 100%; border-collapse: collapse; }
@@ -577,6 +742,14 @@ export default {
 .design-token-value-control { display: block; min-width: 10rem; }
 .design-token-value-control input { width: 100%; }
 .design-token-value-control input[type="color"] { width: 2.75rem; padding: 0; }
+.design-token-actual-preview { display: flex; align-items: center; gap: var(--app-space-2); min-width: 10rem; }
+.design-token-sample { display: inline-grid; place-items: center; flex: 0 0 auto; min-width: 2.25rem; min-height: 2.25rem; max-width: 8rem; max-height: 4rem; overflow: hidden; border: var(--app-border-width) solid var(--app-line); border-radius: var(--app-radius-small); background: var(--app-panel); color: var(--app-ink); }
+.design-token-actual-preview.is-color .design-token-sample, .design-token-actual-preview.is-gradient .design-token-sample { width: 3rem; }
+.design-token-actual-preview.is-radius .design-token-sample { width: 3rem; background: var(--app-accent); }
+.design-token-actual-preview.is-shadow .design-token-sample { width: 3rem; margin: .25rem; }
+.design-token-actual-preview.is-length .design-token-sample { min-width: .25rem; background: var(--app-accent); }
+.design-token-responsive-warning { margin-top: var(--app-space-1); padding: var(--app-space-1); border-radius: var(--app-radius-small); background: var(--app-warning-soft, var(--app-accent-soft)); color: var(--app-warning-ink, var(--app-muted)); }
+.design-token-responsive-warning .text-button { font-size: var(--app-font-size-small); }
 .text-button { margin-left: var(--app-space-1); border: 0; background: transparent; color: var(--app-accent); text-decoration: underline; }
 .sticky-actions { position: sticky; z-index: 2; bottom: 0; padding: var(--app-space-2); background: var(--app-panel); border-top: var(--app-border-width) solid var(--app-line); }
 .file-button { position: relative; overflow: hidden; cursor: pointer; }
