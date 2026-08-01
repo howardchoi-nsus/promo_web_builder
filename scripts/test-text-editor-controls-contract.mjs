@@ -37,6 +37,9 @@ assert.match(textControls, /textGradientToken/);
 assert.match(textControls, /textBackgroundToken/);
 assert.match(textControls, /listType/);
 assert.match(textControls, /changeListIndent/);
+assert.match(textControls, /lineSelection/);
+assert.match(textControls, /emitLinePatch/);
+assert.match(previewPanel, /@select-text-lines="updateSelectedTextLines"/);
 assert.match(textControls, /lineHeightToken/);
 assert.match(textControls, /letterSpacingToken/);
 assert.match(textControls, /horizontalAnchor/);
@@ -49,6 +52,9 @@ assert.match(renderer, /scaleFont:\s*false/);
 assert.match(renderer, /usesAutomaticComponentHeight/);
 assert.match(renderer, /textListItems/);
 assert.match(renderer, /--item-list-padding/);
+assert.match(renderer, /select-text-lines/);
+assert.match(renderer, /textLineEntries/);
+assert.match(rendererCss, /rendered-text-line\.is-bullet/);
 assert.match(renderer, /has-text-gradient/);
 assert.match(rendererCss, /--item-text-background/);
 assert.match(rendererCss, /background-clip:\s*text/);
@@ -75,6 +81,12 @@ const valid = validateLayoutSpec({
       textBackgroundToken: "--app-accent-soft",
       listType: "bullet",
       listIndent: 2,
+      lineStyles: {
+        $item: {
+          0: { fontWeight: 700, listType: "bullet", listIndent: 1 },
+          1: { colorToken: "--promo-color-text" },
+        },
+      },
       textAlign: "center",
     },
   },
@@ -117,5 +129,11 @@ const invalidListIndent = validateLayoutSpec({
 });
 assert.equal(invalidListIndent.ok, false);
 assert(invalidListIndent.errors.some((entry) => entry.path.endsWith("listIndent")));
+
+const invalidLineStyle = validateLayoutSpec({
+  itemStyles: { "hero.title": { lineStyles: { $item: { 0: { positionMode: "free" } } } } },
+});
+assert.equal(invalidLineStyle.ok, false);
+assert(invalidLineStyle.errors.some((entry) => entry.path.endsWith("positionMode")));
 
 console.log("Text editor controls, outline, auto-size, and section anchor contract tests passed.");

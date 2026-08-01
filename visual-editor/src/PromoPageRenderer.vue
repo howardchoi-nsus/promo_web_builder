@@ -25,7 +25,7 @@ const props = defineProps({
   motionSpec: { type: Object, default: () => ({ sections: {}, items: {} }) },
   viewportOverride: { type: String, default: "" },
 });
-const emit = defineEmits(["select-item", "update-item-style", "update-renderer-item-style", "update-item-content", "update-section-style"]);
+const emit = defineEmits(["select-item", "select-text-lines", "update-item-style", "update-renderer-item-style", "update-item-content", "update-section-style"]);
 const SECTION_VERTICAL_PADDING_PX = 20;
 const DRAG_ACTIVATION_DISTANCE_PX = 7;
 const viewportWidth = ref(typeof globalThis.innerWidth === "number" ? globalThis.innerWidth : 1280);
@@ -557,6 +557,63 @@ function textListItems(value) {
     .filter(Boolean);
 }
 
+function lineStyleScopeKey(field = null) {
+  return field?.fieldKey || "$item";
+}
+
+function lineStyleScope(section, item, field = null) {
+  return itemStyle(section, item).lineStyles?.[lineStyleScopeKey(field)] || {};
+}
+
+function hasLineFormatting(section, item, field = null) {
+  return Object.keys(lineStyleScope(section, item, field)).length > 0;
+}
+
+function usesLineRenderer(section, item, field = null) {
+  return hasLineFormatting(section, item, field)
+    || /\r?\n/u.test(String(valueFor(section, item, field) ?? ""));
+}
+
+function textLineEntries(section, item, field = null) {
+  const baseStyle = itemStyle(section, item);
+  const scopedStyles = lineStyleScope(section, item, field);
+  let number = 0;
+  return String(valueFor(section, item, field) ?? "").split(/\r?\n/u).map((text, index) => {
+    const style = { ...baseStyle, ...(scopedStyles[index] || {}) };
+    if (style.listType === "number") number += 1;
+    else number = 0;
+    return { index, text, style, number };
+  });
+}
+
+function textLineInlineStyle(entry) {
+  const style = entry.style || {};
+  return {
+    color: style.colorToken ? `var(${style.colorToken})` : style.color,
+    fontFamily: style.fontFamilyToken ? `var(${style.fontFamilyToken})` : style.fontFamily,
+    fontSize: style.fontSizeToken
+      ? `var(${style.fontSizeToken})`
+      : (style.fontSize !== undefined ? `${style.fontSize}px` : undefined),
+    fontWeight: style.fontWeightToken ? `var(${style.fontWeightToken})` : style.fontWeight,
+    fontStyle: style.fontStyle,
+    textDecoration: style.textDecoration,
+    lineHeight: style.lineHeightToken ? `var(${style.lineHeightToken})` : style.lineHeight,
+    letterSpacing: style.letterSpacingToken ? `var(${style.letterSpacingToken})` : style.letterSpacing,
+    "--line-text-gradient": style.textGradientToken ? `var(${style.textGradientToken})` : undefined,
+    "--line-text-background": style.textBackgroundToken ? `var(${style.textBackgroundToken})` : style.textBackground,
+    "--line-list-padding": `${1.35 + (clamp(style.listIndent, 0, 6, 0) * 1.5)}em`,
+  };
+}
+
+function textLineClasses(entry) {
+  return {
+    "is-bullet": entry.style.listType === "bullet",
+    "is-number": entry.style.listType === "number",
+    "is-number-start": entry.style.listType === "number" && entry.number === 1,
+    "has-line-gradient": Boolean(entry.style.textGradientToken),
+  };
+}
+
 function selectRendererItem(section, item, event = null) {
   if (!props.editable) return;
   const additive = Boolean(event?.ctrlKey || event?.metaKey || event?.shiftKey);
@@ -832,6 +889,44 @@ function resizeItemByKeyboard(event, section, item, handleDirection = "se") {
   });
 }
 
+function selectionBoundaryOffset(root, node, offset) {
+  const range = document.createRange();
+  range.selectNodeContents(root);
+  try {
+    range.setEnd(node, offset);
+  } catch {
+    return 0;
+  }
+  return range.toString().length;
+}
+
+function selectedTextLineIndexes(textNode) {
+  const selection = window.getSelection();
+  if (!selection?.rangeCount || !textNode.contains(selection.anchorNode) || !textNode.contains(selection.focusNode)) return [];
+  const range = selection.getRangeAt(0);
+  const lineNodes = [...textNode.querySelectorAll("[data-text-line-index]")];
+  if (lineNodes.length) {
+    if (selection.isCollapsed) {
+      const activeLine = selection.anchorNode.nodeType === Node.ELEMENT_NODE
+        ? selection.anchorNode.closest?.("[data-text-line-index]")
+        : selection.anchorNode.parentElement?.closest("[data-text-line-index]");
+      return activeLine ? [Number(activeLine.dataset.textLineIndex)] : [];
+    }
+    return lineNodes
+      .filter((line) => range.intersectsNode(line))
+      .map((line) => Number(line.dataset.textLineIndex));
+  }
+  const value = textNode.innerText.replace(/\r\n?/gu, "\n");
+  const anchor = selectionBoundaryOffset(textNode, selection.anchorNode, selection.anchorOffset);
+  const focus = selectionBoundaryOffset(textNode, selection.focusNode, selection.focusOffset);
+  const start = Math.min(anchor, focus);
+  const end = Math.max(anchor, focus);
+  const lineAt = (offset) => value.slice(0, Math.max(0, offset)).split("\n").length - 1;
+  const first = lineAt(start);
+  const last = lineAt(end > start ? end - 1 : end);
+  return Array.from({ length: Math.max(1, last - first + 1) }, (_, index) => first + index);
+}
+
 function startTextEdit(event, section, item, field = null, explicitTextNode = null) {
   if (!props.editable || item.isLocked) return;
   const textNode = explicitTextNode || event.currentTarget;
@@ -859,6 +954,17 @@ function startTextEdit(event, section, item, field = null, explicitTextNode = nu
   selection.removeAllRanges();
   selection.addRange(range);
 
+  const emitLineSelection = () => {
+    const indexes = selectedTextLineIndexes(textNode);
+    if (!indexes.length) return;
+    emit("select-text-lines", section, item, {
+      scopeKey: lineStyleScopeKey(field),
+      indexes,
+    });
+  };
+  emitLineSelection();
+  document.addEventListener("selectionchange", emitLineSelection);
+
   const finish = () => {
     const nextValue = textNode.innerText.replace(/\r\n?/g, "\n").trim();
     const unchangedPlaceholder = wasEmpty && nextValue === fieldDescription;
@@ -873,6 +979,7 @@ function startTextEdit(event, section, item, field = null, explicitTextNode = nu
     article.classList.remove("is-editing");
     textNode.removeEventListener("blur", finish);
     textNode.removeEventListener("keydown", onKeydown);
+    document.removeEventListener("selectionchange", emitLineSelection);
   };
   const onKeydown = (keyEvent) => {
     if (keyEvent.key === "Escape") {
@@ -886,6 +993,16 @@ function startTextEdit(event, section, item, field = null, explicitTextNode = nu
 
 function handleTextClick(event, section, item, field = null) {
   selectRendererItem(section, item, event);
+  if (event.currentTarget.closest(".rendered-item")?.classList.contains("is-editing")) {
+    const line = event.target.closest?.("[data-text-line-index]");
+    if (line) {
+      emit("select-text-lines", section, item, {
+        scopeKey: lineStyleScopeKey(field),
+        indexes: [Number(line.dataset.textLineIndex)],
+      });
+    }
+    return;
+  }
   if (event.detail >= 2) startTextEdit(event, section, item, field);
 }
 
@@ -1081,6 +1198,26 @@ function startSectionResize(event, section) {
                     <span>{{ aiTargetState(section, item, field).label }}</span>
                   </div>
                 </div>
+                <div
+                  v-else-if="hasContent(valueFor(section, item, field)) && usesLineRenderer(section, item, field)"
+                  class="rendered-text rendered-text--lines rendered-component-field"
+                  :class="{
+                    'rendered-text--title': field.textType === 'title',
+                    'is-hidden-in-output': editable && !isFieldVisible(section, item, field),
+                  }"
+                  :data-field-key="field.fieldKey"
+                  @click.stop="handleTextClick($event, section, item, field)"
+                  @dblclick.stop="startTextEdit($event, section, item, field)"
+                >
+                  <div
+                    v-for="entry in textLineEntries(section, item, field)"
+                    :key="`${field.fieldKey}-line-${entry.index}`"
+                    class="rendered-text-line"
+                    :class="textLineClasses(entry)"
+                    :style="textLineInlineStyle(entry)"
+                    :data-text-line-index="entry.index"
+                  ><span class="rendered-text-line__content">{{ entry.text }}</span></div>
+                </div>
                 <component
                   :is="textListTag(section, item)"
                   v-else-if="hasContent(valueFor(section, item, field)) && itemStyle(section, item).listType"
@@ -1173,9 +1310,25 @@ function startSectionResize(event, section) {
             </template>
 
             <template v-else>
+              <div
+                v-if="hasContent(valueFor(section, item)) && usesLineRenderer(section, item)"
+                class="rendered-text rendered-text--lines"
+                :class="{ 'rendered-text--title': item.textType === 'title' }"
+                @click.stop="handleTextClick($event, section, item)"
+                @dblclick.stop="startTextEdit($event, section, item)"
+              >
+                <div
+                  v-for="entry in textLineEntries(section, item)"
+                  :key="`${item.itemKey}-line-${entry.index}`"
+                  class="rendered-text-line"
+                  :class="textLineClasses(entry)"
+                  :style="textLineInlineStyle(entry)"
+                  :data-text-line-index="entry.index"
+                ><span class="rendered-text-line__content">{{ entry.text }}</span></div>
+              </div>
               <component
                 :is="textListTag(section, item)"
-                v-if="hasContent(valueFor(section, item)) && itemStyle(section, item).listType"
+                v-else-if="hasContent(valueFor(section, item)) && itemStyle(section, item).listType"
                 class="rendered-text"
                 :class="{ 'rendered-text--title': item.textType === 'title' }"
                 @click.stop="handleTextClick($event, section, item)"

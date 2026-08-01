@@ -113,6 +113,55 @@ function validateLayoutSpec(value, sections = []) {
     "lineHeightToken", "letterSpacingToken", "maxWidthToken", "textStyleToken",
     "textGradientToken", "textBackgroundToken",
   ];
+  const allowedLineStyleProperties = new Set([
+    "color", "colorToken", "fontFamily", "fontFamilyToken", "fontSize", "fontSizeToken",
+    "fontWeight", "fontWeightToken", "fontStyle", "textDecoration", "textStyleToken",
+    "textGradientToken", "textBackground", "textBackgroundToken", "lineHeight",
+    "lineHeightToken", "letterSpacing", "letterSpacingToken", "listType", "listIndent",
+  ]);
+  function validateLineStyles(lineStyles, path) {
+    if (lineStyles === undefined) return;
+    if (!lineStyles || typeof lineStyles !== "object" || Array.isArray(lineStyles)) {
+      errors.push({ code: "INVALID_LINE_STYLES", path });
+      return;
+    }
+    Object.entries(lineStyles).forEach(([scopeKey, scope]) => {
+      if (!scope || typeof scope !== "object" || Array.isArray(scope)) {
+        errors.push({ code: "INVALID_LINE_STYLE_SCOPE", path: `${path}.${scopeKey}` });
+        return;
+      }
+      Object.entries(scope).forEach(([lineIndex, lineStyle]) => {
+        const linePath = `${path}.${scopeKey}.${lineIndex}`;
+        if (!/^\d+$/u.test(lineIndex) || Number(lineIndex) > 999) {
+          errors.push({ code: "INVALID_LINE_INDEX", path: linePath });
+        }
+        if (!lineStyle || typeof lineStyle !== "object" || Array.isArray(lineStyle)) {
+          errors.push({ code: "INVALID_LINE_STYLE", path: linePath });
+          return;
+        }
+        Object.keys(lineStyle).forEach((property) => {
+          if (!allowedLineStyleProperties.has(property)) {
+            errors.push({ code: "INVALID_LINE_STYLE_PROPERTY", path: `${linePath}.${property}` });
+          }
+        });
+        managedTokenProperties.forEach((property) => {
+          if (lineStyle[property] !== undefined && lineStyle[property] !== null
+            && !/^--(?:promo|app)-[a-z0-9-]+$/.test(String(lineStyle[property]))) {
+            errors.push({ code: "INVALID_ITEM_TOKEN", path: `${linePath}.${property}` });
+          }
+        });
+        if (lineStyle.listType !== undefined && lineStyle.listType !== null
+          && !["bullet", "number"].includes(lineStyle.listType)) {
+          errors.push({ code: "INVALID_LIST_TYPE", path: `${linePath}.listType` });
+        }
+        const indent = Number(lineStyle.listIndent);
+        if (lineStyle.listIndent !== undefined
+          && (!Number.isInteger(indent) || indent < 0 || indent > 6)) {
+          errors.push({ code: "INVALID_LIST_INDENT", path: `${linePath}.listIndent` });
+        }
+      });
+    });
+  }
   function validateExtendedItemStyle(style, path) {
     for (const tokenProperty of managedTokenProperties) {
       if (style?.[tokenProperty] !== undefined
@@ -141,6 +190,7 @@ function validateLayoutSpec(value, sections = []) {
       && (!Number.isInteger(listIndent) || listIndent < 0 || listIndent > 6)) {
       errors.push({ code: "INVALID_LIST_INDENT", path: `${path}.listIndent` });
     }
+    validateLineStyles(style?.lineStyles, `${path}.lineStyles`);
     for (const offsetProperty of ["offsetX", "offsetY"]) {
       const offset = Number(style?.[offsetProperty]);
       if (style?.[offsetProperty] !== undefined

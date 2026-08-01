@@ -4,6 +4,7 @@ import { computed } from "vue";
 const props = defineProps({
   item: { type: Object, default: null },
   itemStyle: { type: Object, default: () => ({}) },
+  lineSelection: { type: Object, default: null },
   canUndo: { type: Boolean, default: false },
   canRedo: { type: Boolean, default: false },
   colorTokens: { type: Array, default: () => [] },
@@ -33,26 +34,64 @@ const available = computed(() => (
   && props.item.fieldKind !== "image"
   && !props.item.isLocked
 ));
+const hasLineSelection = computed(() => Boolean(
+  props.lineSelection?.scopeKey
+  && Array.isArray(props.lineSelection?.indexes)
+  && props.lineSelection.indexes.length
+));
+const selectedLineStyles = computed(() => {
+  if (!hasLineSelection.value) return [];
+  const scope = props.itemStyle.lineStyles?.[props.lineSelection.scopeKey] || {};
+  return props.lineSelection.indexes.map((index) => ({
+    ...props.itemStyle,
+    ...(scope[index] || {}),
+  }));
+});
+const effectiveTextStyle = computed(() => selectedLineStyles.value[0] || props.itemStyle);
+const allSelectedLinesMatch = (predicate) => (
+  selectedLineStyles.value.length > 0 && selectedLineStyles.value.every(predicate)
+);
 const boldActive = computed(() => {
-  if (Number(props.itemStyle.fontWeight) >= 700) return true;
-  const token = props.fontWeightTokens.find((entry) => entry.key === props.itemStyle.fontWeightToken);
-  return Number(token?.number) >= 700;
+  return allSelectedLinesMatch((style) => {
+    if (Number(style.fontWeight) >= 700) return true;
+    const token = props.fontWeightTokens.find((entry) => entry.key === style.fontWeightToken);
+    return Number(token?.number) >= 700;
+  });
 });
 const autoSizeActive = computed(() => (
   props.itemStyle.heightMode === "auto" || props.itemStyle.widthMode === "fit-content"
 ));
 const selectedTextFill = computed(() => {
-  if (props.itemStyle.textGradientToken) {
-    return props.gradientTokens.find((entry) => entry.key === props.itemStyle.textGradientToken) || null;
+  if (effectiveTextStyle.value.textGradientToken) {
+    return props.gradientTokens.find((entry) => entry.key === effectiveTextStyle.value.textGradientToken) || null;
   }
-  return props.colorTokens.find((entry) => entry.key === props.itemStyle.colorToken) || null;
+  return props.colorTokens.find((entry) => entry.key === effectiveTextStyle.value.colorToken) || null;
 });
 const selectedBackgroundColor = computed(() => (
-  props.backgroundColorTokens.find((entry) => entry.key === props.itemStyle.textBackgroundToken) || null
+  props.backgroundColorTokens.find((entry) => entry.key === effectiveTextStyle.value.textBackgroundToken) || null
 ));
 
+function emitLinePatch(patch) {
+  if (!hasLineSelection.value) return;
+  const lineStyles = { ...(props.itemStyle.lineStyles || {}) };
+  const scopeKey = props.lineSelection.scopeKey;
+  const scope = { ...(lineStyles[scopeKey] || {}) };
+  props.lineSelection.indexes.forEach((index) => {
+    const next = { ...(scope[index] || {}) };
+    Object.entries(patch).forEach(([property, value]) => {
+      if (value === undefined) delete next[property];
+      else next[property] = value;
+    });
+    if (Object.keys(next).length) scope[index] = next;
+    else delete scope[index];
+  });
+  if (Object.keys(scope).length) lineStyles[scopeKey] = scope;
+  else delete lineStyles[scopeKey];
+  emit("patch-style", { lineStyles: Object.keys(lineStyles).length ? lineStyles : undefined });
+}
+
 function tokenPatch(property, rawProperty, tokenKey, clearTextStyle = true) {
-  emit("patch-style", {
+  emitLinePatch({
     [property]: tokenKey || undefined,
     ...(rawProperty ? { [rawProperty]: undefined } : {}),
     ...(clearTextStyle ? { textStyleToken: undefined } : {}),
@@ -62,10 +101,10 @@ function tokenPatch(property, rawProperty, tokenKey, clearTextStyle = true) {
 function applyTextStyle(tokenKey) {
   const token = props.textStyleTokens.find((entry) => entry.key === tokenKey);
   if (!token) {
-    emit("patch-style", { textStyleToken: undefined });
+    emitLinePatch({ textStyleToken: undefined });
     return;
   }
-  emit("patch-style", { ...token.patch, textStyleToken: token.key });
+  emitLinePatch({ ...token.patch, textStyleToken: token.key });
 }
 
 function toggleBold() {
@@ -73,7 +112,7 @@ function toggleBold() {
     const token = props.fontWeightTokens
       .filter((entry) => Number(entry.number) > 0 && Number(entry.number) < 700)
       .sort((a, b) => Math.abs(Number(a.number) - 400) - Math.abs(Number(b.number) - 400))[0];
-    emit("patch-style", token
+    emitLinePatch(token
       ? { textStyleToken: undefined, fontWeightToken: token.key, fontWeight: undefined }
       : { textStyleToken: undefined, fontWeightToken: undefined, fontWeight: 400 });
     return;
@@ -81,30 +120,30 @@ function toggleBold() {
   const token = props.fontWeightTokens
     .filter((entry) => Number(entry.number) >= 700)
     .sort((a, b) => Math.abs(Number(a.number) - 700) - Math.abs(Number(b.number) - 700))[0];
-  emit("patch-style", token
+  emitLinePatch(token
     ? { textStyleToken: undefined, fontWeightToken: token.key, fontWeight: undefined }
     : { textStyleToken: undefined, fontWeightToken: undefined, fontWeight: 700 });
 }
 
 function applyTextFill(type, tokenKey) {
-  emit("patch-style", type === "gradient"
+  emitLinePatch(type === "gradient"
     ? { textGradientToken: tokenKey, colorToken: undefined, color: undefined }
     : { colorToken: tokenKey || undefined, color: undefined, textGradientToken: undefined });
 }
 
 function toggleList(type) {
-  const removing = props.itemStyle.listType === type;
-  emit("patch-style", {
-    listType: removing ? undefined : type,
-    ...(removing ? { listIndent: undefined } : {}),
+  const removing = allSelectedLinesMatch((style) => style.listType === type);
+  emitLinePatch({
+    listType: removing ? null : type,
+    ...(removing ? { listIndent: 0 } : {}),
   });
 }
 
 function changeListIndent(delta) {
-  if (!props.itemStyle.listType) return;
-  const current = Math.max(0, Math.min(6, Number(props.itemStyle.listIndent) || 0));
+  if (!allSelectedLinesMatch((style) => Boolean(style.listType))) return;
+  const current = Math.max(0, Math.min(6, Number(effectiveTextStyle.value.listIndent) || 0));
   const next = Math.max(0, Math.min(6, current + delta));
-  emit("patch-style", { listIndent: next || undefined });
+  emitLinePatch({ listIndent: next });
 }
 </script>
 
@@ -124,7 +163,8 @@ function changeListIndent(delta) {
         <label class="text-toolbar-select text-toolbar-select--style">
           <span class="visually-hidden">텍스트 스타일</span>
           <select
-            :value="itemStyle.textStyleToken || ''"
+            :value="effectiveTextStyle.textStyleToken || ''"
+            :disabled="!hasLineSelection"
             aria-label="텍스트 스타일 디자인 토큰"
             title="텍스트 스타일"
             @change="applyTextStyle($event.target.value)"
@@ -136,7 +176,8 @@ function changeListIndent(delta) {
         <label class="text-toolbar-select">
           <span class="visually-hidden">글꼴</span>
           <select
-            :value="itemStyle.fontFamilyToken || ''"
+            :value="effectiveTextStyle.fontFamilyToken || ''"
+            :disabled="!hasLineSelection"
             aria-label="글꼴 디자인 토큰"
             title="글꼴"
             @change="tokenPatch('fontFamilyToken', 'fontFamily', $event.target.value)"
@@ -148,7 +189,8 @@ function changeListIndent(delta) {
         <label class="text-toolbar-select text-toolbar-select--size">
           <span class="visually-hidden">글자 크기</span>
           <select
-            :value="itemStyle.fontSizeToken || ''"
+            :value="effectiveTextStyle.fontSizeToken || ''"
+            :disabled="!hasLineSelection"
             aria-label="글자 크기 디자인 토큰"
             title="글자 크기"
             @change="tokenPatch('fontSizeToken', 'fontSize', $event.target.value)"
@@ -160,16 +202,17 @@ function changeListIndent(delta) {
       </div>
 
       <div class="text-toolbar-group text-mark-controls" aria-label="텍스트 강조">
-        <button type="button" :class="{ active: boldActive }" :aria-pressed="boldActive" title="굵게" aria-label="굵게" @click="toggleBold">
+        <button type="button" :disabled="!hasLineSelection" :class="{ active: boldActive }" :aria-pressed="boldActive" title="굵게" aria-label="굵게" @click="toggleBold">
           <i class="fa-solid fa-bold" aria-hidden="true"></i>
         </button>
         <button
           type="button"
-          :class="{ active: itemStyle.fontStyle === 'italic' }"
-          :aria-pressed="itemStyle.fontStyle === 'italic'"
+          :disabled="!hasLineSelection"
+          :class="{ active: allSelectedLinesMatch((style) => style.fontStyle === 'italic') }"
+          :aria-pressed="allSelectedLinesMatch((style) => style.fontStyle === 'italic')"
           title="기울임"
           aria-label="기울임"
-          @click="emit('patch-style', { textStyleToken: undefined, fontStyle: itemStyle.fontStyle === 'italic' ? undefined : 'italic' })"
+          @click="emitLinePatch({ textStyleToken: undefined, fontStyle: allSelectedLinesMatch((style) => style.fontStyle === 'italic') ? 'normal' : 'italic' })"
         ><i class="fa-solid fa-italic" aria-hidden="true"></i></button>
       </div>
 
@@ -184,27 +227,29 @@ function changeListIndent(delta) {
             ></span>
           </summary>
           <div class="text-token-palette" role="group" aria-label="폰트 컬러 디자인 토큰">
-            <button type="button" class="text-token-palette__default" :class="{ active: !selectedTextFill }" @click="applyTextFill('color', '')">기본</button>
+            <button type="button" :disabled="!hasLineSelection" class="text-token-palette__default" :class="{ active: !selectedTextFill }" @click="applyTextFill('color', '')">기본</button>
             <button
               v-for="token in colorTokens"
               :key="`color-${token.key}`"
               type="button"
+              :disabled="!hasLineSelection"
               class="text-token-swatch"
-              :class="{ active: itemStyle.colorToken === token.key && !itemStyle.textGradientToken }"
+              :class="{ active: effectiveTextStyle.colorToken === token.key && !effectiveTextStyle.textGradientToken }"
               :title="token.label"
               :aria-label="`폰트 컬러 ${token.label}`"
-              :aria-pressed="itemStyle.colorToken === token.key && !itemStyle.textGradientToken"
+              :aria-pressed="effectiveTextStyle.colorToken === token.key && !effectiveTextStyle.textGradientToken"
               @click="applyTextFill('color', token.key)"
             ><i :style="{ background: token.value }" aria-hidden="true"></i></button>
             <button
               v-for="token in gradientTokens"
               :key="`gradient-${token.key}`"
               type="button"
+              :disabled="!hasLineSelection"
               class="text-token-swatch text-token-swatch--gradient"
-              :class="{ active: itemStyle.textGradientToken === token.key }"
+              :class="{ active: effectiveTextStyle.textGradientToken === token.key }"
               :title="token.label"
               :aria-label="`폰트 그라데이션 ${token.label}`"
-              :aria-pressed="itemStyle.textGradientToken === token.key"
+              :aria-pressed="effectiveTextStyle.textGradientToken === token.key"
               @click="applyTextFill('gradient', token.key)"
             ><i :style="{ background: token.value }" aria-hidden="true"></i></button>
           </div>
@@ -220,16 +265,17 @@ function changeListIndent(delta) {
             ></span>
           </summary>
           <div class="text-token-palette" role="group" aria-label="폰트 배경 시스템 컬러">
-            <button type="button" class="text-token-palette__default" :class="{ active: !itemStyle.textBackgroundToken }" @click="tokenPatch('textBackgroundToken', 'textBackground', '', false)">없음</button>
+            <button type="button" :disabled="!hasLineSelection" class="text-token-palette__default" :class="{ active: !effectiveTextStyle.textBackgroundToken }" @click="tokenPatch('textBackgroundToken', 'textBackground', '', false)">없음</button>
             <button
               v-for="token in backgroundColorTokens"
               :key="`background-${token.key}`"
               type="button"
+              :disabled="!hasLineSelection"
               class="text-token-swatch"
-              :class="{ active: itemStyle.textBackgroundToken === token.key }"
+              :class="{ active: effectiveTextStyle.textBackgroundToken === token.key }"
               :title="token.label"
               :aria-label="`폰트 배경 ${token.label}`"
-              :aria-pressed="itemStyle.textBackgroundToken === token.key"
+              :aria-pressed="effectiveTextStyle.textBackgroundToken === token.key"
               @click="tokenPatch('textBackgroundToken', 'textBackground', token.key, false)"
             ><i :style="{ background: token.value }" aria-hidden="true"></i></button>
           </div>
@@ -239,30 +285,32 @@ function changeListIndent(delta) {
       <div class="text-toolbar-group text-list-controls" aria-label="텍스트 목록">
         <button
           type="button"
-          :class="{ active: itemStyle.listType === 'bullet' }"
-          :aria-pressed="itemStyle.listType === 'bullet'"
+          :disabled="!hasLineSelection"
+          :class="{ active: allSelectedLinesMatch((style) => style.listType === 'bullet') }"
+          :aria-pressed="allSelectedLinesMatch((style) => style.listType === 'bullet')"
           title="불렛 리스트"
           aria-label="불렛 리스트"
           @click="toggleList('bullet')"
         ><i class="fa-solid fa-list-ul" aria-hidden="true"></i></button>
         <button
           type="button"
-          :class="{ active: itemStyle.listType === 'number' }"
-          :aria-pressed="itemStyle.listType === 'number'"
+          :disabled="!hasLineSelection"
+          :class="{ active: allSelectedLinesMatch((style) => style.listType === 'number') }"
+          :aria-pressed="allSelectedLinesMatch((style) => style.listType === 'number')"
           title="넘버 리스트"
           aria-label="넘버 리스트"
           @click="toggleList('number')"
         ><i class="fa-solid fa-list-ol" aria-hidden="true"></i></button>
         <button
           type="button"
-          :disabled="!itemStyle.listType || !(Number(itemStyle.listIndent) > 0)"
+          :disabled="!allSelectedLinesMatch((style) => Boolean(style.listType)) || !(Number(effectiveTextStyle.listIndent) > 0)"
           title="내어쓰기"
           aria-label="내어쓰기"
           @click="changeListIndent(-1)"
         ><i class="fa-solid fa-outdent" aria-hidden="true"></i></button>
         <button
           type="button"
-          :disabled="!itemStyle.listType || Number(itemStyle.listIndent || 0) >= 6"
+          :disabled="!allSelectedLinesMatch((style) => Boolean(style.listType)) || Number(effectiveTextStyle.listIndent || 0) >= 6"
           title="들여쓰기"
           aria-label="들여쓰기"
           @click="changeListIndent(1)"
@@ -274,7 +322,8 @@ function changeListIndent(delta) {
         <label>
           <span>행간</span>
           <select
-            :value="itemStyle.lineHeightToken || ''"
+            :value="effectiveTextStyle.lineHeightToken || ''"
+            :disabled="!hasLineSelection"
             @change="tokenPatch('lineHeightToken', 'lineHeight', $event.target.value)"
           >
             <option value="">기본</option>
@@ -284,7 +333,8 @@ function changeListIndent(delta) {
         <label>
           <span>자간</span>
           <select
-            :value="itemStyle.letterSpacingToken || ''"
+            :value="effectiveTextStyle.letterSpacingToken || ''"
+            :disabled="!hasLineSelection"
             @change="tokenPatch('letterSpacingToken', 'letterSpacing', $event.target.value)"
           >
             <option value="">기본</option>

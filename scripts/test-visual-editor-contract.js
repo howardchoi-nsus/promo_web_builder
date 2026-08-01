@@ -185,6 +185,9 @@ assert.match(renderer, /const itemRect = target\.getBoundingClientRect\(\);[\s\S
 assert.match(app, /function updateRendererContent\(section, item, value, field = null\)/);
 assert.match(renderer, /startTextEdit/);
 assert.match(renderer, /function handleTextClick\(event, section, item, field = null\)/);
+assert.match(renderer, /classList\.contains\("is-editing"\)\) \{/);
+assert.match(renderer, /function usesLineRenderer/);
+assert.match(renderer, /indexes: \[Number\(line\.dataset\.textLineIndex\)\]/);
 assert.match(renderer, /if \(event\.detail >= 2\) startTextEdit\(event, section, item, field\)/);
 assert.match(renderer, /@click\.stop="handleTextClick\(\$event, section, item/);
 assert.match(renderer, /function startArticleTextEdit\(event, section, item\)/);

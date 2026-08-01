@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from "vue";
+import { ref, watch } from "vue";
 import PromoPageRenderer from "../../PromoPageRenderer.vue";
 import EditorPreviewControls from "./EditorPreviewControls.vue";
 import TextEditorControls from "./TextEditorControls.vue";
@@ -66,6 +66,16 @@ const emit = defineEmits([
 ]);
 
 const previewStageRef = ref(null);
+const selectedTextLines = ref(null);
+
+watch(() => props.selectedStyleKey, () => {
+  selectedTextLines.value = null;
+});
+
+function updateSelectedTextLines(section, item, selection) {
+  if (`${section?.sectionKey}.${item?.itemKey}` !== props.selectedStyleKey) return;
+  selectedTextLines.value = selection;
+}
 
 function scrollToSection(sectionKey, behavior = "smooth") {
   if (!sectionKey || !previewStageRef.value) return false;
@@ -202,6 +212,7 @@ defineExpose({ getStageElement, scrollToSection });
     <TextEditorControls
       :item="selectedItem"
       :item-style="selectedItemStyle"
+      :line-selection="selectedTextLines"
       :can-undo="editorHistory.canUndo"
       :can-redo="editorHistory.canRedo"
       :color-tokens="fontColorTokenOptions"
@@ -247,6 +258,7 @@ defineExpose({ getStageElement, scrollToSection });
         @update-item-style="(...args) => emit('update-item-style', ...args)"
         @update-renderer-item-style="(...args) => emit('update-renderer-item-style', ...args)"
         @update-item-content="(...args) => emit('update-item-content', ...args)"
+        @select-text-lines="updateSelectedTextLines"
         @update-section-style="(...args) => emit('update-section-style', ...args)"
       />
     </div>

@@ -76,6 +76,55 @@ export function validateLayoutSpec(value = {}) {
     "lineHeightToken", "letterSpacingToken", "maxWidthToken", "textStyleToken",
     "textGradientToken", "textBackgroundToken",
   ];
+  const allowedLineStyleProperties = new Set([
+    "color", "colorToken", "fontFamily", "fontFamilyToken", "fontSize", "fontSizeToken",
+    "fontWeight", "fontWeightToken", "fontStyle", "textDecoration", "textStyleToken",
+    "textGradientToken", "textBackground", "textBackgroundToken", "lineHeight",
+    "lineHeightToken", "letterSpacing", "letterSpacingToken", "listType", "listIndent",
+  ]);
+  function validateLineStyles(lineStyles, path) {
+    if (lineStyles === undefined) return;
+    if (!lineStyles || typeof lineStyles !== "object" || Array.isArray(lineStyles)) {
+      errors.push({ path, message: "Line styles must be an object." });
+      return;
+    }
+    Object.entries(lineStyles).forEach(([scopeKey, scope]) => {
+      if (!scope || typeof scope !== "object" || Array.isArray(scope)) {
+        errors.push({ path: `${path}.${scopeKey}`, message: "Line style scope must be an object." });
+        return;
+      }
+      Object.entries(scope).forEach(([lineIndex, lineStyle]) => {
+        const linePath = `${path}.${scopeKey}.${lineIndex}`;
+        if (!/^\d+$/u.test(lineIndex) || Number(lineIndex) > 999) {
+          errors.push({ path: linePath, message: "Line index must be between 0 and 999." });
+        }
+        if (!lineStyle || typeof lineStyle !== "object" || Array.isArray(lineStyle)) {
+          errors.push({ path: linePath, message: "Line style must be an object." });
+          return;
+        }
+        Object.keys(lineStyle).forEach((property) => {
+          if (!allowedLineStyleProperties.has(property)) {
+            errors.push({ path: `${linePath}.${property}`, message: "Unsupported line style property." });
+          }
+        });
+        managedTokenProperties.forEach((property) => {
+          if (lineStyle[property] !== undefined && lineStyle[property] !== null
+            && !/^--(?:promo|app)-[a-z0-9-]+$/.test(String(lineStyle[property]))) {
+            errors.push({ path: `${linePath}.${property}`, message: "Managed design token key is required." });
+          }
+        });
+        if (lineStyle.listType !== undefined && lineStyle.listType !== null
+          && !["bullet", "number"].includes(lineStyle.listType)) {
+          errors.push({ path: `${linePath}.listType`, message: "Unsupported text list type." });
+        }
+        const indent = Number(lineStyle.listIndent);
+        if (lineStyle.listIndent !== undefined
+          && (!Number.isInteger(indent) || indent < 0 || indent > 6)) {
+          errors.push({ path: `${linePath}.listIndent`, message: "List indent must be an integer between 0 and 6." });
+        }
+      });
+    });
+  }
   function validateTextLayoutStyle(style, path) {
     for (const tokenProperty of managedTokenProperties) {
       if (style?.[tokenProperty] !== undefined
@@ -115,6 +164,7 @@ export function validateLayoutSpec(value = {}) {
       && (!Number.isInteger(listIndent) || listIndent < 0 || listIndent > 6)) {
       errors.push({ path: `${path}.listIndent`, message: "List indent must be an integer between 0 and 6." });
     }
+    validateLineStyles(style?.lineStyles, `${path}.lineStyles`);
     for (const offsetProperty of ["offsetX", "offsetY"]) {
       const offset = Number(style?.[offsetProperty]);
       if (style?.[offsetProperty] !== undefined
