@@ -1284,6 +1284,7 @@ const adminApp = createApp({
       selectedWizardSectionKey: "",
       wizardSectionDetail: null,
       wizardSectionDetailLoading: false,
+      wizardSectionDetailRequestRevision: 0,
       wizardSectionUsage: [],
       wizardSectionUsageLoading: false,
       wizardSectionFieldsEditor: {
@@ -4115,11 +4116,14 @@ const adminApp = createApp({
     },
 
     async loadWizardSectionDetail(id, options = {}) {
+      const requestRevision = ++this.wizardSectionDetailRequestRevision;
       this.wizardSectionDetailLoading = true;
+      this.wizardSectionDetail = null;
       try {
         const response = await fetch(`/api/wizard-content-section?id=${encodeURIComponent(id)}`);
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `섹션 상세 요청 오류(${response.status})`);
+        if (requestRevision !== this.wizardSectionDetailRequestRevision) return;
         this.wizardSectionDetail = { section: result.section, items: result.items || [], histories: result.histories || [] };
         await this.loadWizardSectionUsage(result.section);
         this.wizardSectionFieldsEditor = {
@@ -4160,9 +4164,9 @@ const adminApp = createApp({
         };
         this.wizardItemEditorOpenId = "";
       } catch (error) {
-        if (!options.silent) this.setStatus(`섹션 상세를 불러오지 못했습니다: ${error.message}`);
+        if (requestRevision === this.wizardSectionDetailRequestRevision && !options.silent) this.setStatus(`섹션 상세를 불러오지 못했습니다: ${error.message}`);
       } finally {
-        this.wizardSectionDetailLoading = false;
+        if (requestRevision === this.wizardSectionDetailRequestRevision) this.wizardSectionDetailLoading = false;
       }
     },
 

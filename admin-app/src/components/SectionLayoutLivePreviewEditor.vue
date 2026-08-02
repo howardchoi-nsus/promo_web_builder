@@ -6,8 +6,10 @@ const props = defineProps({
   section: { type: Object, required: true },
   items: { type: Array, default: () => [] },
   layout: { type: Object, required: true },
+  createMode: { type: Boolean, default: false },
+  aiAllowed: { type: Boolean, default: false },
 });
-const emit = defineEmits(["saved", "close"]);
+const emit = defineEmits(["saved", "created", "close", "set-default", "toggle-ai", "delete"]);
 
 const saving = ref(false);
 const error = ref("");
@@ -18,6 +20,8 @@ const editor = ref(null);
 const undoStack = ref([]);
 const redoStack = ref([]);
 const canvas = ref(null);
+const makeDefault = ref(false);
+const allowAi = ref(false);
 let pointerOperation = null;
 
 const readOnly = computed(() => props.section?.status !== "draft");
@@ -63,6 +67,8 @@ function resetEditor() {
     changeNote: "",
     layoutSnapshot: hydrateMissingItems(clone(props.layout.layoutSnapshot), props.items),
   };
+  makeDefault.value = props.layout.isDefault === true;
+  allowAi.value = props.createMode ? props.section?.aiDesign?.enabled !== false : props.aiAllowed;
   selectedItemKey.value = props.items.find((item) => (
     editor.value.layoutSnapshot.viewports.desktop.items[item.itemKey]
   ))?.itemKey || "";
@@ -177,12 +183,25 @@ async function save() {
   error.value = "";
   savedMessage.value = "";
   try {
-    const result = await sectionLayoutPresetService.update(props.layout.id, props.section.id, {
+    if (!String(editor.value.name || "").trim()) {
+      error.value = "Layout Preset 이름을 입력해 주세요.";
+      return;
+    }
+    const payload = {
       name: editor.value.name,
       description: editor.value.description,
-      changeNote: editor.value.changeNote || "Section Preset Live Preview에서 Layout 수정.",
+      changeNote: editor.value.changeNote || (props.createMode
+        ? "Live Preview에서 Layout Preset 생성."
+        : "Section Preset Live Preview에서 Layout 수정."),
       layoutSnapshot: editor.value.layoutSnapshot,
-    });
+    };
+    const result = props.createMode
+      ? await sectionLayoutPresetService.create({
+        sectionId: props.section.id,
+        ...payload,
+        isDefault: makeDefault.value,
+      })
+      : await sectionLayoutPresetService.update(props.layout.id, props.section.id, payload);
     editor.value = {
       ...editor.value,
       name: result.layout.name,
@@ -192,8 +211,9 @@ async function save() {
     };
     undoStack.value = [];
     redoStack.value = [];
-    savedMessage.value = "Layout Preset을 저장했습니다.";
-    emit("saved", result.layout);
+    savedMessage.value = props.createMode ? "현재 Layout을 Preset으로 저장했습니다." : "Layout Preset을 저장했습니다.";
+    if (props.createMode) emit("created", { layout: result.layout, allowAi: allowAi.value });
+    else emit("saved", result.layout);
   } catch (saveError) {
     error.value = saveError.validationErrors?.[0]?.message || saveError.message;
   } finally {
@@ -208,14 +228,17 @@ onBeforeUnmount(endPointer);
   <section v-if="editor" class="section-layout-live-editor">
     <header class="live-editor-header">
       <div>
-        <strong>Live Preview</strong>
+        <strong>{{ createMode ? '새 Layout Preset' : 'Live Preview' }}</strong>
         <span>{{ layout.layoutKey }} · {{ viewport }}</span>
       </div>
       <div class="live-editor-actions">
         <button class="tiny-button" type="button" :disabled="!undoStack.length || readOnly" @click="undo">실행 취소</button>
         <button class="tiny-button" type="button" :disabled="!redoStack.length || readOnly" @click="redo">다시 실행</button>
+        <button v-if="!createMode" class="tiny-button" type="button" :disabled="readOnly || layout.isDefault" @click="emit('set-default')">기본 Preset으로 지정</button>
+        <button v-if="!createMode" class="tiny-button" type="button" :disabled="readOnly" @click="emit('toggle-ai')">{{ aiAllowed ? 'AI 허용 해제' : 'AI 사용 허용' }}</button>
+        <button v-if="!createMode" class="tiny-button danger" type="button" :disabled="readOnly || aiAllowed" @click="emit('delete')">Preset 삭제</button>
         <button class="tiny-button" type="button" @click="emit('close')">닫기</button>
-        <button class="tiny-button primary" type="button" :disabled="readOnly || saving" @click="save">{{ saving ? '저장 중…' : '저장' }}</button>
+        <button class="tiny-button primary" type="button" :disabled="readOnly || saving" @click="save">{{ saving ? '저장 중…' : (createMode ? '현재 Layout을 Preset으로 저장' : '변경사항 저장') }}</button>
       </div>
     </header>
 
@@ -227,6 +250,12 @@ onBeforeUnmount(endPointer);
         <button type="button" :class="{ active: viewport === 'desktop' }" @click="viewport = 'desktop'">Desktop</button>
         <button type="button" :class="{ active: viewport === 'mobile' }" @click="viewport = 'mobile'">Mobile</button>
       </div>
+    </div>
+
+    <div v-if="createMode" class="live-preset-options" aria-label="새 Preset 적용 정책">
+      <label><input v-model="makeDefault" type="checkbox" :disabled="readOnly || layout.isDefault" /><span>기본 Preset으로 지정</span></label>
+      <label><input v-model="allowAi" type="checkbox" :disabled="readOnly || section.aiDesign?.enabled === false" /><span>AI 사용 허용</span></label>
+      <small>배치를 확인한 뒤 저장하면 그때 Preset이 생성됩니다.</small>
     </div>
 
     <div class="live-editor-body">
@@ -287,6 +316,9 @@ onBeforeUnmount(endPointer);
 .live-editor-header span { color: var(--app-sub); font-size: 12px; }
 .live-editor-actions { flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 .live-editor-meta { display: grid; grid-template-columns: minmax(140px, .7fr) minmax(180px, 1fr) minmax(180px, 1fr) auto; gap: 8px; align-items: end; }
+.live-preset-options { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 10px 12px; border: 1px solid var(--app-line); border-radius: 6px; background: var(--app-surface); }
+.live-preset-options label { display: inline-flex; align-items: center; gap: 6px; color: var(--app-ink); font-size: 12px; font-weight: 750; }
+.live-preset-options small { color: var(--app-sub); }
 .live-editor-meta label, .live-editor-inspector label { display: grid; gap: 5px; color: var(--app-sub); font-size: 11px; font-weight: 750; }
 .live-editor-meta input, .live-editor-inspector input { width: 100%; min-height: 32px; border: 1px solid var(--app-line); border-radius: 5px; background: var(--app-surface); color: var(--app-ink); }
 .live-viewport-switch { gap: 4px; }

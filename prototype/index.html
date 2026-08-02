@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="/prototype/app-components.css?v=app-components-v1" />
     <link rel="stylesheet" href="/prototype/styles.css?v=admin-template-manager-v6" />
     <link rel="stylesheet" href="/prototype/visual-editor-assets/promo-renderer.css?v=promo-renderer-v3" />
-    <link rel="stylesheet" href="/prototype/admin-assets/promo-web-builder.css?v=admin-vite-v8" />
+    <link rel="stylesheet" href="/prototype/admin-assets/promo-web-builder.css?v=admin-vite-v10" />
     <script src="/prototype/vendor/lucide/lucide.min.js?v=1.8.0"></script>
     <script src="/prototype/i18n-runtime.js?v=i18n-runtime-v1"></script>
     <script src="/prototype/shared-shell.js?v=app-shell-sidebar-v4"></script>
@@ -1612,7 +1612,10 @@
                 </div>
                 <div class="subsection">
                   <div class="subsection-title">
-                    <h3>AI 페이지 구성 정책</h3>
+                    <div>
+                      <h3>AI 페이지 구성 정책</h3>
+                      <small>AI가 전체 페이지를 조립할 때 이 Section의 포함 여부, 역할, 반복 수와 수정 가능 범위를 결정합니다.</small>
+                    </div>
                   </div>
                   <div class="form-grid compact">
                     <label class="field compact-field">
@@ -1645,16 +1648,16 @@
                   </div>
                   <div class="form-grid compact">
                     <label class="app-checkbox switch-control">
-                      <input type="checkbox" v-model="wizardSectionFieldsEditor.compositionPolicy.aiEditable" :disabled="wizardSectionDetail.section.status !== 'draft'" />
+                      <input type="checkbox" v-model="wizardSectionFieldsEditor.compositionPolicy.aiEditable" :disabled="wizardSectionDetail.section.status !== 'draft'" @change="$event.target.checked && (wizardSectionFieldsEditor.compositionPolicy.contentLocked = false)" />
                       <span>AI 콘텐츠 수정 허용</span>
                     </label>
                     <label class="app-checkbox switch-control">
-                      <input type="checkbox" v-model="wizardSectionFieldsEditor.compositionPolicy.contentLocked" :disabled="wizardSectionDetail.section.status !== 'draft'" />
+                      <input type="checkbox" v-model="wizardSectionFieldsEditor.compositionPolicy.contentLocked" :disabled="wizardSectionDetail.section.status !== 'draft'" @change="$event.target.checked && (wizardSectionFieldsEditor.compositionPolicy.aiEditable = false)" />
                       <span>콘텐츠 잠금</span>
                     </label>
                     <label class="app-checkbox switch-control">
                       <input type="checkbox" v-model="wizardSectionFieldsEditor.compositionPolicy.layoutLocked" :disabled="wizardSectionDetail.section.status !== 'draft'" />
-                      <span>레이아웃 잠금</span>
+                      <span>AI 레이아웃 변경 잠금</span>
                     </label>
                     <label class="app-checkbox switch-control">
                       <input
@@ -1689,19 +1692,17 @@
                 </div>
                 <div class="subsection">
                   <div class="subsection-title">
-                    <h3>AI 디자인 정책</h3>
+                    <div>
+                      <h3>AI 디자인 정책</h3>
+                      <small>이 Section에서 AI가 승인된 Layout Preset을 선택하고 배경 또는 컴포넌트 이미지를 생성할 수 있는지 결정합니다.</small>
+                    </div>
                   </div>
                   <label class="app-switch">
                     <input class="app-switch__input" type="checkbox" role="switch" v-model="wizardSectionFieldsEditor.aiDesign.enabled" :disabled="wizardSectionDetail.section.status !== 'draft'" />
                     <span class="app-switch__track" aria-hidden="true"></span>
-                    <span class="app-switch__label">이 섹션에서 AI 디자인 생성 허용</span>
+                    <span class="app-switch__label">AI 디자인·이미지 생성 허용</span>
                   </label>
-                  <div class="form-grid compact">
-                    <label class="app-checkbox switch-control" v-for="variant in ['split-left', 'split-right', 'centered-hero']" :key="variant">
-                      <input type="checkbox" :value="variant" v-model="wizardSectionFieldsEditor.aiDesign.allowedLayoutVariants" :disabled="wizardSectionDetail.section.status !== 'draft' || !wizardSectionFieldsEditor.aiDesign.enabled" />
-                      <span>{{ variant }}</span>
-                    </label>
-                  </div>
+                  <div class="empty-state compact">AI가 사용할 수 있는 실제 Layout은 아래 Layout Preset의 Live Preview에서 지정합니다.</div>
                   <label class="app-checkbox switch-control">
                     <input type="checkbox" v-model="wizardSectionFieldsEditor.aiDesign.allowSectionBackground" :disabled="wizardSectionDetail.section.status !== 'draft' || !wizardSectionFieldsEditor.aiDesign.enabled" />
                     <span>섹션 배경 AI 생성 허용</span>
@@ -2301,6 +2302,6 @@
       <button class="shell-overlay" type="button" data-shell-overlay aria-label="메뉴 닫기"></button>
     </div>
 
-    <script type="module" src="/prototype/admin-assets/admin-app.js?v=admin-vite-v9"></script>
+    <script type="module" src="/prototype/admin-assets/admin-app.js?v=admin-vite-v10"></script>
   </body>
 </html>

@@ -19,8 +19,7 @@ export default {
       saving: false,
       error: "",
       layouts: [],
-      showCreate: false,
-      createForm: { name: "", description: "" },
+      draftLayout: null,
       requestRevision: 0,
       selectedLayoutId: "",
     };
@@ -30,6 +29,7 @@ export default {
       return this.section?.status === "draft";
     },
     selectedLayout() {
+      if (this.selectedLayoutId === "__new__") return this.draftLayout;
       return this.layouts.find((layout) => layout.id === this.selectedLayoutId) || null;
     },
   },
@@ -38,6 +38,7 @@ export default {
       immediate: true,
       handler() {
         this.selectedLayoutId = "";
+        this.draftLayout = null;
         this.load();
       },
     },
@@ -64,37 +65,39 @@ export default {
         if (revision === this.requestRevision) this.loading = false;
       }
     },
-    async createPreset() {
-      const name = this.createForm.name.trim();
-      if (!name || !this.editable || this.saving) return;
-      this.saving = true;
+    startNewPreset() {
+      if (!this.editable || this.saving) return;
       this.error = "";
-      try {
-        const result = await sectionLayoutPresetService.create({
-          sectionId: this.section.id,
-          name,
-          description: this.createForm.description.trim(),
-          isDefault: this.layouts.length === 0,
-          layoutSnapshot: createInitialSectionLayout(this.items),
-          changeNote: "Admin에서 Layout Preset 생성.",
-        });
-        this.createForm = { name: "", description: "" };
-        this.showCreate = false;
-        await this.load();
-        this.selectedLayoutId = result.layout.id;
-      } catch (error) {
-        this.error = error.validationErrors?.[0]?.message || error.message;
-      } finally {
-        this.saving = false;
-      }
+      this.draftLayout = {
+        id: "__new__",
+        sectionId: this.section.id,
+        layoutKey: "저장 시 자동 생성",
+        name: "",
+        description: "",
+        isDefault: this.layouts.length === 0,
+        layoutSnapshot: createInitialSectionLayout(this.items),
+      };
+      this.selectedLayoutId = "__new__";
     },
     selectLayout(layout) {
       this.selectedLayoutId = this.selectedLayoutId === layout.id ? "" : layout.id;
+      this.draftLayout = null;
       this.error = "";
     },
     async handleLayoutSaved(layout) {
       this.layouts = this.layouts.map((entry) => entry.id === layout.id ? layout : entry);
       this.selectedLayoutId = layout.id;
+    },
+    async handleLayoutCreated({ layout, allowAi }) {
+      this.error = "";
+      try {
+        await this.load();
+        this.selectedLayoutId = layout.id;
+        this.draftLayout = null;
+        if (allowAi) await this.setAiLayoutAllowed(layout, true);
+      } catch (error) {
+        this.error = error.message;
+      }
     },
     async setDefault(layout) {
       if (!this.editable || layout.isDefault || this.saving) return;
@@ -121,6 +124,7 @@ export default {
       try {
         await sectionLayoutPresetService.remove(layout.id, this.section.id);
         await this.load();
+        if (this.selectedLayoutId === layout.id) this.selectedLayoutId = "";
       } catch (error) {
         this.error = error.message;
       } finally {
@@ -131,14 +135,17 @@ export default {
       return (this.section.aiDesign?.allowedLayoutVariants || []).includes(layout.layoutKey);
     },
     async toggleAiLayout(layout) {
+      return this.setAiLayoutAllowed(layout, !this.aiAllows(layout));
+    },
+    async setAiLayoutAllowed(layout, allowed) {
       if (!this.editable || this.saving) return;
       const savedLayoutKeys = new Set(this.layouts.map((entry) => entry.layoutKey));
       const current = new Set(
         (this.section.aiDesign?.allowedLayoutVariants || [])
           .filter((layoutKey) => savedLayoutKeys.has(layoutKey)),
       );
-      if (current.has(layout.layoutKey)) current.delete(layout.layoutKey);
-      else current.add(layout.layoutKey);
+      if (allowed) current.add(layout.layoutKey);
+      else current.delete(layout.layoutKey);
       this.saving = true;
       this.error = "";
       try {
@@ -159,34 +166,29 @@ export default {
     <div class="subsection-title">
       <div>
         <h3>Layout Preset</h3>
-        <small>섹션을 추가할 때 적용할 Desktop/Mobile 배치를 미리 설정합니다.</small>
+        <small>Live Preview에서 Desktop/Mobile 배치를 완성한 뒤 Preset으로 저장합니다.</small>
       </div>
       <div class="action-row">
         <button class="tiny-button" type="button" :disabled="loading" @click="load">새로고침</button>
-        <button class="tiny-button primary" type="button" :disabled="!editable || saving" @click="showCreate = !showCreate">+ Preset</button>
+        <button class="tiny-button primary" type="button" :disabled="!editable || saving" @click="startNewPreset">+ 새 Layout 만들기</button>
       </div>
     </div>
 
     <div v-if="!editable" class="empty-state compact">활성·비활성 버전의 Layout은 읽기 전용입니다. 초안을 만든 후 편집하세요.</div>
     <div v-if="error" class="field-error">{{ error }}</div>
-    <div v-if="showCreate && editable" class="section-layout-create">
-      <label class="field compact-field"><span>이름</span><input v-model="createForm.name" type="text" placeholder="예: Standard Header" /></label>
-      <label class="field compact-field"><span>설명</span><input v-model="createForm.description" type="text" placeholder="사용 목적" /></label>
-      <button class="tiny-button primary" type="button" :disabled="!createForm.name.trim() || saving" @click="createPreset">생성 후 Live Preview</button>
-    </div>
-
     <div v-if="loading" class="empty-state compact">Layout Preset을 불러오는 중...</div>
     <div v-else class="history-list">
       <div v-for="layout in layouts" :key="layout.id" class="history-item section-layout-row">
         <div>
-          <strong>{{ layout.name }} <em v-if="layout.isDefault" class="status-active">기본</em></strong>
+          <strong>
+            {{ layout.name }}
+            <em v-if="layout.isDefault" class="status-active">기본</em>
+            <em v-if="aiAllows(layout)" class="status-active">AI 허용</em>
+          </strong>
           <span>{{ layout.layoutKey }} · {{ layout.description || '설명 없음' }}</span>
         </div>
         <div class="action-row align-right">
           <button class="tiny-button" type="button" :class="{ primary: selectedLayoutId === layout.id }" @click="selectLayout(layout)">{{ selectedLayoutId === layout.id ? 'Preview 닫기' : (editable ? 'Live Preview 편집' : 'Live Preview 보기') }}</button>
-          <button class="tiny-button" type="button" :disabled="!editable || layout.isDefault || saving" @click="setDefault(layout)">기본값</button>
-          <button class="tiny-button" type="button" :disabled="!editable || saving" @click="toggleAiLayout(layout)">{{ aiAllows(layout) ? 'AI 허용됨' : 'AI 허용' }}</button>
-          <button class="tiny-button danger" type="button" :disabled="!editable || saving || aiAllows(layout)" @click="remove(layout)">삭제</button>
         </div>
       </div>
       <div v-if="!layouts.length" class="empty-state compact">등록된 Layout Preset이 없습니다. 기존 자동 배치가 계속 사용됩니다.</div>
@@ -196,18 +198,22 @@ export default {
       :section="section"
       :items="items"
       :layout="selectedLayout"
+      :create-mode="selectedLayoutId === '__new__'"
+      :ai-allowed="selectedLayoutId !== '__new__' && aiAllows(selectedLayout)"
       @saved="handleLayoutSaved"
-      @close="selectedLayoutId = ''"
+      @created="handleLayoutCreated"
+      @set-default="setDefault(selectedLayout)"
+      @toggle-ai="toggleAiLayout(selectedLayout)"
+      @delete="remove(selectedLayout)"
+      @close="selectedLayoutId = ''; draftLayout = null"
     />
   </section>
 </template>
 
 <style scoped>
 .section-layout-manager { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--app-border, #303744); }
-.section-layout-create { display: grid; grid-template-columns: minmax(160px, .7fr) minmax(220px, 1fr) auto; gap: 10px; align-items: end; margin: 12px 0; }
 .section-layout-row { display: flex; justify-content: space-between; gap: 16px; align-items: center; }
 @media (max-width: 800px) {
-  .section-layout-create { grid-template-columns: 1fr; }
   .section-layout-row { align-items: flex-start; flex-direction: column; }
 }
 </style>
