@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="/prototype/app-components.css?v=app-components-v1" />
     <link rel="stylesheet" href="/prototype/styles.css?v=admin-template-manager-v6" />
     <link rel="stylesheet" href="/prototype/visual-editor-assets/promo-renderer.css?v=promo-renderer-v3" />
-    <link rel="stylesheet" href="/prototype/admin-assets/promo-web-builder.css?v=admin-vite-v4" />
+    <link rel="stylesheet" href="/prototype/admin-assets/promo-web-builder.css?v=admin-vite-v5" />
     <script src="/prototype/vendor/lucide/lucide.min.js?v=1.8.0"></script>
     <script src="/prototype/i18n-runtime.js?v=i18n-runtime-v1"></script>
     <script src="/prototype/shared-shell.js?v=app-shell-sidebar-v4"></script>
@@ -1451,350 +1451,7 @@
               </div>
               <button class="tiny-button" type="button" :disabled="wizardSectionsLoading" @click="loadWizardSections({ fresh: true })">{{ t('common.action.refresh') }}</button>
             </div>
-            <div id="section-preset-manager-target" class="template-component-manager-target"></div>
-          </section>
-
-          <section class="panel stack" v-show="adminTab === 'promo-form'">
-            <section class="subsection form-template-manager">
-              <div class="subsection-title">
-                <div>
-                  <h2>폼 템플릿 및 기본 레이아웃</h2>
-                  <span>활성 Section Preset을 선택하고 페이지 순서와 최초 노출 레이아웃을 관리합니다.</span>
-                </div>
-                <div class="subsection-actions">
-                  <button class="tiny-button" type="button" :disabled="wizardFormTemplatesLoading" @click="loadWizardFormTemplates({ fresh: true })">{{ t('common.action.refresh') }}</button>
-                </div>
-              </div>
-
-              <div class="outline-item danger-state" v-if="wizardFormTemplatesError">
-                <strong>폼 템플릿 오류</strong>
-                <span>{{ wizardFormTemplatesError }}</span>
-              </div>
-
-              <div class="form-template-admin-grid">
-                <aside class="prompt-list-panel template-management-list">
-                  <article
-                    v-for="group in groupedWizardFormTemplates"
-                    :key="group.templateKey"
-                    class="template-list-card"
-                    :class="{ selected: selectedWizardFormTemplateKey === group.templateKey }"
-                  >
-                    <button
-                      class="template-settings-toggle"
-                      type="button"
-                      :class="{ selected: selectedWizardFormTemplateKey === group.templateKey }"
-                      :aria-expanded="expandedWizardFormTemplateSettingsKey === group.templateKey"
-                      :aria-label="`${group.primary?.name || group.templateKey} 설정`"
-                      @click="toggleWizardFormTemplateSettings(group)"
-                    >
-                      <span class="template-list-select">
-                        <strong>{{ group.primary?.name }}</strong>
-                        <span>{{ group.templateKey }} · v{{ group.primary?.version }} · {{ group.versions.length }}개 버전</span>
-                        <em :class="`status-${group.primary?.status}`">{{ group.primary?.isDefault ? '기본' : wizardSectionStatusLabel(group.primary?.status) }}</em>
-                      </span>
-                      <span class="template-settings-icon" aria-hidden="true">⚙</span>
-                    </button>
-                    <div
-                      class="template-list-settings"
-                      v-if="expandedWizardFormTemplateSettingsKey === group.templateKey && wizardFormTemplateDetail?.template?.templateKey === group.templateKey"
-                    >
-                      <label class="app-switch" :aria-busy="wizardFormTemplateSaving ? 'true' : 'false'" :title="group.primary?.isDefault && group.primary?.status === 'active' ? '기본 템플릿은 다른 기본 템플릿을 활성화하기 전까지 비활성화할 수 없습니다.' : '템플릿 활성 상태'">
-                        <input
-                          class="app-switch__input"
-                          type="checkbox"
-                          role="switch"
-                          :checked="group.primary?.status === 'active'"
-                          :disabled="wizardFormTemplateSaving || (group.primary?.isDefault && group.primary?.status === 'active')"
-                          :aria-label="`템플릿 ${group.primary?.status === 'active' ? '활성' : '비활성'}`"
-                          @change="toggleWizardFormTemplateActive(group, $event.target.checked)"
-                        />
-                        <span class="app-switch__track" aria-hidden="true"></span>
-                        <span class="app-switch__label">{{ wizardFormTemplateSaving ? '저장 중' : (group.primary?.status === 'active' ? '활성' : '비활성') }}</span>
-                      </label>
-                      <div class="template-list-card__actions">
-                        <button class="tiny-button" type="button" :disabled="wizardFormTemplateSaving" @click="editWizardFormTemplate(group)">수정</button>
-                        <button class="tiny-button" type="button" :disabled="wizardFormTemplateSaving" @click="openDuplicateWizardFormTemplate(group)">{{ t('common.action.duplicate') }}</button>
-                        <button class="tiny-button danger" type="button" :disabled="wizardFormTemplateSaving || (!group.draft && !group.inactive)" @click="deleteWizardFormTemplate(group)">{{ t('common.action.archive') }}</button>
-                      </div>
-                      <label class="field compact-field">
-                        <span>{{ t('entity.template.key') }}</span>
-                        <input :value="group.templateKey" type="text" readonly />
-                      </label>
-                      <label class="field compact-field" v-if="group.versions.length > 1">
-                        <span>버전 보기</span>
-                        <select :value="wizardFormTemplateDetail.template.id" @change="loadWizardFormTemplateDetail($event.target.value)">
-                          <option v-for="version in group.versions" :key="version.id" :value="version.id">v{{ version.version }} · {{ wizardSectionStatusLabel(version.status) }}</option>
-                        </select>
-                      </label>
-                      <template-layout-manager
-                        class="template-layout-settings--compact"
-                        :template="wizardFormTemplateDetail.template"
-                        :status-label="wizardSectionStatusLabel"
-                        :translate="t"
-                      ></template-layout-manager>
-                      <div class="empty-state compact" v-if="wizardFormTemplateDetail.template.status !== 'draft'">활성·비활성 버전은 읽기 전용입니다. 수정 버튼을 누르면 초안이 열립니다.</div>
-                      <label class="field compact-field">
-                        <span>템플릿 이름</span>
-                        <input v-model="wizardFormTemplateEditor.name" type="text" :disabled="wizardFormTemplateDetail.template.status !== 'draft'" autocomplete="off" />
-                      </label>
-                      <label class="field compact-field">
-                        <span>{{ t('common.field.description') }}</span>
-                        <input v-model="wizardFormTemplateEditor.description" type="text" :disabled="wizardFormTemplateDetail.template.status !== 'draft'" autocomplete="off" />
-                      </label>
-                      <label class="field compact-field">
-                        <span>추천 메타데이터 (JSON)</span>
-                        <textarea
-                          v-model="wizardFormTemplateEditor.recommendationProfileText"
-                          :disabled="wizardFormTemplateDetail.template.status !== 'draft'"
-                          rows="8"
-                          spellcheck="false"
-                          placeholder='{"promotionTypes":[],"markets":[],"audiences":[],"tones":[],"supportedComponentRoles":[],"requiredInputs":[],"requiredNotices":[],"tags":[]}'
-                        ></textarea>
-                        <small>활성 템플릿 추천에 사용할 목적, 마켓, 대상, 톤, 역할, 필수 입력과 태그를 배열로 관리합니다.</small>
-                      </label>
-                      <label class="app-checkbox switch-control">
-                        <input v-model="wizardFormTemplateEditor.isDefault" type="checkbox" :disabled="wizardFormTemplateDetail.template.status !== 'draft'" />
-                        <span>기본 템플릿으로 지정</span>
-                      </label>
-                      <label class="field compact-field" v-if="wizardFormTemplateDetail.template.status === 'draft'">
-                        <span>{{ t('common.field.changeReason') }}</span>
-                        <input v-model="wizardFormTemplateEditor.changeNote" type="text" autocomplete="off" />
-                      </label>
-                      <button class="tiny-button primary" type="button" v-if="wizardFormTemplateDetail.template.status === 'draft'" :disabled="wizardFormTemplateSaving || !wizardFormTemplateEditor.name" @click="saveWizardFormTemplate">{{ t('common.action.save') }}</button>
-                    </div>
-                  </article>
-                  <div class="empty-state compact" v-if="!wizardFormTemplatesLoading && !groupedWizardFormTemplates.length">등록된 템플릿이 없습니다.</div>
-                  <div class="template-list-global-actions">
-                    <button class="tiny-button primary" type="button" @click="toggleNewWizardFormTemplateForm">{{ showNewWizardFormTemplateForm ? t('common.action.cancel') : `+ ${t('entity.template.add')}` }}</button>
-                  </div>
-                  <div class="form-template-create" v-if="showNewWizardFormTemplateForm">
-                    <small>템플릿 식별자는 생성 시 자동으로 부여됩니다.</small>
-                    <label class="field compact-field"><span>{{ t('entity.template.name') }}</span><input v-model="newWizardFormTemplateForm.name" type="text" autocomplete="off" /></label>
-                    <label class="field compact-field"><span>{{ t('common.field.description') }}</span><input v-model="newWizardFormTemplateForm.description" type="text" autocomplete="off" /></label>
-                    <button class="tiny-button primary" type="button" :disabled="wizardFormTemplateSaving || !newWizardFormTemplateForm.name" @click="createWizardFormTemplate">템플릿 생성</button>
-                  </div>
-                  <div class="form-template-duplicate" v-if="showDuplicateWizardFormTemplateForm">
-                    <strong>템플릿 복사본 만들기</strong>
-                    <small>새 템플릿 식별자는 자동으로 생성됩니다.</small>
-                    <div class="outline-item danger-state" v-if="duplicateWizardFormTemplateError"><strong>복사본 생성 실패</strong><span>{{ duplicateWizardFormTemplateError }}</span></div>
-                    <label class="field compact-field"><span>{{ t('entity.template.name') }}</span><input v-model="duplicateWizardFormTemplateForm.name" type="text" autocomplete="off" /></label>
-                    <label class="field compact-field"><span>{{ t('common.field.description') }}</span><input v-model="duplicateWizardFormTemplateForm.description" type="text" autocomplete="off" /></label>
-                    <div class="action-row align-right">
-                      <button class="tiny-button" type="button" @click="showDuplicateWizardFormTemplateForm = false">{{ t('common.action.cancel') }}</button>
-                      <button class="tiny-button primary" type="button" :disabled="wizardFormTemplateSaving || !duplicateWizardFormTemplateForm.name" @click="duplicateWizardFormTemplate">{{ t('common.action.duplicate') }}</button>
-                    </div>
-                  </div>
-                </aside>
-
-                <div class="form-template-editor-panels">
-                <section class="prompt-editor-panel" v-if="wizardFormTemplateDetail">
-                  <div class="subsection-title">
-                    <div>
-                      <h3>Template Section 구성</h3>
-                      <span>Section Preset의 내용과 Layout은 Preset 관리에서 편집하고, 여기서는 연결과 페이지 순서만 관리합니다.</span>
-                    </div>
-                    <button
-                      class="tiny-button primary"
-                      type="button"
-                      :disabled="!wizardFormTemplateCanEdit || !availableWizardSectionsForTemplate.length"
-                      @click="showNewWizardFormTemplateSectionForm = !showNewWizardFormTemplateSectionForm"
-                    >+ Section Preset 연결</button>
-                  </div>
-
-                  <div class="empty-state compact" v-if="!wizardFormTemplateCanEdit">
-                    활성·비활성 Template은 읽기 전용입니다. 수정 버튼을 눌러 Template 초안을 만든 뒤 Preset을 연결하세요.
-                  </div>
-
-                  <div class="template-section-connect" v-if="showNewWizardFormTemplateSectionForm && wizardFormTemplateCanEdit">
-                    <label class="field compact-field">
-                      <span>활성 Section Preset</span>
-                      <select v-model="newWizardFormTemplateSectionForm.sectionId">
-                        <option value="">연결할 Preset을 선택하세요</option>
-                        <option
-                          v-for="group in availableWizardSectionsForTemplate"
-                          :key="group.sectionKey"
-                          :value="group.versions.find(version => version.status === 'active')?.id"
-                        >{{ group.versions.find(version => version.status === 'active')?.name || group.sectionKey }} · {{ group.sectionKey }}</option>
-                      </select>
-                    </label>
-                    <button class="tiny-button" type="button" @click="showNewWizardFormTemplateSectionForm = false; newWizardFormTemplateSectionForm = { sectionId: '' }">{{ t('common.action.cancel') }}</button>
-                    <button class="tiny-button primary" type="button" :disabled="wizardFormTemplateSectionSaving || !newWizardFormTemplateSectionForm.sectionId" @click="addWizardFormTemplateSection">연결</button>
-                  </div>
-
-                  <transition-group name="section-order-list" tag="div" class="history-list template-section-membership-list">
-                    <article
-                      v-for="(section, sectionIndex) in wizardFormTemplateDetail.sections"
-                      :key="section.id"
-                      class="history-item template-section-membership-row"
-                      :class="{
-                        selected: selectedWizardFormTemplateSectionId === section.id,
-                        dragging: draggedWizardFormTemplateSectionKey === section.sectionKey,
-                        'drop-before': wizardFormTemplateSectionDropTargetKey === section.sectionKey && wizardFormTemplateSectionDropPosition === 'before',
-                        'drop-after': wizardFormTemplateSectionDropTargetKey === section.sectionKey && wizardFormTemplateSectionDropPosition === 'after'
-                      }"
-                      @dragover.prevent="dragOverWizardFormTemplateSection(section, $event)"
-                      @drop.prevent.stop="dropWizardFormTemplateSection(section)"
-                    >
-                      <span
-                        class="section-drag-handle"
-                        :class="{ disabled: !wizardFormTemplateSectionCanReorder(section) }"
-                        :draggable="wizardFormTemplateSectionCanReorder(section) && !wizardFormTemplateSectionSaving"
-                        :tabindex="wizardFormTemplateSectionCanReorder(section) ? 0 : -1"
-                        role="button"
-                        :aria-label="`${section.sectionName || section.sectionKey} 순서 변경`"
-                        @dragstart.stop="startWizardFormTemplateSectionDrag(section, $event)"
-                        @dragend.stop="stopWizardFormTemplateSectionDrag"
-                      >{{ wizardFormTemplateSectionCanReorder(section) ? '⋮⋮' : '고정' }}</span>
-                      <button class="template-section-membership-select" type="button" @click="selectWizardFormTemplateSection(section)">
-                        <strong>{{ section.sectionName || section.sectionKey }}</strong>
-                        <span>{{ section.sectionKey }} · v{{ section.sectionVersion }} · {{ wizardSectionStatusLabel(section.sectionStatus) }}</span>
-                      </button>
-                      <div class="action-row align-right">
-                        <button class="tiny-button" type="button" :disabled="!wizardFormTemplateSectionCanReorder(section) || sectionIndex === 0" @click="moveWizardFormTemplateSection(section, -1)">↑</button>
-                        <button class="tiny-button" type="button" :disabled="!wizardFormTemplateSectionCanReorder(section) || sectionIndex === wizardFormTemplateDetail.sections.length - 1" @click="moveWizardFormTemplateSection(section, 1)">↓</button>
-                        <button class="tiny-button danger" type="button" :disabled="!wizardFormTemplateCanEdit || wizardFormTemplateSectionSaving" @click="removeWizardFormTemplateSection(section)">연결 해제</button>
-                      </div>
-                    </article>
-                    <div class="empty-state compact" v-if="!wizardFormTemplateDetail.sections.length">연결된 Section Preset이 없습니다.</div>
-                  </transition-group>
-
-                  <div class="subsection template-section-membership-settings" v-if="selectedWizardFormTemplateSection">
-                    <div class="subsection-title"><h3>Template 적용 설정</h3></div>
-                    <div class="form-grid compact">
-                      <label class="app-checkbox switch-control"><input type="checkbox" v-model="wizardFormTemplateSectionEditor.isRequired" :disabled="!wizardFormTemplateCanEdit" /><span>필수 Section</span></label>
-                      <label class="app-checkbox switch-control"><input type="checkbox" v-model="wizardFormTemplateSectionEditor.isVisible" :disabled="!wizardFormTemplateCanEdit" /><span>프로모션 빌더에 노출</span></label>
-                      <label class="app-checkbox switch-control"><input type="checkbox" v-model="wizardFormTemplateSectionEditor.userReorderAllowed" :disabled="!wizardFormTemplateCanEdit || !!selectedWizardFormTemplateSection.fixedPosition" /><span>사용자 순서 변경 허용</span></label>
-                    </div>
-                    <div class="action-row align-right">
-                      <button class="tiny-button primary" type="button" :disabled="!wizardFormTemplateCanEdit || wizardFormTemplateSectionSaving" @click="saveWizardFormTemplateSection">적용 설정 저장</button>
-                    </div>
-                  </div>
-                </section>
-
-                  <section class="prompt-editor-panel empty-state" v-else>템플릿을 선택하세요.</section>
-
-                <aside class="template-section-items-panel" v-if="false && wizardFormTemplateDetail">
-                  <div class="subsection-title">
-                    <div>
-                      <h3>Section Items</h3>
-                      <span v-if="selectedWizardFormTemplateSection">{{ selectedWizardFormTemplateSection.sectionName || selectedWizardFormTemplateSection.sectionKey }}</span>
-                    </div>
-                  </div>
-                  <div class="subsection" v-if="selectedWizardFormTemplateSection">
-                    <div class="subsection-title"><h3>AI 디자인 정책</h3></div>
-                    <label class="app-switch">
-                      <input class="app-switch__input" type="checkbox" role="switch" v-model="wizardFormTemplateSectionEditor.aiDesign.enabled" :disabled="!wizardFormTemplateCanEdit" />
-                      <span class="app-switch__track" aria-hidden="true"></span>
-                      <span class="app-switch__label">이 Section에서 AI 디자인 생성 허용</span>
-                    </label>
-                    <div class="form-grid compact">
-                      <label class="app-checkbox switch-control" v-for="variant in ['split-left', 'split-right', 'centered-hero']" :key="variant">
-                        <input type="checkbox" :value="variant" v-model="wizardFormTemplateSectionEditor.aiDesign.allowedLayoutVariants" :disabled="!wizardFormTemplateCanEdit || !wizardFormTemplateSectionEditor.aiDesign.enabled" />
-                        <span>{{ variant }}</span>
-                      </label>
-                    </div>
-                    <label class="app-checkbox switch-control">
-                      <input type="checkbox" v-model="wizardFormTemplateSectionEditor.aiDesign.allowSectionBackground" :disabled="!wizardFormTemplateCanEdit || !wizardFormTemplateSectionEditor.aiDesign.enabled" />
-                      <span>섹션 배경 AI 생성 허용</span>
-                    </label>
-                    <div class="form-grid compact">
-                      <label class="app-checkbox switch-control" v-for="item in wizardFormTemplateSectionItems.filter((entry) => entry.fieldKind === 'image' && entry.isVisibleInWizard && entry.image?.allowedSources?.includes('ai'))" :key="item.itemKey">
-                        <input type="checkbox" :value="item.itemKey" v-model="wizardFormTemplateSectionEditor.aiDesign.imageTargetItemKeys" :disabled="!wizardFormTemplateCanEdit || !wizardFormTemplateSectionEditor.aiDesign.enabled" />
-                        <span>{{ item.name }}</span>
-                      </label>
-                      <div class="empty-state compact" v-if="!wizardFormTemplateSectionItems.some((entry) => entry.fieldKind === 'image' && entry.isVisibleInWizard && entry.image?.allowedSources?.includes('ai'))">AI 소스를 허용한 이미지 Item이 없습니다.</div>
-                    </div>
-                    <label class="field compact-field">
-                      <span>이미지 비율</span>
-                      <select v-model="wizardFormTemplateSectionEditor.aiDesign.imageAspectRatio" :disabled="!wizardFormTemplateCanEdit || !wizardFormTemplateSectionEditor.aiDesign.enabled">
-                        <option value="16:9">16:9</option><option value="4:3">4:3</option><option value="1:1">1:1</option><option value="3:4">3:4</option>
-                      </select>
-                    </label>
-                    <label class="field compact-field">
-                      <span>섹션 키비주얼 관리자 지침</span>
-                      <textarea
-                        v-model="wizardFormTemplateSectionEditor.aiDesign.backgroundPromptText"
-                        rows="4"
-                        :disabled="!wizardFormTemplateCanEdit || !wizardFormTemplateSectionEditor.aiDesign.enabled"
-                        placeholder="예: 주요 피사체는 오른쪽에 배치하고 브랜드 로고와 문자는 생성하지 마세요."
-                      ></textarea>
-                    </label>
-                    <div class="action-row align-right">
-                      <button class="tiny-button primary" type="button" :disabled="!wizardFormTemplateCanEdit || wizardFormTemplateSectionSaving" @click="saveWizardFormTemplateSection">AI 정책 저장</button>
-                    </div>
-                  </div>
-                  <div class="subsection-title template-items-heading" v-if="selectedWizardFormTemplateSection">
-                    <span>{{ wizardFormTemplateSectionItems.length }}개 Item</span>
-                    <button class="tiny-button primary" type="button" :disabled="!wizardFormTemplateCanEdit" @click="openNewWizardFormTemplateItemEditor">+ Item 추가</button>
-                  </div>
-                  <div class="empty-state compact" v-if="wizardFormTemplateSectionItemsLoading">Item을 불러오는 중입니다.</div>
-                  <transition-group name="template-item-order" tag="div" class="history-list" v-else-if="wizardFormTemplateSectionItems.length">
-                    <div class="history-item template-item-row" v-for="item in wizardFormTemplateSectionItems" :key="item.id"
-                      :class="{
-                        dragging: draggedWizardFormTemplateItemId === item.id,
-                        'drop-before': wizardFormTemplateItemDropTargetId === item.id && wizardFormTemplateItemDropPosition === 'before',
-                        'drop-after': wizardFormTemplateItemDropTargetId === item.id && wizardFormTemplateItemDropPosition === 'after'
-                      }"
-                      @dragover.prevent="dragOverWizardFormTemplateItem(item, $event)"
-                      @drop.prevent.stop="dropWizardFormTemplateItem(item)"
-                    >
-                      <span class="section-drag-handle" :draggable="!wizardFormTemplateSectionSaving"
-                        title="드래그해서 순서 변경"
-                        @dragstart.stop="startWizardFormTemplateItemDrag(item, $event)"
-                        @dragend.stop="stopWizardFormTemplateItemDrag"
-                      >⋮⋮</span>
-                      <strong>{{ item.name }}</strong>
-                      <span>{{ item.itemKey }} · {{ fieldKindLabel(item.fieldKind) }}{{ item.image?.descriptionEnabled ? ' + 설명' : '' }}{{ item.textType ? ' · ' + textTypeLabel(item.textType) : '' }}</span>
-                      <em>{{ item.isVisibleInWizard ? 'Wizard 노출' : 'Wizard 숨김' }} · {{ item.isRequired ? '필수' : '선택' }} · {{ item.userReorderAllowed ? '사용자 순서 변경 가능' : '사용자 순서 고정' }}{{ item.isLocked ? ' · 내용 고정' : '' }}</em>
-                      <button class="section-expand-button template-item-expand-button" type="button"
-                        :aria-expanded="wizardFormTemplateItemEditorOpenId === item.id"
-                        :aria-label="wizardFormTemplateItemEditorOpenId === item.id ? 'Item 닫기' : 'Item 열기'"
-                        :title="wizardFormTemplateItemEditorOpenId === item.id ? 'Item 닫기' : 'Item 열기'"
-                        @click.stop="openWizardFormTemplateItemEditor(item)"
-                      >{{ wizardFormTemplateItemEditorOpenId === item.id ? '▾' : '▸' }}</button>
-                      <transition name="section-expand">
-                        <div class="template-item-expanded" v-if="wizardFormTemplateItemEditorOpenId === item.id && wizardFormTemplateItemEditor">
-                          <label class="field compact-field"><span>Item 이름</span><input v-model="wizardFormTemplateItemEditor.name" type="text" /></label>
-                          <label class="field compact-field"><span>{{ t('common.field.type') }}</span><select v-model="wizardFormTemplateItemEditor.fieldKind"><option value="text">텍스트</option><option value="image">이미지</option><option value="cta">CTA 버튼</option></select></label>
-                          <label class="field compact-field" v-if="wizardFormTemplateItemEditor.fieldKind === 'text'"><span>텍스트 유형</span><select v-model="wizardFormTemplateItemEditor.textType"><option value="title">Title</option><option value="remark">remark</option><option value="multi">Multi</option></select></label>
-                          <div class="form-grid compact">
-                            <label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.isRequired" type="checkbox" /><span>필수</span></label>
-                            <label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.isVisibleInWizard" type="checkbox" /><span>Wizard 노출</span></label>
-                            <label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.userReorderAllowed" type="checkbox" /><span>Wizard 사용자 순서 변경 허용</span></label>
-                            <label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.isLocked" type="checkbox" /><span>내용 고정</span></label>
-                          </div>
-                          <div class="field" v-if="wizardFormTemplateItemEditor.fieldKind === 'image'"><span>Wizard 이미지 입력 방식 허용</span><div class="subsection-actions"><label v-for="source in ['url', 'file', 'ai']" :key="source" class="app-checkbox switch-control"><input type="checkbox" :checked="wizardFormTemplateItemEditor.image.allowedSources.includes(source)" @change="toggleWizardFormTemplateItemImageSource(source)" /><span>{{ imageSourceLabel(source) }}</span></label><label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.image.descriptionEnabled" type="checkbox" /><span>설명 입력 허용</span></label></div></div>
-                          <div class="form-grid compact" v-if="wizardFormTemplateItemEditor.fieldKind === 'cta'"><label class="field compact-field"><span>UTM Source</span><input v-model="wizardFormTemplateItemEditor.ctaUtm.source" type="text" /></label><label class="field compact-field"><span>UTM Medium</span><input v-model="wizardFormTemplateItemEditor.ctaUtm.medium" type="text" /></label><label class="field compact-field"><span>UTM Campaign</span><input v-model="wizardFormTemplateItemEditor.ctaUtm.campaign" type="text" /></label></div>
-                          <label class="field" v-if="wizardFormTemplateItemEditor.isLocked"><span>고정 내용 (JSON)</span><textarea v-model="wizardFormTemplateItemEditor.lockedValueText" rows="3"></textarea></label>
-                          <div class="action-row align-right"><button class="tiny-button danger" type="button" :disabled="wizardFormTemplateSectionSaving" @click="deleteWizardFormTemplateItem(item)">{{ t('common.action.delete') }}</button><button class="tiny-button" type="button" @click="wizardFormTemplateItemEditorOpenId = ''">{{ t('common.action.cancel') }}</button><button class="tiny-button primary" type="button" :disabled="!wizardFormTemplateItemEditor.name || wizardFormTemplateSectionSaving" @click="saveWizardFormTemplateItem">{{ t('common.action.saveChanges') }}</button></div>
-                        </div>
-                      </transition>
-                    </div>
-                  </transition-group>
-                  <div class="empty-state compact" v-else-if="selectedWizardFormTemplateSection">선택 Section에 등록된 Item이 없습니다.</div>
-                  <div class="template-item-editor" v-if="wizardFormTemplateItemEditorOpenId === 'new' && wizardFormTemplateItemEditor">
-                    <div class="subsection-title"><h3>Item 추가</h3></div>
-                    <label class="field compact-field"><span>Item 이름</span><input v-model="wizardFormTemplateItemEditor.name" type="text" /></label>
-                    <label class="field compact-field"><span>{{ t('common.field.type') }}</span><select v-model="wizardFormTemplateItemEditor.fieldKind"><option value="text">텍스트</option><option value="image">이미지</option><option value="cta">CTA 버튼</option></select></label>
-                    <label class="field compact-field" v-if="wizardFormTemplateItemEditor.fieldKind === 'text'"><span>텍스트 유형</span><select v-model="wizardFormTemplateItemEditor.textType"><option value="title">Title</option><option value="remark">remark</option><option value="multi">Multi</option></select></label>
-                    <div class="form-grid compact">
-                      <label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.isRequired" type="checkbox" /><span>필수</span></label>
-                      <label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.isVisibleInWizard" type="checkbox" /><span>Wizard 노출</span></label>
-                      <label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.userReorderAllowed" type="checkbox" /><span>Wizard 사용자 순서 변경 허용</span></label>
-                      <label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.isLocked" type="checkbox" /><span>내용 고정</span></label>
-                    </div>
-                    <div class="field" v-if="wizardFormTemplateItemEditor.fieldKind === 'image'"><span>Wizard 이미지 입력 방식 허용</span><div class="subsection-actions"><label v-for="source in ['url', 'file', 'ai']" :key="source" class="app-checkbox switch-control"><input type="checkbox" :checked="wizardFormTemplateItemEditor.image.allowedSources.includes(source)" @change="toggleWizardFormTemplateItemImageSource(source)" /><span>{{ imageSourceLabel(source) }}</span></label><label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.image.descriptionEnabled" type="checkbox" /><span>설명 입력 허용</span></label></div></div>
-                    <div class="form-grid compact" v-if="wizardFormTemplateItemEditor.fieldKind === 'cta'"><label class="field compact-field"><span>UTM Source</span><input v-model="wizardFormTemplateItemEditor.ctaUtm.source" type="text" /></label><label class="field compact-field"><span>UTM Medium</span><input v-model="wizardFormTemplateItemEditor.ctaUtm.medium" type="text" /></label><label class="field compact-field"><span>UTM Campaign</span><input v-model="wizardFormTemplateItemEditor.ctaUtm.campaign" type="text" /></label></div>
-                    <label class="field" v-if="wizardFormTemplateItemEditor.isLocked"><span>고정 내용 (JSON)</span><textarea v-model="wizardFormTemplateItemEditor.lockedValueText" rows="3"></textarea></label>
-                    <div class="action-row align-right"><button class="tiny-button" type="button" @click="wizardFormTemplateItemEditorOpenId = ''">{{ t('common.action.cancel') }}</button><button class="tiny-button primary" type="button" :disabled="!wizardFormTemplateItemEditor.name || wizardFormTemplateSectionSaving" @click="saveWizardFormTemplateItem">{{ t('common.action.saveContinue') }}</button></div>
-                  </div>
-                  <div class="empty-state compact" v-if="!selectedWizardFormTemplateSection">Section을 선택해 주세요.</div>
-                </aside>
-                </div>
-              </div>
-            </section>
-
-            <teleport to="#section-preset-manager-target" v-if="adminTab === 'section-presets'">
+            <div id="section-preset-manager-target" class="template-component-manager-target">
             <section class="section-library-manager">
               <div class="section-library-manager-body">
             <div class="outline-item danger-state" v-if="wizardSectionsError">
@@ -2195,7 +1852,349 @@
             </div>
               </div>
             </section>
-            </teleport>
+            </div>
+          </section>
+
+          <section class="panel stack" v-show="adminTab === 'promo-form'">
+            <section class="subsection form-template-manager">
+              <div class="subsection-title">
+                <div>
+                  <h2>폼 템플릿 및 기본 레이아웃</h2>
+                  <span>활성 Section Preset을 선택하고 페이지 순서와 최초 노출 레이아웃을 관리합니다.</span>
+                </div>
+                <div class="subsection-actions">
+                  <button class="tiny-button" type="button" :disabled="wizardFormTemplatesLoading" @click="loadWizardFormTemplates({ fresh: true })">{{ t('common.action.refresh') }}</button>
+                </div>
+              </div>
+
+              <div class="outline-item danger-state" v-if="wizardFormTemplatesError">
+                <strong>폼 템플릿 오류</strong>
+                <span>{{ wizardFormTemplatesError }}</span>
+              </div>
+
+              <div class="form-template-admin-grid">
+                <aside class="prompt-list-panel template-management-list">
+                  <article
+                    v-for="group in groupedWizardFormTemplates"
+                    :key="group.templateKey"
+                    class="template-list-card"
+                    :class="{ selected: selectedWizardFormTemplateKey === group.templateKey }"
+                  >
+                    <button
+                      class="template-settings-toggle"
+                      type="button"
+                      :class="{ selected: selectedWizardFormTemplateKey === group.templateKey }"
+                      :aria-expanded="expandedWizardFormTemplateSettingsKey === group.templateKey"
+                      :aria-label="`${group.primary?.name || group.templateKey} 설정`"
+                      @click="toggleWizardFormTemplateSettings(group)"
+                    >
+                      <span class="template-list-select">
+                        <strong>{{ group.primary?.name }}</strong>
+                        <span>{{ group.templateKey }} · v{{ group.primary?.version }} · {{ group.versions.length }}개 버전</span>
+                        <em :class="`status-${group.primary?.status}`">{{ group.primary?.isDefault ? '기본' : wizardSectionStatusLabel(group.primary?.status) }}</em>
+                      </span>
+                      <span class="template-settings-icon" aria-hidden="true">⚙</span>
+                    </button>
+                    <div
+                      class="template-list-settings"
+                      v-if="expandedWizardFormTemplateSettingsKey === group.templateKey && wizardFormTemplateDetail?.template?.templateKey === group.templateKey"
+                    >
+                      <label class="app-switch" :aria-busy="wizardFormTemplateSaving ? 'true' : 'false'" :title="group.primary?.isDefault && group.primary?.status === 'active' ? '기본 템플릿은 다른 기본 템플릿을 활성화하기 전까지 비활성화할 수 없습니다.' : '템플릿 활성 상태'">
+                        <input
+                          class="app-switch__input"
+                          type="checkbox"
+                          role="switch"
+                          :checked="group.primary?.status === 'active'"
+                          :disabled="wizardFormTemplateSaving || (group.primary?.isDefault && group.primary?.status === 'active')"
+                          :aria-label="`템플릿 ${group.primary?.status === 'active' ? '활성' : '비활성'}`"
+                          @change="toggleWizardFormTemplateActive(group, $event.target.checked)"
+                        />
+                        <span class="app-switch__track" aria-hidden="true"></span>
+                        <span class="app-switch__label">{{ wizardFormTemplateSaving ? '저장 중' : (group.primary?.status === 'active' ? '활성' : '비활성') }}</span>
+                      </label>
+                      <div class="template-list-card__actions">
+                        <button class="tiny-button" type="button" :disabled="wizardFormTemplateSaving" @click="editWizardFormTemplate(group)">수정</button>
+                        <button class="tiny-button" type="button" :disabled="wizardFormTemplateSaving" @click="openDuplicateWizardFormTemplate(group)">{{ t('common.action.duplicate') }}</button>
+                        <button class="tiny-button danger" type="button" :disabled="wizardFormTemplateSaving || (!group.draft && !group.inactive)" @click="deleteWizardFormTemplate(group)">{{ t('common.action.archive') }}</button>
+                      </div>
+                      <label class="field compact-field">
+                        <span>{{ t('entity.template.key') }}</span>
+                        <input :value="group.templateKey" type="text" readonly />
+                      </label>
+                      <label class="field compact-field" v-if="group.versions.length > 1">
+                        <span>버전 보기</span>
+                        <select :value="wizardFormTemplateDetail.template.id" @change="loadWizardFormTemplateDetail($event.target.value)">
+                          <option v-for="version in group.versions" :key="version.id" :value="version.id">v{{ version.version }} · {{ wizardSectionStatusLabel(version.status) }}</option>
+                        </select>
+                      </label>
+                      <template-layout-manager
+                        class="template-layout-settings--compact"
+                        :template="wizardFormTemplateDetail.template"
+                        :status-label="wizardSectionStatusLabel"
+                        :translate="t"
+                      ></template-layout-manager>
+                      <div class="empty-state compact" v-if="wizardFormTemplateDetail.template.status !== 'draft'">활성·비활성 버전은 읽기 전용입니다. 수정 버튼을 누르면 초안이 열립니다.</div>
+                      <label class="field compact-field">
+                        <span>템플릿 이름</span>
+                        <input v-model="wizardFormTemplateEditor.name" type="text" :disabled="wizardFormTemplateDetail.template.status !== 'draft'" autocomplete="off" />
+                      </label>
+                      <label class="field compact-field">
+                        <span>{{ t('common.field.description') }}</span>
+                        <input v-model="wizardFormTemplateEditor.description" type="text" :disabled="wizardFormTemplateDetail.template.status !== 'draft'" autocomplete="off" />
+                      </label>
+                      <label class="field compact-field">
+                        <span>추천 메타데이터 (JSON)</span>
+                        <textarea
+                          v-model="wizardFormTemplateEditor.recommendationProfileText"
+                          :disabled="wizardFormTemplateDetail.template.status !== 'draft'"
+                          rows="8"
+                          spellcheck="false"
+                          placeholder='{"promotionTypes":[],"markets":[],"audiences":[],"tones":[],"supportedComponentRoles":[],"requiredInputs":[],"requiredNotices":[],"tags":[]}'
+                        ></textarea>
+                        <small>활성 템플릿 추천에 사용할 목적, 마켓, 대상, 톤, 역할, 필수 입력과 태그를 배열로 관리합니다.</small>
+                      </label>
+                      <label class="app-checkbox switch-control">
+                        <input v-model="wizardFormTemplateEditor.isDefault" type="checkbox" :disabled="wizardFormTemplateDetail.template.status !== 'draft'" />
+                        <span>기본 템플릿으로 지정</span>
+                      </label>
+                      <label class="field compact-field" v-if="wizardFormTemplateDetail.template.status === 'draft'">
+                        <span>{{ t('common.field.changeReason') }}</span>
+                        <input v-model="wizardFormTemplateEditor.changeNote" type="text" autocomplete="off" />
+                      </label>
+                      <button class="tiny-button primary" type="button" v-if="wizardFormTemplateDetail.template.status === 'draft'" :disabled="wizardFormTemplateSaving || !wizardFormTemplateEditor.name" @click="saveWizardFormTemplate">{{ t('common.action.save') }}</button>
+                    </div>
+                  </article>
+                  <div class="empty-state compact" v-if="!wizardFormTemplatesLoading && !groupedWizardFormTemplates.length">등록된 템플릿이 없습니다.</div>
+                  <div class="template-list-global-actions">
+                    <button class="tiny-button primary" type="button" @click="toggleNewWizardFormTemplateForm">{{ showNewWizardFormTemplateForm ? t('common.action.cancel') : `+ ${t('entity.template.add')}` }}</button>
+                  </div>
+                  <div class="form-template-create" v-if="showNewWizardFormTemplateForm">
+                    <small>템플릿 식별자는 생성 시 자동으로 부여됩니다.</small>
+                    <label class="field compact-field"><span>{{ t('entity.template.name') }}</span><input v-model="newWizardFormTemplateForm.name" type="text" autocomplete="off" /></label>
+                    <label class="field compact-field"><span>{{ t('common.field.description') }}</span><input v-model="newWizardFormTemplateForm.description" type="text" autocomplete="off" /></label>
+                    <button class="tiny-button primary" type="button" :disabled="wizardFormTemplateSaving || !newWizardFormTemplateForm.name" @click="createWizardFormTemplate">템플릿 생성</button>
+                  </div>
+                  <div class="form-template-duplicate" v-if="showDuplicateWizardFormTemplateForm">
+                    <strong>템플릿 복사본 만들기</strong>
+                    <small>새 템플릿 식별자는 자동으로 생성됩니다.</small>
+                    <div class="outline-item danger-state" v-if="duplicateWizardFormTemplateError"><strong>복사본 생성 실패</strong><span>{{ duplicateWizardFormTemplateError }}</span></div>
+                    <label class="field compact-field"><span>{{ t('entity.template.name') }}</span><input v-model="duplicateWizardFormTemplateForm.name" type="text" autocomplete="off" /></label>
+                    <label class="field compact-field"><span>{{ t('common.field.description') }}</span><input v-model="duplicateWizardFormTemplateForm.description" type="text" autocomplete="off" /></label>
+                    <div class="action-row align-right">
+                      <button class="tiny-button" type="button" @click="showDuplicateWizardFormTemplateForm = false">{{ t('common.action.cancel') }}</button>
+                      <button class="tiny-button primary" type="button" :disabled="wizardFormTemplateSaving || !duplicateWizardFormTemplateForm.name" @click="duplicateWizardFormTemplate">{{ t('common.action.duplicate') }}</button>
+                    </div>
+                  </div>
+                </aside>
+
+                <div class="form-template-editor-panels">
+                <section class="prompt-editor-panel" v-if="wizardFormTemplateDetail">
+                  <div class="subsection-title">
+                    <div>
+                      <h3>Template Section 구성</h3>
+                      <span>Section Preset의 내용과 Layout은 Preset 관리에서 편집하고, 여기서는 연결과 페이지 순서만 관리합니다.</span>
+                    </div>
+                    <button
+                      class="tiny-button primary"
+                      type="button"
+                      :disabled="!wizardFormTemplateCanEdit || !availableWizardSectionsForTemplate.length"
+                      @click="showNewWizardFormTemplateSectionForm = !showNewWizardFormTemplateSectionForm"
+                    >+ Section Preset 연결</button>
+                  </div>
+
+                  <div class="empty-state compact" v-if="!wizardFormTemplateCanEdit">
+                    활성·비활성 Template은 읽기 전용입니다. 수정 버튼을 눌러 Template 초안을 만든 뒤 Preset을 연결하세요.
+                  </div>
+
+                  <div class="template-section-connect" v-if="showNewWizardFormTemplateSectionForm && wizardFormTemplateCanEdit">
+                    <label class="field compact-field">
+                      <span>활성 Section Preset</span>
+                      <select v-model="newWizardFormTemplateSectionForm.sectionId">
+                        <option value="">연결할 Preset을 선택하세요</option>
+                        <option
+                          v-for="group in availableWizardSectionsForTemplate"
+                          :key="group.sectionKey"
+                          :value="group.versions.find(version => version.status === 'active')?.id"
+                        >{{ group.versions.find(version => version.status === 'active')?.name || group.sectionKey }} · {{ group.sectionKey }}</option>
+                      </select>
+                    </label>
+                    <button class="tiny-button" type="button" @click="showNewWizardFormTemplateSectionForm = false; newWizardFormTemplateSectionForm = { sectionId: '' }">{{ t('common.action.cancel') }}</button>
+                    <button class="tiny-button primary" type="button" :disabled="wizardFormTemplateSectionSaving || !newWizardFormTemplateSectionForm.sectionId" @click="addWizardFormTemplateSection">연결</button>
+                  </div>
+
+                  <transition-group name="section-order-list" tag="div" class="history-list template-section-membership-list">
+                    <article
+                      v-for="(section, sectionIndex) in wizardFormTemplateDetail.sections"
+                      :key="section.id"
+                      class="history-item template-section-membership-row"
+                      :class="{
+                        selected: selectedWizardFormTemplateSectionId === section.id,
+                        dragging: draggedWizardFormTemplateSectionKey === section.sectionKey,
+                        'drop-before': wizardFormTemplateSectionDropTargetKey === section.sectionKey && wizardFormTemplateSectionDropPosition === 'before',
+                        'drop-after': wizardFormTemplateSectionDropTargetKey === section.sectionKey && wizardFormTemplateSectionDropPosition === 'after'
+                      }"
+                      @dragover.prevent="dragOverWizardFormTemplateSection(section, $event)"
+                      @drop.prevent.stop="dropWizardFormTemplateSection(section)"
+                    >
+                      <span
+                        class="section-drag-handle"
+                        :class="{ disabled: !wizardFormTemplateSectionCanReorder(section) }"
+                        :draggable="wizardFormTemplateSectionCanReorder(section) && !wizardFormTemplateSectionSaving"
+                        :tabindex="wizardFormTemplateSectionCanReorder(section) ? 0 : -1"
+                        role="button"
+                        :aria-label="`${section.sectionName || section.sectionKey} 순서 변경`"
+                        @dragstart.stop="startWizardFormTemplateSectionDrag(section, $event)"
+                        @dragend.stop="stopWizardFormTemplateSectionDrag"
+                      >{{ wizardFormTemplateSectionCanReorder(section) ? '⋮⋮' : '고정' }}</span>
+                      <button class="template-section-membership-select" type="button" @click="selectWizardFormTemplateSection(section)">
+                        <strong>{{ section.sectionName || section.sectionKey }}</strong>
+                        <span>{{ section.sectionKey }} · v{{ section.sectionVersion }} · {{ wizardSectionStatusLabel(section.sectionStatus) }}</span>
+                      </button>
+                      <div class="action-row align-right">
+                        <button class="tiny-button" type="button" :disabled="!wizardFormTemplateSectionCanReorder(section) || sectionIndex === 0" @click="moveWizardFormTemplateSection(section, -1)">↑</button>
+                        <button class="tiny-button" type="button" :disabled="!wizardFormTemplateSectionCanReorder(section) || sectionIndex === wizardFormTemplateDetail.sections.length - 1" @click="moveWizardFormTemplateSection(section, 1)">↓</button>
+                        <button class="tiny-button danger" type="button" :disabled="!wizardFormTemplateCanEdit || wizardFormTemplateSectionSaving" @click="removeWizardFormTemplateSection(section)">연결 해제</button>
+                      </div>
+                    </article>
+                    <div class="empty-state compact" v-if="!wizardFormTemplateDetail.sections.length">연결된 Section Preset이 없습니다.</div>
+                  </transition-group>
+
+                  <div class="subsection template-section-membership-settings" v-if="selectedWizardFormTemplateSection">
+                    <div class="subsection-title"><h3>Template 적용 설정</h3></div>
+                    <div class="form-grid compact">
+                      <label class="app-checkbox switch-control"><input type="checkbox" v-model="wizardFormTemplateSectionEditor.isRequired" :disabled="!wizardFormTemplateCanEdit" /><span>필수 Section</span></label>
+                      <label class="app-checkbox switch-control"><input type="checkbox" v-model="wizardFormTemplateSectionEditor.isVisible" :disabled="!wizardFormTemplateCanEdit" /><span>프로모션 빌더에 노출</span></label>
+                      <label class="app-checkbox switch-control"><input type="checkbox" v-model="wizardFormTemplateSectionEditor.userReorderAllowed" :disabled="!wizardFormTemplateCanEdit || !!selectedWizardFormTemplateSection.fixedPosition" /><span>사용자 순서 변경 허용</span></label>
+                    </div>
+                    <div class="action-row align-right">
+                      <button class="tiny-button primary" type="button" :disabled="!wizardFormTemplateCanEdit || wizardFormTemplateSectionSaving" @click="saveWizardFormTemplateSection">적용 설정 저장</button>
+                    </div>
+                  </div>
+                </section>
+
+                  <section class="prompt-editor-panel empty-state" v-else>템플릿을 선택하세요.</section>
+
+                <aside class="template-section-items-panel" v-if="false && wizardFormTemplateDetail">
+                  <div class="subsection-title">
+                    <div>
+                      <h3>Section Items</h3>
+                      <span v-if="selectedWizardFormTemplateSection">{{ selectedWizardFormTemplateSection.sectionName || selectedWizardFormTemplateSection.sectionKey }}</span>
+                    </div>
+                  </div>
+                  <div class="subsection" v-if="selectedWizardFormTemplateSection">
+                    <div class="subsection-title"><h3>AI 디자인 정책</h3></div>
+                    <label class="app-switch">
+                      <input class="app-switch__input" type="checkbox" role="switch" v-model="wizardFormTemplateSectionEditor.aiDesign.enabled" :disabled="!wizardFormTemplateCanEdit" />
+                      <span class="app-switch__track" aria-hidden="true"></span>
+                      <span class="app-switch__label">이 Section에서 AI 디자인 생성 허용</span>
+                    </label>
+                    <div class="form-grid compact">
+                      <label class="app-checkbox switch-control" v-for="variant in ['split-left', 'split-right', 'centered-hero']" :key="variant">
+                        <input type="checkbox" :value="variant" v-model="wizardFormTemplateSectionEditor.aiDesign.allowedLayoutVariants" :disabled="!wizardFormTemplateCanEdit || !wizardFormTemplateSectionEditor.aiDesign.enabled" />
+                        <span>{{ variant }}</span>
+                      </label>
+                    </div>
+                    <label class="app-checkbox switch-control">
+                      <input type="checkbox" v-model="wizardFormTemplateSectionEditor.aiDesign.allowSectionBackground" :disabled="!wizardFormTemplateCanEdit || !wizardFormTemplateSectionEditor.aiDesign.enabled" />
+                      <span>섹션 배경 AI 생성 허용</span>
+                    </label>
+                    <div class="form-grid compact">
+                      <label class="app-checkbox switch-control" v-for="item in wizardFormTemplateSectionItems.filter((entry) => entry.fieldKind === 'image' && entry.isVisibleInWizard && entry.image?.allowedSources?.includes('ai'))" :key="item.itemKey">
+                        <input type="checkbox" :value="item.itemKey" v-model="wizardFormTemplateSectionEditor.aiDesign.imageTargetItemKeys" :disabled="!wizardFormTemplateCanEdit || !wizardFormTemplateSectionEditor.aiDesign.enabled" />
+                        <span>{{ item.name }}</span>
+                      </label>
+                      <div class="empty-state compact" v-if="!wizardFormTemplateSectionItems.some((entry) => entry.fieldKind === 'image' && entry.isVisibleInWizard && entry.image?.allowedSources?.includes('ai'))">AI 소스를 허용한 이미지 Item이 없습니다.</div>
+                    </div>
+                    <label class="field compact-field">
+                      <span>이미지 비율</span>
+                      <select v-model="wizardFormTemplateSectionEditor.aiDesign.imageAspectRatio" :disabled="!wizardFormTemplateCanEdit || !wizardFormTemplateSectionEditor.aiDesign.enabled">
+                        <option value="16:9">16:9</option><option value="4:3">4:3</option><option value="1:1">1:1</option><option value="3:4">3:4</option>
+                      </select>
+                    </label>
+                    <label class="field compact-field">
+                      <span>섹션 키비주얼 관리자 지침</span>
+                      <textarea
+                        v-model="wizardFormTemplateSectionEditor.aiDesign.backgroundPromptText"
+                        rows="4"
+                        :disabled="!wizardFormTemplateCanEdit || !wizardFormTemplateSectionEditor.aiDesign.enabled"
+                        placeholder="예: 주요 피사체는 오른쪽에 배치하고 브랜드 로고와 문자는 생성하지 마세요."
+                      ></textarea>
+                    </label>
+                    <div class="action-row align-right">
+                      <button class="tiny-button primary" type="button" :disabled="!wizardFormTemplateCanEdit || wizardFormTemplateSectionSaving" @click="saveWizardFormTemplateSection">AI 정책 저장</button>
+                    </div>
+                  </div>
+                  <div class="subsection-title template-items-heading" v-if="selectedWizardFormTemplateSection">
+                    <span>{{ wizardFormTemplateSectionItems.length }}개 Item</span>
+                    <button class="tiny-button primary" type="button" :disabled="!wizardFormTemplateCanEdit" @click="openNewWizardFormTemplateItemEditor">+ Item 추가</button>
+                  </div>
+                  <div class="empty-state compact" v-if="wizardFormTemplateSectionItemsLoading">Item을 불러오는 중입니다.</div>
+                  <transition-group name="template-item-order" tag="div" class="history-list" v-else-if="wizardFormTemplateSectionItems.length">
+                    <div class="history-item template-item-row" v-for="item in wizardFormTemplateSectionItems" :key="item.id"
+                      :class="{
+                        dragging: draggedWizardFormTemplateItemId === item.id,
+                        'drop-before': wizardFormTemplateItemDropTargetId === item.id && wizardFormTemplateItemDropPosition === 'before',
+                        'drop-after': wizardFormTemplateItemDropTargetId === item.id && wizardFormTemplateItemDropPosition === 'after'
+                      }"
+                      @dragover.prevent="dragOverWizardFormTemplateItem(item, $event)"
+                      @drop.prevent.stop="dropWizardFormTemplateItem(item)"
+                    >
+                      <span class="section-drag-handle" :draggable="!wizardFormTemplateSectionSaving"
+                        title="드래그해서 순서 변경"
+                        @dragstart.stop="startWizardFormTemplateItemDrag(item, $event)"
+                        @dragend.stop="stopWizardFormTemplateItemDrag"
+                      >⋮⋮</span>
+                      <strong>{{ item.name }}</strong>
+                      <span>{{ item.itemKey }} · {{ fieldKindLabel(item.fieldKind) }}{{ item.image?.descriptionEnabled ? ' + 설명' : '' }}{{ item.textType ? ' · ' + textTypeLabel(item.textType) : '' }}</span>
+                      <em>{{ item.isVisibleInWizard ? 'Wizard 노출' : 'Wizard 숨김' }} · {{ item.isRequired ? '필수' : '선택' }} · {{ item.userReorderAllowed ? '사용자 순서 변경 가능' : '사용자 순서 고정' }}{{ item.isLocked ? ' · 내용 고정' : '' }}</em>
+                      <button class="section-expand-button template-item-expand-button" type="button"
+                        :aria-expanded="wizardFormTemplateItemEditorOpenId === item.id"
+                        :aria-label="wizardFormTemplateItemEditorOpenId === item.id ? 'Item 닫기' : 'Item 열기'"
+                        :title="wizardFormTemplateItemEditorOpenId === item.id ? 'Item 닫기' : 'Item 열기'"
+                        @click.stop="openWizardFormTemplateItemEditor(item)"
+                      >{{ wizardFormTemplateItemEditorOpenId === item.id ? '▾' : '▸' }}</button>
+                      <transition name="section-expand">
+                        <div class="template-item-expanded" v-if="wizardFormTemplateItemEditorOpenId === item.id && wizardFormTemplateItemEditor">
+                          <label class="field compact-field"><span>Item 이름</span><input v-model="wizardFormTemplateItemEditor.name" type="text" /></label>
+                          <label class="field compact-field"><span>{{ t('common.field.type') }}</span><select v-model="wizardFormTemplateItemEditor.fieldKind"><option value="text">텍스트</option><option value="image">이미지</option><option value="cta">CTA 버튼</option></select></label>
+                          <label class="field compact-field" v-if="wizardFormTemplateItemEditor.fieldKind === 'text'"><span>텍스트 유형</span><select v-model="wizardFormTemplateItemEditor.textType"><option value="title">Title</option><option value="remark">remark</option><option value="multi">Multi</option></select></label>
+                          <div class="form-grid compact">
+                            <label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.isRequired" type="checkbox" /><span>필수</span></label>
+                            <label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.isVisibleInWizard" type="checkbox" /><span>Wizard 노출</span></label>
+                            <label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.userReorderAllowed" type="checkbox" /><span>Wizard 사용자 순서 변경 허용</span></label>
+                            <label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.isLocked" type="checkbox" /><span>내용 고정</span></label>
+                          </div>
+                          <div class="field" v-if="wizardFormTemplateItemEditor.fieldKind === 'image'"><span>Wizard 이미지 입력 방식 허용</span><div class="subsection-actions"><label v-for="source in ['url', 'file', 'ai']" :key="source" class="app-checkbox switch-control"><input type="checkbox" :checked="wizardFormTemplateItemEditor.image.allowedSources.includes(source)" @change="toggleWizardFormTemplateItemImageSource(source)" /><span>{{ imageSourceLabel(source) }}</span></label><label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.image.descriptionEnabled" type="checkbox" /><span>설명 입력 허용</span></label></div></div>
+                          <div class="form-grid compact" v-if="wizardFormTemplateItemEditor.fieldKind === 'cta'"><label class="field compact-field"><span>UTM Source</span><input v-model="wizardFormTemplateItemEditor.ctaUtm.source" type="text" /></label><label class="field compact-field"><span>UTM Medium</span><input v-model="wizardFormTemplateItemEditor.ctaUtm.medium" type="text" /></label><label class="field compact-field"><span>UTM Campaign</span><input v-model="wizardFormTemplateItemEditor.ctaUtm.campaign" type="text" /></label></div>
+                          <label class="field" v-if="wizardFormTemplateItemEditor.isLocked"><span>고정 내용 (JSON)</span><textarea v-model="wizardFormTemplateItemEditor.lockedValueText" rows="3"></textarea></label>
+                          <div class="action-row align-right"><button class="tiny-button danger" type="button" :disabled="wizardFormTemplateSectionSaving" @click="deleteWizardFormTemplateItem(item)">{{ t('common.action.delete') }}</button><button class="tiny-button" type="button" @click="wizardFormTemplateItemEditorOpenId = ''">{{ t('common.action.cancel') }}</button><button class="tiny-button primary" type="button" :disabled="!wizardFormTemplateItemEditor.name || wizardFormTemplateSectionSaving" @click="saveWizardFormTemplateItem">{{ t('common.action.saveChanges') }}</button></div>
+                        </div>
+                      </transition>
+                    </div>
+                  </transition-group>
+                  <div class="empty-state compact" v-else-if="selectedWizardFormTemplateSection">선택 Section에 등록된 Item이 없습니다.</div>
+                  <div class="template-item-editor" v-if="wizardFormTemplateItemEditorOpenId === 'new' && wizardFormTemplateItemEditor">
+                    <div class="subsection-title"><h3>Item 추가</h3></div>
+                    <label class="field compact-field"><span>Item 이름</span><input v-model="wizardFormTemplateItemEditor.name" type="text" /></label>
+                    <label class="field compact-field"><span>{{ t('common.field.type') }}</span><select v-model="wizardFormTemplateItemEditor.fieldKind"><option value="text">텍스트</option><option value="image">이미지</option><option value="cta">CTA 버튼</option></select></label>
+                    <label class="field compact-field" v-if="wizardFormTemplateItemEditor.fieldKind === 'text'"><span>텍스트 유형</span><select v-model="wizardFormTemplateItemEditor.textType"><option value="title">Title</option><option value="remark">remark</option><option value="multi">Multi</option></select></label>
+                    <div class="form-grid compact">
+                      <label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.isRequired" type="checkbox" /><span>필수</span></label>
+                      <label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.isVisibleInWizard" type="checkbox" /><span>Wizard 노출</span></label>
+                      <label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.userReorderAllowed" type="checkbox" /><span>Wizard 사용자 순서 변경 허용</span></label>
+                      <label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.isLocked" type="checkbox" /><span>내용 고정</span></label>
+                    </div>
+                    <div class="field" v-if="wizardFormTemplateItemEditor.fieldKind === 'image'"><span>Wizard 이미지 입력 방식 허용</span><div class="subsection-actions"><label v-for="source in ['url', 'file', 'ai']" :key="source" class="app-checkbox switch-control"><input type="checkbox" :checked="wizardFormTemplateItemEditor.image.allowedSources.includes(source)" @change="toggleWizardFormTemplateItemImageSource(source)" /><span>{{ imageSourceLabel(source) }}</span></label><label class="app-checkbox switch-control"><input v-model="wizardFormTemplateItemEditor.image.descriptionEnabled" type="checkbox" /><span>설명 입력 허용</span></label></div></div>
+                    <div class="form-grid compact" v-if="wizardFormTemplateItemEditor.fieldKind === 'cta'"><label class="field compact-field"><span>UTM Source</span><input v-model="wizardFormTemplateItemEditor.ctaUtm.source" type="text" /></label><label class="field compact-field"><span>UTM Medium</span><input v-model="wizardFormTemplateItemEditor.ctaUtm.medium" type="text" /></label><label class="field compact-field"><span>UTM Campaign</span><input v-model="wizardFormTemplateItemEditor.ctaUtm.campaign" type="text" /></label></div>
+                    <label class="field" v-if="wizardFormTemplateItemEditor.isLocked"><span>고정 내용 (JSON)</span><textarea v-model="wizardFormTemplateItemEditor.lockedValueText" rows="3"></textarea></label>
+                    <div class="action-row align-right"><button class="tiny-button" type="button" @click="wizardFormTemplateItemEditorOpenId = ''">{{ t('common.action.cancel') }}</button><button class="tiny-button primary" type="button" :disabled="!wizardFormTemplateItemEditor.name || wizardFormTemplateSectionSaving" @click="saveWizardFormTemplateItem">{{ t('common.action.saveContinue') }}</button></div>
+                  </div>
+                  <div class="empty-state compact" v-if="!selectedWizardFormTemplateSection">Section을 선택해 주세요.</div>
+                </aside>
+                </div>
+              </div>
+            </section>
+
           </section>
           <section class="panel stack section-audit-manager" v-show="adminTab === 'audit'">
             <div class="panel-header">
@@ -2483,6 +2482,6 @@
       <button class="shell-overlay" type="button" data-shell-overlay aria-label="메뉴 닫기"></button>
     </div>
 
-    <script type="module" src="/prototype/admin-assets/admin-app.js?v=admin-vite-v4"></script>
+    <script type="module" src="/prototype/admin-assets/admin-app.js?v=admin-vite-v5"></script>
   </body>
 </html>

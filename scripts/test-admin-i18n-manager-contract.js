@@ -25,7 +25,7 @@ assert.ok(
   "섹션 추가 버튼은 섹션 목록 아래에 있어야 합니다."
 );
 const sectionManagerStart = html.indexOf('<section class="section-library-manager">');
-const sectionManagerEnd = html.indexOf('</teleport>', sectionManagerStart);
+const sectionManagerEnd = html.indexOf('<section class="panel stack" v-show="adminTab === \'promo-form\'">', sectionManagerStart);
 const sectionManagerHtml = html.slice(sectionManagerStart, sectionManagerEnd);
 assert.doesNotMatch(sectionManagerHtml, /class="panel-header"/);
 assert.doesNotMatch(html, /섹션 CRUD|보관\(삭제\)|노출할 Section/);
