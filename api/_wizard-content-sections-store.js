@@ -256,6 +256,9 @@ function toSectionItem(row) {
     componentKey: row.component_key || null,
     componentVersionId: row.component_version_id || null,
     componentVersion: row.component_version == null ? null : Number(row.component_version),
+    libraryPresentation: row.library_presentation && typeof row.library_presentation === "object"
+      ? row.library_presentation
+      : {},
     itemKey: row.item_key,
     name: row.name,
     description: String(instanceConfig.description || row.component_description || row.editor_schema?.description || "").trim(),
@@ -350,7 +353,7 @@ async function fetchItemRows(sql, sectionId) {
       instance.is_visible_in_wizard, instance.is_required, instance.user_reorder_allowed,
       instance.sort_order, instance.is_locked, instance.locked_value, instance.instance_config,
       instance.created_at, instance.updated_at,
-      component.id::text as item_component_id, component.component_key,
+      component.id::text as item_component_id, component.component_key, component.library_presentation,
       component.description as component_description,
       version.id::text as component_version_id, version.version as component_version,
       version.field_kind, version.text_type, version.editor_schema, version.default_value,

@@ -391,6 +391,28 @@ function normalizePageComposition({
       items,
       selectedLayoutPreset,
     );
+    Object.entries(resolvedPreset?.content || {}).forEach(([componentInstanceId, presetValue]) => {
+      const item = items.find((candidate) => (candidate.id || candidate.itemKey) === componentInstanceId);
+      if (!item) return;
+      const fields = Array.isArray(item.fields) ? item.fields : [];
+      if (fields.length > 1 && presetValue?.fields && typeof presetValue.fields === "object") {
+        const current = sectionInputs[pageSectionInstanceId][componentInstanceId] || { fields: {} };
+        const nextFields = { ...(current.fields || {}) };
+        fields.forEach((field) => {
+          const provenanceKey = `${pageSectionInstanceId}.${componentInstanceId}.${field.fieldKey}`;
+          if (!provenance[provenanceKey] && Object.prototype.hasOwnProperty.call(presetValue.fields, field.fieldKey)) {
+            nextFields[field.fieldKey] = JSON.parse(JSON.stringify(presetValue.fields[field.fieldKey]));
+          }
+        });
+        sectionInputs[pageSectionInstanceId][componentInstanceId] = { ...current, fields: nextFields };
+        return;
+      }
+      const fieldKey = fields[0]?.fieldKey;
+      const provenanceKey = `${pageSectionInstanceId}.${componentInstanceId}.${fieldKey || ""}`;
+      if (!provenance[provenanceKey]) {
+        sectionInputs[pageSectionInstanceId][componentInstanceId] = JSON.parse(JSON.stringify(presetValue));
+      }
+    });
     sectionStyles[pageSectionInstanceId] = resolvedPreset?.sectionStyle || {
       layoutVariant: plannedSection.layoutVariant,
     };

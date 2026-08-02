@@ -54,12 +54,13 @@ assert.match(adminHtmlSource, /@keydown\.up\.prevent="moveWizardSectionComponent
 assert.match(adminHtmlSource, /app-shell\.css\?v=app-shell-sidebar-v4/);
 assert.match(adminHtmlSource, /app\.js/);
 assert.doesNotMatch(adminHtmlSource, /value="image_description"/);
-assert.match(adminHtmlSource, /설명 입력 허용/);
+assert.match(adminHtmlSource, /wizardSectionContentModeOptions\(\)/);
+assert.match(adminSource, /label: "AI 수정 허용"/);
+assert.match(adminSource, /label: "관리자 입력만"/);
+assert.match(adminSource, /label: "고정 콘텐츠"/);
 assert.match(itemApiSource, /componentVersionId is required/);
 assert.match(itemApiSource, /active component version/);
 assert.match(itemApiSource, /createItemKey\(\)/);
-assert.match(adminHtmlSource, /section-expand-button/);
-assert.match(adminHtmlSource, /transition name="section-expand"/);
 assert.match(adminStyleSource, /\.section-order-list-move/);
 assert.match(adminStyleSource, /\.prompt-list-item\.drop-before/);
 assert.match(adminStyleSource, /\.section-component-order-row\.drop-before::before/);

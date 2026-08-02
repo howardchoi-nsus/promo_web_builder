@@ -17,6 +17,10 @@ const preset = {
     contractVersion: 1,
     layoutMode: "free",
     sectionStyle: { minHeight: 88, backgroundColor: "#0B0D12" },
+    content: {
+      logo: { source: "url", value: "https://cdn.example.com/logo.svg", alt: "Brand logo" },
+      badges: "VIP",
+    },
     viewports: {
       desktop: {
         items: {
@@ -41,6 +45,8 @@ const backend = resolveSectionLayoutPreset("sec_instance", [
   { id: "cmp_badges", itemKey: "cmp_badges", sourceItemKey: "badges", isRequired: false },
 ], preset);
 assert.equal(backend.sectionStyle.layoutVariant, "standard-header");
+assert.equal(backend.content.cmp_logo.value, "https://cdn.example.com/logo.svg");
+assert.equal(backend.content.cmp_badges, "VIP");
 assert.equal(backend.itemStyles["sec_instance.cmp_logo"].xPct, 0);
 assert.equal(backend.responsiveLayouts.mobile.itemStyles["sec_instance.cmp_badges"].widthPct, 24);
 assert.equal(backend.responsiveLayouts.mobile.visibility.items["sec_instance.cmp_badges"], false);
@@ -54,6 +60,7 @@ const frontend = resolveSectionPresetLayoutPatch({
 }, preset);
 assert.deepEqual(frontend.itemStyles, backend.itemStyles);
 assert.deepEqual(frontend.responsiveLayouts, backend.responsiveLayouts);
+assert.deepEqual(frontend.content, backend.content);
 
 const planner = plannerCandidateSnapshot({
   templates: [{ templateId: "t", sections: [{ sectionId: "s", layoutPresets: [preset] }] }],
@@ -64,4 +71,3 @@ assert.equal(planner.templates[0].sections[0].layoutPresets[0].layoutKey, "stand
 assert.equal("layoutSnapshot" in planner.templates[0].sections[0].layoutPresets[0], false);
 
 console.log("Section layout preset runtime tests passed.");
-

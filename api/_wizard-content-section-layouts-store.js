@@ -134,6 +134,76 @@ function normalizeViewport(value, viewport, allowedItemKeys, errors) {
   return { items, visibility: { items: visibilityItems } };
 }
 
+function normalizeContentValue(value, path, errors, depth = 0) {
+  if (depth > 8) {
+    errors.push({ path, code: "CONTENT_DEPTH_EXCEEDED", message: "Preset content cannot exceed eight nested levels." });
+    return null;
+  }
+  if (value === null || typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    if (value.length > 20000) {
+      errors.push({ path, code: "CONTENT_VALUE_TOO_LONG", message: "Preset content strings cannot exceed 20,000 characters." });
+      return value.slice(0, 20000);
+    }
+    return value;
+  }
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) {
+      errors.push({ path, code: "INVALID_CONTENT_VALUE", message: "Preset content numbers must be finite." });
+      return null;
+    }
+    return value;
+  }
+  if (Array.isArray(value)) {
+    if (value.length > 100) {
+      errors.push({ path, code: "CONTENT_COLLECTION_TOO_LARGE", message: "Preset content arrays cannot exceed 100 entries." });
+    }
+    return value.slice(0, 100).map((entry, index) => (
+      normalizeContentValue(entry, `${path}.${index}`, errors, depth + 1)
+    ));
+  }
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value);
+    if (entries.length > 100) {
+      errors.push({ path, code: "CONTENT_COLLECTION_TOO_LARGE", message: "Preset content objects cannot exceed 100 properties." });
+    }
+    return Object.fromEntries(entries.slice(0, 100).flatMap(([key, entry]) => {
+      if (["__proto__", "prototype", "constructor"].includes(key) || key.length > 120) {
+        errors.push({ path: `${path}.${key}`, code: "INVALID_CONTENT_KEY", message: "Preset content contains an invalid property key." });
+        return [];
+      }
+      return [[key, normalizeContentValue(entry, `${path}.${key}`, errors, depth + 1)]];
+    }));
+  }
+  errors.push({ path, code: "INVALID_CONTENT_VALUE", message: "Preset content must contain JSON values only." });
+  return null;
+}
+
+function normalizePresetContent(value, allowedItemKeys, errors) {
+  if (value === undefined) return {};
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    errors.push({ path: "content", code: "INVALID_PRESET_CONTENT", message: "Preset content must be an object keyed by itemKey." });
+    return {};
+  }
+  let serialized = "";
+  try {
+    serialized = JSON.stringify(value);
+  } catch {
+    errors.push({ path: "content", code: "INVALID_PRESET_CONTENT", message: "Preset content must be JSON serializable." });
+    return {};
+  }
+  if (serialized.length > 262144) {
+    errors.push({ path: "content", code: "PRESET_CONTENT_TOO_LARGE", message: "Preset content cannot exceed 256 KB." });
+  }
+  return Object.fromEntries(Object.entries(value).flatMap(([itemKey, itemValue]) => {
+    if (!allowedItemKeys.has(itemKey)) {
+      errors.push({ path: `content.${itemKey}`, code: "UNKNOWN_ITEM_KEY", message: `Unknown section itemKey: ${itemKey}.` });
+      return [];
+    }
+    return [[itemKey, normalizeContentValue(itemValue, `content.${itemKey}`, errors)]];
+  }));
+}
+
 function normalizeLayoutSnapshot(value, itemKeys = []) {
   const source = plainObject(value);
   const errors = [];
@@ -154,6 +224,7 @@ function normalizeLayoutSnapshot(value, itemKeys = []) {
     contractVersion: LAYOUT_CONTRACT_VERSION,
     layoutMode: LAYOUT_MODE,
     sectionStyle: normalizeSectionStyle(source.sectionStyle, errors),
+    content: normalizePresetContent(source.content, allowedItemKeys, errors),
     viewports: Object.fromEntries(
       VIEWPORTS.map((viewport) => [
         viewport,
@@ -175,10 +246,22 @@ function validateHeaderLayoutPolicy(sectionRow, items = [], layoutRows = []) {
       message: "Header sections must use the fixed top position.",
     });
   }
-  const logo = items.find((item) => (
-    item.isVisibleInWizard !== false
-    && /logo/i.test(String(item.itemKey || ""))
-  ));
+  const logo = items.find((item) => {
+    if (item.isVisibleInWizard === false) return false;
+    const iconKey = String(item.libraryPresentation?.iconKey || "").trim().toLowerCase();
+    const semanticRole = String(
+      item.capabilities?.semanticRole
+      || item.capabilities?.componentRole
+      || item.editorSchema?.semanticRole
+      || "",
+    ).trim().toLowerCase();
+    const identifiers = [item.itemKey, item.componentKey, item.name]
+      .map((value) => String(value || ""))
+      .join(" ");
+    return iconKey === "logo"
+      || semanticRole === "logo"
+      || /(^|[^a-z])logo([^a-z]|$)|로고/i.test(identifiers);
+  });
   if (!logo) {
     errors.push({
       path: `${sectionKey}.items`,

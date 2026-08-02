@@ -23,6 +23,18 @@ function viewportPatch(section, preset, viewportName) {
   return { itemStyles, visibilityItems };
 }
 
+function contentPatch(section, preset) {
+  const source = preset?.layoutSnapshot?.content || {};
+  const bySourceKey = new Map((section.items || []).map((item) => [
+    String(item.sourceItemKey || item.itemKey),
+    item,
+  ]));
+  return Object.fromEntries(Object.entries(source).flatMap(([sourceItemKey, value]) => {
+    const item = bySourceKey.get(sourceItemKey);
+    return item?.itemKey ? [[item.itemKey, clone(value)]] : [];
+  }));
+}
+
 export function resolveSectionPresetLayoutPatch(section, preset) {
   const snapshot = preset?.layoutSnapshot;
   if (!snapshot || snapshot.contractVersion !== 1 || snapshot.layoutMode !== "free") return null;
@@ -36,6 +48,7 @@ export function resolveSectionPresetLayoutPatch(section, preset) {
       },
     },
     itemStyles: desktop.itemStyles,
+    content: contentPatch(section, preset),
     visibility: { items: desktop.visibilityItems },
     responsiveLayouts: {
       mobile: {
@@ -45,4 +58,3 @@ export function resolveSectionPresetLayoutPatch(section, preset) {
     },
   };
 }
-

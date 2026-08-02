@@ -31,6 +31,17 @@ function resolveViewport(sectionInstanceKey, components, viewport = {}) {
   return { itemStyles, visibilityItems };
 }
 
+function resolveContent(components, content = {}) {
+  const bySourceKey = new Map(
+    (components || []).map((component) => [componentSourceKey(component), component]),
+  );
+  return Object.fromEntries(Object.entries(content || {}).flatMap(([sourceItemKey, value]) => {
+    const component = bySourceKey.get(sourceItemKey);
+    const instanceKey = componentInstanceKey(component);
+    return instanceKey ? [[instanceKey, clone(value)]] : [];
+  }));
+}
+
 function resolveSectionLayoutPreset(sectionInstanceKey, components, preset) {
   const snapshot = preset?.layoutSnapshot || preset?.layout_snapshot;
   if (!snapshot || snapshot.contractVersion !== 1 || snapshot.layoutMode !== "free") return null;
@@ -42,6 +53,7 @@ function resolveSectionLayoutPreset(sectionInstanceKey, components, preset) {
       ...(clone(snapshot.sectionStyle) || {}),
       layoutVariant: String(preset.layoutKey || preset.layout_key || ""),
     },
+    content: resolveContent(components, snapshot.content),
     itemStyles: desktop.itemStyles,
     visibilityItems: desktop.visibilityItems,
     responsiveLayouts: {
@@ -56,4 +68,3 @@ function resolveSectionLayoutPreset(sectionInstanceKey, components, preset) {
 module.exports = {
   resolveSectionLayoutPreset,
 };
-

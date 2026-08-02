@@ -1598,11 +1598,11 @@
                 </label>
                 <div class="form-grid compact">
                   <label class="app-checkbox switch-control">
-                    <input type="checkbox" v-model="wizardSectionFieldsEditor.isRequired" :disabled="wizardSectionDetail.section.status !== 'draft'" />
+                    <input type="checkbox" v-model="wizardSectionFieldsEditor.isRequired" :disabled="wizardSectionDetail.section.status !== 'draft' || wizardSectionFieldsEditor.sectionRole === 'header'" />
                     <span>필수 섹션</span>
                   </label>
                   <label class="app-checkbox switch-control">
-                    <input type="checkbox" v-model="wizardSectionFieldsEditor.orderChangeAllowed" :disabled="wizardSectionDetail.section.status !== 'draft'" />
+                    <input type="checkbox" v-model="wizardSectionFieldsEditor.orderChangeAllowed" :disabled="wizardSectionDetail.section.status !== 'draft' || wizardSectionFieldsEditor.sectionRole === 'header'" />
                     <span>순서변경 허용</span>
                   </label>
                   <label class="app-checkbox switch-control">
@@ -1641,11 +1641,14 @@
                       </label>
                       <label class="field compact-field">
                         <span>페이지 역할</span>
-                        <select v-model="wizardSectionFieldsEditor.sectionRole" :disabled="wizardSectionDetail.section.status !== 'draft'">
+                        <select v-model="wizardSectionFieldsEditor.sectionRole" :disabled="wizardSectionDetail.section.status !== 'draft'" @change="applyWizardSectionRoleDefaults">
                           <option v-for="role in wizardSectionRoleOptions()" :key="role.value" :value="role.value">{{ role.label }}</option>
                         </select>
                         <small>AI가 섹션의 위치와 목적을 해석하는 기준입니다.</small>
                       </label>
+                    </div>
+                    <div class="section-policy-notice" v-if="wizardSectionFieldsEditor.sectionRole === 'header'">
+                      Header는 필수 Section·상단 고정·순서 변경 불가로 자동 저장됩니다. 활성화하려면 Logo 컴포넌트와 Desktop/Mobile 기본 Layout이 필요합니다.
                     </div>
                   </div>
 

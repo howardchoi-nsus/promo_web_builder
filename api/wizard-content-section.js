@@ -95,15 +95,16 @@ async function updateSection(req, res) {
   const name = hasName ? String(body.name || "").trim() : current.name;
   if (!name) return res.status(400).json({ error: "name is required" });
 
-  const fixedPosition = hasFixedPosition
-    ? (body.fixedPosition === "top" || body.fixedPosition === "bottom" ? body.fixedPosition : null)
-    : current.fixed_position;
   const compositionScope = hasCompositionScope && body.compositionScope === "shared"
     ? "shared"
     : hasCompositionScope ? "template" : current.composition_scope || "template";
   const sectionRole = hasSectionRole && SECTION_ROLES.includes(body.sectionRole)
     ? body.sectionRole
     : current.section_role || "content";
+  const requestedFixedPosition = hasFixedPosition
+    ? (body.fixedPosition === "top" || body.fixedPosition === "bottom" ? body.fixedPosition : null)
+    : current.fixed_position;
+  const fixedPosition = sectionRole === "header" ? "top" : requestedFixedPosition;
   const compositionPolicy = normalizeCompositionPolicy(
     hasCompositionPolicy ? body.compositionPolicy : current.composition_policy,
     { fixedPosition },
@@ -117,8 +118,8 @@ async function updateSection(req, res) {
     set
       name = ${name},
       description = ${hasDescription ? String(body.description || "") : current.description || ""},
-      is_required = ${hasRequired ? normalizeBoolean(body.isRequired, current.is_required) : current.is_required},
-      order_change_allowed = ${hasOrderChangeAllowed ? normalizeBoolean(body.orderChangeAllowed, current.order_change_allowed) : current.order_change_allowed},
+      is_required = ${sectionRole === "header" ? true : hasRequired ? normalizeBoolean(body.isRequired, current.is_required) : current.is_required},
+      order_change_allowed = ${sectionRole === "header" ? false : hasOrderChangeAllowed ? normalizeBoolean(body.orderChangeAllowed, current.order_change_allowed) : current.order_change_allowed},
       fixed_position = ${fixedPosition},
       sort_order = ${hasSortOrder ? (normalizeNumber(body.sortOrder) ?? current.sort_order) : current.sort_order},
       is_visible_in_wizard = ${hasVisible ? normalizeBoolean(body.isVisibleInWizard, current.is_visible_in_wizard) : current.is_visible_in_wizard},

@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const {
+  normalizeLayoutSnapshot,
   validateHeaderLayoutPolicy,
 } = require("../api/_wizard-content-section-layouts-store");
 
@@ -27,6 +28,41 @@ assert.deepStrictEqual(validateHeaderLayoutPolicy(
   [{ layout_key: "standard_header", is_default: true, layout_snapshot: snapshot }],
 ), []);
 
+assert.deepStrictEqual(validateHeaderLayoutPolicy(
+  { section_key: "header", section_role: "header", fixed_position: "top" },
+  [{
+    itemKey: "item_m37_random",
+    componentKey: "cmp_generated",
+    name: "Brand mark",
+    isVisibleInWizard: true,
+    libraryPresentation: { iconKey: "logo" },
+  }],
+  [{
+    layout_key: "standard_header",
+    is_default: true,
+    layout_snapshot: {
+      ...snapshot,
+      viewports: {
+        desktop: { items: { item_m37_random: snapshot.viewports.desktop.items.logo }, visibility: { items: {} } },
+        mobile: { items: { item_m37_random: snapshot.viewports.mobile.items.logo }, visibility: { items: {} } },
+      },
+    },
+  }],
+), []);
+
+const contentSnapshot = JSON.parse(JSON.stringify(snapshot));
+contentSnapshot.content = {
+  logo: { source: "url", value: "https://cdn.example.com/logo.svg", alt: "Brand logo" },
+};
+const normalizedContent = normalizeLayoutSnapshot(contentSnapshot, ["logo"]);
+assert.deepStrictEqual(normalizedContent.errors, []);
+assert.equal(normalizedContent.snapshot.content.logo.value, "https://cdn.example.com/logo.svg");
+const invalidContent = normalizeLayoutSnapshot({
+  ...contentSnapshot,
+  content: { unknown: "not allowed" },
+}, ["logo"]);
+assert(invalidContent.errors.some((error) => error.code === "UNKNOWN_ITEM_KEY"));
+
 const missingMobileLogo = JSON.parse(JSON.stringify(snapshot));
 delete missingMobileLogo.viewports.mobile.items.logo;
 assert(validateHeaderLayoutPolicy(
@@ -49,5 +85,11 @@ assert.match(migration, /standard_header/);
 assert.match(migration, /Migration 047 default Header layout/);
 assert.match(migration, /section\.section_role = 'header'/);
 
-console.log("Header section layout policy tests passed.");
+const sectionApi = fs.readFileSync(path.resolve(__dirname, "../api/wizard-content-section.js"), "utf8");
+const activateApi = fs.readFileSync(path.resolve(__dirname, "../api/wizard-content-section-activate.js"), "utf8");
+const sectionStore = fs.readFileSync(path.resolve(__dirname, "../api/_wizard-content-sections-store.js"), "utf8");
+assert.match(sectionApi, /sectionRole === "header" \? "top"/);
+assert.match(activateApi, /Header fixed-position policy normalized/);
+assert.match(sectionStore, /component\.library_presentation/);
 
+console.log("Header section layout policy tests passed.");

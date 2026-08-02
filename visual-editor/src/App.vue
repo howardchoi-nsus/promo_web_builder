@@ -583,6 +583,7 @@ async function createSectionFromPreset(presetOrKey) {
     preserveKeys: !sections.value.some((candidate) => candidate.sectionKey === preset.sectionKey),
   });
   let layoutPatch = null;
+  let presetContent = {};
   let layoutWarning = "";
   try {
     const response = await fetch(`/api/wizard-content-section-layouts?sectionId=${encodeURIComponent(preset.sectionId || preset.id)}`, {
@@ -592,6 +593,7 @@ async function createSectionFromPreset(presetOrKey) {
     if (!response.ok) throw new Error(result.message || result.error || "Layout Preset을 불러오지 못했습니다.");
     const selectedLayout = (result.layouts || []).find((entry) => entry.isDefault) || null;
     layoutPatch = resolveSectionPresetLayoutPatch(section, selectedLayout);
+    presetContent = layoutPatch?.content || {};
     if (selectedLayout) {
       section.selectedLayoutKey = selectedLayout.layoutKey;
       section.layoutPresets = result.layouts || [];
@@ -601,7 +603,9 @@ async function createSectionFromPreset(presetOrKey) {
   }
   if (!executeEditorCommand(EditorCommandType.SECTION_INSTANCE_CREATE, {
     section,
-    content: createSectionInputs([section])[section.sectionKey],
+    content: createSectionInputs([section], {
+      [section.sectionKey]: presetContent,
+    })[section.sectionKey],
     layoutPatch,
   }, { label: "섹션 Preset 추가" })) return;
   structureMessage.value = layoutWarning || `${preset.name} 섹션을 추가했습니다.`;
@@ -1966,9 +1970,11 @@ async function loadSectionPresetLayout() {
         sourceValues: previewTokenSet.sourceValues || [],
       } : null,
     };
-    sections.value = [section];
-    sectionInputs.value = createSectionInputs(sections.value, {});
     const layoutPatch = resolveSectionPresetLayoutPatch(section, selectedLayout) || {};
+    sections.value = [section];
+    sectionInputs.value = createSectionInputs(sections.value, {
+      [section.sectionKey]: layoutPatch.content || {},
+    });
     designSpec.value = normalizeLayoutSpec({
       ...JSON.parse(JSON.stringify(DEFAULT_DESIGN_SPEC)),
       sectionStyles: layoutPatch.sectionStyles || {},
@@ -2007,7 +2013,12 @@ async function saveSectionPresetLayout() {
   layoutSaving.value = true;
   layoutSaveMessage.value = "";
   try {
-    const snapshot = sectionPresetSnapshotFromDesignSpec(section, designSpec.value, layout.layoutSnapshot);
+    const snapshot = sectionPresetSnapshotFromDesignSpec(
+      section,
+      designSpec.value,
+      layout.layoutSnapshot,
+      sectionInputs.value?.[section.sectionKey] || {},
+    );
     const result = await sectionPresetAdapter.update(layout.id, section.id, {
       name: layout.name,
       description: layout.description || "",

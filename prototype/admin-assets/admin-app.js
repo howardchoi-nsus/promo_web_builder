@@ -7516,7 +7516,7 @@ function Fh(e, t, n, r, i, a) {
 		], 8, jh)
 	], 8, Th);
 }
-var Ih = /*#__PURE__*/ Ch(wh, [["render", Fh], ["__scopeId", "data-v-c0962cfb"]]), Lh = /^--(?:promo|app)-[a-z0-9-]+$/;
+var Ih = /*#__PURE__*/ Ch(wh, [["render", Fh], ["__scopeId", "data-v-eafdc266"]]), Lh = /^--(?:promo|app)-[a-z0-9-]+$/;
 function Rh(e) {
 	if (Array.isArray(e)) {
 		let t = /* @__PURE__ */ new Map();
@@ -8246,12 +8246,12 @@ function v_(e, t, n, r, i, a) {
 							void 0,
 							{ trim: !0 }
 						]])]),
-						H("label", bg, [t[42] ||= H("span", null, "값 유형", -1), I(H("select", { "onUpdate:modelValue": t[13] ||= (e) => i.tokenForm.valueType = e }, [...t[41] ||= [Bs("<option value=\"length\" data-v-4ec3e48c>length</option><option value=\"color\" data-v-4ec3e48c>color</option><option value=\"number\" data-v-4ec3e48c>number</option><option value=\"gradient\" data-v-4ec3e48c>gradient</option><option value=\"shadow\" data-v-4ec3e48c>shadow</option><option value=\"font\" data-v-4ec3e48c>font</option>", 6)]], 512), [[uu, i.tokenForm.valueType]])]),
+						H("label", bg, [t[42] ||= H("span", null, "값 유형", -1), I(H("select", { "onUpdate:modelValue": t[13] ||= (e) => i.tokenForm.valueType = e }, [...t[41] ||= [Bs("<option value=\"length\" data-v-6681f16b>length</option><option value=\"color\" data-v-6681f16b>color</option><option value=\"number\" data-v-6681f16b>number</option><option value=\"gradient\" data-v-6681f16b>gradient</option><option value=\"shadow\" data-v-6681f16b>shadow</option><option value=\"font\" data-v-6681f16b>font</option>", 6)]], 512), [[uu, i.tokenForm.valueType]])]),
 						H("label", xg, [t[43] ||= H("span", null, "CSS 속성", -1), I(H("select", { "onUpdate:modelValue": t[14] ||= (e) => i.tokenForm.cssProperty = e }, [(B(!0), V(R, null, ka(i.tokenCssProperties, (e) => (B(), V("option", {
 							key: e,
 							value: e
 						}, M(e), 9, Sg))), 128))], 512), [[uu, i.tokenForm.cssProperty]])]),
-						H("label", Cg, [t[45] ||= H("span", null, "권장 단위", -1), I(H("select", { "onUpdate:modelValue": t[15] ||= (e) => i.tokenForm.unit = e }, [...t[44] ||= [Bs("<option value=\"rem\" data-v-4ec3e48c>rem</option><option value=\"responsive\" data-v-4ec3e48c>clamp / calc</option><option value=\"vw\" data-v-4ec3e48c>vw</option><option value=\"vh\" data-v-4ec3e48c>vh</option><option value=\"px\" data-v-4ec3e48c>px</option><option value=\"\" data-v-4ec3e48c>해당 없음</option>", 6)]], 512), [[uu, i.tokenForm.unit]])]),
+						H("label", Cg, [t[45] ||= H("span", null, "권장 단위", -1), I(H("select", { "onUpdate:modelValue": t[15] ||= (e) => i.tokenForm.unit = e }, [...t[44] ||= [Bs("<option value=\"rem\" data-v-6681f16b>rem</option><option value=\"responsive\" data-v-6681f16b>clamp / calc</option><option value=\"vw\" data-v-6681f16b>vw</option><option value=\"vh\" data-v-6681f16b>vh</option><option value=\"px\" data-v-6681f16b>px</option><option value=\"\" data-v-6681f16b>해당 없음</option>", 6)]], 512), [[uu, i.tokenForm.unit]])]),
 						H("label", wg, [H("span", null, M(a.isDarkOnlySet ? "Dark (Default) 값" : "Light 값"), 1), I(H("input", {
 							"onUpdate:modelValue": t[16] ||= (e) => i.tokenForm.valueLight = e,
 							required: "",
@@ -8468,7 +8468,7 @@ function v_(e, t, n, r, i, a) {
 		])
 	]);
 }
-var y_ = /*#__PURE__*/ Ch(Yh, [["render", v_], ["__scopeId", "data-v-4ec3e48c"]]);
+var y_ = /*#__PURE__*/ Ch(Yh, [["render", v_], ["__scopeId", "data-v-6681f16b"]]);
 Object.freeze({
 	active: 0,
 	validated: 1,
@@ -8843,7 +8843,7 @@ var R_ = Object.freeze({
 				onLoad: n[1] ||= (e) => a.value = !1
 			}, null, 42, V_), a.value ? (B(), V("div", H_, "공통 Visual Editor를 불러오는 중입니다.")) : e.section.status === "draft" ? W("", !0) : (B(), V("div", U_, " 활성·비활성 Section은 읽기 전용입니다. 초안을 만든 후 Layout을 편집하세요. "))], 8, B_)]));
 		}
-	}, [["__scopeId", "data-v-51ab700a"]]) },
+	}, [["__scopeId", "data-v-bb9f5a6b"]]) },
 	props: {
 		section: {
 			type: Object,
@@ -9098,7 +9098,7 @@ function mv(e, t, n, r, i, a) {
 		])) : W("", !0)
 	]);
 }
-var hv = /*#__PURE__*/ Ch(W_, [["render", mv], ["__scopeId", "data-v-aa9f25de"]]), gv = /* @__PURE__ */ o((() => {
+var hv = /*#__PURE__*/ Ch(W_, [["render", mv], ["__scopeId", "data-v-a2b2d756"]]), gv = /* @__PURE__ */ o((() => {
 	var e = {
 		documents: "promoPrototype.documents.abc",
 		generatedPages: "promoPrototype.generatedPages.abc",
@@ -12870,6 +12870,9 @@ var hv = /*#__PURE__*/ Ch(W_, [["render", mv], ["__scopeId", "data-v-aa9f25de"]]
 					label: t
 				}));
 			},
+			applyWizardSectionRoleDefaults() {
+				this.wizardSectionFieldsEditor.sectionRole === "header" ? (this.wizardSectionFieldsEditor.fixedPosition = "top", this.wizardSectionFieldsEditor.isRequired = !0, this.wizardSectionFieldsEditor.orderChangeAllowed = !1, this.wizardSectionFieldsEditor.compositionPolicy.selectionPolicy = "required", this.wizardSectionFieldsEditor.compositionPolicy.layoutLocked = !0) : this.wizardSectionFieldsEditor.fixedPosition === "top" && (this.wizardSectionFieldsEditor.fixedPosition = "", this.wizardSectionFieldsEditor.orderChangeAllowed = !0);
+			},
 			wizardSectionContentModeOptions() {
 				return [
 					{
@@ -13068,7 +13071,11 @@ var hv = /*#__PURE__*/ Ch(W_, [["render", mv], ["__scopeId", "data-v-aa9f25de"]]
 								SECTION_COMPONENT_REQUIRED: "필수 Section에는 프로모션 빌더에 노출되는 컴포넌트가 최소 1개 필요합니다.",
 								REQUIRED_SECTION_ITEM: "필수 Section에는 노출되는 필수 컴포넌트가 필요합니다.",
 								AI_LAYOUT_VARIANT_REQUIRED: "AI 디자인을 사용하려면 AI 사용이 허용된 Layout Preset을 최소 1개 지정해 주세요.",
-								DEFAULT_LAYOUT_REQUIRED: "Layout Preset을 사용하려면 기본 Preset을 1개 지정해 주세요."
+								DEFAULT_LAYOUT_REQUIRED: "Layout Preset을 사용하려면 기본 Preset을 1개 지정해 주세요.",
+								HEADER_LOGO_REQUIRED: "Header에는 프로모션 빌더에 노출되는 Logo 컴포넌트가 필요합니다.",
+								HEADER_DEFAULT_LAYOUT_REQUIRED: "Header에는 기본 Layout Preset이 필요합니다.",
+								HEADER_LOGO_GEOMETRY_REQUIRED: "기본 Layout의 Desktop과 Mobile에 Logo 위치와 크기를 저장해 주세요.",
+								HEADER_LOGO_VISIBILITY_REQUIRED: "Header Logo는 Desktop과 Mobile에서 표시되어야 합니다."
 							})[e.code] || e.message).filter(Boolean);
 							throw Error(e.length ? e.join(" ") : n.message || n.error || `섹션 활성화 오류(${t.status})`);
 						}

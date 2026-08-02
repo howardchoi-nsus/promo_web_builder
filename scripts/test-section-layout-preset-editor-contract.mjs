@@ -82,7 +82,7 @@ assert.doesNotMatch(adminHtml, /v-for="variant in \['split-left', 'split-right',
 
 const converted = sectionPresetSnapshotFromDesignSpec({
   sectionKey: "hero",
-  items: [{ itemKey: "title" }],
+  items: [{ itemKey: "title" }, { itemKey: "badgeImage" }],
 }, {
   sectionStyles: { hero: { minHeight: 240, backgroundColor: "#112233" } },
   itemStyles: { "hero.title": { positionMode: "free", xPct: 8, yPx: 20, widthPct: 60, heightPx: 48, fontSize: 24 } },
@@ -91,9 +91,15 @@ const converted = sectionPresetSnapshotFromDesignSpec({
     itemStyles: { "hero.title": { positionMode: "free", xPct: 5, yPx: 12, widthPct: 90, heightPx: 56 } },
     visibility: { items: { "hero.title": false } },
   } },
-}, snapshot);
+}, snapshot, {
+  title: "Welcome bonus",
+  badgeImage: { source: "url", value: "https://cdn.example.com/badge.png", alt: "VIP badge" },
+});
 assert.equal(converted.sectionStyle.minHeight, 240);
 assert.equal(converted.viewports.desktop.items.title.fontSize, undefined);
 assert.equal(converted.viewports.mobile.visibility.items.title, false);
+assert.equal(converted.content.title, "Welcome bonus");
+assert.equal(converted.content.badgeImage.value, "https://cdn.example.com/badge.png");
+assert.match(editor, /sectionInputs\.value\?\.\[section\.sectionKey\]/);
 
 console.log("Section layout preset editor contract test passed.");

@@ -38,7 +38,26 @@ function viewportSnapshot(section, designSpec, viewportName, baseViewport = {}) 
   return { items, visibility: { items: visibility } };
 }
 
-export function sectionPresetSnapshotFromDesignSpec(section, designSpec = {}, baseSnapshot = {}) {
+function contentSnapshot(section, sectionContent = {}, baseContent = {}) {
+  const content = {};
+  (section.items || []).forEach((item) => {
+    const itemKey = String(item.itemKey || "");
+    if (!itemKey) return;
+    if (Object.prototype.hasOwnProperty.call(sectionContent, itemKey)) {
+      content[itemKey] = clone(sectionContent[itemKey]);
+    } else if (Object.prototype.hasOwnProperty.call(baseContent, itemKey)) {
+      content[itemKey] = clone(baseContent[itemKey]);
+    }
+  });
+  return content;
+}
+
+export function sectionPresetSnapshotFromDesignSpec(
+  section,
+  designSpec = {},
+  baseSnapshot = {},
+  sectionContent = {},
+) {
   const sectionStyle = designSpec.sectionStyles?.[section.sectionKey] || {};
   const baseSectionStyle = baseSnapshot.sectionStyle || {};
   return {
@@ -48,6 +67,7 @@ export function sectionPresetSnapshotFromDesignSpec(section, designSpec = {}, ba
       minHeight: Number(sectionStyle.minHeight ?? baseSectionStyle.minHeight ?? 50),
       backgroundColor: String(sectionStyle.backgroundColor || baseSectionStyle.backgroundColor || "#FFFFFF"),
     },
+    content: contentSnapshot(section, sectionContent, baseSnapshot.content || {}),
     viewports: {
       desktop: viewportSnapshot(section, designSpec, "desktop", baseSnapshot.viewports?.desktop),
       mobile: viewportSnapshot(section, designSpec, "mobile", baseSnapshot.viewports?.mobile),

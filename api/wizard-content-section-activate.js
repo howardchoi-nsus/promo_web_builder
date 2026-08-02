@@ -5,6 +5,7 @@ const {
   fetchSectionRow,
   validateSectionDraft,
   normalizeAiDesign,
+  normalizeCompositionPolicy,
 } = require("./_wizard-content-sections-store");
 
 // POST { id } -> makes this draft/inactive version the active (Wizard-visible) one
@@ -29,6 +30,17 @@ module.exports = async function handler(req, res) {
     }
     if (target.status === "active") {
       return res.status(409).json({ error: "This section version is already active" });
+    }
+    if (target.section_role === "header" && target.fixed_position !== "top") {
+      const compositionPolicy = normalizeCompositionPolicy(target.composition_policy, { fixedPosition: "top" });
+      await sql`
+        update wizard_content_sections
+        set fixed_position = 'top', is_required = true, order_change_allowed = false,
+          composition_policy = ${JSON.stringify(compositionPolicy)}::jsonb,
+          change_note = ${`${changeNote} Header fixed-position policy normalized.`},
+          updated_at = now()
+        where id = ${id}::uuid
+      `;
     }
     const validation = await validateSectionDraft(sql, id);
     if (validation.errors.length) {

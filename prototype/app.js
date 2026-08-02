@@ -4216,6 +4216,19 @@ const adminApp = createApp({
       ].map(([value, label]) => ({ value, label }));
     },
 
+    applyWizardSectionRoleDefaults() {
+      if (this.wizardSectionFieldsEditor.sectionRole === "header") {
+        this.wizardSectionFieldsEditor.fixedPosition = "top";
+        this.wizardSectionFieldsEditor.isRequired = true;
+        this.wizardSectionFieldsEditor.orderChangeAllowed = false;
+        this.wizardSectionFieldsEditor.compositionPolicy.selectionPolicy = "required";
+        this.wizardSectionFieldsEditor.compositionPolicy.layoutLocked = true;
+      } else if (this.wizardSectionFieldsEditor.fixedPosition === "top") {
+        this.wizardSectionFieldsEditor.fixedPosition = "";
+        this.wizardSectionFieldsEditor.orderChangeAllowed = true;
+      }
+    },
+
     wizardSectionContentModeOptions() {
       return [
         { value: "editable", label: "AI 수정 허용", description: "AI가 입력 콘텐츠를 문맥에 맞게 작성·수정할 수 있습니다." },
@@ -4441,6 +4454,10 @@ const adminApp = createApp({
             REQUIRED_SECTION_ITEM: "필수 Section에는 노출되는 필수 컴포넌트가 필요합니다.",
             AI_LAYOUT_VARIANT_REQUIRED: "AI 디자인을 사용하려면 AI 사용이 허용된 Layout Preset을 최소 1개 지정해 주세요.",
             DEFAULT_LAYOUT_REQUIRED: "Layout Preset을 사용하려면 기본 Preset을 1개 지정해 주세요.",
+            HEADER_LOGO_REQUIRED: "Header에는 프로모션 빌더에 노출되는 Logo 컴포넌트가 필요합니다.",
+            HEADER_DEFAULT_LAYOUT_REQUIRED: "Header에는 기본 Layout Preset이 필요합니다.",
+            HEADER_LOGO_GEOMETRY_REQUIRED: "기본 Layout의 Desktop과 Mobile에 Logo 위치와 크기를 저장해 주세요.",
+            HEADER_LOGO_VISIBILITY_REQUIRED: "Header Logo는 Desktop과 Mobile에서 표시되어야 합니다.",
           }[entry.code] || entry.message)).filter(Boolean);
           throw new Error(messages.length
             ? messages.join(" ")
