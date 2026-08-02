@@ -1365,6 +1365,13 @@
                       :title="itemComponentUsage.usageCount > 0 ? '활성·초안 섹션에서 사용 중이라 보관할 수 없습니다.' : '컴포넌트를 보관합니다.'"
                       @click="archiveItemComponent(selectedItemComponent)"
                     >컴포넌트 보관</button>
+                    <button
+                      class="tiny-button danger"
+                      type="button"
+                      :disabled="itemComponentSaving || itemComponentUsageLoading || itemComponentUsage.usageCount > 0 || !!selectedItemComponent.systemSeedCode"
+                      :title="selectedItemComponent.systemSeedCode ? '시스템 기본 컴포넌트는 삭제할 수 없습니다.' : (itemComponentUsage.usageCount > 0 ? '활성·초안 Section Preset에서 사용 중이라 삭제할 수 없습니다.' : '컴포넌트와 모든 버전을 영구 삭제합니다.')"
+                      @click="deleteItemComponent(selectedItemComponent)"
+                    >컴포넌트 삭제</button>
                   </div>
                 </div>
                 <div v-if="selectedItemComponent.status !== 'archived'" class="outline-item" :class="{ 'danger-state': itemComponentUsage.error }">
@@ -2294,6 +2301,6 @@
       <button class="shell-overlay" type="button" data-shell-overlay aria-label="메뉴 닫기"></button>
     </div>
 
-    <script type="module" src="/prototype/admin-assets/admin-app.js?v=admin-vite-v8"></script>
+    <script type="module" src="/prototype/admin-assets/admin-app.js?v=admin-vite-v9"></script>
   </body>
 </html>

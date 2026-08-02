@@ -11506,7 +11506,7 @@ var zv = /*#__PURE__*/ Ch(_v, [["render", Rv], ["__scopeId", "data-v-0b859684"]]
 				if (!this.itemComponentsLoading) {
 					this.itemComponentsLoading = !0, this.itemComponentsError = "";
 					try {
-						let e = await fetch("/api/item-components"), t = await e.json().catch(() => ({}));
+						let e = await fetch("/api/item-components?includeArchived=true"), t = await e.json().catch(() => ({}));
 						if (!e.ok) throw Error(t.message || t.error || `컴포넌트 목록 요청 오류(${e.status})`);
 						this.itemComponents = Array.isArray(t.components) ? t.components : [], this.itemComponents.some((e) => e.id === this.selectedItemComponentId) ? this.selectedItemComponentId && this.loadItemComponentUsage(this.selectedItemComponentId) : (this.selectedItemComponentId = this.itemComponents[0]?.id || "", this.itemComponents[0] && this.selectItemComponent(this.itemComponents[0]));
 					} catch (e) {
@@ -11627,6 +11627,29 @@ var zv = /*#__PURE__*/ Ch(_v, [["render", Rv], ["__scopeId", "data-v-0b859684"]]
 							r && this.selectItemComponent(r), this.setStatus("컴포넌트를 보관했습니다");
 						} catch (e) {
 							this.setStatus(`컴포넌트 보관 실패: ${e.message}`);
+						} finally {
+							this.itemComponentSaving = !1;
+						}
+					}
+				}
+			},
+			async deleteItemComponent(e) {
+				if (!(!e?.id || e.systemSeedCode || this.itemComponentSaving)) {
+					if (await this.loadItemComponentUsage(e.id), this.itemComponentUsage.usageCount > 0) {
+						this.setStatus(`사용 중인 컴포넌트는 삭제할 수 없습니다 (${this.itemComponentUsage.usageCount}개 사용처)`);
+						return;
+					}
+					if (window.confirm(`${e.name} 컴포넌트를 영구 삭제할까요? 모든 버전과 과거 섹션의 배치 정보가 삭제되며 복구할 수 없습니다.`)) {
+						this.itemComponentSaving = !0;
+						try {
+							let t = await fetch(`/api/item-component-delete?componentId=${encodeURIComponent(e.id)}`, { method: "DELETE" }), n = await t.json().catch(() => ({}));
+							if (!t.ok) throw t.status === 409 && await this.loadItemComponentUsage(e.id), Error(n.message || n.error || `컴포넌트 삭제 오류(${t.status})`);
+							this.selectedItemComponentId = "", this.itemComponentUsage = {
+								usageCount: 0,
+								sections: []
+							}, await this.loadItemComponents(), this.setStatus(`컴포넌트를 삭제했습니다 (버전 ${n.deletedVersionCount || 0}개, 과거 배치 ${n.deletedInstanceCount || 0}개 정리)`);
+						} catch (e) {
+							this.setStatus(`컴포넌트 삭제 실패: ${e.message}`);
 						} finally {
 							this.itemComponentSaving = !1;
 						}

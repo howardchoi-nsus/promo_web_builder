@@ -127,13 +127,20 @@ assert.match(invalid.errors.join("; "), /does not allow region|not AI-selectable
 const componentHtml = fs.readFileSync(path.join(root, "prototype/index.html"), "utf8");
 const componentUsageApi = fs.readFileSync(path.join(root, "api/item-component-usage.js"), "utf8");
 const componentArchiveApi = fs.readFileSync(path.join(root, "api/item-component-archive.js"), "utf8");
+const componentDeleteApi = fs.readFileSync(path.join(root, "api/item-component-delete.js"), "utf8");
 assert.match(adminApp, /loadItemComponentUsage/);
 assert.match(adminApp, /archiveItemComponent/);
 assert.match(adminApp, /\/api\/item-component-archive/);
-assert.doesNotMatch(adminApp, /item-components\?includeArchived=true/);
+assert.match(adminApp, /deleteItemComponent/);
+assert.match(adminApp, /\/api\/item-component-delete\?componentId=/);
+assert.match(adminApp, /item-components\?includeArchived=true/);
 assert.match(componentHtml, /컴포넌트 보관/);
+assert.match(componentHtml, /컴포넌트 삭제/);
+assert.match(componentHtml, /selectedItemComponent\.systemSeedCode/);
 assert.match(componentHtml, /itemComponentUsage\.usageCount > 0/);
 assert.match(componentUsageApi, /section\.status in \('draft', 'active'\)/);
 assert.match(componentArchiveApi, /status in \('draft', 'active'\)/);
+assert.match(componentDeleteApi, /status in \('draft', 'active'\)/);
+assert.match(componentDeleteApi, /component\.system_seed_code is null/);
 
 console.log("Item component, design token and planner contract tests passed");

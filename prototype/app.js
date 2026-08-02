@@ -2236,7 +2236,7 @@ const adminApp = createApp({
       this.itemComponentsLoading = true;
       this.itemComponentsError = "";
       try {
-        const response = await fetch("/api/item-components");
+        const response = await fetch("/api/item-components?includeArchived=true");
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `컴포넌트 목록 요청 오류(${response.status})`);
         this.itemComponents = Array.isArray(result.components) ? result.components : [];
@@ -2366,6 +2366,35 @@ const adminApp = createApp({
         this.setStatus("컴포넌트를 보관했습니다");
       } catch (error) {
         this.setStatus(`컴포넌트 보관 실패: ${error.message}`);
+      } finally {
+        this.itemComponentSaving = false;
+      }
+    },
+
+    async deleteItemComponent(component) {
+      if (!component?.id || component.systemSeedCode || this.itemComponentSaving) return;
+      await this.loadItemComponentUsage(component.id);
+      if (this.itemComponentUsage.usageCount > 0) {
+        this.setStatus(`사용 중인 컴포넌트는 삭제할 수 없습니다 (${this.itemComponentUsage.usageCount}개 사용처)`);
+        return;
+      }
+      if (!window.confirm(`${component.name} 컴포넌트를 영구 삭제할까요? 모든 버전과 과거 섹션의 배치 정보가 삭제되며 복구할 수 없습니다.`)) return;
+      this.itemComponentSaving = true;
+      try {
+        const response = await fetch(`/api/item-component-delete?componentId=${encodeURIComponent(component.id)}`, {
+          method: "DELETE",
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          if (response.status === 409) await this.loadItemComponentUsage(component.id);
+          throw new Error(result.message || result.error || `컴포넌트 삭제 오류(${response.status})`);
+        }
+        this.selectedItemComponentId = "";
+        this.itemComponentUsage = { usageCount: 0, sections: [] };
+        await this.loadItemComponents();
+        this.setStatus(`컴포넌트를 삭제했습니다 (버전 ${result.deletedVersionCount || 0}개, 과거 배치 ${result.deletedInstanceCount || 0}개 정리)`);
+      } catch (error) {
+        this.setStatus(`컴포넌트 삭제 실패: ${error.message}`);
       } finally {
         this.itemComponentSaving = false;
       }

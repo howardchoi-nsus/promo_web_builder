@@ -22,6 +22,7 @@ assert.match(html, /type="module" src="\/prototype\/admin-assets\/admin-app\.js/
 assert.match(html, /@click="deleteWizardFormTemplate\(group\)"/);
 assert.match(html, />삭제<\/button>/);
 assert.match(html, /deleteWizardSection\(selectedWizardGroup\)/);
+assert.match(html, /deleteItemComponent\(selectedItemComponent\)/);
 assert.match(html, /rel="stylesheet" href="\/prototype\/admin-assets\/promo-web-builder\.css\?v=admin-vite-v8"/);
 assert.doesNotMatch(html, /unpkg\.com\/vue/);
 assert.equal(packageJson.scripts["build:admin"], "vite build --config admin-app/vite.config.js");
