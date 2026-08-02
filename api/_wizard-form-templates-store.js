@@ -218,6 +218,29 @@ async function validateTemplateDraft(sql, templateId) {
   return errors;
 }
 
+function validateTemplateCompositionSnapshot(sections = []) {
+  const composition = Array.isArray(sections) ? sections : [];
+  const visibleSections = composition.filter((section) => (
+    section?.isVisible !== false && section?.isVisibleInWizard !== false
+  ));
+  const errors = [];
+  if (!visibleSections.length) {
+    errors.push({ code: "VISIBLE_SECTION_REQUIRED", message: "At least one visible section is required." });
+  }
+  visibleSections.forEach((section) => {
+    const visibleItems = (Array.isArray(section?.items) ? section.items : [])
+      .filter((item) => item?.isVisibleInWizard !== false);
+    if (!visibleItems.length) {
+      errors.push({
+        code: "SECTION_COMPONENT_REQUIRED",
+        path: String(section?.sectionKey || ""),
+        message: "The section needs at least one visible component instance.",
+      });
+    }
+  });
+  return errors;
+}
+
 module.exports = {
   TEMPLATE_STATUSES,
   createTemplateKey,
@@ -233,4 +256,5 @@ module.exports = {
   fetchTemplates,
   fetchTemplateSections,
   validateTemplateDraft,
+  validateTemplateCompositionSnapshot,
 };

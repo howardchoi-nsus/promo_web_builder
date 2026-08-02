@@ -1,5 +1,6 @@
 const {
   getSql, parseBody, fetchTemplateRow, toFormTemplate, validateTemplateDraft,
+  validateTemplateCompositionSnapshot,
 } = require("./_wizard-form-templates-store");
 const {
   ensureLayout, toLayout, createLayoutIdentity, fetchTemplateWithItems, validateLayoutSpec,
@@ -34,12 +35,17 @@ module.exports = async function handler(req, res) {
         return res.status(422).json({ error: "Another active default form template is required before removing this default" });
       }
     }
-    const errors = await validateTemplateDraft(sql, id);
     const detail = await fetchTemplateWithItems(sql, id);
     const layout = toLayout(await ensureLayout(sql, id));
     const layoutSections = layout.compositionSnapshot.length
       ? layout.compositionSnapshot
       : detail?.sections || [];
+    // Once Live Preview has saved a composition snapshot, that snapshot is the
+    // runtime source of truth. Template-local sections intentionally do not
+    // have an active Section Preset row and must not fail the legacy check.
+    const errors = layout.compositionSnapshot.length
+      ? validateTemplateCompositionSnapshot(layoutSections)
+      : await validateTemplateDraft(sql, id);
     const layoutValidation = validateLayoutSpec(layout.layoutSpec, layoutSections);
     if (!layoutValidation.ok) {
       return res.status(422).json({ error: "Form template layout validation failed", validation: layoutValidation });

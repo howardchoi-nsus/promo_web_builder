@@ -52,6 +52,7 @@ assert.match(migration21, /form_template_id, section_id, section_key/);
 assert.match(migration21, /user_reorder_allowed/);
 assert.match(migration21, /where ts\.section_id is null/);
 assert.match(activateApi, /validateTemplateDraft/);
+assert.match(activateApi, /validateTemplateCompositionSnapshot/);
 assert.doesNotMatch(activateApi, /activate_wizard_form_template_owned_sections/);
 assert.match(templatesApi, /String\(body\.templateKey \|\| ""\)\.trim\(\) \|\| createTemplateKey\(\)/);
 assert.doesNotMatch(templatesApi, /templateKey is required/);
@@ -70,6 +71,30 @@ assert.match(adminHtml, /추천 메타데이터 \(JSON\)/);
 assert.doesNotMatch(templatesApi, /body\.designTokenSetVersionId/);
 assert.doesNotMatch(templateApi, /body\.designTokenSetVersionId/);
 assert.doesNotMatch(store.validateTemplateDraft.toString(), /DESIGN_TOKEN_SET_REQUIRED/);
+assert.deepStrictEqual(store.validateTemplateCompositionSnapshot([{
+  sectionKey: "template-local",
+  status: "draft",
+  sectionId: null,
+  isVisibleInWizard: true,
+  items: [{ itemKey: "title", isVisibleInWizard: true }],
+}]), [], "a saved Live Preview composition must not require an active Section Preset version");
+assert.deepStrictEqual(store.validateTemplateCompositionSnapshot([{
+  sectionKey: "empty-section",
+  isVisibleInWizard: true,
+  items: [],
+}]), [{
+  code: "SECTION_COMPONENT_REQUIRED",
+  path: "empty-section",
+  message: "The section needs at least one visible component instance.",
+}]);
+assert.deepStrictEqual(store.validateTemplateCompositionSnapshot([{
+  sectionKey: "hidden-section",
+  isVisibleInWizard: false,
+  items: [],
+}]), [{
+  code: "VISIBLE_SECTION_REQUIRED",
+  message: "At least one visible section is required.",
+}]);
 assert.match(migration29, /form_template_id, section_id, section_key/);
 assert.match(sectionsApi, /status in \('draft', 'active'\)/);
 assert.match(sectionsApi, /draft or active section version/);
