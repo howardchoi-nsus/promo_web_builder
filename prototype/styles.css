@@ -2746,6 +2746,234 @@ body.is-resizing {
   min-width: 0;
 }
 
+.section-policy-panel {
+  gap: 14px;
+  padding: 16px;
+  background: var(--panel);
+}
+
+.section-policy-heading,
+.section-policy-group__title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.section-policy-heading > div,
+.section-policy-group__title {
+  min-width: 0;
+}
+
+.section-policy-heading h3,
+.section-policy-heading p,
+.section-policy-fieldset > p {
+  margin: 0;
+}
+
+.section-policy-heading h3 {
+  margin-top: 3px;
+  font-size: 17px;
+}
+
+.section-policy-heading p,
+.section-policy-fieldset > p,
+.section-policy-group__title span,
+.section-policy-help {
+  color: var(--sub);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.section-policy-eyebrow {
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.section-policy-state {
+  flex: none;
+  padding: 5px 9px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.section-policy-result {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 11px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--line));
+  border-radius: var(--radius-small);
+  background: color-mix(in srgb, var(--accent-soft) 58%, var(--panel));
+}
+
+.section-policy-result strong {
+  color: var(--accent);
+  font-size: 11px;
+}
+
+.section-policy-result span {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.section-policy-group {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-small);
+  background: var(--surface-2);
+}
+
+.section-policy-group__title {
+  display: grid;
+  gap: 3px;
+}
+
+.section-policy-group__title strong,
+.section-policy-fieldset legend {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.section-policy-fieldset {
+  margin: 0;
+}
+
+.section-policy-fieldset legend {
+  padding: 0 5px;
+}
+
+.section-policy-classification {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.section-policy-panel .field small {
+  color: var(--sub);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.section-policy-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.section-policy-choice-grid--three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.section-policy-choice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  min-width: 0;
+  min-height: 62px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-small);
+  background: var(--panel);
+  cursor: pointer;
+}
+
+.section-policy-choice:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+}
+
+.section-policy-choice.selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.section-policy-choice:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.section-policy-choice input {
+  margin-top: 2px;
+}
+
+.section-policy-choice > span {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.section-policy-choice strong {
+  font-size: 12px;
+}
+
+.section-policy-choice small {
+  color: var(--sub);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.section-policy-condition {
+  padding: 11px;
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-small);
+  background: var(--panel);
+}
+
+.section-policy-notice {
+  padding: 9px 10px;
+  border-radius: var(--radius-small);
+  background: var(--warning-soft, var(--accent-soft));
+  color: var(--warning-ink, var(--sub));
+  font-size: 11px;
+}
+
+.section-policy-switch {
+  width: fit-content;
+}
+
+.section-policy-limit {
+  max-width: 240px;
+}
+
+@media (max-width: 1100px) {
+  .section-policy-choice-grid--three {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .section-policy-heading,
+  .section-policy-result {
+    grid-template-columns: 1fr;
+  }
+
+  .section-policy-heading {
+    display: grid;
+  }
+
+  .section-policy-state {
+    justify-self: start;
+  }
+
+  .section-policy-choice-grid,
+  .section-policy-classification {
+    grid-template-columns: 1fr;
+  }
+}
+
 .template-section-connect {
   display: grid;
   grid-template-columns: minmax(220px, 1fr) auto auto;

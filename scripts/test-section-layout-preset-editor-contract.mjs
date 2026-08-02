@@ -80,7 +80,7 @@ assert.match(adminHtml, /Section Preset 관리/);
 assert.match(adminHtml, /id="section-preset-manager-target"[\s\S]*?<section class="section-library-manager">/);
 assert.doesNotMatch(adminHtml, /<teleport to="#section-preset-manager-target"/);
 assert.match(adminHtml, /재사용 가능한 Section을 만들고 Component 구성과 Desktop\/Mobile Layout Variant를 관리합니다/);
-assert.match(adminHtml, /AI가 전체 페이지를 조립할 때/);
+assert.match(adminHtml, /AI가 페이지를 만들 때 이 Section을 언제 포함하고/);
 assert.match(adminHtml, /AI 디자인·이미지 생성 허용/);
 assert.doesNotMatch(adminHtml, /v-for="variant in \['split-left', 'split-right', 'centered-hero'\]"/);
 

@@ -7,9 +7,9 @@
     <link rel="stylesheet" href="/prototype/design-tokens.css?v=app-tokens-v1" />
     <link rel="stylesheet" href="/prototype/app-shell.css?v=app-shell-sidebar-v4" />
     <link rel="stylesheet" href="/prototype/app-components.css?v=app-components-v1" />
-    <link rel="stylesheet" href="/prototype/styles.css?v=admin-template-manager-v6" />
+    <link rel="stylesheet" href="/prototype/styles.css?v=admin-template-manager-v7" />
     <link rel="stylesheet" href="/prototype/visual-editor-assets/promo-renderer.css?v=promo-renderer-v3" />
-    <link rel="stylesheet" href="/prototype/admin-assets/promo-web-builder.css?v=admin-vite-v10" />
+    <link rel="stylesheet" href="/prototype/admin-assets/promo-web-builder.css?v=admin-vite-v11" />
     <script src="/prototype/vendor/lucide/lucide.min.js?v=1.8.0"></script>
     <script src="/prototype/i18n-runtime.js?v=i18n-runtime-v1"></script>
     <script src="/prototype/shared-shell.js?v=app-shell-sidebar-v4"></script>
@@ -1610,86 +1610,152 @@
                   <span>프로모션 빌더에 노출</span>
                   </label>
                 </div>
-                <div class="subsection">
-                  <div class="subsection-title">
+                <section class="subsection section-policy-panel" aria-labelledby="section-composition-policy-title">
+                  <div class="section-policy-heading">
                     <div>
-                      <h3>AI 페이지 구성 정책</h3>
-                      <small>AI가 전체 페이지를 조립할 때 이 Section의 포함 여부, 역할, 반복 수와 수정 가능 범위를 결정합니다.</small>
+                      <span class="section-policy-eyebrow">AI PAGE COMPOSITION</span>
+                      <h3 id="section-composition-policy-title">AI 페이지 구성 정책</h3>
+                      <p>AI가 페이지를 만들 때 이 Section을 언제 포함하고, 몇 번 사용하며, 어디까지 수정할 수 있는지 지정합니다.</p>
+                    </div>
+                    <span class="section-policy-state">{{ wizardSectionSelectionPolicyLabel(wizardSectionFieldsEditor.compositionPolicy.selectionPolicy) }}</span>
+                  </div>
+
+                  <div class="section-policy-result" role="status" aria-live="polite">
+                    <strong>현재 적용 결과</strong>
+                    <span>{{ wizardSectionCompositionSummary() }}</span>
+                  </div>
+
+                  <div class="section-policy-group">
+                    <div class="section-policy-group__title">
+                      <strong>1. Section 분류</strong>
+                      <span>AI가 후보를 검색하고 페이지 내 역할을 판단할 때 사용합니다.</span>
+                    </div>
+                    <div class="form-grid compact section-policy-classification">
+                      <label class="field compact-field">
+                        <span>사용 범위</span>
+                        <select v-model="wizardSectionFieldsEditor.compositionScope" :disabled="wizardSectionDetail.section.status !== 'draft'">
+                          <option value="template">현재 템플릿 전용</option>
+                          <option value="shared">공용 Section Preset</option>
+                        </select>
+                        <small>{{ wizardSectionFieldsEditor.compositionScope === 'shared' ? '여러 템플릿에 연결해 재사용할 수 있습니다.' : '연결된 템플릿 안에서만 후보로 사용합니다.' }}</small>
+                      </label>
+                      <label class="field compact-field">
+                        <span>페이지 역할</span>
+                        <select v-model="wizardSectionFieldsEditor.sectionRole" :disabled="wizardSectionDetail.section.status !== 'draft'">
+                          <option v-for="role in wizardSectionRoleOptions()" :key="role.value" :value="role.value">{{ role.label }}</option>
+                        </select>
+                        <small>AI가 섹션의 위치와 목적을 해석하는 기준입니다.</small>
+                      </label>
                     </div>
                   </div>
-                  <div class="form-grid compact">
-                    <label class="field compact-field">
-                      <span>섹션 범위</span>
-                      <select v-model="wizardSectionFieldsEditor.compositionScope" :disabled="wizardSectionDetail.section.status !== 'draft'">
-                        <option value="template">템플릿 전용</option>
-                        <option value="shared">공용 섹션</option>
-                      </select>
-                    </label>
-                    <label class="field compact-field">
-                      <span>섹션 역할</span>
-                      <select v-model="wizardSectionFieldsEditor.sectionRole" :disabled="wizardSectionDetail.section.status !== 'draft'">
-                        <option v-for="role in ['header','footer','terms','legal','responsible-gaming','hero','benefit','content','cta','notice']" :key="role" :value="role">{{ role }}</option>
-                      </select>
-                    </label>
-                    <label class="field compact-field">
-                      <span>선택 정책</span>
-                      <select v-model="wizardSectionFieldsEditor.compositionPolicy.selectionPolicy" :disabled="wizardSectionDetail.section.status !== 'draft' || !!wizardSectionFieldsEditor.fixedPosition">
-                        <option value="required">필수</option>
-                        <option value="required-by-market">마켓별 필수</option>
-                        <option value="required-by-purpose">목적별 필수</option>
-                        <option value="recommended">권장</option>
-                        <option value="optional">선택</option>
-                      </select>
-                    </label>
-                    <label class="field compact-field">
-                      <span>최대 반복 수</span>
-                      <input v-model.number="wizardSectionFieldsEditor.compositionPolicy.maxInstances" type="number" min="1" max="20" :disabled="wizardSectionDetail.section.status !== 'draft' || wizardSectionFieldsEditor.compositionPolicy.duplicatePolicy === 'forbidden'" />
-                    </label>
-                  </div>
-                  <div class="form-grid compact">
-                    <label class="app-checkbox switch-control">
-                      <input type="checkbox" v-model="wizardSectionFieldsEditor.compositionPolicy.aiEditable" :disabled="wizardSectionDetail.section.status !== 'draft'" @change="$event.target.checked && (wizardSectionFieldsEditor.compositionPolicy.contentLocked = false)" />
-                      <span>AI 콘텐츠 수정 허용</span>
-                    </label>
-                    <label class="app-checkbox switch-control">
-                      <input type="checkbox" v-model="wizardSectionFieldsEditor.compositionPolicy.contentLocked" :disabled="wizardSectionDetail.section.status !== 'draft'" @change="$event.target.checked && (wizardSectionFieldsEditor.compositionPolicy.aiEditable = false)" />
-                      <span>콘텐츠 잠금</span>
-                    </label>
-                    <label class="app-checkbox switch-control">
-                      <input type="checkbox" v-model="wizardSectionFieldsEditor.compositionPolicy.layoutLocked" :disabled="wizardSectionDetail.section.status !== 'draft'" />
-                      <span>AI 레이아웃 변경 잠금</span>
-                    </label>
-                    <label class="app-checkbox switch-control">
-                      <input
-                        type="checkbox"
-                        :checked="wizardSectionFieldsEditor.compositionPolicy.duplicatePolicy === 'limited'"
-                        :disabled="wizardSectionDetail.section.status !== 'draft'"
-                        @change="wizardSectionFieldsEditor.compositionPolicy.duplicatePolicy = $event.target.checked ? 'limited' : 'forbidden'; if (!$event.target.checked) wizardSectionFieldsEditor.compositionPolicy.maxInstances = 1"
-                      />
-                      <span>섹션 반복 허용</span>
-                    </label>
-                  </div>
-                  <div class="form-grid compact">
-                    <label class="field compact-field">
-                      <span>적용 마켓 (쉼표 구분)</span>
+
+                  <fieldset class="section-policy-group section-policy-fieldset">
+                    <legend>2. 페이지 포함 기준</legend>
+                    <p>AI가 이 Section을 페이지 구성에 포함할 조건을 하나 선택합니다.</p>
+                    <div class="section-policy-choice-grid">
+                      <label
+                        v-for="policy in wizardSectionSelectionPolicyOptions()"
+                        :key="policy.value"
+                        class="section-policy-choice"
+                        :class="{ selected: wizardSectionFieldsEditor.compositionPolicy.selectionPolicy === policy.value }"
+                      >
+                        <input
+                          type="radio"
+                          name="wizard-section-selection-policy"
+                          :value="policy.value"
+                          v-model="wizardSectionFieldsEditor.compositionPolicy.selectionPolicy"
+                          :disabled="wizardSectionDetail.section.status !== 'draft' || !!wizardSectionFieldsEditor.fixedPosition"
+                        />
+                        <span><strong>{{ policy.label }}</strong><small>{{ policy.description }}</small></span>
+                      </label>
+                    </div>
+                    <div class="section-policy-notice" v-if="wizardSectionFieldsEditor.fixedPosition">
+                      고정 위치 Section은 항상 포함되며 선택 정책을 변경할 수 없습니다.
+                    </div>
+                    <label class="field compact-field section-policy-condition" v-if="wizardSectionFieldsEditor.compositionPolicy.selectionPolicy === 'required-by-market'">
+                      <span>필수 적용 마켓</span>
                       <input
                         type="text"
                         :value="wizardSectionFieldsEditor.compositionPolicy.allowedMarkets.join(', ')"
                         :disabled="wizardSectionDetail.section.status !== 'draft'"
+                        placeholder="예: KR, JP, GLOBAL"
                         @input="wizardSectionFieldsEditor.compositionPolicy.allowedMarkets = $event.target.value.split(',').map(value => value.trim()).filter(Boolean)"
                       />
+                      <small>비워두면 모든 마켓에서 필수로 포함됩니다. 여러 값은 쉼표로 구분하세요.</small>
                     </label>
-                    <label class="field compact-field">
-                      <span>적용 프로모션 목적 (쉼표 구분)</span>
+                    <label class="field compact-field section-policy-condition" v-if="wizardSectionFieldsEditor.compositionPolicy.selectionPolicy === 'required-by-purpose'">
+                      <span>필수 적용 프로모션 목적</span>
                       <input
                         type="text"
                         :value="wizardSectionFieldsEditor.compositionPolicy.allowedPromotionPurposes.join(', ')"
                         :disabled="wizardSectionDetail.section.status !== 'draft'"
+                        placeholder="예: 신규가입, 리텐션, 재활성화"
                         @input="wizardSectionFieldsEditor.compositionPolicy.allowedPromotionPurposes = $event.target.value.split(',').map(value => value.trim()).filter(Boolean)"
                       />
+                      <small>비워두면 모든 프로모션 목적에서 필수로 포함됩니다. 여러 값은 쉼표로 구분하세요.</small>
+                    </label>
+                  </fieldset>
+
+                  <div class="section-policy-group">
+                    <div class="section-policy-group__title">
+                      <strong>3. 반복 사용</strong>
+                      <span>같은 페이지 안에서 이 Section을 여러 번 배치할 수 있는지 지정합니다.</span>
+                    </div>
+                    <label class="app-switch section-policy-switch">
+                      <input
+                        class="app-switch__input"
+                        type="checkbox"
+                        role="switch"
+                        :checked="wizardSectionFieldsEditor.compositionPolicy.duplicatePolicy === 'limited'"
+                        :disabled="wizardSectionDetail.section.status !== 'draft'"
+                        @change="wizardSectionFieldsEditor.compositionPolicy.duplicatePolicy = $event.target.checked ? 'limited' : 'forbidden'; wizardSectionFieldsEditor.compositionPolicy.maxInstances = $event.target.checked ? Math.max(2, wizardSectionFieldsEditor.compositionPolicy.maxInstances || 2) : 1"
+                      />
+                      <span class="app-switch__track" aria-hidden="true"></span>
+                      <span class="app-switch__label">페이지 내 반복 사용 허용</span>
+                    </label>
+                    <label class="field compact-field section-policy-limit" v-if="wizardSectionFieldsEditor.compositionPolicy.duplicatePolicy === 'limited'">
+                      <span>페이지당 최대 사용 횟수</span>
+                      <input v-model.number="wizardSectionFieldsEditor.compositionPolicy.maxInstances" type="number" min="2" max="20" :disabled="wizardSectionDetail.section.status !== 'draft'" />
+                      <small>2~20회 범위에서 지정합니다.</small>
                     </label>
                   </div>
-                </div>
+
+                  <fieldset class="section-policy-group section-policy-fieldset">
+                    <legend>4. AI 수정 허용 범위</legend>
+                    <p>Section이 페이지에 포함된 뒤 AI가 콘텐츠와 레이아웃을 변경할 수 있는 범위입니다.</p>
+                    <div class="section-policy-choice-grid section-policy-choice-grid--three">
+                      <label
+                        v-for="mode in wizardSectionContentModeOptions()"
+                        :key="mode.value"
+                        class="section-policy-choice"
+                        :class="{ selected: wizardSectionContentMode() === mode.value }"
+                      >
+                        <input
+                          type="radio"
+                          name="wizard-section-content-mode"
+                          :value="mode.value"
+                          :checked="wizardSectionContentMode() === mode.value"
+                          :disabled="wizardSectionDetail.section.status !== 'draft'"
+                          @change="setWizardSectionContentMode(mode.value)"
+                        />
+                        <span><strong>{{ mode.label }}</strong><small>{{ mode.description }}</small></span>
+                      </label>
+                    </div>
+                    <label class="app-switch section-policy-switch">
+                      <input
+                        class="app-switch__input"
+                        type="checkbox"
+                        role="switch"
+                        :checked="!wizardSectionFieldsEditor.compositionPolicy.layoutLocked"
+                        :disabled="wizardSectionDetail.section.status !== 'draft' || !!wizardSectionFieldsEditor.fixedPosition"
+                        @change="wizardSectionFieldsEditor.compositionPolicy.layoutLocked = !$event.target.checked"
+                      />
+                      <span class="app-switch__track" aria-hidden="true"></span>
+                      <span class="app-switch__label">AI 레이아웃 변경 허용</span>
+                    </label>
+                    <small class="section-policy-help">끄면 관리자가 저장한 Layout Preset 배치를 유지합니다.</small>
+                  </fieldset>
+                </section>
                 <div class="subsection">
                   <div class="subsection-title">
                     <div>
@@ -2303,6 +2369,6 @@
       <button class="shell-overlay" type="button" data-shell-overlay aria-label="메뉴 닫기"></button>
     </div>
 
-    <script type="module" src="/prototype/admin-assets/admin-app.js?v=admin-vite-v10"></script>
+    <script type="module" src="/prototype/admin-assets/admin-app.js?v=admin-vite-v11"></script>
   </body>
 </html>

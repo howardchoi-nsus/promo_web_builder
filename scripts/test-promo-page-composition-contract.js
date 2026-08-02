@@ -1,4 +1,6 @@
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 const {
   pageCompositionSchema,
   validatePageCompositionProposal,
@@ -7,6 +9,9 @@ const {
 const {
   generateValidatedComposition,
 } = require("../api/_promo-page-composition-service");
+
+const candidateSource = fs.readFileSync(path.resolve(__dirname, "../api/_promo-page-composition-candidates.js"), "utf8");
+assert.match(candidateSource, /policy\.layoutLocked[\s\S]*defaultLayoutKey/);
 
 const candidates = {
   candidateFingerprint: "candidate-hash",
@@ -181,7 +186,42 @@ const duplicateValidated = validatePageCompositionProposal({
   sections: [result.sections[0], result.sections[0]],
 }, candidates);
 assert.equal(duplicateValidated.sections.length, 1);
-assert.match(duplicateValidated.warnings[0], /Duplicate section was removed/);
+assert.match(duplicateValidated.warnings[0], /Section instance limit was applied/);
+
+const repeatableCandidates = JSON.parse(JSON.stringify(candidates));
+repeatableCandidates.templates[0].sections[0].compositionPolicy = {
+  selectionPolicy: "required",
+  duplicatePolicy: "limited",
+  maxInstances: 2,
+};
+const repeatableValidated = validatePageCompositionProposal({
+  ...result,
+  sections: [result.sections[0], result.sections[0], result.sections[0]],
+}, repeatableCandidates);
+assert.equal(repeatableValidated.sections.length, 2);
+assert.match(repeatableValidated.warnings[0], /max 2/);
+
+const lockedCandidates = JSON.parse(JSON.stringify(candidates));
+lockedCandidates.templates[0].sections[0].compositionPolicy = {
+  selectionPolicy: "required",
+  aiEditable: false,
+  contentLocked: true,
+};
+const lockedValidated = validatePageCompositionProposal(result, lockedCandidates);
+assert.equal(lockedValidated.sections[0].components[0].contentBindings.length, 0);
+assert.match(lockedValidated.warnings[0], /AI content binding was ignored/);
+const lockedSnapshot = normalizePageComposition({
+  validated: lockedValidated,
+  overview: { title: "Must not be bound" },
+  documentId: "document-locked",
+  proposalId: "proposal-locked",
+  overviewFingerprint: "overview-locked",
+  candidateFingerprint: "candidate-locked",
+});
+assert.equal(lockedSnapshot.content.sectionSnapshot[0].items[0].fields[0].isLocked, true);
+assert.equal(lockedSnapshot.content.sectionInputs[
+  lockedSnapshot.content.sectionOrder[0]
+][lockedSnapshot.content.sectionSnapshot[0].items[0].itemKey], "");
 
 const secondComponent = {
   ...candidates.templates[0].sections[0].components[0],

@@ -4194,6 +4194,65 @@ const adminApp = createApp({
       return this.promptStatusLabel(status);
     },
 
+    wizardSectionSelectionPolicyOptions() {
+      return [
+        { value: "required", label: "항상 포함", description: "모든 AI 페이지 구성에 반드시 포함합니다." },
+        { value: "required-by-market", label: "마켓 조건부", description: "지정한 마켓에서만 반드시 포함합니다." },
+        { value: "required-by-purpose", label: "목적 조건부", description: "지정한 프로모션 목적에서만 반드시 포함합니다." },
+        { value: "recommended", label: "우선 추천", description: "AI가 적합성을 판단해 우선적으로 포함합니다." },
+        { value: "optional", label: "선택 가능", description: "필요한 경우에만 AI가 선택할 수 있습니다." },
+      ];
+    },
+
+    wizardSectionSelectionPolicyLabel(value) {
+      return this.wizardSectionSelectionPolicyOptions().find((option) => option.value === value)?.label || value || "미지정";
+    },
+
+    wizardSectionRoleOptions() {
+      return [
+        ["header", "헤더"], ["footer", "푸터"], ["terms", "이용약관"], ["legal", "법적 고지"],
+        ["responsible-gaming", "책임 게임"], ["hero", "키비주얼·히어로"], ["benefit", "혜택"],
+        ["content", "본문 콘텐츠"], ["cta", "행동 유도"], ["notice", "안내·주의사항"],
+      ].map(([value, label]) => ({ value, label }));
+    },
+
+    wizardSectionContentModeOptions() {
+      return [
+        { value: "editable", label: "AI 수정 허용", description: "AI가 입력 콘텐츠를 문맥에 맞게 작성·수정할 수 있습니다." },
+        { value: "manual-only", label: "관리자 입력만", description: "AI는 수정하지 않고 관리자와 사용자가 입력한 값을 사용합니다." },
+        { value: "locked", label: "고정 콘텐츠", description: "저장된 콘텐츠를 그대로 유지하고 다른 입력도 허용하지 않습니다." },
+      ];
+    },
+
+    wizardSectionContentMode() {
+      const policy = this.wizardSectionFieldsEditor.compositionPolicy;
+      if (policy.contentLocked) return "locked";
+      return policy.aiEditable ? "editable" : "manual-only";
+    },
+
+    setWizardSectionContentMode(mode) {
+      const policy = this.wizardSectionFieldsEditor.compositionPolicy;
+      policy.aiEditable = mode === "editable";
+      policy.contentLocked = mode === "locked";
+    },
+
+    wizardSectionCompositionSummary() {
+      const editor = this.wizardSectionFieldsEditor;
+      const policy = editor.compositionPolicy;
+      const parts = [this.wizardSectionSelectionPolicyLabel(policy.selectionPolicy)];
+      if (policy.selectionPolicy === "required-by-market") {
+        parts.push(policy.allowedMarkets.length ? `${policy.allowedMarkets.join(", ")} 마켓` : "모든 마켓");
+      }
+      if (policy.selectionPolicy === "required-by-purpose") {
+        parts.push(policy.allowedPromotionPurposes.length ? `${policy.allowedPromotionPurposes.join(", ")} 목적` : "모든 목적");
+      }
+      parts.push(policy.duplicatePolicy === "limited" ? `최대 ${Math.max(2, Number(policy.maxInstances || 2))}회` : "페이지당 1회");
+      const contentLabel = ({ editable: "AI 콘텐츠 수정 허용", "manual-only": "관리자 입력 사용", locked: "콘텐츠 고정" })[this.wizardSectionContentMode()];
+      parts.push(contentLabel);
+      parts.push(policy.layoutLocked ? "저장된 레이아웃 유지" : "AI 레이아웃 변경 허용");
+      return parts.join(" · ");
+    },
+
     fieldKindLabel(kind) {
       return ({ text: "텍스트", image: "이미지", cta: "CTA 버튼" })[kind] || kind;
     },

@@ -72,9 +72,12 @@ async function fetchPageCompositionCandidates(sql, {
       const configuredLayoutKeys = aiDesign.allowedLayoutVariants
         .filter((layoutKey) => savedLayoutKeys.has(layoutKey));
       const defaultLayoutKey = layoutPresets.find((layout) => layout.isDefault)?.layoutKey || "";
-      const allowedLayoutVariants = layoutPresets.length
+      const selectableLayoutVariants = layoutPresets.length
         ? (configuredLayoutKeys.length ? configuredLayoutKeys : [defaultLayoutKey].filter(Boolean))
         : (policy.allowedLayoutVariants.length ? policy.allowedLayoutVariants : ["default"]);
+      const allowedLayoutVariants = policy.layoutLocked
+        ? [defaultLayoutKey || selectableLayoutVariants[0] || "default"]
+        : selectableLayoutVariants;
       sections.push({
         sectionId: membership.sectionId,
         sectionKey: membership.sectionKey,

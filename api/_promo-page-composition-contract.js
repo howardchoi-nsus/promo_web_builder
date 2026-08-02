@@ -111,7 +111,7 @@ function validatePageCompositionProposal(result, candidates) {
     throw Object.assign(new Error("Planner selected an unavailable design token set"), { code: "INVALID_TOKEN_SET" });
   }
   const allowedSections = new Map(template.sections.map((section) => [section.sectionId, section]));
-  const seenSections = new Set();
+  const sectionCounts = new Map();
   const sections = [];
   const warnings = Array.isArray(result.warnings)
     ? result.warnings.map(String).slice(0, 30)
@@ -124,11 +124,16 @@ function validatePageCompositionProposal(result, candidates) {
         { code: "SECTION_NOT_IN_TEMPLATE", retryable: true },
       );
     }
-    if (seenSections.has(planned.sectionId)) {
-      warnings.push(`Duplicate section was removed: ${planned.sectionId}`);
+    const currentSectionCount = Number(sectionCounts.get(planned.sectionId) || 0);
+    const policy = section.compositionPolicy || {};
+    const maxInstances = section.fixedPosition || policy.duplicatePolicy !== "limited"
+      ? 1
+      : Math.max(1, Math.min(20, Number(policy.maxInstances || 1)));
+    if (currentSectionCount >= maxInstances) {
+      warnings.push(`Section instance limit was applied: ${planned.sectionId} (max ${maxInstances})`);
       continue;
     }
-    seenSections.add(planned.sectionId);
+    sectionCounts.set(planned.sectionId, currentSectionCount + 1);
     const allowedComponents = new Map(
       section.components.map((component) => [component.componentInstanceId, component]),
     );
@@ -151,6 +156,11 @@ function validatePageCompositionProposal(result, candidates) {
       const seenFields = new Set();
       const contentBindings = [];
       for (const binding of plannedComponent.contentBindings || []) {
+        if (policy.contentLocked || policy.aiEditable === false) {
+          const warning = `AI content binding was ignored by section policy: ${section.sectionKey}`;
+          if (!warnings.includes(warning)) warnings.push(warning);
+          continue;
+        }
         if (!allowedFields.has(binding.fieldKey)
           || !OVERVIEW_FIELDS.includes(binding.sourceOverviewPath)) {
           throw Object.assign(new Error("Planner returned an invalid content binding"), { code: "INVALID_CONTENT_BINDING" });
@@ -201,7 +211,7 @@ function validatePageCompositionProposal(result, candidates) {
     });
   }
   template.sections.filter((section) => section.resolvedRequired).forEach((section) => {
-    if (!seenSections.has(section.sectionId)) {
+    if (!sectionCounts.has(section.sectionId)) {
       throw Object.assign(new Error(`Required section is missing: ${section.sectionKey}`), { code: "REQUIRED_SECTION_MISSING" });
     }
   });
@@ -329,7 +339,12 @@ function normalizePageComposition({
     plannedSection.components.forEach((plannedComponent) => {
       const source = plannedComponent.component;
       const pageComponentInstanceId = `cmp_${randomUUID().replace(/-/g, "")}`;
-      const fields = source.fields.map((field) => ({ ...field }));
+      const sectionPolicy = section.compositionPolicy || {};
+      const fields = source.fields.map((field) => sectionPolicy.contentLocked ? {
+        ...field,
+        isLocked: true,
+        lockedValue: field.lockedValue ?? field.defaultValue ?? "",
+      } : { ...field });
       const definition = {
         ...source.definition,
         id: pageComponentInstanceId,
