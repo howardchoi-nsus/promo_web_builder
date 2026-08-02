@@ -37,9 +37,18 @@ const mockFetch = async (url, options) => {
 };
 await sectionLayoutPresetService.list("section id", mockFetch);
 assert.equal(request.url, "/api/wizard-content-section-layouts?sectionId=section%20id");
+await sectionLayoutPresetService.update("layout-id", "section-id", { name: "Live" }, mockFetch);
+assert.equal(request.url, "/api/wizard-content-section-layout");
+assert.equal(request.options.method, "PATCH");
+assert.deepEqual(JSON.parse(request.options.body), {
+  id: "layout-id",
+  sectionId: "section-id",
+  name: "Live",
+});
 
 const root = path.resolve(import.meta.dirname, "..");
 const manager = fs.readFileSync(path.join(root, "admin-app/src/components/SectionLayoutPresetManager.vue"), "utf8");
+const liveEditor = fs.readFileSync(path.join(root, "admin-app/src/components/SectionLayoutLivePreviewEditor.vue"), "utf8");
 const editor = fs.readFileSync(path.join(root, "visual-editor/src/SectionPresetEditor.vue"), "utf8");
 const main = fs.readFileSync(path.join(root, "visual-editor/src/main.js"), "utf8");
 const adminMain = fs.readFileSync(path.join(root, "admin-app/src/main.js"), "utf8");
@@ -47,6 +56,13 @@ const adminHtml = fs.readFileSync(path.join(root, "prototype/index.html"), "utf8
 
 assert.match(manager, /Layout Preset/);
 assert.match(manager, /toggleAiLayout/);
+assert.match(manager, /SectionLayoutLivePreviewEditor/);
+assert.match(manager, /Live Preview 편집/);
+assert.doesNotMatch(manager, /globalThis\.open|openEditor/);
+assert.match(liveEditor, /startPointer/);
+assert.match(liveEditor, /viewport === 'desktop'/);
+assert.match(liveEditor, /sectionLayoutPresetService\.update/);
+assert.match(liveEditor, /Layout Preset을 저장했습니다/);
 assert.match(editor, /viewport === 'desktop'/);
 assert.match(editor, /startPointer/);
 assert.match(editor, /undoStack/);

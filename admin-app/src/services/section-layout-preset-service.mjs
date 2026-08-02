@@ -63,6 +63,12 @@ export const sectionLayoutPresetService = Object.freeze({
       body: JSON.stringify(payload),
     }, fetchImpl);
   },
+  update(id, sectionId, payload, fetchImpl) {
+    return requestJson("/api/wizard-content-section-layout", {
+      method: "PATCH",
+      body: JSON.stringify({ id, sectionId, ...payload }),
+    }, fetchImpl);
+  },
   remove(id, sectionId, fetchImpl) {
     return requestJson(
       `/api/wizard-content-section-layout?id=${encodeURIComponent(id)}&sectionId=${encodeURIComponent(sectionId)}`,

@@ -3,9 +3,11 @@ import {
   createInitialSectionLayout,
   sectionLayoutPresetService,
 } from "../services/section-layout-preset-service.mjs";
+import SectionLayoutLivePreviewEditor from "./SectionLayoutLivePreviewEditor.vue";
 
 export default {
   name: "SectionLayoutPresetManager",
+  components: { SectionLayoutLivePreviewEditor },
   props: {
     section: { type: Object, required: true },
     items: { type: Array, default: () => [] },
@@ -20,17 +22,22 @@ export default {
       showCreate: false,
       createForm: { name: "", description: "" },
       requestRevision: 0,
+      selectedLayoutId: "",
     };
   },
   computed: {
     editable() {
       return this.section?.status === "draft";
     },
+    selectedLayout() {
+      return this.layouts.find((layout) => layout.id === this.selectedLayoutId) || null;
+    },
   },
   watch: {
     "section.id": {
       immediate: true,
       handler() {
+        this.selectedLayoutId = "";
         this.load();
       },
     },
@@ -45,7 +52,12 @@ export default {
       this.error = "";
       try {
         const result = await sectionLayoutPresetService.list(this.section.id);
-        if (revision === this.requestRevision) this.layouts = result.layouts || [];
+        if (revision === this.requestRevision) {
+          this.layouts = result.layouts || [];
+          if (this.selectedLayoutId && !this.layouts.some((layout) => layout.id === this.selectedLayoutId)) {
+            this.selectedLayoutId = "";
+          }
+        }
       } catch (error) {
         if (revision === this.requestRevision) this.error = error.message;
       } finally {
@@ -69,19 +81,20 @@ export default {
         this.createForm = { name: "", description: "" };
         this.showCreate = false;
         await this.load();
-        this.openEditor(result.layout);
+        this.selectedLayoutId = result.layout.id;
       } catch (error) {
         this.error = error.validationErrors?.[0]?.message || error.message;
       } finally {
         this.saving = false;
       }
     },
-    openEditor(layout) {
-      globalThis.open(
-        sectionLayoutPresetService.editorUrl(this.section.id, layout.layoutKey),
-        "_blank",
-        "noopener",
-      );
+    selectLayout(layout) {
+      this.selectedLayoutId = this.selectedLayoutId === layout.id ? "" : layout.id;
+      this.error = "";
+    },
+    async handleLayoutSaved(layout) {
+      this.layouts = this.layouts.map((entry) => entry.id === layout.id ? layout : entry);
+      this.selectedLayoutId = layout.id;
     },
     async setDefault(layout) {
       if (!this.editable || layout.isDefault || this.saving) return;
@@ -159,7 +172,7 @@ export default {
     <div v-if="showCreate && editable" class="section-layout-create">
       <label class="field compact-field"><span>이름</span><input v-model="createForm.name" type="text" placeholder="예: Standard Header" /></label>
       <label class="field compact-field"><span>설명</span><input v-model="createForm.description" type="text" placeholder="사용 목적" /></label>
-      <button class="tiny-button primary" type="button" :disabled="!createForm.name.trim() || saving" @click="createPreset">생성 후 편집</button>
+      <button class="tiny-button primary" type="button" :disabled="!createForm.name.trim() || saving" @click="createPreset">생성 후 Live Preview</button>
     </div>
 
     <div v-if="loading" class="empty-state compact">Layout Preset을 불러오는 중...</div>
@@ -170,7 +183,7 @@ export default {
           <span>{{ layout.layoutKey }} · {{ layout.description || '설명 없음' }}</span>
         </div>
         <div class="action-row align-right">
-          <button class="tiny-button" type="button" @click="openEditor(layout)">{{ editable ? '편집' : '보기' }}</button>
+          <button class="tiny-button" type="button" :class="{ primary: selectedLayoutId === layout.id }" @click="selectLayout(layout)">{{ selectedLayoutId === layout.id ? 'Preview 닫기' : (editable ? 'Live Preview 편집' : 'Live Preview 보기') }}</button>
           <button class="tiny-button" type="button" :disabled="!editable || layout.isDefault || saving" @click="setDefault(layout)">기본값</button>
           <button class="tiny-button" type="button" :disabled="!editable || saving" @click="toggleAiLayout(layout)">{{ aiAllows(layout) ? 'AI 허용됨' : 'AI 허용' }}</button>
           <button class="tiny-button danger" type="button" :disabled="!editable || saving || aiAllows(layout)" @click="remove(layout)">삭제</button>
@@ -178,6 +191,14 @@ export default {
       </div>
       <div v-if="!layouts.length" class="empty-state compact">등록된 Layout Preset이 없습니다. 기존 자동 배치가 계속 사용됩니다.</div>
     </div>
+    <section-layout-live-preview-editor
+      v-if="selectedLayout"
+      :section="section"
+      :items="items"
+      :layout="selectedLayout"
+      @saved="handleLayoutSaved"
+      @close="selectedLayoutId = ''"
+    />
   </section>
 </template>
 

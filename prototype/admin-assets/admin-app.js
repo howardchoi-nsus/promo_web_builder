@@ -8711,6 +8711,16 @@ var R_ = Object.freeze({
 			body: JSON.stringify(e)
 		}, t);
 	},
+	update(e, t, n, r) {
+		return F_("/api/wizard-content-section-layout", {
+			method: "PATCH",
+			body: JSON.stringify({
+				id: e,
+				sectionId: t,
+				...n
+			})
+		}, r);
+	},
 	remove(e, t, n) {
 		return F_(`/api/wizard-content-section-layout?id=${encodeURIComponent(e)}&sectionId=${encodeURIComponent(t)}`, { method: "DELETE" }, n);
 	},
@@ -8738,7 +8748,334 @@ var R_ = Object.freeze({
 	},
 	editorUrl: L_
 }), z_ = {
+	key: 0,
+	class: "section-layout-live-editor"
+}, B_ = { class: "live-editor-header" }, V_ = { class: "live-editor-actions" }, H_ = ["disabled"], U_ = ["disabled"], W_ = ["disabled"], G_ = { class: "live-editor-meta" }, K_ = ["disabled"], q_ = ["disabled"], J_ = ["disabled"], Y_ = {
+	class: "live-viewport-switch",
+	role: "group",
+	"aria-label": "미리보기 화면 크기"
+}, X_ = { class: "live-editor-body" }, Z_ = { class: "live-preview-stage" }, Q_ = ["onPointerdown", "onClick"], $_ = ["onPointerdown"], ev = { class: "live-editor-inspector" }, tv = { class: "live-section-controls" }, nv = ["disabled"], rv = ["disabled"], iv = { class: "live-item-list" }, av = ["onClick"], ov = { class: "live-visibility" }, sv = ["checked", "disabled"], cv = { class: "live-geometry-grid" }, lv = ["disabled"], uv = ["disabled"], dv = ["disabled"], fv = ["disabled"], pv = ["disabled"], mv = {
+	key: 1,
+	class: "live-notice"
+}, hv = {
+	key: 2,
+	class: "live-error"
+}, gv = {
+	key: 3,
+	class: "live-success"
+}, _v = {
 	name: "SectionLayoutPresetManager",
+	components: { SectionLayoutLivePreviewEditor: /* @__PURE__ */ Ch({
+		__name: "SectionLayoutLivePreviewEditor",
+		props: {
+			section: {
+				type: Object,
+				required: !0
+			},
+			items: {
+				type: Array,
+				default: () => []
+			},
+			layout: {
+				type: Object,
+				required: !0
+			}
+		},
+		emits: ["saved", "close"],
+		setup(e, { emit: t }) {
+			let n = e, r = t, i = /* @__PURE__ */ wn(!1), a = /* @__PURE__ */ wn(""), o = /* @__PURE__ */ wn(""), s = /* @__PURE__ */ wn("desktop"), c = /* @__PURE__ */ wn(""), l = /* @__PURE__ */ wn(null), u = /* @__PURE__ */ wn([]), d = /* @__PURE__ */ wn([]), f = /* @__PURE__ */ wn(null), p = null, m = gc(() => n.section?.status !== "draft"), h = gc(() => l.value?.layoutSnapshot?.viewports?.[s.value] || {
+				items: {},
+				visibility: { items: {} }
+			}), g = gc(() => h.value.items?.[c.value] || null), _ = gc(() => Math.max(160, Number(l.value?.layoutSnapshot?.sectionStyle?.minHeight || 160)));
+			function v(e) {
+				return JSON.parse(JSON.stringify(e));
+			}
+			function y(e, t) {
+				return ["desktop", "mobile"].forEach((n) => {
+					e.viewports ||= {}, e.viewports[n] ||= {
+						items: {},
+						visibility: { items: {} }
+					};
+					let r = e.viewports[n];
+					r.items ||= {}, r.visibility ||= { items: {} }, r.visibility.items ||= {}, t.forEach((e, t) => {
+						if (r.items[e.itemKey]) return;
+						let i = n === "mobile";
+						r.items[e.itemKey] = {
+							positionMode: "free",
+							xPct: i ? 5 : 4 + t % 2 * 48,
+							yPx: 16 + Math.floor(t / (i ? 1 : 2)) * 72,
+							widthPct: i ? 90 : 44,
+							heightPx: 52,
+							zIndex: 1
+						};
+					});
+				}), e;
+			}
+			function b() {
+				n.layout && (l.value = {
+					name: n.layout.name,
+					description: n.layout.description || "",
+					changeNote: "",
+					layoutSnapshot: y(v(n.layout.layoutSnapshot), n.items)
+				}, c.value = n.items.find((e) => l.value.layoutSnapshot.viewports.desktop.items[e.itemKey])?.itemKey || "", u.value = [], d.value = [], a.value = "", o.value = "");
+			}
+			Hr(() => [n.layout?.id, n.items.map((e) => e.itemKey).join("|")], b, { immediate: !0 });
+			function x() {
+				return l.value ? v(l.value) : null;
+			}
+			function S() {
+				!l.value || m.value || (u.value.push(x()), u.value.length > 60 && u.value.shift(), d.value = [], o.value = "");
+			}
+			function C() {
+				!u.value.length || !l.value || (d.value.push(x()), l.value = u.value.pop());
+			}
+			function w() {
+				!d.value.length || !l.value || (u.value.push(x()), l.value = d.value.pop());
+			}
+			function ee(e) {
+				return h.value.visibility?.items?.[e] !== !1;
+			}
+			function T(e, t) {
+				S(), h.value.visibility.items[e] = t;
+			}
+			function E(e) {
+				let t = h.value.items?.[e];
+				return t ? {
+					left: `${t.xPct}%`,
+					top: `${t.yPx}px`,
+					width: `${t.widthPct}%`,
+					height: `${t.heightPx}px`,
+					zIndex: t.zIndex ?? 1,
+					opacity: ee(e) ? 1 : .28
+				} : { display: "none" };
+			}
+			function D() {
+				p = null, globalThis.removeEventListener("pointermove", te), globalThis.removeEventListener("pointerup", D), globalThis.removeEventListener("pointercancel", D);
+			}
+			function O(e, t, n) {
+				if (m.value) return;
+				let r = h.value.items?.[t], i = f.value?.getBoundingClientRect();
+				!r || !i || (e.preventDefault(), S(), c.value = t, p = {
+					operation: n,
+					itemKey: t,
+					startX: e.clientX,
+					startY: e.clientY,
+					rect: i,
+					geometry: v(r)
+				}, globalThis.addEventListener("pointermove", te), globalThis.addEventListener("pointerup", D, { once: !0 }), globalThis.addEventListener("pointercancel", D, { once: !0 }));
+			}
+			function te(e) {
+				if (!p) return;
+				let t = h.value.items[p.itemKey], n = (e.clientX - p.startX) / p.rect.width * 100, r = e.clientY - p.startY;
+				if (p.operation === "move") {
+					t.xPct = Math.max(0, Math.min(100 - t.widthPct, Number((p.geometry.xPct + n).toFixed(2)))), t.yPx = Math.max(0, Math.min(1200 - t.heightPx, Math.round(p.geometry.yPx + r)));
+					return;
+				}
+				t.widthPct = Math.max(1, Math.min(100 - t.xPct, Number((p.geometry.widthPct + n).toFixed(2)))), t.heightPx = Math.max(1, Math.min(900, Math.round(p.geometry.heightPx + r)));
+			}
+			async function ne() {
+				if (!(m.value || i.value || !l.value)) {
+					i.value = !0, a.value = "", o.value = "";
+					try {
+						let e = await R_.update(n.layout.id, n.section.id, {
+							name: l.value.name,
+							description: l.value.description,
+							changeNote: l.value.changeNote || "Section Preset Live Preview에서 Layout 수정.",
+							layoutSnapshot: l.value.layoutSnapshot
+						});
+						l.value = {
+							...l.value,
+							name: e.layout.name,
+							description: e.layout.description || "",
+							changeNote: "",
+							layoutSnapshot: v(e.layout.layoutSnapshot)
+						}, u.value = [], d.value = [], o.value = "Layout Preset을 저장했습니다.", r("saved", e.layout);
+					} catch (e) {
+						a.value = e.validationErrors?.[0]?.message || e.message;
+					} finally {
+						i.value = !1;
+					}
+				}
+			}
+			return ha(D), (t, n) => l.value ? (B(), V("section", z_, [
+				H("header", B_, [H("div", null, [n[14] ||= H("strong", null, "Live Preview", -1), H("span", null, M(e.layout.layoutKey) + " · " + M(s.value), 1)]), H("div", V_, [
+					H("button", {
+						class: "tiny-button",
+						type: "button",
+						disabled: !u.value.length || m.value,
+						onClick: C
+					}, "실행 취소", 8, H_),
+					H("button", {
+						class: "tiny-button",
+						type: "button",
+						disabled: !d.value.length || m.value,
+						onClick: w
+					}, "다시 실행", 8, U_),
+					H("button", {
+						class: "tiny-button",
+						type: "button",
+						onClick: n[0] ||= (e) => r("close")
+					}, "닫기"),
+					H("button", {
+						class: "tiny-button primary",
+						type: "button",
+						disabled: m.value || i.value,
+						onClick: ne
+					}, M(i.value ? "저장 중…" : "저장"), 9, W_)
+				])]),
+				H("div", G_, [
+					H("label", null, [n[15] ||= H("span", null, "이름", -1), I(H("input", {
+						"onUpdate:modelValue": n[1] ||= (e) => l.value.name = e,
+						disabled: m.value,
+						onFocus: S
+					}, null, 40, K_), [[G, l.value.name]])]),
+					H("label", null, [n[16] ||= H("span", null, "설명", -1), I(H("input", {
+						"onUpdate:modelValue": n[2] ||= (e) => l.value.description = e,
+						disabled: m.value,
+						onFocus: S
+					}, null, 40, q_), [[G, l.value.description]])]),
+					H("label", null, [n[17] ||= H("span", null, "변경 사유", -1), I(H("input", {
+						"onUpdate:modelValue": n[3] ||= (e) => l.value.changeNote = e,
+						disabled: m.value,
+						placeholder: "저장 이력에 기록"
+					}, null, 8, J_), [[G, l.value.changeNote]])]),
+					H("div", Y_, [H("button", {
+						type: "button",
+						class: De({ active: s.value === "desktop" }),
+						onClick: n[4] ||= (e) => s.value = "desktop"
+					}, "Desktop", 2), H("button", {
+						type: "button",
+						class: De({ active: s.value === "mobile" }),
+						onClick: n[5] ||= (e) => s.value = "mobile"
+					}, "Mobile", 2)])
+				]),
+				H("div", X_, [H("section", Z_, [H("div", {
+					ref_key: "canvas",
+					ref: f,
+					class: De(["live-preview-canvas", `viewport-${s.value}`]),
+					style: Se({
+						height: `${_.value}px`,
+						backgroundColor: l.value.layoutSnapshot.sectionStyle.backgroundColor
+					})
+				}, [(B(!0), V(R, null, ka(e.items, (e) => (B(), V("article", {
+					key: e.itemKey,
+					class: De(["live-preview-item", [{ selected: c.value === e.itemKey }, `kind-${e.fieldKind || "text"}`]]),
+					style: Se(E(e.itemKey)),
+					onPointerdown: (t) => O(t, e.itemKey, "move"),
+					onClick: (t) => c.value = e.itemKey
+				}, [
+					H("strong", null, M(e.name), 1),
+					H("small", null, M(e.fieldKind === "image" ? "Image" : e.fieldKind === "cta" ? "CTA Button" : e.itemKey), 1),
+					H("button", {
+						class: "live-resize-handle",
+						type: "button",
+						"aria-label": "크기 변경",
+						onPointerdown: bu((t) => O(t, e.itemKey, "resize"), ["stop"])
+					}, null, 40, $_)
+				], 46, Q_))), 128))], 6)]), H("aside", ev, [
+					H("div", tv, [H("label", null, [n[18] ||= H("span", null, "Section 높이", -1), I(H("input", {
+						"onUpdate:modelValue": n[6] ||= (e) => l.value.layoutSnapshot.sectionStyle.minHeight = e,
+						type: "number",
+						min: "1",
+						max: "1200",
+						disabled: m.value,
+						onFocus: S
+					}, null, 40, nv), [[
+						G,
+						l.value.layoutSnapshot.sectionStyle.minHeight,
+						void 0,
+						{ number: !0 }
+					]])]), H("label", null, [n[19] ||= H("span", null, "배경색", -1), I(H("input", {
+						"onUpdate:modelValue": n[7] ||= (e) => l.value.layoutSnapshot.sectionStyle.backgroundColor = e,
+						type: "color",
+						disabled: m.value,
+						onFocus: S
+					}, null, 40, rv), [[G, l.value.layoutSnapshot.sectionStyle.backgroundColor]])])]),
+					H("div", iv, [(B(!0), V(R, null, ka(e.items, (e) => (B(), V("button", {
+						key: e.itemKey,
+						type: "button",
+						class: De({ active: c.value === e.itemKey }),
+						onClick: (t) => c.value = e.itemKey
+					}, M(e.name), 11, av))), 128))]),
+					g.value ? (B(), V(R, { key: 0 }, [H("label", ov, [H("input", {
+						checked: ee(c.value),
+						type: "checkbox",
+						disabled: m.value,
+						onChange: n[8] ||= (e) => T(c.value, e.target.checked)
+					}, null, 40, sv), H("span", null, M(s.value) + "에서 표시", 1)]), H("div", cv, [
+						H("label", null, [n[20] ||= H("span", null, "X (%)", -1), I(H("input", {
+							"onUpdate:modelValue": n[9] ||= (e) => g.value.xPct = e,
+							type: "number",
+							min: "0",
+							max: "100",
+							disabled: m.value,
+							onFocus: S
+						}, null, 40, lv), [[
+							G,
+							g.value.xPct,
+							void 0,
+							{ number: !0 }
+						]])]),
+						H("label", null, [n[21] ||= H("span", null, "Y (px)", -1), I(H("input", {
+							"onUpdate:modelValue": n[10] ||= (e) => g.value.yPx = e,
+							type: "number",
+							min: "0",
+							max: "1200",
+							disabled: m.value,
+							onFocus: S
+						}, null, 40, uv), [[
+							G,
+							g.value.yPx,
+							void 0,
+							{ number: !0 }
+						]])]),
+						H("label", null, [n[22] ||= H("span", null, "너비 (%)", -1), I(H("input", {
+							"onUpdate:modelValue": n[11] ||= (e) => g.value.widthPct = e,
+							type: "number",
+							min: "1",
+							max: "100",
+							disabled: m.value,
+							onFocus: S
+						}, null, 40, dv), [[
+							G,
+							g.value.widthPct,
+							void 0,
+							{ number: !0 }
+						]])]),
+						H("label", null, [n[23] ||= H("span", null, "높이 (px)", -1), I(H("input", {
+							"onUpdate:modelValue": n[12] ||= (e) => g.value.heightPx = e,
+							type: "number",
+							min: "1",
+							max: "900",
+							disabled: m.value,
+							onFocus: S
+						}, null, 40, fv), [[
+							G,
+							g.value.heightPx,
+							void 0,
+							{ number: !0 }
+						]])]),
+						H("label", null, [n[24] ||= H("span", null, "Z-index", -1), I(H("input", {
+							"onUpdate:modelValue": n[13] ||= (e) => g.value.zIndex = e,
+							type: "number",
+							min: "0",
+							max: "100",
+							disabled: m.value,
+							onFocus: S
+						}, null, 40, pv), [[
+							G,
+							g.value.zIndex,
+							void 0,
+							{ number: !0 }
+						]])])
+					])], 64)) : W("", !0),
+					m.value ? (B(), V("p", mv, "읽기 전용 버전입니다. Section 초안을 만든 후 수정할 수 있습니다.")) : W("", !0),
+					a.value ? (B(), V("p", hv, M(a.value), 1)) : W("", !0),
+					o.value ? (B(), V("p", gv, M(o.value), 1)) : W("", !0)
+				])])
+			])) : W("", !0);
+		}
+	}, [["__scopeId", "data-v-1bc02a69"]]) },
 	props: {
 		section: {
 			type: Object,
@@ -8761,16 +9098,22 @@ var R_ = Object.freeze({
 				name: "",
 				description: ""
 			},
-			requestRevision: 0
+			requestRevision: 0,
+			selectedLayoutId: ""
 		};
 	},
-	computed: { editable() {
-		return this.section?.status === "draft";
-	} },
+	computed: {
+		editable() {
+			return this.section?.status === "draft";
+		},
+		selectedLayout() {
+			return this.layouts.find((e) => e.id === this.selectedLayoutId) || null;
+		}
+	},
 	watch: { "section.id": {
 		immediate: !0,
 		handler() {
-			this.load();
+			this.selectedLayoutId = "", this.load();
 		}
 	} },
 	beforeUnmount() {
@@ -8782,7 +9125,7 @@ var R_ = Object.freeze({
 			this.loading = !0, this.error = "";
 			try {
 				let t = await R_.list(this.section.id);
-				e === this.requestRevision && (this.layouts = t.layouts || []);
+				e === this.requestRevision && (this.layouts = t.layouts || [], this.selectedLayoutId && !this.layouts.some((e) => e.id === this.selectedLayoutId) && (this.selectedLayoutId = ""));
 			} catch (t) {
 				e === this.requestRevision && (this.error = t.message);
 			} finally {
@@ -8805,7 +9148,7 @@ var R_ = Object.freeze({
 					this.createForm = {
 						name: "",
 						description: ""
-					}, this.showCreate = !1, await this.load(), this.openEditor(t.layout);
+					}, this.showCreate = !1, await this.load(), this.selectedLayoutId = t.layout.id;
 				} catch (e) {
 					this.error = e.validationErrors?.[0]?.message || e.message;
 				} finally {
@@ -8813,8 +9156,11 @@ var R_ = Object.freeze({
 				}
 			}
 		},
-		openEditor(e) {
-			globalThis.open(R_.editorUrl(this.section.id, e.layoutKey), "_blank", "noopener");
+		selectLayout(e) {
+			this.selectedLayoutId = this.selectedLayoutId === e.id ? "" : e.id, this.error = "";
+		},
+		async handleLayoutSaved(e) {
+			this.layouts = this.layouts.map((t) => t.id === e.id ? e : t), this.selectedLayoutId = e.id;
 		},
 		async setDefault(e) {
 			if (!(!this.editable || e.isDefault || this.saving)) {
@@ -8862,50 +9208,51 @@ var R_ = Object.freeze({
 			}
 		}
 	}
-}, B_ = { class: "section-layout-manager" }, V_ = { class: "subsection-title" }, H_ = { class: "action-row" }, U_ = ["disabled"], W_ = ["disabled"], G_ = {
+}, vv = { class: "section-layout-manager" }, yv = { class: "subsection-title" }, bv = { class: "action-row" }, xv = ["disabled"], Sv = ["disabled"], Cv = {
 	key: 0,
 	class: "empty-state compact"
-}, K_ = {
+}, wv = {
 	key: 1,
 	class: "field-error"
-}, q_ = {
+}, Tv = {
 	key: 2,
 	class: "section-layout-create"
-}, J_ = { class: "field compact-field" }, Y_ = { class: "field compact-field" }, X_ = ["disabled"], Z_ = {
+}, Ev = { class: "field compact-field" }, Dv = { class: "field compact-field" }, Ov = ["disabled"], kv = {
 	key: 3,
 	class: "empty-state compact"
-}, Q_ = {
+}, Av = {
 	key: 4,
 	class: "history-list"
-}, $_ = {
+}, jv = {
 	key: 0,
 	class: "status-active"
-}, ev = { class: "action-row align-right" }, tv = ["onClick"], nv = ["disabled", "onClick"], rv = ["disabled", "onClick"], iv = ["disabled", "onClick"], av = {
+}, Mv = { class: "action-row align-right" }, Nv = ["onClick"], Pv = ["disabled", "onClick"], Fv = ["disabled", "onClick"], Iv = ["disabled", "onClick"], Lv = {
 	key: 0,
 	class: "empty-state compact"
 };
-function ov(e, t, n, r, i, a) {
-	return B(), V("section", B_, [
-		H("div", V_, [t[5] ||= H("div", null, [H("h3", null, "Layout Preset"), H("small", null, "섹션을 추가할 때 적용할 Desktop/Mobile 배치를 미리 설정합니다.")], -1), H("div", H_, [H("button", {
+function Rv(e, t, n, r, i, a) {
+	let o = Ca("section-layout-live-preview-editor");
+	return B(), V("section", vv, [
+		H("div", yv, [t[6] ||= H("div", null, [H("h3", null, "Layout Preset"), H("small", null, "섹션을 추가할 때 적용할 Desktop/Mobile 배치를 미리 설정합니다.")], -1), H("div", bv, [H("button", {
 			class: "tiny-button",
 			type: "button",
 			disabled: i.loading,
 			onClick: t[0] ||= (...e) => a.load && a.load(...e)
-		}, "새로고침", 8, U_), H("button", {
+		}, "새로고침", 8, xv), H("button", {
 			class: "tiny-button primary",
 			type: "button",
 			disabled: !a.editable || i.saving,
 			onClick: t[1] ||= (e) => i.showCreate = !i.showCreate
-		}, "+ Preset", 8, W_)])]),
-		a.editable ? W("", !0) : (B(), V("div", G_, "활성·비활성 버전의 Layout은 읽기 전용입니다. 초안을 만든 후 편집하세요.")),
-		i.error ? (B(), V("div", K_, M(i.error), 1)) : W("", !0),
-		i.showCreate && a.editable ? (B(), V("div", q_, [
-			H("label", J_, [t[6] ||= H("span", null, "이름", -1), I(H("input", {
+		}, "+ Preset", 8, Sv)])]),
+		a.editable ? W("", !0) : (B(), V("div", Cv, "활성·비활성 버전의 Layout은 읽기 전용입니다. 초안을 만든 후 편집하세요.")),
+		i.error ? (B(), V("div", wv, M(i.error), 1)) : W("", !0),
+		i.showCreate && a.editable ? (B(), V("div", Tv, [
+			H("label", Ev, [t[7] ||= H("span", null, "이름", -1), I(H("input", {
 				"onUpdate:modelValue": t[2] ||= (e) => i.createForm.name = e,
 				type: "text",
 				placeholder: "예: Standard Header"
 			}, null, 512), [[G, i.createForm.name]])]),
-			H("label", Y_, [t[7] ||= H("span", null, "설명", -1), I(H("input", {
+			H("label", Dv, [t[8] ||= H("span", null, "설명", -1), I(H("input", {
 				"onUpdate:modelValue": t[3] ||= (e) => i.createForm.description = e,
 				type: "text",
 				placeholder: "사용 목적"
@@ -8915,39 +9262,52 @@ function ov(e, t, n, r, i, a) {
 				type: "button",
 				disabled: !i.createForm.name.trim() || i.saving,
 				onClick: t[4] ||= (...e) => a.createPreset && a.createPreset(...e)
-			}, "생성 후 편집", 8, X_)
+			}, "생성 후 Live Preview", 8, Ov)
 		])) : W("", !0),
-		i.loading ? (B(), V("div", Z_, "Layout Preset을 불러오는 중...")) : (B(), V("div", Q_, [(B(!0), V(R, null, ka(i.layouts, (e) => (B(), V("div", {
+		i.loading ? (B(), V("div", kv, "Layout Preset을 불러오는 중...")) : (B(), V("div", Av, [(B(!0), V(R, null, ka(i.layouts, (e) => (B(), V("div", {
 			key: e.id,
 			class: "history-item section-layout-row"
-		}, [H("div", null, [H("strong", null, [zs(M(e.name) + " ", 1), e.isDefault ? (B(), V("em", $_, "기본")) : W("", !0)]), H("span", null, M(e.layoutKey) + " · " + M(e.description || "설명 없음"), 1)]), H("div", ev, [
+		}, [H("div", null, [H("strong", null, [zs(M(e.name) + " ", 1), e.isDefault ? (B(), V("em", jv, "기본")) : W("", !0)]), H("span", null, M(e.layoutKey) + " · " + M(e.description || "설명 없음"), 1)]), H("div", Mv, [
 			H("button", {
-				class: "tiny-button",
+				class: De(["tiny-button", { primary: i.selectedLayoutId === e.id }]),
 				type: "button",
-				onClick: (t) => a.openEditor(e)
-			}, M(a.editable ? "편집" : "보기"), 9, tv),
+				onClick: (t) => a.selectLayout(e)
+			}, M(i.selectedLayoutId === e.id ? "Preview 닫기" : a.editable ? "Live Preview 편집" : "Live Preview 보기"), 11, Nv),
 			H("button", {
 				class: "tiny-button",
 				type: "button",
 				disabled: !a.editable || e.isDefault || i.saving,
 				onClick: (t) => a.setDefault(e)
-			}, "기본값", 8, nv),
+			}, "기본값", 8, Pv),
 			H("button", {
 				class: "tiny-button",
 				type: "button",
 				disabled: !a.editable || i.saving,
 				onClick: (t) => a.toggleAiLayout(e)
-			}, M(a.aiAllows(e) ? "AI 허용됨" : "AI 허용"), 9, rv),
+			}, M(a.aiAllows(e) ? "AI 허용됨" : "AI 허용"), 9, Fv),
 			H("button", {
 				class: "tiny-button danger",
 				type: "button",
 				disabled: !a.editable || i.saving || a.aiAllows(e),
 				onClick: (t) => a.remove(e)
-			}, "삭제", 8, iv)
-		])]))), 128)), i.layouts.length ? W("", !0) : (B(), V("div", av, "등록된 Layout Preset이 없습니다. 기존 자동 배치가 계속 사용됩니다."))]))
+			}, "삭제", 8, Iv)
+		])]))), 128)), i.layouts.length ? W("", !0) : (B(), V("div", Lv, "등록된 Layout Preset이 없습니다. 기존 자동 배치가 계속 사용됩니다."))])),
+		a.selectedLayout ? (B(), As(o, {
+			key: 5,
+			section: n.section,
+			items: n.items,
+			layout: a.selectedLayout,
+			onSaved: a.handleLayoutSaved,
+			onClose: t[5] ||= (e) => i.selectedLayoutId = ""
+		}, null, 8, [
+			"section",
+			"items",
+			"layout",
+			"onSaved"
+		])) : W("", !0)
 	]);
 }
-var sv = /*#__PURE__*/ Ch(z_, [["render", ov], ["__scopeId", "data-v-d128f75e"]]), cv = /* @__PURE__ */ o((() => {
+var zv = /*#__PURE__*/ Ch(_v, [["render", Rv], ["__scopeId", "data-v-0b859684"]]), Bv = /* @__PURE__ */ o((() => {
 	var e = {
 		documents: "promoPrototype.documents.abc",
 		generatedPages: "promoPrototype.generatedPages.abc",
@@ -14554,6 +14914,6 @@ yh(document), globalThis.Vue = gh, globalThis.PromoAdminTemplateLayout = Object.
 	component: y_
 }), globalThis.PromoAdminPromptGroups = P_, globalThis.PromoAdminSectionLayouts = Object.freeze({
 	service: R_,
-	component: sv
-}), await Promise.resolve().then(() => /* @__PURE__ */ l(cv()));
+	component: zv
+}), await Promise.resolve().then(() => /* @__PURE__ */ l(Bv()));
 //#endregion
