@@ -57,4 +57,4 @@ docs/
 - 텍스트 콘텐츠는 plain string으로 유지하고 선택 라인 서식은 검증된 `lineStyles` 메타데이터로 저장하는 정책을 확정했다.
 - Font Awesome Toolbar, Design Token, Bullet/Number, Indent/Outdent, Section 기준 배치의 적용 범위를 명시했다.
 - 구조 패널 Accordion, AI 디자인/섹션 구성의 역할 분리, Motion preset과 Reduced Motion 정책을 통합했다.
-- 현행 구현 설계서는 `설계/visual-editor-live-preview-rich-text-design-2026-08-01.md`, 작업 인계는 `handoff/handoff-2026-08-01.md`를 기준으로 한다.
+- 현행 구현 설계서는 `설계/visual-editor-live-preview-rich-text-design-2026-08-01.md`, 최신 작업 인계는 `handoff/handoff-2026-08-02.md`를 기준으로 한다.
