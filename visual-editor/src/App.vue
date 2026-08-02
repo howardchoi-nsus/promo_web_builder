@@ -1946,6 +1946,16 @@ async function loadAdminLayout() {
   }
 }
 
+function notifyAdminLayoutSaved(activated = false) {
+  if (globalThis.parent === globalThis) return;
+  globalThis.parent.postMessage({
+    type: "promo-admin-layout-saved",
+    templateId: template.value?.id || "",
+    layoutRevision: layoutRevision.value,
+    activated,
+  }, globalThis.location.origin);
+}
+
 async function saveAdminLayout({ activate = false } = {}) {
   if (!template.value?.id || layoutSaving.value) return;
   layoutSaveMessage.value = "";
@@ -1975,6 +1985,7 @@ async function saveAdminLayout({ activate = false } = {}) {
     layoutChangeNote.value = "";
     if (!activate) {
       layoutSaveMessage.value = `초안 v${template.value.version || 1} · layout r${layoutRevision.value} 저장 완료 · 프로모션 빌더 반영을 위해 템플릿을 활성화하세요.`;
+      notifyAdminLayoutSaved(false);
       return;
     }
 
@@ -1988,6 +1999,7 @@ async function saveAdminLayout({ activate = false } = {}) {
     template.value = { ...template.value, ...(activateResult.template || {}), status: "active" };
     layoutIdentity.value = activateResult.layoutIdentity || layoutIdentity.value;
     layoutSaveMessage.value = `활성 v${template.value.version || 1} · layout r${layoutRevision.value} 반영 완료 · 신규 프로모션 빌더에서 사용됩니다.`;
+    notifyAdminLayoutSaved(true);
   } catch (saveError) {
     layoutSaveMessage.value = saveError.message;
   } finally {

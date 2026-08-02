@@ -88,7 +88,6 @@ const component = {
 };
 
 let browser;
-let addBody;
 let activateBody;
 let createdSectionBody;
 let componentOrderBody;
@@ -110,10 +109,6 @@ try {
     if (url.pathname === "/api/design-token-sets") return reply({ ok: true, tokenSets: [{ id: "set", name: "Rounded", versionId: tokenVersionId, version: 1, versionStatus: "active" }] });
     if (url.pathname === "/api/wizard-form-templates") return reply({ ok: true, templates: [template] });
     if (url.pathname === "/api/wizard-form-template") return reply({ ok: true, template, sections: [membership] });
-    if (url.pathname === "/api/wizard-form-template-sections" && request.method() === "POST") {
-      addBody = request.postDataJSON();
-      return reply({ ok: true, section: { ...membership, id: "new-membership", sectionId: sectionB.id, sectionKey: sectionB.sectionKey } }, 201);
-    }
     if (url.pathname === "/api/wizard-form-template-activate" && request.method() === "POST") {
       activateBody = request.postDataJSON();
       template = { ...template, status: "active" };
@@ -146,7 +141,19 @@ try {
     }
     if (url.pathname === "/api/wizard-content-section") return reply({ ok: true, section: sectionA, items: sectionItems, histories: [] });
     if (url.pathname === "/api/wizard-content-section-usage") return reply({ ok: true, templates: [template] });
-    if (url.pathname === "/api/wizard-form-template-layout") return reply({ ok: true, layout: { id: "layout", layoutRevision: 1, layoutSpec: { theme: {}, responsive: {}, itemStyles: {}, sectionStyles: {} }, validationResult: { ok: true, errors: [] } } });
+    if (url.pathname === "/api/wizard-form-template-layout") return reply({
+      ok: true,
+      template,
+      sections: [{ ...membership, items: sectionItems }],
+      layout: {
+        id: "layout",
+        layoutRevision: 1,
+        layoutSpec: { theme: {}, responsive: {}, itemStyles: {}, sectionStyles: {} },
+        defaultContent: {},
+        validationResult: { ok: true, errors: [] },
+      },
+      layoutIdentity: { layoutRevision: 1 },
+    });
     return reply({ ok: true, templates: [], sections: [], logs: [], settings: [] });
   });
 
@@ -210,22 +217,26 @@ try {
   assert.equal(await page.locator(".template-section-composer").count(), 0);
 
   await page.getByRole("tab", { name: "템플릿·레이아웃 관리" }).click();
-  await page.getByRole("button", { name: "+ Section Preset 연결" }).click();
-  await page.locator(".template-section-connect select").selectOption(sectionB.id);
-  await page.locator(".template-section-connect").getByRole("button", { name: "연결", exact: true }).click();
-  await page.waitForTimeout(50);
-  assert.deepEqual(addBody, {
-    templateId: template.id,
-    sectionId: sectionB.id,
-  });
+  await page.locator(".template-live-preview").waitFor({ state: "visible" });
+  assert.equal(await page.getByRole("heading", { name: "Template Section 구성" }).count(), 0);
+  assert.equal(await page.getByRole("button", { name: "+ Section Preset 연결" }).count(), 0);
+  const livePreviewFrame = page.locator(".template-live-preview__frame");
+  assert.equal(await livePreviewFrame.count(), 1);
+  assert.match(await livePreviewFrame.getAttribute("src"), /mode=admin-layout/);
+  assert.match(await livePreviewFrame.getAttribute("src"), new RegExp(`templateId=${template.id}`));
+  const livePreviewEditor = page.frameLocator(".template-live-preview__frame");
+  await livePreviewEditor.getByRole("complementary", { name: "페이지 구조와 컴포넌트" }).waitFor({ state: "visible" });
+  assert.equal(await livePreviewEditor.getByRole("button", { name: "+ 빈 섹션" }).count(), 1);
+  assert.equal(await livePreviewEditor.getByRole("tab", { name: "컴포넌트" }).count(), 1);
+  assert.ok(await livePreviewEditor.getByRole("button", { name: /섹션 삭제/ }).count() > 0);
+  assert.ok(await livePreviewEditor.getByRole("button", { name: /컴포넌트 삭제/ }).count() > 0);
 
   const templateCard = page.locator(".template-list-card").first();
   await templateCard.locator(".template-settings-toggle").click();
   await templateCard.locator(".template-list-settings").waitFor({ state: "visible" });
   assert.equal(await templateCard.locator('input[readonly][value="default"]').count(), 1);
-  assert.equal(await templateCard.locator(".template-layout-settings").count(), 1);
-  assert.equal(await page.locator(".form-template-editor-panels > .prompt-editor-panel > .template-layout-settings").count(), 0);
-  assert.equal(await page.locator(".template-section-membership-row").count(), 1);
+  assert.equal(await templateCard.locator(".template-live-preview").count(), 0);
+  assert.equal(await page.locator(".template-section-membership-row").count(), 0);
 
   await templateCard.getByRole("button", { name: "복사본 만들기", exact: true }).click();
   await page.locator(".form-template-duplicate").waitFor({ state: "visible" });

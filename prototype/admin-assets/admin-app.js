@@ -7404,25 +7404,41 @@ var Sh = Object.freeze({
 			required: !0
 		}
 	},
+	emits: ["layout-saved"],
 	data() {
 		return {
 			layoutRevision: null,
 			loading: !1,
+			frameLoading: !0,
 			error: "",
-			requestRevision: 0
+			requestRevision: 0,
+			frameRevision: 0
 		};
 	},
-	computed: { headingId() {
-		return `template-layout-manager-${String(this.template?.id || "none").replace(/[^a-zA-Z0-9_-]/g, "-")}`;
-	} },
+	computed: {
+		headingId() {
+			return `template-layout-manager-${String(this.template?.id || "none").replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+		},
+		editable() {
+			return this.template?.status === "draft";
+		},
+		editorUrl() {
+			if (!this.template?.id) return "";
+			let e = new URL(Sh.editorUrl(this.template.id));
+			return e.searchParams.set("embedded", "1"), e.searchParams.set("frameRevision", String(this.frameRevision)), e.toString();
+		}
+	},
 	watch: { "template.id": {
 		immediate: !0,
 		handler() {
-			this.loadLayout();
+			this.frameLoading = !0, this.loadLayout();
 		}
 	} },
+	mounted() {
+		globalThis.addEventListener("message", this.handleEditorMessage);
+	},
 	beforeUnmount() {
-		this.requestRevision += 1;
+		this.requestRevision += 1, globalThis.removeEventListener("message", this.handleEditorMessage);
 	},
 	methods: {
 		async loadLayout() {
@@ -7443,32 +7459,64 @@ var Sh = Object.freeze({
 				e === this.requestRevision && (this.loading = !1);
 			}
 		},
-		openEditor() {
-			!this.template?.id || this.template.status !== "draft" || globalThis.open(Sh.editorUrl(this.template.id), "_blank", "noopener");
+		reloadEditor() {
+			this.frameLoading = !0, this.frameRevision += 1, this.loadLayout();
+		},
+		handleFrameLoad() {
+			this.frameLoading = !1;
+		},
+		handleEditorMessage(e) {
+			if (e.origin !== globalThis.location.origin || e.source !== this.$refs.editorFrame?.contentWindow) return;
+			let t = e.data || {};
+			t.type !== "promo-admin-layout-saved" || t.templateId !== this.template?.id || (this.layoutRevision = Number(t.layoutRevision || this.layoutRevision || 1), this.$emit("layout-saved", t));
 		}
 	}
-}, Th = ["aria-labelledby"], Eh = { class: "template-layout-settings-copy" }, Dh = { class: "template-layout-settings-eyebrow" }, Oh = ["id"], kh = { key: 0 }, Ah = {
+}, Th = ["aria-labelledby"], Eh = { class: "template-live-preview__header" }, Dh = { class: "template-layout-settings-eyebrow" }, Oh = ["id"], kh = ["disabled"], Ah = {
+	key: 0,
+	class: "outline-item danger-state",
+	role: "alert"
+}, jh = ["aria-busy"], Mh = ["src", "title"], Nh = {
 	key: 1,
-	class: "field-error"
-}, jh = { class: "template-layout-settings-actions" }, Mh = ["disabled"], Nh = { key: 0 }, Ph = { key: 1 };
+	class: "template-live-preview__loading",
+	role: "status"
+}, Ph = {
+	key: 2,
+	class: "template-live-preview__readonly"
+};
 function Fh(e, t, n, r, i, a) {
 	return B(), V("section", {
-		class: "template-layout-settings",
+		class: "template-live-preview",
 		"aria-labelledby": a.headingId
-	}, [H("div", Eh, [
-		H("span", Dh, M(n.translate("admin.templateLayout.eyebrow")), 1),
-		H("h3", { id: a.headingId }, M(n.translate("admin.templateLayout.title")), 9, Oh),
-		H("p", null, M(n.translate("admin.templateLayout.description")), 1),
-		H("span", { class: De(["template-layout-settings-state", "status-" + n.template.status]) }, [zs(" v" + M(n.template.version) + " · " + M(n.statusLabel(n.template.status)), 1), i.layoutRevision ? (B(), V(R, { key: 0 }, [zs(" · " + M(n.translate("admin.templateLayout.revision")) + " r" + M(i.layoutRevision), 1)], 64)) : W("", !0)], 2),
-		i.loading ? (B(), V("small", kh, M(n.translate("admin.templateLayout.loading")), 1)) : i.error ? (B(), V("small", Ah, M(i.error), 1)) : W("", !0)
-	]), H("div", jh, [H("button", {
-		class: "tiny-button primary template-layout-settings-button",
-		type: "button",
-		disabled: n.template.status !== "draft",
-		onClick: t[0] ||= (...e) => a.openEditor && a.openEditor(...e)
-	}, M(n.translate("admin.templateLayout.openEditor")), 9, Mh), n.template.status === "draft" ? (B(), V("small", Ph, M(n.translate("admin.templateLayout.draftHelp")), 1)) : (B(), V("small", Nh, M(n.translate("admin.templateLayout.readOnlyHelp")), 1))])], 8, Th);
+	}, [
+		H("div", Eh, [H("div", null, [
+			H("span", Dh, M(n.translate("admin.templateLayout.eyebrow")), 1),
+			H("h3", { id: a.headingId }, M(n.template.name) + " Live Preview", 9, Oh),
+			H("small", null, [zs(" v" + M(n.template.version) + " · " + M(n.statusLabel(n.template.status)) + " ", 1), i.layoutRevision ? (B(), V(R, { key: 0 }, [zs(" · " + M(n.translate("admin.templateLayout.revision")) + " r" + M(i.layoutRevision), 1)], 64)) : W("", !0)])
+		]), H("button", {
+			class: "tiny-button",
+			type: "button",
+			disabled: i.loading,
+			onClick: t[0] ||= (...e) => a.reloadEditor && a.reloadEditor(...e)
+		}, "새로고침", 8, kh)]),
+		i.error ? (B(), V("div", Ah, [t[2] ||= H("strong", null, "Live Preview 오류", -1), H("span", null, M(i.error), 1)])) : W("", !0),
+		H("div", {
+			class: "template-live-preview__frame-wrap",
+			"aria-busy": i.frameLoading ? "true" : "false"
+		}, [
+			a.editorUrl ? (B(), V("iframe", {
+				ref: "editorFrame",
+				key: a.editorUrl,
+				class: De(["template-live-preview__frame", { "is-readonly": !a.editable }]),
+				src: a.editorUrl,
+				title: `${n.template.name} 템플릿 Live Preview 편집기`,
+				onLoad: t[1] ||= (...e) => a.handleFrameLoad && a.handleFrameLoad(...e)
+			}, null, 42, Mh)) : W("", !0),
+			i.frameLoading ? (B(), V("div", Nh, "Live Preview를 불러오는 중입니다.")) : W("", !0),
+			!a.editable && !i.frameLoading ? (B(), V("div", Ph, [...t[3] ||= [H("strong", null, "읽기 전용 템플릿입니다.", -1), H("span", null, "왼쪽 템플릿 설정에서 수정하여 초안을 만든 뒤 섹션과 컴포넌트를 편집하세요.", -1)]])) : W("", !0)
+		], 8, jh)
+	], 8, Th);
 }
-var Ih = /*#__PURE__*/ Ch(wh, [["render", Fh]]), Lh = /^--(?:promo|app)-[a-z0-9-]+$/;
+var Ih = /*#__PURE__*/ Ch(wh, [["render", Fh], ["__scopeId", "data-v-c0962cfb"]]), Lh = /^--(?:promo|app)-[a-z0-9-]+$/;
 function Rh(e) {
 	if (Array.isArray(e)) {
 		let t = /* @__PURE__ */ new Map();

@@ -18,7 +18,7 @@ assert.match(html, /admin\.i18n\.englishText/);
 assert.match(html, /<section class="section-library-manager">/);
 assert.doesNotMatch(html, /t\('entity\.template\.sectionConfig'\)/);
 assert.match(html, /t\('entity\.component\.fieldLabel'\)/);
-assert.match(html, /활성 Section Preset을 선택하고 페이지 순서와 최초 노출 레이아웃/);
+assert.match(html, /템플릿을 선택하고 Live Preview에서 섹션·컴포넌트 구성과 기본 레이아웃을 관리합니다/);
 assert.match(html, /class="section-library-list-column"/);
 assert.ok(
   html.indexOf('class="section-library-add"') > html.indexOf('name="section-order-list"'),
