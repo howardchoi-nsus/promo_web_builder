@@ -7,9 +7,9 @@
     <link rel="stylesheet" href="/prototype/design-tokens.css?v=app-tokens-v1" />
     <link rel="stylesheet" href="/prototype/app-shell.css?v=app-shell-sidebar-v4" />
     <link rel="stylesheet" href="/prototype/app-components.css?v=app-components-v1" />
-    <link rel="stylesheet" href="/prototype/styles.css?v=admin-template-manager-v5" />
+    <link rel="stylesheet" href="/prototype/styles.css?v=admin-template-manager-v6" />
     <link rel="stylesheet" href="/prototype/visual-editor-assets/promo-renderer.css?v=promo-renderer-v3" />
-    <link rel="stylesheet" href="/prototype/admin-assets/promo-web-builder.css?v=admin-vite-v2" />
+    <link rel="stylesheet" href="/prototype/admin-assets/promo-web-builder.css?v=admin-vite-v3" />
     <script src="/prototype/vendor/lucide/lucide.min.js?v=1.8.0"></script>
     <script src="/prototype/i18n-runtime.js?v=i18n-runtime-v1"></script>
     <script src="/prototype/shared-shell.js?v=app-shell-sidebar-v4"></script>
@@ -705,6 +705,14 @@
                 :aria-selected="adminTab === 'components'"
                 @click="selectAdminTab('components')"
               >컴포넌트 관리</button>
+              <button
+                class="admin-tab"
+                :class="{ active: adminTab === 'section-presets' }"
+                type="button"
+                role="tab"
+                :aria-selected="adminTab === 'section-presets'"
+                @click="selectAdminTab('section-presets')"
+              >Section Preset 관리</button>
               <button
                 class="admin-tab"
                 :class="{ active: adminTab === 'promo-form' }"
@@ -1435,12 +1443,23 @@
             </div>
           </section>
 
+          <section class="panel stack section-preset-admin" v-show="adminTab === 'section-presets'">
+            <div class="panel-header">
+              <div>
+                <h2>Section Preset 관리</h2>
+                <p>재사용 가능한 Section을 만들고 Component 구성과 Desktop/Mobile Layout Variant를 관리합니다.</p>
+              </div>
+              <button class="tiny-button" type="button" :disabled="wizardSectionsLoading" @click="loadWizardSections({ fresh: true })">{{ t('common.action.refresh') }}</button>
+            </div>
+            <div id="section-preset-manager-target" class="template-component-manager-target"></div>
+          </section>
+
           <section class="panel stack" v-show="adminTab === 'promo-form'">
             <section class="subsection form-template-manager">
               <div class="subsection-title">
                 <div>
                   <h2>폼 템플릿 및 기본 레이아웃</h2>
-                  <span>프로모션 빌더에서 사용할 섹션 구성과 최초 노출 레이아웃을 함께 관리합니다.</span>
+                  <span>활성 Section Preset을 선택하고 페이지 순서와 최초 노출 레이아웃을 관리합니다.</span>
                 </div>
                 <div class="subsection-actions">
                   <button class="tiny-button" type="button" :disabled="wizardFormTemplatesLoading" @click="loadWizardFormTemplates({ fresh: true })">{{ t('common.action.refresh') }}</button>
@@ -1569,7 +1588,87 @@
 
                 <div class="form-template-editor-panels">
                 <section class="prompt-editor-panel" v-if="wizardFormTemplateDetail">
-                  <div id="template-component-manager-target" class="template-component-manager-target"></div>
+                  <div class="subsection-title">
+                    <div>
+                      <h3>Template Section 구성</h3>
+                      <span>Section Preset의 내용과 Layout은 Preset 관리에서 편집하고, 여기서는 연결과 페이지 순서만 관리합니다.</span>
+                    </div>
+                    <button
+                      class="tiny-button primary"
+                      type="button"
+                      :disabled="!wizardFormTemplateCanEdit || !availableWizardSectionsForTemplate.length"
+                      @click="showNewWizardFormTemplateSectionForm = !showNewWizardFormTemplateSectionForm"
+                    >+ Section Preset 연결</button>
+                  </div>
+
+                  <div class="empty-state compact" v-if="!wizardFormTemplateCanEdit">
+                    활성·비활성 Template은 읽기 전용입니다. 수정 버튼을 눌러 Template 초안을 만든 뒤 Preset을 연결하세요.
+                  </div>
+
+                  <div class="template-section-connect" v-if="showNewWizardFormTemplateSectionForm && wizardFormTemplateCanEdit">
+                    <label class="field compact-field">
+                      <span>활성 Section Preset</span>
+                      <select v-model="newWizardFormTemplateSectionForm.sectionId">
+                        <option value="">연결할 Preset을 선택하세요</option>
+                        <option
+                          v-for="group in availableWizardSectionsForTemplate"
+                          :key="group.sectionKey"
+                          :value="group.versions.find(version => version.status === 'active')?.id"
+                        >{{ group.versions.find(version => version.status === 'active')?.name || group.sectionKey }} · {{ group.sectionKey }}</option>
+                      </select>
+                    </label>
+                    <button class="tiny-button" type="button" @click="showNewWizardFormTemplateSectionForm = false; newWizardFormTemplateSectionForm = { sectionId: '' }">{{ t('common.action.cancel') }}</button>
+                    <button class="tiny-button primary" type="button" :disabled="wizardFormTemplateSectionSaving || !newWizardFormTemplateSectionForm.sectionId" @click="addWizardFormTemplateSection">연결</button>
+                  </div>
+
+                  <transition-group name="section-order-list" tag="div" class="history-list template-section-membership-list">
+                    <article
+                      v-for="(section, sectionIndex) in wizardFormTemplateDetail.sections"
+                      :key="section.id"
+                      class="history-item template-section-membership-row"
+                      :class="{
+                        selected: selectedWizardFormTemplateSectionId === section.id,
+                        dragging: draggedWizardFormTemplateSectionKey === section.sectionKey,
+                        'drop-before': wizardFormTemplateSectionDropTargetKey === section.sectionKey && wizardFormTemplateSectionDropPosition === 'before',
+                        'drop-after': wizardFormTemplateSectionDropTargetKey === section.sectionKey && wizardFormTemplateSectionDropPosition === 'after'
+                      }"
+                      @dragover.prevent="dragOverWizardFormTemplateSection(section, $event)"
+                      @drop.prevent.stop="dropWizardFormTemplateSection(section)"
+                    >
+                      <span
+                        class="section-drag-handle"
+                        :class="{ disabled: !wizardFormTemplateSectionCanReorder(section) }"
+                        :draggable="wizardFormTemplateSectionCanReorder(section) && !wizardFormTemplateSectionSaving"
+                        :tabindex="wizardFormTemplateSectionCanReorder(section) ? 0 : -1"
+                        role="button"
+                        :aria-label="`${section.sectionName || section.sectionKey} 순서 변경`"
+                        @dragstart.stop="startWizardFormTemplateSectionDrag(section, $event)"
+                        @dragend.stop="stopWizardFormTemplateSectionDrag"
+                      >{{ wizardFormTemplateSectionCanReorder(section) ? '⋮⋮' : '고정' }}</span>
+                      <button class="template-section-membership-select" type="button" @click="selectWizardFormTemplateSection(section)">
+                        <strong>{{ section.sectionName || section.sectionKey }}</strong>
+                        <span>{{ section.sectionKey }} · v{{ section.sectionVersion }} · {{ wizardSectionStatusLabel(section.sectionStatus) }}</span>
+                      </button>
+                      <div class="action-row align-right">
+                        <button class="tiny-button" type="button" :disabled="!wizardFormTemplateSectionCanReorder(section) || sectionIndex === 0" @click="moveWizardFormTemplateSection(section, -1)">↑</button>
+                        <button class="tiny-button" type="button" :disabled="!wizardFormTemplateSectionCanReorder(section) || sectionIndex === wizardFormTemplateDetail.sections.length - 1" @click="moveWizardFormTemplateSection(section, 1)">↓</button>
+                        <button class="tiny-button danger" type="button" :disabled="!wizardFormTemplateCanEdit || wizardFormTemplateSectionSaving" @click="removeWizardFormTemplateSection(section)">연결 해제</button>
+                      </div>
+                    </article>
+                    <div class="empty-state compact" v-if="!wizardFormTemplateDetail.sections.length">연결된 Section Preset이 없습니다.</div>
+                  </transition-group>
+
+                  <div class="subsection template-section-membership-settings" v-if="selectedWizardFormTemplateSection">
+                    <div class="subsection-title"><h3>Template 적용 설정</h3></div>
+                    <div class="form-grid compact">
+                      <label class="app-checkbox switch-control"><input type="checkbox" v-model="wizardFormTemplateSectionEditor.isRequired" :disabled="!wizardFormTemplateCanEdit" /><span>필수 Section</span></label>
+                      <label class="app-checkbox switch-control"><input type="checkbox" v-model="wizardFormTemplateSectionEditor.isVisible" :disabled="!wizardFormTemplateCanEdit" /><span>프로모션 빌더에 노출</span></label>
+                      <label class="app-checkbox switch-control"><input type="checkbox" v-model="wizardFormTemplateSectionEditor.userReorderAllowed" :disabled="!wizardFormTemplateCanEdit || !!selectedWizardFormTemplateSection.fixedPosition" /><span>사용자 순서 변경 허용</span></label>
+                    </div>
+                    <div class="action-row align-right">
+                      <button class="tiny-button primary" type="button" :disabled="!wizardFormTemplateCanEdit || wizardFormTemplateSectionSaving" @click="saveWizardFormTemplateSection">적용 설정 저장</button>
+                    </div>
+                  </div>
                 </section>
 
                   <section class="prompt-editor-panel empty-state" v-else>템플릿을 선택하세요.</section>
@@ -1695,7 +1794,7 @@
               </div>
             </section>
 
-            <teleport to="#template-component-manager-target" v-if="wizardFormTemplateDetail">
+            <teleport to="#section-preset-manager-target" v-if="adminTab === 'section-presets'">
             <section class="section-library-manager">
               <div class="section-library-manager-body">
             <div class="outline-item danger-state" v-if="wizardSectionsError">
@@ -1707,37 +1806,37 @@
               <div class="section-library-list-column">
               <transition-group name="section-order-list" tag="aside" class="prompt-list-panel">
                 <button
-                  v-for="group in wizardSectionsForCurrentTemplate"
+                  v-for="group in groupedWizardSections"
                   :key="group.sectionKey"
                   class="prompt-list-item"
                   type="button"
                   :class="{
                     selected: selectedWizardSectionKey === group.sectionKey,
-                    dragging: draggedWizardFormTemplateSectionKey === group.sectionKey,
-                    'drop-before': wizardFormTemplateSectionDropTargetKey === group.sectionKey && wizardFormTemplateSectionDropPosition === 'before',
-                    'drop-after': wizardFormTemplateSectionDropTargetKey === group.sectionKey && wizardFormTemplateSectionDropPosition === 'after'
+                    dragging: draggedWizardSectionKey === group.sectionKey,
+                    'drop-before': wizardSectionDropTargetKey === group.sectionKey && wizardSectionDropPosition === 'before',
+                    'drop-after': wizardSectionDropTargetKey === group.sectionKey && wizardSectionDropPosition === 'after'
                   }"
-                  @dragover.prevent="dragOverWizardFormTemplateSection(group.templateMembership, $event)"
-                  @drop.prevent.stop="dropWizardFormTemplateSection(group.templateMembership)"
-                  @click="selectWizardSection(group.sectionKey, { sectionId: group.templateMembership?.sectionId })"
+                  @dragover.prevent="dragOverWizardSection(group, $event)"
+                  @drop.prevent.stop="dropWizardSection(group)"
+                  @click="selectWizardSection(group.sectionKey, { sectionId: group.primary?.id })"
                 >
                   <strong>
                     <span
                       class="section-drag-handle"
-                      :class="{ disabled: !wizardFormTemplateSectionCanReorder(group.templateMembership) }"
-                      :draggable="wizardFormTemplateSectionCanReorder(group.templateMembership) && !wizardFormTemplateSectionSaving"
-                      :title="wizardFormTemplateSectionCanReorder(group.templateMembership) ? '드래그해서 템플릿 섹션 순서 변경' : '순서 고정'"
-                      @dragstart.stop="startWizardFormTemplateSectionDrag(group.templateMembership, $event)"
-                      @dragend.stop="stopWizardFormTemplateSectionDrag"
+                      :class="{ disabled: !wizardSectionCanReorder(group) }"
+                      :draggable="wizardSectionCanReorder(group) && !wizardSectionOrderSaving"
+                      :title="wizardSectionCanReorder(group) ? '드래그해서 Section Preset 순서 변경' : '순서 고정'"
+                      @dragstart.stop="startWizardSectionDrag(group, $event)"
+                      @dragend.stop="stopWizardSectionDrag"
                       @click.stop
-                    >{{ wizardFormTemplateSectionCanReorder(group.templateMembership) ? '⋮⋮' : '고정' }}</span>
-                    {{ group.templateMembership?.sectionName || group.primary?.name }}
+                    >{{ wizardSectionCanReorder(group) ? '⋮⋮' : '고정' }}</span>
+                    {{ group.primary?.name }}
                   </strong>
-                  <span>{{ group.sectionKey }} · v{{ group.templateMembership?.sectionVersion || group.primary?.version }}{{ group.versions.length > 1 ? ` (버전 ${group.versions.length}개)` : '' }}</span>
-                  <em :class="`status-${group.templateMembership?.sectionStatus || group.primary?.status}`">{{ wizardSectionStatusLabel(group.templateMembership?.sectionStatus || group.primary?.status) }}</em>
+                  <span>{{ group.sectionKey }} · v{{ group.primary?.version }}{{ group.versions.length > 1 ? ` (버전 ${group.versions.length}개)` : '' }}</span>
+                  <em :class="`status-${group.primary?.status}`">{{ wizardSectionStatusLabel(group.primary?.status) }}</em>
                 </button>
-                <div class="empty-state compact" v-if="!wizardSectionsLoading && !wizardSectionsForCurrentTemplate.length" key="wizard-sections-empty">
-                  등록된 섹션이 없습니다. "+ 섹션 추가"로 새로 만들어 보세요.
+                <div class="empty-state compact" v-if="!wizardSectionsLoading && !groupedWizardSections.length" key="wizard-sections-empty">
+                  등록된 Section Preset이 없습니다. "+ Preset 추가"로 새로 만들어 보세요.
                 </div>
                 <div class="section-order-saving" v-if="wizardSectionOrderSaving" key="section-order-saving">
                   <span class="section-order-spinner" aria-hidden="true"></span>
@@ -1748,12 +1847,10 @@
                 <button
                   class="tiny-button primary"
                   type="button"
-                  :disabled="!wizardFormTemplateCanEdit"
-                  :title="wizardFormTemplateCanEdit ? '새 섹션을 만들고 현재 템플릿 초안에 추가합니다.' : '템플릿 수정 버튼을 눌러 초안을 먼저 만들어 주세요.'"
+                  title="독립적인 Section Preset 초안을 만듭니다. 활성화한 뒤 Template에서 연결할 수 있습니다."
                   @click="toggleNewWizardSectionForm"
-                >{{ showNewWizardSectionForm ? t('common.action.cancel') : `+ ${t('entity.section.add')}` }}</button>
+                >{{ showNewWizardSectionForm ? t('common.action.cancel') : '+ Preset 추가' }}</button>
               </div>
-              <small class="field-error" v-if="!wizardFormTemplateCanEdit">섹션을 추가하려면 템플릿 설정에서 수정 버튼을 눌러 초안을 먼저 만들어 주세요.</small>
               <div class="form-grid compact section-library-create" v-if="showNewWizardSectionForm">
                 <label class="field compact-field">
                   <span>{{ t('entity.section.key') }}</span>
@@ -1768,7 +1865,7 @@
                   <input v-model="newWizardSectionForm.description" type="text" autocomplete="off" />
                 </label>
                 <div class="action-row align-right">
-                  <button class="tiny-button primary" type="button" :disabled="wizardSectionSaving || !newWizardSectionForm.name" @click="createWizardSection">섹션 추가</button>
+                  <button class="tiny-button primary" type="button" :disabled="wizardSectionSaving || !newWizardSectionForm.name" @click="createWizardSection">Preset 생성</button>
                 </div>
               </div>
               </div>
@@ -2386,6 +2483,6 @@
       <button class="shell-overlay" type="button" data-shell-overlay aria-label="메뉴 닫기"></button>
     </div>
 
-    <script type="module" src="/prototype/admin-assets/admin-app.js?v=admin-vite-v2"></script>
+    <script type="module" src="/prototype/admin-assets/admin-app.js?v=admin-vite-v3"></script>
   </body>
 </html>

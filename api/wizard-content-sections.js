@@ -68,7 +68,7 @@ async function createSection(req, res) {
     insert into wizard_content_sections (
       section_key, name, description, is_required, order_change_allowed,
       fixed_position, sort_order, is_visible_in_wizard, status, version, change_note,
-      owner_form_template_id, ai_design
+      owner_form_template_id, composition_scope, ai_design
     )
     values (
       ${sectionKey}, ${name}, ${String(body.description || "")},
@@ -76,12 +76,13 @@ async function createSection(req, res) {
       ${body.fixedPosition === "top" || body.fixedPosition === "bottom" ? body.fixedPosition : null},
       ${normalizeNumber(body.sortOrder) ?? 0}, ${normalizeBoolean(body.isVisibleInWizard, true)},
       'draft', 1, ${String(body.changeNote || "Section component created from Admin Page.")},
-      null, ${JSON.stringify(normalizeAiDesign(body.aiDesign))}::jsonb
+      null, 'shared',
+      ${JSON.stringify(normalizeAiDesign(body.aiDesign))}::jsonb
     )
     returning
       id::text, section_key, name, description, is_required, order_change_allowed,
       fixed_position, sort_order, is_visible_in_wizard, status, version,
-      change_note, ai_design, archived_at, created_at, updated_at
+      change_note, ai_design, composition_scope, archived_at, created_at, updated_at
   `;
 
   return res.status(201).json({ ok: true, section: toSection(rows[0]) });

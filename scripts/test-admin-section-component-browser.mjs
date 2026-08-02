@@ -153,7 +153,16 @@ try {
   await page.goto(`${origin}/prototype/index.html?view=admin&tab=components`, { waitUntil: "networkidle" });
   await page.getByText("Hero Title", { exact: true }).first().waitFor({ state: "visible" });
   assert.equal(await page.getByText(`컴포넌트 식별자: ${component.componentKey}`, { exact: true }).count(), 1);
-  await page.getByRole("tab", { name: "템플릿·레이아웃 관리" }).click();
+  await page.getByRole("tab", { name: "Section Preset 관리" }).click();
+  assert.equal(await page.locator("#section-preset-manager-target .section-library-manager").count(), 1);
+  const linkedSectionRow = page.locator("#section-preset-manager-target .prompt-list-item").filter({ hasText: "Promotion Intro" });
+  assert.equal(await linkedSectionRow.locator(".status-draft").count(), 1, "Preset list must prefer the editable draft version");
+  await linkedSectionRow.click();
+  assert.match(
+    await page.locator("#section-preset-manager-target .prompt-editor-header").textContent(),
+    /v2/,
+    "Selecting a Section Preset must open its draft version",
+  );
   await page.getByRole("button", { name: "+ 컴포넌트 추가" }).click();
   const activeComponentOption = page.locator(`select option[value="${activeComponentVersionId}"]`);
   assert.equal(await activeComponentOption.count(), 1);
@@ -196,12 +205,19 @@ try {
     sectionKey: "",
     name: "New Promotion Section",
     description: "Created in the template section manager",
-  });
-  assert.deepEqual(addBody, {
-    templateId: template.id,
-    sectionId: "99999999-9999-4999-8999-999999999999",
+    compositionScope: "shared",
   });
   assert.equal(await page.locator(".template-section-composer").count(), 0);
+
+  await page.getByRole("tab", { name: "템플릿·레이아웃 관리" }).click();
+  await page.getByRole("button", { name: "+ Section Preset 연결" }).click();
+  await page.locator(".template-section-connect select").selectOption(sectionB.id);
+  await page.locator(".template-section-connect").getByRole("button", { name: "연결", exact: true }).click();
+  await page.waitForTimeout(50);
+  assert.deepEqual(addBody, {
+    templateId: template.id,
+    sectionId: sectionB.id,
+  });
 
   const templateCard = page.locator(".template-list-card").first();
   await templateCard.locator(".template-settings-toggle").click();
@@ -209,15 +225,7 @@ try {
   assert.equal(await templateCard.locator('input[readonly][value="default"]').count(), 1);
   assert.equal(await templateCard.locator(".template-layout-settings").count(), 1);
   assert.equal(await page.locator(".form-template-editor-panels > .prompt-editor-panel > .template-layout-settings").count(), 0);
-  assert.equal(await page.locator("#template-component-manager-target .section-library-manager").count(), 1);
-  const linkedSectionRow = page.locator("#template-component-manager-target .prompt-list-item").filter({ hasText: "Promotion Intro" });
-  assert.equal(await linkedSectionRow.locator(".status-draft").count(), 1, "Template Section list must show the linked draft status, not another active version");
-  await linkedSectionRow.click();
-  assert.match(
-    await page.locator("#template-component-manager-target .prompt-editor-header").textContent(),
-    /v2/,
-    "Selecting a Template Section must open the version linked by the membership",
-  );
+  assert.equal(await page.locator(".template-section-membership-row").count(), 1);
 
   await templateCard.getByRole("button", { name: "복사본 만들기", exact: true }).click();
   await page.locator(".form-template-duplicate").waitFor({ state: "visible" });

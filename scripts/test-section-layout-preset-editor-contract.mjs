@@ -54,6 +54,8 @@ assert.match(editor, /sectionPresetAdapter\.update/);
 assert.match(main, /queryMode === "section-preset"/);
 assert.match(adminMain, /PromoAdminSectionLayouts/);
 assert.match(adminHtml, /section-layout-preset-manager/);
+assert.match(adminHtml, /Section Preset 관리/);
+assert.match(adminHtml, /<teleport to="#section-preset-manager-target"/);
+assert.match(adminHtml, /재사용 가능한 Section을 만들고 Component 구성과 Desktop\/Mobile Layout Variant를 관리합니다/);
 
 console.log("Section layout preset editor contract test passed.");
-

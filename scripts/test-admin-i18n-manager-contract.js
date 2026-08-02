@@ -18,7 +18,7 @@ assert.match(html, /admin\.i18n\.englishText/);
 assert.match(html, /<section class="section-library-manager">/);
 assert.doesNotMatch(html, /t\('entity\.template\.sectionConfig'\)/);
 assert.match(html, /t\('entity\.component\.fieldLabel'\)/);
-assert.match(html, /프로모션 빌더에서 사용할 섹션 구성과 최초 노출 레이아웃/);
+assert.match(html, /활성 Section Preset을 선택하고 페이지 순서와 최초 노출 레이아웃/);
 assert.match(html, /class="section-library-list-column"/);
 assert.ok(
   html.indexOf('class="section-library-add"') > html.indexOf('name="section-order-list"'),
@@ -28,7 +28,7 @@ const sectionManagerStart = html.indexOf('<section class="section-library-manage
 const sectionManagerEnd = html.indexOf('</teleport>', sectionManagerStart);
 const sectionManagerHtml = html.slice(sectionManagerStart, sectionManagerEnd);
 assert.doesNotMatch(sectionManagerHtml, /class="panel-header"/);
-assert.doesNotMatch(html, /섹션 CRUD|보관\(삭제\)|필수 Section|노출할 Section/);
+assert.doesNotMatch(html, /섹션 CRUD|보관\(삭제\)|노출할 Section/);
 assert.match(app, /loadLocaleMessages/);
 assert.match(app, /localeMessagesByLocale/);
 assert.match(app, /koValue/);

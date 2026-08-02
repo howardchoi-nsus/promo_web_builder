@@ -9937,6 +9937,7 @@ var sv = /*#__PURE__*/ Ch(z_, [["render", ov], ["__scopeId", "data-v-d128f75e"]]
 		"webhook",
 		"llm",
 		"components",
+		"section-presets",
 		"promo-form",
 		"design-tokens",
 		"i18n",
@@ -10242,7 +10243,8 @@ var sv = /*#__PURE__*/ Ch(z_, [["render", ov], ["__scopeId", "data-v-d128f75e"]]
 				newWizardSectionForm: {
 					sectionKey: "",
 					name: "",
-					description: ""
+					description: "",
+					compositionScope: "shared"
 				},
 				wizardItemEditorOpenId: "",
 				wizardItemEditor: {
@@ -10716,7 +10718,7 @@ var sv = /*#__PURE__*/ Ch(z_, [["render", ov], ["__scopeId", "data-v-d128f75e"]]
 						versions: []
 					}), e.get(t.sectionKey).versions.push(t);
 				}), Array.from(e.values()).map((e) => {
-					let t = [...e.versions].sort((e, t) => t.version - e.version), n = t.find((e) => e.status === "active") || t.find((e) => e.status === "draft") || t[0];
+					let t = [...e.versions].sort((e, t) => t.version - e.version), n = t.find((e) => e.status === "draft") || t.find((e) => e.status === "active") || t[0];
 					return {
 						...e,
 						versions: t,
@@ -11045,12 +11047,13 @@ var sv = /*#__PURE__*/ Ch(z_, [["render", ov], ["__scopeId", "data-v-d128f75e"]]
 					"webhook",
 					"llm",
 					"components",
+					"section-presets",
 					"promo-form",
 					"design-tokens",
 					"i18n",
 					"audit"
 				].includes(e)) return;
-				this.adminTab = e, e === "i18n" && this.loadLocales(), e === "components" && this.loadItemComponents(), e === "audit" && this.loadWizardSectionAuditLogs();
+				this.adminTab = e, e === "i18n" && this.loadLocales(), e === "components" && this.loadItemComponents(), e === "section-presets" && (this.loadWizardSections({ fresh: !0 }), this.loadItemComponents()), e === "audit" && this.loadWizardSectionAuditLogs();
 				let t = new URL(window.location.href);
 				t.searchParams.set("view", "admin"), t.searchParams.set("tab", e), window.history.replaceState({}, "", `${t.pathname}${t.search}${t.hash}`);
 			},
@@ -12296,18 +12299,18 @@ var sv = /*#__PURE__*/ Ch(z_, [["render", ov], ["__scopeId", "data-v-d128f75e"]]
 					}
 				}
 			},
-			async removeWizardFormTemplateSection() {
-				let e = this.selectedWizardFormTemplateSection;
-				if (!(!e || !this.wizardFormTemplateCanEdit || this.wizardFormTemplateSectionSaving) && window.confirm(`템플릿에서 ${e.sectionName || e.sectionKey} Section을 제외할까요?`)) {
+			async removeWizardFormTemplateSection(e = null) {
+				let t = e || this.selectedWizardFormTemplateSection;
+				if (!(!t || !this.wizardFormTemplateCanEdit || this.wizardFormTemplateSectionSaving) && window.confirm(`템플릿에서 ${t.sectionName || t.sectionKey} Section을 제외할까요?`)) {
 					this.wizardFormTemplateSectionSaving = !0;
 					try {
-						let t = await fetch("/api/wizard-form-template-sections", {
+						let e = await fetch("/api/wizard-form-template-sections", {
 							method: "DELETE",
 							headers: { "Content-Type": "application/json" },
-							body: JSON.stringify({ id: e.id })
-						}), n = await t.json().catch(() => ({}));
-						if (!t.ok) throw Error(n.message || n.error || `템플릿 Section 제외 오류(${t.status})`);
-						this.selectedWizardFormTemplateSectionId = "", this.expandedWizardFormTemplateSectionId = "", await this.loadWizardFormTemplateDetail(this.wizardFormTemplateDetail.template.id), this.setStatus("템플릿에서 Section을 제외했습니다");
+							body: JSON.stringify({ id: t.id })
+						}), n = await e.json().catch(() => ({}));
+						if (!e.ok) throw Error(n.message || n.error || `템플릿 Section 제외 오류(${e.status})`);
+						this.selectedWizardFormTemplateSectionId === t.id && (this.selectedWizardFormTemplateSectionId = "", this.expandedWizardFormTemplateSectionId = ""), await this.loadWizardFormTemplateDetail(this.wizardFormTemplateDetail.template.id), this.setStatus("템플릿에서 Section을 제외했습니다");
 					} catch (e) {
 						this.setStatus(`템플릿 Section 제외 실패: ${e.message}`);
 					} finally {
@@ -12317,6 +12320,31 @@ var sv = /*#__PURE__*/ Ch(z_, [["render", ov], ["__scopeId", "data-v-d128f75e"]]
 			},
 			wizardFormTemplateSectionCanReorder(e) {
 				return !!(this.wizardFormTemplateCanEdit && !e?.fixedPosition);
+			},
+			async moveWizardFormTemplateSection(e, t) {
+				if (!this.wizardFormTemplateSectionCanReorder(e) || this.wizardFormTemplateSectionSaving) return;
+				let n = this.wizardFormTemplateDetail.sections.filter((e) => !e.fixedPosition), r = n.findIndex((t) => t.id === e.id), i = r + t;
+				if (r < 0 || i < 0 || i >= n.length) return;
+				let a = [...n], [o] = a.splice(r, 1);
+				a.splice(i, 0, o);
+				let s = [...this.wizardFormTemplateDetail.sections], c = [...a];
+				this.wizardFormTemplateDetail.sections = s.map((e) => e.fixedPosition ? e : c.shift()), this.wizardFormTemplateSectionSaving = !0;
+				try {
+					let e = await fetch("/api/wizard-form-template-sections-order", {
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({
+							templateId: this.wizardFormTemplateDetail.template.id,
+							sectionIds: a.map((e) => e.sectionId)
+						})
+					}), t = await e.json().catch(() => ({}));
+					if (!e.ok) throw Error(t.message || t.error || `템플릿 Section 순서 오류(${e.status})`);
+					this.wizardFormTemplateDetail.sections = t.sections || this.wizardFormTemplateDetail.sections, this.setStatus("템플릿 Section 순서를 저장했습니다");
+				} catch (e) {
+					this.wizardFormTemplateDetail.sections = s, this.setStatus(`템플릿 Section 순서 저장 실패: ${e.message}`);
+				} finally {
+					this.wizardFormTemplateSectionSaving = !1;
+				}
 			},
 			startWizardFormTemplateSectionDrag(e, t) {
 				if (!this.wizardFormTemplateSectionCanReorder(e) || this.wizardFormTemplateSectionSaving) {
@@ -12636,7 +12664,8 @@ var sv = /*#__PURE__*/ Ch(z_, [["render", ov], ["__scopeId", "data-v-d128f75e"]]
 				}[e] || e;
 			},
 			wizardSectionCanReorder(e) {
-				return !!(e?.primary?.status === "active" && e.primary.orderChangeAllowed && !e.primary.fixedPosition);
+				let t = e?.versions?.find((e) => e.status === "active") || e?.primary;
+				return !!(t?.status === "active" && t.orderChangeAllowed && !t.fixedPosition);
 			},
 			startWizardSectionDrag(e, t) {
 				if (!this.wizardSectionCanReorder(e) || this.wizardSectionOrderSaving) {
@@ -12684,42 +12713,32 @@ var sv = /*#__PURE__*/ Ch(z_, [["render", ov], ["__scopeId", "data-v-d128f75e"]]
 				this.showNewWizardSectionForm = !this.showNewWizardSectionForm, this.showNewWizardSectionForm && (this.newWizardSectionForm = {
 					sectionKey: "",
 					name: "",
-					description: ""
+					description: "",
+					compositionScope: "shared"
 				});
 			},
 			async createWizardSection() {
-				if (this.wizardSectionSaving) return;
-				let e = this.wizardFormTemplateDetail?.template;
-				if (!e || e.status !== "draft") {
-					this.setStatus("섹션을 추가하려면 템플릿 수정 버튼을 눌러 초안을 먼저 만들어 주세요.");
-					return;
-				}
-				this.wizardSectionSaving = !0;
-				try {
-					let t = await fetch("/api/wizard-content-sections", {
-						method: "POST",
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify(this.newWizardSectionForm)
-					}), n = await t.json().catch(() => ({}));
-					if (!t.ok) throw Error(n.message || n.error || `섹션 생성 오류(${t.status})`);
-					let r = n.section, i = await fetch("/api/wizard-form-template-sections", {
-						method: "POST",
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify({
-							templateId: e.id,
-							sectionId: r.id
-						})
-					}), a = await i.json().catch(() => ({}));
-					if (!i.ok) throw Error(`섹션은 생성됐지만 템플릿 추가에 실패했습니다: ${a.message || a.error || `오류(${i.status})`}`);
-					await this.loadWizardSections({ fresh: !0 }), await this.selectWizardSection(r.sectionKey), await this.loadWizardFormTemplateDetail(e.id, { silent: !0 }), this.newWizardSectionForm = {
-						sectionKey: "",
-						name: "",
-						description: ""
-					}, this.setStatus(`"${r.name}" 섹션을 생성하고 현재 템플릿 초안에 추가했습니다.`);
-				} catch (e) {
-					this.setStatus(`섹션 생성 실패: ${e.message}`);
-				} finally {
-					this.wizardSectionSaving = !1;
+				if (!this.wizardSectionSaving) {
+					this.wizardSectionSaving = !0;
+					try {
+						let e = await fetch("/api/wizard-content-sections", {
+							method: "POST",
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify(this.newWizardSectionForm)
+						}), t = await e.json().catch(() => ({}));
+						if (!e.ok) throw Error(t.message || t.error || `Section Preset 생성 오류(${e.status})`);
+						let n = t.section;
+						await this.loadWizardSections({ fresh: !0 }), await this.selectWizardSection(n.sectionKey), this.newWizardSectionForm = {
+							sectionKey: "",
+							name: "",
+							description: "",
+							compositionScope: "shared"
+						}, this.showNewWizardSectionForm = !1, this.setStatus(`"${n.name}" Section Preset 초안을 생성했습니다.`);
+					} catch (e) {
+						this.setStatus(`Section Preset 생성 실패: ${e.message}`);
+					} finally {
+						this.wizardSectionSaving = !1;
+					}
 				}
 			},
 			async createWizardSectionDraft() {

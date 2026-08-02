@@ -2742,6 +2742,71 @@ body.is-resizing {
   margin-top: 0;
 }
 
+.section-preset-admin {
+  min-width: 0;
+}
+
+.template-section-connect {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto auto;
+  gap: 8px;
+  align-items: end;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.template-section-membership-list {
+  gap: 8px;
+}
+
+.template-section-membership-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.template-section-membership-row.selected {
+  border-color: var(--accent);
+}
+
+.template-section-membership-select {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.template-section-membership-select span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.template-section-membership-settings {
+  margin-top: 4px;
+}
+
+@media (max-width: 900px) {
+  .template-section-connect,
+  .template-section-membership-row {
+    grid-template-columns: 1fr;
+  }
+
+  .template-section-membership-row .section-drag-handle {
+    display: none;
+  }
+}
+
 .template-basic-settings,
 .section-library-manager {
   border-top: 1px solid var(--line);
