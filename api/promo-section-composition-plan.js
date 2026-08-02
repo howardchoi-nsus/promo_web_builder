@@ -33,7 +33,8 @@ module.exports = async function handler(req, res) {
       sql,
       formTemplateId,
       sectionKey,
-      String(body.designTokenSetVersionId || "").trim()
+      String(body.designTokenSetVersionId || "").trim(),
+      body.currentSection
     );
     const options = compositionOptionsFromBody(body);
     const constraints = {

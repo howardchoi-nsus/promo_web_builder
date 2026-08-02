@@ -30,6 +30,80 @@ function stableFingerprint(value) {
   return createHash("sha256").update(JSON.stringify(canonicalizeForFingerprint(value))).digest("hex");
 }
 
+function normalizeCompositionSection(value, expectedSectionKey = "") {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    fail("Current section contract is invalid", "INVALID_SECTION_CONTRACT");
+  }
+  const sectionKey = String(value.sectionKey || "").trim();
+  if (!sectionKey || sectionKey.length > 128 || (expectedSectionKey && sectionKey !== expectedSectionKey)) {
+    fail("Current section key does not match the requested section", "INVALID_SECTION_CONTRACT");
+  }
+  const sourceItems = Array.isArray(value.items) ? value.items : [];
+  if (!sourceItems.length || sourceItems.length > 200) {
+    fail("Current section must contain between 1 and 200 components", "INVALID_SECTION_CONTRACT");
+  }
+  const itemKeys = new Set();
+  const normalizeStyleSlots = (slots) => (Array.isArray(slots) ? slots : []).slice(0, 50).map((slot) => ({
+    slotKey: String(slot?.slotKey || "").trim().slice(0, 128),
+    semanticRole: String(slot?.semanticRole || "").trim().slice(0, 128),
+    aiSelectable: slot?.aiSelectable !== false,
+  })).filter((slot) => slot.slotKey && slot.semanticRole);
+  const normalizeEditorSchema = (schema) => ({
+    ...(Number.isFinite(Number(schema?.maxLength))
+      ? { maxLength: Math.max(0, Math.min(10000, Number(schema.maxLength))) }
+      : {}),
+  });
+  const items = sourceItems.map((item) => {
+    const itemKey = String(item?.itemKey || "").trim();
+    if (!itemKey || itemKey.length > 128 || itemKeys.has(itemKey)) {
+      fail("Current section component keys must be present and unique", "INVALID_SECTION_CONTRACT");
+    }
+    itemKeys.add(itemKey);
+    const fieldKind = String(item?.fieldKind || "text").trim().slice(0, 32);
+    const sourceFields = Array.isArray(item?.fields) ? item.fields : [];
+    if (sourceFields.length > 100) {
+      fail("Current section component has too many fields", "INVALID_SECTION_CONTRACT");
+    }
+    const fieldKeys = new Set();
+    const fields = sourceFields.map((field) => {
+      const fieldKey = String(field?.fieldKey || "").trim();
+      if (!fieldKey || fieldKey.length > 128 || fieldKeys.has(fieldKey)) {
+        fail("Current section field keys must be present and unique", "INVALID_SECTION_CONTRACT");
+      }
+      fieldKeys.add(fieldKey);
+      return {
+        fieldKey,
+        name: String(field?.name || fieldKey).trim().slice(0, 160),
+        fieldKind: String(field?.fieldKind || fieldKind).trim().slice(0, 32),
+        textType: String(field?.textType || "").trim().slice(0, 32) || null,
+        isRequired: Boolean(field?.isRequired),
+        isLocked: Boolean(field?.isLocked),
+        editorSchema: normalizeEditorSchema(field?.editorSchema),
+        styleSlots: normalizeStyleSlots(field?.styleSlots),
+      };
+    });
+    return {
+      itemKey,
+      name: String(item?.name || itemKey).trim().slice(0, 160),
+      fieldKind,
+      textType: String(item?.textType || "").trim().slice(0, 32) || null,
+      isVisibleInWizard: item?.isVisibleInWizard !== false,
+      isLocked: Boolean(item?.isLocked),
+      capabilities: {},
+      editorSchema: normalizeEditorSchema(item?.editorSchema),
+      styleSlots: normalizeStyleSlots(item?.styleSlots),
+      fields,
+    };
+  });
+  const sectionVersion = Number(value.sectionVersion || 1);
+  return {
+    sectionKey,
+    sectionVersion: Number.isFinite(sectionVersion) ? Math.max(1, sectionVersion) : 1,
+    name: String(value.name || sectionKey).trim().slice(0, 160),
+    items,
+  };
+}
+
 function visibleItems(section) {
   return (section?.items || []).filter((item) => item.isVisibleInWizard !== false);
 }
@@ -401,6 +475,7 @@ module.exports = {
   ALLOWED_REGIONS,
   SAFE_TOKEN_PROPERTIES,
   canonicalizeForFingerprint,
+  normalizeCompositionSection,
   publicSectionContract,
   selectableTokens,
   allowedTokenBindings,

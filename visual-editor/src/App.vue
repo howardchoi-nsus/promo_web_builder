@@ -813,6 +813,7 @@ function compositionRequestPayload() {
     formTemplateId: template.value?.id,
     designTokenSetVersionId: template.value?.designTokens?.versionId || "",
     sectionKey,
+    currentSection: selectedSection.value,
     instruction: compositionInstruction.value,
     sectionInputs: sectionInputs.value?.[sectionKey] || {},
     currentLayout: currentCompositionLayout(sectionKey),

@@ -9,6 +9,7 @@ const {
   stableFingerprint,
   normalizeCompositionPlan,
   compositionOptionsFromBody,
+  normalizeCompositionSection,
 } = require("../api/_promo-section-composition-contract");
 
 assert.equal(
@@ -59,6 +60,21 @@ const tokenSet = {
   ],
 };
 const template = { id: "template", version: 2 };
+const dynamicSection = normalizeCompositionSection({
+  sectionKey: "dynamic-section",
+  name: "Dynamic section",
+  items: [{ itemKey: "title", name: "Title", fieldKind: "text", fields: [] }],
+}, "dynamic-section");
+assert.equal(dynamicSection.sectionKey, "dynamic-section");
+assert.equal(dynamicSection.items[0].itemKey, "title");
+assert.throws(() => normalizeCompositionSection({
+  sectionKey: "dynamic-section",
+  items: [{ itemKey: "title" }, { itemKey: "title" }],
+}, "dynamic-section"), /component keys must be present and unique/);
+assert.throws(() => normalizeCompositionSection({
+  sectionKey: "different-section",
+  items: [{ itemKey: "title" }],
+}, "dynamic-section"), /does not match/);
 const current = {
   title: "Before",
   action: { label: "Before CTA", link: "https://example.com/current" },
@@ -266,6 +282,7 @@ assert.match(promptStore, /section_composition_planner/);
 assert.match(app, /promo-section-composition-validate/);
 assert.match(app, /designTokenSetVersionId:\s*template\.value\?\.designTokens\?\.versionId/);
 assert.match(context, /fetchTokenVersion\(sql,\s*selectedTokenVersionId\)/);
+assert.match(context, /normalizeCompositionSection\(currentSection, sectionKey\)/);
 assert.doesNotMatch(context, /template\.designTokenSetVersionId/);
 assert.match(app, /EditorCommandType\.DOCUMENT_PATCH/);
 assert.match(app, /generateBackgroundImage:\s*true/);
@@ -277,5 +294,6 @@ assert.match(controls, /canGenerate/);
 assert.match(controls, /텍스트 또는 CTA 콘텐츠를 2자 이상 입력하면 키비주얼을 생성할 수 있습니다/);
 assert.match(app, /!sectionAiHasContent\(selectedSection\.value\)/);
 assert.match(app, /:can-generate="sectionAiHasContent\(section\)"/);
+assert.match(app, /currentSection:\s*selectedSection\.value/);
 
 console.log("Natural-language section composition contract tests passed.");

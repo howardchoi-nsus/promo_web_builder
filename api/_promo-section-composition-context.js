@@ -5,9 +5,10 @@ const {
   publicSectionContract,
   selectableTokens,
   compositionFingerprint,
+  normalizeCompositionSection,
 } = require("./_promo-section-composition-contract");
 
-async function loadCompositionContext(sql, formTemplateId, sectionKey, designTokenSetVersionId) {
+async function loadCompositionContext(sql, formTemplateId, sectionKey, designTokenSetVersionId, currentSection) {
   const templateData = await fetchTemplateWithItems(sql, formTemplateId);
   if (!templateData || !["active", "draft"].includes(templateData.template.status)) {
     const error = new Error("Form template not found");
@@ -15,9 +16,12 @@ async function loadCompositionContext(sql, formTemplateId, sectionKey, designTok
     throw error;
   }
   const template = toFormTemplate(templateData.template);
-  const section = templateData.sections.find((candidate) => (
+  const storedSection = templateData.sections.find((candidate) => (
     candidate.sectionKey === sectionKey && candidate.isVisible !== false
   ));
+  const section = currentSection
+    ? normalizeCompositionSection(currentSection, sectionKey)
+    : storedSection;
   if (!section) {
     const error = new Error("Template section not found");
     error.statusCode = 404;

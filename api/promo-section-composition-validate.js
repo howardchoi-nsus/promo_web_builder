@@ -32,7 +32,8 @@ module.exports = async function handler(req, res) {
       getSql(),
       formTemplateId,
       sectionKey,
-      String(body.designTokenSetVersionId || "").trim()
+      String(body.designTokenSetVersionId || "").trim(),
+      body.currentSection
     );
     if (context.fingerprint !== fingerprint) {
       return res.status(409).json({
