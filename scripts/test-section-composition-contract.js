@@ -11,6 +11,20 @@ const {
   compositionOptionsFromBody,
   normalizeCompositionSection,
 } = require("../api/_promo-section-composition-contract");
+const {
+  templateVersionSupportsComposition,
+} = require("../api/_promo-section-composition-context");
+
+assert.equal(templateVersionSupportsComposition({ template: { status: "active" } }, null), true);
+assert.equal(templateVersionSupportsComposition({ template: { status: "draft" } }, null), true);
+assert.equal(templateVersionSupportsComposition({ template: { status: "inactive" } }, null), false);
+assert.equal(
+  templateVersionSupportsComposition({ template: { status: "inactive" } }, { sectionKey: "saved-section" }),
+  true,
+  "saved AI documents must keep composing against their immutable inactive template version",
+);
+assert.equal(templateVersionSupportsComposition({ template: { status: "archived" } }, { sectionKey: "saved-section" }), false);
+assert.equal(templateVersionSupportsComposition(null, { sectionKey: "saved-section" }), false);
 
 assert.equal(
   stableFingerprint({ sectionStyle: { backgroundColor: "#000", padding: "10px" }, itemStyles: { "intro.title": { width: 320, x: 10 } } }),

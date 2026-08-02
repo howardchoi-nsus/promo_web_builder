@@ -8,9 +8,15 @@ const {
   normalizeCompositionSection,
 } = require("./_promo-section-composition-contract");
 
+function templateVersionSupportsComposition(templateData, currentSection) {
+  const status = templateData?.template?.status;
+  return ["active", "draft"].includes(status)
+    || (status === "inactive" && Boolean(currentSection));
+}
+
 async function loadCompositionContext(sql, formTemplateId, sectionKey, designTokenSetVersionId, currentSection) {
   const templateData = await fetchTemplateWithItems(sql, formTemplateId);
-  if (!templateData || !["active", "draft"].includes(templateData.template.status)) {
+  if (!templateVersionSupportsComposition(templateData, currentSection)) {
     const error = new Error("Form template not found");
     error.statusCode = 404;
     throw error;
@@ -49,4 +55,4 @@ async function loadCompositionContext(sql, formTemplateId, sectionKey, designTok
   };
 }
 
-module.exports = { loadCompositionContext };
+module.exports = { loadCompositionContext, templateVersionSupportsComposition };
