@@ -124,6 +124,8 @@ try {
         deletedVersionCount: 1,
         cancelledDesignRunCount: 1,
         updatedAssetJobCount: 1,
+        deletedMembershipCount: 1,
+        deletedOwnedSectionCount: 1,
       });
     }
     if (url.pathname === "/api/wizard-form-template-activate" && request.method() === "POST") {

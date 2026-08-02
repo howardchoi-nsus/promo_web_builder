@@ -57,6 +57,8 @@ function createResponse() {
     [],
     [{ id: "asset-job-1" }],
     [{ id: "design-run-1" }],
+    [{ id: "membership-1" }],
+    [{ id: "owned-section-1" }],
     [{ id: "version-1", version: 1 }, { id: "version-2", version: 2 }],
   ];
   await handler({ method: "DELETE", body: {}, query: { id: currentTemplate.id } }, response);
@@ -67,12 +69,19 @@ function createResponse() {
     deletedVersionCount: 2,
     cancelledDesignRunCount: 1,
     updatedAssetJobCount: 1,
+    deletedMembershipCount: 1,
+    deletedOwnedSectionCount: 1,
   });
   assert.match(queryLog.at(-1).text, /delete from wizard_form_templates/);
   assert.match(queryLog.at(-1).text, /not exists/);
   assert.ok(queryLog.some((query) => /update promo_section_design_runs/.test(query.text)));
   assert.ok(queryLog.some((query) => /form_template_id = null/.test(query.text)));
   assert.ok(queryLog.some((query) => /component_instance_id = null/.test(query.text)));
+  const membershipDeleteIndex = queryLog.findIndex((query) => /delete from wizard_form_template_sections/.test(query.text));
+  const ownedSectionDeleteIndex = queryLog.findIndex((query) => /delete from wizard_content_sections/.test(query.text));
+  const templateDeleteIndex = queryLog.findIndex((query) => /delete from wizard_form_templates/.test(query.text));
+  assert.ok(membershipDeleteIndex >= 0 && membershipDeleteIndex < templateDeleteIndex);
+  assert.ok(ownedSectionDeleteIndex >= 0 && ownedSectionDeleteIndex < templateDeleteIndex);
 
   response = createResponse();
   queryResults = [[{ id: "active-version", status: "active", is_default: true }]];

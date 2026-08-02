@@ -69,6 +69,26 @@ module.exports = async function handler(req, res) {
       returning run.id::text
     `;
 
+    const deletedMemberships = await sql`
+      delete from wizard_form_template_sections membership
+      where membership.form_template_id in (
+        select template.id
+        from wizard_form_templates template
+        where template.template_key = ${current.template_key}
+      )
+      returning membership.id::text
+    `;
+
+    const deletedOwnedSections = await sql`
+      delete from wizard_content_sections section
+      where section.owner_form_template_id in (
+        select template.id
+        from wizard_form_templates template
+        where template.template_key = ${current.template_key}
+      )
+      returning section.id::text
+    `;
+
     const deletedRows = await sql`
       delete from wizard_form_templates target
       where target.template_key = ${current.template_key}
@@ -90,6 +110,8 @@ module.exports = async function handler(req, res) {
       deletedVersionCount: deletedRows.length,
       cancelledDesignRunCount: cancelledDesignRuns.length,
       updatedAssetJobCount: updatedAssetJobs.length,
+      deletedMembershipCount: deletedMemberships.length,
+      deletedOwnedSectionCount: deletedOwnedSections.length,
     });
   } catch (error) {
     return res.status(error.statusCode || 500).json({
