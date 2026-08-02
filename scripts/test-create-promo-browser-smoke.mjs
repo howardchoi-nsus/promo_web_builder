@@ -692,31 +692,14 @@ try {
   );
   await textComponent.click();
   await textEditorToolbar.waitFor({ state: "visible" });
-  const colorTokenSelect = editorFrame.locator('.design-controls select:has(option[value="--app-accent"])');
-  await colorTokenSelect.selectOption("--app-accent");
-  assert.equal(
-    await editorFrame.locator(".token-value-preview--color i").evaluate((node) => getComputedStyle(node).backgroundColor),
-    "rgb(211, 0, 0)",
-    "Color token controls must preview the selected real color",
-  );
-  const fontSizeSelect = editorFrame.locator('.design-controls select:has(option[value="--promo-font-size-xl"])');
+  await textEditorToolbar.getByRole("button", { name: "폰트 컬러 Accent", exact: true }).click();
+  const fontSizeSelect = textEditorToolbar.getByRole("combobox", { name: "글자 크기 디자인 토큰", exact: true });
   await fontSizeSelect.selectOption("--promo-font-size-xl");
   await page.waitForTimeout(50);
   assert.equal(
     Number.parseFloat(await textContentNode.evaluate((node) => getComputedStyle(node).fontSize)),
     32,
     "Text font size must use the selected design-token step",
-  );
-  assert.equal(
-    Number.parseFloat(await editorFrame.locator(".token-value-preview--font > span").evaluate((node) => getComputedStyle(node).fontSize)),
-    32,
-    "Font token controls must preview the selected real size",
-  );
-  await editorFrame.locator(".token-option-menu").filter({ hasText: "실제 크기 보기" }).locator("summary").click();
-  assert.equal(
-    Number.parseFloat(await editorFrame.locator(".token-option-list--font > div").filter({ hasText: "80px" }).locator("span").evaluate((node) => getComputedStyle(node).fontSize)),
-    80,
-    "Font token option previews must render each available token at its real size",
   );
   const tokenSizedContent = await page.evaluate(() => JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null"));
   assert.equal(

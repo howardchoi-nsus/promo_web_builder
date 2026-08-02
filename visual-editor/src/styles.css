@@ -146,6 +146,7 @@ button, a { letter-spacing: 0; }
 .text-toolbar-select select { width: 112px; min-height: 32px; border: 1px solid var(--app-line-strong); border-radius: 5px; background: var(--app-panel); color: var(--app-ink); padding: 0 24px 0 8px; font-size: 10px; }
 .text-toolbar-select--style select { width: 124px; }
 .text-toolbar-select--size select { width: 108px; }
+.text-toolbar-select--weight select { width: 104px; }
 .text-color-controls { gap: 2px; }
 .text-color-menu, .text-editor-more { position: relative; flex: 0 0 auto; }
 .text-color-menu > summary, .text-editor-more > summary { position: relative; list-style: none; }
@@ -245,6 +246,10 @@ button, a { letter-spacing: 0; }
 .section-composition-panel header > div { display: grid; gap: 2px; }
 .section-composition-panel header small, .section-composition-panel > p { color: var(--app-muted); font-size: 11px; }
 .section-composition-panel > p { margin: 0; line-height: 1.5; }
+.section-composition-assistant { display: grid; gap: 10px; }
+.section-composition-assistant > summary { padding: 9px 10px; border: 1px solid var(--app-line-strong); background: var(--app-panel); color: var(--app-ink); cursor: pointer; font-size: 12px; font-weight: 800; }
+.section-composition-assistant[open] > summary { margin-bottom: 10px; border-color: var(--app-accent); color: var(--app-accent); }
+.section-composition-assistant > label { display: grid; gap: 5px; margin-bottom: 10px; }
 .section-composition-scope { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin: 0; padding: 9px; border: 1px solid var(--app-line); }
 .section-composition-scope legend { padding: 0 5px; color: var(--app-sub); font-size: 11px; font-weight: 750; }
 .section-composition-request, .section-composition-actions button { min-height: 34px; border: 1px solid var(--app-accent); background: var(--app-accent); color: var(--app-panel); cursor: pointer; font-weight: 750; }

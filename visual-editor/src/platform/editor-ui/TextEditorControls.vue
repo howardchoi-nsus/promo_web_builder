@@ -48,8 +48,11 @@ const selectedLineStyles = computed(() => {
   }));
 });
 const effectiveTextStyle = computed(() => selectedLineStyles.value[0] || props.itemStyle);
+const selectedTextStyles = computed(() => (
+  selectedLineStyles.value.length ? selectedLineStyles.value : [props.itemStyle]
+));
 const allSelectedLinesMatch = (predicate) => (
-  selectedLineStyles.value.length > 0 && selectedLineStyles.value.every(predicate)
+  selectedTextStyles.value.length > 0 && selectedTextStyles.value.every(predicate)
 );
 const boldActive = computed(() => {
   return allSelectedLinesMatch((style) => {
@@ -72,7 +75,10 @@ const selectedBackgroundColor = computed(() => (
 ));
 
 function emitLinePatch(patch) {
-  if (!hasLineSelection.value) return;
+  if (!hasLineSelection.value) {
+    emit("patch-style", patch);
+    return;
+  }
   const lineStyles = { ...(props.itemStyle.lineStyles || {}) };
   const scopeKey = props.lineSelection.scopeKey;
   const scope = { ...(lineStyles[scopeKey] || {}) };
@@ -88,6 +94,18 @@ function emitLinePatch(patch) {
   if (Object.keys(scope).length) lineStyles[scopeKey] = scope;
   else delete lineStyles[scopeKey];
   emit("patch-style", { lineStyles: Object.keys(lineStyles).length ? lineStyles : undefined });
+}
+
+function applyFontWeight(value) {
+  if (String(value).startsWith("raw:")) {
+    emitLinePatch({
+      textStyleToken: undefined,
+      fontWeightToken: undefined,
+      fontWeight: Number(String(value).slice(4)) || 400,
+    });
+    return;
+  }
+  tokenPatch("fontWeightToken", "fontWeight", value);
 }
 
 function tokenPatch(property, rawProperty, tokenKey, clearTextStyle = true) {
@@ -190,7 +208,6 @@ function changeListIndent(delta) {
           <span class="visually-hidden">글자 크기</span>
           <select
             :value="effectiveTextStyle.fontSizeToken || ''"
-            :disabled="!hasLineSelection"
             aria-label="글자 크기 디자인 토큰"
             title="글자 크기"
             @change="tokenPatch('fontSizeToken', 'fontSize', $event.target.value)"
@@ -199,10 +216,26 @@ function changeListIndent(delta) {
             <option v-for="token in fontSizeTokens" :key="token.key" :value="token.key">{{ token.label }} · {{ token.value }}</option>
           </select>
         </label>
+        <label class="text-toolbar-select text-toolbar-select--weight">
+          <span class="visually-hidden">폰트 굵기</span>
+          <select
+            :value="effectiveTextStyle.fontWeightToken || (effectiveTextStyle.fontWeight ? `raw:${effectiveTextStyle.fontWeight}` : '')"
+            aria-label="폰트 굵기"
+            title="폰트 굵기"
+            @change="applyFontWeight($event.target.value)"
+          >
+            <option value="">기본 굵기</option>
+            <option v-for="token in fontWeightTokens" :key="token.key" :value="token.key">{{ token.label }}</option>
+            <option value="raw:400">Regular</option>
+            <option value="raw:500">Medium</option>
+            <option value="raw:700">Bold</option>
+            <option value="raw:800">Extra Bold</option>
+          </select>
+        </label>
       </div>
 
       <div class="text-toolbar-group text-mark-controls" aria-label="텍스트 강조">
-        <button type="button" :disabled="!hasLineSelection" :class="{ active: boldActive }" :aria-pressed="boldActive" title="굵게" aria-label="굵게" @click="toggleBold">
+        <button type="button" :class="{ active: boldActive }" :aria-pressed="boldActive" title="굵게" aria-label="굵게" @click="toggleBold">
           <i class="fa-solid fa-bold" aria-hidden="true"></i>
         </button>
         <button
@@ -227,12 +260,11 @@ function changeListIndent(delta) {
             ></span>
           </summary>
           <div class="text-token-palette" role="group" aria-label="폰트 컬러 디자인 토큰">
-            <button type="button" :disabled="!hasLineSelection" class="text-token-palette__default" :class="{ active: !selectedTextFill }" @click="applyTextFill('color', '')">기본</button>
+            <button type="button" class="text-token-palette__default" :class="{ active: !selectedTextFill }" @click="applyTextFill('color', '')">기본</button>
             <button
               v-for="token in colorTokens"
               :key="`color-${token.key}`"
               type="button"
-              :disabled="!hasLineSelection"
               class="text-token-swatch"
               :class="{ active: effectiveTextStyle.colorToken === token.key && !effectiveTextStyle.textGradientToken }"
               :title="token.label"
@@ -244,7 +276,6 @@ function changeListIndent(delta) {
               v-for="token in gradientTokens"
               :key="`gradient-${token.key}`"
               type="button"
-              :disabled="!hasLineSelection"
               class="text-token-swatch text-token-swatch--gradient"
               :class="{ active: effectiveTextStyle.textGradientToken === token.key }"
               :title="token.label"

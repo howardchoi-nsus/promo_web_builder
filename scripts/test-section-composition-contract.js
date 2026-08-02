@@ -259,6 +259,7 @@ assert.throws(() => normalizeCompositionPlan({
 const provider = fs.readFileSync(path.join(__dirname, "../api/_promo-section-design-provider.js"), "utf8");
 const promptStore = fs.readFileSync(path.join(__dirname, "../api/_prompt-template-store.js"), "utf8");
 const app = fs.readFileSync(path.join(__dirname, "../visual-editor/src/App.vue"), "utf8");
+const controls = fs.readFileSync(path.join(__dirname, "../visual-editor/src/platform/editor-ui/SectionCompositionControls.vue"), "utf8");
 const context = fs.readFileSync(path.join(__dirname, "../api/_promo-section-composition-context.js"), "utf8");
 assert.match(provider, /SECTION_COMPOSITION_PLAN_SCHEMA/);
 assert.match(promptStore, /section_composition_planner/);
@@ -267,6 +268,10 @@ assert.match(app, /designTokenSetVersionId:\s*template\.value\?\.designTokens\?\
 assert.match(context, /fetchTokenVersion\(sql,\s*selectedTokenVersionId\)/);
 assert.doesNotMatch(context, /template\.designTokenSetVersionId/);
 assert.match(app, /EditorCommandType\.DOCUMENT_PATCH/);
-assert.match(app, /preserveContent:\s*compositionPreserveContent\.value/);
+assert.match(app, /generateBackgroundImage:\s*true/);
+assert.match(app, /scope:\s*\{\s*layout:\s*false,\s*tokens:\s*false,\s*keyVisual:\s*true,\s*motion:\s*false,\s*preserveContent:\s*true/s);
+assert.match(controls, />AI 도우미</);
+assert.match(controls, />AI 키비주얼 만들기</);
+assert.doesNotMatch(controls, /AI 레이아웃 생성|섹션 키비주얼도 생성|적용 범위/);
 
 console.log("Natural-language section composition contract tests passed.");

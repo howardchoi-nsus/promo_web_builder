@@ -495,9 +495,9 @@ function estimatedItemHeight(item) {
 
 function renderedItemHeight(section, item) {
   const style = itemStyle(section, item);
-  if (item.fieldKind === "text" && usesAutomaticComponentHeight(item, style)) {
-    return measuredItemHeights.value[styleKey(section, item)] || estimatedItemHeight(item);
-  }
+  const measuredHeight = measuredItemHeights.value[styleKey(section, item)];
+  if (Number.isFinite(measuredHeight) && measuredHeight > 0) return measuredHeight;
+  if (item.fieldKind === "text" && usesAutomaticComponentHeight(item, style)) return estimatedItemHeight(item);
   return estimatedItemHeight(item);
 }
 
@@ -629,14 +629,28 @@ function inlineItemStyle(section, item) {
     ? style.verticalAnchor
     : "middle";
   const anchorLeft = { left: "0%", center: "50%", right: "100%" }[horizontalAnchor];
-  const anchorTop = { top: "0%", middle: "50%", bottom: "100%" }[verticalAnchor];
   const anchorTranslateX = { left: "0%", center: "-50%", right: "-100%" }[horizontalAnchor];
-  const anchorTranslateY = { top: "0%", middle: "-50%", bottom: "-100%" }[verticalAnchor];
+  const canvasHeight = Math.max(0, resolvedSectionHeight(section) - SECTION_VERTICAL_PADDING_PX);
+  const measuredHeight = measuredItemHeights.value[styleKey(section, item)];
+  const boundaryHeight = Number.isFinite(measuredHeight) && measuredHeight > 0
+    ? measuredHeight
+    : (heightPx || renderedItemHeight(section, item));
+  const maximumTop = Math.max(0, canvasHeight - boundaryHeight);
+  const verticalFactor = { top: 0, middle: 0.5, bottom: 1 }[verticalAnchor];
+  const requestedTop = anchored
+    ? ((canvasHeight * verticalFactor) + (Number(style.offsetY) || 0) - (boundaryHeight * verticalFactor))
+    : (style.yPx !== undefined
+      ? Number(style.yPx) || 0
+      : ((Number(position.yPct) || 0) / 100) * canvasHeight);
+  const boundedTop = Math.min(maximumTop, Math.max(0, requestedTop));
+  const boundedLeftPct = anchored
+    ? undefined
+    : Math.min(Math.max(0, 100 - widthPct), Math.max(0, Number(position.xPct) || 0));
   const result = {
-    left: anchored ? anchorLeft : `${position.xPct || 0}%`,
-    top: anchored ? anchorTop : (style.yPx !== undefined ? `${style.yPx}px` : `${position.yPct || 0}%`),
+    left: anchored ? anchorLeft : `${boundedLeftPct}%`,
+    top: `${boundedTop}px`,
     transform: anchored
-      ? `translate(${anchorTranslateX}, ${anchorTranslateY}) translate(${Number(style.offsetX) || 0}px, ${Number(style.offsetY) || 0}px)`
+      ? `translateX(${anchorTranslateX}) translateX(${Number(style.offsetX) || 0}px)`
       : undefined,
     zIndex: style.zIndex || 2,
     color: style.colorToken ? `var(${style.colorToken})` : style.color,
@@ -1435,7 +1449,7 @@ function startSectionResize(event, section) {
             ]"
             :data-item-key="item.itemKey"
             :data-style-key="styleKey(section, item)"
-            :data-auto-height-measure="item.fieldKind === 'text' && usesAutomaticComponentHeight(item, itemStyle(section, item)) ? 'true' : null"
+            data-auto-height-measure="true"
             :data-motion-target="itemMotionBinding(section, item, itemIndex)?.trigger === 'viewport-enter' ? `item:${styleKey(section, item)}` : null"
             :style="{ ...inlineItemStyle(section, item), ...itemMotionStyle(section, item, itemIndex) }"
             @click.stop="selectRendererItem(section, item, $event)"

@@ -30,7 +30,9 @@ assert.match(editorMarkup, /class="app-switch app-switch--small component-visibi
 assert.match(previewControls, /class="guide-mode-control"/, "Preview guide mode must use an explicit segmented mode control");
 assert.match(previewControls, /role="group"/, "Preview guide mode must expose grouped-control semantics");
 assert.match(previewControls, /:aria-pressed="guideMode === mode\.key"/, "Preview guide mode buttons must expose their selected state");
-assert.match(compositionControls, /class="app-checkbox toggle-field"/, "Composition options must use the shared checkbox");
+assert.match(compositionControls, />AI 도우미</, "Section composition must be presented as the AI helper");
+assert.match(compositionControls, />AI 키비주얼 만들기</, "The AI helper must expose the key-visual accordion");
+assert.doesNotMatch(compositionControls, /class="app-checkbox toggle-field"/, "The key-visual-only helper must not expose layout scope toggles");
 assert.match(designTokenManager, /class="app-checkbox design-token-check"/, "Design token filters must use the shared checkbox");
 
 for (const source of [adminMarkup, editorMarkup]) {

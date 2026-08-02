@@ -92,12 +92,6 @@ const multiLayoutSuggestion = ref(null);
 const multiLayoutUndoStack = ref([]);
 const multiLayoutRevision = ref(0);
 const compositionInstruction = ref("");
-const compositionGenerateBackground = ref(false);
-const compositionApplyLayout = ref(true);
-const compositionApplyTokens = ref(true);
-const compositionApplyMotion = ref(false);
-const compositionPreserveContent = ref(true);
-const compositionImageGuidance = ref("");
 const compositionFadeMode = ref("none");
 const compositionKeyVisualTextMode = ref("none");
 const compositionKeyVisualText = ref("");
@@ -405,31 +399,9 @@ function setFieldVisible(section, item, field, visible) {
   }, { label: "컴포넌트 필드 노출 변경" });
 }
 
-function applyColorToken(tokenKey) {
-  const token = colorTokenOptions.value.find((candidate) => candidate.key === tokenKey);
-  updateItemStyle({
-    colorToken: token?.key,
-    color: undefined,
-  });
-}
-
-function applyFontSizeToken(tokenKey) {
-  const token = fontSizeTokenOptions.value.find((candidate) => candidate.key === tokenKey);
-  updateItemStyle({
-    fontSizeToken: token?.key,
-    fontSize: token?.px,
-  });
-}
-
 function resetSectionComposition() {
   compositionRequestSequence += 1;
   compositionInstruction.value = "";
-  compositionGenerateBackground.value = false;
-  compositionApplyLayout.value = true;
-  compositionApplyTokens.value = true;
-  compositionApplyMotion.value = false;
-  compositionPreserveContent.value = true;
-  compositionImageGuidance.value = "";
   compositionFadeMode.value = "none";
   compositionPlanning.value = false;
   compositionApplying.value = false;
@@ -844,19 +816,19 @@ function compositionRequestPayload() {
     instruction: compositionInstruction.value,
     sectionInputs: sectionInputs.value?.[sectionKey] || {},
     currentLayout: currentCompositionLayout(sectionKey),
-    generateBackgroundImage: compositionGenerateBackground.value,
-    imageGuidance: compositionImageGuidance.value,
+    generateBackgroundImage: true,
+    imageGuidance: compositionInstruction.value.trim(),
     fadeMode: compositionFadeMode.value,
     keyVisualTextMode: compositionKeyVisualTextMode.value,
     keyVisualText: compositionKeyVisualTextMode.value === "explicit"
       ? compositionKeyVisualText.value.trim()
       : "",
     scope: {
-      layout: compositionApplyLayout.value,
-      tokens: compositionApplyTokens.value,
-      keyVisual: compositionGenerateBackground.value,
-      motion: compositionApplyMotion.value,
-      preserveContent: compositionPreserveContent.value,
+      layout: false,
+      tokens: false,
+      keyVisual: true,
+      motion: false,
+      preserveContent: true,
     },
   };
 }
@@ -1005,14 +977,7 @@ async function applySectionComposition() {
     if (requestSequence !== compositionRequestSequence || selectedSectionKey.value !== plannedSectionKey) return;
     const proposal = result.proposal;
     const sectionKey = selectedSection.value.sectionKey;
-    const nextItemStyles = { ...(designSpec.value.itemStyles || {}) };
-    Object.entries(proposal.layoutPatch?.itemStyles || {}).forEach(([styleKey, patch]) => {
-      nextItemStyles[styleKey] = { ...(nextItemStyles[styleKey] || {}), ...patch };
-    });
     const nextSectionStyles = { ...(designSpec.value.sectionStyles || {}) };
-    Object.entries(proposal.layoutPatch?.sectionStyles || {}).forEach(([styleKey, patch]) => {
-      nextSectionStyles[styleKey] = { ...(nextSectionStyles[styleKey] || {}), ...patch };
-    });
     if (proposal.backgroundImage?.requested) {
       nextSectionStyles[sectionKey] = {
         ...(nextSectionStyles[sectionKey] || {}),
@@ -1020,25 +985,13 @@ async function applySectionComposition() {
         backgroundFadeSafeArea: proposal.backgroundImage.safeArea,
       };
     }
-    const nextMotionSpec = proposal.motionPatch
-      ? normalizeMotionSpec({
-          ...motionSpec.value,
-          sections: { ...motionSpec.value.sections, ...(proposal.motionPatch.sections || {}) },
-          items: { ...motionSpec.value.items, ...(proposal.motionPatch.items || {}) },
-        })
-      : motionSpec.value;
     executeEditorCommand(EditorCommandType.DOCUMENT_PATCH, {
-      content: {
-        ...sectionInputs.value,
-        [sectionKey]: proposal.content,
-      },
+      content: sectionInputs.value,
       layout: {
         ...designSpec.value,
-        itemStyles: nextItemStyles,
         sectionStyles: nextSectionStyles,
-        motionSpec: nextMotionSpec,
       },
-    }, { source: "ai", label: "AI 섹션 구성 적용" });
+    }, { source: "ai", label: "AI 섹션 키비주얼 적용" });
     compositionResult.value = null;
     await nextTick();
     if (proposal.backgroundImage?.requested) {
@@ -1426,12 +1379,6 @@ const selectedItemStyle = computed(() => (
     ? { ...selectedDesktopItemStyle.value, ...selectedMobileItemStyle.value }
     : selectedDesktopItemStyle.value
 ));
-const selectedColorTokenOption = computed(() => colorTokenOptions.value.find(
-  (token) => token.key === selectedItemStyle.value.colorToken
-) || null);
-const selectedFontSizeTokenOption = computed(() => fontSizeTokenOptions.value.find(
-  (token) => token.key === selectedItemStyle.value.fontSizeToken
-) || null);
 const selectedSectionStyle = computed(() => (
   selectedSection.value
     ? designSpec.value.sectionStyles?.[selectedSection.value.sectionKey] || {}
@@ -2366,12 +2313,6 @@ onBeforeUnmount(() => {
           <SectionCompositionControls
             v-else-if="capabilities.canRunSectionAi && section?.sectionKey === selectedSection?.sectionKey"
             :instruction="compositionInstruction"
-            :generate-background-image="compositionGenerateBackground"
-            :apply-layout="compositionApplyLayout"
-            :apply-tokens="compositionApplyTokens"
-            :apply-motion="compositionApplyMotion"
-            :preserve-content="compositionPreserveContent"
-            :image-guidance="compositionImageGuidance"
             :fade-mode="compositionFadeMode"
             :key-visual-text-mode="compositionKeyVisualTextMode"
             :key-visual-text="compositionKeyVisualText"
@@ -2380,12 +2321,6 @@ onBeforeUnmount(() => {
             :error="compositionError"
             :proposal="compositionResult?.proposal || null"
             @update:instruction="compositionInstruction = $event"
-            @update:generate-background-image="compositionGenerateBackground = $event"
-            @update:apply-layout="compositionApplyLayout = $event"
-            @update:apply-tokens="compositionApplyTokens = $event"
-            @update:apply-motion="compositionApplyMotion = $event"
-            @update:preserve-content="compositionPreserveContent = $event"
-            @update:image-guidance="compositionImageGuidance = $event"
             @update:fade-mode="compositionFadeMode = $event"
             @update:key-visual-text-mode="compositionKeyVisualTextMode = $event"
             @update:key-visual-text="compositionKeyVisualText = $event"
@@ -2855,83 +2790,6 @@ onBeforeUnmount(() => {
                 고정 영역을 넘는 내용은 미리보기와 출력에서 잘립니다.
               </small>
             </div>
-            <template v-if="selectedItem.fieldKind !== 'image'">
-              <label>
-                <span>글자 색상</span>
-                <select
-                  :disabled="selectedItem.isLocked"
-                  :value="selectedItemStyle.colorToken || ''"
-                  @change="applyColorToken($event.target.value)"
-                >
-                  <option value="">디자인 토큰 기본값</option>
-                  <option v-for="token in colorTokenOptions" :key="token.key" :value="token.key">
-                    {{ token.label }} · {{ token.value }}
-                  </option>
-                </select>
-                <div v-if="selectedColorTokenOption" class="token-value-preview token-value-preview--color">
-                  <i :style="{ backgroundColor: selectedColorTokenOption.value }" aria-hidden="true"></i>
-                  <span>{{ selectedColorTokenOption.label }}</span>
-                  <code>{{ selectedColorTokenOption.value }}</code>
-                </div>
-                <details v-if="colorTokenOptions.length" class="token-option-menu">
-                  <summary>실제 색상 보기</summary>
-                  <div class="token-option-list token-option-list--color">
-                    <div
-                      v-for="token in colorTokenOptions"
-                      :key="token.key"
-                      :class="{ active: token.key === selectedItemStyle.colorToken }"
-                    >
-                      <i :style="{ backgroundColor: token.value }" aria-hidden="true"></i>
-                      <span>{{ token.label }}</span>
-                      <code>{{ token.value }}</code>
-                    </div>
-                  </div>
-                </details>
-              </label>
-              <label>
-                <span>폰트 크기</span>
-                <select
-                  :disabled="selectedItem.isLocked"
-                  :value="selectedItemStyle.fontSizeToken || ''"
-                  @change="applyFontSizeToken($event.target.value)"
-                >
-                  <option value="">디자인 토큰 기본값</option>
-                  <option v-for="token in fontSizeTokenOptions" :key="token.key" :value="token.key">
-                    {{ token.label }} · {{ token.value }}
-                  </option>
-                </select>
-                <div v-if="selectedFontSizeTokenOption" class="token-value-preview token-value-preview--font">
-                  <span :style="{ fontSize: selectedFontSizeTokenOption.value }">가나다 Aa</span>
-                  <code>{{ selectedFontSizeTokenOption.label }} · {{ selectedFontSizeTokenOption.value }}</code>
-                </div>
-                <details v-if="fontSizeTokenOptions.length" class="token-option-menu">
-                  <summary>실제 크기 보기</summary>
-                  <div class="token-option-list token-option-list--font">
-                    <div
-                      v-for="token in fontSizeTokenOptions"
-                      :key="token.key"
-                      :class="{ active: token.key === selectedItemStyle.fontSizeToken }"
-                    >
-                      <span :style="{ fontSize: token.value }">가나다 Aa</span>
-                      <code>{{ token.label }} · {{ token.value }}</code>
-                    </div>
-                  </div>
-                </details>
-              </label>
-              <label>
-                <span>폰트 굵기</span>
-                <select
-                  :disabled="selectedItem.isLocked"
-                  :value="selectedItemStyle.fontWeight || 400"
-                  @change="updateItemStyle({ fontWeight: Number($event.target.value) })"
-                >
-                  <option :value="400">Regular</option>
-                  <option :value="500">Medium</option>
-                  <option :value="700">Bold</option>
-                  <option :value="800">Extra Bold</option>
-                </select>
-              </label>
-            </template>
             <div class="position-status">
               <span>위치</span>
               <strong v-if="selectedItemStyle.positionMode === 'free'">
