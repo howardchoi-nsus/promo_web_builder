@@ -273,5 +273,9 @@ assert.match(app, /scope:\s*\{\s*layout:\s*false,\s*tokens:\s*false,\s*keyVisual
 assert.match(controls, />AI 도우미</);
 assert.match(controls, />AI 키비주얼 만들기</);
 assert.doesNotMatch(controls, /AI 레이아웃 생성|섹션 키비주얼도 생성|적용 범위/);
+assert.match(controls, /canGenerate/);
+assert.match(controls, /텍스트 또는 CTA 콘텐츠를 2자 이상 입력하면 키비주얼을 생성할 수 있습니다/);
+assert.match(app, /!sectionAiHasContent\(selectedSection\.value\)/);
+assert.match(app, /:can-generate="sectionAiHasContent\(section\)"/);
 
 console.log("Natural-language section composition contract tests passed.");

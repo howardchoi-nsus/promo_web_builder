@@ -93,9 +93,11 @@ const activeTab = ref("tree");
         @remove-component="(section, item) => emit('remove-component', section, item)"
         @drop-library-component="(componentKey, sectionKey) => emit('add-component', componentKey, sectionKey)"
       >
+        <template #section-tools="{ section }">
+          <slot name="section-composition" :section="section"></slot>
+        </template>
         <template #section-details="{ section }">
           <div class="section-property-accordion">
-            <slot name="section-composition" :section="section"></slot>
             <SectionProperties
               :section="section"
               :section-style="selectedSectionStyle"

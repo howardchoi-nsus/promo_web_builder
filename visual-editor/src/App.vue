@@ -926,7 +926,8 @@ async function applySectionStructurePlan() {
 }
 
 async function requestSectionComposition() {
-  if (!selectedSection.value || compositionInstruction.value.trim().length < 3 || compositionPlanning.value) return;
+  if (!selectedSection.value || !sectionAiHasContent(selectedSection.value)
+    || compositionInstruction.value.trim().length < 3 || compositionPlanning.value) return;
   compositionPlanning.value = true;
   compositionError.value = "";
   compositionResult.value = null;
@@ -2313,6 +2314,7 @@ onBeforeUnmount(() => {
           <SectionCompositionControls
             v-else-if="capabilities.canRunSectionAi && section?.sectionKey === selectedSection?.sectionKey"
             :instruction="compositionInstruction"
+            :can-generate="sectionAiHasContent(section)"
             :fade-mode="compositionFadeMode"
             :key-visual-text-mode="compositionKeyVisualTextMode"
             :key-visual-text="compositionKeyVisualText"

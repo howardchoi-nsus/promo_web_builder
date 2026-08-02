@@ -1,6 +1,7 @@
 <script setup>
 defineProps({
   instruction: { type: String, default: "" },
+  canGenerate: { type: Boolean, default: false },
   fadeMode: { type: String, default: "none" },
   keyVisualTextMode: { type: String, default: "none" },
   keyVisualText: { type: String, default: "" },
@@ -31,6 +32,7 @@ const emit = defineEmits([
         <span>디자인 요청 사항</span>
         <textarea
           :value="instruction"
+          :disabled="!canGenerate"
           rows="4"
           maxlength="4000"
           placeholder="예: 여름 프로모션 분위기의 밝고 역동적인 키비주얼을 만들어줘."
@@ -41,6 +43,7 @@ const emit = defineEmits([
         <span>키비주얼 텍스트</span>
         <select
           :value="keyVisualTextMode"
+          :disabled="!canGenerate"
           @change="emit('update:key-visual-text-mode', $event.target.value)"
         >
           <option value="none">텍스트 없음</option>
@@ -51,6 +54,7 @@ const emit = defineEmits([
         <span>승인 문구</span>
         <input
           :value="keyVisualText"
+          :disabled="!canGenerate"
           type="text"
           maxlength="40"
           placeholder="예: SUMMER DROP"
@@ -60,18 +64,21 @@ const emit = defineEmits([
       </label>
       <label>
         <span>페이드</span>
-        <select :value="fadeMode" @change="emit('update:fade-mode', $event.target.value)">
+        <select :value="fadeMode" :disabled="!canGenerate" @change="emit('update:fade-mode', $event.target.value)">
           <option value="none">없음</option>
           <option value="left">왼쪽</option>
           <option value="right">오른쪽</option>
           <option value="both">양끝</option>
         </select>
       </label>
+      <p v-if="!canGenerate" class="section-composition-warning" role="status">
+        텍스트 또는 CTA 콘텐츠를 2자 이상 입력하면 키비주얼을 생성할 수 있습니다.
+      </p>
       <p v-if="error" class="section-composition-error" role="alert">{{ error }}</p>
       <button
         type="button"
         class="section-composition-request"
-        :disabled="planning || applying || instruction.trim().length < 3 || (keyVisualTextMode === 'explicit' && !keyVisualText.trim())"
+        :disabled="!canGenerate || planning || applying || instruction.trim().length < 3 || (keyVisualTextMode === 'explicit' && !keyVisualText.trim())"
         @click="emit('request-plan')"
       >{{ planning ? "키비주얼 제안 생성 중…" : "키비주얼 제안" }}</button>
 

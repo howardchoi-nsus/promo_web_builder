@@ -42,6 +42,15 @@ assert.match(structurePanel, /emit\('select-section'/);
 assert.match(structurePanel, /emit\('section-ai-action'/);
 assert.match(structurePanel, /<PageTree/);
 assert.match(pageTree, /role="tree"/);
+assert.match(structurePanel, /#section-tools/);
+assert.ok(
+  pageTree.indexOf('<slot name="section-tools"') < pageTree.indexOf('v-for="item in section.items || []"'),
+  "Section tools must render directly below the section header and above its component list",
+);
+assert.ok(
+  pageTree.indexOf('v-for="item in section.items || []"') < pageTree.indexOf('<slot name="section-details"'),
+  "Section properties must remain below the component list",
+);
 assert.match(app, /const expandedSectionKey = ref\(""\)/);
 assert.match(app, /function toggleSectionExpansion/);
 assert.match(pageTree, /class="page-tree__disclosure"/);

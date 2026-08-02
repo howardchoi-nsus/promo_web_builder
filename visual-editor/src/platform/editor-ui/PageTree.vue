@@ -207,6 +207,7 @@ function dropOnComponent(section, item, event) {
           :id="`page-tree-section-${section.sectionKey}`"
           role="group"
         >
+          <slot name="section-tools" :section="section"></slot>
           <div
             v-for="item in section.items || []"
             :key="item.itemKey"
