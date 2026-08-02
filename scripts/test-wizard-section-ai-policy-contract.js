@@ -1,7 +1,10 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const { normalizeAiDesign } = require("../api/_wizard-content-sections-store");
+const {
+  normalizeAiDesign,
+  normalizeAiDesignForItems,
+} = require("../api/_wizard-content-sections-store");
 
 assert.deepEqual(normalizeAiDesign(), {
   enabled: true,
@@ -27,6 +30,29 @@ assert.deepEqual(normalizeAiDesign({
   imageAspectRatio: "4:3",
   backgroundPromptText: "",
 });
+assert.deepEqual(normalizeAiDesignForItems({
+  enabled: true,
+  imageTarget: "item",
+  imageTargetItemKeys: ["deletedImage"],
+  allowSectionBackground: true,
+}, []), {
+  enabled: true,
+  allowedLayoutVariants: ["split-left", "split-right", "centered-hero"],
+  allowSectionBackground: true,
+  imageTarget: "section-background",
+  imageTargetItemKeys: [],
+  imageAspectRatio: "16:9",
+  backgroundPromptText: "",
+});
+assert.equal(normalizeAiDesignForItems({
+  imageTarget: "item",
+  imageTargetItemKeys: ["heroImage", "deletedImage"],
+}, [{
+  itemKey: "heroImage",
+  isVisibleInWizard: true,
+  fieldKind: "image",
+  image: { allowedSources: ["ai"] },
+}]).imageTargetItemKeys.join(","), "heroImage");
 
 const root = path.resolve(__dirname, "..");
 const migration = fs.readFileSync(path.join(root, "db/migrations/026_wizard_section_ai_design_policy.sql"), "utf8");
@@ -38,8 +64,8 @@ const publicTemplateApi = fs.readFileSync(path.join(root, "api/wizard-form-templ
 assert.match(migration, /add column if not exists ai_design jsonb/i);
 assert.match(migration, /v_source\.ai_design/);
 assert.match(adminHtml, /wizardSectionFieldsEditor\.aiDesign\.enabled/);
-assert.match(adminHtml, /Section Items[\s\S]*wizardFormTemplateSectionEditor\.aiDesign\.enabled/);
-assert.match(adminHtml, /AI 정책 저장/);
+assert.match(adminHtml, /섹션 컴포넌트/);
+assert.match(adminHtml, /AI 디자인 정책/);
 assert.match(adminApp, /aiDesign:\s*\{[\s\S]*allowedLayoutVariants/);
 assert.match(adminHtml, /aiDesign\.allowSectionBackground/);
 assert.match(adminHtml, /섹션 배경 AI 생성 허용/);

@@ -21,6 +21,16 @@ assert.equal(promo.capabilities.canSavePromoOverrides, true);
 assert.equal(promo.capabilities.canRunSectionAi, true);
 assert.equal(promo.capabilities.isEmbedded, true);
 
+const sectionPreset = createEditorContext("section-preset");
+assert.equal(sectionPreset.surface, "section-preset");
+assert.equal(sectionPreset.engineKey, admin.engineKey);
+assert.equal(sectionPreset.isSectionPreset, true);
+assert.equal(sectionPreset.isBuilderWorkspace, true);
+assert.equal(sectionPreset.capabilities.canSaveSectionPreset, true);
+assert.equal(sectionPreset.capabilities.canSaveTemplateLayout, false);
+assert.equal(sectionPreset.capabilities.canManageComponents, false);
+assert.equal(sectionPreset.capabilities.isEmbedded, true);
+
 const standalone = createEditorContext("editor");
 assert.equal(standalone.isBuilderWorkspace, false);
 assert.equal(standalone.capabilities.canOpenWebOutput, true);

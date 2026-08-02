@@ -4,6 +4,7 @@ const {
   normalizeBoolean,
   normalizeNumber,
   normalizeAiDesign,
+  normalizeAiDesignForItems,
   normalizeCompositionPolicy,
   SECTION_ROLES,
   toSection,
@@ -107,6 +108,9 @@ async function updateSection(req, res) {
     hasCompositionPolicy ? body.compositionPolicy : current.composition_policy,
     { fixedPosition },
   );
+  const aiDesign = hasAiDesign
+    ? normalizeAiDesignForItems(body.aiDesign, await fetchItemsForSection(sql, id))
+    : normalizeAiDesign(current.ai_design);
 
   const rows = await sql`
     update wizard_content_sections
@@ -118,7 +122,7 @@ async function updateSection(req, res) {
       fixed_position = ${fixedPosition},
       sort_order = ${hasSortOrder ? (normalizeNumber(body.sortOrder) ?? current.sort_order) : current.sort_order},
       is_visible_in_wizard = ${hasVisible ? normalizeBoolean(body.isVisibleInWizard, current.is_visible_in_wizard) : current.is_visible_in_wizard},
-      ai_design = ${JSON.stringify(hasAiDesign ? normalizeAiDesign(body.aiDesign) : normalizeAiDesign(current.ai_design))}::jsonb,
+      ai_design = ${JSON.stringify(aiDesign)}::jsonb,
       composition_scope = ${compositionScope},
       section_role = ${sectionRole},
       composition_policy = ${JSON.stringify(compositionPolicy)}::jsonb,

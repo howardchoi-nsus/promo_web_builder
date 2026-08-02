@@ -142,6 +142,31 @@ function normalizeAiDesign(value = {}) {
   };
 }
 
+function aiImageTargetItemKeys(items = []) {
+  return new Set((items || [])
+    .filter((item) => item.isVisibleInWizard && (
+      (item.fieldKind === "image" && item.image?.allowedSources?.includes("ai"))
+      || (item.fields || []).some((field) => (
+        field.fieldKind === "image"
+        && !field.isLocked
+        && field.image?.allowedSources?.includes("ai")
+      ))
+    ))
+    .map((item) => item.itemKey));
+}
+
+function normalizeAiDesignForItems(value = {}, items = []) {
+  const aiDesign = normalizeAiDesign(value);
+  if (aiDesign.imageTarget !== "item") return aiDesign;
+  const validKeys = aiImageTargetItemKeys(items);
+  const selectedKeys = aiDesign.imageTargetItemKeys.filter((key) => validKeys.has(key));
+  if (selectedKeys.length) return { ...aiDesign, imageTargetItemKeys: selectedKeys };
+  if (aiDesign.allowSectionBackground) {
+    return { ...aiDesign, imageTarget: "section-background", imageTargetItemKeys: [] };
+  }
+  return { ...aiDesign, imageTargetItemKeys: [] };
+}
+
 function normalizeUtm(body = {}) {
   return {
     source: String(body.source || body.utmSource || "").trim(),
@@ -358,29 +383,20 @@ async function validateSectionDraft(sql, sectionId) {
   const items = await fetchItemsForSection(sql, sectionId);
   const visibleItems = items.filter((item) => item.isVisibleInWizard);
   const errors = [];
-  const aiDesign = normalizeAiDesign(sectionRow.ai_design);
+  const aiDesign = normalizeAiDesignForItems(sectionRow.ai_design, items);
 
   if (aiDesign.enabled && !aiDesign.allowedLayoutVariants.length) {
     errors.push({ path: `${sectionRow.section_key}.aiDesign.allowedLayoutVariants`, code: "AI_LAYOUT_VARIANT_REQUIRED", message: "An AI-enabled section needs at least one allowed layout variant." });
   }
   if (aiDesign.enabled && aiDesign.imageTarget === "item") {
-    const visibleImageKeys = new Set(visibleItems
-      .filter((item) => (
-        (item.fieldKind === "image" && item.image?.allowedSources?.includes("ai"))
-        || (item.fields || []).some((field) => (
-          field.fieldKind === "image"
-          && !field.isLocked
-          && field.image?.allowedSources?.includes("ai")
-        ))
-      ))
-      .map((item) => item.itemKey));
+    const visibleImageKeys = aiImageTargetItemKeys(visibleItems);
     if (!aiDesign.imageTargetItemKeys.some((key) => visibleImageKeys.has(key))) {
       errors.push({ path: `${sectionRow.section_key}.aiDesign.imageTargetItemKeys`, code: "AI_IMAGE_TARGET_REQUIRED", message: "Select at least one visible image item that allows the AI source." });
     }
   }
 
-  if (sectionRow.is_required && !visibleItems.some((item) => item.isRequired)) {
-    errors.push({ path: sectionRow.section_key, code: "REQUIRED_SECTION_ITEM", message: "A required section needs at least one visible required item." });
+  if (sectionRow.is_required && !visibleItems.length) {
+    errors.push({ path: sectionRow.section_key, code: "SECTION_COMPONENT_REQUIRED", message: "A required section needs at least one visible component." });
   }
   visibleItems.forEach((item) => {
     if (item.isLocked) {
@@ -446,7 +462,7 @@ async function validateSectionDraft(sql, sectionId) {
     });
   }
   errors.push(...validateHeaderLayoutPolicy(sectionRow, items, layoutRows));
-  return { section: toSection(sectionRow), items, errors };
+  return { section: toSection(sectionRow), items, aiDesign, errors };
 }
 
 async function fetchAllSections(sql, { includeArchived = false } = {}) {
@@ -561,6 +577,7 @@ module.exports = {
   normalizeNumber,
   normalizeImageSources,
   normalizeAiDesign,
+  normalizeAiDesignForItems,
   normalizeCompositionPolicy,
   normalizeUtm,
   validateFieldKind,

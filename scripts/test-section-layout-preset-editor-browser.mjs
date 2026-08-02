@@ -46,10 +46,15 @@ const server = http.createServer(async (request, response) => {
       ok: true,
       section: { id: sectionId, sectionKey: "header", name: "Header", status: sectionStatus, version: 2 },
       items: [
-        { id: "1", itemKey: "logo", name: "Logo", isVisibleInWizard: true },
-        { id: "2", itemKey: "badges", name: "Badges", isVisibleInWizard: true },
+        { id: "1", itemKey: "logo", name: "Logo", fieldKind: "text", textType: "title", defaultValue: "Logo", isVisibleInWizard: true, isRequired: false },
+        { id: "2", itemKey: "badges", name: "Badges", fieldKind: "text", textType: "title", defaultValue: "Badges", isVisibleInWizard: true, isRequired: false },
       ],
     }));
+    return;
+  }
+  if (url.pathname === "/api/design-token-sets") {
+    response.writeHead(200, { "Content-Type": "application/json" });
+    response.end(JSON.stringify({ ok: true, tokenSets: [] }));
     return;
   }
   if (url.pathname === "/api/wizard-content-section-layouts") {
@@ -113,26 +118,25 @@ try {
     `${origin}/prototype/visual-editor.html?mode=section-preset&sectionId=${sectionId}&layoutKey=standard-header`,
     { waitUntil: "networkidle" },
   );
-  await page.getByRole("heading", { name: "Header" }).waitFor();
-  assert.equal(await page.locator(".preset-item").count(), 2);
+  await page.locator(".editor-workspace.is-section-preset-workspace").waitFor();
+  assert.equal(await page.locator(".rendered-item").count(), 2);
   await page.getByRole("button", { name: "Mobile" }).click();
-  assert.equal(await page.locator(".preset-canvas").getAttribute("class").then((value) => value.includes("viewport-mobile")), true);
-  await page.getByRole("button", { name: "Badges", exact: true }).click();
-  const visibility = page.getByText("mobile에서 표시").locator("..").getByRole("checkbox");
+  await page.locator(".property-panel .component-property-trigger").filter({ hasText: "Badges" }).click();
+  const visibility = page.getByRole("switch", { name: "Badges 노출" });
   assert.equal(await visibility.isChecked(), false);
-  await visibility.check();
-  await page.getByRole("button", { name: "저장", exact: true }).click();
-  await page.getByText("Layout Preset을 저장했습니다.").waitFor();
+  await visibility.locator("..").click();
+  assert.equal(await visibility.isChecked(), true);
+  await page.getByRole("button", { name: "Preset 저장", exact: true }).click();
+  await page.getByText("Standard Header Layout Preset을 저장했습니다.").waitFor();
   assert(savedBody);
   assert.equal(savedBody.layoutSnapshot.viewports.mobile.visibility.items.badges, true);
   await page.reload({ waitUntil: "networkidle" });
   await page.getByRole("button", { name: "Mobile" }).click();
-  await page.getByRole("button", { name: "Badges", exact: true }).click();
-  assert.equal(await page.getByText("mobile에서 표시").locator("..").getByRole("checkbox").isChecked(), true);
+  await page.locator(".property-panel .component-property-trigger").filter({ hasText: "Badges" }).click();
+  assert.equal(await page.getByRole("switch", { name: "Badges 노출" }).isChecked(), true);
   sectionStatus = "active";
   await page.reload({ waitUntil: "networkidle" });
-  assert.equal(await page.getByRole("button", { name: "저장", exact: true }).isDisabled(), true);
-  await page.getByText("읽기 전용 버전입니다.").waitFor();
+  assert.equal(await page.getByRole("button", { name: "Preset 저장", exact: true }).isDisabled(), true);
   assert.deepEqual(pageErrors, []);
   console.log("Section layout preset editor browser test passed");
 } finally {

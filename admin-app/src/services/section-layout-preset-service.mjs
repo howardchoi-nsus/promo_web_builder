@@ -30,9 +30,9 @@ export function createInitialSectionLayout(items = []) {
     },
   ]));
   const minHeight = Math.max(
-    160,
+    50,
     40 + (Math.ceil(visibleItems.length / 2) * 72),
-    40 + (visibleItems.length * 72),
+    visibleItems.length ? 40 + (visibleItems.length * 72) : 50,
   );
   return {
     contractVersion: 1,

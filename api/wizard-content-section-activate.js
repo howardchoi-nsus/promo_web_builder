@@ -4,6 +4,7 @@ const {
   toSection,
   fetchSectionRow,
   validateSectionDraft,
+  normalizeAiDesign,
 } = require("./_wizard-content-sections-store");
 
 // POST { id } -> makes this draft/inactive version the active (Wizard-visible) one
@@ -32,6 +33,15 @@ module.exports = async function handler(req, res) {
     const validation = await validateSectionDraft(sql, id);
     if (validation.errors.length) {
       return res.status(422).json({ error: "Section draft validation failed", errors: validation.errors });
+    }
+    if (JSON.stringify(validation.aiDesign) !== JSON.stringify(normalizeAiDesign(target.ai_design))) {
+      await sql`
+        update wizard_content_sections
+        set ai_design = ${JSON.stringify(validation.aiDesign)}::jsonb,
+          change_note = ${`${changeNote} Legacy AI image target normalized.`},
+          updated_at = now()
+        where id = ${id}::uuid
+      `;
     }
 
     await sql`select activate_wizard_content_section(${id}::uuid, ${changeNote})`;

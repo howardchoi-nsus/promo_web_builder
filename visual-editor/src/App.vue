@@ -9,6 +9,7 @@ import { rebaseDocumentSnapshot } from "./revision-rebase.mjs";
 import { createAdminTemplateAdapter } from "./platform/adapters/admin-template-adapter.mjs";
 import { createAiDocumentAdapter } from "./platform/adapters/ai-document-adapter.mjs";
 import { createEditorLibraryAdapter } from "./platform/adapters/editor-library-adapter.mjs";
+import { sectionPresetAdapter } from "./platform/adapters/section-preset-adapter.mjs";
 import {
   PromoBuilderMessageType,
   createPromoBuilderAdapter,
@@ -31,6 +32,7 @@ import {
   usesAutomaticComponentHeight,
 } from "./platform/layout-engine/geometry.mjs";
 import { resolveSectionPresetLayoutPatch } from "./platform/layout-engine/section-preset-resolver.mjs";
+import { sectionPresetSnapshotFromDesignSpec } from "./platform/layout-engine/section-preset-snapshot.mjs";
 import PreviewPanel from "./platform/editor-ui/PreviewPanel.vue";
 import StructurePanel from "./platform/editor-ui/StructurePanel.vue";
 import AiLayoutControls from "./platform/editor-ui/AiLayoutControls.vue";
@@ -74,6 +76,7 @@ const layoutIdentity = ref(null);
 const layoutChangeNote = ref("");
 const layoutSaving = ref(false);
 const layoutSaveMessage = ref("");
+const sectionPresetLayout = ref(null);
 const aiDocumentSnapshot = ref(null);
 const aiDocumentId = ref("");
 const aiDocumentRevision = ref(0);
@@ -137,6 +140,7 @@ const wizardSource = new URLSearchParams(window.location.search).get("source") |
 const editorContext = computed(() => createEditorContext(props.mode, wizardSource));
 const capabilities = computed(() => editorContext.value.capabilities);
 const isAdminLayoutMode = computed(() => editorContext.value.isAdminLayout);
+const isSectionPresetMode = computed(() => editorContext.value.isSectionPreset);
 const isAiDocumentMode = computed(() => editorContext.value.isAiDocument);
 const isWizardLayoutMode = computed(() => editorContext.value.isWizardLayout);
 const isCreatePromoWizardMode = computed(() => editorContext.value.isCreatePromo);
@@ -191,6 +195,9 @@ const editorSnapshot = computed(() => {
 const rendererSnapshot = computed(() => props.mode === "output" ? outputSnapshot.value : editorSnapshot.value);
 const templateIdentityLabel = computed(() => {
   if (!template.value) return "템플릿 없음";
+  if (isSectionPresetMode.value) {
+    return `${template.value.name} · ${sectionPresetLayout.value?.layoutKey || "layout"} · ${viewport.value}`;
+  }
   const status = isAdminLayoutMode.value ? (template.value.status || "draft") : "active";
   const shortId = String(template.value.id || "").slice(0, 8);
   return `${template.value.templateKey} · v${template.value.version || 1} · ${status} · layout r${layoutRevision.value}${shortId ? ` · ${shortId}` : ""}`;
@@ -368,7 +375,11 @@ function componentKey(section, item) {
 
 function itemVisible(section, item) {
   if (item?.isRequired || item?.isLocked) return true;
-  return designSpec.value.visibility?.items?.[componentKey(section, item)] !== false;
+  const key = componentKey(section, item);
+  const responsive = viewport.value === "mobile"
+    ? designSpec.value.responsiveLayouts?.mobile?.visibility?.items?.[key]
+    : undefined;
+  return (responsive ?? designSpec.value.visibility?.items?.[key]) !== false;
 }
 
 function fieldVisibilityKey(section, item, field) {
@@ -382,6 +393,27 @@ function fieldVisible(section, item, field) {
 
 function setItemVisible(section, item, visible) {
   if (!section || !item || item.isRequired || item.isLocked) return;
+  if (viewport.value === "mobile") {
+    const targetKey = componentKey(section, item);
+    const mobile = designSpec.value.responsiveLayouts?.mobile || {};
+    executeEditorCommand(EditorCommandType.LAYOUT_REPLACE, {
+      layout: {
+        ...designSpec.value,
+        responsiveLayouts: {
+          ...(designSpec.value.responsiveLayouts || {}),
+          mobile: {
+            ...mobile,
+            visibility: {
+              ...(mobile.visibility || {}),
+              items: { ...(mobile.visibility?.items || {}), [targetKey]: visible !== false },
+            },
+          },
+        },
+      },
+    }, { label: "모바일 컴포넌트 노출 변경" });
+    if (!visible) selectedItemKeys.value = selectedItemKeys.value.filter((key) => key !== item.itemKey);
+    return;
+  }
   executeEditorCommand(EditorCommandType.VISIBILITY_SET, {
     targetType: "item",
     targetKey: componentKey(section, item),
@@ -1898,6 +1930,103 @@ async function openOutput() {
   outputAdapter.open();
 }
 
+async function loadSectionPresetLayout() {
+  const params = new URLSearchParams(window.location.search);
+  const sectionId = params.get("sectionId") || "";
+  const layoutKey = params.get("layoutKey") || "";
+  if (!sectionId || !layoutKey) {
+    error.value = "sectionId와 layoutKey가 필요합니다.";
+    loading.value = false;
+    return;
+  }
+  try {
+    const [result, availableTokenSets] = await Promise.all([
+      sectionPresetAdapter.load(sectionId),
+      adminTemplateAdapter.loadDesignTokenSets(),
+    ]);
+    const selectedLayout = result.layouts.find((entry) => entry.layoutKey === layoutKey);
+    if (!selectedLayout) throw new Error("요청한 Layout Preset을 찾을 수 없습니다.");
+    const section = { ...result.section, items: result.items || [] };
+    const previewTokenSet = availableTokenSets.find((candidate) => candidate.isDefault)
+      || availableTokenSets[0]
+      || null;
+    designTokenSets.value = availableTokenSets;
+    previewDesignTokenVersionId.value = previewTokenSet?.versionId || "";
+    template.value = {
+      id: section.id,
+      templateKey: section.sectionKey,
+      name: section.name,
+      version: section.version || 1,
+      status: section.status || "draft",
+      designTokens: previewTokenSet ? {
+        setKey: previewTokenSet.setKey,
+        version: previewTokenSet.version,
+        versionId: previewTokenSet.versionId,
+        values: previewTokenSet.values || {},
+        sourceValues: previewTokenSet.sourceValues || [],
+      } : null,
+    };
+    sections.value = [section];
+    sectionInputs.value = createSectionInputs(sections.value, {});
+    const layoutPatch = resolveSectionPresetLayoutPatch(section, selectedLayout) || {};
+    designSpec.value = normalizeLayoutSpec({
+      ...JSON.parse(JSON.stringify(DEFAULT_DESIGN_SPEC)),
+      sectionStyles: layoutPatch.sectionStyles || {},
+      itemStyles: layoutPatch.itemStyles || {},
+      visibility: layoutPatch.visibility || { items: {}, fields: {} },
+      responsiveLayouts: layoutPatch.responsiveLayouts || { mobile: { itemStyles: {}, visibility: { items: {} } } },
+    });
+    sectionPresetLayout.value = selectedLayout;
+    layoutRevision.value = 1;
+    selectedSectionKey.value = section.sectionKey;
+    selectedItemKey.value = section.items?.[0]?.itemKey || "";
+    selectedItemKeys.value = selectedItemKey.value ? [selectedItemKey.value] : [];
+    expandedComponentKey.value = componentKey(section, section.items?.[0]);
+    hydrateEditorCore();
+  } catch (loadError) {
+    error.value = loadError.message;
+  } finally {
+    loading.value = false;
+  }
+}
+
+function notifySectionPresetSaved() {
+  if (globalThis.parent === globalThis) return;
+  globalThis.parent.postMessage({
+    type: "promo-section-layout-saved",
+    sectionId: sections.value[0]?.id || "",
+    layoutId: sectionPresetLayout.value?.id || "",
+    layoutKey: sectionPresetLayout.value?.layoutKey || "",
+  }, globalThis.location.origin);
+}
+
+async function saveSectionPresetLayout() {
+  const section = sections.value[0];
+  const layout = sectionPresetLayout.value;
+  if (!section?.id || !layout?.id || layoutSaving.value) return;
+  layoutSaving.value = true;
+  layoutSaveMessage.value = "";
+  try {
+    const snapshot = sectionPresetSnapshotFromDesignSpec(section, designSpec.value, layout.layoutSnapshot);
+    const result = await sectionPresetAdapter.update(layout.id, section.id, {
+      name: layout.name,
+      description: layout.description || "",
+      changeNote: layoutChangeNote.value || "공통 Visual Editor에서 Section Layout Preset을 저장했습니다.",
+      layoutSnapshot: snapshot,
+    });
+    sectionPresetLayout.value = result.layout;
+    layoutChangeNote.value = "";
+    editorCore.replaceDocument(editorDocumentFromRefs(), { resetHistory: false, dirty: false });
+    updateEditorHistory();
+    layoutSaveMessage.value = `${result.layout.name} Layout Preset을 저장했습니다.`;
+    notifySectionPresetSaved();
+  } catch (saveError) {
+    layoutSaveMessage.value = saveError.validationErrors?.[0]?.message || saveError.message;
+  } finally {
+    layoutSaving.value = false;
+  }
+}
+
 async function loadAdminLayout() {
   const templateId = new URLSearchParams(window.location.search).get("templateId");
   if (!templateId) {
@@ -2061,7 +2190,7 @@ watch([designSpec, sectionInputs, sections], () => {
 }, { deep: true });
 
 async function loadEditorLibraries() {
-  if (!isBuilderWorkspaceMode.value) return;
+  if (!isBuilderWorkspaceMode.value || (!capabilities.value.canManageComponents && !capabilities.value.canCreateSections)) return;
   editorLibraryLoading.value = true;
   try {
     const result = await editorLibraryAdapter.load();
@@ -2111,6 +2240,7 @@ onMounted(() => {
   loadEditorLibraries();
   if (props.mode === "output") loadOutput();
   else if (isAiDocumentMode.value) loadAiDocument();
+  else if (isSectionPresetMode.value) loadSectionPresetLayout();
   else if (isAdminLayoutMode.value) loadAdminLayout();
   else if (isWizardLayoutMode.value) {
     loading.value = true;
@@ -2191,10 +2321,10 @@ onBeforeUnmount(() => {
       <header v-if="!usesEmbeddedEngineShell" class="shell-utility-bar editor-shell-header">
         <div class="shell-page-identity">
           <button class="shell-menu-toggle" type="button" data-shell-menu-toggle aria-controls="visual-editor-global-navigation" aria-expanded="false" aria-label="메뉴 열기">메뉴</button>
-          <strong>{{ isAdminLayoutMode ? "Admin Template Layout" : isAiDocumentMode ? "AI Promotion Visual Editor" : "Visual Editor" }}</strong>
+          <strong>{{ isAdminLayoutMode ? "Admin Template Layout" : isSectionPresetMode ? "Section Layout Preset" : isAiDocumentMode ? "AI Promotion Visual Editor" : "Visual Editor" }}</strong>
         </div>
         <div class="shell-page-actions">
-        <div class="shell-status" role="status">{{ isAdminLayoutMode ? `Layout revision ${layoutRevision}` : isAiDocumentMode ? `Document revision ${aiDocumentRevision}` : "편집 준비" }}</div>
+        <div class="shell-status" role="status">{{ isSectionPresetMode ? sectionPresetLayout?.name : isAdminLayoutMode ? `Layout revision ${layoutRevision}` : isAiDocumentMode ? `Document revision ${aiDocumentRevision}` : "편집 준비" }}</div>
         </div>
       </header>
 
@@ -2253,6 +2383,7 @@ onBeforeUnmount(() => {
         'is-builder-workspace': isBuilderWorkspaceMode,
         'is-create-promo-wizard': isCreatePromoWizardMode,
         'is-admin-layout-workspace': isAdminLayoutMode,
+        'is-section-preset-workspace': isSectionPresetMode,
         'is-ai-document-workspace': isAiDocumentMode,
       }"
     >
@@ -2375,6 +2506,7 @@ onBeforeUnmount(() => {
         @redo="redoEditorCommand"
         @update-design-token="updateDesignToken"
         @save-admin-layout="saveAdminLayout"
+        @save-section-preset="saveSectionPresetLayout"
         @save-ai-document="saveAiDocument"
         @open-output="openOutput"
         @clear-selection="clearEditorSelection"

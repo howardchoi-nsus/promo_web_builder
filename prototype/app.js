@@ -4434,7 +4434,18 @@ const adminApp = createApp({
           body: JSON.stringify({ id, changeNote: "관리자 페이지에서 활성 버전으로 지정했습니다." }),
         });
         const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.message || result.error || `섹션 활성화 오류(${response.status})`);
+        if (!response.ok) {
+          const messages = (result.errors || []).map((entry) => ({
+            AI_IMAGE_TARGET_REQUIRED: "AI 이미지 대상으로 사용할 컴포넌트를 선택하거나 섹션 배경 생성을 허용해 주세요.",
+            SECTION_COMPONENT_REQUIRED: "필수 Section에는 프로모션 빌더에 노출되는 컴포넌트가 최소 1개 필요합니다.",
+            REQUIRED_SECTION_ITEM: "필수 Section에는 노출되는 필수 컴포넌트가 필요합니다.",
+            AI_LAYOUT_VARIANT_REQUIRED: "AI 디자인을 사용하려면 AI 사용이 허용된 Layout Preset을 최소 1개 지정해 주세요.",
+            DEFAULT_LAYOUT_REQUIRED: "Layout Preset을 사용하려면 기본 Preset을 1개 지정해 주세요.",
+          }[entry.code] || entry.message)).filter(Boolean);
+          throw new Error(messages.length
+            ? messages.join(" ")
+            : result.message || result.error || `섹션 활성화 오류(${response.status})`);
+        }
         await this.loadWizardSections({ fresh: true });
         await this.loadWizardSectionDetail(id);
         if (this.wizardFormTemplateDetail?.template?.id) {

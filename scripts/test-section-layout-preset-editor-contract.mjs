@@ -6,6 +6,7 @@ import {
   sectionLayoutEditorUrl,
   sectionLayoutPresetService,
 } from "../admin-app/src/services/section-layout-preset-service.mjs";
+import { sectionPresetSnapshotFromDesignSpec } from "../visual-editor/src/platform/layout-engine/section-preset-snapshot.mjs";
 
 const snapshot = createInitialSectionLayout([
   { itemKey: "logo", isVisibleInWizard: true },
@@ -15,7 +16,8 @@ assert.equal(snapshot.contractVersion, 1);
 assert.equal(snapshot.layoutMode, "free");
 assert(snapshot.viewports.desktop.items.logo);
 assert(snapshot.viewports.mobile.items.badges);
-assert(snapshot.sectionStyle.minHeight >= 160);
+assert(snapshot.sectionStyle.minHeight >= 50);
+assert.equal(createInitialSectionLayout([]).sectionStyle.minHeight, 50);
 
 const editorUrl = sectionLayoutEditorUrl(
   "section-id",
@@ -48,32 +50,26 @@ assert.deepEqual(JSON.parse(request.options.body), {
 
 const root = path.resolve(import.meta.dirname, "..");
 const manager = fs.readFileSync(path.join(root, "admin-app/src/components/SectionLayoutPresetManager.vue"), "utf8");
-const liveEditor = fs.readFileSync(path.join(root, "admin-app/src/components/SectionLayoutLivePreviewEditor.vue"), "utf8");
-const editor = fs.readFileSync(path.join(root, "visual-editor/src/SectionPresetEditor.vue"), "utf8");
+const frame = fs.readFileSync(path.join(root, "admin-app/src/components/SectionLayoutVisualEditorFrame.vue"), "utf8");
+const editor = fs.readFileSync(path.join(root, "visual-editor/src/App.vue"), "utf8");
 const main = fs.readFileSync(path.join(root, "visual-editor/src/main.js"), "utf8");
 const adminMain = fs.readFileSync(path.join(root, "admin-app/src/main.js"), "utf8");
 const adminHtml = fs.readFileSync(path.join(root, "prototype/index.html"), "utf8");
 
 assert.match(manager, /Layout Preset/);
 assert.match(manager, /toggleAiLayout/);
-assert.match(manager, /SectionLayoutLivePreviewEditor/);
+assert.match(manager, /SectionLayoutVisualEditorFrame/);
 assert.match(manager, /Live Preview 편집/);
 assert.match(manager, /새 Layout 만들기/);
 assert.match(manager, /startNewPreset/);
-assert.doesNotMatch(manager, /globalThis\.open|openEditor/);
-assert.match(liveEditor, /startPointer/);
-assert.match(liveEditor, /viewport === 'desktop'/);
-assert.match(liveEditor, /sectionLayoutPresetService\.update/);
-assert.match(liveEditor, /sectionLayoutPresetService\.create/);
-assert.match(liveEditor, /Layout Preset을 저장했습니다/);
-assert.match(liveEditor, /현재 Layout을 Preset으로 저장/);
-assert.match(liveEditor, /기본 Preset으로 지정/);
-assert.match(liveEditor, /AI 사용 허용/);
-assert.match(editor, /viewport === 'desktop'/);
-assert.match(editor, /startPointer/);
-assert.match(editor, /undoStack/);
+assert.match(manager, /Preset 만들고 Visual Editor 열기/);
+assert.match(frame, /promo-section-layout-saved/);
+assert.match(frame, /sectionLayoutPresetService\.editorUrl/);
+assert.match(editor, /loadSectionPresetLayout/);
+assert.match(editor, /saveSectionPresetLayout/);
+assert.match(editor, /PromoPageRenderer/);
 assert.match(editor, /sectionPresetAdapter\.update/);
-assert.match(main, /queryMode === "section-preset"/);
+assert.doesNotMatch(main, /SectionPresetEditor/);
 assert.match(adminMain, /PromoAdminSectionLayouts/);
 assert.match(adminHtml, /section-layout-preset-manager/);
 assert.match(adminHtml, /Section Preset 관리/);
@@ -83,5 +79,21 @@ assert.match(adminHtml, /재사용 가능한 Section을 만들고 Component 구�
 assert.match(adminHtml, /AI가 페이지를 만들 때 이 Section을 언제 포함하고/);
 assert.match(adminHtml, /AI 디자인·이미지 생성 허용/);
 assert.doesNotMatch(adminHtml, /v-for="variant in \['split-left', 'split-right', 'centered-hero'\]"/);
+
+const converted = sectionPresetSnapshotFromDesignSpec({
+  sectionKey: "hero",
+  items: [{ itemKey: "title" }],
+}, {
+  sectionStyles: { hero: { minHeight: 240, backgroundColor: "#112233" } },
+  itemStyles: { "hero.title": { positionMode: "free", xPct: 8, yPx: 20, widthPct: 60, heightPx: 48, fontSize: 24 } },
+  visibility: { items: { "hero.title": true } },
+  responsiveLayouts: { mobile: {
+    itemStyles: { "hero.title": { positionMode: "free", xPct: 5, yPx: 12, widthPct: 90, heightPx: 56 } },
+    visibility: { items: { "hero.title": false } },
+  } },
+}, snapshot);
+assert.equal(converted.sectionStyle.minHeight, 240);
+assert.equal(converted.viewports.desktop.items.title.fontSize, undefined);
+assert.equal(converted.viewports.mobile.visibility.items.title, false);
 
 console.log("Section layout preset editor contract test passed.");

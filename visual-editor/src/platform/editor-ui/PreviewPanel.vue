@@ -49,6 +49,7 @@ const emit = defineEmits([
   "redo",
   "update-design-token",
   "save-admin-layout",
+  "save-section-preset",
   "save-ai-document",
   "open-output",
   "clear-selection",
@@ -198,6 +199,21 @@ defineExpose({ finishTextEdit, getStageElement, scrollToSection });
               @click="emit('save-admin-layout')"
             >{{ layoutSaving ? "저장 중" : "초안 저장" }}</button>
           </div>
+          <div v-if="capabilities.canSaveSectionPreset" class="admin-layout-actions">
+            <input
+              :value="layoutChangeNote"
+              type="text"
+              placeholder="변경 사유"
+              aria-label="Layout Preset 변경 사유"
+              @input="emit('update:layout-change-note', $event.target.value)"
+            />
+            <button
+              type="button"
+              class="is-primary"
+              :disabled="!editorSnapshot || layoutSaving || template?.status !== 'draft'"
+              @click="emit('save-section-preset')"
+            >{{ layoutSaving ? "저장 중" : "Preset 저장" }}</button>
+          </div>
           <button
             v-if="capabilities.canSaveAiDocument"
             type="button"
@@ -256,7 +272,7 @@ defineExpose({ finishTextEdit, getStageElement, scrollToSection });
         :motion-spec="rendererSnapshot.motionSpec"
         :section-design-runs="sectionDesignRuns"
         :viewport-override="viewport"
-        editable
+        :editable="capabilities.canSaveSectionPreset ? template?.status === 'draft' : true"
         :show-guides="guideMode !== 'normal'"
         :outline-mode="guideMode === 'outline'"
         :selected-item-key="selectedStyleKey"

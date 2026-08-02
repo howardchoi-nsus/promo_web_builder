@@ -3,11 +3,11 @@ import {
   createInitialSectionLayout,
   sectionLayoutPresetService,
 } from "../services/section-layout-preset-service.mjs";
-import SectionLayoutLivePreviewEditor from "./SectionLayoutLivePreviewEditor.vue";
+import SectionLayoutVisualEditorFrame from "./SectionLayoutVisualEditorFrame.vue";
 
 export default {
   name: "SectionLayoutPresetManager",
-  components: { SectionLayoutLivePreviewEditor },
+  components: { SectionLayoutVisualEditorFrame },
   props: {
     section: { type: Object, required: true },
     items: { type: Array, default: () => [] },
@@ -19,7 +19,7 @@ export default {
       saving: false,
       error: "",
       layouts: [],
-      draftLayout: null,
+      newPresetEditor: null,
       requestRevision: 0,
       selectedLayoutId: "",
     };
@@ -29,7 +29,6 @@ export default {
       return this.section?.status === "draft";
     },
     selectedLayout() {
-      if (this.selectedLayoutId === "__new__") return this.draftLayout;
       return this.layouts.find((layout) => layout.id === this.selectedLayoutId) || null;
     },
   },
@@ -38,7 +37,7 @@ export default {
       immediate: true,
       handler() {
         this.selectedLayoutId = "";
-        this.draftLayout = null;
+        this.newPresetEditor = null;
         this.load();
       },
     },
@@ -68,36 +67,53 @@ export default {
     startNewPreset() {
       if (!this.editable || this.saving) return;
       this.error = "";
-      this.draftLayout = {
-        id: "__new__",
-        sectionId: this.section.id,
-        layoutKey: "저장 시 자동 생성",
+      this.newPresetEditor = {
         name: "",
         description: "",
         isDefault: this.layouts.length === 0,
-        layoutSnapshot: createInitialSectionLayout(this.items),
+        allowAi: this.section?.aiDesign?.enabled !== false,
       };
-      this.selectedLayoutId = "__new__";
+      this.selectedLayoutId = "";
+    },
+    async createPreset() {
+      if (!this.editable || this.saving || !this.newPresetEditor) return;
+      const name = String(this.newPresetEditor.name || "").trim();
+      if (!name) {
+        this.error = "Layout Preset 이름을 입력해 주세요.";
+        return;
+      }
+      this.saving = true;
+      this.error = "";
+      let createdLayout = null;
+      let allowAi = false;
+      try {
+        const result = await sectionLayoutPresetService.create({
+          sectionId: this.section.id,
+          name,
+          description: this.newPresetEditor.description || "",
+          isDefault: this.newPresetEditor.isDefault,
+          changeNote: "공통 Visual Editor 편집을 위한 Layout Preset 생성.",
+          layoutSnapshot: createInitialSectionLayout(this.items),
+        });
+        allowAi = this.newPresetEditor.allowAi;
+        createdLayout = result.layout;
+        await this.load();
+        this.selectedLayoutId = result.layout.id;
+        this.newPresetEditor = null;
+      } catch (error) {
+        this.error = error.validationErrors?.[0]?.message || error.message;
+      } finally {
+        this.saving = false;
+      }
+      if (createdLayout && allowAi) await this.setAiLayoutAllowed(createdLayout, true);
     },
     selectLayout(layout) {
       this.selectedLayoutId = this.selectedLayoutId === layout.id ? "" : layout.id;
-      this.draftLayout = null;
+      this.newPresetEditor = null;
       this.error = "";
     },
-    async handleLayoutSaved(layout) {
-      this.layouts = this.layouts.map((entry) => entry.id === layout.id ? layout : entry);
-      this.selectedLayoutId = layout.id;
-    },
-    async handleLayoutCreated({ layout, allowAi }) {
-      this.error = "";
-      try {
-        await this.load();
-        this.selectedLayoutId = layout.id;
-        this.draftLayout = null;
-        if (allowAi) await this.setAiLayoutAllowed(layout, true);
-      } catch (error) {
-        this.error = error.message;
-      }
+    async handleVisualEditorSaved() {
+      await this.load();
     },
     async setDefault(layout) {
       if (!this.editable || layout.isDefault || this.saving) return;
@@ -189,23 +205,29 @@ export default {
         </div>
         <div class="action-row align-right">
           <button class="tiny-button" type="button" :class="{ primary: selectedLayoutId === layout.id }" @click="selectLayout(layout)">{{ selectedLayoutId === layout.id ? 'Preview 닫기' : (editable ? 'Live Preview 편집' : 'Live Preview 보기') }}</button>
+          <button class="tiny-button" type="button" :disabled="!editable || saving || layout.isDefault" @click="setDefault(layout)">기본 지정</button>
+          <button class="tiny-button" type="button" :disabled="!editable || saving" @click="toggleAiLayout(layout)">{{ aiAllows(layout) ? 'AI 허용 해제' : 'AI 사용 허용' }}</button>
+          <button class="tiny-button danger" type="button" :disabled="!editable || saving || aiAllows(layout)" @click="remove(layout)">삭제</button>
         </div>
       </div>
       <div v-if="!layouts.length" class="empty-state compact">등록된 Layout Preset이 없습니다. 기존 자동 배치가 계속 사용됩니다.</div>
     </div>
-    <section-layout-live-preview-editor
+    <form v-if="newPresetEditor" class="new-layout-preset-form" @submit.prevent="createPreset">
+      <label><span>Preset 이름</span><input v-model="newPresetEditor.name" required /></label>
+      <label><span>설명</span><input v-model="newPresetEditor.description" /></label>
+      <label class="inline-check"><input v-model="newPresetEditor.isDefault" type="checkbox" :disabled="!layouts.length" /><span>기본 Preset</span></label>
+      <label class="inline-check"><input v-model="newPresetEditor.allowAi" type="checkbox" :disabled="section.aiDesign?.enabled === false" /><span>AI 사용 허용</span></label>
+      <div class="action-row">
+        <button class="tiny-button" type="button" @click="newPresetEditor = null">취소</button>
+        <button class="tiny-button primary" type="submit" :disabled="saving">{{ saving ? '생성 중…' : 'Preset 만들고 Visual Editor 열기' }}</button>
+      </div>
+    </form>
+    <section-layout-visual-editor-frame
       v-if="selectedLayout"
       :section="section"
-      :items="items"
       :layout="selectedLayout"
-      :create-mode="selectedLayoutId === '__new__'"
-      :ai-allowed="selectedLayoutId !== '__new__' && aiAllows(selectedLayout)"
-      @saved="handleLayoutSaved"
-      @created="handleLayoutCreated"
-      @set-default="setDefault(selectedLayout)"
-      @toggle-ai="toggleAiLayout(selectedLayout)"
-      @delete="remove(selectedLayout)"
-      @close="selectedLayoutId = ''; draftLayout = null"
+      @saved="handleVisualEditorSaved"
+      @close="selectedLayoutId = ''"
     />
   </section>
 </template>
@@ -213,7 +235,13 @@ export default {
 <style scoped>
 .section-layout-manager { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--app-border, #303744); }
 .section-layout-row { display: flex; justify-content: space-between; gap: 16px; align-items: center; }
+.new-layout-preset-form { display: grid; grid-template-columns: minmax(160px, .7fr) minmax(220px, 1fr) auto auto auto; gap: 10px; align-items: end; margin-top: 12px; padding: 12px; border: 1px solid var(--app-line); border-radius: 8px; background: var(--app-surface); }
+.new-layout-preset-form label { display: grid; gap: 5px; color: var(--app-sub); font-size: 11px; font-weight: 750; }
+.new-layout-preset-form input { min-height: 32px; border: 1px solid var(--app-line); border-radius: 5px; background: var(--app-panel); color: var(--app-ink); }
+.new-layout-preset-form .inline-check { display: inline-flex; align-items: center; padding-bottom: 7px; white-space: nowrap; }
+.new-layout-preset-form .inline-check input { min-height: auto; }
 @media (max-width: 800px) {
   .section-layout-row { align-items: flex-start; flex-direction: column; }
+  .new-layout-preset-form { grid-template-columns: 1fr; }
 }
 </style>
