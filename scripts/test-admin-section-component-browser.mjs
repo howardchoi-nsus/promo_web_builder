@@ -92,6 +92,8 @@ let browser;
 let activateBody;
 let deleteTemplateBody;
 let generatedTemplateDeleted = false;
+let deleteSectionBody;
+let sectionBDeleted = false;
 let createdSectionBody;
 let componentOrderBody;
 let rejectComponentOrder = false;
@@ -147,7 +149,19 @@ try {
         },
       }, 201);
     }
-    if (url.pathname === "/api/wizard-content-sections") return reply({ ok: true, sections: [sectionA, sectionAActive, sectionB] });
+    if (url.pathname === "/api/wizard-content-section-delete" && request.method() === "DELETE") {
+      deleteSectionBody = { id: url.searchParams.get("id") };
+      sectionBDeleted = true;
+      return reply({
+        ok: true,
+        sectionKey: sectionB.sectionKey,
+        deletedVersionCount: 1,
+        deletedMembershipCount: 0,
+        cancelledDesignRunCount: 1,
+        updatedAssetJobCount: 0,
+      });
+    }
+    if (url.pathname === "/api/wizard-content-sections") return reply({ ok: true, sections: sectionBDeleted ? [sectionA, sectionAActive] : [sectionA, sectionAActive, sectionB] });
     if (url.pathname === "/api/wizard-content-section-items-order" && request.method() === "POST") {
       componentOrderBody = request.postDataJSON();
       if (rejectComponentOrder) return reply({ error: "Simulated stale order" }, 409);
@@ -158,8 +172,11 @@ try {
       }));
       return reply({ ok: true, items: sectionItems });
     }
-    if (url.pathname === "/api/wizard-content-section") return reply({ ok: true, section: sectionA, items: sectionItems, histories: [] });
-    if (url.pathname === "/api/wizard-content-section-usage") return reply({ ok: true, templates: [template] });
+    if (url.pathname === "/api/wizard-content-section") {
+      const selectedSection = url.searchParams.get("id") === sectionB.id ? sectionB : sectionA;
+      return reply({ ok: true, section: selectedSection, items: selectedSection.id === sectionB.id ? [] : sectionItems, histories: [] });
+    }
+    if (url.pathname === "/api/wizard-content-section-usage") return reply({ ok: true, templates: url.searchParams.get("sectionId") === sectionB.id ? [] : [template] });
     if (url.pathname === "/api/wizard-form-template-layout") return reply({
       ok: true,
       template,
@@ -234,6 +251,16 @@ try {
     compositionScope: "shared",
   });
   assert.equal(await page.locator(".template-section-composer").count(), 0);
+
+  const unusedSectionRow = page.locator("#section-preset-manager-target .prompt-list-item").filter({ hasText: "Benefits" });
+  await unusedSectionRow.click();
+  await page.locator("#section-preset-manager-target .prompt-editor-header").filter({ hasText: "Benefits" }).waitFor({ state: "visible" });
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.locator("#section-preset-manager-target .prompt-editor-header").getByRole("button", { name: "삭제", exact: true }).click();
+  await page.waitForTimeout(100);
+  assert.deepEqual(deleteSectionBody, { id: sectionB.id });
+  assert.equal(await page.locator("#section-preset-manager-target .prompt-list-item").filter({ hasText: "Benefits" }).count(), 0);
+  assert.match(await page.locator(".shell-status").textContent(), /AI 디자인 작업 1건 취소/);
 
   await page.getByRole("tab", { name: "템플릿·레이아웃 관리" }).click();
   await page.locator(".template-live-preview").waitFor({ state: "visible" });

@@ -12959,7 +12959,7 @@ var zv = /*#__PURE__*/ Ch(_v, [["render", Rv], ["__scopeId", "data-v-0b859684"]]
 					try {
 						let e = await fetch("/api/wizard-content-sections?includeArchived=true"), t = await e.json().catch(() => ({}));
 						if (!e.ok) throw Error(t.message || t.error || `섹션 목록 요청 오류(${e.status})`);
-						this.wizardSections = Array.isArray(t.sections) ? t.sections : [], !this.selectedWizardSectionKey && this.groupedWizardSections.length ? await this.selectWizardSection(this.groupedWizardSections[0].sectionKey) : this.selectedWizardSectionKey && await this.selectWizardSection(this.selectedWizardSectionKey, { silent: !0 });
+						this.wizardSections = Array.isArray(t.sections) ? t.sections : [], this.groupedWizardSections.some((e) => e.sectionKey === this.selectedWizardSectionKey) || (this.selectedWizardSectionKey = this.groupedWizardSections[0]?.sectionKey || ""), this.selectedWizardSectionKey ? await this.selectWizardSection(this.selectedWizardSectionKey, { silent: !0 }) : (this.wizardSectionDetail = null, this.wizardSectionUsage = []);
 					} catch (e) {
 						this.wizardSectionsError = e.message, this.setStatus(`Wizard 섹션 목록을 불러오지 못했습니다: ${e.message}`);
 					} finally {
@@ -13227,6 +13227,29 @@ var zv = /*#__PURE__*/ Ch(_v, [["render", Rv], ["__scopeId", "data-v-0b859684"]]
 						await this.loadWizardSections({ fresh: !0 }), this.setStatus("섹션을 보관 처리했습니다 (Wizard에서 즉시 숨겨짐)");
 					} catch (e) {
 						this.setStatus(`섹션 보관 실패: ${e.message}`);
+					} finally {
+						this.wizardSectionSaving = !1;
+					}
+				}
+			},
+			async deleteWizardSection(e = this.selectedWizardGroup) {
+				let t = e?.primary || null;
+				if (!t || this.wizardSectionSaving || this.wizardSectionUsageLoading) return;
+				if (this.wizardSectionUsage.length) {
+					this.setStatus("활성 또는 초안 템플릿에서 사용 중인 Section Preset은 삭제할 수 없습니다.");
+					return;
+				}
+				let n = e.versions.length;
+				if (window.confirm(`${t.name} Section Preset을 영구 삭제할까요? ${n}개 버전과 컴포넌트 배치·레이아웃이 함께 삭제됩니다. 진행 중인 AI 디자인 작업은 취소되며 복구할 수 없습니다.`)) {
+					this.wizardSectionSaving = !0;
+					try {
+						let e = await fetch(`/api/wizard-content-section-delete?id=${encodeURIComponent(t.id)}`, { method: "DELETE" }), r = await e.json().catch(() => ({}));
+						if (!e.ok) throw Error(r.message || r.error || `Section Preset 삭제 오류(${e.status})`);
+						this.selectedWizardSectionKey = "", this.wizardSectionDetail = null, this.wizardSectionUsage = [], await this.loadWizardSections({ fresh: !0 });
+						let i = Number(r.cancelledDesignRunCount || 0);
+						this.setStatus(`${t.name} Section Preset과 ${Number(r.deletedVersionCount || n)}개 버전을 삭제했습니다${i ? ` · AI 디자인 작업 ${i}건 취소` : ""}`);
+					} catch (e) {
+						this.setStatus(`Section Preset 삭제 실패: ${e.message}`);
 					} finally {
 						this.wizardSectionSaving = !1;
 					}

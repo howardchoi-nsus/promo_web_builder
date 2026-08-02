@@ -4046,10 +4046,14 @@ const adminApp = createApp({
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `섹션 목록 요청 오류(${response.status})`);
         this.wizardSections = Array.isArray(result.sections) ? result.sections : [];
-        if (!this.selectedWizardSectionKey && this.groupedWizardSections.length) {
-          await this.selectWizardSection(this.groupedWizardSections[0].sectionKey);
-        } else if (this.selectedWizardSectionKey) {
+        if (!this.groupedWizardSections.some((group) => group.sectionKey === this.selectedWizardSectionKey)) {
+          this.selectedWizardSectionKey = this.groupedWizardSections[0]?.sectionKey || "";
+        }
+        if (this.selectedWizardSectionKey) {
           await this.selectWizardSection(this.selectedWizardSectionKey, { silent: true });
+        } else {
+          this.wizardSectionDetail = null;
+          this.wizardSectionUsage = [];
         }
       } catch (error) {
         this.wizardSectionsError = error.message;
@@ -4359,6 +4363,35 @@ const adminApp = createApp({
         this.setStatus("섹션을 보관 처리했습니다 (Wizard에서 즉시 숨겨짐)");
       } catch (error) {
         this.setStatus(`섹션 보관 실패: ${error.message}`);
+      } finally {
+        this.wizardSectionSaving = false;
+      }
+    },
+
+    async deleteWizardSection(group = this.selectedWizardGroup) {
+      const target = group?.primary || null;
+      if (!target || this.wizardSectionSaving || this.wizardSectionUsageLoading) return;
+      if (this.wizardSectionUsage.length) {
+        this.setStatus("활성 또는 초안 템플릿에서 사용 중인 Section Preset은 삭제할 수 없습니다.");
+        return;
+      }
+      const versionCount = group.versions.length;
+      if (!window.confirm(`${target.name} Section Preset을 영구 삭제할까요? ${versionCount}개 버전과 컴포넌트 배치·레이아웃이 함께 삭제됩니다. 진행 중인 AI 디자인 작업은 취소되며 복구할 수 없습니다.`)) return;
+      this.wizardSectionSaving = true;
+      try {
+        const response = await fetch(`/api/wizard-content-section-delete?id=${encodeURIComponent(target.id)}`, {
+          method: "DELETE",
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `Section Preset 삭제 오류(${response.status})`);
+        this.selectedWizardSectionKey = "";
+        this.wizardSectionDetail = null;
+        this.wizardSectionUsage = [];
+        await this.loadWizardSections({ fresh: true });
+        const cancelledRunCount = Number(result.cancelledDesignRunCount || 0);
+        this.setStatus(`${target.name} Section Preset과 ${Number(result.deletedVersionCount || versionCount)}개 버전을 삭제했습니다${cancelledRunCount ? ` · AI 디자인 작업 ${cancelledRunCount}건 취소` : ""}`);
+      } catch (error) {
+        this.setStatus(`Section Preset 삭제 실패: ${error.message}`);
       } finally {
         this.wizardSectionSaving = false;
       }
