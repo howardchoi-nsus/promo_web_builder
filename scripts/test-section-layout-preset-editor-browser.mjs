@@ -142,6 +142,17 @@ try {
     top: node.style.top,
     transform: node.style.transform,
   })), logoPositionBeforeAlignment);
+  const livePreviewUrl = page.url();
+  const outputPagePromise = page.context().waitForEvent("page");
+  await page.getByRole("button", { name: "Web Output", exact: true }).click();
+  const outputPage = await outputPagePromise;
+  await outputPage.locator(".promo-renderer").waitFor();
+  assert.equal(new URL(outputPage.url()).searchParams.get("returnUrl"), livePreviewUrl);
+  const outputClosed = outputPage.waitForEvent("close");
+  await outputPage.getByRole("button", { name: "Live Preview로 돌아가기", exact: true }).click();
+  await outputClosed;
+  assert.equal(page.url(), livePreviewUrl);
+  assert.equal(await page.locator(".editor-workspace.is-section-preset-workspace").count(), 1);
   await page.locator(".property-panel .component-property-trigger").filter({ hasText: "Logo" }).click();
   await page.getByLabel("텍스트", { exact: true }).fill("Saved header text");
   await page.getByRole("button", { name: "Mobile" }).click();

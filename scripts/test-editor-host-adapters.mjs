@@ -57,7 +57,11 @@ const output = createOutputAdapter({
 });
 assert.equal(output.save({ id: "snapshot-1" }).ok, true);
 assert.equal(output.load().id, "snapshot-1");
-output.open();
-assert.deepEqual(opened[0], ["/prototype/visual-output.html", "_blank", "noopener"]);
+output.open("https://builder.example/live-preview?mode=create-promo");
+assert.deepEqual(opened[0], [
+  "/prototype/visual-output.html?returnUrl=https%3A%2F%2Fbuilder.example%2Flive-preview%3Fmode%3Dcreate-promo",
+  "_blank",
+  "noopener",
+]);
 
 console.log("Editor host adapter tests passed.");

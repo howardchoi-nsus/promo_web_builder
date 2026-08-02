@@ -19,9 +19,14 @@ export function createOutputAdapter({
       return JSON.parse(stored);
     },
 
-    open() {
+    open(returnUrl = globalThis.location?.href || "") {
       if (typeof openWindow !== "function") throw new Error("Web Output 창을 열 수 없습니다.");
-      openWindow(outputUrl, "_blank", "noopener");
+      const target = new URL(outputUrl, globalThis.location?.origin || "http://localhost");
+      if (returnUrl) target.searchParams.set("returnUrl", returnUrl);
+      const destination = /^https?:\/\//i.test(outputUrl)
+        ? target.href
+        : `${target.pathname}${target.search}${target.hash}`;
+      openWindow(destination, "_blank", "noopener");
     },
   });
 }

@@ -227,6 +227,7 @@ function openOutput() {
   url.searchParams.set("mode", "output");
   url.searchParams.set("builderDocumentId", store.documentId);
   url.searchParams.set("revision", String(store.documentRevision));
+  url.searchParams.set("returnUrl", window.location.href);
   window.open(url, "_blank", "noopener,noreferrer");
   recordBuilderEvent({
     eventName: "web_output_opened",

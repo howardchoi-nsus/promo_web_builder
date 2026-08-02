@@ -361,7 +361,7 @@ try {
   await editorFrame.getByRole("button", { name: "Web Output", exact: true }).click();
   const separateOutputPage = await separateOutputPagePromise;
   await separateOutputPage.locator(".promo-renderer").waitFor({ timeout: 10_000 });
-  assert.match(separateOutputPage.url(), /\/prototype\/visual-output\.html$/);
+  assert.match(separateOutputPage.url(), /\/prototype\/visual-output\.html\?returnUrl=/);
   await separateOutputPage.close();
   const createPromoWorkspaceStyles = await editorFrame.locator(".editor-workspace.is-create-promo-wizard").evaluate((node) => {
     const styles = getComputedStyle(node);

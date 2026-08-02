@@ -1902,6 +1902,7 @@ async function openOutput() {
     url.searchParams.set("mode", "output");
     url.searchParams.set("builderDocumentId", aiDocumentId.value);
     url.searchParams.set("revision", String(aiDocumentRevision.value));
+    url.searchParams.set("returnUrl", window.location.href);
     window.open(url, "_blank", "noopener,noreferrer");
     return;
   }
@@ -1911,7 +1912,38 @@ async function openOutput() {
     outputSaveError.value = result.message;
     return;
   }
-  outputAdapter.open();
+  outputAdapter.open(window.location.href);
+}
+
+function outputReturnTarget() {
+  const raw = new URLSearchParams(window.location.search).get("returnUrl");
+  if (!raw) return "";
+  try {
+    const target = new URL(raw, window.location.origin);
+    if (target.origin !== window.location.origin) return "";
+    if (target.pathname === window.location.pathname && target.searchParams.get("mode") === "output") return "";
+    return target.href;
+  } catch {
+    return "";
+  }
+}
+
+function returnToLivePreview() {
+  if (window.opener && !window.opener.closed) {
+    window.opener.focus();
+    window.close();
+    return;
+  }
+  const returnUrl = outputReturnTarget();
+  window.close();
+  window.setTimeout(() => {
+    if (document.visibilityState === "hidden") return;
+    if (returnUrl) {
+      window.location.replace(returnUrl);
+      return;
+    }
+    if (window.history.length > 1) window.history.back();
+  }, 120);
 }
 
 async function loadSectionPresetLayout() {
@@ -2258,7 +2290,7 @@ onBeforeUnmount(() => {
         <span>WEB OUTPUT</span>
         <strong>{{ rendererSnapshot?.content?.formTemplate?.name || "Visual Editor" }}</strong>
       </div>
-      <a href="/prototype/visual-editor.html">Visual Editor로 돌아가기</a>
+      <button type="button" @click="returnToLivePreview">Live Preview로 돌아가기</button>
     </header>
     <div v-if="error" class="system-message system-message--error">{{ error }}</div>
     <PromoPageRenderer
