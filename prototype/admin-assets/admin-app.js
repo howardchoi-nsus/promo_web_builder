@@ -11634,9 +11634,14 @@ var zv = /*#__PURE__*/ Ch(_v, [["render", Rv], ["__scopeId", "data-v-0b859684"]]
 				}
 			},
 			async deleteItemComponent(e) {
-				if (!(!e?.id || e.systemSeedCode || this.itemComponentSaving)) {
+				if (!(!e?.id || this.itemComponentSaving)) {
+					if (e.systemSeedCode) {
+						this.setStatus("시스템 기본 컴포넌트는 삭제할 수 없습니다");
+						return;
+					}
 					if (await this.loadItemComponentUsage(e.id), this.itemComponentUsage.usageCount > 0) {
-						this.setStatus(`사용 중인 컴포넌트는 삭제할 수 없습니다 (${this.itemComponentUsage.usageCount}개 사용처)`);
+						let e = this.itemComponentUsage.sections.slice(0, 3).map((e) => `${e.name} v${e.sectionVersion}`).join(", ");
+						this.setStatus(`컴포넌트 삭제 불가: 활성·초안 Section Preset ${this.itemComponentUsage.usageCount}곳에서 사용 중입니다${e ? ` (${e}${this.itemComponentUsage.usageCount > 3 ? " 외" : ""})` : ""}`);
 						return;
 					}
 					if (window.confirm(`${e.name} 컴포넌트를 영구 삭제할까요? 모든 버전과 과거 섹션의 배치 정보가 삭제되며 복구할 수 없습니다.`)) {

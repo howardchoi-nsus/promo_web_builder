@@ -137,6 +137,7 @@ assert.match(adminApp, /item-components\?includeArchived=true/);
 assert.match(componentHtml, /컴포넌트 보관/);
 assert.match(componentHtml, /컴포넌트 삭제/);
 assert.match(componentHtml, /selectedItemComponent\.systemSeedCode/);
+assert.doesNotMatch(componentHtml, /:disabled="itemComponentSaving \|\| itemComponentUsageLoading \|\| itemComponentUsage\.usageCount > 0 \|\| !!selectedItemComponent\.systemSeedCode"/);
 assert.match(componentHtml, /itemComponentUsage\.usageCount > 0/);
 assert.match(componentUsageApi, /section\.status in \('draft', 'active'\)/);
 assert.match(componentArchiveApi, /status in \('draft', 'active'\)/);

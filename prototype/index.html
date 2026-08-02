@@ -1368,18 +1368,18 @@
                     <button
                       class="tiny-button danger"
                       type="button"
-                      :disabled="itemComponentSaving || itemComponentUsageLoading || itemComponentUsage.usageCount > 0 || !!selectedItemComponent.systemSeedCode"
-                      :title="selectedItemComponent.systemSeedCode ? '시스템 기본 컴포넌트는 삭제할 수 없습니다.' : (itemComponentUsage.usageCount > 0 ? '활성·초안 Section Preset에서 사용 중이라 삭제할 수 없습니다.' : '컴포넌트와 모든 버전을 영구 삭제합니다.')"
+                      :disabled="itemComponentSaving"
+                      :title="selectedItemComponent.systemSeedCode ? '클릭하면 시스템 기본 컴포넌트 보호 안내를 확인할 수 있습니다.' : (itemComponentUsage.usageCount > 0 ? '클릭하면 삭제를 막는 Section Preset 사용처를 확인할 수 있습니다.' : '컴포넌트와 모든 버전을 영구 삭제합니다.')"
                       @click="deleteItemComponent(selectedItemComponent)"
                     >컴포넌트 삭제</button>
                   </div>
                 </div>
-                <div v-if="selectedItemComponent.status !== 'archived'" class="outline-item" :class="{ 'danger-state': itemComponentUsage.error }">
+                <div v-if="selectedItemComponent" class="outline-item" :class="{ 'danger-state': itemComponentUsage.error }">
                   <strong>컴포넌트 사용처</strong>
                   <span v-if="itemComponentUsageLoading">사용처를 확인하는 중입니다.</span>
                   <span v-else-if="itemComponentUsage.error">{{ itemComponentUsage.error }}</span>
-                  <span v-else-if="itemComponentUsage.usageCount">활성·초안 섹션 {{ itemComponentUsage.usageCount }}곳에서 사용 중이므로 보관할 수 없습니다.</span>
-                  <span v-else>사용 중인 활성·초안 섹션이 없어 안전하게 보관할 수 있습니다.</span>
+                  <span v-else-if="itemComponentUsage.usageCount">활성·초안 Section Preset {{ itemComponentUsage.usageCount }}곳에서 사용 중이므로 보관하거나 삭제할 수 없습니다.</span>
+                  <span v-else>사용 중인 활성·초안 Section Preset이 없어 안전하게 보관하거나 삭제할 수 있습니다.</span>
                   <small v-for="usage in itemComponentUsage.sections" :key="`${usage.id}-${usage.itemKey}`">
                     {{ usage.name }} v{{ usage.sectionVersion }} · {{ usage.itemKey }}
                   </small>
