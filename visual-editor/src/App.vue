@@ -1956,7 +1956,7 @@ function notifyAdminLayoutSaved(activated = false) {
   }, globalThis.location.origin);
 }
 
-async function saveAdminLayout({ activate = false } = {}) {
+async function saveAdminLayout() {
   if (!template.value?.id || layoutSaving.value) return;
   layoutSaveMessage.value = "";
   const validation = validateLayoutSpec(designSpec.value);
@@ -1983,23 +1983,8 @@ async function saveAdminLayout({ activate = false } = {}) {
     editorCore.replaceDocument(editorDocumentFromRefs(), { resetHistory: false, dirty: false });
     updateEditorHistory();
     layoutChangeNote.value = "";
-    if (!activate) {
-      layoutSaveMessage.value = `초안 v${template.value.version || 1} · layout r${layoutRevision.value} 저장 완료 · 프로모션 빌더 반영을 위해 템플릿을 활성화하세요.`;
-      notifyAdminLayoutSaved(false);
-      return;
-    }
-
-    const activateResult = await adminTemplateAdapter.activateTemplate({
-      id: template.value.id,
-      changeNote: "Admin Layout Editor에서 기본 레이아웃 저장 후 활성화했습니다.",
-    });
-    if (Number(activateResult.layoutIdentity?.layoutRevision || 0) !== layoutRevision.value) {
-      throw new Error("활성화 결과의 Layout revision이 방금 저장한 초안과 일치하지 않습니다.");
-    }
-    template.value = { ...template.value, ...(activateResult.template || {}), status: "active" };
-    layoutIdentity.value = activateResult.layoutIdentity || layoutIdentity.value;
-    layoutSaveMessage.value = `활성 v${template.value.version || 1} · layout r${layoutRevision.value} 반영 완료 · 신규 프로모션 빌더에서 사용됩니다.`;
-    notifyAdminLayoutSaved(true);
+    layoutSaveMessage.value = `초안 v${template.value.version || 1} · layout r${layoutRevision.value} 저장 완료 · 운영 반영은 왼쪽 템플릿의 활성/비활성 토글에서 지정하세요.`;
+    notifyAdminLayoutSaved(false);
   } catch (saveError) {
     layoutSaveMessage.value = saveError.message;
   } finally {
@@ -2226,7 +2211,7 @@ onBeforeUnmount(() => {
         <span>{{ isAdminLayoutMode ? "ADMIN TEMPLATE LAYOUT" : isWizardLayoutMode ? "WIZARD LAYOUT" : "VISUAL EDITOR" }}</span>
         <h2>{{ template?.name || "Default Renderer" }}</h2>
         <small v-if="isAdminLayoutMode" class="editor-mode-note">
-          v{{ template?.version || 1 }} · {{ template?.status || "draft" }} · Draft 저장 후 템플릿을 활성화해야 Create Promo에 반영됩니다.
+          v{{ template?.version || 1 }} · {{ template?.status || "draft" }} · 초안 저장 후 왼쪽 템플릿 활성/비활성 토글에서 운영 반영을 지정합니다.
         </small>
       </div>
       <div class="editor-global-actions">
@@ -2389,7 +2374,7 @@ onBeforeUnmount(() => {
         @undo="undoEditorCommand"
         @redo="redoEditorCommand"
         @update-design-token="updateDesignToken"
-        @save-admin-layout="(activate) => saveAdminLayout({ activate })"
+        @save-admin-layout="saveAdminLayout"
         @save-ai-document="saveAiDocument"
         @open-output="openOutput"
         @clear-selection="clearEditorSelection"

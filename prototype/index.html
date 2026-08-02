@@ -1927,6 +1927,7 @@
                         <span class="app-switch__track" aria-hidden="true"></span>
                         <span class="app-switch__label">{{ wizardFormTemplateSaving ? '저장 중' : (group.primary?.status === 'active' ? '활성' : '비활성') }}</span>
                       </label>
+                      <small class="template-activation-hint">Live Preview에서 초안을 저장한 뒤 이 토글을 켜면 저장된 최신 초안이 활성화됩니다. 미저장 변경은 반영되지 않습니다.</small>
                       <div class="template-list-card__actions">
                         <button class="tiny-button" type="button" :disabled="wizardFormTemplateSaving" @click="editWizardFormTemplate(group)">수정</button>
                         <button class="tiny-button" type="button" :disabled="wizardFormTemplateSaving" @click="openDuplicateWizardFormTemplate(group)">{{ t('common.action.duplicate') }}</button>
@@ -1976,7 +1977,7 @@
                         <span>{{ t('common.field.changeReason') }}</span>
                         <input v-model="wizardFormTemplateEditor.changeNote" type="text" autocomplete="off" />
                       </label>
-                      <button class="tiny-button primary" type="button" v-if="wizardFormTemplateDetail.template.status === 'draft'" :disabled="wizardFormTemplateSaving || !wizardFormTemplateEditor.name" @click="saveWizardFormTemplate">{{ t('common.action.save') }}</button>
+                      <button class="tiny-button primary" type="button" v-if="wizardFormTemplateDetail.template.status === 'draft'" :disabled="wizardFormTemplateSaving || !wizardFormTemplateEditor.name" @click="saveWizardFormTemplate">템플릿 정보 저장</button>
                     </div>
                   </article>
                   <div class="empty-state compact" v-if="!wizardFormTemplatesLoading && !groupedWizardFormTemplates.length">등록된 템플릿이 없습니다.</div>

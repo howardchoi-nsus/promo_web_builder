@@ -16,11 +16,10 @@ const admin = createAdminTemplateAdapter({
 await admin.loadLayout("template A");
 await admin.loadDesignTokenSets();
 await admin.saveLayout({ templateId: "template-A" });
-await admin.activateTemplate({ id: "template-A" });
 assert.equal(fetchCalls[0].url, "/api/wizard-form-template-layout?templateId=template%20A");
 assert.equal(fetchCalls[1].url, "/api/design-token-sets?scope=public");
 assert.equal(fetchCalls[2].options.method, "PATCH");
-assert.equal(fetchCalls[3].options.method, "POST");
+assert.equal(fetchCalls.length, 3);
 
 const sentMessages = [];
 const eventListeners = new Map();

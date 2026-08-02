@@ -195,14 +195,8 @@ defineExpose({ finishTextEdit, getStageElement, scrollToSection });
             <button
               type="button"
               :disabled="!editorSnapshot || layoutSaving || template?.status !== 'draft'"
-              @click="emit('save-admin-layout', false)"
+              @click="emit('save-admin-layout')"
             >{{ layoutSaving ? "저장 중" : "초안 저장" }}</button>
-            <button
-              type="button"
-              class="is-primary"
-              :disabled="!editorSnapshot || layoutSaving || template?.status !== 'draft'"
-              @click="emit('save-admin-layout', true)"
-            >저장 후 활성화</button>
           </div>
           <button
             v-if="capabilities.canSaveAiDocument"

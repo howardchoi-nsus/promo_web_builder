@@ -111,7 +111,7 @@ try {
   assert.equal(await adminEditorPage.locator(".editor-shell--embedded").count(), 1);
   assert.equal(await adminEditorPage.locator(".shell-sidebar").count(), 0);
   assert.equal(await adminEditorPage.getByRole("button", { name: "초안 저장" }).count(), 1);
-  assert.equal(await adminEditorPage.getByRole("button", { name: "저장 후 활성화" }).count(), 1);
+  assert.equal(await adminEditorPage.getByRole("button", { name: "저장 후 활성화" }).count(), 0);
   assert.equal(await adminEditorPage.getByText("AI 다중 정렬", { exact: true }).count(), 1);
   assert.equal(await adminEditorPage.locator(".section-property-accordion").count(), 1);
   assert.equal(await adminEditorPage.locator(".property-panel .section-properties").count(), 0);

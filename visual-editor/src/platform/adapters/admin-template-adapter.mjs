@@ -36,15 +36,5 @@ export function createAdminTemplateAdapter({ fetchImpl = globalThis.fetch } = {}
       return result;
     },
 
-    async activateTemplate(payload) {
-      const response = await fetchImpl("/api/wizard-form-template-activate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const result = await readJson(response);
-      if (!response.ok) throw responseError(result, "템플릿 활성화 오류", response.status);
-      return result;
-    },
   });
 }
