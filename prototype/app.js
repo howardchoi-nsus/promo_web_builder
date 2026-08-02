@@ -3543,7 +3543,7 @@ const adminApp = createApp({
         return;
       }
       const versionCount = group.versions.length;
-      if (!window.confirm(`${target.name} 템플릿을 영구 삭제할까요? ${versionCount}개 버전과 저장된 레이아웃이 함께 삭제되며 복구할 수 없습니다.`)) return;
+      if (!window.confirm(`${target.name} 템플릿을 영구 삭제할까요? ${versionCount}개 버전과 저장된 레이아웃이 함께 삭제됩니다. 진행 중인 AI 디자인 작업은 취소되며 복구할 수 없습니다.`)) return;
       this.wizardFormTemplateSaving = true;
       try {
         const response = await fetch(`/api/wizard-form-template-delete?id=${encodeURIComponent(target.id)}`, {
@@ -3553,7 +3553,8 @@ const adminApp = createApp({
         if (!response.ok) throw new Error(result.message || result.error || `템플릿 삭제 오류(${response.status})`);
         this.expandedWizardFormTemplateSettingsKey = "";
         await this.loadWizardFormTemplates({ fresh: true });
-        this.setStatus(`${target.name} 템플릿과 ${Number(result.deletedVersionCount || versionCount)}개 버전을 삭제했습니다`);
+        const cancelledRunCount = Number(result.cancelledDesignRunCount || 0);
+        this.setStatus(`${target.name} 템플릿과 ${Number(result.deletedVersionCount || versionCount)}개 버전을 삭제했습니다${cancelledRunCount ? ` · AI 디자인 작업 ${cancelledRunCount}건 취소` : ""}`);
       } catch (error) {
         this.setStatus(`템플릿 삭제 실패: ${error.message}`);
       } finally {

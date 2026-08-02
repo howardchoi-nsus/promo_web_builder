@@ -118,7 +118,13 @@ try {
     if (url.pathname === "/api/wizard-form-template-delete" && request.method() === "DELETE") {
       deleteTemplateBody = { id: url.searchParams.get("id") };
       generatedTemplateDeleted = true;
-      return reply({ ok: true, templateKey: generatedTemplate.templateKey, deletedVersionCount: 1 });
+      return reply({
+        ok: true,
+        templateKey: generatedTemplate.templateKey,
+        deletedVersionCount: 1,
+        cancelledDesignRunCount: 1,
+        updatedAssetJobCount: 1,
+      });
     }
     if (url.pathname === "/api/wizard-form-template-activate" && request.method() === "POST") {
       activateBody = request.postDataJSON();
@@ -250,6 +256,7 @@ try {
   await page.waitForTimeout(100);
   assert.deepEqual(deleteTemplateBody, { id: generatedTemplate.id });
   assert.equal(await page.locator(".template-list-card").filter({ hasText: "Generated Template" }).count(), 0);
+  assert.match(await page.locator(".shell-status").textContent(), /AI 디자인 작업 1건 취소/);
 
   const templateCard = page.locator(".template-list-card").first();
   await templateCard.locator(".template-settings-toggle").click();

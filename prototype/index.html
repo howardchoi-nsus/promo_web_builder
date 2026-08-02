@@ -1919,7 +1919,7 @@
                           class="tiny-button danger"
                           type="button"
                           :disabled="wizardFormTemplateSaving || !!group.active || group.versions.some(version => version.isDefault)"
-                          :title="group.active || group.versions.some(version => version.isDefault) ? '활성 또는 기본 템플릿은 삭제할 수 없습니다.' : '템플릿의 모든 버전과 레이아웃을 영구 삭제합니다.'"
+                          :title="group.active || group.versions.some(version => version.isDefault) ? '활성 또는 기본 템플릿은 삭제할 수 없습니다.' : '템플릿의 모든 버전과 레이아웃을 영구 삭제하고 진행 중인 AI 작업을 취소합니다.'"
                           @click="deleteWizardFormTemplate(group)"
                         >삭제</button>
                       </div>

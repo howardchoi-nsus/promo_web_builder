@@ -53,16 +53,26 @@ function createResponse() {
   assert.equal(response.statusCode, 400);
 
   response = createResponse();
-  queryResults = [[], [{ id: "version-1", version: 1 }, { id: "version-2", version: 2 }]];
+  queryResults = [
+    [],
+    [{ id: "asset-job-1" }],
+    [{ id: "design-run-1" }],
+    [{ id: "version-1", version: 1 }, { id: "version-2", version: 2 }],
+  ];
   await handler({ method: "DELETE", body: {}, query: { id: currentTemplate.id } }, response);
   assert.equal(response.statusCode, 200);
   assert.deepEqual(response.payload, {
     ok: true,
     templateKey: "tpl_created",
     deletedVersionCount: 2,
+    cancelledDesignRunCount: 1,
+    updatedAssetJobCount: 1,
   });
   assert.match(queryLog.at(-1).text, /delete from wizard_form_templates/);
   assert.match(queryLog.at(-1).text, /not exists/);
+  assert.ok(queryLog.some((query) => /update promo_section_design_runs/.test(query.text)));
+  assert.ok(queryLog.some((query) => /form_template_id = null/.test(query.text)));
+  assert.ok(queryLog.some((query) => /component_instance_id = null/.test(query.text)));
 
   response = createResponse();
   queryResults = [[{ id: "active-version", status: "active", is_default: true }]];
