@@ -18,6 +18,16 @@ function mergeRecord(base = {}, override = {}) {
   return result;
 }
 
+function migrateLegacyAnchorTextAlignment(itemStyles = {}) {
+  Object.values(itemStyles).forEach((style) => {
+    if (!style || typeof style !== "object" || Array.isArray(style)) return;
+    if (style.textAlign !== undefined || style.positionMode !== "anchored") return;
+    if (["left", "center", "right"].includes(style.horizontalAnchor)) {
+      style.textAlign = style.horizontalAnchor;
+    }
+  });
+}
+
 export function normalizeLayoutSpec(value = {}) {
   return mergeLayoutSpec(DEFAULT_DESIGN_SPEC, value);
 }
@@ -41,6 +51,8 @@ export function mergeLayoutSpec(base = DEFAULT_DESIGN_SPEC, override = {}) {
     && !Array.isArray(merged.responsiveLayouts)
     ? merged.responsiveLayouts
     : {};
+  migrateLegacyAnchorTextAlignment(merged.itemStyles);
+  migrateLegacyAnchorTextAlignment(merged.responsiveLayouts.mobile?.itemStyles);
   return merged;
 }
 
@@ -80,7 +92,7 @@ export function validateLayoutSpec(value = {}) {
     "color", "colorToken", "fontFamily", "fontFamilyToken", "fontSize", "fontSizeToken",
     "fontWeight", "fontWeightToken", "fontStyle", "textDecoration", "textStyleToken",
     "textGradientToken", "textBackground", "textBackgroundToken", "lineHeight",
-    "lineHeightToken", "letterSpacing", "letterSpacingToken", "listType", "listIndent",
+    "lineHeightToken", "letterSpacing", "letterSpacingToken", "listType", "listIndent", "textAlign",
   ]);
   function validateLineStyles(lineStyles, path) {
     if (lineStyles === undefined) return;
@@ -116,6 +128,9 @@ export function validateLayoutSpec(value = {}) {
         if (lineStyle.listType !== undefined && lineStyle.listType !== null
           && !["bullet", "number"].includes(lineStyle.listType)) {
           errors.push({ path: `${linePath}.listType`, message: "Unsupported text list type." });
+        }
+        if (lineStyle.textAlign !== undefined && !allowedTextAlignments.has(lineStyle.textAlign)) {
+          errors.push({ path: `${linePath}.textAlign`, message: "Unsupported text alignment." });
         }
         const indent = Number(lineStyle.listIndent);
         if (lineStyle.listIndent !== undefined

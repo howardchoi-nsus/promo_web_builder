@@ -1437,26 +1437,6 @@ function updateItemStyle(patch) {
   );
 }
 
-function setItemAnchor(axis, value) {
-  if (!selectedItem.value || selectedItem.value.isLocked) return;
-  if (axis === "horizontal" && !["left", "center", "right"].includes(value)) return;
-  if (axis === "vertical" && !["top", "middle", "bottom"].includes(value)) return;
-  const horizontalAnchor = axis === "horizontal"
-    ? value
-    : (selectedItemStyle.value.horizontalAnchor || "center");
-  const verticalAnchor = axis === "vertical"
-    ? value
-    : (selectedItemStyle.value.verticalAnchor || "middle");
-  updateItemStyle({
-    positionMode: "anchored",
-    horizontalAnchor,
-    verticalAnchor,
-    textAlign: horizontalAnchor,
-    xPct: undefined,
-    yPx: undefined,
-  });
-}
-
 function rawSelectedViewportStyle() {
   return viewport.value === "mobile" ? selectedMobileItemStyle.value : selectedDesktopItemStyle.value;
 }
@@ -2528,7 +2508,6 @@ onBeforeUnmount(() => {
         @update-section-style="updateSectionStyle"
         @drop-library-component="addComponent"
         @patch-selected-text-style="patchSelectedTextStyle"
-        @set-item-anchor="setItemAnchor"
         @restore-automatic-position="restoreAutomaticPosition"
         @reset-selected-item-offset="resetSelectedItemOffset"
         @enable-automatic-text-size="enableAutomaticTextSize"

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { validateLayoutSpec } from "../visual-editor/src/layout-utils.mjs";
+import { normalizeLayoutSpec, validateLayoutSpec } from "../visual-editor/src/layout-utils.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
 const read = (...parts) => fs.readFileSync(path.join(root, ...parts), "utf8");
@@ -53,8 +53,10 @@ assert.match(app, /renderedRect\?\.height/);
 assert.match(app, /고정 영역을 넘는 내용은 미리보기와 출력에서 잘립니다/);
 assert.match(textControls, /lineHeightToken/);
 assert.match(textControls, /letterSpacingToken/);
-assert.match(textControls, /horizontalAnchor/);
-assert.match(textControls, /verticalAnchor/);
+assert.match(textControls, /aria-label="텍스트 박스 내부 정렬"/);
+assert.match(textControls, /emitLinePatch\(\{ textAlign: entry\.key \}\)/);
+assert.doesNotMatch(textControls, /set-anchor/);
+assert.doesNotMatch(textControls, /섹션 기준 세로/);
 assert.match(textControls, /자동 크기/);
 assert.match(app, /RESPONSIVE_ITEM_STYLE_PATCH/);
 assert.match(commands, /RESPONSIVE_ITEM_STYLE_PATCH/);
@@ -96,7 +98,7 @@ const valid = validateLayoutSpec({
       listIndent: 2,
       lineStyles: {
         $item: {
-          0: { fontWeight: 700, listType: "bullet", listIndent: 1 },
+          0: { fontWeight: 700, listType: "bullet", listIndent: 1, textAlign: "center" },
           1: { colorToken: "--promo-color-text" },
         },
       },
@@ -117,6 +119,29 @@ const valid = validateLayoutSpec({
   },
 });
 assert.equal(valid.ok, true, JSON.stringify(valid.errors));
+
+const migratedLegacyAlignment = normalizeLayoutSpec({
+  itemStyles: {
+    "hero.title": {
+      positionMode: "anchored",
+      horizontalAnchor: "right",
+      verticalAnchor: "bottom",
+    },
+  },
+  responsiveLayouts: {
+    mobile: {
+      itemStyles: {
+        "hero.title": {
+          positionMode: "anchored",
+          horizontalAnchor: "center",
+        },
+      },
+    },
+  },
+});
+assert.equal(migratedLegacyAlignment.itemStyles["hero.title"].textAlign, "right");
+assert.equal(migratedLegacyAlignment.responsiveLayouts.mobile.itemStyles["hero.title"].textAlign, "center");
+assert.equal(migratedLegacyAlignment.itemStyles["hero.title"].verticalAnchor, "bottom");
 
 const invalid = validateLayoutSpec({
   itemStyles: {
@@ -142,6 +167,14 @@ const invalidListIndent = validateLayoutSpec({
 });
 assert.equal(invalidListIndent.ok, false);
 assert(invalidListIndent.errors.some((entry) => entry.path.endsWith("listIndent")));
+
+const invalidLineAlignment = validateLayoutSpec({
+  itemStyles: {
+    "hero.title": { lineStyles: { $item: { 0: { textAlign: "diagonal" } } } },
+  },
+});
+assert.equal(invalidLineAlignment.ok, false);
+assert(invalidLineAlignment.errors.some((entry) => entry.path.endsWith("lineStyles.$item.0.textAlign")));
 
 const invalidLineStyle = validateLayoutSpec({
   itemStyles: { "hero.title": { lineStyles: { $item: { 0: { positionMode: "free" } } } } },

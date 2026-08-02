@@ -117,7 +117,7 @@ function validateLayoutSpec(value, sections = []) {
     "color", "colorToken", "fontFamily", "fontFamilyToken", "fontSize", "fontSizeToken",
     "fontWeight", "fontWeightToken", "fontStyle", "textDecoration", "textStyleToken",
     "textGradientToken", "textBackground", "textBackgroundToken", "lineHeight",
-    "lineHeightToken", "letterSpacing", "letterSpacingToken", "listType", "listIndent",
+    "lineHeightToken", "letterSpacing", "letterSpacingToken", "listType", "listIndent", "textAlign",
   ]);
   function validateLineStyles(lineStyles, path) {
     if (lineStyles === undefined) return;
@@ -153,6 +153,10 @@ function validateLayoutSpec(value, sections = []) {
         if (lineStyle.listType !== undefined && lineStyle.listType !== null
           && !["bullet", "number"].includes(lineStyle.listType)) {
           errors.push({ code: "INVALID_LIST_TYPE", path: `${linePath}.listType` });
+        }
+        if (lineStyle.textAlign !== undefined
+          && !["left", "center", "right"].includes(lineStyle.textAlign)) {
+          errors.push({ code: "INVALID_TEXT_ALIGN", path: `${linePath}.textAlign` });
         }
         const indent = Number(lineStyle.listIndent);
         if (lineStyle.listIndent !== undefined

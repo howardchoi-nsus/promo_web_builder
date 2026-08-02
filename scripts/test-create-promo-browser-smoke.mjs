@@ -538,6 +538,7 @@ try {
     textDomPositionBeforeSelection,
     "Selecting text without dragging must preserve its rendered DOM position",
   );
+  await textComponent.click();
   const textEditorToolbar = editorFrame.locator(".text-editor-controls");
   await textEditorToolbar.waitFor({ state: "visible" });
   const textPropertyInput = editorFrame.locator(".component-property-content textarea").first();
@@ -675,20 +676,27 @@ try {
   const anchoredTextComponent = editorFrame.locator('[data-section-key="heroBanner"] [data-item-key="title"]');
   await anchoredTextComponent.click();
   await textEditorToolbar.waitFor({ state: "visible" });
-  await textEditorToolbar.getByRole("button", { name: "섹션 기준 가로 중앙 정렬", exact: true }).click();
-  await textEditorToolbar.getByRole("button", { name: "섹션 기준 세로 상 정렬", exact: true }).click();
+  const beforeTextAlignmentContent = await page.evaluate(() => JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null"));
+  const beforeTextAlignmentStyle = beforeTextAlignmentContent?.templateLayouts?.["default-preview"]?.resolvedLayout
+    ?.itemStyles?.["heroBanner.title"] || {};
+  assert.equal(await textEditorToolbar.getByRole("button", { name: /섹션 기준 세로/ }).count(), 0);
+  await textEditorToolbar.getByRole("button", { name: "텍스트 박스 내부 중앙 정렬", exact: true }).click();
   await page.waitForTimeout(50);
-  assert.equal(await anchoredTextComponent.getAttribute("class").then((value) => value.includes("is-anchored-positioned")), true);
   assert.equal(
     await anchoredTextComponent.evaluate((node) => getComputedStyle(node).textAlign),
     "center",
-    "Section-centered text must derive centered paragraph alignment",
+    "Text alignment must use the selected text box",
   );
   const anchoredTextContent = await page.evaluate(() => JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null"));
-  assert.equal(
-    anchoredTextContent?.templateLayouts?.["default-preview"]?.resolvedLayout?.itemStyles?.["heroBanner.title"]?.positionMode,
-    "anchored",
-    "Section anchor intent must persist in the layout snapshot",
+  const afterTextAlignmentStyle = anchoredTextContent?.templateLayouts?.["default-preview"]?.resolvedLayout
+    ?.itemStyles?.["heroBanner.title"] || {};
+  assert.equal(afterTextAlignmentStyle.textAlign, "center", "Text-box alignment must persist in the layout snapshot");
+  assert.deepEqual(
+    Object.fromEntries(["positionMode", "horizontalAnchor", "verticalAnchor", "xPct", "yPx"]
+      .map((key) => [key, afterTextAlignmentStyle[key]])),
+    Object.fromEntries(["positionMode", "horizontalAnchor", "verticalAnchor", "xPct", "yPx"]
+      .map((key) => [key, beforeTextAlignmentStyle[key]])),
+    "Text alignment must not move or anchor the component box",
   );
   await textComponent.click();
   await textEditorToolbar.waitFor({ state: "visible" });

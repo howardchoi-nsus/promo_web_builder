@@ -671,7 +671,7 @@ function inlineItemStyle(section, item) {
     letterSpacing: style.letterSpacingToken ? `var(${style.letterSpacingToken})` : style.letterSpacing,
     fontStyle: style.fontStyle,
     textDecoration: style.textDecoration,
-    textAlign: style.textAlign || (anchored ? horizontalAnchor : undefined),
+    textAlign: style.textAlign,
     width: fitContent ? "fit-content" : style.widthMode === "fill" ? "100%" : `${widthPct}%`,
     maxWidth: fitContent
       ? (style.maxWidthToken ? `var(${style.maxWidthToken})` : `${clamp(style.maxWidthPct, 10, 100, 80)}%`)
@@ -735,6 +735,7 @@ function textLineInlineStyle(entry) {
     fontWeight: style.fontWeightToken ? `var(${style.fontWeightToken})` : style.fontWeight,
     fontStyle: style.fontStyle,
     textDecoration: style.textDecoration,
+    textAlign: style.textAlign,
     lineHeight: style.lineHeightToken ? `var(${style.lineHeightToken})` : style.lineHeight,
     letterSpacing: style.letterSpacingToken ? `var(${style.letterSpacingToken})` : style.letterSpacing,
     "--line-text-gradient": style.textGradientToken ? `var(${style.textGradientToken})` : undefined,

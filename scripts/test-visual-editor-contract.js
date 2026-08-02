@@ -368,7 +368,10 @@ assert.match(rendererStyles, /\.rendered-component-fields\s*\{[^}]*min-width:\s*
 assert.doesNotMatch(rendererStyles, /\.rendered-component-fields\s*\{[^}]*min-width:\s*180px/s);
 assert.match(renderer, /textAlign:\s*style\.textAlign/);
 assert.match(renderer, /horizontalAnchor/);
-assert.match(app, /textAlign:\s*horizontalAnchor/);
+assert.doesNotMatch(renderer, /textAlign:\s*style\.textAlign\s*\|\|/);
+assert.doesNotMatch(app, /textAlign:\s*horizontalAnchor/);
+assert.match(textEditorControls, /텍스트 박스 내부/);
+assert.doesNotMatch(textEditorControls, /섹션 기준 세로/);
 assert.match(app, /class="component-frame-controls"/);
 assert.match(app, /aria-label="컴포넌트 너비 퍼센트"/);
 assert.match(app, /aria-label="컴포넌트 높이 픽셀"/);

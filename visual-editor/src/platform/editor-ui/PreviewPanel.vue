@@ -60,7 +60,6 @@ const emit = defineEmits([
   "update-section-style",
   "drop-library-component",
   "patch-selected-text-style",
-  "set-item-anchor",
   "restore-automatic-position",
   "reset-selected-item-offset",
   "enable-automatic-text-size",
@@ -249,7 +248,6 @@ defineExpose({ finishTextEdit, getStageElement, scrollToSection });
       @undo="emit('undo')"
       @redo="emit('redo')"
       @patch-style="emit('patch-selected-text-style', $event)"
-      @set-anchor="(...args) => emit('set-item-anchor', ...args)"
       @restore-automatic-position="emit('restore-automatic-position')"
       @reset-offset="emit('reset-selected-item-offset')"
       @enable-auto-size="emit('enable-automatic-text-size')"

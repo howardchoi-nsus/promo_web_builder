@@ -121,23 +121,23 @@ button, a { letter-spacing: 0; }
 .preview-controls { display: flex; align-items: center; gap: 10px; }
 .visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
 .text-editor-controls { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 7px 12px; border-bottom: 1px solid var(--app-line); background: var(--app-surface); }
-.text-editor-toolbar, .section-anchor-toolbar { display: flex; align-items: center; min-width: 0; }
+.text-editor-toolbar, .text-layout-toolbar { display: flex; align-items: center; min-width: 0; }
 .text-editor-toolbar { flex: 1 1 auto; flex-wrap: wrap; gap: 4px 0; overflow: visible; }
 .text-toolbar-group { display: inline-flex; flex: 0 0 auto; align-items: center; padding: 0 6px; border-right: 1px solid var(--app-line); }
 .text-toolbar-group:first-child { padding-left: 0; }
 .text-toolbar-group button,
-.section-anchor-toolbar button,
+.text-layout-toolbar button,
 .text-color-menu > summary,
 .text-editor-more > summary { display: inline-flex; align-items: center; justify-content: center; width: 32px; min-width: 32px; height: 32px; padding: 0; border: 1px solid transparent; border-radius: 5px; background: transparent; color: var(--app-ink-soft); cursor: pointer; font-size: 12px; }
 .text-toolbar-group button:hover:not(:disabled),
-.section-anchor-toolbar button:hover:not(:disabled),
+.text-layout-toolbar button:hover:not(:disabled),
 .text-color-menu > summary:hover,
 .text-editor-more > summary:hover { border-color: var(--app-line-strong); background: var(--app-panel); color: var(--app-ink); }
 .text-toolbar-group button:disabled { opacity: .35; cursor: not-allowed; }
 .text-toolbar-group button.active,
-.section-anchor-toolbar button.active { border-color: var(--app-accent); background: var(--app-accent-soft); color: var(--app-accent); }
+.text-layout-toolbar button.active { border-color: var(--app-accent); background: var(--app-accent-soft); color: var(--app-accent); }
 .text-toolbar-group button:focus-visible,
-.section-anchor-toolbar button:focus-visible,
+.text-layout-toolbar button:focus-visible,
 .text-editor-toolbar select:focus-visible,
 .text-color-menu > summary:focus-visible,
 .text-editor-more > summary:focus-visible { outline: 2px solid var(--app-focus); outline-offset: 1px; }
@@ -162,9 +162,9 @@ button, a { letter-spacing: 0; }
 .text-editor-more[open] > summary { order: 3; }
 .text-editor-more label { display: grid; flex: 0 0 auto; gap: 2px; color: var(--app-sub); font-size: 9px; font-weight: 750; }
 .text-editor-more select { min-width: 86px; min-height: 30px; border: 1px solid var(--app-line-strong); background: var(--app-panel); color: var(--app-ink); font-size: 10px; }
-.section-anchor-toolbar { flex: 0 0 auto; gap: 3px; padding-left: 8px; border-left: 1px solid var(--app-line); }
-.section-anchor-toolbar > div { display: inline-flex; align-items: center; }
-.section-anchor-toolbar > div button + button { margin-left: 1px; }
+.text-layout-toolbar { flex: 0 0 auto; gap: 3px; padding-left: 8px; border-left: 1px solid var(--app-line); }
+.text-layout-toolbar > div { display: inline-flex; align-items: center; }
+.text-layout-toolbar > div button + button { margin-left: 1px; }
 .editor-history-actions { display: flex; align-items: center; gap: 6px; }
 .editor-history-actions .secondary-control { padding: 0 10px; }
 .editor-history-actions .secondary-control:disabled { cursor: not-allowed; opacity: .45; }
@@ -389,8 +389,8 @@ button, a { letter-spacing: 0; }
   .editor-header nav { justify-content: flex-start; }
   .preview-toolbar, .preview-controls { align-items: flex-start; flex-direction: column; }
   .text-editor-controls { align-items: flex-start; flex-direction: column; }
-  .text-editor-toolbar, .section-anchor-toolbar { width: 100%; overflow-x: auto; }
-  .section-anchor-toolbar { padding-top: 6px; padding-left: 0; border-top: 1px solid var(--app-line); border-left: 0; }
+  .text-editor-toolbar, .text-layout-toolbar { width: 100%; overflow-x: auto; }
+  .text-layout-toolbar { padding-top: 6px; padding-left: 0; border-top: 1px solid var(--app-line); border-left: 0; }
   .editor-workspace { display: flex; flex-direction: column; }
   .section-rail { border-right: 0; border-bottom: 1px solid var(--app-line); }
   .property-panel { border-right: 0; border-bottom: 1px solid var(--app-line); }

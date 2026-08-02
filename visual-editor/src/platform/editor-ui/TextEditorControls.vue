@@ -22,7 +22,6 @@ const emit = defineEmits([
   "undo",
   "redo",
   "patch-style",
-  "set-anchor",
   "restore-automatic-position",
   "reset-offset",
   "enable-auto-size",
@@ -374,8 +373,8 @@ function changeListIndent(delta) {
         </label>
       </details>
 
-      <div class="section-anchor-toolbar" role="group" aria-label="섹션 기준 텍스트 정렬">
-      <div role="group" aria-label="가로 정렬">
+      <div class="text-layout-toolbar" role="group" aria-label="텍스트 박스 정렬 및 배치 도구">
+      <div role="group" aria-label="텍스트 박스 내부 정렬">
         <button
           v-for="entry in [
             { key: 'left', label: '좌', icon: 'fa-align-left' },
@@ -384,27 +383,11 @@ function changeListIndent(delta) {
           ]"
           :key="entry.key"
           type="button"
-          :class="{ active: itemStyle.positionMode === 'anchored' && itemStyle.horizontalAnchor === entry.key }"
-          :aria-pressed="itemStyle.positionMode === 'anchored' && itemStyle.horizontalAnchor === entry.key"
-          :aria-label="`섹션 기준 가로 ${entry.label} 정렬`"
-          :title="`가로 ${entry.label} 정렬`"
-          @click="emit('set-anchor', 'horizontal', entry.key)"
-        ><i class="fa-solid" :class="entry.icon" aria-hidden="true"></i></button>
-      </div>
-      <div role="group" aria-label="세로 정렬">
-        <button
-          v-for="entry in [
-            { key: 'top', label: '상', icon: 'fa-arrow-up' },
-            { key: 'middle', label: '중앙', icon: 'fa-arrows-up-down' },
-            { key: 'bottom', label: '하', icon: 'fa-arrow-down' },
-          ]"
-          :key="entry.key"
-          type="button"
-          :class="{ active: itemStyle.positionMode === 'anchored' && itemStyle.verticalAnchor === entry.key }"
-          :aria-pressed="itemStyle.positionMode === 'anchored' && itemStyle.verticalAnchor === entry.key"
-          :aria-label="`섹션 기준 세로 ${entry.label} 정렬`"
-          :title="`세로 ${entry.label} 정렬`"
-          @click="emit('set-anchor', 'vertical', entry.key)"
+          :class="{ active: allSelectedLinesMatch((style) => (style.textAlign || 'left') === entry.key) }"
+          :aria-pressed="allSelectedLinesMatch((style) => (style.textAlign || 'left') === entry.key)"
+          :aria-label="`텍스트 박스 내부 ${entry.label} 정렬`"
+          :title="`텍스트 박스 내부 ${entry.label} 정렬`"
+          @click="emitLinePatch({ textAlign: entry.key })"
         ><i class="fa-solid" :class="entry.icon" aria-hidden="true"></i></button>
       </div>
       <button
