@@ -12563,26 +12563,21 @@ var zv = /*#__PURE__*/ Ch(_v, [["render", Rv], ["__scopeId", "data-v-0b859684"]]
 				}
 			},
 			async deleteWizardFormTemplate(e) {
-				let t = e?.draft || e?.inactive || null;
-				if (!t || this.wizardFormTemplateSaving) {
-					this.setStatus("활성 템플릿은 삭제할 수 없습니다. 먼저 다른 버전을 활성화하거나 비활성화해 주세요.");
+				let t = e?.draft || e?.inactive || e?.primary || null;
+				if (!t || this.wizardFormTemplateSaving) return;
+				if (e.active || e.versions.some((e) => e.isDefault)) {
+					this.setStatus("활성 또는 기본 템플릿은 삭제할 수 없습니다. 먼저 다른 템플릿을 활성화해 주세요.");
 					return;
 				}
-				if (window.confirm(`${t.name} v${t.version}을 삭제(보관)할까요?`)) {
+				let n = e.versions.length;
+				if (window.confirm(`${t.name} 템플릿을 영구 삭제할까요? ${n}개 버전과 저장된 레이아웃이 함께 삭제되며 복구할 수 없습니다.`)) {
 					this.wizardFormTemplateSaving = !0;
 					try {
-						let e = await fetch("/api/wizard-form-template-archive", {
-							method: "POST",
-							headers: { "Content-Type": "application/json" },
-							body: JSON.stringify({
-								id: t.id,
-								changeNote: "관리자 페이지 템플릿 목록에서 삭제(보관)했습니다."
-							})
-						}), n = await e.json().catch(() => ({}));
-						if (!e.ok) throw Error(n.message || n.error || `템플릿 보관 오류(${e.status})`);
-						this.expandedWizardFormTemplateSettingsKey = "", await this.loadWizardFormTemplates({ fresh: !0 }), this.setStatus("템플릿 버전을 보관했습니다");
+						let e = await fetch(`/api/wizard-form-template-delete?id=${encodeURIComponent(t.id)}`, { method: "DELETE" }), r = await e.json().catch(() => ({}));
+						if (!e.ok) throw Error(r.message || r.error || `템플릿 삭제 오류(${e.status})`);
+						this.expandedWizardFormTemplateSettingsKey = "", await this.loadWizardFormTemplates({ fresh: !0 }), this.setStatus(`${t.name} 템플릿과 ${Number(r.deletedVersionCount || n)}개 버전을 삭제했습니다`);
 					} catch (e) {
-						this.setStatus(`템플릿 보관 실패: ${e.message}`);
+						this.setStatus(`템플릿 삭제 실패: ${e.message}`);
 					} finally {
 						this.wizardFormTemplateSaving = !1;
 					}

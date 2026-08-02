@@ -3536,26 +3536,26 @@ const adminApp = createApp({
     },
 
     async deleteWizardFormTemplate(group) {
-      const target = group?.draft || group?.inactive || null;
-      if (!target || this.wizardFormTemplateSaving) {
-        this.setStatus("활성 템플릿은 삭제할 수 없습니다. 먼저 다른 버전을 활성화하거나 비활성화해 주세요.");
+      const target = group?.draft || group?.inactive || group?.primary || null;
+      if (!target || this.wizardFormTemplateSaving) return;
+      if (group.active || group.versions.some((version) => version.isDefault)) {
+        this.setStatus("활성 또는 기본 템플릿은 삭제할 수 없습니다. 먼저 다른 템플릿을 활성화해 주세요.");
         return;
       }
-      if (!window.confirm(`${target.name} v${target.version}을 삭제(보관)할까요?`)) return;
+      const versionCount = group.versions.length;
+      if (!window.confirm(`${target.name} 템플릿을 영구 삭제할까요? ${versionCount}개 버전과 저장된 레이아웃이 함께 삭제되며 복구할 수 없습니다.`)) return;
       this.wizardFormTemplateSaving = true;
       try {
-        const response = await fetch("/api/wizard-form-template-archive", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: target.id, changeNote: "관리자 페이지 템플릿 목록에서 삭제(보관)했습니다." }),
+        const response = await fetch(`/api/wizard-form-template-delete?id=${encodeURIComponent(target.id)}`, {
+          method: "DELETE",
         });
         const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.message || result.error || `템플릿 보관 오류(${response.status})`);
+        if (!response.ok) throw new Error(result.message || result.error || `템플릿 삭제 오류(${response.status})`);
         this.expandedWizardFormTemplateSettingsKey = "";
         await this.loadWizardFormTemplates({ fresh: true });
-        this.setStatus("템플릿 버전을 보관했습니다");
+        this.setStatus(`${target.name} 템플릿과 ${Number(result.deletedVersionCount || versionCount)}개 버전을 삭제했습니다`);
       } catch (error) {
-        this.setStatus(`템플릿 보관 실패: ${error.message}`);
+        this.setStatus(`템플릿 삭제 실패: ${error.message}`);
       } finally {
         this.wizardFormTemplateSaving = false;
       }

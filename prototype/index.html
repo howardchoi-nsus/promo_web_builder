@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="/prototype/app-components.css?v=app-components-v1" />
     <link rel="stylesheet" href="/prototype/styles.css?v=admin-template-manager-v6" />
     <link rel="stylesheet" href="/prototype/visual-editor-assets/promo-renderer.css?v=promo-renderer-v3" />
-    <link rel="stylesheet" href="/prototype/admin-assets/promo-web-builder.css?v=admin-vite-v6" />
+    <link rel="stylesheet" href="/prototype/admin-assets/promo-web-builder.css?v=admin-vite-v7" />
     <script src="/prototype/vendor/lucide/lucide.min.js?v=1.8.0"></script>
     <script src="/prototype/i18n-runtime.js?v=i18n-runtime-v1"></script>
     <script src="/prototype/shared-shell.js?v=app-shell-sidebar-v4"></script>
@@ -1915,7 +1915,13 @@
                       <div class="template-list-card__actions">
                         <button class="tiny-button" type="button" :disabled="wizardFormTemplateSaving" @click="editWizardFormTemplate(group)">수정</button>
                         <button class="tiny-button" type="button" :disabled="wizardFormTemplateSaving" @click="openDuplicateWizardFormTemplate(group)">{{ t('common.action.duplicate') }}</button>
-                        <button class="tiny-button danger" type="button" :disabled="wizardFormTemplateSaving || (!group.draft && !group.inactive)" @click="deleteWizardFormTemplate(group)">{{ t('common.action.archive') }}</button>
+                        <button
+                          class="tiny-button danger"
+                          type="button"
+                          :disabled="wizardFormTemplateSaving || !!group.active || group.versions.some(version => version.isDefault)"
+                          :title="group.active || group.versions.some(version => version.isDefault) ? '활성 또는 기본 템플릿은 삭제할 수 없습니다.' : '템플릿의 모든 버전과 레이아웃을 영구 삭제합니다.'"
+                          @click="deleteWizardFormTemplate(group)"
+                        >삭제</button>
                       </div>
                       <label class="field compact-field">
                         <span>{{ t('entity.template.key') }}</span>
@@ -2281,6 +2287,6 @@
       <button class="shell-overlay" type="button" data-shell-overlay aria-label="메뉴 닫기"></button>
     </div>
 
-    <script type="module" src="/prototype/admin-assets/admin-app.js?v=admin-vite-v6"></script>
+    <script type="module" src="/prototype/admin-assets/admin-app.js?v=admin-vite-v7"></script>
   </body>
 </html>

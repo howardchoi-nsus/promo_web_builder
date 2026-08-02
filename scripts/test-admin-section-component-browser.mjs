@@ -22,6 +22,7 @@ async function waitForServer() {
 
 const tokenVersionId = "77777777-7777-4777-8777-777777777777";
 let template = { id: "11111111-1111-4111-8111-111111111111", templateKey: "default", name: "Default", status: "draft", version: 1, designTokenSetVersionId: tokenVersionId };
+const generatedTemplate = { id: "11111111-1111-4111-8111-111111111112", templateKey: "tpl_generated", name: "Generated Template", status: "draft", version: 1, designTokenSetVersionId: tokenVersionId };
 const sectionA = { id: "22222222-2222-4222-8222-222222222222", sectionKey: "promotionIntro", name: "Promotion Intro", status: "draft", version: 2, aiDesign: { enabled: true } };
 const sectionAActive = { id: "22222222-2222-4222-8222-222222222223", sectionKey: "promotionIntro", name: "Promotion Intro", status: "active", version: 1, aiDesign: { enabled: true } };
 const sectionB = { id: "33333333-3333-4333-8333-333333333333", sectionKey: "benefits", name: "Benefits", status: "active", version: 1, aiDesign: { enabled: true } };
@@ -89,6 +90,8 @@ const component = {
 
 let browser;
 let activateBody;
+let deleteTemplateBody;
+let generatedTemplateDeleted = false;
 let createdSectionBody;
 let componentOrderBody;
 let rejectComponentOrder = false;
@@ -107,8 +110,16 @@ try {
     if (url.pathname === "/api/locale-snapshot") return reply({ ok: true, locale: "ko", defaultLocale: "ko", messages: {}, defaultMessages: {} });
     if (url.pathname === "/api/item-components") return reply({ ok: true, components: [component] });
     if (url.pathname === "/api/design-token-sets") return reply({ ok: true, tokenSets: [{ id: "set", name: "Rounded", versionId: tokenVersionId, version: 1, versionStatus: "active" }] });
-    if (url.pathname === "/api/wizard-form-templates") return reply({ ok: true, templates: [template] });
-    if (url.pathname === "/api/wizard-form-template") return reply({ ok: true, template, sections: [membership] });
+    if (url.pathname === "/api/wizard-form-templates") return reply({ ok: true, templates: generatedTemplateDeleted ? [template] : [template, generatedTemplate] });
+    if (url.pathname === "/api/wizard-form-template") {
+      const selectedTemplate = url.searchParams.get("id") === generatedTemplate.id ? generatedTemplate : template;
+      return reply({ ok: true, template: selectedTemplate, sections: selectedTemplate.id === template.id ? [membership] : [] });
+    }
+    if (url.pathname === "/api/wizard-form-template-delete" && request.method() === "DELETE") {
+      deleteTemplateBody = { id: url.searchParams.get("id") };
+      generatedTemplateDeleted = true;
+      return reply({ ok: true, templateKey: generatedTemplate.templateKey, deletedVersionCount: 1 });
+    }
     if (url.pathname === "/api/wizard-form-template-activate" && request.method() === "POST") {
       activateBody = request.postDataJSON();
       template = { ...template, status: "active" };
@@ -230,6 +241,15 @@ try {
   assert.equal(await livePreviewEditor.getByRole("tab", { name: "컴포넌트" }).count(), 1);
   assert.ok(await livePreviewEditor.getByRole("button", { name: /섹션 삭제/ }).count() > 0);
   assert.ok(await livePreviewEditor.getByRole("button", { name: /컴포넌트 삭제/ }).count() > 0);
+
+  const generatedTemplateCard = page.locator(".template-list-card").filter({ hasText: "Generated Template" });
+  await generatedTemplateCard.locator(".template-settings-toggle").click();
+  await generatedTemplateCard.locator(".template-list-settings").waitFor({ state: "visible" });
+  page.once("dialog", (dialog) => dialog.accept());
+  await generatedTemplateCard.getByRole("button", { name: "삭제", exact: true }).click();
+  await page.waitForTimeout(100);
+  assert.deepEqual(deleteTemplateBody, { id: generatedTemplate.id });
+  assert.equal(await page.locator(".template-list-card").filter({ hasText: "Generated Template" }).count(), 0);
 
   const templateCard = page.locator(".template-list-card").first();
   await templateCard.locator(".template-settings-toggle").click();
