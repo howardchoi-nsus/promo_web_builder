@@ -124,6 +124,24 @@ try {
   );
   await page.locator(".editor-workspace.is-section-preset-workspace").waitFor();
   assert.equal(await page.locator(".rendered-item").count(), 2);
+  const logoItem = page.locator('[data-section-key="header"] [data-item-key="logo"]');
+  const logoPositionBeforeAlignment = await logoItem.evaluate((node) => ({
+    left: node.style.left,
+    top: node.style.top,
+    transform: node.style.transform,
+  }));
+  await logoItem.click();
+  const textToolbar = page.locator(".text-editor-controls");
+  await textToolbar.waitFor({ state: "visible" });
+  assert.equal(await textToolbar.getByRole("button", { name: /섹션 기준 세로/ }).count(), 0);
+  await textToolbar.getByRole("button", { name: "텍스트 박스 내부 중앙 정렬", exact: true }).click();
+  assert.equal(await logoItem.evaluate((node) => getComputedStyle(node).textAlign), "center");
+  assert.equal(await logoItem.evaluate((node) => node.classList.contains("is-free-positioned")), true);
+  assert.deepEqual(await logoItem.evaluate((node) => ({
+    left: node.style.left,
+    top: node.style.top,
+    transform: node.style.transform,
+  })), logoPositionBeforeAlignment);
   await page.locator(".property-panel .component-property-trigger").filter({ hasText: "Logo" }).click();
   await page.getByLabel("텍스트", { exact: true }).fill("Saved header text");
   await page.getByRole("button", { name: "Mobile" }).click();
@@ -137,6 +155,10 @@ try {
   await page.getByText("Standard Header Layout Preset을 저장했습니다.").waitFor();
   assert(savedBody);
   assert.equal(savedBody.layoutSnapshot.viewports.mobile.visibility.items.badges, true);
+  assert.equal(savedBody.layoutSnapshot.viewports.desktop.items.logo.textAlign, "center");
+  assert.equal(savedBody.layoutSnapshot.viewports.desktop.items.logo.positionMode, "free");
+  assert.equal(savedBody.layoutSnapshot.viewports.desktop.items.logo.xPct, 4);
+  assert.equal(savedBody.layoutSnapshot.viewports.desktop.items.logo.yPx, 16);
   assert.equal(savedBody.layoutSnapshot.content.logo, "Saved header text");
   assert.equal(savedBody.layoutSnapshot.content.badges.value, "https://cdn.example.com/saved-badge.png");
   await page.reload({ waitUntil: "networkidle" });
