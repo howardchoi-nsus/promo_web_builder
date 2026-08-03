@@ -14,6 +14,14 @@ const SAFE_CSS_PROPERTIES = new Set([
   "transition-duration", "transition-delay", "transition-timing-function",
 ]);
 const TOKEN_KEY_PATTERN = /^--(?:promo|app)-[a-z0-9-]+$/;
+const REQUIRED_PROMO_TOKEN_ALIASES = Object.freeze({
+  "--promo-surface": "--app-surface",
+  "--promo-text": "--app-ink",
+  "--promo-muted": "--app-muted",
+  "--promo-accent": "--app-accent",
+  "--promo-radius": "--app-radius",
+  "--promo-shadow": "--app-shadow",
+});
 
 function getSql() {
   const url = getDatabaseUrl();
@@ -96,12 +104,47 @@ function parseCsvRows(csvText) {
   return rows.slice(1).map((values) => Object.fromEntries(headers.map((header, index) => [header, String(values[index] || "").trim()])));
 }
 
+function resolveRequiredTokenAliases(entries, definitions) {
+  const resolved = Array.isArray(entries) ? entries.map((entry) => ({ ...entry })) : [];
+  const tokenKey = (entry) => String(entry?.tokenKey || entry?.token_key || "").trim();
+  const valueIndex = (entry) => Math.max(
+    0,
+    Number.parseInt(entry?.valueIndex ?? entry?.value_index ?? 0, 10) || 0,
+  );
+  const namespacesPresent = new Set(resolved.map((entry) => tokenKey(entry).split("-")[2]).filter(Boolean));
+  const identities = new Set(resolved.map((entry) => `${tokenKey(entry)}:${valueIndex(entry)}`));
+  (definitions || []).filter((definition) => definition.required).forEach((definition) => {
+    const requiredKey = String(definition.token_key || "").trim();
+    const namespace = requiredKey.split("-")[2];
+    if (!namespacesPresent.has(namespace) || identities.has(`${requiredKey}:0`)) return;
+    const aliasKey = REQUIRED_PROMO_TOKEN_ALIASES[requiredKey];
+    if (!aliasKey) return;
+    const alias = resolved.find((entry) => tokenKey(entry) === aliasKey && valueIndex(entry) === 0);
+    if (!alias) return;
+    resolved.push({
+      ...alias,
+      tokenKey: requiredKey,
+      token_key: requiredKey,
+      valueIndex: 0,
+      value_index: 0,
+      metadata: {
+        ...(alias.metadata && typeof alias.metadata === "object" && !Array.isArray(alias.metadata)
+          ? alias.metadata
+          : {}),
+        canonicalAliasSource: aliasKey,
+      },
+    });
+    identities.add(`${requiredKey}:0`);
+  });
+  return resolved;
+}
+
 function normalizeTokenEntries(entries, definitions) {
   const byKey = new Map((definitions || []).map((definition) => [definition.token_key, definition]));
   const normalized = [];
   const errors = [];
   const seen = new Set();
-  (Array.isArray(entries) ? entries : []).forEach((entry, index) => {
+  resolveRequiredTokenAliases(entries, definitions).forEach((entry, index) => {
     const tokenKey = String(entry?.tokenKey || entry?.token_key || "").trim();
     const valueIndex = Math.max(0, Number.parseInt(entry?.valueIndex ?? entry?.value_index ?? 0, 10) || 0);
     const identity = `${tokenKey}:${valueIndex}`;
@@ -373,6 +416,7 @@ module.exports = {
   validateTokenValue,
   isSafeLengthValue,
   parseCsvRows,
+  resolveRequiredTokenAliases,
   normalizeTokenEntries,
   fetchTokenDefinitions,
   fetchTokenSets,

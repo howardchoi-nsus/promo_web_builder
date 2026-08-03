@@ -7614,15 +7614,22 @@ var Vh = (e, t) => ({
 	"margin",
 	"width",
 	"height"
-];
-function Kh(e) {
+], Kh = Object.freeze({
+	"--promo-surface": "--app-surface",
+	"--promo-text": "--app-ink",
+	"--promo-muted": "--app-muted",
+	"--promo-accent": "--app-accent",
+	"--promo-radius": "--app-radius",
+	"--promo-shadow": "--app-shadow"
+});
+function qh(e) {
 	let t = String(e ?? "");
 	return /[",\r\n]/.test(t) ? `"${t.replaceAll("\"", "\"\"")}"` : t;
 }
-function qh(e) {
+function Jh(e) {
 	return `${e.tokenKey}:${Number(e.valueIndex || 0)}`;
 }
-function Jh(e) {
+function Yh(e) {
 	return JSON.stringify({
 		value: String(e.value || ""),
 		valueLight: String(e.valueLight || ""),
@@ -7630,7 +7637,26 @@ function Jh(e) {
 		activeTheme: String(e.activeTheme || "dark")
 	});
 }
-var Yh = {
+function Xh(e, t) {
+	let n = (t || []).map((e) => ({ ...e })), r = new Map(n.map((e) => [e.tokenKey, e]));
+	return (e || []).filter((e) => e.required).forEach((e) => {
+		if (r.has(e.tokenKey)) return;
+		let t = Kh[e.tokenKey], i = t ? r.get(t) : null, a = String(i?.value || "").trim(), o = String(i?.valueLight || a).trim(), s = String(i?.valueDark || "").trim(), c = {
+			...e,
+			valueIndex: 0,
+			value: a,
+			valueLight: o,
+			valueDark: s,
+			activeTheme: i?.activeTheme || "dark",
+			metadata: i ? {
+				...i.metadata || {},
+				canonicalAliasSource: t
+			} : {}
+		};
+		n.push(c), r.set(c.tokenKey, c);
+	}), n;
+}
+var Zh = {
 	name: "DesignTokenManager",
 	props: { translate: {
 		type: Function,
@@ -7746,7 +7772,7 @@ var Yh = {
 		globalThis.removeEventListener("beforeunload", this.preventUnsavedExit);
 	},
 	methods: {
-		tokenIdentity: qh,
+		tokenIdentity: Jh,
 		t(e, t) {
 			return this.translate(e, t);
 		},
@@ -7795,7 +7821,7 @@ var Yh = {
 				valueDark: "",
 				activeTheme: "dark",
 				metadata: {}
-			})), this.originalValues = Object.fromEntries(this.editorValues.map((e) => [qh(e), Jh(e)])), this.usage = {
+			})), this.originalValues = Object.fromEntries(this.editorValues.map((e) => [Jh(e), Yh(e)])), this.usage = {
 				templates: [],
 				aiRuns: {
 					total: 0,
@@ -7814,10 +7840,10 @@ var Yh = {
 				}
 			}, this.histories = t.histories || [];
 			let n = new Map(this.definitions.map((e) => [e.tokenKey, e])), r = this.detail.values || [];
-			this.editorValues = r.length ? r.map((e) => ({
+			this.editorValues = r.length ? Xh(this.definitions, r.map((e) => ({
 				...n.get(e.tokenKey) || {},
 				...e
-			})) : this.definitions.map((e) => ({
+			}))) : this.definitions.map((e) => ({
 				...e,
 				valueIndex: 0,
 				value: "",
@@ -7834,7 +7860,7 @@ var Yh = {
 					valueDark: t,
 					activeTheme: "dark"
 				};
-			})), this.originalValues = Object.fromEntries(this.editorValues.map((e) => [qh(e), Jh(e)])), this.importErrors = [], this.validationErrors = [];
+			})), this.originalValues = Object.fromEntries(this.editorValues.map((e) => [Jh(e), Yh(e)])), this.importErrors = [], this.validationErrors = [];
 		},
 		tokenPayload() {
 			return this.editorValues.map((e) => ({
@@ -7848,10 +7874,10 @@ var Yh = {
 			}));
 		},
 		isTokenChanged(e) {
-			return Jh(e) !== String(this.originalValues[qh(e)] || "");
+			return Yh(e) !== String(this.originalValues[Jh(e)] || "");
 		},
 		restoreToken(e) {
-			let t = JSON.parse(this.originalValues[qh(e)] || "{}");
+			let t = JSON.parse(this.originalValues[Jh(e)] || "{}");
 			Object.assign(e, t);
 		},
 		restoreAll() {
@@ -7955,7 +7981,7 @@ var Yh = {
 			}), this.showAddToken = !1, this.resetTokenForm();
 		},
 		removeNewToken(e) {
-			this.editorValues = this.editorValues.filter((t) => qh(t) !== qh(e));
+			this.editorValues = this.editorValues.filter((t) => Jh(t) !== Jh(e));
 		},
 		pendingDefinitions() {
 			return this.editorValues.filter((e) => this.isNewToken(e)).map((e) => ({
@@ -8051,7 +8077,7 @@ var Yh = {
 				(e.cssProperties || e.metadata?.cssProperties || [e.cssProperty]).filter(Boolean).join(";"),
 				e.valueLight || "",
 				e.valueDark || ""
-			])].map((e) => e.map(Kh).join(",")), t = new Blob([`\uFEFF${e.join("\r\n")}`], { type: "text/csv;charset=utf-8" }), n = URL.createObjectURL(t), r = document.createElement("a");
+			])].map((e) => e.map(qh).join(",")), t = new Blob([`\uFEFF${e.join("\r\n")}`], { type: "text/csv;charset=utf-8" }), n = URL.createObjectURL(t), r = document.createElement("a");
 			r.href = n, r.download = `${this.selectedSet?.setKey || "promo-design-tokens"}.csv`, r.click(), URL.revokeObjectURL(n);
 		},
 		async createSet() {
@@ -8090,59 +8116,59 @@ var Yh = {
 			this.isDirty && (e.preventDefault(), e.returnValue = "");
 		}
 	}
-}, Xh = { class: "design-token-manager" }, Zh = { class: "design-token-toolbar" }, Qh = { class: "design-token-actions" }, $h = ["disabled"], eg = {
+}, Qh = { class: "design-token-manager" }, $h = { class: "design-token-toolbar" }, eg = { class: "design-token-actions" }, tg = ["disabled"], ng = {
 	key: 0,
 	class: "outline-item danger-state"
-}, tg = { class: "field" }, ng = { class: "field" }, rg = ["disabled"], ig = { class: "design-token-grid" }, ag = { class: "design-token-column design-token-list" }, og = ["onClick"], sg = {
+}, rg = { class: "field" }, ig = { class: "field" }, ag = ["disabled"], og = { class: "design-token-grid" }, sg = { class: "design-token-column design-token-list" }, cg = ["onClick"], lg = {
 	key: 0,
 	class: "empty-state"
-}, cg = { class: "design-token-column design-token-editor" }, lg = { class: "design-token-table-toolbar" }, ug = ["placeholder"], dg = { value: "" }, fg = ["value"], pg = { class: "app-checkbox design-token-check" }, mg = ["disabled"], hg = ["disabled"], gg = { class: "form-grid compact" }, _g = { class: "field" }, vg = { class: "field" }, yg = { class: "field" }, bg = { class: "field" }, xg = { class: "field" }, Sg = ["value"], Cg = { class: "field" }, wg = { class: "field" }, Tg = {
+}, ug = { class: "design-token-column design-token-editor" }, dg = { class: "design-token-table-toolbar" }, fg = ["placeholder"], pg = { value: "" }, mg = ["value"], hg = { class: "app-checkbox design-token-check" }, gg = ["disabled"], _g = ["disabled"], vg = { class: "form-grid compact" }, yg = { class: "field" }, bg = { class: "field" }, xg = { class: "field" }, Sg = { class: "field" }, Cg = { class: "field" }, wg = ["value"], Tg = { class: "field" }, Eg = { class: "field" }, Dg = {
 	key: 0,
 	class: "field"
-}, Eg = ["disabled", "placeholder"], Dg = {
+}, Og = ["disabled", "placeholder"], kg = {
 	key: 0,
 	class: "app-checkbox design-token-check"
-}, Og = {
+}, Ag = {
 	key: 1,
 	class: "danger-state"
-}, kg = { class: "design-token-actions" }, Ag = { class: "design-token-table-wrap" }, jg = { class: "design-token-table" }, Mg = { key: 0 }, Ng = { key: 0 }, Pg = { key: 0 }, Fg = { class: "design-token-value-control" }, Ig = [
+}, jg = { class: "design-token-actions" }, Mg = { class: "design-token-table-wrap" }, Ng = { class: "design-token-table" }, Pg = { key: 0 }, Fg = { key: 0 }, Ig = { key: 0 }, Lg = { class: "design-token-value-control" }, Rg = [
 	"onUpdate:modelValue",
 	"disabled",
 	"onInput"
-], Lg = { class: "design-token-value-control" }, Rg = [
+], zg = { class: "design-token-value-control" }, Bg = [
 	"onUpdate:modelValue",
 	"disabled",
 	"placeholder",
 	"onInput"
-], zg = {
+], Vg = {
 	key: 0,
 	class: "design-token-responsive-warning"
-}, Bg = ["onClick"], Vg = ["onClick"], Hg = ["onClick"], Ug = ["onClick"], Wg = {
+}, Hg = ["onClick"], Ug = ["onClick"], Wg = ["onClick"], Gg = ["onClick"], Kg = {
 	key: 1,
 	class: "design-token-errors"
-}, Gg = { class: "design-token-actions sticky-actions" }, Kg = { class: "tiny-button file-button" }, qg = ["disabled"], Jg = {
+}, qg = { class: "design-token-actions sticky-actions" }, Jg = { class: "tiny-button file-button" }, Yg = ["disabled"], Xg = {
 	key: 0,
 	class: "source-name"
-}, Yg = ["disabled"], Xg = { class: "design-token-column design-token-inspector" }, Zg = { class: "design-token-section" }, Qg = { class: "design-token-actions" }, $g = { class: "rendered-section" }, e_ = { class: "rendered-section__inner" }, t_ = { class: "rendered-empty" }, n_ = { class: "rendered-text rendered-text--title" }, r_ = { class: "rendered-cta" }, i_ = { class: "design-token-section" }, a_ = { class: "field" }, o_ = { class: "field" }, s_ = { class: "field" }, c_ = { class: "design-token-actions" }, l_ = ["disabled"], u_ = ["disabled"], d_ = ["disabled"], f_ = ["disabled", "title"], p_ = ["disabled"], m_ = ["disabled"], h_ = { class: "field" }, g_ = { class: "field" }, __ = ["disabled"];
-function v_(e, t, n, r, i, a) {
-	return B(), V("section", Xh, [
-		H("div", Zh, [H("div", null, [H("h2", null, M(a.t("admin.designToken.title")), 1), H("p", null, M(a.t("admin.designToken.scopeNotice")), 1)]), H("div", Qh, [H("button", {
+}, Zg = ["disabled"], Qg = { class: "design-token-column design-token-inspector" }, $g = { class: "design-token-section" }, e_ = { class: "design-token-actions" }, t_ = { class: "rendered-section" }, n_ = { class: "rendered-section__inner" }, r_ = { class: "rendered-empty" }, i_ = { class: "rendered-text rendered-text--title" }, a_ = { class: "rendered-cta" }, o_ = { class: "design-token-section" }, s_ = { class: "field" }, c_ = { class: "field" }, l_ = { class: "field" }, u_ = { class: "design-token-actions" }, d_ = ["disabled"], f_ = ["disabled"], p_ = ["disabled"], m_ = ["disabled", "title"], h_ = ["disabled"], g_ = ["disabled"], __ = { class: "field" }, v_ = { class: "field" }, y_ = ["disabled"];
+function b_(e, t, n, r, i, a) {
+	return B(), V("section", Qh, [
+		H("div", $h, [H("div", null, [H("h2", null, M(a.t("admin.designToken.title")), 1), H("p", null, M(a.t("admin.designToken.scopeNotice")), 1)]), H("div", eg, [H("button", {
 			class: "tiny-button",
 			type: "button",
 			disabled: i.loading,
 			onClick: t[0] ||= (e) => a.reload()
-		}, M(a.t("common.action.refresh")), 9, $h), H("button", {
+		}, M(a.t("common.action.refresh")), 9, tg), H("button", {
 			class: "tiny-button primary",
 			type: "button",
 			onClick: t[1] ||= (e) => i.showCreate = !i.showCreate
 		}, M(a.t("admin.designToken.addSet")), 1)])]),
-		i.error ? (B(), V("div", eg, M(i.error), 1)) : W("", !0),
+		i.error ? (B(), V("div", ng, M(i.error), 1)) : W("", !0),
 		i.showCreate ? (B(), V("form", {
 			key: 1,
 			class: "design-token-create",
 			onSubmit: t[4] ||= bu((...e) => a.createSet && a.createSet(...e), ["prevent"])
 		}, [
-			H("label", tg, [H("span", null, M(a.t("admin.designToken.name")), 1), I(H("input", {
+			H("label", rg, [H("span", null, M(a.t("admin.designToken.name")), 1), I(H("input", {
 				"onUpdate:modelValue": t[2] ||= (e) => i.createForm.name = e,
 				required: ""
 			}, null, 512), [[
@@ -8151,7 +8177,7 @@ function v_(e, t, n, r, i, a) {
 				void 0,
 				{ trim: !0 }
 			]])]),
-			H("label", ng, [H("span", null, M(a.t("admin.designToken.description")), 1), I(H("input", { "onUpdate:modelValue": t[3] ||= (e) => i.createForm.description = e }, null, 512), [[
+			H("label", ig, [H("span", null, M(a.t("admin.designToken.description")), 1), I(H("input", { "onUpdate:modelValue": t[3] ||= (e) => i.createForm.description = e }, null, 512), [[
 				G,
 				i.createForm.description,
 				void 0,
@@ -8161,10 +8187,10 @@ function v_(e, t, n, r, i, a) {
 				class: "tiny-button primary",
 				type: "submit",
 				disabled: i.saving
-			}, M(a.t("common.action.create")), 9, rg)
+			}, M(a.t("common.action.create")), 9, ag)
 		], 32)) : W("", !0),
-		H("div", ig, [
-			H("aside", ag, [
+		H("div", og, [
+			H("aside", sg, [
 				H("strong", null, M(a.t("admin.designToken.setList")), 1),
 				(B(!0), V(R, null, ka(i.tokenSets, (e) => (B(), V("button", {
 					key: e.id,
@@ -8175,26 +8201,26 @@ function v_(e, t, n, r, i, a) {
 					H("span", null, M(e.name), 1),
 					H("small", null, [zs(M(e.setKey) + " · " + M(a.t(e.status === "inactive" ? "common.state.inactive" : "common.state.active")) + " ", 1), e.isDefault ? (B(), V(R, { key: 0 }, [zs(" · " + M(a.t("admin.designToken.defaultBadge")), 1)], 64)) : W("", !0)]),
 					H("small", null, "v" + M(e.draftVersion?.version || e.activeVersion?.version || e.version), 1)
-				], 10, og))), 128)),
-				!i.loading && !i.tokenSets.length ? (B(), V("div", sg, M(a.t("admin.designToken.emptySets")), 1)) : W("", !0)
+				], 10, cg))), 128)),
+				!i.loading && !i.tokenSets.length ? (B(), V("div", lg, M(a.t("admin.designToken.emptySets")), 1)) : W("", !0)
 			]),
-			H("main", cg, [a.selectedSet && i.detail ? (B(), V(R, { key: 0 }, [
-				H("div", lg, [
+			H("main", ug, [a.selectedSet && i.detail ? (B(), V(R, { key: 0 }, [
+				H("div", dg, [
 					I(H("input", {
 						"onUpdate:modelValue": t[5] ||= (e) => i.searchTerm = e,
 						type: "search",
 						placeholder: a.t("admin.designToken.search")
-					}, null, 8, ug), [[
+					}, null, 8, fg), [[
 						G,
 						i.searchTerm,
 						void 0,
 						{ trim: !0 }
 					]]),
-					I(H("select", { "onUpdate:modelValue": t[6] ||= (e) => i.categoryFilter = e }, [H("option", dg, M(a.t("admin.designToken.allCategories")), 1), (B(!0), V(R, null, ka(a.categories, (e) => (B(), V("option", {
+					I(H("select", { "onUpdate:modelValue": t[6] ||= (e) => i.categoryFilter = e }, [H("option", pg, M(a.t("admin.designToken.allCategories")), 1), (B(!0), V(R, null, ka(a.categories, (e) => (B(), V("option", {
 						key: e,
 						value: e
-					}, M(e), 9, fg))), 128))], 512), [[uu, i.categoryFilter]]),
-					H("label", pg, [I(H("input", {
+					}, M(e), 9, mg))), 128))], 512), [[uu, i.categoryFilter]]),
+					H("label", hg, [I(H("input", {
 						"onUpdate:modelValue": t[7] ||= (e) => i.changedOnly = e,
 						type: "checkbox"
 					}, null, 512), [[su, i.changedOnly]]), zs(" " + M(a.t("admin.designToken.changedOnly")), 1)]),
@@ -8203,21 +8229,21 @@ function v_(e, t, n, r, i, a) {
 						type: "button",
 						disabled: !a.isDirty,
 						onClick: t[8] ||= (...e) => a.restoreAll && a.restoreAll(...e)
-					}, M(a.t("common.action.reset")), 9, mg),
+					}, M(a.t("common.action.reset")), 9, gg),
 					H("button", {
 						class: "tiny-button primary",
 						type: "button",
 						disabled: !a.setIsActive,
 						onClick: t[9] ||= (e) => i.showAddToken = !i.showAddToken
-					}, "+ 토큰 추가", 8, hg)
+					}, "+ 토큰 추가", 8, _g)
 				]),
 				i.showAddToken ? (B(), V("form", {
 					key: 0,
 					class: "design-token-add-form",
 					onSubmit: t[20] ||= bu((...e) => a.addToken && a.addToken(...e), ["prevent"])
 				}, [
-					H("div", gg, [
-						H("label", _g, [t[38] ||= H("span", null, "토큰 키", -1), I(H("input", {
+					H("div", vg, [
+						H("label", yg, [t[38] ||= H("span", null, "토큰 키", -1), I(H("input", {
 							"onUpdate:modelValue": t[10] ||= (e) => i.tokenForm.tokenKey = e,
 							required: "",
 							placeholder: "--promo-font-size-caption"
@@ -8227,7 +8253,7 @@ function v_(e, t, n, r, i, a) {
 							void 0,
 							{ trim: !0 }
 						]])]),
-						H("label", vg, [t[39] ||= H("span", null, "표시 이름", -1), I(H("input", {
+						H("label", bg, [t[39] ||= H("span", null, "표시 이름", -1), I(H("input", {
 							"onUpdate:modelValue": t[11] ||= (e) => i.tokenForm.label = e,
 							required: "",
 							placeholder: "캡션 글자 크기"
@@ -8237,7 +8263,7 @@ function v_(e, t, n, r, i, a) {
 							void 0,
 							{ trim: !0 }
 						]])]),
-						H("label", yg, [t[40] ||= H("span", null, "분류", -1), I(H("input", {
+						H("label", xg, [t[40] ||= H("span", null, "분류", -1), I(H("input", {
 							"onUpdate:modelValue": t[12] ||= (e) => i.tokenForm.category = e,
 							placeholder: "typography"
 						}, null, 512), [[
@@ -8246,13 +8272,13 @@ function v_(e, t, n, r, i, a) {
 							void 0,
 							{ trim: !0 }
 						]])]),
-						H("label", bg, [t[42] ||= H("span", null, "값 유형", -1), I(H("select", { "onUpdate:modelValue": t[13] ||= (e) => i.tokenForm.valueType = e }, [...t[41] ||= [Bs("<option value=\"length\" data-v-6681f16b>length</option><option value=\"color\" data-v-6681f16b>color</option><option value=\"number\" data-v-6681f16b>number</option><option value=\"gradient\" data-v-6681f16b>gradient</option><option value=\"shadow\" data-v-6681f16b>shadow</option><option value=\"font\" data-v-6681f16b>font</option>", 6)]], 512), [[uu, i.tokenForm.valueType]])]),
-						H("label", xg, [t[43] ||= H("span", null, "CSS 속성", -1), I(H("select", { "onUpdate:modelValue": t[14] ||= (e) => i.tokenForm.cssProperty = e }, [(B(!0), V(R, null, ka(i.tokenCssProperties, (e) => (B(), V("option", {
+						H("label", Sg, [t[42] ||= H("span", null, "값 유형", -1), I(H("select", { "onUpdate:modelValue": t[13] ||= (e) => i.tokenForm.valueType = e }, [...t[41] ||= [Bs("<option value=\"length\" data-v-b7653eb2>length</option><option value=\"color\" data-v-b7653eb2>color</option><option value=\"number\" data-v-b7653eb2>number</option><option value=\"gradient\" data-v-b7653eb2>gradient</option><option value=\"shadow\" data-v-b7653eb2>shadow</option><option value=\"font\" data-v-b7653eb2>font</option>", 6)]], 512), [[uu, i.tokenForm.valueType]])]),
+						H("label", Cg, [t[43] ||= H("span", null, "CSS 속성", -1), I(H("select", { "onUpdate:modelValue": t[14] ||= (e) => i.tokenForm.cssProperty = e }, [(B(!0), V(R, null, ka(i.tokenCssProperties, (e) => (B(), V("option", {
 							key: e,
 							value: e
-						}, M(e), 9, Sg))), 128))], 512), [[uu, i.tokenForm.cssProperty]])]),
-						H("label", Cg, [t[45] ||= H("span", null, "권장 단위", -1), I(H("select", { "onUpdate:modelValue": t[15] ||= (e) => i.tokenForm.unit = e }, [...t[44] ||= [Bs("<option value=\"rem\" data-v-6681f16b>rem</option><option value=\"responsive\" data-v-6681f16b>clamp / calc</option><option value=\"vw\" data-v-6681f16b>vw</option><option value=\"vh\" data-v-6681f16b>vh</option><option value=\"px\" data-v-6681f16b>px</option><option value=\"\" data-v-6681f16b>해당 없음</option>", 6)]], 512), [[uu, i.tokenForm.unit]])]),
-						H("label", wg, [H("span", null, M(a.isDarkOnlySet ? "Dark (Default) 값" : "Light 값"), 1), I(H("input", {
+						}, M(e), 9, wg))), 128))], 512), [[uu, i.tokenForm.cssProperty]])]),
+						H("label", Tg, [t[45] ||= H("span", null, "권장 단위", -1), I(H("select", { "onUpdate:modelValue": t[15] ||= (e) => i.tokenForm.unit = e }, [...t[44] ||= [Bs("<option value=\"rem\" data-v-b7653eb2>rem</option><option value=\"responsive\" data-v-b7653eb2>clamp / calc</option><option value=\"vw\" data-v-b7653eb2>vw</option><option value=\"vh\" data-v-b7653eb2>vh</option><option value=\"px\" data-v-b7653eb2>px</option><option value=\"\" data-v-b7653eb2>해당 없음</option>", 6)]], 512), [[uu, i.tokenForm.unit]])]),
+						H("label", Eg, [H("span", null, M(a.isDarkOnlySet ? "Dark (Default) 값" : "Light 값"), 1), I(H("input", {
 							"onUpdate:modelValue": t[16] ||= (e) => i.tokenForm.valueLight = e,
 							required: "",
 							placeholder: "1rem 또는 clamp(...)"
@@ -8262,24 +8288,24 @@ function v_(e, t, n, r, i, a) {
 							void 0,
 							{ trim: !0 }
 						]])]),
-						a.isDarkOnlySet ? W("", !0) : (B(), V("label", Tg, [t[46] ||= H("span", null, "Dark 값", -1), I(H("input", {
+						a.isDarkOnlySet ? W("", !0) : (B(), V("label", Dg, [t[46] ||= H("span", null, "Dark 값", -1), I(H("input", {
 							"onUpdate:modelValue": t[17] ||= (e) => i.tokenForm.valueDark = e,
 							disabled: !i.tokenForm.themeable,
 							placeholder: i.tokenForm.themeable ? "1rem" : "Light 공통 사용"
-						}, null, 8, Eg), [[
+						}, null, 8, Og), [[
 							G,
 							i.tokenForm.valueDark,
 							void 0,
 							{ trim: !0 }
 						]])]))
 					]),
-					a.isDarkOnlySet ? W("", !0) : (B(), V("label", Dg, [I(H("input", {
+					a.isDarkOnlySet ? W("", !0) : (B(), V("label", kg, [I(H("input", {
 						"onUpdate:modelValue": t[18] ||= (e) => i.tokenForm.themeable = e,
 						type: "checkbox"
 					}, null, 512), [[su, i.tokenForm.themeable]]), t[47] ||= zs(" Light/Dark 개별 값 사용", -1)])),
 					t[49] ||= H("small", null, "글꼴 크기는 `rem` 또는 `clamp(최소, 유동값, 최대)` 사용을 권장합니다. `vh` 단독 사용은 화면 높이에 따라 과도하게 변할 수 있습니다.", -1),
-					i.addTokenError ? (B(), V("span", Og, M(i.addTokenError), 1)) : W("", !0),
-					H("div", kg, [H("button", {
+					i.addTokenError ? (B(), V("span", Ag, M(i.addTokenError), 1)) : W("", !0),
+					H("div", jg, [H("button", {
 						class: "tiny-button",
 						type: "button",
 						onClick: t[19] ||= (e) => {
@@ -8290,11 +8316,11 @@ function v_(e, t, n, r, i, a) {
 						type: "submit"
 					}, "목록에 추가", -1)])
 				], 32)) : W("", !0),
-				H("div", Ag, [H("table", jg, [H("thead", null, [H("tr", null, [
+				H("div", Mg, [H("table", Ng, [H("thead", null, [H("tr", null, [
 					H("th", null, M(a.t("admin.designToken.category")), 1),
 					H("th", null, M(a.t("admin.designToken.token")), 1),
 					H("th", null, M(a.t("admin.designToken.type")), 1),
-					a.isDarkOnlySet ? W("", !0) : (B(), V("th", Mg, "Light")),
+					a.isDarkOnlySet ? W("", !0) : (B(), V("th", Pg, "Light")),
 					H("th", null, M(a.isDarkOnlySet ? "Dark (Default)" : "Dark"), 1),
 					H("th", null, M(a.t("admin.designToken.value")), 1),
 					H("th", null, M(a.t("admin.designToken.status")), 1)
@@ -8304,73 +8330,73 @@ function v_(e, t, n, r, i, a) {
 				}, [
 					H("td", null, [zs(M(e.categoryLabel || e.category), 1), H("small", null, M(e.category), 1)]),
 					H("td", null, [H("code", null, M(e.tokenKey), 1), H("small", null, [zs(M(e.label || e.semanticRole), 1), e.cardinality === "list" ? (B(), V(R, { key: 0 }, [zs(" · #" + M(e.valueIndex), 1)], 64)) : W("", !0)])]),
-					H("td", null, [zs(M(e.valueType), 1), e.unit ? (B(), V("small", Ng, M(e.unit), 1)) : W("", !0)]),
-					a.isDarkOnlySet ? W("", !0) : (B(), V("td", Pg, [H("span", Fg, [I(H("input", {
+					H("td", null, [zs(M(e.valueType), 1), e.unit ? (B(), V("small", Fg, M(e.unit), 1)) : W("", !0)]),
+					a.isDarkOnlySet ? W("", !0) : (B(), V("td", Ig, [H("span", Lg, [I(H("input", {
 						"onUpdate:modelValue": (t) => e.valueLight = t,
 						type: "text",
 						disabled: !e.editable || !a.setIsActive,
 						onInput: (t) => a.updateResolvedValue(e)
-					}, null, 40, Ig), [[G, e.valueLight]])])])),
-					H("td", null, [H("span", Lg, [I(H("input", {
+					}, null, 40, Rg), [[G, e.valueLight]])])])),
+					H("td", null, [H("span", zg, [I(H("input", {
 						"onUpdate:modelValue": (t) => e.valueDark = t,
 						type: "text",
 						disabled: !e.editable || !a.setIsActive || !a.isDarkOnlySet && !e.themeable,
 						placeholder: !a.isDarkOnlySet && !e.themeable ? "Light 공통 사용" : "",
 						onInput: (t) => a.updateResolvedValue(e)
-					}, null, 40, Rg), [[G, e.valueDark]])])]),
+					}, null, 40, Bg), [[G, e.valueDark]])])]),
 					H("td", null, [H("div", { class: De(["design-token-actual-preview", `is-${a.tokenVisualKind(e)}`]) }, [H("span", {
 						class: "design-token-sample",
 						style: Se(a.tokenVisualStyle(e))
-					}, M(["font-size", "font-weight"].includes(a.tokenVisualKind(e)) ? "Aa" : ""), 5), H("span", null, [H("code", null, M(a.currentTokenValue(e)), 1), H("small", null, M(a.isDarkOnlySet || e.activeTheme === "dark" ? "Dark 기준" : "Light 기준"), 1)])], 2), a.isFixedFontSize(e) ? (B(), V("div", zg, [
+					}, M(["font-size", "font-weight"].includes(a.tokenVisualKind(e)) ? "Aa" : ""), 5), H("span", null, [H("code", null, M(a.currentTokenValue(e)), 1), H("small", null, M(a.isDarkOnlySet || e.activeTheme === "dark" ? "Dark 기준" : "Light 기준"), 1)])], 2), a.isFixedFontSize(e) ? (B(), V("div", Vg, [
 						t[50] ||= H("small", null, "고정 px · 반응형 전환 권장", -1),
 						H("button", {
 							class: "text-button",
 							type: "button",
 							onClick: (t) => a.convertFontSize(e, "rem")
-						}, "rem 변환", 8, Bg),
+						}, "rem 변환", 8, Hg),
 						H("button", {
 							class: "text-button",
 							type: "button",
 							onClick: (t) => a.convertFontSize(e, "fluid")
-						}, "유동형 clamp", 8, Vg)
+						}, "유동형 clamp", 8, Ug)
 					])) : W("", !0)]),
 					H("td", null, [H("span", null, M(a.t(a.isTokenChanged(e) ? "admin.designToken.changed" : "admin.designToken.normal")), 1), a.isNewToken(e) ? (B(), V("button", {
 						key: 0,
 						class: "text-button danger",
 						type: "button",
 						onClick: (t) => a.removeNewToken(e)
-					}, "추가 취소", 8, Hg)) : a.isTokenChanged(e) ? (B(), V("button", {
+					}, "추가 취소", 8, Wg)) : a.isTokenChanged(e) ? (B(), V("button", {
 						key: 1,
 						class: "text-button",
 						type: "button",
 						onClick: (t) => a.restoreToken(e)
-					}, M(a.t("common.action.reset")), 9, Ug)) : W("", !0)])
+					}, M(a.t("common.action.reset")), 9, Gg)) : W("", !0)])
 				], 2))), 128))])])]),
-				i.validationErrors.length || i.importErrors.length ? (B(), V("div", Wg, [H("strong", null, M(a.t("admin.designToken.validationErrors")), 1), (B(!0), V(R, null, ka([...i.validationErrors, ...i.importErrors], (e) => (B(), V("span", { key: `${e.tokenKey}-${e.message}` }, M(e.tokenKey) + ": " + M(e.message), 1))), 128))])) : W("", !0),
-				H("div", Gg, [
-					H("label", Kg, [zs(M(a.t("admin.designToken.csvImport")) + " ", 1), H("input", {
+				i.validationErrors.length || i.importErrors.length ? (B(), V("div", Kg, [H("strong", null, M(a.t("admin.designToken.validationErrors")), 1), (B(!0), V(R, null, ka([...i.validationErrors, ...i.importErrors], (e) => (B(), V("span", { key: `${e.tokenKey}-${e.message}` }, M(e.tokenKey) + ": " + M(e.message), 1))), 128))])) : W("", !0),
+				H("div", qg, [
+					H("label", Jg, [zs(M(a.t("admin.designToken.csvImport")) + " ", 1), H("input", {
 						type: "file",
 						accept: ".csv,text/csv",
 						disabled: !a.setIsActive,
 						onChange: t[21] ||= (...e) => a.onCsvFile && a.onCsvFile(...e)
-					}, null, 40, qg)]),
+					}, null, 40, Yg)]),
 					H("button", {
 						class: "tiny-button",
 						type: "button",
 						onClick: t[22] ||= (...e) => a.exportCsv && a.exportCsv(...e)
 					}, M(a.t("admin.designToken.csvExport")), 1),
-					i.csvSourceName ? (B(), V("span", Jg, M(i.csvSourceName), 1)) : W("", !0),
+					i.csvSourceName ? (B(), V("span", Xg, M(i.csvSourceName), 1)) : W("", !0),
 					H("button", {
 						class: "tiny-button",
 						type: "button",
 						disabled: i.saving || !a.setIsActive || !a.isDirty,
 						onClick: t[23] ||= (...e) => a.save && a.save(...e)
-					}, M(a.t("common.action.save")), 9, Yg)
+					}, M(a.t("common.action.save")), 9, Zg)
 				])
 			], 64)) : W("", !0)]),
-			H("aside", Xg, [a.selectedSet && i.detail ? (B(), V(R, { key: 0 }, [H("section", Zg, [
+			H("aside", Qg, [a.selectedSet && i.detail ? (B(), V(R, { key: 0 }, [H("section", $g, [
 				H("h3", null, M(a.t("admin.designToken.preview")), 1),
-				H("div", Qg, [H("button", {
+				H("div", e_, [H("button", {
 					class: De(["tiny-button", { primary: i.previewViewport === "desktop" }]),
 					type: "button",
 					onClick: t[24] ||= (e) => i.previewViewport = "desktop"
@@ -8382,40 +8408,40 @@ function v_(e, t, n, r, i, a) {
 				H("div", { class: De(["design-token-preview-stage", `is-${i.previewViewport}`]) }, [H("div", {
 					class: "promo-renderer",
 					style: Se(a.previewStyle)
-				}, [H("section", $g, [H("div", e_, [
-					H("small", t_, M(a.t("admin.designToken.previewEyebrow")), 1),
-					H("h4", n_, M(a.t("admin.designToken.previewTitle")), 1),
+				}, [H("section", t_, [H("div", n_, [
+					H("small", r_, M(a.t("admin.designToken.previewEyebrow")), 1),
+					H("h4", i_, M(a.t("admin.designToken.previewTitle")), 1),
 					H("p", null, M(a.t("admin.designToken.previewBody")), 1),
-					H("a", r_, M(a.t("admin.designToken.previewButton")), 1)
+					H("a", a_, M(a.t("admin.designToken.previewButton")), 1)
 				])])], 4)], 2)
-			]), H("details", i_, [
+			]), H("details", o_, [
 				H("summary", null, M(a.t("admin.designToken.settings")), 1),
-				H("label", a_, [H("span", null, M(a.t("admin.designToken.name")), 1), I(H("input", { "onUpdate:modelValue": t[26] ||= (e) => i.metadata.name = e }, null, 512), [[G, i.metadata.name]])]),
-				H("label", o_, [H("span", null, M(a.t("admin.designToken.description")), 1), I(H("textarea", {
+				H("label", s_, [H("span", null, M(a.t("admin.designToken.name")), 1), I(H("input", { "onUpdate:modelValue": t[26] ||= (e) => i.metadata.name = e }, null, 512), [[G, i.metadata.name]])]),
+				H("label", c_, [H("span", null, M(a.t("admin.designToken.description")), 1), I(H("textarea", {
 					"onUpdate:modelValue": t[27] ||= (e) => i.metadata.description = e,
 					rows: "2"
 				}, null, 512), [[G, i.metadata.description]])]),
-				H("label", s_, [H("span", null, M(a.t("admin.designToken.changeNote")), 1), I(H("input", { "onUpdate:modelValue": t[28] ||= (e) => i.metadata.changeNote = e }, null, 512), [[G, i.metadata.changeNote]])]),
-				H("div", c_, [
+				H("label", l_, [H("span", null, M(a.t("admin.designToken.changeNote")), 1), I(H("input", { "onUpdate:modelValue": t[28] ||= (e) => i.metadata.changeNote = e }, null, 512), [[G, i.metadata.changeNote]])]),
+				H("div", u_, [
 					H("button", {
 						class: "tiny-button",
 						type: "button",
 						disabled: i.saving,
 						onClick: t[29] ||= (...e) => a.saveMetadata && a.saveMetadata(...e)
-					}, M(a.t("common.action.save")), 9, l_),
+					}, M(a.t("common.action.save")), 9, d_),
 					H("button", {
 						class: "tiny-button",
 						type: "button",
 						disabled: !a.setIsActive,
 						onClick: t[30] ||= (e) => i.showClone = !i.showClone
-					}, M(a.t("common.action.duplicate")), 9, u_),
+					}, M(a.t("common.action.duplicate")), 9, f_),
 					a.setIsActive && !a.selectedSet.isDefault ? (B(), V("button", {
 						key: 0,
 						class: "tiny-button",
 						type: "button",
 						disabled: i.saving,
 						onClick: t[31] ||= (e) => a.updateSetStatus("set-default")
-					}, M(a.t("admin.designToken.setDefault")), 9, d_)) : W("", !0),
+					}, M(a.t("admin.designToken.setDefault")), 9, p_)) : W("", !0),
 					a.setIsActive ? (B(), V("button", {
 						key: 1,
 						class: "tiny-button",
@@ -8423,27 +8449,27 @@ function v_(e, t, n, r, i, a) {
 						disabled: i.saving || a.selectedSet.isDefault,
 						title: a.selectedSet.isDefault ? a.t("admin.designToken.defaultDeactivateHint") : "",
 						onClick: t[32] ||= (e) => a.updateSetStatus("deactivate")
-					}, M(a.t("common.action.deactivate")), 9, f_)) : a.selectedSet.status === "inactive" ? (B(), V("button", {
+					}, M(a.t("common.action.deactivate")), 9, m_)) : a.selectedSet.status === "inactive" ? (B(), V("button", {
 						key: 2,
 						class: "tiny-button",
 						type: "button",
 						disabled: i.saving,
 						onClick: t[33] ||= (e) => a.updateSetStatus("activate")
-					}, M(a.t("common.action.activate")), 9, p_)) : W("", !0),
+					}, M(a.t("common.action.activate")), 9, h_)) : W("", !0),
 					a.selectedSet.status === "inactive" ? (B(), V("button", {
 						key: 3,
 						class: "tiny-button danger",
 						type: "button",
 						disabled: i.saving,
 						onClick: t[34] ||= (...e) => a.archiveSet && a.archiveSet(...e)
-					}, M(a.t("common.action.delete")), 9, m_)) : W("", !0)
+					}, M(a.t("common.action.delete")), 9, g_)) : W("", !0)
 				]),
 				i.showClone ? (B(), V("form", {
 					key: 0,
 					class: "design-token-clone",
 					onSubmit: t[37] ||= bu((...e) => a.cloneSet && a.cloneSet(...e), ["prevent"])
 				}, [
-					H("label", h_, [H("span", null, M(a.t("admin.designToken.cloneName")), 1), I(H("input", {
+					H("label", __, [H("span", null, M(a.t("admin.designToken.cloneName")), 1), I(H("input", {
 						"onUpdate:modelValue": t[35] ||= (e) => i.cloneForm.name = e,
 						required: ""
 					}, null, 512), [[
@@ -8452,7 +8478,7 @@ function v_(e, t, n, r, i, a) {
 						void 0,
 						{ trim: !0 }
 					]])]),
-					H("label", g_, [H("span", null, M(a.t("admin.designToken.description")), 1), I(H("input", { "onUpdate:modelValue": t[36] ||= (e) => i.cloneForm.description = e }, null, 512), [[
+					H("label", v_, [H("span", null, M(a.t("admin.designToken.description")), 1), I(H("input", { "onUpdate:modelValue": t[36] ||= (e) => i.cloneForm.description = e }, null, 512), [[
 						G,
 						i.cloneForm.description,
 						void 0,
@@ -8462,13 +8488,13 @@ function v_(e, t, n, r, i, a) {
 						class: "tiny-button primary",
 						type: "submit",
 						disabled: i.saving
-					}, M(a.t("common.action.duplicate")), 9, __)
+					}, M(a.t("common.action.duplicate")), 9, y_)
 				], 32)) : W("", !0)
 			])], 64)) : W("", !0)])
 		])
 	]);
 }
-var y_ = /*#__PURE__*/ Ch(Yh, [["render", v_], ["__scopeId", "data-v-6681f16b"]]);
+var x_ = /*#__PURE__*/ Ch(Zh, [["render", b_], ["__scopeId", "data-v-b7653eb2"]]);
 Object.freeze({
 	active: 0,
 	validated: 1,
@@ -8476,7 +8502,7 @@ Object.freeze({
 	inactive: 3,
 	archived: 4
 });
-var b_ = Object.freeze([
+var S_ = Object.freeze([
 	{
 		key: "promotion-overview",
 		label: "프로모션 개요",
@@ -8519,7 +8545,7 @@ var b_ = Object.freeze([
 		description: "아직 관리 그룹이 지정되지 않은 프롬프트입니다.",
 		order: 999
 	}
-]), x_ = Object.freeze({
+]), C_ = Object.freeze({
 	promo_overview_parser: {
 		group: "promotion-overview",
 		order: 10,
@@ -8605,9 +8631,9 @@ var b_ = Object.freeze([
 		executionMode: "독립 실행"
 	}
 });
-function S_(e) {
+function w_(e) {
 	let t = String(e || "").trim();
-	return x_[t] || {
+	return C_[t] || {
 		group: "other",
 		order: 999,
 		label: t || "알 수 없음",
@@ -8615,36 +8641,36 @@ function S_(e) {
 		executionMode: "실행 방식 미지정"
 	};
 }
-function C_(e) {
-	return b_.find((t) => t.key === e) || b_[b_.length - 1];
+function T_(e) {
+	return S_.find((t) => t.key === e) || S_[S_.length - 1];
 }
-function w_(e) {
+function E_(e) {
 	let t = Number(e?.version);
 	return Number.isFinite(t) ? t : 0;
 }
-function T_(e) {
+function D_(e) {
 	let t = Date.parse(e?.updatedAt || "");
 	return Number.isFinite(t) ? t : 0;
 }
-function E_(e, t) {
-	return w_(t) - w_(e) || T_(t) - T_(e) || String(e?.id || "").localeCompare(String(t?.id || ""));
+function O_(e, t) {
+	return E_(t) - E_(e) || D_(t) - D_(e) || String(e?.id || "").localeCompare(String(t?.id || ""));
 }
-function D_(e) {
+function k_(e) {
 	return String(e?.lineageId || "").trim() || `legacy:${String(e?.type || "unknown")}:${String(e?.id || "unknown")}`;
 }
-function O_(e) {
+function A_(e) {
 	return e && (e.active || e.validated || e.draft || e.latestInactive || e.latestArchived || e.versions?.[0]) || null;
 }
-function k_(e = []) {
+function j_(e = []) {
 	let t = /* @__PURE__ */ new Map();
 	return e.filter((e) => e && typeof e == "object").forEach((e) => {
-		let n = D_(e);
+		let n = k_(e);
 		t.has(n) || t.set(n, {
 			lineageId: n,
 			versions: []
 		}), t.get(n).versions.push(e);
 	}), [...t.values()].map((e) => {
-		let t = [...e.versions].sort(E_), n = t.find((e) => e.status === "active") || null, r = t.find((e) => e.status === "validated") || null, i = t.find((e) => e.status === "draft") || null, a = t.find((e) => e.status === "inactive") || null, o = t.find((e) => e.status === "archived") || null, s = {
+		let t = [...e.versions].sort(O_), n = t.find((e) => e.status === "active") || null, r = t.find((e) => e.status === "validated") || null, i = t.find((e) => e.status === "draft") || null, a = t.find((e) => e.status === "inactive") || null, o = t.find((e) => e.status === "archived") || null, s = {
 			...e,
 			versions: t,
 			active: n,
@@ -8654,55 +8680,55 @@ function k_(e = []) {
 			latestArchived: o,
 			archivedCount: t.filter((e) => e.status === "archived").length,
 			hasCandidate: !!(r || i)
-		}, c = O_(s);
+		}, c = A_(s);
 		return {
 			...s,
 			primary: c,
 			type: c?.type || t[0]?.type || "",
 			name: c?.name || t[0]?.name || "",
-			updatedAt: t.reduce((e, t) => T_(t) > T_(e) ? t : e, t[0] || null)?.updatedAt || null
+			updatedAt: t.reduce((e, t) => D_(t) > D_(e) ? t : e, t[0] || null)?.updatedAt || null
 		};
-	}).sort((e, t) => C_(S_(e.type).group).order - C_(S_(t.type).group).order || S_(e.type).order - S_(t.type).order || String(e.name || "").localeCompare(String(t.name || "")) || String(e.lineageId).localeCompare(String(t.lineageId)));
+	}).sort((e, t) => T_(w_(e.type).group).order - T_(w_(t.type).group).order || w_(e.type).order - w_(t.type).order || String(e.name || "").localeCompare(String(t.name || "")) || String(e.lineageId).localeCompare(String(t.lineageId)));
 }
-function A_(e = [], t = "") {
+function M_(e = [], t = "") {
 	let n = String(t || "").trim();
 	return n ? e.filter((e) => e.type === n) : e;
 }
-function j_(e = [], t = "") {
+function N_(e = [], t = "") {
 	let n = String(t || "");
 	return e.find((e) => e.versions.some((e) => e.id === n)) || null;
 }
-function M_(e = []) {
+function P_(e = []) {
 	let t = /* @__PURE__ */ new Map();
 	return e.forEach((e) => {
-		let n = C_(S_(e?.type).group);
+		let n = T_(w_(e?.type).group);
 		t.has(n.key) || t.set(n.key, {
 			...n,
 			promptGroups: []
 		}), t.get(n.key).promptGroups.push(e);
 	}), [...t.values()].map((e) => ({
 		...e,
-		promptGroups: [...e.promptGroups].sort((e, t) => S_(e?.type).order - S_(t?.type).order || String(e?.name || "").localeCompare(String(t?.name || "")))
+		promptGroups: [...e.promptGroups].sort((e, t) => w_(e?.type).order - w_(t?.type).order || String(e?.name || "").localeCompare(String(t?.name || "")))
 	})).sort((e, t) => e.order - t.order);
 }
-function N_(e = [], t = "", n = "image_execution") {
-	let r = j_(e, t);
+function F_(e = [], t = "", n = "image_execution") {
+	let r = N_(e, t);
 	return r ? r.versions.find((e) => e.id === t) || r.primary || null : e.find((e) => e.type === n && e.active)?.active || e.find((e) => e.active)?.active || e[0]?.primary || null;
 }
-var P_ = Object.freeze({
-	filterPromptGroups: A_,
-	findPromptGroup: j_,
-	groupPromptTemplateSections: M_,
-	groupPromptTemplates: k_,
-	promptLineageId: D_,
-	promptTypeMeta: S_,
-	promptWorkflowGroupMeta: C_,
-	resolvePromptSelection: N_,
-	selectPromptGroupPrimary: O_
+var I_ = Object.freeze({
+	filterPromptGroups: M_,
+	findPromptGroup: N_,
+	groupPromptTemplateSections: P_,
+	groupPromptTemplates: j_,
+	promptLineageId: k_,
+	promptTypeMeta: w_,
+	promptWorkflowGroupMeta: T_,
+	resolvePromptSelection: F_,
+	selectPromptGroupPrimary: A_
 });
 //#endregion
 //#region admin-app/src/services/section-layout-preset-service.mjs
-async function F_(e, t = {}, n = globalThis.fetch) {
+async function L_(e, t = {}, n = globalThis.fetch) {
 	let r = await n(e, {
 		cache: "no-store",
 		...t,
@@ -8717,7 +8743,7 @@ async function F_(e, t = {}, n = globalThis.fetch) {
 	}
 	return i;
 }
-function I_(e = []) {
+function R_(e = []) {
 	let t = e.filter((e) => e.isVisibleInWizard !== !1), n = (e) => Object.fromEntries(t.map((t, n) => [t.itemKey, {
 		positionMode: "free",
 		xPct: e === "mobile" ? 5 : 4 + n % 2 * 48,
@@ -8745,22 +8771,22 @@ function I_(e = []) {
 		}
 	};
 }
-function L_(e, t, n = globalThis.location?.origin) {
+function z_(e, t, n = globalThis.location?.origin) {
 	let r = new URL("/prototype/visual-editor.html", n);
 	return r.searchParams.set("mode", "section-preset"), r.searchParams.set("sectionId", e), r.searchParams.set("layoutKey", t), r.toString();
 }
-var R_ = Object.freeze({
+var B_ = Object.freeze({
 	list(e, t) {
-		return F_(`/api/wizard-content-section-layouts?sectionId=${encodeURIComponent(e)}`, {}, t);
+		return L_(`/api/wizard-content-section-layouts?sectionId=${encodeURIComponent(e)}`, {}, t);
 	},
 	create(e, t) {
-		return F_("/api/wizard-content-section-layouts", {
+		return L_("/api/wizard-content-section-layouts", {
 			method: "POST",
 			body: JSON.stringify(e)
 		}, t);
 	},
 	update(e, t, n, r) {
-		return F_("/api/wizard-content-section-layout", {
+		return L_("/api/wizard-content-section-layout", {
 			method: "PATCH",
 			body: JSON.stringify({
 				id: e,
@@ -8770,10 +8796,10 @@ var R_ = Object.freeze({
 		}, r);
 	},
 	remove(e, t, n) {
-		return F_(`/api/wizard-content-section-layout?id=${encodeURIComponent(e)}&sectionId=${encodeURIComponent(t)}`, { method: "DELETE" }, n);
+		return L_(`/api/wizard-content-section-layout?id=${encodeURIComponent(e)}&sectionId=${encodeURIComponent(t)}`, { method: "DELETE" }, n);
 	},
 	setDefault(e, t, n) {
-		return F_("/api/wizard-content-section-layout-default", {
+		return L_("/api/wizard-content-section-layout-default", {
 			method: "POST",
 			body: JSON.stringify({
 				id: e,
@@ -8782,7 +8808,7 @@ var R_ = Object.freeze({
 		}, n);
 	},
 	updateAiLayoutVariants(e, t, n) {
-		return F_("/api/wizard-content-section", {
+		return L_("/api/wizard-content-section", {
 			method: "PATCH",
 			body: JSON.stringify({
 				id: e.id,
@@ -8794,15 +8820,15 @@ var R_ = Object.freeze({
 			})
 		}, n);
 	},
-	editorUrl: L_
-}), z_ = { class: "section-layout-visual-editor" }, B_ = ["aria-busy"], V_ = ["src", "title"], H_ = {
+	editorUrl: z_
+}), V_ = { class: "section-layout-visual-editor" }, H_ = ["aria-busy"], U_ = ["src", "title"], W_ = {
 	key: 0,
 	class: "section-layout-visual-editor__loading",
 	role: "status"
-}, U_ = {
+}, G_ = {
 	key: 1,
 	class: "section-layout-visual-editor__readonly"
-}, W_ = {
+}, K_ = {
 	name: "SectionLayoutPresetManager",
 	components: { SectionLayoutVisualEditorFrame: /* @__PURE__ */ Ch({
 		__name: "SectionLayoutVisualEditorFrame",
@@ -8819,7 +8845,7 @@ var R_ = Object.freeze({
 		emits: ["saved", "close"],
 		setup(e, { emit: t }) {
 			let n = e, r = t, i = /* @__PURE__ */ wn(null), a = /* @__PURE__ */ wn(!0), o = gc(() => {
-				let e = new URL(R_.editorUrl(n.section.id, n.layout.layoutKey));
+				let e = new URL(B_.editorUrl(n.section.id, n.layout.layoutKey));
 				return e.searchParams.set("embedded", "1"), e.toString();
 			});
 			function s(e) {
@@ -8827,7 +8853,7 @@ var R_ = Object.freeze({
 				let t = e.data || {};
 				t.type === "promo-section-layout-saved" && (t.sectionId !== n.section.id || t.layoutId !== n.layout.id || r("saved", t));
 			}
-			return fa(() => globalThis.addEventListener("message", s)), ha(() => globalThis.removeEventListener("message", s)), (t, n) => (B(), V("section", z_, [H("header", null, [H("div", null, [H("strong", null, M(e.layout.name) + " · Visual Editor", 1), H("small", null, M(e.layout.layoutKey) + " · 실제 텍스트·이미지·CTA 렌더링 기준", 1)]), H("button", {
+			return fa(() => globalThis.addEventListener("message", s)), ha(() => globalThis.removeEventListener("message", s)), (t, n) => (B(), V("section", V_, [H("header", null, [H("div", null, [H("strong", null, M(e.layout.name) + " · Visual Editor", 1), H("small", null, M(e.layout.layoutKey) + " · 실제 텍스트·이미지·CTA 렌더링 기준", 1)]), H("button", {
 				class: "tiny-button",
 				type: "button",
 				onClick: n[0] ||= (e) => r("close")
@@ -8841,7 +8867,7 @@ var R_ = Object.freeze({
 				src: o.value,
 				title: `${e.section.name} ${e.layout.name} Layout Preset Visual Editor`,
 				onLoad: n[1] ||= (e) => a.value = !1
-			}, null, 42, V_), a.value ? (B(), V("div", H_, "공통 Visual Editor를 불러오는 중입니다.")) : e.section.status === "draft" ? W("", !0) : (B(), V("div", U_, " 활성·비활성 Section은 읽기 전용입니다. 초안을 만든 후 Layout을 편집하세요. "))], 8, B_)]));
+			}, null, 42, U_), a.value ? (B(), V("div", W_, "공통 Visual Editor를 불러오는 중입니다.")) : e.section.status === "draft" ? W("", !0) : (B(), V("div", G_, " 활성·비활성 Section은 읽기 전용입니다. 초안을 만든 후 Layout을 편집하세요. "))], 8, H_)]));
 		}
 	}, [["__scopeId", "data-v-bb9f5a6b"]]) },
 	props: {
@@ -8888,7 +8914,7 @@ var R_ = Object.freeze({
 			let e = ++this.requestRevision;
 			this.loading = !0, this.error = "";
 			try {
-				let t = await R_.list(this.section.id);
+				let t = await B_.list(this.section.id);
 				e === this.requestRevision && (this.layouts = t.layouts || [], this.selectedLayoutId && !this.layouts.some((e) => e.id === this.selectedLayoutId) && (this.selectedLayoutId = ""));
 			} catch (t) {
 				e === this.requestRevision && (this.error = t.message);
@@ -8914,13 +8940,13 @@ var R_ = Object.freeze({
 			this.saving = !0, this.error = "";
 			let t = null, n = !1;
 			try {
-				let r = await R_.create({
+				let r = await B_.create({
 					sectionId: this.section.id,
 					name: e,
 					description: this.newPresetEditor.description || "",
 					isDefault: this.newPresetEditor.isDefault,
 					changeNote: "공통 Visual Editor 편집을 위한 Layout Preset 생성.",
-					layoutSnapshot: I_(this.items)
+					layoutSnapshot: R_(this.items)
 				});
 				n = this.newPresetEditor.allowAi, t = r.layout, await this.load(), this.selectedLayoutId = r.layout.id, this.newPresetEditor = null;
 			} catch (e) {
@@ -8940,7 +8966,7 @@ var R_ = Object.freeze({
 			if (!(!this.editable || e.isDefault || this.saving)) {
 				this.saving = !0, this.error = "";
 				try {
-					await R_.setDefault(e.id, this.section.id), await this.load();
+					await B_.setDefault(e.id, this.section.id), await this.load();
 				} catch (e) {
 					this.error = e.message;
 				} finally {
@@ -8957,7 +8983,7 @@ var R_ = Object.freeze({
 				if (globalThis.confirm(`"${e.name}" Layout Preset을 삭제할까요?`)) {
 					this.saving = !0, this.error = "";
 					try {
-						await R_.remove(e.id, this.section.id), await this.load(), this.selectedLayoutId === e.id && (this.selectedLayoutId = "");
+						await B_.remove(e.id, this.section.id), await this.load(), this.selectedLayoutId === e.id && (this.selectedLayoutId = "");
 					} catch (e) {
 						this.error = e.message;
 					} finally {
@@ -8977,7 +9003,7 @@ var R_ = Object.freeze({
 			let n = new Set(this.layouts.map((e) => e.layoutKey)), r = new Set((this.section.aiDesign?.allowedLayoutVariants || []).filter((e) => n.has(e)));
 			t ? r.add(e.layoutKey) : r.delete(e.layoutKey), this.saving = !0, this.error = "";
 			try {
-				await R_.updateAiLayoutVariants(this.section, [...r]), this.$emit("section-updated");
+				await B_.updateAiLayoutVariants(this.section, [...r]), this.$emit("section-updated");
 			} catch (e) {
 				this.error = e.message;
 			} finally {
@@ -8985,76 +9011,76 @@ var R_ = Object.freeze({
 			}
 		}
 	}
-}, G_ = { class: "section-layout-manager" }, K_ = { class: "subsection-title" }, q_ = { class: "action-row" }, J_ = ["disabled"], Y_ = ["disabled"], X_ = {
+}, q_ = { class: "section-layout-manager" }, J_ = { class: "subsection-title" }, Y_ = { class: "action-row" }, X_ = ["disabled"], Z_ = ["disabled"], Q_ = {
 	key: 0,
-	class: "empty-state compact"
-}, Z_ = {
-	key: 1,
-	class: "field-error"
-}, Q_ = {
-	key: 2,
 	class: "empty-state compact"
 }, $_ = {
+	key: 1,
+	class: "field-error"
+}, ev = {
+	key: 2,
+	class: "empty-state compact"
+}, tv = {
 	key: 3,
 	class: "history-list"
-}, ev = {
+}, nv = {
 	key: 0,
 	class: "status-active"
-}, tv = {
+}, rv = {
 	key: 1,
 	class: "status-active"
-}, nv = { class: "action-row align-right" }, rv = ["onClick"], iv = ["disabled", "onClick"], av = ["disabled", "onClick"], ov = ["disabled", "onClick"], sv = {
+}, iv = { class: "action-row align-right" }, av = ["onClick"], ov = ["disabled", "onClick"], sv = ["disabled", "onClick"], cv = ["disabled", "onClick"], lv = {
 	key: 0,
 	class: "empty-state compact"
-}, cv = { class: "inline-check" }, lv = ["disabled"], uv = { class: "inline-check" }, dv = ["disabled"], fv = { class: "action-row" }, pv = ["disabled"];
-function mv(e, t, n, r, i, a) {
+}, uv = { class: "inline-check" }, dv = ["disabled"], fv = { class: "inline-check" }, pv = ["disabled"], mv = { class: "action-row" }, hv = ["disabled"];
+function gv(e, t, n, r, i, a) {
 	let o = Ca("section-layout-visual-editor-frame");
-	return B(), V("section", G_, [
-		H("div", K_, [t[9] ||= H("div", null, [H("h3", null, "Layout Preset"), H("small", null, "Live Preview에서 Desktop/Mobile 배치를 완성한 뒤 Preset으로 저장합니다.")], -1), H("div", q_, [H("button", {
+	return B(), V("section", q_, [
+		H("div", J_, [t[9] ||= H("div", null, [H("h3", null, "Layout Preset"), H("small", null, "Live Preview에서 Desktop/Mobile 배치를 완성한 뒤 Preset으로 저장합니다.")], -1), H("div", Y_, [H("button", {
 			class: "tiny-button",
 			type: "button",
 			disabled: i.loading,
 			onClick: t[0] ||= (...e) => a.load && a.load(...e)
-		}, "새로고침", 8, J_), H("button", {
+		}, "새로고침", 8, X_), H("button", {
 			class: "tiny-button primary",
 			type: "button",
 			disabled: !a.editable || i.saving,
 			onClick: t[1] ||= (...e) => a.startNewPreset && a.startNewPreset(...e)
-		}, "+ 새 Layout 만들기", 8, Y_)])]),
-		a.editable ? W("", !0) : (B(), V("div", X_, "활성·비활성 버전의 Layout은 읽기 전용입니다. 초안을 만든 후 편집하세요.")),
-		i.error ? (B(), V("div", Z_, M(i.error), 1)) : W("", !0),
-		i.loading ? (B(), V("div", Q_, "Layout Preset을 불러오는 중...")) : (B(), V("div", $_, [(B(!0), V(R, null, ka(i.layouts, (e) => (B(), V("div", {
+		}, "+ 새 Layout 만들기", 8, Z_)])]),
+		a.editable ? W("", !0) : (B(), V("div", Q_, "활성·비활성 버전의 Layout은 읽기 전용입니다. 초안을 만든 후 편집하세요.")),
+		i.error ? (B(), V("div", $_, M(i.error), 1)) : W("", !0),
+		i.loading ? (B(), V("div", ev, "Layout Preset을 불러오는 중...")) : (B(), V("div", tv, [(B(!0), V(R, null, ka(i.layouts, (e) => (B(), V("div", {
 			key: e.id,
 			class: "history-item section-layout-row"
 		}, [H("div", null, [H("strong", null, [
 			zs(M(e.name) + " ", 1),
-			e.isDefault ? (B(), V("em", ev, "기본")) : W("", !0),
-			a.aiAllows(e) ? (B(), V("em", tv, "AI 허용")) : W("", !0)
-		]), H("span", null, M(e.layoutKey) + " · " + M(e.description || "설명 없음"), 1)]), H("div", nv, [
+			e.isDefault ? (B(), V("em", nv, "기본")) : W("", !0),
+			a.aiAllows(e) ? (B(), V("em", rv, "AI 허용")) : W("", !0)
+		]), H("span", null, M(e.layoutKey) + " · " + M(e.description || "설명 없음"), 1)]), H("div", iv, [
 			H("button", {
 				class: De(["tiny-button", { primary: i.selectedLayoutId === e.id }]),
 				type: "button",
 				onClick: (t) => a.selectLayout(e)
-			}, M(i.selectedLayoutId === e.id ? "Preview 닫기" : a.editable ? "Live Preview 편집" : "Live Preview 보기"), 11, rv),
+			}, M(i.selectedLayoutId === e.id ? "Preview 닫기" : a.editable ? "Live Preview 편집" : "Live Preview 보기"), 11, av),
 			H("button", {
 				class: "tiny-button",
 				type: "button",
 				disabled: !a.editable || i.saving || e.isDefault,
 				onClick: (t) => a.setDefault(e)
-			}, "기본 지정", 8, iv),
+			}, "기본 지정", 8, ov),
 			H("button", {
 				class: "tiny-button",
 				type: "button",
 				disabled: !a.editable || i.saving,
 				onClick: (t) => a.toggleAiLayout(e)
-			}, M(a.aiAllows(e) ? "AI 허용 해제" : "AI 사용 허용"), 9, av),
+			}, M(a.aiAllows(e) ? "AI 허용 해제" : "AI 사용 허용"), 9, sv),
 			H("button", {
 				class: "tiny-button danger",
 				type: "button",
 				disabled: !a.editable || i.saving || a.aiAllows(e),
 				onClick: (t) => a.remove(e)
-			}, "삭제", 8, ov)
-		])]))), 128)), i.layouts.length ? W("", !0) : (B(), V("div", sv, "등록된 Layout Preset이 없습니다. 기존 자동 배치가 계속 사용됩니다."))])),
+			}, "삭제", 8, cv)
+		])]))), 128)), i.layouts.length ? W("", !0) : (B(), V("div", lv, "등록된 Layout Preset이 없습니다. 기존 자동 배치가 계속 사용됩니다."))])),
 		i.newPresetEditor ? (B(), V("form", {
 			key: 4,
 			class: "new-layout-preset-form",
@@ -9065,17 +9091,17 @@ function mv(e, t, n, r, i, a) {
 				required: ""
 			}, null, 512), [[G, i.newPresetEditor.name]])]),
 			H("label", null, [t[11] ||= H("span", null, "설명", -1), I(H("input", { "onUpdate:modelValue": t[3] ||= (e) => i.newPresetEditor.description = e }, null, 512), [[G, i.newPresetEditor.description]])]),
-			H("label", cv, [I(H("input", {
+			H("label", uv, [I(H("input", {
 				"onUpdate:modelValue": t[4] ||= (e) => i.newPresetEditor.isDefault = e,
 				type: "checkbox",
 				disabled: !i.layouts.length
-			}, null, 8, lv), [[su, i.newPresetEditor.isDefault]]), t[12] ||= H("span", null, "기본 Preset", -1)]),
-			H("label", uv, [I(H("input", {
+			}, null, 8, dv), [[su, i.newPresetEditor.isDefault]]), t[12] ||= H("span", null, "기본 Preset", -1)]),
+			H("label", fv, [I(H("input", {
 				"onUpdate:modelValue": t[5] ||= (e) => i.newPresetEditor.allowAi = e,
 				type: "checkbox",
 				disabled: n.section.aiDesign?.enabled === !1
-			}, null, 8, dv), [[su, i.newPresetEditor.allowAi]]), t[13] ||= H("span", null, "AI 사용 허용", -1)]),
-			H("div", fv, [H("button", {
+			}, null, 8, pv), [[su, i.newPresetEditor.allowAi]]), t[13] ||= H("span", null, "AI 사용 허용", -1)]),
+			H("div", mv, [H("button", {
 				class: "tiny-button",
 				type: "button",
 				onClick: t[6] ||= (e) => i.newPresetEditor = null
@@ -9083,7 +9109,7 @@ function mv(e, t, n, r, i, a) {
 				class: "tiny-button primary",
 				type: "submit",
 				disabled: i.saving
-			}, M(i.saving ? "생성 중…" : "Preset 만들고 Visual Editor 열기"), 9, pv)])
+			}, M(i.saving ? "생성 중…" : "Preset 만들고 Visual Editor 열기"), 9, hv)])
 		], 32)) : W("", !0),
 		a.selectedLayout ? (B(), As(o, {
 			key: 5,
@@ -9098,7 +9124,7 @@ function mv(e, t, n, r, i, a) {
 		])) : W("", !0)
 	]);
 }
-var hv = /*#__PURE__*/ Ch(W_, [["render", mv], ["__scopeId", "data-v-a2b2d756"]]), gv = /* @__PURE__ */ o((() => {
+var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-a2b2d756"]]), vv = /* @__PURE__ */ o((() => {
 	var e = {
 		documents: "promoPrototype.documents.abc",
 		generatedPages: "promoPrototype.generatedPages.abc",
@@ -14855,9 +14881,9 @@ yh(document), globalThis.Vue = gh, globalThis.PromoAdminTemplateLayout = Object.
 	component: Ih
 }), globalThis.PromoAdminDesignTokens = Object.freeze({
 	service: Hh,
-	component: y_
-}), globalThis.PromoAdminPromptGroups = P_, globalThis.PromoAdminSectionLayouts = Object.freeze({
-	service: R_,
-	component: hv
-}), await Promise.resolve().then(() => /* @__PURE__ */ l(gv()));
+	component: x_
+}), globalThis.PromoAdminPromptGroups = I_, globalThis.PromoAdminSectionLayouts = Object.freeze({
+	service: B_,
+	component: _v
+}), await Promise.resolve().then(() => /* @__PURE__ */ l(vv()));
 //#endregion

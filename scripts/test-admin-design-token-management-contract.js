@@ -32,7 +32,9 @@ assert.match(store, /normalizeDarkOnlyTokenEntries/);
 
 const {
   isDarkOnlyTokenSet,
+  normalizeTokenEntries,
   normalizeDarkOnlyTokenEntries,
+  resolveRequiredTokenAliases,
   validateTokenValue,
 } = require("../api/_design-token-store");
 assert.equal(isDarkOnlyTokenSet({ setKey: "ggpoker-web", name: "GGPoker Web" }), true);
@@ -50,6 +52,56 @@ assert.deepEqual(normalizeDarkOnlyTokenEntries([{
   valueDark: "16px",
   activeTheme: "dark",
 });
+const tokenDefinition = (tokenKey, required, valueType, cssProperty) => ({
+  token_key: tokenKey,
+  required,
+  value_type: valueType,
+  css_property: cssProperty,
+  css_properties: [cssProperty],
+});
+const aliasCases = [
+  ["--promo-surface", "--app-surface", "#111111", "color", "background-color"],
+  ["--promo-text", "--app-ink", "#eeeeee", "color", "color"],
+  ["--promo-muted", "--app-muted", "#999999", "color", "color"],
+  ["--promo-accent", "--app-accent", "#123456", "color", "background-color"],
+  ["--promo-radius", "--app-radius", "18px", "length", "border-radius"],
+  ["--promo-shadow", "--app-shadow", "0 4px 18px #00000033", "shadow", "box-shadow"],
+];
+const aliasDefinitions = [
+  tokenDefinition("--promo-title-size", true, "length", "font-size"),
+  ...aliasCases.flatMap(([requiredKey, aliasKey, , valueType, cssProperty]) => [
+    tokenDefinition(requiredKey, true, valueType, cssProperty),
+    tokenDefinition(aliasKey, false, valueType, cssProperty),
+  ]),
+];
+const aliasEntries = [
+  { tokenKey: "--promo-title-size", value: "48px" },
+  ...aliasCases.map(([, aliasKey, value]) => ({ tokenKey: aliasKey, value, valueDark: value })),
+];
+const resolvedAliases = resolveRequiredTokenAliases(aliasEntries, aliasDefinitions);
+aliasCases.forEach(([requiredKey, aliasKey, value]) => {
+  const resolved = resolvedAliases.find((entry) => entry.tokenKey === requiredKey);
+  assert.equal(resolved?.value, value);
+  assert.equal(resolved?.metadata.canonicalAliasSource, aliasKey);
+});
+const normalizedAliases = normalizeTokenEntries(aliasEntries, aliasDefinitions);
+assert.deepEqual(normalizedAliases.errors, []);
+assert.equal(normalizedAliases.normalized.filter((entry) => entry.metadata.canonicalAliasSource).length, 6);
+const missingAlias = normalizeTokenEntries([
+  { tokenKey: "--promo-title-size", value: "48px" },
+], aliasDefinitions);
+aliasCases.forEach(([requiredKey]) => {
+  assert.equal(
+    missingAlias.errors.some((error) => error.tokenKey === requiredKey && error.message === "required token is missing"),
+    true,
+  );
+});
+const explicitCanonical = normalizeTokenEntries([
+  ...aliasEntries,
+  { tokenKey: "--promo-accent", value: "#abcdef" },
+], aliasDefinitions);
+assert.equal(explicitCanonical.normalized.find((entry) => entry.tokenKey === "--promo-accent")?.value, "#abcdef");
+assert.equal(explicitCanonical.normalized.filter((entry) => entry.tokenKey === "--promo-accent").length, 1);
 
 const importHandler = read("api/design-token-set-import.js");
 assert.match(importHandler, /normalizeTokenEntries/);
@@ -163,6 +215,8 @@ assert.match(component, /convertFontSize/);
 assert.match(component, /유동형 clamp/);
 assert.match(component, /\+ 토큰 추가/);
 assert.match(component, /pendingDefinitions/);
+assert.match(component, /mergeRequiredTokenDefinitions/);
+assert.match(component, /canonicalAliasSource/);
 assert.match(service, /registerDefinitions/);
 assert.match(service, /\/api\/design-token-catalog-import/);
 assert.match(component, /type="file"/);

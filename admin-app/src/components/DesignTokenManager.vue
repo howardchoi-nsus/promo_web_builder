@@ -9,6 +9,14 @@ const TOKEN_CSS_PROPERTIES = [
   "background-color", "background-image", "border-color", "border-radius",
   "box-shadow", "gap", "padding", "margin", "width", "height",
 ];
+const REQUIRED_PROMO_TOKEN_ALIASES = Object.freeze({
+  "--promo-surface": "--app-surface",
+  "--promo-text": "--app-ink",
+  "--promo-muted": "--app-muted",
+  "--promo-accent": "--app-accent",
+  "--promo-radius": "--app-radius",
+  "--promo-shadow": "--app-shadow",
+});
 
 function csvCell(value) {
   const text = String(value ?? "");
@@ -26,6 +34,33 @@ function tokenSnapshot(item) {
     valueDark: String(item.valueDark || ""),
     activeTheme: String(item.activeTheme || "dark"),
   });
+}
+
+function mergeRequiredTokenDefinitions(definitions, values) {
+  const merged = (values || []).map((item) => ({ ...item }));
+  const byKey = new Map(merged.map((item) => [item.tokenKey, item]));
+  (definitions || []).filter((definition) => definition.required).forEach((definition) => {
+    if (byKey.has(definition.tokenKey)) return;
+    const aliasKey = REQUIRED_PROMO_TOKEN_ALIASES[definition.tokenKey];
+    const alias = aliasKey ? byKey.get(aliasKey) : null;
+    const value = String(alias?.value || "").trim();
+    const valueLight = String(alias?.valueLight || value).trim();
+    const valueDark = String(alias?.valueDark || "").trim();
+    const item = {
+      ...definition,
+      valueIndex: 0,
+      value,
+      valueLight,
+      valueDark,
+      activeTheme: alias?.activeTheme || "dark",
+      metadata: alias
+        ? { ...(alias.metadata || {}), canonicalAliasSource: aliasKey }
+        : {},
+    };
+    merged.push(item);
+    byKey.set(item.tokenKey, item);
+  });
+  return merged;
 }
 
 export default {
@@ -198,7 +233,10 @@ export default {
       const definitions = new Map(this.definitions.map((item) => [item.tokenKey, item]));
       const values = this.detail.values || [];
       this.editorValues = values.length
-        ? values.map((item) => ({ ...(definitions.get(item.tokenKey) || {}), ...item }))
+        ? mergeRequiredTokenDefinitions(
+          this.definitions,
+          values.map((item) => ({ ...(definitions.get(item.tokenKey) || {}), ...item })),
+        )
         : this.definitions.map((definition) => ({
           ...definition, valueIndex: 0, value: "", valueLight: "", valueDark: "",
           activeTheme: "dark", metadata: {},

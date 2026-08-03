@@ -34,6 +34,8 @@ const definitions = [
   { tokenKey: "--app-font-weight-strong", category: "typography-weight", categoryLabel: "글자 두께", label: "강조", valueType: "number", semanticRole: "강조", cssProperty: "font-weight", required: false, aiSelectable: false, editable: true },
   { tokenKey: "--app-font-weight-heading", category: "typography-weight", categoryLabel: "글자 두께", label: "제목", valueType: "number", semanticRole: "제목", cssProperty: "font-weight", required: false, aiSelectable: false, editable: true },
   { tokenKey: "--app-font-weight-title", category: "typography-weight", categoryLabel: "글자 두께", label: "타이틀", valueType: "number", semanticRole: "타이틀", cssProperty: "font-weight", required: false, aiSelectable: false, editable: true },
+  { tokenKey: "--promo-radius", category: "shape", valueType: "length", semanticRole: "radius", cssProperty: "border-radius", required: true, aiSelectable: true, editable: true },
+  { tokenKey: "--app-radius", category: "shape", valueType: "length", semanticRole: "radius", cssProperty: "border-radius", required: false, aiSelectable: false, editable: true },
 ];
 let values = [
   { ...definitions[0], value: "#F8FAFC", metadata: {} },
@@ -43,6 +45,7 @@ let values = [
   { ...definitions[4], value: "800", metadata: {} },
   { ...definitions[5], value: "900", metadata: {} },
   { ...definitions[6], value: "950", metadata: {} },
+  { ...definitions[8], value: "18px", valueLight: "18px", valueDark: "", metadata: {} },
 ];
 const tokenSet = {
   id: setId,
@@ -152,11 +155,16 @@ try {
       ?.querySelector("input[type='text']:enabled")?.value === "#123456"
   ));
   assert.equal(await accentInput.inputValue(), "#123456");
+  const canonicalRadiusInput = page.locator(".design-token-value")
+    .filter({ hasText: "--promo-radius" }).locator('input[type="text"]:enabled');
+  assert.equal(await canonicalRadiusInput.inputValue(), "18px");
   await accentInput.fill("#FF0000");
   await page.locator(".sticky-actions").getByRole("button", { name: "저장", exact: true }).click();
   await page.waitForFunction(() => document.querySelector(".shell-status")?.textContent?.includes("저장"));
 
   assert.equal(savedTokens.find((token) => token.tokenKey === "--promo-accent").value, "#FF0000");
+  assert.equal(savedTokens.find((token) => token.tokenKey === "--promo-radius").value, "18px");
+  assert.equal(savedTokens.find((token) => token.tokenKey === "--promo-radius").metadata.canonicalAliasSource, "--app-radius");
   if (false) {
     assert.deepEqual(savedTemplateIds, []);
 
