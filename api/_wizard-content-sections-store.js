@@ -236,7 +236,9 @@ function toSection(row) {
     version: Number(row.version || 1),
     changeNote: row.change_note || "",
     aiDesign: normalizeAiDesign(row.ai_design),
-    compositionScope: row.composition_scope === "shared" ? "shared" : "template",
+    compositionScope: ["shared", "registry"].includes(row.composition_scope)
+      ? row.composition_scope
+      : "template",
     sectionRole: SECTION_ROLES.includes(row.section_role) ? row.section_role : "content",
     compositionPolicy: normalizeCompositionPolicy(row.composition_policy, { fixedPosition }),
     archivedAt: row.archived_at || null,
@@ -256,6 +258,7 @@ function toSectionItem(row) {
     componentKey: row.component_key || null,
     componentVersionId: row.component_version_id || null,
     componentVersion: row.component_version == null ? null : Number(row.component_version),
+    componentVersionStatus: row.component_version_status || null,
     libraryPresentation: row.library_presentation && typeof row.library_presentation === "object"
       ? row.library_presentation
       : {},
@@ -356,6 +359,7 @@ async function fetchItemRows(sql, sectionId) {
       component.id::text as item_component_id, component.component_key, component.library_presentation,
       component.description as component_description,
       version.id::text as component_version_id, version.version as component_version,
+      version.status as component_version_status,
       version.field_kind, version.text_type, version.editor_schema, version.default_value,
       version.capabilities, version.image_policy, version.cta_policy, version.style_slots
     from wizard_content_section_component_instances instance
@@ -374,6 +378,39 @@ async function fetchItemsForSection(sql, sectionId) {
     item.fields = (fieldsByVersion.get(item.componentVersionId) || []).map(toSectionComponentField);
   });
   return items;
+}
+
+async function fetchItemsForSections(sql, sectionIds = []) {
+  const ids = Array.from(new Set(sectionIds.map(String).filter(Boolean)));
+  if (!ids.length) return new Map();
+  const rows = await sql`
+    select
+      instance.id::text, instance.section_id::text, instance.item_key,
+      coalesce(nullif(instance.display_name, ''), component.name) as name,
+      instance.is_visible_in_wizard, instance.is_required, instance.user_reorder_allowed,
+      instance.sort_order, instance.is_locked, instance.locked_value, instance.instance_config,
+      instance.created_at, instance.updated_at,
+      component.id::text as item_component_id, component.component_key, component.library_presentation,
+      component.description as component_description,
+      version.id::text as component_version_id, version.version as component_version,
+      version.status as component_version_status,
+      version.field_kind, version.text_type, version.editor_schema, version.default_value,
+      version.capabilities, version.image_policy, version.cta_policy, version.style_slots
+    from wizard_content_section_component_instances instance
+    join wizard_item_component_versions version on version.id = instance.component_version_id
+    join wizard_item_components component on component.id = version.component_id
+    where instance.section_id = any(${ids}::uuid[])
+    order by instance.section_id, instance.sort_order asc, instance.created_at asc
+  `;
+  const items = rows.map(toSectionItem);
+  const fieldsByVersion = await fetchVersionFields(sql, items.map((item) => item.componentVersionId));
+  const bySection = new Map(ids.map((id) => [id, []]));
+  items.forEach((item) => {
+    item.fields = (fieldsByVersion.get(item.componentVersionId) || []).map(toSectionComponentField);
+    if (!bySection.has(item.sectionId)) bySection.set(item.sectionId, []);
+    bySection.get(item.sectionId).push(item);
+  });
+  return bySection;
 }
 
 async function validateSectionDraft(sql, sectionId) {
@@ -504,6 +541,7 @@ async function fetchPublicSectionsWithItems(sql) {
       archived_at, created_at, updated_at
     from wizard_content_sections
     where status = 'active' and is_visible_in_wizard = true
+      and composition_scope <> 'registry'
     order by
       case fixed_position when 'top' then 0 when 'bottom' then 2 else 1 end,
       sort_order asc
@@ -591,6 +629,7 @@ module.exports = {
   toSectionItem,
   fetchSectionRow,
   fetchItemsForSection,
+  fetchItemsForSections,
   validateSectionDraft,
   fetchAllSections,
   fetchPublicSectionsWithItems,

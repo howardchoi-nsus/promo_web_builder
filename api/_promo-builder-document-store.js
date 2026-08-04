@@ -27,6 +27,15 @@ function toProposal(row, { includeSnapshots = false } = {}) {
     baseDocumentRevision: Number(row.base_document_revision || 0),
     overviewFingerprint: row.overview_fingerprint,
     candidateFingerprint: row.candidate_fingerprint,
+    policyFingerprint: row.policy_fingerprint || "",
+    resourceFingerprint: row.resource_fingerprint || "",
+    contractVersion: Number(row.contract_version || 2),
+    stage: row.stage || null,
+    shellVersionId: row.shell_version_id || null,
+    sourceTemplateId: row.source_template_id || null,
+    sourceTemplateVersion: row.source_template_version == null
+      ? null
+      : Number(row.source_template_version),
     status: row.status,
     autoApplicable: Boolean(row.validation_json?.autoApplicable),
     validation: row.validation_json || {},
@@ -106,6 +115,44 @@ async function fetchProposal(sql, proposalId, ownerSubject, { includeSnapshots =
 }
 
 async function createProposal(sql, input) {
+  if (Number(input.contractVersion || 2) === 3) {
+    const requiredTextFields = [
+      "overviewFingerprint",
+      "candidateFingerprint",
+      "policyFingerprint",
+      "resourceFingerprint",
+    ];
+    requiredTextFields.forEach((field) => {
+      if (!String(input[field] || "").trim()) {
+        throw new TypeError(`Contract v3 proposal requires ${field}`);
+      }
+    });
+    if (!input.shellVersionId) {
+      throw new TypeError("Contract v3 proposal requires shellVersionId");
+    }
+
+    const rows = await sql`
+      select create_promo_builder_composition_proposal_v3(
+        ${input.documentId}::uuid,
+        ${input.ownerSubject},
+        ${input.requestId},
+        ${input.baseDocumentRevision},
+        ${input.overviewFingerprint},
+        ${input.candidateFingerprint},
+        ${input.policyFingerprint},
+        ${input.resourceFingerprint},
+        ${input.shellVersionId}::uuid,
+        ${input.sourceTemplateId || null}::uuid,
+        ${input.sourceTemplateVersion || null},
+        ${JSON.stringify(input.requestSnapshot)}::jsonb,
+        ${JSON.stringify(input.candidateSnapshot)}::jsonb,
+        ${input.promptTemplateId || null}::uuid,
+        ${input.idempotencyKey}
+      )::text as id
+    `;
+    return fetchProposal(sql, rows[0].id, input.ownerSubject, { includeSnapshots: true });
+  }
+
   const rows = await sql`
     select create_promo_builder_composition_proposal(
       ${input.documentId}::uuid,
@@ -134,6 +181,7 @@ async function cancelProposal(sql, proposalId, ownerSubject) {
         end,
         lease_token = case when proposal.status in ('queued', 'processing', 'ready') then null else lease_token end,
         lease_expires_at = case when proposal.status in ('queued', 'processing', 'ready') then null else lease_expires_at end,
+        stage = case when proposal.status in ('queued', 'processing', 'ready') then null else stage end,
         updated_at = now()
     from promo_builder_documents document
     where proposal.id = ${proposalId}::uuid
@@ -149,6 +197,7 @@ async function acquireProposalLease(sql, proposalId) {
   const rows = await sql`
     update promo_builder_composition_proposals
     set status = 'processing',
+      stage = case when contract_version = 3 then 'planning' else null end,
       current_attempt = current_attempt + 1,
       lease_token = ${leaseToken},
       lease_expires_at = now() + interval '2 minutes',
@@ -172,6 +221,7 @@ async function completeProposal(sql, {
   const rows = await sql`
     update promo_builder_composition_proposals
     set status = 'ready',
+      stage = null,
       proposal_snapshot = ${JSON.stringify(snapshot)}::jsonb,
       validation_json = ${JSON.stringify(validation)}::jsonb,
       lease_token = null,
@@ -197,6 +247,7 @@ async function failProposal(sql, {
   const rows = await sql`
     update promo_builder_composition_proposals
     set status = 'failed',
+      stage = null,
       lease_token = null,
       lease_expires_at = null,
       next_retry_at = case
@@ -222,8 +273,49 @@ async function applyProposal(sql, {
   baseDocumentRevision,
   snapshot,
   changeNote,
+  contractVersion = 2,
+  overviewFingerprint,
+  candidateFingerprint,
+  policyFingerprint,
+  resourceFingerprint,
+  shellVersionId,
 }) {
   const nextSnapshot = { ...snapshot, documentRevision: Number(baseDocumentRevision) + 1 };
+  if (Number(contractVersion) === 3) {
+    const requiredTextFields = {
+      overviewFingerprint,
+      candidateFingerprint,
+      policyFingerprint,
+      resourceFingerprint,
+    };
+    Object.entries(requiredTextFields).forEach(([field, value]) => {
+      if (!String(value || "").trim()) {
+        throw new TypeError(`Contract v3 apply requires ${field}`);
+      }
+    });
+    if (!shellVersionId) {
+      throw new TypeError("Contract v3 apply requires shellVersionId");
+    }
+
+    const rows = await sql`
+      select apply_promo_builder_composition_proposal_v3(
+        ${documentId}::uuid,
+        ${proposalId}::uuid,
+        ${ownerSubject},
+        ${baseDocumentRevision},
+        ${overviewFingerprint},
+        ${candidateFingerprint},
+        ${policyFingerprint},
+        ${resourceFingerprint},
+        ${shellVersionId}::uuid,
+        ${JSON.stringify(nextSnapshot)}::jsonb,
+        ${snapshotHash(nextSnapshot)},
+        ${changeNote || "AI composition v3 applied."}
+      ) as revision
+    `;
+    return { revision: Number(rows[0].revision), snapshot: nextSnapshot };
+  }
+
   const rows = await sql`
     select apply_promo_builder_composition_proposal(
       ${documentId}::uuid,

@@ -117,7 +117,9 @@ function toTemplateSection(row) {
     orderChangeAllowed: Boolean(row.order_change_allowed),
     userReorderAllowed: row.user_reorder_allowed === undefined ? Boolean(row.order_change_allowed) : Boolean(row.user_reorder_allowed),
     fixedPosition: row.fixed_position || null,
-    compositionScope: row.composition_scope === "shared" ? "shared" : "template",
+    compositionScope: ["shared", "registry"].includes(row.composition_scope)
+      ? row.composition_scope
+      : "template",
     sectionRole: row.section_role || "content",
     compositionPolicy: row.composition_policy || {},
     createdAt: row.created_at || null,

@@ -36,6 +36,7 @@ docs/
 - i18n/내비/정리: `admin-i18n-locale-management-2026-07-22`, `left-sidebar-global-navigation-2026-07-21`, `source-code-cleanup-and-consolidation-2026-07-21`
 - Visual Editor: `webflow-style-component-library-drag-drop-development-plan-2026-07-31`, `live-preview-outline-editor-text-alignment-development-plan-2026-07-31`, `visual-editor-structure-ai-design-transition-development-plan-2026-07-31`
 - AI·Preset 보완: `promo-builder-ai-asset-and-section-layout-preset-remediation-development-plan-2026-07-30`
+- AI Registry Composition Mode: `ai-registry-composition-mode-supplement-development-plan-2026-08-04` — Blank Shell, Registry 후보, Resource Reference, Composition Contract v3 보완 계획
 
 ### 정책 (1)
 - `promo-web-builder-policies-2026-07-23.md`(현행화: Visual Editor·라인 편집·AI 역할·Motion 규칙 반영) + `source/collaboration-protocol-2026-07-21.md`

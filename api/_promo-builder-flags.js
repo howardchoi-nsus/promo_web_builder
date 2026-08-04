@@ -5,7 +5,10 @@ const FLAG_NAMES = Object.freeze({
   motion: "PROMO_PAGE_COMPOSITION_MOTION_ENABLED",
   naturalLanguageEdit: "PROMO_PAGE_COMPOSITION_NL_EDIT_ENABLED",
   libraryMode: "PROMO_PAGE_COMPOSITION_LIBRARY_MODE_ENABLED",
+  compositionV3: "AI_COMPOSITION_MODE_V3",
 });
+
+const FLAG_DEFAULTS = Object.freeze({ compositionV3: false });
 
 function enabled(value, fallback = true) {
   if (value === undefined || value === null || value === "") return fallback;
@@ -15,7 +18,7 @@ function enabled(value, fallback = true) {
 function builderFlags(env = process.env) {
   return Object.fromEntries(Object.entries(FLAG_NAMES).map(([key, envName]) => [
     key,
-    enabled(env[envName], true),
+    enabled(env[envName], FLAG_DEFAULTS[key] ?? true),
   ]));
 }
 

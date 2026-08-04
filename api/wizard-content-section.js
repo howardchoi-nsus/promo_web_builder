@@ -95,8 +95,8 @@ async function updateSection(req, res) {
   const name = hasName ? String(body.name || "").trim() : current.name;
   if (!name) return res.status(400).json({ error: "name is required" });
 
-  const compositionScope = hasCompositionScope && body.compositionScope === "shared"
-    ? "shared"
+  const compositionScope = hasCompositionScope && ["shared", "registry"].includes(body.compositionScope)
+    ? body.compositionScope
     : hasCompositionScope ? "template" : current.composition_scope || "template";
   const sectionRole = hasSectionRole && SECTION_ROLES.includes(body.sectionRole)
     ? body.sectionRole

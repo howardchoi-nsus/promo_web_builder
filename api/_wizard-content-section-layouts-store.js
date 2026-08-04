@@ -329,6 +329,24 @@ async function fetchLayoutsForSection(sql, sectionId, options = {}) {
   return (await fetchLayoutRows(sql, sectionId)).map((row) => toLayout(row, options));
 }
 
+async function fetchLayoutsForSections(sql, sectionIds = [], options = {}) {
+  const ids = Array.from(new Set(sectionIds.map(String).filter(Boolean)));
+  if (!ids.length) return new Map();
+  const rows = await sql`
+    select id::text, section_id::text, layout_key, name, description, is_default,
+      layout_snapshot, change_note, created_at, updated_at
+    from wizard_content_section_layouts
+    where section_id = any(${ids}::uuid[])
+    order by section_id, is_default desc, created_at asc, layout_key asc
+  `;
+  const bySection = new Map(ids.map((id) => [id, []]));
+  rows.forEach((row) => {
+    if (!bySection.has(row.section_id)) bySection.set(row.section_id, []);
+    bySection.get(row.section_id).push(toLayout(row, options));
+  });
+  return bySection;
+}
+
 async function fetchLayoutRow(sql, id, sectionId = "") {
   const rows = sectionId
     ? await sql`
@@ -378,6 +396,7 @@ module.exports = {
   toLayout,
   fetchLayoutRows,
   fetchLayoutsForSection,
+  fetchLayoutsForSections,
   fetchLayoutRow,
   recordLayoutHistory,
 };
