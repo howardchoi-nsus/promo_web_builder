@@ -311,6 +311,61 @@ async function fetchRegistryCompositionCandidates(sql, {
   return { ...snapshot, candidateFingerprint: fingerprint(snapshot) };
 }
 
+function plannerRegistryCandidateSnapshot(candidates) {
+  return {
+    contractVersion: 3,
+    shell: candidates.shell,
+    criteria: candidates.criteria,
+    sections: (candidates.sections || []).map((section) => ({
+      sectionVersionId: section.sectionVersionId,
+      sectionKey: section.sectionKey,
+      name: section.name,
+      description: section.description,
+      sectionRole: section.sectionRole,
+      resolvedRequired: section.resolvedRequired,
+      compositionPolicy: section.compositionPolicy,
+      layoutPresets: (section.layoutPresets || []).map((layout) => ({
+        layoutKey: layout.layoutKey,
+        name: layout.name,
+        description: layout.description,
+        isDefault: layout.isDefault,
+      })),
+      components: (section.components || []).map((component) => ({
+        componentInstanceId: component.componentInstanceId,
+        componentVersionId: component.componentVersionId,
+        componentKey: component.componentKey,
+        itemKey: component.itemKey,
+        name: component.name,
+        description: component.description,
+        isRequired: component.isRequired,
+        isLocked: component.isLocked,
+        capabilities: component.capabilities,
+        fields: (component.fields || []).map((field) => ({
+          fieldKey: field.fieldKey,
+          name: field.name,
+          fieldKind: field.fieldKind,
+          textType: field.textType,
+          isRequired: field.isRequired,
+          isLocked: field.isLocked,
+        })),
+      })),
+      resourceReferences: section.resourceReferences || [],
+    })),
+    tokenSets: (candidates.tokenSets || []).map((token) => ({
+      tokenSetVersionId: token.tokenSetVersionId,
+      setKey: token.setKey,
+      name: token.name,
+      isDefault: token.isDefault,
+      selectableTokens: token.selectableTokens,
+    })),
+    motionPresets: candidates.motionPresets || [],
+    resources: candidates.resources || [],
+    candidateFingerprint: candidates.candidateFingerprint,
+    policyFingerprint: candidates.policyFingerprint,
+    resourceFingerprint: candidates.resourceFingerprint,
+  };
+}
+
 module.exports = {
   DEFAULT_SECTION_LIMIT,
   stableStringify,
@@ -320,4 +375,5 @@ module.exports = {
   evaluateSectionCandidate,
   rankCandidates,
   fetchRegistryCompositionCandidates,
+  plannerRegistryCandidateSnapshot,
 };

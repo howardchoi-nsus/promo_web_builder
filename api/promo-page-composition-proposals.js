@@ -6,6 +6,10 @@ const {
   fetchPageCompositionCandidates,
   plannerCandidateSnapshot,
 } = require("./_promo-page-composition-candidates");
+const {
+  fetchRegistryCompositionCandidates,
+  plannerRegistryCandidateSnapshot,
+} = require("./_promo-registry-composition-candidates");
 const { resolveBuilderOwner } = require("./_promo-builder-auth");
 const {
   getSql,
@@ -77,6 +81,94 @@ module.exports = async function handler(req, res) {
         overviewFingerprint: fingerprint,
       });
     }
+    const registryModeRequested = body.mode === "ai-composition";
+    const contractVersion = body.contractVersion == null
+      ? (registryModeRequested ? 3 : 2)
+      : Number(body.contractVersion);
+    if (![2, 3].includes(contractVersion)) {
+      return res.status(400).json({ error: "contractVersion must be 2 or 3" });
+    }
+    if (registryModeRequested && contractVersion !== 3) {
+      return res.status(400).json({ error: "ai-composition mode requires contractVersion 3" });
+    }
+    const isRegistryV3 = contractVersion === 3;
+    if (isRegistryV3) {
+      requireBuilderFlag("compositionV3");
+      if (document.document.mode !== "ai") {
+        return res.status(422).json({
+          error: "Contract v3 composition requires an AI Builder document",
+          code: "V3_AI_DOCUMENT_REQUIRED",
+        });
+      }
+      const shellVersionId = String(body.shellVersionId || "").trim();
+      if (!shellVersionId) return res.status(400).json({ error: "shellVersionId is required for Contract v3" });
+      const capabilities = Array.isArray(body.capabilities) ? body.capabilities : [];
+      const registryOverview = {
+        ...overview,
+        locale: String(body.overview?.locale || body.locale || "").trim(),
+      };
+      const candidates = await fetchRegistryCompositionCandidates(sql, {
+        shellVersionId,
+        overview: registryOverview,
+        capabilities,
+      });
+      if (!candidates.sections.length) {
+        return res.status(422).json({
+          error: "No active Registry composition candidates are available",
+          code: "COMPOSITION_CANDIDATES_EMPTY",
+          excluded: candidates.excluded,
+        });
+      }
+      if (candidates.resourceIssues.some((issue) => issue.required !== false)) {
+        return res.status(422).json({
+          error: "Required content resources could not be resolved",
+          code: "RESOURCE_POLICY_UNRESOLVED",
+          issues: candidates.resourceIssues,
+        });
+      }
+      const promptExecutionSnapshot = await createPromptExecutionSnapshot(sql, "promo_page_composer", {
+        overviewJson: JSON.stringify(registryOverview),
+        candidateSnapshotJson: JSON.stringify(plannerRegistryCandidateSnapshot(candidates)),
+        constraintsJson: JSON.stringify({
+          contractVersion: 3,
+          allowTemplateSelection: false,
+          allowHtml: false,
+          allowCss: false,
+          allowJavascript: false,
+          allowRawCoordinates: false,
+          allowResourceBodyGeneration: false,
+          useRepeatForCollections: true,
+          requirePolicyValidation: true,
+        }),
+      });
+      const requestId = String(body.requestId || "").trim() || randomUUID();
+      const proposal = await createProposal(sql, {
+        contractVersion: 3,
+        documentId,
+        ownerSubject: owner.ownerSubject,
+        requestId,
+        baseDocumentRevision,
+        overviewFingerprint: fingerprint,
+        candidateFingerprint: candidates.candidateFingerprint,
+        policyFingerprint: candidates.policyFingerprint,
+        resourceFingerprint: candidates.resourceFingerprint,
+        shellVersionId,
+        sourceTemplateId: null,
+        sourceTemplateVersion: null,
+        requestSnapshot: {
+          overview: registryOverview,
+          capabilities,
+          confirmedFieldPaths: Array.isArray(body.confirmedFieldPaths) ? body.confirmedFieldPaths : [],
+          promptExecutionSnapshot,
+        },
+        candidateSnapshot: candidates,
+        promptTemplateId: promptExecutionSnapshot.promptConfig.promptId,
+        idempotencyKey,
+      });
+      schedule(processCompositionProposal(proposal.id, { sql }));
+      return res.status(202).json({ ok: true, proposal });
+    }
+
     const candidates = await fetchPageCompositionCandidates(sql, {
       overview,
       selectedOptionalSectionIds: Array.isArray(body.selectedOptionalSectionIds)

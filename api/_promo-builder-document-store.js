@@ -212,6 +212,21 @@ async function acquireProposalLease(sql, proposalId) {
   return rows[0] ? { row: rows[0], leaseToken } : null;
 }
 
+async function setProposalStage(sql, { proposalId, leaseToken, stage }) {
+  const allowedStages = new Set(["planning", "validating", "repairing", "applying"]);
+  if (!allowedStages.has(stage)) throw new TypeError("Invalid composition proposal stage");
+  const rows = await sql`
+    update promo_builder_composition_proposals
+    set stage = ${stage}, updated_at = now()
+    where id = ${proposalId}::uuid
+      and contract_version = 3
+      and status = 'processing'
+      and lease_token = ${leaseToken}
+    returning id::text
+  `;
+  return Boolean(rows[0]);
+}
+
 async function completeProposal(sql, {
   proposalId,
   leaseToken,
@@ -387,6 +402,7 @@ module.exports = {
   createProposal,
   cancelProposal,
   acquireProposalLease,
+  setProposalStage,
   completeProposal,
   failProposal,
   applyProposal,

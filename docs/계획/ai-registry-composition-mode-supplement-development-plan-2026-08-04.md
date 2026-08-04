@@ -877,6 +877,20 @@ Terms: Common Resource Reference
 - Resource 관리 API에 Resource 생성, version 생성·활성화, market rule 생성을 추가
 - content hash는 JSON key 순서와 무관하게 동일하도록 canonical fingerprint 적용
 
+### 10.5 5단계 구현 현황 (2026-08-04)
+
+- Template ID가 없는 `Composition Contract v3` JSON Schema와 Validator 추가
+- Section version, Section별 Component instance, Layout key, Motion version, Token version allowlist 검증
+- Collection 반복은 중복 Section 배열 대신 `repeat`로 표현하고 Section policy의 `maxInstances`로 제한
+- 대표 계약 `Hero + Card ×3 + pinned Terms Resource` 검증 추가
+- locked content와 Resource 본문은 LLM binding 대상에서 제외
+- v3 Proposal snapshot은 즉시 렌더 문서가 아닌 `registry-composition-proposal` CompositionSpec으로 저장
+- 기존 `promo_page_composer` 관리 Prompt를 사용하되 v3 candidate snapshot과 실행 제약을 별도 주입
+- 최초 검증 실패 시 allowlist 기반 repair를 1회만 실행하고 `validating → repairing` stage 기록
+- Proposal API에 `mode=ai-composition`, `contractVersion=3`, `shellVersionId` 분기 연결
+- Apply API는 candidate/policy/resource fingerprint를 재검증하지만 Compiler가 준비되기 전까지 `V3_COMPOSITION_COMPILER_NOT_READY`로 차단
+- v2 Template Proposal·Worker·Apply 경로는 기존 분기를 유지
+
 Migration 검증에는 up migration뿐 아니라 다음 호환 테스트를 포함한다.
 
 - 기존 Contract v2 proposal 생성·조회·apply

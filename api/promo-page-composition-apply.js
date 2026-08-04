@@ -7,6 +7,7 @@ const {
   applyProposal,
 } = require("./_promo-builder-document-store");
 const { fetchPageCompositionCandidates } = require("./_promo-page-composition-candidates");
+const { fetchRegistryCompositionCandidates } = require("./_promo-registry-composition-candidates");
 const {
   enqueueAndScheduleBuilderAssetJobs,
 } = require("./_promo-builder-assets");
@@ -40,6 +41,38 @@ module.exports = async function handler(req, res) {
     if (document.document.currentDocumentRevision !== baseDocumentRevision
       || proposal.baseDocumentRevision !== baseDocumentRevision) {
       return res.status(409).json({ error: "Builder document revision changed", code: "DOCUMENT_REVISION_MISMATCH" });
+    }
+    if (proposal.contractVersion === 3) {
+      requireBuilderFlag("compositionV3");
+      const currentCandidates = await fetchRegistryCompositionCandidates(sql, {
+        shellVersionId: proposal.shellVersionId,
+        overview: proposal.requestSnapshot.overview,
+        capabilities: proposal.requestSnapshot.capabilities || [],
+      });
+      if (currentCandidates.candidateFingerprint !== proposal.candidateFingerprint) {
+        return res.status(409).json({
+          error: "Registry candidates changed",
+          code: "CANDIDATE_FINGERPRINT_MISMATCH",
+        });
+      }
+      if (currentCandidates.policyFingerprint !== proposal.policyFingerprint) {
+        return res.status(409).json({
+          error: "Registry composition policy changed",
+          code: "POLICY_FINGERPRINT_MISMATCH",
+        });
+      }
+      if (currentCandidates.resourceFingerprint !== proposal.resourceFingerprint) {
+        return res.status(409).json({
+          error: "Pinned content resources changed",
+          code: "RESOURCE_FINGERPRINT_MISMATCH",
+        });
+      }
+      return res.status(409).json({
+        error: "Contract v3 proposal preview is ready, but Builder compilation is not enabled yet",
+        code: "V3_COMPOSITION_COMPILER_NOT_READY",
+        proposalId: proposal.id,
+        snapshot: proposal.snapshot,
+      });
     }
     const currentCandidates = await fetchPageCompositionCandidates(sql, {
       overview: proposal.requestSnapshot.overview,

@@ -3,12 +3,18 @@ const {
   completeProposal,
   failProposal,
   getSql,
+  setProposalStage,
 } = require("./_promo-builder-document-store");
 const {
   pageCompositionSchema,
   validatePageCompositionProposal,
   normalizePageComposition,
 } = require("./_promo-page-composition-contract");
+const {
+  registryCompositionSchema,
+  validateRegistryCompositionProposal,
+  normalizeRegistryCompositionProposal,
+} = require("./_promo-registry-composition-contract");
 const { generateStructuredPlannerResult } = require("./_promo-section-design-provider");
 
 const CANDIDATE_SCOPE_RETRY_CODES = new Set([
@@ -68,6 +74,54 @@ async function generateValidatedComposition({
   });
 }
 
+function registryRetryPromptConfig(promptConfig, candidates, error) {
+  return {
+    ...promptConfig,
+    renderedPrompt: [
+      String(promptConfig?.renderedPrompt || "").trim(),
+      "",
+      "Correction required for Contract v3:",
+      `Previous validation error: ${error.code || "INVALID_COMPOSITION"} - ${error.message}`,
+      `Allowed Shell version: ${candidates.shell?.shellVersionId || ""}`,
+      `Allowed Section versions: ${(candidates.sections || []).map((item) => item.sectionVersionId).join(", ")}`,
+      "Use repeat for multiple instances and never duplicate a Section selection.",
+      "Use only Component instance IDs belonging to each selected Section.",
+      "Do not create content, HTML, CSS, URLs, IDs, Resource text, or raw layout coordinates.",
+    ].join("\n"),
+  };
+}
+
+async function generateValidatedRegistryComposition({
+  candidates,
+  promptConfig,
+  generate = generateStructuredPlannerResult,
+  onStage = async () => {},
+}) {
+  let currentPrompt = promptConfig;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    await onStage(attempt === 0 ? "validating" : "repairing");
+    const generation = await generate({
+      type: "promo_page_composer",
+      schemaName: "promo_registry_composition_v3",
+      schema: registryCompositionSchema(candidates),
+      promptConfig: currentPrompt,
+    });
+    try {
+      return {
+        generation,
+        validated: validateRegistryCompositionProposal(generation.result, candidates),
+        repaired: attempt > 0,
+      };
+    } catch (error) {
+      if (attempt > 0 || error.retryable === false) throw error;
+      currentPrompt = registryRetryPromptConfig(promptConfig, candidates, error);
+    }
+  }
+  throw Object.assign(new Error("Registry composition repair was exhausted"), {
+    code: "COMPOSITION_REPAIR_EXHAUSTED",
+  });
+}
+
 async function processCompositionProposal(proposalId, dependencies = {}) {
   const sql = dependencies.sql || getSql();
   const acquired = await acquireProposalLease(sql, proposalId);
@@ -78,25 +132,49 @@ async function processCompositionProposal(proposalId, dependencies = {}) {
     const candidates = row.candidate_snapshot || {};
     const promptConfig = request.promptExecutionSnapshot?.promptConfig;
     if (!promptConfig) throw Object.assign(new Error("Pinned prompt snapshot is missing"), { code: "PROMPT_SNAPSHOT_MISSING" });
-    const { validated } = await generateValidatedComposition({
-      candidates,
-      promptConfig,
-      generate: dependencies.generateStructuredPlannerResult || generateStructuredPlannerResult,
-    });
-    const snapshot = normalizePageComposition({
-      validated,
-      overview: request.overview,
-      documentId: row.document_id,
-      documentRevision: Number(row.base_document_revision || 0),
-      proposalId: row.id,
-      overviewFingerprint: row.overview_fingerprint,
-      candidateFingerprint: row.candidate_fingerprint,
-      promptExecutionSnapshot: promptConfig,
-    });
+    const isRegistryV3 = Number(row.contract_version || 2) === 3;
+    const generation = isRegistryV3
+      ? await generateValidatedRegistryComposition({
+        candidates,
+        promptConfig,
+        generate: dependencies.generateStructuredPlannerResult || generateStructuredPlannerResult,
+        onStage: (stage) => setProposalStage(sql, {
+          proposalId: row.id,
+          leaseToken,
+          stage,
+        }),
+      })
+      : await generateValidatedComposition({
+        candidates,
+        promptConfig,
+        generate: dependencies.generateStructuredPlannerResult || generateStructuredPlannerResult,
+      });
+    const snapshot = isRegistryV3
+      ? normalizeRegistryCompositionProposal({
+        validated: generation.validated,
+        documentId: row.document_id,
+        documentRevision: Number(row.base_document_revision || 0),
+        proposalId: row.id,
+        overviewFingerprint: row.overview_fingerprint,
+        candidateFingerprint: row.candidate_fingerprint,
+        policyFingerprint: row.policy_fingerprint,
+        resourceFingerprint: row.resource_fingerprint,
+        promptExecutionSnapshot: promptConfig,
+      })
+      : normalizePageComposition({
+        validated: generation.validated,
+        overview: request.overview,
+        documentId: row.document_id,
+        documentRevision: Number(row.base_document_revision || 0),
+        proposalId: row.id,
+        overviewFingerprint: row.overview_fingerprint,
+        candidateFingerprint: row.candidate_fingerprint,
+        promptExecutionSnapshot: promptConfig,
+      });
     const warnings = snapshot.validation.warnings || [];
     const validation = {
       ok: true,
-      autoApplicable: warnings.length === 0,
+      autoApplicable: !isRegistryV3 && warnings.length === 0,
       errors: [],
       warnings,
     };
@@ -121,5 +199,6 @@ async function processCompositionProposal(proposalId, dependencies = {}) {
 
 module.exports = {
   generateValidatedComposition,
+  generateValidatedRegistryComposition,
   processCompositionProposal,
 };
