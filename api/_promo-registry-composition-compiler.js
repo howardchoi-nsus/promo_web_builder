@@ -1,4 +1,5 @@
 const { createHash } = require("node:crypto");
+const { normalizeCtaLabel } = require("./_promo-content-policy");
 const { resolveSectionLayoutPreset } = require("./_section-layout-preset-resolver");
 const {
   buildDefaultItemStyles,
@@ -79,7 +80,7 @@ function applyPresetValue(current, fields, value) {
 }
 
 function overviewValue(field, value) {
-  if (field.fieldKind === "cta") return { label: String(value || ""), link: "", target: "_self" };
+  if (field.fieldKind === "cta") return { label: normalizeCtaLabel(value, { allowEmpty: false }), link: "", target: "_self" };
   return String(value || "");
 }
 
@@ -317,7 +318,14 @@ async function compileRegistryComposition({
             assetRequests.push({
               assetRequestId: stableUuid(proposalId, sectionId, componentId, field.fieldKey),
               targetType: "component-field-image", pageSectionInstanceId: sectionId,
-              pageComponentInstanceId: componentId, fieldKey: field.fieldKey, status: "pending",
+              pageComponentInstanceId: componentId,
+              fieldKey: field.fieldKey,
+              assetRole: item.instanceConfig?.assetRole || (section.sectionRole === "hero" ? "hero-key-visual" : "component-image"),
+              guidance: item.instanceConfig?.assetPromptText || "",
+              aspectRatio: section.sectionRole === "hero"
+                ? (section.aiDesign?.imageAspectRatio || "4:3")
+                : (field.image?.aspectRatio || "1:1"),
+              status: "pending",
             });
           }
         });

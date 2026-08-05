@@ -7,6 +7,7 @@ const emit = defineEmits(["update:modelValue", "confirm", "back"]);
 const fields = [
   ["title", "프로모션 제목"],
   ["leadText", "리드 텍스트"],
+  ["ctaLabel", "CTA Label"],
   ["promotionPurpose", "프로모션 목적"],
   ["market", "마켓 / 지역"],
   ["audience", "대상 고객"],
@@ -36,6 +37,7 @@ function updateField(key, value) {
         <input
           v-else
           type="text"
+          :maxlength="key === 'ctaLabel' ? 20 : undefined"
           :value="modelValue[key] || ''"
           @input="updateField(key, $event.target.value)"
         />

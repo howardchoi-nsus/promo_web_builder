@@ -1,3 +1,4 @@
+const { normalizeCtaLabel } = require("./_promo-content-policy");
 const { createHash } = require("node:crypto");
 
 const ALLOWED_REGIONS = Object.freeze(["left", "center", "right"]);
@@ -321,7 +322,7 @@ function normalizeCompositionPlan({
         }
         after = {
           ...current,
-          label: patch.ctaLabel === null ? current.label || "" : textWithLimit(patch.ctaLabel, field.editorSchema),
+          label: patch.ctaLabel === null ? current.label || "" : normalizeCtaLabel(patch.ctaLabel, { allowEmpty: false }),
           link: proposedUrl || currentUrl,
         };
       } else if (field.fieldKind !== "image"

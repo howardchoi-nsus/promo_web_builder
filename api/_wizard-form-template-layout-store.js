@@ -1,3 +1,4 @@
+const { normalizeCtaLabel } = require("./_promo-content-policy");
 const { fetchTemplateRow, fetchTemplateSections } = require("./_wizard-form-templates-store");
 const { fetchItemsForSection } = require("./_wizard-content-sections-store");
 
@@ -42,6 +43,33 @@ function normalizeLayoutSpec(value) {
   };
 }
 
+function normalizeContentFieldValue(field, value, path) {
+  if (field?.fieldKind !== "cta") return clone(value);
+  const current = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  try {
+    return { ...clone(current), label: normalizeCtaLabel(current.label) };
+  } catch (error) {
+    error.path = `${path}.label`;
+    throw error;
+  }
+}
+
+function normalizeItemContentValue(item, value, path) {
+  const fields = Array.isArray(item?.fields) && item.fields.length ? item.fields : [item];
+  if (fields.length <= 1) return normalizeContentFieldValue(fields[0], value, path);
+  const current = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const sourceFields = current.fields && typeof current.fields === "object" && !Array.isArray(current.fields)
+    ? current.fields : {};
+  const normalizedFields = clone(sourceFields);
+  fields.forEach((field) => {
+    if (!Object.prototype.hasOwnProperty.call(sourceFields, field.fieldKey)) return;
+    normalizedFields[field.fieldKey] = normalizeContentFieldValue(
+      field, sourceFields[field.fieldKey], `${path}.fields.${field.fieldKey}`,
+    );
+  });
+  return { ...clone(current), fields: normalizedFields };
+}
+
 function normalizeDefaultContent(value, sections = []) {
   const candidate = value && typeof value === "object" && !Array.isArray(value) ? value : {};
   if (!sections.length) return clone(candidate);
@@ -52,7 +80,9 @@ function normalizeDefaultContent(value, sections = []) {
     const itemValues = {};
     (section.items || []).forEach((item) => {
       if (!Object.prototype.hasOwnProperty.call(sectionValue, item.itemKey)) return;
-      itemValues[item.itemKey] = clone(sectionValue[item.itemKey]);
+      itemValues[item.itemKey] = normalizeItemContentValue(
+        item, sectionValue[item.itemKey], `${section.sectionKey}.${item.itemKey}`,
+      );
     });
     if (Object.keys(itemValues).length) result[section.sectionKey] = itemValues;
   });

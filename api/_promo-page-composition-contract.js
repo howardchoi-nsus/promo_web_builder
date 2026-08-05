@@ -1,5 +1,6 @@
 const { randomUUID } = require("node:crypto");
 const { OVERVIEW_FIELDS } = require("./_promo-overview-contract");
+const { normalizeCtaLabel } = require("./_promo-content-policy");
 const { resolveSectionLayoutPreset } = require("./_section-layout-preset-resolver");
 
 const OPERATION_TYPES = Object.freeze([
@@ -158,7 +159,8 @@ function validatePageCompositionProposal(result, candidates) {
         continue;
       }
       seenComponents.add(plannedComponent.componentInstanceId);
-      const allowedFields = new Set(component.fields.map((field) => field.fieldKey));
+      const fieldsByKey = new Map(component.fields.map((field) => [field.fieldKey, field]));
+      const allowedFields = new Set(fieldsByKey.keys());
       const seenFields = new Set();
       const contentBindings = [];
       for (const binding of plannedComponent.contentBindings || []) {
@@ -167,8 +169,11 @@ function validatePageCompositionProposal(result, candidates) {
           if (!warnings.includes(warning)) warnings.push(warning);
           continue;
         }
+        const targetField = fieldsByKey.get(binding.fieldKey);
         if (!allowedFields.has(binding.fieldKey)
-          || !OVERVIEW_FIELDS.includes(binding.sourceOverviewPath)) {
+          || !OVERVIEW_FIELDS.includes(binding.sourceOverviewPath)
+          || (targetField?.fieldKind === "cta" && binding.sourceOverviewPath !== "ctaLabel")
+          || (targetField?.fieldKind !== "cta" && binding.sourceOverviewPath === "ctaLabel")) {
           throw Object.assign(new Error("Planner returned an invalid content binding"), { code: "INVALID_CONTENT_BINDING" });
         }
         if (seenFields.has(binding.fieldKey)) {
@@ -244,7 +249,7 @@ function boundValue(field, binding, overview) {
   if (!binding) return defaultValue(field);
   const value = overview[binding.sourceOverviewPath];
   if (field.fieldKind === "cta") {
-    return { label: String(value || ""), link: "", target: "_self" };
+    return { label: normalizeCtaLabel(value, { allowEmpty: false }), link: "", target: "_self" };
   }
   return String(value || "");
 }
@@ -476,6 +481,11 @@ function normalizePageComposition({
             pageSectionInstanceId,
             pageComponentInstanceId,
             fieldKey: field.fieldKey,
+            assetRole: source.instanceConfig?.assetRole || (section.sectionRole === "hero" ? "hero-key-visual" : "component-image"),
+            guidance: source.instanceConfig?.assetPromptText || "",
+            aspectRatio: section.sectionRole === "hero"
+              ? (section.aiDesign?.imageAspectRatio || "4:3")
+              : (field.image?.aspectRatio || "1:1"),
             status: "pending",
           });
         }

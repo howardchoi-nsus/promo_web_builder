@@ -262,6 +262,47 @@ assert.throws(() => validatePageCompositionProposal({
   }],
 }, scopedCandidates), (error) => error.code === "COMPONENT_NOT_IN_SECTION");
 
+const ctaCandidates = JSON.parse(JSON.stringify(candidates));
+ctaCandidates.templates[0].sections[0].components[0].fields[0].fieldKind = "cta";
+ctaCandidates.templates[0].sections[0].components[0].definition.fieldKind = "cta";
+assert.throws(
+  () => validatePageCompositionProposal(result, ctaCandidates),
+  (error) => error.code === "INVALID_CONTENT_BINDING",
+);
+const ctaResult = {
+  ...result,
+  sections: [{
+    ...result.sections[0],
+    components: [{
+      ...result.sections[0].components[0],
+      contentBindings: [{ fieldKey: "text", sourceOverviewPath: "ctaLabel" }],
+    }],
+  }],
+};
+const ctaValidated = validatePageCompositionProposal(ctaResult, ctaCandidates);
+const ctaSnapshot = normalizePageComposition({
+  validated: ctaValidated,
+  overview: { ctaLabel: "지금 참여하기" },
+  documentId: "document-cta",
+  proposalId: "proposal-cta",
+  overviewFingerprint: "overview-cta",
+  candidateFingerprint: "candidate-cta",
+});
+assert.equal(
+  ctaSnapshot.content.sectionInputs[ctaSnapshot.content.sectionOrder[0]][ctaSnapshot.content.sectionSnapshot[0].items[0].itemKey].label,
+  "지금 참여하기",
+);
+assert.throws(
+  () => normalizePageComposition({
+    validated: ctaValidated,
+    overview: { ctaLabel: "가".repeat(21) },
+    documentId: "document-cta-long",
+    proposalId: "proposal-cta-long",
+    overviewFingerprint: "overview-cta-long",
+    candidateFingerprint: "candidate-cta-long",
+  }),
+  (error) => error.code === "CTA_LABEL_TOO_LONG",
+);
 const retryCandidates = {
   ...candidates,
   templates: [

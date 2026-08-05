@@ -133,7 +133,8 @@ function validateRegistryCompositionProposal(result, candidates) {
         || (!collection.enabled && repeat !== 1)) {
         fail("COMPONENT_COLLECTION_LIMIT_EXCEEDED", `Component collection limit exceeded: ${component.itemKey}`);
       }
-      const allowedFields = new Set((component.fields || []).map((field) => field.fieldKey));
+      const fieldsByKey = new Map((component.fields || []).map((field) => [field.fieldKey, field]));
+      const allowedFields = new Set(fieldsByKey.keys());
       const seenFields = new Set();
       const contentBindings = [];
       for (const binding of plannedComponent.contentBindings || []) {
@@ -142,7 +143,11 @@ function validateRegistryCompositionProposal(result, candidates) {
           if (!warnings.includes(warning)) warnings.push(warning);
           continue;
         }
-        if (!allowedFields.has(binding.fieldKey) || !OVERVIEW_FIELDS.includes(binding.sourceOverviewPath)) {
+        const targetField = fieldsByKey.get(binding.fieldKey);
+        if (!allowedFields.has(binding.fieldKey)
+          || !OVERVIEW_FIELDS.includes(binding.sourceOverviewPath)
+          || (targetField?.fieldKind === "cta" && binding.sourceOverviewPath !== "ctaLabel")
+          || (targetField?.fieldKind !== "cta" && binding.sourceOverviewPath === "ctaLabel")) {
           fail("INVALID_CONTENT_BINDING", "Planner returned an invalid content binding", false);
         }
         if (seenFields.has(binding.fieldKey)) fail("DUPLICATE_CONTENT_BINDING", "Planner duplicated a content field binding");

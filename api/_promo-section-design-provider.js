@@ -1,3 +1,4 @@
+const { CTA_LABEL_MAX_CHARACTERS } = require("./_promo-content-policy");
 const {
   buildImageHarnessPrompt,
   imageMetadata,
@@ -89,7 +90,7 @@ const SECTION_COMPOSITION_PLAN_SCHEMA = {
               properties: {
                 fieldKey: { type: ["string", "null"] },
                 textValue: { type: ["string", "null"] },
-                ctaLabel: { type: ["string", "null"] },
+                ctaLabel: { type: ["string", "null"], maxLength: CTA_LABEL_MAX_CHARACTERS },
                 ctaUrl: { type: ["string", "null"] },
               },
             },

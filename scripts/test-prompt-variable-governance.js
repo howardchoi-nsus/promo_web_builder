@@ -57,6 +57,9 @@ assert.deepEqual(PROMPT_TYPES.promo_overview_parser.optionalVariables, [
 ]);
 assert.match(PROMPT_TYPES.promo_overview_parser.body, /new promotion overview draft/i);
 assert.match(PROMPT_TYPES.promo_overview_parser.body, /Never merge or reuse/i);
+assert.match(PROMPT_TYPES.promo_overview_parser.body, /CTA label.*20 Unicode characters/i);
+assert.match(PROMPT_TYPES.promo_page_composer.body, /non-empty ctaLabel/i);
+assert.match(PROMPT_TYPES.promo_template_composer.body, /ctaLabel only to CTA fields/i);
 
 assert.deepEqual(extractPromptVariables("{{sectionName}} {{ sectionName }} {{contentJson}}"), [
   "sectionName",

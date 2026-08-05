@@ -99,6 +99,15 @@ where version.component_id = component.id
   and version.version = 1
   and component.system_seed_code = 'registry-promo-card';
 
+update wizard_item_component_versions version
+set editor_schema = coalesce(version.editor_schema, '{}'::jsonb)
+    || '{"labelRequired":true,"linkRequired":true,"maxLength":20}'::jsonb,
+  updated_at = now()
+from wizard_item_components component
+where version.component_id = component.id
+  and version.status = 'active'
+  and component.system_seed_code = 'primary-cta';
+
 -- Stable field keys make CompositionSpec bindings reproducible.
 insert into wizard_item_component_version_fields (
   component_version_id, field_key, name, field_kind, text_type, sort_order,
@@ -119,7 +128,7 @@ from (values
     '"프로모션 혜택을 확인하세요."','{"multiline":true,"maxLength":500}','{"copy":true}',
     '{}','{}','[{"slotKey":"bodyColor","semanticRole":"text-color","aiSelectable":true}]'),
   ('registry-promo-card','fld_10000000000000000000000000000003','Card Action','cta',null,20,true,false,
-    '{"label":"자세히 보기","link":"#","target":"_self"}','{"labelRequired":true,"linkRequired":true}','{"action":true}',
+    '{"label":"자세히 보기","link":"#","target":"_self"}','{"labelRequired":true,"linkRequired":true,"maxLength":20}','{"action":true}',
     '{}','{"utmEnabled":true}','[{"slotKey":"ctaBackground","semanticRole":"accent-color","aiSelectable":true}]'),
   ('registry-terms-content','fld_20000000000000000000000000000001','Terms Content','text','multi',0,true,true,
     '"공통 약관"','{"multiline":true,"maxLength":20000}','{"resourceBound":true}',
@@ -163,7 +172,7 @@ from (values
   (
     'registryHero','Registry Hero','Required Hero with title, description, image, and CTA.',
     true,true,null,10,'registry','hero',
-    '{"enabled":true,"allowedLayoutVariants":["hero_centered"],"allowSectionBackground":false,"imageTarget":"item","imageTargetItemKeys":["visual"],"imageAspectRatio":"16:9"}',
+    '{"enabled":true,"allowedLayoutVariants":["hero_centered"],"allowSectionBackground":false,"imageTarget":"item","imageTargetItemKeys":["visual"],"imageAspectRatio":"4:3"}',
     '{"selectionPolicy":"required","allowedMarkets":[],"allowedPromotionPurposes":[],"aiEditable":true,"contentLocked":false,"layoutLocked":false,"duplicatePolicy":"forbidden","maxInstances":1,"allowedLayoutVariants":["hero_centered"],"allowedMotionPresets":[]}'
   ),
   (
@@ -205,7 +214,7 @@ set name = seed.name,
   updated_at = now()
 from (values
   ('registryHero','Registry Hero','Required Hero with title, description, image, and CTA.',true,true,null,10,'registry','hero',
-    '{"enabled":true,"allowedLayoutVariants":["hero_centered"],"allowSectionBackground":false,"imageTarget":"item","imageTargetItemKeys":["visual"],"imageAspectRatio":"16:9"}',
+    '{"enabled":true,"allowedLayoutVariants":["hero_centered"],"allowSectionBackground":false,"imageTarget":"item","imageTargetItemKeys":["visual"],"imageAspectRatio":"4:3"}',
     '{"selectionPolicy":"required","allowedMarkets":[],"allowedPromotionPurposes":[],"aiEditable":true,"contentLocked":false,"layoutLocked":false,"duplicatePolicy":"forbidden","maxInstances":1,"allowedLayoutVariants":["hero_centered"],"allowedMotionPresets":[]}'),
   ('registryCardGrid','Registry Card Grid','Repeatable image, description, and CTA cards.',false,true,null,30,'registry','benefit',
     '{"enabled":true,"allowedLayoutVariants":["card_grid_3"],"allowSectionBackground":false,"imageTarget":"item","imageTargetItemKeys":["cards"],"imageAspectRatio":"4:3"}',
@@ -234,7 +243,7 @@ select section.id, version.id, seed.item_key, seed.display_name,
 from (values
   ('registryHero','hero-title','title','Title',true,false,10,false,null,'{"description":"Primary promotion title."}'),
   ('registryHero','body-text','description','Description',true,false,20,false,null,'{"description":"Primary promotion description."}'),
-  ('registryHero','content-image','visual','Visual',false,true,30,false,null,'{"description":"Primary promotion visual."}'),
+  ('registryHero','content-image','visual','Visual',false,true,30,false,null,'{"description":"Primary promotion key visual.","assetRole":"hero-key-visual","assetPromptText":"Create one distinctive campaign focal motif with strong visual identity. Do not generate a generic stock photograph, texture, empty gradient, or UI mockup. This artwork is placed inside a bounded Hero media component, never as a full-bleed section background. Keep the complete focal subject inside the canvas with intentional breathing room. Do not render titles, descriptions, CTA labels, buttons, badges, logos, or interface text inside the image."}'),
   ('registryHero','primary-cta','primaryAction','Primary Action',false,true,40,false,null,'{"description":"Primary promotion action."}'),
   ('registryCardGrid','registry-promo-card','cards','Promotion Cards',true,true,10,false,null,
     '{"description":"Repeatable benefit cards.","collection":{"enabled":true,"minItems":1,"maxItems":3,"layout":"grid","desktopColumns":3,"mobileColumns":1,"gapPct":2,"gapPx":16}}'),
@@ -277,8 +286,8 @@ insert into wizard_content_section_layouts (
 select section.id, seed.layout_key, seed.name, seed.description, true,
   seed.layout_snapshot::jsonb, 'Registry Composition vertical slice layout.'
 from (values
-  ('registryHero','hero_centered','Centered Hero','Centered copy with a supporting visual.',
-    '{"contractVersion":1,"layoutMode":"free","sectionStyle":{"minHeight":680,"backgroundColorToken":"--app-bg"},"content":{"title":"여름 프로모션","description":"신규 고객을 위한 특별한 혜택을 확인하세요.","visual":{"source":"url","value":"","description":"","alt":"Promotion visual"},"primaryAction":{"label":"혜택 확인하기","link":"#","target":"_self"}},"viewports":{"desktop":{"items":{"title":{"positionMode":"free","xPct":10,"yPx":70,"widthPct":80,"heightPx":90,"zIndex":2},"description":{"positionMode":"free","xPct":18,"yPx":175,"widthPct":64,"heightPx":80,"zIndex":2},"visual":{"positionMode":"free","xPct":18,"yPx":280,"widthPct":64,"heightPx":270,"zIndex":1},"primaryAction":{"positionMode":"free","xPct":38,"yPx":575,"widthPct":24,"heightPx":54,"zIndex":2}},"visibility":{"items":{}}},"mobile":{"items":{"title":{"positionMode":"free","xPct":5,"yPx":40,"widthPct":90,"heightPx":105,"zIndex":2},"description":{"positionMode":"free","xPct":5,"yPx":160,"widthPct":90,"heightPx":100,"zIndex":2},"visual":{"positionMode":"free","xPct":5,"yPx":280,"widthPct":90,"heightPx":240,"zIndex":1},"primaryAction":{"positionMode":"free","xPct":15,"yPx":545,"widthPct":70,"heightPx":54,"zIndex":2}},"visibility":{"items":{}}}}}'),
+  ('registryHero','hero_centered','Split Hero','Concise copy with a bounded Hero key visual.',
+    '{"contractVersion":1,"layoutMode":"free","sectionStyle":{"minHeight":620,"backgroundColorToken":"--app-bg"},"content":{"title":"여름 프로모션","description":"신규 고객을 위한 특별한 혜택을 확인하세요.","visual":{"source":"url","value":"","description":"","alt":"Promotion visual"},"primaryAction":{"label":"혜택 확인하기","link":"#","target":"_self"}},"viewports":{"desktop":{"items":{"title":{"positionMode":"free","xPct":8,"yPx":90,"widthPct":40,"heightPx":90,"zIndex":2},"description":{"positionMode":"free","xPct":8,"yPx":200,"widthPct":40,"heightPx":90,"zIndex":2},"visual":{"positionMode":"free","xPct":53,"yPx":70,"widthPct":39,"heightPx":420,"zIndex":1},"primaryAction":{"positionMode":"free","xPct":8,"yPx":330,"widthPct":22,"heightPx":54,"zIndex":2}},"visibility":{"items":{}}},"mobile":{"items":{"title":{"positionMode":"free","xPct":5,"yPx":40,"widthPct":90,"heightPx":105,"zIndex":2},"description":{"positionMode":"free","xPct":5,"yPx":160,"widthPct":90,"heightPx":100,"zIndex":2},"visual":{"positionMode":"free","xPct":10,"yPx":270,"widthPct":80,"heightPx":230,"zIndex":1},"primaryAction":{"positionMode":"free","xPct":15,"yPx":520,"widthPct":70,"heightPx":54,"zIndex":2}},"visibility":{"items":{}}}}}'),
   ('registryCardGrid','card_grid_3','Three Card Grid','Three columns on desktop and one column on mobile.',
     '{"contractVersion":1,"layoutMode":"free","sectionStyle":{"minHeight":460,"backgroundColorToken":"--app-surface"},"content":{"cards":{"fields":{"image":{"source":"url","value":"","description":"","alt":"Promotion benefit"},"description":"프로모션 혜택을 확인하세요.","action":{"label":"자세히 보기","link":"#","target":"_self"}}}},"viewports":{"desktop":{"items":{"cards":{"positionMode":"free","xPct":8,"yPx":50,"widthPct":84,"heightPx":330,"zIndex":1}},"visibility":{"items":{}}},"mobile":{"items":{"cards":{"positionMode":"free","xPct":5,"yPx":40,"widthPct":90,"heightPx":320,"zIndex":1}},"visibility":{"items":{}}}}}'),
   ('sharedTerms','terms_default','Terms Default','Pinned terms content at the bottom of the page.',

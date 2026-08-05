@@ -26,6 +26,8 @@ assert.match(migration, /create table if not exists wizard_form_template_layouts
 assert.match(defaultContentMigration, /add column if not exists default_content jsonb/);
 assert.match(store, /normalizeDefaultContent/);
 assert.match(api, /default_content =/);
+assert.match(api, /code: error\.code/);
+assert.match(api, /maxCharacters: error\.maxCharacters/);
 assert.match(publicApi, /defaultContent:\s*layout\.defaultContent/);
 assert.match(migration, /wizard_form_template_layout_histories/);
 assert.match(migration, /wizard_layout_usage_events/);

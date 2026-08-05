@@ -53,7 +53,7 @@ const candidates = {
     sectionVersionId: "hero-version-1", sectionKey: "hero", sectionRole: "hero", version: 2,
     name: "Hero", description: "Hero Section", resolvedRequired: true, sortOrder: 10,
     compositionPolicy: {}, fixedPosition: null,
-    aiDesign: { enabled: true, allowSectionBackground: false },
+    aiDesign: { enabled: true, allowSectionBackground: false, imageAspectRatio: "4:3" },
     layoutPresets: [{ layoutKey: "hero-centered", layoutSnapshot: layoutSnapshot({ title: { fields: { subtitle: "프리셋 설명" } } }) }],
     components: [{
       componentInstanceId: "hero-title-instance", componentVersionId: "hero-title-version",
@@ -64,6 +64,19 @@ const candidates = {
         { fieldKey: "text", name: "Text", fieldKind: "text", textType: "title", defaultValue: "기본 제목", isLocked: false },
         { fieldKey: "subtitle", name: "Subtitle", fieldKind: "text", textType: "remark", defaultValue: "기본 설명", isLocked: false, styleSlots: [{ slotKey: "subtitleColor", semanticRole: "muted-color" }] },
       ],
+    }, {
+      componentInstanceId: "hero-visual-instance", componentVersionId: "hero-visual-version",
+      componentKey: "content-image", itemKey: "visual", name: "Key Visual", fieldKind: "image",
+      defaultValue: { source: "url", value: "", alt: "Promotion visual" },
+      isRequired: false, isLocked: false,
+      instanceConfig: {
+        assetRole: "hero-key-visual",
+        assetPromptText: "Create one distinctive campaign focal motif inside a bounded Hero media component.",
+      },
+      fields: [{
+        fieldKey: "image", name: "Image", fieldKind: "image", isLocked: false,
+        image: { allowedSources: ["ai", "file", "url"], aspectRatio: "16:9" },
+      }],
     }],
   }, {
     sectionVersionId: "terms-version-1", sectionKey: "terms", sectionRole: "terms", version: 1,
@@ -96,6 +109,9 @@ const proposalSnapshot = {
       components: [{
         componentInstanceId: "hero-title-instance", visible: true, repeat: 2,
         contentBindings: [{ fieldKey: "text", sourceOverviewPath: "title" }],
+      }, {
+        componentInstanceId: "hero-visual-instance", visible: true, repeat: 1,
+        contentBindings: [],
       }],
     }, {
       sectionVersionId: "terms-version-1", visible: true, sortOrder: 90,
@@ -143,7 +159,7 @@ async function compile(candidateSet = candidates) {
   const heroId = snapshot.content.sectionOrder[0];
   const hero = snapshot.content.sectionSnapshot[0];
   const heroItemId = hero.items[0].id;
-  assert.equal(hero.items.length, 2);
+  assert.equal(hero.items.length, 3);
   assert.equal(hero.items[0].collection.collectionKey, "hero-title-instance");
   assert.equal(hero.items[1].collection.index, 1);
   assert.equal(snapshot.content.sectionInputs[heroId][heroItemId].fields.text, "오버뷰 제목");
@@ -157,6 +173,10 @@ async function compile(candidateSet = candidates) {
   assert.equal(snapshot.designSpec.itemStyles[`${heroId}.${hero.items[1].id}`].xPct, 51);
   assert.equal(snapshot.designSpec.responsiveLayouts.mobile.itemStyles[`${heroId}.${heroItemId}`].widthPct, 90);
   assert.equal(snapshot.motionSpec.sections[heroId].className, "fade-up");
+  assert.equal(snapshot.assets.requests.length, 2);
+  assert.equal(snapshot.assets.requests[0].assetRole, "hero-key-visual");
+  assert.equal(snapshot.assets.requests[0].aspectRatio, "4:3");
+  assert.match(snapshot.assets.requests[0].guidance, /bounded Hero media component/);
 
   const termsId = snapshot.content.sectionOrder[2];
   const terms = snapshot.content.sectionSnapshot[2];

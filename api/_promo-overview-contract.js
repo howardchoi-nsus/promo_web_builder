@@ -1,9 +1,11 @@
+const { CTA_LABEL_MAX_CHARACTERS, normalizeCtaLabel } = require("./_promo-content-policy");
 const PROMOTION_PURPOSES = ["할인쿠폰", "경품", "이벤트", "기타"];
 const AUDIENCES = ["신규", "기존고객", "일반고객"];
 const CAMPAIGN_TONES = ["활기찬", "진중함", "럭셔리", "프리미엄", "긴급함", "친근함"];
 const OVERVIEW_FIELDS = Object.freeze([
   "title",
   "leadText",
+  "ctaLabel",
   "promotionPurpose",
   "promotionPurposeOther",
   "market",
@@ -38,6 +40,7 @@ const OVERVIEW_PARSE_SCHEMA = {
       properties: {
         title: { type: "string", maxLength: 200 },
         leadText: { type: "string", maxLength: 240 },
+        ctaLabel: { type: "string", maxLength: CTA_LABEL_MAX_CHARACTERS },
         promotionPurpose: { type: "string", enum: PROMOTION_PURPOSES },
         promotionPurposeOther: { type: "string", maxLength: 200 },
         market: { type: "string", maxLength: 200 },
@@ -90,11 +93,12 @@ function normalizeOverview(value = {}) {
   const purpose = PROMOTION_PURPOSES.includes(value.promotionPurpose)
     ? value.promotionPurpose : "";
   return {
-    schemaVersion: 4,
+    schemaVersion: 5,
     inputMode: value.inputMode === "natural-language" ? "natural-language" : "structured",
     rawNaturalLanguage: text(value.rawNaturalLanguage, 4000),
     title: text(value.title, 200),
     leadText: text(value.leadText, 240),
+    ctaLabel: normalizeCtaLabel(value.ctaLabel),
     promotionPurpose: purpose,
     promotionPurposeOther: purpose === "기타" ? text(value.promotionPurposeOther, 200) : "",
     market: text(value.market, 200),

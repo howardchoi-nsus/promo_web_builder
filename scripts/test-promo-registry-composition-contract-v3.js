@@ -138,6 +138,29 @@ assert.equal(validated.sections[1].components[0].repeat, 3);
 assert.equal(validated.sections[2].resourceReferences[0].resourceVersionId, "terms-ko-v2");
 assert.throws(() => validateRegistryCompositionProposal({
   ...validResult,
+  sections: validResult.sections.map((section) => section.sectionVersionId === "cards-v1"
+    ? {
+      ...section,
+      components: [{
+        ...section.components[0],
+        contentBindings: [{ fieldKey: "button", sourceOverviewPath: "mainOffer" }],
+      }],
+    } : section),
+}, candidates), (error) => error.code === "INVALID_CONTENT_BINDING");
+const ctaBound = validateRegistryCompositionProposal({
+  ...validResult,
+  sections: validResult.sections.map((section) => section.sectionVersionId === "cards-v1"
+    ? {
+      ...section,
+      components: [{
+        ...section.components[0],
+        contentBindings: [{ fieldKey: "button", sourceOverviewPath: "ctaLabel" }],
+      }],
+    } : section),
+}, candidates);
+assert.equal(ctaBound.sections[1].components[0].contentBindings[0].sourceOverviewPath, "ctaLabel");
+assert.throws(() => validateRegistryCompositionProposal({
+  ...validResult,
   sections: validResult.sections.map((section) => (
     section.sectionVersionId === "cards-v1" ? {
       ...section,

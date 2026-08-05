@@ -11,7 +11,13 @@ module.exports = async function handler(req, res) {
     res.setHeader("Allow", "GET, PATCH");
     return res.status(405).json({ error: "Method not allowed" });
   } catch (error) {
-    return res.status(error.statusCode || 500).json({ error: "Wizard form template layout API failed", message: error.message });
+    return res.status(error.statusCode || 500).json({
+      error: "Wizard form template layout API failed",
+      code: error.code || undefined,
+      message: error.message,
+      path: error.path || undefined,
+      maxCharacters: error.maxCharacters || undefined,
+    });
   }
 };
 

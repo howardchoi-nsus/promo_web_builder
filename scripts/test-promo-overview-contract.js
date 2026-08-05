@@ -9,6 +9,7 @@ const {
 const baseOverview = {
   title: "첫 충전 프로모션",
   leadText: "신규 고객을 위한 첫 충전 혜택",
+  ctaLabel: "지금 참여하기",
   promotionPurpose: "이벤트",
   market: "KR",
   audience: "신규",
@@ -18,8 +19,9 @@ const baseOverview = {
 };
 
 const normalized = normalizeOverview(baseOverview);
-assert.equal(normalized.schemaVersion, 4);
+assert.equal(normalized.schemaVersion, 5);
 assert.equal(normalized.leadText, "신규 고객을 위한 첫 충전 혜택");
+assert.equal(normalized.ctaLabel, "지금 참여하기");
 assert.equal(Object.hasOwn(normalized, "primaryAction"), false);
 
 const generatedDraft = normalizeParsedOverview({
@@ -32,6 +34,7 @@ const generatedDraft = normalizeParsedOverview({
     overview: {
       title: "첫 만남 충전 보너스",
       leadText: "첫 충전부터 특별하게",
+      ctaLabel: "혜택 받기",
       promotionPurpose: "이벤트",
       promotionPurposeOther: "",
       market: "",
@@ -64,6 +67,7 @@ const generatedDraft = normalizeParsedOverview({
 });
 assert.equal(generatedDraft.overview.title, "첫 만남 충전 보너스");
 assert.equal(generatedDraft.overview.leadText, "첫 충전부터 특별하게");
+assert.equal(generatedDraft.overview.ctaLabel, "혜택 받기");
 assert.notEqual(generatedDraft.overview.title, "이전 정형 입력 제목");
 assert.ok(generatedDraft.missingCriticalInputs.includes("market"));
 assert.equal(generatedDraft.fieldDecisions[0].origin, "generated");
@@ -76,11 +80,20 @@ assert.equal(
     ...baseOverview,
     primaryAction: { label: "다른 CTA", url: "https://other.example" },
   }),
-  "CTA changes must not alter the Overview v4 fingerprint"
+  "Legacy primaryAction changes must not alter the Overview v5 fingerprint"
 );
 assert.notEqual(
   overviewFingerprint(baseOverview),
   overviewFingerprint({ ...baseOverview, market: "Global" })
+);
+assert.notEqual(
+  overviewFingerprint(baseOverview),
+  overviewFingerprint({ ...baseOverview, ctaLabel: "다른 혜택 보기" }),
+  "CTA label changes must alter the Overview v5 fingerprint",
+);
+assert.throws(
+  () => normalizeOverview({ ...baseOverview, ctaLabel: "가".repeat(21) }),
+  (error) => error.code === "CTA_LABEL_TOO_LONG",
 );
 assert.equal(
   overviewRequestFingerprint(" 간단한 이벤트 설명 "),

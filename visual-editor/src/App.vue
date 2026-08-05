@@ -1074,8 +1074,14 @@ function updateSelectedValue(value) {
   }, { label: "콘텐츠 변경" });
 }
 
+function ctaLabelInput(value) {
+  return Array.from(String(value ?? "")).slice(0, 20).join("");
+}
+
 function updateObjectField(key, value) {
-  updateSelectedValue({ ...(selectedValue.value || {}), [key]: value });
+  const nextValue = key === "label" && selectedItem.value?.fieldKind === "cta"
+    ? ctaLabelInput(value) : value;
+  updateSelectedValue({ ...(selectedValue.value || {}), [key]: nextValue });
 }
 
 function componentFields(item) {
@@ -1111,7 +1117,8 @@ function updateFieldValue(item, field, value) {
 }
 
 function updateFieldObject(item, field, key, value) {
-  updateFieldValue(item, field, { ...(fieldValue(item, field) || {}), [key]: value });
+  const nextValue = key === "label" && field?.fieldKind === "cta" ? ctaLabelInput(value) : value;
+  updateFieldValue(item, field, { ...(fieldValue(item, field) || {}), [key]: nextValue });
 }
 
 function updateRendererContent(section, item, value, field = null) {
@@ -2647,7 +2654,7 @@ onBeforeUnmount(() => {
                 </label>
               </header>
               <template v-if="field.fieldKind === 'cta'">
-                <label><span>버튼 텍스트</span><input :disabled="selectedItem.isLocked || field.isLocked" :value="fieldValue(selectedItem, field)?.label" @input="updateFieldObject(selectedItem, field, 'label', $event.target.value)" /></label>
+                <label><span>버튼 텍스트</span><input :disabled="selectedItem.isLocked || field.isLocked" :value="fieldValue(selectedItem, field)?.label" :maxlength="field.editorSchema?.maxLength || 20" @input="updateFieldObject(selectedItem, field, 'label', $event.target.value)" /></label>
                 <label><span>버튼 URL</span><input :disabled="selectedItem.isLocked || field.isLocked" type="url" :value="fieldValue(selectedItem, field)?.link" @input="updateFieldObject(selectedItem, field, 'link', $event.target.value)" /></label>
               </template>
               <template v-else-if="field.fieldKind === 'image'">
@@ -2677,7 +2684,7 @@ onBeforeUnmount(() => {
 
           <label v-if="componentFields(selectedItem).length <= 1 && selectedItem.fieldKind === 'cta'">
             <span>버튼 텍스트</span>
-            <input :disabled="selectedItem.isLocked" :value="selectedValue?.label" @input="updateObjectField('label', $event.target.value)" />
+            <input :disabled="selectedItem.isLocked" :value="selectedValue?.label" :maxlength="selectedItem.editorSchema?.maxLength || 20" @input="updateObjectField('label', $event.target.value)" />
           </label>
           <label v-if="componentFields(selectedItem).length <= 1 && selectedItem.fieldKind === 'cta'">
             <span>버튼 URL</span>

@@ -25,7 +25,7 @@ from (values
   ('hero-title','text','title','{"multiline":true,"maxLength":160}','{"layoutRegions":["copy-primary","copy-secondary","center"]}','{}','{}','[{"slotKey":"titleColor","semanticRole":"accent-color","aiSelectable":true},{"slotKey":"titleSize","semanticRole":"title-size","aiSelectable":true}]'),
   ('body-text','text','multi','{"multiline":true,"maxLength":2000}','{"layoutRegions":["copy-primary","copy-secondary","center"]}','{}','{}','[{"slotKey":"bodyColor","semanticRole":"text-color","aiSelectable":true}]'),
   ('remark-text','text','remark','{"multiline":true,"maxLength":300}','{"layoutRegions":["copy-primary","copy-secondary","center"]}','{}','{}','[{"slotKey":"remarkColor","semanticRole":"muted-color","aiSelectable":true}]'),
-  ('primary-cta','cta',null,'{"labelRequired":true,"linkRequired":true}','{"layoutRegions":["copy-primary","copy-secondary","center"]}','{}','{"utmEnabled":true}','[{"slotKey":"ctaBackground","semanticRole":"accent-color","aiSelectable":true},{"slotKey":"ctaRadius","semanticRole":"radius","aiSelectable":true}]'),
+  ('primary-cta','cta',null,'{"labelRequired":true,"linkRequired":true,"maxLength":20}','{"layoutRegions":["copy-primary","copy-secondary","center"]}','{}','{"utmEnabled":true}','[{"slotKey":"ctaBackground","semanticRole":"accent-color","aiSelectable":true},{"slotKey":"ctaRadius","semanticRole":"radius","aiSelectable":true}]'),
   ('content-image','image',null,'{"altText":true}','{"layoutRegions":["media-primary","media-secondary"],"aiImage":true}','{"allowedSources":["ai","file","url"],"promptText":"Create a promotional image without text, logos, buttons, or UI labels.","aspectRatio":"16:9","descriptionEnabled":true}','{}','[{"slotKey":"imageRadius","semanticRole":"radius","aiSelectable":true}]'),
   ('logo-image','image',null,'{"altText":true}','{"layoutRegions":["brand"]}','{"allowedSources":["file","url"],"aspectRatio":"auto"}','{}','[]'),
   ('badge-image','image',null,'{"altText":true}','{"layoutRegions":["trust"]}','{"allowedSources":["file","url"],"aspectRatio":"auto"}','{}','[]')
@@ -34,6 +34,15 @@ join wizard_item_components component on component.system_seed_code = seed.syste
 where not exists (
   select 1 from wizard_item_component_versions version where version.component_id = component.id and version.version = 1
 );
+
+update wizard_item_component_versions version
+set editor_schema = coalesce(version.editor_schema, '{}'::jsonb)
+    || '{"labelRequired":true,"linkRequired":true,"maxLength":20}'::jsonb,
+  updated_at = now()
+from wizard_item_components component
+where version.component_id = component.id
+  and version.status = 'active'
+  and component.system_seed_code = 'primary-cta';
 
 insert into promo_design_token_definitions (
   token_key, category, value_type, semantic_role, css_property, required, ai_selectable

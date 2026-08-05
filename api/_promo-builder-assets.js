@@ -69,7 +69,7 @@ async function enqueueBuilderAssetJobs(sql, {
       fadeMode: snapshot.designSpec?.sectionStyles?.[request.pageSectionInstanceId]?.backgroundFadeMode
         || "none",
       aspectRatio: isComponent
-        ? field.image?.aspectRatio || "1:1"
+        ? request.aspectRatio || field.image?.aspectRatio || "1:1"
         : section.aiDesign?.imageAspectRatio || "16:9",
     });
     const promptSnapshot = await createPromptExecutionSnapshot(sql, promptType, promptVariables);
@@ -85,8 +85,9 @@ async function enqueueBuilderAssetJobs(sql, {
       content: sectionContent,
       design: {
         backgroundColor,
-        keyVisualTextPolicy: "derived-only",
+        keyVisualTextPolicy: "none",
       },
+      assetRole: request.assetRole || (isComponent ? "component-image" : "section-key-visual"),
       builder: {
         documentId,
         documentRevision,
@@ -120,7 +121,7 @@ async function enqueueBuilderAssetJobs(sql, {
         ${assetInputHash(snapshot.content.formTemplate.designTokens?.values || {})},
         ${JSON.stringify({
           imageAspectRatio: isComponent
-            ? field.image?.aspectRatio || "1:1"
+            ? request.aspectRatio || field.image?.aspectRatio || "1:1"
             : section.aiDesign?.imageAspectRatio || "16:9",
           imageTarget: {
             type: targetType,
@@ -137,7 +138,7 @@ async function enqueueBuilderAssetJobs(sql, {
             prompt: promptSnapshot.promptConfig.renderedPrompt,
             safeArea: "none",
             aspectRatio: isComponent
-              ? field.image?.aspectRatio || "1:1"
+              ? request.aspectRatio || field.image?.aspectRatio || "1:1"
               : section.aiDesign?.imageAspectRatio || "16:9",
             target: {
               type: targetType,
@@ -166,11 +167,12 @@ async function enqueueBuilderAssetJobs(sql, {
       promptConfig: promptSnapshot.promptConfig,
       safeArea: "none",
       aspectRatio: isComponent
-        ? field.image?.aspectRatio || "1:1"
+        ? request.aspectRatio || field.image?.aspectRatio || "1:1"
         : section.aiDesign?.imageAspectRatio || "16:9",
       sourceGeometry: null,
       effectiveGeometry: null,
-      keyVisualTextPolicy: isComponent ? "none" : "derived-only",
+      keyVisualTextPolicy: "none",
+      assetRole: request.assetRole || (isComponent ? "component-image" : "section-key-visual"),
     };
     const existingJobs = await sql`
       select id::text, status
