@@ -153,7 +153,7 @@ const managedTokenStyle = computed(() => createPromoTokenRuntimeStyle(managedTok
   accent: props.designSpec?.theme?.accentColor,
   cta: props.designSpec?.theme?.ctaColor || props.designSpec?.theme?.accentColor,
   ctaTransparent: props.designSpec?.theme?.ctaVariant === "ghost",
-  radius: props.designSpec?.theme?.ctaShape === "round" ? "999px" : "2px",
+  font: props.designSpec?.theme?.fontFamily,
 }));
 
 function componentFields(item) {
@@ -299,9 +299,9 @@ function motionStyle(targetType, targetKey) {
   const binding = motionBinding(targetType, targetKey);
   if (!binding) return {};
   return {
-    "--motion-duration": binding.durationToken || "360ms",
-    "--motion-easing": binding.easingToken || "ease-out",
-    "--motion-delay": binding.delayToken || "0ms",
+    "--motion-duration": binding.durationToken || undefined,
+    "--motion-easing": binding.easingToken || undefined,
+    "--motion-delay": binding.delayToken || undefined,
   };
 }
 
@@ -325,9 +325,9 @@ function itemMotionStyle(section, item, itemIndex) {
   const binding = itemMotionBinding(section, item, itemIndex);
   if (!binding) return {};
   return {
-    "--motion-duration": binding.durationToken || "360ms",
-    "--motion-easing": binding.easingToken || "ease-out",
-    "--motion-delay": binding.delayToken || "0ms",
+    "--motion-duration": binding.durationToken || undefined,
+    "--motion-easing": binding.easingToken || undefined,
+    "--motion-delay": binding.delayToken || undefined,
   };
 }
 
@@ -445,12 +445,26 @@ function imageFrameStyle(section, item) {
     backgroundSize: ["contain", "cover"].includes(style.imageFit) ? style.imageFit : "contain",
     backgroundPosition: style.imagePosition || "center center",
     backgroundRepeat: "no-repeat",
-    borderRadius: shape === "circle" ? "50%" : shape === "rounded" ? "var(--promo-image-radius, 24px)" : "0",
+    borderRadius: style.borderRadiusToken
+      ? `var(${style.borderRadiusToken})`
+      : (shape === "circle" ? "50%" : shape === "rounded" ? "var(--promo-image-radius)" : "0"),
   };
 }
 
 function fieldStyle(section, item, field) {
-  return props.designSpec?.itemStyles?.[`${styleKey(section, item)}.${field.fieldKey}`] || {};
+  const style = props.designSpec?.itemStyles?.[`${styleKey(section, item)}.${field.fieldKey}`] || {};
+  return {
+    ...style,
+    color: style.colorToken ? `var(${style.colorToken})` : style.color,
+    backgroundColor: style.backgroundColorToken ? `var(${style.backgroundColorToken})` : style.backgroundColor,
+    borderRadius: style.borderRadiusToken ? `var(${style.borderRadiusToken})` : style.borderRadius,
+    boxShadow: style.boxShadowToken ? `var(${style.boxShadowToken})` : style.boxShadow,
+    fontFamily: style.fontFamilyToken ? `var(${style.fontFamilyToken})` : style.fontFamily,
+    fontSize: style.fontSizeToken ? `var(${style.fontSizeToken})` : style.fontSize,
+    fontWeight: style.fontWeightToken ? `var(${style.fontWeightToken})` : style.fontWeight,
+    lineHeight: style.lineHeightToken ? `var(${style.lineHeightToken})` : style.lineHeight,
+    letterSpacing: style.letterSpacingToken ? `var(${style.letterSpacingToken})` : style.letterSpacing,
+  };
 }
 
 function imageFieldFrameStyle(section, item, field) {
@@ -463,7 +477,9 @@ function imageFieldFrameStyle(section, item, field) {
     backgroundPosition: style.imagePosition || "center center",
     backgroundRepeat: "no-repeat",
     aspectRatio: normalizedAspectRatio(style.aspectRatio || field.image?.aspectRatio, "1 / 1"),
-    borderRadius: shape === "circle" ? "50%" : shape === "rounded" ? "var(--promo-image-radius, 24px)" : "0",
+    borderRadius: style.borderRadiusToken
+      ? `var(${style.borderRadiusToken})`
+      : (shape === "circle" ? "50%" : shape === "rounded" ? "var(--promo-image-radius)" : "0"),
   };
 }
 
@@ -531,19 +547,34 @@ function normalizedFadeMode(style) {
   return "none";
 }
 
+function managedTokenReference(tokenKey) {
+  const normalized = String(tokenKey || "").trim();
+  return /^--(?:promo|app)-[a-z0-9-]+$/.test(normalized) ? `var(${normalized})` : "";
+}
+
+function managedTokenValue(tokenKey) {
+  const normalized = String(tokenKey || "").trim();
+  return String(managedTokens.value[normalized] || "").trim();
+}
+
 function effectiveSectionBackgroundColor(style) {
+  const sectionToken = managedTokenReference(style.backgroundColorToken);
+  if (sectionToken) return sectionToken;
   const sectionColor = String(style.backgroundColor || "").trim();
-  if (/^#[0-9a-f]{6}$/i.test(sectionColor)) return sectionColor;
-  const tokenColor = String(
-    managedTokens.value["--promo-bg"]
-    || managedTokens.value["--app-bg"]
-    || managedTokens.value["--promo-surface"]
-    || managedTokens.value["--app-surface"]
-    || "",
-  ).trim();
-  if (/^#[0-9a-f]{6}$/i.test(tokenColor)) return tokenColor;
+  if (sectionColor) return sectionColor;
+  const themeToken = managedTokenReference(props.designSpec?.theme?.backgroundColorToken);
+  if (themeToken) return themeToken;
   const themeColor = String(props.designSpec?.theme?.backgroundColor || "").trim();
-  return /^#[0-9a-f]{6}$/i.test(themeColor) ? themeColor : "#f5f7fb";
+  return themeColor || "var(--promo-bg)";
+}
+
+function effectiveSectionFadeColor(style) {
+  const explicitToken = managedTokenValue(style.backgroundFadeColorToken || style.backgroundColorToken);
+  if (explicitToken) return explicitToken;
+  const explicitColor = String(style.backgroundFadeColor || style.backgroundColor || "").trim();
+  if (explicitColor) return explicitColor;
+  const themeToken = managedTokenValue(props.designSpec?.theme?.backgroundColorToken);
+  return themeToken || String(props.designSpec?.theme?.backgroundColor || "").trim();
 }
 
 function backgroundFadeGradient(mode, color, strength = "medium", configuredStops = {}) {
@@ -573,7 +604,7 @@ function inlineSectionStyle(section) {
   const fadeGradient = backgroundImage
     ? backgroundFadeGradient(
       normalizedFadeMode(style),
-      backgroundColor,
+      effectiveSectionFadeColor(style),
       style.backgroundFadeStrength,
       style.backgroundFadeStops,
     )
@@ -654,6 +685,9 @@ function inlineItemStyle(section, item) {
       : undefined,
     zIndex: style.zIndex || 2,
     color: style.colorToken ? `var(${style.colorToken})` : style.color,
+    backgroundColor: style.backgroundColorToken ? `var(${style.backgroundColorToken})` : style.backgroundColor,
+    borderRadius: style.borderRadiusToken ? `var(${style.borderRadiusToken})` : style.borderRadius,
+    boxShadow: style.boxShadowToken ? `var(${style.boxShadowToken})` : style.boxShadow,
     "--item-color": style.colorToken ? `var(${style.colorToken})` : style.color,
     fontFamily: style.fontFamilyToken ? `var(${style.fontFamilyToken})` : style.fontFamily,
     fontSize: style.fontSizeToken
@@ -728,6 +762,9 @@ function textLineInlineStyle(entry) {
   const style = entry.style || {};
   return {
     color: style.colorToken ? `var(${style.colorToken})` : style.color,
+    backgroundColor: style.backgroundColorToken ? `var(${style.backgroundColorToken})` : style.backgroundColor,
+    borderRadius: style.borderRadiusToken ? `var(${style.borderRadiusToken})` : style.borderRadius,
+    boxShadow: style.boxShadowToken ? `var(${style.boxShadowToken})` : style.boxShadow,
     fontFamily: style.fontFamilyToken ? `var(${style.fontFamilyToken})` : style.fontFamily,
     fontSize: style.fontSizeToken
       ? `var(${style.fontSizeToken})`
@@ -1390,7 +1427,7 @@ function startSectionResize(event, section) {
       'is-outline-mode': editable && outlineMode,
     }"
     :style="{
-      '--promo-font': designSpec.theme.fontFamily,
+      '--promo-font': designSpec.theme.fontFamilyToken ? `var(${designSpec.theme.fontFamilyToken})` : designSpec.theme.fontFamily,
       '--promo-width': `${Math.min(1280, Number(designSpec.responsive.contentMaxWidth || 1280))}px`,
       '--promo-min-width': `${designSpec.responsive.contentMinWidth || 0}px`,
       ...managedTokenStyle,

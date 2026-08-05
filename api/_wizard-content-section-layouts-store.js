@@ -22,6 +22,14 @@ function normalizeSectionStyle(value, errors) {
       style.minHeight = minHeight;
     }
   }
+  if (Object.prototype.hasOwnProperty.call(source, "backgroundColorToken")) {
+    const tokenKey = String(source.backgroundColorToken || "").trim();
+    if (tokenKey && !/^--(?:promo|app)-[a-z0-9-]+$/.test(tokenKey)) {
+      errors.push({ path: "sectionStyle.backgroundColorToken", code: "INVALID_BACKGROUND_COLOR_TOKEN", message: "backgroundColorToken must use a managed promo or app token key." });
+    } else if (tokenKey) {
+      style.backgroundColorToken = tokenKey;
+    }
+  }
   if (Object.prototype.hasOwnProperty.call(source, "backgroundColor")) {
     const color = String(source.backgroundColor || "").trim();
     if (color && !/^#[0-9a-fA-F]{6}$/.test(color)) {

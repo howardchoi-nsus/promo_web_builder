@@ -11,7 +11,7 @@ const resourceReference = {
 const layoutSnapshot = (content = {}) => ({
   contractVersion: 1,
   layoutMode: "free",
-  sectionStyle: { backgroundColor: "#ffffff" },
+  sectionStyle: { backgroundColorToken: "--app-bg" },
   content,
   viewports: {
     desktop: { items: { title: { xPct: 10, yPx: 40, widthPct: 80, heightPx: 80, zIndex: 1 } }, visibility: { items: {} } },
@@ -28,7 +28,22 @@ const candidates = {
   resourceFingerprint: "resource-fingerprint",
   tokenSets: [{
     tokenSetVersionId: "token-version-1",
-    runtimeValues: { "--app-bg": "#fafafa", "--app-ink": "#101010", "--app-font-size-heading": "48px" },
+    runtimeValues: {
+      "--app-bg": "#fafafa", "--app-surface": "#ffffff", "--app-ink": "#101010",
+      "--app-muted": "#555555", "--app-accent": "#ff3300", "--app-radius": "12px",
+      "--app-shadow": "0 4px 16px #00000022", "--app-font-body": "Test Sans",
+      "--app-font-size-heading": "48px",
+    },
+    selectableTokens: [
+      { tokenKey: "--app-bg", semanticRole: "page-background" },
+      { tokenKey: "--app-surface", semanticRole: "surface-color" },
+      { tokenKey: "--app-ink", semanticRole: "text-color" },
+      { tokenKey: "--app-muted", semanticRole: "muted-color" },
+      { tokenKey: "--app-accent", semanticRole: "accent-color" },
+      { tokenKey: "--app-radius", semanticRole: "radius" },
+      { tokenKey: "--app-shadow", semanticRole: "shadow" },
+      { tokenKey: "--app-font-body", semanticRole: "font-family" },
+    ],
   }],
   motionPresets: [{
     presetVersionId: "motion-version-1",
@@ -43,11 +58,11 @@ const candidates = {
     components: [{
       componentInstanceId: "hero-title-instance", componentVersionId: "hero-title-version",
       componentKey: "title", itemKey: "title", name: "Title", fieldKind: "text", textType: "title",
-      defaultValue: "기본 제목", isRequired: true, isLocked: false, styleSlots: [],
+      defaultValue: "기본 제목", isRequired: true, isLocked: false, styleSlots: [{ slotKey: "titleColor", semanticRole: "text-color" }],
       collection: { enabled: true, minItems: 1, maxItems: 2, layout: "grid", desktopColumns: 2, mobileColumns: 1, gapPct: 2, gapPx: 16 },
       fields: [
         { fieldKey: "text", name: "Text", fieldKind: "text", textType: "title", defaultValue: "기본 제목", isLocked: false },
-        { fieldKey: "subtitle", name: "Subtitle", fieldKind: "text", textType: "remark", defaultValue: "기본 설명", isLocked: false },
+        { fieldKey: "subtitle", name: "Subtitle", fieldKind: "text", textType: "remark", defaultValue: "기본 설명", isLocked: false, styleSlots: [{ slotKey: "subtitleColor", semanticRole: "muted-color" }] },
       ],
     }],
   }, {
@@ -59,7 +74,7 @@ const candidates = {
     components: [{
       componentInstanceId: "terms-instance", componentVersionId: "terms-version",
       componentKey: "legal", itemKey: "legal", name: "Legal", fieldKind: "text", textType: "multi",
-      defaultValue: "기본 약관", isRequired: true, isLocked: true, lockedValue: "기본 약관", styleSlots: [],
+      defaultValue: "기본 약관", isRequired: true, isLocked: true, lockedValue: "기본 약관", styleSlots: [{ slotKey: "termsColor", semanticRole: "muted-color" }],
       fields: [{ fieldKey: "content", name: "Content", fieldKind: "text", textType: "multi", defaultValue: "기본 약관", isLocked: true }],
     }],
   }],
@@ -92,11 +107,11 @@ const proposalSnapshot = {
   validation: { warnings: [] },
 };
 
-async function compile() {
+async function compile(candidateSet = candidates) {
   return compileRegistryComposition({
     sql: null,
     proposalSnapshot,
-    candidates,
+    candidates: candidateSet,
     overview: { title: "오버뷰 제목" },
     documentId: "document-1",
     proposalId: "proposal-1",
@@ -118,6 +133,12 @@ async function compile() {
   assert.deepEqual(snapshot.assets.requests, repeated.assets.requests);
   assert.equal(snapshot.compositionMeta.sourceTemplateId, candidates.shell.fallbackTemplateId);
   assert.equal(snapshot.content.formTemplate.designTokens.values["--app-bg"], "#fafafa");
+  assert.deepEqual(snapshot.designSpec.theme, {
+    backgroundColorToken: "--app-bg", surfaceColorToken: "--app-surface",
+    textColorToken: "--app-ink", accentColorToken: "--app-accent",
+    ctaColorToken: "--app-accent", radiusToken: "--app-radius",
+    shadowToken: "--app-shadow", fontFamilyToken: "--app-font-body",
+  });
 
   const heroId = snapshot.content.sectionOrder[0];
   const hero = snapshot.content.sectionSnapshot[0];
@@ -128,6 +149,11 @@ async function compile() {
   assert.equal(snapshot.content.sectionInputs[heroId][heroItemId].fields.text, "오버뷰 제목");
   assert.equal(snapshot.content.sectionInputs[heroId][heroItemId].fields.subtitle, "프리셋 설명");
   assert.equal(snapshot.designSpec.itemStyles[`${heroId}.${heroItemId}`].xPct, 10);
+  assert.equal(snapshot.designSpec.sectionStyles[heroId].backgroundColorToken, "--app-bg");
+  assert.equal(snapshot.designSpec.sectionStyles[heroId].backgroundColor, undefined);
+  assert.equal(snapshot.designSpec.itemStyles[`${heroId}.${heroItemId}`].colorToken, "--app-ink");
+  assert.equal(snapshot.designSpec.itemStyles[`${heroId}.${heroItemId}`].fontFamilyToken, "--app-font-body");
+  assert.equal(snapshot.designSpec.itemStyles[`${heroId}.${heroItemId}.subtitle`].colorToken, "--app-muted");
   assert.equal(snapshot.designSpec.itemStyles[`${heroId}.${hero.items[1].id}`].xPct, 51);
   assert.equal(snapshot.designSpec.responsiveLayouts.mobile.itemStyles[`${heroId}.${heroItemId}`].widthPct, 90);
   assert.equal(snapshot.motionSpec.sections[heroId].className, "fade-up");
@@ -139,6 +165,17 @@ async function compile() {
   assert.equal(terms.items[0].lockedValue, "공통 약관 본문");
   assert.equal(snapshot.provenance[`${termsId}.${termsItemId}.content`].contentHash, resourceReference.contentHash);
   assert.equal(Object.hasOwn(snapshot.content.resourceReferences[0], "content"), false);
+  assert.equal(snapshot.designSpec.itemStyles[`${termsId}.${termsItemId}`].colorToken, "--app-muted");
+
+  const missingTokens = JSON.parse(JSON.stringify(candidates));
+  delete missingTokens.tokenSets[0].runtimeValues["--app-shadow"];
+  missingTokens.tokenSets[0].selectableTokens = missingTokens.tokenSets[0].selectableTokens
+    .filter((token) => token.semanticRole !== "shadow");
+  await assert.rejects(
+    () => compile(missingTokens),
+    (error) => error.code === "REQUIRED_DESIGN_TOKEN_MISSING"
+      && error.missingTokenRoles.includes("shadow"),
+  );
 
   const validRows = [{
     resource_id: "resource-1", resource_key: "common-terms", resource_type: "terms",

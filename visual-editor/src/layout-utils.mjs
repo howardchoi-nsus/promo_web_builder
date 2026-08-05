@@ -86,7 +86,8 @@ export function validateLayoutSpec(value = {}) {
   const managedTokenProperties = [
     "colorToken", "fontFamilyToken", "fontSizeToken", "fontWeightToken",
     "lineHeightToken", "letterSpacingToken", "maxWidthToken", "textStyleToken",
-    "textGradientToken", "textBackgroundToken",
+    "textGradientToken", "textBackgroundToken", "backgroundColorToken",
+    "borderRadiusToken", "boxShadowToken",
   ];
   const allowedLineStyleProperties = new Set([
     "color", "colorToken", "fontFamily", "fontFamilyToken", "fontSize", "fontSizeToken",
@@ -218,6 +219,16 @@ export function validateLayoutSpec(value = {}) {
     }
     if (style?.backgroundFadeStrength !== undefined && !allowedFadeStrengths.has(style.backgroundFadeStrength)) {
       errors.push({ path: `sectionStyles.${key}.backgroundFadeStrength`, message: "Unsupported section background fade strength." });
+    }
+    for (const tokenKey of ["backgroundColorToken", "backgroundFadeColorToken"]) {
+      if (style?.[tokenKey] !== undefined
+        && !/^--(?:promo|app)-[a-z0-9-]+$/.test(String(style[tokenKey]))) {
+        errors.push({
+          code: "INVALID_SECTION_TOKEN",
+          path: `sectionStyles.${key}.${tokenKey}`,
+          message: "Section token references must use managed promo or app token keys.",
+        });
+      }
     }
     for (const colorKey of ["backgroundColor", "backgroundFadeColor"]) {
       if (style?.[colorKey] !== undefined && !/^#[0-9a-f]{6}$/i.test(String(style[colorKey]))) {

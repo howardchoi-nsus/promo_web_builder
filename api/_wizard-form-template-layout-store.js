@@ -111,7 +111,8 @@ function validateLayoutSpec(value, sections = []) {
   const managedTokenProperties = [
     "colorToken", "fontFamilyToken", "fontSizeToken", "fontWeightToken",
     "lineHeightToken", "letterSpacingToken", "maxWidthToken", "textStyleToken",
-    "textGradientToken", "textBackgroundToken",
+    "textGradientToken", "textBackgroundToken", "backgroundColorToken",
+    "borderRadiusToken", "boxShadowToken",
   ];
   const allowedLineStyleProperties = new Set([
     "color", "colorToken", "fontFamily", "fontFamilyToken", "fontSize", "fontSizeToken",
@@ -212,7 +213,10 @@ function validateLayoutSpec(value, sections = []) {
   if (spec.contractVersion !== 1) errors.push({ code: "UNSUPPORTED_LAYOUT_CONTRACT", path: "contractVersion" });
   const sectionKeys = new Set(sections.map((section) => section.sectionKey));
   const itemKeys = new Set(sections.flatMap((section) => (
-    (section.items || []).map((item) => `${section.sectionKey}.${item.itemKey}`)
+    (section.items || []).flatMap((item) => {
+      const itemKey = `${section.sectionKey}.${item.itemKey}`;
+      return [itemKey, ...(item.fields || []).map((field) => `${itemKey}.${field.fieldKey}`)];
+    })
   )));
   Object.entries(spec.sectionStyles).forEach(([key, style]) => {
     if (sections.length && !sectionKeys.has(key)) warnings.push({ code: "UNKNOWN_LAYOUT_SECTION", path: key });
@@ -238,6 +242,16 @@ function validateLayoutSpec(value, sections = []) {
     if (style?.backgroundFadeStrength !== undefined
       && !["soft", "medium", "strong"].includes(style.backgroundFadeStrength)) {
       errors.push({ code: "INVALID_SECTION_FADE_STRENGTH", path: `sectionStyles.${key}.backgroundFadeStrength` });
+    }
+    for (const tokenKey of ["backgroundColorToken", "backgroundFadeColorToken"]) {
+      if (style?.[tokenKey] !== undefined
+        && !/^--(?:promo|app)-[a-z0-9-]+$/.test(String(style[tokenKey]))) {
+        errors.push({
+          code: "INVALID_SECTION_TOKEN",
+          path: `sectionStyles.${key}.${tokenKey}`,
+          message: "Section token references must use managed promo or app token keys.",
+        });
+      }
     }
     for (const colorKey of ["backgroundColor", "backgroundFadeColor"]) {
       if (style?.[colorKey] !== undefined && !/^#[0-9a-f]{6}$/i.test(String(style[colorKey]))) {

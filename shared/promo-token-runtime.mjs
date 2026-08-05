@@ -27,49 +27,41 @@ export function normalizePromoTokenValues(input) {
 
 export function createPromoTokenRuntimeStyle(input, fallbacks = {}) {
   const tokens = normalizePromoTokenValues(input);
-  const background = String(fallbacks.background || "#f5f7fb");
-  const text = String(fallbacks.text || "#172033");
-  const muted = String(fallbacks.muted || "#64748b");
-  const accent = String(fallbacks.accent || "#2563eb");
-  const cta = String(fallbacks.cta || accent);
-  const ctaInk = String(fallbacks.ctaInk || "#ffffff");
-  const radius = String(fallbacks.radius || "2px");
-  const shadow = String(fallbacks.shadow || "0 10px 32px rgba(33, 43, 61, .12)");
-  const backgroundToken = tokens["--promo-bg"] || tokens["--app-bg"]
-    || tokens["--promo-surface"] || tokens["--app-surface"];
-  const textToken = tokens["--promo-text"] || tokens["--app-ink"];
-  const mutedToken = tokens["--promo-muted"] || tokens["--app-muted"];
-  const accentToken = tokens["--promo-accent"] || tokens["--app-accent"];
-  const radiusToken = tokens["--promo-radius"] || tokens["--app-radius"];
-  const shadowToken = tokens["--promo-shadow"] || tokens["--app-shadow"];
+  const first = (...values) => values.map((value) => String(value || "").trim()).find(Boolean) || "";
+  const background = first(tokens["--promo-bg"], tokens["--app-bg"], tokens["--promo-surface"], tokens["--app-surface"], fallbacks.background);
+  const text = first(tokens["--promo-text"], tokens["--app-ink"], tokens["--app-text"], fallbacks.text);
+  const muted = first(tokens["--promo-muted"], tokens["--app-muted"], tokens["--app-ink-soft"], fallbacks.muted);
+  const accent = first(tokens["--promo-accent"], tokens["--app-accent"], fallbacks.accent, fallbacks.cta);
+  const ctaInk = first(tokens["--app-on-accent"], fallbacks.ctaInk, text);
+  const radius = first(tokens["--promo-radius"], tokens["--app-radius"], fallbacks.radius);
+  const shadow = first(tokens["--promo-shadow"], tokens["--app-shadow"], fallbacks.shadow);
+  const font = first(tokens["--app-font-body"], tokens["--app-font-family"], tokens["--promo-font"], fallbacks.font);
+  const style = { ...tokens };
+  const set = (key, value) => { if (value) style[key] = value; };
 
-  return {
-    "--promo-bg": backgroundToken || background,
-    "--promo-ink": textToken || text,
-    "--promo-muted-ink": mutedToken || muted,
-    "--promo-accent": accentToken || accent,
-    "--promo-cta": `var(--promo-accent, ${cta})`,
-    "--promo-cta-bg": fallbacks.ctaTransparent === true ? "transparent" : `var(--promo-accent, ${cta})`,
-    "--promo-cta-ink": fallbacks.ctaTransparent === true ? `var(--promo-accent, ${cta})` : ctaInk,
-    "--promo-cta-radius": radiusToken || radius,
-    "--promo-image-radius": radiusToken || radius,
-    "--promo-component-radius": radiusToken || radius,
-    "--promo-component-shadow": shadowToken || shadow,
-    "--promo-font": tokens["--app-font-body"] || tokens["--app-font-family"]
-      || tokens["--promo-font"] || fallbacks.font || "",
-    "--promo-radius": radiusToken || radius,
-    "--promo-shadow": shadowToken || shadow,
-    "--promo-hero-bg-image": tokens["--app-hero-bg-image"] || "none",
-    "--promo-button-height": tokens["--app-button-height"] || "44px",
-    "--promo-space-4": tokens["--app-space-4"] || "18px",
-    "--promo-border-width": tokens["--app-border-width"] || "2px",
-    "--promo-font-size-body": tokens["--app-font-size-body"] || "16px",
-    "--promo-title-size": tokens["--promo-font-size-main-title"]
-      || tokens["--promo-title-size"] || fallbacks.titleSize || "clamp(28px, 5vw, 72px)",
-    "--promo-font-weight-strong": tokens["--app-font-weight-strong"] || "800",
-    "--promo-transition-duration": tokens["--app-transition-duration-normal"] || "200ms",
-    "--promo-transition-delay": tokens["--app-transition-delay"] || "0ms",
-    "--promo-transition-ease": tokens["--app-ease"] || "ease",
-    ...tokens,
-  };
+  set("--promo-bg", background);
+  set("--promo-ink", text);
+  set("--promo-muted-ink", muted);
+  set("--promo-accent", accent);
+  set("--promo-cta", accent ? "var(--promo-accent)" : "");
+  set("--promo-cta-bg", fallbacks.ctaTransparent === true ? "transparent" : (accent ? "var(--promo-accent)" : ""));
+  set("--promo-cta-ink", fallbacks.ctaTransparent === true && accent ? "var(--promo-accent)" : ctaInk);
+  set("--promo-cta-radius", radius);
+  set("--promo-image-radius", radius);
+  set("--promo-component-radius", radius);
+  set("--promo-component-shadow", shadow);
+  set("--promo-font", font);
+  set("--promo-radius", radius);
+  set("--promo-shadow", shadow);
+  set("--promo-hero-bg-image", tokens["--app-hero-bg-image"]);
+  set("--promo-button-height", tokens["--app-button-height"]);
+  set("--promo-space-4", tokens["--app-space-4"]);
+  set("--promo-border-width", tokens["--app-border-width"]);
+  set("--promo-font-size-body", tokens["--app-font-size-body"]);
+  set("--promo-title-size", first(tokens["--promo-font-size-main-title"], tokens["--promo-title-size"], fallbacks.titleSize));
+  set("--promo-font-weight-strong", tokens["--app-font-weight-strong"]);
+  set("--promo-transition-duration", tokens["--app-transition-duration-normal"]);
+  set("--promo-transition-delay", tokens["--app-transition-delay"]);
+  set("--promo-transition-ease", tokens["--app-ease"]);
+  return style;
 }

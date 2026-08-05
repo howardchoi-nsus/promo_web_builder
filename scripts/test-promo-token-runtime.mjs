@@ -31,7 +31,7 @@ const style = createPromoTokenRuntimeStyle({
 assert.equal(style["--promo-bg"], "#111111");
 assert.equal(style["--promo-ink"], "#eeeeee");
 assert.equal(style["--promo-muted-ink"], "#999999");
-assert.equal(style["--promo-cta"], "var(--promo-accent, #2563eb)");
+assert.equal(style["--promo-cta"], "var(--promo-accent)");
 assert.equal(style["--promo-cta-radius"], "18px");
 assert.equal(style["--promo-image-radius"], "18px");
 assert.equal(style["--promo-component-shadow"], "0 4px 18px #00000033");
@@ -53,7 +53,7 @@ assert.equal(appStyle["--promo-ink"], "#ffffff");
 assert.equal(appStyle["--promo-accent"], "#ff2f2f");
 assert.equal(appStyle["--promo-cta-radius"], "10px");
 assert.equal(appStyle["--promo-transition-duration"], "200ms");
-assert.equal(appStyle["--promo-title-size"], "clamp(28px, 5vw, 72px)");
+assert.equal(appStyle["--promo-title-size"], undefined);
 
 const ggpokerStyle = createPromoTokenRuntimeStyle({
   "--app-font-body": "Inter, Pretendard, sans-serif",

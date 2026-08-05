@@ -963,6 +963,24 @@ Terms: Common Resource Reference
 - 0%, 일부 %, 100% rollout 그룹별 접근 및 Flag off 차단 검증
 - 실제 DB에서 revision mismatch·rollback 후 재출력 Browser E2E
 
+### 10.9 초기 운영 데이터 Seed 구현 현황 (2026-08-05)
+
+- Migration 029, 031, 044, 047~053 이후 실행하는 트랜잭션형 Seed `005_seed_registry_composition_vertical_slice.sql` 추가
+- Registry Hero, 반복형 3열 Card Grid, pinned Shared Terms Section과 Desktop/Mobile Layout Preset 구성
+- Image·Description·CTA 필드가 결합된 반복형 Promotion Card Component와 Resource-bound Terms Component 구성
+- 공통 약관 Resource ko-KR v1과 market/purpose/role 선택 규칙, content hash를 함께 저장
+- active Design Token Set version과 Shared Terms Section version을 `default-registry` Shell v1에 pin하고 active fallback Template을 연결
+- Seed 004 primitive Component, active Token, fallback Template 누락 시 전체 트랜잭션을 실패시켜 불완전 구성을 차단
+- 재실행 시 새 버전을 만들지 않고 active v1만 갱신하며 archived Section/Shell version은 되살리지 않음
+- Section 3개, Component instance 6개, 기본 Layout 3개, active Shell·Resource를 완료 시점에 재검증
+- 정적 Seed 계약과 기존 v3 후보·Contract·Compiler·Operation 회귀 테스트 통과
+
+남은 운영 Gate:
+
+- Production DB에서 Seed 005를 1회 적용하고 재실행 idempotency 확인
+- active Shell 1개, Registry/Shared Section 3개, Resource version 1개가 API 후보에 노출되는지 확인
+- 자연어 생성 → v3 Proposal 승인 → Apply → Visual Editor → HTML Export 브라우저 E2E
+
 Migration 검증에는 up migration뿐 아니라 다음 호환 테스트를 포함한다.
 
 - 기존 Contract v2 proposal 생성·조회·apply

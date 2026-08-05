@@ -59,7 +59,11 @@ const candidates = {
   candidateFingerprint: "candidate-v1",
   policyFingerprint: "policy-v1",
   resourceFingerprint: "resource-v1",
-  tokenSets: [{ tokenSetVersionId: "tokens-v1", runtimeValues: { "--app-ink": "#111111" } }],
+  tokenSets: [{ tokenSetVersionId: "tokens-v1", runtimeValues: {
+    "--app-bg": "#000000", "--app-surface": "#222222", "--app-ink": "#ffffff", "--app-muted": "#999999",
+    "--app-accent": "#ff3300", "--app-radius": "12px",
+    "--app-shadow": "0 4px 16px #00000022", "--app-font-body": "Test Sans",
+  } }],
   motionPresets: [],
   resources: [],
   sections: [sectionCandidate("section-a", "benefits"), sectionCandidate("section-b", "details")],

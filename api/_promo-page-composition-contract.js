@@ -253,7 +253,91 @@ function firstAvailableToken(tokenValues, candidates) {
   return candidates.find((tokenKey) => tokenValues[tokenKey]) || "";
 }
 
-function defaultItemTokenStyle(item, tokenValues = {}) {
+const DESIGN_TOKEN_ROLE_CANDIDATES = Object.freeze({
+  background: ["--promo-bg", "--app-bg", "--promo-surface", "--app-surface"],
+  surface: ["--promo-surface", "--app-surface", "--promo-bg", "--app-bg"],
+  text: ["--promo-text", "--app-ink", "--app-text"],
+  muted: ["--promo-muted", "--app-muted", "--app-ink-soft", "--app-ink"],
+  accent: ["--promo-accent", "--app-accent"],
+  onAccent: ["--app-on-accent", "--promo-text", "--app-ink"],
+  radius: ["--promo-radius", "--app-radius"],
+  shadow: ["--promo-shadow", "--app-shadow"],
+  font: ["--promo-font", "--app-font-body", "--app-font-family", "--app-font-heading"],
+});
+
+const REQUIRED_DESIGN_TOKEN_ROLE_CANDIDATES = Object.freeze({
+  surface: ["--promo-surface", "--app-surface"],
+  text: ["--promo-text", "--app-ink", "--app-text"],
+  muted: ["--promo-muted", "--app-muted", "--app-ink-soft"],
+  accent: ["--promo-accent", "--app-accent"],
+  radius: ["--promo-radius", "--app-radius"],
+  shadow: ["--promo-shadow", "--app-shadow"],
+});
+
+function missingRequiredDesignTokenRoles(tokenValues = {}) {
+  return Object.entries(REQUIRED_DESIGN_TOKEN_ROLE_CANDIDATES)
+    .filter(([, candidates]) => !firstAvailableToken(tokenValues, candidates))
+    .map(([role]) => role);
+}
+
+function resolveDesignTokenBindings(tokenValues = {}, selectableTokens = []) {
+  const semanticTokens = new Map();
+  (selectableTokens || []).forEach((token) => {
+    const tokenKey = String(token?.tokenKey || "").trim();
+    const semanticRole = String(token?.semanticRole || "").trim().toLowerCase();
+    if (tokenValues[tokenKey] && semanticRole && !semanticTokens.has(semanticRole)) {
+      semanticTokens.set(semanticRole, tokenKey);
+    }
+  });
+  const semanticAliases = {
+    background: ["page-background", "background-color"],
+    surface: ["surface-color"],
+    text: ["text-color"],
+    muted: ["muted-color"],
+    accent: ["accent-color"],
+    onAccent: ["on-accent-color"],
+    radius: ["radius"],
+    shadow: ["shadow"],
+    font: ["font-family", "body-font"],
+  };
+  return Object.fromEntries(Object.entries(DESIGN_TOKEN_ROLE_CANDIDATES).map(([role, candidates]) => {
+    const semanticToken = (semanticAliases[role] || []).map((alias) => semanticTokens.get(alias)).find(Boolean);
+    return [role, semanticToken || firstAvailableToken(tokenValues, candidates)];
+  }));
+}
+
+function styleSlotTokenStyle(styleSlots = [], bindings = {}) {
+  const propertyByRole = {
+    "surface-color": "backgroundColorToken",
+    "background-color": "backgroundColorToken",
+    "text-color": "colorToken",
+    "muted-color": "colorToken",
+    "accent-color": "backgroundColorToken",
+    "on-accent-color": "colorToken",
+    radius: "borderRadiusToken",
+    shadow: "boxShadowToken",
+    "font-family": "fontFamilyToken",
+  };
+  const bindingByRole = {
+    "surface-color": bindings.surface,
+    "background-color": bindings.background,
+    "text-color": bindings.text,
+    "muted-color": bindings.muted,
+    "accent-color": bindings.accent,
+    "on-accent-color": bindings.onAccent,
+    radius: bindings.radius,
+    shadow: bindings.shadow,
+    "font-family": bindings.font,
+  };
+  return Object.fromEntries((styleSlots || []).flatMap((slot) => {
+    const role = String(slot?.semanticRole || "").trim().toLowerCase();
+    const property = propertyByRole[role];
+    const tokenKey = bindingByRole[role];
+    return property && tokenKey ? [[property, tokenKey]] : [];
+  }));
+}
+
+function defaultItemTokenStyle(item, tokenValues = {}, bindings = resolveDesignTokenBindings(tokenValues)) {
   const fields = Array.isArray(item?.fields) && item.fields.length ? item.fields : [item];
   const identity = fields.map((field) => [
     field?.fieldKey,
@@ -288,18 +372,29 @@ function defaultItemTokenStyle(item, tokenValues = {}) {
         ? ["--app-font-weight-strong", "--app-font-weight-label"]
         : ["--app-font-weight-label"]);
   return {
+    ...(bindings.font ? { fontFamilyToken: bindings.font } : {}),
     ...(colorToken ? { colorToken } : {}),
     ...(fontSizeToken ? { fontSizeToken } : {}),
     ...(fontWeightToken ? { fontWeightToken } : {}),
+    ...styleSlotTokenStyle(item?.styleSlots, bindings),
   };
 }
 
-function buildDefaultItemStyles(sections, tokenValues = {}) {
+function buildDefaultItemStyles(sections, tokenValues = {}, selectableTokens = []) {
+  const bindings = resolveDesignTokenBindings(tokenValues, selectableTokens);
   return Object.fromEntries((sections || []).flatMap((section) => (
-    (section.items || []).map((item) => [
-      `${section.sectionKey}.${item.itemKey}`,
-      defaultItemTokenStyle(item, tokenValues),
-    ])
+    (section.items || []).flatMap((item) => {
+      const itemKey = `${section.sectionKey}.${item.itemKey}`;
+      const itemStyle = defaultItemTokenStyle(item, tokenValues, bindings);
+      const fieldStyles = (item.fields || []).map((field) => [
+        `${itemKey}.${field.fieldKey}`,
+        {
+          ...defaultItemTokenStyle(field, tokenValues, bindings),
+          ...styleSlotTokenStyle(field.styleSlots, bindings),
+        },
+      ]);
+      return [[itemKey, itemStyle], ...fieldStyles];
+    })
   )).filter(([, style]) => Object.keys(style).length));
 }
 
@@ -553,4 +648,6 @@ module.exports = {
   validatePageCompositionProposal,
   normalizePageComposition,
   buildDefaultItemStyles,
+  resolveDesignTokenBindings,
+  missingRequiredDesignTokenRoles,
 };

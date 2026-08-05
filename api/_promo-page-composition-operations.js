@@ -468,9 +468,9 @@ function applyCompositionOperations(snapshot, operations) {
       if (operation.motionPresetVersionId) {
         targetMap[operation.targetInstanceId] = {
           presetVersionId: operation.motionPresetVersionId,
-          durationToken: "var(--app-motion-duration, 360ms)",
-          easingToken: "var(--app-motion-easing, ease-out)",
-          delayToken: "0ms",
+          durationToken: "var(--app-transition-duration-normal)",
+          easingToken: "var(--app-ease)",
+          delayToken: "var(--app-transition-delay)",
         };
       } else {
         delete targetMap[operation.targetInstanceId];

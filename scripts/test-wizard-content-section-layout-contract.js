@@ -42,6 +42,20 @@ assert.deepStrictEqual(valid.errors, []);
 assert.strictEqual(valid.snapshot.sectionStyle.backgroundColor, "#0B0D12");
 assert.strictEqual(valid.snapshot.viewports.mobile.visibility.items.badges, false);
 
+const tokenBackground = normalizeLayoutSnapshot({
+  ...validSnapshot,
+  sectionStyle: { minHeight: 88, backgroundColorToken: "--app-surface" },
+}, ["logo", "badges"]);
+assert.deepStrictEqual(tokenBackground.errors, []);
+assert.strictEqual(tokenBackground.snapshot.sectionStyle.backgroundColorToken, "--app-surface");
+assert.strictEqual(tokenBackground.snapshot.sectionStyle.backgroundColor, undefined);
+
+const invalidTokenBackground = normalizeLayoutSnapshot({
+  ...validSnapshot,
+  sectionStyle: { minHeight: 88, backgroundColorToken: "--unsafe-surface" },
+}, ["logo", "badges"]);
+assert(invalidTokenBackground.errors.some((error) => error.code === "INVALID_BACKGROUND_COLOR_TOKEN"));
+
 const unknownKey = normalizeLayoutSnapshot({
   ...validSnapshot,
   viewports: {

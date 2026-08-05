@@ -65,7 +65,13 @@ export function sectionPresetSnapshotFromDesignSpec(
     layoutMode: "free",
     sectionStyle: {
       minHeight: Number(sectionStyle.minHeight ?? baseSectionStyle.minHeight ?? 50),
-      backgroundColor: String(sectionStyle.backgroundColor || baseSectionStyle.backgroundColor || "#FFFFFF"),
+      ...(sectionStyle.backgroundColorToken || baseSectionStyle.backgroundColorToken ? {
+        backgroundColorToken: String(sectionStyle.backgroundColorToken || baseSectionStyle.backgroundColorToken),
+      } : {}),
+      ...(!sectionStyle.backgroundColorToken && !baseSectionStyle.backgroundColorToken
+        && (sectionStyle.backgroundColor || baseSectionStyle.backgroundColor) ? {
+          backgroundColor: String(sectionStyle.backgroundColor || baseSectionStyle.backgroundColor),
+        } : {}),
     },
     content: contentSnapshot(section, sectionContent, baseSnapshot.content || {}),
     viewports: {

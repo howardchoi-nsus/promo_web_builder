@@ -1,6 +1,10 @@
 const { createHash } = require("node:crypto");
 const { resolveSectionLayoutPreset } = require("./_section-layout-preset-resolver");
-const { buildDefaultItemStyles } = require("./_promo-page-composition-contract");
+const {
+  buildDefaultItemStyles,
+  missingRequiredDesignTokenRoles,
+  resolveDesignTokenBindings,
+} = require("./_promo-page-composition-contract");
 const { fetchPinnedResourceVersions } = require("./_promo-content-resources-store");
 const { validateLayoutSpec } = require("./_wizard-form-template-layout-store");
 
@@ -105,9 +109,9 @@ function motionConfig(preset) {
   return {
     presetVersionId: preset.presetVersionId,
     className: preset.config?.className || "",
-    durationToken: preset.config?.durationToken || "0ms",
-    easingToken: preset.config?.easingToken || "linear",
-    delayToken: preset.config?.delayToken || "0ms",
+    ...(preset.config?.durationToken ? { durationToken: preset.config.durationToken } : {}),
+    ...(preset.config?.easingToken ? { easingToken: preset.config.easingToken } : {}),
+    ...(preset.config?.delayToken ? { delayToken: preset.config.delayToken } : {}),
   };
 }
 
@@ -163,6 +167,18 @@ async function compileRegistryComposition({
   ) || null;
   if ((candidates.tokenSets || []).length && !tokenSet) {
     throw compilerError("TOKEN_SET_VERSION_MISMATCH", "Design Token Set changed before compilation");
+  }
+  const tokenValues = tokenSet?.runtimeValues || {};
+  const tokenBindings = resolveDesignTokenBindings(tokenValues, tokenSet?.selectableTokens || []);
+  const missingTokenRoles = missingRequiredDesignTokenRoles(tokenValues);
+  if (missingTokenRoles.length) {
+    const error = compilerError(
+      "REQUIRED_DESIGN_TOKEN_MISSING",
+      `Design Token Set is missing required semantic roles: ${missingTokenRoles.join(", ")}`,
+      422,
+    );
+    error.missingTokenRoles = missingTokenRoles;
+    throw error;
   }
 
   const sectionSnapshot = [];
@@ -307,7 +323,16 @@ async function compileRegistryComposition({
         });
       }
 
-      sectionStyles[sectionId] = resolvedLayout?.sectionStyle || { layoutVariant: planned.layoutKey };
+      const resolvedSectionStyle = clone(resolvedLayout?.sectionStyle || { layoutVariant: planned.layoutKey });
+      delete resolvedSectionStyle.backgroundColor;
+      delete resolvedSectionStyle.backgroundFadeColor;
+      resolvedSectionStyle.backgroundColorToken = ["hero", "key-visual"].includes(section.sectionRole)
+        ? tokenBindings.background
+        : tokenBindings.surface;
+      if (resolvedSectionStyle.backgroundFadeMode && resolvedSectionStyle.backgroundFadeMode !== "none") {
+        resolvedSectionStyle.backgroundFadeColorToken = resolvedSectionStyle.backgroundColorToken;
+      }
+      sectionStyles[sectionId] = resolvedSectionStyle;
       Object.assign(presetItemStyles, resolvedLayout?.itemStyles || {});
       Object.assign(itemVisibility, resolvedLayout?.visibilityItems || {});
       Object.assign(mobileItemStyles, resolvedLayout?.responsiveLayouts?.mobile?.itemStyles || {});
@@ -348,19 +373,24 @@ async function compileRegistryComposition({
     }
   }
 
-  const tokenValues = tokenSet?.runtimeValues || {};
-  const defaultItemStyles = buildDefaultItemStyles(sectionSnapshot, tokenValues);
+  const defaultItemStyles = buildDefaultItemStyles(
+    sectionSnapshot,
+    tokenValues,
+    tokenSet?.selectableTokens || [],
+  );
   const itemStyleKeys = new Set([...Object.keys(defaultItemStyles), ...Object.keys(presetItemStyles)]);
   const designSpec = {
     contractVersion: 1,
     specKey: "ai-registry-composition",
     theme: {
-      backgroundColor: tokenValues["--app-bg"] || tokenValues["--app-surface"] || "#f5f7fb",
-      textColor: tokenValues["--app-ink"] || tokenValues["--app-text"] || "#172033",
-      accentColor: tokenValues["--app-accent"] || "#156b5b",
-      ctaColor: tokenValues["--app-cta-background"] || tokenValues["--app-accent"] || "#156b5b",
-      ctaShape: "round", ctaVariant: "fill",
-      fontFamily: tokenValues["--app-font-body"] || tokenValues["--app-font-family"] || "Inter, Pretendard, sans-serif",
+      backgroundColorToken: tokenBindings.background,
+      surfaceColorToken: tokenBindings.surface,
+      textColorToken: tokenBindings.text,
+      accentColorToken: tokenBindings.accent,
+      ctaColorToken: tokenBindings.accent,
+      radiusToken: tokenBindings.radius,
+      shadowToken: tokenBindings.shadow,
+      fontFamilyToken: tokenBindings.font,
     },
     responsive: { contentMaxWidth: 1280, contentMinWidth: 1140, mobileBreakpoint: 720 },
     itemStyles: Object.fromEntries([...itemStyleKeys].map((key) => [key, {

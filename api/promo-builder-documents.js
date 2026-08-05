@@ -15,7 +15,11 @@ const {
   normalizeDefaultContent,
   validateLayoutSpec,
 } = require("./_wizard-form-template-layout-store");
-const { buildDefaultItemStyles } = require("./_promo-page-composition-contract");
+const {
+  buildDefaultItemStyles,
+  missingRequiredDesignTokenRoles,
+  resolveDesignTokenBindings,
+} = require("./_promo-page-composition-contract");
 
 function normalizedSectionOrder(candidate, sections) {
   const allowed = sections.map((section) => section.sectionKey);
@@ -103,6 +107,7 @@ async function normalizeEditorSnapshot(sql, currentSnapshot, incomingSnapshot, d
       || "",
   ).trim();
   let designTokens = currentSnapshot.content.formTemplate?.designTokens || { values: {} };
+  let tokenDefinitions = [];
   let appearance = currentSnapshot.appearance || {};
   if (requestedVersionId) {
     const tokenVersion = await fetchTokenVersion(sql, requestedVersionId);
@@ -112,6 +117,7 @@ async function normalizeEditorSnapshot(sql, currentSnapshot, incomingSnapshot, d
         code: "INVALID_DESIGN_TOKEN_SET",
       });
     }
+    tokenDefinitions = tokenVersion.values || [];
     designTokens = {
       setKey: tokenVersion.setKey,
       name: tokenVersion.name,
@@ -126,6 +132,17 @@ async function normalizeEditorSnapshot(sql, currentSnapshot, incomingSnapshot, d
   }
   const tokenValues = designTokens.values || {};
   const tokenKeys = new Set(Object.keys(tokenValues));
+  const tokenBindings = resolveDesignTokenBindings(tokenValues, tokenDefinitions);
+  const missingTokenRoles = Number(currentSnapshot.contractVersion) === 3
+    ? missingRequiredDesignTokenRoles(tokenValues)
+    : [];
+  if (missingTokenRoles.length) {
+    throw Object.assign(new Error(`Design Token Set is missing required semantic roles: ${missingTokenRoles.join(", ")}`), {
+      statusCode: 422,
+      code: "REQUIRED_DESIGN_TOKEN_MISSING",
+      missingTokenRoles,
+    });
+  }
   const incomingItemStyles = Object.fromEntries(Object.entries(
     layoutValidation.spec.itemStyles || {},
   ).map(([styleKey, style]) => {
@@ -133,13 +150,14 @@ async function normalizeEditorSnapshot(sql, currentSnapshot, incomingSnapshot, d
     [
       "colorToken", "fontFamilyToken", "fontSizeToken", "fontWeightToken",
       "lineHeightToken", "letterSpacingToken", "maxWidthToken", "textStyleToken",
-      "textGradientToken", "textBackgroundToken",
+      "textGradientToken", "textBackgroundToken", "backgroundColorToken",
+      "borderRadiusToken", "boxShadowToken",
     ].forEach((property) => {
       if (nextStyle[property] && !tokenKeys.has(nextStyle[property])) delete nextStyle[property];
     });
     return [styleKey, nextStyle];
   }));
-  const defaultItemStyles = buildDefaultItemStyles(sections, tokenValues);
+  const defaultItemStyles = buildDefaultItemStyles(sections, tokenValues, tokenDefinitions);
   const mergedItemStyles = Object.fromEntries(Array.from(new Set([
     ...Object.keys(defaultItemStyles),
     ...Object.keys(incomingItemStyles),
@@ -150,9 +168,34 @@ async function normalizeEditorSnapshot(sql, currentSnapshot, incomingSnapshot, d
       ...(incomingItemStyles[styleKey] || {}),
     },
   ]));
+  const v3SectionStyles = Number(currentSnapshot.contractVersion) === 3
+    ? Object.fromEntries(sections.map((section) => {
+      const style = { ...(layoutValidation.spec.sectionStyles?.[section.sectionKey] || {}) };
+      delete style.backgroundColor;
+      delete style.backgroundFadeColor;
+      style.backgroundColorToken = ["hero", "key-visual"].includes(section.sectionRole)
+        ? tokenBindings.background
+        : tokenBindings.surface;
+      if (style.backgroundFadeMode && style.backgroundFadeMode !== "none") {
+        style.backgroundFadeColorToken = style.backgroundColorToken;
+      }
+      return [section.sectionKey, style];
+    }))
+    : layoutValidation.spec.sectionStyles;
   const designSpec = {
     ...layoutValidation.spec,
     contractVersion: Number(currentSnapshot.designSpec.contractVersion || 2),
+    theme: Number(currentSnapshot.contractVersion) === 3 ? {
+      backgroundColorToken: tokenBindings.background,
+      surfaceColorToken: tokenBindings.surface,
+      textColorToken: tokenBindings.text,
+      accentColorToken: tokenBindings.accent,
+      ctaColorToken: tokenBindings.accent,
+      radiusToken: tokenBindings.radius,
+      shadowToken: tokenBindings.shadow,
+      fontFamilyToken: tokenBindings.font,
+    } : layoutValidation.spec.theme,
+    sectionStyles: v3SectionStyles,
     itemStyles: mergedItemStyles,
   };
   return {
