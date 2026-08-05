@@ -40,6 +40,44 @@ async function fetchResourceVersions(sql, { resourceId = "", includeContent = fa
   return rows.map((row) => toResourceVersion(row, { includeContent }));
 }
 
+async function fetchPinnedResourceVersions(sql, references = []) {
+  const ids = Array.from(new Set(references.map((item) => String(item?.resourceVersionId || "").trim()).filter(Boolean)));
+  if (!ids.length) return new Map();
+  const rows = await sql`
+    select resource.id::text as resource_id, resource.resource_key, resource.resource_type,
+      resource.name as resource_name, resource.status as resource_status,
+      version.id::text as resource_version_id, version.locale, version.version,
+      version.status, version.content_json, version.content_hash,
+      version.effective_from, version.effective_to, version.change_note
+    from promo_content_resource_versions version
+    join promo_content_resources resource on resource.id = version.resource_id
+    where version.id = any(${ids}::uuid[])
+  `;
+  const byId = new Map(rows.map((row) => [row.resource_version_id, toResourceVersion(row, { includeContent: true })]));
+  references.forEach((reference) => {
+    const version = byId.get(reference.resourceVersionId);
+    if (!version) {
+      throw Object.assign(new Error(`Pinned content Resource version not found: ${reference.resourceKey}`), {
+        code: "PINNED_RESOURCE_VERSION_NOT_FOUND",
+        statusCode: 409,
+      });
+    }
+    if (version.status !== "active" || version.resourceStatus !== "active") {
+      throw Object.assign(new Error(`Pinned content Resource version is not active: ${reference.resourceKey}`), {
+        code: "PINNED_RESOURCE_VERSION_NOT_ACTIVE",
+        statusCode: 409,
+      });
+    }
+    if (version.contentHash !== reference.contentHash || contentHash(version.content) !== reference.contentHash) {
+      throw Object.assign(new Error(`Pinned content Resource hash mismatch: ${reference.resourceKey}`), {
+        code: "PINNED_RESOURCE_HASH_MISMATCH",
+        statusCode: 409,
+      });
+    }
+  });
+  return byId;
+}
+
 async function createResource(sql, input) {
   const state = {
     resourceKey: input.resourceKey,
@@ -130,6 +168,7 @@ module.exports = {
   contentHash,
   toResourceVersion,
   fetchResourceVersions,
+  fetchPinnedResourceVersions,
   createResource,
   createResourceVersion,
   activateResourceVersion,

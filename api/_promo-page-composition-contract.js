@@ -12,6 +12,12 @@ const OPERATION_TYPES = Object.freeze([
   "change-motion-preset",
   "request-asset-regeneration",
   "remove-asset",
+  "add-section",
+  "remove-section",
+  "replace-section",
+  "add-collection-item",
+  "remove-collection-item",
+  "move-collection-item",
 ]);
 
 function unique(values) {

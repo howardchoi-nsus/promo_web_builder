@@ -24,6 +24,10 @@ export function loadBuilderCapabilities() {
   return request("/api/promo-builder-capabilities");
 }
 
+export function loadCompositionShells() {
+  return request("/api/promo-composition-shells?scope=public");
+}
+
 export function recordBuilderEvent(payload) {
   return request("/api/promo-builder-events", {
     method: "POST",

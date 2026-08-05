@@ -12,6 +12,7 @@ const {
   enqueueAndScheduleBuilderAssetJobs,
 } = require("./_promo-builder-assets");
 const { requireBuilderFlag } = require("./_promo-builder-flags");
+const { compileRegistryComposition } = require("./_promo-registry-composition-compiler");
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
@@ -67,11 +68,42 @@ module.exports = async function handler(req, res) {
           code: "RESOURCE_FINGERPRINT_MISMATCH",
         });
       }
-      return res.status(409).json({
-        error: "Contract v3 proposal preview is ready, but Builder compilation is not enabled yet",
-        code: "V3_COMPOSITION_COMPILER_NOT_READY",
-        proposalId: proposal.id,
-        snapshot: proposal.snapshot,
+      const compiledSnapshot = await compileRegistryComposition({
+        sql,
+        proposalSnapshot: proposal.snapshot,
+        candidates: currentCandidates,
+        overview: proposal.requestSnapshot.overview,
+        documentId,
+        proposalId,
+        documentRevision: baseDocumentRevision,
+      });
+      const applied = await applyProposal(sql, {
+        contractVersion: 3,
+        documentId,
+        proposalId,
+        ownerSubject: owner.ownerSubject,
+        baseDocumentRevision,
+        overviewFingerprint: proposal.overviewFingerprint,
+        candidateFingerprint: proposal.candidateFingerprint,
+        policyFingerprint: proposal.policyFingerprint,
+        resourceFingerprint: proposal.resourceFingerprint,
+        shellVersionId: proposal.shellVersionId,
+        snapshot: compiledSnapshot,
+        changeNote: "AI Registry composition v3 applied.",
+      });
+      const { assetJobs, assetWarning } = await enqueueAndScheduleBuilderAssetJobs(sql, {
+        documentId,
+        documentRevision: applied.revision,
+        snapshot: applied.snapshot,
+      });
+      return res.status(200).json({
+        ok: true,
+        documentId,
+        revision: applied.revision,
+        snapshot: applied.snapshot,
+        assetJobs,
+        assetWarning,
+        warnings: assetWarning ? [assetWarning] : [],
       });
     }
     const currentCandidates = await fetchPageCompositionCandidates(sql, {
@@ -114,6 +146,7 @@ module.exports = async function handler(req, res) {
       error: "Composition apply failed",
       code: error.code || null,
       message: error.message,
+      ...(Array.isArray(error.errors) ? { errors: error.errors } : {}),
     });
   }
 };

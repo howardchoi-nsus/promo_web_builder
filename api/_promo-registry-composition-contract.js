@@ -51,10 +51,11 @@ function registryCompositionSchema(candidates) {
               items: {
                 type: "object",
                 additionalProperties: false,
-                required: ["componentInstanceId", "visible", "contentBindings"],
+                required: ["componentInstanceId", "visible", "repeat", "contentBindings"],
                 properties: {
                   componentInstanceId: { type: "string", enum: componentIds },
                   visible: { type: "boolean" },
+                  repeat: { type: "integer", minimum: 1, maximum: 20 },
                   contentBindings: {
                     type: "array",
                     maxItems: 30,
@@ -124,6 +125,14 @@ function validateRegistryCompositionProposal(result, candidates) {
       if (seenComponents.has(plannedComponent.componentInstanceId)) fail("DUPLICATE_COMPONENT_SELECTION", "Planner duplicated a Component selection");
       seenComponents.add(plannedComponent.componentInstanceId);
       if (component.isRequired && plannedComponent.visible === false) fail("REQUIRED_COMPONENT_HIDDEN", "Required Component cannot be hidden");
+      const collection = component.collection || { enabled: false, minItems: 1, maxItems: 1 };
+      const repeat = Math.max(1, Number(plannedComponent.repeat || 1));
+      if (!Number.isInteger(repeat)
+        || repeat < Number(collection.minItems || 1)
+        || repeat > Number(collection.maxItems || 1)
+        || (!collection.enabled && repeat !== 1)) {
+        fail("COMPONENT_COLLECTION_LIMIT_EXCEEDED", `Component collection limit exceeded: ${component.itemKey}`);
+      }
       const allowedFields = new Set((component.fields || []).map((field) => field.fieldKey));
       const seenFields = new Set();
       const contentBindings = [];
@@ -145,6 +154,8 @@ function validateRegistryCompositionProposal(result, candidates) {
         componentVersionId: component.componentVersionId,
         itemKey: component.itemKey,
         visible: plannedComponent.visible !== false,
+        repeat,
+        collection,
         contentBindings,
       });
     }
@@ -220,6 +231,9 @@ function normalizeRegistryCompositionProposal({
         repeat: section.repeat,
         layoutKey: section.layoutKey,
         componentKeys: section.components.map((component) => component.itemKey),
+        componentRepeats: Object.fromEntries(section.components.map((component) => [
+          component.itemKey, component.repeat,
+        ])),
         resourceKeys: section.resourceReferences.map((resource) => resource.resourceKey),
       })),
       resources: validated.resources.map((resource) => ({

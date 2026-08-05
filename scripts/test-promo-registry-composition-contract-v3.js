@@ -24,6 +24,7 @@ const cardComponent = {
   itemKey: "card",
   isRequired: true,
   isLocked: false,
+  collection: { enabled: true, minItems: 1, maxItems: 3, layout: "grid", desktopColumns: 3, mobileColumns: 1 },
   fields: [
     { fieldKey: "image", fieldKind: "image" },
     { fieldKey: "description", fieldKind: "text", textType: "remark" },
@@ -103,6 +104,7 @@ const validResult = {
     components: [{
       componentInstanceId: "hero-title-instance",
       visible: true,
+      repeat: 1,
       contentBindings: [{ fieldKey: "text", sourceOverviewPath: "title" }],
     }],
   }, {
@@ -111,8 +113,8 @@ const validResult = {
     sortOrder: 20,
     layoutKey: "cards-3-column",
     motionPresetVersionId: "",
-    repeat: 3,
-    components: [{ componentInstanceId: "card-instance", visible: true, contentBindings: [] }],
+    repeat: 1,
+    components: [{ componentInstanceId: "card-instance", visible: true, repeat: 3, contentBindings: [] }],
   }, {
     sectionVersionId: "terms-v1",
     visible: true,
@@ -120,7 +122,7 @@ const validResult = {
     layoutKey: "terms-default",
     motionPresetVersionId: "",
     repeat: 1,
-    components: [{ componentInstanceId: "terms-content-instance", visible: true, contentBindings: [] }],
+    components: [{ componentInstanceId: "terms-content-instance", visible: true, repeat: 1, contentBindings: [] }],
   }],
   warnings: [],
   summary: "Hero, three cards and pinned common terms",
@@ -132,14 +134,17 @@ assert.deepEqual(schema.properties.contractVersion.enum, [3]);
 assert.deepEqual(schema.properties.shellVersionId.enum, ["shell-v1"]);
 
 const validated = validateRegistryCompositionProposal(validResult, candidates);
-assert.equal(validated.sections[1].repeat, 3);
+assert.equal(validated.sections[1].components[0].repeat, 3);
 assert.equal(validated.sections[2].resourceReferences[0].resourceVersionId, "terms-ko-v2");
 assert.throws(() => validateRegistryCompositionProposal({
   ...validResult,
   sections: validResult.sections.map((section) => (
-    section.sectionVersionId === "cards-v1" ? { ...section, repeat: 4 } : section
+    section.sectionVersionId === "cards-v1" ? {
+      ...section,
+      components: section.components.map((component) => ({ ...component, repeat: 4 })),
+    } : section
   )),
-}, candidates), (error) => error.code === "SECTION_REPEAT_LIMIT_EXCEEDED");
+}, candidates), (error) => error.code === "COMPONENT_COLLECTION_LIMIT_EXCEEDED");
 assert.throws(() => validateRegistryCompositionProposal({
   ...validResult,
   sections: [...validResult.sections, validResult.sections[1]],
@@ -147,7 +152,7 @@ assert.throws(() => validateRegistryCompositionProposal({
 assert.throws(() => validateRegistryCompositionProposal({
   ...validResult,
   sections: validResult.sections.map((section) => section.sectionVersionId === "hero-v1"
-    ? { ...section, components: [{ componentInstanceId: "card-instance", visible: true, contentBindings: [] }] }
+    ? { ...section, components: [{ componentInstanceId: "card-instance", visible: true, repeat: 1, contentBindings: [] }] }
     : section),
 }, candidates), (error) => error.code === "COMPONENT_NOT_IN_SECTION");
 
@@ -168,7 +173,8 @@ assert.equal(snapshot.compositionMeta.mode, "ai-composition");
 assert.equal(Object.hasOwn(snapshot.compositionMeta, "sourceTemplateId"), false);
 assert.equal(snapshot.compositionSpec.resourceReferences[0].contentHash, "terms-hash");
 assert.equal(Object.hasOwn(snapshot.compositionSpec.resourceReferences[0], "content"), false);
-assert.equal(snapshot.preview.sections[1].repeat, 3);
+assert.equal(snapshot.compositionSpec.sections[1].components[0].repeat, 3);
+assert.equal(snapshot.preview.sections[1].componentRepeats.card, 3);
 assert.deepEqual(snapshot.preview.sections[2].resourceKeys, ["common-terms"]);
 assert.equal(snapshot.preview.resources[0].locale, "ko-KR");
 
@@ -198,7 +204,8 @@ assert.equal(snapshot.preview.resources[0].locale, "ko-KR");
   assert.match(serviceSource, /setProposalStage/);
   assert.match(applyApi, /POLICY_FINGERPRINT_MISMATCH/);
   assert.match(applyApi, /RESOURCE_FINGERPRINT_MISMATCH/);
-  assert.match(applyApi, /V3_COMPOSITION_COMPILER_NOT_READY/);
+  assert.match(applyApi, /compileRegistryComposition/);
+  assert.doesNotMatch(applyApi, /V3_COMPOSITION_COMPILER_NOT_READY/);
   console.log("Promo Registry Composition Contract v3 and Worker tests passed");
 })().catch((error) => {
   console.error(error);

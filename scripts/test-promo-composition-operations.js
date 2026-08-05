@@ -25,6 +25,10 @@ const snapshot = {
         isRequired: true,
         isLocked: false,
         userReorderAllowed: true,
+        collection: {
+          enabled: true, collectionKey: "title-collection", sourceItemKey: "title",
+          minItems: 1, maxItems: 3, desktopColumns: 3, mobileColumns: 1,
+        },
         fields: [{
           fieldKey: "text",
           fieldKind: "text",
@@ -38,6 +42,7 @@ const snapshot = {
     visibility: { items: {}, fields: {} },
     sectionStyles: {},
     itemStyles: {},
+    responsiveLayouts: { mobile: { itemStyles: {}, visibility: { items: {} } } },
   },
   motionSpec: { sections: {}, items: {} },
   assets: { contractVersion: 1, items: {}, requests: [] },
@@ -73,5 +78,35 @@ assert.throws(() => validateCompositionOperations({
   ...result,
   operations: [{ ...result.operations[0], type: "set-visibility", visible: false }],
 }, snapshot, motion), /visibility cannot change/);
+
+const addCollection = validateCompositionOperations({
+  operations: [{
+    ...result.operations[0],
+    operationId: "collection-add-1",
+    type: "add-collection-item",
+    fieldKey: "",
+    valueText: "",
+    reason: "Add a second title item",
+  }],
+}, snapshot, motion);
+const collectionAdded = applyCompositionOperations(snapshot, addCollection.operations);
+assert.equal(collectionAdded.content.sectionSnapshot[0].items.length, 2);
+assert.equal(collectionAdded.content.sectionSnapshot[0].items[1].collection.index, 1);
+assert.equal(collectionAdded.layoutRevision, 1);
+const addedItemId = collectionAdded.content.sectionSnapshot[0].items[1].id;
+const removeCollection = validateCompositionOperations({
+  operations: [{
+    ...result.operations[0],
+    operationId: "collection-remove-1",
+    type: "remove-collection-item",
+    targetInstanceId: addedItemId,
+    fieldKey: "",
+    valueText: "",
+    reason: "Remove the second title item",
+  }],
+}, collectionAdded, motion);
+const collectionRemoved = applyCompositionOperations(collectionAdded, removeCollection.operations);
+assert.equal(collectionRemoved.content.sectionSnapshot[0].items.length, 1);
+assert.equal(collectionRemoved.content.sectionInputs.sec_1[addedItemId], undefined);
 
 console.log("Promo composition operation tests passed");

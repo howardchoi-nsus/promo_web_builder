@@ -30,4 +30,33 @@ const outputApp = fs.readFileSync(
 assert.match(outputApp, /builderDocumentId/);
 assert.match(outputApp, /promo-builder-documents/);
 
+const aiBuilderApp = fs.readFileSync(
+  path.resolve(__dirname, "../visual-editor/src/builder/AiBuilderApp.vue"),
+  "utf8",
+);
+const registryReview = fs.readFileSync(
+  path.resolve(__dirname, "../visual-editor/src/builder/RegistryProposalReview.vue"),
+  "utf8",
+);
+const operationReview = fs.readFileSync(
+  path.resolve(__dirname, "../visual-editor/src/builder/OperationProposalReview.vue"),
+  "utf8",
+);
+const capabilitiesApi = fs.readFileSync(
+  path.resolve(__dirname, "../api/promo-builder-capabilities.js"),
+  "utf8",
+);
+assert.match(aiBuilderApp, /loadCompositionShells/);
+assert.match(aiBuilderApp, /mode:\s*"ai-composition"/);
+assert.match(aiBuilderApp, /proposal\.contractVersion === 3/);
+assert.match(aiBuilderApp, /applyReadyProposal/);
+assert.match(aiBuilderApp, /applyOperationProposal/);
+assert.match(aiBuilderApp, /reloadLatestForOperation/);
+assert.match(aiBuilderApp, /DOCUMENT_REVISION_MISMATCH/);
+assert.match(registryReview, /Composition Review/);
+assert.match(registryReview, /이 구성 적용/);
+assert.match(operationReview, /Natural Language Change Review/);
+assert.match(operationReview, /변경 적용/);
+assert.match(capabilitiesApi, /supportedContractVersions/);
+
 console.log("Promo Builder platform contract tests passed");

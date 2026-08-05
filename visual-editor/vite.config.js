@@ -11,6 +11,7 @@ function emitStandaloneCssAssets() {
       [
         ["promo-renderer.css", "src/promo-renderer.css"],
         ["visual-output.css", "src/visual-output.css"],
+        ["export-runtime.css", "src/export-runtime.css"],
       ].forEach(([fileName, sourcePath]) => {
         this.emitFile({
           type: "asset",
@@ -66,6 +67,7 @@ export default defineConfig({
       input: {
         "visual-editor": resolve(__dirname, "src/main.js"),
         "ai-builder": resolve(__dirname, "src/builder/main.js"),
+        "export-runtime": resolve(__dirname, "src/export/main.js"),
       },
       output: {
         entryFileNames: "[name].js",

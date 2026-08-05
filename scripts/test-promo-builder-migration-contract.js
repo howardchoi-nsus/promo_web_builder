@@ -10,6 +10,10 @@ const v3Sql = fs.readFileSync(
   path.resolve(__dirname, "../db/migrations/049_registry_composition_v3_foundation.sql"),
   "utf8",
 );
+const operationV3Sql = fs.readFileSync(
+  path.resolve(__dirname, "../db/migrations/053_builder_operations_contract_v3.sql"),
+  "utf8",
+);
 const storeSource = fs.readFileSync(
   path.resolve(__dirname, "../api/_promo-builder-document-store.js"),
   "utf8",
@@ -59,6 +63,12 @@ assert.match(v3Sql, /v_proposal\.policy_fingerprint <> p_policy_fingerprint/);
 assert.match(v3Sql, /v_proposal\.resource_fingerprint <> p_resource_fingerprint/);
 assert.match(v3Sql, /v_proposal\.shell_version_id is distinct from p_shell_version_id/);
 assert.match(v3Sql, /v_revision, 3,/);
+
+assert.match(operationV3Sql, /create or replace function apply_promo_builder_operations/);
+assert.match(operationV3Sql, /p_snapshot_json->>'contractVersion'/);
+assert.match(operationV3Sql, /v_contract_version not in \(2, 3\)/);
+assert.match(operationV3Sql, /v_revision, v_contract_version/);
+assert.match(operationV3Sql, /current_document_revision <> p_base_document_revision/);
 
 assert.match(storeSource, /Number\(input\.contractVersion \|\| 2\) === 3/);
 assert.match(storeSource, /create_promo_builder_composition_proposal_v3/);

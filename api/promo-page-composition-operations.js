@@ -16,6 +16,8 @@ const {
   enqueueAndScheduleBuilderAssetJobs,
 } = require("./_promo-builder-assets");
 const { requireBuilderFlag } = require("./_promo-builder-flags");
+const { fetchRegistryCompositionCandidates } = require("./_promo-registry-composition-candidates");
+const { prepareRegistryStructuralOperations } = require("./_promo-registry-composition-operations");
 
 async function fetchMotionPresets(sql) {
   const rows = await sql`
@@ -59,7 +61,32 @@ module.exports = async function handler(req, res) {
         code: "DOCUMENT_REVISION_MISMATCH",
       });
     }
-    const motionPresets = await fetchMotionPresets(sql);
+    const isRegistryV3 = Number(loaded.snapshot?.contractVersion) === 3;
+    let registryCandidates = null;
+    if (isRegistryV3) {
+      requireBuilderFlag("compositionV3");
+      const criteria = loaded.snapshot.compositionMeta?.compositionCriteria;
+      if (!criteria || !loaded.snapshot.compositionMeta?.shellVersionId) {
+        return res.status(409).json({
+          error: "Registry composition context is missing",
+          code: "REGISTRY_COMPOSITION_CONTEXT_MISSING",
+        });
+      }
+      registryCandidates = await fetchRegistryCompositionCandidates(sql, {
+        shellVersionId: loaded.snapshot.compositionMeta.shellVersionId,
+        overview: criteria,
+        capabilities: criteria.capabilities || [],
+      });
+      if (registryCandidates.candidateFingerprint !== loaded.snapshot.compositionMeta.candidateFingerprint
+        || registryCandidates.policyFingerprint !== loaded.snapshot.compositionMeta.policyFingerprint
+        || registryCandidates.resourceFingerprint !== loaded.snapshot.compositionMeta.resourceFingerprint) {
+        return res.status(409).json({
+          error: "Registry candidates changed after the document composition",
+          code: "CANDIDATE_FINGERPRINT_MISMATCH",
+        });
+      }
+    }
+    const motionPresets = registryCandidates?.motionPresets || await fetchMotionPresets(sql);
     if (action === "propose") {
       const instruction = String(body.instruction || "").trim().slice(0, 3000);
       if (!instruction) return res.status(400).json({ error: "instruction is required" });
@@ -71,17 +98,34 @@ module.exports = async function handler(req, res) {
             "update-field", "set-visibility", "move-section", "move-component",
             "change-layout-variant", "change-token-binding",
             "change-motion-preset", "request-asset-regeneration",
+            "add-section", "remove-section", "replace-section",
+            "add-collection-item", "remove-collection-item", "move-collection-item",
           ],
           motionPresets,
+          registrySections: (registryCandidates?.sections || []).map((section) => ({
+            sectionVersionId: section.sectionVersionId,
+            sectionKey: section.sectionKey,
+            sectionRole: section.sectionRole,
+            name: section.name,
+            description: section.description,
+            required: section.resolvedRequired,
+            layoutKeys: (section.layoutPresets || []).map((layout) => layout.layoutKey),
+            components: (section.components || []).map((component) => ({
+              componentInstanceId: component.componentInstanceId,
+              componentKey: component.componentKey,
+              itemKey: component.itemKey,
+              collection: component.collection,
+            })),
+          })),
         }),
       });
       const generation = await generateStructuredPlannerResult({
         type: "promo_composition_editor",
         schemaName: "promo_composition_operations",
-        schema: compositionOperationSchema(loaded.snapshot, motionPresets),
+        schema: compositionOperationSchema(loaded.snapshot, motionPresets, registryCandidates),
         promptConfig: prompt.promptConfig,
       });
-      const validated = validateCompositionOperations(generation.result, loaded.snapshot, motionPresets);
+      const validated = validateCompositionOperations(generation.result, loaded.snapshot, motionPresets, registryCandidates);
       return res.status(200).json({
         ok: true,
         action: "propose",
@@ -96,15 +140,24 @@ module.exports = async function handler(req, res) {
       operations: body.operations,
       summary: body.summary || "",
       warnings: [],
-    }, loaded.snapshot, motionPresets);
+    }, loaded.snapshot, motionPresets, registryCandidates);
     if (!validated.operations.length) return res.status(422).json({ error: "At least one operation is required" });
-    const nextSnapshot = applyCompositionOperations(loaded.snapshot, validated.operations);
+    const preparedOperations = isRegistryV3
+      ? await prepareRegistryStructuralOperations({
+        sql,
+        snapshot: loaded.snapshot,
+        candidates: registryCandidates,
+        operations: validated.operations,
+        documentId,
+      })
+      : validated.operations;
+    const nextSnapshot = applyCompositionOperations(loaded.snapshot, preparedOperations);
     const applied = await applyOperations(sql, {
       documentId,
       ownerSubject: owner.ownerSubject,
       baseDocumentRevision,
       snapshot: nextSnapshot,
-      operations: validated.operations,
+      operations: preparedOperations,
       changeNote: validated.summary || "Natural-language composition edit applied.",
     });
     const { assetJobs, assetWarning } = await enqueueAndScheduleBuilderAssetJobs(sql, {
@@ -118,7 +171,7 @@ module.exports = async function handler(req, res) {
       documentId,
       revision: applied.revision,
       snapshot: applied.snapshot,
-      operations: validated.operations,
+      operations: preparedOperations,
       assetJobs,
       assetWarning,
       warnings: assetWarning ? [assetWarning] : [],

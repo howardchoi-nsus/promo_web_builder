@@ -47,6 +47,25 @@ function componentCapabilities(component) {
   return [...values].sort();
 }
 
+function componentCollection(component) {
+  const source = component.instanceConfig?.collection || component.capabilities?.collection;
+  if (!source || source.enabled !== true) {
+    return { enabled: false, minItems: 1, maxItems: 1, layout: "stack", desktopColumns: 1, mobileColumns: 1 };
+  }
+  const minItems = Math.max(1, Math.min(20, Number(source.minItems || 1)));
+  const maxItems = Math.max(minItems, Math.min(20, Number(source.maxItems || minItems)));
+  return {
+    enabled: true,
+    minItems,
+    maxItems,
+    layout: source.layout === "grid" ? "grid" : "stack",
+    desktopColumns: Math.max(1, Math.min(maxItems, Number(source.desktopColumns || maxItems))),
+    mobileColumns: Math.max(1, Math.min(maxItems, Number(source.mobileColumns || 1))),
+    gapPct: Math.max(0, Math.min(10, Number(source.gapPct || 2))),
+    gapPx: Math.max(0, Math.min(120, Number(source.gapPx || 16))),
+  };
+}
+
 function evaluateSectionCandidate({ section, components, layouts, criteria, shellConfig }) {
   const reasons = [];
   const policy = normalizeCompositionPolicy(section.compositionPolicy, section);
@@ -256,6 +275,14 @@ async function fetchRegistryCompositionCandidates(sql, {
         description: component.description,
         fieldKind: component.fieldKind,
         textType: component.textType,
+        defaultValue: component.defaultValue,
+        image: component.image,
+        ctaUtm: component.ctaUtm,
+        editorSchema: component.editorSchema || {},
+        capabilitiesConfig: component.capabilities || {},
+        instanceConfig: component.instanceConfig || {},
+        collection: componentCollection(component),
+        lockedValue: component.lockedValue,
         isRequired: component.isRequired,
         isLocked: component.isLocked,
         capabilities: componentCapabilities(component),
@@ -340,6 +367,7 @@ function plannerRegistryCandidateSnapshot(candidates) {
         isRequired: component.isRequired,
         isLocked: component.isLocked,
         capabilities: component.capabilities,
+        collection: component.collection,
         fields: (component.fields || []).map((field) => ({
           fieldKey: field.fieldKey,
           name: field.name,

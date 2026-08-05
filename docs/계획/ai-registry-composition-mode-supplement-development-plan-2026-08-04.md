@@ -881,7 +881,7 @@ Terms: Common Resource Reference
 
 - Template ID가 없는 `Composition Contract v3` JSON Schema와 Validator 추가
 - Section version, Section별 Component instance, Layout key, Motion version, Token version allowlist 검증
-- Collection 반복은 중복 Section 배열 대신 `repeat`로 표현하고 Section policy의 `maxInstances`로 제한
+- Section 반복과 Component Collection 반복을 각각 `sections[].repeat`, `components[].repeat`로 분리하고 각 policy의 상한으로 제한
 - 대표 계약 `Hero + Card ×3 + pinned Terms Resource` 검증 추가
 - locked content와 Resource 본문은 LLM binding 대상에서 제외
 - v3 Proposal snapshot은 즉시 렌더 문서가 아닌 `registry-composition-proposal` CompositionSpec으로 저장
@@ -890,6 +890,78 @@ Terms: Common Resource Reference
 - Proposal API에 `mode=ai-composition`, `contractVersion=3`, `shellVersionId` 분기 연결
 - Apply API는 candidate/policy/resource fingerprint를 재검증하지만 Compiler가 준비되기 전까지 `V3_COMPOSITION_COMPILER_NOT_READY`로 차단
 - v2 Template Proposal·Worker·Apply 경로는 기존 분기를 유지
+
+### 10.6 6단계 구현 현황 (2026-08-04)
+
+- v3 CompositionSpec을 공통 Visual Editor/Web Output용 Builder Document snapshot으로 변환하는 결정적 Compiler 추가
+- Proposal·Section version·Component instance·repeat index로 Section/Component/Asset ID를 결정적으로 생성해 재시도 결과를 동일하게 유지
+- Layout Preset의 Desktop/Mobile geometry, visibility, section style, preset content를 instance ID에 맞게 해석
+- 값 우선순위를 Component 기본값 → Preset content → Overview binding → pinned Resource 본문 순서로 고정
+- 선택된 Token Set의 runtime value와 semantic text style을 Design Spec에 병합하고 Motion Preset을 section instance에 연결
+- Apply 직전에 pinned Resource version 본문을 조회하고 저장된 `contentHash`와 canonical 본문 hash를 모두 검증
+- Resource 본문은 문서 입력값에 반영하되 문서의 Resource reference에는 version ID와 hash만 유지하고 provenance를 기록
+- v3 Apply가 Compiler 결과를 v3 revision SQL 함수로 저장한 뒤 기존 Asset Job pipeline을 실행하도록 연결
+- AI Builder는 `compositionV3` 기능 플래그가 활성화된 경우 active Shell을 조회해 v3 Proposal을 생성
+- v3 Proposal은 자동 적용하지 않고 Registry Section·Layout·Component·Resource 구조화 미리보기에서 사용자 승인 후 적용
+- 기능 플래그가 비활성화된 경우 기존 Contract v2 Template 기반 생성·자동 적용 흐름을 유지
+- Compiler 결정성, Desktop/Mobile layout, Token, Motion, Overview, locked Resource hydration, Resource hash mismatch 테스트 추가
+
+남은 운영 Gate:
+
+- 실제 DB migration 적용 환경에서 active Shell/Registry/Resource를 이용한 브라우저 E2E
+- Visual Editor 저장·reload 후 Web Output screenshot parity 검증
+- 명시된 오류 코드에 한정한 Shell fallback Template 전환 UI
+
+### 10.7 7단계 구현 현황 (2026-08-04)
+
+- Contract v3 Component 선택에 `repeat`와 Collection min/max/grid/desktop/mobile column 계약 추가
+- Compiler가 하나의 Section 안에 고유 ID를 가진 Collection Component instance를 생성하고 Desktop/Mobile grid geometry를 결정적으로 계산
+- 자연어 Operation에 Section 추가·삭제·교체와 Collection item 추가·삭제·재정렬 명령 추가
+- Section 추가·교체 시 현재 Shell과 Registry fingerprint를 재검증하고 active Section·Component·Layout·Resource만으로 부분 snapshot을 컴파일
+- 필수·고정 Section 삭제와 role/fixed position이 다른 교체, Collection min/max 위반을 Apply 전에 차단
+- 구조·Layout Operation은 `layoutRevision`을 한 번 증가시키고 전체 snapshot을 하나의 document revision으로 원자 저장
+- Migration `053_builder_operations_contract_v3.sql`에서 Operation 저장 revision의 contract version을 snapshot의 v2/v3와 일치하도록 수정
+- AI Builder 자연어 수정은 v3에서 변경 목록을 먼저 표시하고 사용자 승인 후 적용
+- Operation revision mismatch 발생 시 자동 덮어쓰기 없이 최신 문서 로드 후 자연어 요청을 다시 작성하도록 안내
+- Visual Editor의 기존 Section/Component 구조 Command Stack과 Undo/Redo, revision rebase UI를 v3 snapshot에도 그대로 유지
+- Collection cardinality, Section add/replace/remove, 구조 revision, migration v3, Editor 구조 Undo/Redo 회귀 테스트 추가
+
+남은 운영 Gate:
+
+- Migration 053이 적용된 실제 DB에서 동시 Apply 두 건 중 한 건만 성공하는지 검증
+- 브라우저에서 자연어 Section 추가 → Undo/Redo → 저장 → reload 순서 E2E
+- 동일 Section/Collection을 두 창에서 수정한 실제 충돌 비교 UX 검증
+
+### 10.8 8단계 구현 현황 (2026-08-05)
+
+- Builder Document의 현재 revision을 독립 HTML로 변환하는 Export API 추가
+- Export 전용 Vue runtime을 추가해 전체 Visual Editor App·Toolbar·Editor state 없이 `PromoPageRenderer`만 마운트
+- 공개 Snapshot allowlist를 적용해 composition metadata, provenance, validation, 미완료 Asset request, 관리 전용 필드를 출력에서 제거
+- HTML script 종료 문자열과 HTML special character를 JSON Unicode escape 처리해 inline JSON injection 차단
+- HTML·Vue·React Adapter가 동일한 공개 Snapshot과 HTML Adapter를 사용하도록 구성
+- Token Set version·token key, Component version, pinned Resource version/hash/locale, Asset URL/status/hash, Renderer version을 담은 dependency manifest 추가
+- Export 요청에 Builder 세션 소유권, 현재 document revision, `PROMO_BUILDER_EXPORT_ENABLED` Feature Flag 검증 추가
+- `PROMO_BUILDER_EXPORT_ROLLOUT_PERCENT`의 owner hash bucket으로 0~100% 점진 배포 지원
+- AI Builder 결과 화면에 Feature Flag가 활성화된 경우에만 HTML 다운로드 진입점 표시
+- v3 기능은 활성 Shell을 찾지 못한 경우 기존 Contract v2 Template 구성으로 자동 fallback하고 이벤트 기록
+- 기존 이전 revision rollback API와 UI를 운영 rollback 경로로 유지
+- 공개 Snapshot 정보 제거, manifest 결정성, injection 방어, Vue/React wrapper, Flag·rollout 단위 테스트 추가
+- Visual Editor production build에서 별도 `export-runtime.js`, `export-runtime.css` 산출 확인
+
+현재 검증 결과:
+
+- `scripts/test-promo-builder-export-adapters.js`: 성공
+- `scripts/test-promo-registry-composition-compiler.js`: 성공
+- `pnpm run build:visual-editor`: 성공 (67 modules)
+- Migration 053 실제 DB 적용: 사용자 완료 확인, 실제 동시성 Browser E2E는 진행 전
+
+남은 운영 Gate:
+
+- 배포 환경에서 HTML 다운로드와 Asset/Resource 접근 가능 여부 확인
+- 동일 문서의 Visual Editor와 독립 Export Desktop/Mobile screenshot parity 검증
+- Vue/React source export를 소비 프로젝트에서 실행하는 통합 테스트
+- 0%, 일부 %, 100% rollout 그룹별 접근 및 Flag off 차단 검증
+- 실제 DB에서 revision mismatch·rollback 후 재출력 Browser E2E
 
 Migration 검증에는 up migration뿐 아니라 다음 호환 테스트를 포함한다.
 

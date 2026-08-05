@@ -6,6 +6,7 @@ const FLAG_NAMES = Object.freeze({
   naturalLanguageEdit: "PROMO_PAGE_COMPOSITION_NL_EDIT_ENABLED",
   libraryMode: "PROMO_PAGE_COMPOSITION_LIBRARY_MODE_ENABLED",
   compositionV3: "AI_COMPOSITION_MODE_V3",
+  export: "PROMO_BUILDER_EXPORT_ENABLED",
 });
 
 const FLAG_DEFAULTS = Object.freeze({ compositionV3: false });

@@ -6,12 +6,15 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
   res.setHeader("Cache-Control", "no-store");
+  const capabilities = builderFlags();
   return res.status(200).json({
     ok: true,
     capabilities: {
-      ...builderFlags(),
+      ...capabilities,
       contractVersion: 2,
-      outputMode: "preview",
+      supportedContractVersions: capabilities.compositionV3 ? [2, 3] : [2],
+      outputMode: capabilities.export ? "preview-and-export" : "preview",
+      exportFormats: capabilities.export ? ["html", "manifest", "snapshot", "vue", "react"] : [],
     },
   });
 };
