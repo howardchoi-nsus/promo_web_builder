@@ -39,6 +39,9 @@ assert.match(adminHtml, /wizardItemEditor\.componentVersionId/);
 assert.match(adminApp, /newWizardFormTemplateSectionForm: \{ sectionId: "" \}/);
 assert.match(seed, /'hero-title', 'Hero Title'/);
 assert.match(seed, /'content-image', 'Content Image'/);
+assert.match(seed, /token_set_version_id, token_key, value_index, token_value/);
+assert.match(seed, /on conflict \(token_set_version_id, token_key, value_index\)/);
+assert.doesNotMatch(seed, /on conflict \(token_set_version_id, token_key\) do update/);
 assert.doesNotMatch(seed, /insert into wizard_content_section_items/);
 
 console.log("Item component separation contract test passed");

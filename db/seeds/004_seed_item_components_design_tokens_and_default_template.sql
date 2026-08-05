@@ -68,8 +68,12 @@ from promo_design_token_sets token_set
 where token_set.set_key in ('rounded-style','square-style')
   and not exists (select 1 from promo_design_token_set_versions version where version.token_set_id = token_set.id and version.version = 1);
 
-insert into promo_design_token_values (token_set_version_id, token_key, token_value)
-select version.id, seed.token_key, seed.token_value
+insert into promo_design_token_values (
+  token_set_version_id, token_key, value_index, token_value,
+  value_light, value_dark, active_theme
+)
+select version.id, seed.token_key, 0, seed.token_value,
+  seed.token_value, seed.token_value, 'dark'
 from (values
   ('rounded-style','--promo-surface','#F8FAFC'), ('rounded-style','--promo-text','#111827'),
   ('rounded-style','--promo-muted','#64748B'), ('rounded-style','--promo-accent','#6D5DFB'),
@@ -82,7 +86,11 @@ from (values
 ) seed(set_key, token_key, token_value)
 join promo_design_token_sets token_set on token_set.set_key = seed.set_key
 join promo_design_token_set_versions version on version.token_set_id = token_set.id and version.version = 1
-on conflict (token_set_version_id, token_key) do update set token_value = excluded.token_value;
+on conflict (token_set_version_id, token_key, value_index) do update set
+  token_value = excluded.token_value,
+  value_light = excluded.value_light,
+  value_dark = excluded.value_dark,
+  active_theme = excluded.active_theme;
 
 -- New sections are deliberately not named after the removed legacy Header/Hero
 -- catalogue. They are assembled from pinned item component versions.
