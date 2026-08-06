@@ -33,15 +33,17 @@ const content = {
 };
 
 const canonical = overview.syncFromLegacy(content);
-assert.equal(canonical.schemaVersion, 4);
+assert.equal(canonical.schemaVersion, 5);
 assert.equal(canonical.title, "신규 이벤트");
 assert.equal(canonical.leadText, "신규 고객 한정 혜택");
+assert.equal(canonical.ctaLabel, "참가");
 assert.equal(canonical.mainOffer, "100% 보너스");
 assert.equal(Object.hasOwn(canonical, "primaryAction"), false);
 
 overview.applyToLegacy(content, {
   title: "기존 고객 이벤트",
   leadText: "다시 만나는 특별한 혜택",
+  ctaLabel: "  혜택   받기  ",
   promotionPurpose: "할인쿠폰",
   market: "Global",
   audience: "기존고객",
@@ -52,7 +54,7 @@ overview.applyToLegacy(content, {
 assert.equal(content.promo.title, "기존 고객 이벤트");
 assert.equal(content.promo.leadText, "다시 만나는 특별한 혜택");
 assert.equal(content.simpleBrief.mainOffer, "20% 할인");
-assert.equal(content.promo.ctaLabel, "참가", "Legacy CTA content must be preserved but excluded from Overview v4");
+assert.equal(content.promo.ctaLabel, "혜택 받기", "Overview v5 CTA must be synchronized to legacy content");
 assert.equal(content.promo.ctaUrl, "https://promo.example/start");
 
 assert.equal(overview.fingerprint(content.promotionOverview), overview.fingerprint({
@@ -77,6 +79,10 @@ assert.equal(
 );
 assert.equal(overview.normalize(normalizationEdgeCase).promotionPurposeOther, "");
 assert.equal(Object.hasOwn(overview.normalize(normalizationEdgeCase), "primaryAction"), false);
+assert.throws(
+  () => overview.normalize({ ...normalizationEdgeCase, ctaLabel: "가".repeat(21) }),
+  (error) => error.code === "CTA_LABEL_TOO_LONG" && error.maxCharacters === 20,
+);
 assert.equal(
   overview.requestFingerprint(" 간단한 설명 "),
   serverOverviewRequestFingerprint("간단한 설명")

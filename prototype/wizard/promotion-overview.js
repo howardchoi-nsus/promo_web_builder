@@ -7,15 +7,27 @@
     return String(value || "").trim().slice(0, maxLength);
   }
 
+  function normalizeCtaLabel(value) {
+    const label = String(value ?? "").trim().replace(/\s+/g, " ");
+    if (Array.from(label).length > 20) {
+      const error = new Error("CTA label must not exceed 20 characters");
+      error.code = "CTA_LABEL_TOO_LONG";
+      error.maxCharacters = 20;
+      throw error;
+    }
+    return label;
+  }
+
   function normalize(value = {}) {
     const promotionPurpose = PROMOTION_PURPOSES.includes(value.promotionPurpose)
       ? value.promotionPurpose : "";
     return {
-      schemaVersion: 4,
+      schemaVersion: 5,
       inputMode: value.inputMode === "natural-language" ? "natural-language" : "structured",
       rawNaturalLanguage: text(value.rawNaturalLanguage, 4000),
       title: text(value.title, 200),
       leadText: text(value.leadText, 240),
+      ctaLabel: normalizeCtaLabel(value.ctaLabel),
       promotionPurpose,
       promotionPurposeOther: promotionPurpose === "기타"
         ? text(value.promotionPurposeOther, 200) : "",
@@ -32,6 +44,7 @@
       ...saved,
       title: content.promo?.title || saved.title,
       leadText: content.promo?.leadText || saved.leadText,
+      ctaLabel: content.promo?.ctaLabel || saved.ctaLabel,
       promotionPurpose: content.promo?.promotionPurpose || saved.promotionPurpose,
       promotionPurposeOther: content.promo?.promotionPurposeOther || saved.promotionPurposeOther,
       market: content.promo?.market || saved.market,
@@ -48,6 +61,7 @@
     content.simpleBrief = content.simpleBrief || {};
     content.promo.title = overview.title;
     content.promo.leadText = overview.leadText;
+    content.promo.ctaLabel = overview.ctaLabel;
     content.promo.promotionPurpose = overview.promotionPurpose;
     content.promo.promotionPurposeOther = overview.promotionPurpose === "기타"
       ? overview.promotionPurposeOther : "";

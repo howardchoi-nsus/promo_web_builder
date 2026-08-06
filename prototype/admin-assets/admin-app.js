@@ -7516,7 +7516,7 @@ function Fh(e, t, n, r, i, a) {
 		], 8, jh)
 	], 8, Th);
 }
-var Ih = /*#__PURE__*/ Ch(wh, [["render", Fh], ["__scopeId", "data-v-eafdc266"]]), Lh = /^--(?:promo|app)-[a-z0-9-]+$/;
+var Ih = /*#__PURE__*/ Ch(wh, [["render", Fh], ["__scopeId", "data-v-c0962cfb"]]), Lh = /^--(?:promo|app)-[a-z0-9-]+$/;
 function Rh(e) {
 	if (Array.isArray(e)) {
 		let t = /* @__PURE__ */ new Map();
@@ -7531,34 +7531,10 @@ function Rh(e) {
 	return !e || typeof e != "object" ? {} : Object.fromEntries(Object.entries(e).map(([e, t]) => [String(e).trim(), String(t ?? "").trim()]).filter(([e, t]) => Lh.test(e) && t));
 }
 function zh(e, t = {}) {
-	let n = Rh(e), r = String(t.background || "#f5f7fb"), i = String(t.text || "#172033"), a = String(t.muted || "#64748b"), o = String(t.accent || "#2563eb"), s = String(t.cta || o), c = String(t.ctaInk || "#ffffff"), l = String(t.radius || "2px"), u = String(t.shadow || "0 10px 32px rgba(33, 43, 61, .12)"), d = n["--promo-bg"] || n["--app-bg"] || n["--promo-surface"] || n["--app-surface"], f = n["--promo-text"] || n["--app-ink"], p = n["--promo-muted"] || n["--app-muted"], m = n["--promo-accent"] || n["--app-accent"], h = n["--promo-radius"] || n["--app-radius"], g = n["--promo-shadow"] || n["--app-shadow"];
-	return {
-		"--promo-bg": d || r,
-		"--promo-ink": f || i,
-		"--promo-muted-ink": p || a,
-		"--promo-accent": m || o,
-		"--promo-cta": `var(--promo-accent, ${s})`,
-		"--promo-cta-bg": t.ctaTransparent === !0 ? "transparent" : `var(--promo-accent, ${s})`,
-		"--promo-cta-ink": t.ctaTransparent === !0 ? `var(--promo-accent, ${s})` : c,
-		"--promo-cta-radius": h || l,
-		"--promo-image-radius": h || l,
-		"--promo-component-radius": h || l,
-		"--promo-component-shadow": g || u,
-		"--promo-font": n["--app-font-body"] || n["--app-font-family"] || n["--promo-font"] || t.font || "",
-		"--promo-radius": h || l,
-		"--promo-shadow": g || u,
-		"--promo-hero-bg-image": n["--app-hero-bg-image"] || "none",
-		"--promo-button-height": n["--app-button-height"] || "44px",
-		"--promo-space-4": n["--app-space-4"] || "18px",
-		"--promo-border-width": n["--app-border-width"] || "2px",
-		"--promo-font-size-body": n["--app-font-size-body"] || "16px",
-		"--promo-title-size": n["--promo-font-size-main-title"] || n["--promo-title-size"] || t.titleSize || "clamp(28px, 5vw, 72px)",
-		"--promo-font-weight-strong": n["--app-font-weight-strong"] || "800",
-		"--promo-transition-duration": n["--app-transition-duration-normal"] || "200ms",
-		"--promo-transition-delay": n["--app-transition-delay"] || "0ms",
-		"--promo-transition-ease": n["--app-ease"] || "ease",
-		...n
+	let n = Rh(e), r = (...e) => e.map((e) => String(e || "").trim()).find(Boolean) || "", i = r(n["--promo-bg"], n["--app-bg"], n["--promo-surface"], n["--app-surface"], t.background), a = r(n["--promo-text"], n["--app-ink"], n["--app-text"], t.text), o = r(n["--promo-muted"], n["--app-muted"], n["--app-ink-soft"], t.muted), s = r(n["--promo-accent"], n["--app-accent"], t.accent, t.cta), c = r(n["--app-on-accent"], t.ctaInk, a), l = r(n["--promo-radius"], n["--app-radius"], t.radius), u = r(n["--promo-shadow"], n["--app-shadow"], t.shadow), d = r(n["--app-font-body"], n["--app-font-family"], n["--promo-font"], t.font), f = { ...n }, p = (e, t) => {
+		t && (f[e] = t);
 	};
+	return p("--promo-bg", i), p("--promo-ink", a), p("--promo-muted-ink", o), p("--promo-accent", s), p("--promo-cta", s ? "var(--promo-accent)" : ""), p("--promo-cta-bg", t.ctaTransparent === !0 ? "transparent" : s ? "var(--promo-accent)" : ""), p("--promo-cta-ink", t.ctaTransparent === !0 && s ? "var(--promo-accent)" : c), p("--promo-cta-radius", l), p("--promo-image-radius", l), p("--promo-component-radius", l), p("--promo-component-shadow", u), p("--promo-font", d), p("--promo-radius", l), p("--promo-shadow", u), p("--promo-hero-bg-image", n["--app-hero-bg-image"]), p("--promo-button-height", n["--app-button-height"]), p("--promo-space-4", n["--app-space-4"]), p("--promo-border-width", n["--app-border-width"]), p("--promo-font-size-body", n["--app-font-size-body"]), p("--promo-title-size", r(n["--promo-font-size-main-title"], n["--promo-title-size"], t.titleSize)), p("--promo-font-weight-strong", n["--app-font-weight-strong"]), p("--promo-transition-duration", n["--app-transition-duration-normal"]), p("--promo-transition-delay", n["--app-transition-delay"]), p("--promo-transition-ease", n["--app-ease"]), f;
 }
 //#endregion
 //#region admin-app/src/services/design-token-service.mjs
@@ -8272,12 +8248,12 @@ function b_(e, t, n, r, i, a) {
 							void 0,
 							{ trim: !0 }
 						]])]),
-						H("label", Sg, [t[42] ||= H("span", null, "값 유형", -1), I(H("select", { "onUpdate:modelValue": t[13] ||= (e) => i.tokenForm.valueType = e }, [...t[41] ||= [Bs("<option value=\"length\" data-v-b7653eb2>length</option><option value=\"color\" data-v-b7653eb2>color</option><option value=\"number\" data-v-b7653eb2>number</option><option value=\"gradient\" data-v-b7653eb2>gradient</option><option value=\"shadow\" data-v-b7653eb2>shadow</option><option value=\"font\" data-v-b7653eb2>font</option>", 6)]], 512), [[uu, i.tokenForm.valueType]])]),
+						H("label", Sg, [t[42] ||= H("span", null, "값 유형", -1), I(H("select", { "onUpdate:modelValue": t[13] ||= (e) => i.tokenForm.valueType = e }, [...t[41] ||= [Bs("<option value=\"length\" data-v-ef9ac274>length</option><option value=\"color\" data-v-ef9ac274>color</option><option value=\"number\" data-v-ef9ac274>number</option><option value=\"gradient\" data-v-ef9ac274>gradient</option><option value=\"shadow\" data-v-ef9ac274>shadow</option><option value=\"font\" data-v-ef9ac274>font</option>", 6)]], 512), [[uu, i.tokenForm.valueType]])]),
 						H("label", Cg, [t[43] ||= H("span", null, "CSS 속성", -1), I(H("select", { "onUpdate:modelValue": t[14] ||= (e) => i.tokenForm.cssProperty = e }, [(B(!0), V(R, null, ka(i.tokenCssProperties, (e) => (B(), V("option", {
 							key: e,
 							value: e
 						}, M(e), 9, wg))), 128))], 512), [[uu, i.tokenForm.cssProperty]])]),
-						H("label", Tg, [t[45] ||= H("span", null, "권장 단위", -1), I(H("select", { "onUpdate:modelValue": t[15] ||= (e) => i.tokenForm.unit = e }, [...t[44] ||= [Bs("<option value=\"rem\" data-v-b7653eb2>rem</option><option value=\"responsive\" data-v-b7653eb2>clamp / calc</option><option value=\"vw\" data-v-b7653eb2>vw</option><option value=\"vh\" data-v-b7653eb2>vh</option><option value=\"px\" data-v-b7653eb2>px</option><option value=\"\" data-v-b7653eb2>해당 없음</option>", 6)]], 512), [[uu, i.tokenForm.unit]])]),
+						H("label", Tg, [t[45] ||= H("span", null, "권장 단위", -1), I(H("select", { "onUpdate:modelValue": t[15] ||= (e) => i.tokenForm.unit = e }, [...t[44] ||= [Bs("<option value=\"rem\" data-v-ef9ac274>rem</option><option value=\"responsive\" data-v-ef9ac274>clamp / calc</option><option value=\"vw\" data-v-ef9ac274>vw</option><option value=\"vh\" data-v-ef9ac274>vh</option><option value=\"px\" data-v-ef9ac274>px</option><option value=\"\" data-v-ef9ac274>해당 없음</option>", 6)]], 512), [[uu, i.tokenForm.unit]])]),
 						H("label", Eg, [H("span", null, M(a.isDarkOnlySet ? "Dark (Default) 값" : "Light 값"), 1), I(H("input", {
 							"onUpdate:modelValue": t[16] ||= (e) => i.tokenForm.valueLight = e,
 							required: "",
@@ -8494,7 +8470,7 @@ function b_(e, t, n, r, i, a) {
 		])
 	]);
 }
-var x_ = /*#__PURE__*/ Ch(Zh, [["render", b_], ["__scopeId", "data-v-b7653eb2"]]);
+var x_ = /*#__PURE__*/ Ch(Zh, [["render", b_], ["__scopeId", "data-v-ef9ac274"]]);
 Object.freeze({
 	active: 0,
 	validated: 1,
@@ -8869,7 +8845,7 @@ var B_ = Object.freeze({
 				onLoad: n[1] ||= (e) => a.value = !1
 			}, null, 42, U_), a.value ? (B(), V("div", W_, "공통 Visual Editor를 불러오는 중입니다.")) : e.section.status === "draft" ? W("", !0) : (B(), V("div", G_, " 활성·비활성 Section은 읽기 전용입니다. 초안을 만든 후 Layout을 편집하세요. "))], 8, H_)]));
 		}
-	}, [["__scopeId", "data-v-bb9f5a6b"]]) },
+	}, [["__scopeId", "data-v-51ab700a"]]) },
 	props: {
 		section: {
 			type: Object,
@@ -9124,7 +9100,7 @@ function gv(e, t, n, r, i, a) {
 		])) : W("", !0)
 	]);
 }
-var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-a2b2d756"]]), vv = /* @__PURE__ */ o((() => {
+var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]), vv = /* @__PURE__ */ o((() => {
 	var e = {
 		documents: "promoPrototype.documents.abc",
 		generatedPages: "promoPrototype.generatedPages.abc",

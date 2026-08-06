@@ -27,12 +27,13 @@ const backgroundColorFunction = rendererSource.match(
   /function effectiveSectionBackgroundColor\(style\) \{[\s\S]*?\n\}/
 )?.[0] || "";
 assert.doesNotMatch(backgroundColorFunction, /backgroundFadeColor/);
-assert.match(backgroundColorFunction, /managedTokens\.value\["--app-bg"\]/);
-assert.match(backgroundColorFunction, /managedTokens\.value\["--app-surface"\]/);
+assert.match(backgroundColorFunction, /managedTokenReference\(style\.backgroundColorToken\)/);
+assert.match(backgroundColorFunction, /managedTokenReference\(props\.designSpec\?\.theme\?\.backgroundColorToken\)/);
 assert.match(
   rendererSource,
-  /backgroundFadeGradient\([\s\S]*?normalizedFadeMode\(style\),[\s\S]*?backgroundColor,[\s\S]*?style\.backgroundFadeStrength,[\s\S]*?style\.backgroundFadeStops/
+  /backgroundFadeGradient\([\s\S]*?normalizedFadeMode\(style\),[\s\S]*?effectiveSectionFadeColor\(style\),[\s\S]*?style\.backgroundFadeStrength,[\s\S]*?style\.backgroundFadeStops/
 );
-assert.doesNotMatch(rendererSource, /function effectiveSectionFadeColor/);
+assert.match(rendererSource, /function effectiveSectionFadeColor/);
+assert.match(rendererSource, /managedTokenValue\(style\.backgroundFadeColorToken \|\| style\.backgroundColorToken\)/);
 
 console.log("Section AI background color preservation contract tests passed.");

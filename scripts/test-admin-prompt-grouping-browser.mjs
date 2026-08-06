@@ -168,6 +168,9 @@ try {
   const englishPromptEditor = page.locator(".prompt-body-grid textarea").nth(0);
   assert.equal(await englishPromptEditor.getAttribute("readonly"), null);
   const originalPromptBody = await englishPromptEditor.inputValue();
+  await page.waitForFunction((expected) => (
+    document.querySelector(".prompt-body-translation")?.value === `한글 번역\n${expected}`
+  ), originalPromptBody);
   await englishPromptEditor.fill(`${originalPromptBody}\n한글 입력`);
   await page.getByText("영문 원문에는 한글을 입력할 수 없습니다.", { exact: true }).waitFor();
   await englishPromptEditor.fill(originalPromptBody);

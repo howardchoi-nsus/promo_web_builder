@@ -3,19 +3,22 @@
 ## 0. 문서 정보
 
 - 작성일: 2026-07-29
-- 개정일: 2026-07-29
+- 개정일: 2026-08-06
 - 대상 프로젝트: `promo_web_builder`
-- 문서 상태: 구현 전 Technical Design / 소스코드 미반영
+- 문서 상태: Contract v3 Vertical Slice 구현 반영 / 브라우저·운영 E2E 진행 중
 - 상위 계획:
   - `docs/계획/ai-page-section-composition-engine-development-plan-2026-07-29.md`
+  - `docs/계획/ai-registry-composition-mode-supplement-development-plan-2026-08-04.md`
 - 관련 설계·계획:
   - `docs/계획/frontend-platform-unification-and-shared-modules-development-plan-2026-07-24.md`
   - `docs/계획/create-promo-overview-first-template-recommendation-development-plan-2026-07-27.md`
   - `docs/계획/admin-llm-prompt-hardcoding-remediation-development-plan-2026-07-29.md`
 - 기준 플랫폼: Vue 3 + Vite + ESM
-- 현행 Builder Host: `prototype/create-promo.js`
+- 현행 Builder Host: Legacy Template `prototype/create-promo.js` / Registry AI `visual-editor/src/builder/AiBuilderApp.vue`
 - 기준 Renderer: `visual-editor/src/PromoPageRenderer.vue`
-- 기준 Snapshot 생성기: `prototype/wizard/wizard-storage.js`
+- 기준 Snapshot 생성기: Registry AI `api/_promo-registry-composition-compiler.js` / Legacy Template `prototype/wizard/wizard-storage.js`
+
+> 현행 우선순위: 이 문서의 기존 Contract v2 내용은 기반 설계와 호환 설명으로 유지한다. 2026-08-06 이후 신규 AI Composition의 최우선 기준은 **25장 Contract v3 구현 현행화**이며, v2와 충돌하는 항목은 25장을 따른다.
 
 ### 0.1 이번 개정의 핵심
 
@@ -30,6 +33,18 @@
 7. 페이지 인스턴스 ID 전환 대상을 콘텐츠·스타일·가시성·AI Run·Asset·Editor Command 전체로 확장한다.
 8. Prompt Version FK를 실제 구조인 `prompt_templates(id)`에 맞춘다.
 9. Proposal의 허용 상태 전이, 취소, 재시도, supersede, 활성 작업 Unique Index를 확정한다.
+
+### 0.2 2026-08-06 현행화 핵심
+
+1. Template ID 없는 Registry Composition Contract v3 Vertical Slice가 구현됐다.
+2. active Composition Shell과 Registry Candidate Resolver, pinned Resource, candidate/policy/resource fingerprint가 연결됐다.
+3. 결정적 Compiler, 구조 Operation, document revision 충돌, HTML/Vue/React Export가 구현됐다.
+4. Hero key visual은 `hero-key-visual`, `4:3`, bounded visual Component 계약으로 전환됐다.
+5. Overview는 서버 기준 v5이며 CTA source는 `ctaLabel`, 최대 20 Unicode code point다.
+6. Section Preset의 Desktop/Mobile geometry, 텍스트, 이미지 URL, 다중 필드 값 저장 경로가 구현됐다.
+7. Migration 053과 Seed 004/005가 운영 DB에 적용됐지만 실제 Provider·브라우저·Export parity E2E는 남아 있다.
+8. Legacy Template Host의 브라우저 Overview adapter를 v5로 전환해 `ctaLabel` 저장과 browser/server fingerprint parity를 복구했다.
+9. Admin·Visual Editor 정적 bundle을 최신 source 기준으로 재생성했다. 릴리스 증거는 프로젝트 기준인 Node 22.x에서 다시 확보해야 한다.
 
 ## 1. 설계 목적
 
@@ -63,6 +78,9 @@ AI 모드는 HTML과 CSS를 자유 생성하지 않는다. AI는 활성 섹션·
 - 이미지 생성 실패가 페이지 구조와 콘텐츠를 손상시키지 않는다.
 - 자연어 수정은 전체 페이지 재생성이 아닌 제한된 Operation으로 처리한다.
 - 서버 저장 후 새로고침·재접속·롤백이 가능하다.
+- 브라우저와 서버가 동일한 Overview v5 정규화·fingerprint를 사용하고 `ctaLabel`을 유실하지 않는다.
+- 커밋된 Admin·Visual Editor 정적 bundle이 같은 revision의 소스와 일치한다.
+- 수동 DB 복구 사항이 idempotent Migration으로 재현 가능하다.
 
 ### 1.2 제외 범위
 
@@ -83,14 +101,14 @@ AI 모드는 HTML과 CSS를 자유 생성하지 않는다. AI는 활성 섹션·
 | 영역 | 현행 파일·테이블 | 설계 결정 |
 |---|---|---|
 | Wizard 흐름 | `prototype/wizard/wizard-flow.js` | 템플릿 모드 유지, AI 모드 Host 분기 추가 |
-| 자연어 Overview | `prototype/wizard/promotion-overview.js`, `api/promo-overview-parse.js` | 재사용 |
+| 자연어 Overview | `prototype/wizard/promotion-overview.js`, `api/_promo-overview-contract.js`, `api/promo-overview-parse.js` | 서버 v5 기준. Legacy browser adapter v5 parity 복구 필요 |
 | 로컬 상태 | `prototype/create-promo.js`, `prototype/wizard/wizard-storage.js` | Contract v2 캐시로 확장 |
 | 템플릿 추천 | `api/promo-template-recommendations.js` | 템플릿 모드에서 유지 |
 | 템플릿 Composition | `api/promo-template-composition-plan.js` | AI Base Preset Planner로 호환 확장 검토 |
 | 섹션 AI | `api/promo-section-composition-plan.js` | 단일 섹션 후속 수정에 재사용 |
 | 컴포넌트 Registry | `wizard_item_components`, 버전·필드·인스턴스 | 재사용 |
 | 디자인 토큰 | `promo_design_token_sets`, 버전·값 | 프로모션별 선택 |
-| Layout Snapshot | `createLayoutSnapshot()` | Contract v2 Source of Truth로 승격 |
+| Layout Snapshot | `createLayoutSnapshot()`, `_promo-registry-composition-compiler.js` | Legacy는 v2 호환, Registry AI는 v3 Builder Document 생성 |
 | Editor Bridge | `editor-bridge.js`, `editor-snapshot-contract.js` | Contract v2 전송 |
 | Renderer | `PromoPageRenderer.vue` | 범용 필드 Renderer 유지 |
 | 이미지 Job | `promo_section_design_asset_jobs`, 필드 Asset Job | 재사용·문서 revision 연계 |
@@ -221,6 +239,7 @@ interface BuilderModeState {
 |---|---:|---:|
 | title | 예 | 가능 |
 | leadText | 아니오 | 가능 |
+| ctaLabel | 예 | 가능, 사용자 확인 권장 |
 | promotionPurpose | 예 | 가능 |
 | market | 예 | 확인 권장 |
 | audience | 예 | 가능 |
@@ -251,6 +270,13 @@ interface OverviewFieldDecision {
 ```
 
 `confirmationRequired`인 필드가 미확인 상태면 페이지 생성 버튼을 비활성화하거나 명시적 확인 Checkbox를 요구한다.
+
+현행 CTA 규칙:
+
+- canonical source는 `ctaLabel` 하나다.
+- 행동 중심 2~4단어를 권장하고 공백 포함 최대 20 Unicode code point다.
+- `title`, `leadText`, `mainOffer`, legacy `primaryAction`을 CTA source로 사용하지 않는다.
+- Legacy Template Host와 Vue AI Builder는 서버 Overview v5와 같은 정규화·fingerprint를 사용해야 한다.
 
 ### 4.4 공용·필수 섹션 확인
 
@@ -362,7 +388,9 @@ interface SectionCompositionPolicy {
 - Content: 선택 가능, 초기 중복 금지
 - CTA: 선택 가능, URL 명시 전 자동 활성화 금지
 
-## 6. Composition Contract v2
+## 6. Composition Contract v2 기반 설계
+
+> v2는 기존 Template 호환과 초기 Builder Document 기반 계약이다. 신규 Registry AI Composition의 생성·검증·Apply는 25장의 Contract v3 계약을 사용한다.
 
 ### 6.1 설계 원칙
 
@@ -1940,7 +1968,7 @@ Natural Language
   → Policy-resolved Candidates
   → Composition Proposal
   → Validation
-  → Composition Contract v2
+  → Composition Contract v3 (Template 호환 경로는 v2)
   → Shared Vue Renderer
   → DOM/CSS
   → Async Assets
@@ -1952,3 +1980,220 @@ Natural Language
 신규 AI 화면은 기존 Visual Editor Vite 환경의 멀티 엔트리 Vue 3 App으로 구현한다. 템플릿 모드는 현재 Legacy Host를 유지하고 Compatibility Adapter를 통해 Contract v2로 점진 수렴한다.
 
 페이지 구조를 먼저 렌더링하고 키비주얼과 컴포넌트 이미지를 별도 Job으로 생성함으로써 이미지 처리 시간과 관계없이 빠르게 첫 편집 가능 화면을 제공한다.
+
+## 25. Contract v3 구현 현행화 — 2026-08-06
+
+### 25.1 현행 실행 흐름
+
+```text
+Natural Language
+  → Overview v5 구조화·사용자 검토
+  → active Composition Shell 조회
+  → Registry Section/Component/Layout/Token/Motion/Resource 후보 고정
+  → Contract v3 CompositionSpec 생성·검증
+  → allowlist 기반 repair 최대 1회
+  → Proposal 저장·사용자 승인
+  → fingerprint와 pinned version 재검증
+  → 결정적 Compiler
+  → Builder Document revision 생성
+  → 공통 Visual Editor/Renderer
+  → HTML/Vue/React Export
+```
+
+Feature Flag 비활성 또는 active Shell 부재 시 기존 Template Mode로 fallback한다. fallback은 정상 v3 성공과 구분해 기록한다.
+
+### 25.2 Contract v3 핵심 데이터
+
+Contract v3는 Template ID를 요구하지 않는다. 최소 재현성 데이터는 다음과 같다.
+
+```ts
+interface RegistryCompositionV3Meta {
+  contractVersion: 3;
+  shellVersionId: string;
+  overviewFingerprint: string;
+  candidateFingerprint: string;
+  policyFingerprint: string;
+  resourceFingerprint: string;
+  promptTemplateVersionId: string;
+  model: string;
+}
+
+interface PinnedResourceReference {
+  resourceVersionId: string;
+  resourceKey: string;
+  locale: string;
+  contentHash: string;
+}
+```
+
+Apply는 위 fingerprint와 `shellVersionId`, `baseDocumentRevision`을 모두 확인한다. 하나라도 비거나 현재 값과 다르면 새 revision을 만들지 않는다.
+
+핵심 구현:
+
+- `api/_promo-registry-composition-contract.js`
+- `api/_promo-registry-composition-candidates.js`
+- `api/_promo-registry-composition-compiler.js`
+- `api/promo-page-composition-proposals.js`
+- `api/promo-page-composition-process.js`
+- `api/promo-page-composition-apply.js`
+- `api/_promo-builder-document-store.js`
+- `db/migrations/049_registry_composition_v3_foundation.sql`
+- `db/migrations/050_registry_scope_and_composition_shell_management.sql`
+- `db/migrations/051_registry_candidate_resolver_indexes.sql`
+- `db/migrations/052_content_resource_registry.sql`
+- `db/migrations/053_builder_operations_contract_v3.sql`
+
+### 25.3 결정적 Compiler와 저장 순서
+
+Compiler의 콘텐츠 해석 순서는 고정한다.
+
+```text
+Component field default
+  → Layout Preset content
+  → Overview binding
+  → pinned Resource content
+```
+
+Section/Component/repeat index와 Proposal ID를 기반으로 안정적인 instance ID를 생성한다. 같은 pinned 입력을 다시 컴파일하면 의미적으로 동일한 Builder Document를 생성해야 한다.
+
+Desktop/Mobile geometry, visibility, token reference, motion binding, Resource version/hash, Asset request target을 Snapshot에 함께 저장한다. Section Preset 콘텐츠는 텍스트·이미지 URL·다중 필드 `fields`를 보존한다.
+
+### 25.4 Overview v5와 CTA
+
+서버 기준 canonical contract는 `api/_promo-overview-contract.js`의 v5다.
+
+```ts
+interface OverviewV5 {
+  schemaVersion: 5;
+  title: string;
+  leadText: string;
+  ctaLabel: string;
+  promotionPurpose: string;
+  promotionPurposeOther: string;
+  market: string;
+  audience: string;
+  campaignTone: string;
+  mainOffer: string;
+}
+```
+
+- CTA Component는 `ctaLabel`만 바인딩한다.
+- 최대 길이는 공백 포함 20 Unicode code point다.
+- Prompt, JSON Schema, Composition v2/v3 Validator, Section Composer, Visual Editor, Template Layout 저장, Builder Document 저장에서 같은 제한을 사용한다.
+- 초과 오류 코드는 `CTA_LABEL_TOO_LONG`이다.
+
+2026-08-06 구현 상태:
+
+- `prototype/wizard/promotion-overview.js`를 v5로 전환했다.
+- `ctaLabel`의 공백 정규화, 20 Unicode code point 검증, canonical Overview와 `content.promo.ctaLabel` 양방향 동기화를 적용했다.
+- 브라우저 adapter와 서버의 Overview fingerprint parity test가 통과한다.
+
+### 25.5 Hero key visual과 Asset Job
+
+Hero visual의 기본 Registry 계약:
+
+```json
+{
+  "assetRole": "hero-key-visual",
+  "imageAspectRatio": "4:3",
+  "desktop": {
+    "xPct": 53,
+    "widthPct": 39,
+    "yPx": 70,
+    "heightPx": 420,
+    "positionMode": "free"
+  },
+  "mobile": {
+    "xPct": 10,
+    "widthPct": 80,
+    "heightPx": 230
+  }
+}
+```
+
+이미지는 Hero Section background가 아니라 visual Component에 적용한다. 이미지 안에 제목·설명·CTA·버튼·배지·로고·UI text를 생성하지 않는다. 창작 지시문은 Registry instance의 `assetPromptText`에 저장한다.
+
+### 25.6 Operation·revision·rollback
+
+- Section 추가·삭제·교체와 Collection item 추가·삭제·재정렬을 구조 Operation으로 처리한다.
+- 필수·고정 Section 삭제와 role/fixed-position 비호환 교체를 거부한다.
+- 하나의 승인된 구조 변경은 하나의 document revision을 만든다.
+- `DOCUMENT_REVISION_MISMATCH` 시 자동 merge·강제 저장하지 않는다.
+- rollback은 과거 Snapshot을 복사한 새 revision이며 과거 row를 수정하지 않는다.
+- Undo/Redo는 v3 Snapshot과 동일 Command Stack 경계를 사용한다.
+
+### 25.7 Export runtime
+
+`api/promo-builder-export.js`는 소유권, 현재 revision, `PROMO_BUILDER_EXPORT_ENABLED`, `PROMO_BUILDER_EXPORT_ROLLOUT_PERCENT`를 확인한다.
+
+공개 Snapshot은 다음을 제거한다.
+
+- 관리 metadata
+- provenance와 validation
+- 미완료 Asset request
+- Editor selection·outline·toolbar 상태
+
+HTML/Vue/React Adapter는 같은 공개 Snapshot을 사용한다. HTML JSON injection 방지를 위해 `<`, `>`, `&`, U+2028, U+2029를 escape한다. Production Asset/Resource 접근성과 Visual Editor screenshot parity는 E2E 완료 전까지 미검증으로 표시한다.
+
+### 25.8 Design Token과 정적 bundle
+
+Compiler와 Renderer는 `shared/promo-token-runtime.mjs`를 기준으로 semantic token을 해석한다. v3 Compiler, Renderer, Seed에는 raw color, font, radius, shadow를 추가하지 않는다.
+
+저장소가 직접 제공하는 `prototype/admin-assets/*`, `prototype/visual-editor-assets/*`는 source와 같은 revision에서 다시 빌드해야 한다. 2026-08-06 현행화에서 Admin·Visual Editor bundle을 최신 source 기준으로 재생성해 Admin의 이전 token runtime과 Visual Editor의 자동 높이 툴바 판정 불일치를 제거했다.
+
+완료 조건:
+
+1. Node 22.x에서 Admin·Visual Editor를 재빌드한다.
+2. 생성 bundle diff를 검토하고 source 변경과 함께 커밋한다.
+3. CI에서 source 변경 후 build artifact drift를 검출한다.
+
+### 25.9 Migration·Seed 재현성
+
+운영 적용 기준:
+
+- Migration 053 적용 완료
+- Seed 004 실행 완료
+- Seed 005 실행 완료
+
+Seed 004의 Design Token conflict target은 `(token_set_version_id, token_key, value_index)`다. `--app-hero-bg-image`의 `value_index=0,1`은 정상 list-valued gradient layer다.
+
+Schema-drift 복구 상태:
+
+- 기존 `wizard_item_components` 테이블에 `system_seed_code` Unique index가 없으면 Seed 004의 `ON CONFLICT (system_seed_code)`가 실패한다.
+- 운영 DB의 수동 보완을 `054_repair_item_component_seed_identity_unique_index.sql`로 코드화했다.
+- Migration 054는 index 생성 전 중복 seed code를 검출해 `23505`로 중단하고, 중복이 없으면 `CREATE UNIQUE INDEX IF NOT EXISTS`로 복구한다.
+- Migration contract test가 중복 방어, index 정의, Seed 004 conflict target의 일치를 검증한다.
+- 저장소 Migration 추가와 운영 DB 적용은 별개다. 대상 환경의 Migration 054 적용 여부를 배포 절차에서 확인해야 한다.
+
+### 25.10 검증 상태와 완료 Gate
+
+2026-08-06 현행화 검증 결과:
+
+- Legacy browser Overview v5·CTA 저장·browser/server fingerprint parity 통과
+- Migration 054 contract test 추가 및 통과
+- Admin build 성공(26 modules), Visual Editor build 성공(67 modules)
+- Admin 생성·Design Token·i18n·Section Component 브라우저 통합 테스트 통과
+- Create Promo 전체 browser smoke test 통과
+- 전체 Suite 118개가 최종 재실행에서 모두 통과했다. 중간 실행에서 확인된 `admin-prompt-grouping-browser`의 상세 선택·번역 응답 경쟁은 번역 반영 완료를 동기화 조건으로 추가해 안정화했다.
+- 실행 환경은 bundled Node 24.14.0이었으며 최종 릴리스 기준 Node 22.x 재검증이 필요하다.
+
+이번 현행화에서 분류·처리한 항목:
+
+| 분류 | 확인 내용 | 처리 |
+|---|---|---|
+| 실제 계약 결함 | Legacy browser Overview v4와 server v5 불일치 | adapter v5, CTA 동기화, parity test 복구 |
+| 실제 UI 결함 | 생략된 text `heightMode`를 Renderer는 자동으로, Toolbar는 고정으로 판정 | 공통 `usesAutomaticComponentHeight` 사용 |
+| Schema drift | 기존 DB의 `system_seed_code` Unique index 누락 | idempotent Migration 054와 contract test 추가 |
+| 오래된 assertion·selector | 이동된 AI UI, 접힌 색상 메뉴, 자동 높이 handle, 24px/4% 최소 폭 | 현행 소유 컴포넌트와 사용자 흐름 기준 갱신 |
+| fixture·timing | 빈 locale snapshot, 초기 locale, `networkidle` polling 영향 | 실제 locale fixture, 초기 locale 고정, DOM ready 기준 적용 |
+
+최종 Vertical Slice 완료 Gate:
+
+1. 자연어 → Overview v5 → Contract v3 Proposal → 승인 → Apply가 실제 Provider에서 성공한다.
+2. Hero가 실제 이미지 결과에서도 4:3 bounded Component로 보이며 내부 UI 문구가 없다.
+3. 한국어·영어 CTA가 생성·편집·저장 후 20자 이내로 보존된다.
+4. Component geometry와 Preset 콘텐츠가 저장·새로고침 후 동일하다.
+5. 두 창의 동시 수정에서 한 요청만 성공하고 다른 요청은 revision mismatch 안내를 표시한다.
+6. Visual Editor와 HTML Export의 Desktop/Mobile screenshot이 일치한다.
+7. Export rollout 0%, 부분 %, 100%와 Flag off를 검증한다.
+8. Node 22.x에서 전체 build와 테스트가 통과하고 미분류 실패가 없다.

@@ -6,6 +6,7 @@ import { chromium } from "playwright";
 
 const port = Number(process.env.ADMIN_COMPONENT_TEST_PORT || 4182);
 const origin = `http://127.0.0.1:${port}`;
+const koMessages = JSON.parse(fs.readFileSync(path.resolve("locales/ko.json"), "utf8"));
 const server = spawn(process.execPath, ["scripts/serve-visual-editor-preview.js"], {
   cwd: process.cwd(), env: { ...process.env, PORT: String(port), USE_FIXTURE: "1" }, stdio: ["ignore", "pipe", "pipe"],
 });
@@ -109,7 +110,13 @@ try {
     const request = route.request();
     const url = new URL(request.url());
     const reply = (body, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
-    if (url.pathname === "/api/locale-snapshot") return reply({ ok: true, locale: "ko", defaultLocale: "ko", messages: {}, defaultMessages: {} });
+    if (url.pathname === "/api/locale-snapshot") return reply({
+      ok: true,
+      locale: "ko",
+      defaultLocale: "ko",
+      messages: koMessages,
+      defaultMessages: koMessages,
+    });
     if (url.pathname === "/api/item-components") return reply({ ok: true, components: [component] });
     if (url.pathname === "/api/design-token-sets") return reply({ ok: true, tokenSets: [{ id: "set", name: "Rounded", versionId: tokenVersionId, version: 1, versionStatus: "active" }] });
     if (url.pathname === "/api/wizard-form-templates") return reply({ ok: true, templates: generatedTemplateDeleted ? [template] : [template, generatedTemplate] });

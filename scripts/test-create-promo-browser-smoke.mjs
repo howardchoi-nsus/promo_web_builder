@@ -538,7 +538,7 @@ try {
     textDomPositionBeforeSelection,
     "Selecting text without dragging must preserve its rendered DOM position",
   );
-  await textComponent.click();
+  await editorFrame.locator(".page-tree__component").filter({ hasText: "상세 설명" }).locator(".page-tree__select").click();
   const textEditorToolbar = editorFrame.locator(".text-editor-controls");
   await textEditorToolbar.waitFor({ state: "visible" });
   const textPropertyInput = editorFrame.locator(".component-property-content textarea").first();
@@ -561,6 +561,7 @@ try {
   const emptyTextContent = await page.evaluate(() => JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null"));
   assert.equal(emptyTextContent?.sectionInputs?.contentFeature?.copy, "");
   assert.doesNotMatch(JSON.stringify(emptyTextContent), /Lorem ipsum/);
+  await textEditorToolbar.getByRole("button", { name: "자동 크기", exact: true }).click();
   assert.equal(
     await textComponent.locator(".component-resize-handle").count(),
     8,
@@ -653,15 +654,20 @@ try {
   await page.waitForTimeout(50);
   const textBoxAtTechnicalMinimum = await textComponent.boundingBox();
   const textFontSizeAtTechnicalMinimum = Number.parseFloat(await textContentNode.evaluate((node) => getComputedStyle(node).fontSize));
-  assert.ok(textBoxAtTechnicalMinimum.width < 5, "Text component width must shrink below the former 80px minimum");
+  assert.ok(
+    textBoxAtTechnicalMinimum.width >= 23.5 && textBoxAtTechnicalMinimum.width < 80,
+    `Text component width must respect the 24px technical minimum while remaining below the former 80px minimum (actual: ${textBoxAtTechnicalMinimum.width}px)`,
+  );
   assert.ok(
     Math.abs(textFontSizeAtTechnicalMinimum - textFontSizeBefore) < 0.1,
     "Drag resizing must preserve the selected design-token font size",
   );
   const resizedTextContent = await page.evaluate(() => JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null"));
+  const technicalMinimumWidthPct = resizedTextContent?.templateLayouts?.["default-preview"]?.resolvedLayout
+    ?.itemStyles?.["contentFeature.copy"]?.widthPct;
   assert.ok(
-    resizedTextContent?.templateLayouts?.["default-preview"]?.resolvedLayout?.itemStyles?.["contentFeature.copy"]?.widthPct < 1,
-    "A text component width below 1 percent must persist in the layout snapshot",
+    technicalMinimumWidthPct <= 5,
+    `The technical-minimum text component width must persist in the layout snapshot (actual: ${technicalMinimumWidthPct}%)`,
   );
   const persistedFontSize = resizedTextContent?.templateLayouts?.["default-preview"]?.resolvedLayout
     ?.itemStyles?.["contentFeature.copy"]?.fontSize;
@@ -698,8 +704,10 @@ try {
       .map((key) => [key, beforeTextAlignmentStyle[key]])),
     "Text alignment must not move or anchor the component box",
   );
-  await textComponent.click();
+  await editorFrame.getByRole("button", { name: "Feature Content 섹션 열기", exact: true }).click();
+  await editorFrame.locator(".page-tree__component").filter({ hasText: "상세 설명" }).locator(".page-tree__select").click();
   await textEditorToolbar.waitFor({ state: "visible" });
+  await textEditorToolbar.locator('summary[aria-label="폰트 컬러"]').click();
   await textEditorToolbar.getByRole("button", { name: "폰트 컬러 Accent", exact: true }).click();
   const fontSizeSelect = textEditorToolbar.getByRole("combobox", { name: "글자 크기 디자인 토큰", exact: true });
   await fontSizeSelect.selectOption("--promo-font-size-xl");
@@ -715,7 +723,7 @@ try {
     "--promo-font-size-xl",
     "The selected font-size token must persist in the layout snapshot",
   );
-  await itemImageFrame.click();
+  await editorFrame.locator(".page-tree__component").filter({ hasText: "프로모션 이미지" }).locator(".page-tree__select").click();
   const imageRemoveAction = editorFrame.locator(".image-remove-action");
   await imageRemoveAction.waitFor();
   page.once("dialog", (dialog) => dialog.accept());

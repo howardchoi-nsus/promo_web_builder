@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from "vue";
+import { usesAutomaticComponentHeight } from "../layout-engine/geometry.mjs";
 
 const props = defineProps({
   item: { type: Object, default: null },
@@ -60,9 +61,7 @@ const boldActive = computed(() => {
     return Number(token?.number) >= 700;
   });
 });
-const autoSizeActive = computed(() => (
-  props.itemStyle.heightMode === "auto" || props.itemStyle.widthMode === "fit-content"
-));
+const autoSizeActive = computed(() => usesAutomaticComponentHeight(props.item || {}, props.itemStyle));
 const selectedTextFill = computed(() => {
   if (effectiveTextStyle.value.textGradientToken) {
     return props.gradientTokens.find((entry) => entry.key === effectiveTextStyle.value.textGradientToken) || null;

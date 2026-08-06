@@ -78,14 +78,17 @@ assert.ok(
 const root = path.resolve(__dirname, "..");
 const runs = fs.readFileSync(path.join(root, "api", "promo-section-design-runs.js"), "utf8");
 const createPromo = fs.readFileSync(path.join(root, "prototype", "create-promo.js"), "utf8");
-const sectionProperties = fs.readFileSync(path.join(root, "visual-editor", "src", "SectionProperties.vue"), "utf8");
+const sectionCompositionControls = fs.readFileSync(
+  path.join(root, "visual-editor", "src", "platform", "editor-ui", "SectionCompositionControls.vue"),
+  "utf8",
+);
 const adapter = fs.readFileSync(path.join(root, "visual-editor", "src", "platform", "adapters", "promo-builder-adapter.mjs"), "utf8");
 assert.match(runs, /normalizeKeyVisualTextPolicy/);
 assert.match(runs, /keyVisualTextPolicy/);
 assert.match(createPromo, /keyVisualTextMode/);
 assert.match(createPromo, /keyVisualText:\s*requestedKeyVisualTextPolicy\.text/);
-assert.match(sectionProperties, /AI 키비주얼/);
-assert.match(sectionProperties, /승인 문구 사용/);
+assert.match(sectionCompositionControls, /AI 키비주얼/);
+assert.match(sectionCompositionControls, /승인 문구 사용/);
 assert.match(adapter, /keyVisualTextMode/);
 
 console.log("Section key visual contract tests passed.");

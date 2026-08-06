@@ -1,7 +1,7 @@
 # Promo Web Builder 통합 정책서
 
 - 작성일: 2026-07-23
-- 최종 갱신일: 2026-08-01
+- 최종 갱신일: 2026-08-06
 - 대상 프로젝트: `promo_web_builder`
 - 문서 성격: 정책(가드레일·규칙·거버넌스·소유권·경계)을 한 곳으로 취합
 - 강제 수준: **MUST**(반드시) / **MUST NOT**(절대 금지) / **SHOULD**(특별 사유 없으면 준수) / **MAY**(선택)
@@ -14,6 +14,8 @@
   - `계획/live-preview-outline-editor-text-alignment-development-plan-2026-07-31.md` (Live Preview·텍스트 배치)
   - `계획/visual-editor-structure-ai-design-transition-development-plan-2026-07-31.md` (구조 패널·AI 역할·Motion)
   - `설계/visual-editor-live-preview-rich-text-design-2026-08-01.md` (현행 Live Preview·라인 편집 계약)
+  - `계획/ai-registry-composition-mode-supplement-development-plan-2026-08-04.md` (Registry Composition Contract v3)
+  - `handoff/handoff-2026-08-06.md` (구현·DB·테스트 현황과 잔여 검증)
 
 ---
 
@@ -62,6 +64,15 @@
 - **MUST NOT** LLM이 좌표(`xPct/yPx/widthPct/heightPx`)나 임의 CSS를 직접 만든다. **좌표는 결정론적 Executor 또는 사용자 드래그 편집으로만** 생성한다.
 - **MUST** LLM 출력(예: `design_plan`/`SectionDesignSpec`)은 **Validator를 통과하기 전** 저장·적용하지 않는다.
 - **MUST** 배경/컴포넌트 이미지 프롬프트는 서버에서 조립하고, 브랜드명·HEX·재질을 시스템 프롬프트에 하드코딩하지 않는다. 이미지에 페이드·그라데이션·마스크를 굽지 않고 Renderer가 CSS로 처리한다.
+
+### 3.1 Registry Composition Contract v3
+
+- **MUST** 신규 AI Composition은 active Composition Shell과 Registry의 Section, Component, Layout Preset, Resource, Design Token, Motion Preset 후보만 사용한다.
+- **MUST NOT** Contract v3에서 Template ID를 필수 기반으로 사용하거나, Registry 밖의 ID·버전·필드를 LLM이 새로 만들게 한다.
+- **MUST** Proposal에 candidate, policy, resource fingerprint와 pinned version/hash를 저장하고 Apply 직전에 현재 값과 다시 비교한다.
+- **MUST** 최초 Structured Output 검증 실패 시에도 동일 allowlist 안에서 최대 1회만 repair한다. repair가 정책·후보 범위를 확장해서는 안 된다.
+- **MUST** 사용자가 Proposal의 구조와 변경 내용을 확인하고 승인한 뒤 Apply한다. 자동 적용은 명시적으로 승인된 제한 시나리오 외에는 허용하지 않는다.
+- **MUST** Feature Flag 비활성 또는 active Shell 부재 시 기존 Template Mode fallback을 유지하되, fallback 사실과 원인을 관측 이벤트로 구분한다.
 
 ## 4. 컴포넌트·템플릿 정책
 
@@ -116,6 +127,14 @@
 - 이미지 생성:
   - **MUST** 서버에서 `[공통 스타일 토큰] + 유형 템플릿 + 검증된 변수 + 네거티브`로만 프롬프트를 조립한다(자유 프롬프트 그대로 전달 금지).
   - **MUST NOT** 실존 인물(예: 앰배서더 실명·실인물)·타사 로고·미성년 묘사를 생성한다.
+
+### 9.1 Hero key visual
+
+- **MUST** Hero 생성 이미지는 일반 Section background가 아니라 `hero-key-visual` 역할의 bounded visual Component에 적용한다.
+- 기본 생성 비율은 `4:3`이며 Desktop/Mobile 모두 Section 전체를 덮는 배경으로 자동 전환하지 않는다.
+- **MUST NOT** 이미지 안에 제목, 설명, CTA, 버튼, 배지, 로고 또는 UI 문구를 생성한다.
+- Hero 창작 지시문은 API 소스가 아니라 versioned Registry Component instance 설정의 `assetPromptText`로 관리한다.
+- 기존 Builder Document는 pinned snapshot이므로 Registry Seed 변경만으로 자동 갱신하지 않는다. 새 문서 생성 또는 명시적 Preset 재적용이 필요하다.
 
 ## 10. Visual Editor Live Preview 정책
 
@@ -214,6 +233,62 @@
 - Motion 변경은 Undo/Redo와 revision 계약에 포함한다. Outline toggle과 같은 Editor 표시 상태는 포함하지 않는다.
 - Desktop/Mobile별 Motion override 계약이 도입되기 전까지 Motion은 공통 적용으로 명시한다.
 
+## 13. Overview·CTA 계약 정책
+
+### 13.1 Overview 단일 계약
+
+- **MUST** 자연어 분석 API, Legacy Template Host, Vue AI Builder, 저장소, Composer가 동일한 최신 Overview schema를 사용한다. 2026-08-06 기준은 `schemaVersion: 5`다.
+- Overview v5의 CTA 단일 필드는 `ctaLabel`이다. `primaryAction`, `mainOffer`, `title`, `leadText`를 CTA label의 대체 source로 사용하지 않는다.
+- **MUST** 브라우저와 서버가 같은 정규화 결과와 fingerprint를 생성한다. schemaVersion 또는 정규화 필드가 다르면 생성·추천·Apply를 진행하지 않고 계약 불일치로 처리한다.
+- **MUST** API 분석 결과를 Legacy 콘텐츠에 반영할 때 `ctaLabel`을 `content.promo.ctaLabel`과 canonical `promotionOverview.ctaLabel` 양쪽에 유실 없이 동기화한다.
+- Overview schema 변경은 서버 계약, 브라우저 adapter, fixture, fingerprint parity test를 하나의 변경 단위로 배포한다.
+
+### 13.2 CTA 길이와 저장 경계
+
+- CTA는 행동 중심의 짧은 문구로 생성하며 권장 길이는 2~4단어다.
+- **MUST** 공백을 포함해 최대 20 Unicode code point로 제한한다.
+- **MUST** Prompt, Structured Output Schema, 공통 Validator, Visual Editor, Template Layout 저장, Builder Document 저장에서 동일 제한을 적용한다.
+- 브라우저의 HTML `maxlength`만 안전 경계로 간주하지 않는다. JavaScript 정규화와 서버 저장 검증을 함께 적용한다.
+- 20자를 초과하면 `CTA_LABEL_TOO_LONG`으로 거부하며 자동 자르기로 의미를 바꾸지 않는다. 사용자가 직접 입력하는 편집 UI만 입력 중 20자로 제한할 수 있다.
+- 과거 문서는 조회할 수 있으나 재저장·재생성 시 현행 정책을 적용한다.
+
+## 14. Builder Document·Export 정책
+
+- **MUST** AI Apply, 자연어 Operation, 수동 저장, rollback을 단일 `documentRevision` 직렬화 경계로 처리한다.
+- **MUST NOT** `DOCUMENT_REVISION_MISMATCH`에서 자동 merge 또는 강제 덮어쓰기를 수행한다. 최신 문서를 reload한 뒤 사용자 변경을 다시 적용한다.
+- Export는 문서 소유권, 요청 revision, Export Feature Flag, owner 기반 rollout을 모두 검증한다.
+- 공개 Export Snapshot에서는 관리 metadata, provenance, validation, 미완료 Asset request를 제거하고 Renderer에 필요한 공개 데이터만 포함한다.
+- HTML/Vue/React Export는 동일 공개 Snapshot과 동일 Renderer runtime을 사용한다.
+- **MUST** JSON을 HTML에 삽입할 때 `<`, `>`, `&`, U+2028, U+2029를 escape한다.
+- Editor toolbar, selection/outline, 관리용 metadata는 Export 결과에 포함하지 않는다.
+
+## 15. Migration·Seed 재현성 정책
+
+- **MUST** 운영 DB에서 수동으로 적용한 index, constraint, column, data repair를 다음 배포 가능한 idempotent Migration으로 저장소에 코드화한다.
+- **MUST NOT** `CREATE TABLE IF NOT EXISTS`가 기존 테이블의 누락 constraint까지 보강한다고 가정한다.
+- Seed의 `ON CONFLICT` target은 실제 PK/Unique 계약과 일치해야 하며, 해당 constraint가 모든 지원 DB 상태에서 존재하는지 Migration contract test로 검증한다.
+- Seed는 최신 `main` 기준의 명시된 순서로 실행하고, 실행 전 database, schema, search path를 확인한다.
+- Seed 004의 `promo_design_token_values` conflict key는 `(token_set_version_id, token_key, value_index)`다.
+- `--app-hero-bg-image`의 동일 token/version 내 `value_index=0,1` 행은 list-valued gradient layer이므로 중복 데이터로 삭제하지 않는다.
+- 이미 생성된 Builder Document와 Export는 pinned snapshot을 사용하며 Seed 재실행만으로 변경하지 않는다.
+
+## 16. 빌드 산출물·테스트·릴리스 정책
+
+### 16.1 빌드 산출물
+
+- `prototype/admin-assets/*`, `prototype/visual-editor-assets/*`처럼 저장소가 직접 제공하는 정적 산출물은 대응 소스와 같은 커밋에서 생성·검증한다.
+- **MUST** shared runtime, Vue component, CSS 또는 Vite entry가 변경되면 관련 Admin·Visual Editor build를 모두 다시 실행한다.
+- **MUST** 빌드 후 생성된 산출물과 소스의 semantic contract가 일치하는지 확인한다. 소스만 최신이고 커밋된 정적 bundle이 이전 구현인 상태로 배포하지 않는다.
+- CI/릴리스 환경은 프로젝트 `engines.node`와 동일한 Node 22.x를 사용한다. 다른 major에서의 성공은 참고 결과이며 최종 release evidence가 아니다.
+
+### 16.2 테스트 분류와 Gate
+
+- 전체 Suite 실패는 `제품 회귀 / 오래된 assertion·selector / fixture 누락 / browser timing·flaky / 환경 제한` 중 하나로 증거와 함께 분류한다.
+- **MUST NOT** 실패 테스트를 단순히 삭제하거나 제품 동작에 맞춰 무조건 완화한다. 먼저 정책·기대 UX와 실제 DOM/API 계약을 대조한다.
+- 브라우저·서버 Overview fingerprint parity, CTA 저장, Builder 저장/reload, Export parity, revision 충돌은 release blocking 계약이다.
+- 노후 테스트를 확인했으면 같은 변경에서 fixture·selector·기대 계약을 갱신해 전체 Suite가 실제 회귀 신호를 제공하도록 복구한다.
+- 미분류 브라우저 timeout 또는 실패가 남아 있으면 “전체 검증 완료”로 표시하지 않는다.
+
 ## 부록. 강제 수준 표기·출처
 
 각 정책의 상세 배경·구현 지침은 취합 출처 문서에 있다. 본 정책서는 흩어진 규칙을 한 곳에서 참조·강제하기 위한 단일 기준이며, 개별 계획서가 갱신되면 해당 정책 항목도 함께 갱신한다.
@@ -225,3 +300,16 @@
 - 기존 계획에서 제외했던 라인 단위 서식을 `lineStyles` 제한 계약으로 현행화했다.
 - Font Awesome Toolbar, Design Token, List/Indent, Section Anchor의 적용 범위를 확정했다.
 - 구조 패널, AI 디자인/구성 역할 분리, Motion preset·Reduced Motion 정책을 통합했다.
+
+### 2026-08-06 갱신 요약
+
+- Registry Composition Contract v3, fingerprint, pinned Resource, Proposal 승인 정책을 추가했다.
+- Overview v5와 `ctaLabel` 단일 source, 20 Unicode code point 저장 경계를 확정했다.
+- Hero `hero-key-visual` 4:3 bounded Component와 이미지 내 UI 문구 금지 정책을 추가했다.
+- Builder Document revision, Export 공개 Snapshot·rollout 정책을 추가했다.
+- 운영 수동 DB 보완의 Migration 코드화와 Seed 재현성 정책을 추가했다.
+- 커밋 정적 bundle과 소스 동기화, Node 22, 실패 테스트 분류·릴리스 Gate를 명시했다.
+- Legacy Template Host의 Overview v5·`ctaLabel` 동기화와 browser/server fingerprint parity를 복구했다.
+- 운영 수동 Unique Index 보완을 idempotent Migration 054와 회귀 테스트로 코드화했다.
+- 텍스트 자동 높이의 Renderer·Toolbar 판정을 공통화하고 Admin·Visual Editor 정적 bundle을 재생성했다.
+- 현행 UI 구조와 locale fixture에 맞춰 회귀 테스트를 복구했으며, 최종 릴리스 증거는 Node 22.x 전체 Suite로 확정한다.

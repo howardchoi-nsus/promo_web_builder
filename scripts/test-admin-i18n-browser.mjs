@@ -6,6 +6,8 @@ import { chromium } from "playwright";
 
 const port = Number(process.env.ADMIN_I18N_TEST_PORT || 4181);
 const origin = `http://127.0.0.1:${port}`;
+const koMessages = JSON.parse(fs.readFileSync(path.resolve("locales/ko.json"), "utf8"));
+const enMessages = JSON.parse(fs.readFileSync(path.resolve("locales/en.json"), "utf8"));
 const server = spawn(process.execPath, ["scripts/serve-visual-editor-preview.js"], {
   cwd: process.cwd(),
   env: { ...process.env, PORT: String(port), USE_FIXTURE: "1" },
@@ -54,9 +56,11 @@ try {
   browser = await chromium.launch({ headless: true });
   const context = await browser.newContext();
   const page = await context.newPage();
+  await page.addInitScript(() => localStorage.setItem("promoPrototype.locale.v1", "ko"));
   const pageErrors = [];
   const consoleErrors = [];
   const failedResponses = [];
+  const apiRequests = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
   page.on("console", (message) => { if (message.type() === "error") consoleErrors.push(message.text()); });
   page.on("response", (response) => { if (response.status() >= 400) failedResponses.push(`${response.status()} ${response.url()}`); });
@@ -69,11 +73,13 @@ try {
     const request = route.request();
     const url = new URL(request.url());
     const pathname = url.pathname;
+    apiRequests.push(`${request.method()} ${url.pathname}${url.search}`);
     const fulfill = (body, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
     if (pathname === "/api/locales") return fulfill({ ok: true, locales });
     if (pathname === "/api/locale-snapshot") {
       const locale = url.searchParams.get("locale") || "ko";
-      return fulfill({ ok: true, locale, defaultLocale: "ko", revision: 2, messages: { "common.action.save": locale === "en" ? "Save" : "저장" }, defaultMessages: {} });
+      const messages = locale === "en" ? enMessages : koMessages;
+      return fulfill({ ok: true, locale, defaultLocale: "ko", revision: 2, messages, defaultMessages: koMessages });
     }
     if (pathname === "/api/locale-messages") {
       const locale = url.searchParams.get("locale") || "ko";
@@ -96,9 +102,16 @@ try {
     return fulfill({ ok: true, templates: [], sections: [], documents: [], logs: [], settings: [] });
   });
 
-  await page.goto(`${origin}/prototype/index.html?view=admin&tab=i18n`, { waitUntil: "networkidle" });
+  await page.goto(`${origin}/prototype/index.html?view=admin&tab=i18n`, { waitUntil: "domcontentloaded" });
   await page.locator(".locale-manager").waitFor({ state: "visible" });
-  await page.getByRole("columnheader", { name: "한글 문구" }).waitFor();
+  await page.locator(".locale-manager .subsection-actions button").first().click();
+  try {
+    await page.getByRole("columnheader", { name: "한글 문구" }).waitFor({ timeout: 5_000 });
+  } catch (error) {
+    const managerError = await page.locator(".locale-manager .danger-state").textContent().catch(() => "");
+    const managerText = await page.locator(".locale-manager").innerText().catch(() => "");
+    throw new Error(`Locale table did not render. ${managerError}\nManager: ${managerText}\nAPI: ${apiRequests.join(" | ")}\nPage errors: ${pageErrors.join(" | ")}\nConsole errors: ${consoleErrors.join(" | ")}`, { cause: error });
+  }
   await page.getByRole("columnheader", { name: "영문 문구" }).waitFor();
   await page.getByText("저장 수정본", { exact: true }).waitFor();
   await page.getByText("Save", { exact: true }).waitFor();

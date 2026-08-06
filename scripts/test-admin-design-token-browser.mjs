@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
 import { spawn } from "node:child_process";
 import { chromium } from "playwright";
 
 const port = Number(process.env.ADMIN_DESIGN_TOKEN_TEST_PORT || 4186);
 const origin = `http://127.0.0.1:${port}`;
+const koMessages = JSON.parse(fs.readFileSync(path.resolve("locales/ko.json"), "utf8"));
 const server = spawn(process.execPath, ["scripts/serve-visual-editor-preview.js"], {
   cwd: process.cwd(),
   env: { ...process.env, PORT: String(port), USE_FIXTURE: "1" },
@@ -113,7 +116,7 @@ try {
         errors: [],
       });
     }
-    if (url.pathname === "/api/locale-snapshot") return fulfill({ ok: true, locale: "ko", defaultLocale: "ko", revision: 1, messages: {}, defaultMessages: {} });
+    if (url.pathname === "/api/locale-snapshot") return fulfill({ ok: true, locale: "ko", defaultLocale: "ko", revision: 1, messages: koMessages, defaultMessages: koMessages });
     if (url.pathname === "/api/promo-generation-worker-settings") return fulfill({ ok: true, settings: [] });
     if (url.pathname === "/api/prompt-templates") return fulfill({ ok: true, templates: [] });
     if (url.pathname === "/api/wizard-section-audit-logs") return fulfill({ ok: true, logs: [] });
