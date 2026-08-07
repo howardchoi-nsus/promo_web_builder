@@ -53,7 +53,13 @@ const candidates = {
     sectionVersionId: "hero-version-1", sectionKey: "hero", sectionRole: "hero", version: 2,
     name: "Hero", description: "Hero Section", resolvedRequired: true, sortOrder: 10,
     compositionPolicy: {}, fixedPosition: null,
-    aiDesign: { enabled: true, allowSectionBackground: false, imageAspectRatio: "4:3" },
+    aiDesign: {
+      enabled: true,
+      allowSectionBackground: true,
+      imageTarget: "section-background",
+      imageTargetItemKeys: [],
+      imageAspectRatio: "4:3",
+    },
     layoutPresets: [{ layoutKey: "hero-centered", layoutSnapshot: layoutSnapshot({ title: { fields: { subtitle: "프리셋 설명" } } }) }],
     components: [{
       componentInstanceId: "hero-title-instance", componentVersionId: "hero-title-version",
@@ -174,9 +180,21 @@ async function compile(candidateSet = candidates) {
   assert.equal(snapshot.designSpec.responsiveLayouts.mobile.itemStyles[`${heroId}.${heroItemId}`].widthPct, 90);
   assert.equal(snapshot.motionSpec.sections[heroId].className, "fade-up");
   assert.equal(snapshot.assets.requests.length, 2);
-  assert.equal(snapshot.assets.requests[0].assetRole, "hero-key-visual");
-  assert.equal(snapshot.assets.requests[0].aspectRatio, "4:3");
-  assert.match(snapshot.assets.requests[0].guidance, /bounded Hero media component/);
+  assert.ok(snapshot.assets.requests.every((request) => request.targetType === "section-key-visual"));
+  assert.ok(snapshot.assets.requests.every((request) => !request.pageComponentInstanceId));
+
+  const componentTargetCandidates = JSON.parse(JSON.stringify(candidates));
+  componentTargetCandidates.sections[0].aiDesign = {
+    enabled: true,
+    allowSectionBackground: false,
+    imageTarget: "item",
+    imageTargetItemKeys: ["visual"],
+    imageAspectRatio: "4:3",
+  };
+  const componentTargetSnapshot = await compile(componentTargetCandidates);
+  assert.ok(componentTargetSnapshot.assets.requests.every((request) => request.targetType === "component-field-image"));
+  assert.equal(componentTargetSnapshot.assets.requests[0].assetRole, "hero-key-visual");
+  assert.match(componentTargetSnapshot.assets.requests[0].guidance, /bounded Hero media component/);
 
   const termsId = snapshot.content.sectionOrder[2];
   const terms = snapshot.content.sectionSnapshot[2];

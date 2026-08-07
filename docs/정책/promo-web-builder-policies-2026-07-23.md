@@ -130,10 +130,11 @@
 
 ### 9.1 Hero key visual
 
-- **MUST** Hero 생성 이미지는 일반 Section background가 아니라 `hero-key-visual` 역할의 bounded visual Component에 적용한다.
-- 기본 생성 비율은 `4:3`이며 Desktop/Mobile 모두 Section 전체를 덮는 배경으로 자동 전환하지 않는다.
+- **MUST** Hero의 `AI 키비주얼 만들기` 결과는 `section-key-visual` Asset으로 생성하고 해당 Hero Section의 background에 적용한다.
+- Section 키비주얼 요청에서 `component-field-image` Job을 함께 만들지 않는다. 컴포넌트 이미지는 Section 정책이 `imageTarget: item`이고 대상 item key가 명시된 별도 요청에서만 생성한다.
+- 기본 생성 비율은 Section의 `aiDesign.imageAspectRatio`를 사용하며 Desktop/Mobile에서 동일한 Section Asset을 각 viewport의 background render policy로 표시한다.
 - **MUST NOT** 이미지 안에 제목, 설명, CTA, 버튼, 배지, 로고 또는 UI 문구를 생성한다.
-- Hero 창작 지시문은 API 소스가 아니라 versioned Registry Component instance 설정의 `assetPromptText`로 관리한다.
+- Hero 창작 지시문은 Section 키비주얼 요청의 guidance와 versioned prompt template으로 관리한다.
 - 기존 Builder Document는 pinned snapshot이므로 Registry Seed 변경만으로 자동 갱신하지 않는다. 새 문서 생성 또는 명시적 Preset 재적용이 필요하다.
 
 ## 10. Visual Editor Live Preview 정책
@@ -305,7 +306,7 @@
 
 - Registry Composition Contract v3, fingerprint, pinned Resource, Proposal 승인 정책을 추가했다.
 - Overview v5와 `ctaLabel` 단일 source, 20 Unicode code point 저장 경계를 확정했다.
-- Hero `hero-key-visual` 4:3 bounded Component와 이미지 내 UI 문구 금지 정책을 추가했다.
+- Hero `section-key-visual` Section background와 이미지 내 UI 문구 금지 정책을 확정했다.
 - Builder Document revision, Export 공개 Snapshot·rollout 정책을 추가했다.
 - 운영 수동 DB 보완의 Migration 코드화와 Seed 재현성 정책을 추가했다.
 - 커밋 정적 bundle과 소스 동기화, Node 22, 실패 테스트 분류·릴리스 Gate를 명시했다.

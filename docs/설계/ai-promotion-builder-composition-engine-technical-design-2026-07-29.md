@@ -39,7 +39,7 @@
 1. Template ID 없는 Registry Composition Contract v3 Vertical Slice가 구현됐다.
 2. active Composition Shell과 Registry Candidate Resolver, pinned Resource, candidate/policy/resource fingerprint가 연결됐다.
 3. 결정적 Compiler, 구조 Operation, document revision 충돌, HTML/Vue/React Export가 구현됐다.
-4. Hero key visual은 `hero-key-visual`, `4:3`, bounded visual Component 계약으로 전환됐다.
+4. Hero key visual은 `section-key-visual` Asset을 Hero Section background에 적용하는 계약으로 전환됐다.
 5. Overview는 서버 기준 v5이며 CTA source는 `ctaLabel`, 최대 20 Unicode code point다.
 6. Section Preset의 Desktop/Mobile geometry, 텍스트, 이미지 URL, 다중 필드 값 저장 경로가 구현됐다.
 7. Migration 053과 Seed 004/005가 운영 DB에 적용됐지만 실제 Provider·브라우저·Export parity E2E는 남아 있다.
@@ -2094,24 +2094,15 @@ Hero visual의 기본 Registry 계약:
 
 ```json
 {
-  "assetRole": "hero-key-visual",
-  "imageAspectRatio": "4:3",
-  "desktop": {
-    "xPct": 53,
-    "widthPct": 39,
-    "yPx": 70,
-    "heightPx": 420,
-    "positionMode": "free"
-  },
-  "mobile": {
-    "xPct": 10,
-    "widthPct": 80,
-    "heightPx": 230
-  }
+  "enabled": true,
+  "allowSectionBackground": true,
+  "imageTarget": "section-background",
+  "imageTargetItemKeys": [],
+  "imageAspectRatio": "4:3"
 }
 ```
 
-이미지는 Hero Section background가 아니라 visual Component에 적용한다. 이미지 안에 제목·설명·CTA·버튼·배지·로고·UI text를 생성하지 않는다. 창작 지시문은 Registry instance의 `assetPromptText`에 저장한다.
+Compiler는 이 정책에서 `section-key-visual` 요청만 생성하고 `component-field-image` 요청을 만들지 않는다. 결과 이미지는 Hero Section의 `backgroundImage`에 적용한다. 이미지 안에 제목·설명·CTA·버튼·배지·로고·UI text를 생성하지 않는다. 컴포넌트 이미지 생성은 `imageTarget: item`과 허용 item key가 모두 명시된 별도 Section 정책에서만 가능하다.
 
 ### 25.6 Operation·revision·rollback
 
@@ -2164,6 +2155,7 @@ Schema-drift 복구 상태:
 - Migration 054는 index 생성 전 중복 seed code를 검출해 `23505`로 중단하고, 중복이 없으면 `CREATE UNIQUE INDEX IF NOT EXISTS`로 복구한다.
 - Migration contract test가 중복 방어, index 정의, Seed 004 conflict target의 일치를 검증한다.
 - 저장소 Migration 추가와 운영 DB 적용은 별개다. 대상 환경의 Migration 054 적용 여부를 배포 절차에서 확인해야 한다.
+- Migration 055는 기존 `registryHero`의 item target과 `visual` Component instance를 제거하고 Section key visual 정책·Layout으로 복구한다.
 
 ### 25.10 검증 상태와 완료 Gate
 
@@ -2174,7 +2166,7 @@ Schema-drift 복구 상태:
 - Admin build 성공(26 modules), Visual Editor build 성공(67 modules)
 - Admin 생성·Design Token·i18n·Section Component 브라우저 통합 테스트 통과
 - Create Promo 전체 browser smoke test 통과
-- 전체 Suite 118개가 최종 재실행에서 모두 통과했다. 중간 실행에서 확인된 `admin-prompt-grouping-browser`의 상세 선택·번역 응답 경쟁은 번역 반영 완료를 동기화 조건으로 추가해 안정화했다.
+- Migration 055의 Hero Section key visual 복구 테스트를 포함해 전체 Suite 119개가 최종 재실행에서 모두 통과했다. 중간 실행에서 확인된 `admin-prompt-grouping-browser`의 상세 선택·번역 응답 경쟁은 번역 반영 완료를 동기화 조건으로 추가해 안정화했다.
 - 실행 환경은 bundled Node 24.14.0이었으며 최종 릴리스 기준 Node 22.x 재검증이 필요하다.
 
 이번 현행화에서 분류·처리한 항목:
@@ -2190,7 +2182,7 @@ Schema-drift 복구 상태:
 최종 Vertical Slice 완료 Gate:
 
 1. 자연어 → Overview v5 → Contract v3 Proposal → 승인 → Apply가 실제 Provider에서 성공한다.
-2. Hero가 실제 이미지 결과에서도 4:3 bounded Component로 보이며 내부 UI 문구가 없다.
+2. Hero가 실제 이미지 결과에서 Section background 키비주얼로 보이고 별도 이미지 Component Job이나 내부 UI 문구가 없다.
 3. 한국어·영어 CTA가 생성·편집·저장 후 20자 이내로 보존된다.
 4. Component geometry와 Preset 콘텐츠가 저장·새로고침 후 동일하다.
 5. 두 창의 동시 수정에서 한 요청만 성공하고 다른 요청은 revision mismatch 안내를 표시한다.

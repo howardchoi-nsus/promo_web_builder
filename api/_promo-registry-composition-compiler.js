@@ -13,6 +13,22 @@ function clone(value) {
   return value == null ? value : JSON.parse(JSON.stringify(value));
 }
 
+function usesComponentImageTarget(section, item) {
+  const policy = section?.aiDesign || {};
+  const itemKey = item?.sourceItemKey || item?.itemKey || "";
+  return policy.enabled !== false
+    && policy.imageTarget === "item"
+    && Array.isArray(policy.imageTargetItemKeys)
+    && policy.imageTargetItemKeys.includes(itemKey);
+}
+
+function usesSectionKeyVisualTarget(section) {
+  const policy = section?.aiDesign || {};
+  return policy.enabled !== false
+    && policy.imageTarget !== "item"
+    && policy.allowSectionBackground !== false;
+}
+
 function compilerError(code, message, statusCode = 409) {
   return Object.assign(new Error(message), { code, statusCode });
 }
@@ -314,7 +330,8 @@ async function compileRegistryComposition({
           }
         }
         item.fields.forEach((field) => {
-          if (field.fieldKind === "image" && !field.isLocked && field.image?.allowedSources?.includes("ai")) {
+          if (usesComponentImageTarget(section, item)
+            && field.fieldKind === "image" && !field.isLocked && field.image?.allowedSources?.includes("ai")) {
             assetRequests.push({
               assetRequestId: stableUuid(proposalId, sectionId, componentId, field.fieldKey),
               targetType: "component-field-image", pageSectionInstanceId: sectionId,
@@ -351,7 +368,7 @@ async function compileRegistryComposition({
         applyCollectionGeometry(presetItemStyles, sectionId, entries, collection);
         applyCollectionGeometry(mobileItemStyles, sectionId, entries, collection, { mobile: true });
       }
-      if (section.aiDesign?.enabled && section.aiDesign?.allowSectionBackground !== false) {
+      if (usesSectionKeyVisualTarget(section)) {
         assetRequests.push({
           assetRequestId: stableUuid(proposalId, sectionId, "section-key-visual"),
           targetType: "section-key-visual", pageSectionInstanceId: sectionId, status: "pending",

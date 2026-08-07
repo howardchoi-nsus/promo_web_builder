@@ -25,6 +25,22 @@ function unique(values) {
   return Array.from(new Set(values.filter(Boolean)));
 }
 
+function usesComponentImageTarget(section, item) {
+  const policy = section?.aiDesign || {};
+  const itemKey = item?.sourceItemKey || item?.itemKey || "";
+  return policy.enabled !== false
+    && policy.imageTarget === "item"
+    && Array.isArray(policy.imageTargetItemKeys)
+    && policy.imageTargetItemKeys.includes(itemKey);
+}
+
+function usesSectionKeyVisualTarget(section) {
+  const policy = section?.aiDesign || {};
+  return policy.enabled !== false
+    && policy.imageTarget !== "item"
+    && policy.allowSectionBackground !== false;
+}
+
 function pageCompositionSchema(candidates) {
   const templates = candidates.templates || [];
   const sectionIds = unique(templates.flatMap((template) => template.sections.map((section) => section.sectionId)));
@@ -474,7 +490,8 @@ function normalizePageComposition({
             confirmationRequired: false,
           };
         }
-        if (field.fieldKind === "image" && field.image?.allowedSources?.includes("ai")) {
+        if (usesComponentImageTarget(section, definition)
+          && field.fieldKind === "image" && field.image?.allowedSources?.includes("ai")) {
           assetRequests.push({
             assetRequestId: randomUUID(),
             targetType: "component-field-image",
@@ -534,7 +551,7 @@ function normalizePageComposition({
       mobileItemVisibility,
       resolvedPreset?.responsiveLayouts?.mobile?.visibility?.items || {},
     );
-    if (section.aiDesign?.enabled && section.aiDesign?.allowSectionBackground !== false) {
+    if (usesSectionKeyVisualTarget(section)) {
       assetRequests.push({
         assetRequestId: randomUUID(),
         targetType: "section-key-visual",
