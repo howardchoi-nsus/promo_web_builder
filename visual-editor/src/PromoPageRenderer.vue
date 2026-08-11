@@ -39,6 +39,7 @@ let motionObserver = null;
 let itemResizeObserver = null;
 let activeDragCleanup = null;
 let activeResizeCleanup = null;
+let suppressedSelectionPointerId = null;
 let activeInteractionKind = "idle";
 let measurementFrame = 0;
 let rendererUnmounted = false;
@@ -792,6 +793,10 @@ function textLineClasses(entry) {
 
 function selectRendererItem(section, item, event = null) {
   if (!props.editable) return;
+  if (event?.type === "click" && event.pointerId === suppressedSelectionPointerId) {
+    suppressedSelectionPointerId = null;
+    return;
+  }
   const additive = Boolean(event?.ctrlKey || event?.metaKey || event?.shiftKey);
   const key = styleKey(section, item);
   const alreadyExclusive = props.selectedItemKey === key
@@ -811,6 +816,7 @@ function handleCtaDragStart(event) {
 }
 
 function startDrag(event, section, item) {
+  suppressedSelectionPointerId = null;
   if (!props.editable || item.isLocked || event.button !== 0
     || event.ctrlKey || event.metaKey || event.shiftKey
     || event.target.closest(".item-resize-handle")
@@ -820,6 +826,7 @@ function startDrag(event, section, item) {
   if (!container) return;
   activeResizeCleanup?.();
   activeDragCleanup?.();
+  suppressedSelectionPointerId = event.pointerId;
   selectRendererItem(section, item);
 
   const startX = event.clientX;
@@ -844,11 +851,13 @@ function startDrag(event, section, item) {
     if (!moved) {
       if (Math.hypot(deltaX, deltaY) < DRAG_ACTIVATION_DISTANCE_PX) return;
       if (moveEvent.cancelable) moveEvent.preventDefault();
-      try {
-        target.setPointerCapture(moveEvent.pointerId);
-      } catch {
-        end();
-        return;
+      if (!target.hasPointerCapture(moveEvent.pointerId)) {
+        try {
+          target.setPointerCapture(moveEvent.pointerId);
+        } catch {
+          end();
+          return;
+        }
       }
       rect = container.getBoundingClientRect();
       const itemRect = target.getBoundingClientRect();

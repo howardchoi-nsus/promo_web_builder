@@ -105,19 +105,24 @@ try {
   const adminEditorPage = await context.newPage();
   await adminEditorPage.goto(
     `${origin}/prototype/visual-editor.html?mode=admin-layout&templateId=visual-editor-preview-template`,
-    { waitUntil: "networkidle" },
+    { waitUntil: "domcontentloaded" },
   );
   await adminEditorPage.locator(".editor-workspace.is-builder-workspace.is-admin-layout-workspace").waitFor();
   assert.equal(await adminEditorPage.locator(".editor-shell--embedded").count(), 1);
   assert.equal(await adminEditorPage.locator(".shell-sidebar").count(), 0);
   assert.equal(await adminEditorPage.getByRole("button", { name: "초안 저장" }).count(), 1);
   assert.equal(await adminEditorPage.getByRole("button", { name: "저장 후 활성화" }).count(), 0);
-  assert.equal(await adminEditorPage.getByText("AI 다중 정렬", { exact: true }).count(), 1);
+  assert.equal(
+    await adminEditorPage.getByText("AI 다중 정렬", { exact: true }).count(),
+    0,
+    "Multi-layout controls must stay hidden until multiple components are selected",
+  );
   assert.equal(await adminEditorPage.locator(".section-property-accordion").count(), 1);
-  assert.equal(await adminEditorPage.locator(".property-panel .section-properties").count(), 0);
+  assert.equal(await adminEditorPage.locator(".property-panel").count(), 0);
   await adminEditorPage.close();
 
-  await page.goto(`${origin}/create-promo.html?mode=template`, { waitUntil: "networkidle" });
+  await page.goto(`${origin}/create-promo.html?mode=template`, { waitUntil: "domcontentloaded" });
+  await page.locator('[data-field-key="title"] input').waitFor();
   await page.locator('[data-field-key="title"] input').fill("Admin Layout Integration");
   await page.locator('[data-field-key="leadText"] input').fill("Admin layout integration lead");
   await page.locator('[data-field-key="promotionPurpose"] select').selectOption("이벤트");
@@ -147,12 +152,12 @@ try {
   assert.equal(await editorFrame.locator(".editor-shell--embedded").count(), 1);
   assert.equal(await editorFrame.locator(".shell-sidebar").count(), 0);
   assert.equal(await editorFrame.locator(".structure-panel .page-tree__section .section-composition-panel").count(), 1);
-  assert.equal(await editorFrame.locator(".property-panel .section-composition-panel").count(), 0);
+  assert.equal(await editorFrame.locator(".property-panel").count(), 0);
   assert.equal(await editorFrame.locator(".section-composition-request").count(), 1);
   const sectionTriggers = editorFrame.locator(".page-tree__section .page-tree__select");
   if (await sectionTriggers.count() > 1) await sectionTriggers.nth(1).click();
   assert.equal(await editorFrame.locator(".section-property-accordion").count(), 1);
-  assert.equal(await editorFrame.locator(".property-panel .section-properties").count(), 0);
+  assert.equal(await editorFrame.locator(".property-panel").count(), 0);
   const refreshedLayout = {
     ...adminLayout,
     sectionStyles: {

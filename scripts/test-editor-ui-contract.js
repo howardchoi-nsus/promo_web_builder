@@ -11,7 +11,7 @@ const structurePanel = read("visual-editor", "src", "platform", "editor-ui", "St
 const pageTree = read("visual-editor", "src", "platform", "editor-ui", "PageTree.vue");
 const previewPanel = read("visual-editor", "src", "platform", "editor-ui", "PreviewPanel.vue");
 const aiLayoutControls = read("visual-editor", "src", "platform", "editor-ui", "AiLayoutControls.vue");
-const propertyPanel = read("visual-editor", "src", "platform", "editor-ui", "PropertyPanel.vue");
+const componentInspector = read("visual-editor", "src", "platform", "editor-ui", "ComponentInspectorPopover.vue");
 
 assert.match(app, /import PreviewPanel/);
 assert.match(app, /<PreviewPanel/);
@@ -63,10 +63,15 @@ assert.doesNotMatch(app, /<section v-if="capabilities\.canRunMultiLayoutAi" clas
 assert.match(aiLayoutControls, /class="multi-layout-panel"/);
 assert.match(aiLayoutControls, /emit\('request-suggestion'/);
 assert.match(aiLayoutControls, /emit\('apply-suggestion'/);
-assert.match(app, /import PropertyPanel/);
-assert.match(app, /<PropertyPanel/);
+assert.match(app, /import ComponentInspectorPopover/);
+assert.match(app, /<ComponentInspectorPopover/);
 assert.doesNotMatch(app, /<aside class="property-panel"/);
-assert.match(propertyPanel, /<aside class="property-panel"/);
-assert.match(propertyPanel, /<slot name="ai-controls"/);
+assert.doesNotMatch(app, /<PropertyPanel/);
+assert.match(componentInspector, /class="component-inspector-popover"/);
+assert.match(componentInspector, /role="dialog"/);
+assert.match(componentInspector, /event\.key !== "Escape"/);
+assert.match(componentInspector, /event\.defaultPrevented/);
+assert.match(previewPanel, /"selection-rect-change"/);
+assert.match(previewPanel, /data-style-key/);
 
 console.log("Editor UI component contract test passed");

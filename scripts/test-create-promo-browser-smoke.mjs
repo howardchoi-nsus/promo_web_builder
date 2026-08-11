@@ -371,7 +371,7 @@ try {
       overflowY: styles.overflowY,
     };
   });
-  assert.match(createPromoWorkspaceStyles.gridTemplateAreas, /sections preview content/);
+  assert.match(createPromoWorkspaceStyles.gridTemplateAreas, /sections preview/);
   assert.match(createPromoWorkspaceStyles.overflowX, /^(auto|hidden)$/);
   assert.equal(createPromoWorkspaceStyles.overflowY, "hidden");
   assert.equal(
@@ -380,20 +380,11 @@ try {
     "Section rail shell must keep scrolling inside the Section list",
   );
   assert.equal(
-    await editorFrame.locator(".property-panel").evaluate((node) => getComputedStyle(node).overflowY),
-    "hidden",
-    "Property panel shell must keep scrolling inside the property form",
-  );
-  assert.equal(
     await editorFrame.locator(".section-list").evaluate((node) => getComputedStyle(node).overflowY),
     "auto",
     "Section list must scroll independently",
   );
-  assert.equal(
-    await editorFrame.locator(".property-form").evaluate((node) => getComputedStyle(node).overflowY),
-    "auto",
-    "Property form must scroll independently",
-  );
+  assert.equal(await editorFrame.locator(".property-panel").count(), 0, "The retired fixed property panel must not render");
   assert.equal(
     await editorFrame.locator(".preview-stage").evaluate((node) => getComputedStyle(node).overflowY),
     "auto",
@@ -443,10 +434,8 @@ try {
   await editorFrame.locator(".auto-register-message").waitFor({ timeout: 10_000 });
   sectionAiRunRequest = null;
   await editorFrame.locator(".page-tree__section .page-tree__select").filter({ hasText: "Feature Content" }).click();
-  const imageComponentTrigger = editorFrame.locator(".component-property-trigger").filter({ hasText: "프로모션 이미지" });
-  if (await imageComponentTrigger.getAttribute("aria-expanded") !== "true") {
-    await imageComponentTrigger.click();
-  }
+  await editorFrame.locator(".page-tree__component").filter({ hasText: "프로모션 이미지" }).locator(".page-tree__select").click();
+  await editorFrame.locator(".component-inspector-popover").waitFor();
   const itemAiAction = editorFrame.locator(".item-ai-generation-action");
   await itemAiAction.waitFor();
   assert.equal(await itemAiAction.isDisabled(), false, "Allowed image Item AI action should be enabled when the Section has content");

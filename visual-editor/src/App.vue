@@ -38,7 +38,7 @@ import StructurePanel from "./platform/editor-ui/StructurePanel.vue";
 import AiLayoutControls from "./platform/editor-ui/AiLayoutControls.vue";
 import SectionCompositionControls from "./platform/editor-ui/SectionCompositionControls.vue";
 import AiSectionCompositionPanel from "./platform/editor-ui/AiSectionCompositionPanel.vue";
-import PropertyPanel from "./platform/editor-ui/PropertyPanel.vue";
+import ComponentInspectorPopover from "./platform/editor-ui/ComponentInspectorPopover.vue";
 import ComponentTransitionControls from "./platform/editor-ui/ComponentTransitionControls.vue";
 import { createItemMotionBinding, createSectionMotionBinding, normalizeMotionSpec } from "./platform/editor-core/motion-spec.mjs";
 import {
@@ -64,8 +64,8 @@ const selectedSectionKey = ref("");
 const expandedSectionKey = ref("");
 const selectedItemKey = ref("");
 const selectedItemKeys = ref([]);
-const expandedComponentKey = ref("");
 const previewPanelRef = ref(null);
+const componentInspectorAnchor = ref(null);
 const viewport = ref("desktop");
 const previewGuideMode = ref("selection");
 const outputSaveError = ref("");
@@ -459,7 +459,6 @@ async function selectRendererItem(section, item, selection = {}) {
   } else {
     selectItem(section, item);
   }
-  expandedComponentKey.value = componentKey(section, item);
   await nextTick();
 }
 
@@ -476,7 +475,6 @@ async function selectSection(section) {
   expandedSectionKey.value = section.sectionKey;
   selectedItemKey.value = "";
   selectedItemKeys.value = [];
-  expandedComponentKey.value = "";
   multiLayoutSuggestion.value = null;
   multiLayoutError.value = "";
   await nextTick();
@@ -629,7 +627,6 @@ async function addComponent(componentOrKey, sectionKey = selectedSection.value?.
   }, { label: "컴포넌트 추가" })) return;
   const nextSection = sections.value.find((candidate) => candidate.sectionKey === sectionKey);
   selectItem(nextSection, nextSection?.items?.find((candidate) => candidate.itemKey === item.itemKey));
-  expandedComponentKey.value = `${sectionKey}.${item.itemKey}`;
   structureMessage.value = `${component.name} 컴포넌트를 추가했습니다.`;
 }
 
@@ -704,7 +701,6 @@ function toggleMultiItem(section, item) {
   else keys.add(item.itemKey);
   selectedItemKeys.value = [...keys];
   selectItem(section, item, { preserveMulti: true });
-  expandedComponentKey.value = componentKey(section, item);
   multiLayoutSuggestion.value = null;
   multiLayoutError.value = "";
 }
@@ -718,7 +714,6 @@ function clearMultiSelection() {
 function clearEditorSelection() {
   selectedItemKey.value = "";
   selectedItemKeys.value = [];
-  expandedComponentKey.value = "";
   multiLayoutSuggestion.value = null;
   multiLayoutError.value = "";
 }
@@ -1052,17 +1047,6 @@ async function applySectionComposition() {
   } finally {
     if (requestSequence === compositionRequestSequence) compositionApplying.value = false;
   }
-}
-
-function selectComponent(section, item) {
-  const key = componentKey(section, item);
-  selectItem(section, item);
-  expandedComponentKey.value = key;
-}
-
-function toggleComponentExpansion(section, item) {
-  const key = componentKey(section, item);
-  expandedComponentKey.value = expandedComponentKey.value === key ? "" : key;
 }
 
 function updateSelectedValue(value) {
@@ -1668,7 +1652,6 @@ async function loadEditor() {
     selectedSectionKey.value = sections.value[0]?.sectionKey || "";
     selectedItemKey.value = sections.value[0]?.items?.[0]?.itemKey || "";
     selectedItemKeys.value = selectedItemKey.value ? [selectedItemKey.value] : [];
-    expandedComponentKey.value = componentKey(sections.value[0], sections.value[0]?.items?.[0]);
     hydrateEditorCore();
   } catch (loadError) {
     error.value = loadError.message;
@@ -1725,7 +1708,6 @@ async function loadAiDocument() {
     selectedSectionKey.value = sections.value[0]?.sectionKey || "";
     selectedItemKey.value = sections.value[0]?.items?.[0]?.itemKey || "";
     selectedItemKeys.value = selectedItemKey.value ? [selectedItemKey.value] : [];
-    expandedComponentKey.value = componentKey(sections.value[0], sections.value[0]?.items?.[0]);
     hydrateEditorCore();
     refreshAiDocumentAssetsUntilSettled();
   } catch (loadError) {
@@ -1845,7 +1827,6 @@ function applyAiDocumentWorkingSnapshot(snapshot, { baseSnapshot, revision, dirt
   selectedSectionKey.value = nextSection?.sectionKey || "";
   selectedItemKey.value = nextItem?.itemKey || "";
   selectedItemKeys.value = nextItem?.itemKey ? [nextItem.itemKey] : [];
-  expandedComponentKey.value = componentKey(nextSection, nextItem);
   hydrateEditorCore({ resetHistory: false, dirty });
 }
 
@@ -2006,7 +1987,6 @@ async function loadSectionPresetLayout() {
     selectedSectionKey.value = section.sectionKey;
     selectedItemKey.value = section.items?.[0]?.itemKey || "";
     selectedItemKeys.value = selectedItemKey.value ? [selectedItemKey.value] : [];
-    expandedComponentKey.value = componentKey(section, section.items?.[0]);
     hydrateEditorCore();
   } catch (loadError) {
     error.value = loadError.message;
@@ -2096,7 +2076,6 @@ async function loadAdminLayout() {
     selectedSectionKey.value = sections.value[0]?.sectionKey || "";
     selectedItemKey.value = sections.value[0]?.items?.[0]?.itemKey || "";
     selectedItemKeys.value = selectedItemKey.value ? [selectedItemKey.value] : [];
-    expandedComponentKey.value = componentKey(sections.value[0], sections.value[0]?.items?.[0]);
     hydrateEditorCore();
   } catch (loadError) {
     error.value = loadError.message;
@@ -2158,7 +2137,6 @@ async function applyExternalSnapshot(snapshot) {
   if (incomingSnapshotRevision) lastExternalSnapshotRevision = incomingSnapshotRevision;
   const previousSectionKey = selectedSection.value?.sectionKey || selectedSectionKey.value;
   const previousItemKey = selectedItem.value?.itemKey || selectedItemKey.value;
-  const previousExpandedComponentKey = expandedComponentKey.value;
   applyingExternalSnapshot = true;
   const resetEditorHistory = !externalSnapshotReady.value;
   template.value = snapshot.content.formTemplate || null;
@@ -2177,15 +2155,6 @@ async function applyExternalSnapshot(snapshot) {
     : nextSelectedSection?.items?.[0]?.itemKey || "";
   selectedItemKeys.value = selectedItemKey.value ? [selectedItemKey.value] : [];
   multiLayoutSuggestion.value = null;
-  const selectedComponentKey = componentKey(
-    nextSelectedSection,
-    nextSelectedSection?.items?.find((item) => item.itemKey === selectedItemKey.value),
-  );
-  expandedComponentKey.value = sections.value.some((section) => (
-    (section.items || []).some((item) => componentKey(section, item) === previousExpandedComponentKey)
-  ))
-    ? previousExpandedComponentKey
-    : selectedComponentKey;
   externalSnapshotReady.value = true;
   hydrateEditorCore({ resetHistory: resetEditorHistory });
   loading.value = false;
@@ -2551,12 +2520,20 @@ onBeforeUnmount(() => {
         @reset-selected-item-offset="resetSelectedItemOffset"
         @enable-automatic-text-size="enableAutomaticTextSize"
         @enable-fixed-text-size="enableFixedTextSize"
+        @selection-rect-change="componentInspectorAnchor = $event"
       />
 
-      <PropertyPanel :selected-section="selectedSection">
-        <template #ai-controls>
+      <ComponentInspectorPopover
+        v-if="selectedItem && componentInspectorAnchor"
+        :anchor-rect="componentInspectorAnchor"
+        :title="selectedItemKeys.length > 1 ? `${selectedItemKeys.length}개 컴포넌트` : selectedItem.name"
+        :subtitle="selectedItemKeys.length > 1 ? '다중 정렬' : selectedItem.fieldKind"
+        :locked="selectedItemKeys.length <= 1 && selectedItem.isLocked"
+        @close="clearEditorSelection"
+      >
+        <div class="component-inspector-ai">
           <AiLayoutControls
-            v-if="capabilities.canRunMultiLayoutAi"
+            v-if="capabilities.canRunMultiLayoutAi && selectedItemKeys.length > 1"
             :selected-count="selectedItemKeys.length"
             :revision="multiLayoutRevision"
             :planning="multiLayoutPlanning"
@@ -2570,67 +2547,26 @@ onBeforeUnmount(() => {
             @apply-suggestion="applyMultiLayoutSuggestion"
             @dismiss-suggestion="multiLayoutSuggestion = null"
           />
-        </template>
+        </div>
 
-          <div class="component-property-list">
-            <section
-              v-for="item in selectedSection.items || []"
-              :key="item.itemKey"
-              class="component-property-accordion"
-              :class="{ open: expandedComponentKey === componentKey(selectedSection, item) }"
-            >
-              <div class="component-property-header">
-                <label v-if="capabilities.canRunMultiLayoutAi" class="component-multi-select" :title="item.isLocked ? '잠긴 컴포넌트는 다중 정렬할 수 없습니다.' : '다중 정렬 대상 선택'">
-                  <input
-                    type="checkbox"
-                    :checked="multiItemSelected(item)"
-                    :disabled="item.isLocked"
-                    :aria-label="`${item.name} 다중 정렬 대상 선택`"
-                    @change="toggleMultiItem(selectedSection, item)"
-                  />
-                </label>
-                <button
-                  type="button"
-                  class="component-property-trigger"
-                  :aria-expanded="expandedComponentKey === componentKey(selectedSection, item)"
-                  @click="selectComponent(selectedSection, item)"
-                >
-                  <span>{{ item.name }}</span>
-                  <small>{{ item.fieldKind }}</small>
-                </button>
-                <button
-                  type="button"
-                  class="component-property-toggle"
-                  :aria-label="`${item.name} 속성 ${expandedComponentKey === componentKey(selectedSection, item) ? '닫기' : '열기'}`"
-                  :aria-expanded="expandedComponentKey === componentKey(selectedSection, item)"
-                  @click="toggleComponentExpansion(selectedSection, item)"
-                >
-                  <i aria-hidden="true"></i>
-                </button>
-                <label
-                  v-if="!item.isRequired && !item.isLocked"
-                  class="app-switch app-switch--small component-visibility-toggle"
-                  :title="itemVisible(selectedSection, item) ? '웹 출력에 노출 중' : '웹 출력에서 숨김'"
-                  @click.stop
-                >
-                  <input
-                    class="app-switch__input"
-                    type="checkbox"
-                    role="switch"
-                    :checked="itemVisible(selectedSection, item)"
-                    :aria-label="`${item.name} 노출`"
-                    @change="setItemVisible(selectedSection, item, $event.target.checked)"
-                  />
-                  <span class="app-switch__track" aria-hidden="true"></span>
-                  <span class="app-switch__label">노출</span>
-                </label>
-              </div>
-              <div class="component-property-body">
-                <div>
-                  <div
-                    v-if="selectedItem && selectedItem.itemKey === item.itemKey"
-                    class="component-property-content"
-                  >
+          <div v-if="selectedItemKeys.length <= 1" class="component-property-list">
+            <div class="component-property-content">
+              <label
+                v-if="!selectedItem.isRequired && !selectedItem.isLocked"
+                class="app-switch app-switch--small component-visibility-toggle"
+                :title="itemVisible(selectedSection, selectedItem) ? '웹 출력에 노출 중' : '웹 출력에서 숨김'"
+              >
+                <input
+                  class="app-switch__input"
+                  type="checkbox"
+                  role="switch"
+                  :checked="itemVisible(selectedSection, selectedItem)"
+                  :aria-label="`${selectedItem.name} 노출`"
+                  @change="setItemVisible(selectedSection, selectedItem, $event.target.checked)"
+                />
+                <span class="app-switch__track" aria-hidden="true"></span>
+                <span class="app-switch__label">노출</span>
+              </label>
           <div v-if="componentFields(selectedItem).length > 1" class="component-field-property-list">
             <section v-for="field in componentFields(selectedItem)" :key="field.fieldKey" class="component-field-property">
               <header>
@@ -2971,20 +2907,16 @@ onBeforeUnmount(() => {
               자동 배치로 복원
             </button>
           </section>
-                  </div>
-                </div>
-              </div>
-            </section>
-            <span v-if="!selectedSection.items?.length" class="component-property-empty">등록된 컴포넌트 없음</span>
+            </div>
           </div>
         <ComponentTransitionControls
-          v-if="selectedItem"
+          v-if="selectedItem && selectedItemKeys.length <= 1"
           :binding="selectedItemMotion"
           :disabled="selectedItem.isLocked"
           @update="updateItemMotion"
           @replay="replayMotion"
         />
-      </PropertyPanel>
+      </ComponentInspectorPopover>
     </section>
       </div>
     </div>
