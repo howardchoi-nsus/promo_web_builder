@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from "vue";
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import PromoPageRenderer from "../../PromoPageRenderer.vue";
 import EditorPreviewControls from "./EditorPreviewControls.vue";
 import TextEditorControls from "./TextEditorControls.vue";
@@ -64,13 +64,57 @@ const emit = defineEmits([
   "reset-selected-item-offset",
   "enable-automatic-text-size",
   "enable-fixed-text-size",
+  "selection-rect-change",
 ]);
 
 const previewStageRef = ref(null);
 const selectedTextLines = ref(null);
+let selectionFrame = 0;
+
+function updateSelectionRect() {
+  cancelAnimationFrame(selectionFrame);
+  selectionFrame = requestAnimationFrame(() => {
+    const stage = previewStageRef.value;
+    if (!stage || !props.selectedStyleKey) {
+      emit("selection-rect-change", null);
+      return;
+    }
+    const target = stage.querySelector(`[data-style-key="${CSS.escape(props.selectedStyleKey)}"]`);
+    if (!target) {
+      emit("selection-rect-change", null);
+      return;
+    }
+    const rect = target.getBoundingClientRect();
+    emit("selection-rect-change", {
+      top: rect.top,
+      right: rect.right,
+      bottom: rect.bottom,
+      left: rect.left,
+      width: rect.width,
+      height: rect.height,
+    });
+  });
+}
 
 watch(() => props.selectedStyleKey, () => {
   selectedTextLines.value = null;
+  nextTick(updateSelectionRect);
+});
+
+watch(() => [props.viewport, props.rendererSnapshot, props.selectedItemStyle], () => {
+  nextTick(updateSelectionRect);
+}, { deep: true });
+
+onMounted(() => {
+  previewStageRef.value?.addEventListener("scroll", updateSelectionRect, { passive: true });
+  window.addEventListener("resize", updateSelectionRect, { passive: true });
+  updateSelectionRect();
+});
+
+onBeforeUnmount(() => {
+  cancelAnimationFrame(selectionFrame);
+  previewStageRef.value?.removeEventListener("scroll", updateSelectionRect);
+  window.removeEventListener("resize", updateSelectionRect);
 });
 
 function updateSelectedTextLines(section, item, selection) {

@@ -120,7 +120,7 @@ page.on("pageerror", (error) => pageErrors.push(error.message));
 try {
   await page.goto(
     `${origin}/prototype/visual-editor.html?mode=section-preset&sectionId=${sectionId}&layoutKey=standard-header`,
-    { waitUntil: "networkidle" },
+    { waitUntil: "domcontentloaded" },
   );
   await page.locator(".editor-workspace.is-section-preset-workspace").waitFor();
   assert.equal(await page.locator(".rendered-item").count(), 2);
@@ -153,10 +153,11 @@ try {
   await outputClosed;
   assert.equal(page.url(), livePreviewUrl);
   assert.equal(await page.locator(".editor-workspace.is-section-preset-workspace").count(), 1);
-  await page.locator(".property-panel .component-property-trigger").filter({ hasText: "Logo" }).click();
+  await page.locator(".page-tree__component").filter({ hasText: "Logo" }).locator(".page-tree__select").click();
+  await page.locator(".component-inspector-popover").waitFor();
   await page.getByLabel("텍스트", { exact: true }).fill("Saved header text");
   await page.getByRole("button", { name: "Mobile" }).click();
-  await page.locator(".property-panel .component-property-trigger").filter({ hasText: "Badges" }).click();
+  await page.locator(".page-tree__component").filter({ hasText: "Badges" }).locator(".page-tree__select").click();
   await page.getByLabel("URL 또는 이미지 설명", { exact: true }).fill("https://cdn.example.com/saved-badge.png");
   const visibility = page.getByRole("switch", { name: "Badges 노출" });
   assert.equal(await visibility.isChecked(), false);
@@ -172,15 +173,18 @@ try {
   assert.equal(savedBody.layoutSnapshot.viewports.desktop.items.logo.yPx, 16);
   assert.equal(savedBody.layoutSnapshot.content.logo, "Saved header text");
   assert.equal(savedBody.layoutSnapshot.content.badges.value, "https://cdn.example.com/saved-badge.png");
-  await page.reload({ waitUntil: "networkidle" });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.locator(".editor-workspace.is-section-preset-workspace").waitFor();
   await page.getByRole("button", { name: "Mobile" }).click();
-  await page.locator(".property-panel .component-property-trigger").filter({ hasText: "Badges" }).click();
+  await page.locator(".page-tree__component").filter({ hasText: "Badges" }).locator(".page-tree__select").click();
+  await page.locator(".component-inspector-popover").waitFor();
   assert.equal(await page.getByRole("switch", { name: "Badges 노출" }).isChecked(), true);
   assert.equal(await page.getByLabel("URL 또는 이미지 설명", { exact: true }).inputValue(), "https://cdn.example.com/saved-badge.png");
-  await page.locator(".property-panel .component-property-trigger").filter({ hasText: "Logo" }).click();
+  await page.locator(".page-tree__component").filter({ hasText: "Logo" }).locator(".page-tree__select").click();
   assert.equal(await page.getByLabel("텍스트", { exact: true }).inputValue(), "Saved header text");
   sectionStatus = "active";
-  await page.reload({ waitUntil: "networkidle" });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.locator(".editor-workspace.is-section-preset-workspace").waitFor();
   assert.equal(await page.getByRole("button", { name: "Preset 저장", exact: true }).isDisabled(), true);
   assert.deepEqual(pageErrors, []);
   console.log("Section layout preset editor browser test passed");
