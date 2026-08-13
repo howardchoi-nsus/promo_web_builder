@@ -370,6 +370,11 @@ onMounted(async () => {
   <main class="ai-builder-shell">
     <BuilderModeSelector v-if="selectedMode !== 'ai'" :ai-enabled="capabilities.aiMode" @select="selectMode" />
     <template v-else>
+      <div v-if="store.error" class="ai-builder-error" role="alert" aria-live="assertive">
+        <strong>{{ store.error.code }}</strong>
+        <span>{{ store.error.message }}</span>
+        <button type="button" @click="clearBuilderError(store)">닫기</button>
+      </div>
       <div v-if="store.warning" class="ai-builder-warning" role="status">
         <strong>{{ store.warning.code }}</strong>
         <span>{{ store.warning.message }}</span>

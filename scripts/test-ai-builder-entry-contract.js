@@ -19,5 +19,9 @@ assert.match(bootstrap, /visual-editor-assets\/ai-builder\.js/);
 assert.match(vite, /"ai-builder": resolve/);
 assert.match(app, /BuilderModeSelector/);
 assert.match(app, /PromoPageRenderer|CompositionReview/);
+assert.match(app, /v-if="store\.error"/);
+assert.match(app, /role="alert"/);
+assert.match(app, /store\.error\.code/);
+assert.match(app, /store\.error\.message/);
 
 console.log("AI Builder entry contract test passed");
