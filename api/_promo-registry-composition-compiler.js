@@ -182,7 +182,7 @@ async function compileRegistryComposition({
   const tokenSet = (candidates.tokenSets || []).find(
     (candidate) => candidate.tokenSetVersionId === spec.designTokenSetVersionId,
   ) || null;
-  if ((candidates.tokenSets || []).length && !tokenSet) {
+  if (spec.designTokenSetVersionId && !tokenSet) {
     throw compilerError("TOKEN_SET_VERSION_MISMATCH", "Design Token Set changed before compilation");
   }
   const tokenValues = tokenSet?.runtimeValues || {};

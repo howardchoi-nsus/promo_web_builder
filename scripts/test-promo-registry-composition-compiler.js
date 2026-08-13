@@ -215,6 +215,13 @@ async function compile(candidateSet = candidates) {
       && error.missingTokenRoles.includes("shadow"),
   );
 
+  const stalePinnedToken = JSON.parse(JSON.stringify(candidates));
+  stalePinnedToken.tokenSets = [];
+  await assert.rejects(
+    () => compile(stalePinnedToken),
+    (error) => error.code === "TOKEN_SET_VERSION_MISMATCH",
+  );
+
   const validRows = [{
     resource_id: "resource-1", resource_key: "common-terms", resource_type: "terms",
     resource_name: "Common Terms", resource_status: "active",
