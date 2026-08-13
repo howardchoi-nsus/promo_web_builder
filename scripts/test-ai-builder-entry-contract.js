@@ -23,5 +23,8 @@ assert.match(app, /v-if="store\.error"/);
 assert.match(app, /role="alert"/);
 assert.match(app, /store\.error\.code/);
 assert.match(app, /store\.error\.message/);
+assert.match(app, /if \(response\.proposal\.status === "ready"\) return response\.proposal;/);
+assert.match(app, /if \(\["queued", "processing"\]\.includes\(response\.proposal\.status\)\) \{[\s\S]*?store\.stage = response\.proposal\.status;[\s\S]*?\}/);
+assert.match(app, /proposal\.contractVersion === 3[\s\S]*store\.stage = "review_required"/);
 
 console.log("AI Builder entry contract test passed");

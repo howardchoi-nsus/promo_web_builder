@@ -91,8 +91,12 @@ async function pollProposal(proposalId) {
   for (let count = 0; count < 120; count += 1) {
     const response = await loadCompositionProposal(proposalId);
     store.proposal = response.proposal;
-    store.stage = response.proposal.status;
     if (response.proposal.status === "ready") return response.proposal;
+    // `ready` is an internal queue state. Rendering it as a UI stage briefly
+    // remounts CompositionProgress before the caller selects review/apply.
+    if (["queued", "processing"].includes(response.proposal.status)) {
+      store.stage = response.proposal.status;
+    }
     if (["failed", "cancelled", "superseded"].includes(response.proposal.status)) {
       throw Object.assign(new Error(response.proposal.errorMessage || "구성 생성에 실패했습니다."), {
         code: response.proposal.errorCode || "COMPOSITION_FAILED",
@@ -174,8 +178,11 @@ async function compose() {
       documentRevision: store.documentRevision,
     });
     const proposal = await pollProposal(queued.proposal.id);
+    if (proposal.contractVersion === 3) {
+      store.stage = "review_required";
+      return;
+    }
     store.stage = proposal.autoApplicable ? "applying" : "review_required";
-    if (proposal.contractVersion === 3) return;
     await applyReadyProposal(proposal);
   } catch (error) {
     setBuilderError(store, error);
