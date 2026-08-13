@@ -322,7 +322,15 @@ const retryCandidates = {
 let generationAttempts = 0;
 const retryResult = generateValidatedComposition({
   candidates: retryCandidates,
-  promptConfig: { renderedPrompt: "Build the promotion", model: "test-model" },
+  promptConfig: {
+    renderedPrompt: "Build the promotion",
+    model: "test-model",
+    promptLayers: {
+      repairPrompts: {
+        candidateScope: "Use only templateId {{templateId}}",
+      },
+    },
+  },
   generate: async ({ schema, promptConfig }) => {
     generationAttempts += 1;
     if (generationAttempts === 1) {
@@ -335,6 +343,7 @@ const retryResult = generateValidatedComposition({
     }
     assert.deepEqual(schema.properties.templateId.enum, ["template-1"]);
     assert.match(promptConfig.renderedPrompt, /Use only templateId template-1/);
+    assert.match(promptConfig.renderedPromptHash, /^[0-9a-f]{64}$/);
     return { result };
   },
 });

@@ -16,6 +16,26 @@ global.fetch = async () => ({
 
 const handler = require("../api/prompt-template-translate");
 
+const promptSql = async () => [{
+  id: "00000000-0000-0000-0000-000000000056",
+  type: "admin_prompt_translation",
+  name: "Admin Prompt Translation",
+  body: "Translate exactly:\n{{sourcePrompt}}",
+  status: "active",
+  version: 1,
+  required_variables: ["sourcePrompt"],
+  optional_variables: [],
+  provider: "openai",
+  model: "gpt-4.1-mini",
+  temperature: 0,
+  max_tokens: 16000,
+  response_format: "text",
+  model_options: {
+    runtimeConfig: { timeoutMs: 60000, maxAttempts: 1, retryBaseMs: 0, retryMaxMs: 0 },
+    promptLayers: { schemaVersion: 1 },
+  },
+}];
+
 function responseRecorder() {
   return {
     statusCode: 200,
@@ -39,6 +59,7 @@ function responseRecorder() {
   const success = responseRecorder();
   await handler({
     method: "POST",
+    promptSql,
     headers: { origin: "https://promo.test", host: "promo.test" },
     body: {
       text: "Section: {{sectionName}}\nContent: {{contentJson}}",
@@ -54,6 +75,7 @@ function responseRecorder() {
   const mismatch = responseRecorder();
   await handler({
     method: "POST",
+    promptSql,
     headers: { origin: "https://promo.test", host: "promo.test" },
     body: {
       text: "Section: {{sectionName}}",

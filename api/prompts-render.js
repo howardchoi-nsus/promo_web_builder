@@ -1,15 +1,5 @@
-const {
-  ensureDefaultPromptTemplates,
-  getSql,
-  parseBody,
-  renderPrompt,
-  sha256,
-  toPromptTemplate,
-  unresolvedVariables,
-  validatePromptExecutionVariables,
-  validatePromptTemplateContract,
-} = require("./_prompt-template-store");
-const { fitFinalDesignPromptVariables } = require("./_final-design-prompt-budget");
+const { getSql, parseBody } = require("./_prompt-template-store");
+const { createPromptExecutionSnapshot } = require("./_prompt-execution-snapshot");
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
@@ -23,100 +13,36 @@ module.exports = async function handler(req, res) {
     const variables = body.variables && typeof body.variables === "object" ? body.variables : {};
     if (!type) return res.status(400).json({ error: "type is required" });
 
-    const sql = getSql();
-    await ensureDefaultPromptTemplates(sql);
-    const rows = await sql`
-      select
-        id::text,
-        type,
-        name,
-        body,
-        status,
-        version,
-        required_variables,
-        optional_variables,
-        provider,
-        model,
-        temperature,
-        max_tokens,
-        response_format,
-        model_options,
-        change_note,
-        archived_at,
-        created_at,
-        updated_at
-      from prompt_templates
-      where type = ${type}
-        and status = 'active'
-      limit 1
-    `;
-
-    if (!rows.length) return res.status(404).json({ error: "Active prompt template not found", type });
-
-    const prompt = toPromptTemplate(rows[0]);
-    validatePromptTemplateContract(prompt.type, prompt);
-    validatePromptExecutionVariables(prompt.type, variables);
-    const missingRequired = prompt.requiredVariables.filter((key) => {
-      const value = variables[key];
-      return value === null || value === undefined || String(value).trim() === "";
-    });
-    if (missingRequired.length) {
-      return res.status(400).json({
-        error: "Required prompt variables are missing",
-        missingVariables: missingRequired,
-      });
-    }
-
-    const fitted = type === "final_design"
-      ? fitFinalDesignPromptVariables(prompt.body, variables, renderPrompt)
-      : { variables, renderedPrompt: renderPrompt(prompt.body, variables), lengthGuard: null };
-    const renderedPrompt = fitted.renderedPrompt;
-    const unresolved = unresolvedVariables(renderedPrompt);
-    if (unresolved.length) {
-      return res.status(400).json({
-        error: "Rendered prompt contains unresolved variables",
-        unresolvedVariables: unresolved,
-      });
-    }
-
-    const renderedPromptHash = sha256(renderedPrompt);
-    const variableHash = sha256(JSON.stringify(fitted.variables));
+    const snapshot = await createPromptExecutionSnapshot(getSql(), type, variables);
+    const prompt = snapshot.promptConfig;
 
     return res.status(200).json({
       ok: true,
-      promptId: prompt.id,
-      promptType: prompt.type,
-      promptName: prompt.name,
-      promptVersion: prompt.version,
-      promptStatus: prompt.status,
+      promptId: prompt.promptId,
+      promptType: prompt.promptType,
+      promptName: prompt.promptName,
+      promptVersion: prompt.promptVersion,
+      promptStatus: "active",
       provider: prompt.provider,
       model: prompt.model,
-      modelOptions: {
-        ...(prompt.modelOptions || {}),
-        temperature: prompt.temperature,
-        maxTokens: prompt.maxTokens,
-        responseFormat: prompt.responseFormat,
-      },
-      renderedPrompt,
-      renderedPromptHash,
-      variableHash,
+      modelOptions: prompt.modelOptions,
+      renderedPrompt: prompt.renderedPrompt,
+      renderedPromptHash: prompt.renderedPromptHash,
+      variableHash: prompt.variableHash,
+      promptLayerSources: prompt.promptLayerSources || [],
       promptMeta: {
-        id: prompt.id,
-        type: prompt.type,
-        name: prompt.name,
-        version: prompt.version,
-        status: prompt.status,
+        id: prompt.promptId,
+        type: prompt.promptType,
+        name: prompt.promptName,
+        version: prompt.promptVersion,
+        status: "active",
         provider: prompt.provider,
         model: prompt.model,
-        modelOptions: {
-          ...(prompt.modelOptions || {}),
-          temperature: prompt.temperature,
-          maxTokens: prompt.maxTokens,
-          responseFormat: prompt.responseFormat,
-        },
-        renderedPromptHash,
-        variableHash,
-        ...(fitted.lengthGuard ? { lengthGuard: fitted.lengthGuard } : {}),
+        modelOptions: prompt.modelOptions,
+        renderedPromptHash: prompt.renderedPromptHash,
+        variableHash: prompt.variableHash,
+        promptLayerSources: prompt.promptLayerSources || [],
+        ...(prompt.lengthGuard ? { lengthGuard: prompt.lengthGuard } : {}),
       },
     });
   } catch (error) {

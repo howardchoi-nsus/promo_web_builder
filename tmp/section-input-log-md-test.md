@@ -10,10 +10,6 @@ selectedMd: "together.ai"
 
 # Promotion Input Log MD
 
-This document is the primary content and page-composition contract for integrated brief generation.
-Use the interpreted sections near the top as the source of truth. The Raw Payload Snapshot is for debugging only.
-Template defaults are fallback only. The final page structure comes from Page Composition, especially section order, visibility, fixed position, and item visibility.
-
 ## Log Summary
 
 - Run Key: promo-030
@@ -47,8 +43,6 @@ Template defaults are fallback only. The final page structure comes from Page Co
 - User Disposition / Visual Mood: unknown
 - Design Implication: unknown
 - Avoid: unknown
-- Market names, flags, maps, landmarks, and stereotypes must not be forced into visible UI copy unless they are explicitly supplied as user-facing promotion content.
-
 ## Promotion Content Contract
 
 - Title: GGPoker Welcome Bonus
@@ -59,11 +53,7 @@ Template defaults are fallback only. The final page structure comes from Page Co
 - CTA Link: https://example.com
 - Alpha / Compliance Text: unknown
 - Terms / Legal Text: Terms and conditions apply.
-- Visible UI copy should come from Section Content Mapping first. Promotion metadata is fallback only.
-
 ## Page Composition
-
-Page Composition is the final structure contract for the generated page. Use `sectionId`, `order`, and `visible` for validation and mapping; `displayName` is descriptive and may change.
 
 ```json
 [
@@ -318,8 +308,6 @@ Page Composition is the final structure contract for the generated page. Use `se
 ```
 
 ## Raw Payload Snapshot
-
-Raw values below are for debugging and traceability. Do not override Page Composition, Promotion Strategy, Market / Region Context, or Promotion Content Contract with raw fallback values unless the interpreted sections are missing.
 
 ### Promo
 

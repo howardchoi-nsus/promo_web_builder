@@ -173,6 +173,18 @@
   margin-top: min(12vh, 96px);
   text-align: center;
 }
+.ai-execution-indicator { display: grid; gap: 12px; margin-top: 18px; }
+.ai-execution-indicator__message { color: var(--ai-builder-ink, #111827); font-size: 15px; animation: ai-execution-pulse 1.15s ease-in-out infinite; }
+.ai-execution-indicator__model { display: inline-flex; align-items: center; gap: 10px; width: fit-content; padding: 9px 12px; border: 1px solid #d9dee8; border-radius: 12px; background: #f8fafc; }
+.ai-execution-indicator__model > span:last-child { display: grid; gap: 2px; text-align: left; }
+.ai-execution-indicator__model small { color: #667085; font-size: 10px; }
+.ai-execution-indicator__model b { color: #1d2939; font-size: 12px; }
+.ai-execution-indicator__icon { display: grid; width: 30px; height: 30px; place-items: center; border-radius: 9px; background: #344054; color: #fff; font-size: 10px; font-weight: 850; letter-spacing: -.02em; }
+.ai-execution-indicator__icon[data-provider="openai"] { background: #101828; }
+.ai-execution-indicator__icon[data-provider="google"] { background: linear-gradient(135deg, #4285f4 0 50%, #34a853 50%); }
+.ai-execution-indicator__icon[data-provider="anthropic"] { background: #cc785c; }
+.ai-execution-indicator__model--pending { opacity: .68; }
+@keyframes ai-execution-pulse { 0%, 100% { opacity: .42; } 50% { opacity: 1; } }
 
 .ai-spinner {
   display: inline-block;
@@ -260,4 +272,5 @@
 
 @media (prefers-reduced-motion: reduce) {
   .ai-spinner { animation-duration: 2s; }
+  .ai-execution-indicator__message { animation: none; opacity: 1; }
 }

@@ -36,6 +36,7 @@
     "test:section-ai-design-contract": "node scripts/test-section-ai-design-contract.js",
     "test:section-ai-provider-contract": "node scripts/test-section-ai-provider-contract.js",
     "test:prompt-template-groups": "node scripts/test-prompt-template-groups.mjs",
+    "test:no-hardcoded-runtime-prompts": "node scripts/test-no-hardcoded-runtime-prompts.js",
     "test:admin-prompt-grouping-browser": "node scripts/test-admin-prompt-grouping-browser.mjs",
     "inspect:component-cutover": "node scripts/inspect-item-component-cutover.js",
     "design-md:dry-run": "node scripts/import-design-md-docs.js",

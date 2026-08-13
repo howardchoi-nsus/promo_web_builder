@@ -6,9 +6,38 @@ const {
   validateControlPlaneConfig,
   validateRequestedImageResolution,
 } = require("../api/_section-ai-control-plane");
-const { defaultPromptControlPlane } = require("../api/_prompt-template-store");
-
-const defaults = defaultPromptControlPlane("section_background_image");
+const defaults = {
+  executionSnapshotVersion: 3,
+  policySchemaVersion: 1,
+  harnessConfig: {},
+  runtimeConfig: { timeoutMs: 240000, maxAttempts: 1, retryBaseMs: 0, retryMaxMs: 0 },
+  modelCapabilitySnapshot: {},
+  safetyContract: {},
+  generationPolicy: {
+    requestedTier: "2K",
+    aspectRatioStrategy: "fixed",
+    fixedAspectRatio: "16:9",
+    fallbackAspectRatio: "16:9",
+    quality: "medium",
+    outputMimeType: "image/jpeg",
+    backgroundColorStrategy: "section",
+    subjectScale: { minimumPercent: 55, maximumPercent: 75 },
+  },
+  renderPolicy: {},
+  validationPolicy: {
+    rejectUnreadableMetadata: true,
+    rejectMimeMismatch: true,
+    rejectLowResolution: true,
+    resolutionRules: {
+      "1K": { minimumLandscapeWidth: 1024, minimumPortraitHeight: 1024, minimumSquareSide: 1024 },
+      "2K": { minimumLandscapeWidth: 2048, minimumPortraitHeight: 2048, minimumSquareSide: 2048 },
+      "4K": { minimumLandscapeWidth: 3840, minimumPortraitHeight: 3840, minimumSquareSide: 3840 },
+    },
+    aspectRatioTolerancePercent: 8,
+    minimumByteLength: 1024,
+    edgeFrameDetection: { enabled: false },
+  },
+};
 const config = normalizeControlPlanePromptConfig("section_background_image", {
   snapshotVersion: 3,
   modelOptions: defaults,

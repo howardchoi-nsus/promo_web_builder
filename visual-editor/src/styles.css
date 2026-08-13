@@ -115,7 +115,12 @@ button, a { letter-spacing: 0; }
   background: var(--app-panel);
   box-shadow: 0 18px 48px color-mix(in srgb, var(--app-ink) 24%, transparent);
   flex-direction: column;
+  transform-origin: top left;
+  animation: component-inspector-enter 140ms ease-out;
 }
+.component-inspector-popover[data-placement="sheet"] { border-radius: 16px 16px 12px 12px; transform-origin: bottom center; }
+@keyframes component-inspector-enter { from { opacity: 0; transform: translateY(4px) scale(.99); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .component-inspector-popover { animation: none; } }
 .component-inspector-popover__header {
   display: flex;
   align-items: flex-start;

@@ -2529,6 +2529,7 @@ onBeforeUnmount(() => {
         :title="selectedItemKeys.length > 1 ? `${selectedItemKeys.length}개 컴포넌트` : selectedItem.name"
         :subtitle="selectedItemKeys.length > 1 ? '다중 정렬' : selectedItem.fieldKind"
         :locked="selectedItemKeys.length <= 1 && selectedItem.isLocked"
+        :anchor-key="selectedStyleKey"
         @close="clearEditorSelection"
       >
         <div class="component-inspector-ai">

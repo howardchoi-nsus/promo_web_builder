@@ -3,6 +3,8 @@ const {
   buildImageHarnessPrompt,
   imageMetadata,
   normalizeControlPlanePromptConfig,
+  resolveOpenAiImageSize,
+  validateControlPlaneConfig,
   validateRequestedImageResolution,
 } = require("./_section-ai-control-plane");
 
@@ -216,32 +218,25 @@ function promptPlaceholders(value) {
     .sort();
 }
 
-async function generatePromptKoreanTranslation({ text, signal }) {
+async function generatePromptKoreanTranslation({ text, promptConfig, signal }) {
   const source = String(text || "").trim();
   if (!source) return { translation: "", provider: null, usage: {} };
-  const model = String(
-    process.env.ADMIN_PROMPT_TRANSLATION_MODEL
-      || process.env.SECTION_LAYOUT_MODEL
-      || "gpt-4.1-mini"
-  ).trim();
+  const model = String(promptConfig?.model || "").trim();
+  const instruction = String(promptConfig?.renderedPrompt || "").trim();
+  if (!model || !instruction) {
+    throw Object.assign(new Error("Active admin_prompt_translation settings are required"), {
+      code: "PROMPT_CONFIGURATION_REQUIRED",
+      statusCode: 409,
+    });
+  }
   const startedAt = Date.now();
-  const instruction = [
-    "Translate the following AI prompt from English into clear Korean for an administrator's read-only reference.",
-    "Preserve line breaks, list structure, JSON, Markdown, punctuation, identifiers, model names, URLs, and every {{placeholder}} exactly.",
-    "Do not add explanations, headings, code fences, summaries, or omitted-content markers.",
-    "Return only the Korean translation.",
-    "",
-    "<prompt>",
-    source,
-    "</prompt>",
-  ].join("\n");
   const { payload, requestId } = await requestJson("https://api.openai.com/v1/responses", {
     model,
     store: false,
     input: instruction,
-    temperature: 0,
-    max_output_tokens: 16000,
-  }, openAiHeaders(), signal, 60000);
+    ...(promptConfig.temperature === null ? {} : { temperature: promptConfig.temperature }),
+    ...(promptConfig.maxTokens === null ? {} : { max_output_tokens: promptConfig.maxTokens }),
+  }, openAiHeaders(), signal, promptConfig.runtimeConfig?.timeoutMs);
   const translation = responseOutputText(payload).trim();
   if (!translation) {
     throw Object.assign(new Error("Prompt translation returned no output"), { code: "EMPTY_PROMPT_TRANSLATION" });
@@ -263,22 +258,6 @@ async function generatePromptKoreanTranslation({ text, signal }) {
   };
 }
 
-function imagePromptForSafeArea(
-  prompt,
-  safeArea,
-  backgroundColor = "#f5f7fb",
-  targetType = "section-background",
-  aspectRatio = "16:9"
-) {
-  return buildImageHarnessPrompt({
-    prompt,
-    safeArea,
-    backgroundColor,
-    targetType,
-    aspectRatio: normalizedImageAspectRatio(aspectRatio),
-  });
-}
-
 function normalizedImageAspectRatio(value) {
   const candidate = String(value || "").trim();
   if (["1:1", "4:3", "3:4", "16:9", "9:16"].includes(candidate)) return candidate;
@@ -290,13 +269,6 @@ function normalizedImageAspectRatio(value) {
   if (ratio < 0.65) return "9:16";
   if (ratio < 0.9) return "3:4";
   return "1:1";
-}
-
-function openAiImageSize(aspectRatio) {
-  const ratio = normalizedImageAspectRatio(aspectRatio);
-  if (ratio === "1:1") return "1024x1024";
-  if (ratio === "3:4" || ratio === "9:16") return "1024x1536";
-  return "1536x1024";
 }
 
 function geminiImageDimensions(imageSize, aspectRatio) {
@@ -311,10 +283,11 @@ function geminiImageDimensions(imageSize, aspectRatio) {
 
 function normalizedGeminiImageSize(value) {
   const imageSize = String(value || "").trim().toUpperCase();
-  return ["1K", "2K", "4K"].includes(imageSize) ? imageSize : "2K";
+  return ["1K", "2K", "4K"].includes(imageSize) ? imageSize : "";
 }
 
 function plannerRequestConfig(type, promptConfig = {}) {
+  validateControlPlaneConfig(type, promptConfig);
   const config = normalizeControlPlanePromptConfig(type, promptConfig);
   return {
     config,
@@ -328,16 +301,8 @@ function plannerRequestConfig(type, promptConfig = {}) {
 
 async function generateSectionDesignPlan({ section, sectionInputs, constraints, tokenSet, requestMode = "full", promptConfig, signal }) {
   const execution = plannerRequestConfig("section_layout_planner", promptConfig);
-  const model = promptConfig?.model || process.env.SECTION_LAYOUT_MODEL || "gpt-4.1-mini";
-  const prompt = promptConfig?.renderedPrompt || [
-    "Plan one promotional web section using only the supplied component instances, layout regions, style slots and promo tokens.",
-    "Never invent item keys, regions, slots, tokens, CSS, selectors, HTML, or text rendered inside images.",
-    `Mode: ${requestMode}`,
-    `Section: ${JSON.stringify(section)}`,
-    `Content: ${JSON.stringify(sectionInputs)}`,
-    `Constraints: ${JSON.stringify(constraints)}`,
-    `Token set: ${JSON.stringify(tokenSet)}`,
-  ].join("\n");
+  const model = promptConfig?.model;
+  const prompt = promptConfig?.renderedPrompt;
   const startedAt = Date.now();
   const { payload, requestId } = await requestJson("https://api.openai.com/v1/responses", {
     model, store: false, input: prompt, ...execution.requestFields,
@@ -353,7 +318,7 @@ async function generateSectionDesignPlan({ section, sectionInputs, constraints, 
 
 async function generateMultiComponentLayoutPlan({ promptConfig, signal }) {
   const execution = plannerRequestConfig("multi_component_layout_planner", promptConfig);
-  const model = promptConfig?.model || process.env.SECTION_LAYOUT_MODEL || "gpt-4.1-mini";
+  const model = promptConfig?.model;
   const prompt = String(promptConfig?.renderedPrompt || "").trim();
   if (!prompt) throw Object.assign(new Error("Multi-component layout prompt is required"), { code: "LAYOUT_PROMPT_REQUIRED" });
   const startedAt = Date.now();
@@ -382,7 +347,7 @@ async function generateMultiComponentLayoutPlan({ promptConfig, signal }) {
 
 async function generateSectionCompositionPlan({ promptConfig, signal }) {
   const execution = plannerRequestConfig("section_composition_planner", promptConfig);
-  const model = promptConfig?.model || process.env.SECTION_LAYOUT_MODEL || "gpt-4.1-mini";
+  const model = promptConfig?.model;
   const prompt = String(promptConfig?.renderedPrompt || "").trim();
   if (!prompt) throw Object.assign(new Error("Section composition prompt is required"), { code: "COMPOSITION_PROMPT_REQUIRED" });
   const startedAt = Date.now();
@@ -417,7 +382,7 @@ async function generateStructuredPlannerResult({
   signal,
 }) {
   const execution = plannerRequestConfig(type, promptConfig);
-  const model = promptConfig?.model || process.env.SECTION_LAYOUT_MODEL || "gpt-4.1-mini";
+  const model = promptConfig?.model;
   const prompt = String(promptConfig?.renderedPrompt || "").trim();
   if (!prompt) throw Object.assign(new Error(`${type} prompt is required`), { code: "PLANNER_PROMPT_REQUIRED" });
   const startedAt = Date.now();
@@ -449,21 +414,28 @@ async function generateOpenAiSectionImage({ prompt, aspectRatio, model: requeste
     promptConfig?.promptType || "component_image",
     { ...promptConfig, modelOptions }
   );
-  const model = requestedModel || process.env.SECTION_IMAGE_MODEL || "gpt-image-1";
+  const model = String(requestedModel || "").trim();
   const outputMimeType = execution.generationPolicy?.outputMimeType
-    || execution.runtimeConfig.outputMimeType
-    || "image/webp";
+    || execution.runtimeConfig.outputMimeType;
+  const size = resolveOpenAiImageSize({
+    aspectRatio: execution.effectiveAspectRatio || aspectRatio,
+    configuredSize: execution.modelOptions?.size,
+    capabilities: execution.modelCapabilitySnapshot,
+  });
+  const quality = String(execution.generationPolicy?.quality || execution.modelOptions?.quality || "").trim();
+  if (!model || !outputMimeType || !size || !quality) {
+    throw Object.assign(new Error("OpenAI image model, size, quality, and output MIME type must come from active prompt settings"), {
+      code: "PROMPT_CONFIGURATION_REQUIRED",
+    });
+  }
   const outputFormat = outputMimeType === "image/jpeg" ? "jpeg"
     : outputMimeType === "image/png" ? "png" : "webp";
   const startedAt = Date.now();
   const { payload, requestId } = await requestJson("https://api.openai.com/v1/images/generations", {
     model,
     prompt,
-    size: execution.modelOptions?.size || openAiImageSize(aspectRatio),
-    quality: execution.generationPolicy?.quality
-      || execution.modelOptions?.quality
-      || process.env.SECTION_IMAGE_QUALITY
-      || "medium",
+    size,
+    quality,
     output_format: outputFormat,
   }, openAiHeaders(), signal, execution.runtimeConfig.timeoutMs);
   const base64 = payload.data?.[0]?.b64_json;
@@ -478,7 +450,7 @@ async function generateOpenAiSectionImage({ prompt, aspectRatio, model: requeste
       code: "IMAGE_MIME_MISMATCH",
     });
   }
-  validateRequestedImageResolution(metadata, execution);
+  validateRequestedImageResolution(metadata, { ...execution, providerRequestSize: size });
   return {
     bytes,
     mimeType: metadata?.mimeType || outputMimeType,
@@ -494,15 +466,18 @@ async function generateGeminiSectionImage({ prompt, aspectRatio, model: requeste
     promptConfig?.promptType || "component_image",
     { ...promptConfig, modelOptions }
   );
-  const model = requestedModel || process.env.SECTION_IMAGE_MODEL || "gemini-3.1-flash-image";
+  const model = String(requestedModel || "").trim();
   const imageSize = normalizedGeminiImageSize(
     execution.generationPolicy?.requestedTier
     || execution.modelOptions?.imageSize
-    || process.env.SECTION_IMAGE_SIZE
   );
   const outputMimeType = execution.generationPolicy?.outputMimeType
-    || execution.runtimeConfig.outputMimeType
-    || "image/jpeg";
+    || execution.runtimeConfig.outputMimeType;
+  if (!model || !imageSize || !outputMimeType) {
+    throw Object.assign(new Error("Gemini image model, size, and output MIME type must come from active prompt settings"), {
+      code: "PROMPT_CONFIGURATION_REQUIRED",
+    });
+  }
   const startedAt = Date.now();
   const { payload, requestId } = await requestJson(
     "https://generativelanguage.googleapis.com/v1beta/interactions",
@@ -555,6 +530,7 @@ async function generateSectionImage(input) {
   const promptType = (input.targetType || "section-background") === "section-background"
     ? "section_background_image"
     : "component_image";
+  validateControlPlaneConfig(promptType, input.promptConfig || {});
   const promptConfig = normalizeControlPlanePromptConfig(promptType, {
     ...(input.promptConfig || {}),
     modelOptions: input.modelOptions || input.promptConfig?.modelOptions,
@@ -562,7 +538,7 @@ async function generateSectionImage(input) {
   promptConfig.effectiveAspectRatio = normalizedImageAspectRatio(
     input.effectiveAspectRatio || input.aspectRatio
   );
-  const configuredProvider = input.provider || promptConfig.provider || process.env.SECTION_IMAGE_PROVIDER || "openai";
+  const configuredProvider = input.provider || promptConfig.provider;
   const provider = String(configuredProvider).trim().toLowerCase() === "google"
     ? "gemini"
     : String(configuredProvider).trim().toLowerCase();
@@ -575,15 +551,14 @@ async function generateSectionImage(input) {
     targetType: input.targetType || "section-background",
     aspectRatio: normalizedImageAspectRatio(input.aspectRatio),
     keyVisualTextPolicy: input.keyVisualTextPolicy,
+    subjectScale,
   });
   const request = {
     ...input,
     model: input.model || promptConfig.model,
     promptConfig,
     modelOptions: promptConfig.modelOptions,
-    prompt: subjectScale
-      ? `${generatedPrompt}\nKeep the principal visual subject between ${subjectScale.minimumPercent}% and ${subjectScale.maximumPercent}% of the usable canvas.`
-      : generatedPrompt,
+    prompt: generatedPrompt,
   };
   if (provider === "gemini") return generateGeminiSectionImage(request);
   if (provider === "openai") return generateOpenAiSectionImage(request);
@@ -599,8 +574,6 @@ module.exports = {
   generateSectionImage,
   generateOpenAiSectionImage,
   generateGeminiSectionImage,
-  imagePromptForSafeArea,
   normalizedImageAspectRatio,
-  openAiImageSize,
   geminiImageDimensions,
 };

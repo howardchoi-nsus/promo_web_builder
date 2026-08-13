@@ -29,6 +29,7 @@ export function createAiBuilderState(overrides = {}) {
     resolvedPolicies: [],
     selectedOptionalSectionIds: [],
     proposal: null,
+    executionDisplays: {},
     snapshot: null,
     assetJobs: {},
     warning: null,

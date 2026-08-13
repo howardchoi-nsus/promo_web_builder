@@ -6,14 +6,6 @@ const {
   resolveRun,
 } = require("./_promo-generation-run-store");
 
-const DEFAULT_NEGATIVE_PROMPT = [
-  "poster, flyer, brochure, print ad, presentation slide, magazine cover",
-  "browser chrome, editor UI, Figma canvas UI",
-  "template labels, section labels, side annotations, annotation columns, wireframe labels, diagram legends, QA checklist labels",
-  "non-English UI copy, Korean text, unreadable text",
-  "cropped footer, missing legal content, missing required promotional sections",
-].join(", ");
-
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -28,10 +20,21 @@ module.exports = async function handler(req, res) {
     const sql = getSql();
     const run = await resolveRun(sql, runId);
     if (!run) return res.status(404).json({ error: "Generation run not found" });
+    const promptRows = await sql`
+      select prompt_meta
+      from promo_generation_integrated_briefs
+      where run_id = ${run.id}::uuid
+      limit 1
+    `;
+    const promptMetaSnapshot = promptRows[0]?.prompt_meta || body.promptMeta || body.prompt_meta || {};
+    const fallbackNegativePrompt = String(
+      promptMetaSnapshot.executionSnapshot?.promptConfig?.promptLayers?.fallbackOutputValues?.negativePrompt
+      || ""
+    ).trim();
 
     let parsed;
     try {
-      parsed = parseIntegratedBriefResponse(body);
+      parsed = parseIntegratedBriefResponse(body, { fallbackNegativePrompt });
     } catch (error) {
       await saveIntegratedBriefFailure({
         sql,
@@ -129,11 +132,11 @@ module.exports = async function handler(req, res) {
   }
 };
 
-function parseIntegratedBriefResponse(body) {
+function parseIntegratedBriefResponse(body, options = {}) {
   const directMarkdown = body.integratedDesignBriefMarkdown || body.integrated_design_brief_markdown;
   const directBrief = body.integratedDesignBrief || body.integratedBrief || body.integrated_brief || body.integratedBriefJson;
   if (directMarkdown && directBrief && typeof directBrief === "object") {
-    const normalizedBrief = normalizeIntegratedBrief(directBrief, directMarkdown);
+    const normalizedBrief = normalizeIntegratedBrief(directBrief, directMarkdown, options);
     return {
       integratedDesignBriefMarkdown: materializeRequiredMarkdownSections(directMarkdown, normalizedBrief),
       integratedDesignBrief: normalizedBrief,
@@ -156,7 +159,7 @@ function parseIntegratedBriefResponse(body) {
   }
 
   const markdown = String(generated.integratedDesignBriefMarkdown || "").trim();
-  const brief = normalizeIntegratedBrief(generated.integratedDesignBrief || {}, markdown);
+  const brief = normalizeIntegratedBrief(generated.integratedDesignBrief || {}, markdown, options);
 
   return {
     integratedDesignBriefMarkdown: materializeRequiredMarkdownSections(markdown, brief),
@@ -182,7 +185,7 @@ function extractLlmContent(response) {
     "";
 }
 
-function normalizeIntegratedBrief(brief, markdown) {
+function normalizeIntegratedBrief(brief, markdown, options = {}) {
   const safeBrief = brief && typeof brief === "object" && !Array.isArray(brief) ? { ...brief } : {};
   const finalInputs = safeBrief.finalImagePromptInputs && typeof safeBrief.finalImagePromptInputs === "object"
     ? { ...safeBrief.finalImagePromptInputs }
@@ -242,7 +245,7 @@ function normalizeIntegratedBrief(brief, markdown) {
     safeBrief.negativePrompt = extractMarkdownSection(markdown, "## Negative Prompt", ["## Visual QA Checklist"]);
   }
   if (!String(safeBrief.negativePrompt || "").trim()) {
-    safeBrief.negativePrompt = DEFAULT_NEGATIVE_PROMPT;
+    safeBrief.negativePrompt = String(options.fallbackNegativePrompt || "").trim();
   }
   if (!Array.isArray(safeBrief.visualQaChecklist) && Array.isArray(safeBrief.visual_qa_checklist)) {
     safeBrief.visualQaChecklist = safeBrief.visual_qa_checklist;
@@ -461,7 +464,6 @@ function mergeMeta(base, extra) {
 }
 
 module.exports._test = {
-  DEFAULT_NEGATIVE_PROMPT,
   materializeRequiredMarkdownSections,
   normalizeIntegratedBrief,
 };

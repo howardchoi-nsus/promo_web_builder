@@ -8605,6 +8605,20 @@ var S_ = Object.freeze([
 		label: "이미지 실행 프롬프트",
 		description: "LO-FI·최종 디자인 흐름과 분리된 독립 이미지 생성 요청에 사용합니다.",
 		executionMode: "독립 실행"
+	},
+	admin_prompt_translation: {
+		group: "shared-execution",
+		order: 20,
+		label: "관리자 프롬프트 번역",
+		description: "영문 프롬프트를 관리자 검토용 한국어로 번역합니다.",
+		executionMode: "관리자 요청"
+	},
+	promo_page_generation: {
+		group: "design-generator",
+		order: 40,
+		label: "프로모션 페이지 코드 생성",
+		description: "디자인 분석과 프로모션 입력으로 페이지 결과를 생성합니다.",
+		executionMode: "사용자 요청"
 	}
 });
 function w_(e) {
@@ -9108,13 +9122,10 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 		generatedPage: "promoPrototype.generatedPage",
 		themeMode: "promoPrototype.themeMode"
 	}, t = {
-		text: "gpt-4o-mini",
-		image: "gemini-3.1-flash-image"
-	}, n = {
 		integrated_brief: 360 * 1e3,
 		lofi_draft: 240 * 1e3,
 		final_design: 360 * 1e3
-	}, r = [
+	}, n = [
 		{
 			id: "preset-001",
 			name: "GGPoker 글로벌 기본",
@@ -9191,7 +9202,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 				heroTitleWeight: "700"
 			}
 		}
-	], i = {
+	], r = {
 		id: "temp4",
 		templateId: "default_temp",
 		name: "Template 4",
@@ -9531,15 +9542,15 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 			}
 		]
 	};
-	function a(e) {
+	function i(e) {
 		return Array.isArray(e?.sections) ? e.sections : [];
 	}
-	function o(e) {
-		let t = a(e), n = new Map(t.map((e) => [e.sectionId || e.key, e]));
+	function a(e) {
+		let t = i(e), n = new Map(t.map((e) => [e.sectionId || e.key, e]));
 		return (Array.isArray(e?.sectionOrder) && e.sectionOrder.length ? e.sectionOrder : t.map((e) => e.sectionId || e.key)).map((e) => n.get(e)).filter(Boolean);
 	}
-	function s(e) {
-		let t = o(e);
+	function o(e) {
+		let t = a(e);
 		return {
 			orderedSections: t.map((e) => e.sectionId || e.key),
 			sectionVisibility: Object.fromEntries(t.map((e) => [e.sectionId || e.key, e.defaultVisible !== !1])),
@@ -9550,11 +9561,11 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 			}))]))
 		};
 	}
-	function c(e) {
+	function s(e) {
 		return e?.imageGenerationRequest || e?.sendToImagePrompt ? "generate" : "none";
 	}
-	function l(e, t = null) {
-		let n = a(e), r = o(e).map((e) => e.sectionId || e.key), i = Array.isArray(t?.orderedSections) && t.orderedSections.length ? t.orderedSections.filter((e) => n.some((t) => (t.sectionId || t.key) === e)) : r, s = Object.fromEntries(n.map((e) => {
+	function c(e, t = null) {
+		let n = i(e), r = a(e).map((e) => e.sectionId || e.key), o = Array.isArray(t?.orderedSections) && t.orderedSections.length ? t.orderedSections.filter((e) => n.some((t) => (t.sectionId || t.key) === e)) : r, c = Object.fromEntries(n.map((e) => {
 			let n = e.sectionId || e.key;
 			return [n, t?.sectionVisibility?.[n] ?? e.defaultVisible !== !1];
 		})), l = Object.fromEntries(n.map((e) => [e.sectionId || e.key, Object.fromEntries((e.items || []).map((n) => {
@@ -9565,9 +9576,9 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 			templateId: e?.templateId || e?.id,
 			templateName: e?.templateName || e?.name,
 			schemaVersion: e?.version || "1.0.0",
-			orderedSections: i,
-			visibleSections: i.filter((e) => s[e] !== !1),
-			sectionVisibility: s,
+			orderedSections: o,
+			visibleSections: o.filter((e) => c[e] !== !1),
+			sectionVisibility: c,
 			itemVisibility: l,
 			fixedSections: n.filter((e) => e.fixedPosition).map((e) => ({
 				sectionId: e.sectionId || e.key,
@@ -9577,13 +9588,13 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 			imageGenerationTargets: n.flatMap((e) => (e.items || []).filter((t) => {
 				if (e.repeatableSet) return !1;
 				let n = e.sectionId || e.key, r = t.itemId || t.key;
-				return s[n] === !1 || l[n]?.[r] === !1 ? !1 : (u?.[n]?.[r] || c(t)) === "generate";
+				return c[n] === !1 || l[n]?.[r] === !1 ? !1 : (u?.[n]?.[r] || s(t)) === "generate";
 			}).map((t) => ({
 				sectionId: e.sectionId || e.key,
 				itemId: t.itemId || t.key,
 				label: t.label,
 				inputPath: t.inputPath,
-				mode: u?.[e.sectionId || e.key]?.[t.itemId || t.key] || c(t)
+				mode: u?.[e.sectionId || e.key]?.[t.itemId || t.key] || s(t)
 			}))),
 			governance: e?.governance || {},
 			promotionInputSchema: e?.promotionInputSchema || {},
@@ -9593,50 +9604,19 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 			progress: e?.progress || {}
 		};
 	}
-	function u(e) {
-		let t = String(e || "").trim(), n = t.toLowerCase(), r = {
+	function l(e) {
+		let t = String(e || "").trim();
+		return {
 			market: t,
 			primaryUse: "image_generation",
 			textCopyInfluence: "low",
 			visualInfluence: t ? "medium_high" : "neutral",
-			instruction: t ? "Use the selected market as subtle visual localization context for mood, audience relevance, environment, and compliance sensitivity. Do not render the market name as a visible UI label unless it is part of user-facing promo copy." : "Use neutral global promotional web UI visuals without region-specific cues.",
-			avoid: [
-				"flag-heavy compositions",
-				"map graphics",
-				"stereotyped cultural symbols",
-				"traditional costume clichés",
-				"visible market labels used as annotations"
-			]
-		};
-		return /brazil/.test(n) ? {
-			...r,
-			visualMood: "warm, energetic, social, mobile-friendly, subtly relevant to Brazil/Latam audiences",
-			avoid: [
-				...r.avoid,
-				"carnival stereotypes",
-				"Brazil flag collage"
-			]
-		} : /latam|latin/.test(n) ? {
-			...r,
-			visualMood: "warm, dynamic, social, accessible, subtly relevant to Latam audiences",
-			avoid: [...r.avoid, "generic Latin festival stereotypes"]
-		} : /europe|germany|united kingdom|canada ontario|french/.test(n) ? {
-			...r,
-			visualMood: "restrained, premium, regulation-aware, clean, trust-forward",
-			avoid: [
-				...r.avoid,
-				"EU flag collage",
-				"literal landmark montage"
-			]
-		} : /global/.test(n) ? {
-			...r,
-			visualMood: "international, neutral, broad-audience, non-region-specific"
-		} : {
-			...r,
-			visualMood: t ? `subtly localized for ${t} without literal labels or stereotypes` : "neutral global"
+			instruction: "",
+			avoid: [],
+			visualMood: ""
 		};
 	}
-	function d() {
+	function u() {
 		return {
 			header: {
 				logoText: "GGPoker",
@@ -9705,7 +9685,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 			}
 		};
 	}
-	function f() {
+	function d() {
 		let e = {
 			label: "Qualify on GGPoker",
 			link: "https://www.ggpoker.com/promotions/",
@@ -9796,7 +9776,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 			}
 		};
 	}
-	function p({ promo: e, simpleBrief: t, selectedDocument: n, visualMode: r }) {
+	function f({ promo: e, simpleBrief: t, selectedDocument: n, visualMode: r }) {
 		let i = n?.brandName || "GGPoker", a = e.title.trim(), o = t.mainOffer.trim(), s = t.targetAction.trim(), c = t.audience.trim(), l = t.campaignTone.trim(), u = t.secondaryMessage.trim(), d = e.termsText.trim(), f = {
 			label: e.ctaLabel.trim(),
 			link: e.ctaUrl.trim(),
@@ -9862,23 +9842,23 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 			}
 		};
 	}
-	function m(e, t) {
+	function p(e, t) {
 		localStorage.setItem(e, JSON.stringify(t));
 	}
-	function h(e) {
+	function m(e) {
 		return e.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 	}
-	function g(e) {
+	function h(e) {
 		return String(e || "").replace(/\.[^.]+$/, "").replace(/(?:-?design-?system|-?eng|-?kor)$/gi, "").replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim() || "Untitled Design Style";
 	}
-	function _(e, t = {}) {
+	function g(e, t = {}) {
 		try {
 			return JSON.parse(e);
 		} catch {
 			return t;
 		}
 	}
-	var v = new Intl.DateTimeFormat("en-CA", {
+	var _ = new Intl.DateTimeFormat("en-CA", {
 		timeZone: "Asia/Seoul",
 		year: "numeric",
 		month: "2-digit",
@@ -9887,24 +9867,24 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 		minute: "2-digit",
 		hourCycle: "h23"
 	});
-	function y(e = /* @__PURE__ */ new Date()) {
+	function v(e = /* @__PURE__ */ new Date()) {
 		let t = e instanceof Date ? e : new Date(e);
-		return Number.isNaN(t.getTime()) ? null : v.formatToParts(t).reduce((e, t) => (t.type !== "literal" && (e[t.type] = t.value), e), {});
+		return Number.isNaN(t.getTime()) ? null : _.formatToParts(t).reduce((e, t) => (t.type !== "literal" && (e[t.type] = t.value), e), {});
 	}
-	function b(e = /* @__PURE__ */ new Date()) {
-		let t = y(e);
+	function y(e = /* @__PURE__ */ new Date()) {
+		let t = v(e);
 		return t ? `${t.year}-${t.month}-${t.day} ${t.hour}:${t.minute}` : String(e || "");
 	}
-	function x() {
-		return b(/* @__PURE__ */ new Date());
+	function b() {
+		return y(/* @__PURE__ */ new Date());
 	}
-	function S(e = /* @__PURE__ */ new Date()) {
+	function x(e = /* @__PURE__ */ new Date()) {
 		let t = (e) => String(e).padStart(2, "0"), n = String(e || ""), r = n.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
 		if (r) {
 			let [, e, t, n, i, a] = r;
 			return `${e.slice(-2)}${t}${n}${i}${a}`;
 		}
-		let i = y(e);
+		let i = v(e);
 		return i ? [
 			String(i.year).slice(-2),
 			t(i.month),
@@ -9913,7 +9893,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 			t(i.minute)
 		].join("") : n.replace(/\D/g, "").slice(2, 12);
 	}
-	function C(e, t) {
+	function S(e, t) {
 		let n = String(e || "").trim();
 		if (!n || !t || !/promo-ui-design-generate\/?(?:\?.*)?$/.test(n)) return n;
 		let r = `promo-ui-design-view?id=${encodeURIComponent(t)}`, i = n.replace(/promo-ui-design-generate\/?(?:\?.*)?$/, r);
@@ -9925,52 +9905,52 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 			return n;
 		}
 	}
-	function w(e) {
+	function C(e) {
 		return /promo-ui-design-view|promo-ui-design-generate/.test(String(e || ""));
 	}
-	function ee(e, t) {
+	function w(e, t) {
 		let n = String(e || "").trim();
 		if (!n) return !1;
 		if (n.startsWith("data:image/")) return !0;
-		if (w(n)) return !1;
+		if (C(n)) return !1;
 		let r = String(t?.designUrl || t?.pageUrl || "").trim();
 		return !(r && n === r);
 	}
-	function T(e) {
+	function ee(e) {
 		return e ? `/api/promo-design-view?id=${encodeURIComponent(e)}` : "";
 	}
-	function E(e) {
+	function T(e) {
 		return e ? `/api/promo-design-image?id=${encodeURIComponent(e)}` : "";
 	}
-	function D(e) {
+	function E(e) {
 		return e ? `/api/promo-generation-lofi-draft-image?draftId=${encodeURIComponent(e)}` : "";
 	}
-	function O(e) {
+	function D(e) {
 		return e ? `/api/promo-generation-final-design-image?finalDesignId=${encodeURIComponent(e)}` : "";
 	}
-	function te(e) {
+	function O(e) {
 		if (!e || e.asset_type !== "generated_image") return !1;
 		let t = Number(e.file_size || 0), n = String(e.mime_type || "").toLowerCase();
 		return t > 0 && (t < 1024 || !n.startsWith("image/"));
 	}
-	function ne(e = 5) {
+	function te(e = 5) {
 		let t = new Uint8Array(e);
 		if (window.crypto?.getRandomValues) window.crypto.getRandomValues(t);
 		else for (let n = 0; n < e; n += 1) t[n] = Math.floor(Math.random() * 256);
 		return Array.from(t, (e) => "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"[e % 62]).join("");
 	}
-	function re() {
-		return `promo-${S(/* @__PURE__ */ new Date())}-${ne(5)}`;
+	function ne() {
+		return `promo-${x(/* @__PURE__ */ new Date())}-${te(5)}`;
 	}
-	function ie(e) {
+	function re(e) {
 		return new Promise((t) => {
 			window.setTimeout(t, e);
 		});
 	}
-	function ae(e) {
-		let t = String(e?.stage || ""), r = String(e?.status || ""), i = n[t] || 0, a = e?.updatedAt || e?.updated_at || "", o = a ? new Date(a).getTime() : 0, s = o ? Math.max(0, Date.now() - o) : 0, c = /queued|generating|running|pending|accepted/i.test(r), l = !!(i && c && s > i);
+	function ie(e) {
+		let n = String(e?.stage || ""), r = String(e?.status || ""), i = t[n] || 0, a = e?.updatedAt || e?.updated_at || "", o = a ? new Date(a).getTime() : 0, s = o ? Math.max(0, Date.now() - o) : 0, c = /queued|generating|running|pending|accepted/i.test(r), l = !!(i && c && s > i);
 		return {
-			stage: t,
+			stage: n,
 			status: r,
 			ageMs: s,
 			staleLimitMs: i,
@@ -9979,25 +9959,25 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 			staleMessage: l ? "작업이 예상보다 오래 걸리고 있습니다. Worker 상태를 확인하거나 현재 단계를 다시 시도해 주세요." : ""
 		};
 	}
-	function oe(e) {
+	function ae(e) {
 		let t = e.toLowerCase().replace(/^\d+\.\s*/, "");
 		return t.includes("color") || t.includes("palette") ? "colors" : t.includes("typography") || t.includes("font") ? "typography" : t.includes("layout") || t.includes("spacing") || t.includes("grid") ? "layout" : t.includes("elevation") || t.includes("depth") || t.includes("shadow") ? "elevation" : t.includes("shape") || t.includes("radius") || t.includes("geometry") ? "shapes" : t.includes("component") || t.includes("styling") ? "components" : t.includes("responsive") || t.includes("breakpoint") ? "responsive" : t.includes("do's") || t.includes("don't") || t.includes("dos") ? "dos_donts" : t.includes("gap") ? "known_gaps" : t.includes("overview") || t.includes("theme") || t.includes("atmosphere") ? "overview" : "other";
 	}
-	function se(e) {
+	function oe(e) {
 		let t = e.split(/\r?\n/), n = [], r = null;
 		for (let e of t) {
 			let t = /^(#{1,4})\s+(.+)$/.exec(e);
 			t ? (r = {
 				level: t[1].length,
 				title: t[2].trim(),
-				category: oe(t[2].trim()),
+				category: ae(t[2].trim()),
 				excerpt: ""
 			}, n.push(r)) : r && e.trim() && r.excerpt.length < 180 && (r.excerpt += `${e.trim()} `);
 		}
 		return n;
 	}
-	function ce(e) {
-		let t = se(e), n = Array.from(new Set(e.match(/#[0-9a-fA-F]{6}\b/g) || [])).slice(0, 8), r = Array.from(new Set((e.match(/(?:fontFamily|font-family|Heading|Body|Primary):?\s*["'`]?([A-Za-z][A-Za-z0-9\s,-]*(?:Pretendard|sans-serif|serif|monospace|Arial|Inter|Helvetica|Georgia|system-ui))/gi) || []).map((e) => e.replace(/^(fontFamily|font-family|Heading|Body|Primary):?\s*/i, "").replace(/["'`]/g, "").trim()))).slice(0, 4), i = Array.from(new Set(t.map((e) => e.category))).filter((e) => e !== "other");
+	function se(e) {
+		let t = oe(e), n = Array.from(new Set(e.match(/#[0-9a-fA-F]{6}\b/g) || [])).slice(0, 8), r = Array.from(new Set((e.match(/(?:fontFamily|font-family|Heading|Body|Primary):?\s*["'`]?([A-Za-z][A-Za-z0-9\s,-]*(?:Pretendard|sans-serif|serif|monospace|Arial|Inter|Helvetica|Georgia|system-ui))/gi) || []).map((e) => e.replace(/^(fontFamily|font-family|Heading|Body|Primary):?\s*/i, "").replace(/["'`]/g, "").trim()))).slice(0, 4), i = Array.from(new Set(t.map((e) => e.category))).filter((e) => e !== "other");
 		return {
 			headings: t,
 			colors: n,
@@ -10007,7 +9987,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 			tokenCount: n.length + r.length
 		};
 	}
-	function le({ id: e, brandId: t, brandName: n, slug: r, markdown: i, sourceName: a, designTokenFileName: o = "", designTokensJson: s = {}, status: c, updatedAt: l }) {
+	function ce({ id: e, brandId: t, brandName: n, slug: r, markdown: i, sourceName: a, designTokenFileName: o = "", designTokensJson: s = {}, status: c, updatedAt: l }) {
 		return {
 			id: e,
 			brandId: t,
@@ -10028,12 +10008,12 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 				analyzedAt: "",
 				analysisModel: ""
 			},
-			summary: ce(i)
+			summary: se(i)
 		};
 	}
-	function ue() {
+	function le() {
 		return [
-			le({
+			ce({
 				id: "doc-001",
 				brandId: "brand-ggpoker",
 				brandName: "GGPoker",
@@ -10043,7 +10023,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 				status: "seeded",
 				updatedAt: "2026-06-25 12:00"
 			}),
-			le({
+			ce({
 				id: "doc-002",
 				brandId: "brand-apple",
 				brandName: "Apple",
@@ -10053,7 +10033,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 				status: "seeded",
 				updatedAt: "2026-06-25 12:05"
 			}),
-			le({
+			ce({
 				id: "doc-003",
 				brandId: "brand-starbucks",
 				brandName: "Starbucks",
@@ -10065,7 +10045,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 			})
 		];
 	}
-	function k(e) {
+	function ue(e) {
 		let t = Array.isArray(e?.summary?.colors) ? e.summary.colors : [], n = Array.isArray(e?.summary?.fonts) ? e.summary.fonts : [], r = t[0] || "#d52b1e";
 		return {
 			primaryColor: r,
@@ -10076,7 +10056,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 			titleWeight: "800"
 		};
 	}
-	function de(e) {
+	function k(e) {
 		return {
 			primaryColor: e.colorTokens.primary,
 			ctaColor: e.colorTokens.cta,
@@ -10086,7 +10066,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 			titleWeight: e.typographyTokens.heroTitleWeight
 		};
 	}
-	var { createApp: A } = Vue, fe = new URLSearchParams(window.location.search), pe = fe.get("view") === "admin" ? "prompts" : "builder", j = fe.get("tab"), me = [
+	var { createApp: de } = Vue, A = new URLSearchParams(window.location.search), fe = A.get("view") === "admin" ? "prompts" : "builder", pe = A.get("tab"), j = [
 		"webhook",
 		"llm",
 		"components",
@@ -10095,14 +10075,14 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 		"design-tokens",
 		"i18n",
 		"audit"
-	].includes(j) ? j : "promo-form", he = A({
+	].includes(pe) ? pe : "promo-form", me = de({
 		data() {
 			return {
 				status: "준비 완료",
 				localeRevision: 0,
 				localeUnsubscribe: null,
-				currentView: pe,
-				adminTab: me,
+				currentView: fe,
+				adminTab: j,
 				sectionWidths: [
 					30,
 					30,
@@ -10124,13 +10104,13 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 				selectedStyleGroupSlug: "",
 				activeDesignTokenSectionKey: "color",
 				styleGroupSearch: "",
-				companyStylePresets: r,
+				companyStylePresets: n,
 				selectedDocumentId: localStorage.getItem(e.selectedDocumentId) || "",
 				themeMode: localStorage.getItem(e.themeMode) || "light",
 				selectedPresetId: "preset-001",
 				styleSource: "design_md",
-				templateSchema: i,
-				sectionConfig: s(i),
+				templateSchema: r,
+				sectionConfig: o(r),
 				designMode: "ai",
 				generationMode: "ai_agent",
 				inputMode: "simple",
@@ -10450,6 +10430,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 					renderPolicyText: "{}",
 					validationPolicyText: "{}",
 					harnessConfigText: "{}",
+					promptLayersText: "{}",
 					modelCapabilitySnapshotText: "{}",
 					safetyContractText: "{}",
 					modelOptionsText: "{}",
@@ -10486,7 +10467,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 					campaignTone: "",
 					secondaryMessage: ""
 				},
-				sectionInputs: d(),
+				sectionInputs: u(),
 				sectionInputsDirty: !1,
 				override: {
 					primaryColor: "#d52b1e",
@@ -10639,7 +10620,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 				return this.companyStylePresets.find((e) => e.id === this.selectedPresetId) || this.companyStylePresets[0];
 			},
 			sourceStyle() {
-				return this.styleSource === "design_md" && this.selectedDocument ? k(this.selectedDocument) : de(this.selectedPreset);
+				return this.styleSource === "design_md" && this.selectedDocument ? ue(this.selectedDocument) : k(this.selectedPreset);
 			},
 			finalStyle() {
 				return {
@@ -10686,7 +10667,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 				return e[this.generationStatusIndex % e.length];
 			},
 			sectionConfigSections() {
-				let e = a(this.templateSchema), t = new Map(e.map((e) => [e.sectionId || e.key, e]));
+				let e = i(this.templateSchema), t = new Map(e.map((e) => [e.sectionId || e.key, e]));
 				return (Array.isArray(this.sectionConfig.orderedSections) && this.sectionConfig.orderedSections.length ? this.sectionConfig.orderedSections : e.map((e) => e.sectionId || e.key)).map((e) => t.get(e)).filter(Boolean).map((e) => {
 					let t = e.sectionId || e.key;
 					return {
@@ -10699,7 +10680,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 								...e,
 								itemId: n,
 								visible: this.sectionConfig.itemVisibility?.[t]?.[n] !== !1,
-								imageGenerationMode: this.sectionConfig.imageGenerationMode?.[t]?.[n] || c(e)
+								imageGenerationMode: this.sectionConfig.imageGenerationMode?.[t]?.[n] || s(e)
 							};
 						})
 					};
@@ -11791,7 +11772,8 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 						"policySchemaVersion",
 						"generationPolicy",
 						"renderPolicy",
-						"validationPolicy"
+						"validationPolicy",
+						"promptLayers"
 					]), c = Object.fromEntries(Object.entries(a.modelOptions || {}).filter(([e]) => !s.has(e)));
 					this.promptEditor = {
 						name: a.name || "",
@@ -11818,11 +11800,12 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 						renderPolicyText: JSON.stringify(a.renderPolicy || a.modelOptions?.renderPolicy || {}, null, 2),
 						validationPolicyText: JSON.stringify(a.validationPolicy || a.modelOptions?.validationPolicy || {}, null, 2),
 						harnessConfigText: JSON.stringify(a.harnessConfig || a.modelOptions?.harnessConfig || {}, null, 2),
+						promptLayersText: JSON.stringify(a.promptLayers || a.modelOptions?.promptLayers || {}, null, 2),
 						modelCapabilitySnapshotText: JSON.stringify(a.modelCapabilitySnapshot || a.modelOptions?.modelCapabilitySnapshot || {}, null, 2),
 						safetyContractText: JSON.stringify(a.safetyContract || a.modelOptions?.safetyContract || {}, null, 2),
 						modelOptionsText: JSON.stringify(c, null, 2),
 						changeNote: ""
-					}, this.promptBodyLanguageError = this.promptBodyContainsKorean(a.body) ? "영문 원문에는 한글을 입력할 수 없습니다." : "", this.translatePromptBody(), t.silent || this.setStatus(`${a.name} 프롬프트를 열었습니다`);
+					}, this.promptBodyLanguageError = this.promptBodyContainsKorean(a.body) ? "영문 원문에는 한글을 입력할 수 없습니다." : "", a.type !== "admin_prompt_translation" && this.translatePromptBody(), t.silent || this.setStatus(`${a.name} 프롬프트를 열었습니다`);
 				} catch (e) {
 					this.setStatus(`프롬프트 상세를 불러오지 못했습니다: ${e.message}`);
 				}
@@ -11925,7 +11908,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 			},
 			promptModelOptionsForSave(e) {
 				let t = this.parseModelOptionsText(this.promptEditor.modelOptionsText);
-				if (this.promptSupportsImageSize(e) && (t.imageSize = [
+				if (t.promptLayers = this.parseModelOptionsText(this.promptEditor.promptLayersText), this.promptSupportsImageSize(e) && (t.imageSize = [
 					"1K",
 					"2K",
 					"4K"
@@ -13347,7 +13330,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 					let i = await r.json();
 					this.designDocuments = i.documents || [], this.mdListSource = "Neon Postgres", (!this.selectedDocumentId || !this.selectedDocument) && (this.selectedDocumentId = this.designDocuments[0]?.id || ""), localStorage.setItem(e.selectedDocumentId, this.selectedDocumentId), this.resetOverride(), this.setStatus(`Neon에서 MD ${this.designDocuments.length}개를 불러왔습니다`);
 				} catch {
-					this.designDocuments = ue(), this.mdListSource = "fallback 더미", (!this.selectedDocumentId || !this.selectedDocument) && (this.selectedDocumentId = this.designDocuments[0]?.id || ""), localStorage.setItem(e.selectedDocumentId, this.selectedDocumentId), this.resetOverride(), this.selectedDesignDetail = null, this.setStatus("Neon API를 사용할 수 없어 더미 데이터를 사용합니다");
+					this.designDocuments = le(), this.mdListSource = "fallback 더미", (!this.selectedDocumentId || !this.selectedDocument) && (this.selectedDocumentId = this.designDocuments[0]?.id || ""), localStorage.setItem(e.selectedDocumentId, this.selectedDocumentId), this.resetOverride(), this.selectedDesignDetail = null, this.setStatus("Neon API를 사용할 수 없어 더미 데이터를 사용합니다");
 				}
 			},
 			conceptValue(e) {
@@ -13697,7 +13680,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 				}, t && this.ensureRequiredItemsVisible(e);
 			},
 			setItemVisible(e, t, n) {
-				if ((a(this.templateSchema).find((t) => (t.sectionId || t.key) === e)?.items || []).find((e) => (e.itemId || e.key) === t)?.required && this.sectionConfig.sectionVisibility?.[e] !== !1 && !n) {
+				if ((i(this.templateSchema).find((t) => (t.sectionId || t.key) === e)?.items || []).find((e) => (e.itemId || e.key) === t)?.required && this.sectionConfig.sectionVisibility?.[e] !== !1 && !n) {
 					this.setStatus("필수 아이템은 섹션 사용 중에는 숨길 수 없습니다");
 					return;
 				}
@@ -13818,7 +13801,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 				return String(t || "").split(".").filter(Boolean).reduce((e, t) => e?.[t], e);
 			},
 			ensureRequiredItemsVisible(e) {
-				let t = a(this.templateSchema).find((t) => (t.sectionId || t.key) === e);
+				let t = i(this.templateSchema).find((t) => (t.sectionId || t.key) === e);
 				if (!t) return;
 				let n = Object.fromEntries((t.items || []).filter((e) => e.required).map((e) => [e.itemId || e.key, !0]));
 				this.sectionConfig.itemVisibility = {
@@ -13830,7 +13813,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 				};
 			},
 			resetSectionConfig() {
-				this.sectionConfig = s(this.templateSchema), this.setStatus("섹션 구성을 기본값으로 되돌렸습니다");
+				this.sectionConfig = o(this.templateSchema), this.setStatus("섹션 구성을 기본값으로 되돌렸습니다");
 			},
 			templateLabel(e) {
 				return e === "Template 4" ? "템플릿 4" : e || "";
@@ -13892,7 +13875,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 				this.currentBuilderStep = Math.max(1, this.currentBuilderStep - 1);
 			},
 			resultType(e) {
-				return e ? e.status === "n8n_failed" || e.errorMessage ? "failed" : e.status === "n8n_ui_design_pending" ? "pending" : ee(e.imageUrl, e) ? "image" : e.finalDesignPreviewUrl ? "final_design" : e.lofiDraftPreviewUrl ? "lofi_draft" : /queued|generating|running|pending|accepted/i.test(e.generationRunStatus || "") ? "pending" : e.designUrl || e.pageUrl || w(e.imageUrl) ? "view" : e.payload ? "draft" : "empty" : "empty";
+				return e ? e.status === "n8n_failed" || e.errorMessage ? "failed" : e.status === "n8n_ui_design_pending" ? "pending" : w(e.imageUrl, e) ? "image" : e.finalDesignPreviewUrl ? "final_design" : e.lofiDraftPreviewUrl ? "lofi_draft" : /queued|generating|running|pending|accepted/i.test(e.generationRunStatus || "") ? "pending" : e.designUrl || e.pageUrl || C(e.imageUrl) ? "view" : e.payload ? "draft" : "empty" : "empty";
 			},
 			resultTypeLabel(e) {
 				return {
@@ -13919,13 +13902,13 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 				}[this.resultType(e)] || "산출물 없음";
 			},
 			previewImageUrl(e) {
-				return ee(e?.imageUrl, e) ? e.imageUrl : e?.finalDesignPreviewUrl ? e.finalDesignPreviewUrl : e?.lofiDraftPreviewUrl || "";
+				return w(e?.imageUrl, e) ? e.imageUrl : e?.finalDesignPreviewUrl ? e.finalDesignPreviewUrl : e?.lofiDraftPreviewUrl || "";
 			},
 			previewFrameUrl(e) {
-				return e && C(e.designUrl || e.pageUrl || (w(e.imageUrl) ? e.imageUrl : ""), e.id) || "";
+				return e && S(e.designUrl || e.pageUrl || (C(e.imageUrl) ? e.imageUrl : ""), e.id) || "";
 			},
 			storedResultToPage(e, t = {}) {
-				let n = e?.run || {}, r = Array.isArray(e?.assets) ? e.assets : [], i = r.find((e) => e.asset_type === "generated_image") || {}, a = r.filter((e) => /_markdown$/.test(e.asset_type || "")), o = n.run_key || t.id || "", s = n.created_at || t.createdAt || "", c = i.created_at || t.committedAt || s, l = s ? b(s) : "", u = c ? b(c) : l, d = te(i), f = Number(i.file_size || 0);
+				let n = e?.run || {}, r = Array.isArray(e?.assets) ? e.assets : [], i = r.find((e) => e.asset_type === "generated_image") || {}, a = r.filter((e) => /_markdown$/.test(e.asset_type || "")), o = n.run_key || t.id || "", s = n.created_at || t.createdAt || "", c = i.created_at || t.committedAt || s, l = s ? y(s) : "", u = c ? y(c) : l, d = O(i), f = Number(i.file_size || 0);
 				return {
 					id: o,
 					title: n.promo_title || t.title || o,
@@ -13935,11 +13918,11 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 					market: n.market || t.market || "",
 					createdAt: l,
 					committedAt: u,
-					timestampStamp: S(c || s || u || l),
+					timestampStamp: x(c || s || u || l),
 					status: n.status || t.status || "generated",
-					designUrl: T(o),
-					imageUrl: E(o),
-					pageUrl: T(o),
+					designUrl: ee(o),
+					imageUrl: T(o),
+					pageUrl: ee(o),
 					layoutMapping: n.layout_mapping || t.layoutMapping || null,
 					mdComplianceMap: n.md_compliance_map || t.mdComplianceMap || null,
 					imagePrompt: n.image_prompt || t.imagePrompt || "",
@@ -13969,7 +13952,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 				};
 			},
 			generationRunStateToPage(e, t = {}) {
-				let n = e?.run || {}, r = n.inputSnapshot || {}, i = r.promo || {}, a = r.md || {}, o = n.createdAt ? b(n.createdAt) : t.createdAt || "", s = {
+				let n = e?.run || {}, r = n.inputSnapshot || {}, i = r.promo || {}, a = r.md || {}, o = n.createdAt ? y(n.createdAt) : t.createdAt || "", s = {
 					id: n.runKey || t.id || n.runId || "",
 					title: n.promoTitle || i.title || t.title || n.runKey || "",
 					selectedMd: n.selectedMdName || a.brand || a.name || t.selectedMd || "",
@@ -13978,7 +13961,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 					market: i.market || t.market || "",
 					createdAt: o,
 					committedAt: t.committedAt || "",
-					timestampStamp: S(n.updatedAt || n.createdAt || o),
+					timestampStamp: x(n.updatedAt || n.createdAt || o),
 					status: t.status || n.status || "generation_run",
 					designUrl: t.designUrl || "",
 					imageUrl: t.imageUrl || "",
@@ -14007,14 +13990,14 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 					generationRunStatus: n.status || "",
 					generationRunStage: n.stage || "",
 					generationRunUpdatedAt: n.updatedAt || e.generationRunUpdatedAt || "",
-					generationPolling: ae(n),
+					generationPolling: ie(n),
 					lofiDrafts: r,
 					confirmedLofiDraft: a,
 					currentLofiDraft: s,
-					lofiDraftPreviewUrl: c ? D(c.draftId) : "",
+					lofiDraftPreviewUrl: c ? E(c.draftId) : "",
 					finalDesigns: i,
 					currentFinalDesign: l,
-					finalDesignPreviewUrl: f ? O(f.finalDesignId) : ""
+					finalDesignPreviewUrl: f ? D(f.finalDesignId) : ""
 				}), e;
 			},
 			currentLofiDraft(e) {
@@ -14143,7 +14126,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 				await Promise.all(t.map((e) => this.refreshGenerationRunState(e).catch(() => !1)));
 			},
 			generationRunNeedsPolling(e) {
-				return !e?.generationRunId || (e.generationPolling = ae({
+				return !e?.generationRunId || (e.generationPolling = ie({
 					stage: e.generationRunStage,
 					status: e.generationRunStatus,
 					updatedAt: e.generationRunUpdatedAt
@@ -14224,7 +14207,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 				this.selectedStyleGroupSlug = e.slug, this.expandedStyleGroupSlug = e.slug;
 			},
 			syncSlug() {
-				this.newMd.slug = h(this.newMd.brandName);
+				this.newMd.slug = m(this.newMd.brandName);
 			},
 			startResize(e, t) {
 				let n = e.currentTarget.closest(".abc-layout");
@@ -14303,10 +14286,10 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 					audience: "",
 					campaignTone: "",
 					secondaryMessage: ""
-				}, this.validationErrors = {}, this.designMode = "ai", this.inputMode = "simple", this.generationMode = "ai_agent", this.globalVisualMode = "auto", this.currentBuilderStep = 1, this.sectionInputs = d(), this.sectionInputsDirty = !1, this.sectionConfig = s(this.templateSchema), this.stopGenerationMotion(), e.rerender && (this.promoBuilderSessionKey += 1);
+				}, this.validationErrors = {}, this.designMode = "ai", this.inputMode = "simple", this.generationMode = "ai_agent", this.globalVisualMode = "auto", this.currentBuilderStep = 1, this.sectionInputs = u(), this.sectionInputsDirty = !1, this.sectionConfig = o(this.templateSchema), this.stopGenerationMotion(), e.rerender && (this.promoBuilderSessionKey += 1);
 			},
 			autoFillPromoInputs() {
-				let e = f();
+				let e = d();
 				this.promo = {
 					...this.promo,
 					...e.promo,
@@ -14335,7 +14318,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 						this.setStatus("지원하지 않는 파일입니다");
 						return;
 					}
-					this.newMd.text = await t.text(), this.newMd.sourceName = t.name, this.newMd.designStyleName = g(t.name), this.newMd.brandName = this.newMd.designStyleName, this.newMd.slug = h(this.newMd.designStyleName), this.setStatus("MD 파일을 불러왔습니다");
+					this.newMd.text = await t.text(), this.newMd.sourceName = t.name, this.newMd.designStyleName = h(t.name), this.newMd.brandName = this.newMd.designStyleName, this.newMd.slug = m(this.newMd.designStyleName), this.setStatus("MD 파일을 불러왔습니다");
 				}
 			},
 			async onTokenFileChange(e) {
@@ -14352,7 +14335,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 					this.setStatus("디자인 토큰 파일을 선택해 주세요");
 					return;
 				}
-				let n = this.newMd.designStyleName.trim() || g(this.newMd.sourceName), r = this.newMd.slug.trim() || h(n);
+				let n = this.newMd.designStyleName.trim() || h(this.newMd.sourceName), r = this.newMd.slug.trim() || m(n);
 				if (window.location.protocol !== "file:") {
 					let e = !!this.newMd.id;
 					this.setStatus(e ? "디자인 스타일을 수정 중입니다" : "디자인 스타일을 저장 중입니다");
@@ -14381,7 +14364,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 						return;
 					}
 				}
-				let i = le({
+				let i = ce({
 					id: `doc-${String(this.designDocuments.length + 1).padStart(3, "0")}`,
 					brandId: `brand-${r}`,
 					brandName: n,
@@ -14389,11 +14372,11 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 					markdown: t,
 					sourceName: this.newMd.sourceName,
 					designTokenFileName: this.newMd.tokenFileName,
-					designTokensJson: _(this.newMd.tokenText || "{}"),
+					designTokensJson: g(this.newMd.tokenText || "{}"),
 					status: "uploaded",
-					updatedAt: x()
+					updatedAt: b()
 				});
-				this.designDocuments.unshift(i), this.selectDocument(i.id), m(e.documents, this.designDocuments), this.setStatus("디자인 스타일이 등록되었습니다"), this.closeAddDesign();
+				this.designDocuments.unshift(i), this.selectDocument(i.id), p(e.documents, this.designDocuments), this.setStatus("디자인 스타일이 등록되었습니다"), this.closeAddDesign();
 			},
 			selectDocument(t) {
 				this.selectedDocumentId = t, this.selectedDesignDetail = null, localStorage.setItem(e.selectedDocumentId, t);
@@ -14490,7 +14473,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 					contentCta: this.sectionInputs?.contentCta?.visualMode || "auto",
 					imageTextRow: this.sectionInputs?.imageTextRow?.[0]?.visualMode || "auto"
 				};
-				this.sectionInputs = p({
+				this.sectionInputs = f({
 					promo: this.promo,
 					simpleBrief: this.simpleBrief,
 					selectedDocument: this.selectedDocument,
@@ -14505,91 +14488,89 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 				return !this.sectionInputsDirty && (this.inputMode === "simple" || !this.hasSectionDraft() && String(this.promo.title || "").trim()) && this.refreshSectionDraft({ silent: !0 }), JSON.parse(JSON.stringify(this.sectionInputs));
 			},
 			buildGeneratedPayload(e) {
-				let n = this.sourceStyle, r = this.selectedDesignDataSource || this.selectedDocument, i = this.sectionInputsForPayload(), a = l(this.templateSchema, this.sectionConfig), o = this.repeatImageGenerationTargets(i), s = [...a.imageGenerationTargets, ...o], c = {
+				let t = this.sourceStyle, n = this.selectedDesignDataSource || this.selectedDocument, r = this.sectionInputsForPayload(), i = c(this.templateSchema, this.sectionConfig), a = this.repeatImageGenerationTargets(r), o = [...i.imageGenerationTargets, ...a], s = {
 					...JSON.parse(JSON.stringify(this.sectionConfig)),
-					fixedSections: Object.fromEntries(a.fixedSections.map((e) => [e.sectionId, e.fixedPosition])),
-					imageGenerationTargets: s,
+					fixedSections: Object.fromEntries(i.fixedSections.map((e) => [e.sectionId, e.fixedPosition])),
+					imageGenerationTargets: o,
 					repeatableSets: Object.fromEntries(this.sectionConfigSections.filter((e) => e.repeatableSet).map((e) => [e.sectionId, e.repeatableSet]))
-				}, d = i.heroBanner?.cta?.label || i.contentCta?.cta?.label || i.stepBar?.[0]?.ctaLabel || "Learn More", f = i.heroBanner?.cta?.link || i.contentCta?.cta?.link || i.stepBar?.[0]?.link || "#", p = i.titleDescription?.contents || i.footer?.content || "Terms and conditions apply. Please play responsibly.", m = {
+				}, u = r.heroBanner?.cta?.label || r.contentCta?.cta?.label || r.stepBar?.[0]?.ctaLabel || "Learn More", d = r.heroBanner?.cta?.link || r.contentCta?.cta?.link || r.stepBar?.[0]?.link || "#", f = r.titleDescription?.contents || r.footer?.content || "Terms and conditions apply. Please play responsibly.", p = {
 					...this.promo,
 					template: this.promo.template,
-					leadText: this.promo.leadText || i.heroBanner.sublineText || this.simpleBrief.mainOffer,
-					subline: this.promo.subline || i.contentCta.longText || this.simpleBrief.secondaryMessage,
-					alphaText: this.promo.alphaText || i.heroBanner.alphaText,
-					ctaLabel: this.promo.ctaLabel || d,
-					ctaUrl: this.promo.ctaUrl || f,
-					termsText: this.promo.termsText || p
-				}, h = {
+					leadText: this.promo.leadText || r.heroBanner.sublineText || this.simpleBrief.mainOffer,
+					subline: this.promo.subline || r.contentCta.longText || this.simpleBrief.secondaryMessage,
+					alphaText: this.promo.alphaText || r.heroBanner.alphaText,
+					ctaLabel: this.promo.ctaLabel || u,
+					ctaUrl: this.promo.ctaUrl || d,
+					termsText: this.promo.termsText || f
+				}, m = {
 					purpose: this.promo.promotionPurpose || this.promo.purpose || "",
 					purposeOther: this.promo.promotionPurposeOther || "",
 					targetCustomer: this.simpleBrief.audience || "",
 					campaignTone: this.simpleBrief.campaignTone || ""
-				}, g = u(this.promo.market);
+				}, h = l(this.promo.market);
 				return {
 					id: e,
-					model: t.text,
-					imageModel: t.image,
-					generatedAt: x(),
+					generatedAt: b(),
 					md: {
-						id: r.id,
-						brand: r.brandName,
-						designStyleId: r.id,
-						designStyleName: r.designStyleName || r.brandName,
-						slug: r.slug,
-						summary: r.summary,
-						designMdMarkdown: r.markdown || "",
-						designTokenFileName: r.designTokenFileName || "",
-						selectedTokens: r.designTokensJson || r.rawDesignTokens || {},
-						designConcept: r.designConcept,
-						styleClassification: r.styleClassification,
-						designPromptContext: r.designConcept?.promptContext || "",
+						id: n.id,
+						brand: n.brandName,
+						designStyleId: n.id,
+						designStyleName: n.designStyleName || n.brandName,
+						slug: n.slug,
+						summary: n.summary,
+						designMdMarkdown: n.markdown || "",
+						designTokenFileName: n.designTokenFileName || "",
+						selectedTokens: n.designTokensJson || n.rawDesignTokens || {},
+						designConcept: n.designConcept,
+						styleClassification: n.styleClassification,
+						designPromptContext: n.designConcept?.promptContext || "",
 						designData: {
-							summary: r.summary,
-							metadata: r.metadata || r.metadataItems || [],
-							normalizedSchema: r.normalizedSchema || r.tokenSet?.normalizedSchema || null,
-							tokenItems: r.tokenItems || [],
-							componentPatterns: r.componentPatterns || [],
-							layoutPatterns: r.layoutPatterns || [],
-							guidelineItems: r.guidelineItems || [],
-							componentPatternCount: r.summary?.componentPatternCount || r.componentPatterns?.length || 0,
-							layoutPatternCount: r.summary?.layoutPatternCount || r.layoutPatterns?.length || 0,
-							guidelineCount: r.summary?.guidelineCount || r.guidelineItems?.length || 0,
-							extractionStatus: r.extractionStatus || r.status,
-							sourceHash: r.sourceHash || r.tokenSet?.sourceHash || ""
+							summary: n.summary,
+							metadata: n.metadata || n.metadataItems || [],
+							normalizedSchema: n.normalizedSchema || n.tokenSet?.normalizedSchema || null,
+							tokenItems: n.tokenItems || [],
+							componentPatterns: n.componentPatterns || [],
+							layoutPatterns: n.layoutPatterns || [],
+							guidelineItems: n.guidelineItems || [],
+							componentPatternCount: n.summary?.componentPatternCount || n.componentPatterns?.length || 0,
+							layoutPatternCount: n.summary?.layoutPatternCount || n.layoutPatterns?.length || 0,
+							guidelineCount: n.summary?.guidelineCount || n.guidelineItems?.length || 0,
+							extractionStatus: n.extractionStatus || n.status,
+							sourceHash: n.sourceHash || n.tokenSet?.sourceHash || ""
 						}
 					},
-					selectedDesignStyleId: r.id,
-					promo: m,
-					promotionInput: h,
-					marketVisualGuidance: g,
-					sectionConfig: c,
+					selectedDesignStyleId: n.id,
+					promo: p,
+					promotionInput: m,
+					marketVisualGuidance: h,
+					sectionConfig: s,
 					template: {
 						id: this.templateSchema.id,
 						name: this.templateSchema.name,
 						designMode: this.designMode,
 						selectionMode: this.designMode === "advanced" ? "manual" : "auto",
 						selectedTemplateId: this.designMode === "advanced" ? "default_temp" : "",
-						templateId: a.templateId,
-						templateName: a.templateName,
-						schemaVersion: a.schemaVersion,
+						templateId: i.templateId,
+						templateName: i.templateName,
+						schemaVersion: i.schemaVersion,
 						generationMode: this.generationMode,
 						inputMode: this.inputMode,
-						sectionOrder: a.orderedSections,
-						visibleSections: a.visibleSections,
-						sectionVisibility: a.sectionVisibility,
-						itemVisibility: a.itemVisibility,
-						fixedSections: a.fixedSections,
-						draggableSections: a.draggableSections,
-						imageGenerationTargets: s,
-						governance: a.governance,
-						promotionInputSchema: a.promotionInputSchema,
-						templateForm: a.templateForm,
-						generationRules: a.generationRules,
-						validationRules: a.validationRules,
-						progress: a.progress
+						sectionOrder: i.orderedSections,
+						visibleSections: i.visibleSections,
+						sectionVisibility: i.sectionVisibility,
+						itemVisibility: i.itemVisibility,
+						fixedSections: i.fixedSections,
+						draggableSections: i.draggableSections,
+						imageGenerationTargets: o,
+						governance: i.governance,
+						promotionInputSchema: i.promotionInputSchema,
+						templateForm: i.templateForm,
+						generationRules: i.generationRules,
+						validationRules: i.validationRules,
+						progress: i.progress
 					},
 					simpleBrief: { ...this.simpleBrief },
-					sectionInputs: i,
+					sectionInputs: r,
 					design: {
 						...this.finalStyle,
 						canvasColor: "#000000",
@@ -14597,19 +14578,19 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 						backgroundPolicy: "full_bleed_pure_black_no_gray_artboard"
 					},
 					selectedDesignTokens: { ...this.finalStyle },
-					sourceDesign: { ...n },
+					sourceDesign: { ...t },
 					styleSource: this.styleSource,
 					styleSourceLabel: this.styleSourceLabel(),
 					companyPreset: this.styleSource === "company_default" ? this.selectedPreset.name : null,
-					hasOverride: this.hasOverride(this.finalStyle, n),
+					hasOverride: this.hasOverride(this.finalStyle, t),
 					inputSnapshot: {
-						promo: m,
-						promotionInput: h,
-						marketVisualGuidance: g,
+						promo: p,
+						promotionInput: m,
+						marketVisualGuidance: h,
 						simpleBrief: { ...this.simpleBrief },
-						sectionInputs: i,
-						sectionConfig: c,
-						templateRuntime: a
+						sectionInputs: r,
+						sectionConfig: s,
+						templateRuntime: i
 					}
 				};
 			},
@@ -14690,7 +14671,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 				let n = t.attempts || 4, r = t.delayMs || 900;
 				for (let t = 0; t < n; t += 1) {
 					if (await this.refreshStoredDesignResult(e).catch(() => !1)) return !0;
-					t < n - 1 && await ie(r);
+					t < n - 1 && await re(r);
 				}
 				return !1;
 			},
@@ -14702,7 +14683,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 				}
 				if (!this.validatePromoInputs() || !this.validateSectionConfig()) return;
 				await this.loadSelectedDesignDetail(this.selectedDocumentId);
-				let e = re(), t = this.buildGeneratedPayload(e), n = S(t.generatedAt);
+				let e = ne(), t = this.buildGeneratedPayload(e), n = x(t.generatedAt);
 				this.setStatus("AI가 요청 사항을 접수 중입니다"), this.startGenerationMotion(), await this.$nextTick(), await new Promise((e) => {
 					window.requestAnimationFrame ? window.requestAnimationFrame(e) : window.setTimeout(e, 0);
 				});
@@ -14755,9 +14736,9 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 					r.status = "n8n_failed", r.errorMessage = e.message, this.setStatus(`n8n 실행 실패. 서버 저장 결과를 확인하지 못했습니다: ${e.message}`), this.stopGenerationMotion();
 					return;
 				}
-				r.status = i ? "n8n_ui_design_generated" : "draft", r.designUrl = C(i?.designUrl || T(r.id), r.id), r.imageUrl = i?.imageUrl || "", r.pageUrl = C(i?.designUrl || i?.pageUrl || i?.previewUrl || T(r.id), r.id) || i?.imageUrl || "", r.resultType = i?.resultType || this.resultType(r), r.layoutMapping = i?.layoutMapping || null, r.mdComplianceMap = i?.mdComplianceMap || null, r.imagePrompt = i?.imagePrompt || "", r.promptGroupId = i?.promptGroupId || "", r.designPromptStorageKey = i?.designPromptStorageKey || "", r.promoInputStorageKey = i?.promoInputStorageKey || "", r.integratedBriefStorageKey = i?.integratedBriefStorageKey || "";
+				r.status = i ? "n8n_ui_design_generated" : "draft", r.designUrl = S(i?.designUrl || ee(r.id), r.id), r.imageUrl = i?.imageUrl || "", r.pageUrl = S(i?.designUrl || i?.pageUrl || i?.previewUrl || ee(r.id), r.id) || i?.imageUrl || "", r.resultType = i?.resultType || this.resultType(r), r.layoutMapping = i?.layoutMapping || null, r.mdComplianceMap = i?.mdComplianceMap || null, r.imagePrompt = i?.imagePrompt || "", r.promptGroupId = i?.promptGroupId || "", r.designPromptStorageKey = i?.designPromptStorageKey || "", r.promoInputStorageKey = i?.promoInputStorageKey || "", r.integratedBriefStorageKey = i?.integratedBriefStorageKey || "";
 				let a = i?.committedAt || r.committedAt;
-				r.committedAt = a ? b(a) : r.committedAt, r.timestampStamp = i?.timestampStamp || S(a || r.createdAt), r.payload = i?.payload || t, await this.waitForStoredDesignResult(r, {
+				r.committedAt = a ? y(a) : r.committedAt, r.timestampStamp = i?.timestampStamp || x(a || r.createdAt), r.payload = i?.payload || t, await this.waitForStoredDesignResult(r, {
 					attempts: 5,
 					delayMs: 900
 				}).catch(() => !1), await this.loadGeneratedPagesFromServer({
@@ -14771,7 +14752,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 			},
 			async openGenerated(t) {
 				(t.status === "n8n_failed" || !t.pageUrl || !t.designUrl) && await this.refreshStoredDesignResult(t).catch(() => !1);
-				let n = C(t.pageUrl || t.designUrl || "", t.id);
+				let n = S(t.pageUrl || t.designUrl || "", t.id);
 				if (n) {
 					window.open(n, "_blank");
 					return;
@@ -14781,7 +14762,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 					window.open(r, "_blank");
 					return;
 				}
-				m(e.generatedPage, t.payload), window.open("generated.html", "_blank");
+				p(e.generatedPage, t.payload), window.open("generated.html", "_blank");
 			},
 			canOpenPromptFiles(e) {
 				return !!(e?.promptGroupId || e?.designPromptStorageKey || e?.promoInputStorageKey || e?.integratedBriefStorageKey || e?.id && !e?.generationRunId);
@@ -14838,7 +14819,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 					this.setStatus("다운로드할 Markdown 내용이 없습니다");
 					return;
 				}
-				let n = this.promptModalPage?.id || "promo", r = this.promptModalPage?.timestampStamp || S(/* @__PURE__ */ new Date()), i = this.markdownDownloadFilename(t.storageKey, `${t.fallbackName}-${n}-${r}.md`), a = new Blob([t.markdown], { type: "text/markdown;charset=utf-8" }), o = URL.createObjectURL(a), s = document.createElement("a");
+				let n = this.promptModalPage?.id || "promo", r = this.promptModalPage?.timestampStamp || x(/* @__PURE__ */ new Date()), i = this.markdownDownloadFilename(t.storageKey, `${t.fallbackName}-${n}-${r}.md`), a = new Blob([t.markdown], { type: "text/markdown;charset=utf-8" }), o = URL.createObjectURL(a), s = document.createElement("a");
 				s.href = o, s.download = i, document.body.appendChild(s), s.click(), s.remove(), URL.revokeObjectURL(o), this.setStatus(`${i} 다운로드를 시작했습니다`);
 			},
 			markdownDownloadFilename(e, t) {
@@ -14850,7 +14831,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 			}
 		}
 	});
-	he.component("template-layout-manager", window.PromoAdminTemplateLayout.component), he.component("section-layout-preset-manager", window.PromoAdminSectionLayouts.component), he.component("design-token-manager", window.PromoAdminDesignTokens.component), (window.PromoI18n?.init?.() || Promise.resolve()).finally(() => he.mount("#app"));
+	me.component("template-layout-manager", window.PromoAdminTemplateLayout.component), me.component("section-layout-preset-manager", window.PromoAdminSectionLayouts.component), me.component("design-token-manager", window.PromoAdminDesignTokens.component), (window.PromoI18n?.init?.() || Promise.resolve()).finally(() => me.mount("#app"));
 }));
 yh(document), globalThis.Vue = gh, globalThis.PromoAdminTemplateLayout = Object.freeze({
 	service: Sh,

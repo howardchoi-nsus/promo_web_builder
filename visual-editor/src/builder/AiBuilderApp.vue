@@ -19,6 +19,7 @@ import {
   loadBuilderDocument,
   loadBuilderCapabilities,
   loadCompositionShells,
+  loadPromptExecutionDisplay,
   recordBuilderEvent,
   retryBuilderAssets,
   rollbackComposition,
@@ -39,6 +40,8 @@ const operationConflict = ref(null);
 const busy = computed(() => [
   "analyzing_overview", "resolving_policy", "queued", "processing", "applying",
 ].includes(store.stage));
+const overviewExecution = computed(() => store.executionDisplays.promo_overview_parser || null);
+const compositionExecution = computed(() => store.executionDisplays.promo_page_composer || null);
 
 function selectMode(mode) {
   recordBuilderEvent({ eventName: "builder_mode_selected", metadata: { mode } });
@@ -70,6 +73,7 @@ async function analyze() {
   });
   try {
     const response = await analyzeOverview(store.naturalLanguage);
+    if (response.executionDisplay) store.executionDisplays.promo_overview_parser = response.executionDisplay;
     store.overviewDraft = response.overview;
     store.overviewFingerprint = response.overviewFingerprint;
     store.stage = "reviewing_overview";
@@ -163,6 +167,7 @@ async function compose() {
       } : {}),
       idempotencyKey: crypto.randomUUID(),
     });
+    if (queued.executionDisplay) store.executionDisplays.promo_page_composer = queued.executionDisplay;
     recordBuilderEvent({
       eventName: "composition_requested",
       documentId: store.documentId,
@@ -333,6 +338,16 @@ function exportDocument() {
 
 onMounted(async () => {
   try {
+    const executionLookups = Promise.allSettled([
+      loadPromptExecutionDisplay("promo_overview_parser"),
+      loadPromptExecutionDisplay("promo_page_composer"),
+    ]).then((results) => {
+      for (const result of results) {
+        if (result.status === "fulfilled" && result.value?.type && result.value.executionDisplay) {
+          store.executionDisplays[result.value.type] = result.value.executionDisplay;
+        }
+      }
+    });
     const result = await loadBuilderCapabilities();
     capabilities.value = result.capabilities || capabilities.value;
     if (capabilities.value.compositionV3) {
@@ -344,6 +359,7 @@ onMounted(async () => {
       return;
     }
     if (selectedMode.value === "ai") await ensureDocument();
+    await executionLookups;
   } catch (error) {
     setBuilderError(store, error);
   }
@@ -380,6 +396,7 @@ onMounted(async () => {
         v-if="store.stage === 'idle' || store.stage === 'analyzing_overview' || store.stage === 'failed' && !store.overviewDraft"
         v-model="store.naturalLanguage"
         :busy="busy"
+        :execution="overviewExecution"
         @analyze="analyze"
       />
       <OverviewReviewForm
@@ -392,7 +409,8 @@ onMounted(async () => {
       <CompositionProgress
         v-else-if="!store.snapshot && store.stage !== 'review_required'"
         :stage="store.stage"
-        message="섹션 정책과 사용 가능한 컴포넌트를 검증하고 있습니다."
+        message="프로모션 구조를 생성하고 있습니다."
+        :execution="compositionExecution"
       />
       <RegistryProposalReview
         v-else-if="store.stage === 'review_required' && store.proposal?.contractVersion === 3"

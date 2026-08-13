@@ -39,12 +39,7 @@ assert.deepEqual(mergePromptTemplatePatch({
 });
 
 for (const [type, config] of Object.entries(PROMPT_TYPES)) {
-  if (!config.body) continue;
-  assert.doesNotThrow(() => validatePromptTemplateContract(type, {
-    body: config.body,
-    requiredVariables: config.requiredVariables,
-    optionalVariables: config.optionalVariables,
-  }));
+  assert.equal(config.body, undefined, `${type} must not contain repository prompt prose`);
 }
 
 assert.deepEqual(PROMPT_TYPES.promo_overview_parser.requiredVariables, [
@@ -55,11 +50,7 @@ assert.deepEqual(PROMPT_TYPES.promo_overview_parser.optionalVariables, [
   "generationMode",
   "currentOverviewJson",
 ]);
-assert.match(PROMPT_TYPES.promo_overview_parser.body, /new promotion overview draft/i);
-assert.match(PROMPT_TYPES.promo_overview_parser.body, /Never merge or reuse/i);
-assert.match(PROMPT_TYPES.promo_overview_parser.body, /CTA label.*20 Unicode characters/i);
-assert.match(PROMPT_TYPES.promo_page_composer.body, /non-empty ctaLabel/i);
-assert.match(PROMPT_TYPES.promo_template_composer.body, /ctaLabel only to CTA fields/i);
+assert.deepEqual(PROMPT_TYPES.admin_prompt_translation.requiredVariables, ["sourcePrompt"]);
 
 assert.deepEqual(extractPromptVariables("{{sectionName}} {{ sectionName }} {{contentJson}}"), [
   "sectionName",
@@ -92,13 +83,35 @@ assert.doesNotThrow(() => validateStageModelConfig("section_background_image", {
   provider: "google",
   model: "gemini-3.1-flash-image",
   responseFormat: "image",
-  modelOptions: { imageSize: "2K" },
+  modelOptions: {
+    imageSize: "2K",
+    executionSnapshotVersion: 2,
+    runtimeConfig: { timeoutMs: 120000, maxAttempts: 1, retryBaseMs: 0, retryMaxMs: 0, outputMimeType: "image/jpeg" },
+    modelCapabilitySnapshot: {},
+    safetyContract: {},
+    harnessConfig: {
+      creativeIntentRules: ["creative"],
+      keyVisualTextInstructions: { none: "none", explicit: "explicit" },
+      subjectScaleInstruction: "scale",
+    },
+  },
 }));
 assert.throws(() => validateStageModelConfig("section_background_image", {
   provider: "google",
   model: "gemini-3.1-flash-image",
   responseFormat: "image",
-  modelOptions: { imageSize: "1920px" },
+  modelOptions: {
+    imageSize: "1920px",
+    executionSnapshotVersion: 2,
+    runtimeConfig: { timeoutMs: 120000, maxAttempts: 1, retryBaseMs: 0, retryMaxMs: 0, outputMimeType: "image/jpeg" },
+    modelCapabilitySnapshot: {},
+    safetyContract: {},
+    harnessConfig: {
+      creativeIntentRules: ["creative"],
+      keyVisualTextInstructions: { none: "none", explicit: "explicit" },
+      subjectScaleInstruction: "scale",
+    },
+  },
 }), /imageSize must be one of/);
 
 const root = path.resolve(__dirname, "..");
@@ -107,6 +120,15 @@ const activationRoute = fs.readFileSync(path.join(root, "api", "prompt-template-
 const archiveRoute = fs.readFileSync(path.join(root, "api", "prompt-template-archive.js"), "utf8");
 const draftRoute = fs.readFileSync(path.join(root, "api", "prompt-template-draft.js"), "utf8");
 const validateRoute = fs.readFileSync(path.join(root, "api", "prompt-template-validate.js"), "utf8");
+const governanceMigration = fs.readFileSync(
+  path.join(root, "db", "migrations", "056_prompt_layers_and_runtime_prompt_governance.sql"),
+  "utf8",
+);
+assert.doesNotMatch(
+  governanceMigration,
+  /every \{\{placeholder\}\}/,
+  "Admin translation instructions must not declare a literal placeholder as a runtime variable",
+);
 const rollbackRoute = fs.readFileSync(path.join(root, "api", "prompt-template-rollback.js"), "utf8");
 const lifecycleMigration = fs.readFileSync(
   path.join(root, "db", "migrations", "033_prompt_template_version_lifecycle.sql"),

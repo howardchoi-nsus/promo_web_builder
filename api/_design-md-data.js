@@ -787,13 +787,13 @@ function group(slug, name, description, styleTags) {
 
 function conceptFromMetadata(markdown, metadataItems, styleClassification) {
   const find = (categories) => metadataItems.find((item) => categories.includes(item.category))?.value || "";
-  const concept = find(["philosophy", "other"]) || "Design metadata extracted from the uploaded Design MD.";
-  const layout = find(["layout"]) || "Use the extracted layout metadata and spacing tokens as the layout basis.";
-  const component = find(["component"]) || "Use extracted component metadata and token references where available.";
-  const depth = find(["elevation"]) || "Use extracted elevation and depth metadata where available.";
-  const shape = find(["radius"]) || "Use extracted radius and shape tokens where available.";
-  const color = find(["color"]) || "Use extracted DTCG color tokens.";
-  const typography = find(["typography"]) || "Use extracted typography tokens.";
+  const concept = find(["philosophy", "other"]);
+  const layout = find(["layout"]);
+  const component = find(["component"]);
+  const depth = find(["elevation"]);
+  const shape = find(["radius"]);
+  const color = find(["color"]);
+  const typography = find(["typography"]);
   const guidance = metadataItems.filter((item) => item.category === "guidance").map((item) => item.value).slice(0, 6);
 
   return {
@@ -804,22 +804,18 @@ function conceptFromMetadata(markdown, metadataItems, styleClassification) {
     depthAndEffects: depth.slice(0, 700),
     shapeAndRadius: shape.slice(0, 700),
     componentStyle: component.slice(0, 700),
-    motionOrEffects: find(["elevation"]) || "No explicit motion metadata extracted.",
+    motionOrEffects: find(["elevation"]),
     colorBehavior: color.slice(0, 700),
     typographyBehavior: typography.slice(0, 700),
     dos: guidance.length ? guidance : [],
     donts: [],
-    generationGuidance: [
-      "Use only extracted tokens and metadata for generation.",
-      "Do not refer back to the original Design MD in image generation.",
-      ...guidance,
-    ].slice(0, 8),
+    generationGuidance: guidance,
     promoPageImplications: {
-      hero: "Derive hero composition from extracted component and layout metadata.",
-      contentSections: "Apply extracted spacing, layout, and component patterns to supporting sections.",
-      cta: "Use extracted CTA/button metadata where available.",
-      legal: "Keep legal/footer hierarchy visible and consistent with extracted metadata.",
-      desktopLayout: "Use extracted layout and breakpoint metadata instead of raw Design MD prose.",
+      hero: "",
+      contentSections: "",
+      cta: "",
+      legal: "",
+      desktopLayout: "",
     },
     styleClassification,
     confidence: styleClassification.confidence || 0.6,

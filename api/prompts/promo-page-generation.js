@@ -1,25 +1,42 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
+const { getSql } = require("../_prompt-template-store");
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== "GET") {
     res.setHeader("Allow", "GET");
     return res.status(405).json({ error: "Method not allowed" });
   }
-
   try {
-    const promptPath = path.join(process.cwd(), "prompts", "promo-page-generation.md");
-    const prompt = await readFile(promptPath, "utf8");
+    const rows = await getSql()`
+      select id::text, type, body, status, version, provider, model, model_options
+      from prompt_templates
+      where type = 'promo_page_generation'
+        and status = 'active'
+      limit 1
+    `;
+    if (!rows.length) {
+      return res.status(409).json({
+        error: "Active promo_page_generation prompt is required",
+        code: "PROMPT_CONFIGURATION_REQUIRED",
+      });
+    }
+    const prompt = rows[0];
     res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=300");
     return res.status(200).json({
       id: "promo-page-generation",
-      version: "2026-06-26.md-compliance-v1",
-      prompt,
+      version: `managed-v${prompt.version}`,
+      prompt: prompt.body,
+      promptTemplateId: prompt.id,
+      promptTemplateType: prompt.type,
+      promptTemplateStatus: prompt.status,
+      provider: prompt.provider || "",
+      model: prompt.model || "",
+      modelOptions: prompt.model_options || {},
     });
   } catch (error) {
-    return res.status(500).json({
-      error: "Failed to load prompt",
+    return res.status(error.statusCode || 503).json({
+      error: "Managed prompt could not be loaded",
       message: error.message,
+      code: error.code || "PROMPT_STORE_UNAVAILABLE",
     });
   }
-}
+};

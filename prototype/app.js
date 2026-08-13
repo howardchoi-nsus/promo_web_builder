@@ -122,11 +122,6 @@ const storageKeys = {
   themeMode: "promoPrototype.themeMode",
 };
 
-const generationModels = {
-  text: "gpt-4o-mini",
-  image: "gemini-3.1-flash-image",
-};
-
 const generationStageStaleLimitsMs = {
   integrated_brief: 6 * 60 * 1000,
   lofi_draft: 4 * 60 * 1000,
@@ -479,57 +474,16 @@ function buildTemplateRuntime(schema, config = null) {
   };
 }
 
-// Market is visual guidance, not visible copy, to avoid accidental region labels in generated designs.
 function marketVisualGuidanceFor(market) {
   const value = String(market || "").trim();
-  const normalized = value.toLowerCase();
-  const base = {
+  return {
     market: value,
     primaryUse: "image_generation",
     textCopyInfluence: "low",
     visualInfluence: value ? "medium_high" : "neutral",
-    instruction: value
-      ? "Use the selected market as subtle visual localization context for mood, audience relevance, environment, and compliance sensitivity. Do not render the market name as a visible UI label unless it is part of user-facing promo copy."
-      : "Use neutral global promotional web UI visuals without region-specific cues.",
-    avoid: [
-      "flag-heavy compositions",
-      "map graphics",
-      "stereotyped cultural symbols",
-      "traditional costume clichés",
-      "visible market labels used as annotations",
-    ],
-  };
-
-  if (/brazil/.test(normalized)) {
-    return {
-      ...base,
-      visualMood: "warm, energetic, social, mobile-friendly, subtly relevant to Brazil/Latam audiences",
-      avoid: [...base.avoid, "carnival stereotypes", "Brazil flag collage"],
-    };
-  }
-  if (/latam|latin/.test(normalized)) {
-    return {
-      ...base,
-      visualMood: "warm, dynamic, social, accessible, subtly relevant to Latam audiences",
-      avoid: [...base.avoid, "generic Latin festival stereotypes"],
-    };
-  }
-  if (/europe|germany|united kingdom|canada ontario|french/.test(normalized)) {
-    return {
-      ...base,
-      visualMood: "restrained, premium, regulation-aware, clean, trust-forward",
-      avoid: [...base.avoid, "EU flag collage", "literal landmark montage"],
-    };
-  }
-  if (/global/.test(normalized)) {
-    return {
-      ...base,
-      visualMood: "international, neutral, broad-audience, non-region-specific",
-    };
-  }
-  return {
-    ...base,
-    visualMood: value ? `subtly localized for ${value} without literal labels or stereotypes` : "neutral global",
+    instruction: "",
+    avoid: [],
+    visualMood: "",
   };
 }
 
@@ -1358,6 +1312,7 @@ const adminApp = createApp({
         renderPolicyText: "{}",
         validationPolicyText: "{}",
         harnessConfigText: "{}",
+        promptLayersText: "{}",
         modelCapabilitySnapshotText: "{}",
         safetyContractText: "{}",
         modelOptionsText: "{}",
@@ -2858,6 +2813,7 @@ const adminApp = createApp({
           "generationPolicy",
           "renderPolicy",
           "validationPolicy",
+          "promptLayers",
         ]);
         const providerOptions = Object.fromEntries(
           Object.entries(detail.modelOptions || {}).filter(([key]) => !reservedModelOptionKeys.has(key))
@@ -2908,6 +2864,7 @@ const adminApp = createApp({
             2
           ),
           harnessConfigText: JSON.stringify(detail.harnessConfig || detail.modelOptions?.harnessConfig || {}, null, 2),
+          promptLayersText: JSON.stringify(detail.promptLayers || detail.modelOptions?.promptLayers || {}, null, 2),
           modelCapabilitySnapshotText: JSON.stringify(
             detail.modelCapabilitySnapshot || detail.modelOptions?.modelCapabilitySnapshot || {},
             null,
@@ -2920,7 +2877,7 @@ const adminApp = createApp({
         this.promptBodyLanguageError = this.promptBodyContainsKorean(detail.body)
           ? "영문 원문에는 한글을 입력할 수 없습니다."
           : "";
-        this.translatePromptBody();
+        if (detail.type !== "admin_prompt_translation") this.translatePromptBody();
         if (!options.silent) this.setStatus(`${detail.name} 프롬프트를 열었습니다`);
       } catch (error) {
         this.setStatus(`프롬프트 상세를 불러오지 못했습니다: ${error.message}`);
@@ -3064,6 +3021,7 @@ const adminApp = createApp({
 
     promptModelOptionsForSave(prompt) {
       const modelOptions = this.parseModelOptionsText(this.promptEditor.modelOptionsText);
+      modelOptions.promptLayers = this.parseModelOptionsText(this.promptEditor.promptLayersText);
       if (this.promptSupportsImageSize(prompt)) {
         modelOptions.imageSize = ["1K", "2K", "4K"].includes(this.promptEditor.imageSize)
           ? this.promptEditor.imageSize
@@ -6425,8 +6383,6 @@ const adminApp = createApp({
       const marketVisualGuidance = marketVisualGuidanceFor(this.promo.market);
       return {
         id: pageId,
-        model: generationModels.text,
-        imageModel: generationModels.image,
         generatedAt: nowText(),
         md: {
           id: designDoc.id,

@@ -3,26 +3,17 @@ const {
   renderPrompt,
   sha256,
   toPromptTemplate,
-  unresolvedVariables,
   validatePromptExecutionVariables,
+  validatePromptLayers,
   validatePromptTemplateContract,
 } = require("./_prompt-template-store");
 const { fitFinalDesignPromptVariables } = require("./_final-design-prompt-budget");
+const { assembleEffectivePrompt } = require("./_prompt-assembler");
 const { normalizeExecutionModelOptions } = require("./_worker-execution-contract");
 const {
   normalizeControlPlanePromptConfig,
   validateControlPlaneConfig,
 } = require("./_section-ai-control-plane");
-
-const INTEGRATED_BRIEF_OUTPUT_GUARD = [
-  "",
-  "Mandatory completion guard:",
-  "- integratedDesignBriefMarkdown must contain the exact heading `## Negative Prompt` followed by a fenced text block.",
-  "- integratedDesignBriefMarkdown must contain the exact heading `## Visual QA Checklist` followed by at least 10 checklist items.",
-  "- integratedDesignBrief.negativePrompt must contain the same substantive negative-prompt content.",
-  "- integratedDesignBrief.visualQaChecklist must contain the same checklist as an array.",
-  "- Do not omit these final sections when the response is long. Compress earlier prose before removing either section.",
-].join("\n");
 
 function completeDeclaredPromptVariables(prompt, variables = {}) {
   const completed = { ...variables };
@@ -84,9 +75,6 @@ async function createPromptExecutionSnapshot(sql, type, variables = {}) {
         renderedPrompt: renderPrompt(prompt.body, completedVariables),
         lengthGuard: null,
       };
-  let renderedPrompt = type === "integrated_brief"
-    ? `${fitted.renderedPrompt.trim()}\n${INTEGRATED_BRIEF_OUTPUT_GUARD}`
-    : fitted.renderedPrompt;
   const snapshotModelOptions = prompt.controlPlaneReady
     ? prompt.modelOptions
     : { ...(prompt.modelOptions || {}), executionSnapshotVersion: 1 };
@@ -96,26 +84,18 @@ async function createPromptExecutionSnapshot(sql, type, variables = {}) {
     responseFormat: prompt.responseFormat,
     modelOptions: snapshotModelOptions,
   });
-  if ([
-    "section_layout_planner",
-    "multi_component_layout_planner",
-    "section_composition_planner",
-    "promo_overview_parser",
-    "promo_template_recommender",
-    "promo_template_composer",
-    "promo_page_composer",
-    "promo_composition_editor",
-  ].includes(type)) {
-    const instructions = controlPlane.harnessConfig.additionalInstructions || [];
-    if (instructions.length) renderedPrompt = `${renderedPrompt.trim()}\n${instructions.join("\n")}`;
-  }
-  const unresolved = unresolvedVariables(renderedPrompt);
-  if (unresolved.length) {
-    const error = new Error(`Rendered ${type} prompt contains unresolved variables: ${unresolved.join(", ")}`);
-    error.statusCode = 409;
-    throw error;
-  }
-
+  const promptLayers = snapshotModelOptions.promptLayers
+    && typeof snapshotModelOptions.promptLayers === "object"
+    && !Array.isArray(snapshotModelOptions.promptLayers)
+    ? snapshotModelOptions.promptLayers
+    : {};
+  const assembled = assembleEffectivePrompt({
+    type,
+    renderedBody: fitted.renderedPrompt,
+    variables: fitted.variables,
+    promptLayers,
+    harnessConfig: controlPlane.harnessConfig,
+  });
   const modelOptions = normalizeExecutionModelOptions({
     ...snapshotModelOptions,
     temperature: prompt.temperature,
@@ -138,6 +118,7 @@ async function createPromptExecutionSnapshot(sql, type, variables = {}) {
       modelOptions,
       runtimeConfig: controlPlane.runtimeConfig,
       harnessConfig: controlPlane.harnessConfig,
+      promptLayers,
       modelCapabilitySnapshot: controlPlane.modelCapabilitySnapshot,
       safetyContract: controlPlane.safetyContract,
       ...(controlPlane.snapshotVersion >= 3 ? {
@@ -147,8 +128,9 @@ async function createPromptExecutionSnapshot(sql, type, variables = {}) {
         validationPolicy: controlPlane.validationPolicy,
       } : {}),
       controlPlaneReady: prompt.controlPlaneReady,
-      renderedPrompt,
-      renderedPromptHash: sha256(renderedPrompt),
+      renderedPrompt: assembled.renderedPrompt,
+      renderedPromptHash: assembled.renderedPromptHash,
+      promptLayerSources: assembled.layerSources,
       variableHash: sha256(JSON.stringify(fitted.variables)),
       ...(fitted.lengthGuard ? { lengthGuard: fitted.lengthGuard } : {}),
     },
@@ -167,10 +149,21 @@ function validateStageModelConfig(type, prompt) {
   };
 
   if (!provider || !model) fail(`${type} provider and model are required`);
+  validatePromptLayers(type, prompt.modelOptions || {});
   validateControlPlaneConfig(type, prompt);
   if (type === "integrated_brief") {
     if (provider !== "openai") fail("integrated_brief currently supports the openai provider only");
     if (responseFormat !== "json_object") fail("integrated_brief responseFormat must be json_object");
+    return true;
+  }
+  if (type === "admin_prompt_translation") {
+    if (provider !== "openai") fail("admin_prompt_translation currently supports the openai provider only");
+    if (responseFormat !== "text") fail("admin_prompt_translation responseFormat must be text");
+    return true;
+  }
+  if (type === "promo_page_generation") {
+    if (provider !== "openai") fail("promo_page_generation currently supports the openai provider only");
+    if (responseFormat !== "json_object") fail("promo_page_generation responseFormat must be json_object");
     return true;
   }
   if (type === "lofi_draft") {

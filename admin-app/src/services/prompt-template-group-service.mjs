@@ -136,6 +136,20 @@ const PROMPT_TYPE_CATALOG = Object.freeze({
     description: "LO-FI·최종 디자인 흐름과 분리된 독립 이미지 생성 요청에 사용합니다.",
     executionMode: "독립 실행",
   },
+  admin_prompt_translation: {
+    group: "shared-execution",
+    order: 20,
+    label: "관리자 프롬프트 번역",
+    description: "영문 프롬프트를 관리자 검토용 한국어로 번역합니다.",
+    executionMode: "관리자 요청",
+  },
+  promo_page_generation: {
+    group: "design-generator",
+    order: 40,
+    label: "프로모션 페이지 코드 생성",
+    description: "디자인 분석과 프로모션 입력으로 페이지 결과를 생성합니다.",
+    executionMode: "사용자 요청",
+  },
 });
 
 function promptTypeMeta(type) {

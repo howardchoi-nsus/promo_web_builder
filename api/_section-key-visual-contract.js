@@ -37,25 +37,6 @@ function normalizeKeyVisualTextPolicy(input = {}, registeredContent = {}, target
   return { mode: "explicit", text };
 }
 
-function keyVisualTextPromptInstruction(policy = {}) {
-  const shared = [
-    "KEY VISUAL TEXT CONTRACT (higher priority than earlier creative guidance):",
-    "Never render, reproduce, translate, paraphrase, abbreviate, or stylize any registered main title, lead text, description text, CTA label, CTA button, or other DOM copy inside the image.",
-    "Never render a button, button-like shape, clickable control, UI label, or CTA treatment.",
-  ];
-  if (policy.mode === "explicit" && policy.text) {
-    return [
-      ...shared,
-      `The only visible text permitted is this exact approved key-visual copy: ${JSON.stringify(policy.text)}.`,
-      "Use the approved copy once as a short integrated key-visual graphic. Do not add any other letters, words, numbers, captions, badges, or logos.",
-    ].join("\n");
-  }
-  return [
-    ...shared,
-    "Render no visible text, letters, words, numbers, captions, typography, badges, or logos.",
-  ].join("\n");
-}
-
 function collectRegisteredStrings(value, result = []) {
   if (typeof value === "string") {
     if (value.trim()) result.push(value.trim());
@@ -89,6 +70,5 @@ module.exports = {
   KEY_VISUAL_TEXT_MODES,
   MAX_KEY_VISUAL_TEXT_LENGTH,
   MAX_KEY_VISUAL_TEXT_WORDS,
-  keyVisualTextPromptInstruction,
   normalizeKeyVisualTextPolicy,
 };

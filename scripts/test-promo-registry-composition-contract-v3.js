@@ -206,7 +206,14 @@ assert.equal(snapshot.preview.resources[0].locale, "ko-KR");
   let attempts = 0;
   const generated = await generateValidatedRegistryComposition({
     candidates,
-    promptConfig: { renderedPrompt: "Compose from approved Registry candidates." },
+    promptConfig: {
+      renderedPrompt: "Compose from approved Registry candidates.",
+      promptLayers: {
+        repairPrompts: {
+          contractV3: "Repair {{errorCode}} {{errorMessage}} using {{shellVersionId}} and {{sectionVersionIds}}.",
+        },
+      },
+    },
     onStage: async (stage) => stages.push(stage),
     generate: async () => {
       attempts += 1;

@@ -16,6 +16,7 @@ const {
   normalizeRegistryCompositionProposal,
 } = require("./_promo-registry-composition-contract");
 const { generateStructuredPlannerResult } = require("./_promo-section-design-provider");
+const { sha256 } = require("./_prompt-template-store");
 
 const CANDIDATE_SCOPE_RETRY_CODES = new Set([
   "SECTION_NOT_IN_TEMPLATE",
@@ -23,17 +24,14 @@ const CANDIDATE_SCOPE_RETRY_CODES = new Set([
 ]);
 
 function retryPromptConfig(promptConfig, template) {
+  const repairPrompt = renderRepairPrompt(promptConfig, "candidateScope", {
+    templateId: template.templateId,
+  });
+  const renderedPrompt = `${String(promptConfig?.renderedPrompt || "").trim()}\n${repairPrompt}`;
   return {
     ...promptConfig,
-    renderedPrompt: [
-      String(promptConfig?.renderedPrompt || "").trim(),
-      "",
-      "Correction required:",
-      `Use only templateId ${template.templateId}.`,
-      "Every sectionId must belong to that template.",
-      "Every componentInstanceId must belong to its containing section.",
-      "Return each section and component at most once.",
-    ].join("\n"),
+    renderedPrompt,
+    renderedPromptHash: sha256(renderedPrompt),
   };
 }
 
@@ -75,20 +73,31 @@ async function generateValidatedComposition({
 }
 
 function registryRetryPromptConfig(promptConfig, candidates, error) {
+  const repairPrompt = renderRepairPrompt(promptConfig, "contractV3", {
+    errorCode: error.code || "INVALID_COMPOSITION",
+    errorMessage: error.message,
+    shellVersionId: candidates.shell?.shellVersionId || "",
+    sectionVersionIds: (candidates.sections || []).map((item) => item.sectionVersionId).join(", "),
+  });
+  const renderedPrompt = `${String(promptConfig?.renderedPrompt || "").trim()}\n${repairPrompt}`;
   return {
     ...promptConfig,
-    renderedPrompt: [
-      String(promptConfig?.renderedPrompt || "").trim(),
-      "",
-      "Correction required for Contract v3:",
-      `Previous validation error: ${error.code || "INVALID_COMPOSITION"} - ${error.message}`,
-      `Allowed Shell version: ${candidates.shell?.shellVersionId || ""}`,
-      `Allowed Section versions: ${(candidates.sections || []).map((item) => item.sectionVersionId).join(", ")}`,
-      "Use repeat for multiple instances and never duplicate a Section selection.",
-      "Use only Component instance IDs belonging to each selected Section.",
-      "Do not create content, HTML, CSS, URLs, IDs, Resource text, or raw layout coordinates.",
-    ].join("\n"),
+    renderedPrompt,
+    renderedPromptHash: sha256(renderedPrompt),
   };
+}
+
+function renderRepairPrompt(promptConfig, key, variables) {
+  const template = String(promptConfig?.promptLayers?.repairPrompts?.[key] || "").trim();
+  if (!template) {
+    throw Object.assign(new Error(`Active prompt is missing repair prompt: ${key}`), {
+      code: "PROMPT_LAYER_REQUIRED",
+      statusCode: 409,
+    });
+  }
+  return template.replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (match, variable) => (
+    Object.prototype.hasOwnProperty.call(variables, variable) ? String(variables[variable] ?? "") : match
+  ));
 }
 
 async function generateValidatedRegistryComposition({

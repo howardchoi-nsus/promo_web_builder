@@ -2,7 +2,6 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const {
-  keyVisualTextPromptInstruction,
   normalizeKeyVisualTextPolicy,
 } = require("../api/_section-key-visual-contract");
 const {
@@ -56,20 +55,24 @@ assert.deepEqual(
   { mode: "none", text: "" },
 );
 
-const noTextInstruction = keyVisualTextPromptInstruction({ mode: "none", text: "" });
-assert.match(noTextInstruction, /main title, lead text, description text, CTA label/);
-assert.match(noTextInstruction, /Render no visible text/);
-const explicitInstruction = keyVisualTextPromptInstruction({ mode: "explicit", text: "SUMMER DROP" });
-assert.match(explicitInstruction, /"SUMMER DROP"/);
-assert.match(explicitInstruction, /only visible text permitted/);
-
 const harnessPrompt = buildImageHarnessPrompt({
   prompt: "Create a supporting background image.",
   targetType: "section-background",
   keyVisualTextPolicy: { mode: "explicit", text: "SUMMER DROP" },
+  harnessConfig: {
+    version: 1,
+    safeAreaInstructions: {},
+    creativeIntentRules: ["PROMOTIONAL SECTION KEY VISUAL"],
+    sectionBackgroundRules: [],
+    componentImageRules: [],
+    negativeRules: ["Do not render text"],
+    keyVisualTextInstructions: {
+      explicit: 'Only approved copy: "{{keyVisualText}}"',
+      none: "No visible text",
+    },
+  },
 });
 assert.match(harnessPrompt, /PROMOTIONAL SECTION KEY VISUAL/);
-assert.match(harnessPrompt, /background placement is an implementation detail/);
 assert.ok(
   harnessPrompt.lastIndexOf('"SUMMER DROP"') > harnessPrompt.lastIndexOf("Do not render text"),
   "Approved key visual text exception must appear after generic negative rules",

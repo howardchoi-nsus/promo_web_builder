@@ -78,15 +78,40 @@ assert.deepEqual(unresolvedVariables(renderPrompt(
 )), []);
 assert.equal(validateStageModelConfig("section_background_image", {
   provider: "google", model: "gemini-3.1-flash-image", responseFormat: "image",
+  modelOptions: {
+    executionSnapshotVersion: 2,
+    runtimeConfig: { timeoutMs: 120000, maxAttempts: 1, retryBaseMs: 0, retryMaxMs: 0, outputMimeType: "image/jpeg" },
+    modelCapabilitySnapshot: {},
+    safetyContract: {},
+    harnessConfig: {
+      creativeIntentRules: ["creative"],
+      keyVisualTextInstructions: { none: "none", explicit: "explicit" },
+      subjectScaleInstruction: "scale",
+    },
+  },
 }), true);
 assert.equal(validateStageModelConfig("multi_component_layout_planner", {
   provider: "openai", model: "gpt-4.1-mini", responseFormat: "json_object",
+  modelOptions: {
+    executionSnapshotVersion: 2,
+    harnessConfig: { version: 1, additionalInstructions: [] },
+    runtimeConfig: { timeoutMs: 90000, maxAttempts: 1, retryBaseMs: 0, retryMaxMs: 0 },
+    modelCapabilitySnapshot: {},
+    safetyContract: {},
+  },
 }), true);
 assert.equal(validateStageModelConfig("image_execution", {
   provider: "google", model: "gemini-3.1-flash-image", responseFormat: "image",
 }), true);
 assert.throws(() => validateStageModelConfig("component_image", {
   provider: "google", model: "gpt-4.1-mini", responseFormat: "image",
+  modelOptions: {
+    executionSnapshotVersion: 2,
+    harnessConfig: { subjectScaleInstruction: "scale" },
+    runtimeConfig: { timeoutMs: 120000, maxAttempts: 1, retryBaseMs: 0, retryMaxMs: 0, outputMimeType: "image/jpeg" },
+    modelCapabilitySnapshot: {},
+    safetyContract: {},
+  },
 }), /approved/);
 
 console.log("Section AI prompt admin contract tests passed");

@@ -28,6 +28,10 @@ export function loadCompositionShells() {
   return request("/api/promo-composition-shells?scope=public");
 }
 
+export function loadPromptExecutionDisplay(type) {
+  return request(`/api/prompt-execution-display?type=${encodeURIComponent(type)}`);
+}
+
 export function recordBuilderEvent(payload) {
   return request("/api/promo-builder-events", {
     method: "POST",

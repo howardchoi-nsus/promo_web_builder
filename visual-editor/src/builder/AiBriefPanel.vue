@@ -1,7 +1,10 @@
 <script setup>
+import AiExecutionIndicator from "./AiExecutionIndicator.vue";
+
 defineProps({
   modelValue: { type: String, default: "" },
   busy: { type: Boolean, default: false },
+  execution: { type: Object, default: null },
 });
 const emit = defineEmits(["update:modelValue", "analyze"]);
 </script>
@@ -29,5 +32,6 @@ const emit = defineEmits(["update:modelValue", "analyze"]);
     >
       {{ busy ? "개요 분석 중…" : "AI 개요 분석" }}
     </button>
+    <AiExecutionIndicator v-if="busy" message="프로모션 개요를 분석하고 있습니다." :execution="execution" />
   </section>
 </template>

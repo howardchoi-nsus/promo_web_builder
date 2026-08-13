@@ -8,16 +8,33 @@ const {
   fitFinalDesignPromptVariables,
 } = require("../api/_final-design-prompt-budget");
 const { renderPrompt } = require("../api/_prompt-template-store");
+const { assembleEffectivePrompt } = require("../api/_prompt-assembler");
 const {
   normalizeExecutionModelOptions,
   workerExecutionSummary,
 } = require("../api/_worker-execution-contract");
 
 async function main() {
+  const assembled = assembleEffectivePrompt({
+    type: "integrated_brief",
+    renderedBody: "BODY value",
+    variables: { value: "value" },
+    promptLayers: { sourceDataPolicy: ["POLICY"], completionGuard: ["GUARD"] },
+  });
+  assert.equal(assembled.renderedPrompt, "BODY value\nPOLICY\nGUARD");
+  assert.equal(assembled.layerSources.length, 3);
+  assert.match(assembled.renderedPromptHash, /^[0-9a-f]{64}$/);
   validateStageModelConfig("integrated_brief", {
     provider: "openai",
     model: "gpt-4o-mini",
     responseFormat: "json_object",
+    modelOptions: {
+      promptLayers: {
+        completionGuard: ["guard"],
+        sourceDataPolicy: ["policy"],
+        fallbackOutputValues: { negativePrompt: "negative" },
+      },
+    },
   });
   validateStageModelConfig("lofi_draft", {
     provider: "openai",

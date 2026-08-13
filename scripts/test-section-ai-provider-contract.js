@@ -2,7 +2,6 @@ const assert = require("node:assert/strict");
 const {
   generateSectionDesignPlan,
   generateSectionImage,
-  imagePromptForSafeArea,
 } = require("../api/_promo-section-design-provider");
 
 function fakeWebp(width, height, size = 4096) {
@@ -130,6 +129,28 @@ process.env.SECTION_IMAGE_PROVIDER = "openai";
   assert.equal(requests[1].body.max_output_tokens, 3210);
   assert.equal(requests[1].body.input, "Managed planner prompt");
 
+  const managedHarness = {
+    version: 1,
+    safeAreaInstructions: {
+      none: "Use the full canvas.",
+      "left-copy": "Keep the left half as clean negative space and place the main visual subject on the right.",
+      "right-copy": "Keep the right half as clean negative space and place the main visual subject on the left.",
+    },
+    creativeIntentRules: ["FULL-BLEED WEB SECTION KEY VISUAL"],
+    sectionBackgroundRules: [
+      "Compose directly and cover every pixel from edge to edge.",
+      "Do not place the scene inside a card, panel, poster.",
+      "Do not add any outer margin, padding, matte, whitespace.",
+      "Never draw it as a surrounding frame or margin.",
+    ],
+    componentImageRules: [],
+    negativeRules: [
+      "Use edge colors compatible with the solid section background color {{backgroundColor}}.",
+      "Do not bake a fade, gradient, vignette, transparency; the web renderer applies the requested fade with CSS.",
+    ],
+    keyVisualTextInstructions: {},
+  };
+
   const image = await generateSectionImage({
     prompt: "Premium visual, no text",
     safeArea: "right-copy",
@@ -137,9 +158,16 @@ process.env.SECTION_IMAGE_PROVIDER = "openai";
     promptConfig: {
       promptType: "section_background_image",
       snapshotVersion: 2,
+      provider: "openai",
+      model: "gpt-image-test",
       modelOptions: {
         executionSnapshotVersion: 2,
+        size: "1536x1024",
+        quality: "medium",
         runtimeConfig: { timeoutMs: 240000, maxAttempts: 3, outputMimeType: "image/jpeg" },
+        harnessConfig: managedHarness,
+        modelCapabilitySnapshot: {},
+        safetyContract: {},
       },
     },
   });
@@ -166,6 +194,22 @@ process.env.SECTION_IMAGE_PROVIDER = "openai";
     prompt: "Premium visual",
     safeArea: "left-copy",
     aspectRatio: "1/1",
+    promptConfig: {
+      provider: "google",
+      model: "gemini-3.1-flash-image",
+      snapshotVersion: 3,
+      modelOptions: {
+        executionSnapshotVersion: 3,
+        policySchemaVersion: 1,
+        runtimeConfig: { timeoutMs: 240000, maxAttempts: 1, retryBaseMs: 0, retryMaxMs: 0 },
+        harnessConfig: managedHarness,
+        generationPolicy: { requestedTier: "2K", outputMimeType: "image/jpeg" },
+        renderPolicy: {},
+        validationPolicy: {},
+        modelCapabilitySnapshot: {},
+        safetyContract: {},
+      },
+    },
   });
   assert.equal(geminiImage.bytes.length, 4096);
   assert.equal(geminiImage.mimeType, "image/jpeg");
@@ -181,12 +225,31 @@ process.env.SECTION_IMAGE_PROVIDER = "openai";
   assert.equal(requests[3].body.response_format.image_size, "2K");
   assert.match(requests[3].body.input[0].text, /left half as clean negative space/);
   assert.match(requests[3].body.input[0].text, /main visual subject on the right/);
-  assert.match(imagePromptForSafeArea("Centered visual", "center-copy"), /center as clean negative space/);
-  assert.doesNotMatch(
-    imagePromptForSafeArea("Component visual", "none", "#ffffff", "item", "1:1"),
-    /FULL-BLEED WEB SECTION BACKGROUND/
-  );
-
+  const openAiV3Image = await generateSectionImage({
+    prompt: "Managed OpenAI V3 visual",
+    safeArea: "none",
+    aspectRatio: "16:9",
+    promptConfig: {
+      promptType: "section_background_image",
+      snapshotVersion: 3,
+      provider: "openai",
+      model: "gpt-image-test",
+      modelOptions: {
+        executionSnapshotVersion: 3,
+        policySchemaVersion: 1,
+        generationPolicy: { requestedTier: "2K", quality: "medium", outputMimeType: "image/jpeg" },
+        harnessConfig: managedHarness,
+        runtimeConfig: { timeoutMs: 240000, maxAttempts: 1, retryBaseMs: 0, retryMaxMs: 0 },
+        renderPolicy: {},
+        validationPolicy: {},
+        modelCapabilitySnapshot: { openAiImageSizes: ["1024x1024", "1536x1024", "1024x1536"] },
+        safetyContract: {},
+      },
+    },
+  });
+  assert.equal(openAiV3Image.width, 1536);
+  assert.equal(openAiV3Image.height, 1024);
+  assert.equal(requests[4].body.size, "1536x1024");
   const gemini4kImage = await generateSectionImage({
     prompt: "Wide premium visual",
     safeArea: "none",
@@ -194,15 +257,24 @@ process.env.SECTION_IMAGE_PROVIDER = "openai";
     promptConfig: {
       promptType: "section_background_image",
       snapshotVersion: 3,
+      provider: "google",
+      model: "gemini-3.1-flash-image",
       modelOptions: {
         executionSnapshotVersion: 3,
+        policySchemaVersion: 1,
         generationPolicy: { requestedTier: "4K", outputMimeType: "image/jpeg" },
+        harnessConfig: managedHarness,
+        runtimeConfig: { timeoutMs: 240000, maxAttempts: 1, retryBaseMs: 0, retryMaxMs: 0 },
+        renderPolicy: {},
+        validationPolicy: {},
+        modelCapabilitySnapshot: {},
+        safetyContract: {},
       },
     },
   });
   assert.equal(gemini4kImage.width, 4096);
   assert.equal(gemini4kImage.height, 2304);
-  assert.equal(requests[4].body.response_format.image_size, "4K");
+  assert.equal(requests[5].body.response_format.image_size, "4K");
 
   await generateSectionImage({
     prompt: "Managed component visual",
@@ -212,7 +284,23 @@ process.env.SECTION_IMAGE_PROVIDER = "openai";
     promptConfig: {
       promptType: "component_image",
       snapshotVersion: 2,
-      modelOptions: { executionSnapshotVersion: 2 },
+      model: "gpt-image-test",
+      modelOptions: {
+        executionSnapshotVersion: 2,
+        size: "1536x1024",
+        quality: "medium",
+        runtimeConfig: { timeoutMs: 30000, maxAttempts: 2, retryBaseMs: 0, retryMaxMs: 0, outputMimeType: "image/webp" },
+        harnessConfig: {
+          version: 1,
+          safeAreaInstructions: { none: "CUSTOM SAFE AREA" },
+          sectionBackgroundRules: [],
+          componentImageRules: ["CUSTOM COMPONENT RULE"],
+          negativeRules: ["CUSTOM NEGATIVE RULE"],
+          subjectScaleInstruction: "SCALE {{minimumSubjectScale}} {{maximumSubjectScale}}",
+        },
+        modelCapabilitySnapshot: {},
+        safetyContract: {},
+      },
       runtimeConfig: { timeoutMs: 30000, maxAttempts: 2, outputMimeType: "image/webp" },
       harnessConfig: {
         version: 1,
@@ -225,10 +313,10 @@ process.env.SECTION_IMAGE_PROVIDER = "openai";
       safetyContract: {},
     },
   });
-  assert.match(requests[5].body.prompt, /CUSTOM SAFE AREA/);
-  assert.match(requests[5].body.prompt, /CUSTOM COMPONENT RULE/);
-  assert.match(requests[5].body.prompt, /CUSTOM NEGATIVE RULE/);
-  assert.doesNotMatch(requests[5].body.prompt, /FULL-BLEED WEB SECTION BACKGROUND/);
+  assert.match(requests[6].body.prompt, /CUSTOM SAFE AREA/);
+  assert.match(requests[6].body.prompt, /CUSTOM COMPONENT RULE/);
+  assert.match(requests[6].body.prompt, /CUSTOM NEGATIVE RULE/);
+  assert.doesNotMatch(requests[6].body.prompt, /FULL-BLEED WEB SECTION BACKGROUND/);
 
   console.log("Section AI provider contract tests passed.");
 })().finally(() => {

@@ -2,6 +2,7 @@ const { getSql, parseBody } = require("./_promo-section-design-store");
 const { randomUUID } = require("node:crypto");
 const { createPromptExecutionSnapshot } = require("./_prompt-execution-snapshot");
 const { generateStructuredPlannerResult } = require("./_promo-section-design-provider");
+const { toAiExecutionDisplay } = require("./_ai-execution-display");
 const {
   PROMOTION_PURPOSES,
   AUDIENCES,
@@ -63,6 +64,7 @@ module.exports = async function handler(req, res) {
         hash: promptSnapshot.promptConfig.renderedPromptHash,
       },
       provider: generation.provider,
+      executionDisplay: toAiExecutionDisplay(promptSnapshot.promptConfig),
       usage: generation.usage,
     });
   } catch (error) {

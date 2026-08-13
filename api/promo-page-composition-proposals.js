@@ -20,6 +20,7 @@ const {
 } = require("./_promo-builder-document-store");
 const { processCompositionProposal } = require("./_promo-page-composition-service");
 const { requireBuilderFlag } = require("./_promo-builder-flags");
+const { toAiExecutionDisplay } = require("./_ai-execution-display");
 
 function schedule(work) {
   try {
@@ -43,7 +44,11 @@ module.exports = async function handler(req, res) {
       if (!proposalId) return res.status(400).json({ error: "proposalId is required" });
       const proposal = await fetchProposal(sql, proposalId, owner.ownerSubject, { includeSnapshots: true });
       if (!proposal) return res.status(404).json({ error: "Composition proposal not found" });
-      return res.status(200).json({ ok: true, proposal });
+      return res.status(200).json({
+        ok: true,
+        proposal,
+        executionDisplay: toAiExecutionDisplay(proposal.requestSnapshot?.promptExecutionSnapshot?.promptConfig),
+      });
     }
     if (req.method === "DELETE") {
       const proposalId = String(req.query.proposalId || "").trim();
@@ -166,7 +171,11 @@ module.exports = async function handler(req, res) {
         idempotencyKey,
       });
       schedule(processCompositionProposal(proposal.id, { sql }));
-      return res.status(202).json({ ok: true, proposal });
+      return res.status(202).json({
+        ok: true,
+        proposal,
+        executionDisplay: toAiExecutionDisplay(promptExecutionSnapshot.promptConfig),
+      });
     }
 
     const candidates = await fetchPageCompositionCandidates(sql, {
@@ -214,7 +223,11 @@ module.exports = async function handler(req, res) {
       idempotencyKey,
     });
     schedule(processCompositionProposal(proposal.id, { sql }));
-    return res.status(202).json({ ok: true, proposal });
+    return res.status(202).json({
+      ok: true,
+      proposal,
+      executionDisplay: toAiExecutionDisplay(promptExecutionSnapshot.promptConfig),
+    });
   } catch (error) {
     const status = /access denied/i.test(error.message) ? 403
       : /revision conflict/i.test(error.message) ? 409

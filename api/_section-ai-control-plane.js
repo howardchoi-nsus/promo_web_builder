@@ -3,9 +3,6 @@ const {
   defaultPromptControlPlane,
   normalizePromptControlPlaneOptions,
 } = require("./_prompt-template-store");
-const {
-  keyVisualTextPromptInstruction,
-} = require("./_section-key-visual-contract");
 
 const RUNTIME_LIMITS = Object.freeze({
   plannerTimeoutMs: 90000,
@@ -45,6 +42,7 @@ const IMAGE_MIME_TYPES = Object.freeze(["image/jpeg", "image/png", "image/webp"]
 const IMAGE_FIT_MODES = Object.freeze(["cover", "contain", "width-fill"]);
 const IMAGE_FADE_MODES = Object.freeze(["none", "left", "right", "both"]);
 const ASPECT_RATIO_STRATEGIES = Object.freeze(["fixed", "section", "nearest-supported", "target"]);
+const OPENAI_IMAGE_SIZES = Object.freeze(["1024x1024", "1536x1024", "1024x1536"]);
 
 function plainObject(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
@@ -201,6 +199,14 @@ function normalizeHarnessConfig(type, value = {}) {
     sectionBackgroundRules: stringList(source.sectionBackgroundRules, defaults.sectionBackgroundRules),
     componentImageRules: stringList(source.componentImageRules, defaults.componentImageRules),
     negativeRules: stringList(source.negativeRules, defaults.negativeRules),
+    creativeIntentRules: stringList(source.creativeIntentRules, defaults.creativeIntentRules),
+    keyVisualTextInstructions: {
+      ...defaults.keyVisualTextInstructions,
+      ...plainObject(source.keyVisualTextInstructions),
+    },
+    subjectScaleInstruction: String(
+      source.subjectScaleInstruction || defaults.subjectScaleInstruction || ""
+    ).trim(),
   };
 }
 
@@ -242,6 +248,17 @@ function validateControlPlaneConfig(type, promptConfig = {}) {
     ? promptConfig.modelOptions
     : {};
   const version = Number(source.executionSnapshotVersion || promptConfig.executionSnapshotVersion || 1);
+  const controlled = [
+    "section_layout_planner", "multi_component_layout_planner", "section_composition_planner",
+    "promo_overview_parser", "promo_template_recommender", "promo_template_composer",
+    "promo_page_composer", "promo_composition_editor", "section_background_image", "component_image",
+  ].includes(type);
+  if (controlled && version < 2) {
+    const error = new Error(`${type} requires an activated Execution Snapshot V2 or newer setting`);
+    error.statusCode = 422;
+    error.code = "CONTROL_PLANE_CONFIG_REQUIRED";
+    throw error;
+  }
   if (version < 2) return true;
   const requiredObjects = [
     "harnessConfig", "runtimeConfig", "modelCapabilitySnapshot", "safetyContract",
@@ -312,31 +329,36 @@ function buildImageHarnessPrompt({
   targetType = "section-background",
   aspectRatio = "16:9",
   keyVisualTextPolicy = { mode: "none", text: "" },
+  subjectScale = null,
 }) {
   const harness = normalizeHarnessConfig(
     targetType === "section-background" ? "section_background_image" : "component_image",
     harnessConfig
   );
-  const variables = { backgroundColor, aspectRatio };
+  const variables = {
+    backgroundColor,
+    aspectRatio,
+    keyVisualText: keyVisualTextPolicy.text || "",
+    minimumSubjectScale: subjectScale?.minimumPercent ?? "",
+    maximumSubjectScale: subjectScale?.maximumPercent ?? "",
+  };
   const safeAreaInstruction = harness.safeAreaInstructions[safeArea]
     || harness.safeAreaInstructions.none
     || "";
   const targetRules = targetType === "section-background"
     ? harness.sectionBackgroundRules
     : harness.componentImageRules;
+  const keyVisualTextInstruction = keyVisualTextPolicy.mode === "explicit" && keyVisualTextPolicy.text
+    ? harness.keyVisualTextInstructions.explicit
+    : harness.keyVisualTextInstructions.none;
   return [
     String(prompt || "").trim(),
-    ...(targetType === "section-background" ? [
-      "CREATIVE INTENT — PROMOTIONAL SECTION KEY VISUAL (higher priority than earlier background/supporting language):",
-      "Create a compelling promotional key visual with one clear campaign-relevant focal motif. Do not reduce the result to a generic texture, ambient backdrop, empty gradient, or decorative lighting study.",
-      "The artwork is delivered full-bleed and will be applied behind separately rendered DOM content; background placement is an implementation detail, not the creative purpose.",
-    ] : []),
+    ...(targetType === "section-background" ? harness.creativeIntentRules : []),
     safeAreaInstruction,
     ...targetRules,
     ...harness.negativeRules,
-    ...(targetType === "section-background"
-      ? [keyVisualTextPromptInstruction(keyVisualTextPolicy)]
-      : []),
+    ...(targetType === "section-background" ? [keyVisualTextInstruction] : []),
+    ...(subjectScale ? [harness.subjectScaleInstruction] : []),
   ].filter(Boolean).map((line) => renderHarnessLine(line, variables)).join("\n");
 }
 
@@ -409,6 +431,27 @@ function validateRequestedImageResolution(metadata, promptConfig = {}) {
   if (Number(promptConfig.snapshotVersion || 1) >= 3 && promptConfig.validationPolicy) {
     const policy = promptConfig.validationPolicy;
     if (policy.rejectLowResolution === false) return true;
+    const providerSize = String(promptConfig.providerRequestSize || "").match(/^(\d+)x(\d+)$/);
+    if (providerSize) {
+      const requestedWidth = Number(providerSize[1]);
+      const requestedHeight = Number(providerSize[2]);
+      const requestedRatio = requestedWidth / requestedHeight;
+      const actualRatio = metadata.width / metadata.height;
+      const tolerance = Number(policy.aspectRatioTolerancePercent || 0) / 100;
+      if (Math.abs(actualRatio - requestedRatio) / requestedRatio > tolerance) {
+        const error = new Error(`Generated image aspect ratio ${actualRatio.toFixed(4)} does not match provider request ${promptConfig.providerRequestSize}`);
+        error.code = "IMAGE_ASPECT_RATIO_MISMATCH";
+        error.statusCode = 422;
+        throw error;
+      }
+      if (metadata.width < requestedWidth || metadata.height < requestedHeight) {
+        const error = new Error(`Generated image resolution ${metadata.width}x${metadata.height} is below provider request ${promptConfig.providerRequestSize}`);
+        error.code = "IMAGE_RESOLUTION_BELOW_REQUEST";
+        error.statusCode = 422;
+        throw error;
+      }
+      return true;
+    }
     const rule = policy.resolutionRules?.[imageSize] || {};
     const requestedRatio = ratioNumber(promptConfig.effectiveAspectRatio);
     const actualRatio = metadata.width / metadata.height;
@@ -480,6 +523,40 @@ function resolveEffectiveAspectRatio(generationPolicy = {}, geometry = {}, targe
   ), supportedRatios[0] || fallback);
 }
 
+function resolveOpenAiImageSize({ aspectRatio = "1:1", configuredSize = "", capabilities = {} } = {}) {
+  const allowed = Array.isArray(capabilities.openAiImageSizes)
+    ? capabilities.openAiImageSizes.filter((size) => OPENAI_IMAGE_SIZES.includes(String(size)))
+    : OPENAI_IMAGE_SIZES;
+  const explicit = String(configuredSize || "").trim();
+  if (explicit) {
+    if (!allowed.includes(explicit)) {
+      const error = new Error(`OpenAI image size is not supported by the active model capability snapshot: ${explicit}`);
+      error.code = "PROMPT_PROVIDER_OPTION_UNSUPPORTED";
+      error.statusCode = 422;
+      throw error;
+    }
+    return explicit;
+  }
+  const match = String(aspectRatio || "1:1").trim().replace("/", ":").match(/^(\d+(?:\.\d+)?):(\d+(?:\.\d+)?)$/);
+  if (!match) {
+    const error = new Error(`OpenAI image aspect ratio is invalid: ${aspectRatio}`);
+    error.code = "PROMPT_PROVIDER_OPTION_UNSUPPORTED";
+    error.statusCode = 422;
+    throw error;
+  }
+  const ratio = Number(match[1]) / Number(match[2]);
+  const preferred = Math.abs(ratio - 1) <= 0.08
+    ? "1024x1024"
+    : ratio > 1 ? "1536x1024" : "1024x1536";
+  if (!allowed.includes(preferred)) {
+    const error = new Error(`Active model capability snapshot does not support the required OpenAI image orientation: ${preferred}`);
+    error.code = "PROMPT_PROVIDER_OPTION_UNSUPPORTED";
+    error.statusCode = 422;
+    throw error;
+  }
+  return preferred;
+}
+
 function backgroundSizeForFitMode(value) {
   if (value === "width-fill") return "100% auto";
   return value === "contain" ? "contain" : "cover";
@@ -497,6 +574,7 @@ module.exports = {
   normalizeTargetGeometry,
   normalizeValidationPolicy,
   resolveEffectiveAspectRatio,
+  resolveOpenAiImageSize,
   backgroundSizeForFitMode,
   validateControlPlaneConfig,
   validateRequestedImageResolution,

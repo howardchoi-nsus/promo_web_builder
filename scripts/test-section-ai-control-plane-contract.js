@@ -8,6 +8,7 @@ const {
   backgroundSizeForFitMode,
   normalizeTargetGeometry,
   resolveEffectiveAspectRatio,
+  resolveOpenAiImageSize,
   validateControlPlaneConfig,
   validateRequestedImageResolution,
 } = require("../api/_section-ai-control-plane");
@@ -27,13 +28,22 @@ const migration = read("db", "migrations", "035_llm_prompt_control_plane_backfil
 const policyMigration = read("db", "migrations", "036_section_ai_image_policy_v3_drafts.sql");
 
 const backgroundDefaults = defaultPromptControlPlane("section_background_image");
-assert.equal(backgroundDefaults.executionSnapshotVersion, 3);
-assert.equal(backgroundDefaults.generationPolicy.requestedTier, "2K");
-assert.equal(backgroundDefaults.renderPolicy.sectionBackground.fitMode, "cover");
-assert.equal(backgroundDefaults.validationPolicy.resolutionRules["2K"].minimumLandscapeWidth, 2048);
-assert.equal(backgroundDefaults.runtimeConfig.timeoutMs, 240000);
-assert.equal(backgroundDefaults.runtimeConfig.maxAttempts, 3);
-assert.equal(backgroundDefaults.modelCapabilitySnapshot.minimumLongSideByTier["2K"], 1800);
+assert.deepEqual(backgroundDefaults, {});
+const managedBackgroundConfig = {
+  harnessConfig: {
+    version: 1,
+    safeAreaInstructions: {},
+    creativeIntentRules: ["creative"],
+    sectionBackgroundRules: [],
+    componentImageRules: [],
+    negativeRules: [],
+    keyVisualTextInstructions: { none: "none", explicit: "explicit" },
+    subjectScaleInstruction: "scale",
+  },
+  runtimeConfig: { timeoutMs: 240000, maxAttempts: 3, retryBaseMs: 15000, retryMaxMs: 75000 },
+  modelCapabilitySnapshot: { minimumLongSideByTier: { "2K": 1800 } },
+  safetyContract: { key: "section-image-v1", version: 1 },
+};
 assert.equal(backgroundSizeForFitMode("width-fill"), "100% auto");
 assert.deepEqual(normalizeTargetGeometry({ width: 9999, height: 20 }), {
   width: 3840, height: 120, viewport: "desktop",
@@ -44,6 +54,13 @@ assert.equal(resolveEffectiveAspectRatio(
   "",
   ["16:9", "4:3"]
 ), "16:9");
+assert.equal(resolveOpenAiImageSize({ aspectRatio: "1:1" }), "1024x1024");
+assert.equal(resolveOpenAiImageSize({ aspectRatio: "16:9" }), "1536x1024");
+assert.equal(resolveOpenAiImageSize({ aspectRatio: "9:16" }), "1024x1536");
+assert.throws(() => resolveOpenAiImageSize({
+  aspectRatio: "16:9",
+  capabilities: { openAiImageSizes: ["1024x1024"] },
+}), /does not support/);
 assert.equal(resolveEffectiveAspectRatio(
   { aspectRatioStrategy: "section", fallbackAspectRatio: "16:9" },
   { width: 1280, height: 520 },
@@ -64,9 +81,9 @@ const config = normalizeControlPlanePromptConfig("section_background_image", {
       retryMaxMs: 3000,
       outputMimeType: "image/jpeg",
     },
-    harnessConfig: backgroundDefaults.harnessConfig,
-    modelCapabilitySnapshot: backgroundDefaults.modelCapabilitySnapshot,
-    safetyContract: backgroundDefaults.safetyContract,
+    harnessConfig: managedBackgroundConfig.harnessConfig,
+    modelCapabilitySnapshot: managedBackgroundConfig.modelCapabilitySnapshot,
+    safetyContract: managedBackgroundConfig.safetyContract,
   },
 });
 assert.equal(config.temperature, 0.35);
@@ -90,15 +107,16 @@ const customPrompt = buildImageHarnessPrompt({
   harnessConfig: {
     version: 1,
     safeAreaInstructions: { "right-copy": "SAFE" },
+    creativeIntentRules: ["CREATIVE"],
     sectionBackgroundRules: ["RATIO {{aspectRatio}}"],
     componentImageRules: [],
     negativeRules: ["COLOR {{backgroundColor}}"],
+    keyVisualTextInstructions: { none: "NO TEXT" },
   },
 });
-assert.match(customPrompt, /^BASE\nCREATIVE INTENT — PROMOTIONAL SECTION KEY VISUAL/);
+assert.match(customPrompt, /^BASE\nCREATIVE/);
 assert.match(customPrompt, /\nSAFE\nRATIO 16:9\nCOLOR #112233\n/);
-assert.match(customPrompt, /KEY VISUAL TEXT CONTRACT/);
-assert.match(customPrompt, /Render no visible text/);
+assert.match(customPrompt, /NO TEXT/);
 
 const png = Buffer.alloc(24);
 Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]).copy(png);

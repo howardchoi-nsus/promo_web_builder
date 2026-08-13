@@ -3,24 +3,35 @@ const fs = require("node:fs");
 const path = require("node:path");
 const {
   _test: {
-    DEFAULT_NEGATIVE_PROMPT,
     materializeRequiredMarkdownSections,
     normalizeIntegratedBrief,
   },
 } = require("../api/promo-generation-integrated-brief-complete");
 
-const integratedBriefPrompt = fs.readFileSync(
-  path.join(__dirname, "..", "api", "prompts", "promo-integrated-design-brief-generation.js"),
+const promptMigration = fs.readFileSync(
+  path.join(__dirname, "..", "db", "migrations", "056_prompt_layers_and_runtime_prompt_governance.sql"),
   "utf8"
 );
+for (const [index, line] of promptMigration.split("\n").entries()) {
+  if (!line.includes(";")) continue;
+  assert.match(
+    line,
+    /;\s*$/,
+    `Migration line ${index + 1} contains a semicolon inside SQL text; naive deployment runners may split it`,
+  );
+}
 
 assert.doesNotMatch(
-  integratedBriefPrompt,
+  promptMigration,
   /"negativePrompt"\s*:\s*""/,
   "Integrated Brief prompt must not demonstrate an empty negativePrompt"
 );
-assert.match(integratedBriefPrompt, /negativePrompt is required and must be a non-empty, substantive string/);
-assert.match(integratedBriefPrompt, /The ## Negative Prompt markdown section must contain the same substantive restrictions/);
+assert.match(promptMigration, /fallbackOutputValues/);
+assert.match(promptMigration, /completionGuard/);
+assert.doesNotMatch(promptMigration, /update\s+prompt_templates\s+set/i);
+assert.match(promptMigration, /source_prompt_template_id/);
+assert.match(promptMigration, /'draft'/);
+assert.match(promptMigration, /prompt_template_histories/);
 
 const markdown = [
   "---",
@@ -57,11 +68,16 @@ const emptyNegativeMarkdown = [
   "",
   "## Visual QA Checklist",
 ].join("\n");
-const normalizedFallback = normalizeIntegratedBrief({ negativePrompt: "" }, emptyNegativeMarkdown);
-assert.equal(normalizedFallback.negativePrompt, DEFAULT_NEGATIVE_PROMPT);
+const configuredNegativePrompt = "Configured negative prompt fixture.";
+const normalizedFallback = normalizeIntegratedBrief(
+  { negativePrompt: "" },
+  emptyNegativeMarkdown,
+  { fallbackNegativePrompt: configuredNegativePrompt }
+);
+assert.equal(normalizedFallback.negativePrompt, configuredNegativePrompt);
 
 const materializedFallback = materializeRequiredMarkdownSections(emptyNegativeMarkdown, normalizedFallback);
-assert.match(materializedFallback, new RegExp(DEFAULT_NEGATIVE_PROMPT.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+assert.match(materializedFallback, new RegExp(configuredNegativePrompt.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
 assert.equal((materializedFallback.match(/^## Negative Prompt$/gm) || []).length, 1);
 assert.ok(
   materializedFallback.indexOf("## Negative Prompt") < materializedFallback.indexOf("## Visual QA Checklist"),

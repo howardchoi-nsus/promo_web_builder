@@ -1,4 +1,5 @@
-const { parseBody } = require("./_prompt-template-store");
+const { getSql, parseBody } = require("./_prompt-template-store");
+const { createPromptExecutionSnapshot } = require("./_prompt-execution-snapshot");
 const { generatePromptKoreanTranslation } = require("./_promo-section-design-provider");
 
 module.exports = async function handler(req, res) {
@@ -25,7 +26,15 @@ module.exports = async function handler(req, res) {
         code: "PROMPT_TRANSLATION_TOO_LONG",
       });
     }
-    const result = await generatePromptKoreanTranslation({ text });
+    const execution = await createPromptExecutionSnapshot(
+      req.promptSql || getSql(),
+      "admin_prompt_translation",
+      { sourcePrompt: text }
+    );
+    const result = await generatePromptKoreanTranslation({
+      text,
+      promptConfig: execution.promptConfig,
+    });
     return res.status(200).json({ ok: true, ...result });
   } catch (error) {
     const status = error.statusCode >= 400 && error.statusCode < 500 ? error.statusCode : 502;
