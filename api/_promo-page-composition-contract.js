@@ -1,6 +1,7 @@
 const { randomUUID } = require("node:crypto");
 const { OVERVIEW_FIELDS } = require("./_promo-overview-contract");
 const { normalizeCtaLabel } = require("./_promo-content-policy");
+const { styleSlotTargetProperty } = require("./_promo-style-slot-contract");
 const { resolveSectionLayoutPreset } = require("./_section-layout-preset-resolver");
 
 const OPERATION_TYPES = Object.freeze([
@@ -328,17 +329,6 @@ function resolveDesignTokenBindings(tokenValues = {}, selectableTokens = []) {
 }
 
 function styleSlotTokenStyle(styleSlots = [], bindings = {}) {
-  const propertyByRole = {
-    "surface-color": "backgroundColorToken",
-    "background-color": "backgroundColorToken",
-    "text-color": "colorToken",
-    "muted-color": "colorToken",
-    "accent-color": "backgroundColorToken",
-    "on-accent-color": "colorToken",
-    radius: "borderRadiusToken",
-    shadow: "boxShadowToken",
-    "font-family": "fontFamilyToken",
-  };
   const bindingByRole = {
     "surface-color": bindings.surface,
     "background-color": bindings.background,
@@ -352,7 +342,7 @@ function styleSlotTokenStyle(styleSlots = [], bindings = {}) {
   };
   return Object.fromEntries((styleSlots || []).flatMap((slot) => {
     const role = String(slot?.semanticRole || "").trim().toLowerCase();
-    const property = propertyByRole[role];
+    const property = styleSlotTargetProperty(slot);
     const tokenKey = bindingByRole[role];
     return property && tokenKey ? [[property, tokenKey]] : [];
   }));

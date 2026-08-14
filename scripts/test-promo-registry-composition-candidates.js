@@ -5,6 +5,7 @@ const {
   fingerprint,
   evaluateSectionCandidate,
   rankCandidates,
+  resolveAllowedLayoutPresets,
 } = require("../api/_promo-registry-composition-candidates");
 
 const resolverSource = fs.readFileSync(
@@ -60,6 +61,39 @@ assert.equal(evaluation.eligible, true);
 assert.equal(evaluation.resolvedRequired, true);
 assert.deepEqual(evaluation.matchedCapabilities, ["text", "title"]);
 assert.equal(evaluation.missingCapabilities.length, 0);
+
+const savedLayouts = [
+  { layoutKey: "hero-left", isDefault: true },
+  { layoutKey: "hero-center", isDefault: false },
+  { layoutKey: "hero-right", isDefault: false },
+];
+const selectableLayouts = resolveAllowedLayoutPresets({
+  aiDesign: { allowedLayoutVariants: ["hero-left", "hero-right", "missing"] },
+  compositionPolicy: { layoutLocked: false },
+}, savedLayouts);
+assert.deepEqual(selectableLayouts.allowedLayoutKeys, ["hero-left", "hero-right"]);
+assert.deepEqual(selectableLayouts.layoutPresets.map((layout) => layout.layoutKey), ["hero-left", "hero-right"]);
+const lockedLayouts = resolveAllowedLayoutPresets({
+  aiDesign: { allowedLayoutVariants: ["hero-right"] },
+  compositionPolicy: { layoutLocked: true },
+}, savedLayouts);
+assert.deepEqual(lockedLayouts.allowedLayoutKeys, ["hero-left"]);
+assert.equal(lockedLayouts.layoutSelectionLocked, true);
+const failClosedLayouts = resolveAllowedLayoutPresets({
+  aiDesign: { allowedLayoutVariants: ["missing"] },
+  compositionPolicy: { layoutLocked: false },
+}, savedLayouts);
+assert.deepEqual(failClosedLayouts.allowedLayoutKeys, []);
+assert.deepEqual(failClosedLayouts.layoutPresets, []);
+const noAllowedEvaluation = evaluateSectionCandidate({
+  section: baseSection,
+  components,
+  layouts: [],
+  layoutPolicy: failClosedLayouts,
+  criteria,
+  shellConfig: {},
+});
+assert.ok(noAllowedEvaluation.reasons.includes("AI_LAYOUT_PRESET_REQUIRED"));
 
 const partialCapabilityMatch = evaluateSectionCandidate({
   section: { ...baseSection, isRequired: false, compositionPolicy: { selectionPolicy: "optional" } },

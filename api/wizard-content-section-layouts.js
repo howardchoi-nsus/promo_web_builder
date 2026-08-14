@@ -7,6 +7,7 @@ const {
 } = require("./_wizard-content-sections-store");
 const {
   normalizeLayoutSnapshot,
+  normalizeLayoutSelectionMetadata,
   toLayout,
   fetchLayoutsForSection,
   fetchLayoutRow,
@@ -73,16 +74,21 @@ async function createLayout(req, res) {
   if (normalized.errors.length) {
     return res.status(422).json({ error: "Layout snapshot validation failed", errors: normalized.errors });
   }
+  const normalizedMetadata = normalizeLayoutSelectionMetadata(body.selectionMetadata);
+  if (normalizedMetadata.errors.length) {
+    return res.status(422).json({ error: "Layout selection metadata validation failed", errors: normalizedMetadata.errors });
+  }
   const existingLayouts = await fetchLayoutsForSection(sql, sectionId, { includeSnapshot: false });
   const wantsDefault = body.isDefault === true || existingLayouts.length === 0;
   const changeNote = String(body.changeNote || "Section layout preset created.").trim();
   const rows = await sql`
     insert into wizard_content_section_layouts (
       section_id, layout_key, name, description, is_default,
-      layout_snapshot, change_note
+      selection_metadata, layout_snapshot, change_note
     ) values (
       ${sectionId}::uuid, ${layoutKey}, ${name}, ${String(body.description || "")},
-      false, ${JSON.stringify(normalized.snapshot)}::jsonb, ${changeNote}
+      false, ${JSON.stringify(normalizedMetadata.metadata)}::jsonb,
+      ${JSON.stringify(normalized.snapshot)}::jsonb, ${changeNote}
     )
     returning id::text
   `;
@@ -100,4 +106,3 @@ async function createLayout(req, res) {
   });
   return res.status(201).json({ ok: true, layout: toLayout(row) });
 }
-

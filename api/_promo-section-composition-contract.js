@@ -1,5 +1,6 @@
 const { normalizeCtaLabel } = require("./_promo-content-policy");
 const { createHash } = require("node:crypto");
+const { normalizeStyleSlot } = require("./_promo-style-slot-contract");
 
 const ALLOWED_REGIONS = Object.freeze(["left", "center", "right"]);
 const SAFE_TOKEN_PROPERTIES = new Set([
@@ -44,11 +45,15 @@ function normalizeCompositionSection(value, expectedSectionKey = "") {
     fail("Current section must contain between 1 and 200 components", "INVALID_SECTION_CONTRACT");
   }
   const itemKeys = new Set();
-  const normalizeStyleSlots = (slots) => (Array.isArray(slots) ? slots : []).slice(0, 50).map((slot) => ({
-    slotKey: String(slot?.slotKey || "").trim().slice(0, 128),
-    semanticRole: String(slot?.semanticRole || "").trim().slice(0, 128),
-    aiSelectable: slot?.aiSelectable !== false,
-  })).filter((slot) => slot.slotKey && slot.semanticRole);
+  const normalizeStyleSlots = (slots) => (Array.isArray(slots) ? slots : []).slice(0, 50)
+    .map((slot) => normalizeStyleSlot(slot))
+    .map((slot) => ({
+      slotKey: slot.slotKey.slice(0, 128),
+      semanticRole: slot.semanticRole.slice(0, 128),
+      ...(slot.targetProperty ? { targetProperty: slot.targetProperty } : {}),
+      aiSelectable: slot.aiSelectable,
+    }))
+    .filter((slot) => slot.slotKey && slot.semanticRole);
   const normalizeEditorSchema = (schema) => ({
     ...(Number.isFinite(Number(schema?.maxLength))
       ? { maxLength: Math.max(0, Math.min(10000, Number(schema.maxLength))) }

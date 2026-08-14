@@ -1,6 +1,12 @@
 const LAYOUT_CONTRACT_VERSION = 1;
 const LAYOUT_MODE = "free";
 const VIEWPORTS = Object.freeze(["desktop", "mobile"]);
+const LAYOUT_ALIGNMENT_VALUES = Object.freeze(["auto", "left", "center", "right", "stretch"]);
+const LAYOUT_CONTENT_REGION_VALUES = Object.freeze([
+  "auto", "top-left", "top-center", "top-right", "center-left", "center", "center-right", "bottom-left", "bottom-center", "bottom-right",
+]);
+const LAYOUT_VISUAL_BALANCE_VALUES = Object.freeze(["auto", "media-left", "media-center", "media-right", "full-background"]);
+const LAYOUT_DENSITY_VALUES = Object.freeze(["auto", "compact", "standard", "spacious"]);
 
 function plainObject(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
@@ -9,6 +15,55 @@ function plainObject(value) {
 function finiteNumber(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
+}
+
+function normalizeLayoutSelectionMetadata(value) {
+  const source = plainObject(value);
+  const errors = [];
+  const enumValue = (key, allowed) => {
+    const candidate = String(source[key] || "auto").trim().toLowerCase();
+    if (!allowed.includes(candidate)) {
+      errors.push({
+        path: `selectionMetadata.${key}`,
+        code: "INVALID_LAYOUT_SELECTION_METADATA",
+        message: `${key} must be one of: ${allowed.join(", ")}.`,
+      });
+      return "auto";
+    }
+    return candidate;
+  };
+  const purposeTags = [...new Set((Array.isArray(source.purposeTags) ? source.purposeTags : [])
+    .map((tag) => String(tag || "").trim().toLowerCase())
+    .filter(Boolean))].slice(0, 20);
+  if (purposeTags.some((tag) => tag.length > 40)) {
+    errors.push({
+      path: "selectionMetadata.purposeTags",
+      code: "INVALID_LAYOUT_SELECTION_METADATA",
+      message: "purposeTags values cannot exceed 40 characters.",
+    });
+  }
+  const selectionWeight = source.selectionWeight == null || source.selectionWeight === ""
+    ? 1
+    : Number(source.selectionWeight);
+  if (!Number.isFinite(selectionWeight) || selectionWeight < 0.1 || selectionWeight > 10) {
+    errors.push({
+      path: "selectionMetadata.selectionWeight",
+      code: "INVALID_LAYOUT_SELECTION_METADATA",
+      message: "selectionWeight must be between 0.1 and 10.",
+    });
+  }
+  return {
+    metadata: {
+      alignment: enumValue("alignment", LAYOUT_ALIGNMENT_VALUES),
+      contentRegion: enumValue("contentRegion", LAYOUT_CONTENT_REGION_VALUES),
+      visualBalance: enumValue("visualBalance", LAYOUT_VISUAL_BALANCE_VALUES),
+      density: enumValue("density", LAYOUT_DENSITY_VALUES),
+      purposeTags,
+      selectionWeight: Number.isFinite(selectionWeight) ? selectionWeight : 1,
+      avoidImmediateRepeat: source.avoidImmediateRepeat === true,
+    },
+    errors,
+  };
 }
 
 function normalizeSectionStyle(value, errors) {
@@ -315,6 +370,7 @@ function toLayout(row, { includeSnapshot = true } = {}) {
     name: row.name,
     description: row.description || "",
     isDefault: Boolean(row.is_default),
+    selectionMetadata: row.selection_metadata || {},
     changeNote: row.change_note || "",
     createdAt: row.created_at || null,
     updatedAt: row.updated_at || null,
@@ -326,7 +382,7 @@ function toLayout(row, { includeSnapshot = true } = {}) {
 async function fetchLayoutRows(sql, sectionId) {
   return sql`
     select id::text, section_id::text, layout_key, name, description, is_default,
-      layout_snapshot, change_note, created_at, updated_at
+      selection_metadata, layout_snapshot, change_note, created_at, updated_at
     from wizard_content_section_layouts
     where section_id = ${sectionId}::uuid
     order by is_default desc, created_at asc, layout_key asc
@@ -342,7 +398,7 @@ async function fetchLayoutsForSections(sql, sectionIds = [], options = {}) {
   if (!ids.length) return new Map();
   const rows = await sql`
     select id::text, section_id::text, layout_key, name, description, is_default,
-      layout_snapshot, change_note, created_at, updated_at
+      selection_metadata, layout_snapshot, change_note, created_at, updated_at
     from wizard_content_section_layouts
     where section_id = any(${ids}::uuid[])
     order by section_id, is_default desc, created_at asc, layout_key asc
@@ -359,14 +415,14 @@ async function fetchLayoutRow(sql, id, sectionId = "") {
   const rows = sectionId
     ? await sql`
       select id::text, section_id::text, layout_key, name, description, is_default,
-        layout_snapshot, change_note, created_at, updated_at
+        selection_metadata, layout_snapshot, change_note, created_at, updated_at
       from wizard_content_section_layouts
       where id = ${id}::uuid and section_id = ${sectionId}::uuid
       limit 1
     `
     : await sql`
       select id::text, section_id::text, layout_key, name, description, is_default,
-        layout_snapshot, change_note, created_at, updated_at
+        selection_metadata, layout_snapshot, change_note, created_at, updated_at
       from wizard_content_section_layouts
       where id = ${id}::uuid
       limit 1
@@ -399,6 +455,11 @@ module.exports = {
   LAYOUT_CONTRACT_VERSION,
   LAYOUT_MODE,
   VIEWPORTS,
+  LAYOUT_ALIGNMENT_VALUES,
+  LAYOUT_CONTENT_REGION_VALUES,
+  LAYOUT_VISUAL_BALANCE_VALUES,
+  LAYOUT_DENSITY_VALUES,
+  normalizeLayoutSelectionMetadata,
   normalizeLayoutSnapshot,
   validateHeaderLayoutPolicy,
   toLayout,

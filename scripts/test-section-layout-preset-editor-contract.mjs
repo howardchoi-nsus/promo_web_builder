@@ -56,13 +56,16 @@ const main = fs.readFileSync(path.join(root, "visual-editor/src/main.js"), "utf8
 const adminMain = fs.readFileSync(path.join(root, "admin-app/src/main.js"), "utf8");
 const adminHtml = fs.readFileSync(path.join(root, "prototype/index.html"), "utf8");
 
-assert.match(manager, /Layout Preset/);
+assert.match(manager, /레이아웃 프리셋/);
+assert.match(manager, /selectionMetadata/);
+assert.match(manager, /AI 선택 기준/);
+assert.match(manager, /연속 선택 지양/);
 assert.match(manager, /toggleAiLayout/);
 assert.match(manager, /SectionLayoutVisualEditorFrame/);
 assert.match(manager, /Live Preview 편집/);
-assert.match(manager, /새 Layout 만들기/);
+assert.match(manager, /레이아웃 프리셋 추가/);
 assert.match(manager, /startNewPreset/);
-assert.match(manager, /Preset 만들고 Visual Editor 열기/);
+assert.match(manager, /프리셋 만들고 Visual Editor 열기/);
 assert.match(frame, /promo-section-layout-saved/);
 assert.match(frame, /sectionLayoutPresetService\.editorUrl/);
 assert.match(editor, /loadSectionPresetLayout/);
@@ -72,12 +75,12 @@ assert.match(editor, /sectionPresetAdapter\.update/);
 assert.doesNotMatch(main, /SectionPresetEditor/);
 assert.match(adminMain, /PromoAdminSectionLayouts/);
 assert.match(adminHtml, /section-layout-preset-manager/);
-assert.match(adminHtml, /Section Preset 관리/);
+assert.match(adminHtml, /섹션 프리셋 관리/);
 assert.match(adminHtml, /id="section-preset-manager-target"[\s\S]*?<section class="section-library-manager">/);
 assert.doesNotMatch(adminHtml, /<teleport to="#section-preset-manager-target"/);
-assert.match(adminHtml, /재사용 가능한 Section을 만들고 Component 구성과 Desktop\/Mobile Layout Variant를 관리합니다/);
-assert.match(adminHtml, /AI가 페이지를 만들 때 이 Section을 언제 포함하고/);
-assert.match(adminHtml, /AI 디자인·이미지 생성 허용/);
+assert.match(adminHtml, /재사용 가능한 섹션을 만들고 컴포넌트 구성과 Desktop\/Mobile 레이아웃 프리셋을 관리합니다/);
+assert.match(adminHtml, /AI가 페이지를 만들 때 이 섹션을 언제 포함하고/);
+assert.match(adminHtml, /AI 레이아웃 선택·이미지 생성 허용/);
 assert.doesNotMatch(adminHtml, /v-for="variant in \['split-left', 'split-right', 'centered-hero'\]"/);
 
 const converted = sectionPresetSnapshotFromDesignSpec({

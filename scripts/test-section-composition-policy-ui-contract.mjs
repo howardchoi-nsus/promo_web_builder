@@ -14,7 +14,7 @@ assert.match(html, /wizardSectionSelectionPolicyOptions\(\)/);
 assert.match(html, /selectionPolicy === 'required-by-market'/);
 assert.match(html, /selectionPolicy === 'required-by-purpose'/);
 assert.match(html, /wizardSectionContentModeOptions\(\)/);
-assert.match(html, /AI 레이아웃 변경 허용/);
+assert.match(html, /AI가 레이아웃 프리셋 선택/);
 assert.doesNotMatch(html, />선택 정책<\/span>[\s\S]{0,120}<select v-model="wizardSectionFieldsEditor\.compositionPolicy\.selectionPolicy"/);
 assert.match(app, /wizardSectionCompositionSummary\(\)/);
 assert.match(app, /value: "manual-only"/);

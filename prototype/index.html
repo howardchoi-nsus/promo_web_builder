@@ -712,7 +712,7 @@
                 role="tab"
                 :aria-selected="adminTab === 'section-presets'"
                 @click="selectAdminTab('section-presets')"
-              >Section Preset 관리</button>
+              >섹션 프리셋 관리</button>
               <button
                 class="admin-tab"
                 :class="{ active: adminTab === 'promo-form' }"
@@ -810,6 +810,8 @@
                     <option value="promo_overview_parser">프로모션 개요 분석</option>
                     <option value="promo_template_recommender">프로모션 템플릿 추천</option>
                     <option value="promo_template_composer">템플릿 구성 계획</option>
+                    <option value="promo_page_composer">AI 페이지 구성 계획</option>
+                    <option value="promo_composition_editor">AI 페이지 구성 수정</option>
                     <option value="integrated_brief">통합 디자인 브리프</option>
                     <option value="image_execution">이미지 실행 프롬프트</option>
                     <option value="lofi_draft">LO-FI 시안</option>
@@ -945,19 +947,20 @@
                       </div>
                       <div class="subsection-actions">
                         <button class="tiny-button primary" type="button" :disabled="promptSaving || promptEditorReadOnly" @click="savePromptTemplate">{{ t('common.action.save') }}</button>
-                        <button class="tiny-button" type="button" v-if="!['draft', 'validated'].includes(selectedPromptTemplate.status)" :disabled="promptSaving" @click="createPromptDraft">새 초안 만들기</button>
-                        <button class="tiny-button" type="button" v-if="selectedPromptTemplate.status === 'draft'" :disabled="promptSaving" @click="validatePromptTemplate">초안 검증</button>
-                        <button class="tiny-button" type="button" v-if="selectedPromptTemplate.status === 'validated'" :disabled="promptSaving" @click="activatePromptTemplate">활성 프롬프트로 지정</button>
-                        <button class="tiny-button" type="button" v-if="['inactive', 'archived'].includes(selectedPromptTemplate.status)" :disabled="promptSaving" @click="rollbackPromptTemplate">이 버전으로 롤백</button>
-                        <button class="tiny-button danger" type="button" :disabled="promptSaving || selectedPromptTemplate.status === 'active' || selectedPromptTemplate.status === 'archived'" @click="archivePromptTemplate">{{ t('common.action.archive') }}</button>
+                        <button class="tiny-button" type="button" v-if="!['draft', 'validated'].includes(selectedPromptTemplate.status)" :disabled="promptSaving || promptDetailLoading" @click="createPromptDraft">새 초안 만들기</button>
+                        <button class="tiny-button" type="button" v-if="selectedPromptTemplate.status === 'draft'" :disabled="promptSaving || promptDetailLoading" @click="validatePromptTemplate">초안 검증</button>
+                        <button class="tiny-button" type="button" v-if="selectedPromptTemplate.status === 'validated'" :disabled="promptSaving || promptDetailLoading" @click="activatePromptTemplate">활성 프롬프트로 지정</button>
+                        <button class="tiny-button" type="button" v-if="['inactive', 'archived'].includes(selectedPromptTemplate.status)" :disabled="promptSaving || promptDetailLoading" @click="rollbackPromptTemplate">이 버전으로 롤백</button>
+                        <button class="tiny-button danger" type="button" :disabled="promptSaving || promptDetailLoading || selectedPromptTemplate.status === 'active' || selectedPromptTemplate.status === 'archived'" @click="archivePromptTemplate">{{ t('common.action.archive') }}</button>
                       </div>
                     </div>
 
-                <div class="empty-state compact" v-if="promptEditorReadOnly">
+                <div class="empty-state compact" v-if="promptDetailLoading" role="status">프롬프트 상세를 불러오는 중...</div>
+                <div class="empty-state compact" v-else-if="promptEditorReadOnly">
                   이 버전은 읽기 전용입니다. 운영 프롬프트를 변경하려면 새 초안을 만든 뒤 검증하고 활성화하세요.
                 </div>
 
-                <fieldset class="prompt-editor-fields" :disabled="promptEditorReadOnly">
+                <fieldset v-if="!promptDetailLoading" class="prompt-editor-fields" :disabled="promptEditorReadOnly">
                 <div class="form-grid compact">
                   <label class="field">
                     <span>프롬프트 이름</span>
@@ -1444,6 +1447,23 @@
                           <label class="field"><span>이미지 비율</span><select v-model="field.imagePolicy.aspectRatio" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'"><option value="">기본</option><option value="16:9">16:9</option><option value="4:3">4:3</option><option value="1:1">1:1</option><option value="3:4">3:4</option></select></label>
                         </div>
                       </template>
+                      <div class="subsection-title">
+                        <div>
+                          <h4>스타일 슬롯</h4>
+                          <small>토큰의 의미와 실제 적용 속성을 분리해 관리합니다.</small>
+                        </div>
+                        <button class="tiny-button" type="button" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" @click="addItemComponentStyleSlot(field)">+ 스타일 슬롯 추가</button>
+                      </div>
+                      <div class="stack" v-if="field.styleSlots && field.styleSlots.length">
+                        <div class="form-grid compact" v-for="(slot, slotIndex) in field.styleSlots" :key="`${field.fieldKey || fieldIndex}:${slotIndex}`">
+                          <label class="field"><span>슬롯 식별자</span><input v-model="slot.slotKey" type="text" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /></label>
+                          <label class="field"><span>토큰 의미</span><select v-model="slot.semanticRole" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'"><option value="text-color">글자색</option><option value="muted-color">보조 글자색</option><option value="accent-color">강조색</option><option value="on-accent-color">강조색 위 글자색</option><option value="surface-color">표면색</option><option value="background-color">배경색</option><option value="radius">모서리 반경</option><option value="shadow">그림자</option><option value="font-family">글꼴</option><option value="title-size">제목 크기</option></select></label>
+                          <label class="field"><span>적용 속성</span><select v-model="slot.targetProperty" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'"><option value="">기존 호환 규칙</option><option value="colorToken">글자색</option><option value="backgroundColorToken">배경색</option><option value="textBackgroundToken">텍스트 배경</option><option value="borderRadiusToken">모서리 반경</option><option value="boxShadowToken">그림자</option><option value="fontFamilyToken">글꼴</option><option value="fontSizeToken">글자 크기</option><option value="fontWeightToken">글자 굵기</option><option value="lineHeightToken">줄 높이</option><option value="letterSpacingToken">자간</option><option value="maxWidthToken">최대 너비</option><option value="textStyleToken">텍스트 스타일</option><option value="textGradientToken">텍스트 그라데이션</option></select></label>
+                          <label class="app-checkbox switch-control"><input v-model="slot.aiSelectable" type="checkbox" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /><span>AI 선택 허용</span></label>
+                          <button class="tiny-button danger" type="button" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" @click="removeItemComponentStyleSlot(field, slotIndex)">스타일 슬롯 삭제</button>
+                        </div>
+                      </div>
+                      <div class="empty-state compact" v-else>등록된 스타일 슬롯이 없습니다.</div>
                       <div class="action-row align-right">
                         <button class="tiny-button" type="button" :disabled="(!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft') || fieldIndex === 0" @click="moveItemComponentField(fieldIndex, -1)">위로</button>
                         <button class="tiny-button" type="button" :disabled="(!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft') || fieldIndex === itemComponentEditor.fields.length - 1" @click="moveItemComponentField(fieldIndex, 1)">아래로</button>
@@ -1461,8 +1481,8 @@
           <section class="panel stack section-preset-admin" v-show="adminTab === 'section-presets'">
             <div class="panel-header">
               <div>
-                <h2>Section Preset 관리</h2>
-                <p>재사용 가능한 Section을 만들고 Component 구성과 Desktop/Mobile Layout Variant를 관리합니다.</p>
+                <h2>섹션 프리셋 관리</h2>
+                <p>재사용 가능한 섹션을 만들고 컴포넌트 구성과 Desktop/Mobile 레이아웃 프리셋을 관리합니다.</p>
               </div>
               <button class="tiny-button" type="button" :disabled="wizardSectionsLoading" @click="loadWizardSections({ fresh: true })">{{ t('common.action.refresh') }}</button>
             </div>
@@ -1497,7 +1517,7 @@
                       class="section-drag-handle"
                       :class="{ disabled: !wizardSectionCanReorder(group) }"
                       :draggable="wizardSectionCanReorder(group) && !wizardSectionOrderSaving"
-                      :title="wizardSectionCanReorder(group) ? '드래그해서 Section Preset 순서 변경' : '순서 고정'"
+                      :title="wizardSectionCanReorder(group) ? '드래그해서 섹션 프리셋 순서 변경' : '순서 고정'"
                       @dragstart.stop="startWizardSectionDrag(group, $event)"
                       @dragend.stop="stopWizardSectionDrag"
                       @click.stop
@@ -1508,7 +1528,7 @@
                   <em :class="`status-${group.primary?.status}`">{{ wizardSectionStatusLabel(group.primary?.status) }}</em>
                 </button>
                 <div class="empty-state compact" v-if="!wizardSectionsLoading && !groupedWizardSections.length" key="wizard-sections-empty">
-                  등록된 Section Preset이 없습니다. "+ Preset 추가"로 새로 만들어 보세요.
+                  등록된 섹션 프리셋이 없습니다. "+ 프리셋 추가"로 새로 만들어 보세요.
                 </div>
                 <div class="section-order-saving" v-if="wizardSectionOrderSaving" key="section-order-saving">
                   <span class="section-order-spinner" aria-hidden="true"></span>
@@ -1519,9 +1539,9 @@
                 <button
                   class="tiny-button primary"
                   type="button"
-                  title="독립적인 Section Preset 초안을 만듭니다. 활성화한 뒤 Template에서 연결할 수 있습니다."
+                  title="독립적인 섹션 프리셋 초안을 만듭니다. 활성화한 뒤 템플릿에서 연결할 수 있습니다."
                   @click="toggleNewWizardSectionForm"
-                >{{ showNewWizardSectionForm ? t('common.action.cancel') : '+ Preset 추가' }}</button>
+                >{{ showNewWizardSectionForm ? t('common.action.cancel') : '+ 프리셋 추가' }}</button>
               </div>
               <div class="form-grid compact section-library-create" v-if="showNewWizardSectionForm">
                 <label class="field compact-field">
@@ -1537,7 +1557,7 @@
                   <input v-model="newWizardSectionForm.description" type="text" autocomplete="off" />
                 </label>
                 <div class="action-row align-right">
-                  <button class="tiny-button primary" type="button" :disabled="wizardSectionSaving || !newWizardSectionForm.name" @click="createWizardSection">Preset 생성</button>
+                  <button class="tiny-button primary" type="button" :disabled="wizardSectionSaving || !newWizardSectionForm.name" @click="createWizardSection">프리셋 생성</button>
                 </div>
               </div>
               </div>
@@ -1580,7 +1600,7 @@
                       class="tiny-button danger"
                       type="button"
                       :disabled="wizardSectionSaving || wizardSectionUsageLoading || wizardSectionUsage.length > 0"
-                      :title="wizardSectionUsage.length ? '활성 또는 초안 템플릿에서 사용 중인 Preset은 삭제할 수 없습니다.' : 'Section Preset 전체 버전과 레이아웃을 영구 삭제합니다.'"
+                      :title="wizardSectionUsage.length ? '활성 또는 초안 템플릿에서 사용 중인 프리셋은 삭제할 수 없습니다.' : '섹션 프리셋 전체 버전과 레이아웃을 영구 삭제합니다.'"
                       @click="deleteWizardSection(selectedWizardGroup)"
                     >삭제</button>
                   </div>
@@ -1623,7 +1643,7 @@
                     <div>
                       <span class="section-policy-eyebrow">AI PAGE COMPOSITION</span>
                       <h3 id="section-composition-policy-title">AI 페이지 구성 정책</h3>
-                      <p>AI가 페이지를 만들 때 이 Section을 언제 포함하고, 몇 번 사용하며, 어디까지 수정할 수 있는지 지정합니다.</p>
+                      <p>AI가 페이지를 만들 때 이 섹션을 언제 포함하고, 몇 번 사용하며, 어디까지 수정할 수 있는지 지정합니다.</p>
                     </div>
                     <span class="section-policy-state">{{ wizardSectionSelectionPolicyLabel(wizardSectionFieldsEditor.compositionPolicy.selectionPolicy) }}</span>
                   </div>
@@ -1635,7 +1655,7 @@
 
                   <div class="section-policy-group">
                     <div class="section-policy-group__title">
-                      <strong>1. Section 분류</strong>
+                      <strong>1. 섹션 분류</strong>
                       <span>AI가 후보를 검색하고 페이지 내 역할을 판단할 때 사용합니다.</span>
                     </div>
                     <div class="form-grid compact section-policy-classification">
@@ -1643,7 +1663,7 @@
                         <span>사용 범위</span>
                         <select v-model="wizardSectionFieldsEditor.compositionScope" :disabled="wizardSectionDetail.section.status !== 'draft'">
                           <option value="template">현재 템플릿 전용</option>
-                          <option value="shared">공용 Section Preset</option>
+                          <option value="shared">공용 섹션 프리셋</option>
                         </select>
                         <small>{{ wizardSectionFieldsEditor.compositionScope === 'shared' ? '여러 템플릿에 연결해 재사용할 수 있습니다.' : '연결된 템플릿 안에서만 후보로 사용합니다.' }}</small>
                       </label>
@@ -1656,13 +1676,13 @@
                       </label>
                     </div>
                     <div class="section-policy-notice" v-if="wizardSectionFieldsEditor.sectionRole === 'header'">
-                      Header는 필수 Section·상단 고정·순서 변경 불가로 자동 저장됩니다. 활성화하려면 Logo 컴포넌트와 Desktop/Mobile 기본 Layout이 필요합니다.
+                      헤더는 필수 섹션·상단 고정·순서 변경 불가로 자동 저장됩니다. 활성화하려면 로고 컴포넌트와 Desktop/Mobile 기본 레이아웃이 필요합니다.
                     </div>
                   </div>
 
                   <fieldset class="section-policy-group section-policy-fieldset">
                     <legend>2. 페이지 포함 기준</legend>
-                    <p>AI가 이 Section을 페이지 구성에 포함할 조건을 하나 선택합니다.</p>
+                    <p>AI가 이 섹션을 페이지 구성에 포함할 조건을 하나 선택합니다.</p>
                     <div class="section-policy-choice-grid">
                       <label
                         v-for="policy in wizardSectionSelectionPolicyOptions()"
@@ -1681,7 +1701,7 @@
                       </label>
                     </div>
                     <div class="section-policy-notice" v-if="wizardSectionFieldsEditor.fixedPosition">
-                      고정 위치 Section은 항상 포함되며 선택 정책을 변경할 수 없습니다.
+                      고정 위치 섹션은 항상 포함되며 선택 정책을 변경할 수 없습니다.
                     </div>
                     <label class="field compact-field section-policy-condition" v-if="wizardSectionFieldsEditor.compositionPolicy.selectionPolicy === 'required-by-market'">
                       <span>필수 적용 마켓</span>
@@ -1710,7 +1730,7 @@
                   <div class="section-policy-group">
                     <div class="section-policy-group__title">
                       <strong>3. 반복 사용</strong>
-                      <span>같은 페이지 안에서 이 Section을 여러 번 배치할 수 있는지 지정합니다.</span>
+                      <span>같은 페이지 안에서 이 섹션을 여러 번 배치할 수 있는지 지정합니다.</span>
                     </div>
                     <label class="app-switch section-policy-switch">
                       <input
@@ -1733,7 +1753,7 @@
 
                   <fieldset class="section-policy-group section-policy-fieldset">
                     <legend>4. AI 수정 허용 범위</legend>
-                    <p>Section이 페이지에 포함된 뒤 AI가 콘텐츠와 레이아웃을 변경할 수 있는 범위입니다.</p>
+                    <p>섹션이 페이지에 포함된 뒤 AI가 콘텐츠와 레이아웃을 변경할 수 있는 범위입니다.</p>
                     <div class="section-policy-choice-grid section-policy-choice-grid--three">
                       <label
                         v-for="mode in wizardSectionContentModeOptions()"
@@ -1762,24 +1782,24 @@
                         @change="wizardSectionFieldsEditor.compositionPolicy.layoutLocked = !$event.target.checked"
                       />
                       <span class="app-switch__track" aria-hidden="true"></span>
-                      <span class="app-switch__label">AI 레이아웃 변경 허용</span>
+                      <span class="app-switch__label">AI가 레이아웃 프리셋 선택</span>
                     </label>
-                    <small class="section-policy-help">끄면 관리자가 저장한 Layout Preset 배치를 유지합니다.</small>
+                    <small class="section-policy-help">끄면 관리자가 저장한 기본 레이아웃 프리셋 배치를 유지합니다.</small>
                   </fieldset>
                 </section>
                 <div class="subsection">
                   <div class="subsection-title">
                     <div>
                       <h3>AI 디자인 정책</h3>
-                      <small>이 Section에서 AI가 승인된 Layout Preset을 선택하고 배경 또는 컴포넌트 이미지를 생성할 수 있는지 결정합니다.</small>
+                      <small>이 섹션에서 AI가 승인된 레이아웃 프리셋을 선택하고 배경 또는 컴포넌트 이미지를 생성할 수 있는지 결정합니다.</small>
                     </div>
                   </div>
                   <label class="app-switch">
                     <input class="app-switch__input" type="checkbox" role="switch" v-model="wizardSectionFieldsEditor.aiDesign.enabled" :disabled="wizardSectionDetail.section.status !== 'draft'" />
                     <span class="app-switch__track" aria-hidden="true"></span>
-                    <span class="app-switch__label">AI 디자인·이미지 생성 허용</span>
+                    <span class="app-switch__label">AI 레이아웃 선택·이미지 생성 허용</span>
                   </label>
-                  <div class="empty-state compact">AI가 사용할 수 있는 실제 Layout은 아래 Layout Preset의 Live Preview에서 지정합니다.</div>
+                  <div class="empty-state compact">AI가 선택할 수 있는 실제 배치는 아래 레이아웃 프리셋의 Live Preview에서 지정합니다.</div>
                   <label class="app-checkbox switch-control">
                     <input type="checkbox" v-model="wizardSectionFieldsEditor.aiDesign.allowSectionBackground" :disabled="wizardSectionDetail.section.status !== 'draft' || !wizardSectionFieldsEditor.aiDesign.enabled" />
                     <span>섹션 배경 AI 생성 허용</span>

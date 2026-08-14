@@ -8498,6 +8498,12 @@ var S_ = Object.freeze([
 		order: 30
 	},
 	{
+		key: "ai-page-composition",
+		label: "AI 페이지 구성",
+		description: "승인된 섹션·레이아웃 후보로 페이지를 구성하고 자연어 수정안을 만듭니다.",
+		order: 35
+	},
+	{
 		key: "promotion-image",
 		label: "프로모션 이미지",
 		description: "섹션 키비주얼과 컴포넌트 필드 이미지를 필요할 때 생성합니다.",
@@ -8541,6 +8547,20 @@ var S_ = Object.freeze([
 		order: 20,
 		label: "템플릿 구성 계획",
 		description: "선택한 템플릿의 섹션과 컴포넌트에 프로모션 콘텐츠를 매핑합니다.",
+		executionMode: "사용자 요청"
+	},
+	promo_page_composer: {
+		group: "ai-page-composition",
+		order: 10,
+		label: "AI 페이지 구성 계획",
+		description: "승인된 Section과 Layout Preset 후보를 사용해 프로모션 페이지 구성을 계획합니다.",
+		executionMode: "사용자 요청"
+	},
+	promo_composition_editor: {
+		group: "ai-page-composition",
+		order: 20,
+		label: "AI 페이지 구성 수정",
+		description: "현재 AI 페이지 구성에 적용할 자연어 수정 작업을 제안합니다.",
 		executionMode: "사용자 요청"
 	},
 	section_composition_planner: {
@@ -8806,7 +8826,7 @@ var B_ = Object.freeze({
 					...e.aiDesign || {},
 					allowedLayoutVariants: t
 				},
-				changeNote: "Layout Preset의 AI 사용 정책 변경."
+				changeNote: "레이아웃 프리셋의 AI 선택 후보 정책 변경."
 			})
 		}, n);
 	},
@@ -8905,7 +8925,19 @@ var B_ = Object.freeze({
 			this.loading = !0, this.error = "";
 			try {
 				let t = await B_.list(this.section.id);
-				e === this.requestRevision && (this.layouts = t.layouts || [], this.selectedLayoutId && !this.layouts.some((e) => e.id === this.selectedLayoutId) && (this.selectedLayoutId = ""));
+				e === this.requestRevision && (this.layouts = (t.layouts || []).map((e) => ({
+					...e,
+					selectionMetadata: {
+						alignment: "auto",
+						contentRegion: "auto",
+						visualBalance: "auto",
+						density: "auto",
+						purposeTags: [],
+						selectionWeight: 1,
+						avoidImmediateRepeat: !1,
+						...e.selectionMetadata || {}
+					}
+				})), this.selectedLayoutId && !this.layouts.some((e) => e.id === this.selectedLayoutId) && (this.selectedLayoutId = ""));
 			} catch (t) {
 				e === this.requestRevision && (this.error = t.message);
 			} finally {
@@ -8917,14 +8949,23 @@ var B_ = Object.freeze({
 				name: "",
 				description: "",
 				isDefault: this.layouts.length === 0,
-				allowAi: this.section?.aiDesign?.enabled !== !1
+				allowAi: this.section?.aiDesign?.enabled !== !1,
+				selectionMetadata: {
+					alignment: "auto",
+					contentRegion: "auto",
+					visualBalance: "auto",
+					density: "auto",
+					purposeTagsText: "",
+					selectionWeight: 1,
+					avoidImmediateRepeat: !1
+				}
 			}, this.selectedLayoutId = "");
 		},
 		async createPreset() {
 			if (!this.editable || this.saving || !this.newPresetEditor) return;
 			let e = String(this.newPresetEditor.name || "").trim();
 			if (!e) {
-				this.error = "Layout Preset 이름을 입력해 주세요.";
+				this.error = "레이아웃 프리셋 이름을 입력해 주세요.";
 				return;
 			}
 			this.saving = !0, this.error = "";
@@ -8935,7 +8976,12 @@ var B_ = Object.freeze({
 					name: e,
 					description: this.newPresetEditor.description || "",
 					isDefault: this.newPresetEditor.isDefault,
-					changeNote: "공통 Visual Editor 편집을 위한 Layout Preset 생성.",
+					selectionMetadata: {
+						...this.newPresetEditor.selectionMetadata,
+						purposeTags: String(this.newPresetEditor.selectionMetadata.purposeTagsText || "").split(",").map((e) => e.trim()).filter(Boolean),
+						purposeTagsText: void 0
+					},
+					changeNote: "공통 Visual Editor 편집을 위한 레이아웃 프리셋 생성.",
 					layoutSnapshot: R_(this.items)
 				});
 				n = this.newPresetEditor.allowAi, t = r.layout, await this.load(), this.selectedLayoutId = r.layout.id, this.newPresetEditor = null;
@@ -8964,13 +9010,31 @@ var B_ = Object.freeze({
 				}
 			}
 		},
+		async saveSelectionMetadata(e) {
+			if (!(!this.editable || this.saving)) {
+				this.saving = !0, this.error = "";
+				try {
+					await B_.update(e.id, this.section.id, {
+						selectionMetadata: {
+							...e.selectionMetadata || {},
+							purposeTags: Array.isArray(e.selectionMetadata?.purposeTags) ? e.selectionMetadata.purposeTags : String(e.selectionMetadata?.purposeTags || "").split(",").map((e) => e.trim()).filter(Boolean)
+						},
+						changeNote: "AI 레이아웃 선택 메타데이터 변경."
+					}), await this.load();
+				} catch (e) {
+					this.error = e.validationErrors?.[0]?.message || e.message;
+				} finally {
+					this.saving = !1;
+				}
+			}
+		},
 		async remove(e) {
 			if (!(!this.editable || this.saving)) {
 				if (this.aiAllows(e)) {
-					this.error = "AI 허용을 먼저 해제한 뒤 Layout Preset을 삭제하세요.";
+					this.error = "AI 선택 후보를 먼저 해제한 뒤 레이아웃 프리셋을 삭제하세요.";
 					return;
 				}
-				if (globalThis.confirm(`"${e.name}" Layout Preset을 삭제할까요?`)) {
+				if (globalThis.confirm(`"${e.name}" 레이아웃 프리셋을 삭제할까요?`)) {
 					this.saving = !0, this.error = "";
 					try {
 						await B_.remove(e.id, this.section.id), await this.load(), this.selectedLayoutId === e.id && (this.selectedLayoutId = "");
@@ -9021,12 +9085,15 @@ var B_ = Object.freeze({
 	class: "status-active"
 }, iv = { class: "action-row align-right" }, av = ["onClick"], ov = ["disabled", "onClick"], sv = ["disabled", "onClick"], cv = ["disabled", "onClick"], lv = {
 	key: 0,
+	class: "layout-selection-metadata"
+}, uv = { class: "new-layout-preset-form" }, dv = ["onUpdate:modelValue"], fv = ["onUpdate:modelValue"], pv = ["onUpdate:modelValue"], mv = ["onUpdate:modelValue"], hv = ["value", "onInput"], gv = ["onUpdate:modelValue"], _v = { class: "inline-check" }, vv = ["onUpdate:modelValue"], yv = ["disabled", "onClick"], bv = {
+	key: 0,
 	class: "empty-state compact"
-}, uv = { class: "inline-check" }, dv = ["disabled"], fv = { class: "inline-check" }, pv = ["disabled"], mv = { class: "action-row" }, hv = ["disabled"];
-function gv(e, t, n, r, i, a) {
+}, xv = { class: "inline-check" }, Sv = { class: "inline-check" }, Cv = ["disabled"], wv = { class: "inline-check" }, Tv = ["disabled"], Ev = { class: "action-row" }, Dv = ["disabled"];
+function Ov(e, t, n, r, i, a) {
 	let o = Ca("section-layout-visual-editor-frame");
 	return B(), V("section", q_, [
-		H("div", J_, [t[9] ||= H("div", null, [H("h3", null, "Layout Preset"), H("small", null, "Live Preview에서 Desktop/Mobile 배치를 완성한 뒤 Preset으로 저장합니다.")], -1), H("div", Y_, [H("button", {
+		H("div", J_, [t[16] ||= H("div", null, [H("h3", null, "레이아웃 프리셋"), H("small", null, "Live Preview에서 Desktop/Mobile 배치를 완성한 뒤 프리셋으로 저장합니다.")], -1), H("div", Y_, [H("button", {
 			class: "tiny-button",
 			type: "button",
 			disabled: i.loading,
@@ -9036,77 +9103,147 @@ function gv(e, t, n, r, i, a) {
 			type: "button",
 			disabled: !a.editable || i.saving,
 			onClick: t[1] ||= (...e) => a.startNewPreset && a.startNewPreset(...e)
-		}, "+ 새 Layout 만들기", 8, Z_)])]),
-		a.editable ? W("", !0) : (B(), V("div", Q_, "활성·비활성 버전의 Layout은 읽기 전용입니다. 초안을 만든 후 편집하세요.")),
+		}, "+ 레이아웃 프리셋 추가", 8, Z_)])]),
+		a.editable ? W("", !0) : (B(), V("div", Q_, "활성·비활성 버전의 레이아웃 프리셋은 읽기 전용입니다. 초안을 만든 후 편집하세요.")),
 		i.error ? (B(), V("div", $_, M(i.error), 1)) : W("", !0),
-		i.loading ? (B(), V("div", ev, "Layout Preset을 불러오는 중...")) : (B(), V("div", tv, [(B(!0), V(R, null, ka(i.layouts, (e) => (B(), V("div", {
+		i.loading ? (B(), V("div", ev, "레이아웃 프리셋을 불러오는 중...")) : (B(), V("div", tv, [(B(!0), V(R, null, ka(i.layouts, (e) => (B(), V("div", {
 			key: e.id,
 			class: "history-item section-layout-row"
-		}, [H("div", null, [H("strong", null, [
-			zs(M(e.name) + " ", 1),
-			e.isDefault ? (B(), V("em", nv, "기본")) : W("", !0),
-			a.aiAllows(e) ? (B(), V("em", rv, "AI 허용")) : W("", !0)
-		]), H("span", null, M(e.layoutKey) + " · " + M(e.description || "설명 없음"), 1)]), H("div", iv, [
-			H("button", {
-				class: De(["tiny-button", { primary: i.selectedLayoutId === e.id }]),
-				type: "button",
-				onClick: (t) => a.selectLayout(e)
-			}, M(i.selectedLayoutId === e.id ? "Preview 닫기" : a.editable ? "Live Preview 편집" : "Live Preview 보기"), 11, av),
-			H("button", {
-				class: "tiny-button",
-				type: "button",
-				disabled: !a.editable || i.saving || e.isDefault,
-				onClick: (t) => a.setDefault(e)
-			}, "기본 지정", 8, ov),
-			H("button", {
-				class: "tiny-button",
-				type: "button",
-				disabled: !a.editable || i.saving,
-				onClick: (t) => a.toggleAiLayout(e)
-			}, M(a.aiAllows(e) ? "AI 허용 해제" : "AI 사용 허용"), 9, sv),
-			H("button", {
-				class: "tiny-button danger",
-				type: "button",
-				disabled: !a.editable || i.saving || a.aiAllows(e),
-				onClick: (t) => a.remove(e)
-			}, "삭제", 8, cv)
-		])]))), 128)), i.layouts.length ? W("", !0) : (B(), V("div", lv, "등록된 Layout Preset이 없습니다. 기존 자동 배치가 계속 사용됩니다."))])),
+		}, [
+			H("div", null, [H("strong", null, [
+				zs(M(e.name) + " ", 1),
+				e.isDefault ? (B(), V("em", nv, "기본")) : W("", !0),
+				a.aiAllows(e) ? (B(), V("em", rv, "AI 선택 후보")) : W("", !0)
+			]), H("span", null, M(e.layoutKey) + " · " + M(e.description || "설명 없음"), 1)]),
+			H("div", iv, [
+				H("button", {
+					class: De(["tiny-button", { primary: i.selectedLayoutId === e.id }]),
+					type: "button",
+					onClick: (t) => a.selectLayout(e)
+				}, M(i.selectedLayoutId === e.id ? "Preview 닫기" : a.editable ? "Live Preview 편집" : "Live Preview 보기"), 11, av),
+				H("button", {
+					class: "tiny-button",
+					type: "button",
+					disabled: !a.editable || i.saving || e.isDefault,
+					onClick: (t) => a.setDefault(e)
+				}, "기본 지정", 8, ov),
+				H("button", {
+					class: "tiny-button",
+					type: "button",
+					disabled: !a.editable || i.saving,
+					onClick: (t) => a.toggleAiLayout(e)
+				}, M(a.aiAllows(e) ? "AI 후보 해제" : "AI 선택 후보로 지정"), 9, sv),
+				H("button", {
+					class: "tiny-button danger",
+					type: "button",
+					disabled: !a.editable || i.saving || a.aiAllows(e),
+					onClick: (t) => a.remove(e)
+				}, "삭제", 8, cv)
+			]),
+			a.editable ? (B(), V("details", lv, [t[28] ||= H("summary", null, "AI 선택 기준", -1), H("div", uv, [
+				H("label", null, [t[18] ||= H("span", null, "콘텐츠 정렬", -1), I(H("select", { "onUpdate:modelValue": (t) => e.selectionMetadata.alignment = t }, [...t[17] ||= [Bs("<option value=\"auto\" data-v-f13b7a47>자동</option><option value=\"left\" data-v-f13b7a47>왼쪽</option><option value=\"center\" data-v-f13b7a47>중앙</option><option value=\"right\" data-v-f13b7a47>오른쪽</option><option value=\"stretch\" data-v-f13b7a47>전체 폭</option>", 5)]], 8, dv), [[uu, e.selectionMetadata.alignment]])]),
+				H("label", null, [t[20] ||= H("span", null, "콘텐츠 영역", -1), I(H("select", { "onUpdate:modelValue": (t) => e.selectionMetadata.contentRegion = t }, [...t[19] ||= [Bs("<option value=\"auto\" data-v-f13b7a47>자동</option><option value=\"top-left\" data-v-f13b7a47>왼쪽 상단</option><option value=\"top-center\" data-v-f13b7a47>중앙 상단</option><option value=\"top-right\" data-v-f13b7a47>오른쪽 상단</option><option value=\"center-left\" data-v-f13b7a47>왼쪽 중앙</option><option value=\"center\" data-v-f13b7a47>중앙</option><option value=\"center-right\" data-v-f13b7a47>오른쪽 중앙</option><option value=\"bottom-left\" data-v-f13b7a47>왼쪽 하단</option><option value=\"bottom-center\" data-v-f13b7a47>중앙 하단</option><option value=\"bottom-right\" data-v-f13b7a47>오른쪽 하단</option>", 10)]], 8, fv), [[uu, e.selectionMetadata.contentRegion]])]),
+				H("label", null, [t[22] ||= H("span", null, "비주얼 균형", -1), I(H("select", { "onUpdate:modelValue": (t) => e.selectionMetadata.visualBalance = t }, [...t[21] ||= [Bs("<option value=\"auto\" data-v-f13b7a47>자동</option><option value=\"media-left\" data-v-f13b7a47>이미지 왼쪽</option><option value=\"media-center\" data-v-f13b7a47>이미지 중앙</option><option value=\"media-right\" data-v-f13b7a47>이미지 오른쪽</option><option value=\"full-background\" data-v-f13b7a47>전체 배경</option>", 5)]], 8, pv), [[uu, e.selectionMetadata.visualBalance]])]),
+				H("label", null, [t[24] ||= H("span", null, "밀도", -1), I(H("select", { "onUpdate:modelValue": (t) => e.selectionMetadata.density = t }, [...t[23] ||= [
+					H("option", { value: "auto" }, "자동", -1),
+					H("option", { value: "compact" }, "간결", -1),
+					H("option", { value: "standard" }, "기본", -1),
+					H("option", { value: "spacious" }, "여유", -1)
+				]], 8, mv), [[uu, e.selectionMetadata.density]])]),
+				H("label", null, [t[25] ||= H("span", null, "권장 용도", -1), H("input", {
+					value: (e.selectionMetadata.purposeTags || []).join(", "),
+					onInput: (t) => e.selectionMetadata.purposeTags = t.target.value.split(",").map((e) => e.trim()).filter(Boolean),
+					placeholder: "event, brand-intro"
+				}, null, 40, hv)]),
+				H("label", null, [t[26] ||= H("span", null, "선택 가중치", -1), I(H("input", {
+					"onUpdate:modelValue": (t) => e.selectionMetadata.selectionWeight = t,
+					type: "number",
+					min: "0.1",
+					max: "10",
+					step: "0.1"
+				}, null, 8, gv), [[
+					G,
+					e.selectionMetadata.selectionWeight,
+					void 0,
+					{ number: !0 }
+				]])]),
+				H("label", _v, [I(H("input", {
+					"onUpdate:modelValue": (t) => e.selectionMetadata.avoidImmediateRepeat = t,
+					type: "checkbox"
+				}, null, 8, vv), [[su, e.selectionMetadata.avoidImmediateRepeat]]), t[27] ||= H("span", null, "연속 선택 지양", -1)]),
+				H("button", {
+					class: "tiny-button",
+					type: "button",
+					disabled: i.saving,
+					onClick: (t) => a.saveSelectionMetadata(e)
+				}, "선택 기준 저장", 8, yv)
+			])])) : W("", !0)
+		]))), 128)), i.layouts.length ? W("", !0) : (B(), V("div", bv, "등록된 레이아웃 프리셋이 없습니다. 기존 자동 배치가 계속 사용됩니다."))])),
 		i.newPresetEditor ? (B(), V("form", {
 			key: 4,
 			class: "new-layout-preset-form",
-			onSubmit: t[7] ||= bu((...e) => a.createPreset && a.createPreset(...e), ["prevent"])
+			onSubmit: t[14] ||= bu((...e) => a.createPreset && a.createPreset(...e), ["prevent"])
 		}, [
-			H("label", null, [t[10] ||= H("span", null, "Preset 이름", -1), I(H("input", {
+			H("label", null, [t[29] ||= H("span", null, "프리셋 이름", -1), I(H("input", {
 				"onUpdate:modelValue": t[2] ||= (e) => i.newPresetEditor.name = e,
 				required: ""
 			}, null, 512), [[G, i.newPresetEditor.name]])]),
-			H("label", null, [t[11] ||= H("span", null, "설명", -1), I(H("input", { "onUpdate:modelValue": t[3] ||= (e) => i.newPresetEditor.description = e }, null, 512), [[G, i.newPresetEditor.description]])]),
-			H("label", uv, [I(H("input", {
-				"onUpdate:modelValue": t[4] ||= (e) => i.newPresetEditor.isDefault = e,
+			H("label", null, [t[30] ||= H("span", null, "설명", -1), I(H("input", { "onUpdate:modelValue": t[3] ||= (e) => i.newPresetEditor.description = e }, null, 512), [[G, i.newPresetEditor.description]])]),
+			H("label", null, [t[32] ||= H("span", null, "콘텐츠 정렬", -1), I(H("select", { "onUpdate:modelValue": t[4] ||= (e) => i.newPresetEditor.selectionMetadata.alignment = e }, [...t[31] ||= [Bs("<option value=\"auto\" data-v-f13b7a47>자동</option><option value=\"left\" data-v-f13b7a47>왼쪽</option><option value=\"center\" data-v-f13b7a47>중앙</option><option value=\"right\" data-v-f13b7a47>오른쪽</option><option value=\"stretch\" data-v-f13b7a47>전체 폭</option>", 5)]], 512), [[uu, i.newPresetEditor.selectionMetadata.alignment]])]),
+			H("label", null, [t[34] ||= H("span", null, "콘텐츠 영역", -1), I(H("select", { "onUpdate:modelValue": t[5] ||= (e) => i.newPresetEditor.selectionMetadata.contentRegion = e }, [...t[33] ||= [Bs("<option value=\"auto\" data-v-f13b7a47>자동</option><option value=\"top-left\" data-v-f13b7a47>왼쪽 상단</option><option value=\"top-center\" data-v-f13b7a47>중앙 상단</option><option value=\"top-right\" data-v-f13b7a47>오른쪽 상단</option><option value=\"center-left\" data-v-f13b7a47>왼쪽 중앙</option><option value=\"center\" data-v-f13b7a47>중앙</option><option value=\"center-right\" data-v-f13b7a47>오른쪽 중앙</option><option value=\"bottom-left\" data-v-f13b7a47>왼쪽 하단</option><option value=\"bottom-center\" data-v-f13b7a47>중앙 하단</option><option value=\"bottom-right\" data-v-f13b7a47>오른쪽 하단</option>", 10)]], 512), [[uu, i.newPresetEditor.selectionMetadata.contentRegion]])]),
+			H("label", null, [t[36] ||= H("span", null, "비주얼 균형", -1), I(H("select", { "onUpdate:modelValue": t[6] ||= (e) => i.newPresetEditor.selectionMetadata.visualBalance = e }, [...t[35] ||= [Bs("<option value=\"auto\" data-v-f13b7a47>자동</option><option value=\"media-left\" data-v-f13b7a47>이미지 왼쪽</option><option value=\"media-center\" data-v-f13b7a47>이미지 중앙</option><option value=\"media-right\" data-v-f13b7a47>이미지 오른쪽</option><option value=\"full-background\" data-v-f13b7a47>전체 배경</option>", 5)]], 512), [[uu, i.newPresetEditor.selectionMetadata.visualBalance]])]),
+			H("label", null, [t[38] ||= H("span", null, "밀도", -1), I(H("select", { "onUpdate:modelValue": t[7] ||= (e) => i.newPresetEditor.selectionMetadata.density = e }, [...t[37] ||= [
+				H("option", { value: "auto" }, "자동", -1),
+				H("option", { value: "compact" }, "간결", -1),
+				H("option", { value: "standard" }, "기본", -1),
+				H("option", { value: "spacious" }, "여유", -1)
+			]], 512), [[uu, i.newPresetEditor.selectionMetadata.density]])]),
+			H("label", null, [t[39] ||= H("span", null, "권장 용도", -1), I(H("input", {
+				"onUpdate:modelValue": t[8] ||= (e) => i.newPresetEditor.selectionMetadata.purposeTagsText = e,
+				placeholder: "event, brand-intro"
+			}, null, 512), [[G, i.newPresetEditor.selectionMetadata.purposeTagsText]])]),
+			H("label", null, [t[40] ||= H("span", null, "선택 가중치", -1), I(H("input", {
+				"onUpdate:modelValue": t[9] ||= (e) => i.newPresetEditor.selectionMetadata.selectionWeight = e,
+				type: "number",
+				min: "0.1",
+				max: "10",
+				step: "0.1"
+			}, null, 512), [[
+				G,
+				i.newPresetEditor.selectionMetadata.selectionWeight,
+				void 0,
+				{ number: !0 }
+			]])]),
+			H("label", xv, [I(H("input", {
+				"onUpdate:modelValue": t[10] ||= (e) => i.newPresetEditor.selectionMetadata.avoidImmediateRepeat = e,
+				type: "checkbox"
+			}, null, 512), [[su, i.newPresetEditor.selectionMetadata.avoidImmediateRepeat]]), t[41] ||= H("span", null, "연속 선택 지양", -1)]),
+			H("label", Sv, [I(H("input", {
+				"onUpdate:modelValue": t[11] ||= (e) => i.newPresetEditor.isDefault = e,
 				type: "checkbox",
 				disabled: !i.layouts.length
-			}, null, 8, dv), [[su, i.newPresetEditor.isDefault]]), t[12] ||= H("span", null, "기본 Preset", -1)]),
-			H("label", fv, [I(H("input", {
-				"onUpdate:modelValue": t[5] ||= (e) => i.newPresetEditor.allowAi = e,
+			}, null, 8, Cv), [[su, i.newPresetEditor.isDefault]]), t[42] ||= H("span", null, "기본 프리셋", -1)]),
+			H("label", wv, [I(H("input", {
+				"onUpdate:modelValue": t[12] ||= (e) => i.newPresetEditor.allowAi = e,
 				type: "checkbox",
 				disabled: n.section.aiDesign?.enabled === !1
-			}, null, 8, pv), [[su, i.newPresetEditor.allowAi]]), t[13] ||= H("span", null, "AI 사용 허용", -1)]),
-			H("div", mv, [H("button", {
+			}, null, 8, Tv), [[su, i.newPresetEditor.allowAi]]), t[43] ||= H("span", null, "AI 선택 후보", -1)]),
+			H("div", Ev, [H("button", {
 				class: "tiny-button",
 				type: "button",
-				onClick: t[6] ||= (e) => i.newPresetEditor = null
+				onClick: t[13] ||= (e) => i.newPresetEditor = null
 			}, "취소"), H("button", {
 				class: "tiny-button primary",
 				type: "submit",
 				disabled: i.saving
-			}, M(i.saving ? "생성 중…" : "Preset 만들고 Visual Editor 열기"), 9, hv)])
+			}, M(i.saving ? "생성 중…" : "프리셋 만들고 Visual Editor 열기"), 9, Dv)])
 		], 32)) : W("", !0),
 		a.selectedLayout ? (B(), As(o, {
 			key: 5,
 			section: n.section,
 			layout: a.selectedLayout,
 			onSaved: a.handleVisualEditorSaved,
-			onClose: t[8] ||= (e) => i.selectedLayoutId = ""
+			onClose: t[15] ||= (e) => i.selectedLayoutId = ""
 		}, null, 8, [
 			"section",
 			"layout",
@@ -9114,7 +9251,7 @@ function gv(e, t, n, r, i, a) {
 		])) : W("", !0)
 	]);
 }
-var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]), vv = /* @__PURE__ */ o((() => {
+var kv = /*#__PURE__*/ Ch(K_, [["render", Ov], ["__scopeId", "data-v-f13b7a47"]]), Av = /* @__PURE__ */ o((() => {
 	var e = {
 		documents: "promoPrototype.documents.abc",
 		generatedPages: "promoPrototype.generatedPages.abc",
@@ -10133,6 +10270,8 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 				promptTemplates: [],
 				promptTemplatesLoading: !1,
 				promptTemplatesError: "",
+				promptDetailLoading: !1,
+				promptDetailRequestRevision: 0,
 				selectedPromptTemplateId: "",
 				promptTypeFilter: "",
 				expandedPromptLineageIds: [],
@@ -10140,6 +10279,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 					"promotion-overview",
 					"template-selection",
 					"section-layout",
+					"ai-page-composition",
 					"promotion-image",
 					"design-generator",
 					"shared-execution",
@@ -10753,7 +10893,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 				return window.PromoAdminPromptGroups.findPromptGroup(this.promptTemplateGroups, this.selectedPromptTemplateId);
 			},
 			promptEditorReadOnly() {
-				return this.selectedPromptTemplate?.status !== "draft";
+				return this.promptDetailLoading || this.selectedPromptTemplate?.status !== "draft";
 			},
 			selectedPromptEditorTitle() {
 				return this.selectedPromptTemplate ? this.promptTypeLabel(this.selectedPromptTemplate.type) : "프롬프트 편집기";
@@ -11413,6 +11553,19 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 					styleSlots: []
 				});
 			},
+			addItemComponentStyleSlot(e) {
+				if (!e) return;
+				let t = e.styleSlots ||= [], n = e.fieldKind === "cta";
+				t.push({
+					slotKey: `style${t.length + 1}`,
+					semanticRole: n ? "accent-color" : "text-color",
+					targetProperty: n ? "backgroundColorToken" : "colorToken",
+					aiSelectable: !0
+				});
+			},
+			removeItemComponentStyleSlot(e, t) {
+				Array.isArray(e?.styleSlots) && e.styleSlots.splice(t, 1);
+			},
 			removeItemComponentField(e) {
 				if ((this.itemComponentEditor.fields || []).length <= 1) {
 					this.setStatus("컴포넌트에는 요소가 하나 이상 필요합니다");
@@ -11756,14 +11909,20 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 				}
 			},
 			async selectPromptTemplate(e, t = {}) {
-				this.selectedPromptTemplateId = e, this.expandPromptGroupForPromptId(e), this.promptBodyTranslationKo = "", this.promptBodyTranslationSource = "", this.promptBodyTranslationError = "", this.promptBodyTranslationLoading = !1, this.promptBodyLanguageError = "";
-				let n = this.promptTemplates.find((t) => t.id === e);
-				if (n) try {
-					let r = await fetch(`/api/prompt-template?id=${encodeURIComponent(e)}`), i = await r.json().catch(() => ({}));
-					if (!r.ok) throw Error(i.message || i.error || `프롬프트 요청 오류(${r.status})`);
-					let a = i.prompt || n, o = this.promptTemplates.findIndex((t) => t.id === e);
-					o >= 0 && this.promptTemplates.splice(o, 1, a), this.promptHistories = Array.isArray(i.histories) ? i.histories : [];
-					let s = /* @__PURE__ */ new Set([
+				let n = ++this.promptDetailRequestRevision;
+				this.selectedPromptTemplateId = e, this.promptDetailLoading = !0, this.expandPromptGroupForPromptId(e), this.promptBodyTranslationKo = "", this.promptBodyTranslationSource = "", this.promptBodyTranslationError = "", this.promptBodyTranslationLoading = !1, this.promptBodyLanguageError = "";
+				let r = this.promptTemplates.find((t) => t.id === e);
+				if (!r) {
+					n === this.promptDetailRequestRevision && (this.promptDetailLoading = !1);
+					return;
+				}
+				try {
+					let i = await fetch(`/api/prompt-template?id=${encodeURIComponent(e)}`), a = await i.json().catch(() => ({}));
+					if (!i.ok) throw Error(a.message || a.error || `프롬프트 요청 오류(${i.status})`);
+					if (n !== this.promptDetailRequestRevision || e !== this.selectedPromptTemplateId) return;
+					let o = a.prompt || r, s = this.promptTemplates.findIndex((t) => t.id === e);
+					s >= 0 && this.promptTemplates.splice(s, 1, o), this.promptHistories = Array.isArray(a.histories) ? a.histories : [];
+					let c = /* @__PURE__ */ new Set([
 						"executionSnapshotVersion",
 						"harnessConfig",
 						"runtimeConfig",
@@ -11774,40 +11933,42 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 						"renderPolicy",
 						"validationPolicy",
 						"promptLayers"
-					]), c = Object.fromEntries(Object.entries(a.modelOptions || {}).filter(([e]) => !s.has(e)));
+					]), l = Object.fromEntries(Object.entries(o.modelOptions || {}).filter(([e]) => !c.has(e)));
 					this.promptEditor = {
-						name: a.name || "",
-						body: a.body || "",
-						requiredVariablesText: (a.requiredVariables || []).join(", "),
-						optionalVariablesText: (a.optionalVariables || []).join(", "),
-						provider: a.provider || "",
-						model: a.model || "",
-						temperature: a.temperature ?? "",
-						maxTokens: a.maxTokens ?? "",
-						responseFormat: a.responseFormat || "",
+						name: o.name || "",
+						body: o.body || "",
+						requiredVariablesText: (o.requiredVariables || []).join(", "),
+						optionalVariablesText: (o.optionalVariables || []).join(", "),
+						provider: o.provider || "",
+						model: o.model || "",
+						temperature: o.temperature ?? "",
+						maxTokens: o.maxTokens ?? "",
+						responseFormat: o.responseFormat || "",
 						imageSize: [
 							"1K",
 							"2K",
 							"4K"
-						].includes(String(a.generationPolicy?.requestedTier || a.modelOptions?.generationPolicy?.requestedTier || a.modelOptions?.imageSize || a.modelOptions?.image_size || "").toUpperCase()) ? String(a.generationPolicy?.requestedTier || a.modelOptions?.generationPolicy?.requestedTier || a.modelOptions?.imageSize || a.modelOptions?.image_size).toUpperCase() : "2K",
-						executionSnapshotVersion: Number(a.executionSnapshotVersion || a.modelOptions?.executionSnapshotVersion || 2),
-						timeoutMs: a.runtimeConfig?.timeoutMs ?? a.modelOptions?.runtimeConfig?.timeoutMs ?? "",
-						maxAttempts: a.runtimeConfig?.maxAttempts ?? a.modelOptions?.runtimeConfig?.maxAttempts ?? "",
-						retryBaseMs: a.runtimeConfig?.retryBaseMs ?? a.modelOptions?.runtimeConfig?.retryBaseMs ?? "",
-						retryMaxMs: a.runtimeConfig?.retryMaxMs ?? a.modelOptions?.runtimeConfig?.retryMaxMs ?? "",
-						outputMimeType: a.generationPolicy?.outputMimeType ?? a.modelOptions?.generationPolicy?.outputMimeType ?? a.runtimeConfig?.outputMimeType ?? a.modelOptions?.runtimeConfig?.outputMimeType ?? "",
-						generationPolicyText: JSON.stringify(a.generationPolicy || a.modelOptions?.generationPolicy || {}, null, 2),
-						renderPolicyText: JSON.stringify(a.renderPolicy || a.modelOptions?.renderPolicy || {}, null, 2),
-						validationPolicyText: JSON.stringify(a.validationPolicy || a.modelOptions?.validationPolicy || {}, null, 2),
-						harnessConfigText: JSON.stringify(a.harnessConfig || a.modelOptions?.harnessConfig || {}, null, 2),
-						promptLayersText: JSON.stringify(a.promptLayers || a.modelOptions?.promptLayers || {}, null, 2),
-						modelCapabilitySnapshotText: JSON.stringify(a.modelCapabilitySnapshot || a.modelOptions?.modelCapabilitySnapshot || {}, null, 2),
-						safetyContractText: JSON.stringify(a.safetyContract || a.modelOptions?.safetyContract || {}, null, 2),
-						modelOptionsText: JSON.stringify(c, null, 2),
+						].includes(String(o.generationPolicy?.requestedTier || o.modelOptions?.generationPolicy?.requestedTier || o.modelOptions?.imageSize || o.modelOptions?.image_size || "").toUpperCase()) ? String(o.generationPolicy?.requestedTier || o.modelOptions?.generationPolicy?.requestedTier || o.modelOptions?.imageSize || o.modelOptions?.image_size).toUpperCase() : "2K",
+						executionSnapshotVersion: Number(o.executionSnapshotVersion || o.modelOptions?.executionSnapshotVersion || 2),
+						timeoutMs: o.runtimeConfig?.timeoutMs ?? o.modelOptions?.runtimeConfig?.timeoutMs ?? "",
+						maxAttempts: o.runtimeConfig?.maxAttempts ?? o.modelOptions?.runtimeConfig?.maxAttempts ?? "",
+						retryBaseMs: o.runtimeConfig?.retryBaseMs ?? o.modelOptions?.runtimeConfig?.retryBaseMs ?? "",
+						retryMaxMs: o.runtimeConfig?.retryMaxMs ?? o.modelOptions?.runtimeConfig?.retryMaxMs ?? "",
+						outputMimeType: o.generationPolicy?.outputMimeType ?? o.modelOptions?.generationPolicy?.outputMimeType ?? o.runtimeConfig?.outputMimeType ?? o.modelOptions?.runtimeConfig?.outputMimeType ?? "",
+						generationPolicyText: JSON.stringify(o.generationPolicy || o.modelOptions?.generationPolicy || {}, null, 2),
+						renderPolicyText: JSON.stringify(o.renderPolicy || o.modelOptions?.renderPolicy || {}, null, 2),
+						validationPolicyText: JSON.stringify(o.validationPolicy || o.modelOptions?.validationPolicy || {}, null, 2),
+						harnessConfigText: JSON.stringify(o.harnessConfig || o.modelOptions?.harnessConfig || {}, null, 2),
+						promptLayersText: JSON.stringify(o.promptLayers || o.modelOptions?.promptLayers || {}, null, 2),
+						modelCapabilitySnapshotText: JSON.stringify(o.modelCapabilitySnapshot || o.modelOptions?.modelCapabilitySnapshot || {}, null, 2),
+						safetyContractText: JSON.stringify(o.safetyContract || o.modelOptions?.safetyContract || {}, null, 2),
+						modelOptionsText: JSON.stringify(l, null, 2),
 						changeNote: ""
-					}, this.promptBodyLanguageError = this.promptBodyContainsKorean(a.body) ? "영문 원문에는 한글을 입력할 수 없습니다." : "", a.type !== "admin_prompt_translation" && this.translatePromptBody(), t.silent || this.setStatus(`${a.name} 프롬프트를 열었습니다`);
+					}, this.promptBodyLanguageError = this.promptBodyContainsKorean(o.body) ? "영문 원문에는 한글을 입력할 수 없습니다." : "", o.type !== "admin_prompt_translation" && this.translatePromptBody(), t.silent || this.setStatus(`${o.name} 프롬프트를 열었습니다`);
 				} catch (e) {
-					this.setStatus(`프롬프트 상세를 불러오지 못했습니다: ${e.message}`);
+					n === this.promptDetailRequestRevision && this.setStatus(`프롬프트 상세를 불러오지 못했습니다: ${e.message}`);
+				} finally {
+					n === this.promptDetailRequestRevision && (this.promptDetailLoading = !1);
 				}
 			},
 			variableTextToList(e) {
@@ -12893,7 +13054,7 @@ var _v = /*#__PURE__*/ Ch(K_, [["render", gv], ["__scopeId", "data-v-aa9f25de"]]
 					"manual-only": "관리자 입력 사용",
 					locked: "콘텐츠 고정"
 				}[this.wizardSectionContentMode()];
-				return t.push(n), t.push(e.layoutLocked ? "저장된 레이아웃 유지" : "AI 레이아웃 변경 허용"), t.join(" · ");
+				return t.push(n), t.push(e.layoutLocked ? "기본 레이아웃 프리셋 유지" : "AI가 레이아웃 프리셋 선택"), t.join(" · ");
 			},
 			fieldKindLabel(e) {
 				return {
@@ -14841,6 +15002,6 @@ yh(document), globalThis.Vue = gh, globalThis.PromoAdminTemplateLayout = Object.
 	component: x_
 }), globalThis.PromoAdminPromptGroups = I_, globalThis.PromoAdminSectionLayouts = Object.freeze({
 	service: B_,
-	component: _v
-}), await Promise.resolve().then(() => /* @__PURE__ */ l(vv()));
+	component: kv
+}), await Promise.resolve().then(() => /* @__PURE__ */ l(Av()));
 //#endregion

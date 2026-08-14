@@ -3,6 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const {
   normalizeLayoutSnapshot,
+  normalizeLayoutSelectionMetadata,
   LAYOUT_CONTRACT_VERSION,
   LAYOUT_MODE,
 } = require("../api/_wizard-content-section-layouts-store");
@@ -32,6 +33,27 @@ const validSnapshot = {
 
 assert.strictEqual(LAYOUT_CONTRACT_VERSION, 1);
 assert.strictEqual(LAYOUT_MODE, "free");
+assert.deepStrictEqual(normalizeLayoutSelectionMetadata({
+  alignment: "left",
+  contentRegion: "top-left",
+  visualBalance: "media-right",
+  density: "compact",
+  purposeTags: ["Event", "event", "brand-intro"],
+  selectionWeight: 1.5,
+  avoidImmediateRepeat: true,
+}), {
+  metadata: {
+    alignment: "left",
+    contentRegion: "top-left",
+    visualBalance: "media-right",
+    density: "compact",
+    purposeTags: ["event", "brand-intro"],
+    selectionWeight: 1.5,
+    avoidImmediateRepeat: true,
+  },
+  errors: [],
+});
+assert(normalizeLayoutSelectionMetadata({ alignment: "diagonal" }).errors.length > 0);
 assert.deepStrictEqual(
   normalizeAiDesign({ allowedLayoutVariants: ["standard-header", "compact_header", "bad key"] }).allowedLayoutVariants,
   ["standard-header", "compact_header"],
@@ -124,11 +146,21 @@ const migration = fs.readFileSync(
   path.join(__dirname, "../db/migrations/047_wizard_content_section_layout_presets.sql"),
   "utf8",
 );
+const selectionMetadataMigration = fs.readFileSync(
+  path.join(__dirname, "../db/migrations/058_layout_selection_metadata_and_style_slot_targets.sql"),
+  "utf8",
+);
 assert(migration.includes("create table if not exists wizard_content_section_layouts"));
 assert(migration.includes("wizard_content_section_layouts_one_default_idx"));
 assert(migration.includes("insert into wizard_content_section_layouts"));
 assert(migration.includes("set_wizard_content_section_default_layout"));
 assert(migration.includes("wizard_content_section_layout_histories"));
+assert(selectionMetadataMigration.includes("add column if not exists selection_metadata jsonb"));
+assert(selectionMetadataMigration.includes("jsonb_typeof(selection_metadata) = 'object'"));
+assert(selectionMetadataMigration.includes("Migration 058 candidate: explicit Style Slot targetProperty."));
+assert(selectionMetadataMigration.includes("select id into draft_id"));
+assert(selectionMetadataMigration.includes("then slot || '{\"targetProperty\":\"colorToken\"}'::jsonb"));
+assert(selectionMetadataMigration.includes("then slot || '{\"targetProperty\":\"backgroundColorToken\"}'::jsonb"));
 
 [
   "wizard-content-section-layouts.js",

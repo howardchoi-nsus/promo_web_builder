@@ -1,5 +1,6 @@
 const { getDatabaseUrl } = require("./_db");
 const { neon } = require("@neondatabase/serverless");
+const { normalizeStyleSlot } = require("./_promo-style-slot-contract");
 
 const FIELD_KINDS = ["text", "image", "cta"];
 const TEXT_TYPES = ["title", "remark", "multi"];
@@ -140,7 +141,7 @@ function validateFieldDefinition(body, index = 0) {
   const capabilities = asObject(body.capabilities);
   const imagePolicy = fieldKind === "image" ? asObject(body.imagePolicy) : {};
   const ctaPolicy = fieldKind === "cta" ? asObject(body.ctaPolicy) : {};
-  const styleSlots = asArray(body.styleSlots);
+  const styleSlots = asArray(body.styleSlots).map((slot) => normalizeStyleSlot(slot));
   for (const slot of styleSlots) {
     if (!slot || typeof slot !== "object" || !String(slot.slotKey || "").trim()) {
       const error = new Error("Every style slot requires slotKey");

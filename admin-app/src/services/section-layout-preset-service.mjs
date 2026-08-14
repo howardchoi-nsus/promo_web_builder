@@ -91,7 +91,7 @@ export const sectionLayoutPresetService = Object.freeze({
           ...(section.aiDesign || {}),
           allowedLayoutVariants,
         },
-        changeNote: "Layout Preset의 AI 사용 정책 변경.",
+        changeNote: "레이아웃 프리셋의 AI 선택 후보 정책 변경.",
       }),
     }, fetchImpl);
   },

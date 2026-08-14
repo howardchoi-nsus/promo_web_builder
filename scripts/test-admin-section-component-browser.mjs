@@ -203,7 +203,7 @@ try {
   await page.goto(`${origin}/prototype/index.html?view=admin&tab=components`, { waitUntil: "networkidle" });
   await page.getByText("Hero Title", { exact: true }).first().waitFor({ state: "visible" });
   assert.equal(await page.getByText(`컴포넌트 식별자: ${component.componentKey}`, { exact: true }).count(), 1);
-  await page.getByRole("tab", { name: "Section Preset 관리" }).click();
+  await page.getByRole("tab", { name: "섹션 프리셋 관리" }).click();
   assert.equal(await page.locator("#section-preset-manager-target .section-library-manager").count(), 1);
   const linkedSectionRow = page.locator("#section-preset-manager-target .prompt-list-item").filter({ hasText: "Promotion Intro" });
   assert.equal(await linkedSectionRow.locator(".status-draft").count(), 1, "Preset list must prefer the editable draft version");

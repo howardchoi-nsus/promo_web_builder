@@ -6,6 +6,7 @@ const {
 } = require("./_wizard-content-sections-store");
 const {
   normalizeLayoutSnapshot,
+  normalizeLayoutSelectionMetadata,
   toLayout,
   fetchLayoutRow,
   fetchLayoutRows,
@@ -68,6 +69,7 @@ async function updateLayout(req, res) {
   const hasName = Object.prototype.hasOwnProperty.call(body, "name");
   const hasDescription = Object.prototype.hasOwnProperty.call(body, "description");
   const hasSnapshot = Object.prototype.hasOwnProperty.call(body, "layoutSnapshot");
+  const hasSelectionMetadata = Object.prototype.hasOwnProperty.call(body, "selectionMetadata");
   const name = hasName ? String(body.name || "").trim() : current.name;
   if (!name) return res.status(400).json({ error: "name is required" });
 
@@ -80,18 +82,27 @@ async function updateLayout(req, res) {
     }
     snapshot = normalized.snapshot;
   }
+  let selectionMetadata = current.selection_metadata || {};
+  if (hasSelectionMetadata) {
+    const normalizedMetadata = normalizeLayoutSelectionMetadata(body.selectionMetadata);
+    if (normalizedMetadata.errors.length) {
+      return res.status(422).json({ error: "Layout selection metadata validation failed", errors: normalizedMetadata.errors });
+    }
+    selectionMetadata = normalizedMetadata.metadata;
+  }
   const changeNote = String(body.changeNote || "Section layout preset updated.").trim();
   const rows = await sql`
     update wizard_content_section_layouts
     set
       name = ${name},
       description = ${hasDescription ? String(body.description || "") : current.description || ""},
+      selection_metadata = ${JSON.stringify(selectionMetadata)}::jsonb,
       layout_snapshot = ${JSON.stringify(snapshot)}::jsonb,
       change_note = ${changeNote},
       updated_at = now()
     where id = ${id}::uuid and section_id = ${current.section_id}::uuid
     returning id::text, section_id::text, layout_key, name, description, is_default,
-      layout_snapshot, change_note, created_at, updated_at
+      selection_metadata, layout_snapshot, change_note, created_at, updated_at
   `;
   await recordLayoutHistory(sql, {
     layoutId: id,
@@ -131,4 +142,3 @@ async function deleteLayout(req, res) {
   }
   return res.status(200).json({ ok: true, id });
 }
-

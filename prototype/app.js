@@ -1102,6 +1102,8 @@ const adminApp = createApp({
       promptTemplates: [],
       promptTemplatesLoading: false,
       promptTemplatesError: "",
+      promptDetailLoading: false,
+      promptDetailRequestRevision: 0,
       selectedPromptTemplateId: "",
       promptTypeFilter: "",
       expandedPromptLineageIds: [],
@@ -1109,6 +1111,7 @@ const adminApp = createApp({
         "promotion-overview",
         "template-selection",
         "section-layout",
+        "ai-page-composition",
         "promotion-image",
         "design-generator",
         "shared-execution",
@@ -1666,7 +1669,7 @@ const adminApp = createApp({
     },
 
     promptEditorReadOnly() {
-      return this.selectedPromptTemplate?.status !== "draft";
+      return this.promptDetailLoading || this.selectedPromptTemplate?.status !== "draft";
     },
 
     selectedPromptEditorTitle() {
@@ -2381,6 +2384,23 @@ const adminApp = createApp({
       });
     },
 
+    addItemComponentStyleSlot(field) {
+      if (!field) return;
+      const slots = field.styleSlots || (field.styleSlots = []);
+      const isCta = field.fieldKind === "cta";
+      slots.push({
+        slotKey: `style${slots.length + 1}`,
+        semanticRole: isCta ? "accent-color" : "text-color",
+        targetProperty: isCta ? "backgroundColorToken" : "colorToken",
+        aiSelectable: true,
+      });
+    },
+
+    removeItemComponentStyleSlot(field, slotIndex) {
+      if (!Array.isArray(field?.styleSlots)) return;
+      field.styleSlots.splice(slotIndex, 1);
+    },
+
     removeItemComponentField(index) {
       if ((this.itemComponentEditor.fields || []).length <= 1) {
         this.setStatus("컴포넌트에는 요소가 하나 이상 필요합니다");
@@ -2786,7 +2806,9 @@ const adminApp = createApp({
     },
 
     async selectPromptTemplate(id, options = {}) {
+      const requestRevision = ++this.promptDetailRequestRevision;
       this.selectedPromptTemplateId = id;
+      this.promptDetailLoading = true;
       this.expandPromptGroupForPromptId(id);
       this.promptBodyTranslationKo = "";
       this.promptBodyTranslationSource = "";
@@ -2794,11 +2816,15 @@ const adminApp = createApp({
       this.promptBodyTranslationLoading = false;
       this.promptBodyLanguageError = "";
       const prompt = this.promptTemplates.find((item) => item.id === id);
-      if (!prompt) return;
+      if (!prompt) {
+        if (requestRevision === this.promptDetailRequestRevision) this.promptDetailLoading = false;
+        return;
+      }
       try {
         const response = await fetch(`/api/prompt-template?id=${encodeURIComponent(id)}`);
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `프롬프트 요청 오류(${response.status})`);
+        if (requestRevision !== this.promptDetailRequestRevision || id !== this.selectedPromptTemplateId) return;
         const detail = result.prompt || prompt;
         const index = this.promptTemplates.findIndex((item) => item.id === id);
         if (index >= 0) this.promptTemplates.splice(index, 1, detail);
@@ -2880,7 +2906,11 @@ const adminApp = createApp({
         if (detail.type !== "admin_prompt_translation") this.translatePromptBody();
         if (!options.silent) this.setStatus(`${detail.name} 프롬프트를 열었습니다`);
       } catch (error) {
-        this.setStatus(`프롬프트 상세를 불러오지 못했습니다: ${error.message}`);
+        if (requestRevision === this.promptDetailRequestRevision) {
+          this.setStatus(`프롬프트 상세를 불러오지 못했습니다: ${error.message}`);
+        }
+      } finally {
+        if (requestRevision === this.promptDetailRequestRevision) this.promptDetailLoading = false;
       }
     },
 
@@ -4220,7 +4250,7 @@ const adminApp = createApp({
       parts.push(policy.duplicatePolicy === "limited" ? `최대 ${Math.max(2, Number(policy.maxInstances || 2))}회` : "페이지당 1회");
       const contentLabel = ({ editable: "AI 콘텐츠 수정 허용", "manual-only": "관리자 입력 사용", locked: "콘텐츠 고정" })[this.wizardSectionContentMode()];
       parts.push(contentLabel);
-      parts.push(policy.layoutLocked ? "저장된 레이아웃 유지" : "AI 레이아웃 변경 허용");
+      parts.push(policy.layoutLocked ? "기본 레이아웃 프리셋 유지" : "AI가 레이아웃 프리셋 선택");
       return parts.join(" · ");
     },
 

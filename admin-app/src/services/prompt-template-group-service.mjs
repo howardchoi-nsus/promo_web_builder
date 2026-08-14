@@ -26,6 +26,12 @@ const PROMPT_WORKFLOW_GROUPS = Object.freeze([
     order: 30,
   },
   {
+    key: "ai-page-composition",
+    label: "AI 페이지 구성",
+    description: "승인된 섹션·레이아웃 후보로 페이지를 구성하고 자연어 수정안을 만듭니다.",
+    order: 35,
+  },
+  {
     key: "promotion-image",
     label: "프로모션 이미지",
     description: "섹션 키비주얼과 컴포넌트 필드 이미지를 필요할 때 생성합니다.",
@@ -71,6 +77,20 @@ const PROMPT_TYPE_CATALOG = Object.freeze({
     order: 20,
     label: "템플릿 구성 계획",
     description: "선택한 템플릿의 섹션과 컴포넌트에 프로모션 콘텐츠를 매핑합니다.",
+    executionMode: "사용자 요청",
+  },
+  promo_page_composer: {
+    group: "ai-page-composition",
+    order: 10,
+    label: "AI 페이지 구성 계획",
+    description: "승인된 Section과 Layout Preset 후보를 사용해 프로모션 페이지 구성을 계획합니다.",
+    executionMode: "사용자 요청",
+  },
+  promo_composition_editor: {
+    group: "ai-page-composition",
+    order: 20,
+    label: "AI 페이지 구성 수정",
+    description: "현재 AI 페이지 구성에 적용할 자연어 수정 작업을 제안합니다.",
     executionMode: "사용자 요청",
   },
   section_composition_planner: {

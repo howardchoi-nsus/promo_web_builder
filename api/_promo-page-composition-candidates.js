@@ -14,6 +14,7 @@ const {
   fetchTokenVersion,
   toRuntimeTokenMap,
 } = require("./_design-token-store");
+const { resolveAllowedLayoutPresets } = require("./_promo-layout-preset-policy");
 
 function stableStringify(value) {
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(",")}]`;
@@ -68,12 +69,13 @@ async function fetchPageCompositionCandidates(sql, {
       );
       const aiDesign = normalizeAiDesign(membership.aiDesign);
       const layoutPresets = await fetchLayoutsForSection(sql, membership.sectionId);
-      const savedLayoutKeys = new Set(layoutPresets.map((layout) => layout.layoutKey));
-      const configuredLayoutKeys = aiDesign.allowedLayoutVariants
-        .filter((layoutKey) => savedLayoutKeys.has(layoutKey));
-      const defaultLayoutKey = layoutPresets.find((layout) => layout.isDefault)?.layoutKey || "";
+      const layoutPolicy = resolveAllowedLayoutPresets({
+        aiDesign,
+        compositionPolicy: policy,
+      }, layoutPresets, { fallbackToDefault: true });
+      const defaultLayoutKey = layoutPolicy.defaultLayoutKey || "";
       const selectableLayoutVariants = layoutPresets.length
-        ? (configuredLayoutKeys.length ? configuredLayoutKeys : [defaultLayoutKey].filter(Boolean))
+        ? layoutPolicy.allowedLayoutKeys
         : (policy.allowedLayoutVariants.length ? policy.allowedLayoutVariants : ["default"]);
       const allowedLayoutVariants = policy.layoutLocked
         ? [defaultLayoutKey || selectableLayoutVariants[0] || "default"]
@@ -91,6 +93,7 @@ async function fetchPageCompositionCandidates(sql, {
         sectionRole: membership.sectionRole || "content",
         compositionPolicy: policy,
         aiDesign,
+        layoutSelectionLocked: policy.layoutLocked,
         resolvedRequired: policyRequiresSection(
           { ...membership, compositionPolicy: policy },
           overview,

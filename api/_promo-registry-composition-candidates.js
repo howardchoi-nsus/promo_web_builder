@@ -16,6 +16,7 @@ const {
   enrichCandidatesWithResourcePolicy,
   resolveContentResourceReferences,
 } = require("./_promo-resource-policy");
+const { resolveAllowedLayoutPresets } = require("./_promo-layout-preset-policy");
 
 const MAX_SECTION_SCAN = 500;
 const DEFAULT_SECTION_LIMIT = 40;
@@ -66,7 +67,7 @@ function componentCollection(component) {
   };
 }
 
-function evaluateSectionCandidate({ section, components, layouts, criteria, shellConfig }) {
+function evaluateSectionCandidate({ section, components, layouts, layoutPolicy, criteria, shellConfig }) {
   const reasons = [];
   const policy = normalizeCompositionPolicy(section.compositionPolicy, section);
   const aiDesign = normalizeAiDesign(section.aiDesign);
@@ -91,7 +92,9 @@ function evaluateSectionCandidate({ section, components, layouts, criteria, shel
   }
   if (!aiDesign.enabled) reasons.push("AI_DESIGN_DISABLED");
   if (!components.length) reasons.push("ACTIVE_COMPONENT_REQUIRED");
-  if (!layouts.length) reasons.push("LAYOUT_PRESET_REQUIRED");
+  if (!layouts.length) reasons.push(
+    layoutPolicy?.savedLayoutCount ? "AI_LAYOUT_PRESET_REQUIRED" : "LAYOUT_PRESET_REQUIRED",
+  );
 
   const availableCapabilities = new Set(components.flatMap(componentCapabilities));
   const matchedCapabilities = criteria.capabilities.filter((item) => availableCapabilities.has(item));
@@ -237,8 +240,12 @@ async function fetchRegistryCompositionCandidates(sql, {
     const section = toSection(row);
     const components = (itemsBySection.get(section.id) || [])
       .filter((item) => item.isVisibleInWizard && item.componentVersionStatus === "active");
-    const layouts = layoutsBySection.get(section.id) || [];
-    const evaluation = evaluateSectionCandidate({ section, components, layouts, criteria, shellConfig });
+    const savedLayouts = layoutsBySection.get(section.id) || [];
+    const layoutPolicy = resolveAllowedLayoutPresets(section, savedLayouts);
+    const layouts = layoutPolicy.layoutPresets;
+    const evaluation = evaluateSectionCandidate({
+      section, components, layouts, layoutPolicy, criteria, shellConfig,
+    });
     if (!evaluation.eligible) {
       excluded.push({
         sectionVersionId: section.id,
@@ -264,6 +271,9 @@ async function fetchRegistryCompositionCandidates(sql, {
       matchedCapabilities: evaluation.matchedCapabilities,
       compositionPolicy: evaluation.policy,
       aiDesign: evaluation.aiDesign,
+      defaultLayoutKey: layoutPolicy.defaultLayoutKey,
+      allowedLayoutKeys: layoutPolicy.allowedLayoutKeys,
+      layoutSelectionLocked: layoutPolicy.layoutSelectionLocked,
       layoutPresets: layouts,
       components: components.map((component) => ({
         componentInstanceId: component.id,
@@ -313,6 +323,10 @@ async function fetchRegistryCompositionCandidates(sql, {
     sectionPolicies: sections.map((section) => ({
       sectionVersionId: section.sectionVersionId,
       policy: section.compositionPolicy,
+      aiDesign: section.aiDesign,
+      allowedLayoutKeys: section.allowedLayoutKeys,
+      defaultLayoutKey: section.defaultLayoutKey,
+      layoutSelectionLocked: section.layoutSelectionLocked,
     })),
   });
   const resourceFingerprint = resourceResolution.resourceFingerprint;
@@ -351,11 +365,15 @@ function plannerRegistryCandidateSnapshot(candidates) {
       sectionRole: section.sectionRole,
       resolvedRequired: section.resolvedRequired,
       compositionPolicy: section.compositionPolicy,
+      defaultLayoutKey: section.defaultLayoutKey,
+      allowedLayoutKeys: section.allowedLayoutKeys,
+      layoutSelectionLocked: section.layoutSelectionLocked,
       layoutPresets: (section.layoutPresets || []).map((layout) => ({
         layoutKey: layout.layoutKey,
         name: layout.name,
         description: layout.description,
         isDefault: layout.isDefault,
+        selectionMetadata: layout.selectionMetadata || {},
       })),
       components: (section.components || []).map((component) => ({
         componentInstanceId: component.componentInstanceId,
@@ -400,6 +418,7 @@ module.exports = {
   fingerprint,
   normalizeStringList,
   componentCapabilities,
+  resolveAllowedLayoutPresets,
   evaluateSectionCandidate,
   rankCandidates,
   fetchRegistryCompositionCandidates,

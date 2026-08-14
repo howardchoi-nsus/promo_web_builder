@@ -153,7 +153,7 @@ assert.match(adminSource, /newWizardFormTemplateSectionForm:\s*\{ sectionId: "" 
 assert.match(adminHtml, /t\('entity\.component\.manage'\)/);
 assert.doesNotMatch(adminHtml, /transition-group name="template-section-order"/);
 assert.doesNotMatch(adminHtml, /class="template-section-add"/);
-assert.match(adminHtml, /Section Preset 관리/);
+assert.match(adminHtml, /섹션 프리셋 관리/);
 assert.match(adminHtml, /v-for="group in groupedWizardSections"/);
 assert.match(adminHtml, /selectWizardSection\(group\.sectionKey, \{ sectionId: group\.primary\?\.id \}\)/);
 assert.match(adminHtml, /class="tiny-button section-activate-button"[\s\S]*?\['draft', 'inactive'\]\.includes\(wizardSectionDetail\.section\.status\)/);

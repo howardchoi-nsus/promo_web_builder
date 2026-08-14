@@ -1,6 +1,7 @@
 const { createHash, randomUUID } = require("node:crypto");
 const { resolveSectionLayoutPreset } = require("./_section-layout-preset-resolver");
 const { OPERATION_TYPES } = require("./_promo-page-composition-contract");
+const { resolveAllowedLayoutPresets } = require("./_promo-layout-preset-policy");
 
 function collectTargets(snapshot) {
   const sections = new Map();
@@ -157,10 +158,12 @@ function validateCompositionOperations(result, snapshot, motionPresets = [], reg
     }
     if (type === "change-layout-variant") {
       const presetKeys = new Set((section?.layoutPresets || []).map((layout) => layout.layoutKey));
-      const configuredPresetKeys = (section?.aiDesign?.allowedLayoutVariants || [])
-        .filter((layoutKey) => presetKeys.has(layoutKey));
+      const layoutPolicy = section ? resolveAllowedLayoutPresets(
+        section,
+        section.layoutPresets || [],
+      ) : { allowedLayoutKeys: [] };
       const allowed = presetKeys.size
-        ? configuredPresetKeys
+        ? (section?.allowedLayoutKeys?.length ? section.allowedLayoutKeys : layoutPolicy.allowedLayoutKeys)
         : section?.compositionPolicy?.allowedLayoutVariants || [];
       if (!section || (presetKeys.size
         ? !allowed.includes(candidate.layoutVariant)

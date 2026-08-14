@@ -136,6 +136,8 @@ assert.match(adminApp, /\/api\/item-component-delete\?componentId=/);
 assert.match(adminApp, /item-components\?includeArchived=true/);
 assert.match(componentHtml, /컴포넌트 보관/);
 assert.match(componentHtml, /컴포넌트 삭제/);
+assert.match(componentHtml, /스타일 슬롯/);
+assert.match(componentHtml, /targetProperty/);
 assert.match(componentHtml, /selectedItemComponent\.systemSeedCode/);
 assert.doesNotMatch(componentHtml, /:disabled="itemComponentSaving \|\| itemComponentUsageLoading \|\| itemComponentUsage\.usageCount > 0 \|\| !!selectedItemComponent\.systemSeedCode"/);
 assert.match(componentHtml, /itemComponentUsage\.usageCount > 0/);
