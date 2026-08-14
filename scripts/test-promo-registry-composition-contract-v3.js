@@ -224,6 +224,43 @@ assert.equal(snapshot.preview.resources[0].locale, "ko-KR");
   assert.equal(attempts, 2);
   assert.deepEqual(stages, ["validating", "repairing"]);
 
+  let bindingAttempts = 0;
+  const repairedBinding = await generateValidatedRegistryComposition({
+    candidates,
+    promptConfig: {
+      renderedPrompt: "Compose from approved Registry candidates.",
+      promptLayers: {
+        repairPrompts: {
+          contractV3: "Repair {{errorCode}} {{errorMessage}} using {{shellVersionId}} and {{sectionVersionIds}}.",
+        },
+      },
+    },
+    generate: async ({ promptConfig }) => {
+      bindingAttempts += 1;
+      if (bindingAttempts === 1) {
+        return {
+          result: {
+            ...validResult,
+            sections: validResult.sections.map((section) => section.sectionVersionId === "cards-v1"
+              ? {
+                ...section,
+                components: [{
+                  ...section.components[0],
+                  contentBindings: [{ fieldKey: "button", sourceOverviewPath: "mainOffer" }],
+                }],
+              }
+              : section),
+          },
+        };
+      }
+      assert.match(promptConfig.renderedPrompt, /INVALID_CONTENT_BINDING/);
+      assert.match(promptConfig.renderedPrompt, /CTA fields accept only ctaLabel/);
+      return { result: validResult };
+    },
+  });
+  assert.equal(repairedBinding.repaired, true);
+  assert.equal(bindingAttempts, 2);
+
   const proposalApi = fs.readFileSync(path.resolve(__dirname, "../api/promo-page-composition-proposals.js"), "utf8");
   const applyApi = fs.readFileSync(path.resolve(__dirname, "../api/promo-page-composition-apply.js"), "utf8");
   const serviceSource = fs.readFileSync(path.resolve(__dirname, "../api/_promo-page-composition-service.js"), "utf8");

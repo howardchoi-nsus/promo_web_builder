@@ -148,7 +148,11 @@ function validateRegistryCompositionProposal(result, candidates) {
           || !OVERVIEW_FIELDS.includes(binding.sourceOverviewPath)
           || (targetField?.fieldKind === "cta" && binding.sourceOverviewPath !== "ctaLabel")
           || (targetField?.fieldKind !== "cta" && binding.sourceOverviewPath === "ctaLabel")) {
-          fail("INVALID_CONTENT_BINDING", "Planner returned an invalid content binding", false);
+          const targetKind = targetField?.fieldKind || "unknown";
+          fail(
+            "INVALID_CONTENT_BINDING",
+            `Invalid content binding: ${section.sectionKey}.${component.itemKey}.${binding.fieldKey} (${targetKind}) <- ${binding.sourceOverviewPath}. CTA fields accept only ctaLabel, and ctaLabel can target only CTA fields.`,
+          );
         }
         if (seenFields.has(binding.fieldKey)) fail("DUPLICATE_CONTENT_BINDING", "Planner duplicated a content field binding");
         seenFields.add(binding.fieldKey);
