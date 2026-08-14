@@ -211,6 +211,17 @@
   border-bottom: 1px solid var(--app-border, #d5dcd8);
 }
 
+.ai-builder-readonly-badge {
+  display: inline-block;
+  width: fit-content;
+  margin-top: 5px;
+  padding: 2px 7px;
+  border: 1px solid var(--app-border, #d5dcd8);
+  border-radius: 999px;
+  color: var(--app-muted, #66736c);
+  font-size: 11px;
+}
+
 .ai-builder-preview {
   max-height: calc(100vh - 190px);
   overflow: auto;

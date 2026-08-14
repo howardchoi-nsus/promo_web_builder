@@ -6,6 +6,7 @@ export const PromoBuilderMessageType = Object.freeze({
   AUTO_REGISTER_RESULT: "create-promo-auto-register-result",
   SECTION_AI_ACTION: "create-promo-section-ai-action",
   REMOVE_IMAGE: "create-promo-remove-image",
+  DIRTY_STATE: "promo-visual-editor-dirty-state",
 });
 
 function clonePayload(value) {

@@ -2479,9 +2479,10 @@ function renderContentStep() {
   const layoutHeader = document.createElement("div");
   layoutHeader.className = "wizard-layout-panel__header";
   const layoutHeading = document.createElement("div");
-  appendTextElement(layoutHeading, "span", "eyebrow", "Template Layout");
+  appendTextElement(layoutHeading, "span", "eyebrow", "현재 프로모션 레이아웃 편집");
   appendTextElement(layoutHeading, "strong", "", `${selectedWizardFormTemplate?.name || "Template"} · layout r${wizardLayoutRevision}`);
   appendTextElement(layoutHeading, "small", "create-promo-appearance-note", "색상, 글꼴과 컴포넌트 스타일은 Step 1에서 선택한 디자인 토큰을 기준으로 적용됩니다.");
+  appendTextElement(layoutHeading, "small", "create-promo-save-scope", "저장 범위: 현재 프로모션 · 관리자 기본 레이아웃에는 영향을 주지 않습니다.");
   const layoutActions = document.createElement("div");
   layoutActions.className = "wizard-layout-panel__actions";
   const layoutRefresh = document.createElement("button");
@@ -2502,7 +2503,7 @@ function renderContentStep() {
   layoutHeader.append(layoutHeading, layoutActions);
   const layoutFrame = document.createElement("iframe");
   layoutFrame.className = "wizard-layout-frame";
-  layoutFrame.title = "Create Promo 템플릿 콘텐츠 및 레이아웃 편집기";
+  layoutFrame.title = "현재 프로모션 콘텐츠 및 레이아웃 편집기";
   layoutFrame.setAttribute("scrolling", "no");
   layoutFrame.src = "/prototype/visual-editor.html?mode=wizard-layout&source=create-promo";
   layoutFrame.addEventListener("load", postWizardLayoutSnapshot);

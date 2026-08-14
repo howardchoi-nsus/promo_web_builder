@@ -1,3 +1,5 @@
+import { visualEditorEntry } from "../../../visual-editor/src/platform/visual-editor-entry.mjs";
+
 async function requestJson(url, options = {}, fetchImpl = globalThis.fetch) {
   const response = await fetchImpl(url, {
     cache: "no-store",
@@ -46,11 +48,7 @@ export function createInitialSectionLayout(items = []) {
 }
 
 export function sectionLayoutEditorUrl(sectionId, layoutKey, origin = globalThis.location?.origin) {
-  const url = new URL("/prototype/visual-editor.html", origin);
-  url.searchParams.set("mode", "section-preset");
-  url.searchParams.set("sectionId", sectionId);
-  url.searchParams.set("layoutKey", layoutKey);
-  return url.toString();
+  return visualEditorEntry.sectionPreset(sectionId, layoutKey, origin);
 }
 
 export const sectionLayoutPresetService = Object.freeze({

@@ -5,6 +5,7 @@ import AiBriefPanel from "./AiBriefPanel.vue";
 import OverviewReviewForm from "./OverviewReviewForm.vue";
 import CompositionProgress from "./CompositionProgress.vue";
 import CompositionReview from "./CompositionReview.vue";
+import { visualEditorEntry } from "../platform/visual-editor-entry.mjs";
 import RegistryProposalReview from "./RegistryProposalReview.vue";
 import OperationProposalReview from "./OperationProposalReview.vue";
 import NaturalLanguageEditor from "./NaturalLanguageEditor.vue";
@@ -108,11 +109,7 @@ async function pollProposal(proposalId) {
 }
 
 function openVisualEditor() {
-  const url = new URL("/prototype/visual-editor.html", window.location.origin);
-  url.searchParams.set("mode", "ai-document");
-  url.searchParams.set("builderDocumentId", store.documentId);
-  url.searchParams.set("revision", String(store.documentRevision));
-  window.location.assign(url);
+  window.location.assign(visualEditorEntry.aiDocument(store.documentId, store.documentRevision));
 }
 
 async function retryAssets() {
@@ -314,11 +311,7 @@ async function reloadLatestForOperation() {
 }
 
 function openOutput() {
-  const url = new URL("/prototype/visual-editor.html", window.location.origin);
-  url.searchParams.set("mode", "output");
-  url.searchParams.set("builderDocumentId", store.documentId);
-  url.searchParams.set("revision", String(store.documentRevision));
-  url.searchParams.set("returnUrl", window.location.href);
+  const url = visualEditorEntry.output(store.documentId, store.documentRevision, window.location.href);
   window.open(url, "_blank", "noopener,noreferrer");
   recordBuilderEvent({
     eventName: "web_output_opened",
@@ -446,6 +439,7 @@ onMounted(async () => {
         :export-enabled="Boolean(capabilities.export)"
         @edit-natural-language="operationOpen = true"
         @rollback="rollback"
+        @open-editor="openVisualEditor"
         @open-output="openOutput"
         @export-document="exportDocument"
       />

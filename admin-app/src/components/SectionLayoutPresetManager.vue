@@ -231,7 +231,7 @@ export default {
     <div class="subsection-title">
       <div>
         <h3>레이아웃 프리셋</h3>
-        <small>Live Preview에서 Desktop/Mobile 배치를 완성한 뒤 프리셋으로 저장합니다.</small>
+        <small>레이아웃 프리셋 편집기에서 Desktop/Mobile 배치를 완성한 뒤 선택한 프리셋에 저장합니다.</small>
       </div>
       <div class="action-row">
         <button class="tiny-button" type="button" :disabled="loading" @click="load">새로고침</button>
@@ -253,7 +253,7 @@ export default {
           <span>{{ layout.layoutKey }} · {{ layout.description || '설명 없음' }}</span>
         </div>
         <div class="action-row align-right">
-          <button class="tiny-button" type="button" aria-haspopup="dialog" @click="selectLayout(layout)">{{ editable ? 'Live Preview 편집' : 'Live Preview 보기' }}</button>
+          <button class="tiny-button" type="button" aria-haspopup="dialog" @click="selectLayout(layout)">{{ editable ? '레이아웃 프리셋 편집' : '레이아웃 프리셋 보기' }}</button>
           <button class="tiny-button" type="button" :disabled="!editable || saving || layout.isDefault" @click="setDefault(layout)">기본 지정</button>
           <button class="tiny-button" type="button" :disabled="!editable || saving" @click="toggleAiLayout(layout)">{{ aiAllows(layout) ? 'AI 후보 해제' : 'AI 선택 후보로 지정' }}</button>
           <button class="tiny-button danger" type="button" :disabled="!editable || saving || aiAllows(layout)" @click="remove(layout)">삭제</button>

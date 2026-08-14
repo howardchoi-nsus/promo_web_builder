@@ -1,3 +1,5 @@
+import { visualEditorEntry } from "../../../visual-editor/src/platform/visual-editor-entry.mjs";
+
 export async function requestTemplateLayout(templateId, { fetchImpl = globalThis.fetch } = {}) {
   const id = String(templateId || "").trim();
   if (!id) throw new Error("Template id is required");
@@ -15,10 +17,7 @@ export async function requestTemplateLayout(templateId, { fetchImpl = globalThis
 export function createTemplateLayoutEditorUrl(templateId, origin = globalThis.location?.origin) {
   const id = String(templateId || "").trim();
   if (!id) throw new Error("Template id is required");
-  const url = new URL("/prototype/visual-editor.html", origin);
-  url.searchParams.set("mode", "admin-layout");
-  url.searchParams.set("templateId", id);
-  return url.toString();
+  return visualEditorEntry.adminLayout(id, origin);
 }
 
 export const templateLayoutService = Object.freeze({

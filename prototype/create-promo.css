@@ -1792,6 +1792,17 @@ a {
   line-height: 1.45;
 }
 
+.create-promo-save-scope {
+  display: inline-block;
+  width: fit-content;
+  margin-top: 5px;
+  padding: 2px 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--sub);
+  font-size: 11px;
+}
+
 .wizard-layout-frame {
   display: block;
   width: 100%;

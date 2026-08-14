@@ -4,7 +4,7 @@
 
 - 작성일: 2026-08-14
 - 대상 프로젝트: `promo_web_builder`
-- 문서 상태: 개발 전 계획 / 소스코드 미반영
+- 문서 상태: 개발 반영 완료 / 검증 완료
 - 기준 화면:
   - `설정 > 섹션 프리셋 관리 > 레이아웃 프리셋`
   - `설정 > 템플릿·레이아웃 관리`
@@ -620,3 +620,22 @@ DB Schema Migration은 필요하지 않다. Locale 메시지를 DB로 운영하�
 이번 개선은 엔진을 새로 만드는 작업이 아니다. 이미 단일화된 Renderer와 Visual Editor Engine을 유지하면서 사용자에게 작업 목적과 저장 범위를 명확히 보여주고, mode별 기능 차이를 선언적인 Context 계약으로 관리하는 작업이다.
 
 `Live Preview`는 공통 Canvas 명칭으로 유지하고, 외부 진입점은 `레이아웃 프리셋 편집`, `템플릿 기본 레이아웃 편집`, `프로모션 레이아웃 편집`, `AI 생성 결과 미리보기`, `AI 프로모션 편집기`처럼 실제 업무를 표현해야 한다.
+
+---
+
+## 19. 개발 반영 결과
+
+반영일: 2026-08-14
+
+- `editor-context.mjs`를 mode별 title, presentation, saveTarget, runtime read-only 상태를 포함하는 Context Manifest로 확장했다.
+- Editor Core의 command, undo, redo 계층에 `EDITOR_READ_ONLY` 차단을 추가했다.
+- 설정 화면의 섹션 레이아웃 프리셋과 템플릿 기본 레이아웃이 동일한 `VisualEditorDialogHost.vue`를 사용하도록 통합했다.
+- 공통 모달에 ESC·배경 클릭·닫기 버튼, 배경 스크롤 잠금, 포커스 복원, iframe loading/read-only, dirty 종료 확인을 반영했다.
+- 템플릿 기본 레이아웃의 인라인 iframe을 모달 진입 버튼으로 변경했다.
+- 템플릿 Step 3에는 현재 프로모션 전용 저장 범위와 관리자 기본 레이아웃 비영향 안내를 추가했다.
+- AI 결과 화면을 `AI 생성 결과 미리보기`로 명명하고 읽기 전용 Badge와 `Visual Editor에서 편집` CTA를 추가했다.
+- 공통 Visual Editor URL Builder와 dirty Message Type 계약을 추가했다.
+- 저장 성공 또는 Step 3 부모 동기화 완료 시 Editor Core dirty 상태가 해제되도록 연결했다.
+- Admin/Visual Editor production build와 관련 unit, contract, browser 테스트를 통과했다.
+
+DB Schema와 LLM Prompt는 변경하지 않았으므로 Migration 및 Prompt seed 작업은 필요하지 않다.

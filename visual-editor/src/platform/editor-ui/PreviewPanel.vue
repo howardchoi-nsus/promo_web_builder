@@ -11,6 +11,7 @@ const props = defineProps({
   viewport: { type: String, default: "desktop" },
   templateIdentityLabel: { type: String, default: "" },
   capabilities: { type: Object, required: true },
+  editorContext: { type: Object, required: true },
   autoRegisterPending: { type: Boolean, default: false },
   autoRegisterMessage: { type: String, default: "" },
   editorHistory: { type: Object, required: true },
@@ -186,8 +187,10 @@ defineExpose({ finishTextEdit, getStageElement, scrollToSection });
   <section class="preview-panel">
     <div class="preview-toolbar">
       <div class="preview-title-group">
-        <strong>Live Preview</strong>
+        <strong>{{ editorContext.canvasTitle || "Live Preview" }}</strong>
         <small>{{ templateIdentityLabel }}</small>
+        <small class="preview-save-target">저장 대상: {{ editorContext.saveTargetLabel }}</small>
+        <small v-if="editorContext.readOnly" class="preview-readonly-state">읽기 전용</small>
         <button
           v-if="capabilities.canAutoRegister"
           class="auto-register-action"
@@ -228,7 +231,7 @@ defineExpose({ finishTextEdit, getStageElement, scrollToSection });
           </fieldset>
         </template>
         <template #host-actions>
-          <div v-if="capabilities.canSaveTemplateLayout" class="admin-layout-actions">
+          <div v-if="editorContext.isAdminLayout" class="admin-layout-actions">
             <input
               :value="layoutChangeNote"
               type="text"
@@ -238,11 +241,11 @@ defineExpose({ finishTextEdit, getStageElement, scrollToSection });
             />
             <button
               type="button"
-              :disabled="!editorSnapshot || layoutSaving || template?.status !== 'draft'"
+              :disabled="!capabilities.canSaveTemplateLayout || !editorSnapshot || layoutSaving || template?.status !== 'draft'"
               @click="emit('save-admin-layout')"
             >{{ layoutSaving ? "저장 중" : "초안 저장" }}</button>
           </div>
-          <div v-if="capabilities.canSaveSectionPreset" class="admin-layout-actions">
+          <div v-if="editorContext.isSectionPreset" class="admin-layout-actions">
             <input
               :value="layoutChangeNote"
               type="text"
@@ -253,7 +256,7 @@ defineExpose({ finishTextEdit, getStageElement, scrollToSection });
             <button
               type="button"
               class="is-primary"
-              :disabled="!editorSnapshot || layoutSaving || template?.status !== 'draft'"
+              :disabled="!capabilities.canSaveSectionPreset || !editorSnapshot || layoutSaving || template?.status !== 'draft'"
               @click="emit('save-section-preset')"
             >{{ layoutSaving ? "저장 중" : "Preset 저장" }}</button>
           </div>
@@ -314,7 +317,7 @@ defineExpose({ finishTextEdit, getStageElement, scrollToSection });
         :motion-spec="rendererSnapshot.motionSpec"
         :section-design-runs="sectionDesignRuns"
         :viewport-override="viewport"
-        :editable="capabilities.canSaveSectionPreset ? template?.status === 'draft' : true"
+        :editable="capabilities.canMutate"
         :show-guides="guideMode !== 'normal'"
         :outline-mode="guideMode === 'outline'"
         :selected-item-key="selectedStyleKey"

@@ -15,11 +15,11 @@ const composition = read("api/_promo-page-composition-contract.js");
 const { normalizeSectionSnapshot } = require("../api/promo-builder-documents");
 
 assert.match(context, /mode === "ai-document"/);
-assert.match(context, /canSaveAiDocument: isAiDocument/);
-assert.match(context, /canEditDesignTokens: isAdminLayout \|\| isAiDocument/);
-assert.match(context, /canComposeStructure: isBuilderWorkspace/);
-assert.match(builder, /searchParams\.set\("mode", "ai-document"\)/);
-assert.match(builder, /window\.location\.assign\(url\)/);
+assert.match(context, /canSaveAiDocument: isAiDocument && canMutate/);
+assert.match(context, /canEditDesignTokens: \(isAdminLayout \|\| isAiDocument\) && canMutate/);
+assert.match(context, /canComposeStructure: isBuilderWorkspace && !isSectionPreset && canMutate/);
+assert.match(builder, /visualEditorEntry\.aiDocument/);
+assert.match(builder, /window\.location\.assign\(visualEditorEntry\.aiDocument/);
 assert.doesNotMatch(builder, /refreshAssetsUntilSettled/);
 assert.match(adapter, /method: "PATCH"/);
 assert.match(adapter, /error\.currentDocumentRevision/);

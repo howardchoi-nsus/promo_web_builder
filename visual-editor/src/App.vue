@@ -137,7 +137,9 @@ watch(selectedSectionKey, (nextKey, previousKey) => {
 });
 
 const wizardSource = new URLSearchParams(window.location.search).get("source") || "";
-const editorContext = computed(() => createEditorContext(props.mode, wizardSource));
+const editorContext = computed(() => createEditorContext(props.mode, wizardSource, {
+  entityStatus: template.value?.status || "",
+}));
 const capabilities = computed(() => editorContext.value.capabilities);
 const isAdminLayoutMode = computed(() => editorContext.value.isAdminLayout);
 const isSectionPresetMode = computed(() => editorContext.value.isSectionPreset);
@@ -147,6 +149,10 @@ const isCreatePromoWizardMode = computed(() => editorContext.value.isCreatePromo
 const isBuilderWorkspaceMode = computed(() => editorContext.value.isBuilderWorkspace);
 const usesEmbeddedEngineShell = computed(() => editorContext.value.capabilities.isEmbedded);
 const shellNavItems = window.PromoShell?.navItems || [];
+
+watch(editorContext, (context) => {
+  editorCore.setReadOnly(context.readOnly);
+}, { immediate: true });
 
 const selectedSection = computed(() => sections.value.find((section) => section.sectionKey === selectedSectionKey.value) || sections.value[0]);
 const selectedItem = computed(() => (
@@ -332,9 +338,23 @@ function updateEditorHistory() {
   editorHistory.value = editorCore.getHistoryState();
 }
 
+function notifyHostDirtyState(dirty = editorCore.getState().dirty) {
+  if (globalThis.parent === globalThis) return;
+  globalThis.parent.postMessage({
+    type: PromoBuilderMessageType.DIRTY_STATE,
+    mode: props.mode,
+    dirty: dirty === true,
+    templateId: template.value?.id || "",
+    sectionId: isSectionPresetMode.value ? sections.value[0]?.id || "" : "",
+    layoutId: sectionPresetLayout.value?.id || "",
+    documentId: aiDocumentId.value || "",
+  }, globalThis.location.origin);
+}
+
 function hydrateEditorCore({ resetHistory = true, dirty = false } = {}) {
   editorCore.replaceDocument(editorDocumentFromRefs(), { resetHistory, dirty });
   updateEditorHistory();
+  notifyHostDirtyState(dirty);
 }
 
 function applyEditorCoreResult(result) {
@@ -343,6 +363,7 @@ function applyEditorCoreResult(result) {
   sectionInputs.value = result.state.document.content;
   sections.value = result.state.document.sections;
   editorHistory.value = result.history || editorCore.getHistoryState();
+  notifyHostDirtyState(result.state.dirty);
   return true;
 }
 
@@ -1789,6 +1810,7 @@ async function saveAiDocument() {
     layoutRevision.value = Number(saved.snapshot.layoutRevision || layoutRevision.value);
     editorCore.replaceDocument(editorDocumentFromRefs(), { resetHistory: false, dirty: false });
     updateEditorHistory();
+    notifyHostDirtyState(false);
     aiDocumentSaveMessage.value = `AI 프로모션 문서 revision ${saved.revision} 저장 완료`;
     return true;
   } catch (saveError) {
@@ -2008,7 +2030,7 @@ function notifySectionPresetSaved() {
 async function saveSectionPresetLayout() {
   const section = sections.value[0];
   const layout = sectionPresetLayout.value;
-  if (!section?.id || !layout?.id || layoutSaving.value) return;
+  if (!capabilities.value.canSaveSectionPreset || !section?.id || !layout?.id || layoutSaving.value) return;
   layoutSaving.value = true;
   layoutSaveMessage.value = "";
   try {
@@ -2028,6 +2050,7 @@ async function saveSectionPresetLayout() {
     layoutChangeNote.value = "";
     editorCore.replaceDocument(editorDocumentFromRefs(), { resetHistory: false, dirty: false });
     updateEditorHistory();
+    notifyHostDirtyState(false);
     layoutSaveMessage.value = `${result.layout.name} Layout Preset을 저장했습니다.`;
     notifySectionPresetSaved();
   } catch (saveError) {
@@ -2095,7 +2118,7 @@ function notifyAdminLayoutSaved(activated = false) {
 }
 
 async function saveAdminLayout() {
-  if (!template.value?.id || layoutSaving.value) return;
+  if (!capabilities.value.canSaveAdminLayout || !template.value?.id || layoutSaving.value) return;
   layoutSaveMessage.value = "";
   const validation = validateLayoutSpec(designSpec.value);
   if (!validation.ok) {
@@ -2120,6 +2143,7 @@ async function saveAdminLayout() {
     layoutIdentity.value = result.layoutIdentity || layoutIdentity.value;
     editorCore.replaceDocument(editorDocumentFromRefs(), { resetHistory: false, dirty: false });
     updateEditorHistory();
+    notifyHostDirtyState(false);
     layoutChangeNote.value = "";
     layoutSaveMessage.value = `초안 v${template.value.version || 1} · layout r${layoutRevision.value} 저장 완료 · 운영 반영은 왼쪽 템플릿의 활성/비활성 토글에서 지정하세요.`;
     notifyAdminLayoutSaved(false);
@@ -2186,6 +2210,9 @@ watch([designSpec, sectionInputs, sections], () => {
     sectionInputs: sectionInputs.value,
     sections: sections.value,
   });
+  editorCore.markSaved();
+  updateEditorHistory();
+  notifyHostDirtyState(false);
 }, { deep: true });
 
 async function loadEditorLibraries() {
@@ -2320,10 +2347,10 @@ onBeforeUnmount(() => {
       <header v-if="!usesEmbeddedEngineShell" class="shell-utility-bar editor-shell-header">
         <div class="shell-page-identity">
           <button class="shell-menu-toggle" type="button" data-shell-menu-toggle aria-controls="visual-editor-global-navigation" aria-expanded="false" aria-label="메뉴 열기">메뉴</button>
-          <strong>{{ isAdminLayoutMode ? "Admin Template Layout" : isSectionPresetMode ? "Section Layout Preset" : isAiDocumentMode ? "AI Promotion Visual Editor" : "Visual Editor" }}</strong>
+          <strong>{{ editorContext.title }}</strong>
         </div>
         <div class="shell-page-actions">
-        <div class="shell-status" role="status">{{ isSectionPresetMode ? sectionPresetLayout?.name : isAdminLayoutMode ? `Layout revision ${layoutRevision}` : isAiDocumentMode ? `Document revision ${aiDocumentRevision}` : "편집 준비" }}</div>
+        <div class="shell-status" role="status">{{ editorContext.saveTargetLabel }} · {{ isSectionPresetMode ? sectionPresetLayout?.name : isAdminLayoutMode ? `Layout revision ${layoutRevision}` : isAiDocumentMode ? `Document revision ${aiDocumentRevision}` : "편집 준비" }}</div>
         </div>
       </header>
 
@@ -2470,6 +2497,7 @@ onBeforeUnmount(() => {
         :viewport="viewport"
         :template-identity-label="templateIdentityLabel"
         :capabilities="capabilities"
+        :editor-context="editorContext"
         :auto-register-pending="autoRegisterPending"
         :auto-register-message="autoRegisterMessage"
         :editor-history="editorHistory"

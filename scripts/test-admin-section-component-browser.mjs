@@ -226,25 +226,25 @@ try {
     /v2/,
     "Selecting a Section Preset must open its draft version",
   );
-  const livePreviewButton = page.getByRole("button", { name: "Live Preview 편집", exact: true });
+  const livePreviewButton = page.getByRole("button", { name: "레이아웃 프리셋 편집", exact: true });
   await livePreviewButton.waitFor({ state: "visible" });
   await livePreviewButton.click();
-  const layoutPreviewDialog = page.locator("dialog.section-layout-visual-editor-modal[open]");
+  const layoutPreviewDialog = page.locator("dialog.visual-editor-dialog-host[open]");
   await layoutPreviewDialog.waitFor({ state: "visible" });
-  assert.equal(await page.locator("body").evaluate((body) => body.classList.contains("section-layout-preview-open")), true);
+  assert.equal(await page.locator("body").evaluate((body) => body.classList.contains("visual-editor-dialog-open")), true);
   assert.match(
     await layoutPreviewDialog.locator("iframe").getAttribute("src"),
     /mode=section-preset.*embedded=1|embedded=1.*mode=section-preset/,
   );
-  await layoutPreviewDialog.getByRole("button", { name: "Live Preview 모달 닫기" }).click();
+  await layoutPreviewDialog.getByRole("button", { name: "Visual Editor 모달 닫기" }).click();
   await layoutPreviewDialog.waitFor({ state: "detached" });
-  await page.waitForFunction(() => !document.body.classList.contains("section-layout-preview-open"));
-  assert.equal(await page.locator("body").evaluate((body) => body.classList.contains("section-layout-preview-open")), false);
+  await page.waitForFunction(() => !document.body.classList.contains("visual-editor-dialog-open"));
+  assert.equal(await page.locator("body").evaluate((body) => body.classList.contains("visual-editor-dialog-open")), false);
   await livePreviewButton.click();
-  await page.locator("dialog.section-layout-visual-editor-modal[open]").waitFor({ state: "visible" });
+  await page.locator("dialog.visual-editor-dialog-host[open]").waitFor({ state: "visible" });
   await page.keyboard.press("Escape");
-  await page.locator("dialog.section-layout-visual-editor-modal[open]").waitFor({ state: "detached" });
-  await page.waitForFunction(() => !document.body.classList.contains("section-layout-preview-open"));
+  await page.locator("dialog.visual-editor-dialog-host[open]").waitFor({ state: "detached" });
+  await page.waitForFunction(() => !document.body.classList.contains("visual-editor-dialog-open"));
   await page.getByRole("button", { name: "+ 컴포넌트 추가" }).click();
   const activeComponentOption = page.locator(`select option[value="${activeComponentVersionId}"]`);
   assert.equal(await activeComponentOption.count(), 1);
@@ -302,19 +302,22 @@ try {
   assert.match(await page.locator(".shell-status").textContent(), /AI 디자인 작업 1건 취소/);
 
   await page.getByRole("tab", { name: "템플릿·레이아웃 관리" }).click();
-  await page.locator(".template-live-preview").waitFor({ state: "visible" });
+  await page.locator(".template-layout-manager").waitFor({ state: "visible" });
   assert.equal(await page.getByRole("heading", { name: "Template Section 구성" }).count(), 0);
   assert.equal(await page.getByRole("button", { name: "+ Section Preset 연결" }).count(), 0);
-  const livePreviewFrame = page.locator(".template-live-preview__frame");
+  await page.getByRole("button", { name: "템플릿 기본 레이아웃 편집", exact: true }).click();
+  const livePreviewFrame = page.locator(".visual-editor-dialog-host__frame");
   assert.equal(await livePreviewFrame.count(), 1);
   assert.match(await livePreviewFrame.getAttribute("src"), /mode=admin-layout/);
   assert.match(await livePreviewFrame.getAttribute("src"), new RegExp(`templateId=${template.id}`));
-  const livePreviewEditor = page.frameLocator(".template-live-preview__frame");
+  const livePreviewEditor = page.frameLocator(".visual-editor-dialog-host__frame");
   await livePreviewEditor.getByRole("complementary", { name: "페이지 구조와 컴포넌트" }).waitFor({ state: "visible" });
   assert.equal(await livePreviewEditor.getByRole("button", { name: "+ 빈 섹션" }).count(), 1);
   assert.equal(await livePreviewEditor.getByRole("tab", { name: "컴포넌트" }).count(), 1);
   assert.ok(await livePreviewEditor.getByRole("button", { name: /섹션 삭제/ }).count() > 0);
   assert.ok(await livePreviewEditor.getByRole("button", { name: /컴포넌트 삭제/ }).count() > 0);
+  await page.locator("dialog.visual-editor-dialog-host[open]").getByRole("button", { name: "Visual Editor 모달 닫기" }).click();
+  await page.locator("dialog.visual-editor-dialog-host[open]").waitFor({ state: "detached" });
 
   const generatedTemplateCard = page.locator(".template-list-card").filter({ hasText: "Generated Template" });
   await generatedTemplateCard.locator(".template-settings-toggle").click();
@@ -330,7 +333,7 @@ try {
   await templateCard.locator(".template-settings-toggle").click();
   await templateCard.locator(".template-list-settings").waitFor({ state: "visible" });
   assert.equal(await templateCard.locator('input[readonly][value="default"]').count(), 1);
-  assert.equal(await templateCard.locator(".template-live-preview").count(), 0);
+  assert.equal(await templateCard.locator(".template-layout-manager").count(), 0);
   assert.equal(await page.locator(".template-section-membership-row").count(), 0);
 
   await templateCard.getByRole("button", { name: "복사본 만들기", exact: true }).click();

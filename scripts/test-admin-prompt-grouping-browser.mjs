@@ -166,6 +166,9 @@ try {
   assert.equal(await backgroundGroup.locator(".prompt-version-item").count(), 4);
   await backgroundGroup.locator(".prompt-version-item").filter({ hasText: "v15" }).click();
   const englishPromptEditor = page.locator(".prompt-body-grid textarea").nth(0);
+  await page.waitForFunction(() => (
+    document.querySelector(".prompt-body-grid textarea")?.getAttribute("readonly") === null
+  ));
   assert.equal(await englishPromptEditor.getAttribute("readonly"), null);
   const originalPromptBody = await englishPromptEditor.inputValue();
   await page.waitForFunction((expected) => (

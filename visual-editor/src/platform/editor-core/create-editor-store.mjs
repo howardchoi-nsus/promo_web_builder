@@ -5,6 +5,17 @@ export function createEditorStore(initialDocument = createEditorDocument(), { hi
   let state = createEditorState(initialDocument);
   let undoStack = [];
   let redoStack = [];
+  let readOnly = false;
+
+  function readOnlyResult() {
+    return {
+      ok: false,
+      code: "EDITOR_READ_ONLY",
+      error: "Editor is read-only.",
+      state: getState(),
+      history: getHistoryState(),
+    };
+  }
 
   function snapshot() {
     return cloneEditorState(state);
@@ -25,6 +36,7 @@ export function createEditorStore(initialDocument = createEditorDocument(), { hi
   }
 
   function execute(command) {
+    if (readOnly) return readOnlyResult();
     const before = snapshot();
     const result = reduceEditorCommand(state, command);
     if (!result.ok) return { ...result, history: getHistoryState() };
@@ -35,6 +47,7 @@ export function createEditorStore(initialDocument = createEditorDocument(), { hi
   }
 
   function undo() {
+    if (readOnly) return readOnlyResult();
     const previous = undoStack.at(-1);
     if (!previous) return { ok: false, state: getState(), history: getHistoryState(), error: "Nothing to undo." };
     redoStack = [...redoStack.slice(-(historyLimit - 1)), snapshot()];
@@ -44,6 +57,7 @@ export function createEditorStore(initialDocument = createEditorDocument(), { hi
   }
 
   function redo() {
+    if (readOnly) return readOnlyResult();
     const next = redoStack.at(-1);
     if (!next) return { ok: false, state: getState(), history: getHistoryState(), error: "Nothing to redo." };
     undoStack = [...undoStack.slice(-(historyLimit - 1)), snapshot()];
@@ -55,6 +69,11 @@ export function createEditorStore(initialDocument = createEditorDocument(), { hi
   function markSaved() {
     state = { ...state, dirty: false };
     return getState();
+  }
+
+  function setReadOnly(value) {
+    readOnly = value === true;
+    return readOnly;
   }
 
   function getState() {
@@ -76,6 +95,7 @@ export function createEditorStore(initialDocument = createEditorDocument(), { hi
     redo,
     replaceDocument,
     markSaved,
+    setReadOnly,
     getState,
     getHistoryState,
   });

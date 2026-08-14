@@ -86,4 +86,21 @@ assert.equal(store.getHistoryState().canUndo, false);
 assert.equal(store.getState().dirty, false);
 assert.equal(store.getState().document.content.hero.title, "Reloaded");
 
+store.setReadOnly(true);
+result = store.execute(editorCommand(EditorCommandType.CONTENT_VALUE_SET, {
+  sectionKey: "hero",
+  itemKey: "title",
+  value: "Must not change",
+}));
+assert.equal(result.ok, false);
+assert.equal(result.code, "EDITOR_READ_ONLY");
+assert.equal(store.getState().document.content.hero.title, "Reloaded");
+assert.equal(store.undo().code, "EDITOR_READ_ONLY");
+store.setReadOnly(false);
+assert.equal(store.execute(editorCommand(EditorCommandType.CONTENT_VALUE_SET, {
+  sectionKey: "hero",
+  itemKey: "title",
+  value: "Editable again",
+})).ok, true);
+
 console.log("Editor core command and history tests passed.");

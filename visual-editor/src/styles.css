@@ -220,6 +220,8 @@ button, a { letter-spacing: 0; }
 .admin-layout-actions button { min-height: 32px; padding: 0 10px; border: 1px solid var(--app-line-strong); background: var(--app-panel); color: var(--app-ink-soft); cursor: pointer; font-size: 11px; font-weight: 800; }
 .admin-layout-actions button.is-primary { border-color: var(--app-accent); background: var(--app-accent); color: var(--app-panel); }
 .admin-layout-actions button:disabled { cursor: not-allowed; opacity: .45; }
+.preview-save-target { display: inline-flex; width: fit-content; padding: 2px 7px; border: 1px solid var(--app-line); border-radius: 999px; background: var(--app-panel); color: var(--app-sub); font-weight: 750; }
+.preview-readonly-state { display: inline-flex; width: fit-content; padding: 2px 7px; border-radius: 999px; background: var(--app-warning-soft); color: var(--app-warning-ink); font-weight: 800; }
 .web-output-action { min-height: 32px; padding: 0 12px; border: 1px solid var(--app-accent); background: var(--app-accent); color: var(--app-panel); cursor: pointer; font-size: 11px; font-weight: 800; }
 .web-output-action:disabled { cursor: not-allowed; opacity: .5; }
 .guide-mode-control { display: inline-flex; align-items: center; border: 1px solid var(--app-line-strong); background: var(--app-panel); }
