@@ -27,6 +27,16 @@ const generatedTemplate = { id: "11111111-1111-4111-8111-111111111112", template
 const sectionA = { id: "22222222-2222-4222-8222-222222222222", sectionKey: "promotionIntro", name: "Promotion Intro", status: "draft", version: 2, aiDesign: { enabled: true } };
 const sectionAActive = { id: "22222222-2222-4222-8222-222222222223", sectionKey: "promotionIntro", name: "Promotion Intro", status: "active", version: 1, aiDesign: { enabled: true } };
 const sectionB = { id: "33333333-3333-4333-8333-333333333333", sectionKey: "benefits", name: "Benefits", status: "active", version: 1, aiDesign: { enabled: true } };
+const sectionLayout = {
+  id: "aaaaaaaa-1111-4111-8111-aaaaaaaaaaaa",
+  sectionId: sectionA.id,
+  layoutKey: "hero-left",
+  name: "Hero Left",
+  description: "Left-aligned hero content",
+  isDefault: true,
+  selectionMetadata: {},
+  layoutSnapshot: {},
+};
 const membership = {
   id: "44444444-4444-4444-8444-444444444444",
   formTemplateId: template.id,
@@ -183,6 +193,9 @@ try {
       const selectedSection = url.searchParams.get("id") === sectionB.id ? sectionB : sectionA;
       return reply({ ok: true, section: selectedSection, items: selectedSection.id === sectionB.id ? [] : sectionItems, histories: [] });
     }
+    if (url.pathname === "/api/wizard-content-section-layouts") {
+      return reply({ ok: true, layouts: url.searchParams.get("sectionId") === sectionA.id ? [sectionLayout] : [] });
+    }
     if (url.pathname === "/api/wizard-content-section-usage") return reply({ ok: true, templates: url.searchParams.get("sectionId") === sectionB.id ? [] : [template] });
     if (url.pathname === "/api/wizard-form-template-layout") return reply({
       ok: true,
@@ -213,6 +226,25 @@ try {
     /v2/,
     "Selecting a Section Preset must open its draft version",
   );
+  const livePreviewButton = page.getByRole("button", { name: "Live Preview 편집", exact: true });
+  await livePreviewButton.waitFor({ state: "visible" });
+  await livePreviewButton.click();
+  const layoutPreviewDialog = page.locator("dialog.section-layout-visual-editor-modal[open]");
+  await layoutPreviewDialog.waitFor({ state: "visible" });
+  assert.equal(await page.locator("body").evaluate((body) => body.classList.contains("section-layout-preview-open")), true);
+  assert.match(
+    await layoutPreviewDialog.locator("iframe").getAttribute("src"),
+    /mode=section-preset.*embedded=1|embedded=1.*mode=section-preset/,
+  );
+  await layoutPreviewDialog.getByRole("button", { name: "Live Preview 모달 닫기" }).click();
+  await layoutPreviewDialog.waitFor({ state: "detached" });
+  await page.waitForFunction(() => !document.body.classList.contains("section-layout-preview-open"));
+  assert.equal(await page.locator("body").evaluate((body) => body.classList.contains("section-layout-preview-open")), false);
+  await livePreviewButton.click();
+  await page.locator("dialog.section-layout-visual-editor-modal[open]").waitFor({ state: "visible" });
+  await page.keyboard.press("Escape");
+  await page.locator("dialog.section-layout-visual-editor-modal[open]").waitFor({ state: "detached" });
+  await page.waitForFunction(() => !document.body.classList.contains("section-layout-preview-open"));
   await page.getByRole("button", { name: "+ 컴포넌트 추가" }).click();
   const activeComponentOption = page.locator(`select option[value="${activeComponentVersionId}"]`);
   assert.equal(await activeComponentOption.count(), 1);

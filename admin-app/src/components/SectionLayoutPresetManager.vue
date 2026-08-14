@@ -135,7 +135,7 @@ export default {
       if (createdLayout && allowAi) await this.setAiLayoutAllowed(createdLayout, true);
     },
     selectLayout(layout) {
-      this.selectedLayoutId = this.selectedLayoutId === layout.id ? "" : layout.id;
+      this.selectedLayoutId = layout.id;
       this.newPresetEditor = null;
       this.error = "";
     },
@@ -253,7 +253,7 @@ export default {
           <span>{{ layout.layoutKey }} · {{ layout.description || '설명 없음' }}</span>
         </div>
         <div class="action-row align-right">
-          <button class="tiny-button" type="button" :class="{ primary: selectedLayoutId === layout.id }" @click="selectLayout(layout)">{{ selectedLayoutId === layout.id ? 'Preview 닫기' : (editable ? 'Live Preview 편집' : 'Live Preview 보기') }}</button>
+          <button class="tiny-button" type="button" aria-haspopup="dialog" @click="selectLayout(layout)">{{ editable ? 'Live Preview 편집' : 'Live Preview 보기' }}</button>
           <button class="tiny-button" type="button" :disabled="!editable || saving || layout.isDefault" @click="setDefault(layout)">기본 지정</button>
           <button class="tiny-button" type="button" :disabled="!editable || saving" @click="toggleAiLayout(layout)">{{ aiAllows(layout) ? 'AI 후보 해제' : 'AI 선택 후보로 지정' }}</button>
           <button class="tiny-button danger" type="button" :disabled="!editable || saving || aiAllows(layout)" @click="remove(layout)">삭제</button>
