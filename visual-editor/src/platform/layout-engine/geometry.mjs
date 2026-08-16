@@ -52,6 +52,16 @@ export function usesAutomaticComponentHeight(item = {}, style = {}) {
   return item.fieldKind === "text" && style.heightMode !== "fixed";
 }
 
+export function resolveRenderedComponentHeight(item = {}, style = {}) {
+  if (usesAutomaticComponentHeight(item, style)) return undefined;
+  return clampNumber(
+    style.heightPx,
+    MINIMUM_COMPONENT_HEIGHT_PX,
+    MAXIMUM_COMPONENT_HEIGHT_PX,
+    defaultComponentHeight(item),
+  );
+}
+
 export function normalizeComponentGeometry({
   item = {},
   style = {},

@@ -9,6 +9,7 @@ import {
   defaultComponentWidthPct,
   geometryToLayoutStyle,
   normalizeComponentGeometry,
+  resolveRenderedComponentHeight,
   resolveSectionHeight,
   usesAutomaticComponentHeight,
 } from "../visual-editor/src/platform/layout-engine/geometry.mjs";
@@ -28,6 +29,18 @@ assert.equal(usesAutomaticComponentHeight(textItem, { heightMode: "auto" }), tru
 assert.equal(usesAutomaticComponentHeight(textItem, { heightMode: "fixed" }), false);
 assert.equal(usesAutomaticComponentHeight({ fieldKind: "cta" }, {}), false);
 assert.equal(usesAutomaticComponentHeight({ fieldKind: "image" }, { heightMode: "auto" }), false);
+assert.equal(resolveRenderedComponentHeight(textItem, { heightPx: 180 }), undefined);
+assert.equal(resolveRenderedComponentHeight(textItem, { heightMode: "auto", heightPx: 180 }), undefined);
+assert.equal(resolveRenderedComponentHeight(textItem, { heightMode: "fixed", heightPx: 180 }), 180);
+assert.equal(
+  resolveRenderedComponentHeight(textItem, { heightMode: "fixed", heightPx: 1200 }),
+  MAXIMUM_COMPONENT_HEIGHT_PX,
+);
+assert.equal(resolveRenderedComponentHeight({ fieldKind: "image" }, { heightPx: 180 }), 180);
+assert.equal(
+  resolveRenderedComponentHeight({ fieldKind: "image" }, {}),
+  defaultComponentHeight({ fieldKind: "image" }),
+);
 const shortContentGeometry = normalizeComponentGeometry({
   item: textItem,
   style: {},

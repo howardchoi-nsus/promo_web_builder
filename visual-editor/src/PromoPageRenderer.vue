@@ -11,6 +11,7 @@ import {
   defaultComponentWidthPct,
   geometryToLayoutStyle,
   normalizeComponentGeometry,
+  resolveRenderedComponentHeight,
   resolveSectionHeight,
   usesAutomaticComponentHeight,
 } from "./platform/layout-engine/geometry.mjs";
@@ -664,12 +665,7 @@ function inlineItemStyle(section, item) {
   );
   const autoHeight = usesAutomaticComponentHeight(item, style);
   const fitContent = !isImage && style.widthMode === "fit-content";
-  const heightPx = clamp(
-    style.heightPx,
-    MINIMUM_COMPONENT_HEIGHT_PX,
-    900,
-    isImage || autoHeight ? undefined : defaultComponentHeight(item),
-  );
+  const heightPx = resolveRenderedComponentHeight(item, style);
   const horizontalAnchor = ["left", "center", "right"].includes(style.horizontalAnchor)
     ? style.horizontalAnchor
     : "center";
