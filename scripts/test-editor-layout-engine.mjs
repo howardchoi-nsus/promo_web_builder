@@ -6,6 +6,7 @@ import {
   MINIMUM_COMPONENT_HEIGHT_PX,
   MINIMUM_COMPONENT_WIDTH_PCT,
   defaultComponentHeight,
+  defaultComponentWidthPct,
   geometryToLayoutStyle,
   normalizeComponentGeometry,
   resolveSectionHeight,
@@ -40,6 +41,15 @@ const longContentGeometry = normalizeComponentGeometry({
 
 assert.deepEqual(shortContentGeometry, longContentGeometry);
 assert.equal(shortContentGeometry.widthPct, DEFAULT_COMPONENT_WIDTH_PCT);
+assert.equal(defaultComponentWidthPct({ fieldKind: "text", textType: "title" }), 72);
+assert.equal(defaultComponentWidthPct({ fieldKind: "image" }), 44);
+assert.equal(defaultComponentWidthPct({ fieldKind: "cta" }), 24);
+assert.equal(defaultComponentWidthPct({ fields: [{ fieldKind: "image" }, { fieldKind: "text" }] }), 100);
+assert.equal(normalizeComponentGeometry({
+  item: { fieldKind: "text", textType: "title" },
+  style: {},
+  canvasWidth: 1000,
+}).widthPct, 72);
 assert.equal(shortContentGeometry.height, defaultComponentHeight(textItem));
 
 const tinyImageGeometry = normalizeComponentGeometry({

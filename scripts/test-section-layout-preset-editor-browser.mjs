@@ -124,6 +124,15 @@ try {
   );
   await page.locator(".editor-workspace.is-section-preset-workspace").waitFor();
   assert.equal(await page.locator(".rendered-item").count(), 2);
+  const splitter = page.getByRole("separator", { name: "STRUCTURE와 LIVE PREVIEW 너비 조절" });
+  await splitter.waitFor({ state: "visible" });
+  const structureWidthBefore = (await page.locator(".section-rail").boundingBox()).width;
+  await splitter.focus();
+  await page.keyboard.press("ArrowRight");
+  const structureWidthAfter = (await page.locator(".section-rail").boundingBox()).width;
+  assert(structureWidthAfter > structureWidthBefore, "Keyboard resizing must widen the STRUCTURE panel");
+  const storedSplit = await page.evaluate(() => JSON.parse(localStorage.getItem("promo-visual-editor:workspace-split:section-preset")));
+  assert.equal(storedSplit.structureWidthPx, 336);
   const logoItem = page.locator('[data-section-key="header"] [data-item-key="logo"]');
   const logoPositionBeforeAlignment = await logoItem.evaluate((node) => ({
     left: node.style.left,
@@ -175,6 +184,7 @@ try {
   assert.equal(savedBody.layoutSnapshot.content.badges.value, "https://cdn.example.com/saved-badge.png");
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.locator(".editor-workspace.is-section-preset-workspace").waitFor();
+  assert.equal(Math.round((await page.locator(".section-rail").boundingBox()).width), 336);
   await page.getByRole("button", { name: "Mobile" }).click();
   await page.locator(".page-tree__component").filter({ hasText: "Badges" }).locator(".page-tree__select").click();
   await page.locator(".component-inspector-popover").waitFor();

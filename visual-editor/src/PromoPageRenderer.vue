@@ -8,6 +8,7 @@ import {
   MINIMUM_COMPONENT_HEIGHT_PX,
   MINIMUM_COMPONENT_WIDTH_PCT,
   defaultComponentHeight,
+  defaultComponentWidthPct,
   geometryToLayoutStyle,
   normalizeComponentGeometry,
   resolveSectionHeight,
@@ -24,6 +25,7 @@ const props = defineProps({
   outlineMode: { type: Boolean, default: false },
   selectedItemKey: { type: String, default: "" },
   selectedItemKeys: { type: Array, default: () => [] },
+  selectedFieldKey: { type: String, default: "" },
   sectionDesignRuns: { type: Object, default: () => ({}) },
   motionSpec: { type: Object, default: () => ({ sections: {}, items: {} }) },
   viewportOverride: { type: String, default: "" },
@@ -452,8 +454,17 @@ function imageFrameStyle(section, item) {
   };
 }
 
+function fieldStyleData(section, item, field) {
+  const key = `${styleKey(section, item)}.${field.fieldKey}`;
+  const desktop = props.designSpec?.itemStyles?.[key] || {};
+  const mobile = mobileLayoutActive.value
+    ? props.designSpec?.responsiveLayouts?.mobile?.itemStyles?.[key] || {}
+    : {};
+  return { ...desktop, ...mobile };
+}
+
 function fieldStyle(section, item, field) {
-  const style = props.designSpec?.itemStyles?.[`${styleKey(section, item)}.${field.fieldKey}`] || {};
+  const style = fieldStyleData(section, item, field);
   return {
     ...style,
     color: style.colorToken ? `var(${style.colorToken})` : style.color,
@@ -645,7 +656,12 @@ function inlineItemStyle(section, item) {
   const anchored = style.positionMode === "anchored";
   const position = style.positionMode === "free" ? style : defaultItemPosition(section, item);
   const isImage = item.fieldKind === "image";
-  const widthPct = clamp(style.widthPct, MINIMUM_COMPONENT_WIDTH_PCT, 100, 32);
+  const widthPct = clamp(
+    style.widthPct,
+    MINIMUM_COMPONENT_WIDTH_PCT,
+    100,
+    defaultComponentWidthPct(item),
+  );
   const autoHeight = usesAutomaticComponentHeight(item, style);
   const fitContent = !isImage && style.widthMode === "fit-content";
   const heightPx = clamp(
@@ -719,8 +735,9 @@ function inlineItemStyle(section, item) {
   return result;
 }
 
-function textListTag(section, item) {
-  return itemStyle(section, item).listType === "number" ? "ol" : "ul";
+function textListTag(section, item, field = null) {
+  const style = field ? fieldStyleData(section, item, field) : itemStyle(section, item);
+  return style.listType === "number" ? "ol" : "ul";
 }
 
 function textListItems(value) {
@@ -735,7 +752,8 @@ function lineStyleScopeKey(field = null) {
 }
 
 function lineStyleScope(section, item, field = null) {
-  return itemStyle(section, item).lineStyles?.[lineStyleScopeKey(field)] || {};
+  const style = field ? fieldStyleData(section, item, field) : itemStyle(section, item);
+  return style.lineStyles?.[lineStyleScopeKey(field)] || {};
 }
 
 function hasLineFormatting(section, item, field = null) {
@@ -748,7 +766,7 @@ function usesLineRenderer(section, item, field = null) {
 }
 
 function textLineEntries(section, item, field = null) {
-  const baseStyle = itemStyle(section, item);
+  const baseStyle = field ? fieldStyleData(section, item, field) : itemStyle(section, item);
   const scopedStyles = lineStyleScope(section, item, field);
   let number = 0;
   return String(valueFor(section, item, field) ?? "").split(/\r?\n/u).map((text, index) => {
@@ -799,11 +817,27 @@ function selectRendererItem(section, item, event = null) {
   }
   const additive = Boolean(event?.ctrlKey || event?.metaKey || event?.shiftKey);
   const key = styleKey(section, item);
+  const targetFieldKey = event?.fieldKey ? `${key}.${event.fieldKey}` : "";
   const alreadyExclusive = props.selectedItemKey === key
-    && props.selectedItemKeys.length <= 1;
+    && props.selectedItemKeys.length <= 1
+    && props.selectedFieldKey === targetFieldKey;
   if (!additive && alreadyExclusive) return;
   emit("select-item", section, item, {
     additive,
+    fieldKey: event?.fieldKey || "",
+  });
+}
+
+function handleFieldClick(event, section, item, field) {
+  if (!props.editable) return;
+  event.preventDefault();
+  selectRendererItem(section, item, {
+    type: event.type,
+    pointerId: event.pointerId,
+    ctrlKey: event.ctrlKey,
+    metaKey: event.metaKey,
+    shiftKey: event.shiftKey,
+    fieldKey: field.fieldKey,
   });
 }
 
@@ -820,6 +854,7 @@ function startDrag(event, section, item) {
   if (!props.editable || item.isLocked || event.button !== 0
     || event.ctrlKey || event.metaKey || event.shiftKey
     || event.target.closest(".item-resize-handle")
+    || event.target.closest("[data-field-style-key]")
     || event.currentTarget.classList.contains("is-editing")) return;
   const target = event.currentTarget;
   const container = target.closest(".rendered-items");
@@ -1309,7 +1344,14 @@ function startTextEdit(event, section, item, field = null, explicitTextNode = nu
 }
 
 function handleTextClick(event, section, item, field = null) {
-  selectRendererItem(section, item, event);
+  selectRendererItem(section, item, field ? {
+    type: event.type,
+    pointerId: event.pointerId,
+    ctrlKey: event.ctrlKey,
+    metaKey: event.metaKey,
+    shiftKey: event.shiftKey,
+    fieldKey: field.fieldKey,
+  } : event);
   if (event.currentTarget.closest(".rendered-item")?.classList.contains("is-editing")) {
     const line = event.target.closest?.("[data-text-line-index]");
     if (line) {
@@ -1522,19 +1564,28 @@ function startSectionResize(event, section) {
                 <a
                   v-if="field.fieldKind === 'cta'"
                   class="rendered-cta rendered-component-field"
-                  :class="{ 'is-hidden-in-output': editable && !isFieldVisible(section, item, field) }"
+                  :class="{
+                    'is-hidden-in-output': editable && !isFieldVisible(section, item, field),
+                    'is-selected-field': editable && selectedFieldKey === `${styleKey(section, item)}.${field.fieldKey}`,
+                  }"
                   :style="fieldStyle(section, item, field)"
+                  :data-field-style-key="`${styleKey(section, item)}.${field.fieldKey}`"
                   :href="ctaUrl(valueFor(section, item, field))"
                   :target="valueFor(section, item, field)?.target || '_self'"
                   :rel="valueFor(section, item, field)?.target === '_blank' ? 'noopener noreferrer' : undefined"
                   :draggable="editable ? false : undefined"
-                  @click="handleCtaClick"
+                  @click.stop="handleFieldClick($event, section, item, field)"
                   @dragstart="handleCtaDragStart"
                 >{{ valueFor(section, item, field)?.label || field.name }}</a>
                 <div
                   v-else-if="field.fieldKind === 'image'"
                   class="rendered-component-field"
-                  :class="{ 'is-hidden-in-output': editable && !isFieldVisible(section, item, field) }"
+                  :class="{
+                    'is-hidden-in-output': editable && !isFieldVisible(section, item, field),
+                    'is-selected-field': editable && selectedFieldKey === `${styleKey(section, item)}.${field.fieldKey}`,
+                  }"
+                  :data-field-style-key="`${styleKey(section, item)}.${field.fieldKey}`"
+                  @click.stop="handleFieldClick($event, section, item, field)"
                 >
                   <div
                     class="rendered-image-frame rendered-component-image-frame"
@@ -1560,8 +1611,11 @@ function startSectionResize(event, section) {
                   :class="{
                     'rendered-text--title': field.textType === 'title',
                     'is-hidden-in-output': editable && !isFieldVisible(section, item, field),
+                    'is-selected-field': editable && selectedFieldKey === `${styleKey(section, item)}.${field.fieldKey}`,
                   }"
+                  :style="fieldStyle(section, item, field)"
                   :data-field-key="field.fieldKey"
+                  :data-field-style-key="`${styleKey(section, item)}.${field.fieldKey}`"
                   @click.stop="handleTextClick($event, section, item, field)"
                   @dblclick.stop="startTextEdit($event, section, item, field)"
                 >
@@ -1575,15 +1629,17 @@ function startSectionResize(event, section) {
                   ><span class="rendered-text-line__content">{{ entry.text }}</span></div>
                 </div>
                 <component
-                  :is="textListTag(section, item)"
-                  v-else-if="hasContent(valueFor(section, item, field)) && itemStyle(section, item).listType"
+                  :is="textListTag(section, item, field)"
+                  v-else-if="hasContent(valueFor(section, item, field)) && fieldStyleData(section, item, field).listType"
                   class="rendered-text rendered-component-field"
                   :class="{
                     'rendered-text--title': field.textType === 'title',
                     'is-hidden-in-output': editable && !isFieldVisible(section, item, field),
+                    'is-selected-field': editable && selectedFieldKey === `${styleKey(section, item)}.${field.fieldKey}`,
                   }"
                   :style="fieldStyle(section, item, field)"
                   :data-field-key="field.fieldKey"
+                  :data-field-style-key="`${styleKey(section, item)}.${field.fieldKey}`"
                   @click.stop="handleTextClick($event, section, item, field)"
                   @dblclick.stop="startTextEdit($event, section, item, field)"
                 >
@@ -1597,17 +1653,23 @@ function startSectionResize(event, section) {
                   :class="{
                     'rendered-text--title': field.textType === 'title',
                     'is-hidden-in-output': editable && !isFieldVisible(section, item, field),
+                    'is-selected-field': editable && selectedFieldKey === `${styleKey(section, item)}.${field.fieldKey}`,
                   }"
                   :style="fieldStyle(section, item, field)"
                   :data-field-key="field.fieldKey"
+                  :data-field-style-key="`${styleKey(section, item)}.${field.fieldKey}`"
                   @click.stop="handleTextClick($event, section, item, field)"
                   @dblclick.stop="startTextEdit($event, section, item, field)"
                 ><span class="rendered-text__content">{{ valueFor(section, item, field) }}</span></p>
                 <p
                   v-else
                   class="rendered-empty rendered-component-field"
-                  :class="{ 'is-hidden-in-output': editable && !isFieldVisible(section, item, field) }"
+                  :class="{
+                    'is-hidden-in-output': editable && !isFieldVisible(section, item, field),
+                    'is-selected-field': editable && selectedFieldKey === `${styleKey(section, item)}.${field.fieldKey}`,
+                  }"
                   :data-field-key="field.fieldKey"
+                  :data-field-style-key="`${styleKey(section, item)}.${field.fieldKey}`"
                   @click.stop="handleTextClick($event, section, item, field)"
                   @dblclick.stop="startTextEdit($event, section, item, field)"
                 >{{ textFieldDescription(item, field) }}</p>

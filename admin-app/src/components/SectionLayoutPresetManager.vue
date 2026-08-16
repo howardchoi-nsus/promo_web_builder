@@ -4,10 +4,11 @@ import {
   sectionLayoutPresetService,
 } from "../services/section-layout-preset-service.mjs";
 import SectionLayoutVisualEditorFrame from "./SectionLayoutVisualEditorFrame.vue";
+import JsonSnapshotDialog from "./JsonSnapshotDialog.vue";
 
 export default {
   name: "SectionLayoutPresetManager",
-  components: { SectionLayoutVisualEditorFrame },
+  components: { JsonSnapshotDialog, SectionLayoutVisualEditorFrame },
   props: {
     section: { type: Object, required: true },
     items: { type: Array, default: () => [] },
@@ -22,6 +23,7 @@ export default {
       newPresetEditor: null,
       requestRevision: 0,
       selectedLayoutId: "",
+      jsonLayoutId: "",
     };
   },
   computed: {
@@ -31,6 +33,9 @@ export default {
     selectedLayout() {
       return this.layouts.find((layout) => layout.id === this.selectedLayoutId) || null;
     },
+    jsonLayout() {
+      return this.layouts.find((layout) => layout.id === this.jsonLayoutId) || null;
+    },
   },
   watch: {
     "section.id": {
@@ -38,6 +43,7 @@ export default {
       handler() {
         this.selectedLayoutId = "";
         this.newPresetEditor = null;
+        this.jsonLayoutId = "";
         this.load();
       },
     },
@@ -138,6 +144,9 @@ export default {
       this.selectedLayoutId = layout.id;
       this.newPresetEditor = null;
       this.error = "";
+    },
+    showStoredJson(layout) {
+      this.jsonLayoutId = layout.id;
     },
     async handleVisualEditorSaved() {
       await this.load();
@@ -254,6 +263,7 @@ export default {
         </div>
         <div class="action-row align-right">
           <button class="tiny-button" type="button" aria-haspopup="dialog" @click="selectLayout(layout)">{{ editable ? '레이아웃 프리셋 편집' : '레이아웃 프리셋 보기' }}</button>
+          <button class="tiny-button" type="button" aria-haspopup="dialog" @click="showStoredJson(layout)">저장 JSON</button>
           <button class="tiny-button" type="button" :disabled="!editable || saving || layout.isDefault" @click="setDefault(layout)">기본 지정</button>
           <button class="tiny-button" type="button" :disabled="!editable || saving" @click="toggleAiLayout(layout)">{{ aiAllows(layout) ? 'AI 후보 해제' : 'AI 선택 후보로 지정' }}</button>
           <button class="tiny-button danger" type="button" :disabled="!editable || saving || aiAllows(layout)" @click="remove(layout)">삭제</button>
@@ -297,6 +307,14 @@ export default {
       :layout="selectedLayout"
       @saved="handleVisualEditorSaved"
       @close="selectedLayoutId = ''"
+    />
+    <json-snapshot-dialog
+      v-if="jsonLayout"
+      :layout="jsonLayout"
+      :section="section"
+      :items="items"
+      :ai-selectable="aiAllows(jsonLayout)"
+      @close="jsonLayoutId = ''"
     />
   </section>
 </template>

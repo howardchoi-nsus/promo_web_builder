@@ -2,7 +2,6 @@
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import PromoPageRenderer from "../../PromoPageRenderer.vue";
 import EditorPreviewControls from "./EditorPreviewControls.vue";
-import TextEditorControls from "./TextEditorControls.vue";
 
 const props = defineProps({
   rendererSnapshot: { type: Object, default: null },
@@ -24,6 +23,8 @@ const props = defineProps({
   editorSnapshot: { type: Object, default: null },
   template: { type: Object, default: null },
   selectedStyleKey: { type: String, default: "" },
+  selectedInspectorKey: { type: String, default: "" },
+  selectedFieldStyleKey: { type: String, default: "" },
   selectedItemKeys: { type: Array, default: () => [] },
   selectedSection: { type: Object, default: null },
   selectedItem: { type: Object, default: null },
@@ -66,21 +67,25 @@ const emit = defineEmits([
   "enable-automatic-text-size",
   "enable-fixed-text-size",
   "selection-rect-change",
+  "text-line-selection-change",
 ]);
 
 const previewStageRef = ref(null);
-const selectedTextLines = ref(null);
 let selectionFrame = 0;
+let stageResizeObserver = null;
 
 function updateSelectionRect() {
   cancelAnimationFrame(selectionFrame);
   selectionFrame = requestAnimationFrame(() => {
     const stage = previewStageRef.value;
-    if (!stage || !props.selectedStyleKey) {
+    if (!stage || !props.selectedInspectorKey) {
       emit("selection-rect-change", null);
       return;
     }
-    const target = stage.querySelector(`[data-style-key="${CSS.escape(props.selectedStyleKey)}"]`);
+    const escapedKey = CSS.escape(props.selectedInspectorKey);
+    const target = stage.querySelector(
+      `[data-field-style-key="${escapedKey}"], [data-style-key="${escapedKey}"]`,
+    );
     if (!target) {
       emit("selection-rect-change", null);
       return;
@@ -97,8 +102,8 @@ function updateSelectionRect() {
   });
 }
 
-watch(() => props.selectedStyleKey, () => {
-  selectedTextLines.value = null;
+watch(() => props.selectedInspectorKey, () => {
+  emit("text-line-selection-change", null);
   nextTick(updateSelectionRect);
 });
 
@@ -109,6 +114,10 @@ watch(() => [props.viewport, props.rendererSnapshot, props.selectedItemStyle], (
 onMounted(() => {
   previewStageRef.value?.addEventListener("scroll", updateSelectionRect, { passive: true });
   window.addEventListener("resize", updateSelectionRect, { passive: true });
+  if (typeof ResizeObserver === "function" && previewStageRef.value) {
+    stageResizeObserver = new ResizeObserver(updateSelectionRect);
+    stageResizeObserver.observe(previewStageRef.value);
+  }
   updateSelectionRect();
 });
 
@@ -116,17 +125,18 @@ onBeforeUnmount(() => {
   cancelAnimationFrame(selectionFrame);
   previewStageRef.value?.removeEventListener("scroll", updateSelectionRect);
   window.removeEventListener("resize", updateSelectionRect);
+  stageResizeObserver?.disconnect();
 });
 
 function updateSelectedTextLines(section, item, selection) {
   if (`${section?.sectionKey}.${item?.itemKey}` !== props.selectedStyleKey) return;
-  selectedTextLines.value = selection?.indexes?.length ? selection : null;
+  emit("text-line-selection-change", selection?.indexes?.length ? selection : null);
 }
 
 function clearPreviewSelection(event) {
   if (event.target instanceof Element && event.target.closest(".rendered-item, .item-resize-handle, .section-resize-handle")) return;
   previewStageRef.value?.querySelector('[contenteditable="true"]')?.blur();
-  selectedTextLines.value = null;
+  emit("text-line-selection-change", null);
   emit("clear-selection");
 }
 
@@ -180,7 +190,7 @@ function handlePreviewDrop(event) {
   if (sectionKey) emit("drop-library-component", componentKey, sectionKey);
 }
 
-defineExpose({ finishTextEdit, getStageElement, scrollToSection });
+defineExpose({ finishTextEdit, getStageElement, scrollToSection, updateSelectionRect });
 </script>
 
 <template>
@@ -277,29 +287,6 @@ defineExpose({ finishTextEdit, getStageElement, scrollToSection });
         </template>
       </EditorPreviewControls>
     </div>
-    <TextEditorControls
-      :item="selectedItem"
-      :item-style="selectedItemStyle"
-      :line-selection="selectedTextLines"
-      :can-undo="editorHistory.canUndo"
-      :can-redo="editorHistory.canRedo"
-      :color-tokens="fontColorTokenOptions"
-      :gradient-tokens="gradientTokenOptions"
-      :background-color-tokens="backgroundColorTokenOptions"
-      :text-style-tokens="textStyleTokenOptions"
-      :font-family-tokens="fontFamilyTokenOptions"
-      :font-size-tokens="fontSizeTokenOptions"
-      :font-weight-tokens="fontWeightTokenOptions"
-      :line-height-tokens="lineHeightTokenOptions"
-      :letter-spacing-tokens="letterSpacingTokenOptions"
-      @undo="emit('undo')"
-      @redo="emit('redo')"
-      @patch-style="emit('patch-selected-text-style', $event)"
-      @restore-automatic-position="emit('restore-automatic-position')"
-      @reset-offset="emit('reset-selected-item-offset')"
-      @enable-auto-size="emit('enable-automatic-text-size')"
-      @enable-fixed-size="emit('enable-fixed-text-size')"
-    />
     <div
       ref="previewStageRef"
       class="preview-stage"
@@ -322,6 +309,7 @@ defineExpose({ finishTextEdit, getStageElement, scrollToSection });
         :outline-mode="guideMode === 'outline'"
         :selected-item-key="selectedStyleKey"
         :selected-item-keys="selectedItemKeys.map((itemKey) => `${selectedSection?.sectionKey}.${itemKey}`)"
+        :selected-field-key="selectedFieldStyleKey"
         @select-item="(...args) => emit('select-item', ...args)"
         @update-item-style="(...args) => emit('update-item-style', ...args)"
         @update-renderer-item-style="(...args) => emit('update-renderer-item-style', ...args)"

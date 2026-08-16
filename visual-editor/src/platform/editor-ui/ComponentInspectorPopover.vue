@@ -40,7 +40,9 @@ const popoverStyle = computed(() => {
 function restoreAnchorFocus() {
   nextTick(() => {
     const escapedKey = props.anchorKey && typeof CSS !== "undefined" && CSS.escape ? CSS.escape(props.anchorKey) : "";
-    const anchor = escapedKey ? document.querySelector(`[data-style-key="${escapedKey}"]`) : null;
+    const anchor = escapedKey
+      ? document.querySelector(`[data-field-style-key="${escapedKey}"], [data-style-key="${escapedKey}"]`)
+      : null;
     const target = anchor || previousFocus;
     if (target instanceof HTMLElement) target.focus({ preventScroll: true });
   });
@@ -61,7 +63,7 @@ function handleKeydown(event) {
 
 function handlePointerdown(event) {
   if (popoverRef.value?.contains(event.target)
-    || event.target?.closest?.("[data-style-key], .text-editor-controls, .preview-stage, .page-tree")) return;
+    || event.target?.closest?.("[data-field-style-key], [data-style-key], .text-editor-controls, .preview-stage, .page-tree")) return;
   close();
 }
 

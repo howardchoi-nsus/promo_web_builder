@@ -22,7 +22,9 @@ assert.match(previewPanel, /import EditorPreviewControls/);
 assert.match(previewPanel, /<EditorPreviewControls/);
 assert.match(previewPanel, /#tokens/);
 assert.match(previewPanel, /#host-actions/);
-assert.match(previewPanel, /defineExpose\(\{ finishTextEdit, getStageElement, scrollToSection \}\)/);
+assert.match(previewPanel, /defineExpose\(\{ finishTextEdit, getStageElement, scrollToSection, updateSelectionRect \}\)/);
+assert.doesNotMatch(previewPanel, /<TextEditorControls/);
+assert.match(app, /<TextEditorControls/);
 assert.match(textEditorControls, /text-history-controls/);
 assert.match(textEditorControls, /emit\('undo'\)/);
 assert.match(textEditorControls, /emit\('redo'\)/);
@@ -73,5 +75,6 @@ assert.match(componentInspector, /event\.key !== "Escape"/);
 assert.match(componentInspector, /event\.defaultPrevented/);
 assert.match(previewPanel, /"selection-rect-change"/);
 assert.match(previewPanel, /data-style-key/);
+assert.match(previewPanel, /data-field-style-key/);
 
 console.log("Editor UI component contract test passed");

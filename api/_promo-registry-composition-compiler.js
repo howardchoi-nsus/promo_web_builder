@@ -210,6 +210,7 @@ async function compileRegistryComposition({
   const mobileItemVisibility = {};
   const motionSections = {};
   const assetRequests = [];
+  const layoutDiagnostics = [];
 
   for (const planned of spec.sections || []) {
     const section = sectionsById.get(planned.sectionVersionId);
@@ -280,6 +281,11 @@ async function compileRegistryComposition({
       }
 
       const resolvedLayout = resolveSectionLayoutPreset(sectionId, items, layout);
+      layoutDiagnostics.push(...(resolvedLayout?.diagnostics || []).map((entry) => ({
+        ...entry,
+        sectionKey: section.sectionKey,
+        layoutKey: layout.layoutKey,
+      })));
       Object.entries(resolvedLayout?.content || {}).forEach(([componentId, value]) => {
         const item = items.find((candidate) => candidate.id === componentId);
         if (!item) return;
@@ -485,7 +491,11 @@ async function compileRegistryComposition({
     assets: { contractVersion: 1, items: {}, requests: assetRequests },
     validation: {
       ok: true, errors: [],
-      warnings: [...(proposalSnapshot.validation?.warnings || []), ...(layoutValidation.warnings || [])],
+      warnings: [
+        ...(proposalSnapshot.validation?.warnings || []),
+        ...(layoutValidation.warnings || []),
+        ...layoutDiagnostics,
+      ],
     },
   };
 }

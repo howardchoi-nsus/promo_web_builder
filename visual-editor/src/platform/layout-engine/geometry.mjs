@@ -1,5 +1,5 @@
 export const DESIGN_CANVAS_WIDTH = 1280;
-export const DEFAULT_COMPONENT_WIDTH_PCT = 32;
+export const DEFAULT_COMPONENT_WIDTH_PCT = 60;
 export const DEFAULT_TEXT_COMPONENT_HEIGHT = 86;
 export const DEFAULT_CTA_COMPONENT_HEIGHT = 64;
 export const DEFAULT_IMAGE_COMPONENT_HEIGHT = 250;
@@ -36,6 +36,16 @@ export function defaultComponentHeight(item = {}) {
   return DEFAULT_TEXT_COMPONENT_HEIGHT;
 }
 
+export function defaultComponentWidthPct(item = {}) {
+  const fields = Array.isArray(item.fields) ? item.fields : [];
+  if (fields.length > 1) return 100;
+  if (item.fieldKind === "image") return 44;
+  if (item.fieldKind === "cta") return 24;
+  if (item.textType === "title" || item.textType === "headline") return 72;
+  if (item.textType === "lead" || item.textType === "multi" || item.fieldKind === "text") return 60;
+  return DEFAULT_COMPONENT_WIDTH_PCT;
+}
+
 export function usesAutomaticComponentHeight(item = {}, style = {}) {
   if (item.fieldKind === "image") return false;
   if (style.heightMode === "auto") return true;
@@ -54,7 +64,7 @@ export function normalizeComponentGeometry({
     style.widthPct,
     MINIMUM_COMPONENT_WIDTH_PCT,
     100,
-    DEFAULT_COMPONENT_WIDTH_PCT,
+    defaultComponentWidthPct(item),
   );
   const height = clampNumber(
     style.heightPx,

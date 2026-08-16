@@ -36,8 +36,8 @@ button, a { letter-spacing: 0; }
 .editor-header button:disabled { cursor: not-allowed; opacity: .5; }
 
 .editor-workspace {
-  display: grid; grid-template-columns: minmax(190px, 230px) minmax(480px, 1fr);
-  grid-template-areas: "sections preview";
+  display: grid; grid-template-columns: minmax(190px, 230px) 0 minmax(480px, 1fr);
+  grid-template-areas: "sections splitter preview";
   min-height: calc(100vh - 182px); margin-top: 12px;
 }
 .section-rail { display: flex; min-width: 0; min-height: 0; overflow: hidden; background: var(--app-surface); flex-direction: column; }
@@ -65,11 +65,16 @@ button, a { letter-spacing: 0; }
 .section-ai-remove, .image-remove-action { border-color: var(--app-danger); color: var(--app-danger); }
 
 .preview-panel { grid-area: preview; min-width: 0; background: color-mix(in srgb, var(--app-ink) 8%, var(--app-bg)); }
+.workspace-splitter { grid-area: splitter; position: relative; z-index: 8; width: 8px; min-width: 8px; padding: 0; border: 0; border-inline: 1px solid var(--app-line); background: var(--app-surface); cursor: col-resize; touch-action: none; }
+.workspace-splitter span { position: absolute; inset: 50% auto auto 50%; width: 2px; height: 34px; border-radius: 999px; background: var(--app-line-strong); transform: translate(-50%, -50%); }
+.workspace-splitter:hover, .workspace-splitter:focus-visible { outline: 0; background: var(--app-accent-soft); border-color: var(--app-accent); }
+.workspace-splitter:hover span, .workspace-splitter:focus-visible span { background: var(--app-accent); }
+.workspace-splitter:disabled { width: 0; min-width: 0; overflow: hidden; border: 0; cursor: default; }
 
 .editor-workspace.is-builder-workspace {
-  grid-template-columns: minmax(280px, 320px) minmax(560px, 1fr);
+  grid-template-columns: minmax(240px, var(--structure-pane-width, 320px)) 8px minmax(560px, 1fr);
   grid-template-rows: minmax(0, 1fr);
-  grid-template-areas: "sections preview";
+  grid-template-areas: "sections splitter preview";
   min-height: 0;
   margin-top: 0;
   overflow: hidden;
@@ -168,6 +173,14 @@ button, a { letter-spacing: 0; }
 .preview-controls { display: flex; align-items: center; gap: 10px; }
 .visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
 .text-editor-controls { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 7px 12px; border-bottom: 1px solid var(--app-line); background: var(--app-surface); }
+.text-editor-controls__scope { flex: 0 0 auto; color: var(--app-sub); font-size: 10px; font-weight: 800; }
+.component-inspector-typography { display: grid; gap: 8px; margin-top: 12px; border: 1px solid var(--app-line); background: var(--app-surface); }
+.component-inspector-typography .design-controls__heading { padding: 10px 12px 0; }
+.component-inspector-typography .text-editor-controls { align-items: flex-start; flex-direction: column; border: 0; }
+.component-inspector-typography .text-editor-toolbar { width: 100%; flex-wrap: wrap; overflow: visible; }
+.component-inspector-typography .text-layout-toolbar { width: 100%; padding-top: 7px; padding-left: 0; border-top: 1px solid var(--app-line); border-left: 0; }
+.component-field-token-controls, .component-field-design-controls { display: grid; gap: 8px; padding: 0 12px 12px; }
+.rendered-component-field.is-selected-field { outline: 2px solid var(--app-accent); outline-offset: 3px; }
 .text-editor-toolbar, .text-layout-toolbar { display: flex; align-items: center; min-width: 0; }
 .text-editor-toolbar { flex: 1 1 auto; flex-wrap: wrap; gap: 4px 0; overflow: visible; }
 .text-toolbar-group { display: inline-flex; flex: 0 0 auto; align-items: center; padding: 0 6px; border-right: 1px solid var(--app-line); }
@@ -251,8 +264,11 @@ button, a { letter-spacing: 0; }
 .component-property-content { display: grid; gap: 14px; padding: 14px; border-top: 1px solid var(--app-line); }
 .component-field-property-list { display: grid; gap: 12px; }
 .component-field-property { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--app-line); background: var(--app-bg); }
+.component-field-property.is-selected { border-color: var(--app-accent); background: var(--app-accent-soft); }
 .component-field-property header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .component-field-property header strong { color: var(--app-ink); font-size: 12px; }
+.component-field-select { min-width: 0; padding: 0; border: 0; background: transparent; color: var(--app-ink); cursor: pointer; font-size: 12px; font-weight: 800; text-align: left; }
+.component-field-select:hover, .component-field-select[aria-pressed="true"] { color: var(--app-accent); }
 .component-field-property header small { color: var(--app-muted); font-size: 10px; overflow-wrap: anywhere; text-align: right; }
 .component-property-empty { padding: 14px; color: var(--app-muted); font-size: 11px; }
 .multi-layout-panel { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--app-line); background: var(--app-bg); }
@@ -395,14 +411,14 @@ button, a { letter-spacing: 0; }
 
 @media (max-width: 980px) {
   .editor-workspace {
-    grid-template-columns: 180px minmax(420px, 1fr);
+    grid-template-columns: 180px 0 minmax(420px, 1fr);
     overflow-x: auto;
   }
 }
 
 @media (max-width: 1199px) and (min-width: 681px) {
   .editor-workspace.is-builder-workspace {
-    grid-template-columns: 280px minmax(560px, 1fr);
+    grid-template-columns: minmax(240px, var(--structure-pane-width, 280px)) 8px minmax(560px, 1fr);
     overflow-x: auto;
   }
 }
@@ -608,13 +624,14 @@ button, a { letter-spacing: 0; }
 @media (max-width: 680px) {
   .editor-workspace.is-builder-workspace {
     display: grid;
-    grid-template-columns: 260px minmax(420px, 1fr);
+    grid-template-columns: 260px 0 minmax(420px, 1fr);
     grid-template-rows: minmax(0, 1fr);
-    grid-template-areas: "sections preview";
+    grid-template-areas: "sections splitter preview";
     height: 100%;
     overflow-x: auto;
     overflow-y: hidden;
   }
+  .editor-workspace.is-builder-workspace .workspace-splitter { display: none; }
   .editor-workspace.is-builder-workspace > .section-rail { min-height: 0; overflow: hidden; }
   .editor-workspace.is-builder-workspace .preview-panel { min-height: 0; }
 }

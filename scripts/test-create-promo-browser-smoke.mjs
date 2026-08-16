@@ -371,7 +371,7 @@ try {
       overflowY: styles.overflowY,
     };
   });
-  assert.match(createPromoWorkspaceStyles.gridTemplateAreas, /sections preview/);
+  assert.match(createPromoWorkspaceStyles.gridTemplateAreas, /sections splitter preview/);
   assert.match(createPromoWorkspaceStyles.overflowX, /^(auto|hidden)$/);
   assert.equal(createPromoWorkspaceStyles.overflowY, "hidden");
   assert.equal(

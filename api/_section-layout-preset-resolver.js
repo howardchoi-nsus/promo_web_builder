@@ -31,6 +31,13 @@ function resolveViewport(sectionInstanceKey, components, viewport = {}) {
   return { itemStyles, visibilityItems };
 }
 
+function missingGeometryItemKeys(components, viewport = {}) {
+  const savedKeys = new Set(Object.keys(viewport.items || {}));
+  return (components || [])
+    .map(componentSourceKey)
+    .filter((sourceKey) => sourceKey && !sourceKey.includes("#") && !savedKeys.has(sourceKey));
+}
+
 function resolveContent(components, content = {}) {
   const bySourceKey = new Map(
     (components || []).map((component) => [componentSourceKey(component), component]),
@@ -47,6 +54,14 @@ function resolveSectionLayoutPreset(sectionInstanceKey, components, preset) {
   if (!snapshot || snapshot.contractVersion !== 1 || snapshot.layoutMode !== "free") return null;
   const desktop = resolveViewport(sectionInstanceKey, components, snapshot.viewports?.desktop);
   const mobile = resolveViewport(sectionInstanceKey, components, snapshot.viewports?.mobile);
+  const diagnostics = ["desktop", "mobile"].flatMap((viewport) => (
+    missingGeometryItemKeys(components, snapshot.viewports?.[viewport]).map((itemKey) => ({
+      code: "LAYOUT_GEOMETRY_INCOMPLETE",
+      path: `layoutSnapshot.viewports.${viewport}.items.${itemKey}`,
+      message: `${itemKey} has no ${viewport} geometry in the selected Layout Preset.`,
+      level: "warning",
+    }))
+  ));
   return {
     layoutKey: String(preset.layoutKey || preset.layout_key || ""),
     sectionStyle: {
@@ -62,6 +77,7 @@ function resolveSectionLayoutPreset(sectionInstanceKey, components, preset) {
         visibility: { items: mobile.visibilityItems },
       },
     },
+    diagnostics,
   };
 }
 

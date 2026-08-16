@@ -17,6 +17,7 @@ const props = defineProps({
   fontWeightTokens: { type: Array, default: () => [] },
   lineHeightTokens: { type: Array, default: () => [] },
   letterSpacingTokens: { type: Array, default: () => [] },
+  showLayoutControls: { type: Boolean, default: true },
 });
 
 const emit = defineEmits([
@@ -165,6 +166,7 @@ function changeListIndent(delta) {
 
 <template>
   <section v-if="available" class="text-editor-controls" aria-label="선택한 텍스트 편집">
+    <small class="text-editor-controls__scope">{{ hasLineSelection ? `선택한 줄 ${lineSelection.indexes.length}개` : '전체 텍스트' }}</small>
     <div class="text-editor-toolbar" role="toolbar" aria-label="텍스트 디자인">
       <div class="text-toolbar-group text-history-controls" aria-label="편집 기록">
         <button type="button" :disabled="!canUndo" title="되돌리기" aria-label="되돌리기" @click="emit('undo')">
@@ -180,7 +182,6 @@ function changeListIndent(delta) {
           <span class="visually-hidden">텍스트 스타일</span>
           <select
             :value="effectiveTextStyle.textStyleToken || ''"
-            :disabled="!hasLineSelection"
             aria-label="텍스트 스타일 디자인 토큰"
             title="텍스트 스타일"
             @change="applyTextStyle($event.target.value)"
@@ -193,7 +194,6 @@ function changeListIndent(delta) {
           <span class="visually-hidden">글꼴</span>
           <select
             :value="effectiveTextStyle.fontFamilyToken || ''"
-            :disabled="!hasLineSelection"
             aria-label="글꼴 디자인 토큰"
             title="글꼴"
             @change="tokenPatch('fontFamilyToken', 'fontFamily', $event.target.value)"
@@ -238,7 +238,6 @@ function changeListIndent(delta) {
         </button>
         <button
           type="button"
-          :disabled="!hasLineSelection"
           :class="{ active: allSelectedLinesMatch((style) => style.fontStyle === 'italic') }"
           :aria-pressed="allSelectedLinesMatch((style) => style.fontStyle === 'italic')"
           title="기울임"
@@ -294,12 +293,11 @@ function changeListIndent(delta) {
             ></span>
           </summary>
           <div class="text-token-palette" role="group" aria-label="폰트 배경 시스템 컬러">
-            <button type="button" :disabled="!hasLineSelection" class="text-token-palette__default" :class="{ active: !effectiveTextStyle.textBackgroundToken }" @click="tokenPatch('textBackgroundToken', 'textBackground', '', false)">없음</button>
+            <button type="button" class="text-token-palette__default" :class="{ active: !effectiveTextStyle.textBackgroundToken }" @click="tokenPatch('textBackgroundToken', 'textBackground', '', false)">없음</button>
             <button
               v-for="token in backgroundColorTokens"
               :key="`background-${token.key}`"
               type="button"
-              :disabled="!hasLineSelection"
               class="text-token-swatch"
               :class="{ active: effectiveTextStyle.textBackgroundToken === token.key }"
               :title="token.label"
@@ -314,7 +312,6 @@ function changeListIndent(delta) {
       <div class="text-toolbar-group text-list-controls" aria-label="텍스트 목록">
         <button
           type="button"
-          :disabled="!hasLineSelection"
           :class="{ active: allSelectedLinesMatch((style) => style.listType === 'bullet') }"
           :aria-pressed="allSelectedLinesMatch((style) => style.listType === 'bullet')"
           title="불렛 리스트"
@@ -323,7 +320,6 @@ function changeListIndent(delta) {
         ><i class="fa-solid fa-list-ul" aria-hidden="true"></i></button>
         <button
           type="button"
-          :disabled="!hasLineSelection"
           :class="{ active: allSelectedLinesMatch((style) => style.listType === 'number') }"
           :aria-pressed="allSelectedLinesMatch((style) => style.listType === 'number')"
           title="넘버 리스트"
@@ -352,7 +348,6 @@ function changeListIndent(delta) {
           <span>행간</span>
           <select
             :value="effectiveTextStyle.lineHeightToken || ''"
-            :disabled="!hasLineSelection"
             @change="tokenPatch('lineHeightToken', 'lineHeight', $event.target.value)"
           >
             <option value="">기본</option>
@@ -363,7 +358,6 @@ function changeListIndent(delta) {
           <span>자간</span>
           <select
             :value="effectiveTextStyle.letterSpacingToken || ''"
-            :disabled="!hasLineSelection"
             @change="tokenPatch('letterSpacingToken', 'letterSpacing', $event.target.value)"
           >
             <option value="">기본</option>
@@ -373,32 +367,34 @@ function changeListIndent(delta) {
       </details>
 
       <div class="text-layout-toolbar" role="group" aria-label="텍스트 박스 정렬 및 배치 도구">
-      <div role="group" aria-label="텍스트 박스 내부 정렬">
-        <button
-          v-for="entry in [
-            { key: 'left', label: '좌', icon: 'fa-align-left' },
-            { key: 'center', label: '중앙', icon: 'fa-align-center' },
-            { key: 'right', label: '우', icon: 'fa-align-right' },
-          ]"
-          :key="entry.key"
-          type="button"
-          :class="{ active: allSelectedLinesMatch((style) => (style.textAlign || 'left') === entry.key) }"
-          :aria-pressed="allSelectedLinesMatch((style) => (style.textAlign || 'left') === entry.key)"
-          :aria-label="`텍스트 박스 내부 ${entry.label} 정렬`"
-          :title="`텍스트 박스 내부 ${entry.label} 정렬`"
-          @click="emitLinePatch({ textAlign: entry.key })"
-        ><i class="fa-solid" :class="entry.icon" aria-hidden="true"></i></button>
-      </div>
-      <button
-        type="button"
-        :class="{ active: autoSizeActive }"
-        :aria-pressed="autoSizeActive"
-        title="자동 크기"
-        aria-label="자동 크기"
-        @click="autoSizeActive ? emit('enable-fixed-size') : emit('enable-auto-size')"
-      ><i class="fa-solid fa-up-right-and-down-left-from-center" aria-hidden="true"></i></button>
-      <button type="button" title="간격 초기화" aria-label="간격 초기화" @click="emit('reset-offset')"><i class="fa-solid fa-crosshairs" aria-hidden="true"></i></button>
-      <button type="button" title="자동 배치" aria-label="자동 배치" @click="emit('restore-automatic-position')"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i></button>
+        <div role="group" aria-label="텍스트 박스 내부 정렬">
+          <button
+            v-for="entry in [
+              { key: 'left', label: '좌', icon: 'fa-align-left' },
+              { key: 'center', label: '중앙', icon: 'fa-align-center' },
+              { key: 'right', label: '우', icon: 'fa-align-right' },
+            ]"
+            :key="entry.key"
+            type="button"
+            :class="{ active: allSelectedLinesMatch((style) => (style.textAlign || 'left') === entry.key) }"
+            :aria-pressed="allSelectedLinesMatch((style) => (style.textAlign || 'left') === entry.key)"
+            :aria-label="`텍스트 박스 내부 ${entry.label} 정렬`"
+            :title="`텍스트 박스 내부 ${entry.label} 정렬`"
+            @click="emitLinePatch({ textAlign: entry.key })"
+          ><i class="fa-solid" :class="entry.icon" aria-hidden="true"></i></button>
+        </div>
+        <template v-if="showLayoutControls">
+          <button
+            type="button"
+            :class="{ active: autoSizeActive }"
+            :aria-pressed="autoSizeActive"
+            title="자동 크기"
+            aria-label="자동 크기"
+            @click="autoSizeActive ? emit('enable-fixed-size') : emit('enable-auto-size')"
+          ><i class="fa-solid fa-up-right-and-down-left-from-center" aria-hidden="true"></i></button>
+          <button type="button" title="간격 초기화" aria-label="간격 초기화" @click="emit('reset-offset')"><i class="fa-solid fa-crosshairs" aria-hidden="true"></i></button>
+          <button type="button" title="자동 배치" aria-label="자동 배치" @click="emit('restore-automatic-position')"><i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i></button>
+        </template>
       </div>
     </div>
   </section>

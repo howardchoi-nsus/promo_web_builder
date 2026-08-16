@@ -29,6 +29,7 @@ import {
   MINIMUM_COMPONENT_HEIGHT_PX,
   MINIMUM_COMPONENT_WIDTH_PCT,
   defaultComponentHeight,
+  defaultComponentWidthPct,
   usesAutomaticComponentHeight,
 } from "./platform/layout-engine/geometry.mjs";
 import { resolveSectionPresetLayoutPatch } from "./platform/layout-engine/section-preset-resolver.mjs";
@@ -40,6 +41,13 @@ import SectionCompositionControls from "./platform/editor-ui/SectionCompositionC
 import AiSectionCompositionPanel from "./platform/editor-ui/AiSectionCompositionPanel.vue";
 import ComponentInspectorPopover from "./platform/editor-ui/ComponentInspectorPopover.vue";
 import ComponentTransitionControls from "./platform/editor-ui/ComponentTransitionControls.vue";
+import TextEditorControls from "./platform/editor-ui/TextEditorControls.vue";
+import WorkspaceSplitter from "./platform/editor-ui/WorkspaceSplitter.vue";
+import {
+  loadWorkspaceSplitWidth,
+  saveWorkspaceSplitWidth,
+  workspaceSplitStorageKey,
+} from "./platform/editor-ui/workspace-split.mjs";
 import { createItemMotionBinding, createSectionMotionBinding, normalizeMotionSpec } from "./platform/editor-core/motion-spec.mjs";
 import {
   DEFAULT_DESIGN_SPEC,
@@ -64,8 +72,12 @@ const selectedSectionKey = ref("");
 const expandedSectionKey = ref("");
 const selectedItemKey = ref("");
 const selectedItemKeys = ref([]);
+const selectedFieldKey = ref("");
+const selectedTextLines = ref(null);
 const previewPanelRef = ref(null);
 const componentInspectorAnchor = ref(null);
+const workspaceSplitKey = workspaceSplitStorageKey(props.mode);
+const structurePaneWidth = ref(loadWorkspaceSplitWidth(globalThis.localStorage, workspaceSplitKey));
 const viewport = ref("desktop");
 const previewGuideMode = ref("selection");
 const outputSaveError = ref("");
@@ -148,6 +160,7 @@ const isWizardLayoutMode = computed(() => editorContext.value.isWizardLayout);
 const isCreatePromoWizardMode = computed(() => editorContext.value.isCreatePromo);
 const isBuilderWorkspaceMode = computed(() => editorContext.value.isBuilderWorkspace);
 const usesEmbeddedEngineShell = computed(() => editorContext.value.capabilities.isEmbedded);
+const workspaceStyle = computed(() => ({ "--structure-pane-width": `${structurePaneWidth.value}px` }));
 const shellNavItems = window.PromoShell?.navItems || [];
 
 watch(editorContext, (context) => {
@@ -158,6 +171,10 @@ const selectedSection = computed(() => sections.value.find((section) => section.
 const selectedItem = computed(() => (
   selectedSection.value?.items?.find((item) => item.itemKey === selectedItemKey.value) || null
 ));
+const selectedField = computed(() => (
+  componentFields(selectedItem.value).find((field) => field.fieldKey === selectedFieldKey.value) || null
+));
+watch(selectedFieldKey, () => { selectedTextLines.value = null; });
 const motionSpec = computed(() => normalizeMotionSpec(
   designSpec.value.motionSpec || aiDocumentSnapshot.value?.motionSpec || {},
 ));
@@ -379,7 +396,7 @@ function redoEditorCommand() {
   applyEditorCoreResult(editorCore.redo());
 }
 
-function selectItem(section, item, { preserveMulti = false } = {}) {
+function selectItem(section, item, { preserveMulti = false, fieldKey = "" } = {}) {
   if (!section) return;
   const selectionChanged = selectedSectionKey.value !== section.sectionKey
     || selectedItemKey.value !== (item?.itemKey || "");
@@ -387,6 +404,8 @@ function selectItem(section, item, { preserveMulti = false } = {}) {
   const sectionChanged = selectedSectionKey.value && selectedSectionKey.value !== section.sectionKey;
   selectedSectionKey.value = section.sectionKey;
   selectedItemKey.value = item?.itemKey || "";
+  selectedFieldKey.value = componentFields(item).some((field) => field.fieldKey === fieldKey) ? fieldKey : "";
+  selectedTextLines.value = null;
   if (!preserveMulti || sectionChanged) selectedItemKeys.value = item?.itemKey ? [item.itemKey] : [];
 }
 
@@ -478,7 +497,7 @@ async function selectRendererItem(section, item, selection = {}) {
     selectedItemKeys.value = [...keys];
     selectItem(section, item, { preserveMulti: true });
   } else {
-    selectItem(section, item);
+    selectItem(section, item, { fieldKey: selection.fieldKey || "" });
   }
   await nextTick();
 }
@@ -496,6 +515,8 @@ async function selectSection(section) {
   expandedSectionKey.value = section.sectionKey;
   selectedItemKey.value = "";
   selectedItemKeys.value = [];
+  selectedFieldKey.value = "";
+  selectedTextLines.value = null;
   multiLayoutSuggestion.value = null;
   multiLayoutError.value = "";
   await nextTick();
@@ -735,6 +756,8 @@ function clearMultiSelection() {
 function clearEditorSelection() {
   selectedItemKey.value = "";
   selectedItemKeys.value = [];
+  selectedFieldKey.value = "";
+  selectedTextLines.value = null;
   multiLayoutSuggestion.value = null;
   multiLayoutError.value = "";
 }
@@ -1127,7 +1150,7 @@ function updateFieldObject(item, field, key, value) {
 }
 
 function updateRendererContent(section, item, value, field = null) {
-  selectItem(section, item);
+  selectItem(section, item, { fieldKey: field?.fieldKey || "" });
   if (field) {
     if (field.fieldKind !== "text" || field.isLocked) return;
     updateFieldValue(item, field, value);
@@ -1420,6 +1443,12 @@ const selectedStyleKey = computed(() => (
     ? `${selectedSection.value.sectionKey}.${selectedItem.value.itemKey}`
     : ""
 ));
+const selectedFieldStyleKey = computed(() => (
+  selectedStyleKey.value && selectedField.value
+    ? `${selectedStyleKey.value}.${selectedField.value.fieldKey}`
+    : ""
+));
+const selectedTargetStyleKey = computed(() => selectedFieldStyleKey.value || selectedStyleKey.value);
 const selectedDesktopItemStyle = computed(() => designSpec.value.itemStyles?.[selectedStyleKey.value] || {});
 const selectedMobileItemStyle = computed(() => (
   designSpec.value.responsiveLayouts?.mobile?.itemStyles?.[selectedStyleKey.value] || {}
@@ -1428,6 +1457,15 @@ const selectedItemStyle = computed(() => (
   viewport.value === "mobile"
     ? { ...selectedDesktopItemStyle.value, ...selectedMobileItemStyle.value }
     : selectedDesktopItemStyle.value
+));
+const selectedDesktopTargetStyle = computed(() => designSpec.value.itemStyles?.[selectedTargetStyleKey.value] || {});
+const selectedMobileTargetStyle = computed(() => (
+  designSpec.value.responsiveLayouts?.mobile?.itemStyles?.[selectedTargetStyleKey.value] || {}
+));
+const selectedTargetStyle = computed(() => (
+  viewport.value === "mobile"
+    ? { ...selectedDesktopTargetStyle.value, ...selectedMobileTargetStyle.value }
+    : selectedDesktopTargetStyle.value
 ));
 const selectedSectionStyle = computed(() => (
   selectedSection.value
@@ -1446,6 +1484,33 @@ function updateItemStyle(patch) {
       patch,
     },
     { label: responsive ? "모바일 컴포넌트 스타일 변경" : "컴포넌트 스타일 변경" },
+  );
+}
+
+function updateSelectedTargetStyle(patch) {
+  if (!selectedTargetStyleKey.value || selectedItem.value?.isLocked || selectedField.value?.isLocked) return;
+  const responsive = viewport.value === "mobile";
+  executeEditorCommand(
+    responsive ? EditorCommandType.RESPONSIVE_ITEM_STYLE_PATCH : EditorCommandType.ITEM_STYLE_PATCH,
+    {
+      ...(responsive ? { viewport: "mobile" } : {}),
+      styleKey: selectedTargetStyleKey.value,
+      patch,
+    },
+    { label: selectedField.value ? `${selectedField.value.name} 필드 스타일 변경` : "컴포넌트 스타일 변경" },
+  );
+}
+
+function resetSelectedTargetStyle() {
+  if (!selectedTargetStyleKey.value || selectedItem.value?.isLocked || selectedField.value?.isLocked) return;
+  const responsive = viewport.value === "mobile";
+  executeEditorCommand(
+    responsive ? EditorCommandType.RESPONSIVE_ITEM_STYLE_REMOVE : EditorCommandType.ITEM_STYLE_REMOVE,
+    {
+      ...(responsive ? { viewport: "mobile" } : {}),
+      styleKey: selectedTargetStyleKey.value,
+    },
+    { label: selectedField.value ? `${selectedField.value.name} 필드 스타일 초기화` : "컴포넌트 스타일 초기화" },
   );
 }
 
@@ -1508,7 +1573,7 @@ function enableFixedTextSize() {
   updateItemStyle({
     widthMode: "fixed",
     heightMode: "fixed",
-    widthPct: selectedItemStyle.value.widthPct || 32,
+    widthPct: selectedItemStyle.value.widthPct || defaultComponentWidthPct(selectedItem.value),
     heightPx: Math.min(
       MAXIMUM_COMPONENT_HEIGHT_PX,
       Math.max(
@@ -1520,7 +1585,16 @@ function enableFixedTextSize() {
 }
 
 function patchSelectedTextStyle(patch) {
-  updateItemStyle(patch);
+  updateSelectedTargetStyle(patch);
+}
+
+function updateSelectedTextLines(selection) {
+  selectedTextLines.value = selection?.indexes?.length ? selection : null;
+}
+
+function persistStructurePaneWidth() {
+  saveWorkspaceSplitWidth(globalThis.localStorage, workspaceSplitKey, structurePaneWidth.value);
+  nextTick(() => previewPanelRef.value?.updateSelectionRect?.());
 }
 
 function updateRendererItemStyle(section, item, patch) {
@@ -2412,6 +2486,7 @@ onBeforeUnmount(() => {
         'is-section-preset-workspace': isSectionPresetMode,
         'is-ai-document-workspace': isAiDocumentMode,
       }"
+      :style="workspaceStyle"
     >
       <StructurePanel
         :sections="sections"
@@ -2488,6 +2563,12 @@ onBeforeUnmount(() => {
         </template>
       </StructurePanel>
 
+      <WorkspaceSplitter
+        v-model="structurePaneWidth"
+        :disabled="!isBuilderWorkspaceMode"
+        @resize-end="persistStructurePaneWidth"
+      />
+
       <PreviewPanel
         ref="previewPanelRef"
         :motion-replay-key="motionReplayKey"
@@ -2511,6 +2592,8 @@ onBeforeUnmount(() => {
         :editor-snapshot="editorSnapshot"
         :template="template"
         :selected-style-key="selectedStyleKey"
+        :selected-inspector-key="selectedTargetStyleKey"
+        :selected-field-style-key="selectedFieldStyleKey"
         :selected-item-keys="selectedItemKeys"
         :selected-section="selectedSection"
         :selected-item="selectedItem"
@@ -2549,15 +2632,16 @@ onBeforeUnmount(() => {
         @enable-automatic-text-size="enableAutomaticTextSize"
         @enable-fixed-text-size="enableFixedTextSize"
         @selection-rect-change="componentInspectorAnchor = $event"
+        @text-line-selection-change="updateSelectedTextLines"
       />
 
       <ComponentInspectorPopover
         v-if="selectedItem && componentInspectorAnchor"
         :anchor-rect="componentInspectorAnchor"
-        :title="selectedItemKeys.length > 1 ? `${selectedItemKeys.length}개 컴포넌트` : selectedItem.name"
-        :subtitle="selectedItemKeys.length > 1 ? '다중 정렬' : selectedItem.fieldKind"
-        :locked="selectedItemKeys.length <= 1 && selectedItem.isLocked"
-        :anchor-key="selectedStyleKey"
+        :title="selectedItemKeys.length > 1 ? `${selectedItemKeys.length}개 컴포넌트` : (selectedField?.name || selectedItem.name)"
+        :subtitle="selectedItemKeys.length > 1 ? '다중 정렬' : (selectedField ? `${selectedItem.name} · ${selectedField.fieldKind}` : selectedItem.fieldKind)"
+        :locked="selectedItemKeys.length <= 1 && (selectedItem.isLocked || selectedField?.isLocked)"
+        :anchor-key="selectedTargetStyleKey"
         @close="clearEditorSelection"
       >
         <div class="component-inspector-ai">
@@ -2597,9 +2681,19 @@ onBeforeUnmount(() => {
                 <span class="app-switch__label">노출</span>
               </label>
           <div v-if="componentFields(selectedItem).length > 1" class="component-field-property-list">
-            <section v-for="field in componentFields(selectedItem)" :key="field.fieldKey" class="component-field-property">
+            <section
+              v-for="field in componentFields(selectedItem)"
+              :key="field.fieldKey"
+              class="component-field-property"
+              :class="{ 'is-selected': selectedFieldKey === field.fieldKey }"
+            >
               <header>
-                <strong>{{ field.name }}</strong>
+                <button
+                  type="button"
+                  class="component-field-select"
+                  :aria-pressed="selectedFieldKey === field.fieldKey"
+                  @click="selectedFieldKey = selectedFieldKey === field.fieldKey ? '' : field.fieldKey"
+                >{{ field.name }}</button>
                 <small>{{ field.fieldKind }} · {{ field.fieldKey }}</small>
                 <label
                   v-if="!field.isRequired && !field.isLocked"
@@ -2707,9 +2801,76 @@ onBeforeUnmount(() => {
             <div><dt>고정</dt><dd>{{ selectedItem.isLocked ? "Y" : "N" }}</dd></div>
           </dl>
 
+          <section
+            v-if="selectedField || (componentFields(selectedItem).length <= 1 && selectedItem.fieldKind !== 'image')"
+            class="component-inspector-typography"
+          >
+            <div class="design-controls__heading">
+              <strong>{{ selectedField ? `${selectedField.name} DESIGN` : 'TYPOGRAPHY' }}</strong>
+              <button
+                v-if="selectedField"
+                type="button"
+                :disabled="selectedItem.isLocked || selectedField.isLocked"
+                @click="resetSelectedTargetStyle"
+              >필드 초기화</button>
+            </div>
+            <TextEditorControls
+              v-if="(selectedField || selectedItem).fieldKind !== 'image'"
+              :item="selectedField || selectedItem"
+              :item-style="selectedTargetStyle"
+              :line-selection="selectedTextLines"
+              :show-layout-controls="!selectedField"
+              :can-undo="editorHistory.canUndo"
+              :can-redo="editorHistory.canRedo"
+              :color-tokens="fontColorTokenOptions"
+              :gradient-tokens="gradientTokenOptions"
+              :background-color-tokens="backgroundColorTokenOptions"
+              :text-style-tokens="textStyleTokenOptions"
+              :font-family-tokens="fontFamilyTokenOptions"
+              :font-size-tokens="fontSizeTokenOptions"
+              :font-weight-tokens="fontWeightTokenOptions"
+              :line-height-tokens="lineHeightTokenOptions"
+              :letter-spacing-tokens="letterSpacingTokenOptions"
+              @undo="undoEditorCommand"
+              @redo="redoEditorCommand"
+              @patch-style="patchSelectedTextStyle"
+              @restore-automatic-position="restoreAutomaticPosition"
+              @reset-offset="resetSelectedItemOffset"
+              @enable-auto-size="enableAutomaticTextSize"
+              @enable-fixed-size="enableFixedTextSize"
+            />
+            <div v-if="selectedField?.fieldKind === 'cta'" class="component-field-token-controls">
+              <label>
+                <span>버튼 글자색</span>
+                <select :value="selectedTargetStyle.colorToken || ''" @change="updateSelectedTargetStyle({ colorToken: $event.target.value || undefined, color: undefined })">
+                  <option value="">기본</option>
+                  <option v-for="token in fontColorTokenOptions" :key="token.key" :value="token.key">{{ token.label }}</option>
+                </select>
+              </label>
+              <label>
+                <span>버튼 배경</span>
+                <select :value="selectedTargetStyle.backgroundColorToken || ''" @change="updateSelectedTargetStyle({ backgroundColorToken: $event.target.value || undefined, backgroundColor: undefined })">
+                  <option value="">기본</option>
+                  <option v-for="token in backgroundColorTokenOptions" :key="token.key" :value="token.key">{{ token.label }}</option>
+                </select>
+              </label>
+            </div>
+          </section>
+
+          <section v-if="selectedField?.fieldKind === 'image'" class="design-controls component-field-design-controls">
+            <div class="design-controls__heading">
+              <strong>{{ selectedField.name }} IMAGE DESIGN</strong>
+              <button type="button" :disabled="selectedItem.isLocked || selectedField.isLocked" @click="resetSelectedTargetStyle">필드 초기화</button>
+            </div>
+            <label><span>이미지 맞춤</span><select :value="selectedTargetStyle.imageFit || 'contain'" @change="updateSelectedTargetStyle({ imageFit: $event.target.value })"><option value="contain">전체 표시</option><option value="cover">영역 채우기</option></select></label>
+            <label><span>이미지 초점</span><select :value="selectedTargetStyle.imagePosition || 'center center'" @change="updateSelectedTargetStyle({ imagePosition: $event.target.value })"><option value="left top">왼쪽 위</option><option value="center top">중앙 위</option><option value="right top">오른쪽 위</option><option value="left center">왼쪽 중앙</option><option value="center center">중앙</option><option value="right center">오른쪽 중앙</option><option value="left bottom">왼쪽 아래</option><option value="center bottom">중앙 아래</option><option value="right bottom">오른쪽 아래</option></select></label>
+            <label><span>이미지 형태</span><select :value="selectedTargetStyle.shape || 'square'" @change="updateSelectedTargetStyle({ shape: $event.target.value, aspectRatio: $event.target.value === 'circle' ? '1:1' : selectedTargetStyle.aspectRatio })"><option value="square">사각형</option><option value="rounded">둥근 사각형</option><option value="circle">원형</option></select></label>
+            <label><span>이미지 비율</span><input type="text" :value="selectedTargetStyle.aspectRatio || selectedField.image?.aspectRatio || '1:1'" placeholder="예: 4:3" @change="updateSelectedTargetStyle({ aspectRatio: $event.target.value })" /></label>
+          </section>
+
           <section class="design-controls">
             <div class="design-controls__heading">
-              <strong>DESIGN</strong>
+              <strong>{{ selectedField ? 'COMPONENT FRAME' : 'DESIGN' }}</strong>
               <button type="button" :disabled="selectedItem.isLocked" @click="resetItemStyle">초기화</button>
             </div>
             <div v-if="selectedItem.fieldKind === 'image'" class="image-frame-controls">
@@ -2740,7 +2901,7 @@ onBeforeUnmount(() => {
                     max="100"
                     step="0.01"
                     :disabled="selectedItem.isLocked"
-                    :value="selectedItemStyle.widthPct || 32"
+                    :value="selectedItemStyle.widthPct || defaultComponentWidthPct(selectedItem)"
                     @input="updateItemStyle({ widthPct: Number($event.target.value) })"
                   />
                   <input
@@ -2750,9 +2911,9 @@ onBeforeUnmount(() => {
                     max="100"
                     step="0.01"
                     :disabled="selectedItem.isLocked"
-                    :value="Number((selectedItemStyle.widthPct || 32).toFixed(2))"
+                    :value="Number((selectedItemStyle.widthPct || defaultComponentWidthPct(selectedItem)).toFixed(2))"
                     aria-label="이미지 너비 퍼센트"
-                    @change="updateItemStyle({ widthPct: Math.min(100, Math.max(MINIMUM_COMPONENT_WIDTH_PCT, Number($event.target.value) || 32)) })"
+                    @change="updateItemStyle({ widthPct: Math.min(100, Math.max(MINIMUM_COMPONENT_WIDTH_PCT, Number($event.target.value) || defaultComponentWidthPct(selectedItem))) })"
                   />
                 </div>
               </label>
@@ -2871,7 +3032,7 @@ onBeforeUnmount(() => {
                     max="100"
                     step="0.1"
                     :disabled="selectedItem.isLocked"
-                    :value="selectedItemStyle.widthPct || 32"
+                    :value="selectedItemStyle.widthPct || defaultComponentWidthPct(selectedItem)"
                     @input="updateItemStyle({ widthPct: Number($event.target.value) })"
                   />
                   <input
@@ -2881,9 +3042,9 @@ onBeforeUnmount(() => {
                     max="100"
                     step="0.1"
                     :disabled="selectedItem.isLocked"
-                    :value="Math.round(selectedItemStyle.widthPct || 32)"
+                    :value="Math.round(selectedItemStyle.widthPct || defaultComponentWidthPct(selectedItem))"
                     aria-label="컴포넌트 너비 퍼센트"
-                    @change="updateItemStyle({ widthPct: Math.min(100, Math.max(MINIMUM_COMPONENT_WIDTH_PCT, Number($event.target.value) || 32)) })"
+                    @change="updateItemStyle({ widthPct: Math.min(100, Math.max(MINIMUM_COMPONENT_WIDTH_PCT, Number($event.target.value) || defaultComponentWidthPct(selectedItem))) })"
                   />
                 </div>
               </label>
