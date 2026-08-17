@@ -31,7 +31,7 @@ const props = defineProps({
   motionSpec: { type: Object, default: () => ({ sections: {}, items: {} }) },
   viewportOverride: { type: String, default: "" },
 });
-const emit = defineEmits(["select-item", "select-text-lines", "update-item-style", "update-renderer-item-style", "update-item-content", "update-section-style"]);
+const emit = defineEmits(["select-item", "select-text-lines", "open-item-inspector", "update-item-style", "update-renderer-item-style", "update-item-content", "update-section-style"]);
 const SECTION_VERTICAL_PADDING_PX = 20;
 const DRAG_ACTIVATION_DISTANCE_PX = 7;
 const viewportWidth = ref(typeof globalThis.innerWidth === "number" ? globalThis.innerWidth : 1280);
@@ -973,6 +973,13 @@ function startMoveHandleDrag(event, section, item) {
   startDrag(event, section, item, { target, fromMoveHandle: true });
 }
 
+function openItemInspector(event, section, item) {
+  if (!props.editable) return;
+  event.preventDefault();
+  event.stopPropagation();
+  emit("open-item-inspector", section, item);
+}
+
 function moveItemByKeyboard(event, section, item) {
   const deltas = {
     ArrowLeft: [-1, 0],
@@ -1672,12 +1679,21 @@ defineExpose({ inspectLayoutCollisions });
             <button
               v-if="editable && showGuides && !item.isLocked && selectedItemKey === styleKey(section, item)"
               type="button"
-              class="component-move-handle"
+              class="component-action-handle component-move-handle"
               :aria-label="`${item.name || item.itemKey} 이동`"
               :title="`${item.name || item.itemKey} 이동 (Shift + 방향키: 10px)`"
               @pointerdown="startMoveHandleDrag($event, section, item)"
               @keydown="moveItemByKeyboard($event, section, item)"
-            ><i class="fa-solid fa-up-down-left-right" aria-hidden="true"></i></button>
+            ></button>
+            <button
+              v-if="editable && showGuides && selectedItemKey === styleKey(section, item)"
+              type="button"
+              class="component-action-handle component-properties-handle"
+              :aria-label="`${item.name || item.itemKey} 속성`"
+              :title="`${item.name || item.itemKey} 속성 열기`"
+              @pointerdown.stop
+              @click="openItemInspector($event, section, item)"
+            ></button>
             <span
               v-if="editable && !isItemVisible(section, item)"
               class="output-hidden-badge"

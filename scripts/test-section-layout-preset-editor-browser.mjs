@@ -140,6 +140,7 @@ try {
     transform: node.style.transform,
   }));
   await logoItem.click();
+  await logoItem.locator(".component-properties-handle").click();
   const textToolbar = page.locator(".text-editor-controls");
   await textToolbar.waitFor({ state: "visible" });
   assert.equal(await textToolbar.getByRole("button", { name: /섹션 기준 세로/ }).count(), 0);
@@ -163,10 +164,13 @@ try {
   assert.equal(page.url(), livePreviewUrl);
   assert.equal(await page.locator(".editor-workspace.is-section-preset-workspace").count(), 1);
   await page.locator(".page-tree__component").filter({ hasText: "Logo" }).locator(".page-tree__select").click();
+  assert.equal(await page.locator(".component-inspector-popover").count(), 0);
+  await page.locator('[data-item-key="logo"] .component-properties-handle').click();
   await page.locator(".component-inspector-popover").waitFor();
   await page.getByLabel("텍스트", { exact: true }).fill("Saved header text");
   await page.getByRole("button", { name: "Mobile" }).click();
   await page.locator(".page-tree__component").filter({ hasText: "Badges" }).locator(".page-tree__select").click();
+  await page.locator('[data-item-key="badges"] .component-properties-handle').click();
   await page.getByLabel("URL 또는 이미지 설명", { exact: true }).fill("https://cdn.example.com/saved-badge.png");
   const visibility = page.getByRole("switch", { name: "Badges 노출" });
   assert.equal(await visibility.isChecked(), false);
@@ -187,10 +191,12 @@ try {
   assert.equal(Math.round((await page.locator(".section-rail").boundingBox()).width), 336);
   await page.getByRole("button", { name: "Mobile" }).click();
   await page.locator(".page-tree__component").filter({ hasText: "Badges" }).locator(".page-tree__select").click();
+  await page.locator('[data-item-key="badges"] .component-properties-handle').click();
   await page.locator(".component-inspector-popover").waitFor();
   assert.equal(await page.getByRole("switch", { name: "Badges 노출" }).isChecked(), true);
   assert.equal(await page.getByLabel("URL 또는 이미지 설명", { exact: true }).inputValue(), "https://cdn.example.com/saved-badge.png");
   await page.locator(".page-tree__component").filter({ hasText: "Logo" }).locator(".page-tree__select").click();
+  await page.locator('[data-item-key="logo"] .component-properties-handle').click();
   assert.equal(await page.getByLabel("텍스트", { exact: true }).inputValue(), "Saved header text");
   sectionStatus = "active";
   await page.reload({ waitUntil: "domcontentloaded" });

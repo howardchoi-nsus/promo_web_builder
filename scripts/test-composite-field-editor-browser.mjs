@@ -100,13 +100,21 @@ try {
   const image = card.locator('[data-field-style-key="feature.card.image"]');
   const title = card.locator('[data-field-style-key="feature.card.title"]');
   const cta = card.locator('[data-field-style-key="feature.card.cta"]');
+  const propertiesHandle = card.getByRole("button", { name: "Promotion Card 속성" });
 
   await image.click();
+  assert.equal(await page.locator(".component-inspector-popover").count(), 0, "component click must select without opening properties");
+  await propertiesHandle.click();
   await page.locator(".component-inspector-popover").getByText("Card Image", { exact: true }).first().waitFor();
   await page.getByLabel("이미지 형태").selectOption("rounded");
   await page.waitForFunction(() => document.querySelector('[data-field-style-key="feature.card.image"] .rendered-component-image-frame')?.style.borderRadius.includes("promo-image-radius"));
 
+  await page.getByRole("button", { name: "컴포넌트 속성 닫기" }).click();
+  assert.equal(await page.locator(".component-inspector-popover").count(), 0);
+
   await title.click();
+  assert.equal(await page.locator(".component-inspector-popover").count(), 0, "text click must not reopen properties");
+  await propertiesHandle.click();
   await page.locator(".component-inspector-popover").getByText("Card Title", { exact: true }).first().waitFor();
   assert.equal(await image.evaluate((node) => node.classList.contains("is-selected-field")), false);
   assert.equal(await title.evaluate((node) => node.classList.contains("is-selected-field")), true);

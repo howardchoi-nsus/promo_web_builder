@@ -435,6 +435,8 @@ try {
   sectionAiRunRequest = null;
   await editorFrame.locator(".page-tree__section .page-tree__select").filter({ hasText: "Feature Content" }).click();
   await editorFrame.locator(".page-tree__component").filter({ hasText: "프로모션 이미지" }).locator(".page-tree__select").click();
+  assert.equal(await editorFrame.locator(".component-inspector-popover").count(), 0);
+  await editorFrame.locator('[data-section-key="contentFeature"] [data-item-key="image"] .component-properties-handle').click();
   await editorFrame.locator(".component-inspector-popover").waitFor();
   const itemAiAction = editorFrame.locator(".item-ai-generation-action");
   await itemAiAction.waitFor();
@@ -528,6 +530,7 @@ try {
     "Selecting text without dragging must preserve its rendered DOM position",
   );
   await editorFrame.locator(".page-tree__component").filter({ hasText: "상세 설명" }).locator(".page-tree__select").click();
+  await editorFrame.locator('[data-section-key="contentFeature"] [data-item-key="copy"] .component-properties-handle').click();
   const textEditorToolbar = editorFrame.locator(".text-editor-controls");
   await textEditorToolbar.waitFor({ state: "visible" });
   const textPropertyInput = editorFrame.locator(".component-property-content textarea").first();
@@ -670,6 +673,7 @@ try {
   );
   const anchoredTextComponent = editorFrame.locator('[data-section-key="heroBanner"] [data-item-key="title"]');
   await anchoredTextComponent.click();
+  await anchoredTextComponent.locator(".component-properties-handle").click();
   await textEditorToolbar.waitFor({ state: "visible" });
   const beforeTextAlignmentContent = await page.evaluate(() => JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null"));
   const beforeTextAlignmentStyle = beforeTextAlignmentContent?.templateLayouts?.["default-preview"]?.resolvedLayout
@@ -695,6 +699,7 @@ try {
   );
   await editorFrame.getByRole("button", { name: "Feature Content 섹션 열기", exact: true }).click();
   await editorFrame.locator(".page-tree__component").filter({ hasText: "상세 설명" }).locator(".page-tree__select").click();
+  await editorFrame.locator('[data-section-key="contentFeature"] [data-item-key="copy"] .component-properties-handle').click();
   await textEditorToolbar.waitFor({ state: "visible" });
   await textEditorToolbar.locator('summary[aria-label="폰트 컬러"]').click();
   await textEditorToolbar.getByRole("button", { name: "폰트 컬러 Accent", exact: true }).click();
@@ -713,6 +718,7 @@ try {
     "The selected font-size token must persist in the layout snapshot",
   );
   await editorFrame.locator(".page-tree__component").filter({ hasText: "프로모션 이미지" }).locator(".page-tree__select").click();
+  await editorFrame.locator('[data-section-key="contentFeature"] [data-item-key="image"] .component-properties-handle').click();
   const imageRemoveAction = editorFrame.locator(".image-remove-action");
   await imageRemoveAction.waitFor();
   page.once("dialog", (dialog) => dialog.accept());

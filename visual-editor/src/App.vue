@@ -76,6 +76,7 @@ const selectedFieldKey = ref("");
 const selectedTextLines = ref(null);
 const previewPanelRef = ref(null);
 const componentInspectorAnchor = ref(null);
+const componentInspectorOpen = ref(false);
 const workspaceSplitKey = workspaceSplitStorageKey(props.mode);
 const structurePaneWidth = ref(loadWorkspaceSplitWidth(globalThis.localStorage, workspaceSplitKey));
 const viewport = ref("desktop");
@@ -487,6 +488,8 @@ function resetSectionComposition() {
 }
 
 async function selectRendererItem(section, item, selection = {}) {
+  const sameTarget = selectedSectionKey.value === section.sectionKey && selectedItemKey.value === item?.itemKey;
+  if (!sameTarget) componentInspectorOpen.value = false;
   if (selectedSectionKey.value && selectedSectionKey.value !== section.sectionKey) {
     resetSectionComposition();
   }
@@ -500,6 +503,20 @@ async function selectRendererItem(section, item, selection = {}) {
     selectItem(section, item, { fieldKey: selection.fieldKey || "" });
   }
   await nextTick();
+}
+
+async function openComponentInspector(section, item) {
+  if (!section || !item) return;
+  if (selectedSectionKey.value !== section.sectionKey || selectedItemKey.value !== item.itemKey) {
+    selectItem(section, item);
+  }
+  componentInspectorOpen.value = true;
+  await nextTick();
+  previewPanelRef.value?.updateSelectionRect?.();
+}
+
+function closeComponentInspector() {
+  componentInspectorOpen.value = false;
 }
 
 function scrollPreviewToSection(section) {
@@ -754,6 +771,7 @@ function clearMultiSelection() {
 }
 
 function clearEditorSelection() {
+  componentInspectorOpen.value = false;
   selectedItemKey.value = "";
   selectedItemKeys.value = [];
   selectedFieldKey.value = "";
@@ -2525,7 +2543,6 @@ onBeforeUnmount(() => {
         @background-alignment="setSectionBackgroundAlignment"
         @background-fade="setSectionBackgroundFadeMode"
         @update-section-style="updateSectionStyle"
-        @layout-collision-reflow="applyLayoutCollisionReflow"
         @reset-section-height="resetSectionHeight"
         @create-blank-section="createBlankSection"
         @create-section-from-preset="createSectionFromPreset"
@@ -2631,10 +2648,12 @@ onBeforeUnmount(() => {
         @open-output="openOutput"
         @clear-selection="clearEditorSelection"
         @select-item="selectRendererItem"
+        @open-item-inspector="openComponentInspector"
         @update-item-style="updateItemStyle"
         @update-renderer-item-style="updateRendererItemStyle"
         @update-item-content="updateRendererContent"
         @update-section-style="updateSectionStyle"
+        @layout-collision-reflow="applyLayoutCollisionReflow"
         @drop-library-component="addComponent"
         @patch-selected-text-style="patchSelectedTextStyle"
         @restore-automatic-position="restoreAutomaticPosition"
@@ -2646,13 +2665,13 @@ onBeforeUnmount(() => {
       />
 
       <ComponentInspectorPopover
-        v-if="selectedItem && componentInspectorAnchor"
+        v-if="componentInspectorOpen && selectedItem && componentInspectorAnchor"
         :anchor-rect="componentInspectorAnchor"
         :title="selectedItemKeys.length > 1 ? `${selectedItemKeys.length}개 컴포넌트` : (selectedField?.name || selectedItem.name)"
         :subtitle="selectedItemKeys.length > 1 ? '다중 정렬' : (selectedField ? `${selectedItem.name} · ${selectedField.fieldKind}` : selectedItem.fieldKind)"
         :locked="selectedItemKeys.length <= 1 && (selectedItem.isLocked || selectedField?.isLocked)"
         :anchor-key="selectedTargetStyleKey"
-        @close="clearEditorSelection"
+        @close="closeComponentInspector"
       >
         <div class="component-inspector-ai">
           <AiLayoutControls
