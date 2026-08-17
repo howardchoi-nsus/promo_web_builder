@@ -1,6 +1,7 @@
 const { normalizeCtaLabel } = require("./_promo-content-policy");
 const { fetchTemplateRow, fetchTemplateSections } = require("./_wizard-form-templates-store");
 const { fetchItemsForSection } = require("./_wizard-content-sections-store");
+const MAXIMUM_SECTION_HEIGHT_PX = 24000;
 
 const DEFAULT_LAYOUT_SPEC = Object.freeze({
   contractVersion: 1,
@@ -251,7 +252,7 @@ function validateLayoutSpec(value, sections = []) {
   Object.entries(spec.sectionStyles).forEach(([key, style]) => {
     if (sections.length && !sectionKeys.has(key)) warnings.push({ code: "UNKNOWN_LAYOUT_SECTION", path: key });
     const height = Number(style?.minHeight);
-    if (style?.minHeight !== undefined && (!Number.isFinite(height) || height < 50 || height > 1200)) {
+    if (style?.minHeight !== undefined && (!Number.isFinite(height) || height < 50 || height > MAXIMUM_SECTION_HEIGHT_PX)) {
       errors.push({ code: "INVALID_SECTION_HEIGHT", path: `sectionStyles.${key}.minHeight` });
     }
     if (style?.backgroundSize !== undefined && !["contain", "cover", "100% auto"].includes(style.backgroundSize)) {
@@ -299,7 +300,7 @@ function validateLayoutSpec(value, sections = []) {
     if (style?.xPct !== undefined && (!Number.isFinite(Number(style.xPct)) || Number(style.xPct) < 0 || Number(style.xPct) > 100)) {
       errors.push({ code: "INVALID_ITEM_X", path: `itemStyles.${key}.xPct` });
     }
-    if (style?.yPx !== undefined && (!Number.isFinite(Number(style.yPx)) || Number(style.yPx) < 0 || Number(style.yPx) > 1200)) {
+    if (style?.yPx !== undefined && (!Number.isFinite(Number(style.yPx)) || Number(style.yPx) < 0 || Number(style.yPx) > MAXIMUM_SECTION_HEIGHT_PX)) {
       errors.push({ code: "INVALID_ITEM_Y", path: `itemStyles.${key}.yPx` });
     }
     if (style?.fontSize !== undefined && (!Number.isFinite(Number(style.fontSize)) || Number(style.fontSize) < 0 || Number(style.fontSize) > 80)) {
@@ -356,7 +357,7 @@ function validateLayoutSpec(value, sections = []) {
         if (style?.xPct !== undefined && (!Number.isFinite(x) || x < 0 || x > 100)) {
           errors.push({ code: "INVALID_RESPONSIVE_ITEM_X", path: `responsiveLayouts.mobile.itemStyles.${key}.xPct` });
         }
-        if (style?.yPx !== undefined && (!Number.isFinite(y) || y < 0 || y > 1200)) {
+        if (style?.yPx !== undefined && (!Number.isFinite(y) || y < 0 || y > MAXIMUM_SECTION_HEIGHT_PX)) {
           errors.push({ code: "INVALID_RESPONSIVE_ITEM_Y", path: `responsiveLayouts.mobile.itemStyles.${key}.yPx` });
         }
         if (style?.widthPct !== undefined && (!Number.isFinite(width) || width < 0.01 || width > 100)) {

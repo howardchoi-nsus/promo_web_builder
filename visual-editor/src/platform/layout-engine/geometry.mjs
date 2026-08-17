@@ -7,7 +7,7 @@ export const DEFAULT_FONT_SIZE = 18;
 export const MINIMUM_COMPONENT_WIDTH_PCT = 4;
 export const MINIMUM_COMPONENT_HEIGHT_PX = 24;
 export const MAXIMUM_COMPONENT_HEIGHT_PX = 900;
-export const MAXIMUM_SECTION_HEIGHT_PX = 1200;
+export const MAXIMUM_SECTION_HEIGHT_PX = 24000;
 
 export function clampNumber(value, min, max, fallback) {
   const number = Number(value);
@@ -84,7 +84,7 @@ export function normalizeComponentGeometry({
   );
   return {
     x: (clampNumber(style.xPct, 0, 100, fallbackX) / 100) * resolvedCanvasWidth,
-    y: clampNumber(style.yPx, 0, 1200, fallbackY),
+    y: clampNumber(style.yPx, 0, MAXIMUM_SECTION_HEIGHT_PX, fallbackY),
     width: (widthPct / 100) * resolvedCanvasWidth,
     height,
     widthPct,

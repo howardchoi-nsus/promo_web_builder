@@ -1,4 +1,5 @@
 import { DEFAULT_DESIGN_SPEC } from "./contracts.js";
+import { MAXIMUM_SECTION_HEIGHT_PX } from "./platform/layout-engine/geometry.mjs";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -202,8 +203,8 @@ export function validateLayoutSpec(value = {}) {
   }
   Object.entries(spec.sectionStyles).forEach(([key, style]) => {
     const height = Number(style?.minHeight);
-    if (style?.minHeight !== undefined && (!Number.isFinite(height) || height < 50 || height > 1200)) {
-      errors.push({ path: `sectionStyles.${key}.minHeight`, message: "Section height must be between 50 and 1200." });
+    if (style?.minHeight !== undefined && (!Number.isFinite(height) || height < 50 || height > MAXIMUM_SECTION_HEIGHT_PX)) {
+      errors.push({ path: `sectionStyles.${key}.minHeight`, message: `Section height must be between 50 and ${MAXIMUM_SECTION_HEIGHT_PX}.` });
     }
     if (style?.backgroundSize !== undefined && !allowedBackgroundSizes.has(style.backgroundSize)) {
       errors.push({ path: `sectionStyles.${key}.backgroundSize`, message: "Unsupported section background size." });
@@ -244,8 +245,8 @@ export function validateLayoutSpec(value = {}) {
     if (style?.xPct !== undefined && (!Number.isFinite(x) || x < 0 || x > 100)) {
       errors.push({ path: `itemStyles.${key}.xPct`, message: "xPct must be between 0 and 100." });
     }
-    if (style?.yPx !== undefined && (!Number.isFinite(y) || y < 0 || y > 1200)) {
-      errors.push({ path: `itemStyles.${key}.yPx`, message: "yPx must be between 0 and 1200." });
+    if (style?.yPx !== undefined && (!Number.isFinite(y) || y < 0 || y > MAXIMUM_SECTION_HEIGHT_PX)) {
+      errors.push({ path: `itemStyles.${key}.yPx`, message: `yPx must be between 0 and ${MAXIMUM_SECTION_HEIGHT_PX}.` });
     }
     if (style?.fontSize !== undefined && (!Number.isFinite(size) || size < 0 || size > 80)) {
       errors.push({ path: `itemStyles.${key}.fontSize`, message: "fontSize must be between 0 and 80." });
@@ -298,8 +299,8 @@ export function validateLayoutSpec(value = {}) {
         if (style?.xPct !== undefined && (!Number.isFinite(x) || x < 0 || x > 100)) {
           errors.push({ path: `responsiveLayouts.mobile.itemStyles.${key}.xPct`, message: "Mobile xPct must be between 0 and 100." });
         }
-        if (style?.yPx !== undefined && (!Number.isFinite(y) || y < 0 || y > 1200)) {
-          errors.push({ path: `responsiveLayouts.mobile.itemStyles.${key}.yPx`, message: "Mobile yPx must be between 0 and 1200." });
+        if (style?.yPx !== undefined && (!Number.isFinite(y) || y < 0 || y > MAXIMUM_SECTION_HEIGHT_PX)) {
+          errors.push({ path: `responsiveLayouts.mobile.itemStyles.${key}.yPx`, message: `Mobile yPx must be between 0 and ${MAXIMUM_SECTION_HEIGHT_PX}.` });
         }
         if (style?.widthPct !== undefined && (!Number.isFinite(width) || width < 0.01 || width > 100)) {
           errors.push({ path: `responsiveLayouts.mobile.itemStyles.${key}.widthPct`, message: "Mobile widthPct must be between 0.01 and 100." });

@@ -373,6 +373,9 @@ onMounted(async () => {
       <div v-if="store.error" class="ai-builder-error" role="alert" aria-live="assertive">
         <strong>{{ store.error.code }}</strong>
         <span>{{ store.error.message }}</span>
+        <small v-for="detail in store.error.details || []" :key="`${detail.code}:${detail.path}`">
+          {{ detail.code }} · {{ detail.path }}{{ detail.message ? ` · ${detail.message}` : "" }}
+        </small>
         <button type="button" @click="clearBuilderError(store)">닫기</button>
       </div>
       <div v-if="store.warning" class="ai-builder-warning" role="status">

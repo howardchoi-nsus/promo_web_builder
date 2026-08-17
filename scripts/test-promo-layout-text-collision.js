@@ -1,5 +1,6 @@
 const assert = require("node:assert/strict");
 const { avoidTextComponentOverlaps } = require("../api/_promo-layout-text-collision");
+const { validateLayoutSpec } = require("../api/_wizard-form-template-layout-store");
 
 const section = {
   sectionKey: "hero",
@@ -81,5 +82,35 @@ const compositeResult = avoidTextComponentOverlaps({
 assert.ok(compositeResult.itemStyles["cards.cardTwo"].yPx > 500, "desktop image/text/CTA height must move the next card");
 assert.ok(compositeResult.mobileItemStyles["cards.cardTwo"].yPx > 600, "mobile image/text/CTA height must move the next card");
 assert.ok(compositeResult.sectionStyles.cards.minHeight > compositeResult.mobileItemStyles["cards.cardTwo"].yPx);
+
+const longCardDescription = "Get a 100% bonus on your first deposit, available once per new user. Enhance your experience with this limited-time summer offer, encouraging early participation and maximizing initial engagement.";
+const repeatedCards = [1, 2, 3, 4].map((index) => ({
+  ...compositeCard,
+  itemKey: `card${index}`,
+  name: `Promotion Card ${index}`,
+}));
+const repeatedCompositeResult = avoidTextComponentOverlaps({
+  sections: [{ sectionKey: "repeatedCards", items: repeatedCards }],
+  sectionInputs: { repeatedCards: Object.fromEntries(repeatedCards.map((item) => [
+    item.itemKey,
+    { fields: { image: { value: `${item.itemKey}.jpg` }, description: longCardDescription, action: { label: "Join" } } },
+  ])) },
+  itemStyles: Object.fromEntries(repeatedCards.map((item, index) => [
+    `repeatedCards.${item.itemKey}`,
+    { positionMode: "free", xPct: 5, yPx: 20 + (index * 160), widthPct: 42 },
+  ])),
+  mobileItemStyles: Object.fromEntries(repeatedCards.map((item, index) => [
+    `repeatedCards.${item.itemKey}`,
+    { positionMode: "free", xPct: 5, yPx: 20 + (index * 160), widthPct: 90 },
+  ])),
+});
+assert.ok(repeatedCompositeResult.mobileItemStyles["repeatedCards.card4"].yPx > 1200);
+assert.ok(repeatedCompositeResult.sectionStyles.repeatedCards.minHeight > 1200);
+assert.equal(validateLayoutSpec({
+  contractVersion: 1,
+  itemStyles: repeatedCompositeResult.itemStyles,
+  sectionStyles: repeatedCompositeResult.sectionStyles,
+  responsiveLayouts: { mobile: { itemStyles: repeatedCompositeResult.mobileItemStyles } },
+}, [{ sectionKey: "repeatedCards", items: repeatedCards }]).ok, true, "collision-safe repeated composite layouts must remain valid Contract v3 output");
 
 console.log("Promo text collision normalization tests passed.");

@@ -142,6 +142,12 @@ module.exports = async function handler(req, res) {
     const status = /access denied/i.test(error.message) ? 403
       : /revision conflict|not ready/i.test(error.message) ? 409
         : error.statusCode || 500;
+    console.error("[promo-page-composition-apply] failed", {
+      code: error.code || null,
+      status,
+      message: error.message,
+      errors: Array.isArray(error.errors) ? error.errors.slice(0, 10) : [],
+    });
     return res.status(status).json({
       error: "Composition apply failed",
       code: error.code || null,

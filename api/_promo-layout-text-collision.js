@@ -1,5 +1,6 @@
 const DEFAULT_TEXT_GAP_PX = 20;
 const COMPOSITE_FIELD_GAP_PX = 14;
+const MAXIMUM_SECTION_HEIGHT_PX = 24000;
 
 function clone(value) {
   return value == null ? value : JSON.parse(JSON.stringify(value));
@@ -219,7 +220,7 @@ function avoidTextComponentOverlaps({
     Object.assign(nextMobileItemStyles, mobile.patches);
     const contentBottom = Math.max(desktop.bottom, mobile.bottom);
     const requiredHeight = contentBottom > 0
-      ? Math.min(1200, Math.max(50, Math.ceil(contentBottom + 40)))
+      ? Math.min(MAXIMUM_SECTION_HEIGHT_PX, Math.max(50, Math.ceil(contentBottom + 40)))
       : 0;
     if (requiredHeight > Number(nextSectionStyles[section.sectionKey]?.minHeight || 0)) {
       nextSectionStyles[section.sectionKey] = {

@@ -10,7 +10,7 @@ async function request(path, options = {}) {
     const error = new Error(payload.message || payload.error || `Request failed (${response.status})`);
     error.code = payload.code || `HTTP_${response.status}`;
     error.status = response.status;
-    error.details = payload.details || payload.validation || null;
+    error.details = payload.details || payload.validation || payload.errors || null;
     throw error;
   }
   return payload;
