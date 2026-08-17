@@ -48,8 +48,9 @@ const capabilitiesApi = fs.readFileSync(
 );
 assert.match(aiBuilderApp, /loadCompositionShells/);
 assert.match(aiBuilderApp, /mode:\s*"ai-composition"/);
-assert.match(aiBuilderApp, /proposal\.contractVersion === 3/);
+assert.match(aiBuilderApp, /const proposal = await pollProposal/);
 assert.match(aiBuilderApp, /applyReadyProposal/);
+assert.doesNotMatch(aiBuilderApp, /<RegistryProposalReview/);
 assert.match(aiBuilderApp, /applyOperationProposal/);
 assert.match(aiBuilderApp, /reloadLatestForOperation/);
 assert.match(aiBuilderApp, /DOCUMENT_REVISION_MISMATCH/);

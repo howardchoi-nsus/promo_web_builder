@@ -39,7 +39,10 @@ const builder = fs.readFileSync(
 const editor = fs.readFileSync(path.join(root, "visual-editor/src/App.vue"), "utf8");
 
 assert.match(client, /\/api\/promo-builder-assets-retry/);
-assert.match(builder, /if \(!store\.warning\) openVisualEditor\(\)/);
+assert.match(builder, /waitForBuilderAssets/);
+assert.match(builder, /ASSET_GENERATION_TIMEOUT/);
+assert.match(builder, /if \(!blockingAssetWarning && await waitForBuilderAssets\(\)\) \{[\s\S]*?store\.stage = "navigating_preview";[\s\S]*?openVisualEditor\(\);/);
+assert.match(builder, /clearBuilderError\(store\);[\s\S]*?retryBuilderAssets/);
 assert.match(builder, /이미지 생성 다시 시도/);
 assert.match(editor, /if \(result\.assetWarning\)/);
 assert.match(editor, /AI 이미지 생성 작업을 시작하지 못했습니다/);

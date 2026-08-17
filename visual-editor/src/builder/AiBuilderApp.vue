@@ -1,12 +1,12 @@
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import BuilderModeSelector from "./BuilderModeSelector.vue";
 import AiBriefPanel from "./AiBriefPanel.vue";
 import OverviewReviewForm from "./OverviewReviewForm.vue";
 import CompositionProgress from "./CompositionProgress.vue";
 import CompositionReview from "./CompositionReview.vue";
 import { visualEditorEntry } from "../platform/visual-editor-entry.mjs";
-import RegistryProposalReview from "./RegistryProposalReview.vue";
+import { evaluateAssetReadiness } from "../shared/composition/asset-readiness.mjs";
 import OperationProposalReview from "./OperationProposalReview.vue";
 import NaturalLanguageEditor from "./NaturalLanguageEditor.vue";
 import { createAiBuilderStore, clearBuilderError, setBuilderError } from "./state/ai-builder-store.mjs";
@@ -38,13 +38,49 @@ const capabilities = ref({ aiMode: true });
 const activeShell = ref(null);
 const pendingOperations = ref(null);
 const operationConflict = ref(null);
+let assetPollingCancelled = false;
+let localeUnsubscribe = null;
+const localeRevision = ref(0);
+function translate(key, fallback) {
+  localeRevision.value;
+  const translated = window.PromoI18n?.t?.(key);
+  return translated && translated !== key ? translated : fallback;
+}
 const busy = computed(() => [
   "analyzing_overview", "resolving_policy", "queued", "processing", "applying",
+  "generating_assets", "preview_ready", "navigating_preview",
 ].includes(store.stage));
-const fullScreenProgress = computed(() => store.stage === "analyzing_overview"
-  || (!store.snapshot && ["resolving_policy", "queued", "processing", "applying"].includes(store.stage)));
+const fullScreenProgress = computed(() => [
+  "analyzing_overview", "resolving_policy", "queued", "processing", "applying",
+  "generating_assets", "preview_ready", "navigating_preview",
+].includes(store.stage));
+const progressMessage = computed(() => {
+  if (store.stage === "analyzing_overview") {
+    return translate("builder.progress.analyzingOverview", "프로모션 개요를 분석하고 있습니다.");
+  }
+  if (["resolving_policy", "queued", "processing"].includes(store.stage)) {
+    return translate("builder.progress.composingStructure", "프로모션 구조를 구성하고 있습니다.");
+  }
+  if (["preview_ready", "navigating_preview"].includes(store.stage)) {
+    return translate("builder.progress.preparingPreview", "Live Preview를 준비하고 있습니다.");
+  }
+  return translate("builder.progress.generatingStructure", "프로모션 구조를 생성하고 있습니다.");
+});
 const overviewExecution = computed(() => store.executionDisplays.promo_overview_parser || null);
 const compositionExecution = computed(() => store.executionDisplays.promo_page_composer || null);
+const assetExecution = computed(() => store.executionDisplays.section_background_image
+  || store.executionDisplays.component_image
+  || compositionExecution.value);
+const progressExecution = computed(() => (
+  store.stage === "analyzing_overview"
+    ? overviewExecution.value
+    : ["generating_assets", "preview_ready", "navigating_preview"].includes(store.stage)
+      ? assetExecution.value
+      : compositionExecution.value
+));
+const retryableAssetError = computed(() => Boolean(store.snapshot && [
+  "ASSET_GENERATION_FAILED", "ASSET_GENERATION_TIMEOUT", "ASSET_ENQUEUE_FAILED",
+].includes(store.error?.code)));
 
 function selectMode(mode) {
   recordBuilderEvent({ eventName: "builder_mode_selected", metadata: { mode } });
@@ -114,9 +150,63 @@ function openVisualEditor() {
   window.location.assign(visualEditorEntry.aiDocument(store.documentId, store.documentRevision));
 }
 
+function builderAssetFailure(readiness) {
+  const failed = readiness.failedRequests[0] || {};
+  return Object.assign(new Error(
+    failed.errorMessage || "하나 이상의 AI 이미지 생성에 실패했습니다. 실패한 이미지를 다시 생성해 주세요.",
+  ), {
+    code: failed.errorCode || "ASSET_GENERATION_FAILED",
+    details: readiness.failedRequests.map((request) => ({
+      code: request.errorCode || "ASSET_GENERATION_FAILED",
+      path: request.assetRequestId || request.pageSectionInstanceId || "assets",
+      message: request.errorMessage || "AI 이미지 생성에 실패했습니다.",
+    })),
+  });
+}
+
+async function waitForBuilderAssets({ maxPolls = 200, pollIntervalMs = 2000 } = {}) {
+  let readiness = evaluateAssetReadiness(store.snapshot?.assets?.requests);
+  if (readiness.state === "ready") {
+    store.stage = "preview_ready";
+    return true;
+  }
+  store.stage = "generating_assets";
+  for (let count = 0; count < maxPolls && !assetPollingCancelled; count += 1) {
+    if (count > 0 || readiness.state === "waiting") {
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+    }
+    if (assetPollingCancelled) return false;
+    const loaded = await loadBuilderDocument(store.documentId);
+    if (!loaded.snapshot) {
+      throw Object.assign(new Error("AI 프로모션 자산 상태를 확인하지 못했습니다."), {
+        code: "BUILDER_SNAPSHOT_NOT_READY",
+      });
+    }
+    store.documentRevision = Number(
+      loaded.document?.currentDocumentRevision || loaded.snapshot.documentRevision || store.documentRevision,
+    );
+    store.snapshot = loaded.snapshot;
+    store.assetJobs = Object.fromEntries((loaded.snapshot.assets?.requests || []).map((request) => [
+      request.assetRequestId,
+      request,
+    ]));
+    readiness = evaluateAssetReadiness(loaded.snapshot.assets?.requests);
+    if (readiness.state === "failed") throw builderAssetFailure(readiness);
+    if (readiness.state === "ready") {
+      store.stage = "preview_ready";
+      return true;
+    }
+  }
+  if (assetPollingCancelled) return false;
+  throw Object.assign(new Error("AI 이미지 생성 대기 시간이 초과되었습니다. 다시 확인해 주세요."), {
+    code: "ASSET_GENERATION_TIMEOUT",
+  });
+}
+
 async function retryAssets() {
   if (!store.documentId || !store.documentRevision || assetRetrying.value) return;
   assetRetrying.value = true;
+  clearBuilderError(store);
   try {
     const response = await retryBuilderAssets({
       documentId: store.documentId,
@@ -124,7 +214,10 @@ async function retryAssets() {
     });
     store.assetJobs = Object.fromEntries((response.assetJobs || []).map((job) => [job.id, job]));
     store.warning = null;
-    openVisualEditor();
+    if (await waitForBuilderAssets()) {
+      store.stage = "navigating_preview";
+      openVisualEditor();
+    }
   } catch (error) {
     setBuilderError(store, error);
   } finally {
@@ -177,11 +270,6 @@ async function compose() {
       documentRevision: store.documentRevision,
     });
     const proposal = await pollProposal(queued.proposal.id);
-    if (proposal.contractVersion === 3) {
-      store.stage = "review_required";
-      return;
-    }
-    store.stage = proposal.autoApplicable ? "applying" : "review_required";
     await applyReadyProposal(proposal);
   } catch (error) {
     setBuilderError(store, error);
@@ -189,7 +277,7 @@ async function compose() {
 }
 
 async function applyReadyProposal(proposal = store.proposal) {
-  if (!proposal?.id || busy.value && store.stage !== "review_required") return;
+  if (!proposal?.id || store.stage === "applying") return;
   clearBuilderError(store);
   store.stage = "applying";
   const startedAt = performance.now();
@@ -203,8 +291,10 @@ async function applyReadyProposal(proposal = store.proposal) {
     store.documentRevision = applied.revision;
     store.snapshot = applied.snapshot;
     store.assetJobs = Object.fromEntries((applied.assetJobs || []).map((job) => [job.id, job]));
-    store.warning = applied.assetWarning || applied.warnings?.[0] || store.warning || null;
-    store.stage = "render_ready";
+    const blockingAssetWarning = applied.assetWarning
+      || applied.warnings?.find((warning) => warning?.code === "ASSET_ENQUEUE_FAILED")
+      || null;
+    store.warning = blockingAssetWarning || store.warning || null;
     recordBuilderEvent({
       eventName: "composition_applied",
       documentId: store.documentId,
@@ -212,7 +302,10 @@ async function applyReadyProposal(proposal = store.proposal) {
       durationMs: performance.now() - startedAt,
       metadata: { assetJobCount: Object.keys(store.assetJobs).length },
     });
-    if (!store.warning) openVisualEditor();
+    if (!blockingAssetWarning && await waitForBuilderAssets()) {
+      store.stage = "navigating_preview";
+      openVisualEditor();
+    }
   } catch (error) {
     setBuilderError(store, error);
   }
@@ -340,9 +433,14 @@ function exportDocument() {
 
 onMounted(async () => {
   try {
+    localeUnsubscribe = window.PromoI18n?.subscribe?.(() => {
+      localeRevision.value += 1;
+    }) || null;
     const executionLookups = Promise.allSettled([
       loadPromptExecutionDisplay("promo_overview_parser"),
       loadPromptExecutionDisplay("promo_page_composer"),
+      loadPromptExecutionDisplay("section_background_image"),
+      loadPromptExecutionDisplay("component_image"),
     ]).then((results) => {
       for (const result of results) {
         if (result.status === "fulfilled" && result.value?.type && result.value.executionDisplay) {
@@ -366,6 +464,12 @@ onMounted(async () => {
     setBuilderError(store, error);
   }
 });
+
+onBeforeUnmount(() => {
+  assetPollingCancelled = true;
+  localeUnsubscribe?.();
+  localeUnsubscribe = null;
+});
 </script>
 
 <template>
@@ -378,6 +482,12 @@ onMounted(async () => {
         <small v-for="detail in store.error.details || []" :key="`${detail.code}:${detail.path}`">
           {{ detail.code }} · {{ detail.path }}{{ detail.message ? ` · ${detail.message}` : "" }}
         </small>
+        <button
+          v-if="retryableAssetError"
+          type="button"
+          :disabled="assetRetrying"
+          @click="retryAssets"
+        >{{ assetRetrying ? "이미지 생성 재시도 중…" : "이미지 생성 다시 시도" }}</button>
         <button type="button" @click="clearBuilderError(store)">닫기</button>
       </div>
       <div v-if="store.warning" class="ai-builder-warning" role="status">
@@ -403,10 +513,10 @@ onMounted(async () => {
         <button type="button" @click="operationConflict = null; pendingOperations = null">취소</button>
       </div>
       <CompositionProgress
-        v-if="store.stage === 'analyzing_overview'"
+        v-if="fullScreenProgress"
         :stage="store.stage"
-        message="프로모션 개요를 분석하고 있습니다."
-        :execution="overviewExecution"
+        :message="progressMessage"
+        :execution="progressExecution"
       />
       <AiBriefPanel
         v-else-if="store.stage === 'idle' || store.stage === 'failed' && !store.overviewDraft"
@@ -415,24 +525,11 @@ onMounted(async () => {
         @analyze="analyze"
       />
       <OverviewReviewForm
-        v-else-if="store.stage === 'reviewing_overview' || store.stage === 'failed'"
+        v-else-if="store.stage === 'reviewing_overview' || store.stage === 'failed' && !store.snapshot"
         v-model="store.overviewDraft"
         :busy="busy"
         @back="store.stage = 'idle'"
         @confirm="compose"
-      />
-      <CompositionProgress
-        v-else-if="!store.snapshot && store.stage !== 'review_required'"
-        :stage="store.stage"
-        message="프로모션 구조를 생성하고 있습니다."
-        :execution="compositionExecution"
-      />
-      <RegistryProposalReview
-        v-else-if="store.stage === 'review_required' && store.proposal?.contractVersion === 3"
-        :proposal="store.proposal"
-        :busy="busy"
-        @back="store.stage = 'reviewing_overview'"
-        @apply="applyReadyProposal()"
       />
       <OperationProposalReview
         v-else-if="pendingOperations"
@@ -442,7 +539,7 @@ onMounted(async () => {
         @apply="applyOperationProposal"
       />
       <CompositionReview
-        v-else
+        v-else-if="store.snapshot && store.stage === 'render_ready'"
         :snapshot="store.snapshot"
         :document-revision="store.documentRevision"
         :busy="busy"
@@ -453,6 +550,11 @@ onMounted(async () => {
         @open-output="openOutput"
         @export-document="exportDocument"
       />
+      <section v-else-if="store.stage === 'failed'" class="ai-builder-card">
+        <p class="ai-builder-eyebrow">AI Generation</p>
+        <h1>AI 생성을 완료하지 못했습니다.</h1>
+        <p>상단 오류 내용을 확인한 후 다시 시도해 주세요.</p>
+      </section>
       <NaturalLanguageEditor
         v-if="operationOpen"
         :busy="busy"

@@ -30,6 +30,11 @@ assert.match(client, /payload\.errors/);
 assert.match(store, /error\?\.details/);
 assert.match(app, /if \(response\.proposal\.status === "ready"\) return response\.proposal;/);
 assert.match(app, /if \(\["queued", "processing"\]\.includes\(response\.proposal\.status\)\) \{[\s\S]*?store\.stage = response\.proposal\.status;[\s\S]*?\}/);
-assert.match(app, /proposal\.contractVersion === 3[\s\S]*store\.stage = "review_required"/);
+assert.match(app, /const proposal = await pollProposal\(queued\.proposal\.id\);[\s\S]*await applyReadyProposal\(proposal\);/);
+assert.doesNotMatch(app, /<RegistryProposalReview/);
+assert.doesNotMatch(app, /store\.stage = "review_required"/);
+assert.match(app, /store\.stage = "navigating_preview";[\s\S]*?openVisualEditor\(\);/);
+assert.match(app, /v-else-if="store\.snapshot && store\.stage === 'render_ready'"/);
+assert.doesNotMatch(app, /store\.stage = "render_ready";[\s\S]{0,300}openVisualEditor\(\)/);
 
 console.log("AI Builder entry contract test passed");

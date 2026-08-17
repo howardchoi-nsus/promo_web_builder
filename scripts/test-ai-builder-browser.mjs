@@ -12,12 +12,43 @@ const mime = {
   ".js": "text/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8",
 };
+let proposalPollCount = 0;
+let assetPollCount = 0;
+const snapshotWithAssetStatus = (status) => ({
+  contractVersion: 3,
+  documentRevision: 1,
+  content: {
+    formTemplate: { name: "Browser AI Promotion", templateKey: "browser-ai", designTokens: { values: {} } },
+    sectionSnapshot: [],
+    sectionInputs: {},
+    sectionOrder: [],
+  },
+  designSpec: { contractVersion: 1, theme: {}, itemStyles: {}, sectionStyles: {}, visibility: { items: {}, fields: {} } },
+  assets: {
+    contractVersion: 1,
+    items: status === "ready" ? { "asset-hero": { proxyUrl: "/asset-ready.png" } } : {},
+    requests: [{
+      assetRequestId: "asset-hero",
+      pageSectionInstanceId: "hero",
+      targetType: "section-key-visual",
+      status,
+    }],
+  },
+});
 
 const server = http.createServer(async (request, response) => {
   const url = new URL(request.url, "http://127.0.0.1");
   if (url.pathname === "/api/promo-builder-capabilities") {
     response.writeHead(200, { "Content-Type": "application/json" });
-    response.end(JSON.stringify({ ok: true, capabilities: { aiMode: true, contractVersion: 2 } }));
+    response.end(JSON.stringify({ ok: true, capabilities: { aiMode: true, compositionV3: true, contractVersion: 3 } }));
+    return;
+  }
+  if (url.pathname === "/api/promo-composition-shells") {
+    response.writeHead(200, { "Content-Type": "application/json" });
+    response.end(JSON.stringify({
+      ok: true,
+      versions: [{ id: "shell-browser", config: { isDefault: true, allowedLocales: ["ko-KR"] } }],
+    }));
     return;
   }
   if (url.pathname === "/api/promo-builder-session") {
@@ -58,6 +89,50 @@ const server = http.createServer(async (request, response) => {
       ok: true,
       overview: { title: "여름 신규 고객 충전 이벤트" },
       overviewFingerprint: "browser-test-overview",
+    }));
+    return;
+  }
+  if (url.pathname === "/api/promo-page-composition-proposals" && request.method === "POST") {
+    response.writeHead(202, { "Content-Type": "application/json" });
+    response.end(JSON.stringify({
+      ok: true,
+      proposal: { id: "proposal-browser", status: "queued", contractVersion: 3 },
+      executionDisplay: { providerIconKey: "openai", providerLabel: "OpenAI", modelLabel: "gpt-4.1-mini" },
+    }));
+    return;
+  }
+  if (url.pathname === "/api/promo-page-composition-proposals" && request.method === "GET") {
+    proposalPollCount += 1;
+    response.writeHead(200, { "Content-Type": "application/json" });
+    response.end(JSON.stringify({
+      ok: true,
+      proposal: {
+        id: "proposal-browser",
+        status: proposalPollCount > 1 ? "ready" : "processing",
+        contractVersion: 3,
+        pollAfterMs: 20,
+      },
+    }));
+    return;
+  }
+  if (url.pathname === "/api/promo-page-composition-apply" && request.method === "POST") {
+    response.writeHead(200, { "Content-Type": "application/json" });
+    response.end(JSON.stringify({
+      ok: true,
+      revision: 1,
+      snapshot: snapshotWithAssetStatus("pending"),
+      assetJobs: [{ id: "job-hero", assetRequestId: "asset-hero", status: "queued" }],
+    }));
+    return;
+  }
+  if (url.pathname === "/api/promo-builder-documents" && request.method === "GET") {
+    assetPollCount += 1;
+    const status = assetPollCount > 1 ? "ready" : "processing";
+    response.writeHead(200, { "Content-Type": "application/json" });
+    response.end(JSON.stringify({
+      ok: true,
+      document: { id: "document-browser", currentDocumentRevision: 1 },
+      snapshot: snapshotWithAssetStatus(status),
     }));
     return;
   }
@@ -123,6 +198,17 @@ try {
   assert.equal(progressStyles.textAlign, "center");
   assert.ok(progressStyles.height >= page.viewportSize().height - 100);
   assert.equal(progressStyles.messageAnimation, "ai-execution-pulse");
+  await page.getByRole("heading", { name: "AI 분석 결과를 확인하세요" }).waitFor();
+  await page.getByRole("button", { name: "AI로 프로모션 생성하기" }).click();
+  await page.getByText("프로모션 구조를 구성하고 있습니다.").waitFor();
+  await page.getByText("프로모션 구조를 생성하고 있습니다.").waitFor();
+  assert.equal(await page.locator(".registry-proposal-review").count(), 0);
+  assert.equal(await page.locator(".ai-builder-result").count(), 0);
+  await page.waitForTimeout(2500);
+  assert.match(page.url(), /create-promo\.html/);
+  assert.equal(await page.locator(".ai-builder-result").count(), 0);
+  await page.waitForURL(/visual-editor\.html\?mode=ai-document/, { timeout: 10000 });
+  assert.doesNotMatch(page.url(), /mode=output/);
   assert.deepEqual(errors, []);
   console.log("AI Builder browser test passed");
 } finally {

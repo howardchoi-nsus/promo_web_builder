@@ -15,6 +15,7 @@ import {
   createPromoBuilderAdapter,
 } from "./platform/adapters/promo-builder-adapter.mjs";
 import { createOutputAdapter } from "./platform/adapters/output-adapter.mjs";
+import { evaluateAssetReadiness } from "./shared/composition/asset-readiness.mjs";
 import { createEditorStore } from "./platform/editor-core/create-editor-store.mjs";
 import { EditorCommandType, editorCommand } from "./platform/editor-core/editor-commands.mjs";
 import {
@@ -61,6 +62,7 @@ const props = defineProps({
 });
 
 const loading = ref(props.mode !== "output");
+const aiDocumentLoadingMessage = ref("AI 프로모션 문서를 불러오는 중입니다.");
 const error = ref("");
 const templates = ref([]);
 const template = ref(null);
@@ -1896,7 +1898,11 @@ async function loadAiDocument() {
     selectedItemKey.value = sections.value[0]?.items?.[0]?.itemKey || "";
     selectedItemKeys.value = selectedItemKey.value ? [selectedItemKey.value] : [];
     hydrateEditorCore();
-    refreshAiDocumentAssetsUntilSettled();
+    const verifyingAssets = window.PromoI18n?.t?.("builder.progress.verifyingAssets");
+    aiDocumentLoadingMessage.value = verifyingAssets && verifyingAssets !== "builder.progress.verifyingAssets"
+      ? verifyingAssets
+      : "AI 이미지 생성 완료를 확인하고 있습니다.";
+    await refreshAiDocumentAssetsUntilSettled();
   } catch (loadError) {
     error.value = loadError.message;
   } finally {
@@ -1907,7 +1913,14 @@ async function loadAiDocument() {
 async function refreshAiDocumentAssetsUntilSettled() {
   for (let count = 0; count < 200 && !aiDocumentPollingCancelled; count += 1) {
     const requests = aiDocumentSnapshot.value?.assets?.requests || [];
-    if (!requests.some((request) => ["pending", "queued", "processing"].includes(request.status))) return;
+    const readiness = evaluateAssetReadiness(requests);
+    if (readiness.state === "ready") return;
+    if (readiness.state === "failed") {
+      const failed = readiness.failedRequests[0] || {};
+      throw Object.assign(new Error(
+        failed.errorMessage || "AI 이미지 생성을 완료하지 못했습니다. 프로모션 빌더에서 다시 시도해 주세요.",
+      ), { code: failed.errorCode || "ASSET_GENERATION_FAILED" });
+    }
     await new Promise((resolve) => setTimeout(resolve, 2000));
     if (aiDocumentPollingCancelled) return;
     try {
@@ -1947,8 +1960,15 @@ async function refreshAiDocumentAssetsUntilSettled() {
         updateEditorHistory();
       }
     } catch {
-      return;
+      throw Object.assign(new Error("AI 이미지 생성 상태를 확인하지 못했습니다."), {
+        code: "ASSET_STATUS_LOAD_FAILED",
+      });
     }
+  }
+  if (!aiDocumentPollingCancelled) {
+    throw Object.assign(new Error("AI 이미지 생성 대기 시간이 초과되었습니다."), {
+      code: "ASSET_GENERATION_TIMEOUT",
+    });
   }
 }
 
@@ -2548,7 +2568,7 @@ onBeforeUnmount(() => {
       </div>
     </header>
 
-    <div v-if="loading" class="system-message">{{ isAiDocumentMode ? "AI 프로모션 문서를 불러오는 중입니다." : "기본 Form Template을 불러오는 중입니다." }}</div>
+    <div v-if="loading" class="system-message" role="status" aria-live="polite" aria-busy="true">{{ isAiDocumentMode ? aiDocumentLoadingMessage : "기본 Form Template을 불러오는 중입니다." }}</div>
     <div v-else-if="error" class="system-message system-message--error">{{ error }}</div>
     <div v-if="outputSaveError" class="system-message system-message--error" role="alert">{{ outputSaveError }}</div>
     <div v-if="layoutSaveMessage" class="system-message" role="status">{{ layoutSaveMessage }}</div>

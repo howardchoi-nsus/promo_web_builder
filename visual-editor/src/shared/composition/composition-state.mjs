@@ -10,6 +10,8 @@ export const COMPOSITION_PROGRESS_STAGES = Object.freeze([
   "review_required",
   "render_ready",
   "generating_assets",
+  "preview_ready",
+  "navigating_preview",
   "ready",
   "failed",
 ]);
