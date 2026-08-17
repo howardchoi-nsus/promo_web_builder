@@ -60,6 +60,8 @@ assert.match(manager, /레이아웃 프리셋/);
 assert.match(manager, /selectionMetadata/);
 assert.match(manager, /AI 선택 기준/);
 assert.match(manager, /연속 선택 지양/);
+assert.match(manager, /텍스트 폭/);
+assert.match(manager, /widthProfile/);
 assert.match(manager, /toggleAiLayout/);
 assert.match(manager, /SectionLayoutVisualEditorFrame/);
 assert.match(manager, /레이아웃 프리셋 편집/);
@@ -88,6 +90,7 @@ assert.match(adminHtml, /id="section-preset-manager-target"[\s\S]*?<section clas
 assert.doesNotMatch(adminHtml, /<teleport to="#section-preset-manager-target"/);
 assert.match(adminHtml, /재사용 가능한 섹션을 만들고 컴포넌트 구성과 Desktop\/Mobile 레이아웃 프리셋을 관리합니다/);
 assert.match(adminHtml, /AI가 페이지를 만들 때 이 섹션을 언제 포함하고/);
+assert.match(adminHtml, /AI Registry 후보/);
 assert.match(adminHtml, /AI 레이아웃 선택·이미지 생성 허용/);
 assert.doesNotMatch(adminHtml, /v-for="variant in \['split-left', 'split-right', 'centered-hero'\]"/);
 

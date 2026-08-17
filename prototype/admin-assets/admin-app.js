@@ -9413,6 +9413,7 @@ var nv = { class: "json-tree__row" }, rv = ["aria-label", "aria-expanded"], iv =
 						contentRegion: "auto",
 						visualBalance: "auto",
 						density: "auto",
+						widthProfile: "auto",
 						purposeTags: [],
 						selectionWeight: 1,
 						avoidImmediateRepeat: !1,
@@ -9436,6 +9437,7 @@ var nv = { class: "json-tree__row" }, rv = ["aria-label", "aria-expanded"], iv =
 					contentRegion: "auto",
 					visualBalance: "auto",
 					density: "auto",
+					widthProfile: "auto",
 					purposeTagsText: "",
 					selectionWeight: 1,
 					avoidImmediateRepeat: !1
@@ -9570,14 +9572,14 @@ var nv = { class: "json-tree__row" }, rv = ["aria-label", "aria-expanded"], iv =
 }, Bv = { class: "action-row align-right" }, Vv = ["onClick"], Hv = ["onClick"], Uv = ["disabled", "onClick"], Wv = ["disabled", "onClick"], Gv = ["disabled", "onClick"], Kv = {
 	key: 0,
 	class: "layout-selection-metadata"
-}, qv = { class: "new-layout-preset-form" }, Jv = ["onUpdate:modelValue"], Yv = ["onUpdate:modelValue"], Xv = ["onUpdate:modelValue"], Zv = ["onUpdate:modelValue"], Qv = ["value", "onInput"], $v = ["onUpdate:modelValue"], ey = { class: "inline-check" }, ty = ["onUpdate:modelValue"], ny = ["disabled", "onClick"], ry = {
+}, qv = { class: "new-layout-preset-form" }, Jv = ["onUpdate:modelValue"], Yv = ["onUpdate:modelValue"], Xv = ["onUpdate:modelValue"], Zv = ["onUpdate:modelValue"], Qv = ["onUpdate:modelValue"], $v = ["value", "onInput"], ey = ["onUpdate:modelValue"], ty = { class: "inline-check" }, ny = ["onUpdate:modelValue"], ry = ["disabled", "onClick"], iy = {
 	key: 0,
 	class: "empty-state compact"
-}, iy = { class: "inline-check" }, ay = { class: "inline-check" }, oy = ["disabled"], sy = { class: "inline-check" }, cy = ["disabled"], ly = { class: "action-row" }, uy = ["disabled"];
-function dy(e, t, n, r, i, a) {
+}, ay = { class: "inline-check" }, oy = { class: "inline-check" }, sy = ["disabled"], cy = { class: "inline-check" }, ly = ["disabled"], uy = { class: "action-row" }, dy = ["disabled"];
+function fy(e, t, n, r, i, a) {
 	let o = Ca("section-layout-visual-editor-frame"), s = Ca("json-snapshot-dialog");
 	return B(), V("section", kv, [
-		H("div", Av, [t[17] ||= H("div", null, [H("h3", null, "레이아웃 프리셋"), H("small", null, "레이아웃 프리셋 편집기에서 Desktop/Mobile 배치를 완성한 뒤 선택한 프리셋에 저장합니다.")], -1), H("div", jv, [H("button", {
+		H("div", Av, [t[18] ||= H("div", null, [H("h3", null, "레이아웃 프리셋"), H("small", null, "레이아웃 프리셋 편집기에서 Desktop/Mobile 배치를 완성한 뒤 선택한 프리셋에 저장합니다.")], -1), H("div", jv, [H("button", {
 			class: "tiny-button",
 			type: "button",
 			disabled: i.loading,
@@ -9631,70 +9633,72 @@ function dy(e, t, n, r, i, a) {
 					onClick: (t) => a.remove(e)
 				}, "삭제", 8, Gv)
 			]),
-			a.editable ? (B(), V("details", Kv, [t[29] ||= H("summary", null, "AI 선택 기준", -1), H("div", qv, [
-				H("label", null, [t[19] ||= H("span", null, "콘텐츠 정렬", -1), I(H("select", { "onUpdate:modelValue": (t) => e.selectionMetadata.alignment = t }, [...t[18] ||= [Bs("<option value=\"auto\" data-v-8a35a065>자동</option><option value=\"left\" data-v-8a35a065>왼쪽</option><option value=\"center\" data-v-8a35a065>중앙</option><option value=\"right\" data-v-8a35a065>오른쪽</option><option value=\"stretch\" data-v-8a35a065>전체 폭</option>", 5)]], 8, Jv), [[uu, e.selectionMetadata.alignment]])]),
-				H("label", null, [t[21] ||= H("span", null, "콘텐츠 영역", -1), I(H("select", { "onUpdate:modelValue": (t) => e.selectionMetadata.contentRegion = t }, [...t[20] ||= [Bs("<option value=\"auto\" data-v-8a35a065>자동</option><option value=\"top-left\" data-v-8a35a065>왼쪽 상단</option><option value=\"top-center\" data-v-8a35a065>중앙 상단</option><option value=\"top-right\" data-v-8a35a065>오른쪽 상단</option><option value=\"center-left\" data-v-8a35a065>왼쪽 중앙</option><option value=\"center\" data-v-8a35a065>중앙</option><option value=\"center-right\" data-v-8a35a065>오른쪽 중앙</option><option value=\"bottom-left\" data-v-8a35a065>왼쪽 하단</option><option value=\"bottom-center\" data-v-8a35a065>중앙 하단</option><option value=\"bottom-right\" data-v-8a35a065>오른쪽 하단</option>", 10)]], 8, Yv), [[uu, e.selectionMetadata.contentRegion]])]),
-				H("label", null, [t[23] ||= H("span", null, "비주얼 균형", -1), I(H("select", { "onUpdate:modelValue": (t) => e.selectionMetadata.visualBalance = t }, [...t[22] ||= [Bs("<option value=\"auto\" data-v-8a35a065>자동</option><option value=\"media-left\" data-v-8a35a065>이미지 왼쪽</option><option value=\"media-center\" data-v-8a35a065>이미지 중앙</option><option value=\"media-right\" data-v-8a35a065>이미지 오른쪽</option><option value=\"full-background\" data-v-8a35a065>전체 배경</option>", 5)]], 8, Xv), [[uu, e.selectionMetadata.visualBalance]])]),
-				H("label", null, [t[25] ||= H("span", null, "밀도", -1), I(H("select", { "onUpdate:modelValue": (t) => e.selectionMetadata.density = t }, [...t[24] ||= [
+			a.editable ? (B(), V("details", Kv, [t[32] ||= H("summary", null, "AI 선택 기준", -1), H("div", qv, [
+				H("label", null, [t[20] ||= H("span", null, "콘텐츠 정렬", -1), I(H("select", { "onUpdate:modelValue": (t) => e.selectionMetadata.alignment = t }, [...t[19] ||= [Bs("<option value=\"auto\" data-v-330bdf3d>자동</option><option value=\"left\" data-v-330bdf3d>왼쪽</option><option value=\"center\" data-v-330bdf3d>중앙</option><option value=\"right\" data-v-330bdf3d>오른쪽</option><option value=\"stretch\" data-v-330bdf3d>전체 폭</option>", 5)]], 8, Jv), [[uu, e.selectionMetadata.alignment]])]),
+				H("label", null, [t[22] ||= H("span", null, "콘텐츠 영역", -1), I(H("select", { "onUpdate:modelValue": (t) => e.selectionMetadata.contentRegion = t }, [...t[21] ||= [Bs("<option value=\"auto\" data-v-330bdf3d>자동</option><option value=\"top-left\" data-v-330bdf3d>왼쪽 상단</option><option value=\"top-center\" data-v-330bdf3d>중앙 상단</option><option value=\"top-right\" data-v-330bdf3d>오른쪽 상단</option><option value=\"center-left\" data-v-330bdf3d>왼쪽 중앙</option><option value=\"center\" data-v-330bdf3d>중앙</option><option value=\"center-right\" data-v-330bdf3d>오른쪽 중앙</option><option value=\"bottom-left\" data-v-330bdf3d>왼쪽 하단</option><option value=\"bottom-center\" data-v-330bdf3d>중앙 하단</option><option value=\"bottom-right\" data-v-330bdf3d>오른쪽 하단</option>", 10)]], 8, Yv), [[uu, e.selectionMetadata.contentRegion]])]),
+				H("label", null, [t[24] ||= H("span", null, "비주얼 균형", -1), I(H("select", { "onUpdate:modelValue": (t) => e.selectionMetadata.visualBalance = t }, [...t[23] ||= [Bs("<option value=\"auto\" data-v-330bdf3d>자동</option><option value=\"media-left\" data-v-330bdf3d>이미지 왼쪽</option><option value=\"media-center\" data-v-330bdf3d>이미지 중앙</option><option value=\"media-right\" data-v-330bdf3d>이미지 오른쪽</option><option value=\"full-background\" data-v-330bdf3d>전체 배경</option>", 5)]], 8, Xv), [[uu, e.selectionMetadata.visualBalance]])]),
+				H("label", null, [t[26] ||= H("span", null, "밀도", -1), I(H("select", { "onUpdate:modelValue": (t) => e.selectionMetadata.density = t }, [...t[25] ||= [
 					H("option", { value: "auto" }, "자동", -1),
 					H("option", { value: "compact" }, "간결", -1),
 					H("option", { value: "standard" }, "기본", -1),
 					H("option", { value: "spacious" }, "여유", -1)
 				]], 8, Zv), [[uu, e.selectionMetadata.density]])]),
-				H("label", null, [t[26] ||= H("span", null, "권장 용도", -1), H("input", {
+				H("label", null, [t[28] ||= H("span", null, "텍스트 폭", -1), I(H("select", { "onUpdate:modelValue": (t) => e.selectionMetadata.widthProfile = t }, [...t[27] ||= [Bs("<option value=\"auto\" data-v-330bdf3d>자동</option><option value=\"compact\" data-v-330bdf3d>좁게</option><option value=\"balanced\" data-v-330bdf3d>균형</option><option value=\"wide\" data-v-330bdf3d>넓게</option><option value=\"full\" data-v-330bdf3d>전체 폭</option>", 5)]], 8, Qv), [[uu, e.selectionMetadata.widthProfile]])]),
+				H("label", null, [t[29] ||= H("span", null, "권장 용도", -1), H("input", {
 					value: (e.selectionMetadata.purposeTags || []).join(", "),
 					onInput: (t) => e.selectionMetadata.purposeTags = t.target.value.split(",").map((e) => e.trim()).filter(Boolean),
 					placeholder: "event, brand-intro"
-				}, null, 40, Qv)]),
-				H("label", null, [t[27] ||= H("span", null, "선택 가중치", -1), I(H("input", {
+				}, null, 40, $v)]),
+				H("label", null, [t[30] ||= H("span", null, "선택 가중치", -1), I(H("input", {
 					"onUpdate:modelValue": (t) => e.selectionMetadata.selectionWeight = t,
 					type: "number",
 					min: "0.1",
 					max: "10",
 					step: "0.1"
-				}, null, 8, $v), [[
+				}, null, 8, ey), [[
 					G,
 					e.selectionMetadata.selectionWeight,
 					void 0,
 					{ number: !0 }
 				]])]),
-				H("label", ey, [I(H("input", {
+				H("label", ty, [I(H("input", {
 					"onUpdate:modelValue": (t) => e.selectionMetadata.avoidImmediateRepeat = t,
 					type: "checkbox"
-				}, null, 8, ty), [[su, e.selectionMetadata.avoidImmediateRepeat]]), t[28] ||= H("span", null, "연속 선택 지양", -1)]),
+				}, null, 8, ny), [[su, e.selectionMetadata.avoidImmediateRepeat]]), t[31] ||= H("span", null, "연속 선택 지양", -1)]),
 				H("button", {
 					class: "tiny-button",
 					type: "button",
 					disabled: i.saving,
 					onClick: (t) => a.saveSelectionMetadata(e)
-				}, "선택 기준 저장", 8, ny)
+				}, "선택 기준 저장", 8, ry)
 			])])) : W("", !0)
-		]))), 128)), i.layouts.length ? W("", !0) : (B(), V("div", ry, "등록된 레이아웃 프리셋이 없습니다. 기존 자동 배치가 계속 사용됩니다."))])),
+		]))), 128)), i.layouts.length ? W("", !0) : (B(), V("div", iy, "등록된 레이아웃 프리셋이 없습니다. 기존 자동 배치가 계속 사용됩니다."))])),
 		i.newPresetEditor ? (B(), V("form", {
 			key: 4,
 			class: "new-layout-preset-form",
-			onSubmit: t[14] ||= bu((...e) => a.createPreset && a.createPreset(...e), ["prevent"])
+			onSubmit: t[15] ||= bu((...e) => a.createPreset && a.createPreset(...e), ["prevent"])
 		}, [
-			H("label", null, [t[30] ||= H("span", null, "프리셋 이름", -1), I(H("input", {
+			H("label", null, [t[33] ||= H("span", null, "프리셋 이름", -1), I(H("input", {
 				"onUpdate:modelValue": t[2] ||= (e) => i.newPresetEditor.name = e,
 				required: ""
 			}, null, 512), [[G, i.newPresetEditor.name]])]),
-			H("label", null, [t[31] ||= H("span", null, "설명", -1), I(H("input", { "onUpdate:modelValue": t[3] ||= (e) => i.newPresetEditor.description = e }, null, 512), [[G, i.newPresetEditor.description]])]),
-			H("label", null, [t[33] ||= H("span", null, "콘텐츠 정렬", -1), I(H("select", { "onUpdate:modelValue": t[4] ||= (e) => i.newPresetEditor.selectionMetadata.alignment = e }, [...t[32] ||= [Bs("<option value=\"auto\" data-v-8a35a065>자동</option><option value=\"left\" data-v-8a35a065>왼쪽</option><option value=\"center\" data-v-8a35a065>중앙</option><option value=\"right\" data-v-8a35a065>오른쪽</option><option value=\"stretch\" data-v-8a35a065>전체 폭</option>", 5)]], 512), [[uu, i.newPresetEditor.selectionMetadata.alignment]])]),
-			H("label", null, [t[35] ||= H("span", null, "콘텐츠 영역", -1), I(H("select", { "onUpdate:modelValue": t[5] ||= (e) => i.newPresetEditor.selectionMetadata.contentRegion = e }, [...t[34] ||= [Bs("<option value=\"auto\" data-v-8a35a065>자동</option><option value=\"top-left\" data-v-8a35a065>왼쪽 상단</option><option value=\"top-center\" data-v-8a35a065>중앙 상단</option><option value=\"top-right\" data-v-8a35a065>오른쪽 상단</option><option value=\"center-left\" data-v-8a35a065>왼쪽 중앙</option><option value=\"center\" data-v-8a35a065>중앙</option><option value=\"center-right\" data-v-8a35a065>오른쪽 중앙</option><option value=\"bottom-left\" data-v-8a35a065>왼쪽 하단</option><option value=\"bottom-center\" data-v-8a35a065>중앙 하단</option><option value=\"bottom-right\" data-v-8a35a065>오른쪽 하단</option>", 10)]], 512), [[uu, i.newPresetEditor.selectionMetadata.contentRegion]])]),
-			H("label", null, [t[37] ||= H("span", null, "비주얼 균형", -1), I(H("select", { "onUpdate:modelValue": t[6] ||= (e) => i.newPresetEditor.selectionMetadata.visualBalance = e }, [...t[36] ||= [Bs("<option value=\"auto\" data-v-8a35a065>자동</option><option value=\"media-left\" data-v-8a35a065>이미지 왼쪽</option><option value=\"media-center\" data-v-8a35a065>이미지 중앙</option><option value=\"media-right\" data-v-8a35a065>이미지 오른쪽</option><option value=\"full-background\" data-v-8a35a065>전체 배경</option>", 5)]], 512), [[uu, i.newPresetEditor.selectionMetadata.visualBalance]])]),
-			H("label", null, [t[39] ||= H("span", null, "밀도", -1), I(H("select", { "onUpdate:modelValue": t[7] ||= (e) => i.newPresetEditor.selectionMetadata.density = e }, [...t[38] ||= [
+			H("label", null, [t[34] ||= H("span", null, "설명", -1), I(H("input", { "onUpdate:modelValue": t[3] ||= (e) => i.newPresetEditor.description = e }, null, 512), [[G, i.newPresetEditor.description]])]),
+			H("label", null, [t[36] ||= H("span", null, "콘텐츠 정렬", -1), I(H("select", { "onUpdate:modelValue": t[4] ||= (e) => i.newPresetEditor.selectionMetadata.alignment = e }, [...t[35] ||= [Bs("<option value=\"auto\" data-v-330bdf3d>자동</option><option value=\"left\" data-v-330bdf3d>왼쪽</option><option value=\"center\" data-v-330bdf3d>중앙</option><option value=\"right\" data-v-330bdf3d>오른쪽</option><option value=\"stretch\" data-v-330bdf3d>전체 폭</option>", 5)]], 512), [[uu, i.newPresetEditor.selectionMetadata.alignment]])]),
+			H("label", null, [t[38] ||= H("span", null, "콘텐츠 영역", -1), I(H("select", { "onUpdate:modelValue": t[5] ||= (e) => i.newPresetEditor.selectionMetadata.contentRegion = e }, [...t[37] ||= [Bs("<option value=\"auto\" data-v-330bdf3d>자동</option><option value=\"top-left\" data-v-330bdf3d>왼쪽 상단</option><option value=\"top-center\" data-v-330bdf3d>중앙 상단</option><option value=\"top-right\" data-v-330bdf3d>오른쪽 상단</option><option value=\"center-left\" data-v-330bdf3d>왼쪽 중앙</option><option value=\"center\" data-v-330bdf3d>중앙</option><option value=\"center-right\" data-v-330bdf3d>오른쪽 중앙</option><option value=\"bottom-left\" data-v-330bdf3d>왼쪽 하단</option><option value=\"bottom-center\" data-v-330bdf3d>중앙 하단</option><option value=\"bottom-right\" data-v-330bdf3d>오른쪽 하단</option>", 10)]], 512), [[uu, i.newPresetEditor.selectionMetadata.contentRegion]])]),
+			H("label", null, [t[40] ||= H("span", null, "비주얼 균형", -1), I(H("select", { "onUpdate:modelValue": t[6] ||= (e) => i.newPresetEditor.selectionMetadata.visualBalance = e }, [...t[39] ||= [Bs("<option value=\"auto\" data-v-330bdf3d>자동</option><option value=\"media-left\" data-v-330bdf3d>이미지 왼쪽</option><option value=\"media-center\" data-v-330bdf3d>이미지 중앙</option><option value=\"media-right\" data-v-330bdf3d>이미지 오른쪽</option><option value=\"full-background\" data-v-330bdf3d>전체 배경</option>", 5)]], 512), [[uu, i.newPresetEditor.selectionMetadata.visualBalance]])]),
+			H("label", null, [t[42] ||= H("span", null, "밀도", -1), I(H("select", { "onUpdate:modelValue": t[7] ||= (e) => i.newPresetEditor.selectionMetadata.density = e }, [...t[41] ||= [
 				H("option", { value: "auto" }, "자동", -1),
 				H("option", { value: "compact" }, "간결", -1),
 				H("option", { value: "standard" }, "기본", -1),
 				H("option", { value: "spacious" }, "여유", -1)
 			]], 512), [[uu, i.newPresetEditor.selectionMetadata.density]])]),
-			H("label", null, [t[40] ||= H("span", null, "권장 용도", -1), I(H("input", {
-				"onUpdate:modelValue": t[8] ||= (e) => i.newPresetEditor.selectionMetadata.purposeTagsText = e,
+			H("label", null, [t[44] ||= H("span", null, "텍스트 폭", -1), I(H("select", { "onUpdate:modelValue": t[8] ||= (e) => i.newPresetEditor.selectionMetadata.widthProfile = e }, [...t[43] ||= [Bs("<option value=\"auto\" data-v-330bdf3d>자동</option><option value=\"compact\" data-v-330bdf3d>좁게</option><option value=\"balanced\" data-v-330bdf3d>균형</option><option value=\"wide\" data-v-330bdf3d>넓게</option><option value=\"full\" data-v-330bdf3d>전체 폭</option>", 5)]], 512), [[uu, i.newPresetEditor.selectionMetadata.widthProfile]])]),
+			H("label", null, [t[45] ||= H("span", null, "권장 용도", -1), I(H("input", {
+				"onUpdate:modelValue": t[9] ||= (e) => i.newPresetEditor.selectionMetadata.purposeTagsText = e,
 				placeholder: "event, brand-intro"
 			}, null, 512), [[G, i.newPresetEditor.selectionMetadata.purposeTagsText]])]),
-			H("label", null, [t[41] ||= H("span", null, "선택 가중치", -1), I(H("input", {
-				"onUpdate:modelValue": t[9] ||= (e) => i.newPresetEditor.selectionMetadata.selectionWeight = e,
+			H("label", null, [t[46] ||= H("span", null, "선택 가중치", -1), I(H("input", {
+				"onUpdate:modelValue": t[10] ||= (e) => i.newPresetEditor.selectionMetadata.selectionWeight = e,
 				type: "number",
 				min: "0.1",
 				max: "10",
@@ -9705,36 +9709,36 @@ function dy(e, t, n, r, i, a) {
 				void 0,
 				{ number: !0 }
 			]])]),
-			H("label", iy, [I(H("input", {
-				"onUpdate:modelValue": t[10] ||= (e) => i.newPresetEditor.selectionMetadata.avoidImmediateRepeat = e,
-				type: "checkbox"
-			}, null, 512), [[su, i.newPresetEditor.selectionMetadata.avoidImmediateRepeat]]), t[42] ||= H("span", null, "연속 선택 지양", -1)]),
 			H("label", ay, [I(H("input", {
-				"onUpdate:modelValue": t[11] ||= (e) => i.newPresetEditor.isDefault = e,
+				"onUpdate:modelValue": t[11] ||= (e) => i.newPresetEditor.selectionMetadata.avoidImmediateRepeat = e,
+				type: "checkbox"
+			}, null, 512), [[su, i.newPresetEditor.selectionMetadata.avoidImmediateRepeat]]), t[47] ||= H("span", null, "연속 선택 지양", -1)]),
+			H("label", oy, [I(H("input", {
+				"onUpdate:modelValue": t[12] ||= (e) => i.newPresetEditor.isDefault = e,
 				type: "checkbox",
 				disabled: !i.layouts.length
-			}, null, 8, oy), [[su, i.newPresetEditor.isDefault]]), t[43] ||= H("span", null, "기본 프리셋", -1)]),
-			H("label", sy, [I(H("input", {
-				"onUpdate:modelValue": t[12] ||= (e) => i.newPresetEditor.allowAi = e,
+			}, null, 8, sy), [[su, i.newPresetEditor.isDefault]]), t[48] ||= H("span", null, "기본 프리셋", -1)]),
+			H("label", cy, [I(H("input", {
+				"onUpdate:modelValue": t[13] ||= (e) => i.newPresetEditor.allowAi = e,
 				type: "checkbox",
 				disabled: n.section.aiDesign?.enabled === !1
-			}, null, 8, cy), [[su, i.newPresetEditor.allowAi]]), t[44] ||= H("span", null, "AI 선택 후보", -1)]),
-			H("div", ly, [H("button", {
+			}, null, 8, ly), [[su, i.newPresetEditor.allowAi]]), t[49] ||= H("span", null, "AI 선택 후보", -1)]),
+			H("div", uy, [H("button", {
 				class: "tiny-button",
 				type: "button",
-				onClick: t[13] ||= (e) => i.newPresetEditor = null
+				onClick: t[14] ||= (e) => i.newPresetEditor = null
 			}, "취소"), H("button", {
 				class: "tiny-button primary",
 				type: "submit",
 				disabled: i.saving
-			}, M(i.saving ? "생성 중…" : "프리셋 만들고 Visual Editor 열기"), 9, uy)])
+			}, M(i.saving ? "생성 중…" : "프리셋 만들고 Visual Editor 열기"), 9, dy)])
 		], 32)) : W("", !0),
 		a.selectedLayout ? (B(), As(o, {
 			key: 5,
 			section: n.section,
 			layout: a.selectedLayout,
 			onSaved: a.handleVisualEditorSaved,
-			onClose: t[15] ||= (e) => i.selectedLayoutId = ""
+			onClose: t[16] ||= (e) => i.selectedLayoutId = ""
 		}, null, 8, [
 			"section",
 			"layout",
@@ -9746,7 +9750,7 @@ function dy(e, t, n, r, i, a) {
 			section: n.section,
 			items: n.items,
 			"ai-selectable": a.aiAllows(a.jsonLayout),
-			onClose: t[16] ||= (e) => i.jsonLayoutId = ""
+			onClose: t[17] ||= (e) => i.jsonLayoutId = ""
 		}, null, 8, [
 			"layout",
 			"section",
@@ -9755,7 +9759,7 @@ function dy(e, t, n, r, i, a) {
 		])) : W("", !0)
 	]);
 }
-var fy = /*#__PURE__*/ Eh(Ov, [["render", dy], ["__scopeId", "data-v-8a35a065"]]), py = /* @__PURE__ */ o((() => {
+var py = /*#__PURE__*/ Eh(Ov, [["render", fy], ["__scopeId", "data-v-330bdf3d"]]), my = /* @__PURE__ */ o((() => {
 	var e = {
 		documents: "promoPrototype.documents.abc",
 		generatedPages: "promoPrototype.generatedPages.abc",
@@ -13551,14 +13555,18 @@ var fy = /*#__PURE__*/ Eh(Ov, [["render", dy], ["__scopeId", "data-v-8a35a065"]]
 				t.aiEditable = e === "editable", t.contentLocked = e === "locked";
 			},
 			wizardSectionCompositionSummary() {
-				let e = this.wizardSectionFieldsEditor.compositionPolicy, t = [this.wizardSectionSelectionPolicyLabel(e.selectionPolicy)];
-				e.selectionPolicy === "required-by-market" && t.push(e.allowedMarkets.length ? `${e.allowedMarkets.join(", ")} 마켓` : "모든 마켓"), e.selectionPolicy === "required-by-purpose" && t.push(e.allowedPromotionPurposes.length ? `${e.allowedPromotionPurposes.join(", ")} 목적` : "모든 목적"), t.push(e.duplicatePolicy === "limited" ? `최대 ${Math.max(2, Number(e.maxInstances || 2))}회` : "페이지당 1회");
-				let n = {
+				let e = this.wizardSectionFieldsEditor, t = e.compositionPolicy, n = [{
+					template: "현재 템플릿 전용",
+					registry: "AI Registry 후보",
+					shared: "공용 섹션 프리셋"
+				}[e.compositionScope] || e.compositionScope, this.wizardSectionSelectionPolicyLabel(t.selectionPolicy)];
+				t.selectionPolicy === "required-by-market" && n.push(t.allowedMarkets.length ? `${t.allowedMarkets.join(", ")} 마켓` : "모든 마켓"), t.selectionPolicy === "required-by-purpose" && n.push(t.allowedPromotionPurposes.length ? `${t.allowedPromotionPurposes.join(", ")} 목적` : "모든 목적"), n.push(t.duplicatePolicy === "limited" ? `최대 ${Math.max(2, Number(t.maxInstances || 2))}회` : "페이지당 1회");
+				let r = {
 					editable: "AI 콘텐츠 수정 허용",
 					"manual-only": "관리자 입력 사용",
 					locked: "콘텐츠 고정"
 				}[this.wizardSectionContentMode()];
-				return t.push(n), t.push(e.layoutLocked ? "기본 레이아웃 프리셋 유지" : "AI가 레이아웃 프리셋 선택"), t.join(" · ");
+				return n.push(r), n.push(t.layoutLocked ? "기본 레이아웃 프리셋 유지" : "AI가 레이아웃 프리셋 선택"), n.join(" · ");
 			},
 			fieldKindLabel(e) {
 				return {
@@ -15506,6 +15514,6 @@ yh(document), globalThis.Vue = gh, globalThis.PromoAdminTemplateLayout = Object.
 	component: k_
 }), globalThis.PromoAdminPromptGroups = W_, globalThis.PromoAdminSectionLayouts = Object.freeze({
 	service: J_,
-	component: fy
-}), await Promise.resolve().then(() => /* @__PURE__ */ l(py()));
+	component: py
+}), await Promise.resolve().then(() => /* @__PURE__ */ l(my()));
 //#endregion

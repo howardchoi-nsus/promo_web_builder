@@ -95,6 +95,17 @@ const noAllowedEvaluation = evaluateSectionCandidate({
 });
 assert.ok(noAllowedEvaluation.reasons.includes("AI_LAYOUT_PRESET_REQUIRED"));
 
+const staticRequiredEvaluation = evaluateSectionCandidate({
+  section: { ...baseSection, aiDesign: { enabled: false }, isRequired: true },
+  components,
+  layouts: [{ layoutKey: "hero-default" }],
+  criteria,
+  shellConfig: {},
+});
+assert.equal(staticRequiredEvaluation.eligible, true);
+assert.equal(staticRequiredEvaluation.resolvedRequired, true);
+assert.equal(staticRequiredEvaluation.reasons.includes("AI_DESIGN_DISABLED"), false);
+
 const partialCapabilityMatch = evaluateSectionCandidate({
   section: { ...baseSection, isRequired: false, compositionPolicy: { selectionPolicy: "optional" } },
   components,
@@ -141,6 +152,12 @@ const ranked = rankCandidates([
   { sectionKey: "a", sectionVersionId: "3", rankScore: 20, sortOrder: 10 },
 ], 2);
 assert.deepEqual(ranked.map((item) => item.sectionKey), ["a", "b"]);
+const requiredBeyondLimit = rankCandidates([
+  { sectionKey: "optional", sectionVersionId: "optional", rankScore: 100, sortOrder: 1, resolvedRequired: false },
+  { sectionKey: "required-a", sectionVersionId: "required-a", rankScore: 1, sortOrder: 2, resolvedRequired: true },
+  { sectionKey: "required-b", sectionVersionId: "required-b", rankScore: 1, sortOrder: 3, resolvedRequired: true },
+], 1);
+assert.deepEqual(requiredBeyondLimit.map((item) => item.sectionKey), ["required-a", "required-b"]);
 const largeCandidateSet = Array.from({ length: 10_000 }, (_, index) => ({
   sectionKey: `section-${String(index).padStart(5, "0")}`,
   sectionVersionId: String(index),

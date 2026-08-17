@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const {
   registryCompositionSchema,
+  materializeRequiredSections,
   validateRegistryCompositionProposal,
   normalizeRegistryCompositionProposal,
 } = require("../api/_promo-registry-composition-contract");
@@ -75,6 +76,7 @@ const candidates = {
     sectionKey: "terms",
     sectionRole: "terms",
     sortOrder: 90,
+    fixedPosition: "bottom",
     resolvedRequired: true,
     compositionPolicy: { selectionPolicy: "required", contentLocked: true, aiEditable: false, duplicatePolicy: "forbidden" },
     layoutPresets: [{ layoutKey: "terms-default" }],
@@ -136,6 +138,19 @@ assert.deepEqual(schema.properties.shellVersionId.enum, ["shell-v1"]);
 const validated = validateRegistryCompositionProposal(validResult, candidates);
 assert.equal(validated.sections[1].components[0].repeat, 3);
 assert.equal(validated.sections[2].resourceReferences[0].resourceVersionId, "terms-ko-v2");
+const requiredMaterialized = materializeRequiredSections({
+  ...validResult,
+  sections: validResult.sections.filter((section) => section.sectionVersionId === "cards-v1"),
+}, candidates);
+assert.deepEqual(
+  new Set(requiredMaterialized.sections.map((section) => section.sectionVersionId)),
+  new Set(["hero-v1", "cards-v1", "terms-v1"]),
+);
+const validatedMaterialized = validateRegistryCompositionProposal({
+  ...validResult,
+  sections: validResult.sections.filter((section) => section.sectionVersionId === "cards-v1"),
+}, candidates);
+assert.deepEqual(validatedMaterialized.sections.map((section) => section.sectionVersionId), ["hero-v1", "cards-v1", "terms-v1"]);
 assert.throws(() => validateRegistryCompositionProposal({
   ...validResult,
   sections: validResult.sections.map((section) => section.sectionVersionId === "cards-v1"
@@ -199,6 +214,9 @@ assert.equal(Object.hasOwn(snapshot.compositionSpec.resourceReferences[0], "cont
 assert.equal(snapshot.compositionSpec.sections[1].components[0].repeat, 3);
 assert.equal(snapshot.preview.sections[1].componentRepeats.card, 3);
 assert.deepEqual(snapshot.preview.sections[2].resourceKeys, ["common-terms"]);
+assert.equal(snapshot.preview.sections[0].required, true);
+assert.equal(snapshot.preview.sections[2].fixedPosition, "bottom");
+assert.equal(snapshot.preview.sections[2].sequence, 3);
 assert.equal(snapshot.preview.resources[0].locale, "ko-KR");
 
 (async () => {

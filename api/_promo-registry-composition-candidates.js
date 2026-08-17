@@ -75,6 +75,14 @@ function evaluateSectionCandidate({ section, components, layouts, layoutPolicy, 
   const allowedRoles = normalizeStringList(shellConfig.allowedSectionRoles);
   const market = String(criteria.market || "").trim().toLowerCase();
   const purpose = String(criteria.promotionPurpose || "").trim().toLowerCase();
+  const allowedMarkets = normalizeStringList(policy.allowedMarkets);
+  const allowedPurposes = normalizeStringList(policy.allowedPromotionPurposes);
+  const requiredRoles = normalizeStringList(shellConfig.requiredSectionRoles);
+  const resolvedRequired = Boolean(section.fixedPosition || section.isRequired
+    || policy.selectionPolicy === "required"
+    || (policy.selectionPolicy === "required-by-market" && (!allowedMarkets.length || allowedMarkets.includes(market)))
+    || (policy.selectionPolicy === "required-by-purpose" && (!allowedPurposes.length || allowedPurposes.includes(purpose)))
+    || requiredRoles.includes(String(section.sectionRole).toLowerCase()));
 
   if (section.compositionScope === "shared" && !sharedIds.has(String(section.id).toLowerCase())) {
     reasons.push("SHARED_SECTION_NOT_REFERENCED");
@@ -82,15 +90,15 @@ function evaluateSectionCandidate({ section, components, layouts, layoutPolicy, 
   if (allowedRoles.length && !allowedRoles.includes(String(section.sectionRole).toLowerCase())) {
     reasons.push("SECTION_ROLE_NOT_ALLOWED");
   }
-  const allowedMarkets = normalizeStringList(policy.allowedMarkets);
   if (allowedMarkets.length && (!market || !allowedMarkets.includes(market))) {
     reasons.push("MARKET_NOT_ALLOWED");
   }
-  const allowedPurposes = normalizeStringList(policy.allowedPromotionPurposes);
   if (allowedPurposes.length && (!purpose || !allowedPurposes.includes(purpose))) {
     reasons.push("PURPOSE_NOT_ALLOWED");
   }
-  if (!aiDesign.enabled) reasons.push("AI_DESIGN_DISABLED");
+  // AI Design controls generated styling/assets. It must not remove an otherwise
+  // required static, legal, header, or footer Section from the page.
+  if (!aiDesign.enabled && !resolvedRequired) reasons.push("AI_DESIGN_DISABLED");
   if (!components.length) reasons.push("ACTIVE_COMPONENT_REQUIRED");
   if (!layouts.length) reasons.push(
     layoutPolicy?.savedLayoutCount ? "AI_LAYOUT_PRESET_REQUIRED" : "LAYOUT_PRESET_REQUIRED",
@@ -99,12 +107,6 @@ function evaluateSectionCandidate({ section, components, layouts, layoutPolicy, 
   const availableCapabilities = new Set(components.flatMap(componentCapabilities));
   const matchedCapabilities = criteria.capabilities.filter((item) => availableCapabilities.has(item));
   const missingCapabilities = criteria.capabilities.filter((item) => !availableCapabilities.has(item));
-  const requiredRoles = normalizeStringList(shellConfig.requiredSectionRoles);
-  const resolvedRequired = Boolean(section.fixedPosition || section.isRequired
-    || policy.selectionPolicy === "required"
-    || (policy.selectionPolicy === "required-by-market" && (!allowedMarkets.length || allowedMarkets.includes(market)))
-    || (policy.selectionPolicy === "required-by-purpose" && (!allowedPurposes.length || allowedPurposes.includes(purpose)))
-    || requiredRoles.includes(String(section.sectionRole).toLowerCase()));
   if (criteria.capabilities.length && !matchedCapabilities.length && !resolvedRequired) {
     reasons.push("CAPABILITY_NOT_AVAILABLE");
   }
@@ -129,12 +131,37 @@ function evaluateSectionCandidate({ section, components, layouts, layoutPolicy, 
 }
 
 function rankCandidates(candidates, limit = DEFAULT_SECTION_LIMIT) {
-  return [...candidates].sort((left, right) => (
+  const sorted = [...candidates].sort((left, right) => (
     right.rankScore - left.rankScore
     || Number(left.sortOrder || 0) - Number(right.sortOrder || 0)
     || String(left.sectionKey).localeCompare(String(right.sectionKey))
     || String(left.sectionVersionId).localeCompare(String(right.sectionVersionId))
-  )).slice(0, Math.max(1, Math.min(100, Number(limit) || DEFAULT_SECTION_LIMIT)));
+  ));
+  const required = sorted.filter((candidate) => candidate.resolvedRequired);
+  const optional = sorted.filter((candidate) => !candidate.resolvedRequired);
+  const normalizedLimit = Math.max(1, Math.min(100, Number(limit) || DEFAULT_SECTION_LIMIT));
+  return [...required, ...optional.slice(0, Math.max(0, normalizedLimit - required.length))];
+}
+
+function requiredSectionError(section, reasons) {
+  const codeByReason = {
+    SHARED_SECTION_NOT_REFERENCED: "REQUIRED_SHARED_SECTION_NOT_REFERENCED",
+    SECTION_ROLE_NOT_ALLOWED: "REQUIRED_SECTION_ROLE_NOT_ALLOWED",
+    ACTIVE_COMPONENT_REQUIRED: "REQUIRED_SECTION_COMPONENT_MISSING",
+    LAYOUT_PRESET_REQUIRED: "REQUIRED_SECTION_LAYOUT_MISSING",
+    AI_LAYOUT_PRESET_REQUIRED: "REQUIRED_SECTION_LAYOUT_MISSING",
+  };
+  const primaryReason = reasons.find((reason) => codeByReason[reason]) || reasons[0];
+  return Object.assign(
+    new Error(`Required Section is not eligible: ${section.sectionKey} (${reasons.join(", ")})`),
+    {
+      code: codeByReason[primaryReason] || "REQUIRED_SECTION_INELIGIBLE",
+      statusCode: 422,
+      sectionKey: section.sectionKey,
+      sectionVersionId: section.id,
+      reasonCodes: reasons,
+    },
+  );
 }
 
 async function fetchTokenCandidates(sql, shellConfig) {
@@ -253,6 +280,7 @@ async function fetchRegistryCompositionCandidates(sql, {
         reasonCodes: evaluation.reasons,
         missingCapabilities: evaluation.missingCapabilities,
       });
+      if (evaluation.resolvedRequired) throw requiredSectionError(section, evaluation.reasons);
       continue;
     }
     eligible.push({
@@ -341,6 +369,10 @@ async function fetchRegistryCompositionCandidates(sql, {
     },
     criteria,
     sections,
+    requiredSectionVersionIds: sections
+      .filter((section) => section.resolvedRequired)
+      .map((section) => section.sectionVersionId),
+    requiredSectionCount: sections.filter((section) => section.resolvedRequired).length,
     tokenSets,
     motionPresets,
     resources,
@@ -397,6 +429,8 @@ function plannerRegistryCandidateSnapshot(candidates) {
       })),
       resourceReferences: section.resourceReferences || [],
     })),
+    requiredSectionVersionIds: candidates.requiredSectionVersionIds || [],
+    requiredSectionCount: Number(candidates.requiredSectionCount || 0),
     tokenSets: (candidates.tokenSets || []).map((token) => ({
       tokenSetVersionId: token.tokenSetVersionId,
       setKey: token.setKey,
@@ -421,6 +455,7 @@ module.exports = {
   resolveAllowedLayoutPresets,
   evaluateSectionCandidate,
   rankCandidates,
+  requiredSectionError,
   fetchRegistryCompositionCandidates,
   plannerRegistryCandidateSnapshot,
 };

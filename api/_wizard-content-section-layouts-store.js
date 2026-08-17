@@ -7,6 +7,7 @@ const LAYOUT_CONTENT_REGION_VALUES = Object.freeze([
 ]);
 const LAYOUT_VISUAL_BALANCE_VALUES = Object.freeze(["auto", "media-left", "media-center", "media-right", "full-background"]);
 const LAYOUT_DENSITY_VALUES = Object.freeze(["auto", "compact", "standard", "spacious"]);
+const LAYOUT_WIDTH_PROFILE_VALUES = Object.freeze(["auto", "compact", "balanced", "wide", "full"]);
 
 function plainObject(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
@@ -58,6 +59,7 @@ function normalizeLayoutSelectionMetadata(value) {
       contentRegion: enumValue("contentRegion", LAYOUT_CONTENT_REGION_VALUES),
       visualBalance: enumValue("visualBalance", LAYOUT_VISUAL_BALANCE_VALUES),
       density: enumValue("density", LAYOUT_DENSITY_VALUES),
+      widthProfile: enumValue("widthProfile", LAYOUT_WIDTH_PROFILE_VALUES),
       purposeTags,
       selectionWeight: Number.isFinite(selectionWeight) ? selectionWeight : 1,
       avoidImmediateRepeat: source.avoidImmediateRepeat === true,

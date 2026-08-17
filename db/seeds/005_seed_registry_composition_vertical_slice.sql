@@ -172,8 +172,8 @@ from (values
   (
     'registryHero','Registry Hero','Required Hero with title, description, image, and CTA.',
     true,true,null,10,'registry','hero',
-    '{"enabled":true,"allowedLayoutVariants":["hero_centered"],"allowSectionBackground":true,"imageTarget":"section-background","imageTargetItemKeys":[],"imageAspectRatio":"4:3"}',
-    '{"selectionPolicy":"required","allowedMarkets":[],"allowedPromotionPurposes":[],"aiEditable":true,"contentLocked":false,"layoutLocked":false,"duplicatePolicy":"forbidden","maxInstances":1,"allowedLayoutVariants":["hero_centered"],"allowedMotionPresets":[]}'
+    '{"enabled":true,"allowedLayoutVariants":["hero_centered","hero_left_balanced","hero_center_wide","hero_right_balanced"],"allowSectionBackground":true,"imageTarget":"section-background","imageTargetItemKeys":[],"imageAspectRatio":"4:3"}',
+    '{"selectionPolicy":"required","allowedMarkets":[],"allowedPromotionPurposes":[],"aiEditable":true,"contentLocked":false,"layoutLocked":false,"duplicatePolicy":"forbidden","maxInstances":1,"allowedLayoutVariants":["hero_centered","hero_left_balanced","hero_center_wide","hero_right_balanced"],"allowedMotionPresets":[]}'
   ),
   (
     'registryCardGrid','Registry Card Grid','Repeatable image, description, and CTA cards.',
@@ -214,8 +214,8 @@ set name = seed.name,
   updated_at = now()
 from (values
   ('registryHero','Registry Hero','Required Hero with title, description, image, and CTA.',true,true,null,10,'registry','hero',
-    '{"enabled":true,"allowedLayoutVariants":["hero_centered"],"allowSectionBackground":true,"imageTarget":"section-background","imageTargetItemKeys":[],"imageAspectRatio":"4:3"}',
-    '{"selectionPolicy":"required","allowedMarkets":[],"allowedPromotionPurposes":[],"aiEditable":true,"contentLocked":false,"layoutLocked":false,"duplicatePolicy":"forbidden","maxInstances":1,"allowedLayoutVariants":["hero_centered"],"allowedMotionPresets":[]}'),
+    '{"enabled":true,"allowedLayoutVariants":["hero_centered","hero_left_balanced","hero_center_wide","hero_right_balanced"],"allowSectionBackground":true,"imageTarget":"section-background","imageTargetItemKeys":[],"imageAspectRatio":"4:3"}',
+    '{"selectionPolicy":"required","allowedMarkets":[],"allowedPromotionPurposes":[],"aiEditable":true,"contentLocked":false,"layoutLocked":false,"duplicatePolicy":"forbidden","maxInstances":1,"allowedLayoutVariants":["hero_centered","hero_left_balanced","hero_center_wide","hero_right_balanced"],"allowedMotionPresets":[]}'),
   ('registryCardGrid','Registry Card Grid','Repeatable image, description, and CTA cards.',false,true,null,30,'registry','benefit',
     '{"enabled":true,"allowedLayoutVariants":["card_grid_3"],"allowSectionBackground":false,"imageTarget":"item","imageTargetItemKeys":["cards"],"imageAspectRatio":"4:3"}',
     '{"selectionPolicy":"optional","allowedMarkets":[],"allowedPromotionPurposes":[],"aiEditable":true,"contentLocked":false,"layoutLocked":false,"duplicatePolicy":"forbidden","maxInstances":1,"allowedLayoutVariants":["card_grid_3"],"allowedMotionPresets":[]}'),
@@ -289,26 +289,40 @@ where instance.section_id = section.id
 -- Desktop/Mobile Layout Presets. Collection geometry uses the first card as its base.
 insert into wizard_content_section_layouts (
   section_id, layout_key, name, description, is_default,
-  layout_snapshot, change_note
+  layout_snapshot, selection_metadata, change_note
 )
-select section.id, seed.layout_key, seed.name, seed.description, true,
-  seed.layout_snapshot::jsonb, 'Registry Composition vertical slice layout.'
+select section.id, seed.layout_key, seed.name, seed.description,
+  seed.layout_key in ('hero_centered', 'card_grid_3', 'terms_default'),
+  seed.layout_snapshot::jsonb, seed.selection_metadata::jsonb, 'Registry Composition vertical slice layout.'
 from (values
   ('registryHero','hero_centered','Hero Key Visual','Concise copy over a Section-level Hero key visual.',
-    '{"contractVersion":1,"layoutMode":"free","sectionStyle":{"minHeight":620,"backgroundColorToken":"--app-bg"},"content":{"title":"여름 프로모션","description":"신규 고객을 위한 특별한 혜택을 확인하세요.","primaryAction":{"label":"혜택 확인하기","link":"#","target":"_self"}},"viewports":{"desktop":{"items":{"title":{"positionMode":"free","xPct":8,"yPx":90,"widthPct":40,"heightPx":90,"zIndex":2},"description":{"positionMode":"free","xPct":8,"yPx":200,"widthPct":40,"heightPx":90,"zIndex":2},"primaryAction":{"positionMode":"free","xPct":8,"yPx":330,"widthPct":22,"heightPx":54,"zIndex":2}},"visibility":{"items":{}}},"mobile":{"items":{"title":{"positionMode":"free","xPct":5,"yPx":40,"widthPct":90,"heightPx":105,"zIndex":2},"description":{"positionMode":"free","xPct":5,"yPx":160,"widthPct":90,"heightPx":100,"zIndex":2},"primaryAction":{"positionMode":"free","xPct":15,"yPx":300,"widthPct":70,"heightPx":54,"zIndex":2}},"visibility":{"items":{}}}}}'),
+    '{"contractVersion":1,"layoutMode":"free","sectionStyle":{"minHeight":620,"backgroundColorToken":"--app-bg"},"content":{"title":"여름 프로모션","description":"신규 고객을 위한 특별한 혜택을 확인하세요.","primaryAction":{"label":"혜택 확인하기","link":"#","target":"_self"}},"viewports":{"desktop":{"items":{"title":{"positionMode":"free","xPct":8,"yPx":90,"widthPct":40,"heightPx":90,"zIndex":2},"description":{"positionMode":"free","xPct":8,"yPx":200,"widthPct":40,"heightPx":90,"zIndex":2},"primaryAction":{"positionMode":"free","xPct":8,"yPx":330,"widthPct":22,"heightPx":54,"zIndex":2}},"visibility":{"items":{}}},"mobile":{"items":{"title":{"positionMode":"free","xPct":5,"yPx":40,"widthPct":90,"heightPx":105,"zIndex":2},"description":{"positionMode":"free","xPct":5,"yPx":160,"widthPct":90,"heightPx":100,"zIndex":2},"primaryAction":{"positionMode":"free","xPct":15,"yPx":300,"widthPct":70,"heightPx":54,"zIndex":2}},"visibility":{"items":{}}}}}',
+    '{"alignment":"left","contentRegion":"center-left","visualBalance":"full-background","density":"compact","widthProfile":"compact","purposeTags":["short-copy"],"selectionWeight":1,"avoidImmediateRepeat":true}'),
+  ('registryHero','hero_left_balanced','Hero Left Balanced','Left-aligned balanced-width copy over a Section-level Hero key visual.',
+    '{"contractVersion":1,"layoutMode":"free","sectionStyle":{"minHeight":620,"backgroundColorToken":"--app-bg"},"viewports":{"desktop":{"items":{"title":{"positionMode":"free","xPct":8,"yPx":86,"widthPct":58,"heightMode":"auto","zIndex":2},"description":{"positionMode":"free","xPct":8,"yPx":205,"widthPct":58,"heightMode":"auto","zIndex":2},"primaryAction":{"positionMode":"free","xPct":8,"yPx":350,"widthPct":24,"heightPx":54,"zIndex":2}},"visibility":{"items":{}}},"mobile":{"items":{"title":{"positionMode":"free","xPct":5,"yPx":40,"widthPct":90,"heightMode":"auto","zIndex":2},"description":{"positionMode":"free","xPct":5,"yPx":165,"widthPct":90,"heightMode":"auto","zIndex":2},"primaryAction":{"positionMode":"free","xPct":15,"yPx":320,"widthPct":70,"heightPx":54,"zIndex":2}},"visibility":{"items":{}}}}}',
+    '{"alignment":"left","contentRegion":"center-left","visualBalance":"full-background","density":"standard","widthProfile":"balanced","purposeTags":["general","offer"],"selectionWeight":1,"avoidImmediateRepeat":true}'),
+  ('registryHero','hero_center_wide','Hero Center Wide','Centered wide copy for long headlines and brand-led campaigns.',
+    '{"contractVersion":1,"layoutMode":"free","sectionStyle":{"minHeight":620,"backgroundColorToken":"--app-bg"},"viewports":{"desktop":{"items":{"title":{"positionMode":"free","xPct":12,"yPx":92,"widthPct":76,"heightMode":"auto","textAlign":"center","zIndex":2},"description":{"positionMode":"free","xPct":18,"yPx":215,"widthPct":64,"heightMode":"auto","textAlign":"center","zIndex":2},"primaryAction":{"positionMode":"free","xPct":38,"yPx":355,"widthPct":24,"heightPx":54,"zIndex":2}},"visibility":{"items":{}}},"mobile":{"items":{"title":{"positionMode":"free","xPct":5,"yPx":40,"widthPct":90,"heightMode":"auto","textAlign":"center","zIndex":2},"description":{"positionMode":"free","xPct":5,"yPx":165,"widthPct":90,"heightMode":"auto","textAlign":"center","zIndex":2},"primaryAction":{"positionMode":"free","xPct":15,"yPx":320,"widthPct":70,"heightPx":54,"zIndex":2}},"visibility":{"items":{}}}}}',
+    '{"alignment":"center","contentRegion":"center","visualBalance":"full-background","density":"spacious","widthProfile":"wide","purposeTags":["brand-intro","long-headline"],"selectionWeight":1,"avoidImmediateRepeat":true}'),
+  ('registryHero','hero_right_balanced','Hero Right Balanced','Right-aligned balanced-width copy over a Section-level Hero key visual.',
+    '{"contractVersion":1,"layoutMode":"free","sectionStyle":{"minHeight":620,"backgroundColorToken":"--app-bg"},"viewports":{"desktop":{"items":{"title":{"positionMode":"free","xPct":42,"yPx":86,"widthPct":50,"heightMode":"auto","textAlign":"right","zIndex":2},"description":{"positionMode":"free","xPct":42,"yPx":205,"widthPct":50,"heightMode":"auto","textAlign":"right","zIndex":2},"primaryAction":{"positionMode":"free","xPct":68,"yPx":350,"widthPct":24,"heightPx":54,"zIndex":2}},"visibility":{"items":{}}},"mobile":{"items":{"title":{"positionMode":"free","xPct":5,"yPx":40,"widthPct":90,"heightMode":"auto","textAlign":"right","zIndex":2},"description":{"positionMode":"free","xPct":5,"yPx":165,"widthPct":90,"heightMode":"auto","textAlign":"right","zIndex":2},"primaryAction":{"positionMode":"free","xPct":15,"yPx":320,"widthPct":70,"heightPx":54,"zIndex":2}},"visibility":{"items":{}}}}}',
+    '{"alignment":"right","contentRegion":"center-right","visualBalance":"full-background","density":"standard","widthProfile":"balanced","purposeTags":["general","offer"],"selectionWeight":1,"avoidImmediateRepeat":true}'),
   ('registryCardGrid','card_grid_3','Three Card Grid','Three columns on desktop and one column on mobile.',
-    '{"contractVersion":1,"layoutMode":"free","sectionStyle":{"minHeight":460,"backgroundColorToken":"--app-surface"},"content":{"cards":{"fields":{"image":{"source":"url","value":"","description":"","alt":"Promotion benefit"},"description":"프로모션 혜택을 확인하세요.","action":{"label":"자세히 보기","link":"#","target":"_self"}}}},"viewports":{"desktop":{"items":{"cards":{"positionMode":"free","xPct":8,"yPx":50,"widthPct":84,"heightPx":330,"zIndex":1}},"visibility":{"items":{}}},"mobile":{"items":{"cards":{"positionMode":"free","xPct":5,"yPx":40,"widthPct":90,"heightPx":320,"zIndex":1}},"visibility":{"items":{}}}}}'),
+    '{"contractVersion":1,"layoutMode":"free","sectionStyle":{"minHeight":460,"backgroundColorToken":"--app-surface"},"content":{"cards":{"fields":{"image":{"source":"url","value":"","description":"","alt":"Promotion benefit"},"description":"프로모션 혜택을 확인하세요.","action":{"label":"자세히 보기","link":"#","target":"_self"}}}},"viewports":{"desktop":{"items":{"cards":{"positionMode":"free","xPct":8,"yPx":50,"widthPct":84,"heightPx":330,"zIndex":1}},"visibility":{"items":{}}},"mobile":{"items":{"cards":{"positionMode":"free","xPct":5,"yPx":40,"widthPct":90,"heightPx":320,"zIndex":1}},"visibility":{"items":{}}}}}',
+    '{"alignment":"stretch","contentRegion":"center","visualBalance":"media-center","density":"standard","widthProfile":"full","purposeTags":["benefits"],"selectionWeight":1,"avoidImmediateRepeat":false}'),
   ('sharedTerms','terms_default','Terms Default','Pinned terms content at the bottom of the page.',
-    '{"contractVersion":1,"layoutMode":"free","sectionStyle":{"minHeight":260,"backgroundColorToken":"--app-surface"},"content":{"termsContent":"공통 약관"},"viewports":{"desktop":{"items":{"termsContent":{"positionMode":"free","xPct":6,"yPx":36,"widthPct":88,"heightPx":180,"zIndex":1}},"visibility":{"items":{}}},"mobile":{"items":{"termsContent":{"positionMode":"free","xPct":5,"yPx":28,"widthPct":90,"heightPx":200,"zIndex":1}},"visibility":{"items":{}}}}}')
-) as seed(section_key, layout_key, name, description, layout_snapshot)
+    '{"contractVersion":1,"layoutMode":"free","sectionStyle":{"minHeight":260,"backgroundColorToken":"--app-surface"},"content":{"termsContent":"공통 약관"},"viewports":{"desktop":{"items":{"termsContent":{"positionMode":"free","xPct":6,"yPx":36,"widthPct":88,"heightPx":180,"zIndex":1}},"visibility":{"items":{}}},"mobile":{"items":{"termsContent":{"positionMode":"free","xPct":5,"yPx":28,"widthPct":90,"heightPx":200,"zIndex":1}},"visibility":{"items":{}}}}}',
+    '{"alignment":"stretch","contentRegion":"center","visualBalance":"auto","density":"compact","widthProfile":"full","purposeTags":["terms","legal"],"selectionWeight":1,"avoidImmediateRepeat":false}')
+) as seed(section_key, layout_key, name, description, layout_snapshot, selection_metadata)
 join wizard_content_sections section
   on section.section_key = seed.section_key
   and section.version = 1 and section.status = 'active'
 on conflict (section_id, layout_key) do update set
   name = excluded.name,
   description = excluded.description,
-  is_default = true,
+  is_default = excluded.is_default,
   layout_snapshot = excluded.layout_snapshot,
+  selection_metadata = excluded.selection_metadata,
   change_note = excluded.change_note,
   updated_at = now();
 

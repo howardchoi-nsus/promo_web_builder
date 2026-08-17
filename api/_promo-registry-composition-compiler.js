@@ -177,6 +177,19 @@ async function compileRegistryComposition({
   if (spec.shellVersionId !== candidates.shell?.shellVersionId) {
     throw compilerError("SHELL_VERSION_MISMATCH", "Composition Shell changed before compilation");
   }
+  const plannedSectionVersionIds = new Set(
+    (spec.sections || []).map((section) => String(section.sectionVersionId || "")),
+  );
+  const missingRequiredSections = (candidates.sections || []).filter(
+    (section) => section.resolvedRequired && !plannedSectionVersionIds.has(section.sectionVersionId),
+  );
+  if (missingRequiredSections.length) {
+    throw compilerError(
+      "REQUIRED_SECTION_MISSING",
+      `Required Section is missing before compilation: ${missingRequiredSections.map((section) => section.sectionKey).join(", ")}`,
+      422,
+    );
+  }
   const references = Array.isArray(spec.resourceReferences) ? spec.resourceReferences : [];
   const resourcesById = await fetchPinnedResources(sql, references);
   const sectionsById = new Map((candidates.sections || []).map((section) => [section.sectionVersionId, section]));

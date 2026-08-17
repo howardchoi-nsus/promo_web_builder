@@ -4240,7 +4240,12 @@ const adminApp = createApp({
     wizardSectionCompositionSummary() {
       const editor = this.wizardSectionFieldsEditor;
       const policy = editor.compositionPolicy;
-      const parts = [this.wizardSectionSelectionPolicyLabel(policy.selectionPolicy)];
+      const scopeLabel = ({
+        template: "현재 템플릿 전용",
+        registry: "AI Registry 후보",
+        shared: "공용 섹션 프리셋",
+      })[editor.compositionScope] || editor.compositionScope;
+      const parts = [scopeLabel, this.wizardSectionSelectionPolicyLabel(policy.selectionPolicy)];
       if (policy.selectionPolicy === "required-by-market") {
         parts.push(policy.allowedMarkets.length ? `${policy.allowedMarkets.join(", ")} 마켓` : "모든 마켓");
       }

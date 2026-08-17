@@ -52,6 +52,9 @@ module.exports = async function handler(req, res) {
       error: "Registry composition candidates API failed",
       code: error.code || null,
       message: error.message,
+      sectionKey: error.sectionKey || null,
+      sectionVersionId: error.sectionVersionId || null,
+      reasonCodes: error.reasonCodes || [],
     });
   }
 };

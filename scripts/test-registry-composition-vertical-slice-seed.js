@@ -20,6 +20,9 @@ assert.match(seed, /Seed 004 active primitive components are required/);
   "registryCardGrid",
   "sharedTerms",
   "hero_centered",
+  "hero_left_balanced",
+  "hero_center_wide",
+  "hero_right_balanced",
   "card_grid_3",
   "terms_default",
   "common-promotion-terms",
@@ -53,6 +56,10 @@ assert.match(seed, /Layout seed is incomplete/);
 assert.doesNotMatch(seed, /imageTarget":"none/);
 assert.match(seed, /"allowSectionBackground":true,"imageTarget":"section-background","imageTargetItemKeys":\[\]/);
 assert.match(seed, /"imageAspectRatio":"4:3"/);
+assert.match(seed, /"widthProfile":"compact"/);
+assert.match(seed, /"widthProfile":"balanced"/);
+assert.match(seed, /"widthProfile":"wide"/);
+assert.match(seed, /"widthPct":76/);
 assert.match(seed, /'Hero Key Visual','Concise copy over a Section-level Hero key visual\.'/);
 assert.doesNotMatch(seed, /'registryHero','content-image','visual'/);
 assert.match(seed, /"labelRequired":true,"linkRequired":true,"maxLength":20/);

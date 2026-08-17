@@ -1663,9 +1663,12 @@
                         <span>사용 범위</span>
                         <select v-model="wizardSectionFieldsEditor.compositionScope" :disabled="wizardSectionDetail.section.status !== 'draft'">
                           <option value="template">현재 템플릿 전용</option>
+                          <option value="registry">AI Registry 후보</option>
                           <option value="shared">공용 섹션 프리셋</option>
                         </select>
-                        <small>{{ wizardSectionFieldsEditor.compositionScope === 'shared' ? '여러 템플릿에 연결해 재사용할 수 있습니다.' : '연결된 템플릿 안에서만 후보로 사용합니다.' }}</small>
+                        <small v-if="wizardSectionFieldsEditor.compositionScope === 'shared'">Composition Shell에 연결해 여러 구성에서 재사용합니다.</small>
+                        <small v-else-if="wizardSectionFieldsEditor.compositionScope === 'registry'">템플릿 없이 AI Registry 구성 후보로 사용합니다.</small>
+                        <small v-else>연결된 템플릿 안에서만 후보로 사용합니다.</small>
                       </label>
                       <label class="field compact-field">
                         <span>페이지 역할</span>
@@ -1674,6 +1677,12 @@
                         </select>
                         <small>AI가 섹션의 위치와 목적을 해석하는 기준입니다.</small>
                       </label>
+                    </div>
+                    <div
+                      class="section-policy-notice"
+                      v-if="wizardSectionFieldsEditor.isRequired && wizardSectionFieldsEditor.compositionScope === 'template'"
+                    >
+                      현재 템플릿 전용 필수 섹션은 Registry 기반 AI 모드에 포함되지 않습니다. AI 모드에서도 항상 포함하려면 AI Registry 후보 또는 공용 섹션 프리셋을 사용하세요.
                     </div>
                     <div class="section-policy-notice" v-if="wizardSectionFieldsEditor.sectionRole === 'header'">
                       헤더는 필수 섹션·상단 고정·순서 변경 불가로 자동 저장됩니다. 활성화하려면 로고 컴포넌트와 Desktop/Mobile 기본 레이아웃이 필요합니다.

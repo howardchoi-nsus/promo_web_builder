@@ -38,6 +38,7 @@ assert.deepStrictEqual(normalizeLayoutSelectionMetadata({
   contentRegion: "top-left",
   visualBalance: "media-right",
   density: "compact",
+  widthProfile: "balanced",
   purposeTags: ["Event", "event", "brand-intro"],
   selectionWeight: 1.5,
   avoidImmediateRepeat: true,
@@ -47,6 +48,7 @@ assert.deepStrictEqual(normalizeLayoutSelectionMetadata({
     contentRegion: "top-left",
     visualBalance: "media-right",
     density: "compact",
+    widthProfile: "balanced",
     purposeTags: ["event", "brand-intro"],
     selectionWeight: 1.5,
     avoidImmediateRepeat: true,
@@ -150,6 +152,10 @@ const selectionMetadataMigration = fs.readFileSync(
   path.join(__dirname, "../db/migrations/058_layout_selection_metadata_and_style_slot_targets.sql"),
   "utf8",
 );
+const widthProfileMigration = fs.readFileSync(
+  path.join(__dirname, "../db/migrations/059_registry_required_sections_and_hero_width_profiles.sql"),
+  "utf8",
+);
 assert(migration.includes("create table if not exists wizard_content_section_layouts"));
 assert(migration.includes("wizard_content_section_layouts_one_default_idx"));
 assert(migration.includes("insert into wizard_content_section_layouts"));
@@ -161,6 +167,10 @@ assert(selectionMetadataMigration.includes("Migration 058 candidate: explicit St
 assert(selectionMetadataMigration.includes("select id into draft_id"));
 assert(selectionMetadataMigration.includes("then slot || '{\"targetProperty\":\"colorToken\"}'::jsonb"));
 assert(selectionMetadataMigration.includes("then slot || '{\"targetProperty\":\"backgroundColorToken\"}'::jsonb"));
+assert(widthProfileMigration.includes("hero_left_balanced"));
+assert(widthProfileMigration.includes("hero_center_wide"));
+assert(widthProfileMigration.includes("hero_right_balanced"));
+assert(widthProfileMigration.includes("Layout width-profile selection guidance"));
 
 [
   "wizard-content-section-layouts.js",

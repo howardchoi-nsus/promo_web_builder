@@ -66,6 +66,7 @@ export default {
               contentRegion: "auto",
               visualBalance: "auto",
               density: "auto",
+              widthProfile: "auto",
               purposeTags: [],
               selectionWeight: 1,
               avoidImmediateRepeat: false,
@@ -95,6 +96,7 @@ export default {
           contentRegion: "auto",
           visualBalance: "auto",
           density: "auto",
+          widthProfile: "auto",
           purposeTagsText: "",
           selectionWeight: 1,
           avoidImmediateRepeat: false,
@@ -275,6 +277,7 @@ export default {
             <label><span>콘텐츠 영역</span><select v-model="layout.selectionMetadata.contentRegion"><option value="auto">자동</option><option value="top-left">왼쪽 상단</option><option value="top-center">중앙 상단</option><option value="top-right">오른쪽 상단</option><option value="center-left">왼쪽 중앙</option><option value="center">중앙</option><option value="center-right">오른쪽 중앙</option><option value="bottom-left">왼쪽 하단</option><option value="bottom-center">중앙 하단</option><option value="bottom-right">오른쪽 하단</option></select></label>
             <label><span>비주얼 균형</span><select v-model="layout.selectionMetadata.visualBalance"><option value="auto">자동</option><option value="media-left">이미지 왼쪽</option><option value="media-center">이미지 중앙</option><option value="media-right">이미지 오른쪽</option><option value="full-background">전체 배경</option></select></label>
             <label><span>밀도</span><select v-model="layout.selectionMetadata.density"><option value="auto">자동</option><option value="compact">간결</option><option value="standard">기본</option><option value="spacious">여유</option></select></label>
+            <label><span>텍스트 폭</span><select v-model="layout.selectionMetadata.widthProfile"><option value="auto">자동</option><option value="compact">좁게</option><option value="balanced">균형</option><option value="wide">넓게</option><option value="full">전체 폭</option></select></label>
             <label><span>권장 용도</span><input :value="(layout.selectionMetadata.purposeTags || []).join(', ')" @input="layout.selectionMetadata.purposeTags = $event.target.value.split(',').map((tag) => tag.trim()).filter(Boolean)" placeholder="event, brand-intro" /></label>
             <label><span>선택 가중치</span><input v-model.number="layout.selectionMetadata.selectionWeight" type="number" min="0.1" max="10" step="0.1" /></label>
             <label class="inline-check"><input v-model="layout.selectionMetadata.avoidImmediateRepeat" type="checkbox" /><span>연속 선택 지양</span></label>
@@ -291,6 +294,7 @@ export default {
       <label><span>콘텐츠 영역</span><select v-model="newPresetEditor.selectionMetadata.contentRegion"><option value="auto">자동</option><option value="top-left">왼쪽 상단</option><option value="top-center">중앙 상단</option><option value="top-right">오른쪽 상단</option><option value="center-left">왼쪽 중앙</option><option value="center">중앙</option><option value="center-right">오른쪽 중앙</option><option value="bottom-left">왼쪽 하단</option><option value="bottom-center">중앙 하단</option><option value="bottom-right">오른쪽 하단</option></select></label>
       <label><span>비주얼 균형</span><select v-model="newPresetEditor.selectionMetadata.visualBalance"><option value="auto">자동</option><option value="media-left">이미지 왼쪽</option><option value="media-center">이미지 중앙</option><option value="media-right">이미지 오른쪽</option><option value="full-background">전체 배경</option></select></label>
       <label><span>밀도</span><select v-model="newPresetEditor.selectionMetadata.density"><option value="auto">자동</option><option value="compact">간결</option><option value="standard">기본</option><option value="spacious">여유</option></select></label>
+      <label><span>텍스트 폭</span><select v-model="newPresetEditor.selectionMetadata.widthProfile"><option value="auto">자동</option><option value="compact">좁게</option><option value="balanced">균형</option><option value="wide">넓게</option><option value="full">전체 폭</option></select></label>
       <label><span>권장 용도</span><input v-model="newPresetEditor.selectionMetadata.purposeTagsText" placeholder="event, brand-intro" /></label>
       <label><span>선택 가중치</span><input v-model.number="newPresetEditor.selectionMetadata.selectionWeight" type="number" min="0.1" max="10" step="0.1" /></label>
       <label class="inline-check"><input v-model="newPresetEditor.selectionMetadata.avoidImmediateRepeat" type="checkbox" /><span>연속 선택 지양</span></label>

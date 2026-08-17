@@ -8,6 +8,56 @@ function fail(code, message, retryable = true) {
   throw Object.assign(new Error(message), { code, retryable });
 }
 
+function defaultComponentPlan(component) {
+  const collection = component.collection || { enabled: false, minItems: 1, maxItems: 1 };
+  return {
+    componentInstanceId: component.componentInstanceId,
+    visible: true,
+    repeat: collection.enabled ? Math.max(1, Number(collection.minItems || 1)) : 1,
+    contentBindings: [],
+  };
+}
+
+function defaultRequiredSectionPlan(section) {
+  return {
+    sectionVersionId: section.sectionVersionId,
+    visible: true,
+    sortOrder: Number(section.sortOrder || 0),
+    layoutKey: section.defaultLayoutKey || section.layoutPresets?.[0]?.layoutKey || "",
+    motionPresetVersionId: "",
+    repeat: 1,
+    components: (section.components || []).map(defaultComponentPlan),
+  };
+}
+
+function materializeRequiredSections(result, candidates) {
+  const plannedSections = (Array.isArray(result?.sections) ? result.sections : []).map((planned) => ({
+    ...planned,
+    components: Array.isArray(planned.components) ? planned.components.map((component) => ({ ...component })) : [],
+  }));
+  const bySectionId = new Map(plannedSections.map((planned) => [planned.sectionVersionId, planned]));
+  (candidates.sections || []).filter((section) => section.resolvedRequired).forEach((section) => {
+    let planned = bySectionId.get(section.sectionVersionId);
+    if (!planned) {
+      planned = defaultRequiredSectionPlan(section);
+      plannedSections.push(planned);
+      bySectionId.set(section.sectionVersionId, planned);
+      return;
+    }
+    const componentIds = new Set(planned.components.map((component) => component.componentInstanceId));
+    (section.components || []).filter((component) => component.isRequired).forEach((component) => {
+      if (!componentIds.has(component.componentInstanceId)) planned.components.push(defaultComponentPlan(component));
+    });
+  });
+  return { ...result, sections: plannedSections };
+}
+
+function fixedPositionRank(value) {
+  if (value === "top") return -1;
+  if (value === "bottom") return 1;
+  return 0;
+}
+
 function registryCompositionSchema(candidates) {
   const sections = candidates.sections || [];
   const sectionIds = sections.map((section) => section.sectionVersionId);
@@ -89,12 +139,13 @@ function validateRegistryCompositionProposal(result, candidates) {
   ) || null;
   if ((candidates.tokenSets || []).length && !tokenSet) fail("INVALID_TOKEN_SET", "Planner selected an unavailable design token set");
 
+  const materializedResult = materializeRequiredSections(result, candidates);
   const allowedSections = new Map((candidates.sections || []).map((section) => [section.sectionVersionId, section]));
   const seenSections = new Set();
   const plannedSections = [];
-  const warnings = Array.isArray(result.warnings) ? result.warnings.map(String).slice(0, 30) : [];
+  const warnings = Array.isArray(materializedResult.warnings) ? materializedResult.warnings.map(String).slice(0, 30) : [];
   let expandedSectionCount = 0;
-  for (const planned of Array.isArray(result.sections) ? result.sections : []) {
+  for (const planned of materializedResult.sections) {
     const section = allowedSections.get(planned.sectionVersionId);
     if (!section) fail("SECTION_NOT_IN_REGISTRY", "Planner selected a Section version outside the Registry candidate snapshot");
     if (seenSections.has(planned.sectionVersionId)) fail("DUPLICATE_SECTION_SELECTION", "Use repeat instead of duplicate Section selections");
@@ -175,6 +226,8 @@ function validateRegistryCompositionProposal(result, candidates) {
       sectionVersionId: section.sectionVersionId,
       sectionKey: section.sectionKey,
       sectionRole: section.sectionRole,
+      required: Boolean(section.resolvedRequired),
+      fixedPosition: section.fixedPosition || null,
       visible: planned.visible !== false,
       sortOrder: Number(planned.sortOrder || section.sortOrder || 0),
       layoutKey: planned.layoutKey,
@@ -192,7 +245,11 @@ function validateRegistryCompositionProposal(result, candidates) {
     contractVersion: 3,
     shell: candidates.shell,
     tokenSet,
-    sections: plannedSections.sort((left, right) => left.sortOrder - right.sortOrder || left.sectionKey.localeCompare(right.sectionKey)),
+    sections: plannedSections.sort((left, right) => (
+      fixedPositionRank(left.fixedPosition) - fixedPositionRank(right.fixedPosition)
+      || left.sortOrder - right.sortOrder
+      || left.sectionKey.localeCompare(right.sectionKey)
+    )),
     resources: candidates.resources || [],
     warnings: warnings.slice(0, 30),
     summary: String(result.summary || "").trim().slice(0, 1000),
@@ -234,9 +291,12 @@ function normalizeRegistryCompositionProposal({
       resourceReferences: validated.resources,
     },
     preview: {
-      sections: validated.sections.map((section) => ({
+      sections: validated.sections.map((section, index) => ({
+        sequence: index + 1,
         sectionKey: section.sectionKey,
         sectionRole: section.sectionRole,
+        required: Boolean(section.required),
+        fixedPosition: section.fixedPosition || null,
         repeat: section.repeat,
         layoutKey: section.layoutKey,
         componentKeys: section.components.map((component) => component.itemKey),
@@ -259,6 +319,7 @@ function normalizeRegistryCompositionProposal({
 
 module.exports = {
   registryCompositionSchema,
+  materializeRequiredSections,
   validateRegistryCompositionProposal,
   normalizeRegistryCompositionProposal,
 };
