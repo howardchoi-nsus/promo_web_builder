@@ -49,4 +49,37 @@ const separated = avoidTextComponentOverlaps({
 });
 assert.equal(separated.itemStyles["hero.subtitle"].yPx, 40);
 
+const compositeCard = {
+  itemKey: "cardOne",
+  name: "Promotion Card",
+  fieldKind: "text",
+  textType: "multi",
+  fields: [
+    { fieldKey: "image", fieldKind: "image", image: { aspectRatio: "4:3" } },
+    { fieldKey: "description", fieldKind: "text", textType: "multi", name: "Description" },
+    { fieldKey: "action", fieldKind: "cta", name: "Action" },
+  ],
+};
+const compositeResult = avoidTextComponentOverlaps({
+  sections: [{ sectionKey: "cards", items: [
+    compositeCard,
+    { ...compositeCard, itemKey: "cardTwo", name: "Promotion Card 2" },
+  ] }],
+  sectionInputs: { cards: {
+    cardOne: { fields: { image: { value: "one.jpg" }, description: "첫 번째 카드 설명", action: { label: "보기" } } },
+    cardTwo: { fields: { image: { value: "two.jpg" }, description: "두 번째 카드 설명", action: { label: "보기" } } },
+  } },
+  itemStyles: {
+    "cards.cardOne": { positionMode: "free", xPct: 5, yPx: 20, widthPct: 42, heightPx: 120 },
+    "cards.cardTwo": { positionMode: "free", xPct: 5, yPx: 160, widthPct: 42, heightPx: 120 },
+  },
+  mobileItemStyles: {
+    "cards.cardOne": { positionMode: "free", xPct: 5, yPx: 20, widthPct: 90, heightPx: 120 },
+    "cards.cardTwo": { positionMode: "free", xPct: 5, yPx: 160, widthPct: 90, heightPx: 120 },
+  },
+});
+assert.ok(compositeResult.itemStyles["cards.cardTwo"].yPx > 500, "desktop image/text/CTA height must move the next card");
+assert.ok(compositeResult.mobileItemStyles["cards.cardTwo"].yPx > 600, "mobile image/text/CTA height must move the next card");
+assert.ok(compositeResult.sectionStyles.cards.minHeight > compositeResult.mobileItemStyles["cards.cardTwo"].yPx);
+
 console.log("Promo text collision normalization tests passed.");

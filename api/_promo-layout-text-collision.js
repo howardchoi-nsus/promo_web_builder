@@ -5,19 +5,14 @@ function clone(value) {
   return value == null ? value : JSON.parse(JSON.stringify(value));
 }
 
-function textValues(item, value) {
+function componentValues(item, value) {
   const fields = Array.isArray(item?.fields) && item.fields.length ? item.fields : [item];
   if (fields.length === 1) {
     const field = fields[0];
-    if (field?.fieldKind !== "text") return [];
     const source = value?.fields && field.fieldKey ? value.fields[field.fieldKey] : value;
     return [{ field, value: source }];
   }
-  return fields.flatMap((field) => {
-    if (field.fieldKind !== "text") return [];
-    const source = value?.fields?.[field.fieldKey];
-    return [{ field, value: source }];
-  });
+  return fields.map((field) => ({ field, value: value?.fields?.[field.fieldKey] }));
 }
 
 function stringLines(value, fallback) {
@@ -51,6 +46,13 @@ function lineHeightFor(style = {}) {
   return Number.isFinite(configured) && configured >= 0.8 && configured <= 3 ? configured : 1.45;
 }
 
+function aspectRatioValue(value, fallback = 1) {
+  if (Number.isFinite(Number(value)) && Number(value) > 0) return Number(value);
+  const match = String(value || "").match(/^\s*(\d+(?:\.\d+)?)\s*[/:]\s*(\d+(?:\.\d+)?)\s*$/u);
+  if (!match || Number(match[2]) <= 0) return fallback;
+  return Number(match[1]) / Number(match[2]);
+}
+
 function estimatedLineCount(lines, widthPx, fontSize) {
   return lines.reduce((count, line) => {
     const estimatedWidth = Array.from(String(line)).reduce((width, character) => {
@@ -64,20 +66,36 @@ function estimatedLineCount(lines, widthPx, fontSize) {
 function estimatedItemHeight({ sectionKey, item, value, style, allStyles, tokenValues, viewportWidth, mobile }) {
   const widthPct = Math.min(100, Math.max(0.01, Number(style.widthPct) || (isTitle(item) ? 72 : 60)));
   const widthPx = (widthPct / 100) * viewportWidth;
-  const values = textValues(item, value);
+  const values = componentValues(item, value);
   if (!values.length) return 0;
-  const textHeight = values.reduce((height, entry) => {
+  const contentHeight = values.reduce((height, entry) => {
+    const scopedFieldStyle = allStyles[`${sectionKey}.${item.itemKey}.${entry.field.fieldKey}`] || {};
     const fieldStyle = {
       ...style,
-      ...(allStyles[`${sectionKey}.${item.itemKey}.${entry.field.fieldKey}`] || {}),
+      ...scopedFieldStyle,
     };
+    if (entry.field.fieldKind === "image") {
+      const fieldWidthPct = Math.min(100, Math.max(0.01, Number(scopedFieldStyle.widthPct) || 100));
+      const imageWidth = widthPx * (fieldWidthPct / 100);
+      const ratio = aspectRatioValue(fieldStyle.aspectRatio || entry.field.image?.aspectRatio, 1);
+      return height + Math.ceil(imageWidth / ratio);
+    }
+    if (entry.field.fieldKind === "cta") {
+      const buttonHeight = tokenPixels(
+        tokenValues?.[fieldStyle.heightToken]
+        || tokenValues?.["--promo-button-height"]
+        || tokenValues?.["--app-button-height"],
+      ) || 44;
+      return height + Math.max(44, Math.ceil(buttonHeight));
+    }
+    if (entry.field.fieldKind !== "text") return height;
     const fontSize = fontSizeFor(entry.field, fieldStyle, tokenValues, mobile);
     const lines = stringLines(entry.value, entry.field.name || entry.field.fieldKey || item.name || item.itemKey);
     return height + Math.ceil(
       estimatedLineCount(lines, widthPx, fontSize) * fontSize * lineHeightFor(fieldStyle),
     );
   }, 0);
-  return Math.max(32, textHeight + Math.max(0, values.length - 1) * COMPOSITE_FIELD_GAP_PX);
+  return Math.max(32, contentHeight + Math.max(0, values.length - 1) * COMPOSITE_FIELD_GAP_PX);
 }
 
 function adjustViewport({
@@ -102,7 +120,8 @@ function adjustViewport({
   const candidates = (section.items || []).flatMap((item, order) => {
     const key = `${sectionKey}.${item.itemKey}`;
     const style = effectiveStyles[key];
-    if (item.fieldKind !== "text" || !style || style.positionMode !== "free"
+    const composite = Array.isArray(item.fields) && item.fields.length > 1;
+    if ((item.fieldKind !== "text" && !composite) || !style || style.positionMode !== "free"
       || style.heightMode === "fixed" || visibility?.[key] === false) return [];
     const widthPct = Math.min(100, Math.max(0.01, Number(style.widthPct) || (isTitle(item) ? 72 : 60)));
     const requestedLeft = Number(style.xPct) || 0;

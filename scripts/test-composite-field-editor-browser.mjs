@@ -117,6 +117,30 @@ try {
   await page.locator(".component-inspector-popover").getByText("Card CTA", { exact: true }).first().waitFor();
   assert.equal(await title.evaluate((node) => node.classList.contains("is-selected-field")), false);
   assert.equal(await cta.evaluate((node) => node.classList.contains("is-selected-field")), true);
+
+  await title.dblclick();
+  await title.waitFor({ state: "visible" });
+  assert.equal(await title.getAttribute("contenteditable"), "true");
+  await page.evaluate(() => {
+    window.scrollTo(0, 0);
+    const stage = document.querySelector(".preview-stage");
+    if (stage) stage.scrollTop = 0;
+  });
+  const beforeDrag = await card.boundingBox();
+  const moveHandle = card.getByRole("button", { name: "Promotion Card 이동" });
+  const handleBox = await moveHandle.boundingBox();
+  assert.ok(beforeDrag && handleBox, "selected composite card must expose a move handle");
+  await moveHandle.press("Shift+ArrowRight");
+  await moveHandle.press("Shift+ArrowRight");
+  await moveHandle.press("Shift+ArrowRight");
+  await moveHandle.press("Shift+ArrowDown");
+  await moveHandle.press("Shift+ArrowDown");
+  await moveHandle.press("Shift+ArrowDown");
+  await page.waitForTimeout(50);
+  const afterDrag = await card.boundingBox();
+  assert.equal(await title.getAttribute("contenteditable"), "false");
+  assert.ok(afterDrag.x > beforeDrag.x + 20, `composite card must move horizontally from its dedicated handle: ${JSON.stringify({ beforeDrag, afterDrag, style: await card.getAttribute("style") })}`);
+  assert.ok(afterDrag.y > beforeDrag.y + 15, `composite card must move vertically from its dedicated handle: ${JSON.stringify({ beforeDrag, afterDrag, style: await card.getAttribute("style") })}`);
   assert.deepEqual(pageErrors, []);
   assert.equal(consoleErrors.some((message) => /ReferenceError|TypeError|Unhandled/i.test(message)), false);
   console.log("Composite field editor browser test passed");

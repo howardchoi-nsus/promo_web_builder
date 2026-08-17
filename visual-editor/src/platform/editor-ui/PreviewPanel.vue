@@ -68,9 +68,12 @@ const emit = defineEmits([
   "enable-fixed-text-size",
   "selection-rect-change",
   "text-line-selection-change",
+  "layout-collision-reflow",
 ]);
 
 const previewStageRef = ref(null);
+const rendererRef = ref(null);
+const collisionMessage = ref("");
 let selectionFrame = 0;
 let stageResizeObserver = null;
 
@@ -161,6 +164,24 @@ function finishTextEdit() {
   previewStageRef.value?.querySelector('[contenteditable="true"]')?.blur();
 }
 
+async function inspectCollisions(apply = false) {
+  collisionMessage.value = "겹침을 확인하고 있습니다.";
+  await nextTick();
+  await document.fonts?.ready;
+  const images = [...(previewStageRef.value?.querySelectorAll("img") || [])];
+  await Promise.all(images.map((image) => image.decode?.().catch(() => undefined)));
+  const result = rendererRef.value?.inspectLayoutCollisions?.() || { count: 0 };
+  if (!result.count) {
+    collisionMessage.value = "겹치는 텍스트 컴포넌트가 없습니다.";
+    return result;
+  }
+  collisionMessage.value = apply
+    ? `${result.count}개 컴포넌트의 겹침을 보정했습니다. 저장하면 반영됩니다.`
+    : `${result.count}개 컴포넌트의 겹침이 확인되었습니다.`;
+  if (apply) emit("layout-collision-reflow", result);
+  return result;
+}
+
 function libraryComponentKey(event) {
   const raw = event.dataTransfer?.getData("application/x-promo-component-definition");
   if (!raw) return "";
@@ -190,7 +211,7 @@ function handlePreviewDrop(event) {
   if (sectionKey) emit("drop-library-component", componentKey, sectionKey);
 }
 
-defineExpose({ finishTextEdit, getStageElement, scrollToSection, updateSelectionRect });
+defineExpose({ finishTextEdit, getStageElement, inspectCollisions, scrollToSection, updateSelectionRect });
 </script>
 
 <template>
@@ -212,6 +233,11 @@ defineExpose({ finishTextEdit, getStageElement, scrollToSection, updateSelection
         </button>
         <small v-if="capabilities.canEditPromoContent" class="preview-edit-hint">미리보기 요소를 선택해 내용을 입력하세요.</small>
         <small v-if="autoRegisterMessage" class="auto-register-message" role="status">{{ autoRegisterMessage }}</small>
+        <div v-if="editorContext.isAiDocument && capabilities.canMutate" class="collision-actions">
+          <button type="button" @click="inspectCollisions(false)">겹침 확인</button>
+          <button type="button" class="is-primary" @click="inspectCollisions(true)">겹침 보정</button>
+          <small v-if="collisionMessage" role="status">{{ collisionMessage }}</small>
+        </div>
       </div>
       <EditorPreviewControls
         :guide-mode="guideMode"
@@ -296,6 +322,7 @@ defineExpose({ finishTextEdit, getStageElement, scrollToSection, updateSelection
       @drop="handlePreviewDrop"
     >
       <PromoPageRenderer
+        ref="rendererRef"
         v-if="rendererSnapshot"
         :key="motionReplayKey"
         :content="rendererSnapshot.content"

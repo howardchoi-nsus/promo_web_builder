@@ -845,14 +845,15 @@ function handleCtaDragStart(event) {
   if (props.editable) event.preventDefault();
 }
 
-function startDrag(event, section, item) {
+function startDrag(event, section, item, options = {}) {
   suppressedSelectionPointerId = null;
+  const target = options.target || event.currentTarget;
+  const fromMoveHandle = options.fromMoveHandle === true;
   if (!props.editable || item.isLocked || event.button !== 0
     || event.ctrlKey || event.metaKey || event.shiftKey
     || event.target.closest(".item-resize-handle")
-    || event.target.closest("[data-field-style-key]")
-    || event.currentTarget.classList.contains("is-editing")) return;
-  const target = event.currentTarget;
+    || (!fromMoveHandle && event.target.closest("[data-field-style-key]"))
+    || (!fromMoveHandle && target.classList.contains("is-editing"))) return;
   const container = target.closest(".rendered-items");
   if (!container) return;
   activeResizeCleanup?.();
@@ -904,7 +905,7 @@ function startDrag(event, section, item) {
       moved = true;
     }
     const horizontalLimit = rect.width - target.offsetWidth;
-    const verticalLimit = rect.height - target.offsetHeight;
+    const verticalLimit = MAXIMUM_SECTION_HEIGHT_PX - target.offsetHeight - SECTION_VERTICAL_PADDING_PX;
     const minimumX = Math.min(0, horizontalLimit);
     const maximumX = Math.max(0, horizontalLimit);
     const minimumY = Math.min(0, verticalLimit);
@@ -927,7 +928,14 @@ function startDrag(event, section, item) {
     if (animationFrame) cancelAnimationFrame(animationFrame);
     if (moved && rect) {
       const xPct = rect.width ? (nextX / rect.width) * 100 : 0;
-      emit("update-item-style", { positionMode: "free", xPct, yPx: nextY });
+      emit("update-renderer-item-style", section, item, { positionMode: "free", xPct, yPx: nextY });
+      const dragSectionMinHeight = Math.min(
+        MAXIMUM_SECTION_HEIGHT_PX,
+        Math.ceil(nextY + target.offsetHeight + SECTION_VERTICAL_PADDING_PX * 2),
+      );
+      if (dragSectionMinHeight > Number(sectionStyle(section).minHeight || defaultSectionHeight(section))) {
+        emit("update-section-style", section.sectionKey, { minHeight: dragSectionMinHeight });
+      }
     }
     if (target.hasPointerCapture(event.pointerId)) {
       try { target.releasePointerCapture(event.pointerId); } catch { /* Pointer already ended. */ }
@@ -954,6 +962,55 @@ function startDrag(event, section, item) {
   globalThis.addEventListener("blur", end);
   document.addEventListener("visibilitychange", handleVisibilityChange);
   target.addEventListener("lostpointercapture", end);
+}
+
+function startMoveHandleDrag(event, section, item) {
+  const target = event.currentTarget.closest(".rendered-item");
+  if (!target) return;
+  event.preventDefault();
+  event.stopPropagation();
+  target.querySelector('[contenteditable="true"]')?.blur();
+  startDrag(event, section, item, { target, fromMoveHandle: true });
+}
+
+function moveItemByKeyboard(event, section, item) {
+  const deltas = {
+    ArrowLeft: [-1, 0],
+    ArrowRight: [1, 0],
+    ArrowUp: [0, -1],
+    ArrowDown: [0, 1],
+  };
+  if (!deltas[event.key] || item.isLocked) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const target = event.currentTarget.closest(".rendered-item");
+  const container = target?.closest(".rendered-items");
+  if (!target || !container) return;
+  target.querySelector('[contenteditable="true"]')?.blur();
+  const containerRect = container.getBoundingClientRect();
+  const targetRect = target.getBoundingClientRect();
+  const step = event.shiftKey ? 10 : 1;
+  const [deltaX, deltaY] = deltas[event.key];
+  const left = Math.min(
+    Math.max(0, containerRect.width - targetRect.width),
+    Math.max(0, targetRect.left - containerRect.left + deltaX * step),
+  );
+  const top = Math.min(
+    Math.max(0, MAXIMUM_SECTION_HEIGHT_PX - targetRect.height - SECTION_VERTICAL_PADDING_PX),
+    Math.max(0, targetRect.top - containerRect.top + deltaY * step),
+  );
+  emit("update-renderer-item-style", section, item, {
+    positionMode: "free",
+    xPct: containerRect.width ? (left / containerRect.width) * 100 : 0,
+    yPx: top,
+  });
+  const keyboardSectionMinHeight = Math.min(
+    MAXIMUM_SECTION_HEIGHT_PX,
+    Math.ceil(top + targetRect.height + SECTION_VERTICAL_PADDING_PX * 2),
+  );
+  if (keyboardSectionMinHeight > Number(sectionStyle(section).minHeight || defaultSectionHeight(section))) {
+    emit("update-section-style", section.sectionKey, { minHeight: keyboardSectionMinHeight });
+  }
 }
 
 function startItemResize(event, section, item, handleDirection = "se") {
@@ -1462,6 +1519,77 @@ function startSectionResize(event, section) {
   document.addEventListener("visibilitychange", handleVisibilityChange);
   resizeHandle.addEventListener("lostpointercapture", finish);
 }
+
+function inspectLayoutCollisions() {
+  if (!rendererRoot.value) return { count: 0, itemPatches: {}, sectionPatches: {}, viewport: mobileLayoutActive.value ? "mobile" : "desktop" };
+  const itemPatches = {};
+  const sectionPatches = {};
+  let count = 0;
+  rendererRoot.value.querySelectorAll(".rendered-section").forEach((sectionNode) => {
+    const sectionKey = sectionNode.dataset.sectionKey;
+    const canvas = sectionNode.querySelector(".rendered-items");
+    const canvasRect = canvas?.getBoundingClientRect();
+    if (!sectionKey || !canvas || !canvasRect?.width) return;
+    const section = orderedSections.value.find((entry) => entry.sectionKey === sectionKey);
+    const itemsByKey = new Map((section?.items || []).map((item) => [item.itemKey, item]));
+    let sectionCollisionCount = 0;
+    const boxes = [...canvas.querySelectorAll(".rendered-item--text[data-style-key]")].flatMap((node, order) => {
+      const item = itemsByKey.get(node.dataset.itemKey);
+      const rect = node.getBoundingClientRect();
+      const computed = globalThis.getComputedStyle?.(node);
+      if (!item || item.isLocked || computed?.display === "none" || computed?.visibility === "hidden"
+        || rect.width <= 0 || rect.height <= 0) return [];
+      return [{
+        key: node.dataset.styleKey,
+        item,
+        order,
+        left: rect.left - canvasRect.left,
+        top: rect.top - canvasRect.top,
+        width: rect.width,
+        height: rect.height,
+      }];
+    }).sort((left, right) => left.top - right.top || left.order - right.order);
+    const placed = [];
+    boxes.forEach((box) => {
+      let top = Math.max(0, box.top);
+      for (let attempt = 0; attempt <= placed.length; attempt += 1) {
+        const overlaps = placed.filter((previous) => (
+          box.left < previous.left + previous.width
+          && box.left + box.width > previous.left
+          && top < previous.top + previous.height
+          && top + box.height > previous.top
+        ));
+        if (!overlaps.length) break;
+        top = Math.max(...overlaps.map((previous) => previous.top + previous.height)) + 20;
+      }
+      if (top - box.top >= 0.5) {
+        count += 1;
+        sectionCollisionCount += 1;
+        itemPatches[box.key] = {
+          positionMode: "free",
+          xPct: (Math.max(0, box.left) / canvasRect.width) * 100,
+          yPx: Math.round(top),
+          heightMode: "auto",
+          heightPx: undefined,
+        };
+      }
+      placed.push({ ...box, top });
+    });
+    const contentBottom = placed.reduce((bottom, box) => Math.max(bottom, box.top + box.height), 0);
+    const requiredHeight = Math.min(MAXIMUM_SECTION_HEIGHT_PX, Math.ceil(contentBottom + SECTION_VERTICAL_PADDING_PX * 2));
+    if (sectionCollisionCount > 0 && requiredHeight > sectionNode.getBoundingClientRect().height + 0.5) {
+      sectionPatches[sectionKey] = { minHeight: requiredHeight };
+    }
+  });
+  return {
+    count,
+    itemPatches,
+    sectionPatches,
+    viewport: mobileLayoutActive.value ? "mobile" : "desktop",
+  };
+}
+
+defineExpose({ inspectLayoutCollisions });
 </script>
 
 <template>
@@ -1541,6 +1669,15 @@ function startSectionResize(event, section) {
             @dblclick.capture="startArticleTextEdit($event, section, item)"
             @pointerdown="startDrag($event, section, item)"
           >
+            <button
+              v-if="editable && showGuides && !item.isLocked && selectedItemKey === styleKey(section, item)"
+              type="button"
+              class="component-move-handle"
+              :aria-label="`${item.name || item.itemKey} 이동`"
+              :title="`${item.name || item.itemKey} 이동 (Shift + 방향키: 10px)`"
+              @pointerdown="startMoveHandleDrag($event, section, item)"
+              @keydown="moveItemByKeyboard($event, section, item)"
+            ><i class="fa-solid fa-up-down-left-right" aria-hidden="true"></i></button>
             <span
               v-if="editable && !isItemVisible(section, item)"
               class="output-hidden-badge"

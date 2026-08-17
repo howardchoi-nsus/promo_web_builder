@@ -78,6 +78,22 @@ assert.equal(result.state.document.layout.responsiveLayouts.mobile.itemStyles["h
 result = store.undo();
 assert.equal(result.state.document.layout.responsiveLayouts.mobile.itemStyles["hero.title"].positionMode, "anchored");
 
+result = store.execute(editorCommand(EditorCommandType.LAYOUT_COLLISION_REFLOW, {
+  viewport: "mobile",
+  itemPatches: {
+    "hero.title": { positionMode: "free", xPct: 5, yPx: 180, heightMode: "auto", heightPx: undefined },
+    "hero.description": { positionMode: "free", xPct: 5, yPx: 260, heightMode: "auto" },
+  },
+  sectionPatches: { hero: { minHeight: 520 } },
+}));
+assert.equal(result.ok, true);
+assert.equal(result.state.document.layout.responsiveLayouts.mobile.itemStyles["hero.title"].yPx, 180);
+assert.equal(result.state.document.layout.responsiveLayouts.mobile.itemStyles["hero.title"].heightPx, undefined);
+assert.equal(result.state.document.layout.responsiveLayouts.mobile.itemStyles["hero.description"].yPx, 260);
+assert.equal(result.state.document.layout.sectionStyles.hero.minHeight, 520);
+result = store.undo();
+assert.equal(result.state.document.layout.responsiveLayouts.mobile.itemStyles["hero.description"], undefined);
+
 store.replaceDocument({
   layout: { itemStyles: { "hero.title": { fontSize: 30 } } },
   content: { hero: { title: "Reloaded" } },

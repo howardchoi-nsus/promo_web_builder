@@ -241,6 +241,36 @@ export function reduceEditorCommand(currentState, command) {
       state.document.layout = { ...layout, sectionStyles };
       break;
     }
+    case EditorCommandType.LAYOUT_COLLISION_REFLOW: {
+      const itemPatches = payload.itemPatches && typeof payload.itemPatches === "object" ? payload.itemPatches : {};
+      const sectionPatches = payload.sectionPatches && typeof payload.sectionPatches === "object" ? payload.sectionPatches : {};
+      if (!Object.keys(itemPatches).length) return { ok: false, state: currentState, error: "Collision reflow patches are required." };
+      const patchStyles = (styles = {}) => {
+        const next = { ...styles };
+        Object.entries(itemPatches).forEach(([key, patch]) => {
+          next[key] = patchRecord(next[key] || {}, patch);
+        });
+        return next;
+      };
+      const nextSectionStyles = { ...(layout.sectionStyles || {}) };
+      Object.entries(sectionPatches).forEach(([key, patch]) => {
+        nextSectionStyles[key] = patchRecord(nextSectionStyles[key] || {}, patch);
+      });
+      if (payload.viewport === "mobile") {
+        const mobile = layout.responsiveLayouts?.mobile || {};
+        state.document.layout = {
+          ...layout,
+          sectionStyles: nextSectionStyles,
+          responsiveLayouts: {
+            ...(layout.responsiveLayouts || {}),
+            mobile: { ...mobile, itemStyles: patchStyles(mobile.itemStyles) },
+          },
+        };
+      } else {
+        state.document.layout = { ...layout, sectionStyles: nextSectionStyles, itemStyles: patchStyles(layout.itemStyles) };
+      }
+      break;
+    }
     case EditorCommandType.THEME_STYLE_PATCH:
       state.document.layout = {
         ...layout,

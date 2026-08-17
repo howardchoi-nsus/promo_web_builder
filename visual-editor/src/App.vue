@@ -1618,6 +1618,15 @@ function updateRendererItemStyle(section, item, patch) {
   applyRendererStylePatch(key, nextPatch, "컴포넌트 위치·크기 변경");
 }
 
+function applyLayoutCollisionReflow(result) {
+  if (!result?.count || !result.itemPatches) return;
+  executeEditorCommand(EditorCommandType.LAYOUT_COLLISION_REFLOW, result, {
+    source: "layout-audit",
+    label: `${result.count}개 컴포넌트 겹침 보정`,
+  });
+  nextTick(() => previewPanelRef.value?.updateSelectionRect?.());
+}
+
 function resetItemStyle() {
   if (!selectedStyleKey.value || selectedItem.value?.isLocked) return;
   const responsive = viewport.value === "mobile";
@@ -2516,6 +2525,7 @@ onBeforeUnmount(() => {
         @background-alignment="setSectionBackgroundAlignment"
         @background-fade="setSectionBackgroundFadeMode"
         @update-section-style="updateSectionStyle"
+        @layout-collision-reflow="applyLayoutCollisionReflow"
         @reset-section-height="resetSectionHeight"
         @create-blank-section="createBlankSection"
         @create-section-from-preset="createSectionFromPreset"

@@ -20,6 +20,7 @@ export const EditorCommandType = Object.freeze({
   COMPONENT_INSTANCE_MOVE_SECTION: "COMPONENT_INSTANCE_MOVE_SECTION",
   LAYOUT_REPLACE: "LAYOUT_REPLACE",
   DOCUMENT_PATCH: "DOCUMENT_PATCH",
+  LAYOUT_COLLISION_REFLOW: "LAYOUT_COLLISION_REFLOW",
 });
 
 export function editorCommand(type, payload = {}, meta = {}) {

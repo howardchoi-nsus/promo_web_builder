@@ -185,7 +185,9 @@ assert.match(renderer, /emit\("update-item-content", section, item, nextValue, f
 assert.match(renderer, /:data-field-key="field\.fieldKey"/);
 assert.match(renderer, /const DRAG_ACTIVATION_DISTANCE_PX = 7/);
 assert.match(renderer, /Math\.hypot\(deltaX, deltaY\) < DRAG_ACTIVATION_DISTANCE_PX/);
-assert.match(renderer, /if \(moved && rect\) \{[\s\S]*emit\("update-item-style"/);
+assert.match(renderer, /if \(moved && rect\) \{[\s\S]*emit\("update-renderer-item-style", section, item/);
+assert.match(renderer, /class="component-move-handle"/);
+assert.match(renderer, /function startMoveHandleDrag/);
 assert.match(renderer, /const itemRect = target\.getBoundingClientRect\(\);[\s\S]*target\.style\.transform = "none"/);
 assert.match(app, /function updateRendererContent\(section, item, value, field = null\)/);
 assert.match(renderer, /startTextEdit/);
