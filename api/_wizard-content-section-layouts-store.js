@@ -73,8 +73,8 @@ function normalizeSectionStyle(value, errors) {
   const style = {};
   if (Object.prototype.hasOwnProperty.call(source, "minHeight")) {
     const minHeight = finiteNumber(source.minHeight);
-    if (minHeight === null || minHeight < 1 || minHeight > 1200) {
-      errors.push({ path: "sectionStyle.minHeight", code: "INVALID_MIN_HEIGHT", message: "minHeight must be between 1 and 1200." });
+    if (minHeight === null || minHeight < 50 || minHeight > 1200) {
+      errors.push({ path: "sectionStyle.minHeight", code: "INVALID_MIN_HEIGHT", message: "minHeight must be between 50 and 1200." });
     } else {
       style.minHeight = minHeight;
     }

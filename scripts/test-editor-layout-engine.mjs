@@ -5,10 +5,12 @@ import {
   MAXIMUM_SECTION_HEIGHT_PX,
   MINIMUM_COMPONENT_HEIGHT_PX,
   MINIMUM_COMPONENT_WIDTH_PCT,
+  MINIMUM_SECTION_HEIGHT_PX,
   defaultComponentHeight,
   defaultComponentWidthPct,
   geometryToLayoutStyle,
   normalizeComponentGeometry,
+  minimumSectionContentHeight,
   resolveRenderedComponentHeight,
   resolveSectionHeight,
   usesAutomaticComponentHeight,
@@ -20,10 +22,26 @@ assert.equal(MINIMUM_COMPONENT_WIDTH_PCT, 4);
 assert.equal(MINIMUM_COMPONENT_HEIGHT_PX, 24);
 assert.equal(MAXIMUM_COMPONENT_HEIGHT_PX, 900);
 assert.equal(MAXIMUM_SECTION_HEIGHT_PX, 24000);
+assert.equal(MINIMUM_SECTION_HEIGHT_PX, 50);
 assert.equal(resolveSectionHeight(undefined, 460), 460);
 assert.equal(resolveSectionHeight(240, 460), 240);
 assert.equal(resolveSectionHeight(20, 460), 50);
 assert.equal(resolveSectionHeight(30000, 460), MAXIMUM_SECTION_HEIGHT_PX);
+assert.equal(minimumSectionContentHeight([], () => ({}), () => 0), 50);
+assert.equal(minimumSectionContentHeight([
+  { itemKey: "logo" },
+  { itemKey: "badges" },
+], (item) => item.itemKey === "logo"
+  ? { positionMode: "free", yPx: 4 }
+  : { positionMode: "free", yPx: 8 }, (item) => item.itemKey === "logo" ? 24 : 18, 10), 50);
+assert.equal(minimumSectionContentHeight([
+  { itemKey: "logo" },
+  { itemKey: "badges" },
+], () => ({ positionMode: "free", yPx: 18 }), () => 44, 20), 82);
+assert.equal(minimumSectionContentHeight([
+  { itemKey: "title" },
+  { itemKey: "body" },
+], () => ({ positionMode: "anchored" }), () => 60, 20), 140);
 assert.equal(usesAutomaticComponentHeight(textItem, {}), true);
 assert.equal(usesAutomaticComponentHeight(textItem, { heightMode: "auto" }), true);
 assert.equal(usesAutomaticComponentHeight(textItem, { heightMode: "fixed" }), false);

@@ -94,6 +94,22 @@ defineEmits([
         <span>섹션 높이</span>
         <strong>{{ sectionStyle.minHeight ? `${Math.round(sectionStyle.minHeight)}px` : "자동" }}</strong>
       </div>
+      <label>
+        <span>높이 (px)</span>
+        <input
+          type="number"
+          min="50"
+          max="24000"
+          step="1"
+          :value="sectionStyle.minHeight || ''"
+          placeholder="자동"
+          @change="$emit('update-style', {
+            minHeight: $event.target.value === ''
+              ? undefined
+              : Math.min(24000, Math.max(50, Number($event.target.value) || 50)),
+          })"
+        />
+      </label>
       <button
         type="button"
         :disabled="!sectionStyle.minHeight"

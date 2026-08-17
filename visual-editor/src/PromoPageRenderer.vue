@@ -7,10 +7,12 @@ import {
   MAXIMUM_SECTION_HEIGHT_PX,
   MINIMUM_COMPONENT_HEIGHT_PX,
   MINIMUM_COMPONENT_WIDTH_PCT,
+  MINIMUM_SECTION_HEIGHT_PX,
   defaultComponentHeight,
   defaultComponentWidthPct,
   geometryToLayoutStyle,
   normalizeComponentGeometry,
+  minimumSectionContentHeight,
   resolveRenderedComponentHeight,
   resolveSectionHeight,
   usesAutomaticComponentHeight,
@@ -685,22 +687,19 @@ function renderedItemHeight(section, item) {
   const style = itemStyle(section, item);
   const measuredHeight = measuredItemHeights.value[styleKey(section, item)];
   if (Number.isFinite(measuredHeight) && measuredHeight > 0) return measuredHeight;
+  const presetHeight = Number(style.heightPx);
+  if (style.positionMode === "free" && Number.isFinite(presetHeight) && presetHeight > 0) return presetHeight;
   if (item.fieldKind === "text" && usesAutomaticComponentHeight(item, style)) return estimatedItemHeight(item);
   return estimatedItemHeight(item);
 }
 
 function defaultSectionHeight(section) {
   const items = section.items || [];
-  const contentHeight = items.reduce((height, item) => height + renderedItemHeight(section, item), 0);
-  const positionedBottom = items.reduce((bottom, item) => {
-    const style = itemStyle(section, item);
-    if (style.positionMode !== "free" || style.yPx === undefined) return bottom;
-    return Math.max(bottom, Math.max(0, Number(style.yPx) || 0) + renderedItemHeight(section, item));
-  }, 0);
-  return Math.max(
-    50,
-    contentHeight + (items.length ? 52 : 0),
-    positionedBottom + (items.length ? SECTION_VERTICAL_PADDING_PX * 2 : 0),
+  return minimumSectionContentHeight(
+    items,
+    (item) => itemStyle(section, item),
+    (item) => renderedItemHeight(section, item),
+    SECTION_VERTICAL_PADDING_PX,
   );
 }
 
@@ -1271,7 +1270,9 @@ function startItemResize(event, section, item, handleDirection = "se") {
     const availableHeight = Math.max(minimumItemHeightPx, handleDirection.includes("n")
       ? startGeometry.height + startGeometry.y
       : containerRect.height - startGeometry.y);
-    const maxHeight = Math.min(MAXIMUM_COMPONENT_HEIGHT_PX, availableHeight);
+    const maxHeight = handleDirection.includes("n")
+      ? Math.min(MAXIMUM_COMPONENT_HEIGHT_PX, availableHeight)
+      : MAXIMUM_COMPONENT_HEIGHT_PX;
     nextGeometry = resizeComponentGeometry({
       geometry: startGeometry,
       deltaX,
@@ -1427,7 +1428,9 @@ function resizeItemByKeyboard(event, section, item, handleDirection = "se") {
     maximumWidth: handleDirection.includes("w")
       ? geometry.width + geometry.x
       : containerWidth - geometry.x,
-    maximumHeight: Math.min(MAXIMUM_COMPONENT_HEIGHT_PX, availableHeight),
+    maximumHeight: handleDirection.includes("n")
+      ? Math.min(MAXIMUM_COMPONENT_HEIGHT_PX, availableHeight)
+      : MAXIMUM_COMPONENT_HEIGHT_PX,
     aspectRatioLocked: locked || (isImage && style.shape === "circle"),
     aspectRatio: style.shape === "circle" ? 1 : geometry.width / geometry.height,
     scaleFont: false,
@@ -1654,7 +1657,7 @@ function startSectionResize(event, section) {
       return Math.max(requiredHeight, itemRect.bottom - canvasRect.top);
     }, 0)
     : 0;
-  const minHeight = Math.max(50, Math.ceil(minimumCanvasHeight + verticalPadding));
+  const minHeight = Math.max(MINIMUM_SECTION_HEIGHT_PX, Math.ceil(minimumCanvasHeight + verticalPadding));
   const maxHeight = MAXIMUM_SECTION_HEIGHT_PX;
 
   let finished = false;

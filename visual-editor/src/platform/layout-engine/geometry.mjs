@@ -7,6 +7,7 @@ export const DEFAULT_FONT_SIZE = 18;
 export const MINIMUM_COMPONENT_WIDTH_PCT = 4;
 export const MINIMUM_COMPONENT_HEIGHT_PX = 24;
 export const MAXIMUM_COMPONENT_HEIGHT_PX = 900;
+export const MINIMUM_SECTION_HEIGHT_PX = 50;
 export const MAXIMUM_SECTION_HEIGHT_PX = 24000;
 
 export function clampNumber(value, min, max, fallback) {
@@ -21,9 +22,37 @@ export function roundedGeometryValue(value) {
 export function resolveSectionHeight(configuredHeight, automaticHeight) {
   const configured = Number(configuredHeight);
   if (Number.isFinite(configured) && configured > 0) {
-    return clampNumber(configured, 50, MAXIMUM_SECTION_HEIGHT_PX, 50);
+    return clampNumber(configured, MINIMUM_SECTION_HEIGHT_PX, MAXIMUM_SECTION_HEIGHT_PX, MINIMUM_SECTION_HEIGHT_PX);
   }
-  return clampNumber(automaticHeight, 50, MAXIMUM_SECTION_HEIGHT_PX, 50);
+  return clampNumber(automaticHeight, MINIMUM_SECTION_HEIGHT_PX, MAXIMUM_SECTION_HEIGHT_PX, MINIMUM_SECTION_HEIGHT_PX);
+}
+
+export function minimumSectionContentHeight(
+  items = [],
+  styleFor = () => ({}),
+  heightFor = (item) => defaultComponentHeight(item),
+  verticalPadding = 20,
+) {
+  let anchoredHeight = 0;
+  let positionedBottom = 0;
+  let anchoredCount = 0;
+  let positionedCount = 0;
+  (Array.isArray(items) ? items : []).forEach((item) => {
+    const style = styleFor(item) || {};
+    const height = Math.max(0, Number(heightFor(item, style)) || defaultComponentHeight(item));
+    if (style.positionMode === "free") {
+      positionedCount += 1;
+      positionedBottom = Math.max(positionedBottom, Math.max(0, Number(style.yPx) || 0) + height);
+      return;
+    }
+    anchoredCount += 1;
+    anchoredHeight += height;
+  });
+  return Math.max(
+    MINIMUM_SECTION_HEIGHT_PX,
+    anchoredCount ? anchoredHeight + verticalPadding : 0,
+    positionedCount ? positionedBottom + verticalPadding : 0,
+  );
 }
 
 export function defaultComponentHeight(item = {}) {
