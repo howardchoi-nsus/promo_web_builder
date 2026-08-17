@@ -100,35 +100,51 @@ try {
   const image = card.locator('[data-field-style-key="feature.card.image"]');
   const title = card.locator('[data-field-style-key="feature.card.title"]');
   const cta = card.locator('[data-field-style-key="feature.card.cta"]');
-  const propertiesHandle = card.getByRole("button", { name: "Promotion Card 속성" });
-
   await image.click();
   assert.equal(await page.locator(".component-inspector-popover").count(), 0, "component click must select without opening properties");
-  await propertiesHandle.click();
-  await page.locator(".component-inspector-popover").getByText("Card Image", { exact: true }).first().waitFor();
+  const imageEastResize = image.getByRole("button", { name: "Card Image 오른쪽 방향 크기 조절" });
+  await imageEastResize.press("ArrowLeft");
+  await page.waitForFunction(() => document.querySelector('[data-field-style-key="feature.card.image"]')?.style.width === "99%");
+  await card.getByRole("button", { name: "Card Image 속성 열기" }).click();
+  await page.locator(".component-inspector-popover").getByText("Promotion Card > Card Image", { exact: true }).waitFor();
   await page.getByLabel("이미지 형태").selectOption("rounded");
   await page.waitForFunction(() => document.querySelector('[data-field-style-key="feature.card.image"] .rendered-component-image-frame')?.style.borderRadius.includes("promo-image-radius"));
+  const fieldWidth = page.locator(".component-inspector-popover").getByLabel("너비 (%)");
+  await fieldWidth.fill("72");
+  await fieldWidth.blur();
+  await page.waitForFunction(() => document.querySelector('[data-field-style-key="feature.card.image"]')?.style.width === "72%");
 
   await page.getByRole("button", { name: "컴포넌트 속성 닫기" }).click();
   assert.equal(await page.locator(".component-inspector-popover").count(), 0);
+  await card.getByRole("button", { name: "Promotion Card 속성" }).click();
+  const fieldGap = page.locator(".component-inspector-popover").getByLabel("요소 간격 (px)");
+  await fieldGap.fill("21");
+  await fieldGap.blur();
+  await page.waitForFunction(() => document.querySelector('[data-item-key="card"] .rendered-component-fields')?.style.getPropertyValue('--component-field-gap') === "21px");
+  await page.getByRole("button", { name: "컴포넌트 속성 닫기" }).click();
 
   await title.click();
   assert.equal(await page.locator(".component-inspector-popover").count(), 0, "text click must not reopen properties");
-  await propertiesHandle.click();
-  await page.locator(".component-inspector-popover").getByText("Card Title", { exact: true }).first().waitFor();
+  await card.getByRole("button", { name: "Card Title 속성 열기" }).click();
+  await page.locator(".component-inspector-popover").getByText("Promotion Card > Card Title", { exact: true }).waitFor();
   assert.equal(await image.evaluate((node) => node.classList.contains("is-selected-field")), false);
   assert.equal(await title.evaluate((node) => node.classList.contains("is-selected-field")), true);
   await page.getByRole("button", { name: "텍스트 박스 내부 중앙 정렬", exact: true }).click();
-  assert.equal(await title.evaluate((node) => getComputedStyle(node).textAlign), "center");
+  assert.equal(await title.locator(".rendered-text").evaluate((node) => getComputedStyle(node).textAlign), "center");
+  await page.locator(".component-inspector-popover").getByRole("button", { name: "위로" }).click();
+  assert.equal(await card.locator(".rendered-component-field-shell").first().getAttribute("data-field-key"), "title");
 
   await cta.click();
-  await page.locator(".component-inspector-popover").getByText("Card CTA", { exact: true }).first().waitFor();
+  assert.equal(await page.locator(".component-inspector-popover").count(), 0, "CTA click must select without opening properties");
+  await card.getByRole("button", { name: "Card CTA 속성 열기" }).click();
+  await page.locator(".component-inspector-popover").getByText("Promotion Card > Card CTA", { exact: true }).waitFor();
   assert.equal(await title.evaluate((node) => node.classList.contains("is-selected-field")), false);
   assert.equal(await cta.evaluate((node) => node.classList.contains("is-selected-field")), true);
 
   await title.dblclick();
-  await title.waitFor({ state: "visible" });
-  assert.equal(await title.getAttribute("contenteditable"), "true");
+  const titleText = title.locator(".rendered-text");
+  await titleText.waitFor({ state: "visible" });
+  assert.equal(await titleText.getAttribute("contenteditable"), "true");
   await page.evaluate(() => {
     window.scrollTo(0, 0);
     const stage = document.querySelector(".preview-stage");
@@ -146,7 +162,7 @@ try {
   await moveHandle.press("Shift+ArrowDown");
   await page.waitForTimeout(50);
   const afterDrag = await card.boundingBox();
-  assert.equal(await title.getAttribute("contenteditable"), "false");
+  assert.equal(await titleText.getAttribute("contenteditable"), "false");
   assert.ok(afterDrag.x > beforeDrag.x + 20, `composite card must move horizontally from its dedicated handle: ${JSON.stringify({ beforeDrag, afterDrag, style: await card.getAttribute("style") })}`);
   assert.ok(afterDrag.y > beforeDrag.y + 15, `composite card must move vertically from its dedicated handle: ${JSON.stringify({ beforeDrag, afterDrag, style: await card.getAttribute("style") })}`);
   assert.deepEqual(pageErrors, []);

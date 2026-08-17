@@ -57,8 +57,10 @@ const emit = defineEmits([
   "clear-selection",
   "select-item",
   "open-item-inspector",
+  "open-field-inspector",
   "update-item-style",
   "update-renderer-item-style",
+  "update-renderer-field-style",
   "update-item-content",
   "update-section-style",
   "drop-library-component",
@@ -340,8 +342,10 @@ defineExpose({ finishTextEdit, getStageElement, inspectCollisions, scrollToSecti
         :selected-field-key="selectedFieldStyleKey"
         @select-item="(...args) => emit('select-item', ...args)"
         @open-item-inspector="(...args) => emit('open-item-inspector', ...args)"
+        @open-field-inspector="(...args) => emit('open-field-inspector', ...args)"
         @update-item-style="(...args) => emit('update-item-style', ...args)"
         @update-renderer-item-style="(...args) => emit('update-renderer-item-style', ...args)"
+        @update-renderer-field-style="(...args) => emit('update-renderer-field-style', ...args)"
         @update-item-content="(...args) => emit('update-item-content', ...args)"
         @select-text-lines="updateSelectedTextLines"
         @update-section-style="(...args) => emit('update-section-style', ...args)"

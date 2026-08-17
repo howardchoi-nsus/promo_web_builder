@@ -31,7 +31,7 @@ const props = defineProps({
   motionSpec: { type: Object, default: () => ({ sections: {}, items: {} }) },
   viewportOverride: { type: String, default: "" },
 });
-const emit = defineEmits(["select-item", "select-text-lines", "open-item-inspector", "update-item-style", "update-renderer-item-style", "update-item-content", "update-section-style"]);
+const emit = defineEmits(["select-item", "select-text-lines", "open-item-inspector", "open-field-inspector", "update-item-style", "update-renderer-item-style", "update-renderer-field-style", "update-item-content", "update-section-style"]);
 const SECTION_VERTICAL_PADDING_PX = 20;
 const DRAG_ACTIVATION_DISTANCE_PX = 7;
 const viewportWidth = ref(typeof globalThis.innerWidth === "number" ? globalThis.innerWidth : 1280);
@@ -188,9 +188,18 @@ function isFieldVisible(section, item, field) {
 }
 
 function renderedFields(section, item) {
-  return componentFields(item).filter((field) => (
-    props.editable || isFieldVisible(section, item, field)
-  ));
+  return componentFields(item)
+    .map((field, index) => ({
+      field,
+      index,
+      order: Number(fieldStyleData(section, item, field).order),
+    }))
+    .filter(({ field }) => props.editable || isFieldVisible(section, item, field))
+    .sort((left, right) => (
+      (Number.isFinite(left.order) ? left.order : left.index * 10)
+      - (Number.isFinite(right.order) ? right.order : right.index * 10)
+    ))
+    .map(({ field }) => field);
 }
 
 function valueFor(section, item, field = null) {
@@ -466,8 +475,12 @@ function fieldStyleData(section, item, field) {
 
 function fieldStyle(section, item, field) {
   const style = fieldStyleData(section, item, field);
+  const {
+    order, widthPct, minHeightPx, horizontalAlign, alignSelf,
+    marginTopPx, marginBottomPx, ...visualStyle
+  } = style;
   return {
-    ...style,
+    ...visualStyle,
     color: style.colorToken ? `var(${style.colorToken})` : style.color,
     backgroundColor: style.backgroundColorToken ? `var(${style.backgroundColorToken})` : style.backgroundColor,
     borderRadius: style.borderRadiusToken ? `var(${style.borderRadiusToken})` : style.borderRadius,
@@ -478,6 +491,152 @@ function fieldStyle(section, item, field) {
     lineHeight: style.lineHeightToken ? `var(${style.lineHeightToken})` : style.lineHeight,
     letterSpacing: style.letterSpacingToken ? `var(${style.letterSpacingToken})` : style.letterSpacing,
   };
+}
+
+function fieldLayoutStyle(section, item, field) {
+  const style = fieldStyleData(section, item, field);
+  const widthPct = Math.min(100, Math.max(5, Number(style.widthPct) || 100));
+  const align = ["left", "center", "right", "stretch"].includes(style.horizontalAlign)
+    ? style.horizontalAlign
+    : "stretch";
+  return {
+    order: Number.isFinite(Number(style.order)) ? Number(style.order) : undefined,
+    width: `${widthPct}%`,
+    minHeight: Number(style.minHeightPx) > 0 ? `${Math.min(1200, Math.max(28, Number(style.minHeightPx)))}px` : undefined,
+    justifySelf: align === "stretch" ? "stretch" : align === "left" ? "start" : align === "right" ? "end" : "center",
+    alignSelf: ["start", "center", "end", "stretch"].includes(style.alignSelf) ? style.alignSelf : undefined,
+    marginTop: Number(style.marginTopPx) > 0 ? `${Math.min(240, Number(style.marginTopPx))}px` : undefined,
+    marginBottom: Number(style.marginBottomPx) > 0 ? `${Math.min(240, Number(style.marginBottomPx))}px` : undefined,
+  };
+}
+
+function fieldStyleKey(section, item, field) {
+  return `${styleKey(section, item)}.${field.fieldKey}`;
+}
+
+function fieldSelected(section, item, field) {
+  return props.selectedFieldKey === fieldStyleKey(section, item, field);
+}
+
+function openFieldInspector(event, section, item, field) {
+  if (!props.editable) return;
+  event.preventDefault();
+  event.stopPropagation();
+  emit("open-field-inspector", section, item, field);
+}
+
+function fieldResizeHandles(field) {
+  return field.fieldKind === "text" ? ["e", "w"] : ["e", "s", "w", "se"];
+}
+
+function fieldResizeLabel(field, direction) {
+  return `${field.name || field.fieldKey} ${RESIZE_DIRECTION_LABELS[direction] || direction} 방향 크기 조절`;
+}
+
+function startFieldResize(event, section, item, field, direction) {
+  if (!props.editable || item.isLocked || field.isLocked || event.button !== 0) return;
+  const handle = event.currentTarget;
+  const target = handle.closest(".rendered-component-field-shell");
+  const container = target?.closest(".rendered-component-fields");
+  if (!target || !container) return;
+  event.preventDefault();
+  event.stopPropagation();
+  activeDragCleanup?.();
+  activeResizeCleanup?.();
+  target.querySelector('[contenteditable="true"]')?.blur();
+  try { handle.setPointerCapture(event.pointerId); } catch { return; }
+  beginInteraction("component-field-resize");
+  target.classList.add("is-resizing-field");
+  const containerRect = container.getBoundingClientRect();
+  const startRect = target.getBoundingClientRect();
+  const startX = event.clientX;
+  const startY = event.clientY;
+  const horizontalActive = direction.includes("e") || direction.includes("w");
+  const verticalActive = direction.includes("s") && field.fieldKind !== "text";
+  let nextWidth = startRect.width;
+  let nextHeight = startRect.height;
+  let moved = false;
+  let finished = false;
+  const move = (moveEvent) => {
+    if (finished || moveEvent.pointerId !== event.pointerId) return;
+    if ((moveEvent.buttons & 1) !== 1) { finish(true); return; }
+    if (moveEvent.cancelable) moveEvent.preventDefault();
+    const deltaX = moveEvent.clientX - startX;
+    const deltaY = moveEvent.clientY - startY;
+    if (Math.hypot(deltaX, deltaY) < 0.5) return;
+    moved = true;
+    if (horizontalActive) {
+      const horizontalSign = direction.includes("w") ? -1 : 1;
+      nextWidth = Math.min(containerRect.width, Math.max(containerRect.width * 0.05, startRect.width + (deltaX * horizontalSign)));
+    }
+    if (verticalActive) {
+      nextHeight = Math.min(1200, Math.max(28, startRect.height + moveEvent.clientY - startY));
+    }
+    if (horizontalActive) target.style.width = `${nextWidth}px`;
+    if (verticalActive) target.style.minHeight = `${nextHeight}px`;
+  };
+  const finish = (commit = false) => {
+    if (finished) return;
+    finished = true;
+    if (commit && moved) {
+      emit("update-renderer-field-style", section, item, field, {
+        ...(horizontalActive ? { widthPct: Math.round((nextWidth / containerRect.width) * 10000) / 100 } : {}),
+        ...(verticalActive ? { minHeightPx: Math.round(nextHeight) } : {}),
+      });
+    }
+    target.style.removeProperty("width");
+    target.style.removeProperty("min-height");
+    target.classList.remove("is-resizing-field");
+    if (handle.hasPointerCapture(event.pointerId)) {
+      try { handle.releasePointerCapture(event.pointerId); } catch { /* already released */ }
+    }
+    globalThis.removeEventListener("pointermove", move);
+    globalThis.removeEventListener("pointerup", handlePointerUp);
+    globalThis.removeEventListener("pointercancel", handlePointerCancel);
+    globalThis.removeEventListener("blur", cancelResize);
+    handle.removeEventListener("lostpointercapture", cancelResize);
+    if (activeResizeCleanup === cancelResize) activeResizeCleanup = null;
+    endInteraction("component-field-resize");
+  };
+  const handlePointerUp = (upEvent) => {
+    if (upEvent.pointerId === event.pointerId) finish(true);
+  };
+  const handlePointerCancel = (cancelEvent) => {
+    if (cancelEvent.pointerId === event.pointerId) finish(false);
+  };
+  const cancelResize = () => finish(false);
+  activeResizeCleanup = cancelResize;
+  globalThis.addEventListener("pointermove", move, { passive: false });
+  globalThis.addEventListener("pointerup", handlePointerUp);
+  globalThis.addEventListener("pointercancel", handlePointerCancel);
+  globalThis.addEventListener("blur", cancelResize);
+  handle.addEventListener("lostpointercapture", cancelResize);
+}
+
+function resizeFieldByKeyboard(event, section, item, field, direction) {
+  if (!event.key.startsWith("Arrow") || item.isLocked || field.isLocked) return;
+  const target = event.currentTarget.closest(".rendered-component-field-shell");
+  const container = target?.closest(".rendered-component-fields");
+  if (!target || !container) return;
+  event.preventDefault();
+  event.stopPropagation();
+  const step = event.shiftKey ? 10 : 1;
+  const style = fieldStyleData(section, item, field);
+  const horizontalActive = direction.includes("e") || direction.includes("w");
+  const verticalActive = direction.includes("s") && field.fieldKind !== "text";
+  const widthDelta = horizontalActive
+    ? event.key === "ArrowLeft" ? -step : event.key === "ArrowRight" ? step : 0
+    : 0;
+  const heightDelta = verticalActive
+    ? event.key === "ArrowUp" ? -step : event.key === "ArrowDown" ? step : 0
+    : 0;
+  if (!widthDelta && !heightDelta) return;
+  emit("update-renderer-field-style", section, item, field, {
+    ...(widthDelta ? { widthPct: Math.min(100, Math.max(5, (Number(style.widthPct) || 100) + widthDelta)) } : {}),
+    ...(heightDelta ? {
+      minHeightPx: Math.min(1200, Math.max(28, (Number(style.minHeightPx) || target.getBoundingClientRect().height) + heightDelta)),
+    } : {}),
+  });
 }
 
 function imageFieldFrameStyle(section, item, field) {
@@ -533,11 +692,24 @@ function renderedItemHeight(section, item) {
 function defaultSectionHeight(section) {
   const items = section.items || [];
   const contentHeight = items.reduce((height, item) => height + renderedItemHeight(section, item), 0);
-  return Math.max(50, contentHeight + (items.length ? 52 : 0));
+  const positionedBottom = items.reduce((bottom, item) => {
+    const style = itemStyle(section, item);
+    if (style.positionMode !== "free" || style.yPx === undefined) return bottom;
+    return Math.max(bottom, Math.max(0, Number(style.yPx) || 0) + renderedItemHeight(section, item));
+  }, 0);
+  return Math.max(
+    50,
+    contentHeight + (items.length ? 52 : 0),
+    positionedBottom + (items.length ? SECTION_VERTICAL_PADDING_PX * 2 : 0),
+  );
 }
 
 function resolvedSectionHeight(section) {
-  return resolveSectionHeight(sectionStyle(section).minHeight, defaultSectionHeight(section));
+  const automaticHeight = defaultSectionHeight(section);
+  return Math.max(
+    automaticHeight,
+    resolveSectionHeight(sectionStyle(section).minHeight, automaticHeight),
+  );
 }
 
 function defaultItemPosition(section, item) {
@@ -1657,6 +1829,7 @@ defineExpose({ inspectLayoutCollisions });
                   selectedItemKey === styleKey(section, item)
                   || selectedItemKeys.includes(styleKey(section, item))
                 ),
+                'has-selected-field': editable && selectedFieldKey.startsWith(`${styleKey(section, item)}.`),
                 'is-hidden-in-output': editable && !isItemVisible(section, item),
                 'is-locked': editable && item.isLocked,
                 'is-empty': editable && itemIsEmpty(section, item),
@@ -1708,17 +1881,35 @@ defineExpose({ inspectLayoutCollisions });
               <em v-if="item.isLocked">잠금</em>
               <em v-if="itemIsEmpty(section, item)">비어 있음</em>
             </span>
-            <div v-if="componentFields(item).length > 1" class="rendered-component-fields">
-              <template v-for="field in renderedFields(section, item)" :key="field.fieldKey">
+            <div
+              v-if="componentFields(item).length > 1"
+              class="rendered-component-fields"
+              :style="{
+                '--component-field-gap': `${Math.min(240, Math.max(0, Number(itemStyle(section, item).fieldGapPx) || 14))}px`,
+                '--component-content-padding': `${Math.min(240, Math.max(0, Number(itemStyle(section, item).contentPaddingPx) || 0))}px`,
+              }"
+            >
+              <div
+                v-for="field in renderedFields(section, item)"
+                :key="field.fieldKey"
+                class="rendered-component-field-shell"
+                :class="{
+                  'is-hidden-in-output': editable && !isFieldVisible(section, item, field),
+                  'is-selected-field': editable && fieldSelected(section, item, field),
+                  'is-locked-field': editable && field.isLocked,
+                }"
+                :style="fieldLayoutStyle(section, item, field)"
+                :data-field-key="field.fieldKey"
+                :data-field-kind="field.fieldKind"
+                :data-field-style-key="fieldStyleKey(section, item, field)"
+                :aria-selected="editable ? String(fieldSelected(section, item, field)) : undefined"
+                :tabindex="editable && fieldSelected(section, item, field) ? 0 : -1"
+                @click.stop="handleFieldClick($event, section, item, field)"
+              >
                 <a
                   v-if="field.fieldKind === 'cta'"
                   class="rendered-cta rendered-component-field"
-                  :class="{
-                    'is-hidden-in-output': editable && !isFieldVisible(section, item, field),
-                    'is-selected-field': editable && selectedFieldKey === `${styleKey(section, item)}.${field.fieldKey}`,
-                  }"
                   :style="fieldStyle(section, item, field)"
-                  :data-field-style-key="`${styleKey(section, item)}.${field.fieldKey}`"
                   :href="ctaUrl(valueFor(section, item, field))"
                   :target="valueFor(section, item, field)?.target || '_self'"
                   :rel="valueFor(section, item, field)?.target === '_blank' ? 'noopener noreferrer' : undefined"
@@ -1726,18 +1917,9 @@ defineExpose({ inspectLayoutCollisions });
                   @click.stop="handleFieldClick($event, section, item, field)"
                   @dragstart="handleCtaDragStart"
                 >{{ valueFor(section, item, field)?.label || field.name }}</a>
-                <div
-                  v-else-if="field.fieldKind === 'image'"
-                  class="rendered-component-field"
-                  :class="{
-                    'is-hidden-in-output': editable && !isFieldVisible(section, item, field),
-                    'is-selected-field': editable && selectedFieldKey === `${styleKey(section, item)}.${field.fieldKey}`,
-                  }"
-                  :data-field-style-key="`${styleKey(section, item)}.${field.fieldKey}`"
-                  @click.stop="handleFieldClick($event, section, item, field)"
-                >
+                <template v-else-if="field.fieldKind === 'image'">
                   <div
-                    class="rendered-image-frame rendered-component-image-frame"
+                    class="rendered-image-frame rendered-component-image-frame rendered-component-field"
                     :style="imageFieldFrameStyle(section, item, field)"
                     :role="imageFieldAccessibility(section, item, field).role"
                     :aria-label="imageFieldAccessibility(section, item, field).label"
@@ -1753,76 +1935,66 @@ defineExpose({ inspectLayoutCollisions });
                     <i v-if="aiTargetState(section, item, field).kind === 'processing'" aria-hidden="true"></i>
                     <span>{{ aiTargetState(section, item, field).label }}</span>
                   </div>
-                </div>
+                </template>
                 <div
                   v-else-if="hasContent(valueFor(section, item, field)) && usesLineRenderer(section, item, field)"
                   class="rendered-text rendered-text--lines rendered-component-field"
-                  :class="{
-                    'rendered-text--title': field.textType === 'title',
-                    'is-hidden-in-output': editable && !isFieldVisible(section, item, field),
-                    'is-selected-field': editable && selectedFieldKey === `${styleKey(section, item)}.${field.fieldKey}`,
-                  }"
+                  :class="{ 'rendered-text--title': field.textType === 'title' }"
                   :style="fieldStyle(section, item, field)"
                   :data-field-key="field.fieldKey"
-                  :data-field-style-key="`${styleKey(section, item)}.${field.fieldKey}`"
                   @click.stop="handleTextClick($event, section, item, field)"
                   @dblclick.stop="startTextEdit($event, section, item, field)"
                 >
-                  <div
-                    v-for="entry in textLineEntries(section, item, field)"
-                    :key="`${field.fieldKey}-line-${entry.index}`"
-                    class="rendered-text-line"
-                    :class="textLineClasses(entry)"
-                    :style="textLineInlineStyle(entry)"
-                    :data-text-line-index="entry.index"
-                  ><span class="rendered-text-line__content">{{ entry.text }}</span></div>
+                  <div v-for="entry in textLineEntries(section, item, field)" :key="`${field.fieldKey}-line-${entry.index}`" class="rendered-text-line" :class="textLineClasses(entry)" :style="textLineInlineStyle(entry)" :data-text-line-index="entry.index"><span class="rendered-text-line__content">{{ entry.text }}</span></div>
                 </div>
                 <component
                   :is="textListTag(section, item, field)"
                   v-else-if="hasContent(valueFor(section, item, field)) && fieldStyleData(section, item, field).listType"
                   class="rendered-text rendered-component-field"
-                  :class="{
-                    'rendered-text--title': field.textType === 'title',
-                    'is-hidden-in-output': editable && !isFieldVisible(section, item, field),
-                    'is-selected-field': editable && selectedFieldKey === `${styleKey(section, item)}.${field.fieldKey}`,
-                  }"
+                  :class="{ 'rendered-text--title': field.textType === 'title' }"
                   :style="fieldStyle(section, item, field)"
                   :data-field-key="field.fieldKey"
-                  :data-field-style-key="`${styleKey(section, item)}.${field.fieldKey}`"
                   @click.stop="handleTextClick($event, section, item, field)"
                   @dblclick.stop="startTextEdit($event, section, item, field)"
-                >
-                  <li v-for="(line, index) in textListItems(valueFor(section, item, field))" :key="`${field.fieldKey}-${index}`">
-                    <span class="rendered-text__content">{{ line }}</span>
-                  </li>
-                </component>
+                ><li v-for="(line, index) in textListItems(valueFor(section, item, field))" :key="`${field.fieldKey}-${index}`"><span class="rendered-text__content">{{ line }}</span></li></component>
                 <p
                   v-else-if="hasContent(valueFor(section, item, field))"
                   class="rendered-text rendered-component-field"
-                  :class="{
-                    'rendered-text--title': field.textType === 'title',
-                    'is-hidden-in-output': editable && !isFieldVisible(section, item, field),
-                    'is-selected-field': editable && selectedFieldKey === `${styleKey(section, item)}.${field.fieldKey}`,
-                  }"
+                  :class="{ 'rendered-text--title': field.textType === 'title' }"
                   :style="fieldStyle(section, item, field)"
                   :data-field-key="field.fieldKey"
-                  :data-field-style-key="`${styleKey(section, item)}.${field.fieldKey}`"
                   @click.stop="handleTextClick($event, section, item, field)"
                   @dblclick.stop="startTextEdit($event, section, item, field)"
                 ><span class="rendered-text__content">{{ valueFor(section, item, field) }}</span></p>
                 <p
                   v-else
                   class="rendered-empty rendered-component-field"
-                  :class="{
-                    'is-hidden-in-output': editable && !isFieldVisible(section, item, field),
-                    'is-selected-field': editable && selectedFieldKey === `${styleKey(section, item)}.${field.fieldKey}`,
-                  }"
                   :data-field-key="field.fieldKey"
-                  :data-field-style-key="`${styleKey(section, item)}.${field.fieldKey}`"
                   @click.stop="handleTextClick($event, section, item, field)"
                   @dblclick.stop="startTextEdit($event, section, item, field)"
                 >{{ textFieldDescription(item, field) }}</p>
-              </template>
+                <button
+                  v-if="editable && showGuides && fieldSelected(section, item, field)"
+                  type="button"
+                  class="component-action-handle component-field-properties-handle"
+                  :aria-label="`${field.name || field.fieldKey} 속성 열기`"
+                  :title="`${field.name || field.fieldKey} 속성 열기`"
+                  @pointerdown.stop
+                  @click="openFieldInspector($event, section, item, field)"
+                ></button>
+                <template v-if="editable && showGuides && fieldSelected(section, item, field) && !item.isLocked && !field.isLocked">
+                  <button
+                    v-for="direction in fieldResizeHandles(field)"
+                    :key="direction"
+                    type="button"
+                    class="item-resize-handle component-field-resize-handle"
+                    :class="`item-resize-handle--${direction}`"
+                    :aria-label="fieldResizeLabel(field, direction)"
+                    @pointerdown.stop="startFieldResize($event, section, item, field, direction)"
+                    @keydown="resizeFieldByKeyboard($event, section, item, field, direction)"
+                  ></button>
+                </template>
+              </div>
             </div>
 
             <template v-else-if="item.fieldKind === 'cta'">

@@ -21,6 +21,7 @@ export const EditorCommandType = Object.freeze({
   LAYOUT_REPLACE: "LAYOUT_REPLACE",
   DOCUMENT_PATCH: "DOCUMENT_PATCH",
   LAYOUT_COLLISION_REFLOW: "LAYOUT_COLLISION_REFLOW",
+  COMPONENT_FIELD_LAYOUT_REORDER: "COMPONENT_FIELD_LAYOUT_REORDER",
 });
 
 export function editorCommand(type, payload = {}, meta = {}) {

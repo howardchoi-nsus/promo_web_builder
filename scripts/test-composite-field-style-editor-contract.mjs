@@ -14,15 +14,19 @@ assert.match(appSource, /selectItem\(section, item, \{ fieldKey: field\?\.fieldK
 assert.match(appSource, /<TextEditorControls[\s\S]*:show-layout-controls="!selectedField"/);
 assert.match(appSource, /<TextEditorControls[\s\S]*@patch-style="patchSelectedTextStyle"/);
 
-assert.match(rendererSource, /:data-field-style-key="`\$\{styleKey\(section, item\)\}\.\$\{field\.fieldKey\}`"/);
+assert.match(rendererSource, /:data-field-style-key="fieldStyleKey\(section, item, field\)"/);
 assert.match(rendererSource, /fieldStyleData\(section, item, field\)/);
 assert.match(rendererSource, /fieldKey: field\.fieldKey/);
-assert.match(rendererSource, /selectedFieldKey === `\$\{styleKey\(section, item\)\}\.\$\{field\.fieldKey\}`/);
+assert.match(rendererSource, /props\.selectedFieldKey === fieldStyleKey\(section, item, field\)/);
+assert.match(rendererSource, /class="rendered-component-field-shell"/);
+assert.match(rendererSource, /open-field-inspector/);
+assert.match(rendererSource, /update-renderer-field-style/);
 assert.match(rendererSource, /const targetFieldKey = event\?\.fieldKey \? `\$\{key\}\.\$\{event\.fieldKey\}` : ""/);
 assert.match(rendererSource, /props\.selectedFieldKey === targetFieldKey/);
 assert.match(rendererSource, /event\.target\.closest\("\[data-field-style-key\]"\)/);
 
 assert.match(previewSource, /\[data-field-style-key="\$\{escapedKey\}"\], \[data-style-key="\$\{escapedKey\}"\]/);
+assert.match(previewSource, /@open-field-inspector="\(\.\.\.args\) => emit\('open-field-inspector', \.\.\.args\)"/);
 assert.match(popoverSource, /\[data-field-style-key="\$\{escapedKey\}"\], \[data-style-key="\$\{escapedKey\}"\]/);
 
 console.log("composite field style editor contract tests passed");

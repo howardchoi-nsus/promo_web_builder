@@ -226,10 +226,11 @@ assert.doesNotMatch(renderer, /selectRendererItem\(section, item\);\s*target\.se
 assert.match(previewPanel, /@click="clearPreviewSelection"/);
 assert.match(app, /function clearEditorSelection\(\)/);
 assert.match(renderer, /function resolvedSectionHeight\(section\)/);
-assert.match(renderer, /return resolveSectionHeight\(sectionStyle\(section\)\.minHeight, defaultSectionHeight\(section\)\)/);
-assert.match(renderer, /return Math\.max\(50, contentHeight \+ \(items\.length \? 52 : 0\)\)/);
+assert.match(renderer, /const automaticHeight = defaultSectionHeight\(section\)/);
+assert.match(renderer, /Math\.max\([\s\S]*automaticHeight,[\s\S]*resolveSectionHeight\(sectionStyle\(section\)\.minHeight, automaticHeight\)/);
+assert.match(renderer, /const positionedBottom = items\.reduce/);
+assert.match(renderer, /contentHeight \+ \(items\.length \? 52 : 0\)/);
 assert.doesNotMatch(renderer, /return Math\.max\(180,/);
-assert.doesNotMatch(renderer, /Math\.max\(Number\(sectionStyle\(section\)\.minHeight\) \|\| 0, defaultSectionHeight\(section\)\)/);
 assert.match(renderer, /ResizeObserver/);
 assert.match(rendererStyles, /is-editable:not\(\.is-editing\) \.rendered-text[^}]*user-select:\s*none/);
 assert.match(renderer, /startSectionResize/);

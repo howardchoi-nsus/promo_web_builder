@@ -488,8 +488,7 @@ function resetSectionComposition() {
 }
 
 async function selectRendererItem(section, item, selection = {}) {
-  const sameTarget = selectedSectionKey.value === section.sectionKey && selectedItemKey.value === item?.itemKey;
-  if (!sameTarget) componentInspectorOpen.value = false;
+  componentInspectorOpen.value = false;
   if (selectedSectionKey.value && selectedSectionKey.value !== section.sectionKey) {
     resetSectionComposition();
   }
@@ -507,9 +506,15 @@ async function selectRendererItem(section, item, selection = {}) {
 
 async function openComponentInspector(section, item) {
   if (!section || !item) return;
-  if (selectedSectionKey.value !== section.sectionKey || selectedItemKey.value !== item.itemKey) {
-    selectItem(section, item);
-  }
+  selectItem(section, item, { fieldKey: "" });
+  componentInspectorOpen.value = true;
+  await nextTick();
+  previewPanelRef.value?.updateSelectionRect?.();
+}
+
+async function openFieldInspector(section, item, field) {
+  if (!section || !item || !field) return;
+  selectItem(section, item, { fieldKey: field.fieldKey });
   componentInspectorOpen.value = true;
   await nextTick();
   previewPanelRef.value?.updateSelectionRect?.();
@@ -517,6 +522,15 @@ async function openComponentInspector(section, item) {
 
 function closeComponentInspector() {
   componentInspectorOpen.value = false;
+}
+
+function handleEditorEscape(event) {
+  if (event.key !== "Escape" || event.defaultPrevented || componentInspectorOpen.value || !selectedFieldKey.value) return;
+  if (event.target?.closest?.('input, textarea, select, [contenteditable="true"]')) return;
+  event.preventDefault();
+  selectedFieldKey.value = "";
+  selectedTextLines.value = null;
+  nextTick(() => previewPanelRef.value?.updateSelectionRect?.());
 }
 
 function scrollPreviewToSection(section) {
@@ -1636,6 +1650,57 @@ function updateRendererItemStyle(section, item, patch) {
   applyRendererStylePatch(key, nextPatch, "컴포넌트 위치·크기 변경");
 }
 
+function updateRendererFieldStyle(section, item, field, patch) {
+  if (!section || !item || !field || item.isLocked || field.isLocked) return;
+  applyRendererStylePatch(
+    `${section.sectionKey}.${item.itemKey}.${field.fieldKey}`,
+    patch,
+    `${field.name || field.fieldKey} 필드 크기 변경`,
+  );
+  nextTick(() => previewPanelRef.value?.updateSelectionRect?.());
+}
+
+function orderedComponentFields(item = selectedItem.value) {
+  return componentFields(item)
+    .map((field, index) => ({
+      field,
+      index,
+      order: Number((viewport.value === "mobile"
+        ? {
+            ...(designSpec.value.itemStyles?.[`${selectedStyleKey.value}.${field.fieldKey}`] || {}),
+            ...(designSpec.value.responsiveLayouts?.mobile?.itemStyles?.[`${selectedStyleKey.value}.${field.fieldKey}`] || {}),
+          }
+        : designSpec.value.itemStyles?.[`${selectedStyleKey.value}.${field.fieldKey}`])?.order),
+    }))
+    .sort((left, right) => (
+      (Number.isFinite(left.order) ? left.order : left.index * 10)
+      - (Number.isFinite(right.order) ? right.order : right.index * 10)
+    ))
+    .map(({ field }) => field);
+}
+
+function selectedFieldOrderIndex() {
+  return orderedComponentFields().findIndex((field) => field.fieldKey === selectedField.value?.fieldKey);
+}
+
+function reorderSelectedField(direction) {
+  if (!selectedField.value || selectedItem.value?.isLocked || selectedField.value.isLocked) return;
+  const fields = orderedComponentFields();
+  const currentIndex = fields.findIndex((field) => field.fieldKey === selectedField.value.fieldKey);
+  const targetIndex = currentIndex + direction;
+  if (currentIndex < 0 || targetIndex < 0 || targetIndex >= fields.length) return;
+  [fields[currentIndex], fields[targetIndex]] = [fields[targetIndex], fields[currentIndex]];
+  const stylePatches = Object.fromEntries(fields.map((field, index) => [
+    `${selectedStyleKey.value}.${field.fieldKey}`,
+    { order: index * 10 },
+  ]));
+  executeEditorCommand(EditorCommandType.COMPONENT_FIELD_LAYOUT_REORDER, {
+    ...(viewport.value === "mobile" ? { viewport: "mobile" } : {}),
+    stylePatches,
+  }, { label: `${selectedField.value.name || selectedField.value.fieldKey} 필드 순서 변경` });
+  nextTick(() => previewPanelRef.value?.updateSelectionRect?.());
+}
+
 function applyLayoutCollisionReflow(result) {
   if (!result?.count || !result.itemPatches) return;
   executeEditorCommand(EditorCommandType.LAYOUT_COLLISION_REFLOW, result, {
@@ -2364,6 +2429,7 @@ onMounted(() => {
     document.body.classList.add("create-promo-editor-document");
   }
   window.PromoShell?.init(document);
+  document.addEventListener("keydown", handleEditorEscape);
   loadEditorLibraries();
   if (props.mode === "output") loadOutput();
   else if (isAiDocumentMode.value) loadAiDocument();
@@ -2380,6 +2446,7 @@ onBeforeUnmount(() => {
   aiDocumentPollingCancelled = true;
   disconnectPromoBuilder?.();
   disconnectPromoBuilder = null;
+  document.removeEventListener("keydown", handleEditorEscape);
   document.documentElement.classList.remove("layout-editor-document");
   document.body.classList.remove("layout-editor-document");
   document.documentElement.classList.remove("create-promo-editor-document");
@@ -2649,8 +2716,10 @@ onBeforeUnmount(() => {
         @clear-selection="clearEditorSelection"
         @select-item="selectRendererItem"
         @open-item-inspector="openComponentInspector"
+        @open-field-inspector="openFieldInspector"
         @update-item-style="updateItemStyle"
         @update-renderer-item-style="updateRendererItemStyle"
+        @update-renderer-field-style="updateRendererFieldStyle"
         @update-item-content="updateRendererContent"
         @update-section-style="updateSectionStyle"
         @layout-collision-reflow="applyLayoutCollisionReflow"
@@ -2667,7 +2736,7 @@ onBeforeUnmount(() => {
       <ComponentInspectorPopover
         v-if="componentInspectorOpen && selectedItem && componentInspectorAnchor"
         :anchor-rect="componentInspectorAnchor"
-        :title="selectedItemKeys.length > 1 ? `${selectedItemKeys.length}개 컴포넌트` : (selectedField?.name || selectedItem.name)"
+        :title="selectedItemKeys.length > 1 ? `${selectedItemKeys.length}개 컴포넌트` : (selectedField ? `${selectedItem.name} > ${selectedField.name}` : selectedItem.name)"
         :subtitle="selectedItemKeys.length > 1 ? '다중 정렬' : (selectedField ? `${selectedItem.name} · ${selectedField.fieldKind}` : selectedItem.fieldKind)"
         :locked="selectedItemKeys.length <= 1 && (selectedItem.isLocked || selectedField?.isLocked)"
         :anchor-key="selectedTargetStyleKey"
@@ -2829,6 +2898,32 @@ onBeforeUnmount(() => {
             <div><dt>필수</dt><dd>{{ selectedItem.isRequired ? "Y" : "N" }}</dd></div>
             <div><dt>고정</dt><dd>{{ selectedItem.isLocked ? "Y" : "N" }}</dd></div>
           </dl>
+
+          <section v-if="selectedField" class="component-field-layout-controls">
+            <div class="component-field-layout-controls__heading">
+              <strong>FIELD LAYOUT</strong>
+              <div class="component-field-order-actions" role="group" aria-label="필드 표시 순서">
+                <button type="button" :disabled="selectedItem.isLocked || selectedField.isLocked || selectedFieldOrderIndex() <= 0" @click="reorderSelectedField(-1)">위로</button>
+                <button type="button" :disabled="selectedItem.isLocked || selectedField.isLocked || selectedFieldOrderIndex() >= orderedComponentFields().length - 1" @click="reorderSelectedField(1)">아래로</button>
+              </div>
+            </div>
+            <div class="component-field-layout-grid">
+              <label><span>너비 (%)</span><input type="number" min="5" max="100" step="1" :disabled="selectedItem.isLocked || selectedField.isLocked" :value="selectedTargetStyle.widthPct || 100" @change="updateSelectedTargetStyle({ widthPct: Math.min(100, Math.max(5, Number($event.target.value) || 100)) })" /></label>
+              <label><span>최소 높이 (px)</span><input type="number" min="28" max="1200" step="1" :disabled="selectedItem.isLocked || selectedField.isLocked || selectedField.fieldKind === 'text'" :value="selectedTargetStyle.minHeightPx || ''" placeholder="자동" @change="updateSelectedTargetStyle({ minHeightPx: $event.target.value === '' ? undefined : Math.min(1200, Math.max(28, Number($event.target.value) || 28)) })" /></label>
+              <label><span>가로 정렬</span><select :disabled="selectedItem.isLocked || selectedField.isLocked" :value="selectedTargetStyle.horizontalAlign || 'stretch'" @change="updateSelectedTargetStyle({ horizontalAlign: $event.target.value })"><option value="stretch">채우기</option><option value="left">왼쪽</option><option value="center">가운데</option><option value="right">오른쪽</option></select></label>
+              <label><span>세로 정렬</span><select :disabled="selectedItem.isLocked || selectedField.isLocked" :value="selectedTargetStyle.alignSelf || 'stretch'" @change="updateSelectedTargetStyle({ alignSelf: $event.target.value })"><option value="stretch">채우기</option><option value="start">위</option><option value="center">가운데</option><option value="end">아래</option></select></label>
+              <label><span>위 여백 (px)</span><input type="number" min="0" max="240" step="1" :disabled="selectedItem.isLocked || selectedField.isLocked" :value="selectedTargetStyle.marginTopPx || 0" @change="updateSelectedTargetStyle({ marginTopPx: Math.min(240, Math.max(0, Number($event.target.value) || 0)) })" /></label>
+              <label><span>아래 여백 (px)</span><input type="number" min="0" max="240" step="1" :disabled="selectedItem.isLocked || selectedField.isLocked" :value="selectedTargetStyle.marginBottomPx || 0" @change="updateSelectedTargetStyle({ marginBottomPx: Math.min(240, Math.max(0, Number($event.target.value) || 0)) })" /></label>
+            </div>
+          </section>
+
+          <section v-else-if="componentFields(selectedItem).length > 1" class="component-field-layout-controls">
+            <div class="component-field-layout-controls__heading"><strong>COMPONENT CONTENT LAYOUT</strong></div>
+            <div class="component-field-layout-grid">
+              <label><span>요소 간격 (px)</span><input type="number" min="0" max="240" step="1" :disabled="selectedItem.isLocked" :value="selectedItemStyle.fieldGapPx ?? 14" @change="updateItemStyle({ fieldGapPx: Math.min(240, Math.max(0, Number($event.target.value) || 0)) })" /></label>
+              <label><span>내부 여백 (px)</span><input type="number" min="0" max="240" step="1" :disabled="selectedItem.isLocked" :value="selectedItemStyle.contentPaddingPx ?? 0" @change="updateItemStyle({ contentPaddingPx: Math.min(240, Math.max(0, Number($event.target.value) || 0)) })" /></label>
+            </div>
+          </section>
 
           <section
             v-if="selectedField || (componentFields(selectedItem).length <= 1 && selectedItem.fieldKind !== 'image')"

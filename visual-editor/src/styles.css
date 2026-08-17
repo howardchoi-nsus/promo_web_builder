@@ -184,7 +184,15 @@ button, a { letter-spacing: 0; }
 .component-inspector-typography .text-editor-toolbar { width: 100%; flex-wrap: wrap; overflow: visible; }
 .component-inspector-typography .text-layout-toolbar { width: 100%; padding-top: 7px; padding-left: 0; border-top: 1px solid var(--app-line); border-left: 0; }
 .component-field-token-controls, .component-field-design-controls { display: grid; gap: 8px; padding: 0 12px 12px; }
-.rendered-component-field.is-selected-field { outline: 2px solid var(--app-accent); outline-offset: 3px; }
+.component-field-layout-controls { display: grid; gap: 10px; margin-top: 12px; padding: 12px; border: 1px solid var(--app-line); background: var(--app-surface); }
+.component-field-layout-controls__heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.component-field-layout-controls__heading strong { font-size: 11px; letter-spacing: .04em; }
+.component-field-order-actions { display: inline-flex; gap: 6px; }
+.component-field-order-actions button { min-height: 28px; padding: 0 9px; border: 1px solid var(--app-line-strong); background: var(--app-panel); color: var(--app-ink); cursor: pointer; font-size: 10px; font-weight: 750; }
+.component-field-order-actions button:disabled { cursor: not-allowed; opacity: .4; }
+.component-field-layout-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.component-field-layout-grid label { min-width: 0; }
+.component-field-layout-grid input, .component-field-layout-grid select { width: 100%; }
 .text-editor-toolbar, .text-layout-toolbar { display: flex; align-items: center; min-width: 0; }
 .text-editor-toolbar { flex: 1 1 auto; flex-wrap: wrap; gap: 4px 0; overflow: visible; }
 .text-toolbar-group { display: inline-flex; flex: 0 0 auto; align-items: center; padding: 0 6px; border-right: 1px solid var(--app-line); }

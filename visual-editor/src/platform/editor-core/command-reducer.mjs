@@ -271,6 +271,35 @@ export function reduceEditorCommand(currentState, command) {
       }
       break;
     }
+    case EditorCommandType.COMPONENT_FIELD_LAYOUT_REORDER: {
+      const stylePatches = payload.stylePatches && typeof payload.stylePatches === "object"
+        ? payload.stylePatches
+        : {};
+      const entries = Object.entries(stylePatches).filter(([key, patch]) => (
+        key && patch && typeof patch === "object" && !Array.isArray(patch)
+      ));
+      if (!entries.length) return { ok: false, state: currentState, error: "Component field reorder patches are required." };
+      const patchStyles = (styles = {}) => {
+        const next = { ...styles };
+        entries.forEach(([key, patch]) => {
+          next[key] = patchRecord(next[key] || {}, patch);
+        });
+        return next;
+      };
+      if (payload.viewport === "mobile") {
+        const mobile = layout.responsiveLayouts?.mobile || {};
+        state.document.layout = {
+          ...layout,
+          responsiveLayouts: {
+            ...(layout.responsiveLayouts || {}),
+            mobile: { ...mobile, itemStyles: patchStyles(mobile.itemStyles) },
+          },
+        };
+      } else {
+        state.document.layout = { ...layout, itemStyles: patchStyles(layout.itemStyles) };
+      }
+      break;
+    }
     case EditorCommandType.THEME_STYLE_PATCH:
       state.document.layout = {
         ...layout,

@@ -94,6 +94,29 @@ assert.equal(result.state.document.layout.sectionStyles.hero.minHeight, 520);
 result = store.undo();
 assert.equal(result.state.document.layout.responsiveLayouts.mobile.itemStyles["hero.description"], undefined);
 
+result = store.execute(editorCommand(EditorCommandType.COMPONENT_FIELD_LAYOUT_REORDER, {
+  stylePatches: {
+    "hero.card.image": { order: 10 },
+    "hero.card.title": { order: 0 },
+  },
+}));
+assert.equal(result.ok, true);
+assert.equal(result.state.document.layout.itemStyles["hero.card.image"].order, 10);
+assert.equal(result.state.document.layout.itemStyles["hero.card.title"].order, 0);
+result = store.undo();
+assert.equal(result.state.document.layout.itemStyles["hero.card.image"], undefined);
+assert.equal(result.state.document.layout.itemStyles["hero.card.title"], undefined);
+
+result = store.execute(editorCommand(EditorCommandType.COMPONENT_FIELD_LAYOUT_REORDER, {
+  viewport: "mobile",
+  stylePatches: {
+    "hero.card.image": { order: 0 },
+    "hero.card.title": { order: 10 },
+  },
+}));
+assert.equal(result.ok, true);
+assert.equal(result.state.document.layout.responsiveLayouts.mobile.itemStyles["hero.card.title"].order, 10);
+
 store.replaceDocument({
   layout: { itemStyles: { "hero.title": { fontSize: 30 } } },
   content: { hero: { title: "Reloaded" } },
