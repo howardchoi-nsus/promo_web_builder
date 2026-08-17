@@ -14,8 +14,8 @@ const layoutSnapshot = (content = {}) => ({
   sectionStyle: { backgroundColorToken: "--app-bg" },
   content,
   viewports: {
-    desktop: { items: { title: { xPct: 10, yPx: 40, widthPct: 80, heightPx: 80, zIndex: 1 } }, visibility: { items: {} } },
-    mobile: { items: { title: { xPct: 5, yPx: 20, widthPct: 90, heightPx: 70, zIndex: 1 } }, visibility: { items: {} } },
+    desktop: { items: { title: { positionMode: "free", xPct: 10, yPx: 40, widthPct: 80, heightPx: 80, zIndex: 1 } }, visibility: { items: {} } },
+    mobile: { items: { title: { positionMode: "free", xPct: 5, yPx: 20, widthPct: 90, heightPx: 70, zIndex: 1 } }, visibility: { items: {} } },
   },
 });
 const candidates = {
@@ -175,9 +175,13 @@ async function compile(candidateSet = candidates) {
   assert.equal(snapshot.designSpec.sectionStyles[heroId].backgroundColor, undefined);
   assert.equal(snapshot.designSpec.itemStyles[`${heroId}.${heroItemId}`].colorToken, "--app-ink");
   assert.equal(snapshot.designSpec.itemStyles[`${heroId}.${heroItemId}`].fontFamilyToken, "--app-font-body");
+  assert.equal(snapshot.designSpec.itemStyles[`${heroId}.${heroItemId}`].heightMode, "auto");
+  assert.equal(Object.hasOwn(snapshot.designSpec.itemStyles[`${heroId}.${heroItemId}`], "heightPx"), false);
   assert.equal(snapshot.designSpec.itemStyles[`${heroId}.${heroItemId}.subtitle`].colorToken, "--app-muted");
   assert.equal(snapshot.designSpec.itemStyles[`${heroId}.${hero.items[1].id}`].xPct, 51);
   assert.equal(snapshot.designSpec.responsiveLayouts.mobile.itemStyles[`${heroId}.${heroItemId}`].widthPct, 90);
+  assert.ok(snapshot.designSpec.responsiveLayouts.mobile.itemStyles[`${heroId}.${hero.items[1].id}`].yPx > 106);
+  assert.ok(snapshot.validation.warnings.some((entry) => entry.code === "TEXT_LAYOUT_OVERLAP_ADJUSTED"));
   assert.equal(snapshot.motionSpec.sections[heroId].className, "fade-up");
   assert.equal(snapshot.assets.requests.length, 2);
   assert.ok(snapshot.assets.requests.every((request) => request.targetType === "section-key-visual"));

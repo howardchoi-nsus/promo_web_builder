@@ -8,6 +8,7 @@ const {
 } = require("./_promo-page-composition-contract");
 const { fetchPinnedResourceVersions } = require("./_promo-content-resources-store");
 const { validateLayoutSpec } = require("./_wizard-form-template-layout-store");
+const { avoidTextComponentOverlaps } = require("./_promo-layout-text-collision");
 
 function clone(value) {
   return value == null ? value : JSON.parse(JSON.stringify(value));
@@ -413,6 +414,20 @@ async function compileRegistryComposition({
     tokenSet?.selectableTokens || [],
   );
   const itemStyleKeys = new Set([...Object.keys(defaultItemStyles), ...Object.keys(presetItemStyles)]);
+  const mergedItemStyles = Object.fromEntries([...itemStyleKeys].map((key) => [key, {
+    ...(defaultItemStyles[key] || {}), ...(presetItemStyles[key] || {}),
+  }]));
+  const collisionSafeLayout = avoidTextComponentOverlaps({
+    sections: sectionSnapshot,
+    sectionInputs,
+    itemStyles: mergedItemStyles,
+    mobileItemStyles,
+    sectionStyles,
+    itemVisibility,
+    mobileItemVisibility,
+    tokenValues,
+  });
+  layoutDiagnostics.push(...collisionSafeLayout.diagnostics);
   const designSpec = {
     contractVersion: 1,
     specKey: "ai-registry-composition",
@@ -427,12 +442,10 @@ async function compileRegistryComposition({
       fontFamilyToken: tokenBindings.font,
     },
     responsive: { contentMaxWidth: 1280, contentMinWidth: 1140, mobileBreakpoint: 720 },
-    itemStyles: Object.fromEntries([...itemStyleKeys].map((key) => [key, {
-      ...(defaultItemStyles[key] || {}), ...(presetItemStyles[key] || {}),
-    }])),
-    sectionStyles,
+    itemStyles: collisionSafeLayout.itemStyles,
+    sectionStyles: collisionSafeLayout.sectionStyles,
     visibility: { items: itemVisibility, fields: fieldVisibility },
-    responsiveLayouts: { mobile: { itemStyles: mobileItemStyles, visibility: { items: mobileItemVisibility } } },
+    responsiveLayouts: { mobile: { itemStyles: collisionSafeLayout.mobileItemStyles, visibility: { items: mobileItemVisibility } } },
   };
   const layoutValidation = validateLayoutSpec(designSpec, sectionSnapshot);
   if (layoutValidation.errors.length) {
