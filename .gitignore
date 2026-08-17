@@ -1,3 +1,5 @@
+# Dependencies are restored from package.json and pnpm-lock.yaml.
+# Keep generated dependency trees out of Git.
 node_modules/
 
 .vercel
