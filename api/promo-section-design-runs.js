@@ -121,6 +121,7 @@ module.exports = async function handler(req, res) {
         name: section.name || section.sectionName || sectionKey,
         items: (section.items || []).map((item) => ({
           itemKey: item.itemKey, name: item.name, fieldKind: item.fieldKind,
+          textType: item.textType,
           componentId: item.componentId, componentVersionId: item.componentVersionId,
           componentVersion: item.componentVersion, capabilities: item.capabilities, styleSlots: item.styleSlots,
           image: item.image || null, fields: Array.isArray(item.fields) ? item.fields : [],

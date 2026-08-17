@@ -5,6 +5,7 @@ const {
   defaultConstraints,
   analyzableSectionContent,
   layoutPatchFromResult,
+  layoutPatchFromDesignPlan,
   normalizeBackgroundColor,
   resolveImageTarget,
   safeAreaForVariant,
@@ -123,6 +124,42 @@ assert.throws(() => layoutPatchFromResult(section, {
   minHeight: 400,
   imagePrompt: "test",
 }, constraints), /not allowed/);
+
+const stackedTextSection = {
+  sectionKey: "generatedHero",
+  aiContent: {
+    title: "Bright Summer Welcome Bonus for New Users",
+    subtitle: "Kick off your summer with an exclusive bonus on your first deposit",
+    description: "Join the community and enjoy extra value and fun throughout the promotion.",
+  },
+  items: [
+    { itemKey: "title", fieldKind: "text", textType: "title" },
+    { itemKey: "subtitle", fieldKind: "text", textType: "headline" },
+    { itemKey: "description", fieldKind: "text", textType: "multi" },
+  ],
+};
+const stackedTextPlan = {
+  layoutVariant: "split-right",
+  itemPlacements: stackedTextSection.items.map((item, order) => ({
+    itemKey: item.itemKey,
+    region: "copy-primary",
+    order,
+  })),
+  slotSelections: [],
+  assetRequests: [],
+  rationale: "Stack copy safely.",
+};
+const stackedTextLayout = layoutPatchFromDesignPlan(stackedTextSection, stackedTextPlan, { values: [] });
+const stackedTitle = stackedTextLayout.layoutPatch.itemStyles["generatedHero.title"];
+const stackedSubtitle = stackedTextLayout.layoutPatch.itemStyles["generatedHero.subtitle"];
+const stackedDescription = stackedTextLayout.layoutPatch.itemStyles["generatedHero.description"];
+assert.equal(stackedTitle.heightMode, "auto");
+assert.equal(stackedSubtitle.heightMode, "auto");
+assert.equal(stackedDescription.heightMode, "auto");
+assert.equal(Object.hasOwn(stackedTitle, "heightPx"), false);
+assert.ok(stackedSubtitle.yPx > stackedTitle.yPx);
+assert.ok(stackedDescription.yPx > stackedSubtitle.yPx);
+assert.ok(stackedTextLayout.layoutPatch.sectionStyles.generatedHero.minHeight > 520);
 
 const lockedConstraints = { ...constraints, layoutLocks: ["minHeight"] };
 const lockedGenerated = layoutPatchFromResult(section, {

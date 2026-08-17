@@ -163,6 +163,82 @@ function safeAreaForVariant(layoutVariant) {
   return "center-copy";
 }
 
+const GENERATED_LAYOUT_CANVAS_WIDTH_PX = 1280;
+const GENERATED_TEXT_GAP_PX = 20;
+
+function generatedTextWidthPct(item = {}, style = {}) {
+  const configured = Number(style.widthPct);
+  if (Number.isFinite(configured) && configured > 0) return Math.min(100, configured);
+  if (item.textType === "title" || item.textType === "headline"
+    || /(?:title|headline|heading)/i.test(String(item.itemKey || ""))) return 72;
+  return 60;
+}
+
+function generatedTextFontSize(item = {}, style = {}) {
+  const configured = Number(style.fontSize);
+  if (Number.isFinite(configured) && configured > 0) return configured;
+  if (item.textType === "title" || item.textType === "headline"
+    || /(?:title|headline|heading)/i.test(String(item.itemKey || ""))) return 64;
+  return 22;
+}
+
+function estimatedGeneratedTextHeight(section, item, style) {
+  const values = textContent(section.aiContent?.[item.itemKey] ?? section.sectionInputs?.[item.itemKey]);
+  const lines = (values.length ? values : [String(item.name || item.itemKey || "Text")])
+    .flatMap((value) => String(value).split(/\r?\n/));
+  const fontSize = generatedTextFontSize(item, style);
+  const widthPx = (generatedTextWidthPct(item, style) / 100) * GENERATED_LAYOUT_CANVAS_WIDTH_PX;
+  const wrappedLines = lines.reduce((count, line) => (
+    count + Math.max(1, Math.ceil(Array.from(String(line)).reduce((width, character) => {
+      if (/\s/u.test(character)) return width + (fontSize * 0.35);
+      return width + (fontSize * (/^[\x00-\x7f]$/u.test(character) ? 0.62 : 1));
+    }, 0) / widthPx))
+  ), 0);
+  return Math.max(32, Math.ceil(wrappedLines * fontSize * 1.45));
+}
+
+function avoidGeneratedTextOverlaps(section, plan, itemStyles) {
+  const itemByKey = new Map((section.items || []).map((item) => [item.itemKey, item]));
+  const candidates = (plan.itemPlacements || []).flatMap((placement, placementIndex) => {
+    const item = itemByKey.get(placement.itemKey);
+    const styleKey = `${section.sectionKey}.${placement.itemKey}`;
+    const style = itemStyles[styleKey];
+    if (item?.fieldKind !== "text" || !style || style.positionMode !== "free") return [];
+    const widthPct = generatedTextWidthPct(item, style);
+    const requestedLeft = Number(style.xPct) || 0;
+    return [{
+      item,
+      style,
+      order: Number.isFinite(Number(placement.order)) ? Number(placement.order) : placementIndex,
+      requestedTop: Math.max(0, Number(style.yPx) || 0),
+      left: Math.min(Math.max(0, 100 - widthPct), Math.max(0, requestedLeft)),
+      widthPct,
+    }];
+  }).sort((left, right) => left.requestedTop - right.requestedTop || left.order - right.order);
+
+  const placed = [];
+  candidates.forEach((candidate) => {
+    const height = estimatedGeneratedTextHeight(section, candidate.item, candidate.style);
+    let top = candidate.requestedTop;
+    for (let attempt = 0; attempt <= placed.length; attempt += 1) {
+      const overlaps = placed.filter((previous) => {
+        const horizontalOverlap = candidate.left < previous.left + previous.widthPct
+          && candidate.left + candidate.widthPct > previous.left;
+        const verticalOverlap = top < previous.top + previous.height
+          && top + height > previous.top;
+        return horizontalOverlap && verticalOverlap;
+      });
+      if (!overlaps.length) break;
+      top = Math.max(...overlaps.map((previous) => previous.top + previous.height)) + GENERATED_TEXT_GAP_PX;
+    }
+    candidate.style.heightMode = "auto";
+    delete candidate.style.heightPx;
+    candidate.style.yPx = Math.round(top);
+    placed.push({ ...candidate, top, height });
+  });
+  return placed.reduce((bottom, entry) => Math.max(bottom, entry.top + entry.height), 0);
+}
+
 function layoutPatchFromResult(section, result, constraints) {
   const sectionKey = section.sectionKey;
   const allowedVariants = new Set(constraints.allowedLayoutVariants || []);
@@ -401,9 +477,11 @@ function layoutPatchFromDesignPlan(section, plan, tokenSet) {
       if (Number.isFinite(size)) itemStyles[key].fontSize = clamp(size, 0, 80);
     }
   });
+  const textBottom = avoidGeneratedTextOverlaps(section, plan, itemStyles);
+  const minimumSectionHeight = Math.min(1200, Math.max(520, Math.ceil(textBottom + 40)));
   return {
     layoutVariant: plan.layoutVariant,
-    layoutPatch: { sectionStyles: { [sectionKey]: { minHeight: 520 } }, itemStyles },
+    layoutPatch: { sectionStyles: { [sectionKey]: { minHeight: minimumSectionHeight } }, itemStyles },
     tokenBindings: (plan.slotSelections || []).map((selection) => ({ ...selection })),
     imageRequests: (plan.assetRequests || []).map((request) => ({
       target: { type: request.targetType, sectionKey, itemKey: request.itemKey || null },
