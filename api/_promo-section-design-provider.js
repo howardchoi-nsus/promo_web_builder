@@ -193,6 +193,8 @@ async function requestJson(url, body, headers, signal, timeoutMs) {
       const error = new Error(payload.error?.message || `Model provider failed with ${response.status}`);
       error.code = payload.error?.code || `PROVIDER_${response.status}`;
       error.statusCode = response.status;
+      error.providerErrorType = payload.error?.type || "";
+      error.requestId = response.headers.get("x-request-id") || response.headers.get("x-goog-request-id") || "";
       throw error;
     }
     return { payload, requestId: response.headers.get("x-request-id") || response.headers.get("x-goog-request-id") || "" };
@@ -200,10 +202,27 @@ async function requestJson(url, body, headers, signal, timeoutMs) {
     if (error.name === "AbortError") {
       throw Object.assign(new Error(`Model provider timed out after ${timeoutMs}ms`), { code: "PROVIDER_TIMEOUT", statusCode: 504 });
     }
+    if (error instanceof TypeError && !error.statusCode) {
+      throw Object.assign(new Error(`Model provider network request failed: ${error.message}`), {
+        code: "PROVIDER_NETWORK_ERROR",
+        statusCode: 503,
+      });
+    }
     throw error;
   } finally {
     if (timeout) clearTimeout(timeout);
   }
+}
+
+function isRetryableProviderError(error) {
+  const statusCode = Number(error?.statusCode || 0);
+  const code = String(error?.code || "").trim().toLowerCase();
+  const type = String(error?.providerErrorType || "").trim().toLowerCase();
+  return statusCode === 408
+    || statusCode === 429
+    || statusCode >= 500
+    || ["api_error", "server_error", "rate_limit_exceeded", "provider_timeout"].includes(code)
+    || ["api_error", "server_error"].includes(type);
 }
 
 function responseOutputText(payload) {
@@ -571,6 +590,7 @@ module.exports = {
   generateMultiComponentLayoutPlan,
   generateSectionCompositionPlan,
   generateStructuredPlannerResult,
+  isRetryableProviderError,
   generateSectionImage,
   generateOpenAiSectionImage,
   generateGeminiSectionImage,

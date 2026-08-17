@@ -17,7 +17,8 @@ declare
   v_config jsonb;
   v_shared_ids jsonb;
   v_allowed_roles jsonb;
-  v_reconciled integer := 0;커b밋egin
+  v_reconciled integer := 0;
+begin
   select * into v_section
   from wizard_content_sections
   where id = p_section_version_id;

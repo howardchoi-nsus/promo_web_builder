@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const {
   generateSectionDesignPlan,
   generateSectionImage,
+  isRetryableProviderError,
 } = require("../api/_promo-section-design-provider");
 
 function fakeWebp(width, height, size = 4096) {
@@ -40,6 +41,9 @@ process.env.GEMINI_API_KEY = "gemini-test-key";
 process.env.SECTION_IMAGE_PROVIDER = "openai";
 
 (async () => {
+  assert.equal(isRetryableProviderError({ statusCode: 500, code: "api_error" }), true);
+  assert.equal(isRetryableProviderError({ statusCode: 429, code: "rate_limit_exceeded" }), true);
+  assert.equal(isRetryableProviderError({ statusCode: 400, code: "invalid_request_error" }), false);
   const requests = [];
   global.fetch = async (url, options) => {
     const body = JSON.parse(options.body);

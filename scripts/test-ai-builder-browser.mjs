@@ -14,6 +14,7 @@ const mime = {
 };
 let proposalPollCount = 0;
 let assetPollCount = 0;
+let overviewParseCount = 0;
 const snapshotWithAssetStatus = (status) => ({
   contractVersion: 3,
   documentRevision: 1,
@@ -83,6 +84,22 @@ const server = http.createServer(async (request, response) => {
     return;
   }
   if (url.pathname === "/api/promo-overview-parse" && request.method === "POST") {
+    overviewParseCount += 1;
+    if (overviewParseCount === 1) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      response.writeHead(502, { "Content-Type": "application/json" });
+      response.end(JSON.stringify({
+        error: "Promotion overview parsing failed",
+        message: "Internal error encountered.",
+        code: "api_error",
+        retryable: true,
+        retryPolicy: { maxAttempts: 3, retryBaseMs: 300, retryMaxMs: 300 },
+        requestId: "overview-provider-request",
+        providerErrorType: "api_error",
+        executionDisplay: { providerIconKey: "openai", providerLabel: "OpenAI", modelLabel: "gpt-4.1-mini" },
+      }));
+      return;
+    }
     await new Promise((resolve) => setTimeout(resolve, 1500));
     response.writeHead(200, { "Content-Type": "application/json" });
     response.end(JSON.stringify({
@@ -182,6 +199,7 @@ try {
   await progress.waitFor();
   await page.getByText("프로모션 개요를 분석하고 있습니다.").waitFor();
   await page.getByText("OpenAI · gpt-4.1-mini").waitFor();
+  await page.getByText("AI 응답 오류로 재시도하고 있습니다. (2/3)").waitFor();
   assert.equal(await page.locator(".ai-builder-card").count(), 0);
   assert.equal(await page.locator(".ai-composition-progress__animation").count(), 1);
   const progressStyles = await progress.evaluate((element) => {

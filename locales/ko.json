@@ -136,6 +136,7 @@
   "admin.prompt.imageSizeHelp": "Gemini 이미지의 긴 변 기준 해상도입니다. 새 실행부터 적용됩니다.",
   "builder.title": "프로모션 페이지 제작",
   "builder.progress.analyzingOverview": "프로모션 개요를 분석하고 있습니다.",
+  "builder.progress.retryingOverview": "AI 응답 오류로 재시도하고 있습니다. ({attempt}/{maxAttempts})",
   "builder.progress.composingStructure": "프로모션 구조를 구성하고 있습니다.",
   "builder.progress.generatingStructure": "프로모션 구조를 생성하고 있습니다.",
   "builder.progress.preparingPreview": "Live Preview를 준비하고 있습니다.",

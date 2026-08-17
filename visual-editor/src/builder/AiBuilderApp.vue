@@ -11,7 +11,7 @@ import OperationProposalReview from "./OperationProposalReview.vue";
 import NaturalLanguageEditor from "./NaturalLanguageEditor.vue";
 import { createAiBuilderStore, clearBuilderError, setBuilderError } from "./state/ai-builder-store.mjs";
 import {
-  analyzeOverview,
+  analyzeOverviewWithRetry,
   applyCompositionProposal,
   createBuilderDocument,
   createCompositionProposal,
@@ -38,6 +38,7 @@ const capabilities = ref({ aiMode: true });
 const activeShell = ref(null);
 const pendingOperations = ref(null);
 const operationConflict = ref(null);
+const overviewRetry = ref(null);
 let assetPollingCancelled = false;
 let localeUnsubscribe = null;
 const localeRevision = ref(0);
@@ -56,6 +57,14 @@ const fullScreenProgress = computed(() => [
 ].includes(store.stage));
 const progressMessage = computed(() => {
   if (store.stage === "analyzing_overview") {
+    if (overviewRetry.value) {
+      return translate(
+        "builder.progress.retryingOverview",
+        "AI 응답 오류로 재시도하고 있습니다. ({attempt}/{maxAttempts})"
+      )
+        .replace("{attempt}", String(overviewRetry.value.attempt))
+        .replace("{maxAttempts}", String(overviewRetry.value.maxAttempts));
+    }
     return translate("builder.progress.analyzingOverview", "프로모션 개요를 분석하고 있습니다.");
   }
   if (["resolving_policy", "queued", "processing"].includes(store.stage)) {
@@ -104,6 +113,7 @@ async function ensureDocument() {
 
 async function analyze() {
   clearBuilderError(store);
+  overviewRetry.value = null;
   store.stage = "analyzing_overview";
   const startedAt = performance.now();
   recordBuilderEvent({
@@ -111,7 +121,24 @@ async function analyze() {
     documentId: store.documentId || undefined,
   });
   try {
-    const response = await analyzeOverview(store.naturalLanguage);
+    const response = await analyzeOverviewWithRetry(store.naturalLanguage, {
+      onRetry(retry) {
+        overviewRetry.value = retry;
+        if (retry.executionDisplay) store.executionDisplays.promo_overview_parser = retry.executionDisplay;
+        recordBuilderEvent({
+          eventName: "ai_overview_retrying",
+          documentId: store.documentId || undefined,
+          metadata: {
+            attempt: retry.attempt,
+            maxAttempts: retry.maxAttempts,
+            delayMs: retry.delayMs,
+            requestId: retry.requestId || undefined,
+            providerErrorType: retry.providerErrorType || undefined,
+          },
+        });
+      },
+    });
+    overviewRetry.value = null;
     if (response.executionDisplay) store.executionDisplays.promo_overview_parser = response.executionDisplay;
     store.overviewDraft = response.overview;
     store.overviewFingerprint = response.overviewFingerprint;
@@ -122,6 +149,7 @@ async function analyze() {
       durationMs: performance.now() - startedAt,
     });
   } catch (error) {
+    overviewRetry.value = null;
     setBuilderError(store, error);
   }
 }

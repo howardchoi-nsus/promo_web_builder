@@ -136,6 +136,7 @@
   "admin.prompt.imageSizeHelp": "Long-edge resolution for Gemini images. Applies to new runs.",
   "builder.title": "Promotion page builder",
   "builder.progress.analyzingOverview": "Analyzing the promotion overview.",
+  "builder.progress.retryingOverview": "Retrying after a temporary AI response error. ({attempt}/{maxAttempts})",
   "builder.progress.composingStructure": "Composing the promotion structure.",
   "builder.progress.generatingStructure": "Generating the promotion structure.",
   "builder.progress.preparingPreview": "Preparing Live Preview.",
