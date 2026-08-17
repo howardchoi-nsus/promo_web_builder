@@ -612,8 +612,11 @@ P2    Sticky Action 및 레거시 폭 Fallback 개선
 ### 12.3 운영 반영 순서
 
 1. `db/migrations/059_registry_required_sections_and_hero_width_profiles.sql`을 적용한다.
-2. 필수 Shared Section은 대상 Version ID를 Active Composition Shell에 먼저 포함한 뒤 활성화한다.
-3. `설정 > LLM 및 프롬프트 관리`에서 Migration 059 Prompt Draft를 검토·검증·활성화한다.
-4. AI Mode에서 Proposal 생성 → Composition Review → Apply → Web Output 순서로 Smoke Test를 수행한다.
+2. `db/migrations/060_reconcile_required_shared_sections_with_composition_shells.sql`을 적용한다. 기존 활성 필수 Shared Section의 Version ID와 Role이 새 Composition Shell Version에 자동 반영된다.
+3. 이후 필수 Shared Section 활성화는 Section과 Composition Shell Version을 단일 DB 트랜잭션으로 함께 활성화한다.
+4. `설정 > LLM 및 프롬프트 관리`에서 Migration 059 Prompt Draft를 검토·검증·활성화한다.
+5. AI Mode에서 Proposal 생성 → Composition Review → Apply → Web Output 순서로 Smoke Test를 수행한다.
 
 Migration 059 실행 시 같은 Lineage에 이미 Draft 또는 Validated Prompt가 있으면 새 Prompt Draft를 중복 생성하지 않는다. 이 경우 기존 Draft의 `promptLayers.additionalInstructions`에 폭 Profile 선택 지침이 포함되어 있는지 관리 화면에서 확인한 후 활성화한다.
+
+Migration 060은 Active Composition Shell의 JSON을 직접 수정하지 않고 새 Version을 생성해 활성화한다. 작업 중인 Composition Shell Draft가 있으면 관리자 변경을 덮어쓰지 않고 Migration 전체를 중단한다. 이 경우 Draft를 먼저 활성화하거나 정리한 후 Migration 060을 다시 실행한다.

@@ -30,6 +30,10 @@ const sectionsApiSource = fs.readFileSync(path.join(root, "api", "wizard-content
 const migrationSource = fs.readFileSync(path.join(root, "db", "migrations", "016_wizard_content_sections.sql"), "utf8");
 const imageDescriptionMigration = fs.readFileSync(path.join(root, "db", "migrations", "020_image_description_enabled.sql"), "utf8");
 const componentMigration = fs.readFileSync(path.join(root, "db", "migrations", "029_item_components_design_tokens_and_planner.sql"), "utf8");
+const sharedShellReconciliationMigration = fs.readFileSync(
+  path.join(root, "db", "migrations", "060_reconcile_required_shared_sections_with_composition_shells.sql"),
+  "utf8",
+);
 
 assert.match(wizardSource, /wizardContentLegacyBackup/);
 assert.match(wizardSource, /migrateLegacySectionInputs/);
@@ -64,8 +68,9 @@ assert.match(itemApiSource, /createItemKey\(\)/);
 assert.match(adminStyleSource, /\.section-order-list-move/);
 assert.match(adminStyleSource, /\.prompt-list-item\.drop-before/);
 assert.match(adminStyleSource, /\.section-component-order-row\.drop-before::before/);
-assert.match(activateSource, /activate_wizard_content_section/);
+assert.match(activateSource, /activate_wizard_content_section_with_shell_reconciliation/);
 assert.match(activateSource, /validateSectionDraft/);
+assert.doesNotMatch(activateSource, /Required shared Section must be referenced by an active Composition Shell before activation/);
 assert.match(archiveSource, /Active sections cannot be archived directly/);
 assert.match(orderSource, /s\.status <> 'archived'/);
 assert.match(orderSource, /const updatedKeys = new Set/);
@@ -82,6 +87,11 @@ assert.match(imageDescriptionMigration, /image_description_enabled/);
 assert.match(imageDescriptionMigration, /clone_wizard_content_section_draft/);
 assert.match(componentMigration, /wizard_item_components/);
 assert.match(componentMigration, /wizard_content_section_component_instances/);
+assert.match(sharedShellReconciliationMigration, /create or replace function reconcile_required_shared_section_shells/);
+assert.match(sharedShellReconciliationMigration, /create or replace function activate_wizard_content_section_with_shell_reconciliation/);
+assert.match(sharedShellReconciliationMigration, /sharedSectionVersionIds/);
+assert.match(sharedShellReconciliationMigration, /allowedSectionRoles/);
+assert.match(sharedShellReconciliationMigration, /Cannot reconcile required Shared Section while a Composition Shell draft exists/);
 assert.match(sectionsApiSource, /composition_scope/);
 assert.match(sectionsApiSource, /null, 'shared'/);
 assert.match(sectionsApiSource, /change_note, ai_design, composition_scope, archived_at/);

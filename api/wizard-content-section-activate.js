@@ -31,33 +31,6 @@ module.exports = async function handler(req, res) {
     if (target.status === "active") {
       return res.status(409).json({ error: "This section version is already active" });
     }
-    if (target.composition_scope === "shared") {
-      const policy = normalizeCompositionPolicy(target.composition_policy, { fixedPosition: target.fixed_position });
-      const requiredForAi = Boolean(
-        target.is_required
-        || target.fixed_position
-        || policy.selectionPolicy === "required"
-        || policy.selectionPolicy === "required-by-market"
-        || policy.selectionPolicy === "required-by-purpose",
-      );
-      if (requiredForAi) {
-        const linkedShells = await sql`
-          select shell.shell_key, version.id::text as version_id
-          from promo_composition_shell_versions version
-          join promo_composition_shells shell on shell.id = version.shell_id
-          where version.status = 'active' and shell.status = 'active'
-            and coalesce(version.config_json->'sharedSectionVersionIds', '[]'::jsonb)
-              @> jsonb_build_array(${id}::text)
-        `;
-        if (!linkedShells.length) {
-          return res.status(409).json({
-            error: "Required shared Section must be referenced by an active Composition Shell before activation",
-            code: "REQUIRED_SHARED_SECTION_NOT_REFERENCED",
-            sectionKey: target.section_key,
-          });
-        }
-      }
-    }
     if (target.section_role === "header" && target.fixed_position !== "top") {
       const compositionPolicy = normalizeCompositionPolicy(target.composition_policy, { fixedPosition: "top" });
       await sql`
@@ -83,7 +56,12 @@ module.exports = async function handler(req, res) {
       `;
     }
 
-    await sql`select activate_wizard_content_section(${id}::uuid, ${changeNote})`;
+    await sql`
+      select activate_wizard_content_section_with_shell_reconciliation(
+        ${id}::uuid,
+        ${changeNote}
+      )
+    `;
     await sql`
       update wizard_form_template_sections membership
       set section_id = ${id}::uuid, updated_at = now()
