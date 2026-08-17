@@ -11,6 +11,9 @@ importers:
       '@fortawesome/fontawesome-free':
         specifier: ^7.3.1
         version: 7.3.1
+      '@lottiefiles/dotlottie-vue':
+        specifier: ^0.11.25
+        version: 0.11.25(vue@3.5.39)
       '@neondatabase/serverless':
         specifier: ^0.10.4
         version: 0.10.4
@@ -68,6 +71,16 @@ packages:
 
   '@jridgewell/sourcemap-codec@1.5.5':
     resolution: {integrity: sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==}
+
+  '@lottiefiles/dotlottie-vue@0.11.25':
+    resolution: {integrity: sha512-OZ48XybtG6UL4tap3NTKMJpNMSCBSKYTdTDYVN/5u3rz0qCenMy7FrFtK8GvQKuyyYPcqk6GiLajk7pY4Hp4vw==}
+    engines: {node: '>=18.17.0', npm: '>=9.5.0'}
+    peerDependencies:
+      vue: ^3.3.4
+
+  '@lottiefiles/dotlottie-web@0.79.1':
+    resolution: {integrity: sha512-UKk+DmY2yurQs2T02AekNGVLD+fSGlygHKnf9485LCWF+CUvMSUXizAgR2qDGFUH2APj2i58nk21QhfVi9EG6g==}
+    engines: {node: '>=18.17.0', npm: '>=9.5.0'}
 
   '@napi-rs/wasm-runtime@1.1.6':
     resolution: {integrity: sha512-ZLv/JdUfkvOy9eCnnBaGfiO+XimbjebAeO+MRQqD/B+FR1tnRN0tpKSJHRbE8sFfS6aqsXZ67TQjfwfsxULVbg==}
@@ -637,6 +650,13 @@ snapshots:
   '@fortawesome/fontawesome-free@7.3.1': {}
 
   '@jridgewell/sourcemap-codec@1.5.5': {}
+
+  '@lottiefiles/dotlottie-vue@0.11.25(vue@3.5.39)':
+    dependencies:
+      '@lottiefiles/dotlottie-web': 0.79.1
+      vue: 3.5.39
+
+  '@lottiefiles/dotlottie-web@0.79.1': {}
 
   '@napi-rs/wasm-runtime@1.1.6(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)':
     dependencies:

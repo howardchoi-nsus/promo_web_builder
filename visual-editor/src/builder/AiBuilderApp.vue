@@ -41,6 +41,8 @@ const operationConflict = ref(null);
 const busy = computed(() => [
   "analyzing_overview", "resolving_policy", "queued", "processing", "applying",
 ].includes(store.stage));
+const fullScreenProgress = computed(() => store.stage === "analyzing_overview"
+  || (!store.snapshot && ["resolving_policy", "queued", "processing", "applying"].includes(store.stage)));
 const overviewExecution = computed(() => store.executionDisplays.promo_overview_parser || null);
 const compositionExecution = computed(() => store.executionDisplays.promo_page_composer || null);
 
@@ -367,7 +369,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="ai-builder-shell">
+  <main class="ai-builder-shell" :class="{ 'ai-builder-shell--processing': fullScreenProgress }">
     <BuilderModeSelector v-if="selectedMode !== 'ai'" :ai-enabled="capabilities.aiMode" @select="selectMode" />
     <template v-else>
       <div v-if="store.error" class="ai-builder-error" role="alert" aria-live="assertive">
@@ -400,11 +402,16 @@ onMounted(async () => {
         <button type="button" @click="reloadLatestForOperation">최신본 불러오기</button>
         <button type="button" @click="operationConflict = null; pendingOperations = null">취소</button>
       </div>
+      <CompositionProgress
+        v-if="store.stage === 'analyzing_overview'"
+        :stage="store.stage"
+        message="프로모션 개요를 분석하고 있습니다."
+        :execution="overviewExecution"
+      />
       <AiBriefPanel
-        v-if="store.stage === 'idle' || store.stage === 'analyzing_overview' || store.stage === 'failed' && !store.overviewDraft"
+        v-else-if="store.stage === 'idle' || store.stage === 'failed' && !store.overviewDraft"
         v-model="store.naturalLanguage"
         :busy="busy"
-        :execution="overviewExecution"
         @analyze="analyze"
       />
       <OverviewReviewForm

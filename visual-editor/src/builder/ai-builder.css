@@ -5,6 +5,10 @@
   color: var(--app-text, #17201c);
 }
 
+.ai-builder-shell--processing {
+  padding: 12px;
+}
+
 .ai-builder-card,
 .ai-mode-selector,
 .ai-builder-result {
@@ -266,9 +270,20 @@
 }
 
 .ai-composition-progress {
-  margin-top: min(12vh, 96px);
+  display: grid;
+  width: 100%;
+  min-height: calc(100vh - 88px);
+  place-content: center;
+  justify-items: center;
+  gap: clamp(18px, 3vh, 30px);
+  padding: clamp(32px, 7vw, 96px);
+  background: var(--app-background, #f4f6f5);
   text-align: center;
 }
+.ai-composition-progress__animation { display: block; width: clamp(150px, 15vw, 220px); height: clamp(150px, 15vw, 220px); }
+.ai-composition-progress .ai-execution-indicator { justify-items: center; gap: clamp(20px, 3vh, 32px); margin-top: 0; }
+.ai-composition-progress .ai-execution-indicator__message { font-size: clamp(28px, 3vw, 42px); line-height: 1.25; letter-spacing: -.025em; }
+.ai-composition-progress .ai-execution-indicator__model { padding: 8px 12px; background: color-mix(in srgb, var(--app-surface, #fff) 72%, transparent); }
 .ai-execution-indicator { display: grid; gap: 12px; margin-top: 18px; }
 .ai-execution-indicator__message { color: var(--ai-builder-ink, #111827); font-size: 15px; animation: ai-execution-pulse 1.15s ease-in-out infinite; }
 .ai-execution-indicator__model { display: inline-flex; align-items: center; gap: 10px; width: fit-content; padding: 9px 12px; border: 1px solid #d9dee8; border-radius: 12px; background: #f8fafc; }
@@ -372,6 +387,8 @@
 
 @media (max-width: 760px) {
   .ai-builder-shell { padding: 16px; }
+  .ai-builder-shell--processing { padding: 8px; }
+  .ai-composition-progress { min-height: calc(100vh - 80px); padding: 28px 18px; }
   .ai-mode-grid,
   .ai-overview-grid { grid-template-columns: 1fr; }
   .ai-builder-result__toolbar { align-items: flex-start; flex-direction: column; }

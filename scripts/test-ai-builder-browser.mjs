@@ -38,6 +38,29 @@ const server = http.createServer(async (request, response) => {
     response.end(JSON.stringify({ ok: true }));
     return;
   }
+  if (url.pathname === "/api/prompt-execution-display") {
+    response.writeHead(200, { "Content-Type": "application/json" });
+    response.end(JSON.stringify({
+      ok: true,
+      type: url.searchParams.get("type"),
+      executionDisplay: {
+        providerIconKey: "openai",
+        providerLabel: "OpenAI",
+        modelLabel: "gpt-4.1-mini",
+      },
+    }));
+    return;
+  }
+  if (url.pathname === "/api/promo-overview-parse" && request.method === "POST") {
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    response.writeHead(200, { "Content-Type": "application/json" });
+    response.end(JSON.stringify({
+      ok: true,
+      overview: { title: "여름 신규 고객 충전 이벤트" },
+      overviewFingerprint: "browser-test-overview",
+    }));
+    return;
+  }
   const relative = url.pathname.startsWith("/prototype/")
     ? url.pathname.slice("/prototype/".length)
     : url.pathname.replace(/^\/+/, "");
@@ -79,6 +102,27 @@ try {
   assert.notEqual(cardStyles.borderRadius, "0px");
   await page.getByLabel("프로모션 설명").fill("여름 신규 고객 충전 이벤트");
   assert.equal(await page.getByRole("button", { name: "AI 개요 분석" }).isEnabled(), true);
+  await page.getByRole("button", { name: "AI 개요 분석" }).click();
+  const progress = page.locator('.ai-composition-progress[data-stage="analyzing_overview"]');
+  await progress.waitFor();
+  await page.getByText("프로모션 개요를 분석하고 있습니다.").waitFor();
+  await page.getByText("OpenAI · gpt-4.1-mini").waitFor();
+  assert.equal(await page.locator(".ai-builder-card").count(), 0);
+  assert.equal(await page.locator(".ai-composition-progress__animation").count(), 1);
+  const progressStyles = await progress.evaluate((element) => {
+    const styles = getComputedStyle(element);
+    const message = getComputedStyle(element.querySelector(".ai-execution-indicator__message"));
+    return {
+      height: element.getBoundingClientRect().height,
+      display: styles.display,
+      textAlign: styles.textAlign,
+      messageAnimation: message.animationName,
+    };
+  });
+  assert.equal(progressStyles.display, "grid");
+  assert.equal(progressStyles.textAlign, "center");
+  assert.ok(progressStyles.height >= page.viewportSize().height - 100);
+  assert.equal(progressStyles.messageAnimation, "ai-execution-pulse");
   assert.deepEqual(errors, []);
   console.log("AI Builder browser test passed");
 } finally {

@@ -1,3 +1,69 @@
+# Design QA — AI Full-workspace Progress State
+
+- 검증일: 2026-08-17
+- source visual truth: `/var/folders/rm/jsl0_0sn2p3cfkb1m2_vyp7m0000gn/T/codex-clipboard-2313bb42-33fc-4521-b24d-3a4e22102b2a.png`
+- implementation screenshot: `/Users/hojunchoi/Documents/GitHub/promo_web_builder/design-qa-implementation.png`
+- combined comparison: `/Users/hojunchoi/Documents/GitHub/promo_web_builder/design-qa-comparison.png`
+- 구현 상태: AI 모드 → 영문 프로모션 설명 입력 → `AI 개요 분석` 실행 중
+- 브라우저: Codex in-app browser, light theme
+- 구현 CSS viewport 및 캡처: 1280 × 720 CSS px, deviceScaleFactor 1, 1280 × 720 pixels
+- 기준 이미지: 1356 × 721 pixels. 비교 보드에서 비율을 유지한 채 1280 × 720 프레임에 contain 정규화
+
+## Full-view comparison evidence
+
+기준과 구현 모두 전역 사이드바와 상단 페이지 헤더를 유지한 채, 나머지 빌더 작업영역 전체를 연한 배경의 진행 상태가 차지한다. 애니메이션, 대형 진행 문구, LLM 정보가 하나의 중앙 그룹으로 배치되고 입력 카드와 분석 버튼 하단의 작은 상태 표시는 제거됐다. 기준 이미지의 이전 전역 사이드바 폭과 현재 제품의 208px 사이드바 폭 차이는 이번 변경 전부터 존재하는 앱 셸 차이이므로 진행 화면 구현 범위에서 변경하지 않았다.
+
+## Focused region comparison evidence
+
+중앙 진행 그룹을 확대 확인했다. 제공된 `.lottie` 원본의 실제 일러스트가 205px 정사각형 영역에서 선명하게 재생되고, 문구는 중앙 정렬과 점멸 애니메이션을 적용한다. LLM 영역은 이전 요구사항에 따라 기준 이미지의 단순 괄호 표기 대신 OpenAI 아이콘, 공급자, 모델명을 포함한 기존 제품 배지를 유지한다. 이 세 요소가 충분히 읽히므로 별도 추가 crop은 필요하지 않았다.
+
+## Required fidelity surfaces
+
+- Fonts and typography: passed. 기존 제품 폰트 스택을 유지하고 진행 문구를 28–42px 반응형 굵은 글꼴로 확대했다. 줄 높이 1.25와 중앙 정렬이 안정적이며 문구 점멸은 `prefers-reduced-motion`에서 해제된다.
+- Spacing and layout rhythm: passed. 진행 화면은 작업영역의 전체 높이를 사용하고 중앙 그룹은 실제 가용영역 중앙에 배치된다. 데스크톱 및 760px 이하 규칙에 별도 padding/min-height가 있다.
+- Colors and visual tokens: passed. 배경, 텍스트, surface 색은 기존 앱 토큰을 사용하며 light theme 기준 대비가 충분하다.
+- Image quality and asset fidelity: passed. 사용자가 제공한 Lottie 원본을 `prototype/assets/ai-processing.lottie`에 보존해 원격 로드 지연 없이 재생한다. 기준 이미지의 AI 칩 그림 대신 제공된 원본 일러스트를 쓰는 것은 명시적 요청에 따른 의도적 차이다.
+- Copy and content: passed. `프로모션 개요를 분석하고 있습니다.`가 중앙에 표시되고, `OpenAI · gpt-4.1-mini` 및 실행 중인 LLM 라벨이 함께 노출된다.
+
+## Findings
+
+조치가 필요한 P0/P1/P2 차이는 없다.
+
+- [P3] 기준 이미지와 현재 앱 셸의 사이드바 폭이 다르다. 이번 기능 변경 전부터 존재하는 전역 셸 사양이며 진행 화면의 배치·가독성·작업영역 사용에는 문제가 없다.
+- [P3] 기준 이미지의 LLM 표기는 텍스트 한 줄이지만 구현은 공급자 아이콘이 포함된 배지다. 어떤 AI가 동작하는지 보여 달라는 기존 제품 요구사항을 우선한 의도적 차이다.
+
+## Interaction and accessibility verification
+
+- 분석 버튼 클릭 직후 입력 카드가 사라지고 전체 작업영역 진행 화면이 표시됨
+- 진행 영역 `role=status`, `aria-live=polite`, `aria-busy=true` 확인
+- 중앙 문구의 `ai-execution-pulse` 애니메이션 확인
+- Lottie canvas 생성 및 로컬 `.lottie` 로드 확인
+- OpenAI 공급자 및 `gpt-4.1-mini` 모델 표시 확인
+- 콘솔 warning/error: 0
+- 전체 131개 테스트 파일 통과
+
+## Comparison history
+
+### Iteration 1
+
+- Earlier finding: 원격 Lottie 요청이 첫 캡처보다 늦게 끝날 경우 진행 문구만 먼저 보이고 애니메이션 영역이 비어 보일 수 있었다.
+- Fix made: 제공된 `.lottie` 원본을 프로젝트 정적 자산으로 포함하고 플레이어 소스를 로컬 경로로 변경했다.
+- Post-fix evidence: `design-qa-implementation.png`에서 진행 상태 진입 직후 Lottie canvas와 실제 프레임이 표시되며, `design-qa-comparison.png`에서 기준/구현 중앙 그룹을 함께 확인했다.
+- Remaining P0/P1/P2 findings: none.
+
+## Implementation checklist
+
+- [x] 개요 분석 단계 전체 작업영역 전환
+- [x] 구조 생성 단계와 동일 진행 화면 재사용
+- [x] 제공 Lottie 원본의 로컬 정적 자산 적용
+- [x] 중앙 문구 점멸 및 reduced-motion 처리
+- [x] 수행 중인 LLM 공급자/모델 표시
+- [x] 브라우저·계약·전체 회귀 테스트
+
+final result: passed
+
+---
+
 # Design QA — Left Sidebar Global Navigation
 
 - 검증일: 2026-07-21
