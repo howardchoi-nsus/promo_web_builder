@@ -22,7 +22,7 @@ const emit = defineEmits(["update:modelValue", "analyze"]);
       />
     </label>
     <button
-      class="ai-builder-primary"
+      class="ai-builder-primary ai-builder-primary--brief"
       type="button"
       :disabled="busy || !modelValue.trim()"
       @click="emit('analyze')"
