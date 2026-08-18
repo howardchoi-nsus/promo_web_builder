@@ -291,9 +291,13 @@
   text-align: center;
 }
 .ai-composition-progress__animation { display: block; width: clamp(150px, 15vw, 220px); height: clamp(150px, 15vw, 220px); }
-.ai-composition-progress .ai-execution-indicator { justify-items: center; gap: clamp(20px, 3vh, 32px); margin-top: 0; }
+.ai-composition-progress .ai-execution-indicator { justify-items: center; gap: clamp(18px, 2.5vh, 28px); margin-top: 0; }
 .ai-composition-progress .ai-execution-indicator__message { font-size: clamp(28px, 3vw, 42px); line-height: 1.25; letter-spacing: -.025em; }
-.ai-composition-progress .ai-execution-indicator__model { padding: 8px 12px; background: color-mix(in srgb, var(--app-surface, #fff) 72%, transparent); }
+.ai-composition-progress .ai-execution-indicator__model { gap: 15px; padding: 12px 18px; border-radius: 18px; background: color-mix(in srgb, var(--app-surface, #fff) 72%, transparent); }
+.ai-composition-progress .ai-execution-indicator__model > span:last-child { gap: 3px; }
+.ai-composition-progress .ai-execution-indicator__model small { font-size: 15px; }
+.ai-composition-progress .ai-execution-indicator__model b { font-size: 18px; }
+.ai-composition-progress .ai-execution-indicator__icon { width: 45px; height: 45px; border-radius: 13.5px; font-size: 15px; }
 .ai-execution-indicator { display: grid; gap: 12px; margin-top: 18px; }
 .ai-execution-indicator__message { color: var(--ai-builder-ink, #111827); font-size: 15px; animation: ai-execution-pulse 1.15s ease-in-out infinite; }
 .ai-execution-indicator__model { display: inline-flex; align-items: center; gap: 10px; width: fit-content; padding: 9px 12px; border: 1px solid #d9dee8; border-radius: 12px; background: #f8fafc; }

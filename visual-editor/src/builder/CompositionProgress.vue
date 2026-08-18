@@ -14,13 +14,16 @@ defineProps({
 
 <template>
   <section class="ai-composition-progress" role="status" aria-live="polite" aria-busy="true" :data-stage="stage">
-    <DotLottieVue
-      class="ai-composition-progress__animation"
-      :src="AI_PROCESSING_ANIMATION_URL"
-      autoplay
-      loop
-      aria-hidden="true"
-    />
-    <AiExecutionIndicator :message="message || 'AI가 요청을 수행하고 있습니다.'" :execution="execution" />
+    <AiExecutionIndicator :message="message || 'AI가 요청을 수행하고 있습니다.'" :execution="execution">
+      <template #visual>
+        <DotLottieVue
+          class="ai-composition-progress__animation"
+          :src="AI_PROCESSING_ANIMATION_URL"
+          autoplay
+          loop
+          aria-hidden="true"
+        />
+      </template>
+    </AiExecutionIndicator>
   </section>
 </template>

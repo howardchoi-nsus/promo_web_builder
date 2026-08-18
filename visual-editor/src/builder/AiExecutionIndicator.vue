@@ -12,6 +12,7 @@ const iconText = computed(() => ({ openai: "OA", google: "G", anthropic: "A" }[p
 <template>
   <div class="ai-execution-indicator" role="status" aria-live="polite" aria-atomic="true">
     <strong class="ai-execution-indicator__message">{{ message }}</strong>
+    <slot name="visual" />
     <span v-if="execution" class="ai-execution-indicator__model">
       <span class="ai-execution-indicator__icon" :data-provider="execution.providerIconKey" aria-hidden="true">{{ iconText }}</span>
       <span>

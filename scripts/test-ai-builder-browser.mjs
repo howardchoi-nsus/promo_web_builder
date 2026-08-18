@@ -204,18 +204,39 @@ try {
   assert.equal(await page.locator(".ai-composition-progress__animation").count(), 1);
   const progressStyles = await progress.evaluate((element) => {
     const styles = getComputedStyle(element);
-    const message = getComputedStyle(element.querySelector(".ai-execution-indicator__message"));
+    const messageElement = element.querySelector(".ai-execution-indicator__message");
+    const animationElement = element.querySelector(".ai-composition-progress__animation");
+    const modelElement = element.querySelector(".ai-execution-indicator__model");
+    const modelIcon = element.querySelector(".ai-execution-indicator__icon");
+    const message = getComputedStyle(messageElement);
+    const model = getComputedStyle(modelElement);
+    const icon = getComputedStyle(modelIcon);
     return {
       height: element.getBoundingClientRect().height,
       display: styles.display,
       textAlign: styles.textAlign,
       messageAnimation: message.animationName,
+      messageAboveAnimation: messageElement.getBoundingClientRect().bottom <= animationElement.getBoundingClientRect().top,
+      animationAboveModel: animationElement.getBoundingClientRect().bottom <= modelElement.getBoundingClientRect().top,
+      modelFontSize: getComputedStyle(modelElement.querySelector("b")).fontSize,
+      modelLabelFontSize: getComputedStyle(modelElement.querySelector("small")).fontSize,
+      modelPaddingInline: model.paddingInline,
+      iconSize: [icon.width, icon.height],
     };
   });
   assert.equal(progressStyles.display, "grid");
   assert.equal(progressStyles.textAlign, "center");
   assert.ok(progressStyles.height >= page.viewportSize().height - 100);
   assert.equal(progressStyles.messageAnimation, "ai-execution-pulse");
+  assert.equal(progressStyles.messageAboveAnimation, true);
+  assert.equal(progressStyles.animationAboveModel, true);
+  assert.equal(progressStyles.modelFontSize, "18px");
+  assert.equal(progressStyles.modelLabelFontSize, "15px");
+  assert.equal(progressStyles.modelPaddingInline, "18px");
+  assert.deepEqual(progressStyles.iconSize, ["45px", "45px"]);
+  if (process.env.CAPTURE_AI_PROGRESS_QA === "1") {
+    await page.screenshot({ path: path.join(root, "design-qa-implementation.png"), fullPage: true });
+  }
   await page.getByRole("heading", { name: "AI 분석 결과를 확인하세요" }).waitFor();
   await page.getByRole("button", { name: "AI로 프로모션 생성하기" }).click();
   await page.getByText("프로모션 구조를 구성하고 있습니다.").waitFor();
