@@ -113,6 +113,28 @@ function selectMode(mode) {
   window.history.replaceState({}, "", url);
 }
 
+function refreshOverviewFingerprint(overview = store.overviewDraft) {
+  const fingerprint = window.PromoPromotionOverview?.fingerprint;
+  if (typeof fingerprint !== "function") {
+    throw Object.assign(new Error("프로모션 개요 검증 모듈을 불러오지 못했습니다."), {
+      code: "OVERVIEW_FINGERPRINT_UNAVAILABLE",
+    });
+  }
+  const nextFingerprint = fingerprint(overview || {});
+  store.overviewFingerprint = nextFingerprint;
+  return nextFingerprint;
+}
+
+function updateOverviewDraft(overview) {
+  store.overviewDraft = overview && typeof overview === "object" ? overview : {};
+  try {
+    refreshOverviewFingerprint(store.overviewDraft);
+    clearBuilderError(store);
+  } catch (error) {
+    setBuilderError(store, error);
+  }
+}
+
 async function ensureDocument() {
   if (store.documentId) return;
   await ensureBuilderSession();
@@ -268,6 +290,7 @@ async function compose() {
   store.warning = null;
   store.stage = "resolving_policy";
   try {
+    const currentFingerprint = refreshOverviewFingerprint();
     await ensureDocument();
     const registryRequested = Boolean(capabilities.value.compositionV3);
     const useRegistryComposition = registryRequested && Boolean(activeShell.value?.id);
@@ -289,7 +312,7 @@ async function compose() {
       documentId: store.documentId,
       baseDocumentRevision: store.documentRevision,
       overview: store.overviewDraft,
-      overviewFingerprint: store.overviewFingerprint,
+      overviewFingerprint: currentFingerprint,
       selectedOptionalSectionIds: store.selectedOptionalSectionIds,
       confirmedFieldPaths: store.confirmedFieldPaths,
       ...(useRegistryComposition ? {
@@ -565,8 +588,9 @@ onBeforeUnmount(() => {
       />
       <OverviewReviewForm
         v-else-if="store.stage === 'reviewing_overview' || store.stage === 'failed' && !store.snapshot"
-        v-model="store.overviewDraft"
+        :model-value="store.overviewDraft"
         :busy="busy"
+        @update:model-value="updateOverviewDraft"
         @back="store.stage = 'idle'"
         @confirm="compose"
       />

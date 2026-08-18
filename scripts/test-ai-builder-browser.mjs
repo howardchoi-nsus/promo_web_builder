@@ -1,11 +1,14 @@
 import http from "node:http";
 import fs from "node:fs/promises";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { chromium } from "playwright";
 import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const require = createRequire(import.meta.url);
+const { overviewFingerprint } = require(path.join(root, "api", "_promo-overview-contract.js"));
 const publicRoot = path.join(root, "prototype");
 const mime = {
   ".html": "text/html; charset=utf-8",
@@ -15,6 +18,7 @@ const mime = {
 let proposalPollCount = 0;
 let assetPollCount = 0;
 let overviewParseCount = 0;
+let compositionRequest = null;
 const snapshotWithAssetStatus = (status) => ({
   contractVersion: 3,
   documentRevision: 1,
@@ -110,6 +114,19 @@ const server = http.createServer(async (request, response) => {
     return;
   }
   if (url.pathname === "/api/promo-page-composition-proposals" && request.method === "POST") {
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    compositionRequest = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    const currentFingerprint = overviewFingerprint(compositionRequest.overview);
+    if (compositionRequest.overviewFingerprint !== currentFingerprint) {
+      response.writeHead(409, { "Content-Type": "application/json" });
+      response.end(JSON.stringify({
+        error: "Overview changed before composition planning",
+        code: "OVERVIEW_FINGERPRINT_MISMATCH",
+        overviewFingerprint: currentFingerprint,
+      }));
+      return;
+    }
     response.writeHead(202, { "Content-Type": "application/json" });
     response.end(JSON.stringify({
       ok: true,
@@ -239,8 +256,16 @@ try {
     await page.screenshot({ path: path.join(root, "design-qa-implementation.png"), fullPage: true });
   }
   await page.getByRole("heading", { name: "AI 분석 결과를 확인하세요" }).waitFor();
+  await page.getByLabel("프로모션 제목").fill("수정된 여름 신규 고객 충전 이벤트");
   await page.getByRole("button", { name: "AI로 프로모션 생성하기" }).click();
   await page.getByText("프로모션 구조를 구성하고 있습니다.").waitFor();
+  for (let count = 0; count < 50 && !compositionRequest; count += 1) {
+    await page.waitForTimeout(20);
+  }
+  assert.ok(compositionRequest, "composition request should be received");
+  assert.equal(compositionRequest.overview.title, "수정된 여름 신규 고객 충전 이벤트");
+  assert.equal(compositionRequest.overviewFingerprint, overviewFingerprint(compositionRequest.overview));
+  assert.notEqual(compositionRequest.overviewFingerprint, "browser-test-overview");
   await page.getByText("프로모션 구조를 생성하고 있습니다.").waitFor();
   const assetProgress = page.locator('.ai-composition-progress[data-stage="generating_assets"]');
   await assetProgress.waitFor();
