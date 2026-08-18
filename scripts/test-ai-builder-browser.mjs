@@ -133,6 +133,7 @@ const server = http.createServer(async (request, response) => {
     return;
   }
   if (url.pathname === "/api/promo-page-composition-apply" && request.method === "POST") {
+    await new Promise((resolve) => setTimeout(resolve, 150));
     response.writeHead(200, { "Content-Type": "application/json" });
     response.end(JSON.stringify({
       ok: true,
@@ -241,6 +242,10 @@ try {
   await page.getByRole("button", { name: "AI로 프로모션 생성하기" }).click();
   await page.getByText("프로모션 구조를 구성하고 있습니다.").waitFor();
   await page.getByText("프로모션 구조를 생성하고 있습니다.").waitFor();
+  const assetProgress = page.locator('.ai-composition-progress[data-stage="generating_assets"]');
+  await assetProgress.waitFor();
+  assert.match(await assetProgress.innerText(), /AI 이미지를 생성하고 있습니다\./);
+  assert.equal(await assetProgress.locator(".ai-execution-indicator__emphasis").innerText(), "AI 이미지를 생성");
   assert.equal(await page.locator(".registry-proposal-review").count(), 0);
   assert.equal(await page.locator(".ai-builder-result").count(), 0);
   await page.waitForTimeout(2500);

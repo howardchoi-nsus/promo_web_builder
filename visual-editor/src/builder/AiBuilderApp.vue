@@ -70,10 +70,20 @@ const progressMessage = computed(() => {
   if (["resolving_policy", "queued", "processing"].includes(store.stage)) {
     return translate("builder.progress.composingStructure", "프로모션 구조를 구성하고 있습니다.");
   }
+  if (store.stage === "generating_assets") {
+    return translate("builder.progress.generatingAssets", "AI 이미지를 생성하고 있습니다.");
+  }
   if (["preview_ready", "navigating_preview"].includes(store.stage)) {
     return translate("builder.progress.preparingPreview", "Live Preview를 준비하고 있습니다.");
   }
   return translate("builder.progress.generatingStructure", "프로모션 구조를 생성하고 있습니다.");
+});
+const progressEmphasis = computed(() => {
+  if (store.stage === "analyzing_overview") return "개요를 분석";
+  if (["resolving_policy", "queued", "processing"].includes(store.stage)) return "구조를 구성";
+  if (store.stage === "applying") return "구조를 생성";
+  if (store.stage === "generating_assets") return "AI 이미지를 생성";
+  return "";
 });
 const overviewExecution = computed(() => store.executionDisplays.promo_overview_parser || null);
 const compositionExecution = computed(() => store.executionDisplays.promo_page_composer || null);
@@ -544,6 +554,7 @@ onBeforeUnmount(() => {
         v-if="fullScreenProgress"
         :stage="store.stage"
         :message="progressMessage"
+        :emphasis="progressEmphasis"
         :execution="progressExecution"
       />
       <AiBriefPanel

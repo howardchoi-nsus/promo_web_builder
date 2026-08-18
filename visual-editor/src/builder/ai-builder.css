@@ -300,6 +300,7 @@
 .ai-composition-progress .ai-execution-indicator__icon { width: 45px; height: 45px; border-radius: 13.5px; font-size: 15px; }
 .ai-execution-indicator { display: grid; gap: 12px; margin-top: 18px; }
 .ai-execution-indicator__message { color: var(--ai-builder-ink, #111827); font-size: 15px; animation: ai-execution-pulse 1.15s ease-in-out infinite; }
+.ai-execution-indicator__emphasis { color: var(--app-accent, #4768d8); }
 .ai-execution-indicator__model { display: inline-flex; align-items: center; gap: 10px; width: fit-content; padding: 9px 12px; border: 1px solid #d9dee8; border-radius: 12px; background: #f8fafc; }
 .ai-execution-indicator__model > span:last-child { display: grid; gap: 2px; text-align: left; }
 .ai-execution-indicator__model small { color: #667085; font-size: 10px; }

@@ -139,6 +139,7 @@
   "builder.progress.retryingOverview": "AI 응답 오류로 재시도하고 있습니다. ({attempt}/{maxAttempts})",
   "builder.progress.composingStructure": "프로모션 구조를 구성하고 있습니다.",
   "builder.progress.generatingStructure": "프로모션 구조를 생성하고 있습니다.",
+  "builder.progress.generatingAssets": "AI 이미지를 생성하고 있습니다.",
   "builder.progress.preparingPreview": "Live Preview를 준비하고 있습니다.",
   "builder.progress.verifyingAssets": "AI 이미지 생성 완료를 확인하고 있습니다.",
   "builder.step.designMode": "제작 방식 선택",

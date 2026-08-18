@@ -139,6 +139,7 @@
   "builder.progress.retryingOverview": "Retrying after a temporary AI response error. ({attempt}/{maxAttempts})",
   "builder.progress.composingStructure": "Composing the promotion structure.",
   "builder.progress.generatingStructure": "Generating the promotion structure.",
+  "builder.progress.generatingAssets": "Generating AI images.",
   "builder.progress.preparingPreview": "Preparing Live Preview.",
   "builder.progress.verifyingAssets": "Checking that AI images are ready.",
   "builder.step.designMode": "Select creation method",

@@ -8,13 +8,18 @@ const AI_PROCESSING_ANIMATION_URL = "/prototype/assets/ai-processing.lottie";
 defineProps({
   stage: { type: String, required: true },
   message: { type: String, default: "" },
+  emphasis: { type: String, default: "" },
   execution: { type: Object, default: null },
 });
 </script>
 
 <template>
   <section class="ai-composition-progress" role="status" aria-live="polite" aria-busy="true" :data-stage="stage">
-    <AiExecutionIndicator :message="message || 'AI가 요청을 수행하고 있습니다.'" :execution="execution">
+    <AiExecutionIndicator
+      :message="message || 'AI가 요청을 수행하고 있습니다.'"
+      :emphasis="emphasis"
+      :execution="execution"
+    >
       <template #visual>
         <DotLottieVue
           class="ai-composition-progress__animation"
