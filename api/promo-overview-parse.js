@@ -43,6 +43,7 @@ module.exports = async function handler(req, res) {
     const promptContexts = buildOverviewPromptContexts({
       productCatalog: body.productCatalog ?? body.product_catalog ?? body.productCatalogJson,
       localeAndMarket: body.localeAndMarket ?? body.locale_and_market ?? body.localeAndMarketJson,
+      naturalLanguage: instruction,
       locale: body.locale,
       market: body.market,
       acceptLanguage: req.headers["accept-language"],

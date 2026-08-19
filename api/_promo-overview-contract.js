@@ -218,9 +218,34 @@ function requestLocale(acceptLanguage = "") {
   return text(String(acceptLanguage || "").split(",")[0].split(";")[0], 64);
 }
 
+function inputLanguageLocale(value = "") {
+  const source = text(value, 4000)
+    .replace(/https?:\/\/\S+/gi, " ")
+    .replace(/\b(?:[A-Z]{2,}|[a-z]+_[a-z0-9_]+|[a-z]+-[A-Z]{2})\b/g, " ");
+  if (!source) return "";
+  const counts = {
+    ko: (source.match(/[\uac00-\ud7af]/g) || []).length,
+    ja: (source.match(/[\u3040-\u30ff]/g) || []).length,
+    zh: (source.match(/[\u3400-\u4dbf\u4e00-\u9fff]/g) || []).length,
+    ar: (source.match(/[\u0600-\u06ff]/g) || []).length,
+    th: (source.match(/[\u0e00-\u0e7f]/g) || []).length,
+    cyrl: (source.match(/[\u0400-\u04ff]/g) || []).length,
+    latin: (source.match(/[A-Za-z\u00c0-\u024f]/g) || []).length,
+  };
+  if (counts.ko > 0 && counts.ko >= counts.ja && counts.ko >= counts.zh) return "ko";
+  if (counts.ja > 0) return "ja";
+  if (counts.zh > 0) return "zh";
+  if (counts.ar > 0) return "ar";
+  if (counts.th > 0) return "th";
+  if (counts.cyrl > 0) return "ru";
+  if (counts.latin > 0) return "en";
+  return "";
+}
+
 function buildOverviewPromptContexts({
   productCatalog,
   localeAndMarket,
+  naturalLanguage,
   locale,
   market,
   acceptLanguage,
@@ -240,8 +265,9 @@ function buildOverviewPromptContexts({
   const overview = currentOverview && typeof currentOverview === "object" && !Array.isArray(currentOverview)
     ? currentOverview
     : {};
+  const detectedInputLocale = inputLanguageLocale(naturalLanguage);
   const normalizedLocaleAndMarket = {
-    locale: text(locale || suppliedLocaleAndMarket.locale || requestLocale(acceptLanguage), 64),
+    locale: text(detectedInputLocale || locale || suppliedLocaleAndMarket.locale || requestLocale(acceptLanguage), 64),
     market: text(market || suppliedLocaleAndMarket.market || overview.market, 200),
   };
   return {
@@ -259,6 +285,7 @@ module.exports = {
   OVERVIEW_PARSE_SCHEMA,
   normalizeOverview,
   normalizeParsedOverview,
+  inputLanguageLocale,
   buildOverviewPromptContexts,
   overviewFingerprint,
   overviewRequestFingerprint,

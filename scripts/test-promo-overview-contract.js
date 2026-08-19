@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const {
   normalizeOverview,
   normalizeParsedOverview,
+  inputLanguageLocale,
   buildOverviewPromptContexts,
   overviewFingerprint,
   overviewRequestFingerprint,
@@ -101,6 +102,19 @@ assert.deepEqual(JSON.parse(buildOverviewPromptContexts({
   acceptLanguage: "en-US,en;q=0.9",
   currentOverview: { market: "Global" },
 }).localeAndMarketJson), { locale: "en-US", market: "Global" });
+assert.equal(inputLanguageLocale("Create a welcome promotion for new players."), "en");
+assert.equal(inputLanguageLocale("신규 플레이어를 위한 프로모션을 만들어 주세요."), "ko");
+assert.equal(inputLanguageLocale("新規プレイヤー向けのプロモーションを作成してください。"), "ja");
+assert.deepEqual(JSON.parse(buildOverviewPromptContexts({
+  naturalLanguage: "Create a welcome promotion for new players.",
+  locale: "ko-KR",
+  market: "KR",
+}).localeAndMarketJson), { locale: "en", market: "KR" });
+assert.deepEqual(JSON.parse(buildOverviewPromptContexts({
+  naturalLanguage: "신규 플레이어 프로모션을 만들어 주세요.",
+  locale: "en-US",
+  market: "KR",
+}).localeAndMarketJson), { locale: "ko", market: "KR" });
 assert.throws(
   () => buildOverviewPromptContexts({ productCatalog: "not-json" }),
   (error) => error.code === "OVERVIEW_PROMPT_CONTEXT_INVALID",
