@@ -19,6 +19,7 @@ const FIELD_ORIGINS = Object.freeze([
   "inferred",
   "needs-confirmation",
 ]);
+const MAX_PROMPT_CONTEXT_JSON_LENGTH = 50000;
 
 const OVERVIEW_PARSE_SCHEMA = {
   type: "object",
@@ -179,6 +180,76 @@ function overviewRequestFingerprint(value) {
   return fnvFingerprint("overview-request", text(value, 4000));
 }
 
+function promptContextValue(value, fallback, label) {
+  let parsed = value;
+  if (typeof parsed === "string") {
+    const source = parsed.trim();
+    if (!source) return fallback;
+    try {
+      parsed = JSON.parse(source);
+    } catch {
+      throw Object.assign(new Error(`${label} must be valid JSON`), {
+        code: "OVERVIEW_PROMPT_CONTEXT_INVALID",
+        statusCode: 422,
+      });
+    }
+  }
+  if (!parsed || typeof parsed !== "object") {
+    throw Object.assign(new Error(`${label} must be a JSON object or array`), {
+      code: "OVERVIEW_PROMPT_CONTEXT_INVALID",
+      statusCode: 422,
+    });
+  }
+  return parsed;
+}
+
+function promptContextJson(value, fallback, label) {
+  const serialized = JSON.stringify(promptContextValue(value, fallback, label));
+  if (serialized.length > MAX_PROMPT_CONTEXT_JSON_LENGTH) {
+    throw Object.assign(new Error(`${label} exceeds the ${MAX_PROMPT_CONTEXT_JSON_LENGTH} character limit`), {
+      code: "OVERVIEW_PROMPT_CONTEXT_TOO_LARGE",
+      statusCode: 422,
+    });
+  }
+  return serialized;
+}
+
+function requestLocale(acceptLanguage = "") {
+  return text(String(acceptLanguage || "").split(",")[0].split(";")[0], 64);
+}
+
+function buildOverviewPromptContexts({
+  productCatalog,
+  localeAndMarket,
+  locale,
+  market,
+  acceptLanguage,
+  currentOverview,
+} = {}) {
+  const suppliedLocaleAndMarket = promptContextValue(
+    localeAndMarket || {},
+    {},
+    "localeAndMarket",
+  );
+  if (Array.isArray(suppliedLocaleAndMarket)) {
+    throw Object.assign(new Error("localeAndMarket must be a JSON object"), {
+      code: "OVERVIEW_PROMPT_CONTEXT_INVALID",
+      statusCode: 422,
+    });
+  }
+  const overview = currentOverview && typeof currentOverview === "object" && !Array.isArray(currentOverview)
+    ? currentOverview
+    : {};
+  const normalizedLocaleAndMarket = {
+    locale: text(locale || suppliedLocaleAndMarket.locale || requestLocale(acceptLanguage), 64),
+    market: text(market || suppliedLocaleAndMarket.market || overview.market, 200),
+  };
+  return {
+    productCatalogJson: promptContextJson(productCatalog || [], [], "productCatalog"),
+    localeAndMarketJson: promptContextJson(normalizedLocaleAndMarket, {}, "localeAndMarket"),
+  };
+}
+
 module.exports = {
   PROMOTION_PURPOSES,
   AUDIENCES,
@@ -188,6 +259,7 @@ module.exports = {
   OVERVIEW_PARSE_SCHEMA,
   normalizeOverview,
   normalizeParsedOverview,
+  buildOverviewPromptContexts,
   overviewFingerprint,
   overviewRequestFingerprint,
 };

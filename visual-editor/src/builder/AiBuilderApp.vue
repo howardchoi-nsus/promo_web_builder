@@ -154,6 +154,11 @@ async function analyze() {
   });
   try {
     const response = await analyzeOverviewWithRetry(store.naturalLanguage, {
+      context: {
+        locale: navigator.language || "",
+        market: "",
+        productCatalog: [],
+      },
       onRetry(retry) {
         overviewRetry.value = retry;
         if (retry.executionDisplay) store.executionDisplays.promo_overview_parser = retry.executionDisplay;

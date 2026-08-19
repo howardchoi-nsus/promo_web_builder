@@ -55,10 +55,16 @@ export function loadBuilderDocument(documentId) {
   return request(`/api/promo-builder-documents?documentId=${encodeURIComponent(documentId)}`);
 }
 
-export function analyzeOverview(naturalLanguage) {
+export function analyzeOverview(naturalLanguage, context = {}) {
   return request("/api/promo-overview-parse", {
     method: "POST",
-    body: JSON.stringify({ mode: "natural-language", naturalLanguage }),
+    body: JSON.stringify({
+      mode: "natural-language",
+      naturalLanguage,
+      locale: context.locale || "",
+      market: context.market || "",
+      productCatalog: context.productCatalog || [],
+    }),
   });
 }
 
@@ -81,7 +87,7 @@ export async function analyzeOverviewWithRetry(naturalLanguage, options = {}) {
   let attempt = 1;
   while (true) {
     try {
-      return await analyzeOverview(naturalLanguage);
+      return await analyzeOverview(naturalLanguage, options.context || {});
     } catch (error) {
       const policy = normalizedRetryPolicy(error.retryPolicy || {});
       if (!error.retryable || attempt >= policy.maxAttempts) throw error;

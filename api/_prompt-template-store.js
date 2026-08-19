@@ -58,7 +58,12 @@ const PROMPT_TYPES = {
   promo_overview_parser: {
     name: "Promotion Overview Parser",
     requiredVariables: ["naturalLanguage", "allowedValuesJson"],
-    optionalVariables: ["generationMode", "currentOverviewJson"],
+    optionalVariables: [
+      "generationMode",
+      "currentOverviewJson",
+      "productCatalogJson",
+      "localeAndMarketJson",
+    ],
   },
   promo_template_recommender: {
     name: "Promotion Template Recommender",

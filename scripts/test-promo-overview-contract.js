@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const {
   normalizeOverview,
   normalizeParsedOverview,
+  buildOverviewPromptContexts,
   overviewFingerprint,
   overviewRequestFingerprint,
 } = require("../api/_promo-overview-contract");
@@ -90,6 +91,19 @@ assert.notEqual(
   overviewFingerprint(baseOverview),
   overviewFingerprint({ ...baseOverview, ctaLabel: "다른 혜택 보기" }),
   "CTA label changes must alter the Overview v5 fingerprint",
+);
+assert.deepEqual(JSON.parse(buildOverviewPromptContexts({
+  productCatalog: [{ productKey: "sportsbook" }],
+  locale: "ko-KR",
+  market: "KR",
+}).productCatalogJson), [{ productKey: "sportsbook" }]);
+assert.deepEqual(JSON.parse(buildOverviewPromptContexts({
+  acceptLanguage: "en-US,en;q=0.9",
+  currentOverview: { market: "Global" },
+}).localeAndMarketJson), { locale: "en-US", market: "Global" });
+assert.throws(
+  () => buildOverviewPromptContexts({ productCatalog: "not-json" }),
+  (error) => error.code === "OVERVIEW_PROMPT_CONTEXT_INVALID",
 );
 assert.throws(
   () => normalizeOverview({ ...baseOverview, ctaLabel: "가".repeat(21) }),

@@ -8,6 +8,7 @@ const {
   AUDIENCES,
   CAMPAIGN_TONES,
   OVERVIEW_PARSE_SCHEMA,
+  buildOverviewPromptContexts,
   normalizeParsedOverview,
   overviewFingerprint,
   overviewRequestFingerprint,
@@ -35,12 +36,25 @@ module.exports = async function handler(req, res) {
       audiences: AUDIENCES,
       campaignTones: CAMPAIGN_TONES,
     };
+    const currentOverview = body.currentOverview && typeof body.currentOverview === "object"
+      && !Array.isArray(body.currentOverview)
+      ? body.currentOverview
+      : {};
+    const promptContexts = buildOverviewPromptContexts({
+      productCatalog: body.productCatalog ?? body.product_catalog ?? body.productCatalogJson,
+      localeAndMarket: body.localeAndMarket ?? body.locale_and_market ?? body.localeAndMarketJson,
+      locale: body.locale,
+      market: body.market,
+      acceptLanguage: req.headers["accept-language"],
+      currentOverview,
+    });
     const sql = getSql();
     promptSnapshot = await createPromptExecutionSnapshot(sql, "promo_overview_parser", {
       naturalLanguage: instruction,
-      currentOverviewJson: "{}",
+      currentOverviewJson: JSON.stringify(currentOverview),
       allowedValuesJson: JSON.stringify(allowedValues),
       generationMode: "new-draft",
+      ...promptContexts,
     });
     const generation = await generateStructuredPlannerResult({
       type: "promo_overview_parser",

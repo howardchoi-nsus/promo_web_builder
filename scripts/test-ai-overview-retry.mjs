@@ -6,8 +6,10 @@ const previousFetch = global.fetch;
 try {
   let calls = 0;
   const retries = [];
-  global.fetch = async () => {
+  const requestBodies = [];
+  global.fetch = async (_url, options = {}) => {
     calls += 1;
+    requestBodies.push(JSON.parse(options.body));
     if (calls === 1) {
       return new Response(JSON.stringify({
         message: "Internal error encountered.",
@@ -26,11 +28,24 @@ try {
   };
 
   const result = await analyzeOverviewWithRetry("Create a summer bonus promotion", {
+    context: {
+      locale: "en-CA",
+      market: "CA",
+      productCatalog: [{ productKey: "casino" }],
+    },
     onRetry: (retry) => retries.push(retry),
     wait: async (delayMs) => assert.equal(delayMs, 1000),
   });
   assert.equal(calls, 2);
   assert.equal(result.overview.title, "Summer Bonus");
+  assert.equal(requestBodies.length, 2);
+  requestBodies.forEach((body) => assert.deepEqual(body, {
+    mode: "natural-language",
+    naturalLanguage: "Create a summer bonus promotion",
+    locale: "en-CA",
+    market: "CA",
+    productCatalog: [{ productKey: "casino" }],
+  }));
   assert.deepEqual(retries.map(({ attempt, maxAttempts, requestId }) => ({ attempt, maxAttempts, requestId })), [{
     attempt: 2,
     maxAttempts: 3,

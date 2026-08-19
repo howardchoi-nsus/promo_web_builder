@@ -49,7 +49,21 @@ assert.deepEqual(PROMPT_TYPES.promo_overview_parser.requiredVariables, [
 assert.deepEqual(PROMPT_TYPES.promo_overview_parser.optionalVariables, [
   "generationMode",
   "currentOverviewJson",
+  "productCatalogJson",
+  "localeAndMarketJson",
 ]);
+assert.doesNotThrow(() => validatePromptTemplateContract("promo_overview_parser", {
+  body: [
+    "{{naturalLanguage}}",
+    "{{allowedValuesJson}}",
+    "{{generationMode}}",
+    "{{currentOverviewJson}}",
+    "{{productCatalogJson}}",
+    "{{localeAndMarketJson}}",
+  ].join("\n"),
+  requiredVariables: PROMPT_TYPES.promo_overview_parser.requiredVariables,
+  optionalVariables: PROMPT_TYPES.promo_overview_parser.optionalVariables,
+}));
 assert.deepEqual(PROMPT_TYPES.admin_prompt_translation.requiredVariables, ["sourcePrompt"]);
 
 assert.deepEqual(extractPromptVariables("{{sectionName}} {{ sectionName }} {{contentJson}}"), [

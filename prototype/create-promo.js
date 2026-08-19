@@ -1790,6 +1790,9 @@ async function analyzeNaturalLanguageOverview() {
       body: JSON.stringify({
         naturalLanguage: instruction,
         generationMode: "new-draft",
+        locale: navigator.language || "",
+        market: contentState.promo.market || "",
+        productCatalog: [],
       }),
     });
     if (requestId !== overviewAnalysisRequestId
