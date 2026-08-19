@@ -26,6 +26,9 @@ const admin = read("prototype", "app.js");
 const html = read("prototype", "index.html");
 const migration = read("db", "migrations", "035_llm_prompt_control_plane_backfill.sql");
 const policyMigration = read("db", "migrations", "036_section_ai_image_policy_v3_drafts.sql");
+const promoPlannerMigration = read(
+  "db", "migrations", "062_promo_planner_control_plane_v2_backfill.sql"
+);
 
 const backgroundDefaults = defaultPromptControlPlane("section_background_image");
 assert.deepEqual(backgroundDefaults, {});
@@ -141,7 +144,18 @@ assert.match(legacyImageHandler, /run\.promptSnapshot\?\.promptConfig/);
 assert.match(legacyImageHandler, /promptConfig,/);
 assert.match(assetHandler, /promptConfig:\s*request\.promptConfig/);
 assert.match(admin, /promptUsesSectionAiControlPlane/);
+for (const type of [
+  "promo_overview_parser",
+  "promo_template_recommender",
+  "promo_template_composer",
+  "promo_page_composer",
+  "promo_composition_editor",
+]) {
+  assert.match(admin, new RegExp(`"${type}"`));
+  assert.match(promoPlannerMigration, new RegExp(`'${type}'`));
+}
 assert.match(admin, /modelOptions\.harnessConfig/);
+assert.match(admin, /timeoutMs: 90000, maxAttempts: 1, retryBaseMs: 0, retryMaxMs: 0/);
 assert.match(html, /section_composition_planner/);
 assert.match(html, /Harness 지침\(JSON\)/);
 assert.match(html, /requiredVariablesText[^>]+readonly/);
@@ -151,5 +165,8 @@ assert.match(policyMigration, /status = 'active'/);
 assert.match(policyMigration, /'draft'/);
 assert.match(policyMigration, /minimumLandscapeWidth', 2048/);
 assert.doesNotMatch(policyMigration, /update\s+prompt_templates\s+set/i);
+assert.match(promoPlannerMigration, /executionSnapshotVersion/);
+assert.match(promoPlannerMigration, /'runtimeConfig'/);
+assert.match(promoPlannerMigration, /'promo-planner-v1'/);
 
 console.log("Section AI Control Plane contract tests passed.");

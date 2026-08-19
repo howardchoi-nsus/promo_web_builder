@@ -12441,7 +12441,17 @@ var py = /*#__PURE__*/ Eh(Ov, [["render", fy], ["__scopeId", "data-v-330bdf3d"]]
 						"renderPolicy",
 						"validationPolicy",
 						"promptLayers"
-					]), l = Object.fromEntries(Object.entries(o.modelOptions || {}).filter(([e]) => !c.has(e)));
+					]), l = Object.fromEntries(Object.entries(o.modelOptions || {}).filter(([e]) => !c.has(e))), u = this.promptUsesSectionAiControlPlane(o), d = this.promptUsesSectionImagePolicy(o), f = o.runtimeConfig || o.modelOptions?.runtimeConfig || {}, p = d ? {
+						timeoutMs: 24e4,
+						maxAttempts: 3,
+						retryBaseMs: 15e3,
+						retryMaxMs: 75e3
+					} : {
+						timeoutMs: 9e4,
+						maxAttempts: 1,
+						retryBaseMs: 0,
+						retryMaxMs: 0
+					};
 					this.promptEditor = {
 						name: o.name || "",
 						body: o.body || "",
@@ -12457,11 +12467,11 @@ var py = /*#__PURE__*/ Eh(Ov, [["render", fy], ["__scopeId", "data-v-330bdf3d"]]
 							"2K",
 							"4K"
 						].includes(String(o.generationPolicy?.requestedTier || o.modelOptions?.generationPolicy?.requestedTier || o.modelOptions?.imageSize || o.modelOptions?.image_size || "").toUpperCase()) ? String(o.generationPolicy?.requestedTier || o.modelOptions?.generationPolicy?.requestedTier || o.modelOptions?.imageSize || o.modelOptions?.image_size).toUpperCase() : "2K",
-						executionSnapshotVersion: Number(o.executionSnapshotVersion || o.modelOptions?.executionSnapshotVersion || 2),
-						timeoutMs: o.runtimeConfig?.timeoutMs ?? o.modelOptions?.runtimeConfig?.timeoutMs ?? "",
-						maxAttempts: o.runtimeConfig?.maxAttempts ?? o.modelOptions?.runtimeConfig?.maxAttempts ?? "",
-						retryBaseMs: o.runtimeConfig?.retryBaseMs ?? o.modelOptions?.runtimeConfig?.retryBaseMs ?? "",
-						retryMaxMs: o.runtimeConfig?.retryMaxMs ?? o.modelOptions?.runtimeConfig?.retryMaxMs ?? "",
+						executionSnapshotVersion: Number(o.executionSnapshotVersion || o.modelOptions?.executionSnapshotVersion || (d ? 3 : 2)),
+						timeoutMs: f.timeoutMs ?? (u ? p.timeoutMs : ""),
+						maxAttempts: f.maxAttempts ?? (u ? p.maxAttempts : ""),
+						retryBaseMs: f.retryBaseMs ?? (u ? p.retryBaseMs : ""),
+						retryMaxMs: f.retryMaxMs ?? (u ? p.retryMaxMs : ""),
 						outputMimeType: o.generationPolicy?.outputMimeType ?? o.modelOptions?.generationPolicy?.outputMimeType ?? o.runtimeConfig?.outputMimeType ?? o.modelOptions?.runtimeConfig?.outputMimeType ?? "",
 						generationPolicyText: JSON.stringify(o.generationPolicy || o.modelOptions?.generationPolicy || {}, null, 2),
 						renderPolicyText: JSON.stringify(o.renderPolicy || o.modelOptions?.renderPolicy || {}, null, 2),
@@ -12568,6 +12578,11 @@ var py = /*#__PURE__*/ Eh(Ov, [["render", fy], ["__scopeId", "data-v-330bdf3d"]]
 					"section_layout_planner",
 					"multi_component_layout_planner",
 					"section_composition_planner",
+					"promo_overview_parser",
+					"promo_template_recommender",
+					"promo_template_composer",
+					"promo_page_composer",
+					"promo_composition_editor",
 					"section_background_image",
 					"component_image"
 				].includes(e?.type);

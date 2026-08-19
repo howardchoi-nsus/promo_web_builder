@@ -2844,6 +2844,12 @@ const adminApp = createApp({
         const providerOptions = Object.fromEntries(
           Object.entries(detail.modelOptions || {}).filter(([key]) => !reservedModelOptionKeys.has(key))
         );
+        const usesControlPlane = this.promptUsesSectionAiControlPlane(detail);
+        const usesImagePolicy = this.promptUsesSectionImagePolicy(detail);
+        const runtimeConfig = detail.runtimeConfig || detail.modelOptions?.runtimeConfig || {};
+        const defaultRuntimeConfig = usesImagePolicy
+          ? { timeoutMs: 240000, maxAttempts: 3, retryBaseMs: 15000, retryMaxMs: 75000 }
+          : { timeoutMs: 90000, maxAttempts: 1, retryBaseMs: 0, retryMaxMs: 0 };
         this.promptEditor = {
           name: detail.name || "",
           body: detail.body || "",
@@ -2868,11 +2874,15 @@ const adminApp = createApp({
                 || detail.modelOptions?.image_size
             ).toUpperCase()
             : "2K",
-          executionSnapshotVersion: Number(detail.executionSnapshotVersion || detail.modelOptions?.executionSnapshotVersion || 2),
-          timeoutMs: detail.runtimeConfig?.timeoutMs ?? detail.modelOptions?.runtimeConfig?.timeoutMs ?? "",
-          maxAttempts: detail.runtimeConfig?.maxAttempts ?? detail.modelOptions?.runtimeConfig?.maxAttempts ?? "",
-          retryBaseMs: detail.runtimeConfig?.retryBaseMs ?? detail.modelOptions?.runtimeConfig?.retryBaseMs ?? "",
-          retryMaxMs: detail.runtimeConfig?.retryMaxMs ?? detail.modelOptions?.runtimeConfig?.retryMaxMs ?? "",
+          executionSnapshotVersion: Number(
+            detail.executionSnapshotVersion
+              || detail.modelOptions?.executionSnapshotVersion
+              || (usesImagePolicy ? 3 : 2)
+          ),
+          timeoutMs: runtimeConfig.timeoutMs ?? (usesControlPlane ? defaultRuntimeConfig.timeoutMs : ""),
+          maxAttempts: runtimeConfig.maxAttempts ?? (usesControlPlane ? defaultRuntimeConfig.maxAttempts : ""),
+          retryBaseMs: runtimeConfig.retryBaseMs ?? (usesControlPlane ? defaultRuntimeConfig.retryBaseMs : ""),
+          retryMaxMs: runtimeConfig.retryMaxMs ?? (usesControlPlane ? defaultRuntimeConfig.retryMaxMs : ""),
           outputMimeType: detail.generationPolicy?.outputMimeType
             ?? detail.modelOptions?.generationPolicy?.outputMimeType
             ?? detail.runtimeConfig?.outputMimeType
@@ -3040,6 +3050,11 @@ const adminApp = createApp({
         "section_layout_planner",
         "multi_component_layout_planner",
         "section_composition_planner",
+        "promo_overview_parser",
+        "promo_template_recommender",
+        "promo_template_composer",
+        "promo_page_composer",
+        "promo_composition_editor",
         "section_background_image",
         "component_image",
       ].includes(prompt?.type);

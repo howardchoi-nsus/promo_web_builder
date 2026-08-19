@@ -62,7 +62,25 @@ let prompts = [
     status: "active",
     version: 2,
   }),
+  prompt({
+    id: "overview-v2",
+    lineageId: "overview-lineage",
+    type: "promo_overview_parser",
+    name: "Promotion Overview Parser",
+    body: "Request: {{naturalLanguage}}\nAllowed: {{allowedValuesJson}}",
+    status: "draft",
+    version: 2,
+    requiredVariables: ["naturalLanguage", "allowedValuesJson"],
+    optionalVariables: [
+      "generationMode", "currentOverviewJson", "productCatalogJson", "localeAndMarketJson",
+    ],
+    provider: "openai",
+    model: "gpt-4.1-mini",
+    modelOptions: {},
+  }),
 ];
+
+let savedPromptPatch = null;
 
 let browser;
 try {
@@ -99,6 +117,13 @@ try {
       const selected = prompts.find((item) => item.id === url.searchParams.get("id"));
       return fulfill({ ok: true, prompt: selected, histories: [] });
     }
+    if (url.pathname === "/api/prompt-template" && request.method() === "PATCH") {
+      savedPromptPatch = request.postDataJSON();
+      prompts = prompts.map((item) => item.id === savedPromptPatch.id
+        ? { ...item, ...savedPromptPatch, updatedAt: new Date().toISOString() }
+        : item);
+      return fulfill({ ok: true, prompt: prompts.find((item) => item.id === savedPromptPatch.id) });
+    }
     if (url.pathname === "/api/prompt-template-translate" && request.method() === "POST") {
       const text = String(request.postDataJSON().text || "");
       return fulfill({ ok: true, translation: `한글 번역\n${text}`, provider: { provider: "openai" } });
@@ -130,8 +155,8 @@ try {
   await page.goto(`${origin}/prototype/index.html?view=admin&tab=llm`, { waitUntil: "networkidle" });
   await page.getByRole("heading", { name: "LLM 및 프롬프트 관리" }).waitFor();
   await page.locator(".prompt-group").first().waitFor();
-  assert.equal(await page.locator(".prompt-group").count(), 2, "versions must collapse into lineage groups");
-  assert.equal(await page.locator(".prompt-workflow-group").count(), 1, "related image prompts must share one workflow group");
+  assert.equal(await page.locator(".prompt-group").count(), 3, "versions must collapse into lineage groups");
+  assert.equal(await page.locator(".prompt-workflow-group").count(), 2, "prompts must be grouped by workflow");
   await page.getByRole("heading", { name: "프로모션 이미지" }).waitFor();
   await page.getByText("섹션 콘텐츠와 배경색을 바탕으로 프로모션 키비주얼을 생성합니다.", { exact: true }).first().waitFor();
   await page.getByText("선택 실행", { exact: true }).first().waitFor();
@@ -147,13 +172,14 @@ try {
     (await page.evaluate(() => navigator.clipboard.readText())).replace(/\r\n/g, "\n"),
     (await page.locator(".prompt-body-grid textarea").nth(0).inputValue()).replace(/\r\n/g, "\n"),
   );
-  const workflowToggle = page.locator(".prompt-workflow-toggle");
+  const imageWorkflow = page.locator(".prompt-workflow-group").filter({ hasText: "프로모션 이미지" });
+  const workflowToggle = imageWorkflow.locator(".prompt-workflow-toggle");
   assert.equal(await workflowToggle.getAttribute("aria-expanded"), "true");
   await workflowToggle.click();
-  assert.equal(await page.locator(".prompt-group").first().isVisible(), false, "collapsed workflow must hide its prompts");
+  assert.equal(await imageWorkflow.locator(".prompt-group").first().isVisible(), false, "collapsed workflow must hide its prompts");
   assert.equal(await workflowToggle.getAttribute("aria-expanded"), "false");
   await workflowToggle.click();
-  assert.equal(await page.locator(".prompt-group").first().isVisible(), true, "expanded workflow must restore its prompts");
+  assert.equal(await imageWorkflow.locator(".prompt-group").first().isVisible(), true, "expanded workflow must restore its prompts");
 
   await page.locator('select[aria-label="프롬프트 유형 필터"]').selectOption("section_background_image");
   await page.waitForFunction(() => document.querySelectorAll(".prompt-group").length === 1);
@@ -194,6 +220,28 @@ try {
     "true",
     "selected lineage must remain expanded",
   );
+
+  await page.locator('select[aria-label="프롬프트 유형 필터"]').selectOption("promo_overview_parser");
+  await page.locator(".prompt-version-item").filter({ hasText: "v2" }).click();
+  await page.getByRole("heading", { name: "실행 Harness" }).waitFor();
+  const harnessInput = (label) => page.locator("label.field").filter({ hasText: label }).locator("input");
+  assert.equal(await harnessInput("실행 Snapshot 버전").inputValue(), "2");
+  assert.equal(await harnessInput("제한 시간(ms)").inputValue(), "90000");
+  assert.equal(await harnessInput("최대 시도 횟수").inputValue(), "1");
+  assert.equal(await harnessInput("재시도 기본 대기(ms)").inputValue(), "0");
+  assert.equal(await harnessInput("재시도 최대 대기(ms)").inputValue(), "0");
+  await page.locator(".prompt-editor-header .tiny-button.primary").click();
+  await page.getByText("프롬프트 초안을 저장하고 변경 이력을 생성했습니다", { exact: true }).waitFor();
+  assert.equal(savedPromptPatch.modelOptions.executionSnapshotVersion, 2);
+  assert.deepEqual(savedPromptPatch.modelOptions.runtimeConfig, {
+    timeoutMs: 90000,
+    maxAttempts: 1,
+    retryBaseMs: 0,
+    retryMaxMs: 0,
+  });
+  assert.deepEqual(savedPromptPatch.modelOptions.harnessConfig, {});
+  assert.deepEqual(savedPromptPatch.modelOptions.modelCapabilitySnapshot, {});
+  assert.deepEqual(savedPromptPatch.modelOptions.safetyContract, {});
 
   assert.deepEqual(pageErrors, [], `Page errors:\n${pageErrors.join("\n")}`);
   assert.deepEqual(consoleErrors, [], `Console errors:\n${consoleErrors.join("\n")}`);
