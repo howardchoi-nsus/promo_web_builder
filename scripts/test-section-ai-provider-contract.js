@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const {
   generateSectionDesignPlan,
   generateSectionImage,
+  isProviderBillingError,
   isRetryableProviderError,
 } = require("../api/_promo-section-design-provider");
 
@@ -44,6 +45,16 @@ process.env.SECTION_IMAGE_PROVIDER = "openai";
   assert.equal(isRetryableProviderError({ statusCode: 500, code: "api_error" }), true);
   assert.equal(isRetryableProviderError({ statusCode: 429, code: "rate_limit_exceeded" }), true);
   assert.equal(isRetryableProviderError({ statusCode: 400, code: "invalid_request_error" }), false);
+  assert.equal(isProviderBillingError({
+    statusCode: 429,
+    code: "too_many_requests",
+    message: "Your prepayment credits are depleted.",
+  }), true);
+  assert.equal(isRetryableProviderError({
+    statusCode: 429,
+    code: "too_many_requests",
+    message: "Your prepayment credits are depleted.",
+  }), false);
   const requests = [];
   global.fetch = async (url, options) => {
     const body = JSON.parse(options.body);
@@ -279,6 +290,47 @@ process.env.SECTION_IMAGE_PROVIDER = "openai";
   assert.equal(gemini4kImage.width, 4096);
   assert.equal(gemini4kImage.height, 2304);
   assert.equal(requests[5].body.response_format.image_size, "4K");
+
+  const successfulFetch = global.fetch;
+  global.fetch = async () => new Response(JSON.stringify({
+    error: {
+      code: "too_many_requests",
+      type: "too_many_requests",
+      message: "Your prepayment credits are depleted. Please manage project billing.",
+    },
+  }), {
+    status: 429,
+    headers: { "content-type": "application/json", "x-goog-request-id": "billing-request" },
+  });
+  await assert.rejects(generateSectionImage({
+    prompt: "Managed billing failure visual",
+    safeArea: "none",
+    aspectRatio: "16:9",
+    promptConfig: {
+      promptType: "section_background_image",
+      provider: "google",
+      model: "gemini-3.1-flash-image",
+      modelOptions: {
+        executionSnapshotVersion: 3,
+        policySchemaVersion: 1,
+        generationPolicy: { requestedTier: "2K", outputMimeType: "image/jpeg" },
+        harnessConfig: managedHarness,
+        runtimeConfig: { timeoutMs: 240000, maxAttempts: 3, retryBaseMs: 15000, retryMaxMs: 75000 },
+        renderPolicy: {},
+        validationPolicy: {},
+        modelCapabilitySnapshot: {},
+        safetyContract: {},
+      },
+    },
+  }), (error) => {
+    assert.equal(error.code, "PROVIDER_BILLING_REQUIRED");
+    assert.equal(error.statusCode, 429);
+    assert.equal(error.requestId, "billing-request");
+    assert.match(error.message, /크레딧이 소진/);
+    assert.equal(isRetryableProviderError(error), false);
+    return true;
+  });
+  global.fetch = successfulFetch;
 
   await generateSectionImage({
     prompt: "Managed component visual",

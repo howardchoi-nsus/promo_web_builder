@@ -1,5 +1,8 @@
 const { getSql, parseBody, fetchRun, transitionRun } = require("./_promo-section-design-store");
-const { generateSectionImage } = require("./_promo-section-design-provider");
+const {
+  generateSectionImage,
+  isProviderBillingError,
+} = require("./_promo-section-design-provider");
 const { randomUUID } = require("node:crypto");
 
 module.exports = async function handler(req, res) {
@@ -151,7 +154,8 @@ module.exports = async function handler(req, res) {
   } catch (error) {
     let retryDelayMs = 0;
     const providerStatus = Number(error.statusCode || 0);
-    const retryableProviderError = (
+    const providerBillingError = isProviderBillingError(error);
+    const retryableProviderError = !providerBillingError && (
       providerStatus === 0
       || providerStatus === 404
       || providerStatus === 408
@@ -163,7 +167,19 @@ module.exports = async function handler(req, res) {
     );
     const errorCode = providerStatus === 404
       ? "PROVIDER_ENTITY_NOT_FOUND"
-      : error.code || "SECTION_ASSET_FAILED";
+      : providerBillingError ? "PROVIDER_BILLING_REQUIRED" : error.code || "SECTION_ASSET_FAILED";
+    const errorMessage = providerBillingError
+      ? "AI 모델 사용 크레딧이 소진되었거나 결제 설정이 필요합니다. 관리자에게 문의해 주세요."
+      : error.message;
+    console.error("[promo-section-design-asset-process] provider failure", {
+      jobId,
+      providerStatus,
+      errorCode,
+      providerErrorType: error.providerErrorType || "",
+      requestId: error.requestId || "",
+      retryable: retryableProviderError,
+      providerMessage: error.providerMessage || error.message || "",
+    });
     if (job) {
       const runtime = job.request_snapshot?.promptConfig?.runtimeConfig || {};
       const retryBaseMs = Math.max(0, Number(runtime.retryBaseMs || 15000));
@@ -171,9 +187,9 @@ module.exports = async function handler(req, res) {
       retryDelayMs = Math.min(retryMaxMs, retryBaseMs * Math.max(1, Number(job.current_attempt || 1)));
       await sql`
       update promo_section_design_asset_jobs set status = 'failed', error_code = ${errorCode},
-        error_message = ${error.message}, failure_stage = 'provider',
+        error_message = ${errorMessage}, failure_stage = 'provider',
         lease_token = null, lease_expires_at = null, heartbeat_at = now(),
-        next_retry_at = case when current_attempt < max_attempts
+        next_retry_at = case when ${retryableProviderError} and current_attempt < max_attempts
           then now() + ${retryDelayMs} * interval '1 millisecond' else null end,
         completed_at = now(), updated_at = now()
       where id = ${jobId}::uuid and status = 'processing' and lease_token = ${leaseToken}::uuid
@@ -188,7 +204,7 @@ module.exports = async function handler(req, res) {
         : 502;
     return res.status(responseStatus).json({
       error: "Section design asset generation failed",
-      message: error.message,
+      message: errorMessage,
       code: errorCode,
       retryable,
       retryAfterMs: retryable ? retryDelayMs : 0,

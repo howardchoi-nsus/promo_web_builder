@@ -100,6 +100,9 @@ const progressExecution = computed(() => (
 const retryableAssetError = computed(() => Boolean(store.snapshot && [
   "ASSET_GENERATION_FAILED", "ASSET_GENERATION_TIMEOUT", "ASSET_ENQUEUE_FAILED",
 ].includes(store.error?.code)));
+const billingAssetError = computed(() => Boolean(
+  store.snapshot && store.error?.code === "PROVIDER_BILLING_REQUIRED"
+));
 
 function selectMode(mode) {
   recordBuilderEvent({ eventName: "builder_mode_selected", metadata: { mode } });
@@ -217,6 +220,20 @@ function openVisualEditor() {
 
 function builderAssetFailure(readiness) {
   const failed = readiness.failedRequests[0] || {};
+  const billingFailures = readiness.failedRequests.filter((request) => (
+    String(request.errorCode || "").toUpperCase() === "PROVIDER_BILLING_REQUIRED"
+    || /prepayment credits? (?:are )?depleted|credits? (?:are )?depleted/i.test(
+      String(request.errorMessage || "")
+    )
+  ));
+  if (billingFailures.length) {
+    return Object.assign(new Error(
+      `AI 이미지 모델 사용 크레딧이 소진되었거나 결제 설정이 필요합니다. 관리자에게 문의해 주세요. (실패 이미지 ${billingFailures.length}개)`,
+    ), {
+      code: "PROVIDER_BILLING_REQUIRED",
+      details: [],
+    });
+  }
   return Object.assign(new Error(
     failed.errorMessage || "하나 이상의 AI 이미지 생성에 실패했습니다. 실패한 이미지를 다시 생성해 주세요.",
   ), {
@@ -554,6 +571,11 @@ onBeforeUnmount(() => {
           :disabled="assetRetrying"
           @click="retryAssets"
         >{{ assetRetrying ? "이미지 생성 재시도 중…" : "이미지 생성 다시 시도" }}</button>
+        <button
+          v-if="billingAssetError"
+          type="button"
+          @click="openVisualEditor"
+        >이미지 없이 편집 계속</button>
         <button type="button" @click="clearBuilderError(store)">닫기</button>
       </div>
       <div v-if="store.warning" class="ai-builder-warning" role="status">

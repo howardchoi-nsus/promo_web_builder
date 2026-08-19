@@ -178,6 +178,24 @@ function geminiHeaders() {
   return { "x-goog-api-key": apiKey, "Content-Type": "application/json" };
 }
 
+const PROVIDER_BILLING_MESSAGE = "AI 모델 사용 크레딧이 소진되었거나 결제 설정이 필요합니다. 관리자에게 문의해 주세요.";
+
+function isProviderBillingError(error) {
+  const code = String(error?.code || "").trim().toLowerCase();
+  const type = String(error?.providerErrorType || "").trim().toLowerCase();
+  const message = String(error?.providerMessage || error?.message || "").trim().toLowerCase();
+  return [
+    "provider_billing_required",
+    "insufficient_quota",
+    "billing_hard_limit_reached",
+    "payment_required",
+  ].includes(code)
+    || ["insufficient_quota", "billing_error", "payment_required"].includes(type)
+    || /prepayment credits? (?:are )?depleted/.test(message)
+    || /credits? (?:are )?depleted/.test(message)
+    || /billing (?:account|setup|configuration) (?:is )?(?:required|inactive|disabled)/.test(message);
+}
+
 async function requestJson(url, body, headers, signal, timeoutMs) {
   const controller = signal ? null : new AbortController();
   const timeout = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
@@ -190,11 +208,17 @@ async function requestJson(url, body, headers, signal, timeoutMs) {
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {
-      const error = new Error(payload.error?.message || `Model provider failed with ${response.status}`);
+      const providerMessage = payload.error?.message || `Model provider failed with ${response.status}`;
+      const error = new Error(providerMessage);
       error.code = payload.error?.code || `PROVIDER_${response.status}`;
       error.statusCode = response.status;
       error.providerErrorType = payload.error?.type || "";
       error.requestId = response.headers.get("x-request-id") || response.headers.get("x-goog-request-id") || "";
+      error.providerMessage = providerMessage;
+      if (isProviderBillingError(error)) {
+        error.code = "PROVIDER_BILLING_REQUIRED";
+        error.message = PROVIDER_BILLING_MESSAGE;
+      }
       throw error;
     }
     return { payload, requestId: response.headers.get("x-request-id") || response.headers.get("x-goog-request-id") || "" };
@@ -215,6 +239,7 @@ async function requestJson(url, body, headers, signal, timeoutMs) {
 }
 
 function isRetryableProviderError(error) {
+  if (isProviderBillingError(error)) return false;
   const statusCode = Number(error?.statusCode || 0);
   const code = String(error?.code || "").trim().toLowerCase();
   const type = String(error?.providerErrorType || "").trim().toLowerCase();
@@ -591,6 +616,7 @@ module.exports = {
   generateSectionCompositionPlan,
   generateStructuredPlannerResult,
   isRetryableProviderError,
+  isProviderBillingError,
   generateSectionImage,
   generateOpenAiSectionImage,
   generateGeminiSectionImage,

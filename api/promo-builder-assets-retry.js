@@ -18,6 +18,10 @@ function selectRetryAssetRequests(snapshot, requestedIds = []) {
   const selected = source.filter((request) => (
     (!ids.size || ids.has(String(request.assetRequestId)))
     && ["pending", "failed"].includes(String(request.status || "pending"))
+    && String(request.errorCode || "").toUpperCase() !== "PROVIDER_BILLING_REQUIRED"
+    && !/prepayment credits? (?:are )?depleted|credits? (?:are )?depleted/i.test(
+      String(request.errorMessage || "")
+    )
   ));
   return {
     ...snapshot,
