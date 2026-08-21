@@ -52,7 +52,7 @@ const server = http.createServer(async (request, response) => {
     response.writeHead(200, { "Content-Type": "application/json" });
     response.end(JSON.stringify({
       ok: true,
-      versions: [{ id: "shell-browser", config: { isDefault: true, allowedLocales: ["ko-KR"] } }],
+      versions: [{ id: "shell-browser", config: { isDefault: true, allowedLocales: ["en-US", "ko-KR"] } }],
     }));
     return;
   }
@@ -109,6 +109,7 @@ const server = http.createServer(async (request, response) => {
     response.end(JSON.stringify({
       ok: true,
       overview: { title: "여름 신규 고객 충전 이벤트" },
+      inputLocale: "ko",
       overviewFingerprint: "browser-test-overview",
     }));
     return;
@@ -264,6 +265,7 @@ try {
   }
   assert.ok(compositionRequest, "composition request should be received");
   assert.equal(compositionRequest.overview.title, "수정된 여름 신규 고객 충전 이벤트");
+  assert.equal(compositionRequest.locale, "ko-KR");
   assert.equal(compositionRequest.overviewFingerprint, overviewFingerprint(compositionRequest.overview));
   assert.notEqual(compositionRequest.overviewFingerprint, "browser-test-overview");
   await page.getByText("프로모션 구조를 생성하고 있습니다.").waitFor();

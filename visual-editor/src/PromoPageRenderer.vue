@@ -1715,7 +1715,7 @@ function inspectLayoutCollisions() {
     const section = orderedSections.value.find((entry) => entry.sectionKey === sectionKey);
     const itemsByKey = new Map((section?.items || []).map((item) => [item.itemKey, item]));
     let sectionCollisionCount = 0;
-    const boxes = [...canvas.querySelectorAll(".rendered-item--text[data-style-key]")].flatMap((node, order) => {
+    const boxes = [...canvas.querySelectorAll(".rendered-item[data-style-key]")].flatMap((node, order) => {
       const item = itemsByKey.get(node.dataset.itemKey);
       const rect = node.getBoundingClientRect();
       const computed = globalThis.getComputedStyle?.(node);
@@ -1771,7 +1771,102 @@ function inspectLayoutCollisions() {
   };
 }
 
-defineExpose({ inspectLayoutCollisions });
+function inspectLayoutQuality() {
+  if (!rendererRoot.value) {
+    return {
+      count: 0,
+      collisionCount: 0,
+      placeholderAssetCount: 0,
+      clippedItemCount: 0,
+      overflowItemCount: 0,
+      deadSpaceSectionCount: 0,
+      viewport: mobileLayoutActive.value ? "mobile" : "desktop",
+      diagnostics: [],
+    };
+  }
+  const diagnostics = [];
+  let collisionCount = 0;
+  let clippedItemCount = 0;
+  let overflowItemCount = 0;
+  let deadSpaceSectionCount = 0;
+  const placeholderAssetCount = rendererRoot.value.querySelectorAll(".rendered-image__placeholder").length;
+  rendererRoot.value.querySelectorAll(".rendered-section").forEach((sectionNode) => {
+    const sectionKey = sectionNode.dataset.sectionKey || "";
+    const canvas = sectionNode.querySelector(".rendered-items");
+    const canvasRect = canvas?.getBoundingClientRect();
+    if (!canvas || !canvasRect?.width || !canvasRect?.height) return;
+    const boxes = [...canvas.querySelectorAll(".rendered-item[data-style-key]")].flatMap((node, order) => {
+      const computed = globalThis.getComputedStyle?.(node);
+      const rect = node.getBoundingClientRect();
+      if (computed?.display === "none" || computed?.visibility === "hidden" || rect.width <= 0 || rect.height <= 0) return [];
+      const styleKey = node.dataset.styleKey || node.dataset.itemKey || String(order);
+      const clipped = rect.left < canvasRect.left - 1
+        || rect.top < canvasRect.top - 1
+        || rect.right > canvasRect.right + 1
+        || rect.bottom > canvasRect.bottom + 1;
+      if (clipped) {
+        clippedItemCount += 1;
+        diagnostics.push({ code: "ITEM_CLIPPED", sectionKey, styleKey });
+      }
+      const overflows = node.scrollWidth > node.clientWidth + 1 || node.scrollHeight > node.clientHeight + 1;
+      if (overflows) {
+        overflowItemCount += 1;
+        diagnostics.push({ code: "ITEM_CONTENT_OVERFLOW", sectionKey, styleKey });
+      }
+      return [{
+        styleKey,
+        order,
+        left: rect.left,
+        top: rect.top,
+        right: rect.right,
+        bottom: rect.bottom,
+      }];
+    });
+    for (let index = 0; index < boxes.length; index += 1) {
+      for (let compareIndex = index + 1; compareIndex < boxes.length; compareIndex += 1) {
+        const first = boxes[index];
+        const second = boxes[compareIndex];
+        if (first.left < second.right && first.right > second.left
+          && first.top < second.bottom && first.bottom > second.top) {
+          collisionCount += 1;
+          diagnostics.push({
+            code: "ITEM_COLLISION",
+            sectionKey,
+            styleKey: second.styleKey,
+            relatedStyleKey: first.styleKey,
+          });
+        }
+      }
+    }
+    if (boxes.length) {
+      const contentBottom = Math.max(...boxes.map((box) => box.bottom - canvasRect.top));
+      const emptyHeight = Math.max(0, canvasRect.height - contentBottom);
+      if (emptyHeight > Math.max(320, canvasRect.height * 0.5)) {
+        deadSpaceSectionCount += 1;
+        diagnostics.push({
+          code: "SECTION_DEAD_SPACE_EXCESS",
+          sectionKey,
+          emptyHeight: Math.round(emptyHeight),
+        });
+      }
+    }
+  });
+  if (placeholderAssetCount) {
+    diagnostics.push({ code: "REQUIRED_ASSET_PLACEHOLDER", count: placeholderAssetCount });
+  }
+  return {
+    count: collisionCount + placeholderAssetCount + clippedItemCount + overflowItemCount + deadSpaceSectionCount,
+    collisionCount,
+    placeholderAssetCount,
+    clippedItemCount,
+    overflowItemCount,
+    deadSpaceSectionCount,
+    viewport: mobileLayoutActive.value ? "mobile" : "desktop",
+    diagnostics,
+  };
+}
+
+defineExpose({ inspectLayoutCollisions, inspectLayoutQuality });
 </script>
 
 <template>

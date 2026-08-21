@@ -10,6 +10,7 @@ const {
   OVERVIEW_PARSE_SCHEMA,
   buildOverviewPromptContexts,
   normalizeParsedOverview,
+  inputLanguageLocale,
   overviewFingerprint,
   overviewRequestFingerprint,
 } = require("./_promo-overview-contract");
@@ -72,6 +73,9 @@ module.exports = async function handler(req, res) {
       draftId: randomUUID(),
       createdAt: new Date().toISOString(),
       ...parsed,
+      inputLocale: inputLanguageLocale(instruction)
+        || JSON.parse(promptContexts.localeAndMarketJson || "{}").locale
+        || "",
       overviewFingerprint: overviewFingerprint(parsed.overview),
       requestFingerprint: overviewRequestFingerprint(instruction),
       prompt: {

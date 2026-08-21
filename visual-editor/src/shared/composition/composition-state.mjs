@@ -25,6 +25,7 @@ export function createAiBuilderState(overrides = {}) {
     mode: "ai",
     stage: "idle",
     naturalLanguage: "",
+    inputLocale: "",
     overviewDraft: null,
     overviewFingerprint: "",
     confirmedFieldPaths: [],

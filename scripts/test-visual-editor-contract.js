@@ -324,7 +324,7 @@ assert.doesNotMatch(renderer, /requiredSectionHeight/);
 assert.match(renderer, /function renderedItemHeight\(section, item\)[\s\S]*measuredItemHeights\.value\[styleKey\(section, item\)\]/);
 assert.match(renderer, /data-auto-height-measure/);
 assert.match(renderer, /querySelectorAll\('\[data-auto-height-measure="true"\]'\)/);
-assert.doesNotMatch(renderer, /querySelectorAll\("\.rendered-item\[data-style-key\]"\)/);
+assert.match(renderer, /function inspectLayoutQuality\(\)[\s\S]*querySelectorAll\("\.rendered-item\[data-style-key\]"\)/);
 assert.match(renderer, /activeInteractionKind !== "idle"/);
 assert.match(renderer, /beginInteraction\("component-resize"\)/);
 assert.match(renderer, /endInteraction\("component-resize"\)/);

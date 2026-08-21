@@ -7,6 +7,7 @@ import CompositionProgress from "./CompositionProgress.vue";
 import CompositionReview from "./CompositionReview.vue";
 import { visualEditorEntry } from "../platform/visual-editor-entry.mjs";
 import { evaluateAssetReadiness } from "../shared/composition/asset-readiness.mjs";
+import { resolveCompositionLocale } from "../shared/composition/composition-locale.mjs";
 import OperationProposalReview from "./OperationProposalReview.vue";
 import NaturalLanguageEditor from "./NaturalLanguageEditor.vue";
 import { createAiBuilderStore, clearBuilderError, setBuilderError } from "./state/ai-builder-store.mjs";
@@ -181,6 +182,7 @@ async function analyze() {
     overviewRetry.value = null;
     if (response.executionDisplay) store.executionDisplays.promo_overview_parser = response.executionDisplay;
     store.overviewDraft = response.overview;
+    store.inputLocale = response.inputLocale || "";
     store.overviewFingerprint = response.overviewFingerprint;
     store.stage = "reviewing_overview";
     recordBuilderEvent({
@@ -247,7 +249,10 @@ function builderAssetFailure(readiness) {
 }
 
 async function waitForBuilderAssets({ maxPolls = 200, pollIntervalMs = 2000 } = {}) {
-  let readiness = evaluateAssetReadiness(store.snapshot?.assets?.requests);
+  let readiness = evaluateAssetReadiness(
+    store.snapshot?.assets?.requests,
+    store.snapshot?.assets?.expected,
+  );
   if (readiness.state === "ready") {
     store.stage = "preview_ready";
     return true;
@@ -272,7 +277,10 @@ async function waitForBuilderAssets({ maxPolls = 200, pollIntervalMs = 2000 } = 
       request.assetRequestId,
       request,
     ]));
-    readiness = evaluateAssetReadiness(loaded.snapshot.assets?.requests);
+    readiness = evaluateAssetReadiness(
+      loaded.snapshot.assets?.requests,
+      loaded.snapshot.assets?.expected,
+    );
     if (readiness.state === "failed") throw builderAssetFailure(readiness);
     if (readiness.state === "ready") {
       store.stage = "preview_ready";
@@ -329,7 +337,7 @@ async function compose() {
       });
     }
     const allowedLocales = activeShell.value?.config?.allowedLocales || [];
-    const locale = allowedLocales[0] || navigator.language || "ko-KR";
+    const locale = resolveCompositionLocale(store.inputLocale, allowedLocales, navigator.language);
     const queued = await createCompositionProposal({
       documentId: store.documentId,
       baseDocumentRevision: store.documentRevision,

@@ -37,6 +37,7 @@ docs/
 - Visual Editor: `webflow-style-component-library-drag-drop-development-plan-2026-07-31`, `live-preview-outline-editor-text-alignment-development-plan-2026-07-31`, `visual-editor-structure-ai-design-transition-development-plan-2026-07-31`
 - AI·Preset 보완: `promo-builder-ai-asset-and-section-layout-preset-remediation-development-plan-2026-07-30`
 - AI Registry Composition Mode: `ai-registry-composition-mode-supplement-development-plan-2026-08-04` — Blank Shell, Registry 후보, Resource Reference, Composition Contract v3 보완 계획
+- AI Live Preview 디자인 품질: `ai-live-preview-design-quality-gate-development-plan-2026-08-20` — 실제 AI 생성 결과의 자산 Coverage, Desktop/Mobile Render QA, Layout Fit, 입력 언어 불변식 및 Preview 승격 게이트 계획
 
 ### 정책 (1)
 - `promo-web-builder-policies-2026-07-23.md`(현행화: Visual Editor·라인 편집·AI 역할·Motion 규칙 반영) + `source/collaboration-protocol-2026-07-21.md`

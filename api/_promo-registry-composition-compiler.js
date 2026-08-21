@@ -16,7 +16,10 @@ function clone(value) {
 
 function usesComponentImageTarget(section, item) {
   const policy = section?.aiDesign || {};
-  const itemKey = item?.sourceItemKey || item?.itemKey || "";
+  // Repeated collection items receive generated source keys such as `card#2`.
+  // AI target policy is authored against the original Registry item key, so
+  // use the collection source key when it is available.
+  const itemKey = item?.collection?.sourceItemKey || item?.sourceItemKey || item?.itemKey || "";
   return policy.enabled !== false
     && policy.imageTarget === "item"
     && Array.isArray(policy.imageTargetItemKeys)
@@ -224,6 +227,7 @@ async function compileRegistryComposition({
   const mobileItemVisibility = {};
   const motionSections = {};
   const assetRequests = [];
+  const expectedAssets = [];
   const layoutDiagnostics = [];
 
   for (const planned of spec.sections || []) {
@@ -352,7 +356,7 @@ async function compileRegistryComposition({
         item.fields.forEach((field) => {
           if (usesComponentImageTarget(section, item)
             && field.fieldKind === "image" && !field.isLocked && field.image?.allowedSources?.includes("ai")) {
-            assetRequests.push({
+            const assetRequest = {
               assetRequestId: stableUuid(proposalId, sectionId, componentId, field.fieldKey),
               targetType: "component-field-image", pageSectionInstanceId: sectionId,
               pageComponentInstanceId: componentId,
@@ -363,6 +367,15 @@ async function compileRegistryComposition({
                 ? (section.aiDesign?.imageAspectRatio || "4:3")
                 : (field.image?.aspectRatio || "1:1"),
               status: "pending",
+            };
+            assetRequests.push(assetRequest);
+            expectedAssets.push({
+              assetRequestId: assetRequest.assetRequestId,
+              targetType: assetRequest.targetType,
+              pageSectionInstanceId: assetRequest.pageSectionInstanceId,
+              pageComponentInstanceId: assetRequest.pageComponentInstanceId,
+              fieldKey: assetRequest.fieldKey,
+              required: true,
             });
           }
         });
@@ -389,9 +402,16 @@ async function compileRegistryComposition({
         applyCollectionGeometry(mobileItemStyles, sectionId, entries, collection, { mobile: true });
       }
       if (usesSectionKeyVisualTarget(section)) {
-        assetRequests.push({
+        const assetRequest = {
           assetRequestId: stableUuid(proposalId, sectionId, "section-key-visual"),
           targetType: "section-key-visual", pageSectionInstanceId: sectionId, status: "pending",
+        };
+        assetRequests.push(assetRequest);
+        expectedAssets.push({
+          assetRequestId: assetRequest.assetRequestId,
+          targetType: assetRequest.targetType,
+          pageSectionInstanceId: assetRequest.pageSectionInstanceId,
+          required: true,
         });
       }
       sectionSnapshot.push({
@@ -514,7 +534,7 @@ async function compileRegistryComposition({
     provenance,
     designSpec,
     motionSpec: { sections: motionSections, items: {} },
-    assets: { contractVersion: 1, items: {}, requests: assetRequests },
+    assets: { contractVersion: 1, items: {}, expected: expectedAssets, requests: assetRequests },
     validation: {
       ok: true, errors: [],
       warnings: [

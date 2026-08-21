@@ -168,20 +168,33 @@ function finishTextEdit() {
 }
 
 async function inspectCollisions(apply = false) {
-  collisionMessage.value = "겹침을 확인하고 있습니다.";
+  collisionMessage.value = apply ? "겹침을 보정하고 있습니다." : "레이아웃 품질을 확인하고 있습니다.";
   await nextTick();
   await document.fonts?.ready;
   const images = [...(previewStageRef.value?.querySelectorAll("img") || [])];
   await Promise.all(images.map((image) => image.decode?.().catch(() => undefined)));
-  const result = rendererRef.value?.inspectLayoutCollisions?.() || { count: 0 };
+  const result = apply
+    ? (rendererRef.value?.inspectLayoutCollisions?.() || { count: 0 })
+    : (rendererRef.value?.inspectLayoutQuality?.() || { count: 0 });
   if (!result.count) {
-    collisionMessage.value = "겹치는 텍스트 컴포넌트가 없습니다.";
+    collisionMessage.value = apply
+      ? "보정할 컴포넌트 겹침이 없습니다."
+      : "레이아웃 품질 문제가 없습니다.";
     return result;
   }
-  collisionMessage.value = apply
-    ? `${result.count}개 컴포넌트의 겹침을 보정했습니다. 저장하면 반영됩니다.`
-    : `${result.count}개 컴포넌트의 겹침이 확인되었습니다.`;
-  if (apply) emit("layout-collision-reflow", result);
+  if (apply) {
+    collisionMessage.value = `${result.count}개 컴포넌트의 겹침을 보정했습니다. 저장하면 반영됩니다.`;
+    emit("layout-collision-reflow", result);
+  } else {
+    collisionMessage.value = [
+      `품질 문제 ${result.count}건`,
+      `겹침 ${result.collisionCount || 0}`,
+      `잘림 ${result.clippedItemCount || 0}`,
+      `내용 넘침 ${result.overflowItemCount || 0}`,
+      `미완성 이미지 ${result.placeholderAssetCount || 0}`,
+      `과도한 공백 ${result.deadSpaceSectionCount || 0}`,
+    ].join(" · ");
+  }
   return result;
 }
 
@@ -237,7 +250,7 @@ defineExpose({ finishTextEdit, getStageElement, inspectCollisions, scrollToSecti
         <small v-if="capabilities.canEditPromoContent" class="preview-edit-hint">미리보기 요소를 선택해 내용을 입력하세요.</small>
         <small v-if="autoRegisterMessage" class="auto-register-message" role="status">{{ autoRegisterMessage }}</small>
         <div v-if="editorContext.isAiDocument && capabilities.canMutate" class="collision-actions">
-          <button type="button" @click="inspectCollisions(false)">겹침 확인</button>
+          <button type="button" @click="inspectCollisions(false)">품질 확인</button>
           <button type="button" class="is-primary" @click="inspectCollisions(true)">겹침 보정</button>
           <small v-if="collisionMessage" role="status">{{ collisionMessage }}</small>
         </div>

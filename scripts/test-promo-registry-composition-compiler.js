@@ -184,6 +184,11 @@ async function compile(candidateSet = candidates) {
   assert.ok(snapshot.validation.warnings.some((entry) => entry.code === "TEXT_LAYOUT_OVERLAP_ADJUSTED"));
   assert.equal(snapshot.motionSpec.sections[heroId].className, "fade-up");
   assert.equal(snapshot.assets.requests.length, 2);
+  assert.equal(snapshot.assets.expected.length, 2);
+  assert.deepEqual(
+    snapshot.assets.expected.map((asset) => asset.assetRequestId),
+    snapshot.assets.requests.map((asset) => asset.assetRequestId),
+  );
   assert.ok(snapshot.assets.requests.every((request) => request.targetType === "section-key-visual"));
   assert.ok(snapshot.assets.requests.every((request) => !request.pageComponentInstanceId));
 
@@ -199,6 +204,30 @@ async function compile(candidateSet = candidates) {
   assert.ok(componentTargetSnapshot.assets.requests.every((request) => request.targetType === "component-field-image"));
   assert.equal(componentTargetSnapshot.assets.requests[0].assetRole, "hero-key-visual");
   assert.match(componentTargetSnapshot.assets.requests[0].guidance, /bounded Hero media component/);
+
+  const repeatedComponentCandidates = JSON.parse(JSON.stringify(componentTargetCandidates));
+  repeatedComponentCandidates.sections[0].components[1].collection = {
+    enabled: true, minItems: 1, maxItems: 3,
+    layout: "grid", desktopColumns: 3, mobileColumns: 1, gapPct: 2, gapPx: 16,
+  };
+  const repeatedComponentProposal = JSON.parse(JSON.stringify(proposalSnapshot));
+  repeatedComponentProposal.compositionSpec.sections[0].components[1].repeat = 3;
+  const repeatedComponentSnapshot = await compileRegistryComposition({
+    sql: null,
+    proposalSnapshot: repeatedComponentProposal,
+    candidates: repeatedComponentCandidates,
+    overview: { title: "오버뷰 제목" },
+    documentId: "document-1",
+    proposalId: "proposal-repeated-component",
+    documentRevision: 7,
+    fetchPinnedResources: async () => new Map([[
+      resourceReference.resourceVersionId,
+      { ...resourceReference, content: resourceContent },
+    ]]),
+  });
+  assert.equal(repeatedComponentSnapshot.assets.requests.length, 6);
+  assert.ok(repeatedComponentSnapshot.assets.requests.every((request) => request.targetType === "component-field-image"));
+  assert.equal(repeatedComponentSnapshot.assets.expected.length, 6);
 
   const termsId = snapshot.content.sectionOrder[2];
   const terms = snapshot.content.sectionSnapshot[2];

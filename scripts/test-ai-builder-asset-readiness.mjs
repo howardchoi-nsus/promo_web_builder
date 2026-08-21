@@ -31,4 +31,24 @@ assert.equal(failed.state, "failed");
 assert.equal(failed.failed, 1);
 assert.equal(failed.failedRequests[0].assetRequestId, "hero");
 
+const missingCoverage = evaluateAssetReadiness([
+  { assetRequestId: "card-1", targetType: "component-field-image", status: "ready" },
+], [
+  { assetRequestId: "card-1", targetType: "component-field-image", required: true },
+  { assetRequestId: "card-2", targetType: "component-field-image", required: true },
+]);
+assert.equal(missingCoverage.state, "failed");
+assert.equal(missingCoverage.coverage, 0.5);
+assert.equal(missingCoverage.failedRequests[0].errorCode, "ASSET_REQUEST_COVERAGE_MISMATCH");
+
+const completeCoverage = evaluateAssetReadiness([
+  { assetRequestId: "card-1", status: "ready" },
+  { assetRequestId: "card-2", status: "ready" },
+], [
+  { assetRequestId: "card-1", required: true },
+  { assetRequestId: "card-2", required: true },
+]);
+assert.equal(completeCoverage.state, "ready");
+assert.equal(completeCoverage.coverage, 1);
+
 console.log("AI Builder asset readiness tests passed.");
