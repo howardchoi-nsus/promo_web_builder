@@ -1775,6 +1775,8 @@ function inspectLayoutQuality() {
   if (!rendererRoot.value) {
     return {
       count: 0,
+      blockingCount: 0,
+      warningCount: 0,
       collisionCount: 0,
       placeholderAssetCount: 0,
       clippedItemCount: 0,
@@ -1789,7 +1791,20 @@ function inspectLayoutQuality() {
   let clippedItemCount = 0;
   let overflowItemCount = 0;
   let deadSpaceSectionCount = 0;
-  const placeholderAssetCount = rendererRoot.value.querySelectorAll(".rendered-image__placeholder").length;
+  const placeholders = [...rendererRoot.value.querySelectorAll(".rendered-image__placeholder")];
+  const expectedAssets = Array.isArray(props.assets?.expected)
+    ? props.assets.expected.filter((asset) => asset?.required !== false && asset.targetType === "component-field-image")
+    : null;
+  const requiredAssetTargets = expectedAssets
+    ? new Set(expectedAssets.map((asset) => [
+      asset.pageSectionInstanceId,
+      asset.pageComponentInstanceId,
+      asset.fieldKey,
+    ].map((value) => String(value || "")).join(":")))
+    : null;
+  const placeholderAssetCount = requiredAssetTargets
+    ? placeholders.filter((node) => requiredAssetTargets.has(node.dataset.assetTargetKey || "")).length
+    : placeholders.length;
   rendererRoot.value.querySelectorAll(".rendered-section").forEach((sectionNode) => {
     const sectionKey = sectionNode.dataset.sectionKey || "";
     const canvas = sectionNode.querySelector(".rendered-items");
@@ -1856,6 +1871,8 @@ function inspectLayoutQuality() {
   }
   return {
     count: collisionCount + placeholderAssetCount + clippedItemCount + overflowItemCount + deadSpaceSectionCount,
+    blockingCount: collisionCount + placeholderAssetCount + clippedItemCount + overflowItemCount,
+    warningCount: deadSpaceSectionCount,
     collisionCount,
     placeholderAssetCount,
     clippedItemCount,
@@ -2024,7 +2041,11 @@ defineExpose({ inspectLayoutCollisions, inspectLayoutQuality });
                     :aria-hidden="imageFieldAccessibility(section, item, field).ariaHidden"
                     :aria-busy="aiTargetState(section, item, field)?.kind === 'processing' ? 'true' : undefined"
                   >
-                    <div v-if="!imageUrl(valueFor(section, item, field))" class="rendered-image__placeholder">
+                    <div
+                      v-if="!imageUrl(valueFor(section, item, field))"
+                      class="rendered-image__placeholder"
+                      :data-asset-target-key="`${section.sectionKey}:${item.itemKey}:${field.fieldKey}`"
+                    >
                       <span>{{ field.name }}</span>
                       <small>이미지 준비 중</small>
                     </div>
@@ -2119,7 +2140,11 @@ defineExpose({ inspectLayoutCollisions, inspectLayoutQuality });
                 :aria-hidden="imageFrameAccessibility(section, item).ariaHidden"
                 :aria-busy="aiTargetState(section, item)?.kind === 'processing' ? 'true' : undefined"
               >
-                <div v-if="!imageUrl(valueFor(section, item))" class="rendered-image__placeholder">
+                <div
+                  v-if="!imageUrl(valueFor(section, item))"
+                  class="rendered-image__placeholder"
+                  :data-asset-target-key="`${section.sectionKey}:${item.itemKey}:`"
+                >
                   <span>{{ item.name }}</span>
                   <small>{{ valueFor(section, item)?.value || '이미지 준비 중' }}</small>
                 </div>

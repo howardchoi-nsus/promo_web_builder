@@ -25,8 +25,11 @@ assert.match(adapter, /method: "PATCH"/);
 assert.match(adapter, /error\.currentDocumentRevision/);
 assert.match(app, /async function loadAiDocument/);
 assert.match(app, /await refreshAiDocumentAssetsUntilSettled\(\);/);
-assert.match(app, /evaluateAssetReadiness\(requests\)/);
+assert.match(app, /evaluateAssetReadiness\(requests, aiDocumentSnapshot\.value\?\.assets\?\.expected\)/);
 assert.match(app, /ASSET_GENERATION_TIMEOUT/);
+assert.match(app, /async function runAiDocumentQualityGate/);
+assert.match(app, /inspectQualityAcrossViewports/);
+assert.match(app, /Preview 품질 검사를 통과하지 못해 저장하지 않았습니다/);
 assert.match(app, /async function saveAiDocument/);
 assert.match(app, /DOCUMENT_REVISION_MISMATCH/);
 assert.match(app, /rebaseAiDocumentChanges/);
@@ -52,5 +55,6 @@ assert.throws(
 assert.match(composition, /buildDefaultItemStyles/);
 assert.match(composition, /--promo-font-size-main-title/);
 assert.match(renderer, /style\.fontWeightToken \? `var\(\$\{style\.fontWeightToken\}\)`/);
+assert.match(renderer, /blockingCount: collisionCount \+ placeholderAssetCount \+ clippedItemCount \+ overflowItemCount/);
 
 console.log("AI document Visual Editor contract passed");

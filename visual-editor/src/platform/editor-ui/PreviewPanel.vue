@@ -20,6 +20,7 @@ const props = defineProps({
   layoutSaving: { type: Boolean, default: false },
   aiDocumentSaving: { type: Boolean, default: false },
   aiDocumentSaveMessage: { type: String, default: "" },
+  aiDocumentQualityGate: { type: Object, default: () => ({ state: "idle" }) },
   editorSnapshot: { type: Object, default: null },
   template: { type: Object, default: null },
   selectedStyleKey: { type: String, default: "" },
@@ -72,6 +73,7 @@ const emit = defineEmits([
   "selection-rect-change",
   "text-line-selection-change",
   "layout-collision-reflow",
+  "recheck-ai-quality",
 ]);
 
 const previewStageRef = ref(null);
@@ -198,6 +200,56 @@ async function inspectCollisions(apply = false) {
   return result;
 }
 
+function waitForAnimationFrames(count = 2) {
+  if (typeof requestAnimationFrame !== "function") return Promise.resolve();
+  return new Promise((resolve) => {
+    const next = (remaining) => requestAnimationFrame(() => (
+      remaining > 1 ? next(remaining - 1) : resolve()
+    ));
+    next(count);
+  });
+}
+
+async function waitForPreviewLayout() {
+  await nextTick();
+  await waitForAnimationFrames();
+  await document.fonts?.ready;
+  const images = [...(previewStageRef.value?.querySelectorAll("img") || [])];
+  await Promise.all(images.map((image) => image.decode?.().catch(() => undefined)));
+  await waitForAnimationFrames();
+}
+
+async function inspectQualityAcrossViewports() {
+  const originalViewport = props.viewport;
+  const results = {};
+  try {
+    for (const targetViewport of ["desktop", "mobile"]) {
+      if (props.viewport !== targetViewport) emit("update:viewport", targetViewport);
+      await waitForPreviewLayout();
+      results[targetViewport] = rendererRef.value?.inspectLayoutQuality?.() || {
+        viewport: targetViewport,
+        count: 0,
+        blockingCount: 0,
+        warningCount: 0,
+        diagnostics: [],
+      };
+    }
+  } finally {
+    if (props.viewport !== originalViewport) {
+      emit("update:viewport", originalViewport);
+      await waitForPreviewLayout();
+    }
+  }
+  const values = Object.values(results);
+  return {
+    results,
+    count: values.reduce((sum, result) => sum + Number(result.count || 0), 0),
+    blockingCount: values.reduce((sum, result) => sum + Number(result.blockingCount || 0), 0),
+    warningCount: values.reduce((sum, result) => sum + Number(result.warningCount || 0), 0),
+    diagnostics: values.flatMap((result) => result.diagnostics || []),
+  };
+}
+
 function libraryComponentKey(event) {
   const raw = event.dataTransfer?.getData("application/x-promo-component-definition");
   if (!raw) return "";
@@ -227,7 +279,14 @@ function handlePreviewDrop(event) {
   if (sectionKey) emit("drop-library-component", componentKey, sectionKey);
 }
 
-defineExpose({ finishTextEdit, getStageElement, inspectCollisions, scrollToSection, updateSelectionRect });
+defineExpose({
+  finishTextEdit,
+  getStageElement,
+  inspectCollisions,
+  inspectQualityAcrossViewports,
+  scrollToSection,
+  updateSelectionRect,
+});
 </script>
 
 <template>
@@ -316,14 +375,14 @@ defineExpose({ finishTextEdit, getStageElement, inspectCollisions, scrollToSecti
             v-if="capabilities.canSaveAiDocument"
             type="button"
             class="is-primary"
-            :disabled="!editorSnapshot || aiDocumentSaving"
+            :disabled="!editorSnapshot || aiDocumentSaving || ['checking', 'failed'].includes(aiDocumentQualityGate.state)"
             @click="emit('save-ai-document')"
           >{{ aiDocumentSaving ? "저장 중" : "AI 문서 저장" }}</button>
           <button
             v-if="capabilities.canOpenWebOutput"
             type="button"
             class="web-output-action"
-            :disabled="!editorSnapshot"
+            :disabled="!editorSnapshot || ['checking', 'failed'].includes(aiDocumentQualityGate.state)"
             @click="emit('open-output')"
           >Web Output</button>
         </template>
@@ -337,6 +396,24 @@ defineExpose({ finishTextEdit, getStageElement, inspectCollisions, scrollToSecti
       @dragover="handlePreviewDragOver"
       @drop="handlePreviewDrop"
     >
+      <div
+        v-if="editorContext.isAiDocument && ['checking', 'failed'].includes(aiDocumentQualityGate.state)"
+        class="preview-quality-gate"
+        :class="`is-${aiDocumentQualityGate.state}`"
+        :role="aiDocumentQualityGate.state === 'failed' ? 'alert' : 'status'"
+        :aria-busy="aiDocumentQualityGate.state === 'checking'"
+      >
+        <div class="preview-quality-gate__card">
+          <span>{{ aiDocumentQualityGate.state === 'checking' ? 'PREVIEW QUALITY CHECK' : 'PREVIEW QUALITY BLOCKED' }}</span>
+          <strong>{{ aiDocumentQualityGate.state === 'checking' ? 'Desktop과 Mobile 레이아웃을 확인하고 있습니다.' : '레이아웃 품질 문제를 해결해야 합니다.' }}</strong>
+          <p>{{ aiDocumentQualityGate.message }}</p>
+          <button
+            v-if="aiDocumentQualityGate.state === 'failed'"
+            type="button"
+            @click.stop="emit('recheck-ai-quality')"
+          >다시 검사</button>
+        </div>
+      </div>
       <PromoPageRenderer
         ref="rendererRef"
         v-if="rendererSnapshot"
@@ -347,7 +424,7 @@ defineExpose({ finishTextEdit, getStageElement, inspectCollisions, scrollToSecti
         :motion-spec="rendererSnapshot.motionSpec"
         :section-design-runs="sectionDesignRuns"
         :viewport-override="viewport"
-        :editable="capabilities.canMutate"
+        :editable="capabilities.canMutate && !['checking', 'failed'].includes(aiDocumentQualityGate.state)"
         :show-guides="guideMode !== 'normal'"
         :outline-mode="guideMode === 'outline'"
         :selected-item-key="selectedStyleKey"

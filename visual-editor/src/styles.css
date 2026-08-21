@@ -164,7 +164,7 @@ button, a { letter-spacing: 0; }
 .component-inspector-ai:empty { display: none; }
 .preview-toolbar > div:first-child { display: grid; gap: 2px; }
 .preview-toolbar small { color: var(--app-muted); }
-.preview-title-group { grid-template-columns: auto auto; align-items: center; column-gap: 8px; }
+.preview-title-group { grid-template-columns: auto auto; align-items: center; min-width: 0; column-gap: 8px; flex: 0 1 300px; }
 .preview-title-group > small:first-of-type { grid-column: 1; }
 .auto-register-action { grid-column: 2; grid-row: 1 / span 2; align-self: center; min-height: 32px; padding: 0 12px; border: 1px solid var(--app-accent); background: var(--app-accent); color: var(--app-panel); cursor: pointer; font-size: 11px; font-weight: 800; }
 .auto-register-action:disabled { cursor: wait; opacity: .55; }
@@ -174,7 +174,7 @@ button, a { letter-spacing: 0; }
 .collision-actions button { min-height: 28px; padding: 0 9px; border: 1px solid var(--app-line-strong); background: var(--app-panel); color: var(--app-ink); cursor: pointer; font-size: 11px; font-weight: 750; }
 .collision-actions button.is-primary { border-color: var(--app-accent); background: var(--app-accent); color: var(--app-panel); }
 .collision-actions small { flex-basis: 100%; color: var(--app-muted); }
-.preview-controls { display: flex; align-items: center; gap: 10px; }
+.preview-controls { display: flex; align-items: center; justify-content: flex-end; min-width: 0; gap: 10px; flex: 1 1 520px; flex-wrap: wrap; }
 .visually-hidden { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
 .text-editor-controls { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 7px 12px; border-bottom: 1px solid var(--app-line); background: var(--app-surface); }
 .text-editor-controls__scope { flex: 0 0 auto; color: var(--app-sub); font-size: 10px; font-weight: 800; }
@@ -256,8 +256,15 @@ button, a { letter-spacing: 0; }
 .guide-mode-control button:focus-visible { outline: 2px solid var(--app-focus); outline-offset: -2px; }
 .viewport-control { display: flex; }
 .viewport-control button.active { border-color: var(--app-accent); background: var(--app-accent-soft); color: var(--app-accent); }
-.preview-stage { width: 100%; min-height: calc(100vh - 154px); padding: 18px; overflow: auto; }
-.preview-stage--mobile .promo-renderer { width: min(375px, 100%); margin: 0 auto; }
+.preview-stage { position: relative; width: 100%; min-height: calc(100vh - 154px); padding: 18px; overflow: auto; }
+.preview-stage.preview-stage--mobile .promo-renderer { width: min(375px, 100%); min-width: 0; margin: 0 auto; }
+.preview-quality-gate { position: sticky; top: 0; z-index: 40; display: grid; place-items: start center; width: 100%; height: 0; pointer-events: none; }
+.preview-quality-gate__card { width: min(520px, calc(100% - 24px)); margin-top: 14px; padding: 18px 20px; border: 1px solid color-mix(in srgb, var(--app-accent) 42%, var(--app-line)); border-radius: 14px; background: color-mix(in srgb, var(--app-panel) 94%, transparent); box-shadow: 0 16px 46px color-mix(in srgb, var(--app-ink) 18%, transparent); backdrop-filter: blur(14px); pointer-events: auto; }
+.preview-quality-gate.is-failed .preview-quality-gate__card { border-color: color-mix(in srgb, var(--app-danger) 68%, var(--app-line)); }
+.preview-quality-gate__card span { display: block; margin-bottom: 7px; color: var(--app-muted); font-size: 10px; font-weight: 850; letter-spacing: .12em; }
+.preview-quality-gate__card strong { display: block; font-size: 15px; }
+.preview-quality-gate__card p { margin: 7px 0 0; color: var(--app-muted); font-size: 12px; line-height: 1.55; }
+.preview-quality-gate__card button { margin-top: 12px; min-height: 32px; padding: 0 12px; border: 1px solid var(--app-line-strong); background: var(--app-panel); color: var(--app-ink); font-weight: 750; cursor: pointer; }
 
 .section-properties { display: grid; gap: 12px; padding: 12px; border: 1px solid var(--app-line); background: var(--app-panel); }
 .page-tree__section > [role="group"] > .section-composition-panel { margin: 8px; }

@@ -889,3 +889,64 @@ AI Builder browser test: passed
 - Shadow Mode부터 Blocking 100%까지의 운영 Rollout
 
 후속 개발은 Phase 2의 자동 승격 Gate를 먼저 완성한 뒤 Phase 3 Layout Fit Scoring으로 진행한다.
+
+---
+
+## 19. 2026-08-21 P0 2차 구현 결과
+
+### 19.1 완료
+
+- AI 문서의 Content·Asset 로딩이 끝나고 실제 Preview DOM이 렌더된 직후 자동 품질 검사를 실행한다.
+- Desktop과 Mobile Viewport를 순차 렌더하고 Font·Image Decode·Layout Frame 안정화 이후 동일한 품질 계약으로 검사한다.
+- 겹침, 컴포넌트 잘림, 내용 넘침, 필수 이미지 Placeholder를 `Blocking`으로 분류한다.
+- 과도한 Section 공백은 현재 오탐 가능성을 고려해 `Warning`으로 분리했다.
+- `assets.expected`가 있는 문서는 모든 빈 이미지 슬롯이 아니라 필수 생성 대상으로 선언된 이미지 Placeholder만 차단한다.
+- Blocking 상태에서는 Preview 직접 편집, AI 문서 저장, Web Output 열기를 비활성화한다.
+- 차단 카드에서 Desktop/Mobile 문제 건수와 해결 안내를 표시하고 `다시 검사`를 제공한다.
+- 저장 시점에도 품질 검사를 다시 실행해 초기 검사 후 변경으로 생긴 문제를 저장하지 않는다.
+- 검사 통과 후 사용자가 보고 있던 원래 Viewport로 복원한다.
+
+### 19.2 Browser E2E
+
+`scripts/test-ai-document-quality-gate-browser.mjs`를 추가했다.
+
+- 필수 Component Image 요청은 `ready`지만 실제 Content 값이 비어 있는 손상 Snapshot을 로드한다.
+- Desktop과 Mobile 모두 Blocking 결과가 생성되는지 확인한다.
+- `PREVIEW QUALITY BLOCKED` 안내와 `다시 검사`가 표시되는지 확인한다.
+- AI 문서 저장과 Web Output 버튼이 비활성화되는지 확인한다.
+- 재검사 후에도 문제가 남아 있으면 차단 상태가 유지되는지 확인한다.
+- 차단 중 Document PATCH 요청이 한 번도 발생하지 않는지 확인한다.
+- 빈 화면, Vite Error Overlay, Page Error가 없는지 확인한다.
+
+검증 결과:
+
+```text
+AI document quality gate browser test: passed
+Visual Editor production build: passed
+전체 자동 테스트: 137 files passed
+```
+
+테스트 실행 환경은 번들 Runtime의 Node 24.19.0이며 프로젝트 선언은 Node 22.x다. Release CI에서는 Node 22.x 기준 검증을 추가 수행한다.
+
+### 19.3 남은 후속 범위
+
+- 품질 결과와 Diagnostic을 서버 Document Revision에 저장하는 Gate Snapshot
+- 1440/1024/390/360 고정 폭별 Render Harness와 Golden Corpus
+- 문제 Component로 이동하는 Diagnostic 상세 UI
+- 허용된 Geometry 범위 안에서 최대 2회 수행하는 자동 Repair
+- Layout Fit Scoring과 Preset 재선택
+- Locale Resource Fail-closed와 중복 문구 Repair
+- Shadow Mode 운영 지표와 단계별 Blocking Rollout
+
+현재 단계에서 깨진 AI 결과는 Live Preview에 성공 상태로 노출되거나 저장·Web Output으로 진행되지 않는다. 다음 개발 우선순위는 서버 Revision 품질 보고서 저장과 제한된 자동 Repair다.
+
+### 19.4 2026-08-21 디버깅 보정
+
+- 품질 검사 중 Preview 편집을 잠그면 Renderer에서 `is-editor-preview`가 빠지고 출력용 `min-width` 규칙이 활성화됐다.
+- 이 규칙이 Mobile Preview의 375px 폭보다 우선해 Mobile 반응형 데이터가 약 840px Desktop 캔버스에서 검사되는 문제를 수정했다.
+- Mobile Preview selector의 우선순위를 높이고 `min-width: 0`을 적용해 실제 375px 프레임에서 검사되도록 고정했다.
+- 좁은 Preview 툴바에서 비활성 디자인 토큰 Select가 AI 문서 저장 버튼 위에 겹쳐 포인터 이벤트를 가로채는 문제를 수정했다.
+- Preview Controls를 가변 폭·Wrap 레이아웃으로 변경해 저장, Web Output, Guide, Viewport Control이 서로 겹치지 않도록 했다.
+- Browser E2E에 손상 문서 차단 경로와 정상 이미지 문서의 Desktop/Mobile 통과·Revision 저장 경로를 모두 포함했다.
+
+검증 결과는 Visual Editor Production Build 및 전체 137개 Test File 통과다.

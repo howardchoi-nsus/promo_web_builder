@@ -98,6 +98,14 @@ const aiDocumentRevision = ref(0);
 const aiDocumentSaving = ref(false);
 const aiDocumentSaveMessage = ref("");
 const aiDocumentConflict = ref(null);
+const aiDocumentQualityGate = ref({
+  state: "idle",
+  message: "",
+  results: {},
+  diagnostics: [],
+  blockingCount: 0,
+  warningCount: 0,
+});
 const designTokenSets = ref([]);
 const previewDesignTokenVersionId = ref("");
 const externalSnapshotReady = ref(false);
@@ -1856,6 +1864,7 @@ async function loadAiDocument() {
     loading.value = false;
     return;
   }
+  let shouldInspectQuality = false;
   try {
     const [result, availableTokenSets] = await Promise.all([
       aiDocumentAdapter.load(documentId),
@@ -1903,17 +1912,22 @@ async function loadAiDocument() {
       ? verifyingAssets
       : "AI 이미지 생성 완료를 확인하고 있습니다.";
     await refreshAiDocumentAssetsUntilSettled();
+    shouldInspectQuality = true;
   } catch (loadError) {
     error.value = loadError.message;
   } finally {
     loading.value = false;
+  }
+  if (shouldInspectQuality && !aiDocumentPollingCancelled) {
+    await nextTick();
+    await runAiDocumentQualityGate();
   }
 }
 
 async function refreshAiDocumentAssetsUntilSettled() {
   for (let count = 0; count < 200 && !aiDocumentPollingCancelled; count += 1) {
     const requests = aiDocumentSnapshot.value?.assets?.requests || [];
-    const readiness = evaluateAssetReadiness(requests);
+    const readiness = evaluateAssetReadiness(requests, aiDocumentSnapshot.value?.assets?.expected);
     if (readiness.state === "ready") return;
     if (readiness.state === "failed") {
       const failed = readiness.failedRequests[0] || {};
@@ -1972,8 +1986,59 @@ async function refreshAiDocumentAssetsUntilSettled() {
   }
 }
 
+function qualityGateMessage(result) {
+  const desktop = result.results?.desktop || {};
+  const mobile = result.results?.mobile || {};
+  const summary = (label, value) => `${label} ${Number(value.blockingCount || 0)}건`;
+  if (result.blockingCount) {
+    return `${summary("Desktop", desktop)} · ${summary("Mobile", mobile)} · 겹침, 잘림, 내용 넘침 또는 미완성 이미지를 수정한 뒤 다시 검사해 주세요.`;
+  }
+  if (result.warningCount) {
+    return `Blocking 문제는 없습니다. 과도한 공백 경고 ${result.warningCount}건을 확인해 주세요.`;
+  }
+  return "Desktop과 Mobile Preview 품질 검사를 통과했습니다.";
+}
+
+async function runAiDocumentQualityGate() {
+  if (!isAiDocumentMode.value || !editorSnapshot.value) return true;
+  aiDocumentQualityGate.value = {
+    state: "checking",
+    message: "실제 폰트와 이미지를 반영해 두 Viewport를 순서대로 검사합니다.",
+    results: {},
+    diagnostics: [],
+    blockingCount: 0,
+    warningCount: 0,
+  };
+  await nextTick();
+  try {
+    const result = await previewPanelRef.value?.inspectQualityAcrossViewports?.();
+    if (!result) throw new Error("Preview Renderer가 준비되지 않았습니다.");
+    const passed = Number(result.blockingCount || 0) === 0;
+    aiDocumentQualityGate.value = {
+      state: passed ? "passed" : "failed",
+      message: qualityGateMessage(result),
+      ...result,
+    };
+    return passed;
+  } catch (qualityError) {
+    aiDocumentQualityGate.value = {
+      state: "failed",
+      message: `Preview 품질 검사를 완료하지 못했습니다: ${qualityError.message}`,
+      results: {},
+      diagnostics: [{ code: "PREVIEW_QUALITY_CHECK_FAILED", message: qualityError.message }],
+      blockingCount: 1,
+      warningCount: 0,
+    };
+    return false;
+  }
+}
+
 async function saveAiDocument() {
   if (!isAiDocumentMode.value || !editorSnapshot.value || aiDocumentSaving.value) return false;
+  if (!await runAiDocumentQualityGate()) {
+    aiDocumentSaveMessage.value = "Preview 품질 검사를 통과하지 못해 저장하지 않았습니다.";
+    return false;
+  }
   const validation = validateLayoutSpec(designSpec.value);
   if (!validation.ok) {
     aiDocumentSaveMessage.value = `레이아웃 검증 실패: ${validation.errors[0]?.path || "unknown"}`;
@@ -2703,6 +2768,7 @@ onBeforeUnmount(() => {
         :layout-saving="layoutSaving"
         :ai-document-saving="aiDocumentSaving"
         :ai-document-save-message="aiDocumentSaveMessage"
+        :ai-document-quality-gate="aiDocumentQualityGate"
         :editor-snapshot="editorSnapshot"
         :template="template"
         :selected-style-key="selectedStyleKey"
@@ -2743,6 +2809,7 @@ onBeforeUnmount(() => {
         @update-item-content="updateRendererContent"
         @update-section-style="updateSectionStyle"
         @layout-collision-reflow="applyLayoutCollisionReflow"
+        @recheck-ai-quality="runAiDocumentQualityGate"
         @drop-library-component="addComponent"
         @patch-selected-text-style="patchSelectedTextStyle"
         @restore-automatic-position="restoreAutomaticPosition"

@@ -48,7 +48,7 @@ assert.match(previewPanel, /@click="clearPreviewSelection"/);
 assert.match(app, /selectedTextLines\.value = null/);
 assert.match(previewPanel, /text-line-selection-change/);
 assert.match(app, /@clear-selection="clearEditorSelection"/);
-assert.match(previewPanel, /defineExpose\(\{ finishTextEdit,/);
+assert.match(previewPanel, /defineExpose\(\{\s+finishTextEdit,/);
 assert.match(app, /previewPanelRef\.value\?\.finishTextEdit\(\)/);
 assert.match(app, /function selectedRenderedItemRect\(\)/);
 assert.match(app, /renderedRect\?\.height/);
