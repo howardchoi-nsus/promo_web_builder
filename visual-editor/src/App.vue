@@ -2785,6 +2785,7 @@ onBeforeUnmount(() => {
         :selected-field-style-key="selectedFieldStyleKey"
         :selected-item-keys="selectedItemKeys"
         :selected-section="selectedSection"
+        :layout-fit-repairs="aiDocumentSnapshot?.compositionMeta?.layoutFitRepairs || []"
         :selected-item="selectedItem"
         :selected-item-style="selectedItemStyle"
         :color-token-options="colorTokenOptions"

@@ -11,6 +11,7 @@ const adapter = read("visual-editor/src/platform/adapters/ai-document-adapter.mj
 const builder = read("visual-editor/src/builder/AiBuilderApp.vue");
 const documentsApi = read("api/promo-builder-documents.js");
 const renderer = read("visual-editor/src/PromoPageRenderer.vue");
+const previewPanel = read("visual-editor/src/platform/editor-ui/PreviewPanel.vue");
 const composition = read("api/_promo-page-composition-contract.js");
 const { normalizeSectionSnapshot } = require("../api/promo-builder-documents");
 
@@ -36,6 +37,12 @@ assert.match(app, /rebaseAiDocumentChanges/);
 assert.match(app, /현재 변경을 최신본에 재적용/);
 assert.match(app, /builderDocumentId/);
 assert.match(app, /mode", "output"/);
+assert.match(app, /:layout-fit-repairs="aiDocumentSnapshot\?\.compositionMeta\?\.layoutFitRepairs \|\| \[\]"/);
+assert.match(previewPanel, /layoutFitRepairs: \{ type: Array/);
+assert.match(previewPanel, /const selectedLayoutFitRepair = computed/);
+assert.match(previewPanel, /data-testid="layout-selection-status"/);
+assert.match(previewPanel, /선택 Layout/);
+assert.match(previewPanel, /자동 보정/);
 assert.match(documentsApi, /if \(req\.method === "PATCH"\)/);
 assert.match(documentsApi, /createDocumentRevision/);
 assert.match(documentsApi, /source: "manual"/);

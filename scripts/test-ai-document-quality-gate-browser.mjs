@@ -29,10 +29,20 @@ const snapshot = {
   documentRevision: 1,
   layoutRevision: 0,
   layoutIdentity: { configRevision: "quality-gate-browser" },
+  compositionMeta: {
+    layoutFitRepairs: [{
+      sectionVersionId: "hero-version-1",
+      fromLayoutKey: "hero-left-balanced",
+      toLayoutKey: "hero-center-wide",
+      scoreDelta: 36,
+    }],
+  },
   content: {
     formTemplate: { id: "quality-gate", name: "Quality Gate Browser", templateKey: "quality-gate", designTokens: { values: {} } },
     sectionSnapshot: [{
       sectionKey: "hero",
+      sourceSectionId: "hero-version-1",
+      selectedLayoutKey: "hero-center-wide",
       name: "Hero",
       items: [{
         itemKey: "card#1",
@@ -152,6 +162,10 @@ try {
     { waitUntil: "networkidle" },
   );
   await page.getByText("PREVIEW QUALITY BLOCKED").waitFor();
+  const layoutStatus = page.getByTestId("layout-selection-status");
+  await layoutStatus.waitFor();
+  assert.match(await layoutStatus.innerText(), /선택 Layout\s*hero-center-wide/);
+  assert.match(await layoutStatus.innerText(), /자동 보정\s*hero-left-balanced\s*→\s*hero-center-wide\s*\+36/);
   const alert = page.locator(".preview-quality-gate.is-failed");
   assert.match(await alert.innerText(), /Desktop [1-9]\d*건/);
   assert.match(await alert.innerText(), /Mobile [1-9]\d*건/);

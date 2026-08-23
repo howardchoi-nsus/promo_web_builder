@@ -1,5 +1,5 @@
 <script setup>
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import PromoPageRenderer from "../../PromoPageRenderer.vue";
 import EditorPreviewControls from "./EditorPreviewControls.vue";
 
@@ -28,6 +28,7 @@ const props = defineProps({
   selectedFieldStyleKey: { type: String, default: "" },
   selectedItemKeys: { type: Array, default: () => [] },
   selectedSection: { type: Object, default: null },
+  layoutFitRepairs: { type: Array, default: () => [] },
   selectedItem: { type: Object, default: null },
   selectedItemStyle: { type: Object, default: () => ({}) },
   motionReplayKey: { type: Number, default: 0 },
@@ -79,6 +80,13 @@ const emit = defineEmits([
 const previewStageRef = ref(null);
 const rendererRef = ref(null);
 const collisionMessage = ref("");
+const selectedLayoutFitRepair = computed(() => {
+  const sourceSectionId = String(props.selectedSection?.sourceSectionId || "");
+  if (!sourceSectionId) return null;
+  return props.layoutFitRepairs.find(
+    (repair) => String(repair?.sectionVersionId || "") === sourceSectionId,
+  ) || null;
+});
 let selectionFrame = 0;
 let stageResizeObserver = null;
 
@@ -297,6 +305,23 @@ defineExpose({
         <small>{{ templateIdentityLabel }}</small>
         <small class="preview-save-target">저장 대상: {{ editorContext.saveTargetLabel }}</small>
         <small v-if="editorContext.readOnly" class="preview-readonly-state">읽기 전용</small>
+        <div
+          v-if="editorContext.isAiDocument && selectedSection?.selectedLayoutKey"
+          class="layout-selection-status"
+          data-testid="layout-selection-status"
+        >
+          <small>
+            선택 Layout
+            <code>{{ selectedSection.selectedLayoutKey }}</code>
+          </small>
+          <small v-if="selectedLayoutFitRepair" class="layout-fit-repair-status">
+            자동 보정
+            <code>{{ selectedLayoutFitRepair.fromLayoutKey }}</code>
+            <span aria-hidden="true">→</span>
+            <code>{{ selectedLayoutFitRepair.toLayoutKey }}</code>
+            <strong>{{ Number(selectedLayoutFitRepair.scoreDelta) >= 0 ? "+" : "" }}{{ selectedLayoutFitRepair.scoreDelta }}</strong>
+          </small>
+        </div>
         <button
           v-if="capabilities.canAutoRegister"
           class="auto-register-action"
