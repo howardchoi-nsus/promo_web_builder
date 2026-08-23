@@ -4,6 +4,7 @@
 
 - 작성일: 2026-07-29
 - 개정일: 2026-08-06
+- 최종 현행화: 2026-08-23
 - 대상 프로젝트: `promo_web_builder`
 - 문서 상태: Contract v3 Vertical Slice 구현 반영 / 브라우저·운영 E2E 진행 중
 - 상위 계획:
@@ -309,14 +310,15 @@ type CompositionProgressStage =
   | "resolving_policies"
   | "composing_page"
   | "validating_composition"
-  | "render_ready"
   | "generating_assets"
-  | "partial_ready"
-  | "ready"
+  | "preview_ready"
+  | "navigating_preview"
   | "failed";
 ```
 
-`render_ready` 상태가 되면 Live Preview를 즉시 활성화한다. 이미지 영역에는 Skeleton과 대상별 진행 상태를 표시한다.
+초기 AI 생성에서는 `render_ready`, `partial_ready`를 사용하지 않는다. 필수 Asset Coverage와 모든 요청의 `ready` 상태를 확인한 뒤 `preview_ready → navigating_preview` 순서로 Live Preview에 진입한다. 실패·미완성 Asset은 재시도 대상으로 유지하며 Preview 우회를 허용하지 않는다.
+
+Live Preview에서 실제 Desktop·Mobile DOM 품질 검사를 통과해 저장하면 서버는 품질 보고서를 다음 Builder Document Revision에 결합한다. Composition Apply·Operation·Rollback으로 새 Revision이 만들어지면 보고서를 `pending`으로 무효화하며, Web Output과 Export는 현재 Revision의 `passed` 보고서를 요구한다.
 
 ### 4.6 생성 결과 수정
 
@@ -1769,9 +1771,10 @@ resolve authenticated user
 
 - 자연어 분석 완료 시간
 - Composition Proposal 생성 시간
-- `render_ready`까지 시간
+- 전체 Asset `ready`까지 시간
+- Desktop·Mobile 품질 검사 완료 시간
+- `qualityGate=passed` Revision 저장까지 시간
 - 첫 편집 가능 시간
-- 전체 Asset 준비 시간
 - 자연어 Operation 적용 시간
 
 ### 18.3 로그 보안
@@ -1879,8 +1882,9 @@ Builder 진입
   → Overview 수정
   → 공용 섹션 확인
   → 생성
-  → render_ready
   → 이미지 완료
+  → Desktop·Mobile 품질 검사
+  → qualityGate=passed Revision 저장
   → 자연어 수정
   → 수동 편집
   → 저장·새로고침
@@ -1921,9 +1925,10 @@ Builder 진입
 ### P2 Gate
 
 - AI Composition이 기존 Renderer에서 정상 출력
-- 안전 결과 자동 적용
+- 서버 검증과 `autoApplicable=true`를 충족한 최초 생성 결과 자동 적용
 - 확인 필요 결과 승인 분기
-- 이미지 없이 `render_ready`
+- 필수 Asset Coverage 100%와 전체 `ready` 이후 Preview 진입
+- 실패 Asset Preview 우회 금지
 
 ### P3 Gate
 

@@ -183,7 +183,7 @@ async function processCompositionProposal(proposalId, dependencies = {}) {
     const warnings = snapshot.validation.warnings || [];
     const validation = {
       ok: true,
-      autoApplicable: !isRegistryV3 && warnings.length === 0,
+      autoApplicable: isRegistryV3 || warnings.length === 0,
       errors: [],
       warnings,
     };

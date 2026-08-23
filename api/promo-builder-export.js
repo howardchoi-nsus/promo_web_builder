@@ -8,6 +8,7 @@ const {
   htmlExport,
   frameworkSource,
 } = require("./_promo-builder-export-adapters");
+const { assertPassedQualityGate } = require("./_promo-quality-gate");
 
 const FORMATS = new Set(["html", "manifest", "snapshot", "vue", "react"]);
 
@@ -35,6 +36,7 @@ module.exports = async function handler(req, res) {
         currentDocumentRevision: revision,
       });
     }
+    assertPassedQualityGate(result.snapshot, revision);
     const options = { documentId, revision, title: result.document.title || "Promotion" };
     res.setHeader("Cache-Control", "private, no-store");
     res.setHeader("X-Content-Type-Options", "nosniff");

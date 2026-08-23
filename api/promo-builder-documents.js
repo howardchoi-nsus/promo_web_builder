@@ -20,6 +20,10 @@ const {
   missingRequiredDesignTokenRoles,
   resolveDesignTokenBindings,
 } = require("./_promo-page-composition-contract");
+const {
+  assertPassedQualityGate,
+  normalizePassedQualityGate,
+} = require("./_promo-quality-gate");
 
 function normalizedSectionOrder(candidate, sections) {
   const allowed = sections.map((section) => section.sectionKey);
@@ -76,7 +80,13 @@ function normalizeSectionSnapshot(candidate, fallback = []) {
   return sections;
 }
 
-async function normalizeEditorSnapshot(sql, currentSnapshot, incomingSnapshot, designTokenSetVersionId) {
+async function normalizeEditorSnapshot(
+  sql,
+  currentSnapshot,
+  incomingSnapshot,
+  designTokenSetVersionId,
+  baseDocumentRevision = Number(currentSnapshot?.documentRevision || 0),
+) {
   if (!currentSnapshot?.content || !currentSnapshot?.designSpec) {
     throw Object.assign(new Error("Builder document does not have an editable snapshot"), {
       statusCode: 409,
@@ -198,6 +208,12 @@ async function normalizeEditorSnapshot(sql, currentSnapshot, incomingSnapshot, d
     sectionStyles: v3SectionStyles,
     itemStyles: mergedItemStyles,
   };
+  const qualityGate = Number(currentSnapshot.contractVersion) === 3
+    ? normalizePassedQualityGate(incomingSnapshot?.qualityGate, {
+      sourceDocumentRevision: baseDocumentRevision,
+      documentRevision: Number(baseDocumentRevision) + 1,
+    })
+    : currentSnapshot.qualityGate;
   return {
     ...currentSnapshot,
     appearance,
@@ -222,6 +238,7 @@ async function normalizeEditorSnapshot(sql, currentSnapshot, incomingSnapshot, d
     designSpec,
     assets: currentSnapshot.assets,
     motionSpec: currentSnapshot.motionSpec,
+    ...(qualityGate ? { qualityGate } : {}),
   };
 }
 
@@ -246,6 +263,17 @@ module.exports = async function handler(req, res) {
       if (!documentId) return res.status(400).json({ error: "documentId is required" });
       const result = await fetchDocument(getSql(), documentId, owner.ownerSubject);
       if (!result) return res.status(404).json({ error: "Builder document not found" });
+      const requestedRevision = Number(req.query.revision || 0);
+      if (requestedRevision && requestedRevision !== result.document.currentDocumentRevision) {
+        return res.status(409).json({
+          error: "Builder document revision changed",
+          code: "DOCUMENT_REVISION_MISMATCH",
+          currentDocumentRevision: result.document.currentDocumentRevision,
+        });
+      }
+      if (String(req.query.requireQualityGate || "") === "1") {
+        assertPassedQualityGate(result.snapshot, result.document.currentDocumentRevision);
+      }
       return res.status(200).json({ ok: true, ...result });
     }
     if (req.method === "PATCH") {
@@ -271,6 +299,7 @@ module.exports = async function handler(req, res) {
         current.snapshot,
         body.snapshot,
         body.designTokenSetVersionId,
+        baseDocumentRevision,
       );
       const saved = await createDocumentRevision(sql, {
         documentId,
@@ -279,6 +308,7 @@ module.exports = async function handler(req, res) {
         snapshot,
         source: "manual",
         changeNote: String(body.changeNote || "Visual Editor changes saved.").slice(0, 500),
+        qualityGateVerified: Number(current.snapshot.contractVersion) === 3,
       });
       return res.status(200).json({
         ok: true,

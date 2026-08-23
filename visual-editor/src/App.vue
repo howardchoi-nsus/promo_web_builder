@@ -2050,7 +2050,10 @@ async function saveAiDocument() {
     const saved = await aiDocumentAdapter.save({
       documentId: aiDocumentId.value,
       baseDocumentRevision: aiDocumentRevision.value,
-      snapshot: editorSnapshot.value,
+      snapshot: {
+        ...editorSnapshot.value,
+        qualityGate: aiDocumentQualityGate.value,
+      },
       designTokenSetVersionId: previewDesignTokenVersionId.value,
       changeNote: "Visual Editor에서 AI 프로모션 문서를 저장했습니다.",
     });
@@ -2485,8 +2488,14 @@ async function loadOutput() {
     const builderDocumentId = new URLSearchParams(window.location.search).get("builderDocumentId");
     if (builderDocumentId) {
       loading.value = true;
+      const requestedRevision = Number(new URLSearchParams(window.location.search).get("revision") || 0);
+      const query = new URLSearchParams({
+        documentId: builderDocumentId,
+        requireQualityGate: "1",
+      });
+      if (requestedRevision) query.set("revision", String(requestedRevision));
       const response = await fetch(
-        `/api/promo-builder-documents?documentId=${encodeURIComponent(builderDocumentId)}`,
+        `/api/promo-builder-documents?${query.toString()}`,
         { credentials: "same-origin", cache: "no-store" },
       );
       const result = await response.json().catch(() => ({}));

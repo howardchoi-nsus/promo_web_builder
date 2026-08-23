@@ -5,7 +5,7 @@
 - 작성일: 2026-08-20
 - 대상 프로젝트: `promo_web_builder`
 - 대상 흐름: `AI로 만들기 → Overview 확인 → AI 구성·자산 생성 → Live Preview → Web Output`
-- 문서 상태: P0 1차 기반 구현 완료 / 자동 Preview 승격 Gate·Layout Fit Scoring 후속 개발 필요
+- 문서 상태: P0 서버 Revision Gate·Output/Export 차단 완료 / Layout Fit Scoring·자동 Repair 후속 개발 필요
 - 우선순위: P0 품질 실패 차단 → P1 조합 품질 향상 → P2 운영 최적화
 - 근거 자료:
   - `tmp/ai-live-preview-audit-2026-08-20/ai-live-preview-quality-review-ko.md`
@@ -950,3 +950,25 @@ Visual Editor production build: passed
 - Browser E2E에 손상 문서 차단 경로와 정상 이미지 문서의 Desktop/Mobile 통과·Revision 저장 경로를 모두 포함했다.
 
 검증 결과는 Visual Editor Production Build 및 전체 137개 Test File 통과다.
+
+---
+
+## 20. 2026-08-23 서버 Revision Gate 구현 결과
+
+### 20.1 완료
+
+- Visual Editor가 Desktop·Mobile Blocking 0건인 품질 결과를 저장 요청에 포함한다.
+- 서버는 두 Viewport 결과와 Blocking 0건을 다시 검증하고 다음 `documentRevision`에 결합된 `qualityGate.state=passed` 보고서로 정규화한다.
+- Composition Apply, 자연어 Operation, Rollback은 기존 품질 보고서를 재사용하지 않고 새 Revision의 `pending` 상태로 무효화한다.
+- AI Web Output은 `requireQualityGate=1`과 요청 Revision을 사용해 현재 Revision의 통과 상태를 서버에서 확인한다.
+- HTML/Vue/React Export API는 Contract v3 문서의 현재 Revision 품질 게이트가 없거나 실패한 경우 `QUALITY_GATE_REQUIRED`로 차단한다.
+- 필수 Asset 실패 시 제공하던 `이미지 없이 편집 계속` 버튼을 제거해 Asset Readiness 정책과 실제 Preview 동작을 일치시켰다.
+- Contract v3 최초 생성 자동 Apply는 서버의 `autoApplicable=true`를 프런트에서 명시적으로 확인한다.
+
+### 20.2 남은 후속 범위
+
+- 1440/1024/390/360 고정 폭 Render Harness와 Golden Corpus
+- 허용 Geometry 범위 내 최대 2회 자동 Repair
+- Layout Fit Scoring과 Preset 자동 재선택
+- Locale Resource Fail-closed와 중복 문구 Repair
+- Node 22.x Release CI 증거 확보

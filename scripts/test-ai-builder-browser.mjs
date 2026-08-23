@@ -145,6 +145,8 @@ const server = http.createServer(async (request, response) => {
         id: "proposal-browser",
         status: proposalPollCount > 1 ? "ready" : "processing",
         contractVersion: 3,
+        autoApplicable: true,
+        validation: { ok: true, errors: [], warnings: [] },
         pollAfterMs: 20,
       },
     }));

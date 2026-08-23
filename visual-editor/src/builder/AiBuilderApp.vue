@@ -100,10 +100,8 @@ const progressExecution = computed(() => (
 ));
 const retryableAssetError = computed(() => Boolean(store.snapshot && [
   "ASSET_GENERATION_FAILED", "ASSET_GENERATION_TIMEOUT", "ASSET_ENQUEUE_FAILED",
+  "PROVIDER_BILLING_REQUIRED",
 ].includes(store.error?.code)));
-const billingAssetError = computed(() => Boolean(
-  store.snapshot && store.error?.code === "PROVIDER_BILLING_REQUIRED"
-));
 
 function selectMode(mode) {
   recordBuilderEvent({ eventName: "builder_mode_selected", metadata: { mode } });
@@ -369,6 +367,12 @@ async function compose() {
 
 async function applyReadyProposal(proposal = store.proposal) {
   if (!proposal?.id || store.stage === "applying") return;
+  if (proposal.validation?.ok !== true || proposal.autoApplicable !== true) {
+    setBuilderError(store, Object.assign(new Error(
+      "구성 검증 결과가 자동 적용 조건을 충족하지 않았습니다. 다시 생성해 주세요.",
+    ), { code: "COMPOSITION_AUTO_APPLY_NOT_ALLOWED" }));
+    return;
+  }
   clearBuilderError(store);
   store.stage = "applying";
   const startedAt = performance.now();
@@ -579,11 +583,6 @@ onBeforeUnmount(() => {
           :disabled="assetRetrying"
           @click="retryAssets"
         >{{ assetRetrying ? "이미지 생성 재시도 중…" : "이미지 생성 다시 시도" }}</button>
-        <button
-          v-if="billingAssetError"
-          type="button"
-          @click="openVisualEditor"
-        >이미지 없이 편집 계속</button>
         <button type="button" @click="clearBuilderError(store)">닫기</button>
       </div>
       <div v-if="store.warning" class="ai-builder-warning" role="status">
@@ -595,11 +594,6 @@ onBeforeUnmount(() => {
           :disabled="assetRetrying"
           @click="retryAssets"
         >{{ assetRetrying ? "이미지 생성 재시도 중…" : "이미지 생성 다시 시도" }}</button>
-        <button
-          v-if="store.snapshot"
-          type="button"
-          @click="openVisualEditor"
-        >이미지 없이 편집 계속</button>
         <button type="button" @click="store.warning = null">닫기</button>
       </div>
       <div v-if="operationConflict" class="ai-builder-warning" role="alert">

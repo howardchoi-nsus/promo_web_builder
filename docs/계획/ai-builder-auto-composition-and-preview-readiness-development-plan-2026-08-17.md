@@ -5,7 +5,7 @@
 - 작성일: 2026-08-17
 - 대상 프로젝트: `promo_web_builder`
 - 대상 화면: 프로모션 빌더 AI 모드, AI 프로모션 Live Preview
-- 문서 상태: 개발 착수 전
+- 문서 상태: 핵심 구현 완료 / 2026-08-23 정책·서버 게이트 정합화 완료
 - 우선순위: P0
 - 관련 요구사항:
   - 비전문 사용자를 위한 `AI 섹션 구성 확인(Composition Review)` 단계 제거
@@ -477,3 +477,17 @@ AI 요청 입력
 9. 직접 URL 접근과 새로고침에서도 Pending Asset 상태가 안전하게 처리된다.
 10. LLM Prompt 변경이 발생할 경우 관리자 Prompt Version으로 관리되며 소스코드에 자연어 Prompt가 추가되지 않는다.
 11. Production Build와 전체 자동화 Test가 통과한다.
+
+---
+
+## 13. 2026-08-23 현행 구현 결과
+
+- 초기 Contract v3 생성은 서버가 `validation.ok=true`, `autoApplicable=true`로 판정한 Proposal만 자동 적용한다.
+- Apply 직전 candidate·policy·resource fingerprint 재검증과 Required Section·Content Binding·Layout 검증은 유지한다.
+- `assets.expected`와 `assets.requests` Coverage 및 모든 필수 Asset의 `ready` 상태를 확인한 뒤 Live Preview로 이동한다.
+- Asset 실패·Billing 필요 상태에서 `이미지 없이 편집 계속` 우회 버튼을 제거하고 재시도 기반 Fail-closed 흐름으로 통일했다.
+- Live Preview의 Desktop·Mobile 품질 통과 결과는 저장 시 Builder Document의 다음 Revision에 결합된다.
+- Composition Apply·Operation·Rollback은 기존 품질 보고서를 `pending`으로 무효화한다.
+- 현재 Revision의 품질 보고서가 `passed`가 아니면 Web Output과 Export를 서버에서 거부한다.
+- Visual Editor Production Build를 최신 소스로 재생성했다.
+- Node 24.19.0 기준 전체 자동 테스트를 실행하며, 최종 Release evidence는 정책에 따라 Node 22.x에서 재확인한다.

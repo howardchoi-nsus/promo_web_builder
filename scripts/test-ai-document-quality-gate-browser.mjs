@@ -14,6 +14,7 @@ const mime = {
   ".woff2": "font/woff2",
 };
 let patchCount = 0;
+let persistedQualityGate = null;
 
 const assetTarget = {
   assetRequestId: "quality-gate-image",
@@ -89,7 +90,16 @@ const server = http.createServer(async (request, response) => {
     const chunks = [];
     for await (const chunk of request) chunks.push(chunk);
     const body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
-    const responseSnapshot = body.documentId === "quality-gate-passing-document" ? passingSnapshot : snapshot;
+    persistedQualityGate = body.snapshot?.qualityGate || null;
+    const baseSnapshot = body.documentId === "quality-gate-passing-document" ? passingSnapshot : snapshot;
+    const responseSnapshot = {
+      ...baseSnapshot,
+      documentRevision: 2,
+      qualityGate: {
+        ...persistedQualityGate,
+        documentRevision: 2,
+      },
+    };
     response.writeHead(200, { "Content-Type": "application/json" });
     response.end(JSON.stringify({ ok: true, revision: 2, snapshot: responseSnapshot }));
     return;
@@ -201,6 +211,10 @@ try {
   await passingPage.getByText(/AI 프로모션 문서 revision 2 저장 완료/).waitFor();
   assert.equal(await passingPage.locator(".preview-quality-gate.is-failed").count(), 0);
   assert.equal(patchCount, 1);
+  assert.equal(persistedQualityGate?.state, "passed");
+  assert.equal(persistedQualityGate?.blockingCount, 0);
+  assert.ok(persistedQualityGate?.results?.desktop);
+  assert.ok(persistedQualityGate?.results?.mobile);
   assert.deepEqual(passingErrors, []);
   await passingPage.close();
   console.log("AI document quality gate browser test passed");

@@ -1,5 +1,6 @@
 const { createHash, randomUUID } = require("node:crypto");
 const { getSql } = require("./_wizard-form-templates-store");
+const { pendingQualityGate } = require("./_promo-quality-gate");
 
 function snapshotHash(snapshot) {
   return createHash("sha256").update(JSON.stringify(snapshot)).digest("hex");
@@ -295,7 +296,16 @@ async function applyProposal(sql, {
   resourceFingerprint,
   shellVersionId,
 }) {
-  const nextSnapshot = { ...snapshot, documentRevision: Number(baseDocumentRevision) + 1 };
+  const nextRevision = Number(baseDocumentRevision) + 1;
+  const nextSnapshot = {
+    ...snapshot,
+    documentRevision: nextRevision,
+  };
+  if (Number(snapshot?.contractVersion || contractVersion) === 3) {
+    nextSnapshot.qualityGate = pendingQualityGate(nextRevision, "composition_applied");
+  } else {
+    delete nextSnapshot.qualityGate;
+  }
   if (Number(contractVersion) === 3) {
     const requiredTextFields = {
       overviewFingerprint,
@@ -352,8 +362,20 @@ async function createDocumentRevision(sql, {
   snapshot,
   source,
   changeNote,
+  qualityGateVerified = false,
 }) {
-  const nextSnapshot = { ...snapshot, documentRevision: Number(baseDocumentRevision) + 1 };
+  const nextRevision = Number(baseDocumentRevision) + 1;
+  const nextSnapshot = {
+    ...snapshot,
+    documentRevision: nextRevision,
+  };
+  if (Number(snapshot?.contractVersion || 0) === 3) {
+    nextSnapshot.qualityGate = qualityGateVerified
+      ? snapshot.qualityGate
+      : pendingQualityGate(nextRevision, source || "document_changed");
+  } else {
+    delete nextSnapshot.qualityGate;
+  }
   const rows = await sql`
     select create_promo_builder_document_revision(
       ${documentId}::uuid,
@@ -376,7 +398,16 @@ async function applyOperations(sql, {
   operations,
   changeNote,
 }) {
-  const nextSnapshot = { ...snapshot, documentRevision: Number(baseDocumentRevision) + 1 };
+  const nextRevision = Number(baseDocumentRevision) + 1;
+  const nextSnapshot = {
+    ...snapshot,
+    documentRevision: nextRevision,
+  };
+  if (Number(snapshot?.contractVersion || 0) === 3) {
+    nextSnapshot.qualityGate = pendingQualityGate(nextRevision, "operations_applied");
+  } else {
+    delete nextSnapshot.qualityGate;
+  }
   const rows = await sql`
     select apply_promo_builder_operations(
       ${documentId}::uuid,

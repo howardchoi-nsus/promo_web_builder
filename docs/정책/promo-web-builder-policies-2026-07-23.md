@@ -1,7 +1,7 @@
 # Promo Web Builder 통합 정책서
 
 - 작성일: 2026-07-23
-- 최종 갱신일: 2026-08-06
+- 최종 갱신일: 2026-08-23
 - 대상 프로젝트: `promo_web_builder`
 - 문서 성격: 정책(가드레일·규칙·거버넌스·소유권·경계)을 한 곳으로 취합
 - 강제 수준: **MUST**(반드시) / **MUST NOT**(절대 금지) / **SHOULD**(특별 사유 없으면 준수) / **MAY**(선택)
@@ -16,6 +16,8 @@
   - `설계/visual-editor-live-preview-rich-text-design-2026-08-01.md` (현행 Live Preview·라인 편집 계약)
   - `계획/ai-registry-composition-mode-supplement-development-plan-2026-08-04.md` (Registry Composition Contract v3)
   - `handoff/handoff-2026-08-06.md` (구현·DB·테스트 현황과 잔여 검증)
+  - `계획/ai-builder-auto-composition-and-preview-readiness-development-plan-2026-08-17.md` (초기 생성 자동 적용·Asset Readiness)
+  - `계획/ai-live-preview-design-quality-gate-development-plan-2026-08-20.md` (Render Quality Gate·Output 차단)
 
 ---
 
@@ -71,7 +73,9 @@
 - **MUST NOT** Contract v3에서 Template ID를 필수 기반으로 사용하거나, Registry 밖의 ID·버전·필드를 LLM이 새로 만들게 한다.
 - **MUST** Proposal에 candidate, policy, resource fingerprint와 pinned version/hash를 저장하고 Apply 직전에 현재 값과 다시 비교한다.
 - **MUST** 최초 Structured Output 검증 실패 시에도 동일 allowlist 안에서 최대 1회만 repair한다. repair가 정책·후보 범위를 확장해서는 안 된다.
-- **MUST** 사용자가 Proposal의 구조와 변경 내용을 확인하고 승인한 뒤 Apply한다. 자동 적용은 명시적으로 승인된 제한 시나리오 외에는 허용하지 않는다.
+- **MUST** 사용자가 Proposal의 구조와 변경 내용을 확인하고 승인한 뒤 Apply한다.
+- **MAY** 최초 AI 페이지 생성에 한해 서버 Contract·Required Section·Content Binding 검증을 통과하고, Apply 직전 candidate·policy·resource fingerprint가 일치하며 Proposal의 `autoApplicable=true`가 확인된 경우 Review 화면 없이 자동 Apply할 수 있다.
+- **MUST NOT** 후속 자연어 Operation, 관리자 잠금 변경, 경고를 오류로 승격한 Proposal에 최초 생성 자동 적용 예외를 확장하지 않는다.
 - **MUST** Feature Flag 비활성 또는 active Shell 부재 시 기존 Template Mode fallback을 유지하되, fallback 사실과 원인을 관측 이벤트로 구분한다.
 
 ## 4. 컴포넌트·템플릿 정책
@@ -162,6 +166,15 @@
 - Drag는 pointer 이동이 임계값을 넘은 뒤에만 활성화하고, pointer capture와 `preventDefault()`도 Drag 활성화 이후에 수행한다.
 - 텍스트 편집 중 클릭·드래그는 문자 또는 라인 선택으로 해석하며 Component Drag를 시작하지 않는다.
 - `Escape`는 편집 전 값으로 취소하고, blur 또는 확정 동작은 개행을 보존한 문자열로 저장한다.
+
+### 10.4 AI Document 품질 승격
+
+- **MUST** 최초 AI Document는 필수 Asset Coverage 100%와 모든 필수 Asset `ready`를 확인하기 전 Live Preview로 이동하지 않는다.
+- **MUST NOT** 실패·미완성 Asset을 가진 문서에 `이미지 없이 편집 계속` 우회 동작을 제공한다. 향후 degraded edit mode를 도입할 경우 편집 허용과 저장·Output·Export 차단을 별도 계약으로 정의한다.
+- **MUST** Desktop·Mobile Render Quality의 Blocking 진단이 0건인 결과만 저장 가능한 `passed` 상태로 승격한다.
+- **MUST** 품질 보고서를 해당 Builder Document `documentRevision`에 결합해 Snapshot에 저장한다.
+- **MUST** Composition Apply, 자연어 Operation, Rollback 등 새 Revision 생성 시 기존 품질 보고서를 재사용하지 않고 `pending`으로 무효화한다.
+- **MUST** Web Output과 HTML/Vue/React Export가 현재 Revision의 `qualityGate.state=passed`를 서버에서 확인해야 한다. UI 버튼 비활성화만으로 품질 경계를 구현한 것으로 간주하지 않는다.
 
 ## 11. 텍스트 편집·서식 정책
 
@@ -258,6 +271,7 @@
 - **MUST** AI Apply, 자연어 Operation, 수동 저장, rollback을 단일 `documentRevision` 직렬화 경계로 처리한다.
 - **MUST NOT** `DOCUMENT_REVISION_MISMATCH`에서 자동 merge 또는 강제 덮어쓰기를 수행한다. 최신 문서를 reload한 뒤 사용자 변경을 다시 적용한다.
 - Export는 문서 소유권, 요청 revision, Export Feature Flag, owner 기반 rollout을 모두 검증한다.
+- Contract v3 Export는 현재 revision에 결합된 `qualityGate.state=passed`를 추가로 검증하며, 미검사·실패·과거 revision 보고서는 `QUALITY_GATE_REQUIRED`로 거부한다.
 - 공개 Export Snapshot에서는 관리 metadata, provenance, validation, 미완료 Asset request를 제거하고 Renderer에 필요한 공개 데이터만 포함한다.
 - HTML/Vue/React Export는 동일 공개 Snapshot과 동일 Renderer runtime을 사용한다.
 - **MUST** JSON을 HTML에 삽입할 때 `<`, `>`, `&`, U+2028, U+2029를 escape한다.
@@ -314,3 +328,10 @@
 - 운영 수동 Unique Index 보완을 idempotent Migration 054와 회귀 테스트로 코드화했다.
 - 텍스트 자동 높이의 Renderer·Toolbar 판정을 공통화하고 Admin·Visual Editor 정적 bundle을 재생성했다.
 - 현행 UI 구조와 locale fixture에 맞춰 회귀 테스트를 복구했으며, 최종 릴리스 증거는 Node 22.x 전체 Suite로 확정한다.
+
+### 2026-08-23 갱신 요약
+
+- 최초 Contract v3 생성의 제한적 자동 Apply 조건과 `autoApplicable` 서버 판정 경계를 확정했다.
+- 필수 Asset 실패 시 Preview 우회를 금지하고 재시도 기반 Fail-closed 흐름으로 통일했다.
+- Desktop·Mobile 품질 보고서를 Builder Document Revision에 저장하고 새 Revision에서 무효화하는 정책을 추가했다.
+- Web Output과 Export가 현재 Revision의 서버 품질 게이트를 필수 검증하도록 확정했다.
