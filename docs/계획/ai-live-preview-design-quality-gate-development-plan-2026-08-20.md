@@ -972,3 +972,32 @@ Visual Editor production build: passed
 - Layout Fit Scoring과 Preset 자동 재선택
 - Locale Resource Fail-closed와 중복 문구 Repair
 - Node 22.x Release CI 증거 확보
+
+---
+
+## 21. 2026-08-23 Hero Layout 후보 반영 보정
+
+### 21.1 구현
+
+- 활성 `registryHero`의 Version 번호와 무관하게 세 가지 시스템 Layout 후보를 보장하는 Migration을 추가했다.
+- 기존 관리자 Layout Geometry는 덮어쓰지 않고, 누락된 Layout과 Selection Metadata 및 AI Allowlist만 보정한다.
+- 제목·본문의 시각 길이, 콘텐츠 복잡도, 목적 Tag, Mobile 전략, CTA 강조도와 관리자 선택 가중치를 이용하는 Layout Fit Scoring을 추가했다.
+- Candidate Snapshot에 `recommendedLayoutKey`, Layout별 `fitScore`, `fitReasons`를 포함한다.
+- `layoutLocked=false`인 Section에서 Planner가 Default Layout에 고착되고 추천 후보의 점수가 유의미하게 높은 경우에만 제한적으로 Layout을 재선택한다.
+- `layoutLocked=true`인 Section과 Metadata 정보가 부족한 Layout에는 자동 재선택을 적용하지 않는다.
+
+### 21.2 선택 안전장치
+
+- 저장된 Layout 전체를 자동 허용하지 않고 `aiDesign.allowedLayoutVariants`를 계속 권위 Allowlist로 유지한다.
+- 시스템 Hero의 알려진 세 후보만 Migration에서 Allowlist에 추가한다.
+- 기존 사용자 Geometry와 `layoutLocked` 정책은 보존한다.
+- 일반 AI 선택은 유지하고, Default 고착 또는 큰 점수 차이가 확인될 때만 서버 Repair를 적용한다.
+
+### 21.3 검증 기준
+
+- 짧은 카피 → Compact/short-copy 후보
+- 일반 프로모션 카피 → Balanced 후보
+- 긴 브랜드 헤드라인 → Center Wide 후보
+- 긴 설명과 CTA → Right 후보
+- Layout 잠금 시 자동 변경 없음
+- 활성 Hero Version 2 이상에도 세 후보 및 Allowlist 동기화

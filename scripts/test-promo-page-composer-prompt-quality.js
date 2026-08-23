@@ -9,6 +9,7 @@ const prompt = fs.readFileSync(
 
 assert.match(prompt, /make visual-quality judgements/i);
 assert.match(prompt, /Evaluate every permitted layout preset/i);
+assert.match(prompt, /recommendedLayoutKey, fitScore, and fitReasons/);
 assert.match(prompt, /Content fit:/);
 assert.match(prompt, /Page rhythm:/);
 assert.match(prompt, /treat mobile as a separate composition/i);

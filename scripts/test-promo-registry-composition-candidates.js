@@ -6,6 +6,7 @@ const {
   evaluateSectionCandidate,
   rankCandidates,
   resolveAllowedLayoutPresets,
+  plannerRegistryCandidateSnapshot,
 } = require("../api/_promo-registry-composition-candidates");
 
 const resolverSource = fs.readFileSync(
@@ -172,6 +173,37 @@ assert.equal(
   fingerprint({ a: [1, 3], b: 2 }),
   "fingerprint must be independent of object key insertion order",
 );
+
+const plannerSnapshot = plannerRegistryCandidateSnapshot({
+  contractVersion: 3,
+  shell: { shellVersionId: "shell-v1" },
+  sections: [{
+    sectionVersionId: "hero-v1",
+    sectionKey: "registryHero",
+    name: "Hero",
+    description: "Hero",
+    sectionRole: "hero",
+    compositionPolicy: {},
+    defaultLayoutKey: "hero-left",
+    allowedLayoutKeys: ["hero-left", "hero-center"],
+    layoutSelectionLocked: false,
+    layoutFit: {
+      recommendedLayoutKey: "hero-center",
+      scores: [
+        { layoutKey: "hero-left", score: 10, reasons: ["default"] },
+        { layoutKey: "hero-center", score: 44, reasons: ["long-headline-fit"] },
+      ],
+    },
+    layoutPresets: [
+      { layoutKey: "hero-left", name: "Left", selectionMetadata: {} },
+      { layoutKey: "hero-center", name: "Center", selectionMetadata: {} },
+    ],
+    components: [],
+  }],
+});
+assert.equal(plannerSnapshot.sections[0].recommendedLayoutKey, "hero-center");
+assert.equal(plannerSnapshot.sections[0].layoutPresets[1].fitScore, 44);
+assert.deepEqual(plannerSnapshot.sections[0].layoutPresets[1].fitReasons, ["long-headline-fit"]);
 
 assert.match(resolverSource, /componentVersionStatus === "active"/);
 assert.match(resolverSource, /fetchItemsForSections/);

@@ -17,6 +17,7 @@ const {
 } = require("./_promo-registry-composition-contract");
 const { generateStructuredPlannerResult } = require("./_promo-section-design-provider");
 const { sha256 } = require("./_prompt-template-store");
+const { applyLayoutFitRecommendations } = require("./_promo-layout-fit");
 
 const CANDIDATE_SCOPE_RETRY_CODES = new Set([
   "SECTION_NOT_IN_TEMPLATE",
@@ -116,10 +117,12 @@ async function generateValidatedRegistryComposition({
       promptConfig: currentPrompt,
     });
     try {
+      const layoutFit = applyLayoutFitRecommendations(generation.result, candidates);
       return {
-        generation,
-        validated: validateRegistryCompositionProposal(generation.result, candidates),
-        repaired: attempt > 0,
+        generation: { ...generation, result: layoutFit.result },
+        validated: validateRegistryCompositionProposal(layoutFit.result, candidates),
+        repaired: attempt > 0 || layoutFit.repairs.length > 0,
+        layoutFitRepairs: layoutFit.repairs,
       };
     } catch (error) {
       if (attempt > 0 || error.retryable === false) throw error;

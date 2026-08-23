@@ -17,6 +17,7 @@ const {
   resolveContentResourceReferences,
 } = require("./_promo-resource-policy");
 const { resolveAllowedLayoutPresets } = require("./_promo-layout-preset-policy");
+const { evaluateLayoutFit } = require("./_promo-layout-fit");
 
 const MAX_SECTION_SCAN = 500;
 const DEFAULT_SECTION_LIMIT = 40;
@@ -270,6 +271,12 @@ async function fetchRegistryCompositionCandidates(sql, {
     const savedLayouts = layoutsBySection.get(section.id) || [];
     const layoutPolicy = resolveAllowedLayoutPresets(section, savedLayouts);
     const layouts = layoutPolicy.layoutPresets;
+    const layoutFit = evaluateLayoutFit({
+      layouts,
+      overview,
+      sectionRole: section.sectionRole,
+      defaultLayoutKey: layoutPolicy.defaultLayoutKey,
+    });
     const evaluation = evaluateSectionCandidate({
       section, components, layouts, layoutPolicy, criteria, shellConfig,
     });
@@ -302,6 +309,7 @@ async function fetchRegistryCompositionCandidates(sql, {
       defaultLayoutKey: layoutPolicy.defaultLayoutKey,
       allowedLayoutKeys: layoutPolicy.allowedLayoutKeys,
       layoutSelectionLocked: layoutPolicy.layoutSelectionLocked,
+      layoutFit,
       layoutPresets: layouts,
       components: components.map((component) => ({
         componentInstanceId: component.id,
@@ -400,12 +408,15 @@ function plannerRegistryCandidateSnapshot(candidates) {
       defaultLayoutKey: section.defaultLayoutKey,
       allowedLayoutKeys: section.allowedLayoutKeys,
       layoutSelectionLocked: section.layoutSelectionLocked,
+      recommendedLayoutKey: section.layoutFit?.recommendedLayoutKey || section.defaultLayoutKey,
       layoutPresets: (section.layoutPresets || []).map((layout) => ({
         layoutKey: layout.layoutKey,
         name: layout.name,
         description: layout.description,
         isDefault: layout.isDefault,
         selectionMetadata: layout.selectionMetadata || {},
+        fitScore: Number(section.layoutFit?.scores?.find((entry) => entry.layoutKey === layout.layoutKey)?.score || 0),
+        fitReasons: section.layoutFit?.scores?.find((entry) => entry.layoutKey === layout.layoutKey)?.reasons || [],
       })),
       components: (section.components || []).map((component) => ({
         componentInstanceId: component.componentInstanceId,

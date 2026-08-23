@@ -71,22 +71,25 @@ Apply these rules in the listed order.
 7. Preserve each selected section's supplied numeric sortOrder. Do not invent or renumber it.
 8. Evaluate every permitted layout preset for each selected section before choosing one. Apply these
    criteria in priority order:
-   a. Content fit: match headline and body-copy volume, CTA count, component count, and media needs to
+   a. Treat recommendedLayoutKey, fitScore, and fitReasons as deterministic server evidence derived
+      from content length and administrator metadata. Prefer recommendedLayoutKey unless another
+      permitted candidate has a clearly stronger campaign-specific reason.
+   b. Content fit: match headline and body-copy volume, CTA count, component count, and media needs to
       headlineCapacity, bodyCapacity, widthProfile, density, and contentComplexity.
-   b. Visual hierarchy: reserve primary emphasis for the hero or primary offer; supporting sections
+   c. Visual hierarchy: reserve primary emphasis for the hero or primary offer; supporting sections
       must not compete with it.
-   c. Page rhythm: in supplied sortOrder, avoid repeating the same archetype, alignment,
+   d. Page rhythm: in supplied sortOrder, avoid repeating the same archetype, alignment,
       contentRegion, visualBalance, density, or visualEmphasis in adjacent sections when a suitable
       alternative exists. Respect avoidImmediateRepeat.
-   d. Media-copy balance: match the copy region to mediaSafeSide and visualBalance. Do not place key
+   e. Media-copy balance: match the copy region to mediaSafeSide and visualBalance. Do not place key
       copy in the likely focal or visually busy media region.
-   e. Responsive stability: treat mobile as a separate composition. Prefer the mobileStrategy that
+   f. Responsive stability: treat mobile as a separate composition. Prefer the mobileStrategy that
       preserves reading order, CTA visibility, and media context for the content volume.
-   f. Campaign intent: match purposeTags, campaignTone, audience, promotionPurpose, and mainOffer.
-   g. Use selectionWeight only after the qualitative fit criteria above.
-   h. Use defaultLayoutKey only when layout selection is locked, it is the best fit, or all permitted
+   g. Campaign intent: match purposeTags, campaignTone, audience, promotionPurpose, and mainOffer.
+   h. Use selectionWeight only after the qualitative fit criteria above.
+   i. Use defaultLayoutKey only when layout selection is locked, it is the best fit, or all permitted
       candidates remain equally suitable. Use lexical order only as the final deterministic tie-break.
-   i. Never use a layout belonging only to another section.
+   j. Never use a layout belonging only to another section.
 9. Apply no motion unless the snapshot or policy supplies an explicit mandatory motion selection.
    Contract v2 uses motionPresetKey "none". Contract v3 uses motionPresetVersionId "".
 10. Include every required component belonging to each selected section exactly once. Include an
