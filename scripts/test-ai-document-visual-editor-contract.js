@@ -40,6 +40,7 @@ assert.match(app, /mode", "output"/);
 assert.match(app, /:layout-fit-repairs="aiDocumentSnapshot\?\.compositionMeta\?\.layoutFitRepairs \|\| \[\]"/);
 assert.match(previewPanel, /layoutFitRepairs: \{ type: Array/);
 assert.match(previewPanel, /const selectedLayoutFitRepair = computed/);
+assert.match(previewPanel, /String\(repair\?\.toLayoutKey \|\| ""\) === selectedLayoutKey/);
 assert.match(previewPanel, /data-testid="layout-selection-status"/);
 assert.match(previewPanel, /선택 Layout/);
 assert.match(previewPanel, /자동 보정/);

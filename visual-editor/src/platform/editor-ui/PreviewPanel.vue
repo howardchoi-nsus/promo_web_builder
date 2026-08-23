@@ -82,9 +82,11 @@ const rendererRef = ref(null);
 const collisionMessage = ref("");
 const selectedLayoutFitRepair = computed(() => {
   const sourceSectionId = String(props.selectedSection?.sourceSectionId || "");
-  if (!sourceSectionId) return null;
+  const selectedLayoutKey = String(props.selectedSection?.selectedLayoutKey || "");
+  if (!sourceSectionId || !selectedLayoutKey) return null;
   return props.layoutFitRepairs.find(
-    (repair) => String(repair?.sectionVersionId || "") === sourceSectionId,
+    (repair) => String(repair?.sectionVersionId || "") === sourceSectionId
+      && String(repair?.toLayoutKey || "") === selectedLayoutKey,
   ) || null;
 });
 let selectionFrame = 0;

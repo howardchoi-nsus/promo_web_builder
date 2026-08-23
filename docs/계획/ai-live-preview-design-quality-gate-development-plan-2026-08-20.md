@@ -986,6 +986,7 @@ Visual Editor production build: passed
 - `layoutLocked=false`인 Section에서 Planner가 Default Layout에 고착되고 추천 후보의 점수가 유의미하게 높은 경우에만 제한적으로 Layout을 재선택한다.
 - `layoutLocked=true`인 Section과 Metadata 정보가 부족한 Layout에는 자동 재선택을 적용하지 않는다.
 - 자동 재선택의 Section Version, 변경 전·후 Layout Key와 점수 차이를 `compositionMeta.layoutFitRepairs`에 저장하고 최종 문서까지 전달한다.
+- Live Preview 상단에 현재 선택 Layout을 표시하고, 현재 Layout이 자동 보정 결과와 일치할 때만 변경 전·후 Key와 점수 차이를 표시한다.
 
 ### 21.2 선택 안전장치
 
@@ -1002,3 +1003,4 @@ Visual Editor production build: passed
 - 긴 설명과 CTA → Right 후보
 - Layout 잠금 시 자동 변경 없음
 - 활성 Hero Version 2 이상에도 세 후보 및 Allowlist 동기화
+- 세 Hero 후보를 Desktop·Mobile 실제 Renderer에서 열어 위치·폭·정렬 차이를 검증하는 브라우저 회귀 테스트
