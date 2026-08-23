@@ -67,6 +67,14 @@ export default {
               visualBalance: "auto",
               density: "auto",
               widthProfile: "auto",
+              archetype: "auto",
+              headlineCapacity: "auto",
+              bodyCapacity: "auto",
+              visualEmphasis: "auto",
+              mediaSafeSide: "auto",
+              mobileStrategy: "auto",
+              ctaProminence: "auto",
+              contentComplexity: "auto",
               purposeTags: [],
               selectionWeight: 1,
               avoidImmediateRepeat: false,
@@ -97,6 +105,14 @@ export default {
           visualBalance: "auto",
           density: "auto",
           widthProfile: "auto",
+          archetype: "auto",
+          headlineCapacity: "auto",
+          bodyCapacity: "auto",
+          visualEmphasis: "auto",
+          mediaSafeSide: "auto",
+          mobileStrategy: "auto",
+          ctaProminence: "auto",
+          contentComplexity: "auto",
           purposeTagsText: "",
           selectionWeight: 1,
           avoidImmediateRepeat: false,
@@ -278,6 +294,14 @@ export default {
             <label><span>비주얼 균형</span><select v-model="layout.selectionMetadata.visualBalance"><option value="auto">자동</option><option value="media-left">이미지 왼쪽</option><option value="media-center">이미지 중앙</option><option value="media-right">이미지 오른쪽</option><option value="full-background">전체 배경</option></select></label>
             <label><span>밀도</span><select v-model="layout.selectionMetadata.density"><option value="auto">자동</option><option value="compact">간결</option><option value="standard">기본</option><option value="spacious">여유</option></select></label>
             <label><span>텍스트 폭</span><select v-model="layout.selectionMetadata.widthProfile"><option value="auto">자동</option><option value="compact">좁게</option><option value="balanced">균형</option><option value="wide">넓게</option><option value="full">전체 폭</option></select></label>
+            <label><span>구성 유형</span><select v-model="layout.selectionMetadata.archetype"><option value="auto">자동</option><option value="minimal">미니멀</option><option value="editorial-split">에디토리얼 분할</option><option value="media-led">미디어 중심</option><option value="full-bleed">풀 블리드</option><option value="overlap">오버랩</option><option value="card-grid">카드 그리드</option><option value="feature-list">기능 목록</option><option value="comparison">비교</option><option value="cta-focused">CTA 중심</option></select></label>
+            <label><span>제목 수용량</span><select v-model="layout.selectionMetadata.headlineCapacity"><option value="auto">자동</option><option value="short">짧음</option><option value="medium">보통</option><option value="long">김</option></select></label>
+            <label><span>본문 수용량</span><select v-model="layout.selectionMetadata.bodyCapacity"><option value="auto">자동</option><option value="short">짧음</option><option value="medium">보통</option><option value="long">김</option></select></label>
+            <label><span>비주얼 강조</span><select v-model="layout.selectionMetadata.visualEmphasis"><option value="auto">자동</option><option value="copy-led">카피 중심</option><option value="balanced">균형</option><option value="media-led">미디어 중심</option></select></label>
+            <label><span>미디어 안전영역</span><select v-model="layout.selectionMetadata.mediaSafeSide"><option value="auto">자동</option><option value="left">왼쪽</option><option value="center">중앙</option><option value="right">오른쪽</option><option value="either">양쪽</option><option value="none">없음</option></select></label>
+            <label><span>모바일 전략</span><select v-model="layout.selectionMetadata.mobileStrategy"><option value="auto">자동</option><option value="preserve">구성 유지</option><option value="copy-first">카피 우선</option><option value="media-first">미디어 우선</option><option value="media-after-copy">카피 다음 미디어</option><option value="stack">순차 적층</option><option value="hide-supporting-media">보조 미디어 숨김</option></select></label>
+            <label><span>CTA 강조</span><select v-model="layout.selectionMetadata.ctaProminence"><option value="auto">자동</option><option value="low">낮음</option><option value="medium">보통</option><option value="high">높음</option></select></label>
+            <label><span>콘텐츠 복잡도</span><select v-model="layout.selectionMetadata.contentComplexity"><option value="auto">자동</option><option value="low">낮음</option><option value="medium">보통</option><option value="high">높음</option></select></label>
             <label><span>권장 용도</span><input :value="(layout.selectionMetadata.purposeTags || []).join(', ')" @input="layout.selectionMetadata.purposeTags = $event.target.value.split(',').map((tag) => tag.trim()).filter(Boolean)" placeholder="event, brand-intro" /></label>
             <label><span>선택 가중치</span><input v-model.number="layout.selectionMetadata.selectionWeight" type="number" min="0.1" max="10" step="0.1" /></label>
             <label class="inline-check"><input v-model="layout.selectionMetadata.avoidImmediateRepeat" type="checkbox" /><span>연속 선택 지양</span></label>
@@ -295,6 +319,14 @@ export default {
       <label><span>비주얼 균형</span><select v-model="newPresetEditor.selectionMetadata.visualBalance"><option value="auto">자동</option><option value="media-left">이미지 왼쪽</option><option value="media-center">이미지 중앙</option><option value="media-right">이미지 오른쪽</option><option value="full-background">전체 배경</option></select></label>
       <label><span>밀도</span><select v-model="newPresetEditor.selectionMetadata.density"><option value="auto">자동</option><option value="compact">간결</option><option value="standard">기본</option><option value="spacious">여유</option></select></label>
       <label><span>텍스트 폭</span><select v-model="newPresetEditor.selectionMetadata.widthProfile"><option value="auto">자동</option><option value="compact">좁게</option><option value="balanced">균형</option><option value="wide">넓게</option><option value="full">전체 폭</option></select></label>
+      <label><span>구성 유형</span><select v-model="newPresetEditor.selectionMetadata.archetype"><option value="auto">자동</option><option value="minimal">미니멀</option><option value="editorial-split">에디토리얼 분할</option><option value="media-led">미디어 중심</option><option value="full-bleed">풀 블리드</option><option value="overlap">오버랩</option><option value="card-grid">카드 그리드</option><option value="feature-list">기능 목록</option><option value="comparison">비교</option><option value="cta-focused">CTA 중심</option></select></label>
+      <label><span>제목 수용량</span><select v-model="newPresetEditor.selectionMetadata.headlineCapacity"><option value="auto">자동</option><option value="short">짧음</option><option value="medium">보통</option><option value="long">김</option></select></label>
+      <label><span>본문 수용량</span><select v-model="newPresetEditor.selectionMetadata.bodyCapacity"><option value="auto">자동</option><option value="short">짧음</option><option value="medium">보통</option><option value="long">김</option></select></label>
+      <label><span>비주얼 강조</span><select v-model="newPresetEditor.selectionMetadata.visualEmphasis"><option value="auto">자동</option><option value="copy-led">카피 중심</option><option value="balanced">균형</option><option value="media-led">미디어 중심</option></select></label>
+      <label><span>미디어 안전영역</span><select v-model="newPresetEditor.selectionMetadata.mediaSafeSide"><option value="auto">자동</option><option value="left">왼쪽</option><option value="center">중앙</option><option value="right">오른쪽</option><option value="either">양쪽</option><option value="none">없음</option></select></label>
+      <label><span>모바일 전략</span><select v-model="newPresetEditor.selectionMetadata.mobileStrategy"><option value="auto">자동</option><option value="preserve">구성 유지</option><option value="copy-first">카피 우선</option><option value="media-first">미디어 우선</option><option value="media-after-copy">카피 다음 미디어</option><option value="stack">순차 적층</option><option value="hide-supporting-media">보조 미디어 숨김</option></select></label>
+      <label><span>CTA 강조</span><select v-model="newPresetEditor.selectionMetadata.ctaProminence"><option value="auto">자동</option><option value="low">낮음</option><option value="medium">보통</option><option value="high">높음</option></select></label>
+      <label><span>콘텐츠 복잡도</span><select v-model="newPresetEditor.selectionMetadata.contentComplexity"><option value="auto">자동</option><option value="low">낮음</option><option value="medium">보통</option><option value="high">높음</option></select></label>
       <label><span>권장 용도</span><input v-model="newPresetEditor.selectionMetadata.purposeTagsText" placeholder="event, brand-intro" /></label>
       <label><span>선택 가중치</span><input v-model.number="newPresetEditor.selectionMetadata.selectionWeight" type="number" min="0.1" max="10" step="0.1" /></label>
       <label class="inline-check"><input v-model="newPresetEditor.selectionMetadata.avoidImmediateRepeat" type="checkbox" /><span>연속 선택 지양</span></label>

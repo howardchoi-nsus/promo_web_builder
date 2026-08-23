@@ -8,6 +8,17 @@ const LAYOUT_CONTENT_REGION_VALUES = Object.freeze([
 const LAYOUT_VISUAL_BALANCE_VALUES = Object.freeze(["auto", "media-left", "media-center", "media-right", "full-background"]);
 const LAYOUT_DENSITY_VALUES = Object.freeze(["auto", "compact", "standard", "spacious"]);
 const LAYOUT_WIDTH_PROFILE_VALUES = Object.freeze(["auto", "compact", "balanced", "wide", "full"]);
+const LAYOUT_ARCHETYPE_VALUES = Object.freeze([
+  "auto", "minimal", "editorial-split", "media-led", "full-bleed", "overlap", "card-grid", "feature-list", "comparison", "cta-focused",
+]);
+const LAYOUT_COPY_CAPACITY_VALUES = Object.freeze(["auto", "short", "medium", "long"]);
+const LAYOUT_VISUAL_EMPHASIS_VALUES = Object.freeze(["auto", "copy-led", "balanced", "media-led"]);
+const LAYOUT_MEDIA_SAFE_SIDE_VALUES = Object.freeze(["auto", "left", "center", "right", "either", "none"]);
+const LAYOUT_MOBILE_STRATEGY_VALUES = Object.freeze([
+  "auto", "preserve", "copy-first", "media-first", "media-after-copy", "stack", "hide-supporting-media",
+]);
+const LAYOUT_CTA_PROMINENCE_VALUES = Object.freeze(["auto", "low", "medium", "high"]);
+const LAYOUT_CONTENT_COMPLEXITY_VALUES = Object.freeze(["auto", "low", "medium", "high"]);
 
 function plainObject(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
@@ -60,6 +71,14 @@ function normalizeLayoutSelectionMetadata(value) {
       visualBalance: enumValue("visualBalance", LAYOUT_VISUAL_BALANCE_VALUES),
       density: enumValue("density", LAYOUT_DENSITY_VALUES),
       widthProfile: enumValue("widthProfile", LAYOUT_WIDTH_PROFILE_VALUES),
+      archetype: enumValue("archetype", LAYOUT_ARCHETYPE_VALUES),
+      headlineCapacity: enumValue("headlineCapacity", LAYOUT_COPY_CAPACITY_VALUES),
+      bodyCapacity: enumValue("bodyCapacity", LAYOUT_COPY_CAPACITY_VALUES),
+      visualEmphasis: enumValue("visualEmphasis", LAYOUT_VISUAL_EMPHASIS_VALUES),
+      mediaSafeSide: enumValue("mediaSafeSide", LAYOUT_MEDIA_SAFE_SIDE_VALUES),
+      mobileStrategy: enumValue("mobileStrategy", LAYOUT_MOBILE_STRATEGY_VALUES),
+      ctaProminence: enumValue("ctaProminence", LAYOUT_CTA_PROMINENCE_VALUES),
+      contentComplexity: enumValue("contentComplexity", LAYOUT_CONTENT_COMPLEXITY_VALUES),
       purposeTags,
       selectionWeight: Number.isFinite(selectionWeight) ? selectionWeight : 1,
       avoidImmediateRepeat: source.avoidImmediateRepeat === true,
@@ -461,6 +480,13 @@ module.exports = {
   LAYOUT_CONTENT_REGION_VALUES,
   LAYOUT_VISUAL_BALANCE_VALUES,
   LAYOUT_DENSITY_VALUES,
+  LAYOUT_ARCHETYPE_VALUES,
+  LAYOUT_COPY_CAPACITY_VALUES,
+  LAYOUT_VISUAL_EMPHASIS_VALUES,
+  LAYOUT_MEDIA_SAFE_SIDE_VALUES,
+  LAYOUT_MOBILE_STRATEGY_VALUES,
+  LAYOUT_CTA_PROMINENCE_VALUES,
+  LAYOUT_CONTENT_COMPLEXITY_VALUES,
   normalizeLayoutSelectionMetadata,
   normalizeLayoutSnapshot,
   validateHeaderLayoutPolicy,

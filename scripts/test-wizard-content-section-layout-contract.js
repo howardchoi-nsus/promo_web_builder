@@ -39,6 +39,14 @@ assert.deepStrictEqual(normalizeLayoutSelectionMetadata({
   visualBalance: "media-right",
   density: "compact",
   widthProfile: "balanced",
+  archetype: "editorial-split",
+  headlineCapacity: "long",
+  bodyCapacity: "medium",
+  visualEmphasis: "balanced",
+  mediaSafeSide: "left",
+  mobileStrategy: "media-after-copy",
+  ctaProminence: "high",
+  contentComplexity: "medium",
   purposeTags: ["Event", "event", "brand-intro"],
   selectionWeight: 1.5,
   avoidImmediateRepeat: true,
@@ -49,6 +57,14 @@ assert.deepStrictEqual(normalizeLayoutSelectionMetadata({
     visualBalance: "media-right",
     density: "compact",
     widthProfile: "balanced",
+    archetype: "editorial-split",
+    headlineCapacity: "long",
+    bodyCapacity: "medium",
+    visualEmphasis: "balanced",
+    mediaSafeSide: "left",
+    mobileStrategy: "media-after-copy",
+    ctaProminence: "high",
+    contentComplexity: "medium",
     purposeTags: ["event", "brand-intro"],
     selectionWeight: 1.5,
     avoidImmediateRepeat: true,
@@ -56,6 +72,8 @@ assert.deepStrictEqual(normalizeLayoutSelectionMetadata({
   errors: [],
 });
 assert(normalizeLayoutSelectionMetadata({ alignment: "diagonal" }).errors.length > 0);
+assert(normalizeLayoutSelectionMetadata({ archetype: "generic-premium" }).errors.length > 0);
+assert(normalizeLayoutSelectionMetadata({ mobileStrategy: "shrink-desktop" }).errors.length > 0);
 assert.deepStrictEqual(
   normalizeAiDesign({ allowedLayoutVariants: ["standard-header", "compact_header", "bad key"] }).allowedLayoutVariants,
   ["standard-header", "compact_header"],
