@@ -221,6 +221,7 @@ async function fetchRegistryCompositionCandidates(sql, {
   shellVersionId,
   overview = {},
   capabilities = [],
+  recentLayoutSelections = {},
   sectionLimit = DEFAULT_SECTION_LIMIT,
 } = {}) {
   const shell = await fetchShellVersion(sql, shellVersionId);
@@ -276,6 +277,9 @@ async function fetchRegistryCompositionCandidates(sql, {
       overview,
       sectionRole: section.sectionRole,
       defaultLayoutKey: layoutPolicy.defaultLayoutKey,
+      recentLayoutKeys: recentLayoutSelections[section.sectionKey]
+        || recentLayoutSelections[section.id]
+        || [],
     });
     const evaluation = evaluateSectionCandidate({
       section, components, layouts, layoutPolicy, criteria, shellConfig,
@@ -376,6 +380,7 @@ async function fetchRegistryCompositionCandidates(sql, {
       fallbackTemplateVersion: shell.fallbackTemplateVersion,
     },
     criteria,
+    selectionContext: { recentLayoutSelections },
     sections,
     requiredSectionVersionIds: sections
       .filter((section) => section.resolvedRequired)
@@ -409,6 +414,9 @@ function plannerRegistryCandidateSnapshot(candidates) {
       allowedLayoutKeys: section.allowedLayoutKeys,
       layoutSelectionLocked: section.layoutSelectionLocked,
       recommendedLayoutKey: section.layoutFit?.recommendedLayoutKey || section.defaultLayoutKey,
+      fitRecommendedLayoutKey: section.layoutFit?.fitRecommendedLayoutKey || section.defaultLayoutKey,
+      recentLayoutKeys: section.layoutFit?.recentLayoutKeys || [],
+      repeatAvoided: section.layoutFit?.repeatAvoided === true,
       layoutPresets: (section.layoutPresets || []).map((layout) => ({
         layoutKey: layout.layoutKey,
         name: layout.name,

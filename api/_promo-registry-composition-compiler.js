@@ -9,6 +9,7 @@ const {
 const { fetchPinnedResourceVersions } = require("./_promo-content-resources-store");
 const { validateLayoutSpec } = require("./_wizard-form-template-layout-store");
 const { avoidTextComponentOverlaps } = require("./_promo-layout-text-collision");
+const { uniqueLayoutKeys } = require("./_promo-layout-fit");
 
 function clone(value) {
   return value == null ? value : JSON.parse(JSON.stringify(value));
@@ -461,6 +462,16 @@ async function compileRegistryComposition({
     tokenValues,
   });
   layoutDiagnostics.push(...collisionSafeLayout.diagnostics);
+  const previousLayoutHistory = candidates.selectionContext?.recentLayoutSelections || {};
+  const layoutSelectionHistory = Object.fromEntries((candidates.sections || []).map((section) => {
+    const selected = (spec.sections || []).find(
+      (planned) => planned.sectionVersionId === section.sectionVersionId,
+    )?.layoutKey;
+    return [section.sectionKey, uniqueLayoutKeys([
+      selected,
+      ...(previousLayoutHistory[section.sectionKey] || previousLayoutHistory[section.sectionVersionId] || []),
+    ])];
+  }).filter(([, layoutKeys]) => layoutKeys.length));
   const designSpec = {
     contractVersion: 1,
     specKey: "ai-registry-composition",
@@ -515,6 +526,7 @@ async function compileRegistryComposition({
       model: proposalSnapshot.compositionMeta?.model || "",
       reasoningSummary: proposalSnapshot.compositionMeta?.reasoningSummary || "",
       layoutFitRepairs: clone(proposalSnapshot.compositionMeta?.layoutFitRepairs || []),
+      layoutSelectionHistory,
     },
     appearance: {
       designTokenSetVersionId: tokenSet?.tokenSetVersionId || "",

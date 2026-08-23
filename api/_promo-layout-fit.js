@@ -2,6 +2,44 @@ function normalizedText(value) {
   return String(value || "").trim().toLowerCase();
 }
 
+function uniqueLayoutKeys(values = [], limit = 20) {
+  return [...new Set((Array.isArray(values) ? values : [])
+    .map((value) => String(value || "").trim())
+    .filter(Boolean))].slice(0, limit);
+}
+
+function recentLayoutSelectionsFromSnapshot(snapshot = {}) {
+  const stored = snapshot?.compositionMeta?.layoutSelectionHistory;
+  const history = {};
+  if (stored && typeof stored === "object" && !Array.isArray(stored)) {
+    Object.entries(stored).forEach(([sectionKey, layoutKeys]) => {
+      const normalized = uniqueLayoutKeys(layoutKeys);
+      if (sectionKey && normalized.length) history[sectionKey] = normalized;
+    });
+  }
+  const sections = Array.isArray(snapshot?.content?.sectionSnapshot)
+    ? snapshot.content.sectionSnapshot
+    : [];
+  sections.forEach((section) => {
+    const sectionKey = String(section?.sourceSectionKey || section?.sectionKey || "").trim();
+    const layoutKey = String(section?.selectedLayoutKey || "").trim();
+    if (!sectionKey || !layoutKey) return;
+    history[sectionKey] = uniqueLayoutKeys([layoutKey, ...(history[sectionKey] || [])]);
+  });
+  return history;
+}
+
+function recentLayoutSelectionsFromSnapshots(snapshots = []) {
+  const combined = {};
+  (Array.isArray(snapshots) ? snapshots : []).filter(Boolean).forEach((snapshot) => {
+    const selections = recentLayoutSelectionsFromSnapshot(snapshot);
+    Object.entries(selections).forEach(([sectionKey, layoutKeys]) => {
+      combined[sectionKey] = uniqueLayoutKeys([...(combined[sectionKey] || []), ...layoutKeys]);
+    });
+  });
+  return combined;
+}
+
 function visualLength(value) {
   return Array.from(String(value || "")).reduce((length, character) => {
     if (/\s/u.test(character)) return length + 0.35;
@@ -111,7 +149,9 @@ function scoreLayoutPreset(layout = {}, overview = {}, sectionRole = "") {
   return { layoutKey: layout.layoutKey, score, reasons: [...new Set(reasons)].slice(0, 8) };
 }
 
-function evaluateLayoutFit({ layouts = [], overview = {}, sectionRole = "", defaultLayoutKey = "" } = {}) {
+function evaluateLayoutFit({
+  layouts = [], overview = {}, sectionRole = "", defaultLayoutKey = "", recentLayoutKeys = [],
+} = {}) {
   const scores = layouts.map((layout) => scoreLayoutPreset(layout, overview, sectionRole));
   const informative = scores.some((entry) => !entry.reasons.includes("metadata-insufficient"));
   const sorted = [...scores].sort((left, right) => (
@@ -119,8 +159,21 @@ function evaluateLayoutFit({ layouts = [], overview = {}, sectionRole = "", defa
     || Number(right.layoutKey === defaultLayoutKey) - Number(left.layoutKey === defaultLayoutKey)
     || String(left.layoutKey).localeCompare(String(right.layoutKey))
   ));
+  const layoutsByKey = new Map(layouts.map((layout) => [layout.layoutKey, layout]));
+  const recentWindow = uniqueLayoutKeys(recentLayoutKeys)
+    .filter((layoutKey) => layoutsByKey.has(layoutKey))
+    .slice(0, Math.max(1, layouts.length - 1));
+  const recentSet = new Set(recentWindow);
+  const diversified = sorted.filter((entry) => (
+    !recentSet.has(entry.layoutKey)
+    || layoutsByKey.get(entry.layoutKey)?.selectionMetadata?.avoidImmediateRepeat !== true
+  ));
+  const recommended = diversified[0] || sorted[0];
   return {
-    recommendedLayoutKey: informative ? (sorted[0]?.layoutKey || defaultLayoutKey) : defaultLayoutKey,
+    recommendedLayoutKey: informative ? (recommended?.layoutKey || defaultLayoutKey) : defaultLayoutKey,
+    fitRecommendedLayoutKey: informative ? (sorted[0]?.layoutKey || defaultLayoutKey) : defaultLayoutKey,
+    recentLayoutKeys: recentWindow,
+    repeatAvoided: Boolean(recommended?.layoutKey && recommended.layoutKey !== sorted[0]?.layoutKey),
     scores,
   };
 }
@@ -141,7 +194,12 @@ function applyLayoutFitRecommendations(result = {}, candidates = {}, {
     const recommendedScore = Number(byKey.get(fit.recommendedLayoutKey)?.score || 0);
     const delta = recommendedScore - selectedScore;
     const selectedDefault = planned.layoutKey === section.defaultLayoutKey;
-    if ((!selectedDefault || delta < defaultOverrideThreshold) && delta < strongOverrideThreshold) return planned;
+    const selectedLayout = (section.layoutPresets || []).find((layout) => layout.layoutKey === planned.layoutKey);
+    const repeatedLayout = (fit.recentLayoutKeys || []).includes(planned.layoutKey)
+      && selectedLayout?.selectionMetadata?.avoidImmediateRepeat === true;
+    if (!repeatedLayout
+      && (!selectedDefault || delta < defaultOverrideThreshold)
+      && delta < strongOverrideThreshold) return planned;
     repairs.push({
       sectionVersionId: planned.sectionVersionId,
       fromLayoutKey: planned.layoutKey,
@@ -162,6 +220,9 @@ module.exports = {
   applyLayoutFitRecommendations,
   capacityFor,
   evaluateLayoutFit,
+  recentLayoutSelectionsFromSnapshot,
+  recentLayoutSelectionsFromSnapshots,
   scoreLayoutPreset,
+  uniqueLayoutKeys,
   visualLength,
 };

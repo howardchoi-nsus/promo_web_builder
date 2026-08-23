@@ -26,6 +26,9 @@ const candidates = {
   candidateFingerprint: "candidate-fingerprint",
   policyFingerprint: "policy-fingerprint",
   resourceFingerprint: "resource-fingerprint",
+  selectionContext: {
+    recentLayoutSelections: { hero: ["hero-left", "hero-right"] },
+  },
   tokenSets: [{
     tokenSetVersionId: "token-version-1",
     runtimeValues: {
@@ -159,6 +162,9 @@ async function compile(candidateSet = candidates) {
   assert.deepEqual(snapshot.assets.requests, repeated.assets.requests);
   assert.equal(snapshot.compositionMeta.sourceTemplateId, candidates.shell.fallbackTemplateId);
   assert.deepEqual(snapshot.compositionMeta.layoutFitRepairs, proposalSnapshot.compositionMeta.layoutFitRepairs);
+  assert.deepEqual(snapshot.compositionMeta.layoutSelectionHistory.hero, [
+    "hero-centered", "hero-left", "hero-right",
+  ]);
   assert.equal(snapshot.content.formTemplate.designTokens.values["--app-bg"], "#fafafa");
   assert.deepEqual(snapshot.designSpec.theme, {
     backgroundColorToken: "--app-bg", surfaceColorToken: "--app-surface",

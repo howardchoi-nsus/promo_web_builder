@@ -103,6 +103,20 @@ async function fetchDocument(sql, documentId, ownerSubject, { includeSnapshot = 
   };
 }
 
+async function fetchRecentDocumentSnapshots(sql, ownerSubject, { limit = 12 } = {}) {
+  const safeLimit = Math.max(1, Math.min(50, Number(limit || 12)));
+  const rows = await sql`
+    select version.snapshot_json
+    from promo_builder_document_versions version
+    join promo_builder_documents document on document.id = version.document_id
+    where document.owner_subject = ${ownerSubject}
+      and version.contract_version = 3
+    order by version.created_at desc
+    limit ${safeLimit}
+  `;
+  return rows.map((row) => row.snapshot_json).filter(Boolean);
+}
+
 async function fetchProposal(sql, proposalId, ownerSubject, { includeSnapshots = false } = {}) {
   const rows = await sql`
     select proposal.*
@@ -429,6 +443,7 @@ module.exports = {
   toProposal,
   createDocument,
   fetchDocument,
+  fetchRecentDocumentSnapshots,
   fetchProposal,
   createProposal,
   cancelProposal,

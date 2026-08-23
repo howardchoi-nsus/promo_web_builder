@@ -1029,3 +1029,16 @@ Visual Editor production build: passed
 - Eyebrow가 40px Lead Title로 확대되지 않는다.
 - Hero Display가 Mobile과 Desktop 사이에서 40–68px 범위로 유동 조절된다.
 - 생성 화면 Browser Smoke, Typography 역할 Unit Test, 전체 회귀 Test를 통과한다.
+
+---
+
+## 23. 2026-08-23 Hero Layout 반복 방지 정책
+
+AI Mode의 동일 입력 재생성에서 콘텐츠 적합도 1순위 Hero만 반복되는 문제를 다음 정책으로 보완한다.
+
+- 현재 문서의 `compositionMeta.layoutSelectionHistory`와 `content.sectionSnapshot[].selectedLayoutKey`를 서버에서 복원한다.
+- `selectionMetadata.avoidImmediateRepeat=true`인 Layout은 최근 선택 창에서 제외한다.
+- 최근 선택 창은 허용 후보 수보다 하나 작게 유지하여 모든 후보를 사용한 뒤 적합도 1순위로 자연스럽게 복귀한다.
+- AI가 최근 Layout을 다시 선택해도 최종 Layout Fit 보정 단계에서 반복되지 않은 추천안으로 교체한다.
+- Layout 잠금, Registry 허용 목록, 후보 Fingerprint 및 품질 검증 정책은 그대로 유지한다.
+- 최종 적용 Snapshot에 갱신된 Layout 선택 이력을 저장하여 다음 생성 요청에서도 정책이 이어지게 한다.

@@ -2,6 +2,8 @@ const assert = require("node:assert/strict");
 const {
   applyLayoutFitRecommendations,
   evaluateLayoutFit,
+  recentLayoutSelectionsFromSnapshot,
+  recentLayoutSelectionsFromSnapshots,
   visualLength,
 } = require("../api/_promo-layout-fit");
 
@@ -99,5 +101,67 @@ const locked = applyLayoutFitRecommendations({
 });
 assert.equal(locked.result.sections[0].layoutKey, "hero-compact");
 assert.equal(locked.repairs.length, 0);
+
+const diversifiedLayouts = layouts.slice(0, 3).map((layout) => ({
+  ...layout,
+  selectionMetadata: { ...layout.selectionMetadata, avoidImmediateRepeat: true },
+}));
+const firstDiversified = evaluateLayoutFit({
+  layouts: diversifiedLayouts,
+  sectionRole: "hero",
+  defaultLayoutKey: "hero-compact",
+  overview: { title: "Sale", leadText: "Today only" },
+  recentLayoutKeys: ["hero-compact"],
+});
+assert.notEqual(firstDiversified.recommendedLayoutKey, "hero-compact");
+assert.equal(firstDiversified.repeatAvoided, true);
+const secondDiversified = evaluateLayoutFit({
+  layouts: diversifiedLayouts,
+  sectionRole: "hero",
+  defaultLayoutKey: "hero-compact",
+  overview: { title: "Sale", leadText: "Today only" },
+  recentLayoutKeys: [firstDiversified.recommendedLayoutKey, "hero-compact"],
+});
+assert.equal(secondDiversified.recommendedLayoutKey, "hero-center-wide");
+
+const repeatBlockedCandidates = {
+  sections: [{
+    sectionVersionId: "hero-v1",
+    defaultLayoutKey: "hero-compact",
+    layoutSelectionLocked: false,
+    layoutPresets: diversifiedLayouts,
+    layoutFit: firstDiversified,
+  }],
+};
+const repeatBlocked = applyLayoutFitRecommendations({
+  sections: [{ sectionVersionId: "hero-v1", layoutKey: "hero-compact" }],
+  warnings: [],
+}, repeatBlockedCandidates);
+assert.equal(repeatBlocked.result.sections[0].layoutKey, firstDiversified.recommendedLayoutKey);
+assert.equal(repeatBlocked.repairs.length, 1);
+
+assert.deepEqual(recentLayoutSelectionsFromSnapshot({
+  compositionMeta: { layoutSelectionHistory: { registryHero: ["hero-center-wide", "hero-compact"] } },
+  content: {
+    sectionSnapshot: [{ sourceSectionKey: "registryHero", selectedLayoutKey: "hero-right" }],
+  },
+}), {
+  registryHero: ["hero-right", "hero-center-wide", "hero-compact"],
+});
+assert.deepEqual(recentLayoutSelectionsFromSnapshots([{
+  content: { sectionSnapshot: [{ sourceSectionKey: "registryHero", selectedLayoutKey: "hero-right" }] },
+}, {
+  content: { sectionSnapshot: [{ sourceSectionKey: "registryHero", selectedLayoutKey: "hero-compact" }] },
+}]), {
+  registryHero: ["hero-right", "hero-compact"],
+});
+const staleHistoryIgnored = evaluateLayoutFit({
+  layouts: diversifiedLayouts,
+  sectionRole: "hero",
+  defaultLayoutKey: "hero-compact",
+  overview: { title: "Sale", leadText: "Today only" },
+  recentLayoutKeys: ["retired-layout", "hero-compact"],
+});
+assert.deepEqual(staleHistoryIgnored.recentLayoutKeys, ["hero-compact"]);
 
 console.log("Promotion layout fit scoring tests passed.");

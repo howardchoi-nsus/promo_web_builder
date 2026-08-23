@@ -14,11 +14,13 @@ const { resolveBuilderOwner } = require("./_promo-builder-auth");
 const {
   getSql,
   fetchDocument,
+  fetchRecentDocumentSnapshots,
   fetchProposal,
   createProposal,
   cancelProposal,
 } = require("./_promo-builder-document-store");
 const { processCompositionProposal } = require("./_promo-page-composition-service");
+const { recentLayoutSelectionsFromSnapshots } = require("./_promo-layout-fit");
 const { requireBuilderFlag } = require("./_promo-builder-flags");
 const { toAiExecutionDisplay } = require("./_ai-execution-display");
 
@@ -67,7 +69,7 @@ module.exports = async function handler(req, res) {
     if (!documentId || !idempotencyKey) {
       return res.status(400).json({ error: "documentId and idempotencyKey are required" });
     }
-    const document = await fetchDocument(sql, documentId, owner.ownerSubject, { includeSnapshot: false });
+    const document = await fetchDocument(sql, documentId, owner.ownerSubject, { includeSnapshot: true });
     if (!document) return res.status(404).json({ error: "Builder document not found" });
     const baseDocumentRevision = Number(body.baseDocumentRevision || 0);
     if (baseDocumentRevision !== document.document.currentDocumentRevision) {
@@ -112,10 +114,16 @@ module.exports = async function handler(req, res) {
         ...overview,
         locale: String(body.overview?.locale || body.locale || "").trim(),
       };
+      const ownerSnapshots = await fetchRecentDocumentSnapshots(sql, owner.ownerSubject);
+      const recentLayoutSelections = recentLayoutSelectionsFromSnapshots([
+        document.snapshot,
+        ...ownerSnapshots,
+      ]);
       const candidates = await fetchRegistryCompositionCandidates(sql, {
         shellVersionId,
         overview: registryOverview,
         capabilities,
+        recentLayoutSelections,
       });
       if (!candidates.sections.length) {
         return res.status(422).json({
@@ -163,6 +171,7 @@ module.exports = async function handler(req, res) {
         requestSnapshot: {
           overview: registryOverview,
           capabilities,
+          recentLayoutSelections,
           confirmedFieldPaths: Array.isArray(body.confirmedFieldPaths) ? body.confirmedFieldPaths : [],
           promptExecutionSnapshot,
         },
