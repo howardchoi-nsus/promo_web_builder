@@ -82,14 +82,14 @@ body.shell-drawer-open { overflow: hidden; }
 .shell-sidebar__brand strong {
   color: var(--shell-ink);
   font-family: var(--app-font-heading);
-  font-size: 17px;
+  font-size: var(--app-font-size-heading);
   font-weight: 950;
   line-height: 1.2;
 }
 
 .shell-sidebar__brand-copy > span {
   color: var(--shell-sub);
-  font-size: 10px;
+  font-size: var(--app-font-size-xs);
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -116,7 +116,7 @@ body.shell-drawer-open { overflow: hidden; }
   color: var(--shell-sub);
   cursor: pointer;
   font: inherit;
-  font-size: 11px;
+  font-size: var(--app-font-size-small);
   font-weight: 800;
 }
 
@@ -280,7 +280,7 @@ body.shell-drawer-open { overflow: hidden; }
 .shell-page-identity strong {
   overflow: hidden;
   color: var(--shell-ink);
-  font-size: 15px;
+  font-size: var(--app-font-size-heading);
   font-weight: 900;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -302,7 +302,7 @@ body.shell-drawer-open { overflow: hidden; }
   background: var(--shell-bg);
   color: var(--shell-ink);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--app-font-size-small);
   font-weight: 850;
   line-height: 1;
 }
@@ -352,7 +352,7 @@ body.shell-drawer-open { overflow: hidden; }
   padding-left: 14px;
   border-left: 1px solid var(--shell-line-strong);
   color: var(--shell-sub);
-  font-size: 12px;
+  font-size: var(--app-font-size-small);
   font-weight: 850;
   white-space: nowrap;
 }
@@ -378,7 +378,7 @@ body.shell-drawer-open { overflow: hidden; }
   background: var(--shell-bg);
   color: var(--shell-sub);
   font: inherit;
-  font-size: 12px;
+  font-size: var(--app-font-size-small);
   font-weight: 800;
   line-height: 1;
   text-decoration: none;
@@ -444,7 +444,7 @@ body.shell-drawer-open { overflow: hidden; }
   border: 1px solid color-mix(in srgb, var(--shell-success) 28%, transparent);
   background: var(--shell-success-soft);
   color: var(--shell-success);
-  font-size: 11px;
+  font-size: var(--app-font-size-small);
   font-weight: 850;
   line-height: 1.35;
   text-align: center;
@@ -453,7 +453,7 @@ body.shell-drawer-open { overflow: hidden; }
 @media (max-width: 1080px) {
   .shell-frame { grid-template-columns: var(--app-sidebar-width-compact) minmax(0, 1fr); }
   .shell-sidebar { width: var(--app-sidebar-width-compact); }
-  .shell-sidebar__brand strong { font-size: 15px; }
+  .shell-sidebar__brand strong { font-size: var(--app-font-size-heading); }
 }
 
 @media (max-width: 1023px) {

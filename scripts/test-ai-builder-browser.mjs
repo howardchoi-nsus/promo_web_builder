@@ -251,8 +251,8 @@ try {
   assert.equal(progressStyles.messageAnimation, "ai-execution-pulse");
   assert.equal(progressStyles.messageAboveAnimation, true);
   assert.equal(progressStyles.animationAboveModel, true);
-  assert.equal(progressStyles.modelFontSize, "18px");
-  assert.equal(progressStyles.modelLabelFontSize, "15px");
+  assert.equal(progressStyles.modelFontSize, "20px");
+  assert.equal(progressStyles.modelLabelFontSize, "16px");
   assert.equal(progressStyles.modelPaddingInline, "18px");
   assert.deepEqual(progressStyles.iconSize, ["45px", "45px"]);
   if (process.env.CAPTURE_AI_PROGRESS_QA === "1") {

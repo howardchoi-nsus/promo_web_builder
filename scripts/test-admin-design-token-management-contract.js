@@ -157,16 +157,29 @@ const tokenCatalog = read("docs/claude/design-tokens.csv");
   assert.match(tokenCatalog, new RegExp(`${tokenKey}[^\\n]*font-weight,${value},`));
 });
 [
-  ["--promo-font-size-main-title", "68px"],
-  ["--promo-font-size-lead-title", "40px"],
-  ["--promo-font-size-subtitle", "23px"],
+  ["--promo-font-size-body", "1rem"],
+  ["--promo-font-size-caption", "0.875rem"],
+  ["--promo-font-size-micro", "0.625rem"],
 ].forEach(([tokenKey, value]) => {
   assert.match(tokenCatalog, new RegExp(`${tokenKey}[^\\n]*font-size,${value},${value}`));
+});
+[
+  "--promo-font-size-main-title",
+  "--promo-font-size-lead-title",
+  "--promo-font-size-subtitle",
+  "--promo-font-size-eyebrow",
+  "--promo-font-size-button",
+].forEach((tokenKey) => {
+  assert.match(tokenCatalog, new RegExp(`${tokenKey}[^\\n]*font-size,"clamp\\(`));
 });
 const promoTypographyMigration = read("db/migrations/041_promo_typography_size_tokens.sql");
 assert.match(promoTypographyMigration, /--promo-font-size-main-title/);
 assert.match(promoTypographyMigration, /--promo-font-size-lead-title/);
 assert.match(promoTypographyMigration, /--promo-font-size-subtitle/);
+const typographyModernizationMigration = read("db/migrations/064_typography_role_scale_modernization.sql");
+assert.match(typographyModernizationMigration, /--promo-font-size-eyebrow/);
+assert.match(typographyModernizationMigration, /--promo-font-size-body/);
+assert.match(typographyModernizationMigration, /clamp\(2\.5rem, calc\(2rem \+ 3vw\), 4\.25rem\)/);
 
 [
   "api/design-token-set-metadata.js",

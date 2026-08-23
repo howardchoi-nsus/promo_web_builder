@@ -101,7 +101,7 @@ onBeforeUnmount(() => {
 .visual-editor-dialog-host__surface > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--app-line); background: var(--app-panel); }
 .visual-editor-dialog-host__surface > header > div { display: grid; gap: 3px; }
 .visual-editor-dialog-host__surface small { color: var(--app-sub); }
-.visual-editor-dialog-host__save-target { width: fit-content; padding: 2px 7px; border: 1px solid var(--app-line); border-radius: 999px; color: var(--app-sub); font-size: 11px; }
+.visual-editor-dialog-host__save-target { width: fit-content; padding: 2px 7px; border: 1px solid var(--app-line); border-radius: 999px; color: var(--app-sub); font-size: var(--app-font-size-small); }
 .visual-editor-dialog-host__frame-wrap { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: var(--app-bg); }
 .visual-editor-dialog-host__frame { display: block; width: 100%; height: 100%; border: 0; }
 .visual-editor-dialog-host__frame.is-readonly { pointer-events: none; }

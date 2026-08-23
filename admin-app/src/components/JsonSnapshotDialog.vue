@@ -195,7 +195,7 @@ onBeforeUnmount(() => {
 .json-snapshot-dialog header > div { display: grid; gap: 3px; }
 .json-snapshot-dialog header small, .json-snapshot-dialog__summary small, .json-snapshot-dialog__toolbar small { color: var(--app-sub); }
 .json-snapshot-dialog__summary { justify-content: flex-start; padding: 8px 16px; }
-.json-snapshot-dialog__summary span { padding: 2px 7px; border: 1px solid var(--app-line); border-radius: 999px; font-size: 11px; }
+.json-snapshot-dialog__summary span { padding: 2px 7px; border: 1px solid var(--app-line); border-radius: 999px; font-size: var(--app-font-size-small); }
 .json-snapshot-dialog__summary small { margin-left: auto; }
 .json-snapshot-dialog__tabs { display: flex; gap: 4px; padding: 0 16px; border-bottom: 1px solid var(--app-line); }
 .json-snapshot-dialog__tabs button { padding: 9px 12px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--app-sub); cursor: pointer; }
@@ -210,7 +210,7 @@ onBeforeUnmount(() => {
 .json-snapshot-dialog__code span.is-match { background: rgb(250 204 21 / 24%); color: #fff4ae; }
 .json-snapshot-dialog__validation { display: grid; gap: 6px; max-height: 180px; padding: 12px 16px; overflow: auto; }
 .json-snapshot-dialog__validation ul { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; }
-.json-snapshot-dialog__validation li { display: grid; grid-template-columns: minmax(180px, .7fr) 1fr; gap: 8px; font-size: 11px; }
+.json-snapshot-dialog__validation li { display: grid; grid-template-columns: minmax(180px, .7fr) 1fr; gap: 8px; font-size: var(--app-font-size-small); }
 .json-snapshot-dialog__validation li.is-error { color: var(--app-danger); }
 .json-snapshot-dialog__validation li.is-warning { color: var(--app-warning, #d69e2e); }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }

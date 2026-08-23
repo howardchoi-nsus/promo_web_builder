@@ -42,7 +42,7 @@ a {
 .eyebrow {
   margin: 0 0 4px;
   color: var(--sub);
-  font-size: 12px;
+  font-size: var(--app-font-size-small);
   font-weight: 800;
   text-transform: uppercase;
 }
@@ -58,7 +58,7 @@ a {
   background: var(--panel);
   color: var(--sub);
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--app-font-size-small);
   font-weight: 900;
   text-decoration: none;
   white-space: nowrap;
@@ -101,7 +101,7 @@ a {
 
 .step span {
   color: var(--sub);
-  font-size: 12px;
+  font-size: var(--app-font-size-small);
   font-weight: 800;
   text-transform: uppercase;
 }
@@ -113,7 +113,7 @@ a {
 .step strong {
   overflow: hidden;
   color: color-mix(in srgb, var(--sub) 78%, var(--ink));
-  font-size: 16px;
+  font-size: var(--app-font-size-heading);
   font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -246,7 +246,7 @@ a {
   background: var(--accent);
   color: #ffffff;
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--app-font-size-small);
   font-weight: 900;
 }
 
@@ -279,7 +279,7 @@ a {
   background: var(--panel);
   color: var(--ink);
   cursor: pointer;
-  font-size: 20px;
+  font-size: var(--app-font-size-title);
 }
 
 .concept-carousel-control:hover:not(:disabled) {
@@ -323,7 +323,7 @@ a {
 .concept-card-meta,
 .concept-card-summary {
   color: var(--sub);
-  font-size: 12px;
+  font-size: var(--app-font-size-small);
 }
 
 .concept-card-summary {
@@ -344,7 +344,7 @@ a {
   border: 1px solid var(--line);
   background: var(--panel);
   color: var(--sub);
-  font-size: 11px;
+  font-size: var(--app-font-size-small);
   font-style: normal;
   font-weight: 800;
   padding: 3px 7px;
@@ -385,7 +385,7 @@ a {
 
 .content-save-note {
   color: var(--sub);
-  font-size: 12px;
+  font-size: var(--app-font-size-small);
   font-weight: 800;
 }
 
@@ -398,7 +398,7 @@ a {
 
 .content-form-section h3 {
   margin: 0;
-  font-size: 15px;
+  font-size: var(--app-font-size-heading);
   letter-spacing: 0;
 }
 
@@ -437,7 +437,7 @@ a {
 .overview-nlp-panel__description {
   margin: -4px 0 0;
   color: var(--sub);
-  font-size: 13px;
+  font-size: var(--app-font-size-control);
   line-height: 1.6;
 }
 
@@ -478,7 +478,7 @@ a {
   border-radius: 999px;
   background: var(--accent-soft);
   color: var(--accent);
-  font-size: 12px;
+  font-size: var(--app-font-size-small);
   font-weight: 900;
 }
 
@@ -491,7 +491,7 @@ a {
 
 .overview-analysis-grid dt {
   color: var(--sub);
-  font-size: 12px;
+  font-size: var(--app-font-size-small);
   font-weight: 800;
 }
 
@@ -513,7 +513,7 @@ a {
   border-radius: 999px;
   background: var(--accent-soft);
   color: var(--accent);
-  font-size: 11px;
+  font-size: var(--app-font-size-small);
   font-weight: 800;
 }
 
@@ -525,13 +525,13 @@ a {
 .overview-analysis__reason {
   flex-basis: 100%;
   color: var(--sub);
-  font-size: 11px;
+  font-size: var(--app-font-size-small);
 }
 
 .overview-analysis-warning,
 .overview-analysis-error {
   color: var(--danger);
-  font-size: 12px;
+  font-size: var(--app-font-size-small);
   font-weight: 700;
 }
 
@@ -563,7 +563,7 @@ a {
   height: 28px;
   border-radius: 999px;
   background: var(--surface);
-  font-size: 12px;
+  font-size: var(--app-font-size-small);
 }
 
 .content-substep.is-active {
@@ -711,7 +711,7 @@ a {
   margin: 0;
   padding-left: 22px;
   color: var(--sub);
-  font-size: 12px;
+  font-size: var(--app-font-size-small);
 }
 
 .template-composition-applied {
@@ -723,7 +723,7 @@ a {
 .wizard-template-warning {
   margin: 0;
   color: var(--danger);
-  font-size: 12px;
+  font-size: var(--app-font-size-small);
   font-weight: 700;
 }
 
@@ -752,7 +752,7 @@ a {
   border-radius: 999px;
   background: var(--accent);
   color: var(--accent-ink, #fff);
-  font-size: 10px;
+  font-size: var(--app-font-size-xs);
   font-style: normal;
 }
 
@@ -806,7 +806,7 @@ a {
   gap: 8px;
   margin-top: 12px;
   color: var(--sub);
-  font-size: 12px;
+  font-size: var(--app-font-size-small);
   font-weight: 800;
 }
 
@@ -885,7 +885,7 @@ a {
   width: auto;
   color: var(--sub);
   cursor: not-allowed;
-  font-size: 10px;
+  font-size: var(--app-font-size-xs);
 }
 
 .wizard-content-accordion-toggle {
@@ -897,7 +897,7 @@ a {
   border: 0;
   background: transparent;
   color: var(--ink);
-  font-size: 18px;
+  font-size: var(--app-font-size-title);
   cursor: pointer;
 }
 
@@ -938,7 +938,7 @@ a {
   margin: 0;
   padding: 16px;
   color: var(--ink);
-  font-size: 15px;
+  font-size: var(--app-font-size-heading);
   letter-spacing: 0;
 }
 
@@ -955,7 +955,7 @@ a {
   gap: 6px;
   min-width: 0;
   color: var(--sub);
-  font-size: 12px;
+  font-size: var(--app-font-size-small);
   font-weight: 900;
 }
 
@@ -978,7 +978,7 @@ a {
 .content-json-field textarea {
   min-height: 300px;
   font-family: Consolas, "Courier New", monospace;
-  font-size: 13px;
+  font-size: var(--app-font-size-control);
 }
 
 .content-field.is-invalid input,
@@ -990,7 +990,7 @@ a {
 
 .content-field-error {
   color: var(--danger);
-  font-size: 11px;
+  font-size: var(--app-font-size-small);
 }
 
 .locked-field-value {
@@ -999,7 +999,7 @@ a {
   background: var(--surface);
   color: var(--sub);
   padding: 8px 10px;
-  font-size: 13px;
+  font-size: var(--app-font-size-control);
   line-height: 1.45;
   overflow-wrap: anywhere;
 }
@@ -1014,7 +1014,7 @@ a {
 }
 
 .content-coverage-panel strong {
-  font-size: 16px;
+  font-size: var(--app-font-size-heading);
 }
 
 .content-coverage-panel ul {
@@ -1031,7 +1031,7 @@ a {
   justify-content: space-between;
   gap: 10px;
   color: var(--sub);
-  font-size: 12px;
+  font-size: var(--app-font-size-small);
   font-weight: 800;
 }
 
@@ -1073,7 +1073,7 @@ a {
 .lofi-run-summary h3,
 .final-run-summary h3 {
   margin: 0;
-  font-size: 20px;
+  font-size: var(--app-font-size-title);
   letter-spacing: 0;
 }
 
@@ -1081,7 +1081,7 @@ a {
 .final-run-summary p {
   margin: 0;
   color: var(--sub);
-  font-size: 13px;
+  font-size: var(--app-font-size-control);
 }
 
 .lofi-status-row {
@@ -1097,7 +1097,7 @@ a {
   border: 1px solid var(--line);
   background: var(--panel);
   color: var(--sub);
-  font-size: 11px;
+  font-size: var(--app-font-size-small);
   font-weight: 900;
   padding: 0 8px;
 }
@@ -1149,7 +1149,7 @@ a {
 
 .lofi-content-snapshot li {
   color: var(--sub);
-  font-size: 12px;
+  font-size: var(--app-font-size-small);
   line-height: 1.45;
   overflow-wrap: anywhere;
 }
@@ -1173,7 +1173,7 @@ a {
 .final-design-source-preview span {
   padding: 20px;
   color: var(--sub);
-  font-size: 13px;
+  font-size: var(--app-font-size-control);
   font-weight: 800;
   text-align: center;
 }
@@ -1189,7 +1189,7 @@ a {
 .lofi-action-panel small {
   grid-column: 1 / -1;
   color: var(--sub);
-  font-size: 12px;
+  font-size: var(--app-font-size-small);
   font-weight: 800;
 }
 
@@ -1209,7 +1209,7 @@ a {
 .lofi-large-preview h3,
 .final-large-preview h3 {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--app-font-size-title);
   letter-spacing: 0;
 }
 
@@ -1250,7 +1250,7 @@ a {
 .lofi-large-preview-media span,
 .final-large-preview-frame span {
   color: var(--sub);
-  font-size: 13px;
+  font-size: var(--app-font-size-control);
   font-weight: 800;
   text-align: center;
 }
@@ -1338,7 +1338,7 @@ a {
 
 .lofi-thumbnail span {
   color: var(--sub);
-  font-size: 13px;
+  font-size: var(--app-font-size-control);
   font-weight: 800;
   padding: 12px;
   text-align: center;
@@ -1360,7 +1360,7 @@ a {
 .lofi-draft-meta dd {
   margin: 0;
   color: var(--sub);
-  font-size: 12px;
+  font-size: var(--app-font-size-small);
 }
 
 .lofi-draft-meta dt {
@@ -1369,7 +1369,7 @@ a {
 
 .lofi-error {
   color: var(--danger);
-  font-size: 12px;
+  font-size: var(--app-font-size-small);
   font-weight: 800;
 }
 
@@ -1387,7 +1387,7 @@ a {
 
 .placeholder-card span {
   color: var(--sub);
-  font-size: 13px;
+  font-size: var(--app-font-size-control);
   line-height: 1.5;
 }
 
@@ -1434,7 +1434,7 @@ a {
   padding: 5px 8px;
   border: 1px solid color-mix(in srgb, var(--preview-text) 22%, transparent);
   border-radius: 999px;
-  font-size: 10px;
+  font-size: var(--app-font-size-xs);
   font-weight: 900;
   letter-spacing: 0.12em;
 }
@@ -1450,7 +1450,7 @@ a {
 
 .appearance-preview__eyebrow {
   margin: 0 0 14px;
-  font-size: 12px;
+  font-size: var(--app-font-size-small);
   font-weight: 900;
   letter-spacing: 0.16em;
 }
@@ -1466,7 +1466,7 @@ a {
 .appearance-preview__copy {
   margin: 18px 0 24px;
   opacity: 0.76;
-  font-size: 14px;
+  font-size: var(--app-font-size-body);
 }
 
 .appearance-preview__cta {
@@ -1476,7 +1476,7 @@ a {
   border: 2px solid var(--preview-cta);
   background: var(--preview-cta);
   color: #ffffff;
-  font-size: 13px;
+  font-size: var(--app-font-size-control);
   font-weight: 900;
   pointer-events: none;
 }
@@ -1521,14 +1521,14 @@ a {
 .appearance-fieldset legend {
   padding: 0;
   color: var(--ink);
-  font-size: 14px;
+  font-size: var(--app-font-size-body);
   font-weight: 900;
 }
 
 .appearance-fieldset__description {
   margin: 6px 0 12px;
   color: var(--sub);
-  font-size: 12px;
+  font-size: var(--app-font-size-small);
   line-height: 1.5;
 }
 
@@ -1572,7 +1572,7 @@ a {
 
 .appearance-choice strong {
   overflow: hidden;
-  font-size: 12px;
+  font-size: var(--app-font-size-small);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1594,7 +1594,7 @@ a {
   border: 2px solid var(--choice-cta-color, #e23c34);
   background: var(--choice-cta-color, #e23c34);
   color: #ffffff;
-  font-size: 13px;
+  font-size: var(--app-font-size-control);
   font-weight: 900;
   letter-spacing: 0.04em;
   transition: transform 160ms ease, box-shadow 160ms ease;
@@ -1628,7 +1628,7 @@ a {
 
 .appearance-choice__check {
   color: #ff8748;
-  font-size: 16px;
+  font-size: var(--app-font-size-heading);
   font-weight: 900;
   text-align: center;
 }
@@ -1644,7 +1644,7 @@ a {
 .section-ai-header-action {
   min-height: 30px;
   padding: 0 10px;
-  font-size: 11px;
+  font-size: var(--app-font-size-small);
 }
 
 .secondary-action.is-danger,
@@ -1770,7 +1770,7 @@ a {
 .admin-layout-update-banner span {
   margin-top: 3px;
   color: var(--sub);
-  font-size: 12px;
+  font-size: var(--app-font-size-small);
 }
 
 .admin-layout-update-banner.is-error {
@@ -1788,7 +1788,7 @@ a {
   display: block;
   margin-top: 5px;
   color: var(--sub);
-  font-size: 11px;
+  font-size: var(--app-font-size-small);
   line-height: 1.45;
 }
 
@@ -1800,7 +1800,7 @@ a {
   border: 1px solid var(--line);
   border-radius: 999px;
   color: var(--sub);
-  font-size: 11px;
+  font-size: var(--app-font-size-small);
 }
 
 .wizard-layout-frame {
@@ -1835,7 +1835,7 @@ a {
 
 #step-status {
   color: var(--sub);
-  font-size: 12px;
+  font-size: var(--app-font-size-small);
   font-weight: 900;
 }
 

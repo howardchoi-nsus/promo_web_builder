@@ -40,14 +40,21 @@ spacing,간격,--app-space-4,간격 4,length,px,false,single,0,margin;padding;ga
 spacing,간격,--app-space-5,간격 5,length,px,false,single,0,margin;padding;gap,20px,
 spacing,간격,--app-panel-gap,패널 간격,length,px,false,single,0,gap,12px,
 spacing,간격,--app-content-padding,콘텐츠 여백,length,px,false,single,0,padding,20px,
-typography-size,글자 크기,--app-font-size-xs,아주 작게,length,px,false,single,0,font-size,10px,
+typography-size,글자 크기,--app-font-size-xs,아주 작게,length,px,false,single,0,font-size,12px,
 typography-size,글자 크기,--app-font-size-small,작게,length,px,false,single,0,font-size,12px,
-typography-size,글자 크기,--app-font-size-control,컨트롤,length,px,false,single,0,font-size,13px,
+typography-size,글자 크기,--app-font-size-control,컨트롤,length,px,false,single,0,font-size,14px,
 typography-size,글자 크기,--app-font-size-body,본문,length,px,false,single,0,font-size,14px,
 typography-size,글자 크기,--app-font-size-heading,제목,length,px,false,single,0,font-size,16px,
-typography-size,글자 크기,--promo-font-size-main-title,메인 타이틀,length,px,false,single,0,font-size,68px,68px
-typography-size,글자 크기,--promo-font-size-lead-title,리드 타이틀,length,px,false,single,0,font-size,40px,40px
-typography-size,글자 크기,--promo-font-size-subtitle,서브 타이틀,length,px,false,single,0,font-size,23px,23px
+typography-size,글자 크기,--app-font-size-title,큰 제목,length,rem,false,single,0,font-size,1.25rem,
+typography-size,글자 크기,--app-font-size-page-title,페이지 제목,length,rem,false,single,0,font-size,"clamp(1.75rem, calc(1.5rem + 1.5vw), 2.75rem)",
+typography-size,글자 크기,--promo-font-size-main-title,메인 타이틀,length,rem,false,single,0,font-size,"clamp(2.5rem, calc(2rem + 3vw), 4.25rem)","clamp(2.5rem, calc(2rem + 3vw), 4.25rem)"
+typography-size,글자 크기,--promo-font-size-lead-title,리드 타이틀,length,rem,false,single,0,font-size,"clamp(1.75rem, calc(1.5rem + 1.5vw), 2.5rem)","clamp(1.75rem, calc(1.5rem + 1.5vw), 2.5rem)"
+typography-size,글자 크기,--promo-font-size-subtitle,서브 타이틀,length,rem,false,single,0,font-size,"clamp(1.125rem, calc(1rem + 0.5vw), 1.4375rem)","clamp(1.125rem, calc(1rem + 0.5vw), 1.4375rem)"
+typography-size,글자 크기,--promo-font-size-body,프로모션 본문,length,rem,false,single,0,font-size,1rem,1rem
+typography-size,글자 크기,--promo-font-size-caption,프로모션 보조 문구,length,rem,false,single,0,font-size,0.875rem,0.875rem
+typography-size,글자 크기,--promo-font-size-micro,프로모션 진단 라벨,length,rem,false,single,0,font-size,0.625rem,0.625rem
+typography-size,글자 크기,--promo-font-size-eyebrow,프로모션 오버라인,length,rem,false,single,0,font-size,"clamp(0.75rem, calc(0.7rem + 0.2vw), 0.875rem)","clamp(0.75rem, calc(0.7rem + 0.2vw), 0.875rem)"
+typography-size,글자 크기,--promo-font-size-button,프로모션 버튼,length,rem,false,single,0,font-size,"clamp(0.875rem, calc(0.8rem + 0.2vw), 1rem)","clamp(0.875rem, calc(0.8rem + 0.2vw), 1rem)"
 typography-weight,글자 두께,--app-font-weight-label,라벨,number,,false,single,0,font-weight,700,
 typography-weight,글자 두께,--app-font-weight-strong,강조,number,,false,single,0,font-weight,800,
 typography-weight,글자 두께,--app-font-weight-heading,제목,number,,false,single,0,font-weight,900,

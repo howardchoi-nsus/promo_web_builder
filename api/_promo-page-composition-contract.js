@@ -358,26 +358,35 @@ function defaultItemTokenStyle(item, tokenValues = {}, bindings = resolveDesignT
     field?.fieldKind,
   ].filter(Boolean).join(" ")).join(" ").toLowerCase();
   const isCta = fields.some((field) => field?.fieldKind === "cta");
-  const isLead = /\b(lead|eyebrow|kicker|overline)\b/.test(identity);
-  const isSubtitle = /\b(subtitle|subline|description|body|remark|copy)\b/.test(identity);
-  const isTitle = !isLead && !isSubtitle && /\b(title|headline|heading)\b/.test(identity);
-  const colorToken = firstAvailableToken(tokenValues, isLead
+  const isEyebrow = /\b(eyebrow|kicker|overline)\b/.test(identity);
+  const isLead = !isEyebrow && /\b(lead|lede|intro)\b/.test(identity);
+  const isSubtitle = !isLead && /\b(subtitle|subline)\b/.test(identity);
+  const isBody = !isSubtitle && /\b(description|body|remark|copy)\b/.test(identity);
+  const isTitle = !isEyebrow && !isLead && !isSubtitle && !isBody
+    && /\b(title|headline|heading)\b/.test(identity);
+  const colorToken = firstAvailableToken(tokenValues, isEyebrow || isLead
     ? ["--app-accent", "--app-ink"]
     : isCta
       ? ["--app-on-accent", "--app-ink"]
-      : isSubtitle
+      : isSubtitle || isBody
         ? ["--app-ink-soft", "--app-ink"]
         : ["--app-ink", "--app-text"]);
   const fontSizeToken = firstAvailableToken(tokenValues, isTitle
     ? ["--promo-font-size-main-title", "--promo-title-size", "--app-font-size-heading"]
+    : isEyebrow
+      ? ["--promo-font-size-eyebrow", "--app-font-size-small", "--app-font-size-body"]
     : isLead
       ? ["--promo-font-size-lead-title", "--app-font-size-heading"]
-      : isSubtitle
-        ? ["--promo-font-size-subtitle", "--app-font-size-body"]
-        : ["--app-font-size-body"]);
+    : isSubtitle
+      ? ["--promo-font-size-subtitle", "--app-font-size-body"]
+      : isBody
+        ? ["--promo-font-size-body", "--app-font-size-body"]
+        : isCta
+          ? ["--promo-font-size-button", "--promo-font-size-body", "--app-font-size-body"]
+          : ["--promo-font-size-body", "--app-font-size-body"]);
   const fontWeightToken = firstAvailableToken(tokenValues, isTitle
     ? ["--app-font-weight-title", "--app-font-weight-heading", "--app-font-weight-strong"]
-    : isLead
+    : isEyebrow || isLead
       ? ["--app-font-weight-heading", "--app-font-weight-strong"]
       : isCta
         ? ["--app-font-weight-strong", "--app-font-weight-label"]

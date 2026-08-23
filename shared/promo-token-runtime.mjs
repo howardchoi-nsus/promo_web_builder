@@ -57,7 +57,7 @@ export function createPromoTokenRuntimeStyle(input, fallbacks = {}) {
   set("--promo-button-height", tokens["--app-button-height"]);
   set("--promo-space-4", tokens["--app-space-4"]);
   set("--promo-border-width", tokens["--app-border-width"]);
-  set("--promo-font-size-body", tokens["--app-font-size-body"]);
+  set("--promo-font-size-body", first(tokens["--promo-font-size-body"], tokens["--app-font-size-body"], "1rem"));
   set("--promo-title-size", first(tokens["--promo-font-size-main-title"], tokens["--promo-title-size"], fallbacks.titleSize));
   set("--promo-font-weight-strong", tokens["--app-font-weight-strong"]);
   set("--promo-transition-duration", tokens["--app-transition-duration-normal"]);

@@ -44,8 +44,8 @@ assert.match(indicator, /<slot name="visual" \/>/);
 assert.match(styles, /min-height: calc\(100vh - 88px\)/);
 assert.match(styles, /\.ai-composition-progress \.ai-execution-indicator__message/);
 assert.match(styles, /\.ai-composition-progress \.ai-execution-indicator__model \{ gap: 15px; padding: 12px 18px; border-radius: 18px;/);
-assert.match(styles, /\.ai-composition-progress \.ai-execution-indicator__model small \{ font-size: 15px; \}/);
-assert.match(styles, /\.ai-composition-progress \.ai-execution-indicator__model b \{ font-size: 18px; \}/);
+assert.match(styles, /\.ai-composition-progress \.ai-execution-indicator__model small \{ font-size: var\(--app-font-size-heading\); \}/);
+assert.match(styles, /\.ai-composition-progress \.ai-execution-indicator__model b \{ font-size: var\(--app-font-size-title\); \}/);
 assert.match(styles, /\.ai-composition-progress \.ai-execution-indicator__icon \{ width: 45px; height: 45px;/);
 
 console.log("AI execution indicator contract tests passed.");

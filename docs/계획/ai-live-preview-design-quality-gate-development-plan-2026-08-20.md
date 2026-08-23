@@ -1004,3 +1004,28 @@ Visual Editor production build: passed
 - Layout 잠금 시 자동 변경 없음
 - 활성 Hero Version 2 이상에도 세 후보 및 Allowlist 동기화
 - 세 Hero 후보를 Desktop·Mobile 실제 Renderer에서 열어 위치·폭·정렬 차이를 검증하는 브라우저 회귀 테스트
+
+---
+
+## 22. 2026-08-23 Typography Role Scale 현대화
+
+### 22.1 앱 UI
+
+- 앱 UI의 읽을 수 있는 최소 크기를 12px로 통일하고 `xs`, `small`, `control`, `body`, `heading`, `title`, `page-title` 역할을 명시한다.
+- 9–11px 직접 지정값을 `--app-font-size-*` 토큰으로 전환한다.
+- Caption, Control, Body, Heading, Title에 대응하는 Line Height 토큰을 추가한다.
+
+### 22.2 프로모션 출력
+
+- `main-title`, `lead-title`, `subtitle`의 고정 px 값을 `clamp()` 기반 반응형 값으로 전환한다.
+- `eyebrow`, `body`, `caption`, `micro`, `button` 역할 토큰을 추가한다.
+- `eyebrow/kicker/overline`, `lead/intro`, `subtitle`, `description/body/copy`, `cta`를 각각 다른 Typography 역할로 매핑한다.
+- 기존 Builder Document Snapshot은 유지하고 신규 Composition부터 현대화된 기본 Token Set 값을 사용한다.
+
+### 22.3 검증 기준
+
+- 제품 UI CSS의 반복 Font Size는 앱 토큰을 사용한다.
+- 일반 본문과 Description은 16px 프로모션 본문 역할을 사용한다.
+- Eyebrow가 40px Lead Title로 확대되지 않는다.
+- Hero Display가 Mobile과 Desktop 사이에서 40–68px 범위로 유동 조절된다.
+- 생성 화면 Browser Smoke, Typography 역할 Unit Test, 전체 회귀 Test를 통과한다.

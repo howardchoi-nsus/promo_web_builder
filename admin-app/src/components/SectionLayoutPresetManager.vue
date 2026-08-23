@@ -359,7 +359,7 @@ export default {
 .section-layout-manager { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--app-border, #303744); }
 .section-layout-row { display: flex; justify-content: space-between; gap: 16px; align-items: center; }
 .new-layout-preset-form { display: grid; grid-template-columns: minmax(160px, .7fr) minmax(220px, 1fr) auto auto auto; gap: 10px; align-items: end; margin-top: 12px; padding: 12px; border: 1px solid var(--app-line); border-radius: 8px; background: var(--app-surface); }
-.new-layout-preset-form label { display: grid; gap: 5px; color: var(--app-sub); font-size: 11px; font-weight: 750; }
+.new-layout-preset-form label { display: grid; gap: 5px; color: var(--app-sub); font-size: var(--app-font-size-small); font-weight: 750; }
 .new-layout-preset-form input { min-height: 32px; border: 1px solid var(--app-line); border-radius: 5px; background: var(--app-panel); color: var(--app-ink); }
 .new-layout-preset-form .inline-check { display: inline-flex; align-items: center; padding-bottom: 7px; white-space: nowrap; }
 .new-layout-preset-form .inline-check input { min-height: auto; }
