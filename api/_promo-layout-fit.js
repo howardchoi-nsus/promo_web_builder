@@ -160,19 +160,23 @@ function evaluateLayoutFit({
     || String(left.layoutKey).localeCompare(String(right.layoutKey))
   ));
   const layoutsByKey = new Map(layouts.map((layout) => [layout.layoutKey, layout]));
+  const repeatAvoidanceEnabled = layouts.length > 1 && layouts.some(
+    (layout) => layout.selectionMetadata?.avoidImmediateRepeat === true,
+  );
   const recentWindow = uniqueLayoutKeys(recentLayoutKeys)
     .filter((layoutKey) => layoutsByKey.has(layoutKey))
     .slice(0, Math.max(1, layouts.length - 1));
   const recentSet = new Set(recentWindow);
   const diversified = sorted.filter((entry) => (
     !recentSet.has(entry.layoutKey)
-    || layoutsByKey.get(entry.layoutKey)?.selectionMetadata?.avoidImmediateRepeat !== true
+    || !repeatAvoidanceEnabled
   ));
   const recommended = diversified[0] || sorted[0];
   return {
     recommendedLayoutKey: informative ? (recommended?.layoutKey || defaultLayoutKey) : defaultLayoutKey,
     fitRecommendedLayoutKey: informative ? (sorted[0]?.layoutKey || defaultLayoutKey) : defaultLayoutKey,
     recentLayoutKeys: recentWindow,
+    repeatAvoidanceEnabled,
     repeatAvoided: Boolean(recommended?.layoutKey && recommended.layoutKey !== sorted[0]?.layoutKey),
     scores,
   };
@@ -194,9 +198,8 @@ function applyLayoutFitRecommendations(result = {}, candidates = {}, {
     const recommendedScore = Number(byKey.get(fit.recommendedLayoutKey)?.score || 0);
     const delta = recommendedScore - selectedScore;
     const selectedDefault = planned.layoutKey === section.defaultLayoutKey;
-    const selectedLayout = (section.layoutPresets || []).find((layout) => layout.layoutKey === planned.layoutKey);
     const repeatedLayout = (fit.recentLayoutKeys || []).includes(planned.layoutKey)
-      && selectedLayout?.selectionMetadata?.avoidImmediateRepeat === true;
+      && fit.repeatAvoidanceEnabled === true;
     if (!repeatedLayout
       && (!selectedDefault || delta < defaultOverrideThreshold)
       && delta < strongOverrideThreshold) return planned;

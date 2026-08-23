@@ -102,9 +102,12 @@ const locked = applyLayoutFitRecommendations({
 assert.equal(locked.result.sections[0].layoutKey, "hero-compact");
 assert.equal(locked.repairs.length, 0);
 
-const diversifiedLayouts = layouts.slice(0, 3).map((layout) => ({
+const diversifiedLayouts = layouts.slice(0, 3).map((layout, index) => ({
   ...layout,
-  selectionMetadata: { ...layout.selectionMetadata, avoidImmediateRepeat: true },
+  selectionMetadata: {
+    ...layout.selectionMetadata,
+    ...(index === 0 ? {} : { avoidImmediateRepeat: true }),
+  },
 }));
 const firstDiversified = evaluateLayoutFit({
   layouts: diversifiedLayouts,
@@ -114,6 +117,7 @@ const firstDiversified = evaluateLayoutFit({
   recentLayoutKeys: ["hero-compact"],
 });
 assert.notEqual(firstDiversified.recommendedLayoutKey, "hero-compact");
+assert.equal(firstDiversified.repeatAvoidanceEnabled, true);
 assert.equal(firstDiversified.repeatAvoided, true);
 const secondDiversified = evaluateLayoutFit({
   layouts: diversifiedLayouts,
