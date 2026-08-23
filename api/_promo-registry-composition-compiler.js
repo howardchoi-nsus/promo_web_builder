@@ -514,6 +514,7 @@ async function compileRegistryComposition({
       promptTemplateVersionId: proposalSnapshot.compositionMeta?.promptTemplateVersionId || "",
       model: proposalSnapshot.compositionMeta?.model || "",
       reasoningSummary: proposalSnapshot.compositionMeta?.reasoningSummary || "",
+      layoutFitRepairs: clone(proposalSnapshot.compositionMeta?.layoutFitRepairs || []),
     },
     appearance: {
       designTokenSetVersionId: tokenSet?.tokenSetVersionId || "",

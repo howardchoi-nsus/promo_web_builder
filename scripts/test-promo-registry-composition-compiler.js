@@ -103,6 +103,10 @@ const proposalSnapshot = {
   snapshotType: "registry-composition-proposal",
   compositionMeta: {
     overviewFingerprint: "overview-fingerprint", promptTemplateVersionId: "prompt-version", model: "test-model",
+    layoutFitRepairs: [{
+      sectionVersionId: "hero-version-1", fromLayoutKey: "hero-default",
+      toLayoutKey: "hero-centered", scoreDelta: 24,
+    }],
   },
   compositionSpec: {
     shellVersionId: "shell-version-1",
@@ -154,6 +158,7 @@ async function compile(candidateSet = candidates) {
   assert.deepEqual(snapshot.content.sectionOrder, repeated.content.sectionOrder);
   assert.deepEqual(snapshot.assets.requests, repeated.assets.requests);
   assert.equal(snapshot.compositionMeta.sourceTemplateId, candidates.shell.fallbackTemplateId);
+  assert.deepEqual(snapshot.compositionMeta.layoutFitRepairs, proposalSnapshot.compositionMeta.layoutFitRepairs);
   assert.equal(snapshot.content.formTemplate.designTokens.values["--app-bg"], "#fafafa");
   assert.deepEqual(snapshot.designSpec.theme, {
     backgroundColorToken: "--app-bg", surfaceColorToken: "--app-surface",

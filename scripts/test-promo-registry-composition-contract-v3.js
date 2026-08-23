@@ -203,12 +203,24 @@ const snapshot = normalizeRegistryCompositionProposal({
   candidateFingerprint: candidates.candidateFingerprint,
   policyFingerprint: candidates.policyFingerprint,
   resourceFingerprint: candidates.resourceFingerprint,
+  layoutFitRepairs: [{
+    sectionVersionId: "hero-v1",
+    fromLayoutKey: "hero-default",
+    toLayoutKey: "hero-center-wide",
+    scoreDelta: 42,
+  }],
   promptExecutionSnapshot: { promptId: "prompt-v2", model: "gpt-4.1-mini" },
 });
 assert.equal(snapshot.contractVersion, 3);
 assert.equal(snapshot.snapshotType, "registry-composition-proposal");
 assert.equal(snapshot.compositionMeta.mode, "ai-composition");
 assert.equal(Object.hasOwn(snapshot.compositionMeta, "sourceTemplateId"), false);
+assert.deepEqual(snapshot.compositionMeta.layoutFitRepairs, [{
+  sectionVersionId: "hero-v1",
+  fromLayoutKey: "hero-default",
+  toLayoutKey: "hero-center-wide",
+  scoreDelta: 42,
+}]);
 assert.equal(snapshot.compositionSpec.resourceReferences[0].contentHash, "terms-hash");
 assert.equal(Object.hasOwn(snapshot.compositionSpec.resourceReferences[0], "content"), false);
 assert.equal(snapshot.compositionSpec.sections[1].components[0].repeat, 3);
@@ -241,6 +253,35 @@ assert.equal(snapshot.preview.resources[0].locale, "ko-KR");
   assert.equal(generated.repaired, true);
   assert.equal(attempts, 2);
   assert.deepEqual(stages, ["validating", "repairing"]);
+
+  const fitCandidates = JSON.parse(JSON.stringify(candidates));
+  const fitHero = fitCandidates.sections.find((section) => section.sectionVersionId === "hero-v1");
+  fitHero.defaultLayoutKey = "hero-default";
+  fitHero.layoutSelectionLocked = false;
+  fitHero.layoutPresets.push({ layoutKey: "hero-center-wide" });
+  fitHero.layoutFit = {
+    recommendedLayoutKey: "hero-center-wide",
+    scores: [
+      { layoutKey: "hero-default", score: 10, reasons: ["default"] },
+      { layoutKey: "hero-center-wide", score: 54, reasons: ["long-headline-fit"] },
+    ],
+  };
+  const fitRepaired = await generateValidatedRegistryComposition({
+    candidates: fitCandidates,
+    promptConfig: {
+      renderedPrompt: "Compose from approved Registry candidates.",
+      promptLayers: { repairPrompts: { contractV3: "Repair {{errorCode}} {{errorMessage}}." } },
+    },
+    generate: async () => ({ result: validResult }),
+  });
+  assert.equal(fitRepaired.repaired, true);
+  assert.equal(fitRepaired.validated.sections[0].layoutKey, "hero-center-wide");
+  assert.deepEqual(fitRepaired.layoutFitRepairs, [{
+    sectionVersionId: "hero-v1",
+    fromLayoutKey: "hero-default",
+    toLayoutKey: "hero-center-wide",
+    scoreDelta: 44,
+  }]);
 
   let bindingAttempts = 0;
   const repairedBinding = await generateValidatedRegistryComposition({

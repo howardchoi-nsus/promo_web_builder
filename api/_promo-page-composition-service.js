@@ -171,6 +171,7 @@ async function processCompositionProposal(proposalId, dependencies = {}) {
         candidateFingerprint: row.candidate_fingerprint,
         policyFingerprint: row.policy_fingerprint,
         resourceFingerprint: row.resource_fingerprint,
+        layoutFitRepairs: generation.layoutFitRepairs || [],
         promptExecutionSnapshot: promptConfig,
       })
       : normalizePageComposition({

@@ -985,6 +985,7 @@ Visual Editor production build: passed
 - Candidate Snapshot에 `recommendedLayoutKey`, Layout별 `fitScore`, `fitReasons`를 포함한다.
 - `layoutLocked=false`인 Section에서 Planner가 Default Layout에 고착되고 추천 후보의 점수가 유의미하게 높은 경우에만 제한적으로 Layout을 재선택한다.
 - `layoutLocked=true`인 Section과 Metadata 정보가 부족한 Layout에는 자동 재선택을 적용하지 않는다.
+- 자동 재선택의 Section Version, 변경 전·후 Layout Key와 점수 차이를 `compositionMeta.layoutFitRepairs`에 저장하고 최종 문서까지 전달한다.
 
 ### 21.2 선택 안전장치
 

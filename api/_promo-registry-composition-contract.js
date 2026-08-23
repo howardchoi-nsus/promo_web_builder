@@ -58,6 +58,17 @@ function fixedPositionRank(value) {
   return 0;
 }
 
+function normalizeLayoutFitRepairs(value) {
+  return (Array.isArray(value) ? value : []).slice(0, 30).map((repair) => ({
+    sectionVersionId: String(repair?.sectionVersionId || ""),
+    fromLayoutKey: String(repair?.fromLayoutKey || ""),
+    toLayoutKey: String(repair?.toLayoutKey || ""),
+    scoreDelta: Number.isFinite(Number(repair?.scoreDelta)) ? Number(repair.scoreDelta) : 0,
+  })).filter((repair) => (
+    repair.sectionVersionId && repair.fromLayoutKey && repair.toLayoutKey
+  ));
+}
+
 function registryCompositionSchema(candidates) {
   const sections = candidates.sections || [];
   const sectionIds = sections.map((section) => section.sectionVersionId);
@@ -265,6 +276,7 @@ function normalizeRegistryCompositionProposal({
   candidateFingerprint,
   policyFingerprint,
   resourceFingerprint,
+  layoutFitRepairs = [],
   promptExecutionSnapshot = {},
 }) {
   return {
@@ -283,6 +295,7 @@ function normalizeRegistryCompositionProposal({
       promptTemplateVersionId: String(promptExecutionSnapshot.promptId || ""),
       model: String(promptExecutionSnapshot.model || ""),
       reasoningSummary: validated.summary,
+      layoutFitRepairs: normalizeLayoutFitRepairs(layoutFitRepairs),
     },
     compositionSpec: {
       shellVersionId: validated.shell.shellVersionId,
@@ -322,4 +335,5 @@ module.exports = {
   materializeRequiredSections,
   validateRegistryCompositionProposal,
   normalizeRegistryCompositionProposal,
+  normalizeLayoutFitRepairs,
 };
