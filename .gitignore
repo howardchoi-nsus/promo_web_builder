@@ -6,3 +6,15 @@ node_modules/
 .env*
 
 /claude
+
+# Operating-system metadata.
+.DS_Store
+
+# Local review and presentation build artifacts.
+/output/
+/tmp/pdfs/ai-week-final-review/
+/tmp/presentations/
+
+# AX Week report assets are generated from the presentation sources.
+/assets/ax-week-technical-deliverables-flow-white.png
+/assets/ax-week-technical-deliverables-flow-white.svg
