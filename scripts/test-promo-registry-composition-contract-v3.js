@@ -108,6 +108,7 @@ const validResult = {
       visible: true,
       repeat: 1,
       contentBindings: [{ fieldKey: "text", sourceOverviewPath: "title" }],
+      contentItems: [],
     }],
   }, {
     sectionVersionId: "cards-v1",
@@ -116,7 +117,14 @@ const validResult = {
     layoutKey: "cards-3-column",
     motionPresetVersionId: "",
     repeat: 1,
-    components: [{ componentInstanceId: "card-instance", visible: true, repeat: 3, contentBindings: [] }],
+    components: [{
+      componentInstanceId: "card-instance", visible: true, repeat: 3, contentBindings: [],
+      contentItems: [
+        { repeatIndex: 0, fields: [{ fieldKey: "description", value: "신규 고객 즉시 할인" }] },
+        { repeatIndex: 1, fields: [{ fieldKey: "description", value: "무료 배송 혜택" }] },
+        { repeatIndex: 2, fields: [{ fieldKey: "description", value: "멤버십 추가 적립" }] },
+      ],
+    }],
   }, {
     sectionVersionId: "terms-v1",
     visible: true,
@@ -124,7 +132,7 @@ const validResult = {
     layoutKey: "terms-default",
     motionPresetVersionId: "",
     repeat: 1,
-    components: [{ componentInstanceId: "terms-content-instance", visible: true, repeat: 1, contentBindings: [] }],
+    components: [{ componentInstanceId: "terms-content-instance", visible: true, repeat: 1, contentBindings: [], contentItems: [] }],
   }],
   warnings: [],
   summary: "Hero, three cards and pinned common terms",
@@ -134,9 +142,25 @@ const schema = registryCompositionSchema(candidates);
 assert.equal(schema.additionalProperties, false);
 assert.deepEqual(schema.properties.contractVersion.enum, [3]);
 assert.deepEqual(schema.properties.shellVersionId.enum, ["shell-v1"]);
+assert(schema.properties.sections.items.properties.components.items.required.includes("contentItems"));
 
 const validated = validateRegistryCompositionProposal(validResult, candidates);
 assert.equal(validated.sections[1].components[0].repeat, 3);
+assert.equal(validated.sections[1].components[0].contentItems[2].fields[0].value, "멤버십 추가 적립");
+assert.throws(() => validateRegistryCompositionProposal({
+  ...validResult,
+  sections: validResult.sections.map((section) => section.sectionVersionId === "cards-v1"
+    ? {
+      ...section,
+      components: [{
+        ...section.components[0],
+        contentItems: [0, 1, 2].map((repeatIndex) => ({
+          repeatIndex,
+          fields: [{ fieldKey: "description", value: "동일한 혜택" }],
+        })),
+      }],
+    } : section),
+}, candidates), (error) => error.code === "DUPLICATE_COLLECTION_CONTENT");
 assert.equal(validated.sections[2].resourceReferences[0].resourceVersionId, "terms-ko-v2");
 const requiredMaterialized = materializeRequiredSections({
   ...validResult,
@@ -190,7 +214,7 @@ assert.throws(() => validateRegistryCompositionProposal({
 assert.throws(() => validateRegistryCompositionProposal({
   ...validResult,
   sections: validResult.sections.map((section) => section.sectionVersionId === "hero-v1"
-    ? { ...section, components: [{ componentInstanceId: "card-instance", visible: true, repeat: 1, contentBindings: [] }] }
+    ? { ...section, components: [{ componentInstanceId: "card-instance", visible: true, repeat: 1, contentBindings: [], contentItems: [] }] }
     : section),
 }, candidates), (error) => error.code === "COMPONENT_NOT_IN_SECTION");
 
@@ -326,6 +350,7 @@ assert.equal(snapshot.preview.resources[0].locale, "ko-KR");
   assert.match(proposalApi, /contractVersion: 3/);
   assert.match(proposalApi, /sourceTemplateId: null/);
   assert.match(proposalApi, /plannerRegistryCandidateSnapshot/);
+  assert.match(proposalApi, /requireDistinctRepeatedCopy:\s*true/);
   assert.match(serviceSource, /Number\(row\.contract_version \|\| 2\) === 3/);
   assert.match(serviceSource, /setProposalStage/);
   assert.match(applyApi, /POLICY_FINGERPRINT_MISMATCH/);

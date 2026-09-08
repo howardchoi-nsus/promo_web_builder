@@ -33,7 +33,7 @@ const DEFAULT_AI_DESIGN = Object.freeze({
 });
 const SECTION_ROLES = Object.freeze([
   "header", "footer", "terms", "legal", "responsible-gaming",
-  "hero", "benefit", "content", "cta", "notice",
+  "hero", "benefit", "content", "cta", "notice", "offer", "trust",
 ]);
 const SECTION_SELECTION_POLICIES = Object.freeze([
   "required", "required-by-market", "required-by-purpose", "recommended", "optional",

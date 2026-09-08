@@ -313,17 +313,8 @@ async function compileRegistryComposition({
         );
       });
 
-      for (const selected of planned.components || []) {
-        const entries = compiledComponents.filter((entry) => entry.selected === selected);
-        const first = entries[0];
-        if (!first) continue;
-        entries.slice(1).forEach((entry) => {
-          sectionInputs[sectionId][entry.componentId] = clone(sectionInputs[sectionId][first.componentId]);
-        });
-      }
-
       for (const entry of compiledComponents) {
-        const { selected, component, componentId, item } = entry;
+        const { selected, component, componentId, componentIndex, item } = entry;
         for (const binding of selected.contentBindings || []) {
           const field = item.fields.find((candidate) => candidate.fieldKey === binding.fieldKey);
           if (!field || field.isLocked) continue;
@@ -333,6 +324,22 @@ async function compileRegistryComposition({
           );
           provenance[`${sectionId}.${componentId}.${field.fieldKey}`] = {
             source: "overview-binding", sourceOverviewPath: binding.sourceOverviewPath, confirmationRequired: false,
+          };
+        }
+        const authoredItem = (selected.contentItems || []).find(
+          (candidate) => Number(candidate.repeatIndex) === componentIndex,
+        );
+        for (const generatedField of authoredItem?.fields || []) {
+          const field = item.fields.find((candidate) => candidate.fieldKey === generatedField.fieldKey);
+          if (!field || field.isLocked || field.fieldKind === "image") continue;
+          const value = field.fieldKind === "cta"
+            ? overviewValue(field, generatedField.value)
+            : generatedField.value;
+          sectionInputs[sectionId][componentId] = setFieldValue(
+            sectionInputs[sectionId][componentId], item.fields, field.fieldKey, value,
+          );
+          provenance[`${sectionId}.${componentId}.${field.fieldKey}`] = {
+            source: "ai-authored", repeatIndex: componentIndex, confirmationRequired: false,
           };
         }
         for (const reference of planned.resourceReferences || []) {
@@ -398,7 +405,11 @@ async function compileRegistryComposition({
       Object.assign(mobileItemVisibility, resolvedLayout?.responsiveLayouts?.mobile?.visibility?.items || {});
       for (const selected of planned.components || []) {
         const entries = compiledComponents.filter((entry) => entry.selected === selected);
-        const collection = entries[0]?.component?.collection;
+        const sourceItemKey = entries[0]?.component?.itemKey || "";
+        const collection = {
+          ...(entries[0]?.component?.collection || {}),
+          ...(resolvedLayout?.collectionLayouts?.[sourceItemKey] || {}),
+        };
         applyCollectionGeometry(presetItemStyles, sectionId, entries, collection);
         applyCollectionGeometry(mobileItemStyles, sectionId, entries, collection, { mobile: true });
       }
@@ -520,6 +531,11 @@ async function compileRegistryComposition({
       candidateFingerprint: candidates.candidateFingerprint,
       policyFingerprint: candidates.policyFingerprint,
       resourceFingerprint: candidates.resourceFingerprint,
+      designReferences: (candidates.designReferences || []).map((reference) => ({
+        designDocumentId: reference.designDocumentId,
+        referenceName: reference.referenceName,
+        sourceHash: reference.sourceHash,
+      })),
       sourceTemplateId: shell.fallbackTemplateId || null,
       sourceTemplateVersion: Number(shell.fallbackTemplateVersion || 1),
       promptTemplateVersionId: proposalSnapshot.compositionMeta?.promptTemplateVersionId || "",

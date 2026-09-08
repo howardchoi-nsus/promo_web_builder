@@ -40,6 +40,7 @@ async function prepareRegistryStructuralOperations({
       repeat: Number(component.collection?.minItems || 1),
       collection: component.collection,
       contentBindings: [],
+      contentItems: [],
     }));
     const proposalSnapshot = {
       contractVersion: 3,

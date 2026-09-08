@@ -76,6 +76,7 @@ module.exports = async function handler(req, res) {
         shellVersionId: loaded.snapshot.compositionMeta.shellVersionId,
         overview: criteria,
         capabilities: criteria.capabilities || [],
+        designReferenceId: criteria.designReferenceId || "",
       });
       if (registryCandidates.candidateFingerprint !== loaded.snapshot.compositionMeta.candidateFingerprint
         || registryCandidates.policyFingerprint !== loaded.snapshot.compositionMeta.policyFingerprint

@@ -10,10 +10,14 @@ const renderer = fs.readFileSync(
 assert.match(renderer, /function inspectLayoutQuality\(\)/);
 assert.match(renderer, /\.rendered-item\[data-style-key\]/);
 assert.match(renderer, /REQUIRED_ASSET_PLACEHOLDER/);
+assert.match(renderer, /REQUIRED_SECTION_KEY_VISUAL_MISSING/);
 assert.match(renderer, /ITEM_COLLISION/);
 assert.match(renderer, /ITEM_CLIPPED/);
 assert.match(renderer, /ITEM_CONTENT_OVERFLOW/);
 assert.match(renderer, /SECTION_DEAD_SPACE_EXCESS/);
+assert.match(renderer, /DUPLICATE_COLLECTION_COPY/);
+assert.match(renderer, /GENERIC_DEFAULT_COPY/);
+assert.match(renderer, /TEXT_CONTRAST_LOW/);
 assert.match(renderer, /defineExpose\(\{ inspectLayoutCollisions, inspectLayoutQuality \}\)/);
 
 console.log("Promo render quality contract tests passed.");

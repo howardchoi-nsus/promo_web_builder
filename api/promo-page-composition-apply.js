@@ -49,6 +49,7 @@ module.exports = async function handler(req, res) {
         shellVersionId: proposal.shellVersionId,
         overview: proposal.requestSnapshot.overview,
         capabilities: proposal.requestSnapshot.capabilities || [],
+        designReferenceId: proposal.requestSnapshot.designReferenceId || "",
         recentLayoutSelections: proposal.requestSnapshot.recentLayoutSelections || {},
       });
       if (currentCandidates.candidateFingerprint !== proposal.candidateFingerprint) {

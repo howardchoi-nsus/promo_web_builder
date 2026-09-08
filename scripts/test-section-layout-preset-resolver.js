@@ -11,6 +11,9 @@ const preset = {
   layoutSnapshot: {
     contractVersion: 1,
     layoutMode: "free",
+    collectionLayouts: {
+      card: { desktopColumns: 2, mobileColumns: 1, gapPct: 4, gapPx: 20 },
+    },
     viewports: {
       desktop: { items: { title: { widthPct: 72 } } },
       mobile: { items: { title: { widthPct: 90 }, card: { widthPct: 90 } } },
@@ -20,6 +23,9 @@ const preset = {
 const resolved = resolveSectionLayoutPreset("section-runtime", components, preset);
 assert.equal(resolved.itemStyles["section-runtime.runtime-title"].widthPct, 72);
 assert.equal(resolved.responsiveLayouts.mobile.itemStyles["section-runtime.runtime-card"].widthPct, 90);
+assert.deepEqual(resolved.collectionLayouts.card, {
+  desktopColumns: 2, mobileColumns: 1, gapPct: 4, gapPx: 20,
+});
 assert(resolved.diagnostics.some((entry) => entry.path.endsWith("desktop.items.card")));
 assert(!resolved.diagnostics.some((entry) => entry.path.includes("card#2")));
 

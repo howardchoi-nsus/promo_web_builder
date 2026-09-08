@@ -15,6 +15,7 @@ function defaultComponentPlan(component) {
     visible: true,
     repeat: collection.enabled ? Math.max(1, Number(collection.minItems || 1)) : 1,
     contentBindings: [],
+    contentItems: [],
   };
 }
 
@@ -112,7 +113,7 @@ function registryCompositionSchema(candidates) {
               items: {
                 type: "object",
                 additionalProperties: false,
-                required: ["componentInstanceId", "visible", "repeat", "contentBindings"],
+                required: ["componentInstanceId", "visible", "repeat", "contentBindings", "contentItems"],
                 properties: {
                   componentInstanceId: { type: "string", enum: componentIds },
                   visible: { type: "boolean" },
@@ -127,6 +128,32 @@ function registryCompositionSchema(candidates) {
                       properties: {
                         fieldKey: { type: "string", enum: fieldKeys },
                         sourceOverviewPath: { type: "string", enum: OVERVIEW_FIELDS },
+                      },
+                    },
+                  },
+                  contentItems: {
+                    type: "array",
+                    maxItems: 20,
+                    description: "Distinct AI-authored field values for each repeated component instance.",
+                    items: {
+                      type: "object",
+                      additionalProperties: false,
+                      required: ["repeatIndex", "fields"],
+                      properties: {
+                        repeatIndex: { type: "integer", minimum: 0, maximum: 19 },
+                        fields: {
+                          type: "array",
+                          maxItems: 30,
+                          items: {
+                            type: "object",
+                            additionalProperties: false,
+                            required: ["fieldKey", "value"],
+                            properties: {
+                              fieldKey: { type: "string", enum: fieldKeys },
+                              value: { type: "string", minLength: 1, maxLength: 2000 },
+                            },
+                          },
+                        },
                       },
                     },
                   },
@@ -220,6 +247,61 @@ function validateRegistryCompositionProposal(result, candidates) {
         seenFields.add(binding.fieldKey);
         contentBindings.push({ fieldKey: binding.fieldKey, sourceOverviewPath: binding.sourceOverviewPath });
       }
+      const contentItems = [];
+      const seenRepeatIndexes = new Set();
+      for (const contentItem of plannedComponent.contentItems || []) {
+        if (policy.contentLocked || policy.aiEditable === false || component.isLocked) {
+          const warning = `AI-authored content was ignored by policy: ${section.sectionKey}.${component.itemKey}`;
+          if (!warnings.includes(warning)) warnings.push(warning);
+          continue;
+        }
+        const repeatIndex = Number(contentItem.repeatIndex);
+        if (!Number.isInteger(repeatIndex) || repeatIndex < 0 || repeatIndex >= repeat) {
+          fail("INVALID_CONTENT_ITEM_INDEX", `Invalid content item index: ${section.sectionKey}.${component.itemKey}[${repeatIndex}]`);
+        }
+        if (seenRepeatIndexes.has(repeatIndex)) {
+          fail("DUPLICATE_CONTENT_ITEM_INDEX", `Duplicate content item index: ${section.sectionKey}.${component.itemKey}[${repeatIndex}]`);
+        }
+        seenRepeatIndexes.add(repeatIndex);
+        const itemFields = [];
+        const seenItemFields = new Set();
+        for (const generatedField of contentItem.fields || []) {
+          const targetField = fieldsByKey.get(generatedField.fieldKey);
+          if (!targetField || targetField.isLocked || targetField.fieldKind === "image") {
+            fail("INVALID_GENERATED_CONTENT_FIELD", `AI copy cannot target this field: ${section.sectionKey}.${component.itemKey}.${generatedField.fieldKey}`);
+          }
+          if (seenItemFields.has(generatedField.fieldKey)) {
+            fail("DUPLICATE_GENERATED_CONTENT_FIELD", `AI copy duplicated a field: ${section.sectionKey}.${component.itemKey}.${generatedField.fieldKey}`);
+          }
+          seenItemFields.add(generatedField.fieldKey);
+          const value = String(generatedField.value || "").trim();
+          const maxLength = Math.min(2000, Math.max(1, Number(targetField.editorSchema?.maxLength || 2000)));
+          if (!value || value.length > maxLength) {
+            fail("INVALID_GENERATED_CONTENT_VALUE", `AI copy is empty or exceeds ${maxLength} characters: ${section.sectionKey}.${component.itemKey}.${generatedField.fieldKey}`);
+          }
+          itemFields.push({ fieldKey: generatedField.fieldKey, value });
+        }
+        if (itemFields.length) contentItems.push({ repeatIndex, fields: itemFields });
+      }
+      const generatableTextFields = (component.fields || []).filter(
+        (field) => !field.isLocked && field.fieldKind !== "image",
+      );
+      if (repeat > 1 && generatableTextFields.length && contentItems.length !== repeat) {
+        fail(
+          "COLLECTION_CONTENT_INCOMPLETE",
+          `Every repeated item requires distinct AI copy: ${section.sectionKey}.${component.itemKey} (${contentItems.length}/${repeat})`,
+        );
+      }
+      if (repeat > 1) {
+        const signatures = contentItems.map((item) => item.fields
+          .filter((entry) => fieldsByKey.get(entry.fieldKey)?.fieldKind !== "cta")
+          .map((entry) => `${entry.fieldKey}:${entry.value.toLocaleLowerCase()}`)
+          .sort().join("|"))
+          .filter(Boolean);
+        if (new Set(signatures).size !== signatures.length) {
+          fail("DUPLICATE_COLLECTION_CONTENT", `Repeated items require differentiated copy: ${section.sectionKey}.${component.itemKey}`);
+        }
+      }
       components.push({
         componentInstanceId: component.componentInstanceId,
         componentVersionId: component.componentVersionId,
@@ -228,6 +310,7 @@ function validateRegistryCompositionProposal(result, candidates) {
         repeat,
         collection,
         contentBindings,
+        contentItems,
       });
     }
     section.components.filter((component) => component.isRequired).forEach((component) => {

@@ -122,15 +122,19 @@ const proposalSnapshot = {
       components: [{
         componentInstanceId: "hero-title-instance", visible: true, repeat: 2,
         contentBindings: [{ fieldKey: "text", sourceOverviewPath: "title" }],
+        contentItems: [
+          { repeatIndex: 0, fields: [{ fieldKey: "subtitle", value: "첫 번째 메시지" }] },
+          { repeatIndex: 1, fields: [{ fieldKey: "subtitle", value: "두 번째 메시지" }] },
+        ],
       }, {
         componentInstanceId: "hero-visual-instance", visible: true, repeat: 1,
-        contentBindings: [],
+        contentBindings: [], contentItems: [],
       }],
     }, {
       sectionVersionId: "terms-version-1", visible: true, sortOrder: 90,
       layoutKey: "terms-default", motionPresetVersionId: "", repeat: 1,
       resourceReferences: [resourceReference],
-      components: [{ componentInstanceId: "terms-instance", visible: true, repeat: 1, contentBindings: [] }],
+      components: [{ componentInstanceId: "terms-instance", visible: true, repeat: 1, contentBindings: [], contentItems: [] }],
     }],
   },
   validation: { warnings: [] },
@@ -180,7 +184,8 @@ async function compile(candidateSet = candidates) {
   assert.equal(hero.items[0].collection.collectionKey, "hero-title-instance");
   assert.equal(hero.items[1].collection.index, 1);
   assert.equal(snapshot.content.sectionInputs[heroId][heroItemId].fields.text, "오버뷰 제목");
-  assert.equal(snapshot.content.sectionInputs[heroId][heroItemId].fields.subtitle, "프리셋 설명");
+  assert.equal(snapshot.content.sectionInputs[heroId][heroItemId].fields.subtitle, "첫 번째 메시지");
+  assert.equal(snapshot.content.sectionInputs[heroId][hero.items[1].id].fields.subtitle, "두 번째 메시지");
   assert.equal(snapshot.designSpec.itemStyles[`${heroId}.${heroItemId}`].xPct, 10);
   assert.equal(snapshot.designSpec.sectionStyles[heroId].backgroundColorToken, "--app-bg");
   assert.equal(snapshot.designSpec.sectionStyles[heroId].backgroundColor, undefined);

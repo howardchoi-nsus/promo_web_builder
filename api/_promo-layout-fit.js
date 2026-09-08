@@ -80,6 +80,26 @@ function complexityFor(overview = {}) {
   return "high";
 }
 
+function semanticCampaignTags(overview = {}) {
+  const toneTags = {
+    "활기찬": ["bold", "vibrant", "energetic", "playful"],
+    "진중함": ["minimal", "structured", "editorial", "professional"],
+    "럭셔리": ["luxury", "premium", "editorial", "dramatic", "spacious"],
+    "프리미엄": ["premium", "refined", "minimal", "spacious"],
+    "긴급함": ["urgent", "bold", "contrast", "conversion", "compact"],
+    "친근함": ["friendly", "warm", "rounded", "playful"],
+  };
+  const purposeTags = {
+    "할인쿠폰": ["offer", "coupon", "conversion"],
+    "경품": ["event", "reward", "benefit"],
+    "이벤트": ["event", "campaign", "energetic"],
+  };
+  return [
+    ...(toneTags[String(overview.campaignTone || "").trim()] || []),
+    ...(purposeTags[String(overview.promotionPurpose || "").trim()] || []),
+  ];
+}
+
 function scorePurposeTags(tags, { headlineCapacity, bodyCapacity, overviewText, hasCta }) {
   let score = 0;
   const reasons = [];
@@ -111,7 +131,7 @@ function scoreLayoutPreset(layout = {}, overview = {}, sectionRole = "") {
     mainOffer: normalizedText(overview.mainOffer),
     combined: [
       overview.promotionPurpose, overview.promotionPurposeOther, overview.campaignTone,
-      overview.audience, overview.mainOffer,
+      overview.audience, overview.mainOffer, ...semanticCampaignTags(overview),
     ].map(normalizedText).filter(Boolean).join(" "),
   };
   const hasSignal = [
@@ -142,6 +162,17 @@ function scoreLayoutPreset(layout = {}, overview = {}, sectionRole = "") {
   }
   if (sectionRole === "hero" && metadata.ctaProminence === "high" && normalizedText(overview.ctaLabel)) {
     add(8, "hero-cta-prominence");
+  }
+  const semanticTags = new Set(semanticCampaignTags(overview));
+  if ((semanticTags.has("premium") || semanticTags.has("luxury"))
+    && ["spacious", "editorial"].includes(metadata.density || metadata.archetype)) {
+    add(14, "premium-visual-rhythm");
+  }
+  if (semanticTags.has("conversion") && metadata.ctaProminence === "high") {
+    add(12, "conversion-cta-fit");
+  }
+  if (semanticTags.has("compact") && metadata.density === "compact") {
+    add(10, "urgent-density-fit");
   }
   const weight = Number(metadata.selectionWeight || 1);
   score += Number.isFinite(weight) ? Math.round((weight - 1) * 5) : 0;

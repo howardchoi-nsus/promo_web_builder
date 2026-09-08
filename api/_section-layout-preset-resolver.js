@@ -69,6 +69,7 @@ function resolveSectionLayoutPreset(sectionInstanceKey, components, preset) {
       layoutVariant: String(preset.layoutKey || preset.layout_key || ""),
     },
     content: resolveContent(components, snapshot.content),
+    collectionLayouts: clone(snapshot.collectionLayouts || {}),
     itemStyles: desktop.itemStyles,
     visibilityItems: desktop.visibilityItems,
     responsiveLayouts: {

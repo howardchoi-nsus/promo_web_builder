@@ -1991,10 +1991,10 @@ function qualityGateMessage(result) {
   const mobile = result.results?.mobile || {};
   const summary = (label, value) => `${label} ${Number(value.blockingCount || 0)}건`;
   if (result.blockingCount) {
-    return `${summary("Desktop", desktop)} · ${summary("Mobile", mobile)} · 겹침, 잘림, 내용 넘침 또는 미완성 이미지를 수정한 뒤 다시 검사해 주세요.`;
+    return `${summary("Desktop", desktop)} · ${summary("Mobile", mobile)} · 겹침, 잘림, 내용 넘침, 미완성 이미지 또는 중복·기본 문구를 수정한 뒤 다시 검사해 주세요.`;
   }
   if (result.warningCount) {
-    return `Blocking 문제는 없습니다. 과도한 공백 경고 ${result.warningCount}건을 확인해 주세요.`;
+    return `Blocking 문제는 없습니다. 과도한 공백 또는 텍스트 대비 경고 ${result.warningCount}건을 확인해 주세요.`;
   }
   return "Desktop과 Mobile Preview 품질 검사를 통과했습니다.";
 }

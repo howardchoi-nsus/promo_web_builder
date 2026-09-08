@@ -1782,6 +1782,9 @@ function inspectLayoutQuality() {
       clippedItemCount: 0,
       overflowItemCount: 0,
       deadSpaceSectionCount: 0,
+      duplicateCollectionCopyCount: 0,
+      genericCopyCount: 0,
+      lowContrastTextCount: 0,
       viewport: mobileLayoutActive.value ? "mobile" : "desktop",
       diagnostics: [],
     };
@@ -1791,20 +1794,94 @@ function inspectLayoutQuality() {
   let clippedItemCount = 0;
   let overflowItemCount = 0;
   let deadSpaceSectionCount = 0;
+  let duplicateCollectionCopyCount = 0;
+  let genericCopyCount = 0;
+  let lowContrastTextCount = 0;
   const placeholders = [...rendererRoot.value.querySelectorAll(".rendered-image__placeholder")];
   const expectedAssets = Array.isArray(props.assets?.expected)
-    ? props.assets.expected.filter((asset) => asset?.required !== false && asset.targetType === "component-field-image")
+    ? props.assets.expected.filter((asset) => asset?.required !== false)
     : null;
-  const requiredAssetTargets = expectedAssets
-    ? new Set(expectedAssets.map((asset) => [
+  const requiredComponentAssets = expectedAssets
+    ? expectedAssets.filter((asset) => asset.targetType === "component-field-image")
+    : null;
+  const requiredAssetTargets = requiredComponentAssets
+    ? new Set(requiredComponentAssets.map((asset) => [
       asset.pageSectionInstanceId,
       asset.pageComponentInstanceId,
       asset.fieldKey,
     ].map((value) => String(value || "")).join(":")))
     : null;
-  const placeholderAssetCount = requiredAssetTargets
+  const componentPlaceholderCount = requiredAssetTargets
     ? placeholders.filter((node) => requiredAssetTargets.has(node.dataset.assetTargetKey || "")).length
     : placeholders.length;
+  const missingSectionKeyVisuals = expectedAssets
+    ? expectedAssets.filter((asset) => {
+      if (asset.targetType !== "section-key-visual") return false;
+      const section = (props.content?.sectionSnapshot || []).find((candidate) => (
+        (candidate.pageSectionInstanceId || candidate.sectionKey) === asset.pageSectionInstanceId
+      ));
+      return !section || !sectionBackgroundUrl(section);
+    })
+    : [];
+  const placeholderAssetCount = componentPlaceholderCount + missingSectionKeyVisuals.length;
+  const normalizedCopy = (value) => String(value || "").replace(/\s+/gu, " ").trim().toLocaleLowerCase();
+  const genericCopyPattern = /^(?:기본 (?:제목|설명)|프로모션 혜택을 확인하세요\.?|자세히 보기)$/u;
+  const collectionPayloads = new Map();
+  rendererRoot.value.querySelectorAll(".rendered-item[data-collection-key]").forEach((node) => {
+    const collectionKey = node.dataset.collectionKey || "";
+    if (!collectionKey) return;
+    const payload = normalizedCopy([...node.querySelectorAll(
+      ".rendered-text__content, .rendered-text-line__content",
+    )].map((textNode) => textNode.textContent).join(" "));
+    if (!payload) return;
+    if (!collectionPayloads.has(collectionKey)) collectionPayloads.set(collectionKey, []);
+    collectionPayloads.get(collectionKey).push({ payload, styleKey: node.dataset.styleKey || "" });
+  });
+  collectionPayloads.forEach((items, collectionKey) => {
+    const grouped = new Map();
+    items.forEach((item) => grouped.set(item.payload, [...(grouped.get(item.payload) || []), item.styleKey]));
+    grouped.forEach((styleKeys, payload) => {
+      if (styleKeys.length < 2 || payload.length < 4) return;
+      duplicateCollectionCopyCount += styleKeys.length;
+      diagnostics.push({ code: "DUPLICATE_COLLECTION_COPY", collectionKey, styleKeys, message: payload.slice(0, 160) });
+    });
+  });
+  rendererRoot.value.querySelectorAll(".rendered-text__content, .rendered-text-line__content").forEach((node) => {
+    const value = String(node.textContent || "").replace(/\s+/gu, " ").trim();
+    if (genericCopyPattern.test(value)) {
+      genericCopyCount += 1;
+      diagnostics.push({ code: "GENERIC_DEFAULT_COPY", styleKey: node.closest(".rendered-item")?.dataset.styleKey || "", message: value });
+    }
+    const computed = globalThis.getComputedStyle?.(node);
+    const color = computed?.color?.match(/[\d.]+/g)?.slice(0, 3).map(Number);
+    let backgroundNode = node.parentElement;
+    let background = null;
+    while (backgroundNode && backgroundNode !== rendererRoot.value.parentElement) {
+      const candidate = globalThis.getComputedStyle?.(backgroundNode)?.backgroundColor;
+      const channels = candidate?.match(/[\d.]+/g)?.map(Number) || [];
+      if (channels.length >= 3 && (channels.length < 4 || channels[3] > 0.95)) {
+        background = channels.slice(0, 3);
+        break;
+      }
+      backgroundNode = backgroundNode.parentElement;
+    }
+    if (!color || !background) return;
+    const luminance = (channels) => channels.map((channel) => {
+      const value = channel / 255;
+      return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+    }).reduce((sum, value, index) => sum + value * [0.2126, 0.7152, 0.0722][index], 0);
+    const foregroundLuminance = luminance(color);
+    const backgroundLuminance = luminance(background);
+    const ratio = (Math.max(foregroundLuminance, backgroundLuminance) + 0.05)
+      / (Math.min(foregroundLuminance, backgroundLuminance) + 0.05);
+    const fontSize = Number.parseFloat(computed?.fontSize || "16");
+    const fontWeight = Number.parseInt(computed?.fontWeight || "400", 10);
+    const threshold = fontSize >= 24 || (fontSize >= 18.66 && fontWeight >= 700) ? 3 : 4.5;
+    if (ratio < threshold) {
+      lowContrastTextCount += 1;
+      diagnostics.push({ code: "TEXT_CONTRAST_LOW", level: "warning", ratio: Number(ratio.toFixed(2)), message: value.slice(0, 120) });
+    }
+  });
   rendererRoot.value.querySelectorAll(".rendered-section").forEach((sectionNode) => {
     const sectionKey = sectionNode.dataset.sectionKey || "";
     const canvas = sectionNode.querySelector(".rendered-items");
@@ -1869,15 +1946,25 @@ function inspectLayoutQuality() {
   if (placeholderAssetCount) {
     diagnostics.push({ code: "REQUIRED_ASSET_PLACEHOLDER", count: placeholderAssetCount });
   }
+  missingSectionKeyVisuals.forEach((asset) => diagnostics.push({
+    code: "REQUIRED_SECTION_KEY_VISUAL_MISSING",
+    sectionKey: asset.pageSectionInstanceId,
+    assetRequestId: asset.assetRequestId,
+  }));
   return {
-    count: collisionCount + placeholderAssetCount + clippedItemCount + overflowItemCount + deadSpaceSectionCount,
-    blockingCount: collisionCount + placeholderAssetCount + clippedItemCount + overflowItemCount,
-    warningCount: deadSpaceSectionCount,
+    count: collisionCount + placeholderAssetCount + clippedItemCount + overflowItemCount
+      + deadSpaceSectionCount + duplicateCollectionCopyCount + genericCopyCount + lowContrastTextCount,
+    blockingCount: collisionCount + placeholderAssetCount + clippedItemCount + overflowItemCount
+      + duplicateCollectionCopyCount + genericCopyCount,
+    warningCount: deadSpaceSectionCount + lowContrastTextCount,
     collisionCount,
     placeholderAssetCount,
     clippedItemCount,
     overflowItemCount,
     deadSpaceSectionCount,
+    duplicateCollectionCopyCount,
+    genericCopyCount,
+    lowContrastTextCount,
     viewport: mobileLayoutActive.value ? "mobile" : "desktop",
     diagnostics,
   };
@@ -1957,6 +2044,8 @@ defineExpose({ inspectLayoutCollisions, inspectLayoutQuality });
             ]"
             :data-item-key="item.itemKey"
             :data-style-key="styleKey(section, item)"
+            :data-collection-key="item.collection?.collectionKey || null"
+            :data-collection-index="item.collection?.index ?? null"
             data-auto-height-measure="true"
             :data-motion-target="itemMotionBinding(section, item, itemIndex)?.trigger === 'viewport-enter' ? `item:${styleKey(section, item)}` : null"
             :style="{ ...inlineItemStyle(section, item), ...itemMotionStyle(section, item, itemIndex) }"

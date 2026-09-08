@@ -124,6 +124,7 @@ module.exports = async function handler(req, res) {
         overview: registryOverview,
         capabilities,
         recentLayoutSelections,
+        designReferenceId: String(body.designReferenceId || "").trim(),
       });
       if (!candidates.sections.length) {
         return res.status(422).json({
@@ -151,6 +152,20 @@ module.exports = async function handler(req, res) {
           allowRawCoordinates: false,
           allowResourceBodyGeneration: false,
           useRepeatForCollections: true,
+          contentAuthoring: {
+            mode: "per-instance",
+            requireEveryRepeatedItem: true,
+            requireDistinctRepeatedCopy: true,
+            preserveFactsFromOverview: true,
+            avoidInventedClaims: true,
+            useContentItemsForAuthoredCopy: true,
+          },
+          designReferencePolicy: {
+            abstractPatternsOnly: true,
+            neverCopyBrandNamesOrTrademarks: true,
+            neverCopyReferenceContent: true,
+            preserveCampaignBrandIdentity: true,
+          },
           requirePolicyValidation: true,
         }),
       });
@@ -171,6 +186,7 @@ module.exports = async function handler(req, res) {
         requestSnapshot: {
           overview: registryOverview,
           capabilities,
+          designReferenceId: String(body.designReferenceId || "").trim(),
           recentLayoutSelections,
           confirmedFieldPaths: Array.isArray(body.confirmedFieldPaths) ? body.confirmedFieldPaths : [],
           promptExecutionSnapshot,

@@ -9,7 +9,10 @@ const FLAG_NAMES = Object.freeze({
   export: "PROMO_BUILDER_EXPORT_ENABLED",
 });
 
-const FLAG_DEFAULTS = Object.freeze({ compositionV3: false });
+// Registry composition is the production path. Keep an explicit false value as
+// the rollback switch, but do not silently send new installations through the
+// lower-quality legacy template composer.
+const FLAG_DEFAULTS = Object.freeze({ compositionV3: true });
 
 function enabled(value, fallback = true) {
   if (value === undefined || value === null || value === "") return fallback;

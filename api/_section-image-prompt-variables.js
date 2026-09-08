@@ -53,12 +53,24 @@ function buildSectionImagePromptVariables({
     ? [field?.image?.promptText, request.guidance].filter(Boolean).join("\n")
     : [section.aiDesign?.backgroundPromptText, request.guidance].filter(Boolean).join("\n");
   if (isComponent) {
+    const componentId = component?.id || component?.itemKey || "";
+    const targetContent = sectionContent?.[componentId]
+      ?? sectionContent?.[component?.sourceItemKey]
+      ?? sectionContent?.[component?.itemKey]
+      ?? {};
+    const collectionIndex = Number(component?.collection?.index);
+    const collectionGuidance = Number.isInteger(collectionIndex)
+      ? `This is collection item ${collectionIndex + 1}. Create a visually distinct image that specifically represents only this item's targetContent; do not repeat sibling imagery.`
+      : "Create an image that specifically represents this component's targetContent.";
     return {
       sectionName,
       componentName: component?.name || component?.sourceItemKey || component?.itemKey || "Visual",
       fieldName: field?.name || field?.fieldKey || "Visual",
-      contentJson: JSON.stringify(sectionContent || {}),
-      adminGuidance,
+      contentJson: JSON.stringify({
+        targetContent,
+        sectionContext: { sectionName, sectionRole: section.sectionRole || "content" },
+      }),
+      adminGuidance: [adminGuidance, collectionGuidance].filter(Boolean).join("\n"),
     };
   }
   const theme = designSpec?.theme || {};

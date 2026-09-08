@@ -5,6 +5,7 @@ const {
   fingerprint,
   evaluateSectionCandidate,
   rankCandidates,
+  rankDesignReferences,
   resolveAllowedLayoutPresets,
   plannerRegistryCandidateSnapshot,
 } = require("../api/_promo-registry-composition-candidates");
@@ -174,6 +175,18 @@ assert.equal(
   "fingerprint must be independent of object key insertion order",
 );
 
+const rankedDesignReferences = rankDesignReferences([{
+  id: "minimal", design_style_name: "Minimal", slug: "minimal",
+  style_classification_json: { layoutModel: "structured", typographyTone: "professional" },
+}, {
+  id: "luxury", design_style_name: "Refined Editorial", slug: "refined",
+  style_classification_json: { primaryGroup: "luxury", depthModel: "dramatic" },
+}], { campaignTone: "럭셔리" });
+assert.equal(rankedDesignReferences[0].designDocumentId, "luxury");
+assert.deepEqual(rankDesignReferences([{
+  id: "chosen", design_style_name: "Chosen",
+}, { id: "other", design_style_name: "Other" }], {}, "chosen").map((item) => item.designDocumentId), ["chosen"]);
+
 const plannerSnapshot = plannerRegistryCandidateSnapshot({
   contractVersion: 3,
   shell: { shellVersionId: "shell-v1" },
@@ -200,10 +213,12 @@ const plannerSnapshot = plannerRegistryCandidateSnapshot({
     ],
     components: [],
   }],
+  designReferences: [{ designDocumentId: "luxury", referenceName: "Refined Editorial" }],
 });
 assert.equal(plannerSnapshot.sections[0].recommendedLayoutKey, "hero-center");
 assert.equal(plannerSnapshot.sections[0].layoutPresets[1].fitScore, 44);
 assert.deepEqual(plannerSnapshot.sections[0].layoutPresets[1].fitReasons, ["long-headline-fit"]);
+assert.equal(plannerSnapshot.designReferences[0].designDocumentId, "luxury");
 
 assert.match(resolverSource, /componentVersionStatus === "active"/);
 assert.match(resolverSource, /fetchItemsForSections/);
@@ -212,6 +227,7 @@ assert.match(resolverSource, /composition_scope in \('registry', 'shared'\)/);
 assert.match(resolverSource, /candidateFingerprint: fingerprint\(snapshot\)/);
 assert.match(resolverSource, /policyFingerprint/);
 assert.match(resolverSource, /resourceFingerprint/);
+assert.match(resolverSource, /fetchDesignReferenceCandidates/);
 assert.match(apiSource, /requireBuilderFlag\("compositionV3"\)/);
 assert.match(apiSource, /COMPOSITION_CANDIDATES_EMPTY/);
 assert.match(migration, /wizard_content_sections_registry_candidates_idx/);

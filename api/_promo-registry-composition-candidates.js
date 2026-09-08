@@ -21,6 +21,7 @@ const { evaluateLayoutFit } = require("./_promo-layout-fit");
 
 const MAX_SECTION_SCAN = 500;
 const DEFAULT_SECTION_LIMIT = 40;
+const DEFAULT_DESIGN_REFERENCE_LIMIT = 3;
 
 function normalizeStringList(value, limit = 100) {
   return Array.from(new Set((Array.isArray(value) ? value : [])
@@ -28,6 +29,70 @@ function normalizeStringList(value, limit = 100) {
     .filter(Boolean)))
     .sort()
     .slice(0, limit);
+}
+
+function designReferenceTerms(overview = {}) {
+  const toneTerms = {
+    "활기찬": ["bold", "vibrant", "energetic", "playful"],
+    "진중함": ["minimal", "structured", "editorial", "professional"],
+    "럭셔리": ["luxury", "premium", "editorial", "dramatic"],
+    "프리미엄": ["premium", "refined", "luxury", "minimal"],
+    "긴급함": ["bold", "contrast", "conversion", "energetic"],
+    "친근함": ["friendly", "warm", "rounded", "playful"],
+  };
+  return normalizeStringList([
+    ...(toneTerms[String(overview.campaignTone || "").trim()] || []),
+    overview.promotionPurpose,
+    overview.promotionPurposeOther,
+  ]);
+}
+
+function compactDesignReference(row) {
+  return {
+    designDocumentId: String(row.id || ""),
+    referenceName: String(row.design_style_name || row.brand_name || "Design reference").slice(0, 160),
+    slug: String(row.slug || "").slice(0, 120),
+    sourceHash: String(row.source_hash || ""),
+    styleClassification: row.style_classification_json || {},
+    designConceptSummary: String(row.design_concept_summary || "").slice(0, 1200),
+    promptContext: String(row.design_prompt_context || "").slice(0, 2500),
+  };
+}
+
+function rankDesignReferences(rows = [], overview = {}, preferredId = "", limit = DEFAULT_DESIGN_REFERENCE_LIMIT) {
+  const normalizedPreferredId = String(preferredId || "").trim().toLowerCase();
+  const terms = designReferenceTerms(overview);
+  return rows.map((row, index) => {
+    const searchable = JSON.stringify([
+      row.design_style_name, row.brand_name, row.slug, row.style_classification_json,
+      row.design_concept_summary, row.design_prompt_context,
+    ]).toLowerCase();
+    const exact = normalizedPreferredId && String(row.id || "").toLowerCase() === normalizedPreferredId;
+    const score = (exact ? 10000 : 0) + terms.reduce(
+      (sum, term) => sum + (searchable.includes(term) ? 20 : 0),
+      0,
+    ) - index * 0.001;
+    return { row, exact, score };
+  }).filter((entry) => !normalizedPreferredId || entry.exact)
+    .sort((left, right) => right.score - left.score)
+    .slice(0, Math.max(1, Math.min(5, Number(limit) || DEFAULT_DESIGN_REFERENCE_LIMIT)))
+    .map((entry) => compactDesignReference(entry.row));
+}
+
+async function fetchDesignReferenceCandidates(sql, { overview = {}, preferredId = "", limit } = {}) {
+  const rows = await sql`
+    select d.id::text, coalesce(nullif(d.design_style_name, ''), b.name) as design_style_name,
+      b.name as brand_name, b.slug, d.source_hash, d.style_classification_json,
+      d.design_concept_summary, d.design_prompt_context, d.updated_at
+    from design_documents d
+    join brands b on b.id = d.brand_id
+    where coalesce(d.status, '') <> 'archived'
+      and d.archived_at is null
+      and d.extraction_status = 'ready'
+    order by d.updated_at desc, d.id
+    limit 120
+  `;
+  return rankDesignReferences(rows, overview, preferredId, limit);
 }
 
 function componentCapabilities(component) {
@@ -223,6 +288,7 @@ async function fetchRegistryCompositionCandidates(sql, {
   capabilities = [],
   recentLayoutSelections = {},
   sectionLimit = DEFAULT_SECTION_LIMIT,
+  designReferenceId = "",
 } = {}) {
   const shell = await fetchShellVersion(sql, shellVersionId);
   if (!shell || shell.status !== "active" || shell.shellStatus !== "active") {
@@ -237,6 +303,7 @@ async function fetchRegistryCompositionCandidates(sql, {
     locale: String(overview.locale || overview.language || "").trim(),
     promotionPurpose: String(overview.promotionPurpose || "").trim(),
     capabilities: normalizeStringList(capabilities),
+    designReferenceId: String(designReferenceId || "").trim(),
   };
   const allowedLocales = normalizeStringList(shellConfig.allowedLocales);
   if (allowedLocales.length && !allowedLocales.includes(criteria.locale.toLowerCase())) {
@@ -342,10 +409,15 @@ async function fetchRegistryCompositionCandidates(sql, {
     });
   }
 
-  const [tokenSets, motionPresets, resourceResolution] = await Promise.all([
+  const [tokenSets, motionPresets, resourceResolution, designReferences] = await Promise.all([
     fetchTokenCandidates(sql, shellConfig),
     fetchMotionCandidates(sql, shellConfig),
     resolveContentResourceReferences(sql, { criteria }),
+    fetchDesignReferenceCandidates(sql, {
+      overview,
+      preferredId: criteria.designReferenceId,
+      limit: shellConfig.maxDesignReferences || DEFAULT_DESIGN_REFERENCE_LIMIT,
+    }),
   ]);
   const enriched = enrichCandidatesWithResourcePolicy({
     sections: eligible,
@@ -390,6 +462,7 @@ async function fetchRegistryCompositionCandidates(sql, {
     motionPresets,
     resources,
     resourceIssues,
+    designReferences,
     excluded: excluded.sort((left, right) => String(left.sectionKey).localeCompare(String(right.sectionKey))),
     policyFingerprint,
     resourceFingerprint,
@@ -458,6 +531,7 @@ function plannerRegistryCandidateSnapshot(candidates) {
       selectableTokens: token.selectableTokens,
     })),
     motionPresets: candidates.motionPresets || [],
+    designReferences: candidates.designReferences || [],
     resources: candidates.resources || [],
     candidateFingerprint: candidates.candidateFingerprint,
     policyFingerprint: candidates.policyFingerprint,
@@ -474,6 +548,9 @@ module.exports = {
   resolveAllowedLayoutPresets,
   evaluateSectionCandidate,
   rankCandidates,
+  designReferenceTerms,
+  rankDesignReferences,
+  fetchDesignReferenceCandidates,
   requiredSectionError,
   fetchRegistryCompositionCandidates,
   plannerRegistryCandidateSnapshot,

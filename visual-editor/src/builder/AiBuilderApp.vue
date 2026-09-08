@@ -37,6 +37,7 @@ const operationOpen = ref(false);
 const assetRetrying = ref(false);
 const capabilities = ref({ aiMode: true });
 const activeShell = ref(null);
+const designReferenceId = new URLSearchParams(window.location.search).get("designReferenceId") || "";
 const pendingOperations = ref(null);
 const operationConflict = ref(null);
 const overviewRetry = ref(null);
@@ -320,19 +321,11 @@ async function compose() {
   try {
     const currentFingerprint = refreshOverviewFingerprint();
     await ensureDocument();
-    const registryRequested = Boolean(capabilities.value.compositionV3);
-    const useRegistryComposition = registryRequested && Boolean(activeShell.value?.id);
-    if (registryRequested && !useRegistryComposition) {
-      store.warning = {
-        code: "REGISTRY_SHELL_FALLBACK",
-        message: "활성 Composition Shell을 찾지 못해 기존 Template 구성 방식으로 안전하게 전환했습니다.",
-      };
-      recordBuilderEvent({
-        eventName: "builder_template_fallback_activated",
-        documentId: store.documentId,
-        documentRevision: store.documentRevision,
-        metadata: { reason: "active_shell_unavailable" },
-      });
+    const useRegistryComposition = Boolean(capabilities.value.compositionV3);
+    if (useRegistryComposition && !activeShell.value?.id) {
+      throw Object.assign(new Error(
+        "활성 Composition Shell이 없습니다. 관리자에서 기본 Shell을 활성화한 후 다시 시도해 주세요.",
+      ), { code: "COMPOSITION_SHELL_REQUIRED" });
     }
     const allowedLocales = activeShell.value?.config?.allowedLocales || [];
     const locale = resolveCompositionLocale(store.inputLocale, allowedLocales, navigator.language);
@@ -349,6 +342,7 @@ async function compose() {
         shellVersionId: activeShell.value.id,
         locale,
         capabilities: [],
+        designReferenceId,
       } : {}),
       idempotencyKey: crypto.randomUUID(),
     });
@@ -548,6 +542,11 @@ onMounted(async () => {
     if (capabilities.value.compositionV3) {
       const shells = await loadCompositionShells();
       activeShell.value = shells.versions?.find((shell) => shell.config?.isDefault) || shells.versions?.[0] || null;
+      if (!activeShell.value?.id) {
+        throw Object.assign(new Error(
+          "AI 고품질 생성에 필요한 Composition Shell이 없습니다. 관리자에서 기본 Shell을 활성화해 주세요.",
+        ), { code: "COMPOSITION_SHELL_REQUIRED" });
+      }
     }
     if (selectedMode.value === "ai" && !capabilities.value.aiMode) {
       selectedMode.value = "";
