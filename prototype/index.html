@@ -699,6 +699,14 @@
               >LLM 및 프롬프트 관리</button>
               <button
                 class="admin-tab"
+                :class="{ active: adminTab === 'component-generation' }"
+                type="button"
+                role="tab"
+                :aria-selected="adminTab === 'component-generation'"
+                @click="selectAdminTab('component-generation')"
+              >이미지 컴포넌트 생성</button>
+              <button
+                class="admin-tab"
                 :class="{ active: adminTab === 'components' }"
                 type="button"
                 role="tab"
@@ -1340,6 +1348,10 @@
             </div>
           </section>
 
+          <section class="panel stack" v-show="adminTab === 'component-generation'">
+            <component-generation-workspace @notify="setStatus"></component-generation-workspace>
+          </section>
+
           <section class="panel stack" v-show="adminTab === 'components'">
             <div class="subsection-title">
               <div><h2>{{ t('entity.component.manage') }}</h2><span>섹션에서 재사용할 콘텐츠 블록을 독립적으로 버전 관리합니다.</span></div>
@@ -1370,7 +1382,7 @@
                     <template v-else-if="selectedItemComponent.status !== 'archived' && selectedItemComponent.versionStatus === 'draft'"><button class="tiny-button" type="button" :disabled="itemComponentSaving" @click="saveItemComponentDraft(selectedItemComponent)">{{ t('common.action.save') }}</button><button class="tiny-button primary" type="button" :disabled="itemComponentSaving" @click="activateItemComponent(selectedItemComponent)">{{ t('common.action.activate') }}</button></template>
                     <button v-else-if="selectedItemComponent.status !== 'archived'" class="tiny-button" type="button" :disabled="itemComponentSaving" @click="createItemComponentDraft(selectedItemComponent)">새 초안 만들기</button>
                     <button
-                      v-if="selectedItemComponent.status !== 'archived'"
+                      v-if="selectedItemComponent && selectedItemComponent.status !== 'archived'"
                       class="tiny-button danger"
                       type="button"
                       :disabled="itemComponentSaving || itemComponentUsageLoading || itemComponentUsage.usageCount > 0"
@@ -1378,6 +1390,7 @@
                       @click="archiveItemComponent(selectedItemComponent)"
                     >컴포넌트 보관</button>
                     <button
+                      v-if="selectedItemComponent"
                       class="tiny-button danger"
                       type="button"
                       :disabled="itemComponentSaving"

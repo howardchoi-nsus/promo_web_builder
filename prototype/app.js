@@ -1044,7 +1044,7 @@ const { createApp } = Vue;
 const initialSearchParams = new URLSearchParams(window.location.search);
 const initialView = initialSearchParams.get("view") === "admin" ? "prompts" : "builder";
 const requestedAdminTab = initialSearchParams.get("tab");
-const initialAdminTab = ["webhook", "llm", "components", "section-presets", "promo-form", "design-tokens", "i18n", "audit"].includes(requestedAdminTab)
+const initialAdminTab = ["webhook", "llm", "component-generation", "components", "section-presets", "promo-form", "design-tokens", "i18n", "audit"].includes(requestedAdminTab)
   ? requestedAdminTab
   : "promo-form";
 
@@ -2189,7 +2189,7 @@ const adminApp = createApp({
     },
 
     selectAdminTab(tab) {
-      if (!["webhook", "llm", "components", "section-presets", "promo-form", "design-tokens", "i18n", "audit"].includes(tab)) return;
+      if (!["webhook", "llm", "component-generation", "components", "section-presets", "promo-form", "design-tokens", "i18n", "audit"].includes(tab)) return;
       if (tab === "promo-form" && !this.templateLayoutManagementEnabled) {
         this.setStatus("템플릿·페이지 레이아웃 관리는 비활성화되었습니다.");
         return;
@@ -2214,6 +2214,16 @@ const adminApp = createApp({
         editorSchema: { multiline: true }, defaultValue: null,
         imagePolicy: { allowedSources: ["file", "url"], promptText: "", aspectRatio: "" },
         capabilities: { layoutRegions: ["copy-primary", "copy-secondary", "center"] },
+        libraryPresentation: { category: "", iconKey: "", displayOrder: 100, isFeatured: false },
+        libraryKeywords: "",
+        placementPolicy: {
+          allowedSectionRoles: [], deniedSectionRoles: [], maxInstancesPerSection: null,
+          requiresParentCapabilities: [],
+          defaultGeometry: {
+            desktop: { widthPct: 44, heightPx: 120 },
+            mobile: { widthPct: 90, heightPx: 120 },
+          },
+        },
         styleSlots: [], changeNote: "",
         fields: [{
           name: "Title", description: "", fieldKind: "text", textType: "title", sortOrder: 0,
@@ -6940,5 +6950,6 @@ const adminApp = createApp({
 adminApp.component("template-layout-manager", window.PromoAdminTemplateLayout.component);
 adminApp.component("section-layout-preset-manager", window.PromoAdminSectionLayouts.component);
 adminApp.component("design-token-manager", window.PromoAdminDesignTokens.component);
+adminApp.component("component-generation-workspace", window.PromoAdminComponentGeneration.component);
 const localeReady = window.PromoI18n?.init?.() || Promise.resolve();
 localeReady.finally(() => adminApp.mount("#app"));

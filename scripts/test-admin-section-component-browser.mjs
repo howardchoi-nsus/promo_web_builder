@@ -221,6 +221,33 @@ try {
   await page.goto(`${origin}/prototype/index.html?view=admin&tab=components`, { waitUntil: "networkidle" });
   await page.getByText("Hero Title", { exact: true }).first().waitFor({ state: "visible" });
   assert.equal(await page.getByText(`컴포넌트 식별자: ${component.componentKey}`, { exact: true }).count(), 1);
+
+  await page.getByRole("tab", { name: "이미지 컴포넌트 생성" }).click();
+  const generationWorkspace = page.locator(".component-generation-workspace");
+  await generationWorkspace.waitFor({ state: "visible" });
+  assert.equal(await generationWorkspace.locator(".component-generation-steps li").count(), 5);
+  const sourceInput = generationWorkspace.locator('input[type="file"][accept="image/png,image/jpeg,image/webp"]');
+  const analyzeButton = generationWorkspace.getByRole("button", { name: "분석 시작" });
+  assert.equal(await sourceInput.count(), 1);
+  assert.equal(await analyzeButton.isDisabled(), true);
+  await sourceInput.setInputFiles({
+    name: "sample-component.png",
+    mimeType: "image/png",
+    buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64"),
+  });
+  await generationWorkspace.getByLabel("생성 목적").fill("이미지, 제목, 설명, CTA가 포함된 프로모션 카드");
+  assert.equal(await analyzeButton.isEnabled(), true);
+  await analyzeButton.click();
+  assert.match(await page.locator(".shell-status").textContent(), /이미지 분석 API는 다음 개발 단계/);
+  assert.equal(new URL(page.url()).searchParams.get("tab"), "component-generation");
+
+  await page.getByRole("tab", { name: "컴포넌트 관리" }).click();
+  await page.getByRole("button", { name: "+ 컴포넌트 추가", exact: true }).click();
+  await page.getByText("새 컴포넌트", { exact: true }).waitFor({ state: "visible" });
+  assert.equal(await page.getByRole("button", { name: "초안 생성", exact: true }).count(), 1);
+  await page.locator(".prompt-list-panel .prompt-list-item").filter({ hasText: "Hero Title" }).click();
+  await page.getByText(`컴포넌트 식별자: ${component.componentKey}`, { exact: true }).waitFor({ state: "visible" });
+
   await page.getByRole("tab", { name: "섹션 프리셋 관리" }).click();
   assert.equal(await page.locator("#section-preset-manager-target .section-library-manager").count(), 1);
   const linkedSectionRow = page.locator("#section-preset-manager-target .prompt-list-item").filter({ hasText: "Promotion Intro" });
