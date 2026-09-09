@@ -3,6 +3,7 @@ const {
   fetchTemplateRow, fetchTemplateSections,
 } = require("./_wizard-form-templates-store");
 const { normalizeAiDesign } = require("./_wizard-content-sections-store");
+const { allowTemplateLayoutWrite } = require("./_template-layout-management");
 
 async function requireDraftTemplate(sql, templateId) {
   const template = await fetchTemplateRow(sql, templateId);
@@ -20,9 +21,12 @@ module.exports = async function handler(req, res) {
       if (!await fetchTemplateRow(sql, templateId)) return res.status(404).json({ error: "Form template not found" });
       return res.status(200).json({ ok: true, sections: await fetchTemplateSections(sql, templateId) });
     }
-    if (req.method === "POST") return await addSection(req, res);
-    if (req.method === "PATCH") return await updateMembership(req, res);
-    if (req.method === "DELETE") return await removeSection(req, res);
+    if (["POST", "PATCH", "DELETE"].includes(req.method)) {
+      if (!allowTemplateLayoutWrite(res)) return;
+      if (req.method === "POST") return await addSection(req, res);
+      if (req.method === "PATCH") return await updateMembership(req, res);
+      return await removeSection(req, res);
+    }
     res.setHeader("Allow", "GET, POST, PATCH, DELETE");
     return res.status(405).json({ error: "Method not allowed" });
   } catch (error) {

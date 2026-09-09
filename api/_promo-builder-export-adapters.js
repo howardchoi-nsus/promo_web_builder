@@ -11,10 +11,12 @@ function object(value) {
 function publicExportSnapshot(snapshot) {
   const source = object(snapshot);
   const content = object(source.content);
+  const contractVersion = Number(source.contractVersion || content.contractVersion || 2);
   const formTemplate = object(content.formTemplate);
+  const runtimeTheme = object(content.runtimeTheme);
   const assets = object(source.assets);
   return {
-    contractVersion: Number(source.contractVersion || content.contractVersion || 2),
+    contractVersion,
     layoutIdentity: clone(object(source.layoutIdentity)),
     appearance: clone(object(source.appearance)),
     content: {
@@ -26,6 +28,12 @@ function publicExportSnapshot(snapshot) {
         designTokenSetVersionId: formTemplate.designTokenSetVersionId || "",
         designTokens: clone(object(formTemplate.designTokens)),
       },
+      ...(contractVersion === 3 || Object.keys(runtimeTheme).length ? { runtimeTheme: {
+        sourceType: runtimeTheme.sourceType || "",
+        sourceId: runtimeTheme.sourceId || "",
+        designTokenSetVersionId: runtimeTheme.designTokenSetVersionId || formTemplate.designTokenSetVersionId || "",
+        designTokens: clone(object(runtimeTheme.designTokens || formTemplate.designTokens)),
+      } } : {}),
       sectionSnapshot: clone(Array.isArray(content.sectionSnapshot) ? content.sectionSnapshot : []),
       sectionInputs: clone(object(content.sectionInputs)),
       sectionOrder: clone(Array.isArray(content.sectionOrder) ? content.sectionOrder : []),
@@ -64,7 +72,10 @@ function dependencyManifest(snapshot, { documentId = "", revision = 0 } = {}) {
     status: item.status || "ready",
     contentHash: item.contentHash || item.sha256 || "",
   })).sort((a, b) => a.assetKey.localeCompare(b.assetKey));
-  const tokenValues = object(exported.content.formTemplate.designTokens?.values);
+  const tokenValues = object(
+    exported.content.runtimeTheme?.designTokens?.values
+      || exported.content.formTemplate.designTokens?.values,
+  );
   return {
     manifestVersion: 1,
     documentId,
@@ -75,6 +86,7 @@ function dependencyManifest(snapshot, { documentId = "", revision = 0 } = {}) {
       version: Number(exported.layoutIdentity.rendererVersion || 1),
     },
     designTokenSetVersionId: exported.appearance.designTokenSetVersionId
+      || exported.content.runtimeTheme?.designTokenSetVersionId
       || exported.content.formTemplate.designTokenSetVersionId || "",
     designTokenKeys: Object.keys(tokenValues).sort(),
     componentVersionIds,

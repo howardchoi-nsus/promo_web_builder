@@ -1877,14 +1877,20 @@ async function loadAiDocument() {
     aiDocumentConflict.value = null;
     designTokenSets.value = availableTokenSets;
     const selectedTokenVersionId = result.snapshot.appearance?.designTokenSetVersionId
+      || result.snapshot.content?.runtimeTheme?.designTokenSetVersionId
       || result.snapshot.content?.formTemplate?.designTokenSetVersionId
       || "";
     const selectedTokenSet = availableTokenSets.find(
       (candidate) => candidate.versionId === selectedTokenVersionId,
     ) || availableTokenSets.find((candidate) => candidate.isDefault) || availableTokenSets[0] || null;
     previewDesignTokenVersionId.value = selectedTokenSet?.versionId || selectedTokenVersionId;
+    const runtimeTheme = result.snapshot.content?.runtimeTheme || {};
     template.value = {
       ...result.snapshot.content.formTemplate,
+      ...(!selectedTokenSet && runtimeTheme.designTokens ? {
+        designTokenSetVersionId: runtimeTheme.designTokenSetVersionId || "",
+        designTokens: runtimeTheme.designTokens,
+      } : {}),
       ...(selectedTokenSet ? {
         designTokenSetVersionId: selectedTokenSet.versionId,
         designTokens: {

@@ -3,11 +3,15 @@ const {
   fetchTemplateSections, toFormTemplate, normalizeRecommendationProfile,
   recommendationProfileColumnAvailable,
 } = require("./_wizard-form-templates-store");
+const { allowTemplateLayoutWrite } = require("./_template-layout-management");
 
 module.exports = async function handler(req, res) {
   try {
     if (req.method === "GET") return await getTemplate(req, res);
-    if (req.method === "PATCH") return await updateTemplate(req, res);
+    if (req.method === "PATCH") {
+      if (!allowTemplateLayoutWrite(res)) return;
+      return await updateTemplate(req, res);
+    }
     res.setHeader("Allow", "GET, PATCH");
     return res.status(405).json({ error: "Method not allowed" });
   } catch (error) {

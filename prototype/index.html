@@ -714,6 +714,7 @@
                 @click="selectAdminTab('section-presets')"
               >섹션 프리셋 관리</button>
               <button
+                v-if="templateLayoutManagementEnabled"
                 class="admin-tab"
                 :class="{ active: adminTab === 'promo-form' }"
                 type="button"
@@ -1977,7 +1978,7 @@
           </section>
 
           <section class="panel stack" v-show="adminTab === 'promo-form'">
-            <section class="subsection form-template-manager">
+            <section class="subsection form-template-manager" v-if="templateLayoutManagementEnabled">
               <div class="subsection-title">
                 <div>
                   <h2>폼 템플릿 및 기본 레이아웃</h2>

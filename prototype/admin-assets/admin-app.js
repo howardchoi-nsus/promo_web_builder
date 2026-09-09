@@ -10806,6 +10806,7 @@ var xy = /*#__PURE__*/ Eh(Ov, [["render", by], ["__scopeId", "data-v-856b72e9"]]
 		data() {
 			return {
 				status: "준비 완료",
+				builderCapabilities: { templateLayoutManagement: !0 },
 				localeRevision: 0,
 				localeUnsubscribe: null,
 				currentView: fe,
@@ -11215,6 +11216,9 @@ var xy = /*#__PURE__*/ Eh(Ov, [["render", by], ["__scopeId", "data-v-856b72e9"]]
 			};
 		},
 		computed: {
+			templateLayoutManagementEnabled() {
+				return this.builderCapabilities.templateLayoutManagement !== !1;
+			},
 			abcGridStyle() {
 				return { gridTemplateColumns: `${this.sectionWidths[0]}fr 8px ${this.sectionWidths[1]}fr 8px ${this.sectionWidths[2]}fr` };
 			},
@@ -11639,6 +11643,23 @@ var xy = /*#__PURE__*/ Eh(Ov, [["render", by], ["__scopeId", "data-v-856b72e9"]]
 			t(e, t = {}) {
 				return this.localeRevision, window.PromoI18n?.t(e, t) || e;
 			},
+			async loadAdminCapabilities() {
+				try {
+					let e = await fetch("/api/promo-builder-capabilities", { cache: "no-store" }), t = await e.json().catch(() => ({}));
+					if (!e.ok) throw Error(t.error || `기능 설정 요청 오류(${e.status})`);
+					if (this.builderCapabilities = {
+						...this.builderCapabilities,
+						...t.capabilities || {}
+					}, !this.templateLayoutManagementEnabled && this.adminTab === "promo-form") {
+						this.adminTab = "components";
+						let e = new URL(window.location.href);
+						return e.searchParams.set("view", "admin"), e.searchParams.set("tab", "components"), window.history.replaceState({}, "", `${e.pathname}${e.search}${e.hash}`), this.setStatus("템플릿·페이지 레이아웃 관리는 비활성화되었습니다. 컴포넌트와 섹션 프리셋을 이용해 주세요."), !0;
+					}
+					return !1;
+				} catch (e) {
+					return this.setStatus(`기능 설정을 확인하지 못했습니다: ${e.message}`), !0;
+				}
+			},
 			async localeApi(e, t = {}) {
 				let n = await fetch(e, {
 					...t,
@@ -11897,7 +11918,9 @@ var xy = /*#__PURE__*/ Eh(Ov, [["render", by], ["__scopeId", "data-v-856b72e9"]]
 			async openPromptManager() {
 				this.currentView = "prompts";
 				let e = new URL(window.location.href);
-				e.searchParams.set("view", "admin"), window.history.replaceState({}, "", `${e.pathname}${e.search}${e.hash}`), await Promise.all([
+				e.searchParams.set("view", "admin"), window.history.replaceState({}, "", `${e.pathname}${e.search}${e.hash}`);
+				let t = await this.loadAdminCapabilities();
+				await Promise.all([
 					this.loadPromptTemplates(),
 					this.loadWorkerWebhookSettings(),
 					this.loadWizardFormTemplates(),
@@ -11905,7 +11928,7 @@ var xy = /*#__PURE__*/ Eh(Ov, [["render", by], ["__scopeId", "data-v-856b72e9"]]
 					this.loadWizardSectionAuditLogs(),
 					this.loadItemComponents(),
 					this.loadDesignTokenSets()
-				]), this.adminTab === "i18n" && await this.loadLocales(), this.setStatus("관리자 페이지로 이동했습니다");
+				]), this.adminTab === "i18n" && await this.loadLocales(), t || this.setStatus("관리자 페이지로 이동했습니다");
 			},
 			selectAdminTab(e) {
 				if (![
@@ -11918,6 +11941,10 @@ var xy = /*#__PURE__*/ Eh(Ov, [["render", by], ["__scopeId", "data-v-856b72e9"]]
 					"i18n",
 					"audit"
 				].includes(e)) return;
+				if (e === "promo-form" && !this.templateLayoutManagementEnabled) {
+					this.setStatus("템플릿·페이지 레이아웃 관리는 비활성화되었습니다.");
+					return;
+				}
 				this.adminTab = e, e === "i18n" && this.loadLocales(), e === "components" && this.loadItemComponents(), e === "section-presets" && (this.loadWizardSections({ fresh: !0 }), this.loadItemComponents()), e === "audit" && this.loadWizardSectionAuditLogs();
 				let t = new URL(window.location.href);
 				t.searchParams.set("view", "admin"), t.searchParams.set("tab", e), window.history.replaceState({}, "", `${t.pathname}${t.search}${t.hash}`);

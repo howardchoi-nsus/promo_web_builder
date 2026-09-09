@@ -18,6 +18,12 @@ const snapshot = {
   validation: { warnings: ["internal"] },
   content: {
     contractVersion: 3,
+    runtimeTheme: {
+      sourceType: "composition-shell",
+      sourceId: "shell-version-2",
+      designTokenSetVersionId: "tokens-v4",
+      designTokens: { values: { "--promo-accent": "#654321" } },
+    },
     formTemplate: {
       id: "fallback-template",
       templateKey: "shell:default",
@@ -51,6 +57,14 @@ assert.equal(Object.hasOwn(exported, "provenance"), false);
 assert.equal(Object.hasOwn(exported, "validation"), false);
 assert.equal(Object.hasOwn(exported.assets, "requests"), false);
 assert.equal(Object.hasOwn(exported.content.formTemplate, "adminOnly"), false);
+assert.equal(exported.content.runtimeTheme.sourceType, "composition-shell");
+assert.equal(exported.content.runtimeTheme.designTokens.values["--promo-accent"], "#654321");
+
+const legacySnapshot = JSON.parse(JSON.stringify(snapshot));
+legacySnapshot.contractVersion = 2;
+legacySnapshot.content.contractVersion = 2;
+delete legacySnapshot.content.runtimeTheme;
+assert.equal(Object.hasOwn(publicExportSnapshot(legacySnapshot).content, "runtimeTheme"), false);
 
 const manifest = dependencyManifest(snapshot, { documentId: "doc-1", revision: 7 });
 assert.equal(manifest.contractVersion, 3);

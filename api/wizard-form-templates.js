@@ -3,6 +3,7 @@ const {
   normalizeRecommendationProfile, recommendationProfileColumnAvailable,
 } = require("./_wizard-form-templates-store");
 const { ensureLayout, cloneLayout } = require("./_wizard-form-template-layout-store");
+const { allowTemplateLayoutWrite } = require("./_template-layout-management");
 
 async function saveRecommendationProfile(sql, templateId, profile) {
   if (!await recommendationProfileColumnAvailable(sql)) return;
@@ -25,7 +26,10 @@ module.exports = async function handler(req, res) {
       });
       return res.status(200).json({ ok: true, templates });
     }
-    if (req.method === "POST") return await createTemplate(req, res);
+    if (req.method === "POST") {
+      if (!allowTemplateLayoutWrite(res)) return;
+      return await createTemplate(req, res);
+    }
     res.setHeader("Allow", "GET, POST");
     return res.status(405).json({ error: "Method not allowed" });
   } catch (error) {

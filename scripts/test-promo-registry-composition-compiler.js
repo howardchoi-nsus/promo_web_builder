@@ -164,12 +164,21 @@ async function compile(candidateSet = candidates) {
   assert.equal(snapshot.content.sectionSnapshot.length, 3);
   assert.deepEqual(snapshot.content.sectionOrder, repeated.content.sectionOrder);
   assert.deepEqual(snapshot.assets.requests, repeated.assets.requests);
-  assert.equal(snapshot.compositionMeta.sourceTemplateId, candidates.shell.fallbackTemplateId);
+  assert.equal(snapshot.compositionMeta.sourceTemplateId, null);
+  assert.equal(snapshot.compositionMeta.sourceType, "composition-shell");
+  assert.equal(snapshot.compositionMeta.sourceShellVersionId, candidates.shell.shellVersionId);
+  assert.equal(snapshot.layoutIdentity.sourceType, "composition-shell");
+  assert.equal(snapshot.layoutIdentity.sourceId, candidates.shell.shellVersionId);
+  assert.equal(snapshot.layoutIdentity.templateId, "");
   assert.deepEqual(snapshot.compositionMeta.layoutFitRepairs, proposalSnapshot.compositionMeta.layoutFitRepairs);
   assert.deepEqual(snapshot.compositionMeta.layoutSelectionHistory.hero, [
     "hero-centered", "hero-left", "hero-right",
   ]);
   assert.equal(snapshot.content.formTemplate.designTokens.values["--app-bg"], "#fafafa");
+  assert.equal(snapshot.content.formTemplate.compatibilityOnly, true);
+  assert.equal(snapshot.content.runtimeTheme.sourceType, "composition-shell");
+  assert.equal(snapshot.content.runtimeTheme.sourceId, candidates.shell.shellVersionId);
+  assert.equal(snapshot.content.runtimeTheme.designTokens.values["--app-bg"], "#fafafa");
   assert.deepEqual(snapshot.designSpec.theme, {
     backgroundColorToken: "--app-bg", surfaceColorToken: "--app-surface",
     textColorToken: "--app-ink", accentColorToken: "--app-accent",

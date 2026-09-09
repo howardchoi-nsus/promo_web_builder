@@ -113,10 +113,13 @@ async function normalizeEditorSnapshot(
   const requestedVersionId = String(
     designTokenSetVersionId
       || currentSnapshot.appearance?.designTokenSetVersionId
+      || currentSnapshot.content.runtimeTheme?.designTokenSetVersionId
       || currentSnapshot.content.formTemplate?.designTokenSetVersionId
       || "",
   ).trim();
-  let designTokens = currentSnapshot.content.formTemplate?.designTokens || { values: {} };
+  let designTokens = currentSnapshot.content.runtimeTheme?.designTokens
+    || currentSnapshot.content.formTemplate?.designTokens
+    || { values: {} };
   let tokenDefinitions = [];
   let appearance = currentSnapshot.appearance || {};
   if (requestedVersionId) {
@@ -220,6 +223,17 @@ async function normalizeEditorSnapshot(
     layoutRevision: Number(currentSnapshot.layoutRevision || 0) + 1,
     content: {
       ...currentSnapshot.content,
+      ...(Number(currentSnapshot.contractVersion) === 3 || currentSnapshot.content.runtimeTheme ? { runtimeTheme: {
+        ...(currentSnapshot.content.runtimeTheme || {}),
+        sourceType: currentSnapshot.content.runtimeTheme?.sourceType
+          || (Number(currentSnapshot.contractVersion) === 3 ? "composition-shell" : "form-template"),
+        sourceId: currentSnapshot.content.runtimeTheme?.sourceId
+          || currentSnapshot.compositionMeta?.sourceShellVersionId
+          || currentSnapshot.content.formTemplate?.id
+          || "",
+        designTokenSetVersionId: requestedVersionId,
+        designTokens,
+      } } : {}),
       formTemplate: {
         ...currentSnapshot.content.formTemplate,
         designTokenSetVersionId: requestedVersionId,

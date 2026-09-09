@@ -3,11 +3,18 @@ const {
   fetchLayoutRow, toLayout, fetchTemplateWithItems, ensureLayout, validateLayoutSpec, normalizeDefaultContent,
   normalizeCompositionSnapshot, createLayoutIdentity,
 } = require("./_wizard-form-template-layout-store");
+const {
+  allowTemplateLayoutWrite,
+  templateLayoutManagementEnabled,
+} = require("./_template-layout-management");
 
 module.exports = async function handler(req, res) {
   try {
     if (req.method === "GET") return await getLayout(req, res);
-    if (req.method === "PATCH") return await updateLayout(req, res);
+    if (req.method === "PATCH") {
+      if (!allowTemplateLayoutWrite(res)) return;
+      return await updateLayout(req, res);
+    }
     res.setHeader("Allow", "GET, PATCH");
     return res.status(405).json({ error: "Method not allowed" });
   } catch (error) {
@@ -27,7 +34,11 @@ async function getLayout(req, res) {
   const sql = getSql();
   const detail = await fetchTemplateWithItems(sql, templateId);
   if (!detail) return res.status(404).json({ error: "Form template not found" });
-  const row = await ensureLayout(sql, templateId);
+  // A compatibility read must not create new Template Layout data while the
+  // management surface is disabled.
+  const row = templateLayoutManagementEnabled()
+    ? await ensureLayout(sql, templateId)
+    : await fetchLayoutRow(sql, templateId);
   const template = toFormTemplate(detail.template);
   const layout = toLayout(row);
   const sections = layout.compositionSnapshot.length

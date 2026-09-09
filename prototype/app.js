@@ -1052,6 +1052,7 @@ const adminApp = createApp({
   data() {
     return {
       status: "준비 완료",
+      builderCapabilities: { templateLayoutManagement: true },
       localeRevision: 0,
       localeUnsubscribe: null,
       currentView: initialView,
@@ -1371,6 +1372,10 @@ const adminApp = createApp({
   },
 
   computed: {
+    templateLayoutManagementEnabled() {
+      return this.builderCapabilities.templateLayoutManagement !== false;
+    },
+
     // Layout state keeps the three-column prototype adjustable without coupling it to builder logic.
     abcGridStyle() {
       return {
@@ -1879,6 +1884,30 @@ const adminApp = createApp({
       return window.PromoI18n?.t(key, params) || key;
     },
 
+    async loadAdminCapabilities() {
+      try {
+        const response = await fetch("/api/promo-builder-capabilities", { cache: "no-store" });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || `기능 설정 요청 오류(${response.status})`);
+        this.builderCapabilities = { ...this.builderCapabilities, ...(result.capabilities || {}) };
+        if (!this.templateLayoutManagementEnabled && this.adminTab === "promo-form") {
+          this.adminTab = "components";
+          const url = new URL(window.location.href);
+          url.searchParams.set("view", "admin");
+          url.searchParams.set("tab", "components");
+          window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+          this.setStatus("템플릿·페이지 레이아웃 관리는 비활성화되었습니다. 컴포넌트와 섹션 프리셋을 이용해 주세요.");
+          return true;
+        }
+        return false;
+      } catch (error) {
+        // Server-side write guards remain authoritative. Preserve the existing
+        // admin surface when an older deployment does not expose capabilities.
+        this.setStatus(`기능 설정을 확인하지 못했습니다: ${error.message}`);
+        return true;
+      }
+    },
+
     async localeApi(url, options = {}) {
       const response = await fetch(url, {
         ...options,
@@ -2145,6 +2174,7 @@ const adminApp = createApp({
       const url = new URL(window.location.href);
       url.searchParams.set("view", "admin");
       window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+      const preserveAdminStatus = await this.loadAdminCapabilities();
       await Promise.all([
         this.loadPromptTemplates(),
         this.loadWorkerWebhookSettings(),
@@ -2155,11 +2185,15 @@ const adminApp = createApp({
         this.loadDesignTokenSets(),
       ]);
       if (this.adminTab === "i18n") await this.loadLocales();
-      this.setStatus("관리자 페이지로 이동했습니다");
+      if (!preserveAdminStatus) this.setStatus("관리자 페이지로 이동했습니다");
     },
 
     selectAdminTab(tab) {
       if (!["webhook", "llm", "components", "section-presets", "promo-form", "design-tokens", "i18n", "audit"].includes(tab)) return;
+      if (tab === "promo-form" && !this.templateLayoutManagementEnabled) {
+        this.setStatus("템플릿·페이지 레이아웃 관리는 비활성화되었습니다.");
+        return;
+      }
       this.adminTab = tab;
       if (tab === "i18n") this.loadLocales();
       if (tab === "components") this.loadItemComponents();

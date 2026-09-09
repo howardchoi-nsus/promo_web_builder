@@ -6,13 +6,19 @@ const FLAG_NAMES = Object.freeze({
   naturalLanguageEdit: "PROMO_PAGE_COMPOSITION_NL_EDIT_ENABLED",
   libraryMode: "PROMO_PAGE_COMPOSITION_LIBRARY_MODE_ENABLED",
   compositionV3: "AI_COMPOSITION_MODE_V3",
+  templateLayoutManagement: "TEMPLATE_LAYOUT_MANAGEMENT_ENABLED",
   export: "PROMO_BUILDER_EXPORT_ENABLED",
 });
 
 // Registry composition is the production path. Keep an explicit false value as
 // the rollback switch, but do not silently send new installations through the
 // lower-quality legacy template composer.
-const FLAG_DEFAULTS = Object.freeze({ compositionV3: true });
+const FLAG_DEFAULTS = Object.freeze({
+  compositionV3: true,
+  // Keep existing installations operational until Preview/Production explicitly
+  // disable authoring. This flag controls management writes, never legacy reads.
+  templateLayoutManagement: true,
+});
 
 function enabled(value, fallback = true) {
   if (value === undefined || value === null || value === "") return fallback;

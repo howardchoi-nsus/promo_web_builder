@@ -25,6 +25,12 @@ function collectTargets(snapshot) {
   return { sections, components, fields };
 }
 
+function snapshotTokenValues(snapshot) {
+  return snapshot?.content?.runtimeTheme?.designTokens?.values
+    || snapshot?.content?.formTemplate?.designTokens?.values
+    || {};
+}
+
 function compositionOperationSchema(snapshot, motionPresets = [], registryCandidates = null) {
   const targets = collectTargets(snapshot);
   const targetIds = [
@@ -34,7 +40,7 @@ function compositionOperationSchema(snapshot, motionPresets = [], registryCandid
   const fieldKeys = Array.from(new Set(
     [...targets.fields.values()].map(({ field }) => field.fieldKey),
   ));
-  const tokenKeys = Object.keys(snapshot?.content?.formTemplate?.designTokens?.values || {});
+  const tokenKeys = Object.keys(snapshotTokenValues(snapshot));
   const motionPresetVersionIds = ["", ...motionPresets.map((preset) => preset.presetVersionId)];
   const sectionVersionIds = (registryCandidates?.sections || []).map((section) => section.sectionVersionId);
   return {
@@ -82,7 +88,7 @@ function compositionOperationSchema(snapshot, motionPresets = [], registryCandid
 function validateCompositionOperations(result, snapshot, motionPresets = [], registryCandidates = null) {
   const targets = collectTargets(snapshot);
   const motionIds = new Set(motionPresets.map((preset) => preset.presetVersionId));
-  const tokenKeys = new Set(Object.keys(snapshot?.content?.formTemplate?.designTokens?.values || {}));
+  const tokenKeys = new Set(Object.keys(snapshotTokenValues(snapshot)));
   const seen = new Set();
   const registrySections = new Map((registryCandidates?.sections || []).map((section) => [section.sectionVersionId, section]));
   const operations = (Array.isArray(result?.operations) ? result.operations : []).map((candidate) => {

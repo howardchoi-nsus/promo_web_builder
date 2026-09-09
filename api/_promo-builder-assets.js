@@ -33,12 +33,17 @@ function assetInputHash(value) {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }
 
+function runtimeTheme(snapshot) {
+  return snapshot?.content?.runtimeTheme || snapshot?.content?.formTemplate || {};
+}
+
 async function enqueueBuilderAssetJobs(sql, {
   documentId,
   documentRevision,
   snapshot,
 }) {
   const jobs = [];
+  const theme = runtimeTheme(snapshot);
   for (const request of snapshot?.assets?.requests || []) {
     if (request.status !== "pending") continue;
     const section = sectionById(snapshot, request.pageSectionInstanceId);
@@ -63,7 +68,7 @@ async function enqueueBuilderAssetJobs(sql, {
       field,
       sectionContent,
       designSpec: snapshot.designSpec,
-      designTokenValues: snapshot.content.formTemplate.designTokens?.values || {},
+      designTokenValues: theme.designTokens?.values || {},
       request,
       backgroundColor,
       fadeMode: snapshot.designSpec?.sectionStyles?.[request.pageSectionInstanceId]?.backgroundFadeMode
@@ -108,7 +113,7 @@ async function enqueueBuilderAssetJobs(sql, {
         builder_asset_request_id
       ) values (
         ${snapshot.compositionMeta.sourceTemplateId}::uuid,
-        ${snapshot.content.formTemplate.templateKey || ""},
+        ${snapshot.layoutIdentity?.sourceKey || snapshot.content.formTemplate?.templateKey || ""},
         ${snapshot.compositionMeta.sourceTemplateVersion || 1},
         ${Math.max(1, Number(snapshot.layoutRevision || 1))},
         ${request.pageSectionInstanceId},
@@ -118,7 +123,7 @@ async function enqueueBuilderAssetJobs(sql, {
         ${executionKey},
         2,
         ${JSON.stringify(promptSnapshot)}::jsonb,
-        ${assetInputHash(snapshot.content.formTemplate.designTokens?.values || {})},
+        ${assetInputHash(theme.designTokens?.values || {})},
         ${JSON.stringify({
           imageAspectRatio: isComponent
             ? request.aspectRatio || field.image?.aspectRatio || "1:1"

@@ -1,12 +1,14 @@
 const {
   getSql, parseBody, fetchTemplateRow, toFormTemplate,
 } = require("./_wizard-form-templates-store");
+const { allowTemplateLayoutWrite } = require("./_template-layout-management");
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     return res.status(405).json({ error: "Method not allowed" });
   }
+  if (!allowTemplateLayoutWrite(res)) return;
   try {
     const body = parseBody(req.body);
     const id = String(body.id || req.query.id || "").trim();

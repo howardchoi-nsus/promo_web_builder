@@ -5,12 +5,14 @@ const {
 const {
   ensureLayout, toLayout, createLayoutIdentity, fetchTemplateWithItems, validateLayoutSpec,
 } = require("./_wizard-form-template-layout-store");
+const { allowTemplateLayoutWrite } = require("./_template-layout-management");
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     return res.status(405).json({ error: "Method not allowed" });
   }
+  if (!allowTemplateLayoutWrite(res)) return;
   try {
     const body = parseBody(req.body);
     const id = String(body.id || req.query.id || "").trim();

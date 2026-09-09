@@ -108,6 +108,7 @@ let sectionBDeleted = false;
 let createdSectionBody;
 let componentOrderBody;
 let rejectComponentOrder = false;
+let templateLayoutManagementEnabled = true;
 try {
   await waitForServer();
   browser = await chromium.launch({ headless: true });
@@ -126,6 +127,10 @@ try {
       defaultLocale: "ko",
       messages: koMessages,
       defaultMessages: koMessages,
+    });
+    if (url.pathname === "/api/promo-builder-capabilities") return reply({
+      ok: true,
+      capabilities: { templateLayoutManagement: templateLayoutManagementEnabled },
     });
     if (url.pathname === "/api/item-components") return reply({ ok: true, components: [component] });
     if (url.pathname === "/api/design-token-sets") return reply({ ok: true, tokenSets: [{ id: "set", name: "Rounded", versionId: tokenVersionId, version: 1, versionStatus: "active" }] });
@@ -369,6 +374,16 @@ try {
     id: template.id,
     changeNote: "관리자 페이지에서 템플릿을 활성화했습니다.",
   });
+
+  templateLayoutManagementEnabled = false;
+  await page.goto(`${origin}/prototype/index.html?view=admin&tab=promo-form`, { waitUntil: "networkidle" });
+  assert.equal(await page.getByRole("tab", { name: "템플릿·레이아웃 관리" }).count(), 0);
+  assert.equal(new URL(page.url()).searchParams.get("tab"), "components");
+  assert.equal(await page.getByRole("tab", { name: "컴포넌트 관리" }).getAttribute("aria-selected"), "true");
+  assert.match(
+    await page.locator(".shell-status").textContent(),
+    /템플릿·페이지 레이아웃 관리는 비활성화되었습니다/,
+  );
   assert.deepEqual(pageErrors, []);
   console.log("Admin item component and section composition browser test passed");
   await context.close();

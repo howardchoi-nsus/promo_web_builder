@@ -509,15 +509,26 @@ async function compileRegistryComposition({
     });
   }
   const shell = candidates.shell || {};
+  const shellVersion = Number(shell.version || 1);
+  const shellSourceKey = `shell:${shell.shellKey || "registry"}`;
+  const runtimeTheme = {
+    sourceType: "composition-shell",
+    sourceId: shell.shellVersionId || "",
+    designTokenSetVersionId: tokenSet?.tokenSetVersionId || "",
+    designTokens: { values: tokenValues },
+  };
   return {
     contractVersion: 3,
     documentRevision: Number(documentRevision || 0),
     layoutRevision: 0,
     layoutIdentity: {
       contractVersion: 3,
-      templateId: shell.fallbackTemplateId || "",
-      templateKey: `shell:${shell.shellKey || "registry"}`,
-      templateVersion: Number(shell.fallbackTemplateVersion || 1),
+      sourceType: "composition-shell",
+      sourceId: shell.shellVersionId || "",
+      sourceKey: shellSourceKey,
+      templateId: "",
+      templateKey: shellSourceKey,
+      templateVersion: shellVersion,
       layoutId: "", layoutRevision: 0,
       configRevision: candidates.candidateFingerprint,
       rendererKey: "default-promo-renderer", rendererVersion: 1,
@@ -526,6 +537,8 @@ async function compileRegistryComposition({
       compositionId: stableUuid(proposalId, "composition"),
       documentId, proposalId, mode: "ai-composition",
       shellVersionId: shell.shellVersionId,
+      sourceType: "composition-shell",
+      sourceShellVersionId: shell.shellVersionId,
       compositionCriteria: clone(candidates.criteria || {}),
       overviewFingerprint: proposalSnapshot.compositionMeta?.overviewFingerprint || "",
       candidateFingerprint: candidates.candidateFingerprint,
@@ -536,8 +549,8 @@ async function compileRegistryComposition({
         referenceName: reference.referenceName,
         sourceHash: reference.sourceHash,
       })),
-      sourceTemplateId: shell.fallbackTemplateId || null,
-      sourceTemplateVersion: Number(shell.fallbackTemplateVersion || 1),
+      sourceTemplateId: null,
+      sourceTemplateVersion: null,
       promptTemplateVersionId: proposalSnapshot.compositionMeta?.promptTemplateVersionId || "",
       model: proposalSnapshot.compositionMeta?.model || "",
       reasoningSummary: proposalSnapshot.compositionMeta?.reasoningSummary || "",
@@ -550,12 +563,14 @@ async function compileRegistryComposition({
     },
     content: {
       contractVersion: 3,
+      runtimeTheme,
       formTemplate: {
-        id: shell.fallbackTemplateId || "",
-        templateKey: `shell:${shell.shellKey || "registry"}`,
-        version: Number(shell.fallbackTemplateVersion || 1),
+        id: "",
+        templateKey: shellSourceKey,
+        version: shellVersion,
         designTokenSetVersionId: tokenSet?.tokenSetVersionId || "",
         designTokens: { values: tokenValues },
+        compatibilityOnly: true,
       },
       sectionSnapshot, sectionInputs, sectionOrder,
       resourceReferences: clone(references),

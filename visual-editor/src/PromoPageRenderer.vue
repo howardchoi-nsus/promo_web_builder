@@ -150,7 +150,8 @@ const orderedSections = computed(() => {
 });
 
 const managedTokens = computed(() => normalizePromoTokenValues(
-  props.content?.formTemplate?.designTokens?.values,
+  props.content?.runtimeTheme?.designTokens?.values
+    || props.content?.formTemplate?.designTokens?.values,
 ));
 
 const managedTokenStyle = computed(() => createPromoTokenRuntimeStyle(managedTokens.value, {

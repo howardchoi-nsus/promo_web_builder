@@ -448,8 +448,6 @@ async function fetchRegistryCompositionCandidates(sql, {
       shellVersionId: shell.id,
       shellKey: shell.shellKey,
       version: shell.version,
-      fallbackTemplateId: shell.fallbackTemplateId,
-      fallbackTemplateVersion: shell.fallbackTemplateVersion,
     },
     criteria,
     selectionContext: { recentLayoutSelections },
