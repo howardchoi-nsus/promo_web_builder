@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://promo-web-builder.local/contracts/component-render-spec-v1.schema.json",
+  "title": "Promo Web Builder Component RenderSpec v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "root"],
+  "properties": {
+    "contractVersion": { "const": 1 },
+    "root": { "$ref": "#/$defs/node" },
+    "responsive": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "desktop": { "$ref": "#/$defs/overrides" },
+        "tablet": { "$ref": "#/$defs/overrides" },
+        "mobile": { "$ref": "#/$defs/overrides" }
+      }
+    },
+    "accessibility": { "type": "object" }
+  },
+  "$defs": {
+    "overrides": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^root(?:\\.children\\.[0-9]+)*\\.(?:layout|tokenBindings)\\.[A-Za-z][A-Za-z0-9]*$"
+      }
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nodeType", "tag"],
+      "properties": {
+        "nodeType": { "enum": ["element", "field"] },
+        "tag": {
+          "enum": [
+            "div", "section", "article", "header", "footer", "nav", "main",
+            "h1", "h2", "h3", "h4", "h5", "h6", "p", "span", "strong", "small",
+            "img", "picture", "a", "button", "ul", "ol", "li"
+          ]
+        },
+        "semanticRole": { "type": "string", "maxLength": 80 },
+        "fieldKey": { "type": "string", "maxLength": 120 },
+        "attributes": { "type": "object" },
+        "layout": { "type": "object" },
+        "tokenBindings": { "type": "object" },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/node" },
+          "maxItems": 80
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "nodeType": { "const": "field" } }, "required": ["nodeType"] },
+          "then": { "required": ["fieldKey"] }
+        }
+      ]
+    }
+  }
+}
