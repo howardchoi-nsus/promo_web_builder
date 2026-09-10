@@ -18,6 +18,7 @@ import {
   usesAutomaticComponentHeight,
 } from "./platform/layout-engine/geometry.mjs";
 import { resizeComponentGeometry } from "./platform/layout-engine/resize.mjs";
+import RenderSpecTree from "./platform/render-spec/RenderSpecTree.vue";
 
 const props = defineProps({
   content: { type: Object, required: true },
@@ -166,6 +167,12 @@ const managedTokenStyle = computed(() => createPromoTokenRuntimeStyle(managedTok
 function componentFields(item) {
   const fields = Array.isArray(item?.fields) ? item.fields : [];
   return fields.length ? fields : [item];
+}
+
+function componentRenderSpec(item) {
+  return Number(item?.renderSpec?.contractVersion) === 1 && item?.renderSpec?.root
+    ? item.renderSpec
+    : null;
 }
 
 function itemVisibilityKey(section, item) {
@@ -1007,6 +1014,11 @@ function handleFieldClick(event, section, item, field) {
     shiftKey: event.shiftKey,
     fieldKey: field.fieldKey,
   });
+}
+
+function selectRenderSpecField(section, item, selection) {
+  if (!props.editable || !selection?.fieldKey) return;
+  selectRendererItem(section, item, { type: "click", fieldKey: selection.fieldKey });
 }
 
 function handleCtaClick(event) {
@@ -2086,8 +2098,20 @@ defineExpose({ inspectLayoutCollisions, inspectLayoutQuality });
               <em v-if="item.isLocked">잠금</em>
               <em v-if="itemIsEmpty(section, item)">비어 있음</em>
             </span>
+            <RenderSpecTree
+              v-if="componentRenderSpec(item)"
+              :render-spec="componentRenderSpec(item)"
+              :fields="componentFields(item)"
+              :value="valueFor(section, item)"
+              :viewport="viewportOverride"
+              :viewport-width="viewportWidth"
+              :mobile-breakpoint="Number(designSpec.responsive?.mobileBreakpoint || 720)"
+              :tablet-breakpoint="Number(designSpec.responsive?.tabletBreakpoint || 1024)"
+              :editable="editable"
+              @select-field="selectRenderSpecField(section, item, $event)"
+            />
             <div
-              v-if="componentFields(item).length > 1"
+              v-else-if="componentFields(item).length > 1"
               class="rendered-component-fields"
               :style="{
                 '--component-field-gap': `${Math.min(240, Math.max(0, Number(itemStyle(section, item).fieldGapPx) || 14))}px`,

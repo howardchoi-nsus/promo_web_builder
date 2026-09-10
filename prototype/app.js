@@ -1785,6 +1785,8 @@ const adminApp = createApp({
           versionStatus: activeVersion.status,
           fieldKind: activeVersion.fieldKind,
           textType: activeVersion.textType,
+          renderSpec: activeVersion.renderSpec || null,
+          renderValidation: activeVersion.renderValidation || null,
           fields: activeVersion.fields || [],
         }];
       });

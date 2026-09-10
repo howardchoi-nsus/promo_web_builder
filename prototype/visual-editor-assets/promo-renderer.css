@@ -46,6 +46,9 @@
 .promo-renderer .item-outline-label small { color: var(--promo-muted-ink, var(--promo-ink)); text-transform: uppercase; font-size: var(--promo-font-size-micro, 0.625rem); }
 .promo-renderer .item-outline-label em { color: #b45309; font-size: var(--promo-font-size-micro, 0.625rem); font-style: normal; }
 .promo-renderer .rendered-component-fields { display: grid; width: 100%; min-width: 0; padding: var(--component-content-padding, 0); gap: var(--component-field-gap, 14px); box-sizing: border-box; }
+.promo-renderer .render-spec-node { min-width: 0; max-width: 100%; box-sizing: border-box; }
+.promo-renderer img.render-spec-node, .promo-renderer .render-spec-picture-image { display: block; width: 100%; max-width: 100%; height: auto; }
+.promo-renderer .render-spec-node--field { overflow-wrap: anywhere; }
 .promo-renderer .rendered-component-field-shell { position: relative; display: grid; width: 100%; min-width: 0; box-sizing: border-box; }
 .promo-renderer .rendered-component-field-shell.is-selected-field { outline: 2px solid var(--promo-accent); outline-offset: 3px; }
 .promo-renderer .rendered-component-field-shell.is-resizing-field { transition: none !important; }

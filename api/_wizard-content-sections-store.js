@@ -1,6 +1,6 @@
 const { getDatabaseUrl } = require("./_db");
 const { neon } = require("@neondatabase/serverless");
-const { fetchVersionFields } = require("./_item-components-store");
+const { fetchVersionFields, renderSpecFromVersionRow } = require("./_item-components-store");
 const {
   normalizeLayoutSnapshot,
   validateHeaderLayoutPolicy,
@@ -290,6 +290,8 @@ function toSectionItem(row) {
     defaultValue: row.default_value ?? null,
     capabilities: row.capabilities || {},
     styleSlots: row.style_slots || [],
+    renderSpec: renderSpecFromVersionRow(row),
+    renderValidation: row.render_validation || null,
     instanceConfig,
     isLocked: Boolean(row.is_locked),
     lockedValue: row.locked_value ?? null,
@@ -361,7 +363,9 @@ async function fetchItemRows(sql, sectionId) {
       version.id::text as component_version_id, version.version as component_version,
       version.status as component_version_status,
       version.field_kind, version.text_type, version.editor_schema, version.default_value,
-      version.capabilities, version.image_policy, version.cta_policy, version.style_slots
+      version.capabilities, version.image_policy, version.cta_policy, version.style_slots,
+      version.render_contract_version, version.render_tree, version.render_responsive,
+      version.render_accessibility, version.render_validation
     from wizard_content_section_component_instances instance
     join wizard_item_component_versions version on version.id = instance.component_version_id
     join wizard_item_components component on component.id = version.component_id
@@ -395,7 +399,9 @@ async function fetchItemsForSections(sql, sectionIds = []) {
       version.id::text as component_version_id, version.version as component_version,
       version.status as component_version_status,
       version.field_kind, version.text_type, version.editor_schema, version.default_value,
-      version.capabilities, version.image_policy, version.cta_policy, version.style_slots
+      version.capabilities, version.image_policy, version.cta_policy, version.style_slots,
+      version.render_contract_version, version.render_tree, version.render_responsive,
+      version.render_accessibility, version.render_validation
     from wizard_content_section_component_instances instance
     join wizard_item_component_versions version on version.id = instance.component_version_id
     join wizard_item_components component on component.id = version.component_id

@@ -166,6 +166,8 @@ export function createComponentInstanceFromDefinition(component) {
     defaultValue: clone(version.defaultValue),
     capabilities: clone(version.capabilities || {}),
     styleSlots: clone(version.styleSlots || []),
+    renderSpec: clone(version.renderSpec || null),
+    renderValidation: clone(version.renderValidation || null),
     instanceConfig: {},
     isLocked: false,
     lockedValue: null,

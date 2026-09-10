@@ -404,6 +404,8 @@ async function fetchRegistryCompositionCandidates(sql, {
         isLocked: component.isLocked,
         capabilities: componentCapabilities(component),
         styleSlots: component.styleSlots || [],
+        renderSpec: component.renderSpec || null,
+        renderValidation: component.renderValidation || null,
         fields: component.fields || [],
       })),
     });
