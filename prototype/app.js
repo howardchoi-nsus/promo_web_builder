@@ -1171,6 +1171,7 @@ const adminApp = createApp({
             mobile: { widthPct: 90, heightPx: 120 },
           },
         },
+        renderSpec: null,
         fields: [{
           name: "Title", description: "", fieldKind: "text", textType: "title", sortOrder: 0,
           isRequired: false, isLocked: false, defaultValue: null,
@@ -1787,6 +1788,8 @@ const adminApp = createApp({
           textType: activeVersion.textType,
           renderSpec: activeVersion.renderSpec || null,
           renderValidation: activeVersion.renderValidation || null,
+          renderContractVersion: activeVersion.renderSpec?.contractVersion || null,
+          renderSpecHash: activeVersion.renderValidation?.hash ? `sha256:${activeVersion.renderValidation.hash}` : null,
           fields: activeVersion.fields || [],
         }];
       });
@@ -2226,7 +2229,7 @@ const adminApp = createApp({
             mobile: { widthPct: 90, heightPx: 120 },
           },
         },
-        styleSlots: [], changeNote: "",
+        styleSlots: [], changeNote: "", renderSpec: null,
         fields: [{
           name: "Title", description: "", fieldKind: "text", textType: "title", sortOrder: 0,
           isRequired: false, isLocked: false, defaultValue: null,
@@ -2306,6 +2309,7 @@ const adminApp = createApp({
             },
           },
         },
+        renderSpec: component.renderSpec || null,
         fields: componentFields.map((field) => ({
           ...field,
           editorSchema: { ...(field.editorSchema || {}) },
@@ -3103,6 +3107,7 @@ const adminApp = createApp({
         "promo_composition_editor",
         "section_background_image",
         "component_image",
+        "component_visual_analyzer",
       ].includes(prompt?.type);
     },
 
@@ -6953,5 +6958,6 @@ adminApp.component("template-layout-manager", window.PromoAdminTemplateLayout.co
 adminApp.component("section-layout-preset-manager", window.PromoAdminSectionLayouts.component);
 adminApp.component("design-token-manager", window.PromoAdminDesignTokens.component);
 adminApp.component("component-generation-workspace", window.PromoAdminComponentGeneration.component);
+adminApp.component("render-spec-editor", window.PromoAdminComponentGeneration.renderSpecEditor);
 const localeReady = window.PromoI18n?.init?.() || Promise.resolve();
 localeReady.finally(() => adminApp.mount("#app"));

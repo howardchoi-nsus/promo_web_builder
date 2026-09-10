@@ -38,6 +38,12 @@ const PROMPT_WORKFLOW_GROUPS = Object.freeze([
     order: 40,
   },
   {
+    key: "component-generation",
+    label: "컴포넌트 생성",
+    description: "참조 이미지를 DOM RenderSpec과 재사용 가능한 컴포넌트 제안으로 분석합니다.",
+    order: 45,
+  },
+  {
     key: "design-generator",
     label: "디자인 생성기",
     description: "통합 브리프부터 LO-FI 시안과 최종 디자인까지 생성합니다.",
@@ -126,6 +132,13 @@ const PROMPT_TYPE_CATALOG = Object.freeze({
     order: 20,
     label: "컴포넌트 이미지 생성",
     description: "특정 컴포넌트 이미지 필드의 목적에 맞는 이미지를 생성합니다.",
+    executionMode: "선택 실행",
+  },
+  component_visual_analyzer: {
+    group: "component-generation",
+    order: 10,
+    label: "컴포넌트 이미지 분석",
+    description: "업로드한 디자인 영역을 DOM RenderSpec, 필드와 토큰 바인딩 제안으로 분석합니다.",
     executionMode: "선택 실행",
   },
   integrated_brief: {

@@ -9,6 +9,7 @@ const HARNESS_PROMPT_TYPES = new Set([
   "promo_template_composer",
   "promo_page_composer",
   "promo_composition_editor",
+  "component_visual_analyzer",
 ]);
 
 function instructionList(value) {

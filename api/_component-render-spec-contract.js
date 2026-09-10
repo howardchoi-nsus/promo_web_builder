@@ -318,6 +318,7 @@ function validateRenderSpec(spec, context = {}) {
       }
     } else if (node.fieldKey != null) addError("FIELD_KEY_NOT_ALLOWED", `${path}.fieldKey`, "Only field nodes may reference fieldKey.");
 
+    if (tag === "img" && Array.isArray(node.children) && node.children.length) addError("VOID_ELEMENT_CHILDREN", `${path}.children`, "img nodes cannot contain child nodes.");
     if (node.children != null && !Array.isArray(node.children)) addError("INVALID_CHILDREN", `${path}.children`, "children must be an array.");
     else (node.children || []).forEach((child, index) => validateNode(
       child,

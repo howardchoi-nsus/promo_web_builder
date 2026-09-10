@@ -66,6 +66,15 @@ function dependencyManifest(snapshot, { documentId = "", revision = 0 } = {}) {
   const componentVersionIds = [...new Set(sections.flatMap((section) => (
     (Array.isArray(section.items) ? section.items : []).map((item) => item.componentVersionId).filter(Boolean)
   )))].sort();
+  const componentRenderSpecs = sections.flatMap((section) => (
+    (Array.isArray(section.items) ? section.items : [])
+      .filter((item) => item?.renderSpec && Number(item.renderContractVersion || item.renderSpec.contractVersion) > 0)
+      .map((item) => ({
+        componentVersionId: item.componentVersionId || "",
+        contractVersion: Number(item.renderContractVersion || item.renderSpec.contractVersion),
+        hash: String(item.renderSpecHash || item.renderValidation?.hash || "").replace(/^(?!sha256:)(?=.)/, "sha256:"),
+      }))
+  )).sort((left, right) => left.componentVersionId.localeCompare(right.componentVersionId));
   const assetItems = Object.values(exported.assets.items).map((item) => ({
     assetKey: item.assetKey || item.key || "",
     url: item.url || item.publicUrl || "",
@@ -90,6 +99,7 @@ function dependencyManifest(snapshot, { documentId = "", revision = 0 } = {}) {
       || exported.content.formTemplate.designTokenSetVersionId || "",
     designTokenKeys: Object.keys(tokenValues).sort(),
     componentVersionIds,
+    componentRenderSpecs,
     resources: exported.content.resourceReferences.map((reference) => ({
       resourceVersionId: reference.resourceVersionId || reference.versionId || "",
       resourceKey: reference.resourceKey || "",

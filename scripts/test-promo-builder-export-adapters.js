@@ -36,7 +36,13 @@ const snapshot = {
     sectionInputs: { hero: { title: "</script><img src=x onerror=alert(1)>" } },
     sectionSnapshot: [{
       sectionKey: "hero",
-      items: [{ itemKey: "title", componentVersionId: "component-title-v2" }],
+      items: [{
+        itemKey: "title",
+        componentVersionId: "component-title-v2",
+        renderContractVersion: 1,
+        renderSpecHash: "sha256:abc123",
+        renderSpec: { contractVersion: 1, root: { nodeType: "element", tag: "article" } },
+      }],
     }],
     resourceReferences: [{ resourceKey: "terms", resourceVersionId: "resource-v3", contentHash: "abc" }],
   },
@@ -69,6 +75,11 @@ assert.equal(Object.hasOwn(publicExportSnapshot(legacySnapshot).content, "runtim
 const manifest = dependencyManifest(snapshot, { documentId: "doc-1", revision: 7 });
 assert.equal(manifest.contractVersion, 3);
 assert.deepEqual(manifest.componentVersionIds, ["component-title-v2"]);
+assert.deepEqual(manifest.componentRenderSpecs, [{
+  componentVersionId: "component-title-v2",
+  contractVersion: 1,
+  hash: "sha256:abc123",
+}]);
 assert.deepEqual(manifest.designTokenKeys, ["--promo-accent"]);
 assert.equal(manifest.resources[0].resourceVersionId, "resource-v3");
 assert.match(manifest.snapshotHash, /^[a-f0-9]{64}$/);

@@ -98,6 +98,7 @@ assert.match(rendererSource, /v-else-if="componentFields\(item\)\.length > 1"/, 
 assert.match(nodeSource, /props\.editable \? \{/);
 assert.match(nodeSource, /"data-render-path"/);
 assert.match(sectionStoreSource, /version\.render_contract_version/);
-assert.match(sectionStoreSource, /renderSpec: renderSpecFromVersionRow\(row\)/);
+assert.match(sectionStoreSource, /const renderSpec = renderSpecFromVersionRow\(row\)/);
+assert.match(sectionStoreSource, /renderSpecHash:/);
 
 console.log("Shared Component RenderSpec renderer contract tests passed");

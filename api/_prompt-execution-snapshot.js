@@ -201,7 +201,8 @@ function validateStageModelConfig(type, prompt) {
     || type === "promo_template_recommender"
     || type === "promo_template_composer"
     || type === "promo_page_composer"
-    || type === "promo_composition_editor") {
+    || type === "promo_composition_editor"
+    || type === "component_visual_analyzer") {
     if (provider !== "openai") fail(`${type} currently supports the openai provider only`);
     if (responseFormat !== "json_object") fail(`${type} responseFormat must be json_object`);
     return true;

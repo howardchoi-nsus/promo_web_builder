@@ -252,6 +252,7 @@ function validateControlPlaneConfig(type, promptConfig = {}) {
     "section_layout_planner", "multi_component_layout_planner", "section_composition_planner",
     "promo_overview_parser", "promo_template_recommender", "promo_template_composer",
     "promo_page_composer", "promo_composition_editor", "section_background_image", "component_image",
+    "component_visual_analyzer",
   ].includes(type);
   if (controlled && version < 2) {
     const error = new Error(`${type} requires an activated Execution Snapshot V2 or newer setting`);
@@ -277,7 +278,8 @@ function validateControlPlaneConfig(type, promptConfig = {}) {
   }
   const rawRuntime = source.runtimeConfig;
   const isImage = type === "section_background_image" || type === "component_image";
-  const timeoutMaximum = isImage ? RUNTIME_LIMITS.imageTimeoutMs : RUNTIME_LIMITS.plannerTimeoutMs;
+  const isVisionAnalysis = type === "component_visual_analyzer";
+  const timeoutMaximum = isImage || isVisionAnalysis ? RUNTIME_LIMITS.imageTimeoutMs : RUNTIME_LIMITS.plannerTimeoutMs;
   const timeoutMs = Number(rawRuntime.timeoutMs);
   if (!Number.isInteger(timeoutMs) || timeoutMs < 1000 || timeoutMs > timeoutMaximum) {
     const error = new Error(`${type} runtimeConfig.timeoutMs must be an integer between 1000 and ${timeoutMaximum}`);

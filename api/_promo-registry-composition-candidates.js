@@ -406,6 +406,8 @@ async function fetchRegistryCompositionCandidates(sql, {
         styleSlots: component.styleSlots || [],
         renderSpec: component.renderSpec || null,
         renderValidation: component.renderValidation || null,
+        renderContractVersion: component.renderContractVersion || null,
+        renderSpecHash: component.renderSpecHash || null,
         fields: component.fields || [],
       })),
     });

@@ -95,6 +95,11 @@ const PROMPT_TYPES = {
     requiredVariables: ["sectionName", "componentName", "fieldName", "contentJson"],
     optionalVariables: ["adminGuidance"],
   },
+  component_visual_analyzer: {
+    name: "Component Visual Analyzer",
+    requiredVariables: ["componentIntent", "allowedSectionRolesJson", "tokenCatalogJson", "outputContractJson"],
+    optionalVariables: ["sourceWidth", "sourceHeight", "cropSpecJson"],
+  },
   admin_prompt_translation: {
     name: "Admin Prompt Translation",
     requiredVariables: ["sourcePrompt"],
@@ -122,6 +127,7 @@ const CONTROLLED_PROMPT_TYPES = new Set([
   "promo_composition_editor",
   "section_background_image",
   "component_image",
+  "component_visual_analyzer",
 ]);
 
 const DEFAULT_IMAGE_HARNESS_CONFIG = Object.freeze({

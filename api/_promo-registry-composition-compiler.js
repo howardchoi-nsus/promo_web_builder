@@ -277,6 +277,8 @@ async function compileRegistryComposition({
             styleSlots: clone(component.styleSlots || []),
             renderSpec: clone(component.renderSpec || null),
             renderValidation: clone(component.renderValidation || null),
+            renderContractVersion: component.renderContractVersion || null,
+            renderSpecHash: component.renderSpecHash || null,
             instanceConfig: clone(component.instanceConfig || {}),
             defaultValue: clone(component.defaultValue),
             isRequired: Boolean(component.isRequired && componentIndex === 0),

@@ -168,6 +168,8 @@ export function createComponentInstanceFromDefinition(component) {
     styleSlots: clone(version.styleSlots || []),
     renderSpec: clone(version.renderSpec || null),
     renderValidation: clone(version.renderValidation || null),
+    renderContractVersion: Number(version.renderSpec?.contractVersion || 0) || null,
+    renderSpecHash: version.renderValidation?.hash ? `sha256:${version.renderValidation.hash}` : null,
     instanceConfig: {},
     isLocked: false,
     lockedValue: null,

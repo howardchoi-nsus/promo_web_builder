@@ -251,6 +251,7 @@ function toSectionItem(row) {
   const imagePolicy = row.image_policy && typeof row.image_policy === "object" ? row.image_policy : {};
   const ctaPolicy = row.cta_policy && typeof row.cta_policy === "object" ? row.cta_policy : {};
   const instanceConfig = row.instance_config && typeof row.instance_config === "object" ? row.instance_config : {};
+  const renderSpec = renderSpecFromVersionRow(row);
   return {
     id: row.id,
     sectionId: row.section_id,
@@ -290,8 +291,10 @@ function toSectionItem(row) {
     defaultValue: row.default_value ?? null,
     capabilities: row.capabilities || {},
     styleSlots: row.style_slots || [],
-    renderSpec: renderSpecFromVersionRow(row),
+    renderSpec,
     renderValidation: row.render_validation || null,
+    renderContractVersion: Number(renderSpec?.contractVersion || 0) || null,
+    renderSpecHash: row.render_validation?.hash ? `sha256:${row.render_validation.hash}` : null,
     instanceConfig,
     isLocked: Boolean(row.is_locked),
     lockedValue: row.locked_value ?? null,
