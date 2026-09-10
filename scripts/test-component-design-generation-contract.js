@@ -51,9 +51,16 @@ const fs = require("node:fs");
 const promptStore = fs.readFileSync("api/_prompt-template-store.js", "utf8");
 const promptUi = fs.readFileSync("prototype/index.html", "utf8");
 const workspace = fs.readFileSync("admin-app/src/components/ComponentGenerationWorkspace.vue", "utf8");
+const analyzerPromptMigration = fs.readFileSync("db/migrations/067_component_visual_analyzer_prompt_draft.sql", "utf8");
 assert.match(promptStore, /component_visual_analyzer/);
 assert.match(promptUi, /컴포넌트 이미지 분석/);
 assert.match(workspace, /원본 업로드 없이 다시 분석/);
 assert.match(workspace, /컴포넌트 Draft 생성 · CDR-10/);
+assert.match(analyzerPromptMigration, /where not exists[\s\S]*type = 'component_visual_analyzer'/);
+assert.match(analyzerPromptMigration, /'draft'/);
+assert.match(analyzerPromptMigration, /'json_object'/);
+for (const variable of ["componentIntent", "allowedSectionRolesJson", "tokenCatalogJson", "outputContractJson"]) {
+  assert.match(analyzerPromptMigration, new RegExp(`\\{\\{${variable}\\}\\}`));
+}
 
 console.log("component design generation contract tests passed");
