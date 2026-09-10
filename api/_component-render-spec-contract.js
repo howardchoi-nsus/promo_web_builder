@@ -114,6 +114,8 @@ function normalizeRenderSpec(spec) {
   const normalized = {
     contractVersion: Number(spec.contractVersion),
     root: normalizeNode(spec.root),
+    responsive: {},
+    accessibility: {},
   };
   if (spec.responsive != null) {
     normalized.responsive = Object.keys(isPlainObject(spec.responsive) ? spec.responsive : {}).sort().reduce((result, breakpoint) => {

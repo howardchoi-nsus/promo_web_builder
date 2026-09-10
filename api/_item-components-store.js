@@ -1,6 +1,7 @@
 const { getDatabaseUrl } = require("./_db");
 const { neon } = require("@neondatabase/serverless");
 const { normalizeStyleSlot } = require("./_promo-style-slot-contract");
+const { assertValidRenderSpec } = require("./_component-render-spec-contract");
 
 const FIELD_KINDS = ["text", "image", "cta"];
 const TEXT_TYPES = ["title", "remark", "multi"];
@@ -192,6 +193,59 @@ function validateDefinition(body) {
   return { ...fields[0], fields };
 }
 
+function renderSpecFromVersionRow(row, prefix = "") {
+  const contractVersion = row?.[`${prefix}render_contract_version`];
+  if (contractVersion == null) return null;
+  return {
+    contractVersion: Number(contractVersion),
+    root: row[`${prefix}render_tree`] || {},
+    responsive: row[`${prefix}render_responsive`] || {},
+    accessibility: row[`${prefix}render_accessibility`] || {},
+  };
+}
+
+function prepareRenderSpecPersistence(renderSpec, { fields, tokenCatalog } = {}) {
+  if (renderSpec == null) {
+    return {
+      contractVersion: null,
+      tree: null,
+      responsive: null,
+      accessibility: null,
+      validation: null,
+    };
+  }
+  const result = assertValidRenderSpec(renderSpec, { fields, tokenCatalog });
+  return {
+    contractVersion: result.normalizedSpec.contractVersion,
+    tree: result.normalizedSpec.root,
+    responsive: result.normalizedSpec.responsive || {},
+    accessibility: result.normalizedSpec.accessibility || {},
+    validation: {
+      ok: true,
+      contractVersion: result.normalizedSpec.contractVersion,
+      hash: result.hash,
+      metrics: result.metrics,
+      warnings: result.warnings,
+    },
+  };
+}
+
+async function fetchRenderTokenCatalog(sql) {
+  return sql`
+    select token_key, value_type, semantic_role, css_property, css_properties
+    from promo_design_token_definitions
+    order by token_key
+  `;
+}
+
+function attachRenderSpec(target, row, prefix = "") {
+  const renderSpec = renderSpecFromVersionRow(row, prefix);
+  if (!renderSpec) return target;
+  target.renderSpec = renderSpec;
+  target.renderValidation = row?.[`${prefix}render_validation`] || null;
+  return target;
+}
+
 function toComponentField(row) {
   return {
     id: row.id,
@@ -255,7 +309,7 @@ async function attachComponentFields(sql, components) {
   return components;
 }
 
-async function replaceVersionFields(sql, versionId, fields) {
+async function validateVersionFieldKeys(sql, versionId, fields) {
   const existingRows = await sql`
     select field_key from wizard_item_component_version_fields
     where component_version_id = ${versionId}::uuid
@@ -267,7 +321,10 @@ async function replaceVersionFields(sql, versionId, fields) {
     error.statusCode = 409;
     throw error;
   }
-  await sql`
+}
+
+function buildReplaceVersionFieldsQuery(sql, versionId, fields) {
+  return sql`
     with removed as (
       delete from wizard_item_component_version_fields
       where component_version_id = ${versionId}::uuid
@@ -296,8 +353,13 @@ async function replaceVersionFields(sql, versionId, fields) {
   `;
 }
 
+async function replaceVersionFields(sql, versionId, fields) {
+  await validateVersionFieldKeys(sql, versionId, fields);
+  await buildReplaceVersionFieldsQuery(sql, versionId, fields);
+}
+
 function toComponent(row) {
-  const activeVersion = row.active_version_id ? {
+  const activeVersion = row.active_version_id ? attachRenderSpec({
     id: row.active_version_id,
     version: Number(row.active_version),
     status: row.active_version_status,
@@ -312,8 +374,8 @@ function toComponent(row) {
     placementPolicy: row.active_placement_policy || {},
     changeNote: row.active_change_note || "",
     fields: [],
-  } : null;
-  return {
+  }, row, "active_") : null;
+  return attachRenderSpec({
     id: row.id,
     componentKey: row.component_key,
     systemSeedCode: row.system_seed_code || null,
@@ -338,7 +400,7 @@ function toComponent(row) {
     activeVersion,
     createdAt: row.created_at || null,
     updatedAt: row.updated_at || null,
-  };
+  }, row);
 }
 
 async function fetchComponents(sql, { includeArchived = false } = {}) {
@@ -349,6 +411,8 @@ async function fetchComponents(sql, { includeArchived = false } = {}) {
       version.field_kind, version.text_type, version.editor_schema, version.default_value,
       version.capabilities, version.image_policy, version.cta_policy, version.style_slots,
       version.placement_policy, version.change_note,
+      version.render_contract_version, version.render_tree, version.render_responsive,
+      version.render_accessibility, version.render_validation,
       active_version.id::text as active_version_id, active_version.version as active_version,
       active_version.status as active_version_status, active_version.field_kind as active_field_kind,
       active_version.text_type as active_text_type, active_version.editor_schema as active_editor_schema,
@@ -356,6 +420,11 @@ async function fetchComponents(sql, { includeArchived = false } = {}) {
       active_version.image_policy as active_image_policy, active_version.cta_policy as active_cta_policy,
       active_version.style_slots as active_style_slots, active_version.placement_policy as active_placement_policy,
       active_version.change_note as active_change_note,
+      active_version.render_contract_version as active_render_contract_version,
+      active_version.render_tree as active_render_tree,
+      active_version.render_responsive as active_render_responsive,
+      active_version.render_accessibility as active_render_accessibility,
+      active_version.render_validation as active_render_validation,
       component.created_at, greatest(component.updated_at, version.updated_at) as updated_at
     from wizard_item_components component
     left join lateral (
@@ -379,6 +448,8 @@ async function fetchComponents(sql, { includeArchived = false } = {}) {
       version.field_kind, version.text_type, version.editor_schema, version.default_value,
       version.capabilities, version.image_policy, version.cta_policy, version.style_slots,
       version.placement_policy, version.change_note,
+      version.render_contract_version, version.render_tree, version.render_responsive,
+      version.render_accessibility, version.render_validation,
       active_version.id::text as active_version_id, active_version.version as active_version,
       active_version.status as active_version_status, active_version.field_kind as active_field_kind,
       active_version.text_type as active_text_type, active_version.editor_schema as active_editor_schema,
@@ -386,6 +457,11 @@ async function fetchComponents(sql, { includeArchived = false } = {}) {
       active_version.image_policy as active_image_policy, active_version.cta_policy as active_cta_policy,
       active_version.style_slots as active_style_slots, active_version.placement_policy as active_placement_policy,
       active_version.change_note as active_change_note,
+      active_version.render_contract_version as active_render_contract_version,
+      active_version.render_tree as active_render_tree,
+      active_version.render_responsive as active_render_responsive,
+      active_version.render_accessibility as active_render_accessibility,
+      active_version.render_validation as active_render_validation,
       component.created_at, greatest(component.updated_at, version.updated_at) as updated_at
     from wizard_item_components component
     left join lateral (
@@ -416,6 +492,8 @@ async function fetchComponent(sql, componentId, versionId = "") {
       version.field_kind, version.text_type, version.editor_schema, version.default_value,
       version.capabilities, version.image_policy, version.cta_policy, version.style_slots,
       version.placement_policy, version.change_note,
+      version.render_contract_version, version.render_tree, version.render_responsive,
+      version.render_accessibility, version.render_validation,
       component.created_at, greatest(component.updated_at, version.updated_at) as updated_at
     from wizard_item_components component
     left join wizard_item_component_versions version on version.id = ${versionId}::uuid
@@ -428,6 +506,8 @@ async function fetchComponent(sql, componentId, versionId = "") {
       version.field_kind, version.text_type, version.editor_schema, version.default_value,
       version.capabilities, version.image_policy, version.cta_policy, version.style_slots,
       version.placement_policy, version.change_note,
+      version.render_contract_version, version.render_tree, version.render_responsive,
+      version.render_accessibility, version.render_validation,
       component.created_at, greatest(component.updated_at, version.updated_at) as updated_at
     from wizard_item_components component
     left join lateral (
@@ -446,12 +526,13 @@ async function fetchComponentVersions(sql, componentId) {
   const rows = await sql`
     select id::text, component_id::text, version, status, field_kind, text_type,
       editor_schema, default_value, capabilities, image_policy, cta_policy, style_slots, placement_policy,
+      render_contract_version, render_tree, render_responsive, render_accessibility, render_validation,
       change_note, created_at, updated_at
     from wizard_item_component_versions
     where component_id = ${componentId}::uuid
     order by version desc
   `;
-  const versions = rows.map((row) => ({
+  const versions = rows.map((row) => attachRenderSpec({
     id: row.id, componentId: row.component_id, version: Number(row.version), status: row.status,
     fieldKind: row.field_kind, textType: row.text_type || null, editorSchema: row.editor_schema || {},
     defaultValue: row.default_value ?? null, capabilities: row.capabilities || {},
@@ -459,7 +540,7 @@ async function fetchComponentVersions(sql, componentId) {
     placementPolicy: row.placement_policy || {},
     changeNote: row.change_note || "", createdAt: row.created_at, updatedAt: row.updated_at,
     fields: [],
-  }));
+  }, row));
   const fieldsByVersion = await fetchVersionFields(sql, versions.map((version) => version.id));
   versions.forEach((version) => { version.fields = fieldsByVersion.get(version.id) || []; });
   return versions;
@@ -468,6 +549,8 @@ async function fetchComponentVersions(sql, componentId) {
 module.exports = {
   FIELD_KINDS, TEXT_TYPES, VERSION_STATUSES, LIBRARY_CATEGORIES, COMPONENT_ICON_KEYS, SECTION_ROLES,
   getSql, parseBody, validateDefinition, validateLibraryPresentation, validatePlacementPolicy,
-  toComponent, toComponentField, fetchVersionFields, replaceVersionFields,
+  renderSpecFromVersionRow, prepareRenderSpecPersistence, fetchRenderTokenCatalog,
+  toComponent, toComponentField, fetchVersionFields, validateVersionFieldKeys,
+  buildReplaceVersionFieldsQuery, replaceVersionFields,
   fetchComponents, fetchComponent, fetchComponentVersions,
 };
