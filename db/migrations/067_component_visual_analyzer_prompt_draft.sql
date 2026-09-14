@@ -24,7 +24,7 @@ with inserted as (
     'component_visual_analyzer',
     'Component Visual Analyzer',
     $prompt$
-You are analyzing a cropped reference image to propose one reusable web component.
+You are analyzing a cropped reference image to detect and propose every meaningful reusable web component visible in the selected region.
 
 Component intent:
 {{componentIntent}}
@@ -41,7 +41,7 @@ Required output contract:
 Source dimensions: {{sourceWidth}} x {{sourceHeight}}
 Normalized crop specification: {{cropSpecJson}}
 
-Return exactly one JSON object. Propose semantic, accessible HTML through RenderSpec v1 only. Use only fields declared in the returned fields array. Use only registered design token keys and compatible token properties. Do not emit HTML strings, CSS strings, scripts, event handlers, inline styles, class names, data URLs, or unregistered URLs. Keep the DOM shallow, responsive, and faithful to the selected image region. Include every visually meaningful text, image, and CTA as a field. Set confidence conservatively and list uncertain decisions in reviewNotes.
+Return exactly one JSON object containing a components array with 1 to 12 candidates in visual reading order. Detect reusable units such as headers, navigation groups, hero blocks, cards, banners, CTA groups, notices, terms blocks, and footers. Do not merge separate repeated cards into one giant component, and do not split a cohesive card into separate title, image, and button components. Every candidate must include a unique candidateKey, normalized sourceRegion, its own fields, RenderSpec, confidence, and reviewNotes. Propose semantic, accessible HTML through RenderSpec v1 only. Use only fields declared by that candidate. Use only registered design token keys and compatible token properties. Do not emit HTML strings, CSS strings, scripts, event handlers, inline styles, class names, data URLs, or unregistered URLs. Exclude browser chrome, editor controls, cursors, and purely decorative background regions.
     $prompt$,
     'draft',
     1,
@@ -50,7 +50,7 @@ Return exactly one JSON object. Propose semantic, accessible HTML through Render
     'openai',
     '',
     0.2,
-    6000,
+    12000,
     'json_object',
     jsonb_build_object(
       'executionSnapshotVersion', 2,

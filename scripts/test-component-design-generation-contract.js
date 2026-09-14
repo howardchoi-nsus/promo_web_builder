@@ -6,9 +6,11 @@ const {
 } = require("../api/_component-design-source-contract");
 const {
   normalizeProposal,
+  normalizeProposalList,
   collectTokenBindings,
   componentSimilarity,
 } = require("../api/_component-generation-service");
+const { remapRenderSpecFieldKeys } = require("../api/component-generation-proposals-apply");
 
 const png = Buffer.alloc(33);
 Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]).copy(png, 0);
@@ -46,21 +48,33 @@ assert.deepEqual(proposal.fields.map((field) => field.fieldKey), ["title", "hero
 assert.equal(proposal.confidence, .76);
 assert.deepEqual(collectTokenBindings(proposal.renderSpec.root), { "article.backgroundColor": "--promo-surface" });
 assert.equal(componentSimilarity(proposal, { fields: [{ fieldKind: "text" }, { fieldKind: "image" }, { fieldKind: "cta" }] }), 1);
+assert.equal(remapRenderSpecFieldKeys({ root: { nodeType: "field", tag: "p", fieldKey: "title" } }, new Map([["title", "fld_123"]])).root.fieldKey, "fld_123");
+const proposals = normalizeProposalList({ components: [
+  { ...proposal, candidateKey: "hero", sourceRegion: { x: 0, y: 0, width: 1, height: .4 } },
+  { ...proposal, candidateKey: "card", sourceRegion: { x: .1, y: .45, width: .35, height: .4 } },
+] });
+assert.equal(proposals.length, 2);
+assert.deepEqual(proposals[1].sourceRegion, { x: .1, y: .45, width: .35, height: .4 });
 
 const fs = require("node:fs");
 const promptStore = fs.readFileSync("api/_prompt-template-store.js", "utf8");
 const promptUi = fs.readFileSync("prototype/index.html", "utf8");
 const workspace = fs.readFileSync("admin-app/src/components/ComponentGenerationWorkspace.vue", "utf8");
 const analyzerPromptMigration = fs.readFileSync("db/migrations/067_component_visual_analyzer_prompt_draft.sql", "utf8");
+const multiCandidateMigration = fs.readFileSync("db/migrations/068_component_visual_analyzer_multi_candidate_draft.sql", "utf8");
 assert.match(promptStore, /component_visual_analyzer/);
 assert.match(promptUi, /컴포넌트 이미지 분석/);
 assert.match(workspace, /원본 업로드 없이 다시 분석/);
-assert.match(workspace, /컴포넌트 Draft 생성 · CDR-10/);
+assert.match(workspace, /개 컴포넌트 후보/);
+assert.match(workspace, /선택 후보 컴포넌트 Draft 생성/);
 assert.match(analyzerPromptMigration, /where not exists[\s\S]*type = 'component_visual_analyzer'/);
 assert.match(analyzerPromptMigration, /'draft'/);
 assert.match(analyzerPromptMigration, /'json_object'/);
 for (const variable of ["componentIntent", "allowedSectionRolesJson", "tokenCatalogJson", "outputContractJson"]) {
   assert.match(analyzerPromptMigration, new RegExp(`\\{\\{${variable}\\}\\}`));
 }
+assert.match(multiCandidateMigration, /top-level components array/);
+assert.match(multiCandidateMigration, /normalized sourceRegion/);
+assert.match(multiCandidateMigration, /'draft'/);
 
 console.log("component design generation contract tests passed");

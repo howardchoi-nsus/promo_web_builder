@@ -5,12 +5,16 @@ const { fetchRenderTokenCatalog, fetchComponents } = require("./_item-components
 
 const SECTION_ROLES = new Set(["header", "hero", "benefit", "content", "cta", "notice", "terms", "legal", "footer"]);
 const OUTPUT_CONTRACT = Object.freeze({
-  name: "string",
-  description: "string",
-  confidence: "number 0..1",
-  reviewNotes: ["string"],
-  fields: [{ fieldKey: "snake_case string", name: "string", fieldKind: "text|image|cta", textType: "title|body|null", isRequired: "boolean", defaultValue: "string|null" }],
-  renderSpec: { contractVersion: 1, root: "RenderSpec v1 root node", responsive: "object", accessibility: "object" },
+  components: [{
+    candidateKey: "unique snake_case string",
+    name: "string",
+    description: "string",
+    sourceRegion: { x: "number 0..1", y: "number 0..1", width: "number 0..1", height: "number 0..1" },
+    confidence: "number 0..1",
+    reviewNotes: ["string"],
+    fields: [{ fieldKey: "snake_case string", name: "string", fieldKind: "text|image|cta", textType: "title|body|null", isRequired: "boolean", defaultValue: "string|null" }],
+    renderSpec: { contractVersion: 1, root: "RenderSpec v1 root node", responsive: "object", accessibility: "object" },
+  }],
 });
 
 function normalizeRoles(value) {
@@ -25,11 +29,13 @@ function slugKey(value, fallback) {
 function normalizeProposal(value, intent = "") {
   if (!value || typeof value !== "object") throw generationError("INVALID_ANALYSIS_RESULT", "분석 결과가 JSON 객체가 아닙니다.", 502);
   const used = new Set();
+  const fieldKeyMap = new Map();
   const fields = (Array.isArray(value.fields) ? value.fields : []).slice(0, 20).map((field, index) => {
     const kind = ["text", "image", "cta"].includes(String(field?.fieldKind || "").toLowerCase()) ? String(field.fieldKind).toLowerCase() : "text";
     let fieldKey = slugKey(field?.fieldKey || field?.name, `field_${index + 1}`);
     while (used.has(fieldKey)) fieldKey = `${fieldKey}_${index + 1}`;
     used.add(fieldKey);
+    fieldKeyMap.set(String(field?.fieldKey || field?.name || ""), fieldKey);
     return {
       fieldKey,
       name: String(field?.name || `Field ${index + 1}`).slice(0, 100),
@@ -44,14 +50,47 @@ function normalizeProposal(value, intent = "") {
     };
   });
   if (!fields.length) throw generationError("EMPTY_COMPONENT_FIELDS", "분석 결과에 콘텐츠 필드가 없습니다.", 502);
+  const renderSpec = JSON.parse(JSON.stringify(value.renderSpec || {}));
+  const remapFieldNode = (node) => {
+    if (!node || typeof node !== "object") return;
+    if (node.nodeType === "field" && fieldKeyMap.has(String(node.fieldKey || ""))) node.fieldKey = fieldKeyMap.get(String(node.fieldKey));
+    (node.children || []).forEach(remapFieldNode);
+  };
+  remapFieldNode(renderSpec.root);
   return {
+    candidateKey: slugKey(value.candidateKey || value.name, "component_candidate"),
     name: String(value.name || intent || "Generated component").trim().slice(0, 120),
     description: String(value.description || intent || "").trim().slice(0, 500),
     confidence: Math.max(0, Math.min(1, Number(value.confidence) || 0)),
     reviewNotes: (Array.isArray(value.reviewNotes) ? value.reviewNotes : []).map((item) => String(item || "").slice(0, 300)).filter(Boolean).slice(0, 20),
     fields,
-    renderSpec: value.renderSpec,
+    renderSpec,
+    sourceRegion: normalizeSourceRegion(value.sourceRegion),
   };
+}
+
+function normalizeSourceRegion(value) {
+  const source = value && typeof value === "object" ? value : {};
+  const bounded = (key, fallback) => Math.max(0, Math.min(1, Number.isFinite(Number(source[key])) ? Number(source[key]) : fallback));
+  const region = { x: bounded("x", 0), y: bounded("y", 0), width: bounded("width", 1), height: bounded("height", 1) };
+  region.x = Math.min(.99, region.x);
+  region.y = Math.min(.99, region.y);
+  region.width = Math.max(.01, Math.min(region.width, 1 - region.x));
+  region.height = Math.max(.01, Math.min(region.height, 1 - region.y));
+  return Object.fromEntries(Object.entries(region).map(([key, number]) => [key, Number(number.toFixed(6))]));
+}
+
+function normalizeProposalList(value, intent = "") {
+  const candidates = Array.isArray(value?.components) ? value.components : [value];
+  if (!candidates.length) throw generationError("EMPTY_COMPONENT_CANDIDATES", "분석 결과에서 컴포넌트 후보를 찾지 못했습니다.", 422);
+  const keys = new Set();
+  return candidates.slice(0, 12).map((candidate, index) => {
+    const proposal = normalizeProposal(candidate, intent);
+    let key = proposal.candidateKey || `component_${index + 1}`;
+    while (keys.has(key)) key = `${key}_${index + 1}`;
+    keys.add(key);
+    return { ...proposal, candidateKey: key };
+  });
 }
 
 function collectTokenBindings(node, output = {}) {
@@ -170,22 +209,26 @@ async function analyzeRun(sql, runId) {
     const analysis = await requestVisionAnalysisWithRetry(analysisSource, await readSourceImage(run), promptSnapshot);
     await sql`update component_generation_runs set attempt_count = ${analysis.attemptCount}, updated_at = now() where id = ${runId}::uuid`;
     await sql`update component_generation_runs set status = 'validating', updated_at = now() where id = ${runId}::uuid`;
-    const proposal = normalizeProposal(analysis.value, run.component_intent);
-    const validation = validateRenderSpec(proposal.renderSpec, { fields: proposal.fields, tokenCatalog });
-    const similar = await findSimilarComponents(sql, proposal);
-    const reviewNotes = [...proposal.reviewNotes];
-    if (!validation.ok) reviewNotes.push("RenderSpec 검증 오류를 수정해야 합니다.");
-    if (similar[0]?.score >= 0.75) reviewNotes.push("기존 컴포넌트와 유사합니다. 새 컴포넌트 또는 새 버전 생성을 선택해 주세요.");
-    if (proposal.confidence < 0.8) reviewNotes.push("분석 신뢰도가 낮아 관리자 검토가 필요합니다.");
-    const tokenBindings = collectTokenBindings(proposal.renderSpec?.root);
-    const definition = { name: proposal.name, description: proposal.description, fields: proposal.fields, allowedSectionRoles: run.allowed_section_roles, provider: analysis.provider, usage: analysis.usage, reviewRequired: !validation.ok || proposal.confidence < 0.8 || (similar[0]?.score || 0) >= 0.75, creationMode: similar[0]?.score >= 0.75 ? "new-version" : "new-component", targetComponentId: similar[0]?.score >= 0.75 ? similar[0].componentId : null };
-    const inserted = await sql`
-      insert into component_generation_proposals (run_id, component_definition, render_spec, responsive_spec, token_bindings, accessibility, similar_components, confidence, review_notes, validation_result)
-      values (${runId}::uuid, ${JSON.stringify(definition)}::jsonb, ${JSON.stringify(validation.normalizedSpec || proposal.renderSpec || {})}::jsonb, ${JSON.stringify(proposal.renderSpec?.responsive || {})}::jsonb, ${JSON.stringify(tokenBindings)}::jsonb, ${JSON.stringify(proposal.renderSpec?.accessibility || {})}::jsonb, ${JSON.stringify(similar)}::jsonb, ${proposal.confidence}, ${JSON.stringify(reviewNotes)}::jsonb, ${JSON.stringify(validation)}::jsonb)
-      returning id::text
-    `;
+    const proposals = normalizeProposalList(analysis.value, run.component_intent);
+    const insertedIds = [];
+    for (const [index, proposal] of proposals.entries()) {
+      const validation = validateRenderSpec(proposal.renderSpec, { fields: proposal.fields, tokenCatalog });
+      const similar = await findSimilarComponents(sql, proposal);
+      const reviewNotes = [...proposal.reviewNotes];
+      if (!validation.ok) reviewNotes.push("RenderSpec 검증 오류를 수정해야 합니다.");
+      if (similar[0]?.score >= 0.75) reviewNotes.push("기존 컴포넌트와 유사합니다. 새 컴포넌트 또는 새 버전 생성을 선택해 주세요.");
+      if (proposal.confidence < 0.8) reviewNotes.push("분석 신뢰도가 낮아 관리자 검토가 필요합니다.");
+      const tokenBindings = collectTokenBindings(proposal.renderSpec?.root);
+      const definition = { candidateKey: proposal.candidateKey, name: proposal.name, description: proposal.description, sourceRegion: proposal.sourceRegion, selected: true, fields: proposal.fields, allowedSectionRoles: run.allowed_section_roles, provider: analysis.provider, usage: index === 0 ? analysis.usage : {}, reviewRequired: !validation.ok || proposal.confidence < 0.8 || (similar[0]?.score || 0) >= 0.75, creationMode: similar[0]?.score >= 0.75 ? "new-version" : "new-component", targetComponentId: similar[0]?.score >= 0.75 ? similar[0].componentId : null };
+      const inserted = await sql`
+        insert into component_generation_proposals (run_id, proposal_version, component_definition, render_spec, responsive_spec, token_bindings, accessibility, similar_components, confidence, review_notes, validation_result)
+        values (${runId}::uuid, ${index + 1}, ${JSON.stringify(definition)}::jsonb, ${JSON.stringify(validation.normalizedSpec || proposal.renderSpec || {})}::jsonb, ${JSON.stringify(proposal.renderSpec?.responsive || {})}::jsonb, ${JSON.stringify(tokenBindings)}::jsonb, ${JSON.stringify(proposal.renderSpec?.accessibility || {})}::jsonb, ${JSON.stringify(similar)}::jsonb, ${proposal.confidence}, ${JSON.stringify(reviewNotes)}::jsonb, ${JSON.stringify(validation)}::jsonb)
+        returning id::text
+      `;
+      insertedIds.push(inserted[0].id);
+    }
     await sql`update component_generation_runs set status = 'ready', completed_at = now(), updated_at = now() where id = ${runId}::uuid`;
-    return inserted[0].id;
+    return insertedIds;
   } catch (error) {
     await sql`update component_generation_runs set status = 'failed', error_code = ${String(error.code || "ANALYSIS_FAILED")}, error_message = ${String(error.message || "이미지 분석에 실패했습니다.").slice(0, 1000)}, completed_at = now(), updated_at = now() where id = ${runId}::uuid`;
     throw error;
@@ -204,4 +247,4 @@ function createIdempotencyKey(value) {
   return `${createInputHash(value)}:${randomUUID()}`;
 }
 
-module.exports = { OUTPUT_CONTRACT, normalizeRoles, normalizeProposal, collectTokenBindings, componentSimilarity, findSimilarComponents, analyzeRun, generationError, createInputHash, createIdempotencyKey };
+module.exports = { OUTPUT_CONTRACT, normalizeRoles, normalizeProposal, normalizeProposalList, normalizeSourceRegion, collectTokenBindings, componentSimilarity, findSimilarComponents, analyzeRun, generationError, createInputHash, createIdempotencyKey };

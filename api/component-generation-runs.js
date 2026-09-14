@@ -41,16 +41,29 @@ async function fetchRun(sql, id) {
     select r.id::text, r.source_id::text, r.status, r.component_intent, r.allowed_section_roles,
       r.target_design_token_set_version_id::text, r.prompt_template_id::text, r.prompt_snapshot, r.model_snapshot,
       r.attempt_count, r.error_code, r.error_message, r.created_at, r.updated_at, r.completed_at,
-      p.id::text as proposal_id, p.component_definition, p.render_spec, p.responsive_spec, p.token_bindings,
-      p.accessibility, p.similar_components, p.confidence, p.review_notes, p.validation_result,
       s.width as source_width, s.height as source_height, s.crop_spec, s.mime_type
     from component_generation_runs r
     join component_design_sources s on s.id = r.source_id
-    left join lateral (select * from component_generation_proposals where run_id = r.id order by proposal_version desc limit 1) p on true
     where r.id = ${id}::uuid limit 1
   `;
   const row = rows[0];
   if (!row) return null;
+  const proposalRows = await sql`
+    select id::text, proposal_version, component_definition, render_spec, responsive_spec, token_bindings,
+      accessibility, similar_components, confidence, review_notes, validation_result,
+      applied_component_id::text, applied_version_id::text, applied_at
+    from component_generation_proposals
+    where run_id = ${id}::uuid
+    order by proposal_version asc
+  `;
+  const proposals = proposalRows.map((proposal) => ({
+    id: proposal.id, candidateIndex: Number(proposal.proposal_version), componentDefinition: proposal.component_definition || {},
+    renderSpec: proposal.render_spec || {}, responsiveSpec: proposal.responsive_spec || {}, tokenBindings: proposal.token_bindings || {},
+    accessibility: proposal.accessibility || {}, similarComponents: proposal.similar_components || [],
+    confidence: proposal.confidence == null ? null : Number(proposal.confidence), reviewNotes: proposal.review_notes || [],
+    validationResult: proposal.validation_result || {}, appliedComponentId: proposal.applied_component_id,
+    appliedVersionId: proposal.applied_version_id, appliedAt: proposal.applied_at,
+  }));
   return {
     id: row.id, sourceId: row.source_id, status: row.status, componentIntent: row.component_intent,
     allowedSectionRoles: row.allowed_section_roles || [], targetDesignTokenSetVersionId: row.target_design_token_set_version_id,
@@ -58,7 +71,8 @@ async function fetchRun(sql, id) {
     attemptCount: Number(row.attempt_count || 0), errorCode: row.error_code, errorMessage: row.error_message,
     createdAt: row.created_at, updatedAt: row.updated_at, completedAt: row.completed_at,
     source: { width: Number(row.source_width), height: Number(row.source_height), cropSpec: row.crop_spec || {}, mimeType: row.mime_type, imageUrl: `/api/component-design-source-image?id=${encodeURIComponent(row.source_id)}` },
-    proposal: row.proposal_id ? { id: row.proposal_id, componentDefinition: row.component_definition || {}, renderSpec: row.render_spec || {}, responsiveSpec: row.responsive_spec || {}, tokenBindings: row.token_bindings || {}, accessibility: row.accessibility || {}, similarComponents: row.similar_components || [], confidence: row.confidence == null ? null : Number(row.confidence), reviewNotes: row.review_notes || [], validationResult: row.validation_result || {} } : null,
+    proposals,
+    proposal: proposals[0] || null,
   };
 }
 

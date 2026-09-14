@@ -26,7 +26,7 @@ module.exports = async function handler(req, res) {
     const similar = await findSimilarComponents(sql, proposal);
     const requestedMode = body.componentDefinition?.creationMode === "new-version" ? "new-version" : "new-component";
     const requestedTarget = requestedMode === "new-version" ? String(body.componentDefinition?.targetComponentId || "").trim() || null : null;
-    const definition = { ...current[0].component_definition, name: proposal.name, description: proposal.description, fields: proposal.fields, reviewRequired: !validation.ok || proposal.confidence < 0.8 || (similar[0]?.score || 0) >= 0.75, creationMode: requestedMode, targetComponentId: requestedTarget };
+    const definition = { ...current[0].component_definition, name: proposal.name, description: proposal.description, fields: proposal.fields, selected: body.componentDefinition?.selected !== false, reviewRequired: !validation.ok || proposal.confidence < 0.8 || (similar[0]?.score || 0) >= 0.75, creationMode: requestedMode, targetComponentId: requestedTarget };
     const rows = await sql`
       update component_generation_proposals set component_definition = ${JSON.stringify(definition)}::jsonb,
         render_spec = ${JSON.stringify(validation.normalizedSpec || proposal.renderSpec)}::jsonb,
