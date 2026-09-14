@@ -93,6 +93,103 @@ function normalizeProposalList(value, intent = "") {
   });
 }
 
+function validationPathParts(path) {
+  return String(path || "").replace(/^renderSpec\.?/, "").match(/[^.[\]]+/g) || [];
+}
+
+function valueAtPath(root, path) {
+  return validationPathParts(path).reduce((value, part) => value?.[part], root);
+}
+
+function deleteAtPath(root, path) {
+  const parts = validationPathParts(path);
+  const key = parts.pop();
+  const parent = parts.reduce((value, part) => value?.[part], root);
+  if (parent && key != null) delete parent[key];
+}
+
+function defaultFieldTag(field) {
+  if (field?.fieldKind === "image") return "img";
+  if (field?.fieldKind === "cta") return "a";
+  return field?.textType === "title" ? "h2" : "p";
+}
+
+function fallbackRenderSpec(fields) {
+  return {
+    contractVersion: 1,
+    root: {
+      nodeType: "element",
+      tag: "article",
+      semanticRole: "component",
+      layout: { display: "grid", columns: 1 },
+      children: fields.map((field) => ({ nodeType: "field", tag: defaultFieldTag(field), fieldKey: field.fieldKey })),
+    },
+    responsive: { mobile: { "root.layout.columns": 1 } },
+    accessibility: {},
+  };
+}
+
+function repairGeneratedRenderSpec(renderSpec, { fields = [], tokenCatalog = [] } = {}) {
+  const original = JSON.parse(JSON.stringify(renderSpec || {}));
+  let next = JSON.parse(JSON.stringify(original));
+  let validation = validateRenderSpec(next, { fields, tokenCatalog });
+  if (validation.ok) return { renderSpec: validation.normalizedSpec, validation, repaired: false, fallback: false, repairedErrorCount: 0 };
+
+  const fieldByKey = new Map(fields.map((field) => [field.fieldKey, field]));
+  const removableCodes = new Set([
+    "TOP_LEVEL_PROPERTY_NOT_ALLOWED", "NODE_PROPERTY_NOT_ALLOWED", "UNSAFE_ATTRIBUTE", "ATTRIBUTE_NOT_ALLOWED",
+    "INVALID_ATTRIBUTE_VALUE", "UNSAFE_URL", "INVALID_LINK_TARGET", "LAYOUT_PROPERTY_NOT_ALLOWED",
+    "INVALID_LAYOUT_VALUE", "INVALID_TOKEN_KEY", "UNKNOWN_TOKEN", "TOKEN_TYPE_MISMATCH",
+    "TOKEN_PROPERTY_NOT_ALLOWED", "INVALID_RESPONSIVE_PATH", "BREAKPOINT_NOT_ALLOWED",
+  ]);
+  const initialErrorCount = validation.errors.length;
+
+  for (const error of validation.errors) {
+    if (removableCodes.has(error.code)) {
+      deleteAtPath(next, error.path);
+      continue;
+    }
+    if (error.code === "UNSUPPORTED_CONTRACT_VERSION") next.contractVersion = 1;
+    if (["TAG_NOT_ALLOWED", "FIELD_TAG_MISMATCH"].includes(error.code)) {
+      const nodePath = error.path.replace(/\.tag$/, "");
+      const node = valueAtPath(next, nodePath);
+      if (node) node.tag = node.nodeType === "field" ? defaultFieldTag(fieldByKey.get(node.fieldKey)) : "div";
+    }
+    if (error.code === "NODE_TYPE_NOT_ALLOWED") {
+      const node = valueAtPath(next, error.path.replace(/\.nodeType$/, ""));
+      if (node) node.nodeType = node.fieldKey ? "field" : "element";
+    }
+    if (error.code === "FIELD_KEY_NOT_ALLOWED") deleteAtPath(next, error.path);
+    if (error.code === "VOID_ELEMENT_CHILDREN") deleteAtPath(next, error.path);
+    if (error.code === "INVALID_CHILDREN") {
+      const node = valueAtPath(next, error.path.replace(/\.children$/, ""));
+      if (node) node.children = [];
+    }
+    if (error.code === "INVALID_ROOT_NODE" && next.root) {
+      next.root.nodeType = "element";
+      delete next.root.fieldKey;
+      if (["img", "a", "button"].includes(next.root.tag)) next.root.tag = "article";
+    }
+    if (error.code === "REQUIRED_FIELD_NOT_RENDERED") {
+      const fieldKey = validationPathParts(error.path).at(-1);
+      const field = fieldByKey.get(fieldKey);
+      if (field && next.root?.nodeType === "element" && next.root.tag !== "img") {
+        next.root.children = Array.isArray(next.root.children) ? next.root.children : [];
+        next.root.children.push({ nodeType: "field", tag: defaultFieldTag(field), fieldKey });
+      }
+    }
+  }
+
+  validation = validateRenderSpec(next, { fields, tokenCatalog });
+  if (validation.ok) {
+    return { renderSpec: validation.normalizedSpec, validation, repaired: true, fallback: false, repairedErrorCount: initialErrorCount };
+  }
+
+  next = fallbackRenderSpec(fields);
+  validation = validateRenderSpec(next, { fields, tokenCatalog });
+  return { renderSpec: validation.normalizedSpec || next, validation, repaired: true, fallback: true, repairedErrorCount: initialErrorCount };
+}
+
 function collectTokenBindings(node, output = {}) {
   for (const [property, tokenKey] of Object.entries(node?.tokenBindings || {})) output[`${node.semanticRole || node.fieldKey || node.tag}.${property}`] = tokenKey;
   (node?.children || []).forEach((child) => collectTokenBindings(child, output));
@@ -212,17 +309,21 @@ async function analyzeRun(sql, runId) {
     const proposals = normalizeProposalList(analysis.value, run.component_intent);
     const insertedIds = [];
     for (const [index, proposal] of proposals.entries()) {
-      const validation = validateRenderSpec(proposal.renderSpec, { fields: proposal.fields, tokenCatalog });
+      const repair = repairGeneratedRenderSpec(proposal.renderSpec, { fields: proposal.fields, tokenCatalog });
+      const validation = repair.validation;
+      const renderSpec = repair.renderSpec;
       const similar = await findSimilarComponents(sql, proposal);
       const reviewNotes = [...proposal.reviewNotes];
+      if (repair.repaired && !repair.fallback) reviewNotes.push(`RenderSpec 검증 오류 ${repair.repairedErrorCount}건을 안전 규칙으로 자동 보정했습니다.`);
+      if (repair.fallback) reviewNotes.push("유효하지 않은 RenderSpec을 필드 기반의 안전한 기본 DOM으로 재구성했습니다.");
       if (!validation.ok) reviewNotes.push("RenderSpec 검증 오류를 수정해야 합니다.");
       if (similar[0]?.score >= 0.75) reviewNotes.push("기존 컴포넌트와 유사합니다. 새 컴포넌트 또는 새 버전 생성을 선택해 주세요.");
       if (proposal.confidence < 0.8) reviewNotes.push("분석 신뢰도가 낮아 관리자 검토가 필요합니다.");
-      const tokenBindings = collectTokenBindings(proposal.renderSpec?.root);
+      const tokenBindings = collectTokenBindings(renderSpec?.root);
       const definition = { candidateKey: proposal.candidateKey, name: proposal.name, description: proposal.description, sourceRegion: proposal.sourceRegion, selected: true, fields: proposal.fields, allowedSectionRoles: run.allowed_section_roles, provider: analysis.provider, usage: index === 0 ? analysis.usage : {}, reviewRequired: !validation.ok || proposal.confidence < 0.8 || (similar[0]?.score || 0) >= 0.75, creationMode: similar[0]?.score >= 0.75 ? "new-version" : "new-component", targetComponentId: similar[0]?.score >= 0.75 ? similar[0].componentId : null };
       const inserted = await sql`
         insert into component_generation_proposals (run_id, proposal_version, component_definition, render_spec, responsive_spec, token_bindings, accessibility, similar_components, confidence, review_notes, validation_result)
-        values (${runId}::uuid, ${index + 1}, ${JSON.stringify(definition)}::jsonb, ${JSON.stringify(validation.normalizedSpec || proposal.renderSpec || {})}::jsonb, ${JSON.stringify(proposal.renderSpec?.responsive || {})}::jsonb, ${JSON.stringify(tokenBindings)}::jsonb, ${JSON.stringify(proposal.renderSpec?.accessibility || {})}::jsonb, ${JSON.stringify(similar)}::jsonb, ${proposal.confidence}, ${JSON.stringify(reviewNotes)}::jsonb, ${JSON.stringify(validation)}::jsonb)
+        values (${runId}::uuid, ${index + 1}, ${JSON.stringify(definition)}::jsonb, ${JSON.stringify(renderSpec || {})}::jsonb, ${JSON.stringify(renderSpec?.responsive || {})}::jsonb, ${JSON.stringify(tokenBindings)}::jsonb, ${JSON.stringify(renderSpec?.accessibility || {})}::jsonb, ${JSON.stringify(similar)}::jsonb, ${proposal.confidence}, ${JSON.stringify(reviewNotes)}::jsonb, ${JSON.stringify(validation)}::jsonb)
         returning id::text
       `;
       insertedIds.push(inserted[0].id);
@@ -247,4 +348,4 @@ function createIdempotencyKey(value) {
   return `${createInputHash(value)}:${randomUUID()}`;
 }
 
-module.exports = { OUTPUT_CONTRACT, normalizeRoles, normalizeProposal, normalizeProposalList, normalizeSourceRegion, collectTokenBindings, componentSimilarity, findSimilarComponents, analyzeRun, generationError, createInputHash, createIdempotencyKey };
+module.exports = { OUTPUT_CONTRACT, normalizeRoles, normalizeProposal, normalizeProposalList, normalizeSourceRegion, repairGeneratedRenderSpec, collectTokenBindings, componentSimilarity, findSimilarComponents, analyzeRun, generationError, createInputHash, createIdempotencyKey };

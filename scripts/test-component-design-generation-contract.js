@@ -7,6 +7,7 @@ const {
 const {
   normalizeProposal,
   normalizeProposalList,
+  repairGeneratedRenderSpec,
   collectTokenBindings,
   componentSimilarity,
 } = require("../api/_component-generation-service");
@@ -55,6 +56,36 @@ const proposals = normalizeProposalList({ components: [
 ] });
 assert.equal(proposals.length, 2);
 assert.deepEqual(proposals[1].sourceRegion, { x: .1, y: .45, width: .35, height: .4 });
+
+const repaired = repairGeneratedRenderSpec({
+  contractVersion: "1",
+  unsupported: true,
+  root: {
+    nodeType: "element",
+    tag: "article",
+    layout: { display: "grid", columns: 1, background: "linear-gradient(red, blue)" },
+    tokenBindings: { backgroundColor: "--unknown-brand-accent" },
+    children: [{ nodeType: "field", tag: "div", fieldKey: "title" }],
+  },
+}, {
+  fields: [{ fieldKey: "title", fieldKind: "text", textType: "title", name: "Title", isRequired: true }],
+  tokenCatalog: [],
+});
+assert.equal(repaired.validation.ok, true);
+assert.equal(repaired.repaired, true);
+assert.equal(repaired.fallback, false);
+assert.equal(repaired.renderSpec.contractVersion, 1);
+assert.equal(repaired.renderSpec.root.children[0].tag, "h2");
+assert.equal(repaired.renderSpec.root.layout.background, undefined);
+assert.deepEqual(repaired.renderSpec.root.tokenBindings, {});
+
+const fallback = repairGeneratedRenderSpec({ root: null }, {
+  fields: [{ fieldKey: "image", fieldKind: "image", name: "Image", isRequired: true }],
+  tokenCatalog: [],
+});
+assert.equal(fallback.validation.ok, true);
+assert.equal(fallback.fallback, true);
+assert.equal(fallback.renderSpec.root.children[0].tag, "img");
 
 const fs = require("node:fs");
 const promptStore = fs.readFileSync("api/_prompt-template-store.js", "utf8");
