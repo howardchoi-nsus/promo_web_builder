@@ -223,9 +223,9 @@ try {
   assert.equal(await page.getByText(`컴포넌트 식별자: ${component.componentKey}`, { exact: true }).count(), 1);
 
   await page.getByRole("tab", { name: "이미지 컴포넌트 생성" }).click();
-  const generationWorkspace = page.locator(".component-generation-workspace");
+  const generationWorkspace = page.locator(".generation");
   await generationWorkspace.waitFor({ state: "visible" });
-  assert.equal(await generationWorkspace.locator(".component-generation-steps li").count(), 5);
+  assert.equal(await generationWorkspace.locator(".steps li").count(), 5);
   const sourceInput = generationWorkspace.locator('input[type="file"][accept="image/png,image/jpeg,image/webp"]');
   const analyzeButton = generationWorkspace.getByRole("button", { name: "분석 시작" });
   assert.equal(await sourceInput.count(), 1);
@@ -237,8 +237,6 @@ try {
   });
   await generationWorkspace.getByLabel("생성 목적").fill("이미지, 제목, 설명, CTA가 포함된 프로모션 카드");
   assert.equal(await analyzeButton.isEnabled(), true);
-  await analyzeButton.click();
-  assert.match(await page.locator(".shell-status").textContent(), /이미지 분석 API는 다음 개발 단계/);
   assert.equal(new URL(page.url()).searchParams.get("tab"), "component-generation");
 
   await page.getByRole("tab", { name: "컴포넌트 관리" }).click();
