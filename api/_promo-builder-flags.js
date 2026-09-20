@@ -8,6 +8,13 @@ const FLAG_NAMES = Object.freeze({
   compositionV3: "AI_COMPOSITION_MODE_V3",
   templateLayoutManagement: "TEMPLATE_LAYOUT_MANAGEMENT_ENABLED",
   export: "PROMO_BUILDER_EXPORT_ENABLED",
+  adminDomConfigWorkbench: "ADMIN_DOM_CONFIG_WORKBENCH_ENABLED",
+  adminLegacyVisualConfigEditor: "ADMIN_LEGACY_VISUAL_CONFIG_EDITOR_ENABLED",
+  nuxtRuntime: "NUXT_RUNTIME_ENABLED",
+  nuxtSsr: "NUXT_SSR_ENABLED",
+  directusConfigManagement: "DIRECTUS_CONFIG_MANAGEMENT_ENABLED",
+  directusIntegration: "DIRECTUS_INTEGRATION_ENABLED",
+  directusConnectionTunnel: "DIRECTUS_CONNECTION_TUNNEL_ENABLED",
 });
 
 // Registry composition is the production path. Keep an explicit false value as
@@ -18,6 +25,13 @@ const FLAG_DEFAULTS = Object.freeze({
   // Keep existing installations operational until Preview/Production explicitly
   // disable authoring. This flag controls management writes, never legacy reads.
   templateLayoutManagement: true,
+  adminDomConfigWorkbench: true,
+  adminLegacyVisualConfigEditor: false,
+  nuxtRuntime: true,
+  nuxtSsr: true,
+  directusConfigManagement: true,
+  directusIntegration: false,
+  directusConnectionTunnel: false,
 });
 
 function enabled(value, fallback = true) {

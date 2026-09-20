@@ -1044,7 +1044,7 @@ const { createApp } = Vue;
 const initialSearchParams = new URLSearchParams(window.location.search);
 const initialView = initialSearchParams.get("view") === "admin" ? "prompts" : "builder";
 const requestedAdminTab = initialSearchParams.get("tab");
-const initialAdminTab = ["webhook", "llm", "component-generation", "components", "section-presets", "promo-form", "design-tokens", "i18n", "audit"].includes(requestedAdminTab)
+const initialAdminTab = ["webhook", "llm", "component-generation", "components", "section-presets", "promo-form", "design-tokens", "i18n", "integrations", "audit"].includes(requestedAdminTab)
   ? requestedAdminTab
   : "promo-form";
 
@@ -1052,7 +1052,16 @@ const adminApp = createApp({
   data() {
     return {
       status: "준비 완료",
-      builderCapabilities: { templateLayoutManagement: true },
+      builderCapabilities: {
+        templateLayoutManagement: true,
+        adminDomConfigWorkbench: true,
+        adminLegacyVisualConfigEditor: false,
+        nuxtRuntime: true,
+        nuxtSsr: true,
+        directusConfigManagement: true,
+        directusIntegration: false,
+        directusConnectionTunnel: false,
+      },
       localeRevision: 0,
       localeUnsubscribe: null,
       currentView: initialView,
@@ -2194,7 +2203,7 @@ const adminApp = createApp({
     },
 
     selectAdminTab(tab) {
-      if (!["webhook", "llm", "component-generation", "components", "section-presets", "promo-form", "design-tokens", "i18n", "audit"].includes(tab)) return;
+      if (!["webhook", "llm", "component-generation", "components", "section-presets", "promo-form", "design-tokens", "i18n", "integrations", "audit"].includes(tab)) return;
       if (tab === "promo-form" && !this.templateLayoutManagementEnabled) {
         this.setStatus("템플릿·페이지 레이아웃 관리는 비활성화되었습니다.");
         return;
@@ -6959,5 +6968,6 @@ adminApp.component("section-layout-preset-manager", window.PromoAdminSectionLayo
 adminApp.component("design-token-manager", window.PromoAdminDesignTokens.component);
 adminApp.component("component-generation-workspace", window.PromoAdminComponentGeneration.component);
 adminApp.component("render-spec-editor", window.PromoAdminComponentGeneration.renderSpecEditor);
+adminApp.component("directus-integration-settings", window.PromoAdminIntegrations.directusSettings);
 const localeReady = window.PromoI18n?.init?.() || Promise.resolve();
 localeReady.finally(() => adminApp.mount("#app"));

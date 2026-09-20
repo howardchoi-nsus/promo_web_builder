@@ -256,18 +256,17 @@ try {
     /v2/,
     "Selecting a Section Preset must open its draft version",
   );
-  const livePreviewButton = page.getByRole("button", { name: "레이아웃 프리셋 편집", exact: true });
+  const livePreviewButton = page.getByRole("button", { name: "DOM 구성 편집", exact: true });
   await livePreviewButton.waitFor({ state: "visible" });
   await livePreviewButton.click();
-  const layoutPreviewDialog = page.locator("dialog.visual-editor-dialog-host[open]");
-  await layoutPreviewDialog.waitFor({ state: "visible" });
-  assert.equal(await page.locator("body").evaluate((body) => body.classList.contains("visual-editor-dialog-open")), true);
-  assert.match(
-    await layoutPreviewDialog.locator("iframe").getAttribute("src"),
-    /mode=section-preset.*embedded=1|embedded=1.*mode=section-preset/,
-  );
-  await layoutPreviewDialog.getByRole("button", { name: "Visual Editor 모달 닫기" }).click();
-  await layoutPreviewDialog.waitFor({ state: "detached" });
+  const layoutWorkbench = page.getByRole("region", { name: "섹션 DOM 구성 Workbench" });
+  await layoutWorkbench.waitFor({ state: "visible" });
+  assert.equal(await layoutWorkbench.getByRole("navigation", { name: "섹션 구성 구조" }).count(), 1);
+  assert.equal(await layoutWorkbench.getByText("Section Live Preview", { exact: true }).count(), 1);
+  await layoutWorkbench.getByRole("button", { name: "mobile", exact: true }).click();
+  assert.equal(await layoutWorkbench.getByRole("button", { name: "mobile", exact: true }).getAttribute("aria-pressed"), "true");
+  await layoutWorkbench.getByRole("button", { name: "닫기", exact: true }).click();
+  await layoutWorkbench.waitFor({ state: "detached" });
   await page.getByRole("button", { name: "저장 JSON", exact: true }).click();
   const jsonDialog = page.locator("dialog.json-snapshot-dialog[open]");
   await jsonDialog.waitFor({ state: "visible" });
@@ -282,13 +281,9 @@ try {
   assert.match(await jsonDialog.getByText(/검증 결과:/).textContent(), /오류|경고|정상/);
   await jsonDialog.getByRole("button", { name: "저장 JSON 모달 닫기" }).click();
   await jsonDialog.waitFor({ state: "detached" });
-  await page.waitForFunction(() => !document.body.classList.contains("visual-editor-dialog-open"));
-  assert.equal(await page.locator("body").evaluate((body) => body.classList.contains("visual-editor-dialog-open")), false);
   await livePreviewButton.click();
-  await page.locator("dialog.visual-editor-dialog-host[open]").waitFor({ state: "visible" });
-  await page.keyboard.press("Escape");
-  await page.locator("dialog.visual-editor-dialog-host[open]").waitFor({ state: "detached" });
-  await page.waitForFunction(() => !document.body.classList.contains("visual-editor-dialog-open"));
+  await layoutWorkbench.waitFor({ state: "visible" });
+  await layoutWorkbench.getByRole("button", { name: "닫기", exact: true }).click();
   await page.getByRole("button", { name: "+ 컴포넌트 추가" }).click();
   const activeComponentOption = page.locator(`select option[value="${activeComponentVersionId}"]`);
   assert.equal(await activeComponentOption.count(), 1);

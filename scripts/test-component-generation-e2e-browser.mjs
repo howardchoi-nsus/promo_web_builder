@@ -233,7 +233,7 @@ try {
   await page.getByRole("heading", { name: "혜택 카드", exact: true }).waitFor();
   await page.getByText("3개 필드", { exact: true }).waitFor();
   await page.getByRole("button", { name: "mobile", exact: true }).click();
-  assert.equal(await page.locator(".rs-viewport button.active").textContent(), "mobile");
+  assert.equal(await page.locator('.live-preview-host button[aria-pressed="true"]').textContent(), "mobile");
 
   const applyButton = page.getByRole("button", { name: "선택 후보 컴포넌트 Draft 생성" });
   assert.equal(await applyButton.isDisabled(), true, "Mobile review must gate Draft creation");

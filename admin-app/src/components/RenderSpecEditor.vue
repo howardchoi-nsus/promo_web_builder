@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from "vue";
 import RenderSpecTree from "../../../visual-editor/src/platform/render-spec/RenderSpecTree.vue";
 import DomStructureTree from "./DomStructureTree.vue";
+import LivePreviewHost from "./LivePreviewHost.vue";
 import RenderSpecNodeInspector from "./RenderSpecNodeInspector.vue";
 
 const props = defineProps({
@@ -36,7 +37,6 @@ const previewValue = computed(() => ({ fields: Object.fromEntries(props.fields.m
   if (field.fieldKind === "cta") return [field.fieldKey, { label: field.defaultValue || field.name || "자세히 보기", link: "#" }];
   return [field.fieldKey, field.defaultValue || (field.textType === "title" ? "프로모션 제목 미리보기" : `${field.name || "텍스트"} 내용 미리보기`)];
 })) }));
-const previewWidth = computed(() => ({ desktop: "100%", tablet: "760px", mobile: "390px" }[viewport.value]));
 
 watch(() => props.modelValue, (value) => { rawText.value = value ? JSON.stringify(value, null, 2) : ""; }, { immediate: true, deep: true });
 
@@ -71,6 +71,7 @@ function moveSelected(direction) {
   selectedPath.value = `${parentPath}.children.${Math.max(0, index + direction)}`;
 }
 function selectField(event) { const found = nodes.value.find((item) => item.node.fieldKey === event.fieldKey); if (found) selectedPath.value = found.path; }
+function selectPreviewNode(event) { if (event.path) selectedPath.value = event.path; else if (event.fieldKey) selectField(event); }
 function setFieldKey(value) { const field = props.fields.find((item) => item.fieldKey === value); mutateSelected((node) => { node.fieldKey = value; node.tag = defaultTag(field); }); }
 function setNested(group, property, value) { mutateSelected((node) => { node[group] ||= {}; if (value === "" || value == null) delete node[group][property]; else node[group][property] = value; }); }
 function setNodeProperty({ property, value }) { mutateSelected((node) => { node[property] = value; }); }
@@ -111,10 +112,9 @@ onMounted(async () => { try { const result = await fetch("/api/design-token-sets
         @set-field-key="setFieldKey"
         @set-nested="handleSetNested"
       />
-      <section class="rs-preview-panel">
-        <div class="rs-viewport"><button v-for="name in ['desktop','tablet','mobile']" :key="name" type="button" :class="{ active: viewport === name }" @click="viewport = name">{{ name }}</button></div>
-        <div class="rs-preview" :style="{ width: previewWidth }"><RenderSpecTree :render-spec="spec" :fields="fields" :value="previewValue" :viewport="viewport" editable @select-field="selectField" /></div>
-      </section>
+      <LivePreviewHost v-model="viewport" mode="component" :selected-node-key="selectedPath" title="Component Live Preview" @select-node="selectPreviewNode">
+        <template #default="{ viewport: activeViewport }"><RenderSpecTree :render-spec="spec" :fields="fields" :value="previewValue" :viewport="activeViewport" editable @select-field="selectField" /></template>
+      </LivePreviewHost>
     </div>
     <div v-if="validation" class="rs-validation" :class="{ ok: validation.ok }"><strong>{{ validation.ok ? '검증 통과' : `오류 ${validation.errors?.length || 0}건` }}</strong><ul v-if="!validation.ok"><li v-for="error in validation.errors" :key="`${error.path}:${error.code}`">{{ error.path }} · {{ error.message }}</li></ul></div>
     <details v-if="spec" class="rs-debug"><summary>고급: Raw JSON</summary><textarea v-model="rawText" rows="14" :disabled="disabled"></textarea><p v-if="rawError">{{ rawError }}</p><button class="tiny-button" type="button" :disabled="disabled" @click="applyRaw">JSON 적용</button></details>
@@ -122,5 +122,5 @@ onMounted(async () => { try { const result = await fetch("/api/design-token-sets
 </template>
 
 <style scoped>
-.rs-editor{display:grid;gap:12px;padding:14px;border:1px solid var(--line);background:var(--surface-2)}.rs-toolbar,.rs-viewport{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.rs-toolbar strong{margin-right:auto}.rs-empty{margin:0;color:var(--sub);font-size:12px}.rs-grid{display:grid;grid-template-columns:190px 230px minmax(0,1fr);gap:10px;min-height:340px}.rs-preview-panel{display:grid;min-width:0;align-content:start;gap:10px;padding:10px;overflow:auto;border:1px solid var(--line);background:var(--panel)}.rs-viewport button{padding:5px 8px;border:1px solid var(--line);background:var(--surface-2)}.rs-viewport button.active{background:var(--accent-soft);color:var(--accent)}.rs-preview{max-width:100%;margin:auto;padding:16px;border:1px dashed var(--line);background:#fff;color:#111;transition:width .2s}.rs-preview :deep(img){max-width:100%;height:auto}.rs-preview :deep(a),.rs-preview :deep(button){display:inline-flex;padding:10px 14px;background:#222;color:#fff}.rs-validation{padding:10px;border:1px solid var(--danger);color:var(--danger);font-size:12px}.rs-validation.ok{border-color:#19965b;color:#137a49}.rs-validation ul{margin:8px 0 0;padding-left:18px}.rs-debug textarea{width:100%;font-family:monospace;font-size:11px}.rs-debug p{color:var(--danger)}@media(max-width:1100px){.rs-grid{grid-template-columns:180px 1fr}.rs-preview-panel{grid-column:1/-1}}@media(max-width:700px){.rs-grid{grid-template-columns:1fr}.rs-preview-panel{grid-column:auto}}
+.rs-editor{display:grid;gap:12px;padding:14px;border:1px solid var(--line);background:var(--surface-2)}.rs-toolbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.rs-toolbar strong{margin-right:auto}.rs-empty{margin:0;color:var(--sub);font-size:12px}.rs-grid{display:grid;grid-template-columns:190px 230px minmax(0,1fr);gap:10px;min-height:340px}.rs-validation{padding:10px;border:1px solid var(--danger);color:var(--danger);font-size:12px}.rs-validation.ok{border-color:#19965b;color:#137a49}.rs-validation ul{margin:8px 0 0;padding-left:18px}.rs-debug textarea{width:100%;font-family:monospace;font-size:11px}.rs-debug p{color:var(--danger)}@media(max-width:1100px){.rs-grid{grid-template-columns:180px 1fr}.rs-grid>:last-child{grid-column:1/-1}}@media(max-width:700px){.rs-grid{grid-template-columns:1fr}.rs-grid>:last-child{grid-column:auto}}
 </style>

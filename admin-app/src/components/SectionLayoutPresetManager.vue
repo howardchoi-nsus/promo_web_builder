@@ -4,14 +4,17 @@ import {
   sectionLayoutPresetService,
 } from "../services/section-layout-preset-service.mjs";
 import SectionLayoutVisualEditorFrame from "./SectionLayoutVisualEditorFrame.vue";
+import SectionLayoutDomWorkbench from "./SectionLayoutDomWorkbench.vue";
 import JsonSnapshotDialog from "./JsonSnapshotDialog.vue";
 
 export default {
   name: "SectionLayoutPresetManager",
-  components: { JsonSnapshotDialog, SectionLayoutVisualEditorFrame },
+  components: { JsonSnapshotDialog, SectionLayoutDomWorkbench, SectionLayoutVisualEditorFrame },
   props: {
     section: { type: Object, required: true },
     items: { type: Array, default: () => [] },
+    domWorkbenchEnabled: { type: Boolean, default: true },
+    legacyVisualEditorEnabled: { type: Boolean, default: false },
   },
   emits: ["section-updated"],
   data() {
@@ -143,7 +146,7 @@ export default {
               .split(",").map((tag) => tag.trim()).filter(Boolean),
             purposeTagsText: undefined,
           },
-          changeNote: "공통 Visual Editor 편집을 위한 레이아웃 프리셋 생성.",
+          changeNote: "DOM 구성 Workbench 편집을 위한 레이아웃 프리셋 생성.",
           layoutSnapshot: createInitialSectionLayout(this.items),
         });
         allowAi = this.newPresetEditor.allowAi;
@@ -258,7 +261,7 @@ export default {
     <div class="subsection-title">
       <div>
         <h3>레이아웃 프리셋</h3>
-        <small>레이아웃 프리셋 편집기에서 Desktop/Mobile 배치를 완성한 뒤 선택한 프리셋에 저장합니다.</small>
+        <small>DOM 구성과 하나의 Live Preview에서 Desktop/Mobile 배치를 확인하고 저장합니다.</small>
       </div>
       <div class="action-row">
         <button class="tiny-button" type="button" :disabled="loading" @click="load">새로고침</button>
@@ -280,7 +283,7 @@ export default {
           <span>{{ layout.layoutKey }} · {{ layout.description || '설명 없음' }}</span>
         </div>
         <div class="action-row align-right">
-          <button class="tiny-button" type="button" aria-haspopup="dialog" @click="selectLayout(layout)">{{ editable ? '레이아웃 프리셋 편집' : '레이아웃 프리셋 보기' }}</button>
+          <button class="tiny-button" type="button" @click="selectLayout(layout)">{{ editable ? 'DOM 구성 편집' : 'DOM 구성 보기' }}</button>
           <button class="tiny-button" type="button" aria-haspopup="dialog" @click="showStoredJson(layout)">저장 JSON</button>
           <button class="tiny-button" type="button" :disabled="!editable || saving || layout.isDefault" @click="setDefault(layout)">기본 지정</button>
           <button class="tiny-button" type="button" :disabled="!editable || saving" @click="toggleAiLayout(layout)">{{ aiAllows(layout) ? 'AI 후보 해제' : 'AI 선택 후보로 지정' }}</button>
@@ -334,16 +337,27 @@ export default {
       <label class="inline-check"><input v-model="newPresetEditor.allowAi" type="checkbox" :disabled="section.aiDesign?.enabled === false" /><span>AI 선택 후보</span></label>
       <div class="action-row">
         <button class="tiny-button" type="button" @click="newPresetEditor = null">취소</button>
-        <button class="tiny-button primary" type="submit" :disabled="saving">{{ saving ? '생성 중…' : '프리셋 만들고 Visual Editor 열기' }}</button>
+        <button class="tiny-button primary" type="submit" :disabled="saving">{{ saving ? '생성 중…' : '프리셋 만들고 DOM 구성 열기' }}</button>
       </div>
     </form>
+    <section-layout-dom-workbench
+      v-if="selectedLayout && domWorkbenchEnabled"
+      :section="section"
+      :layout="selectedLayout"
+      :items="items"
+      @saved="handleVisualEditorSaved"
+      @close="selectedLayoutId = ''"
+    />
     <section-layout-visual-editor-frame
-      v-if="selectedLayout"
+      v-else-if="selectedLayout && legacyVisualEditorEnabled"
       :section="section"
       :layout="selectedLayout"
       @saved="handleVisualEditorSaved"
       @close="selectedLayoutId = ''"
     />
+    <div v-else-if="selectedLayout" class="empty-state compact">
+      관리자 DOM 구성 Workbench가 비활성화되어 있습니다. 기능 설정을 확인해 주세요.
+    </div>
     <json-snapshot-dialog
       v-if="jsonLayout"
       :layout="jsonLayout"

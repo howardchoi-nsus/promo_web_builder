@@ -747,6 +747,15 @@
                 @click="selectAdminTab('design-tokens')"
               >{{ t('admin.designToken.title') }}</button>
               <button
+                v-if="builderCapabilities.directusConfigManagement !== false"
+                class="admin-tab"
+                :class="{ active: adminTab === 'integrations' }"
+                type="button"
+                role="tab"
+                :aria-selected="adminTab === 'integrations'"
+                @click="selectAdminTab('integrations')"
+              >Integration Config</button>
+              <button
                 class="admin-tab"
                 :class="{ active: adminTab === 'audit' }"
                 type="button"
@@ -1246,6 +1255,13 @@
               @status="setStatus"
               @token-sets-changed="loadDesignTokenSets"
             ></design-token-manager>
+          </section>
+
+          <section class="panel stack" v-show="adminTab === 'integrations'">
+            <directus-integration-settings
+              :capabilities="builderCapabilities"
+              @notify="setStatus"
+            ></directus-integration-settings>
           </section>
 
           <section class="panel stack locale-manager" v-show="adminTab === 'i18n'">
@@ -1935,6 +1951,8 @@
                   <section-layout-preset-manager
                     :section="wizardSectionDetail.section"
                     :items="wizardSectionDetail.items"
+                    :dom-workbench-enabled="builderCapabilities.adminDomConfigWorkbench !== false"
+                    :legacy-visual-editor-enabled="builderCapabilities.adminLegacyVisualConfigEditor === true"
                     @section-updated="loadWizardSectionDetail(wizardSectionDetail.section.id)"
                   ></section-layout-preset-manager>
 

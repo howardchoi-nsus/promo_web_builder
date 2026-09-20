@@ -7,9 +7,11 @@
   },
   "scripts": {
     "test": "node scripts/run-tests.js",
-    "build": "pnpm run build:admin && pnpm run build:visual-editor",
+    "build": "pnpm run build:admin && pnpm run build:visual-editor && pnpm run build:nuxt-runtime",
     "build:admin": "vite build --config admin-app/vite.config.js",
     "build:visual-editor": "vite build --config visual-editor/vite.config.js",
+    "build:nuxt-runtime": "nuxt build apps/promo-runtime-nuxt",
+    "dev:nuxt-runtime": "nuxt dev apps/promo-runtime-nuxt",
     "dev:admin": "vite --config admin-app/vite.config.js",
     "dev:visual-editor": "vite --config visual-editor/vite.config.js",
     "check": "node --check prototype/app.js && node --check prototype/generated.js && node --check prototype/promo-wizard.js && node --check prototype/create-promo.js",
@@ -53,6 +55,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.8",
+    "nuxt": "4.5.2",
     "playwright": "^1.61.1",
     "vite": "^8.1.4"
   }
