@@ -42,7 +42,7 @@ async function findPublicationBySlug(sql, { slug, locale, publishedOnly = true }
 
 async function listPublications(sql, ownerSubject) {
   const rows = await sql`
-    select publication.*, version.snapshot_hash
+    select publication.*, version.snapshot_json, version.snapshot_hash
     from promo_builder_publications publication
     join promo_builder_documents document on document.id = publication.document_id
     join promo_builder_document_versions version
@@ -52,6 +52,35 @@ async function listPublications(sql, ownerSubject) {
     order by publication.updated_at desc
   `;
   return rows.map(publicationEnvelope);
+}
+
+async function findOwnedDocumentRevision(sql, { documentId, documentRevision, ownerSubject }) {
+  const rows = await sql`
+    select document.id::text as document_id, version.revision as document_revision,
+      version.snapshot_json, version.snapshot_hash
+    from promo_builder_documents document
+    join promo_builder_document_versions version on version.document_id = document.id
+    where document.id = ${documentId}::uuid
+      and version.revision = ${documentRevision}
+      and document.owner_subject = ${ownerSubject}
+    limit 1
+  `;
+  return rows[0] || null;
+}
+
+async function findOwnedPublicationById(sql, { id, ownerSubject }) {
+  const rows = await sql`
+    select publication.*, version.snapshot_json, version.snapshot_hash
+    from promo_builder_publications publication
+    join promo_builder_documents document on document.id = publication.document_id
+    join promo_builder_document_versions version
+      on version.document_id = publication.document_id
+      and version.revision = publication.document_revision
+    where publication.id = ${id}::uuid
+      and document.owner_subject = ${ownerSubject}
+    limit 1
+  `;
+  return publicationEnvelope(rows[0]);
 }
 
 async function savePublication(sql, input) {
@@ -122,6 +151,8 @@ module.exports = {
   publicationEnvelope,
   findPublicationBySlug,
   listPublications,
+  findOwnedDocumentRevision,
+  findOwnedPublicationById,
   savePublication,
   updatePublicationStatus,
 };

@@ -4,6 +4,19 @@ import { readFile } from "node:fs/promises";
 
 const require = createRequire(import.meta.url);
 const { validateConfig } = require("../api/_directus-connection-config-store.js");
+const connectionHandler = require("../api/directus-connection-test.js");
+const configHandler = require("../api/directus-integration-config.js");
+
+function responseCapture() {
+  return {
+    statusCode: 200,
+    body: null,
+    headers: {},
+    status(code) { this.statusCode = code; return this; },
+    json(body) { this.body = body; return this; },
+    setHeader(name, value) { this.headers[name] = value; },
+  };
+}
 
 const valid = validateConfig({
   baseUrl: "https://cms.example.com",
@@ -29,6 +42,7 @@ assert.ok(unsafeUrl.errors.some((error) => error.code === "INVALID_SECRET_REF"))
 const endpoint = await readFile(new URL("../api/directus-connection-test.js", import.meta.url), "utf8");
 const settings = await readFile(new URL("../admin-app/src/components/DirectusIntegrationSettings.vue", import.meta.url), "utf8");
 const adminPage = await readFile(new URL("../prototype/index.html", import.meta.url), "utf8");
+const migration = await readFile(new URL("../db/migrations/070_directus_connection_tunnel.sql", import.meta.url), "utf8");
 assert.match(endpoint, /server\/health/);
 assert.match(endpoint, /users\/me\?fields=id/);
 assert.match(endpoint, /redirect: "error"/);
@@ -37,5 +51,31 @@ assert.match(settings, /Directus 연결 터널/);
 assert.match(settings, /DIRECTUS_CONNECTION_TUNNEL_ENABLED=true/);
 assert.match(settings, /최근 연결 검사/);
 assert.match(adminPage, /adminTab === 'integrations'/);
+assert.match(migration, /must pass a connection check before activation/);
+
+const previousIntegrationFlag = process.env.DIRECTUS_INTEGRATION_ENABLED;
+const previousTunnelFlag = process.env.DIRECTUS_CONNECTION_TUNNEL_ENABLED;
+const previousConfigFlag = process.env.DIRECTUS_CONFIG_MANAGEMENT_ENABLED;
+try {
+  process.env.DIRECTUS_INTEGRATION_ENABLED = "false";
+  process.env.DIRECTUS_CONNECTION_TUNNEL_ENABLED = "false";
+  const blockedConnection = responseCapture();
+  await connectionHandler({ method: "POST", headers: {}, body: {} }, blockedConnection);
+  assert.equal(blockedConnection.statusCode, 404);
+  assert.equal(blockedConnection.body.code, "BUILDER_FEATURE_DISABLED");
+
+  process.env.DIRECTUS_CONFIG_MANAGEMENT_ENABLED = "false";
+  const blockedConfig = responseCapture();
+  await configHandler({ method: "GET", headers: {} }, blockedConfig);
+  assert.equal(blockedConfig.statusCode, 404);
+  assert.equal(blockedConfig.body.code, "BUILDER_FEATURE_DISABLED");
+} finally {
+  if (previousIntegrationFlag === undefined) delete process.env.DIRECTUS_INTEGRATION_ENABLED;
+  else process.env.DIRECTUS_INTEGRATION_ENABLED = previousIntegrationFlag;
+  if (previousTunnelFlag === undefined) delete process.env.DIRECTUS_CONNECTION_TUNNEL_ENABLED;
+  else process.env.DIRECTUS_CONNECTION_TUNNEL_ENABLED = previousTunnelFlag;
+  if (previousConfigFlag === undefined) delete process.env.DIRECTUS_CONFIG_MANAGEMENT_ENABLED;
+  else process.env.DIRECTUS_CONFIG_MANAGEMENT_ENABLED = previousConfigFlag;
+}
 
 console.log("Directus connection tunnel tests passed.");

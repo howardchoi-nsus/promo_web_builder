@@ -113,6 +113,15 @@ async function activateDraft(sql, { id, ownerSubject }) {
   if (current.status !== "draft" || current.validation?.ok !== true) {
     throw Object.assign(new Error("검증을 통과한 초안만 활성화할 수 있습니다."), { statusCode: 409, code: "DIRECTUS_CONFIG_NOT_VALIDATED" });
   }
+  const checks = await sql`
+    select status from promo_integration_connection_checks
+    where config_id = ${id}::uuid
+    order by checked_at desc
+    limit 1
+  `;
+  if (checks[0]?.status !== "passed") {
+    throw Object.assign(new Error("연결 테스트를 통과한 초안만 활성화할 수 있습니다."), { statusCode: 409, code: "DIRECTUS_CONNECTION_CHECK_REQUIRED" });
+  }
   const rows = await sql`
     select activate_promo_integration_config(${id}::uuid, ${ownerSubject})::text as id
   `;

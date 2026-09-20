@@ -13521,8 +13521,8 @@ var jC = /*#__PURE__*/ Eh(bS, [["render", AC], ["__scopeId", "data-v-f0661921"]]
 		].map((e) => ({
 			environment: e,
 			rows: o.value.filter((t) => t.environment === e)
-		})).filter((e) => e.rows.length));
-		async function h(e, t = {}) {
+		})).filter((e) => e.rows.length)), h = q(() => u.value.find((e) => e.configId === s.value) || null);
+		async function g(e, t = {}) {
 			let n = await fetch(e, {
 				cache: "no-store",
 				...t,
@@ -13537,16 +13537,16 @@ var jC = /*#__PURE__*/ Eh(bS, [["render", AC], ["__scopeId", "data-v-f0661921"]]
 			}
 			return r;
 		}
-		function g(e) {
+		function _(e) {
 			s.value = e.id, Object.assign(d, {
 				environment: e.environment,
 				...e.config
 			}), l.value = null;
 		}
-		async function _() {
+		async function v() {
 			i.value = !0, c.value = "";
 			try {
-				let e = await h("/api/directus-integration-config");
+				let e = await g("/api/directus-integration-config");
 				o.value = e.configs || [], u.value = e.checks || [], s.value &&= o.value.some((e) => e.id === s.value) ? s.value : "";
 			} catch (e) {
 				c.value = e.message;
@@ -13554,10 +13554,10 @@ var jC = /*#__PURE__*/ Eh(bS, [["render", AC], ["__scopeId", "data-v-f0661921"]]
 				i.value = !1;
 			}
 		}
-		async function v() {
+		async function y() {
 			a.value = !0, c.value = "";
 			try {
-				let e = await h("/api/directus-integration-config", {
+				let e = await g("/api/directus-integration-config", {
 					method: "POST",
 					body: JSON.stringify({
 						environment: d.environment,
@@ -13570,25 +13570,25 @@ var jC = /*#__PURE__*/ Eh(bS, [["render", AC], ["__scopeId", "data-v-f0661921"]]
 						}
 					})
 				});
-				await _(), g(o.value.find((t) => t.id === e.config.id) || e.config), r("notify", "Directus 연결 설정 초안을 저장했습니다.");
+				await v(), _(o.value.find((t) => t.id === e.config.id) || e.config), r("notify", "Directus 연결 설정 초안을 저장했습니다.");
 			} catch (e) {
 				c.value = e.message;
 			} finally {
 				a.value = !1;
 			}
 		}
-		async function y(e) {
+		async function b(e) {
 			if (f.value) {
 				a.value = !0, c.value = "";
 				try {
-					let t = await h("/api/directus-integration-config", {
+					let t = await g("/api/directus-integration-config", {
 						method: "PATCH",
 						body: JSON.stringify({
 							id: f.value.id,
 							action: e
 						})
 					});
-					await _(), g(o.value.find((e) => e.id === t.config.id) || t.config), r("notify", e === "activate" ? "Directus 연결 설정을 활성화했습니다." : e === "suspend" ? "Directus 연결 설정을 중지했습니다." : "Directus 연결 설정 검증을 완료했습니다.");
+					await v(), _(o.value.find((e) => e.id === t.config.id) || t.config), r("notify", e === "activate" ? "Directus 연결 설정을 활성화했습니다." : e === "suspend" ? "Directus 연결 설정을 중지했습니다." : "Directus 연결 설정 검증을 완료했습니다.");
 				} catch (e) {
 					c.value = e.message;
 				} finally {
@@ -13596,15 +13596,15 @@ var jC = /*#__PURE__*/ Eh(bS, [["render", AC], ["__scopeId", "data-v-f0661921"]]
 				}
 			}
 		}
-		async function b() {
+		async function x() {
 			if (f.value) {
 				a.value = !0, c.value = "", l.value = null;
 				try {
-					let e = await h("/api/directus-connection-test", {
+					let e = await g("/api/directus-connection-test", {
 						method: "POST",
 						body: JSON.stringify({ id: f.value.id })
 					});
-					l.value = e.result, r("notify", "Directus 연결 테스트를 통과했습니다.");
+					l.value = e.result, await v(), r("notify", "Directus 연결 테스트를 통과했습니다.");
 				} catch (e) {
 					c.value = e.message, l.value = e.result?.result || null;
 				} finally {
@@ -13612,7 +13612,7 @@ var jC = /*#__PURE__*/ Eh(bS, [["render", AC], ["__scopeId", "data-v-f0661921"]]
 				}
 			}
 		}
-		return ua(_), (t, n) => (V(), H("div", MC, [
+		return ua(v), (t, n) => (V(), H("div", MC, [
 			U("header", NC, [n[9] ||= U("div", null, [
 				U("span", { class: "eyebrow" }, "Integration Config"),
 				U("h2", null, "Directus 연결 터널"),
@@ -13621,7 +13621,7 @@ var jC = /*#__PURE__*/ Eh(bS, [["render", AC], ["__scopeId", "data-v-f0661921"]]
 				class: "tiny-button",
 				type: "button",
 				disabled: i.value,
-				onClick: _
+				onClick: v
 			}, "새로고침", 8, PC)]),
 			U("div", FC, [
 				U("span", { class: P({ on: e.capabilities.directusConfigManagement }) }, "Config 관리 " + F(e.capabilities.directusConfigManagement ? "ON" : "OFF"), 3),
@@ -13642,7 +13642,7 @@ var jC = /*#__PURE__*/ Eh(bS, [["render", AC], ["__scopeId", "data-v-f0661921"]]
 					key: e.id,
 					type: "button",
 					class: P({ selected: s.value === e.id }),
-					onClick: (t) => g(e)
+					onClick: (t) => _(e)
 				}, [U("span", null, "v" + F(e.version), 1), U("em", null, F(e.status), 1)], 10, VC))), 128))], 64))), 128)),
 				!i.value && !o.value.length ? (V(), H("p", HC, "저장된 설정이 없습니다.")) : K("", !0)
 			]), U("section", UC, [
@@ -13709,31 +13709,31 @@ var jC = /*#__PURE__*/ Eh(bS, [["render", AC], ["__scopeId", "data-v-f0661921"]]
 						class: "tiny-button primary",
 						type: "button",
 						disabled: a.value || !d.baseUrl,
-						onClick: v
+						onClick: y
 					}, "새 초안 저장", 8, QC),
 					U("button", {
 						class: "tiny-button",
 						type: "button",
 						disabled: a.value || f.value?.status !== "draft",
-						onClick: n[6] ||= (e) => y("validate")
+						onClick: n[6] ||= (e) => b("validate")
 					}, "구성 검증", 8, $C),
 					U("button", {
 						class: "tiny-button",
 						type: "button",
-						disabled: a.value || f.value?.status !== "draft" || f.value?.validation?.ok !== !0,
-						onClick: n[7] ||= (e) => y("activate")
+						disabled: a.value || f.value?.status !== "draft" || f.value?.validation?.ok !== !0 || h.value?.status !== "passed",
+						onClick: n[7] ||= (e) => b("activate")
 					}, "활성화", 8, ew),
 					U("button", {
 						class: "tiny-button",
 						type: "button",
 						disabled: a.value || f.value?.status !== "active",
-						onClick: n[8] ||= (e) => y("suspend")
+						onClick: n[8] ||= (e) => b("suspend")
 					}, "중지", 8, tw),
 					U("button", {
 						class: "tiny-button",
 						type: "button",
 						disabled: a.value || !f.value || !p.value,
-						onClick: b
+						onClick: x
 					}, "연결 테스트", 8, nw)
 				]),
 				f.value?.validation?.errors?.length ? (V(), H("div", rw, [n[21] ||= U("strong", null, "검증 오류", -1), U("ul", null, [(V(!0), H(B, null, z(f.value.validation.errors, (e) => (V(), H("li", { key: e.code }, F(e.message), 1))), 128))])])) : K("", !0),
@@ -13752,7 +13752,7 @@ var jC = /*#__PURE__*/ Eh(bS, [["render", AC], ["__scopeId", "data-v-f0661921"]]
 			])])
 		]));
 	}
-}, [["__scopeId", "data-v-1232ebe0"]]), sw = /* @__PURE__ */ o((() => {
+}, [["__scopeId", "data-v-57361789"]]), sw = /* @__PURE__ */ o((() => {
 	var e = {
 		documents: "promoPrototype.documents.abc",
 		generatedPages: "promoPrototype.generatedPages.abc",

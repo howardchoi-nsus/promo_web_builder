@@ -25,6 +25,7 @@ const grouped = computed(() => ["development", "preview", "production"].map((env
   environment,
   rows: configs.value.filter((item) => item.environment === environment),
 })).filter((group) => group.rows.length));
+const selectedLastCheck = computed(() => checks.value.find((check) => check.configId === selectedId.value) || null);
 
 async function api(url, options = {}) {
   const response = await fetch(url, { cache: "no-store", ...options, headers: { "Content-Type": "application/json", ...(options.headers || {}) } });
@@ -112,6 +113,7 @@ async function testConnection() {
   try {
     const result = await api("/api/directus-connection-test", { method: "POST", body: JSON.stringify({ id: selected.value.id }) });
     testResult.value = result.result;
+    await load();
     emit("notify", "Directus 연결 테스트를 통과했습니다.");
   } catch (requestError) {
     error.value = requestError.message;
@@ -170,7 +172,7 @@ onMounted(load);
         <div class="app-actions app-actions--end">
           <button class="tiny-button primary" type="button" :disabled="saving || !editor.baseUrl" @click="saveDraft">새 초안 저장</button>
           <button class="tiny-button" type="button" :disabled="saving || selected?.status !== 'draft'" @click="runAction('validate')">구성 검증</button>
-          <button class="tiny-button" type="button" :disabled="saving || selected?.status !== 'draft' || selected?.validation?.ok !== true" @click="runAction('activate')">활성화</button>
+          <button class="tiny-button" type="button" :disabled="saving || selected?.status !== 'draft' || selected?.validation?.ok !== true || selectedLastCheck?.status !== 'passed'" @click="runAction('activate')">활성화</button>
           <button class="tiny-button" type="button" :disabled="saving || selected?.status !== 'active'" @click="runAction('suspend')">중지</button>
           <button class="tiny-button" type="button" :disabled="saving || !selected || !tunnelEnabled" @click="testConnection">연결 테스트</button>
         </div>

@@ -50,6 +50,14 @@ begin
   if v_config.status <> 'draft' or coalesce((v_config.validation_json->>'ok')::boolean, false) = false then
     raise exception 'Directus config must be validated before activation';
   end if;
+  if coalesce((
+    select connection.status from promo_integration_connection_checks connection
+    where connection.config_id = v_config.id
+    order by connection.checked_at desc
+    limit 1
+  ), '') <> 'passed' then
+    raise exception 'Directus config must pass a connection check before activation';
+  end if;
   update promo_integration_configs
   set status = 'archived', updated_at = now()
   where integration_key = v_config.integration_key

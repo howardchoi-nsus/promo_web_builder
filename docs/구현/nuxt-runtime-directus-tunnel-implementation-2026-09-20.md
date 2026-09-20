@@ -103,13 +103,15 @@ Token 원문은 DB·브라우저 응답·로그에 저장하거나 반환하지 
 
 ## 검증 결과
 
-- 전체 자동화: 159개 테스트 파일 통과
+- 전체 자동화: 160개 테스트 파일 통과
 - Admin Vite Build: 통과
 - Visual Editor Vite Build: 통과
 - Nuxt 4.5.2 Client·SSR·Nitro Build: 통과
 - Nuxt Runtime 실제 HTTP 검증: SSR HTML, SEO, Slug, Revision, 404 통과
 - Directus Mock: Health, Bearer 인증, Retry, Timeout 경계 통과
 - SSRF 경계: HTTPS, Allowlist, URL Credential·Query·Fragment 차단 통과
+- 게시 안전성: v3 Quality Gate 미통과 Revision 게시·재게시 차단
+- Config 안전성: 최신 Directus 연결 검사 통과 전 활성화 차단
 
 검증 명령:
 
