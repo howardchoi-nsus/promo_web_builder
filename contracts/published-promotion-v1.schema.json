@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://promo-web-builder.local/contracts/published-promotion-v1.schema.json",
+  "title": "PublishedPromotion v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "publication", "seo", "renderer", "snapshot", "manifest", "cache"],
+  "properties": {
+    "contractVersion": { "const": 1 },
+    "publication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "documentId", "slug", "locale", "status", "publishedRevision", "publishedAt", "updatedAt"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "documentId": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$", "maxLength": 160 },
+        "locale": { "type": "string", "pattern": "^[a-z]{2,3}(?:-[A-Z]{2})?$", "maxLength": 16 },
+        "status": { "enum": ["draft", "published", "unpublished", "archived"] },
+        "publishedRevision": { "type": "integer", "minimum": 0 },
+        "publishedAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      }
+    },
+    "seo": { "type": "object" },
+    "renderer": {
+      "type": "object",
+      "required": ["key", "version"],
+      "properties": {
+        "key": { "type": "string" },
+        "version": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "snapshot": { "type": "object" },
+    "manifest": { "type": "object" },
+    "cache": {
+      "type": "object",
+      "required": ["etag", "revalidateSeconds"],
+      "properties": {
+        "etag": { "type": "string" },
+        "revalidateSeconds": { "type": "integer", "minimum": 0, "maximum": 86400 }
+      }
+    }
+  }
+}

@@ -10178,19 +10178,183 @@ var Wy = {
 			onSelectField: n[0] ||= (e) => r("select-field", e)
 		}, null, 8, ["node", "editable"])) : G("", !0);
 	}
-}, Gy = { class: "rs-editor" }, Ky = { class: "rs-toolbar" }, qy = ["disabled"], Jy = ["disabled"], Yy = ["disabled"], Xy = ["disabled"], Zy = ["disabled"], Qy = ["disabled"], $y = ["disabled"], eb = {
+}, Gy = ["aria-label"], Ky = [
+	"aria-current",
+	"data-dom-path",
+	"onClick"
+], qy = { key: 0 }, Jy = /*#__PURE__*/ Eh({
+	__name: "DomStructureTree",
+	props: {
+		nodes: {
+			type: Array,
+			default: () => []
+		},
+		selectedPath: {
+			type: String,
+			default: ""
+		},
+		ariaLabel: {
+			type: String,
+			default: "DOM 구조"
+		},
+		emptyMessage: {
+			type: String,
+			default: "표시할 구조가 없습니다."
+		}
+	},
+	emits: ["select"],
+	setup(e, { emit: t }) {
+		let n = t;
+		return (t, r) => (B(), V("nav", {
+			class: "dom-structure-tree",
+			"aria-label": e.ariaLabel
+		}, [(B(!0), V(R, null, L(e.nodes, (t) => (B(), V("button", {
+			key: t.path,
+			type: "button",
+			class: j({ active: t.path === e.selectedPath }),
+			style: Ce({ paddingLeft: `${10 + Number(t.depth || 0) * 16}px` }),
+			"aria-current": t.path === e.selectedPath ? "true" : void 0,
+			"data-dom-path": t.path,
+			onClick: (e) => n("select", t.path)
+		}, [H("small", null, M(t.tag || t.node?.tag || t.kind || "node"), 1), H("span", null, M(t.label || t.path), 1)], 14, Ky))), 128)), e.nodes.length ? G("", !0) : (B(), V("p", qy, M(e.emptyMessage), 1))], 8, Gy));
+	}
+}, [["__scopeId", "data-v-e9c62dcf"]]), Yy = {
+	key: 0,
+	class: "render-spec-node-inspector",
+	"aria-label": "선택 노드 속성"
+}, Xy = ["value", "disabled"], Zy = ["value", "disabled"], Qy = { key: 0 }, $y = ["value", "disabled"], eb = ["value"], tb = { key: 1 }, nb = ["value", "disabled"], rb = ["value", "disabled"], ib = ["value", "disabled"], ab = ["value", "disabled"], ob = ["value", "disabled"], sb = { id: "render-spec-token-keys" }, cb = ["value"], lb = /*#__PURE__*/ Eh({
+	__name: "RenderSpecNodeInspector",
+	props: {
+		selected: {
+			type: Object,
+			default: null
+		},
+		fields: {
+			type: Array,
+			default: () => []
+		},
+		tokenKeys: {
+			type: Array,
+			default: () => []
+		},
+		disabled: {
+			type: Boolean,
+			default: !1
+		},
+		rootPath: {
+			type: String,
+			default: "root"
+		}
+	},
+	emits: [
+		"set-node-property",
+		"set-field-key",
+		"set-nested"
+	],
+	setup(e, { emit: t }) {
+		let n = t;
+		function r(e, t) {
+			n("set-node-property", {
+				property: e,
+				value: t
+			});
+		}
+		function i(e, t, r) {
+			n("set-nested", {
+				group: e,
+				property: t,
+				value: r
+			});
+		}
+		return (t, a) => e.selected ? (B(), V("section", Yy, [
+			H("label", null, [a[9] ||= W(" 노드 유형 ", -1), H("select", {
+				value: e.selected.node.nodeType,
+				disabled: e.disabled || e.selected.path === e.rootPath,
+				onChange: a[0] ||= (e) => r("nodeType", e.target.value)
+			}, [...a[8] ||= [H("option", { value: "element" }, "그룹", -1), H("option", { value: "field" }, "필드", -1)]], 40, Xy)]),
+			H("label", null, [a[10] ||= W(" 태그 ", -1), H("select", {
+				value: e.selected.node.tag,
+				disabled: e.disabled,
+				onChange: a[1] ||= (e) => r("tag", e.target.value)
+			}, [(B(), V(R, null, L([
+				"div",
+				"section",
+				"article",
+				"header",
+				"footer",
+				"h1",
+				"h2",
+				"h3",
+				"p",
+				"span",
+				"strong",
+				"small",
+				"img",
+				"picture",
+				"a",
+				"button",
+				"ul",
+				"ol",
+				"li"
+			], (e) => H("option", { key: e }, M(e), 1)), 64))], 40, Zy)]),
+			e.selected.node.nodeType === "field" ? (B(), V("label", Qy, [a[11] ||= W(" 연결 필드 ", -1), H("select", {
+				value: e.selected.node.fieldKey,
+				disabled: e.disabled,
+				onChange: a[2] ||= (e) => n("set-field-key", e.target.value)
+			}, [(B(!0), V(R, null, L(e.fields, (e) => (B(), V("option", {
+				key: e.fieldKey,
+				value: e.fieldKey
+			}, M(e.name) + " · " + M(e.fieldKey), 9, eb))), 128))], 40, $y)])) : (B(), V("label", tb, [a[12] ||= W(" 의미 역할 ", -1), H("input", {
+				value: e.selected.node.semanticRole || "",
+				disabled: e.disabled,
+				onInput: a[3] ||= (e) => r("semanticRole", e.target.value)
+			}, null, 40, nb)])),
+			H("label", null, [a[14] ||= W(" 배치 ", -1), H("select", {
+				value: e.selected.node.layout?.display || "",
+				disabled: e.disabled,
+				onChange: a[4] ||= (e) => i("layout", "display", e.target.value)
+			}, [...a[13] ||= [
+				H("option", { value: "" }, "기본", -1),
+				H("option", { value: "block" }, "Block", -1),
+				H("option", { value: "flex" }, "Flex", -1),
+				H("option", { value: "grid" }, "Grid", -1)
+			]], 40, rb)]),
+			H("label", null, [a[15] ||= W(" 열 수 ", -1), H("input", {
+				type: "number",
+				min: "1",
+				max: "12",
+				value: e.selected.node.layout?.columns || "",
+				disabled: e.disabled,
+				onInput: a[5] ||= (e) => i("layout", "columns", Number(e.target.value) || "")
+			}, null, 40, ib)]),
+			H("label", null, [a[16] ||= W(" 글자색 토큰 ", -1), H("input", {
+				list: "render-spec-token-keys",
+				value: e.selected.node.tokenBindings?.color || "",
+				disabled: e.disabled,
+				onChange: a[6] ||= (e) => i("tokenBindings", "color", e.target.value)
+			}, null, 40, ab)]),
+			H("label", null, [a[17] ||= W(" 배경색 토큰 ", -1), H("input", {
+				list: "render-spec-token-keys",
+				value: e.selected.node.tokenBindings?.backgroundColor || "",
+				disabled: e.disabled,
+				onChange: a[7] ||= (e) => i("tokenBindings", "backgroundColor", e.target.value)
+			}, null, 40, ob)]),
+			H("datalist", sb, [(B(!0), V(R, null, L(e.tokenKeys, (e) => (B(), V("option", {
+				key: e,
+				value: e
+			}, null, 8, cb))), 128))])
+		])) : G("", !0);
+	}
+}, [["__scopeId", "data-v-585b6a8f"]]), ub = { class: "rs-editor" }, db = { class: "rs-toolbar" }, fb = ["disabled"], pb = ["disabled"], mb = ["disabled"], hb = ["disabled"], gb = ["disabled"], _b = ["disabled"], vb = ["disabled"], yb = {
 	key: 0,
 	class: "rs-empty"
-}, tb = {
+}, bb = {
 	key: 1,
 	class: "rs-grid"
-}, nb = { class: "rs-outline" }, rb = ["onClick"], ib = {
-	key: 0,
-	class: "rs-controls"
-}, ab = ["value", "disabled"], ob = ["value", "disabled"], sb = { key: 0 }, cb = ["value", "disabled"], lb = ["value"], ub = { key: 1 }, db = ["value", "disabled"], fb = ["value", "disabled"], pb = ["value", "disabled"], mb = ["value", "disabled"], hb = ["value", "disabled"], gb = { id: "rs-token-keys" }, _b = ["value"], vb = { class: "rs-preview-panel" }, yb = { class: "rs-viewport" }, bb = ["onClick"], xb = { key: 0 }, Sb = {
+}, xb = { class: "rs-preview-panel" }, Sb = { class: "rs-viewport" }, Cb = ["onClick"], wb = { key: 0 }, Tb = {
 	key: 3,
 	class: "rs-debug"
-}, Cb = ["disabled"], wb = { key: 0 }, Tb = ["disabled"], Eb = /*#__PURE__*/ Eh({
+}, Eb = ["disabled"], Db = { key: 0 }, Ob = ["disabled"], kb = /*#__PURE__*/ Eh({
 	__name: "RenderSpecEditor",
 	props: {
 		modelValue: {
@@ -10325,7 +10489,15 @@ var Wy = {
 				r[e] ||= {}, n === "" || n == null ? delete r[e][t] : r[e][t] = n;
 			});
 		}
-		async function O() {
+		function O({ property: e, value: t }) {
+			S((n) => {
+				n[e] = t;
+			});
+		}
+		function te({ group: e, property: t, value: n }) {
+			D(e, t, n);
+		}
+		async function ne() {
 			if (d.value) {
 				s.value = !0;
 				try {
@@ -10351,7 +10523,7 @@ var Wy = {
 				}
 			}
 		}
-		function te() {
+		function re() {
 			try {
 				y(JSON.parse(c.value)), l.value = "";
 			} catch (e) {
@@ -10363,138 +10535,72 @@ var Wy = {
 				let e = await fetch("/api/design-token-sets?scope=public").then((e) => e.json());
 				u.value = [...new Set((e.tokenSets || []).flatMap((e) => Object.keys(e.values || {})))].sort();
 			} catch {}
-		}), (t, n) => (B(), V("section", Gy, [
-			H("div", Ky, [n[13] ||= H("strong", null, "DOM RenderSpec", -1), d.value ? (B(), V(R, { key: 1 }, [
+		}), (t, n) => (B(), V("section", ub, [
+			H("div", db, [n[6] ||= H("strong", null, "DOM RenderSpec", -1), d.value ? (B(), V(R, { key: 1 }, [
 				H("button", {
 					class: "tiny-button",
 					type: "button",
 					disabled: e.disabled || p.value?.node?.tag === "img",
 					onClick: n[0] ||= (e) => C("element")
-				}, "+ 그룹", 8, Jy),
+				}, "+ 그룹", 8, pb),
 				H("button", {
 					class: "tiny-button",
 					type: "button",
 					disabled: e.disabled || !e.fields.length || p.value?.node?.tag === "img",
 					onClick: n[1] ||= (e) => C("field")
-				}, "+ 필드", 8, Yy),
+				}, "+ 필드", 8, mb),
 				H("button", {
 					class: "tiny-button",
 					type: "button",
 					disabled: e.disabled || i.value === "root",
 					onClick: n[2] ||= (e) => ee(-1)
-				}, "위", 8, Xy),
+				}, "위", 8, hb),
 				H("button", {
 					class: "tiny-button",
 					type: "button",
 					disabled: e.disabled || i.value === "root",
 					onClick: n[3] ||= (e) => ee(1)
-				}, "아래", 8, Zy),
+				}, "아래", 8, gb),
 				H("button", {
 					class: "tiny-button danger",
 					type: "button",
 					disabled: e.disabled || i.value === "root",
 					onClick: w
-				}, "삭제", 8, Qy),
+				}, "삭제", 8, _b),
 				H("button", {
 					class: "tiny-button primary",
 					type: "button",
 					disabled: s.value,
-					onClick: O
-				}, M(s.value ? "검증 중" : "검증"), 9, $y)
+					onClick: ne
+				}, M(s.value ? "검증 중" : "검증"), 9, vb)
 			], 64)) : (B(), V("button", {
 				key: 0,
 				class: "tiny-button primary",
 				type: "button",
 				disabled: e.disabled || e.fields.some((e) => !e.fieldKey),
 				onClick: v
-			}, "기본 DOM 생성", 8, qy))]),
-			d.value ? (B(), V("div", tb, [
-				H("aside", nb, [(B(!0), V(R, null, L(f.value, (e) => (B(), V("button", {
-					key: e.path,
-					type: "button",
-					class: j({ active: e.path === i.value }),
-					style: Ce({ paddingLeft: `${10 + e.depth * 16}px` }),
-					onClick: (t) => i.value = e.path
-				}, [H("small", null, M(e.node.tag), 1), W(M(e.label), 1)], 14, rb))), 128))]),
-				p.value ? (B(), V("div", ib, [
-					H("label", null, [n[15] ||= W("노드 유형", -1), H("select", {
-						value: p.value.node.nodeType,
-						disabled: e.disabled || i.value === "root",
-						onChange: n[4] ||= (e) => S((t) => t.nodeType = e.target.value)
-					}, [...n[14] ||= [H("option", { value: "element" }, "그룹", -1), H("option", { value: "field" }, "필드", -1)]], 40, ab)]),
-					H("label", null, [n[16] ||= W("태그", -1), H("select", {
-						value: p.value.node.tag,
-						disabled: e.disabled,
-						onChange: n[5] ||= (e) => S((t) => t.tag = e.target.value)
-					}, [(B(), V(R, null, L([
-						"div",
-						"section",
-						"article",
-						"header",
-						"footer",
-						"h1",
-						"h2",
-						"h3",
-						"p",
-						"span",
-						"strong",
-						"small",
-						"img",
-						"picture",
-						"a",
-						"button",
-						"ul",
-						"ol",
-						"li"
-					], (e) => H("option", { key: e }, M(e), 1)), 64))], 40, ob)]),
-					p.value.node.nodeType === "field" ? (B(), V("label", sb, [n[17] ||= W("연결 필드", -1), H("select", {
-						value: p.value.node.fieldKey,
-						disabled: e.disabled,
-						onChange: n[6] ||= (e) => E(e.target.value)
-					}, [(B(!0), V(R, null, L(e.fields, (e) => (B(), V("option", {
-						key: e.fieldKey,
-						value: e.fieldKey
-					}, M(e.name) + " · " + M(e.fieldKey), 9, lb))), 128))], 40, cb)])) : (B(), V("label", ub, [n[18] ||= W("의미 역할", -1), H("input", {
-						value: p.value.node.semanticRole || "",
-						disabled: e.disabled,
-						onInput: n[7] ||= (e) => S((t) => t.semanticRole = e.target.value)
-					}, null, 40, db)])),
-					H("label", null, [n[20] ||= W("배치", -1), H("select", {
-						value: p.value.node.layout?.display || "",
-						disabled: e.disabled,
-						onChange: n[8] ||= (e) => D("layout", "display", e.target.value)
-					}, [...n[19] ||= [
-						H("option", { value: "" }, "기본", -1),
-						H("option", { value: "block" }, "Block", -1),
-						H("option", { value: "flex" }, "Flex", -1),
-						H("option", { value: "grid" }, "Grid", -1)
-					]], 40, fb)]),
-					H("label", null, [n[21] ||= W("열 수", -1), H("input", {
-						type: "number",
-						min: "1",
-						max: "12",
-						value: p.value.node.layout?.columns || "",
-						disabled: e.disabled,
-						onInput: n[9] ||= (e) => D("layout", "columns", Number(e.target.value) || "")
-					}, null, 40, pb)]),
-					H("label", null, [n[22] ||= W("글자색 토큰", -1), H("input", {
-						list: "rs-token-keys",
-						value: p.value.node.tokenBindings?.color || "",
-						disabled: e.disabled,
-						onChange: n[10] ||= (e) => D("tokenBindings", "color", e.target.value)
-					}, null, 40, mb)]),
-					H("label", null, [n[23] ||= W("배경색 토큰", -1), H("input", {
-						list: "rs-token-keys",
-						value: p.value.node.tokenBindings?.backgroundColor || "",
-						disabled: e.disabled,
-						onChange: n[11] ||= (e) => D("tokenBindings", "backgroundColor", e.target.value)
-					}, null, 40, hb)]),
-					H("datalist", gb, [(B(!0), V(R, null, L(u.value, (e) => (B(), V("option", {
-						key: e,
-						value: e
-					}, null, 8, _b))), 128))])
-				])) : G("", !0),
-				H("section", vb, [H("div", yb, [(B(), V(R, null, L([
+			}, "기본 DOM 생성", 8, fb))]),
+			d.value ? (B(), V("div", bb, [
+				U(Jy, {
+					nodes: f.value,
+					"selected-path": i.value,
+					onSelect: n[4] ||= (e) => i.value = e
+				}, null, 8, ["nodes", "selected-path"]),
+				U(lb, {
+					selected: p.value,
+					fields: e.fields,
+					"token-keys": u.value,
+					disabled: e.disabled,
+					onSetNodeProperty: O,
+					onSetFieldKey: E,
+					onSetNested: te
+				}, null, 8, [
+					"selected",
+					"fields",
+					"token-keys",
+					"disabled"
+				]),
+				H("section", xb, [H("div", Sb, [(B(), V(R, null, L([
 					"desktop",
 					"tablet",
 					"mobile"
@@ -10503,7 +10609,7 @@ var Wy = {
 					type: "button",
 					class: j({ active: a.value === e }),
 					onClick: (t) => a.value = e
-				}, M(e), 11, bb)), 64))]), H("div", {
+				}, M(e), 11, Cb)), 64))]), H("div", {
 					class: "rs-preview",
 					style: Ce({ width: h.value })
 				}, [U(Wy, {
@@ -10519,35 +10625,35 @@ var Wy = {
 					"value",
 					"viewport"
 				])], 4)])
-			])) : (B(), V("p", eb, "서버가 생성한 필드 키가 있는 초안에서 DOM 구조를 만들 수 있습니다.")),
+			])) : (B(), V("p", yb, "서버가 생성한 필드 키가 있는 초안에서 DOM 구조를 만들 수 있습니다.")),
 			o.value ? (B(), V("div", {
 				key: 2,
 				class: j(["rs-validation", { ok: o.value.ok }])
-			}, [H("strong", null, M(o.value.ok ? "검증 통과" : `오류 ${o.value.errors?.length || 0}건`), 1), o.value.ok ? G("", !0) : (B(), V("ul", xb, [(B(!0), V(R, null, L(o.value.errors, (e) => (B(), V("li", { key: `${e.path}:${e.code}` }, M(e.path) + " · " + M(e.message), 1))), 128))]))], 2)) : G("", !0),
-			d.value ? (B(), V("details", Sb, [
-				n[24] ||= H("summary", null, "고급: Raw JSON", -1),
+			}, [H("strong", null, M(o.value.ok ? "검증 통과" : `오류 ${o.value.errors?.length || 0}건`), 1), o.value.ok ? G("", !0) : (B(), V("ul", wb, [(B(!0), V(R, null, L(o.value.errors, (e) => (B(), V("li", { key: `${e.path}:${e.code}` }, M(e.path) + " · " + M(e.message), 1))), 128))]))], 2)) : G("", !0),
+			d.value ? (B(), V("details", Tb, [
+				n[7] ||= H("summary", null, "고급: Raw JSON", -1),
 				I(H("textarea", {
-					"onUpdate:modelValue": n[12] ||= (e) => c.value = e,
+					"onUpdate:modelValue": n[5] ||= (e) => c.value = e,
 					rows: "14",
 					disabled: e.disabled
-				}, null, 8, Cb), [[q, c.value]]),
-				l.value ? (B(), V("p", wb, M(l.value), 1)) : G("", !0),
+				}, null, 8, Eb), [[q, c.value]]),
+				l.value ? (B(), V("p", Db, M(l.value), 1)) : G("", !0),
 				H("button", {
 					class: "tiny-button",
 					type: "button",
 					disabled: e.disabled,
-					onClick: te
-				}, "JSON 적용", 8, Tb)
+					onClick: re
+				}, "JSON 적용", 8, Ob)
 			])) : G("", !0)
 		]));
 	}
-}, [["__scopeId", "data-v-05d0860c"]]), Db = /* @__PURE__ */ new Set([
+}, [["__scopeId", "data-v-0fbedcff"]]), Ab = /* @__PURE__ */ new Set([
 	"image/png",
 	"image/jpeg",
 	"image/webp"
-]), Ob = 10 * 1024 * 1024, kb = "promo-component-generation-active-run", Ab = {
+]), jb = 10 * 1024 * 1024, Mb = "promo-component-generation-active-run", Nb = {
 	name: "ComponentGenerationWorkspace",
-	components: { RenderSpecEditor: Eb },
+	components: { RenderSpecEditor: kb },
 	emits: ["notify"],
 	data: () => ({
 		file: null,
@@ -10609,7 +10715,7 @@ var Wy = {
 	},
 	async mounted() {
 		this.loadTokenSets();
-		let e = localStorage.getItem(kb);
+		let e = localStorage.getItem(Mb);
 		e && await this.restoreRun(e);
 	},
 	beforeUnmount() {
@@ -10622,21 +10728,21 @@ var Wy = {
 		async selectSource(e) {
 			let t = e.target.files?.[0];
 			if (this.sourceError = "", this.error = "", t) {
-				if (!Db.has(t.type)) return this.rejectSource("PNG, JPEG 또는 WebP 이미지를 선택해 주세요.");
-				if (t.size > Ob) return this.rejectSource("이미지 크기는 10MB 이하여야 합니다.");
+				if (!Ab.has(t.type)) return this.rejectSource("PNG, JPEG 또는 WebP 이미지를 선택해 주세요.");
+				if (t.size > jb) return this.rejectSource("이미지 크기는 10MB 이하여야 합니다.");
 				this.releaseUrl(), this.file = t, this.sourceUrl = URL.createObjectURL(t), this.sourceName = t.name, this.sourceSize = t.size, this.imageDataUrl = await this.readDataUrl(t), this.sourceDimensions = await this.readDimensions(this.sourceUrl), this.sourceId = "", this.sourceImageUrl = "", this.run = null, this.proposals = [], this.proposal = null, this.selectedProposalId = "", this.crop = {
 					x: 0,
 					y: 0,
 					width: 1,
 					height: 1
-				}, localStorage.removeItem(kb), this.$emit("notify", "분석할 이미지를 선택했습니다. 영역을 조정해 주세요.");
+				}, localStorage.removeItem(Mb), this.$emit("notify", "분석할 이미지를 선택했습니다. 영역을 조정해 주세요.");
 			}
 		},
 		rejectSource(e) {
 			this.clearSource(), this.sourceError = e;
 		},
 		clearSource() {
-			this.releaseUrl(), this.file = null, this.imageDataUrl = "", this.sourceName = "", this.sourceSize = 0, this.sourceDimensions = null, this.sourceId = "", this.sourceImageUrl = "", this.run = null, this.proposals = [], this.proposal = null, this.selectedProposalId = "", this.$refs.sourceInput && (this.$refs.sourceInput.value = ""), localStorage.removeItem(kb);
+			this.releaseUrl(), this.file = null, this.imageDataUrl = "", this.sourceName = "", this.sourceSize = 0, this.sourceDimensions = null, this.sourceId = "", this.sourceImageUrl = "", this.run = null, this.proposals = [], this.proposal = null, this.selectedProposalId = "", this.$refs.sourceInput && (this.$refs.sourceInput.value = ""), localStorage.removeItem(Mb);
 		},
 		readDataUrl(e) {
 			return new Promise((t, n) => {
@@ -10703,7 +10809,7 @@ var Wy = {
 							targetDesignTokenSetVersionId: this.targetTokenVersionId
 						})
 					}), n = await t.json().catch(() => ({}));
-					if (!t.ok) throw n.runId && (localStorage.setItem(kb, n.runId), await this.restoreRun(n.runId)), Error(n.message || n.error || `이미지 분석 오류(${t.status})`);
+					if (!t.ok) throw n.runId && (localStorage.setItem(Mb, n.runId), await this.restoreRun(n.runId)), Error(n.message || n.error || `이미지 분석 오류(${t.status})`);
 					this.setRun(n.run), this.$emit("notify", "이미지 분석과 RenderSpec 검증이 완료되었습니다.");
 				} catch (e) {
 					this.error = e.message, this.$emit("notify", `컴포넌트 분석 실패: ${e.message}`);
@@ -10715,7 +10821,7 @@ var Wy = {
 		setRun(e) {
 			this.run = e, this.proposals = e?.proposals || (e?.proposal ? [e.proposal] : []);
 			let t = this.proposals.find((e) => e.id === this.selectedProposalId) || this.proposals[0] || null;
-			this.proposal = t, this.selectedProposalId = t?.id || "", e?.id && localStorage.setItem(kb, e.id), e?.source?.imageUrl && (this.sourceImageUrl = e.source.imageUrl, this.sourceUrl ||= e.source.imageUrl), e?.componentIntent && (this.componentIntent = e.componentIntent), e?.allowedSectionRoles && (this.selectedRoles = e.allowedSectionRoles), e?.source?.cropSpec && (this.crop = e.source.cropSpec), [
+			this.proposal = t, this.selectedProposalId = t?.id || "", e?.id && localStorage.setItem(Mb, e.id), e?.source?.imageUrl && (this.sourceImageUrl = e.source.imageUrl, this.sourceUrl ||= e.source.imageUrl), e?.componentIntent && (this.componentIntent = e.componentIntent), e?.allowedSectionRoles && (this.selectedRoles = e.allowedSectionRoles), e?.source?.cropSpec && (this.crop = e.source.cropSpec), [
 				"queued",
 				"analyzing",
 				"validating"
@@ -10747,7 +10853,7 @@ var Wy = {
 				if (!t.ok) throw Error();
 				this.setRun(n.run);
 			} catch {
-				localStorage.removeItem(kb);
+				localStorage.removeItem(Mb);
 			}
 		},
 		async saveReview() {
@@ -10797,73 +10903,73 @@ var Wy = {
 			this.clearSource(), this.componentIntent = "", this.selectedRoles = [], this.error = "";
 		}
 	}
-}, jb = {
+}, Pb = {
 	class: "generation",
 	"aria-labelledby": "generation-title"
-}, Mb = { class: "generation-header" }, Nb = { class: "steps" }, Pb = {
+}, Fb = { class: "generation-header" }, Ib = { class: "steps" }, Lb = {
 	key: 0,
 	class: "work-grid"
-}, Fb = { class: "card" }, Ib = { class: "card-title" }, Lb = {
+}, Rb = { class: "card" }, zb = { class: "card-title" }, Bb = {
 	key: 0,
 	class: "dropzone"
-}, Rb = {
+}, Vb = {
 	key: 1,
 	class: "crop-stage"
-}, zb = ["src"], Bb = {
+}, Hb = ["src"], Ub = {
 	key: 2,
 	class: "file-info"
-}, Vb = {
+}, Wb = {
 	key: 3,
 	class: "error"
-}, Hb = {
+}, Gb = {
 	key: 4,
 	class: "crop-controls"
-}, Ub = ["onUpdate:modelValue"], Wb = { class: "field" }, Gb = { class: "roles" }, Kb = ["value"], qb = {
+}, Kb = ["onUpdate:modelValue"], qb = { class: "field" }, Jb = { class: "roles" }, Yb = ["value"], Xb = {
 	key: 5,
 	class: "field"
-}, Jb = ["value"], Yb = { class: "card readiness" }, Xb = { class: "checklist" }, Zb = {
+}, Zb = ["value"], Qb = { class: "card readiness" }, $b = { class: "checklist" }, ex = {
 	key: 0,
 	class: "error"
-}, Qb = ["disabled"], $b = { key: 1 }, ex = { key: 2 }, tx = {
+}, tx = ["disabled"], nx = { key: 1 }, rx = { key: 2 }, ix = {
 	key: 1,
 	class: "result-stack"
-}, nx = { class: "card candidate-panel" }, rx = { class: "card-title" }, ix = { class: "candidate-list" }, ax = ["onUpdate:modelValue", "disabled"], ox = ["onClick"], sx = { class: "card" }, cx = { class: "card-title" }, lx = { class: "confidence" }, ux = { class: "badges" }, dx = { key: 0 }, fx = { class: "field" }, px = { class: "field" }, mx = { class: "comparison" }, hx = { class: "card" }, gx = { class: "crop-stage" }, _x = ["src"], vx = ["onClick"], yx = { class: "card" }, bx = {
+}, ax = { class: "card candidate-panel" }, ox = { class: "card-title" }, sx = { class: "candidate-list" }, cx = ["onUpdate:modelValue", "disabled"], lx = ["onClick"], ux = { class: "card" }, dx = { class: "card-title" }, fx = { class: "confidence" }, px = { class: "badges" }, mx = { key: 0 }, hx = { class: "field" }, gx = { class: "field" }, _x = { class: "comparison" }, vx = { class: "card" }, yx = { class: "crop-stage" }, bx = ["src"], xx = ["onClick"], Sx = { class: "card" }, Cx = {
 	key: 0,
 	class: "file-info"
-}, xx = {
+}, wx = {
 	key: 1,
 	class: "validation-errors"
-}, Sx = {
+}, Tx = {
 	key: 2,
 	class: "empty"
-}, Cx = { class: "comparison" }, wx = { class: "card" }, Tx = { class: "field-list" }, Ex = { class: "card" }, Dx = {
+}, Ex = { class: "comparison" }, Dx = { class: "card" }, Ox = { class: "field-list" }, kx = { class: "card" }, Ax = {
 	key: 0,
 	class: "field-list"
-}, Ox = {
+}, jx = {
 	key: 1,
 	class: "empty"
-}, kx = { class: "roles" }, Ax = { key: 0 }, jx = {
+}, Mx = { class: "roles" }, Nx = { key: 0 }, Px = {
 	key: 2,
 	class: "field"
-}, Mx = ["value"], Nx = {
+}, Fx = ["value"], Ix = {
 	key: 0,
 	class: "card"
-}, Px = {
+}, Lx = {
 	key: 1,
 	class: "error"
-}, Fx = {
+}, Rx = {
 	key: 2,
 	class: "field-list"
-}, Ix = { class: "result-actions" }, Lx = ["disabled"], Rx = ["disabled"], zx = { class: "mobile-check" };
-function Bx(e, t, n, r, i, a) {
+}, zx = { class: "result-actions" }, Bx = ["disabled"], Vx = ["disabled"], Hx = { class: "mobile-check" };
+function Ux(e, t, n, r, i, a) {
 	let o = Ca("RenderSpecEditor");
-	return B(), V("section", jb, [
-		H("header", Mb, [t[18] ||= H("div", null, [
+	return B(), V("section", Pb, [
+		H("header", Fb, [t[18] ||= H("div", null, [
 			H("p", { class: "eyebrow" }, "Component Generation · CDR-09"),
 			H("h2", { id: "generation-title" }, "이미지에서 DOM 컴포넌트 생성"),
 			H("p", null, "이미지 영역을 분석해 필드, 안전한 DOM RenderSpec과 디자인 토큰 연결을 제안합니다.")
 		], -1), H("span", { class: j(["status", e.run?.status]) }, M(a.statusLabel), 3)]),
-		H("ol", Nb, [(B(), V(R, null, L([
+		H("ol", Ib, [(B(), V(R, null, L([
 			"이미지 선택",
 			"영역 선택",
 			"AI 분석",
@@ -10876,53 +10982,53 @@ function Bx(e, t, n, r, i, a) {
 				done: a.currentStep > t + 1
 			})
 		}, [H("strong", null, M(t + 1), 1), H("span", null, M(e), 1)], 2)), 64))]),
-		e.proposal ? (B(), V("div", tx, [
-			H("section", nx, [H("div", rx, [H("div", null, [
+		e.proposal ? (B(), V("div", ix, [
+			H("section", ax, [H("div", ox, [H("div", null, [
 				t[34] ||= H("span", null, "Detected components", -1),
 				H("h3", null, M(e.proposals.length) + "개 컴포넌트 후보", 1),
 				t[35] ||= H("p", null, "큰 이미지에서 분리된 후보를 선택해 각각의 DOM과 필드를 검토하세요.", -1)
-			])]), H("div", ix, [(B(!0), V(R, null, L(e.proposals, (t, n) => (B(), V("div", {
+			])]), H("div", sx, [(B(!0), V(R, null, L(e.proposals, (t, n) => (B(), V("div", {
 				key: t.id,
 				class: j(["candidate-row", { active: t.id === e.selectedProposalId }])
 			}, [H("label", null, [I(H("input", {
 				"onUpdate:modelValue": (e) => t.componentDefinition.selected = e,
 				type: "checkbox",
 				disabled: !!t.appliedAt
-			}, null, 8, ax), [[au, t.componentDefinition.selected]]), H("span", null, M(t.appliedAt ? "생성됨" : "생성 선택"), 1)]), H("button", {
+			}, null, 8, cx), [[au, t.componentDefinition.selected]]), H("span", null, M(t.appliedAt ? "생성됨" : "생성 선택"), 1)]), H("button", {
 				type: "button",
 				onClick: (e) => a.selectProposal(t)
 			}, [
 				H("span", null, M(n + 1), 1),
 				H("strong", null, M(t.componentDefinition.name), 1),
 				H("em", null, M(Math.round((t.confidence || 0) * 100)) + "%", 1)
-			], 8, ox)], 2))), 128))])]),
-			H("section", sx, [
-				H("div", cx, [H("div", null, [
+			], 8, lx)], 2))), 128))])]),
+			H("section", ux, [
+				H("div", dx, [H("div", null, [
 					t[36] ||= H("span", null, "Step 4", -1),
 					H("h3", null, M(e.proposal.componentDefinition.name), 1),
 					H("p", null, M(e.proposal.componentDefinition.description), 1)
-				]), H("div", lx, [H("strong", null, M(Math.round((e.proposal.confidence || 0) * 100)) + "%", 1), t[37] ||= H("span", null, "분석 신뢰도", -1)])]),
-				H("div", ux, [
+				]), H("div", fx, [H("strong", null, M(Math.round((e.proposal.confidence || 0) * 100)) + "%", 1), t[37] ||= H("span", null, "분석 신뢰도", -1)])]),
+				H("div", px, [
 					H("span", { class: j({ good: a.validation.ok }) }, M(a.validation.ok ? "RenderSpec 검증 통과" : `검증 오류 ${a.validation.errors?.length || 0}건`), 3),
-					e.proposal.componentDefinition.reviewRequired ? (B(), V("span", dx, "관리자 검토 필요")) : G("", !0),
+					e.proposal.componentDefinition.reviewRequired ? (B(), V("span", mx, "관리자 검토 필요")) : G("", !0),
 					H("span", null, M(a.fields.length) + "개 필드", 1)
 				]),
-				H("label", fx, [t[38] ||= H("span", null, "컴포넌트 이름", -1), I(H("input", { "onUpdate:modelValue": t[7] ||= (t) => e.proposal.componentDefinition.name = t }, null, 512), [[q, e.proposal.componentDefinition.name]])]),
-				H("label", px, [t[39] ||= H("span", null, "설명", -1), I(H("input", { "onUpdate:modelValue": t[8] ||= (t) => e.proposal.componentDefinition.description = t }, null, 512), [[q, e.proposal.componentDefinition.description]])])
+				H("label", hx, [t[38] ||= H("span", null, "컴포넌트 이름", -1), I(H("input", { "onUpdate:modelValue": t[7] ||= (t) => e.proposal.componentDefinition.name = t }, null, 512), [[q, e.proposal.componentDefinition.name]])]),
+				H("label", gx, [t[39] ||= H("span", null, "설명", -1), I(H("input", { "onUpdate:modelValue": t[8] ||= (t) => e.proposal.componentDefinition.description = t }, null, 512), [[q, e.proposal.componentDefinition.description]])])
 			]),
-			H("section", mx, [H("article", hx, [t[40] ||= H("div", { class: "card-title" }, [H("div", null, [H("span", null, "Original"), H("h3", null, "자동 분리 영역")])], -1), H("div", gx, [H("img", {
+			H("section", _x, [H("article", vx, [t[40] ||= H("div", { class: "card-title" }, [H("div", null, [H("span", null, "Original"), H("h3", null, "자동 분리 영역")])], -1), H("div", yx, [H("img", {
 				src: e.sourceImageUrl || e.sourceUrl,
 				alt: "분석 원본"
-			}, null, 8, _x), (B(!0), V(R, null, L(e.proposals, (t, n) => (B(), V("button", {
+			}, null, 8, bx), (B(!0), V(R, null, L(e.proposals, (t, n) => (B(), V("button", {
 				key: t.id,
 				class: j(["candidate-box", { active: t.id === e.selectedProposalId }]),
 				style: Ce(a.candidateRegionStyle(t)),
 				type: "button",
 				onClick: (e) => a.selectProposal(t)
-			}, [H("span", null, M(n + 1), 1)], 14, vx))), 128))])]), H("article", yx, [
+			}, [H("span", null, M(n + 1), 1)], 14, xx))), 128))])]), H("article", Sx, [
 				t[42] ||= H("div", { class: "card-title" }, [H("div", null, [H("span", null, "Validation"), H("h3", null, "분석 품질 확인")])], -1),
-				a.validation.metrics ? (B(), V("p", bx, "노드 " + M(a.validation.metrics.nodeCount) + " · 필드 노드 " + M(a.validation.metrics.fieldNodeCount) + " · 깊이 " + M(a.validation.metrics.maxDepth), 1)) : G("", !0),
-				a.validation.errors?.length ? (B(), V("div", xx, [t[41] ||= H("strong", null, "수정할 항목", -1), (B(!0), V(R, null, L(a.validation.errors, (e) => (B(), V("p", { key: `${e.path}:${e.code}` }, M(e.path) + " · " + M(e.message), 1))), 128))])) : (B(), V("p", Sx, "보안·접근성·필드 참조 검증을 통과했습니다."))
+				a.validation.metrics ? (B(), V("p", Cx, "노드 " + M(a.validation.metrics.nodeCount) + " · 필드 노드 " + M(a.validation.metrics.fieldNodeCount) + " · 깊이 " + M(a.validation.metrics.maxDepth), 1)) : G("", !0),
+				a.validation.errors?.length ? (B(), V("div", wx, [t[41] ||= H("strong", null, "수정할 항목", -1), (B(!0), V(R, null, L(a.validation.errors, (e) => (B(), V("p", { key: `${e.path}:${e.code}` }, M(e.path) + " · " + M(e.message), 1))), 128))])) : (B(), V("p", Tx, "보안·접근성·필드 참조 검증을 통과했습니다."))
 			])]),
 			U(o, {
 				modelValue: e.proposal.renderSpec,
@@ -10934,27 +11040,27 @@ function Bx(e, t, n, r, i, a) {
 				"fields",
 				"source-image-url"
 			]),
-			H("section", Cx, [H("article", wx, [t[43] ||= H("div", { class: "card-title" }, [H("div", null, [H("span", null, "Detected fields"), H("h3", null, "콘텐츠 필드")])], -1), H("ul", Tx, [(B(!0), V(R, null, L(a.fields, (e) => (B(), V("li", { key: e.fieldKey }, [H("strong", null, M(e.name), 1), H("span", null, M(e.fieldKind) + " · " + M(e.fieldKey), 1)]))), 128))])]), H("article", Ex, [
+			H("section", Ex, [H("article", Dx, [t[43] ||= H("div", { class: "card-title" }, [H("div", null, [H("span", null, "Detected fields"), H("h3", null, "콘텐츠 필드")])], -1), H("ul", Ox, [(B(!0), V(R, null, L(a.fields, (e) => (B(), V("li", { key: e.fieldKey }, [H("strong", null, M(e.name), 1), H("span", null, M(e.fieldKind) + " · " + M(e.fieldKey), 1)]))), 128))])]), H("article", kx, [
 				t[47] ||= H("div", { class: "card-title" }, [H("div", null, [H("span", null, "Similarity"), H("h3", null, "유사 컴포넌트와 생성 방식")])], -1),
-				e.proposal.similarComponents?.length ? (B(), V("ul", Dx, [(B(!0), V(R, null, L(e.proposal.similarComponents, (e) => (B(), V("li", { key: e.componentId }, [H("strong", null, M(e.name), 1), H("span", null, "유사도 " + M(Math.round(e.score * 100)) + "% · " + M(e.score >= .75 ? "새 버전 후보" : "참고"), 1)]))), 128))])) : (B(), V("p", Ox, "유사한 기존 컴포넌트가 없습니다.")),
-				H("div", kx, [H("label", null, [I(H("input", {
+				e.proposal.similarComponents?.length ? (B(), V("ul", Ax, [(B(!0), V(R, null, L(e.proposal.similarComponents, (e) => (B(), V("li", { key: e.componentId }, [H("strong", null, M(e.name), 1), H("span", null, "유사도 " + M(Math.round(e.score * 100)) + "% · " + M(e.score >= .75 ? "새 버전 후보" : "참고"), 1)]))), 128))])) : (B(), V("p", jx, "유사한 기존 컴포넌트가 없습니다.")),
+				H("div", Mx, [H("label", null, [I(H("input", {
 					"onUpdate:modelValue": t[10] ||= (t) => e.proposal.componentDefinition.creationMode = t,
 					type: "radio",
 					value: "new-component"
-				}, null, 512), [[su, e.proposal.componentDefinition.creationMode]]), t[44] ||= H("span", null, "새 컴포넌트", -1)]), e.proposal.similarComponents?.length ? (B(), V("label", Ax, [I(H("input", {
+				}, null, 512), [[su, e.proposal.componentDefinition.creationMode]]), t[44] ||= H("span", null, "새 컴포넌트", -1)]), e.proposal.similarComponents?.length ? (B(), V("label", Nx, [I(H("input", {
 					"onUpdate:modelValue": t[11] ||= (t) => e.proposal.componentDefinition.creationMode = t,
 					type: "radio",
 					value: "new-version"
 				}, null, 512), [[su, e.proposal.componentDefinition.creationMode]]), t[45] ||= H("span", null, "기존 컴포넌트의 새 버전", -1)])) : G("", !0)]),
-				e.proposal.componentDefinition.creationMode === "new-version" ? (B(), V("label", jx, [t[46] ||= H("span", null, "대상 컴포넌트", -1), I(H("select", { "onUpdate:modelValue": t[12] ||= (t) => e.proposal.componentDefinition.targetComponentId = t }, [(B(!0), V(R, null, L(e.proposal.similarComponents, (e) => (B(), V("option", {
+				e.proposal.componentDefinition.creationMode === "new-version" ? (B(), V("label", Px, [t[46] ||= H("span", null, "대상 컴포넌트", -1), I(H("select", { "onUpdate:modelValue": t[12] ||= (t) => e.proposal.componentDefinition.targetComponentId = t }, [(B(!0), V(R, null, L(e.proposal.similarComponents, (e) => (B(), V("option", {
 					key: e.componentId,
 					value: e.componentId
-				}, M(e.name) + " · " + M(Math.round(e.score * 100)) + "%", 9, Mx))), 128))], 512), [[J, e.proposal.componentDefinition.targetComponentId]])])) : G("", !0)
+				}, M(e.name) + " · " + M(Math.round(e.score * 100)) + "%", 9, Fx))), 128))], 512), [[J, e.proposal.componentDefinition.targetComponentId]])])) : G("", !0)
 			])]),
-			e.proposal.reviewNotes?.length ? (B(), V("section", Nx, [t[48] ||= H("div", { class: "card-title" }, [H("div", null, [H("span", null, "Review notes"), H("h3", null, "검토 메모")])], -1), H("ul", null, [(B(!0), V(R, null, L(e.proposal.reviewNotes, (e) => (B(), V("li", { key: e }, M(e), 1))), 128))])])) : G("", !0),
-			e.error ? (B(), V("p", Px, M(e.error), 1)) : G("", !0),
-			e.applyResults.length ? (B(), V("ul", Fx, [(B(!0), V(R, null, L(e.applyResults, (e) => (B(), V("li", { key: e.proposalId }, [H("strong", null, M(e.name || e.proposalId), 1), H("span", null, M(e.ok ? "Draft 생성 완료" : e.message), 1)]))), 128))])) : G("", !0),
-			H("div", Ix, [
+			e.proposal.reviewNotes?.length ? (B(), V("section", Ix, [t[48] ||= H("div", { class: "card-title" }, [H("div", null, [H("span", null, "Review notes"), H("h3", null, "검토 메모")])], -1), H("ul", null, [(B(!0), V(R, null, L(e.proposal.reviewNotes, (e) => (B(), V("li", { key: e }, M(e), 1))), 128))])])) : G("", !0),
+			e.error ? (B(), V("p", Lx, M(e.error), 1)) : G("", !0),
+			e.applyResults.length ? (B(), V("ul", Rx, [(B(!0), V(R, null, L(e.applyResults, (e) => (B(), V("li", { key: e.proposalId }, [H("strong", null, M(e.name || e.proposalId), 1), H("span", null, M(e.ok ? "Draft 생성 완료" : e.message), 1)]))), 128))])) : G("", !0),
+			H("div", zx, [
 				H("button", {
 					class: "tiny-button",
 					type: "button",
@@ -10970,33 +11076,33 @@ function Bx(e, t, n, r, i, a) {
 					type: "button",
 					disabled: e.saving,
 					onClick: t[15] ||= (...e) => a.saveReview && a.saveReview(...e)
-				}, M(e.saving ? "저장 중" : "현재 후보 재검증·저장"), 9, Lx),
+				}, M(e.saving ? "저장 중" : "현재 후보 재검증·저장"), 9, Bx),
 				H("button", {
 					class: "tiny-button primary",
 					type: "button",
 					disabled: e.applying || !e.mobileReviewed || !e.proposals.some((e) => e.componentDefinition?.selected !== !1 && !e.appliedAt && e.validationResult?.ok && e.componentDefinition?.creationMode !== "new-version"),
 					onClick: t[16] ||= (...e) => a.applySelected && a.applySelected(...e)
-				}, M(e.applying ? "Draft 생성 중" : "선택 후보 컴포넌트 Draft 생성"), 9, Rx)
+				}, M(e.applying ? "Draft 생성 중" : "선택 후보 컴포넌트 Draft 생성"), 9, Vx)
 			]),
-			H("label", zx, [I(H("input", {
+			H("label", Hx, [I(H("input", {
 				"onUpdate:modelValue": t[17] ||= (t) => e.mobileReviewed = t,
 				type: "checkbox"
 			}, null, 512), [[au, e.mobileReviewed]]), t[49] ||= H("span", null, "Mobile 미리보기와 오버플로를 확인했습니다.", -1)]),
 			t[50] ||= H("p", { class: "next-note" }, "검증을 통과한 새 컴포넌트 후보만 일괄 Draft로 생성됩니다. 기존 컴포넌트의 새 버전 후보는 충돌 방지를 위해 개별 검토가 필요합니다.", -1)
-		])) : (B(), V("div", Pb, [H("section", Fb, [
-			H("div", Ib, [t[19] ||= H("div", null, [H("span", null, "Step 1–2"), H("h3", null, "분석 이미지와 영역")], -1), e.sourceUrl ? (B(), V("button", {
+		])) : (B(), V("div", Lb, [H("section", Rb, [
+			H("div", zb, [t[19] ||= H("div", null, [H("span", null, "Step 1–2"), H("h3", null, "분석 이미지와 영역")], -1), e.sourceUrl ? (B(), V("button", {
 				key: 0,
 				class: "tiny-button",
 				type: "button",
 				onClick: t[0] ||= (...e) => a.clearSource && a.clearSource(...e)
 			}, "다시 선택")) : G("", !0)]),
-			e.sourceUrl ? (B(), V("div", Rb, [H("img", {
+			e.sourceUrl ? (B(), V("div", Vb, [H("img", {
 				src: e.sourceUrl,
 				alt: "분석 원본"
-			}, null, 8, zb), H("div", {
+			}, null, 8, Hb), H("div", {
 				class: "crop-box",
 				style: Ce(a.cropStyle)
-			}, [...t[23] ||= [H("span", null, "분석 영역", -1)]], 4)])) : (B(), V("label", Lb, [
+			}, [...t[23] ||= [H("span", null, "분석 영역", -1)]], 4)])) : (B(), V("label", Bb, [
 				H("input", {
 					ref: "sourceInput",
 					type: "file",
@@ -11007,13 +11113,13 @@ function Bx(e, t, n, r, i, a) {
 				t[21] ||= H("span", null, "PNG, JPEG, WebP · 최대 10MB", -1),
 				t[22] ||= H("small", null, "생성할 컴포넌트가 선명하게 보이는 이미지를 권장합니다.", -1)
 			])),
-			e.sourceUrl ? (B(), V("p", Bb, [
+			e.sourceUrl ? (B(), V("p", Ub, [
 				W(M(e.sourceName || "기존 업로드 이미지"), 1),
 				e.sourceSize ? (B(), V(R, { key: 0 }, [W(" · " + M(a.formatBytes(e.sourceSize)), 1)], 64)) : G("", !0),
 				e.sourceDimensions ? (B(), V(R, { key: 1 }, [W(" · " + M(e.sourceDimensions.width) + "×" + M(e.sourceDimensions.height), 1)], 64)) : G("", !0)
 			])) : G("", !0),
-			e.sourceError ? (B(), V("p", Vb, M(e.sourceError), 1)) : G("", !0),
-			e.sourceUrl ? (B(), V("fieldset", Hb, [t[24] ||= H("legend", null, "영역 좌표 (이미지 비율)", -1), (B(), V(R, null, L([
+			e.sourceError ? (B(), V("p", Wb, M(e.sourceError), 1)) : G("", !0),
+			e.sourceUrl ? (B(), V("fieldset", Gb, [t[24] ||= H("legend", null, "영역 좌표 (이미지 비율)", -1), (B(), V(R, null, L([
 				"x",
 				"y",
 				"width",
@@ -11027,7 +11133,7 @@ function Bx(e, t, n, r, i, a) {
 					max: "1",
 					step: "0.01",
 					onInput: t[2] ||= (...e) => a.clampCrop && a.clampCrop(...e)
-				}, null, 40, Ub), [[
+				}, null, 40, Kb), [[
 					q,
 					e.crop[n],
 					void 0,
@@ -11035,12 +11141,12 @@ function Bx(e, t, n, r, i, a) {
 				]]),
 				H("em", null, M(Math.round(e.crop[n] * 100)) + "%", 1)
 			])), 64))])) : G("", !0),
-			H("label", Wb, [t[25] ||= H("span", null, "생성 목적", -1), I(H("textarea", {
+			H("label", qb, [t[25] ||= H("span", null, "생성 목적", -1), I(H("textarea", {
 				"onUpdate:modelValue": t[3] ||= (t) => e.componentIntent = t,
 				rows: "3",
 				placeholder: "예: 이미지, 제목, 설명, CTA가 포함된 프로모션 카드"
 			}, null, 512), [[q, e.componentIntent]])]),
-			H("fieldset", null, [t[26] ||= H("legend", null, "사용할 섹션 역할", -1), H("div", Gb, [(B(), V(R, null, L([
+			H("fieldset", null, [t[26] ||= H("legend", null, "사용할 섹션 역할", -1), H("div", Jb, [(B(), V(R, null, L([
 				"header",
 				"hero",
 				"benefit",
@@ -11054,32 +11160,32 @@ function Bx(e, t, n, r, i, a) {
 				"onUpdate:modelValue": t[4] ||= (t) => e.selectedRoles = t,
 				type: "checkbox",
 				value: n
-			}, null, 8, Kb), [[au, e.selectedRoles]]), H("span", null, M(n), 1)])), 64))])]),
-			e.tokenSets.length ? (B(), V("label", qb, [t[27] ||= H("span", null, "대상 디자인 토큰", -1), I(H("select", { "onUpdate:modelValue": t[5] ||= (t) => e.targetTokenVersionId = t }, [(B(!0), V(R, null, L(e.tokenSets, (e) => (B(), V("option", {
+			}, null, 8, Yb), [[au, e.selectedRoles]]), H("span", null, M(n), 1)])), 64))])]),
+			e.tokenSets.length ? (B(), V("label", Xb, [t[27] ||= H("span", null, "대상 디자인 토큰", -1), I(H("select", { "onUpdate:modelValue": t[5] ||= (t) => e.targetTokenVersionId = t }, [(B(!0), V(R, null, L(e.tokenSets, (e) => (B(), V("option", {
 				key: e.versionId,
 				value: e.versionId
-			}, [W(M(e.name), 1), e.isDefault ? (B(), V(R, { key: 0 }, [W(" · 기본")], 64)) : G("", !0)], 8, Jb))), 128))], 512), [[J, e.targetTokenVersionId]])])) : G("", !0)
-		]), H("aside", Yb, [
+			}, [W(M(e.name), 1), e.isDefault ? (B(), V(R, { key: 0 }, [W(" · 기본")], 64)) : G("", !0)], 8, Zb))), 128))], 512), [[J, e.targetTokenVersionId]])])) : G("", !0)
+		]), H("aside", Qb, [
 			t[33] ||= H("div", { class: "card-title" }, [H("div", null, [H("span", null, "Step 3"), H("h3", null, "AI 이미지 분석")])], -1),
-			H("ul", Xb, [
+			H("ul", $b, [
 				H("li", null, [t[28] ||= H("span", null, "실제 파일 형식·크기 검증", -1), H("em", null, M(e.sourceUrl ? "준비" : "대기"), 1)]),
 				H("li", null, [t[29] ||= H("span", null, "정규화 Crop 영역", -1), H("em", null, M(e.sourceUrl ? "준비" : "대기"), 1)]),
 				H("li", null, [t[30] ||= H("span", null, "DOM·필드·토큰 분석", -1), H("em", null, M(e.busy ? "진행 중" : "대기"), 1)]),
 				t[31] ||= H("li", null, [H("span", null, "보안·접근성 검증"), H("em", null, "자동")], -1),
 				t[32] ||= H("li", null, [H("span", null, "기존 컴포넌트 유사도"), H("em", null, "자동")], -1)
 			]),
-			e.error ? (B(), V("p", Zb, M(e.error), 1)) : G("", !0),
+			e.error ? (B(), V("p", ex, M(e.error), 1)) : G("", !0),
 			H("button", {
 				class: "tiny-button primary analyze",
 				type: "button",
 				disabled: !a.canAnalyze,
 				onClick: t[6] ||= (...e) => a.analyze && a.analyze(...e)
-			}, M(e.busy ? "이미지를 분석하고 있습니다…" : e.run?.status === "failed" ? "원본 업로드 없이 다시 분석" : "분석 시작"), 9, Qb),
-			e.busy ? (B(), V("small", $b, "프롬프트 설정과 모델에 따라 최대 3분이 걸릴 수 있습니다.")) : (B(), V("small", ex, "관리자에서 활성화한 컴포넌트 이미지 분석 프롬프트와 모델 설정을 사용합니다."))
+			}, M(e.busy ? "이미지를 분석하고 있습니다…" : e.run?.status === "failed" ? "원본 업로드 없이 다시 분석" : "분석 시작"), 9, tx),
+			e.busy ? (B(), V("small", nx, "프롬프트 설정과 모델에 따라 최대 3분이 걸릴 수 있습니다.")) : (B(), V("small", rx, "관리자에서 활성화한 컴포넌트 이미지 분석 프롬프트와 모델 설정을 사용합니다."))
 		])]))
 	]);
 }
-var Vx = /*#__PURE__*/ Eh(Ab, [["render", Bx], ["__scopeId", "data-v-f0661921"]]), Hx = /* @__PURE__ */ o((() => {
+var Wx = /*#__PURE__*/ Eh(Nb, [["render", Ux], ["__scopeId", "data-v-f0661921"]]), Gx = /* @__PURE__ */ o((() => {
 	var e = {
 		documents: "promoPrototype.documents.abc",
 		generatedPages: "promoPrototype.generatedPages.abc",
@@ -16911,7 +17017,7 @@ yh(document), globalThis.Vue = gh, globalThis.PromoAdminTemplateLayout = Object.
 	service: J_,
 	component: xy
 }), globalThis.PromoAdminComponentGeneration = Object.freeze({
-	component: Vx,
-	renderSpecEditor: Eb
-}), await Promise.resolve().then(() => /* @__PURE__ */ l(Hx()));
+	component: Wx,
+	renderSpecEditor: kb
+}), await Promise.resolve().then(() => /* @__PURE__ */ l(Gx()));
 //#endregion
