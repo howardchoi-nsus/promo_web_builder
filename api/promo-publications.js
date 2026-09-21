@@ -2,6 +2,7 @@ const { parseBody } = require("./_wizard-form-templates-store");
 const { resolveBuilderOwner } = require("./_promo-builder-auth");
 const { requireBuilderFlag } = require("./_promo-builder-flags");
 const { assertPassedQualityGate } = require("./_promo-quality-gate");
+const { invalidatePublicationCache } = require("./_promo-publication-cache");
 const {
   getSql,
   listPublications,
@@ -88,7 +89,12 @@ module.exports = async function handler(req, res) {
         ownerSubject: owner.ownerSubject,
       });
       if (!publication) return res.status(404).json({ error: "Builder document revision not found" });
-      return res.status(201).json({ ok: true, publication });
+      const cacheInvalidation = await invalidatePublicationCache({
+        slug,
+        locale,
+        reason: `publication_${status}`,
+      });
+      return res.status(201).json({ ok: true, publication, cacheInvalidation });
     }
     if (req.method === "PATCH") {
       const id = String(body.id || "").trim();
@@ -102,7 +108,12 @@ module.exports = async function handler(req, res) {
       });
       const publication = await updatePublicationStatus(sql, { id, status, ownerSubject: owner.ownerSubject });
       if (!publication) return res.status(404).json({ error: "Publication not found" });
-      return res.status(200).json({ ok: true, publication });
+      const cacheInvalidation = await invalidatePublicationCache({
+        slug: publication.publication.slug,
+        locale: publication.publication.locale,
+        reason: `publication_${status}`,
+      });
+      return res.status(200).json({ ok: true, publication, cacheInvalidation });
     }
     return res.status(405).json({ error: "Method not allowed" });
   } catch (error) {

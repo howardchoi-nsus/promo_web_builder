@@ -56,6 +56,7 @@ const emit = defineEmits([
   "save-section-preset",
   "save-ai-document",
   "open-output",
+  "manage-publication",
   "clear-selection",
   "select-item",
   "open-item-inspector",
@@ -412,6 +413,13 @@ defineExpose({
             :disabled="!editorSnapshot || ['checking', 'failed'].includes(aiDocumentQualityGate.state)"
             @click="emit('open-output')"
           >Web Output</button>
+          <button
+            v-if="editorContext.isAiDocument"
+            type="button"
+            class="publication-action"
+            :disabled="!editorSnapshot || aiDocumentSaving || ['checking', 'failed'].includes(aiDocumentQualityGate.state)"
+            @click="emit('manage-publication')"
+          >게시 관리</button>
         </template>
       </EditorPreviewControls>
     </div>

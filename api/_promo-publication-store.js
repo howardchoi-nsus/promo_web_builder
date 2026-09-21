@@ -40,6 +40,19 @@ async function findPublicationBySlug(sql, { slug, locale, publishedOnly = true }
   return publicationEnvelope(rows[0]);
 }
 
+async function findPublicationById(sql, id) {
+  const rows = await sql`
+    select publication.*, version.snapshot_json, version.snapshot_hash
+    from promo_builder_publications publication
+    join promo_builder_document_versions version
+      on version.document_id = publication.document_id
+      and version.revision = publication.document_revision
+    where publication.id = ${id}::uuid
+    limit 1
+  `;
+  return publicationEnvelope(rows[0]);
+}
+
 async function listPublications(sql, ownerSubject) {
   const rows = await sql`
     select publication.*, version.snapshot_json, version.snapshot_hash
@@ -150,6 +163,7 @@ module.exports = {
   getSql,
   publicationEnvelope,
   findPublicationBySlug,
+  findPublicationById,
   listPublications,
   findOwnedDocumentRevision,
   findOwnedPublicationById,

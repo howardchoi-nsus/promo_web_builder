@@ -1,5 +1,13 @@
 const { createHash } = require("node:crypto");
 
+const NUXT_RUNTIME_COMPATIBILITY = Object.freeze({
+  framework: "nuxt",
+  runtimeVersion: "4.5.2",
+  publicationContractVersion: 1,
+  supportedSnapshotContractVersions: Object.freeze([2, 3]),
+  renderer: Object.freeze({ key: "default-promo-renderer", version: 1 }),
+});
+
 function clone(value) {
   return value === undefined ? undefined : JSON.parse(JSON.stringify(value));
 }
@@ -60,6 +68,23 @@ function sha256(value) {
   return createHash("sha256").update(stableJson(value)).digest("hex");
 }
 
+function assertNuxtRuntimeCompatibility(snapshot) {
+  const exported = publicExportSnapshot(snapshot);
+  const renderer = {
+    key: exported.layoutIdentity.rendererKey || "default-promo-renderer",
+    version: Number(exported.layoutIdentity.rendererVersion || 1),
+  };
+  if (!NUXT_RUNTIME_COMPATIBILITY.supportedSnapshotContractVersions.includes(exported.contractVersion)
+    || renderer.key !== NUXT_RUNTIME_COMPATIBILITY.renderer.key
+    || renderer.version !== NUXT_RUNTIME_COMPATIBILITY.renderer.version) {
+    const error = new TypeError("Snapshot is not compatible with the Nuxt promotion runtime");
+    error.code = "NUXT_RUNTIME_INCOMPATIBLE";
+    error.statusCode = 422;
+    throw error;
+  }
+  return exported;
+}
+
 function dependencyManifest(snapshot, { documentId = "", revision = 0 } = {}) {
   const exported = publicExportSnapshot(snapshot);
   const sections = exported.content.sectionSnapshot;
@@ -86,7 +111,7 @@ function dependencyManifest(snapshot, { documentId = "", revision = 0 } = {}) {
       || exported.content.formTemplate.designTokens?.values,
   );
   return {
-    manifestVersion: 1,
+    manifestVersion: 2,
     documentId,
     revision: Number(revision || 0),
     contractVersion: exported.contractVersion,
@@ -108,6 +133,7 @@ function dependencyManifest(snapshot, { documentId = "", revision = 0 } = {}) {
     })),
     assets: assetItems,
     snapshotHash: sha256(exported),
+    compatibility: clone(NUXT_RUNTIME_COMPATIBILITY),
   };
 }
 
@@ -155,10 +181,41 @@ function frameworkSource(snapshot, framework, options = {}) {
   throw new TypeError(`Unsupported framework: ${framework}`);
 }
 
+function nuxtSource(snapshot, options = {}) {
+  const exported = assertNuxtRuntimeCompatibility(snapshot);
+  const manifest = dependencyManifest(exported, options);
+  const title = String(options.title || "Promotion").replace(/[<>&\"]/g, "");
+  return `<script setup lang="ts">
+import PromoReadonlyRenderer from "#promo-renderer/PromoReadonlyRenderer.vue";
+
+const snapshot = ${safeJson(exported)} as const;
+const exportManifest = ${safeJson(manifest)} as const;
+
+if (!exportManifest.compatibility.supportedSnapshotContractVersions.includes(snapshot.contractVersion)) {
+  throw createError({ statusCode: 500, statusMessage: "Unsupported promotion snapshot contract" });
+}
+useSeoMeta({ title: ${JSON.stringify(title)} });
+<\/script>
+
+<template>
+  <main class="promotion-runtime" :data-document-revision="exportManifest.revision">
+    <PromoReadonlyRenderer :snapshot="snapshot" />
+  </main>
+</template>
+
+<style scoped>
+.promotion-runtime { min-height: 100vh; }
+</style>
+`;
+}
+
 module.exports = {
   publicExportSnapshot,
   dependencyManifest,
   htmlExport,
   frameworkSource,
+  nuxtSource,
+  assertNuxtRuntimeCompatibility,
+  NUXT_RUNTIME_COMPATIBILITY,
   safeJson,
 };

@@ -4,6 +4,8 @@ const {
   dependencyManifest,
   htmlExport,
   frameworkSource,
+  nuxtSource,
+  assertNuxtRuntimeCompatibility,
 } = require("../api/_promo-builder-export-adapters");
 const { builderFlags } = require("../api/_promo-builder-flags");
 const { percent, rolloutBucket } = require("../api/_promo-builder-rollout");
@@ -83,6 +85,10 @@ assert.deepEqual(manifest.componentRenderSpecs, [{
 assert.deepEqual(manifest.designTokenKeys, ["--promo-accent"]);
 assert.equal(manifest.resources[0].resourceVersionId, "resource-v3");
 assert.match(manifest.snapshotHash, /^[a-f0-9]{64}$/);
+assert.equal(manifest.manifestVersion, 2);
+assert.equal(manifest.compatibility.framework, "nuxt");
+assert.equal(manifest.compatibility.runtimeVersion, "4.5.2");
+assert.deepEqual(manifest.compatibility.supportedSnapshotContractVersions, [2, 3]);
 
 const html = htmlExport(snapshot, { documentId: "doc-1", revision: 7 });
 assert.match(html, /promo-export-root/);
@@ -92,6 +98,16 @@ assert.doesNotMatch(html, /<\/script><img/);
 assert.match(html, /\\u003c\/script\\u003e/);
 assert.match(frameworkSource(snapshot, "vue"), /<iframe/);
 assert.match(frameworkSource(snapshot, "react"), /srcDoc/);
+const nuxt = nuxtSource(snapshot, { title: "Nuxt Promotion", revision: 7 });
+assert.match(nuxt, /PromoReadonlyRenderer/);
+assert.match(nuxt, /supportedSnapshotContractVersions/);
+assert.match(nuxt, /Nuxt Promotion/);
+assert.doesNotMatch(nuxt, /<iframe/);
+assert.equal(assertNuxtRuntimeCompatibility(snapshot).contractVersion, 3);
+assert.throws(
+  () => nuxtSource({ ...snapshot, contractVersion: 4, content: { ...snapshot.content, contractVersion: 4 } }),
+  (error) => error.code === "NUXT_RUNTIME_INCOMPATIBLE" && error.statusCode === 422,
+);
 
 assert.equal(builderFlags({ PROMO_BUILDER_EXPORT_ENABLED: "false" }).export, false);
 assert.equal(percent("45"), 45);

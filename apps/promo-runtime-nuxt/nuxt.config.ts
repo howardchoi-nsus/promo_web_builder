@@ -14,12 +14,20 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     promoApiBaseUrl: process.env.PROMO_API_BASE_URL || "http://localhost:3000",
+    revalidateSecret: process.env.NUXT_REVALIDATE_SECRET || "",
     public: {
       defaultLocale: process.env.PROMO_DEFAULT_LOCALE || "ko-KR",
     },
   },
   routeRules: {
     "/promotions/**": { swr: 300 },
+    "/preview/**": {
+      headers: {
+        "cache-control": "private, no-store",
+        "referrer-policy": "no-referrer",
+        "x-robots-tag": "noindex, nofollow",
+      },
+    },
   },
   vite: {
     server: {

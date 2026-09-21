@@ -7,10 +7,11 @@ const {
   dependencyManifest,
   htmlExport,
   frameworkSource,
+  nuxtSource,
 } = require("./_promo-builder-export-adapters");
 const { assertPassedQualityGate } = require("./_promo-quality-gate");
 
-const FORMATS = new Set(["html", "manifest", "snapshot", "vue", "react"]);
+const FORMATS = new Set(["html", "manifest", "snapshot", "vue", "react", "nuxt"]);
 
 module.exports = async function handler(req, res) {
   if (req.method !== "GET") {
@@ -42,8 +43,12 @@ module.exports = async function handler(req, res) {
     res.setHeader("X-Content-Type-Options", "nosniff");
     if (format === "manifest") return res.status(200).json(dependencyManifest(result.snapshot, options));
     if (format === "snapshot") return res.status(200).json(publicExportSnapshot(result.snapshot));
-    const body = format === "html" ? htmlExport(result.snapshot, options) : frameworkSource(result.snapshot, format, options);
-    const extension = format === "react" ? "jsx" : format === "vue" ? "vue" : "html";
+    const body = format === "html"
+      ? htmlExport(result.snapshot, options)
+      : format === "nuxt"
+        ? nuxtSource(result.snapshot, options)
+        : frameworkSource(result.snapshot, format, options);
+    const extension = format === "react" ? "jsx" : ["vue", "nuxt"].includes(format) ? "vue" : "html";
     res.setHeader("Content-Type", format === "html" ? "text/html; charset=utf-8" : "text/plain; charset=utf-8");
     if (String(req.query?.download || "") === "1") {
       res.setHeader("Content-Disposition", `attachment; filename="promotion-r${revision}.${extension}"`);

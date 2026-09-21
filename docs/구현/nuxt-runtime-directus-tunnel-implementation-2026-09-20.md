@@ -3,6 +3,8 @@
 ## 구현 상태
 
 - Nuxt Runtime: 완료
+- Visual Editor Publication 관리·서명 Preview·캐시 무효화: 완료
+- Nuxt 전용 Export·호환성 Manifest: 완료
 - 관리자 Component DOM Tree·Inspector·Single Live Preview: 완료
 - 관리자 Section DOM Workbench·Single Live Preview: 완료
 - 기존 관리자 Visual Editor: 기본 비활성, Feature Flag Rollback 유지
@@ -50,6 +52,14 @@ Directus는 공개 페이지 데이터 흐름에 연결되지 않는다.
 | `PROMO_API_BASE_URL` | `http://localhost:3000` | 빌드·개발 시 내부 Publication API 주소 |
 | `NUXT_PROMO_API_BASE_URL` | 없음 | 빌드된 Nitro 서버의 Runtime Override |
 | `PROMO_DEFAULT_LOCALE` | `ko-KR` | 기본 Locale |
+| `NUXT_REVALIDATE_URL` | 없음 | Builder API가 호출할 Nuxt `/api/revalidate-promotion` 전체 URL |
+| `NUXT_REVALIDATE_SECRET` | 없음 | Builder API와 Nuxt Runtime이 공유하는 캐시 갱신 비밀키 |
+| `PROMO_PREVIEW_TOKEN_SECRET` | 로컬 전용 기본값 | 미게시 Revision용 15분 만료 Preview Token 서명키(호스팅에서는 32자 이상 필수) |
+
+두 캐시 갱신 환경변수가 모두 없으면 발행은 기존처럼 동작하고 캐시 갱신만 건너뛴다. 하나만 있거나 URL이 안전하지 않으면 발행 응답에 캐시 갱신 실패/건너뜀 상태가 포함된다. 호스팅 환경에서는 HTTPS URL만 허용하며 비밀키는 응답과 로그에 노출하지 않는다.
+캐시 갱신은 Nitro route cache 중 `/promotions/**` 항목만 제거하며 Preview나 다른 Route Cache는 건드리지 않는다.
+
+게시 관리의 `Nuxt 미리보기`는 Publication 상태를 변경하지 않고 고정 Revision용 단기 서명 Token을 발급한다. `/preview/promotions/:slug` 경로는 `no-store`, `noindex`, `no-referrer`로 제공되며 일반 `/promotions/:slug` SWR 캐시에 포함되지 않는다.
 
 명령:
 
@@ -103,11 +113,11 @@ Token 원문은 DB·브라우저 응답·로그에 저장하거나 반환하지 
 
 ## 검증 결과
 
-- 전체 자동화: 160개 테스트 파일 통과
+- 전체 자동화: 163개 테스트 파일 통과
 - Admin Vite Build: 통과
 - Visual Editor Vite Build: 통과
 - Nuxt 4.5.2 Client·SSR·Nitro Build: 통과
-- Nuxt Runtime 실제 HTTP 검증: SSR HTML, SEO, Slug, Revision, 404 통과
+- Nuxt Runtime 실제 HTTP 검증: SSR HTML, SEO, Slug, Revision, 404, 서명 Preview, 캐시 재검증 통과
 - Directus Mock: Health, Bearer 인증, Retry, Timeout 경계 통과
 - SSRF 경계: HTTPS, Allowlist, URL Credential·Query·Fragment 차단 통과
 - 게시 안전성: v3 Quality Gate 미통과 Revision 게시·재게시 차단

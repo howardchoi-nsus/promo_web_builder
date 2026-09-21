@@ -44,6 +44,7 @@ import ComponentInspectorPopover from "./platform/editor-ui/ComponentInspectorPo
 import ComponentTransitionControls from "./platform/editor-ui/ComponentTransitionControls.vue";
 import TextEditorControls from "./platform/editor-ui/TextEditorControls.vue";
 import WorkspaceSplitter from "./platform/editor-ui/WorkspaceSplitter.vue";
+import PublicationManagerDialog from "./platform/editor-ui/PublicationManagerDialog.vue";
 import {
   loadWorkspaceSplitWidth,
   saveWorkspaceSplitWidth,
@@ -98,6 +99,7 @@ const aiDocumentRevision = ref(0);
 const aiDocumentSaving = ref(false);
 const aiDocumentSaveMessage = ref("");
 const aiDocumentConflict = ref(null);
+const publicationDialogOpen = ref(false);
 const aiDocumentQualityGate = ref({
   state: "idle",
   message: "",
@@ -2185,6 +2187,18 @@ async function openOutput() {
   outputAdapter.open(window.location.href);
 }
 
+async function openPublicationManager() {
+  if (!isAiDocumentMode.value || !aiDocumentId.value) return;
+  const currentGate = editorSnapshot.value?.qualityGate;
+  const readyRevision = currentGate?.state === "passed"
+    && Number(currentGate.documentRevision || 0) === Number(aiDocumentRevision.value);
+  if (editorCore.getState().dirty || !readyRevision) {
+    const saved = await saveAiDocument();
+    if (!saved) return;
+  }
+  publicationDialogOpen.value = true;
+}
+
 function outputReturnTarget() {
   const raw = new URLSearchParams(window.location.search).get("returnUrl");
   if (!raw) return "";
@@ -2815,6 +2829,7 @@ onBeforeUnmount(() => {
         @save-section-preset="saveSectionPresetLayout"
         @save-ai-document="saveAiDocument"
         @open-output="openOutput"
+        @manage-publication="openPublicationManager"
         @clear-selection="clearEditorSelection"
         @select-item="selectRendererItem"
         @open-item-inspector="openComponentInspector"
@@ -2834,6 +2849,14 @@ onBeforeUnmount(() => {
         @enable-fixed-text-size="enableFixedTextSize"
         @selection-rect-change="componentInspectorAnchor = $event"
         @text-line-selection-change="updateSelectedTextLines"
+      />
+
+      <PublicationManagerDialog
+        v-if="publicationDialogOpen && isAiDocumentMode"
+        :document-id="aiDocumentId"
+        :document-revision="aiDocumentRevision"
+        @close="publicationDialogOpen = false"
+        @status="aiDocumentSaveMessage = $event"
       />
 
       <ComponentInspectorPopover
