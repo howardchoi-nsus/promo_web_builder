@@ -53,7 +53,9 @@ decision_required: true
 8. 성공 기록 또는 Rollback
 ```
 
-현재 `DIRECTUS_RUNTIME_READ_ENABLED`와 Domain Policy는 구현되지 않았다. 구현 전 이 Runbook을 실행할 수 없다.
+`DIRECTUS_RUNTIME_READ_ENABLED`와 Domain Policy 기본값은 비활성이다. 실제 Domain Adapter 연결과 승인 Evidence가 준비되기 전 이 Runbook을 실행할 수 없다.
+
+Source Router와 Readiness Gate는 구현됐지만 실제 Domain API 연결과 환경별 Evidence는 아직 없다. `/api/directus-cutover-readiness?environment=preview&domain=components`가 모든 Gate를 통과하기 전 Read Flag를 활성화하지 않는다.
 
 ## 5. Rollback Trigger
 
@@ -79,6 +81,8 @@ decision_required: true
 7. Source·Target Diff 추출
 8. 재Cutover 금지 상태 설정
 ```
+
+이 절차는 Runtime Read Rollback이다. Migration 데이터 Rollback은 [06-database-migration-runbook.md](./06-database-migration-runbook.md)의 M7을 사용한다.
 
 ## 7. Write Cutover 추가 조건
 
@@ -106,4 +110,3 @@ decision_required: true
 | 결과 | 미실행 |
 | Rollback 여부 |  |
 | Evidence |  |
-

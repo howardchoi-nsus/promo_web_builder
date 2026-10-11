@@ -21,6 +21,8 @@ decision_required: true
 | DEC-09 | Runtime Fallback | 항상/조건부/없음 | 항상 Internal Fallback | SRE | Open |
 | DEC-10 | Write 지원 | Read-only/제한/전체 | Read-only 우선 | 전체 | Open |
 
+개발 기준안은 Component·Design Token, PostgreSQL Source of Truth, Source UUID 유지, Directus Read-only Mirror, 기존 Asset URL 유지, Archived 초기 제외, Internal Fallback, Runtime Write 비활성이다. 각 Owner가 승인하기 전 상태는 계속 `Open`이다.
+
 ## 2. 주요 위험
 
 | 위험 | 영향 | 예방 | 복구 |
@@ -100,6 +102,11 @@ decision_required: true
 | Shadow Read | 미구현 | 사용자 영향 없는 비교 |
 | Cutover Controller | 미구현 | 승인 Snapshot·즉시 복귀 |
 | Runtime Write | 미구현 | 협의 후 결정 |
+| Admin Auth Boundary | 구현 | 운영 Identity Provider의 서명 쿠키 발급 필요 |
+| Reference Schema Manifest | 구현 | `promo-reference-v1` 승인 필요 |
+| Migration Planner·Reconciliation | 구현 | 실제 Exporter·Writer와 환경 실행 필요 |
+| Shadow Source Router | 구현 | Component·Token 조회 API 연결 필요 |
+| Cutover Readiness Gate | 구현 | Preview Evidence와 승인 필요 |
 
 ## 5. 착수 전 회의 Agenda
 
@@ -122,4 +129,3 @@ decision_required: true
 | DevOps/SRE |  | 배포·Secret·Monitoring | Pending |  |
 | Security |  | 권한·Token·Network | Pending |  |
 | QA |  | E2E·합격 기준 | Pending |  |
-

@@ -62,10 +62,10 @@ function toConfig(row) {
   };
 }
 
-async function listConfigs(sql, ownerSubject) {
+async function listConfigs(sql) {
   const rows = await sql`
     select * from promo_integration_configs
-    where integration_key = 'directus' and created_by = ${ownerSubject}
+    where integration_key = 'directus'
     order by environment, version desc
   `;
   return rows.map(toConfig);
@@ -85,30 +85,31 @@ async function createDraft(sql, { environment, config, ownerSubject }) {
   return toConfig(rows[0]);
 }
 
-async function getOwnedConfig(sql, id, ownerSubject) {
+async function getOwnedConfig(sql, id) {
   const rows = await sql`
     select * from promo_integration_configs
-    where id = ${id}::uuid and integration_key = 'directus' and created_by = ${ownerSubject}
+    where id = ${id}::uuid and integration_key = 'directus'
     limit 1
   `;
   return toConfig(rows[0]);
 }
 
 async function validateDraft(sql, { id, ownerSubject, env = process.env }) {
-  const current = await getOwnedConfig(sql, id, ownerSubject);
+  const current = await getOwnedConfig(sql, id);
   if (!current || current.status !== "draft") return null;
   const validation = { ...validateConfig(current.config, env), validatedAt: new Date().toISOString() };
   const rows = await sql`
     update promo_integration_configs
-    set validation_json = ${JSON.stringify(validation)}::jsonb, updated_at = now()
-    where id = ${id}::uuid and created_by = ${ownerSubject} and status = 'draft'
+    set validation_json = ${JSON.stringify(validation)}::jsonb,
+      validated_by = ${ownerSubject}, updated_at = now()
+    where id = ${id}::uuid and status = 'draft'
     returning *
   `;
   return toConfig(rows[0]);
 }
 
 async function activateDraft(sql, { id, ownerSubject }) {
-  const current = await getOwnedConfig(sql, id, ownerSubject);
+  const current = await getOwnedConfig(sql, id);
   if (!current) return null;
   if (current.status !== "draft" || current.validation?.ok !== true) {
     throw Object.assign(new Error("검증을 통과한 초안만 활성화할 수 있습니다."), { statusCode: 409, code: "DIRECTUS_CONFIG_NOT_VALIDATED" });
@@ -125,14 +126,14 @@ async function activateDraft(sql, { id, ownerSubject }) {
   const rows = await sql`
     select activate_promo_integration_config(${id}::uuid, ${ownerSubject})::text as id
   `;
-  return rows[0]?.id ? getOwnedConfig(sql, rows[0].id, ownerSubject) : null;
+  return rows[0]?.id ? getOwnedConfig(sql, rows[0].id) : null;
 }
 
 async function suspendConfig(sql, { id, ownerSubject }) {
   const rows = await sql`
     update promo_integration_configs
-    set status = 'suspended', updated_at = now()
-    where id = ${id}::uuid and created_by = ${ownerSubject} and status = 'active'
+    set status = 'suspended', suspended_by = ${ownerSubject}, updated_at = now()
+    where id = ${id}::uuid and status = 'active'
     returning *
   `;
   return toConfig(rows[0]);
@@ -144,7 +145,6 @@ async function listConnectionChecks(sql, ownerSubject, limit = 20) {
     select connection.*, config.environment, config.version
     from promo_integration_connection_checks connection
     join promo_integration_configs config on config.id = connection.config_id
-    where config.created_by = ${ownerSubject}
     order by connection.checked_at desc
     limit ${safeLimit}
   `;

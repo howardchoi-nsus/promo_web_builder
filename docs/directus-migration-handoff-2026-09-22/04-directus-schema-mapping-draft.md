@@ -137,3 +137,17 @@ Publication Snapshot 자체를 Directus에 복제할지, Internal Revision을 �
 - [ ] Sample Payload 10건 이상 변환 검증
 - [ ] Schema Snapshot Export와 Version ID 기록
 
+## 10. 1차 구현 Schema Manifest
+
+1차 범위는 Component와 Design Token의 Read-only Mirror로 제한한다. 실행 기준 Manifest는 `directus/schema/promo-reference-v1.json`이다.
+
+Manifest에는 다음 Source가 모두 포함된다.
+
+- `wizard_item_components`
+- `wizard_item_component_versions`와 RenderSpec 필드
+- `promo_design_token_definitions`
+- `promo_design_token_sets`
+- `promo_design_token_set_versions`
+- `promo_design_token_values`
+
+Resource, Asset, Publication은 1차 Manifest에 포함하지 않는다. 실제 Directus Schema 적용 전 Manifest Review와 Sample Payload 검증을 완료하고 문서 상태를 `Approved`로 변경해야 한다.

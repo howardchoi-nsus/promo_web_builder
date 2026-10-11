@@ -37,6 +37,8 @@ Migration이 기술적으로 종료됐다는 사실과 데이터가 정확히 �
 | Asset |  |  |  |  |  | 미실행 |
 | Publication |  |  |  |  |  | 미실행 |
 
+1차 Batch에서는 Component, Component Version, Design Token Definition·Set·Version·Value만 Blocking 대상으로 집계한다. 그 외 Domain은 `Not Selected`로 기록하며 누락 0건으로 간주하지 않는다.
+
 ## 4. Field Diff 형식
 
 ```json
@@ -135,3 +137,4 @@ Secret, 사용자 식별정보, 전체 Prompt 원문은 Diff에 저장하지 않
 - Screenshot 또는 HTTP 결과 위치
 - 최종 승인자
 
+Evidence는 `promo_directus_migration_batches`, `promo_directus_migration_journal`, `promo_directus_shadow_diffs`, `promo_directus_cutover_snapshots`에 요약을 저장한다. 전체 Source Payload와 Secret은 저장하지 않는다. 보존 기간과 외부 Dashboard 위치는 인프라 리뷰에서 승인한다.

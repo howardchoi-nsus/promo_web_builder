@@ -1,0 +1,140 @@
+{
+  "schemaVersion": "promo-reference-v1",
+  "status": "draft",
+  "selectedDomains": ["components", "designTokens"],
+  "sourceOfTruth": "postgresql",
+  "directusMode": "read-only-mirror",
+  "idPolicy": "preserve-source-id",
+  "collections": [
+    {
+      "collection": "promo_components",
+      "sourceTable": "wizard_item_components",
+      "primaryKey": "id",
+      "fields": [
+        { "source": "id", "target": "id", "type": "uuid", "required": true },
+        { "source": "component_key", "target": "component_key", "type": "string", "required": true, "unique": true },
+        { "source": "system_seed_code", "target": "system_seed_code", "type": "string", "required": false, "unique": true },
+        { "source": "name", "target": "name", "type": "string", "required": true, "maxLength": 200 },
+        { "source": "description", "target": "description", "type": "text", "required": true },
+        { "source": "status", "target": "status", "type": "dropdown", "required": true, "enum": ["active", "archived"] },
+        { "source": "created_at", "target": "source_created_at", "type": "datetime", "required": true },
+        { "source": "updated_at", "target": "source_updated_at", "type": "datetime", "required": true }
+      ],
+      "migrationFields": ["migration_batch_id", "content_hash"]
+    },
+    {
+      "collection": "promo_component_versions",
+      "sourceTable": "wizard_item_component_versions",
+      "primaryKey": "id",
+      "unique": [["component", "version"]],
+      "fields": [
+        { "source": "id", "target": "id", "type": "uuid", "required": true },
+        { "source": "component_id", "target": "component", "type": "m2o", "required": true, "relatedCollection": "promo_components" },
+        { "source": "version", "target": "version", "type": "integer", "required": true },
+        { "source": "status", "target": "status", "type": "dropdown", "required": true, "enum": ["draft", "active", "inactive", "archived"] },
+        { "source": "field_kind", "target": "field_kind", "type": "dropdown", "required": true, "enum": ["text", "image", "cta"] },
+        { "source": "text_type", "target": "text_type", "type": "dropdown", "required": false, "enum": ["title", "remark", "multi"] },
+        { "source": "editor_schema", "target": "editor_schema", "type": "json", "required": true },
+        { "source": "default_value", "target": "default_value", "type": "json", "required": false },
+        { "source": "capabilities", "target": "capabilities", "type": "json", "required": true },
+        { "source": "image_policy", "target": "image_policy", "type": "json", "required": true },
+        { "source": "cta_policy", "target": "cta_policy", "type": "json", "required": true },
+        { "source": "style_slots", "target": "style_slots", "type": "json", "required": true },
+        { "source": "render_contract_version", "target": "render_contract_version", "type": "integer", "required": false },
+        { "source": "render_tree", "target": "render_tree", "type": "json", "required": false },
+        { "source": "render_responsive", "target": "render_responsive", "type": "json", "required": false },
+        { "source": "render_accessibility", "target": "render_accessibility", "type": "json", "required": false },
+        { "source": "render_validation", "target": "render_validation", "type": "json", "required": false },
+        { "source": "change_note", "target": "change_note", "type": "text", "required": true },
+        { "source": "created_at", "target": "source_created_at", "type": "datetime", "required": true },
+        { "source": "updated_at", "target": "source_updated_at", "type": "datetime", "required": true }
+      ],
+      "migrationFields": ["migration_batch_id", "content_hash"]
+    },
+    {
+      "collection": "promo_design_token_definitions",
+      "sourceTable": "promo_design_token_definitions",
+      "primaryKey": "token_key",
+      "fields": [
+        { "source": "token_key", "target": "token_key", "type": "string", "required": true },
+        { "source": "category", "target": "category", "type": "string", "required": true },
+        { "source": "category_label", "target": "category_label", "type": "string", "required": true },
+        { "source": "label", "target": "label", "type": "string", "required": true },
+        { "source": "value_type", "target": "value_type", "type": "dropdown", "required": true },
+        { "source": "semantic_role", "target": "semantic_role", "type": "string", "required": true },
+        { "source": "css_property", "target": "css_property", "type": "string", "required": true },
+        { "source": "css_properties", "target": "css_properties", "type": "json", "required": true },
+        { "source": "unit", "target": "unit", "type": "string", "required": true },
+        { "source": "themeable", "target": "themeable", "type": "boolean", "required": true },
+        { "source": "cardinality", "target": "cardinality", "type": "dropdown", "required": true },
+        { "source": "allowed_values", "target": "allowed_values", "type": "json", "required": true },
+        { "source": "source_metadata", "target": "source_metadata", "type": "json", "required": true },
+        { "source": "required", "target": "required", "type": "boolean", "required": true },
+        { "source": "ai_selectable", "target": "ai_selectable", "type": "boolean", "required": true },
+        { "source": "editable", "target": "editable", "type": "boolean", "required": true }
+      ],
+      "migrationFields": ["migration_batch_id", "content_hash"]
+    },
+    {
+      "collection": "promo_design_token_sets",
+      "sourceTable": "promo_design_token_sets",
+      "primaryKey": "id",
+      "fields": [
+        { "source": "id", "target": "id", "type": "uuid", "required": true },
+        { "source": "set_key", "target": "set_key", "type": "string", "required": true, "unique": true },
+        { "source": "name", "target": "name", "type": "string", "required": true },
+        { "source": "description", "target": "description", "type": "text", "required": true },
+        { "source": "status", "target": "status", "type": "dropdown", "required": true },
+        { "source": "created_at", "target": "source_created_at", "type": "datetime", "required": true },
+        { "source": "updated_at", "target": "source_updated_at", "type": "datetime", "required": true }
+      ],
+      "migrationFields": ["migration_batch_id", "content_hash"]
+    },
+    {
+      "collection": "promo_design_token_versions",
+      "sourceTable": "promo_design_token_set_versions",
+      "primaryKey": "id",
+      "unique": [["token_set", "version"]],
+      "fields": [
+        { "source": "id", "target": "id", "type": "uuid", "required": true },
+        { "source": "token_set_id", "target": "token_set", "type": "m2o", "required": true, "relatedCollection": "promo_design_token_sets" },
+        { "source": "version", "target": "version", "type": "integer", "required": true },
+        { "source": "status", "target": "status", "type": "dropdown", "required": true },
+        { "source": "source_name", "target": "source_name", "type": "string", "required": true },
+        { "source": "source_hash", "target": "source_hash", "type": "string", "required": true },
+        { "source": "change_note", "target": "change_note", "type": "text", "required": true },
+        { "source": "created_at", "target": "source_created_at", "type": "datetime", "required": true },
+        { "source": "updated_at", "target": "source_updated_at", "type": "datetime", "required": true }
+      ],
+      "migrationFields": ["migration_batch_id", "content_hash"]
+    },
+    {
+      "collection": "promo_design_token_values",
+      "sourceTable": "promo_design_token_values",
+      "primaryKey": ["token_set_version_id", "token_key", "value_index"],
+      "fields": [
+        { "source": "token_set_version_id", "target": "token_set_version", "type": "m2o", "required": true, "relatedCollection": "promo_design_token_versions" },
+        { "source": "token_key", "target": "token_definition", "type": "m2o", "required": true, "relatedCollection": "promo_design_token_definitions" },
+        { "source": "value_index", "target": "value_index", "type": "integer", "required": true },
+        { "source": "token_value", "target": "token_value", "type": "string", "required": true },
+        { "source": "value_light", "target": "value_light", "type": "string", "required": true },
+        { "source": "value_dark", "target": "value_dark", "type": "string", "required": true },
+        { "source": "active_theme", "target": "active_theme", "type": "dropdown", "required": true },
+        { "source": "metadata", "target": "metadata", "type": "json", "required": true }
+      ],
+      "migrationFields": ["migration_batch_id", "content_hash"]
+    }
+  ],
+  "relationOrder": [
+    "promo_components",
+    "promo_component_versions",
+    "promo_design_token_definitions",
+    "promo_design_token_sets",
+    "promo_design_token_versions",
+    "promo_design_token_values"
+  ],
+  "deletePolicy": {
+    "components": "detect-source-missing-and-soft-delete-target",
+    "designTokens": "detect-source-missing-and-block-until-approved"
+  }
+}

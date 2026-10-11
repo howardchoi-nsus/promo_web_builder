@@ -21,7 +21,7 @@ decision_required: true
 
 - [ ] Source Commit 고정
 - [ ] Source DB 환경과 Branch 확인
-- [ ] Migration `066`~`070` 적용 여부 확인
+- [ ] Migration `066`~`071` 적용 여부 확인
 - [ ] Source DB Backup 또는 Neon Branch 생성
 - [ ] Directus Project와 Schema Version 고정
 - [ ] Schema Mapping 문서 Approved
@@ -102,6 +102,7 @@ Full Migration 시작 이후 변경된 Source 레코드를 `updated_at`과 Hash�
   "sourceEnvironment": "preview",
   "targetEnvironment": "preview",
   "schemaVersion": "decision-required",
+  "selectedDomains": ["components", "designTokens"],
   "startedAt": "ISO-8601",
   "completedAt": "ISO-8601",
   "status": "running|passed|failed|rolled_back",
@@ -112,6 +113,8 @@ Full Migration 시작 이후 변경된 Source 레코드를 `updated_at`과 Hash�
 }
 ```
 
+`selectedDomains` 밖의 Domain은 같은 Batch에서 읽거나 쓰지 않는다. 1차 실행은 `components`와 `designTokens`만 허용한다.
+
 ## 5. Idempotency 규칙
 
 - Upsert Key는 Source UUID 또는 승인된 Stable Key를 사용한다.
@@ -119,6 +122,27 @@ Full Migration 시작 이후 변경된 Source 레코드를 `updated_at`과 Hash�
 - Target에 더 새로운 Revision이 있으면 덮어쓰지 않고 Conflict로 기록한다.
 - Relation 연결은 Set 기반으로 비교한다.
 - 실행 재시도 시 새 ID를 만들지 않는다.
+- Source에서 사라진 ID는 삭제 후보로 분리하며 자동 삭제하지 않는다.
+- Component hard delete는 전체 Source ID와 Target ID anti-join으로 탐지한다.
+
+구현된 계획 도구:
+
+```bash
+node scripts/directus-migration-plan.mjs --mode=plan --source=source.json --target=target.json --domains=components,designTokens --environment=development --schema=promo-reference-v1
+node scripts/directus-migration-plan.mjs --mode=reconcile --source=source.json --target=target.json --domains=components,designTokens
+node scripts/directus-migration-plan.mjs --mode=rollback --source=source.json --target=target.json --batch=BATCH_ID
+```
+
+이 도구는 계획·대사·Rollback 순서를 생성하며 Directus에 쓰지 않는다. 실제 Writer 실행은 `DIRECTUS_MIGRATION_ENABLED=true`, 승인된 Schema, Migration Writer Credential, 환경 일치가 모두 확인된 뒤에만 허용한다.
+
+### M7 — Data Rollback
+
+1. `promo_directus_migration_journal`에서 Batch의 적용 작업을 역순으로 읽는다.
+2. 생성 항목은 Relation을 해제한 뒤 제거하거나 비활성화한다.
+3. 갱신 항목은 `before_json`으로 복원한다.
+4. Soft Delete 항목은 이전 상태로 복원한다.
+5. Rollback 후 Count·Hash·Relation Reconciliation을 다시 수행한다.
+6. Batch 상태를 `rolled_back`으로 변경하고 재사용하지 않는다.
 
 ## 6. 데이터 변환 규칙
 
@@ -166,4 +190,3 @@ Full Migration 시작 이후 변경된 Source 레코드를 `updated_at`과 Hash�
 - [ ] Migration Batch와 Evidence 보존
 - [ ] Rollback 실행 가능 상태 확인
 - [ ] Runtime Source는 아직 변경되지 않았음을 확인
-

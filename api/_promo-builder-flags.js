@@ -15,6 +15,10 @@ const FLAG_NAMES = Object.freeze({
   directusConfigManagement: "DIRECTUS_CONFIG_MANAGEMENT_ENABLED",
   directusIntegration: "DIRECTUS_INTEGRATION_ENABLED",
   directusConnectionTunnel: "DIRECTUS_CONNECTION_TUNNEL_ENABLED",
+  directusMigration: "DIRECTUS_MIGRATION_ENABLED",
+  directusShadowRead: "DIRECTUS_SHADOW_READ_ENABLED",
+  directusRuntimeRead: "DIRECTUS_RUNTIME_READ_ENABLED",
+  directusRuntimeWrite: "DIRECTUS_RUNTIME_WRITE_ENABLED",
 });
 
 // Registry composition is the production path. Keep an explicit false value as
@@ -32,6 +36,10 @@ const FLAG_DEFAULTS = Object.freeze({
   directusConfigManagement: true,
   directusIntegration: false,
   directusConnectionTunnel: false,
+  directusMigration: false,
+  directusShadowRead: false,
+  directusRuntimeRead: false,
+  directusRuntimeWrite: false,
 });
 
 function enabled(value, fallback = true) {

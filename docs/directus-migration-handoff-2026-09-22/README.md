@@ -13,7 +13,7 @@ target_environments: [development, preview, production]
 
 이 폴더는 Promo Web Builder를 내부 시스템 또는 Directus와 연결하고, 필요한 데이터베이스 마이그레이션을 설계·실행·검증하기 위한 독립 문서 세트다. 진행 보고보다 실행 책임, 데이터 소유권, 변환 규칙, 승인 조건과 복구 절차를 명확히 하는 데 목적이 있다.
 
-현재 구현은 Directus 설정과 연결 검사까지만 제공한다. Directus Collection 생성, 데이터 이전, Runtime Read/Write 전환은 아직 승인·구현되지 않았다. 따라서 관련 문서는 `Draft`와 `결정 필요` 상태를 유지한다.
+현재 구현은 Directus 설정·연결 검사, 1차 Schema Manifest, Migration 계획·대사·Rollback 기반, Source Router와 Cutover Readiness Gate를 제공한다. Directus Collection 생성, 실제 데이터 Write, Domain Adapter 연결과 Runtime Read/Write 전환은 아직 승인·실행되지 않았다. 따라서 관련 문서는 `Draft`와 `결정 필요` 상태를 유지한다.
 
 ## 현재 기준선
 
@@ -23,10 +23,12 @@ target_environments: [development, preview, production]
 - Directus: Versioned Config, Secret Reference, Health·인증 연결 검사만 구현
 - Directus 데이터 조회·쓰기: 미구현
 - Directus 데이터 마이그레이션: 미실행
-- 기준 DB Migration: `066`~`070`
-- 자동 검증 기준: 163개 테스트 파일, Admin·Visual Editor·Nuxt Build, Nuxt HTTP E2E
+- 기준 DB Migration: `066`~`071`
+- 자동 검증 기준: 169개 테스트 파일, Admin·Visual Editor·Nuxt Build, Nuxt HTTP E2E
 
 ## 문서 읽는 순서
+
+전체 내용을 한 번에 확인하려면 먼저 [00-directus-integration-migration-master-guide.md](./00-directus-integration-migration-master-guide.md)를 읽는다. 아래 문서는 세부 Mapping, 실행 양식과 승인 근거가 필요할 때 참고한다.
 
 | 순서 | 문서 | 목적 | 승인 주체 |
 |---:|---|---|---|
@@ -40,6 +42,7 @@ target_environments: [development, preview, production]
 | 8 | [08-cutover-and-rollback-runbook.md](./08-cutover-and-rollback-runbook.md) | 운영 전환·복구 절차 | 서비스 Owner |
 | 9 | [09-operations-monitoring-and-incident-response.md](./09-operations-monitoring-and-incident-response.md) | 운영 지표와 장애 대응 | SRE·운영 |
 | 10 | [10-decisions-risks-and-execution-roadmap.md](./10-decisions-risks-and-execution-roadmap.md) | 미결정 사항과 실행 Gate 관리 | 전체 승인자 |
+| 11 | [11-developer-infrastructure-review-plan.md](./11-developer-infrastructure-review-plan.md) | 구현 변경, 배포 순서, 환경별 실행 승인 검토 | 개발·인프라·보안 |
 
 ## 문서 관리 규칙
 
@@ -60,4 +63,3 @@ target_environments: [development, preview, production]
 | Approved | 지정 환경에서 실행 가능 |
 | Executed | 실행과 결과 기록 완료 |
 | Deprecated | 더 이상 사용하지 않음 |
-

@@ -10,13 +10,14 @@ decision_required: true
 
 | Method | Endpoint | 호출 주체 | 목적 | DB 변경 |
 |---|---|---|---|---:|
-| GET/POST/PATCH | `/api/directus-integration-config` | Admin | Config 조회·Draft·검증·활성·중지 | Y |
-| POST | `/api/directus-connection-test` | Admin | Health·인증 연결 검사 | 검사 기록 Y |
+| GET/POST/PATCH | `/api/directus-integration-config` | 인증된 Admin | 환경 공용 Config 조회·Draft·검증·활성·중지 | Y |
+| POST | `/api/directus-connection-test` | 인증된 Admin | Health·인증 연결 검사 | 검사 기록 Y |
 | GET/POST/PATCH | `/api/promo-publications` | Visual Editor | 게시 이력·저장·상태 변경 | Y |
 | GET | `/api/promo-publication` | Nuxt | 공개 Publication 조회 | N |
 | POST | `/api/promo-publication-preview-token` | Visual Editor | 단기 Preview Token 발급 | N |
 | GET | `/api/promo-publication-preview` | Nuxt | 미게시 Revision Preview 조회 | N |
 | POST | Nuxt `/api/revalidate-promotion` | Builder API | Promotion Cache 제거 | Cache 변경 |
+| GET | `/api/directus-cutover-readiness` | 인증된 Admin | Domain Cutover Gate 조회 | N |
 
 ## 2. Feature Flag
 
@@ -36,6 +37,8 @@ DIRECTUS_SHADOW_READ_ENABLED
 DIRECTUS_RUNTIME_READ_ENABLED
 DIRECTUS_RUNTIME_WRITE_ENABLED
 ```
+
+모든 후속 Flag의 기본값은 `false`다. Read 대상은 `DIRECTUS_RUNTIME_READ_DOMAINS`, Shadow 대상은 `DIRECTUS_SHADOW_READ_DOMAINS`에 `components,designTokens`처럼 명시한다.
 
 ## 3. Directus Config 계약
 
@@ -73,11 +76,15 @@ DIRECTUS_RUNTIME_WRITE_ENABLED
 
 Reader, Writer, Schema Admin은 같은 Token을 재사용하지 않는다.
 
+호스팅 환경의 Admin Session은 `PROMO_ADMIN_SESSION_SECRET`으로 검증한다. 인증 서비스가 `promo_admin_session` 쿠키를 발급해야 하며 이 저장소는 로그인 화면이나 Identity Provider를 구현하지 않는다. 로컬 비호스팅 환경에서만 `PROMO_ADMIN_LOCAL_ACCESS_ENABLED=true`일 때 Builder Session을 Local Admin으로 사용할 수 있다.
+
+Nuxt 공개 URL은 경로가 없는 Origin 형태의 `PROMO_RUNTIME_PUBLIC_URL`로 지정한다. 호스팅 환경에서는 HTTPS만 허용하며 Visual Editor는 Capability API에서 이 값을 받아 미리보기와 공개 링크를 생성한다.
+
 ## 5. 연결 검사 계약
 
 ```text
 1. Feature Flag 확인
-2. Admin Session 확인
+2. 서명된 Admin Session과 `admin` Role 확인
 3. 저장 Config 조회
 4. URL·Host·Secret Ref 검증
 5. GET /server/health
@@ -136,4 +143,3 @@ Adapter 반환값은 공용 Domain Contract로 정규화하고 Directus 응답 �
 - [ ] Private Network·방화벽 경로 확인
 - [ ] Migration 계정 사용 기한 지정
 - [ ] Connection Reader에 Collection Write 권한이 없음을 확인
-

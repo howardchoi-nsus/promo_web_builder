@@ -76,6 +76,8 @@ Domain Query → Source Router
 | Reconciliation | Count·Hash·Relation Diff | Diff 저장 |
 | Cutover Controller | 승인된 Source 전환 | 승인 Snapshot |
 
+현재 Source Router, Migration 계획·대사·Rollback 계약, Cutover Readiness Gate와 Control Plane 저장소가 구현됐다. Internal·Directus Domain Adapter와 실제 Migration Exporter·Writer는 환경 승인 후 추가해야 한다.
+
 ## 4. Runtime Contract
 
 Runtime은 Source와 무관하게 다음 종류의 계약만 받는다.
@@ -109,4 +111,3 @@ Directus 고유 Field 이름, Relation Payload, File ID는 Adapter 외부로 노
 - [ ] Directus Write를 허용할 관리자 기능
 - [ ] Asset Binary를 Directus Files로 이전할지 여부
 - [ ] Source별 Audit Log 보존 기간
-

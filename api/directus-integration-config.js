@@ -1,5 +1,5 @@
 const { parseBody } = require("./_wizard-form-templates-store");
-const { resolveBuilderOwner } = require("./_promo-builder-auth");
+const { resolveAdminOwner } = require("./_promo-admin-auth");
 const { builderFlags, requireBuilderFlag } = require("./_promo-builder-flags");
 const {
   getSql, listConfigs, createDraft, validateDraft, activateDraft, suspendConfig, listConnectionChecks,
@@ -9,7 +9,7 @@ module.exports = async function handler(req, res) {
   try {
     requireBuilderFlag("directusConfigManagement");
     res.setHeader("Cache-Control", "no-store");
-    const owner = resolveBuilderOwner(req, res, { issue: true });
+    const owner = resolveAdminOwner(req, res);
     const sql = getSql();
     if (req.method === "GET") {
       const [configs, checks] = await Promise.all([

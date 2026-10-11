@@ -114,12 +114,12 @@ Directus 연결 흐름:
 | `068` | Multi-candidate 분석 | 큰 이미지에서 복수 후보 계약 |
 | `069` | Publication Runtime | Slug·Locale·고정 Revision |
 | `070` | Directus Connection Tunnel | Config Version·연결 검사 |
+| `071` | Directus Migration Control Plane | 관리자 감사, Batch·Journal·Shadow Diff·Cutover Snapshot |
 
 ## 7. 기준선 승인 조건
 
 - [ ] 기준 커밋이 Preview와 Production 중 어느 환경에 배포됐는지 기록
-- [ ] Migration `066`~`070` 적용 여부를 환경별로 확인
+- [ ] Migration `066`~`071` 적용 여부를 환경별로 확인
 - [ ] 실제 PostgreSQL Object 수와 문서 Inventory 대조
 - [ ] Directus가 현재 Runtime 데이터 경로에 연결되지 않았음을 확인
 - [ ] 연동 대상 도메인의 Product Owner 지정
-

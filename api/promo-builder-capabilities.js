@@ -1,4 +1,5 @@
 const { builderFlags } = require("./_promo-builder-flags");
+const { runtimePublicConfig } = require("./_promo-runtime-public-config");
 
 module.exports = async function handler(req, res) {
   if (req.method !== "GET") {
@@ -7,6 +8,7 @@ module.exports = async function handler(req, res) {
   }
   res.setHeader("Cache-Control", "no-store");
   const capabilities = builderFlags();
+  const runtime = runtimePublicConfig();
   return res.status(200).json({
     ok: true,
     capabilities: {
@@ -15,6 +17,9 @@ module.exports = async function handler(req, res) {
       supportedContractVersions: capabilities.compositionV3 ? [2, 3] : [2],
       outputMode: capabilities.export ? "preview-and-export" : "preview",
       exportFormats: capabilities.export ? ["html", "manifest", "snapshot", "vue", "react", "nuxt"] : [],
+      runtimePublicUrl: runtime.publicUrl,
+      runtimePublicUrlConfigured: runtime.configured,
+      runtimePublicUrlReason: runtime.reason,
     },
   });
 };

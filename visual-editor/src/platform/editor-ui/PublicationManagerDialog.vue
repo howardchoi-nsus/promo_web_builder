@@ -11,6 +11,8 @@ const saving = ref(false);
 const error = ref("");
 const publications = ref([]);
 const selectedId = ref("");
+const runtimePublicUrl = ref("");
+const runtimePublicUrlConfigured = ref(false);
 const form = reactive({
   slug: "",
   locale: "ko-KR",
@@ -92,8 +94,22 @@ async function load({ preserveSelection = true } = {}) {
   }
 }
 
+async function loadRuntimeConfig() {
+  try {
+    const payload = await api({}, "/api/promo-builder-capabilities");
+    runtimePublicUrl.value = String(payload.capabilities?.runtimePublicUrl || "");
+    runtimePublicUrlConfigured.value = payload.capabilities?.runtimePublicUrlConfigured === true;
+  } catch (configError) {
+    error.value = configError.message;
+  }
+}
+
 async function save(status) {
   if (!form.slug || saving.value) return;
+  if (status === "draft" && selected.value?.publication.status === "published") {
+    error.value = "게시 중인 항목은 초안 저장으로 상태를 변경할 수 없습니다. 현재 revision 게시 또는 게시 중지를 사용해 주세요.";
+    return;
+  }
   saving.value = true;
   error.value = "";
   try {
@@ -160,7 +176,8 @@ async function openPreview() {
       method: "POST",
       body: JSON.stringify({ id: selected.value.publication.id }),
     }, "/api/promo-publication-preview-token");
-    const url = new URL(`/preview/promotions/${payload.preview.slug}`, window.location.origin);
+    if (!runtimePublicUrlConfigured.value) throw new Error("Nuxt Runtime 공개 URL이 설정되지 않았습니다.");
+    const url = new URL(`/preview/promotions/${payload.preview.slug}`, runtimePublicUrl.value);
     url.searchParams.set("locale", payload.preview.locale);
     url.searchParams.set("token", payload.preview.token);
     if (previewWindow) previewWindow.location.replace(url.href);
@@ -174,13 +191,13 @@ async function openPreview() {
 }
 
 function runtimeUrl(item = selected.value) {
-  if (!item) return "";
-  const url = new URL(`/promotions/${item.publication.slug}`, window.location.origin);
+  if (!item || !runtimePublicUrlConfigured.value) return "";
+  const url = new URL(`/promotions/${item.publication.slug}`, runtimePublicUrl.value);
   url.searchParams.set("locale", item.publication.locale);
   return url.href;
 }
 
-onMounted(load);
+onMounted(() => Promise.all([load(), loadRuntimeConfig()]));
 </script>
 
 <template>
@@ -226,12 +243,12 @@ onMounted(load);
           <label><span>캐시 갱신(초)</span><input v-model.number="form.revalidateSeconds" type="number" min="0" max="86400" /></label>
           <label class="publication-dialog__check"><input v-model="form.noIndex" type="checkbox" /><span>검색엔진 제외</span></label>
           <div class="publication-dialog__actions wide">
-            <button type="submit" :disabled="saving || !form.slug">초안 저장</button>
+            <button type="submit" :disabled="saving || !form.slug || selected?.publication.status === 'published'">초안 저장</button>
             <button type="button" class="primary" :disabled="saving || !form.slug" @click="save('published')">현재 revision 게시</button>
             <button type="button" :disabled="saving || !selected || selected.publication.status !== 'published'" @click="changeStatus('unpublished')">게시 중지</button>
             <button type="button" :disabled="saving || !selected || selected.publication.status === 'published'" @click="changeStatus('published')">선택 revision 재게시</button>
-            <button type="button" :disabled="saving || !selected" @click="openPreview">Nuxt 미리보기</button>
-            <a v-if="selected?.publication.status === 'published'" :href="runtimeUrl()" target="_blank" rel="noopener noreferrer">Nuxt 페이지 열기</a>
+            <button type="button" :disabled="saving || !selected || !runtimePublicUrlConfigured" @click="openPreview">Nuxt 미리보기</button>
+            <a v-if="selected?.publication.status === 'published' && runtimePublicUrlConfigured" :href="runtimeUrl()" target="_blank" rel="noopener noreferrer">Nuxt 페이지 열기</a>
           </div>
         </form>
       </div>

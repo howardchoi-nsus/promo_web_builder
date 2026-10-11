@@ -1,5 +1,5 @@
 const { parseBody } = require("./_wizard-form-templates-store");
-const { resolveBuilderOwner } = require("./_promo-builder-auth");
+const { resolveAdminOwner } = require("./_promo-admin-auth");
 const { requireBuilderFlag } = require("./_promo-builder-flags");
 const {
   getSql, getOwnedConfig, validateConfig, recordConnectionCheck,
@@ -30,6 +30,7 @@ async function fetchDirectusWithRetry(url, options) {
       return await fetchDirectus(url, options);
     } catch (error) {
       lastError = error;
+      if (["DIRECTUS_HTTP_401", "DIRECTUS_HTTP_403", "DIRECTUS_RESPONSE_TOO_LARGE"].includes(error?.code)) break;
       if (attempt < options.retryCount) await new Promise((resolve) => setTimeout(resolve, Math.min(500, 100 * (2 ** attempt))));
     }
   }
@@ -45,7 +46,7 @@ module.exports = async function handler(req, res) {
     requireBuilderFlag("directusIntegration");
     requireBuilderFlag("directusConnectionTunnel");
     if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
-    const owner = resolveBuilderOwner(req, res, { issue: true });
+    const owner = resolveAdminOwner(req, res);
     ownerSubject = owner.ownerSubject;
     const body = parseBody(req.body);
     configId = String(body.id || "").trim();
