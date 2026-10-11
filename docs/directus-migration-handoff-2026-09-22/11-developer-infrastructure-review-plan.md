@@ -143,8 +143,9 @@ Development와 Preview Directus URL, Schema Admin·Migration Writer Credential, 
 
 ## 2026-10-11 검증 결과
 
-- 저장소 계약 테스트 169개 중 168개를 실행했고 실패는 0건이다.
-- `scripts/test-promo-readonly-renderer-ssr.mjs` 1개는 애플리케이션 결함이 아니라 로컬 macOS의 `rolldown` 네이티브 바이너리 Team ID 서명 불일치 때문에 실행 대상에서 제외했다.
-- Visual Editor 빌드도 컴파일 진입 전 동일한 `rolldown` 서명 오류로 중단됐다. 현재 실행 Node.js 24와 프로젝트 요구 Node.js 22의 차이도 함께 해소한 뒤 재검증한다.
+- 저장소 계약 테스트 169개를 모두 실행했고 실패는 0건이다.
+- Admin, Visual Editor, Nuxt Runtime 전체 프로덕션 빌드가 통과했다.
+- Codex 앱 번들 Node로 직접 실행하면 macOS Hardened Runtime과 `rolldown` 네이티브 바이너리의 Team ID가 달라 로딩이 차단된다. 저장소나 앱을 변경하지 않은 임시 ad-hoc 서명 Node 복사본으로 네이티브 모듈을 검증했으며, 이전에 제외했던 `scripts/test-promo-readonly-renderer-ssr.mjs`도 통과했다.
+- 로컬·CI의 표준 실행 환경은 프로젝트 `engines`에 맞는 독립 Node.js 22를 사용해야 한다.
 - 새로 추가한 Admin 인증, Runtime URL, Directus 연결, Schema Manifest, Migration·Reconciliation·Rollback, Control Plane, Cutover Readiness 테스트는 모두 통과했다.
 - `git diff --check`와 문서 내부 로컬 링크 검사는 통과했다.
