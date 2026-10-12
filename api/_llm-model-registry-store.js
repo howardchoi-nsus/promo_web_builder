@@ -146,7 +146,7 @@ async function ensureLlmModelRegistry(sql) {
   `;
   for (const row of DEFAULT_MODELS) {
     const [provider, modelId, displayName, modality, isRecommended, isLegacy, temperature, maxTokens, responseFormat, options, sizes] = row;
-    await sql`
+    const seededRows = await sql`
       insert into llm_models (
         provider, model_id, display_name, modality, status, is_recommended, is_legacy,
         default_temperature, default_max_tokens, default_response_format, model_options,
@@ -156,9 +156,44 @@ async function ensureLlmModelRegistry(sql) {
         ${temperature}, ${maxTokens}, ${responseFormat}, ${JSON.stringify(options)}::jsonb,
         ${JSON.stringify(sizes)}::jsonb, 'system:catalog', 'system:catalog'
       ) on conflict (provider, model_id) do nothing
+      returning *
     `;
+    if (seededRows[0]) await appendHistory(sql, seededRows[0], null, "system:catalog");
   }
   await syncPromptModelsToRegistry(sql);
+  await ensureRegistryHistories(sql);
+}
+
+async function ensureRegistryHistories(sql) {
+  await sql`
+    insert into llm_model_histories (
+      llm_model_id, provider, model_id, previous_status, new_status,
+      snapshot, change_note, changed_by
+    )
+    select
+      model.id, model.provider, model.model_id, null, model.status,
+      jsonb_build_object(
+        'provider', model.provider,
+        'modelId', model.model_id,
+        'displayName', model.display_name,
+        'description', model.description,
+        'modality', model.modality,
+        'status', model.status,
+        'isRecommended', model.is_recommended,
+        'isLegacy', model.is_legacy,
+        'defaultTemperature', model.default_temperature,
+        'defaultMaxTokens', model.default_max_tokens,
+        'defaultResponseFormat', model.default_response_format,
+        'supportedImageSizes', model.supported_image_sizes,
+        'modelOptions', model.model_options
+      ),
+      coalesce(nullif(model.change_note, ''), '기존 LLM Registry 모델 이력 초기화'),
+      model.updated_by
+    from llm_models model
+    where not exists (
+      select 1 from llm_model_histories history where history.llm_model_id = model.id
+    )
+  `;
 }
 
 async function syncPromptModelsToRegistry(sql) {
@@ -244,6 +279,39 @@ async function listModels(sql) {
       model.provider, model.modality, model.is_recommended desc, model.display_name
   `;
   return rows.map(toModel);
+}
+
+async function listModelHistories(sql, limit = 200) {
+  await ensureLlmModelRegistry(sql);
+  const safeLimit = Math.max(1, Math.min(Number(limit) || 200, 500));
+  const rows = await sql`
+    select
+      id::text,
+      llm_model_id::text,
+      provider,
+      model_id,
+      previous_status,
+      new_status,
+      snapshot,
+      change_note,
+      changed_by,
+      changed_at
+    from llm_model_histories
+    order by changed_at desc
+    limit ${safeLimit}
+  `;
+  return rows.map((row) => ({
+    id: row.id,
+    llmModelId: row.llm_model_id,
+    provider: row.provider,
+    modelId: row.model_id,
+    previousStatus: row.previous_status || "",
+    newStatus: row.new_status || "",
+    snapshot: row.snapshot || {},
+    changeNote: row.change_note || "",
+    changedBy: row.changed_by || "",
+    changedAt: row.changed_at || null,
+  }));
 }
 
 async function createModel(sql, input, actor) {
@@ -332,8 +400,10 @@ async function appendHistory(sql, row, previousStatus, actor) {
 module.exports = {
   DEFAULT_MODELS,
   createModel,
+  ensureRegistryHistories,
   ensureLlmModelRegistry,
   getSql,
+  listModelHistories,
   listModels,
   normalizeModelInput,
   syncPromptModelsToRegistry,

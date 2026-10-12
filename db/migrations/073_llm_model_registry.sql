@@ -91,4 +91,36 @@ select
 from prompt_models prompt
 on conflict (provider, model_id) do nothing;
 
+insert into llm_model_histories (
+  llm_model_id, provider, model_id, previous_status, new_status,
+  snapshot, change_note, changed_by
+)
+select
+  model.id,
+  model.provider,
+  model.model_id,
+  null,
+  model.status,
+  jsonb_build_object(
+    'provider', model.provider,
+    'modelId', model.model_id,
+    'displayName', model.display_name,
+    'description', model.description,
+    'modality', model.modality,
+    'status', model.status,
+    'isRecommended', model.is_recommended,
+    'isLegacy', model.is_legacy,
+    'defaultTemperature', model.default_temperature,
+    'defaultMaxTokens', model.default_max_tokens,
+    'defaultResponseFormat', model.default_response_format,
+    'supportedImageSizes', model.supported_image_sizes,
+    'modelOptions', model.model_options
+  ),
+  coalesce(nullif(model.change_note, ''), '기존 LLM Registry 모델 이력 초기화'),
+  model.updated_by
+from llm_models model
+where not exists (
+  select 1 from llm_model_histories history where history.llm_model_id = model.id
+);
+
 commit;

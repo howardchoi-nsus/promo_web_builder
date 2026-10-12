@@ -3,6 +3,7 @@ const { parseBody } = require("./_prompt-template-store");
 const {
   createModel,
   getSql,
+  listModelHistories,
   listModels,
   updateModel,
 } = require("./_llm-model-registry-store");
@@ -13,7 +14,9 @@ module.exports = async function handler(req, res) {
     const owner = resolveAdminOwner(req, res);
     const sql = getSql();
     if (req.method === "GET") {
-      return res.status(200).json({ ok: true, models: await listModels(sql) });
+      const models = await listModels(sql);
+      const histories = await listModelHistories(sql, req.query?.historyLimit);
+      return res.status(200).json({ ok: true, models, histories });
     }
     const body = parseBody(req.body);
     if (req.method === "POST") {
