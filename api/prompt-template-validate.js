@@ -6,6 +6,7 @@ const {
   validatePromptTemplateContract,
 } = require("./_prompt-template-store");
 const { validateStageModelConfig } = require("./_prompt-execution-snapshot");
+const { requireActiveRegisteredModel } = require("./_llm-model-registry-store");
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
@@ -40,6 +41,11 @@ module.exports = async function handler(req, res) {
       body: current.body,
       requiredVariables: current.required_variables,
       optionalVariables: current.optional_variables,
+    });
+    await requireActiveRegisteredModel(sql, {
+      provider: current.provider,
+      model: current.model,
+      promptType: current.type,
     });
     validateStageModelConfig(current.type, {
       provider: current.provider,

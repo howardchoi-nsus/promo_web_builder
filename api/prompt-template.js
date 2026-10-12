@@ -9,6 +9,7 @@ const {
   toPromptTemplate,
   validatePromptTemplateContract,
 } = require("./_prompt-template-store");
+const { requireActiveRegisteredModel } = require("./_llm-model-registry-store");
 
 // Only draft rows are mutable. A version is assigned when the draft row is
 // created and never changes afterwards.
@@ -196,6 +197,7 @@ async function updatePrompt(req, res) {
     requiredVariables,
     optionalVariables,
   });
+  await requireActiveRegisteredModel(sql, { provider, model, promptType: current.type });
   // Updating the prompt and appending its audit history must succeed or fail
   // together. A partial write would make production behavior impossible to
   // trace back to the Admin Page change that caused it.

@@ -1112,6 +1112,9 @@ const adminApp = createApp({
       promptTemplates: [],
       promptTemplatesLoading: false,
       promptTemplatesError: "",
+      llmRegistryModels: [],
+      llmRegistryModelsLoading: false,
+      llmRegistryModelsError: "",
       promptDetailLoading: false,
       promptDetailRequestRevision: 0,
       selectedPromptTemplateId: "",
@@ -1620,19 +1623,22 @@ const adminApp = createApp({
     },
 
     promptModelChoices() {
-      return window.PromoAdminModelCatalog?.listModels({
-        provider: this.promptEditor.provider,
-        type: this.selectedPromptTemplate?.type,
-      }) || [];
+      const modality = window.PromoAdminModelCatalog?.promptModality(this.selectedPromptTemplate?.type) || "text";
+      return this.llmRegistryModels
+        .filter((entry) => entry.status === "active"
+          && entry.provider === this.promptEditor.provider
+          && entry.modality === modality)
+        .map((entry) => ({
+          ...entry,
+          model: entry.modelId,
+          label: `${entry.displayName}${entry.isRecommended ? " · 권장" : ""}${entry.isLegacy ? " · 레거시" : ""}`,
+        }));
     },
 
     selectedPromptModelPreset() {
-      return window.PromoAdminModelCatalog?.findModel(
-        this.promptEditor.provider,
-        this.promptEditor.modelChoice === "__custom__"
-          ? this.promptEditor.model
-          : this.promptEditor.modelChoice
-      ) || null;
+      return this.llmRegistryModels.find((entry) => entry.status === "active"
+        && entry.provider === this.promptEditor.provider
+        && entry.modelId === this.promptEditor.modelChoice) || null;
     },
 
     promptImageSizeChoices() {
@@ -2210,6 +2216,7 @@ const adminApp = createApp({
       url.searchParams.set("view", "admin");
       window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
       const preserveAdminStatus = await this.loadAdminCapabilities();
+      await this.loadLlmRegistryModels();
       await Promise.all([
         this.loadPromptTemplates(),
         this.loadWorkerWebhookSettings(),
@@ -2231,6 +2238,7 @@ const adminApp = createApp({
       }
       this.adminTab = tab;
       if (tab === "i18n") this.loadLocales();
+      if (tab === "llm" || tab === "llm-models") this.loadLlmRegistryModels({ fresh: true });
       if (tab === "components") this.loadItemComponents();
       if (tab === "section-presets") {
         this.loadWizardSections({ fresh: true });
@@ -2777,6 +2785,22 @@ const adminApp = createApp({
       }
     },
 
+    async loadLlmRegistryModels(options = {}) {
+      if (this.llmRegistryModelsLoading && !options.fresh) return;
+      this.llmRegistryModelsLoading = true;
+      this.llmRegistryModelsError = "";
+      try {
+        const result = await window.PromoAdminLlmModels.service.list();
+        this.llmRegistryModels = Array.isArray(result.models) ? result.models : [];
+      } catch (error) {
+        this.llmRegistryModels = [];
+        this.llmRegistryModelsError = error.message;
+        this.setStatus(`LLM 모델 목록을 불러오지 못했습니다: ${error.message}`);
+      } finally {
+        this.llmRegistryModelsLoading = false;
+      }
+    },
+
     async loadWorkerWebhookSettings(options = {}) {
       if (this.workerWebhookSettingsLoading && !options.fresh) return;
       this.workerWebhookSettingsLoading = true;
@@ -2938,9 +2962,11 @@ const adminApp = createApp({
           requiredVariablesText: (detail.requiredVariables || []).join(", "),
           optionalVariablesText: (detail.optionalVariables || []).join(", "),
           provider: detail.provider || "",
-          modelChoice: window.PromoAdminModelCatalog?.findModel(detail.provider, detail.model)
+          modelChoice: this.llmRegistryModels.some((entry) => entry.status === "active"
+            && entry.provider === detail.provider
+            && entry.modelId === detail.model)
             ? detail.model
-            : "__custom__",
+            : "",
           model: detail.model || "",
           temperature: detail.temperature ?? "",
           maxTokens: detail.maxTokens ?? "",
@@ -3136,40 +3162,49 @@ const adminApp = createApp({
         this.promptEditor.model = "";
         return;
       }
-      const recommended = window.PromoAdminModelCatalog?.recommendedModel({
-        provider: this.promptEditor.provider,
-        type: this.selectedPromptTemplate?.type,
-      });
+      const recommended = this.promptModelChoices.find((entry) => entry.isRecommended)
+        || this.promptModelChoices[0];
       if (!recommended) {
-        this.promptEditor.modelChoice = "__custom__";
+        this.promptEditor.modelChoice = "";
         this.promptEditor.model = "";
+        this.setStatus("선택한 Provider에 활성화된 LLM 모델이 없습니다. LLM 모델 관리에서 먼저 등록·활성화해 주세요.");
         return;
       }
-      this.promptEditor.modelChoice = recommended.model;
+      this.promptEditor.modelChoice = recommended.modelId;
       this.applyPromptModelPreset();
     },
 
     applyPromptModelPreset() {
-      if (this.promptEditor.modelChoice === "__custom__") return;
-      const preset = window.PromoAdminModelCatalog?.presetFor({
-        provider: this.promptEditor.provider,
-        model: this.promptEditor.modelChoice,
-        type: this.selectedPromptTemplate?.type,
-      });
+      const preset = this.selectedPromptModelPreset;
       if (!preset) return;
-      this.promptEditor.model = preset.model;
-      this.promptEditor.temperature = preset.temperature ?? "";
-      this.promptEditor.maxTokens = preset.maxTokens ?? "";
-      this.promptEditor.responseFormat = preset.responseFormat;
-      this.promptEditor.imageSize = preset.imageSize;
-      this.promptEditor.modelOptionsText = JSON.stringify(preset.modelOptions, null, 2);
+      const responseFormat = preset.defaultResponseFormat || (preset.modality === "image" ? "image" : "text");
+      const imageSize = preset.modelOptions?.imageSize || preset.supportedImageSizes?.[0] || "2K";
+      this.promptEditor.model = preset.modelId;
+      this.promptEditor.temperature = preset.defaultTemperature ?? "";
+      this.promptEditor.maxTokens = preset.defaultMaxTokens ?? "";
+      this.promptEditor.responseFormat = responseFormat;
+      this.promptEditor.imageSize = imageSize;
+      this.promptEditor.modelOptionsText = JSON.stringify({
+        provider: preset.provider,
+        model: preset.modelId,
+        responseFormat,
+        ...(preset.modelOptions || {}),
+      }, null, 2);
       if (this.promptUsesSectionAiControlPlane(this.selectedPromptTemplate)) {
-        this.promptEditor.modelCapabilitySnapshotText = JSON.stringify(preset.capabilitySnapshot, null, 2);
+        this.promptEditor.modelCapabilitySnapshotText = JSON.stringify({
+          provider: preset.provider,
+          model: preset.modelId,
+          modality: preset.modality,
+          legacy: Boolean(preset.isLegacy),
+          supportsStructuredOutput: preset.modality === "text",
+          supportsImageGeneration: preset.modality === "image",
+          ...(preset.modality === "image" ? { supportedImageSizes: preset.supportedImageSizes || [] } : {}),
+        }, null, 2);
       }
       if (this.promptUsesSectionImagePolicy(this.selectedPromptTemplate)) {
         this.promptEditor.outputMimeType = this.promptEditor.outputMimeType || "image/jpeg";
       }
-      this.setStatus(`${preset.label} 권장 설정을 적용했습니다. 저장 전 각 항목을 수정할 수 있습니다.`);
+      this.setStatus(`${preset.displayName} Registry 기본 설정을 적용했습니다. 저장 전 각 항목을 수정할 수 있습니다.`);
     },
 
     promptUsesSectionAiControlPlane(prompt = this.selectedPromptTemplate) {
@@ -3249,6 +3284,10 @@ const adminApp = createApp({
       if (this.promptBodyContainsKorean(this.promptEditor.body)) {
         this.promptBodyLanguageError = "영문 원문에는 한글을 입력할 수 없습니다.";
         this.setStatus(this.promptBodyLanguageError);
+        return;
+      }
+      if (!this.selectedPromptModelPreset || this.promptEditor.model !== this.selectedPromptModelPreset.modelId) {
+        this.setStatus("LLM 모델 관리에 등록되고 활성화된 모델을 선택해 주세요.");
         return;
       }
       this.promptSaving = true;

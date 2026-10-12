@@ -39,13 +39,18 @@ for (const appliedModel of [
 }
 
 const root = new URL("../", import.meta.url);
-const [html, app, entry, component, api, migration] = await Promise.all([
+const [html, app, entry, component, api, migration, registryStoreSource, promptUpdate, promptValidate, promptActivate, promptSnapshot] = await Promise.all([
   readFile(new URL("prototype/index.html", root), "utf8"),
   readFile(new URL("prototype/app.js", root), "utf8"),
   readFile(new URL("admin-app/src/main.js", root), "utf8"),
   readFile(new URL("admin-app/src/components/LlmModelManager.vue", root), "utf8"),
   readFile(new URL("api/llm-models.js", root), "utf8"),
   readFile(new URL("db/migrations/073_llm_model_registry.sql", root), "utf8"),
+  readFile(new URL("api/_llm-model-registry-store.js", root), "utf8"),
+  readFile(new URL("api/prompt-template.js", root), "utf8"),
+  readFile(new URL("api/prompt-template-validate.js", root), "utf8"),
+  readFile(new URL("api/prompt-template-activate.js", root), "utf8"),
+  readFile(new URL("api/_prompt-execution-snapshot.js", root), "utf8"),
 ]);
 assert.match(html, /selectAdminTab\('llm-models'\)/);
 assert.match(html, /<llm-model-manager/);
@@ -54,6 +59,8 @@ assert.match(entry, /PromoAdminLlmModels/);
 assert.match(component, /신규 모델 등록/);
 assert.match(component, /사용 중인 프롬프트가 있으면 모델을 중지할 수 없습니다/);
 assert.match(component, /LLM 업데이트 내역/);
+assert.match(component, /기본 Temperature 가이드/);
+assert.match(component, /Temperature 설정 가이드/);
 assert.match(api, /resolveAdminOwner/);
 assert.match(api, /listModelHistories/);
 assert.ok(
@@ -62,9 +69,13 @@ assert.ok(
 );
 assert.match(migration, /create table if not exists llm_models/);
 assert.match(migration, /create table if not exists llm_model_histories/);
-assert.match(migration, /from prompt_templates/);
-assert.match(migration, /system:prompt-sync/);
-assert.equal(typeof registryStore.syncPromptModelsToRegistry, "function");
+assert.doesNotMatch(migration, /system:prompt-sync/);
+assert.doesNotMatch(registryStoreSource, /syncPromptModelsToRegistry/);
+assert.equal(registryStore.syncPromptModelsToRegistry, undefined);
 assert.equal(typeof registryStore.listModelHistories, "function");
+assert.equal(typeof registryStore.requireActiveRegisteredModel, "function");
+for (const source of [promptUpdate, promptValidate, promptActivate, promptSnapshot]) {
+  assert.match(source, /requireActiveRegisteredModel/);
+}
 
 console.log("Admin LLM model registry contract passed");

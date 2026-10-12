@@ -14,6 +14,7 @@ const {
   normalizeControlPlanePromptConfig,
   validateControlPlaneConfig,
 } = require("./_section-ai-control-plane");
+const { requireActiveRegisteredModel } = require("./_llm-model-registry-store");
 
 const APPROVED_GOOGLE_IMAGE_MODELS = new Set([
   "gemini-nano-banana-2.1",
@@ -69,6 +70,11 @@ async function createPromptExecutionSnapshot(sql, type, variables = {}) {
   }
 
   const prompt = toPromptTemplate(rows[0]);
+  await requireActiveRegisteredModel(sql, {
+    provider: prompt.provider,
+    model: prompt.model,
+    promptType: prompt.type,
+  });
   validatePromptTemplateContract(prompt.type, prompt);
   const completedVariables = completeDeclaredPromptVariables(prompt, variables);
   validatePromptExecutionVariables(type, completedVariables);

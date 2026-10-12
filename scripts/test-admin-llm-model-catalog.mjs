@@ -55,6 +55,11 @@ assert.doesNotThrow(() => promptExecutionSnapshot.validateStageModelConfig("imag
 const html = await readFile(new URL("../prototype/index.html", import.meta.url), "utf8");
 assert.match(html, /v-model="promptEditor\.modelChoice"/);
 assert.match(html, /@change="applyPromptModelPreset"/);
-assert.match(html, /직접 입력 · 고급/);
+assert.doesNotMatch(html, /직접 입력 · 고급/);
+
+const app = await readFile(new URL("../prototype/app.js", import.meta.url), "utf8");
+assert.match(app, /llmRegistryModels/);
+assert.match(app, /PromoAdminLlmModels\.service\.list/);
+assert.match(app, /LLM 모델 관리에 등록되고 활성화된 모델을 선택해 주세요/);
 
 console.log("Admin LLM model catalog contract passed");

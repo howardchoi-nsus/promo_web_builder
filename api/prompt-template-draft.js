@@ -4,6 +4,7 @@ const {
   parseBody,
   toPromptTemplate,
 } = require("./_prompt-template-store");
+const { requireActiveRegisteredModel } = require("./_llm-model-registry-store");
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
@@ -20,7 +21,7 @@ module.exports = async function handler(req, res) {
     const sql = getSql();
     await ensureDefaultPromptTemplates(sql);
     const sourceRows = await sql`
-      select id::text, lineage_id::text, status
+      select id::text, lineage_id::text, status, type, provider, model
       from prompt_templates
       where id = ${id}::uuid
       limit 1
@@ -33,6 +34,11 @@ module.exports = async function handler(req, res) {
         promptId: sourceRows[0].id,
       });
     }
+    await requireActiveRegisteredModel(sql, {
+      provider: sourceRows[0].provider,
+      model: sourceRows[0].model,
+      promptType: sourceRows[0].type,
+    });
 
     const candidateRows = await sql`
       select id::text, status

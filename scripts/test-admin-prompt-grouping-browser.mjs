@@ -97,6 +97,21 @@ let llmModels = [{
   supportedImageSizes: [],
   modelOptions: { reasoning: { effort: "medium" } },
   usage: { total: 1, active: 1 },
+}, {
+  id: "llm-openai-41-mini", provider: "openai", modelId: "gpt-4.1-mini", displayName: "GPT-4.1 Mini",
+  description: "기존 텍스트 모델", modality: "text", status: "active", isRecommended: false, isLegacy: true,
+  defaultTemperature: 0.1, defaultMaxTokens: 12000, defaultResponseFormat: "json_object",
+  supportedImageSizes: [], modelOptions: {}, usage: { total: 1, active: 1 },
+}, {
+  id: "llm-gemini-31", provider: "google", modelId: "gemini-3.1-flash-image", displayName: "Nano Banana 2",
+  description: "기존 Gemini 이미지 모델", modality: "image", status: "active", isRecommended: false, isLegacy: true,
+  defaultTemperature: null, defaultMaxTokens: null, defaultResponseFormat: "image",
+  supportedImageSizes: ["1K", "2K", "4K"], modelOptions: { imageSize: "2K" }, usage: { total: 2, active: 2 },
+}, {
+  id: "llm-gemini-nano", provider: "google", modelId: "gemini-nano-banana-2.1", displayName: "Nano Banana 2.1",
+  description: "권장 Gemini 이미지 모델", modality: "image", status: "active", isRecommended: true, isLegacy: false,
+  defaultTemperature: null, defaultMaxTokens: null, defaultResponseFormat: "image",
+  supportedImageSizes: ["1K", "2K", "4K"], modelOptions: { imageSize: "2K" }, usage: { total: 0, active: 0 },
 }];
 let llmHistories = [{
   id: "history-openai-sol-1",
@@ -318,7 +333,14 @@ try {
   await page.getByText("GPT-6.1 Sol", { exact: true }).first().waitFor();
   await page.getByText("LLM 업데이트 내역", { exact: true }).waitFor();
   await page.getByText("기존 프롬프트 모델 등록", { exact: true }).waitFor();
-  assert.equal(await page.locator(".llm-registry__row").count(), 1);
+  const temperatureGuideButton = page.getByRole("button", { name: "기본 Temperature 가이드", exact: true });
+  await temperatureGuideButton.click();
+  const temperatureGuide = page.getByRole("dialog", { name: "Temperature 설정 가이드", exact: true });
+  await temperatureGuide.waitFor();
+  await temperatureGuide.getByText("0~0.2", { exact: true }).waitFor();
+  await temperatureGuide.getByRole("button", { name: "닫기", exact: true }).click();
+  assert.equal(await temperatureGuide.isVisible(), false);
+  assert.equal(await page.locator(".llm-registry__row").count(), 4);
   await page.getByRole("button", { name: "신규 모델 등록", exact: true }).click();
   await page.getByLabel("모델 ID", { exact: true }).fill("gpt-test-model");
   await page.getByLabel("표시 이름", { exact: true }).fill("GPT Test Model");
@@ -326,7 +348,7 @@ try {
   await page.getByRole("button", { name: "초안 등록", exact: true }).click();
   await page.getByText("LLM 모델 초안을 등록했습니다.", { exact: true }).waitFor();
   await page.getByText("GPT Test Model", { exact: true }).first().waitFor();
-  assert.equal(llmModels.length, 2);
+  assert.equal(llmModels.length, 5);
 
   assert.deepEqual(pageErrors, [], `Page errors:\n${pageErrors.join("\n")}`);
   assert.deepEqual(consoleErrors, [], `Console errors:\n${consoleErrors.join("\n")}`);

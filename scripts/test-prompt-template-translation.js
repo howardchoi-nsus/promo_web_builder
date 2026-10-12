@@ -16,25 +16,46 @@ global.fetch = async () => ({
 
 const handler = require("../api/prompt-template-translate");
 
-const promptSql = async () => [{
-  id: "00000000-0000-0000-0000-000000000056",
-  type: "admin_prompt_translation",
-  name: "Admin Prompt Translation",
-  body: "Translate exactly:\n{{sourcePrompt}}",
-  status: "active",
-  version: 1,
-  required_variables: ["sourcePrompt"],
-  optional_variables: [],
-  provider: "openai",
-  model: "gpt-4.1-mini",
-  temperature: 0,
-  max_tokens: 16000,
-  response_format: "text",
-  model_options: {
-    runtimeConfig: { timeoutMs: 60000, maxAttempts: 1, retryBaseMs: 0, retryMaxMs: 0 },
-    promptLayers: { schemaVersion: 1 },
-  },
-}];
+const promptSql = async (strings) => {
+  const query = Array.isArray(strings) ? strings.join(" ") : String(strings || "");
+  if (/from\s+llm_models/i.test(query)) {
+    return [{
+      id: "00000000-0000-0000-0000-000000000057",
+      provider: "openai",
+      model_id: "gpt-4.1-mini",
+      display_name: "GPT-4.1 mini",
+      description: "",
+      modality: "text",
+      status: "active",
+      is_recommended: true,
+      is_legacy: false,
+      default_temperature: 0,
+      default_max_tokens: 16000,
+      default_response_format: "text",
+      supported_image_sizes: [],
+      model_options: {},
+    }];
+  }
+  return [{
+    id: "00000000-0000-0000-0000-000000000056",
+    type: "admin_prompt_translation",
+    name: "Admin Prompt Translation",
+    body: "Translate exactly:\n{{sourcePrompt}}",
+    status: "active",
+    version: 1,
+    required_variables: ["sourcePrompt"],
+    optional_variables: [],
+    provider: "openai",
+    model: "gpt-4.1-mini",
+    temperature: 0,
+    max_tokens: 16000,
+    response_format: "text",
+    model_options: {
+      runtimeConfig: { timeoutMs: 60000, maxAttempts: 1, retryBaseMs: 0, retryMaxMs: 0 },
+      promptLayers: { schemaVersion: 1 },
+    },
+  }];
+};
 
 function responseRecorder() {
   return {

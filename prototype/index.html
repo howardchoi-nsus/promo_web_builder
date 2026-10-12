@@ -1049,17 +1049,12 @@
                       <option v-for="modelOption in promptModelChoices" :key="modelOption.model" :value="modelOption.model">
                         {{ modelOption.label }} · {{ modelOption.model }}
                       </option>
-                      <option value="__custom__">직접 입력 · 고급</option>
                     </select>
-                    <input
-                      v-if="promptEditor.modelChoice === '__custom__'"
-                      v-model="promptEditor.model"
-                      type="text"
-                      autocomplete="off"
-                      placeholder="정확한 모델 ID 입력"
-                    />
-                    <small v-if="selectedPromptModelPreset">{{ selectedPromptModelPreset.description }} 선택 시 아래 권장 설정이 자동 입력되며 저장 전 수정할 수 있습니다.</small>
-                    <small v-else>목록에 없는 모델은 ‘직접 입력 · 고급’으로 등록할 수 있습니다.</small>
+                    <small v-if="selectedPromptModelPreset">{{ selectedPromptModelPreset.description || 'LLM Registry에 등록된 활성 모델입니다.' }} 선택 시 아래 기본 설정이 자동 입력되며 저장 전 수정할 수 있습니다.</small>
+                    <small v-else-if="llmRegistryModelsLoading">활성 LLM 모델을 불러오는 중입니다.</small>
+                    <small v-else-if="llmRegistryModelsError" class="field-error">LLM 모델 목록 오류: {{ llmRegistryModelsError }}</small>
+                    <small v-else-if="promptEditor.model" class="field-error">현재 {{ promptEditor.model }} 모델은 미등록 또는 비활성 상태입니다. LLM 모델 관리에서 등록·활성화한 뒤 선택해 주세요.</small>
+                    <small v-else>LLM 모델 관리에 등록되고 활성화된 모델만 선택할 수 있습니다.</small>
                   </label>
                 </div>
 

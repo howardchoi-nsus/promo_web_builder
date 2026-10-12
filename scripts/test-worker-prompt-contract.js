@@ -69,6 +69,24 @@ async function main() {
 
   const sql = async (strings) => {
     const query = strings.join("?");
+    if (query.includes("from llm_models")) {
+      return [{
+        id: "llm-gpt-image-1",
+        provider: "openai",
+        model_id: "gpt-image-1",
+        display_name: "GPT Image 1",
+        description: "Registered image model",
+        modality: "image",
+        status: "active",
+        is_recommended: false,
+        is_legacy: true,
+        default_temperature: null,
+        default_max_tokens: null,
+        default_response_format: "image",
+        supported_image_sizes: [],
+        model_options: {},
+      }];
+    }
     if (query.includes("select id::text") && !query.includes("name,")) return [{ id: "existing" }];
     if (query.includes("from prompt_templates") && query.includes("required_variables")) {
       return [{

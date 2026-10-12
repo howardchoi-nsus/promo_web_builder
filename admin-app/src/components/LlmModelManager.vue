@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { llmModelRegistryService } from "../services/llm-model-registry-service.mjs";
 
 const emit = defineEmits(["status"]);
@@ -12,6 +12,8 @@ const selectedId = ref("");
 const search = ref("");
 const providerFilter = ref("");
 const statusFilter = ref("");
+const temperatureGuideOpen = ref(false);
+const temperatureGuideRoot = ref(null);
 
 const emptyEditor = () => ({
   provider: "openai",
@@ -72,6 +74,12 @@ function formatHistoryDate(value) {
   return Number.isNaN(date.getTime()) ? String(value) : new Intl.DateTimeFormat("ko-KR", {
     year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
   }).format(date);
+}
+
+function closeTemperatureGuide(event) {
+  if (event?.type === "keydown" && event.key !== "Escape") return;
+  if (event?.type === "click" && temperatureGuideRoot.value?.contains(event.target)) return;
+  temperatureGuideOpen.value = false;
 }
 
 function resetEditor() {
@@ -189,7 +197,15 @@ async function changeStatus(status) {
   }
 }
 
-onMounted(reload);
+onMounted(() => {
+  reload();
+  document.addEventListener("click", closeTemperatureGuide);
+  document.addEventListener("keydown", closeTemperatureGuide);
+});
+onBeforeUnmount(() => {
+  document.removeEventListener("click", closeTemperatureGuide);
+  document.removeEventListener("keydown", closeTemperatureGuide);
+});
 </script>
 
 <template>
@@ -253,7 +269,36 @@ onMounted(reload);
             <label><span>모델 ID</span><input v-model="editor.modelId" :disabled="Boolean(selected)" type="text" autocomplete="off" placeholder="gpt-... / gemini-..." /></label>
             <label><span>표시 이름</span><input v-model="editor.displayName" type="text" autocomplete="off" /></label>
             <label><span>모델 용도</span><select v-model="editor.modality" @change="onModalityChange"><option value="text">텍스트·JSON</option><option value="image">이미지 생성·편집</option></select></label>
-            <label><span>기본 Temperature</span><input v-model="editor.defaultTemperature" type="number" min="0" max="2" step="0.1" placeholder="미설정" /></label>
+            <label>
+              <span class="llm-registry__field-title">
+                기본 Temperature
+                <span ref="temperatureGuideRoot" class="llm-registry__guide-anchor">
+                  <button
+                    class="llm-registry__guide-button"
+                    type="button"
+                    aria-label="기본 Temperature 가이드"
+                    aria-controls="temperature-guide-popover"
+                    :aria-expanded="String(temperatureGuideOpen)"
+                    @click.stop="temperatureGuideOpen = !temperatureGuideOpen"
+                  >i</button>
+                  <span
+                    v-if="temperatureGuideOpen"
+                    id="temperature-guide-popover"
+                    class="llm-registry__guide-popover"
+                    role="dialog"
+                    aria-label="Temperature 설정 가이드"
+                    @click.stop
+                  >
+                    <strong>Temperature 설정 가이드</strong>
+                    <span><b>0~0.2</b> 구조화 JSON·레이아웃처럼 일관성이 중요한 작업</span>
+                    <span><b>0.3~0.7</b> 프로모션 카피와 아이디어처럼 적당한 다양성이 필요한 작업</span>
+                    <span><b>미설정</b> 모델 기본값 사용. GPT-6 Reasoning·이미지 모델에 권장</span>
+                    <button type="button" @click="temperatureGuideOpen = false">닫기</button>
+                  </span>
+                </span>
+              </span>
+              <input v-model="editor.defaultTemperature" type="number" min="0" max="2" step="0.1" placeholder="미설정" />
+            </label>
             <label><span>기본 Max Tokens</span><input v-model="editor.defaultMaxTokens" type="number" min="1" step="1" placeholder="미설정" /></label>
             <label><span>기본 응답 형식</span><select v-model="editor.defaultResponseFormat"><option value="text">text</option><option value="json_object">json_object</option><option value="image">image</option></select></label>
             <label v-if="editor.modality === 'image'"><span>지원 이미지 크기</span><input v-model="editor.supportedImageSizesText" type="text" placeholder="1K, 2K, 4K" /><small>쉼표로 구분합니다.</small></label>
@@ -331,6 +376,14 @@ onMounted(reload);
 .llm-registry__fields { display: grid; gap: 13px; min-width: 0; padding: 0; border: 0; }
 .llm-registry__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; }
 .llm-registry__grid label, .llm-registry__wide { display: grid; gap: 5px; color: var(--app-sub); font-size: 12px; font-weight: 700; }
+.llm-registry__field-title { display: inline-flex; align-items: center; gap: 5px; }
+.llm-registry__guide-anchor { position: relative; display: inline-flex; }
+.llm-registry__guide-button { display: inline-flex; width: 17px; height: 17px; align-items: center; justify-content: center; padding: 0; border: 1px solid var(--app-line); border-radius: 50%; background: var(--app-panel-subtle, #f4f5f6); color: var(--app-sub); font: 800 11px/1 sans-serif; cursor: pointer; }
+.llm-registry__guide-button:hover, .llm-registry__guide-button:focus-visible { border-color: var(--app-accent); color: var(--app-accent); outline: none; }
+.llm-registry__guide-popover { position: absolute; z-index: 20; top: 24px; left: -8px; display: grid; width: min(320px, 72vw); gap: 8px; padding: 12px; border: 1px solid var(--app-line); border-radius: 9px; background: var(--app-surface); box-shadow: 0 12px 30px rgba(0, 0, 0, .16); color: var(--app-ink); font-size: 11px; font-weight: 500; line-height: 1.45; }
+.llm-registry__guide-popover strong { font-size: 12px; }
+.llm-registry__guide-popover > span { display: block; }
+.llm-registry__guide-popover button { justify-self: end; padding: 4px 8px; border: 1px solid var(--app-line); border-radius: 6px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
 .llm-registry__fields textarea { padding: 9px; resize: vertical; }
 .llm-registry__checks label { display: flex; align-items: center; gap: 6px; color: var(--app-ink); font-size: 13px; }
 .llm-registry__checks input { width: auto; min-height: auto; }
