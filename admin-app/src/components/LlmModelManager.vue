@@ -60,6 +60,10 @@ function statusLabel(status) {
   return { draft: "초안", active: "활성", inactive: "사용 중지" }[status] || status;
 }
 
+function modalityLabel(modality) {
+  return modality === "image" ? "이미지 생성·편집" : "텍스트·JSON";
+}
+
 function historyActionLabel(history) {
   if (!history.previousStatus) return "모델 등록";
   if (history.previousStatus !== history.newStatus) {
@@ -250,8 +254,15 @@ onBeforeUnmount(() => {
             :class="{ selected: model.id === selectedId }"
             @click="selectModel(model)"
           >
-            <span class="llm-registry__row-main"><strong>{{ model.displayName }}</strong><small>{{ model.modelId }}</small></span>
-            <span class="llm-registry__row-meta"><em :class="`is-${model.status}`">{{ statusLabel(model.status) }}</em><small>{{ model.provider }} · {{ model.modality }}</small></span>
+            <span class="llm-registry__row-main">
+              <strong>{{ model.displayName }}</strong>
+              <small>{{ model.modelId }}</small>
+              <span class="llm-registry__row-details">
+                <small><b>모델 용도</b>{{ modalityLabel(model.modality) }}</small>
+                <small><b>연결 프롬프트</b>{{ model.usage?.total || 0 }}개</small>
+              </span>
+            </span>
+            <span class="llm-registry__row-meta"><em :class="`is-${model.status}`">{{ statusLabel(model.status) }}</em><small>{{ model.provider }}</small></span>
           </button>
           <p v-if="!loading && !filteredModels.length" class="llm-registry__empty">조건에 맞는 모델이 없습니다.</p>
         </div>
@@ -361,10 +372,13 @@ onBeforeUnmount(() => {
 .llm-registry__filters input, .llm-registry__filters select, .llm-registry__fields input, .llm-registry__fields select, .llm-registry__fields textarea { width: 100%; border: 1px solid var(--app-line); border-radius: 7px; background: var(--app-surface); color: var(--app-ink); font: inherit; }
 .llm-registry__filters input, .llm-registry__filters select, .llm-registry__fields input, .llm-registry__fields select { min-height: 38px; padding: 7px 9px; }
 .llm-registry__rows { display: grid; gap: 6px; max-height: 670px; overflow: auto; }
-.llm-registry__row { display: flex; justify-content: space-between; gap: 10px; padding: 11px; border: 1px solid var(--app-line); border-radius: 8px; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+.llm-registry__row { display: flex; justify-content: space-between; gap: 10px; padding: 12px; border: 1px solid var(--app-line); border-radius: 8px; background: transparent; color: inherit; text-align: left; cursor: pointer; }
 .llm-registry__row:hover, .llm-registry__row.selected { border-color: var(--app-accent); background: color-mix(in srgb, var(--app-accent) 7%, transparent); }
 .llm-registry__row-main, .llm-registry__row-meta { display: grid; gap: 3px; min-width: 0; }
 .llm-registry__row-main small { overflow: hidden; color: var(--app-sub); text-overflow: ellipsis; white-space: nowrap; }
+.llm-registry__row-details { display: flex; flex-wrap: wrap; gap: 5px 10px; margin-top: 5px; }
+.llm-registry__row-details small { display: inline-flex; gap: 4px; align-items: center; font-size: 11px; white-space: normal; }
+.llm-registry__row-details b { color: var(--app-ink); font-weight: 700; }
 .llm-registry__row-meta { justify-items: end; flex: 0 0 auto; }
 .llm-registry__row-meta em, .llm-registry__status { padding: 3px 7px; border-radius: 999px; background: #f1f3f5; color: #5f6368; font-size: 11px; font-style: normal; font-weight: 700; }
 .llm-registry__row-meta em.is-active, .llm-registry__status.is-active { background: #e5f6eb; color: #14753b; }

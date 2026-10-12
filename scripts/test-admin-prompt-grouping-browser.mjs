@@ -333,6 +333,12 @@ try {
   await page.getByText("GPT-6.1 Sol", { exact: true }).first().waitFor();
   await page.getByText("LLM 업데이트 내역", { exact: true }).waitFor();
   await page.getByText("기존 프롬프트 모델 등록", { exact: true }).waitFor();
+  const textModelRow = page.locator(".llm-registry__row").filter({ hasText: "GPT-6.1 Sol" }).first();
+  await textModelRow.getByText(/모델 용도\s*텍스트·JSON/).waitFor();
+  await textModelRow.getByText(/연결 프롬프트\s*1개/).waitFor();
+  const imageModelRow = page.locator(".llm-registry__row").filter({ hasText: "Nano Banana 2" }).first();
+  await imageModelRow.getByText(/모델 용도\s*이미지 생성·편집/).waitFor();
+  await imageModelRow.getByText(/연결 프롬프트\s*2개/).waitFor();
   const temperatureGuideButton = page.getByRole("button", { name: "기본 Temperature 가이드", exact: true });
   await temperatureGuideButton.click();
   const temperatureGuide = page.getByRole("dialog", { name: "Temperature 설정 가이드", exact: true });

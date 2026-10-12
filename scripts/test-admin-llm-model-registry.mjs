@@ -61,6 +61,9 @@ assert.match(component, /사용 중인 프롬프트가 있으면 모델을 중�
 assert.match(component, /LLM 업데이트 내역/);
 assert.match(component, /기본 Temperature 가이드/);
 assert.match(component, /Temperature 설정 가이드/);
+assert.match(component, /모델 용도/);
+assert.match(component, /연결 프롬프트/);
+assert.match(component, /model\.usage\?\.total \|\| 0/);
 assert.match(api, /resolveAdminOwner/);
 assert.match(api, /listModelHistories/);
 assert.ok(
