@@ -191,6 +191,11 @@ try {
   await page.getByRole("heading", { name: "프로모션 이미지" }).waitFor();
   await page.getByText("섹션 콘텐츠와 배경색을 바탕으로 프로모션 키비주얼을 생성합니다.", { exact: true }).first().waitFor();
   await page.getByText("선택 실행", { exact: true }).first().waitFor();
+  const basicInfoGroup = page.locator("details.prompt-editor-group").filter({ hasText: "기본 정보" }).first();
+  assert.notEqual(await basicInfoGroup.getAttribute("open"), null, "basic information must be open initially");
+  await basicInfoGroup.locator("summary").click();
+  assert.equal(await basicInfoGroup.getAttribute("open"), null, "right editor groups must be collapsible");
+  await basicInfoGroup.locator("summary").click();
   await page.locator(".prompt-body-grid").waitFor();
   assert.equal(await page.locator(".prompt-body-grid textarea").count(), 2);
   assert.equal(await page.locator(".prompt-body-grid textarea").nth(0).getAttribute("lang"), "en");
@@ -262,7 +267,9 @@ try {
 
   await page.locator('select[aria-label="프롬프트 유형 필터"]').selectOption("promo_overview_parser");
   await page.locator(".prompt-version-item").filter({ hasText: "v2" }).click();
-  await page.getByRole("heading", { name: "실행 Harness" }).waitFor();
+  const harnessGroup = page.locator("details.prompt-editor-group").filter({ hasText: "실행 Harness" }).first();
+  await harnessGroup.locator("summary").click();
+  assert.notEqual(await harnessGroup.getAttribute("open"), null, "execution harness must open on demand");
   const harnessInput = (label) => page.locator("label.field").filter({ hasText: label }).locator("input");
   assert.equal(await harnessInput("실행 Snapshot 버전").inputValue(), "2");
   assert.equal(await harnessInput("제한 시간(ms)").inputValue(), "90000");

@@ -994,6 +994,11 @@
                 </div>
 
                 <fieldset v-if="!promptDetailLoading" class="prompt-editor-fields" :disabled="promptEditorReadOnly">
+                <details class="prompt-editor-group" open>
+                  <summary>
+                    <span><strong>기본 정보</strong><small>이름, 유형과 실행 변수 계약</small></span>
+                  </summary>
+                  <div class="prompt-editor-group__content">
                 <div class="form-grid compact">
                   <label class="field">
                     <span>프롬프트 이름</span>
@@ -1018,6 +1023,14 @@
                   <input v-model="promptEditor.optionalVariablesText" type="text" readonly />
                   <small>값이 없더라도 실행할 수 있으며 필요한 경우에만 전달되는 변수입니다.</small>
                 </label>
+                  </div>
+                </details>
+
+                <details class="prompt-editor-group" open>
+                  <summary>
+                    <span><strong>모델 실행 설정</strong><small>Provider, 모델과 기본 호출 옵션</small></span>
+                  </summary>
+                  <div class="prompt-editor-group__content">
 
                 <div class="form-grid compact">
                   <label class="field">
@@ -1082,12 +1095,14 @@
                   <textarea v-model="promptEditor.modelOptionsText" aria-label="Provider 상세 옵션(JSON)" rows="5" spellcheck="false"></textarea>
                   <small>모델 제공자에만 적용되는 고급 옵션입니다. 올바른 JSON 형식으로 입력하세요.</small>
                 </label>
-
-                <div class="subsection" v-if="promptUsesSectionAiControlPlane(selectedPromptTemplate)">
-                  <div class="subsection-title">
-                    <h3>실행 Harness</h3>
-                    <span>이 Prompt Version과 함께 검증·활성화됩니다.</span>
                   </div>
+                </details>
+
+                <details class="prompt-editor-group" v-if="promptUsesSectionAiControlPlane(selectedPromptTemplate)">
+                  <summary>
+                    <span><strong>실행 Harness</strong><small>제한 시간, 재시도와 출력 형식</small></span>
+                  </summary>
+                  <div class="prompt-editor-group__content">
                   <div class="form-grid compact">
                     <label class="field">
                       <span>실행 Snapshot 버전</span>
@@ -1124,11 +1139,14 @@
                       <small>생성 결과를 저장할 이미지 파일 형식입니다.</small>
                     </label>
                   </div>
-                  <div v-if="promptUsesSectionImagePolicy(selectedPromptTemplate)" class="subsection">
-                    <div class="subsection-title">
-                      <h3>Image generation and rendering policy (V3)</h3>
-                      <span>Draft, validate, and activate these settings without a source-code deployment.</span>
-                    </div>
+                  </div>
+                </details>
+
+                <details class="prompt-editor-group" v-if="promptUsesSectionImagePolicy(selectedPromptTemplate)">
+                  <summary>
+                    <span><strong>이미지 생성 정책</strong><small>생성, 렌더링과 검증 정책 V3</small></span>
+                  </summary>
+                  <div class="prompt-editor-group__content">
                     <label class="field">
                       <span>Generation policy (JSON)</span>
                       <textarea v-model="promptEditor.generationPolicyText" rows="10" spellcheck="false"></textarea>
@@ -1145,29 +1163,65 @@
                       <small>For strict 2K landscape output, set minimumLandscapeWidth to 2048.</small>
                     </label>
                   </div>
+                </details>
+
+                <details class="prompt-editor-group" v-if="promptUsesSectionAiControlPlane(selectedPromptTemplate)">
+                  <summary>
+                    <span><strong>Harness 지침</strong><small>안전 영역과 금지 요소 등 운영 지침</small></span>
+                  </summary>
+                  <div class="prompt-editor-group__content">
                   <label class="field">
                     <span>Harness 지침(JSON)</span>
                     <textarea v-model="promptEditor.harnessConfigText" rows="12" spellcheck="false"></textarea>
                     <small>안전 영역, 전체 배경, 금지 요소 등 Prompt 뒤에 조립되는 운영 지침입니다.</small>
                   </label>
+                  </div>
+                </details>
+
+                <details class="prompt-editor-group" v-if="promptUsesSectionAiControlPlane(selectedPromptTemplate)">
+                  <summary>
+                    <span><strong>모델 Capability Snapshot</strong><small>검증 시점의 모델 기능과 제한</small></span>
+                  </summary>
+                  <div class="prompt-editor-group__content">
                   <label class="field">
                     <span>모델 Capability Snapshot(JSON)</span>
                     <textarea v-model="promptEditor.modelCapabilitySnapshotText" rows="7" spellcheck="false"></textarea>
                     <small>검증 시점에 확인된 모델 기능과 제한을 실행 설정에 고정합니다.</small>
                   </label>
+                  </div>
+                </details>
+
+                <details class="prompt-editor-group" v-if="promptUsesSectionAiControlPlane(selectedPromptTemplate)">
+                  <summary>
+                    <span><strong>서버 안전 계약</strong><small>서버에서 강제할 계약 Key와 Version</small></span>
+                  </summary>
+                  <div class="prompt-editor-group__content">
                   <label class="field">
                     <span>서버 안전 계약(JSON)</span>
                     <textarea v-model="promptEditor.safetyContractText" rows="4" spellcheck="false"></textarea>
                     <small>안전 계약의 구현은 서버에 남고, 여기서는 적용할 계약 Key와 Version만 선택합니다.</small>
                   </label>
-                </div>
+                  </div>
+                </details>
 
-                <label class="field">
-                  <span>프롬프트 실행 계층(JSON)</span>
-                  <textarea v-model="promptEditor.promptLayersText" rows="14" spellcheck="false"></textarea>
-                  <small>Completion Guard, 재시도 교정문, 조건부 이미지 지침과 후속 출력 기본값을 이 Prompt Version과 함께 관리합니다.</small>
-                </label>
+                <details class="prompt-editor-group">
+                  <summary>
+                    <span><strong>프롬프트 실행 계층</strong><small>Completion Guard와 조건부 실행 지침</small></span>
+                  </summary>
+                  <div class="prompt-editor-group__content">
+                    <label class="field">
+                      <span>프롬프트 실행 계층(JSON)</span>
+                      <textarea v-model="promptEditor.promptLayersText" rows="14" spellcheck="false"></textarea>
+                      <small>Completion Guard, 재시도 교정문, 조건부 이미지 지침과 후속 출력 기본값을 이 Prompt Version과 함께 관리합니다.</small>
+                    </label>
+                  </div>
+                </details>
 
+                <details class="prompt-editor-group">
+                  <summary>
+                    <span><strong>실행 안내</strong><small>현재 프롬프트 유형의 실행 범위와 제한</small></span>
+                  </summary>
+                  <div class="prompt-editor-group__content">
                 <div class="empty-state compact" v-if="['integrated_brief', 'integrated_brief_v2', 'lofi_draft'].includes(selectedPromptTemplate.type)">
                   현재 {{ promptTypeLabel(selectedPromptTemplate.type) }} Worker는 OpenAI만 지원합니다. 저장한 프롬프트·모델·옵션은 새로 Queue되는 작업의 실행 snapshot에 고정되며, 이미 대기 또는 실행 중인 작업에는 영향을 주지 않습니다.
                 </div>
@@ -1186,14 +1240,28 @@
                 <div class="empty-state compact" v-else-if="['section_background_image', 'component_image'].includes(selectedPromptTemplate.type)">
                   섹션 AI 이미지 생성에 사용할 이미지 모델과 프롬프트를 관리합니다. 안전 정책은 서버에서 별도로 강제됩니다.
                 </div>
+                  </div>
+                </details>
 
-                <label class="field">
-                  <span>{{ t('common.field.changeReason') }}</span>
-                  <input v-model="promptEditor.changeNote" type="text" placeholder="변경 내용을 간단히 입력" autocomplete="off" />
-                  <small>저장, 검증과 활성화 변경 이력에 남길 관리자 메모입니다.</small>
-                </label>
+                <details class="prompt-editor-group" open>
+                  <summary>
+                    <span><strong>{{ t('common.field.changeReason') }}</strong><small>저장·검증·활성화 이력에 남길 관리자 메모</small></span>
+                  </summary>
+                  <div class="prompt-editor-group__content">
+                    <label class="field">
+                      <span>{{ t('common.field.changeReason') }}</span>
+                      <input v-model="promptEditor.changeNote" type="text" placeholder="변경 내용을 간단히 입력" autocomplete="off" />
+                      <small>저장, 검증과 활성화 변경 이력에 남길 관리자 메모입니다.</small>
+                    </label>
+                  </div>
+                </details>
                 </fieldset>
 
+                <details class="prompt-editor-group prompt-editor-group--body" open>
+                  <summary>
+                    <span><strong>프롬프트 본문</strong><small>영문 원문과 관리자 확인용 한글 번역</small></span>
+                  </summary>
+                  <div class="prompt-editor-group__content">
                 <section class="prompt-body-section" aria-labelledby="prompt-body-heading">
                   <div class="prompt-body-heading">
                     <div>
@@ -1254,12 +1322,14 @@
                     </label>
                   </div>
                 </section>
-
-                <div class="subsection">
-                  <div class="subsection-title">
-                    <h3>변경 이력</h3>
-                    <span>최근 20개</span>
                   </div>
+                </details>
+
+                <details class="prompt-editor-group">
+                  <summary>
+                    <span><strong>변경 이력</strong><small>최근 20개 상태·모델 변경 기록</small></span>
+                  </summary>
+                  <div class="prompt-editor-group__content">
                   <div class="history-list" v-if="promptHistories.length">
                     <div v-for="history in promptHistories" :key="history.id" class="history-item">
                       <strong>v{{ history.previousVersion }} → v{{ history.newVersion }}</strong>
@@ -1268,7 +1338,8 @@
                     </div>
                   </div>
                   <div class="empty-state compact" v-else>변경 이력이 없습니다.</div>
-                </div>
+                  </div>
+                </details>
                   </section>
 
                   <section class="prompt-editor-panel empty-state" v-else>
