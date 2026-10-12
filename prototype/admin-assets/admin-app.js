@@ -16062,6 +16062,7 @@ var Ew = /*#__PURE__*/ Eh(hC, [["render", Tw], ["__scopeId", "data-v-f0661921"]]
 				return this.llmRegistryModels.filter((t) => t.status === "active" && t.provider === this.promptEditor.provider && t.modality === e).map((e) => ({
 					...e,
 					model: e.modelId,
+					purposeLabel: e.modality === "image" ? "이미지 생성·편집" : "텍스트·JSON",
 					label: `${e.displayName}${e.isRecommended ? " · 권장" : ""}${e.isLegacy ? " · 레거시" : ""}`
 				}));
 			},

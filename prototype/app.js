@@ -1632,6 +1632,7 @@ const adminApp = createApp({
         .map((entry) => ({
           ...entry,
           model: entry.modelId,
+          purposeLabel: entry.modality === "image" ? "이미지 생성·편집" : "텍스트·JSON",
           label: `${entry.displayName}${entry.isRecommended ? " · 권장" : ""}${entry.isLegacy ? " · 레거시" : ""}`,
         }));
     },

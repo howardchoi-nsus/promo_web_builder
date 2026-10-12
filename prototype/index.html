@@ -1044,7 +1044,7 @@
                     <select v-model="promptEditor.modelChoice" aria-label="모델 선택" :disabled="!promptEditor.provider" @change="applyPromptModelPreset">
                       <option value="" disabled>모델을 선택하세요</option>
                       <option v-for="modelOption in promptModelChoices" :key="modelOption.model" :value="modelOption.model">
-                        {{ modelOption.label }} · {{ modelOption.model }}
+                        {{ modelOption.label }} · 용도: {{ modelOption.purposeLabel }} · {{ modelOption.model }}
                       </option>
                     </select>
                     <small v-if="selectedPromptModelPreset">{{ selectedPromptModelPreset.description || 'LLM Registry에 등록된 활성 모델입니다.' }} 선택 시 아래 기본 설정이 자동 입력되며 저장 전 수정할 수 있습니다.</small>

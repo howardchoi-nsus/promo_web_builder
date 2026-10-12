@@ -295,6 +295,10 @@ try {
     document.querySelector(".prompt-body-translation")?.value === `한글 번역\n${expected}`
   ), originalPromptBody);
   const modelSelect = page.getByLabel("모델 선택", { exact: true });
+  assert.match(
+    (await modelSelect.locator('option[value="gemini-nano-banana-2.1"]').textContent()) || "",
+    /용도:\s*이미지 생성·편집/,
+  );
   await modelSelect.selectOption("gemini-nano-banana-2.1");
   assert.equal(await modelSelect.inputValue(), "gemini-nano-banana-2.1");
   assert.equal(await page.getByLabel("응답 형식", { exact: true }).inputValue(), "image");
