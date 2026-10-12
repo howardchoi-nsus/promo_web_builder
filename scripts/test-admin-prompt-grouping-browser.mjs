@@ -194,6 +194,21 @@ try {
         : item);
       return fulfill({ ok: true, prompt: prompts.find((item) => item.id === savedPromptPatch.id) });
     }
+    if (url.pathname === "/api/prompt-template-draft" && request.method() === "POST") {
+      const source = prompts.find((item) => item.id === request.postDataJSON().id);
+      const version = Math.max(...prompts
+        .filter((item) => item.lineageId === source.lineageId)
+        .map((item) => item.version)) + 1;
+      const draft = {
+        ...source,
+        id: `${source.lineageId}-v${version}`,
+        sourcePromptTemplateId: source.id,
+        status: "draft",
+        version,
+      };
+      prompts = [...prompts, draft];
+      return fulfill({ ok: true, prompt: draft }, 201);
+    }
     if (url.pathname === "/api/prompt-template-translate" && request.method() === "POST") {
       const text = String(request.postDataJSON().text || "");
       return fulfill({ ok: true, translation: `한글 번역\n${text}`, provider: { provider: "openai" } });
@@ -239,7 +254,11 @@ try {
   assert.equal(await page.locator(".prompt-body-grid textarea").count(), 2);
   assert.equal(await page.locator(".prompt-body-grid textarea").nth(0).getAttribute("lang"), "en");
   assert.equal(await page.locator(".prompt-body-grid textarea").nth(1).getAttribute("lang"), "ko");
-  assert.notEqual(await page.locator(".prompt-body-grid textarea").nth(0).getAttribute("readonly"), null);
+  await page.waitForFunction(() => (
+    document.querySelector(".prompt-body-grid textarea")?.getAttribute("readonly") === null
+  ));
+  assert.equal(await page.locator(".prompt-body-grid textarea").nth(0).getAttribute("readonly"), null);
+  assert.equal(await page.locator(".prompt-editor-header button").filter({ hasText: "새 초안 만들기" }).count(), 0);
   await page.locator(".prompt-body-translation").waitFor();
   await page.waitForFunction(() => document.querySelector(".prompt-body-translation")?.value.startsWith("한글 번역"));
   await page.getByRole("button", { name: "영문 프롬프트 본문 복사" }).click();
@@ -287,11 +306,8 @@ try {
   await page.getByText("영문 원문에는 한글을 입력할 수 없습니다.", { exact: true }).waitFor();
   await englishPromptEditor.fill(originalPromptBody);
   assert.equal(await page.getByText("영문 원문에는 한글을 입력할 수 없습니다.", { exact: true }).count(), 0);
-  await page.getByRole("button", { name: "초안 검증" }).click();
-  await backgroundGroup.getByText("검증 v15", { exact: true }).waitFor();
-  assert.equal(await backgroundGroup.getByText("초안 v15", { exact: true }).count(), 0);
-
-  await page.getByRole("button", { name: "활성 프롬프트로 지정" }).click();
+  await page.getByRole("button", { name: "변경 저장 및 활성화", exact: true }).click();
+  await page.getByText("프롬프트 v15을 생성하고 활성화했습니다.", { exact: true }).waitFor();
   await backgroundGroup.getByText("활성 v15", { exact: true }).waitFor();
   assert.equal(
     await backgroundGroup.locator(".prompt-version-item.selected").getAttribute("aria-current"),
@@ -303,6 +319,17 @@ try {
     "true",
     "selected lineage must remain expanded",
   );
+
+  await page.locator('select[aria-label="프롬프트 유형 필터"]').selectOption("component_image");
+  await page.locator(".prompt-version-item").filter({ hasText: "v2" }).click();
+  await page.getByRole("button", { name: "변경 저장 및 활성화", exact: true }).click();
+  await page.getByText("변경된 내용이 없어 새 버전을 생성하지 않았습니다.", { exact: true }).waitFor();
+  assert.equal(prompts.filter((item) => item.lineageId === "component-lineage").length, 1);
+  await page.locator("label.field").filter({ hasText: "프롬프트 이름" }).locator("input").fill("Component Image Updated");
+  await page.getByRole("button", { name: "변경 저장 및 활성화", exact: true }).click();
+  await page.getByText("프롬프트 v3을 생성하고 활성화했습니다.", { exact: true }).waitFor();
+  await page.locator(".prompt-group").getByText("활성 v3", { exact: true }).waitFor();
+  assert.equal(prompts.find((item) => item.id === "component-lineage-v3")?.name, "Component Image Updated");
 
   await page.locator('select[aria-label="프롬프트 유형 필터"]').selectOption("promo_overview_parser");
   await page.locator(".prompt-version-item").filter({ hasText: "v2" }).click();
@@ -316,7 +343,7 @@ try {
   assert.equal(await harnessInput("재시도 기본 대기(ms)").inputValue(), "0");
   assert.equal(await harnessInput("재시도 최대 대기(ms)").inputValue(), "0");
   await page.locator(".prompt-editor-header .tiny-button.primary").click();
-  await page.getByText("프롬프트 초안을 저장하고 변경 이력을 생성했습니다", { exact: true }).waitFor();
+  await page.getByText("프롬프트 v2을 생성하고 활성화했습니다.", { exact: true }).waitFor();
   assert.equal(savedPromptPatch.modelOptions.executionSnapshotVersion, 2);
   assert.deepEqual(savedPromptPatch.modelOptions.runtimeConfig, {
     timeoutMs: 90000,

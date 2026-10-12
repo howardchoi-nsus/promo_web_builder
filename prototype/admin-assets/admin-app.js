@@ -15500,6 +15500,7 @@ var Ew = /*#__PURE__*/ Eh(hC, [["render", Tw], ["__scopeId", "data-v-f0661921"]]
 				],
 				promptArchivedVisibilityByLineage: {},
 				promptSaving: !1,
+				promptEditorBaseline: "",
 				promptHistories: [],
 				promptBodyTranslationKo: "",
 				promptBodyTranslationSource: "",
@@ -16129,7 +16130,7 @@ var Ew = /*#__PURE__*/ Eh(hC, [["render", Tw], ["__scopeId", "data-v-f0661921"]]
 				return window.PromoAdminPromptGroups.findPromptGroup(this.promptTemplateGroups, this.selectedPromptTemplateId);
 			},
 			promptEditorReadOnly() {
-				return this.promptDetailLoading || this.selectedPromptTemplate?.status !== "draft";
+				return this.promptDetailLoading;
 			},
 			selectedPromptEditorTitle() {
 				return this.selectedPromptTemplate ? this.promptTypeLabel(this.selectedPromptTemplate.type) : "프롬프트 편집기";
@@ -17216,7 +17217,7 @@ var Ew = /*#__PURE__*/ Eh(hC, [["render", Tw], ["__scopeId", "data-v-f0661921"]]
 			},
 			async selectPromptTemplate(e, t = {}) {
 				let n = ++this.promptDetailRequestRevision;
-				this.selectedPromptTemplateId = e, this.promptDetailLoading = !0, this.expandPromptGroupForPromptId(e), this.promptBodyTranslationKo = "", this.promptBodyTranslationSource = "", this.promptBodyTranslationError = "", this.promptBodyTranslationLoading = !1, this.promptBodyLanguageError = "";
+				this.selectedPromptTemplateId = e, this.promptDetailLoading = !0, this.expandPromptGroupForPromptId(e), this.promptBodyTranslationKo = "", this.promptBodyTranslationSource = "", this.promptBodyTranslationError = "", this.promptBodyTranslationLoading = !1, this.promptBodyLanguageError = "", this.promptEditorBaseline = "";
 				let r = this.promptTemplates.find((t) => t.id === e);
 				if (!r) {
 					n === this.promptDetailRequestRevision && (this.promptDetailLoading = !1);
@@ -17281,7 +17282,7 @@ var Ew = /*#__PURE__*/ Eh(hC, [["render", Tw], ["__scopeId", "data-v-f0661921"]]
 						safetyContractText: JSON.stringify(o.safetyContract || o.modelOptions?.safetyContract || {}, null, 2),
 						modelOptionsText: JSON.stringify(l, null, 2),
 						changeNote: ""
-					}, this.promptBodyLanguageError = this.promptBodyContainsKorean(o.body) ? "영문 원문에는 한글을 입력할 수 없습니다." : "", o.type !== "admin_prompt_translation" && this.translatePromptBody(), t.silent || this.setStatus(`${o.name} 프롬프트를 열었습니다`);
+					}, this.promptEditorBaseline = JSON.stringify(this.promptEditorSavePayload(o)), this.promptBodyLanguageError = this.promptBodyContainsKorean(o.body) ? "영문 원문에는 한글을 입력할 수 없습니다." : "", o.type !== "admin_prompt_translation" && this.translatePromptBody(), t.silent || this.setStatus(`${o.name} 프롬프트를 열었습니다`);
 				} catch (e) {
 					n === this.promptDetailRequestRevision && this.setStatus(`프롬프트 상세를 불러오지 못했습니다: ${e.message}`);
 				} finally {
@@ -17450,48 +17451,87 @@ var Ew = /*#__PURE__*/ Eh(hC, [["render", Tw], ["__scopeId", "data-v-f0661921"]]
 				}
 				return t;
 			},
+			promptEditorSavePayload(e) {
+				return {
+					name: this.promptEditor.name,
+					body: this.promptEditor.body,
+					requiredVariables: this.variableTextToList(this.promptEditor.requiredVariablesText),
+					optionalVariables: this.variableTextToList(this.promptEditor.optionalVariablesText),
+					provider: this.promptEditor.provider,
+					model: this.promptEditor.model,
+					temperature: this.promptEditor.temperature === "" ? null : Number(this.promptEditor.temperature),
+					maxTokens: this.promptEditor.maxTokens === "" ? null : Number(this.promptEditor.maxTokens),
+					responseFormat: this.promptEditor.responseFormat,
+					modelOptions: this.promptModelOptionsForSave(e)
+				};
+			},
+			async requestPromptLifecycle(e, t, n) {
+				let r = await fetch(e, {
+					method: e === "/api/prompt-template" ? "PATCH" : "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify(t)
+				}), i = await r.json().catch(() => ({}));
+				if (!r.ok) {
+					let e = Error(i.message || i.error || `${n}(${r.status})`);
+					throw e.result = i, e;
+				}
+				return i;
+			},
 			async savePromptTemplate() {
 				let e = this.selectedPromptTemplate;
-				if (!(!e || this.promptSaving)) {
+				if (!e || this.promptSaving) return;
+				if (this.promptBodyContainsKorean(this.promptEditor.body)) {
+					this.promptBodyLanguageError = "영문 원문에는 한글을 입력할 수 없습니다.", this.setStatus(this.promptBodyLanguageError);
+					return;
+				}
+				if (!this.selectedPromptModelPreset || this.promptEditor.model !== this.selectedPromptModelPreset.modelId) {
+					this.setStatus("LLM 모델 관리에 등록되고 활성화된 모델을 선택해 주세요.");
+					return;
+				}
+				let t;
+				try {
+					t = this.promptEditorSavePayload(e);
+				} catch (e) {
+					this.setStatus(`프롬프트 저장 실패: ${e.message}`);
+					return;
+				}
+				if (JSON.stringify(t) === this.promptEditorBaseline && e.status === "active") {
+					this.setStatus("변경된 내용이 없어 새 버전을 생성하지 않았습니다.");
+					return;
+				}
+				this.promptSaving = !0;
+				try {
+					let n = this.promptEditor.changeNote || `관리자 페이지에서 v${e.version} 프롬프트를 변경했습니다.`, r = e.id, i = e.version;
 					if (e.status !== "draft") {
-						this.setStatus("활성·검증 완료·이전 버전은 직접 수정할 수 없습니다. 새 초안을 만들어 주세요.");
-						return;
-					}
-					if (this.promptBodyContainsKorean(this.promptEditor.body)) {
-						this.promptBodyLanguageError = "영문 원문에는 한글을 입력할 수 없습니다.", this.setStatus(this.promptBodyLanguageError);
-						return;
-					}
-					if (!this.selectedPromptModelPreset || this.promptEditor.model !== this.selectedPromptModelPreset.modelId) {
-						this.setStatus("LLM 모델 관리에 등록되고 활성화된 모델을 선택해 주세요.");
-						return;
-					}
-					this.promptSaving = !0;
-					try {
-						let t = await fetch("/api/prompt-template", {
-							method: "PATCH",
-							headers: { "Content-Type": "application/json" },
-							body: JSON.stringify({
+						try {
+							let t = await this.requestPromptLifecycle("/api/prompt-template-draft", {
 								id: e.id,
-								name: this.promptEditor.name,
-								body: this.promptEditor.body,
-								requiredVariables: this.variableTextToList(this.promptEditor.requiredVariablesText),
-								optionalVariables: this.variableTextToList(this.promptEditor.optionalVariablesText),
-								provider: this.promptEditor.provider,
-								model: this.promptEditor.model,
-								temperature: this.promptEditor.temperature === "" ? null : Number(this.promptEditor.temperature),
-								maxTokens: this.promptEditor.maxTokens === "" ? null : Number(this.promptEditor.maxTokens),
-								responseFormat: this.promptEditor.responseFormat,
-								modelOptions: this.promptModelOptionsForSave(e),
-								changeNote: this.promptEditor.changeNote || "관리자 페이지에서 프롬프트를 변경했습니다."
-							})
-						}), n = await t.json().catch(() => ({}));
-						if (!t.ok) throw Error(n.message || n.error || `프롬프트 저장 오류(${t.status})`);
-						this.selectedPromptTemplateId = n.prompt?.id || e.id, await this.loadPromptTemplates({ fresh: !0 }), this.setStatus("프롬프트 초안을 저장하고 변경 이력을 생성했습니다");
-					} catch (e) {
-						this.setStatus(`프롬프트 저장 실패: ${e.message}`);
-					} finally {
-						this.promptSaving = !1;
+								changeNote: n
+							}, "프롬프트 신규 버전 생성 오류");
+							r = t.prompt?.id || "", i = t.prompt?.version || i;
+						} catch (e) {
+							let t = e.result;
+							if (t?.code !== "PROMPT_CANDIDATE_EXISTS" || t.status !== "draft" || !t.promptId) throw e;
+							r = t.promptId;
+						}
+						if (!r) throw Error("생성된 프롬프트 버전 ID를 확인할 수 없습니다.");
 					}
+					let a = (await this.requestPromptLifecycle("/api/prompt-template", {
+						id: r,
+						...t,
+						changeNote: n
+					}, "프롬프트 저장 오류")).prompt?.id || r, o = (await this.requestPromptLifecycle("/api/prompt-template-validate", {
+						id: a,
+						changeNote: `${n} · 자동 검증`
+					}, "프롬프트 자동 검증 오류")).prompt?.id || a, s = await this.requestPromptLifecycle("/api/prompt-template-activate", {
+						id: o,
+						changeNote: `${n} · 저장 후 자동 활성화`
+					}, "프롬프트 자동 활성화 오류");
+					this.selectedPromptTemplateId = s.prompt?.id || o, await this.loadPromptTemplates({ fresh: !0 }), this.setStatus(`프롬프트 v${s.prompt?.version || i}을 생성하고 활성화했습니다.`);
+				} catch (e) {
+					this.setStatus(`프롬프트 저장 실패: ${e.message}`);
+				} finally {
+					this.promptSaving = !1;
 				}
 			},
 			async createPromptDraft() {

@@ -1132,6 +1132,7 @@ const adminApp = createApp({
       ],
       promptArchivedVisibilityByLineage: {},
       promptSaving: false,
+      promptEditorBaseline: "",
       promptHistories: [],
       promptBodyTranslationKo: "",
       promptBodyTranslationSource: "",
@@ -1711,7 +1712,7 @@ const adminApp = createApp({
     },
 
     promptEditorReadOnly() {
-      return this.promptDetailLoading || this.selectedPromptTemplate?.status !== "draft";
+      return this.promptDetailLoading;
     },
 
     selectedPromptEditorTitle() {
@@ -2921,6 +2922,7 @@ const adminApp = createApp({
       this.promptBodyTranslationError = "";
       this.promptBodyTranslationLoading = false;
       this.promptBodyLanguageError = "";
+      this.promptEditorBaseline = "";
       const prompt = this.promptTemplates.find((item) => item.id === id);
       if (!prompt) {
         if (requestRevision === this.promptDetailRequestRevision) this.promptDetailLoading = false;
@@ -3021,6 +3023,7 @@ const adminApp = createApp({
           modelOptionsText: JSON.stringify(providerOptions, null, 2),
           changeNote: "",
         };
+        this.promptEditorBaseline = JSON.stringify(this.promptEditorSavePayload(detail));
         this.promptBodyLanguageError = this.promptBodyContainsKorean(detail.body)
           ? "영문 원문에는 한글을 입력할 수 없습니다."
           : "";
@@ -3274,13 +3277,39 @@ const adminApp = createApp({
       return modelOptions;
     },
 
+    promptEditorSavePayload(prompt) {
+      return {
+        name: this.promptEditor.name,
+        body: this.promptEditor.body,
+        requiredVariables: this.variableTextToList(this.promptEditor.requiredVariablesText),
+        optionalVariables: this.variableTextToList(this.promptEditor.optionalVariablesText),
+        provider: this.promptEditor.provider,
+        model: this.promptEditor.model,
+        temperature: this.promptEditor.temperature === "" ? null : Number(this.promptEditor.temperature),
+        maxTokens: this.promptEditor.maxTokens === "" ? null : Number(this.promptEditor.maxTokens),
+        responseFormat: this.promptEditor.responseFormat,
+        modelOptions: this.promptModelOptionsForSave(prompt),
+      };
+    },
+
+    async requestPromptLifecycle(path, payload, fallbackMessage) {
+      const response = await fetch(path, {
+        method: path === "/api/prompt-template" ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const error = new Error(result.message || result.error || `${fallbackMessage}(${response.status})`);
+        error.result = result;
+        throw error;
+      }
+      return result;
+    },
+
     async savePromptTemplate() {
       const prompt = this.selectedPromptTemplate;
       if (!prompt || this.promptSaving) return;
-      if (prompt.status !== "draft") {
-        this.setStatus("활성·검증 완료·이전 버전은 직접 수정할 수 없습니다. 새 초안을 만들어 주세요.");
-        return;
-      }
       if (this.promptBodyContainsKorean(this.promptEditor.body)) {
         this.promptBodyLanguageError = "영문 원문에는 한글을 입력할 수 없습니다.";
         this.setStatus(this.promptBodyLanguageError);
@@ -3290,31 +3319,57 @@ const adminApp = createApp({
         this.setStatus("LLM 모델 관리에 등록되고 활성화된 모델을 선택해 주세요.");
         return;
       }
+      let editorPayload;
+      try {
+        editorPayload = this.promptEditorSavePayload(prompt);
+      } catch (error) {
+        this.setStatus(`프롬프트 저장 실패: ${error.message}`);
+        return;
+      }
+      if (JSON.stringify(editorPayload) === this.promptEditorBaseline && prompt.status === "active") {
+        this.setStatus("변경된 내용이 없어 새 버전을 생성하지 않았습니다.");
+        return;
+      }
       this.promptSaving = true;
       try {
-        const response = await fetch("/api/prompt-template", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            id: prompt.id,
-            name: this.promptEditor.name,
-            body: this.promptEditor.body,
-            requiredVariables: this.variableTextToList(this.promptEditor.requiredVariablesText),
-            optionalVariables: this.variableTextToList(this.promptEditor.optionalVariablesText),
-            provider: this.promptEditor.provider,
-            model: this.promptEditor.model,
-            temperature: this.promptEditor.temperature === "" ? null : Number(this.promptEditor.temperature),
-            maxTokens: this.promptEditor.maxTokens === "" ? null : Number(this.promptEditor.maxTokens),
-            responseFormat: this.promptEditor.responseFormat,
-            modelOptions: this.promptModelOptionsForSave(prompt),
-            changeNote: this.promptEditor.changeNote || "관리자 페이지에서 프롬프트를 변경했습니다.",
-          }),
-        });
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.message || result.error || `프롬프트 저장 오류(${response.status})`);
-        this.selectedPromptTemplateId = result.prompt?.id || prompt.id;
+        const changeNote = this.promptEditor.changeNote || `관리자 페이지에서 v${prompt.version} 프롬프트를 변경했습니다.`;
+        let draftId = prompt.id;
+        let draftVersion = prompt.version;
+        if (prompt.status !== "draft") {
+          try {
+            const draftResult = await this.requestPromptLifecycle("/api/prompt-template-draft", {
+              id: prompt.id,
+              changeNote,
+            }, "프롬프트 신규 버전 생성 오류");
+            draftId = draftResult.prompt?.id || "";
+            draftVersion = draftResult.prompt?.version || draftVersion;
+          } catch (error) {
+            const existing = error.result;
+            if (existing?.code !== "PROMPT_CANDIDATE_EXISTS" || existing.status !== "draft" || !existing.promptId) {
+              throw error;
+            }
+            draftId = existing.promptId;
+          }
+          if (!draftId) throw new Error("생성된 프롬프트 버전 ID를 확인할 수 없습니다.");
+        }
+        const savedResult = await this.requestPromptLifecycle("/api/prompt-template", {
+          id: draftId,
+          ...editorPayload,
+          changeNote,
+        }, "프롬프트 저장 오류");
+        const savedId = savedResult.prompt?.id || draftId;
+        const validatedResult = await this.requestPromptLifecycle("/api/prompt-template-validate", {
+          id: savedId,
+          changeNote: `${changeNote} · 자동 검증`,
+        }, "프롬프트 자동 검증 오류");
+        const validatedId = validatedResult.prompt?.id || savedId;
+        const activatedResult = await this.requestPromptLifecycle("/api/prompt-template-activate", {
+          id: validatedId,
+          changeNote: `${changeNote} · 저장 후 자동 활성화`,
+        }, "프롬프트 자동 활성화 오류");
+        this.selectedPromptTemplateId = activatedResult.prompt?.id || validatedId;
         await this.loadPromptTemplates({ fresh: true });
-        this.setStatus("프롬프트 초안을 저장하고 변경 이력을 생성했습니다");
+        this.setStatus(`프롬프트 v${activatedResult.prompt?.version || draftVersion}을 생성하고 활성화했습니다.`);
       } catch (error) {
         this.setStatus(`프롬프트 저장 실패: ${error.message}`);
       } finally {
