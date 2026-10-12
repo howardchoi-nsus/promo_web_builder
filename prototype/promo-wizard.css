@@ -1106,6 +1106,28 @@ a {
   font-weight: 900;
 }
 
+/* V1/V2 is an execution-contract choice, so keep it visible beside run status. */
+.pipeline-version-control {
+  align-items: center;
+  display: inline-flex;
+  gap: 8px;
+}
+
+.pipeline-version-control span {
+  color: var(--app-sub);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pipeline-version-control select {
+  background: var(--app-panel);
+  border: 1px solid var(--app-line);
+  border-radius: 8px;
+  color: var(--app-ink);
+  min-height: 34px;
+  padding: 0 30px 0 10px;
+}
+
 @media (max-width: 760px) {
   .wizard-footer {
     align-items: stretch;
