@@ -11,13 +11,15 @@ const {
 module.exports = async function handler(req, res) {
   try {
     res.setHeader("Cache-Control", "no-store");
-    const owner = resolveAdminOwner(req, res);
     const sql = getSql();
     if (req.method === "GET") {
       const models = await listModels(sql);
       const histories = await listModelHistories(sql, req.query?.historyLimit);
       return res.status(200).json({ ok: true, models, histories });
     }
+    // Registry metadata is safe to read in the Admin application, but every
+    // mutation remains behind the authenticated administrator boundary.
+    const owner = resolveAdminOwner(req, res);
     const body = parseBody(req.body);
     if (req.method === "POST") {
       const model = await createModel(sql, body, owner.ownerSubject);

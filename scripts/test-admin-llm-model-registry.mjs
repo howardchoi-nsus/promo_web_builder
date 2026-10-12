@@ -56,6 +56,10 @@ assert.match(component, /사용 중인 프롬프트가 있으면 모델을 중�
 assert.match(component, /LLM 업데이트 내역/);
 assert.match(api, /resolveAdminOwner/);
 assert.match(api, /listModelHistories/);
+assert.ok(
+  api.indexOf('if (req.method === "GET")') < api.indexOf("resolveAdminOwner(req, res)"),
+  "read-only registry access must not require an admin mutation session",
+);
 assert.match(migration, /create table if not exists llm_models/);
 assert.match(migration, /create table if not exists llm_model_histories/);
 assert.match(migration, /from prompt_templates/);
