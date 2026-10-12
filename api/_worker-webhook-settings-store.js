@@ -15,6 +15,10 @@ const WORKER_STAGES = {
     label: "Final Design",
     envName: "N8N_FINAL_DESIGN_WORKER_URL",
   },
+  final_design_v2: {
+    label: "Final Design V2 (No LO-FI)",
+    envName: "N8N_FINAL_DESIGN_V2_WORKER_URL",
+  },
   promo_ui_design: {
     label: "Promo UI Design",
     envName: "N8N_PROMO_UI_DESIGN_WEBHOOK_URL",

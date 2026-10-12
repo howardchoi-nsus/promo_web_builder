@@ -2802,8 +2802,10 @@ const adminApp = createApp({
     workerStageLabel(stage, fallback = "") {
       return ({
         integrated_brief: "통합 디자인 브리프",
+        integrated_brief_v2: "통합 디자인 브리프 V2",
         lofi_draft: "LO-FI 시안",
         final_design: "최종 디자인",
+        final_design_v2: "최종 디자인 V2",
         promo_ui_design: "프로모션 UI 디자인",
       })[stage] || fallback || stage;
     },

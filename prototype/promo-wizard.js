@@ -1,7 +1,7 @@
 const steps = [
   {
     title: "Design Concept Selection",
-    copy: "Select the design concept that will guide the integrated brief, LO-FI draft, and final design generation.",
+    copy: "Select the design concept that will guide the integrated brief and direct final design generation.",
     cards: [
       ["Design MD", "Choose the source design document and concept."],
       ["Visual Mode", "Confirm standard or advanced visual generation mode."],
@@ -18,21 +18,12 @@ const steps = [
     ],
   },
   {
-    title: "LO-FI 시안 생성 및 선택",
-    copy: "새 LO-FI 시안을 누적 생성하고, 생성된 시안 중 하나를 Final Design 기준으로 확정합니다.",
+    title: "Final Design V2 Result",
+    copy: "Generate the final design directly from the integrated brief and inspect the resulting asset.",
     cards: [
-      ["생성 준비", "A섹션 Concept과 B섹션 Content를 통합 브리프로 준비합니다."],
-      ["LO-FI 시안 생성", "버튼을 누를 때마다 기존 시안을 유지한 채 새 시안을 추가합니다."],
-      ["시안 선택", "여러 LO-FI 시안 중 하나를 Confirm Draft로 확정합니다."],
-    ],
-  },
-  {
-    title: "Final Design Result",
-    copy: "Generate the final design from the confirmed LO-FI draft and inspect the resulting asset.",
-    cards: [
-      ["Final Worker", "Trigger final_design generation for the selected draft."],
+      ["Integrated Brief", "Combine the selected concept and promotion content into the generation contract."],
+      ["Final Worker V2", "Trigger direct final design generation without creating a LO-FI artifact."],
       ["Result Preview", "Display the final image and generation metadata."],
-      ["Resume", "Reload by runId without losing generation state."],
     ],
   },
 ];
@@ -402,7 +393,8 @@ function moveTemplateSectionByKeyboard(sectionKey, direction) {
 function loadWizardRun() {
   try {
     const saved = JSON.parse(localStorage.getItem(storageKeys.wizardRun) || "null");
-    return saved && typeof saved === "object" ? saved : null;
+    if (!saved || typeof saved !== "object") return null;
+    return saved.run?.metadata?.pipelineVersion === "v2" ? saved : null;
   } catch {
     return null;
   }
@@ -428,8 +420,8 @@ function mergeQueuedFinalDesign(finalDesign) {
   if (nextState.run) {
     nextState.run = {
       ...nextState.run,
-      stage: "final_design",
-      status: finalDesign.status === "trigger_failed" ? "final_design_trigger_failed" : "final_design_queued",
+      stage: "final_design_v2",
+      status: finalDesign.status === "trigger_failed" ? "final_design_v2_trigger_failed" : "final_design_v2_queued",
     };
   }
   saveWizardRun(nextState);
@@ -943,7 +935,7 @@ function renderContentStep() {
 
   const toolbar = document.createElement("div");
   toolbar.className = "content-form-actions";
-  const note = appendTextElement(toolbar, "span", "", "프로모션 개요와 선택 템플릿의 콘텐츠가 LO-FI 생성 요청에 저장됩니다.");
+  const note = appendTextElement(toolbar, "span", "", "프로모션 개요와 선택 템플릿의 콘텐츠가 V2 통합 브리프와 최종 디자인 요청에 저장됩니다.");
   note.className = "content-save-note";
   const buttons = document.createElement("div");
   const autofill = document.createElement("button");
@@ -1339,7 +1331,7 @@ function createFinalLargePreview(finalDesign) {
     image.src = finalDesignImageSrc(finalDesign);
     frame.append(image);
   } else {
-    appendTextElement(frame, "span", "", finalDesign ? "Final design image is not ready yet." : "Generate a final design from the confirmed LO-FI draft.");
+    appendTextElement(frame, "span", "", finalDesign ? "Final design image is not ready yet." : "Generate a final design directly from the integrated brief.");
   }
   panel.append(frame);
   return panel;
@@ -1430,7 +1422,7 @@ function renderLofiStep() {
         renderStep();
       }
     } else {
-      await prepareLofiRun();
+      await prepareV2Run();
     }
   });
 
@@ -1482,7 +1474,6 @@ function renderFinalStep() {
   placeholders.innerHTML = "";
 
   const run = runState?.run || null;
-  const confirmed = runState?.confirmedDraft || null;
   const finalDesigns = Array.isArray(runState?.finalDesigns) ? [...runState.finalDesigns] : [];
   finalDesigns.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
   const selectedFinalDesign = finalDesigns.find((item) => item.finalDesignId === selectedFinalPreviewDesignId)
@@ -1493,16 +1484,16 @@ function renderFinalStep() {
 
   const summary = document.createElement("section");
   summary.className = "final-run-summary";
-  appendTextElement(summary, "span", "eyebrow", "Final Design Generation Run");
+  appendTextElement(summary, "span", "eyebrow", "Generation Pipeline V2 · No LO-FI");
   appendTextElement(summary, "h3", "", run?.promoTitle || contentState.promo.title || "Untitled promo");
-  appendTextElement(summary, "p", "", "Confirm Draft로 선택한 LO-FI 시안을 기준으로 n8n final_design worker를 호출합니다.");
+  appendTextElement(summary, "p", "", "통합 브리프와 프로모션 콘텐츠를 기준으로 n8n final_design_v2 worker를 직접 호출합니다.");
 
   const statusRow = document.createElement("div");
   statusRow.className = "lofi-status-row";
   const finalComplete = finalDesigns.some((item) => isReadyFinalDesign(item))
-    || /final_design_ready/i.test(String(run?.status || ""));
+    || /final_design(?:_v2)?_ready/i.test(String(run?.status || ""));
   const finalInProgress = finalDesigns.some((item) => isActiveStatus(item.status))
-    || (run?.stage === "final_design" && isActiveStatus(run.status));
+    || (["final_design", "final_design_v2"].includes(run?.stage) && isActiveStatus(run.status));
   const finalProgress = finalComplete
     ? { text: "최종 디자인 · 진행 완료", kind: "ready" }
     : finalInProgress
@@ -1510,27 +1501,20 @@ function renderFinalStep() {
       : { text: "최종 디자인 · 대기 중", kind: "waiting" };
   statusRow.append(createStatusPill(finalProgress.text, finalProgress.kind));
   statusRow.append(createStatusPill(`결과 ${finalDesigns.length}개`));
-  if (confirmed?.draftAttempt) statusRow.append(createStatusPill(`LO-FI 시안 #${confirmed.draftAttempt} 선택됨`, "ready"));
+  statusRow.append(createStatusPill(integratedBriefReady() ? "통합 브리프 · 완료" : "통합 브리프 · 준비 필요", integratedBriefReady() ? "ready" : "waiting"));
   summary.append(statusRow);
 
   const source = document.createElement("div");
   source.className = "lofi-content-snapshot final-design-source";
-  appendTextElement(source, "strong", "", "Final Design Source");
+  appendTextElement(source, "strong", "", "V2 Direct Generation Source");
   const sourcePreview = document.createElement("div");
   sourcePreview.className = "final-design-source-preview";
-  if (confirmed?.draftId) {
-    const sourceImage = document.createElement("img");
-    sourceImage.src = draftImageSrc(confirmed);
-    sourceImage.alt = `선택된 LO-FI 시안 #${confirmed.draftAttempt || ""}`.trim();
-    sourceImage.loading = "lazy";
-    sourcePreview.append(sourceImage);
-  } else {
-    appendTextElement(sourcePreview, "span", "", "Step 3에서 선택된 LO-FI 시안이 없습니다.");
-  }
+  appendTextElement(sourcePreview, "span", "", "LO-FI 이미지 없이 통합 브리프와 섹션 콘텐츠 매핑을 직접 사용합니다.");
   const sourceList = document.createElement("ul");
   [
     ["Run ID", runId()],
-    ["Confirmed Draft ID", confirmed?.draftId],
+    ["Pipeline", "v2 · direct text-to-image"],
+    ["Integrated Brief", runState?.integratedBrief?.status],
     ["Promo Title", contentState.promo.title],
     ["CTA", contentState.promo.ctaLabel || contentState.simpleBrief.targetAction],
   ].forEach(([label, value]) => {
@@ -1546,13 +1530,14 @@ function renderFinalStep() {
   const refresh = document.createElement("button");
   refresh.className = "secondary-action";
   refresh.type = "button";
-  refresh.textContent = "상태 새로고침";
+  refresh.textContent = integratedBriefFailed() ? "통합 브리프 다시 생성" : "상태 새로고침";
   refresh.disabled = runLoading || !runId();
   refresh.addEventListener("click", async () => {
     runLoading = true;
     runError = "";
     renderStep();
     try {
+      if (integratedBriefFailed()) await queueIntegratedBrief();
       await refreshRunState();
       syncRunPolling();
     } catch (error) {
@@ -1567,11 +1552,11 @@ function renderFinalStep() {
   generate.className = "primary-action";
   generate.type = "button";
   generate.textContent = finalDesigns.length ? "최종 디자인 재생성" : "최종 디자인 생성";
-  generate.disabled = runLoading || !runId() || !confirmed?.draftId;
+  generate.disabled = runLoading || !runId() || !integratedBriefReady();
   generate.addEventListener("click", generateFinalDesign);
   actionPanel.append(refresh, generate);
-  if (!confirmed?.draftId) appendTextElement(actionPanel, "small", "", "Step 3에서 LO-FI 시안 하나를 Confirm Draft로 선택해야 최종 디자인을 생성할 수 있습니다.");
-  if (!workerReady("final_design")) appendTextElement(actionPanel, "small", "", "관리자 페이지에서 final_design n8n webhook이 active인지 확인해 주세요. 환경변수로 설정된 경우에는 서버가 그대로 worker를 호출합니다.");
+  if (!integratedBriefReady()) appendTextElement(actionPanel, "small", "", "Integrated Brief가 준비되면 최종 디자인을 생성할 수 있습니다.");
+  if (!workerReady("final_design_v2")) appendTextElement(actionPanel, "small", "", "관리자 페이지에서 final_design_v2 n8n webhook이 active인지 확인해 주세요. 환경변수로 설정된 경우에는 서버가 그대로 worker를 호출합니다.");
   if (runLoading) appendTextElement(actionPanel, "small", "", "요청 처리 중입니다.");
   if (runError) appendTextElement(actionPanel, "small", "lofi-error", runError);
   summary.append(actionPanel);
@@ -1584,7 +1569,7 @@ function renderFinalStep() {
     const empty = document.createElement("article");
     empty.className = "placeholder-card";
     appendTextElement(empty, "strong", "", "아직 생성된 최종 디자인이 없습니다");
-    appendTextElement(empty, "span", "", "Confirm Draft가 준비된 뒤 '최종 디자인 생성'을 눌러 n8n final_design worker를 시작합니다.");
+    appendTextElement(empty, "span", "", "Integrated Brief가 준비된 뒤 '최종 디자인 생성'을 눌러 n8n final_design_v2 worker를 시작합니다.");
     list.append(empty);
   } else {
     finalDesigns.forEach((finalDesign) => list.append(createFinalDesignCard(finalDesign)));
@@ -1768,7 +1753,7 @@ function buildWizardPayload(runKey) {
       name: selectedWizardFormTemplate?.name || "",
       version: selectedWizardFormTemplate?.version || 1,
       designMode: "ai",
-      generationMode: "lofi_draft",
+      generationMode: "direct_final_v2",
       inputMode: "wizard",
       sectionOrder: templateRuntime.orderedSections,
       visibleSections: templateRuntime.visibleSections,
@@ -1897,7 +1882,7 @@ async function createOrRefreshRun() {
   const payload = buildWizardPayload(runKey);
   const result = await fetchJson("/api/promo-generation-runs", {
     method: "POST",
-    body: JSON.stringify({ runKey, payload }),
+    body: JSON.stringify({ runKey, payload, pipelineVersion: "v2" }),
   });
   saveWizardRun(result.state || result);
   return runState;
@@ -1909,6 +1894,7 @@ async function queueIntegratedBrief() {
     method: "POST",
     body: JSON.stringify({
       runId: runId(),
+      pipelineVersion: "v2",
       triggerWorker: true,
       triggerTimeoutMs: workerTimeout("integrated_brief"),
       promptMeta: {
@@ -1950,7 +1936,7 @@ function syncRunPolling() {
   }, 5000);
 }
 
-async function prepareLofiRun() {
+async function prepareV2Run() {
   runLoading = true;
   runError = "";
   renderStep();
@@ -2009,9 +1995,8 @@ async function createNewLofiDraft() {
 }
 
 async function generateFinalDesign() {
-  const confirmed = runState?.confirmedDraft || null;
-  if (!confirmed?.draftId) {
-    runError = "Final Design 생성 전에 LO-FI 시안 하나를 Confirm Draft로 선택해 주세요.";
+  if (!integratedBriefReady()) {
+    runError = "Final Design V2 생성 전에 Integrated Brief를 준비해 주세요.";
     renderStep();
     return;
   }
@@ -2020,16 +2005,16 @@ async function generateFinalDesign() {
   runError = "";
   renderStep();
   try {
-    const result = await fetchJson("/api/promo-generation-final-designs", {
+    const result = await fetchJson("/api/promo-generation-v2-final-designs", {
       method: "POST",
       body: JSON.stringify({
         runId: runId(),
-        confirmedDraftId: confirmed.draftId,
+        pipelineVersion: "v2",
         triggerWorker: true,
-        triggerTimeoutMs: workerTimeout("final_design"),
+        triggerTimeoutMs: workerTimeout("final_design_v2"),
         promptMeta: {
           source: "standalone_wizard",
-          confirmedDraftId: confirmed.draftId,
+          pipelineVersion: "v2",
           contentCoverageRequired: true,
         },
       }),
@@ -2196,11 +2181,6 @@ function renderStep() {
   }
 
   if (currentStep === 2) {
-    renderLofiStep();
-    return;
-  }
-
-  if (currentStep === 3) {
     renderFinalStep();
     return;
   }
@@ -2229,16 +2209,10 @@ stepButtons.forEach((button, index) => {
       renderStep();
       return;
     }
-    if (index >= 3 && !runState?.confirmedDraft) {
-      currentStep = 2;
-      runError = "Final Design으로 이동하기 전에 LO-FI 시안 하나를 Confirm Draft로 선택해 주세요.";
-      renderStep();
-      return;
-    }
     currentStep = index;
     renderStep();
     if (currentStep === 2 && !runId()) {
-      await prepareLofiRun();
+      await prepareV2Run();
     }
   });
 });
@@ -2253,15 +2227,10 @@ next.addEventListener("click", async () => {
     renderStep();
     return;
   }
-  if (currentStep === 2 && !runState?.confirmedDraft) {
-    runError = "Final Design으로 이동하기 전에 LO-FI 시안 하나를 Confirm Draft로 선택해 주세요.";
-    renderStep();
-    return;
-  }
   currentStep = Math.min(steps.length - 1, currentStep + 1);
   renderStep();
   if (currentStep === 2 && !runId()) {
-    await prepareLofiRun();
+    await prepareV2Run();
   }
 });
 

@@ -34,6 +34,10 @@ async function createRun(req, res) {
   const promo = payload.promo || body.promo || {};
   const md = payload.md || body.md || {};
   const inputSnapshot = payload;
+  const pipelineVersion = String(body.pipelineVersion || body.pipeline_version || payload.pipelineVersion || "v1").trim().toLowerCase();
+  if (!["v1", "v2"].includes(pipelineVersion)) {
+    return res.status(400).json({ error: "pipelineVersion must be v1 or v2" });
+  }
   const inputHash = sha256(stableJson(inputSnapshot));
   const sql = getSql();
 
@@ -61,7 +65,7 @@ async function createRun(req, res) {
       'created',
       ${inputHash},
       ${JSON.stringify(inputSnapshot)}::jsonb,
-      ${JSON.stringify({ acceptedAt: new Date().toISOString() })}::jsonb,
+      ${JSON.stringify({ acceptedAt: new Date().toISOString(), pipelineVersion })}::jsonb,
       now()
     )
     on conflict (run_key) do update set

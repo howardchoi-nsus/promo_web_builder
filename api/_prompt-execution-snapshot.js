@@ -68,7 +68,7 @@ async function createPromptExecutionSnapshot(sql, type, variables = {}) {
     throw error;
   }
 
-  const fitted = type === "final_design"
+  const fitted = type === "final_design" || type === "final_design_v2"
     ? fitFinalDesignPromptVariables(prompt.body, completedVariables, renderPrompt)
     : {
         variables: completedVariables,
@@ -151,9 +151,9 @@ function validateStageModelConfig(type, prompt) {
   if (!provider || !model) fail(`${type} provider and model are required`);
   validatePromptLayers(type, prompt.modelOptions || {});
   validateControlPlaneConfig(type, prompt);
-  if (type === "integrated_brief") {
-    if (provider !== "openai") fail("integrated_brief currently supports the openai provider only");
-    if (responseFormat !== "json_object") fail("integrated_brief responseFormat must be json_object");
+  if (type === "integrated_brief" || type === "integrated_brief_v2") {
+    if (provider !== "openai") fail(`${type} currently supports the openai provider only`);
+    if (responseFormat !== "json_object") fail(`${type} responseFormat must be json_object`);
     return true;
   }
   if (type === "admin_prompt_translation") {
@@ -182,6 +182,12 @@ function validateStageModelConfig(type, prompt) {
     if (provider === "google" && imageSize && !["1K", "2K", "4K"].includes(imageSize)) {
       fail("final_design imageSize must be one of: 1K, 2K, 4K");
     }
+    return true;
+  }
+  if (type === "final_design_v2") {
+    if (provider !== "openai") fail("final_design_v2 currently supports the openai provider only");
+    if (!/^gpt-image-/i.test(model)) fail("final_design_v2 requires a GPT Image model");
+    if (responseFormat !== "image") fail("final_design_v2 responseFormat must be image");
     return true;
   }
   if (type === "image_execution") {

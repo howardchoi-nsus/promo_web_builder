@@ -18,9 +18,10 @@ docs/
 
 ## 현재 문서 (현행 기준)
 
-### 기획 (2)
+### 기획 (3)
 - `promo-web-builder-product-plan-2026-07-23.md` — 통합 제품 기획서(현행화: 마이그레이션 032 반영)
 - `promo-builder-ai-design-and-component-analysis-report-2026-07-23.md` — AI 디자인·컴포넌트 분석 리포트(현행화: 031/032 델타 반영)
+- `ai-promotion-web-output-design-quality-strategy-2026-10-11.md` — 프로모션 웹 결과물의 품질 목표, 경쟁 서비스 시사점, 디자인 토큰 활용 원칙, 레이아웃 후보 자동 생성·평가 전략
 
 ### 설계 (4)
 - `admin-page-terminology-dictionary-2026-07-22.md` — 용어 사전(+ 컴포넌트 계층 용어)

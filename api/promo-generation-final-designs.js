@@ -44,6 +44,8 @@ async function queueFinalDesign(req, res) {
   const sql = getSql();
   const run = await resolveRun(sql, runId);
   if (!run) return res.status(404).json({ error: "Generation run not found" });
+  const pipelineVersion = String(body.pipelineVersion || body.pipeline_version || run?.metadata?.pipelineVersion || "v1").trim().toLowerCase();
+  if (pipelineVersion === "v2") return queueFinalDesignV2(req, res, { body, run, sql });
 
   const requestedConfirmedDraftId = String(body.confirmedDraftId || body.confirmed_draft_id || "").trim();
   if (requestedConfirmedDraftId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestedConfirmedDraftId)) {
@@ -237,6 +239,139 @@ async function queueFinalDesign(req, res) {
   });
 }
 
+async function queueFinalDesignV2(req, res, { body, run, sql }) {
+  if (String(run?.metadata?.pipelineVersion || "v1").toLowerCase() !== "v2") {
+    return res.status(409).json({
+      error: "Generation run is not a V2 run",
+      message: "Create the run with pipelineVersion v2 before direct final design generation.",
+    });
+  }
+  const briefRows = await sql`
+    select integrated_brief_markdown
+    from promo_generation_integrated_briefs
+    where run_id = ${run.id}::uuid
+      and status in ('ready', 'completed')
+    limit 1
+  `;
+  if (!briefRows.length) {
+    return res.status(409).json({ error: "Ready Integrated Brief is required" });
+  }
+
+  const executionSnapshot = await createPromptExecutionSnapshot(
+    sql,
+    "final_design_v2",
+    imageStageVariables(run, briefRows[0].integrated_brief_markdown)
+  );
+  const promptMeta = mergeObject(body.promptMeta, {
+    executionSnapshot,
+    pipelineVersion: "v2",
+    sourceOfTruth: "integrated_brief_and_content_mapping",
+  });
+  const modelMeta = mergeObject(body.modelMeta, {
+    ...baseExecutionModelMeta(executionSnapshot),
+    referenceMode: "text_to_image",
+    pipelineVersion: "v2",
+  });
+  const rows = await sql`
+    insert into promo_generation_final_designs (
+      run_id,
+      confirmed_draft_id,
+      status,
+      final_prompt,
+      prompt_meta,
+      model_meta,
+      updated_at
+    )
+    values (
+      ${run.id}::uuid,
+      null,
+      'queued',
+      ${body.finalPrompt || body.prompt || executionSnapshot.promptConfig.renderedPrompt || ""},
+      ${JSON.stringify(promptMeta)}::jsonb,
+      ${JSON.stringify(modelMeta)}::jsonb,
+      now()
+    )
+    returning
+      id::text,
+      run_id::text,
+      confirmed_draft_id::text,
+      status,
+      final_image_url,
+      final_prompt,
+      prompt_meta,
+      model_meta,
+      error_message,
+      created_at,
+      updated_at
+  `;
+
+  await sql`
+    update promo_generation_runs
+    set status = 'final_design_v2_queued', stage = 'final_design_v2', error_message = '', updated_at = now()
+    where id = ${run.id}::uuid
+  `;
+
+  const finalDesign = finalDesignSummary(rows[0]);
+  const origin = requestOrigin(req);
+  const workerPayload = buildWorkerPayload({
+    run,
+    stage: "final_design_v2",
+    taskId: finalDesign.finalDesignId,
+    extra: {
+      pipelineVersion: "v2",
+      finalDesignId: finalDesign.finalDesignId,
+      taskDetailUrl: buildTaskDetailUrl(origin, run.id),
+      execution: workerExecutionSummary(executionSnapshot),
+    },
+  });
+  const workerTriggerRequested = shouldTriggerWorker(body);
+  const workerTrigger = workerTriggerRequested
+    ? await triggerWorker({
+      stage: "final_design_v2",
+      payload: workerPayload,
+      workerUrl: body.workerUrl || body.worker_url,
+      timeoutMs: body.triggerTimeoutMs || body.trigger_timeout_ms,
+      sql,
+    })
+    : null;
+
+  if (workerTriggerRequested) {
+    await sql`
+      update promo_generation_final_designs
+      set prompt_meta = coalesce(prompt_meta, '{}'::jsonb) || ${JSON.stringify({
+        workerTrigger: { workerPayload, workerTrigger, triggeredAt: new Date().toISOString() },
+      })}::jsonb,
+      updated_at = now()
+      where id = ${finalDesign.finalDesignId}::uuid
+    `;
+  }
+  if (workerTrigger && !workerTrigger.ok) {
+    const errorMessage = workerTrigger.error || "Worker trigger failed";
+    await sql`
+      update promo_generation_final_designs
+      set status = 'trigger_failed', error_message = ${errorMessage}, updated_at = now()
+      where id = ${finalDesign.finalDesignId}::uuid
+    `;
+    await sql`
+      update promo_generation_runs
+      set status = 'final_design_v2_trigger_failed', stage = 'final_design_v2', error_message = ${errorMessage}, updated_at = now()
+      where id = ${run.id}::uuid
+    `;
+    finalDesign.status = "trigger_failed";
+    finalDesign.errorMessage = errorMessage;
+  }
+
+  const failed = Boolean(workerTriggerRequested && workerTrigger && !workerTrigger.ok);
+  return res.status(failed ? 502 : 202).json({
+    ok: !failed,
+    accepted: !failed,
+    pipelineVersion: "v2",
+    workerPayload,
+    workerTrigger,
+    finalDesign,
+  });
+}
+
 function mergeObject(value, extra) {
   return {
     ...(value && typeof value === "object" && !Array.isArray(value) ? value : {}),
@@ -271,6 +406,7 @@ async function updateFinalDesign(req, res) {
   const body = parseBody(req.body);
   const finalDesignId = String(body.finalDesignId || body.final_design_id || body.id || "").trim();
   const status = String(body.status || (body.errorMessage ? "failed" : "ready")).trim();
+  const pipelineVersion = String(body.pipelineVersion || body.pipeline_version || "v1").trim().toLowerCase();
   if (!finalDesignId) return res.status(400).json({ error: "finalDesignId is required" });
 
   const sql = getSql();
@@ -332,8 +468,10 @@ async function updateFinalDesign(req, res) {
   await sql`
     update promo_generation_runs
     set
-      status = ${status === "ready" || status === "completed" ? "final_design_ready" : "final_design_failed"},
-      stage = 'final_design',
+      status = ${status === "ready" || status === "completed"
+        ? (pipelineVersion === "v2" ? "final_design_v2_ready" : "final_design_ready")
+        : (pipelineVersion === "v2" ? "final_design_v2_failed" : "final_design_failed")},
+      stage = ${pipelineVersion === "v2" ? "final_design_v2" : "final_design"},
       error_message = ${body.errorMessage || body.error_message || ""},
       updated_at = now()
     where id = ${rows[0].run_id}::uuid

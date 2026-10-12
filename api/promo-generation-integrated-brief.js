@@ -40,12 +40,13 @@ async function queueIntegratedBrief(req, res) {
   const sql = getSql();
   const run = await resolveRun(sql, runId);
   if (!run) return res.status(404).json({ error: "Generation run not found" });
+  const pipelineVersion = resolvePipelineVersion(body, run);
   const executionSnapshot = await createPromptExecutionSnapshot(
     sql,
-    "integrated_brief",
+    pipelineVersion === "v2" ? "integrated_brief_v2" : "integrated_brief",
     integratedBriefVariables(run)
   );
-  const promptMeta = mergeObject(body.promptMeta, { executionSnapshot });
+  const promptMeta = mergeObject(body.promptMeta, { executionSnapshot, pipelineVersion });
   const modelMeta = mergeObject(body.modelMeta, executionModelMeta(executionSnapshot));
 
   const rows = await sql`
@@ -97,6 +98,7 @@ async function queueIntegratedBrief(req, res) {
     taskId: integratedBrief.integratedBriefId,
     extra: {
       integratedBriefId: integratedBrief.integratedBriefId,
+      pipelineVersion,
       taskDetailUrl: buildTaskDetailUrl(req, run.id),
       execution: workerExecutionSummary(executionSnapshot),
     },
@@ -150,6 +152,11 @@ async function queueIntegratedBrief(req, res) {
     workerTrigger,
     integratedBrief,
   });
+}
+
+function resolvePipelineVersion(body, run) {
+  const value = String(body.pipelineVersion || body.pipeline_version || run?.metadata?.pipelineVersion || "v1").trim().toLowerCase();
+  return value === "v2" ? "v2" : "v1";
 }
 
 function mergeObject(value, extra) {

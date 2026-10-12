@@ -11,6 +11,7 @@ const STAGE_STALE_LIMITS_MS = {
   integrated_brief: 6 * 60 * 1000,
   lofi_draft: 4 * 60 * 1000,
   final_design: 6 * 60 * 1000,
+  final_design_v2: 6 * 60 * 1000,
 };
 
 function getSql() {

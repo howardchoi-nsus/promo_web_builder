@@ -42,7 +42,8 @@ async function getSettings(req, res) {
       when 'integrated_brief' then 1
       when 'lofi_draft' then 2
       when 'final_design' then 3
-      when 'promo_ui_design' then 4
+      when 'final_design_v2' then 4
+      when 'promo_ui_design' then 5
       else 99
     end
   `;

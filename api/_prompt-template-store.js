@@ -22,6 +22,23 @@ const PROMPT_TYPES = {
       "pageWidth",
     ],
   },
+  integrated_brief_v2: {
+    name: "Integrated Brief Generation V2",
+    requiredVariables: [
+      "runKey",
+      "designPromptMarkdown",
+      "sectionInputLogMarkdown",
+    ],
+    optionalVariables: [
+      "promptGroupId",
+      "promoTitle",
+      "selectedMd",
+      "selectedMdSlug",
+      "templateName",
+      "canvasSize",
+      "pageWidth",
+    ],
+  },
   image_execution: {
     name: "Image Execution Prompt",
     requiredVariables: ["integratedDesignBriefMarkdown"],
@@ -36,6 +53,11 @@ const PROMPT_TYPES = {
     name: "Final Design Generation",
     requiredVariables: ["integratedDesignBriefMarkdown", "confirmedDraftImageProxyUrl"],
     optionalVariables: ["confirmedDraftPrompt", "sectionContentMapping", "layoutFidelityPolicy"],
+  },
+  final_design_v2: {
+    name: "Final Design Generation V2",
+    requiredVariables: ["integratedDesignBriefMarkdown"],
+    optionalVariables: ["sectionContentMapping"],
   },
   section_layout_planner: {
     name: "Section Layout Planner",

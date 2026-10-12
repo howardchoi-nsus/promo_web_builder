@@ -2,6 +2,7 @@ const WORKER_URL_ENV = {
   integrated_brief: "N8N_INTEGRATED_BRIEF_WORKER_URL",
   lofi_draft: "N8N_LOFI_DRAFT_WORKER_URL",
   final_design: "N8N_FINAL_DESIGN_WORKER_URL",
+  final_design_v2: "N8N_FINAL_DESIGN_V2_WORKER_URL",
 };
 
 const {

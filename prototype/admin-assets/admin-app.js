@@ -8744,6 +8744,13 @@ var A_ = Object.freeze([
 		description: "프로모션 입력과 선택 문서를 통합해 디자인 생성 기준을 구성합니다.",
 		executionMode: "자동 실행"
 	},
+	integrated_brief_v2: {
+		group: "design-generator",
+		order: 15,
+		label: "통합 디자인 브리프 V2",
+		description: "LO-FI 없는 V2 파이프라인을 위한 통합 생성 기준을 구성합니다.",
+		executionMode: "자동 실행"
+	},
 	lofi_draft: {
 		group: "design-generator",
 		order: 20,
@@ -8756,6 +8763,13 @@ var A_ = Object.freeze([
 		order: 30,
 		label: "최종 디자인 생성",
 		description: "승인된 LO-FI 시안과 브리프를 바탕으로 최종 디자인을 생성합니다.",
+		executionMode: "사용자 요청"
+	},
+	final_design_v2: {
+		group: "design-generator",
+		order: 35,
+		label: "최종 디자인 V2 생성",
+		description: "통합 브리프에서 LO-FI 참조 없이 최종 디자인을 직접 생성합니다.",
 		executionMode: "사용자 요청"
 	},
 	image_execution: {
@@ -16426,8 +16440,10 @@ var jC = /*#__PURE__*/ Eh(bS, [["render", AC], ["__scopeId", "data-v-f0661921"]]
 			workerStageLabel(e, t = "") {
 				return {
 					integrated_brief: "통합 디자인 브리프",
+					integrated_brief_v2: "통합 디자인 브리프 V2",
 					lofi_draft: "LO-FI 시안",
 					final_design: "최종 디자인",
+					final_design_v2: "최종 디자인 V2",
 					promo_ui_design: "프로모션 UI 디자인"
 				}[e] || t || e;
 			},
