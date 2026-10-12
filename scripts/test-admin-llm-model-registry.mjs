@@ -26,6 +26,18 @@ assert.throws(() => registryStore.normalizeModelInput({
   modality: "text",
 }), /provider/);
 
+const registeredDefaults = new Set(registryStore.DEFAULT_MODELS.map((entry) => `${entry[0]}:${entry[1]}`));
+for (const appliedModel of [
+  "openai:gpt-4o-mini",
+  "openai:gpt-4.1-mini",
+  "openai:gpt-image-1",
+  "google:gemini-3.1-flash-image",
+  "openai:gpt-6.1-sol",
+  "openai:gpt-image-2.5-sunburst",
+]) {
+  assert.ok(registeredDefaults.has(appliedModel), `${appliedModel} must be registered`);
+}
+
 const root = new URL("../", import.meta.url);
 const [html, app, entry, component, api, migration] = await Promise.all([
   readFile(new URL("prototype/index.html", root), "utf8"),
@@ -44,5 +56,8 @@ assert.match(component, /사용 중인 프롬프트가 있으면 모델을 중�
 assert.match(api, /resolveAdminOwner/);
 assert.match(migration, /create table if not exists llm_models/);
 assert.match(migration, /create table if not exists llm_model_histories/);
+assert.match(migration, /from prompt_templates/);
+assert.match(migration, /system:prompt-sync/);
+assert.equal(typeof registryStore.syncPromptModelsToRegistry, "function");
 
 console.log("Admin LLM model registry contract passed");

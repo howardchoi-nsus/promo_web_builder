@@ -158,6 +158,77 @@ async function ensureLlmModelRegistry(sql) {
       ) on conflict (provider, model_id) do nothing
     `;
   }
+  await syncPromptModelsToRegistry(sql);
+}
+
+async function syncPromptModelsToRegistry(sql) {
+  await sql`
+    with prompt_models as (
+      select distinct on (lower(trim(provider)), trim(model))
+        lower(trim(provider)) as provider,
+        trim(model) as model_id,
+        temperature,
+        max_tokens,
+        response_format,
+        type,
+        status
+      from prompt_templates
+      where lower(trim(provider)) in ('openai', 'google')
+        and trim(model) <> ''
+      order by
+        lower(trim(provider)), trim(model),
+        case status when 'active' then 0 when 'validated' then 1 when 'draft' then 2 else 3 end,
+        updated_at desc
+    ), inserted as (
+      insert into llm_models (
+        provider, model_id, display_name, description, modality, status,
+        is_recommended, is_legacy, default_temperature, default_max_tokens,
+        default_response_format, supported_image_sizes, model_options,
+        change_note, created_by, updated_by
+      )
+      select
+        prompt.provider,
+        prompt.model_id,
+        prompt.model_id,
+        '기존 프롬프트 설정에서 자동 등록된 모델',
+        case
+          when prompt.model_id ilike 'gpt-image-%'
+            or prompt.model_id ilike '%-image%'
+            or prompt.type in ('image_execution', 'lofi_draft', 'final_design', 'final_design_v2', 'section_background_image', 'component_image')
+          then 'image'
+          else 'text'
+        end,
+        'active', false, false,
+        prompt.temperature,
+        prompt.max_tokens,
+        coalesce(nullif(prompt.response_format, ''), case when prompt.model_id ilike '%image%' then 'image' else 'text' end),
+        case when prompt.provider = 'google' and prompt.model_id ilike '%image%' then '["1K","2K","4K"]'::jsonb else '[]'::jsonb end,
+        '{}'::jsonb,
+        '프롬프트에서 사용 중인 모델 자동 등록',
+        'system:prompt-sync',
+        'system:prompt-sync'
+      from prompt_models prompt
+      on conflict (provider, model_id) do nothing
+      returning *
+    )
+    insert into llm_model_histories (
+      llm_model_id, provider, model_id, previous_status, new_status,
+      snapshot, change_note, changed_by
+    )
+    select
+      inserted.id, inserted.provider, inserted.model_id, null, inserted.status,
+      jsonb_build_object(
+        'provider', inserted.provider,
+        'modelId', inserted.model_id,
+        'displayName', inserted.display_name,
+        'modality', inserted.modality,
+        'status', inserted.status,
+        'source', 'prompt_templates'
+      ),
+      inserted.change_note,
+      'system:prompt-sync'
+    from inserted
+  `;
 }
 
 async function listModels(sql) {
@@ -265,6 +336,7 @@ module.exports = {
   getSql,
   listModels,
   normalizeModelInput,
+  syncPromptModelsToRegistry,
   toModel,
   updateModel,
 };
