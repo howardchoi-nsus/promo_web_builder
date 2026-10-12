@@ -59,6 +59,50 @@
         font-size: 13px;
       }
 
+      .site-actions {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+      }
+
+      .version-switcher {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        padding: 3px;
+        border: 1px solid #d5dcd8;
+        border-radius: 8px;
+        background: #f4f6f5;
+      }
+
+      .version-switcher button {
+        min-width: 54px;
+        min-height: 34px;
+        padding: 0 14px;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: #64706a;
+        cursor: pointer;
+        font: inherit;
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      .version-switcher button:hover {
+        color: #17201c;
+      }
+
+      .version-switcher button:focus-visible {
+        outline: 2px solid #176b4d;
+        outline-offset: 2px;
+      }
+
+      .version-switcher button[aria-pressed="true"] {
+        background: #176b4d;
+        color: #ffffff;
+      }
+
       main {
         width: min(1040px, calc(100% - 40px));
         margin: 0 auto;
@@ -110,6 +154,10 @@
         color: inherit;
         text-decoration: none;
         transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+      }
+
+      .entry-card[hidden] {
+        display: none;
       }
 
       .entry-card:hover,
@@ -186,6 +234,15 @@
           display: none;
         }
 
+        .site-actions {
+          gap: 0;
+        }
+
+        .version-switcher button {
+          min-width: 48px;
+          padding: 0 10px;
+        }
+
         main {
           width: min(100% - 32px, 520px);
           padding-top: 48px;
@@ -207,45 +264,51 @@
         <span class="brand-mark" aria-hidden="true">PW</span>
         <span>Promo Web Builder</span>
       </a>
-      <span class="site-label">Promotion creation workspace</span>
+      <div class="site-actions">
+        <span class="site-label">Promotion creation workspace</span>
+        <div class="version-switcher" role="group" aria-label="랜딩 페이지 버전">
+          <button type="button" data-version="v1" aria-pressed="false">V1</button>
+          <button type="button" data-version="v2" aria-pressed="true">V2</button>
+        </div>
+      </div>
     </header>
 
     <main>
       <section class="intro" aria-labelledby="page-title">
         <p class="eyebrow">Workspace</p>
         <h1 id="page-title">프로모션 제작을 시작하세요</h1>
-        <p>작업 목적에 맞는 도구를 선택하면 해당 화면으로 바로 이동합니다.</p>
+        <p id="version-description">V2 운영 흐름에 필요한 도구만 표시합니다.</p>
       </section>
 
       <nav class="entry-grid" aria-label="프로모션 제작 도구">
-        <a class="entry-card" href="/create-promo.html">
+        <a class="entry-card" href="/create-promo.html" data-entry="01">
           <span class="entry-index" aria-hidden="true">01</span>
           <h2>Create Promo</h2>
           <p>Promo Wizard를 기반으로 분리된 새 프로모션 제작 흐름입니다.</p>
           <span class="entry-action">Create Promo 열기 <span class="entry-arrow" aria-hidden="true">→</span></span>
         </a>
 
-        <a class="entry-card" href="/promo-wizard.html">
+        <a class="entry-card" href="/promo-wizard.html" data-entry="02" data-v2-hidden>
           <span class="entry-index" aria-hidden="true">02</span>
           <h2>Promo Wizard</h2>
           <p>템플릿 선택부터 콘텐츠 입력, 디자인 생성까지 단계별로 진행합니다.</p>
           <span class="entry-action">Wizard 열기 <span class="entry-arrow" aria-hidden="true">→</span></span>
         </a>
 
-        <a class="entry-card" href="/prototype/index.html">
+        <a class="entry-card" href="/prototype/index.html" data-entry="03" data-v2-hidden>
           <span class="entry-index" aria-hidden="true">03</span>
           <h2>Promo Builder</h2>
           <p>프로모션 디자인 설정과 생성 결과를 관리합니다.</p>
           <span class="entry-action">Builder 열기 <span class="entry-arrow" aria-hidden="true">→</span></span>
         </a>
 
-        <a class="entry-card" href="/prototype/index.html?view=admin&amp;tab=promo-form">
+        <a class="entry-card" href="/prototype/index.html?view=admin&amp;tab=promo-form" data-entry="04">
           <span class="entry-index" aria-hidden="true">04</span>
           <h2>Admin</h2>
           <p>프로모션 폼 템플릿과 Wizard 기본 레이아웃, 웹훅 및 LLM 프롬프트를 설정합니다.</p>
           <span class="entry-action">Admin 열기 <span class="entry-arrow" aria-hidden="true">→</span></span>
         </a>
-        <a class="entry-card" href="/prototype/visual-editor.html">
+        <a class="entry-card" href="/prototype/visual-editor.html" data-entry="05" data-v2-hidden>
           <span class="entry-index" aria-hidden="true">05</span>
           <h2>Visual Editor</h2>
           <p>프로모션 콘텐츠의 위치, 크기, 스타일과 페이지 배경을 시각적으로 편집합니다.</p>
@@ -253,5 +316,59 @@
         </a>
       </nav>
     </main>
+    <script>
+      (() => {
+        const storageKey = "promoWebBuilder.landingVersion";
+        const buttons = Array.from(document.querySelectorAll("[data-version]"));
+        const v2HiddenEntries = Array.from(document.querySelectorAll("[data-v2-hidden]"));
+        const description = document.getElementById("version-description");
+        const queryVersion = new URLSearchParams(window.location.search).get("version");
+        let storedVersion = "";
+
+        try {
+          storedVersion = window.localStorage.getItem(storageKey) || "";
+        } catch {
+          storedVersion = "";
+        }
+
+        const initialVersion = ["v1", "v2"].includes(queryVersion)
+          ? queryVersion
+          : (["v1", "v2"].includes(storedVersion) ? storedVersion : "v2");
+
+        function applyVersion(version, updateUrl = false) {
+          const selectedVersion = version === "v1" ? "v1" : "v2";
+          const isV2 = selectedVersion === "v2";
+
+          buttons.forEach((button) => {
+            button.setAttribute("aria-pressed", String(button.dataset.version === selectedVersion));
+          });
+          v2HiddenEntries.forEach((entry) => {
+            entry.hidden = isV2;
+          });
+          description.textContent = isV2
+            ? "V2 운영 흐름에 필요한 도구만 표시합니다."
+            : "V1 전체 제작·검토 도구를 표시합니다.";
+          document.documentElement.dataset.landingVersion = selectedVersion;
+
+          try {
+            window.localStorage.setItem(storageKey, selectedVersion);
+          } catch {
+            // Storage can be unavailable in privacy-restricted browsers.
+          }
+
+          if (updateUrl) {
+            const url = new URL(window.location.href);
+            url.searchParams.set("version", selectedVersion);
+            window.history.replaceState({}, "", url);
+          }
+        }
+
+        buttons.forEach((button) => {
+          button.addEventListener("click", () => applyVersion(button.dataset.version, true));
+        });
+
+        applyVersion(initialVersion);
+      })();
+    </script>
   </body>
 </html>
