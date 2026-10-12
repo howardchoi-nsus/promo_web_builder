@@ -98,6 +98,18 @@ let llmModels = [{
   modelOptions: { reasoning: { effort: "medium" } },
   usage: { total: 1, active: 1 },
 }];
+let llmHistories = [{
+  id: "history-openai-sol-1",
+  llmModelId: "llm-openai-sol",
+  provider: "openai",
+  modelId: "gpt-6.1-sol",
+  previousStatus: "",
+  newStatus: "active",
+  snapshot: { defaultResponseFormat: "json_object", defaultMaxTokens: 24000 },
+  changeNote: "기존 프롬프트 모델 등록",
+  changedBy: "system:prompt-sync",
+  changedAt: "2026-10-12T01:00:00.000Z",
+}];
 
 let browser;
 try {
@@ -131,12 +143,24 @@ try {
       return fulfill({ ok: true, prompts });
     }
     if (url.pathname === "/api/llm-models" && request.method() === "GET") {
-      return fulfill({ ok: true, models: llmModels });
+      return fulfill({ ok: true, models: llmModels, histories: llmHistories });
     }
     if (url.pathname === "/api/llm-models" && request.method() === "POST") {
       const payload = request.postDataJSON();
       const model = { ...payload, id: "llm-new-model", usage: { total: 0, active: 0 } };
       llmModels = [...llmModels, model];
+      llmHistories = [{
+        id: "history-new-model-1",
+        llmModelId: model.id,
+        provider: model.provider,
+        modelId: model.modelId,
+        previousStatus: "",
+        newStatus: model.status,
+        snapshot: model,
+        changeNote: model.changeNote,
+        changedBy: "admin:test",
+        changedAt: new Date().toISOString(),
+      }, ...llmHistories];
       return fulfill({ ok: true, model }, 201);
     }
     if (url.pathname === "/api/llm-models" && request.method() === "PATCH") {
@@ -292,6 +316,8 @@ try {
   await page.getByRole("tab", { name: "LLM 모델 관리", exact: true }).click();
   await page.getByRole("heading", { name: "LLM 모델 관리", exact: true }).waitFor();
   await page.getByText("GPT-6.1 Sol", { exact: true }).first().waitFor();
+  await page.getByText("LLM 업데이트 내역", { exact: true }).waitFor();
+  await page.getByText("기존 프롬프트 모델 등록", { exact: true }).waitFor();
   assert.equal(await page.locator(".llm-registry__row").count(), 1);
   await page.getByRole("button", { name: "신규 모델 등록", exact: true }).click();
   await page.getByLabel("모델 ID", { exact: true }).fill("gpt-test-model");

@@ -53,11 +53,14 @@ assert.match(app, /adminApp\.component\("llm-model-manager"/);
 assert.match(entry, /PromoAdminLlmModels/);
 assert.match(component, /신규 모델 등록/);
 assert.match(component, /사용 중인 프롬프트가 있으면 모델을 중지할 수 없습니다/);
+assert.match(component, /LLM 업데이트 내역/);
 assert.match(api, /resolveAdminOwner/);
+assert.match(api, /listModelHistories/);
 assert.match(migration, /create table if not exists llm_models/);
 assert.match(migration, /create table if not exists llm_model_histories/);
 assert.match(migration, /from prompt_templates/);
 assert.match(migration, /system:prompt-sync/);
 assert.equal(typeof registryStore.syncPromptModelsToRegistry, "function");
+assert.equal(typeof registryStore.listModelHistories, "function");
 
 console.log("Admin LLM model registry contract passed");

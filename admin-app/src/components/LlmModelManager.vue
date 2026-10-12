@@ -7,6 +7,7 @@ const loading = ref(false);
 const saving = ref(false);
 const error = ref("");
 const models = ref([]);
+const histories = ref([]);
 const selectedId = ref("");
 const search = ref("");
 const providerFilter = ref("");
@@ -31,6 +32,13 @@ const emptyEditor = () => ({
 const editor = reactive(emptyEditor());
 
 const selected = computed(() => models.value.find((item) => item.id === selectedId.value) || null);
+const selectedHistories = computed(() => {
+  if (!selected.value) return [];
+  return histories.value.filter((history) => (
+    history.llmModelId === selected.value.id
+      || (history.provider === selected.value.provider && history.modelId === selected.value.modelId)
+  ));
+});
 const filteredModels = computed(() => {
   const query = search.value.trim().toLowerCase();
   return models.value.filter((item) => {
@@ -48,6 +56,22 @@ const counts = computed(() => ({
 
 function statusLabel(status) {
   return { draft: "초안", active: "활성", inactive: "사용 중지" }[status] || status;
+}
+
+function historyActionLabel(history) {
+  if (!history.previousStatus) return "모델 등록";
+  if (history.previousStatus !== history.newStatus) {
+    return `${statusLabel(history.previousStatus)} → ${statusLabel(history.newStatus)}`;
+  }
+  return "설정 수정";
+}
+
+function formatHistoryDate(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? String(value) : new Intl.DateTimeFormat("ko-KR", {
+    year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
+  }).format(date);
 }
 
 function resetEditor() {
@@ -116,6 +140,7 @@ async function reload(preferredId = selectedId.value) {
   try {
     const result = await llmModelRegistryService.list();
     models.value = result.models || [];
+    histories.value = result.histories || [];
     const next = models.value.find((item) => item.id === preferredId);
     if (next) selectModel(next);
     else if (models.value.length && !selectedId.value) selectModel(models.value[0]);
@@ -248,6 +273,27 @@ onMounted(reload);
           <button v-if="selected?.status === 'active'" class="tiny-button danger" type="button" :disabled="saving" @click="changeStatus('inactive')">사용 중지</button>
         </div>
         <p class="llm-registry__guard">Provider와 모델 ID는 등록 후 변경할 수 없습니다. 사용 중인 프롬프트가 있으면 모델을 중지할 수 없습니다.</p>
+
+        <details v-if="selected" class="llm-registry__history" open>
+          <summary>
+            <span><strong>LLM 업데이트 내역</strong><small>등록·설정 수정·상태 변경 {{ selectedHistories.length }}건</small></span>
+          </summary>
+          <div class="llm-registry__history-list">
+            <article v-for="history in selectedHistories" :key="history.id" class="llm-registry__history-item">
+              <div>
+                <strong>{{ historyActionLabel(history) }}</strong>
+                <time :datetime="history.changedAt">{{ formatHistoryDate(history.changedAt) }}</time>
+              </div>
+              <p>{{ history.changeNote || '변경 사유 없음' }}</p>
+              <span>
+                {{ history.changedBy || 'system' }}
+                · {{ history.snapshot?.defaultResponseFormat || '-' }}
+                · Max {{ history.snapshot?.defaultMaxTokens || '-' }}
+              </span>
+            </article>
+            <p v-if="!selectedHistories.length" class="llm-registry__empty">기록된 업데이트 내역이 없습니다.</p>
+          </div>
+        </details>
       </form>
     </div>
   </section>
@@ -290,6 +336,17 @@ onMounted(reload);
 .llm-registry__checks input { width: auto; min-height: auto; }
 .llm-registry__guard, .llm-registry__empty { margin: 0; color: var(--app-sub); font-size: 12px; }
 .llm-registry__empty { padding: 18px 8px; text-align: center; }
+.llm-registry__history { overflow: hidden; border: 1px solid var(--app-line); border-radius: 9px; }
+.llm-registry__history > summary { display: flex; justify-content: space-between; padding: 11px 12px; cursor: pointer; list-style: none; }
+.llm-registry__history > summary::-webkit-details-marker { display: none; }
+.llm-registry__history > summary span { display: grid; gap: 2px; }
+.llm-registry__history > summary small { color: var(--app-sub); font-size: 11px; }
+.llm-registry__history-list { display: grid; gap: 0; border-top: 1px solid var(--app-line); }
+.llm-registry__history-item { display: grid; gap: 5px; padding: 11px 12px; border-bottom: 1px solid var(--app-line); }
+.llm-registry__history-item:last-child { border-bottom: 0; }
+.llm-registry__history-item div { display: flex; justify-content: space-between; gap: 10px; }
+.llm-registry__history-item time, .llm-registry__history-item span { color: var(--app-sub); font-size: 11px; }
+.llm-registry__history-item p { margin: 0; font-size: 12px; }
 @media (max-width: 980px) { .llm-registry__workspace { grid-template-columns: 1fr; } .llm-registry__rows { max-height: 320px; } }
 @media (max-width: 680px) { .llm-registry__header { flex-direction: column; } .llm-registry__summary, .llm-registry__grid { grid-template-columns: 1fr; } .llm-registry__filters { grid-template-columns: 1fr; } }
 </style>
