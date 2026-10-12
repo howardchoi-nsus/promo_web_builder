@@ -11,6 +11,8 @@ execution_allowed: false
 
 이 계획은 Component와 Design Token을 PostgreSQL 원본에서 Directus Read-only Mirror로 이전하기 위한 개발·배포·검증 범위를 정한다. 코드 기반과 실행 Gate는 마련됐지만 실제 Directus Schema 적용, 데이터 Write, Shadow Read, Production Cutover는 환경 정보와 승인 Evidence가 없으므로 실행하지 않는다.
 
+현재 시스템과 목표 연동 구조, 단계별 데이터 흐름 및 보안 경계는 [12-basic-system-architecture.md](./12-basic-system-architecture.md)를 기준 구성도로 사용한다.
+
 ## 리뷰 결론
 
 - PostgreSQL을 1차 Source of Truth로 유지한다.

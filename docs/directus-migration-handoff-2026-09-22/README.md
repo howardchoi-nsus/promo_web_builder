@@ -43,6 +43,7 @@ target_environments: [development, preview, production]
 | 9 | [09-operations-monitoring-and-incident-response.md](./09-operations-monitoring-and-incident-response.md) | 운영 지표와 장애 대응 | SRE·운영 |
 | 10 | [10-decisions-risks-and-execution-roadmap.md](./10-decisions-risks-and-execution-roadmap.md) | 미결정 사항과 실행 Gate 관리 | 전체 승인자 |
 | 11 | [11-developer-infrastructure-review-plan.md](./11-developer-infrastructure-review-plan.md) | 구현 변경, 배포 순서, 환경별 실행 승인 검토 | 개발·인프라·보안 |
+| 12 | [12-basic-system-architecture.md](./12-basic-system-architecture.md) | 현재·목표 구성, 데이터 흐름, 보안 경계 검토 | 개발·인프라·보안·Directus 담당 |
 
 ## 문서 관리 규칙
 
