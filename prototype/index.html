@@ -691,12 +691,20 @@
               >웹훅 설정</button>
               <button
                 class="admin-tab"
+                :class="{ active: adminTab === 'llm-models' }"
+                type="button"
+                role="tab"
+                :aria-selected="adminTab === 'llm-models'"
+                @click="selectAdminTab('llm-models')"
+              >LLM 모델 관리</button>
+              <button
+                class="admin-tab"
                 :class="{ active: adminTab === 'llm' }"
                 type="button"
                 role="tab"
                 :aria-selected="adminTab === 'llm'"
                 @click="selectAdminTab('llm')"
-              >LLM 및 프롬프트 관리</button>
+              >프롬프트 관리</button>
               <button
                 class="admin-tab"
                 :class="{ active: adminTab === 'component-generation' }"
@@ -765,6 +773,10 @@
               >변경 이력</button>
             </nav>
 
+            <section v-show="adminTab === 'llm-models'" class="admin-panel">
+              <llm-model-manager @status="setStatus"></llm-model-manager>
+            </section>
+
             <div
               class="prompt-manager-layout admin-ab-layout is-single-panel"
               v-show="adminTab === 'webhook' || adminTab === 'llm'"
@@ -822,7 +834,7 @@
 
               <section class="admin-panel admin-panel-b" v-show="adminTab === 'llm'">
                 <div class="subsection-title">
-                  <h3>LLM 및 프롬프트 관리</h3>
+                  <h3>프롬프트 관리</h3>
                   <select v-model="promptTypeFilter" aria-label="프롬프트 유형 필터">
                     <option value="">전체</option>
                     <option value="promo_overview_parser">프로모션 개요 분석</option>
@@ -1010,7 +1022,7 @@
                 <div class="form-grid compact">
                   <label class="field">
                     <span>모델 제공자</span>
-                    <select v-model="promptEditor.provider">
+                    <select v-model="promptEditor.provider" aria-label="모델 제공자 선택" @change="onPromptProviderChange">
                       <option value="">설정 안 함</option>
                       <option value="openai">OpenAI / GPT</option>
                       <option value="google" :disabled="['integrated_brief', 'integrated_brief_v2', 'lofi_draft', 'final_design_v2', 'section_layout_planner', 'multi_component_layout_planner', 'section_composition_planner', 'component_visual_analyzer'].includes(selectedPromptTemplate.type)">Google / Gemini</option>
@@ -1019,8 +1031,22 @@
                   </label>
                   <label class="field">
                     <span>모델</span>
-                    <input v-model="promptEditor.model" type="text" autocomplete="off" placeholder="gpt-4o-mini" />
-                    <small>선택한 제공자가 지원하는 정확한 모델 ID를 입력합니다.</small>
+                    <select v-model="promptEditor.modelChoice" aria-label="모델 선택" :disabled="!promptEditor.provider" @change="applyPromptModelPreset">
+                      <option value="" disabled>모델을 선택하세요</option>
+                      <option v-for="modelOption in promptModelChoices" :key="modelOption.model" :value="modelOption.model">
+                        {{ modelOption.label }} · {{ modelOption.model }}
+                      </option>
+                      <option value="__custom__">직접 입력 · 고급</option>
+                    </select>
+                    <input
+                      v-if="promptEditor.modelChoice === '__custom__'"
+                      v-model="promptEditor.model"
+                      type="text"
+                      autocomplete="off"
+                      placeholder="정확한 모델 ID 입력"
+                    />
+                    <small v-if="selectedPromptModelPreset">{{ selectedPromptModelPreset.description }} 선택 시 아래 권장 설정이 자동 입력되며 저장 전 수정할 수 있습니다.</small>
+                    <small v-else>목록에 없는 모델은 ‘직접 입력 · 고급’으로 등록할 수 있습니다.</small>
                   </label>
                 </div>
 
@@ -1037,15 +1063,15 @@
                   </label>
                   <label class="field">
                     <span>응답 형식</span>
-                    <input v-model="promptEditor.responseFormat" type="text" autocomplete="off" placeholder="json_object / text / image" />
+                    <input v-model="promptEditor.responseFormat" aria-label="응답 형식" type="text" autocomplete="off" placeholder="json_object / text / image" />
                     <small>실행 계약이 기대하는 JSON, 텍스트 또는 이미지 형식입니다.</small>
                   </label>
                   <label class="field" v-if="promptSupportsImageSize(selectedPromptTemplate)">
                     <span>{{ t('admin.prompt.imageSize') }}</span>
                     <select v-model="promptEditor.imageSize">
-                      <option value="1K">1K · 기본 해상도</option>
-                      <option value="2K">2K · 고해상도</option>
-                      <option value="4K">4K · 초고해상도</option>
+                      <option v-for="size in promptImageSizeChoices" :key="size" :value="size">
+                        {{ size }}{{ size === '1K' ? ' · 기본 해상도' : size === '2K' ? ' · 고해상도' : ' · 초고해상도' }}
+                      </option>
                     </select>
                     <small>{{ t('admin.prompt.imageSizeHelp') }}</small>
                   </label>
@@ -1053,7 +1079,7 @@
 
                 <label class="field">
                   <span>Provider 상세 옵션(JSON)</span>
-                  <textarea v-model="promptEditor.modelOptionsText" rows="5" spellcheck="false"></textarea>
+                  <textarea v-model="promptEditor.modelOptionsText" aria-label="Provider 상세 옵션(JSON)" rows="5" spellcheck="false"></textarea>
                   <small>모델 제공자에만 적용되는 고급 옵션입니다. 올바른 JSON 형식으로 입력하세요.</small>
                 </label>
 

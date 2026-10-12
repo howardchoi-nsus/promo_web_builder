@@ -5,6 +5,9 @@ import { templateLayoutService } from "./services/template-layout-service.mjs";
 import DesignTokenManager from "./components/DesignTokenManager.vue";
 import { designTokenService } from "./services/design-token-service.mjs";
 import { promptTemplateGroupService } from "./services/prompt-template-group-service.mjs";
+import { llmModelCatalogService } from "./services/llm-model-catalog.mjs";
+import LlmModelManager from "./components/LlmModelManager.vue";
+import { llmModelRegistryService } from "./services/llm-model-registry-service.mjs";
 import SectionLayoutPresetManager from "./components/SectionLayoutPresetManager.vue";
 import { sectionLayoutPresetService } from "./services/section-layout-preset-service.mjs";
 import ComponentGenerationWorkspace from "./components/ComponentGenerationWorkspace.vue";
@@ -22,6 +25,11 @@ globalThis.PromoAdminDesignTokens = Object.freeze({
   component: DesignTokenManager,
 });
 globalThis.PromoAdminPromptGroups = promptTemplateGroupService;
+globalThis.PromoAdminModelCatalog = llmModelCatalogService;
+globalThis.PromoAdminLlmModels = Object.freeze({
+  service: llmModelRegistryService,
+  component: LlmModelManager,
+});
 globalThis.PromoAdminSectionLayouts = Object.freeze({
   service: sectionLayoutPresetService,
   component: SectionLayoutPresetManager,

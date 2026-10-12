@@ -1044,7 +1044,7 @@ const { createApp } = Vue;
 const initialSearchParams = new URLSearchParams(window.location.search);
 const initialView = initialSearchParams.get("view") === "admin" ? "prompts" : "builder";
 const requestedAdminTab = initialSearchParams.get("tab");
-const initialAdminTab = ["webhook", "llm", "component-generation", "components", "section-presets", "promo-form", "design-tokens", "i18n", "integrations", "audit"].includes(requestedAdminTab)
+const initialAdminTab = ["webhook", "llm-models", "llm", "component-generation", "components", "section-presets", "promo-form", "design-tokens", "i18n", "integrations", "audit"].includes(requestedAdminTab)
   ? requestedAdminTab
   : "promo-form";
 
@@ -1311,6 +1311,7 @@ const adminApp = createApp({
         requiredVariablesText: "",
         optionalVariablesText: "",
         provider: "",
+        modelChoice: "",
         model: "",
         temperature: "",
         maxTokens: "",
@@ -1616,6 +1617,26 @@ const adminApp = createApp({
       return window.PromoAdminPromptGroups.groupPromptTemplateSections(
         this.filteredPromptTemplateGroups
       );
+    },
+
+    promptModelChoices() {
+      return window.PromoAdminModelCatalog?.listModels({
+        provider: this.promptEditor.provider,
+        type: this.selectedPromptTemplate?.type,
+      }) || [];
+    },
+
+    selectedPromptModelPreset() {
+      return window.PromoAdminModelCatalog?.findModel(
+        this.promptEditor.provider,
+        this.promptEditor.modelChoice === "__custom__"
+          ? this.promptEditor.model
+          : this.promptEditor.modelChoice
+      ) || null;
+    },
+
+    promptImageSizeChoices() {
+      return this.selectedPromptModelPreset?.supportedImageSizes || ["1K", "2K", "4K"];
     },
 
     localeNamespaces() {
@@ -2203,7 +2224,7 @@ const adminApp = createApp({
     },
 
     selectAdminTab(tab) {
-      if (!["webhook", "llm", "component-generation", "components", "section-presets", "promo-form", "design-tokens", "i18n", "integrations", "audit"].includes(tab)) return;
+      if (!["webhook", "llm-models", "llm", "component-generation", "components", "section-presets", "promo-form", "design-tokens", "i18n", "integrations", "audit"].includes(tab)) return;
       if (tab === "promo-form" && !this.templateLayoutManagementEnabled) {
         this.setStatus("템플릿·페이지 레이아웃 관리는 비활성화되었습니다.");
         return;
@@ -2917,6 +2938,9 @@ const adminApp = createApp({
           requiredVariablesText: (detail.requiredVariables || []).join(", "),
           optionalVariablesText: (detail.optionalVariables || []).join(", "),
           provider: detail.provider || "",
+          modelChoice: window.PromoAdminModelCatalog?.findModel(detail.provider, detail.model)
+            ? detail.model
+            : "__custom__",
           model: detail.model || "",
           temperature: detail.temperature ?? "",
           maxTokens: detail.maxTokens ?? "",
@@ -3104,6 +3128,48 @@ const adminApp = createApp({
     promptSupportsImageSize(prompt = this.selectedPromptTemplate) {
       return this.promptEditor.provider === "google"
         && ["image_execution", "final_design", "section_background_image", "component_image"].includes(prompt?.type);
+    },
+
+    onPromptProviderChange() {
+      if (!this.promptEditor.provider) {
+        this.promptEditor.modelChoice = "";
+        this.promptEditor.model = "";
+        return;
+      }
+      const recommended = window.PromoAdminModelCatalog?.recommendedModel({
+        provider: this.promptEditor.provider,
+        type: this.selectedPromptTemplate?.type,
+      });
+      if (!recommended) {
+        this.promptEditor.modelChoice = "__custom__";
+        this.promptEditor.model = "";
+        return;
+      }
+      this.promptEditor.modelChoice = recommended.model;
+      this.applyPromptModelPreset();
+    },
+
+    applyPromptModelPreset() {
+      if (this.promptEditor.modelChoice === "__custom__") return;
+      const preset = window.PromoAdminModelCatalog?.presetFor({
+        provider: this.promptEditor.provider,
+        model: this.promptEditor.modelChoice,
+        type: this.selectedPromptTemplate?.type,
+      });
+      if (!preset) return;
+      this.promptEditor.model = preset.model;
+      this.promptEditor.temperature = preset.temperature ?? "";
+      this.promptEditor.maxTokens = preset.maxTokens ?? "";
+      this.promptEditor.responseFormat = preset.responseFormat;
+      this.promptEditor.imageSize = preset.imageSize;
+      this.promptEditor.modelOptionsText = JSON.stringify(preset.modelOptions, null, 2);
+      if (this.promptUsesSectionAiControlPlane(this.selectedPromptTemplate)) {
+        this.promptEditor.modelCapabilitySnapshotText = JSON.stringify(preset.capabilitySnapshot, null, 2);
+      }
+      if (this.promptUsesSectionImagePolicy(this.selectedPromptTemplate)) {
+        this.promptEditor.outputMimeType = this.promptEditor.outputMimeType || "image/jpeg";
+      }
+      this.setStatus(`${preset.label} 권장 설정을 적용했습니다. 저장 전 각 항목을 수정할 수 있습니다.`);
     },
 
     promptUsesSectionAiControlPlane(prompt = this.selectedPromptTemplate) {
@@ -6968,6 +7034,7 @@ const adminApp = createApp({
 adminApp.component("template-layout-manager", window.PromoAdminTemplateLayout.component);
 adminApp.component("section-layout-preset-manager", window.PromoAdminSectionLayouts.component);
 adminApp.component("design-token-manager", window.PromoAdminDesignTokens.component);
+adminApp.component("llm-model-manager", window.PromoAdminLlmModels.component);
 adminApp.component("component-generation-workspace", window.PromoAdminComponentGeneration.component);
 adminApp.component("render-spec-editor", window.PromoAdminComponentGeneration.renderSpecEditor);
 adminApp.component("directus-integration-settings", window.PromoAdminIntegrations.directusSettings);

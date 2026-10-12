@@ -81,6 +81,23 @@ let prompts = [
 ];
 
 let savedPromptPatch = null;
+let llmModels = [{
+  id: "llm-openai-sol",
+  provider: "openai",
+  modelId: "gpt-6.1-sol",
+  displayName: "GPT-6.1 Sol",
+  description: "구조화 작업 기본 모델",
+  modality: "text",
+  status: "active",
+  isRecommended: true,
+  isLegacy: false,
+  defaultTemperature: null,
+  defaultMaxTokens: 24000,
+  defaultResponseFormat: "json_object",
+  supportedImageSizes: [],
+  modelOptions: { reasoning: { effort: "medium" } },
+  usage: { total: 1, active: 1 },
+}];
 
 let browser;
 try {
@@ -112,6 +129,20 @@ try {
 
     if (url.pathname === "/api/prompt-templates") {
       return fulfill({ ok: true, prompts });
+    }
+    if (url.pathname === "/api/llm-models" && request.method() === "GET") {
+      return fulfill({ ok: true, models: llmModels });
+    }
+    if (url.pathname === "/api/llm-models" && request.method() === "POST") {
+      const payload = request.postDataJSON();
+      const model = { ...payload, id: "llm-new-model", usage: { total: 0, active: 0 } };
+      llmModels = [...llmModels, model];
+      return fulfill({ ok: true, model }, 201);
+    }
+    if (url.pathname === "/api/llm-models" && request.method() === "PATCH") {
+      const payload = request.postDataJSON();
+      llmModels = llmModels.map((item) => item.id === payload.id ? { ...item, ...payload } : item);
+      return fulfill({ ok: true, model: llmModels.find((item) => item.id === payload.id) });
     }
     if (url.pathname === "/api/prompt-template" && request.method() === "GET") {
       const selected = prompts.find((item) => item.id === url.searchParams.get("id"));
@@ -153,7 +184,7 @@ try {
   });
 
   await page.goto(`${origin}/prototype/index.html?view=admin&tab=llm`, { waitUntil: "networkidle" });
-  await page.getByRole("heading", { name: "LLM 및 프롬프트 관리" }).waitFor();
+  await page.getByRole("heading", { name: "프롬프트 관리", exact: true }).waitFor();
   await page.locator(".prompt-group").first().waitFor();
   assert.equal(await page.locator(".prompt-group").count(), 3, "versions must collapse into lineage groups");
   assert.equal(await page.locator(".prompt-workflow-group").count(), 2, "prompts must be grouped by workflow");
@@ -200,6 +231,14 @@ try {
   await page.waitForFunction((expected) => (
     document.querySelector(".prompt-body-translation")?.value === `한글 번역\n${expected}`
   ), originalPromptBody);
+  const modelSelect = page.getByLabel("모델 선택", { exact: true });
+  await modelSelect.selectOption("gemini-nano-banana-2.1");
+  assert.equal(await modelSelect.inputValue(), "gemini-nano-banana-2.1");
+  assert.equal(await page.getByLabel("응답 형식", { exact: true }).inputValue(), "image");
+  const providerOptions = page.getByLabel("Provider 상세 옵션(JSON)", { exact: true });
+  assert.match(await providerOptions.inputValue(), /gemini-nano-banana-2\.1/);
+  await providerOptions.fill('{"imageSize":"2K","customInstruction":"keep-brand-colors"}');
+  assert.match(await providerOptions.inputValue(), /keep-brand-colors/);
   await englishPromptEditor.fill(`${originalPromptBody}\n한글 입력`);
   await page.getByText("영문 원문에는 한글을 입력할 수 없습니다.", { exact: true }).waitFor();
   await englishPromptEditor.fill(originalPromptBody);
@@ -242,6 +281,19 @@ try {
   assert.deepEqual(savedPromptPatch.modelOptions.harnessConfig, {});
   assert.deepEqual(savedPromptPatch.modelOptions.modelCapabilitySnapshot, {});
   assert.deepEqual(savedPromptPatch.modelOptions.safetyContract, {});
+
+  await page.getByRole("tab", { name: "LLM 모델 관리", exact: true }).click();
+  await page.getByRole("heading", { name: "LLM 모델 관리", exact: true }).waitFor();
+  await page.getByText("GPT-6.1 Sol", { exact: true }).first().waitFor();
+  assert.equal(await page.locator(".llm-registry__row").count(), 1);
+  await page.getByRole("button", { name: "신규 모델 등록", exact: true }).click();
+  await page.getByLabel("모델 ID", { exact: true }).fill("gpt-test-model");
+  await page.getByLabel("표시 이름", { exact: true }).fill("GPT Test Model");
+  await page.getByLabel("변경 사유", { exact: true }).fill("브라우저 등록 테스트");
+  await page.getByRole("button", { name: "초안 등록", exact: true }).click();
+  await page.getByText("LLM 모델 초안을 등록했습니다.", { exact: true }).waitFor();
+  await page.getByText("GPT Test Model", { exact: true }).first().waitFor();
+  assert.equal(llmModels.length, 2);
 
   assert.deepEqual(pageErrors, [], `Page errors:\n${pageErrors.join("\n")}`);
   assert.deepEqual(consoleErrors, [], `Console errors:\n${consoleErrors.join("\n")}`);

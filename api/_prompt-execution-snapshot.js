@@ -15,6 +15,18 @@ const {
   validateControlPlaneConfig,
 } = require("./_section-ai-control-plane");
 
+const APPROVED_GOOGLE_IMAGE_MODELS = new Set([
+  "gemini-nano-banana-2.1",
+  "gemini-3.1-flash-lite-image",
+  "gemini-3.1-flash-image",
+  "gemini-3-pro-image",
+  "gemini-2.5-flash-image",
+]);
+
+function isApprovedGoogleImageModel(model) {
+  return APPROVED_GOOGLE_IMAGE_MODELS.has(String(model || "").trim().toLowerCase());
+}
+
 function completeDeclaredPromptVariables(prompt, variables = {}) {
   const completed = { ...variables };
   for (const key of prompt?.optionalVariables || []) {
@@ -174,7 +186,7 @@ function validateStageModelConfig(type, prompt) {
   }
   if (type === "final_design") {
     const openAiImageEdit = provider === "openai" && /^gpt-image-/i.test(model);
-    const geminiImageEdit = provider === "google" && /^gemini-(?:2\.5-flash-image|3(?:\.1)?-(?:flash|pro)-image)$/i.test(model);
+    const geminiImageEdit = provider === "google" && isApprovedGoogleImageModel(model);
     if (!openAiImageEdit && !geminiImageEdit) {
       fail("final_design requires an approved OpenAI GPT Image or Google Gemini image-edit model");
     }
@@ -192,7 +204,7 @@ function validateStageModelConfig(type, prompt) {
   }
   if (type === "image_execution") {
     const openAiImage = provider === "openai" && /^gpt-image-/i.test(model);
-    const geminiImage = provider === "google" && /^gemini-(?:2\.5-flash-image|3(?:\.1)?-(?:flash|pro)-image)$/i.test(model);
+    const geminiImage = provider === "google" && isApprovedGoogleImageModel(model);
     if (!openAiImage && !geminiImage) fail("image_execution requires an approved OpenAI GPT Image or Google Gemini image model");
     if (responseFormat !== "image") fail("image_execution responseFormat must be image");
     if (provider === "google" && imageSize && !["1K", "2K", "4K"].includes(imageSize)) {
@@ -215,7 +227,7 @@ function validateStageModelConfig(type, prompt) {
   }
   if (type === "section_background_image" || type === "component_image") {
     const openAiImage = provider === "openai" && /^gpt-image-/i.test(model);
-    const geminiImage = provider === "google" && /^gemini-(?:2\.5-flash-image|3(?:\.1)?-(?:flash|pro)-image)$/i.test(model);
+    const geminiImage = provider === "google" && isApprovedGoogleImageModel(model);
     if (!openAiImage && !geminiImage) {
       fail(`${type} requires an approved OpenAI GPT Image or Google Gemini image model`);
     }
@@ -235,7 +247,9 @@ function hasPromptValue(value) {
 }
 
 module.exports = {
+  APPROVED_GOOGLE_IMAGE_MODELS,
   completeDeclaredPromptVariables,
   createPromptExecutionSnapshot,
+  isApprovedGoogleImageModel,
   validateStageModelConfig,
 };
