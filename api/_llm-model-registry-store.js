@@ -208,8 +208,7 @@ async function listModels(sql) {
     from llm_models model
     left join prompt_templates prompt on prompt.provider = model.provider and prompt.model = model.model_id
     group by model.id
-    order by case model.status when 'active' then 0 when 'draft' then 1 else 2 end,
-      model.provider, model.modality, model.is_recommended desc, model.display_name
+    order by usage_total desc, model.provider, lower(model.display_name), model.display_name
   `;
   return rows.map(toModel);
 }

@@ -64,6 +64,9 @@ assert.match(component, /Temperature 설정 가이드/);
 assert.match(component, /모델 용도/);
 assert.match(component, /연결 프롬프트/);
 assert.match(component, /model\.usage\?\.total \|\| 0/);
+assert.match(component, /usageDifference/);
+assert.match(component, /providerDifference/);
+assert.match(registryStoreSource, /order by usage_total desc, model\.provider, lower\(model\.display_name\)/);
 assert.match(api, /resolveAdminOwner/);
 assert.match(api, /listModelHistories/);
 assert.ok(

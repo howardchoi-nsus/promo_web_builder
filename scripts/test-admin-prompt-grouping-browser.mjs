@@ -339,6 +339,10 @@ try {
   const imageModelRow = page.locator(".llm-registry__row").filter({ hasText: "Nano Banana 2" }).first();
   await imageModelRow.getByText(/모델 용도\s*이미지 생성·편집/).waitFor();
   await imageModelRow.getByText(/연결 프롬프트\s*2개/).waitFor();
+  assert.deepEqual(
+    await page.locator(".llm-registry__row-main > strong").allTextContents(),
+    ["Nano Banana 2", "GPT-4.1 Mini", "GPT-6.1 Sol", "Nano Banana 2.1"],
+  );
   const temperatureGuideButton = page.getByRole("button", { name: "기본 Temperature 가이드", exact: true });
   await temperatureGuideButton.click();
   const temperatureGuide = page.getByRole("dialog", { name: "Temperature 설정 가이드", exact: true });

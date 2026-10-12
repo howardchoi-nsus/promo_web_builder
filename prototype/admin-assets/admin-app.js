@@ -9237,7 +9237,10 @@ var nv = Object.freeze({
 				t.displayName,
 				t.modelId,
 				t.description
-			].some((t) => String(t || "").toLowerCase().includes(e)));
+			].some((t) => String(t || "").toLowerCase().includes(e))).sort((e, t) => Number(t.usage?.total || 0) - Number(e.usage?.total || 0) || String(e.provider || "").localeCompare(String(t.provider || ""), "en", { sensitivity: "base" }) || String(e.displayName || "").localeCompare(String(t.displayName || ""), "en", {
+				sensitivity: "base",
+				numeric: !0
+			}));
 		}), y = q(() => ({
 			total: o.value.length,
 			active: o.value.filter((e) => e.status === "active").length,
@@ -9567,7 +9570,7 @@ var nv = Object.freeze({
 			], 32)])
 		]));
 	}
-}, [["__scopeId", "data-v-06f44b19"]]);
+}, [["__scopeId", "data-v-990ebc13"]]);
 //#endregion
 //#region admin-app/src/services/section-layout-preset-service.mjs
 async function Bv(e, t = {}, n = globalThis.fetch) {

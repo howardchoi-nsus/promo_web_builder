@@ -43,12 +43,23 @@ const selectedHistories = computed(() => {
 });
 const filteredModels = computed(() => {
   const query = search.value.trim().toLowerCase();
-  return models.value.filter((item) => {
-    if (providerFilter.value && item.provider !== providerFilter.value) return false;
-    if (statusFilter.value && item.status !== statusFilter.value) return false;
-    return !query || [item.displayName, item.modelId, item.description]
-      .some((value) => String(value || "").toLowerCase().includes(query));
-  });
+  return models.value
+    .filter((item) => {
+      if (providerFilter.value && item.provider !== providerFilter.value) return false;
+      if (statusFilter.value && item.status !== statusFilter.value) return false;
+      return !query || [item.displayName, item.modelId, item.description]
+        .some((value) => String(value || "").toLowerCase().includes(query));
+    })
+    .sort((left, right) => {
+      const usageDifference = Number(right.usage?.total || 0) - Number(left.usage?.total || 0);
+      if (usageDifference) return usageDifference;
+      const providerDifference = String(left.provider || "").localeCompare(String(right.provider || ""), "en", { sensitivity: "base" });
+      if (providerDifference) return providerDifference;
+      return String(left.displayName || "").localeCompare(String(right.displayName || ""), "en", {
+        sensitivity: "base",
+        numeric: true,
+      });
+    });
 });
 const counts = computed(() => ({
   total: models.value.length,
