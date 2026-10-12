@@ -31,8 +31,15 @@ assert.match(apiSource, /confirmed_draft_id,[\s\S]*null,/);
 assert.match(apiSource, /stage: "final_design_v2"/);
 
 const wizardSource = fs.readFileSync(path.join(root, "prototype", "promo-wizard.js"), "utf8");
+const wizardHtml = fs.readFileSync(path.join(root, "prototype", "promo-wizard.html"), "utf8");
 assert.match(wizardSource, /promo-generation-v2-final-designs/);
-assert.match(wizardSource, /pipelineVersion: "v2"/);
-assert.doesNotMatch(wizardSource.slice(0, 1800), /LO-FI 시안 생성 및 선택/);
+assert.match(wizardSource, /promo-generation-final-designs/);
+assert.match(wizardSource, /pipelineVersion: selectedPipelineVersion/);
+assert.match(wizardSource, /V1_STEPS/);
+assert.match(wizardSource, /V2_STEPS/);
+assert.match(wizardSource, /V2_STEPS[\s\S]*Final Design V2 Result/);
+assert.match(wizardHtml, /id="pipeline-version"/);
+assert.match(wizardHtml, /value="v1"/);
+assert.match(wizardHtml, /value="v2"/);
 
 console.log("Final Design V2 worker contract passed.");
