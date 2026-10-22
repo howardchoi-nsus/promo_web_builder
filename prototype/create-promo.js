@@ -223,6 +223,7 @@ function toWizardDesignTokens(tokenSet) {
 }
 
 const stepButtons = Array.from(document.querySelectorAll(".step"));
+const wizardProgress = document.querySelector(".wizard-progress");
 const placeholders = document.getElementById("step-placeholders");
 const status = document.getElementById("step-status");
 const shellStatus = document.getElementById("wizard-shell-status");
@@ -2928,8 +2929,13 @@ function renderStep() {
   sessionStorage.setItem(CURRENT_STEP_STORAGE_KEY, currentStep);
   const currentIndex = stepIndex(currentStep);
   const step = steps[currentIndex];
+  if (wizardProgress) wizardProgress.hidden = requestedCreateMode === "wireframe";
   status.textContent = `Step ${currentIndex + 1} / ${steps.length}`;
-  if (shellStatus) shellStatus.textContent = `Step ${currentIndex + 1} / ${steps.length}`;
+  if (shellStatus) {
+    shellStatus.textContent = requestedCreateMode === "wireframe"
+      ? "Wireframe"
+      : `Step ${currentIndex + 1} / ${steps.length}`;
+  }
   prev.disabled = currentStep === "overview";
   next.disabled = currentStep === "output"
     || (currentStep === "layout" && (

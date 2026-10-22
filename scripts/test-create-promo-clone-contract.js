@@ -200,6 +200,8 @@ assert.match(createJs, /Template content registration is no longer part of Step 
 assert.match(createJs, /function renderWebOutputStep\b/);
 assert.match(createJs, /function createWireframeWorkspace\b/);
 assert.match(createJs, /const TEMPLATE_FREE_WIREFRAME_SECTIONS/);
+assert.match(createJs, /wizardProgress\.hidden = requestedCreateMode === "wireframe"/);
+assert.match(createCss, /\.wizard-progress\[hidden\]/);
 assert.match(createJs, /function initializeTemplateFreeWireframe\b/);
 assert.match(createJs, /contentState\.wireframeInputs/);
 assert.match(createJs, /requestedCreateMode === "wireframe"[\s\S]*?initializeTemplateFreeWireframe\(\)/);

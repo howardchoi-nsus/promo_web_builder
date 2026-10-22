@@ -295,6 +295,8 @@ try {
   await page.goto(`${origin}/create-promo.html`, { waitUntil: "networkidle" });
   await page.getByRole("button", { name: /와이어프레임 모드/ }).click();
   await page.locator(".wireframe-workspace").waitFor();
+  assert.equal(await page.locator(".wizard-progress").isHidden(), true);
+  await assertPageText(page.locator("#wizard-shell-status"), "Wireframe");
   assert.equal(
     requestedPaths.filter((pathname) => pathname.startsWith("/api/wizard-form-template")).length,
     0,

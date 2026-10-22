@@ -84,6 +84,10 @@ a {
   overflow: hidden;
 }
 
+.wizard-progress[hidden] {
+  display: none;
+}
+
 .step {
   display: grid;
   align-content: start;
