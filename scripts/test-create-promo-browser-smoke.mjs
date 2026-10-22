@@ -339,7 +339,16 @@ try {
     JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null")
   ));
   assert.equal(templateFreeContent?.wireframeSections?.[0]?.items?.length, 2);
-  await section01Nodes.nth(1).getByRole("button", { name: "이벤트 안내 텍스트 필드 삭제" }).click();
+  await section01Nodes.nth(1).locator("textarea").fill("먼저 보여줄 텍스트");
+  await section01Nodes.nth(1).getByRole("button", { name: "이벤트 안내 텍스트 필드 위로 이동" }).click();
+  const reorderedPreview = page.locator('.wireframe-section[data-section-key="section01"] .wireframe-item');
+  assert.equal(await reorderedPreview.nth(0).textContent(), "먼저 보여줄 텍스트");
+  assert.equal(await reorderedPreview.nth(1).textContent(), "Wireframe live text");
+  templateFreeContent = await page.evaluate(() => (
+    JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null")
+  ));
+  assert.notEqual(templateFreeContent?.wireframeSections?.[0]?.items?.[0]?.itemKey, "text01");
+  await section01Nodes.nth(0).getByRole("button", { name: "이벤트 안내 텍스트 필드 삭제" }).click();
   assert.equal(await section01Nodes.count(), 1);
   templateFreeContent = await page.evaluate(() => (
     JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null")
@@ -348,6 +357,23 @@ try {
   assert.equal(templateFreeContent?.wireframeSections?.[0]?.name, "이벤트 안내");
   assert.equal(templateFreeContent?.wireframeSections?.[0]?.items?.length, 1);
   assert.deepEqual(templateFreeContent?.wireframeSectionOrder, ["section01", "section02", "section03"]);
+  await page.getByRole("button", { name: "섹션 추가", exact: true }).click();
+  const wireframeSections = page.locator(".wireframe-tree-panel .wizard-content-accordion");
+  assert.equal(await wireframeSections.count(), 4);
+  const addedSection = wireframeSections.nth(3);
+  await addedSection.locator("[data-wireframe-section-name]").fill("신규 섹션");
+  templateFreeContent = await page.evaluate(() => (
+    JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null")
+  ));
+  assert.equal(templateFreeContent?.wireframeSections?.[3]?.name, "신규 섹션");
+  assert.equal(templateFreeContent?.wireframeSections?.[3]?.items?.length, 1);
+  page.once("dialog", (dialog) => dialog.accept());
+  await addedSection.getByRole("button", { name: "신규 섹션 삭제" }).click();
+  assert.equal(await wireframeSections.count(), 3);
+  templateFreeContent = await page.evaluate(() => (
+    JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null")
+  ));
+  assert.equal(templateFreeContent?.wireframeSections?.length, 3);
   await page.evaluate(() => {
     sessionStorage.clear();
     localStorage.setItem("promoPrototype.createPromo.content.v1", JSON.stringify({

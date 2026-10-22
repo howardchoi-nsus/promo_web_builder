@@ -108,6 +108,7 @@ let layoutWorkspaceMode = ["wireframe", "design"].includes(sessionStorage.getIte
   : requestedCreateMode === "wireframe" ? "wireframe" : "design";
 let wireframeViewport = "desktop";
 let selectedWireframeTarget = { sectionKey: "", itemKey: "" };
+let draggedWireframeField = { sectionKey: "", itemKey: "" };
 const wizardEditorBridge = globalThis.PromoEditorBridge?.createEditorBridge({
   getFrame: () => wizardLayoutFrame,
 });
@@ -1077,14 +1078,13 @@ function renameWireframeSection(sectionKey, name) {
   return section.name;
 }
 
-function addWireframeTextField(sectionKey) {
-  const section = wizardSectionDefinitions.find((candidate) => candidate.sectionKey === sectionKey);
-  if (!section) return;
-  const suffix = globalThis.crypto?.randomUUID?.().replaceAll("-", "").slice(0, 10)
+function createWireframeEntitySuffix() {
+  return globalThis.crypto?.randomUUID?.().replaceAll("-", "").slice(0, 10)
     || `${Date.now()}${Math.random().toString(16).slice(2, 6)}`;
-  const itemKey = `text-${suffix}`;
-  section.items ||= [];
-  section.items.push({
+}
+
+function createWireframeTextItem(sectionKey, itemKey = `text-${createWireframeEntitySuffix()}`) {
+  return {
     id: `${sectionKey}-${itemKey}`,
     itemKey,
     name: "텍스트 입력",
@@ -1092,12 +1092,104 @@ function addWireframeTextField(sectionKey) {
     isRequired: false,
     isLocked: false,
     isVisibleInWizard: true,
-  });
-  setValueAtPath(contentState.sectionInputs, `${sectionKey}.${itemKey}`, "");
+  };
+}
+
+function addWireframeSection() {
+  if (requestedCreateMode !== "wireframe") return;
+  const suffix = createWireframeEntitySuffix();
+  const sectionKey = `section-${suffix}`;
+  const item = createWireframeTextItem(sectionKey, "text01");
+  const section = {
+    sectionId: `wireframe-${sectionKey}`,
+    sectionKey,
+    name: `섹션 ${String(wizardSectionDefinitions.length + 1).padStart(2, "0")}`,
+    description: "",
+    userReorderAllowed: true,
+    fixedPosition: null,
+    items: [item],
+  };
+  wizardSectionDefinitions.push(section);
+  contentState.sectionInputs[sectionKey] = { [item.itemKey]: "" };
+  wizardBaseSectionOrder.push(sectionKey);
+  expandedTemplateSectionKeys.clear();
+  expandedTemplateSectionKeys.add(sectionKey);
+  selectedWireframeTarget = { sectionKey, itemKey: "" };
+  saveWizardContent();
+  renderStep();
+}
+
+function removeWireframeSection(sectionKey) {
+  if (requestedCreateMode !== "wireframe") return;
+  const index = wizardSectionDefinitions.findIndex((section) => section.sectionKey === sectionKey);
+  if (index < 0) return;
+  wizardSectionDefinitions.splice(index, 1);
+  wizardBaseSectionOrder = wizardBaseSectionOrder.filter((key) => key !== sectionKey);
+  delete contentState.sectionInputs[sectionKey];
+  expandedTemplateSectionKeys.delete(sectionKey);
+  if (selectedWireframeTarget.sectionKey === sectionKey) {
+    selectedWireframeTarget = { sectionKey: "", itemKey: "" };
+  }
+  saveWizardContent();
+  renderStep();
+}
+
+function addWireframeTextField(sectionKey) {
+  const section = wizardSectionDefinitions.find((candidate) => candidate.sectionKey === sectionKey);
+  if (!section) return;
+  const item = createWireframeTextItem(sectionKey);
+  section.items ||= [];
+  section.items.push(item);
+  setValueAtPath(contentState.sectionInputs, `${sectionKey}.${item.itemKey}`, "");
   expandedTemplateSectionKeys.clear();
   expandedTemplateSectionKeys.add(sectionKey);
   saveWizardContent();
   renderStep();
+}
+
+function reorderWireframeTextField(sectionKey, sourceItemKey, targetItemKey) {
+  const section = wizardSectionDefinitions.find((candidate) => candidate.sectionKey === sectionKey);
+  if (!section || !sourceItemKey || sourceItemKey === targetItemKey) return false;
+  const sourceIndex = (section.items || []).findIndex((item) => item.itemKey === sourceItemKey);
+  const targetIndex = (section.items || []).findIndex((item) => item.itemKey === targetItemKey);
+  if (sourceIndex < 0 || targetIndex < 0) return false;
+  const [source] = section.items.splice(sourceIndex, 1);
+  section.items.splice(targetIndex, 0, source);
+  expandedTemplateSectionKeys.clear();
+  expandedTemplateSectionKeys.add(sectionKey);
+  saveWizardContent();
+  renderStep();
+  return true;
+}
+
+function moveWireframeTextField(sectionKey, itemKey, direction) {
+  const section = wizardSectionDefinitions.find((candidate) => candidate.sectionKey === sectionKey);
+  const visibleItems = (section?.items || []).filter(isWireframeTextItem);
+  const sourceIndex = visibleItems.findIndex((item) => item.itemKey === itemKey);
+  const target = visibleItems[sourceIndex + direction];
+  if (sourceIndex < 0 || !target) return false;
+  return reorderWireframeTextField(sectionKey, itemKey, target.itemKey);
+}
+
+function startWireframeFieldDrag(sectionKey, itemKey, event) {
+  draggedWireframeField = { sectionKey, itemKey };
+  event.dataTransfer.effectAllowed = "move";
+  event.dataTransfer.setData("text/plain", `${sectionKey}:${itemKey}`);
+}
+
+function stopWireframeFieldDrag() {
+  draggedWireframeField = { sectionKey: "", itemKey: "" };
+  document.querySelectorAll(".wizard-content-tree-node.is-drop-target").forEach((node) => {
+    node.classList.remove("is-drop-target");
+  });
+}
+
+function dropWireframeTextField(sectionKey, targetItemKey, event) {
+  event.preventDefault();
+  const source = { ...draggedWireframeField };
+  stopWireframeFieldDrag();
+  if (source.sectionKey !== sectionKey) return false;
+  return reorderWireframeTextField(sectionKey, source.itemKey, targetItemKey);
 }
 
 function removeWireframeTextField(sectionKey, itemKey) {
@@ -2772,6 +2864,7 @@ function renderContentStep() {
             button.setAttribute("aria-label", `${currentName} 텍스트 필드 삭제`);
           });
           sectionEl.querySelector(".wireframe-field-add")?.setAttribute("aria-label", `${currentName}에 텍스트 필드 추가`);
+          sectionEl.querySelector(".wireframe-section-remove")?.setAttribute("aria-label", `${currentName} 삭제`);
         });
         sectionNameInput.addEventListener("blur", (event) => {
           const normalized = String(event.target.value || "").trim()
@@ -2798,19 +2891,75 @@ function renderContentStep() {
       toggle.setAttribute("aria-expanded", String(expanded));
       toggle.setAttribute("aria-label", expanded ? `${section.name} 닫기` : `${section.name} 열기`);
       toggle.textContent = expanded ? "▾" : "▸";
-      sectionHeader.append(dragHandle, sectionIdentity, itemCount, toggle);
+      const sectionActions = document.createElement("div");
+      sectionActions.className = "wireframe-section-actions";
+      if (requestedCreateMode === "wireframe") {
+        const removeSection = document.createElement("button");
+        removeSection.type = "button";
+        removeSection.className = "wireframe-section-remove";
+        removeSection.setAttribute("aria-label", `${wireframeSectionDisplayName(section, sectionIndex)} 삭제`);
+        removeSection.title = "섹션 삭제";
+        removeSection.textContent = "삭제";
+        removeSection.addEventListener("click", () => {
+          if (!window.confirm(`${wireframeSectionDisplayName(section, sectionIndex)}을 삭제할까요?`)) return;
+          removeWireframeSection(section.sectionKey);
+        });
+        sectionActions.append(removeSection);
+      }
+      sectionActions.append(toggle);
+      sectionHeader.append(dragHandle, sectionIdentity, itemCount, sectionActions);
       const grid = document.createElement("div");
       grid.className = `content-form-grid wizard-content-accordion-body${expanded ? " is-open" : ""}`;
       grid.setAttribute("role", "group");
       grid.inert = !expanded;
       grid.setAttribute("aria-hidden", String(!expanded));
-      visibleItems.forEach((item) => {
+      visibleItems.forEach((item, itemIndex) => {
         const node = document.createElement("div");
-        node.className = "wizard-content-tree-node";
+        node.className = `wizard-content-tree-node${requestedCreateMode === "wireframe" ? " is-wireframe" : ""}`;
         node.setAttribute("role", "treeitem");
         node.setAttribute("aria-level", "2");
+        node.addEventListener("dragover", (event) => {
+          if (draggedWireframeField.sectionKey !== section.sectionKey) return;
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "move";
+          node.classList.add("is-drop-target");
+        });
+        node.addEventListener("dragleave", (event) => {
+          if (!node.contains(event.relatedTarget)) node.classList.remove("is-drop-target");
+        });
+        node.addEventListener("drop", (event) => dropWireframeTextField(section.sectionKey, item.itemKey, event));
+        if (requestedCreateMode === "wireframe") {
+          const fieldDragHandle = document.createElement("span");
+          fieldDragHandle.className = "wireframe-field-drag-handle";
+          fieldDragHandle.draggable = true;
+          fieldDragHandle.tabIndex = 0;
+          fieldDragHandle.setAttribute("role", "button");
+          fieldDragHandle.setAttribute("aria-label", `${wireframeSectionDisplayName(section, sectionIndex)} 텍스트 필드 순서 변경`);
+          fieldDragHandle.title = "드래그해서 텍스트 필드 순서 변경";
+          fieldDragHandle.textContent = "⋮⋮";
+          fieldDragHandle.addEventListener("dragstart", (event) => startWireframeFieldDrag(section.sectionKey, item.itemKey, event));
+          fieldDragHandle.addEventListener("dragend", stopWireframeFieldDrag);
+          fieldDragHandle.addEventListener("keydown", (event) => {
+            if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+            event.preventDefault();
+            moveWireframeTextField(section.sectionKey, item.itemKey, event.key === "ArrowUp" ? -1 : 1);
+          });
+          node.append(fieldDragHandle);
+        }
         node.append(createDynamicSectionField(section.sectionKey, item));
         if (requestedCreateMode === "wireframe") {
+          const fieldActions = document.createElement("div");
+          fieldActions.className = "wireframe-field-actions";
+          [[-1, "위로"], [1, "아래로"]].forEach(([direction, label]) => {
+            const moveField = document.createElement("button");
+            moveField.type = "button";
+            moveField.className = "wireframe-field-move";
+            moveField.disabled = direction < 0 ? itemIndex === 0 : itemIndex === visibleItems.length - 1;
+            moveField.setAttribute("aria-label", `${wireframeSectionDisplayName(section, sectionIndex)} 텍스트 필드 ${label} 이동`);
+            moveField.textContent = direction < 0 ? "↑" : "↓";
+            moveField.addEventListener("click", () => moveWireframeTextField(section.sectionKey, item.itemKey, direction));
+            fieldActions.append(moveField);
+          });
           const removeField = document.createElement("button");
           removeField.type = "button";
           removeField.className = "wireframe-field-remove";
@@ -2818,7 +2967,8 @@ function renderContentStep() {
           removeField.title = "텍스트 필드 삭제";
           removeField.textContent = "삭제";
           removeField.addEventListener("click", () => removeWireframeTextField(section.sectionKey, item.itemKey));
-          node.append(removeField);
+          fieldActions.append(removeField);
+          node.append(fieldActions);
         }
         grid.append(node);
       });
@@ -2866,7 +3016,19 @@ function renderContentStep() {
   dynamicSectionsWrapper.className = "wizard-template-content-sections";
   dynamicSectionsWrapper.setAttribute("role", "tree");
   dynamicSectionsWrapper.setAttribute("aria-label", "프로모션 섹션별 텍스트 콘텐츠");
-  appendTextElement(dynamicSectionsWrapper, "h3", "wizard-template-content-title", "3. 섹션별 텍스트 등록");
+  const treeToolbar = document.createElement("div");
+  treeToolbar.className = "wireframe-tree-toolbar";
+  appendTextElement(treeToolbar, "h3", "wizard-template-content-title", "3. 섹션별 텍스트 등록");
+  if (requestedCreateMode === "wireframe") {
+    const addSection = document.createElement("button");
+    addSection.type = "button";
+    addSection.className = "wireframe-section-add";
+    addSection.setAttribute("aria-label", "섹션 추가");
+    addSection.textContent = "+ 섹션 추가";
+    addSection.addEventListener("click", addWireframeSection);
+    treeToolbar.append(addSection);
+  }
+  dynamicSectionsWrapper.append(treeToolbar);
   dynamicSectionsWrapper.append(...dynamicSections);
 
   const layoutPanel = document.createElement("section");
