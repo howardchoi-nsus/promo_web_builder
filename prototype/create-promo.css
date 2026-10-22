@@ -778,6 +778,8 @@ a {
 
 .wireframe-section__body {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-auto-flow: row;
   gap: 13px;
   align-items: center;
 }
@@ -788,11 +790,8 @@ a {
   text-align: center;
 }
 
-.wireframe-section__body--content:has(.wireframe-item--image) {
-  grid-template-columns: minmax(120px, 1fr) minmax(0, 1.3fr);
-}
-
 .wireframe-item {
+  grid-column: 1;
   max-width: 100%;
   overflow-wrap: anywhere;
   border-radius: 4px;
@@ -881,10 +880,6 @@ a {
 
 .wireframe-canvas.is-mobile .wireframe-section {
   padding-inline: 24px;
-}
-
-.wireframe-canvas.is-mobile .wireframe-section__body--content:has(.wireframe-item--image) {
-  grid-template-columns: 1fr;
 }
 
 .web-output-layout {

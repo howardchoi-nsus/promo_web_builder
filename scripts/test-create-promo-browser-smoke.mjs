@@ -304,6 +304,13 @@ try {
     page.locator('.wireframe-item[data-section-key="contentFeature"][data-item-key="image"]'),
     "▧프로모션 이미지 · Directus 연동 예정"
   );
+  assert.equal(
+    await page.locator('.wireframe-section[data-section-key="contentFeature"] .wireframe-section__body').evaluate((node) => (
+      getComputedStyle(node).gridTemplateColumns.trim().split(/\s+/).length
+    )),
+    1,
+    "Every wireframe element must be placed in a single-column row"
+  );
   await page.locator('[data-item-key="title"] textarea').fill("Wireframe live title");
   await assertPageText(
     page.locator('.wireframe-item[data-section-key="heroBanner"][data-item-key="title"]'),
