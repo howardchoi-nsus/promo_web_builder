@@ -10,6 +10,9 @@ const {
 const {
   generateValidatedRegistryComposition,
 } = require("../api/_promo-page-composition-service");
+const {
+  plannerRegistryCandidateSnapshot,
+} = require("../api/_promo-registry-composition-candidates");
 
 const titleComponent = {
   componentInstanceId: "hero-title-instance",
@@ -143,6 +146,17 @@ assert.equal(schema.additionalProperties, false);
 assert.deepEqual(schema.properties.contractVersion.enum, [3]);
 assert.deepEqual(schema.properties.shellVersionId.enum, ["shell-v1"]);
 assert(schema.properties.sections.items.properties.components.items.required.includes("contentItems"));
+const generatedContentFieldKeys = schema.properties.sections.items.properties.components.items
+  .properties.contentItems.items.properties.fields.items.properties.fieldKey.enum;
+assert.equal(generatedContentFieldKeys.includes("image"), false);
+assert.equal(generatedContentFieldKeys.includes("description"), true);
+assert.equal(generatedContentFieldKeys.includes("button"), true);
+const plannerCandidates = plannerRegistryCandidateSnapshot(candidates);
+const plannerCardFields = plannerCandidates.sections
+  .find((section) => section.sectionVersionId === "cards-v1")
+  .components[0].fields;
+assert.equal(plannerCardFields.find((field) => field.fieldKey === "image").aiCopyAllowed, false);
+assert.equal(plannerCardFields.find((field) => field.fieldKey === "description").aiCopyAllowed, true);
 
 const validated = validateRegistryCompositionProposal(validResult, candidates);
 assert.equal(validated.sections[1].components[0].repeat, 3);
@@ -186,6 +200,28 @@ assert.throws(() => validateRegistryCompositionProposal({
       }],
     } : section),
 }, candidates), (error) => error.code === "INVALID_CONTENT_BINDING");
+assert.throws(() => validateRegistryCompositionProposal({
+  ...validResult,
+  sections: validResult.sections.map((section) => section.sectionVersionId === "cards-v1"
+    ? {
+      ...section,
+      components: [{
+        ...section.components[0],
+        contentBindings: [{ fieldKey: "image", sourceOverviewPath: "mainOffer" }],
+      }],
+    } : section),
+}, candidates), (error) => error.code === "INVALID_CONTENT_BINDING");
+assert.throws(() => validateRegistryCompositionProposal({
+  ...validResult,
+  sections: validResult.sections.map((section) => section.sectionVersionId === "cards-v1"
+    ? {
+      ...section,
+      components: [{
+        ...section.components[0],
+        contentItems: [{ repeatIndex: 0, fields: [{ fieldKey: "image", value: "invalid copy" }] }],
+      }],
+    } : section),
+}, candidates), (error) => error.code === "INVALID_GENERATED_CONTENT_FIELD");
 const ctaBound = validateRegistryCompositionProposal({
   ...validResult,
   sections: validResult.sections.map((section) => section.sectionVersionId === "cards-v1"

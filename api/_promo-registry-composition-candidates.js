@@ -519,6 +519,7 @@ function plannerRegistryCandidateSnapshot(candidates) {
           textType: field.textType,
           isRequired: field.isRequired,
           isLocked: field.isLocked,
+          aiCopyAllowed: !field.isLocked && field.fieldKind !== "image",
         })),
       })),
       resourceReferences: section.resourceReferences || [],

@@ -56,6 +56,7 @@ assert.match(seed, /Layout seed is incomplete/);
 assert.doesNotMatch(seed, /imageTarget":"none/);
 assert.match(seed, /"allowSectionBackground":true,"imageTarget":"section-background","imageTargetItemKeys":\[\]/);
 assert.match(seed, /"imageAspectRatio":"4:3"/);
+assert.match(seed, /'fld_10000000000000000000000000000001','Card Image','image'/);
 assert.match(seed, /"widthProfile":"compact"/);
 assert.match(seed, /"widthProfile":"balanced"/);
 assert.match(seed, /"widthProfile":"wide"/);

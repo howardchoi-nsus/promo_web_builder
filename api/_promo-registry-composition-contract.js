@@ -76,8 +76,10 @@ function registryCompositionSchema(candidates) {
   const componentIds = unique(sections.flatMap((section) => (
     section.components.map((component) => component.componentInstanceId)
   )));
-  const fieldKeys = unique(sections.flatMap((section) => section.components.flatMap((component) => (
-    (component.fields || []).map((field) => field.fieldKey)
+  const contentFieldKeys = unique(sections.flatMap((section) => section.components.flatMap((component) => (
+    (component.fields || [])
+      .filter((field) => !field.isLocked && field.fieldKind !== "image")
+      .map((field) => field.fieldKey)
   ))));
   const layoutKeys = unique(sections.flatMap((section) => (
     (section.layoutPresets || []).map((layout) => layout.layoutKey)
@@ -126,7 +128,7 @@ function registryCompositionSchema(candidates) {
                       additionalProperties: false,
                       required: ["fieldKey", "sourceOverviewPath"],
                       properties: {
-                        fieldKey: { type: "string", enum: fieldKeys },
+                        fieldKey: { type: "string", enum: contentFieldKeys.length ? contentFieldKeys : [""] },
                         sourceOverviewPath: { type: "string", enum: OVERVIEW_FIELDS },
                       },
                     },
@@ -149,7 +151,7 @@ function registryCompositionSchema(candidates) {
                             additionalProperties: false,
                             required: ["fieldKey", "value"],
                             properties: {
-                              fieldKey: { type: "string", enum: fieldKeys },
+                              fieldKey: { type: "string", enum: contentFieldKeys.length ? contentFieldKeys : [""] },
                               value: { type: "string", minLength: 1, maxLength: 2000 },
                             },
                           },
@@ -234,6 +236,8 @@ function validateRegistryCompositionProposal(result, candidates) {
         }
         const targetField = fieldsByKey.get(binding.fieldKey);
         if (!allowedFields.has(binding.fieldKey)
+          || targetField?.isLocked
+          || targetField?.fieldKind === "image"
           || !OVERVIEW_FIELDS.includes(binding.sourceOverviewPath)
           || (targetField?.fieldKind === "cta" && binding.sourceOverviewPath !== "ctaLabel")
           || (targetField?.fieldKind !== "cta" && binding.sourceOverviewPath === "ctaLabel")) {
