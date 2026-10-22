@@ -141,7 +141,7 @@ const TEMPLATE_FREE_WIREFRAME_SECTIONS = Object.freeze([
     userReorderAllowed: true,
     fixedPosition: null,
     items: [
-      { id: "section01-text01", itemKey: "text01", name: "텍스트 입력", fieldKind: "text", isRequired: false, isLocked: false, isVisibleInWizard: true },
+      { id: "section01-text01", itemKey: "text01", name: "텍스트 입력", fieldKind: "text", contentMode: "text", isRequired: false, isLocked: false, isVisibleInWizard: true },
     ],
   },
   {
@@ -152,7 +152,7 @@ const TEMPLATE_FREE_WIREFRAME_SECTIONS = Object.freeze([
     userReorderAllowed: true,
     fixedPosition: null,
     items: [
-      { id: "section02-text01", itemKey: "text01", name: "텍스트 입력", fieldKind: "text", isRequired: false, isLocked: false, isVisibleInWizard: true },
+      { id: "section02-text01", itemKey: "text01", name: "텍스트 입력", fieldKind: "text", contentMode: "text", isRequired: false, isLocked: false, isVisibleInWizard: true },
     ],
   },
   {
@@ -163,7 +163,7 @@ const TEMPLATE_FREE_WIREFRAME_SECTIONS = Object.freeze([
     userReorderAllowed: true,
     fixedPosition: null,
     items: [
-      { id: "section03-text01", itemKey: "text01", name: "텍스트 입력", fieldKind: "text", isRequired: false, isLocked: false, isVisibleInWizard: true },
+      { id: "section03-text01", itemKey: "text01", name: "텍스트 입력", fieldKind: "text", contentMode: "text", isRequired: false, isLocked: false, isVisibleInWizard: true },
     ],
   },
 ]);
@@ -1033,9 +1033,56 @@ function createSectionField({ path, label, type = "text", placeholder = "입력�
   return wrapper;
 }
 
+function createWireframeSectionField(sectionKey, item) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "content-field wireframe-content-field";
+  const header = document.createElement("div");
+  header.className = "wireframe-content-field__header";
+  appendTextElement(header, "span", "", item.name);
+
+  const mode = wireframeContentMode(item);
+  const modeSelect = document.createElement("select");
+  modeSelect.className = "wireframe-content-mode";
+  modeSelect.setAttribute("aria-label", `${item.name} 입력 형식`);
+  [["text", "일반 텍스트"], ["html", "HTML"]].forEach(([value, label]) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    modeSelect.append(option);
+  });
+  modeSelect.value = mode;
+  header.append(modeSelect);
+
+  const control = document.createElement("textarea");
+  control.rows = mode === "html" ? 6 : 3;
+  control.value = valueAtPath(contentState.sectionInputs, `${sectionKey}.${item.itemKey}`) || "";
+  control.placeholder = mode === "html" ? "<p>HTML 코드를 입력해 주세요.</p>" : "입력해 주세요";
+  control.classList.toggle("wireframe-html-code", mode === "html");
+  control.spellcheck = mode !== "html";
+  control.setAttribute("aria-label", item.name);
+  control.addEventListener("input", (event) => {
+    setSectionValue(`${sectionKey}.${item.itemKey}`, event.target.value);
+  });
+
+  const help = document.createElement("small");
+  help.className = "wireframe-html-help";
+  help.textContent = "허용 태그: p, br, strong, em, b, i, u, ul, ol, li, a, span";
+  help.hidden = mode !== "html";
+  modeSelect.addEventListener("change", (event) => {
+    item.contentMode = event.target.value === "html" ? "html" : "text";
+    saveWizardContent();
+    renderStep();
+  });
+
+  wrapper.append(header, control, help);
+  return wrapper;
+}
+
 function createDynamicSectionField(sectionKey, item) {
   let field;
-  if (item.isLocked) field = createLockedSectionField(sectionKey, item);
+  if (requestedCreateMode === "wireframe" && item.fieldKind === "text") {
+    field = createWireframeSectionField(sectionKey, item);
+  } else if (item.isLocked) field = createLockedSectionField(sectionKey, item);
   else if (item.fieldKind === "cta") field = createCtaSectionField(sectionKey, item);
   else if (item.fieldKind === "image") field = createImageSectionField(sectionKey, item);
   else {
@@ -1054,6 +1101,60 @@ function createDynamicSectionField(sectionKey, item) {
 
 function wireframeDisplayValue(value) {
   return String(value || "");
+}
+
+function wireframeContentMode(item) {
+  return item?.contentMode === "html" ? "html" : "text";
+}
+
+const WIREFRAME_ALLOWED_HTML_TAGS = new Set([
+  "P", "BR", "STRONG", "EM", "B", "I", "U", "UL", "OL", "LI", "A", "SPAN",
+]);
+const WIREFRAME_BLOCKED_HTML_TAGS = new Set([
+  "SCRIPT", "STYLE", "IFRAME", "OBJECT", "EMBED", "LINK", "META", "BASE", "FORM", "INPUT", "BUTTON", "TEXTAREA", "SELECT", "SVG", "MATH",
+]);
+
+function sanitizeWireframeHref(value) {
+  const source = String(value || "").trim();
+  if (!source) return "";
+  if (source.startsWith("#") || source.startsWith("/") || source.startsWith("./") || source.startsWith("../")) {
+    return source;
+  }
+  try {
+    const url = new URL(source, window.location.origin);
+    return ["http:", "https:", "mailto:", "tel:"].includes(url.protocol) ? source : "";
+  } catch (_error) {
+    return "";
+  }
+}
+
+function sanitizeWireframeHtml(value) {
+  const template = document.createElement("template");
+  template.innerHTML = String(value || "");
+  const sanitizeNode = (node) => {
+    if (node.nodeType === Node.TEXT_NODE) return document.createTextNode(node.textContent || "");
+    const fragment = document.createDocumentFragment();
+    if (node.nodeType !== Node.ELEMENT_NODE) return fragment;
+    if (WIREFRAME_BLOCKED_HTML_TAGS.has(node.tagName)) return fragment;
+    Array.from(node.childNodes).forEach((child) => fragment.append(sanitizeNode(child)));
+    if (!WIREFRAME_ALLOWED_HTML_TAGS.has(node.tagName)) return fragment;
+    const safe = document.createElement(node.tagName.toLowerCase());
+    if (node.tagName === "A") {
+      const href = sanitizeWireframeHref(node.getAttribute("href"));
+      if (href) safe.setAttribute("href", href);
+      const title = String(node.getAttribute("title") || "").slice(0, 200);
+      if (title) safe.setAttribute("title", title);
+      if (node.getAttribute("target") === "_blank") {
+        safe.setAttribute("target", "_blank");
+        safe.setAttribute("rel", "noopener noreferrer nofollow");
+      }
+    }
+    safe.append(fragment);
+    return safe;
+  };
+  const output = document.createElement("div");
+  Array.from(template.content.childNodes).forEach((node) => output.append(sanitizeNode(node)));
+  return output.innerHTML;
 }
 
 function isWireframeTextItem(item) {
@@ -1090,6 +1191,7 @@ function createWireframeTextItem(sectionKey, itemKey = `text-${createWireframeEn
     itemKey,
     name: "텍스트 입력",
     fieldKind: "text",
+    contentMode: "text",
     isRequired: false,
     isLocked: false,
     isVisibleInWizard: true,
@@ -1265,7 +1367,12 @@ function createWireframeSection(section, index) {
     node.dataset.sectionKey = section.sectionKey;
     node.dataset.itemKey = item.itemKey;
     node.title = `${item.name} 편집`;
-    node.textContent = display || item.name;
+    if (wireframeContentMode(item) === "html" && display) {
+      node.classList.add("is-html");
+      node.innerHTML = sanitizeWireframeHtml(display);
+    } else {
+      node.textContent = display || item.name;
+    }
     node.classList.toggle("is-placeholder", !display);
     node.addEventListener("click", (event) => {
       event.stopPropagation();

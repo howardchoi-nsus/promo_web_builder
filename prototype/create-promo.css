@@ -708,6 +708,37 @@ a {
   font-weight: 400;
 }
 
+.wireframe-content-field__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.content-field .wireframe-content-mode {
+  width: auto;
+  min-height: 30px;
+  padding: 3px 26px 3px 8px;
+}
+
+.content-field .wireframe-html-code {
+  min-height: 128px;
+  font-family: Consolas, "Courier New", monospace;
+  line-height: 1.5;
+  tab-size: 2;
+}
+
+.wireframe-html-help {
+  color: var(--sub);
+  font-size: var(--app-font-size-xs);
+  font-weight: 400;
+  line-height: 1.45;
+}
+
+.wireframe-html-help[hidden] {
+  display: none;
+}
+
 .wireframe-tree-panel .wizard-content-accordion + .wizard-content-accordion {
   border-top: 1px solid var(--line);
 }

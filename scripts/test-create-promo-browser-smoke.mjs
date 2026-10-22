@@ -331,6 +331,24 @@ try {
     page.locator('.wireframe-item[data-section-key="section01"][data-item-key="text01"]'),
     "Wireframe live text"
   );
+  const firstWireframeField = page.locator('.wireframe-tree-panel [data-section-key="section01"] [data-item-key="text01"]');
+  await firstWireframeField.locator(".wireframe-content-mode").selectOption("html");
+  await firstWireframeField.locator("textarea").fill(
+    '<p>HTML 안내 <strong>강조</strong><script>window.__unsafe = true</script><span style="color:red" onclick="alert(1)">안전</span><a href="javascript:alert(1)">링크</a></p>'
+  );
+  const htmlPreviewItem = page.locator('.wireframe-item[data-section-key="section01"][data-item-key="text01"]');
+  await assertPageText(htmlPreviewItem, "HTML 안내 강조안전링크");
+  assert.equal(await htmlPreviewItem.locator("strong").count(), 1);
+  assert.equal(await htmlPreviewItem.locator("script").count(), 0);
+  assert.equal(await htmlPreviewItem.locator("span").getAttribute("style"), null);
+  assert.equal(await htmlPreviewItem.locator("span").getAttribute("onclick"), null);
+  assert.equal(await htmlPreviewItem.locator("a").getAttribute("href"), null);
+  let templateFreeContent = await page.evaluate(() => (
+    JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null")
+  ));
+  assert.equal(templateFreeContent?.wireframeSections?.[0]?.items?.[0]?.contentMode, "html");
+  await firstWireframeField.locator(".wireframe-content-mode").selectOption("text");
+  await firstWireframeField.locator("textarea").fill("Wireframe live text");
   const section01Name = page.locator('.wireframe-tree-panel [data-section-key="section01"] [data-wireframe-section-name]');
   await section01Name.fill("이벤트 안내");
   await assertPageText(
@@ -340,7 +358,7 @@ try {
   await page.getByRole("button", { name: "이벤트 안내에 텍스트 필드 추가" }).click();
   const section01Nodes = page.locator('.wireframe-tree-panel [data-section-key="section01"] .wizard-content-tree-node');
   assert.equal(await section01Nodes.count(), 2);
-  let templateFreeContent = await page.evaluate(() => (
+  templateFreeContent = await page.evaluate(() => (
     JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null")
   ));
   assert.equal(templateFreeContent?.wireframeSections?.[0]?.items?.length, 2);
