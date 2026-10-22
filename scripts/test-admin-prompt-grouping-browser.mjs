@@ -160,6 +160,28 @@ try {
     if (url.pathname === "/api/llm-models" && request.method() === "GET") {
       return fulfill({ ok: true, models: llmModels, histories: llmHistories });
     }
+    if (url.pathname === "/api/prompt-variables" && request.method() === "GET") {
+      return fulfill({
+        ok: true,
+        summary: { variableCount: 2, promptTypeCount: 2, requiredUsageCount: 2, optionalUsageCount: 1 },
+        variables: [{
+          key: "contentJson",
+          requiredCount: 2,
+          optionalCount: 0,
+          promptTypeCount: 2,
+          usages: [
+            { promptType: "section_background_image", promptName: "Section Key Visual", requirement: "required" },
+            { promptType: "component_image", promptName: "Component Field Image", requirement: "required" },
+          ],
+        }, {
+          key: "adminGuidance",
+          requiredCount: 0,
+          optionalCount: 1,
+          promptTypeCount: 1,
+          usages: [{ promptType: "component_image", promptName: "Component Field Image", requirement: "optional" }],
+        }],
+      });
+    }
     if (url.pathname === "/api/llm-models" && request.method() === "POST") {
       const payload = request.postDataJSON();
       const model = { ...payload, id: "llm-new-model", usage: { total: 0, active: 0 } };
@@ -390,6 +412,13 @@ try {
   await page.getByText("LLM 모델 초안을 등록했습니다.", { exact: true }).waitFor();
   await page.getByText("GPT Test Model", { exact: true }).first().waitFor();
   assert.equal(llmModels.length, 5);
+
+  await page.getByRole("tab", { name: "프롬프트 변수 관리", exact: true }).click();
+  await page.getByRole("heading", { name: "프롬프트 변수 관리", exact: true }).waitFor();
+  await page.getByText("contentJson", { exact: true }).first().waitFor();
+  await page.getByText("연결된 프롬프트 유형 2개", { exact: true }).waitFor();
+  await page.getByText("필수 2", { exact: true }).waitFor();
+  await page.getByText("Section Key Visual", { exact: true }).waitFor();
 
   assert.deepEqual(pageErrors, [], `Page errors:\n${pageErrors.join("\n")}`);
   assert.deepEqual(consoleErrors, [], `Console errors:\n${consoleErrors.join("\n")}`);

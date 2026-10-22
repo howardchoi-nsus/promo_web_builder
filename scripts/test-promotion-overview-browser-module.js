@@ -7,6 +7,10 @@ const source = fs.readFileSync(
   path.join(__dirname, "..", "prototype", "wizard", "promotion-overview.js"),
   "utf8"
 );
+const createPromoHtml = fs.readFileSync(
+  path.join(__dirname, "..", "prototype", "create-promo.html"),
+  "utf8"
+);
 const context = { globalThis: {} };
 vm.runInNewContext(source, context);
 const overview = context.globalThis.PromoPromotionOverview;
@@ -34,6 +38,11 @@ const content = {
 
 const canonical = overview.syncFromLegacy(content);
 assert.equal(canonical.schemaVersion, 5);
+assert.match(
+  createPromoHtml,
+  new RegExp(`wizard/promotion-overview\\.js\\?v=promotion-overview-v${canonical.schemaVersion}`),
+  "Browser Overview cache version must match the normalized schema version"
+);
 assert.equal(canonical.title, "신규 이벤트");
 assert.equal(canonical.leadText, "신규 고객 한정 혜택");
 assert.equal(canonical.ctaLabel, "참가");

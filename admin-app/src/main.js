@@ -8,6 +8,8 @@ import { promptTemplateGroupService } from "./services/prompt-template-group-ser
 import { llmModelCatalogService } from "./services/llm-model-catalog.mjs";
 import LlmModelManager from "./components/LlmModelManager.vue";
 import { llmModelRegistryService } from "./services/llm-model-registry-service.mjs";
+import PromptVariableManager from "./components/PromptVariableManager.vue";
+import { promptVariableService } from "./services/prompt-variable-service.mjs";
 import SectionLayoutPresetManager from "./components/SectionLayoutPresetManager.vue";
 import { sectionLayoutPresetService } from "./services/section-layout-preset-service.mjs";
 import ComponentGenerationWorkspace from "./components/ComponentGenerationWorkspace.vue";
@@ -29,6 +31,10 @@ globalThis.PromoAdminModelCatalog = llmModelCatalogService;
 globalThis.PromoAdminLlmModels = Object.freeze({
   service: llmModelRegistryService,
   component: LlmModelManager,
+});
+globalThis.PromoAdminPromptVariables = Object.freeze({
+  service: promptVariableService,
+  component: PromptVariableManager,
 });
 globalThis.PromoAdminSectionLayouts = Object.freeze({
   service: sectionLayoutPresetService,
