@@ -1105,6 +1105,28 @@ a {
   min-width: 0;
 }
 
+.wireframe-section-name-input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  color: var(--ink);
+  padding: 2px 0;
+  font: inherit;
+  font-size: var(--app-font-size-base);
+  font-weight: 900;
+}
+
+.wireframe-section-name-input:hover {
+  border-bottom-color: var(--line-strong);
+}
+
+.wireframe-section-name-input:focus {
+  border-bottom-color: var(--accent);
+  outline: 0;
+}
+
 .wizard-content-tree-count {
   padding: 3px 7px;
   border: 1px solid var(--line);

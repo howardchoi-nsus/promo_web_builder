@@ -1058,6 +1058,25 @@ function isWireframeTextItem(item) {
   return item?.isVisibleInWizard && item.fieldKind === "text";
 }
 
+function wireframeSectionDisplayName(section, index = -1) {
+  const name = String(section?.name || "").trim();
+  if (name) return name;
+  const resolvedIndex = index >= 0
+    ? index
+    : wizardSectionDefinitions.findIndex((candidate) => candidate.sectionKey === section?.sectionKey);
+  return `섹션 ${String(Math.max(0, resolvedIndex) + 1).padStart(2, "0")}`;
+}
+
+function renameWireframeSection(sectionKey, name) {
+  if (requestedCreateMode !== "wireframe") return "";
+  const section = wizardSectionDefinitions.find((candidate) => candidate.sectionKey === sectionKey);
+  if (!section) return "";
+  section.name = String(name || "").slice(0, 60);
+  saveWizardContent();
+  renderWireframePreview();
+  return section.name;
+}
+
 function addWireframeTextField(sectionKey) {
   const section = wizardSectionDefinitions.find((candidate) => candidate.sectionKey === sectionKey);
   if (!section) return;
@@ -1131,15 +1150,16 @@ function selectWireframeTarget(sectionKey, itemKey = "", options = {}) {
 }
 
 function createWireframeSection(section, index) {
+  const sectionName = wireframeSectionDisplayName(section, index);
   const article = document.createElement("article");
   article.className = "wireframe-section";
   article.dataset.sectionKey = section.sectionKey;
   article.tabIndex = 0;
-  article.setAttribute("aria-label", `${section.name} 섹션 편집`);
+  article.setAttribute("aria-label", `${sectionName} 섹션 편집`);
   const label = document.createElement("div");
   label.className = "wireframe-section__label";
   appendTextElement(label, "span", "", `SECTION ${String(index + 1).padStart(2, "0")}`);
-  appendTextElement(label, "strong", "", section.name);
+  appendTextElement(label, "strong", "", sectionName);
   article.append(label);
 
   const body = document.createElement("div");
@@ -2732,9 +2752,42 @@ function renderContentStep() {
       const sectionIdentity = document.createElement("div");
       sectionIdentity.className = "wizard-content-tree-identity";
       appendTextElement(sectionIdentity, "small", "", `SECTION ${String(sectionIndex + 1).padStart(2, "0")}`);
-      const sectionName = document.createElement("h3");
-      sectionName.textContent = section.name;
-      sectionIdentity.append(sectionName);
+      if (requestedCreateMode === "wireframe") {
+        const sectionNameInput = document.createElement("input");
+        sectionNameInput.type = "text";
+        sectionNameInput.className = "wireframe-section-name-input";
+        sectionNameInput.dataset.wireframeSectionName = "";
+        sectionNameInput.value = section.name;
+        sectionNameInput.maxLength = 60;
+        sectionNameInput.placeholder = wireframeSectionDisplayName(section, sectionIndex);
+        sectionNameInput.setAttribute("aria-label", `SECTION ${String(sectionIndex + 1).padStart(2, "0")} 이름 변경`);
+        sectionNameInput.addEventListener("input", (event) => {
+          renameWireframeSection(section.sectionKey, event.target.value);
+          const currentName = wireframeSectionDisplayName(section, sectionIndex);
+          dragHandle.setAttribute("aria-label", `${currentName} 순서 변경. 위아래 방향키를 사용할 수 있습니다.`);
+          toggle.setAttribute("aria-label", expandedTemplateSectionKeys.has(section.sectionKey)
+            ? `${currentName} 닫기`
+            : `${currentName} 열기`);
+          sectionEl.querySelectorAll(".wireframe-field-remove").forEach((button) => {
+            button.setAttribute("aria-label", `${currentName} 텍스트 필드 삭제`);
+          });
+          sectionEl.querySelector(".wireframe-field-add")?.setAttribute("aria-label", `${currentName}에 텍스트 필드 추가`);
+        });
+        sectionNameInput.addEventListener("blur", (event) => {
+          const normalized = String(event.target.value || "").trim()
+            || wireframeSectionDisplayName({ ...section, name: "" }, sectionIndex);
+          event.target.value = normalized;
+          renameWireframeSection(section.sectionKey, normalized);
+        });
+        sectionNameInput.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") event.currentTarget.blur();
+        });
+        sectionIdentity.append(sectionNameInput);
+      } else {
+        const sectionName = document.createElement("h3");
+        sectionName.textContent = section.name;
+        sectionIdentity.append(sectionName);
+      }
       const itemCount = document.createElement("span");
       itemCount.className = "wizard-content-tree-count";
       itemCount.textContent = `${visibleItems.length}개 텍스트`;
@@ -2790,7 +2843,9 @@ function renderContentStep() {
           const accordionOpen = expandedTemplateSectionKeys.has(accordionKey);
           const accordionBody = accordion.querySelector(".wizard-content-accordion-body");
           const accordionToggle = accordion.querySelector(".wizard-content-accordion-toggle");
-          const accordionName = accordion.querySelector("h3")?.textContent || "Section";
+          const accordionName = accordion.querySelector("[data-wireframe-section-name]")?.value
+            || accordion.querySelector("h3")?.textContent
+            || "Section";
           accordionBody?.classList.toggle("is-open", accordionOpen);
           if (accordionBody) {
             accordionBody.inert = !accordionOpen;
