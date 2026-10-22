@@ -208,12 +208,17 @@ assert.match(createJs, /requestedCreateMode === "wireframe"[\s\S]*?initializeTem
 assert.match(createJs, /function renderWireframePreview\b/);
 assert.match(createJs, /function selectWireframeTarget\b/);
 assert.match(createJs, /function isWireframeTextItem\b/);
-assert.match(createJs, /\["text", "cta"\]\.includes\(item\.fieldKind\)/);
+assert.match(createJs, /item\.fieldKind === "text"/);
+assert.match(createJs, /function addWireframeTextField\b/);
+assert.match(createJs, /function removeWireframeTextField\b/);
+assert.match(createJs, /contentState\.wireframeSections/);
+assert.match(createJs, /name:\s*"텍스트 입력"/);
 assert.doesNotMatch(createJs, /section02-visual|Directus 연동 예정/);
 assert.match(createJs, /layoutWorkspaceMode === "wireframe"/);
 assert.match(createCss, /\.wireframe-workspace/);
 assert.match(createCss, /\.wizard-content-tree-node/);
 assert.doesNotMatch(createCss, /\.wireframe-item--image|\.wireframe-image-icon/);
+assert.doesNotMatch(createCss, /\.wireframe-item--title|\.wireframe-item--cta|\.wireframe-item--multi/);
 assert.match(createCss, /\.wireframe-section__body\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\)/);
 assert.doesNotMatch(createCss, /\.wireframe-section__body--content:has/);
 assert.match(createCss, /grid-template-columns:\s*minmax\(320px, 2fr\) minmax\(460px, 3fr\)/);

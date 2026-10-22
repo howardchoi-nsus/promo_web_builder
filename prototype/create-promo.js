@@ -55,6 +55,7 @@ const CURRENT_STEP_STORAGE_KEY = "promoPrototype.createPromo.currentStep.v3";
 const LEGACY_CURRENT_STEP_STORAGE_KEY = "promoPrototype.createPromo.currentStep.v2";
 const LAYOUT_MODE_STORAGE_KEY = "promoPrototype.createPromo.layoutMode.v1";
 const requestedCreateMode = new URLSearchParams(window.location.search).get("mode") || "";
+const WIREFRAME_SCHEMA_VERSION = 2;
 const {
   normalizeLayoutIdentity,
   sameLayoutIdentity,
@@ -134,42 +135,34 @@ const TEMPLATE_FREE_WIREFRAME_SECTIONS = Object.freeze([
   {
     sectionId: "wireframe-section-01",
     sectionKey: "section01",
-    name: "섹션 01 · 히어로",
-    description: "프로모션의 핵심 메시지",
+    name: "섹션 01",
+    description: "",
     userReorderAllowed: true,
     fixedPosition: null,
     items: [
-      { id: "section01-title", itemKey: "title", name: "메인 타이틀", fieldKind: "text", textType: "title", isRequired: false, isLocked: false, isVisibleInWizard: true },
-      { id: "section01-main-copy", itemKey: "mainCopy", name: "메인 카피", fieldKind: "text", textType: "multi", isRequired: false, isLocked: false, isVisibleInWizard: true },
-      { id: "section01-sub-copy", itemKey: "subCopy", name: "서브 카피", fieldKind: "text", textType: "multi", isRequired: false, isLocked: false, isVisibleInWizard: true },
-      { id: "section01-cta", itemKey: "cta", name: "CTA", fieldKind: "cta", isRequired: false, isLocked: false, isVisibleInWizard: true },
-      { id: "section01-notice", itemKey: "notice", name: "유의사항", fieldKind: "text", textType: "multi", isRequired: false, isLocked: false, isVisibleInWizard: true },
+      { id: "section01-text01", itemKey: "text01", name: "텍스트 입력", fieldKind: "text", isRequired: false, isLocked: false, isVisibleInWizard: true },
     ],
   },
   {
     sectionId: "wireframe-section-02",
     sectionKey: "section02",
-    name: "섹션 02 · 상세 콘텐츠",
-    description: "혜택과 상세 설명",
+    name: "섹션 02",
+    description: "",
     userReorderAllowed: true,
     fixedPosition: null,
     items: [
-      { id: "section02-title", itemKey: "title", name: "섹션 타이틀", fieldKind: "text", textType: "title", isRequired: false, isLocked: false, isVisibleInWizard: true },
-      { id: "section02-description", itemKey: "description", name: "상세 설명", fieldKind: "text", textType: "multi", isRequired: false, isLocked: false, isVisibleInWizard: true },
-      { id: "section02-cta", itemKey: "cta", name: "CTA", fieldKind: "cta", isRequired: false, isLocked: false, isVisibleInWizard: true },
+      { id: "section02-text01", itemKey: "text01", name: "텍스트 입력", fieldKind: "text", isRequired: false, isLocked: false, isVisibleInWizard: true },
     ],
   },
   {
     sectionId: "wireframe-section-03",
     sectionKey: "section03",
-    name: "섹션 03 · 안내",
-    description: "참여 방법과 추가 안내",
+    name: "섹션 03",
+    description: "",
     userReorderAllowed: true,
     fixedPosition: null,
     items: [
-      { id: "section03-title", itemKey: "title", name: "안내 타이틀", fieldKind: "text", textType: "title", isRequired: false, isLocked: false, isVisibleInWizard: true },
-      { id: "section03-description", itemKey: "description", name: "안내 내용", fieldKind: "text", textType: "multi", isRequired: false, isLocked: false, isVisibleInWizard: true },
-      { id: "section03-notice", itemKey: "notice", name: "유의사항", fieldKind: "text", textType: "multi", isRequired: false, isLocked: false, isVisibleInWizard: true },
+      { id: "section03-text01", itemKey: "text01", name: "텍스트 입력", fieldKind: "text", isRequired: false, isLocked: false, isVisibleInWizard: true },
     ],
   },
 ]);
@@ -300,13 +293,19 @@ function loadWizardContent() {
       "promotionOverview", "promotionOverviewDraft", "templateRecommendation", "templateCompositionProposal",
       "templateInputs", "templateDefaultContents",
       "templateSectionOrders", "templateSectionDefinitions", "templateLayouts", "sectionDesignRuns",
-      "wireframeInputs", "wireframeSectionOrder",
+      "wireframeInputs", "wireframeSectionOrder", "wireframeSections", "wireframeSchema",
     ],
   });
 }
 
 function initializeTemplateFreeWireframe() {
-  const definitions = JSON.parse(JSON.stringify(TEMPLATE_FREE_WIREFRAME_SECTIONS));
+  const savedDefinitions = contentState.wireframeSchema?.version === WIREFRAME_SCHEMA_VERSION
+    && Array.isArray(contentState.wireframeSections)
+    ? contentState.wireframeSections
+    : [];
+  const definitions = JSON.parse(JSON.stringify(
+    savedDefinitions.length ? savedDefinitions : TEMPLATE_FREE_WIREFRAME_SECTIONS
+  ));
   const defaultOrder = definitions.map((section) => section.sectionKey);
   const savedOrder = Array.isArray(contentState.wireframeSectionOrder)
     ? contentState.wireframeSectionOrder.filter((key) => defaultOrder.includes(key))
@@ -628,8 +627,10 @@ function saveWizardContent() {
   contentState.promotionOverview.inputMode = overviewInputMode;
   contentState.promotionOverview.rawNaturalLanguage = overviewNaturalLanguage;
   if (requestedCreateMode === "wireframe") {
+    contentState.wireframeSchema = { version: WIREFRAME_SCHEMA_VERSION };
     contentState.wireframeInputs = contentState.sectionInputs;
     contentState.wireframeSectionOrder = wizardSectionDefinitions.map((section) => section.sectionKey);
+    contentState.wireframeSections = JSON.parse(JSON.stringify(wizardSectionDefinitions));
   }
   contentState.templateSectionDefinitions ||= {};
   if (selectedWizardFormTemplate?.templateKey) {
@@ -1049,13 +1050,51 @@ function createDynamicSectionField(sectionKey, item) {
   return field;
 }
 
-function wireframeDisplayValue(item, value) {
-  if (item.fieldKind === "cta") return String(value?.label || "CTA 버튼");
+function wireframeDisplayValue(value) {
   return String(value || "");
 }
 
 function isWireframeTextItem(item) {
-  return item?.isVisibleInWizard && ["text", "cta"].includes(item.fieldKind);
+  return item?.isVisibleInWizard && item.fieldKind === "text";
+}
+
+function addWireframeTextField(sectionKey) {
+  const section = wizardSectionDefinitions.find((candidate) => candidate.sectionKey === sectionKey);
+  if (!section) return;
+  const suffix = globalThis.crypto?.randomUUID?.().replaceAll("-", "").slice(0, 10)
+    || `${Date.now()}${Math.random().toString(16).slice(2, 6)}`;
+  const itemKey = `text-${suffix}`;
+  section.items ||= [];
+  section.items.push({
+    id: `${sectionKey}-${itemKey}`,
+    itemKey,
+    name: "텍스트 입력",
+    fieldKind: "text",
+    isRequired: false,
+    isLocked: false,
+    isVisibleInWizard: true,
+  });
+  setValueAtPath(contentState.sectionInputs, `${sectionKey}.${itemKey}`, "");
+  expandedTemplateSectionKeys.clear();
+  expandedTemplateSectionKeys.add(sectionKey);
+  saveWizardContent();
+  renderStep();
+}
+
+function removeWireframeTextField(sectionKey, itemKey) {
+  const section = wizardSectionDefinitions.find((candidate) => candidate.sectionKey === sectionKey);
+  if (!section) return;
+  section.items = (section.items || []).filter((item) => item.itemKey !== itemKey);
+  if (contentState.sectionInputs?.[sectionKey]) {
+    delete contentState.sectionInputs[sectionKey][itemKey];
+  }
+  if (selectedWireframeTarget.sectionKey === sectionKey && selectedWireframeTarget.itemKey === itemKey) {
+    selectedWireframeTarget = { sectionKey, itemKey: "" };
+  }
+  expandedTemplateSectionKeys.clear();
+  expandedTemplateSectionKeys.add(sectionKey);
+  saveWizardContent();
+  renderStep();
 }
 
 function selectWireframeTarget(sectionKey, itemKey = "", options = {}) {
@@ -1104,14 +1143,12 @@ function createWireframeSection(section, index) {
   article.append(label);
 
   const body = document.createElement("div");
-  const isHero = section.sectionKey.toLowerCase().includes("hero");
-  body.className = `wireframe-section__body wireframe-section__body--${isHero ? "hero" : "content"}`;
+  body.className = "wireframe-section__body";
   (section.items || []).filter(isWireframeTextItem).forEach((item) => {
     const value = valueAtPath(contentState.sectionInputs, `${section.sectionKey}.${item.itemKey}`);
-    const display = wireframeDisplayValue(item, value);
-    const node = document.createElement(item.fieldKind === "cta" ? "button" : "div");
-    if (node.tagName === "BUTTON") node.type = "button";
-    node.className = `wireframe-item wireframe-item--${item.fieldKind}${item.textType ? ` wireframe-item--${item.textType}` : ""}`;
+    const display = wireframeDisplayValue(value);
+    const node = document.createElement("div");
+    node.className = "wireframe-item";
     node.dataset.sectionKey = section.sectionKey;
     node.dataset.itemKey = item.itemKey;
     node.title = `${item.name} 편집`;
@@ -1135,7 +1172,7 @@ function renderWireframePreview() {
   canvas.classList.toggle("is-mobile", wireframeViewport === "mobile");
   wizardSectionDefinitions.forEach((section, index) => canvas.append(createWireframeSection(section, index)));
   if (!wizardSectionDefinitions.length) {
-    appendTextElement(canvas, "p", "wireframe-empty", "템플릿 섹션을 불러오면 와이어프레임이 표시됩니다.");
+    appendTextElement(canvas, "p", "wireframe-empty", "표시할 섹션이 없습니다.");
   }
   selectWireframeTarget(selectedWireframeTarget.sectionKey, selectedWireframeTarget.itemKey);
 }
@@ -1173,7 +1210,7 @@ function createWireframeWorkspace(dynamicSectionsWrapper) {
   const treeHeader = document.createElement("header");
   appendTextElement(treeHeader, "span", "eyebrow", "Content tree");
   appendTextElement(treeHeader, "strong", "", "섹션별 텍스트 콘텐츠");
-  appendTextElement(treeHeader, "small", "", "섹션을 펼쳐 텍스트와 CTA를 입력하고 순서를 관리하세요.");
+  appendTextElement(treeHeader, "small", "", "섹션을 펼쳐 텍스트 필드를 추가하거나 삭제하고 순서를 관리하세요.");
   tree.append(treeHeader, dynamicSectionsWrapper);
 
   const preview = document.createElement("section");
@@ -2720,10 +2757,29 @@ function renderContentStep() {
         node.setAttribute("role", "treeitem");
         node.setAttribute("aria-level", "2");
         node.append(createDynamicSectionField(section.sectionKey, item));
+        if (requestedCreateMode === "wireframe") {
+          const removeField = document.createElement("button");
+          removeField.type = "button";
+          removeField.className = "wireframe-field-remove";
+          removeField.setAttribute("aria-label", `${section.name} 텍스트 필드 삭제`);
+          removeField.title = "텍스트 필드 삭제";
+          removeField.textContent = "삭제";
+          removeField.addEventListener("click", () => removeWireframeTextField(section.sectionKey, item.itemKey));
+          node.append(removeField);
+        }
         grid.append(node);
       });
       if (!visibleItems.length) {
-        appendTextElement(grid, "p", "wizard-content-tree-empty", "이 섹션에는 MVP에서 편집할 텍스트 항목이 없습니다.");
+        appendTextElement(grid, "p", "wizard-content-tree-empty", "텍스트 필드를 추가해 주세요.");
+      }
+      if (requestedCreateMode === "wireframe") {
+        const addField = document.createElement("button");
+        addField.type = "button";
+        addField.className = "wireframe-field-add";
+        addField.setAttribute("aria-label", `${section.name}에 텍스트 필드 추가`);
+        addField.textContent = "+ 텍스트 필드 추가";
+        addField.addEventListener("click", () => addWireframeTextField(section.sectionKey));
+        grid.append(addField);
       }
       toggle.addEventListener("click", () => {
         const isOpen = expandedTemplateSectionKeys.has(section.sectionKey);

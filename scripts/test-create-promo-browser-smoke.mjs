@@ -319,15 +319,27 @@ try {
     1,
     "Every wireframe element must be placed in a single-column row"
   );
-  await page.locator('.wireframe-tree-panel [data-section-key="section01"] [data-item-key="title"] textarea').fill("Wireframe live title");
+  assert.equal(await page.getByText("텍스트 입력", { exact: true }).count() >= 3, true);
+  assert.equal(await page.locator(".wireframe-item--title, .wireframe-item--cta").count(), 0);
+  await page.locator('.wireframe-tree-panel [data-section-key="section01"] [data-item-key="text01"] textarea').fill("Wireframe live text");
   await assertPageText(
-    page.locator('.wireframe-item[data-section-key="section01"][data-item-key="title"]'),
-    "Wireframe live title"
+    page.locator('.wireframe-item[data-section-key="section01"][data-item-key="text01"]'),
+    "Wireframe live text"
   );
-  const templateFreeContent = await page.evaluate(() => (
+  await page.getByRole("button", { name: "섹션 01에 텍스트 필드 추가" }).click();
+  const section01Nodes = page.locator('.wireframe-tree-panel [data-section-key="section01"] .wizard-content-tree-node');
+  assert.equal(await section01Nodes.count(), 2);
+  let templateFreeContent = await page.evaluate(() => (
     JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null")
   ));
-  assert.equal(templateFreeContent?.wireframeInputs?.section01?.title, "Wireframe live title");
+  assert.equal(templateFreeContent?.wireframeSections?.[0]?.items?.length, 2);
+  await section01Nodes.nth(1).getByRole("button", { name: "섹션 01 텍스트 필드 삭제" }).click();
+  assert.equal(await section01Nodes.count(), 1);
+  templateFreeContent = await page.evaluate(() => (
+    JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null")
+  ));
+  assert.equal(templateFreeContent?.wireframeInputs?.section01?.text01, "Wireframe live text");
+  assert.equal(templateFreeContent?.wireframeSections?.[0]?.items?.length, 1);
   assert.deepEqual(templateFreeContent?.wireframeSectionOrder, ["section01", "section02", "section03"]);
   await page.evaluate(() => {
     sessionStorage.clear();
