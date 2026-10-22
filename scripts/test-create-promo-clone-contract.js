@@ -208,11 +208,12 @@ assert.match(createJs, /requestedCreateMode === "wireframe"[\s\S]*?initializeTem
 assert.match(createJs, /function renderWireframePreview\b/);
 assert.match(createJs, /function selectWireframeTarget\b/);
 assert.match(createJs, /function isWireframeTextItem\b/);
-assert.match(createJs, /item\.fieldKind !== "image"/);
-assert.match(createJs, /Directus 연동 예정/);
+assert.match(createJs, /\["text", "cta"\]\.includes\(item\.fieldKind\)/);
+assert.doesNotMatch(createJs, /section02-visual|Directus 연동 예정/);
 assert.match(createJs, /layoutWorkspaceMode === "wireframe"/);
 assert.match(createCss, /\.wireframe-workspace/);
 assert.match(createCss, /\.wizard-content-tree-node/);
+assert.doesNotMatch(createCss, /\.wireframe-item--image|\.wireframe-image-icon/);
 assert.match(createCss, /\.wireframe-section__body\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\)/);
 assert.doesNotMatch(createCss, /\.wireframe-section__body--content:has/);
 assert.match(createCss, /grid-template-columns:\s*minmax\(320px, 2fr\) minmax\(460px, 3fr\)/);

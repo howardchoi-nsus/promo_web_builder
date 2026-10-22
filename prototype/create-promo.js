@@ -156,7 +156,6 @@ const TEMPLATE_FREE_WIREFRAME_SECTIONS = Object.freeze([
     items: [
       { id: "section02-title", itemKey: "title", name: "섹션 타이틀", fieldKind: "text", textType: "title", isRequired: false, isLocked: false, isVisibleInWizard: true },
       { id: "section02-description", itemKey: "description", name: "상세 설명", fieldKind: "text", textType: "multi", isRequired: false, isLocked: false, isVisibleInWizard: true },
-      { id: "section02-visual", itemKey: "visual", name: "이미지 영역", fieldKind: "image", isRequired: false, isLocked: true, isVisibleInWizard: true },
       { id: "section02-cta", itemKey: "cta", name: "CTA", fieldKind: "cta", isRequired: false, isLocked: false, isVisibleInWizard: true },
     ],
   },
@@ -1056,7 +1055,7 @@ function wireframeDisplayValue(item, value) {
 }
 
 function isWireframeTextItem(item) {
-  return item?.isVisibleInWizard && item.fieldKind !== "image";
+  return item?.isVisibleInWizard && ["text", "cta"].includes(item.fieldKind);
 }
 
 function selectWireframeTarget(sectionKey, itemKey = "", options = {}) {
@@ -1107,7 +1106,7 @@ function createWireframeSection(section, index) {
   const body = document.createElement("div");
   const isHero = section.sectionKey.toLowerCase().includes("hero");
   body.className = `wireframe-section__body wireframe-section__body--${isHero ? "hero" : "content"}`;
-  (section.items || []).filter((item) => item.isVisibleInWizard).forEach((item) => {
+  (section.items || []).filter(isWireframeTextItem).forEach((item) => {
     const value = valueAtPath(contentState.sectionInputs, `${section.sectionKey}.${item.itemKey}`);
     const display = wireframeDisplayValue(item, value);
     const node = document.createElement(item.fieldKind === "cta" ? "button" : "div");
@@ -1116,21 +1115,12 @@ function createWireframeSection(section, index) {
     node.dataset.sectionKey = section.sectionKey;
     node.dataset.itemKey = item.itemKey;
     node.title = `${item.name} 편집`;
-    if (item.fieldKind === "image") {
-      node.classList.add("is-readonly");
-      node.title = "이미지는 추후 Directus에서 연결됩니다.";
-      appendTextElement(node, "span", "wireframe-image-icon", "▧");
-      appendTextElement(node, "small", "", `${item.name} · Directus 연동 예정`);
-    } else {
-      node.textContent = display || item.name;
-      node.classList.toggle("is-placeholder", !display);
-    }
-    if (item.fieldKind !== "image") {
-      node.addEventListener("click", (event) => {
-        event.stopPropagation();
-        selectWireframeTarget(section.sectionKey, item.itemKey, { syncTree: true });
-      });
-    }
+    node.textContent = display || item.name;
+    node.classList.toggle("is-placeholder", !display);
+    node.addEventListener("click", (event) => {
+      event.stopPropagation();
+      selectWireframeTarget(section.sectionKey, item.itemKey, { syncTree: true });
+    });
     body.append(node);
   });
   article.append(body);
@@ -1183,7 +1173,7 @@ function createWireframeWorkspace(dynamicSectionsWrapper) {
   const treeHeader = document.createElement("header");
   appendTextElement(treeHeader, "span", "eyebrow", "Content tree");
   appendTextElement(treeHeader, "strong", "", "섹션별 텍스트 콘텐츠");
-  appendTextElement(treeHeader, "small", "", "이미지는 제외됩니다. 섹션을 펼쳐 텍스트를 입력하고 순서를 관리하세요.");
+  appendTextElement(treeHeader, "small", "", "섹션을 펼쳐 텍스트와 CTA를 입력하고 순서를 관리하세요.");
   tree.append(treeHeader, dynamicSectionsWrapper);
 
   const preview = document.createElement("section");

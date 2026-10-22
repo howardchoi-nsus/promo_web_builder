@@ -307,9 +307,10 @@ try {
     0,
     "MVP content tree must not expose image registration fields"
   );
-  await assertPageText(
-    page.locator('.wireframe-item[data-section-key="section02"][data-item-key="visual"]'),
-    "▧이미지 영역 · Directus 연동 예정"
+  assert.equal(
+    await page.locator(".wireframe-workspace .wireframe-item--image").count(),
+    0,
+    "MVP wireframe must not render image fields or placeholders"
   );
   assert.equal(
     await page.locator('.wireframe-section[data-section-key="section02"] .wireframe-section__body').evaluate((node) => (
