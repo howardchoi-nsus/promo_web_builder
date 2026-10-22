@@ -296,6 +296,11 @@ try {
   await page.getByRole("button", { name: /와이어프레임 모드/ }).click();
   await page.locator(".wireframe-workspace").waitFor();
   assert.equal(await page.locator(".wizard-progress").isHidden(), true);
+  assert.equal(await page.locator(".wizard-footer").isHidden(), true);
+  assert.equal(
+    await page.locator(".wireframe-tree-panel textarea").first().evaluate((element) => getComputedStyle(element).fontWeight),
+    "400"
+  );
   await assertPageText(page.locator("#wizard-shell-status"), "Wireframe");
   assert.equal(
     requestedPaths.filter((pathname) => pathname.startsWith("/api/wizard-form-template")).length,

@@ -88,6 +88,10 @@ a {
   display: none;
 }
 
+.wizard-footer[hidden] {
+  display: none;
+}
+
 .step {
   display: grid;
   align-content: start;
@@ -696,6 +700,12 @@ a {
 
 .wireframe-tree-panel .wizard-template-content-title {
   display: none;
+}
+
+.wireframe-tree-panel input,
+.wireframe-tree-panel textarea,
+.wireframe-tree-panel select {
+  font-weight: 400;
 }
 
 .wireframe-tree-panel .wizard-content-accordion + .wizard-content-accordion {
