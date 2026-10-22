@@ -290,9 +290,34 @@ try {
     failedRequests.push(`${request.method()} ${request.url()}: ${reason}`);
   });
 
-  // The Builder now has an explicit mode-selection entry. This regression
-  // scenario verifies the unchanged legacy template host.
-  await page.goto(`${origin}/create-promo.html?mode=template`, { waitUntil: "networkidle" });
+  // Wireframe mode opens the split tree/canvas workspace directly and mirrors
+  // content edits without requiring the full visual editor.
+  await page.goto(`${origin}/create-promo.html`, { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: /와이어프레임 모드/ }).click();
+  await page.locator(".wireframe-workspace").waitFor();
+  await page.locator('[data-item-key="title"] textarea').fill("Wireframe live title");
+  await assertPageText(
+    page.locator('.wireframe-item[data-section-key="heroBanner"][data-item-key="title"]'),
+    "Wireframe live title"
+  );
+  await page.evaluate(() => {
+    sessionStorage.clear();
+    localStorage.setItem("promoPrototype.createPromo.content.v1", JSON.stringify({
+      sectionInputSchemaVersion: 4,
+      templateInputs: {
+        "default-preview": {
+          heroBanner: {
+            title: "Existing user title",
+            description: "Existing user description",
+          },
+        },
+      },
+      templateDefaultContents: { "default-preview": {} },
+    }));
+  });
+
+  // The explicit template entry still opens the existing staged editor flow.
+  await page.goto(`${origin}/create-promo.html?mode=template`, { waitUntil: "domcontentloaded" });
   await assertPageText(page.locator(".step.is-active strong"), "Overview");
   await page.getByRole("tab", { name: "자연어 입력" }).click();
   await page.locator(".overview-nlp-input").fill(

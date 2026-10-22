@@ -591,7 +591,291 @@ a {
 }
 
 .template-layout-workspace {
-  display: block;
+  display: grid;
+  gap: 14px;
+}
+
+.layout-mode-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+}
+
+.layout-mode-bar > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.layout-mode-bar small,
+.wireframe-tree-panel > header small,
+.wireframe-preview-panel > header small {
+  color: var(--sub);
+  line-height: 1.45;
+}
+
+.layout-mode-tabs,
+.wireframe-viewport-tabs {
+  display: inline-flex;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+}
+
+.layout-mode-tabs button,
+.wireframe-viewport-tabs button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--sub);
+  cursor: pointer;
+  font-size: var(--app-font-size-small);
+  font-weight: 900;
+}
+
+.layout-mode-tabs button.is-active,
+.wireframe-viewport-tabs button.is-active {
+  background: var(--ink);
+  color: var(--panel);
+}
+
+.wireframe-workspace {
+  display: grid;
+  grid-template-columns: minmax(320px, 2fr) minmax(460px, 3fr);
+  gap: 14px;
+  min-width: 0;
+  align-items: start;
+}
+
+.wireframe-tree-panel,
+.wireframe-preview-panel {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel);
+}
+
+.wireframe-tree-panel > header,
+.wireframe-preview-panel > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 78px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.wireframe-tree-panel > header {
+  display: grid;
+  gap: 2px;
+}
+
+.wireframe-preview-panel > header > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.wireframe-tree-panel .wizard-template-content-sections {
+  border: 0;
+  background: transparent;
+}
+
+.wireframe-tree-panel .wizard-template-content-title {
+  display: none;
+}
+
+.wireframe-tree-panel .wizard-content-accordion + .wizard-content-accordion {
+  border-top: 1px solid var(--line);
+}
+
+.wireframe-tree-panel .wizard-content-accordion-header h3 {
+  overflow: hidden;
+  font-size: var(--app-font-size-body);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wireframe-preview-panel {
+  position: sticky;
+  top: 16px;
+}
+
+.wireframe-stage {
+  height: min(720px, 72dvh);
+  overflow: auto;
+  padding: 24px;
+  background:
+    linear-gradient(45deg, color-mix(in srgb, var(--line) 32%, transparent) 25%, transparent 25%),
+    linear-gradient(-45deg, color-mix(in srgb, var(--line) 32%, transparent) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, color-mix(in srgb, var(--line) 32%, transparent) 75%),
+    linear-gradient(-45deg, transparent 75%, color-mix(in srgb, var(--line) 32%, transparent) 75%),
+    var(--surface);
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  background-size: 16px 16px;
+}
+
+.wireframe-canvas {
+  width: 100%;
+  max-width: 760px;
+  min-height: 560px;
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #20242c;
+  box-shadow: 0 18px 44px rgba(26, 32, 44, 0.12);
+  transition: width 180ms ease;
+}
+
+.wireframe-canvas.is-mobile {
+  width: min(390px, 100%);
+}
+
+.wireframe-section {
+  position: relative;
+  padding: 36px clamp(22px, 6vw, 64px);
+  border: 0;
+  border-bottom: 1px dashed #aeb5c0;
+  background: #fff;
+  cursor: pointer;
+  transition: background 140ms ease, box-shadow 140ms ease;
+}
+
+.wireframe-section:nth-child(even) {
+  background: #f6f7f9;
+}
+
+.wireframe-section:hover,
+.wireframe-section:focus-visible,
+.wireframe-section.is-selected {
+  z-index: 1;
+  outline: 0;
+  box-shadow: inset 0 0 0 2px #606a78;
+}
+
+.wireframe-section__label {
+  position: absolute;
+  top: 9px;
+  left: 12px;
+  display: flex;
+  gap: 7px;
+  color: #747d8b;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.wireframe-section__body {
+  display: grid;
+  gap: 13px;
+  align-items: center;
+}
+
+.wireframe-section__body--hero {
+  min-height: 190px;
+  justify-items: center;
+  text-align: center;
+}
+
+.wireframe-section__body--content:has(.wireframe-item--image) {
+  grid-template-columns: minmax(120px, 1fr) minmax(0, 1.3fr);
+}
+
+.wireframe-item {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  border-radius: 4px;
+  transition: box-shadow 120ms ease, background 120ms ease;
+}
+
+.wireframe-item:hover,
+.wireframe-item.is-selected {
+  box-shadow: 0 0 0 2px #3f4855;
+  background: #eef0f3;
+}
+
+.wireframe-item--title {
+  font-size: clamp(25px, 4vw, 44px);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+}
+
+.wireframe-item--multi,
+.wireframe-item--text {
+  color: #626b78;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.wireframe-item--cta {
+  justify-self: start;
+  min-height: 38px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 5px;
+  background: #3f4855;
+  color: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.wireframe-section__body--hero .wireframe-item--cta {
+  justify-self: center;
+}
+
+.wireframe-item--image {
+  display: grid;
+  place-items: center;
+  min-height: 150px;
+  overflow: hidden;
+  border: 1px solid #aeb5c0;
+  background: #e7e9ed;
+  color: #697280;
+  text-align: center;
+}
+
+.wireframe-item--image img {
+  width: 100%;
+  height: 100%;
+  min-height: 150px;
+  object-fit: cover;
+}
+
+.wireframe-image-icon {
+  font-size: 30px;
+}
+
+.wireframe-item.is-placeholder {
+  color: #9097a2;
+  font-style: italic;
+}
+
+.wireframe-empty {
+  margin: 0;
+  padding: 80px 24px;
+  color: #697280;
+  text-align: center;
+}
+
+.wireframe-canvas.is-mobile .wireframe-section {
+  padding-inline: 24px;
+}
+
+.wireframe-canvas.is-mobile .wireframe-section__body--content:has(.wireframe-item--image) {
+  grid-template-columns: 1fr;
 }
 
 .web-output-layout {
@@ -1840,6 +2124,35 @@ a {
 }
 
 @media (max-width: 760px) {
+  .layout-mode-bar,
+  .wireframe-preview-panel > header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .wireframe-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .wireframe-preview-panel {
+    position: static;
+  }
+
+  .wireframe-stage {
+    height: 620px;
+    padding: 12px;
+  }
+
+  .wireframe-viewport-tabs,
+  .layout-mode-tabs {
+    align-self: stretch;
+  }
+
+  .wireframe-viewport-tabs button,
+  .layout-mode-tabs button {
+    flex: 1;
+  }
+
   .wizard-footer {
     align-items: stretch;
     flex-direction: column;

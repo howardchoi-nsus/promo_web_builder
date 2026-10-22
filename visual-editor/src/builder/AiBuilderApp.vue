@@ -106,8 +106,12 @@ const retryableAssetError = computed(() => Boolean(store.snapshot && [
 
 function selectMode(mode) {
   recordBuilderEvent({ eventName: "builder_mode_selected", metadata: { mode } });
+  if (mode === "wireframe") {
+    window.location.assign("/prototype/create-promo.html?mode=wireframe");
+    return;
+  }
   if (mode === "template") {
-    window.location.assign("/prototype/create-promo?mode=template");
+    window.location.assign("/prototype/create-promo.html?mode=template");
     return;
   }
   selectedMode.value = "ai";

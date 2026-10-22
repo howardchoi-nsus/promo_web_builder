@@ -35,7 +35,7 @@
     });
   }
 
-  if (mode === "template") {
+  if (mode === "template" || mode === "wireframe") {
     if (legacyRoot) legacyRoot.hidden = false;
     if (aiRoot) aiRoot.hidden = true;
     loadScript("create-promo.js?v=create-promo-light-v41").catch(() => {

@@ -53,6 +53,8 @@ const WEB_OUTPUT_SNAPSHOT_STORAGE_KEY = "promoVisualEditor.snapshot.v1";
 const CONTENT_SUBSTEP_STORAGE_KEY = "promoPrototype.createPromo.contentSubstep.v1";
 const CURRENT_STEP_STORAGE_KEY = "promoPrototype.createPromo.currentStep.v3";
 const LEGACY_CURRENT_STEP_STORAGE_KEY = "promoPrototype.createPromo.currentStep.v2";
+const LAYOUT_MODE_STORAGE_KEY = "promoPrototype.createPromo.layoutMode.v1";
+const requestedCreateMode = new URLSearchParams(window.location.search).get("mode") || "";
 const {
   normalizeLayoutIdentity,
   sameLayoutIdentity,
@@ -68,6 +70,10 @@ let contentSubstep = CONTENT_SUBSTEPS.includes(sessionStorage.getItem(CONTENT_SU
 const storedCurrentStep = sessionStorage.getItem(CURRENT_STEP_STORAGE_KEY);
 const legacyCurrentStep = sessionStorage.getItem(LEGACY_CURRENT_STEP_STORAGE_KEY);
 let currentStep = resolveInitialStep(storedCurrentStep, contentSubstep, legacyCurrentStep);
+if (requestedCreateMode === "wireframe") {
+  currentStep = "layout";
+  contentSubstep = "layout";
+}
 let validationErrors = {};
 // Admin-managed Step 2 content sections (Admin Page "C. Wizard Content
 // Sections 관리"). Replaces the previously hardcoded 7-section structure.
@@ -96,6 +102,11 @@ let wizardTemplateRefreshPromise = null;
 let wizardTemplateRefreshRequestId = 0;
 let wizardTemplateRefreshError = "";
 let wizardLayoutFrame = null;
+let layoutWorkspaceMode = ["wireframe", "design"].includes(sessionStorage.getItem(LAYOUT_MODE_STORAGE_KEY))
+  ? sessionStorage.getItem(LAYOUT_MODE_STORAGE_KEY)
+  : requestedCreateMode === "wireframe" ? "wireframe" : "design";
+let wireframeViewport = "desktop";
+let selectedWireframeTarget = { sectionKey: "", itemKey: "" };
 const wizardEditorBridge = globalThis.PromoEditorBridge?.createEditorBridge({
   getFrame: () => wizardLayoutFrame,
 });
@@ -858,6 +869,7 @@ function setSectionValue(path, value) {
   setValueAtPath(contentState.sectionInputs, path, value);
   saveWizardContent();
   postWizardLayoutSnapshot();
+  renderWireframePreview();
 }
 
 function fieldInvalid(key) {
@@ -941,16 +953,194 @@ function createSectionField({ path, label, type = "text", placeholder = "입력�
 }
 
 function createDynamicSectionField(sectionKey, item) {
-  if (item.isLocked) return createLockedSectionField(sectionKey, item);
-  if (item.fieldKind === "cta") return createCtaSectionField(sectionKey, item);
-  if (item.fieldKind === "image") return createImageSectionField(sectionKey, item);
+  let field;
+  if (item.isLocked) field = createLockedSectionField(sectionKey, item);
+  else if (item.fieldKind === "cta") field = createCtaSectionField(sectionKey, item);
+  else if (item.fieldKind === "image") field = createImageSectionField(sectionKey, item);
+  else {
+    field = createSectionField({
+      path: `${sectionKey}.${item.itemKey}`,
+      label: item.isRequired ? `${item.name} *` : item.name,
+      type: "textarea",
+      rows: item.textType === "multi" ? 4 : 3,
+    });
+  }
+  field.dataset.sectionKey = sectionKey;
+  field.dataset.itemKey = item.itemKey;
+  field.addEventListener("focusin", () => selectWireframeTarget(sectionKey, item.itemKey));
+  return field;
+}
 
-  return createSectionField({
-    path: `${sectionKey}.${item.itemKey}`,
-    label: item.isRequired ? `${item.name} *` : item.name,
-    type: "textarea",
-    rows: item.textType === "multi" ? 4 : 3,
+function wireframeDisplayValue(item, value) {
+  if (item.fieldKind === "cta") return String(value?.label || "CTA 버튼");
+  if (item.fieldKind === "image") return String(value?.value || "");
+  return String(value || "");
+}
+
+function selectWireframeTarget(sectionKey, itemKey = "", options = {}) {
+  selectedWireframeTarget = { sectionKey, itemKey };
+  document.querySelectorAll(".wireframe-section, .wireframe-item").forEach((node) => {
+    const selectedSection = node.dataset.sectionKey === sectionKey;
+    const selectedItem = !itemKey || node.dataset.itemKey === itemKey;
+    node.classList.toggle("is-selected", selectedSection && selectedItem);
   });
+  if (!options.syncTree) return;
+  expandedTemplateSectionKeys.clear();
+  expandedTemplateSectionKeys.add(sectionKey);
+  const accordion = document.querySelector(`.wizard-content-accordion[data-section-key="${CSS.escape(sectionKey)}"]`);
+  if (!accordion) return;
+  document.querySelectorAll(".wizard-content-accordion").forEach((node) => {
+    const open = node === accordion;
+    const body = node.querySelector(".wizard-content-accordion-body");
+    body?.classList.toggle("is-open", open);
+    if (body) {
+      body.inert = !open;
+      body.setAttribute("aria-hidden", String(!open));
+    }
+    const toggle = node.querySelector(".wizard-content-accordion-toggle");
+    if (toggle) {
+      toggle.textContent = open ? "▾" : "▸";
+      toggle.setAttribute("aria-expanded", String(open));
+    }
+  });
+  const target = itemKey
+    ? accordion.querySelector(`[data-item-key="${CSS.escape(itemKey)}"]`)
+    : accordion;
+  target?.scrollIntoView({ behavior: "smooth", block: "center" });
+  target?.querySelector("input, textarea, select")?.focus({ preventScroll: true });
+}
+
+function createWireframeSection(section, index) {
+  const article = document.createElement("article");
+  article.className = "wireframe-section";
+  article.dataset.sectionKey = section.sectionKey;
+  article.tabIndex = 0;
+  article.setAttribute("aria-label", `${section.name} 섹션 편집`);
+  const label = document.createElement("div");
+  label.className = "wireframe-section__label";
+  appendTextElement(label, "span", "", `SECTION ${String(index + 1).padStart(2, "0")}`);
+  appendTextElement(label, "strong", "", section.name);
+  article.append(label);
+
+  const body = document.createElement("div");
+  const isHero = section.sectionKey.toLowerCase().includes("hero");
+  body.className = `wireframe-section__body wireframe-section__body--${isHero ? "hero" : "content"}`;
+  (section.items || []).filter((item) => item.isVisibleInWizard).forEach((item) => {
+    const value = valueAtPath(contentState.sectionInputs, `${section.sectionKey}.${item.itemKey}`);
+    const display = wireframeDisplayValue(item, value);
+    const node = document.createElement(item.fieldKind === "cta" ? "button" : "div");
+    if (node.tagName === "BUTTON") node.type = "button";
+    node.className = `wireframe-item wireframe-item--${item.fieldKind}${item.textType ? ` wireframe-item--${item.textType}` : ""}`;
+    node.dataset.sectionKey = section.sectionKey;
+    node.dataset.itemKey = item.itemKey;
+    node.title = `${item.name} 편집`;
+    if (item.fieldKind === "image") {
+      const imageValue = String(value?.value || "").trim();
+      if (/^(https?:|\/)/.test(imageValue)) {
+        const image = document.createElement("img");
+        image.src = imageValue;
+        image.alt = value?.alt || item.name;
+        node.append(image);
+      } else {
+        appendTextElement(node, "span", "wireframe-image-icon", "▧");
+        appendTextElement(node, "small", "", imageValue || item.name);
+      }
+    } else {
+      node.textContent = display || item.name;
+      node.classList.toggle("is-placeholder", !display);
+    }
+    node.addEventListener("click", (event) => {
+      event.stopPropagation();
+      selectWireframeTarget(section.sectionKey, item.itemKey, { syncTree: true });
+    });
+    body.append(node);
+  });
+  article.append(body);
+  article.addEventListener("click", () => selectWireframeTarget(section.sectionKey, "", { syncTree: true }));
+  return article;
+}
+
+function renderWireframePreview() {
+  const canvas = document.querySelector("[data-wireframe-canvas]");
+  if (!canvas) return;
+  canvas.innerHTML = "";
+  canvas.classList.toggle("is-mobile", wireframeViewport === "mobile");
+  wizardSectionDefinitions.forEach((section, index) => canvas.append(createWireframeSection(section, index)));
+  if (!wizardSectionDefinitions.length) {
+    appendTextElement(canvas, "p", "wireframe-empty", "템플릿 섹션을 불러오면 와이어프레임이 표시됩니다.");
+  }
+  selectWireframeTarget(selectedWireframeTarget.sectionKey, selectedWireframeTarget.itemKey);
+}
+
+function createLayoutModeBar() {
+  const bar = document.createElement("div");
+  bar.className = "layout-mode-bar";
+  const copy = document.createElement("div");
+  appendTextElement(copy, "strong", "", "Layout & Design");
+  appendTextElement(copy, "small", "", "콘텐츠 구조를 먼저 잡고, 필요할 때 상세 디자인을 편집하세요.");
+  const modes = document.createElement("div");
+  modes.className = "layout-mode-tabs";
+  [["wireframe", "Wireframe"], ["design", "Design"]].forEach(([mode, label]) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = layoutWorkspaceMode === mode ? "is-active" : "";
+    button.setAttribute("aria-pressed", String(layoutWorkspaceMode === mode));
+    button.textContent = label;
+    button.addEventListener("click", () => {
+      layoutWorkspaceMode = mode;
+      sessionStorage.setItem(LAYOUT_MODE_STORAGE_KEY, mode);
+      renderStep();
+    });
+    modes.append(button);
+  });
+  bar.append(copy, modes);
+  return bar;
+}
+
+function createWireframeWorkspace(dynamicSectionsWrapper) {
+  const split = document.createElement("div");
+  split.className = "wireframe-workspace";
+  const tree = document.createElement("aside");
+  tree.className = "wireframe-tree-panel";
+  const treeHeader = document.createElement("header");
+  appendTextElement(treeHeader, "span", "eyebrow", "Content tree");
+  appendTextElement(treeHeader, "strong", "", "섹션 구조와 콘텐츠");
+  appendTextElement(treeHeader, "small", "", "섹션을 펼쳐 입력하고, 핸들을 드래그해 순서를 바꾸세요.");
+  tree.append(treeHeader, dynamicSectionsWrapper);
+
+  const preview = document.createElement("section");
+  preview.className = "wireframe-preview-panel";
+  const previewHeader = document.createElement("header");
+  const previewCopy = document.createElement("div");
+  appendTextElement(previewCopy, "span", "eyebrow", "Live wireframe");
+  appendTextElement(previewCopy, "strong", "", selectedWizardFormTemplate?.name || "프로모션 미리보기");
+  appendTextElement(previewCopy, "small", "", "왼쪽 입력과 섹션 순서가 실시간으로 반영됩니다.");
+  const viewports = document.createElement("div");
+  viewports.className = "wireframe-viewport-tabs";
+  [["desktop", "Desktop"], ["mobile", "Mobile"]].forEach(([mode, label]) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = wireframeViewport === mode ? "is-active" : "";
+    button.setAttribute("aria-pressed", String(wireframeViewport === mode));
+    button.textContent = label;
+    button.addEventListener("click", () => {
+      wireframeViewport = mode;
+      viewports.querySelectorAll("button").forEach((item) => item.classList.toggle("is-active", item === button));
+      renderWireframePreview();
+    });
+    viewports.append(button);
+  });
+  previewHeader.append(previewCopy, viewports);
+  const stage = document.createElement("div");
+  stage.className = "wireframe-stage";
+  const canvas = document.createElement("div");
+  canvas.className = "wireframe-canvas";
+  canvas.dataset.wireframeCanvas = "";
+  stage.append(canvas);
+  preview.append(previewHeader, stage);
+  split.append(tree, preview);
+  requestAnimationFrame(renderWireframePreview);
+  return split;
 }
 
 function createLockedSectionField(sectionKey, item) {
@@ -2572,9 +2762,14 @@ function renderContentStep() {
   if (currentStep === "layout") {
     const workspace = document.createElement("div");
     workspace.className = "template-layout-workspace";
-    workspace.append(layoutPanel);
+    workspace.append(createLayoutModeBar());
+    if (layoutWorkspaceMode === "wireframe") {
+      workspace.append(createWireframeWorkspace(dynamicSectionsWrapper));
+    } else {
+      workspace.append(layoutPanel);
+    }
     placeholders.append(workspace);
-    requestAnimationFrame(postWizardLayoutSnapshot);
+    if (layoutWorkspaceMode === "design") requestAnimationFrame(postWizardLayoutSnapshot);
   }
 }
 
