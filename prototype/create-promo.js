@@ -3019,17 +3019,17 @@ function renderContentStep() {
   const treeToolbar = document.createElement("div");
   treeToolbar.className = "wireframe-tree-toolbar";
   appendTextElement(treeToolbar, "h3", "wizard-template-content-title", "3. 섹션별 텍스트 등록");
+  dynamicSectionsWrapper.append(treeToolbar);
+  dynamicSectionsWrapper.append(...dynamicSections);
   if (requestedCreateMode === "wireframe") {
     const addSection = document.createElement("button");
     addSection.type = "button";
-    addSection.className = "wireframe-section-add";
+    addSection.className = "wireframe-section-add wireframe-section-add--bottom";
     addSection.setAttribute("aria-label", "섹션 추가");
     addSection.textContent = "+ 섹션 추가";
     addSection.addEventListener("click", addWireframeSection);
-    treeToolbar.append(addSection);
+    dynamicSectionsWrapper.append(addSection);
   }
-  dynamicSectionsWrapper.append(treeToolbar);
-  dynamicSectionsWrapper.append(...dynamicSections);
 
   const layoutPanel = document.createElement("section");
   layoutPanel.className = "wizard-layout-panel";

@@ -357,7 +357,11 @@ try {
   assert.equal(templateFreeContent?.wireframeSections?.[0]?.name, "이벤트 안내");
   assert.equal(templateFreeContent?.wireframeSections?.[0]?.items?.length, 1);
   assert.deepEqual(templateFreeContent?.wireframeSectionOrder, ["section01", "section02", "section03"]);
-  await page.getByRole("button", { name: "섹션 추가", exact: true }).click();
+  const addSectionButton = page.getByRole("button", { name: "섹션 추가", exact: true });
+  assert.equal(await addSectionButton.evaluate((node) => (
+    node.previousElementSibling?.classList.contains("wizard-content-accordion")
+  )), true, "Section add button must remain below the section list");
+  await addSectionButton.click();
   const wireframeSections = page.locator(".wireframe-tree-panel .wizard-content-accordion");
   assert.equal(await wireframeSections.count(), 4);
   const addedSection = wireframeSections.nth(3);
