@@ -4,7 +4,15 @@ const {
   generateSectionImage,
   isProviderBillingError,
   isRetryableProviderError,
+  parseStructuredOutput,
 } = require("../api/_promo-section-design-provider");
+
+assert.throws(
+  () => parseStructuredOutput('{"sections":[}', "promo_page_composer"),
+  (error) => error.code === "PLANNER_OUTPUT_JSON_INVALID"
+    && error.retryable === true
+    && /invalid structured JSON/.test(error.message),
+);
 
 function fakeWebp(width, height, size = 4096) {
   const bytes = Buffer.alloc(Math.max(size, 30), 0);

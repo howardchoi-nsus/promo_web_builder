@@ -278,6 +278,33 @@ assert.equal(snapshot.preview.resources[0].locale, "ko-KR");
   assert.equal(attempts, 2);
   assert.deepEqual(stages, ["validating", "repairing"]);
 
+  let invalidJsonAttempts = 0;
+  const invalidJsonRepaired = await generateValidatedRegistryComposition({
+    candidates,
+    promptConfig: {
+      renderedPrompt: "Compose from approved Registry candidates.",
+      promptLayers: {
+        repairPrompts: {
+          contractV3: "Repair {{errorCode}} {{errorMessage}} using {{shellVersionId}} and {{sectionVersionIds}}.",
+        },
+      },
+    },
+    generate: async ({ promptConfig }) => {
+      invalidJsonAttempts += 1;
+      if (invalidJsonAttempts === 1) {
+        throw Object.assign(new Error("Unexpected token at position 8271"), {
+          code: "PLANNER_OUTPUT_JSON_INVALID",
+          retryable: true,
+        });
+      }
+      assert.match(promptConfig.renderedPrompt, /PLANNER_OUTPUT_JSON_INVALID/);
+      assert.match(promptConfig.renderedPrompt, /Unexpected token at position 8271/);
+      return { result: validResult };
+    },
+  });
+  assert.equal(invalidJsonRepaired.repaired, true);
+  assert.equal(invalidJsonAttempts, 2);
+
   const fitCandidates = JSON.parse(JSON.stringify(candidates));
   const fitHero = fitCandidates.sections.find((section) => section.sectionVersionId === "hero-v1");
   fitHero.defaultLayoutKey = "hero-default";

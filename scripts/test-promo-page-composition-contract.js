@@ -348,9 +348,27 @@ const retryResult = generateValidatedComposition({
   },
 });
 
-retryResult.then(({ validated: retried }) => {
+let invalidJsonAttempts = 0;
+const invalidJsonRetryResult = generateValidatedComposition({
+  candidates,
+  promptConfig: { renderedPrompt: "Build the promotion", model: "test-model" },
+  generate: async () => {
+    invalidJsonAttempts += 1;
+    if (invalidJsonAttempts === 1) {
+      throw Object.assign(new Error("Invalid JSON at position 8271"), {
+        code: "PLANNER_OUTPUT_JSON_INVALID",
+        retryable: true,
+      });
+    }
+    return { result };
+  },
+});
+
+Promise.all([retryResult, invalidJsonRetryResult]).then(([{ validated: retried }, invalidJsonRetried]) => {
   assert.equal(generationAttempts, 2);
   assert.equal(retried.template.templateId, "template-1");
+  assert.equal(invalidJsonAttempts, 2);
+  assert.equal(invalidJsonRetried.validated.template.templateId, "template-1");
   console.log("Promo page composition contract tests passed");
 }).catch((error) => {
   console.error(error);

@@ -44,12 +44,18 @@ async function generateValidatedComposition({
   let scopedCandidates = candidates;
   let scopedPromptConfig = promptConfig;
   for (let attempt = 0; attempt < 2; attempt += 1) {
-    const generation = await generate({
-      type: "promo_page_composer",
-      schemaName: "promo_page_composition",
-      schema: pageCompositionSchema(scopedCandidates),
-      promptConfig: scopedPromptConfig,
-    });
+    let generation;
+    try {
+      generation = await generate({
+        type: "promo_page_composer",
+        schemaName: "promo_page_composition",
+        schema: pageCompositionSchema(scopedCandidates),
+        promptConfig: scopedPromptConfig,
+      });
+    } catch (error) {
+      if (attempt > 0 || error.code !== "PLANNER_OUTPUT_JSON_INVALID") throw error;
+      continue;
+    }
     try {
       return {
         generation,
@@ -110,12 +116,19 @@ async function generateValidatedRegistryComposition({
   let currentPrompt = promptConfig;
   for (let attempt = 0; attempt < 2; attempt += 1) {
     await onStage(attempt === 0 ? "validating" : "repairing");
-    const generation = await generate({
-      type: "promo_page_composer",
-      schemaName: "promo_registry_composition_v3",
-      schema: registryCompositionSchema(candidates),
-      promptConfig: currentPrompt,
-    });
+    let generation;
+    try {
+      generation = await generate({
+        type: "promo_page_composer",
+        schemaName: "promo_registry_composition_v3",
+        schema: registryCompositionSchema(candidates),
+        promptConfig: currentPrompt,
+      });
+    } catch (error) {
+      if (attempt > 0 || error.code !== "PLANNER_OUTPUT_JSON_INVALID") throw error;
+      currentPrompt = registryRetryPromptConfig(promptConfig, candidates, error);
+      continue;
+    }
     try {
       const layoutFit = applyLayoutFitRecommendations(generation.result, candidates);
       return {

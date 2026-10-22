@@ -256,6 +256,17 @@ function responseOutputText(payload) {
     .find((part) => part.type === "output_text")?.text || "";
 }
 
+function parseStructuredOutput(output, type) {
+  try {
+    return JSON.parse(output);
+  } catch (cause) {
+    throw Object.assign(
+      new Error(`${type} returned invalid structured JSON: ${cause.message}`, { cause }),
+      { code: "PLANNER_OUTPUT_JSON_INVALID", retryable: true },
+    );
+  }
+}
+
 function promptPlaceholders(value) {
   return [...String(value || "").matchAll(/\{\{\s*([a-zA-Z0-9_.-]+)\s*\}\}/g)]
     .map((match) => match[1])
@@ -355,7 +366,7 @@ async function generateSectionDesignPlan({ section, sectionInputs, constraints, 
   const output = responseOutputText(payload);
   if (!output) throw Object.assign(new Error("Planner returned no structured output"), { code: "EMPTY_DESIGN_PLAN" });
   return {
-    result: JSON.parse(output),
+    result: parseStructuredOutput(output, "section_layout_planner"),
     provider: { provider: "openai", model, requestId, latencyMs: Date.now() - startedAt }, usage: payload.usage || {},
   };
 }
@@ -383,7 +394,7 @@ async function generateMultiComponentLayoutPlan({ promptConfig, signal }) {
   const output = responseOutputText(payload);
   if (!output) throw Object.assign(new Error("Multi-component planner returned no structured output"), { code: "EMPTY_MULTI_LAYOUT_PLAN" });
   return {
-    result: JSON.parse(output),
+    result: parseStructuredOutput(output, "multi_component_layout_planner"),
     provider: { provider: "openai", model, requestId, latencyMs: Date.now() - startedAt },
     usage: payload.usage || {},
   };
@@ -412,7 +423,7 @@ async function generateSectionCompositionPlan({ promptConfig, signal }) {
   const output = responseOutputText(payload);
   if (!output) throw Object.assign(new Error("Section composition planner returned no structured output"), { code: "EMPTY_COMPOSITION_PLAN" });
   return {
-    result: JSON.parse(output),
+    result: parseStructuredOutput(output, "section_composition_planner"),
     provider: { provider: "openai", model, requestId, latencyMs: Date.now() - startedAt },
     usage: payload.usage || {},
   };
@@ -447,7 +458,7 @@ async function generateStructuredPlannerResult({
   const output = responseOutputText(payload);
   if (!output) throw Object.assign(new Error(`${type} returned no structured output`), { code: "EMPTY_PLANNER_RESULT" });
   return {
-    result: JSON.parse(output),
+    result: parseStructuredOutput(output, type),
     provider: { provider: "openai", model, requestId, latencyMs: Date.now() - startedAt },
     usage: payload.usage || {},
   };
@@ -615,6 +626,7 @@ module.exports = {
   generateMultiComponentLayoutPlan,
   generateSectionCompositionPlan,
   generateStructuredPlannerResult,
+  parseStructuredOutput,
   isRetryableProviderError,
   isProviderBillingError,
   generateSectionImage,
