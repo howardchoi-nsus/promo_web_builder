@@ -130,6 +130,51 @@ const FALLBACK_LAYOUT = {
   sectionStyles: {},
 };
 
+const TEMPLATE_FREE_WIREFRAME_SECTIONS = Object.freeze([
+  {
+    sectionId: "wireframe-section-01",
+    sectionKey: "section01",
+    name: "섹션 01 · 히어로",
+    description: "프로모션의 핵심 메시지",
+    userReorderAllowed: true,
+    fixedPosition: null,
+    items: [
+      { id: "section01-title", itemKey: "title", name: "메인 타이틀", fieldKind: "text", textType: "title", isRequired: false, isLocked: false, isVisibleInWizard: true },
+      { id: "section01-main-copy", itemKey: "mainCopy", name: "메인 카피", fieldKind: "text", textType: "multi", isRequired: false, isLocked: false, isVisibleInWizard: true },
+      { id: "section01-sub-copy", itemKey: "subCopy", name: "서브 카피", fieldKind: "text", textType: "multi", isRequired: false, isLocked: false, isVisibleInWizard: true },
+      { id: "section01-cta", itemKey: "cta", name: "CTA", fieldKind: "cta", isRequired: false, isLocked: false, isVisibleInWizard: true },
+      { id: "section01-notice", itemKey: "notice", name: "유의사항", fieldKind: "text", textType: "multi", isRequired: false, isLocked: false, isVisibleInWizard: true },
+    ],
+  },
+  {
+    sectionId: "wireframe-section-02",
+    sectionKey: "section02",
+    name: "섹션 02 · 상세 콘텐츠",
+    description: "혜택과 상세 설명",
+    userReorderAllowed: true,
+    fixedPosition: null,
+    items: [
+      { id: "section02-title", itemKey: "title", name: "섹션 타이틀", fieldKind: "text", textType: "title", isRequired: false, isLocked: false, isVisibleInWizard: true },
+      { id: "section02-description", itemKey: "description", name: "상세 설명", fieldKind: "text", textType: "multi", isRequired: false, isLocked: false, isVisibleInWizard: true },
+      { id: "section02-visual", itemKey: "visual", name: "이미지 영역", fieldKind: "image", isRequired: false, isLocked: true, isVisibleInWizard: true },
+      { id: "section02-cta", itemKey: "cta", name: "CTA", fieldKind: "cta", isRequired: false, isLocked: false, isVisibleInWizard: true },
+    ],
+  },
+  {
+    sectionId: "wireframe-section-03",
+    sectionKey: "section03",
+    name: "섹션 03 · 안내",
+    description: "참여 방법과 추가 안내",
+    userReorderAllowed: true,
+    fixedPosition: null,
+    items: [
+      { id: "section03-title", itemKey: "title", name: "안내 타이틀", fieldKind: "text", textType: "title", isRequired: false, isLocked: false, isVisibleInWizard: true },
+      { id: "section03-description", itemKey: "description", name: "안내 내용", fieldKind: "text", textType: "multi", isRequired: false, isLocked: false, isVisibleInWizard: true },
+      { id: "section03-notice", itemKey: "notice", name: "유의사항", fieldKind: "text", textType: "multi", isRequired: false, isLocked: false, isVisibleInWizard: true },
+    ],
+  },
+]);
+
 const contentState = loadWizardContent();
 contentState.promotionOverview = syncPromotionOverviewFromLegacy(contentState);
 let overviewInputMode = contentState.promotionOverview.inputMode || "structured";
@@ -255,8 +300,36 @@ function loadWizardContent() {
       "promotionOverview", "promotionOverviewDraft", "templateRecommendation", "templateCompositionProposal",
       "templateInputs", "templateDefaultContents",
       "templateSectionOrders", "templateSectionDefinitions", "templateLayouts", "sectionDesignRuns",
+      "wireframeInputs", "wireframeSectionOrder",
     ],
   });
+}
+
+function initializeTemplateFreeWireframe() {
+  const definitions = JSON.parse(JSON.stringify(TEMPLATE_FREE_WIREFRAME_SECTIONS));
+  const defaultOrder = definitions.map((section) => section.sectionKey);
+  const savedOrder = Array.isArray(contentState.wireframeSectionOrder)
+    ? contentState.wireframeSectionOrder.filter((key) => defaultOrder.includes(key))
+    : [];
+  const resolvedOrder = [...savedOrder, ...defaultOrder.filter((key) => !savedOrder.includes(key))];
+  const byKey = new Map(definitions.map((section) => [section.sectionKey, section]));
+  wizardSectionDefinitions = resolvedOrder.map((key) => byKey.get(key)).filter(Boolean);
+  expandedTemplateSectionKeys = new Set(wizardSectionDefinitions.slice(0, 1).map((section) => section.sectionKey));
+  wizardSectionDefinitionsLoading = false;
+  wizardSectionDefinitionsError = "";
+  wizardBaseSectionOrder = [...defaultOrder];
+  wizardBaseLayout = cloneEditorValue(FALLBACK_LAYOUT);
+  wizardResolvedLayout = cloneEditorValue(FALLBACK_LAYOUT);
+  wizardLayoutIdentity = null;
+  selectedWizardFormTemplate = null;
+  contentState.formTemplate = null;
+  contentState.sectionInputs = mergeSectionInputs(
+    contentState.wireframeInputs || {},
+    wizardSectionDefinitions,
+    {},
+    {},
+  );
+  saveWizardContent();
 }
 
 async function loadWizardSectionDefinitions() {
@@ -436,6 +509,7 @@ async function selectWizardFormTemplate(templateId, options = {}) {
 }
 
 async function refreshActiveWizardTemplate() {
+  if (requestedCreateMode === "wireframe") return false;
   if (!selectedWizardFormTemplate || wizardSectionDefinitionsLoading) return false;
   if (wizardTemplateRefreshPromise) return wizardTemplateRefreshPromise;
   const requestId = ++wizardTemplateRefreshRequestId;
@@ -553,6 +627,10 @@ function saveWizardContent() {
   contentState.promotionOverview = syncPromotionOverviewFromLegacy(contentState);
   contentState.promotionOverview.inputMode = overviewInputMode;
   contentState.promotionOverview.rawNaturalLanguage = overviewNaturalLanguage;
+  if (requestedCreateMode === "wireframe") {
+    contentState.wireframeInputs = contentState.sectionInputs;
+    contentState.wireframeSectionOrder = wizardSectionDefinitions.map((section) => section.sectionKey);
+  }
   contentState.templateSectionDefinitions ||= {};
   if (selectedWizardFormTemplate?.templateKey) {
     contentState.templateInputs[selectedWizardFormTemplate.templateKey] = contentState.sectionInputs;
@@ -580,7 +658,7 @@ function saveWizardContent() {
 }
 
 function wizardLayoutSnapshot() {
-  if (!selectedWizardFormTemplate || !wizardResolvedLayout) return null;
+  if ((!selectedWizardFormTemplate && requestedCreateMode !== "wireframe") || !wizardResolvedLayout) return null;
   const snapshot = createLayoutSnapshot({
     layoutRevision: wizardLayoutRevision,
     layoutIdentity: wizardLayoutIdentity,
@@ -1112,7 +1190,9 @@ function createWireframeWorkspace(dynamicSectionsWrapper) {
   const previewHeader = document.createElement("header");
   const previewCopy = document.createElement("div");
   appendTextElement(previewCopy, "span", "eyebrow", "Live wireframe");
-  appendTextElement(previewCopy, "strong", "", selectedWizardFormTemplate?.name || "프로모션 미리보기");
+  appendTextElement(previewCopy, "strong", "", requestedCreateMode === "wireframe"
+    ? "자유형 프로모션"
+    : selectedWizardFormTemplate?.name || "프로모션 미리보기");
   appendTextElement(previewCopy, "small", "", "왼쪽 입력과 섹션 순서가 실시간으로 반영됩니다.");
   const viewports = document.createElement("div");
   viewports.className = "wireframe-viewport-tabs";
@@ -1244,6 +1324,7 @@ function createImageSectionField(sectionKey, item) {
 function contentErrors() {
   const errors = {};
   if (!wizardSectionConfigurationReady()) errors.sectionConfiguration = true;
+  if (requestedCreateMode === "wireframe") return errors;
   const required = [
     ["title", contentState.promo.title],
     ["leadText", contentState.promo.leadText],
@@ -2812,7 +2893,7 @@ function renderWebOutputStep() {
     "p",
     "",
     snapshot
-      ? `Template v${snapshot.content?.formTemplate?.version || 1} · layout r${snapshot.layoutRevision || 1} · ${new Date(snapshot.createdAt).toLocaleString()}`
+      ? `${requestedCreateMode === "wireframe" ? "Freeform" : `Template v${snapshot.content?.formTemplate?.version || 1}`} · layout r${snapshot.layoutRevision || 1} · ${new Date(snapshot.createdAt).toLocaleString()}`
       : "Step 4에서 필수 콘텐츠와 레이아웃을 확인한 후 Web Output을 생성해 주세요."
   );
   const actions = document.createElement("div");
@@ -2851,7 +2932,10 @@ function renderStep() {
   if (shellStatus) shellStatus.textContent = `Step ${currentIndex + 1} / ${steps.length}`;
   prev.disabled = currentStep === "overview";
   next.disabled = currentStep === "output"
-    || (currentStep === "layout" && (!selectedDesignTokenSet() || !wizardSectionConfigurationReady()));
+    || (currentStep === "layout" && (
+      !wizardSectionConfigurationReady()
+      || (requestedCreateMode !== "wireframe" && !selectedDesignTokenSet())
+    ));
   next.textContent = currentStep === "layout" ? "Web Output" : "Next";
 
   stepButtons.forEach((button, index) => {
@@ -2891,7 +2975,9 @@ stepButtons.forEach((button, index) => {
   button.addEventListener("click", () => {
     const targetStep = button.dataset.step;
     const targetIndex = stepIndex(targetStep);
-    if (targetIndex >= stepIndex("template") && Object.keys(promotionOverviewErrors()).length) {
+    if (requestedCreateMode !== "wireframe"
+      && targetIndex >= stepIndex("template")
+      && Object.keys(promotionOverviewErrors()).length) {
       validationErrors = promotionOverviewErrors();
       currentStep = "overview";
       renderStep();
@@ -2939,5 +3025,10 @@ next.addEventListener("click", () => {
   if (currentStep === "layout") refreshActiveWizardTemplate();
 });
 
-renderStep();
-loadWizardSectionDefinitions();
+if (requestedCreateMode === "wireframe") {
+  initializeTemplateFreeWireframe();
+  renderStep();
+} else {
+  renderStep();
+  loadWizardSectionDefinitions();
+}

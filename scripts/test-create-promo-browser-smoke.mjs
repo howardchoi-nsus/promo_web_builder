@@ -296,26 +296,36 @@ try {
   await page.getByRole("button", { name: /와이어프레임 모드/ }).click();
   await page.locator(".wireframe-workspace").waitFor();
   assert.equal(
-    await page.locator('.wireframe-tree-panel [data-item-key="image"]').count(),
+    requestedPaths.filter((pathname) => pathname.startsWith("/api/wizard-form-template")).length,
+    0,
+    "Template-free wireframe mode must not request a template"
+  );
+  assert.equal(
+    await page.locator('.wireframe-tree-panel [data-item-key="visual"]').count(),
     0,
     "MVP content tree must not expose image registration fields"
   );
   await assertPageText(
-    page.locator('.wireframe-item[data-section-key="contentFeature"][data-item-key="image"]'),
-    "▧프로모션 이미지 · Directus 연동 예정"
+    page.locator('.wireframe-item[data-section-key="section02"][data-item-key="visual"]'),
+    "▧이미지 영역 · Directus 연동 예정"
   );
   assert.equal(
-    await page.locator('.wireframe-section[data-section-key="contentFeature"] .wireframe-section__body').evaluate((node) => (
+    await page.locator('.wireframe-section[data-section-key="section02"] .wireframe-section__body').evaluate((node) => (
       getComputedStyle(node).gridTemplateColumns.trim().split(/\s+/).length
     )),
     1,
     "Every wireframe element must be placed in a single-column row"
   );
-  await page.locator('[data-item-key="title"] textarea').fill("Wireframe live title");
+  await page.locator('.wireframe-tree-panel [data-section-key="section01"] [data-item-key="title"] textarea').fill("Wireframe live title");
   await assertPageText(
-    page.locator('.wireframe-item[data-section-key="heroBanner"][data-item-key="title"]'),
+    page.locator('.wireframe-item[data-section-key="section01"][data-item-key="title"]'),
     "Wireframe live title"
   );
+  const templateFreeContent = await page.evaluate(() => (
+    JSON.parse(localStorage.getItem("promoPrototype.createPromo.content.v1") || "null")
+  ));
+  assert.equal(templateFreeContent?.wireframeInputs?.section01?.title, "Wireframe live title");
+  assert.deepEqual(templateFreeContent?.wireframeSectionOrder, ["section01", "section02", "section03"]);
   await page.evaluate(() => {
     sessionStorage.clear();
     localStorage.setItem("promoPrototype.createPromo.content.v1", JSON.stringify({
