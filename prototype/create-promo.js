@@ -973,8 +973,11 @@ function createDynamicSectionField(sectionKey, item) {
 
 function wireframeDisplayValue(item, value) {
   if (item.fieldKind === "cta") return String(value?.label || "CTA 버튼");
-  if (item.fieldKind === "image") return String(value?.value || "");
   return String(value || "");
+}
+
+function isWireframeTextItem(item) {
+  return item?.isVisibleInWizard && item.fieldKind !== "image";
 }
 
 function selectWireframeTarget(sectionKey, itemKey = "", options = {}) {
@@ -1035,24 +1038,20 @@ function createWireframeSection(section, index) {
     node.dataset.itemKey = item.itemKey;
     node.title = `${item.name} 편집`;
     if (item.fieldKind === "image") {
-      const imageValue = String(value?.value || "").trim();
-      if (/^(https?:|\/)/.test(imageValue)) {
-        const image = document.createElement("img");
-        image.src = imageValue;
-        image.alt = value?.alt || item.name;
-        node.append(image);
-      } else {
-        appendTextElement(node, "span", "wireframe-image-icon", "▧");
-        appendTextElement(node, "small", "", imageValue || item.name);
-      }
+      node.classList.add("is-readonly");
+      node.title = "이미지는 추후 Directus에서 연결됩니다.";
+      appendTextElement(node, "span", "wireframe-image-icon", "▧");
+      appendTextElement(node, "small", "", `${item.name} · Directus 연동 예정`);
     } else {
       node.textContent = display || item.name;
       node.classList.toggle("is-placeholder", !display);
     }
-    node.addEventListener("click", (event) => {
-      event.stopPropagation();
-      selectWireframeTarget(section.sectionKey, item.itemKey, { syncTree: true });
-    });
+    if (item.fieldKind !== "image") {
+      node.addEventListener("click", (event) => {
+        event.stopPropagation();
+        selectWireframeTarget(section.sectionKey, item.itemKey, { syncTree: true });
+      });
+    }
     body.append(node);
   });
   article.append(body);
@@ -1104,8 +1103,8 @@ function createWireframeWorkspace(dynamicSectionsWrapper) {
   tree.className = "wireframe-tree-panel";
   const treeHeader = document.createElement("header");
   appendTextElement(treeHeader, "span", "eyebrow", "Content tree");
-  appendTextElement(treeHeader, "strong", "", "섹션 구조와 콘텐츠");
-  appendTextElement(treeHeader, "small", "", "섹션을 펼쳐 입력하고, 핸들을 드래그해 순서를 바꾸세요.");
+  appendTextElement(treeHeader, "strong", "", "섹션별 텍스트 콘텐츠");
+  appendTextElement(treeHeader, "small", "", "이미지는 제외됩니다. 섹션을 펼쳐 텍스트를 입력하고 순서를 관리하세요.");
   tree.append(treeHeader, dynamicSectionsWrapper);
 
   const preview = document.createElement("section");
@@ -2585,12 +2584,13 @@ function renderContentStep() {
     error.append(retry);
     dynamicSections.push(error);
   } else {
-    wizardSectionDefinitions.forEach((section) => {
-      const visibleItems = (section.items || []).filter((item) => item.isVisibleInWizard);
-      if (!visibleItems.length) return;
+    wizardSectionDefinitions.forEach((section, sectionIndex) => {
+      const visibleItems = (section.items || []).filter(isWireframeTextItem);
       const sectionEl = document.createElement("article");
       sectionEl.className = `content-form-section wizard-content-accordion${draggedTemplateSectionKey === section.sectionKey ? " is-dragging" : ""}`;
       sectionEl.dataset.sectionKey = section.sectionKey;
+      sectionEl.setAttribute("role", "treeitem");
+      sectionEl.setAttribute("aria-level", "1");
       sectionEl.addEventListener("dragover", (event) => {
         if (!draggedTemplateSectionKey || !templateSectionCanReorder(section)) return;
         event.preventDefault();
@@ -2620,8 +2620,15 @@ function renderContentStep() {
       }
       dragHandle.addEventListener("dragstart", (event) => startTemplateSectionDrag(section, event));
       dragHandle.addEventListener("dragend", stopTemplateSectionDrag);
+      const sectionIdentity = document.createElement("div");
+      sectionIdentity.className = "wizard-content-tree-identity";
+      appendTextElement(sectionIdentity, "small", "", `SECTION ${String(sectionIndex + 1).padStart(2, "0")}`);
       const sectionName = document.createElement("h3");
       sectionName.textContent = section.name;
+      sectionIdentity.append(sectionName);
+      const itemCount = document.createElement("span");
+      itemCount.className = "wizard-content-tree-count";
+      itemCount.textContent = `${visibleItems.length}개 텍스트`;
       const expanded = expandedTemplateSectionKeys.has(section.sectionKey);
       const toggle = document.createElement("button");
       toggle.type = "button";
@@ -2629,12 +2636,23 @@ function renderContentStep() {
       toggle.setAttribute("aria-expanded", String(expanded));
       toggle.setAttribute("aria-label", expanded ? `${section.name} 닫기` : `${section.name} 열기`);
       toggle.textContent = expanded ? "▾" : "▸";
-      sectionHeader.append(dragHandle, sectionName, toggle);
+      sectionHeader.append(dragHandle, sectionIdentity, itemCount, toggle);
       const grid = document.createElement("div");
       grid.className = `content-form-grid wizard-content-accordion-body${expanded ? " is-open" : ""}`;
+      grid.setAttribute("role", "group");
       grid.inert = !expanded;
       grid.setAttribute("aria-hidden", String(!expanded));
-      visibleItems.forEach((item) => grid.append(createDynamicSectionField(section.sectionKey, item)));
+      visibleItems.forEach((item) => {
+        const node = document.createElement("div");
+        node.className = "wizard-content-tree-node";
+        node.setAttribute("role", "treeitem");
+        node.setAttribute("aria-level", "2");
+        node.append(createDynamicSectionField(section.sectionKey, item));
+        grid.append(node);
+      });
+      if (!visibleItems.length) {
+        appendTextElement(grid, "p", "wizard-content-tree-empty", "이 섹션에는 MVP에서 편집할 텍스트 항목이 없습니다.");
+      }
       toggle.addEventListener("click", () => {
         const isOpen = expandedTemplateSectionKeys.has(section.sectionKey);
         expandedTemplateSectionKeys.clear();
@@ -2663,7 +2681,9 @@ function renderContentStep() {
   }
   const dynamicSectionsWrapper = document.createElement("div");
   dynamicSectionsWrapper.className = "wizard-template-content-sections";
-  appendTextElement(dynamicSectionsWrapper, "h3", "wizard-template-content-title", "3. 컨텐츠 등록");
+  dynamicSectionsWrapper.setAttribute("role", "tree");
+  dynamicSectionsWrapper.setAttribute("aria-label", "프로모션 섹션별 텍스트 콘텐츠");
+  appendTextElement(dynamicSectionsWrapper, "h3", "wizard-template-content-title", "3. 섹션별 텍스트 등록");
   dynamicSectionsWrapper.append(...dynamicSections);
 
   const layoutPanel = document.createElement("section");

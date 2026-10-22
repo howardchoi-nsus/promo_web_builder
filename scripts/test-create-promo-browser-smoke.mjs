@@ -295,6 +295,15 @@ try {
   await page.goto(`${origin}/create-promo.html`, { waitUntil: "networkidle" });
   await page.getByRole("button", { name: /와이어프레임 모드/ }).click();
   await page.locator(".wireframe-workspace").waitFor();
+  assert.equal(
+    await page.locator('.wireframe-tree-panel [data-item-key="image"]').count(),
+    0,
+    "MVP content tree must not expose image registration fields"
+  );
+  await assertPageText(
+    page.locator('.wireframe-item[data-section-key="contentFeature"][data-item-key="image"]'),
+    "▧프로모션 이미지 · Directus 연동 예정"
+  );
   await page.locator('[data-item-key="title"] textarea').fill("Wireframe live title");
   await assertPageText(
     page.locator('.wireframe-item[data-section-key="heroBanner"][data-item-key="title"]'),
