@@ -42,6 +42,8 @@
     "test:no-hardcoded-runtime-prompts": "node scripts/test-no-hardcoded-runtime-prompts.js",
     "test:admin-prompt-grouping-browser": "node scripts/test-admin-prompt-grouping-browser.mjs",
     "test:component-generation-e2e": "node scripts/test-component-generation-e2e-browser.mjs",
+    "prompt-quality:plan": "node scripts/apply-web-output-prompt-quality-pack.mjs",
+    "prompt-quality:check": "node scripts/apply-web-output-prompt-quality-pack.mjs --check --target=preview",
     "inspect:component-cutover": "node scripts/inspect-item-component-cutover.js",
     "design-md:dry-run": "node scripts/import-design-md-docs.js",
     "design-md:import": "node scripts/import-design-md-docs.js --apply"
