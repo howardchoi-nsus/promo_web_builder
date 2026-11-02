@@ -292,9 +292,39 @@ try {
 
   // Wireframe mode opens the split tree/canvas workspace directly and mirrors
   // content edits without requiring the full visual editor.
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${origin}/create-promo.html`, { waitUntil: "networkidle" });
+  await assertPageText(page.locator("#wizard-shell-status"), "Create Promo");
+  for (const name of [/와이어프레임 모드/, /템플릿 모드/, /AI 모드/]) {
+    await page.getByRole("button", { name }).waitFor();
+  }
+  const aiModeBox = await page.getByRole("button", { name: /AI 모드/ }).boundingBox();
+  assert.ok(
+    aiModeBox && aiModeBox.y + aiModeBox.height <= 844,
+    "모바일 첫 화면에서 세 가지 제작 방식이 모두 보여야 합니다."
+  );
+  await page.evaluate(() => {
+    sessionStorage.setItem("promoPrototype.createPromo.layoutMode.v1", "design");
+  });
   await page.getByRole("button", { name: /와이어프레임 모드/ }).click();
   await page.locator(".wireframe-workspace").waitFor();
+  assert.equal(
+    await page.locator(".layout-mode-bar").count(),
+    0,
+    "전용 와이어프레임 모드에는 Design 전환을 노출하지 않아야 합니다."
+  );
+  const mobileViewTabs = page.getByRole("group", { name: "와이어프레임 보기" });
+  await mobileViewTabs.waitFor();
+  assert.equal(await page.locator(".wireframe-tree-panel").isVisible(), true);
+  assert.equal(await page.locator(".wireframe-preview-panel").isHidden(), true);
+  await mobileViewTabs.getByRole("button", { name: "미리보기", exact: true }).click();
+  assert.equal(await page.locator(".wireframe-tree-panel").isHidden(), true);
+  assert.equal(await page.locator(".wireframe-preview-panel").isVisible(), true);
+  await mobileViewTabs.getByRole("button", { name: "콘텐츠", exact: true }).click();
+  await page.setViewportSize({ width: 1280, height: 900 });
+  assert.equal(await mobileViewTabs.isHidden(), true);
+  assert.equal(await page.locator(".wireframe-tree-panel").isVisible(), true);
+  assert.equal(await page.locator(".wireframe-preview-panel").isVisible(), true);
   assert.equal(await page.locator(".wizard-progress").isHidden(), true);
   assert.equal(await page.locator(".wizard-footer").isHidden(), true);
   assert.equal(
@@ -332,6 +362,19 @@ try {
     "Wireframe live text"
   );
   const firstWireframeField = page.locator('.wireframe-tree-panel [data-section-key="section01"] [data-item-key="text01"]');
+  const firstPreviewItem = page.locator('.wireframe-item[data-section-key="section01"][data-item-key="text01"]');
+  await firstPreviewItem.focus();
+  await page.keyboard.press("Enter");
+  assert.equal(
+    await firstWireframeField.locator("textarea").evaluate((element) => document.activeElement === element),
+    true,
+    "미리보기 텍스트는 키보드로 선택해 연결된 입력 필드로 이동할 수 있어야 합니다."
+  );
+  assert.equal(
+    (await page.locator('.wireframe-section[data-section-key="section01"] .wireframe-section__label').textContent()).trim(),
+    "SECTION 01",
+    "기본 섹션 이름은 SECTION 번호와 중복 표시하지 않아야 합니다."
+  );
   await firstWireframeField.locator(".wireframe-content-mode").selectOption("html");
   await firstWireframeField.locator("textarea").fill(
     '<p>HTML 안내 <strong>강조</strong><script>window.__unsafe = true</script><span style="color:red" onclick="alert(1)">안전</span><a href="javascript:alert(1)">링크</a></p>'

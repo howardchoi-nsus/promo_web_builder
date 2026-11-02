@@ -126,6 +126,10 @@ try {
   await page.goto(`${origin}/prototype/index.html?view=admin&tab=design-tokens`, { waitUntil: "networkidle" });
   await page.getByRole("heading", { name: "디자인 토큰 관리" }).waitFor();
   await page.getByText("Rounded Style", { exact: true }).first().waitFor();
+  assert.equal(await page.locator(".design-token-table th").first().textContent(), "토큰 이름 (name)");
+  const labelTokenRow = page.locator(".design-token-value").filter({ hasText: "--app-font-weight-label" });
+  assert.match(await labelTokenRow.locator("td").first().textContent(), /라벨/);
+  assert.match(await labelTokenRow.locator("td").first().textContent(), /글자 두께/);
   assert.equal(
     await page.locator(".design-token-table th").first().evaluate((node) => getComputedStyle(node).borderTopWidth),
     "1px",

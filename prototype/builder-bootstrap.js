@@ -38,7 +38,7 @@
   if (mode === "template" || mode === "wireframe") {
     if (legacyRoot) legacyRoot.hidden = false;
     if (aiRoot) aiRoot.hidden = true;
-    loadScript("create-promo.js?v=create-promo-light-v41").catch(() => {
+    loadScript("create-promo.js?v=create-promo-light-v42").catch(() => {
       const status = document.querySelector("#wizard-shell-status");
       if (status) status.textContent = "템플릿 빌더를 불러오지 못했습니다.";
     });
@@ -47,7 +47,7 @@
 
   if (legacyRoot) legacyRoot.hidden = true;
   if (aiRoot) aiRoot.hidden = false;
-  loadStylesheet("visual-editor-assets/ai-builder.css?v=ai-builder-v1")
+  loadStylesheet("visual-editor-assets/ai-builder.css?v=ai-builder-v2")
     .then(() => loadScript("visual-editor-assets/ai-builder.js?v=ai-builder-v1", "module"))
     .catch(() => {
       if (aiRoot) {

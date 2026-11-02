@@ -196,6 +196,10 @@ const plannerSnapshot = plannerRegistryCandidateSnapshot({
     name: "Hero",
     description: "Hero",
     sectionRole: "hero",
+    sortOrder: 10,
+    fixedPosition: "top",
+    rankScore: 82,
+    matchedCapabilities: ["title", "cta"],
     compositionPolicy: {},
     defaultLayoutKey: "hero-left",
     allowedLayoutKeys: ["hero-left", "hero-center"],
@@ -211,11 +215,43 @@ const plannerSnapshot = plannerRegistryCandidateSnapshot({
       { layoutKey: "hero-left", name: "Left", selectionMetadata: {} },
       { layoutKey: "hero-center", name: "Center", selectionMetadata: {} },
     ],
-    components: [],
+    components: [{
+      componentInstanceId: "hero-copy",
+      componentVersionId: "hero-copy-v1",
+      componentKey: "hero-copy",
+      itemKey: "copy",
+      name: "Hero Copy",
+      description: "Primary conversion copy",
+      fields: [
+        {
+          fieldKey: "title",
+          name: "Title",
+          description: "Primary headline",
+          fieldKind: "text",
+          textType: "title",
+          editorSchema: { maxLength: 72 },
+        },
+        {
+          fieldKey: "description",
+          name: "Description",
+          description: "Supporting copy",
+          fieldKind: "text",
+          textType: "body",
+          editorSchema: { maxLength: "invalid" },
+        },
+      ],
+    }],
   }],
   designReferences: [{ designDocumentId: "luxury", referenceName: "Refined Editorial" }],
 });
 assert.equal(plannerSnapshot.sections[0].recommendedLayoutKey, "hero-center");
+assert.equal(plannerSnapshot.sections[0].sortOrder, 10);
+assert.equal(plannerSnapshot.sections[0].fixedPosition, "top");
+assert.equal(plannerSnapshot.sections[0].rankScore, 82);
+assert.deepEqual(plannerSnapshot.sections[0].matchedCapabilities, ["title", "cta"]);
+assert.equal(plannerSnapshot.sections[0].components[0].fields[0].description, "Primary headline");
+assert.equal(plannerSnapshot.sections[0].components[0].fields[0].maxLength, 72);
+assert.equal(plannerSnapshot.sections[0].components[0].fields[1].maxLength, 2000);
 assert.equal(plannerSnapshot.sections[0].layoutPresets[1].fitScore, 44);
 assert.deepEqual(plannerSnapshot.sections[0].layoutPresets[1].fitReasons, ["long-headline-fit"]);
 assert.equal(plannerSnapshot.designReferences[0].designDocumentId, "luxury");

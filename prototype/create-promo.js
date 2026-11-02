@@ -103,10 +103,14 @@ let wizardTemplateRefreshPromise = null;
 let wizardTemplateRefreshRequestId = 0;
 let wizardTemplateRefreshError = "";
 let wizardLayoutFrame = null;
-let layoutWorkspaceMode = ["wireframe", "design"].includes(sessionStorage.getItem(LAYOUT_MODE_STORAGE_KEY))
-  ? sessionStorage.getItem(LAYOUT_MODE_STORAGE_KEY)
-  : requestedCreateMode === "wireframe" ? "wireframe" : "design";
+const storedLayoutWorkspaceMode = sessionStorage.getItem(LAYOUT_MODE_STORAGE_KEY);
+let layoutWorkspaceMode = requestedCreateMode === "wireframe"
+  ? "wireframe"
+  : ["wireframe", "design"].includes(storedLayoutWorkspaceMode)
+    ? storedLayoutWorkspaceMode
+    : "design";
 let wireframeViewport = "desktop";
+let wireframeMobileView = "tree";
 let selectedWireframeTarget = { sectionKey: "", itemKey: "" };
 let draggedWireframeField = { sectionKey: "", itemKey: "" };
 const wizardEditorBridge = globalThis.PromoEditorBridge?.createEditorBridge({
@@ -1341,20 +1345,29 @@ function selectWireframeTarget(sectionKey, itemKey = "", options = {}) {
     ? accordion.querySelector(`[data-item-key="${CSS.escape(itemKey)}"]`)
     : accordion;
   target?.scrollIntoView({ behavior: "smooth", block: "center" });
-  target?.querySelector("input, textarea, select")?.focus({ preventScroll: true });
+  const primaryInput = target?.querySelector("textarea")
+    || target?.querySelector("input")
+    || target?.querySelector("select");
+  primaryInput?.focus({ preventScroll: true });
 }
 
 function createWireframeSection(section, index) {
   const sectionName = wireframeSectionDisplayName(section, index);
+  const defaultSectionName = `섹션 ${String(index + 1).padStart(2, "0")}`;
   const article = document.createElement("article");
   article.className = "wireframe-section";
   article.dataset.sectionKey = section.sectionKey;
-  article.tabIndex = 0;
   article.setAttribute("aria-label", `${sectionName} 섹션 편집`);
-  const label = document.createElement("div");
+  const label = document.createElement("button");
+  label.type = "button";
   label.className = "wireframe-section__label";
+  label.setAttribute("aria-label", `${sectionName} 섹션 편집`);
   appendTextElement(label, "span", "", `SECTION ${String(index + 1).padStart(2, "0")}`);
-  appendTextElement(label, "strong", "", sectionName);
+  if (sectionName !== defaultSectionName) appendTextElement(label, "strong", "", sectionName);
+  label.addEventListener("click", (event) => {
+    event.stopPropagation();
+    selectWireframeTarget(section.sectionKey, "", { syncTree: true });
+  });
   article.append(label);
 
   const body = document.createElement("div");
@@ -1367,6 +1380,9 @@ function createWireframeSection(section, index) {
     node.dataset.sectionKey = section.sectionKey;
     node.dataset.itemKey = item.itemKey;
     node.title = `${item.name} 편집`;
+    node.tabIndex = 0;
+    node.setAttribute("role", "button");
+    node.setAttribute("aria-label", `${item.name} 편집`);
     if (wireframeContentMode(item) === "html" && display) {
       node.classList.add("is-html");
       node.innerHTML = sanitizeWireframeHtml(display);
@@ -1375,6 +1391,12 @@ function createWireframeSection(section, index) {
     }
     node.classList.toggle("is-placeholder", !display);
     node.addEventListener("click", (event) => {
+      event.stopPropagation();
+      selectWireframeTarget(section.sectionKey, item.itemKey, { syncTree: true });
+    });
+    node.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
       event.stopPropagation();
       selectWireframeTarget(section.sectionKey, item.itemKey, { syncTree: true });
     });
@@ -1425,6 +1447,31 @@ function createLayoutModeBar() {
 function createWireframeWorkspace(dynamicSectionsWrapper) {
   const split = document.createElement("div");
   split.className = "wireframe-workspace";
+  split.dataset.mobileView = wireframeMobileView;
+
+  const mobileViews = document.createElement("div");
+  mobileViews.className = "wireframe-mobile-view-tabs";
+  mobileViews.setAttribute("role", "group");
+  mobileViews.setAttribute("aria-label", "와이어프레임 보기");
+  [["tree", "콘텐츠"], ["preview", "미리보기"]].forEach(([view, label]) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = wireframeMobileView === view ? "is-active" : "";
+    button.setAttribute("aria-pressed", String(wireframeMobileView === view));
+    button.textContent = label;
+    button.addEventListener("click", () => {
+      wireframeMobileView = view;
+      split.dataset.mobileView = view;
+      mobileViews.querySelectorAll("button").forEach((item) => {
+        const active = item === button;
+        item.classList.toggle("is-active", active);
+        item.setAttribute("aria-pressed", String(active));
+      });
+      if (view === "preview") renderWireframePreview();
+    });
+    mobileViews.append(button);
+  });
+
   const tree = document.createElement("aside");
   tree.className = "wireframe-tree-panel";
   const treeHeader = document.createElement("header");
@@ -1465,7 +1512,7 @@ function createWireframeWorkspace(dynamicSectionsWrapper) {
   canvas.dataset.wireframeCanvas = "";
   stage.append(canvas);
   preview.append(previewHeader, stage);
-  split.append(tree, preview);
+  split.append(mobileViews, tree, preview);
   requestAnimationFrame(renderWireframePreview);
   return split;
 }
@@ -3235,7 +3282,7 @@ function renderContentStep() {
   if (currentStep === "layout") {
     const workspace = document.createElement("div");
     workspace.className = "template-layout-workspace";
-    workspace.append(createLayoutModeBar());
+    if (requestedCreateMode !== "wireframe") workspace.append(createLayoutModeBar());
     if (layoutWorkspaceMode === "wireframe") {
       workspace.append(createWireframeWorkspace(dynamicSectionsWrapper));
     } else {

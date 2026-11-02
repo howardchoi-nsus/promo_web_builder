@@ -224,7 +224,7 @@
   ,"admin.designToken.search": "토큰 검색"
   ,"admin.designToken.allCategories": "전체 분류"
   ,"admin.designToken.changedOnly": "변경된 항목만 보기"
-  ,"admin.designToken.category": "분류"
+  ,"admin.designToken.category": "토큰 이름 (name)"
   ,"admin.designToken.token": "토큰"
   ,"admin.designToken.type": "형식"
   ,"admin.designToken.value": "현재 값"

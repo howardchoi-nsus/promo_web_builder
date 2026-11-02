@@ -625,10 +625,13 @@ export default {
               </tr></thead>
               <tbody>
                 <tr v-for="item in filteredValues" :key="tokenIdentity(item)" class="design-token-value" :class="{ changed: isTokenChanged(item) }">
-                  <td>{{ item.categoryLabel || item.category }}<small>{{ item.category }}</small></td>
+                  <td>
+                    {{ item.label || item.semanticRole || item.tokenKey }}
+                    <small>{{ item.categoryLabel || item.category }}</small>
+                  </td>
                   <td>
                     <code>{{ item.tokenKey }}</code>
-                    <small>{{ item.label || item.semanticRole }}<template v-if="item.cardinality === 'list'"> · #{{ item.valueIndex }}</template></small>
+                    <small v-if="item.cardinality === 'list'">#{{ item.valueIndex }}</small>
                   </td>
                   <td>{{ item.valueType }}<small v-if="item.unit">{{ item.unit }}</small></td>
                   <td v-if="!isDarkOnlySet">

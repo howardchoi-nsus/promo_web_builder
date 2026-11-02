@@ -224,7 +224,7 @@
   ,"admin.designToken.search": "Search tokens"
   ,"admin.designToken.allCategories": "All categories"
   ,"admin.designToken.changedOnly": "Show changed only"
-  ,"admin.designToken.category": "Category"
+  ,"admin.designToken.category": "Token name"
   ,"admin.designToken.token": "Token"
   ,"admin.designToken.type": "Type"
   ,"admin.designToken.value": "Current value"

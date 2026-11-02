@@ -43,9 +43,16 @@
 .ai-mode-grid,
 .ai-overview-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
   margin-top: 24px;
+}
+
+.ai-mode-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ai-overview-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .ai-mode-grid button {
@@ -405,8 +412,11 @@
   .ai-builder-shell { padding: 16px; }
   .ai-builder-shell--processing { padding: 8px; }
   .ai-composition-progress { min-height: calc(100vh - 80px); padding: 28px 18px; }
+  .ai-mode-selector { margin-top: 0; padding: 20px; }
   .ai-mode-grid,
   .ai-overview-grid { grid-template-columns: 1fr; }
+  .ai-mode-grid { gap: 10px; margin-top: 18px; }
+  .ai-mode-grid button { min-height: 0; gap: 6px; padding: 16px 18px; }
   .ai-builder-result__toolbar { align-items: flex-start; flex-direction: column; }
   .registry-proposal-list > li { grid-template-columns: 36px minmax(0, 1fr); gap: 8px; }
   .registry-proposal-sequence { width: 30px; height: 30px; }

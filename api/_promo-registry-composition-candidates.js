@@ -483,6 +483,10 @@ function plannerRegistryCandidateSnapshot(candidates) {
       name: section.name,
       description: section.description,
       sectionRole: section.sectionRole,
+      sortOrder: Number(section.sortOrder || 0),
+      fixedPosition: section.fixedPosition || null,
+      rankScore: Number(section.rankScore || 0),
+      matchedCapabilities: section.matchedCapabilities || [],
       resolvedRequired: section.resolvedRequired,
       compositionPolicy: section.compositionPolicy,
       defaultLayoutKey: section.defaultLayoutKey,
@@ -515,8 +519,16 @@ function plannerRegistryCandidateSnapshot(candidates) {
         fields: (component.fields || []).map((field) => ({
           fieldKey: field.fieldKey,
           name: field.name,
+          description: field.description || "",
           fieldKind: field.fieldKind,
           textType: field.textType,
+          maxLength: field.editorSchema?.maxLength !== null
+            && field.editorSchema?.maxLength !== undefined
+            && field.editorSchema?.maxLength !== ""
+            && Number.isFinite(Number(field.editorSchema.maxLength))
+            && Number(field.editorSchema.maxLength) > 0
+            ? Math.min(2000, Math.max(1, Number(field.editorSchema.maxLength)))
+            : 2000,
           isRequired: field.isRequired,
           isLocked: field.isLocked,
           aiCopyAllowed: !field.isLocked && field.fieldKind !== "image",

@@ -37,6 +37,23 @@ function runtimeTheme(snapshot) {
   return snapshot?.content?.runtimeTheme || snapshot?.content?.formTemplate || {};
 }
 
+function sectionVisualSafeArea(section) {
+  const layout = (section?.layoutPresets || []).find(
+    (candidate) => candidate.layoutKey === section?.selectedLayoutKey,
+  );
+  const metadata = layout?.selectionMetadata || {};
+  const contentRegion = String(metadata.contentRegion || "").trim().toLowerCase();
+  if (contentRegion.includes("left")) return "left-copy";
+  if (contentRegion.includes("right")) return "right-copy";
+  if (contentRegion === "center") return "center-copy";
+  const mediaSafeSide = String(metadata.mediaSafeSide || "").trim().toLowerCase();
+  // mediaSafeSide describes where the focal media can live. The generated
+  // background therefore reserves the opposite side for DOM copy.
+  if (mediaSafeSide === "left") return "right-copy";
+  if (mediaSafeSide === "right") return "left-copy";
+  return "none";
+}
+
 async function enqueueBuilderAssetJobs(sql, {
   documentId,
   documentRevision,
@@ -61,6 +78,7 @@ async function enqueueBuilderAssetJobs(sql, {
     const field = isComponent ? fieldByKey(component, request.fieldKey) : null;
     if (isComponent && (!component || !field || field.fieldKind !== "image")) continue;
     const promptType = isComponent ? "component_image" : "section_background_image";
+    const safeArea = isComponent ? "none" : sectionVisualSafeArea(section);
     const promptVariables = buildSectionImagePromptVariables({
       promptType,
       section,
@@ -141,7 +159,7 @@ async function enqueueBuilderAssetJobs(sql, {
         ${JSON.stringify({
           imageRequest: {
             prompt: promptSnapshot.promptConfig.renderedPrompt,
-            safeArea: "none",
+            safeArea,
             aspectRatio: isComponent
               ? request.aspectRatio || field.image?.aspectRatio || "1:1"
               : section.aiDesign?.imageAspectRatio || "16:9",
@@ -170,7 +188,7 @@ async function enqueueBuilderAssetJobs(sql, {
     const requestSnapshot = {
       prompt: promptSnapshot.promptConfig.renderedPrompt,
       promptConfig: promptSnapshot.promptConfig,
-      safeArea: "none",
+      safeArea,
       aspectRatio: isComponent
         ? request.aspectRatio || field.image?.aspectRatio || "1:1"
         : section.aiDesign?.imageAspectRatio || "16:9",
@@ -330,6 +348,7 @@ async function hydrateBuilderAssetResults(sql, documentId, snapshot) {
 
 module.exports = {
   SECTION_DESIGN_ASSET_REQUEST_MODE,
+  sectionVisualSafeArea,
   enqueueBuilderAssetJobs,
   enqueueAndScheduleBuilderAssetJobs,
   scheduleBuilderAssetJobs,
