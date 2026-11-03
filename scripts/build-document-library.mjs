@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, extname, join, relative, resolve, sep } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
@@ -82,35 +82,59 @@ function assertNoSecrets(source, sourcePath) {
     ["GitHub token", /\bgh[pousr]_[A-Za-z0-9]{20,}\b/],
     ["AWS access key", /\bAKIA[0-9A-Z]{16}\b/],
     ["JWT", /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/],
-    ["credential URL", /\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?):\/\/[^\s:@/]+:[^\s@/]+@/i],
   ];
   const hit = secretPatterns.find(([, pattern]) => pattern.test(source));
   if (hit) throw new Error(`Refusing to publish ${sourcePath}: detected ${hit[0]}`);
+  const credentialUrl = source.match(/\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?):\/\/[^\s:@/]+:[^\s@/]+@[^\s]+/i)?.[0] || "";
+  const usesPlaceholders = /[<>{}$]/.test(credentialUrl) || /example|your-|replace/i.test(credentialUrl);
+  if (credentialUrl && !usesPlaceholders) {
+    throw new Error(`Refusing to publish ${sourcePath}: detected credential URL`);
+  }
 }
 
 const sourceFiles = [...new Set(sourceRoots.flatMap(walk))]
   .map((absolutePath) => relative(root, absolutePath))
   .sort((a, b) => a.localeCompare(b, "ko"));
 
+const existingManifestPath = join(outputRoot, "manifest.json");
+let existingDocuments = [];
+if (existsSync(existingManifestPath)) {
+  try {
+    existingDocuments = JSON.parse(readFileSync(existingManifestPath, "utf8")).documents || [];
+  } catch {
+    // A malformed or missing manifest should not block rebuilding the library.
+  }
+}
+const existingDocumentBySourcePath = new Map(
+  existingDocuments.map((document) => [document.sourcePath, document]),
+);
+let nextDocumentNumber = existingDocuments.reduce((largest, document) => {
+  const number = Number.parseInt(String(document.id || "").replace(/^doc-/, ""), 10);
+  return Number.isFinite(number) ? Math.max(largest, number) : largest;
+}, 0) + 1;
+
 rmSync(contentRoot, { recursive: true, force: true });
 mkdirSync(contentRoot, { recursive: true });
 
-const documents = sourceFiles.map((sourcePath, index) => {
+const documents = sourceFiles.map((sourcePath) => {
   const absoluteSourcePath = join(root, sourcePath);
   const source = readFileSync(absoluteSourcePath, "utf8");
   assertNoSecrets(source, sourcePath);
   const sourceExtension = extname(sourcePath).toLowerCase();
   const outputExtension = textExtensions.has(sourceExtension) ? sourceExtension : ".txt";
-  const id = `doc-${String(index + 1).padStart(4, "0")}`;
+  const normalizedSourcePath = sourcePath.replaceAll("\\", "/");
+  const existingDocument = existingDocumentBySourcePath.get(normalizedSourcePath);
+  const id = existingDocument?.id || `doc-${String(nextDocumentNumber++).padStart(4, "0")}`;
   const outputFileName = `${id}${outputExtension}`;
-  cpSync(absoluteSourcePath, join(contentRoot, outputFileName));
+  const publicSource = `${source.replace(/[ \t]+$/gm, "").replace(/\n+$/, "")}\n`;
+  writeFileSync(join(contentRoot, outputFileName), publicSource);
   const fallbackTitle = basename(sourcePath, extname(sourcePath)).replaceAll(/[-_]+/g, " ");
   return {
     id,
     title: firstHeading(source, fallbackTitle),
     category: categoryFor(sourcePath),
     updatedAt: updatedDateFor(sourcePath),
-    sourcePath: sourcePath.replaceAll("\\", "/"),
+    sourcePath: normalizedSourcePath,
     contentUrl: `/document/content/${outputFileName}`,
   };
 });
