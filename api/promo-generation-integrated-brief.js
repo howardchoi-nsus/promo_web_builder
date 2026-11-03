@@ -240,3 +240,5 @@ async function updateIntegratedBrief(req, res) {
     state,
   });
 }
+
+module.exports.queueIntegratedBrief = queueIntegratedBrief;

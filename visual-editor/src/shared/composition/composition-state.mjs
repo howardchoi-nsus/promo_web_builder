@@ -18,6 +18,9 @@ export const COMPOSITION_PROGRESS_STAGES = Object.freeze([
 
 export function createAiBuilderState(overrides = {}) {
   return {
+    requestId: "",
+    generationJobId: "",
+    approvalId: "",
     documentId: "",
     documentRevision: 0,
     layoutRevision: 0,

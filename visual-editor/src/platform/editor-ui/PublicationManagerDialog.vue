@@ -13,6 +13,9 @@ const publications = ref([]);
 const selectedId = ref("");
 const runtimePublicUrl = ref("");
 const runtimePublicUrlConfigured = ref(false);
+const serviceContractV3 = ref(false);
+const serviceRequest = ref(null);
+const approval = ref(null);
 const form = reactive({
   slug: "",
   locale: "ko-KR",
@@ -99,8 +102,73 @@ async function loadRuntimeConfig() {
     const payload = await api({}, "/api/promo-builder-capabilities");
     runtimePublicUrl.value = String(payload.capabilities?.runtimePublicUrl || "");
     runtimePublicUrlConfigured.value = payload.capabilities?.runtimePublicUrlConfigured === true;
+    serviceContractV3.value = payload.capabilities?.serviceContractV3 === true;
+    if (serviceContractV3.value) await loadServiceRequest();
   } catch (configError) {
     error.value = configError.message;
+  }
+}
+
+async function loadServiceRequest() {
+  const payload = await api({}, "/api/v3/promo-requests");
+  serviceRequest.value = (payload.requests || []).find((item) => item.documentId === props.documentId) || null;
+  approval.value = serviceRequest.value?.approval?.decision === "approved"
+    && Number(serviceRequest.value.approval.documentRevision) === props.documentRevision
+    ? serviceRequest.value.approval
+    : null;
+}
+
+async function approveCurrentRevision() {
+  if (!serviceRequest.value || saving.value) return;
+  saving.value = true;
+  error.value = "";
+  try {
+    const payload = await api({
+      method: "POST",
+      body: JSON.stringify({ contractVersion: 3, decision: "approved", documentRevision: props.documentRevision }),
+    }, `/api/v3/promo-requests/${encodeURIComponent(serviceRequest.value.requestId)}/review`);
+    approval.value = payload.approval;
+    emit("status", "현재 revision을 승인했습니다. 이제 웹 발행할 수 있습니다.");
+  } catch (approvalError) {
+    error.value = approvalError.code === "QUALITY_GATE_REQUIRED"
+      ? "Desktop·Mobile 품질 검사를 통과해야 승인할 수 있습니다."
+      : approvalError.message;
+  } finally {
+    saving.value = false;
+  }
+}
+
+async function publishV3() {
+  if (!serviceRequest.value || !approval.value || !form.slug || saving.value) return;
+  saving.value = true;
+  error.value = "";
+  try {
+    const payload = await api({
+      method: "POST",
+      body: JSON.stringify({
+        contractVersion: 3,
+        requestId: serviceRequest.value.requestId,
+        approvalId: approval.value.approvalId,
+        slug: form.slug,
+        locale: form.locale,
+        seo: {
+          title: form.title,
+          description: form.description,
+          imageUrl: form.imageUrl,
+          canonicalUrl: form.canonicalUrl,
+          noIndex: form.noIndex,
+        },
+        revalidateSeconds: Number(form.revalidateSeconds),
+      }),
+    }, "/api/v3/publications");
+    selectedId.value = payload.legacyPublication?.publication?.id || selectedId.value;
+    await load();
+    const cacheWarning = payload.cacheInvalidation?.status === "failed" ? " (Nuxt 캐시 갱신 지연)" : "";
+    emit("status", `V3 승인 Snapshot 게시 완료${cacheWarning}`);
+  } catch (publishError) {
+    error.value = publishError.message;
+  } finally {
+    saving.value = false;
   }
 }
 
@@ -244,7 +312,11 @@ onMounted(() => Promise.all([load(), loadRuntimeConfig()]));
           <label class="publication-dialog__check"><input v-model="form.noIndex" type="checkbox" /><span>검색엔진 제외</span></label>
           <div class="publication-dialog__actions wide">
             <button type="submit" :disabled="saving || !form.slug || selected?.publication.status === 'published'">초안 저장</button>
-            <button type="button" class="primary" :disabled="saving || !form.slug" @click="save('published')">현재 revision 게시</button>
+            <template v-if="serviceContractV3">
+              <button type="button" :disabled="saving || !serviceRequest || Boolean(approval)" @click="approveCurrentRevision">현재 revision 승인</button>
+              <button type="button" class="primary" :disabled="saving || !form.slug || !approval" @click="publishV3">승인 Snapshot 게시</button>
+            </template>
+            <button v-else type="button" class="primary" :disabled="saving || !form.slug" @click="save('published')">현재 revision 게시</button>
             <button type="button" :disabled="saving || !selected || selected.publication.status !== 'published'" @click="changeStatus('unpublished')">게시 중지</button>
             <button type="button" :disabled="saving || !selected || selected.publication.status === 'published'" @click="changeStatus('published')">선택 revision 재게시</button>
             <button type="button" :disabled="saving || !selected || !runtimePublicUrlConfigured" @click="openPreview">Nuxt 미리보기</button>

@@ -19,6 +19,7 @@ const FLAG_NAMES = Object.freeze({
   directusShadowRead: "DIRECTUS_SHADOW_READ_ENABLED",
   directusRuntimeRead: "DIRECTUS_RUNTIME_READ_ENABLED",
   directusRuntimeWrite: "DIRECTUS_RUNTIME_WRITE_ENABLED",
+  serviceContractV3: "PROMO_SERVICE_CONTRACT_V3_ENABLED",
 });
 
 // Registry composition is the production path. Keep an explicit false value as
@@ -40,6 +41,8 @@ const FLAG_DEFAULTS = Object.freeze({
   directusShadowRead: false,
   directusRuntimeRead: false,
   directusRuntimeWrite: false,
+  // V3 is opt-in until its DB migration and Preview contract tests are complete.
+  serviceContractV3: false,
 });
 
 function enabled(value, fallback = true) {
