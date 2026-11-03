@@ -110,17 +110,29 @@ Admin Prompt harness는 `left-copy`, `right-copy`, `center-copy` 안전영역을
 
 - `api/_promo-registry-composition-candidates.js`: Section 순서·고정 위치·rank와 Field 설명·최대 길이를 Planner Snapshot에 추가
 - `api/_promo-builder-assets.js`: 선택 Layout에 따라 Section 이미지 safe area를 계산
+- `api/_prompt-execution-snapshot.js`: 운영 Active를 바꾸지 않고 `validated` 후보를 동일한 Runtime 조립·검증·Hash 경로로 평가할 수 있는 Snapshot 추가
+- `api/_promo-page-generation-contract.js`: HTML/CSS 결과의 정확한 출력 Shape, 필수 카피·CTA URL, 텍스트 전용 정책, 반응형·접근성 self-check를 fail-closed로 검증
+- `n8n/promo-ai-page-generator.workflow.json`: 하드코딩 Prompt/Model/온도 대신 `/api/prompts-render`의 Active Snapshot을 사용하고 정적 검증과 실제 1440px·390px Browser Gate를 통과한 결과만 Artifact API에 저장
+- Prompt Runtime API는 `PROMPT_RUNTIME_SERVICE_TOKEN`으로 보호하고 캐시하지 않음
+- Prompt 관리 조회·수정·Validate·Activate·Rollback API는 Admin Session으로 보호하고 캐시하지 않음
+- n8n 생성 Webhook은 `PROMO_PAGE_GENERATION_WEBHOOK_TOKEN` 헤더 인증이 없으면 모델을 호출하지 않음
 - 정적 품질 테스트: 새 Migration에 핵심 `QUALITY GATE`와 lifecycle 계약이 존재하는지 검증
 - 단위 테스트: Candidate Snapshot 필드와 safe-area 매핑 검증
 
 ## 운영 적용 절차
 
-1. Migration 075를 대상 환경에 적용한다.
-2. Admin Prompt 관리에서 다음 4개 `Web Output Quality` 후보를 확인한다.
-3. 각 후보의 변수 계약, provider/model, response format, Prompt Layer를 Validate한다.
-4. 대표 Fixture 결과를 기존 active 버전과 비교한다.
-5. 통과한 후보만 Type별로 Activate한다. 기존 active 버전은 lifecycle 규칙에 따라 inactive로 보존한다.
-6. 실행 로그에서 실제 `promptTemplateId`, `version`, `renderedPromptHash`가 활성화한 후보와 일치하는지 확인한다.
+1. Preview에 `PREVIEW_DATABASE_URL`을 주입하고 DB Backup/Restore Point를 생성한다.
+2. 별도 승인한 Preview DB 지문을 `PROMPT_QUALITY_PREVIEW_FINGERPRINT`에 설정한다.
+3. `pnpm prompt-quality:check`로 4개 Active Source, lifecycle index, 기존 후보 무결성을 확인한 뒤 Migration 075만 적용한다.
+4. Admin Prompt 관리에서 다음 4개 `Web Output Quality` 후보를 확인한다.
+5. 각 후보의 변수 계약, provider/model, response format, Prompt Layer를 Validate한다.
+6. 대표 Fixture 결과를 기존 active 버전과 비교한다.
+7. 통과한 후보만 Type별로 Activate한다. 기존 active 버전은 lifecycle 규칙에 따라 inactive로 보존한다.
+8. 실행 로그에서 실제 `promptTemplateId`, `version`, `renderedPromptHash`가 활성화한 후보와 일치하는지 확인한다.
+
+Preview/Production 배포 전에는 Web API와 n8n 양쪽에 동일한 32자 이상 `PROMPT_RUNTIME_SERVICE_TOKEN`을 설정한다. n8n에는 Prompt Render·Validator·Artifact API URL, Browser Gate 내부 URL, OpenAI Credential, 생성 Webhook Header Auth, Browser Gate 전용 Header Auth를 Credential Store 또는 External Secrets로 매핑하며 요청 Payload로 Model이나 Prompt URL을 받지 않는다. 호출 서비스는 생성 Webhook에 `x-promo-generation-token`을 전달해야 한다. 별도 `PROMO_PAGE_BROWSER_QUALITY_ATTESTATION_SECRET`은 Browser Service와 Artifact API만 공유하고 n8n에는 노출하지 않는다. 저장소의 Workflow JSON은 이 Credential 매핑 전 Import Template이므로 Preview 매핑 검증 전에는 활성화하지 않는다.
+
+Prompt Admin은 32자 이상 `PROMO_ADMIN_SESSION_SECRET`과 `promo_admin_session` 쿠키를 발급하는 사내 IdP 연결이 선행되어야 한다. 설정 없이 배포하면 Prompt 관리 API는 의도적으로 403으로 차단된다. 로컬 Prompt Runtime 우회가 꼭 필요한 경우에만 `PROMPT_RUNTIME_LOCAL_ACCESS_ENABLED=true`를 명시한다.
 
 Migration 적용만으로는 운영 출력이 달라지지 않는다. Admin Activate 전에는 현재 active 프롬프트가 계속 사용된다.
 
@@ -149,8 +161,8 @@ Migration 적용만으로는 운영 출력이 달라지지 않는다. Admin Acti
 ## 남은 고우선 과제
 
 1. 페이지 단위 `artDirection` 계약을 추가해 모든 Section과 이미지가 concept, density, palette 역할, 조명, 배경 복잡도, crop 전략을 공유하게 한다.
-2. 실제 1440px/390px 렌더를 캡처해 overflow, collision, typography, rhythm을 검사하고 실패 시 자동 repair하는 Render Quality Gate를 구축한다.
+2. 구현된 1440px/390px Browser Gate를 내부 Container에 배포하고, 실패 진단을 다음 Model 호출의 제한된 Repair Prompt로 연결한다.
 3. 현재 빈 배열로 전달되는 `productCatalog`와 Overview 콘텐츠 계약을 확장해 proof point, benefit, offer mechanics, terms/FAQ 근거를 Composer에 제공한다.
-4. n8n workflow에 중복된 system prompt와 고정 model parameter를 Admin Prompt Control Plane으로 통합한다.
+4. 동일 Fixture를 Active/Validated 후보에 실행하는 Preview 전용 A/B Runner와 repair-rate·fact-fidelity 비교 리포트를 추가한다.
 
 프롬프트 정적 품질 게이트는 필수지만 충분조건은 아니다. 다음 품질 단계는 대표 Fixture를 실제 Renderer로 1440px·390px에 렌더하고 결과를 자동 판정하는 것이다.

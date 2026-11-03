@@ -4,6 +4,7 @@ const {
   parseBody,
   toPromptTemplate,
 } = require("./_prompt-template-store");
+const { resolveAdminOwner } = require("./_promo-admin-auth");
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
@@ -12,6 +13,8 @@ module.exports = async function handler(req, res) {
   }
 
   try {
+    resolveAdminOwner(req, res);
+    res.setHeader("Cache-Control", "private, no-store");
     const body = parseBody(req.body);
     const id = String(body.id || req.query.id || "").trim();
     const changeNote = String(body.changeNote || body.change_note || "Prompt archived.").trim();
@@ -114,9 +117,11 @@ module.exports = async function handler(req, res) {
 
     return res.status(200).json({ ok: true, prompt: toPromptTemplate(updatedRows[0]) });
   } catch (error) {
+    res.setHeader("Cache-Control", "private, no-store");
     return res.status(error.statusCode || 500).json({
       error: "Prompt archive failed",
       message: error.message,
+      code: error.code,
     });
   }
 };

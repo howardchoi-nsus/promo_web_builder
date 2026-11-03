@@ -69,7 +69,86 @@ async function createPromptExecutionSnapshot(sql, type, variables = {}) {
     throw error;
   }
 
+  return buildPromptExecutionSnapshot(sql, toPromptTemplate(rows[0]), variables);
+}
+
+async function createValidatedPromptExecutionSnapshot(sql, promptId, variables = {}, { expectedType = "" } = {}) {
+  const id = String(promptId || "").trim();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) {
+    const error = new Error("A valid prompt template id is required");
+    error.statusCode = 400;
+    error.code = "PROMPT_ID_INVALID";
+    throw error;
+  }
+
+  await ensureDefaultPromptTemplates(sql);
+  const rows = await sql`
+    select
+      id::text,
+      type,
+      name,
+      body,
+      status,
+      version,
+      lineage_id::text,
+      source_prompt_template_id::text,
+      validated_at,
+      required_variables,
+      optional_variables,
+      provider,
+      model,
+      temperature,
+      max_tokens,
+      response_format,
+      model_options,
+      change_note,
+      archived_at,
+      created_at,
+      updated_at
+    from prompt_templates
+    where id = ${id}::uuid
+    limit 1
+  `;
+  if (!rows.length) {
+    const error = new Error("Prompt template not found");
+    error.statusCode = 404;
+    error.code = "PROMPT_TEMPLATE_NOT_FOUND";
+    throw error;
+  }
+
   const prompt = toPromptTemplate(rows[0]);
+  if (prompt.status !== "validated" || !prompt.validatedAt) {
+    const error = new Error("Only a validated prompt candidate can be evaluated");
+    error.statusCode = 409;
+    error.code = "PROMPT_VALIDATION_REQUIRED";
+    throw error;
+  }
+  const normalizedExpectedType = String(expectedType || "").trim();
+  if (normalizedExpectedType && prompt.type !== normalizedExpectedType) {
+    const error = new Error(`Prompt type mismatch: expected ${normalizedExpectedType}, received ${prompt.type}`);
+    error.statusCode = 409;
+    error.code = "PROMPT_TYPE_MISMATCH";
+    throw error;
+  }
+
+  const snapshot = await buildPromptExecutionSnapshot(sql, prompt, variables);
+  return {
+    ...snapshot,
+    promptSelection: {
+      mode: "validated-candidate",
+      status: prompt.status,
+      id: prompt.id,
+      type: prompt.type,
+      version: prompt.version,
+      lineageId: prompt.lineageId,
+      sourcePromptTemplateId: prompt.sourcePromptTemplateId,
+      validatedAt: prompt.validatedAt,
+    },
+  };
+}
+
+async function buildPromptExecutionSnapshot(sql, prompt, variables = {}) {
+  const type = prompt.type;
   await requireActiveRegisteredModel(sql, {
     provider: prompt.provider,
     model: prompt.model,
@@ -256,6 +335,7 @@ module.exports = {
   APPROVED_GOOGLE_IMAGE_MODELS,
   completeDeclaredPromptVariables,
   createPromptExecutionSnapshot,
+  createValidatedPromptExecutionSnapshot,
   isApprovedGoogleImageModel,
   validateStageModelConfig,
 };

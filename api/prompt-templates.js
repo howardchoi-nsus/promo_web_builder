@@ -3,6 +3,7 @@ const {
   getSql,
   toPromptTemplate,
 } = require("./_prompt-template-store");
+const { resolveAdminOwner } = require("./_promo-admin-auth");
 
 // Listing always ensures repository defaults exist first so a fresh database can
 // open the Admin Page without a separate migration/seed command.
@@ -13,6 +14,8 @@ module.exports = async function handler(req, res) {
   }
 
   try {
+    resolveAdminOwner(req, res);
+    res.setHeader("Cache-Control", "private, no-store");
     const sql = getSql();
     await ensureDefaultPromptTemplates(sql);
 
@@ -85,9 +88,11 @@ module.exports = async function handler(req, res) {
       prompts: rows.map(toPromptTemplate),
     });
   } catch (error) {
+    res.setHeader("Cache-Control", "private, no-store");
     return res.status(error.statusCode || 500).json({
       error: "Prompt templates API failed",
       message: error.message,
+      code: error.code,
     });
   }
 };

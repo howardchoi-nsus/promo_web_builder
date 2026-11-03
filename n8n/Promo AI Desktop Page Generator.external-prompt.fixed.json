@@ -13,47 +13,34 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [
-        0,
-        0
+        -960,
+        -120
       ],
       "webhookId": "promo-ai-page-generate"
     },
     {
       "parameters": {
-        "jsCode": "const body = $json.body || $json;\nconst id = String(body.id || ('promo-ai-' + Date.now())).trim();\nconst md = body.md || {};\nconst promo = body.promo || {};\nconst design = body.design || {};\nconst output = body.output || {};\nconst model = String(body.model || 'gpt-4o-mini').trim();\nconst n8nWebhookUrl = String(body.n8nWebhookUrl || body.n8n_webhook_url || '').trim();\nconst promptUrl = String(body.promptUrl || body.prompt_url || '').trim();\n\nconst requiredPromo = ['title', 'template', 'market', 'leadText', 'ctaLabel', 'ctaUrl', 'subline', 'termsText'];\nconst missingPromo = requiredPromo.filter((key) => !String(promo[key] || '').trim());\nif (missingPromo.length) throw new Error('Missing promo fields: ' + missingPromo.join(', '));\nif (!md.brand) throw new Error('md.brand is required');\nif (!md.designConcept && !md.designPromptContext) throw new Error('md.designConcept or md.designPromptContext is required');\n\nreturn [{\n  json: {\n    id,\n    model,\n    n8nWebhookUrl,\n    promptUrl,\n    md,\n    promo,\n    design,\n    sourceDesign: body.sourceDesign || {},\n    styleSource: body.styleSource || '',\n    styleSourceLabel: body.styleSourceLabel || '',\n    companyPreset: body.companyPreset || null,\n    hasOverride: Boolean(body.hasOverride),\n    output: {\n      format: output.format || 'desktop_web_page',\n      viewport: output.viewport || { width: 1440, minWidth: 1180 }\n    }\n  }\n}];"
+        "jsCode": "const expectedWebhookToken = String($env.PROMO_PAGE_GENERATION_WEBHOOK_TOKEN || '').trim();\nconst suppliedWebhookToken = String($json.headers?.['x-promo-generation-token'] || '').trim();\nif (expectedWebhookToken.length < 32) throw new Error('PROMO_PAGE_GENERATION_WEBHOOK_TOKEN is not configured');\nlet tokenMismatch = suppliedWebhookToken.length !== expectedWebhookToken.length ? 1 : 0;\nconst comparisonLength = Math.max(suppliedWebhookToken.length, expectedWebhookToken.length);\nfor (let index = 0; index < comparisonLength; index += 1) {\n  tokenMismatch |= (suppliedWebhookToken.charCodeAt(index) || 0) ^ (expectedWebhookToken.charCodeAt(index) || 0);\n}\nif (tokenMismatch !== 0) throw new Error('Valid promo generation webhook authentication is required');\n\nconst body = $json.body || $json;\nconst id = String(body.id || ('promo-ai-' + Date.now())).trim();\nconst md = body.md || {};\nconst promo = body.promo || {};\nconst design = body.design || {};\nconst output = body.output || {};\nconst n8nWebhookUrl = String(body.n8nWebhookUrl || body.n8n_webhook_url || '').trim();\n\nconst requiredPromo = ['title', 'market', 'leadText', 'ctaLabel', 'ctaUrl', 'subline', 'termsText'];\nconst missingPromo = requiredPromo.filter((key) => !String(promo[key] || '').trim());\nif (missingPromo.length) throw new Error('Missing promo fields: ' + missingPromo.join(', '));\nif (!/^(https?:\\/\\/|\\/(?!\\/)|#[a-z0-9_-]+$)/i.test(String(promo.ctaUrl || '').trim())) throw new Error('promo.ctaUrl must be an approved http(s), root-relative, or fragment URL');\nif (!md.brand) throw new Error('md.brand is required');\nif (!md.designConcept && !md.designPromptContext) throw new Error('md.designConcept or md.designPromptContext is required');\n\nconst concept = md.designConcept || {};\nconst conceptJson = concept.json || {};\nconst promptContext = md.designPromptContext || concept.promptContext || '';\nconst summary = md.summary || {};\nconst promptVariables = {\n  brand: md.brand || '',\n  slug: md.slug || '',\n  designConceptSummary: concept.summary || conceptJson.brandConcept || '',\n  designPromptContext: promptContext,\n  designConceptJson: JSON.stringify(conceptJson, null, 2),\n  categories: JSON.stringify(summary.categories || []),\n  colors: JSON.stringify(summary.colors || []),\n  fonts: JSON.stringify(summary.fonts || []),\n  promoJson: JSON.stringify(promo, null, 2),\n  designJson: JSON.stringify(design, null, 2),\n  styleSource: body.styleSource || '',\n  styleSourceLabel: body.styleSourceLabel || '',\n  companyPreset: JSON.stringify(body.companyPreset || null, null, 2),\n  hasOverride: String(Boolean(body.hasOverride))\n};\nconst requiredVisibleCopy = ['title', 'leadText', 'subline', 'ctaLabel', 'termsText']\n  .map((key) => String(promo[key] || '').trim())\n  .filter(Boolean);\nconst allowedUrls = Object.entries(promo)\n  .filter(([key, value]) => /url/i.test(key) && String(value || '').trim())\n  .map(([, value]) => String(value).trim());\n\nreturn [{\n  json: {\n    id,\n    n8nWebhookUrl,\n    md,\n    promo,\n    design,\n    sourceDesign: body.sourceDesign || {},\n    styleSource: body.styleSource || '',\n    styleSourceLabel: body.styleSourceLabel || '',\n    companyPreset: body.companyPreset || null,\n    hasOverride: Boolean(body.hasOverride),\n    promptVariables,\n    requiredVisibleCopy,\n    allowedUrls,\n    output: {\n      format: output.format || 'desktop_web_page',\n      viewport: output.viewport || { width: 1440, minWidth: 1180 }\n    }\n  }\n}];"
       },
       "id": "a20a009b-c79c-49d8-8a5d-2c237b67ee2c",
       "name": "Normalize Payload",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        240,
-        0
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const input = $('Normalize Payload').item.json;\nconst loadedPrompt = $json;\nconst concept = input.md.designConcept || {};\nconst conceptJson = concept.json || {};\nconst promptContext = input.md.designPromptContext || concept.promptContext || '';\nconst summary = input.md.summary || {};\n\nconst promptTemplate = String(\n  loadedPrompt.prompt ||\n  loadedPrompt.body?.prompt ||\n  loadedPrompt.data?.prompt ||\n  ''\n).trim();\n\nif (!promptTemplate) {\n  throw new Error('External page generation prompt is empty');\n}\n\nconst values = {\n  brand: input.md.brand || '',\n  slug: input.md.slug || '',\n  designConceptSummary: concept.summary || conceptJson.brandConcept || '',\n  designPromptContext: promptContext,\n  designConceptJson: JSON.stringify(conceptJson, null, 2),\n  categories: JSON.stringify(summary.categories || []),\n  colors: JSON.stringify(summary.colors || []),\n  fonts: JSON.stringify(summary.fonts || []),\n  promoJson: JSON.stringify(input.promo, null, 2),\n  designJson: JSON.stringify(input.design, null, 2),\n  styleSource: input.styleSource || '',\n  styleSourceLabel: input.styleSourceLabel || '',\n  companyPreset: input.companyPreset || '',\n  hasOverride: String(input.hasOverride)\n};\n\nconst render = (template, data) => template.replace(/\\{\\{\\s*([a-zA-Z0-9_]+)\\s*\\}\\}/g, (match, key) => (\n  Object.prototype.hasOwnProperty.call(data, key) ? String(data[key]) : match\n));\n\nconst system = 'You are a senior brand-faithful promotional web designer and frontend engineer. Return valid JSON only. You must treat the selected MD as a binding design specification, not inspiration.';\nconst user = render(promptTemplate, values);\n\nreturn [{\n  json: {\n    ...input,\n    promptMeta: {\n      id: loadedPrompt.id || loadedPrompt.body?.id || 'external-promo-page-generation',\n      version: loadedPrompt.version || loadedPrompt.body?.version || '',\n      url: input.promptUrl || ''\n    },\n    llmRequest: {\n      model: input.model,\n      messages: [\n        { role: 'system', content: system },\n        { role: 'user', content: user }\n      ],\n      temperature: 0.38,\n      response_format: { type: 'json_object' }\n    }\n  }\n}];"
-      },
-      "id": "3a73c6de-31aa-4935-807f-ed1a654f1123",
-      "name": "Build Page Generation Prompt",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        720,
-        0
+        -720,
+        -120
       ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "https://api.openai.com/v1/chat/completions",
+        "url": "={{$env.PROMPT_RENDER_URL}}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "Authorization",
-              "value": "Bearer REPLACE_WITH_OPENAI_API_KEY_OR_USE_CREDENTIAL"
+              "value": "={{ 'Bearer ' + $env.PROMPT_RUNTIME_SERVICE_TOKEN }}"
             },
             {
               "name": "Content-Type",
@@ -62,6 +49,54 @@
           ]
         },
         "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ type: 'promo_page_generation', variables: $json.promptVariables }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "7c5f54f0-b07c-47c1-bfb4-26fef41433c7",
+      "name": "Load Page Generation Prompt",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -480,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $('Normalize Payload').item.json;\nconst loadedPrompt = $json;\nconst renderedPrompt = String(loadedPrompt.renderedPrompt || '').trim();\nconst model = String(loadedPrompt.model || '').trim();\nif (!renderedPrompt || !model) throw new Error('Managed rendered prompt and model are required');\nif (String(loadedPrompt.provider || '').toLowerCase() !== 'openai') throw new Error('promo_page_generation requires the managed OpenAI provider');\nif (loadedPrompt.promptType !== 'promo_page_generation' || loadedPrompt.promptStatus !== 'active') {\n  throw new Error('Active promo_page_generation snapshot is required');\n}\nconst responseFormat = String(loadedPrompt.modelOptions?.responseFormat || loadedPrompt.responseFormat || '').trim();\nif (responseFormat !== 'json_object') throw new Error('promo_page_generation responseFormat must be json_object');\n\nconst llmRequest = {\n  model,\n  store: false,\n  input: renderedPrompt,\n  text: { format: { type: 'json_object' } }\n};\nconst rawTemperature = loadedPrompt.modelOptions?.temperature ?? loadedPrompt.temperature;\nconst rawMaxTokens = loadedPrompt.modelOptions?.maxTokens ?? loadedPrompt.maxTokens;\nconst temperature = rawTemperature === null || rawTemperature === undefined || rawTemperature === '' ? null : Number(rawTemperature);\nconst maxTokens = rawMaxTokens === null || rawMaxTokens === undefined || rawMaxTokens === '' ? null : Number(rawMaxTokens);\nif (temperature !== null && Number.isFinite(temperature)) llmRequest.temperature = temperature;\nif (maxTokens !== null && Number.isInteger(maxTokens) && maxTokens > 0) llmRequest.max_output_tokens = maxTokens;\n\nreturn [{\n  json: {\n    ...input,\n    promptMeta: {\n      id: loadedPrompt.promptId,\n      type: loadedPrompt.promptType,\n      name: loadedPrompt.promptName,\n      version: loadedPrompt.promptVersion,\n      renderedPromptHash: loadedPrompt.renderedPromptHash,\n      variableHash: loadedPrompt.variableHash,\n      promptLayerSources: loadedPrompt.promptLayerSources || []\n    },\n    llmRequest\n  }\n}];"
+      },
+      "id": "3a73c6de-31aa-4935-807f-ed1a654f1123",
+      "name": "Build Page Generation Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/responses",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.OPENAI_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify($json.llmRequest) }}",
         "options": {
@@ -73,21 +108,136 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        960,
-        0
+        0,
+        -120
       ]
     },
     {
       "parameters": {
-        "jsCode": "const input = $('Build Page Generation Prompt').item.json;\nconst response = $json;\nconst content = response.choices?.[0]?.message?.content || response.message?.content || response.content || response.text || response.output_text || '';\nif (!content) throw new Error('LLM response content is empty');\n\nlet generated;\ntry {\n  const fence = String.fromCharCode(96, 96, 96);\n  generated = typeof content === 'string'\n    ? JSON.parse(content.replace(new RegExp('^' + fence + 'json\\\\s*', 'i'), '').replace(new RegExp(fence + '$', 'i'), '').trim())\n    : content;\n} catch (error) {\n  throw new Error('Failed to parse LLM JSON: ' + error.message);\n}\n\nif (!generated.html || !generated.css) throw new Error('LLM JSON must include html and css');\nif (!generated.mdComplianceMap || typeof generated.mdComplianceMap !== 'object') {\n  throw new Error('LLM JSON must include mdComplianceMap to prove MD requirements were applied');\n}\n\nconst requiredCompliance = [\n  'layoutPhilosophy',\n  'visualMood',\n  'componentStyle',\n  'depthAndEffects',\n  'shapeAndRadius',\n  'promoPageImplications',\n  'notColorFontOnlyProof'\n];\nconst missingCompliance = requiredCompliance.filter((key) => !String(generated.mdComplianceMap[key] || '').trim());\nif (missingCompliance.length) {\n  throw new Error('mdComplianceMap missing fields: ' + missingCompliance.join(', '));\n}\n\nconst proof = String(generated.mdComplianceMap.notColorFontOnlyProof || '').trim();\nif (proof.length < 40) {\n  throw new Error('mdComplianceMap.notColorFontOnlyProof is too weak');\n}\n\nconst stripDangerous = (value) => String(value || '')\n  .replace(/<script[\\s\\S]*?>[\\s\\S]*?<\\/script>/gi, '')\n  .replace(/\\son[a-z]+\\s*=\\s*(['\"]).*?\\1/gi, '')\n  .replace(/javascript:/gi, '');\n\nconst htmlBody = stripDangerous(generated.html);\nconst css = stripDangerous(generated.css);\nif (!/promo-generated-page/.test(htmlBody)) throw new Error('HTML must include .promo-generated-page root');\n\nconst title = String(input.promo.title || 'Promo Page').replace(/[<>]/g, '');\nconst fullHtml = \"<!doctype html><html lang='ko'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>\" + title + \"</title><style>\" + css + \"</style></head><body>\" + htmlBody + \"</body></html>\";\n\nconst staticData = $getWorkflowStaticData('global');\nstaticData.pages = staticData.pages || {};\nstaticData.pages[input.id] = {\n  html: fullHtml,\n  payload: input,\n  designIntent: generated.designIntent || '',\n  layoutSummary: generated.layoutSummary || '',\n  mdComplianceMap: generated.mdComplianceMap,\n  qualityChecks: generated.qualityChecks || [],\n  createdAt: new Date().toISOString()\n};\n\nconst queryPath = 'promo-ai-page-view?id=' + encodeURIComponent(input.id);\nconst sourceUrl = String(input.n8nWebhookUrl || '').trim();\nlet pageUrl = '/webhook/' + queryPath;\n\nif (sourceUrl) {\n  pageUrl = sourceUrl.replace(/promo-ai-page-generate(?:\\?.*)?$/, queryPath);\n} else {\n  const headers = $('Generate AI Promo Page').item.json.headers || {};\n  const proto = headers['x-forwarded-proto'] || 'https';\n  const host = headers['x-forwarded-host'] || headers.host || '';\n  if (host) pageUrl = proto + '://' + host + '/webhook/' + queryPath;\n}\n\nreturn [{\n  json: {\n    ok: true,\n    id: input.id,\n    pageUrl,\n    designIntent: generated.designIntent || '',\n    layoutSummary: generated.layoutSummary || '',\n    mdComplianceMap: generated.mdComplianceMap,\n    qualityChecks: generated.qualityChecks || [],\n    payload: input\n  }\n}];"
+        "jsCode": "const input = $('Build Page Generation Prompt').item.json;\nconst response = $json;\nconst responseOutputText = Array.isArray(response.output)\n  ? response.output.flatMap((item) => Array.isArray(item?.content) ? item.content : [])\n    .find((item) => item?.type === 'output_text')?.text || ''\n  : '';\nconst content = response.output_text || responseOutputText || response.choices?.[0]?.message?.content || response.message?.content || response.content || response.text || '';\nif (!content) throw new Error('LLM response content is empty');\nlet generated;\ntry {\n  const fence = String.fromCharCode(96, 96, 96);\n  generated = typeof content === 'string'\n    ? JSON.parse(content.replace(new RegExp('^' + fence + 'json\\\\s*', 'i'), '').replace(new RegExp(fence + '$', 'i'), '').trim())\n    : content;\n} catch (error) {\n  throw new Error('Failed to parse LLM JSON: ' + error.message);\n}\nreturn [{ json: { generated, input } }];"
       },
-      "id": "372ccd6d-34fd-4191-b967-14efd8ede3ba",
-      "name": "Parse Validate Store Page",
+      "id": "7118d18d-f68b-4db4-81e4-710000000075",
+      "name": "Parse Generated Page JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.PROMO_PAGE_VALIDATOR_URL}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.PROMPT_RUNTIME_SERVICE_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ generated: $json.generated, requiredVisibleCopy: $json.input.requiredVisibleCopy, ctaUrl: $json.input.promo.ctaUrl, allowedUrls: $json.input.allowedUrls, locale: $json.input.promo.locale || '', market: $json.input.promo.market || '' }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "8118d18d-f68b-4db4-81e4-710000000075",
+      "name": "Validate Generated Page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.PROMO_PAGE_BROWSER_QUALITY_GATE_URL}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.PROMO_PAGE_BROWSER_QUALITY_GATE_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ artifactId: $('Build Page Generation Prompt').item.json.id, title: $('Build Page Generation Prompt').item.json.promo.title, promptMeta: $('Build Page Generation Prompt').item.json.promptMeta, generated: $json.result, requiredVisibleCopy: $('Build Page Generation Prompt').item.json.requiredVisibleCopy, ctaUrl: $('Build Page Generation Prompt').item.json.promo.ctaUrl, allowedUrls: $('Build Page Generation Prompt').item.json.allowedUrls, locale: $('Build Page Generation Prompt').item.json.promo.locale || '', market: $('Build Page Generation Prompt').item.json.promo.market || '' }) }}",
+        "options": {
+          "timeout": 45000
+        }
+      },
+      "id": "9118d18d-f68b-4db4-81e4-710000000075",
+      "name": "Browser Quality Gate",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.PROMO_PAGE_ARTIFACT_URL}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $env.PROMPT_RUNTIME_SERVICE_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ id: $('Build Page Generation Prompt').item.json.id, result: $json.result, requiredVisibleCopy: $('Build Page Generation Prompt').item.json.requiredVisibleCopy, ctaUrl: $('Build Page Generation Prompt').item.json.promo.ctaUrl, allowedUrls: $('Build Page Generation Prompt').item.json.allowedUrls, locale: $('Build Page Generation Prompt').item.json.promo.locale || '', market: $('Build Page Generation Prompt').item.json.promo.market || '', title: $('Build Page Generation Prompt').item.json.promo.title, promptMeta: $('Build Page Generation Prompt').item.json.promptMeta, browserQualityGate: $json.browserQualityGate, browserQualityAttestation: $json.browserQualityAttestation }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "a118d18d-f68b-4db4-81e4-710000000075",
+      "name": "Persist Promo Page Artifact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $('Build Page Generation Prompt').item.json;\nconst artifact = $json;\nconst browserValidation = $('Browser Quality Gate').item.json;\nif (!artifact.ok || !artifact.pagePath || !artifact.contentHash) throw new Error('Generated page artifact was not persisted');\nif (browserValidation.browserQualityGate?.state !== 'passed' || Number(browserValidation.browserQualityGate?.blockingCount || 0) !== 0) {\n  throw new Error('Generated page browser quality gate is not passed');\n}\nconst artifactEndpoint = String($env.PROMO_PAGE_ARTIFACT_URL || '').trim();\nif (!/^https?:\\/\\//i.test(artifactEndpoint)) throw new Error('PROMO_PAGE_ARTIFACT_URL must be an absolute internal API URL');\nconst pageUrl = new URL(artifact.pagePath, new URL(artifactEndpoint).origin).toString();\nconst { llmRequest, promptVariables, requiredVisibleCopy, allowedUrls, n8nWebhookUrl, ...safeInput } = input;\nreturn [{\n  json: {\n    ok: true,\n    id: artifact.id,\n    pageUrl,\n    pagePath: artifact.pagePath,\n    contentHash: artifact.contentHash,\n    expiresAt: artifact.expiresAt,\n    promptMeta: input.promptMeta,\n    browserQualityGate: browserValidation.browserQualityGate,\n    payload: safeInput\n  }\n}];"
+      },
+      "id": "b118d18d-f68b-4db4-81e4-710000000075",
+      "name": "Build Promo Page Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         1200,
-        0
+        -120
       ]
     },
     {
@@ -102,77 +252,7 @@
       "typeVersion": 1.1,
       "position": [
         1440,
-        0
-      ]
-    },
-    {
-      "parameters": {
-        "path": "promo-ai-page-view",
-        "responseMode": "responseNode",
-        "options": {}
-      },
-      "id": "4227ceb2-8c91-4ef8-9cb8-31cab95a1c1f",
-      "name": "View AI Promo Page",
-      "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
-      "position": [
-        480,
-        304
-      ],
-      "webhookId": "promo-ai-page-view"
-    },
-    {
-      "parameters": {
-        "jsCode": "const id = $json.params?.id || $json.query?.id || '';\nconst staticData = $getWorkflowStaticData('global');\nconst page = staticData.pages?.[id];\nconst html = page?.html || `<!doctype html><html lang='ko'><head><meta charset='utf-8'><title>Promo page not found</title></head><body style='font-family:Arial,sans-serif;padding:40px'><h1>Promo page not found</h1><p>No generated page was stored for id: ${id}</p></body></html>`;\nreturn [{ json: { html } }];"
-      },
-      "id": "d57c2b15-11dc-4ec0-9b3a-ff97bf6b8dfe",
-      "name": "Read Stored AI Page",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        720,
-        304
-      ]
-    },
-    {
-      "parameters": {
-        "respondWith": "text",
-        "responseBody": "={{$json.html}}",
-        "options": {
-          "responseHeaders": {
-            "entries": [
-              {
-                "name": "Content-Type",
-                "value": "text/html; charset=utf-8"
-              }
-            ]
-          }
-        }
-      },
-      "id": "b03d333b-5820-4440-9112-765a6eec0727",
-      "name": "Render AI HTML Page",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
-      "position": [
-        960,
-        304
-      ]
-    },
-    {
-      "parameters": {
-        "method": "GET",
-        "url": "={{$json.promptUrl || 'https://promo-web-builder.vercel.app/api/prompts/promo-page-generation'}}",
-        "options": {
-          "timeout": 30000
-        }
-      },
-      "id": "7c5f54f0-b07c-47c1-bfb4-26fef41433c7",
-      "name": "Load Page Generation Prompt",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        480,
-        0
+        -120
       ]
     }
   ],
@@ -200,6 +280,17 @@
         ]
       ]
     },
+    "Load Page Generation Prompt": {
+      "main": [
+        [
+          {
+            "node": "Build Page Generation Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Build Page Generation Prompt": {
       "main": [
         [
@@ -215,51 +306,62 @@
       "main": [
         [
           {
-            "node": "Parse Validate Store Page",
+            "node": "Parse Generated Page JSON",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Parse Validate Store Page": {
+    "Parse Generated Page JSON": {
+      "main": [
+        [
+          {
+            "node": "Validate Generated Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Generated Page": {
+      "main": [
+        [
+          {
+            "node": "Browser Quality Gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Browser Quality Gate": {
+      "main": [
+        [
+          {
+            "node": "Persist Promo Page Artifact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persist Promo Page Artifact": {
+      "main": [
+        [
+          {
+            "node": "Build Promo Page Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Promo Page Response": {
       "main": [
         [
           {
             "node": "Return AI Page URL",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "View AI Promo Page": {
-      "main": [
-        [
-          {
-            "node": "Read Stored AI Page",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Read Stored AI Page": {
-      "main": [
-        [
-          {
-            "node": "Render AI HTML Page",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Load Page Generation Prompt": {
-      "main": [
-        [
-          {
-            "node": "Build Page Generation Prompt",
             "type": "main",
             "index": 0
           }
@@ -273,11 +375,12 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "08b91072-8ba8-4c84-8cf2-1c2f8ff501c0",
+  "versionId": "promo-ai-page-generator-v4-attested-browser-artifacts",
   "meta": {
     "instanceId": "ee6d8ea39b1dbea6e747bcf329edcc14093b08f85629cd5e0c191de80b3c89a8"
   },
   "nodeGroups": [],
   "id": "g6rm9xfssYoHtA9O",
-  "tags": []
+  "tags": [],
+  "updatedAt": "2026-11-02T00:00:00.000Z"
 }

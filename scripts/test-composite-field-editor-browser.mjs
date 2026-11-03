@@ -118,9 +118,23 @@ try {
   assert.equal(await page.locator(".component-inspector-popover").count(), 0);
   await card.getByRole("button", { name: "Promotion Card 속성" }).click();
   const fieldGap = page.locator(".component-inspector-popover").getByLabel("요소 간격 (px)");
-  await fieldGap.fill("21");
-  await fieldGap.blur();
-  await page.waitForFunction(() => document.querySelector('[data-item-key="card"] .rendered-component-fields')?.style.getPropertyValue('--component-field-gap') === "21px");
+  // Set and commit atomically so a pending Vue render cannot replace the input
+  // between Playwright's fill and change actions during a long browser suite.
+  await fieldGap.evaluate((input) => {
+    const valueSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+    valueSetter?.call(input, "21");
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  try {
+    await page.waitForFunction(() => document.querySelector('[data-item-key="card"] .rendered-component-fields')?.style.getPropertyValue('--component-field-gap') === "21px");
+  } catch (error) {
+    const diagnostic = await page.evaluate(() => ({
+      fieldGap: document.querySelector('[data-item-key="card"] .rendered-component-fields')?.style.getPropertyValue('--component-field-gap'),
+      inputValue: [...document.querySelectorAll("label")]
+        .find((label) => label.textContent?.includes("요소 간격"))?.querySelector("input")?.value,
+    }));
+    throw new Error(`Component field gap did not commit: ${JSON.stringify(diagnostic)}`, { cause: error });
+  }
   await page.getByRole("button", { name: "컴포넌트 속성 닫기" }).click();
 
   await title.click();

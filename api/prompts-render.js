@@ -1,5 +1,6 @@
 const { getSql, parseBody } = require("./_prompt-template-store");
 const { createPromptExecutionSnapshot } = require("./_prompt-execution-snapshot");
+const { requirePromptRuntimeService } = require("./_prompt-runtime-auth");
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
@@ -8,6 +9,7 @@ module.exports = async function handler(req, res) {
   }
 
   try {
+    requirePromptRuntimeService(req);
     const body = parseBody(req.body);
     const type = String(body.type || body.promptType || body.prompt_type || "").trim();
     const variables = body.variables && typeof body.variables === "object" ? body.variables : {};
@@ -16,6 +18,7 @@ module.exports = async function handler(req, res) {
     const snapshot = await createPromptExecutionSnapshot(getSql(), type, variables);
     const prompt = snapshot.promptConfig;
 
+    res.setHeader("Cache-Control", "private, no-store");
     return res.status(200).json({
       ok: true,
       promptId: prompt.promptId,
@@ -46,9 +49,11 @@ module.exports = async function handler(req, res) {
       },
     });
   } catch (error) {
+    res.setHeader("Cache-Control", "private, no-store");
     return res.status(error.statusCode || 500).json({
       error: "Prompt render failed",
       message: error.message,
+      code: error.code,
     });
   }
 };

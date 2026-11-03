@@ -1,6 +1,7 @@
 const { getSql, parseBody } = require("./_prompt-template-store");
 const { createPromptExecutionSnapshot } = require("./_prompt-execution-snapshot");
 const { generatePromptKoreanTranslation } = require("./_promo-section-design-provider");
+const { resolveAdminOwner } = require("./_promo-admin-auth");
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
@@ -8,7 +9,8 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
   try {
-    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("Cache-Control", "private, no-store");
+    resolveAdminOwner(req, res);
     if (!isSameOriginRequest(req)) {
       return res.status(403).json({
         error: "Same-origin Admin request is required",
@@ -37,6 +39,7 @@ module.exports = async function handler(req, res) {
     });
     return res.status(200).json({ ok: true, ...result });
   } catch (error) {
+    res.setHeader("Cache-Control", "private, no-store");
     const status = error.statusCode >= 400 && error.statusCode < 500 ? error.statusCode : 502;
     return res.status(status).json({
       error: "Prompt translation failed",

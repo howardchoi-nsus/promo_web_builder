@@ -4,6 +4,8 @@ import { readFileSync } from "node:fs";
 import {
   EXPECTED_MIGRATION_SHA256,
   MIGRATION_URL,
+  assertApprovedPreviewTarget,
+  databaseRedactionSecrets,
   migrationPlan,
   parseArgs,
   redactSecrets,
@@ -44,8 +46,13 @@ assert.throws(() => parseArgs(["--apply", "--target=production"]), /requires --t
 assert.throws(() => parseArgs(["--sql=other.sql"]), /Unknown argument/);
 
 const migrationSql = readFileSync(MIGRATION_URL, "utf8");
+const rolloutSource = readFileSync(scriptUrl, "utf8");
+assert.match(rolloutSource, /\$\{lock \? "for update" : ""\}/);
 const checkedPlan = migrationPlan();
 assert.equal(checkedPlan.migrationSha256, EXPECTED_MIGRATION_SHA256);
+assert.equal(checkedPlan.contract.qualityInstructions.promo_page_composer.length, 7);
+assert.match(checkedPlan.contract.pagePromptBody, /# QUALITY GATE: TEXT_FIRST_MVP/);
+assert.match(checkedPlan.contract.composerRepairPrompt, /Previous validation error/);
 const body = stripOuterTransaction(migrationSql);
 assert.doesNotMatch(body, /^begin\s*;/i);
 assert.doesNotMatch(body, /commit\s*;\s*$/i);
@@ -78,37 +85,92 @@ assert.throws(
 );
 const redacted = redactSecrets(`Could not connect to ${previewUrl}`, [previewUrl]);
 assert.doesNotMatch(redacted, /preview-user|preview-password|preview\.example/);
-assert.match(redacted, /REDACTED_DB_URL/);
+assert.match(redacted, /REDACTED_DB_TARGET/);
+const componentRedacted = redactSecrets(
+  "DNS lookup failed for preview.example.test as preview-user on promo_preview",
+  databaseRedactionSecrets({ PREVIEW_DATABASE_URL: previewUrl }),
+);
+assert.doesNotMatch(componentRedacted, /preview\.example|preview-user|promo_preview/);
+assert.throws(
+  () => assertApprovedPreviewTarget(target, { confirmTarget: target.fingerprint }, {}),
+  /separately approved/,
+);
+assert.throws(
+  () => assertApprovedPreviewTarget(target, { confirmTarget: target.fingerprint }, {
+    PROMPT_QUALITY_PREVIEW_FINGERPRINT: "000000000000",
+  }),
+  /does not match/,
+);
+assert.doesNotThrow(() => assertApprovedPreviewTarget(target, { confirmTarget: target.fingerprint }, {
+  PROMPT_QUALITY_PREVIEW_FINGERPRINT: target.fingerprint,
+}));
 
 const baseRows = [
   ["promo_overview_parser", "Promotion Overview Parser — Web Output Quality"],
   ["promo_page_composer", "AI Promotion Page Composer — Web Output Quality"],
   ["promo_composition_editor", "AI Promotion Composition Editor — Web Output Quality"],
   ["promo_page_generation", "Promo Page Generation — Responsive Text-first Quality"],
-].map(([type, name], index) => ({
+].map(([type, name], index) => {
+  const sourceBody = `source body ${type}`;
+  const candidateBody = type === "promo_page_generation"
+    ? checkedPlan.contract.pagePromptBody
+    : sourceBody;
+  const promptLayers = {
+    schemaVersion: 2,
+    postInstructions: checkedPlan.contract.qualityInstructions[type],
+    ...(type === "promo_page_composer"
+      ? { repairPrompts: { contractV3: checkedPlan.contract.composerRepairPrompt } }
+      : {}),
+  };
+  return {
   id: `candidate-${index}`,
   type,
   name,
   status: "draft",
   version: 1,
   source_prompt_template_id: `source-${index}`,
-  model_options: type === "promo_page_composer"
-    ? { promptLayers: { postInstructions: ["CONTRACT_V3_CONTENT_ITEMS"], repairPrompts: {} } }
-    : {},
+  body: candidateBody,
+  source_body: sourceBody,
+  source_model_options: {},
+  model_options: { promptLayers },
   provider_matches: true,
   model_matches: true,
+  temperature_matches: true,
+  max_tokens_match: true,
+  response_format_matches: true,
   required_variables_match: true,
   optional_variables_match: true,
   history_count: 1,
-}));
+  migration_history_count: 1,
+  migration_history_matches: true,
+  };
+});
 assert.doesNotThrow(() => validateCandidateTransition([], baseRows));
 assert.doesNotThrow(() => validateCandidateTransition(baseRows, baseRows));
+assert.doesNotThrow(() => validateCandidateTransition(
+  baseRows.map((row) => ({ ...row, status: "validated" })),
+  baseRows.map((row) => ({ ...row, status: "validated" })),
+));
+assert.throws(
+  () => validateCandidateTransition(
+    baseRows.map((row) => ({ ...row, status: "archived" })),
+    baseRows.map((row) => ({ ...row, status: "archived" })),
+  ),
+  /must be draft or validated/,
+);
+assert.throws(
+  () => validateCandidateTransition(
+    baseRows.map((row) => ({ ...row, status: "inactive" })),
+    baseRows.map((row) => ({ ...row, status: "inactive" })),
+  ),
+  /must be draft or validated/,
+);
 assert.throws(() => validateCandidateTransition(baseRows.slice(0, 2), baseRows), /partial candidate set/);
 assert.throws(
   () => validateCandidateTransition([], baseRows.map((row) => row.type === "promo_page_composer"
-    ? { ...row, model_options: {} }
+    ? { ...row, model_options: { promptLayers: { schemaVersion: 2, postInstructions: [] } } }
     : row)),
-  /Contract V3/,
+  /quality instructions/,
 );
 
 const applyWithoutTarget = spawnSync(process.execPath, [

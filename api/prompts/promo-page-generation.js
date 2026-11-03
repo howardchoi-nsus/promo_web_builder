@@ -1,4 +1,5 @@
 const { getSql } = require("../_prompt-template-store");
+const { requirePromptRuntimeService } = require("../_prompt-runtime-auth");
 
 module.exports = async function handler(req, res) {
   if (req.method !== "GET") {
@@ -6,6 +7,7 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
   try {
+    requirePromptRuntimeService(req);
     const rows = await getSql()`
       select id::text, type, body, status, version, provider, model, model_options
       from prompt_templates
@@ -20,7 +22,7 @@ module.exports = async function handler(req, res) {
       });
     }
     const prompt = rows[0];
-    res.setHeader("Cache-Control", "s-maxage=60, stale-while-revalidate=300");
+    res.setHeader("Cache-Control", "private, no-store");
     return res.status(200).json({
       id: "promo-page-generation",
       version: `managed-v${prompt.version}`,
@@ -33,6 +35,7 @@ module.exports = async function handler(req, res) {
       modelOptions: prompt.model_options || {},
     });
   } catch (error) {
+    res.setHeader("Cache-Control", "private, no-store");
     return res.status(error.statusCode || 503).json({
       error: "Managed prompt could not be loaded",
       message: error.message,

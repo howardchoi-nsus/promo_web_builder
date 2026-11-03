@@ -10,20 +10,26 @@ const {
   validatePromptTemplateContract,
 } = require("./_prompt-template-store");
 const { requireActiveRegisteredModel } = require("./_llm-model-registry-store");
+const { resolveAdminOwner } = require("./_promo-admin-auth");
 
 // Only draft rows are mutable. A version is assigned when the draft row is
 // created and never changes afterwards.
 module.exports = async function handler(req, res) {
   try {
+    if (!["GET", "PATCH"].includes(req.method)) {
+      res.setHeader("Allow", "GET, PATCH");
+      return res.status(405).json({ error: "Method not allowed" });
+    }
+    resolveAdminOwner(req, res);
+    res.setHeader("Cache-Control", "private, no-store");
     if (req.method === "GET") return await getPrompt(req, res);
     if (req.method === "PATCH") return await updatePrompt(req, res);
-
-    res.setHeader("Allow", "GET, PATCH");
-    return res.status(405).json({ error: "Method not allowed" });
   } catch (error) {
+    res.setHeader("Cache-Control", "private, no-store");
     return res.status(error.statusCode || 500).json({
       error: "Prompt template API failed",
       message: error.message,
+      code: error.code,
     });
   }
 };

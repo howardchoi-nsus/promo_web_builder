@@ -5,6 +5,7 @@ const {
   toPromptTemplate,
 } = require("./_prompt-template-store");
 const { requireActiveRegisteredModel } = require("./_llm-model-registry-store");
+const { resolveAdminOwner } = require("./_promo-admin-auth");
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
@@ -13,6 +14,8 @@ module.exports = async function handler(req, res) {
   }
 
   try {
+    resolveAdminOwner(req, res);
+    res.setHeader("Cache-Control", "private, no-store");
     const body = parseBody(req.body);
     const id = String(body.id || req.query.id || "").trim();
     const changeNote = String(body.changeNote || body.change_note || "New prompt draft created.").trim();
@@ -172,6 +175,7 @@ module.exports = async function handler(req, res) {
 
     return res.status(201).json({ ok: true, prompt: toPromptTemplate(createdRows[0]) });
   } catch (error) {
+    res.setHeader("Cache-Control", "private, no-store");
     const conflict = error.code === "23505";
     return res.status(conflict ? 409 : (error.statusCode || 500)).json({
       error: conflict ? "A prompt draft was created concurrently" : "Prompt draft creation failed",

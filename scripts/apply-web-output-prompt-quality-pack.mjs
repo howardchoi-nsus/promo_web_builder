@@ -15,6 +15,12 @@ export const QUALITY_PROMPTS = Object.freeze([
   ["promo_page_generation", "Promo Page Generation — Responsive Text-first Quality"],
 ]);
 
+const REQUIRED_LIFECYCLE_INDEXES = Object.freeze([
+  "prompt_templates_lineage_version_uidx",
+  "prompt_templates_one_active_per_type_uidx",
+  "prompt_templates_one_candidate_per_lineage_uidx",
+]);
+
 const REQUIRED_COLUMNS = Object.freeze({
   prompt_templates: [
     "id", "type", "name", "body", "status", "version", "lineage_id",
@@ -56,12 +62,52 @@ export function migrationPlan() {
       throw new Error(`Migration 075 is missing the quality candidate contract for ${type}`);
     }
   }
+  const pagePromptMatch = sql.match(/when 'promo_page_generation' then \$page_prompt\$([\s\S]*?)\$page_prompt\$/);
+  if (!pagePromptMatch?.[1]) throw new Error("Migration 075 page-generation prompt body could not be extracted");
+  const qualityInstructions = Object.fromEntries(QUALITY_PROMPTS.map(([type]) => [
+    type,
+    extractQualityInstructions(sql, type),
+  ]));
+  const repairPromptMatch = sql.match(/'contractV3', E'((?:''|\\.|[^'])*)'/);
+  if (!repairPromptMatch?.[1]) throw new Error("Migration 075 Contract V3 repair prompt could not be extracted");
   return {
     sql,
     body,
     migrationSha256,
     migrationFile: fileURLToPath(MIGRATION_URL),
+    contract: {
+      pagePromptBody: pagePromptMatch[1],
+      qualityInstructions,
+      composerRepairPrompt: decodePostgresEscapeString(repairPromptMatch[1]),
+    },
   };
+}
+
+function extractQualityInstructions(sql, type) {
+  const startToken = `when '${type}' then jsonb_build_array(`;
+  const start = sql.indexOf(startToken);
+  if (start < 0) throw new Error(`Migration 075 quality instructions are missing for ${type}`);
+  const contentStart = start + startToken.length;
+  const nextWhen = sql.indexOf("\n      )\n      when '", contentStart);
+  const endCase = sql.indexOf("\n      )\n    end as quality_instructions", contentStart);
+  const end = nextWhen >= 0 ? nextWhen : endCase;
+  if (end < 0) throw new Error(`Migration 075 quality instruction boundary is invalid for ${type}`);
+  const instructions = [];
+  const pattern = /'((?:''|[^'])*)'/g;
+  for (const match of sql.slice(contentStart, end).matchAll(pattern)) {
+    instructions.push(match[1].replace(/''/g, "'"));
+  }
+  if (!instructions.length) throw new Error(`Migration 075 quality instructions are empty for ${type}`);
+  return instructions;
+}
+
+function decodePostgresEscapeString(value) {
+  return String(value || "")
+    .replace(/''/g, "'")
+    .replace(/\\n/g, "\n")
+    .replace(/\\r/g, "\r")
+    .replace(/\\t/g, "\t")
+    .replace(/\\\\/g, "\\");
 }
 
 export function stripOuterTransaction(sql) {
@@ -150,12 +196,43 @@ export function resolvePreviewTarget(env = process.env) {
   return { databaseUrl, fingerprint: sha256(identity).slice(0, 12) };
 }
 
+export function assertApprovedPreviewTarget(target, args, env = process.env) {
+  const approved = String(env.PROMPT_QUALITY_PREVIEW_FINGERPRINT || "").trim().toLowerCase();
+  if (!/^[0-9a-f]{12}$/.test(approved)) {
+    throw new Error("Apply requires a separately approved PROMPT_QUALITY_PREVIEW_FINGERPRINT");
+  }
+  if (approved !== target.fingerprint || args.confirmTarget !== target.fingerprint) {
+    throw new Error("Preview target approval does not match the connected database");
+  }
+}
+
+function urlRedactionParts(value) {
+  const parts = [String(value || "").trim()].filter(Boolean);
+  try {
+    const parsed = new URL(String(value || "").trim());
+    parts.push(
+      decodeURIComponent(parsed.username || ""),
+      decodeURIComponent(parsed.password || ""),
+      parsed.hostname,
+      decodeURIComponent(parsed.pathname.replace(/^\/+/, "")),
+    );
+  } catch {
+    // The complete invalid value is still redacted by the first entry.
+  }
+  return parts.filter((part) => part.length >= 3);
+}
+
+export function databaseRedactionSecrets(env = process.env) {
+  return ["PREVIEW_DATABASE_URL", ...PRODUCTION_URL_KEYS]
+    .flatMap((key) => urlRedactionParts(env[key]));
+}
+
 export function redactSecrets(value, secrets = []) {
   let redacted = String(value || "");
-  for (const secret of secrets.filter(Boolean)) {
-    redacted = redacted.split(String(secret)).join("[REDACTED_DB_URL]");
+  for (const secret of secrets.filter(Boolean).sort((a, b) => String(b).length - String(a).length)) {
+    redacted = redacted.split(String(secret)).join("[REDACTED_DB_TARGET]");
   }
-  return redacted.replace(/postgres(?:ql)?:\/\/[^\s'"`]+/gi, "[REDACTED_DB_URL]");
+  return redacted.replace(/postgres(?:ql)?:\/\/[^\s'"`]+/gi, "[REDACTED_DB_TARGET]");
 }
 
 function candidateKey(row) {
@@ -210,6 +287,34 @@ async function readSchemaColumns(client) {
   if (missing.length) throw new Error(`Migration 075 schema preflight failed; missing: ${missing.join(", ")}`);
 }
 
+async function assertLifecycleSchema(client) {
+  const indexes = await client.query(`
+    select indexname
+    from pg_indexes
+    where schemaname = 'public'
+      and tablename = 'prompt_templates'
+      and indexname = any($1::text[])
+  `, [REQUIRED_LIFECYCLE_INDEXES]);
+  const found = new Set(indexes.rows.map((row) => row.indexname));
+  const missing = REQUIRED_LIFECYCLE_INDEXES.filter((name) => !found.has(name));
+  if (missing.length) throw new Error(`Prompt lifecycle indexes are missing: ${missing.join(", ")}`);
+
+  const statusConstraint = await client.query(`
+    select pg_get_constraintdef(constraint_row.oid) as definition
+    from pg_constraint constraint_row
+    join pg_class table_row on table_row.oid = constraint_row.conrelid
+    join pg_namespace schema_row on schema_row.oid = table_row.relnamespace
+    where schema_row.nspname = 'public'
+      and table_row.relname = 'prompt_templates'
+      and constraint_row.conname = 'prompt_templates_status_chk'
+    limit 1
+  `);
+  const definition = String(statusConstraint.rows[0]?.definition || "").toLowerCase();
+  if (!definition.includes("validated") || !definition.includes("active") || !definition.includes("archived")) {
+    throw new Error("Prompt lifecycle status constraint is missing validated/active/archived states");
+  }
+}
+
 async function readSources(client) {
   const result = await client.query(`
     with ranked as (
@@ -243,13 +348,14 @@ async function readSources(client) {
   return result.rows;
 }
 
-async function readActives(client) {
+async function readActives(client, { lock = false } = {}) {
   const result = await client.query(`
     select type, id::text, version
     from public.prompt_templates
     where type = any($1::text[])
       and status = 'active'
     order by type
+    ${lock ? "for update" : ""}
   `, [QUALITY_PROMPTS.map(([type]) => type)]);
   return activeSnapshot(result.rows);
 }
@@ -272,13 +378,40 @@ async function readCandidates(client) {
       candidate.source_prompt_template_id::text,
       candidate.model_options,
       candidate.body,
+      source.body as source_body,
+      source.status as source_status,
+      source.model_options as source_model_options,
       (candidate.provider = source.provider) as provider_matches,
       (candidate.model = source.model) as model_matches,
+      (candidate.temperature is not distinct from source.temperature) as temperature_matches,
+      (candidate.max_tokens is not distinct from source.max_tokens) as max_tokens_match,
+      (candidate.response_format = source.response_format) as response_format_matches,
       (candidate.required_variables = source.required_variables) as required_variables_match,
       (candidate.optional_variables = source.optional_variables) as optional_variables_match,
       (select count(*)::integer
         from public.prompt_template_histories history
-        where history.prompt_template_id = candidate.id) as history_count
+        where history.prompt_template_id = candidate.id) as history_count,
+      (select count(*)::integer
+        from public.prompt_template_histories history
+        where history.prompt_template_id = candidate.id
+          and history.change_note = 'Migration 075: Web Output prompt quality pack candidate.') as migration_history_count,
+      coalesce((select bool_or(
+          history.previous_body = source.body
+          and history.new_body = candidate.body
+          and history.previous_version = source.version
+          and history.new_version = candidate.version
+          and history.previous_status = source.status
+          and history.new_status = 'draft'
+          and history.previous_provider = source.provider
+          and history.new_provider = candidate.provider
+          and history.previous_model = source.model
+          and history.new_model = candidate.model
+          and history.previous_model_options = source.model_options
+          and history.new_model_options = candidate.model_options
+        )
+        from public.prompt_template_histories history
+        where history.prompt_template_id = candidate.id
+          and history.change_note = 'Migration 075: Web Output prompt quality pack candidate.'), false) as migration_history_matches
     from expected
     join public.prompt_templates candidate
       on candidate.type = expected.type
@@ -291,7 +424,62 @@ async function readCandidates(client) {
   return result.rows;
 }
 
-export function validateCandidateTransition(beforeRows, afterRows) {
+function stableJson(value) {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function withoutKeys(value, keys) {
+  return Object.fromEntries(Object.entries(value && typeof value === "object" ? value : {})
+    .filter(([key]) => !keys.includes(key)));
+}
+
+function assertCandidateOptions(row, contract) {
+  const candidateOptions = row.model_options && typeof row.model_options === "object" ? row.model_options : {};
+  const sourceOptions = row.source_model_options && typeof row.source_model_options === "object" ? row.source_model_options : {};
+  if (stableJson(withoutKeys(candidateOptions, ["promptLayers"])) !== stableJson(withoutKeys(sourceOptions, ["promptLayers"]))) {
+    throw new Error(`Candidate ${row.type} changed model options outside promptLayers`);
+  }
+  const candidateLayers = candidateOptions.promptLayers && typeof candidateOptions.promptLayers === "object"
+    ? candidateOptions.promptLayers
+    : {};
+  const sourceLayers = sourceOptions.promptLayers && typeof sourceOptions.promptLayers === "object"
+    ? sourceOptions.promptLayers
+    : {};
+  if (Number(candidateLayers.schemaVersion) !== 2) {
+    throw new Error(`Candidate ${row.type} is missing promptLayers.schemaVersion 2`);
+  }
+  const expectedInstructions = [
+    ...(Array.isArray(sourceLayers.postInstructions) ? sourceLayers.postInstructions : []),
+    ...contract.qualityInstructions[row.type],
+  ];
+  if (stableJson(candidateLayers.postInstructions) !== stableJson(expectedInstructions)) {
+    throw new Error(`Candidate ${row.type} quality instructions do not match Migration 075`);
+  }
+  const layerKeysToIgnore = row.type === "promo_page_composer"
+    ? ["schemaVersion", "postInstructions", "repairPrompts"]
+    : ["schemaVersion", "postInstructions"];
+  if (stableJson(withoutKeys(candidateLayers, layerKeysToIgnore)) !== stableJson(withoutKeys(sourceLayers, layerKeysToIgnore))) {
+    throw new Error(`Candidate ${row.type} did not preserve its source prompt layers`);
+  }
+  if (row.type === "promo_page_composer") {
+    const candidateRepair = candidateLayers.repairPrompts && typeof candidateLayers.repairPrompts === "object"
+      ? candidateLayers.repairPrompts
+      : {};
+    const sourceRepair = sourceLayers.repairPrompts && typeof sourceLayers.repairPrompts === "object"
+      ? sourceLayers.repairPrompts
+      : {};
+    if (candidateRepair.contractV3 !== contract.composerRepairPrompt
+      || stableJson(withoutKeys(candidateRepair, ["contractV3"])) !== stableJson(withoutKeys(sourceRepair, ["contractV3"]))) {
+      throw new Error("Composer candidate Contract V3 repair prompt does not match Migration 075");
+    }
+  }
+}
+
+export function validateCandidateTransition(beforeRows, afterRows, contract = migrationPlan().contract) {
   if (![0, QUALITY_PROMPTS.length].includes(beforeRows.length)) {
     throw new Error(`Migration 075 found a partial candidate set (${beforeRows.length}/${QUALITY_PROMPTS.length}); inspect it before applying`);
   }
@@ -301,15 +489,23 @@ export function validateCandidateTransition(beforeRows, afterRows) {
   const expected = new Set(QUALITY_PROMPTS.map(([type, name]) => `${type}:${name}`));
   for (const row of afterRows) {
     if (!expected.has(candidateKey(row))) throw new Error(`Unexpected Migration 075 candidate: ${candidateKey(row)}`);
-    if (!row.provider_matches || !row.model_matches || !row.required_variables_match || !row.optional_variables_match) {
+    if (!["draft", "validated"].includes(row.status)) {
+      throw new Error(`Candidate ${row.type} must be draft or validated, not ${row.status}`);
+    }
+    if (!row.provider_matches || !row.model_matches || !row.temperature_matches || !row.max_tokens_match
+      || !row.response_format_matches || !row.required_variables_match || !row.optional_variables_match) {
       throw new Error(`Candidate ${row.type} does not preserve its source model and variable contract`);
     }
     if (Number(row.history_count) < 1) throw new Error(`Candidate ${row.type} is missing its audit history`);
-  }
-  const composer = afterRows.find((row) => row.type === "promo_page_composer");
-  const composerOptions = JSON.stringify(composer?.model_options || {});
-  if (!composerOptions.includes("CONTRACT_V3_CONTENT_ITEMS") || !composerOptions.includes("repairPrompts")) {
-    throw new Error("Composer candidate is missing the Contract V3 quality or repair layer");
+    if (Number(row.migration_history_count) !== 1 || !row.migration_history_matches) {
+      throw new Error(`Candidate ${row.type} has an invalid Migration 075 history snapshot`);
+    }
+    if (row.type === "promo_page_generation") {
+      if (row.body !== contract.pagePromptBody) throw new Error("Page-generation candidate body does not match Migration 075");
+    } else if (row.body !== row.source_body) {
+      throw new Error(`Candidate ${row.type} unexpectedly changed its source prompt body`);
+    }
+    assertCandidateOptions(row, contract);
   }
   if (!beforeRows.length) {
     for (const row of afterRows) {
@@ -328,21 +524,45 @@ export function validateCandidateTransition(beforeRows, afterRows) {
   );
 }
 
-async function preflight(client) {
+async function preflight(client, contract, { lockActives = false } = {}) {
   await readSchemaColumns(client);
+  await assertLifecycleSchema(client);
   const sources = await readSources(client);
-  const actives = await readActives(client);
+  const actives = await readActives(client, { lock: lockActives });
+  const expectedTypes = QUALITY_PROMPTS.map(([type]) => type).sort();
+  const activeTypes = actives.map((row) => row.type).sort();
+  if (stableJson(activeTypes) !== stableJson(expectedTypes)) {
+    const missing = expectedTypes.filter((type) => !activeTypes.includes(type));
+    throw new Error(`Migration 075 requires one Active source for every prompt type; missing: ${missing.join(", ")}`);
+  }
+  const activeByType = new Map(actives.map((row) => [row.type, row.id]));
+  for (const source of sources) {
+    if (activeByType.get(source.type) !== source.id) {
+      throw new Error(`Migration 075 source selection for ${source.type} is not its Active prompt`);
+    }
+  }
   const candidates = await readCandidates(client);
   if (![0, QUALITY_PROMPTS.length].includes(candidates.length)) {
     throw new Error(`Migration 075 found a partial candidate set (${candidates.length}/${QUALITY_PROMPTS.length}); inspect it before applying`);
   }
+  for (const candidate of candidates) {
+    if (activeByType.get(candidate.type) !== candidate.source_prompt_template_id) {
+      throw new Error(`Candidate ${candidate.type} is not based on the current Active prompt`);
+    }
+  }
+  if (candidates.length) validateCandidateTransition(candidates, candidates, contract);
   return { sources, actives, candidates };
 }
 
 async function connect(databaseUrl) {
-  const client = new Client({ connectionString: databaseUrl });
-  await client.connect();
-  return client;
+  const client = new Client({ connectionString: databaseUrl, connectionTimeoutMillis: 10_000 });
+  try {
+    await client.connect();
+    return client;
+  } catch (error) {
+    try { await client.end(); } catch { /* preserve the connection error */ }
+    throw error;
+  }
 }
 
 function publicReport(mode, target, state, migrationSha256) {
@@ -361,16 +581,19 @@ function publicReport(mode, target, state, migrationSha256) {
     })),
     activePrompts: state.actives,
     candidates: state.candidates.map(compactCandidate),
+    ...(mode === "check" ? {
+      next: "Verify this fingerprint out of band, set PROMPT_QUALITY_PREVIEW_FINGERPRINT to the approved value, create a backup/restore point, then run apply with the same --confirm-target value.",
+    } : {}),
   };
 }
 
-async function checkPreview(target, migrationSha256) {
+async function checkPreview(target, plan) {
   const client = await connect(target.databaseUrl);
   try {
     await client.query("begin read only");
-    const state = await preflight(client);
+    const state = await preflight(client, plan.contract);
     await client.query("rollback");
-    return publicReport("check", target, state, migrationSha256);
+    return publicReport("check", target, state, plan.migrationSha256);
   } catch (error) {
     try { await client.query("rollback"); } catch { /* preserve the original error */ }
     throw error;
@@ -386,10 +609,10 @@ async function applyPreview(target, plan) {
     await client.query("set local lock_timeout = '10s'");
     await client.query("set local statement_timeout = '60s'");
     await client.query("select pg_advisory_xact_lock(hashtext($1))", ["migration:075_web_output_prompt_quality_pack"]);
-    const before = await preflight(client);
+    const before = await preflight(client, plan.contract, { lockActives: true });
     await client.query(plan.body);
-    const after = await preflight(client);
-    validateCandidateTransition(before.candidates, after.candidates);
+    const after = await preflight(client, plan.contract, { lockActives: true });
+    validateCandidateTransition(before.candidates, after.candidates, plan.contract);
     assertEqualSnapshot(before.actives, after.actives, "Active prompt snapshot");
     await client.query("commit");
     return publicReport("apply", target, after, plan.migrationSha256);
@@ -412,18 +635,16 @@ export async function run(argv = process.argv.slice(2), env = process.env) {
       migration: "075_web_output_prompt_quality_pack.sql",
       migrationSha256: plan.migrationSha256,
       promptTypes: QUALITY_PROMPTS.map(([type]) => type),
-      next: "Inject PREVIEW_DATABASE_URL, create a Preview DB backup/branch, then run with --check --target=preview.",
+      next: "Inject PREVIEW_DATABASE_URL, then run --check --target=preview. Apply additionally requires an independently approved PROMPT_QUALITY_PREVIEW_FINGERPRINT and a backup/restore point.",
     };
   }
 
   const target = resolvePreviewTarget(env);
-  if (args.mode === "check") return checkPreview(target, plan.migrationSha256);
+  if (args.mode === "check") return checkPreview(target, plan);
   if (!args.backupConfirmed) {
     throw new Error("Apply requires --backup-confirmed after creating a Preview DB backup or restore point");
   }
-  if (args.confirmTarget !== target.fingerprint) {
-    throw new Error(`Apply requires --confirm-target=${target.fingerprint}`);
-  }
+  assertApprovedPreviewTarget(target, args, env);
   return applyPreview(target, plan);
 }
 
@@ -434,8 +655,7 @@ if (isMain) {
   run().then((report) => {
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
   }).catch((error) => {
-    const previewUrl = String(process.env.PREVIEW_DATABASE_URL || "").trim();
-    process.stderr.write(`${redactSecrets(error?.message || error, [previewUrl])}\n`);
+    process.stderr.write(`${redactSecrets(error?.message || error, databaseRedactionSecrets(process.env))}\n`);
     process.exitCode = 1;
   });
 }

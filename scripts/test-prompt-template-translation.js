@@ -90,7 +90,7 @@ function responseRecorder() {
   assert.equal(success.payload.ok, true);
   assert.match(success.payload.translation, /\{\{sectionName\}\}/);
   assert.match(success.payload.translation, /\{\{contentJson\}\}/);
-  assert.equal(success.headers["Cache-Control"], "no-store");
+  assert.equal(success.headers["Cache-Control"], "private, no-store");
 
   providerOutput = "섹션 이름을 번역했지만 변수는 제거했습니다.";
   const mismatch = responseRecorder();
