@@ -1,33 +1,26 @@
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
+const {
+  generationReadiness,
+} = require("./_promo-page-generation-proxy");
+
+function createHandler({ env = process.env } = {}) {
+  return async function handler(req, res) {
+    res.setHeader("Cache-Control", "private, no-store");
+    if (req.method === "GET") {
+      return res.status(200).json({ ok: true, ...generationReadiness(env) });
+    }
+    if (req.method === "POST") {
+      return res.status(410).json({
+        ok: false,
+        error: "This generation facade has been retired",
+        code: "GENERATION_FACADE_RETIRED",
+        message: "Use the validated output quality test endpoint.",
+      });
+    }
+    res.setHeader("Allow", "GET, POST");
     return res.status(405).json({ error: "Method not allowed" });
-  }
-
-  const webhookUrl = process.env.N8N_PROMO_WEBHOOK_URL || req.headers["x-n8n-webhook-url"];
-  if (!webhookUrl) {
-    return res.status(400).json({
-      error: "Missing n8n webhook URL",
-      message: "Set N8N_PROMO_WEBHOOK_URL in Vercel or pass x-n8n-webhook-url.",
-    });
-  }
-
-  try {
-    const response = await fetch(webhookUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(req.body || {}),
-    });
-
-    const contentType = response.headers.get("content-type") || "";
-    const body = contentType.includes("application/json") ? await response.json() : { html: await response.text() };
-    return res.status(response.status).json(body);
-  } catch (error) {
-    return res.status(502).json({
-      error: "n8n request failed",
-      message: error.message,
-    });
-  }
+  };
 }
+
+const handler = createHandler();
+module.exports = handler;
+module.exports.createHandler = createHandler;

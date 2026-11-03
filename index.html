@@ -139,7 +139,7 @@
 
       .entry-grid {
         display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 16px;
       }
 
@@ -196,6 +196,11 @@
         color: #176b5b;
       }
 
+      .entry-card[data-entry="06"] .entry-index {
+        background: #fff0d6;
+        color: #8b5d16;
+      }
+
       .entry-card h2 {
         margin: 0 0 8px;
         font-size: 21px;
@@ -223,6 +228,12 @@
       .entry-arrow {
         font-size: 20px;
         line-height: 1;
+      }
+
+      @media (max-width: 960px) {
+        .entry-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
       }
 
       @media (max-width: 760px) {
@@ -286,6 +297,13 @@
           <h2>Create Promo</h2>
           <p>Promo Wizard를 기반으로 분리된 새 프로모션 제작 흐름입니다.</p>
           <span class="entry-action">Create Promo 열기 <span class="entry-arrow" aria-hidden="true">→</span></span>
+        </a>
+
+        <a class="entry-card" href="/output-quality-test" data-entry="06">
+          <span class="entry-index" aria-hidden="true">TEST</span>
+          <h2>웹 출력 품질 테스트</h2>
+          <p>텍스트 예시를 입력하고 Desktop · Mobile 결과와 품질 진단을 한 화면에서 확인합니다.</p>
+          <span class="entry-action">품질 테스트 열기 <span class="entry-arrow" aria-hidden="true">→</span></span>
         </a>
 
         <a class="entry-card" href="/promo-wizard.html" data-entry="02" data-v2-hidden>
