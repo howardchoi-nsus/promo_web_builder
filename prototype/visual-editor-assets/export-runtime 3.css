@@ -1,0 +1,5 @@
+*, *::before, *::after { box-sizing: border-box; }
+html, body, #promo-export-root { width: 100%; min-width: 320px; min-height: 100%; margin: 0; }
+body { min-height: 100vh; background: #fff; }
+#promo-export-root > .promo-renderer { min-height: 100vh; border-radius: 0; box-shadow: none; }
+.promo-export-error { margin: 0; padding: 32px; color: #b91c1c; font-family: sans-serif; }

@@ -1,6 +1,6 @@
 {
   "generatedAt": "2026-11-30T00:00:00.000Z",
-  "count": 377,
+  "count": 380,
   "documents": [
     {
       "id": "doc-0001",
@@ -500,306 +500,306 @@
     },
     {
       "id": "doc-0063",
-      "title": "Prompt 거버넌스 및 Contextual Inspector 리뷰 보완 개발계획서",
-      "category": "프롬프트",
-      "updatedAt": "2026-08-13",
-      "sourcePath": "docs/계획/prompt-governance-and-contextual-inspector-review-remediation-development-plan-2026-08-13.md",
+      "title": "Promo Web Builder 서비스 계약 V3 개발 계획서",
+      "category": "계획서",
+      "updatedAt": "2026-11-03",
+      "sourcePath": "docs/계획/promo-web-builder-api-service-boundary-refactoring-development-plan-2026-11-03.md",
       "contentUrl": "/document/content/doc-0063.md"
     },
     {
       "id": "doc-0064",
-      "title": "섹션 AI 이미지 적용 및 섹션별 UI 개선 개발계획서",
-      "category": "계획서",
-      "updatedAt": "2026-07-20",
-      "sourcePath": "docs/계획/section-ai-image-application-and-section-ui-development-plan-2026-07-20.md",
+      "title": "Prompt 거버넌스 및 Contextual Inspector 리뷰 보완 개발계획서",
+      "category": "프롬프트",
+      "updatedAt": "2026-08-13",
+      "sourcePath": "docs/계획/prompt-governance-and-contextual-inspector-review-remediation-development-plan-2026-08-13.md",
       "contentUrl": "/document/content/doc-0064.md"
     },
     {
       "id": "doc-0065",
-      "title": "섹션 AI 이미지 생성·렌더링 정책 통합 개발계획서",
+      "title": "섹션 AI 이미지 적용 및 섹션별 UI 개선 개발계획서",
       "category": "계획서",
-      "updatedAt": "2026-07-26",
-      "sourcePath": "docs/계획/section-ai-image-generation-rendering-policy-development-plan-2026-07-26.md",
+      "updatedAt": "2026-07-20",
+      "sourcePath": "docs/계획/section-ai-image-application-and-section-ui-development-plan-2026-07-20.md",
       "contentUrl": "/document/content/doc-0065.md"
     },
     {
       "id": "doc-0066",
-      "title": "섹션 AI 레이아웃 및 이미지 생성 1차 개발계획서",
+      "title": "섹션 AI 이미지 생성·렌더링 정책 통합 개발계획서",
       "category": "계획서",
-      "updatedAt": "2026-07-20",
-      "sourcePath": "docs/계획/section-ai-layout-and-image-generation-mvp-development-plan-2026-07-20.md",
+      "updatedAt": "2026-07-26",
+      "sourcePath": "docs/계획/section-ai-image-generation-rendering-policy-development-plan-2026-07-26.md",
       "contentUrl": "/document/content/doc-0066.md"
     },
     {
       "id": "doc-0067",
-      "title": "섹션 배경 및 Image Frame 개발계획서",
+      "title": "섹션 AI 레이아웃 및 이미지 생성 1차 개발계획서",
       "category": "계획서",
-      "updatedAt": "2026-07-23",
-      "sourcePath": "docs/계획/section-background-and-image-frame-development-plan-2026-07-23.md",
+      "updatedAt": "2026-07-20",
+      "sourcePath": "docs/계획/section-ai-layout-and-image-generation-mvp-development-plan-2026-07-20.md",
       "contentUrl": "/document/content/doc-0067.md"
     },
     {
       "id": "doc-0068",
-      "title": "섹션 이미지 프롬프트 운영 안정화 검토안",
-      "category": "프롬프트",
-      "updatedAt": "2026-07-24",
-      "sourcePath": "docs/계획/section-image-prompt-governance-draft-2026-07-24.md",
+      "title": "섹션 배경 및 Image Frame 개발계획서",
+      "category": "계획서",
+      "updatedAt": "2026-07-23",
+      "sourcePath": "docs/계획/section-background-and-image-frame-development-plan-2026-07-23.md",
       "contentUrl": "/document/content/doc-0068.md"
     },
     {
       "id": "doc-0069",
-      "title": "소스코드 정리 및 공통화 개발계획서",
-      "category": "계획서",
-      "updatedAt": "2026-07-21",
-      "sourcePath": "docs/계획/source-code-cleanup-and-consolidation-development-plan-2026-07-21.md",
+      "title": "섹션 이미지 프롬프트 운영 안정화 검토안",
+      "category": "프롬프트",
+      "updatedAt": "2026-07-24",
+      "sourcePath": "docs/계획/section-image-prompt-governance-draft-2026-07-24.md",
       "contentUrl": "/document/content/doc-0069.md"
     },
     {
       "id": "doc-0070",
-      "title": "소스코드 LLM 프롬프트 설정 일원화 개발계획서",
-      "category": "프롬프트",
-      "updatedAt": "2026-08-07",
-      "sourcePath": "docs/계획/source-code-llm-prompt-setting-centralization-development-plan-2026-08-07.md",
+      "title": "소스코드 정리 및 공통화 개발계획서",
+      "category": "계획서",
+      "updatedAt": "2026-07-21",
+      "sourcePath": "docs/계획/source-code-cleanup-and-consolidation-development-plan-2026-07-21.md",
       "contentUrl": "/document/content/doc-0070.md"
     },
     {
       "id": "doc-0071",
-      "title": "템플릿·페이지 레이아웃 관리 비활성화 개발 계획서",
-      "category": "계획서",
-      "updatedAt": "2026-09-08",
-      "sourcePath": "docs/계획/template-layout-management-deactivation-development-plan-2026-09-08.md",
+      "title": "소스코드 LLM 프롬프트 설정 일원화 개발계획서",
+      "category": "프롬프트",
+      "updatedAt": "2026-08-07",
+      "sourcePath": "docs/계획/source-code-llm-prompt-setting-centralization-development-plan-2026-08-07.md",
       "contentUrl": "/document/content/doc-0071.md"
     },
     {
       "id": "doc-0072",
-      "title": "Visual Editor 선택 컴포넌트 컨텍스트 속성 팝업 개발계획서",
+      "title": "템플릿·페이지 레이아웃 관리 비활성화 개발 계획서",
       "category": "계획서",
-      "updatedAt": "2026-08-10",
-      "sourcePath": "docs/계획/visual-editor-contextual-component-inspector-development-plan-2026-08-10.md",
+      "updatedAt": "2026-09-08",
+      "sourcePath": "docs/계획/template-layout-management-deactivation-development-plan-2026-09-08.md",
       "contentUrl": "/document/content/doc-0072.md"
     },
     {
       "id": "doc-0073",
-      "title": "Visual Editor 구조·AI 디자인·섹션/컴포넌트 트랜지션 개발 계획서",
+      "title": "Visual Editor 선택 컴포넌트 컨텍스트 속성 팝업 개발계획서",
       "category": "계획서",
-      "updatedAt": "2026-07-31",
-      "sourcePath": "docs/계획/visual-editor-structure-ai-design-transition-development-plan-2026-07-31.md",
+      "updatedAt": "2026-08-10",
+      "sourcePath": "docs/계획/visual-editor-contextual-component-inspector-development-plan-2026-08-10.md",
       "contentUrl": "/document/content/doc-0073.md"
     },
     {
       "id": "doc-0074",
-      "title": "Visual Editor 3개 모드 통합 개발계획서",
+      "title": "Visual Editor 구조·AI 디자인·섹션/컴포넌트 트랜지션 개발 계획서",
       "category": "계획서",
-      "updatedAt": "2026-07-30",
-      "sourcePath": "docs/계획/visual-editor-three-mode-unification-development-plan-2026-07-30.md",
+      "updatedAt": "2026-07-31",
+      "sourcePath": "docs/계획/visual-editor-structure-ai-design-transition-development-plan-2026-07-31.md",
       "contentUrl": "/document/content/doc-0074.md"
     },
     {
       "id": "doc-0075",
-      "title": "Webflow형 공통 컴포넌트 아이콘 Library 및 Drag & Drop 개발 계획서",
+      "title": "Visual Editor 3개 모드 통합 개발계획서",
       "category": "계획서",
-      "updatedAt": "2026-07-31",
-      "sourcePath": "docs/계획/webflow-style-component-library-drag-drop-development-plan-2026-07-31.md",
+      "updatedAt": "2026-07-30",
+      "sourcePath": "docs/계획/visual-editor-three-mode-unification-development-plan-2026-07-30.md",
       "contentUrl": "/document/content/doc-0075.md"
     },
     {
       "id": "doc-0076",
-      "title": "지난주 진행 정리 및 금주 계획",
+      "title": "Webflow형 공통 컴포넌트 아이콘 Library 및 Drag & Drop 개발 계획서",
       "category": "계획서",
-      "updatedAt": "2026-07-27",
-      "sourcePath": "docs/계획/weekly-progress-and-plan-2026-07-27.md",
+      "updatedAt": "2026-07-31",
+      "sourcePath": "docs/계획/webflow-style-component-library-drag-drop-development-plan-2026-07-31.md",
       "contentUrl": "/document/content/doc-0076.md"
     },
     {
       "id": "doc-0077",
-      "title": "Nuxt Runtime·관리자 DOM Workbench·Directus Tunnel 구현 결과",
-      "category": "구현 문서",
-      "updatedAt": "2026-09-20",
-      "sourcePath": "docs/구현/nuxt-runtime-directus-tunnel-implementation-2026-09-20.md",
+      "title": "지난주 진행 정리 및 금주 계획",
+      "category": "계획서",
+      "updatedAt": "2026-07-27",
+      "sourcePath": "docs/계획/weekly-progress-and-plan-2026-07-27.md",
       "contentUrl": "/document/content/doc-0077.md"
     },
     {
       "id": "doc-0078",
-      "title": "AI 프로모션 웹 결과물 디자인 품질 전략",
-      "category": "기획서",
-      "updatedAt": "2026-10-11",
-      "sourcePath": "docs/기획/ai-promotion-web-output-design-quality-strategy-2026-10-11.md",
+      "title": "Nuxt Runtime·관리자 DOM Workbench·Directus Tunnel 구현 결과",
+      "category": "구현 문서",
+      "updatedAt": "2026-09-20",
+      "sourcePath": "docs/구현/nuxt-runtime-directus-tunnel-implementation-2026-09-20.md",
       "contentUrl": "/document/content/doc-0078.md"
     },
     {
       "id": "doc-0079",
-      "title": "자연어 기반 섹션 구성 기능 1차 정리",
+      "title": "AI 프로모션 웹 결과물 디자인 품질 전략",
       "category": "기획서",
-      "updatedAt": "2026-07-25",
-      "sourcePath": "docs/기획/natural-language-section-composition-analysis-report-2026-07-25.md",
+      "updatedAt": "2026-10-11",
+      "sourcePath": "docs/기획/ai-promotion-web-output-design-quality-strategy-2026-10-11.md",
       "contentUrl": "/document/content/doc-0079.md"
     },
     {
       "id": "doc-0080",
-      "title": "프로모션 빌더 AI 디자인·컴포넌트·화면 구조 분석 리포트",
+      "title": "자연어 기반 섹션 구성 기능 1차 정리",
       "category": "기획서",
-      "updatedAt": "2026-07-23",
-      "sourcePath": "docs/기획/promo-builder-ai-design-and-component-analysis-report-2026-07-23.md",
+      "updatedAt": "2026-07-25",
+      "sourcePath": "docs/기획/natural-language-section-composition-analysis-report-2026-07-25.md",
       "contentUrl": "/document/content/doc-0080.md"
     },
     {
       "id": "doc-0081",
-      "title": "Promo Web Builder 통합 기획서 (현행화)",
-      "category": "계획서",
+      "title": "프로모션 빌더 AI 디자인·컴포넌트·화면 구조 분석 리포트",
+      "category": "기획서",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/기획/promo-web-builder-product-plan-2026-07-23.md",
+      "sourcePath": "docs/기획/promo-builder-ai-design-and-component-analysis-report-2026-07-23.md",
       "contentUrl": "/document/content/doc-0081.md"
     },
     {
       "id": "doc-0082",
-      "title": "관리자 페이지 용어 사전 (다국어 i18n 기준)",
-      "category": "설계서",
-      "updatedAt": "2026-07-22",
-      "sourcePath": "docs/설계/admin-page-terminology-dictionary-2026-07-22.md",
+      "title": "Promo Web Builder 통합 기획서 (현행화)",
+      "category": "계획서",
+      "updatedAt": "2026-07-23",
+      "sourcePath": "docs/기획/promo-web-builder-product-plan-2026-07-23.md",
       "contentUrl": "/document/content/doc-0082.md"
     },
     {
       "id": "doc-0083",
-      "title": "Directus·MCP 적용 시 예상 구성",
+      "title": "관리자 페이지 용어 사전 (다국어 i18n 기준)",
       "category": "설계서",
-      "updatedAt": "2026-09-04",
-      "sourcePath": "docs/설계/admin-service-directus-relationship-summary-2026-09-04.md",
+      "updatedAt": "2026-07-22",
+      "sourcePath": "docs/설계/admin-page-terminology-dictionary-2026-07-22.md",
       "contentUrl": "/document/content/doc-0083.md"
     },
     {
       "id": "doc-0084",
-      "title": "AI 프로모션 빌더 Composition Engine 개발 설계서",
+      "title": "Directus·MCP 적용 시 예상 구성",
       "category": "설계서",
-      "updatedAt": "2026-07-29",
-      "sourcePath": "docs/설계/ai-promotion-builder-composition-engine-technical-design-2026-07-29.md",
+      "updatedAt": "2026-09-04",
+      "sourcePath": "docs/설계/admin-service-directus-relationship-summary-2026-09-04.md",
       "contentUrl": "/document/content/doc-0084.md"
     },
     {
       "id": "doc-0085",
-      "title": "현재 AI Agent 구성 확인",
+      "title": "AI 프로모션 빌더 Composition Engine 개발 설계서",
       "category": "설계서",
-      "updatedAt": "2026-09-04",
-      "sourcePath": "docs/설계/current-ai-agent-inventory-2026-09-04.md",
+      "updatedAt": "2026-07-29",
+      "sourcePath": "docs/설계/ai-promotion-builder-composition-engine-technical-design-2026-07-29.md",
       "contentUrl": "/document/content/doc-0085.md"
     },
     {
       "id": "doc-0086",
-      "title": "정의된 Agent의 Directus 적용 방향",
-      "category": "계획서",
+      "title": "현재 AI Agent 구성 확인",
+      "category": "설계서",
       "updatedAt": "2026-09-04",
-      "sourcePath": "docs/설계/directus-agent-control-plane-roadmap-2026-09-04.md",
+      "sourcePath": "docs/설계/current-ai-agent-inventory-2026-09-04.md",
       "contentUrl": "/document/content/doc-0086.md"
     },
     {
       "id": "doc-0087",
-      "title": "Directus MCP 활용 방안",
-      "category": "설계서",
+      "title": "정의된 Agent의 Directus 적용 방향",
+      "category": "계획서",
       "updatedAt": "2026-09-04",
-      "sourcePath": "docs/설계/directus-mcp-promo-web-builder-brief-2026-09-04.md",
+      "sourcePath": "docs/설계/directus-agent-control-plane-roadmap-2026-09-04.md",
       "contentUrl": "/document/content/doc-0087.md"
     },
     {
       "id": "doc-0088",
-      "title": "Directus MCP와 프로모션 웹빌더 활용 방법",
+      "title": "Directus MCP 활용 방안",
       "category": "설계서",
       "updatedAt": "2026-09-04",
-      "sourcePath": "docs/설계/directus-mcp-promo-web-builder-use-cases-2026-09-04.md",
+      "sourcePath": "docs/설계/directus-mcp-promo-web-builder-brief-2026-09-04.md",
       "contentUrl": "/document/content/doc-0088.md"
     },
     {
       "id": "doc-0089",
-      "title": "GGPoker 톤앤매너 · 이미지 생성 프롬프트 · 프로모션 빌더 디자인 토큰",
-      "category": "프롬프트",
-      "updatedAt": "2026-07-22",
-      "sourcePath": "docs/설계/ggpoker-brand-tone-and-image-prompt-guide-2026-07-22.md",
+      "title": "Directus MCP와 프로모션 웹빌더 활용 방법",
+      "category": "설계서",
+      "updatedAt": "2026-09-04",
+      "sourcePath": "docs/설계/directus-mcp-promo-web-builder-use-cases-2026-09-04.md",
       "contentUrl": "/document/content/doc-0089.md"
     },
     {
       "id": "doc-0090",
-      "title": "Promo Web Builder AS-IS / TO-BE 비교",
-      "category": "설계서",
-      "updatedAt": "2026-09-04",
-      "sourcePath": "docs/설계/promo-builder-directus-as-is-to-be-comparison-2026-09-04.md",
+      "title": "GGPoker 톤앤매너 · 이미지 생성 프롬프트 · 프로모션 빌더 디자인 토큰",
+      "category": "프롬프트",
+      "updatedAt": "2026-07-22",
+      "sourcePath": "docs/설계/ggpoker-brand-tone-and-image-prompt-guide-2026-07-22.md",
       "contentUrl": "/document/content/doc-0090.md"
     },
     {
       "id": "doc-0091",
-      "title": "Directus 적용 전·후 간단 비교",
+      "title": "Promo Web Builder AS-IS / TO-BE 비교",
       "category": "설계서",
       "updatedAt": "2026-09-04",
-      "sourcePath": "docs/설계/promo-builder-directus-as-is-to-be-summary-2026-09-04.md",
+      "sourcePath": "docs/설계/promo-builder-directus-as-is-to-be-comparison-2026-09-04.md",
       "contentUrl": "/document/content/doc-0091.md"
     },
     {
       "id": "doc-0092",
-      "title": "Promo Web Builder 서비스·AI Admin·CMS 영역 분리 아키텍처",
+      "title": "Directus 적용 전·후 간단 비교",
       "category": "설계서",
-      "updatedAt": "2026-11-01",
-      "sourcePath": "docs/설계/promo-web-builder-domain-architecture-2026-11-01.md",
+      "updatedAt": "2026-09-04",
+      "sourcePath": "docs/설계/promo-builder-directus-as-is-to-be-summary-2026-09-04.md",
       "contentUrl": "/document/content/doc-0092.md"
     },
     {
       "id": "doc-0093",
-      "title": "Promo Web Builder 서비스 흐름 소스 검토 및 LLM 인수인계",
+      "title": "Promo Web Builder 서비스·AI Admin·CMS 영역 분리 아키텍처",
       "category": "설계서",
-      "updatedAt": "2026-11-03",
-      "sourcePath": "docs/설계/promo-web-builder-service-flow-source-review-and-llm-handoff-2026-11-03.md",
+      "updatedAt": "2026-11-01",
+      "sourcePath": "docs/설계/promo-web-builder-domain-architecture-2026-11-01.md",
       "contentUrl": "/document/content/doc-0093.md"
     },
     {
       "id": "doc-0094",
-      "title": "Promo Web Builder 소스 코드 분석 보고서",
+      "title": "Promo Web Builder 서비스 흐름 소스 검토 및 LLM 인수인계",
       "category": "설계서",
       "updatedAt": "2026-11-03",
-      "sourcePath": "docs/설계/promo-web-builder-source-code-analysis-2026-11-03.md",
+      "sourcePath": "docs/설계/promo-web-builder-service-flow-source-review-and-llm-handoff-2026-11-03.md",
       "contentUrl": "/document/content/doc-0094.md"
     },
     {
       "id": "doc-0095",
-      "title": "Visual Editor Live Preview·라인 단위 텍스트 편집 설계서",
+      "title": "Promo Web Builder 소스 코드 분석 보고서",
       "category": "설계서",
-      "updatedAt": "2026-08-01",
-      "sourcePath": "docs/설계/visual-editor-live-preview-rich-text-design-2026-08-01.md",
+      "updatedAt": "2026-11-03",
+      "sourcePath": "docs/설계/promo-web-builder-source-code-analysis-2026-11-03.md",
       "contentUrl": "/document/content/doc-0095.md"
     },
     {
       "id": "doc-0096",
-      "title": "WordPress에서 Directus로 전환",
+      "title": "Promo Web Builder 사용자 서비스 CMS 웹 출력 도메인 분리 검토",
       "category": "설계서",
-      "updatedAt": "2026-09-04",
-      "sourcePath": "docs/설계/wordpress-to-directus-summary-2026-09-04.md",
+      "updatedAt": "2026-11-03",
+      "sourcePath": "docs/설계/promo-web-builder-user-cms-web-output-domain-separation-review-2026-11-03.md",
       "contentUrl": "/document/content/doc-0096.md"
     },
     {
       "id": "doc-0097",
-      "title": "B섹션 사용 가이드",
-      "category": "기술 문서",
-      "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/b-section-usage-guide.md",
+      "title": "Visual Editor Live Preview·라인 단위 텍스트 편집 설계서",
+      "category": "설계서",
+      "updatedAt": "2026-08-01",
+      "sourcePath": "docs/설계/visual-editor-live-preview-rich-text-design-2026-08-01.md",
       "contentUrl": "/document/content/doc-0097.md"
     },
     {
       "id": "doc-0098",
-      "title": "Codex Project Transfer Environment Guide",
-      "category": "기술 문서",
-      "updatedAt": "2026-07-11",
-      "sourcePath": "docs/자료/codex-project-transfer-env-guide-2026-07-11.md",
+      "title": "WordPress에서 Directus로 전환",
+      "category": "설계서",
+      "updatedAt": "2026-09-04",
+      "sourcePath": "docs/설계/wordpress-to-directus-summary-2026-09-04.md",
       "contentUrl": "/document/content/doc-0098.md"
     },
     {
       "id": "doc-0099",
-      "title": "DESIGN",
-      "category": "디자인 참고자료",
+      "title": "B섹션 사용 가이드",
+      "category": "기술 문서",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/airbnb/DESIGN.md",
+      "sourcePath": "docs/자료/b-section-usage-guide.md",
       "contentUrl": "/document/content/doc-0099.md"
     },
     {
       "id": "doc-0100",
-      "title": "Airbnb Inspired Design System Analysis",
-      "category": "디자인 참고자료",
-      "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/airbnb/README.md",
+      "title": "Codex Project Transfer Environment Guide",
+      "category": "기술 문서",
+      "updatedAt": "2026-07-11",
+      "sourcePath": "docs/자료/codex-project-transfer-env-guide-2026-07-11.md",
       "contentUrl": "/document/content/doc-0100.md"
     },
     {
@@ -807,15 +807,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/airtable/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/airbnb/DESIGN.md",
       "contentUrl": "/document/content/doc-0101.md"
     },
     {
       "id": "doc-0102",
-      "title": "Airtable Inspired Design System Analysis",
+      "title": "Airbnb Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/airtable/README.md",
+      "sourcePath": "docs/자료/design-md/airbnb/README.md",
       "contentUrl": "/document/content/doc-0102.md"
     },
     {
@@ -823,15 +823,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/apple/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/airtable/DESIGN.md",
       "contentUrl": "/document/content/doc-0103.md"
     },
     {
       "id": "doc-0104",
-      "title": "Apple Inspired Design System Analysis",
+      "title": "Airtable Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/apple/README.md",
+      "sourcePath": "docs/자료/design-md/airtable/README.md",
       "contentUrl": "/document/content/doc-0104.md"
     },
     {
@@ -839,15 +839,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/binance/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/apple/DESIGN.md",
       "contentUrl": "/document/content/doc-0105.md"
     },
     {
       "id": "doc-0106",
-      "title": "Binance Inspired Design System Analysis",
+      "title": "Apple Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/binance/README.md",
+      "sourcePath": "docs/자료/design-md/apple/README.md",
       "contentUrl": "/document/content/doc-0106.md"
     },
     {
@@ -855,15 +855,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/bmw-m/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/binance/DESIGN.md",
       "contentUrl": "/document/content/doc-0107.md"
     },
     {
       "id": "doc-0108",
-      "title": "Bmw-m Inspired Design System Analysis",
+      "title": "Binance Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/bmw-m/README.md",
+      "sourcePath": "docs/자료/design-md/binance/README.md",
       "contentUrl": "/document/content/doc-0108.md"
     },
     {
@@ -871,15 +871,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/bmw/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/bmw-m/DESIGN.md",
       "contentUrl": "/document/content/doc-0109.md"
     },
     {
       "id": "doc-0110",
-      "title": "Bmw Inspired Design System Analysis",
+      "title": "Bmw-m Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/bmw/README.md",
+      "sourcePath": "docs/자료/design-md/bmw-m/README.md",
       "contentUrl": "/document/content/doc-0110.md"
     },
     {
@@ -887,15 +887,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/bugatti/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/bmw/DESIGN.md",
       "contentUrl": "/document/content/doc-0111.md"
     },
     {
       "id": "doc-0112",
-      "title": "Bugatti Inspired Design System Analysis",
+      "title": "Bmw Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/bugatti/README.md",
+      "sourcePath": "docs/자료/design-md/bmw/README.md",
       "contentUrl": "/document/content/doc-0112.md"
     },
     {
@@ -903,15 +903,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/cal/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/bugatti/DESIGN.md",
       "contentUrl": "/document/content/doc-0113.md"
     },
     {
       "id": "doc-0114",
-      "title": "Cal Inspired Design System Analysis",
+      "title": "Bugatti Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/cal/README.md",
+      "sourcePath": "docs/자료/design-md/bugatti/README.md",
       "contentUrl": "/document/content/doc-0114.md"
     },
     {
@@ -919,15 +919,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/claude/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/cal/DESIGN.md",
       "contentUrl": "/document/content/doc-0115.md"
     },
     {
       "id": "doc-0116",
-      "title": "Claude Inspired Design System Analysis",
+      "title": "Cal Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/claude/README.md",
+      "sourcePath": "docs/자료/design-md/cal/README.md",
       "contentUrl": "/document/content/doc-0116.md"
     },
     {
@@ -935,15 +935,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/clay/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/claude/DESIGN.md",
       "contentUrl": "/document/content/doc-0117.md"
     },
     {
       "id": "doc-0118",
-      "title": "Clay Inspired Design System Analysis",
+      "title": "Claude Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/clay/README.md",
+      "sourcePath": "docs/자료/design-md/claude/README.md",
       "contentUrl": "/document/content/doc-0118.md"
     },
     {
@@ -951,15 +951,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/clickhouse/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/clay/DESIGN.md",
       "contentUrl": "/document/content/doc-0119.md"
     },
     {
       "id": "doc-0120",
-      "title": "ClickHouse Inspired Design System Analysis",
+      "title": "Clay Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/clickhouse/README.md",
+      "sourcePath": "docs/자료/design-md/clay/README.md",
       "contentUrl": "/document/content/doc-0120.md"
     },
     {
@@ -967,15 +967,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/cohere/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/clickhouse/DESIGN.md",
       "contentUrl": "/document/content/doc-0121.md"
     },
     {
       "id": "doc-0122",
-      "title": "Cohere Inspired Design System Analysis",
+      "title": "ClickHouse Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/cohere/README.md",
+      "sourcePath": "docs/자료/design-md/clickhouse/README.md",
       "contentUrl": "/document/content/doc-0122.md"
     },
     {
@@ -983,15 +983,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/coinbase/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/cohere/DESIGN.md",
       "contentUrl": "/document/content/doc-0123.md"
     },
     {
       "id": "doc-0124",
-      "title": "Coinbase Inspired Design System Analysis",
+      "title": "Cohere Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/coinbase/README.md",
+      "sourcePath": "docs/자료/design-md/cohere/README.md",
       "contentUrl": "/document/content/doc-0124.md"
     },
     {
@@ -999,15 +999,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/composio/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/coinbase/DESIGN.md",
       "contentUrl": "/document/content/doc-0125.md"
     },
     {
       "id": "doc-0126",
-      "title": "Composio Inspired Design System Analysis",
+      "title": "Coinbase Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/composio/README.md",
+      "sourcePath": "docs/자료/design-md/coinbase/README.md",
       "contentUrl": "/document/content/doc-0126.md"
     },
     {
@@ -1015,15 +1015,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/cursor/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/composio/DESIGN.md",
       "contentUrl": "/document/content/doc-0127.md"
     },
     {
       "id": "doc-0128",
-      "title": "Cursor Inspired Design System Analysis",
+      "title": "Composio Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/cursor/README.md",
+      "sourcePath": "docs/자료/design-md/composio/README.md",
       "contentUrl": "/document/content/doc-0128.md"
     },
     {
@@ -1031,15 +1031,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/dell-1996/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/cursor/DESIGN.md",
       "contentUrl": "/document/content/doc-0129.md"
     },
     {
       "id": "doc-0130",
-      "title": "Dell (1996) Inspired Design System Analysis",
+      "title": "Cursor Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/dell-1996/README.md",
+      "sourcePath": "docs/자료/design-md/cursor/README.md",
       "contentUrl": "/document/content/doc-0130.md"
     },
     {
@@ -1047,15 +1047,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/elevenlabs/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/dell-1996/DESIGN.md",
       "contentUrl": "/document/content/doc-0131.md"
     },
     {
       "id": "doc-0132",
-      "title": "Elevenlabs Inspired Design System Analysis",
+      "title": "Dell (1996) Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/elevenlabs/README.md",
+      "sourcePath": "docs/자료/design-md/dell-1996/README.md",
       "contentUrl": "/document/content/doc-0132.md"
     },
     {
@@ -1063,15 +1063,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/expo/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/elevenlabs/DESIGN.md",
       "contentUrl": "/document/content/doc-0133.md"
     },
     {
       "id": "doc-0134",
-      "title": "Expo Inspired Design System Analysis",
+      "title": "Elevenlabs Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/expo/README.md",
+      "sourcePath": "docs/자료/design-md/elevenlabs/README.md",
       "contentUrl": "/document/content/doc-0134.md"
     },
     {
@@ -1079,15 +1079,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/ferrari/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/expo/DESIGN.md",
       "contentUrl": "/document/content/doc-0135.md"
     },
     {
       "id": "doc-0136",
-      "title": "Ferrari Inspired Design System Analysis",
+      "title": "Expo Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/ferrari/README.md",
+      "sourcePath": "docs/자료/design-md/expo/README.md",
       "contentUrl": "/document/content/doc-0136.md"
     },
     {
@@ -1095,15 +1095,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/figma/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/ferrari/DESIGN.md",
       "contentUrl": "/document/content/doc-0137.md"
     },
     {
       "id": "doc-0138",
-      "title": "Figma Inspired Design System Analysis",
+      "title": "Ferrari Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/figma/README.md",
+      "sourcePath": "docs/자료/design-md/ferrari/README.md",
       "contentUrl": "/document/content/doc-0138.md"
     },
     {
@@ -1111,15 +1111,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/framer/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/figma/DESIGN.md",
       "contentUrl": "/document/content/doc-0139.md"
     },
     {
       "id": "doc-0140",
-      "title": "Framer Inspired Design System Analysis",
+      "title": "Figma Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/framer/README.md",
+      "sourcePath": "docs/자료/design-md/figma/README.md",
       "contentUrl": "/document/content/doc-0140.md"
     },
     {
@@ -1127,15 +1127,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/hashicorp/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/framer/DESIGN.md",
       "contentUrl": "/document/content/doc-0141.md"
     },
     {
       "id": "doc-0142",
-      "title": "HashiCorp Inspired Design System Analysis",
+      "title": "Framer Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/hashicorp/README.md",
+      "sourcePath": "docs/자료/design-md/framer/README.md",
       "contentUrl": "/document/content/doc-0142.md"
     },
     {
@@ -1143,15 +1143,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/hp/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/hashicorp/DESIGN.md",
       "contentUrl": "/document/content/doc-0143.md"
     },
     {
       "id": "doc-0144",
-      "title": "HP Inspired Design System Analysis",
+      "title": "HashiCorp Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/hp/README.md",
+      "sourcePath": "docs/자료/design-md/hashicorp/README.md",
       "contentUrl": "/document/content/doc-0144.md"
     },
     {
@@ -1159,15 +1159,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/ibm/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/hp/DESIGN.md",
       "contentUrl": "/document/content/doc-0145.md"
     },
     {
       "id": "doc-0146",
-      "title": "IBM Inspired Design System Analysis",
+      "title": "HP Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/ibm/README.md",
+      "sourcePath": "docs/자료/design-md/hp/README.md",
       "contentUrl": "/document/content/doc-0146.md"
     },
     {
@@ -1175,111 +1175,111 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/intercom/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/ibm/DESIGN.md",
       "contentUrl": "/document/content/doc-0147.md"
     },
     {
       "id": "doc-0148",
-      "title": "Intercom Inspired Design System Analysis",
+      "title": "IBM Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/intercom/README.md",
+      "sourcePath": "docs/자료/design-md/ibm/README.md",
       "contentUrl": "/document/content/doc-0148.md"
     },
     {
       "id": "doc-0149",
-      "title": "Design System Inspired by Kraken",
+      "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/kraken/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/intercom/DESIGN.md",
       "contentUrl": "/document/content/doc-0149.md"
     },
     {
       "id": "doc-0150",
-      "title": "Kraken Inspired Design System Analysis",
+      "title": "Intercom Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/kraken/README.md",
+      "sourcePath": "docs/자료/design-md/intercom/README.md",
       "contentUrl": "/document/content/doc-0150.md"
     },
     {
       "id": "doc-0151",
-      "title": "Design System Inspired by Lamborghini",
+      "title": "Design System Inspired by Kraken",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/lamborghini/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/kraken/DESIGN.md",
       "contentUrl": "/document/content/doc-0151.md"
     },
     {
       "id": "doc-0152",
-      "title": "Lamborghini Inspired Design System Analysis",
+      "title": "Kraken Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/lamborghini/README.md",
+      "sourcePath": "docs/자료/design-md/kraken/README.md",
       "contentUrl": "/document/content/doc-0152.md"
     },
     {
       "id": "doc-0153",
-      "title": "DESIGN",
+      "title": "Design System Inspired by Lamborghini",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/linear.app/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/lamborghini/DESIGN.md",
       "contentUrl": "/document/content/doc-0153.md"
     },
     {
       "id": "doc-0154",
-      "title": "Linear Inspired Design System Analysis",
+      "title": "Lamborghini Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/linear.app/README.md",
+      "sourcePath": "docs/자료/design-md/lamborghini/README.md",
       "contentUrl": "/document/content/doc-0154.md"
     },
     {
       "id": "doc-0155",
-      "title": "Design System Inspired by Lovable",
+      "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/lovable/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/linear.app/DESIGN.md",
       "contentUrl": "/document/content/doc-0155.md"
     },
     {
       "id": "doc-0156",
-      "title": "Lovable Inspired Design System Analysis",
+      "title": "Linear Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/lovable/README.md",
+      "sourcePath": "docs/자료/design-md/linear.app/README.md",
       "contentUrl": "/document/content/doc-0156.md"
     },
     {
       "id": "doc-0157",
-      "title": "Design System Inspired by Mastercard",
+      "title": "Design System Inspired by Lovable",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/mastercard/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/lovable/DESIGN.md",
       "contentUrl": "/document/content/doc-0157.md"
     },
     {
       "id": "doc-0158",
-      "title": "Mastercard Inspired Design System Analysis",
+      "title": "Lovable Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/mastercard/README.md",
+      "sourcePath": "docs/자료/design-md/lovable/README.md",
       "contentUrl": "/document/content/doc-0158.md"
     },
     {
       "id": "doc-0159",
-      "title": "DESIGN",
+      "title": "Design System Inspired by Mastercard",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/meta/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/mastercard/DESIGN.md",
       "contentUrl": "/document/content/doc-0159.md"
     },
     {
       "id": "doc-0160",
-      "title": "Meta Inspired Design System Analysis",
+      "title": "Mastercard Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/meta/README.md",
+      "sourcePath": "docs/자료/design-md/mastercard/README.md",
       "contentUrl": "/document/content/doc-0160.md"
     },
     {
@@ -1287,15 +1287,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/minimax/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/meta/DESIGN.md",
       "contentUrl": "/document/content/doc-0161.md"
     },
     {
       "id": "doc-0162",
-      "title": "Minimax Inspired Design System Analysis",
+      "title": "Meta Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/minimax/README.md",
+      "sourcePath": "docs/자료/design-md/meta/README.md",
       "contentUrl": "/document/content/doc-0162.md"
     },
     {
@@ -1303,15 +1303,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/mintlify/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/minimax/DESIGN.md",
       "contentUrl": "/document/content/doc-0163.md"
     },
     {
       "id": "doc-0164",
-      "title": "Mintlify Inspired Design System Analysis",
+      "title": "Minimax Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/mintlify/README.md",
+      "sourcePath": "docs/자료/design-md/minimax/README.md",
       "contentUrl": "/document/content/doc-0164.md"
     },
     {
@@ -1319,15 +1319,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/miro/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/mintlify/DESIGN.md",
       "contentUrl": "/document/content/doc-0165.md"
     },
     {
       "id": "doc-0166",
-      "title": "Miro Inspired Design System Analysis",
+      "title": "Mintlify Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/miro/README.md",
+      "sourcePath": "docs/자료/design-md/mintlify/README.md",
       "contentUrl": "/document/content/doc-0166.md"
     },
     {
@@ -1335,15 +1335,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/mistral.ai/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/miro/DESIGN.md",
       "contentUrl": "/document/content/doc-0167.md"
     },
     {
       "id": "doc-0168",
-      "title": "Mistral AI Inspired Design System Analysis",
+      "title": "Miro Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/mistral.ai/README.md",
+      "sourcePath": "docs/자료/design-md/miro/README.md",
       "contentUrl": "/document/content/doc-0168.md"
     },
     {
@@ -1351,15 +1351,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/mongodb/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/mistral.ai/DESIGN.md",
       "contentUrl": "/document/content/doc-0169.md"
     },
     {
       "id": "doc-0170",
-      "title": "Mongodb Inspired Design System Analysis",
+      "title": "Mistral AI Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/mongodb/README.md",
+      "sourcePath": "docs/자료/design-md/mistral.ai/README.md",
       "contentUrl": "/document/content/doc-0170.md"
     },
     {
@@ -1367,15 +1367,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/nike/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/mongodb/DESIGN.md",
       "contentUrl": "/document/content/doc-0171.md"
     },
     {
       "id": "doc-0172",
-      "title": "Nike Inspired Design System Analysis",
+      "title": "Mongodb Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/nike/README.md",
+      "sourcePath": "docs/자료/design-md/mongodb/README.md",
       "contentUrl": "/document/content/doc-0172.md"
     },
     {
@@ -1383,15 +1383,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/nintendo-2001/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/nike/DESIGN.md",
       "contentUrl": "/document/content/doc-0173.md"
     },
     {
       "id": "doc-0174",
-      "title": "Nintendo.com (2001) Inspired Design System Analysis",
+      "title": "Nike Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/nintendo-2001/README.md",
+      "sourcePath": "docs/자료/design-md/nike/README.md",
       "contentUrl": "/document/content/doc-0174.md"
     },
     {
@@ -1399,15 +1399,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/notion/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/nintendo-2001/DESIGN.md",
       "contentUrl": "/document/content/doc-0175.md"
     },
     {
       "id": "doc-0176",
-      "title": "Notion Inspired Design System Analysis",
+      "title": "Nintendo.com (2001) Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/notion/README.md",
+      "sourcePath": "docs/자료/design-md/nintendo-2001/README.md",
       "contentUrl": "/document/content/doc-0176.md"
     },
     {
@@ -1415,15 +1415,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/nvidia/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/notion/DESIGN.md",
       "contentUrl": "/document/content/doc-0177.md"
     },
     {
       "id": "doc-0178",
-      "title": "NVIDIA Inspired Design System Analysis",
+      "title": "Notion Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/nvidia/README.md",
+      "sourcePath": "docs/자료/design-md/notion/README.md",
       "contentUrl": "/document/content/doc-0178.md"
     },
     {
@@ -1431,15 +1431,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/ollama/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/nvidia/DESIGN.md",
       "contentUrl": "/document/content/doc-0179.md"
     },
     {
       "id": "doc-0180",
-      "title": "Ollama Inspired Design System Analysis",
+      "title": "NVIDIA Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/ollama/README.md",
+      "sourcePath": "docs/자료/design-md/nvidia/README.md",
       "contentUrl": "/document/content/doc-0180.md"
     },
     {
@@ -1447,15 +1447,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/opencode.ai/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/ollama/DESIGN.md",
       "contentUrl": "/document/content/doc-0181.md"
     },
     {
       "id": "doc-0182",
-      "title": "OpenCode AI Inspired Design System Analysis",
+      "title": "Ollama Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/opencode.ai/README.md",
+      "sourcePath": "docs/자료/design-md/ollama/README.md",
       "contentUrl": "/document/content/doc-0182.md"
     },
     {
@@ -1463,15 +1463,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/pinterest/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/opencode.ai/DESIGN.md",
       "contentUrl": "/document/content/doc-0183.md"
     },
     {
       "id": "doc-0184",
-      "title": "Pinterest Inspired Design System Analysis",
+      "title": "OpenCode AI Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/pinterest/README.md",
+      "sourcePath": "docs/자료/design-md/opencode.ai/README.md",
       "contentUrl": "/document/content/doc-0184.md"
     },
     {
@@ -1479,15 +1479,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/playstation/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/pinterest/DESIGN.md",
       "contentUrl": "/document/content/doc-0185.md"
     },
     {
       "id": "doc-0186",
-      "title": "Playstation Inspired Design System Analysis",
+      "title": "Pinterest Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/playstation/README.md",
+      "sourcePath": "docs/자료/design-md/pinterest/README.md",
       "contentUrl": "/document/content/doc-0186.md"
     },
     {
@@ -1495,15 +1495,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/posthog/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/playstation/DESIGN.md",
       "contentUrl": "/document/content/doc-0187.md"
     },
     {
       "id": "doc-0188",
-      "title": "Posthog Inspired Design System Analysis",
+      "title": "Playstation Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/posthog/README.md",
+      "sourcePath": "docs/자료/design-md/playstation/README.md",
       "contentUrl": "/document/content/doc-0188.md"
     },
     {
@@ -1511,15 +1511,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/raycast/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/posthog/DESIGN.md",
       "contentUrl": "/document/content/doc-0189.md"
     },
     {
       "id": "doc-0190",
-      "title": "Raycast Inspired Design System Analysis",
+      "title": "Posthog Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/raycast/README.md",
+      "sourcePath": "docs/자료/design-md/posthog/README.md",
       "contentUrl": "/document/content/doc-0190.md"
     },
     {
@@ -1527,15 +1527,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/renault/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/raycast/DESIGN.md",
       "contentUrl": "/document/content/doc-0191.md"
     },
     {
       "id": "doc-0192",
-      "title": "Renault Inspired Design System Analysis",
+      "title": "Raycast Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/renault/README.md",
+      "sourcePath": "docs/자료/design-md/raycast/README.md",
       "contentUrl": "/document/content/doc-0192.md"
     },
     {
@@ -1543,15 +1543,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/replicate/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/renault/DESIGN.md",
       "contentUrl": "/document/content/doc-0193.md"
     },
     {
       "id": "doc-0194",
-      "title": "Replicate Inspired Design System Analysis",
+      "title": "Renault Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/replicate/README.md",
+      "sourcePath": "docs/자료/design-md/renault/README.md",
       "contentUrl": "/document/content/doc-0194.md"
     },
     {
@@ -1559,15 +1559,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/resend/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/replicate/DESIGN.md",
       "contentUrl": "/document/content/doc-0195.md"
     },
     {
       "id": "doc-0196",
-      "title": "Resend Inspired Design System Analysis",
+      "title": "Replicate Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/resend/README.md",
+      "sourcePath": "docs/자료/design-md/replicate/README.md",
       "contentUrl": "/document/content/doc-0196.md"
     },
     {
@@ -1575,63 +1575,63 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/revolut/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/resend/DESIGN.md",
       "contentUrl": "/document/content/doc-0197.md"
     },
     {
       "id": "doc-0198",
-      "title": "Revolut Inspired Design System Analysis",
+      "title": "Resend Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/revolut/README.md",
+      "sourcePath": "docs/자료/design-md/resend/README.md",
       "contentUrl": "/document/content/doc-0198.md"
     },
     {
       "id": "doc-0199",
-      "title": "Design System Inspired by Runway",
+      "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/runwayml/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/revolut/DESIGN.md",
       "contentUrl": "/document/content/doc-0199.md"
     },
     {
       "id": "doc-0200",
-      "title": "RunwayML Inspired Design System Analysis",
+      "title": "Revolut Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/runwayml/README.md",
+      "sourcePath": "docs/자료/design-md/revolut/README.md",
       "contentUrl": "/document/content/doc-0200.md"
     },
     {
       "id": "doc-0201",
-      "title": "Design System Inspired by Sanity",
+      "title": "Design System Inspired by Runway",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/sanity/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/runwayml/DESIGN.md",
       "contentUrl": "/document/content/doc-0201.md"
     },
     {
       "id": "doc-0202",
-      "title": "Sanity Inspired Design System Analysis",
+      "title": "RunwayML Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/sanity/README.md",
+      "sourcePath": "docs/자료/design-md/runwayml/README.md",
       "contentUrl": "/document/content/doc-0202.md"
     },
     {
       "id": "doc-0203",
-      "title": "DESIGN",
+      "title": "Design System Inspired by Sanity",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/sentry/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/sanity/DESIGN.md",
       "contentUrl": "/document/content/doc-0203.md"
     },
     {
       "id": "doc-0204",
-      "title": "Sentry Inspired Design System Analysis",
+      "title": "Sanity Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/sentry/README.md",
+      "sourcePath": "docs/자료/design-md/sanity/README.md",
       "contentUrl": "/document/content/doc-0204.md"
     },
     {
@@ -1639,15 +1639,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/shopify/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/sentry/DESIGN.md",
       "contentUrl": "/document/content/doc-0205.md"
     },
     {
       "id": "doc-0206",
-      "title": "Shopify Inspired Design System Analysis",
+      "title": "Sentry Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/shopify/README.md",
+      "sourcePath": "docs/자료/design-md/sentry/README.md",
       "contentUrl": "/document/content/doc-0206.md"
     },
     {
@@ -1655,71 +1655,71 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/slack/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/shopify/DESIGN.md",
       "contentUrl": "/document/content/doc-0207.md"
     },
     {
       "id": "doc-0208",
-      "title": "DESIGN",
+      "title": "Shopify Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/spacex/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/shopify/README.md",
       "contentUrl": "/document/content/doc-0208.md"
     },
     {
       "id": "doc-0209",
-      "title": "Spacex Inspired Design System Analysis",
+      "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/spacex/README.md",
+      "sourcePath": "docs/자료/design-md/slack/DESIGN.md",
       "contentUrl": "/document/content/doc-0209.md"
     },
     {
       "id": "doc-0210",
-      "title": "Design System Inspired by Spotify",
+      "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/spotify/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/spacex/DESIGN.md",
       "contentUrl": "/document/content/doc-0210.md"
     },
     {
       "id": "doc-0211",
-      "title": "Spotify Inspired Design System Analysis",
+      "title": "Spacex Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/spotify/README.md",
+      "sourcePath": "docs/자료/design-md/spacex/README.md",
       "contentUrl": "/document/content/doc-0211.md"
     },
     {
       "id": "doc-0212",
-      "title": "Design System Inspired by Starbucks",
+      "title": "Design System Inspired by Spotify",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/starbucks/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/spotify/DESIGN.md",
       "contentUrl": "/document/content/doc-0212.md"
     },
     {
       "id": "doc-0213",
-      "title": "Starbucks Inspired Design System Analysis",
+      "title": "Spotify Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/starbucks/README.md",
+      "sourcePath": "docs/자료/design-md/spotify/README.md",
       "contentUrl": "/document/content/doc-0213.md"
     },
     {
       "id": "doc-0214",
-      "title": "DESIGN",
+      "title": "Design System Inspired by Starbucks",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/stripe/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/starbucks/DESIGN.md",
       "contentUrl": "/document/content/doc-0214.md"
     },
     {
       "id": "doc-0215",
-      "title": "Stripe Inspired Design System Analysis",
+      "title": "Starbucks Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/stripe/README.md",
+      "sourcePath": "docs/자료/design-md/starbucks/README.md",
       "contentUrl": "/document/content/doc-0215.md"
     },
     {
@@ -1727,15 +1727,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/supabase/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/stripe/DESIGN.md",
       "contentUrl": "/document/content/doc-0216.md"
     },
     {
       "id": "doc-0217",
-      "title": "Supabase Inspired Design System Analysis",
+      "title": "Stripe Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/supabase/README.md",
+      "sourcePath": "docs/자료/design-md/stripe/README.md",
       "contentUrl": "/document/content/doc-0217.md"
     },
     {
@@ -1743,63 +1743,63 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/superhuman/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/supabase/DESIGN.md",
       "contentUrl": "/document/content/doc-0218.md"
     },
     {
       "id": "doc-0219",
-      "title": "Superhuman Inspired Design System Analysis",
+      "title": "Supabase Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/superhuman/README.md",
+      "sourcePath": "docs/자료/design-md/supabase/README.md",
       "contentUrl": "/document/content/doc-0219.md"
     },
     {
       "id": "doc-0220",
-      "title": "Design System Inspired by Tesla",
+      "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/tesla/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/superhuman/DESIGN.md",
       "contentUrl": "/document/content/doc-0220.md"
     },
     {
       "id": "doc-0221",
-      "title": "Tesla Inspired Design System Analysis",
+      "title": "Superhuman Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/tesla/README.md",
+      "sourcePath": "docs/자료/design-md/superhuman/README.md",
       "contentUrl": "/document/content/doc-0221.md"
     },
     {
       "id": "doc-0222",
-      "title": "Design System Inspired by The Verge",
+      "title": "Design System Inspired by Tesla",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/theverge/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/tesla/DESIGN.md",
       "contentUrl": "/document/content/doc-0222.md"
     },
     {
       "id": "doc-0223",
-      "title": "Theverge Inspired Design System Analysis",
+      "title": "Tesla Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/theverge/README.md",
+      "sourcePath": "docs/자료/design-md/tesla/README.md",
       "contentUrl": "/document/content/doc-0223.md"
     },
     {
       "id": "doc-0224",
-      "title": "DESIGN",
+      "title": "Design System Inspired by The Verge",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/together.ai/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/theverge/DESIGN.md",
       "contentUrl": "/document/content/doc-0224.md"
     },
     {
       "id": "doc-0225",
-      "title": "Together AI Inspired Design System Analysis",
+      "title": "Theverge Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/together.ai/README.md",
+      "sourcePath": "docs/자료/design-md/theverge/README.md",
       "contentUrl": "/document/content/doc-0225.md"
     },
     {
@@ -1807,15 +1807,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/uber/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/together.ai/DESIGN.md",
       "contentUrl": "/document/content/doc-0226.md"
     },
     {
       "id": "doc-0227",
-      "title": "Uber Inspired Design System Analysis",
+      "title": "Together AI Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/uber/README.md",
+      "sourcePath": "docs/자료/design-md/together.ai/README.md",
       "contentUrl": "/document/content/doc-0227.md"
     },
     {
@@ -1823,15 +1823,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/vercel/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/uber/DESIGN.md",
       "contentUrl": "/document/content/doc-0228.md"
     },
     {
       "id": "doc-0229",
-      "title": "Vercel Inspired Design System Analysis",
+      "title": "Uber Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/vercel/README.md",
+      "sourcePath": "docs/자료/design-md/uber/README.md",
       "contentUrl": "/document/content/doc-0229.md"
     },
     {
@@ -1839,15 +1839,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/vodafone/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/vercel/DESIGN.md",
       "contentUrl": "/document/content/doc-0230.md"
     },
     {
       "id": "doc-0231",
-      "title": "Vodafone Inspired Design System Analysis",
+      "title": "Vercel Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/vodafone/README.md",
+      "sourcePath": "docs/자료/design-md/vercel/README.md",
       "contentUrl": "/document/content/doc-0231.md"
     },
     {
@@ -1855,15 +1855,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/voltagent/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/vodafone/DESIGN.md",
       "contentUrl": "/document/content/doc-0232.md"
     },
     {
       "id": "doc-0233",
-      "title": "VoltAgent Inspired Design System Analysis",
+      "title": "Vodafone Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/voltagent/README.md",
+      "sourcePath": "docs/자료/design-md/vodafone/README.md",
       "contentUrl": "/document/content/doc-0233.md"
     },
     {
@@ -1871,15 +1871,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/warp/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/voltagent/DESIGN.md",
       "contentUrl": "/document/content/doc-0234.md"
     },
     {
       "id": "doc-0235",
-      "title": "Warp Inspired Design System Analysis",
+      "title": "VoltAgent Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/warp/README.md",
+      "sourcePath": "docs/자료/design-md/voltagent/README.md",
       "contentUrl": "/document/content/doc-0235.md"
     },
     {
@@ -1887,15 +1887,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/webflow/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/warp/DESIGN.md",
       "contentUrl": "/document/content/doc-0236.md"
     },
     {
       "id": "doc-0237",
-      "title": "Webflow Inspired Design System Analysis",
+      "title": "Warp Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/webflow/README.md",
+      "sourcePath": "docs/자료/design-md/warp/README.md",
       "contentUrl": "/document/content/doc-0237.md"
     },
     {
@@ -1903,15 +1903,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/wired/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/webflow/DESIGN.md",
       "contentUrl": "/document/content/doc-0238.md"
     },
     {
       "id": "doc-0239",
-      "title": "Wired Inspired Design System Analysis",
+      "title": "Webflow Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/wired/README.md",
+      "sourcePath": "docs/자료/design-md/webflow/README.md",
       "contentUrl": "/document/content/doc-0239.md"
     },
     {
@@ -1919,15 +1919,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/wise/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/wired/DESIGN.md",
       "contentUrl": "/document/content/doc-0240.md"
     },
     {
       "id": "doc-0241",
-      "title": "Wise Inspired Design System Analysis",
+      "title": "Wired Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/wise/README.md",
+      "sourcePath": "docs/자료/design-md/wired/README.md",
       "contentUrl": "/document/content/doc-0241.md"
     },
     {
@@ -1935,15 +1935,15 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/x.ai/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/wise/DESIGN.md",
       "contentUrl": "/document/content/doc-0242.md"
     },
     {
       "id": "doc-0243",
-      "title": "xAI Inspired Design System Analysis",
+      "title": "Wise Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/x.ai/README.md",
+      "sourcePath": "docs/자료/design-md/wise/README.md",
       "contentUrl": "/document/content/doc-0243.md"
     },
     {
@@ -1951,1072 +1951,1096 @@
       "title": "DESIGN",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/zapier/DESIGN.md",
+      "sourcePath": "docs/자료/design-md/x.ai/DESIGN.md",
       "contentUrl": "/document/content/doc-0244.md"
     },
     {
       "id": "doc-0245",
-      "title": "Zapier Inspired Design System Analysis",
+      "title": "xAI Inspired Design System Analysis",
       "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/design-md/zapier/README.md",
+      "sourcePath": "docs/자료/design-md/x.ai/README.md",
       "contentUrl": "/document/content/doc-0245.md"
     },
     {
       "id": "doc-0246",
-      "title": "Promo Web Builder 정보구조(IA) 현황 — As-Is",
-      "category": "설계서",
-      "updatedAt": "2026-07-21",
-      "sourcePath": "docs/자료/information-architecture-as-is-2026-07-21.md",
+      "title": "DESIGN",
+      "category": "디자인 참고자료",
+      "updatedAt": "2026-07-23",
+      "sourcePath": "docs/자료/design-md/zapier/DESIGN.md",
       "contentUrl": "/document/content/doc-0246.md"
     },
     {
       "id": "doc-0247",
-      "title": "Integrated Design Brief MD",
-      "category": "기술 문서",
+      "title": "Zapier Inspired Design System Analysis",
+      "category": "디자인 참고자료",
       "updatedAt": "2026-07-23",
-      "sourcePath": "docs/자료/integrated-design-brief-sample.md",
+      "sourcePath": "docs/자료/design-md/zapier/README.md",
       "contentUrl": "/document/content/doc-0247.md"
     },
     {
       "id": "doc-0248",
-      "title": "구형 화면 및 경로 참조 감사 — 2026-07-24",
-      "category": "QA 보고서",
-      "updatedAt": "2026-07-24",
-      "sourcePath": "docs/자료/legacy-route-reference-audit-2026-07-24.md",
+      "title": "Promo Web Builder 정보구조(IA) 현황 — As-Is",
+      "category": "설계서",
+      "updatedAt": "2026-07-21",
+      "sourcePath": "docs/자료/information-architecture-as-is-2026-07-21.md",
       "contentUrl": "/document/content/doc-0248.md"
     },
     {
       "id": "doc-0249",
-      "title": "Promo Web Builder 주요 Agenda별 개발 진행 및 결과 보고서",
-      "category": "보고서",
-      "updatedAt": "2026-06-08",
-      "sourcePath": "docs/자료/promo-web-builder-agenda-progress-report-2026-06-08-to-2026-08-21.md",
+      "title": "Integrated Design Brief MD",
+      "category": "기술 문서",
+      "updatedAt": "2026-07-23",
+      "sourcePath": "docs/자료/integrated-design-brief-sample.md",
       "contentUrl": "/document/content/doc-0249.md"
     },
     {
       "id": "doc-0250",
-      "title": "Promo Web Builder 개발 진행 보고서",
-      "category": "보고서",
-      "updatedAt": "2026-06-08",
-      "sourcePath": "docs/자료/promo-web-builder-progress-report-2026-06-08-to-2026-08-21.md",
+      "title": "구형 화면 및 경로 참조 감사 — 2026-07-24",
+      "category": "QA 보고서",
+      "updatedAt": "2026-07-24",
+      "sourcePath": "docs/자료/legacy-route-reference-audit-2026-07-24.md",
       "contentUrl": "/document/content/doc-0250.md"
     },
     {
       "id": "doc-0251",
-      "title": "Promo Web Builder 소스코드 정리 및 중복 검토 보고서",
+      "title": "Promo Web Builder 주요 Agenda별 개발 진행 및 결과 보고서",
       "category": "보고서",
-      "updatedAt": "2026-07-20",
-      "sourcePath": "docs/자료/source-code-cleanup-review-2026-07-20.md",
+      "updatedAt": "2026-06-08",
+      "sourcePath": "docs/자료/promo-web-builder-agenda-progress-report-2026-06-08-to-2026-08-21.md",
       "contentUrl": "/document/content/doc-0251.md"
     },
     {
       "id": "doc-0252",
-      "title": "소스코드 정밀 검토 및 문서 현행화 보고서",
+      "title": "Promo Web Builder 개발 진행 보고서",
       "category": "보고서",
-      "updatedAt": "2026-07-25",
-      "sourcePath": "docs/자료/source-code-review-and-currentization-2026-07-25.md",
+      "updatedAt": "2026-06-08",
+      "sourcePath": "docs/자료/promo-web-builder-progress-report-2026-06-08-to-2026-08-21.md",
       "contentUrl": "/document/content/doc-0252.md"
     },
     {
       "id": "doc-0253",
-      "title": "Promo Web Builder 통합 정책서",
-      "category": "정책",
-      "updatedAt": "2026-07-23",
-      "sourcePath": "docs/정책/promo-web-builder-policies-2026-07-23.md",
+      "title": "Promo Web Builder 소스코드 정리 및 중복 검토 보고서",
+      "category": "보고서",
+      "updatedAt": "2026-07-20",
+      "sourcePath": "docs/자료/source-code-cleanup-review-2026-07-20.md",
       "contentUrl": "/document/content/doc-0253.md"
     },
     {
       "id": "doc-0254",
-      "title": "FE/BE 멀티 에이전트 협업 프로토콜",
-      "category": "정책",
-      "updatedAt": "2026-07-21",
-      "sourcePath": "docs/정책/source/collaboration-protocol-2026-07-21.md",
+      "title": "소스코드 정밀 검토 및 문서 현행화 보고서",
+      "category": "보고서",
+      "updatedAt": "2026-07-25",
+      "sourcePath": "docs/자료/source-code-review-and-currentization-2026-07-25.md",
       "contentUrl": "/document/content/doc-0254.md"
     },
     {
       "id": "doc-0255",
-      "title": "Admin LLM 설정 → n8n 실제 실행 연동 계획",
-      "category": "계획서",
-      "updatedAt": "2026-07-12",
-      "sourcePath": "docs/archive/계획/admin-llm-to-n8n-application-plan-2026-07-12.md",
+      "title": "Promo Web Builder 통합 정책서",
+      "category": "정책",
+      "updatedAt": "2026-07-23",
+      "sourcePath": "docs/정책/promo-web-builder-policies-2026-07-23.md",
       "contentUrl": "/document/content/doc-0255.md"
     },
     {
       "id": "doc-0256",
-      "title": "Admin 템플릿 기본 레이아웃 및 Wizard 실행별 편집 개발계획서",
-      "category": "계획서",
-      "updatedAt": "2026-07-17",
-      "sourcePath": "docs/archive/계획/admin-template-default-layout-wizard-editing-development-plan-2026-07-17.md",
+      "title": "FE/BE 멀티 에이전트 협업 프로토콜",
+      "category": "정책",
+      "updatedAt": "2026-07-21",
+      "sourcePath": "docs/정책/source/collaboration-protocol-2026-07-21.md",
       "contentUrl": "/document/content/doc-0256.md"
     },
     {
       "id": "doc-0257",
-      "title": "Development Plan - B Section Redesign and Dark Mode",
+      "title": "Admin LLM 설정 → n8n 실제 실행 연동 계획",
       "category": "계획서",
-      "updatedAt": "2026-07-03",
-      "sourcePath": "docs/archive/계획/development-plan-2026-07-03-b-section-redesign.md",
+      "updatedAt": "2026-07-12",
+      "sourcePath": "docs/archive/계획/admin-llm-to-n8n-application-plan-2026-07-12.md",
       "contentUrl": "/document/content/doc-0257.md"
     },
     {
       "id": "doc-0258",
-      "title": "Development Plan Debug Review - 2026-07-08",
+      "title": "Admin 템플릿 기본 레이아웃 및 Wizard 실행별 편집 개발계획서",
       "category": "계획서",
-      "updatedAt": "2026-07-08",
-      "sourcePath": "docs/archive/계획/development-plan-debug-review-2026-07-08.md",
+      "updatedAt": "2026-07-17",
+      "sourcePath": "docs/archive/계획/admin-template-default-layout-wizard-editing-development-plan-2026-07-17.md",
       "contentUrl": "/document/content/doc-0258.md"
     },
     {
       "id": "doc-0259",
-      "title": "Final Design 기반 Vue 웹페이지 생성 개발 계획서",
+      "title": "Development Plan - B Section Redesign and Dark Mode",
       "category": "계획서",
-      "updatedAt": "2026-07-14",
-      "sourcePath": "docs/archive/계획/final-design-vue-webpage-generation-development-plan-2026-07-14.md",
+      "updatedAt": "2026-07-03",
+      "sourcePath": "docs/archive/계획/development-plan-2026-07-03-b-section-redesign.md",
       "contentUrl": "/document/content/doc-0259.md"
     },
     {
       "id": "doc-0260",
-      "title": "랜딩 페이지 및 서비스 폴더 분리 개발계획서",
+      "title": "Development Plan Debug Review - 2026-07-08",
       "category": "계획서",
-      "updatedAt": "2026-07-15",
-      "sourcePath": "docs/archive/계획/landing-and-folder-restructure-development-plan-2026-07-15.md",
+      "updatedAt": "2026-07-08",
+      "sourcePath": "docs/archive/계획/development-plan-debug-review-2026-07-08.md",
       "contentUrl": "/document/content/doc-0260.md"
     },
     {
       "id": "doc-0261",
-      "title": "LO-FI Draft Confirmation Development Plan - 2026-07-08",
+      "title": "Final Design 기반 Vue 웹페이지 생성 개발 계획서",
       "category": "계획서",
-      "updatedAt": "2026-07-08",
-      "sourcePath": "docs/archive/계획/lofi-draft-confirmation-development-plan-2026-07-08.md",
+      "updatedAt": "2026-07-14",
+      "sourcePath": "docs/archive/계획/final-design-vue-webpage-generation-development-plan-2026-07-14.md",
       "contentUrl": "/document/content/doc-0261.md"
     },
     {
       "id": "doc-0262",
-      "title": "LO-FI Draft Confirmation Plan - Debugged Version - 2026-07-08",
+      "title": "랜딩 페이지 및 서비스 폴더 분리 개발계획서",
       "category": "계획서",
-      "updatedAt": "2026-07-08",
-      "sourcePath": "docs/archive/계획/lofi-draft-confirmation-plan-debugged-2026-07-08.md",
+      "updatedAt": "2026-07-15",
+      "sourcePath": "docs/archive/계획/landing-and-folder-restructure-development-plan-2026-07-15.md",
       "contentUrl": "/document/content/doc-0262.md"
     },
     {
       "id": "doc-0263",
-      "title": "n8n 3단계 Worker 이슈 해결 계획",
+      "title": "LO-FI Draft Confirmation Development Plan - 2026-07-08",
       "category": "계획서",
-      "updatedAt": "2026-07-11",
-      "sourcePath": "docs/archive/계획/n8n-three-stage-worker-issue-resolution-plan-2026-07-11.md",
+      "updatedAt": "2026-07-08",
+      "sourcePath": "docs/archive/계획/lofi-draft-confirmation-development-plan-2026-07-08.md",
       "contentUrl": "/document/content/doc-0263.md"
     },
     {
       "id": "doc-0264",
-      "title": "n8n / Web Harness Refactor Plan - 2026-07-08",
+      "title": "LO-FI Draft Confirmation Plan - Debugged Version - 2026-07-08",
       "category": "계획서",
       "updatedAt": "2026-07-08",
-      "sourcePath": "docs/archive/계획/n8n-web-harness-refactor-plan-2026-07-08.md",
+      "sourcePath": "docs/archive/계획/lofi-draft-confirmation-plan-debugged-2026-07-08.md",
       "contentUrl": "/document/content/doc-0264.md"
     },
     {
       "id": "doc-0265",
-      "title": "n8n Worker JSON Refactor Rationale and Development Plan - 2026-07-08",
+      "title": "n8n 3단계 Worker 이슈 해결 계획",
       "category": "계획서",
-      "updatedAt": "2026-07-08",
-      "sourcePath": "docs/archive/계획/n8n-worker-json-refactor-rationale-plan-2026-07-08.md",
+      "updatedAt": "2026-07-11",
+      "sourcePath": "docs/archive/계획/n8n-three-stage-worker-issue-resolution-plan-2026-07-11.md",
       "contentUrl": "/document/content/doc-0265.md"
     },
     {
       "id": "doc-0266",
-      "title": "Next Development Plan: Worker Integration - 2026-07-08",
+      "title": "n8n / Web Harness Refactor Plan - 2026-07-08",
       "category": "계획서",
       "updatedAt": "2026-07-08",
-      "sourcePath": "docs/archive/계획/next-development-plan-worker-integration-2026-07-08.md",
+      "sourcePath": "docs/archive/계획/n8n-web-harness-refactor-plan-2026-07-08.md",
       "contentUrl": "/document/content/doc-0266.md"
     },
     {
       "id": "doc-0267",
-      "title": "Standalone Promo Wizard Development Plan - 2026-07-10",
+      "title": "n8n Worker JSON Refactor Rationale and Development Plan - 2026-07-08",
       "category": "계획서",
-      "updatedAt": "2026-07-10",
-      "sourcePath": "docs/archive/계획/standalone-promo-wizard-development-plan-2026-07-10.md",
+      "updatedAt": "2026-07-08",
+      "sourcePath": "docs/archive/계획/n8n-worker-json-refactor-rationale-plan-2026-07-08.md",
       "contentUrl": "/document/content/doc-0267.md"
     },
     {
       "id": "doc-0268",
-      "title": "UI Design Generation 보완 작업 메모",
+      "title": "Next Development Plan: Worker Integration - 2026-07-08",
       "category": "계획서",
-      "updatedAt": "2026-06-28",
-      "sourcePath": "docs/archive/계획/ui-design-generation-fix-plan-2026-06-28.md",
+      "updatedAt": "2026-07-08",
+      "sourcePath": "docs/archive/계획/next-development-plan-worker-integration-2026-07-08.md",
       "contentUrl": "/document/content/doc-0268.md"
     },
     {
       "id": "doc-0269",
-      "title": "Visual Editor P1 안정화 개발계획서",
+      "title": "Standalone Promo Wizard Development Plan - 2026-07-10",
       "category": "계획서",
-      "updatedAt": "2026-07-17",
-      "sourcePath": "docs/archive/계획/visual-editor-p1-stabilization-development-plan-2026-07-17.md",
+      "updatedAt": "2026-07-10",
+      "sourcePath": "docs/archive/계획/standalone-promo-wizard-development-plan-2026-07-10.md",
       "contentUrl": "/document/content/doc-0269.md"
     },
     {
       "id": "doc-0270",
-      "title": "Visual Renderer 및 웹 출력 개발 계획서",
+      "title": "UI Design Generation 보완 작업 메모",
       "category": "계획서",
-      "updatedAt": "2026-07-16",
-      "sourcePath": "docs/archive/계획/visual-renderer-development-plan-with-n8n-2026-07-16.md",
+      "updatedAt": "2026-06-28",
+      "sourcePath": "docs/archive/계획/ui-design-generation-fix-plan-2026-06-28.md",
       "contentUrl": "/document/content/doc-0270.md"
     },
     {
       "id": "doc-0271",
-      "title": "Visual Template Editor / Vue Renderer 전환 개발계획서",
+      "title": "Visual Editor P1 안정화 개발계획서",
       "category": "계획서",
-      "updatedAt": "2026-07-16",
-      "sourcePath": "docs/archive/계획/visual-template-editor-development-plan-2026-07-16.md",
+      "updatedAt": "2026-07-17",
+      "sourcePath": "docs/archive/계획/visual-editor-p1-stabilization-development-plan-2026-07-17.md",
       "contentUrl": "/document/content/doc-0271.md"
     },
     {
       "id": "doc-0272",
-      "title": "Wizard Content Sections 관리자 기능 보완 개발 계획서",
+      "title": "Visual Renderer 및 웹 출력 개발 계획서",
       "category": "계획서",
-      "updatedAt": "2026-07-14",
-      "sourcePath": "docs/archive/계획/wizard-content-admin-hardening-development-plan-2026-07-14.md",
+      "updatedAt": "2026-07-16",
+      "sourcePath": "docs/archive/계획/visual-renderer-development-plan-with-n8n-2026-07-16.md",
       "contentUrl": "/document/content/doc-0272.md"
     },
     {
       "id": "doc-0273",
-      "title": "Wizard Step 2 템플릿 연동 개발계획서",
+      "title": "Visual Template Editor / Vue Renderer 전환 개발계획서",
       "category": "계획서",
-      "updatedAt": "2026-07-15",
-      "sourcePath": "docs/archive/계획/wizard-step2-template-integration-development-plan-2026-07-15.md",
+      "updatedAt": "2026-07-16",
+      "sourcePath": "docs/archive/계획/visual-template-editor-development-plan-2026-07-16.md",
       "contentUrl": "/document/content/doc-0273.md"
     },
     {
       "id": "doc-0274",
-      "title": "AI 디자인 추천 기반 프로모션 페이지 생성 워크플로우 제안 (2026-07-09, v3)",
-      "category": "기획서",
-      "updatedAt": "2026-07-09",
-      "sourcePath": "docs/archive/기획-source/ai-design-recommendation-workflow-proposal-2026-07-09.md",
+      "title": "Wizard Content Sections 관리자 기능 보완 개발 계획서",
+      "category": "계획서",
+      "updatedAt": "2026-07-14",
+      "sourcePath": "docs/archive/계획/wizard-content-admin-hardening-development-plan-2026-07-14.md",
       "contentUrl": "/document/content/doc-0274.md"
     },
     {
       "id": "doc-0275",
-      "title": "무인 Vue 웹페이지 자동 생성 프로세스 검토 및 권고안",
-      "category": "기획서",
-      "updatedAt": "2026-07-14",
-      "sourcePath": "docs/archive/기획-source/automated-vue-web-generation-process-recommendation-2026-07-14.md",
+      "title": "Wizard Step 2 템플릿 연동 개발계획서",
+      "category": "계획서",
+      "updatedAt": "2026-07-15",
+      "sourcePath": "docs/archive/계획/wizard-step2-template-integration-development-plan-2026-07-15.md",
       "contentUrl": "/document/content/doc-0275.md"
     },
     {
       "id": "doc-0276",
-      "title": "Promo Web Builder 정보구조(IA) 목표 — To-Be",
+      "title": "AI 디자인 추천 기반 프로모션 페이지 생성 워크플로우 제안 (2026-07-09, v3)",
       "category": "기획서",
-      "updatedAt": "2026-07-21",
-      "sourcePath": "docs/archive/기획-source/information-architecture-to-be-2026-07-21.md",
+      "updatedAt": "2026-07-09",
+      "sourcePath": "docs/archive/기획-source/ai-design-recommendation-workflow-proposal-2026-07-09.md",
       "contentUrl": "/document/content/doc-0276.md"
     },
     {
       "id": "doc-0277",
-      "title": "Promo AI Builder 제품 방향 및 구현 검토",
+      "title": "무인 Vue 웹페이지 자동 생성 프로세스 검토 및 권고안",
       "category": "기획서",
-      "updatedAt": "2026-07-24",
-      "sourcePath": "docs/archive/기획-source/product-direction-and-gap-review.md",
+      "updatedAt": "2026-07-14",
+      "sourcePath": "docs/archive/기획-source/automated-vue-web-generation-process-recommendation-2026-07-14.md",
       "contentUrl": "/document/content/doc-0277.md"
     },
     {
       "id": "doc-0278",
-      "title": "Status: Superseded - 2026-07-10",
+      "title": "Promo Web Builder 정보구조(IA) 목표 — To-Be",
       "category": "기획서",
-      "updatedAt": "2026-07-10",
-      "sourcePath": "docs/archive/기획-source/promo-builder-wizard-design-request-2026-07-10.md",
+      "updatedAt": "2026-07-21",
+      "sourcePath": "docs/archive/기획-source/information-architecture-to-be-2026-07-21.md",
       "contentUrl": "/document/content/doc-0278.md"
     },
     {
       "id": "doc-0279",
-      "title": "Visual Template Editor 및 LLM Vue 템플릿 생성 구조 검토안",
+      "title": "Promo AI Builder 제품 방향 및 구현 검토",
       "category": "기획서",
-      "updatedAt": "2026-07-16",
-      "sourcePath": "docs/archive/기획-source/visual-template-editor-and-llm-vue-generation-proposal-2026-07-16.md",
+      "updatedAt": "2026-07-24",
+      "sourcePath": "docs/archive/기획-source/product-direction-and-gap-review.md",
       "contentUrl": "/document/content/doc-0279.md"
     },
     {
       "id": "doc-0280",
-      "title": "PRD: Wizard Content Section 관리자 설정 기능",
+      "title": "Status: Superseded - 2026-07-10",
       "category": "기획서",
-      "updatedAt": "2026-07-14",
-      "sourcePath": "docs/archive/기획-source/wizard-content-section-admin-management-prd-2026-07-14.md",
+      "updatedAt": "2026-07-10",
+      "sourcePath": "docs/archive/기획-source/promo-builder-wizard-design-request-2026-07-10.md",
       "contentUrl": "/document/content/doc-0280.md"
     },
     {
       "id": "doc-0281",
-      "title": "Visual Renderer P0 기준선 및 기술 계약",
-      "category": "설계서",
+      "title": "Visual Template Editor 및 LLM Vue 템플릿 생성 구조 검토안",
+      "category": "기획서",
       "updatedAt": "2026-07-16",
-      "sourcePath": "docs/archive/설계/visual-renderer-p0-baseline-and-contract-2026-07-16.md",
+      "sourcePath": "docs/archive/기획-source/visual-template-editor-and-llm-vue-generation-proposal-2026-07-16.md",
       "contentUrl": "/document/content/doc-0281.md"
     },
     {
       "id": "doc-0282",
-      "title": "Visual Template Editor 서비스 플로우",
-      "category": "설계서",
-      "updatedAt": "2026-07-16",
-      "sourcePath": "docs/archive/설계/visual-template-editor-service-flow-2026-07-16.md",
+      "title": "PRD: Wizard Content Section 관리자 설정 기능",
+      "category": "기획서",
+      "updatedAt": "2026-07-14",
+      "sourcePath": "docs/archive/기획-source/wizard-content-section-admin-management-prd-2026-07-14.md",
       "contentUrl": "/document/content/doc-0282.md"
     },
     {
       "id": "doc-0283",
-      "title": "데일리 작업 계획 및 진행률 체크 - 2026-06-29 ~ 2026-07-03",
-      "category": "계획서",
-      "updatedAt": "2026-06-29",
-      "sourcePath": "docs/archive/자료/daily-plan-2026-06-29-to-2026-07-03.md",
+      "title": "Visual Renderer P0 기준선 및 기술 계약",
+      "category": "설계서",
+      "updatedAt": "2026-07-16",
+      "sourcePath": "docs/archive/설계/visual-renderer-p0-baseline-and-contract-2026-07-16.md",
       "contentUrl": "/document/content/doc-0283.md"
     },
     {
       "id": "doc-0284",
-      "title": "Daily Plan - 2026-07-01",
-      "category": "계획서",
-      "updatedAt": "2026-07-01",
-      "sourcePath": "docs/archive/자료/daily-plan-2026-07-01.md",
+      "title": "Visual Template Editor 서비스 플로우",
+      "category": "설계서",
+      "updatedAt": "2026-07-16",
+      "sourcePath": "docs/archive/설계/visual-template-editor-service-flow-2026-07-16.md",
       "contentUrl": "/document/content/doc-0284.md"
     },
     {
       "id": "doc-0285",
-      "title": "Final Design LO-FI Layout Fidelity Issue",
-      "category": "기술 문서",
-      "updatedAt": "2026-07-10",
-      "sourcePath": "docs/archive/자료/final-design-lofi-layout-fidelity-issue-2026-07-10.md",
+      "title": "데일리 작업 계획 및 진행률 체크 - 2026-06-29 ~ 2026-07-03",
+      "category": "계획서",
+      "updatedAt": "2026-06-29",
+      "sourcePath": "docs/archive/자료/daily-plan-2026-06-29-to-2026-07-03.md",
       "contentUrl": "/document/content/doc-0285.md"
     },
     {
       "id": "doc-0286",
-      "title": "중간보고 리포트 — PRD 자동화 & AI 프로모션 페이지 빌더 PoC",
-      "category": "보고서",
-      "updatedAt": "2026-07-09",
-      "sourcePath": "docs/archive/자료/interim-status-report-2026-07-09.md",
+      "title": "Daily Plan - 2026-07-01",
+      "category": "계획서",
+      "updatedAt": "2026-07-01",
+      "sourcePath": "docs/archive/자료/daily-plan-2026-07-01.md",
       "contentUrl": "/document/content/doc-0286.md"
     },
     {
       "id": "doc-0287",
-      "title": "LO-FI와 최종 디자인 간 레이아웃 일관성 개선 논의",
+      "title": "Final Design LO-FI Layout Fidelity Issue",
       "category": "기술 문서",
-      "updatedAt": "2026-07-11",
-      "sourcePath": "docs/archive/자료/lofi-final-design-fidelity-discussion-2026-07-11.md",
+      "updatedAt": "2026-07-10",
+      "sourcePath": "docs/archive/자료/final-design-lofi-layout-fidelity-issue-2026-07-10.md",
       "contentUrl": "/document/content/doc-0287.md"
     },
     {
       "id": "doc-0288",
-      "title": "LO-FI Draft And Final Design Variant Review - 2026-07-09",
+      "title": "중간보고 리포트 — PRD 자동화 & AI 프로모션 페이지 빌더 PoC",
       "category": "보고서",
       "updatedAt": "2026-07-09",
-      "sourcePath": "docs/archive/자료/lofi-final-design-variant-review-2026-07-09.md",
+      "sourcePath": "docs/archive/자료/interim-status-report-2026-07-09.md",
       "contentUrl": "/document/content/doc-0288.md"
     },
     {
       "id": "doc-0289",
-      "title": "n8n 관리자 설정 연동 수정 가이드 — 2026-07-12",
+      "title": "LO-FI와 최종 디자인 간 레이아웃 일관성 개선 논의",
       "category": "기술 문서",
-      "updatedAt": "2026-07-12",
-      "sourcePath": "docs/archive/자료/n8n-admin-settings-worker-update-guide-2026-07-12.md",
+      "updatedAt": "2026-07-11",
+      "sourcePath": "docs/archive/자료/lofi-final-design-fidelity-discussion-2026-07-11.md",
       "contentUrl": "/document/content/doc-0289.md"
     },
     {
       "id": "doc-0290",
-      "title": "n8n 3단계 Worker와 관리자 LLM 설정 연동 논의",
-      "category": "기술 문서",
-      "updatedAt": "2026-07-11",
-      "sourcePath": "docs/archive/자료/n8n-three-stage-worker-and-admin-llm-discussion-2026-07-11.md",
+      "title": "LO-FI Draft And Final Design Variant Review - 2026-07-09",
+      "category": "보고서",
+      "updatedAt": "2026-07-09",
+      "sourcePath": "docs/archive/자료/lofi-final-design-variant-review-2026-07-09.md",
       "contentUrl": "/document/content/doc-0290.md"
     },
     {
       "id": "doc-0291",
-      "title": "금주 작업 계획 - 2026-06-29",
-      "category": "계획서",
-      "updatedAt": "2026-06-29",
-      "sourcePath": "docs/archive/자료/weekly-plan-2026-06-29.md",
+      "title": "n8n 관리자 설정 연동 수정 가이드 — 2026-07-12",
+      "category": "기술 문서",
+      "updatedAt": "2026-07-12",
+      "sourcePath": "docs/archive/자료/n8n-admin-settings-worker-update-guide-2026-07-12.md",
       "contentUrl": "/document/content/doc-0291.md"
     },
     {
       "id": "doc-0292",
-      "title": "주간 보고 - 2026-06-28",
-      "category": "보고서",
-      "updatedAt": "2026-06-28",
-      "sourcePath": "docs/archive/자료/weekly-report-2026-06-28.md",
+      "title": "n8n 3단계 Worker와 관리자 LLM 설정 연동 논의",
+      "category": "기술 문서",
+      "updatedAt": "2026-07-11",
+      "sourcePath": "docs/archive/자료/n8n-three-stage-worker-and-admin-llm-discussion-2026-07-11.md",
       "contentUrl": "/document/content/doc-0292.md"
     },
     {
       "id": "doc-0293",
-      "title": "docs/archive",
-      "category": "안내서",
-      "updatedAt": "2026-07-24",
-      "sourcePath": "docs/archive/README.md",
+      "title": "금주 작업 계획 - 2026-06-29",
+      "category": "계획서",
+      "updatedAt": "2026-06-29",
+      "sourcePath": "docs/archive/자료/weekly-plan-2026-06-29.md",
       "contentUrl": "/document/content/doc-0293.md"
     },
     {
       "id": "doc-0294",
-      "title": "AI 활용 전략 및 Admin–Wizard–Visual Editor 데이터 경계",
+      "title": "주간 보고 - 2026-06-28",
       "category": "보고서",
-      "updatedAt": "2026-07-17",
-      "sourcePath": "docs/claude/ai-utilization-strategy-review-2026-07-17.md",
+      "updatedAt": "2026-06-28",
+      "sourcePath": "docs/archive/자료/weekly-report-2026-06-28.md",
       "contentUrl": "/document/content/doc-0294.md"
     },
     {
       "id": "doc-0295",
-      "title": "WordPress / Directus 연동 준비 검토",
-      "category": "보고서",
-      "updatedAt": "2026-07-14",
-      "sourcePath": "docs/claude/cms-integration-readiness-review-2026-07-14.md",
+      "title": "docs/archive",
+      "category": "안내서",
+      "updatedAt": "2026-07-24",
+      "sourcePath": "docs/archive/README.md",
       "contentUrl": "/document/content/doc-0295.md"
     },
     {
       "id": "doc-0296",
-      "title": "종합 검토 리포트: 소스코드 + n8n 워크플로우 + 문서 (2026-07-12)",
+      "title": "AI 활용 전략 및 Admin–Wizard–Visual Editor 데이터 경계",
       "category": "보고서",
-      "updatedAt": "2026-07-12",
-      "sourcePath": "docs/claude/comprehensive-review-report-2026-07-12.md",
+      "updatedAt": "2026-07-17",
+      "sourcePath": "docs/claude/ai-utilization-strategy-review-2026-07-17.md",
       "contentUrl": "/document/content/doc-0296.md"
     },
     {
       "id": "doc-0297",
-      "title": "개선 계획: Final Design 퀄리티 저하 / LO-FI 속도 문제",
-      "category": "계획서",
-      "updatedAt": "2026-07-12",
-      "sourcePath": "docs/claude/final-design-quality-improvement-plan-2026-07-12.md",
+      "title": "WordPress / Directus 연동 준비 검토",
+      "category": "보고서",
+      "updatedAt": "2026-07-14",
+      "sourcePath": "docs/claude/cms-integration-readiness-review-2026-07-14.md",
       "contentUrl": "/document/content/doc-0297.md"
     },
     {
       "id": "doc-0298",
-      "title": "n8n Worker / 관리자 LLM 연동 수정 계획서",
-      "category": "계획서",
-      "updatedAt": "2026-07-11",
-      "sourcePath": "docs/claude/n8n-worker-remediation-plan-2026-07-11.md",
+      "title": "종합 검토 리포트: 소스코드 + n8n 워크플로우 + 문서 (2026-07-12)",
+      "category": "보고서",
+      "updatedAt": "2026-07-12",
+      "sourcePath": "docs/claude/comprehensive-review-report-2026-07-12.md",
       "contentUrl": "/document/content/doc-0298.md"
     },
     {
       "id": "doc-0299",
-      "title": "Promo(사용자) / 관리자 페이지 분리 개선 제안 (2026-07-10)",
-      "category": "기획서",
-      "updatedAt": "2026-07-10",
-      "sourcePath": "docs/claude/promo-admin-ui-separation-proposal-2026-07-10.md",
+      "title": "개선 계획: Final Design 퀄리티 저하 / LO-FI 속도 문제",
+      "category": "계획서",
+      "updatedAt": "2026-07-12",
+      "sourcePath": "docs/claude/final-design-quality-improvement-plan-2026-07-12.md",
       "contentUrl": "/document/content/doc-0299.md"
     },
     {
       "id": "doc-0300",
-      "title": "Form Template L/M/R 관리자 및 Wizard 순서 제어 개발 계획",
+      "title": "n8n Worker / 관리자 LLM 연동 수정 계획서",
       "category": "계획서",
-      "updatedAt": "2026-07-14",
-      "sourcePath": "docs/claude/promo-form-template-lmr-development-plan-2026-07-14.md",
+      "updatedAt": "2026-07-11",
+      "sourcePath": "docs/claude/n8n-worker-remediation-plan-2026-07-11.md",
       "contentUrl": "/document/content/doc-0300.md"
     },
     {
       "id": "doc-0301",
-      "title": "검토 의견: Admin LLM 설정 → n8n 실제 실행 연동 계획",
-      "category": "계획서",
-      "updatedAt": "2026-07-12",
-      "sourcePath": "docs/claude/review-admin-llm-to-n8n-application-plan-2026-07-12.md",
+      "title": "Promo(사용자) / 관리자 페이지 분리 개선 제안 (2026-07-10)",
+      "category": "기획서",
+      "updatedAt": "2026-07-10",
+      "sourcePath": "docs/claude/promo-admin-ui-separation-proposal-2026-07-10.md",
       "contentUrl": "/document/content/doc-0301.md"
     },
     {
       "id": "doc-0302",
-      "title": "검토 의견: 현재 운영 중인 관리자 페이지 (prototype/index.html + app.js)",
-      "category": "보고서",
+      "title": "Form Template L/M/R 관리자 및 Wizard 순서 제어 개발 계획",
+      "category": "계획서",
       "updatedAt": "2026-07-14",
-      "sourcePath": "docs/claude/review-admin-page-source-2026-07-14.md",
+      "sourcePath": "docs/claude/promo-form-template-lmr-development-plan-2026-07-14.md",
       "contentUrl": "/document/content/doc-0302.md"
     },
     {
       "id": "doc-0303",
-      "title": "검토 의견: 관리자 페이지 소스코드 (2026-07-15 기준)",
-      "category": "보고서",
-      "updatedAt": "2026-07-15",
-      "sourcePath": "docs/claude/review-admin-page-source-2026-07-15.md",
+      "title": "검토 의견: Admin LLM 설정 → n8n 실제 실행 연동 계획",
+      "category": "계획서",
+      "updatedAt": "2026-07-12",
+      "sourcePath": "docs/claude/review-admin-llm-to-n8n-application-plan-2026-07-12.md",
       "contentUrl": "/document/content/doc-0303.md"
     },
     {
       "id": "doc-0304",
-      "title": "검토 의견: 관리자 페이지 UI/UX (2026-07-15)",
+      "title": "검토 의견: 현재 운영 중인 관리자 페이지 (prototype/index.html + app.js)",
       "category": "보고서",
-      "updatedAt": "2026-07-15",
-      "sourcePath": "docs/claude/review-admin-page-ui-2026-07-15.md",
+      "updatedAt": "2026-07-14",
+      "sourcePath": "docs/claude/review-admin-page-source-2026-07-14.md",
       "contentUrl": "/document/content/doc-0304.md"
     },
     {
       "id": "doc-0305",
-      "title": "검토 의견: api/ 폴더 전체 소스코드",
+      "title": "검토 의견: 관리자 페이지 소스코드 (2026-07-15 기준)",
       "category": "보고서",
-      "updatedAt": "2026-07-12",
-      "sourcePath": "docs/claude/review-api-folder-source-2026-07-12.md",
+      "updatedAt": "2026-07-15",
+      "sourcePath": "docs/claude/review-admin-page-source-2026-07-15.md",
       "contentUrl": "/document/content/doc-0305.md"
     },
     {
       "id": "doc-0306",
-      "title": "검토 의견: DB 테이블 정리 (불필요 테이블 식별) (2026-07-15)",
+      "title": "검토 의견: 관리자 페이지 UI/UX (2026-07-15)",
       "category": "보고서",
       "updatedAt": "2026-07-15",
-      "sourcePath": "docs/claude/review-db-tables-cleanup-2026-07-15.md",
+      "sourcePath": "docs/claude/review-admin-page-ui-2026-07-15.md",
       "contentUrl": "/document/content/doc-0306.md"
     },
     {
       "id": "doc-0307",
-      "title": "디자인 생성 진행 과정 노출 방식 검토 (Progress UX)",
+      "title": "검토 의견: api/ 폴더 전체 소스코드",
       "category": "보고서",
-      "updatedAt": "2026-07-14",
-      "sourcePath": "docs/claude/review-design-generation-progress-ux-2026-07-14.md",
+      "updatedAt": "2026-07-12",
+      "sourcePath": "docs/claude/review-api-folder-source-2026-07-12.md",
       "contentUrl": "/document/content/doc-0307.md"
     },
     {
       "id": "doc-0308",
-      "title": "프런트엔드 프레임워크 단일성 검토 및 개선안",
+      "title": "검토 의견: DB 테이블 정리 (불필요 테이블 식별) (2026-07-15)",
       "category": "보고서",
-      "updatedAt": "2026-07-26",
-      "sourcePath": "docs/claude/review-frontend-framework-singularity-2026-07-26.md",
+      "updatedAt": "2026-07-15",
+      "sourcePath": "docs/claude/review-db-tables-cleanup-2026-07-15.md",
       "contentUrl": "/document/content/doc-0308.md"
     },
     {
       "id": "doc-0309",
-      "title": "하드코딩된 LLM 프롬프트 검토 리포트 (2026-07-28)",
-      "category": "프롬프트",
-      "updatedAt": "2026-07-28",
-      "sourcePath": "docs/claude/review-hardcoded-llm-prompts-2026-07-28.md",
+      "title": "디자인 생성 진행 과정 노출 방식 검토 (Progress UX)",
+      "category": "보고서",
+      "updatedAt": "2026-07-14",
+      "sourcePath": "docs/claude/review-design-generation-progress-ux-2026-07-14.md",
       "contentUrl": "/document/content/doc-0309.md"
     },
     {
       "id": "doc-0310",
-      "title": "검토 의견: 랜딩 페이지 3버튼 + 페이지별 폴더 분리 구성안 (2026-07-15)",
+      "title": "프런트엔드 프레임워크 단일성 검토 및 개선안",
       "category": "보고서",
-      "updatedAt": "2026-07-15",
-      "sourcePath": "docs/claude/review-landing-and-folder-restructure-2026-07-15.md",
+      "updatedAt": "2026-07-26",
+      "sourcePath": "docs/claude/review-frontend-framework-singularity-2026-07-26.md",
       "contentUrl": "/document/content/doc-0310.md"
     },
     {
       "id": "doc-0311",
-      "title": "검토 의견: lofi-final-design-fidelity-discussion-2026-07-11.md",
-      "category": "보고서",
-      "updatedAt": "2026-07-11",
-      "sourcePath": "docs/claude/review-lofi-final-design-fidelity-discussion-2026-07-11.md",
+      "title": "하드코딩된 LLM 프롬프트 검토 리포트 (2026-07-28)",
+      "category": "프롬프트",
+      "updatedAt": "2026-07-28",
+      "sourcePath": "docs/claude/review-hardcoded-llm-prompts-2026-07-28.md",
       "contentUrl": "/document/content/doc-0311.md"
     },
     {
       "id": "doc-0312",
-      "title": "검토 의견: n8n 관리자 설정 연동 수정 가이드",
+      "title": "검토 의견: 랜딩 페이지 3버튼 + 페이지별 폴더 분리 구성안 (2026-07-15)",
       "category": "보고서",
-      "updatedAt": "2026-07-12",
-      "sourcePath": "docs/claude/review-n8n-admin-settings-worker-update-guide-2026-07-12.md",
+      "updatedAt": "2026-07-15",
+      "sourcePath": "docs/claude/review-landing-and-folder-restructure-2026-07-15.md",
       "contentUrl": "/document/content/doc-0312.md"
     },
     {
       "id": "doc-0313",
-      "title": "검토 의견: n8n-three-stage-worker-and-admin-llm-discussion-2026-07-11.md",
+      "title": "검토 의견: lofi-final-design-fidelity-discussion-2026-07-11.md",
       "category": "보고서",
       "updatedAt": "2026-07-11",
-      "sourcePath": "docs/claude/review-n8n-three-stage-worker-and-admin-llm-discussion-2026-07-11.md",
+      "sourcePath": "docs/claude/review-lofi-final-design-fidelity-discussion-2026-07-11.md",
       "contentUrl": "/document/content/doc-0313.md"
     },
     {
       "id": "doc-0314",
-      "title": "검토 의견: n8n 3단계 Worker 워크플로우 (재검토)",
+      "title": "검토 의견: n8n 관리자 설정 연동 수정 가이드",
       "category": "보고서",
       "updatedAt": "2026-07-12",
-      "sourcePath": "docs/claude/review-n8n-workflows-2026-07-12.md",
+      "sourcePath": "docs/claude/review-n8n-admin-settings-worker-update-guide-2026-07-12.md",
       "contentUrl": "/document/content/doc-0314.md"
     },
     {
       "id": "doc-0315",
-      "title": "검토 의견: prototype/promo-wizard. (Standalone Promo Wizard 프론트엔드)",
+      "title": "검토 의견: n8n-three-stage-worker-and-admin-llm-discussion-2026-07-11.md",
       "category": "보고서",
-      "updatedAt": "2026-07-14",
-      "sourcePath": "docs/claude/review-promo-wizard-frontend-source-2026-07-14.md",
+      "updatedAt": "2026-07-11",
+      "sourcePath": "docs/claude/review-n8n-three-stage-worker-and-admin-llm-discussion-2026-07-11.md",
       "contentUrl": "/document/content/doc-0315.md"
     },
     {
       "id": "doc-0316",
-      "title": "템플릿·섹션·컴포넌트 용어집",
-      "category": "기술 문서",
-      "updatedAt": "2026-07-23",
-      "sourcePath": "docs/claude/section-component-terminology-glossary-2026-07-23.md",
+      "title": "검토 의견: n8n 3단계 Worker 워크플로우 (재검토)",
+      "category": "보고서",
+      "updatedAt": "2026-07-12",
+      "sourcePath": "docs/claude/review-n8n-workflows-2026-07-12.md",
       "contentUrl": "/document/content/doc-0316.md"
     },
     {
       "id": "doc-0317",
-      "title": "Promo Web Builder 서비스 아키텍처 구성",
-      "category": "설계서",
-      "updatedAt": "2026-07-17",
-      "sourcePath": "docs/claude/service-architecture-2026-07-17.md",
+      "title": "검토 의견: prototype/promo-wizard. (Standalone Promo Wizard 프론트엔드)",
+      "category": "보고서",
+      "updatedAt": "2026-07-14",
+      "sourcePath": "docs/claude/review-promo-wizard-frontend-source-2026-07-14.md",
       "contentUrl": "/document/content/doc-0317.md"
     },
     {
       "id": "doc-0318",
-      "title": "소스코드 종합 분석 리포트",
+      "title": "템플릿·섹션·컴포넌트 용어집",
       "category": "기술 문서",
-      "updatedAt": "2026-07-17",
-      "sourcePath": "docs/claude/source-code-analysis-2026-07-17.md",
+      "updatedAt": "2026-07-23",
+      "sourcePath": "docs/claude/section-component-terminology-glossary-2026-07-23.md",
       "contentUrl": "/document/content/doc-0318.md"
     },
     {
       "id": "doc-0319",
-      "title": "Zero-Click 관점의 Promo Web AI Builder E2E — AX 도입 개념 정립",
-      "category": "기술 문서",
-      "updatedAt": "2026-07-14",
-      "sourcePath": "docs/claude/zero-click-ax-concept-2026-07-14.md",
+      "title": "Promo Web Builder 서비스 아키텍처 구성",
+      "category": "설계서",
+      "updatedAt": "2026-07-17",
+      "sourcePath": "docs/claude/service-architecture-2026-07-17.md",
       "contentUrl": "/document/content/doc-0319.md"
     },
     {
       "id": "doc-0320",
-      "title": "Promo Web Builder Directus 연동·DB Migration 통합 가이드",
-      "category": "인수인계",
-      "updatedAt": "2026-09-22",
-      "sourcePath": "docs/directus-migration-handoff-2026-09-22/00-directus-integration-migration-master-guide.md",
+      "title": "소스코드 종합 분석 리포트",
+      "category": "기술 문서",
+      "updatedAt": "2026-07-17",
+      "sourcePath": "docs/claude/source-code-analysis-2026-07-17.md",
       "contentUrl": "/document/content/doc-0320.md"
     },
     {
       "id": "doc-0321",
-      "title": "01. 개요와 현행 시스템 기준선",
-      "category": "인수인계",
-      "updatedAt": "2026-09-22",
-      "sourcePath": "docs/directus-migration-handoff-2026-09-22/01-overview-and-current-baseline.md",
+      "title": "Zero-Click 관점의 Promo Web AI Builder E2E — AX 도입 개념 정립",
+      "category": "기술 문서",
+      "updatedAt": "2026-07-14",
+      "sourcePath": "docs/claude/zero-click-ax-concept-2026-07-14.md",
       "contentUrl": "/document/content/doc-0321.md"
     },
     {
       "id": "doc-0322",
-      "title": "02. 목표 연동 아키텍처",
-      "category": "설계서",
+      "title": "Promo Web Builder Directus 연동·DB Migration 통합 가이드",
+      "category": "인수인계",
       "updatedAt": "2026-09-22",
-      "sourcePath": "docs/directus-migration-handoff-2026-09-22/02-target-integration-architecture.md",
+      "sourcePath": "docs/directus-migration-handoff-2026-09-22/00-directus-integration-migration-master-guide.md",
       "contentUrl": "/document/content/doc-0322.md"
     },
     {
       "id": "doc-0323",
-      "title": "03. 데이터 도메인 Inventory와 소유권",
+      "title": "01. 개요와 현행 시스템 기준선",
       "category": "인수인계",
       "updatedAt": "2026-09-22",
-      "sourcePath": "docs/directus-migration-handoff-2026-09-22/03-data-domain-inventory-and-ownership.md",
+      "sourcePath": "docs/directus-migration-handoff-2026-09-22/01-overview-and-current-baseline.md",
       "contentUrl": "/document/content/doc-0323.md"
     },
     {
       "id": "doc-0324",
-      "title": "04. Directus Schema·Field·Relation Mapping 초안",
-      "category": "인수인계",
+      "title": "02. 목표 연동 아키텍처",
+      "category": "설계서",
       "updatedAt": "2026-09-22",
-      "sourcePath": "docs/directus-migration-handoff-2026-09-22/04-directus-schema-mapping-draft.md",
+      "sourcePath": "docs/directus-migration-handoff-2026-09-22/02-target-integration-architecture.md",
       "contentUrl": "/document/content/doc-0324.md"
     },
     {
       "id": "doc-0325",
-      "title": "05. API·Integration Config·보안 계약",
+      "title": "03. 데이터 도메인 Inventory와 소유권",
       "category": "인수인계",
       "updatedAt": "2026-09-22",
-      "sourcePath": "docs/directus-migration-handoff-2026-09-22/05-api-config-and-security-contract.md",
+      "sourcePath": "docs/directus-migration-handoff-2026-09-22/03-data-domain-inventory-and-ownership.md",
       "contentUrl": "/document/content/doc-0325.md"
     },
     {
       "id": "doc-0326",
-      "title": "06. Database·Directus Migration 실행 Runbook",
+      "title": "04. Directus Schema·Field·Relation Mapping 초안",
       "category": "인수인계",
       "updatedAt": "2026-09-22",
-      "sourcePath": "docs/directus-migration-handoff-2026-09-22/06-database-migration-runbook.md",
+      "sourcePath": "docs/directus-migration-handoff-2026-09-22/04-directus-schema-mapping-draft.md",
       "contentUrl": "/document/content/doc-0326.md"
     },
     {
       "id": "doc-0327",
-      "title": "07. 데이터 검증·대사 계획",
+      "title": "05. API·Integration Config·보안 계약",
       "category": "인수인계",
       "updatedAt": "2026-09-22",
-      "sourcePath": "docs/directus-migration-handoff-2026-09-22/07-validation-and-reconciliation-plan.md",
+      "sourcePath": "docs/directus-migration-handoff-2026-09-22/05-api-config-and-security-contract.md",
       "contentUrl": "/document/content/doc-0327.md"
     },
     {
       "id": "doc-0328",
-      "title": "08. Cutover·Rollback Runbook",
+      "title": "06. Database·Directus Migration 실행 Runbook",
       "category": "인수인계",
       "updatedAt": "2026-09-22",
-      "sourcePath": "docs/directus-migration-handoff-2026-09-22/08-cutover-and-rollback-runbook.md",
+      "sourcePath": "docs/directus-migration-handoff-2026-09-22/06-database-migration-runbook.md",
       "contentUrl": "/document/content/doc-0328.md"
     },
     {
       "id": "doc-0329",
-      "title": "09. 운영·모니터링·장애 대응",
+      "title": "07. 데이터 검증·대사 계획",
       "category": "인수인계",
       "updatedAt": "2026-09-22",
-      "sourcePath": "docs/directus-migration-handoff-2026-09-22/09-operations-monitoring-and-incident-response.md",
+      "sourcePath": "docs/directus-migration-handoff-2026-09-22/07-validation-and-reconciliation-plan.md",
       "contentUrl": "/document/content/doc-0329.md"
     },
     {
       "id": "doc-0330",
-      "title": "10. 미결정 사항·위험·실행 Roadmap",
-      "category": "계획서",
+      "title": "08. Cutover·Rollback Runbook",
+      "category": "인수인계",
       "updatedAt": "2026-09-22",
-      "sourcePath": "docs/directus-migration-handoff-2026-09-22/10-decisions-risks-and-execution-roadmap.md",
+      "sourcePath": "docs/directus-migration-handoff-2026-09-22/08-cutover-and-rollback-runbook.md",
       "contentUrl": "/document/content/doc-0330.md"
     },
     {
       "id": "doc-0331",
-      "title": "Directus 연동 개발 및 인프라 리뷰 계획",
+      "title": "09. 운영·모니터링·장애 대응",
       "category": "인수인계",
       "updatedAt": "2026-09-22",
-      "sourcePath": "docs/directus-migration-handoff-2026-09-22/11-developer-infrastructure-review-plan.md",
+      "sourcePath": "docs/directus-migration-handoff-2026-09-22/09-operations-monitoring-and-incident-response.md",
       "contentUrl": "/document/content/doc-0331.md"
     },
     {
       "id": "doc-0332",
-      "title": "Directus 연동 기본 구성도",
-      "category": "설계서",
+      "title": "10. 미결정 사항·위험·실행 Roadmap",
+      "category": "계획서",
       "updatedAt": "2026-09-22",
-      "sourcePath": "docs/directus-migration-handoff-2026-09-22/12-basic-system-architecture.md",
+      "sourcePath": "docs/directus-migration-handoff-2026-09-22/10-decisions-risks-and-execution-roadmap.md",
       "contentUrl": "/document/content/doc-0332.md"
     },
     {
       "id": "doc-0333",
-      "title": "Promo Web Builder 내부 연동·Directus·DB Migration 문서 패키지",
+      "title": "Directus 연동 개발 및 인프라 리뷰 계획",
       "category": "인수인계",
       "updatedAt": "2026-09-22",
-      "sourcePath": "docs/directus-migration-handoff-2026-09-22/README.md",
+      "sourcePath": "docs/directus-migration-handoff-2026-09-22/11-developer-infrastructure-review-plan.md",
       "contentUrl": "/document/content/doc-0333.md"
     },
     {
       "id": "doc-0334",
-      "title": "프런트엔드 플랫폼 단일화 기반 개발 Handoff",
-      "category": "인수인계",
-      "updatedAt": "2026-07-24",
-      "sourcePath": "docs/handoff/frontend-platform-unification-foundation-handoff-2026-07-24.md",
+      "title": "Directus 연동 기본 구성도",
+      "category": "설계서",
+      "updatedAt": "2026-09-22",
+      "sourcePath": "docs/directus-migration-handoff-2026-09-22/12-basic-system-architecture.md",
       "contentUrl": "/document/content/doc-0334.md"
     },
     {
       "id": "doc-0335",
-      "title": "Handoff - 2026-06-27",
+      "title": "Promo Web Builder 내부 연동·Directus·DB Migration 문서 패키지",
       "category": "인수인계",
-      "updatedAt": "2026-06-27",
-      "sourcePath": "docs/handoff/handoff-2026-06-27.md",
+      "updatedAt": "2026-09-22",
+      "sourcePath": "docs/directus-migration-handoff-2026-09-22/README.md",
       "contentUrl": "/document/content/doc-0335.md"
     },
     {
       "id": "doc-0336",
-      "title": "Handoff - 2026-06-29",
+      "title": "프런트엔드 플랫폼 단일화 기반 개발 Handoff",
       "category": "인수인계",
-      "updatedAt": "2026-06-29",
-      "sourcePath": "docs/handoff/handoff-2026-06-29.md",
+      "updatedAt": "2026-07-24",
+      "sourcePath": "docs/handoff/frontend-platform-unification-foundation-handoff-2026-07-24.md",
       "contentUrl": "/document/content/doc-0336.md"
     },
     {
       "id": "doc-0337",
-      "title": "Handoff - 2026-06-30",
+      "title": "Handoff - 2026-06-27",
       "category": "인수인계",
-      "updatedAt": "2026-06-30",
-      "sourcePath": "docs/handoff/handoff-2026-06-30.md",
+      "updatedAt": "2026-06-27",
+      "sourcePath": "docs/handoff/handoff-2026-06-27.md",
       "contentUrl": "/document/content/doc-0337.md"
     },
     {
       "id": "doc-0338",
-      "title": "Handoff - 2026-07-01",
+      "title": "Handoff - 2026-06-29",
       "category": "인수인계",
-      "updatedAt": "2026-07-01",
-      "sourcePath": "docs/handoff/handoff-2026-07-01.md",
+      "updatedAt": "2026-06-29",
+      "sourcePath": "docs/handoff/handoff-2026-06-29.md",
       "contentUrl": "/document/content/doc-0338.md"
     },
     {
       "id": "doc-0339",
-      "title": "Handoff - 2026-07-02",
+      "title": "Handoff - 2026-06-30",
       "category": "인수인계",
-      "updatedAt": "2026-07-02",
-      "sourcePath": "docs/handoff/handoff-2026-07-02.md",
+      "updatedAt": "2026-06-30",
+      "sourcePath": "docs/handoff/handoff-2026-06-30.md",
       "contentUrl": "/document/content/doc-0339.md"
     },
     {
       "id": "doc-0340",
-      "title": "Handoff - 2026-07-03",
+      "title": "Handoff - 2026-07-01",
       "category": "인수인계",
-      "updatedAt": "2026-07-03",
-      "sourcePath": "docs/handoff/handoff-2026-07-03.md",
+      "updatedAt": "2026-07-01",
+      "sourcePath": "docs/handoff/handoff-2026-07-01.md",
       "contentUrl": "/document/content/doc-0340.md"
     },
     {
       "id": "doc-0341",
-      "title": "Handoff - 2026-07-04",
+      "title": "Handoff - 2026-07-02",
       "category": "인수인계",
-      "updatedAt": "2026-07-04",
-      "sourcePath": "docs/handoff/handoff-2026-07-04.md",
+      "updatedAt": "2026-07-02",
+      "sourcePath": "docs/handoff/handoff-2026-07-02.md",
       "contentUrl": "/document/content/doc-0341.md"
     },
     {
       "id": "doc-0342",
-      "title": "Handoff - 2026-07-06",
+      "title": "Handoff - 2026-07-03",
       "category": "인수인계",
-      "updatedAt": "2026-07-06",
-      "sourcePath": "docs/handoff/handoff-2026-07-06.md",
+      "updatedAt": "2026-07-03",
+      "sourcePath": "docs/handoff/handoff-2026-07-03.md",
       "contentUrl": "/document/content/doc-0342.md"
     },
     {
       "id": "doc-0343",
-      "title": "Handoff - 2026-07-07",
+      "title": "Handoff - 2026-07-04",
       "category": "인수인계",
-      "updatedAt": "2026-07-07",
-      "sourcePath": "docs/handoff/handoff-2026-07-07.md",
+      "updatedAt": "2026-07-04",
+      "sourcePath": "docs/handoff/handoff-2026-07-04.md",
       "contentUrl": "/document/content/doc-0343.md"
     },
     {
       "id": "doc-0344",
-      "title": "Handoff - 2026-07-08",
+      "title": "Handoff - 2026-07-06",
       "category": "인수인계",
-      "updatedAt": "2026-07-08",
-      "sourcePath": "docs/handoff/handoff-2026-07-08.md",
+      "updatedAt": "2026-07-06",
+      "sourcePath": "docs/handoff/handoff-2026-07-06.md",
       "contentUrl": "/document/content/doc-0344.md"
     },
     {
       "id": "doc-0345",
-      "title": "Handoff - 2026-07-09",
+      "title": "Handoff - 2026-07-07",
       "category": "인수인계",
-      "updatedAt": "2026-07-09",
-      "sourcePath": "docs/handoff/handoff-2026-07-09.md",
+      "updatedAt": "2026-07-07",
+      "sourcePath": "docs/handoff/handoff-2026-07-07.md",
       "contentUrl": "/document/content/doc-0345.md"
     },
     {
       "id": "doc-0346",
-      "title": "Handoff 2026-07-10",
+      "title": "Handoff - 2026-07-08",
       "category": "인수인계",
-      "updatedAt": "2026-07-10",
-      "sourcePath": "docs/handoff/handoff-2026-07-10.md",
+      "updatedAt": "2026-07-08",
+      "sourcePath": "docs/handoff/handoff-2026-07-08.md",
       "contentUrl": "/document/content/doc-0346.md"
     },
     {
       "id": "doc-0347",
-      "title": "Handoff 2026-07-12",
+      "title": "Handoff - 2026-07-09",
       "category": "인수인계",
-      "updatedAt": "2026-07-12",
-      "sourcePath": "docs/handoff/handoff-2026-07-12.md",
+      "updatedAt": "2026-07-09",
+      "sourcePath": "docs/handoff/handoff-2026-07-09.md",
       "contentUrl": "/document/content/doc-0347.md"
     },
     {
       "id": "doc-0348",
-      "title": "Handoff 2026-07-13",
+      "title": "Handoff 2026-07-10",
       "category": "인수인계",
-      "updatedAt": "2026-07-13",
-      "sourcePath": "docs/handoff/handoff-2026-07-13.md",
+      "updatedAt": "2026-07-10",
+      "sourcePath": "docs/handoff/handoff-2026-07-10.md",
       "contentUrl": "/document/content/doc-0348.md"
     },
     {
       "id": "doc-0349",
-      "title": "Handoff 2026-07-14",
+      "title": "Handoff 2026-07-12",
       "category": "인수인계",
-      "updatedAt": "2026-07-14",
-      "sourcePath": "docs/handoff/handoff-2026-07-14.md",
+      "updatedAt": "2026-07-12",
+      "sourcePath": "docs/handoff/handoff-2026-07-12.md",
       "contentUrl": "/document/content/doc-0349.md"
     },
     {
       "id": "doc-0350",
-      "title": "Handoff 2026-07-15",
+      "title": "Handoff 2026-07-13",
       "category": "인수인계",
-      "updatedAt": "2026-07-15",
-      "sourcePath": "docs/handoff/handoff-2026-07-15.md",
+      "updatedAt": "2026-07-13",
+      "sourcePath": "docs/handoff/handoff-2026-07-13.md",
       "contentUrl": "/document/content/doc-0350.md"
     },
     {
       "id": "doc-0351",
-      "title": "Handoff 2026-07-16",
+      "title": "Handoff 2026-07-14",
       "category": "인수인계",
-      "updatedAt": "2026-07-16",
-      "sourcePath": "docs/handoff/handoff-2026-07-16.md",
+      "updatedAt": "2026-07-14",
+      "sourcePath": "docs/handoff/handoff-2026-07-14.md",
       "contentUrl": "/document/content/doc-0351.md"
     },
     {
       "id": "doc-0352",
-      "title": "Handoff 2026-07-17",
+      "title": "Handoff 2026-07-15",
       "category": "인수인계",
-      "updatedAt": "2026-07-17",
-      "sourcePath": "docs/handoff/handoff-2026-07-17.md",
+      "updatedAt": "2026-07-15",
+      "sourcePath": "docs/handoff/handoff-2026-07-15.md",
       "contentUrl": "/document/content/doc-0352.md"
     },
     {
       "id": "doc-0353",
-      "title": "Handoff 2026-07-20",
+      "title": "Handoff 2026-07-16",
       "category": "인수인계",
-      "updatedAt": "2026-07-20",
-      "sourcePath": "docs/handoff/handoff-2026-07-20.md",
+      "updatedAt": "2026-07-16",
+      "sourcePath": "docs/handoff/handoff-2026-07-16.md",
       "contentUrl": "/document/content/doc-0353.md"
     },
     {
       "id": "doc-0354",
-      "title": "Promo Web Builder Handoff — 2026-07-21",
+      "title": "Handoff 2026-07-17",
       "category": "인수인계",
-      "updatedAt": "2026-07-21",
-      "sourcePath": "docs/handoff/handoff-2026-07-21.md",
+      "updatedAt": "2026-07-17",
+      "sourcePath": "docs/handoff/handoff-2026-07-17.md",
       "contentUrl": "/document/content/doc-0354.md"
     },
     {
       "id": "doc-0355",
-      "title": "Promo Web Builder Handoff — 2026-07-23",
+      "title": "Handoff 2026-07-20",
       "category": "인수인계",
-      "updatedAt": "2026-07-23",
-      "sourcePath": "docs/handoff/handoff-2026-07-23.md",
+      "updatedAt": "2026-07-20",
+      "sourcePath": "docs/handoff/handoff-2026-07-20.md",
       "contentUrl": "/document/content/doc-0355.md"
     },
     {
       "id": "doc-0356",
-      "title": "Promo Web Builder Handoff — 2026-07-27",
+      "title": "Promo Web Builder Handoff — 2026-07-21",
       "category": "인수인계",
-      "updatedAt": "2026-07-27",
-      "sourcePath": "docs/handoff/handoff-2026-07-27.md",
+      "updatedAt": "2026-07-21",
+      "sourcePath": "docs/handoff/handoff-2026-07-21.md",
       "contentUrl": "/document/content/doc-0356.md"
     },
     {
       "id": "doc-0357",
-      "title": "Promo Web Builder Handoff — 2026-07-28",
+      "title": "Promo Web Builder Handoff — 2026-07-23",
       "category": "인수인계",
-      "updatedAt": "2026-07-28",
-      "sourcePath": "docs/handoff/handoff-2026-07-28.md",
+      "updatedAt": "2026-07-23",
+      "sourcePath": "docs/handoff/handoff-2026-07-23.md",
       "contentUrl": "/document/content/doc-0357.md"
     },
     {
       "id": "doc-0358",
-      "title": "Promo Web Builder Handoff — 2026-07-29",
+      "title": "Promo Web Builder Handoff — 2026-07-27",
       "category": "인수인계",
-      "updatedAt": "2026-07-29",
-      "sourcePath": "docs/handoff/handoff-2026-07-29.md",
+      "updatedAt": "2026-07-27",
+      "sourcePath": "docs/handoff/handoff-2026-07-27.md",
       "contentUrl": "/document/content/doc-0358.md"
     },
     {
       "id": "doc-0359",
-      "title": "Promo Web Builder Handoff — 2026-08-01",
+      "title": "Promo Web Builder Handoff — 2026-07-28",
       "category": "인수인계",
-      "updatedAt": "2026-08-01",
-      "sourcePath": "docs/handoff/handoff-2026-08-01.md",
+      "updatedAt": "2026-07-28",
+      "sourcePath": "docs/handoff/handoff-2026-07-28.md",
       "contentUrl": "/document/content/doc-0359.md"
     },
     {
       "id": "doc-0360",
-      "title": "Promo Web Builder Handoff — 2026-08-02",
+      "title": "Promo Web Builder Handoff — 2026-07-29",
       "category": "인수인계",
-      "updatedAt": "2026-08-02",
-      "sourcePath": "docs/handoff/handoff-2026-08-02.md",
+      "updatedAt": "2026-07-29",
+      "sourcePath": "docs/handoff/handoff-2026-07-29.md",
       "contentUrl": "/document/content/doc-0360.md"
     },
     {
       "id": "doc-0361",
-      "title": "Promo Web Builder Handoff — 2026-08-05",
+      "title": "Promo Web Builder Handoff — 2026-08-01",
       "category": "인수인계",
-      "updatedAt": "2026-08-05",
-      "sourcePath": "docs/handoff/handoff-2026-08-05.md",
+      "updatedAt": "2026-08-01",
+      "sourcePath": "docs/handoff/handoff-2026-08-01.md",
       "contentUrl": "/document/content/doc-0361.md"
     },
     {
       "id": "doc-0362",
-      "title": "Promo Web Builder 상세 인수인계 — 2026-08-06",
+      "title": "Promo Web Builder Handoff — 2026-08-02",
       "category": "인수인계",
-      "updatedAt": "2026-08-06",
-      "sourcePath": "docs/handoff/handoff-2026-08-06.md",
+      "updatedAt": "2026-08-02",
+      "sourcePath": "docs/handoff/handoff-2026-08-02.md",
       "contentUrl": "/document/content/doc-0362.md"
     },
     {
       "id": "doc-0363",
-      "title": "왼쪽 구조 패널 UX 검토",
-      "category": "QA 보고서",
-      "updatedAt": "2026-07-31",
-      "sourcePath": "docs/qa/left-panel-audit-2026-07-31/report.md",
+      "title": "Promo Web Builder Handoff — 2026-08-05",
+      "category": "인수인계",
+      "updatedAt": "2026-08-05",
+      "sourcePath": "docs/handoff/handoff-2026-08-05.md",
       "contentUrl": "/document/content/doc-0363.md"
     },
     {
       "id": "doc-0364",
-      "title": "Live Preview 컴포넌트 리사이즈 재감사",
-      "category": "QA 보고서",
-      "updatedAt": "2026-08-01",
-      "sourcePath": "docs/qa/live-preview-component-resize-audit-2026-08-01.md",
+      "title": "Promo Web Builder 상세 인수인계 — 2026-08-06",
+      "category": "인수인계",
+      "updatedAt": "2026-08-06",
+      "sourcePath": "docs/handoff/handoff-2026-08-06.md",
       "contentUrl": "/document/content/doc-0364.md"
     },
     {
       "id": "doc-0365",
-      "title": "Live Preview 선택·편집·이동 상호작용 진단 리포트",
-      "category": "QA 보고서",
-      "updatedAt": "2026-08-01",
-      "sourcePath": "docs/qa/live-preview-interaction-audit-2026-08-01.md",
+      "title": "Promo Service Contract V3 구현 및 Rollout 인수인계",
+      "category": "인수인계",
+      "updatedAt": "2026-11-03",
+      "sourcePath": "docs/handoff/promo-service-contract-v3-rollout-handoff-2026-11-03.md",
       "contentUrl": "/document/content/doc-0365.md"
     },
     {
       "id": "doc-0366",
-      "title": "프로모션 빌더 Create Promo UX 검토",
+      "title": "왼쪽 구조 패널 UX 검토",
       "category": "QA 보고서",
-      "updatedAt": "2026-11-01",
-      "sourcePath": "docs/qa/promo-builder-create-flow-audit-2026-11-01.md",
+      "updatedAt": "2026-07-31",
+      "sourcePath": "docs/qa/left-panel-audit-2026-07-31/report.md",
       "contentUrl": "/document/content/doc-0366.md"
     },
     {
       "id": "doc-0367",
-      "title": "생성 페이지 아티팩트 저장 계약",
+      "title": "Live Preview 컴포넌트 리사이즈 재감사",
       "category": "QA 보고서",
-      "updatedAt": "2026-11-02",
-      "sourcePath": "docs/qa/promo-page-artifact-persistence-contract-2026-11-02.md",
+      "updatedAt": "2026-08-01",
+      "sourcePath": "docs/qa/live-preview-component-resize-audit-2026-08-01.md",
       "contentUrl": "/document/content/doc-0367.md"
     },
     {
       "id": "doc-0368",
-      "title": "생성 페이지 브라우저 품질 게이트",
+      "title": "Live Preview 선택·편집·이동 상호작용 진단 리포트",
       "category": "QA 보고서",
-      "updatedAt": "2026-11-02",
-      "sourcePath": "docs/qa/promo-page-browser-quality-gate-2026-11-02.md",
+      "updatedAt": "2026-08-01",
+      "sourcePath": "docs/qa/live-preview-interaction-audit-2026-08-01.md",
       "contentUrl": "/document/content/doc-0368.md"
     },
     {
       "id": "doc-0369",
-      "title": "Registry Hero 섹션 키비주얼 테스트 시나리오",
+      "title": "프로모션 빌더 Create Promo UX 검토",
       "category": "QA 보고서",
-      "updatedAt": "2026-08-07",
-      "sourcePath": "docs/qa/registry-hero-section-key-visual-test-scenarios-2026-08-07.md",
+      "updatedAt": "2026-11-01",
+      "sourcePath": "docs/qa/promo-builder-create-flow-audit-2026-11-01.md",
       "contentUrl": "/document/content/doc-0369.md"
     },
     {
       "id": "doc-0370",
-      "title": "Text Editor Toolbar Design QA",
+      "title": "생성 페이지 아티팩트 저장 계약",
       "category": "QA 보고서",
-      "updatedAt": "2026-07-31",
-      "sourcePath": "docs/qa/text-editor-toolbar-design-qa-2026-07-31.md",
+      "updatedAt": "2026-11-02",
+      "sourcePath": "docs/qa/promo-page-artifact-persistence-contract-2026-11-02.md",
       "contentUrl": "/document/content/doc-0370.md"
     },
     {
       "id": "doc-0371",
-      "title": "Web Output 프롬프트 품질 감사 및 개선 기록",
-      "category": "프롬프트",
+      "title": "생성 페이지 브라우저 품질 게이트",
+      "category": "QA 보고서",
       "updatedAt": "2026-11-02",
-      "sourcePath": "docs/qa/web-output-prompt-quality-audit-2026-11-02.md",
+      "sourcePath": "docs/qa/promo-page-browser-quality-gate-2026-11-02.md",
       "contentUrl": "/document/content/doc-0371.md"
     },
     {
       "id": "doc-0372",
-      "title": "docs 구조 안내",
-      "category": "안내서",
-      "updatedAt": "2026-10-12",
-      "sourcePath": "docs/README.md",
+      "title": "Registry Hero 섹션 키비주얼 테스트 시나리오",
+      "category": "QA 보고서",
+      "updatedAt": "2026-08-07",
+      "sourcePath": "docs/qa/registry-hero-section-key-visual-test-scenarios-2026-08-07.md",
       "contentUrl": "/document/content/doc-0372.md"
     },
     {
       "id": "doc-0373",
-      "title": "Design Token Extraction Prompt",
-      "category": "프롬프트",
-      "updatedAt": "2026-07-01",
-      "sourcePath": "prompts/promo-Design Token Extraction Prompt",
-      "contentUrl": "/document/content/doc-0373.txt"
+      "title": "Text Editor Toolbar Design QA",
+      "category": "QA 보고서",
+      "updatedAt": "2026-07-31",
+      "sourcePath": "docs/qa/text-editor-toolbar-design-qa-2026-07-31.md",
+      "contentUrl": "/document/content/doc-0373.md"
     },
     {
       "id": "doc-0374",
-      "title": "Promo Integrated Design Brief Generation Prompt",
+      "title": "Web Output 프롬프트 품질 감사 및 개선 기록",
       "category": "프롬프트",
-      "updatedAt": "2026-07-07",
-      "sourcePath": "prompts/promo-integrated-design-brief-generation.md",
+      "updatedAt": "2026-11-02",
+      "sourcePath": "docs/qa/web-output-prompt-quality-audit-2026-11-02.md",
       "contentUrl": "/document/content/doc-0374.md"
     },
     {
       "id": "doc-0375",
-      "title": "Promo AI Page Generation Prompt v2",
-      "category": "프롬프트",
-      "updatedAt": "2026-11-02",
-      "sourcePath": "prompts/promo-page-generation.md",
+      "title": "docs 구조 안내",
+      "category": "안내서",
+      "updatedAt": "2026-10-12",
+      "sourcePath": "docs/README.md",
       "contentUrl": "/document/content/doc-0375.md"
     },
     {
       "id": "doc-0376",
+      "title": "Design Token Extraction Prompt",
+      "category": "프롬프트",
+      "updatedAt": "2026-07-01",
+      "sourcePath": "prompts/promo-Design Token Extraction Prompt",
+      "contentUrl": "/document/content/doc-0376.txt"
+    },
+    {
+      "id": "doc-0377",
+      "title": "Promo Integrated Design Brief Generation Prompt",
+      "category": "프롬프트",
+      "updatedAt": "2026-07-07",
+      "sourcePath": "prompts/promo-integrated-design-brief-generation.md",
+      "contentUrl": "/document/content/doc-0377.md"
+    },
+    {
+      "id": "doc-0378",
+      "title": "Promo AI Page Generation Prompt v2",
+      "category": "프롬프트",
+      "updatedAt": "2026-11-02",
+      "sourcePath": "prompts/promo-page-generation.md",
+      "contentUrl": "/document/content/doc-0378.md"
+    },
+    {
+      "id": "doc-0379",
       "title": "Promo UI Design Image Generation Prompt",
       "category": "프롬프트",
       "updatedAt": "2026-07-04",
       "sourcePath": "prompts/promo-ui-design-image-generation.md",
-      "contentUrl": "/document/content/doc-0376.md"
+      "contentUrl": "/document/content/doc-0379.md"
     },
     {
-      "id": "doc-0377",
+      "id": "doc-0380",
       "title": "promowebbuilder",
       "category": "안내서",
       "updatedAt": "2026-06-25",
       "sourcePath": "README.md",
-      "contentUrl": "/document/content/doc-0377.md"
+      "contentUrl": "/document/content/doc-0380.md"
     }
   ]
 }
