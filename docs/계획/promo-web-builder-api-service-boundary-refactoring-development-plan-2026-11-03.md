@@ -5,7 +5,7 @@
 - 작성일: 2026-11-03
 - 대상 프로젝트: `promo_web_builder`
 - 기준 Commit: `5fe5731`
-- 문서 상태: V3 소스 구현 완료 · Preview Rollout 승인 대기
+- 문서 상태: V3 소스 구현·커밋 완료 · Preview DB 인증 복구 대기
 - 권장 실행 기간: 8주
 - 현재 Source of Truth: PostgreSQL
 - 목표: 기존 Builder와 PublishedPromotion v1 계약을 유지하면서 사용자 서비스, LLM 관리 및 하네싱, CMS, 웹 출력의 네 Domain을 Promo Service Contract V3 API로 구축한다.
@@ -24,7 +24,7 @@
 | 사용자 Action | Feedback, Regenerate, Cancel API | 완료 |
 | 승인 | Quality Gate 기반 Review와 CMS Approval Event | 완료 |
 | 웹 출력 | 승인 Snapshot 기반 Publication V3와 Nuxt Cache Invalidation | 완료 |
-| 데이터 경계 | `user_service`, `llm_runtime`, `cms`, `web_output` Schema Migration | 작성 완료, 적용 전 |
+| 데이터 경계 | `user_service`, `llm_runtime`, `cms`, `web_output` Schema Migration | 작성 완료, Preview DB 인증 실패로 적용 전 |
 | Event | Domain별 Outbox, Dispatcher와 Request Projection | 완료 |
 | 보안 | 내부 API 전용 Bearer Token 검증 | 완료 |
 | Rollout | `PROMO_SERVICE_CONTRACT_V3_ENABLED` Feature Flag | 완료, 기본 OFF |
@@ -33,13 +33,24 @@
 
 다음 항목은 외부 환경 Rollout 단계이다.
 
+- Preview의 `PREVIEW_DATABASE_URL` 자격 증명 복구
 - Preview DB Migration 적용
-- Preview 환경의 `PROMO_SERVICE_V3_TOKEN`과 Feature Flag 설정
-- Preview 배포와 실제 DB·n8n·Nuxt E2E
+- Preview 환경의 `PROMO_SERVICE_V3_TOKEN` 설정 완료, Feature Flag는 DB 복구 전까지 OFF
+- Preview 배포 완료, 실제 DB·n8n·Nuxt E2E는 DB 복구 후 재개
 - Rollback Drill
-- 별도 승인 후 Production Migration과 단계적 활성화
+- Preview Release Gate 통과 후 Production Migration과 단계적 활성화
 
 V3 활성화 전 `070_promo_service_contract_v3_foundation.sql`을 적용하고 `PROMO_SERVICE_V3_TOKEN`을 32자 이상으로 설정해야 한다.
+
+### 1.1 2026-11-03 Rollout 결과
+
+- V3 Preview 소스 배포와 Build는 성공했다.
+- V3 Capability는 Preview에서 활성 상태로 확인했다.
+- `070` Migration 실행은 `PREVIEW_DATABASE_URL`의 `neondb_owner` 비밀번호 인증 실패(`28P01`)로 Transaction 시작 전에 중단됐다.
+- Preview DB 스키마와 Production DB에는 변경이 발생하지 않았다.
+- 임시 Migration UI/API는 제거했고 제거 경로의 `404`를 확인했다.
+- Preview Feature Flag는 `false`로 복구했으며 Capability가 Contract Version 2를 반환하는 것을 확인했다.
+- Production Migration과 Production 배포는 Preview Release Gate 미통과로 실행하지 않았다.
 
 ## 1. 개발 목표
 
