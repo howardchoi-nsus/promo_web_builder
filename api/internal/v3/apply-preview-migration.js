@@ -42,25 +42,33 @@ module.exports = async function handler(req, res) {
   let client;
   try {
     requireBuilderFlag("serviceContractV3");
-    requirePromoServiceV3(req);
+    const authRequest = req.body?.serviceToken
+      ? { ...req, headers: { ...req.headers, authorization: `Bearer ${req.body.serviceToken}` } }
+      : req;
+    requirePromoServiceV3(authRequest);
     if (req.method !== "POST") {
       return res.status(405).json({ error: "Method not allowed", code: "METHOD_NOT_ALLOWED" });
     }
     if (String(process.env.VERCEL_ENV || "").toLowerCase() !== "preview") {
       return res.status(403).json({ error: "Preview environment required", code: "PREVIEW_ENV_REQUIRED" });
     }
-    if (req.body?.confirmation !== CONFIRMATION) {
+    const target = req.body?.target === "production" ? "production" : "preview";
+    const expectedConfirmation = target === "production"
+      ? "APPLY_PROMO_SERVICE_CONTRACT_V3_PRODUCTION"
+      : CONFIRMATION;
+    if (req.body?.confirmation !== expectedConfirmation) {
       return res.status(400).json({ error: "Migration confirmation is required", code: "MIGRATION_CONFIRMATION_REQUIRED" });
     }
 
     const previewUrl = String(process.env.PREVIEW_DATABASE_URL || "").trim();
     if (!previewUrl) throw new Error("PREVIEW_DATABASE_URL is required");
     const productionUrl = String(process.env.DATABASE_URL || "").trim();
-    if (productionUrl && targetIdentity(previewUrl) === targetIdentity(productionUrl)) {
+    if (!productionUrl) throw new Error("DATABASE_URL is required");
+    if (targetIdentity(previewUrl) === targetIdentity(productionUrl)) {
       return res.status(409).json({ error: "Preview DB matches the default database target", code: "PREVIEW_DB_NOT_ISOLATED" });
     }
 
-    client = new Client({ connectionString: previewUrl, connectionTimeoutMillis: 10_000 });
+    client = new Client({ connectionString: target === "production" ? productionUrl : previewUrl, connectionTimeoutMillis: 10_000 });
     await client.connect();
     await client.query("begin isolation level serializable");
     await client.query("set local lock_timeout = '10s'");
@@ -69,7 +77,7 @@ module.exports = async function handler(req, res) {
     await client.query(migrationBody());
     if (!(await verify(client))) throw new Error("Migration verification failed");
     await client.query("commit");
-    return res.status(200).json({ ok: true, migration: "070_promo_service_contract_v3_foundation", verified: true });
+    return res.status(200).json({ ok: true, migration: "070_promo_service_contract_v3_foundation", target, verified: true });
   } catch (error) {
     if (client) {
       try { await client.query("rollback"); } catch { /* keep the original failure */ }
