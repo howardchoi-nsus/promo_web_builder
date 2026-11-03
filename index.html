@@ -65,6 +65,29 @@
         gap: 18px;
       }
 
+      .document-link {
+        display: inline-flex;
+        min-height: 38px;
+        align-items: center;
+        padding: 0 15px;
+        border: 1px solid #cbd5d0;
+        border-radius: 8px;
+        color: #26332d;
+        font-size: 13px;
+        font-weight: 800;
+        text-decoration: none;
+      }
+
+      .document-link:hover {
+        border-color: #176b4d;
+        color: #176b4d;
+      }
+
+      .document-link:focus-visible {
+        outline: 2px solid #176b4d;
+        outline-offset: 2px;
+      }
+
       .version-switcher {
         display: inline-flex;
         align-items: center;
@@ -246,7 +269,12 @@
         }
 
         .site-actions {
-          gap: 0;
+          gap: 8px;
+        }
+
+        .document-link {
+          min-height: 36px;
+          padding: 0 11px;
         }
 
         .version-switcher button {
@@ -277,6 +305,7 @@
       </a>
       <div class="site-actions">
         <span class="site-label">Promotion creation workspace</span>
+        <a class="document-link" href="/document/">문서보기</a>
         <div class="version-switcher" role="group" aria-label="랜딩 페이지 버전">
           <button type="button" data-version="v1" aria-pressed="false">V1</button>
           <button type="button" data-version="v2" aria-pressed="true">V2</button>

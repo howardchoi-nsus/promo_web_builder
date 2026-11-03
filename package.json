@@ -7,7 +7,8 @@
   },
   "scripts": {
     "test": "node scripts/run-tests.js",
-    "build": "pnpm run build:admin && pnpm run build:visual-editor && pnpm run build:nuxt-runtime",
+    "build": "pnpm run build:documents && pnpm run build:admin && pnpm run build:visual-editor && pnpm run build:nuxt-runtime",
+    "build:documents": "node scripts/build-document-library.mjs",
     "build:admin": "vite build --config admin-app/vite.config.js",
     "build:visual-editor": "vite build --config visual-editor/vite.config.js",
     "build:nuxt-runtime": "nuxt build apps/promo-runtime-nuxt",

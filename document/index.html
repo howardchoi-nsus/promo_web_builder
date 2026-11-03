@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="Promo Web Builder 계획서, 설계서, 프롬프트 및 운영 문서 라이브러리" />
+    <title>문서 라이브러리 · Promo Web Builder</title>
+    <link rel="stylesheet" href="/document/styles.css" />
+    <script src="/document/app.js" defer></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="Promo Web Builder 홈">
+        <span class="brand-mark" aria-hidden="true">PW</span>
+        <span>Promo Web Builder</span>
+      </a>
+      <nav class="header-actions" aria-label="문서 메뉴">
+        <a href="/prototype/index.html?view=admin&amp;tab=promo-form">Admin</a>
+        <a class="primary-link" href="/">홈으로</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="library-view" id="library-view" aria-labelledby="page-title">
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow">Document library</p>
+            <h1 id="page-title">프로젝트 문서</h1>
+            <p class="page-description">계획서, 설계서, 프롬프트와 운영 기록을 한곳에서 찾아볼 수 있습니다.</p>
+          </div>
+          <p class="document-count" id="document-count" aria-live="polite">문서를 불러오는 중입니다.</p>
+        </div>
+
+        <section class="filters" aria-label="문서 필터">
+          <label class="search-field">
+            <span>문서 검색</span>
+            <input id="document-search" type="search" placeholder="문서명 또는 경로 검색" autocomplete="off" />
+          </label>
+          <label>
+            <span>속성</span>
+            <select id="category-filter">
+              <option value="">전체 속성</option>
+            </select>
+          </label>
+        </section>
+
+        <div class="table-shell">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">문서명</th>
+                <th scope="col">속성</th>
+                <th scope="col">업데이트 날짜</th>
+                <th scope="col"><span class="visually-hidden">보기</span></th>
+              </tr>
+            </thead>
+            <tbody id="document-table-body"></tbody>
+          </table>
+          <div class="empty-state" id="empty-state" hidden>조건에 맞는 문서가 없습니다.</div>
+        </div>
+
+        <nav class="pagination" id="pagination" aria-label="문서 목록 페이지"></nav>
+      </section>
+
+      <article class="document-viewer" id="document-viewer" hidden aria-labelledby="viewer-title">
+        <div class="viewer-toolbar">
+          <button class="back-button" id="viewer-back" type="button">← 목록으로</button>
+          <a class="source-link" id="viewer-source-link" href="#" target="_blank" rel="noopener">원문 열기</a>
+        </div>
+        <header class="viewer-heading">
+          <div class="viewer-meta">
+            <span class="category-badge" id="viewer-category"></span>
+            <time id="viewer-date"></time>
+          </div>
+          <h1 id="viewer-title"></h1>
+          <p id="viewer-path"></p>
+        </header>
+        <div class="viewer-loading" id="viewer-loading" aria-live="polite">문서 내용을 불러오는 중입니다.</div>
+        <div class="markdown-body" id="viewer-content"></div>
+      </article>
+    </main>
+  </body>
+</html>
