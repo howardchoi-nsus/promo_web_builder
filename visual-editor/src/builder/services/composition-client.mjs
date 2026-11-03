@@ -51,6 +51,35 @@ export function createBuilderDocument(idempotencyKey = crypto.randomUUID()) {
   });
 }
 
+export function createPromoRequestV3(payload, idempotencyKey = crypto.randomUUID()) {
+  return request("/api/v3/promo-requests", {
+    method: "POST",
+    headers: { "Idempotency-Key": idempotencyKey },
+    body: JSON.stringify({ contractVersion: 3, channel: "ai-builder", ...payload }),
+  });
+}
+
+export function submitPromoFeedbackV3(requestId, payload) {
+  return request(`/api/v3/promo-requests/${encodeURIComponent(requestId)}/feedback`, {
+    method: "POST",
+    body: JSON.stringify({ contractVersion: 3, ...payload }),
+  });
+}
+
+export function reviewPromoRequestV3(requestId, payload) {
+  return request(`/api/v3/promo-requests/${encodeURIComponent(requestId)}/review`, {
+    method: "POST",
+    body: JSON.stringify({ contractVersion: 3, ...payload }),
+  });
+}
+
+export function cancelPromoRequestV3(requestId, reason = "") {
+  return request(`/api/v3/promo-requests/${encodeURIComponent(requestId)}/cancel`, {
+    method: "POST",
+    body: JSON.stringify({ contractVersion: 3, reason }),
+  });
+}
+
 export function loadBuilderDocument(documentId) {
   return request(`/api/promo-builder-documents?documentId=${encodeURIComponent(documentId)}`);
 }

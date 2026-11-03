@@ -1,6 +1,6 @@
 const { parseBody } = require("./_wizard-form-templates-store");
 const { resolveBuilderOwner } = require("./_promo-builder-auth");
-const { requireBuilderFlag } = require("./_promo-builder-flags");
+const { requireBuilderFlag, builderFlags } = require("./_promo-builder-flags");
 const { assertPassedQualityGate } = require("./_promo-quality-gate");
 const { invalidatePublicationCache } = require("./_promo-publication-cache");
 const {
@@ -44,6 +44,12 @@ module.exports = async function handler(req, res) {
       const slug = String(body.slug || "").trim().toLowerCase();
       const locale = String(body.locale || "ko-KR").trim();
       const status = STATUSES.has(body.status) ? body.status : "draft";
+      if (status === "published" && builderFlags().serviceContractV3) {
+        return res.status(409).json({
+          error: "V3 approval is required before publication",
+          code: "V3_APPROVAL_REQUIRED",
+        });
+      }
       const documentId = String(body.documentId || "").trim();
       const documentRevision = Number(body.documentRevision || 0);
       const revalidateSeconds = normalizeRevalidateSeconds(body.revalidateSeconds);
@@ -99,6 +105,12 @@ module.exports = async function handler(req, res) {
     if (req.method === "PATCH") {
       const id = String(body.id || "").trim();
       const status = String(body.status || "").trim();
+      if (status === "published" && builderFlags().serviceContractV3) {
+        return res.status(409).json({
+          error: "V3 approval is required before publication",
+          code: "V3_APPROVAL_REQUIRED",
+        });
+      }
       if (!id || !STATUSES.has(status)) return res.status(400).json({ error: "id and valid status are required" });
       const current = await findOwnedPublicationById(sql, { id, ownerSubject: owner.ownerSubject });
       if (!current) return res.status(404).json({ error: "Publication not found" });

@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.mjs",
     "./publication": "./src/publication.mjs",
-    "./renderer": "./src/renderer.mjs"
+    "./renderer": "./src/renderer.mjs",
+    "./service-v3": "./src/service-v3.mjs"
   }
 }

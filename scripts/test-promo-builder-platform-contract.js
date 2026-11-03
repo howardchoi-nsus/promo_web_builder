@@ -18,6 +18,8 @@ assert.equal(builderFlags({}).nuxtSsr, true);
 assert.equal(builderFlags({}).directusConfigManagement, true);
 assert.equal(builderFlags({}).directusIntegration, false);
 assert.equal(builderFlags({}).directusConnectionTunnel, false);
+assert.equal(builderFlags({}).serviceContractV3, false);
+assert.equal(builderFlags({ PROMO_SERVICE_CONTRACT_V3_ENABLED: "true" }).serviceContractV3, true);
 assert.equal(builderFlags({ ADMIN_DOM_CONFIG_WORKBENCH_ENABLED: "false" }).adminDomConfigWorkbench, false);
 assert.equal(builderFlags({ ADMIN_LEGACY_VISUAL_CONFIG_EDITOR_ENABLED: "true" }).adminLegacyVisualConfigEditor, true);
 assert.equal(builderFlags({ TEMPLATE_LAYOUT_MANAGEMENT_ENABLED: "false" }).templateLayoutManagement, false);

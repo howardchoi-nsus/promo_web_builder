@@ -13,7 +13,7 @@ module.exports = async function handler(req, res) {
     ok: true,
     capabilities: {
       ...capabilities,
-      contractVersion: 2,
+      contractVersion: capabilities.serviceContractV3 ? 3 : 2,
       supportedContractVersions: capabilities.compositionV3 ? [2, 3] : [2],
       outputMode: capabilities.export ? "preview-and-export" : "preview",
       exportFormats: capabilities.export ? ["html", "manifest", "snapshot", "vue", "react", "nuxt"] : [],

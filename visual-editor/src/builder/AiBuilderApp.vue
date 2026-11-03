@@ -15,6 +15,7 @@ import {
   analyzeOverviewWithRetry,
   applyCompositionProposal,
   createBuilderDocument,
+  createPromoRequestV3,
   createCompositionProposal,
   ensureBuilderSession,
   loadCompositionProposal,
@@ -145,6 +146,21 @@ function updateOverviewDraft(overview) {
 async function ensureDocument() {
   if (store.documentId) return;
   await ensureBuilderSession();
+  if (capabilities.value.serviceContractV3) {
+    const response = await createPromoRequestV3({
+      brief: {
+        title: "AI 프로모션 요청",
+        purpose: "promotion",
+        market: "",
+        locale: navigator.language || "ko-KR",
+        requestText: store.naturalLanguage,
+      },
+    });
+    store.requestId = response.request.requestId;
+    store.documentId = response.request.documentId;
+    store.documentRevision = 0;
+    return;
+  }
   const response = await createBuilderDocument();
   store.documentId = response.document.id;
   store.documentRevision = response.document.currentDocumentRevision;
