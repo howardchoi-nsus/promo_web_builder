@@ -1,16 +1,12 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import BuilderModeSelector from "./BuilderModeSelector.vue";
-import AiBriefPanel from "./AiBriefPanel.vue";
-import OverviewReviewForm from "./OverviewReviewForm.vue";
-import CompositionProgress from "./CompositionProgress.vue";
 import CompositionReview from "./CompositionReview.vue";
 import { visualEditorEntry } from "../platform/visual-editor-entry.mjs";
 import { evaluateAssetReadiness } from "../shared/composition/asset-readiness.mjs";
 import { resolveCompositionLocale } from "../shared/composition/composition-locale.mjs";
 import OperationProposalReview from "./OperationProposalReview.vue";
 import NaturalLanguageEditor from "./NaturalLanguageEditor.vue";
-import PromoPageRenderer from "../PromoPageRenderer.vue";
 import { createAiBuilderStore, clearBuilderError, setBuilderError } from "./state/ai-builder-store.mjs";
 import {
   analyzeOverviewWithRetry,
@@ -31,6 +27,13 @@ import {
   uploadReferenceImage,
   analyzeReferenceImage,
   deleteReferenceImage,
+  createChatWorkspace,
+  loadChatWorkspace,
+  saveChatMessage,
+  saveRequirementsRevision,
+  executeChatAction,
+  saveWireframeRevision,
+  confirmWireframeRevision,
 } from "./services/composition-client.mjs";
 
 const props = defineProps({
@@ -52,12 +55,15 @@ const attachments = ref([]);
 const chatInput = ref("");
 const attachmentBusy = ref(false);
 const wireframeSnapshot = ref(null);
+const chatSessionId = ref("");
+const requirementsRevision = ref(0);
+const wireframeRevision = ref(0);
+const wireframeFingerprint = ref("");
 const activeResultTab = ref("requirements");
 const splitPercent = ref(38);
 const draggingSplit = ref(false);
 const chatList = ref(null);
 const fileInput = ref(null);
-const previousStage = ref("idle");
 let assetPollingCancelled = false;
 let localeUnsubscribe = null;
 const localeRevision = ref(0);
@@ -81,6 +87,37 @@ const currentStatus = computed(() => {
   return { label: "요구사항을 입력해 주세요", state: "대기" };
 });
 const wireframeDisplaySnapshot = computed(() => wireframeSnapshot.value || store.proposal?.snapshot || null);
+const wireframeSections = computed(() => {
+  const previewSections = wireframeDisplaySnapshot.value?.preview?.sections;
+  if (Array.isArray(previewSections)) {
+    return previewSections.flatMap((section) => Array.from(
+      { length: Math.max(1, Number(section.repeat || 1)) },
+      (_, sectionIndex) => ({
+        key: `${section.sectionKey}:${sectionIndex}`,
+        label: section.sectionKey,
+        role: section.sectionRole,
+        layout: section.layoutKey,
+        components: (section.componentKeys || []).flatMap((componentKey) => Array.from(
+          { length: Math.max(1, Number(section.componentRepeats?.[componentKey] || 1)) },
+          (_, componentIndex) => ({
+            key: `${componentKey}:${componentIndex}`,
+            label: componentKey,
+          }),
+        )),
+      }),
+    ));
+  }
+  return (wireframeDisplaySnapshot.value?.content?.sectionSnapshot || []).map((section) => ({
+    key: section.sectionKey,
+    label: section.sourceSectionKey || section.sectionKey,
+    role: section.sectionRole,
+    layout: section.selectedLayoutKey,
+    components: (section.items || []).map((item) => ({
+      key: item.itemKey,
+      label: item.sourceItemKey || item.itemKey,
+    })),
+  }));
+});
 const fullScreenProgress = computed(() => [
   "analyzing_overview", "resolving_policy", "queued", "processing", "applying",
   "generating_assets", "preview_ready", "navigating_preview",
@@ -108,25 +145,6 @@ const progressMessage = computed(() => {
   }
   return translate("builder.progress.generatingStructure", "프로모션 구조를 생성하고 있습니다.");
 });
-const progressEmphasis = computed(() => {
-  if (store.stage === "analyzing_overview") return "개요를 분석";
-  if (["resolving_policy", "queued", "processing"].includes(store.stage)) return "구조를 구성";
-  if (store.stage === "applying") return "구조를 생성";
-  if (store.stage === "generating_assets") return "AI 이미지를 생성";
-  return "";
-});
-const overviewExecution = computed(() => store.executionDisplays.promo_overview_parser || null);
-const compositionExecution = computed(() => store.executionDisplays.promo_page_composer || null);
-const assetExecution = computed(() => store.executionDisplays.section_background_image
-  || store.executionDisplays.component_image
-  || compositionExecution.value);
-const progressExecution = computed(() => (
-  store.stage === "analyzing_overview"
-    ? overviewExecution.value
-    : ["generating_assets", "preview_ready", "navigating_preview"].includes(store.stage)
-      ? assetExecution.value
-      : compositionExecution.value
-));
 const retryableAssetError = computed(() => Boolean(store.snapshot && [
   "ASSET_GENERATION_FAILED", "ASSET_GENERATION_TIMEOUT", "ASSET_ENQUEUE_FAILED",
   "PROVIDER_BILLING_REQUIRED",
@@ -185,6 +203,19 @@ function appendMessage(role, text, extra = {}) {
   return message;
 }
 
+async function persistMessage(message) {
+  if (!capabilities.value.chatWorkspaceV1 || !chatSessionId.value) return message;
+  const response = await saveChatMessage(chatSessionId.value, message);
+  const index = messages.value.findIndex((item) => item.id === message.id);
+  if (index >= 0) messages.value[index] = response.message;
+  return response.message;
+}
+
+async function appendPersistedMessage(role, text, extra = {}) {
+  const message = appendMessage(role, text, extra);
+  return persistMessage(message);
+}
+
 function updateStatusMessage(operationId, text, status = "in_progress") {
   const existing = messages.value.find((message) => message.operationId === operationId);
   if (existing) {
@@ -202,6 +233,10 @@ function persistWorkspace() {
       documentId: store.documentId,
       documentRevision: store.documentRevision,
       requestId: store.requestId,
+      chatSessionId: chatSessionId.value,
+      requirementsRevision: requirementsRevision.value,
+      wireframeRevision: wireframeRevision.value,
+      wireframeFingerprint: wireframeFingerprint.value,
       stage: store.stage,
       naturalLanguage: store.naturalLanguage,
       inputLocale: store.inputLocale,
@@ -230,6 +265,10 @@ function restoreWorkspaceCache() {
     store.documentId = cached.documentId || "";
     store.documentRevision = Number(cached.documentRevision || 0);
     store.requestId = cached.requestId || "";
+    chatSessionId.value = cached.chatSessionId || "";
+    requirementsRevision.value = Number(cached.requirementsRevision || 0);
+    wireframeRevision.value = Number(cached.wireframeRevision || 0);
+    wireframeFingerprint.value = cached.wireframeFingerprint || "";
     store.naturalLanguage = cached.naturalLanguage || "";
     store.inputLocale = cached.inputLocale || "";
     store.overviewDraft = cached.overviewDraft || null;
@@ -370,11 +409,44 @@ async function ensureDocument() {
   store.documentRevision = response.document.currentDocumentRevision;
 }
 
+function hydrateChatWorkspace(workspace) {
+  if (!workspace?.session) return;
+  chatSessionId.value = workspace.session.id;
+  requirementsRevision.value = Number(workspace.requirements?.revision || 0);
+  wireframeRevision.value = Number(workspace.wireframe?.revision || 0);
+  wireframeFingerprint.value = workspace.wireframe?.structureFingerprint || "";
+  if (Array.isArray(workspace.messages) && workspace.messages.length) messages.value = workspace.messages;
+  if (workspace.requirements?.value) {
+    store.overviewDraft = workspace.requirements.value;
+    store.overviewFingerprint = workspace.requirements.fingerprint || store.overviewFingerprint;
+  }
+  if (workspace.wireframe?.snapshot) {
+    wireframeSnapshot.value = workspace.wireframe.snapshot;
+    activeResultTab.value = "wireframe";
+  }
+}
+
+async function ensureChatWorkspace() {
+  if (!capabilities.value.chatWorkspaceV1 || !store.documentId) return null;
+  const workspace = chatSessionId.value
+    ? await loadChatWorkspace(chatSessionId.value).catch((error) => {
+      if (error.status === 404) return null;
+      throw error;
+    })
+    : null;
+  const resolved = workspace || await createChatWorkspace(store.documentId, store.requestId);
+  hydrateChatWorkspace(resolved);
+  if (resolved.wireframe?.proposalId) {
+    const proposal = await loadCompositionProposal(resolved.wireframe.proposalId);
+    store.proposal = proposal.proposal;
+  }
+  return resolved;
+}
+
 async function analyze(instruction = store.naturalLanguage) {
   clearBuilderError(store);
   overviewRetry.value = null;
   store.stage = "analyzing_overview";
-  previousStage.value = "analyzing_overview";
   const operationId = `overview-${Date.now()}`;
   updateStatusMessage(operationId, "요구사항을 분석하고 있습니다.", "in_progress");
   const startedAt = performance.now();
@@ -413,8 +485,18 @@ async function analyze(instruction = store.naturalLanguage) {
     store.overviewFingerprint = response.overviewFingerprint;
     store.stage = "reviewing_overview";
     activeResultTab.value = "requirements";
+    if (capabilities.value.chatWorkspaceV1) {
+      await ensureChatWorkspace();
+      const savedRequirements = await saveRequirementsRevision({
+        sessionId: chatSessionId.value,
+        documentRevision: store.documentRevision,
+        requirements: store.overviewDraft,
+        fingerprint: store.overviewFingerprint,
+      });
+      requirementsRevision.value = Number(savedRequirements.requirements.revision);
+    }
     updateStatusMessage(operationId, "요구사항 분석을 완료했습니다.", "completed");
-    appendMessage("assistant", "요구사항을 정리했습니다. 오른쪽 요구사항 Tree를 확인한 뒤 확정하거나 수정 내용을 알려주세요.", {
+    await appendPersistedMessage("assistant", "요구사항을 정리했습니다. 오른쪽 요구사항 Tree를 확인한 뒤 확정하거나 수정 내용을 알려주세요.", {
       type: "assistant",
       actions: [
         { key: "confirm_requirements", label: "요구사항 확정" },
@@ -436,7 +518,9 @@ async function analyze(instruction = store.naturalLanguage) {
 async function submitChat() {
   const input = chatInput.value.trim();
   if (interactionLocked.value || (!input && !attachments.value.some((item) => item.dataUrl && !item.analysis))) return;
-  appendMessage("user", input || "첨부한 프로모션 이미지를 분석해 주세요.", {
+  await ensureDocument();
+  await ensureChatWorkspace();
+  await appendPersistedMessage("user", input || "첨부한 프로모션 이미지를 분석해 주세요.", {
     type: "user",
     attachmentIds: attachments.value.map((item) => item.id),
   });
@@ -455,21 +539,51 @@ async function submitChat() {
 
 async function handleChatAction(action) {
   if (interactionLocked.value) return;
-  if (action.key === "confirm_requirements") {
-    appendMessage("user", action.label, { type: "action" });
-    await prepareWireframe();
-    return;
+  try {
+    if (action.key === "confirm_requirements") {
+      if (capabilities.value.chatWorkspaceV1) {
+        await executeChatAction({
+          sessionId: chatSessionId.value,
+          actionId: action.id,
+          actionKey: action.key,
+          idempotencyKey: crypto.randomUUID(),
+        });
+      }
+      await appendPersistedMessage("user", action.label, { type: "action" });
+      await prepareWireframe();
+      return;
+    }
+    if (action.key === "approve_wireframe") {
+      await appendPersistedMessage("user", action.label, { type: "action" });
+      await approveWireframe(action);
+      return;
+    }
+    if (action.key === "revise_requirements" || action.key === "revise_wireframe") {
+      if (capabilities.value.chatWorkspaceV1) {
+        await executeChatAction({
+          sessionId: chatSessionId.value,
+          actionId: action.id,
+          actionKey: action.key,
+          idempotencyKey: crypto.randomUUID(),
+        });
+      }
+      await appendPersistedMessage("assistant", "수정할 내용을 채팅으로 입력해 주세요.", { type: "assistant" });
+      return;
+    }
+    if (action.key === "open_output") {
+      if (capabilities.value.chatWorkspaceV1 && action.id) {
+        await executeChatAction({
+          sessionId: chatSessionId.value,
+          actionId: action.id,
+          actionKey: action.key,
+          idempotencyKey: crypto.randomUUID(),
+        });
+      }
+      openOutput();
+    }
+  } catch (error) {
+    setBuilderError(store, error);
   }
-  if (action.key === "approve_wireframe") {
-    appendMessage("user", action.label, { type: "action" });
-    await approveWireframe();
-    return;
-  }
-  if (action.key === "revise_requirements" || action.key === "revise_wireframe") {
-    appendMessage("assistant", "수정할 내용을 채팅으로 입력해 주세요.", { type: "assistant" });
-    return;
-  }
-  if (action.key === "open_output") openOutput();
 }
 
 async function pollProposal(proposalId) {
@@ -477,8 +591,8 @@ async function pollProposal(proposalId) {
     const response = await loadCompositionProposal(proposalId);
     store.proposal = response.proposal;
     if (response.proposal.status === "ready") return response.proposal;
-    // `ready` is an internal queue state. Rendering it as a UI stage briefly
-    // remounts CompositionProgress before the caller selects review/apply.
+    // `ready` is an internal queue state. Keep the visible stage stable until
+    // the caller selects Wireframe review.
     if (["queued", "processing"].includes(response.proposal.status)) {
       store.stage = response.proposal.status;
     }
@@ -595,7 +709,6 @@ async function prepareWireframe() {
   clearBuilderError(store);
   store.warning = null;
   store.stage = "resolving_policy";
-  previousStage.value = "resolving_policy";
   const operationId = `wireframe-${Date.now()}`;
   updateStatusMessage(operationId, "B/W Wireframe 구조를 생성하고 있습니다.", "in_progress");
   try {
@@ -634,11 +747,22 @@ async function prepareWireframe() {
     });
     const proposal = await pollProposal(queued.proposal.id);
     wireframeSnapshot.value = proposal.snapshot || null;
+    if (capabilities.value.chatWorkspaceV1) {
+      const savedWireframe = await saveWireframeRevision({
+        sessionId: chatSessionId.value,
+        documentId: store.documentId,
+        proposalId: proposal.id,
+        baseDocumentRevision: store.documentRevision,
+        snapshot: proposal.snapshot,
+      });
+      wireframeRevision.value = Number(savedWireframe.wireframe.revision);
+      wireframeFingerprint.value = savedWireframe.wireframe.structureFingerprint;
+    }
     store.proposal = proposal;
     store.stage = "review_required";
     activeResultTab.value = "wireframe";
     updateStatusMessage(operationId, "B/W Wireframe 생성을 완료했습니다.", "completed");
-    appendMessage("assistant", "색상과 실제 이미지를 제외한 Wireframe을 생성했습니다. 오른쪽 결과를 확인해 주세요.", {
+    await appendPersistedMessage("assistant", "색상과 실제 이미지를 제외한 Wireframe을 생성했습니다. 오른쪽 결과를 확인해 주세요.", {
       type: "assistant",
       actions: [
         { key: "approve_wireframe", label: "Wireframe 승인" },
@@ -655,15 +779,29 @@ async function compose() {
   await prepareWireframe();
 }
 
-async function approveWireframe() {
+async function approveWireframe(action = {}) {
   if (!store.proposal?.id) return;
   const operationId = `final-${Date.now()}`;
   updateStatusMessage(operationId, "최종 디자인과 이미지를 생성하고 있습니다.", "in_progress");
   try {
+    if (capabilities.value.chatWorkspaceV1) {
+      const confirmed = await confirmWireframeRevision({
+        sessionId: chatSessionId.value,
+        revision: wireframeRevision.value,
+        structureFingerprint: wireframeFingerprint.value,
+      });
+      wireframeFingerprint.value = confirmed.wireframe.structureFingerprint;
+      await executeChatAction({
+        sessionId: chatSessionId.value,
+        actionId: action.id,
+        actionKey: "approve_wireframe",
+        idempotencyKey: crypto.randomUUID(),
+      });
+    }
     await applyReadyProposal(store.proposal, { navigate: false });
     activeResultTab.value = "final";
     updateStatusMessage(operationId, "최종 디자인 생성을 완료했습니다.", "completed");
-    appendMessage("assistant", "승인한 Wireframe 구조를 기준으로 최종 디자인을 완성했습니다.", {
+    await appendPersistedMessage("assistant", "승인한 Wireframe 구조를 기준으로 최종 디자인을 완성했습니다.", {
       type: "assistant",
       actions: [{ key: "open_output", label: "Web Output 열기" }],
     });
@@ -690,6 +828,11 @@ async function applyReadyProposal(proposal = store.proposal, { navigate = true }
       proposalId: proposal.id,
       baseDocumentRevision: store.documentRevision,
       idempotencyKey: crypto.randomUUID(),
+      ...(capabilities.value.chatWorkspaceV1 ? {
+        chatSessionId: chatSessionId.value,
+        confirmedWireframeRevision: wireframeRevision.value,
+        structureFingerprint: wireframeFingerprint.value,
+      } : {}),
     });
     store.documentRevision = applied.revision;
     store.snapshot = applied.snapshot;
@@ -931,6 +1074,7 @@ onMounted(async () => {
       } else {
         await ensureDocument();
       }
+      await ensureChatWorkspace();
     }
     await executionLookups;
   } catch (error) {
@@ -1106,15 +1250,17 @@ onBeforeUnmount(() => {
             <section v-else-if="activeResultTab === 'wireframe' && wireframeDisplaySnapshot" class="ai-wireframe-review">
               <header><strong>B/W Wireframe</strong><small>색상·디자인 토큰·실제 이미지를 제외한 구조 검토용 화면입니다.</small></header>
               <div class="ai-wireframe-canvas">
-                <PromoPageRenderer
-                  :content="wireframeDisplaySnapshot.content"
-                  :design-spec="wireframeDisplaySnapshot.designSpec"
-                  :assets="{ expected: [], requests: [] }"
-                  :motion-spec="{ sections: {}, items: {} }"
-                  :editable="false"
-                  :show-guides="false"
-                  outline-mode
-                />
+                <article v-for="section in wireframeSections" :key="section.key" class="ai-wireframe-section">
+                  <header>
+                    <strong>{{ section.label }}</strong>
+                    <small>{{ section.role || "section" }} · {{ section.layout || "default" }}</small>
+                  </header>
+                  <div class="ai-wireframe-components">
+                    <div v-for="component in section.components" :key="component.key">
+                      <span></span><strong>{{ component.label }}</strong>
+                    </div>
+                  </div>
+                </article>
               </div>
             </section>
 

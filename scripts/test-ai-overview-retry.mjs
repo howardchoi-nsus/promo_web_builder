@@ -45,6 +45,7 @@ try {
     locale: "en-CA",
     market: "CA",
     productCatalog: [{ productKey: "casino" }],
+    currentOverview: {},
   }));
   assert.deepEqual(retries.map(({ attempt, maxAttempts, requestId }) => ({ attempt, maxAttempts, requestId })), [{
     attempt: 2,

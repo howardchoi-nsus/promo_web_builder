@@ -5,7 +5,7 @@
 - 작성일: 2026-11-04
 - 대상 프로젝트: Promo Web Builder
 - 대상 화면: `/prototype/create-promo?mode=ai`
-- 문서 상태: 개발 전 계획 / 소스코드 미반영
+- 문서 상태: Phase 0~1 핵심 Vertical Slice 구현 완료 / Preview 전환 대기
 - 기준 구현:
   - `prototype/create-promo.html`
   - `prototype/builder-bootstrap.js`
@@ -18,6 +18,36 @@
   - Composition Contract v3
   - 자연어 Composition Operation
   - 비동기 이미지 Asset Job
+
+### 0.1 2026-11-04 구현 현황
+
+완료:
+
+- Migration `077_ai_builder_chat_workspace.sql` 작성
+- Builder Document 소유권에 연결된 서버 Chat Session 저장·복원
+- 메시지와 서버 발급 CTA Action 저장
+- 요구사항 revision 및 서버 계산 fingerprint 저장
+- V3 `compositionSpec`과 최종 Compile Snapshot을 동일 구조로 정규화하는 Wireframe fingerprint 계약
+- Wireframe revision 저장, 승인, 중복 실행 방지와 재시도 처리
+- 최종 Composition 적용 전 승인 증명 및 Compile 후 구조 fingerprint 재검증
+- Proposal `preview.sections` 기반 B/W Wireframe 표시
+- Chat Workspace API client와 Vue 화면 연결
+- 기능 플래그 `PROMO_BUILDER_CHAT_WORKSPACE_V1_ENABLED` 추가
+- 계약·Handler·Compiler·브라우저 및 전체 회귀 테스트 갱신
+
+배포 전 남은 작업:
+
+1. Preview Neon DB에 Migration 077 적용
+2. Preview 환경에서 `PROMO_BUILDER_CHAT_WORKSPACE_V1_ENABLED=true` 설정
+3. Preview 실데이터로 재접속 복원, CTA 재시도, Wireframe 승인과 최종 적용 확인
+4. Production Migration 적용 후 단계적 기능 플래그 전환
+
+후속 Phase 범위:
+
+- 전용 OCR 결과와 좌표 근거 저장
+- URL 수집·SSRF 방어 계층
+- 메시지 cursor pagination
+- 장기 실행 operation의 polling/SSE 상태 복원
 
 ## 1. 목적과 결론
 

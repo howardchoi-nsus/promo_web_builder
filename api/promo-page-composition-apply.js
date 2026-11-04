@@ -13,6 +13,14 @@ const {
 } = require("./_promo-builder-assets");
 const { requireBuilderFlag } = require("./_promo-builder-flags");
 const { compileRegistryComposition } = require("./_promo-registry-composition-compiler");
+const {
+  computeStructureFingerprint,
+  assertWireframeProof,
+} = require("./_promo-builder-chat-workspace-contract");
+const {
+  fetchConfirmedWireframe,
+  completeSession,
+} = require("./_promo-builder-chat-workspace-store");
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
@@ -42,6 +50,36 @@ module.exports = async function handler(req, res) {
     if (document.document.currentDocumentRevision !== baseDocumentRevision
       || proposal.baseDocumentRevision !== baseDocumentRevision) {
       return res.status(409).json({ error: "Builder document revision changed", code: "DOCUMENT_REVISION_MISMATCH" });
+    }
+    const chatSessionId = String(body.chatSessionId || "").trim();
+    const confirmedWireframeRevision = Number(body.confirmedWireframeRevision || 0);
+    let confirmedWireframe = null;
+    if (chatSessionId || confirmedWireframeRevision || body.structureFingerprint) {
+      requireBuilderFlag("chatWorkspaceV1");
+      if (!chatSessionId || !confirmedWireframeRevision || !String(body.structureFingerprint || "").trim()) {
+        return res.status(400).json({
+          error: "chatSessionId, confirmedWireframeRevision and structureFingerprint are required together",
+          code: "WIREFRAME_PROOF_INCOMPLETE",
+        });
+      }
+      confirmedWireframe = await fetchConfirmedWireframe(sql, {
+        sessionId: chatSessionId,
+        ownerSubject: owner.ownerSubject,
+        revision: confirmedWireframeRevision,
+      });
+      assertWireframeProof({
+        confirmed: confirmedWireframe,
+        documentId,
+        proposalId,
+        baseDocumentRevision,
+        fingerprint: computeStructureFingerprint(proposal.snapshot),
+      });
+      if (confirmedWireframe.structureFingerprint !== String(body.structureFingerprint)) {
+        return res.status(409).json({
+          error: "Wireframe fingerprint changed",
+          code: "WIREFRAME_FINGERPRINT_MISMATCH",
+        });
+      }
     }
     if (proposal.contractVersion === 3) {
       requireBuilderFlag("compositionV3");
@@ -79,6 +117,13 @@ module.exports = async function handler(req, res) {
         proposalId,
         documentRevision: baseDocumentRevision,
       });
+      if (confirmedWireframe
+        && computeStructureFingerprint(compiledSnapshot) !== confirmedWireframe.structureFingerprint) {
+        return res.status(409).json({
+          error: "Compiled design structure differs from the confirmed Wireframe",
+          code: "FINAL_STRUCTURE_MISMATCH",
+        });
+      }
       const applied = await applyProposal(sql, {
         contractVersion: 3,
         documentId,
@@ -98,6 +143,21 @@ module.exports = async function handler(req, res) {
         documentRevision: applied.revision,
         snapshot: applied.snapshot,
       });
+      let sessionWarning = null;
+      if (chatSessionId) {
+        try {
+          await completeSession(sql, { sessionId: chatSessionId, ownerSubject: owner.ownerSubject });
+        } catch (sessionError) {
+          console.error("[promo-page-composition-apply] chat session completion failed", {
+            chatSessionId,
+            message: sessionError.message,
+          });
+          sessionWarning = {
+            code: "CHAT_SESSION_COMPLETION_DELAYED",
+            message: "The design was applied, but chat session completion will require reconciliation.",
+          };
+        }
+      }
       return res.status(200).json({
         ok: true,
         documentId,
@@ -105,7 +165,7 @@ module.exports = async function handler(req, res) {
         snapshot: applied.snapshot,
         assetJobs,
         assetWarning,
-        warnings: assetWarning ? [assetWarning] : [],
+        warnings: [assetWarning, sessionWarning].filter(Boolean),
       });
     }
     const currentCandidates = await fetchPageCompositionCandidates(sql, {
@@ -131,6 +191,21 @@ module.exports = async function handler(req, res) {
       documentRevision: applied.revision,
       snapshot: applied.snapshot,
     });
+    let sessionWarning = null;
+    if (chatSessionId) {
+      try {
+        await completeSession(sql, { sessionId: chatSessionId, ownerSubject: owner.ownerSubject });
+      } catch (sessionError) {
+        console.error("[promo-page-composition-apply] chat session completion failed", {
+          chatSessionId,
+          message: sessionError.message,
+        });
+        sessionWarning = {
+          code: "CHAT_SESSION_COMPLETION_DELAYED",
+          message: "The design was applied, but chat session completion will require reconciliation.",
+        };
+      }
+    }
     return res.status(200).json({
       ok: true,
       documentId,
@@ -138,7 +213,7 @@ module.exports = async function handler(req, res) {
       snapshot: applied.snapshot,
       assetJobs,
       assetWarning,
-      warnings: assetWarning ? [assetWarning] : [],
+      warnings: [assetWarning, sessionWarning].filter(Boolean),
     });
   } catch (error) {
     const status = /access denied/i.test(error.message) ? 403

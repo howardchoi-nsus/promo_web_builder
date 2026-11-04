@@ -19,14 +19,23 @@ let proposalPollCount = 0;
 let assetPollCount = 0;
 let overviewParseCount = 0;
 let compositionRequest = null;
+let applyRequest = null;
+let chatStage = "idle";
+let confirmedWireframeRevision = null;
+const chatMessages = [];
 const snapshotWithAssetStatus = (status) => ({
   contractVersion: 3,
   documentRevision: 1,
   content: {
     formTemplate: { name: "Browser AI Promotion", templateKey: "browser-ai", designTokens: { values: {} } },
-    sectionSnapshot: [],
+    sectionSnapshot: [{
+      sectionKey: "hero",
+      sectionRole: "hero",
+      selectedLayoutKey: "stacked",
+      items: [{ itemKey: "title", sourceItemKey: "title", fieldKind: "text" }],
+    }],
     sectionInputs: {},
-    sectionOrder: [],
+    sectionOrder: ["hero"],
   },
   designSpec: { contractVersion: 1, theme: {}, itemStyles: {}, sectionStyles: {}, visibility: { items: {}, fields: {} } },
   assets: {
@@ -45,7 +54,9 @@ const server = http.createServer(async (request, response) => {
   const url = new URL(request.url, "http://127.0.0.1");
   if (url.pathname === "/api/promo-builder-capabilities") {
     response.writeHead(200, { "Content-Type": "application/json" });
-    response.end(JSON.stringify({ ok: true, capabilities: { aiMode: true, compositionV3: true, contractVersion: 3 } }));
+    response.end(JSON.stringify({ ok: true, capabilities: {
+      aiMode: true, compositionV3: true, chatWorkspaceV1: true, contractVersion: 3,
+    } }));
     return;
   }
   if (url.pathname === "/api/promo-composition-shells") {
@@ -72,6 +83,73 @@ const server = http.createServer(async (request, response) => {
   if (url.pathname === "/api/promo-builder-events") {
     response.writeHead(202, { "Content-Type": "application/json" });
     response.end(JSON.stringify({ ok: true }));
+    return;
+  }
+  if (url.pathname === "/api/promo-builder-chat-sessions" && request.method === "POST") {
+    response.writeHead(201, { "Content-Type": "application/json" });
+    response.end(JSON.stringify({
+      ok: true,
+      session: {
+        id: "session-browser", documentId: "document-browser", stage: chatStage,
+        latestRequirementsRevision: chatStage === "idle" ? 0 : 1,
+        latestWireframeRevision: confirmedWireframeRevision ? 1 : 0,
+        confirmedWireframeRevision,
+      },
+      messages: chatMessages,
+      requirements: null,
+      wireframe: null,
+    }));
+    return;
+  }
+  if (url.pathname === "/api/promo-builder-chat-messages" && request.method === "POST") {
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    const body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    const message = {
+      ...body.message,
+      actions: (body.message.actions || []).map((action) => ({
+        ...action, id: `action-${action.key}`, status: "proposed", issuedStage: chatStage,
+      })),
+    };
+    chatMessages.push(message);
+    response.writeHead(201, { "Content-Type": "application/json" });
+    response.end(JSON.stringify({ ok: true, message }));
+    return;
+  }
+  if (url.pathname === "/api/promo-builder-requirements-revisions" && request.method === "POST") {
+    chatStage = "requirements_review";
+    response.writeHead(201, { "Content-Type": "application/json" });
+    response.end(JSON.stringify({ ok: true, requirements: { revision: 1, fingerprint: "requirements-browser" } }));
+    return;
+  }
+  if (url.pathname === "/api/promo-builder-chat-actions" && request.method === "POST") {
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    const body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    if (body.actionKey === "confirm_requirements") chatStage = "wireframe_review";
+    if (body.actionKey === "approve_wireframe") chatStage = "finalizing";
+    response.writeHead(200, { "Content-Type": "application/json" });
+    response.end(JSON.stringify({ ok: true, action: { id: body.actionId, key: body.actionKey }, stage: chatStage }));
+    return;
+  }
+  if (url.pathname === "/api/promo-builder-wireframes" && request.method === "POST") {
+    chatStage = "wireframe_review";
+    response.writeHead(201, { "Content-Type": "application/json" });
+    response.end(JSON.stringify({ ok: true, wireframe: {
+      revision: 1,
+      structureFingerprint: "a".repeat(64),
+      status: "draft",
+    } }));
+    return;
+  }
+  if (url.pathname === "/api/promo-builder-wireframes-confirm" && request.method === "POST") {
+    confirmedWireframeRevision = 1;
+    response.writeHead(200, { "Content-Type": "application/json" });
+    response.end(JSON.stringify({ ok: true, wireframe: {
+      revision: 1,
+      structureFingerprint: "a".repeat(64),
+      status: "confirmed",
+    } }));
     return;
   }
   if (url.pathname === "/api/prompt-execution-display") {
@@ -148,11 +226,15 @@ const server = http.createServer(async (request, response) => {
         autoApplicable: true,
         validation: { ok: true, errors: [], warnings: [] },
         pollAfterMs: 20,
+        snapshot: snapshotWithAssetStatus("ready"),
       },
     }));
     return;
   }
   if (url.pathname === "/api/promo-page-composition-apply" && request.method === "POST") {
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    applyRequest = JSON.parse(Buffer.concat(chunks).toString("utf8"));
     await new Promise((resolve) => setTimeout(resolve, 150));
     response.writeHead(200, { "Content-Type": "application/json" });
     response.end(JSON.stringify({
@@ -200,88 +282,47 @@ try {
   await page.getByRole("heading", { name: "프로모션 제작 방식을 선택하세요" }).waitFor();
   assert.equal(await page.getByRole("button", { name: /AI 모드/ }).isEnabled(), true);
   await page.getByRole("button", { name: /AI 모드/ }).click();
-  await page.getByRole("heading", { name: "어떤 프로모션을 만들까요?" }).waitFor();
+  await page.getByText("프로모션 제작 대화").waitFor();
   assert.equal(await page.locator('link[href*="visual-editor-assets/ai-builder.css"]').count(), 1);
-  const cardStyles = await page.locator(".ai-builder-card").evaluate((element) => {
+  const workspaceStyles = await page.locator(".ai-chat-workspace").evaluate((element) => {
     const styles = getComputedStyle(element);
     return {
-      padding: styles.padding,
-      borderWidth: styles.borderTopWidth,
-      borderRadius: styles.borderRadius,
-    };
-  });
-  assert.notEqual(cardStyles.padding, "0px");
-  assert.notEqual(cardStyles.borderWidth, "0px");
-  assert.notEqual(cardStyles.borderRadius, "0px");
-  await page.getByLabel("프로모션 설명").fill("여름 신규 고객 충전 이벤트");
-  assert.equal(await page.getByRole("button", { name: "AI 개요 분석" }).isEnabled(), true);
-  await page.getByRole("button", { name: "AI 개요 분석" }).click();
-  const progress = page.locator('.ai-composition-progress[data-stage="analyzing_overview"]');
-  await progress.waitFor();
-  await page.getByText("프로모션 개요를 분석하고 있습니다.").waitFor();
-  await page.getByText("OpenAI · gpt-4.1-mini").waitFor();
-  await page.getByText("AI 응답 오류로 재시도하고 있습니다. (2/3)").waitFor();
-  assert.equal(await page.locator(".ai-builder-card").count(), 0);
-  assert.equal(await page.locator(".ai-composition-progress__animation").count(), 1);
-  const progressStyles = await progress.evaluate((element) => {
-    const styles = getComputedStyle(element);
-    const messageElement = element.querySelector(".ai-execution-indicator__message");
-    const animationElement = element.querySelector(".ai-composition-progress__animation");
-    const modelElement = element.querySelector(".ai-execution-indicator__model");
-    const modelIcon = element.querySelector(".ai-execution-indicator__icon");
-    const message = getComputedStyle(messageElement);
-    const model = getComputedStyle(modelElement);
-    const icon = getComputedStyle(modelIcon);
-    return {
-      height: element.getBoundingClientRect().height,
       display: styles.display,
-      textAlign: styles.textAlign,
-      messageAnimation: message.animationName,
-      messageAboveAnimation: messageElement.getBoundingClientRect().bottom <= animationElement.getBoundingClientRect().top,
-      animationAboveModel: animationElement.getBoundingClientRect().bottom <= modelElement.getBoundingClientRect().top,
-      modelFontSize: getComputedStyle(modelElement.querySelector("b")).fontSize,
-      modelLabelFontSize: getComputedStyle(modelElement.querySelector("small")).fontSize,
-      modelPaddingInline: model.paddingInline,
-      iconSize: [icon.width, icon.height],
+      gridColumns: styles.gridTemplateColumns,
     };
   });
-  assert.equal(progressStyles.display, "grid");
-  assert.equal(progressStyles.textAlign, "center");
-  assert.ok(progressStyles.height >= page.viewportSize().height - 100);
-  assert.equal(progressStyles.messageAnimation, "ai-execution-pulse");
-  assert.equal(progressStyles.messageAboveAnimation, true);
-  assert.equal(progressStyles.animationAboveModel, true);
-  assert.equal(progressStyles.modelFontSize, "20px");
-  assert.equal(progressStyles.modelLabelFontSize, "16px");
-  assert.equal(progressStyles.modelPaddingInline, "18px");
-  assert.deepEqual(progressStyles.iconSize, ["45px", "45px"]);
+  assert.equal(workspaceStyles.display, "grid");
+  assert.match(workspaceStyles.gridColumns, /px/);
+  await page.getByPlaceholder("프로모션 요구사항을 입력하거나 화면 이미지를 붙여넣으세요.").fill("여름 신규 고객 충전 이벤트");
+  assert.equal(await page.getByRole("button", { name: "전송" }).isEnabled(), true);
+  await page.getByRole("button", { name: "전송" }).click();
+  await page.getByText("프로모션 개요를 분석하고 있습니다.").waitFor();
+  await page.getByText("AI 응답 오류로 재시도하고 있습니다. (2/3)").waitFor();
   if (process.env.CAPTURE_AI_PROGRESS_QA === "1") {
     await page.screenshot({ path: path.join(root, "design-qa-implementation.png"), fullPage: true });
   }
-  await page.getByRole("heading", { name: "AI 분석 결과를 확인하세요" }).waitFor();
-  await page.getByLabel("프로모션 제목").fill("수정된 여름 신규 고객 충전 이벤트");
-  await page.getByRole("button", { name: "AI로 프로모션 생성하기" }).click();
+  await page.getByText("요구사항 분석을 완료했습니다.").waitFor();
+  await page.getByText("여름 신규 고객 충전 이벤트", { exact: true }).last().waitFor();
+  await page.getByRole("button", { name: "요구사항 확정" }).click();
   await page.getByText("프로모션 구조를 구성하고 있습니다.").waitFor();
   for (let count = 0; count < 50 && !compositionRequest; count += 1) {
     await page.waitForTimeout(20);
   }
   assert.ok(compositionRequest, "composition request should be received");
-  assert.equal(compositionRequest.overview.title, "수정된 여름 신규 고객 충전 이벤트");
+  assert.equal(compositionRequest.overview.title, "여름 신규 고객 충전 이벤트");
   assert.equal(compositionRequest.locale, "ko-KR");
   assert.equal(compositionRequest.overviewFingerprint, overviewFingerprint(compositionRequest.overview));
   assert.notEqual(compositionRequest.overviewFingerprint, "browser-test-overview");
-  await page.getByText("프로모션 구조를 생성하고 있습니다.").waitFor();
-  const assetProgress = page.locator('.ai-composition-progress[data-stage="generating_assets"]');
-  await assetProgress.waitFor();
-  assert.match(await assetProgress.innerText(), /AI 이미지를 생성하고 있습니다\./);
-  assert.equal(await assetProgress.locator(".ai-execution-indicator__emphasis").innerText(), "AI 이미지를 생성");
-  assert.equal(await page.locator(".registry-proposal-review").count(), 0);
-  assert.equal(await page.locator(".ai-builder-result").count(), 0);
-  await page.waitForTimeout(2500);
+  await page.getByText("B/W Wireframe 생성을 완료했습니다.").waitFor();
+  await page.getByRole("button", { name: "Wireframe 승인" }).click();
+  await page.getByText("AI 이미지를 생성하고 있습니다.").waitFor();
+  await page.getByText("최종 디자인 생성을 완료했습니다.").waitFor({ timeout: 10000 });
+  assert.equal(applyRequest.chatSessionId, "session-browser");
+  assert.equal(applyRequest.confirmedWireframeRevision, 1);
+  assert.equal(applyRequest.structureFingerprint, "a".repeat(64));
+  assert.equal(await page.getByRole("button", { name: "최종 디자인" }).isEnabled(), true);
+  assert.equal(await page.locator(".ai-builder-result").count(), 1);
   assert.match(page.url(), /create-promo\.html/);
-  assert.equal(await page.locator(".ai-builder-result").count(), 0);
-  await page.waitForURL(/visual-editor\.html\?mode=ai-document/, { timeout: 10000 });
-  assert.doesNotMatch(page.url(), /mode=output/);
   assert.deepEqual(errors, []);
   console.log("AI Builder browser test passed");
 } finally {

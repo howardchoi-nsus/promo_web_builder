@@ -52,7 +52,7 @@ assert.match(createHtml, /wizard\/wizard-storage\.js\?v=wizard-storage-v2/);
 assert.match(createHtml, /create-promo-layout-cache\.js\?v=create-promo-light-v28/);
 assert.match(createHtml, /builder-bootstrap\.js\?v=ai-builder-bootstrap-v2/);
 assert.match(builderBootstrap, /create-promo\.js\?v=create-promo-light-v42/);
-assert.match(builderBootstrap, /ai-builder\.css\?v=ai-builder-v2/);
+assert.match(builderBootstrap, /ai-builder\.css\?v=ai-builder-v3-chat/);
 assert.match(designTokensCss, /\[data-theme="light"\]\s*\{[\s\S]*?color-scheme:\s*light;/);
 assert.match(designTokensCss, /\[data-theme="dark"\]\s*\{[\s\S]*?color-scheme:\s*dark;/);
 assert.match(appComponentsCss, /--bg:\s*var\(--app-bg\)/);

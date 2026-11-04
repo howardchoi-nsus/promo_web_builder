@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 const { compileRegistryComposition } = require("../api/_promo-registry-composition-compiler");
 const { contentHash, fetchPinnedResourceVersions } = require("../api/_promo-content-resources-store");
+const { computeStructureFingerprint } = require("../api/_promo-builder-chat-workspace-contract");
 
 const resourceContent = { components: { legal: { fields: { content: "공통 약관 본문" } } } };
 const resourceReference = {
@@ -159,6 +160,7 @@ async function compile(candidateSet = candidates) {
 (async () => {
   const snapshot = await compile();
   const repeated = await compile();
+  assert.equal(computeStructureFingerprint(proposalSnapshot), computeStructureFingerprint(snapshot));
   assert.equal(snapshot.contractVersion, 3);
   assert.equal(snapshot.documentRevision, 7);
   assert.equal(snapshot.content.sectionSnapshot.length, 3);

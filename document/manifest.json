@@ -1,6 +1,6 @@
 {
   "generatedAt": "2026-11-30T00:00:00.000Z",
-  "count": 380,
+  "count": 381,
   "documents": [
     {
       "id": "doc-0001",
@@ -177,6 +177,14 @@
       "updatedAt": "2026-08-17",
       "sourcePath": "docs/계획/ai-builder-auto-composition-and-preview-readiness-development-plan-2026-08-17.md",
       "contentUrl": "/document/content/doc-0022.md"
+    },
+    {
+      "id": "doc-0381",
+      "title": "AI Builder 대화형 워크스페이스 및 Wireframe 승인 흐름 개발계획서",
+      "category": "계획서",
+      "updatedAt": "2026-11-04",
+      "sourcePath": "docs/계획/ai-builder-chat-workspace-and-wireframe-approval-development-plan-2026-11-04.md",
+      "contentUrl": "/document/content/doc-0381.md"
     },
     {
       "id": "doc-0023",

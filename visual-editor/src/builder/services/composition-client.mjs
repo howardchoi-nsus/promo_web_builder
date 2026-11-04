@@ -84,6 +84,52 @@ export function loadBuilderDocument(documentId) {
   return request(`/api/promo-builder-documents?documentId=${encodeURIComponent(documentId)}`);
 }
 
+export function createChatWorkspace(documentId, requestId = "") {
+  return request("/api/promo-builder-chat-sessions", {
+    method: "POST",
+    body: JSON.stringify({ documentId, requestId }),
+  });
+}
+
+export function loadChatWorkspace(sessionId) {
+  return request(`/api/promo-builder-chat-sessions?sessionId=${encodeURIComponent(sessionId)}`);
+}
+
+export function saveChatMessage(sessionId, message) {
+  return request("/api/promo-builder-chat-messages", {
+    method: "POST",
+    body: JSON.stringify({ sessionId, message }),
+  });
+}
+
+export function saveRequirementsRevision(payload) {
+  return request("/api/promo-builder-requirements-revisions", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function executeChatAction(payload) {
+  return request("/api/promo-builder-chat-actions", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function saveWireframeRevision(payload) {
+  return request("/api/promo-builder-wireframes", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function confirmWireframeRevision(payload) {
+  return request("/api/promo-builder-wireframes-confirm", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function analyzeOverview(naturalLanguage, context = {}) {
   return request("/api/promo-overview-parse", {
     method: "POST",

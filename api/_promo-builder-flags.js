@@ -20,6 +20,7 @@ const FLAG_NAMES = Object.freeze({
   directusRuntimeRead: "DIRECTUS_RUNTIME_READ_ENABLED",
   directusRuntimeWrite: "DIRECTUS_RUNTIME_WRITE_ENABLED",
   serviceContractV3: "PROMO_SERVICE_CONTRACT_V3_ENABLED",
+  chatWorkspaceV1: "PROMO_BUILDER_CHAT_WORKSPACE_V1_ENABLED",
 });
 
 // Registry composition is the production path. Keep an explicit false value as
@@ -43,6 +44,8 @@ const FLAG_DEFAULTS = Object.freeze({
   directusRuntimeWrite: false,
   // V3 is opt-in until its DB migration and Preview contract tests are complete.
   serviceContractV3: false,
+  // Requires migration 077. Enable only after the target database is migrated.
+  chatWorkspaceV1: false,
 });
 
 function enabled(value, fallback = true) {
