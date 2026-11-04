@@ -874,9 +874,16 @@ try {
   await textEditorToolbar.getByRole("button", { name: "폰트 컬러 Accent", exact: true }).click();
   const fontSizeSelect = textEditorToolbar.getByRole("combobox", { name: "글자 크기 디자인 토큰", exact: true });
   await fontSizeSelect.selectOption("--promo-font-size-xl");
-  await page.waitForTimeout(50);
+  let selectedTokenFontSize = 0;
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    selectedTokenFontSize = Number.parseFloat(
+      await textContentNode.evaluate((node) => getComputedStyle(node).fontSize),
+    );
+    if (Math.abs(selectedTokenFontSize - 32) < 0.1) break;
+    await page.waitForTimeout(20);
+  }
   assert.equal(
-    Number.parseFloat(await textContentNode.evaluate((node) => getComputedStyle(node).fontSize)),
+    selectedTokenFontSize,
     32,
     "Text font size must use the selected design-token step",
   );

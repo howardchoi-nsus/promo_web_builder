@@ -22,6 +22,9 @@ let compositionRequest = null;
 let applyRequest = null;
 let chatStage = "idle";
 let confirmedWireframeRevision = null;
+let builderSessionReady = false;
+let builderSessionRequestCount = 0;
+let eventAuthFailureCount = 0;
 const chatMessages = [];
 const snapshotWithAssetStatus = (status) => ({
   contractVersion: 3,
@@ -68,6 +71,8 @@ const server = http.createServer(async (request, response) => {
     return;
   }
   if (url.pathname === "/api/promo-builder-session") {
+    builderSessionReady = true;
+    builderSessionRequestCount += 1;
     response.writeHead(200, { "Content-Type": "application/json" });
     response.end(JSON.stringify({ ok: true, session: { authenticated: false } }));
     return;
@@ -81,6 +86,16 @@ const server = http.createServer(async (request, response) => {
     return;
   }
   if (url.pathname === "/api/promo-builder-events") {
+    if (!builderSessionReady) {
+      eventAuthFailureCount += 1;
+      response.writeHead(401, { "Content-Type": "application/json" });
+      response.end(JSON.stringify({
+        error: "Builder event failed",
+        code: "BUILDER_SESSION_REQUIRED",
+        message: "A valid Builder session is required",
+      }));
+      return;
+    }
     response.writeHead(202, { "Content-Type": "application/json" });
     response.end(JSON.stringify({ ok: true }));
     return;
@@ -323,6 +338,8 @@ try {
   assert.equal(await page.getByRole("button", { name: "최종 디자인" }).isEnabled(), true);
   assert.equal(await page.locator(".ai-builder-result").count(), 1);
   assert.match(page.url(), /create-promo\.html/);
+  assert.equal(builderSessionRequestCount, 1);
+  assert.equal(eventAuthFailureCount, 0);
   assert.deepEqual(errors, []);
   console.log("AI Builder browser test passed");
 } finally {

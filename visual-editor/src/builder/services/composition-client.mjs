@@ -21,8 +21,17 @@ async function request(path, options = {}) {
   return payload;
 }
 
+let builderSessionPromise = null;
+
 export function ensureBuilderSession() {
-  return request("/api/promo-builder-session", { method: "POST", body: "{}" });
+  if (!builderSessionPromise) {
+    builderSessionPromise = request("/api/promo-builder-session", { method: "POST", body: "{}" })
+      .catch((error) => {
+        builderSessionPromise = null;
+        throw error;
+      });
+  }
+  return builderSessionPromise;
 }
 
 export function loadBuilderCapabilities() {
@@ -38,10 +47,12 @@ export function loadPromptExecutionDisplay(type) {
 }
 
 export function recordBuilderEvent(payload) {
-  return request("/api/promo-builder-events", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  }).catch(() => null);
+  return ensureBuilderSession()
+    .then(() => request("/api/promo-builder-events", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }))
+    .catch(() => null);
 }
 
 export function createBuilderDocument(idempotencyKey = crypto.randomUUID()) {
