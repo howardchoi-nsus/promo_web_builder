@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import BuilderModeSelector from "./BuilderModeSelector.vue";
 import AiBriefPanel from "./AiBriefPanel.vue";
 import OverviewReviewForm from "./OverviewReviewForm.vue";
@@ -10,6 +10,7 @@ import { evaluateAssetReadiness } from "../shared/composition/asset-readiness.mj
 import { resolveCompositionLocale } from "../shared/composition/composition-locale.mjs";
 import OperationProposalReview from "./OperationProposalReview.vue";
 import NaturalLanguageEditor from "./NaturalLanguageEditor.vue";
+import PromoPageRenderer from "../PromoPageRenderer.vue";
 import { createAiBuilderStore, clearBuilderError, setBuilderError } from "./state/ai-builder-store.mjs";
 import {
   analyzeOverviewWithRetry,
@@ -27,6 +28,9 @@ import {
   retryBuilderAssets,
   rollbackComposition,
   submitCompositionOperation,
+  uploadReferenceImage,
+  analyzeReferenceImage,
+  deleteReferenceImage,
 } from "./services/composition-client.mjs";
 
 const props = defineProps({
@@ -42,6 +46,18 @@ const designReferenceId = new URLSearchParams(window.location.search).get("desig
 const pendingOperations = ref(null);
 const operationConflict = ref(null);
 const overviewRetry = ref(null);
+const CHAT_STORAGE_KEY = "promoAiBuilder.chatWorkspace.v1";
+const messages = ref([]);
+const attachments = ref([]);
+const chatInput = ref("");
+const attachmentBusy = ref(false);
+const wireframeSnapshot = ref(null);
+const activeResultTab = ref("requirements");
+const splitPercent = ref(38);
+const draggingSplit = ref(false);
+const chatList = ref(null);
+const fileInput = ref(null);
+const previousStage = ref("idle");
 let assetPollingCancelled = false;
 let localeUnsubscribe = null;
 const localeRevision = ref(0);
@@ -54,6 +70,17 @@ const busy = computed(() => [
   "analyzing_overview", "resolving_policy", "queued", "processing", "applying",
   "generating_assets", "preview_ready", "navigating_preview",
 ].includes(store.stage));
+const interactionLocked = computed(() => busy.value || attachmentBusy.value);
+const currentStatus = computed(() => {
+  if (attachmentBusy.value) return { label: "참고 이미지 분석", state: "진행 중" };
+  if (busy.value) return { label: progressMessage.value, state: "진행 중" };
+  if (store.stage === "failed") return { label: store.error?.message || "처리 실패", state: "실패" };
+  if (store.snapshot && store.stage === "render_ready") return { label: "최종 디자인 생성 완료", state: "완료" };
+  if (wireframeSnapshot.value) return { label: "B/W Wireframe 생성 완료", state: "확인 필요" };
+  if (store.overviewDraft) return { label: "요구사항 분석 완료", state: "확인 필요" };
+  return { label: "요구사항을 입력해 주세요", state: "대기" };
+});
+const wireframeDisplaySnapshot = computed(() => wireframeSnapshot.value || store.proposal?.snapshot || null);
 const fullScreenProgress = computed(() => [
   "analyzing_overview", "resolving_policy", "queued", "processing", "applying",
   "generating_assets", "preview_ready", "navigating_preview",
@@ -143,6 +170,183 @@ function updateOverviewDraft(overview) {
   }
 }
 
+function appendMessage(role, text, extra = {}) {
+  const message = {
+    id: crypto.randomUUID(),
+    role,
+    text: String(text || ""),
+    createdAt: new Date().toISOString(),
+    ...extra,
+  };
+  messages.value.push(message);
+  nextTick(() => {
+    if (chatList.value) chatList.value.scrollTop = chatList.value.scrollHeight;
+  });
+  return message;
+}
+
+function updateStatusMessage(operationId, text, status = "in_progress") {
+  const existing = messages.value.find((message) => message.operationId === operationId);
+  if (existing) {
+    existing.text = text;
+    existing.status = status;
+    existing.updatedAt = new Date().toISOString();
+    return existing;
+  }
+  return appendMessage("system", text, { type: "status", operationId, status });
+}
+
+function persistWorkspace() {
+  try {
+    localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify({
+      documentId: store.documentId,
+      documentRevision: store.documentRevision,
+      requestId: store.requestId,
+      stage: store.stage,
+      naturalLanguage: store.naturalLanguage,
+      inputLocale: store.inputLocale,
+      overviewDraft: store.overviewDraft,
+      overviewFingerprint: store.overviewFingerprint,
+      messages: messages.value.slice(-200),
+      attachments: attachments.value.map(({ dataUrl, ...attachment }) => attachment),
+      wireframeSnapshot: wireframeSnapshot.value,
+      activeResultTab: activeResultTab.value,
+      splitPercent: splitPercent.value,
+    }));
+  } catch {
+    // Browser storage is a convenience cache; Builder Document remains canonical.
+  }
+}
+
+function restoreWorkspaceCache() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(CHAT_STORAGE_KEY) || "null");
+    if (!cached || typeof cached !== "object") return null;
+    messages.value = Array.isArray(cached.messages) ? cached.messages : [];
+    attachments.value = Array.isArray(cached.attachments) ? cached.attachments : [];
+    wireframeSnapshot.value = cached.wireframeSnapshot || null;
+    activeResultTab.value = cached.activeResultTab || (wireframeSnapshot.value ? "wireframe" : "requirements");
+    splitPercent.value = Math.min(65, Math.max(28, Number(cached.splitPercent || 38)));
+    store.documentId = cached.documentId || "";
+    store.documentRevision = Number(cached.documentRevision || 0);
+    store.requestId = cached.requestId || "";
+    store.naturalLanguage = cached.naturalLanguage || "";
+    store.inputLocale = cached.inputLocale || "";
+    store.overviewDraft = cached.overviewDraft || null;
+    store.overviewFingerprint = cached.overviewFingerprint || "";
+    return cached;
+  } catch {
+    return null;
+  }
+}
+
+function fileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(reader.error || new Error("이미지를 읽지 못했습니다."));
+    reader.readAsDataURL(file);
+  });
+}
+
+function imageDimensions(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve({ width: image.naturalWidth, height: image.naturalHeight });
+    image.onerror = () => reject(new Error("이미지 크기를 확인하지 못했습니다."));
+    image.src = dataUrl;
+  });
+}
+
+async function addImageFiles(files) {
+  const accepted = [...files].filter((file) => ["image/png", "image/jpeg", "image/webp"].includes(file.type));
+  if (!accepted.length) return;
+  if (attachments.value.length + accepted.length > 10) {
+    appendMessage("system", "참고 이미지는 한 대화에서 최대 10장까지 첨부할 수 있습니다.", { type: "error" });
+    return;
+  }
+  for (const file of accepted) {
+    if (file.size > 10 * 1024 * 1024) {
+      appendMessage("system", `${file.name}은 10MB를 초과해 첨부하지 않았습니다.`, { type: "error" });
+      continue;
+    }
+    const dataUrl = await fileAsDataUrl(file);
+    const dimensions = await imageDimensions(dataUrl);
+    attachments.value.push({
+      id: crypto.randomUUID(),
+      name: file.name || "clipboard-image.png",
+      mimeType: file.type,
+      byteSize: file.size,
+      width: dimensions.width,
+      height: dimensions.height,
+      viewport: dimensions.width <= 760 ? "mobile" : "desktop",
+      status: "ready",
+      dataUrl,
+    });
+  }
+}
+
+function onPaste(event) {
+  const files = [...(event.clipboardData?.files || [])].filter((file) => file.type.startsWith("image/"));
+  if (!files.length) return;
+  event.preventDefault();
+  addImageFiles(files).catch((error) => appendMessage("system", error.message, { type: "error" }));
+}
+
+async function removeAttachment(attachment) {
+  attachments.value = attachments.value.filter((item) => item.id !== attachment.id);
+  if (attachment.sourceId) deleteReferenceImage(attachment.sourceId).catch(() => null);
+}
+
+async function analyzeAttachments() {
+  const pending = attachments.value.filter((attachment) => attachment.dataUrl && !attachment.analysis);
+  if (!pending.length) return "";
+  attachmentBusy.value = true;
+  const operationId = `reference-${Date.now()}`;
+  updateStatusMessage(operationId, `참고 이미지 ${pending.length}장을 업로드하고 있습니다.`, "in_progress");
+  const summaries = [];
+  try {
+    for (const [index, attachment] of pending.entries()) {
+      attachment.status = "uploading";
+      const uploaded = await uploadReferenceImage({
+        imageDataUrl: attachment.dataUrl,
+        fileName: attachment.name,
+        cropSpec: { x: 0, y: 0, width: 1, height: 1 },
+      });
+      attachment.sourceId = uploaded.source.id;
+      attachment.imageUrl = uploaded.source.imageUrl;
+      attachment.status = "analyzing";
+      updateStatusMessage(operationId, `참고 이미지 ${index + 1}/${pending.length}의 텍스트와 화면 구조를 분석하고 있습니다.`, "in_progress");
+      const analyzed = await analyzeReferenceImage({
+        sourceId: attachment.sourceId,
+        componentIntent: "프로모션 페이지 스크린샷에서 제목, 혜택, 기간, CTA, 섹션 구조, 이미지 역할과 확인이 필요한 조건을 분석",
+        allowedSectionRoles: ["hero", "content", "benefit", "steps", "faq", "legal"],
+        idempotencyKey: crypto.randomUUID(),
+      });
+      const proposal = analyzed.run?.proposal || analyzed.run?.proposals?.[0] || null;
+      attachment.analysis = proposal;
+      attachment.status = "analyzed";
+      attachment.dataUrl = "";
+      if (proposal) {
+        summaries.push(JSON.stringify({
+          image: attachment.name,
+          viewport: attachment.viewport,
+          component: proposal.componentDefinition,
+          confidence: proposal.confidence,
+          reviewNotes: proposal.reviewNotes,
+        }));
+      }
+    }
+    updateStatusMessage(operationId, "참고 이미지 분석을 완료했습니다.", "completed");
+    return summaries.join("\n");
+  } catch (error) {
+    updateStatusMessage(operationId, `참고 이미지 분석에 실패했습니다. ${error.message}`, "failed");
+    throw error;
+  } finally {
+    attachmentBusy.value = false;
+  }
+}
+
 async function ensureDocument() {
   if (store.documentId) return;
   await ensureBuilderSession();
@@ -166,21 +370,25 @@ async function ensureDocument() {
   store.documentRevision = response.document.currentDocumentRevision;
 }
 
-async function analyze() {
+async function analyze(instruction = store.naturalLanguage) {
   clearBuilderError(store);
   overviewRetry.value = null;
   store.stage = "analyzing_overview";
+  previousStage.value = "analyzing_overview";
+  const operationId = `overview-${Date.now()}`;
+  updateStatusMessage(operationId, "요구사항을 분석하고 있습니다.", "in_progress");
   const startedAt = performance.now();
   recordBuilderEvent({
     eventName: "ai_overview_requested",
     documentId: store.documentId || undefined,
   });
   try {
-    const response = await analyzeOverviewWithRetry(store.naturalLanguage, {
+    const response = await analyzeOverviewWithRetry(instruction, {
       context: {
         locale: navigator.language || "",
         market: "",
         productCatalog: [],
+        currentOverview: store.overviewDraft || {},
       },
       onRetry(retry) {
         overviewRetry.value = retry;
@@ -204,6 +412,15 @@ async function analyze() {
     store.inputLocale = response.inputLocale || "";
     store.overviewFingerprint = response.overviewFingerprint;
     store.stage = "reviewing_overview";
+    activeResultTab.value = "requirements";
+    updateStatusMessage(operationId, "요구사항 분석을 완료했습니다.", "completed");
+    appendMessage("assistant", "요구사항을 정리했습니다. 오른쪽 요구사항 Tree를 확인한 뒤 확정하거나 수정 내용을 알려주세요.", {
+      type: "assistant",
+      actions: [
+        { key: "confirm_requirements", label: "요구사항 확정" },
+        { key: "revise_requirements", label: "수정 요청" },
+      ],
+    });
     recordBuilderEvent({
       eventName: "ai_overview_reviewed",
       documentId: store.documentId || undefined,
@@ -211,8 +428,48 @@ async function analyze() {
     });
   } catch (error) {
     overviewRetry.value = null;
+    updateStatusMessage(operationId, `요구사항 분석에 실패했습니다. ${error.message}`, "failed");
     setBuilderError(store, error);
   }
+}
+
+async function submitChat() {
+  const input = chatInput.value.trim();
+  if (interactionLocked.value || (!input && !attachments.value.some((item) => item.dataUrl && !item.analysis))) return;
+  appendMessage("user", input || "첨부한 프로모션 이미지를 분석해 주세요.", {
+    type: "user",
+    attachmentIds: attachments.value.map((item) => item.id),
+  });
+  chatInput.value = "";
+  try {
+    const referenceSummary = await analyzeAttachments();
+    const combined = [input, referenceSummary && `참고 이미지 분석 결과:\n${referenceSummary}`]
+      .filter(Boolean)
+      .join("\n\n");
+    store.naturalLanguage = combined;
+    await analyze(combined);
+  } catch (error) {
+    setBuilderError(store, error);
+  }
+}
+
+async function handleChatAction(action) {
+  if (interactionLocked.value) return;
+  if (action.key === "confirm_requirements") {
+    appendMessage("user", action.label, { type: "action" });
+    await prepareWireframe();
+    return;
+  }
+  if (action.key === "approve_wireframe") {
+    appendMessage("user", action.label, { type: "action" });
+    await approveWireframe();
+    return;
+  }
+  if (action.key === "revise_requirements" || action.key === "revise_wireframe") {
+    appendMessage("assistant", "수정할 내용을 채팅으로 입력해 주세요.", { type: "assistant" });
+    return;
+  }
+  if (action.key === "open_output") openOutput();
 }
 
 async function pollProposal(proposalId) {
@@ -334,10 +591,13 @@ async function retryAssets() {
   }
 }
 
-async function compose() {
+async function prepareWireframe() {
   clearBuilderError(store);
   store.warning = null;
   store.stage = "resolving_policy";
+  previousStage.value = "resolving_policy";
+  const operationId = `wireframe-${Date.now()}`;
+  updateStatusMessage(operationId, "B/W Wireframe 구조를 생성하고 있습니다.", "in_progress");
   try {
     const currentFingerprint = refreshOverviewFingerprint();
     await ensureDocument();
@@ -373,13 +633,47 @@ async function compose() {
       documentRevision: store.documentRevision,
     });
     const proposal = await pollProposal(queued.proposal.id);
-    await applyReadyProposal(proposal);
+    wireframeSnapshot.value = proposal.snapshot || null;
+    store.proposal = proposal;
+    store.stage = "review_required";
+    activeResultTab.value = "wireframe";
+    updateStatusMessage(operationId, "B/W Wireframe 생성을 완료했습니다.", "completed");
+    appendMessage("assistant", "색상과 실제 이미지를 제외한 Wireframe을 생성했습니다. 오른쪽 결과를 확인해 주세요.", {
+      type: "assistant",
+      actions: [
+        { key: "approve_wireframe", label: "Wireframe 승인" },
+        { key: "revise_wireframe", label: "수정 요청" },
+      ],
+    });
   } catch (error) {
+    updateStatusMessage(operationId, `Wireframe 생성에 실패했습니다. ${error.message}`, "failed");
     setBuilderError(store, error);
   }
 }
 
-async function applyReadyProposal(proposal = store.proposal) {
+async function compose() {
+  await prepareWireframe();
+}
+
+async function approveWireframe() {
+  if (!store.proposal?.id) return;
+  const operationId = `final-${Date.now()}`;
+  updateStatusMessage(operationId, "최종 디자인과 이미지를 생성하고 있습니다.", "in_progress");
+  try {
+    await applyReadyProposal(store.proposal, { navigate: false });
+    activeResultTab.value = "final";
+    updateStatusMessage(operationId, "최종 디자인 생성을 완료했습니다.", "completed");
+    appendMessage("assistant", "승인한 Wireframe 구조를 기준으로 최종 디자인을 완성했습니다.", {
+      type: "assistant",
+      actions: [{ key: "open_output", label: "Web Output 열기" }],
+    });
+  } catch (error) {
+    updateStatusMessage(operationId, `최종 디자인 생성에 실패했습니다. ${error.message}`, "failed");
+    setBuilderError(store, error);
+  }
+}
+
+async function applyReadyProposal(proposal = store.proposal, { navigate = true } = {}) {
   if (!proposal?.id || store.stage === "applying") return;
   if (proposal.validation?.ok !== true || proposal.autoApplicable !== true) {
     setBuilderError(store, Object.assign(new Error(
@@ -412,11 +706,16 @@ async function applyReadyProposal(proposal = store.proposal) {
       metadata: { assetJobCount: Object.keys(store.assetJobs).length },
     });
     if (!blockingAssetWarning && await waitForBuilderAssets()) {
-      store.stage = "navigating_preview";
-      openVisualEditor();
+      if (navigate) {
+        store.stage = "navigating_preview";
+        openVisualEditor();
+      } else {
+        store.stage = "render_ready";
+      }
     }
   } catch (error) {
     setBuilderError(store, error);
+    throw error;
   }
 }
 
@@ -540,8 +839,50 @@ function exportDocument() {
   });
 }
 
+function beginSplitDrag(event) {
+  if (window.innerWidth <= 900) return;
+  draggingSplit.value = true;
+  event.currentTarget.setPointerCapture?.(event.pointerId);
+}
+
+function moveSplitDrag(event) {
+  if (!draggingSplit.value) return;
+  const shell = event.currentTarget.parentElement;
+  const rect = shell.getBoundingClientRect();
+  const percent = ((event.clientX - rect.left) / rect.width) * 100;
+  splitPercent.value = Math.min(65, Math.max(28, Number(percent.toFixed(2))));
+}
+
+function endSplitDrag() {
+  draggingSplit.value = false;
+}
+
+function adjustSplit(event) {
+  if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+  event.preventDefault();
+  const step = event.shiftKey ? 5 : 1;
+  splitPercent.value = Math.min(65, Math.max(28, splitPercent.value + (event.key === 'ArrowRight' ? step : -step)));
+}
+
+function overviewEntries(value = store.overviewDraft, prefix = "") {
+  if (!value || typeof value !== "object") return [];
+  return Object.entries(value).flatMap(([key, item]) => {
+    const path = prefix ? `${prefix}.${key}` : key;
+    if (item && typeof item === "object" && !Array.isArray(item)) return overviewEntries(item, path);
+    const display = Array.isArray(item) ? item.join(", ") : String(item ?? "");
+    return display ? [{ path, label: key, value: display }] : [];
+  });
+}
+
+watch([messages, attachments, wireframeSnapshot, activeResultTab, splitPercent], persistWorkspace, { deep: true });
+watch(() => [store.documentId, store.documentRevision, store.stage, store.overviewDraft, store.snapshot], persistWorkspace, { deep: true });
+
 onMounted(async () => {
   try {
+    const cached = restoreWorkspaceCache();
+    if (!messages.value.length) {
+      appendMessage("assistant", "만들고 싶은 프로모션을 설명하거나 참고 화면을 붙여넣어 주세요. 이미지와 자연어를 함께 입력할 수 있습니다.", { type: "assistant" });
+    }
     localeUnsubscribe = window.PromoI18n?.subscribe?.(() => {
       localeRevision.value += 1;
     }) || null;
@@ -572,7 +913,25 @@ onMounted(async () => {
       selectedMode.value = "";
       return;
     }
-    if (selectedMode.value === "ai") await ensureDocument();
+    if (selectedMode.value === "ai") {
+      if (cached?.documentId) {
+        try {
+          const loaded = await loadBuilderDocument(cached.documentId);
+          store.documentRevision = Number(loaded.document?.currentDocumentRevision || cached.documentRevision || 0);
+          store.snapshot = loaded.snapshot || null;
+          if (store.snapshot && cached.stage === "render_ready") store.stage = "render_ready";
+          else if (wireframeSnapshot.value) store.stage = "review_required";
+          else if (store.overviewDraft) store.stage = "reviewing_overview";
+          else store.stage = "idle";
+        } catch {
+          store.documentId = "";
+          store.documentRevision = 0;
+          await ensureDocument();
+        }
+      } else {
+        await ensureDocument();
+      }
+    }
     await executionLookups;
   } catch (error) {
     setBuilderError(store, error);
@@ -621,57 +980,161 @@ onBeforeUnmount(() => {
         <button type="button" @click="reloadLatestForOperation">최신본 불러오기</button>
         <button type="button" @click="operationConflict = null; pendingOperations = null">취소</button>
       </div>
-      <CompositionProgress
-        v-if="fullScreenProgress"
-        :stage="store.stage"
-        :message="progressMessage"
-        :emphasis="progressEmphasis"
-        :execution="progressExecution"
-      />
-      <AiBriefPanel
-        v-else-if="store.stage === 'idle' || store.stage === 'failed' && !store.overviewDraft"
-        v-model="store.naturalLanguage"
-        :busy="busy"
-        @analyze="analyze"
-      />
-      <OverviewReviewForm
-        v-else-if="store.stage === 'reviewing_overview' || store.stage === 'failed' && !store.snapshot"
-        :model-value="store.overviewDraft"
-        :busy="busy"
-        @update:model-value="updateOverviewDraft"
-        @back="store.stage = 'idle'"
-        @confirm="compose"
-      />
-      <OperationProposalReview
-        v-else-if="pendingOperations"
-        :proposal="pendingOperations"
-        :busy="busy"
-        @cancel="pendingOperations = null"
-        @apply="applyOperationProposal"
-      />
-      <CompositionReview
-        v-else-if="store.snapshot && store.stage === 'render_ready'"
-        :snapshot="store.snapshot"
-        :document-revision="store.documentRevision"
-        :busy="busy"
-        :export-enabled="Boolean(capabilities.export)"
-        @edit-natural-language="operationOpen = true"
-        @rollback="rollback"
-        @open-editor="openVisualEditor"
-        @open-output="openOutput"
-        @export-document="exportDocument"
-      />
-      <section v-else-if="store.stage === 'failed'" class="ai-builder-card">
-        <p class="ai-builder-eyebrow">AI Generation</p>
-        <h1>AI 생성을 완료하지 못했습니다.</h1>
-        <p>상단 오류 내용을 확인한 후 다시 시도해 주세요.</p>
+      <section
+        class="ai-chat-workspace"
+        :class="{ 'is-dragging': draggingSplit }"
+        :style="{ '--chat-pane': `${splitPercent}%` }"
+      >
+        <aside class="ai-chat-pane" aria-label="AI Builder 채팅">
+          <header class="ai-chat-header">
+            <div>
+              <p class="ai-builder-eyebrow">V3 AI Builder</p>
+              <strong>프로모션 제작 대화</strong>
+            </div>
+            <span class="ai-chat-status" :data-state="currentStatus.state">{{ currentStatus.state }}</span>
+          </header>
+
+          <div ref="chatList" class="ai-chat-messages" aria-live="polite">
+            <article
+              v-for="message in messages"
+              :key="message.id"
+              class="ai-chat-message"
+              :class="[`is-${message.role}`, `is-${message.type || 'text'}`]"
+            >
+              <div class="ai-chat-message__meta">
+                <strong>{{ message.role === 'user' ? '나' : message.role === 'system' ? '진행 상태' : 'AI Builder' }}</strong>
+                <span v-if="message.status">{{ message.status === 'in_progress' ? '진행 중' : message.status === 'completed' ? '완료' : '실패' }}</span>
+              </div>
+              <p>{{ message.text }}</p>
+              <div v-if="message.actions?.length" class="ai-chat-actions">
+                <button
+                  v-for="action in message.actions"
+                  :key="action.key"
+                  type="button"
+                  :disabled="interactionLocked"
+                  @click="handleChatAction(action)"
+                >{{ action.label }}</button>
+              </div>
+            </article>
+          </div>
+
+          <div v-if="attachments.length" class="ai-reference-tray" aria-label="첨부 이미지">
+            <article v-for="(attachment, index) in attachments" :key="attachment.id" class="ai-reference-card">
+              <img v-if="attachment.dataUrl || attachment.imageUrl" :src="attachment.dataUrl || attachment.imageUrl" :alt="`${attachment.name} 미리보기`" />
+              <div>
+                <strong>{{ index + 1 }}. {{ attachment.name }}</strong>
+                <small>{{ attachment.viewport === 'mobile' ? 'Mobile' : 'Desktop' }} · {{ attachment.status === 'analyzed' ? '분석 완료' : attachment.status === 'analyzing' ? '분석 중' : '첨부됨' }}</small>
+              </div>
+              <button type="button" :disabled="interactionLocked" :aria-label="`${attachment.name} 삭제`" @click="removeAttachment(attachment)">×</button>
+            </article>
+          </div>
+
+          <form class="ai-chat-composer" @submit.prevent="submitChat">
+            <textarea
+              v-model="chatInput"
+              rows="3"
+              placeholder="프로모션 요구사항을 입력하거나 화면 이미지를 붙여넣으세요."
+              :disabled="interactionLocked"
+              @paste="onPaste"
+              @keydown.enter.exact.prevent="submitChat"
+            ></textarea>
+            <div class="ai-chat-composer__actions">
+              <input
+                ref="fileInput"
+                class="visually-hidden"
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                multiple
+                @change="addImageFiles($event.target.files); $event.target.value = ''"
+              />
+              <button type="button" class="ai-builder-secondary" :disabled="interactionLocked" @click="fileInput?.click()">이미지 첨부</button>
+              <button type="submit" class="ai-builder-primary" :disabled="interactionLocked || (!chatInput.trim() && !attachments.some((item) => item.dataUrl && !item.analysis))">
+                {{ interactionLocked ? '처리 중…' : '전송' }}
+              </button>
+            </div>
+          </form>
+        </aside>
+
+        <div
+          class="ai-split-handle"
+          role="separator"
+          tabindex="0"
+          aria-label="채팅과 결과 영역 너비 조절"
+          aria-orientation="vertical"
+          :aria-valuenow="Math.round(splitPercent)"
+          aria-valuemin="28"
+          aria-valuemax="65"
+          @pointerdown="beginSplitDrag"
+          @pointermove="moveSplitDrag"
+          @pointerup="endSplitDrag"
+          @pointercancel="endSplitDrag"
+          @keydown="adjustSplit"
+        ></div>
+
+        <section class="ai-result-pane" aria-label="AI Builder 결과">
+          <header class="ai-result-header">
+            <div>
+              <p class="ai-builder-eyebrow">Progress & Result</p>
+              <strong>{{ currentStatus.label }}</strong>
+            </div>
+            <span class="ai-chat-status" :data-state="currentStatus.state">{{ currentStatus.state }}</span>
+          </header>
+
+          <ol class="ai-process-steps" aria-label="프로모션 생성 단계">
+            <li :class="{ active: !store.overviewDraft, complete: store.overviewDraft }"><span>1</span>요구사항</li>
+            <li :class="{ active: store.overviewDraft && !wireframeDisplaySnapshot, complete: wireframeDisplaySnapshot }"><span>2</span>Wireframe</li>
+            <li :class="{ active: wireframeDisplaySnapshot && !store.snapshot, complete: store.snapshot && store.stage === 'render_ready' }"><span>3</span>최종 디자인</li>
+          </ol>
+
+          <nav class="ai-result-tabs" aria-label="결과 보기">
+            <button type="button" :aria-current="activeResultTab === 'requirements' ? 'page' : undefined" @click="activeResultTab = 'requirements'">요구사항</button>
+            <button type="button" :disabled="!wireframeDisplaySnapshot" :aria-current="activeResultTab === 'wireframe' ? 'page' : undefined" @click="activeResultTab = 'wireframe'">B/W Wireframe</button>
+            <button type="button" :disabled="!store.snapshot" :aria-current="activeResultTab === 'final' ? 'page' : undefined" @click="activeResultTab = 'final'">최종 디자인</button>
+          </nav>
+
+          <div class="ai-result-content">
+            <section v-if="activeResultTab === 'requirements'" class="ai-requirements-tree">
+              <header><strong>요구사항 Tree</strong><small>채팅에서 수정할 수 있습니다.</small></header>
+              <ul v-if="store.overviewDraft" role="tree">
+                <li v-for="entry in overviewEntries()" :key="entry.path" role="treeitem">
+                  <span>{{ entry.label }}</span><strong>{{ entry.value }}</strong>
+                </li>
+              </ul>
+              <div v-else class="ai-result-empty">채팅으로 요구사항을 입력하면 분석 결과가 여기에 표시됩니다.</div>
+            </section>
+
+            <section v-else-if="activeResultTab === 'wireframe' && wireframeDisplaySnapshot" class="ai-wireframe-review">
+              <header><strong>B/W Wireframe</strong><small>색상·디자인 토큰·실제 이미지를 제외한 구조 검토용 화면입니다.</small></header>
+              <div class="ai-wireframe-canvas">
+                <PromoPageRenderer
+                  :content="wireframeDisplaySnapshot.content"
+                  :design-spec="wireframeDisplaySnapshot.designSpec"
+                  :assets="{ expected: [], requests: [] }"
+                  :motion-spec="{ sections: {}, items: {} }"
+                  :editable="false"
+                  :show-guides="false"
+                  outline-mode
+                />
+              </div>
+            </section>
+
+            <section v-else-if="activeResultTab === 'final' && store.snapshot" class="ai-final-review">
+              <CompositionReview
+                :snapshot="store.snapshot"
+                :document-revision="store.documentRevision"
+                :busy="busy"
+                :export-enabled="Boolean(capabilities.export)"
+                @edit-natural-language="operationOpen = true"
+                @rollback="rollback"
+                @open-editor="openVisualEditor"
+                @open-output="openOutput"
+                @export-document="exportDocument"
+              />
+            </section>
+          </div>
+        </section>
       </section>
-      <NaturalLanguageEditor
-        v-if="operationOpen"
-        :busy="busy"
-        @cancel="operationOpen = false"
-        @submit="editNaturalLanguage"
-      />
+      <NaturalLanguageEditor v-if="operationOpen" :busy="busy" @cancel="operationOpen = false" @submit="editNaturalLanguage" />
     </template>
   </main>
 </template>
