@@ -47,8 +47,12 @@
 
   if (legacyRoot) legacyRoot.hidden = true;
   if (aiRoot) aiRoot.hidden = false;
-  loadStylesheet("visual-editor-assets/ai-builder.css?v=ai-builder-v2")
-    .then(() => loadScript("visual-editor-assets/ai-builder.js?v=ai-builder-v1", "module"))
+  document.body.classList.add("ai-builder-workspace-mode");
+  document.querySelector("[data-shell-sidebar]")?.remove();
+  document.querySelector("[data-shell-overlay]")?.remove();
+  document.querySelector("[data-shell-menu-toggle]")?.remove();
+  loadStylesheet("visual-editor-assets/ai-builder.css?v=ai-builder-v3-chat")
+    .then(() => loadScript("visual-editor-assets/ai-builder.js?v=ai-builder-v3-chat", "module"))
     .catch(() => {
       if (aiRoot) {
         aiRoot.innerHTML = '<p role="alert">AI 빌더를 불러오지 못했습니다. 템플릿 모드로 이동해 주세요.</p>';

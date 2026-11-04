@@ -27,6 +27,14 @@ body.shell-drawer-open { overflow: hidden; }
   transition: grid-template-columns var(--app-motion-normal) ease;
 }
 
+body.ai-builder-workspace-mode .shell-frame {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+body.ai-builder-workspace-mode .shell-main {
+  grid-column: 1;
+}
+
 .shell-sidebar {
   position: sticky;
   z-index: var(--app-shell-z-sidebar);

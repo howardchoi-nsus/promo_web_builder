@@ -93,7 +93,28 @@ export function analyzeOverview(naturalLanguage, context = {}) {
       locale: context.locale || "",
       market: context.market || "",
       productCatalog: context.productCatalog || [],
+      currentOverview: context.currentOverview || {},
     }),
+  });
+}
+
+export function uploadReferenceImage(payload) {
+  return request("/api/component-design-sources", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function analyzeReferenceImage(payload) {
+  return request("/api/component-generation-runs", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteReferenceImage(sourceId) {
+  return request(`/api/component-design-sources?id=${encodeURIComponent(sourceId)}`, {
+    method: "DELETE",
   });
 }
 
