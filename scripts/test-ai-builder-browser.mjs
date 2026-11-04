@@ -303,8 +303,8 @@ try {
   }
   await page.getByText("요구사항 분석을 완료했습니다.").waitFor();
   await page.getByText("여름 신규 고객 충전 이벤트", { exact: true }).last().waitFor();
-  await page.getByRole("button", { name: "요구사항 확정" }).click();
-  await page.getByText("프로모션 구조를 구성하고 있습니다.").waitFor();
+  assert.equal(await page.getByRole("button", { name: "요구사항 확정" }).count(), 0);
+  await page.getByText(/Wireframe을 자동으로 생성합니다/).waitFor();
   for (let count = 0; count < 50 && !compositionRequest; count += 1) {
     await page.waitForTimeout(20);
   }

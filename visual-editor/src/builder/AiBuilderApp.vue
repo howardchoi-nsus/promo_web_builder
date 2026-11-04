@@ -496,18 +496,17 @@ async function analyze(instruction = store.naturalLanguage) {
       requirementsRevision.value = Number(savedRequirements.requirements.revision);
     }
     updateStatusMessage(operationId, "요구사항 분석을 완료했습니다.", "completed");
-    await appendPersistedMessage("assistant", "요구사항을 정리했습니다. 오른쪽 요구사항 Tree를 확인한 뒤 확정하거나 수정 내용을 알려주세요.", {
-      type: "assistant",
-      actions: [
-        { key: "confirm_requirements", label: "요구사항 확정" },
-        { key: "revise_requirements", label: "수정 요청" },
-      ],
-    });
+    await appendPersistedMessage(
+      "assistant",
+      "요구사항을 정리했습니다. 오른쪽 요구사항 Tree에 반영했으며 Wireframe을 자동으로 생성합니다.",
+      { type: "assistant" },
+    );
     recordBuilderEvent({
       eventName: "ai_overview_reviewed",
       documentId: store.documentId || undefined,
       durationMs: performance.now() - startedAt,
     });
+    await prepareWireframe();
   } catch (error) {
     overviewRetry.value = null;
     updateStatusMessage(operationId, `요구사항 분석에 실패했습니다. ${error.message}`, "failed");
