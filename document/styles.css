@@ -124,7 +124,7 @@ h1 {
 
 .filters {
   display: grid;
-  grid-template-columns: minmax(260px, 1fr) minmax(180px, 260px);
+  grid-template-columns: minmax(260px, 1fr) minmax(180px, 240px) minmax(210px, 260px);
   gap: 12px;
   margin-bottom: 16px;
   padding: 18px;

@@ -8,6 +8,7 @@
     count: document.getElementById("document-count"),
     search: document.getElementById("document-search"),
     category: document.getElementById("category-filter"),
+    sortOrder: document.getElementById("sort-order"),
     empty: document.getElementById("empty-state"),
     pagination: document.getElementById("pagination"),
     viewerBack: document.getElementById("viewer-back"),
@@ -148,8 +149,25 @@
       const matchesSearch = !search || `${documentItem.title} ${documentItem.sourcePath}`.toLocaleLowerCase("ko").includes(search);
       return matchesSearch && (!category || documentItem.category === category);
     });
+    sortDocuments();
     state.page = 1;
     renderList();
+  }
+
+  function sortDocuments() {
+    const [field, direction] = elements.sortOrder.value.split("-");
+    const multiplier = direction === "asc" ? 1 : -1;
+    const fieldName = {
+      updated: "updatedAt",
+      category: "category",
+      title: "title",
+    }[field];
+
+    state.filtered.sort((first, second) => {
+      const result = String(first[fieldName]).localeCompare(String(second[fieldName]), "ko");
+      if (result !== 0) return result * multiplier;
+      return first.title.localeCompare(second.title, "ko");
+    });
   }
 
   function renderList() {
@@ -245,6 +263,7 @@
       const manifest = await response.json();
       state.documents = manifest.documents;
       state.filtered = [...state.documents];
+      sortDocuments();
       renderCategories();
       renderList();
       const requestedDocument = new URLSearchParams(window.location.search).get("doc");
@@ -258,6 +277,7 @@
 
   elements.search.addEventListener("input", filterDocuments);
   elements.category.addEventListener("change", filterDocuments);
+  elements.sortOrder.addEventListener("change", filterDocuments);
   elements.viewerBack.addEventListener("click", () => showLibrary(true));
   window.addEventListener("popstate", () => {
     const id = new URLSearchParams(window.location.search).get("doc");
