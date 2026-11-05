@@ -50,6 +50,22 @@ const separated = avoidTextComponentOverlaps({
 });
 assert.equal(separated.itemStyles["hero.subtitle"].yPx, 40);
 
+const fixedHeightText = avoidTextComponentOverlaps({
+  sections: [{ ...section, items: section.items.slice(0, 2) }],
+  sectionInputs: { hero: { title: "Winter Giveaway", subtitle: "Join the Giveaway" } },
+  itemStyles: {
+    "hero.title": { positionMode: "free", heightMode: "fixed", xPct: 5, yPx: 20, widthPct: 90, heightPx: 50 },
+    "hero.subtitle": { positionMode: "free", heightMode: "fixed", xPct: 5, yPx: 30, widthPct: 90, heightPx: 50 },
+  },
+  mobileItemStyles: {
+    "hero.title": { positionMode: "free", heightMode: "fixed", xPct: 5, yPx: 20, widthPct: 90, heightPx: 50 },
+    "hero.subtitle": { positionMode: "free", heightMode: "fixed", xPct: 5, yPx: 30, widthPct: 90, heightPx: 50 },
+  },
+});
+assert.equal(fixedHeightText.mobileItemStyles["hero.title"].heightMode, "auto");
+assert.equal(Object.hasOwn(fixedHeightText.mobileItemStyles["hero.title"], "heightPx"), false);
+assert.ok(fixedHeightText.mobileItemStyles["hero.subtitle"].yPx > fixedHeightText.mobileItemStyles["hero.title"].yPx);
+
 const compositeCard = {
   itemKey: "cardOne",
   name: "Promotion Card",
@@ -80,7 +96,7 @@ const compositeResult = avoidTextComponentOverlaps({
   },
 });
 assert.ok(compositeResult.itemStyles["cards.cardTwo"].yPx > 500, "desktop image/text/CTA height must move the next card");
-assert.ok(compositeResult.mobileItemStyles["cards.cardTwo"].yPx > 600, "mobile image/text/CTA height must move the next card");
+assert.ok(compositeResult.mobileItemStyles["cards.cardTwo"].yPx > 380, "390px mobile image/text/CTA height must move the next card");
 assert.ok(compositeResult.sectionStyles.cards.minHeight > compositeResult.mobileItemStyles["cards.cardTwo"].yPx);
 
 const longCardDescription = "Get a 100% bonus on your first deposit, available once per new user. Enhance your experience with this limited-time summer offer, encouraging early participation and maximizing initial engagement.";

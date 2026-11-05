@@ -291,6 +291,27 @@ function itemStyle(section, item) {
   };
 }
 
+function mobileItemStyle(section, item) {
+  return props.designSpec?.responsiveLayouts?.mobile?.itemStyles?.[styleKey(section, item)] || {};
+}
+
+function itemContainsTitle(item) {
+  return [item, ...componentFields(item)].some((field) => (
+    ["title", "headline"].includes(String(field?.textType || "").toLowerCase())
+  ));
+}
+
+function responsiveItemFontSize(section, item, style) {
+  const mobile = mobileItemStyle(section, item);
+  const hasExplicitMobileSize = mobile.fontSize !== undefined || Boolean(mobile.fontSizeToken);
+  const configured = style.fontSizeToken
+    ? `var(${style.fontSizeToken})`
+    : (style.fontSize !== undefined ? `${style.fontSize}px` : "");
+  if (!mobileLayoutActive.value || hasExplicitMobileSize || !itemContainsTitle(item)) return configured || undefined;
+  const mobileCap = "clamp(2rem, 10vw, 3.25rem)";
+  return configured ? `min(${configured}, ${mobileCap})` : mobileCap;
+}
+
 function sectionStyle(section) {
   return props.designSpec?.sectionStyles?.[section.sectionKey] || {};
 }
@@ -833,6 +854,7 @@ function inlineCanvasStyle(section) {
 
 function inlineItemStyle(section, item) {
   const style = itemStyle(section, item);
+  const responsiveFontSize = responsiveItemFontSize(section, item, style);
   const anchored = style.positionMode === "anchored";
   const position = style.positionMode === "free" ? style : defaultItemPosition(section, item);
   const isImage = item.fieldKind === "image";
@@ -882,12 +904,8 @@ function inlineItemStyle(section, item) {
     boxShadow: style.boxShadowToken ? `var(${style.boxShadowToken})` : style.boxShadow,
     "--item-color": style.colorToken ? `var(${style.colorToken})` : style.color,
     fontFamily: style.fontFamilyToken ? `var(${style.fontFamilyToken})` : style.fontFamily,
-    fontSize: style.fontSizeToken
-      ? `var(${style.fontSizeToken})`
-      : (style.fontSize !== undefined ? `${style.fontSize}px` : undefined),
-    "--item-font-size": style.fontSizeToken
-      ? `var(${style.fontSizeToken})`
-      : (style.fontSize !== undefined ? `${style.fontSize}px` : undefined),
+    fontSize: responsiveFontSize,
+    "--item-font-size": responsiveFontSize,
     fontWeight: style.fontWeightToken ? `var(${style.fontWeightToken})` : style.fontWeight,
     "--item-font-weight": style.fontWeightToken ? `var(${style.fontWeightToken})` : style.fontWeight,
     "--item-text-gradient": style.textGradientToken ? `var(${style.textGradientToken})` : undefined,

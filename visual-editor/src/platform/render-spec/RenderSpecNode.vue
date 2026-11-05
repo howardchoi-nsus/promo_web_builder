@@ -31,6 +31,7 @@ function selectField(event) {
     :class="[
       `render-spec-node--${node.nodeType}`,
       node.fieldKind ? `render-spec-node--${node.fieldKind}` : '',
+      node.field?.textType ? `render-spec-node--text-${node.field.textType}` : '',
     ]"
     :style="node.style"
     @click="selectField"

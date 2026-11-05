@@ -35,12 +35,20 @@ const snapshotWithAssetStatus = (status) => ({
       sectionKey: "hero",
       sectionRole: "hero",
       selectedLayoutKey: "stacked",
-      items: [{ itemKey: "title", sourceItemKey: "title", fieldKind: "text" }],
+      items: [{ itemKey: "title", sourceItemKey: "title", fieldKind: "text", textType: "title" }],
     }],
-    sectionInputs: {},
+    sectionInputs: { hero: { title: "Winter Giveaway" } },
     sectionOrder: ["hero"],
   },
-  designSpec: { contractVersion: 1, theme: {}, itemStyles: {}, sectionStyles: {}, visibility: { items: {}, fields: {} } },
+  designSpec: {
+    contractVersion: 1,
+    theme: {},
+    responsive: { mobileBreakpoint: 720, contentMaxWidth: 1280 },
+    itemStyles: { "hero.title": { positionMode: "free", xPct: 5, yPx: 20, widthPct: 90, fontSize: 96 } },
+    sectionStyles: { hero: { minHeight: 300 } },
+    visibility: { items: {}, fields: {} },
+    responsiveLayouts: { mobile: { itemStyles: {}, visibility: { items: {} } } },
+  },
   assets: {
     contractVersion: 1,
     items: status === "ready" ? { "asset-hero": { proxyUrl: "/asset-ready.png" } } : {},
@@ -337,6 +345,25 @@ try {
   assert.equal(applyRequest.structureFingerprint, "a".repeat(64));
   assert.equal(await page.getByRole("button", { name: "최종 디자인" }).isEnabled(), true);
   assert.equal(await page.locator(".ai-builder-result").count(), 1);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobileActions = await page.locator(".ai-builder-actions").evaluate((element) => {
+    const styles = getComputedStyle(element);
+    const buttons = [...element.querySelectorAll("button")].map((button) => button.getBoundingClientRect());
+    return {
+      display: styles.display,
+      columnCount: styles.gridTemplateColumns.split(" ").length,
+      buttonWidths: buttons.map((button) => button.width),
+      buttonHeights: buttons.map((button) => button.height),
+    };
+  });
+  assert.equal(mobileActions.display, "grid");
+  assert.equal(mobileActions.columnCount, 2);
+  assert.ok(mobileActions.buttonWidths.every((width) => width >= 130));
+  assert.ok(mobileActions.buttonHeights.every((height) => height < 90));
+  const mobileTitleFontSize = await page.locator(".rendered-text--title").evaluate((element) => (
+    Number.parseFloat(getComputedStyle(element).fontSize)
+  ));
+  assert.ok(mobileTitleFontSize >= 32 && mobileTitleFontSize <= 52);
   assert.match(page.url(), /create-promo\.html/);
   assert.equal(builderSessionRequestCount, 1);
   assert.equal(eventAuthFailureCount, 0);

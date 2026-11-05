@@ -123,7 +123,7 @@ function adjustViewport({
     const style = effectiveStyles[key];
     const composite = Array.isArray(item.fields) && item.fields.length > 1;
     if ((item.fieldKind !== "text" && !composite) || !style || style.positionMode !== "free"
-      || style.heightMode === "fixed" || visibility?.[key] === false) return [];
+      || visibility?.[key] === false) return [];
     const widthPct = Math.min(100, Math.max(0.01, Number(style.widthPct) || (isTitle(item) ? 72 : 60)));
     const requestedLeft = Number(style.xPct) || 0;
     const height = estimatedItemHeight({
@@ -199,7 +199,7 @@ function avoidTextComponentOverlaps({
   mobileItemVisibility = {},
   tokenValues = {},
   desktopWidth = 1280,
-  mobileWidth = 720,
+  mobileWidth = 390,
   gapPx = DEFAULT_TEXT_GAP_PX,
 } = {}) {
   const nextItemStyles = clone(itemStyles) || {};

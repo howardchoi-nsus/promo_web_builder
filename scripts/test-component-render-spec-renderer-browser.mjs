@@ -131,12 +131,16 @@ try {
   assert.equal(await card.evaluate((element) => getComputedStyle(element).backgroundColor), "rgb(244, 241, 234)");
   assert.equal(await card.locator(":scope > img + div > h2").textContent(), "September offer");
   assert.equal(await card.locator(":scope > img + div > a").getAttribute("href"), "/offer");
+  assert.equal(await card.locator(":scope > img + div > a").evaluate((element) => getComputedStyle(element).textDecorationLine), "none");
+  assert.notEqual(await card.locator(":scope > img + div > a").evaluate((element) => getComputedStyle(element).display), "inline");
   assert.equal(await card.locator("[data-render-path]").count(), 0, "Read-only output must not include editor decorations");
   await desktop.close();
 
   const mobile = await outputPage(390);
   const mobileCard = mobile.locator(".rendered-item article.render-spec-node");
   assert.equal(await mobileCard.evaluate((element) => element.style.gridTemplateColumns), "repeat(1, minmax(0px, 1fr))");
+  const mobileTitleFontSize = await mobileCard.locator("h2").evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize));
+  assert.ok(mobileTitleFontSize >= 32 && mobileTitleFontSize <= 52);
   assert.equal(await mobile.locator(".promo-renderer").evaluate((element) => element.scrollWidth <= element.clientWidth), true);
   await mobile.close();
 

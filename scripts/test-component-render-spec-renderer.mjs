@@ -33,7 +33,7 @@ const renderSpec = {
         nodeType: "element",
         tag: "div",
         children: [
-          { nodeType: "field", tag: "h2", fieldKey: "fld_title", tokenBindings: { color: "--promo-ink" } },
+          { nodeType: "field", tag: "h2", fieldKey: "fld_title", tokenBindings: { color: "--promo-ink", fontSize: "--promo-font-size-display" } },
           { nodeType: "field", tag: "a", fieldKey: "fld_cta", attributes: { target: "_self" } },
         ],
       },
@@ -75,6 +75,8 @@ assert.equal(desktop.children[1].children[1].attributes.target, "_blank");
 assert.equal(desktop.children[1].children[1].attributes.rel, "noopener noreferrer");
 assert.equal(mobile.style.gridTemplateColumns, "repeat(1, minmax(0, 1fr))");
 assert.equal(mobile.children[1].style.backgroundColor, "var(--promo-surface-muted)");
+assert.equal(mobile.children[1].children[0].style.fontSize, "min(var(--promo-font-size-display), clamp(2rem, 10vw, 3.25rem))");
+assert.equal(mobile.children[1].children[0].style.lineHeight, "1.08");
 assert.equal(renderSpecStructureSignature(desktop), renderSpecStructureSignature(mobile));
 
 const unsafeRuntimeTree = createResolvedRenderSpecTree({

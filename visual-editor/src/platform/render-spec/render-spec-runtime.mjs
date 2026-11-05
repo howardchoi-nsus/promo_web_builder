@@ -193,6 +193,17 @@ function fieldAttributes(tag, attributes, value, field) {
   return result;
 }
 
+function responsiveFieldStyle(style, field, tag, breakpoint) {
+  const next = { ...style };
+  const titleLike = ["title", "headline"].includes(String(field?.textType || "").toLowerCase())
+    || /^h[1-6]$/u.test(tag);
+  if (breakpoint !== "mobile" || !titleLike) return next;
+  const mobileCap = "clamp(2rem, 10vw, 3.25rem)";
+  next.fontSize = next.fontSize ? `min(${next.fontSize}, ${mobileCap})` : mobileCap;
+  if (!next.lineHeight) next.lineHeight = "1.08";
+  return next;
+}
+
 export function createResolvedRenderSpecTree({
   renderSpec,
   fields = [],
@@ -228,7 +239,12 @@ export function createResolvedRenderSpecTree({
       imageSrc,
       imageAlt,
       attributes,
-      style: { ...layoutStyle(node.layout), ...tokenStyle(node.tokenBindings) },
+      style: responsiveFieldStyle(
+        { ...layoutStyle(node.layout), ...tokenStyle(node.tokenBindings) },
+        field,
+        tag,
+        breakpoint,
+      ),
       children: (Array.isArray(node.children) ? node.children : [])
         .map((child, index) => resolveNode(child, `${path}.children.${index}`))
         .filter(Boolean),

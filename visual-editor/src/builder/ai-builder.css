@@ -212,6 +212,8 @@
 
 .ai-builder-actions {
   display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 10px;
   margin-top: 24px;
@@ -529,6 +531,20 @@
   .ai-mode-grid { gap: 10px; margin-top: 18px; }
   .ai-mode-grid button { min-height: 0; gap: 6px; padding: 16px 18px; }
   .ai-builder-result__toolbar { align-items: flex-start; flex-direction: column; }
+  .ai-builder-actions {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 0;
+  }
+  .ai-builder-actions button {
+    width: 100%;
+    min-width: 0;
+    padding: 8px 12px;
+    line-height: 1.35;
+    overflow-wrap: normal;
+    word-break: keep-all;
+  }
   .registry-proposal-list > li { grid-template-columns: 36px minmax(0, 1fr); gap: 8px; }
   .registry-proposal-sequence { width: 30px; height: 30px; }
   .registry-proposal-section__header { flex-direction: column; }
