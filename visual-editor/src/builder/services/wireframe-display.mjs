@@ -99,7 +99,7 @@ const TEXT_TYPE_LABELS = {
   label: "라벨",
 };
 
-const INTERNAL_KEY_PATTERN = /^(?:(?:sec|item|cmp|component)(?:[_.:/#-][a-z0-9]+)+|(?:field\s*id|fid)(?:[a-z0-9]{6,}|(?:[\s_.:/#()\[\]-]+[a-z0-9]+)*[\s_.:/#()\[\]-]*))$/i;
+const INTERNAL_KEY_PATTERN = /^(?:(?:sec|item|cmp|component)(?:[_.:/#-][a-z0-9]+)+|(?:field\s*id|fid|fld)(?:[a-z0-9]{6,}|(?:[\s_.:/#()\[\]-]+[a-z0-9]+)*[\s_.:/#()\[\]-]*))$/i;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const URL_PATTERN = /^(?:https?:|data:|blob:|\/\/)/i;
 const CONFIRMATION_PLACEHOLDER_PATTERN = /^(?:(?:사용자|상세\s*조건)\s*)?확인(?:이)?\s*필요(?:합니다)?[.!]?$/i;

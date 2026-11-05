@@ -197,6 +197,33 @@ assert.equal(fidResult[0].components[0].technicalLabel, "");
 assert.equal(fidResult[0].components[0].contentLines[0].label, "");
 assert.equal(fidResult[0].components[0].contentLines[0].text, "노출할 실제 문구");
 
+const fldResult = buildWireframeSections({
+  content: {
+    sectionSnapshot: [{
+      sectionKey: "hero",
+      sectionRole: "hero",
+      items: [{
+        itemKey: "fld_a6e81ec903914f4d9b8169751fd4a46e",
+        fields: [{
+          fieldKey: "fld a6e81ec903914f4d9b8169751fd4a46e",
+          fieldKind: "text",
+        }],
+      }],
+    }],
+    sectionInputs: {
+      hero: {
+        fld_a6e81ec903914f4d9b8169751fd4a46e: { fields: {
+          "fld a6e81ec903914f4d9b8169751fd4a46e": "히어로에 노출할 실제 문구",
+        } },
+      },
+    },
+  },
+});
+assert.equal(fldResult[0].components[0].label, "콘텐츠 항목 1");
+assert.equal(fldResult[0].components[0].technicalLabel, "");
+assert.equal(fldResult[0].components[0].contentLines[0].label, "");
+assert.equal(fldResult[0].components[0].contentLines[0].text, "히어로에 노출할 실제 문구");
+
 const complexFidResult = buildWireframeSections({
   content: {
     sectionSnapshot: [{
