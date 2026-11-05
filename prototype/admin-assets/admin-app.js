@@ -16406,9 +16406,12 @@ var Yw = /*#__PURE__*/ Eh(RC, [["render", Jw], ["__scopeId", "data-v-f0661921"]]
 			}
 		},
 		mounted() {
-			this.localeUnsubscribe = window.PromoI18n?.subscribe(() => {
+			if (this.localeUnsubscribe = window.PromoI18n?.subscribe(() => {
 				this.localeRevision += 1;
-			}) || null, localStorage.removeItem(e.generatedPages), localStorage.removeItem(e.generatedPage), this.applyThemeMode(), this.loadDesignDocuments(), this.loadGeneratedPagesFromServer({ silent: !0 }), this.loadHandoffDocuments(), this.resetOverride(), this.currentView === "prompts" && this.openPromptManager();
+			}) || null, localStorage.removeItem(e.generatedPages), localStorage.removeItem(e.generatedPage), this.applyThemeMode(), this.loadDesignDocuments(), this.loadGeneratedPagesFromServer({ silent: !0 }), this.loadHandoffDocuments(), this.resetOverride(), this.currentView === "prompts") {
+				let e = this.takeAdminRemoteLoginToken();
+				e ? this.signInAdminWithRemoteToken(e) : this.openPromptManager();
+			}
 		},
 		unmounted() {
 			this.localeUnsubscribe && this.localeUnsubscribe(), this.stopGenerationRunPolling();
@@ -16697,6 +16700,30 @@ var Yw = /*#__PURE__*/ Eh(RC, [["render", Jw], ["__scopeId", "data-v-f0661921"]]
 					return;
 				}
 				await this.loadPromptManagerData();
+			},
+			takeAdminRemoteLoginToken() {
+				let e = new URLSearchParams(window.location.hash.replace(/^#/, "")), t = String(e.get("adminLogin") || "").trim();
+				if (!t) return "";
+				e.delete("adminLogin");
+				let n = e.toString();
+				return window.history.replaceState({}, "", `${window.location.pathname}${window.location.search}${n ? `#${n}` : ""}`), t;
+			},
+			async signInAdminWithRemoteToken(e) {
+				this.adminAuthState = "checking", this.adminAuthBusy = !0, this.adminAuthError = "";
+				try {
+					let t = await fetch("/api/promo-admin-session", {
+						method: "POST",
+						credentials: "same-origin",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({ loginToken: e })
+					}), n = await t.json().catch(() => ({}));
+					if (!t.ok) throw Error(n.error || `관리자 로그인 오류(${t.status})`);
+					this.adminAuthState = "authenticated", this.adminAuthSubject = n.subject || "promo-admin", this.setStatus("원격 관리자 로그인이 완료되었습니다."), await this.loadPromptManagerData();
+				} catch {
+					this.adminAuthState = "required", this.adminAuthError = "원격 로그인 링크가 만료되었거나 유효하지 않습니다. 새 링크를 발급해 주세요.", this.setStatus(`관리자 로그인 실패: ${this.adminAuthError}`);
+				} finally {
+					this.adminAuthBusy = !1;
+				}
 			},
 			async checkAdminSession() {
 				this.adminAuthState = "checking", this.adminAuthError = "";

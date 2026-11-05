@@ -159,7 +159,9 @@ try {
       return fulfill({ ok: true, authenticated: adminSignedIn, subject: adminSignedIn ? "test-admin" : "" });
     }
     if (url.pathname === "/api/promo-admin-session" && request.method() === "POST") {
-      adminSignedIn = request.postDataJSON().accessKey === "test-admin-access-key";
+      const payload = request.postDataJSON();
+      adminSignedIn = payload.accessKey === "test-admin-access-key"
+        || payload.loginToken === "test-remote-login-token";
       return fulfill(adminSignedIn
         ? { ok: true, authenticated: true, subject: "test-admin" }
         : { error: "Administrator authentication failed", code: "ADMIN_ACCESS_DENIED" },
@@ -274,7 +276,10 @@ try {
     return fulfill({ ok: true, templates: [], sections: [], documents: [], logs: [], settings: [] });
   });
 
-  await page.goto(`${origin}/prototype/index.html?view=admin&tab=llm`, { waitUntil: "networkidle" });
+  await page.goto(`${origin}/prototype/index.html?view=admin&tab=llm#adminLogin=test-remote-login-token`, { waitUntil: "networkidle" });
+  await page.getByRole("heading", { name: "프롬프트 관리", exact: true }).waitFor();
+  assert.equal(page.url().includes("adminLogin="), false, "remote login token must be removed from the address immediately");
+  await page.getByRole("button", { name: "관리자 로그아웃", exact: true }).click();
   await page.getByRole("heading", { name: "관리자 로그인", exact: true }).waitFor();
   await page.getByLabel("관리자 액세스 키", { exact: true }).fill("test-admin-access-key");
   await page.getByRole("button", { name: "관리자 로그인", exact: true }).click();

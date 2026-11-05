@@ -7,6 +7,7 @@ const {
   createAdminSessionToken,
   resolveAdminOwner,
   verifyAdminAccessKey,
+  verifyAdminRemoteLoginToken,
 } = require("./_promo-admin-auth");
 
 function parseBody(body) {
@@ -68,13 +69,16 @@ function createHandler({ env = process.env } = {}) {
         requireConfiguration(env);
         assertSameOrigin(req);
         const body = parseBody(req.body);
-        if (!verifyAdminAccessKey(body.accessKey, env)) {
+        const remoteLogin = verifyAdminRemoteLoginToken(body.loginToken, { env });
+        if (!verifyAdminAccessKey(body.accessKey, env) && !remoteLogin) {
           return res.status(401).json({
             error: "Administrator authentication failed",
             code: "ADMIN_ACCESS_DENIED",
           });
         }
-        const subject = String(env.PROMO_ADMIN_SUBJECT || "promo-admin").trim() || "promo-admin";
+        const subject = remoteLogin?.subject
+          || String(env.PROMO_ADMIN_SUBJECT || "promo-admin").trim()
+          || "promo-admin";
         const token = createAdminSessionToken({
           subject,
           ttlSeconds: ADMIN_SESSION_MAX_AGE_SECONDS,

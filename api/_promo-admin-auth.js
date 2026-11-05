@@ -1,4 +1,4 @@
-const { createHmac, timingSafeEqual } = require("node:crypto");
+const { createHmac, randomBytes, timingSafeEqual } = require("node:crypto");
 const { resolveBuilderOwner } = require("./_promo-builder-auth");
 
 const ADMIN_COOKIE_NAME = "promo_admin_session";
@@ -44,9 +44,30 @@ function createAdminSessionToken({
     code: "ADMIN_SESSION_SECRET_REQUIRED",
   });
   const claims = {
+    purpose: "session",
     subject: String(subject || "").trim(),
     roles: Array.from(new Set(roles.map((role) => String(role).trim()).filter(Boolean))),
     expiresAt: now + Math.min(86_400, Math.max(60, Number(ttlSeconds || 3600))) * 1000,
+  };
+  if (!claims.subject) throw new TypeError("Admin subject is required");
+  const payload = Buffer.from(JSON.stringify(claims)).toString("base64url");
+  return `v1.${payload}.${sign(`v1.${payload}`, env)}`;
+}
+
+function createAdminRemoteLoginToken({
+  subject,
+  now = Date.now(),
+  ttlSeconds = 15 * 60,
+}, env = process.env) {
+  if (!adminSecret(env)) throw Object.assign(new Error("PROMO_ADMIN_SESSION_SECRET must be at least 32 characters"), {
+    statusCode: 503,
+    code: "ADMIN_SESSION_SECRET_REQUIRED",
+  });
+  const claims = {
+    purpose: "remote-login",
+    subject: String(subject || "").trim(),
+    nonce: randomBytes(16).toString("base64url"),
+    expiresAt: now + Math.min(30 * 60, Math.max(60, Number(ttlSeconds || 900))) * 1000,
   };
   if (!claims.subject) throw new TypeError("Admin subject is required");
   const payload = Buffer.from(JSON.stringify(claims)).toString("base64url");
@@ -76,7 +97,7 @@ function clearAdminCookie(env = process.env) {
   return adminCookieValue("", { env, maxAgeSeconds: 0 });
 }
 
-function verifyAdminSessionToken(token, { now = Date.now(), env = process.env } = {}) {
+function verifiedClaims(token, { now = Date.now(), env = process.env } = {}) {
   if (!adminSecret(env)) return null;
   const parts = String(token || "").split(".");
   if (parts.length !== 3 || parts[0] !== "v1") return null;
@@ -89,9 +110,21 @@ function verifyAdminSessionToken(token, { now = Date.now(), env = process.env } 
   } catch {
     return null;
   }
-  if (!claims?.subject || !Array.isArray(claims.roles) || !claims.roles.includes("admin")) return null;
+  if (!claims?.subject) return null;
   if (!Number.isFinite(Number(claims.expiresAt)) || Number(claims.expiresAt) <= now) return null;
+  return claims;
+}
+
+function verifyAdminSessionToken(token, options = {}) {
+  const claims = verifiedClaims(token, options);
+  if (!claims || claims.purpose !== "session" || !Array.isArray(claims.roles) || !claims.roles.includes("admin")) return null;
   return { subject: String(claims.subject), roles: claims.roles, expiresAt: Number(claims.expiresAt) };
+}
+
+function verifyAdminRemoteLoginToken(token, options = {}) {
+  const claims = verifiedClaims(token, options);
+  if (!claims || claims.purpose !== "remote-login" || !claims.nonce) return null;
+  return { subject: String(claims.subject), expiresAt: Number(claims.expiresAt) };
 }
 
 function resolveAdminOwner(req, res, { env = process.env } = {}) {
@@ -125,8 +158,10 @@ module.exports = {
   adminCookieValue,
   adminSecret,
   clearAdminCookie,
+  createAdminRemoteLoginToken,
   createAdminSessionToken,
   resolveAdminOwner,
   verifyAdminAccessKey,
+  verifyAdminRemoteLoginToken,
   verifyAdminSessionToken,
 };

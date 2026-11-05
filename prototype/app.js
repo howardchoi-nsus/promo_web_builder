@@ -1918,7 +1918,11 @@ const adminApp = createApp({
     this.loadGeneratedPagesFromServer({ silent: true });
     this.loadHandoffDocuments();
     this.resetOverride();
-    if (this.currentView === "prompts") this.openPromptManager();
+    if (this.currentView === "prompts") {
+      const remoteLoginToken = this.takeAdminRemoteLoginToken();
+      if (remoteLoginToken) this.signInAdminWithRemoteToken(remoteLoginToken);
+      else this.openPromptManager();
+    }
   },
 
   unmounted() {
@@ -2229,6 +2233,46 @@ const adminApp = createApp({
         return;
       }
       await this.loadPromptManagerData();
+    },
+
+    takeAdminRemoteLoginToken() {
+      const fragment = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const token = String(fragment.get("adminLogin") || "").trim();
+      if (!token) return "";
+      fragment.delete("adminLogin");
+      const nextHash = fragment.toString();
+      window.history.replaceState(
+        {},
+        "",
+        `${window.location.pathname}${window.location.search}${nextHash ? `#${nextHash}` : ""}`,
+      );
+      return token;
+    },
+
+    async signInAdminWithRemoteToken(loginToken) {
+      this.adminAuthState = "checking";
+      this.adminAuthBusy = true;
+      this.adminAuthError = "";
+      try {
+        const response = await fetch("/api/promo-admin-session", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ loginToken }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || `관리자 로그인 오류(${response.status})`);
+        this.adminAuthState = "authenticated";
+        this.adminAuthSubject = result.subject || "promo-admin";
+        this.setStatus("원격 관리자 로그인이 완료되었습니다.");
+        await this.loadPromptManagerData();
+      } catch (error) {
+        this.adminAuthState = "required";
+        this.adminAuthError = "원격 로그인 링크가 만료되었거나 유효하지 않습니다. 새 링크를 발급해 주세요.";
+        this.setStatus(`관리자 로그인 실패: ${this.adminAuthError}`);
+      } finally {
+        this.adminAuthBusy = false;
+      }
     },
 
     async checkAdminSession() {

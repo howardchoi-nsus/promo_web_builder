@@ -6,9 +6,11 @@ const {
   ADMIN_COOKIE_NAME,
   adminCookieValue,
   clearAdminCookie,
+  createAdminRemoteLoginToken,
   createAdminSessionToken,
   resolveAdminOwner,
   verifyAdminAccessKey,
+  verifyAdminRemoteLoginToken,
   verifyAdminSessionToken,
 } = require("../api/_promo-admin-auth.js");
 const { createHandler } = require("../api/promo-admin-session.js");
@@ -20,7 +22,11 @@ const env = {
 };
 const now = Date.now();
 const token = createAdminSessionToken({ subject: "developer@example.com", now }, env);
+const remoteLoginToken = createAdminRemoteLoginToken({ subject: "remote-admin@example.com", now }, env);
 assert.equal(verifyAdminSessionToken(token, { now: now + 1_000, env }).subject, "developer@example.com");
+assert.equal(verifyAdminRemoteLoginToken(remoteLoginToken, { now: now + 1_000, env }).subject, "remote-admin@example.com");
+assert.equal(verifyAdminSessionToken(remoteLoginToken, { now: now + 1_000, env }), null);
+assert.equal(verifyAdminRemoteLoginToken(token, { now: now + 1_000, env }), null);
 assert.equal(verifyAdminSessionToken(`${token}tampered`, { now: now + 1_000, env }), null);
 assert.equal(resolveAdminOwner({ headers: { cookie: `${ADMIN_COOKIE_NAME}=${token}` } }, {}, { env }).authenticated, true);
 assert.equal(verifyAdminAccessKey(env.PROMO_ADMIN_ACCESS_KEY, env), true);
@@ -68,6 +74,16 @@ await handler({
 assert.equal(signedIn.statusCode, 200);
 assert.equal(signedIn.body.authenticated, true);
 assert.match(signedIn.headers["set-cookie"], new RegExp(`^${ADMIN_COOKIE_NAME}=`));
+
+const remotelySignedIn = response();
+await handler({
+  method: "POST",
+  headers: { host: "example.com", origin: "https://example.com" },
+  body: { loginToken: remoteLoginToken },
+}, remotelySignedIn);
+assert.equal(remotelySignedIn.statusCode, 200);
+assert.equal(remotelySignedIn.body.subject, "remote-admin@example.com");
+assert.match(remotelySignedIn.headers["set-cookie"], new RegExp(`^${ADMIN_COOKIE_NAME}=`));
 
 const sessionCookie = signedIn.headers["set-cookie"].split(";")[0];
 const checked = response();
