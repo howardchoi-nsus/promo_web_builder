@@ -19,6 +19,12 @@ function adminAccessKey(env = process.env) {
   return value.length >= 24 ? value : "";
 }
 
+function temporaryAdminAccessKey(env = process.env) {
+  const value = String(env.PROMO_ADMIN_TEMP_ACCESS_KEY || "").trim();
+  const expiresAt = Date.parse(String(env.PROMO_ADMIN_TEMP_ACCESS_KEY_EXPIRES_AT || ""));
+  return value && Number.isFinite(expiresAt) ? { value, expiresAt } : null;
+}
+
 function parseCookies(header = "") {
   return Object.fromEntries(String(header).split(";").map((part) => {
     const index = part.indexOf("=");
@@ -74,12 +80,17 @@ function createAdminRemoteLoginToken({
   return `v1.${payload}.${sign(`v1.${payload}`, env)}`;
 }
 
-function verifyAdminAccessKey(value, env = process.env) {
-  const expectedValue = adminAccessKey(env);
+function constantTimeStringEqual(value, expectedValue) {
   if (!expectedValue) return false;
-  const expected = Buffer.from(expectedValue);
+  const expected = Buffer.from(String(expectedValue));
   const supplied = Buffer.from(String(value || "").trim());
   return expected.length === supplied.length && timingSafeEqual(expected, supplied);
+}
+
+function verifyAdminAccessKey(value, env = process.env, { now = Date.now() } = {}) {
+  if (constantTimeStringEqual(value, adminAccessKey(env))) return true;
+  const temporary = temporaryAdminAccessKey(env);
+  return Boolean(temporary && temporary.expiresAt > now && constantTimeStringEqual(value, temporary.value));
 }
 
 function adminCookieValue(token, { env = process.env, maxAgeSeconds = ADMIN_SESSION_MAX_AGE_SECONDS } = {}) {
@@ -161,6 +172,7 @@ module.exports = {
   createAdminRemoteLoginToken,
   createAdminSessionToken,
   resolveAdminOwner,
+  temporaryAdminAccessKey,
   verifyAdminAccessKey,
   verifyAdminRemoteLoginToken,
   verifyAdminSessionToken,

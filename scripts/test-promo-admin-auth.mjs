@@ -31,6 +31,13 @@ assert.equal(verifyAdminSessionToken(`${token}tampered`, { now: now + 1_000, env
 assert.equal(resolveAdminOwner({ headers: { cookie: `${ADMIN_COOKIE_NAME}=${token}` } }, {}, { env }).authenticated, true);
 assert.equal(verifyAdminAccessKey(env.PROMO_ADMIN_ACCESS_KEY, env), true);
 assert.equal(verifyAdminAccessKey("wrong-access-key", env), false);
+const temporaryKeyEnv = {
+  ...env,
+  PROMO_ADMIN_TEMP_ACCESS_KEY: "1234",
+  PROMO_ADMIN_TEMP_ACCESS_KEY_EXPIRES_AT: new Date(now + 60_000).toISOString(),
+};
+assert.equal(verifyAdminAccessKey("1234", temporaryKeyEnv, { now }), true);
+assert.equal(verifyAdminAccessKey("1234", temporaryKeyEnv, { now: now + 60_001 }), false);
 assert.match(adminCookieValue(token, { env }), /HttpOnly/);
 assert.match(adminCookieValue(token, { env }), /SameSite=Strict/);
 assert.match(adminCookieValue(token, { env }), /Secure/);
