@@ -357,8 +357,10 @@ try {
   }
   await page.getByText("요구사항 분석을 완료했습니다.").waitFor();
   await page.getByText("여름 신규 고객 충전 이벤트", { exact: true }).last().waitFor();
-  assert.equal(await page.getByRole("button", { name: "요구사항 확정" }).count(), 0);
-  await page.getByText(/Wireframe을 자동으로 생성합니다/).waitFor();
+  await page.getByText(/요구사항 Tree를 확인한 뒤 승인해 주세요/).waitFor();
+  await page.getByRole("button", { name: "요구사항 승인" }).waitFor();
+  assert.equal(compositionRequest, null, "composition must wait for requirements approval");
+  await page.getByRole("button", { name: "요구사항 승인" }).click();
   for (let count = 0; count < 50 && !compositionRequest; count += 1) {
     await page.waitForTimeout(20);
   }
