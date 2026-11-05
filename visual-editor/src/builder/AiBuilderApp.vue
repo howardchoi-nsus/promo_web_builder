@@ -5,6 +5,11 @@ import CompositionReview from "./CompositionReview.vue";
 import { visualEditorEntry } from "../platform/visual-editor-entry.mjs";
 import { evaluateAssetReadiness } from "../shared/composition/asset-readiness.mjs";
 import { resolveCompositionLocale } from "../shared/composition/composition-locale.mjs";
+import {
+  composeOverviewInstruction,
+  referenceItemCharacterBudget,
+  summarizeReferenceProposal,
+} from "./services/reference-overview-summary.mjs";
 import OperationProposalReview from "./OperationProposalReview.vue";
 import NaturalLanguageEditor from "./NaturalLanguageEditor.vue";
 import { createAiBuilderStore, clearBuilderError, setBuilderError } from "./state/ai-builder-store.mjs";
@@ -344,6 +349,7 @@ async function analyzeAttachments() {
   const operationId = `reference-${Date.now()}`;
   updateStatusMessage(operationId, `참고 이미지 ${pending.length}장을 업로드하고 있습니다.`, "in_progress");
   const summaries = [];
+  const summaryItemBudget = referenceItemCharacterBudget(pending.length);
   try {
     for (const [index, attachment] of pending.entries()) {
       attachment.status = "uploading";
@@ -367,12 +373,11 @@ async function analyzeAttachments() {
       attachment.status = "analyzed";
       attachment.dataUrl = "";
       if (proposal) {
-        summaries.push(JSON.stringify({
-          image: attachment.name,
+        summaries.push(summarizeReferenceProposal({
+          imageName: attachment.name,
           viewport: attachment.viewport,
-          component: proposal.componentDefinition,
-          confidence: proposal.confidence,
-          reviewNotes: proposal.reviewNotes,
+          proposal,
+          maxCharacters: summaryItemBudget,
         }));
       }
     }
@@ -526,9 +531,7 @@ async function submitChat() {
   chatInput.value = "";
   try {
     const referenceSummary = await analyzeAttachments();
-    const combined = [input, referenceSummary && `참고 이미지 분석 결과:\n${referenceSummary}`]
-      .filter(Boolean)
-      .join("\n\n");
+    const combined = composeOverviewInstruction(input, referenceSummary);
     store.naturalLanguage = combined;
     await analyze(combined);
   } catch (error) {
@@ -1176,6 +1179,7 @@ onBeforeUnmount(() => {
             <textarea
               v-model="chatInput"
               rows="3"
+              maxlength="4000"
               placeholder="프로모션 요구사항을 입력하거나 화면 이미지를 붙여넣으세요."
               :disabled="interactionLocked"
               @paste="onPaste"
