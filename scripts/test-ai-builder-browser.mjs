@@ -437,6 +437,8 @@ try {
   );
   assert.equal(chatTurnScroll.scrollBehavior, "smooth");
   assert.equal(chatTurnScroll.hasTurnSpace, true);
+  assert.equal(await page.locator(".ai-chat-thinking").count(), 1);
+  assert.equal(await page.locator('.ai-chat-message[role="status"][aria-busy="true"]').count(), 1);
   await page.getByText("AI 응답 오류로 재시도하고 있습니다. (2/3)").waitFor();
   if (process.env.CAPTURE_AI_PROGRESS_QA === "1") {
     await page.screenshot({ path: path.join(root, "design-qa-implementation.png"), fullPage: true });
@@ -452,6 +454,27 @@ try {
   assert.equal(compositionRequest.overviewFingerprint, overviewFingerprint(compositionRequest.overview));
   assert.notEqual(compositionRequest.overviewFingerprint, "browser-test-overview");
   await page.getByText("페이지 구성 미리보기 생성을 완료했습니다.").waitFor();
+  await page.waitForTimeout(350);
+  assert.equal(await page.locator(".ai-chat-messages.has-active-turn").count(), 0);
+  assert.equal(await page.locator(".ai-chat-thinking").count(), 0);
+  const messagePresentation = await page.locator(".ai-chat-messages").evaluate((container) => {
+    const user = container.querySelector(".ai-chat-message.is-user");
+    const assistant = container.querySelector(".ai-chat-message.is-assistant");
+    const userStyles = getComputedStyle(user);
+    const assistantStyles = getComputedStyle(assistant);
+    return {
+      userBackground: userStyles.backgroundColor,
+      userRadius: userStyles.borderRadius,
+      assistantBackground: assistantStyles.backgroundColor,
+      assistantBorderWidth: assistantStyles.borderTopWidth,
+      assistantShadow: assistantStyles.boxShadow,
+    };
+  });
+  assert.notEqual(messagePresentation.userBackground, "rgba(0, 0, 0, 0)");
+  assert.notEqual(messagePresentation.userRadius, "0px");
+  assert.equal(messagePresentation.assistantBackground, "rgba(0, 0, 0, 0)");
+  assert.equal(messagePresentation.assistantBorderWidth, "0px");
+  assert.equal(messagePresentation.assistantShadow, "none");
   await page.getByRole("button", { name: "페이지 구성 미리보기" }).waitFor();
   await page.getByRole("button", { name: "요청 내용" }).click();
   await page.getByText("여름 신규 고객 충전 이벤트", { exact: true }).last().waitFor();

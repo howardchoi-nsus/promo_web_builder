@@ -231,7 +231,7 @@ function appendMessage(role, text, extra = {}) {
       container.scrollTo({ top: Math.max(0, top), behavior: reducedMotion ? "auto" : "smooth" });
       return;
     }
-    if (!activeChatTurnMessageId.value) {
+    if (!activeChatTurnMessageId.value || !interactionLocked.value) {
       container.scrollTo({ top: container.scrollHeight, behavior: "auto" });
     }
   });
@@ -1727,6 +1727,34 @@ watch([
   requirementsEditBaseline,
 ], persistWorkspace, { deep: true });
 watch(() => [store.documentId, store.documentRevision, store.stage, store.overviewDraft, store.snapshot], persistWorkspace, { deep: true });
+watch(interactionLocked, (locked, wasLocked) => {
+  if (!activeChatTurnMessageId.value) return;
+  if (locked && !wasLocked) {
+    nextTick(() => {
+      const container = chatList.value;
+      const target = container?.querySelector(`[data-message-id="${activeChatTurnMessageId.value}"]`);
+      if (!container || !target) return;
+      const top = container.scrollTop
+        + target.getBoundingClientRect().top
+        - container.getBoundingClientRect().top
+        - 12;
+      const reducedMotion = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+      container.scrollTo({ top: Math.max(0, top), behavior: reducedMotion ? "auto" : "smooth" });
+    });
+    return;
+  }
+  if (locked || !wasLocked) return;
+  activeChatTurnMessageId.value = "";
+  nextTick(() => {
+    const container = chatList.value;
+    if (!container) return;
+    const reducedMotion = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: reducedMotion ? "auto" : "smooth",
+    });
+  });
+});
 
 onMounted(async () => {
   try {
@@ -1905,8 +1933,9 @@ onBeforeUnmount(() => {
           <div
             ref="chatList"
             class="ai-chat-messages"
-            :class="{ 'has-active-turn': Boolean(activeChatTurnMessageId) }"
+            :class="{ 'has-active-turn': Boolean(activeChatTurnMessageId) && interactionLocked }"
             aria-live="polite"
+            :aria-busy="interactionLocked ? 'true' : 'false'"
           >
             <article
               v-for="message in messages"
@@ -1918,10 +1947,17 @@ onBeforeUnmount(() => {
                 { 'is-turn-anchor': message.id === activeChatTurnMessageId },
               ]"
               :data-message-id="message.id"
+              :role="message.type === 'status' ? 'status' : undefined"
+              :aria-busy="message.status === 'in_progress' ? 'true' : undefined"
             >
               <div class="ai-chat-message__meta">
                 <strong>{{ message.role === 'user' ? '나' : message.role === 'system' ? '진행 상태' : 'AI Builder' }}</strong>
-                <span v-if="message.status">{{ message.status === 'in_progress' ? '진행 중' : message.status === 'completed' ? '완료' : '실패' }}</span>
+                <span v-if="message.status" class="ai-chat-message__status" :data-status="message.status">
+                  <span v-if="message.status === 'in_progress'" class="ai-chat-thinking" aria-hidden="true">
+                    <i></i><i></i><i></i>
+                  </span>
+                  {{ message.status === 'in_progress' ? '진행 중' : message.status === 'completed' ? '완료' : '실패' }}
+                </span>
               </div>
               <p>{{ message.text }}</p>
               <div v-if="visibleMessageActions(message).length" class="ai-chat-actions">

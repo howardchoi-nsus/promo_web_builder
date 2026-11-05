@@ -150,4 +150,16 @@ assert.match(chatStore, /async function listSessions/);
 assert.match(chatStore, /order by session\.updated_at desc/);
 assert.match(chatStore, /message\.role = 'user'/);
 
+const builder = fs.readFileSync(path.resolve(__dirname, "../visual-editor/src/builder/AiBuilderApp.vue"), "utf8");
+const builderCss = fs.readFileSync(path.resolve(__dirname, "../visual-editor/src/builder/ai-builder.css"), "utf8");
+assert.match(builder, /'has-active-turn': Boolean\(activeChatTurnMessageId\) && interactionLocked/);
+assert.match(builder, /watch\(interactionLocked,[\s\S]*?activeChatTurnMessageId\.value = ""/);
+assert.match(builder, /class="ai-chat-thinking"/);
+assert.match(builder, /:aria-busy="interactionLocked \? 'true' : 'false'"/);
+assert.match(builderCss, /\.ai-chat-messages\.has-active-turn::after \{ min-height: 100%; flex: 0 0 100%/);
+assert.match(builderCss, /\.ai-chat-message \{ width: 100%;[\s\S]*?border: 0;[\s\S]*?background: transparent/);
+assert.match(builderCss, /\.ai-chat-message\.is-user \{ width: min\(84%, 620px\);[\s\S]*?background: #176b4d/);
+assert.match(builderCss, /@keyframes ai-chat-thinking-dot/);
+assert.match(builderCss, /prefers-reduced-motion:[\s\S]*?\.ai-chat-thinking i \{ animation: none/);
+
 console.log("AI Builder chat workspace contract passed");
