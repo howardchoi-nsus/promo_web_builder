@@ -99,7 +99,7 @@ const TEXT_TYPE_LABELS = {
   label: "라벨",
 };
 
-const INTERNAL_KEY_PATTERN = /^(?:sec|item|cmp|component)_[a-z0-9_-]+$/i;
+const INTERNAL_KEY_PATTERN = /^(?:(?:sec|item|cmp|component)[_-][a-z0-9_-]+|fid(?:[_:-]?[a-z0-9]{6,})?)$/i;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const URL_PATTERN = /^(?:https?:|data:|blob:|\/\/)/i;
 const MAX_PREVIEW_LENGTH = 280;
@@ -125,6 +125,10 @@ function readableFallback(value) {
     .replace(/[-_]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function safeTechnicalLabel(value) {
+  return isInternalKey(value) ? "" : String(value || "").trim();
 }
 
 function resolveSectionLabel(section) {
@@ -280,7 +284,7 @@ function contentSections(snapshot, viewport = "desktop") {
       order: sectionIndex + 1,
       kind: normalizedKey(section.sectionRole || section.sourceSectionKey || section.sectionKey) || "content",
       label: resolveSectionLabel(section),
-      technicalLabel: section.sourceSectionKey || section.sectionKey || "",
+      technicalLabel: safeTechnicalLabel(section.sourceSectionKey || section.sectionKey),
       roleLabel: SECTION_LABELS[normalizedKey(section.sectionRole)] || "콘텐츠 섹션",
       layoutLabel: resolveLayoutLabel(section.selectedLayoutKey || section.defaultLayoutKey),
       components: (section.items || []).filter((item) => {
@@ -306,7 +310,7 @@ function contentSections(snapshot, viewport = "desktop") {
           order: itemIndex + 1,
           label: resolveComponentLabel(item, itemIndex),
           typeLabel: resolveComponentType(item),
-          technicalLabel: item.sourceItemKey || item.itemKey || "",
+          technicalLabel: safeTechnicalLabel(item.sourceItemKey || item.itemKey),
           contentLines: resolveContentLines(visibleItem, inputValue),
           isImage: normalizedKey(item.fieldKind) === "image",
           ...componentPresentation(item),
@@ -389,7 +393,7 @@ function compositionSpecSections(snapshot, overview = {}) {
               order: componentOrder,
               label: resolveComponentLabel({ sourceItemKey: component.itemKey }, componentIndex),
               typeLabel: isImage ? "이미지 영역" : "콘텐츠 영역",
-              technicalLabel: component.itemKey,
+              technicalLabel: safeTechnicalLabel(component.itemKey),
               contentLines,
               isImage,
               ...componentPresentation({ sourceItemKey: component.itemKey, fieldKind: isImage ? "image" : "text" }),
@@ -402,7 +406,7 @@ function compositionSpecSections(snapshot, overview = {}) {
         order,
         kind: normalizedKey(section.sectionRole || section.sectionKey) || "content",
         label: resolveSectionLabel({ ...section, sourceSectionKey: section.sectionKey }),
-        technicalLabel: section.sectionKey,
+        technicalLabel: safeTechnicalLabel(section.sectionKey),
         roleLabel: SECTION_LABELS[normalizedKey(section.sectionRole)] || "콘텐츠 섹션",
         layoutLabel: resolveLayoutLabel(section.layoutKey),
         components,
@@ -429,7 +433,7 @@ function previewSections(snapshot) {
             order: componentOrder,
             label: resolveComponentLabel({ sourceItemKey: componentKey }, componentIndex),
             typeLabel: "콘텐츠 영역",
-            technicalLabel: componentKey,
+            technicalLabel: safeTechnicalLabel(componentKey),
             contentLines: [],
             isImage: false,
             ...componentPresentation({ sourceItemKey: componentKey }),
@@ -441,7 +445,7 @@ function previewSections(snapshot) {
         order,
         kind: normalizedKey(section.sectionRole || section.sectionKey) || "content",
         label: resolveSectionLabel({ ...section, sourceSectionKey: section.sectionKey }),
-        technicalLabel: section.sectionKey,
+        technicalLabel: safeTechnicalLabel(section.sectionKey),
         roleLabel: SECTION_LABELS[normalizedKey(section.sectionRole)] || "콘텐츠 섹션",
         layoutLabel: resolveLayoutLabel(section.layoutKey),
         components: componentKeys,

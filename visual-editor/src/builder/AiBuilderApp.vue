@@ -1949,11 +1949,11 @@ onBeforeUnmount(() => {
                   <details class="ai-wireframe-technical">
                     <summary>기술 정보 보기</summary>
                     <dl>
-                      <div><dt>섹션 키</dt><dd>{{ section.technicalLabel || section.key }}</dd></div>
+                      <div v-if="section.technicalLabel"><dt>섹션 키</dt><dd>{{ section.technicalLabel }}</dd></div>
                       <div><dt>구성 방식</dt><dd>{{ section.layoutLabel }}</dd></div>
                       <div v-for="component in section.components" :key="`technical:${component.key}`">
                         <dt>{{ component.label }}</dt>
-                        <dd>{{ component.technicalLabel || component.key }} · {{ component.typeLabel }}</dd>
+                        <dd>{{ component.technicalLabel ? `${component.technicalLabel} · ` : "" }}{{ component.typeLabel }}</dd>
                       </div>
                     </dl>
                   </details>

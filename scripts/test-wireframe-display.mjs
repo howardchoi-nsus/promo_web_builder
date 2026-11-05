@@ -175,4 +175,26 @@ assert.equal(opaqueResult[0].components[0].label, "콘텐츠 항목 1");
 assert.ok(!opaqueResult[0].label.includes("sec_"));
 assert.ok(!opaqueResult[0].components[0].label.includes("item_"));
 
+const fidResult = buildWireframeSections({
+  content: {
+    sectionSnapshot: [{
+      sectionKey: "sec_fidpreview1",
+      sectionRole: "content",
+      items: [{
+        itemKey: "fid_01J9W7M3QK6R2T8V",
+        fields: [{ fieldKey: "fid_copy123456", fieldKind: "text" }],
+      }],
+    }],
+    sectionInputs: {
+      sec_fidpreview1: {
+        fid_01J9W7M3QK6R2T8V: { fields: { fid_copy123456: "노출할 실제 문구" } },
+      },
+    },
+  },
+});
+assert.equal(fidResult[0].technicalLabel, "");
+assert.equal(fidResult[0].components[0].technicalLabel, "");
+assert.equal(fidResult[0].components[0].contentLines[0].label, "");
+assert.equal(fidResult[0].components[0].contentLines[0].text, "노출할 실제 문구");
+
 console.log("wireframe display tests passed");
