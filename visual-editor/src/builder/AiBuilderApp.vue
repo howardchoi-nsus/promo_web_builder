@@ -1173,9 +1173,16 @@ function adjustSplit(event) {
   splitPercent.value = Math.min(65, Math.max(28, splitPercent.value + (event.key === 'ArrowRight' ? step : -step)));
 }
 
+const HIDDEN_OVERVIEW_TREE_FIELDS = new Set([
+  "schemaVersion",
+  "inputMode",
+  "rawNaturalLanguage",
+]);
+
 function overviewEntries(value = store.overviewDraft, prefix = "") {
   if (!value || typeof value !== "object") return [];
   return Object.entries(value).flatMap(([key, item]) => {
+    if (HIDDEN_OVERVIEW_TREE_FIELDS.has(key)) return [];
     const path = prefix ? `${prefix}.${key}` : key;
     if (item && typeof item === "object" && !Array.isArray(item)) return overviewEntries(item, path);
     const display = Array.isArray(item) ? item.join(", ") : String(item ?? "");
