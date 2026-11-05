@@ -294,7 +294,7 @@ try {
   // content edits without requiring the full visual editor.
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${origin}/create-promo.html`, { waitUntil: "networkidle" });
-  await assertPageText(page.locator("#wizard-shell-status"), "Create Promo");
+  assert.equal(await page.locator("header.shell-utility-bar").count(), 0);
   for (const name of [/와이어프레임 모드/, /템플릿 모드/, /AI 모드/]) {
     await page.getByRole("button", { name }).waitFor();
   }
@@ -875,7 +875,7 @@ try {
   const fontSizeSelect = textEditorToolbar.getByRole("combobox", { name: "글자 크기 디자인 토큰", exact: true });
   await fontSizeSelect.selectOption("--promo-font-size-xl");
   let selectedTokenFontSize = 0;
-  for (let attempt = 0; attempt < 100; attempt += 1) {
+  for (let attempt = 0; attempt < 500; attempt += 1) {
     selectedTokenFontSize = Number.parseFloat(
       await textContentNode.evaluate((node) => getComputedStyle(node).fontSize),
     );

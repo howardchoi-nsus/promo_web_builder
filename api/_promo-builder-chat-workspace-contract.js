@@ -14,7 +14,7 @@ const ACTION_TRANSITIONS = Object.freeze({
   complete_requirements_edit: { from: "requirements_review", to: "requirements_review" },
   cancel_requirements_edit: { from: "requirements_review", to: "requirements_review" },
   approve_wireframe: { from: "wireframe_review", to: "finalizing" },
-  revise_wireframe: { from: "wireframe_review", to: "requirements_review" },
+  revise_wireframe: { from: "wireframe_review", to: "wireframe_review" },
   open_output: { from: "completed", to: "completed" },
 });
 

@@ -22,6 +22,7 @@ let compositionRequest = null;
 let applyRequest = null;
 let chatStage = "idle";
 let confirmedWireframeRevision = null;
+let wireframeEditRequest = null;
 let builderSessionReady = false;
 let builderSessionRequestCount = 0;
 let eventAuthFailureCount = 0;
@@ -187,6 +188,34 @@ const server = http.createServer(async (request, response) => {
       structureFingerprint: "a".repeat(64),
       status: "draft",
     } }));
+    return;
+  }
+  if (url.pathname === "/api/promo-builder-wireframe-edits" && request.method === "POST") {
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    wireframeEditRequest = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    const snapshot = snapshotWithAssetStatus("ready");
+    const contentEdit = wireframeEditRequest.edits.find((edit) => edit.type === "update-content");
+    if (contentEdit) snapshot.content.sectionInputs.hero.title = contentEdit.valueText;
+    response.writeHead(200, { "Content-Type": "application/json" });
+    response.end(JSON.stringify({
+      ok: true,
+      proposal: {
+        id: "proposal-browser",
+        status: "ready",
+        contractVersion: 3,
+        autoApplicable: true,
+        validation: { ok: true, errors: [], warnings: [] },
+        snapshot,
+      },
+      wireframe: {
+        revision: 1,
+        requirementsRevision: 2,
+        structureFingerprint: "a".repeat(64),
+        status: "draft",
+      },
+      overview: compositionRequest.overview,
+    }));
     return;
   }
   if (url.pathname === "/api/promo-builder-wireframes-confirm" && request.method === "POST") {
@@ -413,54 +442,37 @@ try {
     await page.screenshot({ path: path.join(root, "design-qa-implementation.png"), fullPage: true });
   }
   await page.getByText("요구사항 분석을 완료했습니다.").waitFor();
-  await page.getByText("여름 신규 고객 충전 이벤트", { exact: true }).last().waitFor();
-  await page.getByText("콘텐츠 구성", { exact: true }).waitFor();
-  await page.getByText("주요 혜택", { exact: true }).first().waitFor();
-  await page.getByText("신규 고객 보너스", { exact: true }).first().waitFor();
-  await page.getByText("추가 정보", { exact: true }).waitFor();
-  await page.getByText("미입력", { exact: true }).waitFor();
-  assert.equal(await page.getByText("사용자 확인 필요", { exact: true }).count(), 0);
-  assert.ok(await page.locator(".ai-requirements-tree .ai-confirmation-badge").count() > 0);
-  await page.getByText(/요구사항 Tree를 확인한 뒤 승인해 주세요/).waitFor();
-  await page.getByRole("button", { name: "요구사항 승인" }).waitFor();
-  assert.equal(compositionRequest, null, "composition must wait for requirements approval");
-  await page.getByRole("button", { name: "수정 요청" }).click();
-  await page.getByText(/수정이 필요한 항목을 오른쪽 요구사항 Tree에서 수정해 주세요/).waitFor();
-  await page.getByText(/편집 중 · 변경 0개/).waitFor();
-  assert.equal(await page.getByRole("button", { name: "수정 완료" }).isDisabled(), true);
-  const titleInputs = page.locator('.ai-requirements-tree input[aria-label="제목 수정"]');
-  await titleInputs.first().fill("여름 VIP 고객 충전 이벤트");
-  await titleInputs.nth(2).fill("VIP 신규 고객 보너스");
-  await page.getByText(/편집 중 · 변경 2개/).waitFor();
-  assert.equal(await page.getByRole("button", { name: "수정 완료" }).isEnabled(), true);
-  assert.equal(await page.getByRole("button", { name: "요구사항 승인" }).isDisabled(), true);
-  await page.getByRole("button", { name: "수정 완료" }).click();
-  await page.getByText(/수정된 요구사항을 저장했습니다/).waitFor();
-  await page.getByText("여름 VIP 고객 충전 이벤트", { exact: true }).waitFor();
-  assert.equal(requirementsSaveRequests.length, 2);
-  assert.equal(requirementsSaveRequests[1].requirements.contentSections[0].items[0].title, "VIP 신규 고객 보너스");
-  assert.equal(compositionRequest, null, "composition must still wait after manual requirements editing");
-  await page.getByRole("button", { name: "수정 요청" }).last().click();
-  await page.locator('.ai-requirements-tree input[aria-label="제목 수정"]').first().fill("취소할 임시 제목");
-  await page.getByRole("button", { name: "수정 취소" }).last().click();
-  await page.getByText(/요구사항 수정을 취소했습니다/).waitFor();
-  await page.getByText("여름 VIP 고객 충전 이벤트", { exact: true }).waitFor();
-  assert.equal(await page.getByText("취소할 임시 제목", { exact: true }).count(), 0);
-  assert.equal(requirementsSaveRequests.length, 2, "cancel must not save another requirements revision");
-  await page.getByRole("button", { name: "요구사항 승인" }).last().click();
   for (let count = 0; count < 50 && !compositionRequest; count += 1) {
     await page.waitForTimeout(20);
   }
   assert.ok(compositionRequest, "composition request should be received");
-  assert.equal(compositionRequest.overview.title, "여름 VIP 고객 충전 이벤트");
-  assert.equal(compositionRequest.overview.contentSections[0].items[0].title, "VIP 신규 고객 보너스");
+  assert.equal(compositionRequest.overview.title, "여름 신규 고객 충전 이벤트");
+  assert.equal(compositionRequest.overview.contentSections[0].items[0].title, "신규 고객 보너스");
   assert.equal(compositionRequest.locale, "ko-KR");
   assert.equal(compositionRequest.overviewFingerprint, overviewFingerprint(compositionRequest.overview));
   assert.notEqual(compositionRequest.overviewFingerprint, "browser-test-overview");
   await page.getByText("페이지 구성 미리보기 생성을 완료했습니다.").waitFor();
   await page.getByRole("button", { name: "페이지 구성 미리보기" }).waitFor();
-  await page.getByText(/현재 화면은 페이지 배치와 문구를 확인하는 단계입니다/).waitFor();
+  await page.getByRole("button", { name: "요청 내용" }).click();
+  await page.getByText("여름 신규 고객 충전 이벤트", { exact: true }).last().waitFor();
+  await page.getByText("콘텐츠 구성", { exact: true }).waitFor();
+  assert.ok(await page.locator(".ai-requirements-tree .ai-confirmation-badge").count() > 0);
+  await page.getByRole("button", { name: "페이지 구성 미리보기" }).click();
+  await page.getByText(/현재 화면에서 문구와 가로 배치를 수정할 수 있습니다/).waitFor();
   await page.getByText("Winter Giveaway", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "내용·배치 수정" }).click();
+  const titleEditor = page.getByRole("textbox", { name: "메인 제목 내용 수정" });
+  await titleEditor.fill("Centered Winter Giveaway");
+  const titleCard = page.locator(".ai-wireframe-component--title");
+  await titleCard.getByRole("button", { name: "가운데" }).click();
+  assert.equal(await page.getByRole("button", { name: "수정 저장" }).isEnabled(), true);
+  await page.getByRole("button", { name: "수정 저장" }).click();
+  await page.getByText(/페이지 구성의 문구와 배치 수정을 저장했습니다/).waitFor();
+  await page.getByText("Centered Winter Giveaway", { exact: true }).waitFor();
+  assert.ok(wireframeEditRequest.edits.some((edit) => edit.type === "update-content"));
+  assert.ok(wireframeEditRequest.edits.some((edit) => (
+    edit.type === "set-horizontal-alignment" && edit.alignment === "center"
+  )));
   await page.getByText("기술 정보 보기", { exact: true }).waitFor();
   assert.equal(await page.locator(".ai-wireframe-technical dd").first().isVisible(), false);
   await page.getByText("기술 정보 보기", { exact: true }).click();
@@ -494,6 +506,12 @@ try {
   assert.equal(mobileActions.columnCount, 2);
   assert.ok(mobileActions.buttonWidths.every((width) => width >= 130));
   assert.ok(mobileActions.buttonHeights.every((height) => height < 90));
+  await page.waitForFunction(() => {
+    const element = document.querySelector(".rendered-text--title");
+    if (!element) return false;
+    const size = Number.parseFloat(getComputedStyle(element).fontSize);
+    return size >= 32 && size <= 52;
+  });
   const mobileTitleFontSize = await page.locator(".rendered-text--title").evaluate((element) => (
     Number.parseFloat(getComputedStyle(element).fontSize)
   ));

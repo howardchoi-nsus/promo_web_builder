@@ -257,6 +257,7 @@ function resolveContentLines(item, inputValue) {
         key: field.fieldKey,
         label: resolveFieldLabel(field),
         kind: normalizedKey(field.fieldKind || item.fieldKind) || "content",
+        editable: field.isLocked !== true && item.isLocked !== true,
         ...content,
       }] : [];
     });
@@ -267,6 +268,7 @@ function resolveContentLines(item, inputValue) {
     key: item?.itemKey || "value",
     label: "",
     kind: normalizedKey(item?.fieldKind) || "content",
+    editable: item?.isLocked !== true,
     ...content,
   }] : [];
 }
@@ -319,6 +321,8 @@ function contentSections(snapshot, viewport = "desktop") {
           : item;
         return {
           key: item.itemKey || `item:${itemIndex}`,
+          componentKey: item.id || item.itemKey,
+          componentIndex: Number(item.collection?.index || 0),
           order: itemIndex + 1,
           label: resolveComponentLabel(item, itemIndex),
           typeLabel: resolveComponentType(item),
@@ -326,6 +330,7 @@ function contentSections(snapshot, viewport = "desktop") {
           contentLines: resolveContentLines(visibleItem, inputValue),
           requiresConfirmation: valueNeedsConfirmation(inputValue),
           isImage: normalizedKey(item.fieldKind) === "image",
+          horizontalAlignment: "",
           ...componentPresentation(item),
         };
       }),
@@ -370,12 +375,14 @@ function overviewComponentContent(component, overview = {}) {
   });
   const lines = [...values.entries()].flatMap(([fieldKey, value]) => {
     const content = displayText(value, fieldKey === "button" ? "cta" : "text");
-    return content ? [{
+    if (!content && typeof value !== "string") return [];
+    return [{
       key: fieldKey,
       label: resolveFieldLabel({ fieldKey }),
       kind: fieldKey === "button" ? "cta" : "text",
-      ...content,
-    }] : [];
+      editable: true,
+      ...(content || { text: "", fullText: "", truncated: false }),
+    }];
   });
   return { lines, requiresConfirmation };
 }
@@ -391,7 +398,7 @@ function inferredImageComponent(componentKey) {
     || key.endsWith("-visual");
 }
 
-function compositionSpecSections(snapshot, overview = {}) {
+function compositionSpecSections(snapshot, overview = {}, viewport = "desktop") {
   const sections = snapshot?.compositionSpec?.sections;
   if (!Array.isArray(sections) || sections.length === 0) return [];
   let order = 0;
@@ -415,6 +422,7 @@ function compositionSpecSections(snapshot, overview = {}) {
                 key: "resource",
                 label: "고정 콘텐츠",
                 kind: "resource",
+                editable: false,
                 text: "CMS에 등록된 고정 콘텐츠가 적용됩니다.",
                 fullText: "CMS에 등록된 고정 콘텐츠가 적용됩니다.",
                 truncated: false,
@@ -424,6 +432,7 @@ function compositionSpecSections(snapshot, overview = {}) {
                 key: "registered-content",
                 label: "등록 콘텐츠",
                 kind: "content",
+                editable: false,
                 text: "컴포넌트에 등록된 기본 콘텐츠가 적용됩니다.",
                 fullText: "컴포넌트에 등록된 기본 콘텐츠가 적용됩니다.",
                 truncated: false,
@@ -431,6 +440,8 @@ function compositionSpecSections(snapshot, overview = {}) {
             }
             return {
               key: `${component.itemKey}:${componentIndex}`,
+              componentKey: component.itemKey,
+              componentIndex,
               order: componentOrder,
               label: resolveComponentLabel({ sourceItemKey: component.itemKey }, componentIndex),
               typeLabel: isImage ? "이미지 영역" : "콘텐츠 영역",
@@ -438,6 +449,7 @@ function compositionSpecSections(snapshot, overview = {}) {
               contentLines,
               requiresConfirmation: resolvedContent.requiresConfirmation,
               isImage,
+              horizontalAlignment: component.layoutOverrides?.[viewport]?.horizontalAlignments?.[componentIndex] || "",
               ...componentPresentation({ sourceItemKey: component.itemKey, fieldKind: isImage ? "image" : "text" }),
             };
           },
@@ -445,6 +457,8 @@ function compositionSpecSections(snapshot, overview = {}) {
       );
       return {
         key: `${section.sectionKey}:${sectionIndex}`,
+        sectionKey: section.sectionKey,
+        sectionIndex,
         order,
         kind: normalizedKey(section.sectionRole || section.sectionKey) || "content",
         label: resolveSectionLabel({ ...section, sourceSectionKey: section.sectionKey }),
@@ -500,7 +514,7 @@ function previewSections(snapshot) {
 export function buildWireframeSections(snapshot, { overview = {}, viewport = "desktop" } = {}) {
   const sections = contentSections(snapshot, viewport);
   if (sections.length > 0) return sections;
-  const plannedSections = compositionSpecSections(snapshot, overview);
+  const plannedSections = compositionSpecSections(snapshot, overview, viewport);
   return plannedSections.length > 0 ? plannedSections : previewSections(snapshot);
 }
 

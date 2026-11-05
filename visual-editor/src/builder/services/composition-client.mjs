@@ -140,6 +140,13 @@ export function saveWireframeRevision(payload) {
   });
 }
 
+export function updateWireframeDraft(payload) {
+  return request("/api/promo-builder-wireframe-edits", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function confirmWireframeRevision(payload) {
   return request("/api/promo-builder-wireframes-confirm", {
     method: "POST",

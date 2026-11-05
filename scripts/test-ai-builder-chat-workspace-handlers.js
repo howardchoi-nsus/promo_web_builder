@@ -3,6 +3,7 @@ const { createHandler: createSessionHandler } = require("../api/promo-builder-ch
 const { createHandler: createMessageHandler } = require("../api/promo-builder-chat-messages");
 const { createHandler: createActionHandler } = require("../api/promo-builder-chat-actions");
 const { createHandler: createWireframeHandler } = require("../api/promo-builder-wireframes");
+const { createHandler: createWireframeEditHandler } = require("../api/promo-builder-wireframe-edits");
 const { createHandler: createConfirmHandler } = require("../api/promo-builder-wireframes-confirm");
 
 function response() {
@@ -125,10 +126,55 @@ async function testWireframeSaveAndConfirm() {
   assert.equal(confirmRes.body.wireframe.status, "confirmed");
 }
 
+async function testWireframeEditUsesOptimisticContext() {
+  let updateInput = null;
+  const snapshot = {
+    contractVersion: 3,
+    snapshotType: "registry-composition-proposal",
+    compositionSpec: {
+      sections: [{
+        sectionKey: "hero",
+        sectionVersionId: "section-version-1",
+        layoutKey: "centered",
+        components: [{ itemKey: "cta", repeat: 1, contentBindings: [{ fieldKey: "label" }] }],
+      }],
+    },
+  };
+  const handler = createWireframeEditHandler({
+    ...common,
+    fetchProposal: async () => ({
+      id: "proposal-1", documentId: "document-1", status: "ready", baseDocumentRevision: 2,
+      snapshot, requestSnapshot: { overview: {} },
+    }),
+    applyWireframeEdits: () => ({ snapshot, requestSnapshot: { overview: {} } }),
+    updateWireframeDraft: async (_sql, input) => {
+      updateInput = input;
+      return { revision: 4, structureFingerprint: "b".repeat(64), status: "draft" };
+    },
+  });
+  const res = response();
+  await handler({ method: "POST", body: {
+    sessionId: "session-1", documentId: "document-1", proposalId: "proposal-1",
+    baseDocumentRevision: 2, wireframeRevision: 4, structureFingerprint: "a".repeat(64),
+    edits: [{ type: "set-horizontal-alignment" }],
+  } }, res);
+  assert.equal(res.statusCode, 200);
+  assert.equal(updateInput.wireframeRevision, 4);
+  assert.equal(updateInput.expectedStructureFingerprint, "a".repeat(64));
+
+  const invalid = response();
+  await handler({ method: "POST", body: {
+    sessionId: "session-1", documentId: "document-1", proposalId: "proposal-1",
+    baseDocumentRevision: 2, wireframeRevision: 4, edits: [],
+  } }, invalid);
+  assert.equal(invalid.statusCode, 400);
+}
+
 Promise.resolve()
   .then(testSession)
   .then(testMessageActions)
   .then(testApprovalActionRequiresConfirmation)
   .then(testWireframeSaveAndConfirm)
+  .then(testWireframeEditUsesOptimisticContext)
   .then(() => console.log("AI Builder chat workspace handlers passed"))
   .catch((error) => { console.error(error); process.exitCode = 1; });

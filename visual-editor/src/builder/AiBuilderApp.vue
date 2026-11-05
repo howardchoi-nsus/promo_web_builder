@@ -39,6 +39,7 @@ import {
   saveRequirementsRevision,
   executeChatAction,
   saveWireframeRevision,
+  updateWireframeDraft,
   confirmWireframeRevision,
 } from "./services/composition-client.mjs";
 import { buildWireframeSections } from "./services/wireframe-display.mjs";
@@ -85,6 +86,10 @@ const requirementsEditing = ref(false);
 const requirementsEditDraft = ref(null);
 const requirementsEditBaseline = ref(null);
 const requirementsSaving = ref(false);
+const wireframeEditing = ref(false);
+const wireframeEditDraft = ref({ content: {}, alignment: {} });
+const wireframeEditBaseline = ref({ content: {}, alignment: {} });
+const wireframeSaving = ref(false);
 let assetPollingCancelled = false;
 let localeUnsubscribe = null;
 const localeRevision = ref(0);
@@ -97,16 +102,25 @@ const busy = computed(() => [
   "analyzing_overview", "resolving_policy", "queued", "processing", "applying",
   "generating_assets", "preview_ready", "navigating_preview",
 ].includes(store.stage));
-const interactionLocked = computed(() => busy.value || attachmentBusy.value || requirementsSaving.value);
-const chatComposerLocked = computed(() => interactionLocked.value || requirementsEditing.value);
+const interactionLocked = computed(() => (
+  busy.value || attachmentBusy.value || requirementsSaving.value || wireframeSaving.value
+));
+const chatComposerLocked = computed(() => (
+  interactionLocked.value || requirementsEditing.value || wireframeEditing.value
+));
 const requirementsEditDirty = computed(() => (
   requirementsEditing.value
   && JSON.stringify(requirementsEditDraft.value) !== JSON.stringify(requirementsEditBaseline.value)
+));
+const wireframeEditDirty = computed(() => (
+  wireframeEditing.value
+  && JSON.stringify(wireframeEditDraft.value) !== JSON.stringify(wireframeEditBaseline.value)
 ));
 const currentStatus = computed(() => {
   if (attachmentBusy.value) return { label: "참고 이미지 분석", state: "진행 중" };
   if (busy.value) return { label: progressMessage.value, state: "진행 중" };
   if (requirementsEditing.value) return { label: "요구사항 수정 중", state: "확인 필요" };
+  if (wireframeEditing.value) return { label: "페이지 구성 수정 중", state: "확인 필요" };
   if (store.stage === "failed") return { label: store.error?.message || "처리 실패", state: "실패" };
   if (store.snapshot && store.stage === "render_ready") return { label: "최종 디자인 생성 완료", state: "완료" };
   if (wireframeSnapshot.value) return { label: "페이지 구성 미리보기 준비 완료", state: "확인 필요" };
@@ -361,6 +375,10 @@ function resetWorkspaceState() {
   requirementsEditDraft.value = null;
   requirementsEditBaseline.value = null;
   requirementsSaving.value = false;
+  wireframeEditing.value = false;
+  wireframeEditDraft.value = { content: {}, alignment: {} };
+  wireframeEditBaseline.value = { content: {}, alignment: {} };
+  wireframeSaving.value = false;
 }
 
 function appendWelcomeMessage() {
@@ -720,20 +738,15 @@ async function analyze(instruction = store.naturalLanguage) {
     updateStatusMessage(operationId, "요구사항 분석을 완료했습니다.", "completed");
     await appendPersistedMessage(
       "assistant",
-      "요구사항을 정리했습니다. 오른쪽 요구사항 Tree를 확인한 뒤 승인해 주세요.",
-      {
-        type: "assistant",
-        actions: [
-          { key: "confirm_requirements", label: "요구사항 승인" },
-          { key: "revise_requirements", label: "수정 요청" },
-        ],
-      },
+      "요구사항을 내부 기준으로 정리했습니다. 페이지 구성 미리보기에서 문구와 배치를 바로 수정할 수 있습니다.",
+      { type: "assistant" },
     );
     recordBuilderEvent({
       eventName: "ai_overview_reviewed",
       documentId: store.documentId || undefined,
       durationMs: performance.now() - startedAt,
     });
+    await prepareWireframe();
   } catch (error) {
     overviewRetry.value = null;
     updateStatusMessage(operationId, `요구사항 분석에 실패했습니다. ${error.message}`, "failed");
@@ -790,6 +803,123 @@ function clearRequirementsEdit() {
   requirementsEditing.value = false;
   requirementsEditDraft.value = null;
   requirementsEditBaseline.value = null;
+}
+
+function wireframeContentKey(section, component, line) {
+  return `${section.sectionKey || section.key}::${component.componentKey || component.key}::${component.componentIndex || 0}::${line.key}`;
+}
+
+function wireframeAlignmentKey(section, component) {
+  return `${section.sectionKey || section.key}::${component.componentKey || component.key}::${component.componentIndex || 0}`;
+}
+
+function beginWireframeEdit() {
+  const content = {};
+  const alignment = {};
+  wireframeSections.value.forEach((section) => {
+    section.components.forEach((component) => {
+      alignment[wireframeAlignmentKey(section, component)] = component.horizontalAlignment || "";
+      component.contentLines.filter((line) => line.editable !== false).forEach((line) => {
+        content[wireframeContentKey(section, component, line)] = line.fullText || line.text || "";
+      });
+    });
+  });
+  wireframeEditBaseline.value = { content: { ...content }, alignment: { ...alignment } };
+  wireframeEditDraft.value = { content: { ...content }, alignment: { ...alignment } };
+  wireframeEditing.value = true;
+  activeResultTab.value = "wireframe";
+}
+
+function cancelWireframeEdit() {
+  wireframeEditing.value = false;
+  wireframeEditDraft.value = { content: {}, alignment: {} };
+  wireframeEditBaseline.value = { content: {}, alignment: {} };
+}
+
+function setWireframeContent(section, component, line, value) {
+  const key = wireframeContentKey(section, component, line);
+  wireframeEditDraft.value.content = { ...wireframeEditDraft.value.content, [key]: value };
+}
+
+function setWireframeAlignment(section, component, value) {
+  const key = wireframeAlignmentKey(section, component);
+  wireframeEditDraft.value.alignment = { ...wireframeEditDraft.value.alignment, [key]: value };
+}
+
+async function saveWireframeEdits() {
+  if (!wireframeEditing.value || !wireframeEditDirty.value || !store.proposal?.id) return;
+  const edits = [];
+  wireframeSections.value.forEach((section) => {
+    section.components.forEach((component) => {
+      component.contentLines.filter((line) => line.editable !== false).forEach((line) => {
+        const key = wireframeContentKey(section, component, line);
+        const nextValue = wireframeEditDraft.value.content[key] ?? "";
+        if (nextValue !== wireframeEditBaseline.value.content[key]) {
+          edits.push({
+            type: "update-content",
+            sectionKey: section.sectionKey || section.key,
+            componentKey: component.componentKey || component.key,
+            componentIndex: component.componentIndex || 0,
+            fieldKey: line.key,
+            valueText: nextValue,
+          });
+        }
+      });
+      const alignmentKey = wireframeAlignmentKey(section, component);
+      const nextAlignment = wireframeEditDraft.value.alignment[alignmentKey] || "";
+      if (nextAlignment && nextAlignment !== wireframeEditBaseline.value.alignment[alignmentKey]) {
+        edits.push({
+          type: "set-horizontal-alignment",
+          sectionKey: section.sectionKey || section.key,
+          componentKey: component.componentKey || component.key,
+          componentIndex: component.componentIndex || 0,
+          viewport: wireframeViewport.value,
+          alignment: nextAlignment,
+        });
+      }
+    });
+  });
+  if (!edits.length) return;
+  wireframeSaving.value = true;
+  clearBuilderError(store);
+  try {
+    const response = await updateWireframeDraft({
+      sessionId: chatSessionId.value,
+      documentId: store.documentId,
+      proposalId: store.proposal.id,
+      baseDocumentRevision: store.documentRevision,
+      wireframeRevision: wireframeRevision.value,
+      structureFingerprint: wireframeFingerprint.value,
+      edits,
+    });
+    store.proposal = response.proposal;
+    wireframeSnapshot.value = response.proposal.snapshot;
+    wireframeRevision.value = Number(response.wireframe.revision || wireframeRevision.value);
+    requirementsRevision.value = Number(response.wireframe.requirementsRevision || requirementsRevision.value);
+    wireframeFingerprint.value = response.wireframe.structureFingerprint;
+    if (response.overview && typeof response.overview === "object") updateOverviewDraft(response.overview);
+    cancelWireframeEdit();
+    messages.value.forEach((message) => {
+      if (!Array.isArray(message.actions)) return;
+      message.actions = message.actions.map((action) => (
+        ["approve_wireframe", "revise_wireframe"].includes(action.key)
+          && (!action.status || action.status === "proposed")
+          ? { ...action, status: "expired" }
+          : action
+      ));
+    });
+    await appendPersistedMessage("assistant", "페이지 구성의 문구와 배치 수정을 저장했습니다. 다른 내용은 유지되었습니다.", {
+      type: "assistant",
+      actions: [
+        { key: "approve_wireframe", label: "페이지 구성 승인" },
+        { key: "revise_wireframe", label: "추가 수정" },
+      ],
+    });
+  } catch (error) {
+    setBuilderError(store, error);
+  } finally {
+    wireframeSaving.value = false;
+  }
 }
 
 async function executeRequirementsEditAction(action) {
@@ -887,7 +1017,11 @@ function isChatActionDisabled(action) {
     return !requirementsEditing.value || !requirementsEditDirty.value;
   }
   if (action.key === "cancel_requirements_edit") return !requirementsEditing.value;
-  return requirementsEditing.value;
+  return requirementsEditing.value || wireframeEditing.value;
+}
+
+function visibleMessageActions(message) {
+  return (message?.actions || []).filter((action) => !action.status || action.status === "proposed");
 }
 
 async function handleChatAction(action) {
@@ -945,7 +1079,13 @@ async function handleChatAction(action) {
         );
         return;
       }
-      await appendPersistedMessage("assistant", "수정할 내용을 채팅으로 입력해 주세요.", { type: "assistant" });
+      markChatActionGroupHandled(action);
+      beginWireframeEdit();
+      await appendPersistedMessage(
+        "assistant",
+        "오른쪽 페이지 구성 미리보기에서 문구와 가로 배치를 수정한 뒤 ‘수정 저장’을 눌러 주세요.",
+        { type: "assistant" },
+      );
       return;
     }
     if (action.key === "open_output") {
@@ -1784,9 +1924,9 @@ onBeforeUnmount(() => {
                 <span v-if="message.status">{{ message.status === 'in_progress' ? '진행 중' : message.status === 'completed' ? '완료' : '실패' }}</span>
               </div>
               <p>{{ message.text }}</p>
-              <div v-if="message.actions?.length" class="ai-chat-actions">
+              <div v-if="visibleMessageActions(message).length" class="ai-chat-actions">
                 <button
-                  v-for="action in message.actions"
+                  v-for="action in visibleMessageActions(message)"
                   :key="action.key"
                   type="button"
                   :disabled="isChatActionDisabled(action)"
@@ -1866,7 +2006,7 @@ onBeforeUnmount(() => {
           </ol>
 
           <nav class="ai-result-tabs" aria-label="결과 보기">
-            <button type="button" :aria-current="activeResultTab === 'requirements' ? 'page' : undefined" @click="activeResultTab = 'requirements'">요구사항</button>
+            <button type="button" :aria-current="activeResultTab === 'requirements' ? 'page' : undefined" @click="activeResultTab = 'requirements'">요청 내용</button>
             <button type="button" :disabled="!wireframeDisplaySnapshot" :aria-current="activeResultTab === 'wireframe' ? 'page' : undefined" @click="activeResultTab = 'wireframe'">페이지 구성 미리보기</button>
             <button type="button" :disabled="!store.snapshot" :aria-current="activeResultTab === 'final' ? 'page' : undefined" @click="activeResultTab = 'final'">최종 디자인</button>
           </nav>
@@ -1874,11 +2014,11 @@ onBeforeUnmount(() => {
           <div class="ai-result-content">
             <section v-if="activeResultTab === 'requirements'" class="ai-requirements-tree">
               <header>
-                <strong>요구사항 Tree</strong>
+                <strong>요청 내용</strong>
                 <small v-if="requirementsEditing" class="is-editing">
                   편집 중 · 변경 {{ requirementsChangedCount }}개 · 완료/취소는 왼쪽 채팅에서 진행합니다.
                 </small>
-                <small v-else>수정과 승인은 왼쪽 채팅에서 진행합니다.</small>
+                <small v-else>생성 기준으로 내부 저장되며, 실제 문구와 배치는 페이지 구성에서 수정합니다.</small>
               </header>
               <ul v-if="store.overviewDraft" role="tree" :class="{ 'is-editing': requirementsEditing }">
                 <li
@@ -1940,21 +2080,32 @@ onBeforeUnmount(() => {
                   <strong>페이지 구성 미리보기</strong>
                   <small>{{ wireframeSections.length }}개 섹션 · {{ wireframeComponentCount }}개 콘텐츠 영역</small>
                 </div>
-                <div class="ai-page-preview-viewport" role="group" aria-label="미리보기 화면 크기">
-                  <button
-                    type="button"
-                    :aria-pressed="wireframeViewport === 'desktop'"
-                    @click="wireframeViewport = 'desktop'"
-                  >데스크톱</button>
-                  <button
-                    type="button"
-                    :aria-pressed="wireframeViewport === 'mobile'"
-                    @click="wireframeViewport = 'mobile'"
-                  >모바일</button>
+                <div class="ai-page-preview-actions">
+                  <div class="ai-page-preview-viewport" role="group" aria-label="미리보기 화면 크기">
+                    <button
+                      type="button"
+                      :disabled="wireframeEditing"
+                      :aria-pressed="wireframeViewport === 'desktop'"
+                      @click="wireframeViewport = 'desktop'"
+                    >데스크톱</button>
+                    <button
+                      type="button"
+                      :disabled="wireframeEditing"
+                      :aria-pressed="wireframeViewport === 'mobile'"
+                      @click="wireframeViewport = 'mobile'"
+                    >모바일</button>
+                  </div>
+                  <template v-if="wireframeEditing">
+                    <button type="button" class="ai-wireframe-edit-action is-secondary" :disabled="wireframeSaving" @click="cancelWireframeEdit">취소</button>
+                    <button type="button" class="ai-wireframe-edit-action" :disabled="wireframeSaving || !wireframeEditDirty" @click="saveWireframeEdits">
+                      {{ wireframeSaving ? '저장 중…' : '수정 저장' }}
+                    </button>
+                  </template>
+                  <button v-else type="button" class="ai-wireframe-edit-action" @click="beginWireframeEdit">내용·배치 수정</button>
                 </div>
               </header>
               <p class="ai-page-preview-notice">
-                현재 화면은 페이지 배치와 문구를 확인하는 단계입니다. 색상과 실제 이미지는 최종 디자인에서 적용됩니다.
+                현재 화면에서 문구와 가로 배치를 수정할 수 있습니다. 색상과 실제 이미지는 최종 디자인에서 적용됩니다.
               </p>
               <div class="ai-wireframe-stage" :data-viewport="wireframeViewport">
                 <div class="ai-wireframe-canvas">
@@ -1976,6 +2127,9 @@ onBeforeUnmount(() => {
                       v-for="component in section.components"
                       :key="component.key"
                       class="ai-wireframe-component"
+                      :data-align="wireframeEditing
+                        ? (wireframeEditDraft.alignment[wireframeAlignmentKey(section, component)] || component.horizontalAlignment || '')
+                        : component.horizontalAlignment"
                       :class="{
                         'ai-wireframe-component--image': component.isImage,
                         'ai-wireframe-component--title': component.isTitle,
@@ -1991,7 +2145,15 @@ onBeforeUnmount(() => {
                       <div v-if="component.contentLines.length" class="ai-wireframe-copy">
                         <p v-for="line in component.contentLines" :key="line.key">
                           <span v-if="line.label">{{ line.label }}</span>
-                          <strong :title="line.fullText">{{ line.text }}</strong>
+                          <textarea
+                            v-if="wireframeEditing && line.editable !== false"
+                            :value="wireframeEditDraft.content[wireframeContentKey(section, component, line)] ?? line.fullText"
+                            :aria-label="`${component.label} ${line.label || '내용'} 수정`"
+                            rows="2"
+                            maxlength="3000"
+                            @input="setWireframeContent(section, component, line, $event.target.value)"
+                          ></textarea>
+                          <strong v-else :title="line.fullText">{{ line.text }}</strong>
                         </p>
                       </div>
                       <div v-else class="ai-wireframe-placeholder">
@@ -2001,6 +2163,16 @@ onBeforeUnmount(() => {
                           : component.requiresConfirmation
                             ? "확정할 내용을 입력해 주세요"
                             : "표시할 내용이 아직 없습니다" }}
+                      </div>
+                      <div v-if="wireframeEditing" class="ai-wireframe-alignment" role="group" :aria-label="`${component.label} 가로 배치`">
+                        <span>가로 배치</span>
+                        <button
+                          v-for="alignment in ['left', 'center', 'right']"
+                          :key="alignment"
+                          type="button"
+                          :aria-pressed="wireframeEditDraft.alignment[wireframeAlignmentKey(section, component)] === alignment"
+                          @click="setWireframeAlignment(section, component, alignment)"
+                        >{{ { left: '왼쪽', center: '가운데', right: '오른쪽' }[alignment] }}</button>
                       </div>
                     </div>
                   </div>

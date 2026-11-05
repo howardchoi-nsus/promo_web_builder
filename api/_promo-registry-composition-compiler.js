@@ -416,6 +416,28 @@ async function compileRegistryComposition({
         };
         applyCollectionGeometry(presetItemStyles, sectionId, entries, collection);
         applyCollectionGeometry(mobileItemStyles, sectionId, entries, collection, { mobile: true });
+        const applyHorizontalAlignment = (styles, alignments = {}) => {
+          entries.forEach((entry) => {
+            const alignment = alignments[entry.componentIndex];
+            if (!["left", "center", "right"].includes(alignment)) return;
+            const styleKey = `${sectionId}.${entry.componentId}`;
+            const current = styles[styleKey] || {};
+            const widthPct = Math.max(0, Math.min(100, Number(current.widthPct || 100)));
+            styles[styleKey] = {
+              ...current,
+              positionMode: "free",
+              xPct: alignment === "left" ? 0 : alignment === "right" ? 100 - widthPct : (100 - widthPct) / 2,
+            };
+          });
+        };
+        applyHorizontalAlignment(
+          presetItemStyles,
+          selected.layoutOverrides?.desktop?.horizontalAlignments,
+        );
+        applyHorizontalAlignment(
+          mobileItemStyles,
+          selected.layoutOverrides?.mobile?.horizontalAlignments,
+        );
       }
       if (usesSectionKeyVisualTarget(section)) {
         const assetRequest = {

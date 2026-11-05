@@ -82,6 +82,7 @@ assert.deepEqual(editActions.map((action) => action.actionKey), [
   "cancel_requirements_edit",
 ]);
 assert.equal(assertActionTransition("approve_wireframe", "wireframe_review").to, "finalizing");
+assert.equal(assertActionTransition("revise_wireframe", "wireframe_review").to, "wireframe_review");
 assert.equal(assertActionTransition("approve_wireframe", "finalizing").to, "finalizing");
 assert.throws(
   () => normalizeActions([{ key: "approve_wireframe", label: "승인" }], "requirements_review"),
@@ -140,6 +141,7 @@ for (const endpoint of [
   "/api/promo-builder-chat-actions",
   "/api/promo-builder-wireframes",
   "/api/promo-builder-wireframes-confirm",
+  "/api/promo-builder-wireframe-edits",
 ]) assert.match(client, new RegExp(endpoint.replaceAll("/", "\\/")));
 assert.match(client, /listChatWorkspaces/);
 

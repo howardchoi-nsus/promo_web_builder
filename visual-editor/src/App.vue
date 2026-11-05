@@ -148,6 +148,7 @@ const editorLibraryAdapter = createEditorLibraryAdapter();
 const promoBuilderAdapter = createPromoBuilderAdapter();
 const outputAdapter = createOutputAdapter({ storageKey: SNAPSHOT_STORAGE_KEY });
 let applyingExternalSnapshot = false;
+let pendingWizardHostNotification = false;
 let lastExternalSnapshotRevision = 0;
 let disconnectPromoBuilder = null;
 let compositionRequestSequence = 0;
@@ -398,7 +399,11 @@ function applyEditorCoreResult(result) {
 }
 
 function executeEditorCommand(type, payload, { source = "ui", label = type } = {}) {
-  return applyEditorCoreResult(editorCore.execute(editorCommand(type, payload, { source, label })));
+  const applied = applyEditorCoreResult(editorCore.execute(editorCommand(type, payload, { source, label })));
+  if (applied && isWizardLayoutMode.value && applyingExternalSnapshot) {
+    pendingWizardHostNotification = true;
+  }
+  return applied;
 }
 
 function undoEditorCommand() {
@@ -2459,6 +2464,10 @@ async function applyExternalSnapshot(snapshot) {
   error.value = "";
   await nextTick();
   applyingExternalSnapshot = false;
+  if (pendingWizardHostNotification) {
+    pendingWizardHostNotification = false;
+    notifyWizardHostChange();
+  }
 }
 
 function handleParentMessage(message) {
@@ -2476,7 +2485,7 @@ function handleParentMessage(message) {
   }
 }
 
-watch([designSpec, sectionInputs, sections], () => {
+function notifyWizardHostChange() {
   if (!isWizardLayoutMode.value || !externalSnapshotReady.value || applyingExternalSnapshot) return;
   promoBuilderAdapter.notifyChange({
     snapshotRevision: lastExternalSnapshotRevision,
@@ -2487,6 +2496,10 @@ watch([designSpec, sectionInputs, sections], () => {
   editorCore.markSaved();
   updateEditorHistory();
   notifyHostDirtyState(false);
+}
+
+watch([designSpec, sectionInputs, sections], () => {
+  notifyWizardHostChange();
 }, { deep: true });
 
 async function loadEditorLibraries() {

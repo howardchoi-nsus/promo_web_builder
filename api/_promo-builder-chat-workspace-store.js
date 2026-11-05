@@ -356,6 +356,56 @@ async function saveWireframeRevision(sql, {
   return toWireframe(rows[0]);
 }
 
+async function updateWireframeDraft(sql, {
+  sessionId, ownerSubject, documentId, proposalId, baseDocumentRevision,
+  wireframeRevision, expectedStructureFingerprint,
+  snapshot, requestSnapshot, structure, structureFingerprint,
+}) {
+  const rows = await sql`
+    with target_session as (
+      select session.id
+      from promo_builder_chat_sessions session
+      join promo_builder_documents document on document.id = session.document_id
+      where session.id = ${sessionId}::uuid
+        and session.document_id = ${documentId}::uuid
+        and session.owner_subject = ${ownerSubject}
+        and session.stage = 'wireframe_review'
+        and document.current_document_revision = ${baseDocumentRevision}
+    ), target_draft as (
+      select wireframe.id
+      from promo_builder_wireframe_revisions wireframe
+      join target_session on target_session.id = wireframe.session_id
+      where wireframe.document_id = ${documentId}::uuid
+        and wireframe.proposal_id = ${proposalId}::uuid
+        and wireframe.revision = ${wireframeRevision}
+        and wireframe.structure_fingerprint = ${expectedStructureFingerprint}
+        and wireframe.status = 'draft'
+    ), updated_proposal as (
+      update promo_builder_composition_proposals proposal
+      set proposal_snapshot = ${JSON.stringify(snapshot)}::jsonb,
+        request_snapshot = ${JSON.stringify(requestSnapshot)}::jsonb,
+        updated_at = now()
+      from target_draft
+      where proposal.id = ${proposalId}::uuid
+        and proposal.document_id = ${documentId}::uuid
+        and proposal.base_document_revision = ${baseDocumentRevision}
+        and proposal.status = 'ready'
+      returning proposal.id
+    )
+    update promo_builder_wireframe_revisions wireframe
+    set snapshot_json = ${JSON.stringify(snapshot)}::jsonb,
+      structure_json = ${JSON.stringify(structure)}::jsonb,
+      structure_fingerprint = ${structureFingerprint},
+      status = 'draft',
+      confirmed_at = null
+    from target_draft, updated_proposal
+    where wireframe.id = target_draft.id
+      and wireframe.proposal_id = updated_proposal.id
+    returning wireframe.*
+  `;
+  return toWireframe(rows[0]);
+}
+
 async function confirmWireframeRevision(sql, {
   sessionId, ownerSubject, revision, structureFingerprint,
 }) {
@@ -415,6 +465,7 @@ module.exports = {
   saveRequirementsRevision,
   executeAction,
   saveWireframeRevision,
+  updateWireframeDraft,
   confirmWireframeRevision,
   fetchConfirmedWireframe,
   completeSession,
