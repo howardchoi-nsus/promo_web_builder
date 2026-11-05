@@ -1222,7 +1222,7 @@ onBeforeUnmount(() => {
             </section>
 
             <section v-else-if="activeResultTab === 'wireframe' && wireframeDisplaySnapshot" class="ai-wireframe-review">
-              <header><strong>B/W Wireframe</strong><small>색상·디자인 토큰·실제 이미지를 제외한 구조 검토용 화면입니다.</small></header>
+              <header><strong>B/W Wireframe</strong><small>실제 문구와 구조를 확인합니다. 색상·디자인 토큰·실제 이미지는 제외됩니다.</small></header>
               <div class="ai-wireframe-canvas">
                 <article v-for="section in wireframeSections" :key="section.key" class="ai-wireframe-section">
                   <header>
@@ -1236,11 +1236,26 @@ onBeforeUnmount(() => {
                     <div
                       v-for="component in section.components"
                       :key="component.key"
+                      class="ai-wireframe-component"
+                      :class="{ 'ai-wireframe-component--image': component.isImage }"
                       :title="component.technicalLabel"
                     >
-                      <span>{{ component.order }}</span>
-                      <strong>{{ component.label }}</strong>
-                      <small>{{ component.typeLabel }}</small>
+                      <header>
+                        <span>{{ component.order }}</span>
+                        <div>
+                          <strong>{{ component.label }}</strong>
+                          <small>{{ component.typeLabel }}</small>
+                        </div>
+                      </header>
+                      <div v-if="component.contentLines.length" class="ai-wireframe-copy">
+                        <p v-for="line in component.contentLines" :key="line.key">
+                          <span v-if="line.label">{{ line.label }}</span>
+                          <strong :title="line.fullText">{{ line.text }}</strong>
+                        </p>
+                      </div>
+                      <div v-else class="ai-wireframe-placeholder">
+                        {{ component.isImage ? "이미지 영역" : "내용 입력 영역" }}
+                      </div>
                     </div>
                   </div>
                 </article>

@@ -15,6 +15,10 @@ const contentResult = buildWireframeSections({
         name: "Title",
         fieldKind: "text",
         textType: "title",
+        fields: [
+          { fieldKey: "text", name: "Text", fieldKind: "text", textType: "title" },
+          { fieldKey: "subtitle", name: "Subtitle", fieldKind: "text", textType: "remark" },
+        ],
       }, {
         itemKey: "item_opaque456",
         sourceItemKey: "primaryAction",
@@ -25,6 +29,20 @@ const contentResult = buildWireframeSections({
         fieldKind: "image",
       }],
     }],
+    sectionInputs: {
+      sec_coooo123: {
+        cmp_opaque123: { fields: {
+          text: "겨울 시즌 스페셜 경품 이벤트",
+          subtitle: "지금 참여하고 특별한 경품을 만나보세요.",
+        } },
+        item_opaque456: "이벤트 참여하기",
+        item_opaque789: {
+          source: "url",
+          value: "https://example.com/hero.jpg",
+          alt: "눈 내리는 겨울 경품 이미지",
+        },
+      },
+    },
   },
   preview: { sections: [{ sectionKey: "ignored-preview" }] },
 });
@@ -37,6 +55,29 @@ assert.deepEqual(contentResult[0].components.map((item) => item.label), [
 ]);
 assert.equal(contentResult[0].components[0].typeLabel, "텍스트 · 제목");
 assert.equal(contentResult[0].components[1].typeLabel, "버튼");
+assert.deepEqual(contentResult[0].components[0].contentLines.map((line) => line.text), [
+  "겨울 시즌 스페셜 경품 이벤트",
+  "지금 참여하고 특별한 경품을 만나보세요.",
+]);
+assert.equal(contentResult[0].components[0].contentLines[1].label, "보조 제목");
+assert.equal(contentResult[0].components[1].contentLines[0].text, "이벤트 참여하기");
+assert.equal(contentResult[0].components[2].contentLines[0].text, "눈 내리는 겨울 경품 이미지");
+assert.ok(!contentResult[0].components[2].contentLines[0].text.includes("https://"));
+
+const longCopy = "긴 약관 문구 ".repeat(40).trim();
+const longCopyResult = buildWireframeSections({
+  content: {
+    sectionSnapshot: [{
+      sectionKey: "terms-section",
+      sectionRole: "terms",
+      items: [{ itemKey: "legal-copy", sourceItemKey: "legal", fieldKind: "text", textType: "multi" }],
+    }],
+    sectionInputs: { "terms-section": { "legal-copy": longCopy } },
+  },
+});
+assert.equal(longCopyResult[0].components[0].contentLines[0].truncated, true);
+assert.ok(longCopyResult[0].components[0].contentLines[0].text.endsWith("…"));
+assert.equal(longCopyResult[0].components[0].contentLines[0].fullText, longCopy);
 
 const previewResult = buildWireframeSections({
   preview: {

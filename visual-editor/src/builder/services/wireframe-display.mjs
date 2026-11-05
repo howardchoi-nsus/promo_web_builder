@@ -101,6 +101,8 @@ const TEXT_TYPE_LABELS = {
 
 const INTERNAL_KEY_PATTERN = /^(?:sec|item|cmp|component)_[a-z0-9_-]+$/i;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const URL_PATTERN = /^(?:https?:|data:|blob:|\/\/)/i;
+const MAX_PREVIEW_LENGTH = 280;
 
 function normalizedKey(value) {
   return String(value || "")
@@ -157,6 +159,88 @@ function resolveComponentType(item) {
   return kind || textType || "콘텐츠 영역";
 }
 
+function compactText(value) {
+  const fullText = String(value ?? "").replace(/\s+/g, " ").trim();
+  if (!fullText || URL_PATTERN.test(fullText)) return null;
+  const truncated = fullText.length > MAX_PREVIEW_LENGTH;
+  return {
+    text: truncated ? `${fullText.slice(0, MAX_PREVIEW_LENGTH).trimEnd()}…` : fullText,
+    fullText,
+    truncated,
+  };
+}
+
+function commonObjectText(value, fieldKind = "") {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const kind = normalizedKey(fieldKind);
+  const candidateKeys = kind === "image"
+    ? ["alt", "caption", "name", "title"]
+    : kind === "cta" || kind === "link"
+      ? ["label", "text", "title", "name"]
+      : ["text", "title", "label", "content", "copy", "description", "name", "alt", "value"];
+  for (const key of candidateKeys) {
+    const candidate = value[key];
+    if (["string", "number", "boolean"].includes(typeof candidate)) {
+      const result = compactText(candidate);
+      if (result) return result;
+    }
+  }
+  return null;
+}
+
+function displayText(value, fieldKind = "") {
+  if (["string", "number", "boolean"].includes(typeof value)) return compactText(value);
+  if (Array.isArray(value)) {
+    const values = value
+      .map((entry) => displayText(entry, fieldKind)?.fullText)
+      .filter(Boolean)
+      .slice(0, 3);
+    return values.length ? compactText(values.join(" · ")) : null;
+  }
+  return commonObjectText(value, fieldKind);
+}
+
+function resolveFieldLabel(field) {
+  const key = normalizedKey(field?.fieldKey);
+  if (["text", "content", "value"].includes(key)) return "";
+  return COMPONENT_LABELS[key]
+    || TEXT_TYPE_LABELS[normalizedKey(field?.textType)]
+    || readableFallback(field?.name)
+    || readableFallback(field?.fieldKey);
+}
+
+function resolveContentLines(item, inputValue) {
+  if (inputValue === undefined || inputValue === null) return [];
+  const fields = Array.isArray(item?.fields) ? item.fields : [];
+  const fieldValues = inputValue && typeof inputValue === "object" && !Array.isArray(inputValue)
+    && inputValue.fields && typeof inputValue.fields === "object"
+    ? inputValue.fields
+    : null;
+
+  if (fieldValues) {
+    const definedFields = fields.length
+      ? fields
+      : Object.keys(fieldValues).map((fieldKey) => ({ fieldKey }));
+    return definedFields.flatMap((field) => {
+      const content = displayText(fieldValues[field.fieldKey], field.fieldKind || item.fieldKind);
+      return content ? [{
+        key: field.fieldKey,
+        label: resolveFieldLabel(field),
+        kind: normalizedKey(field.fieldKind || item.fieldKind) || "content",
+        ...content,
+      }] : [];
+    });
+  }
+
+  const content = displayText(inputValue, item?.fieldKind);
+  return content ? [{
+    key: item?.itemKey || "value",
+    label: "",
+    kind: normalizedKey(item?.fieldKind) || "content",
+    ...content,
+  }] : [];
+}
+
 function resolveLayoutLabel(layoutKey) {
   const key = normalizedKey(layoutKey);
   if (LAYOUT_LABELS[key]) return LAYOUT_LABELS[key];
@@ -169,21 +253,32 @@ function resolveLayoutLabel(layoutKey) {
 function contentSections(snapshot) {
   const sections = snapshot?.content?.sectionSnapshot;
   if (!Array.isArray(sections) || sections.length === 0) return [];
-  return sections.map((section, sectionIndex) => ({
-    key: section.sectionKey || `section:${sectionIndex}`,
-    order: sectionIndex + 1,
-    label: resolveSectionLabel(section),
-    technicalLabel: section.sourceSectionKey || section.sectionKey || "",
-    roleLabel: SECTION_LABELS[normalizedKey(section.sectionRole)] || "콘텐츠 섹션",
-    layoutLabel: resolveLayoutLabel(section.selectedLayoutKey || section.defaultLayoutKey),
-    components: (section.items || []).map((item, itemIndex) => ({
-      key: item.itemKey || `item:${itemIndex}`,
-      order: itemIndex + 1,
-      label: resolveComponentLabel(item, itemIndex),
-      typeLabel: resolveComponentType(item),
-      technicalLabel: item.sourceItemKey || item.itemKey || "",
-    })),
-  }));
+  const allInputs = snapshot?.content?.sectionInputs || {};
+  return sections.map((section, sectionIndex) => {
+    const sectionInputs = allInputs[section.sectionKey] || allInputs[section.id] || {};
+    return {
+      key: section.sectionKey || `section:${sectionIndex}`,
+      order: sectionIndex + 1,
+      label: resolveSectionLabel(section),
+      technicalLabel: section.sourceSectionKey || section.sectionKey || "",
+      roleLabel: SECTION_LABELS[normalizedKey(section.sectionRole)] || "콘텐츠 섹션",
+      layoutLabel: resolveLayoutLabel(section.selectedLayoutKey || section.defaultLayoutKey),
+      components: (section.items || []).map((item, itemIndex) => {
+        const inputValue = sectionInputs[item.itemKey]
+          ?? sectionInputs[item.id]
+          ?? sectionInputs[item.sourceItemKey];
+        return {
+          key: item.itemKey || `item:${itemIndex}`,
+          order: itemIndex + 1,
+          label: resolveComponentLabel(item, itemIndex),
+          typeLabel: resolveComponentType(item),
+          technicalLabel: item.sourceItemKey || item.itemKey || "",
+          contentLines: resolveContentLines(item, inputValue),
+          isImage: normalizedKey(item.fieldKind) === "image",
+        };
+      }),
+    };
+  });
 }
 
 function previewSections(snapshot) {
@@ -205,6 +300,8 @@ function previewSections(snapshot) {
             label: resolveComponentLabel({ sourceItemKey: componentKey }, componentIndex),
             typeLabel: "콘텐츠 영역",
             technicalLabel: componentKey,
+            contentLines: [],
+            isImage: false,
           };
         },
       ));

@@ -104,10 +104,18 @@
 .ai-wireframe-section-name > span { display: grid; width: 28px; height: 28px; flex: 0 0 auto; place-items: center; border: 1px solid #6c746f; border-radius: 50%; background: #fff; color: #4d5550; font-size: 10px; font-weight: 900; }
 .ai-wireframe-section-name > strong { font-size: 14px; overflow-wrap: anywhere; }
 .ai-wireframe-components { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; padding: 12px; }
-.ai-wireframe-components > div { display: grid; min-height: 92px; place-items: center; align-content: center; gap: 6px; padding: 12px 10px; border: 1px dashed #737c77; background: #e8ebe9; color: #303632; text-align: center; }
-.ai-wireframe-components > div > span { display: grid; width: 24px; height: 24px; place-items: center; border: 1px solid #89918d; border-radius: 4px; background: #fff; color: #555e59; font-size: 10px; font-weight: 900; }
-.ai-wireframe-components strong { font-size: 12px; overflow-wrap: anywhere; }
-.ai-wireframe-components small { color: #69716d; font-size: 10px; }
+.ai-wireframe-component { min-width: 0; min-height: 124px; border: 1px dashed #737c77; background: #e8ebe9; color: #303632; }
+.ai-wireframe-component > header { display: flex; align-items: center; gap: 8px; padding: 9px 10px; border-bottom: 1px solid #c4cac6; text-align: left; }
+.ai-wireframe-component > header > span { display: grid; width: 24px; height: 24px; flex: 0 0 auto; place-items: center; border: 1px solid #89918d; border-radius: 4px; background: #fff; color: #555e59; font-size: 10px; font-weight: 900; }
+.ai-wireframe-component > header > div { display: grid; min-width: 0; gap: 2px; }
+.ai-wireframe-component > header strong { font-size: 12px; overflow-wrap: anywhere; }
+.ai-wireframe-component > header small { color: #69716d; font-size: 10px; }
+.ai-wireframe-copy { display: grid; gap: 7px; padding: 10px; }
+.ai-wireframe-copy p { display: grid; gap: 3px; margin: 0; padding: 8px; border: 1px solid #d0d5d2; background: #fff; text-align: left; }
+.ai-wireframe-copy p > span { color: #6b746f; font-size: 9px; font-weight: 800; }
+.ai-wireframe-copy p > strong { display: -webkit-box; overflow: hidden; color: #2f3532; font-size: 11px; font-weight: 750; line-height: 1.45; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+.ai-wireframe-placeholder { display: grid; min-height: 76px; place-items: center; margin: 10px; border: 1px solid #c6ccc8; background: #f5f6f5; color: #747d78; font-size: 10px; font-weight: 750; }
+.ai-wireframe-component--image .ai-wireframe-copy::before { display: block; height: 42px; border: 1px solid #aeb6b1; background: repeating-linear-gradient(135deg, #f4f5f4, #f4f5f4 8px, #e2e5e3 8px, #e2e5e3 16px); content: ""; }
 .ai-final-review .ai-builder-result { width: 100%; border: 0; }
 .ai-final-review .ai-builder-preview { max-height: none; }
 
@@ -555,7 +563,7 @@
   .registry-proposal-badges { justify-content: flex-start; }
   .ai-wireframe-review > header { align-items: flex-start; flex-direction: column; }
   .ai-wireframe-section > header { align-items: flex-start; flex-direction: column; }
-  .ai-wireframe-components { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ai-wireframe-components { grid-template-columns: 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {
