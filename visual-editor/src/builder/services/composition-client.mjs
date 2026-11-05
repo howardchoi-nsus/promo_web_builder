@@ -108,6 +108,10 @@ export function loadChatWorkspace(sessionId) {
   return request(`/api/promo-builder-chat-sessions?sessionId=${encodeURIComponent(sessionId)}`);
 }
 
+export function listChatWorkspaces(limit = 30) {
+  return request(`/api/promo-builder-chat-sessions?limit=${encodeURIComponent(limit)}`);
+}
+
 export function saveChatMessage(sessionId, message) {
   return request("/api/promo-builder-chat-messages", {
     method: "POST",

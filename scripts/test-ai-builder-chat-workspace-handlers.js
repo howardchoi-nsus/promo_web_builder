@@ -27,11 +27,17 @@ async function testSession() {
     ...common,
     createOrLoadSession: async () => ({ id: "session-1", stage: "idle" }),
     fetchSession: async () => ({ session: { id: "session-1", stage: "idle" }, messages: [], requirements: null, wireframe: null }),
+    listSessions: async () => [{ id: "session-history", title: "겨울 프로모션", stage: "completed" }],
   });
   const res = response();
   await handler({ method: "POST", body: { documentId: "document-1" }, query: {} }, res);
   assert.equal(res.statusCode, 201);
   assert.equal(res.body.session.id, "session-1");
+
+  const listRes = response();
+  await handler({ method: "GET", body: null, query: { limit: "20" } }, listRes);
+  assert.equal(listRes.statusCode, 200);
+  assert.equal(listRes.body.sessions[0].title, "겨울 프로모션");
 }
 
 async function testMessageActions() {

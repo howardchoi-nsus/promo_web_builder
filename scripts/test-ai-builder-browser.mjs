@@ -124,6 +124,22 @@ const server = http.createServer(async (request, response) => {
     }));
     return;
   }
+  if (url.pathname === "/api/promo-builder-chat-sessions" && request.method === "GET") {
+    response.writeHead(200, { "Content-Type": "application/json" });
+    response.end(JSON.stringify({
+      ok: true,
+      sessions: [{
+        id: "session-history",
+        documentId: "document-history",
+        requestId: "request-history",
+        title: "지난 겨울 프로모션",
+        preview: "겨울 신규 회원 이벤트를 만들어 주세요.",
+        stage: "completed",
+        updatedAt: "2026-11-05T03:00:00.000Z",
+      }],
+    }));
+    return;
+  }
   if (url.pathname === "/api/promo-builder-chat-messages" && request.method === "POST") {
     const chunks = [];
     for await (const chunk of request) chunks.push(chunk);
@@ -299,6 +315,13 @@ const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage();
 const errors = [];
 page.on("pageerror", (error) => errors.push(error.message));
+await page.addInitScript(() => {
+  localStorage.setItem("promoAiBuilder.chatWorkspace.v1", JSON.stringify({
+    documentId: "legacy-document",
+    chatSessionId: "legacy-session",
+    messages: [{ id: "legacy-message", role: "user", text: "자동 복원되면 안 되는 이전 대화" }],
+  }));
+});
 
 try {
   await page.goto(`${origin}/create-promo.html`, { waitUntil: "networkidle" });
@@ -306,6 +329,12 @@ try {
   assert.equal(await page.getByRole("button", { name: /AI 모드/ }).isEnabled(), true);
   await page.getByRole("button", { name: /AI 모드/ }).click();
   await page.getByText("프로모션 제작 대화").waitFor();
+  assert.equal(await page.getByText("자동 복원되면 안 되는 이전 대화").count(), 0);
+  await page.getByRole("button", { name: "기존 대화 목록 열기" }).click();
+  await page.getByRole("dialog", { name: "기존 대화 목록" }).waitFor();
+  await page.getByText("지난 겨울 프로모션").waitFor();
+  assert.equal(await page.getByRole("button", { name: "+ 새 대화" }).isEnabled(), true);
+  await page.getByRole("button", { name: "대화 목록 닫기" }).click();
   assert.equal(await page.locator('link[href*="visual-editor-assets/ai-builder.css"]').count(), 1);
   const workspaceStyles = await page.locator(".ai-chat-workspace").evaluate((element) => {
     const styles = getComputedStyle(element);
@@ -365,6 +394,8 @@ try {
   ));
   assert.ok(mobileTitleFontSize >= 32 && mobileTitleFontSize <= 52);
   assert.match(page.url(), /create-promo\.html/);
+  assert.equal(await page.evaluate(() => localStorage.getItem("promoAiBuilder.chatWorkspace.v1")), null);
+  assert.ok(await page.evaluate(() => sessionStorage.getItem("promoAiBuilder.activeChat.v2")));
   assert.equal(builderSessionRequestCount, 1);
   assert.equal(eventAuthFailureCount, 0);
   assert.deepEqual(errors, []);

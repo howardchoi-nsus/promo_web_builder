@@ -34,6 +34,7 @@ import {
   deleteReferenceImage,
   createChatWorkspace,
   loadChatWorkspace,
+  listChatWorkspaces,
   saveChatMessage,
   saveRequirementsRevision,
   executeChatAction,
@@ -41,6 +42,7 @@ import {
   confirmWireframeRevision,
 } from "./services/composition-client.mjs";
 import { buildWireframeSections } from "./services/wireframe-display.mjs";
+import { createAiBuilderState } from "../shared/composition/composition-state.mjs";
 
 const props = defineProps({
   initialMode: { type: String, default: "" },
@@ -55,7 +57,8 @@ const designReferenceId = new URLSearchParams(window.location.search).get("desig
 const pendingOperations = ref(null);
 const operationConflict = ref(null);
 const overviewRetry = ref(null);
-const CHAT_STORAGE_KEY = "promoAiBuilder.chatWorkspace.v1";
+const ACTIVE_CHAT_STORAGE_KEY = "promoAiBuilder.activeChat.v2";
+const LEGACY_CHAT_STORAGE_KEY = "promoAiBuilder.chatWorkspace.v1";
 const messages = ref([]);
 const attachments = ref([]);
 const chatInput = ref("");
@@ -70,6 +73,11 @@ const splitPercent = ref(38);
 const draggingSplit = ref(false);
 const chatList = ref(null);
 const fileInput = ref(null);
+const chatMenuOpen = ref(false);
+const chatSessions = ref([]);
+const chatSessionsLoading = ref(false);
+const chatSessionsError = ref("");
+const chatSessionSwitching = ref(false);
 let assetPollingCancelled = false;
 let localeUnsubscribe = null;
 const localeRevision = ref(0);
@@ -205,7 +213,7 @@ function updateStatusMessage(operationId, text, status = "in_progress") {
 
 function persistWorkspace() {
   try {
-    localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify({
+    sessionStorage.setItem(ACTIVE_CHAT_STORAGE_KEY, JSON.stringify({
       documentId: store.documentId,
       documentRevision: store.documentRevision,
       requestId: store.requestId,
@@ -231,7 +239,7 @@ function persistWorkspace() {
 
 function restoreWorkspaceCache() {
   try {
-    const cached = JSON.parse(localStorage.getItem(CHAT_STORAGE_KEY) || "null");
+    const cached = JSON.parse(sessionStorage.getItem(ACTIVE_CHAT_STORAGE_KEY) || "null");
     if (!cached || typeof cached !== "object") return null;
     messages.value = Array.isArray(cached.messages) ? cached.messages : [];
     attachments.value = Array.isArray(cached.attachments) ? cached.attachments : [];
@@ -252,6 +260,119 @@ function restoreWorkspaceCache() {
     return cached;
   } catch {
     return null;
+  }
+}
+
+function resetWorkspaceState() {
+  const executionDisplays = store.executionDisplays;
+  Object.assign(store, createAiBuilderState({ executionDisplays }));
+  messages.value = [];
+  attachments.value = [];
+  chatInput.value = "";
+  wireframeSnapshot.value = null;
+  chatSessionId.value = "";
+  requirementsRevision.value = 0;
+  wireframeRevision.value = 0;
+  wireframeFingerprint.value = "";
+  activeResultTab.value = "requirements";
+  pendingOperations.value = null;
+  operationConflict.value = null;
+  overviewRetry.value = null;
+}
+
+function appendWelcomeMessage() {
+  if (messages.value.length) return;
+  appendMessage(
+    "assistant",
+    "만들고 싶은 프로모션을 설명하거나 참고 화면을 붙여넣어 주세요. 이미지와 자연어를 함께 입력할 수 있습니다.",
+    { type: "assistant" },
+  );
+}
+
+function chatStageLabel(stage) {
+  return ({
+    idle: "작성 대기",
+    requirements_review: "요구사항 검토",
+    wireframe_review: "Wireframe 검토",
+    finalizing: "최종 생성 중",
+    completed: "완료",
+  })[stage] || "작성 중";
+}
+
+function formatChatUpdatedAt(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("ko-KR", {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+async function refreshChatSessions() {
+  if (!capabilities.value.chatWorkspaceV1 || chatSessionsLoading.value) return;
+  chatSessionsLoading.value = true;
+  chatSessionsError.value = "";
+  try {
+    const response = await listChatWorkspaces(30);
+    chatSessions.value = Array.isArray(response.sessions) ? response.sessions : [];
+  } catch (error) {
+    chatSessionsError.value = error.message || "대화 목록을 불러오지 못했습니다.";
+  } finally {
+    chatSessionsLoading.value = false;
+  }
+}
+
+async function toggleChatMenu() {
+  chatMenuOpen.value = !chatMenuOpen.value;
+  if (chatMenuOpen.value) await refreshChatSessions();
+}
+
+function startNewConversation() {
+  if (interactionLocked.value || chatSessionSwitching.value) return;
+  sessionStorage.removeItem(ACTIVE_CHAT_STORAGE_KEY);
+  localStorage.removeItem(LEGACY_CHAT_STORAGE_KEY);
+  const url = new URL(window.location.href);
+  url.searchParams.set("mode", "ai");
+  window.location.assign(url.toString());
+}
+
+async function openChatSession(summary) {
+  if (!summary?.id || interactionLocked.value || chatSessionSwitching.value) return;
+  if (summary.id === chatSessionId.value) {
+    chatMenuOpen.value = false;
+    return;
+  }
+  chatSessionSwitching.value = true;
+  chatSessionsError.value = "";
+  try {
+    const [workspace, loaded] = await Promise.all([
+      loadChatWorkspace(summary.id),
+      loadBuilderDocument(summary.documentId),
+    ]);
+    resetWorkspaceState();
+    store.documentId = summary.documentId;
+    store.requestId = summary.requestId || "";
+    store.documentRevision = Number(loaded.document?.currentDocumentRevision || 0);
+    store.snapshot = loaded.snapshot || null;
+    hydrateChatWorkspace(workspace);
+    if (workspace.wireframe?.proposalId) {
+      const proposal = await loadCompositionProposal(workspace.wireframe.proposalId);
+      store.proposal = proposal.proposal;
+    }
+    if (store.snapshot) store.stage = "render_ready";
+    else if (wireframeSnapshot.value) store.stage = "review_required";
+    else if (store.overviewDraft) store.stage = "reviewing_overview";
+    else store.stage = "idle";
+    appendWelcomeMessage();
+    persistWorkspace();
+    chatMenuOpen.value = false;
+  } catch (error) {
+    chatSessionsError.value = error.message || "기존 대화를 열지 못했습니다.";
+  } finally {
+    chatSessionSwitching.value = false;
   }
 }
 
@@ -995,10 +1116,9 @@ watch(() => [store.documentId, store.documentRevision, store.stage, store.overvi
 
 onMounted(async () => {
   try {
+    localStorage.removeItem(LEGACY_CHAT_STORAGE_KEY);
     const cached = restoreWorkspaceCache();
-    if (!messages.value.length) {
-      appendMessage("assistant", "만들고 싶은 프로모션을 설명하거나 참고 화면을 붙여넣어 주세요. 이미지와 자연어를 함께 입력할 수 있습니다.", { type: "assistant" });
-    }
+    appendWelcomeMessage();
     localeUnsubscribe = window.PromoI18n?.subscribe?.(() => {
       localeRevision.value += 1;
     }) || null;
@@ -1048,6 +1168,7 @@ onMounted(async () => {
         await ensureDocument();
       }
       await ensureChatWorkspace();
+      appendWelcomeMessage();
     }
     await executionLookups;
   } catch (error) {
@@ -1102,11 +1223,64 @@ onBeforeUnmount(() => {
         :class="{ 'is-dragging': draggingSplit }"
         :style="{ '--chat-pane': `${splitPercent}%` }"
       >
+        <div
+          v-if="chatMenuOpen"
+          class="ai-chat-history-overlay"
+          role="presentation"
+          tabindex="-1"
+          @click.self="chatMenuOpen = false"
+          @keydown.esc="chatMenuOpen = false"
+        >
+          <aside class="ai-chat-history" role="dialog" aria-modal="true" aria-label="기존 대화 목록">
+            <header>
+              <div>
+                <p class="ai-builder-eyebrow">AI Builder</p>
+                <strong>기존 대화</strong>
+              </div>
+              <button type="button" aria-label="대화 목록 닫기" @click="chatMenuOpen = false">×</button>
+            </header>
+            <button
+              type="button"
+              class="ai-chat-history__new"
+              :disabled="interactionLocked || chatSessionSwitching"
+              @click="startNewConversation"
+            >+ 새 대화</button>
+            <div class="ai-chat-history__list" aria-live="polite">
+              <p v-if="chatSessionsLoading" class="ai-chat-history__state">대화 목록을 불러오는 중입니다.</p>
+              <p v-else-if="chatSessionsError" class="ai-chat-history__state is-error">{{ chatSessionsError }}</p>
+              <p v-else-if="!chatSessions.length" class="ai-chat-history__state">저장된 대화가 없습니다.</p>
+              <template v-else>
+                <button
+                  v-for="session in chatSessions"
+                  :key="session.id"
+                  type="button"
+                  class="ai-chat-history__item"
+                  :class="{ 'is-current': session.id === chatSessionId }"
+                  :disabled="interactionLocked || chatSessionSwitching"
+                  @click="openChatSession(session)"
+                >
+                  <strong>{{ session.title }}</strong>
+                  <span>{{ chatStageLabel(session.stage) }} · {{ formatChatUpdatedAt(session.updatedAt) }}</span>
+                  <small v-if="session.preview">{{ session.preview }}</small>
+                </button>
+              </template>
+            </div>
+          </aside>
+        </div>
         <aside class="ai-chat-pane" aria-label="AI Builder 채팅">
           <header class="ai-chat-header">
-            <div>
-              <p class="ai-builder-eyebrow">V3 AI Builder</p>
-              <strong>프로모션 제작 대화</strong>
+            <div class="ai-chat-header__identity">
+              <button
+                type="button"
+                class="ai-chat-menu-button"
+                aria-label="기존 대화 목록 열기"
+                :aria-expanded="chatMenuOpen"
+                @click="toggleChatMenu"
+              ><span aria-hidden="true">☰</span></button>
+              <div>
+                <p class="ai-builder-eyebrow">V3 AI Builder</p>
+                <strong>프로모션 제작 대화</strong>
+              </div>
             </div>
             <span class="ai-chat-status" :data-state="currentStatus.state">{{ currentStatus.state }}</span>
           </header>

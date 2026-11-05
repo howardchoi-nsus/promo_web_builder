@@ -9,6 +9,7 @@ function createHandler(deps = {}) {
     parseBody, resolveBuilderOwner, getSql, requireBuilderFlag,
     createOrLoadSession: store.createOrLoadSession,
     fetchSession: store.fetchSession,
+    listSessions: store.listSessions,
     ...deps,
   };
   return async function handler(req, res) {
@@ -32,7 +33,13 @@ function createHandler(deps = {}) {
       }
       if (req.method === "GET") {
         const sessionId = String(req.query?.sessionId || "").trim();
-        if (!sessionId) return res.status(400).json({ error: "sessionId is required" });
+        if (!sessionId) {
+          const sessions = await use.listSessions(sql, {
+            ownerSubject: owner.ownerSubject,
+            limit: req.query?.limit,
+          });
+          return res.status(200).json({ ok: true, sessions });
+        }
         const workspace = await use.fetchSession(sql, { sessionId, ownerSubject: owner.ownerSubject });
         if (!workspace) return res.status(404).json({ error: "Chat session not found" });
         return res.status(200).json({ ok: true, ...workspace });

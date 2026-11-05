@@ -133,5 +133,11 @@ for (const endpoint of [
   "/api/promo-builder-wireframes",
   "/api/promo-builder-wireframes-confirm",
 ]) assert.match(client, new RegExp(endpoint.replaceAll("/", "\\/")));
+assert.match(client, /listChatWorkspaces/);
+
+const chatStore = fs.readFileSync(path.resolve(__dirname, "../api/_promo-builder-chat-workspace-store.js"), "utf8");
+assert.match(chatStore, /async function listSessions/);
+assert.match(chatStore, /order by session\.updated_at desc/);
+assert.match(chatStore, /message\.role = 'user'/);
 
 console.log("AI Builder chat workspace contract passed");

@@ -68,6 +68,23 @@ function toSession(row) {
   };
 }
 
+function toSessionSummary(row) {
+  const title = String(row?.title || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80);
+  const preview = String(row?.preview || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 140);
+  return {
+    ...toSession(row),
+    title: title || "새 프로모션 대화",
+    preview,
+    messageCount: Number(row?.message_count || 0),
+  };
+}
+
 async function createOrLoadSession(sql, { documentId, requestId = "", ownerSubject }) {
   const rows = await sql`
     insert into promo_builder_chat_sessions (document_id, request_id, owner_subject)
@@ -118,6 +135,41 @@ async function fetchSession(sql, { sessionId, ownerSubject }) {
   };
 }
 
+async function listSessions(sql, { ownerSubject, limit = 30 }) {
+  const safeLimit = Math.min(50, Math.max(1, Number(limit) || 30));
+  const rows = await sql`
+    select session.*,
+      coalesce((
+        select message.text_content
+        from promo_builder_chat_messages message
+        where message.session_id = session.id and message.role = 'user'
+        order by message.created_at, message.id
+        limit 1
+      ), '') as title,
+      coalesce((
+        select message.text_content
+        from promo_builder_chat_messages message
+        where message.session_id = session.id
+        order by message.created_at desc, message.id desc
+        limit 1
+      ), '') as preview,
+      (select count(*) from promo_builder_chat_messages message where message.session_id = session.id) as message_count
+    from promo_builder_chat_sessions session
+    where session.owner_subject = ${ownerSubject}
+      and (
+        session.latest_requirements_revision > 0
+        or session.latest_wireframe_revision > 0
+        or exists (
+          select 1 from promo_builder_chat_messages message
+          where message.session_id = session.id and message.role = 'user'
+        )
+      )
+    order by session.updated_at desc, session.id desc
+    limit ${safeLimit}
+  `;
+  return rows.map(toSessionSummary);
+}
+
 async function saveMessage(sql, { sessionId, ownerSubject, message, actions }) {
   const messageId = String(message.id || randomUUID());
   const metadata = { ...(message.metadata || {}) };
@@ -142,6 +194,11 @@ async function saveMessage(sql, { sessionId, ownerSubject, message, actions }) {
     returning *
   `;
   if (!rows[0]) return null;
+  await sql`
+    update promo_builder_chat_sessions
+    set updated_at = now()
+    where id = ${sessionId}::uuid and owner_subject = ${ownerSubject}
+  `;
   const savedActions = [];
   for (const action of actions) {
     const actionRows = await sql`
@@ -346,6 +403,7 @@ async function completeSession(sql, { sessionId, ownerSubject }) {
 module.exports = {
   createOrLoadSession,
   fetchSession,
+  listSessions,
   saveMessage,
   saveRequirementsRevision,
   executeAction,
