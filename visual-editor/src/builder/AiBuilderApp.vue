@@ -113,7 +113,10 @@ const currentStatus = computed(() => {
   return { label: "요구사항을 입력해 주세요", state: "대기" };
 });
 const wireframeDisplaySnapshot = computed(() => wireframeSnapshot.value || store.proposal?.snapshot || null);
-const wireframeSections = computed(() => buildWireframeSections(wireframeDisplaySnapshot.value));
+const wireframeSections = computed(() => buildWireframeSections(wireframeDisplaySnapshot.value, {
+  overview: store.overviewDraft || {},
+  viewport: wireframeViewport.value,
+}));
 const wireframeComponentCount = computed(() => wireframeSections.value.reduce(
   (total, section) => total + section.components.length,
   0,

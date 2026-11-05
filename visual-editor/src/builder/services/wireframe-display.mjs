@@ -264,10 +264,15 @@ function resolveLayoutLabel(layoutKey) {
   return readableFallback(layoutKey) || "기본 배치";
 }
 
-function contentSections(snapshot) {
+function contentSections(snapshot, viewport = "desktop") {
   const sections = snapshot?.content?.sectionSnapshot;
   if (!Array.isArray(sections) || sections.length === 0) return [];
   const allInputs = snapshot?.content?.sectionInputs || {};
+  const itemVisibility = snapshot?.designSpec?.visibility?.items || {};
+  const fieldVisibility = snapshot?.designSpec?.visibility?.fields || {};
+  const responsiveItemVisibility = viewport === "mobile"
+    ? snapshot?.designSpec?.responsiveLayouts?.mobile?.visibility?.items || {}
+    : {};
   return sections.map((section, sectionIndex) => {
     const sectionInputs = allInputs[section.sectionKey] || allInputs[section.id] || {};
     return {
@@ -278,23 +283,132 @@ function contentSections(snapshot) {
       technicalLabel: section.sourceSectionKey || section.sectionKey || "",
       roleLabel: SECTION_LABELS[normalizedKey(section.sectionRole)] || "콘텐츠 섹션",
       layoutLabel: resolveLayoutLabel(section.selectedLayoutKey || section.defaultLayoutKey),
-      components: (section.items || []).map((item, itemIndex) => {
+      components: (section.items || []).filter((item) => {
+        if (item?.isRequired || item?.isLocked) return true;
+        const visibilityKey = `${section.sectionKey}.${item.itemKey}`;
+        return (responsiveItemVisibility[visibilityKey] ?? itemVisibility[visibilityKey]) !== false;
+      }).map((item, itemIndex) => {
         const inputValue = sectionInputs[item.itemKey]
           ?? sectionInputs[item.id]
           ?? sectionInputs[item.sourceItemKey];
+        const visibleItem = Array.isArray(item.fields) && item.fields.length
+          ? {
+            ...item,
+            fields: item.fields.filter((field) => (
+              field?.isRequired
+              || field?.isLocked
+              || fieldVisibility[`${section.sectionKey}.${item.itemKey}.${field.fieldKey}`] !== false
+            )),
+          }
+          : item;
         return {
           key: item.itemKey || `item:${itemIndex}`,
           order: itemIndex + 1,
           label: resolveComponentLabel(item, itemIndex),
           typeLabel: resolveComponentType(item),
           technicalLabel: item.sourceItemKey || item.itemKey || "",
-          contentLines: resolveContentLines(item, inputValue),
+          contentLines: resolveContentLines(visibleItem, inputValue),
           isImage: normalizedKey(item.fieldKind) === "image",
           ...componentPresentation(item),
         };
       }),
     };
   });
+}
+
+function overviewContentLines(component, overview = {}) {
+  const values = new Map();
+  (component.contentBindings || []).forEach((binding) => {
+    const value = overview?.[binding.sourceOverviewPath];
+    if (hasDisplayContent(value)) values.set(binding.fieldKey, value);
+  });
+  const authored = (component.contentItems || []).find((item) => (
+    Number(item.repeatIndex) === Number(component.repeatIndex || 0)
+  ));
+  (authored?.fields || []).forEach((field) => values.set(field.fieldKey, field.value));
+  return [...values.entries()].flatMap(([fieldKey, value]) => {
+    const content = displayText(value, fieldKey === "button" ? "cta" : "text");
+    return content ? [{
+      key: fieldKey,
+      label: resolveFieldLabel({ fieldKey }),
+      kind: fieldKey === "button" ? "cta" : "text",
+      ...content,
+    }] : [];
+  });
+}
+
+function hasDisplayContent(value) {
+  return Boolean(displayText(value));
+}
+
+function inferredImageComponent(componentKey) {
+  const key = normalizedKey(componentKey);
+  return ["visual", "image", "hero-image", "key-visual", "logo"].includes(key)
+    || key.endsWith("-image")
+    || key.endsWith("-visual");
+}
+
+function compositionSpecSections(snapshot, overview = {}) {
+  const sections = snapshot?.compositionSpec?.sections;
+  if (!Array.isArray(sections) || sections.length === 0) return [];
+  let order = 0;
+  return sections.filter((section) => section.visible !== false).flatMap((section) => Array.from(
+    { length: Math.max(1, Number(section.repeat || 1)) },
+    (_, sectionIndex) => {
+      order += 1;
+      let componentOrder = 0;
+      const components = (section.components || []).filter((component) => component.visible !== false).flatMap(
+        (component) => Array.from(
+          { length: Math.max(1, Number(component.repeat || 1)) },
+          (_, componentIndex) => {
+            componentOrder += 1;
+            const instance = { ...component, repeatIndex: componentIndex };
+            const isImage = inferredImageComponent(component.itemKey);
+            let contentLines = overviewContentLines(instance, overview);
+            if (!contentLines.length && !isImage && (section.resourceReferences || []).length) {
+              contentLines = [{
+                key: "resource",
+                label: "고정 콘텐츠",
+                kind: "resource",
+                text: "CMS에 등록된 고정 콘텐츠가 적용됩니다.",
+                fullText: "CMS에 등록된 고정 콘텐츠가 적용됩니다.",
+                truncated: false,
+              }];
+            } else if (!contentLines.length && !isImage) {
+              contentLines = [{
+                key: "registered-content",
+                label: "등록 콘텐츠",
+                kind: "content",
+                text: "컴포넌트에 등록된 기본 콘텐츠가 적용됩니다.",
+                fullText: "컴포넌트에 등록된 기본 콘텐츠가 적용됩니다.",
+                truncated: false,
+              }];
+            }
+            return {
+              key: `${component.itemKey}:${componentIndex}`,
+              order: componentOrder,
+              label: resolveComponentLabel({ sourceItemKey: component.itemKey }, componentIndex),
+              typeLabel: isImage ? "이미지 영역" : "콘텐츠 영역",
+              technicalLabel: component.itemKey,
+              contentLines,
+              isImage,
+              ...componentPresentation({ sourceItemKey: component.itemKey, fieldKind: isImage ? "image" : "text" }),
+            };
+          },
+        ),
+      );
+      return {
+        key: `${section.sectionKey}:${sectionIndex}`,
+        order,
+        kind: normalizedKey(section.sectionRole || section.sectionKey) || "content",
+        label: resolveSectionLabel({ ...section, sourceSectionKey: section.sectionKey }),
+        technicalLabel: section.sectionKey,
+        roleLabel: SECTION_LABELS[normalizedKey(section.sectionRole)] || "콘텐츠 섹션",
+        layoutLabel: resolveLayoutLabel(section.layoutKey),
+        components,
+      };
+    },
+  ));
 }
 
 function previewSections(snapshot) {
@@ -336,8 +450,10 @@ function previewSections(snapshot) {
   ));
 }
 
-export function buildWireframeSections(snapshot) {
-  const sections = contentSections(snapshot);
-  return sections.length > 0 ? sections : previewSections(snapshot);
+export function buildWireframeSections(snapshot, { overview = {}, viewport = "desktop" } = {}) {
+  const sections = contentSections(snapshot, viewport);
+  if (sections.length > 0) return sections;
+  const plannedSections = compositionSpecSections(snapshot, overview);
+  return plannedSections.length > 0 ? plannedSections : previewSections(snapshot);
 }
 

@@ -95,6 +95,71 @@ const previewResult = buildWireframeSections({
 assert.equal(previewResult[0].label, "유의사항 및 약관");
 assert.equal(previewResult[0].components[0].label, "약관 및 유의사항");
 
+const proposalResult = buildWireframeSections({
+  compositionSpec: {
+    sections: [{
+      sectionKey: "hero",
+      sectionRole: "hero",
+      visible: true,
+      repeat: 1,
+      layoutKey: "hero-centered",
+      resourceReferences: [],
+      components: [{
+        itemKey: "title",
+        visible: true,
+        repeat: 1,
+        contentBindings: [{ fieldKey: "text", sourceOverviewPath: "title" }],
+        contentItems: [{ repeatIndex: 0, fields: [{ fieldKey: "subtitle", value: "특별한 혜택을 확인하세요." }] }],
+      }, {
+        itemKey: "visual",
+        visible: true,
+        repeat: 1,
+        contentBindings: [],
+        contentItems: [],
+      }],
+    }, {
+      sectionKey: "terms",
+      sectionRole: "terms",
+      visible: true,
+      repeat: 1,
+      layoutKey: "terms-default",
+      resourceReferences: [{ resourceKey: "common-terms" }],
+      components: [{
+        itemKey: "legal",
+        visible: true,
+        repeat: 1,
+        contentBindings: [],
+        contentItems: [],
+      }],
+    }],
+  },
+}, { overview: { title: "겨울 경품 이벤트" } });
+
+assert.deepEqual(proposalResult[0].components[0].contentLines.map((line) => line.text), [
+  "겨울 경품 이벤트",
+  "특별한 혜택을 확인하세요.",
+]);
+assert.equal(proposalResult[0].components[1].isImage, true);
+assert.equal(proposalResult[0].components[1].contentLines.length, 0);
+assert.equal(proposalResult[1].components[0].contentLines[0].text, "CMS에 등록된 고정 콘텐츠가 적용됩니다.");
+
+const hiddenComponentResult = buildWireframeSections({
+  content: {
+    sectionSnapshot: [{
+      sectionKey: "hero-section",
+      sectionRole: "hero",
+      items: [{ itemKey: "visible-title", sourceItemKey: "title", fieldKind: "text" }, {
+        itemKey: "hidden-copy", sourceItemKey: "body", fieldKind: "text",
+      }],
+    }],
+    sectionInputs: { "hero-section": { "visible-title": "노출 제목", "hidden-copy": "숨김 본문" } },
+  },
+  designSpec: {
+    visibility: { items: { "hero-section.hidden-copy": false }, fields: {} },
+  },
+});
+assert.deepEqual(hiddenComponentResult[0].components.map((component) => component.label), ["메인 제목"]);
+
 const opaqueResult = buildWireframeSections({
   content: {
     sectionSnapshot: [{
