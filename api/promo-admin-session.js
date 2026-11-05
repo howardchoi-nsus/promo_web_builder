@@ -3,10 +3,10 @@ const {
   adminAccessKey,
   adminCookieValue,
   adminSecret,
+  authenticateAdminAccessKey,
   clearAdminCookie,
   createAdminSessionToken,
   resolveAdminOwner,
-  verifyAdminAccessKey,
   verifyAdminRemoteLoginToken,
 } = require("./_promo-admin-auth");
 
@@ -70,7 +70,8 @@ function createHandler({ env = process.env } = {}) {
         assertSameOrigin(req);
         const body = parseBody(req.body);
         const remoteLogin = verifyAdminRemoteLoginToken(body.loginToken, { env });
-        if (!verifyAdminAccessKey(body.accessKey, env) && !remoteLogin) {
+        const accessKeyLogin = authenticateAdminAccessKey(body.accessKey, env);
+        if (!accessKeyLogin && !remoteLogin) {
           return res.status(401).json({
             error: "Administrator authentication failed",
             code: "ADMIN_ACCESS_DENIED",
@@ -79,17 +80,20 @@ function createHandler({ env = process.env } = {}) {
         const subject = remoteLogin?.subject
           || String(env.PROMO_ADMIN_SUBJECT || "promo-admin").trim()
           || "promo-admin";
+        const sessionMaxAgeSeconds = accessKeyLogin?.method === "temporary"
+          ? Math.max(1, Math.floor((accessKeyLogin.expiresAt - Date.now()) / 1000))
+          : ADMIN_SESSION_MAX_AGE_SECONDS;
         const token = createAdminSessionToken({
           subject,
-          ttlSeconds: ADMIN_SESSION_MAX_AGE_SECONDS,
+          ttlSeconds: sessionMaxAgeSeconds,
         }, env);
-        res.setHeader("Set-Cookie", adminCookieValue(token, { env }));
+        res.setHeader("Set-Cookie", adminCookieValue(token, { env, maxAgeSeconds: sessionMaxAgeSeconds }));
         return res.status(200).json({
           ok: true,
           authenticated: true,
           subject,
           roles: ["admin"],
-          expiresAt: new Date(Date.now() + ADMIN_SESSION_MAX_AGE_SECONDS * 1000).toISOString(),
+          expiresAt: new Date(Date.now() + sessionMaxAgeSeconds * 1000).toISOString(),
         });
       }
 

@@ -53,7 +53,7 @@ function createAdminSessionToken({
     purpose: "session",
     subject: String(subject || "").trim(),
     roles: Array.from(new Set(roles.map((role) => String(role).trim()).filter(Boolean))),
-    expiresAt: now + Math.min(86_400, Math.max(60, Number(ttlSeconds || 3600))) * 1000,
+    expiresAt: now + Math.min(86_400, Math.max(1, Number(ttlSeconds || 3600))) * 1000,
   };
   if (!claims.subject) throw new TypeError("Admin subject is required");
   const payload = Buffer.from(JSON.stringify(claims)).toString("base64url");
@@ -87,10 +87,17 @@ function constantTimeStringEqual(value, expectedValue) {
   return expected.length === supplied.length && timingSafeEqual(expected, supplied);
 }
 
-function verifyAdminAccessKey(value, env = process.env, { now = Date.now() } = {}) {
-  if (constantTimeStringEqual(value, adminAccessKey(env))) return true;
+function authenticateAdminAccessKey(value, env = process.env, { now = Date.now() } = {}) {
+  if (constantTimeStringEqual(value, adminAccessKey(env))) return { method: "permanent" };
   const temporary = temporaryAdminAccessKey(env);
-  return Boolean(temporary && temporary.expiresAt > now && constantTimeStringEqual(value, temporary.value));
+  if (temporary && temporary.expiresAt > now && constantTimeStringEqual(value, temporary.value)) {
+    return { method: "temporary", expiresAt: temporary.expiresAt };
+  }
+  return null;
+}
+
+function verifyAdminAccessKey(value, env = process.env, options = {}) {
+  return Boolean(authenticateAdminAccessKey(value, env, options));
 }
 
 function adminCookieValue(token, { env = process.env, maxAgeSeconds = ADMIN_SESSION_MAX_AGE_SECONDS } = {}) {
@@ -168,6 +175,7 @@ module.exports = {
   adminAccessKey,
   adminCookieValue,
   adminSecret,
+  authenticateAdminAccessKey,
   clearAdminCookie,
   createAdminRemoteLoginToken,
   createAdminSessionToken,

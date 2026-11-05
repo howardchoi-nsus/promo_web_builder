@@ -82,6 +82,16 @@ assert.equal(signedIn.statusCode, 200);
 assert.equal(signedIn.body.authenticated, true);
 assert.match(signedIn.headers["set-cookie"], new RegExp(`^${ADMIN_COOKIE_NAME}=`));
 
+const temporarilySignedIn = response();
+await createHandler({ env: temporaryKeyEnv })({
+  method: "POST",
+  headers: { host: "example.com", origin: "https://example.com" },
+  body: { accessKey: "1234" },
+}, temporarilySignedIn);
+assert.equal(temporarilySignedIn.statusCode, 200);
+assert.match(temporarilySignedIn.headers["set-cookie"], /Max-Age=([1-5]?\d|60);/);
+assert.ok(Date.parse(temporarilySignedIn.body.expiresAt) <= now + 60_000);
+
 const remotelySignedIn = response();
 await handler({
   method: "POST",
