@@ -81,6 +81,7 @@ let prompts = [
 ];
 
 let savedPromptPatch = null;
+let adminSignedIn = false;
 let llmModels = [{
   id: "llm-openai-sol",
   provider: "openai",
@@ -154,6 +155,20 @@ try {
       body: JSON.stringify(body),
     });
 
+    if (url.pathname === "/api/promo-admin-session" && request.method() === "GET") {
+      return fulfill({ ok: true, authenticated: adminSignedIn, subject: adminSignedIn ? "test-admin" : "" });
+    }
+    if (url.pathname === "/api/promo-admin-session" && request.method() === "POST") {
+      adminSignedIn = request.postDataJSON().accessKey === "test-admin-access-key";
+      return fulfill(adminSignedIn
+        ? { ok: true, authenticated: true, subject: "test-admin" }
+        : { error: "Administrator authentication failed", code: "ADMIN_ACCESS_DENIED" },
+      adminSignedIn ? 200 : 401);
+    }
+    if (url.pathname === "/api/promo-admin-session" && request.method() === "DELETE") {
+      adminSignedIn = false;
+      return fulfill({ ok: true, authenticated: false });
+    }
     if (url.pathname === "/api/prompt-templates") {
       return fulfill({ ok: true, prompts });
     }
@@ -260,6 +275,9 @@ try {
   });
 
   await page.goto(`${origin}/prototype/index.html?view=admin&tab=llm`, { waitUntil: "networkidle" });
+  await page.getByRole("heading", { name: "관리자 로그인", exact: true }).waitFor();
+  await page.getByLabel("관리자 액세스 키", { exact: true }).fill("test-admin-access-key");
+  await page.getByRole("button", { name: "관리자 로그인", exact: true }).click();
   await page.getByRole("heading", { name: "프롬프트 관리", exact: true }).waitFor();
   await page.locator(".prompt-group").first().waitFor();
   assert.equal(await page.locator(".prompt-group").count(), 3, "versions must collapse into lineage groups");

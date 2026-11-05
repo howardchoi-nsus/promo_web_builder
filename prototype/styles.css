@@ -2520,6 +2520,45 @@ body.is-resizing {
   min-height: calc(100vh - 136px);
 }
 
+.admin-auth-panel {
+  min-height: calc(100vh - 136px);
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+}
+
+.admin-auth-card {
+  display: grid;
+  width: min(100%, 480px);
+  gap: 16px;
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--panel);
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.12);
+}
+
+.admin-auth-card h2,
+.admin-auth-card p {
+  margin: 0;
+}
+
+.admin-auth-card > small {
+  color: var(--muted);
+}
+
+.admin-auth-form {
+  display: grid;
+  gap: 14px;
+}
+
+.admin-auth-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .prompt-manager-page .form-grid,
 .prompt-manager-page .form-grid.compact {
   display: block;

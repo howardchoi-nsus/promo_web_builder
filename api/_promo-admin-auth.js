@@ -2,6 +2,7 @@ const { createHmac, timingSafeEqual } = require("node:crypto");
 const { resolveBuilderOwner } = require("./_promo-builder-auth");
 
 const ADMIN_COOKIE_NAME = "promo_admin_session";
+const ADMIN_SESSION_MAX_AGE_SECONDS = 60 * 60 * 8;
 
 function hosted(env = process.env) {
   return Boolean(env.VERCEL)
@@ -11,6 +12,11 @@ function hosted(env = process.env) {
 function adminSecret(env = process.env) {
   const value = String(env.PROMO_ADMIN_SESSION_SECRET || "").trim();
   return value.length >= 32 ? value : "";
+}
+
+function adminAccessKey(env = process.env) {
+  const value = String(env.PROMO_ADMIN_ACCESS_KEY || "").trim();
+  return value.length >= 24 ? value : "";
 }
 
 function parseCookies(header = "") {
@@ -27,7 +33,12 @@ function sign(payload, env) {
   return createHmac("sha256", secret).update(payload).digest("base64url");
 }
 
-function createAdminSessionToken({ subject, roles = ["admin"], now = Date.now(), ttlSeconds = 3600 }, env = process.env) {
+function createAdminSessionToken({
+  subject,
+  roles = ["admin"],
+  now = Date.now(),
+  ttlSeconds = ADMIN_SESSION_MAX_AGE_SECONDS,
+}, env = process.env) {
   if (!adminSecret(env)) throw Object.assign(new Error("PROMO_ADMIN_SESSION_SECRET must be at least 32 characters"), {
     statusCode: 503,
     code: "ADMIN_SESSION_SECRET_REQUIRED",
@@ -40,6 +51,29 @@ function createAdminSessionToken({ subject, roles = ["admin"], now = Date.now(),
   if (!claims.subject) throw new TypeError("Admin subject is required");
   const payload = Buffer.from(JSON.stringify(claims)).toString("base64url");
   return `v1.${payload}.${sign(`v1.${payload}`, env)}`;
+}
+
+function verifyAdminAccessKey(value, env = process.env) {
+  const expectedValue = adminAccessKey(env);
+  if (!expectedValue) return false;
+  const expected = Buffer.from(expectedValue);
+  const supplied = Buffer.from(String(value || "").trim());
+  return expected.length === supplied.length && timingSafeEqual(expected, supplied);
+}
+
+function adminCookieValue(token, { env = process.env, maxAgeSeconds = ADMIN_SESSION_MAX_AGE_SECONDS } = {}) {
+  return [
+    `${ADMIN_COOKIE_NAME}=${encodeURIComponent(token)}`,
+    "Path=/",
+    `Max-Age=${Math.max(0, Number(maxAgeSeconds) || 0)}`,
+    "HttpOnly",
+    "SameSite=Strict",
+    ...(hosted(env) ? ["Secure"] : []),
+  ].join("; ");
+}
+
+function clearAdminCookie(env = process.env) {
+  return adminCookieValue("", { env, maxAgeSeconds: 0 });
 }
 
 function verifyAdminSessionToken(token, { now = Date.now(), env = process.env } = {}) {
@@ -86,8 +120,13 @@ function resolveAdminOwner(req, res, { env = process.env } = {}) {
 
 module.exports = {
   ADMIN_COOKIE_NAME,
+  ADMIN_SESSION_MAX_AGE_SECONDS,
+  adminAccessKey,
+  adminCookieValue,
   adminSecret,
+  clearAdminCookie,
   createAdminSessionToken,
   resolveAdminOwner,
+  verifyAdminAccessKey,
   verifyAdminSessionToken,
 };

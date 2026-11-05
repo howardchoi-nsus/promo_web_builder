@@ -50,6 +50,13 @@
           </div>
           <div class="shell-page-actions">
             <a class="tiny-button" href="/document/">문서보기</a>
+            <button
+              v-if="currentView === 'prompts' && adminAuthState === 'authenticated'"
+              class="tiny-button"
+              type="button"
+              :disabled="adminAuthBusy"
+              @click="signOutAdmin"
+            >관리자 로그아웃</button>
             <div class="status-pill shell-status">{{ status }}</div>
           </div>
         </header>
@@ -674,7 +681,49 @@
         </section>
 
         <section v-else class="prompt-manager-page">
-          <section class="panel stack">
+          <section v-if="adminAuthState !== 'authenticated'" class="panel stack admin-auth-panel">
+            <div class="admin-auth-card" role="region" aria-labelledby="admin-auth-title">
+              <p class="eyebrow">Protected Admin</p>
+              <h2 id="admin-auth-title">관리자 로그인</h2>
+              <p>프롬프트와 LLM 설정을 관리하려면 관리자 액세스 키로 로그인해 주세요.</p>
+              <div v-if="adminAuthState === 'checking'" class="empty-state compact" role="status">
+                관리자 인증 상태를 확인하고 있습니다.
+              </div>
+              <form v-else class="admin-auth-form" @submit.prevent="signInAdmin">
+                <label class="field">
+                  <span>관리자 액세스 키</span>
+                  <input
+                    v-model="adminAuthAccessKey"
+                    type="password"
+                    autocomplete="current-password"
+                    placeholder="관리자 액세스 키 입력"
+                    :disabled="adminAuthBusy || adminAuthState === 'error'"
+                  />
+                </label>
+                <div v-if="adminAuthError" class="outline-item danger-state" role="alert">
+                  <strong>관리자 인증 오류</strong>
+                  <span>{{ adminAuthError }}</span>
+                </div>
+                <div class="admin-auth-actions">
+                  <button
+                    class="tiny-button primary"
+                    type="submit"
+                    :disabled="adminAuthBusy || adminAuthState === 'error' || !adminAuthAccessKey.trim()"
+                  >{{ adminAuthBusy ? '로그인 중…' : '관리자 로그인' }}</button>
+                  <button
+                    v-if="adminAuthState === 'error'"
+                    class="tiny-button"
+                    type="button"
+                    :disabled="adminAuthBusy"
+                    @click="checkAdminSession"
+                  >다시 확인</button>
+                </div>
+              </form>
+              <small>로그인 세션은 HttpOnly 쿠키로 보호되며 8시간 후 만료됩니다.</small>
+            </div>
+          </section>
+
+          <section v-else class="panel stack">
             <div class="panel-header">
               <div>
                 <h2>설정</h2>

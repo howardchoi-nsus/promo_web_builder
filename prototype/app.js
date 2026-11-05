@@ -1109,6 +1109,11 @@ const adminApp = createApp({
       promptModalDesignMarkdown: "",
       promptModalIntegratedMarkdown: "",
       promptModalPromoMarkdown: "",
+      adminAuthState: "checking",
+      adminAuthAccessKey: "",
+      adminAuthError: "",
+      adminAuthBusy: false,
+      adminAuthSubject: "",
       promptTemplates: [],
       promptTemplatesLoading: false,
       promptTemplatesError: "",
@@ -2217,6 +2222,102 @@ const adminApp = createApp({
       const url = new URL(window.location.href);
       url.searchParams.set("view", "admin");
       window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+      if (!await this.checkAdminSession()) {
+        this.setStatus(this.adminAuthState === "error"
+          ? this.adminAuthError
+          : "관리자 로그인이 필요합니다.");
+        return;
+      }
+      await this.loadPromptManagerData();
+    },
+
+    async checkAdminSession() {
+      this.adminAuthState = "checking";
+      this.adminAuthError = "";
+      try {
+        const response = await fetch("/api/promo-admin-session", {
+          credentials: "same-origin",
+          cache: "no-store",
+        });
+        const result = await response.json().catch(() => ({}));
+        if (response.ok && result.authenticated) {
+          this.adminAuthState = "authenticated";
+          this.adminAuthSubject = result.subject || "promo-admin";
+          return true;
+        }
+        const localHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+        const localEndpointUnavailable = response.status === 404
+          || (response.ok && typeof result.authenticated === "undefined");
+        if (localHost && localEndpointUnavailable) {
+          this.adminAuthState = "authenticated";
+          this.adminAuthSubject = "local-admin";
+          return true;
+        }
+        this.adminAuthState = result.code === "ADMIN_AUTH_NOT_CONFIGURED" ? "error" : "required";
+        this.adminAuthError = result.code === "ADMIN_AUTH_NOT_CONFIGURED"
+          ? "관리자 인증 환경변수가 설정되지 않았습니다."
+          : "관리자 로그인이 필요합니다.";
+        return false;
+      } catch (error) {
+        this.adminAuthState = "error";
+        this.adminAuthError = `관리자 인증 상태를 확인하지 못했습니다: ${error.message}`;
+        return false;
+      }
+    },
+
+    async signInAdmin() {
+      if (this.adminAuthBusy || !this.adminAuthAccessKey.trim()) return;
+      this.adminAuthBusy = true;
+      this.adminAuthError = "";
+      try {
+        const response = await fetch("/api/promo-admin-session", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ accessKey: this.adminAuthAccessKey }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw Object.assign(
+          new Error(result.error || `관리자 로그인 오류(${response.status})`),
+          { code: result.code || "ADMIN_LOGIN_FAILED" },
+        );
+        this.adminAuthAccessKey = "";
+        this.adminAuthState = "authenticated";
+        this.adminAuthSubject = result.subject || "promo-admin";
+        this.setStatus("관리자 로그인이 완료되었습니다.");
+        await this.loadPromptManagerData();
+      } catch (error) {
+        this.adminAuthState = error.code === "ADMIN_AUTH_NOT_CONFIGURED" ? "error" : "required";
+        this.adminAuthError = error.code === "ADMIN_AUTH_NOT_CONFIGURED"
+          ? "관리자 인증 환경변수가 설정되지 않았습니다."
+          : "관리자 액세스 키를 확인해 주세요.";
+        this.setStatus(`관리자 로그인 실패: ${this.adminAuthError}`);
+      } finally {
+        this.adminAuthBusy = false;
+      }
+    },
+
+    async signOutAdmin() {
+      if (this.adminAuthBusy) return;
+      this.adminAuthBusy = true;
+      try {
+        await fetch("/api/promo-admin-session", {
+          method: "DELETE",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+        });
+      } finally {
+        this.adminAuthState = "required";
+        this.adminAuthSubject = "";
+        this.adminAuthAccessKey = "";
+        this.promptTemplates = [];
+        this.selectedPromptTemplateId = "";
+        this.adminAuthBusy = false;
+        this.setStatus("관리자 로그아웃이 완료되었습니다.");
+      }
+    },
+
+    async loadPromptManagerData() {
       const preserveAdminStatus = await this.loadAdminCapabilities();
       await this.loadLlmRegistryModels();
       await Promise.all([
@@ -2762,6 +2863,18 @@ const adminApp = createApp({
       if (prompt) this.selectPromptTemplate(prompt.id, { silent: true });
     },
 
+    handleAdminAuthResponse(response, result = {}) {
+      if (![401, 403].includes(response.status) || !String(result.code || "").startsWith("ADMIN_")) {
+        return false;
+      }
+      this.adminAuthState = result.code === "ADMIN_AUTH_NOT_CONFIGURED" ? "error" : "required";
+      this.adminAuthSubject = "";
+      this.adminAuthError = result.code === "ADMIN_AUTH_NOT_CONFIGURED"
+        ? "관리자 인증 환경변수가 설정되지 않았습니다."
+        : "관리자 세션이 만료되었습니다. 다시 로그인해 주세요.";
+      return true;
+    },
+
     async loadPromptTemplates(options = {}) {
       if (this.promptTemplatesLoading && !options.fresh) return;
       this.promptTemplatesLoading = true;
@@ -2769,6 +2882,7 @@ const adminApp = createApp({
       try {
         const response = await fetch("/api/prompt-templates?includeArchived=true");
         const result = await response.json().catch(() => ({}));
+        this.handleAdminAuthResponse(response, result);
         if (!response.ok) throw new Error(result.message || result.error || `프롬프트 목록 요청 오류(${response.status})`);
         this.promptTemplates = Array.isArray(result.prompts) ? result.prompts : [];
         const groups = window.PromoAdminPromptGroups.groupPromptTemplates(this.promptTemplates);
@@ -3301,6 +3415,7 @@ const adminApp = createApp({
       });
       const result = await response.json().catch(() => ({}));
       if (!response.ok) {
+        this.handleAdminAuthResponse(response, result);
         const error = new Error(result.message || result.error || `${fallbackMessage}(${response.status})`);
         error.result = result;
         throw error;
