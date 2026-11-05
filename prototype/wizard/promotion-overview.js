@@ -2,6 +2,14 @@
   const PROMOTION_PURPOSES = ["할인쿠폰", "경품", "이벤트", "기타"];
   const AUDIENCES = ["신규", "기존고객", "일반고객"];
   const CAMPAIGN_TONES = ["활기찬", "진중함", "럭셔리", "프리미엄", "긴급함", "친근함"];
+  const CONTENT_SECTION_TYPES = [
+    "hero", "benefits", "cards", "steps", "feature", "story", "stats",
+    "faq", "notice", "legal", "footer", "custom",
+  ];
+  const CONTENT_PRESENTATION_HINTS = [
+    "hero", "cards", "steps", "split-content", "story", "stats", "list",
+    "legal", "footer",
+  ];
 
   function text(value, maxLength = 2000) {
     return String(value || "").trim().slice(0, maxLength);
@@ -18,11 +26,76 @@
     return label;
   }
 
+  function normalizeContentItem(value = {}, index = 0) {
+    return {
+      itemKey: text(value.itemKey, 100) || `item-${index + 1}`,
+      title: text(value.title, 200),
+      description: text(value.description, 1000),
+      eyebrow: text(value.eyebrow, 120),
+      badge: text(value.badge, 80),
+      value: text(value.value, 200),
+      imageIntent: text(value.imageIntent, 500),
+      ctaLabel: normalizeCtaLabel(value.ctaLabel),
+      ctaUrl: text(value.ctaUrl, 1000),
+      confirmationRequired: Boolean(value.confirmationRequired),
+    };
+  }
+
+  function normalizeContentSection(value = {}, index = 0) {
+    const sectionType = CONTENT_SECTION_TYPES.includes(value.sectionType) ? value.sectionType : "custom";
+    const defaultPresentation = sectionType === "benefits" || sectionType === "cards" ? "cards"
+      : sectionType === "steps" ? "steps"
+        : sectionType === "stats" ? "stats"
+          : sectionType === "legal" || sectionType === "notice" ? "legal"
+            : sectionType === "footer" ? "footer"
+              : sectionType === "hero" ? "hero"
+                : "story";
+    return {
+      sectionKey: text(value.sectionKey, 100) || `section-${index + 1}`,
+      sectionType,
+      title: text(value.title, 200),
+      description: text(value.description, 1000),
+      presentationHint: CONTENT_PRESENTATION_HINTS.includes(value.presentationHint)
+        ? value.presentationHint : defaultPresentation,
+      items: (Array.isArray(value.items) ? value.items : []).slice(0, 12)
+        .map((item, itemIndex) => normalizeContentItem(item, itemIndex)),
+      cta: {
+        label: normalizeCtaLabel(value.cta?.label),
+        url: text(value.cta?.url, 1000),
+        confirmationRequired: Boolean(value.cta?.confirmationRequired),
+      },
+      media: {
+        role: text(value.media?.role, 80),
+        imageIntent: text(value.media?.imageIntent, 500),
+        altText: text(value.media?.altText, 300),
+        mobileImageRequired: Boolean(value.media?.mobileImageRequired),
+      },
+      required: value.required !== false,
+    };
+  }
+
+  function normalizeAdditionalInformation(value = {}) {
+    return {
+      label: text(value.label, 120),
+      value: text(value.value, 500),
+      description: text(value.description, 1000),
+      confirmationRequired: Boolean(value.confirmationRequired),
+    };
+  }
+
+  function normalizeNotice(value = {}, maxBodyLength = 1500) {
+    return {
+      title: text(value.title, 160),
+      body: text(value.body, maxBodyLength),
+      confirmationRequired: Boolean(value.confirmationRequired),
+    };
+  }
+
   function normalize(value = {}) {
     const promotionPurpose = PROMOTION_PURPOSES.includes(value.promotionPurpose)
       ? value.promotionPurpose : "";
     return {
-      schemaVersion: 5,
+      schemaVersion: 6,
       inputMode: value.inputMode === "natural-language" ? "natural-language" : "structured",
       rawNaturalLanguage: text(value.rawNaturalLanguage, 4000),
       title: text(value.title, 200),
@@ -35,6 +108,14 @@
       audience: AUDIENCES.includes(value.audience) ? value.audience : "",
       campaignTone: CAMPAIGN_TONES.includes(value.campaignTone) ? value.campaignTone : "",
       mainOffer: text(value.mainOffer, 1000),
+      contentSections: (Array.isArray(value.contentSections) ? value.contentSections : []).slice(0, 16)
+        .map((section, index) => normalizeContentSection(section, index)),
+      additionalInformation: (Array.isArray(value.additionalInformation) ? value.additionalInformation : []).slice(0, 20)
+        .map(normalizeAdditionalInformation),
+      notices: (Array.isArray(value.notices) ? value.notices : []).slice(0, 20)
+        .map((notice) => normalizeNotice(notice, 1500)),
+      legalInformation: (Array.isArray(value.legalInformation) ? value.legalInformation : []).slice(0, 20)
+        .map((notice) => normalizeNotice(notice, 2000)),
     };
   }
 

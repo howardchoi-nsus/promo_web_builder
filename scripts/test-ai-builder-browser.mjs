@@ -225,7 +225,36 @@ const server = http.createServer(async (request, response) => {
     response.writeHead(200, { "Content-Type": "application/json" });
     response.end(JSON.stringify({
       ok: true,
-      overview: { title: "여름 신규 고객 충전 이벤트" },
+      overview: {
+        title: "여름 신규 고객 충전 이벤트",
+        contentSections: [{
+          sectionKey: "benefits",
+          sectionType: "benefits",
+          title: "주요 혜택",
+          description: "혜택을 카드로 안내합니다.",
+          presentationHint: "cards",
+          items: [{
+            itemKey: "welcome-card",
+            title: "신규 고객 보너스",
+            description: "첫 충전 고객을 위한 혜택",
+            eyebrow: "WELCOME",
+            badge: "신규",
+            value: "100%",
+            imageIntent: "여름 분위기의 보너스 카드",
+            ctaLabel: "혜택 보기",
+            ctaUrl: "",
+            confirmationRequired: true,
+          }],
+          cta: { label: "전체 혜택", url: "", confirmationRequired: true },
+          media: { role: "benefit-visual", imageIntent: "여름 혜택 키비주얼", altText: "", mobileImageRequired: true },
+          required: true,
+        }],
+        additionalInformation: [{
+          label: "이벤트 기간", value: "사용자 확인 필요", description: "기간 입력 필요", confirmationRequired: true,
+        }],
+        notices: [],
+        legalInformation: [],
+      },
       inputLocale: "ko",
       overviewFingerprint: "browser-test-overview",
     }));
@@ -357,6 +386,10 @@ try {
   }
   await page.getByText("요구사항 분석을 완료했습니다.").waitFor();
   await page.getByText("여름 신규 고객 충전 이벤트", { exact: true }).last().waitFor();
+  await page.getByText("콘텐츠 구성", { exact: true }).waitFor();
+  await page.getByText("주요 혜택", { exact: true }).first().waitFor();
+  await page.getByText("신규 고객 보너스", { exact: true }).first().waitFor();
+  await page.getByText("추가 정보", { exact: true }).waitFor();
   await page.getByText(/요구사항 Tree를 확인한 뒤 승인해 주세요/).waitFor();
   await page.getByRole("button", { name: "요구사항 승인" }).waitFor();
   assert.equal(compositionRequest, null, "composition must wait for requirements approval");
@@ -366,6 +399,7 @@ try {
   }
   assert.ok(compositionRequest, "composition request should be received");
   assert.equal(compositionRequest.overview.title, "여름 신규 고객 충전 이벤트");
+  assert.equal(compositionRequest.overview.contentSections[0].items[0].title, "신규 고객 보너스");
   assert.equal(compositionRequest.locale, "ko-KR");
   assert.equal(compositionRequest.overviewFingerprint, overviewFingerprint(compositionRequest.overview));
   assert.notEqual(compositionRequest.overviewFingerprint, "browser-test-overview");

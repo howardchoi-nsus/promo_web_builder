@@ -1182,16 +1182,88 @@ const HIDDEN_OVERVIEW_TREE_FIELDS = new Set([
   "schemaVersion",
   "inputMode",
   "rawNaturalLanguage",
+  "sectionKey",
+  "itemKey",
 ]);
 
-function overviewEntries(value = store.overviewDraft, prefix = "") {
+const OVERVIEW_TREE_LABELS = Object.freeze({
+  title: "제목",
+  leadText: "리드 문구",
+  ctaLabel: "CTA 문구",
+  ctaUrl: "CTA URL",
+  promotionPurpose: "프로모션 목적",
+  promotionPurposeOther: "기타 목적",
+  market: "마켓 / 지역",
+  audience: "대상 고객",
+  campaignTone: "캠페인 톤",
+  mainOffer: "핵심 혜택",
+  contentSections: "콘텐츠 구성",
+  sectionType: "섹션 유형",
+  description: "설명",
+  presentationHint: "표시 방식",
+  items: "콘텐츠 항목",
+  eyebrow: "보조 문구",
+  badge: "배지",
+  value: "값 / 강조 수치",
+  imageIntent: "이미지 구성 의도",
+  confirmationRequired: "사용자 확인 필요",
+  cta: "CTA",
+  media: "이미지 / 미디어",
+  role: "이미지 역할",
+  altText: "대체 텍스트",
+  mobileImageRequired: "모바일 전용 이미지 필요",
+  required: "필수 섹션",
+  additionalInformation: "추가 정보",
+  notices: "유의사항",
+  legalInformation: "법적 고지",
+  body: "내용",
+});
+
+function overviewTreeLabel(key, value, index = -1) {
+  if (index >= 0) {
+    if (value?.title) return String(value.title);
+    if (value?.label) return String(value.label);
+    return `항목 ${index + 1}`;
+  }
+  return OVERVIEW_TREE_LABELS[key] || key;
+}
+
+function overviewTreeDisplay(value) {
+  if (typeof value === "boolean") return value ? "예" : "아니오";
+  return String(value ?? "");
+}
+
+function overviewEntries(value = store.overviewDraft, prefix = "", depth = 0) {
   if (!value || typeof value !== "object") return [];
   return Object.entries(value).flatMap(([key, item]) => {
     if (HIDDEN_OVERVIEW_TREE_FIELDS.has(key)) return [];
     const path = prefix ? `${prefix}.${key}` : key;
-    if (item && typeof item === "object" && !Array.isArray(item)) return overviewEntries(item, path);
-    const display = Array.isArray(item) ? item.join(", ") : String(item ?? "");
-    return display ? [{ path, label: key, value: display }] : [];
+    const label = overviewTreeLabel(key, item);
+    if (Array.isArray(item)) {
+      if (!item.length) return [];
+      const children = item.flatMap((child, index) => {
+        const childPath = `${path}.${index}`;
+        if (child && typeof child === "object") {
+          return [
+            { path: childPath, label: overviewTreeLabel(key, child, index), value: "", depth: depth + 1, kind: "group" },
+            ...overviewEntries(child, childPath, depth + 2),
+          ];
+        }
+        const display = overviewTreeDisplay(child);
+        return display ? [{ path: childPath, label: `항목 ${index + 1}`, value: display, depth: depth + 1, kind: "value" }] : [];
+      });
+      return children.length
+        ? [{ path, label, value: "", depth, kind: "group" }, ...children]
+        : [];
+    }
+    if (item && typeof item === "object") {
+      const children = overviewEntries(item, path, depth + 1);
+      return children.length
+        ? [{ path, label, value: "", depth, kind: "group" }, ...children]
+        : [];
+    }
+    const display = overviewTreeDisplay(item);
+    return display ? [{ path, label, value: display, depth, kind: "value" }] : [];
   });
 }
 
@@ -1475,8 +1547,14 @@ onBeforeUnmount(() => {
             <section v-if="activeResultTab === 'requirements'" class="ai-requirements-tree">
               <header><strong>요구사항 Tree</strong><small>채팅에서 수정할 수 있습니다.</small></header>
               <ul v-if="store.overviewDraft" role="tree">
-                <li v-for="entry in overviewEntries()" :key="entry.path" role="treeitem">
-                  <span>{{ entry.label }}</span><strong>{{ entry.value }}</strong>
+                <li
+                  v-for="entry in overviewEntries()"
+                  :key="entry.path"
+                  role="treeitem"
+                  :class="{ 'is-group': entry.kind === 'group' }"
+                  :style="{ '--tree-depth': entry.depth }"
+                >
+                  <span>{{ entry.label }}</span><strong v-if="entry.kind !== 'group'">{{ entry.value }}</strong>
                 </li>
               </ul>
               <div v-else class="ai-result-empty">채팅으로 요구사항을 입력하면 분석 결과가 여기에 표시됩니다.</div>

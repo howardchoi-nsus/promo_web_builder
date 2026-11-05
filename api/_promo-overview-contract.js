@@ -13,6 +13,24 @@ const OVERVIEW_FIELDS = Object.freeze([
   "campaignTone",
   "mainOffer",
 ]);
+const OVERVIEW_CONTENT_FIELDS = Object.freeze([
+  "contentSections",
+  "additionalInformation",
+  "notices",
+  "legalInformation",
+]);
+const OVERVIEW_REQUIREMENT_FIELDS = Object.freeze([
+  ...OVERVIEW_FIELDS,
+  ...OVERVIEW_CONTENT_FIELDS,
+]);
+const CONTENT_SECTION_TYPES = Object.freeze([
+  "hero", "benefits", "cards", "steps", "feature", "story", "stats",
+  "faq", "notice", "legal", "footer", "custom",
+]);
+const CONTENT_PRESENTATION_HINTS = Object.freeze([
+  "hero", "cards", "steps", "split-content", "story", "stats", "list",
+  "legal", "footer",
+]);
 const FIELD_ORIGINS = Object.freeze([
   "provided",
   "generated",
@@ -39,7 +57,7 @@ const OVERVIEW_PARSE_SCHEMA = {
     overview: {
       type: "object",
       additionalProperties: false,
-      required: OVERVIEW_FIELDS,
+      required: OVERVIEW_REQUIREMENT_FIELDS,
       properties: {
         title: { type: "string", maxLength: 200 },
         leadText: { type: "string", maxLength: 240 },
@@ -50,17 +68,125 @@ const OVERVIEW_PARSE_SCHEMA = {
         audience: { type: "string", enum: AUDIENCES },
         campaignTone: { type: "string", enum: CAMPAIGN_TONES },
         mainOffer: { type: "string", maxLength: 1000 },
+        contentSections: {
+          type: "array",
+          maxItems: 16,
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: [
+              "sectionKey", "sectionType", "title", "description", "presentationHint",
+              "items", "cta", "media", "required",
+            ],
+            properties: {
+              sectionKey: { type: "string", maxLength: 100 },
+              sectionType: { type: "string", enum: CONTENT_SECTION_TYPES },
+              title: { type: "string", maxLength: 200 },
+              description: { type: "string", maxLength: 1000 },
+              presentationHint: { type: "string", enum: CONTENT_PRESENTATION_HINTS },
+              items: {
+                type: "array",
+                maxItems: 12,
+                items: {
+                  type: "object",
+                  additionalProperties: false,
+                  required: [
+                    "itemKey", "title", "description", "eyebrow", "badge", "value",
+                    "imageIntent", "ctaLabel", "ctaUrl", "confirmationRequired",
+                  ],
+                  properties: {
+                    itemKey: { type: "string", maxLength: 100 },
+                    title: { type: "string", maxLength: 200 },
+                    description: { type: "string", maxLength: 1000 },
+                    eyebrow: { type: "string", maxLength: 120 },
+                    badge: { type: "string", maxLength: 80 },
+                    value: { type: "string", maxLength: 200 },
+                    imageIntent: { type: "string", maxLength: 500 },
+                    ctaLabel: { type: "string", maxLength: CTA_LABEL_MAX_CHARACTERS },
+                    ctaUrl: { type: "string", maxLength: 1000 },
+                    confirmationRequired: { type: "boolean" },
+                  },
+                },
+              },
+              cta: {
+                type: "object",
+                additionalProperties: false,
+                required: ["label", "url", "confirmationRequired"],
+                properties: {
+                  label: { type: "string", maxLength: CTA_LABEL_MAX_CHARACTERS },
+                  url: { type: "string", maxLength: 1000 },
+                  confirmationRequired: { type: "boolean" },
+                },
+              },
+              media: {
+                type: "object",
+                additionalProperties: false,
+                required: ["role", "imageIntent", "altText", "mobileImageRequired"],
+                properties: {
+                  role: { type: "string", maxLength: 80 },
+                  imageIntent: { type: "string", maxLength: 500 },
+                  altText: { type: "string", maxLength: 300 },
+                  mobileImageRequired: { type: "boolean" },
+                },
+              },
+              required: { type: "boolean" },
+            },
+          },
+        },
+        additionalInformation: {
+          type: "array",
+          maxItems: 20,
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["label", "value", "description", "confirmationRequired"],
+            properties: {
+              label: { type: "string", maxLength: 120 },
+              value: { type: "string", maxLength: 500 },
+              description: { type: "string", maxLength: 1000 },
+              confirmationRequired: { type: "boolean" },
+            },
+          },
+        },
+        notices: {
+          type: "array",
+          maxItems: 20,
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["title", "body", "confirmationRequired"],
+            properties: {
+              title: { type: "string", maxLength: 160 },
+              body: { type: "string", maxLength: 1500 },
+              confirmationRequired: { type: "boolean" },
+            },
+          },
+        },
+        legalInformation: {
+          type: "array",
+          maxItems: 20,
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["title", "body", "confirmationRequired"],
+            properties: {
+              title: { type: "string", maxLength: 160 },
+              body: { type: "string", maxLength: 2000 },
+              confirmationRequired: { type: "boolean" },
+            },
+          },
+        },
       },
     },
     fieldDecisions: {
       type: "array",
-      maxItems: OVERVIEW_FIELDS.length,
+      maxItems: OVERVIEW_REQUIREMENT_FIELDS.length,
       items: {
         type: "object",
         additionalProperties: false,
         required: ["field", "origin", "confidence", "reason", "requiresConfirmation"],
         properties: {
-          field: { type: "string", enum: OVERVIEW_FIELDS },
+          field: { type: "string", enum: OVERVIEW_REQUIREMENT_FIELDS },
           origin: { type: "string", enum: FIELD_ORIGINS },
           confidence: { type: "number", minimum: 0, maximum: 1 },
           reason: { type: "string", maxLength: 300 },
@@ -75,8 +201,8 @@ const OVERVIEW_PARSE_SCHEMA = {
     },
     missingCriticalInputs: {
       type: "array",
-      maxItems: OVERVIEW_FIELDS.length,
-      items: { type: "string", enum: OVERVIEW_FIELDS },
+      maxItems: OVERVIEW_REQUIREMENT_FIELDS.length,
+      items: { type: "string", enum: OVERVIEW_REQUIREMENT_FIELDS },
     },
     warnings: {
       type: "array",
@@ -90,6 +216,71 @@ const OVERVIEW_PARSE_SCHEMA = {
 
 function text(value, maxLength = 2000) {
   return String(value || "").trim().slice(0, maxLength);
+}
+
+function normalizeContentItem(value = {}, index = 0) {
+  return {
+    itemKey: text(value.itemKey, 100) || `item-${index + 1}`,
+    title: text(value.title, 200),
+    description: text(value.description, 1000),
+    eyebrow: text(value.eyebrow, 120),
+    badge: text(value.badge, 80),
+    value: text(value.value, 200),
+    imageIntent: text(value.imageIntent, 500),
+    ctaLabel: normalizeCtaLabel(value.ctaLabel),
+    ctaUrl: text(value.ctaUrl, 1000),
+    confirmationRequired: Boolean(value.confirmationRequired),
+  };
+}
+
+function normalizeContentSection(value = {}, index = 0) {
+  const sectionType = CONTENT_SECTION_TYPES.includes(value.sectionType) ? value.sectionType : "custom";
+  const defaultPresentation = sectionType === "benefits" || sectionType === "cards" ? "cards"
+    : sectionType === "steps" ? "steps"
+      : sectionType === "stats" ? "stats"
+        : sectionType === "legal" || sectionType === "notice" ? "legal"
+          : sectionType === "footer" ? "footer"
+            : sectionType === "hero" ? "hero"
+              : "story";
+  return {
+    sectionKey: text(value.sectionKey, 100) || `section-${index + 1}`,
+    sectionType,
+    title: text(value.title, 200),
+    description: text(value.description, 1000),
+    presentationHint: CONTENT_PRESENTATION_HINTS.includes(value.presentationHint)
+      ? value.presentationHint : defaultPresentation,
+    items: (Array.isArray(value.items) ? value.items : []).slice(0, 12)
+      .map((item, itemIndex) => normalizeContentItem(item, itemIndex)),
+    cta: {
+      label: normalizeCtaLabel(value.cta?.label),
+      url: text(value.cta?.url, 1000),
+      confirmationRequired: Boolean(value.cta?.confirmationRequired),
+    },
+    media: {
+      role: text(value.media?.role, 80),
+      imageIntent: text(value.media?.imageIntent, 500),
+      altText: text(value.media?.altText, 300),
+      mobileImageRequired: Boolean(value.media?.mobileImageRequired),
+    },
+    required: value.required !== false,
+  };
+}
+
+function normalizeAdditionalInformation(value = {}) {
+  return {
+    label: text(value.label, 120),
+    value: text(value.value, 500),
+    description: text(value.description, 1000),
+    confirmationRequired: Boolean(value.confirmationRequired),
+  };
+}
+
+function normalizeNotice(value = {}, maxBodyLength = 1500) {
+  return {
+    title: text(value.title, 160),
+    body: text(value.body, maxBodyLength),
+    confirmationRequired: Boolean(value.confirmationRequired),
+  };
 }
 
 function validateOverviewInstruction(value) {
@@ -113,7 +304,7 @@ function normalizeOverview(value = {}) {
   const purpose = PROMOTION_PURPOSES.includes(value.promotionPurpose)
     ? value.promotionPurpose : "";
   return {
-    schemaVersion: 5,
+    schemaVersion: 6,
     inputMode: value.inputMode === "natural-language" ? "natural-language" : "structured",
     rawNaturalLanguage: text(value.rawNaturalLanguage, 4000),
     title: text(value.title, 200),
@@ -125,6 +316,14 @@ function normalizeOverview(value = {}) {
     audience: AUDIENCES.includes(value.audience) ? value.audience : "",
     campaignTone: CAMPAIGN_TONES.includes(value.campaignTone) ? value.campaignTone : "",
     mainOffer: text(value.mainOffer, 1000),
+    contentSections: (Array.isArray(value.contentSections) ? value.contentSections : []).slice(0, 16)
+      .map((section, index) => normalizeContentSection(section, index)),
+    additionalInformation: (Array.isArray(value.additionalInformation) ? value.additionalInformation : []).slice(0, 20)
+      .map(normalizeAdditionalInformation),
+    notices: (Array.isArray(value.notices) ? value.notices : []).slice(0, 20)
+      .map((notice) => normalizeNotice(notice, 1500)),
+    legalInformation: (Array.isArray(value.legalInformation) ? value.legalInformation : []).slice(0, 20)
+      .map((notice) => normalizeNotice(notice, 2000)),
   };
 }
 
@@ -146,7 +345,7 @@ function normalizeParsedOverview({ result = {}, instruction = "" }) {
   (Array.isArray(result.fieldDecisions) ? result.fieldDecisions : []).forEach((item) => {
     const field = text(item?.field, 120);
     const origin = text(item?.origin, 120);
-    if (!OVERVIEW_FIELDS.includes(field) || !FIELD_ORIGINS.includes(origin) || decisions.has(field)) return;
+    if (!OVERVIEW_REQUIREMENT_FIELDS.includes(field) || !FIELD_ORIGINS.includes(origin) || decisions.has(field)) return;
     decisions.set(field, {
       field,
       origin,
@@ -158,7 +357,7 @@ function normalizeParsedOverview({ result = {}, instruction = "" }) {
   const missingCriticalInputs = Array.from(new Set(
     (Array.isArray(result.missingCriticalInputs) ? result.missingCriticalInputs : [])
       .map((item) => text(item, 120))
-      .filter((item) => OVERVIEW_FIELDS.includes(item))
+      .filter((item) => OVERVIEW_REQUIREMENT_FIELDS.includes(item))
   ));
   if (!overview.market && !missingCriticalInputs.includes("market")) {
     missingCriticalInputs.push("market");
@@ -300,6 +499,10 @@ module.exports = {
   AUDIENCES,
   CAMPAIGN_TONES,
   OVERVIEW_FIELDS,
+  OVERVIEW_CONTENT_FIELDS,
+  OVERVIEW_REQUIREMENT_FIELDS,
+  CONTENT_SECTION_TYPES,
+  CONTENT_PRESENTATION_HINTS,
   FIELD_ORIGINS,
   MIN_OVERVIEW_INSTRUCTION_CHARACTERS,
   MAX_OVERVIEW_INSTRUCTION_CHARACTERS,

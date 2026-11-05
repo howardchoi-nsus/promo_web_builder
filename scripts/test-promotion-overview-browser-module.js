@@ -37,7 +37,7 @@ const content = {
 };
 
 const canonical = overview.syncFromLegacy(content);
-assert.equal(canonical.schemaVersion, 5);
+assert.equal(canonical.schemaVersion, 6);
 assert.match(
   createPromoHtml,
   new RegExp(`wizard/promotion-overview\\.js\\?v=promotion-overview-v${canonical.schemaVersion}`),
@@ -63,7 +63,7 @@ overview.applyToLegacy(content, {
 assert.equal(content.promo.title, "기존 고객 이벤트");
 assert.equal(content.promo.leadText, "다시 만나는 특별한 혜택");
 assert.equal(content.simpleBrief.mainOffer, "20% 할인");
-assert.equal(content.promo.ctaLabel, "혜택 받기", "Overview v5 CTA must be synchronized to legacy content");
+assert.equal(content.promo.ctaLabel, "혜택 받기", "Overview v6 CTA must be synchronized to legacy content");
 assert.equal(content.promo.ctaUrl, "https://promo.example/start");
 
 assert.equal(overview.fingerprint(content.promotionOverview), overview.fingerprint({

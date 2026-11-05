@@ -33,10 +33,12 @@ const baseOverview = {
 };
 
 const normalized = normalizeOverview(baseOverview);
-assert.equal(normalized.schemaVersion, 5);
+assert.equal(normalized.schemaVersion, 6);
 assert.equal(normalized.leadText, "신규 고객을 위한 첫 충전 혜택");
 assert.equal(normalized.ctaLabel, "지금 참여하기");
 assert.equal(Object.hasOwn(normalized, "primaryAction"), false);
+assert.deepEqual(normalized.contentSections, []);
+assert.deepEqual(normalized.additionalInformation, []);
 
 const generatedDraft = normalizeParsedOverview({
   instruction: "신규 고객을 위한 첫 충전 이벤트를 만들어 주세요.",
@@ -55,6 +57,33 @@ const generatedDraft = normalizeParsedOverview({
       audience: "신규",
       campaignTone: "프리미엄",
       mainOffer: "첫 충전 혜택을 강조하는 프로모션",
+      contentSections: [{
+        sectionKey: "benefits",
+        sectionType: "benefits",
+        title: "주요 혜택",
+        description: "핵심 혜택을 카드로 안내합니다.",
+        presentationHint: "cards",
+        items: [{
+          itemKey: "welcome-bonus",
+          title: "첫 충전 혜택",
+          description: "첫 충전 고객 대상 혜택",
+          eyebrow: "WELCOME",
+          badge: "신규",
+          value: "100%",
+          imageIntent: "보너스 칩 이미지",
+          ctaLabel: "혜택 보기",
+          ctaUrl: "",
+          confirmationRequired: true,
+        }],
+        cta: { label: "전체 혜택", url: "", confirmationRequired: true },
+        media: { role: "benefit-visual", imageIntent: "혜택 카드 키비주얼", altText: "", mobileImageRequired: true },
+        required: true,
+      }],
+      additionalInformation: [{
+        label: "이벤트 기간", value: "사용자 확인 필요", description: "기간이 입력되지 않았습니다.", confirmationRequired: true,
+      }],
+      notices: [{ title: "지급 조건", body: "상세 조건 확인 필요", confirmationRequired: true }],
+      legalInformation: [],
     },
     fieldDecisions: [
       {
@@ -86,6 +115,8 @@ assert.notEqual(generatedDraft.overview.title, "이전 정형 입력 제목");
 assert.ok(generatedDraft.missingCriticalInputs.includes("market"));
 assert.equal(generatedDraft.fieldDecisions[0].origin, "generated");
 assert.equal(generatedDraft.assumptions.length, 1);
+assert.equal(generatedDraft.overview.contentSections[0].items[0].title, "첫 충전 혜택");
+assert.equal(generatedDraft.overview.additionalInformation[0].confirmationRequired, true);
 
 assert.equal(overviewFingerprint(baseOverview), overviewFingerprint({ ...baseOverview }));
 assert.equal(
@@ -94,7 +125,7 @@ assert.equal(
     ...baseOverview,
     primaryAction: { label: "다른 CTA", url: "https://other.example" },
   }),
-  "Legacy primaryAction changes must not alter the Overview v5 fingerprint"
+  "Legacy primaryAction changes must not alter the Overview v6 fingerprint"
 );
 assert.notEqual(
   overviewFingerprint(baseOverview),
@@ -103,7 +134,12 @@ assert.notEqual(
 assert.notEqual(
   overviewFingerprint(baseOverview),
   overviewFingerprint({ ...baseOverview, ctaLabel: "다른 혜택 보기" }),
-  "CTA label changes must alter the Overview v5 fingerprint",
+  "CTA label changes must alter the Overview v6 fingerprint",
+);
+assert.notEqual(
+  overviewFingerprint(baseOverview),
+  overviewFingerprint({ ...baseOverview, contentSections: generatedDraft.overview.contentSections }),
+  "Content section changes must alter the Overview v6 fingerprint",
 );
 assert.deepEqual(JSON.parse(buildOverviewPromptContexts({
   productCatalog: [{ productKey: "sportsbook" }],
