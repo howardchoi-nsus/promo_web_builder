@@ -40,6 +40,7 @@ import {
   saveWireframeRevision,
   confirmWireframeRevision,
 } from "./services/composition-client.mjs";
+import { buildWireframeSections } from "./services/wireframe-display.mjs";
 
 const props = defineProps({
   initialMode: { type: String, default: "" },
@@ -92,37 +93,7 @@ const currentStatus = computed(() => {
   return { label: "요구사항을 입력해 주세요", state: "대기" };
 });
 const wireframeDisplaySnapshot = computed(() => wireframeSnapshot.value || store.proposal?.snapshot || null);
-const wireframeSections = computed(() => {
-  const previewSections = wireframeDisplaySnapshot.value?.preview?.sections;
-  if (Array.isArray(previewSections)) {
-    return previewSections.flatMap((section) => Array.from(
-      { length: Math.max(1, Number(section.repeat || 1)) },
-      (_, sectionIndex) => ({
-        key: `${section.sectionKey}:${sectionIndex}`,
-        label: section.sectionKey,
-        role: section.sectionRole,
-        layout: section.layoutKey,
-        components: (section.componentKeys || []).flatMap((componentKey) => Array.from(
-          { length: Math.max(1, Number(section.componentRepeats?.[componentKey] || 1)) },
-          (_, componentIndex) => ({
-            key: `${componentKey}:${componentIndex}`,
-            label: componentKey,
-          }),
-        )),
-      }),
-    ));
-  }
-  return (wireframeDisplaySnapshot.value?.content?.sectionSnapshot || []).map((section) => ({
-    key: section.sectionKey,
-    label: section.sourceSectionKey || section.sectionKey,
-    role: section.sectionRole,
-    layout: section.selectedLayoutKey,
-    components: (section.items || []).map((item) => ({
-      key: item.itemKey,
-      label: item.sourceItemKey || item.itemKey,
-    })),
-  }));
-});
+const wireframeSections = computed(() => buildWireframeSections(wireframeDisplaySnapshot.value));
 const fullScreenProgress = computed(() => [
   "analyzing_overview", "resolving_policy", "queued", "processing", "applying",
   "generating_assets", "preview_ready", "navigating_preview",
@@ -1255,12 +1226,21 @@ onBeforeUnmount(() => {
               <div class="ai-wireframe-canvas">
                 <article v-for="section in wireframeSections" :key="section.key" class="ai-wireframe-section">
                   <header>
-                    <strong>{{ section.label }}</strong>
-                    <small>{{ section.role || "section" }} · {{ section.layout || "default" }}</small>
+                    <div class="ai-wireframe-section-name">
+                      <span>{{ String(section.order).padStart(2, "0") }}</span>
+                      <strong>{{ section.label }}</strong>
+                    </div>
+                    <small>구성 방식: {{ section.layoutLabel }}</small>
                   </header>
                   <div class="ai-wireframe-components">
-                    <div v-for="component in section.components" :key="component.key">
-                      <span></span><strong>{{ component.label }}</strong>
+                    <div
+                      v-for="component in section.components"
+                      :key="component.key"
+                      :title="component.technicalLabel"
+                    >
+                      <span>{{ component.order }}</span>
+                      <strong>{{ component.label }}</strong>
+                      <small>{{ component.typeLabel }}</small>
                     </div>
                   </div>
                 </article>

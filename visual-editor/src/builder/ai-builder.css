@@ -100,10 +100,14 @@
 .ai-wireframe-section { border: 2px solid #68716c; border-radius: 6px; background: #f8f9f8; }
 .ai-wireframe-section > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-bottom: 1px solid #aeb6b1; }
 .ai-wireframe-section > header small { color: #626b66; }
-.ai-wireframe-components { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; padding: 12px; }
-.ai-wireframe-components > div { display: grid; min-height: 72px; place-items: center; gap: 6px; padding: 10px; border: 1px dashed #737c77; background: #e8ebe9; color: #303632; text-align: center; }
-.ai-wireframe-components span { width: 34px; height: 20px; border: 1px solid #89918d; background: #d3d7d5; }
-.ai-wireframe-components strong { font-size: 11px; overflow-wrap: anywhere; }
+.ai-wireframe-section-name { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.ai-wireframe-section-name > span { display: grid; width: 28px; height: 28px; flex: 0 0 auto; place-items: center; border: 1px solid #6c746f; border-radius: 50%; background: #fff; color: #4d5550; font-size: 10px; font-weight: 900; }
+.ai-wireframe-section-name > strong { font-size: 14px; overflow-wrap: anywhere; }
+.ai-wireframe-components { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; padding: 12px; }
+.ai-wireframe-components > div { display: grid; min-height: 92px; place-items: center; align-content: center; gap: 6px; padding: 12px 10px; border: 1px dashed #737c77; background: #e8ebe9; color: #303632; text-align: center; }
+.ai-wireframe-components > div > span { display: grid; width: 24px; height: 24px; place-items: center; border: 1px solid #89918d; border-radius: 4px; background: #fff; color: #555e59; font-size: 10px; font-weight: 900; }
+.ai-wireframe-components strong { font-size: 12px; overflow-wrap: anywhere; }
+.ai-wireframe-components small { color: #69716d; font-size: 10px; }
 .ai-final-review .ai-builder-result { width: 100%; border: 0; }
 .ai-final-review .ai-builder-preview { max-height: none; }
 
@@ -549,6 +553,9 @@
   .registry-proposal-sequence { width: 30px; height: 30px; }
   .registry-proposal-section__header { flex-direction: column; }
   .registry-proposal-badges { justify-content: flex-start; }
+  .ai-wireframe-review > header { align-items: flex-start; flex-direction: column; }
+  .ai-wireframe-section > header { align-items: flex-start; flex-direction: column; }
+  .ai-wireframe-components { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (prefers-reduced-motion: reduce) {
