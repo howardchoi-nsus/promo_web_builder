@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const {
   registryCompositionSchema,
+  repairRegistryCompositionBindings,
   materializeRequiredSections,
   validateRegistryCompositionProposal,
   normalizeRegistryCompositionProposal,
@@ -292,6 +293,42 @@ assert.throws(() => validateRegistryCompositionProposal({
     : section),
 }, candidates), (error) => error.code === "COMPONENT_NOT_IN_SECTION");
 
+const crossComponentBinding = JSON.parse(JSON.stringify(validResult));
+crossComponentBinding.sections[0].components[0].contentBindings = [{
+  fieldKey: "fld_8c82abe43a1f4a7a9a160875bdc08ed0",
+  sourceOverviewPath: "ctaLabel",
+}];
+const repairedCrossComponentBinding = repairRegistryCompositionBindings(
+  crossComponentBinding,
+  candidates,
+);
+assert.deepEqual(repairedCrossComponentBinding.result.sections[0].components[0].contentBindings, [{
+  fieldKey: "text",
+  sourceOverviewPath: "title",
+}]);
+assert.equal(repairedCrossComponentBinding.repairs.length, 1);
+assert.match(repairedCrossComponentBinding.result.warnings.at(-1), /Content binding repaired/);
+assert.doesNotThrow(() => validateRegistryCompositionProposal(
+  repairedCrossComponentBinding.result,
+  candidates,
+));
+
+const ambiguousCandidates = JSON.parse(JSON.stringify(candidates));
+ambiguousCandidates.sections[0].components[0].fields.push({
+  fieldKey: "subtitle",
+  fieldKind: "text",
+  textType: "subtitle",
+});
+const ambiguousBinding = repairRegistryCompositionBindings(
+  crossComponentBinding,
+  ambiguousCandidates,
+);
+assert.equal(ambiguousBinding.repairs.length, 0);
+assert.throws(() => validateRegistryCompositionProposal(
+  ambiguousBinding.result,
+  ambiguousCandidates,
+), (error) => error.code === "INVALID_CONTENT_BINDING");
+
 const snapshot = normalizeRegistryCompositionProposal({
   validated,
   documentId: "document-v3",
@@ -445,6 +482,29 @@ assert.equal(snapshot.preview.resources[0].locale, "ko-KR");
   assert.equal(repairedBinding.repaired, true);
   assert.equal(bindingAttempts, 2);
 
+  let crossComponentAttempts = 0;
+  const automaticallyRepairedBinding = await generateValidatedRegistryComposition({
+    candidates,
+    promptConfig: {
+      renderedPrompt: "Compose from approved Registry candidates.",
+      promptLayers: { repairPrompts: { contractV3: "Repair {{errorCode}} {{errorMessage}}." } },
+    },
+    generate: async () => {
+      crossComponentAttempts += 1;
+      return { result: crossComponentBinding };
+    },
+  });
+  assert.equal(automaticallyRepairedBinding.repaired, true);
+  assert.equal(crossComponentAttempts, 1);
+  assert.deepEqual(automaticallyRepairedBinding.bindingRepairs, [{
+    sectionKey: "hero",
+    componentKey: "title",
+    fromFieldKey: "fld_8c82abe43a1f4a7a9a160875bdc08ed0",
+    toFieldKey: "text",
+    fromOverviewPath: "ctaLabel",
+    toOverviewPath: "title",
+  }]);
+
   const proposalApi = fs.readFileSync(path.resolve(__dirname, "../api/promo-page-composition-proposals.js"), "utf8");
   const applyApi = fs.readFileSync(path.resolve(__dirname, "../api/promo-page-composition-apply.js"), "utf8");
   const serviceSource = fs.readFileSync(path.resolve(__dirname, "../api/_promo-page-composition-service.js"), "utf8");
@@ -453,6 +513,9 @@ assert.equal(snapshot.preview.resources[0].locale, "ko-KR");
   assert.match(proposalApi, /plannerRegistryCandidateSnapshot/);
   assert.match(proposalApi, /requireEveryVisibleNonImageComponentContent:\s*true/);
   assert.match(proposalApi, /requireDistinctRepeatedCopy:\s*true/);
+  assert.match(proposalApi, /contentBindingFieldMustBelongToSelectedComponent:\s*true/);
+  assert.match(proposalApi, /ctaLabelOnlyTargetsCtaFields:\s*true/);
+  assert.match(proposalApi, /ctaFieldsAcceptOnlyCtaLabel:\s*true/);
   assert.match(serviceSource, /Number\(row\.contract_version \|\| 2\) === 3/);
   assert.match(serviceSource, /setProposalStage/);
   assert.match(applyApi, /POLICY_FINGERPRINT_MISMATCH/);

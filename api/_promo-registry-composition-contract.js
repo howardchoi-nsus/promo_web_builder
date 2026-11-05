@@ -55,6 +55,96 @@ function validationFields(component) {
   }];
 }
 
+function semanticOverviewPath(component, field) {
+  if (field?.fieldKind === "cta") return "ctaLabel";
+  const semanticText = [
+    component?.itemKey,
+    component?.componentKey,
+    component?.name,
+    field?.fieldKey,
+    field?.name,
+    field?.textType,
+  ].map((value) => String(value || "").toLowerCase()).join(" ");
+  if (/title|headline|heading|hero-title|main-title/.test(semanticText)) return "title";
+  if (/offer|benefit|reward|prize|discount|bonus/.test(semanticText)) return "mainOffer";
+  if (/audience|customer|member|target/.test(semanticText)) return "audience";
+  if (/market|country|locale|region/.test(semanticText)) return "market";
+  if (/tone|mood|voice/.test(semanticText)) return "campaignTone";
+  if (/purpose|objective|goal/.test(semanticText)) return "promotionPurpose";
+  return "leadText";
+}
+
+function repairRegistryCompositionBindings(result, candidates) {
+  const repairedResult = JSON.parse(JSON.stringify(result || {}));
+  const sectionsById = new Map((candidates?.sections || []).map((section) => (
+    [section.sectionVersionId, section]
+  )));
+  const repairs = [];
+  for (const plannedSection of repairedResult.sections || []) {
+    const section = sectionsById.get(plannedSection.sectionVersionId);
+    if (!section) continue;
+    const componentsById = new Map((section.components || []).map((component) => (
+      [component.componentInstanceId, component]
+    )));
+    for (const plannedComponent of plannedSection.components || []) {
+      const component = componentsById.get(plannedComponent.componentInstanceId);
+      if (!component || !Array.isArray(plannedComponent.contentBindings)) continue;
+      const fields = validationFields(component);
+      const fieldsByKey = new Map(fields.map((field) => [field.fieldKey, field]));
+      const editableFields = fields.filter((field) => (
+        !field.isLocked && field.fieldKind !== "image"
+      ));
+      const seenTargets = new Set();
+      plannedComponent.contentBindings = plannedComponent.contentBindings.flatMap((binding) => {
+        if (fieldsByKey.has(binding.fieldKey)) {
+          seenTargets.add(binding.fieldKey);
+          return [binding];
+        }
+        const sourceOverviewPath = String(binding.sourceOverviewPath || "");
+        let target = null;
+        let repairedOverviewPath = sourceOverviewPath;
+        if (sourceOverviewPath === "ctaLabel") {
+          const ctaFields = editableFields.filter((field) => field.fieldKind === "cta");
+          if (ctaFields.length === 1) target = ctaFields[0];
+          else {
+            const textFields = editableFields.filter((field) => field.fieldKind !== "cta");
+            if (textFields.length === 1) {
+              target = textFields[0];
+              repairedOverviewPath = semanticOverviewPath(component, target);
+            }
+          }
+        } else {
+          const textFields = editableFields.filter((field) => field.fieldKind !== "cta");
+          if (textFields.length === 1) target = textFields[0];
+        }
+        if (!target) return [binding];
+        const repair = {
+          sectionKey: section.sectionKey,
+          componentKey: component.itemKey,
+          fromFieldKey: binding.fieldKey,
+          toFieldKey: target.fieldKey,
+          fromOverviewPath: sourceOverviewPath,
+          toOverviewPath: repairedOverviewPath,
+        };
+        repairs.push(repair);
+        if (seenTargets.has(target.fieldKey)) return [];
+        seenTargets.add(target.fieldKey);
+        return [{ fieldKey: target.fieldKey, sourceOverviewPath: repairedOverviewPath }];
+      });
+    }
+  }
+  if (repairs.length) {
+    const warnings = Array.isArray(repairedResult.warnings) ? repairedResult.warnings.map(String) : [];
+    repairs.forEach((repair) => {
+      warnings.push(
+        `Content binding repaired: ${repair.sectionKey}.${repair.componentKey}.${repair.fromFieldKey} <- ${repair.fromOverviewPath} to ${repair.toFieldKey} <- ${repair.toOverviewPath}.`,
+      );
+    });
+    repairedResult.warnings = warnings.slice(0, 30);
+  }
+  return { result: repairedResult, repairs };
+}
+
 function componentDefaultProvidesContent(component) {
   return validationFields(component).some((field) => (
     field.fieldKind !== "image"
@@ -487,6 +577,7 @@ function normalizeRegistryCompositionProposal({
 
 module.exports = {
   registryCompositionSchema,
+  repairRegistryCompositionBindings,
   materializeRequiredSections,
   validateRegistryCompositionProposal,
   normalizeRegistryCompositionProposal,

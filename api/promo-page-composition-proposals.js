@@ -160,6 +160,9 @@ module.exports = async function handler(req, res) {
             preserveFactsFromOverview: true,
             avoidInventedClaims: true,
             useContentItemsForAuthoredCopy: true,
+            contentBindingFieldMustBelongToSelectedComponent: true,
+            ctaLabelOnlyTargetsCtaFields: true,
+            ctaFieldsAcceptOnlyCtaLabel: true,
           },
           designReferencePolicy: {
             abstractPatternsOnly: true,

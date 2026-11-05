@@ -12,6 +12,7 @@ const {
 } = require("./_promo-page-composition-contract");
 const {
   registryCompositionSchema,
+  repairRegistryCompositionBindings,
   validateRegistryCompositionProposal,
   normalizeRegistryCompositionProposal,
 } = require("./_promo-registry-composition-contract");
@@ -130,11 +131,13 @@ async function generateValidatedRegistryComposition({
       continue;
     }
     try {
-      const layoutFit = applyLayoutFitRecommendations(generation.result, candidates);
+      const bindingRepair = repairRegistryCompositionBindings(generation.result, candidates);
+      const layoutFit = applyLayoutFitRecommendations(bindingRepair.result, candidates);
       return {
         generation: { ...generation, result: layoutFit.result },
         validated: validateRegistryCompositionProposal(layoutFit.result, candidates),
-        repaired: attempt > 0 || layoutFit.repairs.length > 0,
+        repaired: attempt > 0 || bindingRepair.repairs.length > 0 || layoutFit.repairs.length > 0,
+        bindingRepairs: bindingRepair.repairs,
         layoutFitRepairs: layoutFit.repairs,
       };
     } catch (error) {
