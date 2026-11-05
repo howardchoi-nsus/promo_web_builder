@@ -362,6 +362,7 @@ await page.addInitScript(() => {
 
 try {
   await page.goto(`${origin}/create-promo.html`, { waitUntil: "networkidle" });
+  assert.equal(await page.locator("header.shell-utility-bar").count(), 0);
   await page.getByRole("heading", { name: "프로모션 제작 방식을 선택하세요" }).waitFor();
   assert.equal(await page.getByRole("button", { name: /AI 모드/ }).isEnabled(), true);
   await page.getByRole("button", { name: /AI 모드/ }).click();

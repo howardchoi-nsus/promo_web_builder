@@ -50,7 +50,7 @@
   document.body.classList.add("ai-builder-workspace-mode");
   document.querySelector("[data-shell-sidebar]")?.remove();
   document.querySelector("[data-shell-overlay]")?.remove();
-  document.querySelector("[data-shell-menu-toggle]")?.remove();
+  document.querySelector("header.shell-utility-bar")?.remove();
   loadStylesheet("visual-editor-assets/ai-builder.css?v=ai-builder-v9-hide-fld-ids")
     .then(() => loadScript("visual-editor-assets/ai-builder.js?v=ai-builder-v9-hide-fld-ids", "module"))
     .catch(() => {
