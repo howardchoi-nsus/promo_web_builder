@@ -43,7 +43,7 @@ assert.match(createHtml, /<title>프로모션 빌더<\/title>/);
 assert.match(createHtml, /id="wizard-shell-status" role="status">Create Promo<\/div>/);
 assert.match(createHtml, /data-shell-nav data-shell-active="create-promo"/);
 assert.doesNotMatch(createHtml, /class="active" href="\/promo-wizard\.html"/);
-assert.match(createHtml, /create-promo\.css\?v=create-promo-overview-v3/);
+assert.match(createHtml, /create-promo\.css\?v=create-promo-overview-v4/);
 assert.match(createHtml, /app-components\.css\?v=app-components-v1/);
 assert.match(createHtml, /wizard\/wizard-core\.js\?v=wizard-core-v2/);
 assert.match(createHtml, /wizard\/wizard-content\.js\?v=wizard-content-v5/);
@@ -77,6 +77,7 @@ assert.match(wizardJs, /resolveTemplate\(wizardFormTemplates,\s*contentState\.fo
 
 assert.match(createHtml, /<main class="workspace shell-content">/);
 assert.match(createCss, /\.workspace\.shell-content/);
+assert.doesNotMatch(createCss, /\.workspace\.shell-content\s*\{[^}]*padding:\s*20px;/);
 assert.match(createCss, /\.wizard-progress/);
 assert.match(createCss, /\.wizard-layout-frame/);
 assert.match(createCss, /\.section-ai-design-panel/);
