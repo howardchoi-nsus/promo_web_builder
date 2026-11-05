@@ -154,6 +154,7 @@ module.exports = async function handler(req, res) {
           useRepeatForCollections: true,
           contentAuthoring: {
             mode: "per-instance",
+            requireEveryVisibleNonImageComponentContent: true,
             requireEveryRepeatedItem: true,
             requireDistinctRepeatedCopy: true,
             preserveFactsFromOverview: true,

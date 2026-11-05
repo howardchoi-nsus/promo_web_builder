@@ -22,6 +22,14 @@ const titleComponent = {
   isLocked: false,
   fields: [{ fieldKey: "text", fieldKind: "text", textType: "title" }],
 };
+const optionalHeroVisualComponent = {
+  componentInstanceId: "hero-visual-instance",
+  componentVersionId: "hero-visual-v1",
+  itemKey: "visual",
+  isRequired: false,
+  isLocked: false,
+  fields: [{ fieldKey: "image", fieldKind: "image" }],
+};
 const cardComponent = {
   componentInstanceId: "card-instance",
   componentVersionId: "card-v1",
@@ -64,7 +72,7 @@ const candidates = {
     resolvedRequired: true,
     compositionPolicy: { selectionPolicy: "required", duplicatePolicy: "forbidden", maxInstances: 1 },
     layoutPresets: [{ layoutKey: "hero-default" }],
-    components: [titleComponent],
+    components: [titleComponent, optionalHeroVisualComponent],
   }, {
     sectionVersionId: "cards-v1",
     sectionKey: "cards",
@@ -184,11 +192,41 @@ assert.deepEqual(
   new Set(requiredMaterialized.sections.map((section) => section.sectionVersionId)),
   new Set(["hero-v1", "cards-v1", "terms-v1"]),
 );
-const validatedMaterialized = validateRegistryCompositionProposal({
+const materializedHero = requiredMaterialized.sections.find((section) => section.sectionVersionId === "hero-v1");
+assert.deepEqual(materializedHero.components.map((component) => component.componentInstanceId), ["hero-title-instance"]);
+assert.throws(() => validateRegistryCompositionProposal({
   ...validResult,
   sections: validResult.sections.filter((section) => section.sectionVersionId === "cards-v1"),
-}, candidates);
-assert.deepEqual(validatedMaterialized.sections.map((section) => section.sectionVersionId), ["hero-v1", "cards-v1", "terms-v1"]);
+}, candidates), (error) => error.code === "COMPONENT_CONTENT_INCOMPLETE");
+assert.throws(() => validateRegistryCompositionProposal({
+  ...validResult,
+  sections: validResult.sections.map((section) => section.sectionVersionId === "hero-v1"
+    ? {
+      ...section,
+      components: section.components.map((component) => ({
+        ...component,
+        contentBindings: [],
+        contentItems: [],
+      })),
+    }
+    : section),
+}, candidates), (error) => error.code === "COMPONENT_CONTENT_INCOMPLETE");
+const defaultContentCandidates = JSON.parse(JSON.stringify(candidates));
+defaultContentCandidates.sections[0].components[0].fields[0].defaultValue = "기본 히어로 제목";
+const defaultContentValidated = validateRegistryCompositionProposal({
+  ...validResult,
+  sections: validResult.sections.map((section) => section.sectionVersionId === "hero-v1"
+    ? {
+      ...section,
+      components: section.components.map((component) => ({
+        ...component,
+        contentBindings: [],
+        contentItems: [],
+      })),
+    }
+    : section),
+}, defaultContentCandidates);
+assert.equal(defaultContentValidated.sections[0].components[0].itemKey, "title");
 assert.throws(() => validateRegistryCompositionProposal({
   ...validResult,
   sections: validResult.sections.map((section) => section.sectionVersionId === "cards-v1"
@@ -413,6 +451,7 @@ assert.equal(snapshot.preview.resources[0].locale, "ko-KR");
   assert.match(proposalApi, /contractVersion: 3/);
   assert.match(proposalApi, /sourceTemplateId: null/);
   assert.match(proposalApi, /plannerRegistryCandidateSnapshot/);
+  assert.match(proposalApi, /requireEveryVisibleNonImageComponentContent:\s*true/);
   assert.match(proposalApi, /requireDistinctRepeatedCopy:\s*true/);
   assert.match(serviceSource, /Number\(row\.contract_version \|\| 2\) === 3/);
   assert.match(serviceSource, /setProposalStage/);

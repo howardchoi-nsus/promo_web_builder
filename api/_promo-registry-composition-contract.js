@@ -27,8 +27,60 @@ function defaultRequiredSectionPlan(section) {
     layoutKey: section.defaultLayoutKey || section.layoutPresets?.[0]?.layoutKey || "",
     motionPresetVersionId: "",
     repeat: 1,
-    components: (section.components || []).map(defaultComponentPlan),
+    components: (section.components || [])
+      .filter((component) => component.isRequired)
+      .map(defaultComponentPlan),
   };
+}
+
+function hasDisplayContent(value) {
+  if (["string", "number", "boolean"].includes(typeof value)) {
+    return String(value).trim().length > 0;
+  }
+  if (Array.isArray(value)) return value.some(hasDisplayContent);
+  if (!value || typeof value !== "object") return false;
+  if (Object.prototype.hasOwnProperty.call(value, "fields")) {
+    return hasDisplayContent(value.fields);
+  }
+  return Object.entries(value).some(([key, entry]) => (
+    !["link", "target", "source"].includes(key) && hasDisplayContent(entry)
+  ));
+}
+
+function validationFields(component) {
+  if (Array.isArray(component.fields) && component.fields.length) return component.fields;
+  return [{
+    ...component,
+    fieldKey: component.itemKey,
+  }];
+}
+
+function componentDefaultProvidesContent(component) {
+  return validationFields(component).some((field) => (
+    field.fieldKind !== "image"
+    && hasDisplayContent(field.isLocked
+      ? field.lockedValue ?? field.defaultValue
+      : field.defaultValue)
+  ));
+}
+
+function layoutProvidesContent(layout, component) {
+  const snapshot = layout?.layoutSnapshot || layout?.layout_snapshot;
+  if (!snapshot || typeof snapshot.content !== "object" || !snapshot.content) return false;
+  const value = snapshot.content[component.itemKey] ?? snapshot.content[component.componentKey];
+  return hasDisplayContent(value);
+}
+
+function componentHasResolvedContent({
+  component,
+  contentBindings,
+  contentItems,
+  layout,
+  section,
+}) {
+  if (contentBindings.length || contentItems.some((item) => item.fields.length)) return true;
+  if (componentDefaultProvidesContent(component) || layoutProvidesContent(layout, component)) return true;
+  return (section.resourceReferences || []).length > 0;
 }
 
 function materializeRequiredSections(result, candidates) {
@@ -224,7 +276,8 @@ function validateRegistryCompositionProposal(result, candidates) {
         || (!collection.enabled && repeat !== 1)) {
         fail("COMPONENT_COLLECTION_LIMIT_EXCEEDED", `Component collection limit exceeded: ${component.itemKey}`);
       }
-      const fieldsByKey = new Map((component.fields || []).map((field) => [field.fieldKey, field]));
+      const componentFields = validationFields(component);
+      const fieldsByKey = new Map(componentFields.map((field) => [field.fieldKey, field]));
       const allowedFields = new Set(fieldsByKey.keys());
       const seenFields = new Set();
       const contentBindings = [];
@@ -287,7 +340,7 @@ function validateRegistryCompositionProposal(result, candidates) {
         }
         if (itemFields.length) contentItems.push({ repeatIndex, fields: itemFields });
       }
-      const generatableTextFields = (component.fields || []).filter(
+      const generatableTextFields = componentFields.filter(
         (field) => !field.isLocked && field.fieldKind !== "image",
       );
       if (repeat > 1 && generatableTextFields.length && contentItems.length !== repeat) {
@@ -305,6 +358,21 @@ function validateRegistryCompositionProposal(result, candidates) {
         if (new Set(signatures).size !== signatures.length) {
           fail("DUPLICATE_COLLECTION_CONTENT", `Repeated items require differentiated copy: ${section.sectionKey}.${component.itemKey}`);
         }
+      }
+      const displayFields = componentFields.filter((field) => field.fieldKind !== "image");
+      if (plannedComponent.visible !== false
+        && displayFields.length
+        && !componentHasResolvedContent({
+          component,
+          contentBindings,
+          contentItems,
+          layout,
+          section,
+        })) {
+        fail(
+          "COMPONENT_CONTENT_INCOMPLETE",
+          `Visible component requires display content: ${section.sectionKey}.${component.itemKey}. Add a contentBinding or contentItems entry for repeatIndex 0.`,
+        );
       }
       components.push({
         componentInstanceId: component.componentInstanceId,
