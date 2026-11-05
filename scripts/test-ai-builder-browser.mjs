@@ -417,6 +417,9 @@ try {
   await page.getByText("주요 혜택", { exact: true }).first().waitFor();
   await page.getByText("신규 고객 보너스", { exact: true }).first().waitFor();
   await page.getByText("추가 정보", { exact: true }).waitFor();
+  await page.getByText("미입력", { exact: true }).waitFor();
+  assert.equal(await page.getByText("사용자 확인 필요", { exact: true }).count(), 0);
+  assert.ok(await page.locator(".ai-requirements-tree .ai-confirmation-badge").count() > 0);
   await page.getByText(/요구사항 Tree를 확인한 뒤 승인해 주세요/).waitFor();
   await page.getByRole("button", { name: "요구사항 승인" }).waitFor();
   assert.equal(compositionRequest, null, "composition must wait for requirements approval");

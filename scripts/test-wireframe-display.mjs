@@ -197,4 +197,48 @@ assert.equal(fidResult[0].components[0].technicalLabel, "");
 assert.equal(fidResult[0].components[0].contentLines[0].label, "");
 assert.equal(fidResult[0].components[0].contentLines[0].text, "노출할 실제 문구");
 
+const confirmationResult = buildWireframeSections({
+  compositionSpec: {
+    sections: [{
+      sectionKey: "notice",
+      sectionRole: "notice",
+      components: [{
+        itemKey: "notice",
+        contentBindings: [{
+          fieldKey: "text",
+          sourceOverviewPath: "additionalInformation[0].value",
+        }],
+      }],
+    }],
+  },
+}, {
+  overview: {
+    additionalInformation: [{
+      label: "이벤트 기간",
+      value: "사용자 확인 필요",
+      confirmationRequired: true,
+    }],
+  },
+});
+assert.equal(confirmationResult[0].components[0].contentLines.length, 0);
+assert.equal(confirmationResult[0].components[0].requiresConfirmation, true);
+
+const confirmedCopyResult = buildWireframeSections({
+  compositionSpec: {
+    sections: [{
+      sectionKey: "notice",
+      components: [{
+        itemKey: "notice",
+        contentBindings: [{ fieldKey: "text", sourceOverviewPath: "notices.0.body" }],
+      }],
+    }],
+  },
+}, {
+  overview: {
+    notices: [{ body: "결제 완료 후 혜택이 지급됩니다.", confirmationRequired: true }],
+  },
+});
+assert.equal(confirmedCopyResult[0].components[0].contentLines[0].text, "결제 완료 후 혜택이 지급됩니다.");
+assert.equal(confirmedCopyResult[0].components[0].requiresConfirmation, true);
+
 console.log("wireframe display tests passed");

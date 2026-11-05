@@ -102,6 +102,7 @@ const TEXT_TYPE_LABELS = {
 const INTERNAL_KEY_PATTERN = /^(?:(?:sec|item|cmp|component)[_-][a-z0-9_-]+|fid(?:[_:-]?[a-z0-9]{6,})?)$/i;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const URL_PATTERN = /^(?:https?:|data:|blob:|\/\/)/i;
+const CONFIRMATION_PLACEHOLDER_PATTERN = /^(?:(?:사용자|상세\s*조건)\s*)?확인(?:이)?\s*필요(?:합니다)?[.!]?$/i;
 const MAX_PREVIEW_LENGTH = 280;
 
 function normalizedKey(value) {
@@ -179,13 +180,23 @@ function componentPresentation(item = {}) {
 
 function compactText(value) {
   const fullText = String(value ?? "").replace(/\s+/g, " ").trim();
-  if (!fullText || URL_PATTERN.test(fullText)) return null;
+  if (!fullText || URL_PATTERN.test(fullText) || CONFIRMATION_PLACEHOLDER_PATTERN.test(fullText)) return null;
   const truncated = fullText.length > MAX_PREVIEW_LENGTH;
   return {
     text: truncated ? `${fullText.slice(0, MAX_PREVIEW_LENGTH).trimEnd()}…` : fullText,
     fullText,
     truncated,
   };
+}
+
+function valueNeedsConfirmation(value) {
+  if (["string", "number", "boolean"].includes(typeof value)) {
+    return CONFIRMATION_PLACEHOLDER_PATTERN.test(String(value).replace(/\s+/g, " ").trim());
+  }
+  if (Array.isArray(value)) return value.some(valueNeedsConfirmation);
+  if (!value || typeof value !== "object") return false;
+  return value.confirmationRequired === true
+    || Object.entries(value).some(([key, child]) => key !== "confirmationRequired" && valueNeedsConfirmation(child));
 }
 
 function commonObjectText(value, fieldKind = "") {
@@ -312,6 +323,7 @@ function contentSections(snapshot, viewport = "desktop") {
           typeLabel: resolveComponentType(item),
           technicalLabel: safeTechnicalLabel(item.sourceItemKey || item.itemKey),
           contentLines: resolveContentLines(visibleItem, inputValue),
+          requiresConfirmation: valueNeedsConfirmation(inputValue),
           isImage: normalizedKey(item.fieldKind) === "image",
           ...componentPresentation(item),
         };
@@ -320,17 +332,42 @@ function contentSections(snapshot, viewport = "desktop") {
   });
 }
 
-function overviewContentLines(component, overview = {}) {
+function overviewValue(overview, path) {
+  const segments = String(path || "")
+    .replace(/\[(\d+)\]/g, ".$1")
+    .split(".")
+    .filter(Boolean)
+    .map((segment) => (/^\d+$/.test(segment) ? Number(segment) : segment));
+  let current = overview;
+  let requiresConfirmation = false;
+  for (const segment of segments) {
+    if (current && typeof current === "object" && current.confirmationRequired === true) {
+      requiresConfirmation = true;
+    }
+    current = current?.[segment];
+  }
+  if (current && typeof current === "object" && current.confirmationRequired === true) {
+    requiresConfirmation = true;
+  }
+  return { value: current, requiresConfirmation: requiresConfirmation || valueNeedsConfirmation(current) };
+}
+
+function overviewComponentContent(component, overview = {}) {
   const values = new Map();
+  let requiresConfirmation = false;
   (component.contentBindings || []).forEach((binding) => {
-    const value = overview?.[binding.sourceOverviewPath];
-    if (hasDisplayContent(value)) values.set(binding.fieldKey, value);
+    const resolved = overviewValue(overview, binding.sourceOverviewPath);
+    requiresConfirmation ||= resolved.requiresConfirmation;
+    if (hasDisplayContent(resolved.value)) values.set(binding.fieldKey, resolved.value);
   });
   const authored = (component.contentItems || []).find((item) => (
     Number(item.repeatIndex) === Number(component.repeatIndex || 0)
   ));
-  (authored?.fields || []).forEach((field) => values.set(field.fieldKey, field.value));
-  return [...values.entries()].flatMap(([fieldKey, value]) => {
+  (authored?.fields || []).forEach((field) => {
+    requiresConfirmation ||= valueNeedsConfirmation(field.value);
+    values.set(field.fieldKey, field.value);
+  });
+  const lines = [...values.entries()].flatMap(([fieldKey, value]) => {
     const content = displayText(value, fieldKey === "button" ? "cta" : "text");
     return content ? [{
       key: fieldKey,
@@ -339,6 +376,7 @@ function overviewContentLines(component, overview = {}) {
       ...content,
     }] : [];
   });
+  return { lines, requiresConfirmation };
 }
 
 function hasDisplayContent(value) {
@@ -368,8 +406,10 @@ function compositionSpecSections(snapshot, overview = {}) {
             componentOrder += 1;
             const instance = { ...component, repeatIndex: componentIndex };
             const isImage = inferredImageComponent(component.itemKey);
-            let contentLines = overviewContentLines(instance, overview);
-            if (!contentLines.length && !isImage && (section.resourceReferences || []).length) {
+            const resolvedContent = overviewComponentContent(instance, overview);
+            let contentLines = resolvedContent.lines;
+            if (!contentLines.length && !isImage && !resolvedContent.requiresConfirmation
+              && (section.resourceReferences || []).length) {
               contentLines = [{
                 key: "resource",
                 label: "고정 콘텐츠",
@@ -378,7 +418,7 @@ function compositionSpecSections(snapshot, overview = {}) {
                 fullText: "CMS에 등록된 고정 콘텐츠가 적용됩니다.",
                 truncated: false,
               }];
-            } else if (!contentLines.length && !isImage) {
+            } else if (!contentLines.length && !isImage && !resolvedContent.requiresConfirmation) {
               contentLines = [{
                 key: "registered-content",
                 label: "등록 콘텐츠",
@@ -395,6 +435,7 @@ function compositionSpecSections(snapshot, overview = {}) {
               typeLabel: isImage ? "이미지 영역" : "콘텐츠 영역",
               technicalLabel: safeTechnicalLabel(component.itemKey),
               contentLines,
+              requiresConfirmation: resolvedContent.requiresConfirmation,
               isImage,
               ...componentPresentation({ sourceItemKey: component.itemKey, fieldKind: isImage ? "image" : "text" }),
             };
@@ -435,6 +476,7 @@ function previewSections(snapshot) {
             typeLabel: "콘텐츠 영역",
             technicalLabel: safeTechnicalLabel(componentKey),
             contentLines: [],
+            requiresConfirmation: false,
             isImage: false,
             ...componentPresentation({ sourceItemKey: componentKey }),
           };

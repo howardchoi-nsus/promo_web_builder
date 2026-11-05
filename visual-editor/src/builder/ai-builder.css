@@ -134,6 +134,8 @@
 .ai-requirements-tree li strong { font-size: 12px; overflow-wrap: anywhere; }
 .ai-requirements-tree li.is-group { grid-template-columns: 1fr; margin-top: 5px; border-bottom-color: #dce5e0; background: #f5f8f6; }
 .ai-requirements-tree li.is-group span { color: #24352d; font-size: 12px; font-weight: 850; }
+.ai-requirements-tree__label { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.ai-confirmation-badge { display: inline-flex; min-height: 20px; align-items: center; padding: 2px 7px; border: 1px solid #e5bf54; border-radius: 999px; background: #fff8dc; color: #755600; font-size: 9px; font-style: normal; font-weight: 900; line-height: 1; white-space: nowrap; }
 .ai-requirements-tree ul.is-editing li:not(.is-group) { align-items: start; }
 .ai-requirements-tree li.is-changed { border-left-color: #6d28d9; background: #faf8ff; }
 .ai-requirements-tree li.is-changed::before { border-color: #6d28d9; }
@@ -168,7 +170,7 @@
 .ai-wireframe-section-name > strong { font-size: 14px; overflow-wrap: anywhere; }
 .ai-wireframe-components { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; padding: 16px; }
 .ai-wireframe-component { min-width: 0; min-height: 108px; overflow: hidden; border: 1px solid #d7dcda; border-radius: 8px; background: #f5f7f6; color: #303632; }
-.ai-wireframe-component > header { display: flex; align-items: center; gap: 8px; padding: 9px 10px 0; text-align: left; }
+.ai-wireframe-component > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 10px 0; text-align: left; }
 .ai-wireframe-component > header > div { display: grid; min-width: 0; gap: 2px; }
 .ai-wireframe-component > header strong { color: #68726d; font-size: 10px; overflow-wrap: anywhere; }
 .ai-wireframe-copy { display: grid; gap: 7px; padding: 10px; }

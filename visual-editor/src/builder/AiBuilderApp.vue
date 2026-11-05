@@ -1391,6 +1391,7 @@ const HIDDEN_OVERVIEW_TREE_FIELDS = new Set([
   "rawNaturalLanguage",
   "sectionKey",
   "itemKey",
+  "confirmationRequired",
 ]);
 
 const OVERVIEW_TREE_LABELS = Object.freeze({
@@ -1413,7 +1414,6 @@ const OVERVIEW_TREE_LABELS = Object.freeze({
   badge: "배지",
   value: "값 / 강조 수치",
   imageIntent: "이미지 구성 의도",
-  confirmationRequired: "사용자 확인 필요",
   cta: "CTA",
   media: "이미지 / 미디어",
   role: "이미지 역할",
@@ -1455,6 +1455,11 @@ function overviewTreeLabel(key, value, index = -1) {
 function overviewTreeDisplay(value) {
   if (typeof value === "boolean") return value ? "예" : "아니오";
   return String(value ?? "");
+}
+
+function isConfirmationPlaceholder(value) {
+  return /^(?:(?:사용자|상세\s*조건)\s*)?확인(?:이)?\s*필요(?:합니다)?[.!]?$/i
+    .test(String(value ?? "").replace(/\s+/g, " ").trim());
 }
 
 function overviewTreeInputKind(key, value) {
@@ -1506,7 +1511,14 @@ function overviewEntries(
         const childPath = `${path}.${index}`;
         if (child && typeof child === "object") {
           return [
-            { path: childPath, label: overviewTreeLabel(key, child, index), value: "", depth: depth + 1, kind: "group" },
+            {
+              path: childPath,
+              label: overviewTreeLabel(key, child, index),
+              value: "",
+              depth: depth + 1,
+              kind: "group",
+              requiresConfirmation: child.confirmationRequired === true,
+            },
             ...overviewEntries(child, childPath, depth + 2),
           ];
         }
@@ -1530,16 +1542,25 @@ function overviewEntries(
     if (item && typeof item === "object") {
       const children = overviewEntries(item, path, depth + 1);
       return children.length
-        ? [{ path, label, value: "", depth, kind: "group" }, ...children]
+        ? [{
+          path,
+          label,
+          value: "",
+          depth,
+          kind: "group",
+          requiresConfirmation: item.confirmationRequired === true,
+        }, ...children]
         : [];
     }
-    const display = overviewTreeDisplay(item);
+    const confirmationPlaceholder = value.confirmationRequired === true && isConfirmationPlaceholder(item);
+    const display = confirmationPlaceholder ? "미입력" : overviewTreeDisplay(item);
     return (display || requirementsEditing.value) ? [{
       path,
       key,
       label,
       value: display,
       rawValue: item,
+      editValue: confirmationPlaceholder ? "" : item,
       inputKind: overviewTreeInputKind(key, item),
       options: OVERVIEW_TREE_SELECT_OPTIONS[key] || [],
       depth,
@@ -1867,7 +1888,10 @@ onBeforeUnmount(() => {
                   :class="{ 'is-group': entry.kind === 'group', 'is-changed': requirementEntryChanged(entry) }"
                   :style="{ '--tree-depth': entry.depth }"
                 >
-                  <span>{{ entry.label }}</span>
+                  <span class="ai-requirements-tree__label">
+                    {{ entry.label }}
+                    <em v-if="entry.requiresConfirmation" class="ai-confirmation-badge">확인 필요</em>
+                  </span>
                   <template v-if="entry.kind !== 'group'">
                     <strong v-if="!requirementsEditing">{{ entry.value }}</strong>
                     <label v-else-if="entry.inputKind === 'checkbox'" class="ai-requirements-tree__boolean">
@@ -1881,7 +1905,7 @@ onBeforeUnmount(() => {
                     </label>
                     <select
                       v-else-if="entry.inputKind === 'select'"
-                      :value="entry.rawValue"
+                      :value="entry.editValue ?? entry.rawValue"
                       :aria-label="`${entry.label} 수정`"
                       @change="setRequirementValue(entry.path, $event.target.value)"
                     >
@@ -1890,7 +1914,7 @@ onBeforeUnmount(() => {
                     </select>
                     <textarea
                       v-else-if="entry.inputKind === 'textarea'"
-                      :value="entry.rawValue"
+                      :value="entry.editValue ?? entry.rawValue"
                       rows="3"
                       maxlength="2000"
                       :aria-label="`${entry.label} 수정`"
@@ -1899,7 +1923,7 @@ onBeforeUnmount(() => {
                     <input
                       v-else
                       :type="entry.inputKind"
-                      :value="entry.rawValue"
+                      :value="entry.editValue ?? entry.rawValue"
                       :maxlength="entry.key === 'ctaLabel' || (entry.key === 'label' && entry.path.endsWith('.cta.label')) ? 20 : 2000"
                       :aria-label="`${entry.label} 수정`"
                       @input="setRequirementValue(entry.path, $event.target.value)"
@@ -1962,6 +1986,7 @@ onBeforeUnmount(() => {
                         <div>
                           <strong>{{ component.label }}</strong>
                         </div>
+                        <em v-if="component.requiresConfirmation" class="ai-confirmation-badge">확인 필요</em>
                       </header>
                       <div v-if="component.contentLines.length" class="ai-wireframe-copy">
                         <p v-for="line in component.contentLines" :key="line.key">
@@ -1971,7 +1996,11 @@ onBeforeUnmount(() => {
                       </div>
                       <div v-else class="ai-wireframe-placeholder">
                         <span aria-hidden="true">{{ component.isImage ? "▧" : "…" }}</span>
-                        {{ component.isImage ? `${component.label} 자리` : "표시할 내용이 아직 없습니다" }}
+                        {{ component.isImage
+                          ? `${component.label} 자리`
+                          : component.requiresConfirmation
+                            ? "확정할 내용을 입력해 주세요"
+                            : "표시할 내용이 아직 없습니다" }}
                       </div>
                     </div>
                   </div>
