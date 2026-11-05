@@ -197,6 +197,44 @@ assert.equal(fidResult[0].components[0].technicalLabel, "");
 assert.equal(fidResult[0].components[0].contentLines[0].label, "");
 assert.equal(fidResult[0].components[0].contentLines[0].text, "노출할 실제 문구");
 
+const complexFidResult = buildWireframeSections({
+  content: {
+    sectionSnapshot: [{
+      sectionKey: "fid.section.hero",
+      sourceSectionKey: "fid-section-hero",
+      name: "FID: Hero Section",
+      items: [{
+        itemKey: "fid/hero/title",
+        sourceItemKey: "fid-hero-title",
+        name: "Field ID (Hero Title)",
+        fields: [{
+          fieldKey: "fid.hero.title.copy",
+          name: "FID: title copy",
+          fieldKind: "text",
+        }, {
+          fieldKey: "fid.hero.internal.value",
+          name: "Field ID / internal value",
+          fieldKind: "text",
+        }],
+      }],
+    }],
+    sectionInputs: {
+      "fid.section.hero": {
+        "fid/hero/title": { fields: {
+          "fid.hero.title.copy": "실제로 노출할 제목",
+          "fid.hero.internal.value": "fid_internal_placeholder_value",
+        } },
+      },
+    },
+  },
+});
+assert.equal(complexFidResult[0].label, "콘텐츠 섹션");
+assert.equal(complexFidResult[0].technicalLabel, "");
+assert.equal(complexFidResult[0].components[0].label, "콘텐츠 항목 1");
+assert.equal(complexFidResult[0].components[0].technicalLabel, "");
+assert.deepEqual(complexFidResult[0].components[0].contentLines.map((line) => line.text), ["실제로 노출할 제목"]);
+assert.ok(complexFidResult[0].components[0].contentLines.every((line) => !/fid/i.test(line.label)));
+
 const confirmationResult = buildWireframeSections({
   compositionSpec: {
     sections: [{

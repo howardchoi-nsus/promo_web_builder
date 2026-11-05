@@ -462,6 +462,9 @@ try {
   await page.getByText("Winter Giveaway", { exact: true }).waitFor();
   await page.getByText("기술 정보 보기", { exact: true }).waitFor();
   assert.equal(await page.locator(".ai-wireframe-technical dd").first().isVisible(), false);
+  await page.getByText("기술 정보 보기", { exact: true }).click();
+  assert.equal(await page.locator(".ai-wireframe-technical").getByText(/\bfid\b/i).count(), 0);
+  assert.equal(await page.locator(".ai-wireframe-technical dt", { hasText: "섹션 키" }).count(), 0);
   await page.getByRole("button", { name: "모바일" }).click();
   assert.equal(await page.locator(".ai-wireframe-stage").getAttribute("data-viewport"), "mobile");
   await page.waitForTimeout(250);
