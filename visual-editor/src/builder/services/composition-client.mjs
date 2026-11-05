@@ -148,6 +148,7 @@ export function analyzeOverview(naturalLanguage, context = {}) {
     method: "POST",
     body: JSON.stringify({
       mode: "natural-language",
+      generationMode: "new-draft",
       naturalLanguage,
       locale: context.locale || "",
       market: context.market || "",

@@ -2335,8 +2335,8 @@ function overviewDecisionLabel(decision) {
 
 async function analyzeNaturalLanguageOverview() {
   const instruction = String(overviewNaturalLanguage || "").trim();
-  if (instruction.length < 10) {
-    overviewAnalysisError = "자연어 설명을 10자 이상 입력해 주세요.";
+  if (instruction.length < 2) {
+    overviewAnalysisError = "프로모션 요구사항을 2자 이상 입력해 주세요.";
     overviewAnalysis = null;
     renderStep();
     return;

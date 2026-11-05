@@ -19,6 +19,8 @@ const FIELD_ORIGINS = Object.freeze([
   "inferred",
   "needs-confirmation",
 ]);
+const MIN_OVERVIEW_INSTRUCTION_CHARACTERS = 2;
+const MAX_OVERVIEW_INSTRUCTION_CHARACTERS = 4000;
 const MAX_PROMPT_CONTEXT_JSON_LENGTH = 50000;
 
 const OVERVIEW_PARSE_SCHEMA = {
@@ -88,6 +90,23 @@ const OVERVIEW_PARSE_SCHEMA = {
 
 function text(value, maxLength = 2000) {
   return String(value || "").trim().slice(0, maxLength);
+}
+
+function validateOverviewInstruction(value) {
+  const instruction = String(value || "").trim();
+  if (instruction.length < MIN_OVERVIEW_INSTRUCTION_CHARACTERS) {
+    throw Object.assign(
+      new Error(`프로모션 요구사항을 ${MIN_OVERVIEW_INSTRUCTION_CHARACTERS}자 이상 입력해 주세요.`),
+      { code: "OVERVIEW_INSTRUCTION_TOO_SHORT", statusCode: 422 },
+    );
+  }
+  if (instruction.length > MAX_OVERVIEW_INSTRUCTION_CHARACTERS) {
+    throw Object.assign(
+      new Error(`프로모션 요구사항은 ${MAX_OVERVIEW_INSTRUCTION_CHARACTERS}자 이하여야 합니다.`),
+      { code: "OVERVIEW_INSTRUCTION_TOO_LONG", statusCode: 422 },
+    );
+  }
+  return instruction;
 }
 
 function normalizeOverview(value = {}) {
@@ -282,7 +301,10 @@ module.exports = {
   CAMPAIGN_TONES,
   OVERVIEW_FIELDS,
   FIELD_ORIGINS,
+  MIN_OVERVIEW_INSTRUCTION_CHARACTERS,
+  MAX_OVERVIEW_INSTRUCTION_CHARACTERS,
   OVERVIEW_PARSE_SCHEMA,
+  validateOverviewInstruction,
   normalizeOverview,
   normalizeParsedOverview,
   inputLanguageLocale,

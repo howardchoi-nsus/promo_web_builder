@@ -4,9 +4,21 @@ const {
   normalizeParsedOverview,
   inputLanguageLocale,
   buildOverviewPromptContexts,
+  validateOverviewInstruction,
   overviewFingerprint,
   overviewRequestFingerprint,
 } = require("../api/_promo-overview-contract");
+
+assert.equal(validateOverviewInstruction(" 프로모션 생성 "), "프로모션 생성");
+assert.equal(validateOverviewInstruction("봄 이벤트"), "봄 이벤트");
+assert.throws(
+  () => validateOverviewInstruction("봄"),
+  (error) => error.code === "OVERVIEW_INSTRUCTION_TOO_SHORT" && error.statusCode === 422,
+);
+assert.throws(
+  () => validateOverviewInstruction("가".repeat(4001)),
+  (error) => error.code === "OVERVIEW_INSTRUCTION_TOO_LONG" && error.statusCode === 422,
+);
 
 const baseOverview = {
   title: "첫 충전 프로모션",

@@ -41,6 +41,7 @@ try {
   assert.equal(requestBodies.length, 2);
   requestBodies.forEach((body) => assert.deepEqual(body, {
     mode: "natural-language",
+    generationMode: "new-draft",
     naturalLanguage: "Create a summer bonus promotion",
     locale: "en-CA",
     market: "CA",

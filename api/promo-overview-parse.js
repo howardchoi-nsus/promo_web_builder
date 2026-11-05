@@ -8,6 +8,7 @@ const {
   AUDIENCES,
   CAMPAIGN_TONES,
   OVERVIEW_PARSE_SCHEMA,
+  validateOverviewInstruction,
   buildOverviewPromptContexts,
   normalizeParsedOverview,
   inputLanguageLocale,
@@ -24,11 +25,8 @@ module.exports = async function handler(req, res) {
   try {
     res.setHeader("Cache-Control", "no-store");
     const body = parseBody(req.body);
-    const instruction = String(body.naturalLanguage || "").trim();
+    const instruction = validateOverviewInstruction(body.naturalLanguage);
     const generationMode = String(body.generationMode || "new-draft").trim();
-    if (instruction.length < 10 || instruction.length > 4000) {
-      return res.status(422).json({ error: "Natural-language overview must be between 10 and 4000 characters" });
-    }
     if (generationMode !== "new-draft") {
       return res.status(422).json({ error: "Unsupported promotion overview generation mode" });
     }
