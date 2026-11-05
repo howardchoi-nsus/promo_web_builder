@@ -17,14 +17,13 @@ class ComponentSourceError extends Error {
   }
 }
 
-function parseDataUrl(value) {
-  const match = /^data:([^;,]+);base64,([a-z0-9+/=\r\n]+)$/i.exec(String(value || ""));
-  if (!match) throw new ComponentSourceError("INVALID_IMAGE_DATA", "Base64 이미지 데이터가 올바르지 않습니다.");
-  const bytes = Buffer.from(match[2].replace(/\s/g, ""), "base64");
+function parseImageBytes(value, declaredMimeType = "") {
+  const bytes = Buffer.isBuffer(value) ? value : Buffer.from(value || "");
   if (!bytes.length) throw new ComponentSourceError("EMPTY_IMAGE", "빈 이미지는 업로드할 수 없습니다.");
   if (bytes.length > MAX_SOURCE_BYTES) throw new ComponentSourceError("IMAGE_TOO_LARGE", "이미지는 10MB 이하여야 합니다.", 413);
   const mimeType = detectMimeType(bytes);
-  if (!mimeType || mimeType !== String(match[1]).toLowerCase()) {
+  const normalizedDeclaredMimeType = String(declaredMimeType || "").split(";", 1)[0].trim().toLowerCase();
+  if (!mimeType || (normalizedDeclaredMimeType && mimeType !== normalizedDeclaredMimeType)) {
     throw new ComponentSourceError("IMAGE_SIGNATURE_MISMATCH", "파일 확장 정보와 실제 이미지 형식이 일치하지 않습니다.");
   }
   const dimensions = readImageDimensions(bytes, mimeType);
@@ -39,6 +38,12 @@ function parseDataUrl(value) {
     height: dimensions.height,
     contentHash: createHash("sha256").update(bytes).digest("hex"),
   };
+}
+
+function parseDataUrl(value) {
+  const match = /^data:([^;,]+);base64,([a-z0-9+/=\r\n]+)$/i.exec(String(value || ""));
+  if (!match) throw new ComponentSourceError("INVALID_IMAGE_DATA", "Base64 이미지 데이터가 올바르지 않습니다.");
+  return parseImageBytes(Buffer.from(match[2].replace(/\s/g, ""), "base64"), match[1]);
 }
 
 function detectMimeType(bytes) {
@@ -98,5 +103,5 @@ function normalizeCropSpec(value) {
 
 module.exports = {
   MAX_SOURCE_BYTES, MAX_DIMENSION, MIME_EXTENSIONS, ComponentSourceError,
-  parseDataUrl, detectMimeType, readImageDimensions, normalizeCropSpec,
+  parseDataUrl, parseImageBytes, detectMimeType, readImageDimensions, normalizeCropSpec,
 };

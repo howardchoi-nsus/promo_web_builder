@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 const {
   parseDataUrl,
+  parseImageBytes,
   normalizeCropSpec,
   ComponentSourceError,
 } = require("../api/_component-design-source-contract");
@@ -24,6 +25,7 @@ assert.equal(parsed.mimeType, "image/png");
 assert.equal(parsed.width, 320);
 assert.equal(parsed.height, 180);
 assert.match(parsed.contentHash, /^[a-f0-9]{64}$/);
+assert.deepEqual(parseImageBytes(png, "image/png"), parsed);
 
 assert.throws(
   () => parseDataUrl(`data:image/jpeg;base64,${png.toString("base64")}`),
@@ -91,6 +93,9 @@ const fs = require("node:fs");
 const promptStore = fs.readFileSync("api/_prompt-template-store.js", "utf8");
 const promptUi = fs.readFileSync("prototype/index.html", "utf8");
 const workspace = fs.readFileSync("admin-app/src/components/ComponentGenerationWorkspace.vue", "utf8");
+const builderClient = fs.readFileSync("visual-editor/src/builder/services/composition-client.mjs", "utf8");
+const uploadApi = fs.readFileSync("api/component-design-source-upload.js", "utf8");
+const sourceApi = fs.readFileSync("api/component-design-sources.js", "utf8");
 const analyzerPromptMigration = fs.readFileSync("db/migrations/067_component_visual_analyzer_prompt_draft.sql", "utf8");
 const multiCandidateMigration = fs.readFileSync("db/migrations/068_component_visual_analyzer_multi_candidate_draft.sql", "utf8");
 assert.match(promptStore, /component_visual_analyzer/);
@@ -98,6 +103,14 @@ assert.match(promptUi, /컴포넌트 이미지 분석/);
 assert.match(workspace, /원본 업로드 없이 다시 분석/);
 assert.match(workspace, /개 컴포넌트 후보/);
 assert.match(workspace, /선택 후보 컴포넌트 Draft 생성/);
+assert.match(builderClient, /@vercel\/blob\/client/);
+assert.match(builderClient, /handleUploadUrl:\s*"\/api\/component-design-source-upload"/);
+assert.match(builderClient, /imageBlob:\s*\{/);
+assert.match(uploadApi, /handleUpload/);
+assert.match(uploadApi, /maximumSizeInBytes:\s*MAX_SOURCE_BYTES/);
+assert.match(uploadApi, /resolveBuilderOwner\(req, res, \{ issue: false \}\)/);
+assert.match(sourceApi, /readUploadedImage\(body\.imageBlob\)/);
+assert.match(sourceApi, /parseImageBytes/);
 assert.match(analyzerPromptMigration, /where not exists[\s\S]*type = 'component_visual_analyzer'/);
 assert.match(analyzerPromptMigration, /'draft'/);
 assert.match(analyzerPromptMigration, /'json_object'/);

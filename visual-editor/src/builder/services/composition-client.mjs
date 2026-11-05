@@ -1,3 +1,5 @@
+import { upload } from "@vercel/blob/client";
+
 async function request(path, options = {}) {
   const response = await fetch(path, {
     credentials: "same-origin",
@@ -155,10 +157,46 @@ export function analyzeOverview(naturalLanguage, context = {}) {
   });
 }
 
-export function uploadReferenceImage(payload) {
+const COMPONENT_SOURCE_UPLOAD_PREFIX = "component-source-uploads/";
+const COMPONENT_SOURCE_MAX_BYTES = 10 * 1024 * 1024;
+
+export function imageDataUrlToBlob(value) {
+  const match = /^data:([^;,]+);base64,([a-z0-9+/=\r\n]+)$/i.exec(String(value || ""));
+  if (!match) throw new Error("붙여넣은 이미지 데이터가 올바르지 않습니다.");
+  const binary = atob(match[2].replace(/\s/g, ""));
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  if (!bytes.length) throw new Error("빈 이미지는 업로드할 수 없습니다.");
+  if (bytes.length > COMPONENT_SOURCE_MAX_BYTES) throw new Error("이미지는 10MB 이하여야 합니다.");
+  return new Blob([bytes], { type: match[1].toLowerCase() });
+}
+
+function componentSourceExtension(mimeType) {
+  return { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" }[mimeType] || "bin";
+}
+
+export async function uploadReferenceImage(payload) {
+  await ensureBuilderSession();
+  const image = imageDataUrlToBlob(payload.imageDataUrl);
+  const pathname = `${COMPONENT_SOURCE_UPLOAD_PREFIX}${crypto.randomUUID()}.${componentSourceExtension(image.type)}`;
+  const uploaded = await upload(pathname, image, {
+    access: "private",
+    handleUploadUrl: "/api/component-design-source-upload",
+    contentType: image.type,
+    multipart: image.size > 5 * 1024 * 1024,
+    clientPayload: JSON.stringify({ fileName: String(payload.fileName || "").slice(0, 180) }),
+  });
   return request("/api/component-design-sources", {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      fileName: payload.fileName,
+      cropSpec: payload.cropSpec,
+      imageBlob: {
+        pathname: uploaded.pathname,
+        contentType: uploaded.contentType || image.type,
+        etag: uploaded.etag || "",
+      },
+    }),
   });
 }
 
