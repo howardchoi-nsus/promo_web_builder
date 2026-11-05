@@ -79,6 +79,10 @@ const chatSessionsLoading = ref(false);
 const chatSessionsError = ref("");
 const chatSessionSwitching = ref(false);
 const legacyWorkspace = ref(null);
+const requirementsEditing = ref(false);
+const requirementsEditDraft = ref(null);
+const requirementsEditBaseline = ref(null);
+const requirementsSaving = ref(false);
 let assetPollingCancelled = false;
 let localeUnsubscribe = null;
 const localeRevision = ref(0);
@@ -91,10 +95,16 @@ const busy = computed(() => [
   "analyzing_overview", "resolving_policy", "queued", "processing", "applying",
   "generating_assets", "preview_ready", "navigating_preview",
 ].includes(store.stage));
-const interactionLocked = computed(() => busy.value || attachmentBusy.value);
+const interactionLocked = computed(() => busy.value || attachmentBusy.value || requirementsSaving.value);
+const chatComposerLocked = computed(() => interactionLocked.value || requirementsEditing.value);
+const requirementsEditDirty = computed(() => (
+  requirementsEditing.value
+  && JSON.stringify(requirementsEditDraft.value) !== JSON.stringify(requirementsEditBaseline.value)
+));
 const currentStatus = computed(() => {
   if (attachmentBusy.value) return { label: "참고 이미지 분석", state: "진행 중" };
   if (busy.value) return { label: progressMessage.value, state: "진행 중" };
+  if (requirementsEditing.value) return { label: "요구사항 수정 중", state: "확인 필요" };
   if (store.stage === "failed") return { label: store.error?.message || "처리 실패", state: "실패" };
   if (store.snapshot && store.stage === "render_ready") return { label: "최종 디자인 생성 완료", state: "완료" };
   if (wireframeSnapshot.value) return { label: "B/W Wireframe 생성 완료", state: "확인 필요" };
@@ -232,6 +242,9 @@ function persistWorkspace() {
       wireframeSnapshot: wireframeSnapshot.value,
       activeResultTab: activeResultTab.value,
       splitPercent: splitPercent.value,
+      requirementsEditing: requirementsEditing.value,
+      requirementsEditDraft: requirementsEditing.value ? requirementsEditDraft.value : null,
+      requirementsEditBaseline: requirementsEditing.value ? requirementsEditBaseline.value : null,
     }));
   } catch {
     // Browser storage is a convenience cache; Builder Document remains canonical.
@@ -258,6 +271,11 @@ function restoreWorkspaceCache() {
     store.inputLocale = cached.inputLocale || "";
     store.overviewDraft = cached.overviewDraft || null;
     store.overviewFingerprint = cached.overviewFingerprint || "";
+    requirementsEditing.value = Boolean(cached.requirementsEditing && cached.requirementsEditDraft);
+    requirementsEditDraft.value = requirementsEditing.value ? cached.requirementsEditDraft : null;
+    requirementsEditBaseline.value = requirementsEditing.value
+      ? (cached.requirementsEditBaseline || cloneRequirements(store.overviewDraft))
+      : null;
     return cached;
   } catch {
     return null;
@@ -309,6 +327,10 @@ function resetWorkspaceState() {
   pendingOperations.value = null;
   operationConflict.value = null;
   overviewRetry.value = null;
+  requirementsEditing.value = false;
+  requirementsEditDraft.value = null;
+  requirementsEditBaseline.value = null;
+  requirementsSaving.value = false;
 }
 
 function appendWelcomeMessage() {
@@ -708,9 +730,146 @@ async function submitChat() {
   }
 }
 
+function cloneRequirements(value = store.overviewDraft) {
+  return JSON.parse(JSON.stringify(value || {}));
+}
+
+function markChatActionGroupHandled(action) {
+  const matches = (candidate) => (
+    action.id ? candidate.id === action.id : candidate.key === action.key
+  );
+  const message = messages.value.find((item) => (
+    Array.isArray(item.actions) && item.actions.some(matches)
+  ));
+  if (!message) return;
+  message.actions = message.actions.map((candidate) => ({
+    ...candidate,
+    status: matches(candidate) ? "executed" : "expired",
+  }));
+}
+
+function beginRequirementsEdit() {
+  requirementsEditBaseline.value = cloneRequirements();
+  requirementsEditDraft.value = cloneRequirements();
+  requirementsEditing.value = true;
+  activeResultTab.value = "requirements";
+}
+
+function clearRequirementsEdit() {
+  requirementsEditing.value = false;
+  requirementsEditDraft.value = null;
+  requirementsEditBaseline.value = null;
+}
+
+async function executeRequirementsEditAction(action) {
+  if (!capabilities.value.chatWorkspaceV1) return null;
+  return executeChatAction({
+    sessionId: chatSessionId.value,
+    actionId: action.id,
+    actionKey: action.key,
+    idempotencyKey: crypto.randomUUID(),
+  });
+}
+
+async function completeRequirementsEdit(action) {
+  if (!requirementsEditing.value || !requirementsEditDirty.value) return;
+  requirementsSaving.value = true;
+  clearBuilderError(store);
+  try {
+    const normalize = window.PromoPromotionOverview?.normalize;
+    if (typeof normalize !== "function") {
+      throw Object.assign(new Error("프로모션 요구사항 검증 모듈을 불러오지 못했습니다."), {
+        code: "OVERVIEW_NORMALIZER_UNAVAILABLE",
+      });
+    }
+    const normalized = normalize(requirementsEditDraft.value || {});
+    const fingerprint = window.PromoPromotionOverview?.fingerprint;
+    if (typeof fingerprint !== "function") {
+      throw Object.assign(new Error("프로모션 요구사항 검증 모듈을 불러오지 못했습니다."), {
+        code: "OVERVIEW_FINGERPRINT_UNAVAILABLE",
+      });
+    }
+    const nextFingerprint = fingerprint(normalized);
+    await executeRequirementsEditAction(action);
+    if (capabilities.value.chatWorkspaceV1) {
+      const savedRequirements = await saveRequirementsRevision({
+        sessionId: chatSessionId.value,
+        documentRevision: store.documentRevision,
+        requirements: normalized,
+        fingerprint: nextFingerprint,
+      });
+      requirementsRevision.value = Number(savedRequirements.requirements.revision);
+    }
+    updateOverviewDraft(normalized);
+    markChatActionGroupHandled(action);
+    clearRequirementsEdit();
+    await appendPersistedMessage("user", action.label, { type: "action" });
+    await appendPersistedMessage(
+      "assistant",
+      "수정된 요구사항을 저장했습니다. 오른쪽 요구사항 Tree를 확인한 뒤 승인해 주세요.",
+      {
+        type: "assistant",
+        actions: [
+          { key: "confirm_requirements", label: "요구사항 승인" },
+          { key: "revise_requirements", label: "수정 요청" },
+        ],
+      },
+    );
+  } catch (error) {
+    setBuilderError(store, error);
+  } finally {
+    requirementsSaving.value = false;
+  }
+}
+
+async function cancelRequirementsEdit(action) {
+  if (!requirementsEditing.value) return;
+  requirementsSaving.value = true;
+  clearBuilderError(store);
+  try {
+    await executeRequirementsEditAction(action);
+    markChatActionGroupHandled(action);
+    clearRequirementsEdit();
+    activeResultTab.value = "requirements";
+    await appendPersistedMessage("user", action.label, { type: "action" });
+    await appendPersistedMessage(
+      "assistant",
+      "요구사항 수정을 취소했습니다. 기존 요구사항을 확인한 뒤 승인하거나 다시 수정해 주세요.",
+      {
+        type: "assistant",
+        actions: [
+          { key: "confirm_requirements", label: "요구사항 승인" },
+          { key: "revise_requirements", label: "수정 요청" },
+        ],
+      },
+    );
+  } catch (error) {
+    setBuilderError(store, error);
+  } finally {
+    requirementsSaving.value = false;
+  }
+}
+
+function isChatActionDisabled(action) {
+  if (interactionLocked.value || (action.status && action.status !== "proposed")) return true;
+  if (action.key === "complete_requirements_edit") {
+    return !requirementsEditing.value || !requirementsEditDirty.value;
+  }
+  if (action.key === "cancel_requirements_edit") return !requirementsEditing.value;
+  return requirementsEditing.value;
+}
+
 async function handleChatAction(action) {
   if (interactionLocked.value) return;
   try {
+    if (action.key === "complete_requirements_edit") {
+      await completeRequirementsEdit(action);
+      return;
+    }
+    if (action.key === "cancel_requirements_edit") {
+      await cancelRequirementsEdit(action);
+      return;
+    }
     if (action.key === "confirm_requirements") {
       if (capabilities.value.chatWorkspaceV1) {
         await executeChatAction({
@@ -737,6 +896,23 @@ async function handleChatAction(action) {
           actionKey: action.key,
           idempotencyKey: crypto.randomUUID(),
         });
+      }
+      await appendPersistedMessage("user", action.label, { type: "action" });
+      if (action.key === "revise_requirements") {
+        markChatActionGroupHandled(action);
+        beginRequirementsEdit();
+        await appendPersistedMessage(
+          "assistant",
+          "수정이 필요한 항목을 오른쪽 요구사항 Tree에서 수정해 주세요. 수정이 끝나면 ‘수정 완료’를 눌러 주세요.",
+          {
+            type: "assistant",
+            actions: [
+              { key: "complete_requirements_edit", label: "수정 완료" },
+              { key: "cancel_requirements_edit", label: "수정 취소" },
+            ],
+          },
+        );
+        return;
       }
       await appendPersistedMessage("assistant", "수정할 내용을 채팅으로 입력해 주세요.", { type: "assistant" });
       return;
@@ -1219,6 +1395,23 @@ const OVERVIEW_TREE_LABELS = Object.freeze({
   body: "내용",
 });
 
+const OVERVIEW_TREE_SELECT_OPTIONS = Object.freeze({
+  promotionPurpose: ["할인쿠폰", "경품", "이벤트", "기타"],
+  audience: ["신규", "기존고객", "일반고객"],
+  campaignTone: ["활기찬", "진중함", "럭셔리", "프리미엄", "긴급함", "친근함"],
+  sectionType: ["hero", "benefits", "cards", "steps", "feature", "story", "stats", "faq", "notice", "legal", "footer", "custom"],
+  presentationHint: ["hero", "cards", "steps", "split-content", "story", "stats", "list", "legal", "footer"],
+});
+
+const OVERVIEW_TREE_MULTILINE_FIELDS = new Set([
+  "leadText",
+  "mainOffer",
+  "description",
+  "imageIntent",
+  "altText",
+  "body",
+]);
+
 function overviewTreeLabel(key, value, index = -1) {
   if (index >= 0) {
     if (value?.title) return String(value.title);
@@ -1233,7 +1426,44 @@ function overviewTreeDisplay(value) {
   return String(value ?? "");
 }
 
-function overviewEntries(value = store.overviewDraft, prefix = "", depth = 0) {
+function overviewTreeInputKind(key, value) {
+  if (typeof value === "boolean") return "checkbox";
+  if (OVERVIEW_TREE_SELECT_OPTIONS[key]) return "select";
+  if (OVERVIEW_TREE_MULTILINE_FIELDS.has(key)) return "textarea";
+  if (/url$/i.test(key)) return "url";
+  return "text";
+}
+
+function requirementPathSegments(path) {
+  return String(path || "").split(".").filter(Boolean).map((segment) => (
+    /^\d+$/.test(segment) ? Number(segment) : segment
+  ));
+}
+
+function requirementValueAt(value, path) {
+  return requirementPathSegments(path).reduce((current, segment) => current?.[segment], value);
+}
+
+function setRequirementValue(path, value) {
+  if (!requirementsEditing.value || !requirementsEditDraft.value) return;
+  const segments = requirementPathSegments(path);
+  const key = segments.pop();
+  const target = segments.reduce((current, segment) => current?.[segment], requirementsEditDraft.value);
+  if (!target || key === undefined) return;
+  target[key] = value;
+}
+
+function requirementEntryChanged(entry) {
+  if (!requirementsEditing.value || entry.kind === "group") return false;
+  return JSON.stringify(requirementValueAt(requirementsEditBaseline.value, entry.path))
+    !== JSON.stringify(entry.rawValue);
+}
+
+function overviewEntries(
+  value = requirementsEditing.value ? requirementsEditDraft.value : store.overviewDraft,
+  prefix = "",
+  depth = 0,
+) {
   if (!value || typeof value !== "object") return [];
   return Object.entries(value).flatMap(([key, item]) => {
     if (HIDDEN_OVERVIEW_TREE_FIELDS.has(key)) return [];
@@ -1250,7 +1480,17 @@ function overviewEntries(value = store.overviewDraft, prefix = "", depth = 0) {
           ];
         }
         const display = overviewTreeDisplay(child);
-        return display ? [{ path: childPath, label: `항목 ${index + 1}`, value: display, depth: depth + 1, kind: "value" }] : [];
+        return (display || requirementsEditing.value) ? [{
+          path: childPath,
+          key: String(index),
+          label: `항목 ${index + 1}`,
+          value: display,
+          rawValue: child,
+          inputKind: overviewTreeInputKind(key, child),
+          options: OVERVIEW_TREE_SELECT_OPTIONS[key] || [],
+          depth: depth + 1,
+          kind: "value",
+        }] : [];
       });
       return children.length
         ? [{ path, label, value: "", depth, kind: "group" }, ...children]
@@ -1263,11 +1503,36 @@ function overviewEntries(value = store.overviewDraft, prefix = "", depth = 0) {
         : [];
     }
     const display = overviewTreeDisplay(item);
-    return display ? [{ path, label, value: display, depth, kind: "value" }] : [];
+    return (display || requirementsEditing.value) ? [{
+      path,
+      key,
+      label,
+      value: display,
+      rawValue: item,
+      inputKind: overviewTreeInputKind(key, item),
+      options: OVERVIEW_TREE_SELECT_OPTIONS[key] || [],
+      depth,
+      kind: "value",
+    }] : [];
   });
 }
 
-watch([messages, attachments, wireframeSnapshot, activeResultTab, splitPercent], persistWorkspace, { deep: true });
+const requirementsChangedCount = computed(() => (
+  requirementsEditing.value
+    ? overviewEntries(requirementsEditDraft.value).filter(requirementEntryChanged).length
+    : 0
+));
+
+watch([
+  messages,
+  attachments,
+  wireframeSnapshot,
+  activeResultTab,
+  splitPercent,
+  requirementsEditing,
+  requirementsEditDraft,
+  requirementsEditBaseline,
+], persistWorkspace, { deep: true });
 watch(() => [store.documentId, store.documentRevision, store.stage, store.overviewDraft, store.snapshot], persistWorkspace, { deep: true });
 
 onMounted(async () => {
@@ -1461,7 +1726,7 @@ onBeforeUnmount(() => {
                   v-for="action in message.actions"
                   :key="action.key"
                   type="button"
-                  :disabled="interactionLocked"
+                  :disabled="isChatActionDisabled(action)"
                   @click="handleChatAction(action)"
                 >{{ action.label }}</button>
               </div>
@@ -1485,7 +1750,7 @@ onBeforeUnmount(() => {
               rows="3"
               maxlength="4000"
               placeholder="프로모션 요구사항을 입력하거나 화면 이미지를 붙여넣으세요."
-              :disabled="interactionLocked"
+              :disabled="chatComposerLocked"
               @paste="onPaste"
               @keydown.enter.exact.prevent="submitChat"
             ></textarea>
@@ -1498,9 +1763,9 @@ onBeforeUnmount(() => {
                 multiple
                 @change="addImageFiles($event.target.files); $event.target.value = ''"
               />
-              <button type="button" class="ai-builder-secondary" :disabled="interactionLocked" @click="fileInput?.click()">이미지 첨부</button>
-              <button type="submit" class="ai-builder-primary" :disabled="interactionLocked || (!chatInput.trim() && !attachments.some((item) => item.dataUrl && !item.analysis))">
-                {{ interactionLocked ? '처리 중…' : '전송' }}
+              <button type="button" class="ai-builder-secondary" :disabled="chatComposerLocked" @click="fileInput?.click()">이미지 첨부</button>
+              <button type="submit" class="ai-builder-primary" :disabled="chatComposerLocked || (!chatInput.trim() && !attachments.some((item) => item.dataUrl && !item.analysis))">
+                {{ interactionLocked ? '처리 중…' : requirementsEditing ? 'Tree 수정 중' : '전송' }}
               </button>
             </div>
           </form>
@@ -1545,16 +1810,59 @@ onBeforeUnmount(() => {
 
           <div class="ai-result-content">
             <section v-if="activeResultTab === 'requirements'" class="ai-requirements-tree">
-              <header><strong>요구사항 Tree</strong><small>채팅에서 수정할 수 있습니다.</small></header>
-              <ul v-if="store.overviewDraft" role="tree">
+              <header>
+                <strong>요구사항 Tree</strong>
+                <small v-if="requirementsEditing" class="is-editing">
+                  편집 중 · 변경 {{ requirementsChangedCount }}개 · 완료/취소는 왼쪽 채팅에서 진행합니다.
+                </small>
+                <small v-else>수정과 승인은 왼쪽 채팅에서 진행합니다.</small>
+              </header>
+              <ul v-if="store.overviewDraft" role="tree" :class="{ 'is-editing': requirementsEditing }">
                 <li
                   v-for="entry in overviewEntries()"
                   :key="entry.path"
                   role="treeitem"
-                  :class="{ 'is-group': entry.kind === 'group' }"
+                  :class="{ 'is-group': entry.kind === 'group', 'is-changed': requirementEntryChanged(entry) }"
                   :style="{ '--tree-depth': entry.depth }"
                 >
-                  <span>{{ entry.label }}</span><strong v-if="entry.kind !== 'group'">{{ entry.value }}</strong>
+                  <span>{{ entry.label }}</span>
+                  <template v-if="entry.kind !== 'group'">
+                    <strong v-if="!requirementsEditing">{{ entry.value }}</strong>
+                    <label v-else-if="entry.inputKind === 'checkbox'" class="ai-requirements-tree__boolean">
+                      <input
+                        type="checkbox"
+                        :checked="entry.rawValue"
+                        :aria-label="`${entry.label} 수정`"
+                        @change="setRequirementValue(entry.path, $event.target.checked)"
+                      />
+                      <span>{{ entry.rawValue ? '예' : '아니오' }}</span>
+                    </label>
+                    <select
+                      v-else-if="entry.inputKind === 'select'"
+                      :value="entry.rawValue"
+                      :aria-label="`${entry.label} 수정`"
+                      @change="setRequirementValue(entry.path, $event.target.value)"
+                    >
+                      <option value="">선택해 주세요</option>
+                      <option v-for="option in entry.options" :key="option" :value="option">{{ option }}</option>
+                    </select>
+                    <textarea
+                      v-else-if="entry.inputKind === 'textarea'"
+                      :value="entry.rawValue"
+                      rows="3"
+                      maxlength="2000"
+                      :aria-label="`${entry.label} 수정`"
+                      @input="setRequirementValue(entry.path, $event.target.value)"
+                    ></textarea>
+                    <input
+                      v-else
+                      :type="entry.inputKind"
+                      :value="entry.rawValue"
+                      :maxlength="entry.key === 'ctaLabel' || (entry.key === 'label' && entry.path.endsWith('.cta.label')) ? 20 : 2000"
+                      :aria-label="`${entry.label} 수정`"
+                      @input="setRequirementValue(entry.path, $event.target.value)"
+                    />
+                  </template>
                 </li>
               </ul>
               <div v-else class="ai-result-empty">채팅으로 요구사항을 입력하면 분석 결과가 여기에 표시됩니다.</div>

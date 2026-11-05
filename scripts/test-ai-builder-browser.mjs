@@ -25,6 +25,8 @@ let confirmedWireframeRevision = null;
 let builderSessionReady = false;
 let builderSessionRequestCount = 0;
 let eventAuthFailureCount = 0;
+let chatActionSequence = 0;
+const requirementsSaveRequests = [];
 const chatMessages = [];
 const snapshotWithAssetStatus = (status) => ({
   contractVersion: 3,
@@ -147,7 +149,7 @@ const server = http.createServer(async (request, response) => {
     const message = {
       ...body.message,
       actions: (body.message.actions || []).map((action) => ({
-        ...action, id: `action-${action.key}`, status: "proposed", issuedStage: chatStage,
+        ...action, id: `action-${++chatActionSequence}`, status: "proposed", issuedStage: chatStage,
       })),
     };
     chatMessages.push(message);
@@ -156,9 +158,15 @@ const server = http.createServer(async (request, response) => {
     return;
   }
   if (url.pathname === "/api/promo-builder-requirements-revisions" && request.method === "POST") {
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    requirementsSaveRequests.push(JSON.parse(Buffer.concat(chunks).toString("utf8")));
     chatStage = "requirements_review";
     response.writeHead(201, { "Content-Type": "application/json" });
-    response.end(JSON.stringify({ ok: true, requirements: { revision: 1, fingerprint: "requirements-browser" } }));
+    response.end(JSON.stringify({ ok: true, requirements: {
+      revision: requirementsSaveRequests.length,
+      fingerprint: `requirements-browser-${requirementsSaveRequests.length}`,
+    } }));
     return;
   }
   if (url.pathname === "/api/promo-builder-chat-actions" && request.method === "POST") {
@@ -393,13 +401,36 @@ try {
   await page.getByText(/요구사항 Tree를 확인한 뒤 승인해 주세요/).waitFor();
   await page.getByRole("button", { name: "요구사항 승인" }).waitFor();
   assert.equal(compositionRequest, null, "composition must wait for requirements approval");
-  await page.getByRole("button", { name: "요구사항 승인" }).click();
+  await page.getByRole("button", { name: "수정 요청" }).click();
+  await page.getByText(/수정이 필요한 항목을 오른쪽 요구사항 Tree에서 수정해 주세요/).waitFor();
+  await page.getByText(/편집 중 · 변경 0개/).waitFor();
+  assert.equal(await page.getByRole("button", { name: "수정 완료" }).isDisabled(), true);
+  const titleInputs = page.locator('.ai-requirements-tree input[aria-label="제목 수정"]');
+  await titleInputs.first().fill("여름 VIP 고객 충전 이벤트");
+  await titleInputs.nth(2).fill("VIP 신규 고객 보너스");
+  await page.getByText(/편집 중 · 변경 2개/).waitFor();
+  assert.equal(await page.getByRole("button", { name: "수정 완료" }).isEnabled(), true);
+  assert.equal(await page.getByRole("button", { name: "요구사항 승인" }).isDisabled(), true);
+  await page.getByRole("button", { name: "수정 완료" }).click();
+  await page.getByText(/수정된 요구사항을 저장했습니다/).waitFor();
+  await page.getByText("여름 VIP 고객 충전 이벤트", { exact: true }).waitFor();
+  assert.equal(requirementsSaveRequests.length, 2);
+  assert.equal(requirementsSaveRequests[1].requirements.contentSections[0].items[0].title, "VIP 신규 고객 보너스");
+  assert.equal(compositionRequest, null, "composition must still wait after manual requirements editing");
+  await page.getByRole("button", { name: "수정 요청" }).last().click();
+  await page.locator('.ai-requirements-tree input[aria-label="제목 수정"]').first().fill("취소할 임시 제목");
+  await page.getByRole("button", { name: "수정 취소" }).last().click();
+  await page.getByText(/요구사항 수정을 취소했습니다/).waitFor();
+  await page.getByText("여름 VIP 고객 충전 이벤트", { exact: true }).waitFor();
+  assert.equal(await page.getByText("취소할 임시 제목", { exact: true }).count(), 0);
+  assert.equal(requirementsSaveRequests.length, 2, "cancel must not save another requirements revision");
+  await page.getByRole("button", { name: "요구사항 승인" }).last().click();
   for (let count = 0; count < 50 && !compositionRequest; count += 1) {
     await page.waitForTimeout(20);
   }
   assert.ok(compositionRequest, "composition request should be received");
-  assert.equal(compositionRequest.overview.title, "여름 신규 고객 충전 이벤트");
-  assert.equal(compositionRequest.overview.contentSections[0].items[0].title, "신규 고객 보너스");
+  assert.equal(compositionRequest.overview.title, "여름 VIP 고객 충전 이벤트");
+  assert.equal(compositionRequest.overview.contentSections[0].items[0].title, "VIP 신규 고객 보너스");
   assert.equal(compositionRequest.locale, "ko-KR");
   assert.equal(compositionRequest.overviewFingerprint, overviewFingerprint(compositionRequest.overview));
   assert.notEqual(compositionRequest.overviewFingerprint, "browser-test-overview");

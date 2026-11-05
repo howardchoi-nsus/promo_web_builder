@@ -288,6 +288,13 @@ async function executeAction(sql, {
     return { action: toAction(replay[0]), replayed: true };
   }
   await sql`
+    update promo_builder_chat_actions
+    set status = 'expired'
+    where message_id = ${rows[0].message_id}::uuid
+      and id <> ${rows[0].id}::uuid
+      and status = 'proposed'
+  `;
+  await sql`
     update promo_builder_chat_sessions
     set stage = ${nextStage}, updated_at = now()
     where id = ${sessionId}::uuid and owner_subject = ${ownerSubject}

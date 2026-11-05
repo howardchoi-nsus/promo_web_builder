@@ -73,6 +73,14 @@ assert.equal(computeStructureFingerprint(proposalPlan), computeStructureFingerpr
 
 const actions = normalizeActions([{ key: "confirm_requirements", label: "확정" }], "requirements_review");
 assert.equal(actions[0].actionKey, "confirm_requirements");
+const editActions = normalizeActions([
+  { key: "complete_requirements_edit", label: "수정 완료" },
+  { key: "cancel_requirements_edit", label: "수정 취소" },
+], "requirements_review");
+assert.deepEqual(editActions.map((action) => action.actionKey), [
+  "complete_requirements_edit",
+  "cancel_requirements_edit",
+]);
 assert.equal(assertActionTransition("approve_wireframe", "wireframe_review").to, "finalizing");
 assert.equal(assertActionTransition("approve_wireframe", "finalizing").to, "finalizing");
 assert.throws(

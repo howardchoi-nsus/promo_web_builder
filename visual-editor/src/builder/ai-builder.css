@@ -72,7 +72,7 @@
 .ai-chat-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
 .ai-chat-actions button { min-height: 34px; padding: 0 11px; border: 1px solid #176b4d; border-radius: 7px; background: #fff; color: #176b4d; cursor: pointer; font-size: 12px; font-weight: 850; }
 .ai-chat-actions button:first-child { background: #176b4d; color: #fff; }
-.ai-chat-actions button:disabled { cursor: wait; opacity: .5; }
+.ai-chat-actions button:disabled { cursor: not-allowed; opacity: .5; }
 
 .ai-reference-tray { display: flex; gap: 8px; padding: 10px 14px; overflow-x: auto; border-top: 1px solid #e2e7e4; background: #fff; }
 .ai-reference-card { display: grid; grid-template-columns: 48px minmax(110px, 1fr) 24px; flex: 0 0 230px; align-items: center; gap: 8px; padding: 7px; border: 1px solid #d8dfdb; border-radius: 8px; }
@@ -114,6 +114,7 @@
 .ai-wireframe-review > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid #e3e8e5; }
 .ai-requirements-tree header small,
 .ai-wireframe-review header small { color: #78837d; }
+.ai-requirements-tree header small.is-editing { color: #6d28d9; font-weight: 800; }
 .ai-requirements-tree ul { margin: 0; padding: 10px 16px 20px 34px; list-style: none; }
 .ai-requirements-tree li { position: relative; display: grid; grid-template-columns: minmax(130px, .4fr) minmax(0, 1fr); gap: 16px; padding: 10px 12px 10px calc(12px + (var(--tree-depth, 0) * 18px)); border-left: 1px solid #cfd8d3; border-bottom: 1px solid #edf0ee; }
 .ai-requirements-tree li::before { position: absolute; top: 50%; left: -1px; width: 13px; border-top: 1px solid #cfd8d3; content: ""; }
@@ -121,6 +122,22 @@
 .ai-requirements-tree li strong { font-size: 12px; overflow-wrap: anywhere; }
 .ai-requirements-tree li.is-group { grid-template-columns: 1fr; margin-top: 5px; border-bottom-color: #dce5e0; background: #f5f8f6; }
 .ai-requirements-tree li.is-group span { color: #24352d; font-size: 12px; font-weight: 850; }
+.ai-requirements-tree ul.is-editing li:not(.is-group) { align-items: start; }
+.ai-requirements-tree li.is-changed { border-left-color: #6d28d9; background: #faf8ff; }
+.ai-requirements-tree li.is-changed::before { border-color: #6d28d9; }
+.ai-requirements-tree li.is-changed > span { color: #6d28d9; font-weight: 850; }
+.ai-requirements-tree input:not([type="checkbox"]),
+.ai-requirements-tree select,
+.ai-requirements-tree textarea { width: 100%; min-width: 0; border: 1px solid #c8d1cc; border-radius: 7px; background: #fff; color: #1f2a25; font: inherit; font-size: 12px; line-height: 1.45; }
+.ai-requirements-tree input:not([type="checkbox"]),
+.ai-requirements-tree select { min-height: 36px; padding: 7px 9px; }
+.ai-requirements-tree textarea { min-height: 76px; resize: vertical; padding: 9px; }
+.ai-requirements-tree input:focus,
+.ai-requirements-tree select:focus,
+.ai-requirements-tree textarea:focus { border-color: #6d28d9; outline: 2px solid rgb(109 40 217 / 14%); }
+.ai-requirements-tree__boolean { display: inline-flex; min-height: 36px; align-items: center; gap: 8px; }
+.ai-requirements-tree__boolean input { width: 18px; height: 18px; accent-color: #6d28d9; }
+.ai-requirements-tree__boolean span { color: #26332d; font-weight: 800; }
 .ai-result-empty { display: grid; min-height: 320px; place-items: center; padding: 30px; color: #77827c; text-align: center; }
 .ai-wireframe-canvas { display: grid; gap: 12px; padding: 16px; filter: grayscale(1); }
 .ai-wireframe-section { border: 2px solid #68716c; border-radius: 6px; background: #f8f9f8; }
@@ -588,6 +605,9 @@
   .registry-proposal-section__header { flex-direction: column; }
   .registry-proposal-badges { justify-content: flex-start; }
   .ai-wireframe-review > header { align-items: flex-start; flex-direction: column; }
+  .ai-requirements-tree > header { align-items: flex-start; flex-direction: column; }
+  .ai-requirements-tree ul { padding-right: 8px; padding-left: 18px; }
+  .ai-requirements-tree li { grid-template-columns: 1fr; gap: 6px; padding-left: calc(9px + (var(--tree-depth, 0) * 8px)); }
   .ai-wireframe-section > header { align-items: flex-start; flex-direction: column; }
   .ai-wireframe-components { grid-template-columns: 1fr; }
   .ai-chat-history { width: 100%; }

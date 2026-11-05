@@ -11,6 +11,8 @@ const SESSION_STAGES = Object.freeze([
 const ACTION_TRANSITIONS = Object.freeze({
   confirm_requirements: { from: "requirements_review", to: "wireframe_review" },
   revise_requirements: { from: "requirements_review", to: "requirements_review" },
+  complete_requirements_edit: { from: "requirements_review", to: "requirements_review" },
+  cancel_requirements_edit: { from: "requirements_review", to: "requirements_review" },
   approve_wireframe: { from: "wireframe_review", to: "finalizing" },
   revise_wireframe: { from: "wireframe_review", to: "requirements_review" },
   open_output: { from: "completed", to: "completed" },
