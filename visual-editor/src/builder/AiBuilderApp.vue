@@ -78,6 +78,7 @@ const chatSessions = ref([]);
 const chatSessionsLoading = ref(false);
 const chatSessionsError = ref("");
 const chatSessionSwitching = ref(false);
+const legacyWorkspace = ref(null);
 let assetPollingCancelled = false;
 let localeUnsubscribe = null;
 const localeRevision = ref(0);
@@ -263,6 +264,36 @@ function restoreWorkspaceCache() {
   }
 }
 
+function loadLegacyWorkspaceCache() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(LEGACY_CHAT_STORAGE_KEY) || "null");
+    if (!cached || typeof cached !== "object") return null;
+    const hasHistory = Array.isArray(cached.messages) && cached.messages.length > 0
+      || cached.overviewDraft
+      || cached.wireframeSnapshot;
+    return hasHistory ? cached : null;
+  } catch {
+    return null;
+  }
+}
+
+function legacyWorkspaceSummary(cached = legacyWorkspace.value) {
+  if (!cached) return null;
+  const history = Array.isArray(cached.messages) ? cached.messages : [];
+  const firstUserMessage = history.find((message) => message.role === "user" && message.text);
+  const lastMessage = [...history].reverse().find((message) => message.text);
+  return {
+    id: `legacy:${cached.chatSessionId || cached.documentId || "browser"}`,
+    documentId: cached.documentId || "",
+    requestId: cached.requestId || "",
+    title: String(firstUserMessage?.text || "이전 프로모션 대화").replace(/\s+/g, " ").slice(0, 80),
+    preview: String(lastMessage?.text || "").replace(/\s+/g, " ").slice(0, 140),
+    stage: cached.stage || (cached.wireframeSnapshot ? "wireframe_review" : "idle"),
+    updatedAt: lastMessage?.updatedAt || lastMessage?.createdAt || "",
+    isLocal: true,
+  };
+}
+
 function resetWorkspaceState() {
   const executionDisplays = store.executionDisplays;
   Object.assign(store, createAiBuilderState({ executionDisplays }));
@@ -317,7 +348,14 @@ async function refreshChatSessions() {
   chatSessionsError.value = "";
   try {
     const response = await listChatWorkspaces(30);
-    chatSessions.value = Array.isArray(response.sessions) ? response.sessions : [];
+    const remoteSessions = Array.isArray(response.sessions) ? response.sessions : [];
+    const localSummary = legacyWorkspaceSummary();
+    const duplicateLocalSession = localSummary?.id && remoteSessions.some(
+      (session) => session.id === legacyWorkspace.value?.chatSessionId,
+    );
+    chatSessions.value = localSummary && !duplicateLocalSession
+      ? [localSummary, ...remoteSessions]
+      : remoteSessions;
   } catch (error) {
     chatSessionsError.value = error.message || "대화 목록을 불러오지 못했습니다.";
   } finally {
@@ -333,7 +371,6 @@ async function toggleChatMenu() {
 function startNewConversation() {
   if (interactionLocked.value || chatSessionSwitching.value) return;
   sessionStorage.removeItem(ACTIVE_CHAT_STORAGE_KEY);
-  localStorage.removeItem(LEGACY_CHAT_STORAGE_KEY);
   const url = new URL(window.location.href);
   url.searchParams.set("mode", "ai");
   window.location.assign(url.toString());
@@ -348,6 +385,41 @@ async function openChatSession(summary) {
   chatSessionSwitching.value = true;
   chatSessionsError.value = "";
   try {
+    if (summary.isLocal) {
+      const cached = legacyWorkspace.value;
+      if (!cached) throw new Error("이전 로컬 대화 정보를 찾지 못했습니다.");
+      resetWorkspaceState();
+      messages.value = Array.isArray(cached.messages) ? cached.messages : [];
+      attachments.value = Array.isArray(cached.attachments) ? cached.attachments : [];
+      wireframeSnapshot.value = cached.wireframeSnapshot || null;
+      activeResultTab.value = cached.activeResultTab || (wireframeSnapshot.value ? "wireframe" : "requirements");
+      store.documentId = cached.documentId || "";
+      store.documentRevision = Number(cached.documentRevision || 0);
+      store.requestId = cached.requestId || "";
+      chatSessionId.value = cached.chatSessionId || "";
+      requirementsRevision.value = Number(cached.requirementsRevision || 0);
+      wireframeRevision.value = Number(cached.wireframeRevision || 0);
+      wireframeFingerprint.value = cached.wireframeFingerprint || "";
+      store.naturalLanguage = cached.naturalLanguage || "";
+      store.inputLocale = cached.inputLocale || "";
+      store.overviewDraft = cached.overviewDraft || null;
+      store.overviewFingerprint = cached.overviewFingerprint || "";
+      if (store.documentId) {
+        const loaded = await loadBuilderDocument(store.documentId).catch(() => null);
+        if (loaded) {
+          store.documentRevision = Number(loaded.document?.currentDocumentRevision || store.documentRevision);
+          store.snapshot = loaded.snapshot || null;
+        }
+      }
+      if (store.snapshot) store.stage = "render_ready";
+      else if (wireframeSnapshot.value) store.stage = "review_required";
+      else if (store.overviewDraft) store.stage = "reviewing_overview";
+      else store.stage = "idle";
+      appendWelcomeMessage();
+      persistWorkspace();
+      chatMenuOpen.value = false;
+      return;
+    }
     const [workspace, loaded] = await Promise.all([
       loadChatWorkspace(summary.id),
       loadBuilderDocument(summary.documentId),
@@ -1116,7 +1188,7 @@ watch(() => [store.documentId, store.documentRevision, store.stage, store.overvi
 
 onMounted(async () => {
   try {
-    localStorage.removeItem(LEGACY_CHAT_STORAGE_KEY);
+    legacyWorkspace.value = loadLegacyWorkspaceCache();
     const cached = restoreWorkspaceCache();
     appendWelcomeMessage();
     localeUnsubscribe = window.PromoI18n?.subscribe?.(() => {
@@ -1260,7 +1332,10 @@ onBeforeUnmount(() => {
                   @click="openChatSession(session)"
                 >
                   <strong>{{ session.title }}</strong>
-                  <span>{{ chatStageLabel(session.stage) }} · {{ formatChatUpdatedAt(session.updatedAt) }}</span>
+                  <span>
+                    {{ session.isLocal ? "이전 로컬 대화" : chatStageLabel(session.stage) }}
+                    <template v-if="formatChatUpdatedAt(session.updatedAt)"> · {{ formatChatUpdatedAt(session.updatedAt) }}</template>
+                  </span>
                   <small v-if="session.preview">{{ session.preview }}</small>
                 </button>
               </template>

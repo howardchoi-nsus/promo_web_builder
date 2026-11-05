@@ -332,6 +332,8 @@ try {
   assert.equal(await page.getByText("자동 복원되면 안 되는 이전 대화").count(), 0);
   await page.getByRole("button", { name: "기존 대화 목록 열기" }).click();
   await page.getByRole("dialog", { name: "기존 대화 목록" }).waitFor();
+  await page.getByRole("button", { name: /자동 복원되면 안 되는 이전 대화.*이전 로컬 대화/ }).waitFor();
+  await page.getByText("이전 로컬 대화").waitFor();
   await page.getByText("지난 겨울 프로모션").waitFor();
   assert.equal(await page.getByRole("button", { name: "+ 새 대화" }).isEnabled(), true);
   await page.getByRole("button", { name: "대화 목록 닫기" }).click();
@@ -394,7 +396,7 @@ try {
   ));
   assert.ok(mobileTitleFontSize >= 32 && mobileTitleFontSize <= 52);
   assert.match(page.url(), /create-promo\.html/);
-  assert.equal(await page.evaluate(() => localStorage.getItem("promoAiBuilder.chatWorkspace.v1")), null);
+  assert.ok(await page.evaluate(() => localStorage.getItem("promoAiBuilder.chatWorkspace.v1")));
   assert.ok(await page.evaluate(() => sessionStorage.getItem("promoAiBuilder.activeChat.v2")));
   assert.equal(builderSessionRequestCount, 1);
   assert.equal(eventAuthFailureCount, 0);
