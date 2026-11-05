@@ -51,8 +51,8 @@
   document.querySelector("[data-shell-sidebar]")?.remove();
   document.querySelector("[data-shell-overlay]")?.remove();
   document.querySelector("[data-shell-menu-toggle]")?.remove();
-  loadStylesheet("visual-editor-assets/ai-builder.css?v=ai-builder-v5-internal-id-hidden")
-    .then(() => loadScript("visual-editor-assets/ai-builder.js?v=ai-builder-v5-internal-id-hidden", "module"))
+  loadStylesheet("visual-editor-assets/ai-builder.css?v=ai-builder-v6-turn-scroll")
+    .then(() => loadScript("visual-editor-assets/ai-builder.js?v=ai-builder-v6-turn-scroll", "module"))
     .catch(() => {
       if (aiRoot) {
         aiRoot.innerHTML = '<p role="alert">AI 빌더를 불러오지 못했습니다. 템플릿 모드로 이동해 주세요.</p>';

@@ -388,6 +388,25 @@ try {
   assert.equal(await page.getByRole("button", { name: "전송" }).isEnabled(), true);
   await page.getByRole("button", { name: "전송" }).click();
   await page.getByText("프로모션 개요를 분석하고 있습니다.").waitFor();
+  await page.waitForTimeout(450);
+  const chatTurnScroll = await page.locator(".ai-chat-messages").evaluate((container) => {
+    const target = container.querySelector(".ai-chat-message.is-user.is-turn-anchor");
+    const containerRect = container.getBoundingClientRect();
+    const targetRect = target?.getBoundingClientRect();
+    return {
+      targetCount: container.querySelectorAll(".ai-chat-message.is-turn-anchor").length,
+      topOffset: targetRect ? targetRect.top - containerRect.top : null,
+      scrollBehavior: getComputedStyle(container).scrollBehavior,
+      hasTurnSpace: getComputedStyle(container, "::after").minHeight !== "0px",
+    };
+  });
+  assert.equal(chatTurnScroll.targetCount, 1);
+  assert.ok(
+    chatTurnScroll.topOffset >= 0 && chatTurnScroll.topOffset <= 36,
+    `user turn should settle near the top of the chat viewport: ${JSON.stringify(chatTurnScroll)}`,
+  );
+  assert.equal(chatTurnScroll.scrollBehavior, "smooth");
+  assert.equal(chatTurnScroll.hasTurnSpace, true);
   await page.getByText("AI 응답 오류로 재시도하고 있습니다. (2/3)").waitFor();
   if (process.env.CAPTURE_AI_PROGRESS_QA === "1") {
     await page.screenshot({ path: path.join(root, "design-qa-implementation.png"), fullPage: true });

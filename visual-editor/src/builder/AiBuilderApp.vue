@@ -73,6 +73,7 @@ const activeResultTab = ref("requirements");
 const splitPercent = ref(38);
 const draggingSplit = ref(false);
 const chatList = ref(null);
+const activeChatTurnMessageId = ref("");
 const fileInput = ref(null);
 const chatMenuOpen = ref(false);
 const chatSessions = ref([]);
@@ -200,8 +201,25 @@ function appendMessage(role, text, extra = {}) {
     ...extra,
   };
   messages.value.push(message);
+  if (role === "user") activeChatTurnMessageId.value = message.id;
   nextTick(() => {
-    if (chatList.value) chatList.value.scrollTop = chatList.value.scrollHeight;
+    const container = chatList.value;
+    if (!container) return;
+    if (role === "user") {
+      const target = [...container.querySelectorAll("[data-message-id]")]
+        .find((element) => element.dataset.messageId === message.id);
+      if (!target) return;
+      const top = container.scrollTop
+        + target.getBoundingClientRect().top
+        - container.getBoundingClientRect().top
+        - 12;
+      const reducedMotion = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+      container.scrollTo({ top: Math.max(0, top), behavior: reducedMotion ? "auto" : "smooth" });
+      return;
+    }
+    if (!activeChatTurnMessageId.value) {
+      container.scrollTo({ top: container.scrollHeight, behavior: "auto" });
+    }
   });
   return message;
 }
@@ -329,6 +347,7 @@ function resetWorkspaceState() {
   attachments.value = [];
   chatInput.value = "";
   wireframeSnapshot.value = null;
+  activeChatTurnMessageId.value = "";
   chatSessionId.value = "";
   requirementsRevision.value = 0;
   wireframeRevision.value = 0;
@@ -1722,12 +1741,22 @@ onBeforeUnmount(() => {
             <span class="ai-chat-status" :data-state="currentStatus.state">{{ currentStatus.state }}</span>
           </header>
 
-          <div ref="chatList" class="ai-chat-messages" aria-live="polite">
+          <div
+            ref="chatList"
+            class="ai-chat-messages"
+            :class="{ 'has-active-turn': Boolean(activeChatTurnMessageId) }"
+            aria-live="polite"
+          >
             <article
               v-for="message in messages"
               :key="message.id"
               class="ai-chat-message"
-              :class="[`is-${message.role}`, `is-${message.type || 'text'}`]"
+              :class="[
+                `is-${message.role}`,
+                `is-${message.type || 'text'}`,
+                { 'is-turn-anchor': message.id === activeChatTurnMessageId },
+              ]"
+              :data-message-id="message.id"
             >
               <div class="ai-chat-message__meta">
                 <strong>{{ message.role === 'user' ? '나' : message.role === 'system' ? '진행 상태' : 'AI Builder' }}</strong>
