@@ -159,6 +159,20 @@ function resolveComponentType(item) {
   return kind || textType || "콘텐츠 영역";
 }
 
+function componentPresentation(item = {}) {
+  const fieldKind = normalizedKey(item.fieldKind);
+  const semanticKey = normalizedKey(item.sourceItemKey || item.componentKey || item.itemKey);
+  const textType = normalizedKey(item.textType);
+  return {
+    kind: fieldKind || "content",
+    isTitle: ["title", "heading", "headline", "primary-title"].some((key) => (
+      semanticKey === key || textType === key
+    )),
+    isAction: ["cta", "link"].includes(fieldKind)
+      || ["action", "cta", "button", "primary-action", "secondary-action"].includes(semanticKey),
+  };
+}
+
 function compactText(value) {
   const fullText = String(value ?? "").replace(/\s+/g, " ").trim();
   if (!fullText || URL_PATTERN.test(fullText)) return null;
@@ -259,6 +273,7 @@ function contentSections(snapshot) {
     return {
       key: section.sectionKey || `section:${sectionIndex}`,
       order: sectionIndex + 1,
+      kind: normalizedKey(section.sectionRole || section.sourceSectionKey || section.sectionKey) || "content",
       label: resolveSectionLabel(section),
       technicalLabel: section.sourceSectionKey || section.sectionKey || "",
       roleLabel: SECTION_LABELS[normalizedKey(section.sectionRole)] || "콘텐츠 섹션",
@@ -275,6 +290,7 @@ function contentSections(snapshot) {
           technicalLabel: item.sourceItemKey || item.itemKey || "",
           contentLines: resolveContentLines(item, inputValue),
           isImage: normalizedKey(item.fieldKind) === "image",
+          ...componentPresentation(item),
         };
       }),
     };
@@ -302,12 +318,14 @@ function previewSections(snapshot) {
             technicalLabel: componentKey,
             contentLines: [],
             isImage: false,
+            ...componentPresentation({ sourceItemKey: componentKey }),
           };
         },
       ));
       return {
         key: `${section.sectionKey}:${sectionIndex}`,
         order,
+        kind: normalizedKey(section.sectionRole || section.sectionKey) || "content",
         label: resolveSectionLabel({ ...section, sourceSectionKey: section.sectionKey }),
         technicalLabel: section.sectionKey,
         roleLabel: SECTION_LABELS[normalizedKey(section.sectionRole)] || "콘텐츠 섹션",

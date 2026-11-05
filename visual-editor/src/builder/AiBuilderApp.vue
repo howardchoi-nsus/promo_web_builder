@@ -68,6 +68,7 @@ const chatSessionId = ref("");
 const requirementsRevision = ref(0);
 const wireframeRevision = ref(0);
 const wireframeFingerprint = ref("");
+const wireframeViewport = ref("desktop");
 const activeResultTab = ref("requirements");
 const splitPercent = ref(38);
 const draggingSplit = ref(false);
@@ -107,12 +108,16 @@ const currentStatus = computed(() => {
   if (requirementsEditing.value) return { label: "요구사항 수정 중", state: "확인 필요" };
   if (store.stage === "failed") return { label: store.error?.message || "처리 실패", state: "실패" };
   if (store.snapshot && store.stage === "render_ready") return { label: "최종 디자인 생성 완료", state: "완료" };
-  if (wireframeSnapshot.value) return { label: "B/W Wireframe 생성 완료", state: "확인 필요" };
+  if (wireframeSnapshot.value) return { label: "페이지 구성 미리보기 준비 완료", state: "확인 필요" };
   if (store.overviewDraft) return { label: "요구사항 분석 완료", state: "확인 필요" };
   return { label: "요구사항을 입력해 주세요", state: "대기" };
 });
 const wireframeDisplaySnapshot = computed(() => wireframeSnapshot.value || store.proposal?.snapshot || null);
 const wireframeSections = computed(() => buildWireframeSections(wireframeDisplaySnapshot.value));
+const wireframeComponentCount = computed(() => wireframeSections.value.reduce(
+  (total, section) => total + section.components.length,
+  0,
+));
 const fullScreenProgress = computed(() => [
   "analyzing_overview", "resolving_policy", "queued", "processing", "applying",
   "generating_assets", "preview_ready", "navigating_preview",
@@ -232,6 +237,7 @@ function persistWorkspace() {
       requirementsRevision: requirementsRevision.value,
       wireframeRevision: wireframeRevision.value,
       wireframeFingerprint: wireframeFingerprint.value,
+      wireframeViewport: wireframeViewport.value,
       stage: store.stage,
       naturalLanguage: store.naturalLanguage,
       inputLocale: store.inputLocale,
@@ -267,6 +273,7 @@ function restoreWorkspaceCache() {
     requirementsRevision.value = Number(cached.requirementsRevision || 0);
     wireframeRevision.value = Number(cached.wireframeRevision || 0);
     wireframeFingerprint.value = cached.wireframeFingerprint || "";
+    wireframeViewport.value = cached.wireframeViewport === "mobile" ? "mobile" : "desktop";
     store.naturalLanguage = cached.naturalLanguage || "";
     store.inputLocale = cached.inputLocale || "";
     store.overviewDraft = cached.overviewDraft || null;
@@ -323,6 +330,7 @@ function resetWorkspaceState() {
   requirementsRevision.value = 0;
   wireframeRevision.value = 0;
   wireframeFingerprint.value = "";
+  wireframeViewport.value = "desktop";
   activeResultTab.value = "requirements";
   pendingOperations.value = null;
   operationConflict.value = null;
@@ -346,7 +354,7 @@ function chatStageLabel(stage) {
   return ({
     idle: "작성 대기",
     requirements_review: "요구사항 검토",
-    wireframe_review: "Wireframe 검토",
+    wireframe_review: "페이지 구성 검토",
     finalizing: "최종 생성 중",
     completed: "완료",
   })[stage] || "작성 중";
@@ -422,6 +430,7 @@ async function openChatSession(summary) {
       requirementsRevision.value = Number(cached.requirementsRevision || 0);
       wireframeRevision.value = Number(cached.wireframeRevision || 0);
       wireframeFingerprint.value = cached.wireframeFingerprint || "";
+      wireframeViewport.value = cached.wireframeViewport === "mobile" ? "mobile" : "desktop";
       store.naturalLanguage = cached.naturalLanguage || "";
       store.inputLocale = cached.inputLocale || "";
       store.overviewDraft = cached.overviewDraft || null;
@@ -1057,7 +1066,7 @@ async function prepareWireframe() {
   store.warning = null;
   store.stage = "resolving_policy";
   const operationId = `wireframe-${Date.now()}`;
-  updateStatusMessage(operationId, "B/W Wireframe 구조를 생성하고 있습니다.", "in_progress");
+  updateStatusMessage(operationId, "페이지 구성 미리보기를 생성하고 있습니다.", "in_progress");
   try {
     const currentFingerprint = refreshOverviewFingerprint();
     await ensureDocument();
@@ -1108,16 +1117,16 @@ async function prepareWireframe() {
     store.proposal = proposal;
     store.stage = "review_required";
     activeResultTab.value = "wireframe";
-    updateStatusMessage(operationId, "B/W Wireframe 생성을 완료했습니다.", "completed");
-    await appendPersistedMessage("assistant", "색상과 실제 이미지를 제외한 Wireframe을 생성했습니다. 오른쪽 결과를 확인해 주세요.", {
+    updateStatusMessage(operationId, "페이지 구성 미리보기 생성을 완료했습니다.", "completed");
+    await appendPersistedMessage("assistant", "페이지의 배치와 실제 문구를 확인할 수 있는 구성 미리보기를 만들었습니다. 오른쪽 결과를 확인해 주세요.", {
       type: "assistant",
       actions: [
-        { key: "approve_wireframe", label: "Wireframe 승인" },
+        { key: "approve_wireframe", label: "페이지 구성 승인" },
         { key: "revise_wireframe", label: "수정 요청" },
       ],
     });
   } catch (error) {
-    updateStatusMessage(operationId, `Wireframe 생성에 실패했습니다. ${error.message}`, "failed");
+    updateStatusMessage(operationId, `페이지 구성 미리보기 생성에 실패했습니다. ${error.message}`, "failed");
     setBuilderError(store, error);
   }
 }
@@ -1148,7 +1157,7 @@ async function approveWireframe(action = {}) {
     await applyReadyProposal(store.proposal, { navigate: false });
     activeResultTab.value = "final";
     updateStatusMessage(operationId, "최종 디자인 생성을 완료했습니다.", "completed");
-    await appendPersistedMessage("assistant", "승인한 Wireframe 구조를 기준으로 최종 디자인을 완성했습니다.", {
+    await appendPersistedMessage("assistant", "승인한 페이지 구성을 기준으로 최종 디자인을 완성했습니다.", {
       type: "assistant",
       actions: [{ key: "open_output", label: "Web Output 열기" }],
     });
@@ -1529,6 +1538,7 @@ watch([
   wireframeSnapshot,
   activeResultTab,
   splitPercent,
+  wireframeViewport,
   requirementsEditing,
   requirementsEditDraft,
   requirementsEditBaseline,
@@ -1798,13 +1808,13 @@ onBeforeUnmount(() => {
 
           <ol class="ai-process-steps" aria-label="프로모션 생성 단계">
             <li :class="{ active: !store.overviewDraft, complete: store.overviewDraft }"><span>1</span>요구사항</li>
-            <li :class="{ active: store.overviewDraft && !wireframeDisplaySnapshot, complete: wireframeDisplaySnapshot }"><span>2</span>Wireframe</li>
+            <li :class="{ active: store.overviewDraft && !wireframeDisplaySnapshot, complete: wireframeDisplaySnapshot }"><span>2</span>페이지 구성</li>
             <li :class="{ active: wireframeDisplaySnapshot && !store.snapshot, complete: store.snapshot && store.stage === 'render_ready' }"><span>3</span>최종 디자인</li>
           </ol>
 
           <nav class="ai-result-tabs" aria-label="결과 보기">
             <button type="button" :aria-current="activeResultTab === 'requirements' ? 'page' : undefined" @click="activeResultTab = 'requirements'">요구사항</button>
-            <button type="button" :disabled="!wireframeDisplaySnapshot" :aria-current="activeResultTab === 'wireframe' ? 'page' : undefined" @click="activeResultTab = 'wireframe'">B/W Wireframe</button>
+            <button type="button" :disabled="!wireframeDisplaySnapshot" :aria-current="activeResultTab === 'wireframe' ? 'page' : undefined" @click="activeResultTab = 'wireframe'">페이지 구성 미리보기</button>
             <button type="button" :disabled="!store.snapshot" :aria-current="activeResultTab === 'final' ? 'page' : undefined" @click="activeResultTab = 'final'">최종 디자인</button>
           </nav>
 
@@ -1869,29 +1879,56 @@ onBeforeUnmount(() => {
             </section>
 
             <section v-else-if="activeResultTab === 'wireframe' && wireframeDisplaySnapshot" class="ai-wireframe-review">
-              <header><strong>B/W Wireframe</strong><small>실제 문구와 구조를 확인합니다. 색상·디자인 토큰·실제 이미지는 제외됩니다.</small></header>
-              <div class="ai-wireframe-canvas">
-                <article v-for="section in wireframeSections" :key="section.key" class="ai-wireframe-section">
+              <header class="ai-page-preview-header">
+                <div>
+                  <strong>페이지 구성 미리보기</strong>
+                  <small>{{ wireframeSections.length }}개 섹션 · {{ wireframeComponentCount }}개 콘텐츠 영역</small>
+                </div>
+                <div class="ai-page-preview-viewport" role="group" aria-label="미리보기 화면 크기">
+                  <button
+                    type="button"
+                    :aria-pressed="wireframeViewport === 'desktop'"
+                    @click="wireframeViewport = 'desktop'"
+                  >데스크톱</button>
+                  <button
+                    type="button"
+                    :aria-pressed="wireframeViewport === 'mobile'"
+                    @click="wireframeViewport = 'mobile'"
+                  >모바일</button>
+                </div>
+              </header>
+              <p class="ai-page-preview-notice">
+                현재 화면은 페이지 배치와 문구를 확인하는 단계입니다. 색상과 실제 이미지는 최종 디자인에서 적용됩니다.
+              </p>
+              <div class="ai-wireframe-stage" :data-viewport="wireframeViewport">
+                <div class="ai-wireframe-canvas">
+                <article
+                  v-for="section in wireframeSections"
+                  :key="section.key"
+                  class="ai-wireframe-section"
+                  :class="`is-${section.kind}`"
+                >
                   <header>
                     <div class="ai-wireframe-section-name">
                       <span>{{ String(section.order).padStart(2, "0") }}</span>
                       <strong>{{ section.label }}</strong>
                     </div>
-                    <small>구성 방식: {{ section.layoutLabel }}</small>
+                    <small>{{ section.components.length }}개 콘텐츠 영역</small>
                   </header>
                   <div class="ai-wireframe-components">
                     <div
                       v-for="component in section.components"
                       :key="component.key"
                       class="ai-wireframe-component"
-                      :class="{ 'ai-wireframe-component--image': component.isImage }"
-                      :title="component.technicalLabel"
+                      :class="{
+                        'ai-wireframe-component--image': component.isImage,
+                        'ai-wireframe-component--title': component.isTitle,
+                        'ai-wireframe-component--action': component.isAction,
+                      }"
                     >
                       <header>
-                        <span>{{ component.order }}</span>
                         <div>
                           <strong>{{ component.label }}</strong>
-                          <small>{{ component.typeLabel }}</small>
                         </div>
                       </header>
                       <div v-if="component.contentLines.length" class="ai-wireframe-copy">
@@ -1901,11 +1938,24 @@ onBeforeUnmount(() => {
                         </p>
                       </div>
                       <div v-else class="ai-wireframe-placeholder">
-                        {{ component.isImage ? "이미지 영역" : "내용 입력 영역" }}
+                        <span aria-hidden="true">{{ component.isImage ? "▧" : "…" }}</span>
+                        {{ component.isImage ? `${component.label} 자리` : "표시할 내용이 아직 없습니다" }}
                       </div>
                     </div>
                   </div>
+                  <details class="ai-wireframe-technical">
+                    <summary>기술 정보 보기</summary>
+                    <dl>
+                      <div><dt>섹션 키</dt><dd>{{ section.technicalLabel || section.key }}</dd></div>
+                      <div><dt>구성 방식</dt><dd>{{ section.layoutLabel }}</dd></div>
+                      <div v-for="component in section.components" :key="`technical:${component.key}`">
+                        <dt>{{ component.label }}</dt>
+                        <dd>{{ component.technicalLabel || component.key }} · {{ component.typeLabel }}</dd>
+                      </div>
+                    </dl>
+                  </details>
                 </article>
+                </div>
               </div>
             </section>
 
