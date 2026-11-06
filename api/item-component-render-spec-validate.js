@@ -1,5 +1,6 @@
 const { validateRenderSpec } = require("./_component-render-spec-contract");
 const { getSql, parseBody, fetchRenderTokenCatalog } = require("./_item-components-store");
+const { resolveAdminOwner } = require("./_promo-admin-auth");
 
 module.exports = async function handler(req, res) {
   try {
@@ -7,6 +8,8 @@ module.exports = async function handler(req, res) {
       res.setHeader("Allow", "POST");
       return res.status(405).json({ error: "Method not allowed" });
     }
+    res.setHeader("Cache-Control", "private, no-store");
+    resolveAdminOwner(req, res);
     const body = parseBody(req.body);
     const validation = validateRenderSpec(body.renderSpec, {
       fields: Array.isArray(body.fields) ? body.fields : [],

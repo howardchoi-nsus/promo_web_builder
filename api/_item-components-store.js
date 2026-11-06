@@ -11,7 +11,10 @@ const COMPONENT_ICON_KEYS = [
   "component-generic", "heading", "text", "image", "button",
   "logo", "badge", "divider", "spacer", "layout",
 ];
-const SECTION_ROLES = ["header", "hero", "benefit", "content", "cta", "notice", "terms", "legal", "footer"];
+const SECTION_ROLES = [
+  "header", "footer", "terms", "legal", "responsible-gaming",
+  "hero", "benefit", "content", "cta", "notice", "offer", "trust",
+];
 
 function getSql() {
   const databaseUrl = getDatabaseUrl();

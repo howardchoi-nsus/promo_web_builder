@@ -1,4 +1,5 @@
 const { getSql, parseBody } = require("./_item-components-store");
+const { resolveAdminOwner } = require("./_promo-admin-auth");
 
 module.exports = async function handler(req, res) {
   if (req.method !== "DELETE") {
@@ -7,6 +8,8 @@ module.exports = async function handler(req, res) {
   }
 
   try {
+    res.setHeader("Cache-Control", "private, no-store");
+    resolveAdminOwner(req, res);
     const body = parseBody(req.body);
     const componentId = String(body.componentId || req.query?.componentId || "").trim();
     if (!componentId) return res.status(400).json({ error: "componentId is required" });

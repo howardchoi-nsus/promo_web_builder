@@ -3,13 +3,14 @@ const {
   renderSpecFromVersionRow, prepareRenderSpecPersistence, fetchRenderTokenCatalog,
   validateVersionFieldKeys, buildReplaceVersionFieldsQuery, fetchComponent, fetchComponentVersions,
 } = require("./_item-components-store");
+const { resolveAdminOwner } = require("./_promo-admin-auth");
 
 module.exports = async function handler(req, res) {
   try {
     const componentId = String(req.query.componentId || req.query.id || "").trim();
     if (!componentId) return res.status(400).json({ error: "componentId is required" });
-    const sql = getSql();
     if (req.method === "GET") {
+      const sql = getSql();
       const component = await fetchComponent(sql, componentId);
       if (!component) return res.status(404).json({ error: "Component not found" });
       return res.status(200).json({ ok: true, component, versions: await fetchComponentVersions(sql, componentId) });
@@ -18,12 +19,15 @@ module.exports = async function handler(req, res) {
       res.setHeader("Allow", "GET, PATCH");
       return res.status(405).json({ error: "Method not allowed" });
     }
+    res.setHeader("Cache-Control", "private, no-store");
+    resolveAdminOwner(req, res);
     const body = parseBody(req.body);
     if (Object.prototype.hasOwnProperty.call(body, "componentKey")) {
       return res.status(400).json({ error: "componentKey is immutable" });
     }
     const versionId = String(body.versionId || "").trim();
     if (!versionId) return res.status(400).json({ error: "versionId is required" });
+    const sql = getSql();
     const currentRows = await sql`
       select * from wizard_item_component_versions
       where id = ${versionId}::uuid and component_id = ${componentId}::uuid limit 1

@@ -2,6 +2,7 @@ const {
   getSql, parseBody, fetchComponent, fetchVersionFields, fetchRenderTokenCatalog,
   renderSpecFromVersionRow, prepareRenderSpecPersistence,
 } = require("./_item-components-store");
+const { resolveAdminOwner } = require("./_promo-admin-auth");
 
 module.exports = async function handler(req, res) {
   if (req.method !== "POST") {
@@ -9,6 +10,8 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
   try {
+    res.setHeader("Cache-Control", "private, no-store");
+    resolveAdminOwner(req, res);
     const body = parseBody(req.body);
     const componentId = String(body.componentId || "").trim();
     const versionId = String(body.versionId || "").trim();
