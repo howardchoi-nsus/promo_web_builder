@@ -38,6 +38,12 @@ const PROMPT_WORKFLOW_GROUPS = Object.freeze([
     order: 40,
   },
   {
+    key: "design-research",
+    label: "디자인 레퍼런스 조사",
+    description: "웹사이트 스크린샷을 분석해 재사용 가능한 레이아웃 원리를 구조화합니다.",
+    order: 42,
+  },
+  {
     key: "component-generation",
     label: "컴포넌트 생성",
     description: "참조 이미지를 DOM RenderSpec과 재사용 가능한 컴포넌트 제안으로 분석합니다.",
@@ -140,6 +146,13 @@ const PROMPT_TYPE_CATALOG = Object.freeze({
     label: "컴포넌트 이미지 분석",
     description: "업로드한 디자인 영역을 DOM RenderSpec, 필드와 토큰 바인딩 제안으로 분석합니다.",
     executionMode: "선택 실행",
+  },
+  layout_reference_analyzer: {
+    group: "design-research",
+    order: 10,
+    label: "레이아웃 레퍼런스 분석",
+    description: "웹사이트 스크린샷에서 섹션 유형, 디자인 원리, 품질점수와 추상화 Layout Spec을 생성합니다.",
+    executionMode: "관리자 요청",
   },
   integrated_brief: {
     group: "design-generator",

@@ -228,14 +228,21 @@ function registryCompositionSchema(candidates) {
   )));
   const motionIds = unique((candidates.motionPresets || []).map((motion) => motion.presetVersionId));
   const tokenIds = unique((candidates.tokenSets || []).map((token) => token.tokenSetVersionId));
+  const layoutReferenceIds = unique((candidates.layoutReferences || []).map(
+    (reference) => reference.layoutReferenceId,
+  ));
   return {
     type: "object",
     additionalProperties: false,
-    required: ["contractVersion", "shellVersionId", "designTokenSetVersionId", "sections", "warnings", "summary"],
+    required: [
+      "contractVersion", "shellVersionId", "designTokenSetVersionId",
+      "layoutReferenceId", "sections", "warnings", "summary",
+    ],
     properties: {
       contractVersion: { type: "integer", enum: [3] },
       shellVersionId: { type: "string", enum: [candidates.shell?.shellVersionId || ""] },
       designTokenSetVersionId: { type: "string", enum: tokenIds.length ? tokenIds : [""] },
+      layoutReferenceId: { type: "string", enum: ["", ...layoutReferenceIds] },
       sections: {
         type: "array",
         minItems: 1,
@@ -320,6 +327,15 @@ function validateRegistryCompositionProposal(result, candidates) {
     (token) => token.tokenSetVersionId === result.designTokenSetVersionId,
   ) || null;
   if ((candidates.tokenSets || []).length && !tokenSet) fail("INVALID_TOKEN_SET", "Planner selected an unavailable design token set");
+  const layoutReferenceId = String(result.layoutReferenceId || "").trim();
+  const layoutReference = layoutReferenceId
+    ? (candidates.layoutReferences || []).find(
+      (reference) => reference.layoutReferenceId === layoutReferenceId,
+    ) || null
+    : null;
+  if (layoutReferenceId && !layoutReference) {
+    fail("LAYOUT_REFERENCE_NOT_ALLOWED", "Planner selected an unavailable or unapproved layout reference");
+  }
 
   const materializedResult = materializeRequiredSections(result, candidates);
   const allowedSections = new Map((candidates.sections || []).map((section) => [section.sectionVersionId, section]));
@@ -501,6 +517,7 @@ function validateRegistryCompositionProposal(result, candidates) {
     contractVersion: 3,
     shell: candidates.shell,
     tokenSet,
+    layoutReference,
     sections: plannedSections.sort((left, right) => (
       fixedPositionRank(left.fixedPosition) - fixedPositionRank(right.fixedPosition)
       || left.sortOrder - right.sortOrder
@@ -540,11 +557,24 @@ function normalizeRegistryCompositionProposal({
       promptTemplateVersionId: String(promptExecutionSnapshot.promptId || ""),
       model: String(promptExecutionSnapshot.model || ""),
       reasoningSummary: validated.summary,
+      layoutReference: validated.layoutReference ? {
+        layoutReferenceId: validated.layoutReference.layoutReferenceId,
+        title: validated.layoutReference.title,
+        pageType: validated.layoutReference.pageType,
+        sectionTypes: validated.layoutReference.sectionTypes || [],
+        qualityScore: Number(validated.layoutReference.qualityScore || 0),
+        matchScore: Number(validated.layoutReference.matchScore || 0),
+      } : null,
       layoutFitRepairs: normalizeLayoutFitRepairs(layoutFitRepairs),
     },
     compositionSpec: {
       shellVersionId: validated.shell.shellVersionId,
       designTokenSetVersionId: validated.tokenSet?.tokenSetVersionId || "",
+      layoutReference: validated.layoutReference ? {
+        layoutReferenceId: validated.layoutReference.layoutReferenceId,
+        title: validated.layoutReference.title,
+        layoutSpec: validated.layoutReference.layoutSpec || {},
+      } : null,
       sections: validated.sections,
       resourceReferences: validated.resources,
     },

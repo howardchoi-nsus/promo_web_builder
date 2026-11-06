@@ -64,6 +64,15 @@ const candidates = {
   resourceFingerprint: "resource-hash",
   tokenSets: [{ tokenSetVersionId: "tokens-v1", setKey: "default" }],
   motionPresets: [{ presetVersionId: "motion-v1", presetKey: "fade-up" }],
+  layoutReferences: [{
+    layoutReferenceId: "layout-reference-v1",
+    title: "Editorial conversion layout",
+    pageType: "promotion",
+    sectionTypes: ["hero", "content", "terms"],
+    qualityScore: 4.7,
+    matchScore: 96,
+    layoutSpec: { rhythm: "editorial", density: "balanced" },
+  }],
   resources: [termsResource],
   sections: [{
     sectionVersionId: "hero-v1",
@@ -108,6 +117,7 @@ const validResult = {
   contractVersion: 3,
   shellVersionId: "shell-v1",
   designTokenSetVersionId: "tokens-v1",
+  layoutReferenceId: "layout-reference-v1",
   sections: [{
     sectionVersionId: "hero-v1",
     visible: true,
@@ -154,6 +164,7 @@ const schema = registryCompositionSchema(candidates);
 assert.equal(schema.additionalProperties, false);
 assert.deepEqual(schema.properties.contractVersion.enum, [3]);
 assert.deepEqual(schema.properties.shellVersionId.enum, ["shell-v1"]);
+assert.deepEqual(schema.properties.layoutReferenceId.enum, ["", "layout-reference-v1"]);
 assert(schema.properties.sections.items.properties.components.items.required.includes("contentItems"));
 const generatedContentFieldKeys = schema.properties.sections.items.properties.components.items
   .properties.contentItems.items.properties.fields.items.properties.fieldKey.enum;
@@ -169,6 +180,11 @@ assert.equal(plannerCardFields.find((field) => field.fieldKey === "description")
 
 const validated = validateRegistryCompositionProposal(validResult, candidates);
 assert.equal(validated.sections[1].components[0].repeat, 3);
+assert.equal(validated.layoutReference.layoutReferenceId, "layout-reference-v1");
+assert.throws(() => validateRegistryCompositionProposal({
+  ...validResult,
+  layoutReferenceId: "unapproved-layout-reference",
+}, candidates), (error) => error.code === "LAYOUT_REFERENCE_NOT_ALLOWED");
 assert.equal(validated.sections[1].components[0].contentItems[2].fields[0].value, "멤버십 추가 적립");
 assert.throws(() => validateRegistryCompositionProposal({
   ...validResult,
@@ -349,6 +365,8 @@ const snapshot = normalizeRegistryCompositionProposal({
 assert.equal(snapshot.contractVersion, 3);
 assert.equal(snapshot.snapshotType, "registry-composition-proposal");
 assert.equal(snapshot.compositionMeta.mode, "ai-composition");
+assert.equal(snapshot.compositionMeta.layoutReference.layoutReferenceId, "layout-reference-v1");
+assert.equal(snapshot.compositionSpec.layoutReference.layoutSpec.rhythm, "editorial");
 assert.equal(Object.hasOwn(snapshot.compositionMeta, "sourceTemplateId"), false);
 assert.deepEqual(snapshot.compositionMeta.layoutFitRepairs, [{
   sectionVersionId: "hero-v1",

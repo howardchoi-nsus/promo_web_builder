@@ -122,6 +122,11 @@ const PROMPT_TYPES = {
     requiredVariables: ["componentIntent", "allowedSectionRolesJson", "tokenCatalogJson", "outputContractJson"],
     optionalVariables: ["sourceWidth", "sourceHeight", "cropSpecJson"],
   },
+  layout_reference_analyzer: {
+    name: "Layout Reference Analyzer",
+    requiredVariables: ["sourceUrl", "contextJson"],
+    optionalVariables: ["sourceSite", "adminNotes"],
+  },
   admin_prompt_translation: {
     name: "Admin Prompt Translation",
     requiredVariables: ["sourcePrompt"],
@@ -150,6 +155,7 @@ const CONTROLLED_PROMPT_TYPES = new Set([
   "section_background_image",
   "component_image",
   "component_visual_analyzer",
+  "layout_reference_analyzer",
 ]);
 
 const DEFAULT_IMAGE_HARNESS_CONFIG = Object.freeze({

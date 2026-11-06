@@ -575,6 +575,7 @@ async function compileRegistryComposition({
         referenceName: reference.referenceName,
         sourceHash: reference.sourceHash,
       })),
+      layoutReference: clone(proposalSnapshot.compositionMeta?.layoutReference || null),
       sourceTemplateId: null,
       sourceTemplateVersion: null,
       promptTemplateVersionId: proposalSnapshot.compositionMeta?.promptTemplateVersionId || "",

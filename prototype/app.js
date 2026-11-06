@@ -1044,7 +1044,7 @@ const { createApp } = Vue;
 const initialSearchParams = new URLSearchParams(window.location.search);
 const initialView = initialSearchParams.get("view") === "admin" ? "prompts" : "builder";
 const requestedAdminTab = initialSearchParams.get("tab");
-const initialAdminTab = ["webhook", "llm-models", "llm", "prompt-variables", "component-generation", "components", "section-presets", "promo-form", "design-tokens", "i18n", "integrations", "audit"].includes(requestedAdminTab)
+const initialAdminTab = ["webhook", "llm-models", "llm", "prompt-variables", "layout-references", "component-generation", "components", "section-presets", "promo-form", "design-tokens", "i18n", "integrations", "audit"].includes(requestedAdminTab)
   ? requestedAdminTab
   : "promo-form";
 
@@ -1131,6 +1131,7 @@ const adminApp = createApp({
         "section-layout",
         "ai-page-composition",
         "promotion-image",
+        "design-research",
         "design-generator",
         "shared-execution",
         "other",
@@ -2378,7 +2379,7 @@ const adminApp = createApp({
     },
 
     selectAdminTab(tab) {
-      if (!["webhook", "llm-models", "llm", "prompt-variables", "component-generation", "components", "section-presets", "promo-form", "design-tokens", "i18n", "integrations", "audit"].includes(tab)) return;
+      if (!["webhook", "llm-models", "llm", "prompt-variables", "layout-references", "component-generation", "components", "section-presets", "promo-form", "design-tokens", "i18n", "integrations", "audit"].includes(tab)) return;
       if (tab === "promo-form" && !this.templateLayoutManagementEnabled) {
         this.setStatus("템플릿·페이지 레이아웃 관리는 비활성화되었습니다.");
         return;
@@ -7293,5 +7294,6 @@ adminApp.component("prompt-variable-manager", window.PromoAdminPromptVariables.c
 adminApp.component("component-generation-workspace", window.PromoAdminComponentGeneration.component);
 adminApp.component("render-spec-editor", window.PromoAdminComponentGeneration.renderSpecEditor);
 adminApp.component("directus-integration-settings", window.PromoAdminIntegrations.directusSettings);
+adminApp.component("layout-reference-manager", window.PromoAdminLayoutReferences.component);
 const localeReady = window.PromoI18n?.init?.() || Promise.resolve();
 localeReady.finally(() => adminApp.mount("#app"));

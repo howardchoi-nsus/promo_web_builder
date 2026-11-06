@@ -55,6 +55,7 @@ const assetRetrying = ref(false);
 const capabilities = ref({ aiMode: true });
 const activeShell = ref(null);
 const designReferenceId = new URLSearchParams(window.location.search).get("designReferenceId") || "";
+const layoutReferenceId = new URLSearchParams(window.location.search).get("layoutReferenceId") || "";
 const pendingOperations = ref(null);
 const operationConflict = ref(null);
 const overviewRetry = ref(null);
@@ -1309,6 +1310,7 @@ async function prepareWireframe(existingOperationId = "") {
         locale,
         capabilities: [],
         designReferenceId,
+        layoutReferenceId,
       } : {}),
       idempotencyKey: crypto.randomUUID(),
     });

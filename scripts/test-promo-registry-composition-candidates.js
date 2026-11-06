@@ -6,6 +6,7 @@ const {
   evaluateSectionCandidate,
   rankCandidates,
   rankDesignReferences,
+  rankLayoutReferences,
   resolveAllowedLayoutPresets,
   plannerRegistryCandidateSnapshot,
 } = require("../api/_promo-registry-composition-candidates");
@@ -187,6 +188,26 @@ assert.deepEqual(rankDesignReferences([{
   id: "chosen", design_style_name: "Chosen",
 }, { id: "other", design_style_name: "Other" }], {}, "chosen").map((item) => item.designDocumentId), ["chosen"]);
 
+const rankedLayoutReferences = rankLayoutReferences([{
+  id: "generic", title: "Generic landing", quality_score: 4.8,
+  viewport: "responsive", section_types: ["hero", "content"],
+  source_url: "https://must-not-leak.example/reference",
+}, {
+  id: "campaign", title: "Luxury event conversion page", quality_score: 4.4,
+  promotion_goal: "이벤트", viewport: "responsive", section_types: ["hero", "content", "terms"],
+  layout_spec: { rhythm: "editorial" },
+}], {
+  overview: { promotionPurpose: "이벤트", campaignTone: "럭셔리" },
+  sectionRoles: ["hero", "content", "terms"],
+});
+assert.equal(rankedLayoutReferences[0].layoutReferenceId, "campaign");
+assert.equal(Object.hasOwn(rankedLayoutReferences[0], "source_url"), false);
+assert.equal(Object.hasOwn(rankedLayoutReferences[0], "sourceUrl"), false);
+assert.deepEqual(rankLayoutReferences([{
+  id: "chosen", title: "Chosen", quality_score: 4,
+}, { id: "other", title: "Other", quality_score: 5 }], { preferredId: "chosen" })
+  .map((item) => item.layoutReferenceId), ["chosen"]);
+
 const plannerSnapshot = plannerRegistryCandidateSnapshot({
   contractVersion: 3,
   shell: { shellVersionId: "shell-v1" },
@@ -243,6 +264,7 @@ const plannerSnapshot = plannerRegistryCandidateSnapshot({
     }],
   }],
   designReferences: [{ designDocumentId: "luxury", referenceName: "Refined Editorial" }],
+  layoutReferences: [{ layoutReferenceId: "campaign", title: "Luxury event conversion page" }],
 });
 assert.equal(plannerSnapshot.sections[0].recommendedLayoutKey, "hero-center");
 assert.equal(plannerSnapshot.sections[0].sortOrder, 10);
@@ -255,6 +277,7 @@ assert.equal(plannerSnapshot.sections[0].components[0].fields[1].maxLength, 2000
 assert.equal(plannerSnapshot.sections[0].layoutPresets[1].fitScore, 44);
 assert.deepEqual(plannerSnapshot.sections[0].layoutPresets[1].fitReasons, ["long-headline-fit"]);
 assert.equal(plannerSnapshot.designReferences[0].designDocumentId, "luxury");
+assert.equal(plannerSnapshot.layoutReferences[0].layoutReferenceId, "campaign");
 
 assert.match(resolverSource, /componentVersionStatus === "active"/);
 assert.match(resolverSource, /fetchItemsForSections/);
@@ -264,6 +287,9 @@ assert.match(resolverSource, /candidateFingerprint: fingerprint\(snapshot\)/);
 assert.match(resolverSource, /policyFingerprint/);
 assert.match(resolverSource, /resourceFingerprint/);
 assert.match(resolverSource, /fetchDesignReferenceCandidates/);
+assert.match(resolverSource, /fetchLayoutReferenceCandidates/);
+assert.match(resolverSource, /status = 'approved'/);
+assert.doesNotMatch(JSON.stringify(plannerSnapshot.layoutReferences), /source_url|sourceUrl/);
 assert.match(apiSource, /requireBuilderFlag\("compositionV3"\)/);
 assert.match(apiSource, /COMPOSITION_CANDIDATES_EMPTY/);
 assert.match(migration, /wizard_content_sections_registry_candidates_idx/);

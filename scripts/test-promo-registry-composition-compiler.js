@@ -107,6 +107,10 @@ const proposalSnapshot = {
   snapshotType: "registry-composition-proposal",
   compositionMeta: {
     overviewFingerprint: "overview-fingerprint", promptTemplateVersionId: "prompt-version", model: "test-model",
+    layoutReference: {
+      layoutReferenceId: "layout-reference-v1", title: "Editorial conversion layout",
+      qualityScore: 4.7, matchScore: 96,
+    },
     layoutFitRepairs: [{
       sectionVersionId: "hero-version-1", fromLayoutKey: "hero-default",
       toLayoutKey: "hero-centered", scoreDelta: 24,
@@ -173,6 +177,7 @@ async function compile(candidateSet = candidates) {
   assert.equal(snapshot.layoutIdentity.sourceId, candidates.shell.shellVersionId);
   assert.equal(snapshot.layoutIdentity.templateId, "");
   assert.deepEqual(snapshot.compositionMeta.layoutFitRepairs, proposalSnapshot.compositionMeta.layoutFitRepairs);
+  assert.deepEqual(snapshot.compositionMeta.layoutReference, proposalSnapshot.compositionMeta.layoutReference);
   assert.deepEqual(snapshot.compositionMeta.layoutSelectionHistory.hero, [
     "hero-centered", "hero-left", "hero-right",
   ]);

@@ -876,7 +876,8 @@ window.addEventListener("message", (event) => {
       sectionStyleCount: Object.keys(wizardResolvedLayout?.sectionStyles || {}).length,
     });
   }, 500);
-  postWizardLayoutSnapshot();
+  // The editor already owns this full state. Echoing it back as a new bridge
+  // revision can race with the next local edit and overwrite that newer edit.
 });
 
 function templateSectionCanReorder(section) {

@@ -27,6 +27,7 @@ module.exports = async function handler(req, res) {
       overview,
       capabilities: Array.isArray(body.capabilities) ? body.capabilities : [],
       designReferenceId: String(body.designReferenceId || "").trim(),
+      layoutReferenceId: String(body.layoutReferenceId || "").trim(),
       sectionLimit: Math.max(1, Math.min(100, Number.isFinite(requestedLimit) ? requestedLimit : 40)),
     });
     if (!candidates.sections.length) {

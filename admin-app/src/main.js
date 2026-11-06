@@ -15,6 +15,8 @@ import { sectionLayoutPresetService } from "./services/section-layout-preset-ser
 import ComponentGenerationWorkspace from "./components/ComponentGenerationWorkspace.vue";
 import RenderSpecEditor from "./components/RenderSpecEditor.vue";
 import DirectusIntegrationSettings from "./components/DirectusIntegrationSettings.vue";
+import LayoutReferenceManager from "./components/LayoutReferenceManager.vue";
+import { layoutReferenceService } from "./services/layout-reference-service.mjs";
 
 resolveAdminShell(document);
 globalThis.Vue = VueRuntime;
@@ -46,6 +48,10 @@ globalThis.PromoAdminComponentGeneration = Object.freeze({
 });
 globalThis.PromoAdminIntegrations = Object.freeze({
   directusSettings: DirectusIntegrationSettings,
+});
+globalThis.PromoAdminLayoutReferences = Object.freeze({
+  service: layoutReferenceService,
+  component: LayoutReferenceManager,
 });
 
 await import("../../prototype/app.js");

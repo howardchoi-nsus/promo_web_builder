@@ -464,6 +464,50 @@ async function generateStructuredPlannerResult({
   };
 }
 
+async function generateStructuredVisionResult({
+  type,
+  schemaName,
+  schema,
+  imageUrl,
+  promptConfig,
+  signal,
+}) {
+  const execution = plannerRequestConfig(type, promptConfig);
+  const model = promptConfig?.model;
+  const prompt = String(promptConfig?.renderedPrompt || "").trim();
+  const normalizedImageUrl = String(imageUrl || "").trim();
+  if (!prompt) throw Object.assign(new Error(`${type} prompt is required`), { code: "PLANNER_PROMPT_REQUIRED" });
+  if (!normalizedImageUrl) throw Object.assign(new Error(`${type} image is required`), { code: "VISION_IMAGE_REQUIRED", statusCode: 422 });
+  const startedAt = Date.now();
+  const { payload, requestId } = await requestJson("https://api.openai.com/v1/responses", {
+    model,
+    store: false,
+    input: [{
+      role: "user",
+      content: [
+        { type: "input_text", text: prompt },
+        { type: "input_image", image_url: normalizedImageUrl },
+      ],
+    }],
+    ...execution.requestFields,
+    text: {
+      format: {
+        type: "json_schema",
+        name: schemaName,
+        strict: true,
+        schema,
+      },
+    },
+  }, openAiHeaders(), signal, execution.timeoutMs);
+  const output = responseOutputText(payload);
+  if (!output) throw Object.assign(new Error(`${type} returned no structured output`), { code: "EMPTY_PLANNER_RESULT" });
+  return {
+    result: parseStructuredOutput(output, type),
+    provider: { provider: "openai", model, requestId, latencyMs: Date.now() - startedAt },
+    usage: payload.usage || {},
+  };
+}
+
 async function generateOpenAiSectionImage({ prompt, aspectRatio, model: requestedModel, modelOptions, promptConfig, signal }) {
   const execution = normalizeControlPlanePromptConfig(
     promptConfig?.promptType || "component_image",
@@ -626,6 +670,7 @@ module.exports = {
   generateMultiComponentLayoutPlan,
   generateSectionCompositionPlan,
   generateStructuredPlannerResult,
+  generateStructuredVisionResult,
   parseStructuredOutput,
   isRetryableProviderError,
   isProviderBillingError,

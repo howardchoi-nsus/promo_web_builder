@@ -18,10 +18,12 @@ const {
 } = require("./_promo-resource-policy");
 const { resolveAllowedLayoutPresets } = require("./_promo-layout-preset-policy");
 const { evaluateLayoutFit } = require("./_promo-layout-fit");
+const { ensureLayoutReferenceRegistry } = require("./_layout-reference-store");
 
 const MAX_SECTION_SCAN = 500;
 const DEFAULT_SECTION_LIMIT = 40;
 const DEFAULT_DESIGN_REFERENCE_LIMIT = 3;
+const DEFAULT_LAYOUT_REFERENCE_LIMIT = 5;
 
 function normalizeStringList(value, limit = 100) {
   return Array.from(new Set((Array.isArray(value) ? value : [])
@@ -93,6 +95,106 @@ async function fetchDesignReferenceCandidates(sql, { overview = {}, preferredId 
     limit 120
   `;
   return rankDesignReferences(rows, overview, preferredId, limit);
+}
+
+function layoutReferenceTerms(overview = {}, sectionRoles = []) {
+  const splitTerms = (value) => String(value || "").toLowerCase()
+    .split(/[^\p{L}\p{N}-]+/u)
+    .map((item) => item.trim())
+    .filter((item) => item.length >= 2);
+  return normalizeStringList([
+    ...designReferenceTerms(overview),
+    ...splitTerms(overview.title),
+    ...splitTerms(overview.promotionPurpose),
+    ...splitTerms(overview.promotionPurposeOther),
+    ...splitTerms(overview.audience),
+    ...splitTerms(overview.campaignTone),
+    ...splitTerms(overview.mainOffer),
+    ...splitTerms(overview.leadText),
+    ...sectionRoles,
+  ], 80);
+}
+
+function compactLayoutReference(row, matchScore = 0, matchReasons = []) {
+  return {
+    layoutReferenceId: String(row.id || ""),
+    title: String(row.title || "").slice(0, 200),
+    pageType: String(row.page_type || "").slice(0, 120),
+    industry: String(row.industry || "").slice(0, 120),
+    promotionGoal: String(row.promotion_goal || "").slice(0, 160),
+    viewport: String(row.viewport || "responsive"),
+    visualStyles: normalizeStringList(row.visual_styles, 12),
+    sectionTypes: normalizeStringList(row.section_types, 20),
+    tags: normalizeStringList(row.tags, 24),
+    designSummary: String(row.design_summary || "").slice(0, 1800),
+    strengths: String(row.strengths || "").slice(0, 1200),
+    risks: String(row.risks || "").slice(0, 1200),
+    layoutSpec: row.layout_spec || {},
+    qualityScore: Number(row.quality_score || 0),
+    matchScore: Math.round(Number(matchScore || 0) * 100) / 100,
+    matchReasons: matchReasons.slice(0, 20),
+  };
+}
+
+function rankLayoutReferences(rows = [], {
+  overview = {},
+  sectionRoles = [],
+  preferredId = "",
+  limit = DEFAULT_LAYOUT_REFERENCE_LIMIT,
+} = {}) {
+  const normalizedPreferredId = String(preferredId || "").trim().toLowerCase();
+  const normalizedRoles = normalizeStringList(sectionRoles, 40);
+  const terms = layoutReferenceTerms(overview, normalizedRoles);
+  return rows.map((row, index) => {
+    const id = String(row.id || "").toLowerCase();
+    const exact = Boolean(normalizedPreferredId && id === normalizedPreferredId);
+    const searchable = JSON.stringify([
+      row.title, row.page_type, row.industry, row.promotion_goal,
+      row.visual_styles, row.section_types, row.tags, row.design_summary,
+      row.strengths, row.layout_spec,
+    ]).toLowerCase();
+    const matchedTerms = terms.filter((term) => searchable.includes(term));
+    const referenceSections = normalizeStringList(row.section_types, 20);
+    const matchedSections = referenceSections.filter((section) => normalizedRoles.includes(section));
+    const purpose = String(overview.promotionPurpose || overview.promotionPurposeOther || "").trim().toLowerCase();
+    const purposeMatch = Boolean(purpose && String(row.promotion_goal || "").toLowerCase().includes(purpose));
+    const qualityScore = Number(row.quality_score || 0);
+    const score = (exact ? 10000 : 0)
+      + qualityScore * 10
+      + matchedTerms.length * 12
+      + matchedSections.length * 18
+      + (purposeMatch ? 35 : 0)
+      + (row.viewport === "responsive" ? 5 : 0)
+      - index * 0.001;
+    const reasons = [
+      ...(exact ? ["explicit-selection"] : []),
+      ...(purposeMatch ? ["promotion-goal-match"] : []),
+      ...matchedSections.map((section) => `section:${section}`),
+      ...matchedTerms.slice(0, 8).map((term) => `term:${term}`),
+      `quality:${qualityScore.toFixed(1)}`,
+    ];
+    return { row, exact, score, reasons };
+  }).filter((entry) => !normalizedPreferredId || entry.exact)
+    .sort((left, right) => right.score - left.score || String(left.row.id).localeCompare(String(right.row.id)))
+    .slice(0, Math.max(1, Math.min(10, Number(limit) || DEFAULT_LAYOUT_REFERENCE_LIMIT)))
+    .map((entry) => compactLayoutReference(entry.row, entry.score, entry.reasons));
+}
+
+async function fetchLayoutReferenceCandidates(sql, options = {}) {
+  await ensureLayoutReferenceRegistry(sql);
+  const rows = await sql`
+    select id::text, title, page_type, industry, promotion_goal, viewport,
+      visual_styles, section_types, tags, design_summary, strengths, risks,
+      layout_spec, quality_score, updated_at
+    from promo_layout_references
+    where status = 'approved'
+      and copyright_reviewed = true
+      and research_only = true
+      and quality_score >= 4
+    order by quality_score desc, updated_at desc, id
+    limit 120
+  `;
+  return rankLayoutReferences(rows, options);
 }
 
 function componentCapabilities(component) {
@@ -289,6 +391,7 @@ async function fetchRegistryCompositionCandidates(sql, {
   recentLayoutSelections = {},
   sectionLimit = DEFAULT_SECTION_LIMIT,
   designReferenceId = "",
+  layoutReferenceId = "",
 } = {}) {
   const shell = await fetchShellVersion(sql, shellVersionId);
   if (!shell || shell.status !== "active" || shell.shellStatus !== "active") {
@@ -304,6 +407,7 @@ async function fetchRegistryCompositionCandidates(sql, {
     promotionPurpose: String(overview.promotionPurpose || "").trim(),
     capabilities: normalizeStringList(capabilities),
     designReferenceId: String(designReferenceId || "").trim(),
+    layoutReferenceId: String(layoutReferenceId || "").trim(),
   };
   const allowedLocales = normalizeStringList(shellConfig.allowedLocales);
   if (allowedLocales.length && !allowedLocales.includes(criteria.locale.toLowerCase())) {
@@ -413,7 +517,8 @@ async function fetchRegistryCompositionCandidates(sql, {
     });
   }
 
-  const [tokenSets, motionPresets, resourceResolution, designReferences] = await Promise.all([
+  const sectionRoles = eligible.map((section) => section.sectionRole);
+  const [tokenSets, motionPresets, resourceResolution, designReferences, layoutReferences] = await Promise.all([
     fetchTokenCandidates(sql, shellConfig),
     fetchMotionCandidates(sql, shellConfig),
     resolveContentResourceReferences(sql, { criteria }),
@@ -421,6 +526,12 @@ async function fetchRegistryCompositionCandidates(sql, {
       overview,
       preferredId: criteria.designReferenceId,
       limit: shellConfig.maxDesignReferences || DEFAULT_DESIGN_REFERENCE_LIMIT,
+    }),
+    fetchLayoutReferenceCandidates(sql, {
+      overview,
+      sectionRoles,
+      preferredId: criteria.layoutReferenceId,
+      limit: shellConfig.maxLayoutReferences || DEFAULT_LAYOUT_REFERENCE_LIMIT,
     }),
   ]);
   const enriched = enrichCandidatesWithResourcePolicy({
@@ -465,6 +576,7 @@ async function fetchRegistryCompositionCandidates(sql, {
     resources,
     resourceIssues,
     designReferences,
+    layoutReferences,
     excluded: excluded.sort((left, right) => String(left.sectionKey).localeCompare(String(right.sectionKey))),
     policyFingerprint,
     resourceFingerprint,
@@ -547,6 +659,7 @@ function plannerRegistryCandidateSnapshot(candidates) {
     })),
     motionPresets: candidates.motionPresets || [],
     designReferences: candidates.designReferences || [],
+    layoutReferences: candidates.layoutReferences || [],
     resources: candidates.resources || [],
     candidateFingerprint: candidates.candidateFingerprint,
     policyFingerprint: candidates.policyFingerprint,
@@ -566,6 +679,9 @@ module.exports = {
   designReferenceTerms,
   rankDesignReferences,
   fetchDesignReferenceCandidates,
+  layoutReferenceTerms,
+  rankLayoutReferences,
+  fetchLayoutReferenceCandidates,
   requiredSectionError,
   fetchRegistryCompositionCandidates,
   plannerRegistryCandidateSnapshot,

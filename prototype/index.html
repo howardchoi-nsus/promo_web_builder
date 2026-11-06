@@ -765,6 +765,14 @@
               >프롬프트 변수 관리</button>
               <button
                 class="admin-tab"
+                :class="{ active: adminTab === 'layout-references' }"
+                type="button"
+                role="tab"
+                :aria-selected="adminTab === 'layout-references'"
+                @click="selectAdminTab('layout-references')"
+              >레이아웃 레퍼런스</button>
+              <button
+                class="admin-tab"
                 :class="{ active: adminTab === 'component-generation' }"
                 type="button"
                 role="tab"
@@ -837,6 +845,10 @@
 
             <section v-show="adminTab === 'prompt-variables'" class="admin-panel">
               <prompt-variable-manager></prompt-variable-manager>
+            </section>
+
+            <section v-show="adminTab === 'layout-references'" class="admin-panel">
+              <layout-reference-manager @status="setStatus"></layout-reference-manager>
             </section>
 
             <div
@@ -916,6 +928,7 @@
                     <option value="section_background_image">섹션 키비주얼 생성</option>
                     <option value="component_image">컴포넌트 이미지 생성</option>
                     <option value="component_visual_analyzer">컴포넌트 이미지 분석</option>
+                    <option value="layout_reference_analyzer">레이아웃 레퍼런스 분석</option>
                     <option value="admin_prompt_translation">관리자 프롬프트 번역</option>
                     <option value="promo_page_generation">프로모션 페이지 코드 생성</option>
                   </select>
