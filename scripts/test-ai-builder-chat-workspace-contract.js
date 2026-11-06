@@ -156,6 +156,13 @@ assert.match(builder, /'has-active-turn': Boolean\(activeChatTurnMessageId\) && 
 assert.match(builder, /watch\(interactionLocked,[\s\S]*?activeChatTurnMessageId\.value = ""/);
 assert.match(builder, /class="ai-chat-thinking"/);
 assert.match(builder, /:aria-busy="interactionLocked \? 'true' : 'false'"/);
+assert.match(builder, /pendingChatActionKey\.value = actionKey/);
+assert.match(builder, /chatActionButtonLabel\(action\)/);
+assert.match(builder, /const messageRequest = appendActionMessage\(action\)/);
+assert.match(builder, /Promise\.all\(\[actionRequest, messageRequest\]\)/);
+assert.match(builder, /async function prepareWireframe\(existingOperationId = ""\)/);
+assert.match(builder, /async function approveWireframe\(action = \{\}, existingOperationId = ""\)/);
+assert.match(builder, /openOutput\(\);[\s\S]*?await executeChatAction/);
 assert.match(builderCss, /\.ai-chat-messages\.has-active-turn::after \{ min-height: 100%; flex: 0 0 100%/);
 assert.match(builderCss, /\.ai-chat-message \{ width: 100%;[\s\S]*?border: 0;[\s\S]*?background: transparent/);
 assert.match(builderCss, /\.ai-chat-message\.is-user \{ width: min\(84%, 620px\);[\s\S]*?background: #176b4d/);

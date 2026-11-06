@@ -175,7 +175,10 @@ const server = http.createServer(async (request, response) => {
     for await (const chunk of request) chunks.push(chunk);
     const body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
     if (body.actionKey === "confirm_requirements") chatStage = "wireframe_review";
-    if (body.actionKey === "approve_wireframe") chatStage = "finalizing";
+    if (body.actionKey === "approve_wireframe") {
+      chatStage = "finalizing";
+      await new Promise((resolve) => setTimeout(resolve, 350));
+    }
     response.writeHead(200, { "Content-Type": "application/json" });
     response.end(JSON.stringify({ ok: true, action: { id: body.actionId, key: body.actionKey }, stage: chatStage }));
     return;
@@ -507,7 +510,21 @@ try {
   const mobilePreviewWidth = await page.locator(".ai-wireframe-canvas").evaluate((element) => element.getBoundingClientRect().width);
   assert.ok(mobilePreviewWidth <= 390);
   await page.getByRole("button", { name: "페이지 구성 승인" }).click();
-  await page.getByText("AI 이미지를 생성하고 있습니다.").waitFor();
+  await page.getByRole("button", { name: "페이지 구성 승인 처리 중…" }).waitFor({ timeout: 1000 });
+  await page.getByText("최종 디자인과 이미지를 생성하고 있습니다.").waitFor({ timeout: 1000 });
+  assert.equal(await page.locator('.ai-chat-message[role="status"][aria-busy="true"]').count(), 1);
+  for (let count = 0; count < 250 && !applyRequest; count += 1) await page.waitForTimeout(20);
+  assert.ok(applyRequest, `apply request should start after immediate feedback: ${JSON.stringify({
+    chatStage,
+    confirmedWireframeRevision,
+    recentMessages: chatMessages.slice(-3).map((message) => ({ role: message.role, text: message.text })),
+  })}`);
+  await Promise.race([
+    page.getByText("AI 이미지를 생성하고 있습니다.").waitFor(),
+    page.locator(".ai-builder-error").waitFor().then(async () => {
+      throw new Error(`final design action failed: ${await page.locator(".ai-builder-error").innerText()}`);
+    }),
+  ]);
   await page.getByText("최종 디자인 생성을 완료했습니다.").waitFor({ timeout: 10000 });
   assert.equal(applyRequest.chatSessionId, "session-browser");
   assert.equal(applyRequest.confirmedWireframeRevision, 1);

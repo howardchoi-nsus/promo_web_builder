@@ -75,6 +75,8 @@ const splitPercent = ref(38);
 const draggingSplit = ref(false);
 const chatList = ref(null);
 const activeChatTurnMessageId = ref("");
+const pendingChatActionKey = ref("");
+const pendingChatActionLabel = ref("");
 const fileInput = ref(null);
 const chatMenuOpen = ref(false);
 const chatSessions = ref([]);
@@ -104,6 +106,7 @@ const busy = computed(() => [
 ].includes(store.stage));
 const interactionLocked = computed(() => (
   busy.value || attachmentBusy.value || requirementsSaving.value || wireframeSaving.value
+  || Boolean(pendingChatActionKey.value)
 ));
 const chatComposerLocked = computed(() => (
   interactionLocked.value || requirementsEditing.value || wireframeEditing.value
@@ -119,6 +122,9 @@ const wireframeEditDirty = computed(() => (
 const currentStatus = computed(() => {
   if (attachmentBusy.value) return { label: "참고 이미지 분석", state: "진행 중" };
   if (busy.value) return { label: progressMessage.value, state: "진행 중" };
+  if (pendingChatActionKey.value) {
+    return { label: `${pendingChatActionLabel.value || "요청"} 처리 중`, state: "진행 중" };
+  }
   if (requirementsEditing.value) return { label: "요구사항 수정 중", state: "확인 필요" };
   if (wireframeEditing.value) return { label: "페이지 구성 수정 중", state: "확인 필요" };
   if (store.stage === "failed") return { label: store.error?.message || "처리 실패", state: "실패" };
@@ -1024,45 +1030,86 @@ function visibleMessageActions(message) {
   return (message?.actions || []).filter((action) => !action.status || action.status === "proposed");
 }
 
+function chatActionIdentity(action) {
+  return String(action?.id || action?.key || "");
+}
+
+function chatActionButtonLabel(action) {
+  return pendingChatActionKey.value === chatActionIdentity(action)
+    ? `${action.label} 처리 중…`
+    : action.label;
+}
+
+function appendActionMessage(action) {
+  const message = appendMessage("user", action.label, { type: "action" });
+  return persistMessage(message);
+}
+
+function actionProgressMessage(action) {
+  return ({
+    confirm_requirements: "페이지 구성 미리보기를 준비하고 있습니다.",
+    approve_wireframe: "최종 디자인 생성을 준비하고 있습니다.",
+    revise_requirements: "요구사항 수정 모드를 준비하고 있습니다.",
+    revise_wireframe: "페이지 구성 수정 모드를 준비하고 있습니다.",
+    complete_requirements_edit: "수정한 요구사항을 저장하고 있습니다.",
+    cancel_requirements_edit: "요구사항 수정을 취소하고 있습니다.",
+    open_output: "Web Output을 열고 있습니다.",
+  })[action.key] || `${action.label} 요청을 처리하고 있습니다.`;
+}
+
 async function handleChatAction(action) {
   if (interactionLocked.value) return;
+  const actionKey = chatActionIdentity(action);
+  const operationId = `chat-action-${action.key}-${Date.now()}`;
+  pendingChatActionKey.value = actionKey;
+  pendingChatActionLabel.value = action.label;
   try {
     if (action.key === "complete_requirements_edit") {
+      updateStatusMessage(operationId, actionProgressMessage(action), "in_progress");
       await completeRequirementsEdit(action);
+      updateStatusMessage(operationId, "수정한 요구사항을 저장했습니다.", "completed");
       return;
     }
     if (action.key === "cancel_requirements_edit") {
+      updateStatusMessage(operationId, actionProgressMessage(action), "in_progress");
       await cancelRequirementsEdit(action);
+      updateStatusMessage(operationId, "요구사항 수정을 취소했습니다.", "completed");
       return;
     }
     if (action.key === "confirm_requirements") {
-      if (capabilities.value.chatWorkspaceV1) {
-        await executeChatAction({
+      const messageRequest = appendActionMessage(action);
+      updateStatusMessage(operationId, actionProgressMessage(action), "in_progress");
+      const actionRequest = capabilities.value.chatWorkspaceV1
+        ? executeChatAction({
           sessionId: chatSessionId.value,
           actionId: action.id,
           actionKey: action.key,
           idempotencyKey: crypto.randomUUID(),
-        });
-      }
-      await appendPersistedMessage("user", action.label, { type: "action" });
-      await prepareWireframe();
+        })
+        : Promise.resolve();
+      await Promise.all([actionRequest, messageRequest]);
+      await prepareWireframe(operationId);
       return;
     }
     if (action.key === "approve_wireframe") {
-      await appendPersistedMessage("user", action.label, { type: "action" });
-      await approveWireframe(action);
+      const messageRequest = appendActionMessage(action);
+      updateStatusMessage(operationId, actionProgressMessage(action), "in_progress");
+      await messageRequest;
+      await approveWireframe(action, operationId);
       return;
     }
     if (action.key === "revise_requirements" || action.key === "revise_wireframe") {
-      if (capabilities.value.chatWorkspaceV1) {
-        await executeChatAction({
+      const messageRequest = appendActionMessage(action);
+      updateStatusMessage(operationId, actionProgressMessage(action), "in_progress");
+      const actionRequest = capabilities.value.chatWorkspaceV1
+        ? executeChatAction({
           sessionId: chatSessionId.value,
           actionId: action.id,
           actionKey: action.key,
           idempotencyKey: crypto.randomUUID(),
-        });
-      }
-      await appendPersistedMessage("user", action.label, { type: "action" });
+        })
+        : Promise.resolve();
+      await Promise.all([actionRequest, messageRequest]);
       if (action.key === "revise_requirements") {
         markChatActionGroupHandled(action);
         beginRequirementsEdit();
@@ -1077,6 +1124,7 @@ async function handleChatAction(action) {
             ],
           },
         );
+        updateStatusMessage(operationId, "요구사항 수정 모드를 열었습니다.", "completed");
         return;
       }
       markChatActionGroupHandled(action);
@@ -1086,9 +1134,12 @@ async function handleChatAction(action) {
         "오른쪽 페이지 구성 미리보기에서 문구와 가로 배치를 수정한 뒤 ‘수정 저장’을 눌러 주세요.",
         { type: "assistant" },
       );
+      updateStatusMessage(operationId, "페이지 구성 수정 모드를 열었습니다.", "completed");
       return;
     }
     if (action.key === "open_output") {
+      updateStatusMessage(operationId, actionProgressMessage(action), "in_progress");
+      openOutput();
       if (capabilities.value.chatWorkspaceV1 && action.id) {
         await executeChatAction({
           sessionId: chatSessionId.value,
@@ -1097,10 +1148,14 @@ async function handleChatAction(action) {
           idempotencyKey: crypto.randomUUID(),
         });
       }
-      openOutput();
+      updateStatusMessage(operationId, "Web Output을 열었습니다.", "completed");
     }
   } catch (error) {
+    updateStatusMessage(operationId, `${action.label} 처리에 실패했습니다. ${error.message}`, "failed");
     setBuilderError(store, error);
+  } finally {
+    pendingChatActionKey.value = "";
+    pendingChatActionLabel.value = "";
   }
 }
 
@@ -1223,11 +1278,11 @@ async function retryAssets() {
   }
 }
 
-async function prepareWireframe() {
+async function prepareWireframe(existingOperationId = "") {
   clearBuilderError(store);
   store.warning = null;
   store.stage = "resolving_policy";
-  const operationId = `wireframe-${Date.now()}`;
+  const operationId = existingOperationId || `wireframe-${Date.now()}`;
   updateStatusMessage(operationId, "페이지 구성 미리보기를 생성하고 있습니다.", "in_progress");
   try {
     const currentFingerprint = refreshOverviewFingerprint();
@@ -1297,9 +1352,9 @@ async function compose() {
   await prepareWireframe();
 }
 
-async function approveWireframe(action = {}) {
+async function approveWireframe(action = {}, existingOperationId = "") {
   if (!store.proposal?.id) return;
-  const operationId = `final-${Date.now()}`;
+  const operationId = existingOperationId || `final-${Date.now()}`;
   updateStatusMessage(operationId, "최종 디자인과 이미지를 생성하고 있습니다.", "in_progress");
   try {
     if (capabilities.value.chatWorkspaceV1) {
@@ -1967,7 +2022,7 @@ onBeforeUnmount(() => {
                   type="button"
                   :disabled="isChatActionDisabled(action)"
                   @click="handleChatAction(action)"
-                >{{ action.label }}</button>
+                >{{ chatActionButtonLabel(action) }}</button>
               </div>
             </article>
           </div>
