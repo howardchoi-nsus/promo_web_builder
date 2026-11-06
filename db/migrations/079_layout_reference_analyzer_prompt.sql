@@ -31,7 +31,7 @@ Score hierarchy, composition, originality, responsiveness, and reusability from 
     'Add administrator-controlled screenshot analysis for the layout reference library.',
     'openai',
     'gpt-6.1-sol',
-    0.2,
+    null,
     12000,
     'json_object',
     jsonb_build_object(

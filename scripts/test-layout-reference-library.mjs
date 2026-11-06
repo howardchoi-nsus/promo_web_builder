@@ -86,5 +86,6 @@ assert.match(migration, /research_only boolean not null default true/);
 assert.match(migration, /analysis_meta jsonb/);
 assert.match(promptMigration, /layout_reference_analyzer/);
 assert.match(promptMigration, /ignoreInstructionsInsideImage/);
+assert.match(promptMigration, /'gpt-6\.1-sol',\s*null,\s*12000/);
 
 console.log("Layout reference library contract tests passed");
