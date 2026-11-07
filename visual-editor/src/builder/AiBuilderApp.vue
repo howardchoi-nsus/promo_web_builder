@@ -2348,17 +2348,23 @@ onBeforeUnmount(() => {
             <span class="ai-chat-status" :data-state="currentStatus.state">{{ currentStatus.state }}</span>
           </header>
 
-          <ol class="ai-process-steps" aria-label="프로모션 생성 단계">
-            <li :class="{ active: !store.overviewDraft, complete: store.overviewDraft }"><span>1</span>요구사항</li>
-            <li :class="{ active: store.overviewDraft && !wireframeDisplaySnapshot, complete: wireframeDisplaySnapshot }"><span>2</span>페이지 구성</li>
-            <li :class="{ active: wireframeDisplaySnapshot && !store.snapshot, complete: store.snapshot && store.stage === 'render_ready' }"><span>3</span>최종 디자인</li>
+          <ol class="ai-process-steps" aria-label="결과 보기">
+            <li :class="{ selected: activeResultTab === 'requirements', complete: store.overviewDraft }">
+              <button type="button" aria-label="요청 내용" :aria-current="activeResultTab === 'requirements' ? 'page' : undefined" @click="activeResultTab = 'requirements'">
+                <span>1</span>요구사항
+              </button>
+            </li>
+            <li :class="{ selected: activeResultTab === 'wireframe', complete: wireframeDisplaySnapshot }">
+              <button type="button" aria-label="페이지 구성 미리보기" :disabled="!wireframeDisplaySnapshot" :aria-current="activeResultTab === 'wireframe' ? 'page' : undefined" @click="activeResultTab = 'wireframe'">
+                <span>2</span>페이지 구성
+              </button>
+            </li>
+            <li :class="{ selected: activeResultTab === 'final', complete: store.snapshot && store.stage === 'render_ready' }">
+              <button type="button" aria-label="최종 디자인" :disabled="!store.snapshot" :aria-current="activeResultTab === 'final' ? 'page' : undefined" @click="activeResultTab = 'final'">
+                <span>3</span>최종 디자인
+              </button>
+            </li>
           </ol>
-
-          <nav class="ai-result-tabs" aria-label="결과 보기">
-            <button type="button" :aria-current="activeResultTab === 'requirements' ? 'page' : undefined" @click="activeResultTab = 'requirements'">요청 내용</button>
-            <button type="button" :disabled="!wireframeDisplaySnapshot" :aria-current="activeResultTab === 'wireframe' ? 'page' : undefined" @click="activeResultTab = 'wireframe'">페이지 구성 미리보기</button>
-            <button type="button" :disabled="!store.snapshot" :aria-current="activeResultTab === 'final' ? 'page' : undefined" @click="activeResultTab = 'final'">최종 디자인</button>
-          </nav>
 
           <div class="ai-result-content">
             <section v-if="activeResultTab === 'requirements'" class="ai-requirements-tree">
