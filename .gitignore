@@ -12,6 +12,10 @@ node_modules/
 # Operating-system metadata.
 .DS_Store
 
+# macOS/Finder conflict copies of generated document-library entries.
+/document/content/doc-* [0-9]*.md
+/document/content/doc-* [0-9]*.txt
+
 # Local review and presentation build artifacts.
 /output/
 /tmp/pdfs/ai-week-final-review/
