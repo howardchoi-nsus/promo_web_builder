@@ -261,6 +261,7 @@ const server = http.createServer(async (request, response) => {
       }));
       return;
     }
+    const needsPeriod = overviewParseCount === 2;
     await new Promise((resolve) => setTimeout(resolve, 1500));
     response.writeHead(200, { "Content-Type": "application/json" });
     response.end(JSON.stringify({
@@ -290,7 +291,10 @@ const server = http.createServer(async (request, response) => {
           required: true,
         }],
         additionalInformation: [{
-          label: "이벤트 기간", value: "사용자 확인 필요", description: "기간 입력 필요", confirmationRequired: true,
+          label: "이벤트 기간",
+          value: needsPeriod ? "사용자 확인 필요" : "2026년 11월 15일부터 12월 31일까지",
+          description: needsPeriod ? "기간 입력 필요" : "확정된 프로모션 운영 기간",
+          confirmationRequired: needsPeriod,
         }],
         notices: [],
         legalInformation: [],
@@ -417,7 +421,8 @@ try {
   });
   assert.equal(workspaceStyles.display, "grid");
   assert.match(workspaceStyles.gridColumns, /px/);
-  await page.getByPlaceholder("프로모션 요구사항을 입력하거나 화면 이미지를 붙여넣으세요.").fill("여름 신규 고객 충전 이벤트");
+  const chatInput = page.getByPlaceholder(/신규 회원에게 1만원 쿠폰/);
+  await chatInput.fill("여름 신규 고객 충전 이벤트");
   assert.equal(await page.getByRole("button", { name: "전송" }).isEnabled(), true);
   await page.getByRole("button", { name: "전송" }).click();
   await page.getByText("프로모션 개요를 분석하고 있습니다.").waitFor();
@@ -447,6 +452,13 @@ try {
     await page.screenshot({ path: path.join(root, "design-qa-implementation.png"), fullPage: true });
   }
   await page.getByText("요구사항 분석을 완료했습니다.").waitFor();
+  await page.getByText("프로모션 진행 기간은 언제부터 언제까지인가요?").waitFor();
+  assert.equal(compositionRequest, null, "composition must wait for clarification and user confirmation");
+  await chatInput.fill("2026년 11월 15일부터 12월 31일까지 진행해줘");
+  await page.getByRole("button", { name: "전송" }).click();
+  await page.getByRole("button", { name: "페이지 구성 만들기" }).waitFor();
+  assert.equal(compositionRequest, null, "composition must not start before the user confirms the organized brief");
+  await page.getByRole("button", { name: "페이지 구성 만들기" }).click();
   for (let count = 0; count < 50 && !compositionRequest; count += 1) {
     await page.waitForTimeout(20);
   }
