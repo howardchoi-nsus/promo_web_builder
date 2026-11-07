@@ -64,6 +64,7 @@ const LEGACY_CHAT_STORAGE_KEY = "promoAiBuilder.chatWorkspace.v1";
 const messages = ref([]);
 const attachments = ref([]);
 const chatInput = ref("");
+const chatSubmitting = ref(false);
 const attachmentBusy = ref(false);
 const wireframeSnapshot = ref(null);
 const chatSessionId = ref("");
@@ -114,7 +115,7 @@ const busy = computed(() => [
 ].includes(store.stage));
 const hasStreamingMessage = computed(() => streamingMessageIds.value.length > 0);
 const interactionLocked = computed(() => (
-  busy.value || attachmentBusy.value || requirementsSaving.value || wireframeSaving.value
+  chatSubmitting.value || busy.value || attachmentBusy.value || requirementsSaving.value || wireframeSaving.value
   || Boolean(pendingChatActionKey.value) || hasStreamingMessage.value
 ));
 const chatComposerLocked = computed(() => (
@@ -131,6 +132,7 @@ const wireframeEditDirty = computed(() => (
 const currentStatus = computed(() => {
   if (attachmentBusy.value) return { label: "참고 이미지 분석", state: "진행 중" };
   if (busy.value) return { label: progressMessage.value, state: "진행 중" };
+  if (chatSubmitting.value) return { label: "요청을 전송하고 있습니다.", state: "진행 중" };
   if (pendingChatActionKey.value) {
     return { label: `${pendingChatActionLabel.value || "요청"} 처리 중`, state: "진행 중" };
   }
@@ -328,13 +330,53 @@ function messageDisplayText(message) {
   return message.isStreaming ? message.displayText : message.text;
 }
 
+const DUPLICATE_MESSAGE_WINDOW_MS = 10_000;
+
+function messageCreatedAtMs(message) {
+  const timestamp = Date.parse(message?.createdAt || message?.updatedAt || "");
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+function duplicateMessageKey(message) {
+  if (!message || !["user", "assistant"].includes(message.role)) return "";
+  const text = String(message.text || "").replace(/\s+/g, " ").trim();
+  return text ? `${message.role}:${message.type || "message"}:${text}` : "";
+}
+
+function mergeDuplicateMessage(target, source) {
+  if ((!Array.isArray(target.actions) || !target.actions.length) && Array.isArray(source.actions)) {
+    target.actions = source.actions;
+  }
+  if ((!Array.isArray(target.questions) || !target.questions.length) && Array.isArray(source.questions)) {
+    target.questions = source.questions;
+  }
+  return target;
+}
+
+function findRecentDuplicateMessage(candidate) {
+  const key = duplicateMessageKey(candidate);
+  if (!key) return null;
+  const candidateTime = messageCreatedAtMs(candidate) || Date.now();
+  return [...messages.value].reverse().find((message) => {
+    if (duplicateMessageKey(message) !== key) return false;
+    const existingTime = messageCreatedAtMs(message);
+    return !existingTime || Math.abs(candidateTime - existingTime) <= DUPLICATE_MESSAGE_WINDOW_MS;
+  }) || null;
+}
+
 function appendMessage(role, text, extra = {}) {
+  const normalizedText = String(text || "");
+  const candidate = {
+    role,
+    text: normalizedText,
+    createdAt: extra.createdAt || new Date().toISOString(),
+    ...extra,
+  };
+  const duplicate = findRecentDuplicateMessage(candidate);
+  if (duplicate) return mergeDuplicateMessage(duplicate, candidate);
   const message = {
     id: crypto.randomUUID(),
-    role,
-    text: String(text || ""),
-    createdAt: new Date().toISOString(),
-    ...extra,
+    ...candidate,
   };
   messages.value.push(message);
   if (role === "user") {
@@ -350,13 +392,20 @@ function appendMessage(role, text, extra = {}) {
       const target = [...container.querySelectorAll("[data-message-id]")]
         .find((element) => element.dataset.messageId === message.id);
       if (!target) return;
-      const top = container.scrollTop
-        + target.getBoundingClientRect().top
-        - container.getBoundingClientRect().top
-        - 12;
-      setProgrammaticChatScroll(() => {
-        container.scrollTo({ top: Math.max(0, top), behavior: prefersReducedMotion() ? "auto" : "smooth" });
-      });
+      const alignUserTurn = () => {
+        const top = container.scrollTop
+          + target.getBoundingClientRect().top
+          - container.getBoundingClientRect().top
+          - 12;
+        setProgrammaticChatScroll(() => {
+          container.scrollTo({ top: Math.max(0, top), behavior: prefersReducedMotion() ? "auto" : "smooth" });
+        });
+      };
+      if (typeof globalThis.requestAnimationFrame === "function") {
+        globalThis.requestAnimationFrame(alignUserTurn);
+      } else {
+        alignUserTurn();
+      }
       return;
     }
     if (chatFollowOutput.value) scrollChatMessageIntoView(message.id);
@@ -394,7 +443,24 @@ function updateStatusMessage(operationId, text, status = "in_progress") {
 }
 
 function normalizeRestoredMessages(value) {
-  return (Array.isArray(value) ? value : []).map(({ displayText, isStreaming, ...message }) => message);
+  const normalized = [];
+  const seenIds = new Set();
+  const recentByKey = new Map();
+  for (const valueMessage of Array.isArray(value) ? value : []) {
+    const { displayText, isStreaming, ...message } = valueMessage || {};
+    if (!message.id || seenIds.has(message.id)) continue;
+    seenIds.add(message.id);
+    const key = duplicateMessageKey(message);
+    const timestamp = messageCreatedAtMs(message);
+    const previous = key ? recentByKey.get(key) : null;
+    if (previous && (!timestamp || !previous.timestamp || Math.abs(timestamp - previous.timestamp) <= DUPLICATE_MESSAGE_WINDOW_MS)) {
+      mergeDuplicateMessage(previous.message, message);
+      continue;
+    }
+    normalized.push(message);
+    if (key) recentByKey.set(key, { message, timestamp });
+  }
+  return normalized;
 }
 
 function restorePendingClarificationsFromMessages() {
@@ -1000,21 +1066,28 @@ async function analyze(instruction = store.naturalLanguage) {
 
 async function submitChat() {
   const input = chatInput.value.trim();
-  if (interactionLocked.value || (!input && !attachments.value.some((item) => item.dataUrl && !item.analysis))) return;
-  await ensureDocument();
-  await ensureChatWorkspace();
-  await appendPersistedMessage("user", input || "첨부한 프로모션 이미지를 분석해 주세요.", {
-    type: "user",
-    attachmentIds: attachments.value.map((item) => item.id),
-  });
+  const hasPendingAttachment = attachments.value.some((item) => item.dataUrl && !item.analysis);
+  if (chatSubmitting.value || interactionLocked.value || (!input && !hasPendingAttachment)) return;
+  chatSubmitting.value = true;
   chatInput.value = "";
+  let messagePersisted = false;
   try {
+    await ensureDocument();
+    await ensureChatWorkspace();
+    await appendPersistedMessage("user", input || "첨부한 프로모션 이미지를 분석해 주세요.", {
+      type: "user",
+      attachmentIds: attachments.value.map((item) => item.id),
+    });
+    messagePersisted = true;
     const referenceSummary = await analyzeAttachments();
     const combined = composeOverviewInstruction(conversationInstruction(input), referenceSummary);
     store.naturalLanguage = combined;
     await analyze(combined);
   } catch (error) {
+    if (!messagePersisted && input && !chatInput.value) chatInput.value = input;
     setBuilderError(store, error);
+  } finally {
+    chatSubmitting.value = false;
   }
 }
 

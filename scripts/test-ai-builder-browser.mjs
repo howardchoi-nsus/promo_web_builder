@@ -423,10 +423,14 @@ try {
   assert.match(workspaceStyles.gridColumns, /px/);
   const chatInput = page.getByPlaceholder("무엇을 만들고 싶으신가요?");
   await chatInput.fill("여름 신규 고객 충전 이벤트");
-  assert.equal(await page.getByRole("button", { name: "전송" }).isEnabled(), true);
-  await page.getByRole("button", { name: "전송" }).click();
+  const sendButton = page.getByRole("button", { name: "전송" });
+  assert.equal(await sendButton.isEnabled(), true);
+  await Promise.all([
+    sendButton.click({ force: true }),
+    sendButton.click({ force: true }),
+  ]);
   await page.getByText("프로모션 개요를 분석하고 있습니다.").waitFor();
-  await page.waitForTimeout(450);
+  await page.waitForTimeout(750);
   const chatTurnScroll = await page.locator(".ai-chat-messages").evaluate((container) => {
     const target = container.querySelector(".ai-chat-message.is-user.is-turn-anchor");
     const containerRect = container.getBoundingClientRect();
@@ -453,6 +457,9 @@ try {
   }
   await page.getByText("요구사항 분석을 완료했습니다.").waitFor();
   await page.getByText("프로모션 진행 기간은 언제부터 언제까지인가요?").waitFor();
+  assert.equal(chatMessages.filter((message) => message.role === "user").length, 1);
+  assert.equal(await page.locator(".ai-chat-message.is-user").count(), 1);
+  assert.equal(overviewParseCount, 2, "rapid duplicate submit must start only one analysis request with one retry");
   assert.equal(compositionRequest, null, "composition must wait for clarification and user confirmation");
   await chatInput.fill("2026년 11월 15일부터 12월 31일까지 진행해줘");
   await page.getByRole("button", { name: "전송" }).click();

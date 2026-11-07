@@ -34,6 +34,9 @@ assert.match(app, /if \(\["queued", "processing"\]\.includes\(response\.proposal
 assert.match(app, /const proposal = await pollProposal\(queued\.proposal\.id\);[\s\S]*wireframeSnapshot\.value = proposal\.snapshot/);
 assert.match(app, /async function approveWireframe[\s\S]*await applyReadyProposal\(store\.proposal/);
 assert.match(app, /createChatWorkspace/);
+assert.match(app, /const chatSubmitting = ref\(false\)/);
+assert.match(app, /DUPLICATE_MESSAGE_WINDOW_MS/);
+assert.match(app, /if \(chatSubmitting\.value \|\| interactionLocked\.value/);
 assert.match(app, /saveRequirementsRevision/);
 assert.match(app, /saveWireframeRevision/);
 assert.match(app, /confirmWireframeRevision/);
