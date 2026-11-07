@@ -222,7 +222,30 @@ function applyLayoutFitRecommendations(result = {}, candidates = {}, {
   const sections = (Array.isArray(result.sections) ? result.sections : []).map((planned) => {
     const section = sectionsById.get(planned.sectionVersionId);
     const fit = section?.layoutFit;
-    if (!section || section.layoutSelectionLocked || !fit?.recommendedLayoutKey) return planned;
+    if (!section) return planned;
+    const allowedLayoutKeys = uniqueLayoutKeys([
+      ...(section.layoutPresets || []).map((layout) => layout.layoutKey),
+      ...(fit?.scores || []).map((entry) => entry.layoutKey),
+    ]);
+    const allowedLayoutSet = new Set(allowedLayoutKeys);
+    if (allowedLayoutSet.size && !allowedLayoutSet.has(planned.layoutKey)) {
+      const preferredFallbacks = section.layoutSelectionLocked
+        ? [section.defaultLayoutKey, fit?.recommendedLayoutKey, ...allowedLayoutKeys]
+        : [fit?.recommendedLayoutKey, section.defaultLayoutKey, ...allowedLayoutKeys];
+      const fallbackLayoutKey = preferredFallbacks.find((layoutKey) => allowedLayoutSet.has(layoutKey));
+      if (!fallbackLayoutKey) return planned;
+      const recommendedScore = Number(
+        (fit?.scores || []).find((entry) => entry.layoutKey === fallbackLayoutKey)?.score || 0,
+      );
+      repairs.push({
+        sectionVersionId: planned.sectionVersionId,
+        fromLayoutKey: planned.layoutKey,
+        toLayoutKey: fallbackLayoutKey,
+        scoreDelta: recommendedScore,
+      });
+      return { ...planned, layoutKey: fallbackLayoutKey };
+    }
+    if (section.layoutSelectionLocked || !fit?.recommendedLayoutKey) return planned;
     if (planned.layoutKey === fit.recommendedLayoutKey) return planned;
     const byKey = new Map((fit.scores || []).map((entry) => [entry.layoutKey, entry]));
     const selectedScore = Number(byKey.get(planned.layoutKey)?.score || 0);

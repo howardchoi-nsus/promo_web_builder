@@ -102,6 +102,35 @@ const locked = applyLayoutFitRecommendations({
 assert.equal(locked.result.sections[0].layoutKey, "hero-compact");
 assert.equal(locked.repairs.length, 0);
 
+const crossSectionLayout = applyLayoutFitRecommendations({
+  sections: [{ sectionVersionId: "hero-v1", layoutKey: "benefit-card-grid" }],
+  warnings: [],
+}, {
+  sections: [{
+    ...candidates.sections[0],
+    layoutPresets: layouts,
+  }],
+});
+assert.equal(crossSectionLayout.result.sections[0].layoutKey, "hero-center-wide");
+assert.deepEqual(crossSectionLayout.repairs, [{
+  sectionVersionId: "hero-v1",
+  fromLayoutKey: "benefit-card-grid",
+  toLayoutKey: "hero-center-wide",
+  scoreDelta: brandFit.scores.find((entry) => entry.layoutKey === "hero-center-wide").score,
+}]);
+
+const lockedCrossSectionLayout = applyLayoutFitRecommendations({
+  sections: [{ sectionVersionId: "hero-v1", layoutKey: "benefit-card-grid" }],
+}, {
+  sections: [{
+    ...candidates.sections[0],
+    layoutSelectionLocked: true,
+    layoutPresets: layouts,
+  }],
+});
+assert.equal(lockedCrossSectionLayout.result.sections[0].layoutKey, "hero-compact");
+assert.equal(lockedCrossSectionLayout.repairs.length, 1);
+
 const diversifiedLayouts = layouts.slice(0, 3).map((layout, index) => ({
   ...layout,
   selectionMetadata: {

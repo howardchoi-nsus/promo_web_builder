@@ -76,6 +76,10 @@ const splitPercent = ref(38);
 const draggingSplit = ref(false);
 const chatList = ref(null);
 const activeChatTurnMessageId = ref("");
+const streamingMessageIds = ref([]);
+const chatFollowOutput = ref(true);
+const showLatestMessageButton = ref(false);
+const pendingClarificationQuestions = ref([]);
 const pendingChatActionKey = ref("");
 const pendingChatActionLabel = ref("");
 const fileInput = ref(null);
@@ -95,6 +99,9 @@ const wireframeEditBaseline = ref({ content: {}, alignment: {} });
 const wireframeSaving = ref(false);
 let assetPollingCancelled = false;
 let localeUnsubscribe = null;
+const streamTimers = new Map();
+let chatScrollProgrammatic = false;
+let chatScrollReleaseTimer = 0;
 const localeRevision = ref(0);
 function translate(key, fallback) {
   localeRevision.value;
@@ -105,9 +112,10 @@ const busy = computed(() => [
   "analyzing_overview", "resolving_policy", "queued", "processing", "applying",
   "generating_assets", "preview_ready", "navigating_preview",
 ].includes(store.stage));
+const hasStreamingMessage = computed(() => streamingMessageIds.value.length > 0);
 const interactionLocked = computed(() => (
   busy.value || attachmentBusy.value || requirementsSaving.value || wireframeSaving.value
-  || Boolean(pendingChatActionKey.value)
+  || Boolean(pendingChatActionKey.value) || hasStreamingMessage.value
 ));
 const chatComposerLocked = computed(() => (
   interactionLocked.value || requirementsEditing.value || wireframeEditing.value
@@ -126,6 +134,7 @@ const currentStatus = computed(() => {
   if (pendingChatActionKey.value) {
     return { label: `${pendingChatActionLabel.value || "요청"} 처리 중`, state: "진행 중" };
   }
+  if (hasStreamingMessage.value) return { label: "답변을 작성하고 있습니다.", state: "진행 중" };
   if (requirementsEditing.value) return { label: "요구사항 수정 중", state: "확인 필요" };
   if (wireframeEditing.value) return { label: "페이지 구성 수정 중", state: "확인 필요" };
   if (store.stage === "failed") return { label: store.error?.message || "처리 실패", state: "실패" };
@@ -213,6 +222,112 @@ function updateOverviewDraft(overview) {
   }
 }
 
+function prefersReducedMotion() {
+  return Boolean(globalThis.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches);
+}
+
+function setProgrammaticChatScroll(callback) {
+  chatScrollProgrammatic = true;
+  clearTimeout(chatScrollReleaseTimer);
+  callback();
+  chatScrollReleaseTimer = globalThis.setTimeout(() => {
+    chatScrollProgrammatic = false;
+  }, prefersReducedMotion() ? 0 : 500);
+}
+
+function scrollChatMessageIntoView(messageId, behavior = "auto") {
+  const container = chatList.value;
+  const target = container?.querySelector(`[data-message-id="${messageId}"]`);
+  if (!container || !target || !chatFollowOutput.value) return;
+  const targetTop = container.scrollTop
+    + target.getBoundingClientRect().top
+    - container.getBoundingClientRect().top;
+  const targetBottom = targetTop + target.offsetHeight;
+  const visibleBottom = container.scrollTop + container.clientHeight - 28;
+  if (targetBottom <= visibleBottom && targetTop >= container.scrollTop + 8) return;
+  setProgrammaticChatScroll(() => {
+    container.scrollTo({
+      top: Math.max(0, targetBottom - container.clientHeight + 32),
+      behavior: prefersReducedMotion() ? "auto" : behavior,
+    });
+  });
+}
+
+function pauseChatFollow() {
+  if (!chatScrollProgrammatic && (interactionLocked.value || hasStreamingMessage.value)) {
+    chatFollowOutput.value = false;
+    showLatestMessageButton.value = true;
+  }
+}
+
+function handleChatScroll() {
+  if (chatScrollProgrammatic) return;
+  const container = chatList.value;
+  if (!container || activeChatTurnMessageId.value) return;
+  const nearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 48;
+  if (nearBottom) {
+    chatFollowOutput.value = true;
+    showLatestMessageButton.value = false;
+  }
+}
+
+function jumpToLatestMessage() {
+  const container = chatList.value;
+  if (!container) return;
+  chatFollowOutput.value = true;
+  showLatestMessageButton.value = false;
+  const latest = [...messages.value].reverse().find((message) => message.text);
+  if (latest) {
+    nextTick(() => scrollChatMessageIntoView(latest.id, "smooth"));
+    return;
+  }
+  setProgrammaticChatScroll(() => {
+    container.scrollTo({ top: container.scrollHeight, behavior: prefersReducedMotion() ? "auto" : "smooth" });
+  });
+}
+
+function finishAssistantStream(message) {
+  const timer = streamTimers.get(message.id);
+  if (timer) clearTimeout(timer);
+  streamTimers.delete(message.id);
+  message.displayText = message.text;
+  message.isStreaming = false;
+  streamingMessageIds.value = streamingMessageIds.value.filter((id) => id !== message.id);
+  if (chatFollowOutput.value) nextTick(() => scrollChatMessageIntoView(message.id));
+  else showLatestMessageButton.value = true;
+}
+
+function streamAssistantMessage(message) {
+  if (message.role !== "assistant" || !["assistant", "clarification"].includes(message.type) || !message.text) return;
+  if (prefersReducedMotion()) {
+    message.displayText = message.text;
+    message.isStreaming = false;
+    return;
+  }
+  const chunks = message.text.match(/\S+\s*/g) || [message.text];
+  message.displayText = "";
+  message.isStreaming = true;
+  streamingMessageIds.value = [...streamingMessageIds.value, message.id];
+  let index = 0;
+  const chunksPerTick = chunks.length > 24 ? 3 : chunks.length > 12 ? 2 : 1;
+  const reveal = () => {
+    index = Math.min(chunks.length, index + chunksPerTick);
+    message.displayText = chunks.slice(0, index).join("");
+    if (chatFollowOutput.value) nextTick(() => scrollChatMessageIntoView(message.id));
+    else showLatestMessageButton.value = true;
+    if (index >= chunks.length) {
+      finishAssistantStream(message);
+      return;
+    }
+    streamTimers.set(message.id, globalThis.setTimeout(reveal, 28));
+  };
+  reveal();
+}
+
+function messageDisplayText(message) {
+  return message.isStreaming ? message.displayText : message.text;
+}
+
 function appendMessage(role, text, extra = {}) {
   const message = {
     id: crypto.randomUUID(),
@@ -222,7 +337,12 @@ function appendMessage(role, text, extra = {}) {
     ...extra,
   };
   messages.value.push(message);
-  if (role === "user") activeChatTurnMessageId.value = message.id;
+  if (role === "user") {
+    activeChatTurnMessageId.value = message.id;
+    chatFollowOutput.value = true;
+    showLatestMessageButton.value = false;
+  }
+  streamAssistantMessage(message);
   nextTick(() => {
     const container = chatList.value;
     if (!container) return;
@@ -234,13 +354,13 @@ function appendMessage(role, text, extra = {}) {
         + target.getBoundingClientRect().top
         - container.getBoundingClientRect().top
         - 12;
-      const reducedMotion = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-      container.scrollTo({ top: Math.max(0, top), behavior: reducedMotion ? "auto" : "smooth" });
+      setProgrammaticChatScroll(() => {
+        container.scrollTo({ top: Math.max(0, top), behavior: prefersReducedMotion() ? "auto" : "smooth" });
+      });
       return;
     }
-    if (!activeChatTurnMessageId.value || !interactionLocked.value) {
-      container.scrollTo({ top: container.scrollHeight, behavior: "auto" });
-    }
+    if (chatFollowOutput.value) scrollChatMessageIntoView(message.id);
+    else showLatestMessageButton.value = true;
   });
   return message;
 }
@@ -249,7 +369,11 @@ async function persistMessage(message) {
   if (!capabilities.value.chatWorkspaceV1 || !chatSessionId.value) return message;
   const response = await saveChatMessage(chatSessionId.value, message);
   const index = messages.value.findIndex((item) => item.id === message.id);
-  if (index >= 0) messages.value[index] = response.message;
+  if (index >= 0) {
+    const current = messages.value[index];
+    const transient = { displayText: current.displayText, isStreaming: current.isStreaming };
+    Object.assign(current, response.message, transient);
+  }
   return response.message;
 }
 
@@ -269,6 +393,27 @@ function updateStatusMessage(operationId, text, status = "in_progress") {
   return appendMessage("system", text, { type: "status", operationId, status });
 }
 
+function normalizeRestoredMessages(value) {
+  return (Array.isArray(value) ? value : []).map(({ displayText, isStreaming, ...message }) => message);
+}
+
+function restorePendingClarificationsFromMessages() {
+  const latest = [...messages.value].reverse().find((message) => message.type === "clarification");
+  const latestUserIndex = messages.value.findLastIndex((message) => message.role === "user");
+  const clarificationIndex = latest ? messages.value.findIndex((message) => message.id === latest.id) : -1;
+  pendingClarificationQuestions.value = clarificationIndex > latestUserIndex && Array.isArray(latest?.questions)
+    ? latest.questions.slice(0, 3)
+    : [];
+}
+
+function resetAssistantStreams() {
+  streamTimers.forEach((timer) => clearTimeout(timer));
+  streamTimers.clear();
+  streamingMessageIds.value = [];
+  chatFollowOutput.value = true;
+  showLatestMessageButton.value = false;
+}
+
 function persistWorkspace() {
   try {
     sessionStorage.setItem(ACTIVE_CHAT_STORAGE_KEY, JSON.stringify({
@@ -285,7 +430,8 @@ function persistWorkspace() {
       inputLocale: store.inputLocale,
       overviewDraft: store.overviewDraft,
       overviewFingerprint: store.overviewFingerprint,
-      messages: messages.value.slice(-200),
+      pendingClarificationQuestions: pendingClarificationQuestions.value,
+      messages: messages.value.slice(-200).map(({ displayText, isStreaming, ...message }) => message),
       attachments: attachments.value.map(({ dataUrl, ...attachment }) => attachment),
       wireframeSnapshot: wireframeSnapshot.value,
       activeResultTab: activeResultTab.value,
@@ -303,7 +449,7 @@ function restoreWorkspaceCache() {
   try {
     const cached = JSON.parse(sessionStorage.getItem(ACTIVE_CHAT_STORAGE_KEY) || "null");
     if (!cached || typeof cached !== "object") return null;
-    messages.value = Array.isArray(cached.messages) ? cached.messages : [];
+    messages.value = normalizeRestoredMessages(cached.messages);
     attachments.value = Array.isArray(cached.attachments) ? cached.attachments : [];
     wireframeSnapshot.value = cached.wireframeSnapshot || null;
     activeResultTab.value = cached.activeResultTab || (wireframeSnapshot.value ? "wireframe" : "requirements");
@@ -320,6 +466,9 @@ function restoreWorkspaceCache() {
     store.inputLocale = cached.inputLocale || "";
     store.overviewDraft = cached.overviewDraft || null;
     store.overviewFingerprint = cached.overviewFingerprint || "";
+    pendingClarificationQuestions.value = Array.isArray(cached.pendingClarificationQuestions)
+      ? cached.pendingClarificationQuestions.slice(0, 3)
+      : [];
     requirementsEditing.value = Boolean(cached.requirementsEditing && cached.requirementsEditDraft);
     requirementsEditDraft.value = requirementsEditing.value ? cached.requirementsEditDraft : null;
     requirementsEditBaseline.value = requirementsEditing.value
@@ -363,6 +512,7 @@ function legacyWorkspaceSummary(cached = legacyWorkspace.value) {
 
 function resetWorkspaceState() {
   const executionDisplays = store.executionDisplays;
+  resetAssistantStreams();
   Object.assign(store, createAiBuilderState({ executionDisplays }));
   messages.value = [];
   attachments.value = [];
@@ -382,6 +532,7 @@ function resetWorkspaceState() {
   requirementsEditDraft.value = null;
   requirementsEditBaseline.value = null;
   requirementsSaving.value = false;
+  pendingClarificationQuestions.value = [];
   wireframeEditing.value = false;
   wireframeEditDraft.value = { content: {}, alignment: {} };
   wireframeEditBaseline.value = { content: {}, alignment: {} };
@@ -392,7 +543,7 @@ function appendWelcomeMessage() {
   if (messages.value.length) return;
   appendMessage(
     "assistant",
-    "만들고 싶은 프로모션을 설명하거나 참고 화면을 붙여넣어 주세요. 이미지와 자연어를 함께 입력할 수 있습니다.",
+    "한두 문장으로 시작해도 됩니다. 만들고 싶은 프로모션과 알고 있는 혜택만 적어 주세요. 필요한 내용은 제가 한 번에 최대 3개씩 질문하고, 답변을 요구사항으로 정리해 드립니다.\n\n예: 신규 회원에게 1만원 쿠폰과 무료 배송을 제공하는 겨울 이벤트를 만들어줘.",
     { type: "assistant" },
   );
 }
@@ -466,7 +617,7 @@ async function openChatSession(summary) {
       const cached = legacyWorkspace.value;
       if (!cached) throw new Error("이전 로컬 대화 정보를 찾지 못했습니다.");
       resetWorkspaceState();
-      messages.value = Array.isArray(cached.messages) ? cached.messages : [];
+      messages.value = normalizeRestoredMessages(cached.messages);
       attachments.value = Array.isArray(cached.attachments) ? cached.attachments : [];
       wireframeSnapshot.value = cached.wireframeSnapshot || null;
       activeResultTab.value = cached.activeResultTab || (wireframeSnapshot.value ? "wireframe" : "requirements");
@@ -482,6 +633,9 @@ async function openChatSession(summary) {
       store.inputLocale = cached.inputLocale || "";
       store.overviewDraft = cached.overviewDraft || null;
       store.overviewFingerprint = cached.overviewFingerprint || "";
+      pendingClarificationQuestions.value = Array.isArray(cached.pendingClarificationQuestions)
+        ? cached.pendingClarificationQuestions.slice(0, 3)
+        : [];
       if (store.documentId) {
         const loaded = await loadBuilderDocument(store.documentId).catch(() => null);
         if (loaded) {
@@ -662,7 +816,11 @@ function hydrateChatWorkspace(workspace) {
   requirementsRevision.value = Number(workspace.requirements?.revision || 0);
   wireframeRevision.value = Number(workspace.wireframe?.revision || 0);
   wireframeFingerprint.value = workspace.wireframe?.structureFingerprint || "";
-  if (Array.isArray(workspace.messages) && workspace.messages.length) messages.value = workspace.messages;
+  if (Array.isArray(workspace.messages) && workspace.messages.length) {
+    resetAssistantStreams();
+    messages.value = normalizeRestoredMessages(workspace.messages);
+    restorePendingClarificationsFromMessages();
+  }
   if (workspace.requirements?.value) {
     store.overviewDraft = workspace.requirements.value;
     store.overviewFingerprint = workspace.requirements.fingerprint || store.overviewFingerprint;
@@ -688,6 +846,71 @@ async function ensureChatWorkspace() {
     store.proposal = proposal.proposal;
   }
   return resolved;
+}
+
+const CLARIFICATION_QUESTION_BY_FIELD = Object.freeze({
+  promotionPurpose: "이번 프로모션의 가장 중요한 목적은 할인, 경품, 이벤트 중 무엇인가요?",
+  promotionPurposeOther: "프로모션의 구체적인 목적을 한 문장으로 알려주세요.",
+  mainOffer: "고객에게 제공할 핵심 혜택은 무엇인가요? 금액이나 조건이 정해졌다면 함께 알려주세요.",
+  audience: "주요 대상은 신규 고객, 기존 고객, 일반 고객 중 누구인가요?",
+  market: "프로모션을 운영할 국가 또는 지역은 어디인가요?",
+});
+
+function clarificationQuestions(response = {}) {
+  const questions = [];
+  const add = (question) => {
+    const normalized = String(question || "").trim();
+    if (normalized && !questions.includes(normalized)) questions.push(normalized);
+  };
+  const missing = new Set(Array.isArray(response.missingCriticalInputs)
+    ? response.missingCriticalInputs
+    : []);
+  ["mainOffer", "promotionPurpose", "promotionPurposeOther", "audience", "market"]
+    .filter((field) => missing.has(field))
+    .forEach((field) => add(CLARIFICATION_QUESTION_BY_FIELD[field]));
+
+  const overview = response.overview || {};
+  (overview.additionalInformation || []).forEach((item) => {
+    if (questions.length >= 3 || item?.confirmationRequired !== true) return;
+    const label = String(item.label || "추가 정보").trim();
+    if (/기간|일정|날짜|date|period/i.test(label)) {
+      add("프로모션 진행 기간은 언제부터 언제까지인가요?");
+      return;
+    }
+    if (isConfirmationPlaceholder(item.value) || !String(item.value || "").trim()) {
+      add(`${label}에 대해 확정된 내용을 알려주세요.`);
+    }
+  });
+  [...(overview.notices || []), ...(overview.legalInformation || [])].forEach((item) => {
+    if (questions.length >= 3 || item?.confirmationRequired !== true) return;
+    if (isConfirmationPlaceholder(item.body) || !String(item.body || "").trim()) {
+      add(`${String(item.title || "필수 안내").trim()}에 포함할 확정 문구가 있나요?`);
+    }
+  });
+  return questions.slice(0, 3);
+}
+
+function clarificationMessage(questions) {
+  return [
+    "요구사항을 먼저 정리했습니다. 더 정확한 페이지를 만들기 위해 아래 내용만 알려주세요.",
+    "",
+    ...questions.map((question, index) => `${index + 1}. ${question}`),
+    "",
+    "번호를 구분하지 않고 편하게 한 문장으로 답해도 됩니다.",
+  ].join("\n");
+}
+
+function conversationInstruction(input) {
+  const current = String(store.naturalLanguage || "").trim();
+  const followUp = String(input || "").trim();
+  const continueDraft = Boolean(
+    current
+    && followUp
+    && !wireframeSnapshot.value
+    && (pendingClarificationQuestions.value.length || store.overviewDraft),
+  );
+  if (!continueDraft) return followUp;
+  return `[사용자의 추가 답변]\n${followUp}\n\n[기존 프로모션 요청]\n${current}`;
 }
 
 async function analyze(instruction = store.naturalLanguage) {
@@ -743,17 +966,31 @@ async function analyze(instruction = store.naturalLanguage) {
       requirementsRevision.value = Number(savedRequirements.requirements.revision);
     }
     updateStatusMessage(operationId, "요구사항 분석을 완료했습니다.", "completed");
-    await appendPersistedMessage(
-      "assistant",
-      "요구사항을 내부 기준으로 정리했습니다. 페이지 구성 미리보기에서 문구와 배치를 바로 수정할 수 있습니다.",
-      { type: "assistant" },
-    );
+    const questions = clarificationQuestions(response);
+    pendingClarificationQuestions.value = questions;
+    if (questions.length) {
+      await appendPersistedMessage("assistant", clarificationMessage(questions), {
+        type: "clarification",
+        metadata: { questions },
+      });
+    } else {
+      await appendPersistedMessage(
+        "assistant",
+        "요구사항을 정리했습니다. 오른쪽 ‘요청 내용’에서 확인할 수 있습니다. 수정할 내용은 채팅으로 편하게 말해 주세요. 이대로 진행하려면 페이지 구성 만들기를 눌러주세요.",
+        {
+          type: "assistant",
+          actions: [
+            { key: "confirm_requirements", label: "페이지 구성 만들기" },
+            { key: "revise_requirements", label: "직접 수정" },
+          ],
+        },
+      );
+    }
     recordBuilderEvent({
       eventName: "ai_overview_reviewed",
       documentId: store.documentId || undefined,
       durationMs: performance.now() - startedAt,
     });
-    await prepareWireframe();
   } catch (error) {
     overviewRetry.value = null;
     updateStatusMessage(operationId, `요구사항 분석에 실패했습니다. ${error.message}`, "failed");
@@ -773,7 +1010,7 @@ async function submitChat() {
   chatInput.value = "";
   try {
     const referenceSummary = await analyzeAttachments();
-    const combined = composeOverviewInstruction(input, referenceSummary);
+    const combined = composeOverviewInstruction(conversationInstruction(input), referenceSummary);
     store.naturalLanguage = combined;
     await analyze(combined);
   } catch (error) {
@@ -1028,6 +1265,7 @@ function isChatActionDisabled(action) {
 }
 
 function visibleMessageActions(message) {
+  if (message?.isStreaming) return [];
   return (message?.actions || []).filter((action) => !action.status || action.status === "proposed");
 }
 
@@ -1782,6 +2020,7 @@ watch([
   requirementsEditing,
   requirementsEditDraft,
   requirementsEditBaseline,
+  pendingClarificationQuestions,
 ], persistWorkspace, { deep: true });
 watch(() => [store.documentId, store.documentRevision, store.stage, store.overviewDraft, store.snapshot], persistWorkspace, { deep: true });
 watch(interactionLocked, (locked, wasLocked) => {
@@ -1795,8 +2034,9 @@ watch(interactionLocked, (locked, wasLocked) => {
         + target.getBoundingClientRect().top
         - container.getBoundingClientRect().top
         - 12;
-      const reducedMotion = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-      container.scrollTo({ top: Math.max(0, top), behavior: reducedMotion ? "auto" : "smooth" });
+      setProgrammaticChatScroll(() => {
+        container.scrollTo({ top: Math.max(0, top), behavior: prefersReducedMotion() ? "auto" : "smooth" });
+      });
     });
     return;
   }
@@ -1804,12 +2044,12 @@ watch(interactionLocked, (locked, wasLocked) => {
   activeChatTurnMessageId.value = "";
   nextTick(() => {
     const container = chatList.value;
-    if (!container) return;
-    const reducedMotion = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-    container.scrollTo({
-      top: container.scrollHeight,
-      behavior: reducedMotion ? "auto" : "smooth",
-    });
+    if (!container || !chatFollowOutput.value) {
+      showLatestMessageButton.value = true;
+      return;
+    }
+    const latest = [...messages.value].reverse().find((message) => message.text);
+    if (latest) scrollChatMessageIntoView(latest.id, "smooth");
   });
 });
 
@@ -1877,6 +2117,8 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   assetPollingCancelled = true;
+  resetAssistantStreams();
+  clearTimeout(chatScrollReleaseTimer);
   localeUnsubscribe?.();
   localeUnsubscribe = null;
 });
@@ -1987,46 +2229,57 @@ onBeforeUnmount(() => {
             <span class="ai-chat-status" :data-state="currentStatus.state">{{ currentStatus.state }}</span>
           </header>
 
-          <div
-            ref="chatList"
-            class="ai-chat-messages"
-            :class="{ 'has-active-turn': Boolean(activeChatTurnMessageId) && interactionLocked }"
-            aria-live="polite"
-            :aria-busy="interactionLocked ? 'true' : 'false'"
-          >
-            <article
-              v-for="message in messages"
-              :key="message.id"
-              class="ai-chat-message"
-              :class="[
-                `is-${message.role}`,
-                `is-${message.type || 'text'}`,
-                { 'is-turn-anchor': message.id === activeChatTurnMessageId },
-              ]"
-              :data-message-id="message.id"
-              :role="message.type === 'status' ? 'status' : undefined"
-              :aria-busy="message.status === 'in_progress' ? 'true' : undefined"
+          <div class="ai-chat-message-region">
+            <div
+              ref="chatList"
+              class="ai-chat-messages"
+              :class="{ 'has-active-turn': Boolean(activeChatTurnMessageId) && interactionLocked }"
+              aria-live="polite"
+              :aria-busy="interactionLocked ? 'true' : 'false'"
+              @scroll.passive="handleChatScroll"
+              @wheel.passive="pauseChatFollow"
+              @touchmove.passive="pauseChatFollow"
             >
-              <div class="ai-chat-message__meta">
-                <strong>{{ message.role === 'user' ? '나' : message.role === 'system' ? '진행 상태' : 'AI Builder' }}</strong>
-                <span v-if="message.status" class="ai-chat-message__status" :data-status="message.status">
-                  <span v-if="message.status === 'in_progress'" class="ai-chat-thinking" aria-hidden="true">
-                    <i></i><i></i><i></i>
+              <article
+                v-for="message in messages"
+                :key="message.id"
+                class="ai-chat-message"
+                :class="[
+                  `is-${message.role}`,
+                  `is-${message.type || 'text'}`,
+                  { 'is-turn-anchor': message.id === activeChatTurnMessageId, 'is-streaming': message.isStreaming },
+                ]"
+                :data-message-id="message.id"
+                :role="message.type === 'status' ? 'status' : undefined"
+                :aria-busy="message.status === 'in_progress' || message.isStreaming ? 'true' : undefined"
+              >
+                <div class="ai-chat-message__meta">
+                  <strong>{{ message.role === 'user' ? '나' : message.role === 'system' ? '진행 상태' : 'AI Builder' }}</strong>
+                  <span v-if="message.status" class="ai-chat-message__status" :data-status="message.status">
+                    <span v-if="message.status === 'in_progress'" class="ai-chat-thinking" aria-hidden="true">
+                      <i></i><i></i><i></i>
+                    </span>
+                    {{ message.status === 'in_progress' ? '진행 중' : message.status === 'completed' ? '완료' : '실패' }}
                   </span>
-                  {{ message.status === 'in_progress' ? '진행 중' : message.status === 'completed' ? '완료' : '실패' }}
-                </span>
-              </div>
-              <p>{{ message.text }}</p>
-              <div v-if="visibleMessageActions(message).length" class="ai-chat-actions">
-                <button
-                  v-for="action in visibleMessageActions(message)"
-                  :key="action.key"
-                  type="button"
-                  :disabled="isChatActionDisabled(action)"
-                  @click="handleChatAction(action)"
-                >{{ chatActionButtonLabel(action) }}</button>
-              </div>
-            </article>
+                </div>
+                <p>{{ messageDisplayText(message) }}<span v-if="message.isStreaming" class="ai-chat-stream-caret" aria-hidden="true"></span></p>
+                <div v-if="visibleMessageActions(message).length" class="ai-chat-actions">
+                  <button
+                    v-for="action in visibleMessageActions(message)"
+                    :key="action.key"
+                    type="button"
+                    :disabled="isChatActionDisabled(action)"
+                    @click="handleChatAction(action)"
+                  >{{ chatActionButtonLabel(action) }}</button>
+                </div>
+              </article>
+            </div>
+            <button
+              v-if="showLatestMessageButton"
+              type="button"
+              class="ai-chat-latest-button"
+              @click="jumpToLatestMessage"
+            ><span aria-hidden="true">↓</span> 최신 메시지</button>
           </div>
 
           <div v-if="attachments.length" class="ai-reference-tray" aria-label="첨부 이미지">
@@ -2041,29 +2294,32 @@ onBeforeUnmount(() => {
           </div>
 
           <form class="ai-chat-composer" @submit.prevent="submitChat">
-            <textarea
-              v-model="chatInput"
-              rows="3"
-              maxlength="4000"
-              placeholder="프로모션 요구사항을 입력하거나 화면 이미지를 붙여넣으세요."
-              :disabled="chatComposerLocked"
-              @paste="onPaste"
-              @keydown.enter.exact.prevent="submitChat"
-            ></textarea>
-            <div class="ai-chat-composer__actions">
-              <input
-                ref="fileInput"
-                class="visually-hidden"
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                multiple
-                @change="addImageFiles($event.target.files); $event.target.value = ''"
-              />
-              <button type="button" class="ai-builder-secondary" :disabled="chatComposerLocked" @click="fileInput?.click()">이미지 첨부</button>
-              <button type="submit" class="ai-builder-primary" :disabled="chatComposerLocked || (!chatInput.trim() && !attachments.some((item) => item.dataUrl && !item.analysis))">
-                {{ interactionLocked ? '처리 중…' : requirementsEditing ? 'Tree 수정 중' : '전송' }}
-              </button>
+            <div class="ai-chat-composer__surface">
+              <textarea
+                v-model="chatInput"
+                rows="1"
+                maxlength="4000"
+                placeholder="예: 신규 회원에게 1만원 쿠폰을 주는 겨울 이벤트를 만들어줘"
+                :disabled="chatComposerLocked"
+                @paste="onPaste"
+                @keydown.enter.exact.prevent="submitChat"
+              ></textarea>
+              <div class="ai-chat-composer__actions">
+                <input
+                  ref="fileInput"
+                  class="visually-hidden"
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  multiple
+                  @change="addImageFiles($event.target.files); $event.target.value = ''"
+                />
+                <button type="button" class="ai-chat-attach-button" aria-label="이미지 첨부" :disabled="chatComposerLocked" @click="fileInput?.click()"><span aria-hidden="true">＋</span> 이미지</button>
+                <button type="submit" class="ai-chat-send-button" aria-label="전송" :disabled="chatComposerLocked || (!chatInput.trim() && !attachments.some((item) => item.dataUrl && !item.analysis))">
+                  <span aria-hidden="true">{{ interactionLocked ? '…' : '↑' }}</span>
+                </button>
+              </div>
             </div>
+            <small>한두 문장으로 시작해도 됩니다 · Enter로 전송 · Shift+Enter로 줄바꿈</small>
           </form>
         </aside>
 

@@ -156,6 +156,11 @@ assert.match(builder, /'has-active-turn': Boolean\(activeChatTurnMessageId\) && 
 assert.match(builder, /watch\(interactionLocked,[\s\S]*?activeChatTurnMessageId\.value = ""/);
 assert.match(builder, /class="ai-chat-thinking"/);
 assert.match(builder, /:aria-busy="interactionLocked \? 'true' : 'false'"/);
+assert.match(builder, /function streamAssistantMessage\(message\)/);
+assert.match(builder, /function messageDisplayText\(message\)/);
+assert.match(builder, /class="ai-chat-latest-button"/);
+assert.match(builder, /class="ai-chat-composer__surface"/);
+assert.match(builder, /@wheel\.passive="pauseChatFollow"/);
 assert.match(builder, /pendingChatActionKey\.value = actionKey/);
 assert.match(builder, /chatActionButtonLabel\(action\)/);
 assert.match(builder, /const messageRequest = appendActionMessage\(action\)/);
@@ -163,9 +168,11 @@ assert.match(builder, /Promise\.all\(\[actionRequest, messageRequest\]\)/);
 assert.match(builder, /async function prepareWireframe\(existingOperationId = ""\)/);
 assert.match(builder, /async function approveWireframe\(action = \{\}, existingOperationId = ""\)/);
 assert.match(builder, /openOutput\(\);[\s\S]*?await executeChatAction/);
-assert.match(builderCss, /\.ai-chat-messages\.has-active-turn::after \{ min-height: 100%; flex: 0 0 100%/);
-assert.match(builderCss, /\.ai-chat-message \{ width: 100%;[\s\S]*?border: 0;[\s\S]*?background: transparent/);
-assert.match(builderCss, /\.ai-chat-message\.is-user \{ width: min\(84%, 620px\);[\s\S]*?background: #176b4d/);
+assert.match(builderCss, /\.ai-chat-messages\.has-active-turn::after \{ min-height: 72%; flex: 0 0 72%/);
+assert.match(builderCss, /\.ai-chat-message \{ width: min\(100%, 760px\);[\s\S]*?border: 0;[\s\S]*?background: transparent/);
+assert.match(builderCss, /\.ai-chat-message\.is-user \{ width: min\(82%, 640px\);[\s\S]*?background: #f1f3f2/);
+assert.match(builderCss, /\.ai-chat-composer__surface[\s\S]*?border-radius: 24px/);
+assert.match(builderCss, /@keyframes ai-chat-stream-caret/);
 assert.match(builderCss, /@keyframes ai-chat-thinking-dot/);
 assert.match(builderCss, /prefers-reduced-motion:[\s\S]*?\.ai-chat-thinking i \{ animation: none/);
 
