@@ -72,7 +72,7 @@ const wireframeRevision = ref(0);
 const wireframeFingerprint = ref("");
 const wireframeViewport = ref("desktop");
 const activeResultTab = ref("requirements");
-const splitPercent = ref(38);
+const splitPercent = ref(42);
 const draggingSplit = ref(false);
 const chatList = ref(null);
 const activeChatTurnMessageId = ref("");
@@ -453,7 +453,7 @@ function restoreWorkspaceCache() {
     attachments.value = Array.isArray(cached.attachments) ? cached.attachments : [];
     wireframeSnapshot.value = cached.wireframeSnapshot || null;
     activeResultTab.value = cached.activeResultTab || (wireframeSnapshot.value ? "wireframe" : "requirements");
-    splitPercent.value = Math.min(65, Math.max(28, Number(cached.splitPercent || 38)));
+    splitPercent.value = Math.min(65, Math.max(28, Number(cached.splitPercent || 42)));
     store.documentId = cached.documentId || "";
     store.documentRevision = Number(cached.documentRevision || 0);
     store.requestId = cached.requestId || "";
@@ -2178,14 +2178,14 @@ onBeforeUnmount(() => {
                 <p class="ai-builder-eyebrow">AI Builder</p>
                 <strong>기존 대화</strong>
               </div>
-              <button type="button" aria-label="대화 목록 닫기" @click="chatMenuOpen = false">×</button>
+              <button type="button" aria-label="대화 목록 닫기" @click="chatMenuOpen = false"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
             </header>
             <button
               type="button"
               class="ai-chat-history__new"
               :disabled="interactionLocked || chatSessionSwitching"
               @click="startNewConversation"
-            >+ 새 대화</button>
+            ><i class="fa-solid fa-plus" aria-hidden="true"></i> 새 대화</button>
             <div class="ai-chat-history__list" aria-live="polite">
               <p v-if="chatSessionsLoading" class="ai-chat-history__state">대화 목록을 불러오는 중입니다.</p>
               <p v-else-if="chatSessionsError" class="ai-chat-history__state is-error">{{ chatSessionsError }}</p>
@@ -2220,10 +2220,10 @@ onBeforeUnmount(() => {
                 aria-label="기존 대화 목록 열기"
                 :aria-expanded="chatMenuOpen"
                 @click="toggleChatMenu"
-              ><span aria-hidden="true">☰</span></button>
+              ><i class="fa-solid fa-bars" aria-hidden="true"></i></button>
               <div>
                 <p class="ai-builder-eyebrow">V3 AI Builder</p>
-                <strong>프로모션 제작 대화</strong>
+                <strong>프로모션 제작</strong>
               </div>
             </div>
             <span class="ai-chat-status" :data-state="currentStatus.state">{{ currentStatus.state }}</span>
@@ -2279,7 +2279,7 @@ onBeforeUnmount(() => {
               type="button"
               class="ai-chat-latest-button"
               @click="jumpToLatestMessage"
-            ><span aria-hidden="true">↓</span> 최신 메시지</button>
+            ><i class="fa-solid fa-arrow-down" aria-hidden="true"></i> 최신 메시지</button>
           </div>
 
           <div v-if="attachments.length" class="ai-reference-tray" aria-label="첨부 이미지">
@@ -2289,7 +2289,7 @@ onBeforeUnmount(() => {
                 <strong>{{ index + 1 }}. {{ attachment.name }}</strong>
                 <small>{{ attachment.viewport === 'mobile' ? 'Mobile' : 'Desktop' }} · {{ attachment.status === 'analyzed' ? '분석 완료' : attachment.status === 'analyzing' ? '분석 중' : '첨부됨' }}</small>
               </div>
-              <button type="button" :disabled="interactionLocked" :aria-label="`${attachment.name} 삭제`" @click="removeAttachment(attachment)">×</button>
+              <button type="button" :disabled="interactionLocked" :aria-label="`${attachment.name} 삭제`" @click="removeAttachment(attachment)"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
             </article>
           </div>
 
@@ -2299,7 +2299,7 @@ onBeforeUnmount(() => {
                 v-model="chatInput"
                 rows="1"
                 maxlength="4000"
-                placeholder="예: 신규 회원에게 1만원 쿠폰을 주는 겨울 이벤트를 만들어줘"
+                placeholder="무엇을 만들고 싶으신가요?"
                 :disabled="chatComposerLocked"
                 @paste="onPaste"
                 @keydown.enter.exact.prevent="submitChat"
@@ -2313,9 +2313,9 @@ onBeforeUnmount(() => {
                   multiple
                   @change="addImageFiles($event.target.files); $event.target.value = ''"
                 />
-                <button type="button" class="ai-chat-attach-button" aria-label="이미지 첨부" :disabled="chatComposerLocked" @click="fileInput?.click()"><span aria-hidden="true">＋</span> 이미지</button>
+                <button type="button" class="ai-chat-attach-button" aria-label="이미지 첨부" :disabled="chatComposerLocked" @click="fileInput?.click()"><i class="fa-solid fa-plus" aria-hidden="true"></i><span>이미지</span></button>
                 <button type="submit" class="ai-chat-send-button" aria-label="전송" :disabled="chatComposerLocked || (!chatInput.trim() && !attachments.some((item) => item.dataUrl && !item.analysis))">
-                  <span aria-hidden="true">{{ interactionLocked ? '…' : '↑' }}</span>
+                  <i :class="interactionLocked ? 'fa-solid fa-ellipsis' : 'fa-solid fa-arrow-up'" aria-hidden="true"></i>
                 </button>
               </div>
             </div>
@@ -2342,8 +2342,8 @@ onBeforeUnmount(() => {
         <section class="ai-result-pane" aria-label="AI Builder 결과">
           <header class="ai-result-header">
             <div>
-              <p class="ai-builder-eyebrow">Progress & Result</p>
-              <strong>{{ currentStatus.label }}</strong>
+              <strong>진행 상황 및 결과</strong>
+              <small>{{ currentStatus.label }}</small>
             </div>
             <span class="ai-chat-status" :data-state="currentStatus.state">{{ currentStatus.state }}</span>
           </header>
@@ -2506,7 +2506,7 @@ onBeforeUnmount(() => {
                         </p>
                       </div>
                       <div v-else class="ai-wireframe-placeholder">
-                        <span aria-hidden="true">{{ component.isImage ? "▧" : "…" }}</span>
+                        <i :class="component.isImage ? 'fa-solid fa-image' : 'fa-solid fa-ellipsis'" aria-hidden="true"></i>
                         {{ component.isImage
                           ? `${component.label} 자리`
                           : component.requiresConfirmation

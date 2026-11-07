@@ -402,14 +402,14 @@ try {
   await page.getByRole("heading", { name: "프로모션 제작 방식을 선택하세요" }).waitFor();
   assert.equal(await page.getByRole("button", { name: /AI 모드/ }).isEnabled(), true);
   await page.getByRole("button", { name: /AI 모드/ }).click();
-  await page.getByText("프로모션 제작 대화").waitFor();
+  await page.getByText("프로모션 제작", { exact: true }).waitFor();
   assert.equal(await page.getByText("자동 복원되면 안 되는 이전 대화").count(), 0);
   await page.getByRole("button", { name: "기존 대화 목록 열기" }).click();
   await page.getByRole("dialog", { name: "기존 대화 목록" }).waitFor();
   await page.getByRole("button", { name: /자동 복원되면 안 되는 이전 대화.*이전 로컬 대화/ }).waitFor();
   await page.getByText("이전 로컬 대화").waitFor();
   await page.getByText("지난 겨울 프로모션").waitFor();
-  assert.equal(await page.getByRole("button", { name: "+ 새 대화" }).isEnabled(), true);
+  assert.equal(await page.getByRole("button", { name: "새 대화" }).isEnabled(), true);
   await page.getByRole("button", { name: "대화 목록 닫기" }).click();
   assert.equal(await page.locator('link[href*="visual-editor-assets/ai-builder.css"]').count(), 1);
   const workspaceStyles = await page.locator(".ai-chat-workspace").evaluate((element) => {
@@ -421,7 +421,7 @@ try {
   });
   assert.equal(workspaceStyles.display, "grid");
   assert.match(workspaceStyles.gridColumns, /px/);
-  const chatInput = page.getByPlaceholder(/신규 회원에게 1만원 쿠폰/);
+  const chatInput = page.getByPlaceholder("무엇을 만들고 싶으신가요?");
   await chatInput.fill("여름 신규 고객 충전 이벤트");
   assert.equal(await page.getByRole("button", { name: "전송" }).isEnabled(), true);
   await page.getByRole("button", { name: "전송" }).click();
