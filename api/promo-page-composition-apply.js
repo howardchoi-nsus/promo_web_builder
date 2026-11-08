@@ -7,12 +7,11 @@ const {
   applyProposal,
 } = require("./_promo-builder-document-store");
 const { fetchPageCompositionCandidates } = require("./_promo-page-composition-candidates");
-const { fetchRegistryCompositionCandidates } = require("./_promo-registry-composition-candidates");
 const {
   enqueueAndScheduleBuilderAssetJobs,
 } = require("./_promo-builder-assets");
 const { requireBuilderFlag } = require("./_promo-builder-flags");
-const { compileRegistryComposition } = require("./_promo-registry-composition-compiler");
+const { compileCurrentRegistryProposal } = require("./_promo-registry-composition-runtime");
 const {
   computeStructureFingerprint,
   assertWireframeProof,
@@ -83,40 +82,20 @@ module.exports = async function handler(req, res) {
     }
     if (proposal.contractVersion === 3) {
       requireBuilderFlag("compositionV3");
-      const currentCandidates = await fetchRegistryCompositionCandidates(sql, {
-        shellVersionId: proposal.shellVersionId,
-        overview: proposal.requestSnapshot.overview,
-        capabilities: proposal.requestSnapshot.capabilities || [],
-        designReferenceId: proposal.requestSnapshot.designReferenceId || "",
-        recentLayoutSelections: proposal.requestSnapshot.recentLayoutSelections || {},
-      });
-      if (currentCandidates.candidateFingerprint !== proposal.candidateFingerprint) {
-        return res.status(409).json({
-          error: "Registry candidates changed",
-          code: "CANDIDATE_FINGERPRINT_MISMATCH",
-        });
-      }
-      if (currentCandidates.policyFingerprint !== proposal.policyFingerprint) {
-        return res.status(409).json({
-          error: "Registry composition policy changed",
-          code: "POLICY_FINGERPRINT_MISMATCH",
-        });
-      }
-      if (currentCandidates.resourceFingerprint !== proposal.resourceFingerprint) {
-        return res.status(409).json({
-          error: "Pinned content resources changed",
-          code: "RESOURCE_FINGERPRINT_MISMATCH",
-        });
-      }
-      const compiledSnapshot = await compileRegistryComposition({
+      const compiled = await compileCurrentRegistryProposal({
         sql,
-        proposalSnapshot: proposal.snapshot,
-        candidates: currentCandidates,
-        overview: proposal.requestSnapshot.overview,
+        proposal,
         documentId,
-        proposalId,
         documentRevision: baseDocumentRevision,
       });
+      const compiledSnapshot = compiled.snapshot;
+      const previewRenderFingerprint = String(body.previewRenderFingerprint || "").trim();
+      if (previewRenderFingerprint && previewRenderFingerprint !== compiled.renderFingerprint) {
+        return res.status(409).json({
+          error: "Compiled design differs from the reviewed page preview",
+          code: "FINAL_RENDER_MISMATCH",
+        });
+      }
       if (confirmedWireframe
         && computeStructureFingerprint(compiledSnapshot) !== confirmedWireframe.structureFingerprint) {
         return res.status(409).json({
@@ -163,6 +142,7 @@ module.exports = async function handler(req, res) {
         documentId,
         revision: applied.revision,
         snapshot: applied.snapshot,
+        renderFingerprint: compiled.renderFingerprint,
         assetJobs,
         assetWarning,
         warnings: [assetWarning, sessionWarning].filter(Boolean),

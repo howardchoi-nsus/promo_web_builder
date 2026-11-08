@@ -348,6 +348,18 @@ const server = http.createServer(async (request, response) => {
     }));
     return;
   }
+  if (url.pathname === "/api/promo-page-composition-preview" && request.method === "POST") {
+    response.writeHead(200, { "Content-Type": "application/json" });
+    response.end(JSON.stringify({
+      ok: true,
+      documentId: "document-browser",
+      proposalId: "proposal-browser",
+      documentRevision: 0,
+      snapshot: snapshotWithAssetStatus("ready"),
+      renderFingerprint: "preview-render-browser",
+    }));
+    return;
+  }
   if (url.pathname === "/api/promo-page-composition-apply" && request.method === "POST") {
     const chunks = [];
     for await (const chunk of request) chunks.push(chunk);

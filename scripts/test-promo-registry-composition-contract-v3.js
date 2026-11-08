@@ -525,6 +525,8 @@ assert.equal(snapshot.preview.resources[0].locale, "ko-KR");
 
   const proposalApi = fs.readFileSync(path.resolve(__dirname, "../api/promo-page-composition-proposals.js"), "utf8");
   const applyApi = fs.readFileSync(path.resolve(__dirname, "../api/promo-page-composition-apply.js"), "utf8");
+  const previewApi = fs.readFileSync(path.resolve(__dirname, "../api/promo-page-composition-preview.js"), "utf8");
+  const runtimeCompiler = fs.readFileSync(path.resolve(__dirname, "../api/_promo-registry-composition-runtime.js"), "utf8");
   const serviceSource = fs.readFileSync(path.resolve(__dirname, "../api/_promo-page-composition-service.js"), "utf8");
   assert.match(proposalApi, /contractVersion: 3/);
   assert.match(proposalApi, /sourceTemplateId: null/);
@@ -536,9 +538,13 @@ assert.equal(snapshot.preview.resources[0].locale, "ko-KR");
   assert.match(proposalApi, /ctaFieldsAcceptOnlyCtaLabel:\s*true/);
   assert.match(serviceSource, /Number\(row\.contract_version \|\| 2\) === 3/);
   assert.match(serviceSource, /setProposalStage/);
-  assert.match(applyApi, /POLICY_FINGERPRINT_MISMATCH/);
-  assert.match(applyApi, /RESOURCE_FINGERPRINT_MISMATCH/);
-  assert.match(applyApi, /compileRegistryComposition/);
+  assert.match(applyApi, /compileCurrentRegistryProposal/);
+  assert.match(applyApi, /FINAL_RENDER_MISMATCH/);
+  assert.match(previewApi, /compileCurrentRegistryProposal/);
+  assert.match(previewApi, /renderFingerprint/);
+  assert.match(runtimeCompiler, /POLICY_FINGERPRINT_MISMATCH/);
+  assert.match(runtimeCompiler, /RESOURCE_FINGERPRINT_MISMATCH/);
+  assert.match(runtimeCompiler, /compileRegistryComposition/);
   assert.doesNotMatch(applyApi, /V3_COMPOSITION_COMPILER_NOT_READY/);
   console.log("Promo Registry Composition Contract v3 and Worker tests passed");
 })().catch((error) => {

@@ -1,60 +1,25 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import PromoPageRenderer from "../PromoPageRenderer.vue";
+import { computed } from "vue";
+import CompositionPreviewCanvas from "./CompositionPreviewCanvas.vue";
 
 const props = defineProps({
   snapshot: { type: Object, required: true },
   documentRevision: { type: Number, required: true },
   busy: { type: Boolean, default: false },
   exportEnabled: { type: Boolean, default: false },
+  viewport: { type: String, default: "desktop" },
 });
-const emit = defineEmits(["edit-natural-language", "rollback", "open-editor", "open-output", "export-document"]);
-const previewViewport = ref("desktop");
-const previewStage = ref(null);
-const previewCanvas = ref(null);
-const previewScale = ref(1);
-const previewHeight = ref(720);
-let previewObserver = null;
-let previewFrame = 0;
-
-const previewWidth = computed(() => previewViewport.value === "mobile" ? 390 : 1280);
-const previewShellStyle = computed(() => ({
-  width: `${Math.max(1, previewWidth.value * previewScale.value)}px`,
-  height: `${Math.max(1, previewHeight.value * previewScale.value)}px`,
-}));
-const previewCanvasStyle = computed(() => ({
-  width: `${previewWidth.value}px`,
-  transform: `scale(${previewScale.value})`,
-}));
-
-function syncPreviewFrame() {
-  if (previewFrame) cancelAnimationFrame(previewFrame);
-  previewFrame = requestAnimationFrame(() => {
-    previewFrame = 0;
-    const availableWidth = Math.max(280, Number(previewStage.value?.clientWidth || previewWidth.value) - 32);
-    previewScale.value = Math.min(1, availableWidth / previewWidth.value);
-    previewHeight.value = Math.max(480, Number(previewCanvas.value?.scrollHeight || 720));
-  });
-}
+const emit = defineEmits([
+  "edit-natural-language", "rollback", "open-editor", "open-output", "export-document", "update:viewport",
+]);
+const previewViewport = computed({
+  get: () => props.viewport,
+  set: (viewport) => emit("update:viewport", viewport),
+});
 
 function selectPreviewViewport(viewport) {
   previewViewport.value = viewport;
-  nextTick(syncPreviewFrame);
 }
-
-onMounted(() => {
-  previewObserver = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(syncPreviewFrame);
-  if (previewStage.value) previewObserver?.observe(previewStage.value);
-  if (previewCanvas.value) previewObserver?.observe(previewCanvas.value);
-  syncPreviewFrame();
-});
-
-watch(() => props.snapshot, () => nextTick(syncPreviewFrame), { deep: true });
-
-onBeforeUnmount(() => {
-  previewObserver?.disconnect();
-  if (previewFrame) cancelAnimationFrame(previewFrame);
-});
 </script>
 
 <template>
@@ -78,20 +43,6 @@ onBeforeUnmount(() => {
       </div>
     </header>
     <p class="ai-builder-preview-note">이 화면은 실제 발행에 사용하는 데이터와 렌더러로 표시됩니다. 데스크톱과 모바일을 전환해 확인하세요.</p>
-    <div ref="previewStage" class="ai-builder-preview ai-builder-preview-stage" :data-viewport="previewViewport">
-      <div class="ai-builder-preview-shell" :style="previewShellStyle">
-        <div ref="previewCanvas" class="ai-builder-preview-canvas" :style="previewCanvasStyle">
-          <PromoPageRenderer
-            :content="snapshot.content"
-            :design-spec="snapshot.designSpec"
-            :assets="snapshot.assets"
-            :motion-spec="snapshot.motionSpec"
-            :editable="false"
-            :show-guides="false"
-            :viewport-override="previewViewport"
-          />
-        </div>
-      </div>
-    </div>
+    <CompositionPreviewCanvas :snapshot="snapshot" :viewport="previewViewport" />
   </section>
 </template>

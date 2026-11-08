@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import BuilderModeSelector from "./BuilderModeSelector.vue";
 import CompositionReview from "./CompositionReview.vue";
+import CompositionPreviewCanvas from "./CompositionPreviewCanvas.vue";
 import { visualEditorEntry } from "../platform/visual-editor-entry.mjs";
 import { evaluateAssetReadiness } from "../shared/composition/asset-readiness.mjs";
 import { resolveCompositionLocale } from "../shared/composition/composition-locale.mjs";
@@ -19,6 +20,7 @@ import {
   createBuilderDocument,
   createPromoRequestV3,
   createCompositionProposal,
+  previewCompositionProposal,
   ensureBuilderSession,
   loadCompositionProposal,
   loadBuilderDocument,
@@ -68,6 +70,9 @@ const chatInput = ref("");
 const chatSubmitting = ref(false);
 const attachmentBusy = ref(false);
 const wireframeSnapshot = ref(null);
+const wireframeRenderSnapshot = ref(null);
+const wireframeRenderFingerprint = ref("");
+const wireframePreviewLoading = ref(false);
 const chatSessionId = ref("");
 const requirementsRevision = ref(0);
 const wireframeRevision = ref(0);
@@ -153,6 +158,10 @@ const currentStatus = computed(() => {
   return { label: "만들고 싶은 프로모션을 입력해 주세요", state: "대기" };
 });
 const wireframeDisplaySnapshot = computed(() => wireframeSnapshot.value || store.proposal?.snapshot || null);
+const hasRenderedWireframe = computed(() => Boolean(
+  wireframeRenderSnapshot.value?.content && wireframeRenderSnapshot.value?.designSpec,
+));
+const renderedWireframeRequired = computed(() => Number(store.proposal?.contractVersion || 0) === 3);
 const wireframeSections = computed(() => buildWireframeSections(wireframeDisplaySnapshot.value, {
   overview: store.overviewDraft || {},
   viewport: wireframeViewport.value,
@@ -688,6 +697,9 @@ function resetWorkspaceState() {
   attachments.value = [];
   chatInput.value = "";
   wireframeSnapshot.value = null;
+  wireframeRenderSnapshot.value = null;
+  wireframeRenderFingerprint.value = "";
+  wireframePreviewLoading.value = false;
   activeChatTurnMessageId.value = "";
   chatSessionId.value = "";
   requirementsRevision.value = 0;
@@ -851,6 +863,7 @@ async function openChatSession(summary) {
     if (workspace.wireframe?.proposalId) {
       const proposal = await loadCompositionProposal(workspace.wireframe.proposalId);
       store.proposal = proposal.proposal;
+      await refreshWireframeRenderPreview(store.proposal, { silent: true });
     }
     if (store.snapshot) store.stage = "render_ready";
     else if (wireframeSnapshot.value) store.stage = "review_required";
@@ -1030,6 +1043,7 @@ async function ensureChatWorkspace() {
   if (resolved.wireframe?.proposalId) {
     const proposal = await loadCompositionProposal(resolved.wireframe.proposalId);
     store.proposal = proposal.proposal;
+    await refreshWireframeRenderPreview(store.proposal, { silent: true });
   }
   return resolved;
 }
@@ -1394,6 +1408,7 @@ async function saveWireframeEdits() {
     requirementsRevision.value = Number(response.wireframe.requirementsRevision || requirementsRevision.value);
     wireframeFingerprint.value = response.wireframe.structureFingerprint;
     if (response.overview && typeof response.overview === "object") updateOverviewDraft(response.overview);
+    await refreshWireframeRenderPreview(response.proposal);
     cancelWireframeEdit();
     messages.value.forEach((message) => {
       if (!Array.isArray(message.actions)) return;
@@ -1780,6 +1795,32 @@ async function retryAssets() {
   }
 }
 
+async function refreshWireframeRenderPreview(proposal = store.proposal, { silent = false } = {}) {
+  if (Number(proposal?.contractVersion || 0) !== 3 || !proposal?.id) {
+    wireframeRenderSnapshot.value = null;
+    wireframeRenderFingerprint.value = "";
+    return null;
+  }
+  wireframePreviewLoading.value = true;
+  try {
+    const preview = await previewCompositionProposal({
+      documentId: store.documentId,
+      proposalId: proposal.id,
+      baseDocumentRevision: store.documentRevision,
+    });
+    wireframeRenderSnapshot.value = preview.snapshot;
+    wireframeRenderFingerprint.value = preview.renderFingerprint || "";
+    return preview;
+  } catch (error) {
+    wireframeRenderSnapshot.value = null;
+    wireframeRenderFingerprint.value = "";
+    if (!silent) throw error;
+    return null;
+  } finally {
+    wireframePreviewLoading.value = false;
+  }
+}
+
 async function prepareWireframe(existingOperationId = "") {
   clearBuilderError(store);
   store.warning = null;
@@ -1822,6 +1863,7 @@ async function prepareWireframe(existingOperationId = "") {
       documentRevision: store.documentRevision,
     });
     const proposal = await pollProposal(queued.proposal.id);
+    store.proposal = proposal;
     wireframeSnapshot.value = proposal.snapshot || null;
     if (capabilities.value.chatWorkspaceV1) {
       const savedWireframe = await saveWireframeRevision({
@@ -1834,7 +1876,7 @@ async function prepareWireframe(existingOperationId = "") {
       wireframeRevision.value = Number(savedWireframe.wireframe.revision);
       wireframeFingerprint.value = savedWireframe.wireframe.structureFingerprint;
     }
-    store.proposal = proposal;
+    await refreshWireframeRenderPreview(proposal);
     store.stage = "review_required";
     activeResultTab.value = "wireframe";
     await startWireframeReveal();
@@ -1905,6 +1947,9 @@ async function applyReadyProposal(proposal = store.proposal, { navigate = true }
       proposalId: proposal.id,
       baseDocumentRevision: store.documentRevision,
       idempotencyKey: crypto.randomUUID(),
+      ...(wireframeRenderFingerprint.value ? {
+        previewRenderFingerprint: wireframeRenderFingerprint.value,
+      } : {}),
       ...(capabilities.value.chatWorkspaceV1 ? {
         chatSessionId: chatSessionId.value,
         confirmedWireframeRevision: wireframeRevision.value,
@@ -2775,13 +2820,35 @@ onBeforeUnmount(() => {
                       {{ wireframeSaving ? '저장 중…' : '수정 저장' }}
                     </button>
                   </template>
-                  <button v-else type="button" class="ai-wireframe-edit-action" @click="beginWireframeEdit">내용·배치 수정</button>
+                  <button
+                    v-else
+                    type="button"
+                    class="ai-wireframe-edit-action"
+                    :disabled="wireframePreviewLoading || (renderedWireframeRequired && !hasRenderedWireframe)"
+                    @click="beginWireframeEdit"
+                  >내용·배치 수정</button>
                 </div>
               </header>
               <p class="ai-page-preview-notice">
-                현재 화면에서 문구와 가로 배치를 수정할 수 있습니다. 색상과 실제 이미지는 최종 디자인에서 적용됩니다.
+                실제 발행과 같은 렌더러와 레이아웃 데이터로 표시됩니다. 생성 예정 이미지는 승인 후 실제 이미지로 교체됩니다.
+              </p>
+              <div v-if="wireframePreviewLoading" class="ai-render-preview-loading" role="status">
+                <span aria-hidden="true"></span>
+                실제 웹 레이아웃을 준비하고 있습니다.
+              </div>
+              <CompositionPreviewCanvas
+                v-else-if="hasRenderedWireframe"
+                :snapshot="wireframeRenderSnapshot"
+                :viewport="wireframeViewport"
+              />
+              <div v-else-if="renderedWireframeRequired" class="ai-render-preview-error" role="alert">
+                실제 웹 레이아웃 미리보기를 준비하지 못했습니다. 페이지 미리보기를 다시 생성해 주세요.
+              </div>
+              <p v-if="hasRenderedWireframe && wireframeEditing" class="ai-wireframe-editor-note">
+                아래 편집 목록에서 문구와 가로 배치를 변경한 뒤 저장하면 실제 레이아웃 미리보기가 다시 생성됩니다.
               </p>
               <div
+                v-if="wireframeEditing || !renderedWireframeRequired"
                 class="ai-wireframe-stage"
                 :data-viewport="wireframeViewport"
                 :data-reveal-state="wireframeRevealState"
@@ -2878,6 +2945,7 @@ onBeforeUnmount(() => {
 
             <section v-else-if="activeResultTab === 'final' && store.snapshot" class="ai-final-review">
               <CompositionReview
+                v-model:viewport="wireframeViewport"
                 :snapshot="store.snapshot"
                 :document-revision="store.documentRevision"
                 :busy="busy"

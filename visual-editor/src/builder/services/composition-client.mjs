@@ -270,6 +270,13 @@ export function createCompositionProposal(payload) {
   });
 }
 
+export function previewCompositionProposal(payload) {
+  return request("/api/promo-page-composition-preview", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function loadCompositionProposal(proposalId) {
   return request(`/api/promo-page-composition-proposals?proposalId=${encodeURIComponent(proposalId)}`);
 }

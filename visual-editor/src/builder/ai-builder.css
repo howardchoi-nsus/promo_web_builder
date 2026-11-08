@@ -246,6 +246,10 @@
 .ai-wireframe-edit-action.is-secondary { border-color: #cbd4cf; background: #fff; color: #4d5a53; }
 .ai-wireframe-edit-action:disabled { cursor: not-allowed; opacity: .5; }
 .ai-page-preview-notice { margin: 12px 16px 0; padding: 10px 12px; border-left: 3px solid #176b4d; border-radius: 0 7px 7px 0; background: #f1f7f4; color: #4f5e56; font-size: 12px; line-height: 1.55; }
+.ai-render-preview-loading { display: flex; min-height: 220px; align-items: center; justify-content: center; gap: 10px; margin-top: 12px; background: #e9eeeb; color: #4f5e56; font-size: 12px; font-weight: 750; }
+.ai-render-preview-loading > span { width: 16px; height: 16px; border: 2px solid #b8c5bf; border-top-color: #176b4d; border-radius: 50%; animation: ai-spin .8s linear infinite; }
+.ai-render-preview-error { margin: 12px 16px 0; padding: 18px; border: 1px solid #e1b8b8; background: #fff6f6; color: #8a3434; font-size: 12px; line-height: 1.55; }
+.ai-wireframe-editor-note { margin: 14px 16px 0; color: #56635c; font-size: 11px; line-height: 1.5; }
 .ai-wireframe-stage { margin-top: 12px; padding: 22px; overflow-x: auto; border-top: 1px solid #dde2df; background: #f2f4f3; transition: background .2s ease; }
 .ai-wireframe-stage[data-viewport="mobile"] { background: #cfd5d2; }
 .ai-wireframe-canvas { display: grid; width: 100%; max-width: 1040px; margin: 0 auto; gap: 14px; filter: grayscale(1); transition: width .2s ease, max-width .2s ease; }
@@ -768,7 +772,12 @@
   .ai-chat-status { max-width: 88px; overflow: hidden; text-overflow: ellipsis; }
 }
 
+@keyframes ai-spin {
+  to { transform: rotate(360deg); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .ai-spinner { animation-duration: 2s; }
+  .ai-render-preview-loading > span { animation-duration: 2s; }
   .ai-execution-indicator__message { animation: none; opacity: 1; }
 }

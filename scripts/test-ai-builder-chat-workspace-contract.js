@@ -132,6 +132,7 @@ assert.match(applyApi, /fetchConfirmedWireframe/);
 assert.match(applyApi, /assertWireframeProof/);
 assert.match(applyApi, /WIREFRAME_PROOF_INCOMPLETE/);
 assert.match(applyApi, /FINAL_STRUCTURE_MISMATCH/);
+assert.match(applyApi, /FINAL_RENDER_MISMATCH/);
 
 const client = fs.readFileSync(path.resolve(__dirname, "../visual-editor/src/builder/services/composition-client.mjs"), "utf8");
 for (const endpoint of [
@@ -142,6 +143,7 @@ for (const endpoint of [
   "/api/promo-builder-wireframes",
   "/api/promo-builder-wireframes-confirm",
   "/api/promo-builder-wireframe-edits",
+  "/api/promo-page-composition-preview",
 ]) assert.match(client, new RegExp(endpoint.replaceAll("/", "\\/")));
 assert.match(client, /listChatWorkspaces/);
 
