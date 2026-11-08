@@ -316,6 +316,17 @@ function sectionStyle(section) {
   return props.designSpec?.sectionStyles?.[section.sectionKey] || {};
 }
 
+function sectionUsesFlowLayout(section) {
+  return sectionStyle(section).layoutMode === "flow";
+}
+
+function sectionLayoutColumns(section) {
+  const style = sectionStyle(section);
+  const configured = mobileLayoutActive.value ? style.mobileLayoutColumns : style.layoutColumns;
+  const maximum = mobileLayoutActive.value ? 2 : 6;
+  return Math.max(1, Math.min(maximum, Number(configured) || 1));
+}
+
 function motionBinding(targetType, targetKey) {
   const bindings = targetType === "section"
     ? props.motionSpec?.sections
@@ -827,8 +838,10 @@ function inlineSectionStyle(section) {
   const backgroundSize = fitMode === "width-fill"
     ? "100% auto"
     : (["contain", "cover"].includes(fitMode) ? fitMode : "cover");
+  const flowLayout = sectionUsesFlowLayout(section);
   return {
-    height: `${Math.max(50, canvasHeight)}px`,
+    height: flowLayout ? undefined : `${Math.max(50, canvasHeight)}px`,
+    minHeight: flowLayout ? `${Math.max(50, canvasHeight)}px` : undefined,
     backgroundColor,
     backgroundImage: backgroundImage
       ? [fadeGradient, `url(${JSON.stringify(backgroundImage)})`].filter(Boolean).join(", ")
@@ -847,6 +860,29 @@ function inlineSectionStyle(section) {
 
 function inlineCanvasStyle(section) {
   const height = resolvedSectionHeight(section);
+  if (sectionUsesFlowLayout(section)) {
+    const style = sectionStyle(section);
+    const gap = mobileLayoutActive.value ? style.mobileLayoutGapPx : style.layoutGapPx;
+    const paddingBlock = mobileLayoutActive.value
+      ? style.mobileLayoutPaddingBlockPx
+      : style.layoutPaddingBlockPx;
+    const alignment = ["start", "center", "end", "stretch"].includes(style.contentAlignment)
+      ? style.contentAlignment
+      : "stretch";
+    return {
+      height: "auto",
+      minHeight: `${Math.max(0, height - SECTION_VERTICAL_PADDING_PX)}px`,
+      display: "grid",
+      gridTemplateColumns: `repeat(${sectionLayoutColumns(section)}, minmax(0, 1fr))`,
+      gridAutoRows: "max-content",
+      gap: `${Math.max(0, Math.min(120, Number(gap) || 24))}px`,
+      alignContent: alignment === "stretch" ? "center" : alignment,
+      alignItems: alignment,
+      justifyItems: alignment,
+      paddingBlock: `${Math.max(0, Math.min(200, Number(paddingBlock) || 40))}px`,
+      boxSizing: "border-box",
+    };
+  }
   return {
     height: `${Math.max(0, height - SECTION_VERTICAL_PADDING_PX)}px`,
   };
@@ -925,6 +961,25 @@ function inlineItemStyle(section, item) {
       ? imageFrameAspectRatio(item, style)
       : undefined,
   };
+  if (style.positionMode === "flow") {
+    return {
+      ...result,
+      position: "relative",
+      left: "auto",
+      top: "auto",
+      transform: undefined,
+      width: fitContent ? "fit-content" : "100%",
+      maxWidth: style.maxWidthToken
+        ? `var(${style.maxWidthToken})`
+        : (style.maxWidthPct ? `${clamp(style.maxWidthPct, 10, 100, 100)}%` : undefined),
+      height: "auto",
+      aspectRatio: isImage ? imageFrameAspectRatio(item, style) : undefined,
+      justifySelf: style.justifySelf,
+      alignSelf: style.alignSelf,
+      padding: Number(style.paddingPx) > 0 ? `${Math.min(160, Number(style.paddingPx))}px` : undefined,
+      boxSizing: "border-box",
+    };
+  }
   return result;
 }
 
@@ -1813,6 +1868,7 @@ function inspectLayoutQuality() {
       clippedItemCount: 0,
       overflowItemCount: 0,
       deadSpaceSectionCount: 0,
+      emptySectionCount: 0,
       duplicateCollectionCopyCount: 0,
       genericCopyCount: 0,
       lowContrastTextCount: 0,
@@ -1825,6 +1881,7 @@ function inspectLayoutQuality() {
   let clippedItemCount = 0;
   let overflowItemCount = 0;
   let deadSpaceSectionCount = 0;
+  let emptySectionCount = 0;
   let duplicateCollectionCopyCount = 0;
   let genericCopyCount = 0;
   let lowContrastTextCount = 0;
@@ -1934,7 +1991,15 @@ function inspectLayoutQuality() {
       const overflows = node.scrollWidth > node.clientWidth + 1 || node.scrollHeight > node.clientHeight + 1;
       if (overflows) {
         overflowItemCount += 1;
-        diagnostics.push({ code: "ITEM_CONTENT_OVERFLOW", sectionKey, styleKey });
+        diagnostics.push({
+          code: "ITEM_CONTENT_OVERFLOW",
+          sectionKey,
+          styleKey,
+          clientWidth: node.clientWidth,
+          scrollWidth: node.scrollWidth,
+          clientHeight: node.clientHeight,
+          scrollHeight: node.scrollHeight,
+        });
       }
       return [{
         styleKey,
@@ -1945,6 +2010,20 @@ function inspectLayoutQuality() {
         bottom: rect.bottom,
       }];
     });
+    if (!boxes.length) {
+      const section = orderedSections.value.find((candidate) => candidate.sectionKey === sectionKey);
+      const backgroundImage = globalThis.getComputedStyle?.(sectionNode)?.backgroundImage || "none";
+      const explicitlyAllowed = section?.compositionPolicy?.allowEmpty === true
+        || section?.aiDesign?.allowEmpty === true;
+      if (!explicitlyAllowed && backgroundImage === "none") {
+        emptySectionCount += 1;
+        diagnostics.push({
+          code: "EMPTY_VISIBLE_SECTION",
+          sectionKey,
+          message: `${section?.name || sectionKey} 섹션에 표시할 콘텐츠가 없습니다.`,
+        });
+      }
+    }
     for (let index = 0; index < boxes.length; index += 1) {
       for (let compareIndex = index + 1; compareIndex < boxes.length; compareIndex += 1) {
         const first = boxes[index];
@@ -1984,15 +2063,16 @@ function inspectLayoutQuality() {
   }));
   return {
     count: collisionCount + placeholderAssetCount + clippedItemCount + overflowItemCount
-      + deadSpaceSectionCount + duplicateCollectionCopyCount + genericCopyCount + lowContrastTextCount,
+      + deadSpaceSectionCount + emptySectionCount + duplicateCollectionCopyCount + genericCopyCount + lowContrastTextCount,
     blockingCount: collisionCount + placeholderAssetCount + clippedItemCount + overflowItemCount
-      + duplicateCollectionCopyCount + genericCopyCount,
+      + emptySectionCount + duplicateCollectionCopyCount + genericCopyCount,
     warningCount: deadSpaceSectionCount + lowContrastTextCount,
     collisionCount,
     placeholderAssetCount,
     clippedItemCount,
     overflowItemCount,
     deadSpaceSectionCount,
+    emptySectionCount,
     duplicateCollectionCopyCount,
     genericCopyCount,
     lowContrastTextCount,
@@ -2029,9 +2109,13 @@ defineExpose({ inspectLayoutCollisions, inspectLayoutQuality });
       :class="[
         `rendered-section--${section.sectionKey}`,
         motionClass('section', section.sectionKey),
-        { 'is-outline-section': editable && outlineMode },
+        {
+          'is-outline-section': editable && outlineMode,
+          'is-flow-layout': sectionUsesFlowLayout(section),
+        },
       ]"
       :data-section-key="section.sectionKey"
+      :data-section-role="section.sectionRole || null"
       :data-motion-target="motionBinding('section', section.sectionKey)?.trigger === 'viewport-enter' ? `section:${section.sectionKey}` : null"
       :style="{ ...inlineSectionStyle(section), ...motionStyle('section', section.sectionKey) }"
       :aria-busy="aiTargetState(section)?.kind === 'processing' ? 'true' : undefined"
@@ -2048,7 +2132,11 @@ defineExpose({ inspectLayoutCollisions, inspectLayoutQuality });
         <span>{{ aiTargetState(section).label }}</span>
       </div>
       <div class="rendered-section__inner">
-        <div class="rendered-items" :style="inlineCanvasStyle(section)">
+        <div
+          class="rendered-items"
+          :class="{ 'is-flow-layout': sectionUsesFlowLayout(section) }"
+          :style="inlineCanvasStyle(section)"
+        >
           <article
             v-for="(item, itemIndex) in renderedItems(section)"
             :key="item.itemKey"
@@ -2066,8 +2154,9 @@ defineExpose({ inspectLayoutCollisions, inspectLayoutQuality });
                 'is-hidden-in-output': editable && !isItemVisible(section, item),
                 'is-locked': editable && item.isLocked,
                 'is-empty': editable && itemIsEmpty(section, item),
-                'is-free-positioned': itemStyle(section, item).positionMode !== 'anchored',
+                'is-free-positioned': itemStyle(section, item).positionMode === 'free',
                 'is-anchored-positioned': itemStyle(section, item).positionMode === 'anchored',
+                'is-flow-positioned': itemStyle(section, item).positionMode === 'flow',
                 'is-fixed-height': item.fieldKind === 'text' && !usesAutomaticComponentHeight(item, itemStyle(section, item)),
                 'has-text-gradient': Boolean(itemStyle(section, item).textGradientToken),
                 'has-text-background': Boolean(itemStyle(section, item).textBackgroundToken || itemStyle(section, item).textBackground),

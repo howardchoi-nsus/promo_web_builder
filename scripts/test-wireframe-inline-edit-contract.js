@@ -73,11 +73,11 @@ const client = fs.readFileSync(path.join(root, "visual-editor", "src", "builder"
 const app = fs.readFileSync(path.join(root, "visual-editor", "src", "builder", "AiBuilderApp.vue"), "utf8");
 assert.match(compiler, /selected\.layoutOverrides\?\.desktop\?\.horizontalAlignments/);
 assert.match(client, /\/api\/promo-builder-wireframe-edits/);
-assert.match(client, /\/api\/promo-page-composition-preview/);
 assert.match(app, /내용·배치 수정/);
 assert.match(app, /saveWireframeEdits/);
-assert.match(app, /refreshWireframeRenderPreview/);
-assert.match(app, /CompositionPreviewCanvas/);
+assert.match(app, /class="ai-wireframe-stage"/);
+assert.match(app, /class="ai-wireframe-canvas"/);
+assert.doesNotMatch(app, /wireframeRenderSnapshot/);
 assert.match(app, /structureFingerprint: wireframeFingerprint\.value/);
 
 console.log("Wireframe inline edit contract passed");

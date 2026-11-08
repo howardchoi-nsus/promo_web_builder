@@ -2,7 +2,6 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import BuilderModeSelector from "./BuilderModeSelector.vue";
 import CompositionReview from "./CompositionReview.vue";
-import CompositionPreviewCanvas from "./CompositionPreviewCanvas.vue";
 import { visualEditorEntry } from "../platform/visual-editor-entry.mjs";
 import { evaluateAssetReadiness } from "../shared/composition/asset-readiness.mjs";
 import { resolveCompositionLocale } from "../shared/composition/composition-locale.mjs";
@@ -20,10 +19,10 @@ import {
   createBuilderDocument,
   createPromoRequestV3,
   createCompositionProposal,
-  previewCompositionProposal,
   ensureBuilderSession,
   loadCompositionProposal,
   loadBuilderDocument,
+  saveBuilderDocument,
   loadBuilderCapabilities,
   loadCompositionShells,
   loadPromptExecutionDisplay,
@@ -70,9 +69,6 @@ const chatInput = ref("");
 const chatSubmitting = ref(false);
 const attachmentBusy = ref(false);
 const wireframeSnapshot = ref(null);
-const wireframeRenderSnapshot = ref(null);
-const wireframeRenderFingerprint = ref("");
-const wireframePreviewLoading = ref(false);
 const chatSessionId = ref("");
 const requirementsRevision = ref(0);
 const wireframeRevision = ref(0);
@@ -109,6 +105,9 @@ const wireframeEditBaseline = ref({ content: {}, alignment: {} });
 const wireframeSaving = ref(false);
 const wireframeRevealState = ref("complete");
 const wireframeRevealedCount = ref(Number.MAX_SAFE_INTEGER);
+const compositionReviewRef = ref(null);
+const finalQualityChecking = ref(false);
+const transientQualityGate = ref(null);
 let assetPollingCancelled = false;
 let localeUnsubscribe = null;
 const streamTimers = new Map();
@@ -128,7 +127,7 @@ const busy = computed(() => [
 const hasStreamingMessage = computed(() => streamingMessageIds.value.length > 0);
 const interactionLocked = computed(() => (
   chatSubmitting.value || busy.value || attachmentBusy.value || requirementsSaving.value || wireframeSaving.value
-  || Boolean(pendingChatActionKey.value) || hasStreamingMessage.value
+  || finalQualityChecking.value || Boolean(pendingChatActionKey.value) || hasStreamingMessage.value
 ));
 const chatComposerLocked = computed(() => (
   interactionLocked.value || requirementsEditing.value || wireframeEditing.value
@@ -142,6 +141,7 @@ const wireframeEditDirty = computed(() => (
   && JSON.stringify(wireframeEditDraft.value) !== JSON.stringify(wireframeEditBaseline.value)
 ));
 const currentStatus = computed(() => {
+  if (finalQualityChecking.value) return { label: "Desktop · Mobile 디자인 품질 검사 중", state: "진행 중" };
   if (attachmentBusy.value) return { label: "참고 이미지 분석", state: "진행 중" };
   if (busy.value) return { label: progressMessage.value, state: "진행 중" };
   if (chatSubmitting.value) return { label: "요청을 전송하고 있습니다.", state: "진행 중" };
@@ -152,16 +152,22 @@ const currentStatus = computed(() => {
   if (requirementsEditing.value) return { label: "요청 내용 수정 중", state: "확인 필요" };
   if (wireframeEditing.value) return { label: "페이지 내용 수정 중", state: "확인 필요" };
   if (store.stage === "failed") return { label: store.error?.message || "처리 실패", state: "실패" };
-  if (store.snapshot && store.stage === "render_ready") return { label: "디자인 미리보기 준비 완료", state: "완료" };
+  if (store.snapshot && store.stage === "render_ready") {
+    return finalQualityPassed.value
+      ? { label: "디자인 미리보기 및 품질 검사 완료", state: "완료" }
+      : { label: "디자인 품질 확인 필요", state: "확인 필요" };
+  }
   if (wireframeSnapshot.value) return { label: "페이지 구성 확인 및 수정 가능", state: "확인 필요" };
   if (store.overviewDraft) return { label: "요청 정리 완료 · 페이지 미리보기 생성 가능", state: "확인 필요" };
   return { label: "만들고 싶은 프로모션을 입력해 주세요", state: "대기" };
 });
-const wireframeDisplaySnapshot = computed(() => wireframeSnapshot.value || store.proposal?.snapshot || null);
-const hasRenderedWireframe = computed(() => Boolean(
-  wireframeRenderSnapshot.value?.content && wireframeRenderSnapshot.value?.designSpec,
+const finalQualityGate = computed(() => transientQualityGate.value || store.snapshot?.qualityGate || null);
+const finalQualityPassed = computed(() => (
+  finalQualityGate.value?.state === "passed"
+  && Number(finalQualityGate.value?.documentRevision || 0) === Number(store.documentRevision || 0)
+  && Number(finalQualityGate.value?.blockingCount || 0) === 0
 ));
-const renderedWireframeRequired = computed(() => Number(store.proposal?.contractVersion || 0) === 3);
+const wireframeDisplaySnapshot = computed(() => wireframeSnapshot.value || store.proposal?.snapshot || null);
 const wireframeSections = computed(() => buildWireframeSections(wireframeDisplaySnapshot.value, {
   overview: store.overviewDraft || {},
   viewport: wireframeViewport.value,
@@ -697,9 +703,8 @@ function resetWorkspaceState() {
   attachments.value = [];
   chatInput.value = "";
   wireframeSnapshot.value = null;
-  wireframeRenderSnapshot.value = null;
-  wireframeRenderFingerprint.value = "";
-  wireframePreviewLoading.value = false;
+  transientQualityGate.value = null;
+  finalQualityChecking.value = false;
   activeChatTurnMessageId.value = "";
   chatSessionId.value = "";
   requirementsRevision.value = 0;
@@ -863,7 +868,6 @@ async function openChatSession(summary) {
     if (workspace.wireframe?.proposalId) {
       const proposal = await loadCompositionProposal(workspace.wireframe.proposalId);
       store.proposal = proposal.proposal;
-      await refreshWireframeRenderPreview(store.proposal, { silent: true });
     }
     if (store.snapshot) store.stage = "render_ready";
     else if (wireframeSnapshot.value) store.stage = "review_required";
@@ -1043,7 +1047,6 @@ async function ensureChatWorkspace() {
   if (resolved.wireframe?.proposalId) {
     const proposal = await loadCompositionProposal(resolved.wireframe.proposalId);
     store.proposal = proposal.proposal;
-    await refreshWireframeRenderPreview(store.proposal, { silent: true });
   }
   return resolved;
 }
@@ -1408,7 +1411,6 @@ async function saveWireframeEdits() {
     requirementsRevision.value = Number(response.wireframe.requirementsRevision || requirementsRevision.value);
     wireframeFingerprint.value = response.wireframe.structureFingerprint;
     if (response.overview && typeof response.overview === "object") updateOverviewDraft(response.overview);
-    await refreshWireframeRenderPreview(response.proposal);
     cancelWireframeEdit();
     messages.value.forEach((message) => {
       if (!Array.isArray(message.actions)) return;
@@ -1795,32 +1797,6 @@ async function retryAssets() {
   }
 }
 
-async function refreshWireframeRenderPreview(proposal = store.proposal, { silent = false } = {}) {
-  if (Number(proposal?.contractVersion || 0) !== 3 || !proposal?.id) {
-    wireframeRenderSnapshot.value = null;
-    wireframeRenderFingerprint.value = "";
-    return null;
-  }
-  wireframePreviewLoading.value = true;
-  try {
-    const preview = await previewCompositionProposal({
-      documentId: store.documentId,
-      proposalId: proposal.id,
-      baseDocumentRevision: store.documentRevision,
-    });
-    wireframeRenderSnapshot.value = preview.snapshot;
-    wireframeRenderFingerprint.value = preview.renderFingerprint || "";
-    return preview;
-  } catch (error) {
-    wireframeRenderSnapshot.value = null;
-    wireframeRenderFingerprint.value = "";
-    if (!silent) throw error;
-    return null;
-  } finally {
-    wireframePreviewLoading.value = false;
-  }
-}
-
 async function prepareWireframe(existingOperationId = "") {
   clearBuilderError(store);
   store.warning = null;
@@ -1876,7 +1852,6 @@ async function prepareWireframe(existingOperationId = "") {
       wireframeRevision.value = Number(savedWireframe.wireframe.revision);
       wireframeFingerprint.value = savedWireframe.wireframe.structureFingerprint;
     }
-    await refreshWireframeRenderPreview(proposal);
     store.stage = "review_required";
     activeResultTab.value = "wireframe";
     await startWireframeReveal();
@@ -1898,6 +1873,131 @@ async function compose() {
   await prepareWireframe();
 }
 
+function qualityGateMessage(result) {
+  const desktop = result.results?.desktop || {};
+  const mobile = result.results?.mobile || {};
+  if (Number(result.blockingCount || 0) > 0) {
+    return [
+      `Desktop ${Number(desktop.blockingCount || 0)}건`,
+      `Mobile ${Number(mobile.blockingCount || 0)}건`,
+      "겹침·잘림·빈 섹션·미완성 콘텐츠를 수정해야 합니다.",
+    ].join(" · ");
+  }
+  if (Number(result.warningCount || 0) > 0) {
+    return `품질 검사 통과 · 대비 또는 여백 경고 ${Number(result.warningCount || 0)}건`;
+  }
+  return "Desktop과 Mobile 디자인 품질 검사를 통과했습니다.";
+}
+
+function designTokenSetVersionId(snapshot = store.snapshot) {
+  return snapshot?.content?.runtimeTheme?.designTokenSetVersionId
+    || snapshot?.content?.formTemplate?.designTokenSetVersionId
+    || "";
+}
+
+async function runFinalQualityGate({ autoRepair = true, force = false } = {}) {
+  if (!store.snapshot || !store.documentId || !store.documentRevision || finalQualityChecking.value) return false;
+  if (!force && finalQualityPassed.value) return true;
+  const originalSnapshot = JSON.parse(JSON.stringify(store.snapshot));
+  finalQualityChecking.value = true;
+  transientQualityGate.value = {
+    contractVersion: 1,
+    state: "checking",
+    documentRevision: store.documentRevision,
+    blockingCount: 0,
+    warningCount: 0,
+    message: "실제 폰트와 이미지를 반영해 Desktop과 Mobile을 검사합니다.",
+  };
+  await nextTick();
+  let lastResult = null;
+  try {
+    for (let attempt = 0; attempt <= 2; attempt += 1) {
+      const result = await compositionReviewRef.value?.inspectQualityAcrossViewports?.();
+      if (!result) {
+        throw Object.assign(new Error("디자인 Preview Renderer가 준비되지 않았습니다."), {
+          code: "PREVIEW_QUALITY_CHECK_UNAVAILABLE",
+        });
+      }
+      lastResult = result;
+      if (Number(result.blockingCount || 0) === 0) {
+        const qualityGate = {
+          contractVersion: 1,
+          state: "passed",
+          documentRevision: store.documentRevision,
+          checkedAt: new Date().toISOString(),
+          blockingCount: 0,
+          warningCount: Number(result.warningCount || 0),
+          results: result.results,
+          message: qualityGateMessage(result),
+        };
+        const saved = await saveBuilderDocument({
+          documentId: store.documentId,
+          baseDocumentRevision: store.documentRevision,
+          snapshot: { ...store.snapshot, qualityGate },
+          designTokenSetVersionId: designTokenSetVersionId(),
+          changeNote: attempt > 0
+            ? `AI Builder 품질 검사 통과 및 자동 레이아웃 보정 ${attempt}회 적용.`
+            : "AI Builder Desktop/Mobile 품질 검사 통과.",
+        });
+        store.documentRevision = Number(saved.revision);
+        store.snapshot = saved.snapshot;
+        transientQualityGate.value = null;
+        recordBuilderEvent({
+          eventName: "builder_quality_gate_passed",
+          documentId: store.documentId,
+          documentRevision: store.documentRevision,
+          metadata: { attempt, warningCount: Number(result.warningCount || 0) },
+        });
+        return true;
+      }
+      if (!autoRepair || attempt >= 2) break;
+      const repaired = await compositionReviewRef.value?.buildAutoRepairSnapshot?.(store.snapshot, result);
+      if (!repaired?.changed) break;
+      store.snapshot = repaired.snapshot;
+      transientQualityGate.value = {
+        ...transientQualityGate.value,
+        message: `품질 문제를 자동 보정하고 있습니다. (${attempt + 1}/2)`,
+      };
+      await nextTick();
+    }
+    store.snapshot = originalSnapshot;
+    transientQualityGate.value = {
+      contractVersion: 1,
+      state: "failed",
+      documentRevision: store.documentRevision,
+      blockingCount: Number(lastResult?.blockingCount || 1),
+      warningCount: Number(lastResult?.warningCount || 0),
+      results: lastResult?.results || {},
+      diagnostics: lastResult?.diagnostics || [],
+      message: qualityGateMessage(lastResult || { blockingCount: 1, results: {} }),
+    };
+    recordBuilderEvent({
+      eventName: "builder_quality_gate_blocked",
+      documentId: store.documentId,
+      documentRevision: store.documentRevision,
+      metadata: { blockingCount: transientQualityGate.value.blockingCount },
+    });
+    return false;
+  } finally {
+    finalQualityChecking.value = false;
+  }
+}
+
+async function checkFinalQuality() {
+  clearBuilderError(store);
+  try {
+    const passed = await runFinalQualityGate({ autoRepair: true, force: true });
+    if (!passed) {
+      throw Object.assign(new Error(transientQualityGate.value?.message || "디자인 품질 검사를 통과하지 못했습니다."), {
+        code: "PREVIEW_QUALITY_BLOCKED",
+        details: transientQualityGate.value?.diagnostics || [],
+      });
+    }
+  } catch (error) {
+    setBuilderError(store, error);
+  }
+}
+
 async function approveWireframe(action = {}, existingOperationId = "") {
   if (!store.proposal?.id) return;
   const operationId = existingOperationId || `final-${Date.now()}`;
@@ -1917,8 +2017,20 @@ async function approveWireframe(action = {}, existingOperationId = "") {
         idempotencyKey: crypto.randomUUID(),
       });
     }
-    await applyReadyProposal(store.proposal, { navigate: false });
+    const applied = await applyReadyProposal(store.proposal, { navigate: false });
+    if (!applied) throw Object.assign(new Error("최종 디자인 Snapshot을 준비하지 못했습니다."), {
+      code: "FINAL_DESIGN_NOT_READY",
+    });
     activeResultTab.value = "final";
+    transientQualityGate.value = null;
+    await nextTick();
+    const qualityPassed = await runFinalQualityGate({ autoRepair: true, force: true });
+    if (!qualityPassed) {
+      throw Object.assign(new Error(transientQualityGate.value?.message || "디자인 품질 검사를 통과하지 못했습니다."), {
+        code: "PREVIEW_QUALITY_BLOCKED",
+        details: transientQualityGate.value?.diagnostics || [],
+      });
+    }
     updateStatusMessage(operationId, "디자인 미리보기를 완성했습니다.", "completed");
     await appendPersistedMessage("assistant", "요청 내용을 기준으로 실제 웹페이지 디자인을 완성했습니다. 오른쪽에서 데스크톱과 모바일 화면을 확인하고, 수정할 내용은 채팅으로 말씀해 주세요.", {
       type: "assistant",
@@ -1931,12 +2043,12 @@ async function approveWireframe(action = {}, existingOperationId = "") {
 }
 
 async function applyReadyProposal(proposal = store.proposal, { navigate = true } = {}) {
-  if (!proposal?.id || store.stage === "applying") return;
+  if (!proposal?.id || store.stage === "applying") return false;
   if (proposal.validation?.ok !== true || proposal.autoApplicable !== true) {
     setBuilderError(store, Object.assign(new Error(
       "구성 검증 결과가 자동 적용 조건을 충족하지 않았습니다. 다시 생성해 주세요.",
     ), { code: "COMPOSITION_AUTO_APPLY_NOT_ALLOWED" }));
-    return;
+    return false;
   }
   clearBuilderError(store);
   store.stage = "applying";
@@ -1947,9 +2059,6 @@ async function applyReadyProposal(proposal = store.proposal, { navigate = true }
       proposalId: proposal.id,
       baseDocumentRevision: store.documentRevision,
       idempotencyKey: crypto.randomUUID(),
-      ...(wireframeRenderFingerprint.value ? {
-        previewRenderFingerprint: wireframeRenderFingerprint.value,
-      } : {}),
       ...(capabilities.value.chatWorkspaceV1 ? {
         chatSessionId: chatSessionId.value,
         confirmedWireframeRevision: wireframeRevision.value,
@@ -1977,7 +2086,9 @@ async function applyReadyProposal(proposal = store.proposal, { navigate = true }
       } else {
         store.stage = "render_ready";
       }
+      return true;
     }
+    return false;
   } catch (error) {
     setBuilderError(store, error);
     throw error;
@@ -1995,6 +2106,11 @@ async function rollback() {
     });
     store.documentRevision = response.revision;
     store.snapshot = response.snapshot;
+    store.stage = "render_ready";
+    transientQualityGate.value = null;
+    activeResultTab.value = "final";
+    await nextTick();
+    await runFinalQualityGate({ autoRepair: true, force: true });
   } catch (error) {
     setBuilderError(store, error);
   }
@@ -2044,6 +2160,7 @@ async function applyOperationProposal() {
     store.assetJobs = Object.fromEntries((applied.assetJobs || []).map((job) => [job.id, job]));
     store.warning = applied.assetWarning || applied.warnings?.[0] || null;
     store.stage = "render_ready";
+    transientQualityGate.value = null;
     pendingOperations.value = null;
     operationConflict.value = null;
     recordBuilderEvent({
@@ -2052,6 +2169,15 @@ async function applyOperationProposal() {
       documentRevision: store.documentRevision,
       metadata: { operationCount: applied.operations?.length || 0 },
     });
+    activeResultTab.value = "final";
+    await nextTick();
+    const qualityPassed = await runFinalQualityGate({ autoRepair: true, force: true });
+    if (!qualityPassed) {
+      throw Object.assign(new Error(transientQualityGate.value?.message || "수정된 디자인이 품질 검사를 통과하지 못했습니다."), {
+        code: "PREVIEW_QUALITY_BLOCKED",
+        details: transientQualityGate.value?.diagnostics || [],
+      });
+    }
   } catch (error) {
     if (error.code === "DOCUMENT_REVISION_MISMATCH") {
       operationConflict.value = { message: "다른 작업에서 문서가 먼저 변경되었습니다. 최신본을 불러온 후 수정 요청을 다시 확인해 주세요." };
@@ -2079,6 +2205,13 @@ async function reloadLatestForOperation() {
 }
 
 function openOutput() {
+  if (!finalQualityPassed.value) {
+    activeResultTab.value = "final";
+    setBuilderError(store, Object.assign(new Error(
+      "Desktop과 Mobile 품질 검사를 통과한 뒤 웹 출력을 확인할 수 있습니다.",
+    ), { code: "QUALITY_GATE_REQUIRED" }));
+    return;
+  }
   const url = visualEditorEntry.output(store.documentId, store.documentRevision, window.location.href);
   window.open(url, "_blank", "noopener,noreferrer");
   recordBuilderEvent({
@@ -2090,6 +2223,12 @@ function openOutput() {
 
 function exportDocument() {
   if (!store.documentId || !store.documentRevision) return;
+  if (!finalQualityPassed.value) {
+    setBuilderError(store, Object.assign(new Error(
+      "Desktop과 Mobile 품질 검사를 통과한 뒤 HTML을 다운로드할 수 있습니다.",
+    ), { code: "QUALITY_GATE_REQUIRED" }));
+    return;
+  }
   const url = new URL("/api/promo-builder-export", window.location.origin);
   url.searchParams.set("documentId", store.documentId);
   url.searchParams.set("revision", String(store.documentRevision));
@@ -2820,35 +2959,13 @@ onBeforeUnmount(() => {
                       {{ wireframeSaving ? '저장 중…' : '수정 저장' }}
                     </button>
                   </template>
-                  <button
-                    v-else
-                    type="button"
-                    class="ai-wireframe-edit-action"
-                    :disabled="wireframePreviewLoading || (renderedWireframeRequired && !hasRenderedWireframe)"
-                    @click="beginWireframeEdit"
-                  >내용·배치 수정</button>
+                  <button v-else type="button" class="ai-wireframe-edit-action" @click="beginWireframeEdit">내용·배치 수정</button>
                 </div>
               </header>
               <p class="ai-page-preview-notice">
-                실제 발행과 같은 렌더러와 레이아웃 데이터로 표시됩니다. 생성 예정 이미지는 승인 후 실제 이미지로 교체됩니다.
-              </p>
-              <div v-if="wireframePreviewLoading" class="ai-render-preview-loading" role="status">
-                <span aria-hidden="true"></span>
-                실제 웹 레이아웃을 준비하고 있습니다.
-              </div>
-              <CompositionPreviewCanvas
-                v-else-if="hasRenderedWireframe"
-                :snapshot="wireframeRenderSnapshot"
-                :viewport="wireframeViewport"
-              />
-              <div v-else-if="renderedWireframeRequired" class="ai-render-preview-error" role="alert">
-                실제 웹 레이아웃 미리보기를 준비하지 못했습니다. 페이지 미리보기를 다시 생성해 주세요.
-              </div>
-              <p v-if="hasRenderedWireframe && wireframeEditing" class="ai-wireframe-editor-note">
-                아래 편집 목록에서 문구와 가로 배치를 변경한 뒤 저장하면 실제 레이아웃 미리보기가 다시 생성됩니다.
+                현재 화면에서 문구와 가로 배치를 수정할 수 있습니다. 색상과 실제 이미지는 최종 디자인에서 적용됩니다.
               </p>
               <div
-                v-if="wireframeEditing || !renderedWireframeRequired"
                 class="ai-wireframe-stage"
                 :data-viewport="wireframeViewport"
                 :data-reveal-state="wireframeRevealState"
@@ -2945,15 +3062,18 @@ onBeforeUnmount(() => {
 
             <section v-else-if="activeResultTab === 'final' && store.snapshot" class="ai-final-review">
               <CompositionReview
+                ref="compositionReviewRef"
                 v-model:viewport="wireframeViewport"
                 :snapshot="store.snapshot"
                 :document-revision="store.documentRevision"
-                :busy="busy"
+                :busy="busy || finalQualityChecking"
+                :quality-gate="finalQualityGate"
                 :export-enabled="Boolean(capabilities.export)"
                 @edit-natural-language="operationOpen = true"
                 @rollback="rollback"
                 @open-editor="openVisualEditor"
                 @open-output="openOutput"
+                @check-quality="checkFinalQuality"
                 @export-document="exportDocument"
               />
             </section>

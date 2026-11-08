@@ -10266,6 +10266,7 @@ var nb = {
 	"aria-live": "polite"
 }, ab = [
 	"data-section-key",
+	"data-section-role",
 	"data-motion-target",
 	"aria-busy"
 ], ob = ["title"], sb = {
@@ -10508,7 +10509,7 @@ var nb = {
 			return O(t).map((n, r) => ({
 				field: n,
 				index: r,
-				order: Number(Re(e, t, n).order)
+				order: Number(Be(e, t, n).order)
 			})).filter(({ field: n }) => r.editable || ne(e, t, n)).sort((e, t) => (Number.isFinite(e.order) ? e.order : e.index * 10) - (Number.isFinite(t.order) ? t.order : t.index * 10)).map(({ field: e }) => e);
 		}
 		function j(e, t, n = null) {
@@ -10575,32 +10576,39 @@ var nb = {
 		function ge(e) {
 			return r.designSpec?.sectionStyles?.[e.sectionKey] || {};
 		}
-		function _e(e, t) {
+		function _e(e) {
+			return ge(e).layoutMode === "flow";
+		}
+		function ve(e) {
+			let t = ge(e), n = w.value ? t.mobileLayoutColumns : t.layoutColumns, r = w.value ? 2 : 6;
+			return Math.max(1, Math.min(r, Number(n) || 1));
+		}
+		function ye(e, t) {
 			let n = e === "section" ? r.motionSpec?.sections : r.motionSpec?.items;
 			return n?.[t] || (e === "item" ? n?.[String(t).split(".").at(-1)] : null) || null;
 		}
-		function ve(e, t) {
+		function be(e, t) {
 			return !e?.presetVersionId || !r.editable && e.trigger === "viewport-enter" && !s.value.has(t) ? "" : [
 				"motion-fade-up",
 				"motion-fade-in",
 				"motion-scale-in"
 			].includes(e.className) ? e.className : String(e.presetVersionId).includes("fade-up") ? "motion-fade-up" : String(e.presetVersionId).includes("fade-in") ? "motion-fade-in" : String(e.presetVersionId).includes("scale-in") ? "motion-scale-in" : "motion-fade-in";
 		}
-		function ye(e, t) {
-			return ve(_e(e, t), `${e}:${t}`);
+		function Se(e, t) {
+			return be(ye(e, t), `${e}:${t}`);
 		}
-		function be(e, t) {
-			let n = _e(e, t);
+		function Ce(e, t) {
+			let n = ye(e, t);
 			return n ? {
 				"--motion-duration": n.durationToken || void 0,
 				"--motion-easing": n.easingToken || void 0,
 				"--motion-delay": n.delayToken || void 0
 			} : {};
 		}
-		function Se(e, t, n) {
-			let r = _e("item", fe(e, t));
+		function we(e, t, n) {
+			let r = ye("item", fe(e, t));
 			if (r?.inherit === !1) return r;
-			let i = _e("section", e.sectionKey);
+			let i = ye("section", e.sectionKey);
 			if (!i?.presetVersionId || i.childrenMode !== "stagger") return null;
 			let a = Math.max(0, Math.min(160, Number.parseInt(i.staggerToken, 10) || 0)), o = Math.max(0, Number.parseInt(i.delayToken, 10) || 0), s = Number.isFinite(Number(r?.motionOrder)) ? Number(r.motionOrder) : n;
 			return {
@@ -10608,18 +10616,18 @@ var nb = {
 				delayToken: `${Math.min(800, o + a * s)}ms`
 			};
 		}
-		function Ce(e, t, n) {
-			return ve(Se(e, t, n), `item:${fe(e, t)}`);
+		function Te(e, t, n) {
+			return be(we(e, t, n), `item:${fe(e, t)}`);
 		}
-		function we(e, t, n) {
-			let r = Se(e, t, n);
+		function Ee(e, t, n) {
+			let r = we(e, t, n);
 			return r ? {
 				"--motion-duration": r.durationToken || void 0,
 				"--motion-easing": r.easingToken || void 0,
 				"--motion-delay": r.delayToken || void 0
 			} : {};
 		}
-		let Te = /* @__PURE__ */ new Set([
+		let De = /* @__PURE__ */ new Set([
 			"queued",
 			"analyzing_content",
 			"generating_layout",
@@ -10628,10 +10636,10 @@ var nb = {
 			"validating_assets",
 			"applying"
 		]);
-		function Ee(e) {
+		function Oe(e) {
 			return r.sectionDesignRuns?.[e.sectionKey] || null;
 		}
-		function De(e, t) {
+		function ke(e, t) {
 			let n = t === "item" ? "AI 이미지" : "AI 키비주얼";
 			return {
 				queued: `${n} 생성 준비 중`,
@@ -10643,18 +10651,18 @@ var nb = {
 				applying: `${n} 적용 중`
 			}[e] || `${n} 처리 중`;
 		}
-		function Oe(e, t = null, n = null) {
-			let r = Ee(e), i = r?.constraintsSnapshot?.imageTarget;
-			return (t ? i?.type === "item" && i.itemKey === t.itemKey && (!n || !i.fieldKey || i.fieldKey === n.fieldKey) : i?.type === "section-background") ? Te.has(r.status) ? {
+		function Ae(e, t = null, n = null) {
+			let r = Oe(e), i = r?.constraintsSnapshot?.imageTarget;
+			return (t ? i?.type === "item" && i.itemKey === t.itemKey && (!n || !i.fieldKey || i.fieldKey === n.fieldKey) : i?.type === "section-background") ? De.has(r.status) ? {
 				kind: "processing",
-				label: De(r.status, i.type)
+				label: ke(r.status, i.type)
 			} : r.status === "failed" ? {
 				kind: "failed",
 				label: i.type === "item" ? "AI 이미지 생성 실패" : "AI 키비주얼 생성 실패",
 				detail: String(r.errorMessage || "").trim()
 			} : null : null;
 		}
-		function ke(e, t) {
+		function je(e, t) {
 			let n = N(e, t);
 			return t.fieldKind === "image" && (n.shape === "circle" || n.aspectRatioLocked !== !1) ? [
 				"nw",
@@ -10672,7 +10680,7 @@ var nb = {
 				"w"
 			];
 		}
-		let Ae = {
+		let Me = {
 			nw: "왼쪽 위",
 			n: "위",
 			ne: "오른쪽 위",
@@ -10682,11 +10690,11 @@ var nb = {
 			sw: "왼쪽 아래",
 			w: "왼쪽"
 		};
-		function je(e, t) {
+		function Ne(e, t) {
 			let n = e.fieldKind === "image" ? "이미지" : "컴포넌트";
-			return `${e.name} ${n} ${Ae[t] || t} 방향 크기 조절`;
+			return `${e.name} ${n} ${Me[t] || t} 방향 크기 조절`;
 		}
-		function Me(e, t, n, r) {
+		function Pe(e, t, n, r) {
 			let i = [
 				"left",
 				"center",
@@ -10709,22 +10717,22 @@ var nb = {
 				offsetY: Math.round((t.y - r * s + t.height * s) * 100) / 100
 			};
 		}
-		function Ne(e, t, n) {
+		function Fe(e, t, n) {
 			let r = n ? Math.round(t.width / n * 1e4) / 100 : 0;
 			v.value = `${e.name} 너비 ${r}%, 높이 ${Math.round(t.height)}픽셀`;
 		}
-		function Pe(e, t, n, r) {
+		function Ie(e, t, n, r) {
 			let i = Number(e);
 			return Number.isFinite(i) ? Math.min(n, Math.max(t, i)) : r;
 		}
-		function Fe(e, t = "1 / 1") {
+		function Le(e, t = "1 / 1") {
 			let n = String(e || "").trim().match(/^(\d+(?:\.\d+)?)\s*[:/]\s*(\d+(?:\.\d+)?)$/);
 			return !n || Number(n[1]) <= 0 || Number(n[2]) <= 0 ? t : `${Number(n[1])} / ${Number(n[2])}`;
 		}
-		function Ie(e, t) {
-			return t.shape === "circle" ? "1 / 1" : Fe(t.aspectRatio || e.image?.aspectRatio, "1 / 1");
+		function Re(e, t) {
+			return t.shape === "circle" ? "1 / 1" : Le(t.aspectRatio || e.image?.aspectRatio, "1 / 1");
 		}
-		function Le(e, t) {
+		function ze(e, t) {
 			let n = N(e, t), r = ie(j(e, t)), i = [
 				"square",
 				"rounded",
@@ -10738,15 +10746,15 @@ var nb = {
 				borderRadius: n.borderRadiusToken ? `var(${n.borderRadiusToken})` : i === "circle" ? "50%" : i === "rounded" ? "var(--promo-image-radius)" : "0"
 			};
 		}
-		function Re(e, t, n) {
+		function Be(e, t, n) {
 			let i = `${fe(e, t)}.${n.fieldKey}`, a = r.designSpec?.itemStyles?.[i] || {}, o = w.value && r.designSpec?.responsiveLayouts?.mobile?.itemStyles?.[i] || {};
 			return {
 				...a,
 				...o
 			};
 		}
-		function ze(e, t, n) {
-			let r = Re(e, t, n), { order: i, widthPct: a, minHeightPx: o, horizontalAlign: s, alignSelf: c, marginTopPx: l, marginBottomPx: u, ...d } = r;
+		function Ve(e, t, n) {
+			let r = Be(e, t, n), { order: i, widthPct: a, minHeightPx: o, horizontalAlign: s, alignSelf: c, marginTopPx: l, marginBottomPx: u, ...d } = r;
 			return {
 				...d,
 				color: r.colorToken ? `var(${r.colorToken})` : r.color,
@@ -10760,8 +10768,8 @@ var nb = {
 				letterSpacing: r.letterSpacingToken ? `var(${r.letterSpacingToken})` : r.letterSpacing
 			};
 		}
-		function Be(e, t, n) {
-			let r = Re(e, t, n), i = Math.min(100, Math.max(5, Number(r.widthPct) || 100)), a = [
+		function He(e, t, n) {
+			let r = Be(e, t, n), i = Math.min(100, Math.max(5, Number(r.widthPct) || 100)), a = [
 				"left",
 				"center",
 				"right",
@@ -10782,16 +10790,16 @@ var nb = {
 				marginBottom: Number(r.marginBottomPx) > 0 ? `${Math.min(240, Number(r.marginBottomPx))}px` : void 0
 			};
 		}
-		function Ve(e, t, n) {
+		function Ue(e, t, n) {
 			return `${fe(e, t)}.${n.fieldKey}`;
 		}
-		function He(e, t, n) {
-			return r.selectedFieldKey === Ve(e, t, n);
+		function We(e, t, n) {
+			return r.selectedFieldKey === Ue(e, t, n);
 		}
-		function Ue(e, t, n, a) {
+		function Ge(e, t, n, a) {
 			r.editable && (e.preventDefault(), e.stopPropagation(), i("open-field-inspector", t, n, a));
 		}
-		function We(e) {
+		function Ke(e) {
 			return e.fieldKind === "text" ? ["e", "w"] : [
 				"e",
 				"s",
@@ -10799,10 +10807,10 @@ var nb = {
 				"se"
 			];
 		}
-		function Ge(e, t) {
-			return `${e.name || e.fieldKey} ${Ae[t] || t} 방향 크기 조절`;
+		function qe(e, t) {
+			return `${e.name || e.fieldKey} ${Me[t] || t} 방향 크기 조절`;
 		}
-		function Ke(e, t, n, a, o) {
+		function Je(e, t, n, a, o) {
 			if (!r.editable || n.isLocked || a.isLocked || e.button !== 0) return;
 			let s = e.currentTarget, c = s.closest(".rendered-component-field-shell"), l = c?.closest(".rendered-component-fields");
 			if (!c || !l) return;
@@ -10845,19 +10853,19 @@ var nb = {
 			}, O = () => T(!1);
 			f = O, globalThis.addEventListener("pointermove", w, { passive: !1 }), globalThis.addEventListener("pointerup", E), globalThis.addEventListener("pointercancel", D), globalThis.addEventListener("blur", O), s.addEventListener("lostpointercapture", O);
 		}
-		function qe(e, t, n, r, a) {
+		function Ye(e, t, n, r, a) {
 			if (!e.key.startsWith("Arrow") || n.isLocked || r.isLocked) return;
 			let o = e.currentTarget.closest(".rendered-component-field-shell"), s = o?.closest(".rendered-component-fields");
 			if (!o || !s) return;
 			e.preventDefault(), e.stopPropagation();
-			let c = e.shiftKey ? 10 : 1, l = Re(t, n, r), u = a.includes("e") || a.includes("w"), d = a.includes("s") && r.fieldKind !== "text", f = u ? e.key === "ArrowLeft" ? -c : e.key === "ArrowRight" ? c : 0 : 0, p = d ? e.key === "ArrowUp" ? -c : e.key === "ArrowDown" ? c : 0 : 0;
+			let c = e.shiftKey ? 10 : 1, l = Be(t, n, r), u = a.includes("e") || a.includes("w"), d = a.includes("s") && r.fieldKind !== "text", f = u ? e.key === "ArrowLeft" ? -c : e.key === "ArrowRight" ? c : 0 : 0, p = d ? e.key === "ArrowUp" ? -c : e.key === "ArrowDown" ? c : 0 : 0;
 			!f && !p || i("update-renderer-field-style", t, n, r, {
 				...f ? { widthPct: Math.min(100, Math.max(5, (Number(l.widthPct) || 100) + f)) } : {},
 				...p ? { minHeightPx: Math.min(1200, Math.max(28, (Number(l.minHeightPx) || o.getBoundingClientRect().height) + p)) } : {}
 			});
 		}
-		function Je(e, t, n) {
-			let r = ze(e, t, n), i = ie(j(e, t, n)), a = [
+		function Xe(e, t, n) {
+			let r = Ve(e, t, n), i = ie(j(e, t, n)), a = [
 				"square",
 				"rounded",
 				"circle"
@@ -10867,12 +10875,12 @@ var nb = {
 				backgroundSize: ["contain", "cover"].includes(r.imageFit) ? r.imageFit : "contain",
 				backgroundPosition: r.imagePosition || "center center",
 				backgroundRepeat: "no-repeat",
-				aspectRatio: Fe(r.aspectRatio || n.image?.aspectRatio, "1 / 1"),
+				aspectRatio: Le(r.aspectRatio || n.image?.aspectRatio, "1 / 1"),
 				borderRadius: r.borderRadiusToken ? `var(${r.borderRadiusToken})` : a === "circle" ? "50%" : a === "rounded" ? "var(--promo-image-radius)" : "0"
 			};
 		}
-		function Ye(e, t, n) {
-			let r = ze(e, t, n), i = j(e, t, n);
+		function Ze(e, t, n) {
+			let r = Ve(e, t, n), i = j(e, t, n);
 			return r.decorative === !0 ? {
 				ariaHidden: "true",
 				role: void 0,
@@ -10883,7 +10891,7 @@ var nb = {
 				label: String(r.accessibleLabel || i?.alt || i?.description || n.name || "Promotion image").trim()
 			};
 		}
-		function Xe(e, t) {
+		function Qe(e, t) {
 			let n = N(e, t), r = j(e, t);
 			return n.decorative === !0 ? {
 				ariaHidden: "true",
@@ -10895,30 +10903,30 @@ var nb = {
 				label: String(n.accessibleLabel || r?.alt || r?.description || t.name || "Promotion image").trim()
 			};
 		}
-		function Ze(e) {
+		function $e(e) {
 			return Ty(e);
 		}
-		function Qe(e, t) {
+		function et(e, t) {
 			let n = N(e, t), r = c.value[fe(e, t)];
 			if (Number.isFinite(r) && r > 0) return r;
 			let i = Number(n.heightPx);
-			return n.positionMode === "free" && Number.isFinite(i) && i > 0 ? i : (t.fieldKind === "text" && Dy(t, n), Ze(t));
+			return n.positionMode === "free" && Number.isFinite(i) && i > 0 ? i : (t.fieldKind === "text" && Dy(t, n), $e(t));
 		}
-		function $e(e) {
-			return wy(e.items || [], (t) => N(e, t), (t) => Qe(e, t), Gb);
+		function tt(e) {
+			return wy(e.items || [], (t) => N(e, t), (t) => et(e, t), Gb);
 		}
-		function et(e) {
-			let t = $e(e);
+		function nt(e) {
+			let t = tt(e);
 			return Math.max(t, Cy(ge(e).minHeight, t));
 		}
-		function tt(e, t) {
-			let n = e.items || [], r = Math.max(0, n.findIndex((e) => e.itemKey === t.itemKey)), i = n.slice(0, r).reduce((t, n) => t + Qe(e, n), 0), a = et(e), o = Math.max(50, a - Gb);
+		function rt(e, t) {
+			let n = e.items || [], r = Math.max(0, n.findIndex((e) => e.itemKey === t.itemKey)), i = n.slice(0, r).reduce((t, n) => t + et(e, n), 0), a = nt(e), o = Math.max(50, a - Gb);
 			return {
 				xPct: 0,
 				yPct: o ? i / o * 100 : 0
 			};
 		}
-		function nt(e) {
+		function it(e) {
 			return [
 				"none",
 				"left",
@@ -10926,21 +10934,21 @@ var nb = {
 				"both"
 			].includes(e.backgroundFadeMode) ? e.backgroundFadeMode : e.backgroundFadeSafeArea === "left-copy" ? "left" : e.backgroundFadeSafeArea === "right-copy" ? "right" : e.backgroundFadeSafeArea === "center-copy" ? "both" : "none";
 		}
-		function rt(e) {
+		function at(e) {
 			let t = String(e || "").trim();
 			return /^--(?:promo|app)-[a-z0-9-]+$/.test(t) ? `var(${t})` : "";
 		}
-		function it(e) {
+		function ot(e) {
 			let t = String(e || "").trim();
 			return String(E.value[t] || "").trim();
 		}
-		function at(e) {
-			return rt(e.backgroundColorToken) || String(e.backgroundColor || "").trim() || rt(r.designSpec?.theme?.backgroundColorToken) || String(r.designSpec?.theme?.backgroundColor || "").trim() || "var(--promo-bg)";
+		function st(e) {
+			return at(e.backgroundColorToken) || String(e.backgroundColor || "").trim() || at(r.designSpec?.theme?.backgroundColorToken) || String(r.designSpec?.theme?.backgroundColor || "").trim() || "var(--promo-bg)";
 		}
-		function ot(e) {
-			return it(e.backgroundFadeColorToken || e.backgroundColorToken) || String(e.backgroundFadeColor || e.backgroundColor || "").trim() || it(r.designSpec?.theme?.backgroundColorToken) || String(r.designSpec?.theme?.backgroundColor || "").trim();
+		function ct(e) {
+			return ot(e.backgroundFadeColorToken || e.backgroundColorToken) || String(e.backgroundFadeColor || e.backgroundColor || "").trim() || ot(r.designSpec?.theme?.backgroundColorToken) || String(r.designSpec?.theme?.backgroundColor || "").trim();
 		}
-		function st(e, t, n = "medium", r = {}) {
+		function lt(e, t, n = "medium", r = {}) {
 			if (!/^#[0-9a-f]{6}$/i.test(String(t || ""))) return "";
 			let i = r?.[n] || {
 				soft: {
@@ -10965,10 +10973,11 @@ var nb = {
 			};
 			return e === "left" ? `linear-gradient(to right, ${t} 0%, ${t} ${i.solid}%, transparent ${i.clear}%)` : e === "right" ? `linear-gradient(to left, ${t} 0%, ${t} ${i.solid}%, transparent ${i.clear}%)` : e === "both" ? `linear-gradient(to right, ${t} 0%, transparent ${i.edge}%, transparent ${100 - i.edge}%, ${t} 100%)` : "";
 		}
-		function ct(e) {
-			let t = ge(e), n = et(e), r = M(e), i = at(t), a = r ? st(nt(t), ot(t), t.backgroundFadeStrength, t.backgroundFadeStops) : "", o = t.backgroundFitMode || (t.backgroundSize === "100% auto" ? "width-fill" : t.backgroundSize), s = o === "width-fill" ? "100% auto" : ["contain", "cover"].includes(o) ? o : "cover";
+		function ut(e) {
+			let t = ge(e), n = nt(e), r = M(e), i = st(t), a = r ? lt(it(t), ct(t), t.backgroundFadeStrength, t.backgroundFadeStops) : "", o = t.backgroundFitMode || (t.backgroundSize === "100% auto" ? "width-fill" : t.backgroundSize), s = o === "width-fill" ? "100% auto" : ["contain", "cover"].includes(o) ? o : "cover", c = _e(e);
 			return {
-				height: `${Math.max(50, n)}px`,
+				height: c ? void 0 : `${Math.max(50, n)}px`,
+				minHeight: c ? `${Math.max(50, n)}px` : void 0,
 				backgroundColor: i,
 				backgroundImage: r ? [a, `url(${JSON.stringify(r)})`].filter(Boolean).join(", ") : void 0,
 				backgroundSize: r ? a ? `100% 100%, ${s}` : s : void 0,
@@ -10976,12 +10985,33 @@ var nb = {
 				backgroundRepeat: r ? a ? `no-repeat, ${t.backgroundRepeat || "no-repeat"}` : t.backgroundRepeat || "no-repeat" : void 0
 			};
 		}
-		function lt(e) {
-			let t = et(e);
+		function dt(e) {
+			let t = nt(e);
+			if (_e(e)) {
+				let n = ge(e), r = w.value ? n.mobileLayoutGapPx : n.layoutGapPx, i = w.value ? n.mobileLayoutPaddingBlockPx : n.layoutPaddingBlockPx, a = [
+					"start",
+					"center",
+					"end",
+					"stretch"
+				].includes(n.contentAlignment) ? n.contentAlignment : "stretch";
+				return {
+					height: "auto",
+					minHeight: `${Math.max(0, t - Gb)}px`,
+					display: "grid",
+					gridTemplateColumns: `repeat(${ve(e)}, minmax(0, 1fr))`,
+					gridAutoRows: "max-content",
+					gap: `${Math.max(0, Math.min(120, Number(r) || 24))}px`,
+					alignContent: a === "stretch" ? "center" : a,
+					alignItems: a,
+					justifyItems: a,
+					paddingBlock: `${Math.max(0, Math.min(200, Number(i) || 40))}px`,
+					boxSizing: "border-box"
+				};
+			}
 			return { height: `${Math.max(0, t - Gb)}px` };
 		}
-		function ut(e, t) {
-			let n = N(e, t), r = he(e, t, n), i = n.positionMode === "anchored", a = n.positionMode === "free" ? n : tt(e, t), o = t.fieldKind === "image", s = Pe(n.widthPct, 4, 100, Ey(t));
+		function ft(e, t) {
+			let n = N(e, t), r = he(e, t, n), i = n.positionMode === "anchored", a = n.positionMode === "free" ? n : rt(e, t), o = t.fieldKind === "image", s = Ie(n.widthPct, 4, 100, Ey(t));
 			Dy(t, n);
 			let l = !o && n.widthMode === "fit-content", u = Oy(t, n), d = [
 				"left",
@@ -10999,12 +11029,11 @@ var nb = {
 				left: "0%",
 				center: "-50%",
 				right: "-100%"
-			}[d], h = Math.max(0, et(e) - Gb), g = c.value[fe(e, t)], _ = Number.isFinite(g) && g > 0 ? g : u || Qe(e, t), v = Math.max(0, h - _), y = {
+			}[d], h = Math.max(0, nt(e) - Gb), g = c.value[fe(e, t)], _ = Number.isFinite(g) && g > 0 ? g : u || et(e, t), v = Math.max(0, h - _), y = {
 				top: 0,
 				middle: .5,
 				bottom: 1
-			}[f], b = i ? h * y + (Number(n.offsetY) || 0) - _ * y : n.yPx === void 0 ? (Number(a.yPct) || 0) / 100 * h : Number(n.yPx) || 0, x = Math.min(v, Math.max(0, b)), S = i ? void 0 : Math.min(Math.max(0, 100 - s), Math.max(0, Number(a.xPct) || 0));
-			return {
+			}[f], b = i ? h * y + (Number(n.offsetY) || 0) - _ * y : n.yPx === void 0 ? (Number(a.yPct) || 0) / 100 * h : Number(n.yPx) || 0, x = Math.min(v, Math.max(0, b)), S = i ? void 0 : Math.min(Math.max(0, 100 - s), Math.max(0, Number(a.xPct) || 0)), C = {
 				left: i ? p : `${S}%`,
 				top: `${x}px`,
 				transform: i ? `translateX(${m}) translateX(${Number(n.offsetX) || 0}px)` : void 0,
@@ -11021,38 +11050,53 @@ var nb = {
 				"--item-font-weight": n.fontWeightToken ? `var(${n.fontWeightToken})` : n.fontWeight,
 				"--item-text-gradient": n.textGradientToken ? `var(${n.textGradientToken})` : void 0,
 				"--item-text-background": n.textBackgroundToken ? `var(${n.textBackgroundToken})` : n.textBackground,
-				"--item-list-padding": `${1.35 + Pe(n.listIndent, 0, 6, 0) * 1.5}em`,
+				"--item-list-padding": `${1.35 + Ie(n.listIndent, 0, 6, 0) * 1.5}em`,
 				lineHeight: n.lineHeightToken ? `var(${n.lineHeightToken})` : n.lineHeight,
 				letterSpacing: n.letterSpacingToken ? `var(${n.letterSpacingToken})` : n.letterSpacing,
 				fontStyle: n.fontStyle,
 				textDecoration: n.textDecoration,
 				textAlign: n.textAlign,
 				width: l ? "fit-content" : n.widthMode === "fill" ? "100%" : `${s}%`,
-				maxWidth: l ? n.maxWidthToken ? `var(${n.maxWidthToken})` : `${Pe(n.maxWidthPct, 10, 100, 80)}%` : void 0,
+				maxWidth: l ? n.maxWidthToken ? `var(${n.maxWidthToken})` : `${Ie(n.maxWidthPct, 10, 100, 80)}%` : void 0,
 				height: u && (!o || n.shape !== "circle") ? `${u}px` : void 0,
-				aspectRatio: o && (!u || n.shape === "circle") ? Ie(t, n) : void 0
+				aspectRatio: o && (!u || n.shape === "circle") ? Re(t, n) : void 0
 			};
+			return n.positionMode === "flow" ? {
+				...C,
+				position: "relative",
+				left: "auto",
+				top: "auto",
+				transform: void 0,
+				width: l ? "fit-content" : "100%",
+				maxWidth: n.maxWidthToken ? `var(${n.maxWidthToken})` : n.maxWidthPct ? `${Ie(n.maxWidthPct, 10, 100, 100)}%` : void 0,
+				height: "auto",
+				aspectRatio: o ? Re(t, n) : void 0,
+				justifySelf: n.justifySelf,
+				alignSelf: n.alignSelf,
+				padding: Number(n.paddingPx) > 0 ? `${Math.min(160, Number(n.paddingPx))}px` : void 0,
+				boxSizing: "border-box"
+			} : C;
 		}
-		function dt(e, t, n = null) {
-			return (n ? Re(e, t, n) : N(e, t)).listType === "number" ? "ol" : "ul";
+		function pt(e, t, n = null) {
+			return (n ? Be(e, t, n) : N(e, t)).listType === "number" ? "ol" : "ul";
 		}
-		function ft(e) {
+		function mt(e) {
 			return String(e ?? "").split(/\r?\n/u).map((e) => e.trim()).filter(Boolean);
 		}
-		function pt(e = null) {
+		function ht(e = null) {
 			return e?.fieldKey || "$item";
 		}
-		function mt(e, t, n = null) {
-			return (n ? Re(e, t, n) : N(e, t)).lineStyles?.[pt(n)] || {};
-		}
-		function ht(e, t, n = null) {
-			return Object.keys(mt(e, t, n)).length > 0;
-		}
 		function gt(e, t, n = null) {
-			return ht(e, t, n) || /\r?\n/u.test(String(j(e, t, n) ?? ""));
+			return (n ? Be(e, t, n) : N(e, t)).lineStyles?.[ht(n)] || {};
 		}
 		function _t(e, t, n = null) {
-			let r = n ? Re(e, t, n) : N(e, t), i = mt(e, t, n), a = 0;
+			return Object.keys(gt(e, t, n)).length > 0;
+		}
+		function vt(e, t, n = null) {
+			return _t(e, t, n) || /\r?\n/u.test(String(j(e, t, n) ?? ""));
+		}
+		function yt(e, t, n = null) {
+			let r = n ? Be(e, t, n) : N(e, t), i = gt(e, t, n), a = 0;
 			return String(j(e, t, n) ?? "").split(/\r?\n/u).map((e, t) => {
 				let n = {
 					...r,
@@ -11066,7 +11110,7 @@ var nb = {
 				};
 			});
 		}
-		function vt(e) {
+		function bt(e) {
 			let t = e.style || {};
 			return {
 				color: t.colorToken ? `var(${t.colorToken})` : t.color,
@@ -11083,10 +11127,10 @@ var nb = {
 				letterSpacing: t.letterSpacingToken ? `var(${t.letterSpacingToken})` : t.letterSpacing,
 				"--line-text-gradient": t.textGradientToken ? `var(${t.textGradientToken})` : void 0,
 				"--line-text-background": t.textBackgroundToken ? `var(${t.textBackgroundToken})` : t.textBackground,
-				"--line-list-padding": `${1.35 + Pe(t.listIndent, 0, 6, 0) * 1.5}em`
+				"--line-list-padding": `${1.35 + Ie(t.listIndent, 0, 6, 0) * 1.5}em`
 			};
 		}
-		function yt(e) {
+		function xt(e) {
 			return {
 				"is-bullet": e.style.listType === "bullet",
 				"is-number": e.style.listType === "number",
@@ -11094,7 +11138,7 @@ var nb = {
 				"has-line-gradient": !!e.style.textGradientToken
 			};
 		}
-		function bt(e, t, n = null) {
+		function St(e, t, n = null) {
 			if (!r.editable) return;
 			if (n?.type === "click" && n.pointerId === p) {
 				p = null;
@@ -11106,8 +11150,8 @@ var nb = {
 				fieldKey: n?.fieldKey || ""
 			});
 		}
-		function xt(e, t, n, i) {
-			r.editable && (e.preventDefault(), bt(t, n, {
+		function Ct(e, t, n, i) {
+			r.editable && (e.preventDefault(), St(t, n, {
 				type: e.type,
 				pointerId: e.pointerId,
 				ctrlKey: e.ctrlKey,
@@ -11116,25 +11160,25 @@ var nb = {
 				fieldKey: i.fieldKey
 			}));
 		}
-		function St(e, t, n) {
-			!r.editable || !n?.fieldKey || bt(e, t, {
+		function wt(e, t, n) {
+			!r.editable || !n?.fieldKey || St(e, t, {
 				type: "click",
 				fieldKey: n.fieldKey
 			});
 		}
-		function Ct(e) {
+		function Tt(e) {
 			r.editable && e.preventDefault();
 		}
-		function wt(e) {
+		function Et(e) {
 			r.editable && e.preventDefault();
 		}
-		function Tt(e, t, n, a = {}) {
+		function Dt(e, t, n, a = {}) {
 			p = null;
 			let o = a.target || e.currentTarget, s = a.fromMoveHandle === !0;
 			if (!r.editable || n.isLocked || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.target.closest(".item-resize-handle") || !s && e.target.closest("[data-field-style-key]") || !s && o.classList.contains("is-editing")) return;
 			let c = o.closest(".rendered-items");
 			if (!c) return;
-			f?.(), d?.(), p = e.pointerId, bt(t, n);
+			f?.(), d?.(), p = e.pointerId, St(t, n);
 			let l = e.clientX, u = e.clientY, m = null, h = 0, g = 0, _ = 0, v = 0, y = 0, b = !1, C = !1, w = (t) => {
 				if (t.pointerId !== e.pointerId || C) return;
 				if ((t.buttons & 1) != 1) {
@@ -11170,7 +11214,7 @@ var nb = {
 							yPx: v
 						});
 						let r = Math.min(by, Math.ceil(v + o.offsetHeight + Gb * 2));
-						r > Number(ge(t).minHeight || $e(t)) && i("update-section-style", t.sectionKey, { minHeight: r });
+						r > Number(ge(t).minHeight || tt(t)) && i("update-section-style", t.sectionKey, { minHeight: r });
 					}
 					if (o.hasPointerCapture(e.pointerId)) try {
 						o.releasePointerCapture(e.pointerId);
@@ -11180,17 +11224,17 @@ var nb = {
 			};
 			d = E, globalThis.addEventListener("pointermove", w, { passive: !1 }), globalThis.addEventListener("pointerup", E), globalThis.addEventListener("pointercancel", E), globalThis.addEventListener("blur", E), document.addEventListener("visibilitychange", T), o.addEventListener("lostpointercapture", E);
 		}
-		function Et(e, t, n) {
+		function Ot(e, t, n) {
 			let r = e.currentTarget.closest(".rendered-item");
-			r && (e.preventDefault(), e.stopPropagation(), r.querySelector("[contenteditable=\"true\"]")?.blur(), Tt(e, t, n, {
+			r && (e.preventDefault(), e.stopPropagation(), r.querySelector("[contenteditable=\"true\"]")?.blur(), Dt(e, t, n, {
 				target: r,
 				fromMoveHandle: !0
 			}));
 		}
-		function Dt(e, t, n) {
+		function kt(e, t, n) {
 			r.editable && (e.preventDefault(), e.stopPropagation(), i("open-item-inspector", t, n));
 		}
-		function Ot(e, t, n) {
+		function At(e, t, n) {
 			let r = {
 				ArrowLeft: [-1, 0],
 				ArrowRight: [1, 0],
@@ -11209,21 +11253,21 @@ var nb = {
 				yPx: p
 			});
 			let m = Math.min(by, Math.ceil(p + c.height + Gb * 2));
-			m > Number(ge(t).minHeight || $e(t)) && i("update-section-style", t.sectionKey, { minHeight: m });
+			m > Number(ge(t).minHeight || tt(t)) && i("update-section-style", t.sectionKey, { minHeight: m });
 		}
-		function kt(e, t, n, a = "se") {
+		function jt(e, t, n, a = "se") {
 			if (!r.editable || n.isLocked || e.button !== 0) return;
 			d?.(), f?.();
 			let o = e.currentTarget, s = o.closest(".rendered-item"), c = s?.closest(".rendered-items");
 			if (!s || !c || s.classList.contains("is-editing")) return;
-			e.preventDefault(), e.stopPropagation(), bt(t, n);
+			e.preventDefault(), e.stopPropagation(), St(t, n);
 			try {
 				o.setPointerCapture(e.pointerId);
 			} catch {
 				return;
 			}
 			s.classList.add("is-resizing"), x("component-resize");
-			let l = c.getBoundingClientRect(), u = s.getBoundingClientRect(), p = e.clientX, m = e.clientY, h = N(t, n), g = n.fieldKind === "image", _ = Dy(n, h), v = h.positionMode === "anchored", y = g && h.aspectRatioLocked !== !1, b = Math.max(24, l.width * (4 / 100)), C = a.includes("w") || a.includes("e"), w = a.includes("n") || a.includes("s"), T = tt(t, n), E = Math.max(50, (ge(t).minHeight || $e(t)) - Gb), D = ky({
+			let l = c.getBoundingClientRect(), u = s.getBoundingClientRect(), p = e.clientX, m = e.clientY, h = N(t, n), g = n.fieldKind === "image", _ = Dy(n, h), v = h.positionMode === "anchored", y = g && h.aspectRatioLocked !== !1, b = Math.max(24, l.width * (4 / 100)), C = a.includes("w") || a.includes("e"), w = a.includes("n") || a.includes("s"), T = rt(t, n), E = Math.max(50, (ge(t).minHeight || tt(t)) - Gb), D = ky({
 				item: n,
 				style: h,
 				canvasWidth: l.width,
@@ -11265,12 +11309,12 @@ var nb = {
 							includeHeight: w && !y && !_ && !(g && h.shape === "circle"),
 							includeFontSize: !1
 						});
-						v && (delete e.positionMode, delete e.xPct, delete e.yPx, Object.assign(e, Me(h, k, l.width, l.height))), i("update-renderer-item-style", t, n, {
+						v && (delete e.positionMode, delete e.xPct, delete e.yPx, Object.assign(e, Pe(h, k, l.width, l.height))), i("update-renderer-item-style", t, n, {
 							...e,
 							...C && !g ? { widthMode: "fixed" } : {},
 							...!w && !y ? { heightPx: h.heightPx } : {},
 							...g ? { aspectRatio: `${Math.max(1, Math.round(k.width))}/${Math.max(1, Math.round(k.height))}` } : {}
-						}), Ne(n, k, l.width);
+						}), Fe(n, k, l.width);
 					}
 					if (o.hasPointerCapture(e.pointerId)) try {
 						o.releasePointerCapture(e.pointerId);
@@ -11284,7 +11328,7 @@ var nb = {
 			}, oe = () => j(!1), se = () => j(!1), ce = () => j(!1);
 			f = ce, globalThis.addEventListener("pointermove", ne, { passive: !1 }), globalThis.addEventListener("pointerup", ie), globalThis.addEventListener("pointercancel", ae), globalThis.addEventListener("blur", oe), document.addEventListener("visibilitychange", re), o.addEventListener("lostpointercapture", se);
 		}
-		function At(e, t, n, a = "se") {
+		function Mt(e, t, n, a = "se") {
 			if (!r.editable || n.isLocked || ![
 				"ArrowLeft",
 				"ArrowRight",
@@ -11296,7 +11340,7 @@ var nb = {
 			if (!h || !g) return;
 			let _ = h.getBoundingClientRect(), v = g.getBoundingClientRect(), y = Math.max(1, _.width), b = f ? e.key === "ArrowRight" ? y * d / 100 : e.key === "ArrowLeft" ? -y * d / 100 : 0 : 0, x = p ? e.key === "ArrowDown" ? d * 4 : e.key === "ArrowUp" ? d * -4 : 0 : 0;
 			if (!b && !x) return;
-			let S = tt(t, n), C = Math.max(50, (ge(t).minHeight || $e(t)) - Gb), w = ky({
+			let S = rt(t, n), C = Math.max(50, (ge(t).minHeight || tt(t)) - Gb), w = ky({
 				item: n,
 				style: o,
 				canvasWidth: y,
@@ -11320,13 +11364,13 @@ var nb = {
 				includeHeight: p && !u && !c && !(s && o.shape === "circle"),
 				includeFontSize: !1
 			});
-			l && (delete D.positionMode, delete D.xPct, delete D.yPx, Object.assign(D, Me(o, E, _.width, _.height))), i("update-renderer-item-style", t, n, {
+			l && (delete D.positionMode, delete D.xPct, delete D.yPx, Object.assign(D, Pe(o, E, _.width, _.height))), i("update-renderer-item-style", t, n, {
 				...D,
 				...f && !s ? { widthMode: "fixed" } : {},
 				...!p && !u ? { heightPx: o.heightPx } : {}
-			}), Ne(n, E, y);
+			}), Fe(n, E, y);
 		}
-		function jt(e, t, n) {
+		function Nt(e, t, n) {
 			let r = document.createRange();
 			r.selectNodeContents(e);
 			try {
@@ -11336,7 +11380,7 @@ var nb = {
 			}
 			return r.toString().length;
 		}
-		function Mt(e) {
+		function Pt(e) {
 			let t = window.getSelection();
 			if (!t?.rangeCount || !e.contains(t.anchorNode) || !e.contains(t.focusNode)) return [];
 			let n = t.getRangeAt(0), r = [...e.querySelectorAll("[data-text-line-index]")];
@@ -11347,22 +11391,22 @@ var nb = {
 				}
 				return r.filter((e) => n.intersectsNode(e)).map((e) => Number(e.dataset.textLineIndex));
 			}
-			let i = e.innerText.replace(/\r\n?/gu, "\n"), a = jt(e, t.anchorNode, t.anchorOffset), o = jt(e, t.focusNode, t.focusOffset), s = Math.min(a, o), c = Math.max(a, o), l = (e) => i.slice(0, Math.max(0, e)).split("\n").length - 1, u = l(s), d = l(c > s ? c - 1 : c);
+			let i = e.innerText.replace(/\r\n?/gu, "\n"), a = Nt(e, t.anchorNode, t.anchorOffset), o = Nt(e, t.focusNode, t.focusOffset), s = Math.min(a, o), c = Math.max(a, o), l = (e) => i.slice(0, Math.max(0, e)).split("\n").length - 1, u = l(s), d = l(c > s ? c - 1 : c);
 			return Array.from({ length: Math.max(1, d - u + 1) }, (e, t) => u + t);
 		}
-		function Nt(e, t, n, a = null, o = null) {
+		function Ft(e, t, n, a = null, o = null) {
 			if (!r.editable || n.isLocked) return;
 			let s = o || e.currentTarget, c = s.closest(".rendered-item");
 			if (!c || c.classList.contains("is-editing") || (a || n).isLocked) return;
-			e.preventDefault(), e.stopPropagation(), bt(t, n);
+			e.preventDefault(), e.stopPropagation(), St(t, n);
 			let l = j(t, n, a), u = String(l ?? "").replace(/\r\n?/g, "\n"), d = !ue(l), f = de(n, a), p = !1, m = !1;
 			x("text-edit"), c.classList.add("is-editing"), s.classList.remove("rendered-empty"), s.classList.add("rendered-text"), s.contentEditable = "true", d && (s.textContent = f), s.focus();
 			let h = window.getSelection(), g = document.createRange();
 			g.selectNodeContents(s), h.removeAllRanges(), h.addRange(g);
 			let _ = () => {
-				let e = Mt(s);
+				let e = Pt(s);
 				i("select-text-lines", t, n, {
-					scopeKey: pt(a),
+					scopeKey: ht(a),
 					indexes: e
 				});
 			};
@@ -11377,8 +11421,8 @@ var nb = {
 			};
 			s.addEventListener("blur", v), s.addEventListener("keydown", y);
 		}
-		function Pt(e, t, n, r = null) {
-			if (bt(t, n, r ? {
+		function It(e, t, n, r = null) {
+			if (St(t, n, r ? {
 				type: e.type,
 				pointerId: e.pointerId,
 				ctrlKey: e.ctrlKey,
@@ -11388,20 +11432,20 @@ var nb = {
 			} : e), e.currentTarget.closest(".rendered-item")?.classList.contains("is-editing")) {
 				let a = e.target.closest?.("[data-text-line-index]");
 				a && i("select-text-lines", t, n, {
-					scopeKey: pt(r),
+					scopeKey: ht(r),
 					indexes: [Number(a.dataset.textLineIndex)]
 				});
 				return;
 			}
 		}
-		function Ft(e, t, n) {
+		function Lt(e, t, n) {
 			if (!r.editable || n.isLocked) return;
 			let i = e.currentTarget, a = e.target.closest?.(".rendered-text, .rendered-empty"), o = a && i.contains(a) ? a : i.querySelector(".rendered-text, .rendered-empty");
 			if (!o) return;
 			let s = o.dataset.fieldKey;
-			Nt(e, t, n, s && O(n).find((e) => e.fieldKey === s) || null, o);
+			Ft(e, t, n, s && O(n).find((e) => e.fieldKey === s) || null, o);
 		}
-		function It(e, t) {
+		function Rt(e, t) {
 			if (!r.editable || e.button !== 0) return;
 			d?.(), f?.();
 			let n = e.currentTarget, a = n.closest(".rendered-section");
@@ -11450,7 +11494,7 @@ var nb = {
 			};
 			f = y, globalThis.addEventListener("pointermove", _, { passive: !1 }), globalThis.addEventListener("pointerup", b), globalThis.addEventListener("pointercancel", b), globalThis.addEventListener("blur", y), document.addEventListener("visibilitychange", v), n.addEventListener("lostpointercapture", y);
 		}
-		function Lt() {
+		function zt() {
 			if (!o.value) return {
 				count: 0,
 				itemPatches: {},
@@ -11500,7 +11544,7 @@ var nb = {
 				viewport: w.value ? "mobile" : "desktop"
 			};
 		}
-		function Rt() {
+		function Bt() {
 			if (!o.value) return {
 				count: 0,
 				blockingCount: 0,
@@ -11510,33 +11554,34 @@ var nb = {
 				clippedItemCount: 0,
 				overflowItemCount: 0,
 				deadSpaceSectionCount: 0,
+				emptySectionCount: 0,
 				duplicateCollectionCopyCount: 0,
 				genericCopyCount: 0,
 				lowContrastTextCount: 0,
 				viewport: w.value ? "mobile" : "desktop",
 				diagnostics: []
 			};
-			let e = [], t = 0, n = 0, i = 0, a = 0, s = 0, c = 0, l = 0, u = [...o.value.querySelectorAll(".rendered-image__placeholder")], d = Array.isArray(r.assets?.expected) ? r.assets.expected.filter((e) => e?.required !== !1) : null, f = d ? d.filter((e) => e.targetType === "component-field-image") : null, p = f ? new Set(f.map((e) => [
+			let e = [], t = 0, n = 0, i = 0, a = 0, s = 0, c = 0, l = 0, u = 0, d = [...o.value.querySelectorAll(".rendered-image__placeholder")], f = Array.isArray(r.assets?.expected) ? r.assets.expected.filter((e) => e?.required !== !1) : null, p = f ? f.filter((e) => e.targetType === "component-field-image") : null, m = p ? new Set(p.map((e) => [
 				e.pageSectionInstanceId,
 				e.pageComponentInstanceId,
 				e.fieldKey
-			].map((e) => String(e || "")).join(":"))) : null, m = p ? u.filter((e) => p.has(e.dataset.assetTargetKey || "")).length : u.length, h = d ? d.filter((e) => {
+			].map((e) => String(e || "")).join(":"))) : null, h = m ? d.filter((e) => m.has(e.dataset.assetTargetKey || "")).length : d.length, g = f ? f.filter((e) => {
 				if (e.targetType !== "section-key-visual") return !1;
 				let t = (r.content?.sectionSnapshot || []).find((t) => (t.pageSectionInstanceId || t.sectionKey) === e.pageSectionInstanceId);
 				return !t || !M(t);
-			}) : [], g = m + h.length, _ = (e) => String(e || "").replace(/\s+/gu, " ").trim().toLocaleLowerCase(), v = /^(?:기본 (?:제목|설명)|프로모션 혜택을 확인하세요\.?|자세히 보기)$/u, y = /* @__PURE__ */ new Map();
+			}) : [], _ = h + g.length, v = (e) => String(e || "").replace(/\s+/gu, " ").trim().toLocaleLowerCase(), y = /^(?:기본 (?:제목|설명)|프로모션 혜택을 확인하세요\.?|자세히 보기)$/u, b = /* @__PURE__ */ new Map();
 			return o.value.querySelectorAll(".rendered-item[data-collection-key]").forEach((e) => {
 				let t = e.dataset.collectionKey || "";
 				if (!t) return;
-				let n = _([...e.querySelectorAll(".rendered-text__content, .rendered-text-line__content")].map((e) => e.textContent).join(" "));
-				n && (y.has(t) || y.set(t, []), y.get(t).push({
+				let n = v([...e.querySelectorAll(".rendered-text__content, .rendered-text-line__content")].map((e) => e.textContent).join(" "));
+				n && (b.has(t) || b.set(t, []), b.get(t).push({
 					payload: n,
 					styleKey: e.dataset.styleKey || ""
 				}));
-			}), y.forEach((t, n) => {
+			}), b.forEach((t, n) => {
 				let r = /* @__PURE__ */ new Map();
 				t.forEach((e) => r.set(e.payload, [...r.get(e.payload) || [], e.styleKey])), r.forEach((t, r) => {
-					t.length < 2 || r.length < 4 || (s += t.length, e.push({
+					t.length < 2 || r.length < 4 || (c += t.length, e.push({
 						code: "DUPLICATE_COLLECTION_COPY",
 						collectionKey: n,
 						styleKeys: t,
@@ -11545,7 +11590,7 @@ var nb = {
 				});
 			}), o.value.querySelectorAll(".rendered-text__content, .rendered-text-line__content").forEach((t) => {
 				let n = String(t.textContent || "").replace(/\s+/gu, " ").trim();
-				v.test(n) && (c += 1, e.push({
+				y.test(n) && (l += 1, e.push({
 					code: "GENERIC_DEFAULT_COPY",
 					styleKey: t.closest(".rendered-item")?.dataset.styleKey || "",
 					message: n
@@ -11560,37 +11605,41 @@ var nb = {
 					a = a.parentElement;
 				}
 				if (!i || !s) return;
-				let u = (e) => e.map((e) => {
+				let c = (e) => e.map((e) => {
 					let t = e / 255;
 					return t <= .03928 ? t / 12.92 : ((t + .055) / 1.055) ** 2.4;
 				}).reduce((e, t, n) => e + t * [
 					.2126,
 					.7152,
 					.0722
-				][n], 0), d = u(i), f = u(s), p = (Math.max(d, f) + .05) / (Math.min(d, f) + .05), m = Number.parseFloat(r?.fontSize || "16"), h = Number.parseInt(r?.fontWeight || "400", 10);
-				p < (m >= 24 || m >= 18.66 && h >= 700 ? 3 : 4.5) && (l += 1, e.push({
+				][n], 0), d = c(i), f = c(s), p = (Math.max(d, f) + .05) / (Math.min(d, f) + .05), m = Number.parseFloat(r?.fontSize || "16"), h = Number.parseInt(r?.fontWeight || "400", 10);
+				p < (m >= 24 || m >= 18.66 && h >= 700 ? 3 : 4.5) && (u += 1, e.push({
 					code: "TEXT_CONTRAST_LOW",
 					level: "warning",
 					ratio: Number(p.toFixed(2)),
 					message: n.slice(0, 120)
 				}));
 			}), o.value.querySelectorAll(".rendered-section").forEach((r) => {
-				let o = r.dataset.sectionKey || "", s = r.querySelector(".rendered-items"), c = s?.getBoundingClientRect();
-				if (!s || !c?.width || !c?.height) return;
-				let l = [...s.querySelectorAll(".rendered-item[data-style-key]")].flatMap((t, r) => {
+				let o = r.dataset.sectionKey || "", c = r.querySelector(".rendered-items"), l = c?.getBoundingClientRect();
+				if (!c || !l?.width || !l?.height) return;
+				let u = [...c.querySelectorAll(".rendered-item[data-style-key]")].flatMap((t, r) => {
 					let a = globalThis.getComputedStyle?.(t), s = t.getBoundingClientRect();
 					if (a?.display === "none" || a?.visibility === "hidden" || s.width <= 0 || s.height <= 0) return [];
-					let l = t.dataset.styleKey || t.dataset.itemKey || String(r);
-					return (s.left < c.left - 1 || s.top < c.top - 1 || s.right > c.right + 1 || s.bottom > c.bottom + 1) && (n += 1, e.push({
+					let c = t.dataset.styleKey || t.dataset.itemKey || String(r);
+					return (s.left < l.left - 1 || s.top < l.top - 1 || s.right > l.right + 1 || s.bottom > l.bottom + 1) && (n += 1, e.push({
 						code: "ITEM_CLIPPED",
 						sectionKey: o,
-						styleKey: l
+						styleKey: c
 					})), (t.scrollWidth > t.clientWidth + 1 || t.scrollHeight > t.clientHeight + 1) && (i += 1, e.push({
 						code: "ITEM_CONTENT_OVERFLOW",
 						sectionKey: o,
-						styleKey: l
+						styleKey: c,
+						clientWidth: t.clientWidth,
+						scrollWidth: t.scrollWidth,
+						clientHeight: t.clientHeight,
+						scrollHeight: t.scrollHeight
 					})), [{
-						styleKey: l,
+						styleKey: c,
 						order: r,
 						left: s.left,
 						top: s.top,
@@ -11598,8 +11647,16 @@ var nb = {
 						bottom: s.bottom
 					}];
 				});
-				for (let n = 0; n < l.length; n += 1) for (let r = n + 1; r < l.length; r += 1) {
-					let i = l[n], a = l[r];
+				if (!u.length) {
+					let t = T.value.find((e) => e.sectionKey === o), n = globalThis.getComputedStyle?.(r)?.backgroundImage || "none";
+					!(t?.compositionPolicy?.allowEmpty === !0 || t?.aiDesign?.allowEmpty === !0) && n === "none" && (s += 1, e.push({
+						code: "EMPTY_VISIBLE_SECTION",
+						sectionKey: o,
+						message: `${t?.name || o} 섹션에 표시할 콘텐츠가 없습니다.`
+					}));
+				}
+				for (let n = 0; n < u.length; n += 1) for (let r = n + 1; r < u.length; r += 1) {
+					let i = u[n], a = u[r];
 					i.left < a.right && i.right > a.left && i.top < a.bottom && i.bottom > a.top && (t += 1, e.push({
 						code: "ITEM_COLLISION",
 						sectionKey: o,
@@ -11607,40 +11664,41 @@ var nb = {
 						relatedStyleKey: i.styleKey
 					}));
 				}
-				if (l.length) {
-					let t = Math.max(...l.map((e) => e.bottom - c.top)), n = Math.max(0, c.height - t);
-					n > Math.max(320, c.height * .5) && (a += 1, e.push({
+				if (u.length) {
+					let t = Math.max(...u.map((e) => e.bottom - l.top)), n = Math.max(0, l.height - t);
+					n > Math.max(320, l.height * .5) && (a += 1, e.push({
 						code: "SECTION_DEAD_SPACE_EXCESS",
 						sectionKey: o,
 						emptyHeight: Math.round(n)
 					}));
 				}
-			}), g && e.push({
+			}), _ && e.push({
 				code: "REQUIRED_ASSET_PLACEHOLDER",
-				count: g
-			}), h.forEach((t) => e.push({
+				count: _
+			}), g.forEach((t) => e.push({
 				code: "REQUIRED_SECTION_KEY_VISUAL_MISSING",
 				sectionKey: t.pageSectionInstanceId,
 				assetRequestId: t.assetRequestId
 			})), {
-				count: t + g + n + i + a + s + c + l,
-				blockingCount: t + g + n + i + s + c,
-				warningCount: a + l,
+				count: t + _ + n + i + a + s + c + l + u,
+				blockingCount: t + _ + n + i + s + c + l,
+				warningCount: a + u,
 				collisionCount: t,
-				placeholderAssetCount: g,
+				placeholderAssetCount: _,
 				clippedItemCount: n,
 				overflowItemCount: i,
 				deadSpaceSectionCount: a,
-				duplicateCollectionCopyCount: s,
-				genericCopyCount: c,
-				lowContrastTextCount: l,
+				emptySectionCount: s,
+				duplicateCollectionCopyCount: c,
+				genericCopyCount: l,
+				lowContrastTextCount: u,
 				viewport: w.value ? "mobile" : "desktop",
 				diagnostics: e
 			};
 		}
 		return t({
-			inspectLayoutCollisions: Lt,
-			inspectLayoutQuality: Rt
+			inspectLayoutCollisions: zt,
+			inspectLayoutQuality: Bt
 		}), (t, n) => (B(), V("div", {
 			ref_key: "rendererRoot",
 			ref: o,
@@ -11662,32 +11720,36 @@ var nb = {
 				key: t.sectionKey,
 				class: P(["rendered-section", [
 					`rendered-section--${t.sectionKey}`,
-					ye("section", t.sectionKey),
-					{ "is-outline-section": e.editable && e.outlineMode }
+					Se("section", t.sectionKey),
+					{
+						"is-outline-section": e.editable && e.outlineMode,
+						"is-flow-layout": _e(t)
+					}
 				]]),
 				"data-section-key": t.sectionKey,
-				"data-motion-target": _e("section", t.sectionKey)?.trigger === "viewport-enter" ? `section:${t.sectionKey}` : null,
+				"data-section-role": t.sectionRole || null,
+				"data-motion-target": ye("section", t.sectionKey)?.trigger === "viewport-enter" ? `section:${t.sectionKey}` : null,
 				style: xe({
-					...ct(t),
-					...be("section", t.sectionKey)
+					...ut(t),
+					...Ce("section", t.sectionKey)
 				}),
-				"aria-busy": Oe(t)?.kind === "processing" ? "true" : void 0
+				"aria-busy": Ae(t)?.kind === "processing" ? "true" : void 0
 			}, [
-				e.editable && Oe(t) ? (B(), V("div", {
+				e.editable && Ae(t) ? (B(), V("div", {
 					key: 0,
-					class: P(["section-ai-state", `is-${Oe(t).kind}`]),
+					class: P(["section-ai-state", `is-${Ae(t).kind}`]),
 					role: "status",
 					"aria-live": "polite",
-					title: Oe(t).detail || void 0
-				}, [Oe(t).kind === "processing" ? (B(), V("i", sb)) : W("", !0), H("span", null, F(Oe(t).label), 1)], 10, ob)) : W("", !0),
+					title: Ae(t).detail || void 0
+				}, [Ae(t).kind === "processing" ? (B(), V("i", sb)) : W("", !0), H("span", null, F(Ae(t).label), 1)], 10, ob)) : W("", !0),
 				H("div", cb, [H("div", {
-					class: "rendered-items",
-					style: xe(lt(t))
+					class: P(["rendered-items", { "is-flow-layout": _e(t) }]),
+					style: xe(dt(t))
 				}, [(B(!0), V(z, null, R(se(t), (r, i) => (B(), V("article", {
 					key: r.itemKey,
 					class: P(["rendered-item", [
 						`rendered-item--${r.fieldKind || "text"}`,
-						Ce(t, r, i),
+						Te(t, r, i),
 						{
 							"is-editable": e.editable && !r.isLocked,
 							"is-selected": e.editable && (e.selectedItemKey === fe(t, r) || e.selectedItemKeys.includes(fe(t, r))),
@@ -11695,8 +11757,9 @@ var nb = {
 							"is-hidden-in-output": e.editable && !te(t, r),
 							"is-locked": e.editable && r.isLocked,
 							"is-empty": e.editable && ce(t, r),
-							"is-free-positioned": N(t, r).positionMode !== "anchored",
+							"is-free-positioned": N(t, r).positionMode === "free",
 							"is-anchored-positioned": N(t, r).positionMode === "anchored",
+							"is-flow-positioned": N(t, r).positionMode === "flow",
 							"is-fixed-height": r.fieldKind === "text" && !kn(Dy)(r, N(t, r)),
 							"has-text-gradient": !!N(t, r).textGradientToken,
 							"has-text-background": !!(N(t, r).textBackgroundToken || N(t, r).textBackground)
@@ -11707,14 +11770,14 @@ var nb = {
 					"data-collection-key": r.collection?.collectionKey || null,
 					"data-collection-index": r.collection?.index ?? null,
 					"data-auto-height-measure": "true",
-					"data-motion-target": Se(t, r, i)?.trigger === "viewport-enter" ? `item:${fe(t, r)}` : null,
+					"data-motion-target": we(t, r, i)?.trigger === "viewport-enter" ? `item:${fe(t, r)}` : null,
 					style: xe({
-						...ut(t, r),
-						...we(t, r, i)
+						...ft(t, r),
+						...Ee(t, r, i)
 					}),
-					onClick: J((e) => bt(t, r, e), ["stop"]),
-					onDblclickCapture: (e) => Ft(e, t, r),
-					onPointerdown: (e) => Tt(e, t, r)
+					onClick: J((e) => St(t, r, e), ["stop"]),
+					onDblclickCapture: (e) => Lt(e, t, r),
+					onPointerdown: (e) => Dt(e, t, r)
 				}, [
 					e.editable && e.showGuides && !r.isLocked && e.selectedItemKey === fe(t, r) ? (B(), V("button", {
 						key: 0,
@@ -11722,8 +11785,8 @@ var nb = {
 						class: "component-action-handle component-move-handle",
 						"aria-label": `${r.name || r.itemKey} 이동`,
 						title: `${r.name || r.itemKey} 이동 (Shift + 방향키: 10px)`,
-						onPointerdown: (e) => Et(e, t, r),
-						onKeydown: (e) => Ot(e, t, r)
+						onPointerdown: (e) => Ot(e, t, r),
+						onKeydown: (e) => At(e, t, r)
 					}, null, 40, ub)) : W("", !0),
 					e.editable && e.showGuides && e.selectedItemKey === fe(t, r) ? (B(), V("button", {
 						key: 1,
@@ -11732,7 +11795,7 @@ var nb = {
 						"aria-label": `${r.name || r.itemKey} 속성`,
 						title: `${r.name || r.itemKey} 속성 열기`,
 						onPointerdown: n[0] ||= J(() => {}, ["stop"]),
-						onClick: (e) => Dt(e, t, r)
+						onClick: (e) => kt(e, t, r)
 					}, null, 40, db)) : W("", !0),
 					e.editable && !te(t, r) ? (B(), V("span", fb, "비노출")) : W("", !0),
 					e.editable && e.outlineMode ? (B(), V("span", pb, [
@@ -11751,7 +11814,7 @@ var nb = {
 						"mobile-breakpoint": Number(e.designSpec.responsive?.mobileBreakpoint || 720),
 						"tablet-breakpoint": Number(e.designSpec.responsive?.tabletBreakpoint || 1024),
 						editable: e.editable,
-						onSelectField: (e) => St(t, r, e)
+						onSelectField: (e) => wt(t, r, e)
 					}, null, 8, [
 						"render-spec",
 						"fields",
@@ -11773,64 +11836,64 @@ var nb = {
 						key: i.fieldKey,
 						class: P(["rendered-component-field-shell", {
 							"is-hidden-in-output": e.editable && !ne(t, r, i),
-							"is-selected-field": e.editable && He(t, r, i),
+							"is-selected-field": e.editable && We(t, r, i),
 							"is-locked-field": e.editable && i.isLocked
 						}]),
-						style: xe(Be(t, r, i)),
+						style: xe(He(t, r, i)),
 						"data-field-key": i.fieldKey,
 						"data-field-kind": i.fieldKind,
-						"data-field-style-key": Ve(t, r, i),
-						"aria-selected": e.editable ? String(He(t, r, i)) : void 0,
-						tabindex: e.editable && He(t, r, i) ? 0 : -1,
-						onClick: J((e) => xt(e, t, r, i), ["stop"])
+						"data-field-style-key": Ue(t, r, i),
+						"aria-selected": e.editable ? String(We(t, r, i)) : void 0,
+						tabindex: e.editable && We(t, r, i) ? 0 : -1,
+						onClick: J((e) => Ct(e, t, r, i), ["stop"])
 					}, [
 						i.fieldKind === "cta" ? (B(), V("a", {
 							key: 0,
 							class: "rendered-cta rendered-component-field",
-							style: xe(ze(t, r, i)),
+							style: xe(Ve(t, r, i)),
 							href: le(j(t, r, i)),
 							target: j(t, r, i)?.target || "_self",
 							rel: j(t, r, i)?.target === "_blank" ? "noopener noreferrer" : void 0,
 							draggable: !e.editable && void 0,
-							onClick: J((e) => xt(e, t, r, i), ["stop"]),
-							onDragstart: wt
+							onClick: J((e) => Ct(e, t, r, i), ["stop"]),
+							onDragstart: Et
 						}, F(j(t, r, i)?.label || i.name), 45, _b)) : i.fieldKind === "image" ? (B(), V(z, { key: 1 }, [H("div", {
 							class: "rendered-image-frame rendered-component-image-frame rendered-component-field",
-							style: xe(Je(t, r, i)),
-							role: Ye(t, r, i).role,
-							"aria-label": Ye(t, r, i).label,
-							"aria-hidden": Ye(t, r, i).ariaHidden,
-							"aria-busy": Oe(t, r, i)?.kind === "processing" ? "true" : void 0
+							style: xe(Xe(t, r, i)),
+							role: Ze(t, r, i).role,
+							"aria-label": Ze(t, r, i).label,
+							"aria-hidden": Ze(t, r, i).ariaHidden,
+							"aria-busy": Ae(t, r, i)?.kind === "processing" ? "true" : void 0
 						}, [ie(j(t, r, i)) ? W("", !0) : (B(), V("div", {
 							key: 0,
 							class: "rendered-image__placeholder",
 							"data-asset-target-key": `${t.sectionKey}:${r.itemKey}:${i.fieldKey}`
-						}, [H("span", null, F(i.name), 1), n[2] ||= H("small", null, "이미지 준비 중", -1)], 8, yb))], 12, vb), e.editable && Oe(t, r, i) ? (B(), V("div", {
+						}, [H("span", null, F(i.name), 1), n[2] ||= H("small", null, "이미지 준비 중", -1)], 8, yb))], 12, vb), e.editable && Ae(t, r, i) ? (B(), V("div", {
 							key: 0,
-							class: P(["item-ai-state", `is-${Oe(t, r, i).kind}`]),
+							class: P(["item-ai-state", `is-${Ae(t, r, i).kind}`]),
 							role: "status",
 							"aria-live": "polite"
-						}, [Oe(t, r, i).kind === "processing" ? (B(), V("i", bb)) : W("", !0), H("span", null, F(Oe(t, r, i).label), 1)], 2)) : W("", !0)], 64)) : ue(j(t, r, i)) && gt(t, r, i) ? (B(), V("div", {
+						}, [Ae(t, r, i).kind === "processing" ? (B(), V("i", bb)) : W("", !0), H("span", null, F(Ae(t, r, i).label), 1)], 2)) : W("", !0)], 64)) : ue(j(t, r, i)) && vt(t, r, i) ? (B(), V("div", {
 							key: 2,
 							class: P(["rendered-text rendered-text--lines rendered-component-field", { "rendered-text--title": i.textType === "title" }]),
-							style: xe(ze(t, r, i)),
+							style: xe(Ve(t, r, i)),
 							"data-field-key": i.fieldKey,
-							onClick: J((e) => Pt(e, t, r, i), ["stop"]),
-							onDblclick: J((e) => Nt(e, t, r, i), ["stop"])
-						}, [(B(!0), V(z, null, R(_t(t, r, i), (e) => (B(), V("div", {
+							onClick: J((e) => It(e, t, r, i), ["stop"]),
+							onDblclick: J((e) => Ft(e, t, r, i), ["stop"])
+						}, [(B(!0), V(z, null, R(yt(t, r, i), (e) => (B(), V("div", {
 							key: `${i.fieldKey}-line-${e.index}`,
-							class: P(["rendered-text-line", yt(e)]),
-							style: xe(vt(e)),
+							class: P(["rendered-text-line", xt(e)]),
+							style: xe(bt(e)),
 							"data-text-line-index": e.index
-						}, [H("span", Cb, F(e.text), 1)], 14, Sb))), 128))], 46, xb)) : ue(j(t, r, i)) && Re(t, r, i).listType ? (B(), js(Ta(dt(t, r, i)), {
+						}, [H("span", Cb, F(e.text), 1)], 14, Sb))), 128))], 46, xb)) : ue(j(t, r, i)) && Be(t, r, i).listType ? (B(), js(Ta(pt(t, r, i)), {
 							key: 3,
 							class: P(["rendered-text rendered-component-field", { "rendered-text--title": i.textType === "title" }]),
-							style: xe(ze(t, r, i)),
+							style: xe(Ve(t, r, i)),
 							"data-field-key": i.fieldKey,
-							onClick: J((e) => Pt(e, t, r, i), ["stop"]),
-							onDblclick: J((e) => Nt(e, t, r, i), ["stop"])
+							onClick: J((e) => It(e, t, r, i), ["stop"]),
+							onDblclick: J((e) => Ft(e, t, r, i), ["stop"])
 						}, {
-							default: Mr(() => [(B(!0), V(z, null, R(ft(j(t, r, i)), (e, t) => (B(), V("li", { key: `${i.fieldKey}-${t}` }, [H("span", wb, F(e), 1)]))), 128))]),
+							default: Mr(() => [(B(!0), V(z, null, R(mt(j(t, r, i)), (e, t) => (B(), V("li", { key: `${i.fieldKey}-${t}` }, [H("span", wb, F(e), 1)]))), 128))]),
 							_: 2
 						}, 1064, [
 							"class",
@@ -11841,33 +11904,33 @@ var nb = {
 						])) : ue(j(t, r, i)) ? (B(), V("p", {
 							key: 4,
 							class: P(["rendered-text rendered-component-field", { "rendered-text--title": i.textType === "title" }]),
-							style: xe(ze(t, r, i)),
+							style: xe(Ve(t, r, i)),
 							"data-field-key": i.fieldKey,
-							onClick: J((e) => Pt(e, t, r, i), ["stop"]),
-							onDblclick: J((e) => Nt(e, t, r, i), ["stop"])
+							onClick: J((e) => It(e, t, r, i), ["stop"]),
+							onDblclick: J((e) => Ft(e, t, r, i), ["stop"])
 						}, [H("span", Eb, F(j(t, r, i)), 1)], 46, Tb)) : (B(), V("p", {
 							key: 5,
 							class: "rendered-empty rendered-component-field",
 							"data-field-key": i.fieldKey,
-							onClick: J((e) => Pt(e, t, r, i), ["stop"]),
-							onDblclick: J((e) => Nt(e, t, r, i), ["stop"])
+							onClick: J((e) => It(e, t, r, i), ["stop"]),
+							onDblclick: J((e) => Ft(e, t, r, i), ["stop"])
 						}, F(de(r, i)), 41, Db)),
-						e.editable && e.showGuides && He(t, r, i) ? (B(), V("button", {
+						e.editable && e.showGuides && We(t, r, i) ? (B(), V("button", {
 							key: 6,
 							type: "button",
 							class: "component-action-handle component-field-properties-handle",
 							"aria-label": `${i.name || i.fieldKey} 속성 열기`,
 							title: `${i.name || i.fieldKey} 속성 열기`,
 							onPointerdown: n[1] ||= J(() => {}, ["stop"]),
-							onClick: (e) => Ue(e, t, r, i)
+							onClick: (e) => Ge(e, t, r, i)
 						}, null, 40, Ob)) : W("", !0),
-						e.editable && e.showGuides && He(t, r, i) && !r.isLocked && !i.isLocked ? (B(!0), V(z, { key: 7 }, R(We(i), (e) => (B(), V("button", {
+						e.editable && e.showGuides && We(t, r, i) && !r.isLocked && !i.isLocked ? (B(!0), V(z, { key: 7 }, R(Ke(i), (e) => (B(), V("button", {
 							key: e,
 							type: "button",
 							class: P(["item-resize-handle component-field-resize-handle", `item-resize-handle--${e}`]),
-							"aria-label": Ge(i, e),
-							onPointerdown: J((n) => Ke(n, t, r, i, e), ["stop"]),
-							onKeydown: (n) => qe(n, t, r, i, e)
+							"aria-label": qe(i, e),
+							onPointerdown: J((n) => Je(n, t, r, i, e), ["stop"]),
+							onKeydown: (n) => Ye(n, t, r, i, e)
 						}, null, 42, kb))), 128)) : W("", !0)
 					], 14, gb))), 128))], 4)) : r.fieldKind === "cta" ? (B(), V("a", {
 						key: 6,
@@ -11876,53 +11939,53 @@ var nb = {
 						target: j(t, r)?.target || "_self",
 						rel: j(t, r)?.target === "_blank" ? "noopener noreferrer" : void 0,
 						draggable: !e.editable && void 0,
-						onClick: Ct,
-						onDragstart: wt
+						onClick: Tt,
+						onDragstart: Et
 					}, F(j(t, r)?.label || r.name), 41, Ab)) : r.fieldKind === "image" ? (B(), V(z, { key: 7 }, [
 						H("div", {
 							class: P(["rendered-image-frame", `rendered-image-frame--${N(t, r).shape || "square"}`]),
-							style: xe(Le(t, r)),
-							role: Xe(t, r).role,
-							"aria-label": Xe(t, r).label,
-							"aria-hidden": Xe(t, r).ariaHidden,
-							"aria-busy": Oe(t, r)?.kind === "processing" ? "true" : void 0
+							style: xe(ze(t, r)),
+							role: Qe(t, r).role,
+							"aria-label": Qe(t, r).label,
+							"aria-hidden": Qe(t, r).ariaHidden,
+							"aria-busy": Ae(t, r)?.kind === "processing" ? "true" : void 0
 						}, [ie(j(t, r)) ? W("", !0) : (B(), V("div", {
 							key: 0,
 							class: "rendered-image__placeholder",
 							"data-asset-target-key": `${t.sectionKey}:${r.itemKey}:`
 						}, [H("span", null, F(r.name), 1), H("small", null, F(j(t, r)?.value || "이미지 준비 중"), 1)], 8, Mb))], 14, jb),
-						e.editable && Oe(t, r) ? (B(), V("div", {
+						e.editable && Ae(t, r) ? (B(), V("div", {
 							key: 0,
-							class: P(["item-ai-state", `is-${Oe(t, r).kind}`]),
+							class: P(["item-ai-state", `is-${Ae(t, r).kind}`]),
 							role: "status",
 							"aria-live": "polite",
-							title: Oe(t, r).detail || void 0
-						}, [Oe(t, r).kind === "processing" ? (B(), V("i", Pb)) : W("", !0), H("span", null, F(Oe(t, r).label), 1)], 10, Nb)) : W("", !0),
-						e.editable && e.showGuides && !r.isLocked && e.selectedItemKey === fe(t, r) ? (B(!0), V(z, { key: 1 }, R(ke(t, r), (e) => (B(), V("button", {
+							title: Ae(t, r).detail || void 0
+						}, [Ae(t, r).kind === "processing" ? (B(), V("i", Pb)) : W("", !0), H("span", null, F(Ae(t, r).label), 1)], 10, Nb)) : W("", !0),
+						e.editable && e.showGuides && !r.isLocked && e.selectedItemKey === fe(t, r) ? (B(!0), V(z, { key: 1 }, R(je(t, r), (e) => (B(), V("button", {
 							key: e,
 							type: "button",
 							class: P(["item-resize-handle image-resize-handle", [`item-resize-handle--${e}`, `image-resize-handle--${e}`]]),
-							"aria-label": je(r, e),
-							onPointerdown: J((n) => kt(n, t, r, e), ["stop"]),
-							onKeydown: (n) => At(n, t, r, e)
+							"aria-label": Ne(r, e),
+							onPointerdown: J((n) => jt(n, t, r, e), ["stop"]),
+							onKeydown: (n) => Mt(n, t, r, e)
 						}, null, 42, Fb))), 128)) : W("", !0)
-					], 64)) : (B(), V(z, { key: 8 }, [ue(j(t, r)) && gt(t, r) ? (B(), V("div", {
+					], 64)) : (B(), V(z, { key: 8 }, [ue(j(t, r)) && vt(t, r) ? (B(), V("div", {
 						key: 0,
 						class: P(["rendered-text rendered-text--lines", { "rendered-text--title": r.textType === "title" }]),
-						onClick: J((e) => Pt(e, t, r), ["stop"]),
-						onDblclick: J((e) => Nt(e, t, r), ["stop"])
-					}, [(B(!0), V(z, null, R(_t(t, r), (e) => (B(), V("div", {
+						onClick: J((e) => It(e, t, r), ["stop"]),
+						onDblclick: J((e) => Ft(e, t, r), ["stop"])
+					}, [(B(!0), V(z, null, R(yt(t, r), (e) => (B(), V("div", {
 						key: `${r.itemKey}-line-${e.index}`,
-						class: P(["rendered-text-line", yt(e)]),
-						style: xe(vt(e)),
+						class: P(["rendered-text-line", xt(e)]),
+						style: xe(bt(e)),
 						"data-text-line-index": e.index
-					}, [H("span", Rb, F(e.text), 1)], 14, Lb))), 128))], 42, Ib)) : ue(j(t, r)) && N(t, r).listType ? (B(), js(Ta(dt(t, r)), {
+					}, [H("span", Rb, F(e.text), 1)], 14, Lb))), 128))], 42, Ib)) : ue(j(t, r)) && N(t, r).listType ? (B(), js(Ta(pt(t, r)), {
 						key: 1,
 						class: P(["rendered-text", { "rendered-text--title": r.textType === "title" }]),
-						onClick: J((e) => Pt(e, t, r), ["stop"]),
-						onDblclick: J((e) => Nt(e, t, r), ["stop"])
+						onClick: J((e) => It(e, t, r), ["stop"]),
+						onDblclick: J((e) => Ft(e, t, r), ["stop"])
 					}, {
-						default: Mr(() => [(B(!0), V(z, null, R(ft(j(t, r)), (e, t) => (B(), V("li", { key: `${r.itemKey}-${t}` }, [H("span", zb, F(e), 1)]))), 128))]),
+						default: Mr(() => [(B(!0), V(z, null, R(mt(j(t, r)), (e, t) => (B(), V("li", { key: `${r.itemKey}-${t}` }, [H("span", zb, F(e), 1)]))), 128))]),
 						_: 2
 					}, 1064, [
 						"class",
@@ -11931,30 +11994,30 @@ var nb = {
 					])) : ue(j(t, r)) ? (B(), V("p", {
 						key: 2,
 						class: P(["rendered-text", { "rendered-text--title": r.textType === "title" }]),
-						onClick: J((e) => Pt(e, t, r), ["stop"]),
-						onDblclick: J((e) => Nt(e, t, r), ["stop"])
+						onClick: J((e) => It(e, t, r), ["stop"]),
+						onDblclick: J((e) => Ft(e, t, r), ["stop"])
 					}, [H("span", Vb, F(j(t, r)), 1)], 42, Bb)) : (B(), V("p", {
 						key: 3,
 						class: "rendered-empty",
-						onClick: J((e) => Pt(e, t, r), ["stop"]),
-						onDblclick: J((e) => Nt(e, t, r), ["stop"])
+						onClick: J((e) => It(e, t, r), ["stop"]),
+						onDblclick: J((e) => Ft(e, t, r), ["stop"])
 					}, F(de(r)), 41, Hb))], 64)),
-					e.editable && e.showGuides && !r.isLocked && r.fieldKind !== "image" && e.selectedItemKey === fe(t, r) ? (B(!0), V(z, { key: 9 }, R(ke(t, r), (e) => (B(), V("button", {
+					e.editable && e.showGuides && !r.isLocked && r.fieldKind !== "image" && e.selectedItemKey === fe(t, r) ? (B(!0), V(z, { key: 9 }, R(je(t, r), (e) => (B(), V("button", {
 						key: e,
 						type: "button",
 						class: P(["item-resize-handle component-resize-handle", [`item-resize-handle--${e}`, `component-resize-handle--${e}`]]),
-						"aria-label": je(r, e),
-						onPointerdown: J((n) => kt(n, t, r, e), ["stop"]),
-						onKeydown: (n) => At(n, t, r, e)
+						"aria-label": Ne(r, e),
+						onPointerdown: J((n) => jt(n, t, r, e), ["stop"]),
+						onKeydown: (n) => Mt(n, t, r, e)
 					}, null, 42, Ub))), 128)) : W("", !0)
-				], 46, lb))), 128))], 4)]),
+				], 46, lb))), 128))], 6)]),
 				e.editable && e.showGuides ? (B(), V("button", {
 					key: 1,
 					class: "section-resize-handle",
 					type: "button",
 					"aria-label": `${t.name} 섹션 높이 조절`,
 					title: `${t.name} 섹션 높이 조절`,
-					onPointerdown: (e) => It(e, t)
+					onPointerdown: (e) => Rt(e, t)
 				}, null, 40, Wb)) : W("", !0)
 			], 14, ab))), 128))
 		], 6));

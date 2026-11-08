@@ -206,7 +206,7 @@ function validateLayoutSpec(value, sections = []) {
       }
     }
     const enums = [
-      ["positionMode", ["free", "anchored"], "INVALID_POSITION_MODE"],
+      ["positionMode", ["free", "anchored", "flow"], "INVALID_POSITION_MODE"],
       ["horizontalAnchor", ["left", "center", "right"], "INVALID_HORIZONTAL_ANCHOR"],
       ["verticalAnchor", ["top", "middle", "bottom"], "INVALID_VERTICAL_ANCHOR"],
       ["widthMode", ["fit-content", "fixed", "fill"], "INVALID_WIDTH_MODE"],
@@ -215,6 +215,8 @@ function validateLayoutSpec(value, sections = []) {
       ["fontStyle", ["italic"], "INVALID_FONT_STYLE"],
       ["textDecoration", ["underline"], "INVALID_TEXT_DECORATION"],
       ["listType", ["bullet", "number"], "INVALID_LIST_TYPE"],
+      ["justifySelf", ["start", "center", "end", "stretch"], "INVALID_JUSTIFY_SELF"],
+      ["alignSelf", ["start", "center", "end", "stretch"], "INVALID_ALIGN_SELF"],
     ];
     enums.forEach(([property, allowed, code]) => {
       if (style?.[property] !== undefined && !allowed.includes(style[property])) {
@@ -233,6 +235,11 @@ function validateLayoutSpec(value, sections = []) {
         && (!Number.isFinite(offset) || offset < -1200 || offset > 1200)) {
         errors.push({ code: "INVALID_ANCHOR_OFFSET", path: `${path}.${offsetProperty}` });
       }
+    }
+    const paddingPx = Number(style?.paddingPx);
+    if (style?.paddingPx !== undefined
+      && (!Number.isFinite(paddingPx) || paddingPx < 0 || paddingPx > 160)) {
+      errors.push({ code: "INVALID_ITEM_PADDING", path: `${path}.paddingPx` });
     }
   }
   if (value?.responsiveLayouts !== undefined
@@ -254,6 +261,21 @@ function validateLayoutSpec(value, sections = []) {
     const height = Number(style?.minHeight);
     if (style?.minHeight !== undefined && (!Number.isFinite(height) || height < 50 || height > MAXIMUM_SECTION_HEIGHT_PX)) {
       errors.push({ code: "INVALID_SECTION_HEIGHT", path: `sectionStyles.${key}.minHeight` });
+    }
+    if (style?.layoutMode !== undefined && !["free", "flow"].includes(style.layoutMode)) {
+      errors.push({ code: "INVALID_SECTION_LAYOUT_MODE", path: `sectionStyles.${key}.layoutMode` });
+    }
+    for (const [property, maximum] of [["layoutColumns", 6], ["mobileLayoutColumns", 2]]) {
+      const value = Number(style?.[property]);
+      if (style?.[property] !== undefined && (!Number.isInteger(value) || value < 1 || value > maximum)) {
+        errors.push({ code: "INVALID_SECTION_LAYOUT_COLUMNS", path: `sectionStyles.${key}.${property}` });
+      }
+    }
+    for (const property of ["layoutGapPx", "mobileLayoutGapPx", "layoutPaddingBlockPx", "mobileLayoutPaddingBlockPx"]) {
+      const value = Number(style?.[property]);
+      if (style?.[property] !== undefined && (!Number.isFinite(value) || value < 0 || value > 200)) {
+        errors.push({ code: "INVALID_SECTION_LAYOUT_SPACING", path: `sectionStyles.${key}.${property}` });
+      }
     }
     if (style?.backgroundSize !== undefined && !["contain", "cover", "100% auto"].includes(style.backgroundSize)) {
       errors.push({ code: "INVALID_SECTION_BACKGROUND_SIZE", path: `sectionStyles.${key}.backgroundSize` });

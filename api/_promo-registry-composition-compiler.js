@@ -10,6 +10,7 @@ const { fetchPinnedResourceVersions } = require("./_promo-content-resources-stor
 const { validateLayoutSpec } = require("./_wizard-form-template-layout-store");
 const { avoidTextComponentOverlaps } = require("./_promo-layout-text-collision");
 const { uniqueLayoutKeys } = require("./_promo-layout-fit");
+const { applyFlowLayoutRecipe } = require("./_promo-layout-recipe");
 
 function clone(value) {
   return value == null ? value : JSON.parse(JSON.stringify(value));
@@ -439,6 +440,18 @@ async function compileRegistryComposition({
           selected.layoutOverrides?.mobile?.horizontalAlignments,
         );
       }
+      const qualityRecipe = applyFlowLayoutRecipe({
+        section: { ...section, sectionKey: sectionId },
+        items,
+        sectionStyle: sectionStyles[sectionId],
+        desktopItemStyles: presetItemStyles,
+        mobileItemStyles,
+        tokenBindings,
+        referenceLayoutSpec: spec.layoutReference?.layoutSpec || {},
+      });
+      sectionStyles[sectionId] = qualityRecipe.sectionStyle;
+      Object.assign(presetItemStyles, qualityRecipe.desktopItemStyles);
+      Object.assign(mobileItemStyles, qualityRecipe.mobileItemStyles);
       if (usesSectionKeyVisualTarget(section)) {
         const assetRequest = {
           assetRequestId: stableUuid(proposalId, sectionId, "section-key-visual"),
@@ -473,6 +486,7 @@ async function compileRegistryComposition({
         layoutSelectionLocked: Boolean(section.layoutSelectionLocked),
         layoutPresets: clone(section.layoutPresets || []),
         selectedLayoutKey: resolvedLayout?.layoutKey || planned.layoutKey,
+        layoutRecipe: qualityRecipe.recipe,
         resourceReferences: clone(planned.resourceReferences || []),
         items,
       });

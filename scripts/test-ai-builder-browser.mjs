@@ -21,6 +21,7 @@ let overviewParseCount = 0;
 const overviewRequests = [];
 let compositionRequest = null;
 let applyRequest = null;
+let qualityGateSaveRequest = null;
 let chatStage = "idle";
 let confirmedWireframeRevision = null;
 let wireframeEditRequest = null;
@@ -95,6 +96,26 @@ const server = http.createServer(async (request, response) => {
     response.end(JSON.stringify({
       ok: true,
       document: { id: "document-browser", mode: "ai", status: "draft", currentDocumentRevision: 0 },
+    }));
+    return;
+  }
+  if (url.pathname === "/api/promo-builder-documents" && request.method === "PATCH") {
+    const chunks = [];
+    for await (const chunk of request) chunks.push(chunk);
+    qualityGateSaveRequest = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    const savedSnapshot = {
+      ...qualityGateSaveRequest.snapshot,
+      documentRevision: Number(qualityGateSaveRequest.baseDocumentRevision || 0) + 1,
+      qualityGate: {
+        ...qualityGateSaveRequest.snapshot.qualityGate,
+        documentRevision: Number(qualityGateSaveRequest.baseDocumentRevision || 0) + 1,
+      },
+    };
+    response.writeHead(200, { "Content-Type": "application/json" });
+    response.end(JSON.stringify({
+      ok: true,
+      revision: savedSnapshot.documentRevision,
+      snapshot: savedSnapshot,
     }));
     return;
   }
@@ -348,18 +369,6 @@ const server = http.createServer(async (request, response) => {
     }));
     return;
   }
-  if (url.pathname === "/api/promo-page-composition-preview" && request.method === "POST") {
-    response.writeHead(200, { "Content-Type": "application/json" });
-    response.end(JSON.stringify({
-      ok: true,
-      documentId: "document-browser",
-      proposalId: "proposal-browser",
-      documentRevision: 0,
-      snapshot: snapshotWithAssetStatus("ready"),
-      renderFingerprint: "preview-render-browser",
-    }));
-    return;
-  }
   if (url.pathname === "/api/promo-page-composition-apply" && request.method === "POST") {
     const chunks = [];
     for await (const chunk of request) chunks.push(chunk);
@@ -532,7 +541,44 @@ try {
     recentMessages: chatMessages.slice(-4).map((message) => ({ role: message.role, type: message.type, text: message.text })),
   })}`);
   await page.getByText("AI 이미지를 생성하고 있습니다.").waitFor();
-  await page.getByText("디자인 미리보기를 완성했습니다.").waitFor({ timeout: 10000 });
+  try {
+    await page.getByText("디자인 미리보기를 완성했습니다.").waitFor({ timeout: 10000 });
+  } catch (error) {
+    throw new Error(`AI Builder quality completion failed: ${JSON.stringify({
+      saveRequest: qualityGateSaveRequest,
+      errorText: await page.locator(".ai-builder-error").allInnerTexts(),
+      gateText: await page.locator(".ai-builder-quality-gate").allInnerTexts(),
+      statusText: await page.locator(".ai-result-header").allInnerTexts(),
+      assetPollCount,
+      itemMeasurements: await page.locator(".rendered-item[data-style-key]").evaluateAll((nodes) => nodes.map((node) => ({
+        styleKey: node.dataset.styleKey,
+        clientWidth: node.clientWidth,
+        scrollWidth: node.scrollWidth,
+        clientHeight: node.clientHeight,
+        scrollHeight: node.scrollHeight,
+        inlineStyle: node.getAttribute("style"),
+        computed: {
+          height: getComputedStyle(node).height,
+          minHeight: getComputedStyle(node).minHeight,
+          maxHeight: getComputedStyle(node).maxHeight,
+          overflow: getComputedStyle(node).overflow,
+          position: getComputedStyle(node).position,
+        },
+        children: [...node.children].map((child) => ({
+          className: child.className,
+          clientHeight: child.clientHeight,
+          scrollHeight: child.scrollHeight,
+          computedHeight: getComputedStyle(child).height,
+          fontSize: getComputedStyle(child).fontSize,
+          lineHeight: getComputedStyle(child).lineHeight,
+        })),
+      }))),
+    })}`, { cause: error });
+  }
+  assert.equal(qualityGateSaveRequest?.snapshot?.qualityGate?.state, "passed");
+  assert.equal(qualityGateSaveRequest?.snapshot?.qualityGate?.blockingCount, 0);
+  assert.equal(qualityGateSaveRequest?.snapshot?.designSpec?.sectionStyles?.hero?.layoutMode, "flow");
+  assert.equal(qualityGateSaveRequest?.snapshot?.designSpec?.itemStyles?.["hero.title"]?.positionMode, "flow");
   await page.waitForTimeout(350);
   assert.equal(await page.locator(".ai-chat-messages.has-active-turn").count(), 0);
   assert.equal(await page.locator(".ai-chat-thinking").count(), 0);

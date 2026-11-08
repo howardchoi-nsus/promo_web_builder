@@ -82,20 +82,12 @@ module.exports = async function handler(req, res) {
     }
     if (proposal.contractVersion === 3) {
       requireBuilderFlag("compositionV3");
-      const compiled = await compileCurrentRegistryProposal({
+      const compiledSnapshot = await compileCurrentRegistryProposal({
         sql,
         proposal,
         documentId,
         documentRevision: baseDocumentRevision,
       });
-      const compiledSnapshot = compiled.snapshot;
-      const previewRenderFingerprint = String(body.previewRenderFingerprint || "").trim();
-      if (previewRenderFingerprint && previewRenderFingerprint !== compiled.renderFingerprint) {
-        return res.status(409).json({
-          error: "Compiled design differs from the reviewed page preview",
-          code: "FINAL_RENDER_MISMATCH",
-        });
-      }
       if (confirmedWireframe
         && computeStructureFingerprint(compiledSnapshot) !== confirmedWireframe.structureFingerprint) {
         return res.status(409).json({
@@ -142,7 +134,6 @@ module.exports = async function handler(req, res) {
         documentId,
         revision: applied.revision,
         snapshot: applied.snapshot,
-        renderFingerprint: compiled.renderFingerprint,
         assetJobs,
         assetWarning,
         warnings: [assetWarning, sessionWarning].filter(Boolean),

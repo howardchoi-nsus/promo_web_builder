@@ -97,6 +97,13 @@ export function loadBuilderDocument(documentId) {
   return request(`/api/promo-builder-documents?documentId=${encodeURIComponent(documentId)}`);
 }
 
+export function saveBuilderDocument(payload) {
+  return request("/api/promo-builder-documents", {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function createChatWorkspace(documentId, requestId = "") {
   return request("/api/promo-builder-chat-sessions", {
     method: "POST",
@@ -265,13 +272,6 @@ export async function analyzeOverviewWithRetry(naturalLanguage, options = {}) {
 
 export function createCompositionProposal(payload) {
   return request("/api/promo-page-composition-proposals", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-}
-
-export function previewCompositionProposal(payload) {
-  return request("/api/promo-page-composition-preview", {
     method: "POST",
     body: JSON.stringify(payload),
   });

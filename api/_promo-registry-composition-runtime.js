@@ -1,23 +1,8 @@
 const { fetchRegistryCompositionCandidates } = require("./_promo-registry-composition-candidates");
 const { compileRegistryComposition } = require("./_promo-registry-composition-compiler");
-const { fingerprint } = require("./_promo-composition-fingerprint");
 
 function conflict(message, code) {
   return Object.assign(new Error(message), { code, statusCode: 409 });
-}
-
-function renderProjection(snapshot = {}) {
-  return {
-    contractVersion: Number(snapshot.contractVersion || 0),
-    content: snapshot.content || {},
-    designSpec: snapshot.designSpec || {},
-    motionSpec: snapshot.motionSpec || {},
-    assets: snapshot.assets || {},
-  };
-}
-
-function computeRenderFingerprint(snapshot) {
-  return fingerprint(renderProjection(snapshot));
 }
 
 async function compileCurrentRegistryProposal({
@@ -43,7 +28,7 @@ async function compileCurrentRegistryProposal({
   if (currentCandidates.resourceFingerprint !== proposal.resourceFingerprint) {
     throw conflict("Pinned content resources changed", "RESOURCE_FINGERPRINT_MISMATCH");
   }
-  const snapshot = await compileRegistryComposition({
+  return compileRegistryComposition({
     sql,
     proposalSnapshot: proposal.snapshot,
     candidates: currentCandidates,
@@ -52,14 +37,8 @@ async function compileCurrentRegistryProposal({
     proposalId: proposal.id,
     documentRevision,
   });
-  return {
-    snapshot,
-    renderFingerprint: computeRenderFingerprint(snapshot),
-  };
 }
 
 module.exports = {
   compileCurrentRegistryProposal,
-  computeRenderFingerprint,
-  renderProjection,
 };
