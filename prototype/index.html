@@ -1594,7 +1594,74 @@
                   <small v-for="usage in itemComponentUsage.sections" :key="`${usage.id}-${usage.itemKey}`">
                     {{ usage.name }} v{{ usage.sectionVersion }} · {{ usage.itemKey }}
                   </small>
+                  <template v-if="itemComponentUsage.generationReadiness">
+                    <strong>{{ itemComponentUsage.generationReadiness.ready ? 'AI 생성 사용 가능' : 'AI 생성 설정 미완료' }}</strong>
+                    <span v-if="itemComponentUsage.generationReadiness.ready">활성 Section과 Layout에 연결되어 Planner 후보로 사용할 수 있습니다.</span>
+                    <small v-for="blocker in itemComponentUsage.generationReadiness.blockers" :key="blocker.code">
+                      {{ blocker.code }} · {{ blocker.message }}
+                    </small>
+                  </template>
                 </div>
+                <details
+                  v-if="selectedItemComponent && (String(selectedItemComponent.systemSeedCode || '').startsWith('ref-pattern-') || selectedItemComponent.capabilities?.referenceDerived === true)"
+                  class="template-basic-settings"
+                >
+                  <summary>AI 생성 사용 준비</summary>
+                  <div class="template-basic-settings-body stack">
+                    <div v-if="referencePublishOptions.error" class="outline-item danger-state">
+                      <strong>옵션을 불러오지 못했습니다.</strong><span>{{ referencePublishOptions.error }}</span>
+                    </div>
+                    <label class="field">
+                      <span>연결 Section</span>
+                      <select :value="referencePublishForm.sectionId" :disabled="referencePublishLoading" @change="selectReferencePublishSection($event.target.value)">
+                        <option value="">선택해 주세요</option>
+                        <option v-for="section in referencePublishOptions.sections" :key="section.id" :value="section.id">
+                          {{ section.name }} · {{ section.sectionRole }} · {{ section.layouts.length }} Layout
+                        </option>
+                      </select>
+                    </label>
+                    <label class="field"><span>Section itemKey</span><input v-model.trim="referencePublishForm.itemKey" type="text" maxlength="80" @input="referencePublishPlan = null" /></label>
+                    <label class="field">
+                      <span>Layout Preset</span>
+                      <select v-model="referencePublishForm.layoutPresetIds" multiple size="4" @change="referencePublishPlan = null">
+                        <option
+                          v-for="layout in (referencePublishOptions.sections.find((section) => section.id === referencePublishForm.sectionId)?.layouts || [])"
+                          :key="layout.id"
+                          :value="layout.id"
+                        >{{ layout.name }}{{ layout.isDefault ? ' · 기본' : '' }}</option>
+                      </select>
+                      <small>Desktop과 Mobile 배치가 모두 있는 Layout을 선택합니다.</small>
+                    </label>
+                    <label class="field">
+                      <span>승인 레퍼런스 근거</span>
+                      <select v-model="referencePublishForm.referenceIds" multiple size="6" @change="referencePublishPlan = null">
+                        <option
+                          v-for="reference in referencePublishOptions.references"
+                          :key="reference.id"
+                          :value="reference.id"
+                          :disabled="!reference.plannerReadiness?.ready"
+                        >{{ reference.title }} · {{ reference.qualityScore.toFixed(1) }}{{ reference.plannerReadiness?.ready ? '' : ' · 사용 불가' }}</option>
+                      </select>
+                      <small>품질·권리·Layout Spec 검토를 통과한 레퍼런스만 선택할 수 있습니다.</small>
+                    </label>
+                    <div class="subsection-actions">
+                      <button class="tiny-button" type="button" :disabled="referencePublishLoading || !referencePublishForm.sectionId || !referencePublishForm.itemKey" @click="prepareReferenceComponentPublish">
+                        {{ referencePublishLoading ? '검사 중…' : 'Dry Run' }}
+                      </button>
+                    </div>
+                    <div v-if="referencePublishPlan" class="outline-item" :class="{ 'danger-state': !referencePublishPlan.readiness?.ready }">
+                      <strong>{{ referencePublishPlan.readiness?.ready ? '발행 준비 완료' : '발행 차단' }}</strong>
+                      <span v-if="referencePublishPlan.readiness?.ready">RenderSpec, Section, Layout, 레퍼런스와 Shell 정책 검사를 통과했습니다.</span>
+                      <small v-for="blocker in referencePublishPlan.readiness?.blockers" :key="blocker.code">{{ blocker.code }} · {{ blocker.message }}</small>
+                    </div>
+                    <template v-if="referencePublishPlan?.readiness?.ready">
+                      <label class="field"><span>변경 사유</span><input v-model.trim="referencePublishForm.changeNote" type="text" maxlength="1000" placeholder="검토 및 발행 사유" /></label>
+                      <div class="subsection-actions">
+                        <button class="tiny-button primary" type="button" :disabled="referencePublishLoading || !referencePublishForm.changeNote" @click="publishReferenceComponent">컴포넌트 발행</button>
+                      </div>
+                    </template>
+                  </div>
+                </details>
                 <label class="field"><span>{{ t('entity.component.name') }}</span><input v-model="itemComponentEditor.name" type="text" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /></label>
                 <label class="field"><span>{{ t('common.field.description') }}</span><input v-model="itemComponentEditor.description" type="text" :disabled="!showNewItemComponentForm && selectedItemComponent.versionStatus !== 'draft'" /></label>
                 <details class="template-basic-settings" open>

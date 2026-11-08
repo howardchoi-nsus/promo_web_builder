@@ -253,7 +253,9 @@ function isRetryableProviderError(error) {
 function responseOutputText(payload) {
   if (typeof payload.output_text === "string") return payload.output_text;
   return (payload.output || []).flatMap((item) => item.content || [])
-    .find((part) => part.type === "output_text")?.text || "";
+    .filter((part) => part.type === "output_text" && typeof part.text === "string")
+    .map((part) => part.text)
+    .join("");
 }
 
 function parseStructuredOutput(output, type) {
@@ -671,6 +673,7 @@ module.exports = {
   generateSectionCompositionPlan,
   generateStructuredPlannerResult,
   generateStructuredVisionResult,
+  responseOutputText,
   parseStructuredOutput,
   isRetryableProviderError,
   isProviderBillingError,

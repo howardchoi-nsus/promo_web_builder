@@ -62,6 +62,7 @@ const overviewRetry = ref(null);
 const ACTIVE_CHAT_STORAGE_KEY = "promoAiBuilder.activeChat.v2";
 const LEGACY_CHAT_STORAGE_KEY = "promoAiBuilder.chatWorkspace.v1";
 const messages = ref([]);
+const visibleMessages = computed(() => messages.value.filter((message) => message.type !== "internal"));
 const attachments = ref([]);
 const chatInput = ref("");
 const chatSubmitting = ref(false);
@@ -81,6 +82,9 @@ const streamingMessageIds = ref([]);
 const chatFollowOutput = ref(true);
 const showLatestMessageButton = ref(false);
 const pendingClarificationQuestions = ref([]);
+const pendingClarificationItems = ref([]);
+const clarificationAskedFields = ref([]);
+const clarificationAnsweredFields = ref([]);
 const pendingChatActionKey = ref("");
 const pendingChatActionLabel = ref("");
 const fileInput = ref(null);
@@ -98,9 +102,12 @@ const wireframeEditing = ref(false);
 const wireframeEditDraft = ref({ content: {}, alignment: {} });
 const wireframeEditBaseline = ref({ content: {}, alignment: {} });
 const wireframeSaving = ref(false);
+const wireframeRevealState = ref("complete");
+const wireframeRevealedCount = ref(Number.MAX_SAFE_INTEGER);
 let assetPollingCancelled = false;
 let localeUnsubscribe = null;
 const streamTimers = new Map();
+const wireframeRevealTimers = new Set();
 let chatScrollProgrammatic = false;
 let chatScrollReleaseTimer = 0;
 const localeRevision = ref(0);
@@ -137,13 +144,13 @@ const currentStatus = computed(() => {
     return { label: `${pendingChatActionLabel.value || "요청"} 처리 중`, state: "진행 중" };
   }
   if (hasStreamingMessage.value) return { label: "답변을 작성하고 있습니다.", state: "진행 중" };
-  if (requirementsEditing.value) return { label: "요구사항 수정 중", state: "확인 필요" };
-  if (wireframeEditing.value) return { label: "페이지 구성 수정 중", state: "확인 필요" };
+  if (requirementsEditing.value) return { label: "요청 내용 수정 중", state: "확인 필요" };
+  if (wireframeEditing.value) return { label: "페이지 내용 수정 중", state: "확인 필요" };
   if (store.stage === "failed") return { label: store.error?.message || "처리 실패", state: "실패" };
-  if (store.snapshot && store.stage === "render_ready") return { label: "최종 디자인 생성 완료", state: "완료" };
-  if (wireframeSnapshot.value) return { label: "페이지 구성 미리보기 준비 완료", state: "확인 필요" };
-  if (store.overviewDraft) return { label: "요구사항 분석 완료", state: "확인 필요" };
-  return { label: "요구사항을 입력해 주세요", state: "대기" };
+  if (store.snapshot && store.stage === "render_ready") return { label: "디자인 미리보기 준비 완료", state: "완료" };
+  if (wireframeSnapshot.value) return { label: "페이지 구성 확인 및 수정 가능", state: "확인 필요" };
+  if (store.overviewDraft) return { label: "요청 정리 완료 · 페이지 미리보기 생성 가능", state: "확인 필요" };
+  return { label: "만들고 싶은 프로모션을 입력해 주세요", state: "대기" };
 });
 const wireframeDisplaySnapshot = computed(() => wireframeSnapshot.value || store.proposal?.snapshot || null);
 const wireframeSections = computed(() => buildWireframeSections(wireframeDisplaySnapshot.value, {
@@ -228,6 +235,43 @@ function prefersReducedMotion() {
   return Boolean(globalThis.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches);
 }
 
+function clearWireframeRevealTimers() {
+  wireframeRevealTimers.forEach((timer) => globalThis.clearTimeout(timer));
+  wireframeRevealTimers.clear();
+}
+
+function completeWireframeReveal() {
+  clearWireframeRevealTimers();
+  wireframeRevealedCount.value = Number.MAX_SAFE_INTEGER;
+  wireframeRevealState.value = "complete";
+}
+
+async function startWireframeReveal() {
+  clearWireframeRevealTimers();
+  const sectionCount = wireframeSections.value.length;
+  if (
+    capabilities.value.progressivePreviewReveal === false
+    || prefersReducedMotion()
+    || sectionCount < 1
+  ) {
+    completeWireframeReveal();
+    return;
+  }
+  wireframeRevealedCount.value = 0;
+  wireframeRevealState.value = "prepared";
+  await nextTick();
+  wireframeRevealState.value = "revealing";
+  const sequenceCount = Math.min(sectionCount, 8);
+  for (let index = 0; index < sequenceCount; index += 1) {
+    const timer = globalThis.setTimeout(() => {
+      wireframeRevealTimers.delete(timer);
+      wireframeRevealedCount.value = index + 1;
+      if (index + 1 === sequenceCount) completeWireframeReveal();
+    }, index * 110);
+    wireframeRevealTimers.add(timer);
+  }
+}
+
 function setProgrammaticChatScroll(callback) {
   chatScrollProgrammatic = true;
   clearTimeout(chatScrollReleaseTimer);
@@ -293,35 +337,64 @@ function finishAssistantStream(message) {
   if (timer) clearTimeout(timer);
   streamTimers.delete(message.id);
   message.displayText = message.text;
+  message.displaySegments = [];
   message.isStreaming = false;
   streamingMessageIds.value = streamingMessageIds.value.filter((id) => id !== message.id);
   if (chatFollowOutput.value) nextTick(() => scrollChatMessageIntoView(message.id));
   else showLatestMessageButton.value = true;
 }
 
+function assistantStreamSegments(text, maxCharacters = 52) {
+  const sourceLines = String(text || "").replace(/\r\n?/g, "\n").split("\n");
+  const segments = [];
+  sourceLines.forEach((sourceLine, sourceIndex) => {
+    const line = sourceLine.trim();
+    if (!line) {
+      if (sourceIndex > 0 && segments.at(-1) !== "") segments.push("");
+      return;
+    }
+    const words = line.split(/\s+/).filter(Boolean);
+    let current = "";
+    words.forEach((word) => {
+      const next = current ? `${current} ${word}` : word;
+      if (current && next.length > maxCharacters) {
+        segments.push(current);
+        current = word;
+        return;
+      }
+      current = next;
+    });
+    if (current) segments.push(current);
+  });
+  return segments.length ? segments : [String(text || "")];
+}
+
 function streamAssistantMessage(message) {
   if (message.role !== "assistant" || !["assistant", "clarification"].includes(message.type) || !message.text) return;
   if (prefersReducedMotion()) {
     message.displayText = message.text;
+    message.displaySegments = [];
     message.isStreaming = false;
     return;
   }
-  const chunks = message.text.match(/\S+\s*/g) || [message.text];
+  const segments = assistantStreamSegments(message.text);
   message.displayText = "";
+  message.displaySegments = [];
   message.isStreaming = true;
   streamingMessageIds.value = [...streamingMessageIds.value, message.id];
   let index = 0;
-  const chunksPerTick = chunks.length > 24 ? 3 : chunks.length > 12 ? 2 : 1;
   const reveal = () => {
-    index = Math.min(chunks.length, index + chunksPerTick);
-    message.displayText = chunks.slice(0, index).join("");
+    index = Math.min(segments.length, index + 1);
+    message.displaySegments = segments.slice(0, index);
+    message.displayText = message.displaySegments.join("\n");
     if (chatFollowOutput.value) nextTick(() => scrollChatMessageIntoView(message.id));
     else showLatestMessageButton.value = true;
-    if (index >= chunks.length) {
-      finishAssistantStream(message);
+    if (index >= segments.length) {
+      streamTimers.set(message.id, globalThis.setTimeout(() => finishAssistantStream(message), 220));
       return;
     }
-    streamTimers.set(message.id, globalThis.setTimeout(reveal, 28));
+    const delay = segments.length > 30 ? 55 : segments.length > 15 ? 70 : 90;
+    streamTimers.set(message.id, globalThis.setTimeout(reveal, delay));
   };
   reveal();
 }
@@ -420,7 +493,11 @@ async function persistMessage(message) {
   const index = messages.value.findIndex((item) => item.id === message.id);
   if (index >= 0) {
     const current = messages.value[index];
-    const transient = { displayText: current.displayText, isStreaming: current.isStreaming };
+    const transient = {
+      displayText: current.displayText,
+      displaySegments: current.displaySegments,
+      isStreaming: current.isStreaming,
+    };
     Object.assign(current, response.message, transient);
   }
   return response.message;
@@ -447,7 +524,7 @@ function normalizeRestoredMessages(value) {
   const seenIds = new Set();
   const recentByKey = new Map();
   for (const valueMessage of Array.isArray(value) ? value : []) {
-    const { displayText, isStreaming, ...message } = valueMessage || {};
+    const { displayText, displaySegments, isStreaming, ...message } = valueMessage || {};
     if (!message.id || seenIds.has(message.id)) continue;
     seenIds.add(message.id);
     const key = duplicateMessageKey(message);
@@ -464,12 +541,25 @@ function normalizeRestoredMessages(value) {
 }
 
 function restorePendingClarificationsFromMessages() {
+  const askedFields = new Set(clarificationAskedFields.value);
+  messages.value.filter((message) => message.type === "clarification").forEach((message) => {
+    const items = Array.isArray(message.clarificationItems)
+      ? message.clarificationItems
+      : Array.isArray(message.metadata?.clarificationItems) ? message.metadata.clarificationItems : [];
+    items.forEach((item) => {
+      const field = String(item?.field || "").trim();
+      if (field) askedFields.add(field);
+    });
+  });
+  clarificationAskedFields.value = [...askedFields];
   const latest = [...messages.value].reverse().find((message) => message.type === "clarification");
   const latestUserIndex = messages.value.findLastIndex((message) => message.role === "user");
   const clarificationIndex = latest ? messages.value.findIndex((message) => message.id === latest.id) : -1;
-  pendingClarificationQuestions.value = clarificationIndex > latestUserIndex && Array.isArray(latest?.questions)
-    ? latest.questions.slice(0, 3)
-    : [];
+  const items = Array.isArray(latest?.clarificationItems)
+    ? latest.clarificationItems
+    : Array.isArray(latest?.metadata?.clarificationItems) ? latest.metadata.clarificationItems : [];
+  pendingClarificationItems.value = clarificationIndex > latestUserIndex ? items.slice(0, 3) : [];
+  pendingClarificationQuestions.value = pendingClarificationItems.value.map((item) => item.question);
 }
 
 function resetAssistantStreams() {
@@ -497,7 +587,10 @@ function persistWorkspace() {
       overviewDraft: store.overviewDraft,
       overviewFingerprint: store.overviewFingerprint,
       pendingClarificationQuestions: pendingClarificationQuestions.value,
-      messages: messages.value.slice(-200).map(({ displayText, isStreaming, ...message }) => message),
+      pendingClarificationItems: pendingClarificationItems.value,
+      clarificationAskedFields: clarificationAskedFields.value,
+      clarificationAnsweredFields: clarificationAnsweredFields.value,
+      messages: messages.value.slice(-200).map(({ displayText, displaySegments, isStreaming, ...message }) => message),
       attachments: attachments.value.map(({ dataUrl, ...attachment }) => attachment),
       wireframeSnapshot: wireframeSnapshot.value,
       activeResultTab: activeResultTab.value,
@@ -518,7 +611,9 @@ function restoreWorkspaceCache() {
     messages.value = normalizeRestoredMessages(cached.messages);
     attachments.value = Array.isArray(cached.attachments) ? cached.attachments : [];
     wireframeSnapshot.value = cached.wireframeSnapshot || null;
-    activeResultTab.value = cached.activeResultTab || (wireframeSnapshot.value ? "wireframe" : "requirements");
+    activeResultTab.value = ["requirements", "wireframe", "final"].includes(cached.activeResultTab)
+      ? cached.activeResultTab
+      : "requirements";
     splitPercent.value = Math.min(65, Math.max(28, Number(cached.splitPercent || 42)));
     store.documentId = cached.documentId || "";
     store.documentRevision = Number(cached.documentRevision || 0);
@@ -534,6 +629,15 @@ function restoreWorkspaceCache() {
     store.overviewFingerprint = cached.overviewFingerprint || "";
     pendingClarificationQuestions.value = Array.isArray(cached.pendingClarificationQuestions)
       ? cached.pendingClarificationQuestions.slice(0, 3)
+      : [];
+    pendingClarificationItems.value = Array.isArray(cached.pendingClarificationItems)
+      ? cached.pendingClarificationItems.slice(0, 3)
+      : [];
+    clarificationAskedFields.value = Array.isArray(cached.clarificationAskedFields)
+      ? [...new Set(cached.clarificationAskedFields.map(String).filter(Boolean))]
+      : [];
+    clarificationAnsweredFields.value = Array.isArray(cached.clarificationAnsweredFields)
+      ? [...new Set(cached.clarificationAnsweredFields.map(String).filter(Boolean))]
       : [];
     requirementsEditing.value = Boolean(cached.requirementsEditing && cached.requirementsEditDraft);
     requirementsEditDraft.value = requirementsEditing.value ? cached.requirementsEditDraft : null;
@@ -599,17 +703,21 @@ function resetWorkspaceState() {
   requirementsEditBaseline.value = null;
   requirementsSaving.value = false;
   pendingClarificationQuestions.value = [];
+  pendingClarificationItems.value = [];
+  clarificationAskedFields.value = [];
+  clarificationAnsweredFields.value = [];
   wireframeEditing.value = false;
   wireframeEditDraft.value = { content: {}, alignment: {} };
   wireframeEditBaseline.value = { content: {}, alignment: {} };
   wireframeSaving.value = false;
+  completeWireframeReveal();
 }
 
 function appendWelcomeMessage() {
   if (messages.value.length) return;
   appendMessage(
     "assistant",
-    "한두 문장으로 시작해도 됩니다. 만들고 싶은 프로모션과 알고 있는 혜택만 적어 주세요. 필요한 내용은 제가 한 번에 최대 3개씩 질문하고, 답변을 요구사항으로 정리해 드립니다.\n\n예: 신규 회원에게 1만원 쿠폰과 무료 배송을 제공하는 겨울 이벤트를 만들어줘.",
+    "한두 문장으로 시작해도 됩니다. 만들고 싶은 프로모션과 핵심 혜택만 알려주세요. 필요한 내용은 한 번만 확인하며, 답변 없이 AI가 구성하도록 선택할 수도 있습니다.\n\n예: 신규 회원에게 1만원 쿠폰과 무료 배송을 제공하는 고급스러운 겨울 이벤트를 만들어줘.",
     { type: "assistant" },
   );
 }
@@ -686,7 +794,9 @@ async function openChatSession(summary) {
       messages.value = normalizeRestoredMessages(cached.messages);
       attachments.value = Array.isArray(cached.attachments) ? cached.attachments : [];
       wireframeSnapshot.value = cached.wireframeSnapshot || null;
-      activeResultTab.value = cached.activeResultTab || (wireframeSnapshot.value ? "wireframe" : "requirements");
+      activeResultTab.value = ["requirements", "wireframe", "final"].includes(cached.activeResultTab)
+        ? cached.activeResultTab
+        : "requirements";
       store.documentId = cached.documentId || "";
       store.documentRevision = Number(cached.documentRevision || 0);
       store.requestId = cached.requestId || "";
@@ -702,6 +812,16 @@ async function openChatSession(summary) {
       pendingClarificationQuestions.value = Array.isArray(cached.pendingClarificationQuestions)
         ? cached.pendingClarificationQuestions.slice(0, 3)
         : [];
+      pendingClarificationItems.value = Array.isArray(cached.pendingClarificationItems)
+        ? cached.pendingClarificationItems.slice(0, 3)
+        : [];
+      clarificationAskedFields.value = Array.isArray(cached.clarificationAskedFields)
+        ? [...new Set(cached.clarificationAskedFields.map(String).filter(Boolean))]
+        : [];
+      clarificationAnsweredFields.value = Array.isArray(cached.clarificationAnsweredFields)
+        ? [...new Set(cached.clarificationAnsweredFields.map(String).filter(Boolean))]
+        : [];
+      restorePendingClarificationsFromMessages();
       if (store.documentId) {
         const loaded = await loadBuilderDocument(store.documentId).catch(() => null);
         if (loaded) {
@@ -922,38 +1042,83 @@ const CLARIFICATION_QUESTION_BY_FIELD = Object.freeze({
   market: "프로모션을 운영할 국가 또는 지역은 어디인가요?",
 });
 
-function clarificationQuestions(response = {}) {
-  const questions = [];
-  const add = (question) => {
+function clarificationItems(response = {}) {
+  const items = [];
+  const excludedFields = new Set([
+    ...clarificationAskedFields.value,
+    ...clarificationAnsweredFields.value,
+  ]);
+  const add = (field, question) => {
+    const normalizedField = String(field || "").trim();
     const normalized = String(question || "").trim();
-    if (normalized && !questions.includes(normalized)) questions.push(normalized);
+    if (!normalizedField || excludedFields.has(normalizedField) || !normalized) return;
+    if (items.some((item) => item.field === normalizedField || item.question === normalized)) return;
+    items.push({ field: normalizedField, question: normalized });
   };
   const missing = new Set(Array.isArray(response.missingCriticalInputs)
     ? response.missingCriticalInputs
     : []);
   ["mainOffer", "promotionPurpose", "promotionPurposeOther", "audience", "market"]
     .filter((field) => missing.has(field))
-    .forEach((field) => add(CLARIFICATION_QUESTION_BY_FIELD[field]));
+    .forEach((field) => add(field, CLARIFICATION_QUESTION_BY_FIELD[field]));
 
   const overview = response.overview || {};
   (overview.additionalInformation || []).forEach((item) => {
-    if (questions.length >= 3 || item?.confirmationRequired !== true) return;
+    if (items.length >= 3 || item?.confirmationRequired !== true) return;
     const label = String(item.label || "추가 정보").trim();
+    const field = `additionalInformation:${label.toLocaleLowerCase()}`;
     if (/기간|일정|날짜|date|period/i.test(label)) {
-      add("프로모션 진행 기간은 언제부터 언제까지인가요?");
+      add(field, "프로모션 진행 기간은 언제부터 언제까지인가요?");
       return;
     }
     if (isConfirmationPlaceholder(item.value) || !String(item.value || "").trim()) {
-      add(`${label}에 대해 확정된 내용을 알려주세요.`);
+      add(field, `${label}에 대해 확정된 내용을 알려주세요.`);
     }
   });
-  [...(overview.notices || []), ...(overview.legalInformation || [])].forEach((item) => {
-    if (questions.length >= 3 || item?.confirmationRequired !== true) return;
+  (overview.notices || []).forEach((item) => {
+    if (items.length >= 3 || item?.confirmationRequired !== true) return;
     if (isConfirmationPlaceholder(item.body) || !String(item.body || "").trim()) {
-      add(`${String(item.title || "필수 안내").trim()}에 포함할 확정 문구가 있나요?`);
+      const title = String(item.title || "필수 안내").trim();
+      add(`notices:${title.toLocaleLowerCase()}`, `${title}에 포함할 확정 문구가 있나요?`);
     }
   });
-  return questions.slice(0, 3);
+  (overview.legalInformation || []).forEach((item) => {
+    if (items.length >= 3 || item?.confirmationRequired !== true) return;
+    if (isConfirmationPlaceholder(item.body) || !String(item.body || "").trim()) {
+      const title = String(item.title || "필수 안내").trim();
+      add(`legalInformation:${title.toLocaleLowerCase()}`, `${title}에 포함할 확정 문구가 있나요?`);
+    }
+  });
+  return items.slice(0, 3);
+}
+
+function markClarificationsAsked(items = []) {
+  clarificationAskedFields.value = [...new Set([
+    ...clarificationAskedFields.value,
+    ...items.map((item) => String(item?.field || "").trim()).filter(Boolean),
+  ])];
+}
+
+function markPendingClarificationsAnswered() {
+  if (!pendingClarificationItems.value.length) return;
+  clarificationAnsweredFields.value = [...new Set([
+    ...clarificationAnsweredFields.value,
+    ...pendingClarificationItems.value.map((item) => item.field).filter(Boolean),
+  ])];
+  pendingClarificationItems.value = [];
+  pendingClarificationQuestions.value = [];
+}
+
+function expireRequirementActionMessages() {
+  messages.value.forEach((message) => {
+    if (!Array.isArray(message.actions)) return;
+    message.actions = message.actions.map((action) => (
+      ["confirm_requirements", "revise_requirements"].includes(action.key)
+        && (!action.status || action.status === "proposed")
+        ? { ...action, status: "expired" }
+        : action
+    ));
+  });
 }
 
 function clarificationMessage(questions) {
@@ -967,16 +1132,20 @@ function clarificationMessage(questions) {
 }
 
 function conversationInstruction(input) {
-  const current = String(store.naturalLanguage || "").trim();
   const followUp = String(input || "").trim();
-  const continueDraft = Boolean(
-    current
-    && followUp
-    && !wireframeSnapshot.value
-    && (pendingClarificationQuestions.value.length || store.overviewDraft),
-  );
-  if (!continueDraft) return followUp;
-  return `[사용자의 추가 답변]\n${followUp}\n\n[기존 프로모션 요청]\n${current}`;
+  const turns = messages.value
+    .filter((message) => message.role === "user" && message.type === "user" && String(message.text || "").trim())
+    .map((message) => String(message.text).trim())
+    .slice(-12);
+  if (!turns.length) return followUp;
+  if (turns.length === 1) return turns[0];
+  return [
+    "[최초 프로모션 요청]",
+    turns[0],
+    "",
+    "[사용자의 추가 답변 및 수정 요청]",
+    ...turns.slice(1).map((turn, index) => `${index + 1}. ${turn}`),
+  ].join("\n");
 }
 
 async function analyze(instruction = store.naturalLanguage) {
@@ -1032,22 +1201,29 @@ async function analyze(instruction = store.naturalLanguage) {
       requirementsRevision.value = Number(savedRequirements.requirements.revision);
     }
     updateStatusMessage(operationId, "요구사항 분석을 완료했습니다.", "completed");
-    const questions = clarificationQuestions(response);
+    const items = clarificationItems(response);
+    const questions = items.map((item) => item.question);
+    markClarificationsAsked(items);
+    pendingClarificationItems.value = items;
     pendingClarificationQuestions.value = questions;
-    if (questions.length) {
+    if (items.length) {
       await appendPersistedMessage("assistant", clarificationMessage(questions), {
         type: "clarification",
-        metadata: { questions },
+        metadata: { questions, clarificationItems: items },
+        actions: [
+          { key: "confirm_requirements", label: "AI가 구성하고 미리보기 생성" },
+          { key: "revise_requirements", label: "요청 내용 직접 수정" },
+        ],
       });
     } else {
       await appendPersistedMessage(
         "assistant",
-        "요구사항을 정리했습니다. 오른쪽 ‘요청 내용’에서 확인할 수 있습니다. 수정할 내용은 채팅으로 편하게 말해 주세요. 이대로 진행하려면 페이지 구성 만들기를 눌러주세요.",
+        "요청 내용을 정리했습니다. 수정할 내용은 채팅으로 편하게 말씀해 주세요. 이대로 진행하면 먼저 페이지 구성 미리보기를 만들어 드립니다.",
         {
           type: "assistant",
           actions: [
-            { key: "confirm_requirements", label: "페이지 구성 만들기" },
-            { key: "revise_requirements", label: "직접 수정" },
+            { key: "confirm_requirements", label: "페이지 미리보기 생성" },
+            { key: "revise_requirements", label: "요청 내용 수정" },
           ],
         },
       );
@@ -1079,6 +1255,8 @@ async function submitChat() {
       attachmentIds: attachments.value.map((item) => item.id),
     });
     messagePersisted = true;
+    markPendingClarificationsAnswered();
+    expireRequirementActionMessages();
     const referenceSummary = await analyzeAttachments();
     const combined = composeOverviewInstruction(conversationInstruction(input), referenceSummary);
     store.naturalLanguage = combined;
@@ -1131,6 +1309,7 @@ function wireframeAlignmentKey(section, component) {
 }
 
 function beginWireframeEdit() {
+  completeWireframeReveal();
   const content = {};
   const alignment = {};
   wireframeSections.value.forEach((section) => {
@@ -1284,12 +1463,12 @@ async function completeRequirementsEdit(action) {
     await appendPersistedMessage("user", action.label, { type: "action" });
     await appendPersistedMessage(
       "assistant",
-      "수정된 요구사항을 저장했습니다. 오른쪽 요구사항 Tree를 확인한 뒤 승인해 주세요.",
+      "수정한 요청 내용을 저장했습니다. 이대로 페이지 미리보기를 만들거나 추가 내용을 채팅으로 알려주세요.",
       {
         type: "assistant",
         actions: [
-          { key: "confirm_requirements", label: "요구사항 승인" },
-          { key: "revise_requirements", label: "수정 요청" },
+          { key: "confirm_requirements", label: "페이지 미리보기 생성" },
+          { key: "revise_requirements", label: "추가 수정" },
         ],
       },
     );
@@ -1312,12 +1491,12 @@ async function cancelRequirementsEdit(action) {
     await appendPersistedMessage("user", action.label, { type: "action" });
     await appendPersistedMessage(
       "assistant",
-      "요구사항 수정을 취소했습니다. 기존 요구사항을 확인한 뒤 승인하거나 다시 수정해 주세요.",
+      "요청 내용 수정을 취소했습니다. 기존 내용으로 페이지 미리보기를 만들거나 채팅으로 수정할 수 있습니다.",
       {
         type: "assistant",
         actions: [
-          { key: "confirm_requirements", label: "요구사항 승인" },
-          { key: "revise_requirements", label: "수정 요청" },
+          { key: "confirm_requirements", label: "페이지 미리보기 생성" },
+          { key: "revise_requirements", label: "다시 수정" },
         ],
       },
     );
@@ -1339,7 +1518,17 @@ function isChatActionDisabled(action) {
 
 function visibleMessageActions(message) {
   if (message?.isStreaming) return [];
-  return (message?.actions || []).filter((action) => !action.status || action.status === "proposed");
+  const messageIndex = messages.value.findIndex((candidate) => candidate.id === message?.id);
+  const latestUserIndex = messages.value.findLastIndex((candidate) => candidate.role === "user");
+  return (message?.actions || []).filter((action) => {
+    if (action.status && action.status !== "proposed") return false;
+    if (
+      ["confirm_requirements", "revise_requirements"].includes(action.key)
+      && messageIndex >= 0
+      && messageIndex < latestUserIndex
+    ) return false;
+    return true;
+  });
 }
 
 function chatActionIdentity(action) {
@@ -1359,7 +1548,7 @@ function appendActionMessage(action) {
 
 function actionProgressMessage(action) {
   return ({
-    confirm_requirements: "페이지 구성 미리보기를 준비하고 있습니다.",
+    confirm_requirements: "페이지 구성 미리보기를 만들고 있습니다.",
     approve_wireframe: "최종 디자인 생성을 준비하고 있습니다.",
     revise_requirements: "요구사항 수정 모드를 준비하고 있습니다.",
     revise_wireframe: "페이지 구성 수정 모드를 준비하고 있습니다.",
@@ -1389,6 +1578,7 @@ async function handleChatAction(action) {
       return;
     }
     if (action.key === "confirm_requirements") {
+      markPendingClarificationsAnswered();
       const messageRequest = appendActionMessage(action);
       updateStatusMessage(operationId, actionProgressMessage(action), "in_progress");
       const actionRequest = capabilities.value.chatWorkspaceV1
@@ -1427,7 +1617,7 @@ async function handleChatAction(action) {
         beginRequirementsEdit();
         await appendPersistedMessage(
           "assistant",
-          "수정이 필요한 항목을 오른쪽 요구사항 Tree에서 수정해 주세요. 수정이 끝나면 ‘수정 완료’를 눌러 주세요.",
+          "오른쪽 요청 요약의 ‘세부 내용 보기’를 열어 필요한 항목을 수정해 주세요. 수정이 끝나면 ‘수정 완료’를 눌러 주세요.",
           {
             type: "assistant",
             actions: [
@@ -1595,7 +1785,7 @@ async function prepareWireframe(existingOperationId = "") {
   store.warning = null;
   store.stage = "resolving_policy";
   const operationId = existingOperationId || `wireframe-${Date.now()}`;
-  updateStatusMessage(operationId, "페이지 구성 미리보기를 생성하고 있습니다.", "in_progress");
+  updateStatusMessage(operationId, "콘텐츠와 레이아웃을 구성하고 있습니다.", "in_progress");
   try {
     const currentFingerprint = refreshOverviewFingerprint();
     await ensureDocument();
@@ -1647,6 +1837,7 @@ async function prepareWireframe(existingOperationId = "") {
     store.proposal = proposal;
     store.stage = "review_required";
     activeResultTab.value = "wireframe";
+    await startWireframeReveal();
     updateStatusMessage(operationId, "페이지 구성 미리보기 생성을 완료했습니다.", "completed");
     await appendPersistedMessage("assistant", "페이지의 배치와 실제 문구를 확인할 수 있는 구성 미리보기를 만들었습니다. 오른쪽 결과를 확인해 주세요.", {
       type: "assistant",
@@ -1686,10 +1877,10 @@ async function approveWireframe(action = {}, existingOperationId = "") {
     }
     await applyReadyProposal(store.proposal, { navigate: false });
     activeResultTab.value = "final";
-    updateStatusMessage(operationId, "최종 디자인 생성을 완료했습니다.", "completed");
-    await appendPersistedMessage("assistant", "승인한 페이지 구성을 기준으로 최종 디자인을 완성했습니다.", {
+    updateStatusMessage(operationId, "디자인 미리보기를 완성했습니다.", "completed");
+    await appendPersistedMessage("assistant", "요청 내용을 기준으로 실제 웹페이지 디자인을 완성했습니다. 오른쪽에서 데스크톱과 모바일 화면을 확인하고, 수정할 내용은 채팅으로 말씀해 주세요.", {
       type: "assistant",
-      actions: [{ key: "open_output", label: "Web Output 열기" }],
+      actions: [{ key: "open_output", label: "새 창에서 확인" }],
     });
   } catch (error) {
     updateStatusMessage(operationId, `최종 디자인 생성에 실패했습니다. ${error.message}`, "failed");
@@ -2077,6 +2268,35 @@ function overviewEntries(
   });
 }
 
+function readableRequirement(value) {
+  if (Array.isArray(value)) {
+    return value.map(readableRequirement).filter(Boolean).join(", ");
+  }
+  if (value && typeof value === "object") {
+    return readableRequirement(value.value || value.label || value.title || value.description || "");
+  }
+  return String(value ?? "").trim();
+}
+
+const requirementSummaryItems = computed(() => {
+  const overview = store.overviewDraft || {};
+  return [
+    { key: "purpose", label: "목적", value: readableRequirement(overview.promotionPurposeOther || overview.promotionPurpose) },
+    { key: "audience", label: "대상", value: readableRequirement(overview.audience) },
+    { key: "offer", label: "핵심 혜택", value: readableRequirement(overview.mainOffer) },
+    { key: "tone", label: "분위기", value: readableRequirement(overview.campaignTone) },
+  ].filter((item) => item.value);
+});
+
+const requirementSectionLabels = computed(() => {
+  const sections = Array.isArray(store.overviewDraft?.contentSections)
+    ? store.overviewDraft.contentSections
+    : [];
+  return sections.map((section, index) => (
+    readableRequirement(section?.title || section?.label || section?.sectionType) || `콘텐츠 ${index + 1}`
+  )).filter(Boolean);
+});
+
 const requirementsChangedCount = computed(() => (
   requirementsEditing.value
     ? overviewEntries(requirementsEditDraft.value).filter(requirementEntryChanged).length
@@ -2094,6 +2314,9 @@ watch([
   requirementsEditDraft,
   requirementsEditBaseline,
   pendingClarificationQuestions,
+  pendingClarificationItems,
+  clarificationAskedFields,
+  clarificationAnsweredFields,
 ], persistWorkspace, { deep: true });
 watch(() => [store.documentId, store.documentRevision, store.stage, store.overviewDraft, store.snapshot], persistWorkspace, { deep: true });
 watch(interactionLocked, (locked, wasLocked) => {
@@ -2124,6 +2347,9 @@ watch(interactionLocked, (locked, wasLocked) => {
     const latest = [...messages.value].reverse().find((message) => message.text);
     if (latest) scrollChatMessageIntoView(latest.id, "smooth");
   });
+});
+watch(activeResultTab, (tab) => {
+  if (tab !== "wireframe" && wireframeRevealState.value !== "complete") completeWireframeReveal();
 });
 
 onMounted(async () => {
@@ -2191,6 +2417,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   assetPollingCancelled = true;
   resetAssistantStreams();
+  clearWireframeRevealTimers();
   clearTimeout(chatScrollReleaseTimer);
   localeUnsubscribe?.();
   localeUnsubscribe = null;
@@ -2306,7 +2533,9 @@ onBeforeUnmount(() => {
             <div
               ref="chatList"
               class="ai-chat-messages"
-              :class="{ 'has-active-turn': Boolean(activeChatTurnMessageId) && interactionLocked }"
+              :class="{
+                'has-active-turn': Boolean(activeChatTurnMessageId) && interactionLocked && !hasStreamingMessage,
+              }"
               aria-live="polite"
               :aria-busy="interactionLocked ? 'true' : 'false'"
               @scroll.passive="handleChatScroll"
@@ -2314,7 +2543,7 @@ onBeforeUnmount(() => {
               @touchmove.passive="pauseChatFollow"
             >
               <article
-                v-for="message in messages"
+                v-for="message in visibleMessages"
                 :key="message.id"
                 class="ai-chat-message"
                 :class="[
@@ -2335,7 +2564,21 @@ onBeforeUnmount(() => {
                     {{ message.status === 'in_progress' ? '진행 중' : message.status === 'completed' ? '완료' : '실패' }}
                   </span>
                 </div>
-                <p>{{ messageDisplayText(message) }}<span v-if="message.isStreaming" class="ai-chat-stream-caret" aria-hidden="true"></span></p>
+                <p v-if="message.isStreaming" class="ai-chat-streaming-copy" :aria-label="message.text">
+                  <span class="ai-chat-stream-lines" aria-hidden="true">
+                    <span
+                      v-for="(segment, segmentIndex) in message.displaySegments || []"
+                      :key="`${message.id}:line:${segmentIndex}`"
+                      class="ai-chat-stream-line"
+                      :class="{ 'is-blank': !segment }"
+                    >
+                      <template v-if="segment">{{ segment }}</template>
+                      <span v-else>&nbsp;</span>
+                      <span v-if="segmentIndex === message.displaySegments.length - 1" class="ai-chat-stream-caret" aria-hidden="true"></span>
+                    </span>
+                  </span>
+                </p>
+                <p v-else>{{ messageDisplayText(message) }}</p>
                 <div v-if="visibleMessageActions(message).length" class="ai-chat-actions">
                   <button
                     v-for="action in visibleMessageActions(message)"
@@ -2421,20 +2664,20 @@ onBeforeUnmount(() => {
             <span class="ai-chat-status" :data-state="currentStatus.state">{{ currentStatus.state }}</span>
           </header>
 
-          <ol class="ai-process-steps" aria-label="결과 보기">
+          <ol class="ai-process-steps" aria-label="제작 단계">
             <li :class="{ selected: activeResultTab === 'requirements', complete: store.overviewDraft }">
-              <button type="button" aria-label="요청 내용" :aria-current="activeResultTab === 'requirements' ? 'page' : undefined" @click="activeResultTab = 'requirements'">
-                <span>1</span>요구사항
+              <button type="button" aria-label="요청 요약" :aria-current="activeResultTab === 'requirements' ? 'step' : undefined" @click="activeResultTab = 'requirements'">
+                <span>1</span>요청 요약
               </button>
             </li>
             <li :class="{ selected: activeResultTab === 'wireframe', complete: wireframeDisplaySnapshot }">
-              <button type="button" aria-label="페이지 구성 미리보기" :disabled="!wireframeDisplaySnapshot" :aria-current="activeResultTab === 'wireframe' ? 'page' : undefined" @click="activeResultTab = 'wireframe'">
-                <span>2</span>페이지 구성
+              <button type="button" aria-label="페이지 구성 미리보기" :disabled="!wireframeDisplaySnapshot" :aria-current="activeResultTab === 'wireframe' ? 'step' : undefined" @click="activeResultTab = 'wireframe'">
+                <span>2</span>페이지 미리보기
               </button>
             </li>
             <li :class="{ selected: activeResultTab === 'final', complete: store.snapshot && store.stage === 'render_ready' }">
-              <button type="button" aria-label="최종 디자인" :disabled="!store.snapshot" :aria-current="activeResultTab === 'final' ? 'page' : undefined" @click="activeResultTab = 'final'">
-                <span>3</span>최종 디자인
+              <button type="button" aria-label="디자인 미리보기" :disabled="!store.snapshot" :aria-current="activeResultTab === 'final' ? 'step' : undefined" @click="activeResultTab = 'final'">
+                <span>3</span>디자인 미리보기
               </button>
             </li>
           </ol>
@@ -2442,63 +2685,66 @@ onBeforeUnmount(() => {
           <div class="ai-result-content">
             <section v-if="activeResultTab === 'requirements'" class="ai-requirements-tree">
               <header>
-                <strong>요청 내용</strong>
+                <strong>AI가 이해한 요청</strong>
                 <small v-if="requirementsEditing" class="is-editing">
                   편집 중 · 변경 {{ requirementsChangedCount }}개 · 완료/취소는 왼쪽 채팅에서 진행합니다.
                 </small>
-                <small v-else>생성 기준으로 내부 저장되며, 실제 문구와 배치는 페이지 구성에서 수정합니다.</small>
+                <small v-else>전문 용어 없이 핵심 내용만 확인하세요. 수정은 왼쪽 채팅에서 편하게 요청할 수 있습니다.</small>
               </header>
-              <ul v-if="store.overviewDraft" role="tree" :class="{ 'is-editing': requirementsEditing }">
-                <li
-                  v-for="entry in overviewEntries()"
-                  :key="entry.path"
-                  role="treeitem"
-                  :class="{ 'is-group': entry.kind === 'group', 'is-changed': requirementEntryChanged(entry) }"
-                  :style="{ '--tree-depth': entry.depth }"
-                >
-                  <span class="ai-requirements-tree__label">
-                    {{ entry.label }}
-                    <em v-if="entry.requiresConfirmation" class="ai-confirmation-badge">확인 필요</em>
-                  </span>
-                  <template v-if="entry.kind !== 'group'">
-                    <strong v-if="!requirementsEditing">{{ entry.value }}</strong>
-                    <label v-else-if="entry.inputKind === 'checkbox'" class="ai-requirements-tree__boolean">
-                      <input
-                        type="checkbox"
-                        :checked="entry.rawValue"
-                        :aria-label="`${entry.label} 수정`"
-                        @change="setRequirementValue(entry.path, $event.target.checked)"
-                      />
-                      <span>{{ entry.rawValue ? '예' : '아니오' }}</span>
-                    </label>
-                    <select
-                      v-else-if="entry.inputKind === 'select'"
-                      :value="entry.editValue ?? entry.rawValue"
-                      :aria-label="`${entry.label} 수정`"
-                      @change="setRequirementValue(entry.path, $event.target.value)"
+              <template v-if="store.overviewDraft">
+                <div class="ai-requirement-summary">
+                  <div class="ai-requirement-summary__title">
+                    <span>프로모션</span>
+                    <strong>{{ store.overviewDraft.title || store.overviewDraft.leadText || '새 프로모션' }}</strong>
+                    <p v-if="store.overviewDraft.leadText && store.overviewDraft.leadText !== store.overviewDraft.title">{{ store.overviewDraft.leadText }}</p>
+                  </div>
+                  <dl v-if="requirementSummaryItems.length" class="ai-requirement-summary__facts">
+                    <div v-for="item in requirementSummaryItems" :key="item.key">
+                      <dt>{{ item.label }}</dt>
+                      <dd>{{ item.value }}</dd>
+                    </div>
+                  </dl>
+                  <div v-if="requirementSectionLabels.length" class="ai-requirement-summary__sections">
+                    <strong>예정 콘텐츠</strong>
+                    <div>
+                      <span v-for="(label, index) in requirementSectionLabels" :key="`${label}:${index}`">{{ index + 1 }}. {{ label }}</span>
+                    </div>
+                  </div>
+                  <p class="ai-requirement-summary__hint">
+                    내용이 맞으면 왼쪽 채팅의 <strong>페이지 미리보기 생성</strong>을 눌러주세요. 바꾸고 싶은 부분은 “혜택을 3개로 줄여줘”처럼 입력하면 됩니다.
+                  </p>
+                </div>
+                <details class="ai-requirements-details" :open="requirementsEditing">
+                  <summary>{{ requirementsEditing ? '세부 내용 편집 중' : '세부 내용 보기' }}</summary>
+                  <ul role="tree" :class="{ 'is-editing': requirementsEditing }">
+                    <li
+                      v-for="entry in overviewEntries()"
+                      :key="entry.path"
+                      role="treeitem"
+                      :class="{ 'is-group': entry.kind === 'group', 'is-changed': requirementEntryChanged(entry) }"
+                      :style="{ '--tree-depth': entry.depth }"
                     >
-                      <option value="">선택해 주세요</option>
-                      <option v-for="option in entry.options" :key="option" :value="option">{{ option }}</option>
-                    </select>
-                    <textarea
-                      v-else-if="entry.inputKind === 'textarea'"
-                      :value="entry.editValue ?? entry.rawValue"
-                      rows="3"
-                      maxlength="2000"
-                      :aria-label="`${entry.label} 수정`"
-                      @input="setRequirementValue(entry.path, $event.target.value)"
-                    ></textarea>
-                    <input
-                      v-else
-                      :type="entry.inputKind"
-                      :value="entry.editValue ?? entry.rawValue"
-                      :maxlength="entry.key === 'ctaLabel' || (entry.key === 'label' && entry.path.endsWith('.cta.label')) ? 20 : 2000"
-                      :aria-label="`${entry.label} 수정`"
-                      @input="setRequirementValue(entry.path, $event.target.value)"
-                    />
-                  </template>
-                </li>
-              </ul>
+                      <span class="ai-requirements-tree__label">
+                        {{ entry.label }}
+                        <em v-if="entry.requiresConfirmation" class="ai-confirmation-badge">확인 필요</em>
+                      </span>
+                      <template v-if="entry.kind !== 'group'">
+                        <strong v-if="!requirementsEditing">{{ entry.value }}</strong>
+                        <label v-else-if="entry.inputKind === 'checkbox'" class="ai-requirements-tree__boolean">
+                          <input type="checkbox" :checked="entry.rawValue" :aria-label="`${entry.label} 수정`" @change="setRequirementValue(entry.path, $event.target.checked)" />
+                          <span>{{ entry.rawValue ? '예' : '아니오' }}</span>
+                        </label>
+                        <select v-else-if="entry.inputKind === 'select'" :value="entry.editValue ?? entry.rawValue" :aria-label="`${entry.label} 수정`" @change="setRequirementValue(entry.path, $event.target.value)">
+                          <option value="">선택해 주세요</option>
+                          <option v-for="option in entry.options" :key="option" :value="option">{{ option }}</option>
+                        </select>
+                        <textarea v-else-if="entry.inputKind === 'textarea'" :value="entry.editValue ?? entry.rawValue" rows="3" maxlength="2000" :aria-label="`${entry.label} 수정`" @input="setRequirementValue(entry.path, $event.target.value)"></textarea>
+                        <input v-else :type="entry.inputKind" :value="entry.editValue ?? entry.rawValue" :maxlength="entry.key === 'ctaLabel' || (entry.key === 'label' && entry.path.endsWith('.cta.label')) ? 20 : 2000" :aria-label="`${entry.label} 수정`" @input="setRequirementValue(entry.path, $event.target.value)" />
+                      </template>
+                    </li>
+                  </ul>
+                </details>
+              </template>
               <div v-else class="ai-result-empty">채팅으로 요구사항을 입력하면 분석 결과가 여기에 표시됩니다.</div>
             </section>
 
@@ -2535,13 +2781,24 @@ onBeforeUnmount(() => {
               <p class="ai-page-preview-notice">
                 현재 화면에서 문구와 가로 배치를 수정할 수 있습니다. 색상과 실제 이미지는 최종 디자인에서 적용됩니다.
               </p>
-              <div class="ai-wireframe-stage" :data-viewport="wireframeViewport">
-                <div class="ai-wireframe-canvas">
+              <div
+                class="ai-wireframe-stage"
+                :data-viewport="wireframeViewport"
+                :data-reveal-state="wireframeRevealState"
+                :aria-busy="wireframeRevealState !== 'complete'"
+              >
+                <div class="ai-wireframe-canvas" :class="{ 'is-revealing': wireframeRevealState !== 'complete' }">
                 <article
-                  v-for="section in wireframeSections"
+                  v-for="(section, sectionIndex) in wireframeSections"
                   :key="section.key"
                   class="ai-wireframe-section"
-                  :class="`is-${section.kind}`"
+                  :class="[
+                    `is-${section.kind}`,
+                    {
+                      'is-reveal-pending': wireframeRevealState !== 'complete' && sectionIndex >= wireframeRevealedCount,
+                      'is-reveal-visible': wireframeRevealState === 'complete' || sectionIndex < wireframeRevealedCount,
+                    },
+                  ]"
                 >
                   <header>
                     <div class="ai-wireframe-section-name">

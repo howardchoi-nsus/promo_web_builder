@@ -9,6 +9,9 @@ const mutationRoutes = [
   "item-component-archive.js",
   "item-component-delete.js",
   "item-component-render-spec-validate.js",
+  "reference-component-publish-plan.js",
+  "reference-component-publish.js",
+  "reference-component-publish-options.js",
 ];
 
 for (const route of mutationRoutes) {

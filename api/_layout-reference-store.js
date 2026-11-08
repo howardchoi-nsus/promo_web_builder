@@ -239,6 +239,9 @@ function approvalErrors(value) {
   const errors = [];
   if (!value.sectionTypes?.length) errors.push("sectionTypes is required");
   if (!value.designSummary) errors.push("designSummary is required");
+  if (!value.layoutSpec || typeof value.layoutSpec !== "object" || Array.isArray(value.layoutSpec) || !Object.keys(value.layoutSpec).length) {
+    errors.push("layoutSpec is required");
+  }
   if (!value.copyrightReviewed) errors.push("copyright review is required");
   if (SCORE_KEYS.some((key) => Number(value.qualityScores?.[key] || 0) === 0)) errors.push("all quality scores are required");
   if (Number(value.qualityScore || 0) < 4) errors.push("quality score must be 4.0 or higher");

@@ -21,6 +21,8 @@ const FLAG_NAMES = Object.freeze({
   directusRuntimeWrite: "DIRECTUS_RUNTIME_WRITE_ENABLED",
   serviceContractV3: "PROMO_SERVICE_CONTRACT_V3_ENABLED",
   chatWorkspaceV1: "PROMO_BUILDER_CHAT_WORKSPACE_V1_ENABLED",
+  progressivePreviewReveal: "PROGRESSIVE_PREVIEW_REVEAL_V1_ENABLED",
+  referenceComponentPublishing: "REFERENCE_COMPONENT_PUBLISHING_V1_ENABLED",
 });
 
 // Registry composition is the production path. Keep an explicit false value as
@@ -46,6 +48,10 @@ const FLAG_DEFAULTS = Object.freeze({
   serviceContractV3: false,
   // Requires migration 077. Enable only after the target database is migrated.
   chatWorkspaceV1: false,
+  // Progressive reveal is presentation-only and safe to enable by default.
+  progressivePreviewReveal: true,
+  // Requires migration 081. Enable only after the target database is migrated.
+  referenceComponentPublishing: false,
 });
 
 function enabled(value, fallback = true) {

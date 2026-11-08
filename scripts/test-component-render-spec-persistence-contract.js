@@ -38,7 +38,10 @@ assert.match(componentApi, /sql\.transaction\(\[/);
 assert.match(createApi, /RenderSpec cannot be supplied during direct component creation/);
 assert.match(draftApi, /source\.render_tree/);
 assert.match(activationApi, /fetchVersionFields/);
-assert.match(activationApi, /select id::text, status,[\s\S]*from wizard_item_component_versions[\s\S]*where id =/);
+assert.match(
+  activationApi,
+  /select (?:version\.)?id::text, (?:version\.)?status,[\s\S]*from wizard_item_component_versions(?: version)?[\s\S]*where (?:version\.)?id =/,
+);
 assert.match(activationApi, /sql\.transaction\(\[/);
 
 const titleFieldKey = "fld_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";

@@ -5,7 +5,21 @@ const {
   isProviderBillingError,
   isRetryableProviderError,
   parseStructuredOutput,
+  responseOutputText,
 } = require("../api/_promo-section-design-provider");
+
+assert.equal(
+  responseOutputText({
+    output: [{
+      content: [
+        { type: "output_text", text: '{"sections":[' },
+        { type: "output_text", text: '{"id":"hero"}' },
+        { type: "output_text", text: "]}" },
+      ],
+    }],
+  }),
+  '{"sections":[{"id":"hero"}]}',
+);
 
 assert.throws(
   () => parseStructuredOutput('{"sections":[}', "promo_page_composer"),

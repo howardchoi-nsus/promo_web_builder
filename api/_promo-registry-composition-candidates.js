@@ -191,6 +191,8 @@ async function fetchLayoutReferenceCandidates(sql, options = {}) {
       and copyright_reviewed = true
       and research_only = true
       and quality_score >= 4
+      and layout_spec <> '{}'::jsonb
+      and btrim(design_summary) <> ''
     order by quality_score desc, updated_at desc, id
     limit 120
   `;

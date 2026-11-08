@@ -83,6 +83,7 @@ const counts = computed(() => ({
   review: references.value.filter((item) => item.status === "review").length,
   approved: references.value.filter((item) => item.status === "approved").length,
   highQuality: references.value.filter((item) => Number(item.qualityScore || 0) >= 4).length,
+  plannerReady: references.value.filter((item) => item.plannerReadiness?.ready).length,
 }));
 const selectedHistories = computed(() => histories.value.filter((item) => item.layoutReferenceId === selectedId.value));
 const averageScore = computed(() => {
@@ -93,6 +94,9 @@ const approvalChecklist = computed(() => [
   { label: "출처 URL", passed: Boolean(editor.sourceUrl.trim()) },
   { label: "섹션 유형", passed: splitList(editor.sectionTypesText).length > 0 },
   { label: "디자인 분석", passed: Boolean(editor.designSummary.trim()) },
+  { label: "Layout Spec", passed: (() => {
+    try { return Object.keys(JSON.parse(editor.layoutSpecText || "{}") || {}).length > 0; } catch { return false; }
+  })() },
   { label: "품질점수 4.0 이상", passed: averageScore.value >= 4 },
   { label: "5개 평가항목 입력", passed: SCORE_FIELDS.every(([key]) => Number(editor.qualityScores[key] || 0) > 0) },
   { label: "권리·출처 확인", passed: editor.copyrightReviewed },
@@ -357,6 +361,7 @@ onMounted(() => reload());
       <div><strong>{{ counts.review }}</strong><span>검토중</span></div>
       <div><strong>{{ counts.approved }}</strong><span>LLM 사용 승인</span></div>
       <div><strong>{{ counts.highQuality }}</strong><span>품질 4.0 이상</span></div>
+      <div><strong>{{ counts.plannerReady }}</strong><span>Planner 사용 가능</span></div>
     </div>
 
     <div v-if="error" class="outline-item danger-state" role="alert">
@@ -398,6 +403,9 @@ onMounted(() => reload());
             <span class="reference-library__row-meta">
               <b>{{ Number(reference.qualityScore || 0).toFixed(1) }}</b>
               <em :class="`is-${reference.status}`">{{ statusLabel(reference.status) }}</em>
+              <em :class="reference.plannerReadiness?.ready ? 'is-ready' : 'is-blocked'">
+                {{ reference.plannerReadiness?.ready ? '사용 가능' : '차단' }}
+              </em>
             </span>
           </button>
           <p v-if="!loading && !filteredReferences.length" class="reference-library__empty">조건에 맞는 레퍼런스가 없습니다.</p>
@@ -495,6 +503,15 @@ onMounted(() => reload());
                 <span>{{ item.passed ? '✓' : '–' }}</span>{{ item.label }}
               </li>
             </ul>
+            <div v-if="selected?.plannerReadiness" class="reference-library__readiness" :class="{ ready: selected.plannerReadiness.ready }">
+              <strong>{{ selected.plannerReadiness.ready ? 'Planner 사용 가능' : 'Planner 사용 차단' }}</strong>
+              <span v-if="selected.plannerReadiness.ready">현재 저장 상태가 모든 검색 조건을 충족합니다.</span>
+              <ul v-else>
+                <li v-for="blocker in selected.plannerReadiness.blockers" :key="blocker.code">
+                  <code>{{ blocker.code }}</code>{{ blocker.message }}
+                </li>
+              </ul>
+            </div>
           </section>
 
           <label><span>레퍼런스 변경 사유</span><input v-model="editor.changeNote" type="text" maxlength="1000" placeholder="레퍼런스 등록·수정·승인 사유" /></label>
@@ -533,7 +550,7 @@ onMounted(() => reload());
 .reference-library__actions, .reference-library__footer { display: flex; align-items: center; gap: 8px; }
 .reference-library__notice { display: flex; gap: 10px; padding: 12px 14px; border: 1px solid color-mix(in srgb, #b47800 35%, var(--app-line)); border-radius: 10px; background: color-mix(in srgb, #f2b632 10%, var(--app-surface)); font-size: 12px; }
 .reference-library__notice span { color: var(--app-sub); }
-.reference-library__summary { display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 10px; }
+.reference-library__summary { display: grid; grid-template-columns: repeat(5, minmax(120px, 1fr)); gap: 10px; }
 .reference-library__summary div { display: grid; gap: 2px; padding: 14px; border: 1px solid var(--app-line); border-radius: 10px; background: var(--app-panel-subtle, #f7f7f7); }
 .reference-library__summary strong { font-size: 22px; }
 .reference-library__summary span { color: var(--app-sub); font-size: 12px; }
@@ -557,6 +574,13 @@ onMounted(() => reload());
 .reference-library__row-meta b { font-size: 15px; }
 .reference-library__row-meta em, .reference-library__status { padding: 3px 7px; border-radius: 999px; font-size: 10px; font-style: normal; font-weight: 800; white-space: nowrap; }
 .is-draft { background: #ededed; color: #555; }.is-review { background: #fff0c2; color: #805b00; }.is-approved { background: #ddf7e6; color: #18733a; }.is-archived { background: #e8e8e8; color: #777; }
+.is-ready { background: #ddf7e6; color: #18733a; }.is-blocked { background: #ffe6e2; color: #a33a2d; }
+.reference-library__readiness { grid-column: 1 / -1; display: grid; gap: 7px; margin-top: 10px; padding: 12px; border: 1px solid #e2aaa2; background: #fff7f5; }
+.reference-library__readiness.ready { border-color: #9ed7b2; background: #f2fbf5; }
+.reference-library__readiness > span { color: var(--app-sub); font-size: 12px; }
+.reference-library__readiness ul { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; }
+.reference-library__readiness li { display: flex; gap: 8px; align-items: baseline; color: var(--app-sub); font-size: 11px; }
+.reference-library__readiness code { color: var(--app-ink); font-size: 10px; }
 .reference-library__empty { margin: 0; padding: 24px 8px; color: var(--app-sub); font-size: 12px; text-align: center; }
 .reference-library__editor { display: grid; gap: 16px; }
 .reference-library__editor-heading { display: flex; justify-content: space-between; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--app-line); }

@@ -1,4 +1,5 @@
 const { getSql } = require("./_item-components-store");
+const { fetchComponentGenerationReadiness } = require("./_reference-component-readiness");
 
 module.exports = async function handler(req, res) {
   if (req.method !== "GET") {
@@ -18,7 +19,8 @@ module.exports = async function handler(req, res) {
       where version.component_id = ${componentId}::uuid and section.status in ('draft', 'active')
       order by section.name, section.version desc, instance.sort_order
     `;
-    return res.status(200).json({ ok: true, componentId, usageCount: rows.length, sections: rows.map((row) => ({
+    const generationReadiness = await fetchComponentGenerationReadiness(sql, componentId);
+    return res.status(200).json({ ok: true, componentId, usageCount: rows.length, generationReadiness, sections: rows.map((row) => ({
       id: row.id, sectionKey: row.section_key, name: row.name, sectionVersion: Number(row.version),
       status: row.status, itemKey: row.item_key, componentVersionId: row.version_id,
       componentVersion: Number(row.component_version),

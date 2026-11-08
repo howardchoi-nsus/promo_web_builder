@@ -1173,7 +1173,11 @@ const adminApp = createApp({
       selectedItemComponentId: "",
       itemComponentSaving: false,
       itemComponentUsageLoading: false,
-      itemComponentUsage: { usageCount: 0, sections: [] },
+      itemComponentUsage: { usageCount: 0, sections: [], generationReadiness: null },
+      referencePublishLoading: false,
+      referencePublishOptions: { sections: [], references: [] },
+      referencePublishPlan: null,
+      referencePublishForm: { sectionId: "", itemKey: "", layoutPresetIds: [], referenceIds: [], changeNote: "" },
       showNewItemComponentForm: false,
       itemComponentEditor: {
         name: "", description: "", fieldKind: "text", textType: "title",
@@ -2449,7 +2453,10 @@ const adminApp = createApp({
 
     selectItemComponent(component) {
       this.selectedItemComponentId = component.id;
-      this.itemComponentUsage = { usageCount: 0, sections: [] };
+      this.itemComponentUsage = { usageCount: 0, sections: [], generationReadiness: null };
+      this.referencePublishOptions = { sections: [], references: [] };
+      this.referencePublishPlan = null;
+      this.referencePublishForm = { sectionId: "", itemKey: "", layoutPresetIds: [], referenceIds: [], changeNote: "" };
       const componentFields = Array.isArray(component.fields) && component.fields.length
         ? component.fields
         : [{
@@ -2510,6 +2517,102 @@ const adminApp = createApp({
       };
       this.showNewItemComponentForm = false;
       this.loadItemComponentUsage(component.id);
+      if (String(component.systemSeedCode || "").startsWith("ref-pattern-") || component.capabilities?.referenceDerived === true) {
+        this.loadReferencePublishOptions(component);
+      }
+    },
+
+    async loadReferencePublishOptions(component = this.selectedItemComponent) {
+      if (!component?.versionId) return;
+      this.referencePublishLoading = true;
+      try {
+        const response = await fetch(`/api/reference-component-publish-options?componentVersionId=${encodeURIComponent(component.versionId)}`);
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `사용 준비 옵션 조회 오류(${response.status})`);
+        if (component.id !== this.selectedItemComponentId) return;
+        this.referencePublishOptions = {
+          sections: Array.isArray(result.sections) ? result.sections : [],
+          references: Array.isArray(result.references) ? result.references : [],
+        };
+        const currentUsage = this.itemComponentUsage.sections?.[0];
+        const section = this.referencePublishOptions.sections.find((entry) => entry.id === currentUsage?.id)
+          || this.referencePublishOptions.sections[0];
+        this.referencePublishForm.sectionId = section?.id || "";
+        this.referencePublishForm.itemKey = currentUsage?.itemKey || component.componentKey || "component";
+        this.referencePublishForm.layoutPresetIds = (section?.layouts || []).map((layout) => layout.id);
+      } catch (error) {
+        this.referencePublishOptions = { sections: [], references: [], error: error.message };
+      } finally {
+        this.referencePublishLoading = false;
+      }
+    },
+
+    selectReferencePublishSection(sectionId) {
+      this.referencePublishForm.sectionId = sectionId;
+      const section = this.referencePublishOptions.sections.find((entry) => entry.id === sectionId);
+      this.referencePublishForm.layoutPresetIds = (section?.layouts || []).map((layout) => layout.id);
+      this.referencePublishPlan = null;
+    },
+
+    referencePublishPayload(component = this.selectedItemComponent) {
+      return {
+        componentVersionId: component?.versionId || "",
+        sectionId: this.referencePublishForm.sectionId,
+        itemKey: this.referencePublishForm.itemKey,
+        layoutPresetIds: [...this.referencePublishForm.layoutPresetIds],
+        referenceIds: [...this.referencePublishForm.referenceIds],
+      };
+    },
+
+    async prepareReferenceComponentPublish() {
+      if (!this.selectedItemComponent?.versionId || this.referencePublishLoading) return;
+      this.referencePublishLoading = true;
+      this.referencePublishPlan = null;
+      try {
+        const response = await fetch("/api/reference-component-publish-plan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(this.referencePublishPayload()),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `발행 계획 오류(${response.status})`);
+        this.referencePublishPlan = result.plan || null;
+        this.setStatus(this.referencePublishPlan?.readiness?.ready ? "사용 준비 검사가 완료되었습니다." : "사용 준비 차단 항목을 확인해 주세요.");
+      } catch (error) {
+        this.referencePublishPlan = { readiness: { ready: false, blockers: [{ code: "PLAN_REQUEST_FAILED", message: error.message }] } };
+        this.setStatus(`사용 준비 검사 실패: ${error.message}`);
+      } finally {
+        this.referencePublishLoading = false;
+      }
+    },
+
+    async publishReferenceComponent() {
+      if (!this.referencePublishPlan?.readiness?.ready || !this.referencePublishForm.changeNote.trim() || this.referencePublishLoading) return;
+      if (!window.confirm("검증된 컴포넌트 버전을 활성화하고 선택한 Section에 연결할까요?")) return;
+      this.referencePublishLoading = true;
+      try {
+        const response = await fetch("/api/reference-component-publish", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Idempotency-Key": crypto.randomUUID(),
+          },
+          body: JSON.stringify({
+            ...this.referencePublishPayload(),
+            changeNote: this.referencePublishForm.changeNote.trim(),
+          }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || result.error || `컴포넌트 발행 오류(${response.status})`);
+        this.setStatus("레퍼런스 컴포넌트를 발행했습니다.");
+        await this.loadItemComponents();
+        await this.loadItemComponentUsage(this.selectedItemComponentId);
+        this.referencePublishPlan = null;
+      } catch (error) {
+        this.setStatus(`컴포넌트 발행 실패: ${error.message}`);
+      } finally {
+        this.referencePublishLoading = false;
+      }
     },
 
     async loadItemComponentUsage(componentId = this.selectedItemComponentId) {
@@ -2523,11 +2626,12 @@ const adminApp = createApp({
           this.itemComponentUsage = {
             usageCount: Number(result.usageCount || 0),
             sections: Array.isArray(result.sections) ? result.sections : [],
+            generationReadiness: result.generationReadiness || null,
           };
         }
       } catch (error) {
         if (componentId === this.selectedItemComponentId) {
-          this.itemComponentUsage = { usageCount: 0, sections: [], error: error.message };
+          this.itemComponentUsage = { usageCount: 0, sections: [], generationReadiness: null, error: error.message };
         }
       } finally {
         this.itemComponentUsageLoading = false;
