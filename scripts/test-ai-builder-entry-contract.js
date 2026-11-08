@@ -49,7 +49,7 @@ assert.match(app, /aria-label="디자인 미리보기"/);
 assert.doesNotMatch(app, /class="ai-result-tabs"/);
 assert.match(app, /페이지 구성 승인/);
 assert.match(app, /페이지 구성 미리보기/);
-assert.match(app, /await prepareWireframe\(operationId\)/);
+assert.match(app, /await prepareWireframe\(operationId, action\)/);
 assert.doesNotMatch(app, /autoFinalize|디자인 생성 내부 승인/);
 assert.match(app, /v-for="message in visibleMessages"/);
 assert.doesNotMatch(app, /<RegistryProposalReview/);

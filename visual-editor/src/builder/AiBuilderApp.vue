@@ -66,6 +66,7 @@ const messages = ref([]);
 const visibleMessages = computed(() => messages.value.filter((message) => message.type !== "internal"));
 const attachments = ref([]);
 const chatInput = ref("");
+const chatInputElement = ref(null);
 const chatSubmitting = ref(false);
 const attachmentBusy = ref(false);
 const wireframeSnapshot = ref(null);
@@ -108,6 +109,8 @@ const wireframeRevealedCount = ref(Number.MAX_SAFE_INTEGER);
 const compositionReviewRef = ref(null);
 const finalQualityChecking = ref(false);
 const transientQualityGate = ref(null);
+const failedTask = ref(null);
+const failedTaskRetrying = ref(false);
 let assetPollingCancelled = false;
 let localeUnsubscribe = null;
 const streamTimers = new Map();
@@ -127,7 +130,8 @@ const busy = computed(() => [
 const hasStreamingMessage = computed(() => streamingMessageIds.value.length > 0);
 const interactionLocked = computed(() => (
   chatSubmitting.value || busy.value || attachmentBusy.value || requirementsSaving.value || wireframeSaving.value
-  || finalQualityChecking.value || Boolean(pendingChatActionKey.value) || hasStreamingMessage.value
+  || finalQualityChecking.value || failedTaskRetrying.value
+  || Boolean(pendingChatActionKey.value) || hasStreamingMessage.value
 ));
 const chatComposerLocked = computed(() => (
   interactionLocked.value || requirementsEditing.value || wireframeEditing.value
@@ -207,6 +211,100 @@ const retryableAssetError = computed(() => Boolean(store.snapshot && [
   "ASSET_GENERATION_FAILED", "ASSET_GENERATION_TIMEOUT", "ASSET_ENQUEUE_FAILED",
   "PROVIDER_BILLING_REQUIRED",
 ].includes(store.error?.code)));
+const failedTaskCanRetry = computed(() => Boolean(
+  failedTask.value && failedTask.value.retryable !== false,
+));
+
+function recoveryStage() {
+  if (store.snapshot) return "render_ready";
+  if (wireframeSnapshot.value) return "review_required";
+  if (store.overviewDraft) return "reviewing_overview";
+  return "idle";
+}
+
+function rememberFailedTask(task, error) {
+  failedTask.value = {
+    kind: String(task?.kind || "unknown"),
+    operationId: String(task?.operationId || ""),
+    label: String(task?.label || "작업"),
+    input: String(task?.input || ""),
+    editableInput: String(task?.editableInput || ""),
+    messagePersisted: task?.messagePersisted === true,
+    action: task?.action && typeof task.action === "object"
+      ? JSON.parse(JSON.stringify(task.action))
+      : null,
+    retryable: error?.retryable !== false,
+    error: {
+      code: String(error?.code || "BUILDER_REQUEST_FAILED"),
+      message: String(error?.message || error || "요청을 처리하지 못했습니다."),
+    },
+    failedAt: new Date().toISOString(),
+  };
+}
+
+function clearFailedTask({ clearError = false } = {}) {
+  failedTask.value = null;
+  if (clearError) clearBuilderError(store);
+}
+
+function isFailedTaskMessage(message) {
+  return Boolean(
+    message?.status === "failed"
+    && failedTask.value?.operationId
+    && failedTask.value.operationId === message.operationId,
+  );
+}
+
+function editFailedTask() {
+  const task = failedTask.value;
+  if (!task || failedTaskRetrying.value) return;
+  const fallbackInput = [...messages.value].reverse().find(
+    (message) => message.role === "user" && message.type === "user" && String(message.text || "").trim(),
+  )?.text || "";
+  chatInput.value = task.editableInput || fallbackInput;
+  store.stage = recoveryStage();
+  clearBuilderError(store);
+  nextTick(() => chatInputElement.value?.focus());
+}
+
+async function retryFailedTask() {
+  const task = failedTask.value;
+  if (!task || task.retryable === false || failedTaskRetrying.value) return;
+  failedTaskRetrying.value = true;
+  failedTask.value = null;
+  clearBuilderError(store);
+  try {
+    if (task.kind === "overview") {
+      await analyze(task.input, { editableInput: task.editableInput });
+    } else if (task.kind === "wireframe") {
+      await prepareWireframe("", task.action || null);
+    } else if (task.kind === "final-design") {
+      await approveWireframe(task.action || {});
+    } else if (task.kind === "chat-action" && task.action) {
+      failedTaskRetrying.value = false;
+      await handleChatAction(task.action);
+    } else if (task.kind === "submit") {
+      if (!task.messagePersisted) {
+        chatInput.value = task.editableInput || task.input;
+        failedTaskRetrying.value = false;
+        await submitChat();
+      } else {
+        const referenceSummary = await analyzeAttachments();
+        const combined = composeOverviewInstruction(
+          conversationInstruction(task.editableInput || task.input),
+          referenceSummary,
+        );
+        store.naturalLanguage = combined;
+        await analyze(combined, { editableInput: task.editableInput });
+      }
+    }
+  } catch (error) {
+    rememberFailedTask(task, error);
+    setBuilderError(store, error);
+  } finally {
+    failedTaskRetrying.value = false;
+  }
+}
 
 function selectMode(mode) {
   recordBuilderEvent({ eventName: "builder_mode_selected", metadata: { mode } });
@@ -613,6 +711,7 @@ function persistWorkspace() {
       requirementsEditing: requirementsEditing.value,
       requirementsEditDraft: requirementsEditing.value ? requirementsEditDraft.value : null,
       requirementsEditBaseline: requirementsEditing.value ? requirementsEditBaseline.value : null,
+      failedTask: failedTask.value,
     }));
   } catch {
     // Browser storage is a convenience cache; Builder Document remains canonical.
@@ -659,6 +758,16 @@ function restoreWorkspaceCache() {
     requirementsEditBaseline.value = requirementsEditing.value
       ? (cached.requirementsEditBaseline || cloneRequirements(store.overviewDraft))
       : null;
+    failedTask.value = cached.failedTask && typeof cached.failedTask === "object"
+      ? cached.failedTask
+      : null;
+    if (failedTask.value?.error) {
+      store.error = {
+        ...failedTask.value.error,
+        details: [],
+        retryable: failedTask.value.retryable !== false,
+      };
+    }
     return cached;
   } catch {
     return null;
@@ -705,6 +814,8 @@ function resetWorkspaceState() {
   wireframeSnapshot.value = null;
   transientQualityGate.value = null;
   finalQualityChecking.value = false;
+  failedTask.value = null;
+  failedTaskRetrying.value = false;
   activeChatTurnMessageId.value = "";
   chatSessionId.value = "";
   requirementsRevision.value = 0;
@@ -1165,7 +1276,7 @@ function conversationInstruction(input) {
   ].join("\n");
 }
 
-async function analyze(instruction = store.naturalLanguage) {
+async function analyze(instruction = store.naturalLanguage, recovery = {}) {
   clearBuilderError(store);
   overviewRetry.value = null;
   store.stage = "analyzing_overview";
@@ -1253,6 +1364,13 @@ async function analyze(instruction = store.naturalLanguage) {
   } catch (error) {
     overviewRetry.value = null;
     updateStatusMessage(operationId, `요구사항 분석에 실패했습니다. ${error.message}`, "failed");
+    rememberFailedTask({
+      kind: "overview",
+      operationId,
+      label: "요구사항 분석",
+      input: instruction,
+      editableInput: recovery.editableInput || "",
+    }, error);
     setBuilderError(store, error);
   }
 }
@@ -1261,6 +1379,7 @@ async function submitChat() {
   const input = chatInput.value.trim();
   const hasPendingAttachment = attachments.value.some((item) => item.dataUrl && !item.analysis);
   if (chatSubmitting.value || interactionLocked.value || (!input && !hasPendingAttachment)) return;
+  clearFailedTask();
   chatSubmitting.value = true;
   chatInput.value = "";
   let messagePersisted = false;
@@ -1277,9 +1396,18 @@ async function submitChat() {
     const referenceSummary = await analyzeAttachments();
     const combined = composeOverviewInstruction(conversationInstruction(input), referenceSummary);
     store.naturalLanguage = combined;
-    await analyze(combined);
+    await analyze(combined, { editableInput: input });
   } catch (error) {
     if (!messagePersisted && input && !chatInput.value) chatInput.value = input;
+    if (!failedTask.value) {
+      rememberFailedTask({
+        kind: "submit",
+        label: "채팅 요청",
+        input,
+        editableInput: input,
+        messagePersisted,
+      }, error);
+    }
     setBuilderError(store, error);
   } finally {
     chatSubmitting.value = false;
@@ -1577,6 +1705,7 @@ function actionProgressMessage(action) {
 
 async function handleChatAction(action) {
   if (interactionLocked.value) return;
+  clearFailedTask();
   const actionKey = chatActionIdentity(action);
   const operationId = `chat-action-${action.key}-${Date.now()}`;
   pendingChatActionKey.value = actionKey;
@@ -1607,7 +1736,7 @@ async function handleChatAction(action) {
         })
         : Promise.resolve();
       await Promise.all([actionRequest, messageRequest]);
-      await prepareWireframe(operationId);
+      await prepareWireframe(operationId, action);
       return;
     }
     if (action.key === "approve_wireframe") {
@@ -1671,6 +1800,14 @@ async function handleChatAction(action) {
     }
   } catch (error) {
     updateStatusMessage(operationId, `${action.label} 처리에 실패했습니다. ${error.message}`, "failed");
+    if (!failedTask.value) {
+      rememberFailedTask({
+        kind: "chat-action",
+        operationId,
+        label: action.label,
+        action,
+      }, error);
+    }
     setBuilderError(store, error);
   } finally {
     pendingChatActionKey.value = "";
@@ -1797,7 +1934,7 @@ async function retryAssets() {
   }
 }
 
-async function prepareWireframe(existingOperationId = "") {
+async function prepareWireframe(existingOperationId = "", sourceAction = null) {
   clearBuilderError(store);
   store.warning = null;
   store.stage = "resolving_policy";
@@ -1865,6 +2002,12 @@ async function prepareWireframe(existingOperationId = "") {
     });
   } catch (error) {
     updateStatusMessage(operationId, `페이지 구성 미리보기 생성에 실패했습니다. ${error.message}`, "failed");
+    rememberFailedTask({
+      kind: "wireframe",
+      operationId,
+      label: "페이지 구성 미리보기 생성",
+      action: sourceAction,
+    }, error);
     setBuilderError(store, error);
   }
 }
@@ -2038,6 +2181,12 @@ async function approveWireframe(action = {}, existingOperationId = "") {
     });
   } catch (error) {
     updateStatusMessage(operationId, `최종 디자인 생성에 실패했습니다. ${error.message}`, "failed");
+    rememberFailedTask({
+      kind: "final-design",
+      operationId,
+      label: "최종 디자인 생성",
+      action,
+    }, error);
     setBuilderError(store, error);
   }
 }
@@ -2501,6 +2650,7 @@ watch([
   pendingClarificationItems,
   clarificationAskedFields,
   clarificationAnsweredFields,
+  failedTask,
 ], persistWorkspace, { deep: true });
 watch(() => [store.documentId, store.documentRevision, store.stage, store.overviewDraft, store.snapshot], persistWorkspace, { deep: true });
 watch(interactionLocked, (locked, wasLocked) => {
@@ -2577,7 +2727,8 @@ onMounted(async () => {
           const loaded = await loadBuilderDocument(cached.documentId);
           store.documentRevision = Number(loaded.document?.currentDocumentRevision || cached.documentRevision || 0);
           store.snapshot = loaded.snapshot || null;
-          if (store.snapshot && cached.stage === "render_ready") store.stage = "render_ready";
+          if (cached.stage === "failed" && failedTask.value) store.stage = "failed";
+          else if (store.snapshot && cached.stage === "render_ready") store.stage = "render_ready";
           else if (wireframeSnapshot.value) store.stage = "review_required";
           else if (store.overviewDraft) store.stage = "reviewing_overview";
           else store.stage = "idle";
@@ -2624,7 +2775,21 @@ onBeforeUnmount(() => {
           :disabled="assetRetrying"
           @click="retryAssets"
         >{{ assetRetrying ? "이미지 생성 재시도 중…" : "이미지 생성 다시 시도" }}</button>
-        <button type="button" @click="clearBuilderError(store)">닫기</button>
+        <div class="ai-builder-error__actions">
+          <button
+            v-if="failedTaskCanRetry && !retryableAssetError"
+            type="button"
+            :disabled="failedTaskRetrying"
+            @click="retryFailedTask"
+          >{{ failedTaskRetrying ? "다시 시도 중…" : "다시 시도" }}</button>
+          <button
+            v-if="failedTask && !retryableAssetError"
+            type="button"
+            :disabled="failedTaskRetrying"
+            @click="editFailedTask"
+          >내용 수정 후 다시 시도</button>
+          <button type="button" @click="clearBuilderError(store)">닫기</button>
+        </div>
       </div>
       <div v-if="store.warning" class="ai-builder-warning" role="status">
         <strong>{{ store.warning.code }}</strong>
@@ -2763,6 +2928,18 @@ onBeforeUnmount(() => {
                   </span>
                 </p>
                 <p v-else>{{ messageDisplayText(message) }}</p>
+                <div v-if="isFailedTaskMessage(message)" class="ai-chat-recovery" role="group" aria-label="실패한 작업 복구">
+                  <p>입력한 내용과 이전 결과는 그대로 보존되어 있습니다.</p>
+                  <div>
+                    <button
+                      v-if="failedTaskCanRetry"
+                      type="button"
+                      :disabled="failedTaskRetrying"
+                      @click="retryFailedTask"
+                    >{{ failedTaskRetrying ? "다시 시도 중…" : "실패한 단계부터 다시 시도" }}</button>
+                    <button type="button" :disabled="failedTaskRetrying" @click="editFailedTask">내용 수정 후 다시 시도</button>
+                  </div>
+                </div>
                 <div v-if="visibleMessageActions(message).length" class="ai-chat-actions">
                   <button
                     v-for="action in visibleMessageActions(message)"
@@ -2796,6 +2973,7 @@ onBeforeUnmount(() => {
           <form class="ai-chat-composer" @submit.prevent="submitChat">
             <div class="ai-chat-composer__surface">
               <textarea
+                ref="chatInputElement"
                 v-model="chatInput"
                 rows="1"
                 maxlength="4000"
