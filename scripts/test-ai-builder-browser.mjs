@@ -508,6 +508,22 @@ try {
   await page.getByRole("button", { name: "요청 요약" }).click();
   await page.locator(".ai-requirement-summary__title strong", { hasText: "여름 신규 고객 충전 이벤트" }).waitFor();
   await page.getByText("예정 콘텐츠", { exact: true }).waitFor();
+  assert.equal(await page.getByText("진행 상황 및 결과", { exact: true }).count(), 0);
+  assert.equal(await page.getByText("AI가 이해한 요청", { exact: true }).count(), 0);
+  assert.equal(await page.locator(".ai-result-progress .ai-process-status").count(), 1);
+  if (process.env.AI_BUILDER_DESIGN_QA_SCREENSHOT) {
+    await page.setViewportSize({ width: 1802, height: 844 });
+    await page.locator(".ai-result-pane").screenshot({
+      path: process.env.AI_BUILDER_DESIGN_QA_SCREENSHOT,
+    });
+    if (process.env.AI_BUILDER_DESIGN_QA_MOBILE_SCREENSHOT) {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.locator(".ai-result-pane").screenshot({
+        path: process.env.AI_BUILDER_DESIGN_QA_MOBILE_SCREENSHOT,
+      });
+    }
+    await page.setViewportSize({ width: 1280, height: 720 });
+  }
   assert.equal(await page.getByRole("button", { name: "페이지 구성 미리보기" }).count(), 1);
   assert.equal(await page.getByRole("button", { name: "페이지 구성 미리보기" }).isDisabled(), true);
   await page.getByRole("button", { name: "페이지 미리보기 생성" }).click();
@@ -548,7 +564,7 @@ try {
       saveRequest: qualityGateSaveRequest,
       errorText: await page.locator(".ai-builder-error").allInnerTexts(),
       gateText: await page.locator(".ai-builder-quality-gate").allInnerTexts(),
-      statusText: await page.locator(".ai-result-header").allInnerTexts(),
+      statusText: await page.locator(".ai-process-status").allInnerTexts(),
       assetPollCount,
       itemMeasurements: await page.locator(".rendered-item[data-style-key]").evaluateAll((nodes) => nodes.map((node) => ({
         styleKey: node.dataset.styleKey,

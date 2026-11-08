@@ -2630,12 +2630,6 @@ const requirementSectionLabels = computed(() => {
   )).filter(Boolean);
 });
 
-const requirementsChangedCount = computed(() => (
-  requirementsEditing.value
-    ? overviewEntries(requirementsEditDraft.value).filter(requirementEntryChanged).length
-    : 0
-));
-
 watch([
   messages,
   attachments,
@@ -3018,41 +3012,32 @@ onBeforeUnmount(() => {
         ></div>
 
         <section class="ai-result-pane" aria-label="AI Builder 결과">
-          <header class="ai-result-header">
-            <div>
-              <strong>진행 상황 및 결과</strong>
+          <header class="ai-result-progress">
+            <ol class="ai-process-steps" aria-label="제작 단계">
+              <li :class="{ selected: activeResultTab === 'requirements', complete: store.overviewDraft }">
+                <button type="button" aria-label="요청 요약" :aria-current="activeResultTab === 'requirements' ? 'step' : undefined" @click="activeResultTab = 'requirements'">
+                  <span>1</span>요청 요약
+                </button>
+              </li>
+              <li :class="{ selected: activeResultTab === 'wireframe', complete: wireframeDisplaySnapshot }">
+                <button type="button" aria-label="페이지 구성 미리보기" :disabled="!wireframeDisplaySnapshot" :aria-current="activeResultTab === 'wireframe' ? 'step' : undefined" @click="activeResultTab = 'wireframe'">
+                  <span>2</span>페이지 미리보기
+                </button>
+              </li>
+              <li :class="{ selected: activeResultTab === 'final', complete: store.snapshot && store.stage === 'render_ready' }">
+                <button type="button" aria-label="디자인 미리보기" :disabled="!store.snapshot" :aria-current="activeResultTab === 'final' ? 'step' : undefined" @click="activeResultTab = 'final'">
+                  <span>3</span>디자인 미리보기
+                </button>
+              </li>
+            </ol>
+            <div class="ai-process-status" role="status" aria-live="polite">
               <small>{{ currentStatus.label }}</small>
+              <span class="ai-chat-status" :data-state="currentStatus.state">{{ currentStatus.state }}</span>
             </div>
-            <span class="ai-chat-status" :data-state="currentStatus.state">{{ currentStatus.state }}</span>
           </header>
-
-          <ol class="ai-process-steps" aria-label="제작 단계">
-            <li :class="{ selected: activeResultTab === 'requirements', complete: store.overviewDraft }">
-              <button type="button" aria-label="요청 요약" :aria-current="activeResultTab === 'requirements' ? 'step' : undefined" @click="activeResultTab = 'requirements'">
-                <span>1</span>요청 요약
-              </button>
-            </li>
-            <li :class="{ selected: activeResultTab === 'wireframe', complete: wireframeDisplaySnapshot }">
-              <button type="button" aria-label="페이지 구성 미리보기" :disabled="!wireframeDisplaySnapshot" :aria-current="activeResultTab === 'wireframe' ? 'step' : undefined" @click="activeResultTab = 'wireframe'">
-                <span>2</span>페이지 미리보기
-              </button>
-            </li>
-            <li :class="{ selected: activeResultTab === 'final', complete: store.snapshot && store.stage === 'render_ready' }">
-              <button type="button" aria-label="디자인 미리보기" :disabled="!store.snapshot" :aria-current="activeResultTab === 'final' ? 'step' : undefined" @click="activeResultTab = 'final'">
-                <span>3</span>디자인 미리보기
-              </button>
-            </li>
-          </ol>
 
           <div class="ai-result-content">
             <section v-if="activeResultTab === 'requirements'" class="ai-requirements-tree">
-              <header>
-                <strong>AI가 이해한 요청</strong>
-                <small v-if="requirementsEditing" class="is-editing">
-                  편집 중 · 변경 {{ requirementsChangedCount }}개 · 완료/취소는 왼쪽 채팅에서 진행합니다.
-                </small>
-                <small v-else>전문 용어 없이 핵심 내용만 확인하세요. 수정은 왼쪽 채팅에서 편하게 요청할 수 있습니다.</small>
-              </header>
               <template v-if="store.overviewDraft">
                 <div class="ai-requirement-summary">
                   <div class="ai-requirement-summary__title">
