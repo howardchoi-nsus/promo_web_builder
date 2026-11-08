@@ -165,8 +165,24 @@ assert.equal(schema.additionalProperties, false);
 assert.deepEqual(schema.properties.contractVersion.enum, [3]);
 assert.deepEqual(schema.properties.shellVersionId.enum, ["shell-v1"]);
 assert.deepEqual(schema.properties.layoutReferenceId.enum, ["", "layout-reference-v1"]);
-assert(schema.properties.sections.items.properties.components.items.required.includes("contentItems"));
-const generatedContentFieldKeys = schema.properties.sections.items.properties.components.items
+assert.equal(schema.properties.sections.items.anyOf.length, candidates.sections.length);
+const heroSectionSchema = schema.properties.sections.items.anyOf.find(
+  (candidate) => candidate.properties.sectionVersionId.enum[0] === "hero-v1",
+);
+const cardsSectionSchema = schema.properties.sections.items.anyOf.find(
+  (candidate) => candidate.properties.sectionVersionId.enum[0] === "cards-v1",
+);
+assert(heroSectionSchema.properties.components.items.required.includes("contentItems"));
+assert.deepEqual(
+  heroSectionSchema.properties.components.items.properties.componentInstanceId.enum,
+  ["hero-title-instance", "hero-visual-instance"],
+);
+assert.deepEqual(heroSectionSchema.properties.layoutKey.enum, ["hero-default"]);
+assert.equal(
+  heroSectionSchema.properties.components.items.properties.componentInstanceId.enum.includes("card-instance"),
+  false,
+);
+const generatedContentFieldKeys = cardsSectionSchema.properties.components.items
   .properties.contentItems.items.properties.fields.items.properties.fieldKey.enum;
 assert.equal(generatedContentFieldKeys.includes("image"), false);
 assert.equal(generatedContentFieldKeys.includes("description"), true);

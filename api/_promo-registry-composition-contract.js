@@ -214,23 +214,88 @@ function normalizeLayoutFitRepairs(value) {
 
 function registryCompositionSchema(candidates) {
   const sections = candidates.sections || [];
-  const sectionIds = sections.map((section) => section.sectionVersionId);
-  const componentIds = unique(sections.flatMap((section) => (
-    section.components.map((component) => component.componentInstanceId)
-  )));
-  const contentFieldKeys = unique(sections.flatMap((section) => section.components.flatMap((component) => (
-    (component.fields || [])
-      .filter((field) => !field.isLocked && field.fieldKind !== "image")
-      .map((field) => field.fieldKey)
-  ))));
-  const layoutKeys = unique(sections.flatMap((section) => (
-    (section.layoutPresets || []).map((layout) => layout.layoutKey)
-  )));
   const motionIds = unique((candidates.motionPresets || []).map((motion) => motion.presetVersionId));
   const tokenIds = unique((candidates.tokenSets || []).map((token) => token.tokenSetVersionId));
   const layoutReferenceIds = unique((candidates.layoutReferences || []).map(
     (reference) => reference.layoutReferenceId,
   ));
+  const sectionSchemas = sections.map((section) => {
+    const componentIds = unique((section.components || []).map(
+      (component) => component.componentInstanceId,
+    ));
+    const contentFieldKeys = unique((section.components || []).flatMap((component) => (
+      validationFields(component)
+        .filter((field) => !field.isLocked && field.fieldKind !== "image")
+        .map((field) => field.fieldKey)
+    )));
+    const layoutKeys = unique((section.layoutPresets || []).map((layout) => layout.layoutKey));
+    return {
+      type: "object",
+      additionalProperties: false,
+      required: ["sectionVersionId", "visible", "sortOrder", "layoutKey", "motionPresetVersionId", "repeat", "components"],
+      properties: {
+        sectionVersionId: { type: "string", enum: [section.sectionVersionId] },
+        visible: { type: "boolean" },
+        sortOrder: { type: "integer", minimum: 0, maximum: 10000 },
+        layoutKey: { type: "string", enum: layoutKeys.length ? layoutKeys : [""] },
+        motionPresetVersionId: { type: "string", enum: ["", ...motionIds] },
+        repeat: { type: "integer", minimum: 1, maximum: 20 },
+        components: {
+          type: "array",
+          maxItems: 60,
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["componentInstanceId", "visible", "repeat", "contentBindings", "contentItems"],
+            properties: {
+              componentInstanceId: { type: "string", enum: componentIds.length ? componentIds : [""] },
+              visible: { type: "boolean" },
+              repeat: { type: "integer", minimum: 1, maximum: 20 },
+              contentBindings: {
+                type: "array",
+                maxItems: 30,
+                items: {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["fieldKey", "sourceOverviewPath"],
+                  properties: {
+                    fieldKey: { type: "string", enum: contentFieldKeys.length ? contentFieldKeys : [""] },
+                    sourceOverviewPath: { type: "string", enum: OVERVIEW_FIELDS },
+                  },
+                },
+              },
+              contentItems: {
+                type: "array",
+                maxItems: 20,
+                description: "Distinct AI-authored field values for each repeated component instance.",
+                items: {
+                  type: "object",
+                  additionalProperties: false,
+                  required: ["repeatIndex", "fields"],
+                  properties: {
+                    repeatIndex: { type: "integer", minimum: 0, maximum: 19 },
+                    fields: {
+                      type: "array",
+                      maxItems: 30,
+                      items: {
+                        type: "object",
+                        additionalProperties: false,
+                        required: ["fieldKey", "value"],
+                        properties: {
+                          fieldKey: { type: "string", enum: contentFieldKeys.length ? contentFieldKeys : [""] },
+                          value: { type: "string", minLength: 1, maxLength: 2000 },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    };
+  });
   return {
     type: "object",
     additionalProperties: false,
@@ -248,70 +313,7 @@ function registryCompositionSchema(candidates) {
         minItems: 1,
         maxItems: 30,
         items: {
-          type: "object",
-          additionalProperties: false,
-          required: ["sectionVersionId", "visible", "sortOrder", "layoutKey", "motionPresetVersionId", "repeat", "components"],
-          properties: {
-            sectionVersionId: { type: "string", enum: sectionIds },
-            visible: { type: "boolean" },
-            sortOrder: { type: "integer", minimum: 0, maximum: 10000 },
-            layoutKey: { type: "string", enum: layoutKeys.length ? layoutKeys : [""] },
-            motionPresetVersionId: { type: "string", enum: ["", ...motionIds] },
-            repeat: { type: "integer", minimum: 1, maximum: 20 },
-            components: {
-              type: "array",
-              maxItems: 60,
-              items: {
-                type: "object",
-                additionalProperties: false,
-                required: ["componentInstanceId", "visible", "repeat", "contentBindings", "contentItems"],
-                properties: {
-                  componentInstanceId: { type: "string", enum: componentIds },
-                  visible: { type: "boolean" },
-                  repeat: { type: "integer", minimum: 1, maximum: 20 },
-                  contentBindings: {
-                    type: "array",
-                    maxItems: 30,
-                    items: {
-                      type: "object",
-                      additionalProperties: false,
-                      required: ["fieldKey", "sourceOverviewPath"],
-                      properties: {
-                        fieldKey: { type: "string", enum: contentFieldKeys.length ? contentFieldKeys : [""] },
-                        sourceOverviewPath: { type: "string", enum: OVERVIEW_FIELDS },
-                      },
-                    },
-                  },
-                  contentItems: {
-                    type: "array",
-                    maxItems: 20,
-                    description: "Distinct AI-authored field values for each repeated component instance.",
-                    items: {
-                      type: "object",
-                      additionalProperties: false,
-                      required: ["repeatIndex", "fields"],
-                      properties: {
-                        repeatIndex: { type: "integer", minimum: 0, maximum: 19 },
-                        fields: {
-                          type: "array",
-                          maxItems: 30,
-                          items: {
-                            type: "object",
-                            additionalProperties: false,
-                            required: ["fieldKey", "value"],
-                            properties: {
-                              fieldKey: { type: "string", enum: contentFieldKeys.length ? contentFieldKeys : [""] },
-                              value: { type: "string", minLength: 1, maxLength: 2000 },
-                            },
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
+          anyOf: sectionSchemas,
         },
       },
       warnings: { type: "array", maxItems: 30, items: { type: "string", maxLength: 300 } },
@@ -370,7 +372,12 @@ function validateRegistryCompositionProposal(result, candidates) {
     const components = [];
     for (const plannedComponent of Array.isArray(planned.components) ? planned.components : []) {
       const component = allowedComponents.get(plannedComponent.componentInstanceId);
-      if (!component) fail("COMPONENT_NOT_IN_SECTION", "Planner selected a Component outside its Section");
+      if (!component) {
+        fail(
+          "COMPONENT_NOT_IN_SECTION",
+          `Planner selected Component ${plannedComponent.componentInstanceId} outside Section ${section.sectionKey}. Allowed Component IDs: ${Array.from(allowedComponents.keys()).join(", ") || "none"}`,
+        );
+      }
       if (seenComponents.has(plannedComponent.componentInstanceId)) fail("DUPLICATE_COMPONENT_SELECTION", "Planner duplicated a Component selection");
       seenComponents.add(plannedComponent.componentInstanceId);
       if (component.isRequired && plannedComponent.visible === false) fail("REQUIRED_COMPONENT_HIDDEN", "Required Component cannot be hidden");
