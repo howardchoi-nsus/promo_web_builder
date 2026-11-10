@@ -1157,7 +1157,14 @@ function hydrateChatWorkspace(workspace) {
   }
   if (workspace.wireframe?.snapshot) {
     wireframeSnapshot.value = workspace.wireframe.snapshot;
-    activeResultTab.value = "wireframe";
+    activeResultTab.value = workspace.session.stage === 'completed' ? 'final' : 'wireframe';
+  }
+  if(workspace.session.stage==='completed' && store.snapshot){
+    store.stage='render_ready';activeResultTab.value='final';
+    const failed=failedTask.value;
+    const alreadyApproved=(workspace.messages||[]).flatMap(message=>message.actions||[]).some(action=>action.id===failed?.action?.id&&action.key==='approve_wireframe'&&action.status==='executed');
+    if(failed?.kind==='final-design'&&failed.error?.code==='CHAT_ACTION_NOT_ALLOWED'&&alreadyApproved)failed.retryable=true;
+    for(const message of messages.value)for(const action of message.actions||[])if(action.status==='proposed'&&['approve_wireframe','revise_wireframe','confirm_requirements','revise_requirements'].includes(action.key))action.status='expired';
   }
 }
 
@@ -1752,6 +1759,7 @@ async function handleChatAction(action) {
         })
         : Promise.resolve();
       await Promise.all([actionRequest, messageRequest]);
+      markChatActionGroupHandled(action);
       await prepareWireframe(operationId, action);
       return;
     }
@@ -2171,6 +2179,7 @@ async function approveWireframe(action = {}, existingOperationId = "") {
   const operationId = existingOperationId || `final-${Date.now()}`;
   updateStatusMessage(operationId, "최종 디자인과 이미지를 생성하고 있습니다.", "in_progress");
   try {
+    let completedApproval = false;
     if (capabilities.value.chatWorkspaceV1) {
       const confirmed = await confirmWireframeRevision({
         sessionId: chatSessionId.value,
@@ -2178,14 +2187,25 @@ async function approveWireframe(action = {}, existingOperationId = "") {
         structureFingerprint: wireframeFingerprint.value,
       });
       wireframeFingerprint.value = confirmed.wireframe.structureFingerprint;
-      await executeChatAction({
+      const approval = await executeChatAction({
         sessionId: chatSessionId.value,
         actionId: action.id,
         actionKey: "approve_wireframe",
         idempotencyKey: crypto.randomUUID(),
       });
+      markChatActionGroupHandled(action);
+      completedApproval = approval.replayed === true && approval.stage === 'completed';
+      if(approval.replayed && !['completed','finalizing'].includes(approval.stage))throw Object.assign(new Error('대화 단계가 변경되었습니다. 최신 대화를 다시 불러와 주세요.'),{code:'CHAT_ACTION_STALE'});
     }
-    const applied = await applyReadyProposal(store.proposal, { navigate: false });
+    let applied;
+    if(completedApproval){
+      const latest = await loadBuilderDocument(store.documentId);
+      if(!latest.snapshot)throw Object.assign(new Error('완료된 디자인 문서를 불러오지 못했습니다.'),{code:'FINAL_DESIGN_NOT_READY'});
+      store.snapshot=latest.snapshot;store.documentRevision=Number(latest.document.currentDocumentRevision);
+      store.stage='generating_assets';
+      applied=await waitForBuilderAssets();
+      if(applied)store.stage='render_ready';
+    }else applied = await applyReadyProposal(store.proposal, { navigate: false });
     if (!applied) throw Object.assign(new Error("최종 디자인 Snapshot을 준비하지 못했습니다."), {
       code: "FINAL_DESIGN_NOT_READY",
     });

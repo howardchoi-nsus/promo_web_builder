@@ -21,6 +21,7 @@ const common = {
   requireBuilderFlag() {},
   resolveBuilderOwner: () => ({ ownerSubject: "owner-1" }),
   getSql: () => "sql",
+  fetchAction: async () => ({id:"action-1",key:"approve_wireframe",status:"proposed"}),
 };
 
 async function testSession() {
@@ -100,6 +101,23 @@ async function testApprovalActionRequiresConfirmation() {
   assert.equal(executed, false);
 }
 
+async function testCompletedApprovalReplay() {
+  let mutations=0;
+  const replay=createActionHandler({...common,
+    fetchSession:async()=>({session:{id:'session-1',stage:'completed'}}),
+    fetchAction:async()=>({id:'action-1',key:'approve_wireframe',status:'executed'}),
+    fetchConfirmedWireframe:async()=>{throw Error('Do not reconfirm an executed action');},
+    executeAction:async()=>{mutations++;throw Error('Do not execute again');},
+  });
+  const body={sessionId:'session-1',actionId:'action-1',actionKey:'approve_wireframe',idempotencyKey:'retry'};
+  const res=response();await replay({method:'POST',body},res);
+  assert.equal(res.statusCode,200);assert.equal(res.body.replayed,true);assert.equal(res.body.stage,'completed');assert.equal(mutations,0);
+  const pending=createActionHandler({...common,fetchSession:async()=>({session:{stage:'completed'}}),fetchAction:async()=>({status:'proposed'}),executeAction:async()=>{mutations++;}});
+  const blocked=response();await pending({method:'POST',body},blocked);assert.equal(blocked.statusCode,409);assert.equal(blocked.body.code,'CHAT_ACTION_NOT_ALLOWED');assert.equal(mutations,0);
+  const foreign=createActionHandler({...common,fetchSession:async()=>null,fetchAction:async()=>{throw Error('Must not read foreign actions');}});
+  const denied=response();await foreign({method:'POST',body},denied);assert.equal(denied.statusCode,404);
+}
+
 async function testWireframeSaveAndConfirm() {
   const wireframe = {
     revision: 1,
@@ -174,6 +192,7 @@ Promise.resolve()
   .then(testSession)
   .then(testMessageActions)
   .then(testApprovalActionRequiresConfirmation)
+  .then(testCompletedApprovalReplay)
   .then(testWireframeSaveAndConfirm)
   .then(testWireframeEditUsesOptimisticContext)
   .then(() => console.log("AI Builder chat workspace handlers passed"))

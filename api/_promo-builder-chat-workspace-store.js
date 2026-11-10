@@ -6,6 +6,7 @@ const {
 } = require("./_promo-builder-chat-workspace-contract");
 
 function toAction(row) {
+  if (!row) return null;
   return {
     id: row.id,
     key: row.action_key,
@@ -252,54 +253,57 @@ async function saveRequirementsRevision(sql, {
   } : null;
 }
 
+async function fetchAction(sql, { sessionId, actionId, actionKey, ownerSubject }) {
+  const rows = await sql`
+    select action.* from promo_builder_chat_actions action
+    join promo_builder_chat_sessions session on session.id = action.session_id
+    where action.session_id = ${sessionId}::uuid and action.id = ${actionId}::uuid
+      and action.action_key = ${actionKey} and session.owner_subject = ${ownerSubject}
+    limit 1
+  `;
+  return toAction(rows[0] || null);
+}
+
 async function executeAction(sql, {
   sessionId, actionId, actionKey, ownerSubject, idempotencyKey, nextStage,
 }) {
+  // One statement keeps action consumption and stage transition atomic.
   const rows = await sql`
-    update promo_builder_chat_actions action
-    set status = 'executed', idempotency_key = ${idempotencyKey}, executed_at = now()
-    from promo_builder_chat_sessions session
-    where action.id = ${actionId}::uuid
-      and action.session_id = ${sessionId}::uuid
-      and action.action_key = ${actionKey}
-      and action.status = 'proposed'
-      and action.issued_stage = session.stage
-      and session.id = action.session_id
-      and session.owner_subject = ${ownerSubject}
-    returning action.*
-  `;
-  if (!rows[0]) {
-    const replay = await sql`
-      select action.* from promo_builder_chat_actions action
-      join promo_builder_chat_sessions session on session.id = action.session_id
-      where action.session_id = ${sessionId}::uuid
-        and action.id = ${actionId}::uuid
-        and action.action_key = ${actionKey}
-        and action.status = 'executed'
-        and session.owner_subject = ${ownerSubject}
-      limit 1
-    `;
-    if (!replay[0]) return null;
-    await sql`
-      update promo_builder_chat_sessions
-      set stage = ${nextStage}, updated_at = now()
+    with locked_session as materialized (
+      select * from promo_builder_chat_sessions
       where id = ${sessionId}::uuid and owner_subject = ${ownerSubject}
-    `;
-    return { action: toAction(replay[0]), replayed: true };
-  }
-  await sql`
-    update promo_builder_chat_actions
-    set status = 'expired'
-    where message_id = ${rows[0].message_id}::uuid
-      and id <> ${rows[0].id}::uuid
-      and status = 'proposed'
+      for update
+    ), executed as (
+      update promo_builder_chat_actions action
+      set status = 'executed', idempotency_key = ${idempotencyKey}, executed_at = now()
+      from locked_session session
+      where action.id = ${actionId}::uuid and action.session_id = session.id
+        and action.action_key = ${actionKey} and action.status = 'proposed'
+        and action.issued_stage = session.stage
+      returning action.*
+    ), expired as (
+      update promo_builder_chat_actions sibling set status = 'expired'
+      from executed
+      where sibling.message_id = executed.message_id and sibling.id <> executed.id
+        and sibling.status = 'proposed'
+    ), transitioned as (
+      update promo_builder_chat_sessions session set stage = ${nextStage}, updated_at = now()
+      from executed where session.id = executed.session_id
+      returning session.stage
+    )
+    select executed.*, transitioned.stage as current_stage from executed cross join transitioned
   `;
-  await sql`
-    update promo_builder_chat_sessions
-    set stage = ${nextStage}, updated_at = now()
-    where id = ${sessionId}::uuid and owner_subject = ${ownerSubject}
+  if (rows[0]) return { action: toAction(rows[0]), replayed: false, stage: rows[0].current_stage };
+  const replay = await sql`
+    select action.*, session.stage as current_stage from promo_builder_chat_actions action
+    join promo_builder_chat_sessions session on session.id = action.session_id
+    where action.session_id = ${sessionId}::uuid and action.id = ${actionId}::uuid
+      and action.action_key = ${actionKey} and action.status = 'executed'
+      and session.owner_subject = ${ownerSubject}
+    limit 1
   `;
-  return { action: toAction(rows[0]), replayed: false };
+  // A retry acknowledges the previous execution, never rewinds completed work.
+  return replay[0] ? { action: toAction(replay[0]), replayed: true, stage: replay[0].current_stage } : null;
 }
 
 async function saveWireframeRevision(sql, {
@@ -463,6 +467,7 @@ module.exports = {
   listSessions,
   saveMessage,
   saveRequirementsRevision,
+  fetchAction,
   executeAction,
   saveWireframeRevision,
   updateWireframeDraft,

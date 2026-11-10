@@ -8,7 +8,7 @@ const store = require("./_promo-builder-chat-workspace-store");
 function createHandler(deps = {}) {
   const use = {
     parseBody, resolveBuilderOwner, getSql, requireBuilderFlag, assertActionTransition,
-    fetchSession: store.fetchSession, executeAction: store.executeAction,
+    fetchSession: store.fetchSession, fetchAction: store.fetchAction, executeAction: store.executeAction,
     fetchConfirmedWireframe: store.fetchConfirmedWireframe, ...deps,
   };
   return async function handler(req, res) {
@@ -31,6 +31,8 @@ function createHandler(deps = {}) {
       const sql = use.getSql();
       const workspace = await use.fetchSession(sql, { sessionId, ownerSubject: owner.ownerSubject });
       if (!workspace) return res.status(404).json({ error: "Chat session not found" });
+      const existing = await use.fetchAction(sql,{sessionId,actionId,actionKey,ownerSubject:owner.ownerSubject});
+      if(existing?.status==='executed')return res.status(200).json({ok:true,action:existing,replayed:true,stage:workspace.session.stage});
       const transition = use.assertActionTransition(actionKey, workspace.session.stage);
       if (actionKey === "approve_wireframe") {
         const confirmed = await use.fetchConfirmedWireframe(sql, {
@@ -45,7 +47,7 @@ function createHandler(deps = {}) {
         nextStage: transition.to,
       });
       if (!executed) return res.status(409).json({ error: "Action is stale or unavailable", code: "CHAT_ACTION_STALE" });
-      return res.status(200).json({ ok: true, ...executed, stage: transition.to });
+      return res.status(200).json({ ok: true, ...executed, stage: executed.stage || transition.to });
     } catch (error) {
       return res.status(error.statusCode || 500).json({ error: error.message, code: error.code || null, details: error.details });
     }
