@@ -18,6 +18,13 @@ async function prepareRegistryStructuralOperations({
       prepared.push(operation);
       continue;
     }
+    const selectedTokens = (candidates.tokenSets || []).find(token => token.tokenSetVersionId === snapshot.appearance?.designTokenSetVersionId);
+    const pinnedPolicy = snapshot.content?.runtimeTheme?.designTokens?.usagePolicy;
+    if (selectedTokens?.usagePolicy && selectedTokens.usagePolicy.id !== pinnedPolicy?.id) {
+      throw Object.assign(new Error("토큰 사용 정책이 변경되었습니다. 기존 결과에 다른 정책을 혼합하지 않도록 페이지를 새로 생성하세요."), {
+        code:"TOKEN_USAGE_POLICY_VERSION_MISMATCH",statusCode:409,
+      });
+    }
     const source = sectionsById.get(operation.sourceVersionId);
     if (!source) {
       throw Object.assign(new Error("Registry Section version changed before operation apply"), {

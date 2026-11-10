@@ -40,12 +40,18 @@ function createHandler({ sqlFactory = getSql, authorize = resolveAdminOwner } = 
         cssProperties: tokenCssProperties(t),
         semanticRole: tokenPlannerRole(t),
       }));
+      const activePolicy = await sql`select policy_json from promo_token_usage_policy_versions where status = 'active' limit 1`;
+      if (activePolicy.length) {
+        const { validateTokenUsagePolicy } = await import('../shared/token-usage-policy.mjs');
+        const validation = validateTokenUsagePolicy(activePolicy[0].policy_json, entries.filter(token=>token.state==='active'&&token.type!=='typography').map(token=>({...token,cssProperties:token.cssProperties})), {activation:true});
+        if (!validation.ok) return res.status(422).json({ error:'활성 사용 정책에 연결된 토큰을 삭제하거나 호환되지 않게 변경할 수 없습니다. 정책을 먼저 수정하세요.', errors:validation.errors });
+      }
       const saved = await sql`select publish_single_design_token_library(${setId}::uuid, ${body.expectedVersionId || null}::uuid, ${JSON.stringify(entries)}::jsonb, ${String(body.changeNote || '공통 디자인 토큰 저장')})::text as version_id`;
       return res.status(200).json({ ok: true, versionId: saved[0].version_id, warnings: analysis.warnings });
     } catch (error) {
       const conflict = /version changed/i.test(error.message);
-      const migration = error.code === '42883';
-      return res.status(conflict ? 409 : migration ? 503 : error.statusCode || 400).json({ error: migration ? '디자인 토큰 DB migration 082가 필요합니다.' : error.message });
+      const migration = ['42883','42P01'].includes(error.code);
+      return res.status(conflict ? 409 : migration ? 503 : error.statusCode || 400).json({ error: migration ? '디자인 토큰 DB migration 082 및 085가 필요합니다.' : error.message });
     }
   };
 }

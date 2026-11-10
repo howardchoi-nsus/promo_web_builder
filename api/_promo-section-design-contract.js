@@ -1,3 +1,5 @@
+const { styleSlotTargetProperty } = require("./_promo-style-slot-contract");
+const { targetForProperty, policyPermitsToken, styleCssProperty } = require("../shared/token-usage-policy.mjs");
 const crypto = require("node:crypto");
 
 const LAYOUT_VARIANTS = Object.freeze(["split-left", "split-right", "centered-hero"]);
@@ -420,7 +422,8 @@ function validateDesignPlan(section, plan, constraints, tokenSet) {
     if (!slot || slot.aiSelectable !== true) errors.push(`Style slot is not AI-selectable: ${selection.itemKey}.${selection.slotKey}`);
     if (!token || token.aiSelectable !== true || !String(token.value || "").trim()
       || (token.metadata?.libraryToken && token.metadata.state !== "active")) errors.push(`Token is not AI-selectable: ${selection.tokenKey}`);
-    if (slot && token && slot.semanticRole !== token.semanticRole) errors.push(`Token semantic role mismatch: ${selection.tokenKey}`);
+    if (tokenSet?.usagePolicy && token && (token.cssProperty !== styleCssProperty(styleSlotTargetProperty(slot)) || !policyPermitsToken(tokenSet.usagePolicy,{ target:targetForProperty(token.cssProperty,item),property:token.cssProperty,tokenKey:token.tokenKey }))) errors.push(`Token usage policy mismatch: ${selection.tokenKey}`);
+    if (!tokenSet?.usagePolicy && slot && token && slot.semanticRole !== token.semanticRole) errors.push(`Token semantic role mismatch: ${selection.tokenKey}`);
   });
   (plan?.assetRequests || []).forEach((asset) => {
     if (asset.targetType === "item") {

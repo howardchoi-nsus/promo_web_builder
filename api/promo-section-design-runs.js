@@ -131,7 +131,7 @@ module.exports = async function handler(req, res) {
         aiContent,
       },
     };
-    const tokenSet = await fetchTokenVersion(sql, designTokenSetVersionId);
+    const tokenSet = await require("./_token-usage-policy-store").policyTokenVersion(sql, await fetchTokenVersion(sql, designTokenSetVersionId));
     if (!tokenSet || tokenSet.status !== "active") {
       return res.status(422).json({ error: "Selected active design token set version was not found" });
     }

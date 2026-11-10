@@ -1,9 +1,11 @@
 <script>
+import TokenUsagePolicyManager from './TokenUsagePolicyManager.vue';
 import { designTokenService } from '../services/design-token-service.mjs';
 import { TOKEN_TYPES, TOKEN_CATEGORIES, analyzeTokenLibrary, parseTokenCsv, exportTokenCsv } from '../../../shared/design-token-library.mjs';
 
 export default {
   name: 'DesignTokenManager',
+  components: { TokenUsagePolicyManager },
   props: { translate: { type: Function, required: true } },
   emits: ['status', 'token-sets-changed'],
   data() {
@@ -120,6 +122,7 @@ export default {
       <label>버전 이력 <select :value="selectedHistory" :disabled="busy" @change="load($event.target.value)"><option v-if="!versions.length" value="">초기 토큰</option><option v-for="v in versions" :key="v.id" :value="v.id">v{{ v.version }}{{ v.id === activeVersionId ? ' · 현재' : '' }}</option></select></label>
       <button type="button" :disabled="busy" @click="load()">새로고침</button>
     </div>
+    <TokenUsagePolicyManager v-if="loaded" :token-version-id="activeVersionId" :blocked="dirty" />
     <template v-if="loaded">
       <div class="token-library-tabs" role="tablist" aria-label="디자인 토큰 카테고리" @keydown="onTabKey">
         <button type="button" role="tab" id="token-tab-all" :aria-selected="!selectedCategory" :tabindex="!selectedCategory ? 0 : -1" aria-controls="token-panel" :disabled="busy" @click="selectedCategory = ''">전체 ({{ tokens.length }})</button>

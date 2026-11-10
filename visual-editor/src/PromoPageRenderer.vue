@@ -158,11 +158,12 @@ const managedTokens = computed(() => normalizePromoTokenValues(
 
 const registeredTokensOnly = computed(() => props.content?.runtimeTheme?.designTokens?.policy === "registered-only");
 const effectiveDesignSpec = computed(() => registeredTokensOnly.value
-  ? enforceRegisteredDesignTokens(props.designSpec, managedTokens.value, props.content?.runtimeTheme?.designTokens?.catalog || []).spec
+  ? enforceRegisteredDesignTokens(props.designSpec, managedTokens.value, props.content?.runtimeTheme?.designTokens?.catalog || [], props.content?.runtimeTheme?.designTokens?.usagePolicy, props.content?.sectionSnapshot || []).spec
   : props.designSpec);
 
 const managedTokenStyle = computed(() => createPromoTokenRuntimeStyle(managedTokens.value, {
   registeredOnly: registeredTokensOnly.value,
+  usagePolicy: props.content?.runtimeTheme?.designTokens?.usagePolicy,
   background: effectiveDesignSpec.value?.theme?.backgroundColor,
   text: effectiveDesignSpec.value?.theme?.textColor,
   accent: effectiveDesignSpec.value?.theme?.accentColor,
@@ -179,7 +180,7 @@ function componentFields(item) {
 function componentRenderSpec(item) {
   const spec = Number(item?.renderSpec?.contractVersion) === 1 && item?.renderSpec?.root ? item.renderSpec : null;
   if (!spec || !registeredTokensOnly.value) return spec;
-  return enforceRegisteredDesignTokens(spec, managedTokens.value, props.content?.runtimeTheme?.designTokens?.catalog || []).spec;
+  return enforceRegisteredDesignTokens(spec, managedTokens.value, props.content?.runtimeTheme?.designTokens?.catalog || [], props.content?.runtimeTheme?.designTokens?.usagePolicy, props.content?.sectionSnapshot || []).spec;
 }
 
 function itemVisibilityKey(section, item) {
@@ -796,7 +797,7 @@ function effectiveSectionBackgroundColor(style) {
   const themeToken = managedTokenReference(effectiveDesignSpec.value?.theme?.backgroundColorToken);
   if (themeToken) return themeToken;
   const themeColor = String(effectiveDesignSpec.value?.theme?.backgroundColor || "").trim();
-  return themeColor || "var(--promo-bg)";
+  return themeColor || (props.content?.runtimeTheme?.designTokens?.usagePolicy ? "var(--render-policy-bg)" : "var(--promo-bg)");
 }
 
 function effectiveSectionFadeColor(style) {
@@ -2097,6 +2098,7 @@ defineExpose({ inspectLayoutCollisions, inspectLayoutQuality });
     class="promo-renderer"
     :class="{
       'is-editor-preview': editable,
+      'has-token-usage-policy': Boolean(content?.runtimeTheme?.designTokens?.usagePolicy),
       'has-editor-guides': editable && showGuides,
       'is-outline-mode': editable && outlineMode,
     }"
@@ -2215,6 +2217,7 @@ defineExpose({ inspectLayoutCollisions, inspectLayoutQuality });
             <RenderSpecTree
               v-if="componentRenderSpec(item)"
               :render-spec="componentRenderSpec(item)"
+              :registered-only="registeredTokensOnly"
               :fields="componentFields(item)"
               :value="valueFor(section, item)"
               :viewport="viewportOverride"

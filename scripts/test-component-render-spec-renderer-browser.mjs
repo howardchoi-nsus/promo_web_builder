@@ -160,6 +160,26 @@ try {
   await strictPage.screenshot({path:"/tmp/registered-token-output.png",fullPage:true});
   await strictPage.close();
 
+  const central = structuredClone(snapshot);
+  central.content.runtimeTheme = { designTokens: { values: {
+    ...central.content.formTemplate.designTokens.values,
+    '--body-size':'16px','--title-size':'32px','--body-weight':'400','--font-family':'Arial',
+    '--button-container-brand-default':'#d30000','--button-label-on-color':'#ffffff',
+  }, policy:'registered-only',catalog:[],usagePolicy:{schemaVersion:1,id:'policy',version:2,bindings:{
+    'page.background':'--promo-surface','text.primary':'--promo-ink','text.font':'--font-family',
+    'text.bodySize':'--body-size','text.titleSize':'--title-size','text.bodyWeight':'--body-weight',
+    'card.background':'--promo-surface','layout.gap':'--promo-space-4',
+    'button.background':'--button-container-brand-default','button.color':'--button-label-on-color',
+  } } } };
+  const centralPage=await outputPage(390,central);
+  assert.equal(await centralPage.locator('.promo-renderer').evaluate(el=>getComputedStyle(el).boxShadow),'none');
+  assert.equal(await centralPage.locator('.promo-renderer').evaluate(el=>getComputedStyle(el).borderRadius),'0px');
+  assert.equal(await centralPage.locator('article.render-spec-node h2').evaluate(el=>getComputedStyle(el).fontSize),'32px');
+  assert.equal(await centralPage.locator('article.render-spec-node a').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(211, 0, 0)');
+  assert.equal(await centralPage.locator('article.render-spec-node a').evaluate(el=>getComputedStyle(el).fontWeight),'400');
+  assert.equal(await centralPage.locator('.promo-renderer').evaluate(el=>el.style.getPropertyValue('--render-policy-ink')),'var(--promo-ink)');
+  await centralPage.screenshot({path:'/tmp/token-policy-output.png',fullPage:true});await centralPage.close();
+
   console.log("Shared Component RenderSpec browser output test passed");
 } finally {
   await browser.close();

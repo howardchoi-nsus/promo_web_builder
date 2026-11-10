@@ -1,3 +1,4 @@
+const { usageToken } = require("../shared/token-usage-policy.mjs");
 const CARD_ROLE_PATTERN = /benefit|offer|reward|step|trust|proof|metric|feature|faq|card|content/i;
 const CENTERED_ROLE_PATTERN = /hero|key-visual|offer|conversion|cta/i;
 
@@ -93,6 +94,7 @@ function applyFlowLayoutRecipe({
   mobileItemStyles = {},
   tokenBindings = {},
   referenceLayoutSpec = {},
+  usagePolicy = null, tokenValues = {},
 } = {}) {
   const role = normalizedRole(section);
   const reference = referenceTerms(referenceLayoutSpec);
@@ -122,6 +124,19 @@ function applyFlowLayoutRecipe({
       centered,
     });
   });
+  const registeredPx = key => {
+    const token = usageToken(usagePolicy,key,tokenValues);
+    const value = tokenValues[token];
+    return /^\d+(?:\.\d+)?px$/.test(value || '') ? Number.parseFloat(value) : undefined;
+  };
+  if (usagePolicy) for (const item of items) {
+    const key = `${sectionKey}.${item.itemKey}`;
+    for (const styles of [nextDesktop,nextMobile]) if (styles[key]) {
+      delete styles[key].paddingPx;
+      const padding = registeredPx('card.padding');
+      if (padding !== undefined && CARD_ROLE_PATTERN.test(role)) styles[key].paddingPx = padding;
+    }
+  }
   return {
     recipe: {
       contractVersion: 1,
@@ -141,6 +156,10 @@ function applyFlowLayoutRecipe({
       mobileLayoutGapPx: 18,
       layoutPaddingBlockPx: compact ? 32 : spacious ? 72 : (/hero|key-visual/i.test(role) ? 72 : 48),
       mobileLayoutPaddingBlockPx: 32,
+      ...(usagePolicy ? {
+        layoutGapPx: registeredPx('layout.gap'), mobileLayoutGapPx: registeredPx('layout.gap'),
+        layoutPaddingBlockPx: registeredPx('layout.padding'), mobileLayoutPaddingBlockPx: registeredPx('layout.padding'),
+      } : {}),
       contentAlignment: centered ? "center" : "stretch",
       minHeight: Math.max(
         Number(sectionStyle?.minHeight || 0),

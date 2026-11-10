@@ -39,7 +39,7 @@ let writes = 0;
 const sql = async (parts) => {
   const query = parts.join('');
   if (query.includes('publish_single')) { writes++; return [{ version_id: 'new-version' }]; }
-  if (query.includes('set_versions')) return [];
+  if (query.includes('set_versions') || query.includes('promo_token_usage_policy_versions')) return [];
   return [{ id: 'set-id' }];
 };
 const handler = createHandler({ sqlFactory: () => sql, authorize() {} });

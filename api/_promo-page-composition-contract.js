@@ -1,3 +1,4 @@
+const { usageBindings, usageToken, TOKEN_USAGE_RULES } = require("../shared/token-usage-policy.mjs");
 const { randomUUID } = require("node:crypto");
 const { OVERVIEW_FIELDS } = require("./_promo-overview-contract");
 const { normalizeCtaLabel } = require("./_promo-content-policy");
@@ -296,13 +297,15 @@ const REQUIRED_DESIGN_TOKEN_ROLE_CANDIDATES = Object.freeze({
   shadow: ["--promo-shadow", "--app-shadow", "--shadow-elevation-1"],
 });
 
-function missingRequiredDesignTokenRoles(tokenValues = {}) {
+function missingRequiredDesignTokenRoles(tokenValues = {}, usagePolicy = null) {
+  if (usagePolicy) return TOKEN_USAGE_RULES.filter(rule => rule.required && !usageToken(usagePolicy, rule.key, tokenValues)).map(rule => rule.key);
   return Object.entries(REQUIRED_DESIGN_TOKEN_ROLE_CANDIDATES)
     .filter(([, candidates]) => !firstAvailableToken(tokenValues, candidates))
     .map(([role]) => role);
 }
 
-function resolveDesignTokenBindings(tokenValues = {}, selectableTokens = []) {
+function resolveDesignTokenBindings(tokenValues = {}, selectableTokens = [], usagePolicy = null) {
+  if (usagePolicy) return usageBindings(usagePolicy, tokenValues);
   const semanticTokens = new Map();
   (selectableTokens || []).forEach((token) => {
     const tokenKey = String(token?.tokenKey || "").trim();
@@ -348,7 +351,17 @@ function styleSlotTokenStyle(styleSlots = [], bindings = {}) {
   }));
 }
 
-function defaultItemTokenStyle(item, tokenValues = {}, bindings = resolveDesignTokenBindings(tokenValues)) {
+function defaultItemTokenStyle(item, tokenValues = {}, bindings = resolveDesignTokenBindings(tokenValues), usagePolicy = null) {
+  if (usagePolicy) {
+    const fields = item.fields?.length ? item.fields : [item];
+    const button = fields.some(field => field.fieldKind === "cta");
+    const title = fields.some(field => /title|headline|heading/.test(`${field.textType || ""} ${field.fieldKey || ""}`));
+    const mapping = { colorToken: button ? "button.color" : "text.primary", fontFamilyToken:button?"button.font":"text.font",
+      fontSizeToken:button?"button.size":title?"text.titleSize":"text.bodySize",
+      fontWeightToken:button?"button.weight":title?"text.titleWeight":"text.bodyWeight",
+      lineHeightToken:button?"button.lineHeight":title?"text.titleLineHeight":"text.bodyLineHeight" };
+    return Object.fromEntries(Object.entries(mapping).flatMap(([property,key]) => { const token = usageToken(usagePolicy,key,tokenValues); return token ? [[property,token]] : []; }));
+  }
   const fields = Array.isArray(item?.fields) && item.fields.length ? item.fields : [item];
   const identity = fields.map((field) => [
     field?.fieldKey,
@@ -400,17 +413,17 @@ function defaultItemTokenStyle(item, tokenValues = {}, bindings = resolveDesignT
   };
 }
 
-function buildDefaultItemStyles(sections, tokenValues = {}, selectableTokens = []) {
-  const bindings = resolveDesignTokenBindings(tokenValues, selectableTokens);
+function buildDefaultItemStyles(sections, tokenValues = {}, selectableTokens = [], usagePolicy = null) {
+  const bindings = resolveDesignTokenBindings(tokenValues, selectableTokens, usagePolicy);
   return Object.fromEntries((sections || []).flatMap((section) => (
     (section.items || []).flatMap((item) => {
       const itemKey = `${section.sectionKey}.${item.itemKey}`;
-      const itemStyle = defaultItemTokenStyle(item, tokenValues, bindings);
+      const itemStyle = defaultItemTokenStyle(item, tokenValues, bindings, usagePolicy);
       const fieldStyles = (item.fields || []).map((field) => [
         `${itemKey}.${field.fieldKey}`,
         {
-          ...defaultItemTokenStyle(field, tokenValues, bindings),
-          ...styleSlotTokenStyle(field.styleSlots, bindings),
+          ...defaultItemTokenStyle(field, tokenValues, bindings, usagePolicy),
+          ...(usagePolicy ? {} : styleSlotTokenStyle(field.styleSlots, bindings)),
         },
       ]);
       return [[itemKey, itemStyle], ...fieldStyles];

@@ -15,6 +15,7 @@ const props = defineProps({
   mobileBreakpoint: { type: Number, default: 720 },
   tabletBreakpoint: { type: Number, default: 1024 },
   editable: { type: Boolean, default: false },
+  registeredOnly: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["select-field"]);
@@ -28,6 +29,7 @@ const breakpoint = computed(() => resolveRenderSpecBreakpoint({
 
 const tree = computed(() => createResolvedRenderSpecTree({
   renderSpec: props.renderSpec,
+  registeredOnly: props.registeredOnly,
   fields: props.fields,
   componentValue: props.value,
   breakpoint: breakpoint.value,

@@ -1,3 +1,4 @@
+const { activeTokenUsagePolicy, tokenPolicyCatalog } = require("./_token-usage-policy-store");
 const { fetchComponents } = require("./_item-components-store");
 const { resolveLibraryComponentCandidates } = require("./_promo-library-component-candidates");
 const { stableStringify, fingerprint } = require("./_promo-composition-fingerprint");
@@ -344,6 +345,8 @@ async function fetchTokenCandidates(sql, shellConfig) {
     if (!row.versionId || (row.setKey !== "design-system" && allowedIds.size && !allowedIds.has(String(row.versionId).toLowerCase()))) continue;
     const version = await fetchTokenVersion(sql, row.versionId);
     if (!version) continue;
+    const { policySelectableTokens } = await import("../shared/token-usage-policy.mjs");
+    const usagePolicy = row.setKey === "design-system" ? await activeTokenUsagePolicy(sql, version) : null;
     candidates.push({
       tokenSetId: row.id,
       tokenSetVersionId: row.versionId,
@@ -352,9 +355,10 @@ async function fetchTokenCandidates(sql, shellConfig) {
       isDefault: Boolean(row.isDefault),
       runtimeValues: toRuntimeTokenMap(version.values),
       tokenPolicy: row.setKey === "design-system" ? "registered-only" : "legacy",
+      usagePolicy,
       tokenCatalog: version.values.filter((value) => value.value && (!value.metadata?.libraryToken || value.metadata.state === "active"))
         .map((value) => ({ tokenKey: value.tokenKey, cssProperties: value.cssProperties, valueType: value.valueType })),
-      selectableTokens: version.values.filter((value) => value.aiSelectable && value.value && (!value.metadata?.libraryToken || value.metadata.state === "active") && value.valueType !== "typography").map((value) => ({
+      selectableTokens: usagePolicy ? policySelectableTokens(usagePolicy, tokenPolicyCatalog(version)).map(token => ({ ...token, values:[token.value] })) : version.values.filter((value) => value.aiSelectable && value.value && (!value.metadata?.libraryToken || value.metadata.state === "active") && value.valueType !== "typography").map((value) => ({
         tokenKey: value.tokenKey,
         category: value.category,
         semanticRole: value.semanticRole,
@@ -553,7 +557,7 @@ async function fetchRegistryCompositionCandidates(sql, {
     for (const section of eligible) {
       section.components = section.components.filter((component) => {
         if (!component.renderSpec) return true;
-        const validation = validateRenderSpec(component.renderSpec, { fields: component.fields, tokenCatalog: strictLibrary.tokenCatalog });
+        const validation = validateRenderSpec(component.renderSpec, { fields: component.fields, tokenCatalog: strictLibrary.tokenCatalog, usagePolicy: strictLibrary.usagePolicy });
         if (validation.ok) return true;
         if (component.isRequired) throw Object.assign(new Error(`Required component ${component.componentKey} uses unavailable tokens or an invalid RenderSpec`), {
           code: "REQUIRED_COMPONENT_TOKEN_POLICY_VIOLATION", statusCode: 422, errors: validation.errors,
@@ -575,6 +579,7 @@ async function fetchRegistryCompositionCandidates(sql, {
   const resources = resourceResolution.references;
   const resourceIssues = [...resourceResolution.issues, ...enriched.issues];
   const policyFingerprint = fingerprint({
+    tokenUsagePolicies: tokenSets.map(token => ({ tokenSetVersionId:token.tokenSetVersionId, policyId:token.usagePolicy?.id || null, policyVersion:token.usagePolicy?.version || null })),
     shellVersionId: shell.id,
     config: shellConfig,
     sectionPolicies: sections.map((section) => ({
@@ -688,6 +693,7 @@ function plannerRegistryCandidateSnapshot(candidates) {
       isDefault: token.isDefault,
       selectableTokens: token.selectableTokens,
       tokenPolicy: token.tokenPolicy,
+      usagePolicy: token.usagePolicy,
     })),
     motionPresets: candidates.motionPresets || [],
     designReferences: candidates.designReferences || [],

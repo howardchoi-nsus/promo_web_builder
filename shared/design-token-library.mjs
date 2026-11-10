@@ -136,20 +136,5 @@ export function tokenCssProperties(token) {
   return ['gap', 'padding', 'margin'];
 }
 
-// Compatibility roles for the existing design planners. Primitive units and
-// incomplete/composite recipes must not become LLM selection candidates.
-export function tokenPlannerRole(token) {
-  const roles = {
-    '--color-bg-dark-800': 'page-background',
-    '--card-container-default': 'surface-color',
-    '--button-label-default': 'text-color',
-    '--button-label-muted-default': 'muted-color',
-    '--color-brand-500': 'accent-color',
-    '--button-label-on-color': 'on-accent-color',
-    '--border-radius-md': 'radius',
-    '--shadow-elevation-1': 'shadow',
-    '--typography-body-lg-typeface': 'font-family',
-    '--typography-title-2xl-font-size': 'title-size',
-  };
-  return token.state === 'active' ? roles[token.name] || '' : '';
-}
+// Semantic use is assigned by the versioned token usage policy, never by token name.
+export function tokenPlannerRole() { return ''; }

@@ -6,10 +6,10 @@ async function assertRegisteredTokenPolicy(snapshot) {
   const library = snapshot?.content?.runtimeTheme?.designTokens;
   if (library?.policy !== "registered-only") return;
   const { enforceRegisteredDesignTokens } = await import("../shared/registered-token-policy.mjs");
-  const validation = enforceRegisteredDesignTokens(snapshot.designSpec, library.values, library.catalog);
+  const validation = enforceRegisteredDesignTokens(snapshot.designSpec, library.values, library.catalog, library.usagePolicy, snapshot.content?.sectionSnapshot);
   const { validateRenderSpec } = require("./_component-render-spec-contract");
   for (const section of snapshot.content?.sectionSnapshot || []) for (const item of section.items || []) {
-    if (item.renderSpec) validation.errors.push(...validateRenderSpec(item.renderSpec, { fields: item.fields, tokenCatalog: library.catalog }).errors);
+    if (item.renderSpec) validation.errors.push(...validateRenderSpec(item.renderSpec, { fields: item.fields, tokenCatalog: library.catalog, usagePolicy: library.usagePolicy }).errors);
   }
   if (validation.errors.length) throw Object.assign(new Error("Only registered design tokens and values are allowed"), {
     code: "REGISTERED_TOKEN_POLICY_VIOLATION", statusCode: 422, errors: validation.errors,

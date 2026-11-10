@@ -193,11 +193,11 @@ function fieldAttributes(tag, attributes, value, field) {
   return result;
 }
 
-function responsiveFieldStyle(style, field, tag, breakpoint) {
+function responsiveFieldStyle(style, field, tag, breakpoint, registeredOnly = false) {
   const next = { ...style };
   const titleLike = ["title", "headline"].includes(String(field?.textType || "").toLowerCase())
     || /^h[1-6]$/u.test(tag);
-  if (breakpoint !== "mobile" || !titleLike) return next;
+  if (registeredOnly || breakpoint !== "mobile" || !titleLike) return next;
   const mobileCap = "clamp(2rem, 10vw, 3.25rem)";
   next.fontSize = next.fontSize ? `min(${next.fontSize}, ${mobileCap})` : mobileCap;
   if (!next.lineHeight) next.lineHeight = "1.08";
@@ -209,6 +209,7 @@ export function createResolvedRenderSpecTree({
   fields = [],
   componentValue,
   breakpoint = "desktop",
+  registeredOnly = false,
 } = {}) {
   if (Number(renderSpec?.contractVersion) !== 1 || !renderSpec?.root) return null;
   const resolvedSpec = resolveResponsiveRenderSpec(renderSpec, breakpoint);
@@ -244,6 +245,7 @@ export function createResolvedRenderSpecTree({
         field,
         tag,
         breakpoint,
+        registeredOnly,
       ),
       children: (Array.isArray(node.children) ? node.children : [])
         .map((child, index) => resolveNode(child, `${path}.children.${index}`))

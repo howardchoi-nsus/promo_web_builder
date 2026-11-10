@@ -234,6 +234,17 @@ function prepareRenderSpecPersistence(renderSpec, { fields, tokenCatalog } = {})
 }
 
 async function fetchRenderTokenCatalog(sql) {
+  const { fetchTokenSets, fetchTokenVersion } = require('./_design-token-store');
+  const current = (await fetchTokenSets(sql,{activeOnly:true})).find(set=>set.setKey==='design-system'&&set.versionId);
+  if(current) {
+    const version=await fetchTokenVersion(sql,current.versionId);
+    const { activeTokenUsagePolicy, tokenPolicyCatalog } = require('./_token-usage-policy-store');
+    const policy=await activeTokenUsagePolicy(sql,version);
+    const { usageCatalog } = await import('../shared/token-usage-policy.mjs');
+    const catalog=usageCatalog(policy,tokenPolicyCatalog(version));
+    catalog.usagePolicy=policy;
+    return catalog;
+  }
   return sql`
     select token_key, value_type, semantic_role, css_property, css_properties
     from promo_design_token_definitions

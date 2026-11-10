@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref } from "vue";
+import TokenUsageReport from "./TokenUsageReport.vue";
 import CompositionPreviewCanvas from "./CompositionPreviewCanvas.vue";
 
 const props = defineProps({
@@ -85,6 +86,7 @@ defineExpose({ buildAutoRepairSnapshot, inspectQualityAcrossViewports });
         @click="emit('check-quality')"
       >다시 검사</button>
     </div>
+    <TokenUsageReport :snapshot="snapshot" />
     <CompositionPreviewCanvas ref="previewCanvasRef" :snapshot="snapshot" :viewport="previewViewport" />
   </section>
 </template>

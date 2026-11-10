@@ -1,3 +1,4 @@
+import { usageRuntimeStyle } from "./token-usage-policy.mjs";
 const MANAGED_TOKEN_KEY = /^--[a-z][a-z0-9-]*$/;
 
 export function normalizePromoTokenValues(input) {
@@ -28,6 +29,7 @@ export function normalizePromoTokenValues(input) {
 
 export function createPromoTokenRuntimeStyle(input, fallbacks = {}) {
   const tokens = normalizePromoTokenValues(input);
+  if (fallbacks.usagePolicy) return { ...tokens, ...usageRuntimeStyle(fallbacks.usagePolicy, tokens) };
   const registeredOnly = fallbacks.registeredOnly === true;
   if (registeredOnly) fallbacks = {};
   const first = (...values) => values.map((value) => String(value || "").trim()).find(Boolean) || "";

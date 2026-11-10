@@ -1,6 +1,7 @@
+const { targetForProperty, policyPermitsToken, styleCssProperty } = require("../shared/token-usage-policy.mjs");
 const { normalizeCtaLabel } = require("./_promo-content-policy");
 const { createHash } = require("node:crypto");
-const { normalizeStyleSlot } = require("./_promo-style-slot-contract");
+const { normalizeStyleSlot, styleSlotTargetProperty } = require("./_promo-style-slot-contract");
 
 const ALLOWED_REGIONS = Object.freeze(["left", "center", "right"]);
 const SAFE_TOKEN_PROPERTIES = new Set([
@@ -168,6 +169,7 @@ function selectableTokens(tokenSet) {
     value: token.value,
     semanticRole: token.semanticRole,
     cssProperty: token.cssProperty,
+    usageRules: token.usageRules,
   }));
 }
 
@@ -182,7 +184,7 @@ function allowedTokenBindings(section, tokenSet) {
       slotKey: slot.slotKey,
       semanticRole: slot.semanticRole,
       allowedTokenKeys: tokens
-        .filter((token) => token.semanticRole === slot.semanticRole)
+        .filter((token) => tokenSet.usagePolicy ? token.cssProperty === styleCssProperty(styleSlotTargetProperty(slot)) && policyPermitsToken(tokenSet.usagePolicy,{target:targetForProperty(token.cssProperty,field),property:token.cssProperty,tokenKey:token.tokenKey}) : token.semanticRole === slot.semanticRole)
         .map((token) => token.tokenKey),
     }));
   }));
@@ -399,7 +401,10 @@ function normalizeCompositionPlan({
       continue;
     }
     let token = tokenByKey.get(binding.tokenKey);
-    if (!token || slot.semanticRole !== token.semanticRole) {
+    if (tokenSet.usagePolicy && (!token || token.cssProperty !== styleCssProperty(styleSlotTargetProperty(slot)) || !policyPermitsToken(tokenSet.usagePolicy,{target:targetForProperty(token.cssProperty,field),property:token.cssProperty,tokenKey:token.tokenKey}))) {
+      fail("Token binding violates the central usage policy", "TOKEN_USAGE_POLICY_MISMATCH");
+    }
+    if (!token || (!tokenSet.usagePolicy && slot.semanticRole !== token.semanticRole)) {
       const fallbackToken = [...tokenByKey.values()].find((candidate) => (
         candidate.semanticRole === slot.semanticRole
       ));

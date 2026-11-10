@@ -1,3 +1,4 @@
+const { targetForProperty, usageAssignmentErrors } = require("../shared/token-usage-policy.mjs");
 const { createHash } = require("node:crypto");
 
 const CONTRACT_VERSION = 1;
@@ -153,6 +154,7 @@ function tokenCssProperties(token) {
 }
 
 function validateRenderSpec(spec, context = {}) {
+  context = { ...context, usagePolicy: context.usagePolicy || context.tokenCatalog?.usagePolicy };
   const errors = [];
   const warnings = [];
   const addError = (code, path, message) => errors.push({ code, path, message });
@@ -245,7 +247,14 @@ function validateRenderSpec(spec, context = {}) {
         addError("LAYOUT_PROPERTY_NOT_ALLOWED", propertyPath, `Layout property ${property} is not allowed.`);
         continue;
       }
-      if (LAYOUT_TOKEN_PROPERTIES[property]) validateToken(value, LAYOUT_TOKEN_PROPERTIES[property], propertyPath);
+      if (LAYOUT_TOKEN_PROPERTIES[property]) {
+        validateToken(value, LAYOUT_TOKEN_PROPERTIES[property], propertyPath);
+        if(context.usagePolicy) {
+          const cssProperty=LAYOUT_TOKEN_PROPERTIES[property].at(-1);
+          const target=targetForProperty(cssProperty);
+          errors.push(...usageAssignmentErrors(context.usagePolicy,{tokenKey:value,property:cssProperty,target,path:propertyPath}));
+        }
+      }
       else if (property === "display" && !["block", "flex", "grid"].includes(value)) addError("INVALID_LAYOUT_VALUE", propertyPath, "display must be block, flex, or grid.");
       else if (property === "direction" && !["row", "column"].includes(value)) addError("INVALID_LAYOUT_VALUE", propertyPath, "direction must be row or column.");
       else if (property === "wrap" && !["nowrap", "wrap"].includes(value)) addError("INVALID_LAYOUT_VALUE", propertyPath, "wrap must be nowrap or wrap.");
@@ -261,7 +270,7 @@ function validateRenderSpec(spec, context = {}) {
     }
   }
 
-  function validateTokenBindings(bindings, path) {
+  function validateTokenBindings(bindings, path, node = {}) {
     if (bindings == null) return;
     if (!isPlainObject(bindings)) {
       addError("INVALID_TOKEN_BINDINGS", path, "Token bindings must be an object.");
@@ -269,7 +278,13 @@ function validateRenderSpec(spec, context = {}) {
     }
     for (const [property, tokenKey] of Object.entries(bindings)) {
       if (!TOKEN_BINDING_PROPERTIES[property]) addError("TOKEN_PROPERTY_NOT_ALLOWED", `${path}.${property}`, `Token property ${property} is not allowed.`);
-      else validateToken(tokenKey, TOKEN_BINDING_PROPERTIES[property], `${path}.${property}`);
+      else {
+        validateToken(tokenKey, TOKEN_BINDING_PROPERTIES[property], `${path}.${property}`);
+        if (context.usagePolicy) {
+          const target = targetForProperty(TOKEN_BINDING_PROPERTIES[property][0], { tag: node.tag, fieldKind: fields.get(node.fieldKey)?.fieldKind });
+          errors.push(...usageAssignmentErrors(context.usagePolicy, { tokenKey, property: TOKEN_BINDING_PROPERTIES[property][0], target, path: `${path}.${property}` }));
+        }
+      }
     }
   }
 
@@ -302,7 +317,7 @@ function validateRenderSpec(spec, context = {}) {
     if (metrics.ctaNodeCount > MAX_CTA_NODES) addError("CTA_LIMIT_EXCEEDED", path, `RenderSpec supports at most ${MAX_CTA_NODES} CTA nodes.`);
     validateAttributes(node.attributes, `${path}.attributes`);
     validateLayout(node.layout, `${path}.layout`);
-    validateTokenBindings(node.tokenBindings, `${path}.tokenBindings`);
+    validateTokenBindings(node.tokenBindings, `${path}.tokenBindings`, node);
 
     if (nodeType === "field") {
       metrics.fieldNodeCount += 1;

@@ -205,8 +205,8 @@ async function compileRegistryComposition({
     throw compilerError("TOKEN_SET_VERSION_MISMATCH", "Design Token Set changed before compilation");
   }
   const tokenValues = tokenSet?.runtimeValues || {};
-  const tokenBindings = resolveDesignTokenBindings(tokenValues, tokenSet?.selectableTokens || []);
-  const missingTokenRoles = missingRequiredDesignTokenRoles(tokenValues);
+  const tokenBindings = resolveDesignTokenBindings(tokenValues, tokenSet?.selectableTokens || [], tokenSet?.usagePolicy);
+  const missingTokenRoles = missingRequiredDesignTokenRoles(tokenValues, tokenSet?.usagePolicy);
   if (missingTokenRoles.length) {
     const error = compilerError(
       "REQUIRED_DESIGN_TOKEN_MISSING",
@@ -459,6 +459,7 @@ async function compileRegistryComposition({
         desktopItemStyles: presetItemStyles,
         mobileItemStyles,
         tokenBindings,
+        usagePolicy: tokenSet?.usagePolicy, tokenValues,
         referenceLayoutSpec: spec.layoutReference?.layoutSpec || {},
       });
       sectionStyles[sectionId] = qualityRecipe.sectionStyle;
@@ -509,6 +510,7 @@ async function compileRegistryComposition({
     sectionSnapshot,
     tokenValues,
     tokenSet?.selectableTokens || [],
+    tokenSet?.usagePolicy,
   );
   const itemStyleKeys = new Set([...Object.keys(defaultItemStyles), ...Object.keys(presetItemStyles)]);
   const mergedItemStyles = Object.fromEntries([...itemStyleKeys].map((key) => [key, {
@@ -556,7 +558,7 @@ async function compileRegistryComposition({
   };
   if (tokenSet?.tokenPolicy === "registered-only") {
     const { enforceRegisteredDesignTokens } = await import("../shared/registered-token-policy.mjs");
-    const enforced = enforceRegisteredDesignTokens(designSpec, tokenValues, tokenSet.tokenCatalog);
+    const enforced = enforceRegisteredDesignTokens(designSpec, tokenValues, tokenSet.tokenCatalog, tokenSet.usagePolicy, sectionSnapshot);
     designSpec = enforced.spec;
     layoutDiagnostics.push(...enforced.errors.map((entry) => ({
       ...entry, level: "warning", message: "Unregistered design value omitted; register a compatible token to apply it.",
@@ -564,7 +566,7 @@ async function compileRegistryComposition({
     const { validateRenderSpec } = require("./_component-render-spec-contract");
     for (const section of sectionSnapshot) for (const item of section.items || []) {
       if (!item.renderSpec) continue;
-      const validation = validateRenderSpec(item.renderSpec, { fields: item.fields, tokenCatalog: tokenSet.tokenCatalog });
+      const validation = validateRenderSpec(item.renderSpec, { fields: item.fields, tokenCatalog: tokenSet.tokenCatalog, usagePolicy: tokenSet.usagePolicy });
       if (!validation.ok) throw Object.assign(compilerError("COMPONENT_TOKEN_POLICY_VIOLATION", `Component ${item.componentKey} is incompatible with the active token library`, 422), { errors: validation.errors });
     }
   }
@@ -581,7 +583,7 @@ async function compileRegistryComposition({
     sourceType: "composition-shell",
     sourceId: shell.shellVersionId || "",
     designTokenSetVersionId: tokenSet?.tokenSetVersionId || "",
-    designTokens: { values: tokenValues, policy: tokenSet?.tokenPolicy || "legacy", catalog: tokenSet?.tokenCatalog || [] },
+    designTokens: { values: tokenValues, policy: tokenSet?.tokenPolicy || "legacy", catalog: tokenSet?.tokenCatalog || [], usagePolicy: tokenSet?.usagePolicy || null },
   };
   return {
     contractVersion: 3,

@@ -39,7 +39,7 @@ async function loadCompositionContext(sql, formTemplateId, sectionKey, designTok
     error.statusCode = 422;
     throw error;
   }
-  const tokenSet = await fetchTokenVersion(sql, selectedTokenVersionId);
+  const tokenSet = await require("./_token-usage-policy-store").policyTokenVersion(sql, await fetchTokenVersion(sql, selectedTokenVersionId));
   if (!tokenSet || tokenSet.status !== "active") {
     const error = new Error("Active design token set version was not found");
     error.statusCode = 422;
