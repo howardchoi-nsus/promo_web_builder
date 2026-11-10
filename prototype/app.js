@@ -3120,6 +3120,11 @@ const adminApp = createApp({
       })[stage] || fallback || stage;
     },
 
+    promptJourneyStepLabel(type) {
+      const step = window.PromoAdminPromptGroups.promptTypeMeta(type).journeyStep;
+      return step ? `${step}단계` : "";
+    },
+
     promptTypeLabel(type) {
       return window.PromoAdminPromptGroups.promptTypeMeta(type).label;
     },

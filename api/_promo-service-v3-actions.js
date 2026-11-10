@@ -7,7 +7,6 @@ const { invalidatePublicationCache } = require("./_promo-publication-cache");
 const { runtimePublicConfig } = require("./_promo-runtime-public-config");
 const publicationStore = require("./_promo-publication-store");
 const serviceStore = require("./_promo-service-v3-store");
-const { startGenerationJobV3 } = require("./_promo-generation-v3-adapter");
 
 async function contracts() {
   return import("../packages/promo-contracts/src/service-v3.mjs");
@@ -83,52 +82,21 @@ function createCancelHandler(dependencies = {}) {
   };
 }
 
+// The V3-to-legacy generation bridge has been removed. Keep a clear response
+// for existing clients without persisting feedback or creating unconsumed jobs.
 function createRegenerateHandler(dependencies = {}) {
-  const deps = common({
-    saveFeedback: serviceStore.savePromoRequestFeedbackV3,
-    createGenerationJob: serviceStore.createGenerationJobV3,
-    startGeneration: startGenerationJobV3,
-    ...dependencies,
-  });
+  const deps = common(dependencies);
   return async function handler(req, res) {
     try {
       deps.requireFlag();
       if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed", code: "METHOD_NOT_ALLOWED" });
-      const owner = deps.resolveBuilderOwner(req, res);
-      const body = deps.parseBody(req.body);
-      const id = requestId(req, body);
-      const feedbackText = String(body.feedbackText || body.feedback || "").trim().slice(0, 10000);
-      if (!id || !feedbackText) return res.status(400).json({ error: "requestId and feedbackText are required", code: "FEEDBACK_REQUIRED" });
-      const sql = deps.getSql();
-      const feedback = await deps.saveFeedback(sql, {
-        requestId: id,
-        ownerSubject: owner.ownerSubject,
-        feedbackText,
-        baseDocumentRevision: Number(body.baseDocumentRevision || 0) || null,
-      });
-      if (!feedback) return res.status(404).json({ error: "Promo request not found", code: "PROMO_REQUEST_NOT_FOUND" });
-      const { assertGenerationJobV3 } = await deps.loadContracts();
-      const contract = assertGenerationJobV3({
+      deps.resolveBuilderOwner(req, res);
+      res.setHeader("Cache-Control", "no-store");
+      return res.status(410).json({
+        ok: false,
         contractVersion: 3,
-        requestId: id,
-        pipeline: body.pipeline || "composition",
-        inputSnapshot: { ...(body.inputSnapshot || {}), feedback: { feedbackText, feedbackId: feedback.feedbackId } },
-      });
-      const result = await deps.createGenerationJob(sql, {
-        requestId: id,
-        pipeline: contract.pipeline,
-        inputSnapshot: contract.inputSnapshot,
-        idempotencyKey: String(req.headers?.["idempotency-key"] || body.idempotencyKey || feedback.feedbackId),
-      });
-      if (!result.job) return res.status(404).json({ error: "Promo request not found", code: "PROMO_REQUEST_NOT_FOUND" });
-      let execution = null;
-      if (result.created) execution = await deps.startGeneration(sql, { job: result.job, inputSnapshot: contract.inputSnapshot, req });
-      if (execution && !execution.ok) return res.status(execution.statusCode || 502).json({ error: execution.error, code: "WORKER_TRIGGER_FAILED", job: result.job });
-      await deps.dispatchOutbox(sql, { limit: 50 }).catch(() => null);
-      return res.status(result.created ? 202 : 200).json({
-        ok: true, contractVersion: 3, feedback,
-        job: { ...result.job, ...(execution?.legacyRunId ? { legacyRunId: execution.legacyRunId, status: "queued" } : {}) },
-        execution,
+        code: "V3_GENERATION_RETIRED",
+        error: "V3 generation bridge has been removed. Use the AI builder composition flow.",
       });
     } catch (error) { return errorResponse(res, error, "PROMO_REGENERATE_V3_FAILED"); }
   };

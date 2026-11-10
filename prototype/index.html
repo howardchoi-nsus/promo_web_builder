@@ -989,7 +989,7 @@
                           :class="{ selected: selectedPromptTemplateId === group.primary?.id }"
                           @click="selectPromptTemplate(group.primary.id)"
                         >
-                          <strong>{{ promptTypeLabel(group.type) }}</strong>
+                          <strong><span v-if="promptJourneyStepLabel(group.type)">{{ promptJourneyStepLabel(group.type) }} · </span>{{ promptTypeLabel(group.type) }}</strong>
                           <span>{{ promptExecutionModeLabel(group.type) }} · {{ promptGroupProviderSummary(group) }}</span>
                           <small class="prompt-group-purpose">{{ promptTypeDescription(group.type) }}</small>
                           <small>최종 수정 {{ formatPromptDate(group.updatedAt) }}</small>

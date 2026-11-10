@@ -4,6 +4,7 @@ const { createHandler: createJobHandler } = require("../api/internal/v3/generati
 const { createHandler: createContextHandler } = require("../api/internal/v3/generation-context");
 const { createHandler: createOutboxHandler } = require("../api/internal/v3/outbox-dispatch");
 const {
+  createRegenerateHandler,
   createReviewHandler,
   createPublicationHandler,
 } = require("../api/_promo-service-v3-actions");
@@ -53,44 +54,50 @@ async function testRequestHandler() {
 }
 
 async function testJobHandler() {
-  const handler = createJobHandler({
+  const noSideEffects = () => { throw new Error("retired generation must not access SQL or dispatch work"); };
+  const deps = {
     requireFlag() {},
     authenticate() {},
-    getSql: () => "sql",
-    loadContracts: contractLoader,
-    createGenerationJob: async (_sql, input) => ({
-      created: true,
-      job: { contractVersion: 3, jobId: "job-1", requestId: input.requestId, pipeline: input.pipeline, status: "accepted" },
-    }),
-    startGeneration: async () => ({ ok: true, statusCode: 202, legacyRunId: "legacy-run-1" }),
-    dispatchOutbox: async () => ({ processed: 1, failed: 0 }),
-  });
-  const res = response();
-  await handler({
-    method: "POST",
-    headers: { "idempotency-key": "job-idem-1" },
-    body: { contractVersion: 3, requestId: "request-1", pipeline: "composition", inputSnapshot: { value: 1 } },
-  }, res);
-  assert.equal(res.statusCode, 202);
-  assert.equal(res.body.job.jobId, "job-1");
-  assert.equal(res.body.job.legacyRunId, "legacy-run-1");
+    resolveBuilderOwner: () => ({ ownerSubject: "owner-1" }),
+    getSql: noSideEffects,
+    createGenerationJob: noSideEffects,
+    startGeneration: noSideEffects,
+    saveFeedback: noSideEffects,
+    dispatchOutbox: noSideEffects,
+  };
+  for (const body of [{}, { start: false }, { pipeline: "composition" }, { pipeline: "final_design_v2" }]) {
+    const res = response();
+    await createJobHandler(deps)({ method: "POST", body, headers: {} }, res);
+    assert.equal(res.statusCode, 410);
+    assert.equal(res.body.code, "V3_GENERATION_RETIRED");
+    assert.equal(res.headers["cache-control"], "no-store");
+  }
+  const regeneration = response();
+  await createRegenerateHandler(deps)({ method: "POST", headers: {}, body: { feedbackText: "retry" } }, regeneration);
+  assert.equal(regeneration.statusCode, 410);
+  assert.equal(regeneration.body.code, "V3_GENERATION_RETIRED");
 
-  const missingHandler = createJobHandler({
-    requireFlag() {},
-    authenticate() {},
-    getSql: () => "sql",
-    loadContracts: contractLoader,
-    createGenerationJob: async () => ({ created: false, job: null }),
-    startGeneration: async () => { throw new Error("must not start"); },
-  });
-  const missingRes = response();
-  await missingHandler({
-    method: "POST",
-    headers: {},
-    body: { contractVersion: 3, requestId: "missing", pipeline: "composition" },
-  }, missingRes);
-  assert.equal(missingRes.statusCode, 404);
-  assert.equal(missingRes.body.code, "PROMO_REQUEST_NOT_FOUND");
+  const historical = { jobId: "job-1", status: "ready", resultReference: "saved-result" };
+  const read = createJobHandler({ ...deps, getSql: () => "sql", findGenerationJob: async () => historical });
+  const res = response();
+  await read({ method: "GET", query: { id: "job-1" }, headers: {} }, res);
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.body.job, historical);
+
+  const forbidden = createJobHandler({ ...deps, authenticate() { throw Object.assign(new Error("Unauthorized"), { statusCode: 401 }); } });
+  const denied = response();
+  await forbidden({ method: "POST", headers: {} }, denied);
+  assert.equal(denied.statusCode, 401);
+
+  const { findGenerationJobV3 } = require("../api/_promo-service-v3-store");
+  let jobQuery = "";
+  const job = await findGenerationJobV3(async (parts) => {
+    jobQuery = parts.join("?");
+    return [{ id: "job-1", status: "ready", legacy_status: "failed", legacy_run_id: "old-run" }];
+  }, "job-1");
+  assert.doesNotMatch(jobQuery, /promo_generation_runs|legacy_run_id|join/i);
+  assert.equal(job.status, "ready");
+  assert.equal(Object.hasOwn(job, "legacyRunId"), false);
 }
 
 async function testContextHandler() {

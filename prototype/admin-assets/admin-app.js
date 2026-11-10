@@ -7522,7 +7522,7 @@ var Ah = Object.freeze({
 			src: e.editorUrl,
 			title: e.iframeTitle,
 			onLoad: n[0] ||= (e) => a.value = !1
-		}, null, 42, Lh), a.value ? (B(), V("div", Rh, "공통 Visual Editor를 불러오는 중입니다.")) : e.readOnly ? (B(), V("div", zh, F(e.readOnlyMessage), 1)) : W("v-if", !0)], 8, Ih)])], 544));
+		}, null, 42, Lh), a.value ? (B(), V("div", Rh, "공통 Visual Editor를 불러오는 중입니다.")) : e.readOnly ? (B(), V("div", zh, F(e.readOnlyMessage), 1)) : W("", !0)], 8, Ih)])], 544));
 	}
 }, [["__scopeId", "data-v-ba4ee7ed"]]), Vh = {
 	name: "TemplateLayoutManager",
@@ -7617,7 +7617,7 @@ function Jh(e, t, n, r, i, a) {
 		H("div", Uh, [H("div", null, [
 			H("span", Wh, F(n.translate("admin.templateLayout.eyebrow")), 1),
 			H("h3", { id: a.headingId }, F(n.template.name) + " · 템플릿 기본 레이아웃", 9, Gh),
-			H("small", null, [U(" v" + F(n.template.version) + " · " + F(n.statusLabel(n.template.status)) + " ", 1), i.layoutRevision ? (B(), V(z, { key: 0 }, [U(" · " + F(n.translate("admin.templateLayout.revision")) + " r" + F(i.layoutRevision), 1)], 64)) : W("v-if", !0)]),
+			H("small", null, [U(" v" + F(n.template.version) + " · " + F(n.statusLabel(n.template.status)) + " ", 1), i.layoutRevision ? (B(), V(z, { key: 0 }, [U(" · " + F(n.translate("admin.templateLayout.revision")) + " r" + F(i.layoutRevision), 1)], 64)) : W("", !0)]),
 			t[1] ||= H("small", null, "저장 범위: 선택한 템플릿의 기본 레이아웃", -1)
 		]), H("button", {
 			class: "tiny-button",
@@ -7626,7 +7626,7 @@ function Jh(e, t, n, r, i, a) {
 			disabled: i.loading || !a.editorUrl,
 			onClick: t[0] ||= (...e) => a.openEditor && a.openEditor(...e)
 		}, F(a.editable ? "템플릿 기본 레이아웃 편집" : "템플릿 기본 레이아웃 보기"), 9, Kh)]),
-		i.error ? (B(), V("div", qh, [t[2] ||= H("strong", null, "템플릿 기본 레이아웃 오류", -1), H("span", null, F(i.error), 1)])) : W("v-if", !0),
+		i.error ? (B(), V("div", qh, [t[2] ||= H("strong", null, "템플릿 기본 레이아웃 오류", -1), H("span", null, F(i.error), 1)])) : W("", !0),
 		i.editorOpen ? (B(), js(o, {
 			key: 1,
 			title: `${n.template.name} · 템플릿 기본 레이아웃 편집기`,
@@ -7646,7 +7646,7 @@ function Jh(e, t, n, r, i, a) {
 			"read-only",
 			"onEditorMessage",
 			"onClose"
-		])) : W("v-if", !0)
+		])) : W("", !0)
 	], 8, Hh);
 }
 var Yh = /*#__PURE__*/ jh(Vh, [["render", Jh], ["__scopeId", "data-v-989daa96"]]);
@@ -8144,18 +8144,18 @@ function Gg(e, t, n, r, i, a) {
 				onClick: t[2] ||= (...e) => a.save && a.save(...e)
 			}, F(i.busy ? "처리 중…" : i.versionId === i.activeVersionId ? "변경사항 저장" : "이 버전을 새 버전으로 복원"), 9, yg)
 		])]),
-		!i.loaded && i.busy ? (B(), V("p", bg, "디자인 토큰을 불러오고 있습니다.")) : W("v-if", !0),
-		i.initial && i.loaded ? (B(), V("p", xg, "공통 라이브러리의 초기 값입니다. 저장하면 새로운 페이지 생성에 적용됩니다. 이전 결과물은 유지됩니다.")) : W("v-if", !0),
-		a.dirty ? (B(), V("p", Sg, "저장하지 않은 변경사항이 있습니다.")) : W("v-if", !0),
-		i.error ? (B(), V("p", Cg, F(i.error), 1)) : W("v-if", !0),
-		i.message ? (B(), V("p", wg, F(i.message), 1)) : W("v-if", !0),
+		!i.loaded && i.busy ? (B(), V("p", bg, "디자인 토큰을 불러오고 있습니다.")) : W("", !0),
+		i.initial && i.loaded ? (B(), V("p", xg, "공통 라이브러리의 초기 값입니다. 저장하면 새로운 페이지 생성에 적용됩니다. 이전 결과물은 유지됩니다.")) : W("", !0),
+		a.dirty ? (B(), V("p", Sg, "저장하지 않은 변경사항이 있습니다.")) : W("", !0),
+		i.error ? (B(), V("p", Cg, F(i.error), 1)) : W("", !0),
+		i.message ? (B(), V("p", wg, F(i.message), 1)) : W("", !0),
 		i.loaded ? (B(), V("div", Tg, [
 			H("span", null, "전체 " + F(i.tokens.length) + "개 · 적용 가능 " + F(a.activeCount) + "개 · 미완성 " + F(a.analysis.warnings.length) + "개", 1),
 			H("label", null, [t[22] ||= U("버전 이력 ", -1), H("select", {
 				value: i.selectedHistory,
 				disabled: i.busy,
 				onChange: t[3] ||= (e) => a.load(e.target.value)
-			}, [i.versions.length ? W("v-if", !0) : (B(), V("option", Dg, "초기 토큰")), (B(!0), V(z, null, R(i.versions, (e) => (B(), V("option", {
+			}, [i.versions.length ? W("", !0) : (B(), V("option", Dg, "초기 토큰")), (B(!0), V(z, null, R(i.versions, (e) => (B(), V("option", {
 				key: e.id,
 				value: e.id
 			}, "v" + F(e.version) + F(e.id === i.activeVersionId ? " · 현재" : ""), 9, Og))), 128))], 40, Eg)]),
@@ -8164,7 +8164,7 @@ function Gg(e, t, n, r, i, a) {
 				disabled: i.busy,
 				onClick: t[4] ||= (e) => a.load()
 			}, "새로고침", 8, kg)
-		])) : W("v-if", !0),
+		])) : W("", !0),
 		i.loaded ? (B(), V(z, { key: 6 }, [
 			H("div", {
 				class: "token-library-tabs",
@@ -8246,7 +8246,7 @@ function Gg(e, t, n, r, i, a) {
 					type: "button",
 					onClick: t[16] ||= (e) => i.showAdd = !1
 				}, "취소")
-			], 32)) : W("v-if", !0),
+			], 32)) : W("", !0),
 			i.importPreview ? (B(), V("div", Lg, [
 				t[28] ||= H("h3", null, "CSV 가져오기 확인", -1),
 				H("p", null, F(i.importPreview.fileName) + " · " + F(i.importPreview.tokens.length) + "개 · 미완성 " + F(i.importPreview.warnings.length) + "개", 1),
@@ -8259,8 +8259,8 @@ function Gg(e, t, n, r, i, a) {
 					type: "button",
 					onClick: t[19] ||= (e) => i.importPreview = null
 				}, "취소")
-			])) : W("v-if", !0),
-			a.analysis.errors.length ? (B(), V("div", Rg, [H("strong", null, "검증 오류 " + F(a.analysis.errors.length) + "개", 1), (B(!0), V(z, null, R(a.analysis.errors.slice(0, 20), (e, t) => (B(), V("p", { key: t }, F(e.token) + ": " + F(e.message), 1))), 128))])) : W("v-if", !0),
+			])) : W("", !0),
+			a.analysis.errors.length ? (B(), V("div", Rg, [H("strong", null, "검증 오류 " + F(a.analysis.errors.length) + "개", 1), (B(!0), V(z, null, R(a.analysis.errors.slice(0, 20), (e, t) => (B(), V("p", { key: t }, F(e.token) + ": " + F(e.message), 1))), 128))])) : W("", !0),
 			H("div", {
 				id: "token-panel",
 				role: "tabpanel",
@@ -8307,8 +8307,8 @@ function Gg(e, t, n, r, i, a) {
 					disabled: i.busy,
 					onClick: (t) => a.removeToken(e)
 				}, "제거", 8, Ug)])
-			]))), 128)), a.filteredTokens.length ? W("v-if", !0) : (B(), V("tr", Wg, [...t[30] ||= [H("td", { colspan: "7" }, "이 카테고리에 토큰을 추가하세요.", -1)]]))])])], 8, zg)
-		], 64)) : W("v-if", !0)
+			]))), 128)), a.filteredTokens.length ? W("", !0) : (B(), V("tr", Wg, [...t[30] ||= [H("td", { colspan: "7" }, "이 카테고리에 토큰을 추가하세요.", -1)]]))])])], 8, zg)
+		], 64)) : W("", !0)
 	]);
 }
 var Kg = /*#__PURE__*/ jh(fg, [["render", Gg], ["__scopeId", "data-v-16513d7b"]]);
@@ -8330,7 +8330,7 @@ var qg = Object.freeze([
 		key: "template-selection",
 		label: "템플릿 선택 및 구성",
 		description: "개요에 맞는 템플릿을 추천하고 섹션·컴포넌트 구성을 계획합니다.",
-		order: 20
+		order: 41
 	},
 	{
 		key: "section-layout",
@@ -8342,7 +8342,7 @@ var qg = Object.freeze([
 		key: "ai-page-composition",
 		label: "AI 페이지 구성",
 		description: "승인된 섹션·레이아웃 후보로 페이지를 구성하고 자연어 수정안을 만듭니다.",
-		order: 35
+		order: 20
 	},
 	{
 		key: "promotion-image",
@@ -8382,6 +8382,7 @@ var qg = Object.freeze([
 	}
 ]), Jg = Object.freeze({
 	promo_overview_parser: {
+		journeyStep: 1,
 		group: "promotion-overview",
 		order: 10,
 		label: "프로모션 개요 분석",
@@ -8403,6 +8404,7 @@ var qg = Object.freeze([
 		executionMode: "사용자 요청"
 	},
 	promo_page_composer: {
+		journeyStep: 3,
 		group: "ai-page-composition",
 		order: 10,
 		label: "AI 페이지 구성 계획",
@@ -8410,6 +8412,7 @@ var qg = Object.freeze([
 		executionMode: "사용자 요청"
 	},
 	promo_composition_editor: {
+		journeyStep: 4,
 		group: "ai-page-composition",
 		order: 20,
 		label: "AI 페이지 구성 수정",
@@ -8417,6 +8420,7 @@ var qg = Object.freeze([
 		executionMode: "사용자 요청"
 	},
 	section_composition_planner: {
+		journeyStep: 5,
 		group: "section-layout",
 		order: 10,
 		label: "자연어 섹션 구성 계획",
@@ -8424,6 +8428,7 @@ var qg = Object.freeze([
 		executionMode: "선택 실행"
 	},
 	section_layout_planner: {
+		journeyStep: 6,
 		group: "section-layout",
 		order: 20,
 		label: "섹션 레이아웃 계획",
@@ -8431,6 +8436,7 @@ var qg = Object.freeze([
 		executionMode: "선택 실행"
 	},
 	multi_component_layout_planner: {
+		journeyStep: 7,
 		group: "section-layout",
 		order: 30,
 		label: "다중 컴포넌트 정렬 계획",
@@ -8438,6 +8444,7 @@ var qg = Object.freeze([
 		executionMode: "선택 실행"
 	},
 	section_background_image: {
+		journeyStep: 8,
 		group: "promotion-image",
 		order: 10,
 		label: "섹션 키비주얼 생성",
@@ -8445,6 +8452,7 @@ var qg = Object.freeze([
 		executionMode: "선택 실행"
 	},
 	component_image: {
+		journeyStep: 9,
 		group: "promotion-image",
 		order: 20,
 		label: "컴포넌트 이미지 생성",
@@ -9118,7 +9126,7 @@ var y_ = Object.freeze({
 				H("div", null, [H("strong", null, F(y.value.active), 1), t[24] ||= H("span", null, "활성 모델", -1)]),
 				H("div", null, [H("strong", null, F(y.value.used), 1), t[25] ||= H("span", null, "프롬프트 연결", -1)])
 			]),
-			a.value ? (B(), V("div", T_, [t[26] ||= H("strong", null, "LLM 모델 관리 오류", -1), H("span", null, F(a.value), 1)])) : W("v-if", !0),
+			a.value ? (B(), V("div", T_, [t[26] ||= H("strong", null, "LLM 모델 관리 오류", -1), H("span", null, F(a.value), 1)])) : W("", !0),
 			H("div", E_, [H("aside", D_, [H("div", O_, [
 				L(H("input", {
 					"onUpdate:modelValue": t[1] ||= (e) => l.value = e,
@@ -9152,14 +9160,14 @@ var y_ = Object.freeze({
 				H("strong", null, F(e.displayName), 1),
 				H("small", null, F(e.modelId), 1),
 				H("span", M_, [H("small", null, [t[29] ||= H("b", null, "모델 용도", -1), U(F(x(e.modality)), 1)]), H("small", null, [t[30] ||= H("b", null, "연결 프롬프트", -1), U(F(e.usage?.total || 0) + "개", 1)])])
-			]), H("span", N_, [H("em", { class: P(`is-${e.status}`) }, F(b(e.status)), 3), H("small", null, F(e.provider), 1)])], 10, A_))), 128)), !r.value && !v.value.length ? (B(), V("p", P_, "조건에 맞는 모델이 없습니다.")) : W("v-if", !0)])]), H("form", {
+			]), H("span", N_, [H("em", { class: P(`is-${e.status}`) }, F(b(e.status)), 3), H("small", null, F(e.provider), 1)])], 10, A_))), 128)), !r.value && !v.value.length ? (B(), V("p", P_, "조건에 맞는 모델이 없습니다.")) : W("", !0)])]), H("form", {
 				class: "llm-registry__editor",
 				onSubmit: yu(A, ["prevent"])
 			}, [
-				H("div", F_, [H("div", null, [H("strong", null, F(g.value ? g.value.displayName : "신규 LLM 모델"), 1), g.value ? (B(), V("span", I_, "프롬프트 " + F(g.value.usage?.total || 0) + "개 연결 · 운영 상태 " + F(g.value.usage?.active || 0) + "개", 1)) : W("v-if", !0)]), g.value ? (B(), V("span", {
+				H("div", F_, [H("div", null, [H("strong", null, F(g.value ? g.value.displayName : "신규 LLM 모델"), 1), g.value ? (B(), V("span", I_, "프롬프트 " + F(g.value.usage?.total || 0) + "개 연결 · 운영 상태 " + F(g.value.usage?.active || 0) + "개", 1)) : W("", !0)]), g.value ? (B(), V("span", {
 					key: 0,
 					class: P(["llm-registry__status", `is-${g.value.status}`])
-				}, F(b(g.value.status)), 3)) : W("v-if", !0)]),
+				}, F(b(g.value.status)), 3)) : W("", !0)]),
 				H("fieldset", {
 					disabled: i.value,
 					class: "llm-registry__fields"
@@ -9212,7 +9220,7 @@ var y_ = Object.freeze({
 								type: "button",
 								onClick: t[9] ||= (e) => f.value = !1
 							}, "닫기")
-						])) : W("v-if", !0)], 512)]), L(H("input", {
+						])) : W("", !0)], 512)]), L(H("input", {
 							"onUpdate:modelValue": t[11] ||= (e) => h.defaultTemperature = e,
 							type: "number",
 							min: "0",
@@ -9240,7 +9248,7 @@ var y_ = Object.freeze({
 								placeholder: "1K, 2K, 4K"
 							}, null, 512), [[K, h.supportedImageSizesText]]),
 							t[46] ||= H("small", null, "쉼표로 구분합니다.", -1)
-						])) : W("v-if", !0)
+						])) : W("", !0)
 					]),
 					H("label", W_, [t[47] ||= H("span", null, "설명", -1), L(H("textarea", {
 						"onUpdate:modelValue": t[15] ||= (e) => h.description = e,
@@ -9271,7 +9279,7 @@ var y_ = Object.freeze({
 						type: "submit",
 						disabled: i.value || !h.modelId || !h.displayName
 					}, F(g.value ? "설정 저장" : "초안 등록"), 9, Y_),
-					g.value?.status === "active" ? W("v-if", !0) : (B(), V("button", {
+					g.value?.status === "active" ? W("", !0) : (B(), V("button", {
 						key: 0,
 						class: "tiny-button",
 						type: "button",
@@ -9284,7 +9292,7 @@ var y_ = Object.freeze({
 						type: "button",
 						disabled: i.value,
 						onClick: t[21] ||= (e) => ee("inactive")
-					}, "사용 중지", 8, Z_)) : W("v-if", !0)
+					}, "사용 중지", 8, Z_)) : W("", !0)
 				]),
 				t[53] ||= H("p", { class: "llm-registry__guard" }, "Provider와 모델 ID는 등록 후 변경할 수 없습니다. 사용 중인 프롬프트가 있으면 모델을 중지할 수 없습니다.", -1),
 				g.value ? (B(), V("details", Q_, [H("summary", null, [H("span", null, [t[52] ||= H("strong", null, "LLM 업데이트 내역", -1), H("small", null, "등록·설정 수정·상태 변경 " + F(_.value.length) + "건", 1)])]), H("div", $_, [(B(!0), V(z, null, R(_.value, (e) => (B(), V("article", {
@@ -9294,7 +9302,7 @@ var y_ = Object.freeze({
 					H("div", null, [H("strong", null, F(S(e)), 1), H("time", { datetime: e.changedAt }, F(C(e.changedAt)), 9, ev)]),
 					H("p", null, F(e.changeNote || "변경 사유 없음"), 1),
 					H("span", null, F(e.changedBy || "system") + " · " + F(e.snapshot?.defaultResponseFormat || "-") + " · Max " + F(e.snapshot?.defaultMaxTokens || "-"), 1)
-				]))), 128)), _.value.length ? W("v-if", !0) : (B(), V("p", tv, "기록된 업데이트 내역이 없습니다."))])])) : W("v-if", !0)
+				]))), 128)), _.value.length ? W("", !0) : (B(), V("p", tv, "기록된 업데이트 내역이 없습니다."))])])) : W("", !0)
 			], 32)])
 		]));
 	}
@@ -9375,7 +9383,7 @@ var iv = Object.freeze({ list: rv }), av = {
 				H("div", null, [H("strong", null, F(i.value.requiredUsageCount), 1), r[5] ||= H("span", null, "필수 연결", -1)]),
 				H("div", null, [H("strong", null, F(i.value.optionalUsageCount), 1), r[6] ||= H("span", null, "선택 연결", -1)])
 			]),
-			n.value ? (B(), V("div", lv, [r[7] ||= H("strong", null, "변수 목록 오류", -1), H("span", null, F(n.value), 1)])) : W("v-if", !0),
+			n.value ? (B(), V("div", lv, [r[7] ||= H("strong", null, "변수 목록 오류", -1), H("span", null, F(n.value), 1)])) : W("", !0),
 			H("div", uv, [H("aside", dv, [H("div", fv, [L(H("input", {
 				"onUpdate:modelValue": r[0] ||= (e) => o.value = e,
 				type: "search",
@@ -9393,7 +9401,7 @@ var iv = Object.freeze({ list: rv }), av = {
 				type: "button",
 				class: P(["prompt-variable-manager__row", { selected: e.key === a.value }]),
 				onClick: (t) => a.value = e.key
-			}, [H("span", null, [H("strong", null, F(e.key), 1), H("small", null, "연결된 프롬프트 유형 " + F(e.promptTypeCount) + "개", 1)]), H("span", hv, [e.requiredCount ? (B(), V("em", gv, "필수 " + F(e.requiredCount), 1)) : W("v-if", !0), e.optionalCount ? (B(), V("em", _v, "선택 " + F(e.optionalCount), 1)) : W("v-if", !0)])], 10, mv))), 128)), !t.value && !c.value.length ? (B(), V("p", vv, "조건에 맞는 변수가 없습니다.")) : W("v-if", !0)])]), H("section", yv, [l.value ? (B(), V(z, { key: 0 }, [H("div", bv, [H("div", null, [r[9] ||= H("small", null, "변수 키", -1), H("strong", null, F(l.value.key), 1)]), H("span", null, "총 " + F(l.value.promptTypeCount) + "개 프롬프트 유형에서 사용", 1)]), H("div", xv, [(B(!0), V(z, null, R(l.value.usages, (e) => (B(), V("article", { key: `${e.promptType}-${e.requirement}` }, [H("div", null, [H("strong", null, F(e.promptName), 1), H("code", null, F(e.promptType), 1)]), H("em", { class: P(`is-${e.requirement}`) }, F(u(e.requirement)), 3)]))), 128))])], 64)) : (B(), V("p", Sv, "왼쪽에서 변수를 선택해 주세요."))])])
+			}, [H("span", null, [H("strong", null, F(e.key), 1), H("small", null, "연결된 프롬프트 유형 " + F(e.promptTypeCount) + "개", 1)]), H("span", hv, [e.requiredCount ? (B(), V("em", gv, "필수 " + F(e.requiredCount), 1)) : W("", !0), e.optionalCount ? (B(), V("em", _v, "선택 " + F(e.optionalCount), 1)) : W("", !0)])], 10, mv))), 128)), !t.value && !c.value.length ? (B(), V("p", vv, "조건에 맞는 변수가 없습니다.")) : W("", !0)])]), H("section", yv, [l.value ? (B(), V(z, { key: 0 }, [H("div", bv, [H("div", null, [r[9] ||= H("small", null, "변수 키", -1), H("strong", null, F(l.value.key), 1)]), H("span", null, "총 " + F(l.value.promptTypeCount) + "개 프롬프트 유형에서 사용", 1)]), H("div", xv, [(B(!0), V(z, null, R(l.value.usages, (e) => (B(), V("article", { key: `${e.promptType}-${e.requirement}` }, [H("div", null, [H("strong", null, F(e.promptName), 1), H("code", null, F(e.promptType), 1)]), H("em", { class: P(`is-${e.requirement}`) }, F(u(e.requirement)), 3)]))), 128))])], 64)) : (B(), V("p", Sv, "왼쪽에서 변수를 선택해 주세요."))])])
 		]));
 	}
 }, [["__scopeId", "data-v-7c369cc6"]]);
@@ -9696,7 +9704,7 @@ var qv = ["src", "alt"], Jv = /*@__PURE__*/ Object.assign({ name: "RenderSpecNod
 					class: "render-spec-picture-image",
 					src: e.node.imageSrc,
 					alt: e.node.imageAlt
-				}, null, 8, qv)) : e.node.nodeType === "field" && e.node.tag !== "img" ? (B(), V(z, { key: 1 }, [U(F(e.node.text), 1)], 64)) : W("v-if", !0), (B(!0), V(z, null, R(e.node.tag === "img" ? [] : e.node.children, (t) => (B(), js(o, {
+				}, null, 8, qv)) : e.node.nodeType === "field" && e.node.tag !== "img" ? (B(), V(z, { key: 1 }, [U(F(e.node.text), 1)], 64)) : W("", !0), (B(!0), V(z, null, R(e.node.tag === "img" ? [] : e.node.children, (t) => (B(), js(o, {
 					key: t.path,
 					node: t,
 					editable: e.editable,
@@ -9985,7 +9993,7 @@ var gy = {
 			node: a.value,
 			editable: e.editable,
 			onSelectField: n[0] ||= (e) => r("select-field", e)
-		}, null, 8, ["node", "editable"])) : W("v-if", !0);
+		}, null, 8, ["node", "editable"])) : W("", !0);
 	}
 }, _y = {
 	key: 0,
@@ -11445,8 +11453,8 @@ var gy = {
 				...D.value
 			})
 		}, [
-			e.editable && e.showGuides ? (B(), V("div", _y)) : W("v-if", !0),
-			e.editable ? (B(), V("p", vy, F(v.value), 1)) : W("v-if", !0),
+			e.editable && e.showGuides ? (B(), V("div", _y)) : W("", !0),
+			e.editable ? (B(), V("p", vy, F(v.value), 1)) : W("", !0),
 			(B(!0), V(z, null, R(T.value, (t) => (B(), V("section", {
 				key: t.sectionKey,
 				class: P(["rendered-section", [
@@ -11472,7 +11480,7 @@ var gy = {
 					role: "status",
 					"aria-live": "polite",
 					title: Ae(t).detail || void 0
-				}, [Ae(t).kind === "processing" ? (B(), V("i", xy)) : W("v-if", !0), H("span", null, F(Ae(t).label), 1)], 10, by)) : W("v-if", !0),
+				}, [Ae(t).kind === "processing" ? (B(), V("i", xy)) : W("", !0), H("span", null, F(Ae(t).label), 1)], 10, by)) : W("", !0),
 				H("div", Sy, [H("div", {
 					class: P(["rendered-items", { "is-flow-layout": _e(t) }]),
 					style: xe(dt(t))
@@ -11518,7 +11526,7 @@ var gy = {
 						title: `${r.name || r.itemKey} 이동 (Shift + 방향키: 10px)`,
 						onPointerdown: (e) => Ot(e, t, r),
 						onKeydown: (e) => At(e, t, r)
-					}, null, 40, wy)) : W("v-if", !0),
+					}, null, 40, wy)) : W("", !0),
 					e.editable && e.showGuides && e.selectedItemKey === fe(t, r) ? (B(), V("button", {
 						key: 1,
 						type: "button",
@@ -11527,14 +11535,14 @@ var gy = {
 						title: `${r.name || r.itemKey} 속성 열기`,
 						onPointerdown: n[0] ||= yu(() => {}, ["stop"]),
 						onClick: (e) => kt(e, t, r)
-					}, null, 40, Ty)) : W("v-if", !0),
-					e.editable && !te(t, r) ? (B(), V("span", Ey, "비노출")) : W("v-if", !0),
+					}, null, 40, Ty)) : W("", !0),
+					e.editable && !te(t, r) ? (B(), V("span", Ey, "비노출")) : W("", !0),
 					e.editable && e.outlineMode ? (B(), V("span", Dy, [
 						U(F(r.name || r.itemKey) + " ", 1),
 						H("small", null, F(r.fieldKind || "text"), 1),
-						r.isLocked ? (B(), V("em", Oy, "잠금")) : W("v-if", !0),
-						ce(t, r) ? (B(), V("em", ky, "비어 있음")) : W("v-if", !0)
-					])) : W("v-if", !0),
+						r.isLocked ? (B(), V("em", Oy, "잠금")) : W("", !0),
+						ce(t, r) ? (B(), V("em", ky, "비어 있음")) : W("", !0)
+					])) : W("", !0),
 					k(r) ? (B(), js(gy, {
 						key: 4,
 						"render-spec": k(r),
@@ -11595,7 +11603,7 @@ var gy = {
 							"aria-label": Ze(t, r, i).label,
 							"aria-hidden": Ze(t, r, i).ariaHidden,
 							"aria-busy": Ae(t, r, i)?.kind === "processing" ? "true" : void 0
-						}, [ie(j(t, r, i)) ? W("v-if", !0) : (B(), V("div", {
+						}, [ie(j(t, r, i)) ? W("", !0) : (B(), V("div", {
 							key: 0,
 							class: "rendered-image__placeholder",
 							"data-asset-target-key": `${t.sectionKey}:${r.itemKey}:${i.fieldKey}`
@@ -11604,7 +11612,7 @@ var gy = {
 							class: P(["item-ai-state", `is-${Ae(t, r, i).kind}`]),
 							role: "status",
 							"aria-live": "polite"
-						}, [Ae(t, r, i).kind === "processing" ? (B(), V("i", Py)) : W("v-if", !0), H("span", null, F(Ae(t, r, i).label), 1)], 2)) : W("v-if", !0)], 64)) : ue(j(t, r, i)) && vt(t, r, i) ? (B(), V("div", {
+						}, [Ae(t, r, i).kind === "processing" ? (B(), V("i", Py)) : W("", !0), H("span", null, F(Ae(t, r, i).label), 1)], 2)) : W("", !0)], 64)) : ue(j(t, r, i)) && vt(t, r, i) ? (B(), V("div", {
 							key: 2,
 							class: P(["rendered-text rendered-text--lines rendered-component-field", { "rendered-text--title": i.textType === "title" }]),
 							style: xe(Ve(t, r, i)),
@@ -11654,7 +11662,7 @@ var gy = {
 							title: `${i.name || i.fieldKey} 속성 열기`,
 							onPointerdown: n[1] ||= yu(() => {}, ["stop"]),
 							onClick: (e) => Ge(e, t, r, i)
-						}, null, 40, Hy)) : W("v-if", !0),
+						}, null, 40, Hy)) : W("", !0),
 						e.editable && e.showGuides && We(t, r, i) && !r.isLocked && !i.isLocked ? (B(!0), V(z, { key: 7 }, R(Ke(i), (e) => (B(), V("button", {
 							key: e,
 							type: "button",
@@ -11662,7 +11670,7 @@ var gy = {
 							"aria-label": qe(i, e),
 							onPointerdown: yu((n) => Je(n, t, r, i, e), ["stop"]),
 							onKeydown: (n) => Ye(n, t, r, i, e)
-						}, null, 42, Uy))), 128)) : W("v-if", !0)
+						}, null, 42, Uy))), 128)) : W("", !0)
 					], 14, Ay))), 128))], 4)) : r.fieldKind === "cta" ? (B(), V("a", {
 						key: 6,
 						class: "rendered-cta",
@@ -11680,7 +11688,7 @@ var gy = {
 							"aria-label": Qe(t, r).label,
 							"aria-hidden": Qe(t, r).ariaHidden,
 							"aria-busy": Ae(t, r)?.kind === "processing" ? "true" : void 0
-						}, [ie(j(t, r)) ? W("v-if", !0) : (B(), V("div", {
+						}, [ie(j(t, r)) ? W("", !0) : (B(), V("div", {
 							key: 0,
 							class: "rendered-image__placeholder",
 							"data-asset-target-key": `${t.sectionKey}:${r.itemKey}:`
@@ -11691,7 +11699,7 @@ var gy = {
 							role: "status",
 							"aria-live": "polite",
 							title: Ae(t, r).detail || void 0
-						}, [Ae(t, r).kind === "processing" ? (B(), V("i", Jy)) : W("v-if", !0), H("span", null, F(Ae(t, r).label), 1)], 10, qy)) : W("v-if", !0),
+						}, [Ae(t, r).kind === "processing" ? (B(), V("i", Jy)) : W("", !0), H("span", null, F(Ae(t, r).label), 1)], 10, qy)) : W("", !0),
 						e.editable && e.showGuides && !r.isLocked && e.selectedItemKey === fe(t, r) ? (B(!0), V(z, { key: 1 }, R(je(t, r), (e) => (B(), V("button", {
 							key: e,
 							type: "button",
@@ -11699,7 +11707,7 @@ var gy = {
 							"aria-label": Ne(r, e),
 							onPointerdown: yu((n) => jt(n, t, r, e), ["stop"]),
 							onKeydown: (n) => Mt(n, t, r, e)
-						}, null, 42, Yy))), 128)) : W("v-if", !0)
+						}, null, 42, Yy))), 128)) : W("", !0)
 					], 64)) : (B(), V(z, { key: 8 }, [ue(j(t, r)) && vt(t, r) ? (B(), V("div", {
 						key: 0,
 						class: P(["rendered-text rendered-text--lines", { "rendered-text--title": r.textType === "title" }]),
@@ -11740,7 +11748,7 @@ var gy = {
 						"aria-label": Ne(r, e),
 						onPointerdown: yu((n) => jt(n, t, r, e), ["stop"]),
 						onKeydown: (n) => Mt(n, t, r, e)
-					}, null, 42, rb))), 128)) : W("v-if", !0)
+					}, null, 42, rb))), 128)) : W("", !0)
 				], 46, Cy))), 128))], 6)]),
 				e.editable && e.showGuides ? (B(), V("button", {
 					key: 1,
@@ -11749,7 +11757,7 @@ var gy = {
 					"aria-label": `${t.name} 섹션 높이 조절`,
 					title: `${t.name} 섹션 높이 조절`,
 					onPointerdown: (e) => Rt(e, t)
-				}, null, 40, ib)) : W("v-if", !0)
+				}, null, 40, ib)) : W("", !0)
 			], 14, yy))), 128))
 		], 6));
 	}
@@ -12030,7 +12038,7 @@ var Cb = ["aria-label"], wb = [
 			"aria-current": t.path === e.selectedPath ? "true" : void 0,
 			"data-dom-path": t.path,
 			onClick: (e) => n("select", t.path)
-		}, [H("small", null, F(t.tag || t.node?.tag || t.kind || "node"), 1), H("span", null, F(t.label || t.path), 1)], 14, wb))), 128)), e.nodes.length ? W("v-if", !0) : (B(), V("p", Tb, F(e.emptyMessage), 1))], 8, Cb));
+		}, [H("small", null, F(t.tag || t.node?.tag || t.kind || "node"), 1), H("span", null, F(t.label || t.path), 1)], 14, wb))), 128)), e.nodes.length ? W("", !0) : (B(), V("p", Tb, F(e.emptyMessage), 1))], 8, Cb));
 	}
 }, [["__scopeId", "data-v-e9c62dcf"]]), Db = ["data-preview-mode"], Ob = {
 	class: "live-preview-host__viewports",
@@ -12193,8 +12201,8 @@ var Cb = ["aria-label"], wb = [
 				disabled: !l.value || s.value,
 				onClick: C
 			}, F(s.value ? "저장 중…" : "프리셋 저장"), 9, Pb)])]),
-			c.value ? (B(), V("p", Fb, F(c.value), 1)) : W("v-if", !0),
-			l.value ? W("v-if", !0) : (B(), V("p", Ib, "활성·비활성 섹션은 읽기 전용입니다.")),
+			c.value ? (B(), V("p", Fb, F(c.value), 1)) : W("", !0),
+			l.value ? W("", !0) : (B(), V("p", Ib, "활성·비활성 섹션은 읽기 전용입니다.")),
 			H("div", Lb, [
 				Ls(Eb, {
 					nodes: u.value,
@@ -12445,7 +12453,7 @@ var tx = { class: "json-tree__row" }, nx = ["aria-label", "aria-expanded"], rx =
 				"query",
 				"expand-revision",
 				"collapse-revision"
-			]))), 128))])) : W("v-if", !0)], 2);
+			]))), 128))])) : W("", !0)], 2);
 		};
 	}
 }, [["__scopeId", "data-v-0a8b684d"]]), lx = { class: "json-snapshot-dialog__surface" }, ux = { class: "json-snapshot-dialog__summary" }, dx = { key: 0 }, fx = { key: 1 }, px = {
@@ -12565,8 +12573,8 @@ var tx = { class: "json-tree__row" }, nx = ["aria-label", "aria-expanded"], rx =
 					}, "닫기")]),
 					H("div", ux, [
 						H("span", null, F(e.section.status), 1),
-						e.layout.isDefault ? (B(), V("span", dx, "기본")) : W("v-if", !0),
-						e.aiSelectable ? (B(), V("span", fx, "AI 선택 후보")) : W("v-if", !0),
+						e.layout.isDefault ? (B(), V("span", dx, "기본")) : W("", !0),
+						e.aiSelectable ? (B(), V("span", fx, "AI 선택 후보")) : W("", !0),
 						H("small", null, "마지막 저장: " + F(e.layout.updatedAt || "기록 없음"), 1)
 					]),
 					H("nav", px, [(B(!0), V(z, null, R(kn(p), (e) => (B(), V("button", {
@@ -12582,7 +12590,7 @@ var tx = { class: "json-tree__row" }, nx = ["aria-label", "aria-expanded"], rx =
 							type: "search",
 							placeholder: "경로 또는 값 검색"
 						}, null, 512), [[K, o.value]])]),
-						v.value ? (B(), V("small", gx, "일치하는 줄 " + F(y.value) + "개", 1)) : W("v-if", !0),
+						v.value ? (B(), V("small", gx, "일치하는 줄 " + F(y.value) + "개", 1)) : W("", !0),
 						H("div", null, [
 							H("button", {
 								class: "tiny-button",
@@ -12601,13 +12609,13 @@ var tx = { class: "json-tree__row" }, nx = ["aria-label", "aria-expanded"], rx =
 								class: "tiny-button",
 								type: "button",
 								onClick: n[3] ||= (e) => l.value += 1
-							}, "모두 펼치기")) : W("v-if", !0),
+							}, "모두 펼치기")) : W("", !0),
 							c.value === "tree" ? (B(), V("button", {
 								key: 1,
 								class: "tiny-button",
 								type: "button",
 								onClick: n[4] ||= (e) => u.value += 1
-							}, "모두 접기")) : W("v-if", !0),
+							}, "모두 접기")) : W("", !0),
 							H("button", {
 								class: "tiny-button",
 								type: "button",
@@ -12640,9 +12648,9 @@ var tx = { class: "json-tree__row" }, nx = ["aria-label", "aria-expanded"], rx =
 						b.value.length ? (B(), V("ul", wx, [(B(!0), V(z, null, R(b.value, (e) => (B(), V("li", {
 							key: `${e.code}:${e.path}`,
 							class: P(`is-${e.level}`)
-						}, [H("code", null, F(e.path), 1), H("span", null, F(e.code) + " · " + F(e.message), 1)], 2))), 128))])) : W("v-if", !0),
-						s.value ? (B(), V("small", Tx, F(s.value), 1)) : W("v-if", !0),
-						a.value === "full" ? (B(), V("small", Ex, "aiSelectable은 Section의 허용 Layout Key를 기준으로 계산한 표시용 값입니다.")) : W("v-if", !0)
+						}, [H("code", null, F(e.path), 1), H("span", null, F(e.code) + " · " + F(e.message), 1)], 2))), 128))])) : W("", !0),
+						s.value ? (B(), V("small", Tx, F(s.value), 1)) : W("", !0),
+						a.value === "full" ? (B(), V("small", Ex, "aiSelectable은 Section의 허용 Layout Key를 기준으로 계산한 표시용 값입니다.")) : W("", !0)
 					])
 				])], 544));
 			}
@@ -12910,16 +12918,16 @@ function bS(e, t, n, r, i, a) {
 			disabled: !a.editable || i.saving,
 			onClick: t[1] ||= (...e) => a.startNewPreset && a.startNewPreset(...e)
 		}, "+ 레이아웃 프리셋 추가", 8, Mx)])]),
-		a.editable ? W("v-if", !0) : (B(), V("div", Nx, "활성·비활성 버전의 레이아웃 프리셋은 읽기 전용입니다. 초안을 만든 후 편집하세요.")),
-		i.error ? (B(), V("div", Px, F(i.error), 1)) : W("v-if", !0),
+		a.editable ? W("", !0) : (B(), V("div", Nx, "활성·비활성 버전의 레이아웃 프리셋은 읽기 전용입니다. 초안을 만든 후 편집하세요.")),
+		i.error ? (B(), V("div", Px, F(i.error), 1)) : W("", !0),
 		i.loading ? (B(), V("div", Fx, "레이아웃 프리셋을 불러오는 중...")) : (B(), V("div", Ix, [(B(!0), V(z, null, R(i.layouts, (e) => (B(), V("div", {
 			key: e.id,
 			class: "history-item section-layout-row"
 		}, [
 			H("div", null, [H("strong", null, [
 				U(F(e.name) + " ", 1),
-				e.isDefault ? (B(), V("em", Lx, "기본")) : W("v-if", !0),
-				a.aiAllows(e) ? (B(), V("em", Rx, "AI 선택 후보")) : W("v-if", !0)
+				e.isDefault ? (B(), V("em", Lx, "기본")) : W("", !0),
+				a.aiAllows(e) ? (B(), V("em", Rx, "AI 선택 후보")) : W("", !0)
 			]), H("span", null, F(e.layoutKey) + " · " + F(e.description || "설명 없음"), 1)]),
 			H("div", zx, [
 				H("button", {
@@ -13023,8 +13031,8 @@ function bS(e, t, n, r, i, a) {
 					disabled: i.saving,
 					onClick: (t) => a.saveSelectionMetadata(e)
 				}, "선택 기준 저장", 8, uS)
-			])])) : W("v-if", !0)
-		]))), 128)), i.layouts.length ? W("v-if", !0) : (B(), V("div", dS, "등록된 레이아웃 프리셋이 없습니다. 기존 자동 배치가 계속 사용됩니다."))])),
+			])])) : W("", !0)
+		]))), 128)), i.layouts.length ? W("", !0) : (B(), V("div", dS, "등록된 레이아웃 프리셋이 없습니다. 기존 자동 배치가 계속 사용됩니다."))])),
 		i.newPresetEditor ? (B(), V("form", {
 			key: 4,
 			class: "new-layout-preset-form",
@@ -13117,7 +13125,7 @@ function bS(e, t, n, r, i, a) {
 				type: "submit",
 				disabled: i.saving
 			}, F(i.saving ? "생성 중…" : "프리셋 만들고 DOM 구성 열기"), 9, vS)])
-		], 32)) : W("v-if", !0),
+		], 32)) : W("", !0),
 		a.selectedLayout && n.domWorkbenchEnabled ? (B(), js(o, {
 			key: 5,
 			section: n.section,
@@ -13140,7 +13148,7 @@ function bS(e, t, n, r, i, a) {
 			"section",
 			"layout",
 			"onSaved"
-		])) : a.selectedLayout ? (B(), V("div", yS, " 관리자 DOM 구성 Workbench가 비활성화되어 있습니다. 기능 설정을 확인해 주세요. ")) : W("v-if", !0),
+		])) : a.selectedLayout ? (B(), V("div", yS, " 관리자 DOM 구성 Workbench가 비활성화되어 있습니다. 기능 설정을 확인해 주세요. ")) : W("", !0),
 		a.jsonLayout ? (B(), js(c, {
 			key: 8,
 			layout: a.jsonLayout,
@@ -13153,7 +13161,7 @@ function bS(e, t, n, r, i, a) {
 			"section",
 			"items",
 			"ai-selectable"
-		])) : W("v-if", !0)
+		])) : W("", !0)
 	]);
 }
 var xS = /*#__PURE__*/ jh(Dx, [["render", bS], ["__scopeId", "data-v-5d03fa39"]]), SS = {
@@ -13281,7 +13289,7 @@ var xS = /*#__PURE__*/ jh(Dx, [["render", bS], ["__scopeId", "data-v-5d03fa39"]]
 				key: e,
 				value: e
 			}, null, 8, FS))), 128))])
-		])) : W("v-if", !0);
+		])) : W("", !0);
 	}
 }, [["__scopeId", "data-v-585b6a8f"]]), LS = { class: "rs-editor" }, RS = { class: "rs-toolbar" }, zS = ["disabled"], BS = ["disabled"], VS = ["disabled"], HS = ["disabled"], US = ["disabled"], WS = ["disabled"], GS = ["disabled"], KS = {
 	key: 0,
@@ -13564,7 +13572,7 @@ var xS = /*#__PURE__*/ jh(Dx, [["render", bS], ["__scopeId", "data-v-5d03fa39"]]
 			o.value ? (B(), V("div", {
 				key: 2,
 				class: P(["rs-validation", { ok: o.value.ok }])
-			}, [H("strong", null, F(o.value.ok ? "검증 통과" : `오류 ${o.value.errors?.length || 0}건`), 1), o.value.ok ? W("v-if", !0) : (B(), V("ul", JS, [(B(!0), V(z, null, R(o.value.errors, (e) => (B(), V("li", { key: `${e.path}:${e.code}` }, F(e.path) + " · " + F(e.message), 1))), 128))]))], 2)) : W("v-if", !0),
+			}, [H("strong", null, F(o.value.ok ? "검증 통과" : `오류 ${o.value.errors?.length || 0}건`), 1), o.value.ok ? W("", !0) : (B(), V("ul", JS, [(B(!0), V(z, null, R(o.value.errors, (e) => (B(), V("li", { key: `${e.path}:${e.code}` }, F(e.path) + " · " + F(e.message), 1))), 128))]))], 2)) : W("", !0),
 			d.value ? (B(), V("details", YS, [
 				n[8] ||= H("summary", null, "고급: Raw JSON", -1),
 				L(H("textarea", {
@@ -13572,14 +13580,14 @@ var xS = /*#__PURE__*/ jh(Dx, [["render", bS], ["__scopeId", "data-v-5d03fa39"]]
 					rows: "14",
 					disabled: e.disabled
 				}, null, 8, XS), [[K, c.value]]),
-				l.value ? (B(), V("p", ZS, F(l.value), 1)) : W("v-if", !0),
+				l.value ? (B(), V("p", ZS, F(l.value), 1)) : W("", !0),
 				H("button", {
 					class: "tiny-button",
 					type: "button",
 					disabled: e.disabled,
 					onClick: te
 				}, "JSON 적용", 8, QS)
-			])) : W("v-if", !0)
+			])) : W("", !0)
 		]));
 	}
 }, [["__scopeId", "data-v-0ea819a6"]]), eC = /* @__PURE__ */ new Set([
@@ -13945,7 +13953,7 @@ function pw(e, t, n, r, i, a) {
 				]), H("div", IC, [H("strong", null, F(Math.round((e.proposal.confidence || 0) * 100)) + "%", 1), t[37] ||= H("span", null, "분석 신뢰도", -1)])]),
 				H("div", LC, [
 					H("span", { class: P({ good: a.validation.ok }) }, F(a.validation.ok ? "RenderSpec 검증 통과" : `검증 오류 ${a.validation.errors?.length || 0}건`), 3),
-					e.proposal.componentDefinition.reviewRequired ? (B(), V("span", RC, "관리자 검토 필요")) : W("v-if", !0),
+					e.proposal.componentDefinition.reviewRequired ? (B(), V("span", RC, "관리자 검토 필요")) : W("", !0),
 					H("span", null, F(a.fields.length) + "개 필드", 1)
 				]),
 				H("label", zC, [t[38] ||= H("span", null, "컴포넌트 이름", -1), L(H("input", { "onUpdate:modelValue": t[7] ||= (t) => e.proposal.componentDefinition.name = t }, null, 512), [[K, e.proposal.componentDefinition.name]])]),
@@ -13962,7 +13970,7 @@ function pw(e, t, n, r, i, a) {
 				onClick: (e) => a.selectProposal(t)
 			}, [H("span", null, F(n + 1), 1)], 14, GC))), 128))])]), H("article", KC, [
 				t[42] ||= H("div", { class: "card-title" }, [H("div", null, [H("span", null, "Validation"), H("h3", null, "분석 품질 확인")])], -1),
-				a.validation.metrics ? (B(), V("p", qC, "노드 " + F(a.validation.metrics.nodeCount) + " · 필드 노드 " + F(a.validation.metrics.fieldNodeCount) + " · 깊이 " + F(a.validation.metrics.maxDepth), 1)) : W("v-if", !0),
+				a.validation.metrics ? (B(), V("p", qC, "노드 " + F(a.validation.metrics.nodeCount) + " · 필드 노드 " + F(a.validation.metrics.fieldNodeCount) + " · 깊이 " + F(a.validation.metrics.maxDepth), 1)) : W("", !0),
 				a.validation.errors?.length ? (B(), V("div", JC, [t[41] ||= H("strong", null, "수정할 항목", -1), (B(!0), V(z, null, R(a.validation.errors, (e) => (B(), V("p", { key: `${e.path}:${e.code}` }, F(e.path) + " · " + F(e.message), 1))), 128))])) : (B(), V("p", YC, "보안·접근성·필드 참조 검증을 통과했습니다."))
 			])]),
 			Ls(o, {
@@ -13986,15 +13994,15 @@ function pw(e, t, n, r, i, a) {
 					"onUpdate:modelValue": t[11] ||= (t) => e.proposal.componentDefinition.creationMode = t,
 					type: "radio",
 					value: "new-version"
-				}, null, 512), [[lu, e.proposal.componentDefinition.creationMode]]), t[45] ||= H("span", null, "기존 컴포넌트의 새 버전", -1)])) : W("v-if", !0)]),
+				}, null, 512), [[lu, e.proposal.componentDefinition.creationMode]]), t[45] ||= H("span", null, "기존 컴포넌트의 새 버전", -1)])) : W("", !0)]),
 				e.proposal.componentDefinition.creationMode === "new-version" ? (B(), V("label", iw, [t[46] ||= H("span", null, "대상 컴포넌트", -1), L(H("select", { "onUpdate:modelValue": t[12] ||= (t) => e.proposal.componentDefinition.targetComponentId = t }, [(B(!0), V(z, null, R(e.proposal.similarComponents, (e) => (B(), V("option", {
 					key: e.componentId,
 					value: e.componentId
-				}, F(e.name) + " · " + F(Math.round(e.score * 100)) + "%", 9, aw))), 128))], 512), [[q, e.proposal.componentDefinition.targetComponentId]])])) : W("v-if", !0)
+				}, F(e.name) + " · " + F(Math.round(e.score * 100)) + "%", 9, aw))), 128))], 512), [[q, e.proposal.componentDefinition.targetComponentId]])])) : W("", !0)
 			])]),
-			e.proposal.reviewNotes?.length ? (B(), V("section", ow, [t[48] ||= H("div", { class: "card-title" }, [H("div", null, [H("span", null, "Review notes"), H("h3", null, "검토 메모")])], -1), H("ul", null, [(B(!0), V(z, null, R(e.proposal.reviewNotes, (e) => (B(), V("li", { key: e }, F(e), 1))), 128))])])) : W("v-if", !0),
-			e.error ? (B(), V("p", sw, F(e.error), 1)) : W("v-if", !0),
-			e.applyResults.length ? (B(), V("ul", cw, [(B(!0), V(z, null, R(e.applyResults, (e) => (B(), V("li", { key: e.proposalId }, [H("strong", null, F(e.name || e.proposalId), 1), H("span", null, F(e.ok ? "Draft 생성 완료" : e.message), 1)]))), 128))])) : W("v-if", !0),
+			e.proposal.reviewNotes?.length ? (B(), V("section", ow, [t[48] ||= H("div", { class: "card-title" }, [H("div", null, [H("span", null, "Review notes"), H("h3", null, "검토 메모")])], -1), H("ul", null, [(B(!0), V(z, null, R(e.proposal.reviewNotes, (e) => (B(), V("li", { key: e }, F(e), 1))), 128))])])) : W("", !0),
+			e.error ? (B(), V("p", sw, F(e.error), 1)) : W("", !0),
+			e.applyResults.length ? (B(), V("ul", cw, [(B(!0), V(z, null, R(e.applyResults, (e) => (B(), V("li", { key: e.proposalId }, [H("strong", null, F(e.name || e.proposalId), 1), H("span", null, F(e.ok ? "Draft 생성 완료" : e.message), 1)]))), 128))])) : W("", !0),
 			H("div", lw, [
 				H("button", {
 					class: "tiny-button",
@@ -14030,7 +14038,7 @@ function pw(e, t, n, r, i, a) {
 				class: "tiny-button",
 				type: "button",
 				onClick: t[0] ||= (...e) => a.clearSource && a.clearSource(...e)
-			}, "다시 선택")) : W("v-if", !0)]),
+			}, "다시 선택")) : W("", !0)]),
 			e.sourceUrl ? (B(), V("div", dC, [H("img", {
 				src: e.sourceUrl,
 				alt: "분석 원본"
@@ -14050,10 +14058,10 @@ function pw(e, t, n, r, i, a) {
 			])),
 			e.sourceUrl ? (B(), V("p", pC, [
 				U(F(e.sourceName || "기존 업로드 이미지"), 1),
-				e.sourceSize ? (B(), V(z, { key: 0 }, [U(" · " + F(a.formatBytes(e.sourceSize)), 1)], 64)) : W("v-if", !0),
-				e.sourceDimensions ? (B(), V(z, { key: 1 }, [U(" · " + F(e.sourceDimensions.width) + "×" + F(e.sourceDimensions.height), 1)], 64)) : W("v-if", !0)
-			])) : W("v-if", !0),
-			e.sourceError ? (B(), V("p", mC, F(e.sourceError), 1)) : W("v-if", !0),
+				e.sourceSize ? (B(), V(z, { key: 0 }, [U(" · " + F(a.formatBytes(e.sourceSize)), 1)], 64)) : W("", !0),
+				e.sourceDimensions ? (B(), V(z, { key: 1 }, [U(" · " + F(e.sourceDimensions.width) + "×" + F(e.sourceDimensions.height), 1)], 64)) : W("", !0)
+			])) : W("", !0),
+			e.sourceError ? (B(), V("p", mC, F(e.sourceError), 1)) : W("", !0),
 			e.sourceUrl ? (B(), V("fieldset", hC, [t[24] ||= H("legend", null, "영역 좌표 (이미지 비율)", -1), (B(), V(z, null, R([
 				"x",
 				"y",
@@ -14075,7 +14083,7 @@ function pw(e, t, n, r, i, a) {
 					{ number: !0 }
 				]]),
 				H("em", null, F(Math.round(e.crop[n] * 100)) + "%", 1)
-			])), 64))])) : W("v-if", !0),
+			])), 64))])) : W("", !0),
 			H("label", _C, [t[25] ||= H("span", null, "생성 목적", -1), L(H("textarea", {
 				"onUpdate:modelValue": t[3] ||= (t) => e.componentIntent = t,
 				rows: "3",
@@ -14099,7 +14107,7 @@ function pw(e, t, n, r, i, a) {
 			e.tokenSets.length ? (B(), V("label", bC, [t[27] ||= H("span", null, "대상 디자인 토큰", -1), L(H("select", { "onUpdate:modelValue": t[5] ||= (t) => e.targetTokenVersionId = t }, [(B(!0), V(z, null, R(e.tokenSets, (e) => (B(), V("option", {
 				key: e.versionId,
 				value: e.versionId
-			}, [U(F(e.name), 1), e.isDefault ? (B(), V(z, { key: 0 }, [U(" · 기본")], 64)) : W("v-if", !0)], 8, xC))), 128))], 512), [[q, e.targetTokenVersionId]])])) : W("v-if", !0)
+			}, [U(F(e.name), 1), e.isDefault ? (B(), V(z, { key: 0 }, [U(" · 기본")], 64)) : W("", !0)], 8, xC))), 128))], 512), [[q, e.targetTokenVersionId]])])) : W("", !0)
 		]), H("aside", SC, [
 			t[33] ||= H("div", { class: "card-title" }, [H("div", null, [H("span", null, "Step 3"), H("h3", null, "AI 이미지 분석")])], -1),
 			H("ul", CC, [
@@ -14109,7 +14117,7 @@ function pw(e, t, n, r, i, a) {
 				t[31] ||= H("li", null, [H("span", null, "보안·접근성 검증"), H("em", null, "자동")], -1),
 				t[32] ||= H("li", null, [H("span", null, "기존 컴포넌트 유사도"), H("em", null, "자동")], -1)
 			]),
-			e.error ? (B(), V("p", wC, F(e.error), 1)) : W("v-if", !0),
+			e.error ? (B(), V("p", wC, F(e.error), 1)) : W("", !0),
 			H("button", {
 				class: "tiny-button primary analyze",
 				type: "button",
@@ -14258,14 +14266,14 @@ var mw = /*#__PURE__*/ jh(rC, [["render", pw], ["__scopeId", "data-v-f0661921"]]
 				H("span", { class: P({ on: e.capabilities.directusIntegration }) }, "Directus 연동 " + F(e.capabilities.directusIntegration ? "ON" : "OFF"), 3),
 				H("span", { class: P({ on: e.capabilities.directusConnectionTunnel }) }, "연결 터널 " + F(e.capabilities.directusConnectionTunnel ? "ON" : "OFF"), 3)
 			]),
-			p.value ? W("v-if", !0) : (B(), V("div", yw, [...n[10] ||= [
+			p.value ? W("", !0) : (B(), V("div", yw, [...n[10] ||= [
 				U(" 설정 초안은 준비할 수 있습니다. 실제 연결 테스트는 ", -1),
 				H("code", null, "DIRECTUS_INTEGRATION_ENABLED=true", -1),
 				U("와 ", -1),
 				H("code", null, "DIRECTUS_CONNECTION_TUNNEL_ENABLED=true", -1),
 				U("일 때만 실행됩니다. ", -1)
 			]])),
-			c.value ? (B(), V("div", bw, [n[11] ||= H("strong", null, "Directus 설정 오류", -1), H("span", null, F(c.value), 1)])) : W("v-if", !0),
+			c.value ? (B(), V("div", bw, [n[11] ||= H("strong", null, "Directus 설정 오류", -1), H("span", null, F(c.value), 1)])) : W("", !0),
 			H("div", xw, [H("aside", Sw, [
 				n[12] ||= H("h3", null, "설정 버전", -1),
 				(B(!0), V(z, null, R(m.value, (e) => (B(), V(z, { key: e.environment }, [H("strong", Cw, F(e.environment), 1), (B(!0), V(z, null, R(e.rows, (e) => (B(), V("button", {
@@ -14274,7 +14282,7 @@ var mw = /*#__PURE__*/ jh(rC, [["render", pw], ["__scopeId", "data-v-f0661921"]]
 					class: P({ selected: s.value === e.id }),
 					onClick: (t) => _(e)
 				}, [H("span", null, "v" + F(e.version), 1), H("em", null, F(e.status), 1)], 10, ww))), 128))], 64))), 128)),
-				!i.value && !o.value.length ? (B(), V("p", Tw, "저장된 설정이 없습니다.")) : W("v-if", !0)
+				!i.value && !o.value.length ? (B(), V("p", Tw, "저장된 설정이 없습니다.")) : W("", !0)
 			]), H("section", Ew, [
 				H("div", Dw, [
 					H("label", Ow, [n[14] ||= H("span", null, "환경", -1), L(H("select", { "onUpdate:modelValue": n[0] ||= (e) => d.environment = e }, [...n[13] ||= [
@@ -14366,18 +14374,18 @@ var mw = /*#__PURE__*/ jh(rC, [["render", pw], ["__scopeId", "data-v-f0661921"]]
 						onClick: x
 					}, "연결 테스트", 8, zw)
 				]),
-				f.value?.validation?.errors?.length ? (B(), V("div", Bw, [n[21] ||= H("strong", null, "검증 오류", -1), H("ul", null, [(B(!0), V(z, null, R(f.value.validation.errors, (e) => (B(), V("li", { key: e.code }, F(e.message), 1))), 128))])])) : W("v-if", !0),
+				f.value?.validation?.errors?.length ? (B(), V("div", Bw, [n[21] ||= H("strong", null, "검증 오류", -1), H("ul", null, [(B(!0), V(z, null, R(f.value.validation.errors, (e) => (B(), V("li", { key: e.code }, F(e.message), 1))), 128))])])) : W("", !0),
 				l.value ? (B(), V("div", {
 					key: 1,
 					class: P(["directus-settings__result", l.value.status])
-				}, [H("strong", null, F(l.value.status === "passed" ? "연결 성공" : "연결 실패"), 1), H("span", null, "Health: " + F(l.value.healthStatus || "-") + " · Auth: " + F(l.value.authVerified ? "확인" : "미확인") + " · " + F(l.value.durationMs) + "ms", 1)], 2)) : W("v-if", !0),
+				}, [H("strong", null, F(l.value.status === "passed" ? "연결 성공" : "연결 실패"), 1), H("span", null, "Health: " + F(l.value.healthStatus || "-") + " · Auth: " + F(l.value.authVerified ? "확인" : "미확인") + " · " + F(l.value.durationMs) + "ms", 1)], 2)) : W("", !0),
 				H("div", Vw, [
 					n[22] ||= H("strong", null, "최근 연결 검사", -1),
 					(B(!0), V(z, null, R(u.value.slice(0, 10), (e) => (B(), V("div", {
 						key: e.id,
 						class: "directus-settings__check"
 					}, [H("span", null, F(e.environment) + " v" + F(e.version) + " · " + F(e.status), 1), H("em", null, F(e.healthStatus || e.errorCode || "-") + " · " + F(e.durationMs) + "ms", 1)]))), 128)),
-					u.value.length ? W("v-if", !0) : (B(), V("small", Hw, "연결 검사 이력이 없습니다."))
+					u.value.length ? W("", !0) : (B(), V("small", Hw, "연결 검사 이력이 없습니다."))
 				])
 			])])
 		]));
@@ -18655,7 +18663,7 @@ var Vj = Object.freeze({
 				H("div", null, [H("strong", null, F(x.value.highQuality), 1), t[31] ||= H("span", null, "품질 4.0 이상", -1)]),
 				H("div", null, [H("strong", null, F(x.value.plannerReady), 1), t[32] ||= H("span", null, "Planner 사용 가능", -1)])
 			]),
-			d.value ? (B(), V("div", qj, [t[33] ||= H("strong", null, "레이아웃 레퍼런스 오류", -1), H("span", null, F(d.value), 1)])) : W("v-if", !0),
+			d.value ? (B(), V("div", qj, [t[33] ||= H("strong", null, "레이아웃 레퍼런스 오류", -1), H("span", null, F(d.value), 1)])) : W("", !0),
 			H("div", Jj, [H("aside", Yj, [H("div", Xj, [
 				L(H("input", {
 					"onUpdate:modelValue": t[1] ||= (e) => p.value = e,
@@ -18697,14 +18705,14 @@ var Vj = Object.freeze({
 					H("em", { class: P(`is-${e.status}`) }, F(D(e.status)), 3),
 					H("em", { class: P(e.plannerReadiness?.ready ? "is-ready" : "is-blocked") }, F(e.plannerReadiness?.ready ? "사용 가능" : "차단"), 3)
 				])
-			], 10, $j))), 128)), !s.value && !b.value.length ? (B(), V("p", iM, "조건에 맞는 레퍼런스가 없습니다.")) : W("v-if", !0)])]), H("form", {
+			], 10, $j))), 128)), !s.value && !b.value.length ? (B(), V("p", iM, "조건에 맞는 레퍼런스가 없습니다.")) : W("", !0)])]), H("form", {
 				class: "reference-library__editor",
 				onSubmit: t[26] ||= yu((e) => ae(), ["prevent"])
 			}, [
 				H("div", aM, [H("div", null, [H("strong", null, F(v.value ? v.value.title : "신규 레이아웃 레퍼런스"), 1), H("span", null, F(v.value ? `최근 수정 ${k(v.value.updatedAt)}` : "출처와 분석 결과를 입력해 주세요."), 1)]), v.value ? (B(), V("span", {
 					key: 0,
 					class: P(["reference-library__status", `is-${_.status}`])
-				}, F(D(_.status)), 3)) : W("v-if", !0)]),
+				}, F(D(_.status)), 3)) : W("", !0)]),
 				H("fieldset", {
 					disabled: c.value || l.value,
 					class: "reference-library__fields"
@@ -18770,8 +18778,8 @@ var Vj = Object.freeze({
 						_.analysisMeta?.analyzedAt ? (B(), V("div", hM, [
 							H("span", null, "최근 분석 " + F(k(_.analysisMeta.analyzedAt)), 1),
 							H("span", null, "신뢰도 " + F(Math.round(Number(_.analysisMeta.confidence || 0) * 100)) + "%", 1),
-							_.analysisMeta.executionDisplay ? (B(), V("span", gM, F(_.analysisMeta.executionDisplay.providerLabel) + " · " + F(_.analysisMeta.executionDisplay.modelLabel), 1)) : W("v-if", !0)
-						])) : W("v-if", !0)
+							_.analysisMeta.executionDisplay ? (B(), V("span", gM, F(_.analysisMeta.executionDisplay.providerLabel) + " · " + F(_.analysisMeta.executionDisplay.modelLabel), 1)) : W("", !0)
+						])) : W("", !0)
 					]),
 					H("section", null, [t[53] ||= H("h3", null, "2. 검색 분류", -1), H("div", _M, [
 						H("label", null, [t[47] ||= H("span", null, "페이지 유형", -1), L(H("input", {
@@ -18857,7 +18865,7 @@ var Vj = Object.freeze({
 						v.value?.plannerReadiness ? (B(), V("div", {
 							key: 0,
 							class: P(["reference-library__readiness", { ready: v.value.plannerReadiness.ready }])
-						}, [H("strong", null, F(v.value.plannerReadiness.ready ? "Planner 사용 가능" : "Planner 사용 차단"), 1), v.value.plannerReadiness.ready ? (B(), V("span", OM, "현재 저장 상태가 모든 검색 조건을 충족합니다.")) : (B(), V("ul", kM, [(B(!0), V(z, null, R(v.value.plannerReadiness.blockers, (e) => (B(), V("li", { key: e.code }, [H("code", null, F(e.code), 1), U(F(e.message), 1)]))), 128))]))], 2)) : W("v-if", !0)
+						}, [H("strong", null, F(v.value.plannerReadiness.ready ? "Planner 사용 가능" : "Planner 사용 차단"), 1), v.value.plannerReadiness.ready ? (B(), V("span", OM, "현재 저장 상태가 모든 검색 조건을 충족합니다.")) : (B(), V("ul", kM, [(B(!0), V(z, null, R(v.value.plannerReadiness.blockers, (e) => (B(), V("li", { key: e.code }, [H("code", null, F(e.code), 1), U(F(e.message), 1)]))), 128))]))], 2)) : W("", !0)
 					]),
 					H("label", null, [t[63] ||= H("span", null, "레퍼런스 변경 사유", -1), L(H("input", {
 						"onUpdate:modelValue": t[22] ||= (e) => _.changeNote = e,
@@ -18873,7 +18881,7 @@ var Vj = Object.freeze({
 						href: _.sourceUrl,
 						target: "_blank",
 						rel: "noopener noreferrer"
-					}, "원본 사이트 열기", 8, jM)) : W("v-if", !0),
+					}, "원본 사이트 열기", 8, jM)) : W("", !0),
 					t[64] ||= H("span", { class: "reference-library__footer-spacer" }, null, -1),
 					v.value && _.status !== "archived" ? (B(), V("button", {
 						key: 1,
@@ -18881,21 +18889,21 @@ var Vj = Object.freeze({
 						type: "button",
 						disabled: c.value || l.value,
 						onClick: t[23] ||= (e) => oe("archived")
-					}, "보관", 8, MM)) : W("v-if", !0),
+					}, "보관", 8, MM)) : W("", !0),
 					v.value && _.status === "draft" ? (B(), V("button", {
 						key: 2,
 						class: "tiny-button",
 						type: "button",
 						disabled: c.value || l.value,
 						onClick: t[24] ||= (e) => oe("review")
-					}, "검토 요청", 8, NM)) : W("v-if", !0),
+					}, "검토 요청", 8, NM)) : W("", !0),
 					v.value && _.status !== "approved" && _.status !== "archived" ? (B(), V("button", {
 						key: 3,
 						class: "tiny-button primary",
 						type: "button",
 						disabled: c.value || l.value || !T.value,
 						onClick: t[25] ||= (e) => oe("approved")
-					}, "LLM 사용 승인", 8, PM)) : W("v-if", !0),
+					}, "LLM 사용 승인", 8, PM)) : W("", !0),
 					H("button", {
 						class: "tiny-button primary",
 						type: "submit",
@@ -18906,7 +18914,7 @@ var Vj = Object.freeze({
 					H("strong", null, F(e.action === "created" ? "등록" : e.action === "status_changed" ? "상태 변경" : "수정"), 1),
 					H("span", null, F(e.previousStatus ? `${D(e.previousStatus)} → ` : "") + F(D(e.newStatus)), 1),
 					H("small", null, F(e.changedBy) + " · " + F(k(e.changedAt)) + " · " + F(e.changeNote || "사유 없음"), 1)
-				]))), 128))])])) : W("v-if", !0)
+				]))), 128))])])) : W("", !0)
 			], 32)])
 		]));
 	}
@@ -21834,6 +21842,10 @@ var Vj = Object.freeze({
 					final_design_v2: "최종 디자인 V2",
 					promo_ui_design: "프로모션 UI 디자인"
 				}[e] || t || e;
+			},
+			promptJourneyStepLabel(e) {
+				let t = window.PromoAdminPromptGroups.promptTypeMeta(e).journeyStep;
+				return t ? `${t}단계` : "";
 			},
 			promptTypeLabel(e) {
 				return window.PromoAdminPromptGroups.promptTypeMeta(e).label;

@@ -45,26 +45,15 @@ function requestFromRow(row) {
 
 function jobFromRow(row) {
   if (!row) return null;
-  const legacyStatus = String(row.legacy_status || "");
-  const reconciledStatus = /final_design(?:_v2)?_ready|completed/.test(legacyStatus)
-    ? "ready"
-    : /failed|trigger_failed/.test(legacyStatus)
-      ? "failed"
-      : /queued|running|generating|integrated_brief|lofi_draft|final_design/.test(legacyStatus)
-        ? "running"
-        : row.status;
   return {
     contractVersion: 3,
     jobId: row.id,
     requestId: row.request_id,
     pipeline: row.pipeline,
-    status: reconciledStatus,
+    status: row.status,
     attempt: Number(row.attempt || 0),
     inputSnapshotId: row.input_hash,
     inputSnapshot: row.input_snapshot || {},
-    legacyRunId: row.legacy_run_id || null,
-    legacyStatus: legacyStatus || null,
-    legacyStage: row.legacy_stage || null,
     resultReference: row.result_reference || null,
     error: row.error_json || null,
     createdAt: row.created_at || null,
@@ -148,46 +137,10 @@ async function listPromoRequestsV3(sql, { ownerSubject, limit = 50 }) {
   return rows.map(requestFromRow);
 }
 
-async function createGenerationJobV3(sql, input) {
-  const inputHash = sha256(stableJson(input.inputSnapshot));
-  const rows = await sql`
-    with created as (
-      insert into llm_runtime.generation_jobs (
-        request_id, idempotency_key, pipeline, status, input_hash, input_snapshot
-      ) values (
-        ${input.requestId}::uuid, ${input.idempotencyKey}, ${input.pipeline},
-        'accepted', ${inputHash}, ${JSON.stringify(input.inputSnapshot || {})}::jsonb
-      )
-      on conflict (request_id, idempotency_key) do nothing
-      returning *
-    )
-    select created.*, true as was_created from created
-    union all
-    select existing.*, false as was_created
-    from llm_runtime.generation_jobs existing
-    where existing.request_id = ${input.requestId}::uuid
-      and existing.idempotency_key = ${input.idempotencyKey}
-      and not exists (select 1 from created)
-    limit 1
-  `;
-  const job = jobFromRow(rows[0]);
-  if (job) {
-    await sql`
-      update user_service.promo_requests
-      set generation_job_id = coalesce(generation_job_id, ${job.jobId}::uuid),
-        status = case when status = 'requested' then 'queued' else status end,
-        updated_at = now()
-      where id = ${input.requestId}::uuid
-    `;
-  }
-  return { created: Boolean(rows[0]?.was_created), job };
-}
-
 async function findGenerationJobV3(sql, jobId) {
   const rows = await sql`
-    select job.*, run.status as legacy_status, run.stage as legacy_stage
+    select job.*
     from llm_runtime.generation_jobs job
-    left join promo_generation_runs run on run.id::text = job.legacy_run_id
     where job.id = ${jobId}::uuid limit 1
   `;
   return jobFromRow(rows[0]);
@@ -489,7 +442,6 @@ module.exports = {
   attachDocumentToRequestV3,
   findPromoRequestV3,
   listPromoRequestsV3,
-  createGenerationJobV3,
   findGenerationJobV3,
   savePromoRequestFeedbackV3,
   cancelPromoRequestV3,

@@ -17,7 +17,7 @@ const PROMPT_WORKFLOW_GROUPS = Object.freeze([
     key: "template-selection",
     label: "템플릿 선택 및 구성",
     description: "개요에 맞는 템플릿을 추천하고 섹션·컴포넌트 구성을 계획합니다.",
-    order: 20,
+    order: 41,
   },
   {
     key: "section-layout",
@@ -29,7 +29,7 @@ const PROMPT_WORKFLOW_GROUPS = Object.freeze([
     key: "ai-page-composition",
     label: "AI 페이지 구성",
     description: "승인된 섹션·레이아웃 후보로 페이지를 구성하고 자연어 수정안을 만듭니다.",
-    order: 35,
+    order: 20,
   },
   {
     key: "promotion-image",
@@ -71,6 +71,7 @@ const PROMPT_WORKFLOW_GROUPS = Object.freeze([
 
 const PROMPT_TYPE_CATALOG = Object.freeze({
   promo_overview_parser: {
+    journeyStep: 1,
     group: "promotion-overview",
     order: 10,
     label: "프로모션 개요 분석",
@@ -92,6 +93,7 @@ const PROMPT_TYPE_CATALOG = Object.freeze({
     executionMode: "사용자 요청",
   },
   promo_page_composer: {
+    journeyStep: 3,
     group: "ai-page-composition",
     order: 10,
     label: "AI 페이지 구성 계획",
@@ -99,6 +101,7 @@ const PROMPT_TYPE_CATALOG = Object.freeze({
     executionMode: "사용자 요청",
   },
   promo_composition_editor: {
+    journeyStep: 4,
     group: "ai-page-composition",
     order: 20,
     label: "AI 페이지 구성 수정",
@@ -106,6 +109,7 @@ const PROMPT_TYPE_CATALOG = Object.freeze({
     executionMode: "사용자 요청",
   },
   section_composition_planner: {
+    journeyStep: 5,
     group: "section-layout",
     order: 10,
     label: "자연어 섹션 구성 계획",
@@ -113,6 +117,7 @@ const PROMPT_TYPE_CATALOG = Object.freeze({
     executionMode: "선택 실행",
   },
   section_layout_planner: {
+    journeyStep: 6,
     group: "section-layout",
     order: 20,
     label: "섹션 레이아웃 계획",
@@ -120,6 +125,7 @@ const PROMPT_TYPE_CATALOG = Object.freeze({
     executionMode: "선택 실행",
   },
   multi_component_layout_planner: {
+    journeyStep: 7,
     group: "section-layout",
     order: 30,
     label: "다중 컴포넌트 정렬 계획",
@@ -127,6 +133,7 @@ const PROMPT_TYPE_CATALOG = Object.freeze({
     executionMode: "선택 실행",
   },
   section_background_image: {
+    journeyStep: 8,
     group: "promotion-image",
     order: 10,
     label: "섹션 키비주얼 생성",
@@ -134,6 +141,7 @@ const PROMPT_TYPE_CATALOG = Object.freeze({
     executionMode: "선택 실행",
   },
   component_image: {
+    journeyStep: 9,
     group: "promotion-image",
     order: 20,
     label: "컴포넌트 이미지 생성",
