@@ -1162,8 +1162,8 @@ function hydrateChatWorkspace(workspace) {
   if(workspace.session.stage==='completed' && store.snapshot){
     store.stage='render_ready';activeResultTab.value='final';
     const failed=failedTask.value;
-    const alreadyApproved=(workspace.messages||[]).flatMap(message=>message.actions||[]).some(action=>action.id===failed?.action?.id&&action.key==='approve_wireframe'&&action.status==='executed');
-    if(failed?.kind==='final-design'&&failed.error?.code==='CHAT_ACTION_NOT_ALLOWED'&&alreadyApproved)failed.retryable=true;
+    const recoverableApproval=(workspace.messages||[]).flatMap(message=>message.actions||[]).some(action=>action.id===failed?.action?.id&&action.key==='approve_wireframe'&&['executed','proposed','expired'].includes(action.status));
+    if(failed?.kind==='final-design'&&failed.error?.code==='CHAT_ACTION_NOT_ALLOWED'&&recoverableApproval)failed.retryable=true;
     for(const message of messages.value)for(const action of message.actions||[])if(action.status==='proposed'&&['approve_wireframe','revise_wireframe','confirm_requirements','revise_requirements'].includes(action.key))action.status='expired';
   }
 }
@@ -1441,7 +1441,7 @@ function cloneRequirements(value = store.overviewDraft) {
   return JSON.parse(JSON.stringify(value || {}));
 }
 
-function markChatActionGroupHandled(action) {
+function markChatActionGroupHandled(action, status = "executed") {
   const matches = (candidate) => (
     action.id ? candidate.id === action.id : candidate.key === action.key
   );
@@ -1451,7 +1451,7 @@ function markChatActionGroupHandled(action) {
   if (!message) return;
   message.actions = message.actions.map((candidate) => ({
     ...candidate,
-    status: matches(candidate) ? "executed" : "expired",
+    status: matches(candidate) ? status : "expired",
   }));
 }
 
@@ -2193,7 +2193,8 @@ async function approveWireframe(action = {}, existingOperationId = "") {
         actionKey: "approve_wireframe",
         idempotencyKey: crypto.randomUUID(),
       });
-      markChatActionGroupHandled(action);
+      markChatActionGroupHandled(action,approval.resumeOnly?'expired':'executed');
+      if(approval.replayed&&approval.stage==='completed')updateStatusMessage(operationId,'저장된 디자인을 불러와 품질 상태를 확인하고 있습니다.','in_progress');
       completedApproval = approval.replayed === true && approval.stage === 'completed';
       if(approval.replayed && !['completed','finalizing'].includes(approval.stage))throw Object.assign(new Error('대화 단계가 변경되었습니다. 최신 대화를 다시 불러와 주세요.'),{code:'CHAT_ACTION_STALE'});
     }

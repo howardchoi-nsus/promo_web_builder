@@ -264,6 +264,22 @@ async function fetchAction(sql, { sessionId, actionId, actionKey, ownerSubject }
   return toAction(rows[0] || null);
 }
 
+async function fetchCompletedDocument(sql, {sessionId,ownerSubject}) {
+  const rows=await sql`
+    select document.id::text as document_id, document.current_document_revision
+    from promo_builder_chat_sessions session
+    join promo_builder_documents document on document.id=session.document_id
+      and document.owner_subject=session.owner_subject
+    join promo_builder_document_versions version on version.document_id=document.id
+      and version.revision=document.current_document_revision
+    where session.id=${sessionId}::uuid and session.owner_subject=${ownerSubject}
+      and session.stage='completed' and document.current_document_revision>0
+      and jsonb_typeof(version.snapshot_json->'content')='object'
+    limit 1
+  `;
+  return rows[0]?{documentId:rows[0].document_id,documentRevision:Number(rows[0].current_document_revision)}:null;
+}
+
 async function executeAction(sql, {
   sessionId, actionId, actionKey, ownerSubject, idempotencyKey, nextStage,
 }) {
@@ -467,6 +483,7 @@ module.exports = {
   listSessions,
   saveMessage,
   saveRequirementsRevision,
+  fetchCompletedDocument,
   fetchAction,
   executeAction,
   saveWireframeRevision,

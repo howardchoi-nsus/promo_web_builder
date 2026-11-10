@@ -22,6 +22,7 @@ const common = {
   resolveBuilderOwner: () => ({ ownerSubject: "owner-1" }),
   getSql: () => "sql",
   fetchAction: async () => ({id:"action-1",key:"approve_wireframe",status:"proposed"}),
+  fetchCompletedDocument:async()=>null,
 };
 
 async function testSession() {
@@ -113,9 +114,28 @@ async function testCompletedApprovalReplay() {
   const res=response();await replay({method:'POST',body},res);
   assert.equal(res.statusCode,200);assert.equal(res.body.replayed,true);assert.equal(res.body.stage,'completed');assert.equal(mutations,0);
   const pending=createActionHandler({...common,fetchSession:async()=>({session:{stage:'completed'}}),fetchAction:async()=>({status:'proposed'}),executeAction:async()=>{mutations++;}});
-  const blocked=response();await pending({method:'POST',body},blocked);assert.equal(blocked.statusCode,409);assert.equal(blocked.body.code,'CHAT_ACTION_NOT_ALLOWED');assert.equal(mutations,0);
+  const blocked=response();await pending({method:'POST',body},blocked);assert.equal(blocked.statusCode,409);assert.equal(blocked.body.code,'COMPLETED_DOCUMENT_NOT_FOUND');assert.equal(mutations,0);
   const foreign=createActionHandler({...common,fetchSession:async()=>null,fetchAction:async()=>{throw Error('Must not read foreign actions');}});
   const denied=response();await foreign({method:'POST',body},denied);assert.equal(denied.statusCode,404);
+}
+
+async function testCompletedPendingApprovalRecovery(){
+ const body={sessionId:'session-1',actionId:'action-1',actionKey:'approve_wireframe',idempotencyKey:'retry'};
+ for(const status of ['proposed','expired']){
+  let mutations=0;
+  const handler=createActionHandler({...common,fetchSession:async()=>({session:{stage:'completed'}}),
+   fetchAction:async()=>({id:'action-1',key:'approve_wireframe',status}),
+   fetchCompletedDocument:async()=>({documentId:'document-1',documentRevision:4}),
+   executeAction:async()=>{mutations++;},fetchConfirmedWireframe:async()=>{throw Error('No new approval');}});
+  const res=response();await handler({method:'POST',body},res);
+  assert.equal(res.statusCode,200);assert.equal(res.body.resumeOnly,true);assert.equal(res.body.stage,'completed');
+  assert.equal(res.body.action.status,status);assert.equal(res.body.documentRevision,4);assert.equal(mutations,0);
+  assert.equal(res.headers['x-promo-chat-actions-version'],'completed-resume-v2');
+ }
+ const missing=createActionHandler({...common,fetchSession:async()=>({session:{stage:'completed'}}),fetchAction:async()=>({status:'expired'}),fetchCompletedDocument:async()=>null});
+ const res=response();await missing({method:'POST',body},res);assert.equal(res.statusCode,409);assert.equal(res.body.code,'COMPLETED_DOCUMENT_NOT_FOUND');
+ const unknown=createActionHandler({...common,fetchSession:async()=>({session:{stage:'completed'}}),fetchAction:async()=>null,fetchCompletedDocument:async()=>{throw Error('Unknown action must not recover');}});
+ const denied=response();await unknown({method:'POST',body},denied);assert.equal(denied.statusCode,409);
 }
 
 async function testWireframeSaveAndConfirm() {
@@ -193,6 +213,7 @@ Promise.resolve()
   .then(testMessageActions)
   .then(testApprovalActionRequiresConfirmation)
   .then(testCompletedApprovalReplay)
+  .then(testCompletedPendingApprovalRecovery)
   .then(testWireframeSaveAndConfirm)
   .then(testWireframeEditUsesOptimisticContext)
   .then(() => console.log("AI Builder chat workspace handlers passed"))

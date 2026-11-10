@@ -13,7 +13,7 @@ const action={id:'approval-1',key:'approve_wireframe',label:'페이지 구성 �
 const draft={contractVersion:3,content:{sectionSnapshot:[{sectionKey:'hero',sectionRole:'hero',items:[{itemKey:'title',fieldKind:'text',textType:'title'}]}],sectionInputs:{hero:{title:'등록된 결과'}},sectionOrder:['hero']}};
 let snapshot={...snapshotForPage(normalize(fixture('example-editorial')).page,context),documentRevision:1,qualityGate:{state:'pending',documentRevision:1}},revision=1,applyCalls=0,approvalRequests=0,writes=0;
 const workspace={session:{id:'session-1',documentId:'document-1',stage:'completed',confirmedWireframeRevision:1},messages:[{id:'assistant-1',role:'assistant',type:'assistant',text:'페이지 구성을 승인해 주세요.',actions:[action]}],wireframe:{revision:1,proposalId:'proposal-1',structureFingerprint:'a'.repeat(64),snapshot:draft,status:'confirmed'}};
-const handler=createHandler({requireBuilderFlag(){},resolveBuilderOwner:()=>({ownerSubject:'owner'}),getSql:()=>({}),fetchSession:async()=>workspace,fetchAction:async()=>action,executeAction:async()=>{writes++;throw Error('Approval must not execute twice');},fetchConfirmedWireframe:async()=>{throw Error('Do not reconfirm executed approval');}});
+const handler=createHandler({requireBuilderFlag(){},resolveBuilderOwner:()=>({ownerSubject:'owner'}),getSql:()=>({}),fetchSession:async()=>workspace,fetchAction:async()=>action,fetchCompletedDocument:async()=>({documentId:'document-1',documentRevision:revision}),executeAction:async()=>{writes++;throw Error('Approval must not execute twice');},fetchConfirmedWireframe:async()=>{throw Error('Do not reconfirm executed approval');}});
 const root=resolve(new URL('..',import.meta.url).pathname);
 const errors=[];
 const server=createServer(async(req,res)=>{try{
@@ -42,6 +42,8 @@ const server=createServer(async(req,res)=>{try{
 await new Promise(r=>server.listen(0,'127.0.0.1',r));
 const browser=await chromium.launch({executablePath:process.env.CHROMIUM_EXECUTABLE_PATH||'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
 try{
+ for(const actionStatus of ['executed','proposed','expired']){
+ action.status=actionStatus;approvalRequests=0;
  const page=await browser.newPage({viewport:{width:1440,height:1000}});page.setDefaultTimeout(15000);page.on('pageerror',error=>errors.push(error.message));
  await page.addInitScript(({draft,action})=>sessionStorage.setItem('promoAiBuilder.activeChat.v2',JSON.stringify({documentId:'document-1',documentRevision:1,chatSessionId:'session-1',stage:'failed',activeResultTab:'final',wireframeSnapshot:draft,wireframeRevision:1,wireframeFingerprint:'a'.repeat(64),messages:[],failedTask:{kind:'final-design',operationId:'failed-approval',label:'최종 디자인 생성',action,retryable:false,error:{code:'CHAT_ACTION_NOT_ALLOWED',message:'Action approve_wireframe is not allowed during completed'}}})),{draft,action});
  await page.goto(`http://127.0.0.1:${server.address().port}/?mode=ai`);
@@ -49,5 +51,7 @@ try{
  await page.waitForFunction(()=>document.body.textContent.includes('디자인 미리보기를 완성했습니다.'));
  assert.equal(approvalRequests,1);assert.equal(applyCalls,0);assert.equal(writes,0);assert.equal(workspace.session.stage,'completed');assert.equal(snapshot.qualityGate.state,'passed');
  assert.equal(await page.getByRole('button',{name:'페이지 구성 승인',exact:true}).count(),0);
+ assert.equal(action.status,actionStatus);await page.close();
+ }
  assert.deepEqual(errors,[]);console.log('Approval retry browser: cached completed-stage 409 recovers saved document, passes quality, and never reapproves or reapplies.');
 }finally{await browser.close();await new Promise(r=>server.close(r));}
