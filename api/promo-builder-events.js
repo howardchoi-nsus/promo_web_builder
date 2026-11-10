@@ -13,6 +13,24 @@ const EVENT_NAMES = new Set([
   "web_output_opened",
 ]);
 
+// Public client event names evolve independently of the historical DB enum.
+// Normalize on the server so already deployed/cached clients remain compatible.
+const EVENT_ALIASES = Object.freeze({
+  ai_overview_retrying: {name:'ai_overview_requested', phase:'retry'},
+  builder_quality_gate_passed: {name:'composition_validated', phase:'quality_gate_passed'},
+  builder_quality_gate_blocked: {name:'composition_review_required', phase:'quality_gate_blocked'},
+  builder_document_exported: {name:'web_output_opened', phase:'document_exported'},
+});
+function normalizeEvent(eventName, metadata) {
+  const alias = Object.hasOwn(EVENT_ALIASES, eventName) ? EVENT_ALIASES[eventName] : null;
+  return {
+    eventName: alias?.name || eventName,
+    metadata: safeMetadata(alias
+      ? {sourceEventName:eventName,eventPhase:alias.phase,...Object.fromEntries(Object.entries(safeMetadata(metadata)).filter(([key])=>!['sourceEventName','eventPhase'].includes(key)))}
+      : metadata),
+  };
+}
+
 function safeMetadata(value) {
   const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
   return Object.fromEntries(Object.entries(source).slice(0, 30).map(([key, item]) => [
@@ -32,7 +50,8 @@ module.exports = async function handler(req, res) {
     res.setHeader("Cache-Control", "no-store");
     const owner = resolveBuilderOwner(req, res);
     const body = parseBody(req.body);
-    const eventName = String(body.eventName || "");
+    const receivedEventName = String(body.eventName || "");
+    const {eventName,metadata} = normalizeEvent(receivedEventName,body.metadata);
     const documentId = String(body.documentId || "").trim();
     if (!EVENT_NAMES.has(eventName)) return res.status(400).json({ error: "Unknown eventName" });
     const sql = getSql();
@@ -51,7 +70,7 @@ module.exports = async function handler(req, res) {
         ${body.documentRevision == null ? null : Number(body.documentRevision)},
         ${String(body.requestId || "").slice(0, 120)},
         ${body.durationMs == null ? null : Math.max(0, Math.round(Number(body.durationMs) || 0))},
-        ${JSON.stringify(safeMetadata(body.metadata))}::jsonb
+        ${JSON.stringify(metadata)}::jsonb
       )
     `;
     return res.status(202).json({ ok: true });
@@ -66,3 +85,6 @@ module.exports = async function handler(req, res) {
 
 module.exports.EVENT_NAMES = EVENT_NAMES;
 module.exports.safeMetadata = safeMetadata;
+
+module.exports.EVENT_ALIASES = EVENT_ALIASES;
+module.exports.normalizeEvent = normalizeEvent;
