@@ -301,7 +301,8 @@ module.exports = async function handler(req, res) {
       const body = parseBody(req.body);
       const documentId = String(body.documentId || "").trim();
       const baseDocumentRevision = Number(body.baseDocumentRevision || 0);
-      if (!documentId || !body.snapshot) {
+      const refreshTokens = body.operation === "refresh-token-library";
+      if (!documentId || (!refreshTokens && !body.snapshot)) {
         return res.status(400).json({ error: "documentId and snapshot are required" });
       }
       const sql = getSql();
@@ -314,7 +315,7 @@ module.exports = async function handler(req, res) {
           currentDocumentRevision: current.document.currentDocumentRevision,
         });
       }
-      const snapshot = await normalizeEditorSnapshot(
+      const snapshot = refreshTokens ? await require("./_promo-output-token-refresh").refreshOutputTokens(sql,current.snapshot) : await normalizeEditorSnapshot(
         sql,
         current.snapshot,
         body.snapshot,
@@ -328,7 +329,7 @@ module.exports = async function handler(req, res) {
         snapshot,
         source: "manual",
         changeNote: String(body.changeNote || "Visual Editor changes saved.").slice(0, 500),
-        qualityGateVerified: Number(current.snapshot.contractVersion) === 3,
+        qualityGateVerified: !refreshTokens && Number(current.snapshot.contractVersion) === 3,
       });
       return res.status(200).json({
         ok: true,
@@ -348,6 +349,7 @@ module.exports = async function handler(req, res) {
       code: error.code || null,
       message: error.message,
       ...(error.validation ? { validation: error.validation } : {}),
+      ...(error.errors ? { errors: error.errors } : {}),
     });
   }
 };

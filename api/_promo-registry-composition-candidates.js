@@ -347,6 +347,7 @@ async function fetchTokenCandidates(sql, shellConfig) {
     if (!version) continue;
     const { policySelectableTokens } = await import("../shared/token-usage-policy.mjs");
     const usagePolicy = row.setKey === "design-system" ? await activeTokenUsagePolicy(sql, version) : null;
+    if(row.setKey==='design-system')require('../shared/layout-token-policy.cjs').assertLayoutTokens({tokenValues:toRuntimeTokenMap(version.values),tokenCatalog:tokenPolicyCatalog(version),usagePolicy});
     candidates.push({
       tokenSetId: row.id,
       tokenSetVersionId: row.versionId,

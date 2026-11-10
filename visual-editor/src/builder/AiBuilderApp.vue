@@ -2049,7 +2049,21 @@ async function compose() {
   await prepareWireframe();
 }
 
+const reconnectingTokens=ref(false);
+const tokenConnectionProblem=computed(()=>[store.error?.code,...(store.error?.details||[]).map(d=>d.code),...(finalQualityGate.value?.diagnostics||[]).map(d=>d.code)].some(code=>/^(LAYOUT_TOKEN|LAYOUT_BREAKPOINT|TOKEN_|OUTPUT_TOKEN|UNREGISTERED_|REGISTERED_TOKEN|STYLE_TOKEN)/.test(code||'')));
+async function reconnectRegisteredTokens(){
+ if(!store.documentId||!store.snapshot||reconnectingTokens.value)return;
+ reconnectingTokens.value=true;clearBuilderError(store);
+ try{
+  const saved=await saveBuilderDocument({operation:'refresh-token-library',documentId:store.documentId,baseDocumentRevision:store.documentRevision,changeNote:'명시적으로 활성 등록 토큰 라이브러리 다시 연결'});
+  store.snapshot=saved.snapshot;store.documentRevision=Number(saved.revision);store.stage='render_ready';activeResultTab.value='final';transientQualityGate.value=null;clearFailedTask();
+  await nextTick();await checkFinalQuality();
+ }catch(error){setBuilderError(store,error);}finally{reconnectingTokens.value=false;}
+}
+
 function qualityGateMessage(result) {
+  const diagnostics=result.diagnostics||[];
+  if(diagnostics.some(item=>/^(LAYOUT_TOKEN|LAYOUT_BREAKPOINT|TOKEN_|OUTPUT_TOKEN|UNREGISTERED_|REGISTERED_TOKEN|STYLE_TOKEN)/.test(item.code||'')))return '문서에 연결된 그리드·디자인 토큰을 확인해야 합니다. 활성 등록 토큰을 다시 연결하거나 관리자에서 누락 항목을 등록해 주세요.';
   const desktop = result.results?.desktop || {};
   const mobile = result.results?.mobile || {};
   if (Number(result.blockingCount || 0) > 0) {
@@ -2861,9 +2875,10 @@ onBeforeUnmount(() => {
         <strong>{{ store.error.code }}</strong>
         <span>{{ store.error.message }}</span>
         <small v-if="store.error.requestId">요청 ID: {{ store.error.requestId }}</small>
-        <small v-for="detail in store.error.details || []" :key="`${detail.code}:${detail.path}`">
-          {{ detail.code }} · {{ detail.path }}{{ detail.message ? ` · ${detail.message}` : "" }}
-        </small>
+        <details v-if="store.error.details?.length" class="ai-builder-error__details" :open="store.error.details.length <= 5">
+          <summary>확인 필요 항목 {{store.error.details.length}}개</summary>
+          <ul><li v-for="detail in store.error.details" :key="`${detail.code}:${detail.path}`"><code>{{detail.path}}</code> · {{detail.message||detail.code}}</li></ul>
+        </details>
         <button
           v-if="retryableAssetError"
           type="button"
@@ -2871,6 +2886,7 @@ onBeforeUnmount(() => {
           @click="retryAssets"
         >{{ assetRetrying ? "이미지 생성 재시도 중…" : "이미지 생성 다시 시도" }}</button>
         <div class="ai-builder-error__actions">
+          <button v-if="tokenConnectionProblem && store.snapshot" type="button" :disabled="reconnectingTokens" @click="reconnectRegisteredTokens">{{reconnectingTokens?'토큰 확인 중…':'활성 등록 토큰 다시 연결'}}</button>
           <button
             v-if="failedTaskCanRetry && !retryableAssetError"
             type="button"
@@ -3306,6 +3322,7 @@ onBeforeUnmount(() => {
             <section v-else-if="activeResultTab === 'final' && store.snapshot" class="ai-final-review">
               <PageSchemaMediaPanel v-if="store.snapshot?.content?.pageSchema" :page="store.snapshot.content.pageSchema" :context="store.snapshot.content.pageContext" :busy="pageSchemaSaving || busy" @change="changeDynamicMedia" />
               <PageSchemaEditor v-if="pageSchemaEditorOpen && store.snapshot?.content?.pageSchema" :page="store.snapshot.content.pageSchema" :busy="pageSchemaSaving" @save="saveDynamicPage" @close="pageSchemaEditorOpen=false" />
+              <button v-if="tokenConnectionProblem" type="button" :disabled="reconnectingTokens" @click="reconnectRegisteredTokens">{{reconnectingTokens?'토큰 확인 중…':'활성 등록 토큰 다시 연결'}}</button>
               <CompositionReview
                 ref="compositionReviewRef"
                 v-model:viewport="wireframeViewport"

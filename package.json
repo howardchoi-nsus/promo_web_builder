@@ -53,7 +53,8 @@
     "build:token-policy": "node scripts/build-token-usage-policy.mjs",
     "test:page-schema": "node scripts/test-page-schema.mjs && node scripts/test-page-schema-api.mjs",
     "test:page-schema-browser": "node scripts/test-page-schema-browser.mjs && node scripts/test-page-schema-builder-browser.mjs",
-    "test:output-isolation-ssr": "pnpm run build:nuxt-runtime && node scripts/test-output-isolation-ssr.mjs"
+    "test:output-isolation-ssr": "pnpm run build:nuxt-runtime && node scripts/test-output-isolation-ssr.mjs",
+    "test:output-token-refresh": "node scripts/test-output-token-refresh.mjs && node scripts/test-output-token-refresh-browser.mjs"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.3.1",

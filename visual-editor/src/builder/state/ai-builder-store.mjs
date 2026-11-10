@@ -7,7 +7,7 @@ export function createAiBuilderStore(overrides = {}) {
 
 export function setBuilderError(store, error) {
   const details = Array.isArray(error?.details)
-    ? error.details.slice(0, 5).map((detail) => ({
+    ? [...new Map(error.details.map(detail=>[`${detail?.code}:${detail?.path}:${detail?.message}`,detail])).values()].slice(0, 30).map((detail) => ({
         code: String(detail?.code || "VALIDATION_ERROR"),
         path: String(detail?.path || "unknown"),
         message: detail?.message ? String(detail.message) : "",

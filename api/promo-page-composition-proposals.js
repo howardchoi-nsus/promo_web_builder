@@ -279,6 +279,7 @@ module.exports = async function handler(req, res) {
       sectionKey: error.sectionKey || null,
       sectionVersionId: error.sectionVersionId || null,
       reasonCodes: error.reasonCodes || [],
+      errors: error.errors || [],
     });
   }
 };

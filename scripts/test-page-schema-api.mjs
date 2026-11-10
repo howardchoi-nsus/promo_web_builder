@@ -5,10 +5,11 @@ const require=createRequire(import.meta.url);
 const {validate,walk}=require('../shared/page-schema/contract.cjs');
 const auth=require('../api/_promo-builder-auth');
 const session=auth.createSessionToken();const owner=auth.ownerSubjectForSession(session.sessionId);
-let revision=0,snapshot=null,calls=0;
+let revision=0,snapshot=null,calls=0,qualityVerified;
+const realTokenMap=require('../api/_design-token-store').toRuntimeTokenMap;
 const mock=(name,exports)=>{const id=require.resolve(`../api/${name}`);require.cache[id]={id,filename:id,loaded:true,exports};};
-mock('_promo-builder-document-store',{getSql:()=>({}),fetchDocument:async(_,id,subject)=>subject===owner&&id==='owned'?{document:{id,mode:'ai',currentDocumentRevision:revision},snapshot}:null,createDocumentRevision:async(_,arg)=>{assert.equal(arg.ownerSubject,owner);assert.equal(arg.baseDocumentRevision,revision);assert.equal(validate(arg.snapshot.content.pageSchema,arg.snapshot.content.pageContext).ok,true);snapshot={...arg.snapshot,documentRevision:++revision};return {revision,snapshot};}});
-mock('_design-token-store',{fetchTokenSets:async()=>[{setKey:'design-system',versionId:'fixture'}],fetchTokenVersion:async()=>({id:'fixture',values:context.tokenCatalog.map(t=>({...t,tokenKey:t.name}))})});
+mock('_promo-builder-document-store',{getSql:()=>({}),fetchDocument:async(_,id,subject)=>subject===owner&&id==='owned'?{document:{id,mode:'ai',currentDocumentRevision:revision},snapshot}:null,createDocumentRevision:async(_,arg)=>{qualityVerified=arg.qualityGateVerified;assert.equal(arg.ownerSubject,owner);assert.equal(arg.baseDocumentRevision,revision);assert.equal(validate(arg.snapshot.content.pageSchema,arg.snapshot.content.pageContext).ok,true);snapshot={...arg.snapshot,documentRevision:++revision};return {revision,snapshot};}});
+mock('_design-token-store',{toRuntimeTokenMap:realTokenMap,fetchTokenSets:async()=>[{setKey:'design-system',versionId:'fixture'}],fetchTokenVersion:async()=>({id:'fixture',status:'active',values:context.tokenCatalog.map(t=>({...t,tokenKey:t.name}))})});
 mock('_token-usage-policy-store',{activeTokenUsagePolicy:async()=>context.usagePolicy,tokenPolicyCatalog:()=>context.tokenCatalog});
 mock('_prompt-execution-snapshot',{createPromptExecutionSnapshot:async(_,type,vars)=>{assert.equal(type,'promo_page_schema_planner');return {promptConfig:{candidate:JSON.parse(vars.candidateSnapshotJson)}};}});
 mock('_promo-section-design-provider',{generateStructuredPlannerResult:async args=>{calls++;const candidate=args.promptConfig.candidate,page=fixture('example-editorial');walk(page.root,({node})=>{node.sourceIds=node.sourceIds.map(id=>Object.entries(candidate.contentSources).find(([,value])=>value.text===context.contentSources[id]?.text)?.[0]||id);if(node.type==='button')node.actionId=Object.keys(candidate.actions)[0];});return {result:page,provider:{model:'fixture'}};}});
@@ -37,4 +38,10 @@ let button;walk(snapshot.content.pageSchema.root,({node})=>{if(node.type==='butt
 assert.equal((await bind({documentId:'owned',baseDocumentRevision:2,nodeId:button.id,url:'javascript:alert(1)'})).status,422);assert.equal(revision,2);
 assert.equal((await bind({documentId:'owned',baseDocumentRevision:2,nodeId:button.id,url:'https://example.com/approved'})).status,200);assert.equal(revision,3);
 assert.equal((await bind({documentId:'owned',baseDocumentRevision:2,nodeId:button.id,url:'/other'})).status,409);assert.equal(revision,3);
+const documentHandler=require('../api/promo-builder-documents');
+async function reconnect(body,cookie=`${auth.COOKIE_NAME}=${session.token}`){let status=200,payload;const res={setHeader(){},status(s){status=s;return this;},json(p){payload=p;}};await documentHandler({method:'PATCH',body,headers:{cookie}},res);return {status,payload};}
+assert.equal((await reconnect({operation:'refresh-token-library',documentId:'owned',baseDocumentRevision:2})).status,409);
+assert.equal((await reconnect({operation:'refresh-token-library',documentId:'foreign',baseDocumentRevision:3})).status,404);
+assert.equal((await reconnect({operation:'refresh-token-library',documentId:'owned',baseDocumentRevision:3},'')).status,401);
+const refreshed=await reconnect({operation:'refresh-token-library',documentId:'owned',baseDocumentRevision:3});assert.equal(refreshed.status,200,JSON.stringify(refreshed));assert.equal(revision,4);assert.equal(qualityVerified,false);
 console.log('PageSchema API: disabled flag, session ownership, generation/save, revision conflicts, invalid edit preservation, tablet gate and pinned context passed.');
