@@ -39,4 +39,12 @@ await assert.rejects(createDocumentRevision(async()=>{writes++;}, {snapshot:inva
 assert.equal(writes,0);
 const bad=structuredClone(candidates);bad.sections[0].components[0].renderSpec.root.tokenBindings={color:'--missing'};
 await assert.rejects(compileRegistryComposition({proposalSnapshot,candidates:bad,documentId:'document-1',proposalId:'proposal-1',fetchPinnedResources:async()=>new Map()}),error=>error.code==='COMPONENT_TOKEN_POLICY_VIOLATION');
+const ctaCandidates = structuredClone(candidates);
+ctaCandidates.sections[0].components[0].fields[0].fieldKind = 'cta';
+ctaCandidates.sections[0].components[0].renderSpec.root.children[0].tag = 'a';
+const ctaProposal = structuredClone(proposalSnapshot);
+ctaProposal.compositionSpec.sections[0].components[0].contentItems[0].fields[0].value = '혜택 보기';
+const ctaResult = await compileRegistryComposition({proposalSnapshot:ctaProposal,candidates:ctaCandidates,overview:{contentSections:[{sectionKey:'benefits',items:[{itemKey:'card',ctaLabel:'혜택 보기',ctaUrl:'/confirmed-offer',confirmationRequired:false}]}]},documentId:'document-1',proposalId:'proposal-cta',fetchPinnedResources:async()=>new Map()});
+const ctaSection = ctaResult.content.sectionSnapshot[0];
+assert.equal(ctaResult.content.sectionInputs[ctaSection.sectionKey][ctaSection.items[0].itemKey].link,'/confirmed-offer');
 console.log('Registered library composition passed: latest versions, new compatible candidates, locks, deterministic IDs, compiled content, strict tokens, persistence rejection, and RenderSpec rejection.');

@@ -410,7 +410,7 @@ const server = http.createServer(async (request, response) => {
 
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 const origin = `http://127.0.0.1:${server.address().port}`;
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({ headless: true, ...(process.env.CHROMIUM_EXECUTABLE_PATH ? { executablePath: process.env.CHROMIUM_EXECUTABLE_PATH } : {}) });
 const page = await browser.newPage();
 const errors = [];
 page.on("pageerror", (error) => errors.push(error.message));
@@ -508,6 +508,18 @@ try {
   await page.getByRole("button", { name: "요청 요약" }).click();
   await page.locator(".ai-requirement-summary__title strong", { hasText: "여름 신규 고객 충전 이벤트" }).waitFor();
   await page.getByText("예정 콘텐츠", { exact: true }).waitFor();
+  await page.getByText("세부 내용 보기", { exact: true }).click();
+  const basicTable = page.getByRole("table", { name: "프로모션 기본 정보", exact: true, includeHidden: true });
+  await basicTable.waitFor();
+  assert.equal(await basicTable.getByRole("rowheader", { name: "대표 제목", exact: true }).count(), 1);
+  assert.equal(await page.locator('[role="tree"], [role="treeitem"]').count(), 0);
+  const sectionTable = page.getByRole("table", { name: "콘텐츠 1 · 주요 혜택", exact: true });
+  assert.equal(await sectionTable.getByText("신규 고객 보너스", { exact: true }).count() > 0, true);
+  assert.equal(await sectionTable.locator(".ai-confirmation-badge").count() > 0, true);
+  await page.locator(".ai-requirements-details").screenshot({path:"/tmp/requirements-tables-desktop.png"});
+  await page.setViewportSize({width:390,height:844});
+  await page.locator(".ai-requirements-details").screenshot({path:"/tmp/requirements-tables-mobile.png"});
+  await page.setViewportSize({width:1280,height:720});
   assert.equal(await page.getByText("진행 상황 및 결과", { exact: true }).count(), 0);
   assert.equal(await page.getByText("AI가 이해한 요청", { exact: true }).count(), 0);
   assert.equal(await page.locator(".ai-result-progress .ai-process-status").count(), 1);
@@ -524,6 +536,16 @@ try {
     }
     await page.setViewportSize({ width: 1280, height: 720 });
   }
+  await page.getByRole('button', {name:'요청 내용 수정',exact:true}).click();
+  const representativeTitle = page.getByRole('textbox', {name:'대표 제목 수정',exact:true});
+  await representativeTitle.fill('취소할 제목');
+  await page.getByRole('button',{name:'수정 취소',exact:true}).click();
+  await page.getByText('요청 내용 수정을 취소했습니다.',{exact:false}).waitFor();
+  assert.equal(await basicTable.getByText('여름 신규 고객 충전 이벤트',{exact:true}).count(),1);
+  await page.getByRole('button',{name:'다시 수정',exact:true}).click();
+  await page.getByRole('textbox',{name:'대표 설명 수정',exact:true}).fill('테이블에서 수정한 대표 설명');
+  await page.getByRole('button',{name:'수정 완료',exact:true}).click();
+  await page.getByText('수정한 요청 내용을 저장했습니다.',{exact:false}).waitFor();
   assert.equal(await page.getByRole("button", { name: "페이지 구성 미리보기" }).count(), 1);
   assert.equal(await page.getByRole("button", { name: "페이지 구성 미리보기" }).isDisabled(), true);
   await page.getByRole("button", { name: "페이지 미리보기 생성" }).click();
@@ -532,6 +554,7 @@ try {
   }
   assert.ok(compositionRequest, "composition request should be received");
   assert.equal(compositionRequest.overview.title, "여름 신규 고객 충전 이벤트");
+  assert.equal(compositionRequest.overview.leadText, "테이블에서 수정한 대표 설명");
   assert.equal(compositionRequest.overview.contentSections[0].items[0].title, "신규 고객 보너스");
   assert.equal(compositionRequest.locale, "ko-KR");
   assert.equal(compositionRequest.overviewFingerprint, overviewFingerprint(compositionRequest.overview));

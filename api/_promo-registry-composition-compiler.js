@@ -1,5 +1,5 @@
 const { createHash } = require("node:crypto");
-const { normalizeCtaLabel } = require("./_promo-content-policy");
+const { normalizeCtaLabel, resolveOverviewCtaLink } = require("./_promo-content-policy");
 const { resolveSectionLayoutPreset } = require("./_section-layout-preset-resolver");
 const {
   buildDefaultItemStyles,
@@ -346,6 +346,18 @@ async function compileRegistryComposition({
           provenance[`${sectionId}.${componentId}.${field.fieldKey}`] = {
             source: "ai-authored", repeatIndex: componentIndex, confirmationRequired: false,
           };
+        }
+        for (const field of item.fields) {
+          if (field.fieldKind !== "cta" || field.isLocked || item.isLocked) continue;
+          const current = item.fields.length > 1
+            ? sectionInputs[sectionId][componentId]?.fields?.[field.fieldKey]
+            : sectionInputs[sectionId][componentId];
+          if (!current?.label) continue;
+          const link = resolveOverviewCtaLink(overview, section, component, current.label);
+          if (!link) continue;
+          sectionInputs[sectionId][componentId] = setFieldValue(
+            sectionInputs[sectionId][componentId], item.fields, field.fieldKey, { ...current, link },
+          );
         }
         for (const reference of planned.resourceReferences || []) {
           const resource = resourcesById.get(reference.resourceVersionId);

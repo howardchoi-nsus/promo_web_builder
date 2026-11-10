@@ -194,19 +194,7 @@
 .ai-requirements-tree { display: block; }
 .ai-wireframe-review > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 0 14px; border-bottom: 1px solid #e3e8e5; }
 .ai-wireframe-review header small { color: #78837d; }
-.ai-requirements-tree ul { margin: 0; padding: 10px 0 20px 18px; list-style: none; }
-.ai-requirements-tree li { position: relative; display: grid; grid-template-columns: minmax(130px, .4fr) minmax(0, 1fr); gap: 16px; padding: 10px 12px 10px calc(12px + (var(--tree-depth, 0) * 18px)); border-left: 1px solid #cfd8d3; border-bottom: 1px solid #edf0ee; }
-.ai-requirements-tree li::before { position: absolute; top: 50%; left: -1px; width: 13px; border-top: 1px solid #cfd8d3; content: ""; }
-.ai-requirements-tree li span { color: #69756f; font-size: 12px; }
-.ai-requirements-tree li strong { font-size: 12px; overflow-wrap: anywhere; }
-.ai-requirements-tree li.is-group { grid-template-columns: 1fr; margin-top: 5px; border-bottom-color: #dce5e0; background: transparent; }
-.ai-requirements-tree li.is-group span { color: #24352d; font-size: 12px; font-weight: 850; }
-.ai-requirements-tree__label { display: flex; align-items: center; gap: 7px; min-width: 0; }
 .ai-confirmation-badge { display: inline-flex; min-height: 18px; align-items: center; padding: 0 0 0 7px; border: 0; border-left: 2px solid #b68a10; border-radius: 0; background: transparent; color: #755600; font-size: 9px; font-style: normal; font-weight: 900; line-height: 1; white-space: nowrap; }
-.ai-requirements-tree ul.is-editing li:not(.is-group) { align-items: start; }
-.ai-requirements-tree li.is-changed { border-left-color: #6d28d9; background: #faf8ff; }
-.ai-requirements-tree li.is-changed::before { border-color: #6d28d9; }
-.ai-requirements-tree li.is-changed > span { color: #6d28d9; font-weight: 850; }
 .ai-requirements-tree input:not([type="checkbox"]),
 .ai-requirements-tree select,
 .ai-requirements-tree textarea { width: 100%; min-width: 0; border: 1px solid #c8d1cc; border-radius: 4px; background: #fff; color: #1f2a25; font: inherit; font-size: 12px; line-height: 1.45; }
@@ -767,8 +755,6 @@
   .ai-result-progress { grid-template-columns: 1fr; }
   .ai-process-status { min-height: 38px; padding: 0 16px; border-top: 1px solid #edf0ee; border-left: 0; }
   .ai-process-status > small { white-space: normal; }
-  .ai-requirements-tree ul { padding-right: 8px; padding-left: 18px; }
-  .ai-requirements-tree li { grid-template-columns: 1fr; gap: 6px; padding-left: calc(9px + (var(--tree-depth, 0) * 8px)); }
   .ai-requirement-summary__facts { grid-template-columns: 1fr; }
   .ai-requirement-summary__facts > div { grid-template-columns: 72px minmax(0, 1fr); }
   .ai-builder-preview-stage { min-height: 440px; padding: 10px; }
@@ -783,3 +769,23 @@
   .ai-spinner { animation-duration: 2s; }
   .ai-execution-indicator__message { animation: none; opacity: 1; }
 }
+
+.ai-requirement-table-wrap { max-width: 100%; margin: 0 0 24px; overflow-x: auto; }
+.ai-requirement-table { width: 100%; border-collapse: collapse; table-layout: fixed; color: #27332d; font-size: 12px; line-height: 1.6; }
+.ai-requirement-table caption { padding: 14px 0 10px; color: #24352d; font-size: 14px; font-weight: 800; text-align: left; }
+.ai-requirement-table th, .ai-requirement-table td { padding: 11px 12px; border: 1px solid #dce5e0; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+.ai-requirement-table thead th { background: #f2f7f4; color: #526159; font-weight: 750; }
+.ai-requirement-table tbody th { width: 26%; background: #fafcfb; font-weight: 650; }
+.ai-requirement-table__value { white-space: pre-wrap; }
+.ai-requirement-table__usage, .ai-requirement-table__group { color: #69756f; }
+.ai-requirement-table__value .is-empty { color: #8b9590; }
+.ai-requirement-table .is-changed th, .ai-requirement-table .is-changed td { background: #faf8ff; }
+.ai-requirement-table .ai-confirmation-badge { margin: 5px 0 0; }
+.ai-requirement-table input, .ai-requirement-table select, .ai-requirement-table textarea { box-sizing: border-box; }
+@media (max-width: 720px) {
+  .ai-requirement-table th, .ai-requirement-table td { padding: 9px 7px; font-size: 11px; }
+}
+
+.ai-requirement-table__group-col { width: 22%; }
+.ai-requirement-table__label-col { width: 24%; }
+.ai-requirement-table__usage-col { width: 26%; }

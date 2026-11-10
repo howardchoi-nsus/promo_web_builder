@@ -47,3 +47,12 @@ assert.throws(
 );
 
 console.log("Promo content policy tests passed");
+
+const { safePromotionCtaLink, resolveOverviewCtaLink } = require('../api/_promo-content-policy');
+assert.equal(safePromotionCtaLink('https://example.com/offer'), 'https://example.com/offer');
+for (const link of ['javascript:alert(1)', '//evil.test', '/\\evil.test', 'data:text/html,x', 'https://example.com/\nattack']) assert.equal(safePromotionCtaLink(link), '');
+const ctaOverview = { contentSections: [{ sectionKey:'benefits', sectionType:'benefits', items:[{itemKey:'card',ctaLabel:'혜택 보기',ctaUrl:'/offer',confirmationRequired:false}] }] };
+assert.equal(resolveOverviewCtaLink(ctaOverview,{sectionKey:'benefits'}, {itemKey:'card'}, '혜택 보기'), '/offer');
+assert.equal(resolveOverviewCtaLink(ctaOverview,{sectionKey:'hero'}, {itemKey:'card'}, '혜택 보기'), '');
+ctaOverview.contentSections[0].items[0].confirmationRequired=true;
+assert.equal(resolveOverviewCtaLink(ctaOverview,{sectionKey:'benefits'}, {itemKey:'card'}, '혜택 보기'), '');

@@ -1,5 +1,6 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import RequirementTable from "./RequirementTable.vue";
 import BuilderModeSelector from "./BuilderModeSelector.vue";
 import CompositionReview from "./CompositionReview.vue";
 import { visualEditorEntry } from "../platform/visual-editor-entry.mjs";
@@ -2447,6 +2448,8 @@ const OVERVIEW_TREE_LABELS = Object.freeze({
   value: "값 / 강조 수치",
   imageIntent: "이미지 구성 의도",
   cta: "CTA",
+  label: "항목명",
+  url: "이동 URL",
   media: "이미지 / 미디어",
   role: "이미지 역할",
   altText: "대체 텍스트",
@@ -2555,7 +2558,7 @@ function overviewEntries(
           ];
         }
         const display = overviewTreeDisplay(child);
-        return (display || requirementsEditing.value) ? [{
+        return (display || requirementsEditing.value || item === "") ? [{
           path: childPath,
           key: String(index),
           label: `항목 ${index + 1}`,
@@ -2586,7 +2589,7 @@ function overviewEntries(
     }
     const confirmationPlaceholder = value.confirmationRequired === true && isConfirmationPlaceholder(item);
     const display = confirmationPlaceholder ? "미입력" : overviewTreeDisplay(item);
-    return (display || requirementsEditing.value) ? [{
+    return (display || requirementsEditing.value || item === "") ? [{
       path,
       key,
       label,
@@ -2600,6 +2603,53 @@ function overviewEntries(
     }] : [];
   });
 }
+
+const REQUIREMENT_USAGE = Object.freeze({
+  title: ["대표 제목", "히어로·주요 제목"],
+  leadText: ["대표 설명", "히어로·소개 설명"],
+  ctaLabel: ["대표 CTA", "주요 행동 버튼"],
+  ctaUrl: ["CTA URL", "주요 버튼 이동 주소"],
+  mainOffer: ["핵심 혜택", "혜택·강조 영역"],
+  promotionPurpose: ["프로모션 목적", "구성·콘텐츠 선택 기준"],
+  promotionPurposeOther: ["기타 목적", "구성·콘텐츠 선택 기준"],
+  audience: ["대상 고객", "콘텐츠·표현 방향"],
+  campaignTone: ["캠페인 톤", "문구·디자인 분위기"],
+  market: ["마켓 / 지역", "대상 시장·정책 조건"],
+});
+
+const requirementTables = computed(() => {
+  const overview = requirementsEditing.value ? requirementsEditDraft.value : store.overviewDraft;
+  if (!overview) return [];
+  const makeRows = (value, prefix = "") => {
+    const entries = overviewEntries(value, prefix);
+    const groups = entries.filter(entry => entry.kind === "group");
+    return entries.filter(entry => entry.kind !== "group").map(entry => {
+      const parents = groups.filter(group => entry.path.startsWith(`${group.path}.`));
+      return { ...entry, group: parents.at(-1)?.label || "", groupKey: parents.at(-1)?.path || "section",
+        label: entry.path.endsWith('.cta.label') ? '버튼 문구' : entry.label,
+        changed: requirementEntryChanged(entry),
+        requiresConfirmation: entry.requiresConfirmation || parents.some(group => group.requiresConfirmation) };
+    });
+  };
+  const basicSource = { ...Object.fromEntries(Object.keys(REQUIREMENT_USAGE)
+    .filter(key => key !== 'ctaUrl' && (key !== 'promotionPurposeOther' || overview.promotionPurpose === '기타'))
+    .map(key => [key, ''])), ...overview };
+  const rows = makeRows(basicSource).filter(entry => !entry.path.includes("."))
+    .map(entry => ({ ...entry,
+      label: REQUIREMENT_USAGE[entry.key]?.[0] || entry.label,
+      usage: REQUIREMENT_USAGE[entry.key]?.[1] || "기획 참고 정보",
+    }));
+  const result = [{ key: "basic", title: "프로모션 기본 정보", rows, showGroup: false }];
+  (overview.contentSections || []).forEach((section, index) => {
+    result.push({ key: `section-${index}`, title: `콘텐츠 ${index + 1} · ${section.title || '제목 미입력'}`,
+      rows: makeRows(section, `contentSections.${index}`), showGroup: true });
+  });
+  for (const key of ["additionalInformation", "notices", "legalInformation"]) {
+    if (overview[key]?.length) result.push({ key, title: OVERVIEW_TREE_LABELS[key],
+      rows: makeRows({ [key]: overview[key] }), showGroup: true });
+  }
+  return result.filter(table => table.rows.length);
+});
 
 function readableRequirement(value) {
   if (Array.isArray(value)) {
@@ -3063,33 +3113,12 @@ onBeforeUnmount(() => {
                 </div>
                 <details class="ai-requirements-details" :open="requirementsEditing">
                   <summary>{{ requirementsEditing ? '세부 내용 편집 중' : '세부 내용 보기' }}</summary>
-                  <ul role="tree" :class="{ 'is-editing': requirementsEditing }">
-                    <li
-                      v-for="entry in overviewEntries()"
-                      :key="entry.path"
-                      role="treeitem"
-                      :class="{ 'is-group': entry.kind === 'group', 'is-changed': requirementEntryChanged(entry) }"
-                      :style="{ '--tree-depth': entry.depth }"
-                    >
-                      <span class="ai-requirements-tree__label">
-                        {{ entry.label }}
-                        <em v-if="entry.requiresConfirmation" class="ai-confirmation-badge">확인 필요</em>
-                      </span>
-                      <template v-if="entry.kind !== 'group'">
-                        <strong v-if="!requirementsEditing">{{ entry.value }}</strong>
-                        <label v-else-if="entry.inputKind === 'checkbox'" class="ai-requirements-tree__boolean">
-                          <input type="checkbox" :checked="entry.rawValue" :aria-label="`${entry.label} 수정`" @change="setRequirementValue(entry.path, $event.target.checked)" />
-                          <span>{{ entry.rawValue ? '예' : '아니오' }}</span>
-                        </label>
-                        <select v-else-if="entry.inputKind === 'select'" :value="entry.editValue ?? entry.rawValue" :aria-label="`${entry.label} 수정`" @change="setRequirementValue(entry.path, $event.target.value)">
-                          <option value="">선택해 주세요</option>
-                          <option v-for="option in entry.options" :key="option" :value="option">{{ option }}</option>
-                        </select>
-                        <textarea v-else-if="entry.inputKind === 'textarea'" :value="entry.editValue ?? entry.rawValue" rows="3" maxlength="2000" :aria-label="`${entry.label} 수정`" @input="setRequirementValue(entry.path, $event.target.value)"></textarea>
-                        <input v-else :type="entry.inputKind" :value="entry.editValue ?? entry.rawValue" :maxlength="entry.key === 'ctaLabel' || (entry.key === 'label' && entry.path.endsWith('.cta.label')) ? 20 : 2000" :aria-label="`${entry.label} 수정`" @input="setRequirementValue(entry.path, $event.target.value)" />
-                      </template>
-                    </li>
-                  </ul>
+                  <RequirementTable
+                    v-for="table in requirementTables" :key="table.key"
+                    :title="table.title" :rows="table.rows" :editing="requirementsEditing"
+                    :show-usage="table.key === 'basic'" :show-group="table.showGroup"
+                    @change="setRequirementValue"
+                  />
                 </details>
               </template>
               <div v-else class="ai-result-empty">채팅으로 요구사항을 입력하면 분석 결과가 여기에 표시됩니다.</div>
