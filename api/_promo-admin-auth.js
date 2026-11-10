@@ -16,7 +16,7 @@ function adminSecret(env = process.env) {
 
 function adminAccessKey(env = process.env) {
   const value = String(env.PROMO_ADMIN_ACCESS_KEY || "").trim();
-  return value.length >= 24 ? value : "";
+  return value.length >= 6 ? value : "";
 }
 
 function temporaryAdminAccessKey(env = process.env) {

@@ -31,6 +31,10 @@ assert.equal(verifyAdminSessionToken(`${token}tampered`, { now: now + 1_000, env
 assert.equal(resolveAdminOwner({ headers: { cookie: `${ADMIN_COOKIE_NAME}=${token}` } }, {}, { env }).authenticated, true);
 assert.equal(verifyAdminAccessKey(env.PROMO_ADMIN_ACCESS_KEY, env), true);
 assert.equal(verifyAdminAccessKey("wrong-access-key", env), false);
+const developmentKeyEnv = { ...env, PROMO_ADMIN_ACCESS_KEY: "123456" };
+assert.equal(verifyAdminAccessKey("123456", developmentKeyEnv), true);
+assert.equal(verifyAdminAccessKey("12345", { ...env, PROMO_ADMIN_ACCESS_KEY: "12345" }), false);
+assert.equal(verifyAdminAccessKey("123456", env), false);
 const temporaryKeyEnv = {
   ...env,
   PROMO_ADMIN_TEMP_ACCESS_KEY: "1234",
@@ -73,6 +77,15 @@ assert.equal(denied.statusCode, 401);
 assert.equal(denied.body.code, "ADMIN_ACCESS_DENIED");
 
 const signedIn = response();
+const developmentSignedIn = response();
+await createHandler({ env: developmentKeyEnv })({
+  method: "POST",
+  headers: { host: "example.com", origin: "https://example.com" },
+  body: { accessKey: "123456" },
+}, developmentSignedIn);
+assert.equal(developmentSignedIn.statusCode, 200);
+assert.equal(developmentSignedIn.body.authenticated, true);
+assert.match(developmentSignedIn.headers["set-cookie"], /HttpOnly/);
 await handler({
   method: "POST",
   headers: { host: "example.com", origin: "https://example.com" },
