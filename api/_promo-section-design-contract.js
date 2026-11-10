@@ -418,7 +418,8 @@ function validateDesignPlan(section, plan, constraints, tokenSet) {
     const slot = (item?.styleSlots || []).find((candidate) => candidate.slotKey === selection.slotKey);
     const token = tokenByKey.get(selection.tokenKey);
     if (!slot || slot.aiSelectable !== true) errors.push(`Style slot is not AI-selectable: ${selection.itemKey}.${selection.slotKey}`);
-    if (!token || token.aiSelectable !== true) errors.push(`Token is not AI-selectable: ${selection.tokenKey}`);
+    if (!token || token.aiSelectable !== true || !String(token.value || "").trim()
+      || (token.metadata?.libraryToken && token.metadata.state !== "active")) errors.push(`Token is not AI-selectable: ${selection.tokenKey}`);
     if (slot && token && slot.semanticRole !== token.semanticRole) errors.push(`Token semantic role mismatch: ${selection.tokenKey}`);
   });
   (plan?.assetRequests || []).forEach((asset) => {

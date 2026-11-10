@@ -365,32 +365,32 @@ function defaultItemTokenStyle(item, tokenValues = {}, bindings = resolveDesignT
   const isTitle = !isEyebrow && !isLead && !isSubtitle && !isBody
     && /\b(title|headline|heading)\b/.test(identity);
   const colorToken = firstAvailableToken(tokenValues, isEyebrow || isLead
-    ? ["--app-accent", "--app-ink"]
+    ? ["--app-accent", "--app-ink", "--button-label-default"]
     : isCta
-      ? ["--app-on-accent", "--app-ink"]
+      ? ["--app-on-accent", "--app-ink", "--button-label-default"]
       : isSubtitle || isBody
-        ? ["--app-ink-soft", "--app-ink"]
-        : ["--app-ink", "--app-text"]);
+        ? ["--app-ink-soft", "--app-ink", "--button-label-muted-default", "--button-label-default"]
+        : ["--app-ink", "--app-text", "--button-label-default"]);
   const fontSizeToken = firstAvailableToken(tokenValues, isTitle
-    ? ["--promo-font-size-main-title", "--promo-title-size", "--app-font-size-heading"]
+    ? ["--promo-font-size-main-title", "--promo-title-size", "--app-font-size-heading", "--typography-title-lg-font-size"]
     : isEyebrow
-      ? ["--promo-font-size-eyebrow", "--app-font-size-small", "--app-font-size-body"]
+      ? ["--promo-font-size-eyebrow", "--app-font-size-small", "--app-font-size-body", "--typography-body-md-font-size"]
     : isLead
-      ? ["--promo-font-size-lead-title", "--app-font-size-heading"]
+      ? ["--promo-font-size-lead-title", "--app-font-size-heading", "--typography-title-lg-font-size"]
     : isSubtitle
-      ? ["--promo-font-size-subtitle", "--app-font-size-body"]
+      ? ["--promo-font-size-subtitle", "--app-font-size-body", "--typography-body-md-font-size"]
       : isBody
-        ? ["--promo-font-size-body", "--app-font-size-body"]
+        ? ["--promo-font-size-body", "--app-font-size-body", "--typography-body-md-font-size"]
         : isCta
-          ? ["--promo-font-size-button", "--promo-font-size-body", "--app-font-size-body"]
-          : ["--promo-font-size-body", "--app-font-size-body"]);
+          ? ["--promo-font-size-button", "--promo-font-size-body", "--app-font-size-body", "--typography-body-md-font-size"]
+          : ["--promo-font-size-body", "--app-font-size-body", "--typography-body-md-font-size"]);
   const fontWeightToken = firstAvailableToken(tokenValues, isTitle
-    ? ["--app-font-weight-title", "--app-font-weight-heading", "--app-font-weight-strong"]
+    ? ["--app-font-weight-title", "--app-font-weight-heading", "--app-font-weight-strong", "--font-weight-700"]
     : isEyebrow || isLead
-      ? ["--app-font-weight-heading", "--app-font-weight-strong"]
+      ? ["--app-font-weight-heading", "--app-font-weight-strong", "--font-weight-700"]
       : isCta
-        ? ["--app-font-weight-strong", "--app-font-weight-label"]
-        : ["--app-font-weight-label"]);
+        ? ["--app-font-weight-strong", "--app-font-weight-label", "--font-weight-400"]
+        : ["--app-font-weight-label", "--font-weight-400"]);
   return {
     ...(bindings.font ? { fontFamilyToken: bindings.font } : {}),
     ...(colorToken ? { colorToken } : {}),

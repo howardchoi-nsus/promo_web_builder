@@ -523,7 +523,7 @@ async function compileRegistryComposition({
       ...(previousLayoutHistory[section.sectionKey] || previousLayoutHistory[section.sectionVersionId] || []),
     ])];
   }).filter(([, layoutKeys]) => layoutKeys.length));
-  const designSpec = {
+  let designSpec = {
     contractVersion: 1,
     specKey: "ai-registry-composition",
     theme: {
@@ -542,6 +542,20 @@ async function compileRegistryComposition({
     visibility: { items: itemVisibility, fields: fieldVisibility },
     responsiveLayouts: { mobile: { itemStyles: collisionSafeLayout.mobileItemStyles, visibility: { items: mobileItemVisibility } } },
   };
+  if (tokenSet?.tokenPolicy === "registered-only") {
+    const { enforceRegisteredDesignTokens } = await import("../shared/registered-token-policy.mjs");
+    const enforced = enforceRegisteredDesignTokens(designSpec, tokenValues, tokenSet.tokenCatalog);
+    designSpec = enforced.spec;
+    layoutDiagnostics.push(...enforced.errors.map((entry) => ({
+      ...entry, level: "warning", message: "Unregistered design value omitted; register a compatible token to apply it.",
+    })));
+    const { validateRenderSpec } = require("./_component-render-spec-contract");
+    for (const section of sectionSnapshot) for (const item of section.items || []) {
+      if (!item.renderSpec) continue;
+      const validation = validateRenderSpec(item.renderSpec, { fields: item.fields, tokenCatalog: tokenSet.tokenCatalog });
+      if (!validation.ok) throw Object.assign(compilerError("COMPONENT_TOKEN_POLICY_VIOLATION", `Component ${item.componentKey} is incompatible with the active token library`, 422), { errors: validation.errors });
+    }
+  }
   const layoutValidation = validateLayoutSpec(designSpec, sectionSnapshot);
   if (layoutValidation.errors.length) {
     throw Object.assign(new Error("Compiled Contract v3 layout is invalid"), {
@@ -555,7 +569,7 @@ async function compileRegistryComposition({
     sourceType: "composition-shell",
     sourceId: shell.shellVersionId || "",
     designTokenSetVersionId: tokenSet?.tokenSetVersionId || "",
-    designTokens: { values: tokenValues },
+    designTokens: { values: tokenValues, policy: tokenSet?.tokenPolicy || "legacy", catalog: tokenSet?.tokenCatalog || [] },
   };
   return {
     contractVersion: 3,

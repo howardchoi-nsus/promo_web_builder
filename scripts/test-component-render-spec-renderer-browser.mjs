@@ -107,15 +107,15 @@ const server = http.createServer(async (request, response) => {
 
 await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 const origin = `http://127.0.0.1:${server.address().port}`;
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({ headless: true, ...(process.env.CHROMIUM_EXECUTABLE_PATH ? { executablePath: process.env.CHROMIUM_EXECUTABLE_PATH } : {}) });
 
-async function outputPage(width) {
+async function outputPage(width, fixture = snapshot) {
   const page = await browser.newPage({ viewport: { width, height: 700 } });
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.addInitScript((value) => {
     localStorage.setItem("promoVisualEditor.snapshot.v1", JSON.stringify(value));
-  }, snapshot);
+  }, fixture);
   await page.goto(`${origin}/prototype/visual-output.html`, { waitUntil: "domcontentloaded" });
   await page.getByText("September offer", { exact: true }).waitFor();
   assert.deepEqual(errors, []);
@@ -143,6 +143,22 @@ try {
   assert.ok(mobileTitleFontSize >= 32 && mobileTitleFontSize <= 52);
   assert.equal(await mobile.locator(".promo-renderer").evaluate((element) => element.scrollWidth <= element.clientWidth), true);
   await mobile.close();
+
+  const strict = structuredClone(snapshot);
+  strict.content.runtimeTheme = { designTokens: {
+    ...strict.content.formTemplate.designTokens, policy: "registered-only", catalog: [],
+  } };
+  strict.designSpec.theme.fontFamily = "unregistered-font";
+  strict.designSpec.itemStyles["content.card"].color = "#abcdef";
+  strict.content.sectionSnapshot[0].items[0].renderSpec.root.tokenBindings.borderColor = "--app-accent";
+  const strictPage = await outputPage(1280, strict);
+  const strictCard = strictPage.locator(".rendered-item article.render-spec-node");
+  assert.equal(await strictCard.evaluate(el => getComputedStyle(el).backgroundColor), "rgb(244, 241, 234)");
+  assert.equal(await strictCard.evaluate(el => el.style.borderColor), "");
+  assert.equal(await strictPage.locator(".rendered-item").first().evaluate(el => el.style.color), "");
+  assert.equal(await strictPage.locator(".promo-renderer").evaluate(el => el.style.getPropertyValue("--promo-font")), "");
+  await strictPage.screenshot({path:"/tmp/registered-token-output.png",fullPage:true});
+  await strictPage.close();
 
   console.log("Shared Component RenderSpec browser output test passed");
 } finally {

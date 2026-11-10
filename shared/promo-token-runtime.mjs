@@ -28,6 +28,8 @@ export function normalizePromoTokenValues(input) {
 
 export function createPromoTokenRuntimeStyle(input, fallbacks = {}) {
   const tokens = normalizePromoTokenValues(input);
+  const registeredOnly = fallbacks.registeredOnly === true;
+  if (registeredOnly) fallbacks = {};
   const first = (...values) => values.map((value) => String(value || "").trim()).find(Boolean) || "";
   const background = first(tokens["--promo-bg"], tokens["--app-bg"], tokens["--promo-surface"], tokens["--app-surface"], tokens['--color-bg-dark-800'], fallbacks.background);
   const text = first(tokens["--promo-text"], tokens["--app-ink"], tokens["--app-text"], tokens['--button-label-default'], fallbacks.text);
@@ -58,8 +60,8 @@ export function createPromoTokenRuntimeStyle(input, fallbacks = {}) {
   set("--promo-button-height", tokens["--app-button-height"]);
   set("--promo-space-4", tokens["--app-space-4"]);
   set("--promo-border-width", tokens["--app-border-width"]);
-  set("--promo-font-size-body", first(tokens["--promo-font-size-body"], tokens["--app-font-size-body"], "1rem"));
-  set("--promo-title-size", first(tokens["--promo-font-size-main-title"], tokens["--promo-title-size"], fallbacks.titleSize));
+  set("--promo-font-size-body", first(tokens["--promo-font-size-body"], tokens["--app-font-size-body"], tokens["--typography-body-md-font-size"], registeredOnly ? "" : "1rem"));
+  set("--promo-title-size", first(tokens["--promo-font-size-main-title"], tokens["--promo-title-size"], tokens["--typography-title-lg-font-size"], fallbacks.titleSize));
   set("--promo-font-weight-strong", tokens["--app-font-weight-strong"]);
   set("--promo-transition-duration", tokens["--app-transition-duration-normal"]);
   set("--promo-transition-delay", tokens["--app-transition-delay"]);

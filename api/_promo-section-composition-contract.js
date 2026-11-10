@@ -160,7 +160,9 @@ function publicSectionContract(section) {
 
 function selectableTokens(tokenSet) {
   return (tokenSet?.values || []).filter((token) => (
-    token.aiSelectable && SAFE_TOKEN_PROPERTIES.has(token.cssProperty)
+    token.aiSelectable && String(token.value || "").trim()
+    && (!token.metadata?.libraryToken || token.metadata.state === "active")
+    && SAFE_TOKEN_PROPERTIES.has(token.cssProperty)
   )).map((token) => ({
     tokenKey: token.tokenKey,
     value: token.value,

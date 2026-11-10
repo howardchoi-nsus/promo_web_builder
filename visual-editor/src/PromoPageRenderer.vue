@@ -1,4 +1,5 @@
 <script setup>
+import { enforceRegisteredDesignTokens } from "../../shared/registered-token-policy.mjs";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import { createPromoTokenRuntimeStyle, normalizePromoTokenValues } from "../../shared/promo-token-runtime.mjs";
 import { normalizeCtaUrl } from "./editor-utils.mjs";
@@ -138,7 +139,7 @@ onBeforeUnmount(() => {
 const mobileLayoutActive = computed(() => (
   props.viewportOverride
     ? props.viewportOverride === "mobile"
-    : viewportWidth.value <= Number(props.designSpec?.responsive?.mobileBreakpoint || 720)
+    : viewportWidth.value <= Number(effectiveDesignSpec.value?.responsive?.mobileBreakpoint || 720)
 ));
 
 const orderedSections = computed(() => {
@@ -155,13 +156,19 @@ const managedTokens = computed(() => normalizePromoTokenValues(
     || props.content?.formTemplate?.designTokens?.values,
 ));
 
+const registeredTokensOnly = computed(() => props.content?.runtimeTheme?.designTokens?.policy === "registered-only");
+const effectiveDesignSpec = computed(() => registeredTokensOnly.value
+  ? enforceRegisteredDesignTokens(props.designSpec, managedTokens.value, props.content?.runtimeTheme?.designTokens?.catalog || []).spec
+  : props.designSpec);
+
 const managedTokenStyle = computed(() => createPromoTokenRuntimeStyle(managedTokens.value, {
-  background: props.designSpec?.theme?.backgroundColor,
-  text: props.designSpec?.theme?.textColor,
-  accent: props.designSpec?.theme?.accentColor,
-  cta: props.designSpec?.theme?.ctaColor || props.designSpec?.theme?.accentColor,
-  ctaTransparent: props.designSpec?.theme?.ctaVariant === "ghost",
-  font: props.designSpec?.theme?.fontFamily,
+  registeredOnly: registeredTokensOnly.value,
+  background: effectiveDesignSpec.value?.theme?.backgroundColor,
+  text: effectiveDesignSpec.value?.theme?.textColor,
+  accent: effectiveDesignSpec.value?.theme?.accentColor,
+  cta: effectiveDesignSpec.value?.theme?.ctaColor || effectiveDesignSpec.value?.theme?.accentColor,
+  ctaTransparent: effectiveDesignSpec.value?.theme?.ctaVariant === "ghost",
+  font: effectiveDesignSpec.value?.theme?.fontFamily,
 }));
 
 function componentFields(item) {
@@ -170,9 +177,9 @@ function componentFields(item) {
 }
 
 function componentRenderSpec(item) {
-  return Number(item?.renderSpec?.contractVersion) === 1 && item?.renderSpec?.root
-    ? item.renderSpec
-    : null;
+  const spec = Number(item?.renderSpec?.contractVersion) === 1 && item?.renderSpec?.root ? item.renderSpec : null;
+  if (!spec || !registeredTokensOnly.value) return spec;
+  return enforceRegisteredDesignTokens(spec, managedTokens.value, props.content?.runtimeTheme?.designTokens?.catalog || []).spec;
 }
 
 function itemVisibilityKey(section, item) {
@@ -187,14 +194,14 @@ function isItemVisible(section, item) {
   if (item?.isRequired || item?.isLocked) return true;
   const key = itemVisibilityKey(section, item);
   const responsive = mobileLayoutActive.value
-    ? props.designSpec?.responsiveLayouts?.mobile?.visibility?.items?.[key]
+    ? effectiveDesignSpec.value?.responsiveLayouts?.mobile?.visibility?.items?.[key]
     : undefined;
-  return (responsive ?? props.designSpec?.visibility?.items?.[key]) !== false;
+  return (responsive ?? effectiveDesignSpec.value?.visibility?.items?.[key]) !== false;
 }
 
 function isFieldVisible(section, item, field) {
   if (field?.isRequired || field?.isLocked) return true;
-  return props.designSpec?.visibility?.fields?.[fieldVisibilityKey(section, item, field)] !== false;
+  return effectiveDesignSpec.value?.visibility?.fields?.[fieldVisibilityKey(section, item, field)] !== false;
 }
 
 function renderedFields(section, item) {
@@ -283,16 +290,16 @@ function styleKey(section, item) {
 
 function itemStyle(section, item) {
   const key = styleKey(section, item);
-  const base = props.designSpec?.itemStyles?.[key] || {};
+  const base = effectiveDesignSpec.value?.itemStyles?.[key] || {};
   if (!mobileLayoutActive.value) return base;
   return {
     ...base,
-    ...(props.designSpec?.responsiveLayouts?.mobile?.itemStyles?.[key] || {}),
+    ...(effectiveDesignSpec.value?.responsiveLayouts?.mobile?.itemStyles?.[key] || {}),
   };
 }
 
 function mobileItemStyle(section, item) {
-  return props.designSpec?.responsiveLayouts?.mobile?.itemStyles?.[styleKey(section, item)] || {};
+  return effectiveDesignSpec.value?.responsiveLayouts?.mobile?.itemStyles?.[styleKey(section, item)] || {};
 }
 
 function itemContainsTitle(item) {
@@ -307,13 +314,13 @@ function responsiveItemFontSize(section, item, style) {
   const configured = style.fontSizeToken
     ? `var(${style.fontSizeToken})`
     : (style.fontSize !== undefined ? `${style.fontSize}px` : "");
-  if (!mobileLayoutActive.value || hasExplicitMobileSize || !itemContainsTitle(item)) return configured || undefined;
+  if (registeredTokensOnly.value || !mobileLayoutActive.value || hasExplicitMobileSize || !itemContainsTitle(item)) return configured || undefined;
   const mobileCap = "clamp(2rem, 10vw, 3.25rem)";
   return configured ? `min(${configured}, ${mobileCap})` : mobileCap;
 }
 
 function sectionStyle(section) {
-  return props.designSpec?.sectionStyles?.[section.sectionKey] || {};
+  return effectiveDesignSpec.value?.sectionStyles?.[section.sectionKey] || {};
 }
 
 function sectionUsesFlowLayout(section) {
@@ -508,9 +515,9 @@ function imageFrameStyle(section, item) {
 
 function fieldStyleData(section, item, field) {
   const key = `${styleKey(section, item)}.${field.fieldKey}`;
-  const desktop = props.designSpec?.itemStyles?.[key] || {};
+  const desktop = effectiveDesignSpec.value?.itemStyles?.[key] || {};
   const mobile = mobileLayoutActive.value
-    ? props.designSpec?.responsiveLayouts?.mobile?.itemStyles?.[key] || {}
+    ? effectiveDesignSpec.value?.responsiveLayouts?.mobile?.itemStyles?.[key] || {}
     : {};
   return { ...desktop, ...mobile };
 }
@@ -773,7 +780,7 @@ function normalizedFadeMode(style) {
 
 function managedTokenReference(tokenKey) {
   const normalized = String(tokenKey || "").trim();
-  return /^--[a-z][a-z0-9-]*$/.test(normalized) ? `var(${normalized})` : "";
+  return /^--[a-z][a-z0-9-]*$/.test(normalized) && (!registeredTokensOnly.value || Object.hasOwn(managedTokens.value, normalized)) ? `var(${normalized})` : "";
 }
 
 function managedTokenValue(tokenKey) {
@@ -786,9 +793,9 @@ function effectiveSectionBackgroundColor(style) {
   if (sectionToken) return sectionToken;
   const sectionColor = String(style.backgroundColor || "").trim();
   if (sectionColor) return sectionColor;
-  const themeToken = managedTokenReference(props.designSpec?.theme?.backgroundColorToken);
+  const themeToken = managedTokenReference(effectiveDesignSpec.value?.theme?.backgroundColorToken);
   if (themeToken) return themeToken;
-  const themeColor = String(props.designSpec?.theme?.backgroundColor || "").trim();
+  const themeColor = String(effectiveDesignSpec.value?.theme?.backgroundColor || "").trim();
   return themeColor || "var(--promo-bg)";
 }
 
@@ -797,8 +804,8 @@ function effectiveSectionFadeColor(style) {
   if (explicitToken) return explicitToken;
   const explicitColor = String(style.backgroundFadeColor || style.backgroundColor || "").trim();
   if (explicitColor) return explicitColor;
-  const themeToken = managedTokenValue(props.designSpec?.theme?.backgroundColorToken);
-  return themeToken || String(props.designSpec?.theme?.backgroundColor || "").trim();
+  const themeToken = managedTokenValue(effectiveDesignSpec.value?.theme?.backgroundColorToken);
+  return themeToken || String(effectiveDesignSpec.value?.theme?.backgroundColor || "").trim();
 }
 
 function backgroundFadeGradient(mode, color, strength = "medium", configuredStops = {}) {
@@ -875,11 +882,11 @@ function inlineCanvasStyle(section) {
       display: "grid",
       gridTemplateColumns: `repeat(${sectionLayoutColumns(section)}, minmax(0, 1fr))`,
       gridAutoRows: "max-content",
-      gap: `${Math.max(0, Math.min(120, Number(gap) || 24))}px`,
+      gap: registeredTokensOnly.value && gap === undefined ? undefined : `${Math.max(0, Math.min(120, Number(gap) || (registeredTokensOnly.value ? 0 : 24)))}px`,
       alignContent: alignment === "stretch" ? "center" : alignment,
       alignItems: alignment,
       justifyItems: alignment,
-      paddingBlock: `${Math.max(0, Math.min(200, Number(paddingBlock) || 40))}px`,
+      paddingBlock: registeredTokensOnly.value && paddingBlock === undefined ? undefined : `${Math.max(0, Math.min(200, Number(paddingBlock) || (registeredTokensOnly.value ? 0 : 40)))}px`,
       boxSizing: "border-box",
     };
   }
@@ -2094,9 +2101,9 @@ defineExpose({ inspectLayoutCollisions, inspectLayoutQuality });
       'is-outline-mode': editable && outlineMode,
     }"
     :style="{
-      '--promo-font': designSpec.theme.fontFamilyToken ? `var(${designSpec.theme.fontFamilyToken})` : designSpec.theme.fontFamily,
-      '--promo-width': `${Math.min(1280, Number(designSpec.responsive.contentMaxWidth || 1280))}px`,
-      '--promo-min-width': `${designSpec.responsive.contentMinWidth || 0}px`,
+      '--promo-font': effectiveDesignSpec.theme.fontFamilyToken ? `var(${effectiveDesignSpec.theme.fontFamilyToken})` : effectiveDesignSpec.theme.fontFamily,
+      '--promo-width': `${Math.min(1280, Number(effectiveDesignSpec.responsive.contentMaxWidth || 1280))}px`,
+      '--promo-min-width': `${effectiveDesignSpec.responsive.contentMinWidth || 0}px`,
       ...managedTokenStyle,
     }"
   >
@@ -2212,8 +2219,8 @@ defineExpose({ inspectLayoutCollisions, inspectLayoutQuality });
               :value="valueFor(section, item)"
               :viewport="viewportOverride"
               :viewport-width="viewportWidth"
-              :mobile-breakpoint="Number(designSpec.responsive?.mobileBreakpoint || 720)"
-              :tablet-breakpoint="Number(designSpec.responsive?.tabletBreakpoint || 1024)"
+              :mobile-breakpoint="Number(effectiveDesignSpec.responsive?.mobileBreakpoint || 720)"
+              :tablet-breakpoint="Number(effectiveDesignSpec.responsive?.tabletBreakpoint || 1024)"
               :editable="editable"
               @select-field="selectRenderSpecField(section, item, $event)"
             />

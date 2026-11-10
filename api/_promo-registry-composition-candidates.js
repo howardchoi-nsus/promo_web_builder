@@ -1,3 +1,5 @@
+const { fetchComponents } = require("./_item-components-store");
+const { resolveLibraryComponentCandidates } = require("./_promo-library-component-candidates");
 const { stableStringify, fingerprint } = require("./_promo-composition-fingerprint");
 const {
   fetchItemsForSections,
@@ -349,7 +351,10 @@ async function fetchTokenCandidates(sql, shellConfig) {
       name: row.name,
       isDefault: Boolean(row.isDefault),
       runtimeValues: toRuntimeTokenMap(version.values),
-      selectableTokens: version.values.filter((value) => value.aiSelectable).map((value) => ({
+      tokenPolicy: row.setKey === "design-system" ? "registered-only" : "legacy",
+      tokenCatalog: version.values.filter((value) => value.value && (!value.metadata?.libraryToken || value.metadata.state === "active"))
+        .map((value) => ({ tokenKey: value.tokenKey, cssProperties: value.cssProperties, valueType: value.valueType })),
+      selectableTokens: version.values.filter((value) => value.aiSelectable && value.value && (!value.metadata?.libraryToken || value.metadata.state === "active") && value.valueType !== "typography").map((value) => ({
         tokenKey: value.tokenKey,
         category: value.category,
         semanticRole: value.semanticRole,
@@ -432,19 +437,23 @@ async function fetchRegistryCompositionCandidates(sql, {
   `;
 
   const sectionIds = sectionRows.map((row) => row.id);
-  const [itemsBySection, layoutsBySection] = await Promise.all([
+  const [itemsBySection, layoutsBySection, library] = await Promise.all([
     fetchItemsForSections(sql, sectionIds),
     fetchLayoutsForSections(sql, sectionIds),
+    fetchComponents(sql),
   ]);
   const eligible = [];
   const excluded = [];
   for (const row of sectionRows) {
     const section = toSection(row);
-    const components = (itemsBySection.get(section.id) || [])
-      .filter((item) => item.isVisibleInWizard && item.componentVersionStatus === "active");
+    const sectionInstances = itemsBySection.get(section.id) || [];
     const savedLayouts = layoutsBySection.get(section.id) || [];
     const layoutPolicy = resolveAllowedLayoutPresets(section, savedLayouts);
     const layouts = layoutPolicy.layoutPresets;
+    const components = resolveLibraryComponentCandidates({
+      section: { ...section, layoutSelectionLocked: layoutPolicy.layoutSelectionLocked },
+      instances: sectionInstances, library, overview,
+    }).filter((item) => item.isVisibleInWizard && item.componentVersionStatus === "active");
     const layoutFit = evaluateLayoutFit({
       layouts,
       overview,
@@ -493,6 +502,8 @@ async function fetchRegistryCompositionCandidates(sql, {
         componentKey: component.componentKey,
         componentVersionId: component.componentVersionId,
         componentVersion: component.componentVersion,
+        candidateSource: component.candidateSource || "section-instance",
+        versionPolicy: component.versionPolicy || "pinned",
         itemKey: component.itemKey,
         name: component.name,
         description: component.description,
@@ -536,6 +547,23 @@ async function fetchRegistryCompositionCandidates(sql, {
       limit: shellConfig.maxLayoutReferences || DEFAULT_LAYOUT_REFERENCE_LIMIT,
     }),
   ]);
+  const strictLibrary = tokenSets.find((token) => token.tokenPolicy === "registered-only");
+  if (strictLibrary) {
+    const { validateRenderSpec } = require("./_component-render-spec-contract");
+    for (const section of eligible) {
+      section.components = section.components.filter((component) => {
+        if (!component.renderSpec) return true;
+        const validation = validateRenderSpec(component.renderSpec, { fields: component.fields, tokenCatalog: strictLibrary.tokenCatalog });
+        if (validation.ok) return true;
+        if (component.isRequired) throw Object.assign(new Error(`Required component ${component.componentKey} uses unavailable tokens or an invalid RenderSpec`), {
+          code: "REQUIRED_COMPONENT_TOKEN_POLICY_VIOLATION", statusCode: 422, errors: validation.errors,
+        });
+        excluded.push({ sectionVersionId: section.sectionVersionId, sectionKey: section.sectionKey,
+          componentInstanceId: component.componentInstanceId, reasonCodes: ["COMPONENT_TOKEN_POLICY_VIOLATION"], errors: validation.errors });
+        return false;
+      });
+    }
+  }
   const enriched = enrichCandidatesWithResourcePolicy({
     sections: eligible,
     resources: resourceResolution.references,
@@ -623,6 +651,7 @@ function plannerRegistryCandidateSnapshot(candidates) {
         componentInstanceId: component.componentInstanceId,
         componentVersionId: component.componentVersionId,
         componentKey: component.componentKey,
+        candidateSource: component.candidateSource || "section-instance",
         itemKey: component.itemKey,
         name: component.name,
         description: component.description,
@@ -658,6 +687,7 @@ function plannerRegistryCandidateSnapshot(candidates) {
       name: token.name,
       isDefault: token.isDefault,
       selectableTokens: token.selectableTokens,
+      tokenPolicy: token.tokenPolicy,
     })),
     motionPresets: candidates.motionPresets || [],
     designReferences: candidates.designReferences || [],

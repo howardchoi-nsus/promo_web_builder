@@ -2,6 +2,20 @@ const { createHash, randomUUID } = require("node:crypto");
 const { getSql } = require("./_wizard-form-templates-store");
 const { pendingQualityGate } = require("./_promo-quality-gate");
 
+async function assertRegisteredTokenPolicy(snapshot) {
+  const library = snapshot?.content?.runtimeTheme?.designTokens;
+  if (library?.policy !== "registered-only") return;
+  const { enforceRegisteredDesignTokens } = await import("../shared/registered-token-policy.mjs");
+  const validation = enforceRegisteredDesignTokens(snapshot.designSpec, library.values, library.catalog);
+  const { validateRenderSpec } = require("./_component-render-spec-contract");
+  for (const section of snapshot.content?.sectionSnapshot || []) for (const item of section.items || []) {
+    if (item.renderSpec) validation.errors.push(...validateRenderSpec(item.renderSpec, { fields: item.fields, tokenCatalog: library.catalog }).errors);
+  }
+  if (validation.errors.length) throw Object.assign(new Error("Only registered design tokens and values are allowed"), {
+    code: "REGISTERED_TOKEN_POLICY_VIOLATION", statusCode: 422, errors: validation.errors,
+  });
+}
+
 function snapshotHash(snapshot) {
   return createHash("sha256").update(JSON.stringify(snapshot)).digest("hex");
 }
@@ -310,6 +324,7 @@ async function applyProposal(sql, {
   resourceFingerprint,
   shellVersionId,
 }) {
+  await assertRegisteredTokenPolicy(snapshot);
   const nextRevision = Number(baseDocumentRevision) + 1;
   const nextSnapshot = {
     ...snapshot,
@@ -378,6 +393,7 @@ async function createDocumentRevision(sql, {
   changeNote,
   qualityGateVerified = false,
 }) {
+  await assertRegisteredTokenPolicy(snapshot);
   const nextRevision = Number(baseDocumentRevision) + 1;
   const nextSnapshot = {
     ...snapshot,
@@ -412,6 +428,7 @@ async function applyOperations(sql, {
   operations,
   changeNote,
 }) {
+  await assertRegisteredTokenPolicy(snapshot);
   const nextRevision = Number(baseDocumentRevision) + 1;
   const nextSnapshot = {
     ...snapshot,

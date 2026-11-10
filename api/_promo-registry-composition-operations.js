@@ -32,7 +32,7 @@ async function prepareRegistryStructuralOperations({
         code: "LAYOUT_VERSION_MISMATCH", statusCode: 409,
       });
     }
-    const selectedComponents = (source.components || []).map((component) => ({
+    const selectedComponents = (source.components || []).filter((component) => component.candidateSource !== "component-library" || component.isRequired).map((component) => ({
       componentInstanceId: component.componentInstanceId,
       componentVersionId: component.componentVersionId,
       itemKey: component.itemKey,
