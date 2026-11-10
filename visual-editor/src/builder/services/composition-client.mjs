@@ -312,3 +312,8 @@ export function retryBuilderAssets(payload) {
     body: JSON.stringify(payload),
   });
 }
+
+export function generatePageSchema(payload) {return request('/api/promo-page-schema',{method:'POST',body:JSON.stringify(payload)});}
+export function savePageSchema(payload) {return request('/api/promo-page-schema',{method:'PUT',body:JSON.stringify(payload)});}
+
+export function updatePageSchemaMedia({method,...payload}) {return request('/api/promo-page-schema-media',{method,body:JSON.stringify(payload)});}

@@ -251,7 +251,7 @@ function validateControlPlaneConfig(type, promptConfig = {}) {
   const controlled = [
     "section_layout_planner", "multi_component_layout_planner", "section_composition_planner",
     "promo_overview_parser", "promo_template_recommender", "promo_template_composer",
-    "promo_page_composer", "promo_composition_editor", "section_background_image", "component_image",
+    "promo_page_schema_planner", "promo_page_composer", "promo_composition_editor", "section_background_image", "component_image",
     "component_visual_analyzer", "layout_reference_analyzer",
   ].includes(type);
   if (controlled && version < 2) {

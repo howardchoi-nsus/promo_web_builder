@@ -7,6 +7,7 @@ const HARNESS_PROMPT_TYPES = new Set([
   "promo_overview_parser",
   "promo_template_recommender",
   "promo_template_composer",
+  "promo_page_schema_planner",
   "promo_page_composer",
   "promo_composition_editor",
   "component_visual_analyzer",

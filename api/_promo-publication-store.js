@@ -15,7 +15,7 @@ function publicationEnvelope(row) {
       updatedAt: row.updated_at,
     },
     seo: row.seo_json || {},
-    renderer: { key: "default-promo-renderer", version: 1 },
+    renderer: { key: row.snapshot_json?.layoutIdentity?.rendererKey || "default-promo-renderer", version: Number(row.snapshot_json?.layoutIdentity?.rendererVersion || 1) },
     snapshot: row.snapshot_json || {},
     manifest: row.manifest_json || {},
     cache: {

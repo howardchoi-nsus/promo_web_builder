@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from "vue";
+import PageSchemaRenderer from "./PageSchemaRenderer.vue";
 import PromoPageRenderer from "../PromoPageRenderer.vue";
 import { normalizeReadonlyRendererProps } from "./readonly-renderer-contract.mjs";
 
@@ -16,7 +17,8 @@ const rendererProps = computed(() => normalizeReadonlyRendererProps(props));
 </script>
 
 <template>
-  <PromoPageRenderer
+  <PageSchemaRenderer v-if="rendererProps.content.pageSchema" :page="rendererProps.content.pageSchema" :context="rendererProps.content.pageContext" :viewport-override="rendererProps.viewportOverride" />
+  <PromoPageRenderer v-else
     class="promo-readonly-renderer"
     :content="rendererProps.content"
     :design-spec="rendererProps.designSpec"

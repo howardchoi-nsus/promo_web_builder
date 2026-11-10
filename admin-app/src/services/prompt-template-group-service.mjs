@@ -92,6 +92,12 @@ const PROMPT_TYPE_CATALOG = Object.freeze({
     description: "선택한 템플릿의 섹션과 컴포넌트에 프로모션 콘텐츠를 매핑합니다.",
     executionMode: "사용자 요청",
   },
+  promo_page_schema_planner: {
+    journeyStep: 3, group: "ai-page-composition", order: 11,
+    label: "AI 동적 페이지 구조 설계",
+    description: "범용 UI 요소와 중앙 토큰 정책으로 PageSchema를 생성합니다.",
+    executionMode: "사용자 요청",
+  },
   promo_page_composer: {
     journeyStep: 3,
     group: "ai-page-composition",

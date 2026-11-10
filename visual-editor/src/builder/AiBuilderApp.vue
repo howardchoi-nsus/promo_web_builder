@@ -1,5 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import PageSchemaMediaPanel from "./PageSchemaMediaPanel.vue";
+import PageSchemaEditor from "./PageSchemaEditor.vue";
 import RequirementTable from "./RequirementTable.vue";
 import BuilderModeSelector from "./BuilderModeSelector.vue";
 import CompositionReview from "./CompositionReview.vue";
@@ -15,6 +17,9 @@ import OperationProposalReview from "./OperationProposalReview.vue";
 import NaturalLanguageEditor from "./NaturalLanguageEditor.vue";
 import { createAiBuilderStore, clearBuilderError, setBuilderError } from "./state/ai-builder-store.mjs";
 import {
+  updatePageSchemaMedia,
+  generatePageSchema,
+  savePageSchema,
   analyzeOverviewWithRetry,
   applyCompositionProposal,
   createBuilderDocument,
@@ -53,6 +58,16 @@ const props = defineProps({
 const store = createAiBuilderStore();
 const selectedMode = ref(props.initialMode);
 const operationOpen = ref(false);
+const pageSchemaEditorOpen = ref(false);
+const pageSchemaSaving = ref(false);
+async function changeDynamicMedia(operation){
+ pageSchemaSaving.value=true;
+ try{const saved=await updatePageSchemaMedia({...operation,documentId:store.documentId,baseDocumentRevision:store.documentRevision});store.documentRevision=Number(saved.revision);store.snapshot=saved.snapshot;transientQualityGate.value=null;}catch(error){setBuilderError(store,error);}finally{pageSchemaSaving.value=false;}
+}
+async function saveDynamicPage(page){
+ pageSchemaSaving.value=true;
+ try{const saved=await savePageSchema({documentId:store.documentId,baseDocumentRevision:store.documentRevision,page});store.documentRevision=Number(saved.revision);store.snapshot=saved.snapshot;transientQualityGate.value=null;pageSchemaEditorOpen.value=false;}catch(error){setBuilderError(store,error);}finally{pageSchemaSaving.value=false;}
+}
 const assetRetrying = ref(false);
 const capabilities = ref({ aiMode: true });
 const activeShell = ref(null);
@@ -1837,6 +1852,7 @@ async function pollProposal(proposalId) {
 }
 
 function openVisualEditor() {
+  if(store.snapshot?.content?.pageSchema){pageSchemaEditorOpen.value=true;return;}
   window.location.assign(visualEditorEntry.aiDocument(store.documentId, store.documentRevision));
 }
 
@@ -1944,6 +1960,14 @@ async function prepareWireframe(existingOperationId = "", sourceAction = null) {
   try {
     const currentFingerprint = refreshOverviewFingerprint();
     await ensureDocument();
+    if(capabilities.value.pageSchemaV1){
+      store.stage="processing";
+      const saved=await generatePageSchema({documentId:store.documentId,baseDocumentRevision:store.documentRevision,overview:store.overviewDraft});
+      store.documentRevision=Number(saved.revision);store.snapshot=saved.snapshot;store.stage="render_ready";activeResultTab.value="final";transientQualityGate.value=null;
+      updateStatusMessage(operationId,"동적 페이지 미리보기를 생성했습니다.","completed");
+      await appendPersistedMessage("assistant","콘텐츠에 맞춰 페이지 구조를 설계했습니다. 오른쪽 미리보기를 확인해 주세요.",{type:"assistant"});
+      return;
+    }
     const useRegistryComposition = Boolean(capabilities.value.compositionV3);
     if (useRegistryComposition && !activeShell.value?.id) {
       throw Object.assign(new Error(
@@ -2269,6 +2293,11 @@ async function rollback() {
 async function editNaturalLanguage(instruction) {
   store.warning = null;
   try {
+    if(store.snapshot?.content?.pageSchema){
+      store.stage="processing";operationOpen.value=false;
+      const saved=await generatePageSchema({documentId:store.documentId,baseDocumentRevision:store.documentRevision,overview:store.overviewDraft,instruction});
+      store.documentRevision=Number(saved.revision);store.snapshot=saved.snapshot;transientQualityGate.value=null;store.stage="render_ready";activeResultTab.value="final";return;
+    }
     const response = await submitCompositionOperation({
       action: "propose",
       documentId: store.documentId,
@@ -2752,7 +2781,7 @@ onMounted(async () => {
     });
     const result = await loadBuilderCapabilities();
     capabilities.value = result.capabilities || capabilities.value;
-    if (capabilities.value.compositionV3) {
+    if (capabilities.value.compositionV3 && !capabilities.value.pageSchemaV1) {
       const shells = await loadCompositionShells();
       activeShell.value = shells.versions?.find((shell) => shell.config?.isDefault) || shells.versions?.[0] || null;
       if (!activeShell.value?.id) {
@@ -3070,14 +3099,14 @@ onBeforeUnmount(() => {
                   <span>1</span>요청 요약
                 </button>
               </li>
-              <li :class="{ selected: activeResultTab === 'wireframe', complete: wireframeDisplaySnapshot }">
+              <li v-if="!capabilities.pageSchemaV1 && !store.snapshot?.content?.pageSchema" :class="{ selected: activeResultTab === 'wireframe', complete: wireframeDisplaySnapshot }">
                 <button type="button" aria-label="페이지 구성 미리보기" :disabled="!wireframeDisplaySnapshot" :aria-current="activeResultTab === 'wireframe' ? 'step' : undefined" @click="activeResultTab = 'wireframe'">
                   <span>2</span>페이지 미리보기
                 </button>
               </li>
               <li :class="{ selected: activeResultTab === 'final', complete: store.snapshot && store.stage === 'render_ready' }">
                 <button type="button" aria-label="디자인 미리보기" :disabled="!store.snapshot" :aria-current="activeResultTab === 'final' ? 'step' : undefined" @click="activeResultTab = 'final'">
-                  <span>3</span>디자인 미리보기
+                  <span>{{ capabilities.pageSchemaV1 || store.snapshot?.content?.pageSchema ? 2 : 3 }}</span>{{ capabilities.pageSchemaV1 || store.snapshot?.content?.pageSchema ? '페이지 미리보기' : '디자인 미리보기' }}
                 </button>
               </li>
             </ol>
@@ -3254,6 +3283,8 @@ onBeforeUnmount(() => {
             </section>
 
             <section v-else-if="activeResultTab === 'final' && store.snapshot" class="ai-final-review">
+              <PageSchemaMediaPanel v-if="store.snapshot?.content?.pageSchema" :page="store.snapshot.content.pageSchema" :context="store.snapshot.content.pageContext" :busy="pageSchemaSaving || busy" @change="changeDynamicMedia" />
+              <PageSchemaEditor v-if="pageSchemaEditorOpen && store.snapshot?.content?.pageSchema" :page="store.snapshot.content.pageSchema" :busy="pageSchemaSaving" @save="saveDynamicPage" @close="pageSchemaEditorOpen=false" />
               <CompositionReview
                 ref="compositionReviewRef"
                 v-model:viewport="wireframeViewport"

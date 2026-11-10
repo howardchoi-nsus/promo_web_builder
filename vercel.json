@@ -32,6 +32,12 @@
     },
     "api/promo-page-composition-operations.js": {
       "maxDuration": 300
+    },
+    "api/promo-page-schema.js": {
+      "maxDuration": 300
+    },
+    "api/promo-page-schema-media.js": {
+      "maxDuration": 300
     }
   }
 }

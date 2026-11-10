@@ -50,7 +50,9 @@
     "inspect:component-cutover": "node scripts/inspect-item-component-cutover.js",
     "design-md:dry-run": "node scripts/import-design-md-docs.js",
     "design-md:import": "node scripts/import-design-md-docs.js --apply",
-    "build:token-policy": "node scripts/build-token-usage-policy.mjs"
+    "build:token-policy": "node scripts/build-token-usage-policy.mjs",
+    "test:page-schema": "node scripts/test-page-schema.mjs && node scripts/test-page-schema-api.mjs",
+    "test:page-schema-browser": "node scripts/test-page-schema-browser.mjs && node scripts/test-page-schema-builder-browser.mjs"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.3.1",
@@ -58,6 +60,7 @@
     "@neondatabase/serverless": "^0.10.4",
     "@vercel/blob": "^2.5.0",
     "@vercel/functions": "3.7.6",
+    "ajv": "8.17.1",
     "vue": "^3.5.39"
   },
   "devDependencies": {

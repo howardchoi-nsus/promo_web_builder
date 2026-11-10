@@ -1,0 +1,28 @@
+digraph Solution {
+ graph [rankdir=TB,bgcolor="white",pad="0.35",nodesep="0.35",ranksep="0.45",fontname="Noto Sans CJK KR",label="동적 PageSchema 솔루션 · 구현 구조",labelloc=t,fontsize=22];
+ node [shape=box,style="rounded,filled",fillcolor="#eff6ff",color="#42658c",fontname="Noto Sans CJK KR",fontsize=12,margin="0.18,0.12"];
+ edge [fontname="Noto Sans CJK KR",fontsize=10,color="#64748b"];
+ customer [label="고객 요청·확정 콘텐츠",shape=parallelogram,fillcolor="#ede9fe"];
+ context [label="요청 Context 고정\n콘텐츠 출처·허용 요소·액션·에셋·예산"];
+ policy [label="중앙 토큰 사용 정책\n등록 값·대상·속성·상태·버전",fillcolor="#dcfce7"];
+ llm [label="AI 구조·콘텐츠 설계\nPageSchema JSON 생성"];
+ schema [label="구조화 출력 + JSON Schema\nsection-layout-v1 실행 계약",fillcolor="#dcfce7"];
+ validate [label="구조·콘텐츠·정책·접근성 검증"];
+ valid [label="검증 통과?",shape=diamond,style=filled,fillcolor="#fef3c7"];
+ repair [label="오류 표시\n기존 정상 결과 유지"];
+ normalize [label="반응형 기본값 보완\n모바일 1열·자연 높이·줄바꿈"];
+ recheck [label="보완 결과 재검증·리비전 저장\n토큰·정책·렌더러 버전 고정"];
+ renderer [label="공유 재귀 렌더러\n11종 범용 UI → DOM"];
+ preview [label="Desktop·Tablet·Mobile 미리보기\n실제 화면 품질 검사",shape=parallelogram,fillcolor="#ede9fe"];
+ edit [label="고객 수정\nNode ID 기반 작업·재검증"];
+ assets [label="필요 이미지 생성·승인 에셋 연결\n임의 URL·HTML 없음"];
+ output [label="고객 확정·품질 통과\n동일 문서·렌더러로 웹 출력·내보내기",shape=parallelogram,fillcolor="#ede9fe"];
+ customer -> context -> llm -> validate -> valid;
+ policy -> context; schema -> llm;
+ valid -> normalize [label="예"];
+ valid -> repair [label="아니오"];
+ normalize -> recheck -> renderer -> preview;
+ preview -> edit [label="수정 필요"];edit -> validate [constraint=false];
+ preview -> assets [label="미디어 미완료"];assets -> validate [constraint=false];
+ preview -> output [label="확정 가능"];
+}

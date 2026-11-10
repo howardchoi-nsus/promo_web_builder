@@ -1,5 +1,6 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import PageSchemaRenderer from "./runtime/PageSchemaRenderer.vue";
 import PromoPageRenderer from "./PromoPageRenderer.vue";
 import { withoutFreePosition } from "./editor-utils.mjs";
 import { createEditorContext } from "./editor-context.mjs";
@@ -1881,6 +1882,10 @@ async function loadAiDocument() {
     aiDocumentId.value = documentId;
     aiDocumentRevision.value = Number(result.document?.currentDocumentRevision || result.snapshot.documentRevision || 0);
     aiDocumentSnapshot.value = result.snapshot;
+    if(result.snapshot.content?.pageSchema){
+      if(props.mode!=="output")window.location.assign("/prototype/create-promo?mode=ai");
+      loading.value=false;return;
+    }
     aiDocumentConflict.value = null;
     designTokenSets.value = availableTokenSets;
     const selectedTokenVersionId = result.snapshot.appearance?.designTokenSetVersionId
@@ -2591,6 +2596,7 @@ onBeforeUnmount(() => {
       <button type="button" @click="returnToLivePreview">Live Preview로 돌아가기</button>
     </header>
     <div v-if="error" class="system-message system-message--error">{{ error }}</div>
+    <PageSchemaRenderer v-else-if="rendererSnapshot?.content?.pageSchema" :page="rendererSnapshot.content.pageSchema" :context="rendererSnapshot.content.pageContext" />
     <PromoPageRenderer
       v-else-if="rendererSnapshot"
       :content="rendererSnapshot.content"

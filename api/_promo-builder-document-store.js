@@ -3,6 +3,10 @@ const { getSql } = require("./_wizard-form-templates-store");
 const { pendingQualityGate } = require("./_promo-quality-gate");
 
 async function assertRegisteredTokenPolicy(snapshot) {
+  if(snapshot?.content?.pageSchema){
+    require("../shared/page-schema/contract.cjs").assertValid(snapshot.content.pageSchema,snapshot.content.pageContext);
+    return;
+  }
   const library = snapshot?.content?.runtimeTheme?.designTokens;
   if (library?.policy !== "registered-only") return;
   const { enforceRegisteredDesignTokens } = await import("../shared/registered-token-policy.mjs");

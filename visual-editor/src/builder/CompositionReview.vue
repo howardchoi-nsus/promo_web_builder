@@ -25,6 +25,7 @@ function selectPreviewViewport(viewport) {
   previewViewport.value = viewport;
 }
 
+const viewportLabel = computed(() => props.snapshot.content?.pageSchema ? "Desktop · Tablet · Mobile" : "Desktop · Mobile");
 const qualityState = computed(() => props.qualityGate?.state || "pending");
 const qualityPassed = computed(() => (
   qualityState.value === "passed"
@@ -32,7 +33,7 @@ const qualityPassed = computed(() => (
   && Number(props.qualityGate?.blockingCount || 0) === 0
 ));
 const qualityLabel = computed(() => {
-  if (qualityState.value === "checking") return "Desktop · Mobile 품질 검사 중";
+  if (qualityState.value === "checking") return `${viewportLabel.value} 품질 검사 중`;
   if (qualityPassed.value) {
     const warnings = Number(props.qualityGate?.warningCount || 0);
     return warnings ? `품질 검사 통과 · 경고 ${warnings}건` : "품질 검사 통과";
@@ -40,7 +41,7 @@ const qualityLabel = computed(() => {
   if (qualityState.value === "failed") {
     return props.qualityGate?.message || `품질 검사 차단 · ${Number(props.qualityGate?.blockingCount || 0)}건`;
   }
-  return "출력 전에 Desktop · Mobile 품질 검사가 필요합니다.";
+  return `출력 전에 ${viewportLabel.value} 품질 검사가 필요합니다.`;
 });
 
 function inspectQualityAcrossViewports() {
@@ -65,6 +66,7 @@ defineExpose({ buildAutoRepairSnapshot, inspectQualityAcrossViewports });
       <div class="ai-builder-actions">
         <div class="ai-builder-preview-viewport" role="group" aria-label="미리보기 화면 크기">
           <button type="button" :aria-pressed="previewViewport === 'desktop'" @click="selectPreviewViewport('desktop')">데스크톱</button>
+          <button v-if="snapshot.content?.pageSchema" type="button" :aria-pressed="previewViewport === 'tablet'" @click="selectPreviewViewport('tablet')">태블릿</button>
           <button type="button" :aria-pressed="previewViewport === 'mobile'" @click="selectPreviewViewport('mobile')">모바일</button>
         </div>
         <button type="button" class="ai-builder-secondary" @click="emit('rollback')">이전 버전</button>

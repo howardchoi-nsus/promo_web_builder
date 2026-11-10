@@ -28,6 +28,7 @@ function publicExportSnapshot(snapshot) {
     layoutIdentity: clone(object(source.layoutIdentity)),
     appearance: clone(object(source.appearance)),
     content: {
+      ...(content.pageSchema ? {pageSchema:clone(content.pageSchema),pageContext:clone(content.pageContext)} : {}),
       contractVersion: Number(content.contractVersion || source.contractVersion || 2),
       formTemplate: {
         id: formTemplate.id || "",
@@ -75,7 +76,7 @@ function assertNuxtRuntimeCompatibility(snapshot) {
     version: Number(exported.layoutIdentity.rendererVersion || 1),
   };
   if (!NUXT_RUNTIME_COMPATIBILITY.supportedSnapshotContractVersions.includes(exported.contractVersion)
-    || renderer.key !== NUXT_RUNTIME_COMPATIBILITY.renderer.key
+    || ![NUXT_RUNTIME_COMPATIBILITY.renderer.key,"page-schema-renderer"].includes(renderer.key)
     || renderer.version !== NUXT_RUNTIME_COMPATIBILITY.renderer.version) {
     const error = new TypeError("Snapshot is not compatible with the Nuxt promotion runtime");
     error.code = "NUXT_RUNTIME_INCOMPATIBLE";
@@ -100,7 +101,8 @@ function dependencyManifest(snapshot, { documentId = "", revision = 0 } = {}) {
         hash: String(item.renderSpecHash || item.renderValidation?.hash || "").replace(/^(?!sha256:)(?=.)/, "sha256:"),
       }))
   )).sort((left, right) => left.componentVersionId.localeCompare(right.componentVersionId));
-  const assetItems = Object.values(exported.assets.items).map((item) => ({
+  const pageAssets = Object.entries(exported.content.pageContext?.assets || {}).map(([key,item]) => ({...item,assetKey:key}));
+  const assetItems = [...Object.values(exported.assets.items),...pageAssets].map((item) => ({
     assetKey: item.assetKey || item.key || "",
     url: item.url || item.publicUrl || "",
     status: item.status || "ready",
@@ -161,7 +163,7 @@ function htmlExport(snapshot, options = {}) {
   <link rel="stylesheet" href="/prototype/visual-editor-assets/export-runtime.css">
 </head>
 <body>
-  <main id="promo-export-root"></main>
+  <div id="promo-export-root"></div>
   <script id="promo-export-snapshot" type="application/json">${safeJson(exported)}</script>
   <script id="promo-export-manifest" type="application/json">${safeJson(manifest)}</script>
   <script type="module" src="/prototype/visual-editor-assets/export-runtime.js"></script>

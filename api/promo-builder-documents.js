@@ -87,6 +87,12 @@ async function normalizeEditorSnapshot(
   designTokenSetVersionId,
   baseDocumentRevision = Number(currentSnapshot?.documentRevision || 0),
 ) {
+  if (currentSnapshot?.content?.pageSchema) {
+    const {assertValid}=require("../shared/page-schema/contract.cjs");
+    assertValid(currentSnapshot.content.pageSchema,currentSnapshot.content.pageContext,{final:true});
+    if(JSON.stringify(incomingSnapshot.content)!==JSON.stringify(currentSnapshot.content))throw Object.assign(new Error("PageSchema 변경은 전용 수정 API를 사용해 주세요."),{statusCode:422,code:"PAGE_SCHEMA_EDIT_REQUIRED"});
+    return {...currentSnapshot,qualityGate:normalizePassedQualityGate(incomingSnapshot.qualityGate,{sourceDocumentRevision:baseDocumentRevision,documentRevision:baseDocumentRevision+1,requiredViewports:["desktop","tablet","mobile"]})};
+  }
   if (!currentSnapshot?.content || !currentSnapshot?.designSpec) {
     throw Object.assign(new Error("Builder document does not have an editable snapshot"), {
       statusCode: 409,

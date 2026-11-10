@@ -194,3 +194,12 @@
 .promo-renderer.has-token-usage-policy .rendered-text-line.is-number { padding-inline-start: var(--render-policy-layout-gap); }
 
 .promo-renderer.has-token-usage-policy :is(h1,h2,h3,h4,h5,h6).render-spec-node { font-size:var(--render-policy-title-size); font-weight:var(--render-policy-font-weight-title); line-height:normal; line-height:var(--render-policy-line-height-title); }
+
+/* Generic PageSchema flow; visual values come from the registered policy. */
+
+.page-schema-renderer{container-type:inline-size;min-width:0;width:100%}
+.page-schema-renderer [data-ps-node]{box-sizing:border-box;min-width:0;max-width:100%;margin:0;overflow-wrap:anywhere}
+.page-schema-renderer :is(h1,h2,h3,h4,h5,h6,p){white-space:pre-wrap;height:auto}
+.page-schema-renderer :is(img,video){display:block;max-width:100%;height:auto}
+.page-schema-renderer :is(button,input){font:inherit}
+.page-schema-renderer [data-ps-type=button]{text-decoration:none}

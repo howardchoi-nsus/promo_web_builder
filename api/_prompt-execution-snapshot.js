@@ -303,6 +303,7 @@ function validateStageModelConfig(type, prompt) {
     || type === "promo_overview_parser"
     || type === "promo_template_recommender"
     || type === "promo_template_composer"
+    || type === "promo_page_schema_planner"
     || type === "promo_page_composer"
     || type === "promo_composition_editor"
     || type === "component_visual_analyzer"

@@ -1,0 +1,14 @@
+{
+  "notice": "설계 검증용 예시입니다. 운영 에셋·액션·정책 ID 또는 실제 활성 설정이 아닙니다.",
+  "contentSources": {
+    "source_title": {"text": "새로운 프로모션을 만나보세요", "required": true, "locked": true},
+    "source_lead": {"text": "제공된 혜택과 참여 방법을 확인하세요", "required": true, "locked": true},
+    "source_benefit": {"text": "고객이 제공한 혜택 안내", "required": true, "locked": true},
+    "source_process": {"text": "고객이 제공한 참여 방법", "required": true, "locked": true}
+  },
+  "actions": {"action_view_details": {"kind": "navigate", "href": "/offer", "label": "자세히 보기"}},
+  "assets": {},
+  "icons": {},
+  "formFields": {},
+  "mappedPolicyRoles": ["page.background", "text.primary", "text.titleSize", "text.bodySize", "text.font", "layout.gap", "layout.padding", "card.background", "card.padding", "card.radius", "button.background", "button.color", "button.padding", "button.font", "button.size"]
+}

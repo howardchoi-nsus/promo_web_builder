@@ -1,0 +1,465 @@
+{
+  "schemaVersion": "page-schema-v1",
+  "layoutContract": "section-layout-v1",
+  "root": {
+    "type": "container",
+    "id": "page_root",
+    "layout": {
+      "desktop": {
+        "direction": "column",
+        "columns": [],
+        "align": "stretch",
+        "justify": "start",
+        "width": "fill",
+        "columnSpan": 1
+      },
+      "tablet": null,
+      "mobile": null
+    },
+    "styles": {
+      "base": [
+        "page.background"
+      ],
+      "tablet": null,
+      "mobile": null
+    },
+    "sourceIds": [],
+    "role": "page",
+    "purpose": "none",
+    "label": "프로모션",
+    "formActionId": null,
+    "children": [
+      {
+        "type": "container",
+        "id": "split_hero",
+        "layout": {
+          "desktop": {
+            "direction": "column",
+            "columns": [],
+            "align": "stretch",
+            "justify": "start",
+            "width": "fill",
+            "columnSpan": 1
+          },
+          "tablet": null,
+          "mobile": null
+        },
+        "styles": {
+          "base": [
+            "layout.padding"
+          ],
+          "tablet": null,
+          "mobile": null
+        },
+        "sourceIds": [],
+        "role": "section",
+        "purpose": "hero",
+        "label": "hero",
+        "formActionId": null,
+        "children": [
+          {
+            "type": "grid",
+            "id": "hero_grid",
+            "layout": {
+              "desktop": {
+                "direction": "column",
+                "columns": [
+                  2,
+                  1
+                ],
+                "align": "stretch",
+                "justify": "start",
+                "width": "fill",
+                "columnSpan": 1
+              },
+              "tablet": null,
+              "mobile": null
+            },
+            "styles": {
+              "base": [
+                "layout.gap"
+              ],
+              "tablet": null,
+              "mobile": null
+            },
+            "sourceIds": [],
+            "children": [
+              {
+                "type": "stack",
+                "id": "hero_copy_stack",
+                "layout": {
+                  "desktop": {
+                    "direction": "column",
+                    "columns": [],
+                    "align": "stretch",
+                    "justify": "start",
+                    "width": "fill",
+                    "columnSpan": 1
+                  },
+                  "tablet": null,
+                  "mobile": null
+                },
+                "styles": {
+                  "base": [
+                    "layout.gap"
+                  ],
+                  "tablet": null,
+                  "mobile": null
+                },
+                "sourceIds": [],
+                "children": [
+                  {
+                    "type": "text",
+                    "id": "split_title",
+                    "layout": {
+                      "desktop": {
+                        "direction": "column",
+                        "columns": [],
+                        "align": "stretch",
+                        "justify": "start",
+                        "width": "fill",
+                        "columnSpan": 1
+                      },
+                      "tablet": null,
+                      "mobile": null
+                    },
+                    "styles": {
+                      "base": [
+                        "text.primary",
+                        "text.titleSize",
+                        "text.font"
+                      ],
+                      "tablet": null,
+                      "mobile": null
+                    },
+                    "sourceIds": [
+                      "source_title"
+                    ],
+                    "role": "heading",
+                    "headingLevel": 1,
+                    "contentMode": "source",
+                    "text": ""
+                  },
+                  {
+                    "type": "text",
+                    "id": "split_copy",
+                    "layout": {
+                      "desktop": {
+                        "direction": "column",
+                        "columns": [],
+                        "align": "stretch",
+                        "justify": "start",
+                        "width": "fill",
+                        "columnSpan": 1
+                      },
+                      "tablet": null,
+                      "mobile": null
+                    },
+                    "styles": {
+                      "base": [
+                        "text.primary",
+                        "text.bodySize",
+                        "text.font"
+                      ],
+                      "tablet": null,
+                      "mobile": null
+                    },
+                    "sourceIds": [
+                      "source_lead"
+                    ],
+                    "role": "body",
+                    "headingLevel": 0,
+                    "contentMode": "source",
+                    "text": ""
+                  },
+                  {
+                    "type": "button",
+                    "id": "split_cta",
+                    "layout": {
+                      "desktop": {
+                        "direction": "column",
+                        "columns": [],
+                        "align": "stretch",
+                        "justify": "start",
+                        "width": "fill",
+                        "columnSpan": 1
+                      },
+                      "tablet": null,
+                      "mobile": null
+                    },
+                    "styles": {
+                      "base": [
+                        "button.background",
+                        "button.color",
+                        "button.padding",
+                        "button.font",
+                        "button.size"
+                      ],
+                      "tablet": null,
+                      "mobile": null
+                    },
+                    "sourceIds": [],
+                    "label": "자세히 보기",
+                    "actionId": "action_view_details"
+                  }
+                ]
+              },
+              {
+                "type": "image",
+                "id": "hero_visual",
+                "layout": {
+                  "desktop": {
+                    "direction": "column",
+                    "columns": [],
+                    "align": "stretch",
+                    "justify": "start",
+                    "width": "fill",
+                    "columnSpan": 1
+                  },
+                  "tablet": null,
+                  "mobile": null
+                },
+                "styles": {
+                  "base": [],
+                  "tablet": null,
+                  "mobile": null
+                },
+                "sourceIds": [],
+                "assetId": null,
+                "requestId": "request_hero_image",
+                "alt": "",
+                "decorative": true,
+                "aspectRatio": "4:3",
+                "fit": "cover"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "container",
+        "id": "process",
+        "layout": {
+          "desktop": {
+            "direction": "column",
+            "columns": [],
+            "align": "stretch",
+            "justify": "start",
+            "width": "fill",
+            "columnSpan": 1
+          },
+          "tablet": null,
+          "mobile": null
+        },
+        "styles": {
+          "base": [
+            "layout.padding"
+          ],
+          "tablet": null,
+          "mobile": null
+        },
+        "sourceIds": [],
+        "role": "section",
+        "purpose": "process",
+        "label": "process",
+        "formActionId": null,
+        "children": [
+          {
+            "type": "text",
+            "id": "process_heading",
+            "layout": {
+              "desktop": {
+                "direction": "column",
+                "columns": [],
+                "align": "stretch",
+                "justify": "start",
+                "width": "fill",
+                "columnSpan": 1
+              },
+              "tablet": null,
+              "mobile": null
+            },
+            "styles": {
+              "base": [
+                "text.primary",
+                "text.titleSize",
+                "text.font"
+              ],
+              "tablet": null,
+              "mobile": null
+            },
+            "sourceIds": [],
+            "role": "heading",
+            "headingLevel": 2,
+            "contentMode": "editorial",
+            "text": "참여 방법"
+          },
+          {
+            "type": "stack",
+            "id": "process_stack",
+            "layout": {
+              "desktop": {
+                "direction": "column",
+                "columns": [],
+                "align": "stretch",
+                "justify": "start",
+                "width": "fill",
+                "columnSpan": 1
+              },
+              "tablet": null,
+              "mobile": null
+            },
+            "styles": {
+              "base": [
+                "layout.gap"
+              ],
+              "tablet": null,
+              "mobile": null
+            },
+            "sourceIds": [],
+            "children": [
+              {
+                "type": "text",
+                "id": "process_detail",
+                "layout": {
+                  "desktop": {
+                    "direction": "column",
+                    "columns": [],
+                    "align": "stretch",
+                    "justify": "start",
+                    "width": "fill",
+                    "columnSpan": 1
+                  },
+                  "tablet": null,
+                  "mobile": null
+                },
+                "styles": {
+                  "base": [
+                    "text.primary",
+                    "text.bodySize",
+                    "text.font"
+                  ],
+                  "tablet": null,
+                  "mobile": null
+                },
+                "sourceIds": [
+                  "source_process"
+                ],
+                "role": "body",
+                "headingLevel": 0,
+                "contentMode": "source",
+                "text": ""
+              },
+              {
+                "type": "container",
+                "id": "nested_notice",
+                "layout": {
+                  "desktop": {
+                    "direction": "column",
+                    "columns": [],
+                    "align": "stretch",
+                    "justify": "start",
+                    "width": "fill",
+                    "columnSpan": 1
+                  },
+                  "tablet": null,
+                  "mobile": null
+                },
+                "styles": {
+                  "base": [
+                    "layout.padding"
+                  ],
+                  "tablet": null,
+                  "mobile": null
+                },
+                "sourceIds": [],
+                "role": "section",
+                "purpose": "notice",
+                "label": "notice",
+                "formActionId": null,
+                "children": [
+                  {
+                    "type": "text",
+                    "id": "notice_heading",
+                    "layout": {
+                      "desktop": {
+                        "direction": "column",
+                        "columns": [],
+                        "align": "stretch",
+                        "justify": "start",
+                        "width": "fill",
+                        "columnSpan": 1
+                      },
+                      "tablet": null,
+                      "mobile": null
+                    },
+                    "styles": {
+                      "base": [
+                        "text.primary",
+                        "text.titleSize",
+                        "text.font"
+                      ],
+                      "tablet": null,
+                      "mobile": null
+                    },
+                    "sourceIds": [],
+                    "role": "heading",
+                    "headingLevel": 3,
+                    "contentMode": "editorial",
+                    "text": "확인 사항"
+                  },
+                  {
+                    "type": "text",
+                    "id": "notice_text",
+                    "layout": {
+                      "desktop": {
+                        "direction": "column",
+                        "columns": [],
+                        "align": "stretch",
+                        "justify": "start",
+                        "width": "fill",
+                        "columnSpan": 1
+                      },
+                      "tablet": null,
+                      "mobile": null
+                    },
+                    "styles": {
+                      "base": [
+                        "text.primary",
+                        "text.bodySize",
+                        "text.font"
+                      ],
+                      "tablet": null,
+                      "mobile": null
+                    },
+                    "sourceIds": [
+                      "source_benefit"
+                    ],
+                    "role": "body",
+                    "headingLevel": 0,
+                    "contentMode": "source",
+                    "text": ""
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "mediaRequests": [
+    {
+      "id": "request_hero_image",
+      "nodeId": "hero_visual",
+      "kind": "image",
+      "intent": "문구나 UI를 포함하지 않는 프로모션 분위기의 추상 배경",
+      "aspectRatio": "4:3",
+      "sourceIds": [
+        "source_title"
+      ]
+    }
+  ],
+  "summary": "2:1 분할 히어로와 중첩 안내 구성",
+  "warnings": []
+}

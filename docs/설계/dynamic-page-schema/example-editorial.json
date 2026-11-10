@@ -1,0 +1,372 @@
+{
+  "schemaVersion": "page-schema-v1",
+  "layoutContract": "section-layout-v1",
+  "root": {
+    "type": "container",
+    "id": "page_root",
+    "layout": {
+      "desktop": {
+        "direction": "column",
+        "columns": [],
+        "align": "stretch",
+        "justify": "start",
+        "width": "fill",
+        "columnSpan": 1
+      },
+      "tablet": null,
+      "mobile": null
+    },
+    "styles": {
+      "base": [
+        "page.background"
+      ],
+      "tablet": null,
+      "mobile": null
+    },
+    "sourceIds": [],
+    "role": "page",
+    "purpose": "none",
+    "label": "프로모션",
+    "formActionId": null,
+    "children": [
+      {
+        "type": "container",
+        "id": "hero",
+        "layout": {
+          "desktop": {
+            "direction": "column",
+            "columns": [],
+            "align": "stretch",
+            "justify": "start",
+            "width": "fill",
+            "columnSpan": 1
+          },
+          "tablet": null,
+          "mobile": null
+        },
+        "styles": {
+          "base": [
+            "layout.padding"
+          ],
+          "tablet": null,
+          "mobile": null
+        },
+        "sourceIds": [],
+        "role": "section",
+        "purpose": "hero",
+        "label": "hero",
+        "formActionId": null,
+        "children": [
+          {
+            "type": "text",
+            "id": "hero_title",
+            "layout": {
+              "desktop": {
+                "direction": "column",
+                "columns": [],
+                "align": "stretch",
+                "justify": "start",
+                "width": "fill",
+                "columnSpan": 1
+              },
+              "tablet": null,
+              "mobile": null
+            },
+            "styles": {
+              "base": [
+                "text.primary",
+                "text.titleSize",
+                "text.font"
+              ],
+              "tablet": null,
+              "mobile": null
+            },
+            "sourceIds": [
+              "source_title"
+            ],
+            "role": "heading",
+            "headingLevel": 1,
+            "contentMode": "source",
+            "text": ""
+          },
+          {
+            "type": "text",
+            "id": "hero_copy",
+            "layout": {
+              "desktop": {
+                "direction": "column",
+                "columns": [],
+                "align": "stretch",
+                "justify": "start",
+                "width": "fill",
+                "columnSpan": 1
+              },
+              "tablet": null,
+              "mobile": null
+            },
+            "styles": {
+              "base": [
+                "text.primary",
+                "text.bodySize",
+                "text.font"
+              ],
+              "tablet": null,
+              "mobile": null
+            },
+            "sourceIds": [
+              "source_lead"
+            ],
+            "role": "body",
+            "headingLevel": 0,
+            "contentMode": "source",
+            "text": ""
+          },
+          {
+            "type": "button",
+            "id": "hero_cta",
+            "layout": {
+              "desktop": {
+                "direction": "column",
+                "columns": [],
+                "align": "stretch",
+                "justify": "start",
+                "width": "fill",
+                "columnSpan": 1
+              },
+              "tablet": null,
+              "mobile": null
+            },
+            "styles": {
+              "base": [
+                "button.background",
+                "button.color",
+                "button.padding",
+                "button.font",
+                "button.size"
+              ],
+              "tablet": null,
+              "mobile": null
+            },
+            "sourceIds": [],
+            "label": "자세히 보기",
+            "actionId": "action_view_details"
+          }
+        ]
+      },
+      {
+        "type": "container",
+        "id": "benefits",
+        "layout": {
+          "desktop": {
+            "direction": "column",
+            "columns": [],
+            "align": "stretch",
+            "justify": "start",
+            "width": "fill",
+            "columnSpan": 1
+          },
+          "tablet": null,
+          "mobile": null
+        },
+        "styles": {
+          "base": [
+            "layout.padding"
+          ],
+          "tablet": null,
+          "mobile": null
+        },
+        "sourceIds": [],
+        "role": "section",
+        "purpose": "benefits",
+        "label": "benefits",
+        "formActionId": null,
+        "children": [
+          {
+            "type": "text",
+            "id": "benefits_title",
+            "layout": {
+              "desktop": {
+                "direction": "column",
+                "columns": [],
+                "align": "stretch",
+                "justify": "start",
+                "width": "fill",
+                "columnSpan": 1
+              },
+              "tablet": null,
+              "mobile": null
+            },
+            "styles": {
+              "base": [
+                "text.primary",
+                "text.titleSize",
+                "text.font"
+              ],
+              "tablet": null,
+              "mobile": null
+            },
+            "sourceIds": [],
+            "role": "heading",
+            "headingLevel": 2,
+            "contentMode": "editorial",
+            "text": "주요 안내"
+          },
+          {
+            "type": "grid",
+            "id": "benefits_grid",
+            "layout": {
+              "desktop": {
+                "direction": "column",
+                "columns": [
+                  1,
+                  1
+                ],
+                "align": "stretch",
+                "justify": "start",
+                "width": "fill",
+                "columnSpan": 1
+              },
+              "tablet": null,
+              "mobile": null
+            },
+            "styles": {
+              "base": [
+                "layout.gap"
+              ],
+              "tablet": null,
+              "mobile": null
+            },
+            "sourceIds": [],
+            "children": [
+              {
+                "type": "card",
+                "id": "benefit_card",
+                "layout": {
+                  "desktop": {
+                    "direction": "column",
+                    "columns": [],
+                    "align": "stretch",
+                    "justify": "start",
+                    "width": "fill",
+                    "columnSpan": 1
+                  },
+                  "tablet": null,
+                  "mobile": null
+                },
+                "styles": {
+                  "base": [
+                    "card.background",
+                    "card.padding",
+                    "card.radius"
+                  ],
+                  "tablet": null,
+                  "mobile": null
+                },
+                "sourceIds": [],
+                "label": "혜택 안내",
+                "children": [
+                  {
+                    "type": "text",
+                    "id": "benefit_text",
+                    "layout": {
+                      "desktop": {
+                        "direction": "column",
+                        "columns": [],
+                        "align": "stretch",
+                        "justify": "start",
+                        "width": "fill",
+                        "columnSpan": 1
+                      },
+                      "tablet": null,
+                      "mobile": null
+                    },
+                    "styles": {
+                      "base": [
+                        "text.primary",
+                        "text.bodySize",
+                        "text.font"
+                      ],
+                      "tablet": null,
+                      "mobile": null
+                    },
+                    "sourceIds": [
+                      "source_benefit"
+                    ],
+                    "role": "body",
+                    "headingLevel": 0,
+                    "contentMode": "source",
+                    "text": ""
+                  }
+                ]
+              },
+              {
+                "type": "card",
+                "id": "process_card",
+                "layout": {
+                  "desktop": {
+                    "direction": "column",
+                    "columns": [],
+                    "align": "stretch",
+                    "justify": "start",
+                    "width": "fill",
+                    "columnSpan": 1
+                  },
+                  "tablet": null,
+                  "mobile": null
+                },
+                "styles": {
+                  "base": [
+                    "card.background",
+                    "card.padding",
+                    "card.radius"
+                  ],
+                  "tablet": null,
+                  "mobile": null
+                },
+                "sourceIds": [],
+                "label": "참여 안내",
+                "children": [
+                  {
+                    "type": "text",
+                    "id": "process_text",
+                    "layout": {
+                      "desktop": {
+                        "direction": "column",
+                        "columns": [],
+                        "align": "stretch",
+                        "justify": "start",
+                        "width": "fill",
+                        "columnSpan": 1
+                      },
+                      "tablet": null,
+                      "mobile": null
+                    },
+                    "styles": {
+                      "base": [
+                        "text.primary",
+                        "text.bodySize",
+                        "text.font"
+                      ],
+                      "tablet": null,
+                      "mobile": null
+                    },
+                    "sourceIds": [
+                      "source_process"
+                    ],
+                    "role": "body",
+                    "headingLevel": 0,
+                    "contentMode": "source",
+                    "text": ""
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "mediaRequests": [],
+  "summary": "텍스트 중심 히어로와 2열 안내 카드 구성",
+  "warnings": []
+}

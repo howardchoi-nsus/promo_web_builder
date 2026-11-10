@@ -97,6 +97,11 @@ const PROMPT_TYPES = {
     requiredVariables: ["overviewJson", "candidateStructuresJson", "allowedContentPathsJson"],
     optionalVariables: [],
   },
+  promo_page_schema_planner: {
+    name: "Dynamic PageSchema Planner",
+    requiredVariables: ["overviewJson", "candidateSnapshotJson", "constraintsJson"],
+    optionalVariables: [],
+  },
   promo_page_composer: {
     name: "AI Promotion Page Composer",
     requiredVariables: ["overviewJson", "candidateSnapshotJson", "constraintsJson"],
@@ -150,6 +155,7 @@ const CONTROLLED_PROMPT_TYPES = new Set([
   "promo_overview_parser",
   "promo_template_recommender",
   "promo_template_composer",
+  "promo_page_schema_planner",
   "promo_page_composer",
   "promo_composition_editor",
   "section_background_image",

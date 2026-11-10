@@ -43,6 +43,7 @@ function normalizedViewport(candidate, viewport) {
 function normalizePassedQualityGate(candidate, {
   sourceDocumentRevision,
   documentRevision,
+  requiredViewports = REQUIRED_VIEWPORTS,
 } = {}) {
   const source = candidate && typeof candidate === "object" ? candidate : {};
   if (source.state !== "passed" || Number(source.blockingCount || 0) !== 0) {
@@ -51,7 +52,7 @@ function normalizePassedQualityGate(candidate, {
       code: "QUALITY_GATE_NOT_PASSED",
     });
   }
-  const results = Object.fromEntries(REQUIRED_VIEWPORTS.map((viewport) => [
+  const results = Object.fromEntries(requiredViewports.map((viewport) => [
     viewport,
     normalizedViewport(source.results?.[viewport], viewport),
   ]));
@@ -62,7 +63,7 @@ function normalizePassedQualityGate(candidate, {
     documentRevision: Number(documentRevision || 0),
     checkedAt: new Date().toISOString(),
     blockingCount: 0,
-    warningCount: REQUIRED_VIEWPORTS.reduce(
+    warningCount: requiredViewports.reduce(
       (sum, viewport) => sum + results[viewport].warningCount,
       0,
     ),
@@ -72,6 +73,10 @@ function normalizePassedQualityGate(candidate, {
 
 function assertPassedQualityGate(snapshot, documentRevision) {
   if (Number(snapshot?.contractVersion || 0) !== 3) return true;
+  if(snapshot?.content?.pageSchema){
+    require("../shared/page-schema/contract.cjs").assertValid(snapshot.content.pageSchema,snapshot.content.pageContext,{final:true});
+    for(const view of ["desktop","tablet","mobile"])normalizedViewport(snapshot.qualityGate?.results?.[view],view);
+  }
   const gate = snapshot?.qualityGate;
   const revision = Number(documentRevision || snapshot?.documentRevision || 0);
   if (gate?.state !== "passed" || Number(gate.documentRevision || 0) !== revision

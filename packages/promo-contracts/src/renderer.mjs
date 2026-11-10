@@ -12,7 +12,7 @@ export function rendererIdentity(candidate = {}) {
 
 export function supportsRenderer(candidate = {}) {
   const identity = rendererIdentity(candidate);
-  return identity.key === RENDERER_KEY && identity.version === RENDERER_VERSION;
+  return [RENDERER_KEY,"page-schema-renderer"].includes(identity.key) && identity.version === RENDERER_VERSION;
 }
 
 export function supportsSnapshotContract(version) {

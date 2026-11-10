@@ -1,5 +1,6 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import PageSchemaRenderer from "../runtime/PageSchemaRenderer.vue";
 import PromoPageRenderer from "../PromoPageRenderer.vue";
 
 const props = defineProps({
@@ -17,7 +18,7 @@ let previewObserver = null;
 let previewFrame = 0;
 
 const effectiveViewport = computed(() => inspectionViewport.value || props.viewport);
-const previewWidth = computed(() => effectiveViewport.value === "mobile" ? 390 : 1280);
+const previewWidth = computed(() => effectiveViewport.value === "mobile" ? 390 : effectiveViewport.value === "tablet" ? 768 : 1280);
 const previewShellStyle = computed(() => ({
   width: `${Math.max(1, previewWidth.value * previewScale.value)}px`,
   height: `${Math.max(1, previewHeight.value * previewScale.value)}px`,
@@ -61,7 +62,13 @@ async function waitForPreviewLayout() {
   await waitForAnimationFrames();
   await document.fonts?.ready;
   const images = [...(previewCanvas.value?.querySelectorAll("img") || [])];
-  await Promise.all(images.map((image) => image.decode?.().catch(() => undefined)));
+  await Promise.all(images.map(async (image) => {
+    if (!props.snapshot.content?.pageSchema) return image.decode?.().catch(() => undefined);
+    image.loading = "eager";
+    let timer;
+    try { await Promise.race([image.decode?.().catch(() => undefined), new Promise(resolve => { timer = setTimeout(resolve, 5000); })]); }
+    finally { clearTimeout(timer); }
+  }));
   await waitForAnimationFrames();
   syncPreviewFrame();
 }
@@ -69,15 +76,15 @@ async function waitForPreviewLayout() {
 async function inspectQualityAcrossViewports() {
   const results = {};
   try {
-    for (const viewport of ["desktop", "mobile"]) {
+    for (const viewport of (props.snapshot.content?.pageSchema ? ["desktop", "tablet", "mobile"] : ["desktop", "mobile"])) {
       inspectionViewport.value = viewport;
       await waitForPreviewLayout();
       results[viewport] = rendererRef.value?.inspectLayoutQuality?.() || {
         viewport,
-        count: 0,
-        blockingCount: 0,
+        count: props.snapshot.content?.pageSchema ? 1 : 0,
+        blockingCount: props.snapshot.content?.pageSchema ? 1 : 0,
         warningCount: 0,
-        diagnostics: [],
+        diagnostics: props.snapshot.content?.pageSchema ? [{code:"RENDERER_NOT_READY",level:"blocking",message:"페이지 렌더러를 준비하지 못했습니다."}] : [],
       };
     }
   } finally {
@@ -205,6 +212,7 @@ function promoteBlockingSectionsToFlow(snapshot, diagnostics) {
 }
 
 async function buildAutoRepairSnapshot(sourceSnapshot, qualityResult) {
+  if(sourceSnapshot?.content?.pageSchema)return {snapshot:sourceSnapshot,changed:false};
   const snapshot = JSON.parse(JSON.stringify(sourceSnapshot));
   snapshot.designSpec ||= {};
   snapshot.designSpec.itemStyles ||= {};
@@ -255,7 +263,8 @@ onBeforeUnmount(() => {
   <div ref="previewStage" class="ai-builder-preview ai-builder-preview-stage" :data-viewport="effectiveViewport">
     <div class="ai-builder-preview-shell" :style="previewShellStyle">
       <div ref="previewCanvas" class="ai-builder-preview-canvas" :style="previewCanvasStyle">
-        <PromoPageRenderer
+        <PageSchemaRenderer v-if="snapshot.content?.pageSchema" ref="rendererRef" :page="snapshot.content.pageSchema" :context="snapshot.content.pageContext" :viewport-override="effectiveViewport" />
+        <PromoPageRenderer v-else
           ref="rendererRef"
           :content="snapshot.content"
           :design-spec="snapshot.designSpec"

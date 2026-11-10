@@ -3487,6 +3487,7 @@ const adminApp = createApp({
         "promo_overview_parser",
         "promo_template_recommender",
         "promo_template_composer",
+        "promo_page_schema_planner",
         "promo_page_composer",
         "promo_composition_editor",
         "section_background_image",
