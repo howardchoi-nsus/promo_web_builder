@@ -48,7 +48,7 @@ function clone(value) {
 
 function tokenReference(value) {
   const key = String(value || "").trim();
-  return /^--(?:promo|app)-[a-z0-9-]+$/.test(key) ? `var(${key})` : undefined;
+  return /^--[a-z][a-z0-9-]*$/.test(key) ? `var(${key})` : undefined;
 }
 
 function boundedDimension(value) {

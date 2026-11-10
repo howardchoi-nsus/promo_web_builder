@@ -13,7 +13,7 @@ const SAFE_CSS_PROPERTIES = new Set([
   "min-width", "min-height", "outline-color", "background-image", "z-index",
   "transition-duration", "transition-delay", "transition-timing-function",
 ]);
-const TOKEN_KEY_PATTERN = /^--(?:promo|app)-[a-z0-9-]+$/;
+const TOKEN_KEY_PATTERN = /^--[a-z][a-z0-9-]*$/;
 const REQUIRED_PROMO_TOKEN_ALIASES = Object.freeze({
   "--promo-surface": "--app-surface",
   "--promo-text": "--app-ink",
@@ -188,7 +188,7 @@ function normalizeTokenEntries(entries, definitions) {
 
 function isDarkOnlyTokenSet(tokenSet) {
   const identity = `${tokenSet?.set_key || tokenSet?.setKey || ""} ${tokenSet?.name || ""}`.toLowerCase();
-  return identity.includes("ggpoker");
+  return identity.includes("ggpoker") || [tokenSet?.set_key, tokenSet?.setKey].includes('design-system');
 }
 
 function normalizeDarkOnlyTokenEntries(entries) {
@@ -236,7 +236,9 @@ async function fetchTokenSets(sql, { activeOnly = false } = {}) {
       order by case candidate.status when 'active' then 0 when 'draft' then 1 else 2 end, candidate.version desc limit 1
     ) version on true where token_set.status <> 'archived' order by token_set.name
   `;
-  return rows.map((row) => ({
+  const selectedRows = rows.some(row => row.set_key === 'design-system' && row.version_status === 'active')
+    ? rows.filter(row => row.set_key === 'design-system') : rows;
+  return selectedRows.map((row) => ({
     id: row.id, setKey: row.set_key, name: row.name, description: row.description || "", status: row.status,
     isDefault: Boolean(row.is_default),
     versionId: row.version_id || null, version: row.version == null ? null : Number(row.version),
@@ -390,6 +392,7 @@ async function fetchTokenSetUsage(sql, tokenSetId) {
 function toRuntimeTokenMap(values) {
   const grouped = new Map();
   (Array.isArray(values) ? values : []).forEach((entry) => {
+    if (entry.metadata?.libraryToken && (entry.metadata.state !== 'active' || entry.metadata.libraryToken.type === 'typography' || entry.valueType === 'typography')) return;
     const key = String(entry?.tokenKey || entry?.token_key || "").trim();
     const value = String(entry?.value ?? entry?.tokenValue ?? entry?.token_value ?? "").trim();
     if (!TOKEN_KEY_PATTERN.test(key) || !value) return;

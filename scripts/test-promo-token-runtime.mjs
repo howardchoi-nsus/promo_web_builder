@@ -9,13 +9,15 @@ const normalized = normalizePromoTokenValues([
   { tokenKey: "--promo-text", value: "#eeeeee" },
   { tokenKey: "--app-hero-bg-image", valueIndex: 1, value: "radial-gradient(circle, #0000, #000)" },
   { tokenKey: "--app-hero-bg-image", valueIndex: 0, value: "linear-gradient(#111, #222)" },
-  { tokenKey: "--unsafe-token", value: "red" },
+  { tokenKey: "--button-border-default", value: "#232329" },
+  { tokenKey: "--invalid;token", value: "red" },
 ]);
 
 assert.deepEqual(normalized, {
   "--promo-surface": "#111111",
   "--promo-text": "#eeeeee",
   "--app-hero-bg-image": "linear-gradient(#111, #222), radial-gradient(circle, #0000, #000)",
+  "--button-border-default": "#232329",
 });
 
 const style = createPromoTokenRuntimeStyle({
@@ -64,5 +66,11 @@ const ggpokerStyle = createPromoTokenRuntimeStyle({
 assert.equal(ggpokerStyle["--promo-font"], "Inter, Pretendard, sans-serif");
 assert.equal(ggpokerStyle["--promo-title-size"], "clamp(2.5rem, calc(2rem + 3vw), 4.25rem)");
 assert.equal(ggpokerStyle["--promo-font-size-body"], "1rem");
+
+assert.deepEqual(normalizePromoTokenValues([
+  { tokenKey: '--shadow-dark-inner-subtle', value: 'none', metadata: { libraryToken: {}, state: 'incomplete' } },
+  { tokenKey: '--title-md-bold', value: '{}', valueType: 'typography', metadata: { libraryToken: {}, state: 'active' } },
+]), {});
+assert.equal(createPromoTokenRuntimeStyle({ '--color-brand-500': '#D30000' })['--promo-accent'], '#D30000');
 
 console.log("Promo token runtime tests passed.");

@@ -16,7 +16,7 @@ const TEXT_TAGS = new Set(["h1", "h2", "h3", "h4", "h5", "h6", "p", "span", "str
 const IMAGE_TAGS = new Set(["img", "picture"]);
 const CTA_TAGS = new Set(["a", "button"]);
 const INTERACTIVE_TAGS = new Set(["a", "button"]);
-const TOKEN_KEY_PATTERN = /^--(?:promo|app)-[a-z0-9-]+$/;
+const TOKEN_KEY_PATTERN = /^--[a-z][a-z0-9-]*$/;
 const SAFE_ATTRIBUTE_NAMES = new Set([
   "role", "aria-label", "aria-labelledby", "aria-describedby", "aria-hidden",
   "alt", "href", "target", "rel",

@@ -100,7 +100,7 @@ function normalizeSectionStyle(value, errors) {
   }
   if (Object.prototype.hasOwnProperty.call(source, "backgroundColorToken")) {
     const tokenKey = String(source.backgroundColorToken || "").trim();
-    if (tokenKey && !/^--(?:promo|app)-[a-z0-9-]+$/.test(tokenKey)) {
+    if (tokenKey && !/^--[a-z][a-z0-9-]*$/.test(tokenKey)) {
       errors.push({ path: "sectionStyle.backgroundColorToken", code: "INVALID_BACKGROUND_COLOR_TOKEN", message: "backgroundColorToken must use a managed promo or app token key." });
     } else if (tokenKey) {
       style.backgroundColorToken = tokenKey;

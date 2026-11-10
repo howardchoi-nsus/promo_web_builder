@@ -123,7 +123,7 @@ export function validateLayoutSpec(value = {}) {
         });
         managedTokenProperties.forEach((property) => {
           if (lineStyle[property] !== undefined && lineStyle[property] !== null
-            && !/^--(?:promo|app)-[a-z0-9-]+$/.test(String(lineStyle[property]))) {
+            && !/^--[a-z][a-z0-9-]*$/.test(String(lineStyle[property]))) {
             errors.push({ path: `${linePath}.${property}`, message: "Managed design token key is required." });
           }
         });
@@ -145,7 +145,7 @@ export function validateLayoutSpec(value = {}) {
   function validateTextLayoutStyle(style, path) {
     for (const tokenProperty of managedTokenProperties) {
       if (style?.[tokenProperty] !== undefined
-        && !/^--(?:promo|app)-[a-z0-9-]+$/.test(String(style[tokenProperty]))) {
+        && !/^--[a-z][a-z0-9-]*$/.test(String(style[tokenProperty]))) {
         errors.push({ path: `${path}.${tokenProperty}`, message: "Managed design token key is required." });
       }
     }
@@ -223,7 +223,7 @@ export function validateLayoutSpec(value = {}) {
     }
     for (const tokenKey of ["backgroundColorToken", "backgroundFadeColorToken"]) {
       if (style?.[tokenKey] !== undefined
-        && !/^--(?:promo|app)-[a-z0-9-]+$/.test(String(style[tokenKey]))) {
+        && !/^--[a-z][a-z0-9-]*$/.test(String(style[tokenKey]))) {
         errors.push({
           code: "INVALID_SECTION_TOKEN",
           path: `sectionStyles.${key}.${tokenKey}`,

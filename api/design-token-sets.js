@@ -1,5 +1,5 @@
 const {
-  getSql, parseBody, createTokenSetKey, fetchTokenSets, fetchTokenVersion,
+  getSql, fetchTokenSets, fetchTokenVersion,
   fetchManagedTokenSets, toRuntimeTokenMap,
 } = require("./_design-token-store");
 
@@ -9,7 +9,8 @@ module.exports = async function handler(req, res) {
       const sql = getSql();
       if (String(req.query.scope || "") === "public") {
         res.setHeader("Cache-Control", "no-store");
-        const tokenSets = await fetchTokenSets(sql, { activeOnly: true });
+        const available = await fetchTokenSets(sql, { activeOnly: true });
+        const tokenSets = [available.find(s => s.setKey === 'design-system') || available.find(s => s.isDefault) || available[0]].filter(Boolean);
         const defaultVersionId = (
           tokenSets.find((tokenSet) => tokenSet.isDefault)
           || tokenSets[0]
@@ -20,7 +21,7 @@ module.exports = async function handler(req, res) {
             ...tokenSet,
             isDefault: tokenSet.versionId === defaultVersionId,
             values: toRuntimeTokenMap(version?.values || []),
-            sourceValues: version?.values || [],
+            sourceValues: (version?.values || []).filter(v => !v.metadata?.libraryToken || v.metadata.state === 'active'),
           };
         }));
         publicTokenSets.sort((left, right) => Number(right.isDefault) - Number(left.isDefault));
@@ -28,40 +29,12 @@ module.exports = async function handler(req, res) {
       }
       return res.status(200).json({
         ok: true,
-        tokenSets: await fetchManagedTokenSets(sql, { includeArchived: String(req.query.includeArchived || "") === "true" }),
+        tokenSets: (await fetchManagedTokenSets(sql)).filter(s => s.setKey === 'design-system'),
       });
     }
     if (req.method !== "POST") { res.setHeader("Allow", "GET, POST"); return res.status(405).json({ error: "Method not allowed" }); }
-    const body = parseBody(req.body);
-    const name = String(body.name || "").trim();
-    if (!name) return res.status(400).json({ error: "name is required" });
-    const setKey = createTokenSetKey(name);
-    const changeNote = String(body.changeNote || "Design token set created.");
-    const rows = await getSql()`
-      with created as (
-        insert into promo_design_token_sets (set_key, name, description)
-        values (${setKey}, ${name}, ${String(body.description || "")})
-        returning *
-      ), history as (
-        insert into promo_design_token_histories (
-          token_set_id, action, new_status, change_note, snapshot
-        )
-        select id, 'set_created', status, ${changeNote},
-          jsonb_build_object('setKey', set_key, 'name', name, 'description', description)
-        from created
-      )
-      select id::text, set_key, name, description, status from created
-    `;
-    return res.status(201).json({
-      ok: true,
-      tokenSet: {
-        id: rows[0].id,
-        setKey: rows[0].set_key,
-        name: rows[0].name,
-        description: rows[0].description || "",
-        status: rows[0].status,
-      },
-    });
+    return res.status(409).json({ error: '하나의 공통 디자인 토큰 라이브러리만 사용합니다. /api/design-token-library에서 관리하세요.' });
+
   } catch (error) {
     const conflict = error.code === "23505";
     return res.status(conflict ? 409 : (error.statusCode || 500)).json({ error: conflict ? "Design token set already exists" : "Design token sets API failed", message: error.message });

@@ -178,7 +178,7 @@ function validateLayoutSpec(value, sections = []) {
         });
         managedTokenProperties.forEach((property) => {
           if (lineStyle[property] !== undefined && lineStyle[property] !== null
-            && !/^--(?:promo|app)-[a-z0-9-]+$/.test(String(lineStyle[property]))) {
+            && !/^--[a-z][a-z0-9-]*$/.test(String(lineStyle[property]))) {
             errors.push({ code: "INVALID_ITEM_TOKEN", path: `${linePath}.${property}` });
           }
         });
@@ -201,7 +201,7 @@ function validateLayoutSpec(value, sections = []) {
   function validateExtendedItemStyle(style, path) {
     for (const tokenProperty of managedTokenProperties) {
       if (style?.[tokenProperty] !== undefined
-        && !/^--(?:promo|app)-[a-z0-9-]+$/.test(String(style[tokenProperty]))) {
+        && !/^--[a-z][a-z0-9-]*$/.test(String(style[tokenProperty]))) {
         errors.push({ code: "INVALID_ITEM_TOKEN", path: `${path}.${tokenProperty}` });
       }
     }
@@ -298,7 +298,7 @@ function validateLayoutSpec(value, sections = []) {
     }
     for (const tokenKey of ["backgroundColorToken", "backgroundFadeColorToken"]) {
       if (style?.[tokenKey] !== undefined
-        && !/^--(?:promo|app)-[a-z0-9-]+$/.test(String(style[tokenKey]))) {
+        && !/^--[a-z][a-z0-9-]*$/.test(String(style[tokenKey]))) {
         errors.push({
           code: "INVALID_SECTION_TOKEN",
           path: `sectionStyles.${key}.${tokenKey}`,

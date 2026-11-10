@@ -20,6 +20,8 @@ async function requestJson(url, options = {}, fetchImpl = globalThis.fetch) {
 const json = (method, body) => ({ method, body: JSON.stringify(body) });
 
 export const designTokenService = Object.freeze({
+  library: (versionId = '') => requestJson(`/api/design-token-library${versionId ? `?versionId=${encodeURIComponent(versionId)}` : ''}`),
+  saveLibrary: (body) => requestJson('/api/design-token-library', json('POST', body)),
   list: () => requestJson("/api/design-token-sets"),
   catalog: () => requestJson("/api/design-token-catalog-import"),
   registerDefinitions: (body) => requestJson("/api/design-token-catalog-import", json("POST", body)),

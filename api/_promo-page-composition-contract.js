@@ -276,24 +276,24 @@ function firstAvailableToken(tokenValues, candidates) {
 }
 
 const DESIGN_TOKEN_ROLE_CANDIDATES = Object.freeze({
-  background: ["--promo-bg", "--app-bg", "--promo-surface", "--app-surface"],
-  surface: ["--promo-surface", "--app-surface", "--promo-bg", "--app-bg"],
-  text: ["--promo-text", "--app-ink", "--app-text"],
-  muted: ["--promo-muted", "--app-muted", "--app-ink-soft", "--app-ink"],
-  accent: ["--promo-accent", "--app-accent"],
-  onAccent: ["--app-on-accent", "--promo-text", "--app-ink"],
-  radius: ["--promo-radius", "--app-radius"],
-  shadow: ["--promo-shadow", "--app-shadow"],
-  font: ["--promo-font", "--app-font-body", "--app-font-family", "--app-font-heading"],
+  background: ["--promo-bg", "--app-bg", "--promo-surface", "--app-surface", "--color-bg-dark-800"],
+  surface: ["--promo-surface", "--app-surface", "--promo-bg", "--app-bg", "--card-container-default"],
+  text: ["--promo-text", "--app-ink", "--app-text", "--button-label-default"],
+  muted: ["--promo-muted", "--app-muted", "--app-ink-soft", "--app-ink", "--button-label-muted-default"],
+  accent: ["--promo-accent", "--app-accent", "--color-brand-500"],
+  onAccent: ["--app-on-accent", "--promo-text", "--app-ink", "--button-label-on-color"],
+  radius: ["--promo-radius", "--app-radius", "--border-radius-md"],
+  shadow: ["--promo-shadow", "--app-shadow", "--shadow-elevation-1"],
+  font: ["--promo-font", "--app-font-body", "--app-font-family", "--app-font-heading", "--typography-body-lg-typeface", "--typeface-roboto"],
 });
 
 const REQUIRED_DESIGN_TOKEN_ROLE_CANDIDATES = Object.freeze({
-  surface: ["--promo-surface", "--app-surface"],
-  text: ["--promo-text", "--app-ink", "--app-text"],
-  muted: ["--promo-muted", "--app-muted", "--app-ink-soft"],
-  accent: ["--promo-accent", "--app-accent"],
-  radius: ["--promo-radius", "--app-radius"],
-  shadow: ["--promo-shadow", "--app-shadow"],
+  surface: ["--promo-surface", "--app-surface", "--card-container-default"],
+  text: ["--promo-text", "--app-ink", "--app-text", "--button-label-default"],
+  muted: ["--promo-muted", "--app-muted", "--app-ink-soft", "--button-label-muted-default"],
+  accent: ["--promo-accent", "--app-accent", "--color-brand-500"],
+  radius: ["--promo-radius", "--app-radius", "--border-radius-md"],
+  shadow: ["--promo-shadow", "--app-shadow", "--shadow-elevation-1"],
 });
 
 function missingRequiredDesignTokenRoles(tokenValues = {}) {

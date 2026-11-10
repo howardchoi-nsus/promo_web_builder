@@ -1,819 +1,177 @@
 <script>
-import { createPromoTokenRuntimeStyle } from "../../../shared/promo-token-runtime.mjs";
-import { designTokenService } from "../services/design-token-service.mjs";
-
-const MAX_CSV_SIZE = 2 * 1024 * 1024;
-const FONT_SIZE_PROPERTIES = new Set(["font-size"]);
-const TOKEN_CSS_PROPERTIES = [
-  "font-size", "font-weight", "line-height", "letter-spacing", "color",
-  "background-color", "background-image", "border-color", "border-radius",
-  "box-shadow", "gap", "padding", "margin", "width", "height",
-];
-const REQUIRED_PROMO_TOKEN_ALIASES = Object.freeze({
-  "--promo-surface": "--app-surface",
-  "--promo-text": "--app-ink",
-  "--promo-muted": "--app-muted",
-  "--promo-accent": "--app-accent",
-  "--promo-radius": "--app-radius",
-  "--promo-shadow": "--app-shadow",
-});
-
-function csvCell(value) {
-  const text = String(value ?? "");
-  return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
-}
-
-function tokenIdentity(item) {
-  return `${item.tokenKey}:${Number(item.valueIndex || 0)}`;
-}
-
-function tokenSnapshot(item) {
-  return JSON.stringify({
-    value: String(item.value || ""),
-    valueLight: String(item.valueLight || ""),
-    valueDark: String(item.valueDark || ""),
-    activeTheme: String(item.activeTheme || "dark"),
-  });
-}
-
-function mergeRequiredTokenDefinitions(definitions, values) {
-  const merged = (values || []).map((item) => ({ ...item }));
-  const byKey = new Map(merged.map((item) => [item.tokenKey, item]));
-  (definitions || []).filter((definition) => definition.required).forEach((definition) => {
-    if (byKey.has(definition.tokenKey)) return;
-    const aliasKey = REQUIRED_PROMO_TOKEN_ALIASES[definition.tokenKey];
-    const alias = aliasKey ? byKey.get(aliasKey) : null;
-    const value = String(alias?.value || "").trim();
-    const valueLight = String(alias?.valueLight || value).trim();
-    const valueDark = String(alias?.valueDark || "").trim();
-    const item = {
-      ...definition,
-      valueIndex: 0,
-      value,
-      valueLight,
-      valueDark,
-      activeTheme: alias?.activeTheme || "dark",
-      metadata: alias
-        ? { ...(alias.metadata || {}), canonicalAliasSource: aliasKey }
-        : {},
-    };
-    merged.push(item);
-    byKey.set(item.tokenKey, item);
-  });
-  return merged;
-}
+import { designTokenService } from '../services/design-token-service.mjs';
+import { TOKEN_TYPES, TOKEN_CATEGORIES, analyzeTokenLibrary, parseTokenCsv, exportTokenCsv } from '../../../shared/design-token-library.mjs';
 
 export default {
-  name: "DesignTokenManager",
-  props: {
-    translate: { type: Function, required: true },
-  },
-  emits: ["status", "token-sets-changed"],
+  name: 'DesignTokenManager',
+  props: { translate: { type: Function, required: true } },
+  emits: ['status', 'token-sets-changed'],
   data() {
     return {
-      loading: false,
-      saving: false,
-      error: "",
-      tokenSets: [],
-      definitions: [],
-      selectedSetId: "",
-      selectedVersionId: "",
-      detail: null,
-      editorValues: [],
-      originalValues: {},
-      metadata: { name: "", description: "", changeNote: "" },
-      createForm: { name: "", description: "" },
-      cloneForm: { name: "", description: "" },
-      showCreate: false,
-      showSettings: false,
-      showClone: false,
-      showAddToken: false,
-      addTokenError: "",
-      tokenForm: {
-        tokenKey: "--promo-font-size-", label: "", category: "typography",
-        valueType: "length", cssProperty: "font-size", unit: "rem",
-        valueLight: "1rem", valueDark: "1rem", themeable: false,
-      },
-      tokenCssProperties: TOKEN_CSS_PROPERTIES,
-      searchTerm: "",
-      categoryFilter: "",
-      changedOnly: false,
-      csvSourceName: "",
-      importErrors: [],
-      validationErrors: [],
-      previewViewport: "desktop",
-      usage: { templates: [], aiRuns: { total: 0, active: 0 } },
-      histories: [],
+      tokens: [], versionId: null, activeVersionId: null, versions: [], initial: false,
+      busy: false, loaded: false, error: '', message: '', selectedCategory: '', search: '',
+      types: TOKEN_TYPES, extraCategories: [], showAdd: false, categoryName: '',
+      form: { category: 'Color', type: 'color', name: '', value: '', reference: '' },
+      importPreview: null, baseline: '', selectedHistory: '',
     };
   },
   computed: {
-    selectedSet() {
-      return this.tokenSets.find((item) => item.id === this.selectedSetId) || null;
-    },
-    activeVersionId() {
-      return this.selectedSet?.activeVersion?.id || "";
-    },
-    workingVersionId() {
-      return this.detail?.status === "draft" ? this.detail.id : "";
-    },
-    isDarkOnlySet() {
-      return `${this.selectedSet?.setKey || ""} ${this.selectedSet?.name || ""}`
-        .toLowerCase().includes("ggpoker");
-    },
-    setIsActive() {
-      return this.selectedSet?.status === "active";
-    },
-    categories() {
-      return [...new Set(this.editorValues.map((item) => item.category || "general"))].sort();
-    },
-    filteredValues() {
-      const query = this.searchTerm.trim().toLowerCase();
-      return this.editorValues.filter((item) => {
-        if (this.categoryFilter && item.category !== this.categoryFilter) return false;
-        if (this.changedOnly && !this.isTokenChanged(item)) return false;
-        return !query || [item.tokenKey, item.semanticRole, item.category]
-          .some((value) => String(value || "").toLowerCase().includes(query));
+    categories() { return [...new Set([...TOKEN_CATEGORIES, ...this.extraCategories, ...this.tokens.map(t => t.category)])]; },
+    filteredTokens() { const q = this.search.trim().toLowerCase(); return this.tokens.filter(t => (!this.selectedCategory || t.category === this.selectedCategory) && (!q || [t.name, t.type, t.value, t.reference].some(v => String(v).toLowerCase().includes(q)))); },
+    analysis() { return analyzeTokenLibrary(this.tokens); },
+    states() { return Object.fromEntries(this.analysis.tokens.map(t => [t.name, t.state])); },
+    dirty() { return this.loaded && exportTokenCsv(this.tokens) !== this.baseline; },
+    activeCount() { return this.analysis.tokens.filter(t => t.state === 'active').length; },
+  },
+  mounted() { globalThis.addEventListener('beforeunload', this.beforeLeave); this.load(); },
+  beforeUnmount() { globalThis.removeEventListener('beforeunload', this.beforeLeave); },
+  methods: {
+    beforeLeave(e) { if (this.dirty) { e.preventDefault(); e.returnValue = ''; } },
+    async run(action) { this.busy = true; this.error = ''; this.message = ''; try { return await action(); } catch (e) { this.error = e.message; return null; } finally { this.busy = false; } },
+    async load(versionId = '') {
+      if (this.dirty && !globalThis.confirm('저장하지 않은 변경사항을 버릴까요?')) return;
+      await this.run(async () => {
+        const r = await designTokenService.library(versionId);
+        this.tokens = r.tokens; this.versionId = r.versionId; this.activeVersionId = r.activeVersionId;
+        this.versions = r.versions; this.initial = r.initial; this.loaded = true;
+        this.baseline = exportTokenCsv(this.tokens); this.selectedHistory = r.versionId || '';
       });
     },
-    isDirty() {
-      return this.editorValues.some((item) => this.isTokenChanged(item));
+    async save() {
+      if (this.analysis.errors.length) { this.error = '아래 오류를 수정한 후 저장하세요.'; return; }
+      await this.run(async () => {
+        const r = await designTokenService.saveLibrary({ tokens: this.tokens, expectedVersionId: this.activeVersionId });
+        this.baseline = exportTokenCsv(this.tokens);
+        const data = await designTokenService.library();
+        this.tokens = data.tokens; this.versionId = data.versionId; this.activeVersionId = data.activeVersionId;
+        this.versions = data.versions; this.selectedHistory = data.versionId; this.initial = false;
+        this.baseline = exportTokenCsv(this.tokens);
+        this.message = `공통 디자인 토큰을 저장했습니다. 미완성 ${r.warnings.length}개는 실제 적용에서 제외됩니다.`;
+        this.$emit('token-sets-changed'); this.$emit('status', this.message);
+      });
     },
-    previewStyle() {
-      return {
-        ...createPromoTokenRuntimeStyle(this.tokenPayload(), {
-          background: "var(--app-surface)",
-          text: "var(--app-ink)",
-          muted: "var(--app-muted)",
-          accent: "var(--app-accent)",
-          radius: "var(--app-radius-small)",
-        }),
-        "--promo-width": "1280px",
-      };
+    categoryCount(category) { return this.tokens.filter(t => t.category === category).length; },
+    onTabKey(event) {
+      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+      const tabs = [...event.currentTarget.querySelectorAll('[role="tab"]')];
+      const index = tabs.indexOf(event.target); if (index < 0) return;
+      event.preventDefault();
+      const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+      tabs[next].click(); tabs[next].focus();
     },
-  },
-  mounted() {
-    globalThis.addEventListener("beforeunload", this.preventUnsavedExit);
-    this.reload();
-  },
-  beforeUnmount() {
-    globalThis.removeEventListener("beforeunload", this.preventUnsavedExit);
-  },
-  methods: {
-    tokenIdentity,
-    t(key, params) {
-      return this.translate(key, params);
+    addCategory() {
+      const name = this.categoryName.trim(); if (!name || name.length > 80) return;
+      if (!this.categories.includes(name)) this.extraCategories.push(name);
+      this.selectedCategory = name; this.categoryName = ''; this.openAdd();
     },
-    notify(key, params) {
-      this.$emit("status", this.t(key, params));
-    },
-    async run(action) {
-      this.saving = true;
-      this.error = "";
-      try {
-        return await action();
-      } catch (error) {
-        this.error = error.message;
-        throw error;
-      } finally {
-        this.saving = false;
-      }
-    },
-    async reload(preferredSetId = this.selectedSetId) {
-      this.loading = true;
-      this.error = "";
-      try {
-        const [setsResult, catalogResult] = await Promise.all([
-          designTokenService.list(),
-          designTokenService.catalog(),
-        ]);
-        this.tokenSets = setsResult.tokenSets || [];
-        this.definitions = catalogResult.definitions || [];
-        this.selectedSetId = this.tokenSets.some((set) => set.id === preferredSetId)
-          ? preferredSetId
-          : (this.tokenSets[0]?.id || "");
-        await this.selectSet(this.selectedSetId, true);
-        this.$emit("token-sets-changed");
-      } catch (error) {
-        this.error = error.message;
-      } finally {
-        this.loading = false;
-      }
-    },
-    async selectSet(setId, force = false) {
-      if (!force && setId !== this.selectedSetId && this.isDirty
-        && !globalThis.confirm(this.t("admin.designToken.unsavedConfirm"))) return;
-      this.selectedSetId = setId;
-      const set = this.selectedSet;
-      this.metadata = {
-        name: set?.name || "",
-        description: set?.description || "",
-        changeNote: "",
-      };
-      const versionId = set?.draftVersion?.id || set?.activeVersion?.id || set?.versions?.[0]?.id || "";
-      if (versionId) await this.selectVersion(versionId);
-      else this.clearDetail();
-    },
-    clearDetail() {
-      this.selectedVersionId = "";
-      this.detail = null;
-      this.editorValues = this.definitions.map((definition) => ({
-        ...definition, valueIndex: 0, value: "", valueLight: "", valueDark: "",
-        activeTheme: "dark", metadata: {},
-      }));
-      this.originalValues = Object.fromEntries(this.editorValues.map((item) => [tokenIdentity(item), tokenSnapshot(item)]));
-      this.usage = { templates: [], aiRuns: { total: 0, active: 0 } };
-      this.histories = [];
-    },
-    async selectVersion(versionId) {
-      this.selectedVersionId = versionId;
-      const result = await designTokenService.detail(versionId);
-      this.detail = result.tokenSet;
-      this.usage = result.usage || { templates: [], aiRuns: { total: 0, active: 0 } };
-      this.histories = result.histories || [];
-      const definitions = new Map(this.definitions.map((item) => [item.tokenKey, item]));
-      const values = this.detail.values || [];
-      this.editorValues = values.length
-        ? mergeRequiredTokenDefinitions(
-          this.definitions,
-          values.map((item) => ({ ...(definitions.get(item.tokenKey) || {}), ...item })),
-        )
-        : this.definitions.map((definition) => ({
-          ...definition, valueIndex: 0, value: "", valueLight: "", valueDark: "",
-          activeTheme: "dark", metadata: {},
-        }));
-      if (this.isDarkOnlySet) {
-        this.editorValues = this.editorValues.map((item) => {
-          const darkValue = String(item.valueDark || item.valueLight || item.value || "").trim();
-          return {
-            ...item,
-            value: darkValue,
-            valueLight: "",
-            valueDark: darkValue,
-            activeTheme: "dark",
-          };
-        });
-      }
-      this.originalValues = Object.fromEntries(this.editorValues.map((item) => [tokenIdentity(item), tokenSnapshot(item)]));
-      this.importErrors = [];
-      this.validationErrors = [];
-    },
-    tokenPayload() {
-      return this.editorValues.map((item) => ({
-        tokenKey: item.tokenKey,
-        valueIndex: Number(item.valueIndex || 0),
-        value: this.isDarkOnlySet ? (item.valueDark || item.value) : item.value,
-        valueLight: this.isDarkOnlySet ? "" : (item.valueLight || item.value),
-        valueDark: this.isDarkOnlySet ? (item.valueDark || item.value) : (item.valueDark || ""),
-        activeTheme: this.isDarkOnlySet ? "dark" : (item.activeTheme || "dark"),
-        metadata: item.metadata || {},
-      }));
-    },
-    isTokenChanged(item) {
-      return tokenSnapshot(item) !== String(this.originalValues[tokenIdentity(item)] || "");
-    },
-    restoreToken(item) {
-      const original = JSON.parse(this.originalValues[tokenIdentity(item)] || "{}");
-      Object.assign(item, original);
-    },
-    restoreAll() {
-      this.editorValues = this.editorValues.filter((item) => !this.isNewToken(item));
-      this.editorValues.forEach((item) => this.restoreToken(item));
-    },
-    fieldType(item) {
-      return item.valueType === "color" ? "color" : "text";
-    },
-    updateResolvedValue(item) {
-      item.value = this.isDarkOnlySet
-        ? (item.valueDark || item.valueLight)
-        : item.activeTheme === "light"
-        ? (item.valueLight || item.valueDark)
-        : (item.valueDark || item.valueLight);
-      if (this.isDarkOnlySet) {
-        item.valueLight = "";
-        item.activeTheme = "dark";
-      }
-    },
-    isNewToken(item) {
-      return !this.definitions.some((definition) => definition.tokenKey === item.tokenKey);
-    },
-    currentTokenValue(item) {
-      return String(item.value || item.valueDark || item.valueLight || "").trim();
-    },
-    isFontSizeToken(item) {
-      const properties = item.cssProperties || [item.cssProperty].filter(Boolean);
-      return properties.some((property) => FONT_SIZE_PROPERTIES.has(property));
-    },
-    isFixedFontSize(item) {
-      return this.isFontSizeToken(item) && /^-?(?:\d+|\d*\.\d+)px$/i.test(this.currentTokenValue(item));
-    },
-    tokenVisualKind(item) {
-      const properties = item.cssProperties || [item.cssProperty].filter(Boolean);
-      if (item.valueType === "color") return "color";
-      if (item.valueType === "gradient") return "gradient";
-      if (properties.includes("font-size")) return "font-size";
-      if (properties.includes("font-weight")) return "font-weight";
-      if (properties.includes("border-radius")) return "radius";
-      if (properties.includes("box-shadow")) return "shadow";
-      if (properties.some((property) => ["gap", "padding", "margin", "width", "height"].includes(property))) return "length";
-      return "text";
-    },
-    tokenVisualStyle(item) {
-      const value = this.currentTokenValue(item);
-      if (!value || /url\s*\(|expression\s*\(|[;{}]/i.test(value)) return {};
-      const kind = this.tokenVisualKind(item);
-      if (kind === "color") return { backgroundColor: value };
-      if (kind === "gradient") return { backgroundImage: value };
-      if (kind === "font-size") return { fontSize: value };
-      if (kind === "font-weight") return { fontWeight: value };
-      if (kind === "radius") return { borderRadius: value };
-      if (kind === "shadow") return { boxShadow: value };
-      if (kind === "length") return { width: `min(${value}, 4rem)` };
-      return {};
-    },
-    convertPxValue(value, mode) {
-      const match = String(value || "").trim().match(/^(-?(?:\d+|\d*\.\d+))px$/i);
-      if (!match) return value;
-      const px = Number(match[1]);
-      const round = (number) => Number(number.toFixed(4));
-      if (mode === "rem") return `${round(px / 16)}rem`;
-      const minPx = px <= 20 ? Math.min(px, Math.max(10, px * 0.875)) : px * 0.75;
-      const maxPx = px * 1.125;
-      const slope = ((maxPx - minPx) / (1440 - 375)) * 100;
-      const interceptPx = minPx - (slope * 375) / 100;
-      return `clamp(${round(minPx / 16)}rem, calc(${round(interceptPx / 16)}rem + ${round(slope)}vw), ${round(maxPx / 16)}rem)`;
-    },
-    convertFontSize(item, mode) {
-      item.valueLight = this.convertPxValue(item.valueLight || item.value, mode);
-      if (item.themeable || this.isDarkOnlySet) item.valueDark = this.convertPxValue(item.valueDark || item.value, mode);
-      this.updateResolvedValue(item);
-    },
-    resetTokenForm() {
-      this.tokenForm = {
-        tokenKey: "--promo-font-size-", label: "", category: "typography",
-        valueType: "length", cssProperty: "font-size", unit: "rem",
-        valueLight: "1rem", valueDark: "1rem", themeable: false,
-      };
-      this.addTokenError = "";
+    openAdd() {
+      const category = this.selectedCategory || 'Color';
+      const type = ({ Color: 'color', Typography: 'typography', Shadow: 'shadow', Grid: 'number' })[category] || 'dimension';
+      this.form = { category, type, name: '', value: '', reference: '' }; this.showAdd = true; this.error = '';
     },
     addToken() {
-      this.addTokenError = "";
-      const form = { ...this.tokenForm };
-      if (!/^(?:--promo-|--app-)[a-z0-9-]+$/.test(form.tokenKey)) {
-        this.addTokenError = "토큰 키는 --promo-* 또는 --app-* 형식이어야 합니다.";
-        return;
-      }
-      if (this.editorValues.some((item) => item.tokenKey === form.tokenKey)) {
-        this.addTokenError = "이미 등록된 토큰 키입니다.";
-        return;
-      }
-      if (!form.label.trim() || !form.valueLight.trim()) {
-        this.addTokenError = "이름과 Light 값을 입력하세요.";
-        return;
-      }
-      const darkValue = this.isDarkOnlySet
-        ? form.valueLight
-        : form.themeable ? (form.valueDark || form.valueLight) : "";
-      const value = this.isDarkOnlySet ? darkValue : form.valueLight;
-      this.editorValues.push({
-        tokenKey: form.tokenKey, label: form.label.trim(), semanticRole: form.label.trim(),
-        category: form.category.trim() || "general", categoryLabel: form.category.trim() || "general",
-        valueType: form.valueType, cssProperty: form.cssProperty, cssProperties: [form.cssProperty],
-        unit: form.unit.trim(), themeable: this.isDarkOnlySet ? false : form.themeable,
-        cardinality: "single", required: false, aiSelectable: false, editable: true,
-        valueIndex: 0, value, valueLight: this.isDarkOnlySet ? "" : form.valueLight,
-        valueDark: darkValue, activeTheme: this.isDarkOnlySet ? "dark" : "light", metadata: {},
+      const candidate = { ...this.form };
+      const result = analyzeTokenLibrary([...this.tokens, candidate]);
+      if (result.errors.length) { this.error = result.errors.map(e => `${e.token}: ${e.message}`).join('\n'); return; }
+      this.tokens.push(candidate); this.selectedCategory = candidate.category; this.showAdd = false;
+    },
+    removeToken(token) {
+      const users = this.tokens.filter(t => t.reference === token.name);
+      if (users.length) { this.error = `참조 중인 토큰이 있습니다: ${users.map(t => t.name).join(', ')}`; return; }
+      if (!globalThis.confirm(`${token.name}을 목록에서 제거할까요? 저장 전까지 실제 반영되지 않습니다.`)) return;
+      this.tokens = this.tokens.filter(t => t !== token);
+    },
+    downloadCsv() {
+      // Export every category, even when a tab or search is active.
+      const url = URL.createObjectURL(new Blob([exportTokenCsv(this.tokens)], { type: 'text/csv;charset=utf-8' }));
+      const a = document.createElement('a'); a.href = url; a.download = 'design-tokens-dark.csv'; a.click(); URL.revokeObjectURL(url);
+    },
+    async uploadCsv(event) {
+      const file = event.target.files?.[0]; event.target.value = ''; if (!file) return;
+      if (file.size > 2 * 1024 * 1024) { this.error = 'CSV 파일은 2MB 이하여야 합니다.'; return; }
+      await this.run(async () => {
+        const tokens = parseTokenCsv(await file.text()); const result = analyzeTokenLibrary(tokens);
+        if (result.errors.length) throw new Error(result.errors.slice(0, 20).map(e => `${e.row || ''}행 ${e.token || ''}: ${e.message}`).join('\n'));
+        this.importPreview = { ...result, fileName: file.name };
       });
-      this.showAddToken = false;
-      this.resetTokenForm();
     },
-    removeNewToken(item) {
-      this.editorValues = this.editorValues.filter((candidate) => tokenIdentity(candidate) !== tokenIdentity(item));
-    },
-    pendingDefinitions() {
-      return this.editorValues.filter((item) => this.isNewToken(item)).map((item) => ({
-        tokenKey: item.tokenKey,
-        category: item.category || "general",
-        categoryLabel: item.categoryLabel || item.category || "general",
-        label: item.label || item.semanticRole || item.tokenKey,
-        valueType: item.valueType,
-        semanticRole: item.semanticRole || item.label || item.tokenKey,
-        cssProperty: item.cssProperty,
-        cssProperties: item.cssProperties || [item.cssProperty].filter(Boolean),
-        unit: item.unit || "",
-        themeable: item.themeable === true,
-        cardinality: item.cardinality || "single",
-        allowedValues: item.allowedValues || [],
-        required: false,
-        aiSelectable: item.aiSelectable === true,
-        editable: true,
-      }));
-    },
-    async publish() {
-      this.validationErrors = [];
-      try {
-        const definitions = this.pendingDefinitions();
-        if (definitions.length) {
-          await this.run(() => designTokenService.registerDefinitions({ definitions }));
-        }
-        const result = await this.run(() => designTokenService.publish({
-          tokenSetId: this.selectedSetId,
-          sourceVersionId: this.activeVersionId,
-          workingVersionId: this.workingVersionId,
-          tokens: this.tokenPayload(),
-          sourceName: this.csvSourceName,
-          changeNote: this.metadata.changeNote,
-        }));
-        await this.reload(this.selectedSetId);
-        this.notify("admin.designToken.saveSuccess");
-      } catch (error) {
-        this.validationErrors = error.details?.errors || [];
-      }
-    },
-    save() {
-      return this.publish();
-    },
-    async onCsvFile(event) {
-      this.importErrors = [];
-      const file = event.target.files?.[0];
-      event.target.value = "";
-      if (!file) return;
-      if (!/\.csv$/i.test(file.name) && file.type !== "text/csv") {
-        this.error = this.t("admin.designToken.csvTypeError");
-        return;
-      }
-      if (file.size > MAX_CSV_SIZE) {
-        this.error = this.t("admin.designToken.csvSizeError");
-        return;
-      }
-      this.csvSourceName = file.name;
-      try {
-        const csvText = (await file.text()).replace(/^\uFEFF/, "");
-        const result = await this.run(() => designTokenService.importCsv({
-          tokenSetId: this.selectedSetId,
-          csvText,
-          sourceName: file.name,
-          dryRun: false,
-          registerCatalog: true,
-          activeTheme: "dark",
-          changeNote: "CSV 전체 토큰을 Dark 기준 초안으로 가져왔습니다.",
-        }));
-        await this.reload(this.selectedSetId);
-        this.notify("admin.designToken.importValidated");
-      } catch (error) {
-        this.importErrors = error.details?.errors || [];
-      }
-    },
-    exportCsv() {
-      const lines = [
-        [
-          "category", "category_label", "token", "label", "type", "unit",
-          "themeable", "cardinality", "value_index", "css_properties",
-          "value_light", "value_dark",
-        ],
-        ...this.editorValues.map((item) => [
-          item.category || "", item.categoryLabel || item.metadata?.categoryLabel || "",
-          item.tokenKey, item.label || item.metadata?.label || item.semanticRole || "",
-          item.valueType || item.metadata?.type || "", item.unit || item.metadata?.unit || "",
-          item.themeable === true || item.metadata?.themeable === true ? "TRUE" : "FALSE",
-          item.cardinality || item.metadata?.cardinality || "single",
-          Number(item.valueIndex || 0),
-          (item.cssProperties || item.metadata?.cssProperties || [item.cssProperty]).filter(Boolean).join(";"),
-          item.valueLight || "", item.valueDark || "",
-        ]),
-      ].map((row) => row.map(csvCell).join(","));
-      const blob = new Blob([`\uFEFF${lines.join("\r\n")}`], { type: "text/csv;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = `${this.selectedSet?.setKey || "promo-design-tokens"}.csv`;
-      anchor.click();
-      URL.revokeObjectURL(url);
-    },
-    async createSet() {
-      const result = await this.run(() => designTokenService.createSet(this.createForm));
-      this.showCreate = false;
-      this.createForm = { name: "", description: "" };
-      await this.reload(result.tokenSet.id);
-      this.notify("admin.designToken.created");
-    },
-    async saveMetadata() {
-      await this.run(() => designTokenService.updateMetadata({
-        tokenSetId: this.selectedSetId,
-        ...this.metadata,
-      }));
-      await this.reload(this.selectedSetId);
-      this.notify("admin.designToken.metadataSaved");
-    },
-    async cloneSet() {
-      const result = await this.run(() => designTokenService.cloneSet({
-        sourceVersionId: this.selectedVersionId,
-        ...this.cloneForm,
-      }));
-      this.showClone = false;
-      this.cloneForm = { name: "", description: "" };
-      await this.reload(result.tokenSet.tokenSetId);
-      this.notify("admin.designToken.cloned");
-    },
-    async archiveSet() {
-      if (!globalThis.confirm(this.t("admin.designToken.deleteConfirm"))) return;
-      await this.run(() => designTokenService.deleteSet({ tokenSetId: this.selectedSetId }));
-      await this.reload("");
-      this.notify("admin.designToken.deleted");
-    },
-    async updateSetStatus(action) {
-      await this.run(() => designTokenService.updateStatus({
-        tokenSetId: this.selectedSetId,
-        action,
-      }));
-      await this.reload(this.selectedSetId);
-      this.notify(action === "activate"
-        ? "admin.designToken.setActivated"
-        : action === "deactivate"
-          ? "admin.designToken.setDeactivated"
-          : "admin.designToken.defaultChanged");
-    },
-    preventUnsavedExit(event) {
-      if (!this.isDirty) return;
-      event.preventDefault();
-      event.returnValue = "";
-    },
+    applyImport() { this.tokens = this.importPreview.tokens; this.message = 'CSV를 편집 목록에 반영했습니다. 저장 버튼을 눌러야 실제 적용됩니다.'; this.importPreview = null; this.selectedCategory = ''; },
   },
 };
 </script>
 
 <template>
-  <section class="design-token-manager">
-    <div class="design-token-toolbar">
-      <div>
-        <h2>{{ t("admin.designToken.title") }}</h2>
-        <p>{{ t("admin.designToken.scopeNotice") }}</p>
+  <section class="token-library" aria-labelledby="token-library-title">
+    <header class="token-library-header">
+      <div><h2 id="token-library-title">디자인 토큰</h2><p>하나의 공통 라이브러리를 카테고리별로 관리합니다. Dark 전용입니다.</p></div>
+      <div class="token-library-actions">
+        <button type="button" :disabled="busy || !loaded" @click="downloadCsv">전체 CSV 다운로드</button>
+        <label class="token-library-upload">전체 CSV 업로드<input aria-label="전체 CSV 업로드" type="file" accept=".csv,text/csv" :disabled="busy || !loaded" @change="uploadCsv"></label>
+        <button type="button" class="primary" :disabled="busy || !loaded || !!analysis.errors.length || (!dirty && !initial && versionId === activeVersionId)" @click="save">{{ busy ? '처리 중…' : versionId !== activeVersionId ? '이 버전을 새 버전으로 복원' : '변경사항 저장' }}</button>
       </div>
-      <div class="design-token-actions">
-        <button class="tiny-button" type="button" :disabled="loading" @click="reload()">{{ t("common.action.refresh") }}</button>
-        <button class="tiny-button primary" type="button" @click="showCreate = !showCreate">{{ t("admin.designToken.addSet") }}</button>
+    </header>
+    <p v-if="!loaded && busy" role="status">디자인 토큰을 불러오고 있습니다.</p>
+    <p v-if="initial && loaded" class="token-library-notice">공통 라이브러리의 초기 값입니다. 저장하면 새로운 페이지 생성에 적용됩니다. 이전 결과물은 유지됩니다.</p>
+    <p v-if="dirty" role="status">저장하지 않은 변경사항이 있습니다.</p>
+    <p v-if="error" class="token-library-error" role="alert">{{ error }}</p>
+    <p v-if="message" role="status">{{ message }}</p>
+    <div v-if="loaded" class="token-library-meta">
+      <span>전체 {{ tokens.length }}개 · 적용 가능 {{ activeCount }}개 · 미완성 {{ analysis.warnings.length }}개</span>
+      <label>버전 이력 <select :value="selectedHistory" :disabled="busy" @change="load($event.target.value)"><option v-if="!versions.length" value="">초기 토큰</option><option v-for="v in versions" :key="v.id" :value="v.id">v{{ v.version }}{{ v.id === activeVersionId ? ' · 현재' : '' }}</option></select></label>
+      <button type="button" :disabled="busy" @click="load()">새로고침</button>
+    </div>
+    <template v-if="loaded">
+      <div class="token-library-tabs" role="tablist" aria-label="디자인 토큰 카테고리" @keydown="onTabKey">
+        <button type="button" role="tab" id="token-tab-all" :aria-selected="!selectedCategory" :tabindex="!selectedCategory ? 0 : -1" aria-controls="token-panel" :disabled="busy" @click="selectedCategory = ''">전체 ({{ tokens.length }})</button>
+        <button v-for="(category, i) in categories" :id="`token-tab-${i}`" :key="category" type="button" role="tab" :aria-selected="selectedCategory === category" :tabindex="selectedCategory === category ? 0 : -1" aria-controls="token-panel" :disabled="busy" @click="selectedCategory = category">{{ category }} ({{ categoryCount(category) }})</button>
       </div>
-    </div>
-
-    <div v-if="error" class="outline-item danger-state">{{ error }}</div>
-    <form v-if="showCreate" class="design-token-create" @submit.prevent="createSet">
-      <label class="field"><span>{{ t("admin.designToken.name") }}</span><input v-model.trim="createForm.name" required></label>
-      <label class="field"><span>{{ t("admin.designToken.description") }}</span><input v-model.trim="createForm.description"></label>
-      <button class="tiny-button primary" type="submit" :disabled="saving">{{ t("common.action.create") }}</button>
-    </form>
-
-    <div class="design-token-grid">
-      <aside class="design-token-column design-token-list">
-        <strong>{{ t("admin.designToken.setList") }}</strong>
-        <button
-          v-for="set in tokenSets"
-          :key="set.id"
-          class="design-token-set"
-          :class="{ active: selectedSetId === set.id }"
-          type="button"
-          @click="selectSet(set.id)"
-        >
-          <span>{{ set.name }}</span>
-          <small>
-            {{ set.setKey }} · {{ t(set.status === "inactive" ? "common.state.inactive" : "common.state.active") }}
-            <template v-if="set.isDefault"> · {{ t("admin.designToken.defaultBadge") }}</template>
-          </small>
-          <small>v{{ set.draftVersion?.version || set.activeVersion?.version || set.version }}</small>
-        </button>
-        <div v-if="!loading && !tokenSets.length" class="empty-state">{{ t("admin.designToken.emptySets") }}</div>
-      </aside>
-
-      <main class="design-token-column design-token-editor">
-        <template v-if="selectedSet && detail">
-          <div class="design-token-table-toolbar">
-            <input v-model.trim="searchTerm" type="search" :placeholder="t('admin.designToken.search')">
-            <select v-model="categoryFilter">
-              <option value="">{{ t("admin.designToken.allCategories") }}</option>
-              <option v-for="category in categories" :key="category" :value="category">{{ category }}</option>
-            </select>
-            <label class="app-checkbox design-token-check"><input v-model="changedOnly" type="checkbox"> {{ t("admin.designToken.changedOnly") }}</label>
-            <button class="tiny-button" type="button" :disabled="!isDirty" @click="restoreAll">{{ t("common.action.reset") }}</button>
-            <button class="tiny-button primary" type="button" :disabled="!setIsActive" @click="showAddToken = !showAddToken">+ 토큰 추가</button>
-          </div>
-
-          <form v-if="showAddToken" class="design-token-add-form" @submit.prevent="addToken">
-            <div class="form-grid compact">
-              <label class="field"><span>토큰 키</span><input v-model.trim="tokenForm.tokenKey" required placeholder="--promo-font-size-caption"></label>
-              <label class="field"><span>표시 이름</span><input v-model.trim="tokenForm.label" required placeholder="캡션 글자 크기"></label>
-              <label class="field"><span>분류</span><input v-model.trim="tokenForm.category" placeholder="typography"></label>
-              <label class="field"><span>값 유형</span><select v-model="tokenForm.valueType"><option value="length">length</option><option value="color">color</option><option value="number">number</option><option value="gradient">gradient</option><option value="shadow">shadow</option><option value="font">font</option></select></label>
-              <label class="field"><span>CSS 속성</span><select v-model="tokenForm.cssProperty"><option v-for="property in tokenCssProperties" :key="property" :value="property">{{ property }}</option></select></label>
-              <label class="field"><span>권장 단위</span><select v-model="tokenForm.unit"><option value="rem">rem</option><option value="responsive">clamp / calc</option><option value="vw">vw</option><option value="vh">vh</option><option value="px">px</option><option value="">해당 없음</option></select></label>
-              <label class="field"><span>{{ isDarkOnlySet ? "Dark (Default) 값" : "Light 값" }}</span><input v-model.trim="tokenForm.valueLight" required placeholder="1rem 또는 clamp(...)"></label>
-              <label v-if="!isDarkOnlySet" class="field"><span>Dark 값</span><input v-model.trim="tokenForm.valueDark" :disabled="!tokenForm.themeable" :placeholder="tokenForm.themeable ? '1rem' : 'Light 공통 사용'"></label>
-            </div>
-            <label v-if="!isDarkOnlySet" class="app-checkbox design-token-check"><input v-model="tokenForm.themeable" type="checkbox"> Light/Dark 개별 값 사용</label>
-            <small>글꼴 크기는 `rem` 또는 `clamp(최소, 유동값, 최대)` 사용을 권장합니다. `vh` 단독 사용은 화면 높이에 따라 과도하게 변할 수 있습니다.</small>
-            <span v-if="addTokenError" class="danger-state">{{ addTokenError }}</span>
-            <div class="design-token-actions"><button class="tiny-button" type="button" @click="showAddToken = false; resetTokenForm()">취소</button><button class="tiny-button primary" type="submit">목록에 추가</button></div>
-          </form>
-
-          <div class="design-token-table-wrap">
-            <table class="design-token-table">
-              <thead><tr>
-                <th>{{ t("admin.designToken.category") }}</th>
-                <th>{{ t("admin.designToken.token") }}</th>
-                <th>{{ t("admin.designToken.type") }}</th>
-                <th v-if="!isDarkOnlySet">Light</th>
-                <th>{{ isDarkOnlySet ? "Dark (Default)" : "Dark" }}</th>
-                <th>{{ t("admin.designToken.value") }}</th>
-                <th>{{ t("admin.designToken.status") }}</th>
-              </tr></thead>
-              <tbody>
-                <tr v-for="item in filteredValues" :key="tokenIdentity(item)" class="design-token-value" :class="{ changed: isTokenChanged(item) }">
-                  <td>
-                    {{ item.label || item.semanticRole || item.tokenKey }}
-                    <small>{{ item.categoryLabel || item.category }}</small>
-                  </td>
-                  <td>
-                    <code>{{ item.tokenKey }}</code>
-                    <small v-if="item.cardinality === 'list'">#{{ item.valueIndex }}</small>
-                  </td>
-                  <td>{{ item.valueType }}<small v-if="item.unit">{{ item.unit }}</small></td>
-                  <td v-if="!isDarkOnlySet">
-                    <span class="design-token-value-control">
-                      <input v-model="item.valueLight" type="text" :disabled="!item.editable || !setIsActive" @input="updateResolvedValue(item)">
-                    </span>
-                  </td>
-                  <td>
-                    <span class="design-token-value-control">
-                      <input
-                        v-model="item.valueDark"
-                        type="text"
-                        :disabled="!item.editable || !setIsActive || (!isDarkOnlySet && !item.themeable)"
-                        :placeholder="!isDarkOnlySet && !item.themeable ? 'Light 공통 사용' : ''"
-                        @input="updateResolvedValue(item)"
-                      >
-                    </span>
-                  </td>
-                  <td>
-                    <div class="design-token-actual-preview" :class="`is-${tokenVisualKind(item)}`">
-                      <span class="design-token-sample" :style="tokenVisualStyle(item)">{{ ["font-size", "font-weight"].includes(tokenVisualKind(item)) ? "Aa" : "" }}</span>
-                      <span><code>{{ currentTokenValue(item) }}</code><small>{{ isDarkOnlySet || item.activeTheme === "dark" ? "Dark 기준" : "Light 기준" }}</small></span>
-                    </div>
-                    <div v-if="isFixedFontSize(item)" class="design-token-responsive-warning">
-                      <small>고정 px · 반응형 전환 권장</small>
-                      <button class="text-button" type="button" @click="convertFontSize(item, 'rem')">rem 변환</button>
-                      <button class="text-button" type="button" @click="convertFontSize(item, 'fluid')">유동형 clamp</button>
-                    </div>
-                  </td>
-                  <td>
-                    <span>{{ t(isTokenChanged(item) ? "admin.designToken.changed" : "admin.designToken.normal") }}</span>
-                    <button v-if="isNewToken(item)" class="text-button danger" type="button" @click="removeNewToken(item)">추가 취소</button>
-                    <button v-else-if="isTokenChanged(item)" class="text-button" type="button" @click="restoreToken(item)">{{ t("common.action.reset") }}</button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div v-if="validationErrors.length || importErrors.length" class="design-token-errors">
-            <strong>{{ t("admin.designToken.validationErrors") }}</strong>
-            <span v-for="item in [...validationErrors, ...importErrors]" :key="`${item.tokenKey}-${item.message}`">{{ item.tokenKey }}: {{ item.message }}</span>
-          </div>
-
-          <div class="design-token-actions sticky-actions">
-            <label class="tiny-button file-button">
-              {{ t("admin.designToken.csvImport") }}
-              <input type="file" accept=".csv,text/csv" :disabled="!setIsActive" @change="onCsvFile">
-            </label>
-            <button class="tiny-button" type="button" @click="exportCsv">{{ t("admin.designToken.csvExport") }}</button>
-            <span v-if="csvSourceName" class="source-name">{{ csvSourceName }}</span>
-            <button class="tiny-button" type="button" :disabled="saving || !setIsActive || !isDirty" @click="save">{{ t("common.action.save") }}</button>
-          </div>
-        </template>
-      </main>
-
-      <aside class="design-token-column design-token-inspector">
-        <template v-if="selectedSet && detail">
-          <section class="design-token-section">
-            <h3>{{ t("admin.designToken.preview") }}</h3>
-            <div class="design-token-actions">
-              <button class="tiny-button" :class="{ primary: previewViewport === 'desktop' }" type="button" @click="previewViewport = 'desktop'">{{ t("admin.designToken.desktop") }}</button>
-              <button class="tiny-button" :class="{ primary: previewViewport === 'mobile' }" type="button" @click="previewViewport = 'mobile'">{{ t("admin.designToken.mobile") }}</button>
-            </div>
-            <div class="design-token-preview-stage" :class="`is-${previewViewport}`">
-              <div class="promo-renderer" :style="previewStyle">
-                <section class="rendered-section">
-                  <div class="rendered-section__inner">
-                    <small class="rendered-empty">{{ t("admin.designToken.previewEyebrow") }}</small>
-                    <h4 class="rendered-text rendered-text--title">{{ t("admin.designToken.previewTitle") }}</h4>
-                    <p>{{ t("admin.designToken.previewBody") }}</p>
-                    <a class="rendered-cta">{{ t("admin.designToken.previewButton") }}</a>
-                  </div>
-                </section>
-              </div>
-            </div>
-          </section>
-
-          <details class="design-token-section">
-            <summary>{{ t("admin.designToken.settings") }}</summary>
-            <label class="field"><span>{{ t("admin.designToken.name") }}</span><input v-model="metadata.name"></label>
-            <label class="field"><span>{{ t("admin.designToken.description") }}</span><textarea v-model="metadata.description" rows="2"></textarea></label>
-            <label class="field"><span>{{ t("admin.designToken.changeNote") }}</span><input v-model="metadata.changeNote"></label>
-            <div class="design-token-actions">
-              <button class="tiny-button" type="button" :disabled="saving" @click="saveMetadata">{{ t("common.action.save") }}</button>
-              <button class="tiny-button" type="button" :disabled="!setIsActive" @click="showClone = !showClone">{{ t("common.action.duplicate") }}</button>
-              <button
-                v-if="setIsActive && !selectedSet.isDefault"
-                class="tiny-button"
-                type="button"
-                :disabled="saving"
-                @click="updateSetStatus('set-default')"
-              >{{ t("admin.designToken.setDefault") }}</button>
-              <button
-                v-if="setIsActive"
-                class="tiny-button"
-                type="button"
-                :disabled="saving || selectedSet.isDefault"
-                :title="selectedSet.isDefault ? t('admin.designToken.defaultDeactivateHint') : ''"
-                @click="updateSetStatus('deactivate')"
-              >{{ t("common.action.deactivate") }}</button>
-              <button
-                v-else-if="selectedSet.status === 'inactive'"
-                class="tiny-button"
-                type="button"
-                :disabled="saving"
-                @click="updateSetStatus('activate')"
-              >{{ t("common.action.activate") }}</button>
-              <button
-                v-if="selectedSet.status === 'inactive'"
-                class="tiny-button danger"
-                type="button"
-                :disabled="saving"
-                @click="archiveSet"
-              >{{ t("common.action.delete") }}</button>
-            </div>
-            <form v-if="showClone" class="design-token-clone" @submit.prevent="cloneSet">
-              <label class="field"><span>{{ t("admin.designToken.cloneName") }}</span><input v-model.trim="cloneForm.name" required></label>
-              <label class="field"><span>{{ t("admin.designToken.description") }}</span><input v-model.trim="cloneForm.description"></label>
-              <button class="tiny-button primary" type="submit" :disabled="saving">{{ t("common.action.duplicate") }}</button>
-            </form>
-          </details>
-        </template>
-      </aside>
-    </div>
+      <div class="token-library-toolbar">
+        <input v-model="search" aria-label="토큰 검색" placeholder="토큰명·유형·값 검색" :disabled="busy">
+        <button type="button" :disabled="busy" @click="openAdd">{{ selectedCategory || '카테고리' }} 토큰 추가</button>
+        <form @submit.prevent="addCategory"><input v-model="categoryName" aria-label="새 카테고리 이름" maxlength="80" placeholder="새 카테고리"><button :disabled="busy || !categoryName.trim()">카테고리 추가</button></form>
+      </div>
+      <form v-if="showAdd" class="token-library-add" aria-label="토큰 추가" @submit.prevent="addToken">
+        <label>카테고리<select v-model="form.category"><option v-for="c in categories" :key="c">{{ c }}</option></select></label>
+        <label>토큰 유형<select v-model="form.type"><option v-for="t in types" :key="t">{{ t }}</option></select></label>
+        <label>토큰명<input v-model.trim="form.name" required placeholder="--spacing-20"></label>
+        <label>값<textarea v-model="form.value" placeholder="직접 값 또는 Typography JSON"></textarea></label>
+        <label>참조 토큰<input v-model.trim="form.reference" placeholder="--unit-20"></label>
+        <button :disabled="busy">목록에 추가</button><button type="button" @click="showAdd = false">취소</button>
+      </form>
+      <div v-if="importPreview" class="token-library-import" role="region" aria-label="CSV 가져오기 미리보기">
+        <h3>CSV 가져오기 확인</h3><p>{{ importPreview.fileName }} · {{ importPreview.tokens.length }}개 · 미완성 {{ importPreview.warnings.length }}개</p>
+        <p>적용하면 현재 편집 목록 전체를 교체합니다. 미완성 항목은 보관되지만 실제 적용에서 제외됩니다.</p>
+        <button type="button" @click="applyImport">편집 목록에 반영</button><button type="button" @click="importPreview = null">취소</button>
+      </div>
+      <div v-if="analysis.errors.length" class="token-library-error" role="alert"><strong>검증 오류 {{ analysis.errors.length }}개</strong><p v-for="(e, i) in analysis.errors.slice(0, 20)" :key="i">{{ e.token }}: {{ e.message }}</p></div>
+      <div id="token-panel" role="tabpanel" :aria-labelledby="selectedCategory ? `token-tab-${categories.indexOf(selectedCategory)}` : 'token-tab-all'" class="token-library-table">
+        <table><thead><tr><th>카테고리</th><th>토큰 유형</th><th>토큰명</th><th>값</th><th>참조 토큰</th><th>적용</th><th><span class="token-library-sr">작업</span></th></tr></thead>
+          <tbody><tr v-for="(token, index) in filteredTokens" :key="tokens.indexOf(token)">
+            <td>{{ token.category }}</td><td><select v-model="token.type" :aria-label="`${token.name} 유형`" :disabled="busy"><option v-for="t in types" :key="t">{{ t }}</option></select></td>
+            <td><code>{{ token.name }}</code></td>
+            <td><textarea v-model="token.value" :aria-label="`${token.name} 값`" :disabled="busy" rows="2" placeholder="직접 값"></textarea></td>
+            <td><input v-model.trim="token.reference" :aria-label="`${token.name} 참조`" :disabled="busy" placeholder="참조 토큰명"></td>
+            <td>{{ states[token.name] === 'active' ? '가능' : '미완성' }}</td><td><button type="button" :aria-label="`${token.name} 제거`" :disabled="busy" @click="removeToken(token)">제거</button></td>
+          </tr><tr v-if="!filteredTokens.length"><td colspan="7">이 카테고리에 토큰을 추가하세요.</td></tr></tbody>
+        </table>
+      </div>
+    </template>
   </section>
 </template>
 
 <style scoped>
-.design-token-manager { display: grid; gap: var(--app-space-4); min-height: 0; }
-.design-token-toolbar, .design-token-actions { display: flex; align-items: center; justify-content: space-between; gap: var(--app-space-3); flex-wrap: wrap; }
-.design-token-toolbar p { margin: var(--app-space-1) 0 0; color: var(--app-sub); }
-.design-token-create { display: grid; grid-template-columns: minmax(12rem, 1fr) minmax(18rem, 2fr) auto; gap: var(--app-space-3); align-items: end; }
-.design-token-grid { display: grid; grid-template-columns: minmax(13rem, .65fr) minmax(34rem, 2fr) minmax(19rem, .9fr); gap: var(--app-panel-gap); min-height: 42rem; }
-.design-token-column { min-width: 0; overflow: auto; border: var(--app-border-width) solid var(--app-line); border-radius: var(--app-radius); padding: var(--app-space-3); background: var(--app-panel); }
-.design-token-list, .design-token-editor, .design-token-inspector { display: flex; flex-direction: column; gap: var(--app-space-3); }
-.design-token-set { display: grid; gap: var(--app-space-1); padding: var(--app-space-3); text-align: left; border: var(--app-border-width) solid var(--app-line); border-radius: var(--app-radius-small); background: transparent; color: var(--app-ink); }
-.design-token-set.active { border-color: var(--app-accent); background: var(--app-accent-soft); }
-.design-token-set small, .design-token-value small { display: block; color: var(--app-muted); }
-.design-token-table-toolbar { display: grid; grid-template-columns: minmax(12rem, 1fr) minmax(10rem, auto) repeat(3, auto); gap: var(--app-space-2); align-items: center; }
-.design-token-add-form { display: grid; gap: var(--app-space-3); padding: var(--app-space-3); border: var(--app-border-width) solid var(--app-accent); border-radius: var(--app-radius-small); background: var(--app-accent-soft); }
-.design-token-add-form > small { color: var(--app-muted); }
-.design-token-check { display: inline-flex; gap: var(--app-space-2); align-items: center; white-space: nowrap; }
-.design-token-table-wrap { overflow: auto; border: var(--app-border-width) solid var(--app-line); border-radius: var(--app-radius-small); }
-.design-token-table { width: 100%; border-collapse: collapse; }
-.design-token-table th, .design-token-table td { padding: var(--app-space-2); border: var(--app-border-width) solid var(--app-line); text-align: left; vertical-align: middle; }
-.design-token-table th { position: sticky; top: 0; z-index: 1; background: var(--app-panel-subtle, var(--app-panel)); }
-.design-token-value.changed { background: var(--app-warning-soft, var(--app-accent-soft)); }
-.design-token-value-control { display: block; min-width: 10rem; }
-.design-token-value-control input { width: 100%; }
-.design-token-value-control input[type="color"] { width: 2.75rem; padding: 0; }
-.design-token-actual-preview { display: flex; align-items: center; gap: var(--app-space-2); min-width: 10rem; }
-.design-token-sample { display: inline-grid; place-items: center; flex: 0 0 auto; min-width: 2.25rem; min-height: 2.25rem; max-width: 8rem; max-height: 4rem; overflow: hidden; border: var(--app-border-width) solid var(--app-line); border-radius: var(--app-radius-small); background: var(--app-panel); color: var(--app-ink); }
-.design-token-actual-preview.is-color .design-token-sample, .design-token-actual-preview.is-gradient .design-token-sample { width: 3rem; }
-.design-token-actual-preview.is-radius .design-token-sample { width: 3rem; background: var(--app-accent); }
-.design-token-actual-preview.is-shadow .design-token-sample { width: 3rem; margin: .25rem; }
-.design-token-actual-preview.is-length .design-token-sample { min-width: .25rem; background: var(--app-accent); }
-.design-token-responsive-warning { margin-top: var(--app-space-1); padding: var(--app-space-1); border-radius: var(--app-radius-small); background: var(--app-warning-soft, var(--app-accent-soft)); color: var(--app-warning-ink, var(--app-muted)); }
-.design-token-responsive-warning .text-button { font-size: var(--app-font-size-small); }
-.text-button { margin-left: var(--app-space-1); border: 0; background: transparent; color: var(--app-accent); text-decoration: underline; }
-.sticky-actions { position: sticky; z-index: 2; bottom: 0; padding: var(--app-space-2); background: var(--app-panel); border-top: var(--app-border-width) solid var(--app-line); }
-.file-button { position: relative; overflow: hidden; cursor: pointer; }
-.file-button input { position: absolute; inline-size: 1px; block-size: 1px; opacity: 0; }
-.source-name { color: var(--app-muted); font-size: var(--app-font-size-small); }
-.design-token-errors { display: grid; gap: var(--app-space-1); color: var(--app-danger); }
-.design-token-section { display: grid; gap: var(--app-space-2); padding: var(--app-space-3); border: var(--app-border-width) solid var(--app-line); border-radius: var(--app-radius-small); }
-.design-token-section h3, .design-token-section summary { margin: 0; font-weight: var(--app-font-weight-strong); }
-.design-token-preview-stage { width: 100%; overflow: auto; }
-.design-token-preview-stage.is-mobile .promo-renderer { width: min(23.4375rem, 100%); margin-inline: auto; }
-.promo-renderer { min-height: 20rem; }
-.rendered-section__inner { padding: var(--app-space-4); }
-.rendered-text--title { margin-block: var(--app-space-2); font-size: var(--promo-title-size); color: var(--promo-ink); }
-.template-choice { display: grid; grid-template-columns: auto 1fr; gap: var(--app-space-2); align-items: start; }
-.template-choice > small { grid-column: 2; color: var(--app-warning-ink, var(--app-muted)); }
-.template-choice.disabled { opacity: .64; }
-@media (max-width: 1439px) {
-  .design-token-grid { grid-template-columns: minmax(12rem, .55fr) minmax(30rem, 2fr); }
-  .design-token-inspector { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(18rem, 1fr) minmax(18rem, 1fr); align-items: start; }
-}
-@media (max-width: 1023px) {
-  .design-token-grid, .design-token-create, .design-token-table-toolbar { grid-template-columns: 1fr; }
-  .design-token-column { max-height: none; }
-  .design-token-inspector { display: flex; grid-column: auto; }
-}
+.token-library { display: grid; gap: 16px; min-width: 0; color: var(--app-ink, #182033); }
+.token-library-header,.token-library-meta,.token-library-actions,.token-library-toolbar { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.token-library-header { justify-content:space-between; }
+.token-library-header h2 { margin:0; }.token-library-header p { color:var(--app-muted,#596579); }
+.token-library button,.token-library-upload { border:1px solid var(--app-line,#d4dbe7); background:var(--app-panel,#fff); color:inherit; border-radius:6px; padding:9px 12px; cursor:pointer; }
+.token-library button:disabled { opacity:.5;cursor:default; }.token-library .primary { background:var(--app-accent,#365cdd);color:white; }
+.token-library input,.token-library select,.token-library textarea { box-sizing:border-box; max-width:100%; border:1px solid var(--app-line,#d4dbe7); border-radius:5px; background:var(--app-panel,#fff); color:inherit;padding:8px; }
+.token-library textarea { width:100%; min-width:220px; resize:vertical; font:12px/1.5 monospace; }
+.token-library-upload input { display:block;max-width:220px; margin-top:4px; }
+.token-library-tabs { display:flex;gap:6px;overflow:auto;padding-bottom:6px; }.token-library-tabs button { flex-shrink:0; }
+.token-library-tabs [aria-selected=true] { background:var(--app-accent,#365cdd);color:white; }
+.token-library-toolbar form { display:flex; gap:8px; }.token-library-add { display:flex;flex-wrap:wrap;gap:12px;padding:16px;border:1px solid var(--app-line,#d4dbe7); }.token-library-add label { display:grid;gap:5px; }
+.token-library-table { overflow:auto; max-height:65vh; }.token-library-table table { width:100%;border-collapse:collapse; }.token-library th,.token-library td { border-bottom:1px solid var(--app-line,#d4dbe7);padding:10px;text-align:left;vertical-align:top; }.token-library th { position:sticky;top:0;background:var(--app-panel,#fff); }.token-library code { font-size:12px;word-break:break-all;min-width:220px;display:block; }
+.token-library-error { white-space:pre-wrap;background:#fff0f0;color:#9f2020;padding:12px; }.token-library-notice,.token-library-import { padding:14px;border:1px solid var(--app-line,#d4dbe7);background:var(--app-bg,#f5f7fc); }.token-library-sr { position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%); }
 </style>

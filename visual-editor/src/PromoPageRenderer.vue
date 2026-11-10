@@ -773,7 +773,7 @@ function normalizedFadeMode(style) {
 
 function managedTokenReference(tokenKey) {
   const normalized = String(tokenKey || "").trim();
-  return /^--(?:promo|app)-[a-z0-9-]+$/.test(normalized) ? `var(${normalized})` : "";
+  return /^--[a-z][a-z0-9-]*$/.test(normalized) ? `var(${normalized})` : "";
 }
 
 function managedTokenValue(tokenKey) {

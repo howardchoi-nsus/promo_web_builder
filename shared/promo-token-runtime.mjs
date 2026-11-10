@@ -1,9 +1,10 @@
-const MANAGED_TOKEN_KEY = /^--(?:promo|app)-[a-z0-9-]+$/;
+const MANAGED_TOKEN_KEY = /^--[a-z][a-z0-9-]*$/;
 
 export function normalizePromoTokenValues(input) {
   if (Array.isArray(input)) {
     const grouped = new Map();
     input.forEach((entry) => {
+      if (entry?.metadata?.libraryToken && (entry.metadata.state !== 'active' || entry.metadata.libraryToken.type === 'typography' || entry.valueType === 'typography')) return;
       const key = String(entry?.tokenKey || entry?.token_key || "").trim();
       const value = String(entry?.value ?? entry?.tokenValue ?? entry?.token_value ?? "").trim();
       if (!MANAGED_TOKEN_KEY.test(key) || !value) return;
@@ -28,14 +29,14 @@ export function normalizePromoTokenValues(input) {
 export function createPromoTokenRuntimeStyle(input, fallbacks = {}) {
   const tokens = normalizePromoTokenValues(input);
   const first = (...values) => values.map((value) => String(value || "").trim()).find(Boolean) || "";
-  const background = first(tokens["--promo-bg"], tokens["--app-bg"], tokens["--promo-surface"], tokens["--app-surface"], fallbacks.background);
-  const text = first(tokens["--promo-text"], tokens["--app-ink"], tokens["--app-text"], fallbacks.text);
+  const background = first(tokens["--promo-bg"], tokens["--app-bg"], tokens["--promo-surface"], tokens["--app-surface"], tokens['--color-bg-dark-800'], fallbacks.background);
+  const text = first(tokens["--promo-text"], tokens["--app-ink"], tokens["--app-text"], tokens['--button-label-default'], fallbacks.text);
   const muted = first(tokens["--promo-muted"], tokens["--app-muted"], tokens["--app-ink-soft"], fallbacks.muted);
-  const accent = first(tokens["--promo-accent"], tokens["--app-accent"], fallbacks.accent, fallbacks.cta);
+  const accent = first(tokens["--promo-accent"], tokens["--app-accent"], tokens['--color-brand-500'], fallbacks.accent, fallbacks.cta);
   const ctaInk = first(tokens["--app-on-accent"], fallbacks.ctaInk, text);
-  const radius = first(tokens["--promo-radius"], tokens["--app-radius"], fallbacks.radius);
-  const shadow = first(tokens["--promo-shadow"], tokens["--app-shadow"], fallbacks.shadow);
-  const font = first(tokens["--app-font-body"], tokens["--app-font-family"], tokens["--promo-font"], fallbacks.font);
+  const radius = first(tokens["--promo-radius"], tokens["--app-radius"], tokens['--border-radius-md'], fallbacks.radius);
+  const shadow = first(tokens["--promo-shadow"], tokens["--app-shadow"], tokens['--shadow-elevation-1'], fallbacks.shadow);
+  const font = first(tokens["--app-font-body"], tokens["--app-font-family"], tokens["--promo-font"], tokens['--typography-body-lg-typeface'], tokens['--typeface-roboto'], fallbacks.font);
   const style = { ...tokens };
   const set = (key, value) => { if (value) style[key] = value; };
 

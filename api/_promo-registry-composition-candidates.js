@@ -339,7 +339,7 @@ async function fetchTokenCandidates(sql, shellConfig) {
   const rows = await fetchTokenSets(sql, { activeOnly: true });
   const candidates = [];
   for (const row of rows.slice(0, 24)) {
-    if (!row.versionId || (allowedIds.size && !allowedIds.has(String(row.versionId).toLowerCase()))) continue;
+    if (!row.versionId || (row.setKey !== "design-system" && allowedIds.size && !allowedIds.has(String(row.versionId).toLowerCase()))) continue;
     const version = await fetchTokenVersion(sql, row.versionId);
     if (!version) continue;
     candidates.push({
