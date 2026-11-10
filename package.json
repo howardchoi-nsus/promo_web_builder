@@ -52,7 +52,8 @@
     "design-md:import": "node scripts/import-design-md-docs.js --apply",
     "build:token-policy": "node scripts/build-token-usage-policy.mjs",
     "test:page-schema": "node scripts/test-page-schema.mjs && node scripts/test-page-schema-api.mjs",
-    "test:page-schema-browser": "node scripts/test-page-schema-browser.mjs && node scripts/test-page-schema-builder-browser.mjs"
+    "test:page-schema-browser": "node scripts/test-page-schema-browser.mjs && node scripts/test-page-schema-builder-browser.mjs",
+    "test:output-isolation-ssr": "pnpm run build:nuxt-runtime && node scripts/test-output-isolation-ssr.mjs"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.3.1",

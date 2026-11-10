@@ -1,9 +1,19 @@
 <script setup>
 import {computed} from 'vue';
+import {layoutTokenPolicy} from '../../../shared/layout-token-policy.mjs';
+import {nodes} from '../../../shared/page-schema/runtime.mjs';
 import {TOKEN_USAGE_RULES,usageToken} from '../../../shared/token-usage-policy.mjs';
 const props=defineProps({snapshot:{type:Object,required:true}});
 const library=computed(()=>props.snapshot.content?.runtimeTheme?.designTokens);
-const rows=computed(()=>TOKEN_USAGE_RULES.map(rule=>{const token=usageToken(library.value?.usagePolicy,rule.key,library.value?.values||{});return {...rule,token,value:token?library.value.values[token]:'',status:token?'연결됨':rule.required?'필수 미연결':'미연결 · 생략'};}));
+const roleRows=computed(()=>TOKEN_USAGE_RULES.map(rule=>{const token=usageToken(library.value?.usagePolicy,rule.key,library.value?.values||{});return {...rule,token,value:token?library.value.values[token]:'',status:token?'연결됨':rule.required?'필수 미연결':'미연결 · 생략'};}));
+const rows=computed(()=>{
+ const values=library.value?.values||{},catalog=library.value?.catalog||[],policy=layoutTokenPolicy({tokenValues:values,tokenCatalog:catalog});
+ const gridRows=Object.entries(policy.profiles).flatMap(([view,bindings])=>Object.entries(bindings).map(([property,token])=>({key:`grid.${view}.${property}`,label:`그리드 · ${view} · ${property}`,token,value:values[token]||'',status:values[token]?'등록 기준':'필수 미연결'})));
+ const breakpointRows=Object.entries(policy.breakpoints).map(([view,token])=>({key:`breakpoint.${view}`,label:`반응형 · ${view}`,token,value:values[token]||'',status:values[token]?'등록 기준':'필수 미연결'}));
+ const selected=new Set();for(const node of nodes(props.snapshot.content?.pageSchema))for(const view of Object.values(node.styles.spacing||{}))for(const token of Object.values(view||{}))if(token)selected.add(token);
+ const spacingRows=[...selected].map(token=>({key:token,label:'PageSchema 간격 선택',token,value:values[token]||'',status:policy.spacing.includes(token)?'명시 선택':'미등록'}));
+ return [...roleRows.value,...gridRows,...breakpointRows,...spacingRows];
+});
 </script>
 <template>
  <details v-if="library?.usagePolicy" class="token-usage-report">

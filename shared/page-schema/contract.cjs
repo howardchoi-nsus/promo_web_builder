@@ -1,5 +1,6 @@
 const Ajv = require('ajv/dist/2020').default;
 const baseSchema = require('./page-schema.schema.json');
+const {layoutTokenPolicy}=require('../layout-token-policy.cjs');
 const {TOKEN_USAGE_RULES,validateTokenUsagePolicy} = require('../token-usage-policy.cjs');
 const LIMITS=Object.freeze({nodes:200,depth:8,bytes:262144,mediaRequests:8,text:60000});
 const TYPES=Object.freeze(['container','grid','stack','text','image','button','card','input','divider','icon','video']);
@@ -23,6 +24,9 @@ function walk(root,visitor){const pending=[{node:root,parent:null,depth:1,path:'
 function nodeTargets(node){if(node.type==='container')return node.role==='group'?['layout']:['page','layout'];return {grid:['layout'],stack:['layout'],card:['card','layout'],text:['text'],button:['button','layout'],input:['input','layout'],image:['image','layout'],divider:['divider','layout'],icon:['icon','layout'],video:['video','layout']}[node.type]||[];}
 function runtimeSchema(context={}){
  const schema=clone(baseSchema);delete schema.$schema;delete schema.$id;
+ schema.$defs.responsiveStyles.required.push("spacing");
+ const spacing=layoutTokenPolicy(context).spacing;
+ schema.$defs.spacingToken={type:"string",enum:spacing.length?spacing:["__unavailable__"]};
  const approvedRoles=TOKEN_USAGE_RULES.filter(rule=>context.usagePolicy?.bindings?.[rule.key]&&context.tokenValues?.[context.usagePolicy.bindings[rule.key]]).map(rule=>rule.key);
  for(const [name,keys] of Object.entries({policyRole:approvedRoles,sourceId:Object.keys(context.contentSources||{}),assetId:Object.keys(context.assets||{}),actionId:Object.keys(context.actions||{}),formFieldId:Object.keys(context.formFields||{}),iconId:Object.keys(context.icons||{})}))schema.$defs[name]={type:'string',enum:keys.length?keys:['__unavailable__']};
  return schema;
@@ -53,6 +57,8 @@ function validate(page,context={},options={}){
  if(!validateShape(page))return {ok:false,errors:validateShape.errors.slice(0,40).map(e=>error('PAGE_SCHEMA_INVALID',e.instancePath,e.message)),warnings};
  const tokenValidation=validateTokenUsagePolicy(context.usagePolicy,context.tokenCatalog||[],{activation:true});
  if(!tokenValidation.ok)errors.push(...tokenValidation.errors.map(e=>error(e.code,e.key,e.message)));
+ const layoutPolicy=layoutTokenPolicy(context);errors.push(...layoutPolicy.errors);
+ for(const [role,token] of Object.entries(context.usagePolicy?.bindings||{}))if((typeof token==='string'&&token.startsWith("--app-")))errors.push(error("BUILDER_TOKEN_FORBIDDEN",role,"Builder tokens cannot style output"));
  const seen=new Set(),usedSources=new Map(),headings=[],requests=new Map(),imageRequests=new Map(),parentById=new Map();
  for(const [key,value] of Object.entries(context.tokenValues||{}))if(!/^--[a-zA-Z][a-zA-Z0-9-]*$/.test(key)||typeof value!=="string"||/[;{}<>]|url\s*\(|expression\s*\(|@import/i.test(value))errors.push(error("TOKEN_VALUE_INVALID",key,"Unsafe registered token value"));
  for(const request of page.mediaRequests){if(requests.has(request.id))errors.push(error('DUPLICATE_MEDIA_REQUEST',request.id,'Duplicate media request'));requests.set(request.id,request);}
@@ -68,6 +74,10 @@ function validate(page,context={},options={}){
   for(const view of ['desktop','tablet','mobile']){
    const layout=node.layout[view];if(layout&&node.type==='grid'&&!layout.columns?.length&&view==='desktop')add('GRID_COLUMNS_REQUIRED','Grid must declare desktop column ratios');
    if(layout&&parent?.type==='grid'&&view==='desktop'&&layout.columnSpan>parent.layout.desktop.columns.length)add('GRID_SPAN_INVALID','Span exceeds parent columns');
+   const profile=layoutPolicy.profiles[view],maxColumns=view==='desktop'?Math.min(Number(context.tokenValues?.[profile.columns]),Number(context.tokenValues?.[layoutPolicy.profiles.desktopWide.columns])):Number(context.tokenValues?.[profile.columns]);
+   if(node.type==='grid'&&layout?.columns?.length>maxColumns)add('GRID_TOKEN_BUDGET_EXCEEDED',`Grid exceeds registered ${view} columns`);
+   const spacing=node.styles.spacing?.[view==='desktop'?'base':view];
+   for(const [property,token] of Object.entries(spacing||{}))if(token!==null&&(!layoutPolicy.spacing.includes(token)||!(context.tokenCatalog||[]).find(t=>(t.name||t.tokenKey)===token)?.cssProperties?.includes(property)))add('SPACING_TOKEN_INVALID',`Unapproved ${property} token: ${token}`);
    const properties=new Set();for(const roleKey of node.styles[view==='desktop'?'base':view]||[]){
     const rule=TOKEN_USAGE_RULES.find(rule=>rule.key===roleKey);const token=context.usagePolicy?.bindings?.[roleKey];
     if(!rule||!token||!Object.hasOwn(context.tokenValues||{},token)||!nodeTargets(node).includes(rule.target)){add('TOKEN_USAGE_POLICY_MISMATCH',`Policy role cannot target this node: ${roleKey}`);continue;}
@@ -96,6 +106,7 @@ function validate(page,context={},options={}){
    if(node.assetId!==null&&(!context.assets?.[node.assetId]||context.assets[node.assetId].kind!=='image'||!safeUrl(context.assets[node.assetId].url)))add('ASSET_REFERENCE_INVALID','Unknown image asset');
    if(node.requestId!==null){imageRequests.set(node.requestId,(imageRequests.get(node.requestId)||0)+1);const request=requests.get(node.requestId);if(!request||request.nodeId!==node.id)add('ASSET_REFERENCE_INVALID','Image request target mismatch');warnings.push(error('IMAGE_GENERATION_PENDING',path,'Image generation is pending',node.id));if(options.final)add('IMAGE_GENERATION_PENDING','Resolve images before export');}
   }
+  if(node.type==='divider'&&(!context.usagePolicy?.bindings?.['divider.color']||!context.usagePolicy?.bindings?.['divider.width'])){warnings.push(error('STYLE_TOKEN_REQUIRED',path,'Divider color and width require registered policy bindings',node.id));if(options.final)add('STYLE_TOKEN_REQUIRED','Resolve divider policy bindings before export');}
   if(node.type==='icon'&&(!Object.hasOwn(context.icons||{},node.iconId)||(!node.decorative&&!node.label.trim())))add('ACCESSIBILITY_INVALID','Icon must be approved and labelled or decorative');
   if(node.type==='input'){
    if(!node.fieldId){warnings.push(error('FORM_BINDING_REQUIRED',path,'Input is preview-only',node.id));if(options.final)add('FORM_BINDING_REQUIRED','Register form fields before export');}

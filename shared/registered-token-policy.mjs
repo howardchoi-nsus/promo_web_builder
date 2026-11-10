@@ -8,10 +8,10 @@ const VISUAL_PROPERTIES = {
   fontStyle:'font-style', textDecoration:'text-decoration', fontFamily:'font-family', fontSize:'font-size', fontWeight:'font-weight', lineHeight:'line-height',
   letterSpacing:'letter-spacing', borderRadius:'border-radius', boxShadow:'box-shadow',
   textBackground:'background-color', textGradient:'background-image', textStyle:'typography',
-  paddingPx:'padding', layoutGapPx:'gap', mobileLayoutGapPx:'gap', layoutPaddingBlockPx:'padding', mobileLayoutPaddingBlockPx:'padding',
+  marginTopPx:'margin',marginBottomPx:'margin',paddingPx:'padding', layoutGapPx:'gap', mobileLayoutGapPx:'gap', layoutPaddingBlockPx:'padding', mobileLayoutPaddingBlockPx:'padding',
 };
 const normalize = value => String(value ?? '').trim().toLowerCase().replace(/\s+/g,' ');
-const PX_PROPERTIES = new Set(['fontSize','letterSpacing','paddingPx','layoutGapPx','mobileLayoutGapPx','layoutPaddingBlockPx','mobileLayoutPaddingBlockPx']);
+const PX_PROPERTIES = new Set(['marginTopPx','marginBottomPx','fontSize','letterSpacing','paddingPx','layoutGapPx','mobileLayoutGapPx','layoutPaddingBlockPx','mobileLayoutPaddingBlockPx']);
 export function enforceRegisteredDesignTokens(spec, tokenValues = {}, catalog = [], usagePolicy = null, sections = []) {
   const values = Object.fromEntries(Object.entries(tokenValues).filter(([key,value]) => /^--[a-z][a-z0-9-]*$/.test(key) && typeof value === 'string' && value.trim()));
   const definitions = new Map(catalog.map(token => [token.tokenKey,token]));

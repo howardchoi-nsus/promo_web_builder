@@ -1,4 +1,5 @@
 <script setup>
+import {layoutTokenPolicy} from "../../shared/layout-token-policy.mjs";
 import { enforceRegisteredDesignTokens } from "../../shared/registered-token-policy.mjs";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import { createPromoTokenRuntimeStyle, normalizePromoTokenValues } from "../../shared/promo-token-runtime.mjs";
@@ -139,7 +140,7 @@ onBeforeUnmount(() => {
 const mobileLayoutActive = computed(() => (
   props.viewportOverride
     ? props.viewportOverride === "mobile"
-    : viewportWidth.value <= Number(effectiveDesignSpec.value?.responsive?.mobileBreakpoint || 720)
+    : viewportWidth.value < Number.parseFloat(managedTokens.value["--breakpoint-tablet-min"])
 ));
 
 const orderedSections = computed(() => {
@@ -331,7 +332,8 @@ function sectionUsesFlowLayout(section) {
 function sectionLayoutColumns(section) {
   const style = sectionStyle(section);
   const configured = mobileLayoutActive.value ? style.mobileLayoutColumns : style.layoutColumns;
-  const maximum = mobileLayoutActive.value ? 2 : 6;
+  const profile=props.viewportOverride||(mobileLayoutActive.value?'mobile':viewportWidth.value<parseFloat(managedTokens.value['--breakpoint-desktop-min'])?'tablet':'desktop');
+  const maximum = !props.editable&&registeredTokensOnly.value ? Number(managedTokens.value[`--grid-${{desktop:'desktop-1440',tablet:'tablet-768',mobile:'mobile-375'}[profile]}-columns`]) : mobileLayoutActive.value ? 2 : 6;
   return Math.max(1, Math.min(maximum, Number(configured) || 1));
 }
 
@@ -868,6 +870,13 @@ function inlineSectionStyle(section) {
 
 function inlineCanvasStyle(section) {
   const height = resolvedSectionHeight(section);
+  if(!props.editable && registeredTokensOnly.value){
+    const policy=layoutTokenPolicy({tokenValues:managedTokens.value,tokenCatalog:props.content?.runtimeTheme?.designTokens?.catalog||[]});
+    if(!policy.ok)return {};
+    const view=props.viewportOverride|| (viewportWidth.value<parseFloat(managedTokens.value['--breakpoint-tablet-min'])?'mobile':viewportWidth.value<parseFloat(managedTokens.value['--breakpoint-desktop-min'])?'tablet':'desktop');
+    const profile=policy.profiles[view],usage=props.content.runtimeTheme.designTokens.usagePolicy;
+    return sectionUsesFlowLayout(section)?{display:'grid',height:'auto',gridTemplateColumns:`repeat(${Math.min(sectionLayoutColumns(section),Number(managedTokens.value[profile.columns]))},minmax(0,1fr))`,gap:`var(${usage.bindings['layout.gap']||profile.gutter})`,paddingBlock:usage.bindings['layout.padding']?`var(${usage.bindings['layout.padding']})`:undefined}:{};
+  }
   if (sectionUsesFlowLayout(section)) {
     const style = sectionStyle(section);
     const gap = mobileLayoutActive.value ? style.mobileLayoutGapPx : style.layoutGapPx;
@@ -2103,10 +2112,12 @@ defineExpose({ inspectLayoutCollisions, inspectLayoutQuality });
       'is-outline-mode': editable && outlineMode,
     }"
     :style="{
+      ...(editable ? {
       '--promo-font': effectiveDesignSpec.theme.fontFamilyToken ? `var(${effectiveDesignSpec.theme.fontFamilyToken})` : effectiveDesignSpec.theme.fontFamily,
       '--promo-width': `${Math.min(1280, Number(effectiveDesignSpec.responsive.contentMaxWidth || 1280))}px`,
       '--promo-min-width': `${effectiveDesignSpec.responsive.contentMinWidth || 0}px`,
-      ...managedTokenStyle,
+      } : {}),
+      ...Object.fromEntries(Object.entries(managedTokenStyle).filter(([key])=>editable||!key.startsWith('--app-'))),
     }"
   >
     <div v-if="editable && showGuides" class="content-width-guide" aria-hidden="true"></div>
@@ -2222,8 +2233,9 @@ defineExpose({ inspectLayoutCollisions, inspectLayoutQuality });
               :value="valueFor(section, item)"
               :viewport="viewportOverride"
               :viewport-width="viewportWidth"
-              :mobile-breakpoint="Number(effectiveDesignSpec.responsive?.mobileBreakpoint || 720)"
-              :tablet-breakpoint="Number(effectiveDesignSpec.responsive?.tabletBreakpoint || 1024)"
+              :mobile-breakpoint="registeredTokensOnly ? parseFloat(managedTokens['--breakpoint-tablet-min']) : Number(effectiveDesignSpec.responsive?.mobileBreakpoint || 720)"
+              :tablet-breakpoint="registeredTokensOnly ? parseFloat(managedTokens['--breakpoint-desktop-min']) : 1024"
+
               :editable="editable"
               @select-field="selectRenderSpecField(section, item, $event)"
             />

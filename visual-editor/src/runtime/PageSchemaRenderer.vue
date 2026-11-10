@@ -9,6 +9,7 @@ export default defineComponent({
   function inspectLayoutQuality(){
    const diagnostics=[];
    for(const node of nodes(props.page)){
+    if(node.type==='divider'&&(!props.context.usagePolicy?.bindings?.['divider.color']||!props.context.usagePolicy?.bindings?.['divider.width']))diagnostics.push({code:'STYLE_TOKEN_REQUIRED',level:'blocking',path:node.id,message:'구분선 색상과 두께를 등록 토큰 정책에 연결해 주세요.'});
     if(node.type==='image'&&(!node.assetId||!safeUrl(props.context.assets?.[node.assetId]?.url)))diagnostics.push({code:'IMAGE_GENERATION_PENDING',level:'blocking',path:node.id,message:'이미지 에셋을 연결해 주세요.'});
     if(node.type==='video'&&!safeUrl(props.context.assets?.[node.assetId]?.url))diagnostics.push({code:'VIDEO_ASSET_REQUIRED',level:'blocking',path:node.id,message:'동영상을 연결해 주세요.'});
     if(node.type==='button'&&!props.context.actions?.[node.actionId])diagnostics.push({code:'ACTION_BINDING_REQUIRED',level:'blocking',path:node.id,message:'버튼에 허용된 이동 경로가 필요합니다.'});

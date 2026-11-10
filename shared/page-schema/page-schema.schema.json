@@ -319,6 +319,9 @@
               "type": "null"
             }
           ]
+        },
+        "spacing": {
+          "$ref": "#/$defs/spacingStyles"
         }
       },
       "required": [
@@ -1062,6 +1065,85 @@
         "intent",
         "aspectRatio",
         "sourceIds"
+      ]
+    },
+    "spacingToken": {
+      "type": "string",
+      "pattern": "^--spacing-[a-z0-9-]+$"
+    },
+    "spacingValues": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "gap": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/spacingToken"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "padding": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/spacingToken"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "margin": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/spacingToken"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "gap",
+        "padding",
+        "margin"
+      ]
+    },
+    "spacingStyles": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "base": {
+          "$ref": "#/$defs/spacingValues"
+        },
+        "tablet": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/spacingValues"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "mobile": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/spacingValues"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "base",
+        "tablet",
+        "mobile"
       ]
     }
   }

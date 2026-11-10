@@ -72,6 +72,16 @@ function normalizePassedQualityGate(candidate, {
 }
 
 function assertPassedQualityGate(snapshot, documentRevision) {
+  const library=snapshot?.content?.runtimeTheme?.designTokens||snapshot?.content?.formTemplate?.designTokens||{};
+  const context=snapshot?.content?.pageContext||{tokenValues:library.values||{},tokenCatalog:library.catalog||[],usagePolicy:library.usagePolicy};
+  require('../shared/layout-token-policy.cjs').assertLayoutTokens(context);
+  const policy=require('../shared/token-usage-policy.cjs').validateTokenUsagePolicy(context.usagePolicy,context.tokenCatalog,{activation:true});
+  const forbidden=Object.values(context.usagePolicy?.bindings||{}).some(token=>(typeof token==='string'&&token.startsWith('--app-')));
+  if(!policy.ok||forbidden)throw Object.assign(new Error('등록된 출력 토큰 정책이 필요합니다.'),{code:'OUTPUT_TOKEN_POLICY_REQUIRED',statusCode:422,errors:policy.errors});
+  if(!snapshot?.content?.pageSchema){
+    const validation=require('../shared/registered-token-policy.cjs').enforceRegisteredDesignTokens(snapshot.designSpec,context.tokenValues,context.tokenCatalog,context.usagePolicy,snapshot.content?.sectionSnapshot||[]);
+    if(validation.errors.length)throw Object.assign(new Error('등록되지 않은 출력 스타일이 포함되어 있습니다.'),{code:'OUTPUT_STYLE_POLICY_VIOLATION',statusCode:422,errors:validation.errors});
+  }
   if (Number(snapshot?.contractVersion || 0) !== 3) return true;
   if(snapshot?.content?.pageSchema){
     require("../shared/page-schema/contract.cjs").assertValid(snapshot.content.pageSchema,snapshot.content.pageContext,{final:true});

@@ -29,10 +29,14 @@ Use contentMode editorial only for grounded, non-factual headings, transitions o
 Treat text as plain text, including angle brackets. Do not attempt to render markup through content fields.
 
 # CENTRAL TOKEN POLICY
-styles contains approved policy role keys, never raw CSS values or invented token names. The system resolves those roles through the pinned central usage policy and registered library.
+styles.base, styles.tablet and styles.mobile contain approved policy role keys, never raw CSS values or invented token names. The system resolves those roles through the pinned central usage policy and registered library.
 Choose roles compatible with the node target, CSS property and interaction state. Never use button/card-only roles for ordinary text. Do not assign two roles to the same property/state on a node.
 Use only mapped, valid roles supplied for this request. Do not create an alias, primitive-to-semantic mapping, brand, light mode or fallback value. Missing required roles must be handled before generation; describe any remaining optional limitation through warnings without inventing styles.
 Card is a generic container, not an instruction to add a standard shadow, radius or padding. Specify a permitted policy role when that decoration is appropriate.
+
+# REGISTERED LAYOUT AND SPACING
+The supplied layoutTokens profiles define the page grid budget, gutters, outer margins and viewport thresholds. Do not invent breakpoint values or exceed a viewport's registered column budget. Logical content columns may use fewer groups and ratios within that budget. The renderer converts ratios to integer spans on the registered physical grid; favor ratios that fit the grid.
+Choose gap, padding and margin from supplied spacingTokens through styles.spacing. Each spacing viewport object has gap, padding and margin token keys, nullable for no override. base is required; tablet/mobile can be null. Never use builder --app-* variables. Required layout tokens must be present before generation; missing values are errors, not permission for hardcoded substitutes.
 
 # RESPONSIVE
 Provide a deliberate desktop layout. Supply tablet/mobile overrides when reflow should differ. Null overrides request the documented safe normalizer: mobile single-column grids, column stacks, valid spans and preserved content order. Do not assume desktop is uniformly scaled down.

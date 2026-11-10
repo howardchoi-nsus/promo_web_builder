@@ -41,3 +41,19 @@ pnpm run build
 ```
 
 추가 검증: 기존 토큰 정책/API, 프롬프트 그룹·프롬프트 하드코딩 금지, API 콜드 스타트, 품질 게이트, export 및 Nuxt/게시 계약 테스트. Migration 086은 격리 PostgreSQL에서 두 번 실행해 중복 생성 방지, Draft 설정, 소유권과 리비전 충돌을 확인했다.
+
+## 출력 스타일 정책 보완
+
+미리보기·웹 출력·HTML 및 Nuxt 읽기 화면은 `IsolatedOutputFrame`의 별도 문서에서 렌더링한다. 빌더 CSS와 `--app-*` 상속을 차단하며, 출력 문서는 `output-only.css`의 구조 초기화와 등록 토큰 참조만 사용한다. 편집 도구의 CSS 파일을 출력 문서에 불러오지 않는다. 서버 렌더링은 iframe `srcdoc`에 초기 콘텐츠를 포함하고, 브라우저에서는 같은 Vue 트리를 연결한다.
+
+`layout-token-policy.cjs`가 필수 grid/breakpoint 이름·타입·순서를 검사한다. `desktop-1920`, `desktop-1440`, `tablet-768`, `mobile-375` 프로필의 columns/gutter/margin-inline, tablet-min/desktop-min breakpoint, desktop-1920 reference width가 필요하다. 빈 범용 `--grid-columns` 등의 항목을 임의 값으로 채우지 않는다.
+
+- Grid columns는 실제 CSS grid track 수와 AI 논리 컬럼 수의 상한으로 사용한다. AI의 컬럼 비율과 점유를 등록 그리드의 정수 span으로 환산한다. 예를 들어 12 track에서 1:2는 4:8 span이다. 임의 비율은 그리드 단위로 반올림하므로 정확한 소수 비율 대신 가장 가까운 등록 그리드 배치를 사용한다. 콘텐츠가 2열이라고 해서 12개 카드로 강제하지 않는다.
+- Grid gutter는 grid의 기본 간격, margin-inline은 페이지 바깥 여백으로 적용한다. 간격을 명시적으로 선택하면 해당 spacing 토큰이 우선한다.
+- `styles.spacing = {base:{gap,padding,margin},tablet:null,mobile:null}`로 등록된 `--spacing-*` 토큰을 선택할 수 있다. 각 값은 토큰명 또는 null이다. 기존 저장 문서는 이 필드가 없어도 읽으며 새 구조화 출력에는 필드를 요구한다.
+- 반응형 CSS는 고정 639/1023px 대신 등록한 breakpoint의 해석된 값으로 생성한다. CSS media query는 일반 custom property `var()`를 지원하지 않으므로 여기에는 등록 값을 직렬화한다.
+- 기존 V2/V3 출력에도 동일 격리·정책 검사를 적용한다. 필요한 토큰이나 정책이 없거나 미등록 스타일이 남은 문서는 임의 대체 없이 차단되므로 토큰 연결 후 재저장 또는 재생성이 필요하다.
+
+새로운 spacing 선택 안내를 적용하려면 migration `087_strict_output_token_prompt.sql`이 생성하는 **AI 동적 페이지 구조 설계 — Registered Layout** Draft를 검토·활성화한다. 토큰 데이터 자체를 자동 수정하거나 활성 프롬프트를 덮어쓰지 않는다.
+
+구분선의 색·두께도 `divider.color`와 `divider.width` 정책으로 연결한다. 연결이 없으면 브라우저 기본 회색 선으로 대체하지 않고 품질 검사에서 누락을 표시한다.

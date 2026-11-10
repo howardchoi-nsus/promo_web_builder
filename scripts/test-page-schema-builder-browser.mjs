@@ -39,7 +39,7 @@ try{
  await page.goto(`http://127.0.0.1:${server.address().port}/?mode=ai`);
  await page.getByPlaceholder('무엇을 만들고 싶으신가요?').fill('등록된 혜택으로 페이지를 만들어줘');await page.getByRole('button',{name:'전송',exact:true}).click();
  await page.getByRole('button',{name:'페이지 미리보기 생성',exact:true}).click();
- await page.locator('[data-ps-node="page_root"]').waitFor().catch(async error=>{console.error(JSON.stringify({requests,errors,body:await page.locator('body').innerText()},null,2));throw error;});assert.equal(generated,1);assert.equal(requests.includes('/api/promo-composition-shells'),false);assert.equal(requests.includes('/api/promo-page-composition-proposals'),false);
+ await page.frameLocator('iframe').first().locator('[data-ps-node="page_root"]').waitFor().catch(async error=>{console.error(JSON.stringify({requests,errors,body:await page.locator('body').innerText()},null,2));throw error;});assert.equal(generated,1);assert.equal(requests.includes('/api/promo-composition-shells'),false);assert.equal(requests.includes('/api/promo-page-composition-proposals'),false);
  await page.getByRole('button',{name:'태블릿',exact:true}).click();await page.getByRole('button',{name:'모바일',exact:true}).click();
  const editorButton=page.getByRole('button',{name:'직접 편집',exact:true});
  await editorButton.click();await page.getByLabel('PageSchema JSON').waitFor();

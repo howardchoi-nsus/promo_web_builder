@@ -159,7 +159,6 @@ function htmlExport(snapshot, options = {}) {
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="promo-export-hash" content="${manifest.snapshotHash}">
   <title>${title}</title>
-  <link rel="stylesheet" href="/prototype/visual-editor-assets/promo-renderer.css">
   <link rel="stylesheet" href="/prototype/visual-editor-assets/export-runtime.css">
 </head>
 <body>

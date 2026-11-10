@@ -10,7 +10,7 @@ import {fixture,context} from './fixtures/page-schema.mjs';
 for(const name of ['example-editorial','example-split-nested']){
  const page=fixture(name),result=validate(page,context);assert.equal(result.ok,true,JSON.stringify(result.errors));
  const normalized=normalize(page);assert.equal(validate(normalized.page,context).ok,true);
- const css=pageCss(normalized.page,context,'ps-test');assert.match(css,/grid-template-columns/);assert.match(css,/var\(--fixture-/);assert.match(css,/max-width:639px/);assert.equal(css.includes('position:absolute'),false);
+ const css=pageCss(normalized.page,context,'ps-test');assert.match(css,/grid-template-columns/);assert.match(css,/var\(--fixture-/);assert.match(css,/min-width:768px/);assert.equal(css.includes('position:absolute'),false);
  assert.deepEqual(page,fixture(name),'normalizer must not mutate input');
 }
 const base=fixture('example-editorial');
@@ -50,3 +50,20 @@ const generated=await generatePage({overview:{},context,promptConfig:{model:'fix
 assert.equal(request.schemaName,'promo_page_schema');assert.equal(validate(generated.page,context).ok,true);assert.equal(snapshotForPage(generated.page,context).contractVersion,3);
 await assert.rejects(generatePage({context,promptConfig:{},generate:async()=>({result:{...base,html:'<script/>'}})}),e=>e.code==='PAGE_SCHEMA_INVALID');
 console.log('PageSchema: examples, recursive budgets, token policy, sources, URL security, provider contract and normalization passed.');
+
+const {layoutTokenPolicy}=require('../shared/layout-token-policy.cjs');
+const {tokenCssProperties}=await import('../shared/design-token-library.mjs');
+assert.deepEqual(tokenCssProperties({type:'number',name:'--grid-mobile-375-columns'}),['grid-template-columns']);
+const missing=structuredClone(context);delete missing.tokenValues['--grid-mobile-375-gutter'];assert.equal(layoutTokenPolicy(missing).ok,false);
+const tooMany=structuredClone(base);walk(tooMany.root,({node})=>{if(node.type==='grid')node.layout.desktop.columns=[1,1,1];});
+const restricted=structuredClone(context);restricted.tokenValues['--grid-desktop-1440-columns']='2';assert.ok(validate(tooMany,restricted).errors.some(error=>error.code==='GRID_TOKEN_BUDGET_EXCEEDED'));
+const spacingPage=structuredClone(base);spacingPage.root.styles.spacing={base:{gap:'--spacing-8',padding:null,margin:null},tablet:null,mobile:null};
+assert.equal(validate(spacingPage,context).ok,true);assert.match(pageCss(spacingPage,context,'ps-test'),/gap:var\(--spacing-8\)/);
+spacingPage.root.styles.spacing.base.gap='--app-space-4';assert.equal(validate(spacingPage,context).ok,false);
+assert.equal(Object.keys(tokenVariables({...context,tokenValues:{...context.tokenValues,'--app-ink':'red'}})).some(key=>key.startsWith('--app-')),false);
+console.log('Strict layout policy: missing grid tokens, grid budgets, spacing references, metadata and builder variable exclusion passed.');
+
+const {gridTrackSpans}=await import('../shared/page-schema/runtime.mjs');
+assert.deepEqual(gridTrackSpans([1,2],12),[4,8]);
+assert.deepEqual(gridTrackSpans([1,1],8),[4,4]);
+assert.deepEqual(gridTrackSpans([1],4),[4]);

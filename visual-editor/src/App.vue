@@ -1,6 +1,6 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import PageSchemaRenderer from "./runtime/PageSchemaRenderer.vue";
+import PromoReadonlyRenderer from "./runtime/PromoReadonlyRenderer.vue";
 import PromoPageRenderer from "./PromoPageRenderer.vue";
 import { withoutFreePosition } from "./editor-utils.mjs";
 import { createEditorContext } from "./editor-context.mjs";
@@ -2596,14 +2596,7 @@ onBeforeUnmount(() => {
       <button type="button" @click="returnToLivePreview">Live Preview로 돌아가기</button>
     </header>
     <div v-if="error" class="system-message system-message--error">{{ error }}</div>
-    <PageSchemaRenderer v-else-if="rendererSnapshot?.content?.pageSchema" :page="rendererSnapshot.content.pageSchema" :context="rendererSnapshot.content.pageContext" />
-    <PromoPageRenderer
-      v-else-if="rendererSnapshot"
-      :content="rendererSnapshot.content"
-      :design-spec="rendererSnapshot.designSpec"
-      :assets="rendererSnapshot.assets"
-      :motion-spec="rendererSnapshot.motionSpec"
-    />
+    <PromoReadonlyRenderer v-else-if="rendererSnapshot" :snapshot="rendererSnapshot" />
   </div>
 
   <main

@@ -127,6 +127,10 @@ export function tokenCssProperties(token) {
   if (token.type === 'color') return ['color', 'background-color', 'border-color'];
   if (token.type === 'fontFamily') return ['font-family'];
   if (token.type === 'fontWeight') return ['font-weight'];
+  if (/^--grid-.*-columns$|^--grid-columns$/.test(token.name)) return ['grid-template-columns'];
+  if (/^--grid-.*-gutter$|^--grid-gutter$/.test(token.name)) return ['gap','column-gap','row-gap'];
+  if (/^--grid-.*-margin-inline$|^--grid-margin-inline$/.test(token.name)) return ['margin-inline','padding-inline'];
+  if (/^--breakpoint-|^--grid-reference-/.test(token.name)) return ['layout-breakpoint'];
   if (token.type === 'number') return ['width'];
   if (token.name.includes('radius')) return ['border-radius'];
   if (token.name.includes('border-width')) return ['border-width'];

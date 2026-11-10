@@ -1,6 +1,7 @@
+import('./fixtures/page-schema.mjs').then(({context})=>{
 const assert = require("node:assert/strict");
 const {
-  assertPassedQualityGate,
+  assertPassedQualityGate: strictAssertPassedQualityGate,
   normalizePassedQualityGate,
   pendingQualityGate,
 } = require("../api/_promo-quality-gate");
@@ -53,3 +54,7 @@ assert.deepEqual(pendingQualityGate(7, "operations_applied"), {
 });
 
 console.log("Promo quality gate persistence tests passed");
+
+function assertPassedQualityGate(snapshot,...args){return strictAssertPassedQualityGate({...snapshot,content:{runtimeTheme:{designTokens:{values:context.tokenValues,catalog:context.tokenCatalog,usagePolicy:context.usagePolicy}}}},...args);}
+assert.throws(()=>strictAssertPassedQualityGate({contractVersion:2}),error=>error.code==='LAYOUT_TOKEN_POLICY_INVALID');
+});

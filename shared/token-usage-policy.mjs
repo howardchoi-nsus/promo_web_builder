@@ -31,6 +31,8 @@ export const TOKEN_USAGE_RULES = Object.freeze([
   rule('button.pressedBackground','button','background-color','버튼 배경 · pressed',['--button-container-brand-pressed'],false,'pressed'),
   rule('button.disabledBackground','button','background-color','버튼 배경 · disabled',['--button-container-brand-disable'],false,'disabled'),
   rule('button.disabledColor','button','color','버튼 문구 · disabled',['--button-label-disable'],false,'disabled'),
+  rule('divider.color','divider','border-color','구분선 색상'),
+  rule('divider.width','divider','border-width','구분선 두께',['--border-width-1']),
 ]);
 const COMPONENT_SCOPES = new Set(['button','card','checkbox','chip','field','modal','navigation','radio','select','tab','tooltip','toast','badge','switch','avatar','divider','progress','slider']);
 export function tokenScope(name) {

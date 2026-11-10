@@ -1,6 +1,6 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import PageSchemaRenderer from "../runtime/PageSchemaRenderer.vue";
+import PromoReadonlyRenderer from "../runtime/PromoReadonlyRenderer.vue";
 import PromoPageRenderer from "../PromoPageRenderer.vue";
 
 const props = defineProps({
@@ -60,8 +60,10 @@ function waitForAnimationFrames(count = 2) {
 async function waitForPreviewLayout() {
   await nextTick();
   await waitForAnimationFrames();
-  await document.fonts?.ready;
-  const images = [...(previewCanvas.value?.querySelectorAll("img") || [])];
+  for(let attempt=0;attempt<20&&!rendererRef.value?.getOutputDocument?.()?.querySelector('[data-output-boundary]');attempt++)await new Promise(resolve=>setTimeout(resolve,25));
+  const outputDocument=rendererRef.value?.getOutputDocument?.();
+  await outputDocument?.fonts?.ready;
+  const images = [...(outputDocument?.querySelectorAll("img") || [])];
   await Promise.all(images.map(async (image) => {
     if (!props.snapshot.content?.pageSchema) return image.decode?.().catch(() => undefined);
     image.loading = "eager";
@@ -263,17 +265,7 @@ onBeforeUnmount(() => {
   <div ref="previewStage" class="ai-builder-preview ai-builder-preview-stage" :data-viewport="effectiveViewport">
     <div class="ai-builder-preview-shell" :style="previewShellStyle">
       <div ref="previewCanvas" class="ai-builder-preview-canvas" :style="previewCanvasStyle">
-        <PageSchemaRenderer v-if="snapshot.content?.pageSchema" ref="rendererRef" :page="snapshot.content.pageSchema" :context="snapshot.content.pageContext" :viewport-override="effectiveViewport" />
-        <PromoPageRenderer v-else
-          ref="rendererRef"
-          :content="snapshot.content"
-          :design-spec="snapshot.designSpec"
-          :assets="snapshot.assets"
-          :motion-spec="snapshot.motionSpec"
-          :editable="false"
-          :show-guides="false"
-          :viewport-override="effectiveViewport"
-        />
+        <PromoReadonlyRenderer ref="rendererRef" :snapshot="snapshot" :viewport-override="effectiveViewport" />
       </div>
     </div>
   </div>
