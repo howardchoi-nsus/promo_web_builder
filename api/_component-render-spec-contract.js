@@ -1,4 +1,4 @@
-const { targetForProperty, usageAssignmentErrors } = require("../shared/token-usage-policy.mjs");
+const { targetForProperty, usageAssignmentErrors } = require("../shared/token-usage-policy.cjs");
 const { createHash } = require("node:crypto");
 
 const CONTRACT_VERSION = 1;

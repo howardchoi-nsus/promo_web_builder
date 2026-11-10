@@ -1,5 +1,5 @@
 const { styleSlotTargetProperty } = require("./_promo-style-slot-contract");
-const { targetForProperty, policyPermitsToken, styleCssProperty } = require("../shared/token-usage-policy.mjs");
+const { targetForProperty, policyPermitsToken, styleCssProperty } = require("../shared/token-usage-policy.cjs");
 const crypto = require("node:crypto");
 
 const LAYOUT_VARIANTS = Object.freeze(["split-left", "split-right", "centered-hero"]);

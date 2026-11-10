@@ -1,4 +1,4 @@
-const { usageToken } = require("../shared/token-usage-policy.mjs");
+const { usageToken } = require("../shared/token-usage-policy.cjs");
 const CARD_ROLE_PATTERN = /benefit|offer|reward|step|trust|proof|metric|feature|faq|card|content/i;
 const CENTERED_ROLE_PATTERN = /hero|key-visual|offer|conversion|cta/i;
 

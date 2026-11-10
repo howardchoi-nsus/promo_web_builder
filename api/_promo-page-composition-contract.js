@@ -1,4 +1,4 @@
-const { usageBindings, usageToken, TOKEN_USAGE_RULES } = require("../shared/token-usage-policy.mjs");
+const { usageBindings, usageToken, TOKEN_USAGE_RULES } = require("../shared/token-usage-policy.cjs");
 const { randomUUID } = require("node:crypto");
 const { OVERVIEW_FIELDS } = require("./_promo-overview-contract");
 const { normalizeCtaLabel } = require("./_promo-content-policy");

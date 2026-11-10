@@ -1,4 +1,4 @@
-const { targetForProperty, policyPermitsToken, styleCssProperty } = require("../shared/token-usage-policy.mjs");
+const { targetForProperty, policyPermitsToken, styleCssProperty } = require("../shared/token-usage-policy.cjs");
 const { normalizeCtaLabel } = require("./_promo-content-policy");
 const { createHash } = require("node:crypto");
 const { normalizeStyleSlot, styleSlotTargetProperty } = require("./_promo-style-slot-contract");

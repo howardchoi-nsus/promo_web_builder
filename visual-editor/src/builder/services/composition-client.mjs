@@ -7,15 +7,19 @@ async function request(path, options = {}) {
     cache: "no-store",
     ...options,
   });
-  const payload = await response.json().catch(() => ({}));
+  const parsed = await response.json().catch(() => ({}));
+  const payload = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
   if (!response.ok) {
-    const error = new Error(payload.message || payload.error || `Request failed (${response.status})`);
-    error.code = payload.code || `HTTP_${response.status}`;
+    const platformCode = response.headers?.get?.("x-vercel-error") || "";
+    const error = new Error(payload.message || payload.error || (response.status >= 500
+      ? `서버 실행 중 오류가 발생했습니다 (HTTP ${response.status}${platformCode ? ` · ${platformCode}` : ""}).`
+      : `Request failed (${response.status})`));
+    error.code = payload.code || platformCode || `HTTP_${response.status}`;
     error.status = response.status;
     error.details = payload.details || payload.validation || payload.errors || null;
     error.retryable = payload.retryable === true;
     error.retryPolicy = payload.retryPolicy || null;
-    error.requestId = payload.requestId || "";
+    error.requestId = payload.requestId || response.headers?.get?.("x-vercel-id") || "";
     error.providerErrorType = payload.providerErrorType || "";
     error.executionDisplay = payload.executionDisplay || null;
     throw error;

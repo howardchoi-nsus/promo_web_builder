@@ -18,6 +18,7 @@ export function setBuilderError(store, error) {
     code: String(error?.code || "BUILDER_REQUEST_FAILED"),
     message: String(error?.message || error || "요청을 처리하지 못했습니다."),
     details,
+    requestId: String(error?.requestId || ""),
     retryable: error?.retryable !== false,
   };
 }

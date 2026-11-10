@@ -2810,6 +2810,7 @@ onBeforeUnmount(() => {
       <div v-if="store.error" class="ai-builder-error" role="alert" aria-live="assertive">
         <strong>{{ store.error.code }}</strong>
         <span>{{ store.error.message }}</span>
+        <small v-if="store.error.requestId">요청 ID: {{ store.error.requestId }}</small>
         <small v-for="detail in store.error.details || []" :key="`${detail.code}:${detail.path}`">
           {{ detail.code }} · {{ detail.path }}{{ detail.message ? ` · ${detail.message}` : "" }}
         </small>

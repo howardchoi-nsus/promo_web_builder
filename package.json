@@ -7,7 +7,7 @@
   },
   "scripts": {
     "test": "node scripts/run-tests.js",
-    "build": "pnpm run build:documents && pnpm run build:admin && pnpm run build:visual-editor && pnpm run build:nuxt-runtime",
+    "build": "pnpm run build:token-policy && pnpm run build:documents && pnpm run build:admin && pnpm run build:visual-editor && pnpm run build:nuxt-runtime",
     "build:documents": "node scripts/build-document-library.mjs",
     "build:admin": "vite build --config admin-app/vite.config.js",
     "build:visual-editor": "vite build --config visual-editor/vite.config.js",
@@ -49,7 +49,8 @@
     "prompt-quality:check": "node scripts/apply-web-output-prompt-quality-pack.mjs --check --target=preview",
     "inspect:component-cutover": "node scripts/inspect-item-component-cutover.js",
     "design-md:dry-run": "node scripts/import-design-md-docs.js",
-    "design-md:import": "node scripts/import-design-md-docs.js --apply"
+    "design-md:import": "node scripts/import-design-md-docs.js --apply",
+    "build:token-policy": "node scripts/build-token-usage-policy.mjs"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.3.1",
