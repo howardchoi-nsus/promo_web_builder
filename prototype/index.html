@@ -697,7 +697,7 @@
                     type="password"
                     autocomplete="current-password"
                     placeholder="관리자 액세스 키 입력"
-                    :disabled="adminAuthBusy || adminAuthState === 'error'"
+                    :disabled="adminAuthBusy"
                   />
                 </label>
                 <div v-if="adminAuthError" class="outline-item danger-state" role="alert">
@@ -708,7 +708,7 @@
                   <button
                     class="tiny-button primary"
                     type="submit"
-                    :disabled="adminAuthBusy || adminAuthState === 'error' || !adminAuthAccessKey.trim()"
+                    :disabled="adminAuthBusy || !adminAuthAccessKey.trim()"
                   >{{ adminAuthBusy ? '로그인 중…' : '관리자 로그인' }}</button>
                   <button
                     v-if="adminAuthState === 'error'"
