@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import PageSchemaMediaPanel from "./PageSchemaMediaPanel.vue";
 import PageSchemaEditor from "./PageSchemaEditor.vue";
 import RequirementTable from "./RequirementTable.vue";
+import {pendingContentConfirmations,assertContentConfirmed} from "../../../shared/page-schema/content-confirmation.mjs";
 import BuilderModeSelector from "./BuilderModeSelector.vue";
 import CompositionReview from "./CompositionReview.vue";
 import { visualEditorEntry } from "../platform/visual-editor-entry.mjs";
@@ -1185,6 +1186,24 @@ async function ensureChatWorkspace() {
   return resolved;
 }
 
+const contentConfirmations=computed(()=>pendingContentConfirmations(store.overviewDraft));
+function updateConfirmationField(path,key,value){
+ const item=contentConfirmations.value.find(item=>item.path===path);
+ if(!item?.editableFields.some(field=>field.key===key)||requirementsEditing.value)return;
+ const target=requirementValueAt(store.overviewDraft,path);
+ if(!target)return;
+ target[key]=String(value).slice(0,2000);
+ refreshOverviewFingerprint();clearBuilderError(store);persistWorkspace();
+}
+function confirmContentItem(path){
+ const entry=contentConfirmations.value.find(item=>item.path===path);
+ if(!entry?.canConfirm||requirementsEditing.value)return;
+ const target=requirementValueAt(store.overviewDraft,path);
+ if(!target)return;
+ target.confirmationRequired=false;
+ refreshOverviewFingerprint();clearBuilderError(store);persistWorkspace();
+}
+
 const CLARIFICATION_QUESTION_BY_FIELD = Object.freeze({
   promotionPurpose: "이번 프로모션의 가장 중요한 목적은 할인, 경품, 이벤트 중 무엇인가요?",
   promotionPurposeOther: "프로모션의 구체적인 목적을 한 문장으로 알려주세요.",
@@ -1747,6 +1766,7 @@ async function handleChatAction(action) {
       return;
     }
     if (action.key === "confirm_requirements") {
+      if(capabilities.value.pageSchemaV1)assertContentConfirmed(store.overviewDraft);
       markPendingClarificationsAnswered();
       const messageRequest = appendActionMessage(action);
       updateStatusMessage(operationId, actionProgressMessage(action), "in_progress");
@@ -3196,6 +3216,19 @@ onBeforeUnmount(() => {
                     내용이 맞으면 왼쪽 채팅의 <strong>페이지 미리보기 생성</strong>을 눌러주세요. 바꾸고 싶은 부분은 “혜택을 3개로 줄여줘”처럼 입력하면 됩니다.
                   </p>
                 </div>
+                <section v-if="capabilities.pageSchemaV1 && contentConfirmations.length" class="ai-requirements-details" aria-label="콘텐츠 확인">
+                  <h3>확인이 필요한 콘텐츠 {{ contentConfirmations.length }}개</h3>
+                  <p>아래 내용을 확인한 후 항목별로 확정해 주세요. 미입력·미정 내용은 먼저 보완해 주세요.</p>
+                  <article v-for="item in contentConfirmations" :key="item.path">
+                    <strong>{{ item.label }}</strong>
+                    <label v-for="field in item.editableFields" :key="field.key" style="display:block">
+                      {{ ({title:'제목',description:'설명',body:'본문',value:'값',label:'문구',url:'URL',ctaLabel:'버튼 문구',ctaUrl:'버튼 URL'})[field.key] || field.key }}
+                      <textarea :value="field.value" :aria-label="`${item.label} ${field.key}`" rows="2" maxlength="2000" :disabled="requirementsEditing || interactionLocked" @input="updateConfirmationField(item.path,field.key,$event.target.value)"></textarea>
+                    </label>
+                    <button type="button" :disabled="!item.canConfirm || requirementsEditing || interactionLocked" @click="confirmContentItem(item.path)">이 내용으로 확정</button>
+                    <span v-if="!item.canConfirm"> 누락된 내용을 먼저 입력해 주세요.</span>
+                  </article>
+                </section>
                 <details class="ai-requirements-details" :open="requirementsEditing">
                   <summary>{{ requirementsEditing ? '세부 내용 편집 중' : '세부 내용 보기' }}</summary>
                   <RequirementTable

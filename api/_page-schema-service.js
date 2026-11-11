@@ -1,9 +1,11 @@
 const {createHash}=require('node:crypto');
 const {assertValid,normalize,runtimeSchema,TYPES,LIMITS,safeUrl}=require('../shared/page-schema/contract.cjs');
 const {assertLayoutTokens}=require('../shared/layout-token-policy.cjs');
+const {assertContentConfirmed,emptyOptionalCta}=require('../shared/page-schema/content-confirmation.cjs');
 const {TOKEN_USAGE_RULES}=require('../shared/token-usage-policy.cjs');
 function contentContext(overview,{usagePolicy,tokenCatalog,tokenValues,tokenVersionId}){
  assertLayoutTokens({usagePolicy,tokenCatalog,tokenValues});
+ assertContentConfirmed(overview);
  const contentSources={},actions={};
  const add=(path,value,required=true)=>{if(typeof value!=='string'||!value.trim())return;const id=`source_${createHash('sha256').update(path).digest('hex').slice(0,20)}`;contentSources[id]={text:value,required,locked:true,repeatAllowed:true,path};};
  for(const key of ['title','leadText','mainOffer'])add(key,overview[key]);
@@ -11,7 +13,7 @@ function contentContext(overview,{usagePolicy,tokenCatalog,tokenValues,tokenVers
  cta('ctaLabel',overview.ctaLabel,overview.ctaUrl);
  const fields=new Set(['title','description','body','text','eyebrow','badge','value','label','question','answer']);
  function visit(value,path,required=true){if(typeof value==='string'){add(path,value,required);return;}if(!value||typeof value!=='object')return;if(Array.isArray(value)){value.forEach((v,i)=>visit(v,`${path}.${i}`,required));return;}
-  if(value.confirmationRequired)throw Object.assign(new Error('확인이 필요한 콘텐츠를 확정한 후 생성해 주세요.'),{statusCode:422,code:'CONTENT_CONFIRMATION_REQUIRED'});
+  if(emptyOptionalCta(value,path))return;
   for(const [key,v] of Object.entries(value)){if(fields.has(key)&&typeof v==='string')add(`${path}.${key}`,v,required);else if(v&&typeof v==='object')visit(v,`${path}.${key}`,required);}
   if(value.cta?.label)cta(`${path}.cta.label`,value.cta.label,value.cta.url);
   if(value.ctaLabel)cta(`${path}.ctaLabel`,value.ctaLabel,value.ctaUrl);

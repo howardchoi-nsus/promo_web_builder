@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+import {pendingContentConfirmations,assertContentConfirmed} from '../shared/page-schema/content-confirmation.mjs';
+import {context} from './fixtures/page-schema.mjs';
+const require=createRequire(import.meta.url),server=require('../shared/page-schema/content-confirmation.cjs');
+const overview={title:'혜택 안내',contentSections:[{title:'혜택',cta:{label:'',url:'',confirmationRequired:true},items:[{title:'참여 안내',description:'참여 방법을 확인하세요.',confirmationRequired:true}]}],additionalInformation:[{label:'기간',value:'',confirmationRequired:true}],notices:[{title:'유의사항',body:'일정을 확인하세요.',confirmationRequired:true}]};
+const before=structuredClone(overview),pending=pendingContentConfirmations(overview);
+assert.equal(pending.length,3);assert.equal(pending[0].canConfirm,true);assert.equal(pending[1].canConfirm,false);assert.deepEqual(overview,before);
+assert.deepEqual(pending,server.pendingContentConfirmations(overview));
+assert.throws(()=>assertContentConfirmed(overview),e=>e.code==='CONTENT_CONFIRMATION_REQUIRED'&&e.errors.length===3&&e.errors[1].path==='additionalInformation.0');
+const {contentContext}=require('../api/_page-schema-service');
+assert.throws(()=>contentContext(overview,context),e=>e.errors?.length===3);
+overview.contentSections[0].items[0].confirmationRequired=false;overview.notices[0].confirmationRequired=false;
+assert.throws(()=>contentContext(overview,context),e=>e.errors?.[0].path==='additionalInformation.0');
+overview.additionalInformation[0]={label:'기간',value:'미정',confirmationRequired:true};assert.equal(pendingContentConfirmations(overview)[0].canConfirm,false);
+overview.additionalInformation=[];
+const result=contentContext(overview,context);assert.ok(Object.values(result.contentSources).some(source=>source.text==='참여 방법을 확인하세요.'));assert.deepEqual(result.actions,{});
+console.log('Content confirmation: empty optional CTA ignored, populated items explicitly reviewed, missing/placeholder facts blocked, complete paths and client/server parity passed.');
