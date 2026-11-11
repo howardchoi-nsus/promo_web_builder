@@ -33,7 +33,7 @@ defineExpose({getOutputDocument:()=>frame.value?.getDocument(),inspectLayoutQual
 <template>
  <section v-if="errors.length" role="alert" class="output-policy-error"><strong>등록된 디자인 토큰을 확인해 주세요.</strong><ul><li v-for="(error,index) in errors" :key="index">{{error.message||error.path||error.key}}</li></ul></section>
  <IsolatedOutputFrame v-else ref="frame" :viewport="rendererProps.viewportOverride" :variables="variables">
-  <div data-output-boundary :style="{...variables,filter:wireframe?'grayscale(1)':undefined}">
+  <div data-output-boundary :style="variables">
    <component :is="'style'">{{layoutCss()}}</component>
    <PageSchemaRenderer v-if="rendererProps.content.pageSchema" ref="renderer" :page="rendererProps.content.pageSchema" :context="context" :viewport-override="rendererProps.viewportOverride" :wireframe="wireframe" />
    <PromoPageRenderer v-else ref="renderer" class="promo-readonly-renderer" :content="{...rendererProps.content,runtimeTheme:{...rendererProps.content.runtimeTheme,designTokens:{...library,policy:'registered-only'}}}" :design-spec="rendererProps.designSpec" :assets="rendererProps.assets" :motion-spec="rendererProps.motionSpec" :viewport-override="rendererProps.viewportOverride" :editable="false" :show-guides="false" :outline-mode="false" />

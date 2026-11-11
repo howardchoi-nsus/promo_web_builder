@@ -797,3 +797,8 @@
 .ai-builder-error__details ul { margin:8px 0;padding-inline-start:20px; }
 .ai-builder-error__details li { margin-block:6px;line-height:1.5; }
 .ai-builder-error__actions button { white-space:normal;word-break:keep-all;flex:0 1 auto; }
+
+/* Conversation tools participate in the chat scroll flow, never float over results. */
+.ai-chat-messages .ai-operation-form { position: static; width: 100%; max-width: 100%; box-shadow: none; }
+.ai-chat-messages > section { flex-shrink: 0; min-width: 0; }
+.ai-chat-messages textarea { max-width: 100%; box-sizing: border-box; }

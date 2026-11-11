@@ -5,6 +5,7 @@ import CompositionPreviewCanvas from "./CompositionPreviewCanvas.vue";
 
 const props = defineProps({
   snapshot: { type: Object, required: true },
+  controlsTarget: { type: String, default: "" },
   documentRevision: { type: Number, required: true },
   busy: { type: Boolean, default: false },
   exportEnabled: { type: Boolean, default: false },
@@ -69,17 +70,22 @@ defineExpose({ buildAutoRepairSnapshot, inspectQualityAcrossViewports });
           <button v-if="snapshot.content?.pageSchema" type="button" :aria-pressed="previewViewport === 'tablet'" @click="selectPreviewViewport('tablet')">태블릿</button>
           <button type="button" :aria-pressed="previewViewport === 'mobile'" @click="selectPreviewViewport('mobile')">모바일</button>
         </div>
+        <Teleport :to="controlsTarget || 'body'" :disabled="!controlsTarget">
+          <div class="ai-builder-actions" aria-label="디자인 작업">
         <button type="button" class="ai-builder-secondary" @click="emit('rollback')">이전 버전</button>
         <button type="button" class="ai-builder-secondary" @click="emit('edit-natural-language')">채팅으로 수정</button>
         <button type="button" class="ai-builder-primary" @click="emit('open-editor')">직접 편집</button>
         <button type="button" class="ai-builder-primary" :disabled="busy || !qualityPassed" @click="emit('open-output')">새 창에서 확인</button>
         <button v-if="exportEnabled" type="button" class="ai-builder-primary" :disabled="busy || !qualityPassed" @click="emit('export-document')">HTML 다운로드</button>
+          </div>
+        </Teleport>
       </div>
     </header>
     <p class="ai-builder-preview-note">이 화면은 실제 발행에 사용하는 데이터와 렌더러로 표시됩니다. 데스크톱과 모바일을 전환해 확인하세요.</p>
     <div class="ai-builder-quality-gate" :class="`is-${qualityState}`" role="status" aria-live="polite">
       <span aria-hidden="true"></span>
       <strong>{{ qualityLabel }}</strong>
+      <Teleport :to="controlsTarget || 'body'" :disabled="!controlsTarget">
       <button
         v-if="!qualityPassed && qualityState !== 'checking'"
         type="button"
@@ -87,6 +93,7 @@ defineExpose({ buildAutoRepairSnapshot, inspectQualityAcrossViewports });
         :disabled="busy"
         @click="emit('check-quality')"
       >다시 검사</button>
+      </Teleport>
     </div>
     <TokenUsageReport :snapshot="snapshot" />
     <CompositionPreviewCanvas ref="previewCanvasRef" :snapshot="snapshot" :viewport="previewViewport" />

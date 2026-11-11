@@ -85,3 +85,18 @@ this compatibility change requires no SQL migration or prompt reactivation.
 Other explicitly configured budgets remain effective, up to 240,000 ms. Other
 text planners retain their 90,000 ms limit. This prevents the legacy 90-second
 cutoff but does not guarantee a provider response within four minutes.
+
+## 채팅 중심 작업과 와이어프레임
+
+요청 정보 보완, 콘텐츠 선택 확인, 요구사항 편집, 구성 수정 요청, PageSchema 편집,
+구성 승인, 오류 복구와 디자인 작업 버튼은 채팅 스크롤 영역에서 제공한다. 오른쪽
+요청 요약은 읽기 전용이며 미리보기의 탭·화면 크기 전환은 조회 도구로 유지한다.
+기존 편집 대화상자의 고정 위치를 해제하여 오른쪽 결과물 위에 표시하지 않는다.
+
+페이지 미리보기는 같은 PageSchema와 등록 토큰 기반 레이아웃을 재사용하지만,
+미리보기에서만 중립 배경·구조 윤곽선·이미지 자리 표시를 적용한다. 흑백 필터만으로
+와이어프레임을 구현하지 않는다. 간격·컬럼·글자 크기 등 배치 측정값은 유지하고,
+승인 후에는 이 표현을 제거하여 등록 토큰의 실제 디자인으로 렌더링한다.
+
+검증: test-page-schema-builder-browser, test-content-preview-auto-browser,
+test-hallmark-journey-browser, test-output-token-refresh-browser.

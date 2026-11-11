@@ -1875,6 +1875,7 @@ async function handleChatAction(action) {
       updateStatusMessage(operationId, actionProgressMessage(action), "in_progress");
       await messageRequest;
       await approveWireframe(action, operationId);
+      updateStatusMessage(operationId,store.error?'페이지 구성 승인 결과를 확인해 주세요.':'페이지 구성을 승인했습니다. 디자인 미리보기를 표시합니다.',store.error?'failed':'completed');
       return;
     }
     if (action.key === "revise_requirements" || action.key === "revise_wireframe") {
@@ -1894,7 +1895,7 @@ async function handleChatAction(action) {
         beginRequirementsEdit();
         await appendPersistedMessage(
           "assistant",
-          "오른쪽 요청 요약의 ‘세부 내용 보기’를 열어 필요한 항목을 수정해 주세요. 수정이 끝나면 ‘수정 완료’를 눌러 주세요.",
+          "채팅의 요청 편집 영역에서 필요한 항목을 수정한 뒤 ‘수정 완료’를 눌러 주세요.",
           {
             type: "assistant",
             actions: [
@@ -1907,13 +1908,15 @@ async function handleChatAction(action) {
         return;
       }
       markChatActionGroupHandled(action);
-      beginWireframeEdit();
-      await appendPersistedMessage(
-        "assistant",
-        "오른쪽 페이지 구성 미리보기에서 문구와 가로 배치를 수정한 뒤 ‘수정 저장’을 눌러 주세요.",
-        { type: "assistant" },
-      );
-      updateStatusMessage(operationId, "페이지 구성 수정 모드를 열었습니다.", "completed");
+      if(store.snapshot?.content?.pageSchema){
+        operationOpen.value=true;
+        await appendPersistedMessage('assistant','채팅에서 변경할 배치나 내용을 알려주세요.',{type:'assistant'});
+        updateStatusMessage(operationId,'채팅에서 구성 수정 요청을 기다리고 있습니다.','completed');
+        return;
+      }
+      operationOpen.value=true;
+      await appendPersistedMessage('assistant','채팅에서 변경할 문구와 배치를 알려주세요.',{type:'assistant'});
+      updateStatusMessage(operationId,'채팅에서 구성 수정 요청을 기다리고 있습니다.','completed');
       return;
     }
     if (action.key === "open_output") {
@@ -3026,59 +3029,6 @@ onBeforeUnmount(() => {
   <main class="ai-builder-shell" :class="{ 'ai-builder-shell--processing': fullScreenProgress }">
     <BuilderModeSelector v-if="selectedMode !== 'ai'" :ai-enabled="capabilities.aiMode" @select="selectMode" />
     <template v-else>
-      <div v-if="store.error" class="ai-builder-error" role="alert" aria-live="assertive">
-        <strong>{{ store.error.code }}</strong>
-        <span>{{ store.error.message }}</span>
-        <small v-if="store.error.requestId">요청 ID: {{ store.error.requestId }}</small>
-        <details v-if="store.error.details?.length" class="ai-builder-error__details" :open="store.error.details.length <= 5">
-          <summary>확인 필요 항목 {{store.error.details.length}}개</summary>
-          <ul><li v-for="detail in store.error.details" :key="`${detail.code}:${detail.path}`"><code>{{detail.path}}</code> · {{detail.message||detail.code}}</li></ul>
-        </details>
-        <button
-          v-if="retryableAssetError"
-          type="button"
-          :disabled="assetRetrying"
-          @click="retryAssets"
-        >{{ assetRetrying ? "이미지 생성 재시도 중…" : "이미지 생성 다시 시도" }}</button>
-        <div class="ai-builder-error__actions">
-          <button v-if="tokenConnectionProblem && store.snapshot" type="button" :disabled="reconnectingTokens" @click="reconnectRegisteredTokens">{{reconnectingTokens?'토큰 확인 중…':'활성 등록 토큰 다시 연결'}}</button>
-          <button
-            v-if="failedTaskCanRetry && !retryableAssetError"
-            type="button"
-            :disabled="failedTaskRetrying"
-            @click="retryFailedTask"
-          >{{ failedTaskRetrying ? "다시 시도 중…" : "다시 시도" }}</button>
-          <button
-            v-if="failedTask && !retryableAssetError"
-            type="button"
-            :disabled="failedTaskRetrying"
-            @click="editFailedTask"
-          >내용 수정 후 다시 시도</button>
-          <button type="button" @click="clearBuilderError(store)">닫기</button>
-        </div>
-      </div>
-      <button v-if="['DOCUMENT_REVISION_MISMATCH','GENERATION_RESULT_SUPERSEDED','GENERATION_LEASE_CHANGED'].includes(store.error?.code)" type="button" @click="loadLatestPage">최신 페이지 불러오기</button>
-      <button v-if="store.error?.code?.startsWith('REQUIREMENTS_')" type="button" :disabled="overviewPersisting" @click="loadLatestRequirements">서버 최신 요약으로 복구</button>
-      <button v-if="overviewBackup?.documentId===store.documentId" type="button" :disabled="overviewPersisting || interactionLocked" @click="restoreOverviewBackup">보관한 입력으로 다시 수정</button>
-      <div v-if="pageGenerationRequest && !busy" role="status" class="ai-builder-warning"><span>진행한 페이지 생성 요청이 있습니다.</span><button type="button" @click="compose">생성 상태 다시 확인</button></div>
-      <div v-if="overviewDirty || overviewPersisting || overviewSaveMessage" role="status" class="ai-builder-warning"><span>{{overviewSaveMessage}}</span><button v-if="overviewDirty && !overviewPersisting" type="button" @click="retryOverviewSave">요청 요약 저장 재시도</button></div>
-      <div v-if="store.warning" class="ai-builder-warning" role="status">
-        <strong>{{ store.warning.code }}</strong>
-        <span>{{ store.warning.message }}</span>
-        <button
-          v-if="store.snapshot && /ASSET|IMAGE/.test(store.warning.code||'')"
-          type="button"
-          :disabled="assetRetrying"
-          @click="retryAssets"
-        >{{ assetRetrying ? "이미지 생성 재시도 중…" : "이미지 생성 다시 시도" }}</button>
-        <button type="button" @click="store.warning = null">닫기</button>
-      </div>
-      <div v-if="operationConflict" class="ai-builder-warning" role="alert">
-        <strong>DOCUMENT_REVISION_MISMATCH</strong>
-        <span>{{ operationConflict.message }}</span>
-        <button type="button" @click="reloadLatestForOperation">최신본 불러오기</button>
-        <button type="button" @click="operationConflict = null; pendingOperations = null">취소</button>
-      </div>
       <section
         class="ai-chat-workspace"
         :class="{ 'is-dragging': draggingSplit }"
@@ -3221,6 +3171,89 @@ onBeforeUnmount(() => {
                   >{{ chatActionButtonLabel(action) }}</button>
                 </div>
               </article>
+      <div v-if="store.error" class="ai-builder-error" role="alert" aria-live="assertive">
+        <strong>{{ store.error.code }}</strong>
+        <span>{{ store.error.message }}</span>
+        <small v-if="store.error.requestId">요청 ID: {{ store.error.requestId }}</small>
+        <details v-if="store.error.details?.length" class="ai-builder-error__details" :open="store.error.details.length <= 5">
+          <summary>확인 필요 항목 {{store.error.details.length}}개</summary>
+          <ul><li v-for="detail in store.error.details" :key="`${detail.code}:${detail.path}`"><code>{{detail.path}}</code> · {{detail.message||detail.code}}</li></ul>
+        </details>
+        <button
+          v-if="retryableAssetError"
+          type="button"
+          :disabled="assetRetrying"
+          @click="retryAssets"
+        >{{ assetRetrying ? "이미지 생성 재시도 중…" : "이미지 생성 다시 시도" }}</button>
+        <div class="ai-builder-error__actions">
+          <button v-if="tokenConnectionProblem && store.snapshot" type="button" :disabled="reconnectingTokens" @click="reconnectRegisteredTokens">{{reconnectingTokens?'토큰 확인 중…':'활성 등록 토큰 다시 연결'}}</button>
+          <button
+            v-if="failedTaskCanRetry && !retryableAssetError"
+            type="button"
+            :disabled="failedTaskRetrying"
+            @click="retryFailedTask"
+          >{{ failedTaskRetrying ? "다시 시도 중…" : "다시 시도" }}</button>
+          <button
+            v-if="failedTask && !retryableAssetError"
+            type="button"
+            :disabled="failedTaskRetrying"
+            @click="editFailedTask"
+          >내용 수정 후 다시 시도</button>
+          <button type="button" @click="clearBuilderError(store)">닫기</button>
+        </div>
+      </div>
+      <button v-if="['DOCUMENT_REVISION_MISMATCH','GENERATION_RESULT_SUPERSEDED','GENERATION_LEASE_CHANGED'].includes(store.error?.code)" type="button" @click="loadLatestPage">최신 페이지 불러오기</button>
+      <button v-if="store.error?.code?.startsWith('REQUIREMENTS_')" type="button" :disabled="overviewPersisting" @click="loadLatestRequirements">서버 최신 요약으로 복구</button>
+      <button v-if="overviewBackup?.documentId===store.documentId" type="button" :disabled="overviewPersisting || interactionLocked" @click="restoreOverviewBackup">보관한 입력으로 다시 수정</button>
+      <div v-if="pageGenerationRequest && !busy" role="status" class="ai-builder-warning"><span>진행한 페이지 생성 요청이 있습니다.</span><button type="button" @click="compose">생성 상태 다시 확인</button></div>
+      <div v-if="overviewDirty || overviewPersisting || overviewSaveMessage" role="status" class="ai-builder-warning"><span>{{overviewSaveMessage}}</span><button v-if="overviewDirty && !overviewPersisting" type="button" @click="retryOverviewSave">요청 요약 저장 재시도</button></div>
+      <div v-if="store.warning" class="ai-builder-warning" role="status">
+        <strong>{{ store.warning.code }}</strong>
+        <span>{{ store.warning.message }}</span>
+        <button
+          v-if="store.snapshot && /ASSET|IMAGE/.test(store.warning.code||'')"
+          type="button"
+          :disabled="assetRetrying"
+          @click="retryAssets"
+        >{{ assetRetrying ? "이미지 생성 재시도 중…" : "이미지 생성 다시 시도" }}</button>
+        <button type="button" @click="store.warning = null">닫기</button>
+      </div>
+      <div v-if="operationConflict" class="ai-builder-warning" role="alert">
+        <strong>DOCUMENT_REVISION_MISMATCH</strong>
+        <span>{{ operationConflict.message }}</span>
+        <button type="button" @click="reloadLatestForOperation">최신본 불러오기</button>
+        <button type="button" @click="operationConflict = null; pendingOperations = null">취소</button>
+      </div>
+          <section v-if="store.overviewDraft && activeResultTab === 'requirements'" class="ai-requirements-details" aria-label="채팅 요청 보완">
+                <RequirementTable v-if="capabilities.pageSchemaV1 && criticalInputRows.length" title="요청 정보 보완 · 선택 사항" :rows="criticalInputRows" editing @change="updateCriticalField" />
+                <section v-if="capabilities.pageSchemaV1 && contentConfirmations.length" class="ai-requirements-details" aria-label="콘텐츠 확인">
+                  <h3>추가 검토할 콘텐츠 {{ contentConfirmations.length }}개 · 선택 사항</h3>
+                  <p>필요한 내용만 수정할 수 있습니다. 입력하지 않아도 AI가 문구와 구성을 보완합니다.</p>
+                  <article v-for="item in contentConfirmations" :key="item.path">
+                    <strong>{{ item.label }}</strong>
+                    <label v-for="field in item.editableFields" :key="field.key" style="display:block">
+                      {{ ({title:'제목',description:'설명',body:'본문',value:'값',label:'문구',url:'URL',ctaLabel:'버튼 문구',ctaUrl:'버튼 URL'})[field.key] || field.key }}
+                      <textarea :value="field.value" :aria-label="`${item.label} ${field.key}`" rows="2" maxlength="2000" :disabled="requirementsEditing || interactionLocked" @input="updateConfirmationField(item.path,field.key,$event.target.value)"></textarea>
+                    </label>
+                    <button type="button" :disabled="!item.canConfirm || requirementsEditing || interactionLocked" @click="confirmContentItem(item.path)">이 내용으로 확정</button>
+                    <span v-if="!item.canConfirm"> 입력하지 않아도 생성할 수 있습니다. 문구는 AI가 보완하고 미정인 사실 정보는 제외합니다.</span>
+                  </article>
+                </section>
+
+            <template v-if="requirementsEditing">
+              <RequirementTable v-for="table in requirementTables" :key="table.key" :title="table.title" :rows="table.rows" editing @change="setRequirementValue" />
+            </template>
+          </section>
+          <div id="ai-chat-design-actions"></div>
+          <PageSchemaMediaPanel v-if="activeResultTab==='final' && store.snapshot?.content?.pageSchema" :page="store.snapshot.content.pageSchema" :context="store.snapshot.content.pageContext" :busy="pageSchemaSaving || busy" @change="changeDynamicMedia" />
+          <button v-if="activeResultTab==='final' && tokenConnectionProblem" type="button" :disabled="reconnectingTokens" @click="reconnectRegisteredTokens">{{reconnectingTokens?'토큰 확인 중…':'활성 등록 토큰 다시 연결'}}</button>
+          <section v-if="store.snapshot?.content?.pageSchema && activeResultTab!=='final'" class="ai-chat-actions" aria-label="채팅 페이지 작업">
+            <button v-if="pageStructurePending" type="button" :disabled="interactionLocked||pageSchemaSaving" @click="handleChatAction({key:'approve_wireframe',label:'페이지 구성 승인'})">페이지 구성 승인</button>
+            <button type="button" :disabled="interactionLocked||pageSchemaSaving" @click="operationOpen=true">구성 수정 요청</button>
+            <button type="button" :disabled="interactionLocked||pageSchemaSaving" @click="pageSchemaEditorOpen=true">구성 편집</button>
+          </section>
+          <PageSchemaEditor v-if="pageSchemaEditorOpen && store.snapshot?.content?.pageSchema" :page="store.snapshot.content.pageSchema" :busy="pageSchemaSaving" @save="saveDynamicPage" @close="pageSchemaEditorOpen=false" />
+          <NaturalLanguageEditor v-if="operationOpen" :page-schema-mode="Boolean(store.snapshot?.content?.pageSchema)" :busy="busy" @cancel="operationOpen=false" @submit="editNaturalLanguage" />
             </div>
             <button
               v-if="showLatestMessageButton"
@@ -3240,6 +3273,7 @@ onBeforeUnmount(() => {
               <button type="button" :disabled="interactionLocked" :aria-label="`${attachment.name} 삭제`" @click="removeAttachment(attachment)"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
             </article>
           </div>
+
 
           <form class="ai-chat-composer" @submit.prevent="submitChat">
             <div class="ai-chat-composer__surface">
@@ -3314,7 +3348,7 @@ onBeforeUnmount(() => {
           </header>
 
           <div class="ai-result-content">
-            <aside v-if="pageSummaryOutdated" role="status"><strong>요청 요약이 변경되었습니다.</strong><p>현재 미리보기는 이전 요약의 결과입니다. 최신 내용으로 다시 생성해 주세요.</p><button type="button" :disabled="busy||overviewPersisting" @click="compose">최신 요약으로 페이지 구성 생성</button></aside>
+            <aside v-if="pageSummaryOutdated" role="status"><strong>요청 요약이 변경되었습니다.</strong><p>현재 미리보기는 이전 요약의 결과입니다. 최신 내용으로 다시 생성해 주세요.</p><span>왼쪽 채팅에서 페이지 구성을 다시 생성해 주세요.</span></aside>
             <aside v-if="activeResultTab !== 'requirements' && store.snapshot?.generationMeta?.designReview?.designWarnings?.length" aria-label="디자인 검토 안내">
               <strong>디자인 검토 안내</strong><ul><li v-for="warning in store.snapshot.generationMeta.designReview.designWarnings" :key="warning.code">{{warning.message}}</li></ul>
             </aside>
@@ -3342,25 +3376,11 @@ onBeforeUnmount(() => {
                     내용이 맞으면 왼쪽 채팅의 <strong>페이지 미리보기 생성</strong>을 눌러주세요. 바꾸고 싶은 부분은 “혜택을 3개로 줄여줘”처럼 입력하면 됩니다.
                   </p>
                 </div>
-                <RequirementTable v-if="capabilities.pageSchemaV1 && criticalInputRows.length" title="요청 정보 확인 — 제목·핵심 혜택은 필수, 미정인 대상·지역은 출력에서 추정하지 않습니다" :rows="criticalInputRows" editing @change="updateCriticalField" />
-                <section v-if="capabilities.pageSchemaV1 && contentConfirmations.length" class="ai-requirements-details" aria-label="콘텐츠 확인">
-                  <h3>추가 검토할 콘텐츠 {{ contentConfirmations.length }}개 · 선택 사항</h3>
-                  <p>아래 내용을 확인한 후 항목별로 확정해 주세요. 미입력·미정 내용은 먼저 보완해 주세요.</p>
-                  <article v-for="item in contentConfirmations" :key="item.path">
-                    <strong>{{ item.label }}</strong>
-                    <label v-for="field in item.editableFields" :key="field.key" style="display:block">
-                      {{ ({title:'제목',description:'설명',body:'본문',value:'값',label:'문구',url:'URL',ctaLabel:'버튼 문구',ctaUrl:'버튼 URL'})[field.key] || field.key }}
-                      <textarea :value="field.value" :aria-label="`${item.label} ${field.key}`" rows="2" maxlength="2000" :disabled="requirementsEditing || interactionLocked" @input="updateConfirmationField(item.path,field.key,$event.target.value)"></textarea>
-                    </label>
-                    <button type="button" :disabled="!item.canConfirm || requirementsEditing || interactionLocked" @click="confirmContentItem(item.path)">이 내용으로 확정</button>
-                    <span v-if="!item.canConfirm"> 입력하지 않아도 생성할 수 있습니다. 문구는 AI가 보완하고 미정인 사실 정보는 제외합니다.</span>
-                  </article>
-                </section>
                 <details class="ai-requirements-details" :open="requirementsEditing">
                   <summary>{{ requirementsEditing ? '세부 내용 편집 중' : '세부 내용 보기' }}</summary>
                   <RequirementTable
                     v-for="table in requirementTables" :key="table.key"
-                    :title="table.title" :rows="table.rows" :editing="requirementsEditing"
+                    :title="table.title" :rows="table.rows" :editing="false"
                     :show-usage="table.key === 'basic'" :show-group="table.showGroup"
                     @change="setRequirementValue"
                   />
@@ -3375,12 +3395,8 @@ onBeforeUnmount(() => {
                 <div role="group" aria-label="구성 미리보기 화면 크기">
                   <button v-for="view in ['desktop','tablet','mobile']" :key="view" type="button" :aria-pressed="wireframeViewport===view" @click="wireframeViewport=view">{{{desktop:'데스크톱',tablet:'태블릿',mobile:'모바일'}[view]}}</button>
                 </div>
-                <button type="button" :disabled="busy||pageSchemaSaving" @click="operationOpen=true">구성 수정 요청</button>
-                <button type="button" :disabled="busy||pageSchemaSaving" @click="pageSchemaEditorOpen=true">구성 편집</button>
-                <button type="button" :disabled="busy||pageSchemaSaving" @click="approveDynamicStructure">페이지 구성 승인</button>
               </header>
-              <p>섹션 순서·배치·문구를 확인해 주세요. 승인 후 같은 구조로 디자인 미리보기를 표시합니다.</p>
-              <PageSchemaEditor v-if="pageSchemaEditorOpen" :page="store.snapshot.content.pageSchema" :busy="pageSchemaSaving" @save="saveDynamicPage" @close="pageSchemaEditorOpen=false" />
+              <p>섹션 순서·배치·문구를 확인해 주세요. 수정 요청과 승인은 왼쪽 채팅에서 진행합니다.</p>
               <PageSchemaWireframe :page="store.snapshot.content.pageSchema" :context="store.snapshot.content.pageContext" :viewport="wireframeViewport" />
             </section>
             <section v-else-if="activeResultTab === 'wireframe' && wireframeDisplaySnapshot" class="ai-wireframe-review">
@@ -3404,17 +3420,10 @@ onBeforeUnmount(() => {
                       @click="wireframeViewport = 'mobile'"
                     >모바일</button>
                   </div>
-                  <template v-if="wireframeEditing">
-                    <button type="button" class="ai-wireframe-edit-action is-secondary" :disabled="wireframeSaving" @click="cancelWireframeEdit">취소</button>
-                    <button type="button" class="ai-wireframe-edit-action" :disabled="wireframeSaving || !wireframeEditDirty" @click="saveWireframeEdits">
-                      {{ wireframeSaving ? '저장 중…' : '수정 저장' }}
-                    </button>
-                  </template>
-                  <button v-else type="button" class="ai-wireframe-edit-action" @click="beginWireframeEdit">내용·배치 수정</button>
                 </div>
               </header>
               <p class="ai-page-preview-notice">
-                현재 화면에서 문구와 가로 배치를 수정할 수 있습니다. 색상과 실제 이미지는 최종 디자인에서 적용됩니다.
+                문구와 배치 수정은 왼쪽 채팅에서 요청해 주세요. 색상과 실제 이미지는 디자인 미리보기에서 적용됩니다.
               </p>
               <div
                 class="ai-wireframe-stage"
@@ -3512,11 +3521,9 @@ onBeforeUnmount(() => {
             </section>
 
             <section v-else-if="activeResultTab === 'final' && store.snapshot" class="ai-final-review">
-              <PageSchemaMediaPanel v-if="store.snapshot?.content?.pageSchema" :page="store.snapshot.content.pageSchema" :context="store.snapshot.content.pageContext" :busy="pageSchemaSaving || busy" @change="changeDynamicMedia" />
-              <PageSchemaEditor v-if="pageSchemaEditorOpen && store.snapshot?.content?.pageSchema" :page="store.snapshot.content.pageSchema" :busy="pageSchemaSaving" @save="saveDynamicPage" @close="pageSchemaEditorOpen=false" />
-              <button v-if="tokenConnectionProblem" type="button" :disabled="reconnectingTokens" @click="reconnectRegisteredTokens">{{reconnectingTokens?'토큰 확인 중…':'활성 등록 토큰 다시 연결'}}</button>
               <CompositionReview
                 ref="compositionReviewRef"
+                controls-target="#ai-chat-design-actions"
                 v-model:viewport="wireframeViewport"
                 :snapshot="store.snapshot"
                 :document-revision="store.documentRevision"
@@ -3534,7 +3541,6 @@ onBeforeUnmount(() => {
           </div>
         </section>
       </section>
-      <NaturalLanguageEditor v-if="operationOpen" :page-schema-mode="Boolean(store.snapshot?.content?.pageSchema)" :busy="busy" @cancel="operationOpen = false" @submit="editNaturalLanguage" />
     </template>
   </main>
 </template>

@@ -46,7 +46,7 @@ try{
  const page=await browser.newPage({viewport:{width:1440,height:1000}});page.setDefaultTimeout(20000);const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.addInitScript(overview=>{if(!sessionStorage.getItem('promoAiBuilder.activeChat.v2'))sessionStorage.setItem('promoAiBuilder.activeChat.v2',JSON.stringify({documentId:'doc-audit',chatSessionId:'session-audit',documentRevision:0,stage:'reviewing_overview',activeResultTab:'requirements',overviewDraft:overview,messages:[]}));},oldOverview);
  const url=`http://127.0.0.1:${server.address().port}/?mode=ai`;
- await page.goto(url);const review=page.getByRole('region',{name:'콘텐츠 확인'});await review.getByRole('heading',{name:'확인이 필요한 콘텐츠 1개'}).waitFor();
+ await page.goto(url);const review=page.locator('.ai-chat-pane').getByRole('region',{name:'콘텐츠 확인'});await review.getByRole('heading',{name:'추가 검토할 콘텐츠 1개 · 선택 사항'}).waitFor();
  await page.getByPlaceholder('무엇을 만들고 싶으신가요?').waitFor();
  await page.waitForFunction(()=>!document.querySelector('.ai-chat-composer textarea')?.disabled);
  await review.getByRole('textbox',{name:'참여 유의사항 body',exact:true}).fill('사용자가 수정한 참여 안내');

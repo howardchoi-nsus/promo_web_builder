@@ -1,6 +1,16 @@
 <script>
 import { defineComponent, h, ref, useId } from 'vue';
 import { pageCss, tokenVariables, safeUrl, textContent, nodes } from '../../../shared/page-schema/runtime.mjs';
+// Preview-only paint overrides: keep token-derived geometry and typography metrics.
+function wireframeCss(scope){
+ const host=`[data-ps-scope="${scope}"]`;
+ return `${host}{background:#fff!important;color:#333!important}
+ ${host} [data-ps-node]{background-color:#fff!important;background-image:none!important;color:#333!important;border-color:#aaa!important;box-shadow:none!important;text-shadow:none!important;animation:none!important;transition:none!important}
+ ${host} [data-ps-type="container"],${host} [data-ps-type="card"]{outline:1px dashed #bbb;outline-offset:-1px}
+ ${host} [data-ps-type="button"],${host} input{background:#eee!important;outline:1px solid #888;outline-offset:-1px}
+ ${host} img,${host} video{object-fit:none!important;object-position:-100000px -100000px!important;background:#eee!important;outline:1px dashed #999;outline-offset:-1px}
+ ${host} [data-ps-type="image"],${host} [data-ps-type="video"]{background:#eee!important;outline:1px dashed #999;outline-offset:-1px}`;
+}
 export default defineComponent({
  name:'PageSchemaRenderer',
  props:{page:{type:Object,required:true},context:{type:Object,required:true},viewportOverride:{type:String,default:''},wireframe:{type:Boolean,default:false}},
@@ -39,10 +49,10 @@ export default defineComponent({
    if(n.type==='input')return h('label',attrs,[h('span',n.label),h('input',{type:n.inputType,name:props.context.formFields?.[n.fieldId]?.name,placeholder:n.placeholder,required:n.required,disabled:props.wireframe||!props.context.formFields?.[n.fieldId]})]);
    if(n.type==='divider')return h('hr',{...attrs,'aria-orientation':n.direction});
    if(n.type==='icon')return h('span',{...attrs,role:n.decorative?undefined:'img','aria-label':n.decorative?undefined:n.label,'aria-hidden':n.decorative?'true':undefined},({check:'✓',arrow:'→',star:'★',info:'ⓘ'})[props.context.icons?.[n.iconId]?.glyph]||'');
-   if(n.type==='video'){const src=safeUrl(props.context.assets?.[n.assetId]?.url);return src?h('video',{...attrs,src,poster:safeUrl(props.context.assets?.[n.posterAssetId]?.url)||undefined,controls:true,preload:'metadata','aria-label':n.label},n.captionAssetId?[h('track',{kind:'captions',src:safeUrl(props.context.assets?.[n.captionAssetId]?.url),srclang:props.context.language||'ko',default:true})]:[]):h('div',attrs,'동영상 연결 대기');}
+   if(n.type==='video'){const src=safeUrl(props.context.assets?.[n.assetId]?.url);return src?h('video',{...attrs,src,poster:safeUrl(props.context.assets?.[n.posterAssetId]?.url)||undefined,controls:!props.wireframe,preload:'metadata','aria-label':n.label},n.captionAssetId?[h('track',{kind:'captions',src:safeUrl(props.context.assets?.[n.captionAssetId]?.url),srclang:props.context.language||'ko',default:true})]:[]):h('div',attrs,'동영상 연결 대기');}
    return null;
   }
-  return ()=>h('div',{ref:host,class:'page-schema-renderer','data-ps-scope':scope,'data-ps-viewport':['desktop','tablet','mobile'].includes(props.viewportOverride)?props.viewportOverride:undefined,style:tokenVariables(props.context)},[h('style',pageCss(props.page,props.context,scope)),renderNode(props.page.root)]);
+  return ()=>h('div',{ref:host,class:'page-schema-renderer','data-ps-scope':scope,'data-ps-viewport':['desktop','tablet','mobile'].includes(props.viewportOverride)?props.viewportOverride:undefined,style:tokenVariables(props.context)},[h('style',pageCss(props.page,props.context,scope)+(props.wireframe?wireframeCss(scope):'')),renderNode(props.page.root)]);
  }
 });
 </script>
