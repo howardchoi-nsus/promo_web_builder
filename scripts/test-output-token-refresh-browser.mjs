@@ -8,7 +8,7 @@ import {fixture,context} from './fixtures/page-schema.mjs';
 const require=createRequire(import.meta.url);
 const {snapshotForPage}=require('../api/_page-schema-service');
 const {refreshOutputTokens}=require('../api/_promo-output-token-refresh');
-const {normalizePassedQualityGate}=require('../api/_promo-quality-gate');
+const {normalizeEditorSnapshot}=require('../api/promo-builder-documents');
 let snapshot=snapshotForPage(fixture('example-editorial'),structuredClone(context)),revision=1,activeReady=false,reconnects=0;
 for(const key of Object.keys(snapshot.content.pageContext.tokenValues))if(/^--grid-|^--breakpoint-/.test(key))delete snapshot.content.pageContext.tokenValues[key];
 snapshot.qualityGate={state:'pending',documentRevision:1};
@@ -29,7 +29,7 @@ const server=createServer(async(req,res)=>{try{
      try{snapshot=await refreshOutputTokens({},snapshot,{fetchTokenSets:async()=>[{setKey:'design-system',versionId:version.id}],fetchTokenVersion:async()=>activeReady?version:{...version,values:version.values.filter(t=>!/^--grid-|^--breakpoint-/.test(t.name))},activeTokenUsagePolicy:async()=>context.usagePolicy,tokenPolicyCatalog:()=>context.tokenCatalog});}
      catch(error){res.statusCode=error.statusCode||500;return res.end(JSON.stringify({code:error.code,message:error.message,errors:error.errors}));}
      snapshot={...snapshot,documentRevision:++revision,qualityGate:{state:'pending',documentRevision:revision}};
-    }else{const gate=normalizePassedQualityGate(body.snapshot.qualityGate,{sourceDocumentRevision:revision,documentRevision:revision+1,requiredViewports:['desktop','tablet','mobile']});snapshot={...snapshot,documentRevision:++revision,qualityGate:gate};}
+    }else{const checked=await normalizeEditorSnapshot({},snapshot,body.snapshot,'',revision);snapshot={...checked,documentRevision:++revision};}
     data={ok:true,revision,snapshot};
    }else data={ok:true,document:{id:'document-1',currentDocumentRevision:revision},snapshot};
   }
@@ -45,7 +45,7 @@ try{
  const page=await browser.newPage({viewport:{width:1280,height:900}});page.setDefaultTimeout(15000);page.on('pageerror',e=>errors.push(e.message));
  await page.addInitScript(()=>sessionStorage.setItem('promoAiBuilder.activeChat.v2',JSON.stringify({documentId:'document-1',documentRevision:1,stage:'render_ready',activeResultTab:'final',messages:[]})));
  await page.goto(`http://127.0.0.1:${server.address().port}/?mode=ai`);
- await page.getByRole('button',{name:'다시 검사',exact:true}).click();
+ // Restoring the final preview must automatically inspect without a button click.
  await page.locator('.ai-builder-error').waitFor();assert.ok((await page.locator('.ai-builder-error').innerText()).includes('그리드·디자인 토큰'));assert.equal((await page.locator('.ai-builder-error').innerText()).includes('겹침·잘림'),false);
  await page.setViewportSize({width:390,height:844});
  const display=await page.locator('.ai-builder-error').evaluate(el=>({display:getComputedStyle(el).display,overflow:el.scrollWidth>el.clientWidth+2,detailCount:el.querySelectorAll('li').length}));assert.equal(display.display,'grid');assert.equal(display.overflow,false);assert.equal(display.detailCount,15);

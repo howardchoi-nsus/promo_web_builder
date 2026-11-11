@@ -23,6 +23,7 @@ const {
 const {
   assertPassedQualityGate,
   normalizePassedQualityGate,
+  pendingQualityGate,
 } = require("./_promo-quality-gate");
 
 function normalizedSectionOrder(candidate, sections) {
@@ -87,6 +88,19 @@ async function normalizeEditorSnapshot(
   designTokenSetVersionId,
   baseDocumentRevision = Number(currentSnapshot?.documentRevision || 0),
 ) {
+  // Quality certification must preserve exactly the document inspected by the browser.
+  if (incomingSnapshot?.qualityGate?.state === "passed") {
+    const visual = (snapshot) => { const {qualityGate, documentRevision, ...rest} = snapshot; return rest; };
+    if (JSON.stringify(visual(incomingSnapshot)) !== JSON.stringify(visual(currentSnapshot))) {
+      throw Object.assign(new Error("변경 내용을 먼저 저장한 후 품질 검사를 다시 실행해 주세요."), {statusCode:409,code:"QUALITY_SNAPSHOT_CHANGED"});
+    }
+    const next = {...currentSnapshot, qualityGate:normalizePassedQualityGate(incomingSnapshot.qualityGate, {
+      sourceDocumentRevision:baseDocumentRevision, documentRevision:baseDocumentRevision+1,
+      requiredViewports:currentSnapshot.content?.pageSchema ? ["desktop","tablet","mobile"] : ["desktop","mobile"],
+    })};
+    assertPassedQualityGate(next, baseDocumentRevision+1);
+    return next;
+  }
   if (currentSnapshot?.content?.pageSchema) {
     const {assertValid}=require("../shared/page-schema/contract.cjs");
     assertValid(currentSnapshot.content.pageSchema,currentSnapshot.content.pageContext,{final:true});
@@ -137,7 +151,15 @@ async function normalizeEditorSnapshot(
       });
     }
     tokenDefinitions = tokenVersion.values || [];
+    const {tokenPolicyCatalog,activeTokenUsagePolicy}=require("./_token-usage-policy-store");
+    const pinnedPolicy = designTokens.usagePolicy;
+    const usagePolicy = designTokens.versionId === tokenVersion.id || requestedVersionId === (currentSnapshot.content.runtimeTheme?.designTokenSetVersionId)
+      ? pinnedPolicy || await activeTokenUsagePolicy(sql,tokenVersion)
+      : await activeTokenUsagePolicy(sql,tokenVersion);
     designTokens = {
+      policy:"registered-only",
+      catalog:tokenPolicyCatalog(tokenVersion),
+      usagePolicy,
       setKey: tokenVersion.setKey,
       name: tokenVersion.name,
       version: tokenVersion.version,
@@ -151,9 +173,9 @@ async function normalizeEditorSnapshot(
   }
   const tokenValues = designTokens.values || {};
   const tokenKeys = new Set(Object.keys(tokenValues));
-  const tokenBindings = resolveDesignTokenBindings(tokenValues, tokenDefinitions);
+  const tokenBindings = resolveDesignTokenBindings(tokenValues, tokenDefinitions, designTokens.usagePolicy);
   const missingTokenRoles = Number(currentSnapshot.contractVersion) === 3
-    ? missingRequiredDesignTokenRoles(tokenValues)
+    ? missingRequiredDesignTokenRoles(tokenValues, designTokens.usagePolicy)
     : [];
   if (missingTokenRoles.length) {
     throw Object.assign(new Error(`Design Token Set is missing required semantic roles: ${missingTokenRoles.join(", ")}`), {
@@ -176,7 +198,7 @@ async function normalizeEditorSnapshot(
     });
     return [styleKey, nextStyle];
   }));
-  const defaultItemStyles = buildDefaultItemStyles(sections, tokenValues, tokenDefinitions);
+  const defaultItemStyles = buildDefaultItemStyles(sections, tokenValues, tokenDefinitions, designTokens.usagePolicy);
   const mergedItemStyles = Object.fromEntries(Array.from(new Set([
     ...Object.keys(defaultItemStyles),
     ...Object.keys(incomingItemStyles),
@@ -218,10 +240,7 @@ async function normalizeEditorSnapshot(
     itemStyles: mergedItemStyles,
   };
   const qualityGate = Number(currentSnapshot.contractVersion) === 3
-    ? normalizePassedQualityGate(incomingSnapshot?.qualityGate, {
-      sourceDocumentRevision: baseDocumentRevision,
-      documentRevision: Number(baseDocumentRevision) + 1,
-    })
+    ? pendingQualityGate(Number(baseDocumentRevision)+1, "document_changed")
     : currentSnapshot.qualityGate;
   return {
     ...currentSnapshot,
@@ -329,8 +348,12 @@ module.exports = async function handler(req, res) {
         snapshot,
         source: "manual",
         changeNote: String(body.changeNote || "Visual Editor changes saved.").slice(0, 500),
-        qualityGateVerified: !refreshTokens && Number(current.snapshot.contractVersion) === 3,
+        qualityGateVerified: !refreshTokens && snapshot.qualityGate?.state === "passed",
       });
+      if (saved.snapshot.qualityGate?.state === "passed") {
+        await sql`update promo_builder_chat_sessions set stage='completed', updated_at=now()
+          where document_id=${documentId}::uuid and owner_subject=${owner.ownerSubject} and stage='finalizing'`;
+      }
       return res.status(200).json({
         ok: true,
         documentId,

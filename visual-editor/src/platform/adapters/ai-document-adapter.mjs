@@ -46,7 +46,7 @@ export function createAiDocumentAdapter({ fetchImpl = globalThis.fetch } = {}) {
         body: JSON.stringify({
           documentId,
           baseDocumentRevision,
-          snapshot,
+          snapshot: {...snapshot, qualityGate:{state:"pending"}},
           designTokenSetVersionId,
           changeNote,
         }),

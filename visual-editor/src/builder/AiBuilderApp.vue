@@ -2088,7 +2088,6 @@ function designTokenSetVersionId(snapshot = store.snapshot) {
 async function runFinalQualityGate({ autoRepair = true, force = false } = {}) {
   if (!store.snapshot || !store.documentId || !store.documentRevision || finalQualityChecking.value) return false;
   if (!force && finalQualityPassed.value) return true;
-  const originalSnapshot = JSON.parse(JSON.stringify(store.snapshot));
   finalQualityChecking.value = true;
   transientQualityGate.value = {
     contractVersion: 1,
@@ -2143,14 +2142,20 @@ async function runFinalQualityGate({ autoRepair = true, force = false } = {}) {
       if (!autoRepair || attempt >= 2) break;
       const repaired = await compositionReviewRef.value?.buildAutoRepairSnapshot?.(store.snapshot, result);
       if (!repaired?.changed) break;
-      store.snapshot = repaired.snapshot;
+      const repairedSave = await saveBuilderDocument({
+        documentId:store.documentId,baseDocumentRevision:store.documentRevision,
+        snapshot:{...repaired.snapshot,qualityGate:{state:'pending'}},
+        designTokenSetVersionId:designTokenSetVersionId(),changeNote:'자동 품질 보정 저장 후 재검사',
+      });
+      store.snapshot = repairedSave.snapshot;
+      store.documentRevision = Number(repairedSave.revision);
       transientQualityGate.value = {
         ...transientQualityGate.value,
         message: `품질 문제를 자동 보정하고 있습니다. (${attempt + 1}/2)`,
       };
       await nextTick();
     }
-    store.snapshot = originalSnapshot;
+    // Keep the latest persisted repair revision; never restore stale content locally.
     transientQualityGate.value = {
       contractVersion: 1,
       state: "failed",
@@ -2169,6 +2174,7 @@ async function runFinalQualityGate({ autoRepair = true, force = false } = {}) {
     });
     return false;
   } finally {
+    automaticQualityKey = `${store.documentId}:${store.documentRevision}`;
     finalQualityChecking.value = false;
   }
 }
@@ -2790,6 +2796,17 @@ watch(interactionLocked, (locked, wasLocked) => {
     if (latest) scrollChatMessageIntoView(latest.id, "smooth");
   });
 });
+// Each saved revision is checked once when its final preview becomes available.
+let automaticQualityKey = '';
+watch(() => [store.documentId,store.documentRevision,store.stage,activeResultTab.value,finalQualityChecking.value], async () => {
+  if (failedTask.value || !store.snapshot || Number(store.snapshot.contractVersion)!==3 || store.stage!=='render_ready' || activeResultTab.value!=='final' || finalQualityChecking.value || finalQualityPassed.value) return;
+  const key = `${store.documentId}:${store.documentRevision}`;
+  if (automaticQualityKey===key) return;
+  automaticQualityKey=key;
+  await nextTick();
+  if (!finalQualityChecking.value) await checkFinalQuality();
+}, {flush:'post'});
+
 watch(activeResultTab, (tab) => {
   if (tab !== "wireframe" && wireframeRevealState.value !== "complete") completeWireframeReveal();
 });

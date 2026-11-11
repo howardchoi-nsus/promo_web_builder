@@ -8,7 +8,11 @@ async function assertRegisteredTokenPolicy(snapshot) {
     return;
   }
   const library = snapshot?.content?.runtimeTheme?.designTokens;
-  if (library?.policy !== "registered-only") return;
+  if (library?.policy !== "registered-only") {
+    if (Number(snapshot?.contractVersion) !== 3) return;
+    throw Object.assign(new Error("등록된 디자인 토큰 정책이 누락되었습니다. 활성 토큰을 다시 연결해 주세요."),{statusCode:422,code:"OUTPUT_TOKEN_POLICY_REQUIRED"});
+  }
+  require('../shared/layout-token-policy.cjs').assertLayoutTokens({tokenValues:library.values,tokenCatalog:library.catalog,usagePolicy:library.usagePolicy});
   const { enforceRegisteredDesignTokens } = await import("../shared/registered-token-policy.mjs");
   const validation = enforceRegisteredDesignTokens(snapshot.designSpec, library.values, library.catalog, library.usagePolicy, snapshot.content?.sectionSnapshot);
   const { validateRenderSpec } = require("./_component-render-spec-contract");

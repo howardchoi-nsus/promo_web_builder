@@ -31,7 +31,7 @@ await assert.rejects(docs.normalizeEditorSnapshot({},snapshot,{...snapshot,quali
 gate.results.tablet={blockingCount:0};
 const checked=await docs.normalizeEditorSnapshot({},snapshot,{...snapshot,qualityGate:gate},'',2);assert.equal(checked.qualityGate.documentRevision,3);
 const forged=structuredClone(snapshot);forged.content.pageContext.actions.fake={href:'javascript:alert(1)'};
-await assert.rejects(docs.normalizeEditorSnapshot({},snapshot,{...forged,qualityGate:gate},'',2),e=>e.code==='PAGE_SCHEMA_EDIT_REQUIRED');
+await assert.rejects(docs.normalizeEditorSnapshot({},snapshot,{...forged,qualityGate:gate},'',2),e=>e.code==='QUALITY_SNAPSHOT_CHANGED');
 const media=require('../api/promo-page-schema-media');
 async function bind(body){let status=200,payload;const res={setHeader(){},status(s){status=s;return this;},json(p){payload=p;}};await media({method:'PATCH',body,headers:{cookie:`${auth.COOKIE_NAME}=${session.token}`}},res);return {status,payload};}
 let button;walk(snapshot.content.pageSchema.root,({node})=>{if(node.type==='button')button=node;});

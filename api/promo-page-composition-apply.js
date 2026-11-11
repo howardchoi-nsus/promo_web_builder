@@ -115,20 +115,7 @@ module.exports = async function handler(req, res) {
         snapshot: applied.snapshot,
       });
       let sessionWarning = null;
-      if (chatSessionId) {
-        try {
-          await completeSession(sql, { sessionId: chatSessionId, ownerSubject: owner.ownerSubject });
-        } catch (sessionError) {
-          console.error("[promo-page-composition-apply] chat session completion failed", {
-            chatSessionId,
-            message: sessionError.message,
-          });
-          sessionWarning = {
-            code: "CHAT_SESSION_COMPLETION_DELAYED",
-            message: "The design was applied, but chat session completion will require reconciliation.",
-          };
-        }
-      }
+      // Session remains finalizing until the saved output passes its quality gate.
       return res.status(200).json({
         ok: true,
         documentId,
