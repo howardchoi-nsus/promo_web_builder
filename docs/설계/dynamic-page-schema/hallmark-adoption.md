@@ -76,3 +76,12 @@ PostgreSQL 호환 저장 검증은 개발 도구에 PGlite가 설치돼 있을 �
 - 관리자에서 새 Draft 검증 후 활성화. 필수 변수 세 개와 PageSchema 출력 계약은 유지.
 - 필요 시 HALLMARK_DESIGN_ENABLED=false와 이전 프롬프트로 비교/롤백.
 - 코드 배포와 원격 프롬프트 활성화, 실제 LLM 품질 검증은 별개로 기록.
+# PageSchema provider timeout
+
+`promo_page_schema_planner` permits a 240,000 ms provider timeout within the
+300-second `promo-page-schema` route. Existing 90,000 ms planner defaults are
+upgraded at execution normalization and shown as 240,000 ms in the prompt editor;
+this compatibility change requires no SQL migration or prompt reactivation.
+Other explicitly configured budgets remain effective, up to 240,000 ms. Other
+text planners retain their 90,000 ms limit. This prevents the legacy 90-second
+cutoff but does not guarantee a provider response within four minutes.

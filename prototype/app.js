@@ -3226,6 +3226,8 @@ const adminApp = createApp({
         const runtimeConfig = detail.runtimeConfig || detail.modelOptions?.runtimeConfig || {};
         const defaultRuntimeConfig = usesImagePolicy
           ? { timeoutMs: 240000, maxAttempts: 3, retryBaseMs: 15000, retryMaxMs: 75000 }
+          : detail.type === "promo_page_schema_planner"
+          ? { timeoutMs: 240000, maxAttempts: 1, retryBaseMs: 0, retryMaxMs: 0 }
           : { timeoutMs: 90000, maxAttempts: 1, retryBaseMs: 0, retryMaxMs: 0 };
         this.promptEditor = {
           name: detail.name || "",
@@ -3261,7 +3263,8 @@ const adminApp = createApp({
               || detail.modelOptions?.executionSnapshotVersion
               || (usesImagePolicy ? 3 : 2)
           ),
-          timeoutMs: runtimeConfig.timeoutMs ?? (usesControlPlane ? defaultRuntimeConfig.timeoutMs : ""),
+          timeoutMs: detail.type === "promo_page_schema_planner" && Number(runtimeConfig.timeoutMs) === 90000
+            ? 240000 : runtimeConfig.timeoutMs ?? (usesControlPlane ? defaultRuntimeConfig.timeoutMs : ""),
           maxAttempts: runtimeConfig.maxAttempts ?? (usesControlPlane ? defaultRuntimeConfig.maxAttempts : ""),
           retryBaseMs: runtimeConfig.retryBaseMs ?? (usesControlPlane ? defaultRuntimeConfig.retryBaseMs : ""),
           retryMaxMs: runtimeConfig.retryMaxMs ?? (usesControlPlane ? defaultRuntimeConfig.retryMaxMs : ""),

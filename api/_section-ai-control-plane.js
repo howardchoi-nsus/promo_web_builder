@@ -6,6 +6,7 @@ const {
 
 const RUNTIME_LIMITS = Object.freeze({
   plannerTimeoutMs: 90000,
+  pageSchemaTimeoutMs: 240000,
   imageTimeoutMs: 240000,
   maxAttempts: 5,
   retryMaxMs: 300000,
@@ -26,10 +27,16 @@ function normalizeRuntimeConfig(type, value = {}) {
   const defaults = defaultPromptControlPlane(type).runtimeConfig || {};
   const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
   const isImage = type === "section_background_image" || type === "component_image";
-  const timeoutLimit = isImage ? RUNTIME_LIMITS.imageTimeoutMs : RUNTIME_LIMITS.plannerTimeoutMs;
+  const isPageSchema = type === "promo_page_schema_planner";
+  const timeoutLimit = isPageSchema ? RUNTIME_LIMITS.pageSchemaTimeoutMs
+    : isImage ? RUNTIME_LIMITS.imageTimeoutMs : RUNTIME_LIMITS.plannerTimeoutMs;
+  // Upgrade the legacy shared planner budget without requiring a DB migration.
+  // Explicit budgets other than the former 90s default remain administrator controlled.
+  const timeoutMs = isPageSchema && Number(source.timeoutMs) === RUNTIME_LIMITS.plannerTimeoutMs
+    ? RUNTIME_LIMITS.pageSchemaTimeoutMs : source.timeoutMs;
   const outputMimeType = String(source.outputMimeType || defaults.outputMimeType || "").trim().toLowerCase();
   return {
-    timeoutMs: integerInRange(source.timeoutMs, defaults.timeoutMs || timeoutLimit, 1000, timeoutLimit),
+    timeoutMs: integerInRange(timeoutMs, defaults.timeoutMs || timeoutLimit, 1000, timeoutLimit),
     maxAttempts: integerInRange(source.maxAttempts, defaults.maxAttempts || 1, 1, RUNTIME_LIMITS.maxAttempts),
     retryBaseMs: integerInRange(source.retryBaseMs, defaults.retryBaseMs || 0, 0, RUNTIME_LIMITS.retryMaxMs),
     retryMaxMs: integerInRange(source.retryMaxMs, defaults.retryMaxMs || 0, 0, RUNTIME_LIMITS.retryMaxMs),
@@ -279,7 +286,8 @@ function validateControlPlaneConfig(type, promptConfig = {}) {
   const rawRuntime = source.runtimeConfig;
   const isImage = type === "section_background_image" || type === "component_image";
   const isVisionAnalysis = type === "component_visual_analyzer" || type === "layout_reference_analyzer";
-  const timeoutMaximum = isImage || isVisionAnalysis ? RUNTIME_LIMITS.imageTimeoutMs : RUNTIME_LIMITS.plannerTimeoutMs;
+  const timeoutMaximum = type === "promo_page_schema_planner" ? RUNTIME_LIMITS.pageSchemaTimeoutMs
+    : isImage || isVisionAnalysis ? RUNTIME_LIMITS.imageTimeoutMs : RUNTIME_LIMITS.plannerTimeoutMs;
   const timeoutMs = Number(rawRuntime.timeoutMs);
   if (!Number.isInteger(timeoutMs) || timeoutMs < 1000 || timeoutMs > timeoutMaximum) {
     const error = new Error(`${type} runtimeConfig.timeoutMs must be an integer between 1000 and ${timeoutMaximum}`);

@@ -5,6 +5,7 @@ const {
   buildImageHarnessPrompt,
   imageMetadata,
   normalizeControlPlanePromptConfig,
+  normalizeRuntimeConfig,
   backgroundSizeForFitMode,
   normalizeTargetGeometry,
   resolveEffectiveAspectRatio,
@@ -94,6 +95,21 @@ assert.equal(config.maxTokens, 2500);
 assert.equal(config.runtimeConfig.timeoutMs, 120000);
 assert.equal(config.modelOptions.imageSize, "2K");
 assert.equal(validateControlPlaneConfig("section_background_image", config), true);
+// Whole-page structure generation has a 240s provider budget inside its 300s route.
+for (const timeoutMs of [undefined, 90000, 240000]) {
+  assert.equal(normalizeRuntimeConfig("promo_page_schema_planner", { timeoutMs }).timeoutMs, 240000);
+}
+assert.equal(normalizeRuntimeConfig("promo_page_schema_planner", { timeoutMs: 45000 }).timeoutMs, 45000);
+assert.equal(normalizeRuntimeConfig("section_layout_planner", { timeoutMs: 240000 }).timeoutMs, 90000);
+const pageConfig = { ...config, modelOptions: {
+  ...config.modelOptions, runtimeConfig: { ...config.runtimeConfig, timeoutMs: 240000 },
+} };
+assert.equal(validateControlPlaneConfig("promo_page_schema_planner", pageConfig), true);
+assert.throws(() => validateControlPlaneConfig("promo_page_schema_planner", {
+  ...pageConfig, modelOptions: {
+    ...pageConfig.modelOptions, runtimeConfig: { ...config.runtimeConfig, timeoutMs: 240001 },
+  },
+}), /timeoutMs/);
 assert.throws(() => validateControlPlaneConfig("section_background_image", {
   modelOptions: {
     ...config.modelOptions,
