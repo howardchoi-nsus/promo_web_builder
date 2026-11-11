@@ -46,21 +46,18 @@ try{
  const page=await browser.newPage({viewport:{width:1440,height:1000}});page.setDefaultTimeout(20000);const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.addInitScript(overview=>{if(!sessionStorage.getItem('promoAiBuilder.activeChat.v2'))sessionStorage.setItem('promoAiBuilder.activeChat.v2',JSON.stringify({documentId:'doc-audit',chatSessionId:'session-audit',documentRevision:0,stage:'reviewing_overview',activeResultTab:'requirements',overviewDraft:overview,messages:[]}));},oldOverview);
  const url=`http://127.0.0.1:${server.address().port}/?mode=ai`;
- await page.goto(url);const review=page.locator('.ai-chat-pane').getByRole('region',{name:'콘텐츠 확인'});await review.getByRole('heading',{name:'추가 검토할 콘텐츠 1개 · 선택 사항'}).waitFor();
- await page.getByPlaceholder('무엇을 만들고 싶으신가요?').waitFor();
+ await page.goto(url);
  await page.waitForFunction(()=>!document.querySelector('.ai-chat-composer textarea')?.disabled);
- await review.getByRole('textbox',{name:'참여 유의사항 body',exact:true}).fill('사용자가 수정한 참여 안내');
- await review.getByRole('button',{name:'이 내용으로 확정',exact:true}).click();await review.waitFor({state:'detached'});await page.waitForFunction(()=>JSON.parse(sessionStorage.getItem('promoAiBuilder.activeChat.v2')).overviewDirty===false);
- const local=await page.evaluate(()=>JSON.parse(sessionStorage.getItem('promoAiBuilder.activeChat.v2')).overviewDraft);
- assert.equal(local.notices[0].confirmationRequired,false);assert.equal(requirements.notices[0].confirmationRequired,false);
- await page.reload();await page.waitForFunction(()=>!document.querySelector('.ai-chat-composer textarea')?.disabled);assert.equal(await review.count(),0);assert.equal(requirements.notices[0].body,'사용자가 수정한 참여 안내');
+ assert.equal(await page.locator('.ai-chat-pane form').count(),1);
+ assert.equal(await page.locator('.ai-chat-pane textarea').count(),1);
+ assert.equal(await page.locator('.ai-chat-pane select,.ai-operation-form,#page-schema-json').count(),0);
  const input=page.getByPlaceholder('무엇을 만들고 싶으신가요?');await input.fill('캠페인 제목과 혜택을 새 내용으로 변경해 주세요.');
  // The latest DOM contains the submit button next to this textarea.
  const submit=page.locator('.ai-chat-composer button[type=submit]');
  if(await submit.count())await submit.click();else await input.press('Enter');
  await page.waitForFunction(()=>JSON.parse(sessionStorage.getItem('promoAiBuilder.activeChat.v2')||'{}').messages?.some(m=>m.text?.includes('요구사항 분석을 완료했습니다.')));
  await page.waitForFunction(()=>JSON.parse(sessionStorage.getItem('promoAiBuilder.activeChat.v2')||'{}').stage==='reviewing_overview');
- assert.equal(parsed.length,1);assert.ok(writes.length>=2);
+ assert.equal(parsed.length,1);assert.ok(writes.length>=1);
  assert.equal(parsed[0].title,writes.at(-1).title);assert.equal(parsed[0].leadText,writes.at(-1).leadText);
  await page.waitForFunction(()=>!document.querySelector('.ai-chat-composer textarea')?.disabled);
  // Resolve the restored pending flag, then inject a generation prerequisite failure.
@@ -75,9 +72,11 @@ try{
  assert.equal(stage,'wireframe_review');assert.equal(generationIds.length,2);assert.equal(generationIds[0],generationIds[1]);
  assert.equal(requests.filter(r=>r.path==='/api/promo-builder-chat-actions').length,0);
  await page.getByRole('button',{name:'구성 수정 요청',exact:true}).click();
- await page.locator('.ai-operation-form select').selectOption('content');await page.locator('.ai-operation-form textarea').fill('핵심 혜택 문구를 최신 요청으로 수정해 주세요.');await page.getByRole('button',{name:'수정 제안',exact:true}).click();
+ assert.equal(await page.locator('.ai-operation-form').count(),0);
+ await input.fill('핵심 혜택 문구를 최신 요청으로 수정해 주세요.');
+ await page.getByRole('button',{name:'전송',exact:true}).click();
  await page.waitForFunction(()=>JSON.parse(sessionStorage.getItem('promoAiBuilder.activeChat.v2')||'{}').stage==='reviewing_overview');
  assert.equal(parsed.length,2);assert.equal(generationAttempts,2,'Content edits must return to requirements review before another generation');
- assert.deepEqual(errors,[]);console.log('Hallmark journey with chat ON: inline save/reload, new analysis preservation, saved requirements pin, failure without consuming approval, stable request retry and structure preview passed.');
+ assert.deepEqual(errors,[]);console.log('Hallmark journey with chat ON: single composer, conversational follow-up, new analysis preservation, saved requirements pin, failure without consuming approval, stable request retry and structure preview passed.');
 
 }finally{await browser.close();await new Promise(r=>server.close(r));}

@@ -74,7 +74,7 @@ defineExpose({ buildAutoRepairSnapshot, inspectQualityAcrossViewports });
           <div class="ai-builder-actions" aria-label="디자인 작업">
         <button type="button" class="ai-builder-secondary" @click="emit('rollback')">이전 버전</button>
         <button type="button" class="ai-builder-secondary" @click="emit('edit-natural-language')">채팅으로 수정</button>
-        <button type="button" class="ai-builder-primary" @click="emit('open-editor')">직접 편집</button>
+
         <button type="button" class="ai-builder-primary" :disabled="busy || !qualityPassed" @click="emit('open-output')">새 창에서 확인</button>
         <button v-if="exportEnabled" type="button" class="ai-builder-primary" :disabled="busy || !qualityPassed" @click="emit('export-document')">HTML 다운로드</button>
           </div>

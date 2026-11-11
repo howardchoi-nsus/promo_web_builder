@@ -1,8 +1,6 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import PageSchemaMediaPanel from "./PageSchemaMediaPanel.vue";
 import PageSchemaWireframe from "./PageSchemaWireframe.vue";
-import PageSchemaEditor from "./PageSchemaEditor.vue";
 import RequirementTable from "./RequirementTable.vue";
 import {pendingContentConfirmations} from "../../../shared/page-schema/content-confirmation.mjs";
 import BuilderModeSelector from "./BuilderModeSelector.vue";
@@ -16,7 +14,6 @@ import {
   summarizeReferenceProposal,
 } from "./services/reference-overview-summary.mjs";
 import OperationProposalReview from "./OperationProposalReview.vue";
-import NaturalLanguageEditor from "./NaturalLanguageEditor.vue";
 import { createAiBuilderStore, clearBuilderError, setBuilderError } from "./state/ai-builder-store.mjs";
 import {
   updatePageSchemaMedia,
@@ -548,7 +545,7 @@ function messageCreatedAtMs(message) {
 }
 
 function duplicateMessageKey(message) {
-  if (!message || !["user", "assistant"].includes(message.role)) return "";
+  if (!message || message.role !== "assistant") return "";
   const text = String(message.text || "").replace(/\s+/g, " ").trim();
   return text ? `${message.role}:${message.type || "message"}:${text}` : "";
 }
@@ -567,7 +564,8 @@ function findRecentDuplicateMessage(candidate) {
   const key = duplicateMessageKey(candidate);
   if (!key) return null;
   const candidateTime = messageCreatedAtMs(candidate) || Date.now();
-  return [...messages.value].reverse().find((message) => {
+  const turnStart=messages.value.findLastIndex(message=>message.role==='user');
+  return messages.value.slice(turnStart+1).reverse().find((message) => {
     if (duplicateMessageKey(message) !== key) return false;
     const existingTime = messageCreatedAtMs(message);
     return !existingTime || Math.abs(candidateTime - existingTime) <= DUPLICATE_MESSAGE_WINDOW_MS;
@@ -664,6 +662,7 @@ function normalizeRestoredMessages(value) {
     const { displayText, displaySegments, isStreaming, ...message } = valueMessage || {};
     if (!message.id || seenIds.has(message.id)) continue;
     seenIds.add(message.id);
+    if(message.role==='user')recentByKey.clear();
     const key = duplicateMessageKey(message);
     const timestamp = messageCreatedAtMs(message);
     const previous = key ? recentByKey.get(key) : null;
@@ -1463,7 +1462,7 @@ async function analyze(instruction = store.naturalLanguage, recovery = {}) {
         metadata: { questions, clarificationItems: items },
         actions: [
           { key: "confirm_requirements", label: "AI가 구성하고 미리보기 생성" },
-          { key: "revise_requirements", label: "요청 내용 직접 수정" },
+          { key: "revise_requirements", label: "채팅으로 추가 요청" },
         ],
       });
     } else {
@@ -1474,7 +1473,7 @@ async function analyze(instruction = store.naturalLanguage, recovery = {}) {
           type: "assistant",
           actions: [
             { key: "confirm_requirements", label: "페이지 미리보기 생성" },
-            { key: "revise_requirements", label: "요청 내용 수정" },
+            { key: "revise_requirements", label: "채팅으로 추가 요청" },
           ],
         },
       );
@@ -1794,6 +1793,7 @@ function visibleMessageActions(message) {
   const messageIndex = messages.value.findIndex((candidate) => candidate.id === message?.id);
   const latestUserIndex = messages.value.findLastIndex((candidate) => candidate.role === "user");
   return (message?.actions || []).filter((action) => {
+    if (["complete_requirements_edit", "cancel_requirements_edit"].includes(action.key)) return false;
     if (action.status && action.status !== "proposed") return false;
     if (
       ["confirm_requirements", "revise_requirements"].includes(action.key)
@@ -1879,44 +1879,10 @@ async function handleChatAction(action) {
       return;
     }
     if (action.key === "revise_requirements" || action.key === "revise_wireframe") {
-      const messageRequest = appendActionMessage(action);
-      updateStatusMessage(operationId, actionProgressMessage(action), "in_progress");
-      const actionRequest = capabilities.value.chatWorkspaceV1
-        ? executeChatAction({
-          sessionId: chatSessionId.value,
-          actionId: action.id,
-          actionKey: action.key,
-          idempotencyKey: crypto.randomUUID(),
-        })
-        : Promise.resolve();
-      await Promise.all([actionRequest, messageRequest]);
-      if (action.key === "revise_requirements") {
-        markChatActionGroupHandled(action);
-        beginRequirementsEdit();
-        await appendPersistedMessage(
-          "assistant",
-          "채팅의 요청 편집 영역에서 필요한 항목을 수정한 뒤 ‘수정 완료’를 눌러 주세요.",
-          {
-            type: "assistant",
-            actions: [
-              { key: "complete_requirements_edit", label: "수정 완료" },
-              { key: "cancel_requirements_edit", label: "수정 취소" },
-            ],
-          },
-        );
-        updateStatusMessage(operationId, "요구사항 수정 모드를 열었습니다.", "completed");
-        return;
-      }
+      await appendActionMessage(action);
       markChatActionGroupHandled(action);
-      if(store.snapshot?.content?.pageSchema){
-        operationOpen.value=true;
-        await appendPersistedMessage('assistant','채팅에서 변경할 배치나 내용을 알려주세요.',{type:'assistant'});
-        updateStatusMessage(operationId,'채팅에서 구성 수정 요청을 기다리고 있습니다.','completed');
-        return;
-      }
-      operationOpen.value=true;
-      await appendPersistedMessage('assistant','채팅에서 변경할 문구와 배치를 알려주세요.',{type:'assistant'});
-      updateStatusMessage(operationId,'채팅에서 구성 수정 요청을 기다리고 있습니다.','completed');
+      await requestChatRevision();
+      updateStatusMessage(operationId,'채팅에서 추가 요청을 기다리고 있습니다.','completed');
       return;
     }
     if (action.key === "open_output") {
@@ -1969,10 +1935,16 @@ async function pollProposal(proposalId) {
   throw Object.assign(new Error("구성 생성 대기 시간이 초과되었습니다."), { code: "POLL_TIMEOUT" });
 }
 
-function openVisualEditor() {
-  if(store.snapshot?.content?.pageSchema){pageSchemaEditorOpen.value=true;return;}
-  window.location.assign(visualEditorEntry.aiDocument(store.documentId, store.documentRevision));
+async function requestChatRevision() {
+  requirementsEditing.value=false;
+  wireframeEditing.value=false;
+  operationOpen.value=false;
+  pageSchemaEditorOpen.value=false;
+  await appendPersistedMessage('assistant','바꾸고 싶은 내용이나 추가 정보를 아래 채팅에 편하게 알려주세요. 기존 요청과 페이지를 바탕으로 반영하겠습니다.',{type:'assistant'});
+  await nextTick();
+  chatInputElement.value?.focus();
 }
+function openVisualEditor() { return requestChatRevision(); }
 
 function builderAssetFailure(readiness) {
   const failed = readiness.failedRequests[0] || {};
@@ -2070,7 +2042,7 @@ async function retryAssets() {
 }
 
 function pageRequestPayload(instruction=''){
- if(!instruction&&pageSummaryOutdated.value)instruction='Update the current page to the newly confirmed overview. Preserve unrelated structure, IDs, media and actions.';
+ if(!instruction&&store.snapshot?.content?.pageSchema)instruction='Apply the latest user request and updated overview to the current page. Infer the requested changes from the conversation. Preserve unrelated structure, IDs, media and actions.';
  const key=JSON.stringify({documentId:store.documentId,overview:store.overviewDraft,requirementsRevision:requirementsRevision.value,instruction,generationRequest:store.naturalLanguage});
  if(pageGenerationRequest.value?.key!==key)pageGenerationRequest.value={key,requestId:crypto.randomUUID(),baseDocumentRevision:store.documentRevision};
  persistWorkspace();
@@ -2554,7 +2526,7 @@ async function reloadLatestForOperation() {
     store.stage = "render_ready";
     pendingOperations.value = null;
     operationConflict.value = null;
-    operationOpen.value = true;
+    await requestChatRevision();
   } catch (error) {
     setBuilderError(store, error);
   }
@@ -3224,36 +3196,12 @@ onBeforeUnmount(() => {
         <button type="button" @click="reloadLatestForOperation">최신본 불러오기</button>
         <button type="button" @click="operationConflict = null; pendingOperations = null">취소</button>
       </div>
-          <section v-if="store.overviewDraft && activeResultTab === 'requirements'" class="ai-requirements-details" aria-label="채팅 요청 보완">
-                <RequirementTable v-if="capabilities.pageSchemaV1 && criticalInputRows.length" title="요청 정보 보완 · 선택 사항" :rows="criticalInputRows" editing @change="updateCriticalField" />
-                <section v-if="capabilities.pageSchemaV1 && contentConfirmations.length" class="ai-requirements-details" aria-label="콘텐츠 확인">
-                  <h3>추가 검토할 콘텐츠 {{ contentConfirmations.length }}개 · 선택 사항</h3>
-                  <p>필요한 내용만 수정할 수 있습니다. 입력하지 않아도 AI가 문구와 구성을 보완합니다.</p>
-                  <article v-for="item in contentConfirmations" :key="item.path">
-                    <strong>{{ item.label }}</strong>
-                    <label v-for="field in item.editableFields" :key="field.key" style="display:block">
-                      {{ ({title:'제목',description:'설명',body:'본문',value:'값',label:'문구',url:'URL',ctaLabel:'버튼 문구',ctaUrl:'버튼 URL'})[field.key] || field.key }}
-                      <textarea :value="field.value" :aria-label="`${item.label} ${field.key}`" rows="2" maxlength="2000" :disabled="requirementsEditing || interactionLocked" @input="updateConfirmationField(item.path,field.key,$event.target.value)"></textarea>
-                    </label>
-                    <button type="button" :disabled="!item.canConfirm || requirementsEditing || interactionLocked" @click="confirmContentItem(item.path)">이 내용으로 확정</button>
-                    <span v-if="!item.canConfirm"> 입력하지 않아도 생성할 수 있습니다. 문구는 AI가 보완하고 미정인 사실 정보는 제외합니다.</span>
-                  </article>
-                </section>
-
-            <template v-if="requirementsEditing">
-              <RequirementTable v-for="table in requirementTables" :key="table.key" :title="table.title" :rows="table.rows" editing @change="setRequirementValue" />
-            </template>
-          </section>
           <div id="ai-chat-design-actions"></div>
-          <PageSchemaMediaPanel v-if="activeResultTab==='final' && store.snapshot?.content?.pageSchema" :page="store.snapshot.content.pageSchema" :context="store.snapshot.content.pageContext" :busy="pageSchemaSaving || busy" @change="changeDynamicMedia" />
           <button v-if="activeResultTab==='final' && tokenConnectionProblem" type="button" :disabled="reconnectingTokens" @click="reconnectRegisteredTokens">{{reconnectingTokens?'토큰 확인 중…':'활성 등록 토큰 다시 연결'}}</button>
           <section v-if="store.snapshot?.content?.pageSchema && activeResultTab!=='final'" class="ai-chat-actions" aria-label="채팅 페이지 작업">
             <button v-if="pageStructurePending" type="button" :disabled="interactionLocked||pageSchemaSaving" @click="handleChatAction({key:'approve_wireframe',label:'페이지 구성 승인'})">페이지 구성 승인</button>
-            <button type="button" :disabled="interactionLocked||pageSchemaSaving" @click="operationOpen=true">구성 수정 요청</button>
-            <button type="button" :disabled="interactionLocked||pageSchemaSaving" @click="pageSchemaEditorOpen=true">구성 편집</button>
+            <button type="button" :disabled="interactionLocked||pageSchemaSaving" @click="requestChatRevision">구성 수정 요청</button>
           </section>
-          <PageSchemaEditor v-if="pageSchemaEditorOpen && store.snapshot?.content?.pageSchema" :page="store.snapshot.content.pageSchema" :busy="pageSchemaSaving" @save="saveDynamicPage" @close="pageSchemaEditorOpen=false" />
-          <NaturalLanguageEditor v-if="operationOpen" :page-schema-mode="Boolean(store.snapshot?.content?.pageSchema)" :busy="busy" @cancel="operationOpen=false" @submit="editNaturalLanguage" />
             </div>
             <button
               v-if="showLatestMessageButton"
@@ -3530,7 +3478,7 @@ onBeforeUnmount(() => {
                 :busy="busy || finalQualityChecking"
                 :quality-gate="finalQualityGate"
                 :export-enabled="Boolean(capabilities.export)"
-                @edit-natural-language="operationOpen = true"
+                @edit-natural-language="requestChatRevision"
                 @rollback="rollback"
                 @open-editor="openVisualEditor"
                 @open-output="openOutput"
