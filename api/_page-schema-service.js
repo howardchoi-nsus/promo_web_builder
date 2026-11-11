@@ -1,11 +1,11 @@
 const {createHash}=require('node:crypto');
 const {assertValid,normalize,runtimeSchema,TYPES,LIMITS,safeUrl}=require('../shared/page-schema/contract.cjs');
 const {assertLayoutTokens}=require('../shared/layout-token-policy.cjs');
-const {assertContentConfirmed,emptyOptionalCta}=require('../shared/page-schema/content-confirmation.cjs');
+const {emptyOptionalCta,prepareOverviewForPreview}=require('../shared/page-schema/content-confirmation.cjs');
 const {TOKEN_USAGE_RULES}=require('../shared/token-usage-policy.cjs');
 function contentContext(overview,{usagePolicy,tokenCatalog,tokenValues,tokenVersionId}){
  assertLayoutTokens({usagePolicy,tokenCatalog,tokenValues});
- assertContentConfirmed(overview);
+ overview=prepareOverviewForPreview(overview).overview;
  const contentSources={},actions={},sourceByText=new Map();
  const add=(path,value,required=true)=>{
   if(typeof value!=='string'||!value.trim())return;

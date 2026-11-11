@@ -10,7 +10,7 @@ const {snapshotForPage}=require('../api/_page-schema-service');
 const {normalize}=require('../shared/page-schema/contract.cjs');
 let revision=0,snapshot,generated=0,edited=0,approved=0,savedGate;
 const errors=[],requests=[];
-const overview={title:'동적 페이지 테스트',leadText:'혜택 안내',promotionPurpose:'기타',promotionPurposeOther:'프로모션',market:'한국',audience:'일반고객',campaignTone:'친근함',mainOffer:'등록된 혜택',contentSections:[],additionalInformation:[],notices:[],legalInformation:[]};
+const overview={title:'동적 페이지 테스트',leadText:'혜택 안내',promotionPurpose:'기타',promotionPurposeOther:'프로모션',market:'한국',audience:'일반고객',campaignTone:'친근함',mainOffer:'',_review:{missingCriticalInputs:['mainOffer']},contentSections:[],additionalInformation:[{label:'기간',value:'미정',confirmationRequired:true}],notices:[],legalInformation:[]};
 const root=resolve(new URL('..',import.meta.url).pathname);
 const server=createServer(async(req,res)=>{try{
  const pathname=new URL(req.url,'http://localhost').pathname;
@@ -19,7 +19,7 @@ const server=createServer(async(req,res)=>{try{
   let payload={ok:true};
   if(pathname==='/api/promo-builder-capabilities')payload.capabilities={aiMode:true,pageSchemaV1:true,compositionV3:true,export:true};
   if(pathname==='/api/promo-builder-documents'&&req.method==='POST')payload.document={id:'browser-doc',currentDocumentRevision:0};
-  if(pathname==='/api/promo-overview-parse')payload={ok:true,overview,overviewFingerprint:'fixture',missingCriticalInputs:[],warnings:[]};
+  if(pathname==='/api/promo-overview-parse')payload={ok:true,overview,overviewFingerprint:'fixture',missingCriticalInputs:['mainOffer'],warnings:[]};
   if(pathname==='/api/promo-page-schema'){
    assert.equal(body.documentId,'browser-doc');assert.equal(body.baseDocumentRevision,revision);
    if(body.operation==='approve-structure'){approved++;snapshot.generationMeta.review={state:'approved'};}else if(req.method==='POST'){generated++;snapshot=snapshotForPage(normalize(fixture('example-editorial')).page,context);snapshot.generationMeta.review={state:'pending'};}else{edited++;snapshot.content.pageSchema=body.page;snapshot.generationMeta.review={state:'pending'};}
@@ -38,7 +38,7 @@ try{
  const page=await browser.newPage({viewport:{width:1440,height:1000}});page.setDefaultTimeout(10000);page.on('pageerror',e=>errors.push(e.message));
  await page.goto(`http://127.0.0.1:${server.address().port}/?mode=ai`);
  await page.getByPlaceholder('무엇을 만들고 싶으신가요?').fill('등록된 혜택으로 페이지를 만들어줘');await page.getByRole('button',{name:'전송',exact:true}).click();
- await page.getByRole('button',{name:'페이지 미리보기 생성',exact:true}).click();
+ await page.getByRole('button',{name:/^(?:AI가 구성하고 미리보기 생성|페이지 미리보기 생성)$/}).click();
  await page.frameLocator('iframe').first().locator('[data-ps-node="page_root"]').waitFor().catch(async error=>{console.error(JSON.stringify({requests,errors,body:await page.locator('body').innerText()},null,2));throw error;});assert.equal(generated,1);assert.equal(requests.includes('/api/promo-composition-shells'),false);assert.equal(requests.includes('/api/promo-page-composition-proposals'),false);
  assert.equal(savedGate,undefined);assert.equal(await page.getByRole('button',{name:'디자인 미리보기',exact:true}).isDisabled(),true);
  await page.getByRole('button',{name:'페이지 구성 승인',exact:true}).click();

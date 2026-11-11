@@ -56,7 +56,6 @@ module.exports=async function handler(req,res){
    if(builderFlags().chatWorkspaceV1)requirementsPin=await pinPageRequirements(sql,{documentId:found.document.id,ownerSubject:owner.ownerSubject,revision:body.requirementsRevision,overview:body.overview});
    const prepared=prepareOverviewForPreview(requirementsPin?.overview||normalizeOverview(body.overview||{}));
    const overview=prepared.overview;
-   if(!overview.title)return res.status(422).json({error:'프로모션 제목이 필요합니다.'});
    if(body.instruction&&!found.snapshot?.content?.pageSchema)return res.status(409).json({error:'PageSchema document required for revisions'});
    if(body.instruction){
     const previous=found.snapshot.content.pageContext;
@@ -75,7 +74,7 @@ module.exports=async function handler(req,res){
    const generationRequest=String(body.generationRequest||'').slice(0,12000);
    const pinned=await createPromptExecutionSnapshot(sql,'promo_page_schema_planner',{
     overviewJson:JSON.stringify(overview),candidateSnapshotJson:JSON.stringify(plannerContext(context)),
-    constraintsJson:JSON.stringify({limits:LIMITS,instruction,generationRequest,currentPage:instruction?found.snapshot.content.pageSchema:null,responsiveDefaults:'mobile one column; tablet max two columns; normal flow',requiredPolicy:'registered-only',designBrief:context.designBrief})});
+    constraintsJson:JSON.stringify({limits:LIMITS,instruction,generationRequest,currentPage:instruction?found.snapshot.content.pageSchema:null,responsiveDefaults:'mobile one column; tablet max two columns; normal flow',requiredPolicy:'registered-only',contentCompletionPolicy:'Review flags are advisory, never a generation prerequisite. Generate missing editorial headings, descriptions and CTA copy from the user request with contentMode editorial. Never invent dates, amounts, eligibility, legal terms or URLs; omit unresolved factual material. Preserve supplied facts and copy.',designBrief:context.designBrief})});
    execution=await generatePage({overview,context,instruction,promptConfig:pinned.promptConfig,generate:generateStructuredPlannerResult});execution.promptConfig=pinned.promptConfig;page=execution.page;
    execution.designReview=builderFlags().hallmarkDesign?reviewDesign(page,{recentStructures:context.designBrief?.recentStructures||[],preserveLayout:Boolean(instruction)}):null;
   }

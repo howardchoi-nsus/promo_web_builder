@@ -4,7 +4,7 @@ import PageSchemaMediaPanel from "./PageSchemaMediaPanel.vue";
 import PageSchemaWireframe from "./PageSchemaWireframe.vue";
 import PageSchemaEditor from "./PageSchemaEditor.vue";
 import RequirementTable from "./RequirementTable.vue";
-import {pendingContentConfirmations,pendingCriticalInputs,prepareOverviewForPreview} from "../../../shared/page-schema/content-confirmation.mjs";
+import {pendingContentConfirmations} from "../../../shared/page-schema/content-confirmation.mjs";
 import BuilderModeSelector from "./BuilderModeSelector.vue";
 import CompositionReview from "./CompositionReview.vue";
 import { visualEditorEntry } from "../platform/visual-editor-entry.mjs";
@@ -1368,11 +1368,11 @@ function expireRequirementActionMessages() {
 
 function clarificationMessage(questions) {
   return [
-    "요구사항을 먼저 정리했습니다. 더 정확한 페이지를 만들기 위해 아래 내용만 알려주세요.",
+    "요구사항을 정리했습니다. 아래 내용은 선택 사항이며, 입력하지 않아도 AI가 문구와 구성을 보완해 생성합니다.",
     "",
     ...questions.map((question, index) => `${index + 1}. ${question}`),
     "",
-    "번호를 구분하지 않고 편하게 한 문장으로 답해도 됩니다.",
+    "추가 정보가 있다면 편하게 알려주세요. 미정인 날짜·금액·조건은 임의로 만들지 않습니다.",
   ].join("\n");
 }
 
@@ -1853,16 +1853,6 @@ async function handleChatAction(action) {
     }
     if (action.key === "confirm_requirements") {
       await flushOverviewChanges();
-      if(capabilities.value.pageSchemaV1){
-        const prepared=prepareOverviewForPreview(store.overviewDraft);
-        const blockers=[...pendingCriticalInputs(prepared.overview).filter(item=>item.blocking),...pendingContentConfirmations(prepared.overview)];
-        if(blockers.length){
-          store.stage='reviewing_overview';activeResultTab.value='requirements';
-          store.warning={code:'CONTENT_REVIEW_NEEDED',message:`필수 콘텐츠 ${blockers.length}개를 확인해 주세요. 요청 요약에서 수정·확정 후 다시 생성할 수 있습니다.`};
-          updateStatusMessage(operationId,'요청 요약에서 필수 콘텐츠 확인을 기다리고 있습니다.','completed');
-          return;
-        }
-      }
       markPendingClarificationsAnswered();
       const messageRequest = appendActionMessage(action);
       updateStatusMessage(operationId, actionProgressMessage(action), "in_progress");
@@ -2477,9 +2467,6 @@ async function editNaturalLanguage(input) {
   try {
     if(store.snapshot?.content?.pageSchema){
       await flushOverviewChanges();
-      const review=prepareOverviewForPreview(store.overviewDraft);
-      const unresolved=[...pendingCriticalInputs(review.overview).filter(item=>item.blocking),...pendingContentConfirmations(review.overview)];
-      if(unresolved.length){activeResultTab.value='requirements';store.stage='reviewing_overview';operationOpen.value=false;store.warning={code:'CONTENT_REVIEW_NEEDED',message:`필수 콘텐츠 ${unresolved.length}개를 확인한 후 구성을 수정해 주세요.`};return;}
       store.stage="processing";operationOpen.value=false;
       const saved=await generatePageSchema(pageRequestPayload(instruction));
       pageGenerationRequest.value=null;store.documentRevision=Number(saved.revision);store.snapshot=saved.snapshot;transientQualityGate.value=null;store.stage="review_required";activeResultTab.value="wireframe";return;
@@ -3357,7 +3344,7 @@ onBeforeUnmount(() => {
                 </div>
                 <RequirementTable v-if="capabilities.pageSchemaV1 && criticalInputRows.length" title="요청 정보 확인 — 제목·핵심 혜택은 필수, 미정인 대상·지역은 출력에서 추정하지 않습니다" :rows="criticalInputRows" editing @change="updateCriticalField" />
                 <section v-if="capabilities.pageSchemaV1 && contentConfirmations.length" class="ai-requirements-details" aria-label="콘텐츠 확인">
-                  <h3>확인이 필요한 콘텐츠 {{ contentConfirmations.length }}개</h3>
+                  <h3>추가 검토할 콘텐츠 {{ contentConfirmations.length }}개 · 선택 사항</h3>
                   <p>아래 내용을 확인한 후 항목별로 확정해 주세요. 미입력·미정 내용은 먼저 보완해 주세요.</p>
                   <article v-for="item in contentConfirmations" :key="item.path">
                     <strong>{{ item.label }}</strong>
@@ -3366,7 +3353,7 @@ onBeforeUnmount(() => {
                       <textarea :value="field.value" :aria-label="`${item.label} ${field.key}`" rows="2" maxlength="2000" :disabled="requirementsEditing || interactionLocked" @input="updateConfirmationField(item.path,field.key,$event.target.value)"></textarea>
                     </label>
                     <button type="button" :disabled="!item.canConfirm || requirementsEditing || interactionLocked" @click="confirmContentItem(item.path)">이 내용으로 확정</button>
-                    <span v-if="!item.canConfirm"> 누락된 내용을 먼저 입력해 주세요.</span>
+                    <span v-if="!item.canConfirm"> 입력하지 않아도 생성할 수 있습니다. 문구는 AI가 보완하고 미정인 사실 정보는 제외합니다.</span>
                   </article>
                 </section>
                 <details class="ai-requirements-details" :open="requirementsEditing">

@@ -16,7 +16,7 @@ const c=contentContext({title:'같은 제목',contentSections:[{title:'같은 �
 assert.equal(Object.values(c.contentSources).filter(s=>s.text==='같은 제목').length,1);
 assert.equal(Object.values(c.contentSources).find(s=>s.text==='선택 내용').required,false);
 assert.equal(Object.values(c.contentSources).find(s=>s.text==='같은 제목').required,true);
-const missing={title:'제목',mainOffer:'',_review:{missingCriticalInputs:['mainOffer']}};assert.equal(pendingCriticalInputs(missing).length,1);assert.throws(()=>assertContentConfirmed(missing),e=>e.errors[0].code==='CRITICAL_INPUT_REQUIRED');missing.mainOffer='사용자가 제공한 혜택';assert.equal(pendingCriticalInputs(missing).length,0);
+const missing={title:'제목',mainOffer:'',_review:{missingCriticalInputs:['mainOffer']}};assert.equal(pendingCriticalInputs(missing).length,1);assert.doesNotThrow(()=>assertContentConfirmed(missing));assert.equal(pendingCriticalInputs(missing)[0].blocking,false);missing.mainOffer='사용자가 제공한 혜택';assert.equal(pendingCriticalInputs(missing).length,0);
 console.log('Hallmark adaptation: goal/material guidance, nonblocking design warnings, revision preservation, optional sources, deduplication and unresolved critical facts passed.');
 
 const contextOnly={title:'제목',mainOffer:'혜택',market:'',_review:{missingCriticalInputs:['market']}};assert.equal(pendingCriticalInputs(contextOnly)[0].blocking,false);assert.doesNotThrow(()=>assertContentConfirmed(contextOnly));
