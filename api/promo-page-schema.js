@@ -5,6 +5,7 @@ const {getSql,fetchDocument,createDocumentRevision}=require('./_promo-builder-do
 const {assertPageSchemaInfrastructure,loadPageSchemaLibrary}=require('./_page-schema-readiness');
 const {createPromptExecutionSnapshot}=require('./_prompt-execution-snapshot');
 const {generateStructuredPlannerResult}=require('./_promo-section-design-provider');
+const {prepareOverviewForPreview}=require('../shared/page-schema/content-confirmation.cjs');
 const {normalizeOverview}=require('./_promo-overview-contract');
 const {plannerContext,contentContext,generatePage,snapshotForPage,TYPES,LIMITS,assertValid,normalize}=require('./_page-schema-service');
 module.exports=async function handler(req,res){
@@ -29,11 +30,13 @@ module.exports=async function handler(req,res){
    context=found.snapshot.content.pageContext;
    assertValid(body.page,context);page=normalize(body.page).page;assertValid(page,context);
   }else{
-   const overview=normalizeOverview(body.overview||{});
+   const prepared=prepareOverviewForPreview(normalizeOverview(body.overview||{}));
+   const overview=prepared.overview;
    if(!overview.title)return res.status(422).json({error:'프로모션 제목이 필요합니다.'});
    if(body.instruction&&!found.snapshot?.content?.pageSchema)return res.status(409).json({error:'PageSchema document required for revisions'});
    if(body.instruction){context=found.snapshot.content.pageContext;}else{
     context=contentContext(overview,await loadPageSchemaLibrary(sql));
+    context.omittedContent=prepared.omittedItems;
    }
    const instruction=String(body.instruction||'').slice(0,4000);
    const generationRequest=String(body.generationRequest||'').slice(0,12000);
@@ -47,7 +50,7 @@ module.exports=async function handler(req,res){
   snapshot.generationMeta={...snapshot.generationMeta,operation:req.method==='PUT'?'manual-edit':body.instruction?'ai-edit':'ai-generate',
    prompt:prompt?{id:prompt.promptId||null,type:prompt.promptType,version:prompt.promptVersion||null,provider:prompt.provider,model:prompt.model}:found.snapshot?.generationMeta?.prompt||null};
   const saved=await createDocumentRevision(sql,{documentId:found.document.id,ownerSubject:owner.ownerSubject,baseDocumentRevision:base,snapshot,source:req.method==='PUT'?'manual':'ai',changeNote:req.method==='PUT'?'PageSchema validated manual edit':'AI dynamic PageSchema generation'});
-  return res.status(200).json({ok:true,revision:saved.revision,snapshot:saved.snapshot,validation:execution?.validation,adjustments:execution?.adjustments||[]});
+  return res.status(200).json({ok:true,revision:saved.revision,snapshot:saved.snapshot,validation:execution?.validation,adjustments:execution?.adjustments||[],warnings:context.omittedContent||[]});
  }catch(error){if(/revision conflict/i.test(error.message)){error.statusCode=409;error.code='DOCUMENT_REVISION_MISMATCH';}return res.status(error.statusCode||500).json({error:error.message,code:error.code||'PAGE_SCHEMA_GENERATION_FAILED',errors:error.errors||[]});}
 };
 

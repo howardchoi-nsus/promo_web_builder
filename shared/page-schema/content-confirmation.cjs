@@ -31,4 +31,21 @@ function assertContentConfirmed(overview) {
  if(errors.length)throw Object.assign(new Error(`확인할 콘텐츠 ${errors.length}개가 남아 있습니다. 요청 요약에서 항목별로 확인·확정하거나 내용을 수정해 주세요.`),{statusCode:422,code:'CONTENT_CONFIRMATION_REQUIRED',errors,details:errors});
 }
 
-module.exports={confirmationText,emptyOptionalCta,pendingContentConfirmations,assertContentConfirmed};
+// An incomplete optional action/supporting fact is omitted, never guessed.
+// Required items, notices and legal text still require explicit confirmation.
+function prepareOverviewForPreview(overview) {
+ const result=JSON.parse(JSON.stringify(overview||{})),omittedItems=[];
+ const pending=pendingContentConfirmations(result);
+ for(const item of pending){
+  if(item.canConfirm||!(/^additionalInformation\.\d+$/.test(item.path)||/\.cta$/.test(item.path)))continue;
+  const parts=item.path.split('.'),key=parts.pop();
+  const parent=parts.reduce((value,part)=>value?.[part],result);
+  if(!parent)continue;
+  if(Array.isArray(parent))parent[Number(key)]=null;else delete parent[key];
+  omittedItems.push({path:item.path,label:item.label,code:'UNCONFIRMED_OPTIONAL_CONTENT_OMITTED',message:`${item.label}: 미확정 선택 항목을 이번 출력에서 제외했습니다.`});
+ }
+ if(Array.isArray(result.additionalInformation))result.additionalInformation=result.additionalInformation.filter(Boolean);
+ return {overview:result,omittedItems};
+}
+
+module.exports={confirmationText,emptyOptionalCta,pendingContentConfirmations,assertContentConfirmed,prepareOverviewForPreview};

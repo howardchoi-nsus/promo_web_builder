@@ -16,3 +16,13 @@ overview.additionalInformation[0]={label:'기간',value:'미정',confirmationReq
 overview.additionalInformation=[];
 const result=contentContext(overview,context);assert.ok(Object.values(result.contentSources).some(source=>source.text==='참여 방법을 확인하세요.'));assert.deepEqual(result.actions,{});
 console.log('Content confirmation: empty optional CTA ignored, populated items explicitly reviewed, missing/placeholder facts blocked, complete paths and client/server parity passed.');
+
+const {prepareOverviewForPreview}=await import('../shared/page-schema/content-confirmation.mjs');
+const optional={title:'쿠폰 안내',contentSections:[{cta:{label:'지금 가입하고 혜택 받기',url:'',confirmationRequired:true}}],additionalInformation:[{label:'쿠폰 사용 조건',value:'',confirmationRequired:true},{label:'쿠폰 배송 조건',value:'미정',confirmationRequired:true}]};
+const optionalBefore=structuredClone(optional),prepared=prepareOverviewForPreview(optional);
+assert.equal(prepared.omittedItems.length,3);assert.deepEqual(prepared.overview.additionalInformation,[]);assert.equal(prepared.overview.contentSections[0].cta,undefined);
+assertContentConfirmed(prepared.overview);assert.deepEqual(optional,optionalBefore);
+assert.deepEqual(prepared,server.prepareOverviewForPreview(optional));
+const legal={...optional,legalInformation:[{title:'약관',body:'미정',confirmationRequired:true}]};
+assert.throws(()=>assertContentConfirmed(prepareOverviewForPreview(legal).overview),e=>e.errors[0].path==='legalInformation.0');
+console.log('Optional omissions are explicit, immutable and consistent; required legal content remains blocked.');

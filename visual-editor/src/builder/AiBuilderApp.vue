@@ -3,7 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import PageSchemaMediaPanel from "./PageSchemaMediaPanel.vue";
 import PageSchemaEditor from "./PageSchemaEditor.vue";
 import RequirementTable from "./RequirementTable.vue";
-import {pendingContentConfirmations,assertContentConfirmed} from "../../../shared/page-schema/content-confirmation.mjs";
+import {pendingContentConfirmations,prepareOverviewForPreview} from "../../../shared/page-schema/content-confirmation.mjs";
 import BuilderModeSelector from "./BuilderModeSelector.vue";
 import CompositionReview from "./CompositionReview.vue";
 import { visualEditorEntry } from "../platform/visual-editor-entry.mjs";
@@ -1766,7 +1766,16 @@ async function handleChatAction(action) {
       return;
     }
     if (action.key === "confirm_requirements") {
-      if(capabilities.value.pageSchemaV1)assertContentConfirmed(store.overviewDraft);
+      if(capabilities.value.pageSchemaV1){
+        const prepared=prepareOverviewForPreview(store.overviewDraft);
+        const blockers=pendingContentConfirmations(prepared.overview);
+        if(blockers.length){
+          store.stage='reviewing_overview';activeResultTab.value='requirements';
+          store.warning={code:'CONTENT_REVIEW_NEEDED',message:`필수 콘텐츠 ${blockers.length}개를 확인해 주세요. 요청 요약에서 수정·확정 후 다시 생성할 수 있습니다.`};
+          updateStatusMessage(operationId,'요청 요약에서 필수 콘텐츠 확인을 기다리고 있습니다.','completed');
+          return;
+        }
+      }
       markPendingClarificationsAnswered();
       const messageRequest = appendActionMessage(action);
       updateStatusMessage(operationId, actionProgressMessage(action), "in_progress");
@@ -1992,6 +2001,7 @@ async function prepareWireframe(existingOperationId = "", sourceAction = null) {
       store.stage="processing";
       const saved=await generatePageSchema({documentId:store.documentId,baseDocumentRevision:store.documentRevision,overview:store.overviewDraft,generationRequest:store.naturalLanguage});
       store.documentRevision=Number(saved.revision);store.snapshot=saved.snapshot;store.stage="render_ready";activeResultTab.value="final";transientQualityGate.value=null;
+      store.warning=saved.warnings?.length?{code:'UNCONFIRMED_OPTIONAL_CONTENT_OMITTED',message:saved.warnings.map(item=>item.message).join(' ')}:null;
       updateStatusMessage(operationId,"동적 페이지 미리보기를 생성했습니다.","completed");
       await appendPersistedMessage("assistant","콘텐츠에 맞춰 페이지 구조를 설계했습니다. 오른쪽 미리보기를 확인해 주세요.",{type:"assistant"});
       return;
