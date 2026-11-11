@@ -33,7 +33,11 @@ try{
   assert.deepEqual(result.overflows,[],JSON.stringify({width,...result}));assert.equal(result.colors[0],'rgb(238, 238, 238)');assert.equal(result.builderVariable,'');assert.equal(result.fontSize,'16px');assert.equal(result.pageMargin,width===2048?'40px':width===1280?'32px':width===768?'24px':'16px');
   assert.ok(result.grid.every(value=>value.split(' ').length===(width===390?4:width===768?8:12)),JSON.stringify(result));
  }
+ const splitShape=await page.frameLocator('iframe').first().locator('main').evaluate(el=>{const shape=n=>({tag:n.tagName,type:n.dataset.psType,children:[...n.children].filter(c=>c.dataset.psNode).map(shape)});return shape(el);});
  current=fixture('example-editorial');await page.reload();await page.frameLocator('iframe').first().locator('h1').waitFor();assert.equal(await page.frameLocator('iframe').first().locator('main').count(),1);assert.deepEqual(errors,[]);
+ const editorialShape=await page.frameLocator('iframe').first().locator('main').evaluate(el=>{const shape=n=>({tag:n.tagName,type:n.dataset.psType,children:[...n.children].filter(c=>c.dataset.psNode).map(shape)});return shape(el);});
+ assert.notDeepEqual(splitShape,editorialShape,'The renderer must preserve different generated trees rather than apply a fixed DOM template');
+ assert.equal(await page.frameLocator('iframe').first().locator('.rendered-items').count(),0);
  // Registered spacing values override role defaults, not arbitrary pixel literals.
  current.root.styles.base.push('layout.padding');current.root.styles.spacing={base:{gap:'--spacing-8',padding:null,margin:null},tablet:null,mobile:null};
  await page.reload();await page.frameLocator('iframe').first().locator('[data-ps-node=page_root]').waitFor();

@@ -13,6 +13,7 @@ module.exports = async function handler(req, res) {
     ok: true,
     capabilities: {
       ...capabilities,
+      generationPath: capabilities.pageSchemaV1 ? "page-schema" : "registry-composition",
       contractVersion: capabilities.serviceContractV3 ? 3 : 2,
       supportedContractVersions: capabilities.compositionV3 ? [2, 3] : [2],
       outputMode: capabilities.export ? "preview-and-export" : "preview",

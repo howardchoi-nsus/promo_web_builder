@@ -1970,7 +1970,7 @@ async function prepareWireframe(existingOperationId = "", sourceAction = null) {
     await ensureDocument();
     if(capabilities.value.pageSchemaV1){
       store.stage="processing";
-      const saved=await generatePageSchema({documentId:store.documentId,baseDocumentRevision:store.documentRevision,overview:store.overviewDraft});
+      const saved=await generatePageSchema({documentId:store.documentId,baseDocumentRevision:store.documentRevision,overview:store.overviewDraft,generationRequest:store.naturalLanguage});
       store.documentRevision=Number(saved.revision);store.snapshot=saved.snapshot;store.stage="render_ready";activeResultTab.value="final";transientQualityGate.value=null;
       updateStatusMessage(operationId,"동적 페이지 미리보기를 생성했습니다.","completed");
       await appendPersistedMessage("assistant","콘텐츠에 맞춰 페이지 구조를 설계했습니다. 오른쪽 미리보기를 확인해 주세요.",{type:"assistant"});
@@ -2822,6 +2822,7 @@ onMounted(async () => {
     const executionLookups = Promise.allSettled([
       loadPromptExecutionDisplay("promo_overview_parser"),
       loadPromptExecutionDisplay("promo_page_composer"),
+      loadPromptExecutionDisplay("promo_page_schema_planner"),
       loadPromptExecutionDisplay("section_background_image"),
       loadPromptExecutionDisplay("component_image"),
     ]).then((results) => {

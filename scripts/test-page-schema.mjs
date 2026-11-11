@@ -5,7 +5,7 @@ import {TOKEN_USAGE_RULES} from '../shared/token-usage-policy.mjs';
 import {pageCss,tokenVariables,textContent,safeUrl as browserSafeUrl} from '../shared/page-schema/runtime.mjs';
 const require=createRequire(import.meta.url);
 const {validate,normalize,runtimeSchema,safeUrl,walk}=require('../shared/page-schema/contract.cjs');
-const {generatePage,snapshotForPage,contentContext}=require('../api/_page-schema-service');
+const {structureFingerprint,generatePage,snapshotForPage,contentContext}=require('../api/_page-schema-service');
 import {fixture,context} from './fixtures/page-schema.mjs';
 for(const name of ['example-editorial','example-split-nested']){
  const page=fixture(name),result=validate(page,context);assert.equal(result.ok,true,JSON.stringify(result.errors));
@@ -67,3 +67,12 @@ const {gridTrackSpans}=await import('../shared/page-schema/runtime.mjs');
 assert.deepEqual(gridTrackSpans([1,2],12),[4,8]);
 assert.deepEqual(gridTrackSpans([1,1],8),[4,4]);
 assert.deepEqual(gridTrackSpans([1],4),[4]);
+
+const editorial=fixture('example-editorial'),split=fixture('example-split-nested');
+assert.notEqual(structureFingerprint(editorial),structureFingerprint(split));
+const copyOnly=structuredClone(editorial);copyOnly.root.id='different-id';copyOnly.summary='새 요약';
+assert.equal(structureFingerprint(editorial),structureFingerprint(copyOnly));
+const columnsOnly=structuredClone(split);
+walk(columnsOnly.root,({node})=>{if(node.type==='grid')node.layout.desktop.columns=[1,3];});
+assert.notEqual(structureFingerprint(split),structureFingerprint(columnsOnly));
+console.log('Structure fingerprints distinguish nesting/ratios while ignoring IDs and copy.');

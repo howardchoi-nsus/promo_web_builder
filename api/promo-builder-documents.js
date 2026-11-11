@@ -352,7 +352,7 @@ module.exports = async function handler(req, res) {
       });
       if (saved.snapshot.qualityGate?.state === "passed") {
         await sql`update promo_builder_chat_sessions set stage='completed', updated_at=now()
-          where document_id=${documentId}::uuid and owner_subject=${owner.ownerSubject} and stage='finalizing'`;
+          where document_id=${documentId}::uuid and owner_subject=${owner.ownerSubject} and (stage='finalizing' or (${Boolean(saved.snapshot.content?.pageSchema)} and stage='wireframe_review'))`;
       }
       return res.status(200).json({
         ok: true,

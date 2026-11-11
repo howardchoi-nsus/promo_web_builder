@@ -26,11 +26,10 @@ const FLAG_NAMES = Object.freeze({
   referenceComponentPublishing: "REFERENCE_COMPONENT_PUBLISHING_V1_ENABLED",
 });
 
-// Registry composition is the production path. Keep an explicit false value as
-// the rollback switch, but do not silently send new installations through the
-// lower-quality legacy template composer.
+// New AI pages use recursive PageSchema generation. Explicit false is the
+// rollback switch; existing documents retain their own renderer.
 const FLAG_DEFAULTS = Object.freeze({
-  pageSchemaV1: false,
+  pageSchemaV1: true,
   compositionV3: true,
   // Keep existing installations operational until Preview/Production explicitly
   // disable authoring. This flag controls management writes, never legacy reads.

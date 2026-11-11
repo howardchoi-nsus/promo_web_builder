@@ -75,3 +75,26 @@ pnpm run build
 - 최종 미리보기 진입·재접속·리비전 변경 시 자동 검사한다. 같은 리비전의 실패를 무한 재시도하지 않는다. 자동 보정은 최대 두 번이며 저장한 결과를 다시 검사한다.
 - Registry V3 채팅은 디자인 적용 시 finalizing을 유지하고 저장된 품질 통과 후 completed로 전환한다.
 - 회귀 검증: scripts/test-registered-token-save-roundtrip.mjs는 실제 legacy normalizer의 토큰 보존, 잘못된 인증 거절, 정책 누락 저장 거절을 확인한다. 토큰 복구 브라우저 테스트는 실제 normalizer로 품질 결과를 저장하며 버튼 없이 자동 검사되는 것을 확인한다.
+
+### 2026-11-11 신규 생성 기본 경로 전환
+- `pageSchemaV1`의 기본값을 true로 전환했다. 기존 환경변수에 false가 있으면 여전히 롤백 경로이므로 Production에서 `PAGE_SCHEMA_GENERATION_ENABLED=true`를 명시한다.
+- 최초 자연어 요청을 `constraintsJson.generationRequest`로 전달해 요약에 누락될 수 있는 배치 의도를 보존한다. 기존 필수 변수는 유지한다.
+- 생성 API는 LLM 호출 전에 migration 086의 PageSchema 저장 지원, 활성 `promo_page_schema_planner`, 활성 공통 토큰 라이브러리 및 사용 정책과 그리드 토큰을 검사한다. 준비되지 않은 환경에서 기존 V3 경로로 조용히 전환하지 않는다.
+- 인증된 `GET /api/promo-page-schema`는 준비 상태를 확인한다. 배포 전 같은 DB 환경에서 `node scripts/check-page-schema-readiness.mjs`로 확인할 수도 있다. CLI는 비밀값을 출력하지 않는다.
+- 새 문서의 `generationMeta`에 생성 경로, 구조 지문, 토큰 버전 및 실제 사용한 프롬프트 ID/버전/provider/model을 기록한다. 구조 지문은 요소 종류·역할·중첩·뷰포트별 배치를 반영하고 문구·노드 ID를 제외한다.
+- PageSchema의 품질 통과 저장은 기존 요구사항 승인 후 `wireframe_review`에 남아 있는 대화도 completed로 전환한다. 기존 V3 문서는 기존 렌더러를 유지하며 신규 생성 시에만 PageSchema로 전환한다.
+
+#### Production 적용 순서
+1. DB migration 086, 087 적용 여부 확인. 086은 저장 함수를 변경하므로 누락하면 생성 API가 사전에 중단된다.
+2. 관리자에서 087의 `AI 동적 페이지 구조 설계 — Registered Layout` 프롬프트를 검증 후 활성화한다. 등록된 활성 모델과 실행 설정을 사용하며 임의 모델/프롬프트 자동 활성화는 하지 않는다.
+3. 관리자에서 저장된 공통 디자인 토큰 및 활성 사용 정책 확인.
+4. Production 환경변수 `PAGE_SCHEMA_GENERATION_ENABLED=true` 지정 후 코드 배포.
+5. 준비 상태 확인 후 기존 결과를 새로고침하는 대신 신규 페이지 구성 생성.
+6. 응답의 `snapshotType=page-schema`, `layoutIdentity.rendererKey=page-schema-renderer`, `generationMeta.prompt` 확인. 웹 출력 내부는 `data-ps-node` 트리이며 기존 `.rendered-items` 틀을 사용하지 않는다.
+7. 서로 다른 배치 요청으로 생성하여 중첩·컬럼·모바일 재배치가 요청에 맞는지 실제 모델과 Production에서 확인한다. 동일 요청이 매번 무작위로 달라져야 하는 요구사항은 아니다.
+
+#### 검증 범위
+- 기본 경로, 준비 상태 오류별 사전 중단, 자연어 배치 요청 전달 및 프롬프트 버전 기록을 API 회귀 테스트로 확인한다.
+- 서로 다른 트리/컬럼 비율의 구조 지문이 다르고, 문구나 ID만 바뀌면 동일한지 검사한다.
+- 브라우저 테스트는 두 종류의 선언형 트리가 서로 다른 DOM 구조로 렌더링되며, 반응형 출력·등록 토큰·출력 격리를 유지하는지 확인한다.
+- 이 로컬 검증은 실제 Production DB/활성 프롬프트/LLM 호출을 대신하지 않는다. 환경에 접속할 수 없다면 원격 적용 여부를 완료로 보고하지 않는다.

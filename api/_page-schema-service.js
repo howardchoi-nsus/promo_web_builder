@@ -28,10 +28,14 @@ async function generatePage({overview,context,instruction='',currentPage=null,pr
  const normalized=normalize(raw);const validation=assertValid(normalized.page,context);
  return {page:normalized.page,validation,adjustments:normalized.adjustments,provider:response.provider,usage:response.usage};
 }
+function structureFingerprint(page){
+ const shape=node=>({type:node.type,role:node.role||null,purpose:node.purpose||null,layout:node.layout,children:(node.children||[]).map(shape)});
+ return createHash('sha256').update(JSON.stringify(shape(page.root))).digest('hex');
+}
 function snapshotForPage(page,context,previous={}){
- return {...previous,contractVersion:3,snapshotType:'page-schema',layoutIdentity:{rendererKey:'page-schema-renderer',rendererVersion:1},
+ return {...previous,compositionMeta:undefined,generationMeta:{generationPath:'page-schema',schemaVersion:page.schemaVersion,structureFingerprint:structureFingerprint(page),tokenVersionId:context.tokenVersionId},contractVersion:3,snapshotType:'page-schema',layoutIdentity:{rendererKey:'page-schema-renderer',rendererVersion:1},
  content:{contractVersion:3,pageSchema:page,pageContext:context,runtimeTheme:{designTokenSetVersionId:context.tokenVersionId,designTokens:{policy:'registered-only',values:context.tokenValues,catalog:context.tokenCatalog,usagePolicy:context.usagePolicy}},sectionSnapshot:[],sectionOrder:[],sectionInputs:{},formTemplate:{}},
  designSpec:{contractVersion:1,theme:{},itemStyles:{},sectionStyles:{},responsiveLayouts:{}},assets:{contractVersion:1,items:{}},motionSpec:{contractVersion:2,sections:{},items:{}}};
 }
 function plannerContext(context){const {contentSources,assets,actions,icons,formFields}=context;return {layoutTokens:assertLayoutTokens(context),spacingTokens:assertLayoutTokens(context).spacing,primitives:TYPES,contentSources,assets,actions,icons,formFields,policyRoles:TOKEN_USAGE_RULES.filter(r=>context.usagePolicy.bindings[r.key]).map(r=>({...r,token:context.usagePolicy.bindings[r.key],value:context.tokenValues[context.usagePolicy.bindings[r.key]]}))};}
-module.exports={plannerContext,contentContext,generatePage,snapshotForPage,TYPES,LIMITS,assertValid,normalize};
+module.exports={structureFingerprint,plannerContext,contentContext,generatePage,snapshotForPage,TYPES,LIMITS,assertValid,normalize};
