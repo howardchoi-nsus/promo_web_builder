@@ -338,11 +338,10 @@ function requiredSectionError(section, reasons) {
 }
 
 async function fetchTokenCandidates(sql, shellConfig) {
-  const allowedIds = new Set(normalizeStringList(shellConfig.allowedTokenSetVersionIds));
   const rows = await fetchTokenSets(sql, { activeOnly: true });
   const candidates = [];
   for (const row of rows.slice(0, 24)) {
-    if (!row.versionId || (row.setKey !== "design-system" && allowedIds.size && !allowedIds.has(String(row.versionId).toLowerCase()))) continue;
+    if (!row.versionId || row.setKey !== "design-system") continue;
     const version = await fetchTokenVersion(sql, row.versionId);
     if (!version) continue;
     const { policySelectableTokens } = await import("../shared/token-usage-policy.mjs");
@@ -357,8 +356,7 @@ async function fetchTokenCandidates(sql, shellConfig) {
       runtimeValues: toRuntimeTokenMap(version.values),
       tokenPolicy: row.setKey === "design-system" ? "registered-only" : "legacy",
       usagePolicy,
-      tokenCatalog: version.values.filter((value) => value.value && (!value.metadata?.libraryToken || value.metadata.state === "active"))
-        .map((value) => ({ tokenKey: value.tokenKey, cssProperties: value.cssProperties, valueType: value.valueType })),
+      tokenCatalog: tokenPolicyCatalog(version),
       selectableTokens: usagePolicy ? policySelectableTokens(usagePolicy, tokenPolicyCatalog(version)).map(token => ({ ...token, values:[token.value] })) : version.values.filter((value) => value.aiSelectable && value.value && (!value.metadata?.libraryToken || value.metadata.state === "active") && value.valueType !== "typography").map((value) => ({
         tokenKey: value.tokenKey,
         category: value.category,
@@ -367,6 +365,7 @@ async function fetchTokenCandidates(sql, shellConfig) {
       })),
     });
   }
+  if (!candidates.length) throw Object.assign(new Error("활성 design-system 토큰 라이브러리와 사용 정책을 등록한 후 페이지 구성을 다시 생성해 주세요."), {statusCode:422,code:"TOKEN_LIBRARY_REQUIRED"});
   return candidates.sort((left, right) => (
     Number(right.tokenSetVersionId === shellConfig.defaultTokenSetVersionId)
     - Number(left.tokenSetVersionId === shellConfig.defaultTokenSetVersionId)
@@ -723,5 +722,6 @@ module.exports = {
   fetchLayoutReferenceCandidates,
   requiredSectionError,
   fetchRegistryCompositionCandidates,
+  fetchTokenCandidates,
   plannerRegistryCandidateSnapshot,
 };

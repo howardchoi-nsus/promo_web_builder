@@ -204,6 +204,9 @@ async function compileRegistryComposition({
   if (spec.designTokenSetVersionId && !tokenSet) {
     throw compilerError("TOKEN_SET_VERSION_MISMATCH", "Design Token Set changed before compilation");
   }
+  if (tokenSet?.tokenPolicy !== "registered-only" || !tokenSet?.usagePolicy || !tokenSet?.tokenCatalog?.length) {
+    throw compilerError("TOKEN_PROPOSAL_REGENERATION_REQUIRED", "이전 토큰 정책으로 생성된 페이지 구성입니다. 활성 등록 토큰을 사용하도록 페이지 구성을 다시 생성해 주세요.", 409);
+  }
   const tokenValues = tokenSet?.runtimeValues || {};
   const tokenBindings = resolveDesignTokenBindings(tokenValues, tokenSet?.selectableTokens || [], tokenSet?.usagePolicy);
   const missingTokenRoles = missingRequiredDesignTokenRoles(tokenValues, tokenSet?.usagePolicy);
@@ -638,7 +641,7 @@ async function compileRegistryComposition({
         templateKey: shellSourceKey,
         version: shellVersion,
         designTokenSetVersionId: tokenSet?.tokenSetVersionId || "",
-        designTokens: { values: tokenValues },
+        designTokens: clone(runtimeTheme.designTokens),
         compatibilityOnly: true,
       },
       sectionSnapshot, sectionInputs, sectionOrder,
