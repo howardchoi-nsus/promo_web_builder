@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import PageSchemaMediaPanel from "./PageSchemaMediaPanel.vue";
+import PageSchemaWireframe from "./PageSchemaWireframe.vue";
 import PageSchemaEditor from "./PageSchemaEditor.vue";
 import RequirementTable from "./RequirementTable.vue";
 import {pendingContentConfirmations,prepareOverviewForPreview} from "../../../shared/page-schema/content-confirmation.mjs";
@@ -61,13 +62,14 @@ const selectedMode = ref(props.initialMode);
 const operationOpen = ref(false);
 const pageSchemaEditorOpen = ref(false);
 const pageSchemaSaving = ref(false);
+const pageStructurePending=computed(()=>store.snapshot?.content?.pageSchema&&store.snapshot.generationMeta?.review?.state==='pending');
 async function changeDynamicMedia(operation){
  pageSchemaSaving.value=true;
  try{const saved=await updatePageSchemaMedia({...operation,documentId:store.documentId,baseDocumentRevision:store.documentRevision});store.documentRevision=Number(saved.revision);store.snapshot=saved.snapshot;transientQualityGate.value=null;}catch(error){setBuilderError(store,error);}finally{pageSchemaSaving.value=false;}
 }
 async function saveDynamicPage(page){
  pageSchemaSaving.value=true;
- try{const saved=await savePageSchema({documentId:store.documentId,baseDocumentRevision:store.documentRevision,page});store.documentRevision=Number(saved.revision);store.snapshot=saved.snapshot;transientQualityGate.value=null;pageSchemaEditorOpen.value=false;}catch(error){setBuilderError(store,error);}finally{pageSchemaSaving.value=false;}
+ try{const saved=await savePageSchema({documentId:store.documentId,baseDocumentRevision:store.documentRevision,page});store.documentRevision=Number(saved.revision);store.snapshot=saved.snapshot;transientQualityGate.value=null;pageSchemaEditorOpen.value=false;store.stage="review_required";activeResultTab.value="wireframe";}catch(error){setBuilderError(store,error);}finally{pageSchemaSaving.value=false;}
 }
 const assetRetrying = ref(false);
 const capabilities = ref({ aiMode: true });
@@ -162,6 +164,7 @@ const wireframeEditDirty = computed(() => (
   && JSON.stringify(wireframeEditDraft.value) !== JSON.stringify(wireframeEditBaseline.value)
 ));
 const currentStatus = computed(() => {
+  if(pageStructurePending.value)return {label:"페이지 구성 확인 및 승인 대기",state:"확인 필요"};
   if (finalQualityChecking.value) return { label: "Desktop · Mobile 디자인 품질 검사 중", state: "진행 중" };
   if (attachmentBusy.value) return { label: "참고 이미지 분석", state: "진행 중" };
   if (busy.value) return { label: progressMessage.value, state: "진행 중" };
@@ -2000,10 +2003,10 @@ async function prepareWireframe(existingOperationId = "", sourceAction = null) {
     if(capabilities.value.pageSchemaV1){
       store.stage="processing";
       const saved=await generatePageSchema({documentId:store.documentId,baseDocumentRevision:store.documentRevision,overview:store.overviewDraft,generationRequest:store.naturalLanguage});
-      store.documentRevision=Number(saved.revision);store.snapshot=saved.snapshot;store.stage="render_ready";activeResultTab.value="final";transientQualityGate.value=null;
+      store.documentRevision=Number(saved.revision);store.snapshot=saved.snapshot;store.stage="review_required";activeResultTab.value="wireframe";transientQualityGate.value=null;
       store.warning=saved.warnings?.length?{code:'UNCONFIRMED_OPTIONAL_CONTENT_OMITTED',message:saved.warnings.map(item=>item.message).join(' ')}:null;
-      updateStatusMessage(operationId,"동적 페이지 미리보기를 생성했습니다.","completed");
-      await appendPersistedMessage("assistant","콘텐츠에 맞춰 페이지 구조를 설계했습니다. 오른쪽 미리보기를 확인해 주세요.",{type:"assistant"});
+      updateStatusMessage(operationId,"페이지 구성 미리보기를 생성했습니다. 구성을 확인하고 승인해 주세요.","completed");
+      await appendPersistedMessage("assistant","콘텐츠에 맞춰 페이지 구조를 설계했습니다. 페이지 구성 미리보기를 확인하고 승인하면 디자인 미리보기로 진행합니다.",{type:"assistant"});
       return;
     }
     const useRegistryComposition = Boolean(capabilities.value.compositionV3);
@@ -2086,8 +2089,8 @@ async function reconnectRegisteredTokens(){
  reconnectingTokens.value=true;clearBuilderError(store);
  try{
   const saved=await saveBuilderDocument({operation:'refresh-token-library',documentId:store.documentId,baseDocumentRevision:store.documentRevision,changeNote:'명시적으로 활성 등록 토큰 라이브러리 다시 연결'});
-  store.snapshot=saved.snapshot;store.documentRevision=Number(saved.revision);store.stage='render_ready';activeResultTab.value='final';transientQualityGate.value=null;clearFailedTask();
-  await nextTick();await checkFinalQuality();
+  store.snapshot=saved.snapshot;store.documentRevision=Number(saved.revision);store.stage=pageStructurePending.value?'review_required':'render_ready';activeResultTab.value=pageStructurePending.value?'wireframe':'final';transientQualityGate.value=null;clearFailedTask();
+  await nextTick();if(!pageStructurePending.value)await checkFinalQuality();
  }catch(error){setBuilderError(store,error);}finally{reconnectingTokens.value=false;}
 }
 
@@ -2224,7 +2227,17 @@ async function checkFinalQuality() {
   }
 }
 
+async function approveDynamicStructure(){
+ if(!store.snapshot?.content?.pageSchema||pageSchemaSaving.value)return;
+ if(!pageStructurePending.value){store.stage='render_ready';activeResultTab.value='final';return;}
+ pageSchemaSaving.value=true;clearBuilderError(store);
+ try{
+  const saved=await generatePageSchema({operation:'approve-structure',documentId:store.documentId,baseDocumentRevision:store.documentRevision,structureFingerprint:store.snapshot.generationMeta?.structureFingerprint});
+  store.documentRevision=Number(saved.revision);store.snapshot=saved.snapshot;store.stage='render_ready';activeResultTab.value='final';transientQualityGate.value=null;
+ }catch(error){setBuilderError(store,error);}finally{pageSchemaSaving.value=false;}
+}
 async function approveWireframe(action = {}, existingOperationId = "") {
+  if(pageStructurePending.value)return approveDynamicStructure();
   if (!store.proposal?.id) return;
   const operationId = existingOperationId || `final-${Date.now()}`;
   updateStatusMessage(operationId, "최종 디자인과 이미지를 생성하고 있습니다.", "in_progress");
@@ -2367,7 +2380,7 @@ async function editNaturalLanguage(instruction) {
     if(store.snapshot?.content?.pageSchema){
       store.stage="processing";operationOpen.value=false;
       const saved=await generatePageSchema({documentId:store.documentId,baseDocumentRevision:store.documentRevision,overview:store.overviewDraft,instruction});
-      store.documentRevision=Number(saved.revision);store.snapshot=saved.snapshot;transientQualityGate.value=null;store.stage="render_ready";activeResultTab.value="final";return;
+      store.documentRevision=Number(saved.revision);store.snapshot=saved.snapshot;transientQualityGate.value=null;store.stage="review_required";activeResultTab.value="wireframe";return;
     }
     const response = await submitCompositionOperation({
       action: "propose",
@@ -2828,6 +2841,7 @@ watch(interactionLocked, (locked, wasLocked) => {
 });
 // Each saved revision is checked once when its final preview becomes available.
 let automaticQualityKey = '';
+watch(pageStructurePending,pending=>{if(pending){store.stage='review_required';activeResultTab.value='wireframe';}});
 watch(() => [store.documentId,store.documentRevision,store.stage,activeResultTab.value,finalQualityChecking.value], async () => {
   if (failedTask.value || !store.snapshot || Number(store.snapshot.contractVersion)!==3 || store.stage!=='render_ready' || activeResultTab.value!=='final' || finalQualityChecking.value || finalQualityPassed.value) return;
   const key = `${store.documentId}:${store.documentRevision}`;
@@ -2897,6 +2911,7 @@ onMounted(async () => {
         await ensureDocument();
       }
       await ensureChatWorkspace();
+      if(pageStructurePending.value){store.stage="review_required";activeResultTab.value="wireframe";}
       appendWelcomeMessage();
     }
     await executionLookups;
@@ -3184,14 +3199,14 @@ onBeforeUnmount(() => {
                   <span>1</span>요청 요약
                 </button>
               </li>
-              <li v-if="!capabilities.pageSchemaV1 && !store.snapshot?.content?.pageSchema" :class="{ selected: activeResultTab === 'wireframe', complete: wireframeDisplaySnapshot }">
-                <button type="button" aria-label="페이지 구성 미리보기" :disabled="!wireframeDisplaySnapshot" :aria-current="activeResultTab === 'wireframe' ? 'step' : undefined" @click="activeResultTab = 'wireframe'">
+              <li :class="{ selected: activeResultTab === 'wireframe', complete: wireframeDisplaySnapshot || store.snapshot?.content?.pageSchema }">
+                <button type="button" aria-label="페이지 구성 미리보기" :disabled="!wireframeDisplaySnapshot && !store.snapshot?.content?.pageSchema" :aria-current="activeResultTab === 'wireframe' ? 'step' : undefined" @click="activeResultTab = 'wireframe'">
                   <span>2</span>페이지 미리보기
                 </button>
               </li>
               <li :class="{ selected: activeResultTab === 'final', complete: store.snapshot && store.stage === 'render_ready' }">
-                <button type="button" aria-label="디자인 미리보기" :disabled="!store.snapshot" :aria-current="activeResultTab === 'final' ? 'step' : undefined" @click="activeResultTab = 'final'">
-                  <span>{{ capabilities.pageSchemaV1 || store.snapshot?.content?.pageSchema ? 2 : 3 }}</span>{{ capabilities.pageSchemaV1 || store.snapshot?.content?.pageSchema ? '페이지 미리보기' : '디자인 미리보기' }}
+                <button type="button" aria-label="디자인 미리보기" :disabled="!store.snapshot || pageStructurePending" :aria-current="activeResultTab === 'final' ? 'step' : undefined" @click="activeResultTab = 'final'">
+                  <span>3</span>디자인 미리보기
                 </button>
               </li>
             </ol>
@@ -3252,6 +3267,20 @@ onBeforeUnmount(() => {
               <div v-else class="ai-result-empty">채팅으로 요구사항을 입력하면 분석 결과가 여기에 표시됩니다.</div>
             </section>
 
+            <section v-else-if="activeResultTab === 'wireframe' && store.snapshot?.content?.pageSchema" class="ai-wireframe-review">
+              <header class="ai-page-preview-header">
+                <strong>페이지 구성 미리보기</strong>
+                <div role="group" aria-label="구성 미리보기 화면 크기">
+                  <button v-for="view in ['desktop','tablet','mobile']" :key="view" type="button" :aria-pressed="wireframeViewport===view" @click="wireframeViewport=view">{{{desktop:'데스크톱',tablet:'태블릿',mobile:'모바일'}[view]}}</button>
+                </div>
+                <button type="button" :disabled="busy||pageSchemaSaving" @click="operationOpen=true">구성 수정 요청</button>
+                <button type="button" :disabled="busy||pageSchemaSaving" @click="pageSchemaEditorOpen=true">구성 편집</button>
+                <button type="button" :disabled="busy||pageSchemaSaving" @click="approveDynamicStructure">페이지 구성 승인</button>
+              </header>
+              <p>섹션 순서·배치·문구를 확인해 주세요. 승인 후 같은 구조로 디자인 미리보기를 표시합니다.</p>
+              <PageSchemaEditor v-if="pageSchemaEditorOpen" :page="store.snapshot.content.pageSchema" :busy="pageSchemaSaving" @save="saveDynamicPage" @close="pageSchemaEditorOpen=false" />
+              <PageSchemaWireframe :page="store.snapshot.content.pageSchema" :context="store.snapshot.content.pageContext" :viewport="wireframeViewport" />
+            </section>
             <section v-else-if="activeResultTab === 'wireframe' && wireframeDisplaySnapshot" class="ai-wireframe-review">
               <header class="ai-page-preview-header">
                 <div>

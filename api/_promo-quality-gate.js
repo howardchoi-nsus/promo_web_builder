@@ -72,6 +72,7 @@ function normalizePassedQualityGate(candidate, {
 }
 
 function assertPassedQualityGate(snapshot, documentRevision) {
+  if(snapshot?.content?.pageSchema&&snapshot.generationMeta?.review?.state==='pending')throw Object.assign(new Error('페이지 구성 미리보기를 확인하고 승인해 주세요.'),{code:'PAGE_SCHEMA_APPROVAL_REQUIRED',statusCode:409});
   const library=snapshot?.content?.runtimeTheme?.designTokens||snapshot?.content?.formTemplate?.designTokens||{};
   const context=snapshot?.content?.pageContext||{tokenValues:library.values||{},tokenCatalog:library.catalog||[],usagePolicy:library.usagePolicy};
   require('../shared/layout-token-policy.cjs').assertLayoutTokens(context);

@@ -7,7 +7,7 @@ const {createPromptExecutionSnapshot}=require('./_prompt-execution-snapshot');
 const {generateStructuredPlannerResult}=require('./_promo-section-design-provider');
 const {prepareOverviewForPreview}=require('../shared/page-schema/content-confirmation.cjs');
 const {normalizeOverview}=require('./_promo-overview-contract');
-const {plannerContext,contentContext,generatePage,snapshotForPage,TYPES,LIMITS,assertValid,normalize}=require('./_page-schema-service');
+const {plannerContext,contentContext,generatePage,snapshotForPage,structureFingerprint,TYPES,LIMITS,assertValid,normalize}=require('./_page-schema-service');
 module.exports=async function handler(req,res){
  res.setHeader('Cache-Control','no-store');
  try{
@@ -24,6 +24,17 @@ module.exports=async function handler(req,res){
   if(found.document.mode!=='ai')return res.status(422).json({error:'AI document required'});
   const base=Number(body.baseDocumentRevision);
   if(!Number.isInteger(base)||base!==found.document.currentDocumentRevision)return res.status(409).json({code:'DOCUMENT_REVISION_MISMATCH',error:'문서가 변경되었습니다. 다시 불러와 주세요.'});
+  if(req.method==='POST'&&body.operation==='approve-structure'){
+   const current=found.snapshot;
+   if(!current?.content?.pageSchema)return res.status(409).json({code:'PAGE_SCHEMA_REQUIRED',error:'승인할 페이지 구성이 없습니다.'});
+   const fingerprint=structureFingerprint(current.content.pageSchema);
+   if(body.structureFingerprint!==fingerprint)return res.status(409).json({code:'PAGE_SCHEMA_STRUCTURE_CHANGED',error:'페이지 구성이 변경되었습니다. 최신 미리보기를 확인해 주세요.'});
+   assertValid(current.content.pageSchema,current.content.pageContext);
+   if(current.generationMeta?.review?.state==='approved')return res.status(200).json({ok:true,revision:base,snapshot:current});
+   const snapshot={...current,generationMeta:{...current.generationMeta,review:{state:'approved',structureFingerprint:fingerprint,sourceDocumentRevision:base,approvedAt:new Date().toISOString()}}};
+   const saved=await createDocumentRevision(sql,{documentId:found.document.id,ownerSubject:owner.ownerSubject,baseDocumentRevision:base,snapshot,source:'manual',changeNote:'PageSchema structure explicitly approved'});
+   return res.status(200).json({ok:true,revision:saved.revision,snapshot:saved.snapshot});
+  }
   let context,page,execution;
   if(req.method==='PUT'){
    if(!found.snapshot?.content?.pageSchema)return res.status(409).json({error:'PageSchema document required'});
@@ -47,7 +58,7 @@ module.exports=async function handler(req,res){
   }
   const snapshot=snapshotForPage(page,context,found.snapshot||{});
   const prompt=execution?.promptConfig;
-  snapshot.generationMeta={...snapshot.generationMeta,operation:req.method==='PUT'?'manual-edit':body.instruction?'ai-edit':'ai-generate',
+  snapshot.generationMeta={...snapshot.generationMeta,review:{state:'pending'},operation:req.method==='PUT'?'manual-edit':body.instruction?'ai-edit':'ai-generate',
    prompt:prompt?{id:prompt.promptId||null,type:prompt.promptType,version:prompt.promptVersion||null,provider:prompt.provider,model:prompt.model}:found.snapshot?.generationMeta?.prompt||null};
   const saved=await createDocumentRevision(sql,{documentId:found.document.id,ownerSubject:owner.ownerSubject,baseDocumentRevision:base,snapshot,source:req.method==='PUT'?'manual':'ai',changeNote:req.method==='PUT'?'PageSchema validated manual edit':'AI dynamic PageSchema generation'});
   return res.status(200).json({ok:true,revision:saved.revision,snapshot:saved.snapshot,validation:execution?.validation,adjustments:execution?.adjustments||[],warnings:context.omittedContent||[]});
