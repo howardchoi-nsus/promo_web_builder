@@ -304,6 +304,7 @@ function normalizeOverview(value = {}) {
   const purpose = PROMOTION_PURPOSES.includes(value.promotionPurpose)
     ? value.promotionPurpose : "";
   return {
+    ...(value._review ? {_review:{missingCriticalInputs:(Array.isArray(value._review.missingCriticalInputs)?value._review.missingCriticalInputs:[]).filter(field=>OVERVIEW_REQUIREMENT_FIELDS.includes(field)).slice(0,20)}} : {}),
     schemaVersion: 6,
     inputMode: value.inputMode === "natural-language" ? "natural-language" : "structured",
     rawNaturalLanguage: text(value.rawNaturalLanguage, 4000),

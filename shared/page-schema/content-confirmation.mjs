@@ -25,8 +25,12 @@ export function pendingContentConfirmations(overview) {
  for(const key of ['contentSections','additionalInformation','notices','legalInformation'])visit(overview?.[key],key);
  return pending;
 }
+export function pendingCriticalInputs(overview) {
+ const allowed=['title','mainOffer','promotionPurpose','promotionPurposeOther','audience','market','ctaLabel'];
+ return [...new Set(Array.isArray(overview?._review?.missingCriticalInputs)?overview._review.missingCriticalInputs:[])].filter(key=>allowed.includes(key)&&(key!=='promotionPurposeOther'||overview.promotionPurpose==='기타')&&!confirmationText(overview[key])).map(key=>({path:key,blocking:['title','mainOffer'].includes(key),code:['title','mainOffer'].includes(key)?'CRITICAL_INPUT_REQUIRED':'REQUEST_CONTEXT_UNRESOLVED',message:`${({title:'제목',mainOffer:'핵심 혜택',promotionPurpose:'프로모션 목적',promotionPurposeOther:'구체적인 목적',audience:'대상',market:'운영 지역',ctaLabel:'버튼 문구'})[key]}을 입력해 주세요.`}));
+}
 export function assertContentConfirmed(overview) {
- const errors=pendingContentConfirmations(overview);
+ const errors=[...pendingCriticalInputs(overview).filter(item=>item.blocking),...pendingContentConfirmations(overview)];
  if(errors.length)throw Object.assign(new Error(`확인할 콘텐츠 ${errors.length}개가 남아 있습니다. 요청 요약에서 항목별로 확인·확정하거나 내용을 수정해 주세요.`),{statusCode:422,code:'CONTENT_CONFIRMATION_REQUIRED',errors,details:errors});
 }
 

@@ -8,7 +8,7 @@ import {enforceRegisteredDesignTokens} from '../../../shared/registered-token-po
 import {layoutTokenPolicy} from '../../../shared/layout-token-policy.mjs';
 import {tokenVariables} from '../../../shared/page-schema/runtime.mjs';
 import {usageRuntimeStyle,validateTokenUsagePolicy} from '../../../shared/token-usage-policy.mjs';
-const props=defineProps({snapshot:{type:Object,default:null},content:{type:Object,default:null},designSpec:{type:Object,default:null},assets:{type:Object,default:null},motionSpec:{type:Object,default:null},viewportOverride:{type:String,default:''}});
+const props=defineProps({snapshot:{type:Object,default:null},content:{type:Object,default:null},designSpec:{type:Object,default:null},assets:{type:Object,default:null},motionSpec:{type:Object,default:null},viewportOverride:{type:String,default:''},wireframe:{type:Boolean,default:false}});
 const rendererProps=computed(()=>normalizeReadonlyRendererProps(props));
 const library=computed(()=>rendererProps.value.content.runtimeTheme?.designTokens||rendererProps.value.content.formTemplate?.designTokens||{});
 const context=computed(()=>rendererProps.value.content.pageContext||{tokenValues:library.value.values||{},tokenCatalog:library.value.catalog||[],usagePolicy:library.value.usagePolicy});
@@ -33,9 +33,9 @@ defineExpose({getOutputDocument:()=>frame.value?.getDocument(),inspectLayoutQual
 <template>
  <section v-if="errors.length" role="alert" class="output-policy-error"><strong>등록된 디자인 토큰을 확인해 주세요.</strong><ul><li v-for="(error,index) in errors" :key="index">{{error.message||error.path||error.key}}</li></ul></section>
  <IsolatedOutputFrame v-else ref="frame" :viewport="rendererProps.viewportOverride" :variables="variables">
-  <div data-output-boundary :style="variables">
+  <div data-output-boundary :style="{...variables,filter:wireframe?'grayscale(1)':undefined}">
    <component :is="'style'">{{layoutCss()}}</component>
-   <PageSchemaRenderer v-if="rendererProps.content.pageSchema" ref="renderer" :page="rendererProps.content.pageSchema" :context="context" :viewport-override="rendererProps.viewportOverride" />
+   <PageSchemaRenderer v-if="rendererProps.content.pageSchema" ref="renderer" :page="rendererProps.content.pageSchema" :context="context" :viewport-override="rendererProps.viewportOverride" :wireframe="wireframe" />
    <PromoPageRenderer v-else ref="renderer" class="promo-readonly-renderer" :content="{...rendererProps.content,runtimeTheme:{...rendererProps.content.runtimeTheme,designTokens:{...library,policy:'registered-only'}}}" :design-spec="rendererProps.designSpec" :assets="rendererProps.assets" :motion-spec="rendererProps.motionSpec" :viewport-override="rendererProps.viewportOverride" :editable="false" :show-guides="false" :outline-mode="false" />
   </div>
  </IsolatedOutputFrame>

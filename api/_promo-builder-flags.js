@@ -1,5 +1,6 @@
 const FLAG_NAMES = Object.freeze({
   pageSchemaV1: "PAGE_SCHEMA_GENERATION_ENABLED",
+  hallmarkDesign: "HALLMARK_DESIGN_ENABLED",
   aiMode: "PROMO_BUILDER_AI_MODE_ENABLED",
   proposal: "PROMO_PAGE_COMPOSITION_PROPOSAL_ENABLED",
   apply: "PROMO_PAGE_COMPOSITION_APPLY_ENABLED",
@@ -30,6 +31,7 @@ const FLAG_NAMES = Object.freeze({
 // rollback switch; existing documents retain their own renderer.
 const FLAG_DEFAULTS = Object.freeze({
   pageSchemaV1: true,
+  hallmarkDesign: true,
   compositionV3: true,
   // Keep existing installations operational until Preview/Production explicitly
   // disable authoring. This flag controls management writes, never legacy reads.

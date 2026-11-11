@@ -311,6 +311,7 @@ module.exports = async function handler(req, res) {
         });
       }
       if (String(req.query.requireQualityGate || "") === "1") {
+        if(result.snapshot?.generationMeta?.sourceRequirements&&require('./_promo-builder-flags').builderFlags().chatWorkspaceV1)await require('./_page-schema-requirements').pinPageRequirements(getSql(),{documentId,ownerSubject:owner.ownerSubject,revision:result.snapshot.generationMeta.sourceRequirements.revision});
         assertPassedQualityGate(result.snapshot, result.document.currentDocumentRevision);
       }
       return res.status(200).json({ ok: true, ...result });
@@ -334,6 +335,7 @@ module.exports = async function handler(req, res) {
           currentDocumentRevision: current.document.currentDocumentRevision,
         });
       }
+      if(body.snapshot?.qualityGate?.state==='passed'&&current.snapshot?.generationMeta?.sourceRequirements&&require('./_promo-builder-flags').builderFlags().chatWorkspaceV1)await require('./_page-schema-requirements').pinPageRequirements(sql,{documentId,ownerSubject:owner.ownerSubject,revision:current.snapshot.generationMeta.sourceRequirements.revision});
       const snapshot = refreshTokens ? await require("./_promo-output-token-refresh").refreshOutputTokens(sql,current.snapshot) : await normalizeEditorSnapshot(
         sql,
         current.snapshot,

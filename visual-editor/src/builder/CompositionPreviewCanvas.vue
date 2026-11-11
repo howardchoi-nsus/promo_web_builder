@@ -5,6 +5,7 @@ import PromoPageRenderer from "../PromoPageRenderer.vue";
 
 const props = defineProps({
   snapshot: { type: Object, required: true },
+  wireframe: {type:Boolean,default:false},
   viewport: { type: String, default: "desktop" },
 });
 
@@ -265,7 +266,7 @@ onBeforeUnmount(() => {
   <div ref="previewStage" class="ai-builder-preview ai-builder-preview-stage" :data-viewport="effectiveViewport">
     <div class="ai-builder-preview-shell" :style="previewShellStyle">
       <div ref="previewCanvas" class="ai-builder-preview-canvas" :style="previewCanvasStyle">
-        <PromoReadonlyRenderer ref="rendererRef" :snapshot="snapshot" :viewport-override="effectiveViewport" />
+        <PromoReadonlyRenderer ref="rendererRef" :snapshot="snapshot" :viewport-override="effectiveViewport" :wireframe="wireframe" />
       </div>
     </div>
   </div>

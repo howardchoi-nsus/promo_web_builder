@@ -219,7 +219,7 @@ async function saveMessage(sql, { sessionId, ownerSubject, message, actions }) {
 }
 
 async function saveRequirementsRevision(sql, {
-  sessionId, ownerSubject, documentRevision, requirements,
+  sessionId, ownerSubject, documentRevision, requirements, expectedRequirementsRevision = null, replaceActions = false,
 }) {
   const serverFingerprint = createHash("sha256")
     .update(stableStringify(requirements))
@@ -234,7 +234,14 @@ async function saveRequirementsRevision(sql, {
         stage = 'requirements_review', updated_at = now()
       from target
       where session.id = target.id
+        and (${expectedRequirementsRevision === null}::boolean or session.latest_requirements_revision = ${Number(expectedRequirementsRevision || 0)})
       returning session.latest_requirements_revision as revision
+    ), expired as (
+      update promo_builder_chat_actions a set status='expired'
+      from next_revision where a.session_id=${sessionId}::uuid and a.status='proposed'
+        and ${Boolean(replaceActions)}::boolean
+        and a.action_key in ('confirm_requirements','revise_requirements','complete_requirements_edit','cancel_requirements_edit')
+      returning a.id
     )
     insert into promo_builder_requirements_revisions (
       session_id, revision, document_revision, requirements_json, requirements_fingerprint
@@ -244,6 +251,11 @@ async function saveRequirementsRevision(sql, {
     from next_revision
     returning *
   `;
+  if(!rows[0] && expectedRequirementsRevision !== null){
+    const current=await sql`select s.latest_requirements_revision,r.document_revision,r.requirements_json,r.requirements_fingerprint,r.created_at from promo_builder_chat_sessions s left join promo_builder_requirements_revisions r on r.session_id=s.id and r.revision=s.latest_requirements_revision where s.id=${sessionId}::uuid and s.owner_subject=${ownerSubject}`;
+    if(current[0]?.requirements_json&&stableStringify(current[0].requirements_json)===stableStringify(requirements))return {revision:Number(current[0].latest_requirements_revision),documentRevision:Number(current[0].document_revision),value:current[0].requirements_json,fingerprint:current[0].requirements_fingerprint,createdAt:current[0].created_at};
+    if(current.length)throw Object.assign(new Error('다른 창에서 요청 요약이 변경되었습니다. 최신 내용을 확인해 주세요.'),{code:'REQUIREMENTS_REVISION_MISMATCH',statusCode:409,currentRequirementsRevision:Number(current[0].latest_requirements_revision)});
+  }
   return rows[0] ? {
     revision: Number(rows[0].revision),
     documentRevision: Number(rows[0].document_revision),

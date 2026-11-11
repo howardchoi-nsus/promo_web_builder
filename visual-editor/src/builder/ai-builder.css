@@ -670,8 +670,8 @@
 
 .ai-builder-preview-stage { min-height: 520px; padding: 16px; background: #e9eeeb; overscroll-behavior: contain; }
 .ai-builder-preview-stage[data-viewport="mobile"] { background: #dfe5e2; }
-.ai-builder-preview-shell { position: relative; margin: 0 auto; transition: width .2s ease, height .2s ease; }
-.ai-builder-preview-canvas { position: absolute; top: 0; left: 0; overflow: hidden; background: #fff; box-shadow: 0 12px 34px rgb(27 42 34 / 14%); transform-origin: top left; transition: width .2s ease, transform .2s ease; }
+.ai-builder-preview-shell { position: relative; margin: 0 auto; transition: none; }
+.ai-builder-preview-canvas { position: absolute; top: 0; left: 0; overflow: hidden; background: #fff; box-shadow: 0 12px 34px rgb(27 42 34 / 14%); transform-origin: top left; transition: none; }
 .ai-builder-preview-canvas > .promo-renderer { min-height: 100%; }
 
 .ai-builder-error {

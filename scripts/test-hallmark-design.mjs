@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+import {fixture,context} from './fixtures/page-schema.mjs';
+import {pendingCriticalInputs,assertContentConfirmed} from '../shared/page-schema/content-confirmation.mjs';
+const require=createRequire(import.meta.url);
+const {designBrief,reviewDesign,structuralHash}=require('../api/_page-schema-design');
+const {contentContext}=require('../api/_page-schema-service');
+const brief=designBrief({promotionPurpose:'가입',audience:'신규 고객',contentSections:[]},{requestId:'fixed',recentStructures:['a','b']});
+assert.equal(brief.guidelinesVersion,'hallmark-adapted-v1');assert.equal(brief.seed,'fixed');assert.deepEqual(brief.recentStructures,['a','b']);
+assert.ok(brief.principles.some(p=>p.includes('registered')));assert.ok(brief.principles.some(p=>p.includes('section count')));
+const page=fixture('example-editorial'),before=JSON.stringify(page);
+const review=reviewDesign(page,{recentStructures:[structuralHash(page)]});assert.equal(review.blockingCount,0);assert.ok(review.designWarnings.some(w=>w.code==='DESIGN_STRUCTURE_REPEATED'));
+assert.equal(reviewDesign(page,{recentStructures:[structuralHash(page)],preserveLayout:true}).designWarnings.some(w=>w.code==='DESIGN_STRUCTURE_REPEATED'),false);
+assert.equal(JSON.stringify(page),before);
+const c=contentContext({title:'같은 제목',contentSections:[{title:'같은 제목',description:'선택 내용',required:false}]},context);
+assert.equal(Object.values(c.contentSources).filter(s=>s.text==='같은 제목').length,1);
+assert.equal(Object.values(c.contentSources).find(s=>s.text==='선택 내용').required,false);
+assert.equal(Object.values(c.contentSources).find(s=>s.text==='같은 제목').required,true);
+const missing={title:'제목',mainOffer:'',_review:{missingCriticalInputs:['mainOffer']}};assert.equal(pendingCriticalInputs(missing).length,1);assert.throws(()=>assertContentConfirmed(missing),e=>e.errors[0].code==='CRITICAL_INPUT_REQUIRED');missing.mainOffer='사용자가 제공한 혜택';assert.equal(pendingCriticalInputs(missing).length,0);
+console.log('Hallmark adaptation: goal/material guidance, nonblocking design warnings, revision preservation, optional sources, deduplication and unresolved critical facts passed.');
+
+const contextOnly={title:'제목',mainOffer:'혜택',market:'',_review:{missingCriticalInputs:['market']}};assert.equal(pendingCriticalInputs(contextOnly)[0].blocking,false);assert.doesNotThrow(()=>assertContentConfirmed(contextOnly));

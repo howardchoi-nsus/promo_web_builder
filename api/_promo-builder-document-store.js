@@ -400,6 +400,8 @@ async function createDocumentRevision(sql, {
   source,
   changeNote,
   qualityGateVerified = false,
+  chatTransition = null,
+  generationJob = null,
 }) {
   await assertRegisteredTokenPolicy(snapshot);
   const nextRevision = Number(baseDocumentRevision) + 1;
@@ -414,7 +416,47 @@ async function createDocumentRevision(sql, {
   } else {
     delete nextSnapshot.qualityGate;
   }
-  const rows = await sql`
+  let rows;
+  if(chatTransition){
+    rows=await sql`
+      with guard as (
+        select s.id from promo_builder_chat_sessions s
+        join promo_page_schema_generation_jobs j on j.document_id=s.document_id and j.owner_subject=s.owner_subject
+        where s.document_id=${documentId}::uuid and s.owner_subject=${ownerSubject}
+          and s.latest_requirements_revision=${Number(chatTransition.requirementsRevision)}
+          and j.request_id=${generationJob?.requestId||null}::uuid and j.claim_token=${generationJob?.claimToken||null}::uuid and j.status='running'
+        for update of s,j
+      ), saved as (
+        select create_promo_builder_document_revision(${documentId}::uuid,${ownerSubject},${baseDocumentRevision},${JSON.stringify(nextSnapshot)}::jsonb,${snapshotHash(nextSnapshot)},${source},${changeNote||''}) as revision
+        from guard
+      ), transitioned as (
+        update promo_builder_chat_sessions s set stage='wireframe_review',updated_at=now()
+        from saved,guard where s.id=guard.id returning s.id
+      ), picked as (
+        select a.id from promo_builder_chat_actions a join transitioned s on s.id=a.session_id
+        where a.status='proposed' and a.action_key='confirm_requirements'
+        order by a.created_at desc limit 1
+      ), handled as (
+        update promo_builder_chat_actions a set status=case when a.id in(select id from picked) then 'executed' else 'expired' end,
+          executed_at=case when a.id in(select id from picked) then now() else a.executed_at end
+        from transitioned s where a.session_id=s.id and a.status='proposed' returning a.id
+      ), completed as (
+        update promo_page_schema_generation_jobs j set status='completed',result_revision=saved.revision,updated_at=now()
+        from saved where j.document_id=${documentId}::uuid and j.request_id=${generationJob?.requestId||null}::uuid and j.claim_token=${generationJob?.claimToken||null}::uuid returning j.request_id
+      ) select revision from saved`;
+    if(!rows.length)throw Object.assign(new Error('생성 중 요청 요약이 변경되었습니다. 최신 요약으로 다시 생성해 주세요.'),{code:'REQUIREMENTS_REVISION_MISMATCH',statusCode:409,retryable:true});
+  }else if(generationJob){
+    rows=await sql`with guard as (
+      select request_id from promo_page_schema_generation_jobs where document_id=${documentId}::uuid and owner_subject=${ownerSubject}
+        and request_id=${generationJob.requestId}::uuid and claim_token=${generationJob.claimToken}::uuid and status='running' for update
+    ), saved as (
+      select create_promo_builder_document_revision(${documentId}::uuid,${ownerSubject},${baseDocumentRevision},${JSON.stringify(nextSnapshot)}::jsonb,${snapshotHash(nextSnapshot)},${source},${changeNote||''}) as revision from guard
+    ), completed as (
+      update promo_page_schema_generation_jobs j set status='completed',result_revision=saved.revision,updated_at=now()
+      from saved where j.document_id=${documentId}::uuid and j.request_id=${generationJob.requestId}::uuid and j.claim_token=${generationJob.claimToken}::uuid returning j.request_id
+    ) select revision from saved`;
+    if(!rows.length)throw Object.assign(new Error('생성 작업이 변경되었습니다. 최신 상태를 확인해 주세요.'),{code:'GENERATION_LEASE_CHANGED',statusCode:409,retryable:true});
+  }else rows = await sql`
     select create_promo_builder_document_revision(
       ${documentId}::uuid,
       ${ownerSubject},

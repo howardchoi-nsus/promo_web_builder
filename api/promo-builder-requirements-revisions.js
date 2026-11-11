@@ -22,17 +22,21 @@ function createHandler(deps = {}) {
       const sessionId = String(body.sessionId || "").trim();
       const requirements = body.requirements && typeof body.requirements === "object" ? body.requirements : null;
       if (!sessionId || !requirements) return res.status(400).json({ error: "sessionId and requirements are required" });
+      const expected=body.expectedRequirementsRevision;
+      if(expected!==undefined&&(!Number.isInteger(expected)||expected<0))return res.status(400).json({error:'expectedRequirementsRevision must be a nonnegative integer'});
       const saved = await use.saveRequirementsRevision(use.getSql(), {
         sessionId,
         ownerSubject: owner.ownerSubject,
         documentRevision: Math.max(0, Number(body.documentRevision || 0)),
         requirements,
+        expectedRequirementsRevision: expected === undefined ? null : expected,
+        replaceActions: body.replaceActions === true,
         fingerprint: String(body.fingerprint || "").trim(),
       });
       if (!saved) return res.status(404).json({ error: "Chat session not found" });
       return res.status(201).json({ ok: true, requirements: saved });
     } catch (error) {
-      return res.status(error.statusCode || 500).json({ error: error.message, code: error.code || null, details: error.details });
+      return res.status(error.statusCode || 500).json({ error: error.message, code: error.code || null, details: error.details, currentRequirementsRevision:error.currentRequirementsRevision });
     }
   };
 }

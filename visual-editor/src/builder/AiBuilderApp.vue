@@ -4,7 +4,7 @@ import PageSchemaMediaPanel from "./PageSchemaMediaPanel.vue";
 import PageSchemaWireframe from "./PageSchemaWireframe.vue";
 import PageSchemaEditor from "./PageSchemaEditor.vue";
 import RequirementTable from "./RequirementTable.vue";
-import {pendingContentConfirmations,prepareOverviewForPreview} from "../../../shared/page-schema/content-confirmation.mjs";
+import {pendingContentConfirmations,pendingCriticalInputs,prepareOverviewForPreview} from "../../../shared/page-schema/content-confirmation.mjs";
 import BuilderModeSelector from "./BuilderModeSelector.vue";
 import CompositionReview from "./CompositionReview.vue";
 import { visualEditorEntry } from "../platform/visual-editor-entry.mjs";
@@ -62,6 +62,8 @@ const selectedMode = ref(props.initialMode);
 const operationOpen = ref(false);
 const pageSchemaEditorOpen = ref(false);
 const pageSchemaSaving = ref(false);
+const pageGenerationRequest=ref(null);
+const pageSummaryOutdated=computed(()=>Boolean(capabilities.value.chatWorkspaceV1&&store.snapshot?.generationMeta?.sourceRequirements&&requirementsRevision.value>store.snapshot.generationMeta.sourceRequirements.revision));
 const pageStructurePending=computed(()=>store.snapshot?.content?.pageSchema&&store.snapshot.generationMeta?.review?.state==='pending');
 async function changeDynamicMedia(operation){
  pageSchemaSaving.value=true;
@@ -148,7 +150,7 @@ const busy = computed(() => [
 ].includes(store.stage));
 const hasStreamingMessage = computed(() => streamingMessageIds.value.length > 0);
 const interactionLocked = computed(() => (
-  chatSubmitting.value || busy.value || attachmentBusy.value || requirementsSaving.value || wireframeSaving.value
+  chatSessionSwitching.value || chatSubmitting.value || busy.value || attachmentBusy.value || requirementsSaving.value || wireframeSaving.value
   || finalQualityChecking.value || failedTaskRetrying.value
   || Boolean(pendingChatActionKey.value) || hasStreamingMessage.value
 ));
@@ -300,6 +302,8 @@ async function retryFailedTask() {
       await prepareWireframe("", task.action || null);
     } else if (task.kind === "final-design") {
       await approveWireframe(task.action || {});
+    } else if (task.kind === "page-layout-edit") {
+      await editNaturalLanguage(task.input);
     } else if (task.kind === "chat-action" && task.action) {
       failedTaskRetrying.value = false;
       await handleChatAction(task.action);
@@ -720,6 +724,9 @@ function persistWorkspace() {
       overviewDraft: store.overviewDraft,
       overviewFingerprint: store.overviewFingerprint,
       pendingClarificationQuestions: pendingClarificationQuestions.value,
+      overviewDirty:overviewDirty.value,
+      overviewBackup:overviewBackup.value,
+      pageGenerationRequest:pageGenerationRequest.value,
       pendingClarificationItems: pendingClarificationItems.value,
       clarificationAskedFields: clarificationAskedFields.value,
       clarificationAnsweredFields: clarificationAnsweredFields.value,
@@ -760,6 +767,10 @@ function restoreWorkspaceCache() {
     store.naturalLanguage = cached.naturalLanguage || "";
     store.inputLocale = cached.inputLocale || "";
     store.overviewDraft = cached.overviewDraft || null;
+    overviewDirty.value=Boolean(cached.overviewDirty);
+    overviewBackup.value=cached.overviewBackup||null;
+    if(overviewDirty.value)overviewSaveMessage.value='저장하지 않은 요청 요약 변경이 있습니다. 저장을 다시 시도해 주세요.';
+    pageGenerationRequest.value=cached.pageGenerationRequest||null;
     store.overviewFingerprint = cached.overviewFingerprint || "";
     pendingClarificationQuestions.value = Array.isArray(cached.pendingClarificationQuestions)
       ? cached.pendingClarificationQuestions.slice(0, 3)
@@ -825,6 +836,7 @@ function legacyWorkspaceSummary(cached = legacyWorkspace.value) {
 }
 
 function resetWorkspaceState() {
+  overviewDirty.value=false;overviewSaveMessage.value='';overviewBackup.value=null;pageGenerationRequest.value=null;clearTimeout(overviewSaveTimer);
   const executionDisplays = store.executionDisplays;
   resetAssistantStreams();
   Object.assign(store, createAiBuilderState({ executionDisplays }));
@@ -865,7 +877,7 @@ function appendWelcomeMessage() {
   if (messages.value.length) return;
   appendMessage(
     "assistant",
-    "한두 문장으로 시작해도 됩니다. 만들고 싶은 프로모션과 핵심 혜택만 알려주세요. 필요한 내용은 한 번만 확인하며, 답변 없이 AI가 구성하도록 선택할 수도 있습니다.\n\n예: 신규 회원에게 1만원 쿠폰과 무료 배송을 제공하는 고급스러운 겨울 이벤트를 만들어줘.",
+    "한두 문장으로 시작해도 됩니다. 만들고 싶은 프로모션과 핵심 혜택만 알려주세요. 핵심 내용은 확인하고, 미정인 선택 정보는 제외하여 AI가 구성하도록 할 수 있습니다.\n\n예: 신규 회원에게 1만원 쿠폰과 무료 배송을 제공하는 고급스러운 겨울 이벤트를 만들어줘.",
     { type: "assistant" },
   );
 }
@@ -918,8 +930,10 @@ async function toggleChatMenu() {
   if (chatMenuOpen.value) await refreshChatSessions();
 }
 
-function startNewConversation() {
+async function startNewConversation() {
   if (interactionLocked.value || chatSessionSwitching.value) return;
+  chatSessionSwitching.value=true;
+  try{await flushOverviewChanges();}catch(error){chatSessionSwitching.value=false;setBuilderError(store,error);return;}
   sessionStorage.removeItem(ACTIVE_CHAT_STORAGE_KEY);
   const url = new URL(window.location.href);
   url.searchParams.set("mode", "ai");
@@ -935,6 +949,7 @@ async function openChatSession(summary) {
   chatSessionSwitching.value = true;
   chatSessionsError.value = "";
   try {
+    await flushOverviewChanges();
     if (summary.isLocal) {
       const cached = legacyWorkspace.value;
       if (!cached) throw new Error("이전 로컬 대화 정보를 찾지 못했습니다.");
@@ -975,6 +990,7 @@ async function openChatSession(summary) {
         if (loaded) {
           store.documentRevision = Number(loaded.document?.currentDocumentRevision || store.documentRevision);
           store.snapshot = loaded.snapshot || null;
+          if(store.snapshot?.generationMeta?.requestId===pageGenerationRequest.value?.requestId)pageGenerationRequest.value=null;
         }
       }
       if (store.snapshot) store.stage = "render_ready";
@@ -1147,7 +1163,7 @@ async function ensureDocument() {
 function hydrateChatWorkspace(workspace) {
   if (!workspace?.session) return;
   chatSessionId.value = workspace.session.id;
-  requirementsRevision.value = Number(workspace.requirements?.revision || 0);
+  if(!overviewDirty.value)requirementsRevision.value = Number(workspace.requirements?.revision || 0);
   wireframeRevision.value = Number(workspace.wireframe?.revision || 0);
   wireframeFingerprint.value = workspace.wireframe?.structureFingerprint || "";
   if (Array.isArray(workspace.messages) && workspace.messages.length) {
@@ -1155,7 +1171,7 @@ function hydrateChatWorkspace(workspace) {
     messages.value = normalizeRestoredMessages(workspace.messages);
     restorePendingClarificationsFromMessages();
   }
-  if (workspace.requirements?.value) {
+  if (workspace.requirements?.value && !overviewDirty.value) {
     store.overviewDraft = workspace.requirements.value;
     store.overviewFingerprint = workspace.requirements.fingerprint || store.overviewFingerprint;
   }
@@ -1172,7 +1188,7 @@ function hydrateChatWorkspace(workspace) {
   }
 }
 
-async function ensureChatWorkspace() {
+async function ensureChatWorkspace({restore = false} = {}) {
   if (!capabilities.value.chatWorkspaceV1 || !store.documentId) return null;
   const workspace = chatSessionId.value
     ? await loadChatWorkspace(chatSessionId.value).catch((error) => {
@@ -1181,7 +1197,9 @@ async function ensureChatWorkspace() {
     })
     : null;
   const resolved = workspace || await createChatWorkspace(store.documentId, store.requestId);
-  hydrateChatWorkspace(resolved);
+  if(!workspace)requirementsRevision.value=Number(resolved.requirements?.revision||0);
+  if(restore)hydrateChatWorkspace(resolved);
+  else chatSessionId.value=resolved.session.id;
   if (resolved.wireframe?.proposalId) {
     const proposal = await loadCompositionProposal(resolved.wireframe.proposalId);
     store.proposal = proposal.proposal;
@@ -1189,22 +1207,77 @@ async function ensureChatWorkspace() {
   return resolved;
 }
 
+const criticalInputRows=computed(()=>(Array.isArray(store.overviewDraft?._review?.missingCriticalInputs)?store.overviewDraft._review.missingCriticalInputs:[]).filter(path=>['title','mainOffer','promotionPurpose','promotionPurposeOther','audience','market','ctaLabel'].includes(path)&&(path!=='promotionPurposeOther'||store.overviewDraft.promotionPurpose==='기타')).map(path=>({path})).map(item=>({path:item.path,key:item.path,label:({title:'제목',mainOffer:'핵심 혜택',promotionPurpose:'프로모션 목적',promotionPurposeOther:'구체적인 목적',audience:'대상',market:'운영 지역',ctaLabel:'버튼 문구'})[item.path],value:store.overviewDraft[item.path]||'',rawValue:store.overviewDraft[item.path]||'',inputKind:OVERVIEW_TREE_SELECT_OPTIONS[item.path]?'select':'text',options:OVERVIEW_TREE_SELECT_OPTIONS[item.path]||[]})));
+function updateCriticalField(path,value){
+ if(!criticalInputRows.value.some(row=>row.path===path))return;
+ store.overviewDraft[path]=value;refreshOverviewFingerprint();markOverviewDirty();persistWorkspace();
+}
 const contentConfirmations=computed(()=>pendingContentConfirmations(store.overviewDraft));
+const overviewDirty=ref(false),overviewPersisting=ref(false),overviewSaveMessage=ref(''),overviewBackup=ref(null);
+let overviewSaveTimer=null,overviewSavePromise=null,overviewEditSerial=0;
+function markOverviewDirty(){
+ overviewEditSerial++;overviewDirty.value=true;overviewSaveMessage.value='변경 내용을 저장하고 있습니다.';
+ clearTimeout(overviewSaveTimer);overviewSaveTimer=setTimeout(()=>flushOverviewChanges().catch(error=>{overviewSaveMessage.value=error.message;setBuilderError(store,error);}),600);
+}
+async function flushOverviewChanges(){
+ clearTimeout(overviewSaveTimer);
+ if(overviewSavePromise){await overviewSavePromise;if(overviewDirty.value)return flushOverviewChanges();return;}
+ if(!overviewDirty.value)return;
+ overviewPersisting.value=true;
+ overviewSavePromise=(async()=>{
+  while(overviewDirty.value){
+   const serial=overviewEditSerial,value=cloneRequirements();
+   if(capabilities.value.chatWorkspaceV1){
+    await ensureChatWorkspace();
+    const saved=await saveRequirementsRevision({sessionId:chatSessionId.value,documentRevision:store.documentRevision,requirements:value,expectedRequirementsRevision:requirementsRevision.value});
+    requirementsRevision.value=Number(saved.requirements.revision);store.overviewFingerprint=saved.requirements.fingerprint;
+   }
+   if(serial===overviewEditSerial)overviewDirty.value=false;
+  }
+  overviewSaveMessage.value='요청 요약을 저장했습니다.';persistWorkspace();
+ })();
+ try{await overviewSavePromise;}catch(error){overviewSaveMessage.value=error.message;persistWorkspace();throw error;}
+ finally{overviewSavePromise=null;overviewPersisting.value=false;}
+}
+async function loadLatestPage(){
+ try{
+  const latest=await loadBuilderDocument(store.documentId);store.snapshot=latest.snapshot;store.documentRevision=Number(latest.document.currentDocumentRevision);pageGenerationRequest.value=null;clearFailedTask();clearBuilderError(store);
+  store.stage=pageStructurePending.value?'review_required':'render_ready';activeResultTab.value=pageStructurePending.value?'wireframe':'final';persistWorkspace();
+ }catch(error){setBuilderError(store,error);}
+}
+async function loadLatestRequirements(){
+ requirementsSaving.value=true;
+ const previousDirty=overviewDirty.value;
+ try{
+  overviewBackup.value={documentId:store.documentId,value:cloneRequirements()};
+  clearTimeout(overviewSaveTimer);if(overviewSavePromise)await overviewSavePromise.catch(()=>{});
+  overviewDirty.value=false;await ensureChatWorkspace({restore:true});
+  clearBuilderError(store);clearFailedTask();overviewSaveMessage.value='서버의 최신 요약을 불러왔습니다. 이전 입력은 보관했습니다.';persistWorkspace();
+ }catch(error){overviewDirty.value=previousDirty;setBuilderError(store,error);}
+ finally{requirementsSaving.value=false;}
+}
+function restoreOverviewBackup(){
+ if(interactionLocked.value)return;
+ if(overviewBackup.value?.documentId!==store.documentId)return;
+ store.overviewDraft=cloneRequirements(overviewBackup.value.value);overviewBackup.value=null;refreshOverviewFingerprint();markOverviewDirty();persistWorkspace();
+}
+async function retryOverviewSave(){try{await flushOverviewChanges();clearBuilderError(store);}catch(error){setBuilderError(store,error);}}
 function updateConfirmationField(path,key,value){
  const item=contentConfirmations.value.find(item=>item.path===path);
  if(!item?.editableFields.some(field=>field.key===key)||requirementsEditing.value)return;
  const target=requirementValueAt(store.overviewDraft,path);
  if(!target)return;
  target[key]=String(value).slice(0,2000);
- refreshOverviewFingerprint();clearBuilderError(store);persistWorkspace();
+ refreshOverviewFingerprint();markOverviewDirty();clearBuilderError(store);persistWorkspace();
 }
-function confirmContentItem(path){
+async function confirmContentItem(path){
  const entry=contentConfirmations.value.find(item=>item.path===path);
  if(!entry?.canConfirm||requirementsEditing.value)return;
  const target=requirementValueAt(store.overviewDraft,path);
  if(!target)return;
  target.confirmationRequired=false;
- refreshOverviewFingerprint();clearBuilderError(store);persistWorkspace();
+ refreshOverviewFingerprint();markOverviewDirty();clearBuilderError(store);persistWorkspace();
+ try{await flushOverviewChanges();}catch(error){setBuilderError(store,error);}
 }
 
 const CLARIFICATION_QUESTION_BY_FIELD = Object.freeze({
@@ -1218,8 +1291,7 @@ const CLARIFICATION_QUESTION_BY_FIELD = Object.freeze({
 function clarificationItems(response = {}) {
   const items = [];
   const excludedFields = new Set([
-    ...clarificationAskedFields.value,
-    ...clarificationAnsweredFields.value,
+    ...clarificationAnsweredFields.value.filter(field => !response.missingCriticalInputs?.includes(field)),
   ]);
   const add = (field, question) => {
     const normalizedField = String(field || "").trim();
@@ -1276,7 +1348,7 @@ function markPendingClarificationsAnswered() {
   if (!pendingClarificationItems.value.length) return;
   clarificationAnsweredFields.value = [...new Set([
     ...clarificationAnsweredFields.value,
-    ...pendingClarificationItems.value.map((item) => item.field).filter(Boolean),
+    ...pendingClarificationItems.value.map((item) => item.field).filter(field => !field.includes(':') && Boolean(store.overviewDraft?.[field])),
   ])];
   pendingClarificationItems.value = [];
   pendingClarificationQuestions.value = [];
@@ -1358,7 +1430,9 @@ async function analyze(instruction = store.naturalLanguage, recovery = {}) {
     });
     overviewRetry.value = null;
     if (response.executionDisplay) store.executionDisplays.promo_overview_parser = response.executionDisplay;
-    store.overviewDraft = response.overview;
+    const parsedOverview=JSON.parse(JSON.stringify(response.overview));
+    parsedOverview._review={missingCriticalInputs:response.missingCriticalInputs||[]};
+    store.overviewDraft = parsedOverview;
     store.inputLocale = response.inputLocale || "";
     store.overviewFingerprint = response.overviewFingerprint;
     store.stage = "reviewing_overview";
@@ -1368,10 +1442,14 @@ async function analyze(instruction = store.naturalLanguage, recovery = {}) {
       const savedRequirements = await saveRequirementsRevision({
         sessionId: chatSessionId.value,
         documentRevision: store.documentRevision,
-        requirements: store.overviewDraft,
+        requirements: parsedOverview,
+        expectedRequirementsRevision:requirementsRevision.value,
+        replaceActions:true,
         fingerprint: store.overviewFingerprint,
       });
       requirementsRevision.value = Number(savedRequirements.requirements.revision);
+      store.overviewFingerprint=savedRequirements.requirements.fingerprint;
+      overviewDirty.value=false;
     }
     updateStatusMessage(operationId, "요구사항 분석을 완료했습니다.", "completed");
     const items = clarificationItems(response);
@@ -1430,6 +1508,7 @@ async function submitChat() {
   let messagePersisted = false;
   try {
     await ensureDocument();
+    await flushOverviewChanges();
     await ensureChatWorkspace();
     await appendPersistedMessage("user", input || "첨부한 프로모션 이미지를 분석해 주세요.", {
       type: "user",
@@ -1630,6 +1709,7 @@ async function completeRequirementsEdit(action) {
       });
     }
     const normalized = normalize(requirementsEditDraft.value || {});
+    if(store.overviewDraft?._review)normalized._review=store.overviewDraft._review;
     const fingerprint = window.PromoPromotionOverview?.fingerprint;
     if (typeof fingerprint !== "function") {
       throw Object.assign(new Error("프로모션 요구사항 검증 모듈을 불러오지 못했습니다."), {
@@ -1637,12 +1717,13 @@ async function completeRequirementsEdit(action) {
       });
     }
     const nextFingerprint = fingerprint(normalized);
-    await executeRequirementsEditAction(action);
+    if(!capabilities.value.pageSchemaV1)await executeRequirementsEditAction(action);
     if (capabilities.value.chatWorkspaceV1) {
       const savedRequirements = await saveRequirementsRevision({
         sessionId: chatSessionId.value,
         documentRevision: store.documentRevision,
         requirements: normalized,
+        expectedRequirementsRevision:requirementsRevision.value,replaceActions:true,
         fingerprint: nextFingerprint,
       });
       requirementsRevision.value = Number(savedRequirements.requirements.revision);
@@ -1664,6 +1745,7 @@ async function completeRequirementsEdit(action) {
     );
   } catch (error) {
     setBuilderError(store, error);
+    throw error;
   } finally {
     requirementsSaving.value = false;
   }
@@ -1692,6 +1774,7 @@ async function cancelRequirementsEdit(action) {
     );
   } catch (error) {
     setBuilderError(store, error);
+    throw error;
   } finally {
     requirementsSaving.value = false;
   }
@@ -1769,9 +1852,10 @@ async function handleChatAction(action) {
       return;
     }
     if (action.key === "confirm_requirements") {
+      await flushOverviewChanges();
       if(capabilities.value.pageSchemaV1){
         const prepared=prepareOverviewForPreview(store.overviewDraft);
-        const blockers=pendingContentConfirmations(prepared.overview);
+        const blockers=[...pendingCriticalInputs(prepared.overview).filter(item=>item.blocking),...pendingContentConfirmations(prepared.overview)];
         if(blockers.length){
           store.stage='reviewing_overview';activeResultTab.value='requirements';
           store.warning={code:'CONTENT_REVIEW_NEEDED',message:`필수 콘텐츠 ${blockers.length}개를 확인해 주세요. 요청 요약에서 수정·확정 후 다시 생성할 수 있습니다.`};
@@ -1782,7 +1866,7 @@ async function handleChatAction(action) {
       markPendingClarificationsAnswered();
       const messageRequest = appendActionMessage(action);
       updateStatusMessage(operationId, actionProgressMessage(action), "in_progress");
-      const actionRequest = capabilities.value.chatWorkspaceV1
+      const actionRequest = capabilities.value.chatWorkspaceV1 && !capabilities.value.pageSchemaV1
         ? executeChatAction({
           sessionId: chatSessionId.value,
           actionId: action.id,
@@ -1791,8 +1875,9 @@ async function handleChatAction(action) {
         })
         : Promise.resolve();
       await Promise.all([actionRequest, messageRequest]);
-      markChatActionGroupHandled(action);
-      await prepareWireframe(operationId, action);
+      if(!capabilities.value.pageSchemaV1)markChatActionGroupHandled(action);
+      const generated=await prepareWireframe(operationId, action);
+      if(generated&&capabilities.value.pageSchemaV1)markChatActionGroupHandled(action);
       return;
     }
     if (action.key === "approve_wireframe") {
@@ -1991,6 +2076,13 @@ async function retryAssets() {
   }
 }
 
+function pageRequestPayload(instruction=''){
+ if(!instruction&&pageSummaryOutdated.value)instruction='Update the current page to the newly confirmed overview. Preserve unrelated structure, IDs, media and actions.';
+ const key=JSON.stringify({documentId:store.documentId,overview:store.overviewDraft,requirementsRevision:requirementsRevision.value,instruction,generationRequest:store.naturalLanguage});
+ if(pageGenerationRequest.value?.key!==key)pageGenerationRequest.value={key,requestId:crypto.randomUUID(),baseDocumentRevision:store.documentRevision};
+ persistWorkspace();
+ return {documentId:store.documentId,baseDocumentRevision:pageGenerationRequest.value.baseDocumentRevision,overview:store.overviewDraft,requirementsRevision:requirementsRevision.value,generationRequest:store.naturalLanguage,requestId:pageGenerationRequest.value.requestId,...(instruction?{instruction}:{})};
+}
 async function prepareWireframe(existingOperationId = "", sourceAction = null) {
   clearBuilderError(store);
   store.warning = null;
@@ -2002,12 +2094,13 @@ async function prepareWireframe(existingOperationId = "", sourceAction = null) {
     await ensureDocument();
     if(capabilities.value.pageSchemaV1){
       store.stage="processing";
-      const saved=await generatePageSchema({documentId:store.documentId,baseDocumentRevision:store.documentRevision,overview:store.overviewDraft,generationRequest:store.naturalLanguage});
-      store.documentRevision=Number(saved.revision);store.snapshot=saved.snapshot;store.stage="review_required";activeResultTab.value="wireframe";transientQualityGate.value=null;
-      store.warning=saved.warnings?.length?{code:'UNCONFIRMED_OPTIONAL_CONTENT_OMITTED',message:saved.warnings.map(item=>item.message).join(' ')}:null;
+      const saved=await generatePageSchema({...pageRequestPayload(),actionId:sourceAction?.id});
+      if(sourceAction)markChatActionGroupHandled(sourceAction);
+      pageGenerationRequest.value=null;store.documentRevision=Number(saved.revision);store.snapshot=saved.snapshot;store.stage="review_required";activeResultTab.value="wireframe";transientQualityGate.value=null;
+      store.warning=saved.warnings?.length?{code:saved.warnings[0].code||'DESIGN_REVIEW',message:saved.warnings.map(item=>item.message).join(' ')}:null;
       updateStatusMessage(operationId,"페이지 구성 미리보기를 생성했습니다. 구성을 확인하고 승인해 주세요.","completed");
       await appendPersistedMessage("assistant","콘텐츠에 맞춰 페이지 구조를 설계했습니다. 페이지 구성 미리보기를 확인하고 승인하면 디자인 미리보기로 진행합니다.",{type:"assistant"});
-      return;
+      return true;
     }
     const useRegistryComposition = Boolean(capabilities.value.compositionV3);
     if (useRegistryComposition && !activeShell.value?.id) {
@@ -2229,6 +2322,7 @@ async function checkFinalQuality() {
 
 async function approveDynamicStructure(){
  if(!store.snapshot?.content?.pageSchema||pageSchemaSaving.value)return;
+ if(pageSummaryOutdated.value){store.warning={code:'REQUIREMENTS_CHANGED',message:'요청 요약이 변경되었습니다. 최신 내용으로 페이지 구성을 다시 생성해 주세요.'};activeResultTab.value='requirements';return;}
  if(!pageStructurePending.value){store.stage='render_ready';activeResultTab.value='final';return;}
  pageSchemaSaving.value=true;clearBuilderError(store);
  try{
@@ -2374,13 +2468,21 @@ async function rollback() {
   }
 }
 
-async function editNaturalLanguage(instruction) {
+async function editNaturalLanguage(input) {
+  const instruction=typeof input==='string'?input:String(input?.instruction||'');
   store.warning = null;
+  if(store.snapshot?.content?.pageSchema && input?.scope==='content'){
+    try{await flushOverviewChanges();operationOpen.value=false;await ensureChatWorkspace();await appendPersistedMessage('user',instruction,{type:'user'});const request=conversationInstruction(instruction);store.naturalLanguage=request;await analyze(request,{editableInput:instruction});}catch(error){setBuilderError(store,error);}return;
+  }
   try {
     if(store.snapshot?.content?.pageSchema){
+      await flushOverviewChanges();
+      const review=prepareOverviewForPreview(store.overviewDraft);
+      const unresolved=[...pendingCriticalInputs(review.overview).filter(item=>item.blocking),...pendingContentConfirmations(review.overview)];
+      if(unresolved.length){activeResultTab.value='requirements';store.stage='reviewing_overview';operationOpen.value=false;store.warning={code:'CONTENT_REVIEW_NEEDED',message:`필수 콘텐츠 ${unresolved.length}개를 확인한 후 구성을 수정해 주세요.`};return;}
       store.stage="processing";operationOpen.value=false;
-      const saved=await generatePageSchema({documentId:store.documentId,baseDocumentRevision:store.documentRevision,overview:store.overviewDraft,instruction});
-      store.documentRevision=Number(saved.revision);store.snapshot=saved.snapshot;transientQualityGate.value=null;store.stage="review_required";activeResultTab.value="wireframe";return;
+      const saved=await generatePageSchema(pageRequestPayload(instruction));
+      pageGenerationRequest.value=null;store.documentRevision=Number(saved.revision);store.snapshot=saved.snapshot;transientQualityGate.value=null;store.stage="review_required";activeResultTab.value="wireframe";return;
     }
     const response = await submitCompositionOperation({
       action: "propose",
@@ -2401,6 +2503,7 @@ async function editNaturalLanguage(instruction) {
       await applyOperationProposal();
     }
   } catch (error) {
+    rememberFailedTask({kind:"page-layout-edit",label:"페이지 구성 수정",input:instruction},error);
     setBuilderError(store, error);
   }
 }
@@ -2538,6 +2641,7 @@ const HIDDEN_OVERVIEW_TREE_FIELDS = new Set([
   "sectionKey",
   "itemKey",
   "confirmationRequired",
+  "_review",
 ]);
 
 const OVERVIEW_TREE_LABELS = Object.freeze({
@@ -2910,7 +3014,7 @@ onMounted(async () => {
       } else {
         await ensureDocument();
       }
-      await ensureChatWorkspace();
+      await ensureChatWorkspace({restore:true});
       if(pageStructurePending.value){store.stage="review_required";activeResultTab.value="wireframe";}
       appendWelcomeMessage();
     }
@@ -2921,6 +3025,7 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  clearTimeout(overviewSaveTimer);
   assetPollingCancelled = true;
   resetAssistantStreams();
   clearWireframeRevealTimers();
@@ -2965,11 +3070,16 @@ onBeforeUnmount(() => {
           <button type="button" @click="clearBuilderError(store)">닫기</button>
         </div>
       </div>
+      <button v-if="['DOCUMENT_REVISION_MISMATCH','GENERATION_RESULT_SUPERSEDED','GENERATION_LEASE_CHANGED'].includes(store.error?.code)" type="button" @click="loadLatestPage">최신 페이지 불러오기</button>
+      <button v-if="store.error?.code?.startsWith('REQUIREMENTS_')" type="button" :disabled="overviewPersisting" @click="loadLatestRequirements">서버 최신 요약으로 복구</button>
+      <button v-if="overviewBackup?.documentId===store.documentId" type="button" :disabled="overviewPersisting || interactionLocked" @click="restoreOverviewBackup">보관한 입력으로 다시 수정</button>
+      <div v-if="pageGenerationRequest && !busy" role="status" class="ai-builder-warning"><span>진행한 페이지 생성 요청이 있습니다.</span><button type="button" @click="compose">생성 상태 다시 확인</button></div>
+      <div v-if="overviewDirty || overviewPersisting || overviewSaveMessage" role="status" class="ai-builder-warning"><span>{{overviewSaveMessage}}</span><button v-if="overviewDirty && !overviewPersisting" type="button" @click="retryOverviewSave">요청 요약 저장 재시도</button></div>
       <div v-if="store.warning" class="ai-builder-warning" role="status">
         <strong>{{ store.warning.code }}</strong>
         <span>{{ store.warning.message }}</span>
         <button
-          v-if="store.snapshot"
+          v-if="store.snapshot && /ASSET|IMAGE/.test(store.warning.code||'')"
           type="button"
           :disabled="assetRetrying"
           @click="retryAssets"
@@ -3217,6 +3327,10 @@ onBeforeUnmount(() => {
           </header>
 
           <div class="ai-result-content">
+            <aside v-if="pageSummaryOutdated" role="status"><strong>요청 요약이 변경되었습니다.</strong><p>현재 미리보기는 이전 요약의 결과입니다. 최신 내용으로 다시 생성해 주세요.</p><button type="button" :disabled="busy||overviewPersisting" @click="compose">최신 요약으로 페이지 구성 생성</button></aside>
+            <aside v-if="activeResultTab !== 'requirements' && store.snapshot?.generationMeta?.designReview?.designWarnings?.length" aria-label="디자인 검토 안내">
+              <strong>디자인 검토 안내</strong><ul><li v-for="warning in store.snapshot.generationMeta.designReview.designWarnings" :key="warning.code">{{warning.message}}</li></ul>
+            </aside>
             <section v-if="activeResultTab === 'requirements'" class="ai-requirements-tree">
               <template v-if="store.overviewDraft">
                 <div class="ai-requirement-summary">
@@ -3241,6 +3355,7 @@ onBeforeUnmount(() => {
                     내용이 맞으면 왼쪽 채팅의 <strong>페이지 미리보기 생성</strong>을 눌러주세요. 바꾸고 싶은 부분은 “혜택을 3개로 줄여줘”처럼 입력하면 됩니다.
                   </p>
                 </div>
+                <RequirementTable v-if="capabilities.pageSchemaV1 && criticalInputRows.length" title="요청 정보 확인 — 제목·핵심 혜택은 필수, 미정인 대상·지역은 출력에서 추정하지 않습니다" :rows="criticalInputRows" editing @change="updateCriticalField" />
                 <section v-if="capabilities.pageSchemaV1 && contentConfirmations.length" class="ai-requirements-details" aria-label="콘텐츠 확인">
                   <h3>확인이 필요한 콘텐츠 {{ contentConfirmations.length }}개</h3>
                   <p>아래 내용을 확인한 후 항목별로 확정해 주세요. 미입력·미정 내용은 먼저 보완해 주세요.</p>
@@ -3432,7 +3547,7 @@ onBeforeUnmount(() => {
           </div>
         </section>
       </section>
-      <NaturalLanguageEditor v-if="operationOpen" :busy="busy" @cancel="operationOpen = false" @submit="editNaturalLanguage" />
+      <NaturalLanguageEditor v-if="operationOpen" :page-schema-mode="Boolean(store.snapshot?.content?.pageSchema)" :busy="busy" @cancel="operationOpen = false" @submit="editNaturalLanguage" />
     </template>
   </main>
 </template>

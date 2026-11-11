@@ -1,0 +1,20 @@
+{
+  "version": "hallmark-adapted-v1",
+  "source": "https://github.com/Nutlope/hallmark/tree/7e213cb6feb4ef82733bd66a0600b2e54ca0994c",
+  "principles": [
+    "Design from the visitor's goal and the supplied material, not a default hero-card-CTA sequence.",
+    "Make the main offer, supporting explanation and primary action visibly distinct in hierarchy.",
+    "Choose section count, nesting, order and column ratios for this content; do not force a section count or a theme DOM.",
+    "Explore a composition appropriate to the brief; do not repeat a recent structure merely by changing copy. User-requested layout takes precedence over novelty.",
+    "Use only registered and approved policy roles, spacing tokens, physical grid budgets, primitives, sources, assets and actions. Do not invent CSS, colors, fonts, tokens or IDs.",
+    "Do not create prices, coupon conditions, dates, testimonials or proof to fill a design. Omit only the explicitly excluded optional material.",
+    "Use deliberate responsive reflow, readable density and content-driven heights. Do not add empty sections or large spacer blocks for visual fullness.",
+    "Respect the promotion language and required legal copy; English word counts and aesthetic bans are not universal blocking rules.",
+    "For revisions preserve unaffected IDs, content sources, assets and action bindings. Do not claim that browser validation has already passed."
+  ],
+  "qualityTiers": {
+    "blocking": "Schema, security, approved facts, registered tokens, accessibility and usable responsive layout.",
+    "designWarning": "Repetitive composition, weak information hierarchy, missing emphasis or unnecessarily sparse/dense structure; not automatic rejection.",
+    "finish": "Minor alignment and visual rhythm improvements; never silently rewrite approved content."
+  }
+}
