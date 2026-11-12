@@ -1,4 +1,5 @@
 <script setup>
+import {reviewPageUntilReady} from "./services/page-quality-review.mjs";
 import {preparePageMedia} from "./services/page-media-preparation.mjs";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import PageSchemaWireframe from "./PageSchemaWireframe.vue";
@@ -19,6 +20,7 @@ import { createAiBuilderStore, clearBuilderError, setBuilderError } from "./stat
 import {
   updatePageSchemaMedia,
   generatePageSchema,
+  reviewPageQuality,
   savePageSchema,
   analyzeOverviewWithRetry,
   applyCompositionProposal,
@@ -190,7 +192,8 @@ const currentStatus = computed(() => {
 });
 const finalQualityGate = computed(() => transientQualityGate.value || store.snapshot?.qualityGate || null);
 const finalQualityPassed = computed(() => (
-  finalQualityGate.value?.state === "passed"
+  (!(capabilities.value.qualityReviewAgent===true&&store.snapshot?.content?.pageSchema)||Boolean(store.snapshot?.generationMeta?.qualityAgentReview&&store.snapshot.generationMeta.qualityAgentReview.blockingCount===0))
+  && finalQualityGate.value?.state === "passed"
   && Number(finalQualityGate.value?.documentRevision || 0) === Number(store.documentRevision || 0)
   && Number(finalQualityGate.value?.blockingCount || 0) === 0
 ));
@@ -2200,8 +2203,10 @@ async function runFinalQualityGate({ autoRepair = true, force = false } = {}) {
   };
   await nextTick();
   let lastResult = null;
+  const agentEnabled=Boolean(store.snapshot.content?.pageSchema&&capabilities.value.qualityReviewAgent===true);
+  let ruleRepairs=0;
   try {
-    for (let attempt = 0; attempt <= 2; attempt += 1) {
+    for (let attempt = 0; attempt <= (agentEnabled?6:2); attempt += 1) {
       const result = await compositionReviewRef.value?.inspectQualityAcrossViewports?.();
       if (!result) {
         throw Object.assign(new Error("디자인 Preview Renderer가 준비되지 않았습니다."), {
@@ -2209,6 +2214,28 @@ async function runFinalQualityGate({ autoRepair = true, force = false } = {}) {
         });
       }
       lastResult = result;
+      const configurationBlocked=(result.diagnostics||[]).some(item=>/^(LAYOUT_TOKEN|LAYOUT_BREAKPOINT|TOKEN_USAGE_POLICY|OUTPUT_TOKEN)/.test(item.code||''));
+      if(agentEnabled&&!configurationBlocked){
+        if(autoRepair&&Number(result.blockingCount||0)>0&&ruleRepairs<2){
+          const repaired=await generatePageSchema({operation:'repair-quality',documentId:store.documentId,baseDocumentRevision:store.documentRevision,diagnostics:result.diagnostics||[]});
+          if(repaired.changed){
+            ruleRepairs++;store.snapshot=repaired.snapshot;store.documentRevision=Number(repaired.revision);transientQualityGate.value={state:'checking',documentRevision:store.documentRevision};
+            if(repaired.requiresApproval){store.stage='review_required';activeResultTab.value='wireframe';updateStatusMessage(qualityOperationId,'자동 보정으로 구성이 변경됐습니다. 이미지를 보존했습니다. 페이지 미리보기를 확인하고 구성 승인 후 AI 검토를 계속합니다.','completed');return false;}
+            await nextTick();continue;
+          }
+        }
+        updateStatusMessage(qualityOperationId,'AI가 페이지 구조·가독성·반응형 구성을 검토하고 필요한 수정안을 적용하고 있습니다.','in_progress');
+        const beforeRevision=store.documentRevision;
+        const reviewed=await reviewPageUntilReady({readCurrent:()=>({documentId:store.documentId,revision:store.documentRevision}),request:reviewPageQuality,report:result,force:Number(result.blockingCount||0)>0&&Boolean(store.snapshot.generationMeta?.qualityAgentReview?.patches?.length),onUpdate:saved=>{store.snapshot=saved.snapshot;store.documentRevision=Number(saved.revision);transientQualityGate.value={state:'checking',documentRevision:store.documentRevision};}});
+        if(reviewed.requiresApproval){store.stage='review_required';activeResultTab.value='wireframe';updateStatusMessage(qualityOperationId,'AI가 배치를 수정했습니다. 문구와 이미지는 보존했습니다. 새 페이지 미리보기의 구성을 승인하면 자동 재검사를 진행합니다.','completed');return false;}
+        if(store.documentRevision!==beforeRevision){await nextTick();continue;}
+        const issues=store.snapshot.generationMeta?.qualityAgentReview?.issues||[];
+        for(const issue of issues.filter(issue=>!issue.resolvedByPatch)){
+          const diagnostic={code:'AI_DESIGN_REVIEW',level:issue.severity==='blocking'?'blocking':'warning',path:issue.nodeId,viewport:'desktop',message:issue.message};
+          result.diagnostics.push(diagnostic);result.results.desktop.diagnostics.push(diagnostic);
+          const key=diagnostic.level==='blocking'?'blockingCount':'warningCount';result[key]=Number(result[key]||0)+1;result.results.desktop[key]=Number(result.results.desktop[key]||0)+1;
+        }
+      }
       if (Number(result.blockingCount || 0) === 0) {
         const qualityGate = {
           contractVersion: 1,
@@ -2225,7 +2252,7 @@ async function runFinalQualityGate({ autoRepair = true, force = false } = {}) {
           baseDocumentRevision: store.documentRevision,
           snapshot: { ...store.snapshot, qualityGate },
           designTokenSetVersionId: designTokenSetVersionId(),
-          changeNote: attempt > 0
+          changeNote: agentEnabled ? "AI 품질 검토와 브라우저 재검사 통과." : attempt > 0
             ? `AI Builder 품질 검사 통과 및 자동 레이아웃 보정 ${attempt}회 적용.`
             : "AI Builder Desktop/Mobile 품질 검사 통과.",
         });
@@ -2241,7 +2268,7 @@ async function runFinalQualityGate({ autoRepair = true, force = false } = {}) {
         });
         return true;
       }
-      if (!autoRepair || attempt >= 2) break;
+      if (agentEnabled||!autoRepair || attempt >= 2) break;
       // Missing libraries/reference geometry require configuration recovery,
       // not a structural rewrite measured on an invalid preview canvas.
       if((result.diagnostics||[]).some(item=>/^(LAYOUT_TOKEN|LAYOUT_BREAKPOINT|TOKEN_USAGE_POLICY|OUTPUT_TOKEN)/.test(item.code||'')))break;
@@ -2291,6 +2318,9 @@ async function runFinalQualityGate({ autoRepair = true, force = false } = {}) {
     });
     updateStatusMessage(qualityOperationId,'자동 보정으로 해결하지 못한 항목이 있습니다. 채팅의 검사 내역에 원인과 필요한 설정을 표시했습니다. 완료된 이미지와 콘텐츠는 보존했습니다.','failed');
     return false;
+  } catch(error){
+    transientQualityGate.value={state:'failed',documentRevision:store.documentRevision,blockingCount:1,warningCount:0,diagnostics:[{code:error.code||'QUALITY_AGENT_FAILED',level:'blocking',path:'page',message:error.message}],message:error.message};
+    updateStatusMessage(qualityOperationId,error.message,'failed');throw error;
   } finally {
     automaticQualityKey = `${store.documentId}:${store.documentRevision}`;
     finalQualityChecking.value = false;
@@ -2956,8 +2986,8 @@ watch(()=>Boolean(workspaceReady.value&&capabilities.value.pageSchemaV1&&activeR
  if(ready)await prepareDynamicMedia();
 },{flush:'post'});
 watch(pageStructurePending,pending=>{if(pending){store.stage='review_required';activeResultTab.value='wireframe';}});
-watch(() => [store.documentId,store.documentRevision,store.stage,activeResultTab.value,finalQualityChecking.value], async () => {
-  if (mediaPending.value || mediaPreparing.value || failedTask.value || !store.snapshot || Number(store.snapshot.contractVersion)!==3 || store.stage!=='render_ready' || activeResultTab.value!=='final' || finalQualityChecking.value || finalQualityPassed.value) return;
+watch(() => [workspaceReady.value,capabilities.value.qualityReviewAgent,store.documentId,store.documentRevision,store.stage,activeResultTab.value,finalQualityChecking.value], async () => {
+  if (!workspaceReady.value || mediaPending.value || mediaPreparing.value || failedTask.value || !store.snapshot || Number(store.snapshot.contractVersion)!==3 || store.stage!=='render_ready' || activeResultTab.value!=='final' || finalQualityChecking.value || finalQualityPassed.value) return;
   const key = `${store.documentId}:${store.documentRevision}`;
   if (automaticQualityKey===key) return;
   automaticQualityKey=key;
@@ -3527,6 +3557,7 @@ onBeforeUnmount(() => {
                 :document-revision="store.documentRevision"
                 :busy="busy || finalQualityChecking"
                 :quality-gate="finalQualityGate"
+                :agent-required="capabilities.qualityReviewAgent===true"
                 :export-enabled="Boolean(capabilities.export)"
                 @edit-natural-language="requestChatRevision"
                 @rollback="rollback"

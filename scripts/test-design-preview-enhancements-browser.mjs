@@ -12,7 +12,8 @@ const {snapshotForPage}=require('../api/_page-schema-service');
 const {normalize,walk}=require('../shared/page-schema/contract.cjs');
 const {repairPageQuality}=require('../api/_page-schema-quality-repair');
 const {structuralHash}=require('../api/_page-schema-design');
-let repairCalls=0;
+let repairCalls=0,agentEnabled=false,agentCalls=0,reviewConfigured=true,agentPatchKind='styles';
+const {processQualityReview}=require('../api/_page-quality-agent');
 let revision=0,snapshot,generated=0,edited=0,approved=0,savedGate,mediaCalls=0;
 const errors=[],requests=[];
 const overview={title:'동적 페이지 테스트',leadText:'혜택 안내',promotionPurpose:'기타',promotionPurposeOther:'프로모션',market:'한국',audience:'일반고객',campaignTone:'친근함',mainOffer:'',_review:{missingCriticalInputs:['mainOffer']},contentSections:[],additionalInformation:[{label:'기간',value:'미정',confirmationRequired:true}],notices:[],legalInformation:[]};
@@ -22,10 +23,20 @@ const server=createServer(async(req,res)=>{try{
  if(pathname.startsWith('/api/')){
   requests.push(pathname);let body={};if(['POST','PUT','PATCH'].includes(req.method)){const chunks=[];for await(const chunk of req)chunks.push(chunk);body=JSON.parse(Buffer.concat(chunks).toString()||'{}');}
   let payload={ok:true};
-  if(pathname==='/api/promo-builder-capabilities')payload.capabilities={aiMode:true,pageSchemaV1:true,compositionV3:true,export:true};
+  if(pathname==='/api/promo-builder-capabilities')payload.capabilities={aiMode:true,pageSchemaV1:true,qualityReviewAgent:agentEnabled,compositionV3:true,export:true};
   if(pathname==='/api/promo-builder-documents'&&req.method==='GET')payload={ok:true,document:{id:'browser-doc',currentDocumentRevision:revision,mode:'ai'},snapshot};
   if(pathname==='/api/promo-builder-documents'&&req.method==='POST')payload.document={id:'browser-doc',currentDocumentRevision:0};
   if(pathname==='/api/promo-overview-parse')payload={ok:true,overview,overviewFingerprint:'fixture',missingCriticalInputs:['mainOffer'],warnings:[]};
+  if(pathname==='/api/promo-page-quality-review'){
+   res.status=function(code){this.statusCode=code;return this;};res.json=function(value){this.setHeader('Content-Type','application/json');this.end(JSON.stringify(value));return this;};
+   try{return await processQualityReview({sql:async()=>[],owner:{ownerSubject:'browser'},body,res},{
+    fetchDocument:async()=>({document:{id:'browser-doc',currentDocumentRevision:revision},snapshot}),
+    createPromptExecutionSnapshot:async(_,type,variables)=>{if(!reviewConfigured)throw new Error('Active promo_page_quality_reviewer prompt template not found');assert.equal(type,'promo_page_quality_reviewer');assert.ok(JSON.parse(variables.qualityReportJson).metrics.some(m=>m.viewport==='mobile'));return {promptConfig:{promptId:'reviewer',promptVersion:1,provider:'openai',model:'fixture-review-model',renderedPrompt:'review guidance'}};},
+    acquireGeneration:async(_,job)=>({...job,claimToken:'browser-claim'}),failGeneration:async()=>{},
+    generate:async()=>{agentCalls++;if(agentPatchKind==='imagePresentation')return {provider:{model:'fixture-review-model'},result:{summary:'이미지를 문구와 분리했습니다.',issues:[],patches:[{nodeId:'design_image',viewport:'desktop',kind:'imagePresentation',roles:null,spacing:null,layout:null,presentation:'content',overlayRole:null,reason:'Keep key visual visible'}]}};let heading;walk(snapshot.content.pageSchema.root,({node})=>{if(!heading&&node.type==='text'&&node.role==='heading')heading=node;});const roles=pageStyleRoles(snapshot.content.pageContext),white=roles.find(r=>r.target==='text'&&r.token==='--color-neutral-100');return {provider:{model:'fixture-review-model'},result:{summary:'제목 색상 위계를 정리했습니다.',issues:[{nodeId:heading.id,category:'hierarchy',severity:'warning',message:'제목을 명확히 구분합니다.',resolvedByPatch:true}],patches:[{nodeId:heading.id,viewport:'desktop',kind:'styles',roles:heading.styles.base.filter(key=>roles.find(r=>r.key===key)?.property!=='color').concat(white.key),spacing:null,layout:null,presentation:null,overlayRole:null,reason:'Improve title hierarchy'}]}};},
+    createDocumentRevision:async(_,args)=>{assert.equal(args.baseDocumentRevision,revision);snapshot=args.snapshot;snapshot.documentRevision=++revision;return {snapshot,revision};}
+   });}catch(e){return res.status(e.statusCode||500).json({error:e.message,code:e.code});}
+  }
   if(pathname==='/api/promo-page-schema'&&body.operation==='repair-quality'){
    repairCalls++;assert.equal(body.baseDocumentRevision,revision);
    const repaired=repairPageQuality(snapshot.content.pageSchema,snapshot.content.pageContext,body.diagnostics);
@@ -131,6 +142,19 @@ try{
  const reapprovedGate=page.waitForResponse(response=>response.url().endsWith('/api/promo-builder-documents')&&response.request().method()==='PATCH');
  await page.locator('.ai-chat-pane').getByRole('button',{name:'페이지 구성 승인',exact:true}).click();await reapprovedGate;
  assert.equal(mediaCalls,originalMediaCalls,'structure repair must retain prepared image without regenerating');assert.equal(approved,2);assert.ok(savedGate);
+ // The enabled agent reviews even a page with zero measured blockers, applies
+ // its constrained patch, then the browser remeasures before certification.
+ agentEnabled=true;
+ async function restoreAgentFixture(){const designed=designFixture({pending:false});snapshot=snapshotForPage(normalize(designed.page).page,designed.context);snapshot.generationMeta.review={state:'approved'};snapshot.documentRevision=++revision;snapshot.qualityGate={state:'pending'};savedGate=undefined;await page.evaluate(()=>{const k='promoAiBuilder.activeChat.v2',c=JSON.parse(sessionStorage.getItem(k));Object.assign(c,{stage:'render_ready',activeResultTab:'final',failedTask:null});sessionStorage.setItem(k,JSON.stringify(c));});}
+ await restoreAgentFixture();
+ const agentGate=page.waitForResponse(r=>r.url().endsWith('/api/promo-builder-documents')&&r.request().method()==='PATCH');await page.reload();await agentGate;
+ assert.equal(agentCalls,1);assert.equal(snapshot.generationMeta.qualityAgentReview.execution.model,'fixture-review-model');assert.equal(snapshot.generationMeta.qualityAgentRequired,true);assert.equal(savedGate.state,'passed');
+ assert.equal(await page.locator('.ai-chat-pane').getByRole('button',{name:'새 창에서 확인',exact:true}).isEnabled(),true);
+ reviewConfigured=false;await restoreAgentFixture();await page.reload();await page.locator('.ai-builder-error').getByText('QUALITY_AGENT_PROMPT_REQUIRED',{exact:true}).waitFor();
+ assert.equal(savedGate,undefined);assert.equal(agentCalls,1);assert.equal(await page.locator('.ai-chat-pane').getByRole('button',{name:'새 창에서 확인',exact:true}).isDisabled(),true);
+ reviewConfigured=true;const recoveredGate=page.waitForResponse(r=>r.url().endsWith('/api/promo-builder-documents')&&r.request().method()==='PATCH');await page.locator('.ai-chat-pane').getByRole('button',{name:'다시 검사',exact:true}).click();await recoveredGate;assert.equal(agentCalls,2);assert.equal(savedGate.state,'passed');
+ agentPatchKind='imagePresentation';await restoreAgentFixture();const imageCallsBeforeAgent=mediaCalls;await page.reload();await page.locator('.ai-chat-pane').getByRole('button',{name:'페이지 구성 승인',exact:true}).waitFor();assert.equal(savedGate,undefined);assert.equal(agentCalls,3);
+ const aiStructuralGate=page.waitForResponse(r=>r.url().endsWith('/api/promo-builder-documents')&&r.request().method()==='PATCH');await page.locator('.ai-chat-pane').getByRole('button',{name:'페이지 구성 승인',exact:true}).click();await aiStructuralGate;assert.equal(agentCalls,3,'reapproval must reuse the same durable AI review');assert.equal(mediaCalls,imageCallsBeforeAgent);assert.equal(savedGate.state,'passed');
  assert.deepEqual(errors,[]);
  console.log('Design preview browser: approval → automatic media failure → chat retry → image/background/overlay/icon/border/typographic hierarchy → three-viewport quality; tab-only and interrupted preparation resume; approved geometry preserved.');
 }finally{await browser.close();await new Promise(r=>server.close(r));}

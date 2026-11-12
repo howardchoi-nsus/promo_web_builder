@@ -27,7 +27,7 @@ function normalizeRuntimeConfig(type, value = {}) {
   const defaults = defaultPromptControlPlane(type).runtimeConfig || {};
   const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
   const isImage = type === "section_background_image" || type === "component_image";
-  const isPageSchema = type === "promo_page_schema_planner";
+  const isPageSchema = ["promo_page_schema_planner","promo_page_quality_reviewer"].includes(type);
   const timeoutLimit = isPageSchema ? RUNTIME_LIMITS.pageSchemaTimeoutMs
     : isImage ? RUNTIME_LIMITS.imageTimeoutMs : RUNTIME_LIMITS.plannerTimeoutMs;
   // Upgrade the legacy shared planner budget without requiring a DB migration.
@@ -258,7 +258,7 @@ function validateControlPlaneConfig(type, promptConfig = {}) {
   const controlled = [
     "section_layout_planner", "multi_component_layout_planner", "section_composition_planner",
     "promo_overview_parser", "promo_template_recommender", "promo_template_composer",
-    "promo_page_schema_planner", "promo_page_composer", "promo_composition_editor", "section_background_image", "component_image",
+    "promo_page_schema_planner", "promo_page_quality_reviewer", "promo_page_composer", "promo_composition_editor", "section_background_image", "component_image",
     "component_visual_analyzer", "layout_reference_analyzer",
   ].includes(type);
   if (controlled && version < 2) {
@@ -286,7 +286,7 @@ function validateControlPlaneConfig(type, promptConfig = {}) {
   const rawRuntime = source.runtimeConfig;
   const isImage = type === "section_background_image" || type === "component_image";
   const isVisionAnalysis = type === "component_visual_analyzer" || type === "layout_reference_analyzer";
-  const timeoutMaximum = type === "promo_page_schema_planner" ? RUNTIME_LIMITS.pageSchemaTimeoutMs
+  const timeoutMaximum = ["promo_page_schema_planner","promo_page_quality_reviewer"].includes(type) ? RUNTIME_LIMITS.pageSchemaTimeoutMs
     : isImage || isVisionAnalysis ? RUNTIME_LIMITS.imageTimeoutMs : RUNTIME_LIMITS.plannerTimeoutMs;
   const timeoutMs = Number(rawRuntime.timeoutMs);
   if (!Number.isInteger(timeoutMs) || timeoutMs < 1000 || timeoutMs > timeoutMaximum) {

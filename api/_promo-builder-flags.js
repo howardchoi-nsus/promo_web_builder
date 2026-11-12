@@ -1,6 +1,7 @@
 const FLAG_NAMES = Object.freeze({
   pageSchemaV1: "PAGE_SCHEMA_GENERATION_ENABLED",
   pageSchemaMedia: "PAGE_SCHEMA_MEDIA_PREPARATION_ENABLED",
+  qualityReviewAgent: "PAGE_QUALITY_REVIEW_AGENT_ENABLED",
   hallmarkDesign: "HALLMARK_DESIGN_ENABLED",
   aiMode: "PROMO_BUILDER_AI_MODE_ENABLED",
   proposal: "PROMO_PAGE_COMPOSITION_PROPOSAL_ENABLED",
@@ -33,6 +34,7 @@ const FLAG_NAMES = Object.freeze({
 const FLAG_DEFAULTS = Object.freeze({
   pageSchemaV1: true,
   pageSchemaMedia: true,
+  qualityReviewAgent: true,
   hallmarkDesign: true,
   compositionV3: true,
   // Keep existing installations operational until Preview/Production explicitly

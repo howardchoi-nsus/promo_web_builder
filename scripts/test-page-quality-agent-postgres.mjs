@@ -1,0 +1,47 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {createRequire} from 'node:module';
+import {designFixture} from './fixtures/design-preview-enhancements.mjs';
+const require=createRequire(import.meta.url),{PGlite}=await import(process.env.PGLITE_TEST_MODULE||'@electric-sql/pglite'),db=new PGlite();
+const sql=async(strings,...values)=>(await db.query(strings.reduce((q,s,i)=>q+(i?'$'+i:'')+s,''),values)).rows;
+const doc='abababab-abab-4aba-8aba-abababababab',owner='owner';
+try{
+ await db.exec(`create table promo_builder_documents(id uuid primary key,owner_subject text,current_document_revision integer default 0,status text,updated_at timestamptz default now());
+ create table promo_builder_document_versions(document_id uuid,revision integer,contract_version integer,snapshot_json jsonb,snapshot_hash text,change_note text,source text,created_at timestamptz default now());
+ create table prompt_templates(id uuid default gen_random_uuid(),type text,name text,body text,status text,version integer,lineage_id uuid,required_variables jsonb,optional_variables jsonb,provider text,model text,temperature numeric,max_tokens integer,response_format text,model_options jsonb,change_note text,archived_at timestamptz,created_at timestamptz default now(),updated_at timestamptz default now());
+ insert into promo_builder_documents(id,owner_subject) values('${doc}','${owner}');`);
+ const migration=fs.readFileSync(new URL('../db/migrations/086_dynamic_page_schema_prompt.sql',import.meta.url),'utf8');
+ await db.exec(migration.slice(migration.indexOf('create or replace function create_promo_builder_document_revision'),migration.lastIndexOf('commit;')));
+ await db.exec(fs.readFileSync(new URL('../db/migrations/088_page_schema_generation_jobs.sql',import.meta.url),'utf8'));
+ await sql`insert into prompt_templates(type,name,status,version,provider,model,max_tokens,model_options) values('promo_page_schema_planner','Current planner','active',1,'openai','registered-planner-model',12000,${JSON.stringify({executionSnapshotVersion:2,runtimeConfig:{timeoutMs:240000,maxAttempts:1,retryBaseMs:0,retryMaxMs:0},harnessConfig:{},modelCapabilitySnapshot:{},safetyContract:{},skillBindings:[{skillVersionId:'should-not-be-copied'}]})}::jsonb)`;
+ const reviewMigration=fs.readFileSync(new URL('../db/migrations/092_page_quality_review_prompt.sql',import.meta.url),'utf8');await db.exec(reviewMigration);await db.exec(reviewMigration);
+ const [prompt]=await sql`select * from prompt_templates where type='promo_page_quality_reviewer'`;
+ assert.equal(prompt.status,'draft');assert.equal(prompt.model,'registered-planner-model');assert.equal(prompt.model_options.skillBindings,undefined);assert.equal(prompt.required_variables.length,4);
+ assert.equal((await sql`select count(*)::integer as count from prompt_templates where type='promo_page_quality_reviewer'`)[0].count,1);
+ await sql`update prompt_templates set status='active' where type='promo_page_quality_reviewer'`;
+ const executionSql=async(strings,...values)=>strings.join('?').includes('from llm_models')?[{id:'registered',provider:'openai',model_id:'registered-planner-model',status:'active',modality:'text',model_options:{}}]:sql(strings,...values);
+ const {createDocumentRevision}=require('../api/_promo-builder-document-store'),{snapshotForPage}=require('../api/_page-schema-service');
+ const fixture=designFixture({pending:false}),snapshot=snapshotForPage(fixture.page,fixture.context);snapshot.generationMeta.review={state:'approved'};
+ await createDocumentRevision(sql,{documentId:doc,ownerSubject:owner,baseDocumentRevision:0,snapshot,source:'ai'});
+ const read=async()=>{const [row]=await sql`select d.current_document_revision,v.snapshot_json from promo_builder_documents d join promo_builder_document_versions v on v.document_id=d.id and v.revision=d.current_document_revision where d.id=${doc}::uuid`;return {document:{id:doc,currentDocumentRevision:row.current_document_revision},snapshot:row.snapshot_json};};
+ let response,calls=0;const res={status(code){assert.equal(code,200);return this;},json(value){response=value;return this;}};
+ const {processQualityReview}=require('../api/_page-quality-agent');
+ const deps={fetchDocument:read,generate:async args=>{calls++;assert.equal(args.promptConfig.model,'registered-planner-model');assert.ok(args.promptConfig.renderedPrompt.includes('Current page:'));return {result:{summary:'검토 완료',issues:[],patches:[]},provider:{model:args.promptConfig.model},usage:{}};}};
+ await processQualityReview({sql:executionSql,owner:{ownerSubject:owner},body:{documentId:doc,baseDocumentRevision:1,report:{}},res},deps);
+ assert.equal(response.revision,2);assert.equal(response.changed,false);assert.equal(calls,1);
+ const persisted=await read();assert.equal(require('../api/_page-quality-agent-contract').isCurrentReview(persisted.snapshot),true,'fingerprint survives actual jsonb ordering');
+ assert.equal(persisted.snapshot.generationMeta.qualityAgentReview.execution.promptId,prompt.id);
+ const [job]=await sql`select status,result_revision from promo_page_schema_generation_jobs where document_id=${doc}::uuid`;
+ assert.equal(job.status,'completed');assert.equal(job.result_revision,2);
+ await processQualityReview({sql:executionSql,owner:{ownerSubject:owner},body:{documentId:doc,baseDocumentRevision:1},res},deps);assert.equal(response.cached,true);assert.equal(calls,1);
+ const checked=structuredClone(persisted.snapshot);checked.qualityGate={state:'passed',documentRevision:2,blockingCount:0,results:Object.fromEntries(['desktop','tablet','mobile'].map(view=>[view,{blockingCount:0}]))};
+ require('../api/_promo-quality-gate').assertPassedQualityGate(checked,2);
+ checked.content.pageSchema.summary+=' stale';assert.throws(()=>require('../api/_promo-quality-gate').assertPassedQualityGate(checked,2),{code:'QUALITY_AGENT_REVIEW_REQUIRED'});
+ await assert.rejects(processQualityReview({sql:executionSql,owner:{ownerSubject:owner},body:{documentId:doc,baseDocumentRevision:2,force:true},res},{...deps,generate:async()=>{
+  const edited=structuredClone(persisted.snapshot);edited.content.pageSchema.summary+=' user edit';await createDocumentRevision(sql,{documentId:doc,ownerSubject:owner,baseDocumentRevision:2,snapshot:edited,source:'manual'});
+  return {result:{summary:'late review',issues:[],patches:[]},provider:{model:'registered-planner-model'},usage:{}};
+ }}),{code:'DOCUMENT_REVISION_MISMATCH'});
+ assert.equal((await read()).document.currentDocumentRevision,3);assert.ok((await read()).snapshot.content.pageSchema.summary.endsWith(' user edit'));
+ assert.equal((await sql`select count(*)::integer as count from promo_page_schema_generation_jobs where document_id=${doc}::uuid and status='running'`)[0].count,0);
+ console.log('Quality agent PostgreSQL: idempotent draft migration, inherited active model without skill auto-binding, actual prompt assembly, atomic job/review revision, jsonb cache replay and stale-review export rejection passed.');
+}finally{await db.close();}

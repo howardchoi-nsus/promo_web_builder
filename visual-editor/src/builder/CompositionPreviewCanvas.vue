@@ -110,6 +110,7 @@ async function inspectQualityAcrossViewports() {
     diagnostics: Object.entries(results).flatMap(([viewport, result]) => (
       (result.diagnostics || []).map((diagnostic) => ({ ...diagnostic, viewport }))
     )),
+    metrics:Object.entries(results).flatMap(([viewport,result])=>(result.metrics||[]).map(metric=>({...metric,viewport}))),
   };
 }
 

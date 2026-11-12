@@ -42,7 +42,8 @@ export default defineComponent({
     if(el.tagName==='IMG'&&(!el.complete||!el.naturalWidth))diagnostics.push({code:'IMAGE_LOAD_FAILED',level:'blocking',path:el.dataset.psNode,message:'이미지를 불러오지 못했습니다.'});
    }
    if(host.value&&!props.wireframe)diagnostics.push(...inspectPageReadability(host.value,props.page,props.viewportOverride||'desktop'));
-   return {viewport:props.viewportOverride||'auto',count:diagnostics.length,blockingCount:diagnostics.filter(d=>d.level==='blocking').length,warningCount:diagnostics.filter(d=>d.level==='warning').length,diagnostics};
+   const metrics=[...(host.value?.querySelectorAll('[data-ps-node]')||[])].map(el=>{const rect=el.getBoundingClientRect();return {nodeId:el.dataset.psNode,width:Math.round(rect.width),height:Math.round(rect.height)};});
+   return {viewport:props.viewportOverride||'auto',count:diagnostics.length,blockingCount:diagnostics.filter(d=>d.level==='blocking').length,warningCount:diagnostics.filter(d=>d.level==='warning').length,diagnostics,metrics};
   }
   expose({inspectLayoutQuality});
   function renderNode(n){

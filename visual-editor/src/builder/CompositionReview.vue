@@ -12,6 +12,7 @@ const props = defineProps({
   exportEnabled: { type: Boolean, default: false },
   viewport: { type: String, default: "desktop" },
   qualityGate: { type: Object, default: null },
+  agentRequired:{type:Boolean,default:false},
 });
 const emit = defineEmits([
   "edit-natural-language", "rollback", "open-editor", "open-output", "export-document", "update:viewport",
@@ -31,7 +32,8 @@ function selectPreviewViewport(viewport) {
 const viewportLabel = computed(() => props.snapshot.content?.pageSchema ? "Desktop · Tablet · Mobile" : "Desktop · Mobile");
 const qualityState = computed(() => props.qualityGate?.state || "pending");
 const qualityPassed = computed(() => (
-  qualityState.value === "passed"
+  (!(props.agentRequired||props.snapshot.generationMeta?.qualityAgentRequired)||Boolean(props.snapshot.generationMeta?.qualityAgentReview&&props.snapshot.generationMeta.qualityAgentReview.blockingCount===0))
+  && qualityState.value === "passed"
   && Number(props.qualityGate?.documentRevision || 0) === Number(props.documentRevision || 0)
   && Number(props.qualityGate?.blockingCount || 0) === 0
 ));
@@ -85,6 +87,7 @@ defineExpose({ buildAutoRepairSnapshot, inspectQualityAcrossViewports });
         <button type="button" class="ai-builder-primary" :disabled="busy || !qualityPassed" :title="outputDisabledReason||'검사한 페이지를 새 창에서 확인합니다.'" @click="emit('open-output')">새 창에서 확인</button>
         <button v-if="exportEnabled" type="button" class="ai-builder-primary" :disabled="busy || !qualityPassed" @click="emit('export-document')">HTML 다운로드</button>
         <p v-if="outputDisabledReason" role="status">{{ outputDisabledReason }}</p>
+        <p v-if="snapshot.generationMeta?.qualityAgentReview">AI 검토: {{ snapshot.generationMeta.qualityAgentReview.summary }} · {{ snapshot.generationMeta.qualityAgentReview.execution?.model }}</p>
         <ul v-if="diagnostics.length" aria-label="자동 품질 검사 내역">
           <li v-for="(item,index) in diagnostics" :key="index">{{ item.viewport }} · {{ item.path || '페이지' }} · {{ item.message }}</li>
         </ul>

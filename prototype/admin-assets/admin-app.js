@@ -8932,6 +8932,14 @@ var q_ = Object.freeze([
 		description: "범용 UI 요소와 중앙 토큰 정책으로 PageSchema를 생성합니다.",
 		executionMode: "사용자 요청"
 	},
+	promo_page_quality_reviewer: {
+		journeyStep: 10,
+		group: "ai-page-composition",
+		order: 30,
+		label: "AI 품질 검토·수정",
+		description: "브라우저 측정 결과와 PageSchema를 검토하고 등록 토큰 범위의 보정안을 생성합니다.",
+		executionMode: "자동 실행"
+	},
 	promo_page_composer: {
 		journeyStep: 3,
 		group: "ai-page-composition",
@@ -12967,12 +12975,22 @@ var jx = /* @__PURE__ */ Zr({
 					message: "이미지를 불러오지 못했습니다."
 				});
 			}
-			return r.value && !e.wireframe && t.push(...kx(r.value, e.page, e.viewportOverride || "desktop")), {
+			r.value && !e.wireframe && t.push(...kx(r.value, e.page, e.viewportOverride || "desktop"));
+			let a = [...r.value?.querySelectorAll("[data-ps-node]") || []].map((e) => {
+				let t = e.getBoundingClientRect();
+				return {
+					nodeId: e.dataset.psNode,
+					width: Math.round(t.width),
+					height: Math.round(t.height)
+				};
+			});
+			return {
 				viewport: e.viewportOverride || "auto",
 				count: t.length,
 				blockingCount: t.filter((e) => e.level === "blocking").length,
 				warningCount: t.filter((e) => e.level === "warning").length,
-				diagnostics: t
+				diagnostics: t,
+				metrics: a
 			};
 		}
 		t({ inspectLayoutQuality: a });
@@ -24283,7 +24301,7 @@ var IF = {
 						maxAttempts: 3,
 						retryBaseMs: 15e3,
 						retryMaxMs: 75e3
-					} : o.type === "promo_page_schema_planner" ? {
+					} : ["promo_page_schema_planner", "promo_page_quality_reviewer"].includes(o.type) ? {
 						timeoutMs: 24e4,
 						maxAttempts: 1,
 						retryBaseMs: 0,
@@ -24311,7 +24329,7 @@ var IF = {
 							"4K"
 						].includes(String(o.generationPolicy?.requestedTier || o.modelOptions?.generationPolicy?.requestedTier || o.modelOptions?.imageSize || o.modelOptions?.image_size || "").toUpperCase()) ? String(o.generationPolicy?.requestedTier || o.modelOptions?.generationPolicy?.requestedTier || o.modelOptions?.imageSize || o.modelOptions?.image_size).toUpperCase() : "2K",
 						executionSnapshotVersion: Number(o.executionSnapshotVersion || o.modelOptions?.executionSnapshotVersion || (d ? 3 : 2)),
-						timeoutMs: o.type === "promo_page_schema_planner" && Number(f.timeoutMs) === 9e4 ? 24e4 : f.timeoutMs ?? (u ? p.timeoutMs : ""),
+						timeoutMs: ["promo_page_schema_planner", "promo_page_quality_reviewer"].includes(o.type) && Number(f.timeoutMs) === 9e4 ? 24e4 : f.timeoutMs ?? (u ? p.timeoutMs : ""),
 						maxAttempts: f.maxAttempts ?? (u ? p.maxAttempts : ""),
 						retryBaseMs: f.retryBaseMs ?? (u ? p.retryBaseMs : ""),
 						retryMaxMs: f.retryMaxMs ?? (u ? p.retryMaxMs : ""),
@@ -24457,6 +24475,7 @@ var IF = {
 					"promo_template_recommender",
 					"promo_template_composer",
 					"promo_page_schema_planner",
+					"promo_page_quality_reviewer",
 					"promo_page_composer",
 					"promo_composition_editor",
 					"section_background_image",

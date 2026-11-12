@@ -36,6 +36,9 @@
     "api/promo-page-schema.js": {
       "maxDuration": 300
     },
+    "api/promo-page-quality-review.js": {
+      "maxDuration": 300
+    },
     "api/promo-page-schema-media.js": {
       "maxDuration": 300
     }
