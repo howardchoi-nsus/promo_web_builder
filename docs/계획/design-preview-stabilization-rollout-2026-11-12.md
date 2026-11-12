@@ -81,7 +81,9 @@ CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium pnpm run qa:design-preview
 ## 배포 상태
 
 - 실제 LLM·Neon·Blob·Vercel Preview 통합 검증: 미실행. 연결 불가라는 사용자 답변을 받음.
-- Production: 미반영. `AGENTS.md`의 ‘Preview에서 실제 LLM과 테스트 DB를 연결해 핵심 여정을 확인한 뒤 Production에 반영한다’는 정책을 적용한다.
+- 사용자 한시적 예외 승인(2026-11-12): 이번 개선본 `e952f3d`는 실제 Preview 통합 검증을 생략하고 Production 반영을 진행한다. 이후 배포에는 기존 검증 정책을 유지한다.
+- Production: main 반영을 통한 자동 배포 요청 예정. 실제 Vercel Ready 상태는 별도 확인해야 하며, 이 기록은 배포 완료를 의미하지 않는다.
+- 운영 DB migration 090 적용 여부, 활성 프롬프트·모델·토큰 정책의 실환경 호환성은 미검증 상태다.
 - 새 이미지 준비를 끄는 설정: `PAGE_SCHEMA_MEDIA_PREPARATION_ENABLED=false`. 기존 연결 이미지와 문서는 보존되며, 미연결 이미지가 있는 문서의 출력 검증을 우회하지 않는다.
 - 롤백은 먼저 새 실행 기능을 끄는 방식으로 진행한다. 새 rendererVersion 2와 등록 역할을 해석할 수 없는 이전 코드로 단순 복귀하면 새 문서를 읽지 못할 수 있다.
 
