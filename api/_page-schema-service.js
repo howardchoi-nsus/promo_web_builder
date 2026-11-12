@@ -39,7 +39,7 @@ async function generatePage({overview,context,instruction='',currentPage=null,pr
 }
 function structureFingerprint(page){return require('./_page-schema-design').structuralHash(page);}
 function snapshotForPage(page,context,previous={}){
- return {...previous,compositionMeta:undefined,generationMeta:{generationPath:'page-schema',schemaVersion:page.schemaVersion,structureFingerprint:structureFingerprint(page),tokenVersionId:context.tokenVersionId},contractVersion:3,snapshotType:'page-schema',layoutIdentity:{rendererKey:'page-schema-renderer',rendererVersion:1},
+ return {...previous,compositionMeta:undefined,generationMeta:{generationPath:'page-schema',schemaVersion:page.schemaVersion,structureFingerprint:structureFingerprint(page),structureFingerprintVersion:2,tokenVersionId:context.tokenVersionId},contractVersion:3,snapshotType:'page-schema',layoutIdentity:{rendererKey:'page-schema-renderer',rendererVersion:1},
  content:{contractVersion:3,pageSchema:page,pageContext:context,runtimeTheme:{designTokenSetVersionId:context.tokenVersionId,designTokens:{policy:'registered-only',values:context.tokenValues,catalog:context.tokenCatalog,usagePolicy:context.usagePolicy}},sectionSnapshot:[],sectionOrder:[],sectionInputs:{},formTemplate:{}},
  designSpec:{contractVersion:1,theme:{},itemStyles:{},sectionStyles:{},responsiveLayouts:{}},assets:{contractVersion:1,items:{}},motionSpec:{contractVersion:2,sections:{},items:{}}};
 }

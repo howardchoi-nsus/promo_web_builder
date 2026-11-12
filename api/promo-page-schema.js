@@ -39,11 +39,14 @@ module.exports=async function handler(req,res){
    const current=found.snapshot;
    if(!current?.content?.pageSchema)return res.status(409).json({code:'PAGE_SCHEMA_REQUIRED',error:'승인할 페이지 구성이 없습니다.'});
    const fingerprint=structureFingerprint(current.content.pageSchema);
-   if(body.structureFingerprint!==fingerprint)return res.status(409).json({code:'PAGE_SCHEMA_STRUCTURE_CHANGED',error:'페이지 구성이 변경되었습니다. 최신 미리보기를 확인해 주세요.'});
+   // Legacy hashes were computed before jsonb reordered keys. The revision check
+   // above binds approval to the exact immutable snapshot the client inspected.
+   const legacyMatch=!current.generationMeta?.structureFingerprintVersion&&typeof body.structureFingerprint==='string'&&body.structureFingerprint===current.generationMeta?.structureFingerprint;
+   if(body.structureFingerprint!==fingerprint&&!legacyMatch)return res.status(409).json({code:'PAGE_SCHEMA_STRUCTURE_CHANGED',error:'페이지 구성이 변경되었습니다. 최신 미리보기를 확인해 주세요.'});
    if(builderFlags().chatWorkspaceV1&&current.generationMeta?.sourceRequirements)await pinPageRequirements(sql,{documentId:found.document.id,ownerSubject:owner.ownerSubject,revision:current.generationMeta.sourceRequirements.revision});
    assertValid(current.content.pageSchema,current.content.pageContext);
    if(current.generationMeta?.review?.state==='approved')return res.status(200).json({ok:true,revision:base,snapshot:current});
-   const snapshot={...current,generationMeta:{...current.generationMeta,review:{state:'approved',structureFingerprint:fingerprint,sourceDocumentRevision:base,approvedAt:new Date().toISOString()}}};
+   const snapshot={...current,generationMeta:{...current.generationMeta,structureFingerprint:fingerprint,structureFingerprintVersion:2,review:{state:'approved',structureFingerprint:fingerprint,sourceDocumentRevision:base,approvedAt:new Date().toISOString()}}};
    const saved=await createDocumentRevision(sql,{documentId:found.document.id,ownerSubject:owner.ownerSubject,baseDocumentRevision:base,snapshot,source:'manual',changeNote:'PageSchema structure explicitly approved'});
    return res.status(200).json({ok:true,revision:saved.revision,snapshot:saved.snapshot});
   }

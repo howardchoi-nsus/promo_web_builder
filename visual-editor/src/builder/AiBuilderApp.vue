@@ -3174,7 +3174,7 @@ onBeforeUnmount(() => {
           <button type="button" @click="clearBuilderError(store)">닫기</button>
         </div>
       </div>
-      <button v-if="['DOCUMENT_REVISION_MISMATCH','GENERATION_RESULT_SUPERSEDED','GENERATION_LEASE_CHANGED'].includes(store.error?.code)" type="button" @click="loadLatestPage">최신 페이지 불러오기</button>
+      <button v-if="['DOCUMENT_REVISION_MISMATCH','GENERATION_RESULT_SUPERSEDED','GENERATION_LEASE_CHANGED','PAGE_SCHEMA_STRUCTURE_CHANGED'].includes(store.error?.code)" type="button" @click="loadLatestPage">최신 페이지 불러오기</button>
       <button v-if="store.error?.code?.startsWith('REQUIREMENTS_')" type="button" :disabled="overviewPersisting" @click="loadLatestRequirements">서버 최신 요약으로 복구</button>
       <button v-if="overviewBackup?.documentId===store.documentId" type="button" :disabled="overviewPersisting || interactionLocked" @click="restoreOverviewBackup">보관한 입력으로 다시 수정</button>
       <div v-if="pageGenerationRequest && !busy" role="status" class="ai-builder-warning"><span>진행한 페이지 생성 요청이 있습니다.</span><button type="button" @click="compose">생성 상태 다시 확인</button></div>

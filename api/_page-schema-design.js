@@ -2,7 +2,14 @@ const {createHash}=require('node:crypto');
 const guidelines=require('../shared/page-schema/design-guidelines.json');
 const {walk}=require('../shared/page-schema/contract.cjs');
 function shape(node){return {type:node.type,role:node.role||null,purpose:node.purpose||null,layout:node.layout,children:(node.children||[]).map(shape)};}
-function structuralHash(page){return createHash('sha256').update(JSON.stringify(shape(page.root))).digest('hex');}
+function canonical(value){
+ if(Array.isArray(value))return value.map(canonical);
+ if(value&&typeof value==='object')return Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonical(value[key])]));
+ return value;
+}
+// PostgreSQL jsonb does not preserve object key order. Child/column array order
+// still carries layout meaning and must remain significant.
+function structuralHash(page){return createHash('sha256').update(JSON.stringify(canonical(shape(page.root)))).digest('hex');}
 function compositionOutline(page){
  let remaining=24;
  const visit=node=>{if(!node||remaining--<=0)return null;return {type:node.type,role:node.role||null,purpose:node.purpose||null,direction:node.layout?.desktop?.direction,columns:node.layout?.desktop?.columns,children:(node.children||[]).map(visit).filter(Boolean)};};
