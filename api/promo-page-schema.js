@@ -2,6 +2,7 @@ const {parseBody}=require('./_wizard-form-templates-store');
 const {resolveBuilderOwner}=require('./_promo-builder-auth');
 const {randomUUID}=require('node:crypto');
 const {acquireGeneration,failGeneration,inputHash}=require('./_page-schema-generation-jobs');
+const {pageStyleWarnings}=require('../shared/token-usage-policy.cjs');
 const {designBrief,reviewDesign,structuralHash,compositionOutline}=require('./_page-schema-design');
 const {pinPageRequirements}=require('./_page-schema-requirements');
 const {requireBuilderFlag,builderFlags}=require('./_promo-builder-flags');
@@ -11,7 +12,7 @@ const {createPromptExecutionSnapshot}=require('./_prompt-execution-snapshot');
 const {generateStructuredPlannerResult}=require('./_promo-section-design-provider');
 const {prepareOverviewForPreview,pendingCriticalInputs}=require('../shared/page-schema/content-confirmation.cjs');
 const {normalizeOverview}=require('./_promo-overview-contract');
-const {plannerContext,contentContext,generatePage,snapshotForPage,structureFingerprint,TYPES,LIMITS,assertValid,normalize}=require('./_page-schema-service');
+const {reusePreparedMedia,plannerContext,contentContext,generatePage,snapshotForPage,structureFingerprint,TYPES,LIMITS,assertValid,normalize}=require('./_page-schema-service');
 module.exports=async function handler(req,res){
  res.setHeader('Cache-Control','no-store');
  let generationJob=null,jobSql=null;
@@ -62,8 +63,11 @@ module.exports=async function handler(req,res){
    if(body.instruction&&!found.snapshot?.content?.pageSchema)return res.status(409).json({error:'PageSchema document required for revisions'});
    if(body.instruction){
     const previous=found.snapshot.content.pageContext;
-    context=contentContext(overview,previous);
-    context={...previous,...context,assets:previous.assets,icons:previous.icons,formFields:previous.formFields,actions:{...previous.actions,...context.actions}};
+    context=contentContext(overview,{...previous,styleChoicesVersion:1});
+    const pinned=new Set();require('../shared/page-schema/contract.cjs').walk(found.snapshot.content.pageSchema.root,({node})=>{for(const role of [...node.styles.base,...(node.styles.tablet||[]),...(node.styles.mobile||[]),node.overlayRole].filter(Boolean))pinned.add(role);});
+    context.pinnedStyleRoles=[...pinned];
+    const registry=await require('./_page-schema-catalog').loadPageAssets(sql);
+    context={...previous,...context,assets:{...registry.assets,...previous.assets},icons:{...registry.icons,...previous.icons},formFields:previous.formFields,actions:{...previous.actions,...context.actions}};
    }else context=contentContext(overview,await loadPageSchemaLibrary(sql));
    context.omittedContent=prepared.omittedItems;
    context.unresolvedInputs=pendingCriticalInputs(overview).filter(item=>!item.blocking).map(item=>({...item,message:item.message.replace(/(?:을|를) 입력해 주세요\.$/,' 정보가 미정입니다. 확정 사실로 출력하지 않습니다.')}));
@@ -77,9 +81,10 @@ module.exports=async function handler(req,res){
    const generationRequest=String(body.generationRequest||'').slice(0,12000);
    const pinned=await createPromptExecutionSnapshot(sql,'promo_page_schema_planner',{
     overviewJson:JSON.stringify(overview),candidateSnapshotJson:JSON.stringify(plannerContext(context)),
-    constraintsJson:JSON.stringify({limits:LIMITS,instruction,generationRequest,currentPage:instruction?found.snapshot.content.pageSchema:null,responsiveDefaults:'mobile one column; tablet max two columns; normal flow',requiredPolicy:'registered-only',contentCompletionPolicy:'Review flags are advisory, never a generation prerequisite. Generate missing editorial headings, descriptions and CTA copy from the user request with contentMode editorial. Never invent dates, amounts, eligibility, legal terms or URLs; omit unresolved factual material. Preserve supplied facts and copy.',designBrief:context.designBrief})});
-   execution=await generatePage({overview,context,instruction,promptConfig:pinned.promptConfig,generate:generateStructuredPlannerResult});execution.promptConfig=pinned.promptConfig;page=execution.page;
-   execution.designReview=builderFlags().hallmarkDesign?reviewDesign(page,{recentStructures:context.designBrief?.recentStructures||[],preserveLayout:Boolean(instruction)}):null;
+    constraintsJson:JSON.stringify({limits:LIMITS,instruction,generationRequest,currentPage:instruction?found.snapshot.content.pageSchema:null,responsiveDefaults:'mobile one column; tablet max two columns; normal flow',requiredPolicy:'registered-only',styleSelectionPolicy:'Choose registered policyRoles by semantic content hierarchy: hero heading, section heading, card heading, body, label, supporting copy and key statistic. Use compatible registered size/weight/line-height/color variants deliberately; do not use one title size for every heading. Use border color, width and style together only when registered. Never invent CSS or values. Preserve legibility and responsive hierarchy. Use an image with presentation background inside a container for a key visual; use container.overlayRole only for supplied registered gradient roles. Missing gradient tokens do not permit invented overlays. Set mediaRequests.regenerate true only when the user requests a new image; otherwise preserve or reuse already prepared matching assets.',contentCompletionPolicy:'Review flags are advisory, never a generation prerequisite. Generate missing editorial headings, descriptions and CTA copy from the user request with contentMode editorial. Never invent dates, amounts, eligibility, legal terms or URLs; omit unresolved factual material. Preserve supplied facts and copy.',designBrief:context.designBrief})});
+   execution=await generatePage({overview,context,instruction,promptConfig:pinned.promptConfig,generate:generateStructuredPlannerResult});execution.promptConfig=pinned.promptConfig;page=reusePreparedMedia(execution.page,context,found.snapshot);assertValid(page,context);
+   execution.designReview=builderFlags().hallmarkDesign?reviewDesign(page,{recentStructures:context.designBrief?.recentStructures||[],preserveLayout:Boolean(instruction)}):{blockingCount:0,designWarnings:[]};
+   execution.designReview.designWarnings.push(...pageStyleWarnings(context));
   }
   const {designBrief:currentDesignBrief,...renderContext}=context;
   const snapshot=snapshotForPage(page,renderContext,found.snapshot||{});

@@ -10,10 +10,10 @@ await assertPageSchemaInfrastructure(async()=>[{schema_ready:true,prompt_ready:t
 await assert.rejects(assertPageSchemaInfrastructure(async()=>[{schema_ready:false,prompt_ready:true,generation_ready:true}]),{code:'PAGE_SCHEMA_MIGRATION_REQUIRED'});
 await assert.rejects(assertPageSchemaInfrastructure(async()=>[{schema_ready:true,prompt_ready:false,generation_ready:true}]),{code:'PAGE_SCHEMA_PROMPT_REQUIRED'});
 await assert.rejects(assertPageSchemaInfrastructure(async()=>{throw Object.assign(Error('missing table'),{code:'42P01'});}),{code:'PAGE_SCHEMA_MIGRATION_REQUIRED'});
-assert.equal((await loadPageSchemaLibrary({})).tokenVersionId,'fixture');
-available=false;await assert.rejects(loadPageSchemaLibrary({}),{code:'TOKEN_LIBRARY_REQUIRED'});available=true;
-active=false;await assert.rejects(loadPageSchemaLibrary({}),{code:'TOKEN_LIBRARY_CHANGED'});active=true;
-policyReady=false;await assert.rejects(loadPageSchemaLibrary({}),{code:'TOKEN_USAGE_POLICY_REQUIRED'});
+assert.equal((await loadPageSchemaLibrary(async()=>[])).tokenVersionId,'fixture');
+available=false;await assert.rejects(loadPageSchemaLibrary(async()=>[]),{code:'TOKEN_LIBRARY_REQUIRED'});available=true;
+active=false;await assert.rejects(loadPageSchemaLibrary(async()=>[]),{code:'TOKEN_LIBRARY_CHANGED'});active=true;
+policyReady=false;await assert.rejects(loadPageSchemaLibrary(async()=>[]),{code:'TOKEN_USAGE_POLICY_REQUIRED'});
 console.log('Dynamic generation readiness: migration, active prompt, library version and usage policy checked before generation.');
 
 await assert.rejects(assertPageSchemaInfrastructure(async()=>[{schema_ready:true,prompt_ready:true,generation_ready:false}]),{code:'PAGE_SCHEMA_MIGRATION_REQUIRED'});

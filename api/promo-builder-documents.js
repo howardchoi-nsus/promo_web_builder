@@ -1,3 +1,4 @@
+const {inputHash:canonicalContentHash}=require('./_page-schema-generation-jobs');
 const { randomUUID } = require("node:crypto");
 const { parseBody } = require("./_wizard-form-templates-store");
 const { resolveBuilderOwner } = require("./_promo-builder-auth");
@@ -91,7 +92,7 @@ async function normalizeEditorSnapshot(
   // Quality certification must preserve exactly the document inspected by the browser.
   if (incomingSnapshot?.qualityGate?.state === "passed") {
     const visual = (snapshot) => { const {qualityGate, documentRevision, ...rest} = snapshot; return rest; };
-    if (JSON.stringify(visual(incomingSnapshot)) !== JSON.stringify(visual(currentSnapshot))) {
+    if (canonicalContentHash(visual(incomingSnapshot)) !== canonicalContentHash(visual(currentSnapshot))) {
       throw Object.assign(new Error("변경 내용을 먼저 저장한 후 품질 검사를 다시 실행해 주세요."), {statusCode:409,code:"QUALITY_SNAPSHOT_CHANGED"});
     }
     const next = {...currentSnapshot, qualityGate:normalizePassedQualityGate(incomingSnapshot.qualityGate, {
@@ -104,7 +105,7 @@ async function normalizeEditorSnapshot(
   if (currentSnapshot?.content?.pageSchema) {
     const {assertValid}=require("../shared/page-schema/contract.cjs");
     assertValid(currentSnapshot.content.pageSchema,currentSnapshot.content.pageContext,{final:true});
-    if(JSON.stringify(incomingSnapshot.content)!==JSON.stringify(currentSnapshot.content))throw Object.assign(new Error("PageSchema 변경은 전용 수정 API를 사용해 주세요."),{statusCode:422,code:"PAGE_SCHEMA_EDIT_REQUIRED"});
+    if(canonicalContentHash(incomingSnapshot.content)!==canonicalContentHash(currentSnapshot.content))throw Object.assign(new Error("PageSchema 변경은 전용 수정 API를 사용해 주세요."),{statusCode:422,code:"PAGE_SCHEMA_EDIT_REQUIRED"});
     return {...currentSnapshot,qualityGate:normalizePassedQualityGate(incomingSnapshot.qualityGate,{sourceDocumentRevision:baseDocumentRevision,documentRevision:baseDocumentRevision+1,requiredViewports:["desktop","tablet","mobile"]})};
   }
   if (!currentSnapshot?.content || !currentSnapshot?.designSpec) {

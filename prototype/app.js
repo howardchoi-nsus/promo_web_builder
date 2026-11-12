@@ -1182,7 +1182,7 @@ const adminApp = createApp({
       itemComponentEditor: {
         name: "", description: "", fieldKind: "text", textType: "title",
         imagePolicy: { allowedSources: ["file", "url"], promptText: "", aspectRatio: "" },
-        capabilities: { layoutRegions: ["copy-primary", "copy-secondary", "center"] },
+        capabilities: { layoutRegions: ["copy-primary", "copy-secondary", "center"],pageSchemaAsset:{kind:"",url:"",text:""} },
         styleSlots: [], changeNote: "",
         libraryPresentation: { category: "text", iconKey: "heading", displayOrder: 100, isFeatured: false },
         libraryKeywords: "",
@@ -2408,7 +2408,7 @@ const adminApp = createApp({
         name: "", description: "", fieldKind: "text", textType: "title",
         editorSchema: { multiline: true }, defaultValue: null,
         imagePolicy: { allowedSources: ["file", "url"], promptText: "", aspectRatio: "" },
-        capabilities: { layoutRegions: ["copy-primary", "copy-secondary", "center"] },
+        capabilities: { layoutRegions: ["copy-primary", "copy-secondary", "center"],pageSchemaAsset:{kind:"",url:"",text:""} },
         libraryPresentation: { category: "", iconKey: "", displayOrder: 100, isFeatured: false },
         libraryKeywords: "",
         placementPolicy: {
@@ -2478,7 +2478,7 @@ const adminApp = createApp({
         name: component.name, description: component.description || "", fieldKind: component.fieldKind || "text",
         textType: component.textType || "title", editorSchema: component.editorSchema || {},
         defaultValue: component.defaultValue ?? null, imagePolicy: { ...(component.imagePolicy || {}) },
-        capabilities: { ...(component.capabilities || {}) }, styleSlots: [...(component.styleSlots || [])], changeNote: "",
+        capabilities: { ...(component.capabilities || {}),pageSchemaAsset:{kind:"",url:"",text:"",...component.capabilities?.pageSchemaAsset} }, styleSlots: [...(component.styleSlots || [])], changeNote: "",
         libraryPresentation: {
           category: component.libraryPresentation?.category || "",
           iconKey: component.libraryPresentation?.iconKey || "",

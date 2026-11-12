@@ -25,7 +25,8 @@ async function loadPageSchemaLibrary(sql){
  const version=await fetchTokenVersion(sql,set.versionId);
  if(!version||version.status!=='active')throw blocked('TOKEN_LIBRARY_CHANGED','활성 디자인 토큰 버전이 변경되었습니다. 다시 실행해 주세요.');
  const usagePolicy=await activeTokenUsagePolicy(sql,version),tokenCatalog=tokenPolicyCatalog(version);
- const library={usagePolicy,tokenCatalog,tokenValues:Object.fromEntries(tokenCatalog.map(t=>[t.name||t.tokenKey,t.value])),tokenVersionId:version.id};
+ const registeredAssets=await require('./_page-schema-catalog').loadPageAssets(sql);
+ const library={...registeredAssets,styleChoicesVersion:1,usagePolicy,tokenCatalog,tokenValues:Object.fromEntries(tokenCatalog.map(t=>[t.name||t.tokenKey,t.value])),tokenVersionId:version.id};
  assertLayoutTokens(library);
  return library;
 }

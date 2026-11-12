@@ -40,6 +40,10 @@ function createHandler({ sqlFactory = getSql, authorize = resolveAdminOwner } = 
         cssProperties: tokenCssProperties(t),
         semanticRole: tokenPlannerRole(t),
       }));
+      if(entries.some(token=>token.type==='borderStyle')){
+        const ready=await sql`select exists(select 1 from pg_constraint where conrelid='promo_design_token_definitions'::regclass and conname='promo_design_token_definitions_value_type_check' and pg_get_constraintdef(oid) like '%borderStyle%') as ready`;
+        if(!ready[0]?.ready)return res.status(503).json({code:'TOKEN_TYPE_MIGRATION_REQUIRED',error:'테두리 선 종류를 저장하려면 DB migration 090을 먼저 적용해 주세요.'});
+      }
       const activePolicy = await sql`select policy_json from promo_token_usage_policy_versions where status = 'active' limit 1`;
       if (activePolicy.length) {
         const { validateTokenUsagePolicy } = await import('../shared/token-usage-policy.mjs');

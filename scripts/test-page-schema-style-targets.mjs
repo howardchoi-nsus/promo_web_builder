@@ -7,7 +7,7 @@ const {runtimeSchema,nodeTargets,walk,TYPES}=require('../shared/page-schema/cont
 const {TOKEN_USAGE_RULES}=require('../shared/token-usage-policy.cjs');
 const schema=runtimeSchema(context);
 for(const type of TYPES){
- const variants=type==='container'?schema.$defs.container.anyOf:[schema.$defs[type]];
+ const variants=schema.$defs[type].anyOf||[schema.$defs[type]];
  for(const definition of variants){
   const role=definition.properties.role?.const||definition.properties.role?.enum?.[0];
   const targets=nodeTargets({type,role});
@@ -18,7 +18,7 @@ for(const type of TYPES){
 }
 const check=new Ajv({strict:false}).compile(schema);
 const page=fixture('example-editorial');
-walk(page.root,({node})=>{node.styles.spacing={base:{gap:null,padding:null,margin:null},tablet:null,mobile:null};});
+walk(page.root,({node})=>{if(node.type==='container')node.overlayRole=null;if(node.type==='image')node.presentation='content';node.styles.spacing={base:{gap:null,padding:null,margin:null},tablet:null,mobile:null};});
 assert.equal(check(page),true,JSON.stringify(check.errors));
 page.root.styles.base.push('text.font');
 assert.equal(check(page),false,'Provider schema must reject text.font on root before model output is accepted');

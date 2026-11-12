@@ -401,6 +401,16 @@
             "$ref": "#/$defs/node"
           },
           "maxItems": 100
+        },
+        "overlayRole": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/policyRole"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -673,6 +683,13 @@
           "enum": [
             "contain",
             "cover"
+          ]
+        },
+        "presentation": {
+          "type": "string",
+          "enum": [
+            "content",
+            "background"
           ]
         }
       },
@@ -1056,6 +1073,9 @@
             "$ref": "#/$defs/sourceId"
           },
           "maxItems": 30
+        },
+        "regenerate": {
+          "type": "boolean"
         }
       },
       "required": [

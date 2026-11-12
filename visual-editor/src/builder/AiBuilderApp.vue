@@ -1,4 +1,5 @@
 <script setup>
+import {preparePageMedia} from "./services/page-media-preparation.mjs";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import PageSchemaWireframe from "./PageSchemaWireframe.vue";
 import RequirementTable from "./RequirementTable.vue";
@@ -57,6 +58,8 @@ const props = defineProps({
 const store = createAiBuilderStore();
 const selectedMode = ref(props.initialMode);
 const operationOpen = ref(false);
+const mediaPreparing=ref(false);
+const mediaPending=computed(()=>Boolean(store.snapshot?.content?.pageSchema?.mediaRequests?.length));
 const pageSchemaEditorOpen = ref(false);
 const pageSchemaSaving = ref(false);
 const pageGenerationRequest=ref(null);
@@ -226,7 +229,7 @@ const progressMessage = computed(() => {
   }
   return translate("builder.progress.generatingStructure", "프로모션 구조를 생성하고 있습니다.");
 });
-const retryableAssetError = computed(() => Boolean(store.snapshot && [
+const retryableAssetError = computed(() => Boolean(!store.snapshot?.content?.pageSchema && store.snapshot && [
   "ASSET_GENERATION_FAILED", "ASSET_GENERATION_TIMEOUT", "ASSET_ENQUEUE_FAILED",
   "PROVIDER_BILLING_REQUIRED",
 ].includes(store.error?.code)));
@@ -299,6 +302,8 @@ async function retryFailedTask() {
       await prepareWireframe("", task.action || null);
     } else if (task.kind === "final-design") {
       await approveWireframe(task.action || {});
+    } else if (task.kind === "page-media") {
+      await prepareDynamicMedia();
     } else if (task.kind === "page-layout-edit") {
       await editNaturalLanguage(task.input);
     } else if (task.kind === "chat-action" && task.action) {
@@ -2020,6 +2025,7 @@ async function waitForBuilderAssets({ maxPolls = 200, pollIntervalMs = 2000 } = 
 }
 
 async function retryAssets() {
+  if(store.snapshot?.content?.pageSchema)return prepareDynamicMedia();
   if (!store.documentId || !store.documentRevision || assetRetrying.value) return;
   assetRetrying.value = true;
   clearBuilderError(store);
@@ -2285,6 +2291,21 @@ async function checkFinalQuality() {
   }
 }
 
+async function prepareDynamicMedia(){
+ if(mediaPreparing.value||!mediaPending.value)return;
+ if(pageSummaryOutdated.value){setBuilderError(store,Object.assign(new Error('요청 요약이 변경되었습니다. 최신 페이지 구성을 생성·승인한 후 이미지를 준비해 주세요.'),{code:'REQUIREMENTS_CHANGED',retryable:false}));return;}
+ mediaPreparing.value=true;store.stage='generating_assets';
+ const operationId='page-media-'+store.documentId;
+ try{
+  await preparePageMedia({readCurrent:()=>({documentId:store.documentId,revision:store.documentRevision,snapshot:store.snapshot}),request:updatePageSchemaMedia,onUpdate:saved=>{store.documentRevision=Number(saved.revision);store.snapshot=saved.snapshot;transientQualityGate.value=null;},onProgress:count=>updateStatusMessage(operationId,`디자인 이미지 ${count}개를 준비하고 있습니다.`,'in_progress')});
+  store.stage='render_ready';activeResultTab.value='final';
+  updateStatusMessage(operationId,'디자인 이미지를 연결했습니다. 품질을 확인합니다.','completed');
+ }catch(error){
+  store.stage='render_ready';
+  rememberFailedTask({kind:'page-media',label:'디자인 이미지 준비',operationId},error);
+  setBuilderError(store,error);updateStatusMessage(operationId,'이미지 준비를 완료하지 못했습니다. 완료된 이미지는 보존되며 실패한 항목부터 다시 시도할 수 있습니다.','failed');
+ }finally{mediaPreparing.value=false;}
+}
 async function approveDynamicStructure(){
  if(!store.snapshot?.content?.pageSchema||pageSchemaSaving.value)return;
  if(pageSummaryOutdated.value){store.warning={code:'REQUIREMENTS_CHANGED',message:'요청 요약이 변경되었습니다. 최신 내용으로 페이지 구성을 다시 생성해 주세요.'};activeResultTab.value='requirements';return;}
@@ -2907,9 +2928,13 @@ watch(interactionLocked, (locked, wasLocked) => {
 });
 // Each saved revision is checked once when its final preview becomes available.
 let automaticQualityKey = '';
+watch(()=>[store.documentId,store.documentRevision,store.stage,pendingChatActionKey.value,failedTaskRetrying.value],async()=>{
+ if(activeResultTab.value!=='final'||store.stage!=='render_ready'||pageSummaryOutdated.value||capabilities.value.pageSchemaMedia===false||!mediaPending.value||mediaPreparing.value||failedTask.value||interactionLocked.value||store.snapshot?.generationMeta?.review?.state!=='approved')return;
+ await prepareDynamicMedia();
+});
 watch(pageStructurePending,pending=>{if(pending){store.stage='review_required';activeResultTab.value='wireframe';}});
 watch(() => [store.documentId,store.documentRevision,store.stage,activeResultTab.value,finalQualityChecking.value], async () => {
-  if (failedTask.value || !store.snapshot || Number(store.snapshot.contractVersion)!==3 || store.stage!=='render_ready' || activeResultTab.value!=='final' || finalQualityChecking.value || finalQualityPassed.value) return;
+  if (mediaPending.value || mediaPreparing.value || failedTask.value || !store.snapshot || Number(store.snapshot.contractVersion)!==3 || store.stage!=='render_ready' || activeResultTab.value!=='final' || finalQualityChecking.value || finalQualityPassed.value) return;
   const key = `${store.documentId}:${store.documentRevision}`;
   if (automaticQualityKey===key) return;
   automaticQualityKey=key;

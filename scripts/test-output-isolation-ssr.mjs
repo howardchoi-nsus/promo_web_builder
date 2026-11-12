@@ -5,6 +5,7 @@ import {existsSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import {chromium} from 'playwright';
 import {fixture,context} from './fixtures/page-schema.mjs';
+import {designFixture,png} from './fixtures/design-preview-enhancements.mjs';
 if(!existsSync(new URL('../apps/promo-runtime-nuxt/.output/server/index.mjs',import.meta.url))){const built=spawnSync('pnpm',['run','build:nuxt-runtime'],{cwd:new URL('..',import.meta.url),encoding:'utf8'});assert.equal(built.status,0,built.stderr);}
 const require=createRequire(import.meta.url);
 const {snapshotForPage}=require('../api/_page-schema-service');
@@ -27,5 +28,15 @@ try{
  const page=await browser.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(/hydration|mismatch/i.test(m.text()))errors.push(m.text());});
  await page.goto(url);await page.frameLocator('iframe').first().locator('h1').waitFor();
  assert.equal(await page.frameLocator('iframe').first().locator('h1').textContent(),context.contentSources.source_title.text);
+ const enhanced=designFixture({pending:false});
+ publication.snapshot=snapshotForPage(normalize(enhanced.page).page,enhanced.context);publication.renderer.version=2;publication.publication.slug='strict-enhanced';
+ await page.route('**/design-fixture.png',route=>route.fulfill({contentType:'image/png',body:png}));
+ await page.goto(`http://127.0.0.1:${port}/promotions/strict-enhanced`);
+ const output=page.frameLocator('iframe').first();await output.locator('[data-ps-node=design_icon]').waitFor();
+ assert.equal(await output.locator('h1').evaluate(el=>getComputedStyle(el).fontSize),'48px');
+ assert.equal(await output.locator('[data-ps-node=page_root]').evaluate(el=>getComputedStyle(el).borderTopStyle),'solid');
+ assert.equal(await output.locator('[data-ps-node=design_icon]').textContent(),'♠');
+ const noJs=await browser.newPage({javaScriptEnabled:false});await noJs.goto(`http://127.0.0.1:${port}/promotions/strict-enhanced`);
+ await noJs.frameLocator('iframe').first().locator('h1').waitFor();assert.equal(await noJs.frameLocator('iframe').first().locator('h1').evaluate(el=>getComputedStyle(el).fontSize),'48px');await noJs.close();
  assert.deepEqual(errors,[]);console.log('Output isolation SSR: Nuxt server srcdoc content, registered styles, client hydration and live isolated DOM passed.');
 }catch(error){console.error(logs);throw error;}finally{await browser?.close();child.kill('SIGTERM');await new Promise(r=>backend.close(r));}

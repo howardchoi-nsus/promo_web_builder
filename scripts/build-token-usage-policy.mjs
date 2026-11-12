@@ -15,4 +15,7 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){fs.wr
  const confirmation=fs.readFileSync(new URL('../shared/page-schema/content-confirmation.mjs',import.meta.url),'utf8');
  const confirmationNames=[...confirmation.matchAll(/^export function (\w+)/gm)].map(match=>match[1]);
  fs.writeFileSync(new URL('../shared/page-schema/content-confirmation.cjs',import.meta.url),'// Generated from content-confirmation.mjs; run build:token-policy.\n'+confirmation.replace(/^export /gm,'')+'\nmodule.exports={'+confirmationNames.join(',')+'};\n');
+ const renderer=fs.readFileSync(new URL('../packages/promo-contracts/src/renderer.mjs',import.meta.url),'utf8');
+ const rendererNames=[...renderer.matchAll(/^export (?:const|function) (\w+)/gm)].map(match=>match[1]);
+ fs.writeFileSync(new URL('../shared/renderer-contract.cjs',import.meta.url),'// Generated from packages/promo-contracts/src/renderer.mjs; run build:token-policy.\n'+renderer.replace(/^export /gm,'')+'\nmodule.exports={'+rendererNames.join(',')+'};\n');
  console.log('Generated server token usage policy.');}

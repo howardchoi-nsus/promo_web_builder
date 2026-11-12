@@ -9,3 +9,7 @@ const layout=fs.readFileSync(new URL('../shared/layout-token-policy.cjs',import.
 assert.equal(fs.readFileSync(new URL('../shared/layout-token-policy.mjs',import.meta.url),'utf8'),'// Generated from layout-token-policy.cjs.\n'+layout);
 const registered=fs.readFileSync(new URL('../shared/registered-token-policy.mjs',import.meta.url),'utf8').replace('import { usageAssignmentErrors, targetForProperty } from "./token-usage-policy.mjs";','const {usageAssignmentErrors,targetForProperty}=require("./token-usage-policy.cjs");').replace(/^export /gm,'');
 assert.equal(fs.readFileSync(new URL('../shared/registered-token-policy.cjs',import.meta.url),'utf8'),'// Generated from registered-token-policy.mjs.\n'+registered+'\nmodule.exports={enforceRegisteredDesignTokens};\n');
+
+const renderer=fs.readFileSync(new URL('../packages/promo-contracts/src/renderer.mjs',import.meta.url),'utf8');
+const rendererNames=[...renderer.matchAll(/^export (?:const|function) (\w+)/gm)].map(match=>match[1]);
+assert.equal(fs.readFileSync(new URL('../shared/renderer-contract.cjs',import.meta.url),'utf8'),'// Generated from packages/promo-contracts/src/renderer.mjs; run build:token-policy.\n'+renderer.replace(/^export /gm,'')+'\nmodule.exports={'+rendererNames.join(',')+'};\n');

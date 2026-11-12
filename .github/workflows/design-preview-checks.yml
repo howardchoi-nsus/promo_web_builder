@@ -1,0 +1,36 @@
+name: Design preview contracts and browser checks
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: ['codex/**']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contracts-browser-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Configure isolated PostgreSQL engine and browser
+        run: |
+          npm install --prefix "$RUNNER_TEMP/promo-pglite" --no-package-lock --ignore-scripts @electric-sql/pglite@0.5.16
+          echo "PGLITE_TEST_MODULE=$RUNNER_TEMP/promo-pglite/node_modules/@electric-sql/pglite/dist/index.js" >> "$GITHUB_ENV"
+          node -e "require('fs').appendFileSync(process.env.GITHUB_ENV, 'CHROMIUM_EXECUTABLE_PATH='+require('playwright').chromium.executablePath()+'\n')"
+      - name: Build policy, Admin, preview and output runtime
+        run: |
+          pnpm run build:token-policy
+          pnpm run build:admin
+          pnpm run build:visual-editor
+          pnpm run build:nuxt-runtime
+      - run: pnpm run qa:design-preview

@@ -402,6 +402,7 @@ async function createDocumentRevision(sql, {
   qualityGateVerified = false,
   chatTransition = null,
   generationJob = null,
+  requirementsGuard = null,
 }) {
   await assertRegisteredTokenPolicy(snapshot);
   const nextRevision = Number(baseDocumentRevision) + 1;
@@ -445,6 +446,22 @@ async function createDocumentRevision(sql, {
         from saved where j.document_id=${documentId}::uuid and j.request_id=${generationJob?.requestId||null}::uuid and j.claim_token=${generationJob?.claimToken||null}::uuid returning j.request_id
       ) select revision from saved`;
     if(!rows.length)throw Object.assign(new Error('생성 중 요청 요약이 변경되었습니다. 최신 요약으로 다시 생성해 주세요.'),{code:'REQUIREMENTS_REVISION_MISMATCH',statusCode:409,retryable:true});
+  }else if(generationJob&&requirementsGuard!==null){
+    rows=await sql`with requirements as (
+      select id from promo_builder_chat_sessions where ${requirementsGuard}::integer is not null
+        and document_id=${documentId}::uuid and owner_subject=${ownerSubject}
+        and latest_requirements_revision=${requirementsGuard}::integer for update
+    ), guard as (
+      select request_id from promo_page_schema_generation_jobs where document_id=${documentId}::uuid and owner_subject=${ownerSubject}
+        and request_id=${generationJob.requestId}::uuid and claim_token=${generationJob.claimToken}::uuid and status='running'
+        and (${requirementsGuard}::integer is null or exists(select 1 from requirements)) for update
+    ), saved as (
+      select create_promo_builder_document_revision(${documentId}::uuid,${ownerSubject},${baseDocumentRevision},${JSON.stringify(nextSnapshot)}::jsonb,${snapshotHash(nextSnapshot)},${source},${changeNote||''}) as revision from guard
+    ), completed as (
+      update promo_page_schema_generation_jobs j set status='completed',result_revision=saved.revision,updated_at=now()
+      from saved where j.document_id=${documentId}::uuid and j.request_id=${generationJob.requestId}::uuid and j.claim_token=${generationJob.claimToken}::uuid returning j.request_id
+    ) select revision from saved`;
+    if(!rows.length)throw Object.assign(new Error('생성 작업이 변경되었습니다. 최신 상태를 확인해 주세요.'),{code:'GENERATION_LEASE_CHANGED',statusCode:409,retryable:true});
   }else if(generationJob){
     rows=await sql`with guard as (
       select request_id from promo_page_schema_generation_jobs where document_id=${documentId}::uuid and owner_subject=${ownerSubject}

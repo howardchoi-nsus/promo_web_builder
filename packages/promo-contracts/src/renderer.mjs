@@ -1,5 +1,6 @@
 export const RENDERER_KEY = "default-promo-renderer";
 export const RENDERER_VERSION = 1;
+export const SUPPORTED_PAGE_SCHEMA_RENDERER_VERSIONS = Object.freeze([1, 2]);
 export const SUPPORTED_RENDER_SPEC_VERSIONS = Object.freeze([1]);
 export const SUPPORTED_SNAPSHOT_CONTRACT_VERSIONS = Object.freeze([2, 3]);
 
@@ -12,7 +13,9 @@ export function rendererIdentity(candidate = {}) {
 
 export function supportsRenderer(candidate = {}) {
   const identity = rendererIdentity(candidate);
-  return [RENDERER_KEY,"page-schema-renderer"].includes(identity.key) && identity.version === RENDERER_VERSION;
+  return identity.key === "page-schema-renderer"
+    ? SUPPORTED_PAGE_SCHEMA_RENDERER_VERSIONS.includes(identity.version)
+    : identity.key === RENDERER_KEY && identity.version === RENDERER_VERSION;
 }
 
 export function supportsSnapshotContract(version) {

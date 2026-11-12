@@ -4,10 +4,10 @@ const { randomUUID } = require("node:crypto");
 
 const VALUE_TYPES = [
   "color", "length", "number", "font", "fontFamily", "shadow", "gradient",
-  "duration", "easing", "enum",
+  "duration", "easing", "enum", "borderStyle",
 ];
 const SAFE_CSS_PROPERTIES = new Set([
-  "color", "background-color", "border-color", "border-radius", "border-width",
+  "color", "background-color", "border-color", "border-radius", "border-width", "border-style",
   "box-shadow", "font-family", "font-size", "font-weight", "line-height",
   "letter-spacing", "padding", "gap", "margin", "width", "height", "max-width",
   "min-width", "min-height", "outline-color", "background-image", "z-index",
@@ -78,6 +78,7 @@ function validateTokenValue(definition, value) {
   }
   if (definition.value_type === "gradient"
     && !/^(?:linear|radial|conic)-gradient\(.+\)$/i.test(text)) return "gradient value is invalid";
+  if (definition.value_type === "borderStyle" && !["none","solid","dashed","dotted","double"].includes(text)) return "borderStyle value is invalid";
   if (definition.value_type === "enum" && Array.isArray(definition.allowed_values)
     && definition.allowed_values.length && !definition.allowed_values.includes(text)) return "enum value is not allowed";
   return "";

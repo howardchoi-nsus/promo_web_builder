@@ -142,7 +142,9 @@ function validateFieldDefinition(body, index = 0) {
   const normalizedEditorSchema = { ...editorSchema };
   if (description) normalizedEditorSchema.description = description;
   else delete normalizedEditorSchema.description;
-  const capabilities = asObject(body.capabilities);
+  const capabilities = {...asObject(body.capabilities)};
+  const pageSchemaAsset=require('./_page-schema-catalog').normalizeRegisteredAsset(capabilities.pageSchemaAsset);
+  if(pageSchemaAsset)capabilities.pageSchemaAsset=pageSchemaAsset;else delete capabilities.pageSchemaAsset;
   const imagePolicy = fieldKind === "image" ? asObject(body.imagePolicy) : {};
   const ctaPolicy = fieldKind === "cta" ? asObject(body.ctaPolicy) : {};
   const styleSlots = asArray(body.styleSlots).map((slot) => normalizeStyleSlot(slot));
@@ -192,6 +194,10 @@ function validateDefinition(body) {
     const error = new Error("fieldKey values must be unique within a component version");
     error.statusCode = 400;
     throw error;
+  }
+  if(body.capabilities&&Object.hasOwn(body.capabilities,'pageSchemaAsset')){
+    const asset=require('./_page-schema-catalog').normalizeRegisteredAsset(body.capabilities.pageSchemaAsset);
+    if(asset)fields[0].capabilities.pageSchemaAsset=asset;else delete fields[0].capabilities.pageSchemaAsset;
   }
   return { ...fields[0], fields };
 }

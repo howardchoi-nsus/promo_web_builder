@@ -1,7 +1,7 @@
 const Ajv = require('ajv/dist/2020').default;
 const baseSchema = require('./page-schema.schema.json');
 const {layoutTokenPolicy}=require('../layout-token-policy.cjs');
-const {TOKEN_USAGE_RULES,validateTokenUsagePolicy} = require('../token-usage-policy.cjs');
+const {TOKEN_USAGE_RULES,pageStyleRoles,pageGenerationStyleRoles,pageStyleToken,pageNodeStyleRules,validateTokenUsagePolicy} = require('../token-usage-policy.cjs');
 const LIMITS=Object.freeze({nodes:200,depth:8,bytes:262144,mediaRequests:8,text:60000});
 const TYPES=Object.freeze(['container','grid','stack','text','image','button','card','input','divider','icon','video']);
 const clone=value=>JSON.parse(JSON.stringify(value));
@@ -25,9 +25,12 @@ function nodeTargets(node){if(node.type==='container')return node.role==='group'
 function runtimeSchema(context={}){
  const schema=clone(baseSchema);delete schema.$schema;delete schema.$id;
  schema.$defs.responsiveStyles.required.push("spacing");
+ schema.$defs.image.required.push("presentation");
+ schema.$defs.mediaRequest.required.push("regenerate");
  const spacing=layoutTokenPolicy(context).spacing;
  schema.$defs.spacingToken={type:"string",enum:spacing.length?spacing:["__unavailable__"]};
- const approvedRoles=TOKEN_USAGE_RULES.filter(rule=>context.usagePolicy?.bindings?.[rule.key]&&context.tokenValues?.[context.usagePolicy.bindings[rule.key]]).map(rule=>rule.key);
+ const styleRoles=pageGenerationStyleRoles(context);
+ const approvedRoles=styleRoles.filter(rule=>context.tokenValues?.[pageStyleToken(context,rule)]).map(rule=>rule.key);
  for(const [name,keys] of Object.entries({policyRole:approvedRoles,sourceId:Object.keys(context.contentSources||{}),assetId:Object.keys(context.assets||{}),actionId:Object.keys(context.actions||{}),formFieldId:Object.keys(context.formFields||{}),iconId:Object.keys(context.icons||{})}))schema.$defs[name]={type:'string',enum:keys.length?keys:['__unavailable__']};
  // A global role enum permits e.g. text.font on the page container, although
  // semantic validation correctly rejects it. Constrain each primitive's styles
@@ -35,14 +38,20 @@ function runtimeSchema(context={}){
  function specialize(name,node){
   const definition=clone(schema.$defs[name]),styles=clone(schema.$defs.responsiveStyles);
   const targets=nodeTargets(node);
-  const roles=TOKEN_USAGE_RULES.filter(rule=>approvedRoles.includes(rule.key)&&targets.includes(rule.target)).map(rule=>rule.key);
+  const roles=styleRoles.filter(rule=>approvedRoles.includes(rule.key)&&targets.includes(rule.target)).map(rule=>rule.key);
   function replace(value){
    if(!value||typeof value!=='object')return;
    if(value.$ref==='#/$defs/policyRole'){delete value.$ref;value.type='string';value.enum=roles.length?roles:['__unavailable__'];return;}
    for(const child of Object.values(value))replace(child);
   }
   replace(styles);
+  if(!roles.length){styles.properties.base.maxItems=0;styles.properties.tablet.anyOf[0].maxItems=0;styles.properties.mobile.anyOf[0].maxItems=0;}
   definition.properties.styles=styles;
+  if(name==='container'){
+   const overlays=styleRoles.filter(rule=>approvedRoles.includes(rule.key)&&targets.includes(rule.target)&&rule.property==='background-image').map(rule=>rule.key);
+   definition.properties.overlayRole=overlays.length?{anyOf:[{type:'string',enum:overlays},{type:'null'}]}:{type:'null'};
+   definition.required.push('overlayRole');
+  }
   return definition;
  }
  for(const type of TYPES)if(type!=='container')schema.$defs[type]=specialize(type,{type});
@@ -51,6 +60,19 @@ function runtimeSchema(context={}){
  container.properties.role.enum=container.properties.role.enum.filter(role=>role!=='group');
  group.properties.role={type:'string',const:'group'};
  schema.$defs.container={anyOf:[container,group]};
+ const idsFor=kind=>Object.entries(context.assets||{}).filter(([,asset])=>asset.kind===kind&&safeUrl(asset.url)).map(([id])=>id);
+ const imageIds=idsFor('image'),videoIds=idsFor('video'),captionIds=idsFor('caption');
+ const nullableIds=ids=>ids.length?{anyOf:[{type:'string',enum:ids},{type:'null'}]}:{type:'null'};
+ const generatedImage=clone(schema.$defs.image);generatedImage.properties.assetId={type:'null'};generatedImage.properties.requestId={$ref:'#/$defs/mediaRequestId'};
+ if(imageIds.length){const registeredImage=clone(schema.$defs.image);registeredImage.properties.assetId={type:'string',enum:imageIds};registeredImage.properties.requestId={type:'null'};schema.$defs.image={anyOf:[registeredImage,generatedImage]};}
+ else schema.$defs.image=generatedImage;
+ schema.$defs.video.properties.assetId=videoIds.length?{type:'string',enum:videoIds}:{type:'null'};schema.$defs.video.properties.posterAssetId=nullableIds(imageIds);schema.$defs.video.properties.captionAssetId=nullableIds(captionIds);
+ if(!videoIds.length)schema.$defs.node.anyOf=schema.$defs.node.anyOf.filter(option=>option.$ref!=='#/$defs/video');
+ if(context.styleChoicesVersion===1&&!['border-color','border-width','border-style'].every(property=>styleRoles.some(role=>role.target==='divider'&&role.property===property&&pageStyleToken(context,role))))schema.$defs.node.anyOf=schema.$defs.node.anyOf.filter(option=>option.$ref!=='#/$defs/divider');
+ let enumValues=0;
+ const count=value=>{if(!value||typeof value!=='object')return;if(Array.isArray(value.enum))enumValues+=value.enum.length;for(const child of Object.values(value))count(child);};
+ count(schema);
+ if(enumValues>1000)throw Object.assign(new Error('등록 스타일·콘텐츠 선택지가 모델의 구조화 출력 예산을 초과합니다. 요청 범위를 나누거나 카탈로그를 줄여 주세요.'),{code:'PAGE_SCHEMA_LIMIT_EXCEEDED',statusCode:422});
  return schema;
 }
 function normalize(page){
@@ -81,6 +103,7 @@ function validate(page,context={},options={}){
  if(!tokenValidation.ok)errors.push(...tokenValidation.errors.map(e=>error(e.code,e.key,e.message)));
  const layoutPolicy=layoutTokenPolicy(context);errors.push(...layoutPolicy.errors);
  for(const [role,token] of Object.entries(context.usagePolicy?.bindings||{}))if((typeof token==='string'&&token.startsWith("--app-")))errors.push(error("BUILDER_TOKEN_FORBIDDEN",role,"Builder tokens cannot style output"));
+ const resolvedStyleRoles=pageStyleRoles(context);
  const seen=new Set(),usedSources=new Map(),headings=[],requests=new Map(),imageRequests=new Map(),parentById=new Map();
  for(const [key,value] of Object.entries(context.tokenValues||{}))if(!/^--[a-zA-Z][a-zA-Z0-9-]*$/.test(key)||typeof value!=="string"||/[;{}<>]|url\s*\(|expression\s*\(|@import/i.test(value))errors.push(error("TOKEN_VALUE_INVALID",key,"Unsafe registered token value"));
  for(const request of page.mediaRequests){if(requests.has(request.id))errors.push(error('DUPLICATE_MEDIA_REQUEST',request.id,'Duplicate media request'));requests.set(request.id,request);}
@@ -101,7 +124,7 @@ function validate(page,context={},options={}){
    const spacing=node.styles.spacing?.[view==='desktop'?'base':view];
    for(const [property,token] of Object.entries(spacing||{}))if(token!==null&&(!layoutPolicy.spacing.includes(token)||!(context.tokenCatalog||[]).find(t=>(t.name||t.tokenKey)===token)?.cssProperties?.includes(property)))add('SPACING_TOKEN_INVALID',`Unapproved ${property} token: ${token}`);
    const properties=new Set();for(const roleKey of node.styles[view==='desktop'?'base':view]||[]){
-    const rule=TOKEN_USAGE_RULES.find(rule=>rule.key===roleKey);const token=context.usagePolicy?.bindings?.[roleKey];
+    const rule=resolvedStyleRoles.find(rule=>rule.key===roleKey);const token=pageStyleToken(context,rule);
     if(!rule||!token||!Object.hasOwn(context.tokenValues||{},token)||!nodeTargets(node).includes(rule.target)){add('TOKEN_USAGE_POLICY_MISMATCH',`Policy role cannot target this node: ${roleKey}`);continue;}
     const propertyKey=`${rule.property}:${rule.state}`;if(properties.has(propertyKey))add('DUPLICATE_STYLE_ROLE',`Duplicate property/state: ${propertyKey}`);properties.add(propertyKey);
    }
@@ -122,14 +145,19 @@ function validate(page,context={},options={}){
    if(action?.kind==='submit'){let ancestor=parent;while(ancestor&&!(ancestor.type==='container'&&ancestor.role==='form'))ancestor=parentById.get(ancestor.id);if(ancestor?.formActionId!==node.actionId)add('FORM_BINDING_REQUIRED','Submit button must belong to its registered form');}
    if(['button','input'].includes(parent?.type))add('INTERACTIVE_NESTING_INVALID','Interactive controls cannot be nested');
   }
+  if(node.type==='container'&&node.overlayRole){
+   const overlay=resolvedStyleRoles.find(rule=>rule.key===node.overlayRole);
+   if(!overlay||!nodeTargets(node).includes(overlay.target)||overlay.property!=='background-image'||!pageStyleToken(context,overlay))add('TOKEN_USAGE_POLICY_MISMATCH','Overlay requires a registered gradient role');
+  }
   if(node.type==='image'){
+   if(node.presentation==='background'&&(parent?.type!=='container'||parent.children.filter(child=>child.type==='image'&&child.presentation==='background').length!==1))add('BACKGROUND_TARGET_INVALID','A background image requires a container with at most one background');
    if((node.assetId===null)===(node.requestId===null))add('ASSET_REFERENCE_INVALID','Image needs an asset OR a generation request');
    if(node.decorative?node.alt!=='':!node.alt.trim())add('ACCESSIBILITY_INVALID','Image alt does not match decorative status');
    if(node.assetId!==null&&(!context.assets?.[node.assetId]||context.assets[node.assetId].kind!=='image'||!safeUrl(context.assets[node.assetId].url)))add('ASSET_REFERENCE_INVALID','Unknown image asset');
    if(node.requestId!==null){imageRequests.set(node.requestId,(imageRequests.get(node.requestId)||0)+1);const request=requests.get(node.requestId);if(!request||request.nodeId!==node.id)add('ASSET_REFERENCE_INVALID','Image request target mismatch');warnings.push(error('IMAGE_GENERATION_PENDING',path,'Image generation is pending',node.id));if(options.final)add('IMAGE_GENERATION_PENDING','Resolve images before export');}
   }
-  if(node.type==='divider'&&(!context.usagePolicy?.bindings?.['divider.color']||!context.usagePolicy?.bindings?.['divider.width'])){warnings.push(error('STYLE_TOKEN_REQUIRED',path,'Divider color and width require registered policy bindings',node.id));if(options.final)add('STYLE_TOKEN_REQUIRED','Resolve divider policy bindings before export');}
-  if(node.type==='icon'&&(!Object.hasOwn(context.icons||{},node.iconId)||(!node.decorative&&!node.label.trim())))add('ACCESSIBILITY_INVALID','Icon must be approved and labelled or decorative');
+  if(node.type==='divider'&&!['border-color','border-width',...(context.styleChoicesVersion===1?['border-style']:[])].every(property=>pageNodeStyleRules(node,'desktop',context,nodeTargets(node),resolvedStyleRoles).some(rule=>rule.property===property))){warnings.push(error('STYLE_TOKEN_REQUIRED',path,'Divider color and width require registered policy bindings',node.id));if(options.final)add('STYLE_TOKEN_REQUIRED','Resolve divider policy bindings before export');}
+  if(node.type==='icon'&&(!Object.hasOwn(context.icons||{},node.iconId)||(!node.decorative&&!node.label.trim())||!(context.icons[node.iconId]?.glyph||context.icons[node.iconId]?.text||safeUrl(context.icons[node.iconId]?.url))))add('ACCESSIBILITY_INVALID','Icon must be approved and labelled or decorative');
   if(node.type==='input'){
    if(!node.fieldId){warnings.push(error('FORM_BINDING_REQUIRED',path,'Input is preview-only',node.id));if(options.final)add('FORM_BINDING_REQUIRED','Register form fields before export');}
    else if(!context.formFields?.[node.fieldId]||context.formFields[node.fieldId].inputType!==node.inputType)add('FORM_FIELD_INVALID','Unapproved form field/type');

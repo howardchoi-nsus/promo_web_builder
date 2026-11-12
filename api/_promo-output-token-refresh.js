@@ -10,7 +10,7 @@ async function refreshOutputTokens(sql,snapshot,deps={}){
  const version=await use.fetchTokenVersion(sql,set.versionId);
  if(!version||version.status!=='active')throw Object.assign(new Error('활성 토큰 버전이 변경되었습니다. 다시 확인해 주세요.'),{statusCode:409,code:'TOKEN_LIBRARY_CHANGED'});
  const policy=await use.activeTokenUsagePolicy(sql,version),catalog=use.tokenPolicyCatalog(version),values=use.toRuntimeTokenMap(version.values);
- const context={tokenValues:values,tokenCatalog:catalog,usagePolicy:policy,tokenVersionId:version.id};
+ const context={...(snapshot.content.pageContext?.styleChoicesVersion?{styleChoicesVersion:snapshot.content.pageContext.styleChoicesVersion}:{}),tokenValues:values,tokenCatalog:catalog,usagePolicy:policy,tokenVersionId:version.id};
  assertLayoutTokens(context);
  const next=JSON.parse(JSON.stringify(snapshot));
  if(next.content.pageSchema){

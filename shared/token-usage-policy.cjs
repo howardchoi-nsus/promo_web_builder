@@ -35,7 +35,87 @@ const TOKEN_USAGE_RULES = Object.freeze([
   rule('divider.color','divider','border-color','구분선 색상'),
   rule('divider.width','divider','border-width','구분선 두께',['--border-width-1']),
 ]);
-const COMPONENT_SCOPES = new Set(['button','card','checkbox','chip','field','modal','navigation','radio','select','tab','tooltip','toast','badge','switch','avatar','divider','progress','slider']);
+// Optional registered-only roles; old policies remain valid without these bindings.
+const PAGE_STYLE_VARIANT_PROPERTIES = Object.freeze({
+ text:['color','font-size','font-family','font-weight','line-height','letter-spacing'],
+ page:['background-color','background-image','border-color','border-width','border-style'],
+ card:['background-color','border-color','border-width','border-style'],
+ button:['background-color','color','border-color','border-width','border-style'],
+ icon:['color','font-size'],
+ divider:['border-color','border-width','border-style'],
+ layout:['min-height','height'],
+});
+// Stable version-1 role IDs: do not change this encoding for persisted documents.
+function roleHash(value){let first=2166136261,second=2246822519;for(const character of value){const code=character.charCodeAt(0);first=Math.imul(first^code,16777619);second=Math.imul(second^code,3266489917);}return (first>>>0).toString(36).padStart(7,'0')+(second>>>0).toString(36).padStart(7,'0');}
+function pageStyleRoles(context={}, {bounded=false}={}) {
+ const result=[...TOKEN_USAGE_RULES];
+ if(context.styleChoicesVersion!==1)return result;
+ const catalog=context.tokenCatalog||[],values=context.tokenValues||{};
+ for(const [target,properties] of Object.entries(PAGE_STYLE_VARIANT_PROPERTIES))for(const property of properties){
+  const base={target,property,state:'default'};
+  // Resolution keeps every registered alias; only new generation is bounded.
+  let candidates=catalog.filter(token=>{
+   const name=token.name||token.tokenKey;
+   return /^--[a-zA-Z][a-zA-Z0-9-]*$/.test(name||'')&&!name.startsWith('--app-')&&typeof values[name]==='string'&&values[name]===token.value&&!/[;{}<>]|url\s*\(|expression\s*\(|@import/i.test(values[name])&&!(target==='text'&&property==='color'&&/^--color-bg-/.test(name))&&tokenAllowedForRule(token,base,catalog);
+  }).sort((a,b)=>{
+   const score=t=>/typography-(title|body|label)|text-|label-|border-/.test(t.name||t.tokenKey)?0:1;
+   const left=a.name||a.tokenKey,right=b.name||b.tokenKey;
+   return score(a)-score(b)||(left<right?-1:left>right?1:0);
+  });
+  if(bounded){
+  const groups=new Map(),seenValues=new Set();
+  for(const token of candidates){
+   const name=token.name||token.tokenKey;
+   const family=name.match(/^--(?:typography-(?:title|body|label)|color-[a-z]+|[a-z]+-[a-z]+)/)?.[0]||name;
+   if(!groups.has(family))groups.set(family,[]);groups.get(family).push(token);
+  }
+  const limit=target==='text'?({'color':6,'font-size':8,'font-family':2,'font-weight':4,'line-height':8}[property]||4):target==='icon'?6:target==='layout'?3:property==='border-width'||property==='border-style'||property==='background-image'?3:4;
+  candidates=[];
+  while(candidates.length<limit&&[...groups.values()].some(group=>group.length))for(const group of groups.values()){
+   const token=group.shift();if(!token||seenValues.has(token.value))continue;
+   seenValues.add(token.value);candidates.push(token);if(candidates.length===limit)break;
+  }
+  }
+  for(const token of candidates){const name=token.name||token.tokenKey;result.push({key:`registered.${target}.v${roleHash(property+':'+name)}`,target,property,state:'default',label:name,token:name,registeredVariant:true});}
+ }
+ return result;
+}
+function pageGenerationStyleRoles(context={}){
+ const roles=pageStyleRoles(context,{bounded:true});
+ if(context.styleChoicesVersion!==1)return roles;
+ const pinned=new Set(context.pinnedStyleRoles||[]);
+ if(pinned.size)for(const role of pageStyleRoles(context))if(pinned.has(role.key)&&!roles.some(existing=>existing.key===role.key))roles.push(role);
+ return roles.filter(role=>!['border-color','border-width','border-style'].includes(role.property)||['border-color','border-width','border-style'].every(property=>roles.some(candidate=>candidate.target===role.target&&candidate.property===property&&context.tokenValues?.[pageStyleToken(context,candidate)])));
+}
+function pageStyleWarnings(context={}){
+ if(context.styleChoicesVersion!==1)return [];
+ const roles=pageStyleRoles(context);
+ const missing=['page','card','button','divider'].some(target=>roles.some(role=>role.target===target&&['border-color','border-width'].includes(role.property)&&pageStyleToken(context,role))&&!['border-color','border-width','border-style'].every(property=>roles.some(role=>role.target===target&&role.property===property&&pageStyleToken(context,role))));
+ return missing?[{code:'BORDER_TOKEN_SET_INCOMPLETE',level:'warning',tier:'designWarning',message:'일부 대상의 테두리 색상·두께·선 종류 등록 토큰이 완비되지 않아 해당 보더 선택을 제한했습니다. 관리자 토큰 등록을 확인해 주세요.'}]:[];
+}
+function pageStyleToken(context,role){return role?.registeredVariant?role.token:context.usagePolicy?.bindings?.[role?.key];}
+function pageNodeStyleRules(node, view, context, targets, resolvedRoles=pageStyleRoles(context)) {
+ const result=new Map();
+ const defaults=node.type==='text'?['text.primary','text.font',node.role==='heading'?'text.titleSize':'text.bodySize']:node.type==='button'?['button.background','button.color']:node.type==='divider'?['divider.color','divider.width']:node.type==='container'&&node.role==='page'?['page.background']:[];
+ for(const role of [...defaults,...node.styles.base,...(view==='desktop'?[]:node.styles[view]||[])]){
+  const rule=resolvedRoles.find(r=>r.key===role),token=pageStyleToken(context,rule);
+  if(rule&&targets.includes(rule.target)&&/^--[a-zA-Z][a-zA-Z0-9-]*$/.test(token||'')&&Object.hasOwn(context.tokenValues||{},token))result.set(`${rule.property}:${rule.state}`,{...rule,token});
+ }
+ if(context.styleChoicesVersion===1&&node.type==='icon')for(const [property,reference] of [['color','text.primary'],['font-size','text.bodySize']])if(!result.has(property+':default')){
+  const candidates=resolvedRoles.filter(rule=>rule.target==='icon'&&rule.property===property&&pageStyleToken(context,rule));
+  const candidate=candidates.find(rule=>pageStyleToken(context,rule)===context.usagePolicy?.bindings?.[reference])||candidates[0];
+  if(candidate)result.set(property+':default',{...candidate,token:pageStyleToken(context,candidate)});
+ }
+ if(context.styleChoicesVersion===1&&(node.type==='divider'||['border-color:default','border-width:default','border-style:default'].some(key=>result.has(key)))){
+  for(const property of ['border-color','border-width','border-style'])if(!result.has(property+':default')){
+   const candidates=resolvedRoles.filter(rule=>targets.includes(rule.target)&&rule.property===property&&pageStyleToken(context,rule));
+   const candidate=property==='border-style'?candidates.find(rule=>context.tokenValues[pageStyleToken(context,rule)]==='solid')||candidates[0]:candidates[0];
+   if(candidate)result.set(property+':default',{...candidate,token:pageStyleToken(context,candidate)});
+  }
+ }
+ return [...result.values()];
+}
+const COMPONENT_SCOPES = new Set(['button','card','icon','checkbox','chip','field','modal','navigation','radio','select','tab','tooltip','toast','badge','switch','avatar','divider','progress','slider']);
 function tokenScope(name) {
   const prefix=String(name||'').replace(/^--/,'').split('-')[0];
   return COMPONENT_SCOPES.has(prefix) ? prefix : 'shared';
@@ -139,4 +219,4 @@ function styleCssProperty(property) {
  return ({radius:'border-radius',shadow:'box-shadow',textColor:'color',surfaceColor:'background-color',accentColor:'background-color'})[key] || key.replace(/[A-Z]/g,letter=>`-${letter.toLowerCase()}`);
 }
 
-module.exports = { TOKEN_USAGE_RULES, tokenScope, tokenAllowedForRule, createTokenUsageDraft, validateTokenUsagePolicy, usageToken, usageBindings, usageRuntimeStyle, policyPermitsToken, targetForProperty, usageAssignmentErrors, usageCatalog, policySelectableTokens, styleCssProperty };
+module.exports = { TOKEN_USAGE_RULES, PAGE_STYLE_VARIANT_PROPERTIES, pageStyleRoles, pageGenerationStyleRoles, pageStyleWarnings, pageStyleToken, pageNodeStyleRules, tokenScope, tokenAllowedForRule, createTokenUsageDraft, validateTokenUsagePolicy, usageToken, usageBindings, usageRuntimeStyle, policyPermitsToken, targetForProperty, usageAssignmentErrors, usageCatalog, policySelectableTokens, styleCssProperty };

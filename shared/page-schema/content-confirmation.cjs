@@ -1,3 +1,4 @@
+// Generated from content-confirmation.mjs; run build:token-policy.
 // Shared by requirements review and server validation. Approval never fabricates copy.
 function confirmationText(value) {
  return typeof value === 'string' && value.trim() && !/^(?:확인\s*필요|미입력|미정|추후\s*확인|입력\s*필요|tbd|to be confirmed)[.!\s]*$/i.test(value.trim());

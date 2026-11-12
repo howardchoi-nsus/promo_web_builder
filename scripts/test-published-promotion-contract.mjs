@@ -62,3 +62,7 @@ assert.throws(
 );
 
 console.log("PublishedPromotion v1 contract tests passed");
+
+assert.equal(supportsRenderer({key:'page-schema-renderer',version:2}),true);
+assert.equal(supportsRenderer({key:'page-schema-renderer',version:3}),false);
+assert.equal(supportsRenderer({key:'default-promo-renderer',version:2}),false);

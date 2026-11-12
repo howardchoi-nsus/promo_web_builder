@@ -1,8 +1,8 @@
-export const TOKEN_TYPES = ['color', 'dimension', 'number', 'fontFamily', 'fontWeight', 'shadow', 'typography'];
-export const TOKEN_CATEGORIES = ['Color', 'Spacing', 'Border Width', 'Border Radius', 'Typography', 'Shadow', 'Grid', 'Breakpoint', 'Measurement'];
+export const TOKEN_TYPES = ['color', 'dimension', 'number', 'fontFamily', 'fontWeight', 'shadow', 'typography', 'borderStyle', 'gradient'];
+export const TOKEN_CATEGORIES = ['Color', 'Spacing', 'Border Width', 'Border Radius', 'Typography', 'Shadow', 'Grid', 'Breakpoint', 'Measurement', 'Border Style', 'Gradient'];
 export const CSV_HEADERS = ['카테고리', '토큰 유형', '토큰명', '값', '참조 토큰'];
 export const TOKEN_NAME = /^--[a-z][a-z0-9-]*$/;
-const length = /^-?(?:\d+|\d*\.\d+)(?:px|rem|em|%|vh|vw|ch)$/;
+const length = /^-?(?:\d+|\d*\.\d+)(?:px|rem|em|%|vh|vw|svh|dvh|ch)$/;
 const unsafe = /url\s*\(|expression\s*\(|[;{}<>]/i;
 
 export function parseTokenCsv(text) {
@@ -67,6 +67,12 @@ export function typographyProperties(value) {
   return props;
 }
 
+function gradient(value){
+ const match=value.match(/^linear-gradient\((.+)\)$/i);if(!match||value.length>1200)return false;
+ const stops=match[1].split(/,(?![^()]*\))/).map(stop=>stop.trim());
+ if(/^(?:-?(?:\d+|\d*\.\d+)deg|to (?:top|bottom|left|right)(?: (?:top|bottom|left|right))?)$/.test(stops[0]))stops.shift();
+ return stops.length>=2&&stops.length<=8&&stops.every(stop=>{const colorValue=stop.replace(/\s+(?:\d+|\d*\.\d+)%$/,'');return colorValue==='transparent'||color(colorValue);});
+}
 function validValue(type, value) {
   if (type !== 'typography' && unsafe.test(value)) return false;
   switch (type) {
@@ -76,6 +82,8 @@ function validValue(type, value) {
     case 'fontWeight': return /^\d+$/.test(value) && Number(value) >= 1 && Number(value) <= 1000;
     case 'fontFamily': return /^[\p{L}\p{N}\s,'"-]+$/u.test(value) && value.length <= 200;
     case 'shadow': return shadow(value);
+    case 'borderStyle': return ['none','solid','dashed','dotted','double'].includes(value);
+    case 'gradient': return gradient(value);
     case 'typography': try { typographyProperties(value); return true; } catch { return false; }
     default: return false;
   }
@@ -124,6 +132,8 @@ export function analyzeTokenLibrary(input) {
 export function tokenCssProperties(token) {
   if (token.type === 'typography') return ['font-family', 'font-size', 'font-weight', 'line-height', 'letter-spacing'];
   if (token.type === 'shadow') return ['box-shadow'];
+  if (token.type === 'borderStyle') return ['border-style'];
+  if (token.type === 'gradient') return ['background-image'];
   if (token.type === 'color') return ['color', 'background-color', 'border-color'];
   if (token.type === 'fontFamily') return ['font-family'];
   if (token.type === 'fontWeight') return ['font-weight'];
@@ -131,12 +141,16 @@ export function tokenCssProperties(token) {
   if (/^--grid-.*-gutter$|^--grid-gutter$/.test(token.name)) return ['gap','column-gap','row-gap'];
   if (/^--grid-.*-margin-inline$|^--grid-margin-inline$/.test(token.name)) return ['margin-inline','padding-inline'];
   if (/^--breakpoint-|^--grid-reference-/.test(token.name)) return ['layout-breakpoint'];
+  if(token.name.includes('line-height')||token.name.includes('line-hight'))return ['line-height'];
   if (token.type === 'number') return ['width'];
   if (token.name.includes('radius')) return ['border-radius'];
   if (token.name.includes('border-width')) return ['border-width'];
   if (token.name.includes('font-size')) return ['font-size'];
   if (token.name.includes('line-height') || token.name.includes('line-hight')) return ['line-height'];
   if (token.name.includes('letter-spacing')) return ['letter-spacing'];
+  if(/^--icon-(?:size|.*-size)(?:-|$)/.test(token.name))return ['font-size'];
+  if(token.name.endsWith('min-height'))return ['min-height'];
+  if(token.name.endsWith('height'))return ['height'];
   return ['gap', 'padding', 'margin'];
 }
 

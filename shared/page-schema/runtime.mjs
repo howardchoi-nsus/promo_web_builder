@@ -1,5 +1,5 @@
 import {layoutTokenPolicy} from '../layout-token-policy.mjs';
-import { TOKEN_USAGE_RULES } from '../token-usage-policy.mjs';
+import { TOKEN_USAGE_RULES, pageStyleRoles, pageStyleToken, pageNodeStyleRules } from '../token-usage-policy.mjs';
 export const views = ['desktop', 'tablet', 'mobile'];
 export function safeUrl(value) {
  const s=String(value||''); if(!s||/[\s\\\u0000-\u001f\u007f]/u.test(s)||s.startsWith('//'))return '';
@@ -15,14 +15,8 @@ export function effectiveLayout(node, view) {
  return layout;
 }
 export function nodeTargets(node) {return node.type==='container'?(node.role==='group'?['layout']:['page','layout']):({grid:['layout'],stack:['layout'],card:['card','layout'],text:['text'],button:['button','layout'],input:['input','layout'],image:['image','layout'],divider:['divider','layout'],icon:['icon','layout'],video:['video','layout']}[node.type]||[]);}
-export function styleRules(node, view, context) {
- const result=new Map();
- const defaults=node.type==='text'?['text.primary','text.font',node.role==='heading'?'text.titleSize':'text.bodySize']:node.type==='button'?['button.background','button.color']:node.type==='divider'?['divider.color','divider.width']:node.type==='container'&&node.role==='page'?['page.background']:[];
- for(const role of [...defaults,...node.styles.base,...(view==='desktop'?[]:node.styles[view]||[])]){
-  const rule=TOKEN_USAGE_RULES.find(r=>r.key===role),token=context.usagePolicy?.bindings?.[role];
-  if(rule&&nodeTargets(node).includes(rule.target)&&/^--[a-zA-Z][a-zA-Z0-9-]*$/.test(token||'')&&Object.hasOwn(context.tokenValues||{},token))result.set(`${rule.property}:${rule.state}`,{...rule,token});
- }
- return [...result.values()];
+export function styleRules(node,view,context,resolvedRoles=pageStyleRoles(context)){
+ return pageNodeStyleRules(node,view,context,nodeTargets(node),resolvedRoles);
 }
 export function tokenVariables(context) {
  return Object.fromEntries(Object.entries(context.tokenValues||{}).filter(([key,value])=>(context.tokenCatalog||[]).some(token=>(token.name||token.tokenKey)===key&&token.state!=='draft'&&token.state!=='incomplete')&&/^--[a-zA-Z][a-zA-Z0-9-]*$/.test(key)&&!key.startsWith('--app-')&&typeof value==='string'&&!/[;{}<>]|url\s*\(|expression\s*\(|@import/i.test(value)));
@@ -44,13 +38,14 @@ export function gridTrackSpans(weights,budget){
 export function pageCss(page,context,scope) {
  if(!/^ps-[a-zA-Z0-9_-]+$/.test(scope))return '';
  const policy=layoutTokenPolicy(context);if(!policy.ok)return '';
+ const resolvedRoles=pageStyleRoles(context);
  const rules={desktop:[],desktopWide:[],tablet:[],mobile:[]};
  for(const node of nodes(page)){
   if(!/^[A-Za-z][A-Za-z0-9_-]{0,79}$/.test(node.id||''))continue;
   for(const view of ['desktop','desktopWide','tablet','mobile']){const l=effectiveLayout(node,view==='desktopWide'?'desktop':view),selector=`[data-ps-scope="${scope}"] [data-ps-node="${node.id}"]`;
    const props={ 'align-items':({start:'flex-start',end:'flex-end',center:'center',stretch:'stretch'})[l.align], 'justify-content':({start:'flex-start',end:'flex-end',center:'center','space-between':'space-between'})[l.justify],width:l.width==='fill'?'100%':l.width==='fit-content'?'fit-content':'auto','grid-column':`span ${Math.max(1,Math.min(12,Number(l.columnSpan)||1))}`};
    if(['container','stack','card'].includes(node.type)){props.display='flex';props['flex-direction']=l.direction==='row'?'row':'column';props['flex-wrap']='wrap';}
-   if(node.type==='divider')props[node.direction==='vertical'?'border-left-style':'border-top-style']='solid';
+   if(node.type==='divider'){if(context.styleChoicesVersion!==1)props[node.direction==='vertical'?'border-left-style':'border-top-style']='solid';else props['border-style']='none';}
    if(node.type==='grid'){props.display='grid';props['grid-template-columns']=`repeat(var(${policy.profiles[view].columns}),minmax(0,1fr))`;}
    const spacing={...(node.styles.spacing?.base||{}),...(['desktop','desktopWide'].includes(view)?{}:Object.fromEntries(Object.entries(node.styles.spacing?.[view]||{}).filter(([,value])=>value!==null)))};
    for(const [property,token] of Object.entries(spacing))if(token&&policy.spacing.includes(token))props[property]=`var(${token})`;
@@ -58,7 +53,7 @@ export function pageCss(page,context,scope) {
    if(node===page.root)props['padding-inline']=`var(${policy.profiles[view].margin})`;
    const defaults=Object.entries(props).filter(([,v])=>v).map(([k,v])=>`${k}:${v}`).join(';');
    const byState={default:[],hover:[],pressed:[],disabled:[]};
-   for(const r of styleRules(node,view,context))if(!spacing[r.property])byState[r.state]?.push(`${r.property}:var(${r.token})`);
+   for(const r of styleRules(node,view,context,resolvedRoles))if(!spacing[r.property])byState[r.state]?.push(`${node.type==='divider'&&/^border-(color|width|style)$/.test(r.property)?r.property.replace('border-',node.direction==='vertical'?'border-left-':'border-top-'):r.property}:var(${r.token})`);
    rules[view].push(`${selector}{${defaults};${byState.default.join(';')}${node===page.root?`;padding-inline:var(${policy.profiles[view].margin})`:''}}`);
    if(node.type==='grid'){
     const weights=l.columns?.length?l.columns:[1],tracks=gridTrackSpans(weights,Number(context.tokenValues[policy.profiles[view].columns]));let cursor=0;

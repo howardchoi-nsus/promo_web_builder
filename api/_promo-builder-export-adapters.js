@@ -1,10 +1,12 @@
 const { createHash } = require("node:crypto");
+const {supportsRenderer,SUPPORTED_PAGE_SCHEMA_RENDERER_VERSIONS}=require("../shared/renderer-contract.cjs");
 
 const NUXT_RUNTIME_COMPATIBILITY = Object.freeze({
   framework: "nuxt",
   runtimeVersion: "4.5.2",
   publicationContractVersion: 1,
   supportedSnapshotContractVersions: Object.freeze([2, 3]),
+  pageSchemaRendererVersions: SUPPORTED_PAGE_SCHEMA_RENDERER_VERSIONS,
   renderer: Object.freeze({ key: "default-promo-renderer", version: 1 }),
 });
 
@@ -77,7 +79,7 @@ function assertNuxtRuntimeCompatibility(snapshot) {
   };
   if (!NUXT_RUNTIME_COMPATIBILITY.supportedSnapshotContractVersions.includes(exported.contractVersion)
     || ![NUXT_RUNTIME_COMPATIBILITY.renderer.key,"page-schema-renderer"].includes(renderer.key)
-    || renderer.version !== NUXT_RUNTIME_COMPATIBILITY.renderer.version) {
+    || !supportsRenderer(renderer)) {
     const error = new TypeError("Snapshot is not compatible with the Nuxt promotion runtime");
     error.code = "NUXT_RUNTIME_INCOMPATIBLE";
     error.statusCode = 422;

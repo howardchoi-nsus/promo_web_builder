@@ -68,7 +68,7 @@ export default {
     },
     openAdd() {
       const category = this.selectedCategory || 'Color';
-      const type = ({ Color: 'color', Typography: 'typography', Shadow: 'shadow', Grid: 'number' })[category] || 'dimension';
+      const type = ({ Color: 'color', Typography: 'typography', Shadow: 'shadow', Grid: 'number', 'Border Style':'borderStyle', Gradient:'gradient' })[category] || 'dimension';
       this.form = { category, type, name: '', value: '', reference: '' }; this.showAdd = true; this.error = '';
     },
     addToken() {

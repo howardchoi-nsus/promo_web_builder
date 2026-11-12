@@ -1,7 +1,7 @@
 const {createHash}=require('node:crypto');
 const guidelines=require('../shared/page-schema/design-guidelines.json');
 const {walk}=require('../shared/page-schema/contract.cjs');
-function shape(node){return {type:node.type,role:node.role||null,purpose:node.purpose||null,layout:node.layout,children:(node.children||[]).map(shape)};}
+function shape(node){return {type:node.type,role:node.role||null,purpose:node.purpose||null,layout:node.layout,...(node.presentation==='background'?{presentation:'background'}:{}),children:(node.children||[]).map(shape)};}
 function canonical(value){
  if(Array.isArray(value))return value.map(canonical);
  if(value&&typeof value==='object')return Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonical(value[key])]));
