@@ -81,4 +81,15 @@ assert.equal((await reconnect({operation:'refresh-token-library',documentId:'for
 assert.equal((await reconnect({operation:'refresh-token-library',documentId:'owned',baseDocumentRevision:4},'')).status,401);
 const refreshed=await reconnect({operation:'refresh-token-library',documentId:'owned',baseDocumentRevision:4});assert.equal(refreshed.status,200,JSON.stringify(refreshed));assert.equal(revision,5);assert.equal(qualityVerified,false);
 assert.equal((await call('PUT',{documentId:'owned',baseDocumentRevision:5,page:snapshot.content.pageSchema})).status,200);assert.equal(snapshot.generationMeta.review.state,'pending');
+// Automatic repairs use a server-owned operation, preserve ownership/CAS,
+// and request renewed approval only when structural placement changes.
+const {designFixture}=await import('./fixtures/design-preview-enhancements.mjs');
+const designed=designFixture({pending:false});snapshot.content.pageSchema=designed.page;snapshot.content.pageContext=designed.context;snapshot.generationMeta.review={state:'approved'};
+const repairArgs={operation:'repair-quality',documentId:'owned',baseDocumentRevision:revision,diagnostics:[{code:'IMAGE_OCCLUDED',path:'design_image',viewport:'desktop',level:'blocking'}]};
+assert.equal((await call('POST',{...repairArgs,documentId:'foreign'})).status,404);
+assert.equal((await call('POST',{...repairArgs,baseDocumentRevision:0})).status,409);
+const beforeRepairRevision=revision,modelCalls=calls;
+const repairResult=await call('POST',repairArgs);assert.equal(repairResult.status,200,JSON.stringify(repairResult));assert.equal(repairResult.payload.requiresApproval,true);assert.equal(revision,beforeRepairRevision+1);assert.equal(calls,modelCalls);
+assert.equal(snapshot.generationMeta.review.state,'pending');assert.equal(snapshot.content.pageSchema.root.children.find(n=>n.id==='design_image').assetId,'image_ready');
+const noRepair=await call('POST',{...repairArgs,baseDocumentRevision:revision});assert.equal(noRepair.payload.changed,false);assert.equal(revision,beforeRepairRevision+1);
 console.log('PageSchema API: disabled flag, session ownership, generation/save, revision conflicts, invalid edit preservation, tablet gate and pinned context passed.');

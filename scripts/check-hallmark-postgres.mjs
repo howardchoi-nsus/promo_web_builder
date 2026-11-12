@@ -81,6 +81,11 @@ const noChatJob=await jobs.acquireGeneration(sql,{documentId:mediaDoc,ownerSubje
 await db.exec('alter table promo_builder_chat_sessions rename to hidden_chat_sessions');
 await createDocumentRevision(sql,{documentId:mediaDoc,ownerSubject:owner,baseDocumentRevision:3,snapshot:persisted.snapshot,source:'manual',generationJob:noChatJob});
 await db.exec('alter table hidden_chat_sessions rename to promo_builder_chat_sessions');
+// A server quality repair also guards the summary in the same SQL transaction,
+// without needing to create or complete an LLM/media generation job.
+await assert.rejects(createDocumentRevision(sql,{documentId:mediaDoc,ownerSubject:owner,baseDocumentRevision:4,snapshot:persisted.snapshot,source:'manual',requirementsGuard:1}),{code:'REQUIREMENTS_REVISION_MISMATCH'});
+assert.equal((await readMedia()).document.currentDocumentRevision,4);
+const qualityRepairSave=await createDocumentRevision(sql,{documentId:mediaDoc,ownerSubject:owner,baseDocumentRevision:4,snapshot:persisted.snapshot,source:'manual',requirementsGuard:2});assert.equal(qualityRepairSave.revision,5);
 console.log('PostgreSQL media: registered styles and icons, jsonb request reordering, atomic media/job completion and persisted image binding passed.');
 await db.exec("create table promo_design_token_definitions(value_type text constraint promo_design_token_definitions_value_type_check check(value_type in ('color','dimension')))");
 const borderMigration=fs.readFileSync(root+'/db/migrations/090_design_token_border_style.sql','utf8');await db.exec(borderMigration);await db.exec(borderMigration);

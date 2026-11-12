@@ -16,4 +16,11 @@ function layoutTokenPolicy(context={}) {
  return {ok:!errors.length,errors,profiles,breakpoints:{tablet,desktop,wide},spacing};
 }
 function assertLayoutTokens(context){const result=layoutTokenPolicy(context);if(!result.ok)throw Object.assign(new Error('등록된 그리드·반응형 토큰을 확인해 주세요.'),{code:'LAYOUT_TOKEN_POLICY_INVALID',statusCode:422,errors:result.errors});return result;}
-module.exports={PROFILES,layoutTokenPolicy,assertLayoutTokens};
+function previewReference(context={},view='desktop'){
+ const profile={desktop:'desktop-1440',tablet:'tablet-768',mobile:'mobile-375'}[view];
+ const key=profile&&`--grid-reference-${profile}-width`;
+ const registered=(context.tokenCatalog||[]).find(t=>(t.name||t.tokenKey)===key&&!['draft','incomplete'].includes(t.state));
+ const value=context.tokenValues?.[key];
+ return registered&&/^\d+(?:\.\d+)?px$/.test(value||'')&&parseFloat(value)>0?{key,width:parseFloat(value)}:null;
+}
+module.exports={PROFILES,layoutTokenPolicy,assertLayoutTokens,previewReference};

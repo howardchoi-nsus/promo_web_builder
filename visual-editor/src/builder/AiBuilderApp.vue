@@ -2167,14 +2167,15 @@ function qualityGateMessage(result) {
   if (Number(result.blockingCount || 0) > 0) {
     return [
       `Desktop ${Number(desktop.blockingCount || 0)}건`,
+      ...(result.results?.tablet?[`Tablet ${Number(result.results.tablet.blockingCount||0)}건`]:[]),
       `Mobile ${Number(mobile.blockingCount || 0)}건`,
       "겹침·잘림·빈 섹션·미완성 콘텐츠를 수정해야 합니다.",
     ].join(" · ");
   }
   if (Number(result.warningCount || 0) > 0) {
-    return `품질 검사 통과 · 대비 또는 여백 경고 ${Number(result.warningCount || 0)}건`;
+    return `품질 검사 통과 · 안내 ${Number(result.warningCount || 0)}건`;
   }
-  return "Desktop과 Mobile 디자인 품질 검사를 통과했습니다.";
+  return result.results?.tablet?"Desktop·Tablet·Mobile 디자인 품질 검사를 통과했습니다.":"Desktop과 Mobile 디자인 품질 검사를 통과했습니다.";
 }
 
 function designTokenSetVersionId(snapshot = store.snapshot) {
@@ -2187,6 +2188,8 @@ async function runFinalQualityGate({ autoRepair = true, force = false } = {}) {
   if (!store.snapshot || !store.documentId || !store.documentRevision || finalQualityChecking.value) return false;
   if (!force && finalQualityPassed.value) return true;
   finalQualityChecking.value = true;
+  const qualityOperationId=`page-quality-${store.documentId}`;
+  updateStatusMessage(qualityOperationId,'화면 크기별 배치·가독성·이미지·CTA를 자동 검사하고 있습니다.','in_progress');
   transientQualityGate.value = {
     contractVersion: 1,
     state: "checking",
@@ -2229,6 +2232,7 @@ async function runFinalQualityGate({ autoRepair = true, force = false } = {}) {
         store.documentRevision = Number(saved.revision);
         store.snapshot = saved.snapshot;
         transientQualityGate.value = null;
+        updateStatusMessage(qualityOperationId,`품질 검사를 통과했습니다. 새 창 보기와 출력을 사용할 수 있습니다.${Number(result.warningCount||0)?' 이동 경로 미정 등 안내 항목은 채팅의 검사 내역에서 확인할 수 있습니다.':''}`,'completed');
         recordBuilderEvent({
           eventName: "builder_quality_gate_passed",
           documentId: store.documentId,
@@ -2238,6 +2242,21 @@ async function runFinalQualityGate({ autoRepair = true, force = false } = {}) {
         return true;
       }
       if (!autoRepair || attempt >= 2) break;
+      // Missing libraries/reference geometry require configuration recovery,
+      // not a structural rewrite measured on an invalid preview canvas.
+      if((result.diagnostics||[]).some(item=>/^(LAYOUT_TOKEN|LAYOUT_BREAKPOINT|TOKEN_USAGE_POLICY|OUTPUT_TOKEN)/.test(item.code||'')))break;
+      if(store.snapshot.content?.pageSchema){
+        updateStatusMessage(qualityOperationId,`검사 결과를 등록 토큰 범위에서 자동 보정합니다. (${attempt+1}/2)`,'in_progress');
+        const repaired=await generatePageSchema({operation:'repair-quality',documentId:store.documentId,baseDocumentRevision:store.documentRevision,diagnostics:result.diagnostics||[]});
+        if(!repaired.changed)break;
+        store.snapshot=repaired.snapshot;store.documentRevision=Number(repaired.revision);transientQualityGate.value=null;
+        if(repaired.requiresApproval){
+          store.stage='review_required';activeResultTab.value='wireframe';
+          updateStatusMessage(qualityOperationId,'이미지 가림·좁은 컬럼을 보정하면서 구성이 변경됐습니다. 이미지는 보존했습니다. 새 페이지 미리보기를 확인한 뒤 채팅의 페이지 구성 승인을 눌러주세요.','completed');
+          return false;
+        }
+        await nextTick();continue;
+      }
       const repaired = await compositionReviewRef.value?.buildAutoRepairSnapshot?.(store.snapshot, result);
       if (!repaired?.changed) break;
       const repairedSave = await saveBuilderDocument({
@@ -2270,6 +2289,7 @@ async function runFinalQualityGate({ autoRepair = true, force = false } = {}) {
       documentRevision: store.documentRevision,
       metadata: { blockingCount: transientQualityGate.value.blockingCount },
     });
+    updateStatusMessage(qualityOperationId,'자동 보정으로 해결하지 못한 항목이 있습니다. 채팅의 검사 내역에 원인과 필요한 설정을 표시했습니다. 완료된 이미지와 콘텐츠는 보존했습니다.','failed');
     return false;
   } finally {
     automaticQualityKey = `${store.documentId}:${store.documentRevision}`;
@@ -2281,6 +2301,7 @@ async function checkFinalQuality() {
   clearBuilderError(store);
   try {
     const passed = await runFinalQualityGate({ autoRepair: true, force: true });
+    if(pageStructurePending.value)return;
     if (!passed) {
       throw Object.assign(new Error(transientQualityGate.value?.message || "디자인 품질 검사를 통과하지 못했습니다."), {
         code: "PREVIEW_QUALITY_BLOCKED",

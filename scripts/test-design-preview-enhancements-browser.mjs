@@ -5,10 +5,14 @@ import {resolve,extname} from 'node:path';
 import {createRequire} from 'node:module';
 import {chromium} from 'playwright';
 import {fixture,context} from './fixtures/page-schema.mjs';
+import {pageStyleRoles} from '../shared/token-usage-policy.mjs';
 import {designFixture,png} from './fixtures/design-preview-enhancements.mjs';
 const require=createRequire(import.meta.url);
 const {snapshotForPage}=require('../api/_page-schema-service');
-const {normalize}=require('../shared/page-schema/contract.cjs');
+const {normalize,walk}=require('../shared/page-schema/contract.cjs');
+const {repairPageQuality}=require('../api/_page-schema-quality-repair');
+const {structuralHash}=require('../api/_page-schema-design');
+let repairCalls=0;
 let revision=0,snapshot,generated=0,edited=0,approved=0,savedGate,mediaCalls=0;
 const errors=[],requests=[];
 const overview={title:'동적 페이지 테스트',leadText:'혜택 안내',promotionPurpose:'기타',promotionPurposeOther:'프로모션',market:'한국',audience:'일반고객',campaignTone:'친근함',mainOffer:'',_review:{missingCriticalInputs:['mainOffer']},contentSections:[],additionalInformation:[{label:'기간',value:'미정',confirmationRequired:true}],notices:[],legalInformation:[]};
@@ -22,6 +26,13 @@ const server=createServer(async(req,res)=>{try{
   if(pathname==='/api/promo-builder-documents'&&req.method==='GET')payload={ok:true,document:{id:'browser-doc',currentDocumentRevision:revision,mode:'ai'},snapshot};
   if(pathname==='/api/promo-builder-documents'&&req.method==='POST')payload.document={id:'browser-doc',currentDocumentRevision:0};
   if(pathname==='/api/promo-overview-parse')payload={ok:true,overview,overviewFingerprint:'fixture',missingCriticalInputs:['mainOffer'],warnings:[]};
+  if(pathname==='/api/promo-page-schema'&&body.operation==='repair-quality'){
+   repairCalls++;assert.equal(body.baseDocumentRevision,revision);
+   const repaired=repairPageQuality(snapshot.content.pageSchema,snapshot.content.pageContext,body.diagnostics);
+   const requiresApproval=structuralHash(repaired.page)!==structuralHash(snapshot.content.pageSchema);
+   if(repaired.changed){snapshot.content.pageSchema=repaired.page;snapshot.documentRevision=++revision;snapshot.qualityGate={state:'pending'};if(requiresApproval)snapshot.generationMeta.review={state:'pending'};}
+   res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({ok:true,changed:repaired.changed,requiresApproval,revision,snapshot}));
+  }
   if(pathname==='/api/promo-page-schema'){
    assert.equal(body.documentId,'browser-doc');assert.equal(body.baseDocumentRevision,revision);
    if(body.operation==='approve-structure'){approved++;snapshot.generationMeta.review={state:'approved'};}else if(req.method==='POST'){generated++;const designed=designFixture();snapshot=snapshotForPage(normalize(designed.page).page,designed.context);snapshot.generationMeta.review={state:'pending'};}else{edited++;snapshot.content.pageSchema=body.page;snapshot.generationMeta.review={state:'pending'};}
@@ -90,6 +101,36 @@ try{
   await Promise.all([resumedMedia,resumedQuality]);
   assert.equal(mediaCalls,beforeCalls+1,stage+' must resume pending images exactly once');assert.equal(approved,1);
  }
+ // A real low-contrast rendered heading triggers registered-only paint repair.
+ const designed=designFixture({pending:false});
+ designed.context.tokenValues['--color-neutral-dark']='#232329';
+ designed.context.tokenCatalog.push({name:'--color-neutral-dark',value:'#232329',state:'active',cssProperties:['color']});
+ const dark=pageStyleRoles(designed.context).find(r=>r.target==='text'&&r.token==='--color-neutral-dark');
+ let contrastHeading;walk(designed.page.root,({node})=>{if(node.type==='text'&&node.role==='heading'&&!contrastHeading)contrastHeading=node;if(node.type==='button')node.actionId=null;});
+ const darkRoles=pageStyleRoles(designed.context);
+ contrastHeading.styles.base=contrastHeading.styles.base.filter(key=>darkRoles.find(r=>r.key===key)?.property!=='color').concat(dark.key);
+ snapshot=snapshotForPage(normalize(designed.page).page,designed.context);snapshot.generationMeta.review={state:'approved'};snapshot.documentRevision=++revision;snapshot.qualityGate={state:'pending'};savedGate=undefined;
+ const paintComplete=page.waitForResponse(response=>response.url().endsWith('/api/promo-builder-documents')&&response.request().method()==='PATCH');
+ await page.evaluate(()=>{const k='promoAiBuilder.activeChat.v2',c=JSON.parse(sessionStorage.getItem(k));Object.assign(c,{stage:'render_ready',activeResultTab:'final',failedTask:null});sessionStorage.setItem(k,JSON.stringify(c));});
+ await page.reload();await paintComplete;
+ assert.ok(repairCalls>=1,'actual contrast failure must execute automatic repair');assert.equal(snapshot.generationMeta.review.state,'approved');assert.equal(approved,1);
+ assert.ok(savedGate.warningCount>0,'unconfigured CTA is advisory static copy, not a mandatory URL');
+ assert.equal(await page.frameLocator('iframe').first().locator('[data-ps-action-state=unbound]').first().evaluate(el=>el.tagName),'SPAN');
+ assert.equal(await page.locator('.ai-chat-pane').getByRole('button',{name:'새 창에서 확인',exact:true}).isEnabled(),true);
+ // Opaque copy covering a key visual requires separation and explicit reapproval.
+ const obscured=designFixture({pending:false}),photo=obscured.page.root.children.find(n=>n.id==='design_image'),hero=obscured.page.root.children.find(n=>n.type==='container'&&n.role==='section');
+ obscured.page.root.children=obscured.page.root.children.filter(n=>n!==photo);hero.overlayRole=obscured.page.root.overlayRole;obscured.page.root.overlayRole=null;
+ hero.children=[{type:'card',id:'opaque_hero_copy',label:'혜택 안내',sourceIds:[],layout:structuredClone(hero.layout),styles:{base:['card.background'],tablet:null,mobile:null,spacing:{base:{gap:null,padding:null,margin:null},tablet:null,mobile:null}},children:hero.children},photo];
+ snapshot=snapshotForPage(normalize(obscured.page).page,obscured.context);snapshot.generationMeta.review={state:'approved'};snapshot.documentRevision=++revision;snapshot.qualityGate={state:'pending'};savedGate=undefined;
+ const originalMediaCalls=mediaCalls;
+ await page.evaluate(()=>{const k='promoAiBuilder.activeChat.v2',c=JSON.parse(sessionStorage.getItem(k));Object.assign(c,{stage:'render_ready',activeResultTab:'final',failedTask:null});sessionStorage.setItem(k,JSON.stringify(c));});
+ await page.reload();
+ await page.locator('.ai-chat-pane').getByRole('button',{name:'페이지 구성 승인',exact:true}).waitFor();
+ assert.equal(snapshot.generationMeta.review.state,'pending');assert.equal(savedGate,undefined);
+ assert.equal(snapshot.content.pageSchema.root.children.find(n=>n.id===hero.id).children.find(n=>n.id==='design_image').presentation,'content');
+ const reapprovedGate=page.waitForResponse(response=>response.url().endsWith('/api/promo-builder-documents')&&response.request().method()==='PATCH');
+ await page.locator('.ai-chat-pane').getByRole('button',{name:'페이지 구성 승인',exact:true}).click();await reapprovedGate;
+ assert.equal(mediaCalls,originalMediaCalls,'structure repair must retain prepared image without regenerating');assert.equal(approved,2);assert.ok(savedGate);
  assert.deepEqual(errors,[]);
  console.log('Design preview browser: approval → automatic media failure → chat retry → image/background/overlay/icon/border/typographic hierarchy → three-viewport quality; tab-only and interrupted preparation resume; approved geometry preserved.');
 }finally{await browser.close();await new Promise(r=>server.close(r));}

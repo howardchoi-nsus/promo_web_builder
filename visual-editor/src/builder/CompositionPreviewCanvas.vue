@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import PromoReadonlyRenderer from "../runtime/PromoReadonlyRenderer.vue";
 import PromoPageRenderer from "../PromoPageRenderer.vue";
+import {previewReference} from '../../../shared/layout-token-policy.mjs';
 
 const props = defineProps({
   snapshot: { type: Object, required: true },
@@ -19,7 +20,8 @@ let previewObserver = null;
 let previewFrame = 0;
 
 const effectiveViewport = computed(() => inspectionViewport.value || props.viewport);
-const previewWidth = computed(() => effectiveViewport.value === "mobile" ? 390 : effectiveViewport.value === "tablet" ? 768 : 1280);
+const registeredPreview=computed(()=>props.snapshot.content?.pageSchema?previewReference(props.snapshot.content.pageContext,effectiveViewport.value):null);
+const previewWidth = computed(() => props.snapshot.content?.pageSchema?(registeredPreview.value?.width||1):(effectiveViewport.value === "mobile" ? 390 : effectiveViewport.value === "tablet" ? 768 : 1280));
 const previewShellStyle = computed(() => ({
   width: `${Math.max(1, previewWidth.value * previewScale.value)}px`,
   height: `${Math.max(1, previewHeight.value * previewScale.value)}px`,
@@ -89,6 +91,11 @@ async function inspectQualityAcrossViewports() {
         warningCount: 0,
         diagnostics: props.snapshot.content?.pageSchema ? [{code:"RENDERER_NOT_READY",level:"blocking",message:"페이지 렌더러를 준비하지 못했습니다."}] : [],
       };
+      if(props.snapshot.content?.pageSchema&&!registeredPreview.value&&!(results[viewport].diagnostics||[]).some(item=>/^LAYOUT_/.test(item.code||''))){
+        const result=results[viewport];result.diagnostics||=[];
+        result.diagnostics.push({code:'LAYOUT_TOKEN_REFERENCE_REQUIRED',level:'blocking',path:viewport,message:'등록된 화면 기준 폭 토큰을 연결해야 정확한 미리보기와 검사가 가능합니다.'});
+        result.blockingCount=Number(result.blockingCount||0)+1;result.count=Number(result.count||0)+1;
+      }
     }
   } finally {
     inspectionViewport.value = "";
@@ -215,7 +222,7 @@ function promoteBlockingSectionsToFlow(snapshot, diagnostics) {
 }
 
 async function buildAutoRepairSnapshot(sourceSnapshot, qualityResult) {
-  if(sourceSnapshot?.content?.pageSchema)return {snapshot:sourceSnapshot,changed:false};
+  if(sourceSnapshot?.content?.pageSchema)return {snapshot:sourceSnapshot,changed:false,requiresServerRepair:true,diagnostics:qualityResult.diagnostics||[]};
   const snapshot = JSON.parse(JSON.stringify(sourceSnapshot));
   snapshot.designSpec ||= {};
   snapshot.designSpec.itemStyles ||= {};

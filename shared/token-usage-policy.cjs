@@ -23,7 +23,7 @@ const TOKEN_USAGE_RULES = Object.freeze([
   rule('button.radius','button','border-radius','버튼 모서리',['--border-radius-md']),
   rule('button.padding','button','padding','버튼 좌우 패딩',['--spacing-16']),
   rule('button.border','button','border-color','버튼 테두리',['--button-border-brand-default']),
-  rule('button.borderWidth','button','border-width','버튼 테두리 두께',['--border-width-1']),
+  rule('button.borderWidth','button','border-width','버튼 테두리 두께',['--border-width-sm','--border-width-1']),
   rule('button.font','button','font-family','버튼 글꼴',['--typography-body-lg-typeface','--typeface-roboto']),
   rule('button.lineHeight','button','line-height','버튼 줄 높이',['--typography-body-md-line-height','--typography-body-md-line-hight']),
   rule('button.size','button','font-size','버튼 글자 크기',['--typography-label-md-font-size']),
@@ -33,7 +33,7 @@ const TOKEN_USAGE_RULES = Object.freeze([
   rule('button.disabledBackground','button','background-color','버튼 배경 · disabled',['--button-container-brand-disable'],false,'disabled'),
   rule('button.disabledColor','button','color','버튼 문구 · disabled',['--button-label-disable'],false,'disabled'),
   rule('divider.color','divider','border-color','구분선 색상'),
-  rule('divider.width','divider','border-width','구분선 두께',['--border-width-1']),
+  rule('divider.width','divider','border-width','구분선 두께',['--border-width-sm','--border-width-1']),
 ]);
 // Optional registered-only roles; old policies remain valid without these bindings.
 const PAGE_STYLE_VARIANT_PROPERTIES = Object.freeze({
@@ -90,8 +90,10 @@ function pageGenerationStyleRoles(context={}){
 function pageStyleWarnings(context={}){
  if(context.styleChoicesVersion!==1)return [];
  const roles=pageStyleRoles(context);
- const missing=['page','card','button','divider'].some(target=>roles.some(role=>role.target===target&&['border-color','border-width'].includes(role.property)&&pageStyleToken(context,role))&&!['border-color','border-width','border-style'].every(property=>roles.some(role=>role.target===target&&role.property===property&&pageStyleToken(context,role))));
- return missing?[{code:'BORDER_TOKEN_SET_INCOMPLETE',level:'warning',tier:'designWarning',message:'일부 대상의 테두리 색상·두께·선 종류 등록 토큰이 완비되지 않아 해당 보더 선택을 제한했습니다. 관리자 토큰 등록을 확인해 주세요.'}]:[];
+ return ['page','card','button','divider'].flatMap(target=>{
+  const missing=['border-color','border-width','border-style'].filter(property=>!roles.some(role=>role.target===target&&role.property===property&&context.tokenValues?.[pageStyleToken(context,role)]));
+  return missing.length?[{code:'BORDER_TOKEN_SET_INCOMPLETE',level:'warning',tier:'designWarning',path:target,missingProperties:missing,message:`${target} 보더에 사용할 수 있는 등록 매핑이 없습니다: ${missing.join(', ')}. 기존 색상·두께 토큰을 유지하며 누락 속성을 임의 값으로 대체하지 않습니다.`}]:[];
+ });
 }
 function pageStyleToken(context,role){return role?.registeredVariant?role.token:context.usagePolicy?.bindings?.[role?.key];}
 function pageNodeStyleRules(node, view, context, targets, resolvedRoles=pageStyleRoles(context)) {

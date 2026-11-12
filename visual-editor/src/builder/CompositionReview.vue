@@ -2,6 +2,7 @@
 import { computed, ref } from "vue";
 import TokenUsageReport from "./TokenUsageReport.vue";
 import CompositionPreviewCanvas from "./CompositionPreviewCanvas.vue";
+import {previewReference} from '../../../shared/layout-token-policy.mjs';
 
 const props = defineProps({
   snapshot: { type: Object, required: true },
@@ -22,6 +23,7 @@ const previewViewport = computed({
   set: (viewport) => emit("update:viewport", viewport),
 });
 
+const previewReferenceWidth=computed(()=>props.snapshot.content?.pageSchema?previewReference(props.snapshot.content.pageContext,previewViewport.value)?.width:null);
 function selectPreviewViewport(viewport) {
   previewViewport.value = viewport;
 }
@@ -33,6 +35,11 @@ const qualityPassed = computed(() => (
   && Number(props.qualityGate?.documentRevision || 0) === Number(props.documentRevision || 0)
   && Number(props.qualityGate?.blockingCount || 0) === 0
 ));
+const outputDisabledReason=computed(()=>props.busy?'이미지 준비 또는 품질 검사가 진행 중입니다.':qualityPassed.value?'':qualityState.value==='failed'?'자동 보정으로 해결하지 못한 항목이 있어 출력을 보류했습니다. 아래 검사 내역을 안내합니다.':qualityState.value==='passed'?'페이지가 변경되어 최신 Revision을 자동 검사해야 합니다.':'자동 품질 검사 완료 후 새 창 보기와 출력을 사용할 수 있습니다.');
+const diagnostics=computed(()=>{
+ const values=props.qualityGate?.diagnostics||Object.entries(props.qualityGate?.results||{}).flatMap(([viewport,result])=>(result.diagnostics||[]).map(item=>({...item,viewport})));
+ return [...new Map(values.map(item=>[`${item.viewport}:${item.path}:${item.code}`,item])).values()];
+});
 const qualityLabel = computed(() => {
   if (qualityState.value === "checking") return `${viewportLabel.value} 품질 검사 중`;
   if (qualityPassed.value) {
@@ -75,13 +82,17 @@ defineExpose({ buildAutoRepairSnapshot, inspectQualityAcrossViewports });
         <button type="button" class="ai-builder-secondary" @click="emit('rollback')">이전 버전</button>
         <button type="button" class="ai-builder-secondary" @click="emit('edit-natural-language')">채팅으로 수정</button>
 
-        <button type="button" class="ai-builder-primary" :disabled="busy || !qualityPassed" @click="emit('open-output')">새 창에서 확인</button>
+        <button type="button" class="ai-builder-primary" :disabled="busy || !qualityPassed" :title="outputDisabledReason||'검사한 페이지를 새 창에서 확인합니다.'" @click="emit('open-output')">새 창에서 확인</button>
         <button v-if="exportEnabled" type="button" class="ai-builder-primary" :disabled="busy || !qualityPassed" @click="emit('export-document')">HTML 다운로드</button>
+        <p v-if="outputDisabledReason" role="status">{{ outputDisabledReason }}</p>
+        <ul v-if="diagnostics.length" aria-label="자동 품질 검사 내역">
+          <li v-for="(item,index) in diagnostics" :key="index">{{ item.viewport }} · {{ item.path || '페이지' }} · {{ item.message }}</li>
+        </ul>
           </div>
         </Teleport>
       </div>
     </header>
-    <p class="ai-builder-preview-note">이 화면은 실제 발행에 사용하는 데이터와 렌더러로 표시됩니다. 데스크톱과 모바일을 전환해 확인하세요.</p>
+    <p class="ai-builder-preview-note">이 화면은 실제 발행에 사용하는 데이터와 렌더러로 표시됩니다. <span v-if="previewReferenceWidth">현재 미리보기 기준 {{ previewReferenceWidth }}px · 패널에 맞춰 축소 표시합니다.</span> 화면 크기를 전환해 확인하세요.</p>
     <div class="ai-builder-quality-gate" :class="`is-${qualityState}`" role="status" aria-live="polite">
       <span aria-hidden="true"></span>
       <strong>{{ qualityLabel }}</strong>

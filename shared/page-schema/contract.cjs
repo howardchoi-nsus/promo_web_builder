@@ -138,7 +138,7 @@ function validate(page,context={},options={}){
   if(node.type==='button'){
    if(/\d|[%$€₩]|https?:\/\//u.test(node.label)&&!Object.values(context.contentSources||{}).some(source=>source.text===node.label)&&!Object.values(context.actions||{}).some(action=>action.label===node.label))add('UNSUPPORTED_FACT','Factual CTA labels must use approved content');
    for(const id of node.sourceIds)if(context.contentSources?.[id]?.text===node.label)usedSources.set(id,(usedSources.get(id)||0)+1);
-   if(node.actionId===null){warnings.push(error('ACTION_BINDING_REQUIRED',path,'CTA has no approved action',node.id));if(options.final)add('ACTION_BINDING_REQUIRED','Resolve CTA action before export');}
+   if(node.actionId===null)warnings.push(error('ACTION_NOT_CONFIGURED',path,'CTA is static copy until an approved action is supplied',node.id));
    else if(!context.actions?.[node.actionId]||!safeUrl(context.actions[node.actionId].href,{external:context.actions[node.actionId].kind==='navigate'}))add('ACTION_REFERENCE_INVALID','Unapproved action');
    const action=context.actions?.[node.actionId];
    if(action&& !['navigate','submit'].includes(action.kind))add('ACTION_REFERENCE_INVALID','Unsupported action kind');

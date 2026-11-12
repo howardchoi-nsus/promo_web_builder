@@ -473,6 +473,12 @@ async function createDocumentRevision(sql, {
       from saved where j.document_id=${documentId}::uuid and j.request_id=${generationJob.requestId}::uuid and j.claim_token=${generationJob.claimToken}::uuid returning j.request_id
     ) select revision from saved`;
     if(!rows.length)throw Object.assign(new Error('생성 작업이 변경되었습니다. 최신 상태를 확인해 주세요.'),{code:'GENERATION_LEASE_CHANGED',statusCode:409,retryable:true});
+  }else if(requirementsGuard!==null){
+    rows=await sql`with requirements as (
+      select id from promo_builder_chat_sessions where document_id=${documentId}::uuid and owner_subject=${ownerSubject}
+        and latest_requirements_revision=${requirementsGuard}::integer for update
+    ) select create_promo_builder_document_revision(${documentId}::uuid,${ownerSubject},${baseDocumentRevision},${JSON.stringify(nextSnapshot)}::jsonb,${snapshotHash(nextSnapshot)},${source},${changeNote||''}) as revision from requirements`;
+    if(!rows.length)throw Object.assign(new Error('자동 보정 중 요청 요약이 변경되었습니다. 최신 페이지에서 다시 진행합니다.'),{code:'REQUIREMENTS_REVISION_MISMATCH',statusCode:409,retryable:true});
   }else rows = await sql`
     select create_promo_builder_document_revision(
       ${documentId}::uuid,

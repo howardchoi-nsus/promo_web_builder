@@ -48,12 +48,13 @@ export function pageCss(page,context,scope) {
    if(node.type==='divider'){if(context.styleChoicesVersion!==1)props[node.direction==='vertical'?'border-left-style':'border-top-style']='solid';else props['border-style']='none';}
    if(node.type==='grid'){props.display='grid';props['grid-template-columns']=`repeat(var(${policy.profiles[view].columns}),minmax(0,1fr))`;}
    const spacing={...(node.styles.spacing?.base||{}),...(['desktop','desktopWide'].includes(view)?{}:Object.fromEntries(Object.entries(node.styles.spacing?.[view]||{}).filter(([,value])=>value!==null)))};
-   for(const [property,token] of Object.entries(spacing))if(token&&policy.spacing.includes(token))props[property]=`var(${token})`;
+   const staticCta=node.type==='button'&&node.actionId===null;
+   for(const [property,token] of Object.entries(spacing))if(token&&policy.spacing.includes(token)&&!(staticCta&&property==='padding'))props[property]=`var(${token})`;
    if(node.type==='grid'&&!spacing.gap&&!node.styles.base.some(role=>role==='layout.gap'))props['column-gap']=`var(${policy.profiles[view].gutter})`;
    if(node===page.root)props['padding-inline']=`var(${policy.profiles[view].margin})`;
    const defaults=Object.entries(props).filter(([,v])=>v).map(([k,v])=>`${k}:${v}`).join(';');
    const byState={default:[],hover:[],pressed:[],disabled:[]};
-   for(const r of styleRules(node,view,context,resolvedRoles))if(!spacing[r.property])byState[r.state]?.push(`${node.type==='divider'&&/^border-(color|width|style)$/.test(r.property)?r.property.replace('border-',node.direction==='vertical'?'border-left-':'border-top-'):r.property}:var(${r.token})`);
+   for(const r of styleRules(node,view,context,resolvedRoles))if(!spacing[r.property]&&!(staticCta&&['background-color','background-image','border-color','border-width','border-style','border-radius','box-shadow','padding'].includes(r.property)))byState[r.state]?.push(`${node.type==='divider'&&/^border-(color|width|style)$/.test(r.property)?r.property.replace('border-',node.direction==='vertical'?'border-left-':'border-top-'):r.property}:var(${r.token})`);
    rules[view].push(`${selector}{${defaults};${byState.default.join(';')}${node===page.root?`;padding-inline:var(${policy.profiles[view].margin})`:''}}`);
    if(node.type==='grid'){
     const weights=l.columns?.length?l.columns:[1],tracks=gridTrackSpans(weights,Number(context.tokenValues[policy.profiles[view].columns]));let cursor=0;

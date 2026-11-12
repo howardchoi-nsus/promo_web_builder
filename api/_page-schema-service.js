@@ -1,6 +1,6 @@
 const {createHash}=require('node:crypto');
 const {assertValid,normalize,runtimeSchema,TYPES,LIMITS,safeUrl}=require('../shared/page-schema/contract.cjs');
-const {assertLayoutTokens}=require('../shared/layout-token-policy.cjs');
+const {assertLayoutTokens,previewReference}=require('../shared/layout-token-policy.cjs');
 const {emptyOptionalCta,prepareOverviewForPreview}=require('../shared/page-schema/content-confirmation.cjs');
 const {TOKEN_USAGE_RULES,pageStyleRoles,pageGenerationStyleRoles,pageStyleWarnings,pageStyleToken}=require('../shared/token-usage-policy.cjs');
 function contentContext(overview,{usagePolicy,tokenCatalog,tokenValues,tokenVersionId,styleChoicesVersion,assets={},icons}){
@@ -64,5 +64,12 @@ function snapshotForPage(page,context,previous={}){
 function plannerContext(context){const {contentSources,actions,formFields}=context;
  const assets=Object.fromEntries(Object.entries(context.assets||{}).map(([id,asset])=>[id,{kind:asset.kind,label:asset.label||asset.intent||id,width:asset.width,height:asset.height,componentId:asset.componentId,versionId:asset.versionId}]));
  const icons=Object.fromEntries(Object.entries(context.icons||{}).map(([id,icon])=>[id,{label:icon.label||id,glyph:icon.glyph,text:icon.text}]));
- return {layoutTokens:assertLayoutTokens(context),spacingTokens:assertLayoutTokens(context).spacing,primitives:runtimeSchema(context).$defs.node.anyOf.map(option=>option.$ref.split('/').at(-1)),omittedContent:context.omittedContent||[],unresolvedInputs:context.unresolvedInputs||[],contentSources,assets,actions,icons,formFields,styleWarnings:pageStyleWarnings(context),policyRoles:pageGenerationStyleRoles(context).filter(r=>pageStyleToken(context,r)).map(r=>({...r,token:pageStyleToken(context,r),value:context.tokenValues[pageStyleToken(context,r)]}))};}
+ const layoutPolicy=assertLayoutTokens(context);
+ const layoutGeometry=Object.fromEntries(['desktop','tablet','mobile'].map(view=>{
+  const reference=previewReference(context,view),profile=layoutPolicy.profiles[view];
+  const margin=parseFloat(context.tokenValues[profile.margin]),gutter=parseFloat(context.tokenValues[profile.gutter]),columns=Number(context.tokenValues[profile.columns]);
+  const contentWidth=reference?reference.width-2*margin:null;
+  return [view,{referenceWidthToken:reference?.key||null,referenceWidth:reference?.width||null,marginToken:profile.margin,margin,gutter,columns,contentWidth,columnWidth:contentWidth===null?null:(contentWidth-(columns-1)*gutter)/columns}];
+ }));
+ return {layoutGeometry,layoutTokens:layoutPolicy,spacingTokens:layoutPolicy.spacing,primitives:runtimeSchema(context).$defs.node.anyOf.map(option=>option.$ref.split('/').at(-1)),omittedContent:context.omittedContent||[],unresolvedInputs:context.unresolvedInputs||[],contentSources,assets,actions,icons,formFields,styleWarnings:pageStyleWarnings(context),policyRoles:pageGenerationStyleRoles(context).filter(r=>pageStyleToken(context,r)).map(r=>({...r,token:pageStyleToken(context,r),value:context.tokenValues[pageStyleToken(context,r)]}))};}
 module.exports={reusePreparedMedia,reusableMediaKey,structureFingerprint,plannerContext,contentContext,generatePage,snapshotForPage,TYPES,LIMITS,assertValid,normalize};

@@ -2,6 +2,7 @@
 import { defineComponent, h, ref, useId, computed } from 'vue';
 import {pageStyleRoles,pageStyleToken} from '../../../shared/token-usage-policy.mjs';
 import { pageCss, tokenVariables, safeUrl, textContent, nodes, styleRules } from '../../../shared/page-schema/runtime.mjs';
+import {inspectPageReadability} from './page-schema-quality.mjs';
 // Preview-only paint overrides: keep token-derived geometry and typography metrics.
 function wireframeCss(scope){
  const host=`[data-ps-scope="${scope}"]`;
@@ -31,7 +32,7 @@ export default defineComponent({
     if(node.type==='divider'&&props.context.styleChoicesVersion!==1&&(!props.context.usagePolicy?.bindings?.['divider.color']||!props.context.usagePolicy?.bindings?.['divider.width']))diagnostics.push({code:'STYLE_TOKEN_REQUIRED',level:'blocking',path:node.id,message:'구분선 색상과 두께를 등록 토큰 정책에 연결해 주세요.'});
     if(node.type==='image'&&(!node.assetId||!safeUrl(props.context.assets?.[node.assetId]?.url)))diagnostics.push({code:'IMAGE_GENERATION_PENDING',level:'blocking',path:node.id,message:'이미지 에셋을 연결해 주세요.'});
     if(node.type==='video'&&!safeUrl(props.context.assets?.[node.assetId]?.url))diagnostics.push({code:'VIDEO_ASSET_REQUIRED',level:'blocking',path:node.id,message:'동영상을 연결해 주세요.'});
-    if(node.type==='button'&&!props.context.actions?.[node.actionId])diagnostics.push({code:'ACTION_BINDING_REQUIRED',level:'blocking',path:node.id,message:'버튼에 허용된 이동 경로가 필요합니다.'});
+    if(node.type==='button'&&node.actionId&&!props.context.actions?.[node.actionId])diagnostics.push({code:'ACTION_BINDING_REQUIRED',level:'blocking',path:node.id,message:'버튼에 허용된 이동 경로가 필요합니다.'});
     if(node.type==='input'&&!props.context.formFields?.[node.fieldId])diagnostics.push({code:'FORM_BINDING_REQUIRED',level:'blocking',path:node.id,message:'입력 필드 연결이 필요합니다.'});
    }
    for(const el of host.value?.querySelectorAll('[data-ps-node]')||[]){
@@ -40,7 +41,8 @@ export default defineComponent({
     if(el.tagName==='VIDEO'&&(el.error||el.readyState===0))diagnostics.push({code:'VIDEO_LOAD_PENDING_OR_FAILED',level:'blocking',path:el.dataset.psNode,message:'동영상 메타데이터 로딩을 확인해 주세요.'});
     if(el.tagName==='IMG'&&(!el.complete||!el.naturalWidth))diagnostics.push({code:'IMAGE_LOAD_FAILED',level:'blocking',path:el.dataset.psNode,message:'이미지를 불러오지 못했습니다.'});
    }
-   return {viewport:props.viewportOverride||'auto',count:diagnostics.length,blockingCount:diagnostics.length,warningCount:0,diagnostics};
+   if(host.value&&!props.wireframe)diagnostics.push(...inspectPageReadability(host.value,props.page,props.viewportOverride||'desktop'));
+   return {viewport:props.viewportOverride||'auto',count:diagnostics.length,blockingCount:diagnostics.filter(d=>d.level==='blocking').length,warningCount:diagnostics.filter(d=>d.level==='warning').length,diagnostics};
   }
   expose({inspectLayoutQuality});
   function renderNode(n){
@@ -58,7 +60,7 @@ export default defineComponent({
    }
    if(['grid','stack','card'].includes(n.type))return h(n.type==='card'?'article':'div',{...attrs,'aria-label':n.label||undefined},children());
    if(n.type==='text')return h(n.role==='heading'?`h${n.headingLevel}`:n.role==='body'?'p':'span',attrs,textContent(n,props.context));
-   if(n.type==='button'){if(props.wireframe)return h('span',attrs,n.label);const action=props.context.actions?.[n.actionId],href=action?.kind==='navigate'?safeUrl(action.href):'',submit=action?.kind==='submit'&&safeUrl(action.href).startsWith('/');return h(href?'a':'button',{...attrs,...(href?{href,rel:'noopener noreferrer'}:{type:submit?'submit':'button',disabled:!submit})},n.label);}
+   if(n.type==='button'){if(props.wireframe||!n.actionId)return h('span',{...attrs,'data-ps-action-state':!n.actionId?'unbound':undefined},n.label);const action=props.context.actions?.[n.actionId],href=action?.kind==='navigate'?safeUrl(action.href):'',submit=action?.kind==='submit'&&safeUrl(action.href).startsWith('/');return h(href?'a':'button',{...attrs,...(href?{href,rel:'noopener noreferrer'}:{type:submit?'submit':'button',disabled:!submit})},n.label);}
    if(n.type==='image'){
     const asset=props.context.assets?.[n.assetId],src=safeUrl(asset?.url);
     const request=props.page.mediaRequests.find(request=>request.id===n.requestId);

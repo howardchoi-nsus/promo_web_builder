@@ -2,7 +2,7 @@ import {fixture,context as original} from './page-schema.mjs';
 import {pageStyleRoles} from '../../shared/token-usage-policy.mjs';
 export function designFixture({pending=true}={}){
  const context=structuredClone(original);context.styleChoicesVersion=1;
- const tokens=[['--typography-title-2xl-font-size','48px','font-size'],['--typography-title-md-font-size','28px','font-size'],['--typography-body-sm-font-size','14px','font-size'],['--color-brand-500','#ff7777','color'],['--color-neutral-100','#eeeeee','color'],['--border-card-color','#999999','border-color'],['--border-width-md','2px','border-width'],['--border-style-solid','solid','border-style'],['--hero-overlay','linear-gradient(transparent, #000000)','background-image']];
+ const tokens=[['--typography-title-2xl-font-size','48px','font-size'],['--typography-title-md-font-size','28px','font-size'],['--typography-body-sm-font-size','14px','font-size'],['--color-brand-500','#ff7777','color'],['--color-neutral-100','#eeeeee','color'],['--border-card-color','#999999','border-color'],['--border-width-md','2px','border-width'],['--border-style-solid','solid','border-style'],['--hero-overlay','linear-gradient(#000000, #18181b)','background-image']];
  for(const [name,value,property] of tokens){context.tokenValues[name]=value;context.tokenCatalog.push({name,tokenKey:name,value,state:'active',cssProperties:[property]});}
  const role=name=>{const found=pageStyleRoles(context).find(rule=>rule.registeredVariant&&rule.token===name);if(!found)throw Error('Missing registered variant '+name);return found.key;};
  const page=fixture('example-editorial');
