@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {createProgressEvent,isHistoricalAction} from '../visual-editor/src/builder/services/chat-experience.mjs';
+const durations=new Map();
+const start=createProgressEvent({operationId:'quality-1',text:'검사 중',status:'in_progress',durations,now:1000});
+assert.equal(start.metadata.eta,'예상 시간 계산 중');
+assert.equal(createProgressEvent({operationId:'quality-1',text:'검사 중',status:'in_progress',previous:{...start,text:'검사 중'},durations,now:2000}),null);
+const done=createProgressEvent({operationId:'quality-1',text:'완료',status:'completed',previous:start,durations,now:11000});
+assert.equal(start.status,'in_progress');assert.equal(done.status,'completed');
+assert.equal(createProgressEvent({operationId:'quality-2',text:'검사 중',status:'in_progress',durations,now:12000}).metadata.eta,'이전 실행 기준 약 10초 남음');
+const message={id:'m1',actions:[{key:'approve_wireframe'}]};
+assert.equal(isHistoricalAction({key:'approve_wireframe'},message,[message]),false);
+assert.equal(isHistoricalAction({key:'approve_wireframe',status:'executed'},message,[message]),true);
+assert.equal(isHistoricalAction({key:'approve_wireframe'},message,[message,{role:'user'}]),true);
+assert.equal(isHistoricalAction({key:'approve_wireframe'},message,[message,{actions:[{key:'approve_wireframe'}]}]),true);
+console.log('chat experience contracts passed');

@@ -802,3 +802,27 @@
 .ai-chat-messages .ai-operation-form { position: static; width: 100%; max-width: 100%; box-shadow: none; }
 .ai-chat-messages > section { flex-shrink: 0; min-width: 0; }
 .ai-chat-messages textarea { max-width: 100%; box-sizing: border-box; }
+
+/* Customer messages keep natural reading direction and fit their content. */
+.ai-chat-message.is-user {
+  width: fit-content;
+  max-width: min(82%, 640px);
+  min-width: 0;
+  margin-left: auto;
+  margin-right: 0;
+  align-self: flex-end;
+  text-align: right;
+  flex-shrink: 0;
+}
+.ai-chat-composer textarea { max-height: 180px; overflow-y: hidden; }
+.ai-chat-composer__surface { align-items: end; }
+.ai-chat-progress-detail { display: block; margin-top: 6px; font-size: 11px; color: #586760; }
+.ai-chat-mask-reveal {
+  mask-image: linear-gradient(to right, #000 0%, #000 45%, transparent 55%);
+  mask-size: 240% 100%;
+  animation: ai-chat-mask-reveal 450ms ease-out both;
+}
+@keyframes ai-chat-mask-reveal { from { mask-position: 100% 0; } to { mask-position: 0 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .ai-chat-mask-reveal { animation: none; mask-image: none; }
+}

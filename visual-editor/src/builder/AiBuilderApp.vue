@@ -1,4 +1,5 @@
 <script setup>
+import { createProgressEvent, progressStage, isHistoricalAction } from "./services/chat-experience.mjs";
 import {reviewPageUntilReady} from "./services/page-quality-review.mjs";
 import {preparePageMedia} from "./services/page-media-preparation.mjs";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
@@ -155,7 +156,7 @@ const hasStreamingMessage = computed(() => streamingMessageIds.value.length > 0)
 const interactionLocked = computed(() => (
   chatSessionSwitching.value || chatSubmitting.value || busy.value || attachmentBusy.value || requirementsSaving.value || wireframeSaving.value
   || finalQualityChecking.value || failedTaskRetrying.value
-  || Boolean(pendingChatActionKey.value) || hasStreamingMessage.value
+  || Boolean(pendingChatActionKey.value)
 ));
 const chatComposerLocked = computed(() => (
   interactionLocked.value || requirementsEditing.value || wireframeEditing.value
@@ -652,16 +653,49 @@ async function appendPersistedMessage(role, text, extra = {}) {
   return persistMessage(message);
 }
 
+const progressDurations = new Map();
 function updateStatusMessage(operationId, text, status = "in_progress") {
-  const existing = messages.value.find((message) => message.operationId === operationId);
-  if (existing) {
-    existing.text = text;
-    existing.status = status;
-    existing.updatedAt = new Date().toISOString();
-    return existing;
-  }
-  return appendMessage("system", text, { type: "status", operationId, status });
+  const previous = messages.value.filter(message => message.operationId === operationId).at(-1);
+  const event = createProgressEvent({ operationId, text, status, previous, durations: progressDurations });
+  if (!event) return previous;
+  const message = appendMessage("system", text, event);
+  // Saving history must not block generation. Failed saves remain in the local workspace.
+  persistMessage(message).catch(() => { message.metadata = { ...message.metadata, persistenceFailed: true }; });
+  return message;
 }
+function isCurrentProgress(message) {
+  return message.status === "in_progress"
+    && messages.value.filter(other => other.operationId === message.operationId).at(-1)?.id === message.id;
+}
+function historicalAction(action, message) {
+  return isHistoricalAction(action, message, messages.value);
+}
+function resizeChatInput() {
+  const input = chatInputElement.value;
+  if (!input) return;
+  input.style.height = "auto";
+  input.style.height = `${Math.min(input.scrollHeight, 180)}px`;
+  input.style.overflowY = input.scrollHeight > 180 ? "auto" : "hidden";
+}
+function onComposerKeydown(event) {
+  if (event.key !== "Enter" || event.shiftKey || event.isComposing || event.keyCode === 229) return;
+  event.preventDefault();
+  submitChat();
+}
+watch(chatInput, () => nextTick(resizeChatInput));
+let composerResizeObserver;
+onMounted(() => {
+  resizeChatInput();
+  if (typeof ResizeObserver !== "undefined" && chatInputElement.value?.parentElement) {
+    let previousWidth = 0;
+    composerResizeObserver = new ResizeObserver(entries => {
+      const width = entries[0]?.contentRect.width;
+      if (width !== previousWidth) { previousWidth = width; resizeChatInput(); }
+    });
+    composerResizeObserver.observe(chatInputElement.value.parentElement);
+  }
+});
+onBeforeUnmount(() => composerResizeObserver?.disconnect());
 
 function normalizeRestoredMessages(value) {
   const normalized = [];
@@ -1789,7 +1823,7 @@ async function cancelRequirementsEdit(action) {
 }
 
 function isChatActionDisabled(action) {
-  if (interactionLocked.value || (action.status && action.status !== "proposed")) return true;
+  if (interactionLocked.value) return true;
   if (action.key === "complete_requirements_edit") {
     return !requirementsEditing.value || !requirementsEditDirty.value;
   }
@@ -1798,19 +1832,7 @@ function isChatActionDisabled(action) {
 }
 
 function visibleMessageActions(message) {
-  if (message?.isStreaming) return [];
-  const messageIndex = messages.value.findIndex((candidate) => candidate.id === message?.id);
-  const latestUserIndex = messages.value.findLastIndex((candidate) => candidate.role === "user");
-  return (message?.actions || []).filter((action) => {
-    if (["complete_requirements_edit", "cancel_requirements_edit"].includes(action.key)) return false;
-    if (action.status && action.status !== "proposed") return false;
-    if (
-      ["confirm_requirements", "revise_requirements"].includes(action.key)
-      && messageIndex >= 0
-      && messageIndex < latestUserIndex
-    ) return false;
-    return true;
-  });
+  return (message?.actions || []).filter(action => !["complete_requirements_edit", "cancel_requirements_edit"].includes(action.key));
 }
 
 function chatActionIdentity(action) {
@@ -1840,8 +1862,18 @@ function actionProgressMessage(action) {
   })[action.key] || `${action.label} 요청을 처리하고 있습니다.`;
 }
 
-async function handleChatAction(action) {
+async function handleChatAction(action, sourceMessage = null) {
   if (interactionLocked.value) return;
+  if (sourceMessage && historicalAction(action, sourceMessage)) {
+    activeResultTab.value = pageStructurePending.value ? "wireframe" : store.snapshot ? "final" : "requirements";
+    await appendPersistedMessage("assistant", "이전 대화의 요청입니다. 중복 실행하지 않고 현재 결과를 표시했습니다. 수정할 내용은 채팅으로 알려주세요. 구성 승인이 필요하면 현재 페이지 미리보기의 승인 버튼을 이용해 주세요.");
+    return;
+  }
+  if (action.key === "approve_wireframe" && capabilities.value.pageSchemaV1 && !pageStructurePending.value) {
+    activeResultTab.value = store.snapshot ? "final" : "requirements";
+    await appendPersistedMessage("assistant", "현재 승인 대기 중인 페이지 구성이 없습니다. 현재 결과를 표시했습니다. 변경할 내용을 채팅으로 알려주세요.");
+    return;
+  }
   clearFailedTask();
   const actionKey = chatActionIdentity(action);
   const operationId = `chat-action-${action.key}-${Date.now()}`;
@@ -1896,6 +1928,7 @@ async function handleChatAction(action) {
     }
     if (action.key === "open_output") {
       updateStatusMessage(operationId, actionProgressMessage(action), "in_progress");
+      if (!finalQualityPassed.value) { openOutput(); updateStatusMessage(operationId, "현재 디자인의 자동 품질검사를 통과해야 출력을 열 수 있습니다.", "failed"); return; }
       openOutput();
       if (capabilities.value.chatWorkspaceV1 && action.id) {
         await executeChatAction({
@@ -3175,15 +3208,15 @@ onBeforeUnmount(() => {
                 ]"
                 :data-message-id="message.id"
                 :role="message.type === 'status' ? 'status' : undefined"
-                :aria-busy="message.status === 'in_progress' || message.isStreaming ? 'true' : undefined"
+                :aria-busy="isCurrentProgress(message) ? 'true' : undefined"
               >
                 <div class="ai-chat-message__meta">
                   <strong>{{ message.role === 'user' ? '나' : message.role === 'system' ? '진행 상태' : 'AI Builder' }}</strong>
                   <span v-if="message.status" class="ai-chat-message__status" :data-status="message.status">
-                    <span v-if="message.status === 'in_progress'" class="ai-chat-thinking" aria-hidden="true">
+                    <span v-if="isCurrentProgress(message)" class="ai-chat-thinking" aria-hidden="true">
                       <i></i><i></i><i></i>
                     </span>
-                    {{ message.status === 'in_progress' ? '진행 중' : message.status === 'completed' ? '완료' : '실패' }}
+                    {{ message.status === 'in_progress' ? (isCurrentProgress(message) ? '진행 중' : '진행 기록') : message.status === 'completed' ? '완료' : '실패' }}
                   </span>
                 </div>
                 <p v-if="message.isStreaming" class="ai-chat-streaming-copy" :aria-label="message.text">
@@ -3200,7 +3233,8 @@ onBeforeUnmount(() => {
                     </span>
                   </span>
                 </p>
-                <p v-else>{{ messageDisplayText(message) }}</p>
+                <p v-else :class="{ 'ai-chat-mask-reveal': message.type === 'status' }">{{ messageDisplayText(message) }}</p>
+                <small v-if="message.type === 'status'" class="ai-chat-progress-detail">{{ message.metadata?.stage || message.stage || progressStage(message.operationId) }} · {{ message.metadata?.eta || message.eta || (message.status === 'in_progress' ? '예상 시간 계산 중' : '단계 종료') }}</small>
                 <div v-if="isFailedTaskMessage(message)" class="ai-chat-recovery" role="group" aria-label="실패한 작업 복구">
                   <p>입력한 내용과 이전 결과는 그대로 보존되어 있습니다.</p>
                   <div>
@@ -3219,8 +3253,8 @@ onBeforeUnmount(() => {
                     :key="action.key"
                     type="button"
                     :disabled="isChatActionDisabled(action)"
-                    @click="handleChatAction(action)"
-                  >{{ chatActionButtonLabel(action) }}</button>
+                    @click="handleChatAction(action, message)"
+                  >{{ historicalAction(action, message) ? `이전 ${action.label} · 현재 상태 보기` : chatActionButtonLabel(action) }}</button>
                 </div>
               </article>
       <div v-if="store.error" class="ai-builder-error" role="alert" aria-live="assertive">
@@ -3313,7 +3347,8 @@ onBeforeUnmount(() => {
                 placeholder="무엇을 만들고 싶으신가요?"
                 :disabled="chatComposerLocked"
                 @paste="onPaste"
-                @keydown.enter.exact.prevent="submitChat"
+                @input="resizeChatInput"
+                @keydown="onComposerKeydown"
               ></textarea>
               <div class="ai-chat-composer__actions">
                 <input
