@@ -82,7 +82,7 @@ CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium pnpm run qa:design-preview
 
 - 실제 LLM·Neon·Blob·Vercel Preview 통합 검증: 미실행. 연결 불가라는 사용자 답변을 받음.
 - 사용자 한시적 예외 승인(2026-11-12): 이번 개선본 `e952f3d`는 실제 Preview 통합 검증을 생략하고 Production 반영을 진행한다. 이후 배포에는 기존 검증 정책을 유지한다.
-- Production: main 반영을 통한 자동 배포 요청 예정. 실제 Vercel Ready 상태는 별도 확인해야 하며, 이 기록은 배포 완료를 의미하지 않는다.
+- Production 대상 브랜치 main: 최초 개선본 0a6d2da까지 반영됨. 후속 이미지 재개 수정은 아래 승인에 따라 반영한다. 실제 Vercel Ready 상태는 미확인이며 코드 반영을 배포 완료로 간주하지 않는다.
 - 운영 DB migration 090 적용 여부, 활성 프롬프트·모델·토큰 정책의 실환경 호환성은 미검증 상태다.
 - 새 이미지 준비를 끄는 설정: `PAGE_SCHEMA_MEDIA_PREPARATION_ENABLED=false`. 기존 연결 이미지와 문서는 보존되며, 미연결 이미지가 있는 문서의 출력 검증을 우회하지 않는다.
 - 롤백은 먼저 새 실행 기능을 끄는 방식으로 진행한다. 새 rendererVersion 2와 등록 역할을 해석할 수 없는 이전 코드로 단순 복귀하면 새 문서를 읽지 못할 수 있다.
@@ -96,3 +96,5 @@ CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium pnpm run qa:design-preview
 - 수정: 실행 가능 여부의 모든 반응형 조건을 감시하고, 초기화가 끝난 후에 실행한다. 서버의 승인 상태로 작업 단계를 복원하여 대기 이미지 요청을 재개한다.
 - 로컬 브라우저 회귀 사례: 탭 전환 후 자동 준비, 준비 도중 새로고침과 환영 채팅 애니메이션 종료 후 자동 재개, API 오류 후 채팅 재시도, 완료된 이미지의 유지. 실제 운영 장애 원인의 확정 또는 실제 LLM·Blob 검증 결과로 간주하지 않는다.
 - 운영 확인 필요: 배포 커밋, pageSchema.mediaRequests 내용, PAGE_SCHEMA_MEDIA_PREPARATION_ENABLED, media API 응답, BLOB_READ_WRITE_TOKEN, 이미지 프롬프트·모델 활성 설정. migration 090은 borderStyle 허용만 담당하며 이미지 생성 기능을 활성화하지 않는다.
+
+- 후속 배포 승인: 사용자가 `93d4f32` 수정의 실제 Preview 검증 생략 및 Production 반영을 승인했다. 로컬 빌드와 관련 검사 4개는 통과했으며 실제 공급자·DB·Blob 통합 검증은 미실행 상태다. main 푸시 후 Vercel 상태를 별도 확인한다.
