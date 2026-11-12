@@ -29,6 +29,28 @@ function runtimeSchema(context={}){
  schema.$defs.spacingToken={type:"string",enum:spacing.length?spacing:["__unavailable__"]};
  const approvedRoles=TOKEN_USAGE_RULES.filter(rule=>context.usagePolicy?.bindings?.[rule.key]&&context.tokenValues?.[context.usagePolicy.bindings[rule.key]]).map(rule=>rule.key);
  for(const [name,keys] of Object.entries({policyRole:approvedRoles,sourceId:Object.keys(context.contentSources||{}),assetId:Object.keys(context.assets||{}),actionId:Object.keys(context.actions||{}),formFieldId:Object.keys(context.formFields||{}),iconId:Object.keys(context.icons||{})}))schema.$defs[name]={type:'string',enum:keys.length?keys:['__unavailable__']};
+ // A global role enum permits e.g. text.font on the page container, although
+ // semantic validation correctly rejects it. Constrain each primitive's styles
+ // before generation using the very same role targets used by validation.
+ function specialize(name,node){
+  const definition=clone(schema.$defs[name]),styles=clone(schema.$defs.responsiveStyles);
+  const targets=nodeTargets(node);
+  const roles=TOKEN_USAGE_RULES.filter(rule=>approvedRoles.includes(rule.key)&&targets.includes(rule.target)).map(rule=>rule.key);
+  function replace(value){
+   if(!value||typeof value!=='object')return;
+   if(value.$ref==='#/$defs/policyRole'){delete value.$ref;value.type='string';value.enum=roles.length?roles:['__unavailable__'];return;}
+   for(const child of Object.values(value))replace(child);
+  }
+  replace(styles);
+  definition.properties.styles=styles;
+  return definition;
+ }
+ for(const type of TYPES)if(type!=='container')schema.$defs[type]=specialize(type,{type});
+ const container=specialize('container',{type:'container',role:'page'});
+ const group=specialize('container',{type:'container',role:'group'});
+ container.properties.role.enum=container.properties.role.enum.filter(role=>role!=='group');
+ group.properties.role={type:'string',const:'group'};
+ schema.$defs.container={anyOf:[container,group]};
  return schema;
 }
 function normalize(page){
