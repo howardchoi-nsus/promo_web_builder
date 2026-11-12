@@ -18,7 +18,11 @@ import DirectusIntegrationSettings from "./components/DirectusIntegrationSetting
 import LayoutReferenceManager from "./components/LayoutReferenceManager.vue";
 import { layoutReferenceService } from "./services/layout-reference-service.mjs";
 
+import AgentSkillManager from "./components/AgentSkillManager.vue";
+import PromptSkillBindings from "./components/PromptSkillBindings.vue";
+
 resolveAdminShell(document);
+globalThis.PromoAdminSkills=Object.freeze({manager:AgentSkillManager,bindings:PromptSkillBindings});
 globalThis.Vue = VueRuntime;
 globalThis.PromoAdminTemplateLayout = Object.freeze({
   service: templateLayoutService,

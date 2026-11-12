@@ -33,6 +33,7 @@ module.exports = async function handler(req, res) {
       renderedPromptHash: prompt.renderedPromptHash,
       variableHash: prompt.variableHash,
       promptLayerSources: prompt.promptLayerSources || [],
+      skillSnapshots: prompt.skillSnapshots || [],
       promptMeta: {
         id: prompt.promptId,
         type: prompt.promptType,
@@ -45,6 +46,7 @@ module.exports = async function handler(req, res) {
         renderedPromptHash: prompt.renderedPromptHash,
         variableHash: prompt.variableHash,
         promptLayerSources: prompt.promptLayerSources || [],
+        skillSnapshots: prompt.skillSnapshots || [],
         ...(prompt.lengthGuard ? { lengthGuard: prompt.lengthGuard } : {}),
       },
     });

@@ -364,6 +364,7 @@ function validatePromptExecutionVariables(type, variables = {}) {
 }
 
 function validatePromptLayers(type, modelOptions = {}) {
+  require('./_agent-skill-store').normalizeSkillBindings(normalizeModelOptions(modelOptions).skillBindings);
   const layers = normalizeModelOptions(modelOptions).promptLayers || {};
   const harness = normalizeModelOptions(modelOptions).harnessConfig || {};
   const fail = (key) => {

@@ -44,6 +44,7 @@ function workerExecutionSummary(snapshot) {
     renderedPrompt: config.renderedPrompt || "",
     renderedPromptHash: config.renderedPromptHash || "",
     variableHash: config.variableHash || "",
+    skillSnapshots: config.skillSnapshots || [],
     lengthGuard: config.lengthGuard || null,
   };
 }
@@ -57,6 +58,7 @@ function executionModelMeta(snapshot) {
     modelOptions: execution.modelOptions,
     promptVersion: execution.promptVersion,
     snapshotVersion: execution.snapshotVersion,
+    ...(execution.skillSnapshots.length?{skillSnapshots:execution.skillSnapshots}:{}),
   };
 }
 

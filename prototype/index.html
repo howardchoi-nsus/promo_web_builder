@@ -763,6 +763,7 @@
                 :aria-selected="adminTab === 'prompt-variables'"
                 @click="selectAdminTab('prompt-variables')"
               >프롬프트 변수 관리</button>
+              <button class="admin-tab" :class="{active:adminTab==='agent-skills'}" type="button" role="tab" :aria-selected="adminTab==='agent-skills'" @click="selectAdminTab('agent-skills')">스킬 관리</button>
               <button
                 class="admin-tab"
                 :class="{ active: adminTab === 'layout-references' }"
@@ -843,6 +844,7 @@
               <llm-model-manager @status="setStatus"></llm-model-manager>
             </section>
 
+            <section v-show="adminTab === 'agent-skills'" class="admin-panel"><agent-skill-manager></agent-skill-manager></section>
             <section v-show="adminTab === 'prompt-variables'" class="admin-panel">
               <prompt-variable-manager></prompt-variable-manager>
             </section>
@@ -1067,6 +1069,7 @@
                 </div>
 
                 <fieldset v-if="!promptDetailLoading" class="prompt-editor-fields" :disabled="promptEditorReadOnly">
+                <details class="prompt-editor-group" open><summary><span><strong>연결된 스킬</strong><small>공통 MD 지침 · 버전 고정</small></span></summary><div class="prompt-editor-group__content"><prompt-skill-bindings v-model="promptEditor.skillBindings"></prompt-skill-bindings></div></details>
                 <details class="prompt-editor-group" open>
                   <summary>
                     <span><strong>기본 정보</strong><small>이름, 유형과 실행 변수 계약</small></span>

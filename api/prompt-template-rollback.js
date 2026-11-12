@@ -57,6 +57,7 @@ module.exports = async function handler(req, res) {
       modelOptions: target.model_options,
     });
 
+    await require('./_agent-skill-store').resolvePromptSkills(sql,(target.model_options||{}).skillBindings);
     const updatedRows = await sql`
       with deactivated as (
         update prompt_templates

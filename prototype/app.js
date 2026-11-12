@@ -1044,7 +1044,7 @@ const { createApp } = Vue;
 const initialSearchParams = new URLSearchParams(window.location.search);
 const initialView = initialSearchParams.get("view") === "admin" ? "prompts" : "builder";
 const requestedAdminTab = initialSearchParams.get("tab");
-const initialAdminTab = ["webhook", "llm-models", "llm", "prompt-variables", "layout-references", "component-generation", "components", "section-presets", "promo-form", "design-tokens", "i18n", "integrations", "audit"].includes(requestedAdminTab)
+const initialAdminTab = ["webhook", "llm-models", "llm", "agent-skills", "prompt-variables", "layout-references", "component-generation", "components", "section-presets", "promo-form", "design-tokens", "i18n", "integrations", "audit"].includes(requestedAdminTab)
   ? requestedAdminTab
   : "promo-form";
 
@@ -1341,6 +1341,7 @@ const adminApp = createApp({
         renderPolicyText: "{}",
         validationPolicyText: "{}",
         harnessConfigText: "{}",
+        skillBindings: [],
         promptLayersText: "{}",
         modelCapabilitySnapshotText: "{}",
         safetyContractText: "{}",
@@ -2383,7 +2384,7 @@ const adminApp = createApp({
     },
 
     selectAdminTab(tab) {
-      if (!["webhook", "llm-models", "llm", "prompt-variables", "layout-references", "component-generation", "components", "section-presets", "promo-form", "design-tokens", "i18n", "integrations", "audit"].includes(tab)) return;
+      if (!["webhook", "llm-models", "llm", "agent-skills", "prompt-variables", "layout-references", "component-generation", "components", "section-presets", "promo-form", "design-tokens", "i18n", "integrations", "audit"].includes(tab)) return;
       if (tab === "promo-form" && !this.templateLayoutManagementEnabled) {
         this.setStatus("템플릿·페이지 레이아웃 관리는 비활성화되었습니다.");
         return;
@@ -3217,6 +3218,7 @@ const adminApp = createApp({
           "renderPolicy",
           "validationPolicy",
           "promptLayers",
+          "skillBindings",
         ]);
         const providerOptions = Object.fromEntries(
           Object.entries(detail.modelOptions || {}).filter(([key]) => !reservedModelOptionKeys.has(key))
@@ -3285,6 +3287,7 @@ const adminApp = createApp({
             2
           ),
           harnessConfigText: JSON.stringify(detail.harnessConfig || detail.modelOptions?.harnessConfig || {}, null, 2),
+          skillBindings: JSON.parse(JSON.stringify(detail.modelOptions?.skillBindings||[])),
           promptLayersText: JSON.stringify(detail.promptLayers || detail.modelOptions?.promptLayers || {}, null, 2),
           modelCapabilitySnapshotText: JSON.stringify(
             detail.modelCapabilitySnapshot || detail.modelOptions?.modelCapabilitySnapshot || {},
@@ -3506,6 +3509,7 @@ const adminApp = createApp({
     promptModelOptionsForSave(prompt) {
       const modelOptions = this.parseModelOptionsText(this.promptEditor.modelOptionsText);
       modelOptions.promptLayers = this.parseModelOptionsText(this.promptEditor.promptLayersText);
+      modelOptions.skillBindings = JSON.parse(JSON.stringify(this.promptEditor.skillBindings||[]));
       if (this.promptSupportsImageSize(prompt)) {
         modelOptions.imageSize = ["1K", "2K", "4K"].includes(this.promptEditor.imageSize)
           ? this.promptEditor.imageSize
@@ -7403,6 +7407,8 @@ adminApp.component("template-layout-manager", window.PromoAdminTemplateLayout.co
 adminApp.component("section-layout-preset-manager", window.PromoAdminSectionLayouts.component);
 adminApp.component("design-token-manager", window.PromoAdminDesignTokens.component);
 adminApp.component("llm-model-manager", window.PromoAdminLlmModels.component);
+adminApp.component("agent-skill-manager", window.PromoAdminSkills.manager);
+adminApp.component("prompt-skill-bindings", window.PromoAdminSkills.bindings);
 adminApp.component("prompt-variable-manager", window.PromoAdminPromptVariables.component);
 adminApp.component("component-generation-workspace", window.PromoAdminComponentGeneration.component);
 adminApp.component("render-spec-editor", window.PromoAdminComponentGeneration.renderSpecEditor);

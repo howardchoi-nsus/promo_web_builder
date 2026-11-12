@@ -130,7 +130,7 @@ let llmHistories = [{
 let browser;
 try {
   await waitForServer();
-  browser = await chromium.launch({ headless: true });
+  browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_EXECUTABLE_PATH || undefined });
   const context = await browser.newContext({
     permissions: ["clipboard-read", "clipboard-write"],
   });
@@ -146,6 +146,8 @@ try {
     if (response.status() >= 400) failedResponses.push(`${response.status()} ${response.url()}`);
   });
 
+  await page.route(/^https:\/\/(?:fonts\.googleapis\.com|fonts\.gstatic\.com)\//, route=>route.fulfill({status:200,contentType:'text/css',body:''}));
+  await page.route('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/**', route=>route.fulfill({status:200,contentType:'text/css',body:''}));
   await page.route("**/api/**", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -171,6 +173,8 @@ try {
       adminSignedIn = false;
       return fulfill({ ok: true, authenticated: false });
     }
+    if (url.pathname === "/api/design-token-library") return fulfill({ok:true,tokens:[],versions:[],versionId:null,activeVersionId:null,initial:true});
+    if (url.pathname === "/api/agent-skills") return fulfill({ok:true,skills:[{id:'skill-1',key:'design-taste',name:'Design Taste',active:true,latestVersion:1,versions:[{id:'55555555-5555-4555-8555-555555555555',version:1}]}]});
     if (url.pathname === "/api/prompt-templates") {
       return fulfill({ ok: true, prompts });
     }
@@ -391,6 +395,8 @@ try {
   assert.equal(await harnessInput("최대 시도 횟수").inputValue(), "1");
   assert.equal(await harnessInput("재시도 기본 대기(ms)").inputValue(), "0");
   assert.equal(await harnessInput("재시도 최대 대기(ms)").inputValue(), "0");
+  await page.getByLabel("추가할 스킬 버전",{exact:true}).selectOption("55555555-5555-4555-8555-555555555555");
+  await page.getByRole("button",{name:"스킬 연결",exact:true}).click();
   await page.locator(".prompt-editor-header .tiny-button.primary").click();
   await page.getByText("프롬프트 v2을 생성하고 활성화했습니다.", { exact: true }).waitFor();
   assert.equal(savedPromptPatch.modelOptions.executionSnapshotVersion, 2);
@@ -403,6 +409,7 @@ try {
   assert.deepEqual(savedPromptPatch.modelOptions.harnessConfig, {});
   assert.deepEqual(savedPromptPatch.modelOptions.modelCapabilitySnapshot, {});
   assert.deepEqual(savedPromptPatch.modelOptions.safetyContract, {});
+  assert.deepEqual(savedPromptPatch.modelOptions.skillBindings,[{skillVersionId:"55555555-5555-4555-8555-555555555555"}]);
 
   await page.getByRole("tab", { name: "LLM 모델 관리", exact: true }).click();
   await page.getByRole("heading", { name: "LLM 모델 관리", exact: true }).waitFor();

@@ -203,6 +203,7 @@ async function updatePrompt(req, res) {
     requiredVariables,
     optionalVariables,
   });
+  await require('./_agent-skill-store').resolvePromptSkills(sql,(modelOptions||{}).skillBindings);
   await requireActiveRegisteredModel(sql, { provider, model, promptType: current.type });
   // Updating the prompt and appending its audit history must succeed or fail
   // together. A partial write would make production behavior impossible to

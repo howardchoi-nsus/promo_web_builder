@@ -7,7 +7,7 @@ const {
   validatePromptLayers,
   validatePromptTemplateContract,
 } = require("./_prompt-template-store");
-const { fitFinalDesignPromptVariables } = require("./_final-design-prompt-budget");
+const { fitFinalDesignPromptVariables, FINAL_DESIGN_PROMPT_MAX_LENGTH } = require("./_final-design-prompt-budget");
 const { assembleEffectivePrompt } = require("./_prompt-assembler");
 const { normalizeExecutionModelOptions } = require("./_worker-execution-contract");
 const {
@@ -186,19 +186,23 @@ async function buildPromptExecutionSnapshot(sql, prompt, variables = {}) {
     && !Array.isArray(snapshotModelOptions.promptLayers)
     ? snapshotModelOptions.promptLayers
     : {};
+  const skills=await require('./_agent-skill-store').resolvePromptSkills(sql,snapshotModelOptions.skillBindings);
   const assembled = assembleEffectivePrompt({
     type,
     renderedBody: fitted.renderedPrompt,
     variables: fitted.variables,
     promptLayers,
     harnessConfig: controlPlane.harnessConfig,
+    skills,
   });
+  if(skills.length&&((['final_design','final_design_v2'].includes(type)&&assembled.renderedPrompt.length>FINAL_DESIGN_PROMPT_MAX_LENGTH)||Buffer.byteLength(assembled.renderedPrompt)>250000))throw Object.assign(new Error('스킬을 포함한 최종 프롬프트가 길이 예산을 초과했습니다. 연결 지침을 줄여 주세요.'),{code:'SKILL_PROMPT_BUDGET_EXCEEDED',statusCode:422});
   const modelOptions = normalizeExecutionModelOptions({
     ...snapshotModelOptions,
     temperature: prompt.temperature,
     maxTokens: prompt.maxTokens,
     responseFormat: prompt.responseFormat,
   });
+  delete modelOptions.skillBindings;
   return {
     snapshotVersion: controlPlane.snapshotVersion,
     promptConfig: {
@@ -228,6 +232,7 @@ async function buildPromptExecutionSnapshot(sql, prompt, variables = {}) {
       renderedPrompt: assembled.renderedPrompt,
       renderedPromptHash: assembled.renderedPromptHash,
       promptLayerSources: assembled.layerSources,
+      skillSnapshots:skills.map(({id,skillId,key,name,version,contentHash,sourceUrl})=>({id,skillId,key,name,version,contentHash,sourceUrl})),
       variableHash: sha256(JSON.stringify(fitted.variables)),
       ...(fitted.lengthGuard ? { lengthGuard: fitted.lengthGuard } : {}),
     },

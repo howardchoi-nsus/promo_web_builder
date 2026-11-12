@@ -12596,17 +12596,26 @@ function Cx(e, t, n) {
 		let d = {
 			...o.styles.spacing?.base || {},
 			...["desktop", "desktopWide"].includes(s) ? {} : Object.fromEntries(Object.entries(o.styles.spacing?.[s] || {}).filter(([, e]) => e !== null))
-		};
-		for (let [e, t] of Object.entries(d)) t && r.spacing.includes(t) && (u[e] = `var(${t})`);
+		}, f = o.type === "button" && o.actionId === null;
+		for (let [e, t] of Object.entries(d)) t && r.spacing.includes(t) && !(f && e === "padding") && (u[e] = `var(${t})`);
 		o.type === "grid" && !d.gap && !o.styles.base.some((e) => e === "layout.gap") && (u["column-gap"] = `var(${r.profiles[s].gutter})`), o === e.root && (u["padding-inline"] = `var(${r.profiles[s].margin})`);
-		let f = Object.entries(u).filter(([, e]) => e).map(([e, t]) => `${e}:${t}`).join(";"), p = {
+		let p = Object.entries(u).filter(([, e]) => e).map(([e, t]) => `${e}:${t}`).join(";"), m = {
 			default: [],
 			hover: [],
 			pressed: [],
 			disabled: []
 		};
-		for (let e of yx(o, s, t, i)) d[e.property] || p[e.state]?.push(`${o.type === "divider" && /^border-(color|width|style)$/.test(e.property) ? e.property.replace("border-", o.direction === "vertical" ? "border-left-" : "border-top-") : e.property}:var(${e.token})`);
-		if (a[s].push(`${l}{${f};${p.default.join(";")}${o === e.root ? `;padding-inline:var(${r.profiles[s].margin})` : ""}}`), o.type === "grid") {
+		for (let e of yx(o, s, t, i)) !d[e.property] && !(f && [
+			"background-color",
+			"background-image",
+			"border-color",
+			"border-width",
+			"border-style",
+			"border-radius",
+			"box-shadow",
+			"padding"
+		].includes(e.property)) && m[e.state]?.push(`${o.type === "divider" && /^border-(color|width|style)$/.test(e.property) ? e.property.replace("border-", o.direction === "vertical" ? "border-left-" : "border-top-") : e.property}:var(${e.token})`);
+		if (a[s].push(`${l}{${p};${m.default.join(";")}${o === e.root ? `;padding-inline:var(${r.profiles[s].margin})` : ""}}`), o.type === "grid") {
 			let e = c.columns?.length ? c.columns : [1], n = Sx(e, Number(t.tokenValues[r.profiles[s].columns])), i = 0;
 			for (let t of o.children) {
 				let r = Math.min(e.length, _x(t, s === "desktopWide" ? "desktop" : s).columnSpan);
@@ -12619,7 +12628,7 @@ function Cx(e, t, n) {
 			["hover", ":hover"],
 			["pressed", ":active"],
 			["disabled", ":disabled"]
-		]) p[e].length && a[s].push(`${l}${t}{${p[e].join(";")}}`);
+		]) m[e].length && a[s].push(`${l}${t}{${m[e].join(";")}}`);
 	}
 	let o = (e) => a[e].join("\n").replaceAll(`[data-ps-scope="${n}"]`, `[data-ps-scope="${n}"][data-ps-viewport="${e}"]`), s = (e) => a[e].join("\n").replaceAll(`[data-ps-scope="${n}"]`, `[data-ps-scope="${n}"]:not([data-ps-viewport])`);
 	return `${s("mobile")}\n@media(min-width:${t.tokenValues[r.breakpoints.tablet]}){${s("tablet")}}\n@media(min-width:${t.tokenValues[r.breakpoints.desktop]}){${s("desktop")}}\n@media(min-width:${t.tokenValues[r.breakpoints.wide]}){${s("desktopWide")}}\n${mx.map(o).join("\n")}`;
@@ -12715,116 +12724,138 @@ function Dx(e, t, n) {
 function Ox(e, t) {
 	return Math.max(0, Math.min(e.right, t.right) - Math.max(e.left, t.left)) * Math.max(0, Math.min(e.bottom, t.bottom) - Math.max(e.top, t.top));
 }
-function kx(e, t) {
-	let n = [], r = /* @__PURE__ */ new Map(), i = (e) => {
-		r.set(e.id, e);
-		for (let t of e.children || []) i(t);
+function kx(e, t, n = "desktop") {
+	let r = [], i = /* @__PURE__ */ new Map(), a = (e) => {
+		i.set(e.id, e);
+		for (let t of e.children || []) a(t);
 	};
-	i(t.root);
-	let a = [...e.querySelectorAll("[data-ps-node]")], o = new Map(a.map((e) => [e.dataset.psNode, e])), s = e.ownerDocument.defaultView;
-	for (let t of a) {
-		let i = r.get(t.dataset.psNode);
-		if (!i || (i.type === "button" && !i.actionId && n.push({
+	a(t.root);
+	let o = [...e.querySelectorAll("[data-ps-node]")], s = new Map(o.map((e) => [e.dataset.psNode, e])), c = e.ownerDocument.defaultView;
+	for (let t of o) {
+		let a = i.get(t.dataset.psNode);
+		if (!a || (a.type === "button" && !a.actionId && r.push({
 			code: "ACTION_NOT_CONFIGURED",
 			level: "warning",
-			path: i.id,
+			path: a.id,
 			message: "이동 경로가 미정인 CTA는 클릭 동작 없이 문구로 표시합니다."
-		}), i.type !== "text" && i.type !== "button")) continue;
-		let a = s.getComputedStyle(t), c = t.getBoundingClientRect(), l = wx(a.color), u = parseFloat(a.fontSize);
-		if (!l || !c.width || !c.height) continue;
-		i.type === "text" && t.textContent.length > 40 && c.width / u < 12 && n.push({
-			code: "CONTENT_NARROW",
-			level: "blocking",
-			path: i.id,
-			fontSize: u,
-			message: "긴 문구가 지나치게 좁은 컬럼에 배치됐습니다."
-		});
-		let d = t, f = [], p = null, m = null;
-		for (; d && d !== e;) {
-			let e = wx(s.getComputedStyle(d).backgroundColor);
-			f.push({
-				paint: e,
-				element: d
-			});
-			let t = r.get(d.dataset?.psNode)?.children?.find((e) => e.type === "image" && e.presentation === "background");
-			if (t) {
-				p = t, m = o.get(t.id);
+		}), a.type !== "text" && a.type !== "button")) continue;
+		let o = c.getComputedStyle(t), l = t.getBoundingClientRect(), u = wx(o.color), d = parseFloat(o.fontSize);
+		if (!u || !l.width || !l.height) continue;
+		let f = !1;
+		for (let r = t.parentElement; r && r !== e; r = r.parentElement) {
+			let e = i.get(r.dataset?.psNode);
+			if (!e) continue;
+			let t = _x(e, n);
+			if (e.type === "grid" && t.columns?.length > 1 || [
+				"stack",
+				"container",
+				"card"
+			].includes(e.type) && t.direction === "row" && (e.children?.length || 0) > 1) {
+				f = !0;
 				break;
 			}
-			if (e?.[3] === 1) break;
-			d = d.parentElement;
 		}
-		let h = [], g = !1;
-		if (p && m?.tagName === "IMG" && m.complete && m.naturalWidth) try {
-			let t = m.getBoundingClientRect(), n = e.ownerDocument.createElement("canvas");
+		f && a.type === "text" && t.textContent.length > 40 && l.width / d < 12 && r.push({
+			code: "CONTENT_NARROW",
+			level: "blocking",
+			path: a.id,
+			fontSize: d,
+			message: "긴 문구가 지나치게 좁은 컬럼에 배치됐습니다."
+		});
+		let p = t, m = [], h = null, g = null;
+		for (; p && p !== e;) {
+			let e = c.getComputedStyle(p), t = wx(e.backgroundColor);
+			m.push({
+				paint: t,
+				element: p,
+				gradient: e.backgroundImage
+			});
+			let n = i.get(p.dataset?.psNode)?.children?.find((e) => e.type === "image" && e.presentation === "background");
+			if (n) {
+				h = n, g = s.get(n.id);
+				break;
+			}
+			if (t?.[3] === 1) break;
+			p = p.parentElement;
+		}
+		let _ = [], v = !1;
+		if (h && g?.tagName === "IMG" && g.complete && g.naturalWidth) try {
+			let t = g.getBoundingClientRect(), n = e.ownerDocument.createElement("canvas");
 			n.width = 5, n.height = 5;
-			let r = n.getContext("2d", { willReadFrequently: !0 }), i = (p.fit === "contain" ? Math.min : Math.max)(t.width / m.naturalWidth, t.height / m.naturalHeight), a = m.naturalWidth * i, o = m.naturalHeight * i, l = [...d.children].find((e) => e.hasAttribute("data-ps-overlay")), u = l ? s.getComputedStyle(l).backgroundImage : null;
+			let r = n.getContext("2d", { willReadFrequently: !0 }), i = (h.fit === "contain" ? Math.min : Math.max)(t.width / g.naturalWidth, t.height / g.naturalHeight), a = g.naturalWidth * i, o = g.naturalHeight * i, s = [...p.children].find((e) => e.hasAttribute("data-ps-overlay")), u = s ? c.getComputedStyle(s).backgroundImage : null;
 			for (let e = 0; e < 5; e++) for (let n = 0; n < 5; n++) {
-				let s = c.left + (n + .5) / 5 * c.width, l = c.top + (e + .5) / 5 * c.height, d = (s - t.left - (t.width - a) / 2) / i, p = (l - t.top - (t.height - o) / 2) / i, _ = f.at(-1)?.paint;
-				if (d >= 0 && p >= 0 && d < m.naturalWidth && p < m.naturalHeight) {
-					r.clearRect(0, 0, 1, 1), r.drawImage(m, Math.floor(d), Math.floor(p), 1, 1, 0, 0, 1, 1);
+				let s = l.left + (n + .5) / 5 * l.width, c = l.top + (e + .5) / 5 * l.height, d = (s - t.left - (t.width - a) / 2) / i, f = (c - t.top - (t.height - o) / 2) / i, p = m.at(-1)?.paint;
+				if (d >= 0 && f >= 0 && d < g.naturalWidth && f < g.naturalHeight) {
+					r.clearRect(0, 0, 1, 1), r.drawImage(g, Math.floor(d), Math.floor(f), 1, 1, 0, 0, 1, 1);
 					let e = r.getImageData(0, 0, 1, 1).data;
-					_ = Tx([
+					p = Tx([
 						e[0],
 						e[1],
 						e[2],
 						e[3] / 255
-					], _);
+					], p);
 				}
 				if (u && u !== "none") {
-					let e = Dx(u, (s - t.left) / t.width, (l - t.top) / t.height);
-					e ? _ = Tx(e, _) : g = !0;
+					let e = Dx(u, (s - t.left) / t.width, (c - t.top) / t.height);
+					e ? p = Tx(e, p) : v = !0;
 				}
-				for (let e of f.slice(0, -1).reverse()) _ = Tx(e.paint, _);
-				_?.[3] === 1 && h.push(_);
+				for (let e of m.slice(0, -1).reverse()) p = Tx(e.paint, p);
+				p?.[3] === 1 && _.push(p);
 			}
 		} catch {
-			g = !0;
+			v = !0;
 		}
-		else if (p) g = !0;
-		else {
-			let e = null;
-			for (let t of [...f].reverse()) e = Tx(t.paint, e);
-			e?.[3] === 1 ? h = [e] : g = !0;
+		else if (h) v = !0;
+		else for (let e of [
+			.1,
+			.5,
+			.9
+		]) {
+			let t = null;
+			for (let n of [...m].reverse()) if (t = Tx(n.paint, t), n.gradient && n.gradient !== "none") {
+				let r = n.element.getBoundingClientRect(), i = (l.left + e * l.width - r.left) / (r.width || 1), a = (l.top + e * l.height - r.top) / (r.height || 1), o = Dx(n.gradient, i, a);
+				o ? t = Tx(o, t) : v = !0;
+			}
+			t?.[3] === 1 ? _.push(t) : v = !0;
 		}
-		let _ = u >= 24 || u >= 18.66 && Number(a.fontWeight) >= 700 ? 3 : 4.5, v = h.length ? Math.min(...h.map((e) => Ex(l, e))) : 0;
-		(g || !h.length || v < _) && n.push({
-			code: p ? "IMAGE_TEXT_CONTRAST" : "TEXT_CONTRAST",
+		let y = d >= 24 || d >= 18.66 && Number(o.fontWeight) >= 700 ? 3 : 4.5, b = _.length ? Math.min(..._.map((e) => Ex(u, e))) : 0;
+		(v || !_.length || b < y) && r.push({
+			code: h ? "IMAGE_TEXT_CONTRAST" : "TEXT_CONTRAST",
 			level: "blocking",
-			path: i.id,
-			imageNodeId: p?.id,
-			samples: h.map((e) => e.map((e) => Math.round(e * 1e3) / 1e3)),
-			threshold: _,
-			fontSize: u,
-			ratio: Math.round(v * 100) / 100,
-			message: p ? "이미지 위 문구의 가독성을 확보하지 못했습니다. 등록 색상 보정 또는 이미지 분리 배치가 필요합니다." : "등록된 글자색과 배경색의 명암 대비가 부족하거나 확인되지 않았습니다."
+			path: a.id,
+			imageNodeId: h?.id,
+			samples: _.map((e) => e.map((e) => Math.round(e * 1e3) / 1e3)),
+			threshold: y,
+			fontSize: d,
+			ratio: Math.round(b * 100) / 100,
+			message: h ? "이미지 위 문구의 가독성을 확보하지 못했습니다. 등록 색상 보정 또는 이미지 분리 배치가 필요합니다." : "등록된 글자색과 배경색의 명암 대비가 부족하거나 확인되지 않았습니다."
 		});
 	}
-	for (let e of a) {
-		let t = [...e.children].filter((e) => e.hasAttribute("data-ps-node") && r.get(e.dataset.psNode)?.presentation !== "background");
-		for (let e = 0; e < t.length; e++) for (let r = e + 1; r < t.length; r++) {
-			let i = t[e].getBoundingClientRect(), a = t[r].getBoundingClientRect();
-			i.width && i.height && a.width && a.height && Ox(i, a) > 4 && n.push({
+	for (let e of o) {
+		let t = [...e.children].filter((e) => e.hasAttribute("data-ps-node") && i.get(e.dataset.psNode)?.presentation !== "background");
+		for (let e = 0; e < t.length; e++) for (let n = e + 1; n < t.length; n++) {
+			let i = t[e].getBoundingClientRect(), a = t[n].getBoundingClientRect();
+			i.width && i.height && a.width && a.height && Ox(i, a) > 4 && r.push({
 				code: "CONTENT_OVERLAP",
 				level: "blocking",
-				path: t[r].dataset.psNode,
+				path: t[n].dataset.psNode,
 				message: "같은 영역의 콘텐츠가 겹칩니다."
 			});
 		}
-		let i = r.get(e.dataset.psNode)?.children?.find((e) => e.presentation === "background");
-		if (i) {
-			let e = o.get(i.id)?.getBoundingClientRect();
+		let n = i.get(e.dataset.psNode)?.children?.find((e) => e.presentation === "background");
+		if (n) {
+			let e = s.get(n.id)?.getBoundingClientRect();
 			if (!e?.width || !e.height) continue;
-			t.filter((e) => wx(s.getComputedStyle(e).backgroundColor)?.[3] === 1).map((t) => Ox(e, t.getBoundingClientRect())).reduce((e, t) => e + t, 0) / (e.width * e.height) > .7 && n.push({
+			t.filter((e) => wx(c.getComputedStyle(e).backgroundColor)?.[3] === 1).map((t) => Ox(e, t.getBoundingClientRect())).reduce((e, t) => e + t, 0) / (e.width * e.height) > .7 && r.push({
 				code: "IMAGE_OCCLUDED",
 				level: "blocking",
-				path: i.id,
-				imageNodeId: i.id,
+				path: n.id,
+				imageNodeId: n.id,
 				message: "불투명 콘텐츠가 배경 이미지 대부분을 가립니다. 이미지와 콘텐츠를 분리 배치해야 합니다."
 			});
 		}
 	}
-	return n;
+	return r;
 }
 //#endregion
 //#region visual-editor/src/runtime/PageSchemaRenderer.vue
@@ -12936,7 +12967,7 @@ var jx = /* @__PURE__ */ Zr({
 					message: "이미지를 불러오지 못했습니다."
 				});
 			}
-			return r.value && !e.wireframe && t.push(...kx(r.value, e.page)), {
+			return r.value && !e.wireframe && t.push(...kx(r.value, e.page, e.viewportOverride || "desktop")), {
 				viewport: e.viewportOverride || "auto",
 				count: t.length,
 				blockingCount: t.filter((e) => e.level === "blocking").length,
@@ -20873,7 +20904,353 @@ var xP = {
 			], 32)])
 		]));
 	}
-}, [["__scopeId", "data-v-53d013e4"]]), _F = /* @__PURE__ */ s((() => {
+}, [["__scopeId", "data-v-53d013e4"]]);
+//#endregion
+//#region admin-app/src/services/agent-skill-service.mjs
+async function _F(e = "", t = {}) {
+	let n = await fetch("/api/agent-skills" + e, {
+		cache: "no-store",
+		...t,
+		headers: {
+			"Content-Type": "application/json",
+			...t.headers
+		}
+	}), r = await n.json().catch(() => ({}));
+	if (!n.ok) throw Object.assign(Error(r.error || "스킬 요청을 처리하지 못했습니다."), { code: r.code });
+	return r;
+}
+var vF = {
+	list: () => _F(),
+	read: (e) => _F("?versionId=" + encodeURIComponent(e)),
+	save: (e) => _F("", {
+		method: "POST",
+		body: JSON.stringify(e)
+	}),
+	setActive: (e) => _F("", {
+		method: "PATCH",
+		body: JSON.stringify(e)
+	})
+};
+function yF() {
+	window.dispatchEvent(new CustomEvent("promo-agent-skills-changed"));
+}
+//#endregion
+//#region admin-app/src/components/AgentSkillManager.vue
+qh();
+var bF = {
+	class: "skill-manager",
+	"aria-labelledby": "agent-skill-title"
+}, xF = ["disabled"], SF = ["disabled"], CF = {
+	key: 0,
+	role: "alert"
+}, wF = {
+	key: 1,
+	role: "status"
+}, TF = { class: "skill-workspace" }, EF = { "aria-label": "등록된 스킬 목록" }, DF = {
+	key: 0,
+	role: "status"
+}, OF = { key: 1 }, kF = ["disabled", "onClick"], AF = [
+	"disabled",
+	"aria-pressed",
+	"onClick"
+], jF = ["disabled"], MF = ["readonly"], NF = { key: 0 }, PF = { type: "submit" }, FF = /*#__PURE__*/ Jh({
+	__name: "AgentSkillManager",
+	setup(e) {
+		let t = /* @__PURE__ */ R([]), n = /* @__PURE__ */ R(!1), r = /* @__PURE__ */ R(!1), i = /* @__PURE__ */ R(""), a = /* @__PURE__ */ R(""), o = /* @__PURE__ */ R(null), s = () => ({
+			id: "",
+			baseVersion: 0,
+			key: "",
+			name: "",
+			description: "",
+			sourceUrl: "",
+			markdown: "",
+			changeNote: "",
+			active: !0
+		}), c = /* @__PURE__ */ It(s());
+		async function l() {
+			n.value = !0, i.value = "";
+			try {
+				let e = await vF.list();
+				t.value = Array.isArray(e.skills) ? e.skills : [];
+			} catch (e) {
+				i.value = e.message;
+			} finally {
+				n.value = !1;
+			}
+		}
+		function u() {
+			Object.assign(c, s()), o.value = null, a.value = "", i.value = "";
+		}
+		async function d(e) {
+			i.value = "", n.value = !0;
+			try {
+				let { version: t } = await vF.read(e);
+				o.value = t, Object.assign(c, {
+					...t,
+					id: t.skillId,
+					baseVersion: Number(t.latestVersion),
+					changeNote: ""
+				});
+			} catch (e) {
+				i.value = e.message;
+			} finally {
+				n.value = !1;
+			}
+		}
+		async function f(e) {
+			let t = e.target.files?.[0];
+			if (t) {
+				i.value = "";
+				try {
+					if (!/\.md$/i.test(t.name) || t.size > 6e4) throw Error("60KB 이하의 UTF-8 .md 파일을 선택해 주세요.");
+					c.markdown = await t.text(), a.value = "MD 내용을 불러왔습니다. 검토 후 새 버전으로 저장해 주세요.";
+				} catch (e) {
+					i.value = e.message;
+				} finally {
+					e.target.value = "";
+				}
+			}
+		}
+		async function p() {
+			r.value = !0, i.value = "", a.value = "";
+			try {
+				let { version: e } = await vF.save({ ...c });
+				await l(), await d(e.id), yF(), a.value = `v${e.version}을 저장했습니다. 프롬프트에서 이 버전을 연결해야 적용됩니다.`;
+			} catch (e) {
+				i.value = e.message;
+			} finally {
+				r.value = !1;
+			}
+		}
+		async function m(e) {
+			r.value = !0, i.value = "";
+			try {
+				await vF.setActive({
+					id: e.id,
+					baseVersion: Number(e.latestVersion),
+					active: !e.active
+				}), await l(), c.id === e.id && (c.active = !e.active), yF(), a.value = e.active ? "스킬을 비활성화했습니다. 연결된 프롬프트의 새 실행은 연결 해제 또는 재활성화 전까지 차단됩니다." : "스킬을 활성화했습니다. 등록만으로 프롬프트에 자동 연결되지 않습니다.";
+			} catch (e) {
+				i.value = e.message;
+			} finally {
+				r.value = !1;
+			}
+		}
+		function h() {
+			if (!o.value) return;
+			let e = new Blob([o.value.markdown], { type: "text/markdown;charset=utf-8" }), t = URL.createObjectURL(e), n = document.createElement("a");
+			n.href = t, n.download = `${o.value.key}-v${o.value.version}.md`, n.click(), setTimeout(() => URL.revokeObjectURL(t), 0);
+		}
+		return ws(l), (e, s) => (V(), H("section", bF, [
+			U("header", null, [
+				s[7] ||= U("div", null, [U("h2", { id: "agent-skill-title" }, "스킬 관리"), U("p", null, "공통 MD 지침을 등록하고 프롬프트별로 버전을 연결합니다.")], -1),
+				U("button", {
+					type: "button",
+					disabled: r.value || n.value,
+					onClick: u
+				}, "새 스킬", 8, xF),
+				U("button", {
+					type: "button",
+					disabled: r.value || n.value,
+					onClick: l
+				}, "새로고침", 8, SF)
+			]),
+			s[17] ||= U("p", null, "MD 텍스트만 LLM에 전달합니다. 스크립트·외부 링크·추가 참고 파일은 자동 실행하거나 가져오지 않습니다. 기본 정책·등록 토큰·출력 계약이 스킬보다 우선합니다.", -1),
+			i.value ? (V(), H("p", CF, L(i.value), 1)) : G("", !0),
+			a.value ? (V(), H("p", wF, L(a.value), 1)) : G("", !0),
+			U("div", TF, [U("aside", EF, [
+				n.value ? (V(), H("p", DF, "불러오는 중…")) : G("", !0),
+				!n.value && !t.value.length ? (V(), H("p", OF, "등록된 스킬이 없습니다.")) : G("", !0),
+				(V(!0), H(K, null, B(t.value, (e) => (V(), H("article", { key: e.id }, [
+					U("strong", null, L(e.name), 1),
+					s[8] ||= W(),
+					U("span", null, L(e.active ? "활성" : "비활성") + " · v" + L(e.latestVersion), 1),
+					U("p", null, L(e.description), 1),
+					U("button", {
+						type: "button",
+						disabled: r.value || n.value,
+						onClick: (t) => m(e)
+					}, L(e.active ? "비활성화" : "활성화"), 9, kF),
+					(V(!0), H(K, null, B(e.versions, (e) => (V(), H("button", {
+						key: e.id,
+						type: "button",
+						disabled: r.value || n.value,
+						"aria-pressed": o.value?.id === e.id,
+						onClick: (t) => d(e.id)
+					}, "v" + L(e.version) + " 열기", 9, AF))), 128))
+				]))), 128))
+			]), U("form", { onSubmit: Lu(p, ["prevent"]) }, [U("fieldset", { disabled: r.value || n.value }, [
+				U("legend", null, L(c.id ? "새 버전 저장" : "스킬 등록"), 1),
+				U("label", null, [s[9] ||= W("스킬 키", -1), z(U("input", {
+					"onUpdate:modelValue": s[0] ||= (e) => c.key = e,
+					required: "",
+					pattern: "[a-z][a-z0-9-]{1,79}",
+					maxlength: "80",
+					readonly: !!c.id,
+					placeholder: "design-taste"
+				}, null, 8, MF), [[J, c.key]])]),
+				U("label", null, [s[10] ||= W("스킬 이름", -1), z(U("input", {
+					"onUpdate:modelValue": s[1] ||= (e) => c.name = e,
+					required: "",
+					maxlength: "160"
+				}, null, 512), [[J, c.name]])]),
+				U("label", null, [s[11] ||= W("설명", -1), z(U("textarea", {
+					"onUpdate:modelValue": s[2] ||= (e) => c.description = e,
+					rows: "2",
+					maxlength: "2000"
+				}, null, 512), [[J, c.description]])]),
+				U("label", null, [s[12] ||= W("출처 URL", -1), z(U("input", {
+					"onUpdate:modelValue": s[3] ||= (e) => c.sourceUrl = e,
+					type: "url",
+					maxlength: "2000",
+					placeholder: "https://github.com/..."
+				}, null, 512), [[J, c.sourceUrl]])]),
+				U("label", null, [z(U("input", {
+					"onUpdate:modelValue": s[4] ||= (e) => c.active = e,
+					type: "checkbox"
+				}, null, 512), [[Mu, c.active]]), s[13] ||= W("프롬프트에서 사용 가능", -1)]),
+				U("label", null, [s[14] ||= W("MD 파일 불러오기", -1), U("input", {
+					type: "file",
+					accept: ".md,text/markdown",
+					onChange: f
+				}, null, 32)]),
+				U("label", null, [s[15] ||= W("MD 지침", -1), z(U("textarea", {
+					"onUpdate:modelValue": s[5] ||= (e) => c.markdown = e,
+					required: "",
+					rows: "20",
+					spellcheck: "false"
+				}, null, 512), [[J, c.markdown]])]),
+				U("label", null, [s[16] ||= W("변경 기록", -1), z(U("input", {
+					"onUpdate:modelValue": s[6] ||= (e) => c.changeNote = e,
+					maxlength: "2000"
+				}, null, 512), [[J, c.changeNote]])]),
+				o.value ? (V(), H("p", NF, "열어 본 버전: v" + L(o.value.version) + " · SHA-256 " + L(o.value.contentHash) + ". 수정 저장은 기존 버전을 덮어쓰지 않습니다.", 1)) : G("", !0),
+				U("button", PF, L(r.value ? "저장 중…" : c.id ? "새 버전 저장" : "스킬 등록"), 1),
+				o.value ? (V(), H("button", {
+					key: 1,
+					type: "button",
+					onClick: h
+				}, "현재 저장 버전 MD 다운로드")) : G("", !0)
+			], 8, jF)], 32)])
+		]));
+	}
+}, [["__scopeId", "data-v-31269fff"]]);
+//#endregion
+//#region admin-app/src/components/PromptSkillBindings.vue
+qh();
+var IF = {
+	class: "prompt-skill-bindings",
+	"aria-label": "연결된 스킬"
+}, LF = {
+	key: 0,
+	role: "alert"
+}, RF = {
+	key: 1,
+	role: "status"
+}, zF = ["value", "disabled"], BF = ["disabled"], VF = ["onClick"], HF = ["disabled", "onClick"], UF = ["disabled", "onClick"], WF = ["onClick"], GF = { key: 2 }, KF = {
+	key: 3,
+	open: ""
+}, qF = /*#__PURE__*/ Jh({
+	__name: "PromptSkillBindings",
+	props: { modelValue: {
+		type: Array,
+		default: () => []
+	} },
+	emits: ["update:modelValue"],
+	setup(e, { emit: t }) {
+		let n = e, r = t, i = /* @__PURE__ */ R([]), a = /* @__PURE__ */ R(""), o = /* @__PURE__ */ R(""), s = /* @__PURE__ */ R(null), c = /* @__PURE__ */ R(!1), l = q(() => i.value.flatMap((e) => (e.versions || []).map((t) => ({
+			...t,
+			skillName: e.name,
+			key: e.key,
+			active: e.active
+		}))));
+		async function u() {
+			c.value = !0, a.value = "";
+			try {
+				let e = await vF.list();
+				i.value = Array.isArray(e.skills) ? e.skills : [];
+			} catch (e) {
+				a.value = e.message;
+			} finally {
+				c.value = !1;
+			}
+		}
+		function d() {
+			!o.value || n.modelValue.length >= 4 || n.modelValue.some((e) => e.skillVersionId === o.value) || (r("update:modelValue", [...n.modelValue, { skillVersionId: o.value }]), o.value = "");
+		}
+		function f(e) {
+			r("update:modelValue", n.modelValue.filter((t, n) => n !== e));
+		}
+		function p(e, t) {
+			let i = [...n.modelValue], a = e + t;
+			a < 0 || a >= i.length || ([i[e], i[a]] = [i[a], i[e]], r("update:modelValue", i));
+		}
+		function m(e) {
+			let t = l.value.find((t) => t.id === e);
+			return t ? `${t.skillName} · v${t.version}${t.active ? "" : " · 비활성"}` : e;
+		}
+		async function h(e) {
+			a.value = "";
+			try {
+				s.value = (await vF.read(e)).version;
+			} catch (e) {
+				a.value = e.message;
+			}
+		}
+		return ws(() => {
+			u(), window.addEventListener("promo-agent-skills-changed", u);
+		}), Ds(() => window.removeEventListener("promo-agent-skills-changed", u)), (t, n) => (V(), H("section", IF, [
+			n[4] ||= U("p", null, "스킬 관리에서 등록한 버전을 선택하세요. 새 스킬 버전을 저장해도 이 연결은 자동으로 바뀌지 않습니다. 프롬프트의 기존 저장·검증·활성화 절차로 반영됩니다.", -1),
+			a.value ? (V(), H("p", LF, L(a.value), 1)) : G("", !0),
+			c.value ? (V(), H("p", RF, "스킬 목록을 불러오는 중…")) : G("", !0),
+			U("label", null, [n[2] ||= W("추가할 스킬 버전", -1), z(U("select", {
+				"onUpdate:modelValue": n[0] ||= (e) => o.value = e,
+				"aria-label": "추가할 스킬 버전"
+			}, [n[1] ||= U("option", { value: "" }, "선택", -1), (V(!0), H(K, null, B(l.value, (t) => (V(), H("option", {
+				key: t.id,
+				value: t.id,
+				disabled: !t.active || e.modelValue.some((e) => e.skillVersionId === t.id)
+			}, L(t.skillName) + " · v" + L(t.version) + L(t.active ? "" : " · 비활성"), 9, zF))), 128))], 512), [[Y, o.value]])]),
+			U("button", {
+				type: "button",
+				disabled: !o.value || e.modelValue.length >= 4,
+				onClick: d
+			}, "스킬 연결", 8, BF),
+			U("button", {
+				type: "button",
+				onClick: u
+			}, "스킬 목록 새로고침"),
+			U("ol", null, [(V(!0), H(K, null, B(e.modelValue, (t, r) => (V(), H("li", { key: t.skillVersionId }, [
+				U("span", null, L(m(t.skillVersionId)), 1),
+				n[3] ||= W(),
+				U("button", {
+					type: "button",
+					onClick: (e) => h(t.skillVersionId)
+				}, "내용 보기", 8, VF),
+				U("button", {
+					type: "button",
+					disabled: r === 0,
+					onClick: (e) => p(r, -1)
+				}, "위로", 8, HF),
+				U("button", {
+					type: "button",
+					disabled: r === e.modelValue.length - 1,
+					onClick: (e) => p(r, 1)
+				}, "아래로", 8, UF),
+				U("button", {
+					type: "button",
+					onClick: (e) => f(r)
+				}, "연결 해제", 8, WF)
+			]))), 128))]),
+			e.modelValue.length ? G("", !0) : (V(), H("p", GF, "연결된 스킬 없음 · 기존 프롬프트만 사용합니다.")),
+			s.value ? (V(), H("details", KF, [
+				U("summary", null, L(s.value.name) + " · v" + L(s.value.version) + " · 저장된 MD", 1),
+				U("pre", null, L(s.value.markdown), 1),
+				U("p", null, "SHA-256 " + L(s.value.contentHash), 1)
+			])) : G("", !0)
+		]));
+	}
+}, [["__scopeId", "data-v-6202f7f1"]]), JF = /* @__PURE__ */ s((() => {
 	var e = {
 		documents: "promoPrototype.documents.abc",
 		generatedPages: "promoPrototype.generatedPages.abc",
@@ -21829,6 +22206,7 @@ var xP = {
 		"webhook",
 		"llm-models",
 		"llm",
+		"agent-skills",
 		"prompt-variables",
 		"layout-references",
 		"component-generation",
@@ -22240,6 +22618,7 @@ var xP = {
 					renderPolicyText: "{}",
 					validationPolicyText: "{}",
 					harnessConfigText: "{}",
+					skillBindings: [],
 					promptLayersText: "{}",
 					modelCapabilitySnapshotText: "{}",
 					safetyContractText: "{}",
@@ -23117,6 +23496,7 @@ var xP = {
 					"webhook",
 					"llm-models",
 					"llm",
+					"agent-skills",
 					"prompt-variables",
 					"layout-references",
 					"component-generation",
@@ -23896,7 +24276,8 @@ var xP = {
 						"generationPolicy",
 						"renderPolicy",
 						"validationPolicy",
-						"promptLayers"
+						"promptLayers",
+						"skillBindings"
 					]), l = Object.fromEntries(Object.entries(o.modelOptions || {}).filter(([e]) => !c.has(e))), u = this.promptUsesSectionAiControlPlane(o), d = this.promptUsesSectionImagePolicy(o), f = o.runtimeConfig || o.modelOptions?.runtimeConfig || {}, p = d ? {
 						timeoutMs: 24e4,
 						maxAttempts: 3,
@@ -23939,6 +24320,7 @@ var xP = {
 						renderPolicyText: JSON.stringify(o.renderPolicy || o.modelOptions?.renderPolicy || {}, null, 2),
 						validationPolicyText: JSON.stringify(o.validationPolicy || o.modelOptions?.validationPolicy || {}, null, 2),
 						harnessConfigText: JSON.stringify(o.harnessConfig || o.modelOptions?.harnessConfig || {}, null, 2),
+						skillBindings: JSON.parse(JSON.stringify(o.modelOptions?.skillBindings || [])),
 						promptLayersText: JSON.stringify(o.promptLayers || o.modelOptions?.promptLayers || {}, null, 2),
 						modelCapabilitySnapshotText: JSON.stringify(o.modelCapabilitySnapshot || o.modelOptions?.modelCapabilitySnapshot || {}, null, 2),
 						safetyContractText: JSON.stringify(o.safetyContract || o.modelOptions?.safetyContract || {}, null, 2),
@@ -24087,7 +24469,7 @@ var xP = {
 			},
 			promptModelOptionsForSave(e) {
 				let t = this.parseModelOptionsText(this.promptEditor.modelOptionsText);
-				if (t.promptLayers = this.parseModelOptionsText(this.promptEditor.promptLayersText), this.promptSupportsImageSize(e) && (t.imageSize = [
+				if (t.promptLayers = this.parseModelOptionsText(this.promptEditor.promptLayersText), t.skillBindings = JSON.parse(JSON.stringify(this.promptEditor.skillBindings || [])), this.promptSupportsImageSize(e) && (t.imageSize = [
 					"1K",
 					"2K",
 					"4K"
@@ -27058,9 +27440,12 @@ var xP = {
 			}
 		}
 	});
-	le.component("template-layout-manager", window.PromoAdminTemplateLayout.component), le.component("section-layout-preset-manager", window.PromoAdminSectionLayouts.component), le.component("design-token-manager", window.PromoAdminDesignTokens.component), le.component("llm-model-manager", window.PromoAdminLlmModels.component), le.component("prompt-variable-manager", window.PromoAdminPromptVariables.component), le.component("component-generation-workspace", window.PromoAdminComponentGeneration.component), le.component("render-spec-editor", window.PromoAdminComponentGeneration.renderSpecEditor), le.component("directus-integration-settings", window.PromoAdminIntegrations.directusSettings), le.component("layout-reference-manager", window.PromoAdminLayoutReferences.component), (window.PromoI18n?.init?.() || Promise.resolve()).finally(() => le.mount("#app"));
+	le.component("template-layout-manager", window.PromoAdminTemplateLayout.component), le.component("section-layout-preset-manager", window.PromoAdminSectionLayouts.component), le.component("design-token-manager", window.PromoAdminDesignTokens.component), le.component("llm-model-manager", window.PromoAdminLlmModels.component), le.component("agent-skill-manager", window.PromoAdminSkills.manager), le.component("prompt-skill-bindings", window.PromoAdminSkills.bindings), le.component("prompt-variable-manager", window.PromoAdminPromptVariables.component), le.component("component-generation-workspace", window.PromoAdminComponentGeneration.component), le.component("render-spec-editor", window.PromoAdminComponentGeneration.renderSpecEditor), le.component("directus-integration-settings", window.PromoAdminIntegrations.directusSettings), le.component("layout-reference-manager", window.PromoAdminLayoutReferences.component), (window.PromoI18n?.init?.() || Promise.resolve()).finally(() => le.mount("#app"));
 }));
-Bh(document), globalThis.Vue = Lh, globalThis.PromoAdminTemplateLayout = Object.freeze({
+Bh(document), globalThis.PromoAdminSkills = Object.freeze({
+	manager: FF,
+	bindings: qF
+}), globalThis.Vue = Lh, globalThis.PromoAdminTemplateLayout = Object.freeze({
 	service: Kh,
 	component: fg
 }), globalThis.PromoAdminDesignTokens = Object.freeze({
@@ -27081,5 +27466,5 @@ Bh(document), globalThis.Vue = Lh, globalThis.PromoAdminTemplateLayout = Object.
 }), globalThis.PromoAdminIntegrations = Object.freeze({ directusSettings: xD }), globalThis.PromoAdminLayoutReferences = Object.freeze({
 	service: bP,
 	component: gF
-}), await Promise.resolve().then(() => /* @__PURE__ */ u(_F()));
+}), await Promise.resolve().then(() => /* @__PURE__ */ u(JF()));
 //#endregion

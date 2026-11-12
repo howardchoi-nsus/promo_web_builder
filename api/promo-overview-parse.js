@@ -80,6 +80,7 @@ module.exports = async function handler(req, res) {
         id: promptSnapshot.promptConfig.promptId,
         version: promptSnapshot.promptConfig.promptVersion,
         hash: promptSnapshot.promptConfig.renderedPromptHash,
+        skillSnapshots: promptSnapshot.promptConfig.skillSnapshots || [],
       },
       provider: generation.provider,
       executionDisplay: toAiExecutionDisplay(promptSnapshot.promptConfig),

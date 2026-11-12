@@ -59,7 +59,7 @@ async function processPageMedia({req,res,sql,owner,body},dependencies={}){
     else Object.assign(variables,{componentName:isBackground?'PageSchema key visual':'PageSchema image',fieldName:node.id});
     const pinned=await use.createPromptExecutionSnapshot(sql,promptType,variables);
     const cfg=pinned.promptConfig;
-    imageExecution={promptType,promptId:cfg.promptId,promptVersion:cfg.promptVersion,provider:cfg.provider,model:cfg.model};
+    imageExecution={promptType,promptId:cfg.promptId,promptVersion:cfg.promptVersion,provider:cfg.provider,model:cfg.model,skillSnapshots:cfg.skillSnapshots||[]};
     const hash=inputHash({generationRequestId:snapshot.generationMeta.requestId,documentId:found.document.id,nodeId:node.id,request,prompt:cfg.renderedPrompt,model:cfg.model,sourceRequirements:snapshot.generationMeta.sourceRequirements});
     const hex=hash.slice(0,32),requestId=`${hex.slice(0,8)}-${hex.slice(8,12)}-5${hex.slice(13,16)}-8${hex.slice(17,20)}-${hex.slice(20)}`;
     job=await use.acquireGeneration(sql,{documentId:found.document.id,ownerSubject:owner.ownerSubject,requestId,hash});
