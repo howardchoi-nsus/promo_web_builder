@@ -59,6 +59,7 @@ const store = createAiBuilderStore();
 const selectedMode = ref(props.initialMode);
 const operationOpen = ref(false);
 const mediaPreparing=ref(false);
+const workspaceReady=ref(false);
 const mediaPending=computed(()=>Boolean(store.snapshot?.content?.pageSchema?.mediaRequests?.length));
 const pageSchemaEditorOpen = ref(false);
 const pageSchemaSaving = ref(false);
@@ -2928,10 +2929,11 @@ watch(interactionLocked, (locked, wasLocked) => {
 });
 // Each saved revision is checked once when its final preview becomes available.
 let automaticQualityKey = '';
-watch(()=>[store.documentId,store.documentRevision,store.stage,pendingChatActionKey.value,failedTaskRetrying.value],async()=>{
- if(activeResultTab.value!=='final'||store.stage!=='render_ready'||pageSummaryOutdated.value||capabilities.value.pageSchemaMedia===false||!mediaPending.value||mediaPreparing.value||failedTask.value||interactionLocked.value||store.snapshot?.generationMeta?.review?.state!=='approved')return;
- await prepareDynamicMedia();
-});
+// Track eligibility itself: tab changes, completed chat animation, restored
+// requirements and late capabilities can all release a deferred media request.
+watch(()=>Boolean(workspaceReady.value&&capabilities.value.pageSchemaV1&&activeResultTab.value==='final'&&store.stage==='render_ready'&&!pageSummaryOutdated.value&&capabilities.value.pageSchemaMedia!==false&&mediaPending.value&&!mediaPreparing.value&&!failedTask.value&&!interactionLocked.value&&store.snapshot?.generationMeta?.review?.state==='approved'),async ready=>{
+ if(ready)await prepareDynamicMedia();
+},{flush:'post'});
 watch(pageStructurePending,pending=>{if(pending){store.stage='review_required';activeResultTab.value='wireframe';}});
 watch(() => [store.documentId,store.documentRevision,store.stage,activeResultTab.value,finalQualityChecking.value], async () => {
   if (mediaPending.value || mediaPreparing.value || failedTask.value || !store.snapshot || Number(store.snapshot.contractVersion)!==3 || store.stage!=='render_ready' || activeResultTab.value!=='final' || finalQualityChecking.value || finalQualityPassed.value) return;
@@ -2989,6 +2991,7 @@ onMounted(async () => {
           store.documentRevision = Number(loaded.document?.currentDocumentRevision || cached.documentRevision || 0);
           store.snapshot = loaded.snapshot || null;
           if (cached.stage === "failed" && failedTask.value) store.stage = "failed";
+          else if (store.snapshot?.content?.pageSchema && store.snapshot.generationMeta?.review?.state === "approved") store.stage = "render_ready";
           else if (store.snapshot && cached.stage === "render_ready") store.stage = "render_ready";
           else if (wireframeSnapshot.value) store.stage = "review_required";
           else if (store.overviewDraft) store.stage = "reviewing_overview";
@@ -3006,6 +3009,7 @@ onMounted(async () => {
       appendWelcomeMessage();
     }
     await executionLookups;
+    workspaceReady.value=true;
   } catch (error) {
     setBuilderError(store, error);
   }

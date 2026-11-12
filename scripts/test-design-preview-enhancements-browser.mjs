@@ -68,6 +68,28 @@ try{
  assert.ok(paint.heading.some(h=>h.size==='48px'&&h.color==='rgb(255, 119, 119)'));assert.ok(paint.heading.some(h=>h.size==='28px'));
  const after=await frame.locator('[data-ps-node]').evaluateAll(nodes=>nodes.map(n=>({id:n.id,width:getComputedStyle(n).width,columns:getComputedStyle(n).gridTemplateColumns,gap:getComputedStyle(n).gap,padding:getComputedStyle(n).padding})));
  assert.deepEqual(after,before,'Image preparation must preserve approved layout geometry');
+ // An approved pending document must resume when only the visible tab changes,
+ // and after reload interrupted during image preparation. No second approval.
+ for(const [stage,tab] of [['render_ready','requirements'],['generating_assets','final']]){
+  const designed=designFixture();snapshot=snapshotForPage(normalize(designed.page).page,designed.context);
+  snapshot.generationMeta.review={state:'approved'};snapshot.documentRevision=++revision;
+  snapshot.qualityGate={state:'pending',documentRevision:revision};savedGate=undefined;
+  const beforeCalls=mediaCalls;
+  const resumedMedia=page.waitForResponse(response=>response.url().endsWith('/api/promo-page-schema-media')&&response.status()===200);
+  const resumedQuality=page.waitForResponse(response=>response.url().endsWith('/api/promo-builder-documents')&&response.request().method()==='PATCH');
+  await page.evaluate(({stage,tab})=>{
+   const key='promoAiBuilder.activeChat.v2',cached=JSON.parse(sessionStorage.getItem(key));
+   Object.assign(cached,{stage,activeResultTab:tab,failedTask:null});if(stage==='generating_assets')cached.messages=[];sessionStorage.setItem(key,JSON.stringify(cached));
+  },{stage,tab});
+  await page.reload();
+  if(tab==='requirements'){
+   await page.getByRole('button',{name:'페이지 구성 미리보기',exact:true}).waitFor();
+   assert.equal(mediaCalls,beforeCalls);
+   await page.getByRole('button',{name:'디자인 미리보기',exact:true}).click();
+  }
+  await Promise.all([resumedMedia,resumedQuality]);
+  assert.equal(mediaCalls,beforeCalls+1,stage+' must resume pending images exactly once');assert.equal(approved,1);
+ }
  assert.deepEqual(errors,[]);
- console.log('Design preview browser: approval → automatic media failure → chat retry → image/background/overlay/icon/border/typographic hierarchy → three-viewport quality; approved geometry preserved.');
+ console.log('Design preview browser: approval → automatic media failure → chat retry → image/background/overlay/icon/border/typographic hierarchy → three-viewport quality; tab-only and interrupted preparation resume; approved geometry preserved.');
 }finally{await browser.close();await new Promise(r=>server.close(r));}

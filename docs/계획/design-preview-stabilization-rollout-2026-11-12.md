@@ -88,3 +88,11 @@ CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium pnpm run qa:design-preview
 - 롤백은 먼저 새 실행 기능을 끄는 방식으로 진행한다. 새 rendererVersion 2와 등록 역할을 해석할 수 없는 이전 코드로 단순 복귀하면 새 문서를 읽지 못할 수 있다.
 
 운영 검증을 완료하면 실제 기준 커밋, Preview URL, DB·프롬프트·모델·토큰 버전, 공급자 지연·사용량, 검사 결과, Production Ready 상태를 이 문서에 추가한다.
+
+## 이미지 미생성 후속 점검 (2026-11-12)
+
+- 로컬 재현: 승인된 미연결 이미지 문서를 요청 요약 탭에서 복원한 뒤 디자인 미리보기로 전환해도 media API가 호출되지 않았다. 이미지 준비 중 새로고침하면 승인된 문서가 render_ready로 복원되지 않아 자동 준비가 멈췄다.
+- 원인: 자동 준비 watcher가 실제 실행 조건 대신 문서·revision·stage 등 일부 값만 감시했다. 탭 전환·채팅 애니메이션 종료·초기화 완료 등 잠금 해제는 재평가를 보장하지 않았다.
+- 수정: 실행 가능 여부의 모든 반응형 조건을 감시하고, 초기화가 끝난 후에 실행한다. 서버의 승인 상태로 작업 단계를 복원하여 대기 이미지 요청을 재개한다.
+- 로컬 브라우저 회귀 사례: 탭 전환 후 자동 준비, 준비 도중 새로고침과 환영 채팅 애니메이션 종료 후 자동 재개, API 오류 후 채팅 재시도, 완료된 이미지의 유지. 실제 운영 장애 원인의 확정 또는 실제 LLM·Blob 검증 결과로 간주하지 않는다.
+- 운영 확인 필요: 배포 커밋, pageSchema.mediaRequests 내용, PAGE_SCHEMA_MEDIA_PREPARATION_ENABLED, media API 응답, BLOB_READ_WRITE_TOKEN, 이미지 프롬프트·모델 활성 설정. migration 090은 borderStyle 허용만 담당하며 이미지 생성 기능을 활성화하지 않는다.
