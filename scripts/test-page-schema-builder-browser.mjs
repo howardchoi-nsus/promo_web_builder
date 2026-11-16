@@ -49,7 +49,7 @@ try{
  await page.getByPlaceholder('무엇을 만들고 싶으신가요?').fill('등록된 혜택으로 페이지를 만들어줘');await page.getByRole('button',{name:'전송',exact:true}).click();
  await page.locator('.ai-chat-mask-reveal').first().waitFor();
  const progressAnimation=await page.locator('.ai-chat-mask-reveal').first().evaluate(el=>({duration:getComputedStyle(el).animationDuration,repeat:getComputedStyle(el).animationIterationCount}));
- assert.equal(progressAnimation.duration,'0.45s');assert.equal(progressAnimation.repeat,'infinite');
+ assert.equal(progressAnimation.duration,'1.8s');assert.equal(progressAnimation.repeat,'infinite');
  await page.emulateMedia({reducedMotion:'reduce'});
  assert.equal(await page.locator('.ai-chat-mask-reveal').first().evaluate(el=>getComputedStyle(el).animationName),'none');
  await page.emulateMedia({reducedMotion:'no-preference'});
