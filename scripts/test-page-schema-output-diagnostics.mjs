@@ -1,0 +1,12 @@
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+import {fixture,context} from './fixtures/page-schema.mjs';
+const require=createRequire(import.meta.url);
+const {outputDiagnostics}=require('../api/_page-schema-output-diagnostics');
+const page=fixture('example-editorial'),before=JSON.stringify(page);
+const report=outputDiagnostics(page,context);
+assert.equal(report.generationPath,'page-schema');assert.equal(report.scope,'saved-schema');
+assert.ok(report.nodes.length);assert.ok(Object.keys(report.candidateCounts).length);
+assert.equal(JSON.stringify(page),before);
+assert.ok(!JSON.stringify(report).includes('contentSources'));
+console.log('Saved schema diagnostics: token candidates, resolved selections and no content mutation passed');

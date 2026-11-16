@@ -1,5 +1,6 @@
 <script setup>
 import { createProgressEvent, progressStage, isHistoricalAction } from "./services/chat-experience.mjs";
+import { requirementNarrative } from "./services/requirement-narrative.mjs";
 import {reviewPageUntilReady} from "./services/page-quality-review.mjs";
 import {preparePageMedia} from "./services/page-media-preparation.mjs";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
@@ -2946,24 +2947,7 @@ function readableRequirement(value) {
   return String(value ?? "").trim();
 }
 
-const requirementSummaryItems = computed(() => {
-  const overview = store.overviewDraft || {};
-  return [
-    { key: "purpose", label: "목적", value: readableRequirement(overview.promotionPurposeOther || overview.promotionPurpose) },
-    { key: "audience", label: "대상", value: readableRequirement(overview.audience) },
-    { key: "offer", label: "핵심 혜택", value: readableRequirement(overview.mainOffer) },
-    { key: "tone", label: "분위기", value: readableRequirement(overview.campaignTone) },
-  ].filter((item) => item.value);
-});
-
-const requirementSectionLabels = computed(() => {
-  const sections = Array.isArray(store.overviewDraft?.contentSections)
-    ? store.overviewDraft.contentSections
-    : [];
-  return sections.map((section, index) => (
-    readableRequirement(section?.title || section?.label || section?.sectionType) || `콘텐츠 ${index + 1}`
-  )).filter(Boolean);
-});
+const requirementSummaryNarrative = computed(() => requirementNarrative(store.overviewDraft || {}));
 
 watch([
   messages,
@@ -3423,17 +3407,9 @@ onBeforeUnmount(() => {
                     <strong>{{ store.overviewDraft.title || store.overviewDraft.leadText || '새 프로모션' }}</strong>
                     <p v-if="store.overviewDraft.leadText && store.overviewDraft.leadText !== store.overviewDraft.title">{{ store.overviewDraft.leadText }}</p>
                   </div>
-                  <dl v-if="requirementSummaryItems.length" class="ai-requirement-summary__facts">
-                    <div v-for="item in requirementSummaryItems" :key="item.key">
-                      <dt>{{ item.label }}</dt>
-                      <dd>{{ item.value }}</dd>
-                    </div>
-                  </dl>
-                  <div v-if="requirementSectionLabels.length" class="ai-requirement-summary__sections">
-                    <strong>예정 콘텐츠</strong>
-                    <div>
-                      <span v-for="(label, index) in requirementSectionLabels" :key="`${label}:${index}`">{{ index + 1 }}. {{ label }}</span>
-                    </div>
+                  <div class="ai-requirement-summary__narrative">
+                    <p v-for="(paragraph, index) in requirementSummaryNarrative.paragraphs" :key="index">{{ paragraph }}</p>
+                    <p v-if="requirementSummaryNarrative.content">{{ requirementSummaryNarrative.content }}</p>
                   </div>
                   <p class="ai-requirement-summary__hint">
                     내용이 맞으면 왼쪽 채팅의 <strong>페이지 미리보기 생성</strong>을 눌러주세요. 바꾸고 싶은 부분은 “혜택을 3개로 줄여줘”처럼 입력하면 됩니다.
@@ -3568,16 +3544,7 @@ onBeforeUnmount(() => {
                       </div>
                     </div>
                   </div>
-                  <details class="ai-wireframe-technical">
-                    <summary>기술 정보 보기</summary>
-                    <dl>
-                      <div><dt>구성 방식</dt><dd>{{ section.layoutLabel }}</dd></div>
-                      <div v-for="component in section.components" :key="`technical:${component.key}`">
-                        <dt>{{ component.label }}</dt>
-                        <dd>{{ component.typeLabel }}</dd>
-                      </div>
-                    </dl>
-                  </details>
+
                 </article>
                 </div>
               </div>

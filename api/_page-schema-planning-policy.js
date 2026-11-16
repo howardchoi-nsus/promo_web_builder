@@ -1,0 +1,3 @@
+// Shared runtime guidance; only schema-supported properties may be generated.
+const dynamicLayoutPolicy = 'Design the section count, order, nesting and responsive layout from the supplied content and explicit request. Header, hero, benefits and legal are not mandatory templates. Do not fabricate sections or legal copy. For revisions, apply the requested structural change to currentPage, not only its wording. Distinguish moving a component within its parent, aligning text inside it, and laying out siblings horizontally. Use only supported schema properties; never introduce CSS or HTML. Keep unrelated facts, assets and actions. Identical suitable layouts are allowed; do not randomize solely to be different.';
+module.exports = {dynamicLayoutPolicy};

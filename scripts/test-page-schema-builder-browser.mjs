@@ -47,6 +47,9 @@ try{
  assert.equal(requests.includes('/api/promo-overview-parse'),false);
  await page.getByPlaceholder('무엇을 만들고 싶으신가요?').fill('등록된 혜택으로 페이지를 만들어줘');await page.getByRole('button',{name:'전송',exact:true}).click();
  assert.equal(await page.locator('.ai-result-content textarea,.ai-result-content input,.ai-result-content select').count(),0);
+ await page.locator('.ai-requirement-summary__narrative').waitFor();
+ assert.equal(await page.locator('.ai-requirement-summary__facts,.ai-wireframe-technical').count(),0);
+ assert.ok((await page.locator('.ai-requirement-summary__narrative').innerText()).includes('프로모션 페이지의 목적은 프로모션입니다.'));
  await page.getByRole('button',{name:/^(?:AI가 구성하고 미리보기 생성|페이지 미리보기 생성)$/}).click();
  await page.frameLocator('iframe').first().locator('[data-ps-node="page_root"]').waitFor().catch(async error=>{console.error(JSON.stringify({requests,errors,body:await page.locator('body').innerText()},null,2));throw error;});assert.equal(generated,1);assert.equal(requests.includes('/api/promo-composition-shells'),false);assert.equal(requests.includes('/api/promo-page-composition-proposals'),false);
  const historic=page.getByRole('button',{name:/이전 .*현재 상태 보기/}).first();

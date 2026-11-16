@@ -75,9 +75,20 @@ const longCopyResult = buildWireframeSections({
     sectionInputs: { "terms-section": { "legal-copy": longCopy } },
   },
 });
-assert.equal(longCopyResult[0].components[0].contentLines[0].truncated, true);
-assert.ok(longCopyResult[0].components[0].contentLines[0].text.endsWith("…"));
+assert.equal(longCopyResult[0].components[0].contentLines[0].truncated, false);
+assert.equal(longCopyResult[0].components[0].contentLines[0].text, longCopyResult[0].components[0].contentLines[0].fullText);
 assert.equal(longCopyResult[0].components[0].contentLines[0].fullText, longCopy);
+
+const fullListSnapshot = {
+  content: {
+    sectionSnapshot: [{sectionKey:'all-copy',sectionRole:'terms',items:[{itemKey:'copy',fieldKind:'text'}]}],
+    sectionInputs: {'all-copy': {copy:['첫째', '둘째', '셋째', '넷째', '다섯째']}},
+  },
+};
+const allCopy = buildWireframeSections(fullListSnapshot)[0].components[0].contentLines.map(line=>line.text).join(' ');
+assert.ok(allCopy.includes('넷째') && allCopy.includes('다섯째'));
+fullListSnapshot.content.sectionInputs['all-copy'].copy = '첫 문단\n\n두 번째 문단';
+assert.equal(buildWireframeSections(fullListSnapshot)[0].components[0].contentLines[0].text,'첫 문단\n\n두 번째 문단');
 
 const previewResult = buildWireframeSections({
   preview: {

@@ -826,3 +826,6 @@
 @media (prefers-reduced-motion: reduce) {
   .ai-chat-mask-reveal { animation: none; mask-image: none; }
 }
+.ai-requirement-summary__narrative { display: grid; gap: 10px; }
+.ai-requirement-summary__narrative p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.7; }
+.ai-wireframe-copy strong { white-space: pre-wrap; overflow-wrap: anywhere; }
