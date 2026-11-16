@@ -180,4 +180,14 @@ assert.notEqual(
   overviewRequestFingerprint("두 번째 요청")
 );
 
-console.log("promo overview contract tests passed");
+
+// Browser and server must hash the same confirmation metadata before composition.
+const vm = require("node:vm");
+const fs = require("node:fs");
+const browserGlobal = {};
+vm.runInNewContext(fs.readFileSync(require.resolve("../prototype/wizard/promotion-overview.js"), "utf8"), {window:browserGlobal,globalThis:browserGlobal});
+for(const overview of [{title:"동일한 요청"},{title:"동일한 요청",_review:{missingCriticalInputs:[]}},{title:"동일한 요청",_review:{missingCriticalInputs:["mainOffer","invalid-field","market"]}}]) {
+  assert.equal(browserGlobal.PromoPromotionOverview.fingerprint(overview), overviewFingerprint(overview));
+}
+
+console.log("promo overview contract and browser/server fingerprint parity tests passed");

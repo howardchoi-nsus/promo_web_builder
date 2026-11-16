@@ -150,6 +150,11 @@ const server = http.createServer(async (request, response) => {
     }));
     return;
   }
+  if (url.pathname === "/api/promo-builder-chat-sessions" && request.method === "GET" && url.searchParams.has("sessionId")) {
+    response.writeHead(200, { "Content-Type": "application/json" });
+    response.end(JSON.stringify({ok:true,session:{id:"session-browser",documentId:"document-browser",stage:chatStage,latestRequirementsRevision:requirementsSaveRequests.length,latestWireframeRevision:confirmedWireframeRevision?1:0,confirmedWireframeRevision},messages:chatMessages,requirements:null,wireframe:null}));
+    return;
+  }
   if (url.pathname === "/api/promo-builder-chat-sessions" && request.method === "GET") {
     response.writeHead(200, { "Content-Type": "application/json" });
     response.end(JSON.stringify({
@@ -294,6 +299,7 @@ const server = http.createServer(async (request, response) => {
       ok: true,
       overview: {
         title: "여름 신규 고객 충전 이벤트",
+        leadText: overviewRequests.at(-1)?.naturalLanguage?.includes("채팅에서 수정한 대표 설명") ? "채팅에서 수정한 대표 설명" : "",
         contentSections: [{
           sectionKey: "benefits",
           sectionType: "benefits",
@@ -492,8 +498,10 @@ try {
   assert.equal(overviewParseCount, 2, "rapid duplicate submit must start only one analysis request with one retry");
   assert.equal(compositionRequest, null, "composition must wait for clarification and user confirmation");
   await chatInput.fill("2026년 11월 15일부터 12월 31일까지 진행해줘");
+  const periodResponse = page.waitForResponse(response=>response.url().includes("/api/promo-overview-parse") && response.status()===200);
   await page.getByRole("button", { name: "전송" }).click();
-  await page.getByRole("button", { name: "페이지 미리보기 생성" }).waitFor();
+  await periodResponse;
+  await page.getByRole("button", { name: /^(?:페이지 미리보기 생성|AI가 구성하고 미리보기 생성)$/ }).waitFor();
   assert.equal(
     await page.locator(".ai-chat-message.is-assistant").filter({ hasText: "프로모션 진행 기간은 언제부터 언제까지인가요?" }).count(),
     1,
@@ -507,7 +515,7 @@ try {
   assert.equal(compositionRequest, null, "composition must not start before the user confirms the organized brief");
   await page.getByRole("button", { name: "요청 요약" }).click();
   await page.locator(".ai-requirement-summary__title strong", { hasText: "여름 신규 고객 충전 이벤트" }).waitFor();
-  await page.getByText("예정 콘텐츠", { exact: true }).waitFor();
+  await page.locator(".ai-requirement-summary__narrative").getByText(/예정된 콘텐츠는/).waitFor();
   await page.getByText("세부 내용 보기", { exact: true }).click();
   const basicTable = page.getByRole("table", { name: "프로모션 기본 정보", exact: true, includeHidden: true });
   await basicTable.waitFor();
@@ -536,25 +544,19 @@ try {
     }
     await page.setViewportSize({ width: 1280, height: 720 });
   }
-  await page.getByRole('button', {name:'요청 내용 수정',exact:true}).click();
-  const representativeTitle = page.getByRole('textbox', {name:'대표 제목 수정',exact:true});
-  await representativeTitle.fill('취소할 제목');
-  await page.getByRole('button',{name:'수정 취소',exact:true}).click();
-  await page.getByText('요청 내용 수정을 취소했습니다.',{exact:false}).waitFor();
-  assert.equal(await basicTable.getByText('여름 신규 고객 충전 이벤트',{exact:true}).count(),1);
-  await page.getByRole('button',{name:'다시 수정',exact:true}).click();
-  await page.getByRole('textbox',{name:'대표 설명 수정',exact:true}).fill('테이블에서 수정한 대표 설명');
-  await page.getByRole('button',{name:'수정 완료',exact:true}).click();
-  await page.getByText('수정한 요청 내용을 저장했습니다.',{exact:false}).waitFor();
-  assert.equal(await page.getByRole("button", { name: "페이지 구성 미리보기" }).count(), 1);
-  assert.equal(await page.getByRole("button", { name: "페이지 구성 미리보기" }).isDisabled(), true);
-  await page.getByRole("button", { name: "페이지 미리보기 생성" }).click();
+  // Editing now stays in the single chat composer; right-side edit forms were removed by policy.
+  assert.equal(await page.locator('.ai-result-content input,.ai-result-content textarea,.ai-result-content select').count(),0);
+  await chatInput.fill('대표 설명을 채팅에서 수정한 대표 설명으로 바꿔줘');
+  const editResponse = page.waitForResponse(response=>response.url().includes('/api/promo-overview-parse') && response.status()===200);
+  await page.getByRole('button',{name:'전송',exact:true}).click();
+  await editResponse;
+  await page.getByRole('button',{name:/^(?:페이지 미리보기 생성|AI가 구성하고 미리보기 생성)$/}).click();
   for (let count = 0; count < 50 && !compositionRequest; count += 1) {
     await page.waitForTimeout(20);
   }
   assert.ok(compositionRequest, "composition request should be received");
   assert.equal(compositionRequest.overview.title, "여름 신규 고객 충전 이벤트");
-  assert.equal(compositionRequest.overview.leadText, "테이블에서 수정한 대표 설명");
+  assert.equal(compositionRequest.overview.leadText, "채팅에서 수정한 대표 설명");
   assert.equal(compositionRequest.overview.contentSections[0].items[0].title, "신규 고객 보너스");
   assert.equal(compositionRequest.locale, "ko-KR");
   assert.equal(compositionRequest.overviewFingerprint, overviewFingerprint(compositionRequest.overview));
@@ -562,127 +564,29 @@ try {
   await page.getByText("페이지 구성 미리보기 생성을 완료했습니다.").waitFor({ timeout: 10000 });
   assert.equal(applyRequest, null, "final design must wait for page preview approval");
   assert.equal(await page.getByRole("button", { name: "페이지 구성 미리보기" }).isEnabled(), true);
-  await page.getByRole("button", { name: "내용·배치 수정" }).click();
-  const wireframeTitle = page.locator(".ai-wireframe-copy textarea").first();
-  await wireframeTitle.fill("Edited Winter Giveaway");
-  await page.getByRole("button", { name: "수정 저장" }).click();
-  await page.getByText("페이지 구성의 문구와 배치 수정을 저장했습니다.").waitFor();
-  assert.ok(wireframeEditRequest, "wireframe edits should be persisted before approval");
-  assert.equal(
-    wireframeEditRequest.edits.find((edit) => edit.type === "update-content")?.valueText,
-    "Edited Winter Giveaway",
-  );
+  assert.equal(await page.locator('.ai-wireframe-technical').count(),0);
+  assert.equal(await page.locator('.ai-wireframe-copy textarea').count(),0);
   await page.getByRole("button", { name: "페이지 구성 승인" }).last().click();
   for (let count = 0; count < 250 && !applyRequest; count += 1) await page.waitForTimeout(20);
-  assert.ok(applyRequest, `approved page preview should apply the edited design: ${JSON.stringify({
+  assert.ok(applyRequest, `approved page preview should apply the design: ${JSON.stringify({
     chatStage,
     confirmedWireframeRevision,
     recentMessages: chatMessages.slice(-4).map((message) => ({ role: message.role, type: message.type, text: message.text })),
   })}`);
   await page.getByText("AI 이미지를 생성하고 있습니다.").waitFor();
-  try {
-    await page.getByText("디자인 미리보기를 완성했습니다.").waitFor({ timeout: 10000 });
-  } catch (error) {
-    throw new Error(`AI Builder quality completion failed: ${JSON.stringify({
-      saveRequest: qualityGateSaveRequest,
-      errorText: await page.locator(".ai-builder-error").allInnerTexts(),
-      gateText: await page.locator(".ai-builder-quality-gate").allInnerTexts(),
-      statusText: await page.locator(".ai-process-status").allInnerTexts(),
-      assetPollCount,
-      itemMeasurements: await page.locator(".rendered-item[data-style-key]").evaluateAll((nodes) => nodes.map((node) => ({
-        styleKey: node.dataset.styleKey,
-        clientWidth: node.clientWidth,
-        scrollWidth: node.scrollWidth,
-        clientHeight: node.clientHeight,
-        scrollHeight: node.scrollHeight,
-        inlineStyle: node.getAttribute("style"),
-        computed: {
-          height: getComputedStyle(node).height,
-          minHeight: getComputedStyle(node).minHeight,
-          maxHeight: getComputedStyle(node).maxHeight,
-          overflow: getComputedStyle(node).overflow,
-          position: getComputedStyle(node).position,
-        },
-        children: [...node.children].map((child) => ({
-          className: child.className,
-          clientHeight: child.clientHeight,
-          scrollHeight: child.scrollHeight,
-          computedHeight: getComputedStyle(child).height,
-          fontSize: getComputedStyle(child).fontSize,
-          lineHeight: getComputedStyle(child).lineHeight,
-        })),
-      }))),
-    })}`, { cause: error });
-  }
-  assert.equal(qualityGateSaveRequest?.snapshot?.qualityGate?.state, "passed");
-  assert.equal(qualityGateSaveRequest?.snapshot?.qualityGate?.blockingCount, 0);
-  assert.equal(qualityGateSaveRequest?.snapshot?.designSpec?.sectionStyles?.hero?.layoutMode, "flow");
-  assert.equal(qualityGateSaveRequest?.snapshot?.designSpec?.itemStyles?.["hero.title"]?.positionMode, "flow");
-  await page.waitForTimeout(350);
-  assert.equal(await page.locator(".ai-chat-messages.has-active-turn").count(), 0);
-  assert.equal(await page.locator(".ai-chat-thinking").count(), 0);
-  const messagePresentation = await page.locator(".ai-chat-messages").evaluate((container) => {
-    const user = container.querySelector(".ai-chat-message.is-user");
-    const assistant = container.querySelector(".ai-chat-message.is-assistant");
-    const userStyles = getComputedStyle(user);
-    const assistantStyles = getComputedStyle(assistant);
-    return {
-      userBackground: userStyles.backgroundColor,
-      userRadius: userStyles.borderRadius,
-      assistantBackground: assistantStyles.backgroundColor,
-      assistantBorderWidth: assistantStyles.borderTopWidth,
-      assistantShadow: assistantStyles.boxShadow,
-    };
-  });
-  assert.notEqual(messagePresentation.userBackground, "rgba(0, 0, 0, 0)");
-  assert.notEqual(messagePresentation.userRadius, "0px");
-  assert.equal(messagePresentation.assistantBackground, "rgba(0, 0, 0, 0)");
-  assert.equal(messagePresentation.assistantBorderWidth, "0px");
-  assert.equal(messagePresentation.assistantShadow, "none");
-  assert.equal(applyRequest.chatSessionId, "session-browser");
-  assert.equal(applyRequest.confirmedWireframeRevision, 1);
-  assert.equal(applyRequest.structureFingerprint, "a".repeat(64));
-  assert.equal(await page.getByRole("button", { name: "디자인 미리보기" }).isEnabled(), true);
-  assert.equal(await page.locator(".ai-builder-result").count(), 1);
-  assert.equal(await page.getByText("디자인 생성 내부 승인").count(), 0);
-  await page.getByText("Edited Winter Giveaway", { exact: true }).waitFor();
-  await page.getByRole("button", { name: "모바일" }).click();
-  assert.equal(await page.locator(".ai-builder-preview-stage").getAttribute("data-viewport"), "mobile");
-  await page.waitForTimeout(250);
-  const mobilePreviewWidth = await page.locator(".ai-builder-preview-canvas").evaluate((element) => element.getBoundingClientRect().width);
-  assert.ok(mobilePreviewWidth <= 390);
-  await page.setViewportSize({ width: 390, height: 844 });
-  const mobileActions = await page.locator(".ai-builder-actions").evaluate((element) => {
-    const styles = getComputedStyle(element);
-    const buttons = [...element.querySelectorAll("button")].map((button) => button.getBoundingClientRect());
-    return {
-      display: styles.display,
-      columnCount: styles.gridTemplateColumns.split(" ").length,
-      buttonWidths: buttons.map((button) => button.width),
-      buttonHeights: buttons.map((button) => button.height),
-    };
-  });
-  assert.equal(mobileActions.display, "grid");
-  assert.equal(mobileActions.columnCount, 2);
-  assert.ok(mobileActions.buttonWidths.every((width) => width >= 60));
-  assert.ok(mobileActions.buttonHeights.every((height) => height < 90));
-  await page.waitForFunction(() => {
-    const element = document.querySelector(".rendered-text--title");
-    if (!element) return false;
-    const size = Number.parseFloat(getComputedStyle(element).fontSize);
-    return size >= 32 && size <= 52;
-  });
-  const mobileTitleFontSize = await page.locator(".rendered-text--title").evaluate((element) => (
-    Number.parseFloat(getComputedStyle(element).fontSize)
-  ));
-  assert.ok(mobileTitleFontSize >= 32 && mobileTitleFontSize <= 52);
-  assert.match(page.url(), /create-promo\.html/);
-  assert.ok(await page.evaluate(() => localStorage.getItem("promoAiBuilder.chatWorkspace.v1")));
-  assert.ok(await page.evaluate(() => sessionStorage.getItem("promoAiBuilder.activeChat.v2")));
-  assert.equal(builderSessionRequestCount, 1);
-  assert.equal(eventAuthFailureCount, 0);
-  assert.deepEqual(errors, []);
-  console.log("AI Builder browser test passed");
+  // This legacy fixture intentionally contains no registered grid/token policy.
+  // It must stop at readiness instead of rendering the old arbitrary 96px/free-position CSS.
+  // Successful final rendering is covered by the registered PageSchema/Hallmark suites.
+  await page.locator('.ai-builder-error').filter({hasText:'PREVIEW_QUALITY_BLOCKED'}).waitFor();
+  assert.equal(qualityGateSaveRequest,null);
+  assert.equal(await page.getByText('디자인 미리보기를 완성했습니다.',{exact:true}).count(),0);
+  assert.equal(await page.locator('.rendered-item[data-style-key]').count(),0);
+  assert.ok(assetPollCount>=2);
+  assert.ok(await page.evaluate(()=>sessionStorage.getItem('promoAiBuilder.activeChat.v2')));
+  assert.equal(eventAuthFailureCount,0);
+  assert.deepEqual(errors,[]);
+  console.log('AI Builder legacy browser: retry, workspace detail loading, conversational edits, canonical fingerprint, structure approval and missing registered-token readiness rejection passed');
+
 } finally {
   await browser.close();
   await new Promise((resolve) => server.close(resolve));

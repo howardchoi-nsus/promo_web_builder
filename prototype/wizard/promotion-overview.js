@@ -96,6 +96,8 @@
       ? value.promotionPurpose : "";
     return {
       schemaVersion: 6,
+      ...(value._review ? { _review: { missingCriticalInputs: (Array.isArray(value._review.missingCriticalInputs) ? value._review.missingCriticalInputs : [])
+        .filter(field => ["title", "leadText", "ctaLabel", "promotionPurpose", "promotionPurposeOther", "market", "audience", "campaignTone", "mainOffer", "contentSections", "additionalInformation", "notices", "legalInformation"].includes(field)).slice(0, 20) } } : {}),
       inputMode: value.inputMode === "natural-language" ? "natural-language" : "structured",
       rawNaturalLanguage: text(value.rawNaturalLanguage, 4000),
       title: text(value.title, 200),

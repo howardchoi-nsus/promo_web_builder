@@ -1,3 +1,4 @@
+import { requireChatWorkspace } from "./chat-workspace-response.mjs";
 import { upload } from "@vercel/blob/client";
 
 async function request(path, options = {}) {
@@ -108,15 +109,15 @@ export function saveBuilderDocument(payload) {
   });
 }
 
-export function createChatWorkspace(documentId, requestId = "") {
-  return request("/api/promo-builder-chat-sessions", {
+export async function createChatWorkspace(documentId, requestId = "") {
+  return requireChatWorkspace(await request("/api/promo-builder-chat-sessions", {
     method: "POST",
     body: JSON.stringify({ documentId, requestId }),
-  });
+  }));
 }
 
-export function loadChatWorkspace(sessionId) {
-  return request(`/api/promo-builder-chat-sessions?sessionId=${encodeURIComponent(sessionId)}`);
+export async function loadChatWorkspace(sessionId) {
+  return requireChatWorkspace(await request(`/api/promo-builder-chat-sessions?sessionId=${encodeURIComponent(sessionId)}`));
 }
 
 export function listChatWorkspaces(limit = 30) {
