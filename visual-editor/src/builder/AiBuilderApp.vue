@@ -64,6 +64,7 @@ const store = createAiBuilderStore();
 const selectedMode = ref(props.initialMode);
 const operationOpen = ref(false);
 const mediaPreparing=ref(false);
+const activeMediaNodeId=ref(null);
 const workspaceReady=ref(false);
 const mediaPending=computed(()=>Boolean(store.snapshot?.content?.pageSchema?.mediaRequests?.length));
 const pageSchemaEditorOpen = ref(false);
@@ -254,6 +255,7 @@ function recoveryStage() {
 function rememberFailedTask(task, error) {
   failedTask.value = {
     kind: String(task?.kind || "unknown"),
+    nodeId: String(task?.nodeId || ""),
     operationId: String(task?.operationId || ""),
     label: String(task?.label || "작업"),
     input: String(task?.input || ""),
@@ -2390,12 +2392,12 @@ async function prepareDynamicMedia(){
  mediaPreparing.value=true;store.stage='generating_assets';
  const operationId='page-media-'+store.documentId;
  try{
-  await preparePageMedia({readCurrent:()=>({documentId:store.documentId,revision:store.documentRevision,snapshot:store.snapshot}),request:updatePageSchemaMedia,onUpdate:saved=>{store.documentRevision=Number(saved.revision);store.snapshot=saved.snapshot;transientQualityGate.value=null;},onProgress:count=>updateStatusMessage(operationId,`디자인 이미지 ${count}개를 준비하고 있습니다.`,'in_progress')});
+  await preparePageMedia({readCurrent:()=>({documentId:store.documentId,revision:store.documentRevision,snapshot:store.snapshot}),request:updatePageSchemaMedia,onUpdate:saved=>{store.documentRevision=Number(saved.revision);store.snapshot=saved.snapshot;transientQualityGate.value=null;},onProgress:(count,job)=>{activeMediaNodeId.value=job.nodeId;updateStatusMessage(operationId,`디자인 이미지 ${count}개를 준비하고 있습니다.`,'in_progress');}});
   store.stage='render_ready';activeResultTab.value='final';
   updateStatusMessage(operationId,'디자인 이미지를 연결했습니다. 품질을 확인합니다.','completed');
  }catch(error){
   store.stage='render_ready';
-  rememberFailedTask({kind:'page-media',label:'디자인 이미지 준비',operationId},error);
+  rememberFailedTask({kind:'page-media',nodeId:activeMediaNodeId.value,label:'디자인 이미지 준비',operationId},error);
   setBuilderError(store,error);updateStatusMessage(operationId,'이미지 준비를 완료하지 못했습니다. 완료된 이미지는 보존되며 실패한 항목부터 다시 시도할 수 있습니다.','failed');
  }finally{mediaPreparing.value=false;}
 }
@@ -3564,9 +3566,11 @@ onBeforeUnmount(() => {
                 v-model:viewport="wireframeViewport"
                 :snapshot="store.snapshot"
                 :document-revision="store.documentRevision"
+                :document-id="store.documentId||''"
                 :busy="busy || finalQualityChecking"
                 :quality-gate="finalQualityGate"
                 :agent-required="capabilities.qualityReviewAgent===true"
+                :generation-activity="{activeNodeId:mediaPreparing?activeMediaNodeId:null,failedNodeId:failedTask?.kind==='page-media'?(failedTask.nodeId||activeMediaNodeId||store.snapshot?.content?.pageSchema?.mediaRequests?.[0]?.nodeId):null}"
                 :export-enabled="Boolean(capabilities.export)"
                 @edit-natural-language="requestChatRevision"
                 @rollback="rollback"

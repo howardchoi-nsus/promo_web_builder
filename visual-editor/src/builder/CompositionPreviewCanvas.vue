@@ -2,11 +2,15 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import PromoReadonlyRenderer from "../runtime/PromoReadonlyRenderer.vue";
 import PromoPageRenderer from "../PromoPageRenderer.vue";
+import { createLiveGenerationPreview } from "./services/live-generation-preview.mjs";
 import {previewReference} from '../../../shared/layout-token-policy.mjs';
 
 const props = defineProps({
   snapshot: { type: Object, required: true },
   wireframe: {type:Boolean,default:false},
+  liveGeneration: {type:Boolean,default:false},
+  documentId:{type:String,default:""},
+  generationActivity: {type:Object,default:()=>({})},
   viewport: { type: String, default: "desktop" },
 });
 
@@ -18,6 +22,7 @@ const previewHeight = ref(720);
 const inspectionViewport = ref("");
 let previewObserver = null;
 let previewFrame = 0;
+let livePreview;
 
 const effectiveViewport = computed(() => inspectionViewport.value || props.viewport);
 const registeredPreview=computed(()=>props.snapshot.content?.pageSchema?previewReference(props.snapshot.content.pageContext,effectiveViewport.value):null);
@@ -35,6 +40,7 @@ function syncPreviewFrame() {
   if (previewFrame) cancelAnimationFrame(previewFrame);
   previewFrame = requestAnimationFrame(() => {
     previewFrame = 0;
+    livePreview?.refresh();
     const availableWidth = Math.max(280, Number(previewStage.value?.clientWidth || previewWidth.value) - 32);
     previewScale.value = Math.min(1, availableWidth / previewWidth.value);
     previewHeight.value = Math.max(480, Number(previewCanvas.value?.scrollHeight || 720));
@@ -42,13 +48,14 @@ function syncPreviewFrame() {
 }
 
 onMounted(() => {
+  if(props.liveGeneration&&!props.wireframe)livePreview=createLiveGenerationPreview({getDocument:()=>rendererRef.value?.getOutputDocument?.(),getSnapshot:()=>props.snapshot,getActivity:()=>props.generationActivity,getIdentity:()=>props.documentId});
   previewObserver = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(syncPreviewFrame);
   if (previewStage.value) previewObserver?.observe(previewStage.value);
   if (previewCanvas.value) previewObserver?.observe(previewCanvas.value);
   syncPreviewFrame();
 });
 
-watch(() => [props.snapshot, effectiveViewport.value], () => nextTick(syncPreviewFrame), { deep: true });
+watch(() => [props.snapshot, effectiveViewport.value,props.generationActivity], () => nextTick(syncPreviewFrame), { deep: true });
 
 function waitForAnimationFrames(count = 2) {
   if (typeof requestAnimationFrame !== "function") return Promise.resolve();
@@ -80,6 +87,7 @@ async function waitForPreviewLayout() {
 
 async function inspectQualityAcrossViewports() {
   const results = {};
+  livePreview?.pause();
   try {
     for (const viewport of (props.snapshot.content?.pageSchema ? ["desktop", "tablet", "mobile"] : ["desktop", "mobile"])) {
       inspectionViewport.value = viewport;
@@ -100,6 +108,7 @@ async function inspectQualityAcrossViewports() {
   } finally {
     inspectionViewport.value = "";
     await waitForPreviewLayout();
+    livePreview?.resume();
   }
   const values = Object.values(results);
   return {
@@ -265,6 +274,7 @@ async function buildAutoRepairSnapshot(sourceSnapshot, qualityResult) {
 defineExpose({ buildAutoRepairSnapshot, inspectQualityAcrossViewports });
 
 onBeforeUnmount(() => {
+  livePreview?.dispose();
   previewObserver?.disconnect();
   if (previewFrame) cancelAnimationFrame(previewFrame);
 });

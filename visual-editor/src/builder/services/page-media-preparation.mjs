@@ -8,7 +8,7 @@ export async function preparePageMedia({readCurrent,request,onUpdate,onProgress,
   if(current.snapshot?.generationMeta?.review?.state!=='approved')throw Object.assign(new Error('최신 페이지 구성을 승인해 주세요.'),{code:'PAGE_SCHEMA_APPROVAL_REQUIRED',retryable:false});
   const pending=page?.mediaRequests||[];
   if(!pending.length)return current;
-  const next=pending[0];onProgress?.(pending.length);
+  const next=pending[0];onProgress?.(pending.length,{nodeId:next.nodeId,requestId:next.id});
   const result=await request({method:'POST',documentId,baseDocumentRevision:current.revision,nodeId:next.nodeId,requestId:next.id});
   // Never replace state after switching documents or after another local revision.
   const live=readCurrent();

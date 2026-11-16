@@ -7,11 +7,13 @@ import {previewReference} from '../../../shared/layout-token-policy.mjs';
 const props = defineProps({
   snapshot: { type: Object, required: true },
   controlsTarget: { type: String, default: "" },
+  documentId:{type:String,default:""},
   documentRevision: { type: Number, required: true },
   busy: { type: Boolean, default: false },
   exportEnabled: { type: Boolean, default: false },
   viewport: { type: String, default: "desktop" },
   qualityGate: { type: Object, default: null },
+  generationActivity:{type:Object,default:()=>({})},
   agentRequired:{type:Boolean,default:false},
 });
 const emit = defineEmits([
@@ -110,6 +112,6 @@ defineExpose({ buildAutoRepairSnapshot, inspectQualityAcrossViewports });
       </Teleport>
     </div>
     <TokenUsageReport :snapshot="snapshot" />
-    <CompositionPreviewCanvas ref="previewCanvasRef" :snapshot="snapshot" :viewport="previewViewport" />
+    <CompositionPreviewCanvas ref="previewCanvasRef" :snapshot="snapshot" :viewport="previewViewport" :document-id="documentId" :live-generation="Boolean(snapshot.content?.pageSchema)" :generation-activity="generationActivity" />
   </section>
 </template>

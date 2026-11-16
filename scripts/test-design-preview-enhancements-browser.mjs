@@ -52,6 +52,7 @@ const server=createServer(async(req,res)=>{try{
   if(pathname==='/api/promo-page-schema-media'){
    mediaCalls++;assert.equal(approved,1);assert.equal(savedGate,undefined);assert.equal(body.requestId,'design_request');assert.equal(body.baseDocumentRevision,revision);
    if(mediaCalls===1){res.statusCode=503;res.setHeader('Content-Type','application/json');return res.end(JSON.stringify({error:'이미지 공급자 일시 오류',code:'TEST_MEDIA_FAILURE',retryable:true}));}
+   await new Promise(resolve=>setTimeout(resolve,700));
    const target=snapshot.content.pageSchema.root.children.find(n=>n.id==='design_image');target.requestId=null;target.assetId='image_ready';
    snapshot.content.pageContext.assets.image_ready={kind:'image',url:'/design-fixture.png',width:1,height:1,displayAspectRatio:'16:9'};
    snapshot.content.pageSchema.mediaRequests=[];snapshot.documentRevision=++revision;snapshot.qualityGate={state:'pending',documentRevision:revision};
@@ -78,9 +79,11 @@ try{
  await page.locator('.ai-chat-pane').getByRole('button',{name:'페이지 구성 승인',exact:true}).click();
  await page.locator('.ai-chat-pane .ai-builder-error').getByText('TEST_MEDIA_FAILURE',{exact:true}).waitFor();
  assert.equal(savedGate,undefined);assert.equal(mediaCalls,1);assert.equal(approved,1);
+ await frame.locator('[data-ps-node=design_image][data-live-state=failed]').waitFor();
  await page.reload();
  await page.locator('.ai-chat-pane').getByRole('button',{name:/^(?:실패한 단계부터 다시 시도|다시 시도)$/}).first().waitFor();assert.equal(mediaCalls,1);
  await page.locator('.ai-chat-pane').getByRole('button',{name:/^(?:실패한 단계부터 다시 시도|다시 시도)$/}).first().click();
+ await page.frameLocator('iframe').first().locator('[data-ps-node=design_image][data-live-state=generating]').waitFor();
  await page.waitForFunction(()=>document.body.textContent.includes('품질 검사 통과'));
  assert.equal(mediaCalls,2);assert.equal(approved,1);assert.ok(savedGate);
  assert.equal(await page.locator('.ai-chat-pane form').count(),1);assert.equal(await page.locator('.ai-chat-pane textarea').count(),1);
