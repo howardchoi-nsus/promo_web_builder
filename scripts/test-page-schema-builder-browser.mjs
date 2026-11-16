@@ -19,6 +19,7 @@ const server=createServer(async(req,res)=>{try{
   let payload={ok:true};
   if(pathname==='/api/promo-builder-capabilities')payload.capabilities={aiMode:true,pageSchemaV1:true,compositionV3:true,export:true};
   if(pathname==='/api/promo-builder-documents'&&req.method==='POST')payload.document={id:'browser-doc',currentDocumentRevision:0};
+  if(pathname==='/api/promo-overview-parse')await new Promise(resolve=>setTimeout(resolve,1400));
   if(pathname==='/api/promo-overview-parse')payload={ok:true,overview,overviewFingerprint:'fixture',missingCriticalInputs:['mainOffer'],warnings:[]};
   if(pathname==='/api/promo-page-schema'){
    assert.equal(body.documentId,'browser-doc');assert.equal(body.baseDocumentRevision,revision);
@@ -46,6 +47,14 @@ try{
  await initialComposer.dispatchEvent('keydown',{key:'Enter',code:'Enter',isComposing:true});
  assert.equal(requests.includes('/api/promo-overview-parse'),false);
  await page.getByPlaceholder('무엇을 만들고 싶으신가요?').fill('등록된 혜택으로 페이지를 만들어줘');await page.getByRole('button',{name:'전송',exact:true}).click();
+ await page.locator('.ai-chat-mask-reveal').first().waitFor();
+ const progressAnimation=await page.locator('.ai-chat-mask-reveal').first().evaluate(el=>({duration:getComputedStyle(el).animationDuration,repeat:getComputedStyle(el).animationIterationCount}));
+ assert.equal(progressAnimation.duration,'0.45s');assert.equal(progressAnimation.repeat,'infinite');
+ await page.emulateMedia({reducedMotion:'reduce'});
+ assert.equal(await page.locator('.ai-chat-mask-reveal').first().evaluate(el=>getComputedStyle(el).animationName),'none');
+ await page.emulateMedia({reducedMotion:'no-preference'});
+ await page.waitForFunction(()=>document.querySelectorAll('.ai-chat-mask-reveal').length===0);
+
  assert.equal(await page.locator('.ai-result-content textarea,.ai-result-content input,.ai-result-content select').count(),0);
  await page.locator('.ai-requirement-summary__narrative').waitFor();
  assert.equal(await page.locator('.ai-requirement-summary__facts,.ai-wireframe-technical').count(),0);
@@ -60,7 +69,7 @@ try{
  assert.equal(userMetrics.align,'right');assert.ok(userMetrics.width<userMetrics.parent*.82);
  assert.ok(await page.locator('.ai-chat-message.is-status').count()>=4);
  await page.emulateMedia({reducedMotion:'reduce'});
- assert.equal(await page.locator('.ai-chat-mask-reveal').first().evaluate(el=>getComputedStyle(el).maskImage),'none');
+ assert.equal(await page.locator('.ai-chat-mask-reveal').count(),0);
  assert.equal(await page.locator('.ai-result-content').getByRole('button',{name:'페이지 구성 승인',exact:true}).count(),0);
  assert.equal(await page.locator('.ai-chat-pane').getByRole('button',{name:'페이지 구성 승인',exact:true}).count(),1);
  assert.equal(await page.locator('.ai-result-content').getByRole('button',{name:'구성 수정 요청',exact:true}).count(),0);

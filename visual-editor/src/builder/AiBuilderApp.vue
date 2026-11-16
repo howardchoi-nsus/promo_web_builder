@@ -3217,7 +3217,7 @@ onBeforeUnmount(() => {
                     </span>
                   </span>
                 </p>
-                <p v-else :class="{ 'ai-chat-mask-reveal': message.type === 'status' }">{{ messageDisplayText(message) }}</p>
+                <p v-else :class="{ 'ai-chat-mask-reveal': message.type === 'status' && isCurrentProgress(message) }">{{ messageDisplayText(message) }}</p>
                 <small v-if="message.type === 'status'" class="ai-chat-progress-detail">{{ message.metadata?.stage || message.stage || progressStage(message.operationId) }} · {{ message.metadata?.eta || message.eta || (message.status === 'in_progress' ? '예상 시간 계산 중' : '단계 종료') }}</small>
                 <div v-if="isFailedTaskMessage(message)" class="ai-chat-recovery" role="group" aria-label="실패한 작업 복구">
                   <p>입력한 내용과 이전 결과는 그대로 보존되어 있습니다.</p>

@@ -820,7 +820,7 @@
 .ai-chat-mask-reveal {
   mask-image: linear-gradient(to right, #000 0%, #000 45%, transparent 55%);
   mask-size: 240% 100%;
-  animation: ai-chat-mask-reveal 450ms ease-out both;
+  animation: ai-chat-mask-reveal 450ms ease-out infinite;
 }
 @keyframes ai-chat-mask-reveal { from { mask-position: 100% 0; } to { mask-position: 0 0; } }
 @media (prefers-reduced-motion: reduce) {
