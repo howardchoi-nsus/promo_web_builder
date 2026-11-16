@@ -1,4 +1,5 @@
 <script setup>
+import { chatNotice } from "./services/chat-notice.mjs";
 import { createProgressEvent, progressStage, isHistoricalAction } from "./services/chat-experience.mjs";
 import { requirementNarrative } from "./services/requirement-narrative.mjs";
 import {reviewPageUntilReady} from "./services/page-quality-review.mjs";
@@ -664,6 +665,12 @@ function updateStatusMessage(operationId, text, status = "in_progress") {
   persistMessage(message).catch(() => { message.metadata = { ...message.metadata, persistenceFailed: true }; });
   return message;
 }
+watch(() => store.warning, warning => {
+  const notice = chatNotice(warning);
+  if (!notice || chatSessionSwitching.value) return;
+  const message = appendMessage("assistant", notice.text, { type: "notice", metadata: notice.metadata });
+  persistMessage(message).catch(() => { message.metadata.persistenceFailed = true; });
+});
 function isCurrentProgress(message) {
   return message.status === "in_progress"
     && messages.value.filter(other => other.operationId === message.operationId).at(-1)?.id === message.id;
@@ -3277,7 +3284,7 @@ onBeforeUnmount(() => {
       <button v-if="overviewBackup?.documentId===store.documentId" type="button" :disabled="overviewPersisting || interactionLocked" @click="restoreOverviewBackup">보관한 입력으로 다시 수정</button>
       <div v-if="pageGenerationRequest && !busy" role="status" class="ai-builder-warning"><span>진행한 페이지 생성 요청이 있습니다.</span><button type="button" @click="compose">생성 상태 다시 확인</button></div>
       <div v-if="overviewDirty || overviewPersisting || overviewSaveMessage" role="status" class="ai-builder-warning"><span>{{overviewSaveMessage}}</span><button v-if="overviewDirty && !overviewPersisting" type="button" @click="retryOverviewSave">요청 요약 저장 재시도</button></div>
-      <div v-if="store.warning" class="ai-builder-warning" role="status">
+      <div v-if="store.warning && !chatNotice(store.warning)" class="ai-builder-warning" role="status">
         <strong>{{ store.warning.code }}</strong>
         <span>{{ store.warning.message }}</span>
         <button

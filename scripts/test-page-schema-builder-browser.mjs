@@ -24,7 +24,7 @@ const server=createServer(async(req,res)=>{try{
   if(pathname==='/api/promo-page-schema'){
    assert.equal(body.documentId,'browser-doc');assert.equal(body.baseDocumentRevision,revision);
    if(body.operation==='approve-structure'){approved++;snapshot.generationMeta.review={state:'approved'};}else if(req.method==='POST'){generated++;snapshot=snapshotForPage(normalize(fixture('example-editorial')).page,context);snapshot.generationMeta.review={state:'pending'};}else{edited++;snapshot.content.pageSchema=body.page;snapshot.generationMeta.review={state:'pending'};}
-   payload={ok:true,revision:++revision,snapshot:{...snapshot,documentRevision:revision,qualityGate:{state:'pending',documentRevision:revision}}};snapshot=payload.snapshot;
+   payload={ok:true,warnings:[{code:'UNCONFIRMED_OPTIONAL_CONTENT_OMITTED',message:'additionalInformation.0: 미정인 사실 정보는 출력에서 제외했습니다.'}],revision:++revision,snapshot:{...snapshot,documentRevision:revision,qualityGate:{state:'pending',documentRevision:revision}}};snapshot=payload.snapshot;
   }
   if(pathname==='/api/promo-builder-documents'&&req.method==='PATCH'){savedGate=body.snapshot.qualityGate;snapshot={...body.snapshot,documentRevision:++revision,qualityGate:{...savedGate,documentRevision:revision}};payload={ok:true,revision,snapshot};}
   res.setHeader('Content-Type','application/json');return res.end(JSON.stringify(payload));
@@ -60,7 +60,13 @@ try{
  assert.equal(await page.locator('.ai-requirement-summary__facts,.ai-wireframe-technical').count(),0);
  assert.ok((await page.locator('.ai-requirement-summary__narrative').innerText()).includes('프로모션 페이지의 목적은 프로모션입니다.'));
  await page.getByRole('button',{name:/^(?:AI가 구성하고 미리보기 생성|페이지 미리보기 생성)$/}).click();
- await page.frameLocator('iframe').first().locator('[data-ps-node="page_root"]').waitFor().catch(async error=>{console.error(JSON.stringify({requests,errors,body:await page.locator('body').innerText()},null,2));throw error;});assert.equal(generated,1);assert.equal(requests.includes('/api/promo-composition-shells'),false);assert.equal(requests.includes('/api/promo-page-composition-proposals'),false);
+ await page.frameLocator('iframe').first().locator('[data-ps-node="page_root"]').waitFor().catch(async error=>{console.error(JSON.stringify({requests,errors,body:await page.locator('body').innerText()},null,2));throw error;});assert.equal(generated,1);
+ const notice=page.locator('.ai-chat-message.is-notice').filter({hasText:'아직 확정되지 않은 조건'}).first();
+ await notice.waitFor();
+ assert.equal(await notice.locator('button').count(),0);
+ assert.equal((await notice.innerText()).includes('UNCONFIRMED_OPTIONAL_CONTENT_OMITTED'),false);
+ assert.equal(await page.locator('.ai-builder-warning').filter({hasText:'UNCONFIRMED_OPTIONAL_CONTENT_OMITTED'}).count(),0);
+ assert.equal(requests.includes('/api/promo-composition-shells'),false);assert.equal(requests.includes('/api/promo-page-composition-proposals'),false);
  const historic=page.getByRole('button',{name:/이전 .*현재 상태 보기/}).first();
  await historic.click();
  await page.getByText('이전 대화의 요청입니다.',{exact:false}).waitFor();

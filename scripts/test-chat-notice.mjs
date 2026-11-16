@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {chatNotice} from '../visual-editor/src/builder/services/chat-notice.mjs';
+assert.equal(chatNotice(null),null);
+assert.equal(chatNotice({code:'ASSET_ENQUEUE_FAILED',message:'retry'}),null);
+const notice=chatNotice({code:'UNCONFIRMED_OPTIONAL_CONTENT_OMITTED',message:'additionalInformation.0 omitted'});
+assert.ok(notice.text.includes('생성을 이어갑니다'));
+assert.equal(notice.text.includes('additionalInformation'),false);
+assert.equal(notice.actions,undefined);
+assert.equal(notice.metadata.noticeCode,'UNCONFIRMED_OPTIONAL_CONTENT_OMITTED');
+assert.equal(chatNotice({code:'REQUIREMENTS_CHANGED',message:'요청 요약이 변경되었습니다.'}).text,'요청 요약이 변경되었습니다.');
+console.log('Conversational notices: friendly content, technical metadata only, no actions and preserved media recovery passed');
