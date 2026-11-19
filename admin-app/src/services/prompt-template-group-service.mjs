@@ -98,6 +98,12 @@ const PROMPT_TYPE_CATALOG = Object.freeze({
     description: "범용 UI 요소와 중앙 토큰 정책으로 PageSchema를 생성합니다.",
     executionMode: "사용자 요청",
   },
+  promo_page_section_designer: {
+    journeyStep: 6, group: "ai-page-composition", order: 12,
+    label: "AI 영역 디자인",
+    description: "구성 승인 후 영역별 등록 토큰 디자인을 생성·저장하고 순차 표시합니다.",
+    executionMode: "자동 실행",
+  },
   promo_page_quality_reviewer: {
     journeyStep: 10, group: "ai-page-composition", order: 30,
     label: "AI 품질 검토·수정",

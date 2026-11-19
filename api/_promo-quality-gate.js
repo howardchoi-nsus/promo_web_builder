@@ -72,6 +72,7 @@ function normalizePassedQualityGate(candidate, {
 }
 
 function assertPassedQualityGate(snapshot, documentRevision) {
+  if(require('../shared/page-schema/section-design.cjs').sectionDesignPending(snapshot))throw Object.assign(new Error('영역별 디자인을 완료한 후 출력할 수 있습니다.'),{code:'SECTION_DESIGN_PENDING',statusCode:409});
   if(snapshot?.content?.pageSchema&&snapshot.generationMeta?.qualityAgentRequired){
     const review=snapshot.generationMeta.qualityAgentReview;
     if(!review||review.blockingCount>0||!require('./_page-quality-agent-contract').isCurrentReview(snapshot))throw Object.assign(new Error('현재 페이지의 AI 품질 검토·수정과 재검사가 필요합니다.'),{code:'QUALITY_AGENT_REVIEW_REQUIRED',statusCode:409});

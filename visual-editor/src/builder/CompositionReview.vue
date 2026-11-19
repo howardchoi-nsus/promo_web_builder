@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref } from "vue";
+import {sectionDesignPending} from "../../../shared/page-schema/section-design.mjs";
 import TokenUsageReport from "./TokenUsageReport.vue";
 import CompositionPreviewCanvas from "./CompositionPreviewCanvas.vue";
 import {previewReference} from '../../../shared/layout-token-policy.mjs';
@@ -34,12 +35,13 @@ function selectPreviewViewport(viewport) {
 const viewportLabel = computed(() => props.snapshot.content?.pageSchema ? "Desktop · Tablet · Mobile" : "Desktop · Mobile");
 const qualityState = computed(() => props.qualityGate?.state || "pending");
 const qualityPassed = computed(() => (
+  !sectionDesignPending(props.snapshot) &&
   (!(props.agentRequired||props.snapshot.generationMeta?.qualityAgentRequired)||Boolean(props.snapshot.generationMeta?.qualityAgentReview&&props.snapshot.generationMeta.qualityAgentReview.blockingCount===0))
   && qualityState.value === "passed"
   && Number(props.qualityGate?.documentRevision || 0) === Number(props.documentRevision || 0)
   && Number(props.qualityGate?.blockingCount || 0) === 0
 ));
-const outputDisabledReason=computed(()=>props.busy?'이미지 준비 또는 품질 검사가 진행 중입니다.':qualityPassed.value?'':qualityState.value==='failed'?'자동 보정으로 해결하지 못한 항목이 있어 출력을 보류했습니다. 아래 검사 내역을 안내합니다.':qualityState.value==='passed'?'페이지가 변경되어 최신 Revision을 자동 검사해야 합니다.':'자동 품질 검사 완료 후 새 창 보기와 출력을 사용할 수 있습니다.');
+const outputDisabledReason=computed(()=>props.busy?'디자인·이미지 준비 또는 품질 검사가 진행 중입니다.':qualityPassed.value?'':qualityState.value==='failed'?'자동 보정으로 해결하지 못한 항목이 있어 출력을 보류했습니다. 아래 검사 내역을 안내합니다.':qualityState.value==='passed'?'페이지가 변경되어 최신 Revision을 자동 검사해야 합니다.':'자동 품질 검사 완료 후 새 창 보기와 출력을 사용할 수 있습니다.');
 const diagnostics=computed(()=>{
  const values=props.qualityGate?.diagnostics||Object.entries(props.qualityGate?.results||{}).flatMap(([viewport,result])=>(result.diagnostics||[]).map(item=>({...item,viewport})));
  return [...new Map(values.map(item=>[`${item.viewport}:${item.path}:${item.code}`,item])).values()];

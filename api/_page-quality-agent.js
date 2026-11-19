@@ -12,6 +12,7 @@ async function processQualityReview({sql,owner,body,res},dependencies={}){
   const found=await use.fetchDocument(sql,String(body.documentId||''),owner.ownerSubject,{includeSnapshot:true});
   if(!found?.snapshot?.content?.pageSchema)throw error('PAGE_SCHEMA_REQUIRED','검토할 페이지 구성을 찾을 수 없습니다.',404);
   const current=found.snapshot;
+  if(require('../shared/page-schema/section-design.cjs').sectionDesignPending(current))throw error('SECTION_DESIGN_PENDING','영역 디자인 완료 후 품질검토를 진행합니다.');
   require('../shared/page-schema/contract.cjs').assertValid(current.content.pageSchema,current.content.pageContext);
   if(current.content.pageSchema.mediaRequests.length)throw error('QUALITY_AGENT_MEDIA_PENDING','이미지 준비 완료 후 AI 품질 검토를 진행합니다.');
   if(isCurrentReview(current)&&!(body.force===true&&(current.generationMeta?.qualityAgentHistory||[]).length<2))return res.status(200).json({ok:true,cached:true,changed:false,requiresApproval:current.generationMeta.review?.state==='pending',revision:found.document.currentDocumentRevision,snapshot:current});

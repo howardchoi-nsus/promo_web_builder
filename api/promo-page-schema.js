@@ -49,6 +49,8 @@ module.exports=async function handler(req,res){
    return res.status(200).json({ok:true,changed:true,requiresApproval,actions:repaired.actions,revision:saved.revision,snapshot:saved.snapshot});
   }
   if(req.method==='POST'&&body.operation==='approve-structure'){
+   if(body.sectionDesignVersion!==undefined&&body.sectionDesignVersion!==1)return res.status(400).json({code:'SECTION_DESIGN_VERSION_UNSUPPORTED',error:'지원하지 않는 영역 디자인 버전입니다.'});
+   if(body.sectionDesignVersion===1&&!builderFlags().sectionDesignV1)return res.status(503).json({code:'SECTION_DESIGN_DISABLED',error:'영역 디자인 기능이 비활성화되어 있습니다. 관리자 설정을 확인해 주세요.',retryable:true});
    const current=found.snapshot;
    if(!current?.content?.pageSchema)return res.status(409).json({code:'PAGE_SCHEMA_REQUIRED',error:'승인할 페이지 구성이 없습니다.'});
    const fingerprint=structureFingerprint(current.content.pageSchema);
@@ -60,6 +62,7 @@ module.exports=async function handler(req,res){
    assertValid(current.content.pageSchema,current.content.pageContext);
    if(current.generationMeta?.review?.state==='approved')return res.status(200).json({ok:true,revision:base,snapshot:current});
    const snapshot={...current,generationMeta:{...current.generationMeta,structureFingerprint:fingerprint,structureFingerprintVersion:2,review:{state:'approved',structureFingerprint:fingerprint,sourceDocumentRevision:base,approvedAt:new Date().toISOString()}}};
+   if(body.sectionDesignVersion===1&&builderFlags().sectionDesignV1&&!snapshot.generationMeta.sectionDesign)snapshot.generationMeta.sectionDesign=require('./_page-section-design').newSectionDesign(snapshot.content.pageSchema);
    const saved=await createDocumentRevision(sql,{documentId:found.document.id,ownerSubject:owner.ownerSubject,baseDocumentRevision:base,snapshot,source:'manual',changeNote:'PageSchema structure explicitly approved'});
    return res.status(200).json({ok:true,revision:saved.revision,snapshot:saved.snapshot});
   }

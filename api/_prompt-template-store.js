@@ -102,6 +102,11 @@ const PROMPT_TYPES = {
     requiredVariables: ["overviewJson", "candidateSnapshotJson", "constraintsJson"],
     optionalVariables: [],
   },
+  promo_page_section_designer: {
+    name: "AI Section Visual Designer",
+    requiredVariables: ["currentPageJson", "sectionJson", "candidateSnapshotJson", "constraintsJson"],
+    optionalVariables: [],
+  },
   promo_page_quality_reviewer: {
     name: "AI Page Quality Review and Repair",
     requiredVariables: ["currentPageJson", "qualityReportJson", "candidateSnapshotJson", "constraintsJson"],
@@ -161,6 +166,7 @@ const CONTROLLED_PROMPT_TYPES = new Set([
   "promo_template_recommender",
   "promo_template_composer",
   "promo_page_schema_planner",
+  "promo_page_section_designer",
   "promo_page_quality_reviewer",
   "promo_page_composer",
   "promo_composition_editor",

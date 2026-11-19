@@ -92,4 +92,10 @@ const beforeRepairRevision=revision,modelCalls=calls;
 const repairResult=await call('POST',repairArgs);assert.equal(repairResult.status,200,JSON.stringify(repairResult));assert.equal(repairResult.payload.requiresApproval,true);assert.equal(revision,beforeRepairRevision+1);assert.equal(calls,modelCalls);
 assert.equal(snapshot.generationMeta.review.state,'pending');assert.equal(snapshot.content.pageSchema.root.children.find(n=>n.id==='design_image').assetId,'image_ready');
 const noRepair=await call('POST',{...repairArgs,baseDocumentRevision:revision});assert.equal(noRepair.payload.changed,false);assert.equal(revision,beforeRepairRevision+1);
+process.env.PAGE_SCHEMA_SECTION_DESIGN_ENABLED='true';
+const sectionApproval=await call('POST',{operation:'approve-structure',documentId:'owned',baseDocumentRevision:revision,structureFingerprint:structuralHash(snapshot.content.pageSchema),sectionDesignVersion:1});assert.equal(sectionApproval.status,200,JSON.stringify(sectionApproval));assert.equal(snapshot.generationMeta.sectionDesign.version,1);assert.equal(snapshot.generationMeta.sectionDesign.state,'pending');
 console.log('PageSchema API: disabled flag, session ownership, generation/save, revision conflicts, invalid edit preservation, tablet gate and pinned context passed.');
+
+process.env.PAGE_SCHEMA_SECTION_DESIGN_ENABLED='false';
+const blockedDesign=await call('POST',{operation:'approve-structure',documentId:'owned',baseDocumentRevision:revision,structureFingerprint:structuralHash(snapshot.content.pageSchema),sectionDesignVersion:1});assert.equal(blockedDesign.payload.code,'SECTION_DESIGN_DISABLED');
+const unknownDesign=await call('POST',{operation:'approve-structure',documentId:'owned',baseDocumentRevision:revision,sectionDesignVersion:2});assert.equal(unknownDesign.payload.code,'SECTION_DESIGN_VERSION_UNSUPPORTED');

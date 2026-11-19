@@ -57,6 +57,9 @@ try{
  assert.equal(await region.getAttribute('data-live-reveal'),null);
  await page.evaluate(()=>{pending();bind('stale','/good.png?late=1');identity='doc-c';pending();});
  await page.waitForTimeout(450);assert.equal(await region.getAttribute('data-live-state'),'waiting');
+ await page.evaluate(()=>{snapshot.generationMeta.sectionDesign={version:1,id:'pipeline',state:'pending',groups:[{id:'image',nodeIds:['image']}],completed:[]};controller.refresh();controller.pause();snapshot.generationMeta.sectionDesign.completed=[{id:'image'}];snapshot.generationMeta.sectionDesign.state='complete';controller.resume();});
+ await page.waitForFunction(()=>doc().querySelector('[data-live-design-state=ready]'));
+ assert.equal(await region.getAttribute('data-live-design-reveal'),null);
  await page.evaluate(()=>{controller.dispose();});assert.equal(await region.getAttribute('data-live-state'),null);
  assert.equal(await page.frameLocator('iframe').locator('[data-live-preview-style]').count(),0);assert.deepEqual(errors,[]);
  console.log('Live preview browser: approval, real active job/failure, async load+decode, stable ratio, one-time reveal, inspection isolation, reduced motion, completed-region preservation, document switching, late load, remount and cleanup passed');

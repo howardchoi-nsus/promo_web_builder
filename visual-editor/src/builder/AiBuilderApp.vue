@@ -1,4 +1,7 @@
 <script setup>
+import { sectionDesignPending } from "../../../shared/page-schema/section-design.mjs";
+import { prepareSectionDesign } from "./services/page-section-design.mjs";
+import { designPageSection } from "./services/composition-client.mjs";
 import { chatNotice } from "./services/chat-notice.mjs";
 import { createProgressEvent, progressStage, isHistoricalAction } from "./services/chat-experience.mjs";
 import { requirementNarrative } from "./services/requirement-narrative.mjs";
@@ -64,6 +67,8 @@ const store = createAiBuilderStore();
 const selectedMode = ref(props.initialMode);
 const operationOpen = ref(false);
 const mediaPreparing=ref(false);
+const designPreparing=ref(false),activeDesignId=ref(null);
+const designPending=computed(()=>sectionDesignPending(store.snapshot));
 const activeMediaNodeId=ref(null);
 const workspaceReady=ref(false);
 const mediaPending=computed(()=>Boolean(store.snapshot?.content?.pageSchema?.mediaRequests?.length));
@@ -152,7 +157,7 @@ function translate(key, fallback) {
   return translated && translated !== key ? translated : fallback;
 }
 const busy = computed(() => [
-  "analyzing_overview", "resolving_policy", "queued", "processing", "applying",
+  "analyzing_overview", "resolving_policy", "queued", "processing", "applying", "designing_sections",
   "generating_assets", "preview_ready", "navigating_preview",
 ].includes(store.stage));
 const hasStreamingMessage = computed(() => streamingMessageIds.value.length > 0);
@@ -196,6 +201,7 @@ const currentStatus = computed(() => {
 });
 const finalQualityGate = computed(() => transientQualityGate.value || store.snapshot?.qualityGate || null);
 const finalQualityPassed = computed(() => (
+  !designPending.value && !designPreparing.value &&
   (!(capabilities.value.qualityReviewAgent===true&&store.snapshot?.content?.pageSchema)||Boolean(store.snapshot?.generationMeta?.qualityAgentReview&&store.snapshot.generationMeta.qualityAgentReview.blockingCount===0))
   && finalQualityGate.value?.state === "passed"
   && Number(finalQualityGate.value?.documentRevision || 0) === Number(store.documentRevision || 0)
@@ -211,10 +217,11 @@ const wireframeComponentCount = computed(() => wireframeSections.value.reduce(
   0,
 ));
 const fullScreenProgress = computed(() => [
-  "analyzing_overview", "resolving_policy", "queued", "processing", "applying",
+  "analyzing_overview", "resolving_policy", "queued", "processing", "applying", "designing_sections",
   "generating_assets", "preview_ready", "navigating_preview",
 ].includes(store.stage));
 const progressMessage = computed(() => {
+  if(store.stage==='designing_sections')return "등록 토큰으로 섹션과 컴포넌트를 디자인하고 있습니다.";
   if (store.stage === "analyzing_overview") {
     if (overviewRetry.value) {
       return translate(
@@ -256,6 +263,7 @@ function rememberFailedTask(task, error) {
   failedTask.value = {
     kind: String(task?.kind || "unknown"),
     nodeId: String(task?.nodeId || ""),
+    groupId: String(task?.groupId || ""),
     operationId: String(task?.operationId || ""),
     label: String(task?.label || "작업"),
     input: String(task?.input || ""),
@@ -282,7 +290,8 @@ function isFailedTaskMessage(message) {
   return Boolean(
     message?.status === "failed"
     && failedTask.value?.operationId
-    && failedTask.value.operationId === message.operationId,
+    && failedTask.value.operationId === message.operationId
+    && messages.value.filter(item => item.operationId === message.operationId && item.status === "failed").at(-1)?.id === message.id,
   );
 }
 
@@ -311,6 +320,8 @@ async function retryFailedTask() {
       await prepareWireframe("", task.action || null);
     } else if (task.kind === "final-design") {
       await approveWireframe(task.action || {});
+    } else if (task.kind === "page-design") {
+      await prepareDynamicDesign();
     } else if (task.kind === "page-media") {
       await prepareDynamicMedia();
     } else if (task.kind === "page-layout-edit") {
@@ -2231,7 +2242,7 @@ function designTokenSetVersionId(snapshot = store.snapshot) {
 }
 
 async function runFinalQualityGate({ autoRepair = true, force = false } = {}) {
-  if (!store.snapshot || !store.documentId || !store.documentRevision || finalQualityChecking.value) return false;
+  if (!store.snapshot || !store.documentId || !store.documentRevision || finalQualityChecking.value || designPending.value || designPreparing.value) return false;
   if (!force && finalQualityPassed.value) return true;
   finalQualityChecking.value = true;
   const qualityOperationId=`page-quality-${store.documentId}`;
@@ -2386,7 +2397,25 @@ async function checkFinalQuality() {
   }
 }
 
+async function prepareDynamicDesign(){
+ if(designPreparing.value)return;
+ if(pageSummaryOutdated.value){setBuilderError(store,Object.assign(new Error('요청 요약이 변경되었습니다. 최신 구성을 생성·승인해 주세요.'),{code:'REQUIREMENTS_CHANGED'}));return;}
+ designPreparing.value=true;store.stage='designing_sections';let phase='design';
+ const designDocumentId=store.documentId;
+ const operationId='page-design-'+designDocumentId+'-'+(store.snapshot?.generationMeta?.sectionDesign?.id||'current');
+ const readCurrent=()=>({documentId:store.documentId,revision:store.documentRevision,snapshot:store.snapshot});
+ const onUpdate=saved=>{store.documentRevision=Number(saved.revision);store.snapshot=saved.snapshot;transientQualityGate.value=null;};
+ try{
+  await prepareSectionDesign({readCurrent,request:designPageSection,onUpdate,onProgress:progress=>{phase=progress.phase;activeDesignId.value=progress.group.id;store.stage=phase==='media'?'generating_assets':'designing_sections';updateStatusMessage(operationId,`${progress.index+1}/${progress.total} 영역의 ${phase==='media'?'이미지를 준비':'등록 토큰 디자인을 생성'}하고 있습니다.`,'in_progress');},prepareMedia:async group=>{
+   mediaPreparing.value=true;
+   try{await preparePageMedia({readCurrent,request:updatePageSchemaMedia,onUpdate,nodeIds:group.nodeIds,onProgress:(_,job)=>{activeMediaNodeId.value=job.nodeId;}});}finally{mediaPreparing.value=false;}
+  }});
+  store.stage='render_ready';updateStatusMessage(operationId,'영역별 디자인과 이미지를 연결했습니다. 자동 품질검사를 진행합니다.','completed');
+ }catch(error){if(store.documentId!==designDocumentId)return;store.stage='render_ready';rememberFailedTask({kind:phase==='media'?'page-media':'page-design',nodeId:phase==='media'?activeMediaNodeId.value:null,groupId:activeDesignId.value,label:'영역 디자인 준비',operationId},error);setBuilderError(store,error);updateStatusMessage(operationId,error.message,'failed');}
+ finally{designPreparing.value=false;}
+}
 async function prepareDynamicMedia(){
+ if(store.snapshot?.generationMeta?.sectionDesign)return prepareDynamicDesign();
  if(mediaPreparing.value||!mediaPending.value)return;
  if(pageSummaryOutdated.value){setBuilderError(store,Object.assign(new Error('요청 요약이 변경되었습니다. 최신 페이지 구성을 생성·승인한 후 이미지를 준비해 주세요.'),{code:'REQUIREMENTS_CHANGED',retryable:false}));return;}
  mediaPreparing.value=true;store.stage='generating_assets';
@@ -2407,7 +2436,7 @@ async function approveDynamicStructure(){
  if(!pageStructurePending.value){store.stage='render_ready';activeResultTab.value='final';return;}
  pageSchemaSaving.value=true;clearBuilderError(store);
  try{
-  const saved=await generatePageSchema({operation:'approve-structure',documentId:store.documentId,baseDocumentRevision:store.documentRevision,structureFingerprint:store.snapshot.generationMeta?.structureFingerprint});
+  const saved=await generatePageSchema({operation:'approve-structure',...(capabilities.value.sectionDesignV1===true?{sectionDesignVersion:1}:{}),documentId:store.documentId,baseDocumentRevision:store.documentRevision,structureFingerprint:store.snapshot.generationMeta?.structureFingerprint});
   store.documentRevision=Number(saved.revision);store.snapshot=saved.snapshot;store.stage='render_ready';activeResultTab.value='final';transientQualityGate.value=null;
  }catch(error){setBuilderError(store,error);}finally{pageSchemaSaving.value=false;}
 }
@@ -3004,16 +3033,17 @@ watch(interactionLocked, (locked, wasLocked) => {
     if (latest) scrollChatMessageIntoView(latest.id, "smooth");
   });
 });
+watch(()=>Boolean(workspaceReady.value&&store.snapshot?.generationMeta?.sectionDesign&&(designPending.value||mediaPending.value)&&activeResultTab.value==='final'&&store.stage==='render_ready'&&!pageSummaryOutdated.value&&!designPreparing.value&&!failedTask.value&&!interactionLocked.value&&store.snapshot.generationMeta.review?.state==='approved'),async ready=>{if(ready)await prepareDynamicDesign();},{flush:'post'});
 // Each saved revision is checked once when its final preview becomes available.
 let automaticQualityKey = '';
 // Track eligibility itself: tab changes, completed chat animation, restored
 // requirements and late capabilities can all release a deferred media request.
-watch(()=>Boolean(workspaceReady.value&&capabilities.value.pageSchemaV1&&activeResultTab.value==='final'&&store.stage==='render_ready'&&!pageSummaryOutdated.value&&capabilities.value.pageSchemaMedia!==false&&mediaPending.value&&!mediaPreparing.value&&!failedTask.value&&!interactionLocked.value&&store.snapshot?.generationMeta?.review?.state==='approved'),async ready=>{
+watch(()=>Boolean(workspaceReady.value&&capabilities.value.pageSchemaV1&&activeResultTab.value==='final'&&store.stage==='render_ready'&&!pageSummaryOutdated.value&&capabilities.value.pageSchemaMedia!==false&&mediaPending.value&&!store.snapshot?.generationMeta?.sectionDesign&&!mediaPreparing.value&&!failedTask.value&&!interactionLocked.value&&store.snapshot?.generationMeta?.review?.state==='approved'),async ready=>{
  if(ready)await prepareDynamicMedia();
 },{flush:'post'});
 watch(pageStructurePending,pending=>{if(pending){store.stage='review_required';activeResultTab.value='wireframe';}});
 watch(() => [workspaceReady.value,capabilities.value.qualityReviewAgent,store.documentId,store.documentRevision,store.stage,activeResultTab.value,finalQualityChecking.value], async () => {
-  if (!workspaceReady.value || mediaPending.value || mediaPreparing.value || failedTask.value || !store.snapshot || Number(store.snapshot.contractVersion)!==3 || store.stage!=='render_ready' || activeResultTab.value!=='final' || finalQualityChecking.value || finalQualityPassed.value) return;
+  if (!workspaceReady.value || designPending.value || designPreparing.value || mediaPending.value || mediaPreparing.value || failedTask.value || !store.snapshot || Number(store.snapshot.contractVersion)!==3 || store.stage!=='render_ready' || activeResultTab.value!=='final' || finalQualityChecking.value || finalQualityPassed.value) return;
   const key = `${store.documentId}:${store.documentRevision}`;
   if (automaticQualityKey===key) return;
   automaticQualityKey=key;
@@ -3570,7 +3600,7 @@ onBeforeUnmount(() => {
                 :busy="busy || finalQualityChecking"
                 :quality-gate="finalQualityGate"
                 :agent-required="capabilities.qualityReviewAgent===true"
-                :generation-activity="{activeNodeId:mediaPreparing?activeMediaNodeId:null,failedNodeId:failedTask?.kind==='page-media'?(failedTask.nodeId||activeMediaNodeId||store.snapshot?.content?.pageSchema?.mediaRequests?.[0]?.nodeId):null}"
+                :generation-activity="{activeDesignId:designPreparing?activeDesignId:null,failedDesignId:failedTask?.kind==='page-design'?failedTask.groupId:null,activeNodeId:mediaPreparing?activeMediaNodeId:null,failedNodeId:failedTask?.kind==='page-media'?(failedTask.nodeId||activeMediaNodeId||store.snapshot?.content?.pageSchema?.mediaRequests?.[0]?.nodeId):null}"
                 :export-enabled="Boolean(capabilities.export)"
                 @edit-natural-language="requestChatRevision"
                 @rollback="rollback"

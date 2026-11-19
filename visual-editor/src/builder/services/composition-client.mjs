@@ -319,3 +319,5 @@ export function reviewPageQuality(payload) {return request('/api/promo-page-qual
 export function savePageSchema(payload) {return request('/api/promo-page-schema',{method:'PUT',body:JSON.stringify(payload)});}
 
 export function updatePageSchemaMedia({method,...payload}) {return request('/api/promo-page-schema-media',{method,body:JSON.stringify(payload)});}
+
+export function designPageSection(payload) { return request("/api/promo-page-section-design", {method:"POST",body:JSON.stringify(payload)}); }

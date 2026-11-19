@@ -1,7 +1,7 @@
 // Presentation events do not change generation or approval state.
 export function progressStage(operationId = '') {
   if (/quality/.test(operationId)) return '디자인 미리보기 · 자동 품질검사';
-  if (/asset|media|approve_wireframe|final/.test(operationId)) return '디자인 미리보기 · 생성';
+  if (/asset|media|page-design|approve_wireframe|final/.test(operationId)) return '디자인 미리보기 · 생성';
   if (/wireframe|composition|confirm_requirements/.test(operationId)) return '페이지 미리보기 · 구성';
   if (/attachment|reference/.test(operationId)) return '요청 요약 · 참고 자료 분석';
   return '요청 요약 · 요청 처리';
