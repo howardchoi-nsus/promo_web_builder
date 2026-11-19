@@ -6,6 +6,7 @@ import CompositionPreviewCanvas from "./CompositionPreviewCanvas.vue";
 import {previewReference} from '../../../shared/layout-token-policy.mjs';
 
 const props = defineProps({
+  wireframe: {type:Boolean,default:false},
   snapshot: { type: Object, required: true },
   controlsTarget: { type: String, default: "" },
   documentId:{type:String,default:""},
@@ -22,6 +23,7 @@ const emit = defineEmits([
   "check-quality",
 ]);
 const previewCanvasRef = ref(null);
+const effectsPaused=ref(false);
 const previewViewport = computed({
   get: () => props.viewport,
   set: (viewport) => emit("update:viewport", viewport),
@@ -73,9 +75,9 @@ defineExpose({ buildAutoRepairSnapshot, inspectQualityAcrossViewports });
   <section class="ai-builder-result">
     <header class="ai-builder-result__toolbar">
       <div>
-        <p class="ai-builder-eyebrow">실제 웹페이지 미리보기</p>
-        <strong>현재 디자인 · Revision {{ documentRevision }}</strong>
-        <span class="ai-builder-readonly-badge">발행 결과와 동일한 렌더러</span>
+        <p class="ai-builder-eyebrow">{{ wireframe ? '페이지 제작 · 구성 확인' : '페이지 제작 · 디자인' }}</p>
+        <strong>{{ wireframe ? '와이어프레임 · 채팅에서 구성 승인' : '현재 디자인' }} · Revision {{ documentRevision }}</strong>
+        <span v-if="!wireframe" class="ai-builder-readonly-badge">발행 결과와 동일한 렌더러</span>
       </div>
       <div class="ai-builder-actions">
         <div class="ai-builder-preview-viewport" role="group" aria-label="미리보기 화면 크기">
@@ -84,9 +86,11 @@ defineExpose({ buildAutoRepairSnapshot, inspectQualityAcrossViewports });
           <button type="button" :aria-pressed="previewViewport === 'mobile'" @click="selectPreviewViewport('mobile')">모바일</button>
         </div>
         <Teleport :to="controlsTarget || 'body'" :disabled="!controlsTarget">
-          <div class="ai-builder-actions" aria-label="디자인 작업">
+          <div v-if="!wireframe" class="ai-builder-actions" aria-label="디자인 작업">
+        <button type="button" class="ai-builder-secondary" :aria-pressed="effectsPaused" @click="effectsPaused=!effectsPaused">{{effectsPaused?'효과 다시 재생':'효과만 일시정지'}}</button>
         <button type="button" class="ai-builder-secondary" @click="emit('rollback')">이전 버전</button>
         <button type="button" class="ai-builder-secondary" @click="emit('edit-natural-language')">채팅으로 수정</button>
+        <button type="button" class="ai-builder-primary" :disabled="busy || !qualityPassed" @click="emit('open-editor')">에디터에서 수정</button>
 
         <button type="button" class="ai-builder-primary" :disabled="busy || !qualityPassed" :title="outputDisabledReason||'검사한 페이지를 새 창에서 확인합니다.'" @click="emit('open-output')">새 창에서 확인</button>
         <button v-if="exportEnabled" type="button" class="ai-builder-primary" :disabled="busy || !qualityPassed" @click="emit('export-document')">HTML 다운로드</button>
@@ -100,7 +104,7 @@ defineExpose({ buildAutoRepairSnapshot, inspectQualityAcrossViewports });
       </div>
     </header>
     <p class="ai-builder-preview-note">이 화면은 실제 발행에 사용하는 데이터와 렌더러로 표시됩니다. <span v-if="previewReferenceWidth">현재 미리보기 기준 {{ previewReferenceWidth }}px · 패널에 맞춰 축소 표시합니다.</span> 화면 크기를 전환해 확인하세요.</p>
-    <div class="ai-builder-quality-gate" :class="`is-${qualityState}`" role="status" aria-live="polite">
+    <div v-if="!wireframe" class="ai-builder-quality-gate" :class="`is-${qualityState}`" role="status" aria-live="polite">
       <span aria-hidden="true"></span>
       <strong>{{ qualityLabel }}</strong>
       <Teleport :to="controlsTarget || 'body'" :disabled="!controlsTarget">
@@ -113,7 +117,7 @@ defineExpose({ buildAutoRepairSnapshot, inspectQualityAcrossViewports });
       >다시 검사</button>
       </Teleport>
     </div>
-    <TokenUsageReport :snapshot="snapshot" />
-    <CompositionPreviewCanvas ref="previewCanvasRef" :snapshot="snapshot" :viewport="previewViewport" :document-id="documentId" :live-generation="Boolean(snapshot.content?.pageSchema)" :generation-activity="generationActivity" />
+    <TokenUsageReport v-if="!wireframe" :snapshot="snapshot" />
+    <CompositionPreviewCanvas ref="previewCanvasRef" :snapshot="snapshot" :viewport="previewViewport" :document-id="documentId" :wireframe="wireframe" :live-generation="Boolean(snapshot.content?.pageSchema)" :generation-activity="generationActivity" :effects-paused="effectsPaused" />
   </section>
 </template>

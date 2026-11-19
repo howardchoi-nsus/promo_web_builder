@@ -1,4 +1,5 @@
 <script setup>
+import {generateProgressivePage} from './services/page-draft.mjs';
 import { sectionDesignPending } from "../../../shared/page-schema/section-design.mjs";
 import { prepareSectionDesign } from "./services/page-section-design.mjs";
 import { designPageSection } from "./services/composition-client.mjs";
@@ -108,6 +109,8 @@ const requirementsRevision = ref(0);
 const wireframeRevision = ref(0);
 const wireframeFingerprint = ref("");
 const wireframeViewport = ref("desktop");
+const draftPreview=ref(null);
+const productionSnapshot=computed(()=>draftPreview.value||store.snapshot);
 const activeResultTab = ref("requirements");
 const splitPercent = ref(42);
 const draggingSplit = ref(false);
@@ -2007,7 +2010,10 @@ async function requestChatRevision() {
   await nextTick();
   chatInputElement.value?.focus();
 }
-function openVisualEditor() { return requestChatRevision(); }
+function openVisualEditor() {
+ if(!store.documentId||!finalQualityPassed.value)return;
+ window.location.assign(visualEditorEntry.aiDocument(store.documentId,store.documentRevision));
+}
 
 function builderAssetFailure(readiness) {
   const failed = readiness.failedRequests[0] || {};
@@ -2107,7 +2113,7 @@ async function retryAssets() {
 
 function pageRequestPayload(instruction=''){
  if(!instruction&&store.snapshot?.content?.pageSchema)instruction='Apply the latest user request and updated overview to the current page. Infer the requested changes from the conversation. Preserve unrelated structure, IDs, media and actions.';
- const key=JSON.stringify({documentId:store.documentId,overview:store.overviewDraft,requirementsRevision:requirementsRevision.value,instruction,generationRequest:store.naturalLanguage});
+ const key=JSON.stringify({documentId:store.documentId,overview:store.overviewDraft,requirementsRevision:requirementsRevision.value,instruction,generationRequest:store.naturalLanguage},(_key,value)=>value&&typeof value==='object'&&!Array.isArray(value)?Object.fromEntries(Object.keys(value).sort().map(k=>[k,value[k]])):value);
  if(pageGenerationRequest.value?.key!==key)pageGenerationRequest.value={key,requestId:crypto.randomUUID(),baseDocumentRevision:store.documentRevision};
  persistWorkspace();
  return {documentId:store.documentId,baseDocumentRevision:pageGenerationRequest.value.baseDocumentRevision,overview:store.overviewDraft,requirementsRevision:requirementsRevision.value,generationRequest:store.naturalLanguage,requestId:pageGenerationRequest.value.requestId,...(instruction?{instruction}:{})};
@@ -2123,7 +2129,10 @@ async function prepareWireframe(existingOperationId = "", sourceAction = null) {
     await ensureDocument();
     if(capabilities.value.pageSchemaV1){
       store.stage="processing";
-      const saved=await generatePageSchema({...pageRequestPayload(),actionId:sourceAction?.id});
+      const payload={...pageRequestPayload(),actionId:sourceAction?.id};
+      const docId=store.documentId;activeResultTab.value='wireframe';
+      const saved=capabilities.value.pageDraftV1&&!payload.instruction?await generateProgressivePage(payload,{request:generatePageSchema,isCurrent:()=>store.documentId===docId,onDraft:draft=>{draftPreview.value={contractVersion:3,content:{pageSchema:draft.page,pageContext:draft.context},generationMeta:{review:{state:'pending'},draftActivity:{nodeIds:draft.nextGroup?.nodeIds||[],label:draft.nextGroup?.label||'구성 준비'}}};updateStatusMessage(operationId,`페이지 제작 · 와이어프레임 ${draft.sequence}개 작업 결과를 반영했습니다.`,'in_progress');}}):await generatePageSchema(payload);
+      draftPreview.value=null;
       if(sourceAction)markChatActionGroupHandled(sourceAction);
       pageGenerationRequest.value=null;store.documentRevision=Number(saved.revision);store.snapshot=saved.snapshot;store.stage="review_required";activeResultTab.value="wireframe";transientQualityGate.value=null;
       store.warning=saved.warnings?.length?{code:saved.warnings[0].code||'DESIGN_REVIEW',message:saved.warnings.map(item=>item.message).join(' ')}:null;
@@ -2406,7 +2415,7 @@ async function prepareDynamicDesign(){
  const readCurrent=()=>({documentId:store.documentId,revision:store.documentRevision,snapshot:store.snapshot});
  const onUpdate=saved=>{store.documentRevision=Number(saved.revision);store.snapshot=saved.snapshot;transientQualityGate.value=null;};
  try{
-  await prepareSectionDesign({readCurrent,request:designPageSection,onUpdate,onProgress:progress=>{phase=progress.phase;activeDesignId.value=progress.group.id;store.stage=phase==='media'?'generating_assets':'designing_sections';updateStatusMessage(operationId,`${progress.index+1}/${progress.total} 영역의 ${phase==='media'?'이미지를 준비':'등록 토큰 디자인을 생성'}하고 있습니다.`,'in_progress');},prepareMedia:async group=>{
+  await prepareSectionDesign({readCurrent,request:designPageSection,onUpdate,onProgress:progress=>{phase=progress.phase;activeDesignId.value=progress.group.id;store.stage=phase==='media'?'generating_assets':'designing_sections';updateStatusMessage(operationId,`${progress.index+1}/${progress.total} · ${progress.group.label} 영역의 ${phase==='media'?'이미지를 준비':'등록 토큰 디자인을 생성'}하고 있습니다.`,'in_progress');},prepareMedia:async group=>{
    mediaPreparing.value=true;
    try{await preparePageMedia({readCurrent,request:updatePageSchemaMedia,onUpdate,nodeIds:group.nodeIds,onProgress:(_,job)=>{activeMediaNodeId.value=job.nodeId;}});}finally{mediaPreparing.value=false;}
   }});
@@ -2685,7 +2694,7 @@ function openOutput() {
     ), { code: "QUALITY_GATE_REQUIRED" }));
     return;
   }
-  const url = visualEditorEntry.output(store.documentId, store.documentRevision, window.location.href);
+  const url = store.snapshot?.content?.pageSchema?new URL('/api/promo-page-output?'+new URLSearchParams({documentId:store.documentId,revision:String(store.documentRevision)}),window.location.origin).toString():visualEditorEntry.output(store.documentId, store.documentRevision, window.location.href);
   window.open(url, "_blank", "noopener,noreferrer");
   recordBuilderEvent({
     eventName: "web_output_opened",
@@ -3111,12 +3120,15 @@ onMounted(async () => {
       } else {
         await ensureDocument();
       }
+      const requestedDocumentId=new URLSearchParams(window.location.search).get('builderDocumentId');
+      if(requestedDocumentId){const saved=await loadBuilderDocument(requestedDocumentId);store.documentId=requestedDocumentId;store.documentRevision=Number(saved.document.currentDocumentRevision);store.snapshot=saved.snapshot;store.stage=pageStructurePending.value?'review_required':'render_ready';activeResultTab.value=pageStructurePending.value?'wireframe':'final';}
       await ensureChatWorkspace({restore:true});
       if(pageStructurePending.value){store.stage="review_required";activeResultTab.value="wireframe";}
       appendWelcomeMessage();
     }
     await executionLookups;
     workspaceReady.value=true;
+    if(capabilities.value.pageDraftV1&&pageGenerationRequest.value&&!failedTask.value&&['processing','resolving_policy'].includes(cached?.stage)&&!store.snapshot?.content?.pageSchema){await nextTick();await prepareWireframe('wireframe-resume-'+store.documentId);}
   } catch (error) {
     setBuilderError(store, error);
   }
@@ -3416,14 +3428,9 @@ onBeforeUnmount(() => {
                   <span>1</span>요청 요약
                 </button>
               </li>
-              <li :class="{ selected: activeResultTab === 'wireframe', complete: wireframeDisplaySnapshot || store.snapshot?.content?.pageSchema }">
-                <button type="button" aria-label="페이지 구성 미리보기" :disabled="!wireframeDisplaySnapshot && !store.snapshot?.content?.pageSchema" :aria-current="activeResultTab === 'wireframe' ? 'step' : undefined" @click="activeResultTab = 'wireframe'">
-                  <span>2</span>페이지 미리보기
-                </button>
-              </li>
-              <li :class="{ selected: activeResultTab === 'final', complete: store.snapshot && store.stage === 'render_ready' }">
-                <button type="button" aria-label="디자인 미리보기" :disabled="!store.snapshot || pageStructurePending" :aria-current="activeResultTab === 'final' ? 'step' : undefined" @click="activeResultTab = 'final'">
-                  <span>3</span>디자인 미리보기
+              <li :class="{ selected: activeResultTab !== 'requirements', complete: store.stage === 'render_ready' }">
+                <button type="button" aria-label="페이지 제작" :aria-current="activeResultTab !== 'requirements' ? 'step' : undefined" @click="activeResultTab = pageStructurePending ? 'wireframe' : store.snapshot ? 'final' : 'wireframe'">
+                  <span>2</span>페이지 제작
                 </button>
               </li>
             </ol>
@@ -3467,16 +3474,29 @@ onBeforeUnmount(() => {
               <div v-else class="ai-result-empty">채팅으로 요구사항을 입력하면 분석 결과가 여기에 표시됩니다.</div>
             </section>
 
-            <section v-else-if="activeResultTab === 'wireframe' && store.snapshot?.content?.pageSchema" class="ai-wireframe-review">
-              <header class="ai-page-preview-header">
-                <strong>페이지 구성 미리보기</strong>
-                <div role="group" aria-label="구성 미리보기 화면 크기">
-                  <button v-for="view in ['desktop','tablet','mobile']" :key="view" type="button" :aria-pressed="wireframeViewport===view" @click="wireframeViewport=view">{{{desktop:'데스크톱',tablet:'태블릿',mobile:'모바일'}[view]}}</button>
-                </div>
-              </header>
-              <p>섹션 순서·배치·문구를 확인해 주세요. 수정 요청과 승인은 왼쪽 채팅에서 진행합니다.</p>
-              <PageSchemaWireframe :page="store.snapshot.content.pageSchema" :context="store.snapshot.content.pageContext" :viewport="wireframeViewport" />
+            <section v-else-if="productionSnapshot?.content?.pageSchema" class="ai-page-production" :class="pageStructurePending?'ai-wireframe-review':'ai-final-review'">
+              <CompositionReview
+                ref="compositionReviewRef"
+                controls-target="#ai-chat-design-actions"
+                v-model:viewport="wireframeViewport"
+                :snapshot="productionSnapshot"
+                :wireframe="Boolean(draftPreview||pageStructurePending)"
+                :document-revision="store.documentRevision"
+                :document-id="store.documentId||''"
+                :busy="busy || finalQualityChecking"
+                :quality-gate="finalQualityGate"
+                :agent-required="capabilities.qualityReviewAgent===true"
+                :generation-activity="{activeDesignId:designPreparing?activeDesignId:null,failedDesignId:failedTask?.kind==='page-design'?failedTask.groupId:null,activeNodeId:mediaPreparing?activeMediaNodeId:null,failedNodeId:failedTask?.kind==='page-media'?(failedTask.nodeId||activeMediaNodeId||store.snapshot?.content?.pageSchema?.mediaRequests?.[0]?.nodeId):null}"
+                :export-enabled="Boolean(capabilities.export)"
+                @edit-natural-language="requestChatRevision"
+                @rollback="rollback"
+                @open-editor="openVisualEditor"
+                @open-output="openOutput"
+                @check-quality="checkFinalQuality"
+                @export-document="exportDocument"
+              />
             </section>
+            <section v-else-if="activeResultTab==='wireframe' && ['processing','resolving_policy'].includes(store.stage)" class="ai-builder-result" aria-busy="true"><h2>페이지 제작 · 구성 생성</h2><p>구조를 설계하고 있습니다. 검증·저장된 결과부터 표시합니다.</p><div style="min-height:360px;border:1px dashed #cbd5e1" aria-label="생성 대기 캔버스"></div></section>
             <section v-else-if="activeResultTab === 'wireframe' && wireframeDisplaySnapshot" class="ai-wireframe-review">
               <header class="ai-page-preview-header">
                 <div>

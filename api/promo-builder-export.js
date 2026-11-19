@@ -43,7 +43,11 @@ module.exports = async function handler(req, res) {
     res.setHeader("X-Content-Type-Options", "nosniff");
     if (format === "manifest") return res.status(200).json(dependencyManifest(result.snapshot, options));
     if (format === "snapshot") return res.status(200).json(publicExportSnapshot(result.snapshot));
-    const body = format === "html"
+    const staticOptions={...options,origin:require('./_page-schema-static-export').exportOrigin(req)};
+    if(format==='html'&&result.snapshot.content?.pageSchema)staticOptions.assetOverrides=await require('./_page-schema-static-export').resolveExportAssets(result.snapshot,{documentId,sql:getSql(),blobGet:async(...args)=>(await import('@vercel/blob')).get(...args)});
+    let body = format === 'html' && result.snapshot.content?.pageSchema
+      ? await require('./_page-schema-static-export').staticPageHtml(result.snapshot,staticOptions)
+      : format === "html"
       ? htmlExport(result.snapshot, options)
       : format === "nuxt"
         ? nuxtSource(result.snapshot, options)

@@ -54,7 +54,7 @@ async function processPageMedia({req,res,sql,owner,body},dependencies={}){
     const backgroundColor=context.tokenValues[context.usagePolicy.bindings['page.background']];
     const isBackground=node.presentation==='background';
     const promptType=isBackground&&/^#[0-9a-f]{6}$/i.test(backgroundColor||'')?'section_background_image':'component_image';
-    const variables={sectionName:page.summary,contentJson:JSON.stringify({intent:request.intent,sourceIds:request.sourceIds,contentSources:context.contentSources,backgroundColor}),adminGuidance:''};
+    const variables={sectionName:page.summary,contentJson:JSON.stringify({designBrief:require('./_page-design-direction').savedDesignBrief(snapshot),intent:request.intent,sourceIds:request.sourceIds,contentSources:context.contentSources,backgroundColor}),adminGuidance:''};
     if(promptType==='section_background_image')Object.assign(variables,{backgroundColor,aspectRatio:request.aspectRatio,fadeMode:'none',brandPalette:JSON.stringify(Object.fromEntries(['page.background','text.primary','button.background'].map(role=>[role,context.tokenValues[context.usagePolicy.bindings[role]]])))});
     else Object.assign(variables,{componentName:isBackground?'PageSchema key visual':'PageSchema image',fieldName:node.id});
     const pinned=await use.createPromptExecutionSnapshot(sql,promptType,variables);

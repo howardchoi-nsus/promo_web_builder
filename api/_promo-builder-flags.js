@@ -1,4 +1,5 @@
 const FLAG_NAMES = Object.freeze({
+  pageDraftV1: "PAGE_SCHEMA_DRAFT_ENABLED",
   sectionDesignV1: "PAGE_SCHEMA_SECTION_DESIGN_ENABLED",
   pageSchemaV1: "PAGE_SCHEMA_GENERATION_ENABLED",
   pageSchemaMedia: "PAGE_SCHEMA_MEDIA_PREPARATION_ENABLED",
@@ -34,6 +35,7 @@ const FLAG_NAMES = Object.freeze({
 // rollback switch; existing documents retain their own renderer.
 const FLAG_DEFAULTS = Object.freeze({
   // Requires migration 093 and an active registered section designer.
+  pageDraftV1: false,
   sectionDesignV1: false,
   pageSchemaV1: true,
   pageSchemaMedia: true,

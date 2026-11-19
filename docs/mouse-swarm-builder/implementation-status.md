@@ -1,0 +1,34 @@
+# 개발 반영 및 운영 준비 상태
+
+2026-11-19 · 저장소 코드 반영 · 운영 배포 전
+
+## 구현
+
+- 요청 요약/페이지 제작의 2단계 화면과 동일 캔버스의 구성 승인·디자인 흐름.
+- 원래 요청과 수정 요청의 공통 디자인 브리프, 등록 토큰의 호환 범위 안에서 요청에 맞는 후보 순위, 구조·영역·이미지·검토 단계 전달.
+- 실제 저장 단위의 점진적 PageSchema 생성. 서버 초안/리스/순서/문서 Revision/채팅 전환을 보호하고 실패한 단계부터 재개한다. 완성 전에는 승인할 수 없다.
+- 12개 시각 커서 풀, 실제 활성 노드의 50% 박스·핸들·텍스트 표시, 완료·오류·이동 피드백과 효과만 일시정지.
+- 같은 PageSchema를 사용하는 에디터, 직접 편집·선택 범위 AI·Undo/Redo·충돌 초안 보존·보수적 병합. 저장 후 자동 QA, 구조 변경 시 재승인.
+- 공통 노드 descriptor와 토큰 CSS로 생성하는 정적 HTML. 새 창·다운로드·공개 HTML에 연결하고 비공개 생성 이미지는 포함한다. 단일 HTML은 4 MiB 한도 초과를 명시적으로 거부한다.
+
+## 검증 방법과 범위
+
+`PGLITE_TEST_MODULE=/workspace/.token-test-tools/node_modules/@electric-sql/pglite/dist/index.js CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium node scripts/check-design-preview.mjs`
+
+검사에는 실제 PGlite SQL 저장/채팅 전환/재시도, Playwright 브라우저의 편집·누적 생성·승인 시점·커서 효과, 세 뷰포트의 정적 HTML과 런타임 DOM 치수/타이포/색상 일치가 포함된다. 모델과 미디어 응답은 준비된 테스트 데이터를 사용한다. 외부 LLM·운영 Neon·Blob·Vercel Preview 연결 검사는 별도이며 수행하지 않았다.
+
+검증 결과: 전체 50개 계약·브라우저·PGlite 회귀검사 통과. Admin, Visual editor, Nuxt 빌드 통과. 문서 패키지 계약 검사도 통과했다. 개발 서버 에디터 검사 종료 시 ResizeObserver 경고가 기록됐으나 편집·충돌 보호 검사와 배포 빌드 브라우저 검사는 통과했다. 실제 운영 환경에서는 별도 확인이 필요하다.
+
+## 운영 활성화 전
+
+1. 기존 DB 상태를 확인하고 migration 094·095 적용.
+2. 094의 비활성 스킬 4개와 기존 타입의 새 Draft 5종 검증·활성화. 스킬 연결 4개로 Draft 생성을 건너뛴 타입은 별도 충돌 검토.
+3. 095의 `promo_page_outline_planner`, `promo_page_fragment_writer` 검증·활성화 후 `PAGE_SCHEMA_DRAFT_ENABLED=true`. 기본값은 false다.
+4. 영역 디자인은 기존 migration 093·활성 프롬프트와 `PAGE_SCHEMA_SECTION_DESIGN_ENABLED` 확인. Blob·출력 기능·공개 URL 설정 확인.
+5. 실제 Preview 여정 검증 후 Production 배포. 이 문서는 DB 적용·Admin 활성화·배포 완료를 의미하지 않는다.
+
+외부 동영상·폰트까지 포함하는 완전한 오프라인 ZIP 패키지와 임의 HTML/스크립트 편집은 구현 범위에 포함하지 않는다. 모델이 받는 정보가 구조·측정값뿐인 경우 이미지 기반 시각 검사 완료로 기록하지 않는다.
+
+## Production 코드 반영 요청
+
+사용자가 미검증 범위와 운영 준비 조건 안내 후 배포를 요청했다. 이번 코드를 main에 반영하며, 실제 Vercel 배포 상태와 운영 DB·프롬프트 활성화는 확인한 결과만 별도로 보고한다. 누적 초안 기능은 기본 비활성으로 유지한다.

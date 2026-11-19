@@ -85,7 +85,7 @@ try{
  assert.equal(await page.locator('.ai-chat-pane form').count(),1);
  assert.equal(await page.locator('.ai-chat-pane textarea').count(),1);
  assert.equal(await page.locator('.ai-chat-pane select,.ai-operation-form,#page-schema-json').count(),0);
- assert.equal(savedGate,undefined);assert.equal(await page.getByRole('button',{name:'디자인 미리보기',exact:true}).isDisabled(),true);
+ assert.equal(savedGate,undefined);assert.equal(await page.getByRole('button',{name:'페이지 제작',exact:true}).count(),1);assert.equal(await page.getByRole('button',{name:'디자인 미리보기',exact:true}).count(),0);
  await page.getByRole('button',{name:'페이지 구성 승인',exact:true}).click();
  await page.getByRole('button',{name:'채팅으로 수정',exact:true}).waitFor();
  assert.equal(await page.frameLocator('iframe').first().locator('[data-wireframe-node]').count(),0);

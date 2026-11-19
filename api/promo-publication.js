@@ -17,6 +17,13 @@ module.exports = async function handler(req, res) {
     }
     const { assertPublishedPromotion } = await import("../packages/promo-contracts/src/publication.mjs");
     const value = assertPublishedPromotion(publication);
+    if(String(req.query.format||'').toLowerCase()==='html'){
+      if(!value.snapshot?.content?.pageSchema)return res.status(422).json({code:'STATIC_PAGE_SCHEMA_REQUIRED',error:'Static HTML requires a PageSchema publication'});
+      const {staticPageHtml,resolveExportAssets,exportOrigin}=require('./_page-schema-static-export');
+      const assetOverrides=await resolveExportAssets(value.snapshot,{documentId:value.publication.documentId,sql,blobGet:async(...args)=>(await import('@vercel/blob')).get(...args)});
+      const html=await staticPageHtml(value.snapshot,{title:value.seo?.title||value.publication.slug,origin:exportOrigin(req),assetOverrides});
+      res.setHeader('Content-Type','text/html; charset=utf-8');res.setHeader('Cache-Control',`public, s-maxage=${value.cache.revalidateSeconds}, stale-while-revalidate=60`);res.setHeader('X-Content-Type-Options','nosniff');return res.status(200).send(html);
+    }
     const etag = `\"${value.cache.etag}\"`;
     res.setHeader("ETag", etag);
     res.setHeader("Cache-Control", `public, s-maxage=${value.cache.revalidateSeconds}, stale-while-revalidate=60`);

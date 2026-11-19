@@ -80,7 +80,7 @@ assert.equal((await reconnect({operation:'refresh-token-library',documentId:'own
 assert.equal((await reconnect({operation:'refresh-token-library',documentId:'foreign',baseDocumentRevision:4})).status,404);
 assert.equal((await reconnect({operation:'refresh-token-library',documentId:'owned',baseDocumentRevision:4},'')).status,401);
 const refreshed=await reconnect({operation:'refresh-token-library',documentId:'owned',baseDocumentRevision:4});assert.equal(refreshed.status,200,JSON.stringify(refreshed));assert.equal(revision,5);assert.equal(qualityVerified,false);
-assert.equal((await call('PUT',{documentId:'owned',baseDocumentRevision:5,page:snapshot.content.pageSchema})).status,200);assert.equal(snapshot.generationMeta.review.state,'pending');
+assert.equal((await call('PUT',{documentId:'owned',baseDocumentRevision:5,page:snapshot.content.pageSchema})).status,200);assert.equal(snapshot.generationMeta.review.state,'approved');
 // Automatic repairs use a server-owned operation, preserve ownership/CAS,
 // and request renewed approval only when structural placement changes.
 const {designFixture}=await import('./fixtures/design-preview-enhancements.mjs');

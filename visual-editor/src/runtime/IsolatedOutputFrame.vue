@@ -12,8 +12,8 @@ onServerPrefetch(async()=>{
  const {renderToString}=await import('vue/server-renderer');
  source.value=shell(await renderToString(createSSRApp({render:()=>h('div',slots.default?.())})));
 });
-let observer,resizeObserver,disposed=false;
-function syncHeight(){if(disposed)return;const root=frame.value?.contentDocument?.getElementById('output-content');if(root)height.value=Math.max(1,Math.ceil(root.getBoundingClientRect().height));}
+let observer,resizeObserver,disposed=false,heightFrame=0;
+function syncHeight(){if(disposed||heightFrame)return;heightFrame=requestAnimationFrame(()=>{heightFrame=0;if(disposed)return;const root=frame.value?.contentDocument?.getElementById('output-content');if(root){const next=Math.max(1,Math.ceil(root.getBoundingClientRect().height));if(height.value!==next)height.value=next;}});}
 async function loaded(){
  if(disposed||target.value)return;
  const doc=frame.value?.contentDocument;if(!doc?.body||doc.URL!=='about:srcdoc')return;
@@ -28,7 +28,7 @@ async function loaded(){
 }
 watch(()=>props.variables,()=>{const doc=frame.value?.contentDocument;if(doc?.getElementById('output-token-values')){doc.body.style.cssText='';doc.getElementById('output-token-values').textContent=`body{${bodyCss()}}`;}},{deep:true});
 onMounted(()=>{loaded();});
-onBeforeUnmount(()=>{disposed=true;observer?.disconnect();resizeObserver?.disconnect();});
+onBeforeUnmount(()=>{disposed=true;if(heightFrame)cancelAnimationFrame(heightFrame);observer?.disconnect();resizeObserver?.disconnect();});
 defineExpose({getDocument:()=>frame.value?.contentDocument,syncHeight});
 </script>
 <template>

@@ -16,7 +16,7 @@ const JSON_PROMPT_TYPES = new Set([
   "promo_overview_parser",
   "promo_template_recommender",
   "promo_template_composer",
-  "promo_page_schema_planner",
+  "promo_page_outline_planner","promo_page_fragment_writer","promo_page_schema_planner",
   "promo_page_section_designer",
   "promo_page_composer",
   "promo_composition_editor",

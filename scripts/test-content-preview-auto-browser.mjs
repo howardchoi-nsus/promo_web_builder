@@ -60,7 +60,7 @@ try{
  await page.getByRole('button',{name:'AI가 구성하고 미리보기 생성',exact:true}).click();
  await page.frameLocator('iframe').first().locator('[data-wireframe-node]').first().waitFor();
  assert.equal(await page.locator('iframe').count(),1);assert.equal(revision,2);assert.equal(approvalCalls,0);
- assert.equal(await page.getByRole('button',{name:'디자인 미리보기',exact:true}).isDisabled(),true);
+ assert.equal(await page.getByRole('button',{name:'페이지 제작',exact:true}).count(),1);assert.equal(await page.getByRole('button',{name:'디자인 미리보기',exact:true}).count(),0);
  const structureBefore=JSON.stringify(snapshot.content.pageSchema);
  const layoutBefore=await page.frameLocator('iframe').first().locator('[data-ps-node]').evaluateAll(nodes=>nodes.map(el=>({id:el.id,width:getComputedStyle(el).width,columns:getComputedStyle(el).gridTemplateColumns,gap:getComputedStyle(el).gap,padding:getComputedStyle(el).padding})));
  assert.equal(await page.frameLocator('iframe').first().locator('a,button:not(:disabled)').count(),0);

@@ -76,3 +76,34 @@ const columnsOnly=structuredClone(split);
 walk(columnsOnly.root,({node})=>{if(node.type==='grid')node.layout.desktop.columns=[1,3];});
 assert.notEqual(structureFingerprint(split),structureFingerprint(columnsOnly));
 console.log('Structure fingerprints distinguish nesting/ratios while ignoring IDs and copy.');
+
+// Regression: approved numeric copy emitted as editorial is a binding error, not a new fact.
+const {repairApprovedSourceBindings}=require('../api/_page-schema-source-bindings');
+const bindingContext=structuredClone(context),bindingPage=fixture('example-editorial');
+const originalText=[];walk(bindingPage.root,({node})=>{if(node.type==='text')originalText.push(node);});
+const template=structuredClone(originalText[0]);
+for(const [index,text] of ['$52 in free tickets','up to $48 in rewards','up to 36 P$ from daily challenges'].entries()){
+ const id=`approved_bonus_${index}`;bindingContext.contentSources[id]={text,required:true,repeatAllowed:true};
+ bindingPage.root.children.push({...structuredClone(template),id:`bonus_${index}`,role:'body',headingLevel:0,contentMode:'editorial',text,sourceIds:[]});
+}
+const before=JSON.stringify(bindingPage),contextBefore=JSON.stringify(bindingContext);
+const repaired=await generatePage({context:bindingContext,promptConfig:{},generate:async()=>({result:bindingPage})});
+assert.equal(repaired.adjustments.filter(x=>x.code==='APPROVED_SOURCE_REFERENCE_REPAIRED').length,3);
+assert.equal(validate(repaired.page,bindingContext).ok,true);
+assert.equal(JSON.stringify(bindingPage),before);assert.equal(JSON.stringify(bindingContext),contextBefore);
+for(const text of ['$500 in free tickets','$48','guaranteed $48 in rewards','01','https://invented.example']){
+ const invalid=structuredClone(bindingPage);invalid.root.children.at(-2).text=text;
+ await assert.rejects(generatePage({context:bindingContext,generate:async()=>({result:invalid})}),error=>error.code==='PAGE_SCHEMA_INVALID'&&error.errors.some(x=>x.code==='UNSUPPORTED_FACT'));
+}
+const spaced=structuredClone(bindingPage);spaced.root.children.at(-1).text='  up to 36 P$   from daily challenges  ';
+assert.equal(validate(repairApprovedSourceBindings(spaced,bindingContext).page,bindingContext).ok,true);
+const unknown=structuredClone(bindingPage);unknown.root.children.at(-1).sourceIds=['unknown_source'];
+assert.ok(validate(repairApprovedSourceBindings(unknown,bindingContext).page,bindingContext).errors.some(x=>x.code==='CONTENT_SOURCE_INVALID'));
+const malformed={...bindingPage,html:'<script/>'};assert.equal(repairApprovedSourceBindings(malformed,bindingContext).page,malformed);
+console.log('Approved numeric source binding: exact repair, whitespace, immutable inputs, invented/partial claims and invalid provenance passed.');
+
+const wrong=structuredClone(bindingPage);wrong.root.children.at(-1).sourceIds=['approved_bonus_0'];
+assert.ok(validate(repairApprovedSourceBindings(wrong,bindingContext).page,bindingContext).errors.some(x=>x.code==='UNSUPPORTED_FACT'));
+const duplicatedContext=structuredClone(bindingContext);duplicatedContext.contentSources.approved_bonus_2.repeatAllowed=false;
+const repeated=structuredClone(bindingPage);repeated.root.children.push({...structuredClone(repeated.root.children.at(-1)),id:'bonus_repeated'});
+await assert.rejects(generatePage({context:duplicatedContext,generate:async()=>({result:repeated})}),error=>error.errors.some(x=>x.code==='CONTENT_SOURCE_DUPLICATED'));

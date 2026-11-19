@@ -97,6 +97,8 @@ const PROMPT_TYPES = {
     requiredVariables: ["overviewJson", "candidateStructuresJson", "allowedContentPathsJson"],
     optionalVariables: [],
   },
+  promo_page_outline_planner: {name:"Progressive Page Outline Planner",requiredVariables:["overviewJson","candidateSnapshotJson","constraintsJson"],optionalVariables:[]},
+  promo_page_fragment_writer: {name:"Progressive Page Content Writer",requiredVariables:["overviewJson","candidateSnapshotJson","constraintsJson"],optionalVariables:[]},
   promo_page_schema_planner: {
     name: "Dynamic PageSchema Planner",
     requiredVariables: ["overviewJson", "candidateSnapshotJson", "constraintsJson"],
@@ -165,6 +167,7 @@ const CONTROLLED_PROMPT_TYPES = new Set([
   "promo_overview_parser",
   "promo_template_recommender",
   "promo_template_composer",
+  "promo_page_outline_planner", "promo_page_fragment_writer",
   "promo_page_schema_planner",
   "promo_page_section_designer",
   "promo_page_quality_reviewer",

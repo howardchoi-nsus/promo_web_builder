@@ -15,9 +15,9 @@ function compositionOutline(page){
  const visit=node=>{if(!node||remaining--<=0)return null;return {type:node.type,role:node.role||null,purpose:node.purpose||null,direction:node.layout?.desktop?.direction,columns:node.layout?.desktop?.columns,children:(node.children||[]).map(visit).filter(Boolean)};};
  return {fingerprint:structuralHash(page),outline:visit(page.root)};
 }
-function designBrief(overview,{requestId,recentStructures=[],recentCompositions=[]}={}){
+function designBrief(overview,{requestId,recentStructures=[],recentCompositions=[],requestText='',instruction='',previous=null}={}){
  const sections=overview.contentSections||[];
- return {guidelinesVersion:guidelines.version,seed:requestId||null,goal:(overview.promotionPurpose==='기타'?overview.promotionPurposeOther:overview.promotionPurpose)||'Communicate the supplied promotion',audience:overview.audience||null,
+ return {...require('./_page-design-direction').designDirection({request:requestText,instruction,overview,previous}),guidelinesVersion:guidelines.version,seed:requestId||null,goal:(overview.promotionPurpose==='기타'?overview.promotionPurposeOther:overview.promotionPurpose)||'Communicate the supplied promotion',audience:overview.audience||null,
    primaryAction:overview.ctaLabel||sections.flatMap(s=>[s.cta?.label,...(s.items||[]).map(item=>item.ctaLabel)]).find(Boolean)||null,
    material:{contentSections:sections.length,hasImageIntent:sections.some(s=>s.media?.imageIntent||s.items?.some(i=>i.imageIntent)),hasRequiredLegalCopy:Boolean(overview.legalInformation?.length)},
    recentStructures:recentStructures.slice(0,5),recentCompositions:recentCompositions.slice(0,3),principles:guidelines.principles,qualityTiers:guidelines.qualityTiers};

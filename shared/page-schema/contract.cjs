@@ -132,7 +132,7 @@ function validate(page,context={},options={}){
   if(node.type==='text'){
    if(node.role==='heading'){if(node.headingLevel<1)add('ACCESSIBILITY_INVALID','Heading level is required');headings.push(node.headingLevel);}else if(node.headingLevel!==0)add('ACCESSIBILITY_INVALID','Non-heading text level must be zero');
    if(node.contentMode==='source'){if(node.sourceIds.length!==1||node.text!=='')add('CONTENT_SOURCE_INVALID','Source text must use exactly one source ID and empty text');else usedSources.set(node.sourceIds[0],(usedSources.get(node.sourceIds[0])||0)+1);}
-   else {if(!node.text.trim())add('CONTENT_EMPTY','Editorial text must not be empty');if(/\d|[%$€₩]|https?:\/\//u.test(node.text))add('UNSUPPORTED_FACT','Numbers, amounts and URLs must use approved source content');}
+   else {if(!node.text.trim())add('CONTENT_EMPTY','Editorial text must not be empty');if(hasRestrictedFacts(node.text))add('UNSUPPORTED_FACT','Numbers, amounts and URLs must use approved source content');}
    totalText+=node.contentMode==='source'?String(context.contentSources?.[node.sourceIds[0]]?.text||'').length:node.text.length;
   }
   if(node.type==='button'){
@@ -180,4 +180,5 @@ function validate(page,context={},options={}){
  return {ok:!errors.length,errors:errors.slice(0,100),warnings,metrics:{nodes:count,textLength:totalText}};
 }
 function assertValid(page,context,options){const result=validate(page,context,options);if(!result.ok)throw Object.assign(new Error('PageSchema 검증에 실패했습니다.'),{code:'PAGE_SCHEMA_INVALID',statusCode:422,errors:result.errors});return result;}
-module.exports={LIMITS,TYPES,baseSchema,runtimeSchema,validate,assertValid,normalize,walk,safeUrl,nodeTargets};
+function hasRestrictedFacts(text){return /\d|[%$€₩]|https?:\/\//u.test(text);}
+module.exports={hasRestrictedFacts,LIMITS,TYPES,baseSchema,runtimeSchema,validate,assertValid,normalize,walk,safeUrl,nodeTargets};

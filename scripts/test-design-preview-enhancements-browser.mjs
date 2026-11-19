@@ -108,9 +108,9 @@ try{
   },{stage,tab});
   await page.reload();
   if(tab==='requirements'){
-   await page.getByRole('button',{name:'페이지 구성 미리보기',exact:true}).waitFor();
+   await page.getByRole('button',{name:'페이지 제작',exact:true}).waitFor();
    assert.equal(mediaCalls,beforeCalls);
-   await page.getByRole('button',{name:'디자인 미리보기',exact:true}).click();
+   await page.getByRole('button',{name:'페이지 제작',exact:true}).click();
   }
   await Promise.all([resumedMedia,resumedQuality]);
   assert.equal(mediaCalls,beforeCalls+1,stage+' must resume pending images exactly once');assert.equal(approved,1);

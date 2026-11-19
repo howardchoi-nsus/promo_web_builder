@@ -8,6 +8,7 @@ import {previewReference} from '../../../shared/layout-token-policy.mjs';
 const props = defineProps({
   snapshot: { type: Object, required: true },
   wireframe: {type:Boolean,default:false},
+  effectsPaused:{type:Boolean,default:false},
   liveGeneration: {type:Boolean,default:false},
   documentId:{type:String,default:""},
   generationActivity: {type:Object,default:()=>({})},
@@ -48,14 +49,15 @@ function syncPreviewFrame() {
 }
 
 onMounted(() => {
-  if(props.liveGeneration&&!props.wireframe)livePreview=createLiveGenerationPreview({getDocument:()=>rendererRef.value?.getOutputDocument?.(),getSnapshot:()=>props.snapshot,getActivity:()=>props.generationActivity,getIdentity:()=>props.documentId});
+  if(props.liveGeneration)livePreview=createLiveGenerationPreview({getDocument:()=>rendererRef.value?.getOutputDocument?.(),getSnapshot:()=>props.snapshot,getActivity:()=>({...props.generationActivity,effectsPaused:props.effectsPaused,wireframe:props.wireframe,viewport:effectiveViewport.value}),getIdentity:()=>props.documentId});
   previewObserver = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(syncPreviewFrame);
   if (previewStage.value) previewObserver?.observe(previewStage.value);
   if (previewCanvas.value) previewObserver?.observe(previewCanvas.value);
   syncPreviewFrame();
 });
 
-watch(() => [props.snapshot, effectiveViewport.value,props.generationActivity], () => nextTick(syncPreviewFrame), { deep: true });
+watch(() => [props.snapshot, effectiveViewport.value,props.generationActivity,props.effectsPaused], () => nextTick(syncPreviewFrame), {deep:true});
+watch(()=>props.wireframe,value=>{if(!value&&props.liveGeneration&&!livePreview)livePreview=createLiveGenerationPreview({getDocument:()=>rendererRef.value?.getOutputDocument?.(),getSnapshot:()=>props.snapshot,getActivity:()=>({...props.generationActivity,effectsPaused:props.effectsPaused,wireframe:props.wireframe,viewport:effectiveViewport.value}),getIdentity:()=>props.documentId});nextTick(syncPreviewFrame);});
 
 function waitForAnimationFrames(count = 2) {
   if (typeof requestAnimationFrame !== "function") return Promise.resolve();
@@ -271,7 +273,7 @@ async function buildAutoRepairSnapshot(sourceSnapshot, qualityResult) {
   return { snapshot, changed };
 }
 
-defineExpose({ buildAutoRepairSnapshot, inspectQualityAcrossViewports });
+defineExpose({getOutputDocument:()=>rendererRef.value?.getOutputDocument?.(), buildAutoRepairSnapshot, inspectQualityAcrossViewports });
 
 onBeforeUnmount(() => {
   livePreview?.dispose();

@@ -1,5 +1,7 @@
 const { getSql } = require("./_promo-builder-document-store");
 
+function publicSnapshot(snapshot){const copy=JSON.parse(JSON.stringify(snapshot||{}));if(copy.content?.pageContext)delete copy.content.pageContext.designBrief;if(copy.generationMeta){delete copy.generationMeta.design;delete copy.generationMeta.draftExecutions;}return copy;}
+
 function publicationEnvelope(row) {
   if (!row) return null;
   return {
@@ -16,7 +18,7 @@ function publicationEnvelope(row) {
     },
     seo: row.seo_json || {},
     renderer: { key: row.snapshot_json?.layoutIdentity?.rendererKey || "default-promo-renderer", version: Number(row.snapshot_json?.layoutIdentity?.rendererVersion || 1) },
-    snapshot: row.snapshot_json || {},
+    snapshot: publicSnapshot(row.snapshot_json),
     manifest: row.manifest_json || {},
     cache: {
       etag: row.snapshot_hash || "",

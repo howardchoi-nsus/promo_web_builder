@@ -30,7 +30,7 @@ function publicExportSnapshot(snapshot) {
     layoutIdentity: clone(object(source.layoutIdentity)),
     appearance: clone(object(source.appearance)),
     content: {
-      ...(content.pageSchema ? {pageSchema:clone(content.pageSchema),pageContext:clone(content.pageContext)} : {}),
+      ...(content.pageSchema ? {pageSchema:clone(content.pageSchema),pageContext:clone(Object.fromEntries(Object.entries(content.pageContext||{}).filter(([key])=>key!=='designBrief')))} : {}),
       contractVersion: Number(content.contractVersion || source.contractVersion || 2),
       formTemplate: {
         id: formTemplate.id || "",

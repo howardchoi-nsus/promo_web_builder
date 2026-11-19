@@ -1,0 +1,103 @@
+{
+  "packageVersion": 2,
+  "status": "registration-draft",
+  "productionApplied": false,
+  "frontendSkillFile": "skills/frontend-rendering.md",
+  "prompts": [
+    {
+      "type": "promo_page_schema_planner",
+      "promptFile": "prompts/page-schema-planner.md",
+      "requiredVariables": [
+        "overviewJson",
+        "candidateSnapshotJson",
+        "constraintsJson"
+      ],
+      "optionalVariables": [],
+      "skillFiles": [
+        "skills/page-structure.md"
+      ],
+      "status": "draft",
+      "preserveRegisteredModelConfig": true
+    },
+    {
+      "type": "promo_page_section_designer",
+      "promptFile": "prompts/section-designer.md",
+      "requiredVariables": [
+        "currentPageJson",
+        "sectionJson",
+        "candidateSnapshotJson",
+        "constraintsJson"
+      ],
+      "optionalVariables": [],
+      "skillFiles": [
+        "skills/region-design.md"
+      ],
+      "status": "draft",
+      "preserveRegisteredModelConfig": true
+    },
+    {
+      "type": "promo_page_quality_reviewer",
+      "promptFile": "prompts/quality-reviewer.md",
+      "requiredVariables": [
+        "currentPageJson",
+        "qualityReportJson",
+        "candidateSnapshotJson",
+        "constraintsJson"
+      ],
+      "optionalVariables": [],
+      "skillFiles": [
+        "skills/quality-review.md"
+      ],
+      "status": "draft",
+      "preserveRegisteredModelConfig": true
+    },
+    {
+      "type": "section_background_image",
+      "promptFile": "prompts/section-background-image.md",
+      "requiredVariables": [
+        "sectionName",
+        "contentJson",
+        "backgroundColor"
+      ],
+      "optionalVariables": [
+        "fadeMode",
+        "adminGuidance",
+        "brandPalette",
+        "aspectRatio"
+      ],
+      "skillFiles": [
+        "skills/image-art-direction.md"
+      ],
+      "status": "draft",
+      "preserveRegisteredModelConfig": true
+    },
+    {
+      "type": "component_image",
+      "promptFile": "prompts/component-image.md",
+      "requiredVariables": [
+        "sectionName",
+        "componentName",
+        "fieldName",
+        "contentJson"
+      ],
+      "optionalVariables": [
+        "adminGuidance"
+      ],
+      "skillFiles": [
+        "skills/image-art-direction.md"
+      ],
+      "status": "draft",
+      "preserveRegisteredModelConfig": true
+    }
+  ],
+  "designDirectionContract": "design-direction.md",
+  "runtimeInjectionImplemented": true,
+  "progressivePromptTypes": [
+    "promo_page_outline_planner",
+    "promo_page_fragment_writer"
+  ],
+  "activationMigrations": [
+    "094_design_direction_pack.sql",
+    "095_progressive_page_drafts.sql"
+  ]
+}

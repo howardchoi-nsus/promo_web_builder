@@ -1,4 +1,5 @@
 <script setup>
+import PageSchemaDocumentEditor from './builder/PageSchemaDocumentEditor.vue';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import PromoReadonlyRenderer from "./runtime/PromoReadonlyRenderer.vue";
 import PromoPageRenderer from "./PromoPageRenderer.vue";
@@ -1883,7 +1884,6 @@ async function loadAiDocument() {
     aiDocumentRevision.value = Number(result.document?.currentDocumentRevision || result.snapshot.documentRevision || 0);
     aiDocumentSnapshot.value = result.snapshot;
     if(result.snapshot.content?.pageSchema){
-      if(props.mode!=="output")window.location.assign("/prototype/create-promo?mode=ai");
       loading.value=false;return;
     }
     aiDocumentConflict.value = null;
@@ -2599,6 +2599,7 @@ onBeforeUnmount(() => {
     <PromoReadonlyRenderer v-else-if="rendererSnapshot" :snapshot="rendererSnapshot" />
   </div>
 
+  <PageSchemaDocumentEditor v-else-if="isAiDocumentMode && aiDocumentSnapshot?.content?.pageSchema" :snapshot="aiDocumentSnapshot" :document-id="aiDocumentId" :revision="aiDocumentRevision" />
   <main
     v-else
     class="editor-shell"

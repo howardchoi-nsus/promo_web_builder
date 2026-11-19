@@ -1,3 +1,4 @@
+const {repairApprovedSourceBindings}=require('./_page-schema-source-bindings');
 const {outputDiagnostics}=require('./_page-schema-output-diagnostics');
 const {createHash}=require('node:crypto');
 const {assertValid,normalize,runtimeSchema,TYPES,LIMITS,safeUrl}=require('../shared/page-schema/contract.cjs');
@@ -33,15 +34,16 @@ function contentContext(overview,{usagePolicy,tokenCatalog,tokenValues,tokenVers
 }
 async function generatePage({overview,context,instruction='',currentPage=null,promptConfig,generate}){
  const response=await generate({type:'promo_page_schema_planner',schemaName:'promo_page_schema',schema:runtimeSchema(context),promptConfig});
- const raw=response.result;
+ const repaired=repairApprovedSourceBindings(response.result,context);
+ const raw=repaired.page;
  assertValid(raw,context);
  const normalized=normalize(raw);const validation=assertValid(normalized.page,context);
- return {page:normalized.page,validation,adjustments:normalized.adjustments,provider:response.provider,usage:response.usage};
+ return {page:normalized.page,validation,adjustments:[...repaired.adjustments,...normalized.adjustments],provider:response.provider,usage:response.usage};
 }
 function reusableMediaKey(request,context){
  if(!request)return '';
  const sourceText=(request.sourceIds||[]).map(id=>context.contentSources?.[id]?.text||'');
- return require('./_page-schema-generation-jobs').inputHash({intent:request.intent,aspectRatio:request.aspectRatio,sourceText});
+ return require('./_page-schema-generation-jobs').inputHash({intent:request.intent,aspectRatio:request.aspectRatio,sourceText,artDirection:context.designBrief?.artDirection?{mood:context.designBrief.artDirection.brandMood,visual:context.designBrief.artDirection.keyVisualDirection}:null});
 }
 function reusePreparedMedia(page,context,previous){
  if(!previous?.content?.pageSchema)return page;
@@ -72,5 +74,7 @@ function plannerContext(context){const {contentSources,actions,formFields}=conte
   const contentWidth=reference?reference.width-2*margin:null;
   return [view,{referenceWidthToken:reference?.key||null,referenceWidth:reference?.width||null,marginToken:profile.margin,margin,gutter,columns,contentWidth,columnWidth:contentWidth===null?null:(contentWidth-(columns-1)*gutter)/columns}];
  }));
- return {layoutGeometry,layoutTokens:layoutPolicy,spacingTokens:layoutPolicy.spacing,primitives:runtimeSchema(context).$defs.node.anyOf.map(option=>option.$ref.split('/').at(-1)),omittedContent:context.omittedContent||[],unresolvedInputs:context.unresolvedInputs||[],contentSources,assets,actions,icons,formFields,styleWarnings:pageStyleWarnings(context),policyRoles:pageGenerationStyleRoles(context).filter(r=>pageStyleToken(context,r)).map(r=>({...r,token:pageStyleToken(context,r),value:context.tokenValues[pageStyleToken(context,r)]}))};}
+ const generatedRoles=pageGenerationStyleRoles(context),allRoles=pageStyleRoles(context);
+ const styleSelectionDiagnostics=(context.designBrief?.tokenPreferences?.values||[]).map(value=>{const matching=allRoles.filter(role=>String(context.tokenValues[pageStyleToken(context,role)]).toLowerCase()===value.toLowerCase()),selected=generatedRoles.filter(role=>matching.some(item=>item.key===role.key));return {value,status:selected.length?'available':matching.length?'candidate-budget-excluded':Object.values(context.tokenValues).some(v=>typeof v==='string'&&v.toLowerCase()===value.toLowerCase())?'registered-but-incompatible':'not-registered',roles:selected.map(role=>role.key)};});
+ return {styleSelectionDiagnostics,layoutGeometry,layoutTokens:layoutPolicy,spacingTokens:layoutPolicy.spacing,primitives:runtimeSchema(context).$defs.node.anyOf.map(option=>option.$ref.split('/').at(-1)),omittedContent:context.omittedContent||[],unresolvedInputs:context.unresolvedInputs||[],contentSources,assets,actions,icons,formFields,styleWarnings:pageStyleWarnings(context),policyRoles:pageGenerationStyleRoles(context).filter(r=>pageStyleToken(context,r)).map(r=>({...r,token:pageStyleToken(context,r),value:context.tokenValues[pageStyleToken(context,r)]}))};}
 module.exports={reusePreparedMedia,reusableMediaKey,structureFingerprint,plannerContext,contentContext,generatePage,snapshotForPage,TYPES,LIMITS,assertValid,normalize};

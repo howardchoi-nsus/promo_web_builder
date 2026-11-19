@@ -21,4 +21,6 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){fs.wr
  const colors=fs.readFileSync(new URL('../shared/page-schema/quality-colors.mjs',import.meta.url),'utf8');
  const colorNames=[...colors.matchAll(/^export function (\w+)/gm)].map(match=>match[1]);
  fs.writeFileSync(new URL('../shared/page-schema/quality-colors.cjs',import.meta.url),'// Generated from quality-colors.mjs; run build:token-policy.\n'+colors.replace(/^export /gm,'')+'\nmodule.exports={'+colorNames.join(',')+'};\n');
+ const sectionDesign=fs.readFileSync(new URL('../shared/page-schema/section-design.cjs',import.meta.url),'utf8').replace('module.exports={treeNodes,designGroups,sectionDesignPending,designNodeStates};','export {treeNodes,designGroups,sectionDesignPending,designNodeStates};');
+ fs.writeFileSync(new URL('../shared/page-schema/section-design.mjs',import.meta.url),'// Generated from section-design.cjs; run build:token-policy.\n'+sectionDesign);
  console.log('Generated server token usage policy.');}

@@ -68,6 +68,8 @@ export function pageStyleRoles(context={}, {bounded=false}={}) {
    const family=name.match(/^--(?:typography-(?:title|body|label)|color-[a-z]+|[a-z]+-[a-z]+)/)?.[0]||name;
    if(!groups.has(family))groups.set(family,[]);groups.get(family).push(token);
   }
+  const preferences=context.designBrief?.tokenPreferences;
+  if(preferences){for(const group of groups.values())group.sort((a,b)=>designCandidateScore(b,property,preferences)-designCandidateScore(a,property,preferences));const ordered=[...groups.entries()].sort((a,b)=>designCandidateScore(b[1][0],property,preferences)-designCandidateScore(a[1][0],property,preferences));groups.clear();for(const [key,group] of ordered)groups.set(key,group);}
   const limit=target==='text'?({'color':6,'font-size':8,'font-family':2,'font-weight':4,'line-height':8}[property]||4):target==='icon'?6:target==='layout'?3:property==='border-width'||property==='border-style'||property==='background-image'?3:4;
   candidates=[];
   while(candidates.length<limit&&[...groups.values()].some(group=>group.length))for(const group of groups.values()){
@@ -218,4 +220,11 @@ export function policySelectableTokens(policy,catalog=[]) {
 export function styleCssProperty(property) {
  const key=String(property||'').replace(/Token$/,'');
  return ({radius:'border-radius',shadow:'box-shadow',textColor:'color',surfaceColor:'background-color',accentColor:'background-color'})[key] || key.replace(/[A-Z]/g,letter=>`-${letter.toLowerCase()}`);
+}
+
+export function designCandidateScore(token,property,preferences={}){
+ if(!token)return 0;const value=String(token.value||'').toLowerCase(),name=String(token.name||token.tokenKey||'').toLowerCase();
+ const match=value.match(/^#([0-9a-f]{6})$/i),rgb=match?[0,2,4].map(i=>parseInt(match[1].slice(i,i+2),16)):null;
+ const colorMatch=rgb&&property.endsWith('color')&&preferences.names?.some(n=>{const [r,g,b]=rgb;return n==='red'?r>100&&r>g*1.5&&r>b*1.4:n==='gold'?r>130&&g>75&&r>g&&b<g*.75:n==='black'?r+g+b<120:n==='white'?Math.min(r,g,b)>220:false;});
+ return (preferences.values?.some(v=>String(v).toLowerCase()===value)?100:0)+(preferences.names?.some(n=>name.split('-').includes(String(n).toLowerCase()))?30:0)+(colorMatch?25:0)+(preferences.bold&&property==='font-weight'&&Number(value)>=700?20:0);
 }

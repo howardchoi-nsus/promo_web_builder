@@ -1,3 +1,4 @@
+import {createWorkFeedback} from './work-feedback.mjs';
 import {designNodeStates} from '../../../../shared/page-schema/section-design.mjs';
 import {nodes,safeUrl} from '../../../../shared/page-schema/runtime.mjs';
 
@@ -22,46 +23,55 @@ const previewCss=`
 [data-live-background],[data-live-background] [data-ps-type="container"],[data-live-background] [data-ps-type="card"],[data-live-background] [data-ps-type="button"],[data-live-background] input{background-color:#f3f4f6!important;background-image:none!important}
 [data-live-background] [data-ps-type="text"],[data-live-background] [data-ps-type="button"],[data-live-background] [data-ps-type="icon"],[data-live-background] input{color:#374151!important;text-shadow:none!important}
 [data-live-background] [data-ps-overlay]{visibility:hidden!important}
-[data-live-background-image][data-live-reveal]{animation-name:live-preview-background}
+[data-live-background-image][data-live-reveal]{animation:live-preview-reveal 350ms ease-out both}
 @keyframes live-preview-background{from{filter:blur(2px)}to{filter:blur(0)}}
 
 [data-live-state="waiting"],[data-live-state="generating"],[data-live-state="failed"]{background:#e5e7eb!important;color:#374151!important;font-size:0!important;overflow:hidden}
 [data-live-state="waiting"]::after,[data-live-state="generating"]::after,[data-live-state="failed"]::after{content:attr(data-live-label);font:14px/1.5 sans-serif;display:block;text-align:center;padding:12px;color:#374151}
 [data-live-state="generating"]{background-image:linear-gradient(100deg,transparent 20%,#fff8 50%,transparent 80%)!important;background-size:240% 100%!important;animation:live-preview-shimmer 1.8s linear infinite}
 img[data-live-state="loading"]{opacity:.25}
-[data-live-reveal]{animation:live-preview-reveal 320ms ease-out both}
+[data-live-reveal]{animation:live-preview-reveal 350ms ease-out both}
+[data-ps-scope] [data-ps-node][data-live-wireframe-entry]{animation:live-preview-reveal 250ms ease-out both!important}
+[data-live-effects-paused] [data-live-reveal],[data-live-effects-paused] [data-live-design-reveal],[data-live-effects-paused] [data-live-wireframe-entry]{animation:none!important}
 @keyframes live-preview-shimmer{from{background-position:100% 0}to{background-position:0 0}}
 @keyframes live-preview-reveal{from{opacity:0}to{opacity:1}}
-@media(prefers-reduced-motion:reduce){[data-live-state],[data-live-reveal],[data-live-design-reveal]{animation:none!important}}
+@media(prefers-reduced-motion:reduce){[data-live-state],[data-live-reveal],[data-live-design-reveal],[data-ps-scope] [data-ps-node][data-live-wireframe-entry]{animation:none!important}}
 `;
-const attributes=['data-live-state','data-live-label','data-live-reveal','data-live-background-image','data-live-design-state','data-live-design-reveal','data-live-design-target'];
+const attributes=['data-live-wireframe-entry','data-live-state','data-live-label','data-live-reveal','data-live-background-image','data-live-design-state','data-live-design-reveal','data-live-design-target'];
 const labels={waiting:'이미지 생성 대기',generating:'이미지 생성 중',loading:'이미지 불러오는 중',failed:'이미지를 준비하지 못했습니다'};
 
 // Builder-only decoration. Never serialize these attributes/styles into PageSchema.
 export function createLiveGenerationPreview({getDocument,getSnapshot,getActivity=()=>({}),getIdentity=()=>''}) {
+  const wireSeen=new Map();
   const designEligible=new Set(),designRevealed=new Set();
+  let feedback;
   let doc,root,observer,style,frame=0,disposed=false,paused=false,attempts=0,identity=getIdentity();
   const backgrounds=new Set(),decorated=new Set(),records=new Map(),eligible=new Set(),revealed=new Set();
   const schedule=()=>{if(!frame&&!disposed&&!paused)frame=requestAnimationFrame(()=>{frame=0;refresh();});};
   function clearBackgrounds(){for(const element of backgrounds)element.removeAttribute('data-live-background');backgrounds.clear();}
   function paintBackground(element){const parent=element.parentElement;if(parent){parent.setAttribute('data-live-background','');backgrounds.add(parent);}}
-  function clearPaint(){clearBackgrounds();for(const element of decorated)for(const attribute of attributes)element.removeAttribute(attribute);decorated.clear();style?.remove();style=null;}
+  function clearPaint(){root?.removeAttribute('data-live-effects-paused');feedback?.dispose();feedback=null;clearBackgrounds();for(const element of decorated)for(const attribute of attributes)element.removeAttribute(attribute);decorated.clear();style?.remove();style=null;}
   function disconnect(){observer?.disconnect();if(doc){doc.removeEventListener('load',schedule,true);doc.removeEventListener('error',schedule,true);}clearPaint();}
   function paint(element,state){element.setAttribute('data-live-state',state);element.setAttribute('data-live-label',labels[state]||'');decorated.add(element);}
   function refresh(){
     if(disposed||paused)return;
     const nextIdentity=getIdentity();
-    if(nextIdentity!==identity){disconnect();doc=null;root=null;records.clear();eligible.clear();revealed.clear();designEligible.clear();designRevealed.clear();identity=nextIdentity;}
+    if(nextIdentity!==identity){disconnect();doc=null;root=null;records.clear();eligible.clear();revealed.clear();designEligible.clear();designRevealed.clear();wireSeen.clear();identity=nextIdentity;}
     const current=getDocument(),boundary=current?.querySelector('[data-output-boundary]');
     if(!boundary){if(++attempts<90)schedule();return;}
     attempts=0;
     if(current!==doc||boundary!==root){disconnect();doc=current;root=boundary;observer=new MutationObserver(schedule);observer.observe(root,{subtree:true,childList:true,attributes:true,attributeFilter:['src']});doc.addEventListener('load',schedule,true);doc.addEventListener('error',schedule,true);}
     const snapshot=getSnapshot(),regions=generationRegions(snapshot,getActivity()),designs=designNodeStates(snapshot,getActivity().activeDesignId,getActivity().failedDesignId);
-    if(!regions.length&&!designs.length){clearPaint();return;}
+    const draftNodes=snapshot?.generationMeta?.draftActivity?.nodeIds||[];const isWireframe=getActivity().wireframe;
+    if(!regions.length&&!designs.length&&!draftNodes.length&&!isWireframe){clearPaint();return;}
     if(!style){style=doc.createElement('style');style.dataset.livePreviewStyle='';style.textContent=previewCss;doc.head.append(style);}
     const elements=new Map([...root.querySelectorAll('[data-ps-node]')].map(el=>[el.dataset.psNode,el]));
+    if(!feedback)feedback=createWorkFeedback(doc);
+    if(getActivity().effectsPaused)root.setAttribute('data-live-effects-paused','');else root.removeAttribute('data-live-effects-paused');
+    if(isWireframe){for(const [id,el] of elements){const text=el.childElementCount?'':el.textContent,key=text||'';if(wireSeen.get(id)!==key){wireSeen.set(id,key);el.setAttribute('data-live-wireframe-entry','');decorated.add(el);}}}
+    const work=[...designs,...regions,...draftNodes.map(nodeId=>({nodeId,state:'generating'}))].map(r=>({el:elements.get(r.nodeId),state:r.state,label:snapshot.content.pageSchema&&elements.get(r.nodeId)?.getAttribute('aria-label')||'영역 구성 중'})).filter(r=>r.el);
     clearBackgrounds();
-    const active=new Set([...regions,...designs].map(region=>elements.get(region.nodeId)));
+    const active=new Set([...(isWireframe?[...elements.keys()].map(nodeId=>({nodeId})):[]),...regions,...designs].map(region=>elements.get(region.nodeId)));
     for(const element of decorated)if(!active.has(element)){for(const attribute of attributes)element.removeAttribute(attribute);decorated.delete(element);}
     for(const region of designs){
       const element=elements.get(region.nodeId);if(!element)continue;
@@ -94,6 +104,7 @@ export function createLiveGenerationPreview({getDocument,getSnapshot,getActivity
         revealed.add(region.key);element.setAttribute('data-live-reveal','');
       }
     }
+    feedback.update([...new Map(work.map(w=>[w.el,{...w,state:w.el.getAttribute('data-live-state')||w.state}])).values()],{...getActivity(),operation:snapshot.generationMeta?.operation,revisionKey:snapshot.documentRevision||snapshot.generationMeta?.requestId||''});
   }
   return {
     refresh,

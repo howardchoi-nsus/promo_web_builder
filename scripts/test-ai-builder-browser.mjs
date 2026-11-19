@@ -563,7 +563,7 @@ try {
   assert.notEqual(compositionRequest.overviewFingerprint, "browser-test-overview");
   await page.getByText("페이지 구성 미리보기 생성을 완료했습니다.").waitFor({ timeout: 10000 });
   assert.equal(applyRequest, null, "final design must wait for page preview approval");
-  assert.equal(await page.getByRole("button", { name: "페이지 구성 미리보기" }).isEnabled(), true);
+  assert.equal(await page.getByRole("button", { name: "페이지 제작" }).isEnabled(), true);
   assert.equal(await page.locator('.ai-wireframe-technical').count(),0);
   assert.equal(await page.locator('.ai-wireframe-copy textarea').count(),0);
   await page.getByRole("button", { name: "페이지 구성 승인" }).last().click();
