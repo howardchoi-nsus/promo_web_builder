@@ -3228,7 +3228,7 @@ const adminApp = createApp({
         const runtimeConfig = detail.runtimeConfig || detail.modelOptions?.runtimeConfig || {};
         const defaultRuntimeConfig = usesImagePolicy
           ? { timeoutMs: 240000, maxAttempts: 3, retryBaseMs: 15000, retryMaxMs: 75000 }
-          : ["promo_page_schema_planner","promo_page_quality_reviewer"].includes(detail.type)
+          : ["promo_page_outline_planner","promo_page_fragment_writer","promo_page_schema_planner","promo_page_section_designer","promo_page_quality_reviewer"].includes(detail.type)
           ? { timeoutMs: 240000, maxAttempts: 1, retryBaseMs: 0, retryMaxMs: 0 }
           : { timeoutMs: 90000, maxAttempts: 1, retryBaseMs: 0, retryMaxMs: 0 };
         this.promptEditor = {
@@ -3265,7 +3265,7 @@ const adminApp = createApp({
               || detail.modelOptions?.executionSnapshotVersion
               || (usesImagePolicy ? 3 : 2)
           ),
-          timeoutMs: ["promo_page_schema_planner","promo_page_quality_reviewer"].includes(detail.type) && Number(runtimeConfig.timeoutMs) === 90000
+          timeoutMs: ["promo_page_outline_planner","promo_page_fragment_writer","promo_page_schema_planner","promo_page_section_designer","promo_page_quality_reviewer"].includes(detail.type) && Number(runtimeConfig.timeoutMs) === 90000
             ? 240000 : runtimeConfig.timeoutMs ?? (usesControlPlane ? defaultRuntimeConfig.timeoutMs : ""),
           maxAttempts: runtimeConfig.maxAttempts ?? (usesControlPlane ? defaultRuntimeConfig.maxAttempts : ""),
           retryBaseMs: runtimeConfig.retryBaseMs ?? (usesControlPlane ? defaultRuntimeConfig.retryBaseMs : ""),
@@ -3493,13 +3493,17 @@ const adminApp = createApp({
         "promo_overview_parser",
         "promo_template_recommender",
         "promo_template_composer",
+        "promo_page_outline_planner",
+        "promo_page_fragment_writer",
         "promo_page_schema_planner",
+        "promo_page_section_designer",
         "promo_page_quality_reviewer",
         "promo_page_composer",
         "promo_composition_editor",
         "section_background_image",
         "component_image",
         "component_visual_analyzer",
+        "layout_reference_analyzer",
       ].includes(prompt?.type);
     },
 

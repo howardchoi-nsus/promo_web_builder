@@ -32,3 +32,7 @@
 ## Production 코드 반영 요청
 
 사용자가 미검증 범위와 운영 준비 조건 안내 후 배포를 요청했다. 이번 코드를 main에 반영하며, 실제 Vercel 배포 상태와 운영 DB·프롬프트 활성화는 확인한 결과만 별도로 보고한다. 누적 초안 기능은 기본 비활성으로 유지한다.
+
+## 2026-11-20 Admin 실행 설정 저장 회귀 수정
+
+`promo_page_section_designer requires an activated Execution Snapshot V2 or newer setting` 오류 원인은 Admin이 신규 프롬프트 타입을 실행 Harness 대상으로 분류하지 않아 읽을 때 분리한 Snapshot 설정을 저장할 때 복구하지 않은 것이다. 영역 디자인·누적 구조·문구 및 레이아웃 분석 타입의 Harness 표시/저장 분류를 보완하고 PageSchema 제한 시간 240000ms를 UI에서도 허용했다. 실제 저장 함수의 결과를 서버 검증기에 통과시키는 회귀검사, 기존 control-plane 및 프롬프트 Admin 계약 검사, Admin 빌드를 검증했다. 마이그레이션 재실행이나 서버 검증 완화는 필요하지 않다. 사용자 배포 요청에 따라 이 후속 수정도 Production 대상 main에 반영한다. 실제 Vercel Ready 및 운영 화면 적용 여부는 별도 확인 대상이다.

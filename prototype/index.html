@@ -1183,7 +1183,7 @@
                     </label>
                     <label class="field">
                       <span>제한 시간(ms)</span>
-                      <input v-model="promptEditor.timeoutMs" type="number" min="1000" :max="['section_background_image', 'component_image', 'component_visual_analyzer'].includes(selectedPromptTemplate.type) ? 240000 : 90000" step="1000" />
+                      <input v-model="promptEditor.timeoutMs" type="number" min="1000" :max="['section_background_image', 'component_image', 'component_visual_analyzer', 'layout_reference_analyzer', 'promo_page_outline_planner', 'promo_page_fragment_writer', 'promo_page_schema_planner', 'promo_page_section_designer', 'promo_page_quality_reviewer'].includes(selectedPromptTemplate.type) ? 240000 : 90000" step="1000" />
                       <small>한 번의 AI 호출을 기다릴 최대 시간입니다.</small>
                     </label>
                     <label class="field">

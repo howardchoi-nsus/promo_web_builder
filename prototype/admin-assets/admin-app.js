@@ -8043,8 +8043,15 @@ function jg(e, { tokenKey: t, property: n, target: r, state: i = "default", path
 }
 function Mg(e, t, n = {}) {
 	if (!e) return 0;
-	let r = String(e.value || "").toLowerCase(), i = String(e.name || e.tokenKey || "").toLowerCase();
-	return (n.values?.some((e) => String(e).toLowerCase() === r) ? 100 : 0) + (n.names?.some((e) => i.split("-").includes(String(e).toLowerCase())) ? 30 : 0) + (n.bold && t === "font-weight" && Number(r) >= 700 ? 20 : 0);
+	let r = String(e.value || "").toLowerCase(), i = String(e.name || e.tokenKey || "").toLowerCase(), a = r.match(/^#([0-9a-f]{6})$/i), o = a ? [
+		0,
+		2,
+		4
+	].map((e) => parseInt(a[1].slice(e, e + 2), 16)) : null, s = o && t.endsWith("color") && n.names?.some((e) => {
+		let [t, n, r] = o;
+		return e === "red" ? t > 100 && t > n * 1.5 && t > r * 1.4 : e === "gold" ? t > 130 && n > 75 && t > n && r < n * .75 : e === "black" ? t + n + r < 120 : e === "white" && Math.min(t, n, r) > 220;
+	});
+	return (n.values?.some((e) => String(e).toLowerCase() === r) ? 100 : 0) + (n.names?.some((e) => i.split("-").includes(String(e).toLowerCase())) ? 30 : 0) + (s ? 25 : 0) + (n.bold && t === "font-weight" && Number(r) >= 700 ? 20 : 0);
 }
 //#endregion
 //#region admin-app/src/components/TokenUsagePolicyManager.vue
@@ -13077,6 +13084,7 @@ function Nx(e) {
 	return `${t}{background:#fff!important;color:#333!important}
  ${t} [data-ps-node]{background-color:#fff!important;background-image:none!important;color:#333!important;border-color:#aaa!important;box-shadow:none!important;text-shadow:none!important;animation:none!important;transition:none!important}
  ${t} [data-ps-type="container"],${t} [data-ps-type="card"]{outline:1px dashed #bbb;outline-offset:-1px}
+ ${t} [data-ps-type="text"]:empty{min-height:1lh;min-width:6ch;background-color:#e5e7eb!important}
  ${t} [data-ps-type="button"],${t} input{background:#eee!important;outline:1px solid #888;outline-offset:-1px}
  ${t} img,${t} video{object-fit:none!important;object-position:-100000px -100000px!important;background:#eee!important;outline:1px dashed #999;outline-offset:-1px}
  ${t} [data-ps-overlay]{display:none!important}
@@ -24361,7 +24369,13 @@ var zF = {
 						maxAttempts: 3,
 						retryBaseMs: 15e3,
 						retryMaxMs: 75e3
-					} : ["promo_page_schema_planner", "promo_page_quality_reviewer"].includes(o.type) ? {
+					} : [
+						"promo_page_outline_planner",
+						"promo_page_fragment_writer",
+						"promo_page_schema_planner",
+						"promo_page_section_designer",
+						"promo_page_quality_reviewer"
+					].includes(o.type) ? {
 						timeoutMs: 24e4,
 						maxAttempts: 1,
 						retryBaseMs: 0,
@@ -24389,7 +24403,13 @@ var zF = {
 							"4K"
 						].includes(String(o.generationPolicy?.requestedTier || o.modelOptions?.generationPolicy?.requestedTier || o.modelOptions?.imageSize || o.modelOptions?.image_size || "").toUpperCase()) ? String(o.generationPolicy?.requestedTier || o.modelOptions?.generationPolicy?.requestedTier || o.modelOptions?.imageSize || o.modelOptions?.image_size).toUpperCase() : "2K",
 						executionSnapshotVersion: Number(o.executionSnapshotVersion || o.modelOptions?.executionSnapshotVersion || (d ? 3 : 2)),
-						timeoutMs: ["promo_page_schema_planner", "promo_page_quality_reviewer"].includes(o.type) && Number(f.timeoutMs) === 9e4 ? 24e4 : f.timeoutMs ?? (u ? p.timeoutMs : ""),
+						timeoutMs: [
+							"promo_page_outline_planner",
+							"promo_page_fragment_writer",
+							"promo_page_schema_planner",
+							"promo_page_section_designer",
+							"promo_page_quality_reviewer"
+						].includes(o.type) && Number(f.timeoutMs) === 9e4 ? 24e4 : f.timeoutMs ?? (u ? p.timeoutMs : ""),
 						maxAttempts: f.maxAttempts ?? (u ? p.maxAttempts : ""),
 						retryBaseMs: f.retryBaseMs ?? (u ? p.retryBaseMs : ""),
 						retryMaxMs: f.retryMaxMs ?? (u ? p.retryMaxMs : ""),
@@ -24534,13 +24554,17 @@ var zF = {
 					"promo_overview_parser",
 					"promo_template_recommender",
 					"promo_template_composer",
+					"promo_page_outline_planner",
+					"promo_page_fragment_writer",
 					"promo_page_schema_planner",
+					"promo_page_section_designer",
 					"promo_page_quality_reviewer",
 					"promo_page_composer",
 					"promo_composition_editor",
 					"section_background_image",
 					"component_image",
-					"component_visual_analyzer"
+					"component_visual_analyzer",
+					"layout_reference_analyzer"
 				].includes(e?.type);
 			},
 			promptUsesSectionImagePolicy(e = this.selectedPromptTemplate) {
