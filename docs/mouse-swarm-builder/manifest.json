@@ -93,11 +93,35 @@
   "designDirectionContract": "design-direction.md",
   "runtimeInjectionImplemented": true,
   "progressivePromptTypes": [
-    "promo_page_outline_planner",
-    "promo_page_fragment_writer"
+    "promo_page_manifest_planner",
+    "promo_page_region_builder"
   ],
   "activationMigrations": [
     "094_design_direction_pack.sql",
-    "095_progressive_page_drafts.sql"
+    "095_progressive_page_drafts.sql",
+    "096_page_draft_units_v2.sql"
+  ],
+  "progressiveContractVersion": 2,
+  "progressivePrompts": [
+    {
+      "type": "promo_page_manifest_planner",
+      "promptFile": "prompts/page-unit-plan.md",
+      "status": "draft",
+      "requiredVariables": [
+        "overviewJson",
+        "candidateSnapshotJson",
+        "constraintsJson"
+      ]
+    },
+    {
+      "type": "promo_page_region_builder",
+      "promptFile": "prompts/page-unit-region.md",
+      "status": "draft",
+      "requiredVariables": [
+        "overviewJson",
+        "candidateSnapshotJson",
+        "constraintsJson"
+      ]
+    }
   ]
 }

@@ -37,7 +37,7 @@ img[data-live-state="loading"]{opacity:.25}
 @keyframes live-preview-reveal{from{opacity:0}to{opacity:1}}
 @media(prefers-reduced-motion:reduce){[data-live-state],[data-live-reveal],[data-live-design-reveal],[data-ps-scope] [data-ps-node][data-live-wireframe-entry]{animation:none!important}}
 `;
-const attributes=['data-live-wireframe-entry','data-live-state','data-live-label','data-live-reveal','data-live-background-image','data-live-design-state','data-live-design-reveal','data-live-design-target'];
+const attributes=['data-live-draft-pending','data-live-wireframe-entry','data-live-state','data-live-label','data-live-reveal','data-live-background-image','data-live-design-state','data-live-design-reveal','data-live-design-target'];
 const labels={waiting:'이미지 생성 대기',generating:'이미지 생성 중',loading:'이미지 불러오는 중',failed:'이미지를 준비하지 못했습니다'};
 
 // Builder-only decoration. Never serialize these attributes/styles into PageSchema.
@@ -69,7 +69,11 @@ export function createLiveGenerationPreview({getDocument,getSnapshot,getActivity
     if(!feedback)feedback=createWorkFeedback(doc);
     if(getActivity().effectsPaused)root.setAttribute('data-live-effects-paused','');else root.removeAttribute('data-live-effects-paused');
     if(isWireframe){for(const [id,el] of elements){const text=el.childElementCount?'':el.textContent,key=text||'';if(wireSeen.get(id)!==key){wireSeen.set(id,key);el.setAttribute('data-live-wireframe-entry','');decorated.add(el);}}}
-    const work=[...designs,...regions,...draftNodes.map(nodeId=>({nodeId,state:'generating'}))].map(r=>({el:elements.get(r.nodeId),state:r.state,label:snapshot.content.pageSchema&&elements.get(r.nodeId)?.getAttribute('aria-label')||'영역 구성 중'})).filter(r=>r.el);
+    // The only preview placeholder is the current not-yet-built work shell.
+    for(const el of decorated)if(el.hasAttribute('data-live-draft-pending')){el.removeAttribute('data-live-draft-pending');el.removeAttribute('data-live-state');el.removeAttribute('data-live-label');}
+    for(const id of draftNodes){const el=elements.get(id);if(el&&!el.children.length&&!el.textContent){paint(el,'generating');el.setAttribute('data-live-draft-pending','');}}
+    const completedDraftNodes=snapshot?.generationMeta?.draftActivity?.completedNodeIds||[];
+    const work=[...designs,...regions,...completedDraftNodes.map(nodeId=>({nodeId,state:'ready'})),...(snapshot?.generationMeta?.draftActivity?.failedNodeIds||[]).map(nodeId=>({nodeId,state:'failed'})),...draftNodes.map(nodeId=>({nodeId,state:'generating'}))].map(r=>({el:elements.get(r.nodeId),state:r.state,label:snapshot.content.pageSchema&&elements.get(r.nodeId)?.getAttribute('aria-label')||'영역 구성 중'})).filter(r=>r.el);
     clearBackgrounds();
     const active=new Set([...(isWireframe?[...elements.keys()].map(nodeId=>({nodeId})):[]),...regions,...designs].map(region=>elements.get(region.nodeId)));
     for(const element of decorated)if(!active.has(element)){for(const attribute of attributes)element.removeAttribute(attribute);decorated.delete(element);}

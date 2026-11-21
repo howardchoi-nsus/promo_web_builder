@@ -45,3 +45,9 @@ for(const term of ['## 12. 채팅 진행 이력','P07','1.8초','opacity: 0.5','
 assert.ok(agents.includes('## 최종 웹 출력 형식'));for(const term of ['## 13. 최종 출력','O08','프레임워크 런타임','PageSchema','interactions.js'])assert.ok(plan.includes(term),term);
 
 for(const term of ['## 14. 와이어프레임','650ms','효과만 일시정지','F08','340ms'])assert.ok(plan.includes(term),term);
+
+assert.equal(manifest.progressiveContractVersion,2);
+for(const entry of manifest.progressivePrompts){const body=readFileSync(new URL(entry.promptFile,root),'utf8');validatePromptTemplateContract(entry.type,{body,requiredVariables:entry.requiredVariables,optionalVariables:[]});}
+
+const unitMigration=readFileSync(new URL('../db/migrations/096_page_draft_units_v2.sql',import.meta.url),'utf8');
+for(const entry of manifest.progressivePrompts){const body=readFileSync(new URL(entry.promptFile,root),'utf8');assert.ok(unitMigration.includes(body.replaceAll("'","''")),'096 must match '+entry.promptFile);}

@@ -8943,6 +8943,22 @@ var J_ = Object.freeze([
 		description: "선택한 템플릿의 섹션과 컴포넌트에 프로모션 콘텐츠를 매핑합니다.",
 		executionMode: "사용자 요청"
 	},
+	promo_page_manifest_planner: {
+		journeyStep: 3,
+		group: "ai-page-composition",
+		order: 7,
+		label: "페이지 제작 · 작업 계획 V2",
+		description: "완성 트리 없이 빈 작업 셸·순서·소스 배정을 계획합니다.",
+		executionMode: "자동 실행"
+	},
+	promo_page_region_builder: {
+		journeyStep: 3,
+		group: "ai-page-composition",
+		order: 8,
+		label: "페이지 제작 · 영역 구성 V2",
+		description: "실제 영역·컴포넌트 그룹을 생성·검증·저장하여 즉시 표시합니다.",
+		executionMode: "자동 실행"
+	},
 	promo_page_outline_planner: {
 		journeyStep: 3,
 		group: "ai-page-composition",
@@ -9220,6 +9236,8 @@ var cv = Object.freeze({
 	"promo_overview_parser",
 	"promo_template_recommender",
 	"promo_template_composer",
+	"promo_page_manifest_planner",
+	"promo_page_region_builder",
 	"promo_page_outline_planner",
 	"promo_page_fragment_writer",
 	"promo_page_schema_planner",
@@ -24370,6 +24388,8 @@ var zF = {
 						retryBaseMs: 15e3,
 						retryMaxMs: 75e3
 					} : [
+						"promo_page_manifest_planner",
+						"promo_page_region_builder",
 						"promo_page_outline_planner",
 						"promo_page_fragment_writer",
 						"promo_page_schema_planner",
@@ -24404,6 +24424,8 @@ var zF = {
 						].includes(String(o.generationPolicy?.requestedTier || o.modelOptions?.generationPolicy?.requestedTier || o.modelOptions?.imageSize || o.modelOptions?.image_size || "").toUpperCase()) ? String(o.generationPolicy?.requestedTier || o.modelOptions?.generationPolicy?.requestedTier || o.modelOptions?.imageSize || o.modelOptions?.image_size).toUpperCase() : "2K",
 						executionSnapshotVersion: this.promptSnapshotVersion(o, o.executionSnapshotVersion || o.modelOptions?.executionSnapshotVersion || (d ? 3 : 2)),
 						timeoutMs: [
+							"promo_page_manifest_planner",
+							"promo_page_region_builder",
 							"promo_page_outline_planner",
 							"promo_page_fragment_writer",
 							"promo_page_schema_planner",
@@ -24558,6 +24580,8 @@ var zF = {
 					"promo_overview_parser",
 					"promo_template_recommender",
 					"promo_template_composer",
+					"promo_page_manifest_planner",
+					"promo_page_region_builder",
 					"promo_page_outline_planner",
 					"promo_page_fragment_writer",
 					"promo_page_schema_planner",

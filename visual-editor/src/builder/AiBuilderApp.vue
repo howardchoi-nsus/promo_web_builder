@@ -1,5 +1,5 @@
 <script setup>
-import {generateProgressivePage} from './services/page-draft.mjs';
+import {generateProgressivePage,waitForDraftPaint} from './services/page-draft.mjs';
 import { sectionDesignPending } from "../../../shared/page-schema/section-design.mjs";
 import { prepareSectionDesign } from "./services/page-section-design.mjs";
 import { designPageSection } from "./services/composition-client.mjs";
@@ -110,6 +110,9 @@ const wireframeRevision = ref(0);
 const wireframeFingerprint = ref("");
 const wireframeViewport = ref("desktop");
 const draftPreview=ref(null);
+function setDraftPreview(draft,failed=false){
+ draftPreview.value={contractVersion:3,content:{pageSchema:draft.page,pageContext:draft.context},generationMeta:{review:{state:'pending'},draftActivity:{nodeIds:failed?[]:draft.nextGroup?.nodeIds||[],failedNodeIds:failed?draft.nextGroup?.nodeIds||[]:[],completedNodeIds:draft.completedGroup?.nodeIds||[],label:draft.nextGroup?.label||'구성 준비'}}};
+}
 const productionSnapshot=computed(()=>draftPreview.value||store.snapshot);
 const activeResultTab = ref("requirements");
 const splitPercent = ref(42);
@@ -2131,7 +2134,12 @@ async function prepareWireframe(existingOperationId = "", sourceAction = null) {
       store.stage="processing";
       const payload={...pageRequestPayload(),actionId:sourceAction?.id};
       const docId=store.documentId;activeResultTab.value='wireframe';
-      const saved=capabilities.value.pageDraftV1&&!payload.instruction?await generateProgressivePage(payload,{request:generatePageSchema,isCurrent:()=>store.documentId===docId,onDraft:draft=>{draftPreview.value={contractVersion:3,content:{pageSchema:draft.page,pageContext:draft.context},generationMeta:{review:{state:'pending'},draftActivity:{nodeIds:draft.nextGroup?.nodeIds||[],label:draft.nextGroup?.label||'구성 준비'}}};updateStatusMessage(operationId,`페이지 제작 · 와이어프레임 ${draft.sequence}개 작업 결과를 반영했습니다.`,'in_progress');}}):await generatePageSchema(payload);
+      const saved=capabilities.value.pageDraftV1&&!payload.instruction?await generateProgressivePage(payload,{request:generatePageSchema,isCurrent:()=>store.documentId===docId,onDraft:async draft=>{setDraftPreview(draft);const done=draft.completedRegions??draft.nextGroup?.index;
+       const label=done===0?'전체 계획을 저장했습니다. 첫 영역을 구성합니다.':done!=null?`${done}개 영역을 저장했습니다. ${draft.nextGroup?.label?draft.nextGroup.label+' 구성 중':'전체 구성 검증 중'}`:`${draft.sequence}개 작업 결과를 반영했습니다.`;
+       updateStatusMessage(operationId,`페이지 제작 · ${label}`,'in_progress');
+       // Acknowledge an actual DOM paint before requesting the next unit.
+       // This is not a timed reveal of already generated content.
+       await nextTick();await waitForDraftPaint();}}):await generatePageSchema(payload);
       draftPreview.value=null;
       if(sourceAction)markChatActionGroupHandled(sourceAction);
       pageGenerationRequest.value=null;store.documentRevision=Number(saved.revision);store.snapshot=saved.snapshot;store.stage="review_required";activeResultTab.value="wireframe";transientQualityGate.value=null;
@@ -2198,6 +2206,7 @@ async function prepareWireframe(existingOperationId = "", sourceAction = null) {
       ],
     });
   } catch (error) {
+    if(draftPreview.value){const activity=draftPreview.value.generationMeta.draftActivity;draftPreview.value={...draftPreview.value,generationMeta:{...draftPreview.value.generationMeta,draftActivity:{...activity,nodeIds:[],failedNodeIds:activity.nodeIds||[]}}};}
     updateStatusMessage(operationId, `페이지 구성 미리보기 생성에 실패했습니다. ${error.message}`, "failed");
     rememberFailedTask({
       kind: "wireframe",
@@ -3128,6 +3137,13 @@ onMounted(async () => {
     }
     await executionLookups;
     workspaceReady.value=true;
+    if(capabilities.value.pageDraftV1&&pageGenerationRequest.value&&cached?.stage==='failed'&&!store.snapshot?.content?.pageSchema){
+      try{
+       const restored=await generatePageSchema({operation:'read-draft',documentId:store.documentId,requestId:pageGenerationRequest.value.requestId,baseDocumentRevision:pageGenerationRequest.value.baseDocumentRevision});
+       if(restored.draft&&restored.runId===pageGenerationRequest.value.requestId){setDraftPreview(restored,true);activeResultTab.value='wireframe';}
+       else if(restored.complete){store.snapshot=restored.snapshot;store.documentRevision=Number(restored.revision);pageGenerationRequest.value=null;failedTask.value=null;clearBuilderError(store);store.stage='review_required';activeResultTab.value='wireframe';}
+      }catch(error){store.warning={code:error.code||'PAGE_DRAFT_RESTORE_FAILED',message:'저장된 초안 복원에 실패했습니다. 실패한 단계 다시 시도로 복구할 수 있습니다.'};}
+    }
     if(capabilities.value.pageDraftV1&&pageGenerationRequest.value&&!failedTask.value&&['processing','resolving_policy'].includes(cached?.stage)&&!store.snapshot?.content?.pageSchema){await nextTick();await prepareWireframe('wireframe-resume-'+store.documentId);}
   } catch (error) {
     setBuilderError(store, error);

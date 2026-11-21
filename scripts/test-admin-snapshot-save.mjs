@@ -9,7 +9,7 @@ const snapshotVersion=method('promptSnapshotVersion','promptUsesSectionAiControl
 const controlled=method('promptUsesSectionAiControlPlane','promptUsesSectionImagePolicy');
 const image=method('promptUsesSectionImagePolicy','promptModelOptionsForSave');
 const save=method('promptModelOptionsForSave','promptEditorSavePayload');
-for(const type of ['promo_page_outline_planner','promo_page_fragment_writer','promo_page_schema_planner','promo_page_section_designer','promo_page_quality_reviewer','layout_reference_analyzer']){
+for(const type of ['promo_page_manifest_planner','promo_page_region_builder','promo_page_outline_planner','promo_page_fragment_writer','promo_page_schema_planner','promo_page_section_designer','promo_page_quality_reviewer','layout_reference_analyzer']){
  const editor={executionSnapshotVersion:2,timeoutMs:240000,maxAttempts:1,retryBaseMs:0,retryMaxMs:0,modelOptionsText:'{"reasoningEffort":"low"}',promptLayersText:'{}',skillBindings:[{skillVersionId:'pinned-version'}],harnessConfigText:'{"additionalInstructions":[]}',modelCapabilitySnapshotText:'{}',safetyContractText:'{"key":"page-section-design-v1","version":1}'};
  const ctx={promptSnapshotVersion:snapshotVersion,promptEditor:editor,parseModelOptionsText:JSON.parse,promptUsesSectionAiControlPlane:controlled,promptUsesSectionImagePolicy:image,promptSupportsImageSize:()=>false};
  assert.equal(controlled({type}),true);

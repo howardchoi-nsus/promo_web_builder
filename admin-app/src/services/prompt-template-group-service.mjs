@@ -92,6 +92,8 @@ const PROMPT_TYPE_CATALOG = Object.freeze({
     description: "선택한 템플릿의 섹션과 컴포넌트에 프로모션 콘텐츠를 매핑합니다.",
     executionMode: "사용자 요청",
   },
+  promo_page_manifest_planner:{journeyStep:3,group:"ai-page-composition",order:7,label:"페이지 제작 · 작업 계획 V2",description:"완성 트리 없이 빈 작업 셸·순서·소스 배정을 계획합니다.",executionMode:"자동 실행"},
+  promo_page_region_builder:{journeyStep:3,group:"ai-page-composition",order:8,label:"페이지 제작 · 영역 구성 V2",description:"실제 영역·컴포넌트 그룹을 생성·검증·저장하여 즉시 표시합니다.",executionMode:"자동 실행"},
   promo_page_outline_planner:{journeyStep:3,group:"ai-page-composition",order:9,label:"페이지 제작 · 와이어프레임 구조",description:"검증 가능한 동적 초안 구조와 소스 배정을 설계합니다.",executionMode:"자동 실행"},
   promo_page_fragment_writer:{journeyStep:3,group:"ai-page-composition",order:10,label:"페이지 제작 · 와이어프레임 문구",description:"저장된 초안의 영역별 문구를 생성합니다.",executionMode:"자동 실행"},
   promo_page_schema_planner: {

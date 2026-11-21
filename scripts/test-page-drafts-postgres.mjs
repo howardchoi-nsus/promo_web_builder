@@ -31,13 +31,14 @@ try{
   return {result:{texts:constraints.group.nodeIds.map(nodeId=>({nodeId,text:'새로운 경험을 만나보세요'}))}};
  }};
  const res={status(code){this.statusCode=code;return this;},json(data){response=data;return this;}};
- const invoke=async body=>require('../api/_page-draft-service').processPageDraft({sql,owner:{ownerSubject:owner},found:await read(),body:{documentId:doc,requestId:run,baseDocumentRevision:0,requirementsRevision:1,...body},res},deps);
- await invoke({operation:'start-draft',overview,generationRequest:'좌측 카피 프리미엄'});assert.equal(response.draft,true);assert.equal((await read()).document.currentDocumentRevision,0);assert.ok(response.page.root);const sequence=response.sequence;
+ let draftService=require('../api/_page-draft-legacy-service');
+ const invoke=async body=>draftService.processPageDraft({sql,owner:{ownerSubject:owner},found:await read(),body:{documentId:doc,requestId:run,baseDocumentRevision:0,requirementsRevision:1,...body},res},deps);
+ await invoke({operation:'start-draft',overview,generationRequest:'좌측 카피 프리미엄'});assert.equal(response.draft,true);assert.equal((await read()).document.currentDocumentRevision,0);assert.ok(response.page.root);const sequence=response.sequence;draftService=require('../api/_page-draft-service');
  await assert.rejects(invoke({operation:'advance-draft',sequence}),/provider test failure/);const [failed]=await sql`select sequence,lease_token from promo_page_drafts`;assert.equal(failed.sequence,sequence);assert.equal(failed.lease_token,null);
  for(let n=0;n<20&&!response.complete;n++)await invoke({operation:'advance-draft',sequence:response.sequence});assert.equal(response.complete,true);assert.equal(response.revision,1);
  const saved=await read();assert.equal(saved.snapshot.generationMeta.draftRunId,run);assert.equal(saved.snapshot.generationMeta.review.state,'pending');assert.equal((await sql`select stage from promo_builder_chat_sessions`)[0].stage,'wireframe_review');assert.equal((await sql`select status from promo_builder_chat_actions`)[0].status,'executed');assert.equal(saved.snapshot.content.pageContext.designBrief.briefVersion,2);
  const before=calls;await invoke({operation:'start-draft'});assert.equal(response.complete,true);assert.equal(calls,before);
  await sql`update promo_page_drafts set status='working',final_revision=null`;await invoke({operation:'advance-draft'});assert.equal(response.complete,true);assert.equal((await sql`select status from promo_page_drafts`)[0].status,'complete');
  const {applyFragment}=require('../api/_page-draft-contract');assert.throws(()=>applyFragment(saved.snapshot.content.pageSchema,saved.snapshot.content.pageContext,{nodeIds:['nope']},{texts:[{nodeId:'nope',text:'$999'}]}));
- console.log('Page drafts PostgreSQL: 094/095 idempotent migrations, real partial SQL saves and atomic chat/action/job transition, failure lease cleanup/resume, final PageSchema save, approval pending, replay and post-save crash recovery passed.');
+ console.log('Legacy page drafts PostgreSQL: 094/095 idempotent migrations, real partial SQL saves and atomic chat/action/job transition, failure lease cleanup/resume, final PageSchema save, approval pending, replay and post-save crash recovery passed.');
 }finally{await db.close();}
