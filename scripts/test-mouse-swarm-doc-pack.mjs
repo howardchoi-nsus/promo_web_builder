@@ -20,7 +20,7 @@ for(const entry of manifest.prompts){
  assert.match(body,entry.type.startsWith('promo_')?/constraintsJson\.designBrief/:/contentJson\.designBrief/);
 }
 const policy=readFileSync(new URL('policy.md',root),'utf8');
-for(const term of ['12','persisted','Revision','pointer-events:none','aria-hidden=true','채팅','초안','모션 감소','단일 전체 결과'])assert.ok(policy.includes(term),term);
+for(const term of ['12','persisted','Revision','pointer-events:none','aria-hidden=true','채팅','초안','모션 감소','360ms'])assert.ok(policy.includes(term),term);
 const agents=readFileSync(new URL('../AGENTS.md',import.meta.url),'utf8');
 assert.ok(agents.includes('## Mouse Swarm Builder 표시 정책'));
 assert.ok(agents.includes('docs/mouse-swarm-builder/README.md'));
@@ -51,3 +51,5 @@ for(const entry of manifest.progressivePrompts){const body=readFileSync(new URL(
 
 const unitMigration=readFileSync(new URL('../db/migrations/096_page_draft_units_v2.sql',import.meta.url),'utf8');
 for(const entry of manifest.progressivePrompts){const body=readFileSync(new URL(entry.promptFile,root),'utf8');assert.ok(unitMigration.includes(body.replaceAll("'","''")),'096 must match '+entry.promptFile);}
+
+for(const term of ['220ms','Mask Reveal','캐럿'])assert.ok(policy.includes(term),term);

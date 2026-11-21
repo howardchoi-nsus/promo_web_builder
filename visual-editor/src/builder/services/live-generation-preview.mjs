@@ -14,6 +14,8 @@ export function generationRegions(snapshot, activity = {}) {
   });
 }
 
+// Bounded, preview-only replay guard survives an iframe/controller remount.
+const maskHistory=new Map();
 const previewCss=`
 [data-live-design-state="waiting"],[data-live-design-state="generating"],[data-live-design-state="failed"]{background-color:#f3f4f6!important;background-image:none!important;color:#4b5563!important;border-color:#cbd5e1!important;box-shadow:none!important;text-shadow:none!important}
 [data-live-design-target]{outline:2px solid #647bdf;outline-offset:-2px}
@@ -32,6 +34,7 @@ const previewCss=`
 img[data-live-state="loading"]{opacity:.25}
 [data-live-reveal]{animation:live-preview-reveal 350ms ease-out both}
 [data-ps-scope] [data-ps-node][data-live-wireframe-entry]{animation:live-preview-reveal 250ms ease-out both!important}
+[data-ps-scope] [data-ps-node][data-live-text-mask]{animation:none!important;transition:none!important}
 [data-live-effects-paused] [data-live-reveal],[data-live-effects-paused] [data-live-design-reveal],[data-live-effects-paused] [data-live-wireframe-entry]{animation:none!important}
 @keyframes live-preview-shimmer{from{background-position:100% 0}to{background-position:0 0}}
 @keyframes live-preview-reveal{from{opacity:0}to{opacity:1}}
@@ -44,7 +47,7 @@ const labels={waiting:'이미지 생성 대기',generating:'이미지 생성 중
 export function createLiveGenerationPreview({getDocument,getSnapshot,getActivity=()=>({}),getIdentity=()=>''}) {
   const wireSeen=new Map();
   const designEligible=new Set(),designRevealed=new Set();
-  let feedback;
+  let feedback,wireInitialized=false;const localMaskHistory=new Set();
   let doc,root,observer,style,frame=0,disposed=false,paused=false,attempts=0,identity=getIdentity();
   const backgrounds=new Set(),decorated=new Set(),records=new Map(),eligible=new Set(),revealed=new Set();
   const schedule=()=>{if(!frame&&!disposed&&!paused)frame=requestAnimationFrame(()=>{frame=0;refresh();});};
@@ -56,7 +59,7 @@ export function createLiveGenerationPreview({getDocument,getSnapshot,getActivity
   function refresh(){
     if(disposed||paused)return;
     const nextIdentity=getIdentity();
-    if(nextIdentity!==identity){disconnect();doc=null;root=null;records.clear();eligible.clear();revealed.clear();designEligible.clear();designRevealed.clear();wireSeen.clear();identity=nextIdentity;}
+    if(nextIdentity!==identity){disconnect();doc=null;root=null;records.clear();eligible.clear();revealed.clear();designEligible.clear();designRevealed.clear();wireSeen.clear();wireInitialized=false;identity=nextIdentity;}
     const current=getDocument(),boundary=current?.querySelector('[data-output-boundary]');
     if(!boundary){if(++attempts<90)schedule();return;}
     attempts=0;
@@ -68,7 +71,21 @@ export function createLiveGenerationPreview({getDocument,getSnapshot,getActivity
     const elements=new Map([...root.querySelectorAll('[data-ps-node]')].map(el=>[el.dataset.psNode,el]));
     if(!feedback)feedback=createWorkFeedback(doc);
     if(getActivity().effectsPaused)root.setAttribute('data-live-effects-paused','');else root.removeAttribute('data-live-effects-paused');
-    if(isWireframe){for(const [id,el] of elements){const text=el.childElementCount?'':el.textContent,key=text||'';if(wireSeen.get(id)!==key){wireSeen.set(id,key);el.setAttribute('data-live-wireframe-entry','');decorated.add(el);}}}
+    if(isWireframe){
+      const completed=snapshot?.generationMeta?.draftActivity?.completedNodeIds||[],run=snapshot?.generationMeta?.draftActivity?.runId||snapshot?.generationMeta?.draftRunId||'';
+      for(const [id,el] of elements){const text=el.childElementCount?'':el.textContent,key=text||'';
+        if(wireSeen.get(id)===key)continue;wireSeen.set(id,key);
+        if(el.dataset.psType==='text'){
+          const historyKey=JSON.stringify([identity,run,id,key]),history=identity?maskHistory:localMaskHistory;
+          const justSaved=completed.some(nodeId=>elements.get(nodeId)?.contains(el));
+          if(key.trim()&&(wireInitialized||justSaved)&&!history.has(historyKey)){
+            if(history instanceof Map){history.set(historyKey,true);if(history.size>1000)history.delete(history.keys().next().value);}else history.add(historyKey);
+            if(!getActivity().effectsPaused)feedback.revealText(el);
+          }
+        }else {el.setAttribute('data-live-wireframe-entry','');decorated.add(el);}
+      }
+      wireInitialized=true;
+    }
     // The only preview placeholder is the current not-yet-built work shell.
     for(const el of decorated)if(el.hasAttribute('data-live-draft-pending')){el.removeAttribute('data-live-draft-pending');el.removeAttribute('data-live-state');el.removeAttribute('data-live-label');}
     for(const id of draftNodes){const el=elements.get(id);if(el&&!el.children.length&&!el.textContent){paint(el,'generating');el.setAttribute('data-live-draft-pending','');}}
@@ -119,6 +136,11 @@ export function createLiveGenerationPreview({getDocument,getSnapshot,getActivity
       const snapshot=getSnapshot(),elements=new Map([...(getDocument()?.querySelectorAll('[data-ps-node]')||[])].map(el=>[el.dataset.psNode,el]));
       for(const region of generationRegions(snapshot,getActivity())){const element=elements.get(region.nodeId);if(region.url&&element?.tagName==='IMG'&&element.complete&&element.naturalWidth)revealed.add(region.key);}
       for(const region of designNodeStates(snapshot,getActivity().activeDesignId,getActivity().failedDesignId))if(region.state==='ready')designRevealed.add(JSON.stringify([snapshot.generationMeta.sectionDesign.id,region.nodeId]));
+      if(getActivity().wireframe){
+        const run=snapshot?.generationMeta?.draftActivity?.runId||snapshot?.generationMeta?.draftRunId||'';
+        for(const [id,el] of elements){const key=el.childElementCount?'':el.textContent||'';wireSeen.set(id,key);if(el.dataset.psType==='text'){const historyKey=JSON.stringify([identity,run,id,key]);if(identity){maskHistory.set(historyKey,true);if(maskHistory.size>1000)maskHistory.delete(maskHistory.keys().next().value);}else localMaskHistory.add(historyKey);}}
+        wireInitialized=true;
+      }
       paused=false;schedule();
     },
     dispose(){disposed=true;if(frame)cancelAnimationFrame(frame);disconnect();records.clear();eligible.clear();revealed.clear();},

@@ -111,7 +111,7 @@ const wireframeFingerprint = ref("");
 const wireframeViewport = ref("desktop");
 const draftPreview=ref(null);
 function setDraftPreview(draft,failed=false){
- draftPreview.value={contractVersion:3,content:{pageSchema:draft.page,pageContext:draft.context},generationMeta:{review:{state:'pending'},draftActivity:{nodeIds:failed?[]:draft.nextGroup?.nodeIds||[],failedNodeIds:failed?draft.nextGroup?.nodeIds||[]:[],completedNodeIds:draft.completedGroup?.nodeIds||[],label:draft.nextGroup?.label||'구성 준비'}}};
+ draftPreview.value={contractVersion:3,content:{pageSchema:draft.page,pageContext:draft.context},generationMeta:{review:{state:'pending'},draftActivity:{runId:draft.runId,nodeIds:failed?[]:draft.nextGroup?.nodeIds||[],failedNodeIds:failed?draft.nextGroup?.nodeIds||[]:[],completedNodeIds:draft.completedGroup?.nodeIds||[],label:draft.nextGroup?.label||'구성 준비'}}};
 }
 const productionSnapshot=computed(()=>draftPreview.value||store.snapshot);
 const activeResultTab = ref("requirements");
