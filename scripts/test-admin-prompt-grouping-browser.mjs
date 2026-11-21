@@ -64,6 +64,7 @@ let prompts = [
   }),
   prompt({
     id: "overview-v2",
+    executionSnapshotVersion: 1, // Legacy API value must upgrade in the editor, not be saved as V1.
     lineageId: "overview-lineage",
     type: "promo_overview_parser",
     name: "Promotion Overview Parser",

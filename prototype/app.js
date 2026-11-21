@@ -3260,7 +3260,7 @@ const adminApp = createApp({
                 || detail.modelOptions?.image_size
             ).toUpperCase()
             : "2K",
-          executionSnapshotVersion: Number(
+          executionSnapshotVersion: this.promptSnapshotVersion(detail,
             detail.executionSnapshotVersion
               || detail.modelOptions?.executionSnapshotVersion
               || (usesImagePolicy ? 3 : 2)
@@ -3485,6 +3485,13 @@ const adminApp = createApp({
       this.setStatus(`${preset.displayName} Registry 기본 설정을 적용했습니다. 저장 전 각 항목을 수정할 수 있습니다.`);
     },
 
+    promptSnapshotVersion(prompt, value) {
+      const minimum = this.promptUsesSectionImagePolicy(prompt) ? 3
+        : this.promptUsesSectionAiControlPlane(prompt) ? 2 : 1;
+      const version = Number(value);
+      return Number.isInteger(version) ? Math.max(minimum, version) : minimum;
+    },
+
     promptUsesSectionAiControlPlane(prompt = this.selectedPromptTemplate) {
       return [
         "section_layout_planner",
@@ -3523,9 +3530,9 @@ const adminApp = createApp({
       }
       if (this.promptUsesSectionAiControlPlane(prompt)) {
         const usesImagePolicy = this.promptUsesSectionImagePolicy(prompt);
-        modelOptions.executionSnapshotVersion = usesImagePolicy
-          ? Math.max(3, Number(this.promptEditor.executionSnapshotVersion || 3))
-          : Number(this.promptEditor.executionSnapshotVersion || 2);
+        modelOptions.executionSnapshotVersion = this.promptSnapshotVersion(
+          prompt, this.promptEditor.executionSnapshotVersion
+        );
         modelOptions.runtimeConfig = {
           timeoutMs: Number(this.promptEditor.timeoutMs),
           maxAttempts: Number(this.promptEditor.maxAttempts),

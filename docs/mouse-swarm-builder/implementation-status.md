@@ -40,3 +40,7 @@
 ## 2026-11-21 누적 초안 응답 스키마 참조 수정
 
 운영 오류 `Invalid schema for response_format page_draft_outline ... reference can only point to definitions defined at the top level`를 확인했다. 래퍼의 page 내부에 있던 `$defs`를 응답 스키마 최상위로 올리고 기존 `#/$defs/...` 참조를 유지했다. 서버의 일반 JSON Schema 검증은 중첩 경로도 허용했지만 모델 제공자의 Structured Outputs는 최상위 정의만 허용하는 차이가 원인이다. 최상위 참조·전체 참조 대상 해석·재귀 스키마 컴파일·소스 바인딩 거부 회귀검사를 추가했고, 실제 SQL 초안 저장/재시도/채팅 전환 및 기존 PageSchema API 검사를 통과했다. 실제 LLM 호출은 미검증이다. 사용자 배포 요청에 따라 이 후속 수정도 Production main에 반영하며 실제 Vercel Ready는 별도 확인 대상이다. DB migration·프롬프트 본문 변경은 필요하지 않다.
+
+## 2026-11-21 기존 Draft Snapshot V1 재저장 경로 수정
+
+같은 저장 오류 재발 보고 후, 조회 응답이 Snapshot V1을 명시하면 기존 UI가 기본값 V2보다 V1을 우선해 다시 저장하는 경로를 재현했다. 기존 타입 분류 수정만으로 이 경로는 막히지 않았다. 편집기 로드/저장 시 제어 대상은 최소 V2(이미지 V3), 상위 버전은 유지하도록 보완하고 Admin 엔트리 URL 버전을 갱신했다. 저장 옵션 누락/0/1/문자열1·정상2·상위3 회귀와 실제 브라우저에서 V1 조회→V2 표시/저장 검증, 기존 계약 2종 및 Admin 빌드가 통과했다. 서버의 저장·활성화 검증은 유지한다. 실제 운영 응답은 접근 제한으로 확인하지 못했다. 사용자 요청에 따라 후속 코드도 Production main에 반영하며 Vercel Ready는 별도 확인 대상이다. 기존 Draft의 버전이 1로 보이면 현재 화면에서 실행 Harness의 Snapshot 버전을 2로 변경해 저장할 수 있다. 마이그레이션 재실행은 필요하지 않다.

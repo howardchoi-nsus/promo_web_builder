@@ -24402,7 +24402,7 @@ var zF = {
 							"2K",
 							"4K"
 						].includes(String(o.generationPolicy?.requestedTier || o.modelOptions?.generationPolicy?.requestedTier || o.modelOptions?.imageSize || o.modelOptions?.image_size || "").toUpperCase()) ? String(o.generationPolicy?.requestedTier || o.modelOptions?.generationPolicy?.requestedTier || o.modelOptions?.imageSize || o.modelOptions?.image_size).toUpperCase() : "2K",
-						executionSnapshotVersion: Number(o.executionSnapshotVersion || o.modelOptions?.executionSnapshotVersion || (d ? 3 : 2)),
+						executionSnapshotVersion: this.promptSnapshotVersion(o, o.executionSnapshotVersion || o.modelOptions?.executionSnapshotVersion || (d ? 3 : 2)),
 						timeoutMs: [
 							"promo_page_outline_planner",
 							"promo_page_fragment_writer",
@@ -24546,6 +24546,10 @@ var zF = {
 					...e.modality === "image" ? { supportedImageSizes: e.supportedImageSizes || [] } : {}
 				}, null, 2)), this.promptUsesSectionImagePolicy(this.selectedPromptTemplate) && (this.promptEditor.outputMimeType = this.promptEditor.outputMimeType || "image/jpeg"), this.setStatus(`${e.displayName} Registry 기본 설정을 적용했습니다. 저장 전 각 항목을 수정할 수 있습니다.`);
 			},
+			promptSnapshotVersion(e, t) {
+				let n = this.promptUsesSectionImagePolicy(e) ? 3 : this.promptUsesSectionAiControlPlane(e) ? 2 : 1, r = Number(t);
+				return Number.isInteger(r) ? Math.max(n, r) : n;
+			},
 			promptUsesSectionAiControlPlane(e = this.selectedPromptTemplate) {
 				return [
 					"section_layout_planner",
@@ -24578,7 +24582,7 @@ var zF = {
 					"4K"
 				].includes(this.promptEditor.imageSize) ? this.promptEditor.imageSize : "2K", delete t.image_size), this.promptUsesSectionAiControlPlane(e)) {
 					let n = this.promptUsesSectionImagePolicy(e);
-					if (t.executionSnapshotVersion = n ? Math.max(3, Number(this.promptEditor.executionSnapshotVersion || 3)) : Number(this.promptEditor.executionSnapshotVersion || 2), t.runtimeConfig = {
+					if (t.executionSnapshotVersion = this.promptSnapshotVersion(e, this.promptEditor.executionSnapshotVersion), t.runtimeConfig = {
 						timeoutMs: Number(this.promptEditor.timeoutMs),
 						maxAttempts: Number(this.promptEditor.maxAttempts),
 						retryBaseMs: Number(this.promptEditor.retryBaseMs),
