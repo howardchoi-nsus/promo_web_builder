@@ -2,6 +2,7 @@ import {spawnSync} from 'node:child_process';
 const root=new URL('..',import.meta.url);
 if(!process.env.PGLITE_TEST_MODULE)throw new Error('PGLITE_TEST_MODULE must point to a PGlite installation for the SQL storage check. See the design preview rollout guide.');
 const checks=[
+ 'test-page-draft-outline-schema.mjs',
  'test-admin-snapshot-save.mjs',
  'test-work-feedback-browser.mjs','test-page-static-api.mjs','test-progressive-page-builder-browser.mjs','test-page-design-direction.mjs','test-page-drafts-postgres.mjs','test-page-editor-export.mjs','test-page-editor-browser.mjs','test-static-page-export-browser.mjs',
  'test-page-section-design.mjs','test-page-section-design-postgres.mjs','test-page-section-design-browser.mjs',

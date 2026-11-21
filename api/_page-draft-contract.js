@@ -2,7 +2,11 @@ const Ajv=require('ajv/dist/2020').default;
 const {runtimeSchema,validate,walk,assertValid}=require('../shared/page-schema/contract.cjs');
 const {designGroups}=require('../shared/page-schema/section-design.cjs');
 const invalid=message=>Object.assign(new Error(message),{code:'PAGE_DRAFT_INVALID',statusCode:422});
-function outlineSchema(context){return {type:'object',additionalProperties:false,properties:{page:JSON.parse(JSON.stringify(runtimeSchema(context)).replaceAll('#/$defs/','#/properties/page/$defs/')),sourceAssignments:{type:'array',maxItems:200,items:{type:'object',additionalProperties:false,properties:{nodeId:{type:'string'},sourceId:{type:'string',minLength:1,maxLength:100}},required:['nodeId','sourceId']}}},required:['page','sourceAssignments']};}
+function outlineSchema(context){
+ // Structured Outputs only permits references to root-level definitions.
+ // Keep the page's original #/$defs/... references and hoist their targets.
+ const {$defs,...page}=runtimeSchema(context);
+ return {type:'object',additionalProperties:false,$defs,properties:{page,sourceAssignments:{type:'array',maxItems:200,items:{type:'object',additionalProperties:false,properties:{nodeId:{type:'string'},sourceId:{type:'string',minLength:1,maxLength:100}},required:['nodeId','sourceId']}}},required:['page','sourceAssignments']};}
 function validateDraft(page,context){const result=validate(page,context);const errors=result.errors.filter(e=>e.code!=='CONTENT_EMPTY');if(errors.length)throw Object.assign(invalid('와이어프레임 초안 검증에 실패했습니다.'),{errors});return result;}
 function outlineResult(result,context){
  const shape=new Ajv({strict:false,allErrors:false}).compile(outlineSchema(context));if(!shape(result))throw Object.assign(invalid('초안 응답 형식이 올바르지 않습니다.'),{errors:shape.errors?.slice(0,40)});

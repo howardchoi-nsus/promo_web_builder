@@ -36,3 +36,7 @@
 ## 2026-11-20 Admin 실행 설정 저장 회귀 수정
 
 `promo_page_section_designer requires an activated Execution Snapshot V2 or newer setting` 오류 원인은 Admin이 신규 프롬프트 타입을 실행 Harness 대상으로 분류하지 않아 읽을 때 분리한 Snapshot 설정을 저장할 때 복구하지 않은 것이다. 영역 디자인·누적 구조·문구 및 레이아웃 분석 타입의 Harness 표시/저장 분류를 보완하고 PageSchema 제한 시간 240000ms를 UI에서도 허용했다. 실제 저장 함수의 결과를 서버 검증기에 통과시키는 회귀검사, 기존 control-plane 및 프롬프트 Admin 계약 검사, Admin 빌드를 검증했다. 마이그레이션 재실행이나 서버 검증 완화는 필요하지 않다. 사용자 배포 요청에 따라 이 후속 수정도 Production 대상 main에 반영한다. 실제 Vercel Ready 및 운영 화면 적용 여부는 별도 확인 대상이다.
+
+## 2026-11-21 누적 초안 응답 스키마 참조 수정
+
+운영 오류 `Invalid schema for response_format page_draft_outline ... reference can only point to definitions defined at the top level`를 확인했다. 래퍼의 page 내부에 있던 `$defs`를 응답 스키마 최상위로 올리고 기존 `#/$defs/...` 참조를 유지했다. 서버의 일반 JSON Schema 검증은 중첩 경로도 허용했지만 모델 제공자의 Structured Outputs는 최상위 정의만 허용하는 차이가 원인이다. 최상위 참조·전체 참조 대상 해석·재귀 스키마 컴파일·소스 바인딩 거부 회귀검사를 추가했고, 실제 SQL 초안 저장/재시도/채팅 전환 및 기존 PageSchema API 검사를 통과했다. 실제 LLM 호출은 미검증이다. 사용자 배포 요청에 따라 이 후속 수정도 Production main에 반영하며 실제 Vercel Ready는 별도 확인 대상이다. DB migration·프롬프트 본문 변경은 필요하지 않다.
