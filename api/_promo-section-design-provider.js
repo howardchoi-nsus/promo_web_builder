@@ -359,12 +359,15 @@ function normalizedGeminiImageSize(value) {
 function plannerRequestConfig(type, promptConfig = {}) {
   validateControlPlaneConfig(type, promptConfig);
   const config = normalizeControlPlanePromptConfig(type, promptConfig);
+  const reasoning=config.modelOptions?.reasoning;
+  if(reasoning!==undefined&&(!reasoning||typeof reasoning!=='object'||Array.isArray(reasoning)))throw Object.assign(new Error(`${type} reasoning must be an administrator-configured JSON object`),{code:'CONTROL_PLANE_CONFIG_INVALID',statusCode:422});
   return {
     config,
     timeoutMs: config.runtimeConfig.timeoutMs,
     requestFields: {
       ...(config.temperature === null ? {} : { temperature: config.temperature }),
       ...(config.maxTokens === null ? {} : { max_output_tokens: config.maxTokens }),
+      ...(reasoning===undefined?{}:{reasoning:structuredClone(reasoning)}),
     },
   };
 }
