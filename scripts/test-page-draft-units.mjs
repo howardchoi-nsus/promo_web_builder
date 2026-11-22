@@ -33,3 +33,7 @@ const hidden=waitForDraftPaint(doc);doc.visibilityState='hidden';doc.dispatchEve
 
 // In-flight older V2 drafts can fill missing plan shells without discarding work.
 const older={...planResult(plan,context),context};older.page.root.children.pop();older.page=applyRegion(older,results[0]);assert.equal(older.page.root.children[1].id,'benefits');assert.deepEqual(older.page.root.children[1].children,[]);
+
+// A lightweight manifest cannot repeat large style lists / descriptions.
+const oversized=structuredClone(plan);oversized.regions[0].shell.styles.base=Array(7).fill(oversized.regions[0].shell.styles.base[0]);assert.throws(()=>planResult(oversized,context),{code:'PAGE_DRAFT_INVALID'});
+const verbose=structuredClone(plan);verbose.regions[0].intent='a'.repeat(161);assert.throws(()=>planResult(verbose,context),{code:'PAGE_DRAFT_INVALID'});

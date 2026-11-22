@@ -258,13 +258,26 @@ function responseOutputText(payload) {
     .join("");
 }
 
-function parseStructuredOutput(output, type) {
+function structuredResponseDiagnostics(payload,{requestId='',maxTokens=null}={}) {
+  return {requestId,status:typeof payload.status==='string'?payload.status:'unknown',reason:String(payload.incomplete_details?.reason||payload.error?.code||'').slice(0,100),outputCharacters:responseOutputText(payload).length,outputTokens:Number.isFinite(Number(payload.usage?.output_tokens))?Number(payload.usage.output_tokens):null,reasoningTokens:Number.isFinite(Number(payload.usage?.output_tokens_details?.reasoning_tokens))?Number(payload.usage.output_tokens_details.reasoning_tokens):null,maxOutputTokens:Number.isFinite(Number(maxTokens))&&maxTokens!==null?Number(maxTokens):null};
+}
+function assertStructuredResponseComplete(payload,type,options={}) {
+  const diagnostics=structuredResponseDiagnostics(payload,options);
+  const incomplete=payload.status==='incomplete'||Boolean(payload.incomplete_details)||payload.output?.some(item=>item.status==='incomplete');
+  const refusal=diagnostics.reason==='content_filter'||payload.output?.some(item=>item.content?.some(part=>part.type==='refusal'));
+  if(!incomplete&&!refusal&&!['failed','cancelled'].includes(payload.status))return diagnostics;
+  const limited=incomplete&&diagnostics.reason==='max_output_tokens';
+  const code=limited?'PLANNER_OUTPUT_LIMIT_REACHED':refusal?'PLANNER_OUTPUT_REFUSED':'PLANNER_OUTPUT_INCOMPLETE';
+  const message=limited?`${type}: AI 응답이 출력 한도에 도달해 중단됐습니다. 불완전한 내용은 적용하지 않았습니다.`:refusal?`${type}: AI가 구조화 응답을 제공하지 않았습니다.`:`${type}: AI 응답이 완료되지 않았습니다. 저장된 결과는 유지합니다.`;
+  throw Object.assign(new Error(message),{code,statusCode:502,retryable:!limited&&!refusal,providerDiagnostics:diagnostics});
+}
+function parseStructuredOutput(output, type, diagnostics) {
   try {
     return JSON.parse(output);
   } catch (cause) {
     throw Object.assign(
       new Error(`${type} returned invalid structured JSON: ${cause.message}`, { cause }),
-      { code: "PLANNER_OUTPUT_JSON_INVALID", retryable: true },
+      { code: "PLANNER_OUTPUT_JSON_INVALID", statusCode:502,retryable: true, ...(diagnostics?{providerDiagnostics:diagnostics}:{}) },
     );
   }
 }
@@ -457,10 +470,11 @@ async function generateStructuredPlannerResult({
       },
     },
   }, openAiHeaders(), signal, execution.timeoutMs);
+  const diagnostics=assertStructuredResponseComplete(payload,type,{requestId,maxTokens:execution.requestFields.max_output_tokens});
   const output = responseOutputText(payload);
   if (!output) throw Object.assign(new Error(`${type} returned no structured output`), { code: "EMPTY_PLANNER_RESULT" });
   return {
-    result: parseStructuredOutput(output, type),
+    result: parseStructuredOutput(output, type,diagnostics),
     provider: { provider: "openai", model, requestId, latencyMs: Date.now() - startedAt },
     usage: payload.usage || {},
   };
@@ -501,10 +515,11 @@ async function generateStructuredVisionResult({
       },
     },
   }, openAiHeaders(), signal, execution.timeoutMs);
+  const diagnostics=assertStructuredResponseComplete(payload,type,{requestId,maxTokens:execution.requestFields.max_output_tokens});
   const output = responseOutputText(payload);
   if (!output) throw Object.assign(new Error(`${type} returned no structured output`), { code: "EMPTY_PLANNER_RESULT" });
   return {
-    result: parseStructuredOutput(output, type),
+    result: parseStructuredOutput(output, type,diagnostics),
     provider: { provider: "openai", model, requestId, latencyMs: Date.now() - startedAt },
     usage: payload.usage || {},
   };
