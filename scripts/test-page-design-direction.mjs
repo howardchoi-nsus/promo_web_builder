@@ -16,4 +16,6 @@ console.log('Design direction: provenance/hash/revision continuity, bounded requ
 
 const next=designDirection({previous:original,request:original.requestText,instruction:'본문 문구를 짧게 해줘'});assert.equal(next.artDirection.composition.hero,'center');assert.deepEqual(next.tokenPreferences.values,original.tokenPreferences.values);
 
-const publicRecord=require('../api/_promo-publication-store').publicationEnvelope({snapshot_json:{content:{pageContext:{designBrief:original}},generationMeta:{design:original,review:{state:'approved'}}}});assert.equal(publicRecord.snapshot.content.pageContext.designBrief,undefined);assert.equal(publicRecord.snapshot.generationMeta.design,undefined);assert.equal(publicRecord.snapshot.generationMeta.review.state,'approved');
+const publicRecord=require('../api/_promo-publication-store').publicationEnvelope({snapshot_json:{content:{pageContext:{designBrief:original}},generationMeta:{draftTimings:[{modelMs:123}],design:original,review:{state:'approved'}}}});assert.equal(publicRecord.snapshot.content.pageContext.designBrief,undefined);assert.equal(publicRecord.snapshot.generationMeta.design,undefined);assert.equal(publicRecord.snapshot.generationMeta.review.state,'approved');
+
+assert.equal(publicRecord.snapshot.generationMeta.draftTimings,undefined);

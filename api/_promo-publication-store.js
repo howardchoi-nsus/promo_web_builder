@@ -1,6 +1,6 @@
 const { getSql } = require("./_promo-builder-document-store");
 
-function publicSnapshot(snapshot){const copy=JSON.parse(JSON.stringify(snapshot||{}));if(copy.content?.pageContext)delete copy.content.pageContext.designBrief;if(copy.generationMeta){delete copy.generationMeta.design;delete copy.generationMeta.draftExecutions;}return copy;}
+function publicSnapshot(snapshot){const copy=JSON.parse(JSON.stringify(snapshot||{}));if(copy.content?.pageContext)delete copy.content.pageContext.designBrief;if(copy.generationMeta){delete copy.generationMeta.design;delete copy.generationMeta.draftExecutions;delete copy.generationMeta.draftTimings;}return copy;}
 
 function publicationEnvelope(row) {
   if (!row) return null;

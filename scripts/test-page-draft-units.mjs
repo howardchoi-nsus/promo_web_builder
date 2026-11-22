@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';import {createRequire} from 'node:module
 import {context} from './fixtures/page-schema.mjs';import {unitFixture} from './fixtures/page-draft-units.mjs';
 const require=createRequire(import.meta.url),{planSchema,planResult,regionSchema,applyRegion,assertV2}=require('../api/_page-draft-units'),{assertValid,walk}=require('../shared/page-schema/contract.cjs');
 const {plan,results}=unitFixture(context.contentSources);const state={...planResult(plan,context),context};
-assert.equal(state.page.root.children.length,1);assert.equal(state.page.root.children[0].children.length,0);assert.equal(state.cursor,0);
+assert.equal(state.page.root.children.length,2);assert.equal(state.page.root.children[0].children.length,0);assert.equal(state.page.root.children[1].children.length,0);assert.equal(state.cursor,0);
 let generated=0;walk(state.page.root,({node})=>{if(node.type==='text')generated++;});assert.equal(generated,0);
 for(const schema of [planSchema(context),regionSchema(context,plan.regions[0])]){
  const visit=(v,path=[])=>{if(!v||typeof v!=='object')return;if(v.$ref){assert.match(v.$ref,/^#\/\$defs\//);let ref=schema;for(const k of v.$ref.slice(2).split('/'))ref=ref?.[k];assert.ok(ref,v.$ref);}if(path.length)assert.equal(v.$defs,undefined);for(const [k,c] of Object.entries(v))visit(c,[...path,k]);};visit(schema);
@@ -30,3 +30,6 @@ const {waitForDraftPaint}=await import('../visual-editor/src/builder/services/pa
 const doc=new EventTarget();doc.visibilityState='visible';let scheduled;doc.defaultView={requestAnimationFrame:cb=>(scheduled=cb,1),cancelAnimationFrame:()=>{scheduled=null;}};
 let painted=false;const painting=waitForDraftPaint(doc).then(()=>painted=true);await Promise.resolve();assert.equal(painted,false);scheduled();await Promise.resolve();assert.equal(painted,false);scheduled();await painting;assert.equal(painted,true);
 const hidden=waitForDraftPaint(doc);doc.visibilityState='hidden';doc.dispatchEvent(new Event('visibilitychange'));await hidden;assert.equal(scheduled,null);await waitForDraftPaint(doc);
+
+// In-flight older V2 drafts can fill missing plan shells without discarding work.
+const older={...planResult(plan,context),context};older.page.root.children.pop();older.page=applyRegion(older,results[0]);assert.equal(older.page.root.children[1].id,'benefits');assert.deepEqual(older.page.root.children[1].children,[]);

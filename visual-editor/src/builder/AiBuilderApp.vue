@@ -111,7 +111,7 @@ const wireframeFingerprint = ref("");
 const wireframeViewport = ref("desktop");
 const draftPreview=ref(null);
 function setDraftPreview(draft,failed=false){
- draftPreview.value={contractVersion:3,content:{pageSchema:draft.page,pageContext:draft.context},generationMeta:{review:{state:'pending'},draftActivity:{runId:draft.runId,nodeIds:failed?[]:draft.nextGroup?.nodeIds||[],failedNodeIds:failed?draft.nextGroup?.nodeIds||[]:[],completedNodeIds:draft.completedGroup?.nodeIds||[],label:draft.nextGroup?.label||'구성 준비'}}};
+ draftPreview.value={contractVersion:3,content:{pageSchema:draft.page,pageContext:draft.context},generationMeta:{review:{state:'pending'},draftActivity:{skeletonFirst:draft.previewMode==='skeleton-first',pendingNodeIds:draft.pendingNodeIds||[],completedRegions:draft.completedRegions,totalRegions:draft.totalRegions,runId:draft.runId,nodeIds:failed?[]:draft.nextGroup?.nodeIds||[],failedNodeIds:failed?draft.nextGroup?.nodeIds||[]:[],completedNodeIds:draft.completedGroup?.nodeIds||[],label:draft.nextGroup?.label||'구성 준비'}}};
 }
 const productionSnapshot=computed(()=>draftPreview.value||store.snapshot);
 const activeResultTab = ref("requirements");
@@ -2133,9 +2133,9 @@ async function prepareWireframe(existingOperationId = "", sourceAction = null) {
     if(capabilities.value.pageSchemaV1){
       store.stage="processing";
       const payload={...pageRequestPayload(),actionId:sourceAction?.id};
-      const docId=store.documentId;activeResultTab.value='wireframe';
+      const docId=store.documentId;wireframeViewport.value='desktop';activeResultTab.value='wireframe';
       const saved=capabilities.value.pageDraftV1&&!payload.instruction?await generateProgressivePage(payload,{request:generatePageSchema,isCurrent:()=>store.documentId===docId,onDraft:async draft=>{setDraftPreview(draft);const done=draft.completedRegions??draft.nextGroup?.index;
-       const label=done===0?'전체 계획을 저장했습니다. 첫 영역을 구성합니다.':done!=null?`${done}개 영역을 저장했습니다. ${draft.nextGroup?.label?draft.nextGroup.label+' 구성 중':'전체 구성 검증 중'}`:`${draft.sequence}개 작업 결과를 반영했습니다.`;
+       const label=done===0?'AI 계획의 전체 스켈레톤을 준비했습니다. 데스크톱 콘텐츠를 구성합니다.':done!=null?`${done}개 영역을 저장했습니다. ${draft.nextGroup?.label?draft.nextGroup.label+' 구성 중':'전체 구성 검증 중'}`:`${draft.sequence}개 작업 결과를 반영했습니다.`;
        updateStatusMessage(operationId,`페이지 제작 · ${label}`,'in_progress');
        // Acknowledge an actual DOM paint before requesting the next unit.
        // This is not a timed reveal of already generated content.
@@ -2279,7 +2279,10 @@ async function runFinalQualityGate({ autoRepair = true, force = false } = {}) {
   let ruleRepairs=0;
   try {
     for (let attempt = 0; attempt <= (agentEnabled?6:2); attempt += 1) {
-      const result = await compositionReviewRef.value?.inspectQualityAcrossViewports?.();
+      const result = await compositionReviewRef.value?.inspectQualityAcrossViewports?.({onViewport:event=>{
+        const label={desktop:'데스크톱',tablet:'태블릿',mobile:'모바일'}[event.viewport]||event.viewport;
+        updateStatusMessage(`${qualityOperationId}-${attempt}-${event.viewport}`,`자동 품질 검사 · ${label} ${event.state==='completed'?'검사 완료':'배치·가독성 검사 중'}`,event.state==='completed'?'completed':'in_progress');
+      }});
       if (!result) {
         throw Object.assign(new Error("디자인 Preview Renderer가 준비되지 않았습니다."), {
           code: "PREVIEW_QUALITY_CHECK_UNAVAILABLE",
@@ -3495,6 +3498,7 @@ onBeforeUnmount(() => {
                 ref="compositionReviewRef"
                 controls-target="#ai-chat-design-actions"
                 v-model:viewport="wireframeViewport"
+                :desktop-first="Boolean(draftPreview||designPending||designPreparing||mediaPending||mediaPreparing)"
                 :snapshot="productionSnapshot"
                 :wireframe="Boolean(draftPreview||pageStructurePending)"
                 :document-revision="store.documentRevision"

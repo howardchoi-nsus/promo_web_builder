@@ -87,11 +87,12 @@ async function waitForPreviewLayout() {
   syncPreviewFrame();
 }
 
-async function inspectQualityAcrossViewports() {
+async function inspectQualityAcrossViewports({onViewport}={}) {
   const results = {};
   livePreview?.pause();
   try {
     for (const viewport of (props.snapshot.content?.pageSchema ? ["desktop", "tablet", "mobile"] : ["desktop", "mobile"])) {
+      const started=performance.now();onViewport?.({viewport,state:"checking"});
       inspectionViewport.value = viewport;
       await waitForPreviewLayout();
       results[viewport] = rendererRef.value?.inspectLayoutQuality?.() || {
@@ -106,6 +107,7 @@ async function inspectQualityAcrossViewports() {
         result.diagnostics.push({code:'LAYOUT_TOKEN_REFERENCE_REQUIRED',level:'blocking',path:viewport,message:'등록된 화면 기준 폭 토큰을 연결해야 정확한 미리보기와 검사가 가능합니다.'});
         result.blockingCount=Number(result.blockingCount||0)+1;result.count=Number(result.count||0)+1;
       }
+      onViewport?.({viewport,state:"completed",durationMs:Math.max(0,performance.now()-started),blockingCount:Number(results[viewport].blockingCount||0)});
     }
   } finally {
     inspectionViewport.value = "";

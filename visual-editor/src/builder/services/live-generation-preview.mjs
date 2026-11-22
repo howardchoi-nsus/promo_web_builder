@@ -17,6 +17,10 @@ export function generationRegions(snapshot, activity = {}) {
 // Bounded, preview-only replay guard survives an iframe/controller remount.
 const maskHistory=new Map();
 const previewCss=`
+[data-ps-scope] [data-ps-node][data-live-skeleton]{min-block-size:3lh;background-color:#f3f4f6!important}
+[data-live-skeleton]::before{content:attr(data-live-skeleton-label);display:block;color:#64748b;font:12px/1.5 sans-serif;padding:10px}
+[data-ps-scope] [data-ps-node][data-live-skeleton-active]{outline:2px solid #647bdf!important;outline-offset:-2px}
+
 [data-live-design-state="waiting"],[data-live-design-state="generating"],[data-live-design-state="failed"]{background-color:#f3f4f6!important;background-image:none!important;color:#4b5563!important;border-color:#cbd5e1!important;box-shadow:none!important;text-shadow:none!important}
 [data-live-design-target]{outline:2px solid #647bdf;outline-offset:-2px}
 [data-live-design-state="waiting"]>[data-ps-overlay],[data-live-design-state="generating"]>[data-ps-overlay],[data-live-design-state="failed"]>[data-ps-overlay]{visibility:hidden!important}
@@ -40,7 +44,7 @@ img[data-live-state="loading"]{opacity:.25}
 @keyframes live-preview-reveal{from{opacity:0}to{opacity:1}}
 @media(prefers-reduced-motion:reduce){[data-live-state],[data-live-reveal],[data-live-design-reveal],[data-ps-scope] [data-ps-node][data-live-wireframe-entry]{animation:none!important}}
 `;
-const attributes=['data-live-draft-pending','data-live-wireframe-entry','data-live-state','data-live-label','data-live-reveal','data-live-background-image','data-live-design-state','data-live-design-reveal','data-live-design-target'];
+const attributes=['data-live-skeleton','data-live-skeleton-label','data-live-skeleton-active','data-live-draft-pending','data-live-wireframe-entry','data-live-state','data-live-label','data-live-reveal','data-live-background-image','data-live-design-state','data-live-design-reveal','data-live-design-target'];
 const labels={waiting:'이미지 생성 대기',generating:'이미지 생성 중',loading:'이미지 불러오는 중',failed:'이미지를 준비하지 못했습니다'};
 
 // Builder-only decoration. Never serialize these attributes/styles into PageSchema.
@@ -86,9 +90,13 @@ export function createLiveGenerationPreview({getDocument,getSnapshot,getActivity
       }
       wireInitialized=true;
     }
-    // The only preview placeholder is the current not-yet-built work shell.
+    // The entire saved AI plan is a skeleton; only the active shell is a task.
+    for(const el of decorated)if(el.hasAttribute('data-live-skeleton')){el.removeAttribute('data-live-skeleton');el.removeAttribute('data-live-skeleton-label');el.removeAttribute('data-live-skeleton-active');}
+    const skeletonIds=snapshot?.generationMeta?.draftActivity?.pendingNodeIds||[];
+    for(const id of skeletonIds){const el=elements.get(id);if(!el)continue;const active=draftNodes.includes(id);el.setAttribute('data-live-skeleton','');el.setAttribute('data-live-skeleton-label',`${el.getAttribute('aria-label')||'계획 영역'} · ${active?'콘텐츠 구성 중':'준비 중'}`);if(active)el.setAttribute('data-live-skeleton-active','');decorated.add(el);}
+
     for(const el of decorated)if(el.hasAttribute('data-live-draft-pending')){el.removeAttribute('data-live-draft-pending');el.removeAttribute('data-live-state');el.removeAttribute('data-live-label');}
-    for(const id of draftNodes){const el=elements.get(id);if(el&&!el.children.length&&!el.textContent){paint(el,'generating');el.setAttribute('data-live-draft-pending','');}}
+    for(const id of draftNodes){const el=elements.get(id);if(el&&!skeletonIds.includes(id)&&!el.children.length&&!el.textContent){paint(el,'generating');el.setAttribute('data-live-label','콘텐츠 구성 중');el.setAttribute('data-live-draft-pending','');}}
     const completedDraftNodes=snapshot?.generationMeta?.draftActivity?.completedNodeIds||[];
     const work=[...designs,...regions,...completedDraftNodes.map(nodeId=>({nodeId,state:'ready'})),...(snapshot?.generationMeta?.draftActivity?.failedNodeIds||[]).map(nodeId=>({nodeId,state:'failed'})),...draftNodes.map(nodeId=>({nodeId,state:'generating'}))].map(r=>({el:elements.get(r.nodeId),state:r.state,label:snapshot.content.pageSchema&&elements.get(r.nodeId)?.getAttribute('aria-label')||'영역 구성 중'})).filter(r=>r.el);
     clearBackgrounds();

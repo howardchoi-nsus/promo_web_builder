@@ -25,17 +25,17 @@ export async function createUnitHarness({chat=true}={}){
  const unitMigration=fs.readFileSync(new URL('../../db/migrations/096_page_draft_units_v2.sql',import.meta.url),'utf8');await db.exec(unitMigration);await db.exec(unitMigration);
  const v2=await sql`select * from prompt_templates where model_options->>'pageDraftContractVersion'='2'`;assert.equal(v2.length,2);for(const row of v2){assert.equal(row.status,'draft');assert.equal(row.provider,'openai');assert.equal(row.model,'registered-model');assert.deepEqual(row.model_options.skillBindings,[]);}
  assert.equal((await sql`select id from prompt_templates where type in('promo_page_outline_planner','promo_page_fragment_writer') and status='draft'`).length,2);
- let release,held=false,failNext=false,contractVersion=2,staged,modelCalls=[];const events=[];
+ let release,held=false,heldIndex=1,failNext=false,contractVersion=2,staged,modelCalls=[];const events=[];
  const deps={loadPageSchemaLibrary:async()=>context,fetchDocument:read,createPromptExecutionSnapshot:async(_,type,variables)=>({promptConfig:{promptId:'fixture',model:'registered-model',type,variables,modelOptions:{pageDraftContractVersion:contractVersion}}}),generate:async args=>{
   const cfg=args.promptConfig,candidates=JSON.parse(cfg.variables.candidateSnapshotJson),constraints=JSON.parse(cfg.variables.constraintsJson);modelCalls.push({type:cfg.type,region:constraints.region?.shell.id});
   if(failNext){failNext=false;throw Error('unit provider test failure');}
   if(constraints.phase==='plan'){staged=unitFixture(candidates.contentSources);return {result:staged.plan};}
-  if(held&&constraints.region.shell.id===staged.plan.regions[1].shell.id)await new Promise(resolve=>release=resolve);
+  if(held&&constraints.region.shell.id===staged.plan.regions[heldIndex].shell.id)await new Promise(resolve=>release=resolve);
   if(failNext){failNext=false;throw Error('unit provider test failure');}
   const index=staged.plan.regions.findIndex(r=>r.shell.id===constraints.region.shell.id);return {result:staged.results[index]};
  }};
  return {db,sql,doc,owner,overview,read,modelCalls,events,
-  setContractVersion(v){contractVersion=v;},failNext(){failNext=true;},holdSecond(){held=true;},get waiting(){return Boolean(release);},release(){held=false;release?.();release=null;},
+  setContractVersion(v){contractVersion=v;},failNext(){failNext=true;},holdFirst(){held=true;heldIndex=0;},holdSecond(){held=true;heldIndex=1;},get waiting(){return Boolean(release);},release(){held=false;release?.();release=null;},
   async invoke(body){let response,status;const res={status(code){status=code;return this;},json(data){response=data;return this;}};
    await require('../../api/_page-draft-service').processPageDraft({sql,owner:{ownerSubject:owner},found:await read(),body:{documentId:doc,baseDocumentRevision:0,requirementsRevision:1,...body},res},deps);
    events.push({sequence:response.sequence,complete:response.complete,completed:response.completedRegions});return {...response,httpStatus:status};

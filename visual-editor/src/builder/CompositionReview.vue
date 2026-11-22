@@ -7,6 +7,7 @@ import {previewReference} from '../../../shared/layout-token-policy.mjs';
 
 const props = defineProps({
   wireframe: {type:Boolean,default:false},
+  desktopFirst:{type:Boolean,default:false},
   snapshot: { type: Object, required: true },
   controlsTarget: { type: String, default: "" },
   documentId:{type:String,default:""},
@@ -25,12 +26,13 @@ const emit = defineEmits([
 const previewCanvasRef = ref(null);
 const effectsPaused=ref(false);
 const previewViewport = computed({
-  get: () => props.viewport,
+  get: () => props.desktopFirst?"desktop":props.viewport,
   set: (viewport) => emit("update:viewport", viewport),
 });
 
 const previewReferenceWidth=computed(()=>props.snapshot.content?.pageSchema?previewReference(props.snapshot.content.pageContext,previewViewport.value)?.width:null);
 function selectPreviewViewport(viewport) {
+  if(props.desktopFirst&&viewport!=="desktop")return;
   previewViewport.value = viewport;
 }
 
@@ -60,8 +62,8 @@ const qualityLabel = computed(() => {
   return `출력 전에 ${viewportLabel.value} 품질 검사가 필요합니다.`;
 });
 
-function inspectQualityAcrossViewports() {
-  return previewCanvasRef.value?.inspectQualityAcrossViewports?.();
+function inspectQualityAcrossViewports(options) {
+  return previewCanvasRef.value?.inspectQualityAcrossViewports?.(options);
 }
 
 function buildAutoRepairSnapshot(snapshot, result) {
@@ -76,14 +78,14 @@ defineExpose({ buildAutoRepairSnapshot, inspectQualityAcrossViewports });
     <header class="ai-builder-result__toolbar">
       <div>
         <p class="ai-builder-eyebrow">{{ wireframe ? '페이지 제작 · 구성 확인' : '페이지 제작 · 디자인' }}</p>
-        <strong>{{ wireframe ? '와이어프레임 · 채팅에서 구성 승인' : '현재 디자인' }} · Revision {{ documentRevision }}</strong>
+        <strong>{{ snapshot.generationMeta?.draftActivity ? '전체 스켈레톤 · 콘텐츠 구성 중' : wireframe ? '와이어프레임 · 채팅에서 구성 승인' : '현재 디자인' }} · Revision {{ documentRevision }}</strong>
         <span v-if="!wireframe" class="ai-builder-readonly-badge">발행 결과와 동일한 렌더러</span>
       </div>
       <div class="ai-builder-actions">
         <div class="ai-builder-preview-viewport" role="group" aria-label="미리보기 화면 크기">
           <button type="button" :aria-pressed="previewViewport === 'desktop'" @click="selectPreviewViewport('desktop')">데스크톱</button>
-          <button v-if="snapshot.content?.pageSchema" type="button" :aria-pressed="previewViewport === 'tablet'" @click="selectPreviewViewport('tablet')">태블릿</button>
-          <button type="button" :aria-pressed="previewViewport === 'mobile'" @click="selectPreviewViewport('mobile')">모바일</button>
+          <button v-if="snapshot.content?.pageSchema" type="button" :disabled="desktopFirst||busy" :aria-pressed="previewViewport === 'tablet'" @click="selectPreviewViewport('tablet')">태블릿</button>
+          <button type="button" :disabled="desktopFirst||busy" :aria-pressed="previewViewport === 'mobile'" @click="selectPreviewViewport('mobile')">모바일</button>
         </div>
         <Teleport :to="controlsTarget || 'body'" :disabled="!controlsTarget">
           <div v-if="!wireframe" class="ai-builder-actions" aria-label="디자인 작업">
@@ -103,6 +105,8 @@ defineExpose({ buildAutoRepairSnapshot, inspectQualityAcrossViewports });
         </Teleport>
       </div>
     </header>
+    <p v-if="snapshot.generationMeta?.draftActivity?.skeletonFirst" class="ai-builder-preview-note" role="status">AI 계획의 전체 배치를 먼저 표시합니다. 콘텐츠 완료 {{snapshot.generationMeta.draftActivity.completedRegions||0}} / {{snapshot.generationMeta.draftActivity.totalRegions||0}}개 영역 · 스켈레톤 표시는 생성 완료를 뜻하지 않습니다.</p>
+    <p v-if="desktopFirst" class="ai-builder-preview-note">데스크톱을 먼저 구성합니다. 반응형 기본 배치는 유지하며 디자인 준비 후 태블릿·모바일을 자동 검사하고 필요한 부분을 보정합니다.</p>
     <p class="ai-builder-preview-note">이 화면은 실제 발행에 사용하는 데이터와 렌더러로 표시됩니다. <span v-if="previewReferenceWidth">현재 미리보기 기준 {{ previewReferenceWidth }}px · 패널에 맞춰 축소 표시합니다.</span> 화면 크기를 전환해 확인하세요.</p>
     <div v-if="!wireframe" class="ai-builder-quality-gate" :class="`is-${qualityState}`" role="status" aria-live="polite">
       <span aria-hidden="true"></span>

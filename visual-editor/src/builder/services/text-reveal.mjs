@@ -1,5 +1,5 @@
 // Geometry only: never split, replace or rewrite the saved text DOM.
-export const TEXT_REVEAL_MS=360;
+export const TEXT_REVEAL_MS=600;
 function textMeasure(element){
  const doc=element.ownerDocument,view=doc.defaultView,walker=doc.createTreeWalker(element,view.NodeFilter.SHOW_TEXT),parts=[];let node,total=0;
  while((node=walker.nextNode())){parts.push({node,start:total,end:total+node.length});total+=node.length;}

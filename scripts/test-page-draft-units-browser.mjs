@@ -9,7 +9,7 @@ import {fixture,context} from './fixtures/page-schema.mjs';
 const require=createRequire(import.meta.url);
 const {snapshotForPage}=require('../api/_page-schema-service');
 const {normalize}=require('../shared/page-schema/contract.cjs');
-const harness=await createUnitHarness({chat:false});harness.holdSecond();
+const harness=await createUnitHarness({chat:false});harness.holdFirst();
 let revision=0,snapshot,generated=0,edited=0,approved=0,savedGate;
 const errors=[],requests=[];
 const overview={...harness.overview,promotionPurpose:'기타',promotionPurposeOther:'프로모션',market:'한국',audience:'일반고객',campaignTone:'친근함',mainOffer:'',notices:[],legalInformation:[]};
@@ -48,6 +48,14 @@ try{
  const page=await browser.newPage({viewport:{width:1440,height:1000}});page.on('pageerror',e=>errors.push(e.message));await page.goto(`http://127.0.0.1:${server.address().port}/?mode=ai`);await page.getByPlaceholder('무엇을 만들고 싶으신가요?').fill('프리미엄 좌측 카피로 구성해줘');await page.getByRole('button',{name:'전송',exact:true}).click();await page.getByRole('button',{name:/^(?:AI가 구성하고 미리보기 생성|페이지 미리보기 생성)$/}).click();
  const frame=page.frameLocator('iframe').first();await frame.locator('[data-ps-node=page_root]').waitFor();assert.equal(revision,0);assert.equal(await page.locator('.ai-process-steps li').count(),2);assert.equal(await page.getByRole('button',{name:'페이지 구성 승인',exact:true}).count(),0);
  {const deadline=Date.now()+15000;while(!harness.waiting){assert.ok(Date.now()<deadline,'Second real provider call did not start: '+errors.join(';'));await new Promise(r=>setTimeout(r,10));}}
+ assert.equal(await frame.locator('[data-ps-node=hero] [data-ps-node]').count(),0);
+ assert.equal(await frame.locator('[data-ps-node=benefits] [data-ps-node]').count(),0);
+ await frame.locator('[data-live-skeleton]').first().waitFor({state:'attached'});assert.equal(await frame.locator('[data-live-skeleton]').count(),2);
+ assert.equal(await page.getByRole('button',{name:'태블릿',exact:true}).isDisabled(),true);
+ assert.equal(await page.getByRole('button',{name:'모바일',exact:true}).isDisabled(),true);
+ assert.ok(await page.getByText('스켈레톤 표시는 생성 완료를 뜻하지 않습니다.',{exact:false}).isVisible());
+ harness.release();harness.holdSecond();
+ {const deadline=Date.now()+15000;while(!harness.waiting){assert.ok(Date.now()<deadline,'Second provider did not start');await new Promise(r=>setTimeout(r,10));}}
  // The actual service/SQL driver has saved region one while its provider call
  // for region two is deliberately held. No fabricated partial API response.
  await frame.locator('[data-ps-node=hero_title]').waitFor();
@@ -71,5 +79,11 @@ try{
  assert.equal(generated,2);assert.equal(harness.modelCalls.filter(call=>call.type==='promo_page_manifest_planner').length,1);assert.equal(revision,1);assert.equal(harness.modelCalls.length,4);
  assert.ok(harness.events.some(event=>event.completed===2&&!event.complete),'last region must be saved before final assembly');
  assert.equal(harness.events.at(-1).complete,true);
- assert.deepEqual(errors,[]);console.log('Real unit builder browser: real service plus PGlite, source-only first region visible while next provider call is held, no future components/early approval, real cursor target, failed-unit retry preserving prior output and final assembly passed.');
+ await page.getByRole('button',{name:'페이지 구성 승인',exact:true}).click();
+ await page.getByText('품질 검사 통과',{exact:true}).first().waitFor();
+ assert.deepEqual(Object.keys(savedGate.results),['desktop','tablet','mobile']);
+ for(const label of ['데스크톱','태블릿','모바일'])assert.ok(await page.getByText(`자동 품질 검사 · ${label} 검사 완료`,{exact:true}).count()>0);
+ assert.equal(await page.getByRole('button',{name:'태블릿',exact:true}).isEnabled(),true);
+ assert.equal(await page.getByRole('button',{name:'모바일',exact:true}).isEnabled(),true);
+ assert.deepEqual(errors,[]);console.log('Real unit builder browser: real service plus PGlite, source-only first region visible while next provider call is held, no future components/early approval, full saved skeleton, desktop-first controls, real cursor target, failure/reload recovery, final assembly and desktop→tablet→mobile quality gate passed.');
 }finally{harness.release();await browser.close();await new Promise(r=>server.close(r));await harness.close();}
