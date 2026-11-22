@@ -1,11 +1,15 @@
 import assert from 'node:assert/strict';import {createRequire} from 'node:module';
-const require=createRequire(import.meta.url),{generateStructuredPlannerResult}=require('../api/_promo-section-design-provider');
+const require=createRequire(import.meta.url),{generateStructuredPlannerResult,assertStructuredSchemaReferences}=require('../api/_promo-section-design-provider');
 const oldFetch=global.fetch,oldKey=process.env.OPENAI_API_KEY;process.env.OPENAI_API_KEY='fixture-only';
 const config={provider:'openai',model:'registered-model',renderedPrompt:'Return supplied structured schema.',maxTokens:24000,modelOptions:{reasoning:{effort:'medium'},executionSnapshotVersion:2,runtimeConfig:{timeoutMs:240000,maxAttempts:1,retryBaseMs:0,retryMaxMs:0},harnessConfig:{},modelCapabilitySnapshot:{},safetyContract:{}}};
 let payload,requests=[];
 global.fetch=async(url,options)=>{requests.push(JSON.parse(options.body));return new Response(JSON.stringify(payload),{status:200,headers:{'x-request-id':'provider-test-id'}});};
 const invoke=()=>generateStructuredPlannerResult({type:'promo_page_manifest_planner',schemaName:'test_manifest',schema:{type:'object',properties:{ok:{type:'boolean'}},required:['ok'],additionalProperties:false},promptConfig:config});
 try{
+ assertStructuredSchemaReferences({type:'object',properties:{literal:{const:{$ref:'literal-data',description:'data, not schema'}}}},'fixture');
+ const callsBeforeInvalid=requests.length;
+ await assert.rejects(generateStructuredPlannerResult({type:'promo_page_region_builder',schemaName:'invalid_ref',schema:{type:'object',properties:{layout:{$ref:'#/$defs/layout',description:'invalid sibling'}},$defs:{layout:{type:'object'}}},promptConfig:config}),{code:'PLANNER_RESPONSE_SCHEMA_INVALID'});
+ assert.equal(requests.length,callsBeforeInvalid,'Invalid provider schemas must fail before a paid request');
  const truncated='{"plan":'+ ' '.repeat(118350);
  payload={status:'incomplete',incomplete_details:{reason:'max_output_tokens'},usage:{output_tokens:24000,output_tokens_details:{reasoning_tokens:12000}},output_text:truncated};
  await assert.rejects(invoke(),e=>{assert.equal(e.code,'PLANNER_OUTPUT_LIMIT_REACHED');assert.equal(e.retryable,false);assert.equal(e.providerDiagnostics.outputCharacters,truncated.length);assert.equal(e.providerDiagnostics.maxOutputTokens,24000);assert.equal(e.providerDiagnostics.requestId,'provider-test-id');assert.equal(e.providerDiagnostics.reasoningTokens,12000);return true;});

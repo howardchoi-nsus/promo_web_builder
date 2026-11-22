@@ -96,3 +96,11 @@ Mask Reveal은 600ms로 조정하고 생성 중 기본 보기/기기 조작은 �
 영역 compact 검증 결과: 전체 58개 계약/브라우저/PGlite 회귀검사, 기존 공급자 계약, 명시 tablet/mobile 레이아웃·스타일·spacing override 복원 검사 통과. 공급자 요청에서 등록 reasoning과 출력 한도 유지, reasoning 미등록 시 미추가, 잘못된 설정의 호출 전 거부도 확인했다. 실제 외부 모델 재실행 및 Production 배포는 미수행이다.
 
 사용자 배포 요청(2026-11-22): 영역 compact/등록 reasoning 전달 수정본을 Production 대상 main에 반영한다. 기존 운영 모델/출력 한도·096/V2 조건을 유지하며 추가 운영 설정 변경은 없다. Vercel Ready와 실제 공급자 재실행 결과는 별도 확인 대상이다.
+
+## 2026-11-22 compact grid $ref/description 호환 수정
+
+실제 공급자 오류로 compact grid.layout의 $ref와 description 동시 사용이 거부됨을 확인했다. 개발 시 추가한 잘못된 설명을 제거했고, planner/vision 모델 요청 전 참조 단독 키워드 검사를 추가했다. 일반 Ajv 검사와 공급자 제약의 차이를 회귀 사례에 반영했다. 구조/스타일/소스 검증은 유지하며 추가 migration·프롬프트 변경은 없다. 외부 모델 재실행·운영 배포는 별도다.
+
+$ref 보정 검증: 전체 58개 회귀검사와 기존 공급자 계약 검사 통과. 모든 compact 영역 참조의 단독 키워드 검사 및 잘못된 schema의 fetch 전 거부, literal const 안의 데이터 오인 방지 검사를 확인했다. 코드 수정은 배포 전이며 실제 공급자 재실행은 미검증이다.
+
+- 2026-11-22 사용자 배포 요청: `$ref` 추가 키워드 오류 수정본을 Production 대상 main에 반영한다. 로컬 58개 검사 통과, 실제 외부 통합 미검증 및 Vercel Ready 확인은 소스 반영과 구분한다. 추가 마이그레이션·Admin 설정 변경은 없다.

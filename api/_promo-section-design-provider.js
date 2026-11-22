@@ -258,6 +258,12 @@ function responseOutputText(payload) {
     .join("");
 }
 
+function assertStructuredSchemaReferences(schema,type){
+ const visit=(value,path)=>{if(!value||typeof value!=='object')return;
+  if(typeof value.$ref==='string'&&Object.keys(value).length!==1)throw Object.assign(new Error(`${type}: 응답 스키마 참조에 허용되지 않는 추가 속성이 있습니다. (${path})`),{code:'PLANNER_RESPONSE_SCHEMA_INVALID',statusCode:500,retryable:false,errors:[{path,code:'REF_SIBLINGS_NOT_SUPPORTED',message:'$ref must be the only keyword in its schema object'}]});
+  for(const [key,child] of Object.entries(value))if(!['const','enum','default','examples'].includes(key))visit(child,`${path}.${key}`);
+ };visit(schema,'schema');
+}
 function structuredResponseDiagnostics(payload,{requestId='',maxTokens=null}={}) {
   return {requestId,status:typeof payload.status==='string'?payload.status:'unknown',reason:String(payload.incomplete_details?.reason||payload.error?.code||'').slice(0,100),outputCharacters:responseOutputText(payload).length,outputTokens:Number.isFinite(Number(payload.usage?.output_tokens))?Number(payload.usage.output_tokens):null,reasoningTokens:Number.isFinite(Number(payload.usage?.output_tokens_details?.reasoning_tokens))?Number(payload.usage.output_tokens_details.reasoning_tokens):null,maxOutputTokens:Number.isFinite(Number(maxTokens))&&maxTokens!==null?Number(maxTokens):null};
 }
@@ -454,6 +460,7 @@ async function generateStructuredPlannerResult({
   promptConfig,
   signal,
 }) {
+  assertStructuredSchemaReferences(schema,type);
   const execution = plannerRequestConfig(type, promptConfig);
   const model = promptConfig?.model;
   const prompt = String(promptConfig?.renderedPrompt || "").trim();
@@ -491,6 +498,7 @@ async function generateStructuredVisionResult({
   promptConfig,
   signal,
 }) {
+  assertStructuredSchemaReferences(schema,type);
   const execution = plannerRequestConfig(type, promptConfig);
   const model = promptConfig?.model;
   const prompt = String(promptConfig?.renderedPrompt || "").trim();
@@ -692,6 +700,7 @@ module.exports = {
   generateStructuredPlannerResult,
   generateStructuredVisionResult,
   responseOutputText,
+  assertStructuredSchemaReferences,
   parseStructuredOutput,
   isRetryableProviderError,
   isProviderBillingError,

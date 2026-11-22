@@ -13,7 +13,7 @@ function compactRegionSchema(context,region){
    const branch=clone(source),roles=clone(branch.properties.styles.properties.base);roles.maxItems=Math.min(roles.maxItems??24,8);
    const variant={type:'object',additionalProperties:false,properties:{layout:nullable({$ref:'#/$defs/layout'}),styles:nullable(roles),spacing:nullable({$ref:'#/$defs/spacingValues'})},required:['layout','styles','spacing']};
    branch.properties.layout=type==='grid'?{$ref:'#/$defs/layout'}:nullable({$ref:'#/$defs/layout'});
-   branch.properties.layout.description='null uses the generic column/stretch/start/fill/one-span layout; use explicit geometry when required.';
+   if(type!=='grid')branch.properties.layout.description='null uses the generic column/stretch/start/fill/one-span layout; use explicit geometry when required.';
    branch.properties.styles=roles;branch.properties.styles.description='Registered base style role keys only. Responsive overrides are separate.';branch.properties.spacing=nullable({$ref:'#/$defs/spacingValues'});branch.properties.tablet=nullable(variant);branch.properties.mobile=nullable(variant);branch.properties.tablet.description='null uses safe responsive layout defaults and inherited base styles.';branch.properties.mobile.description='null uses safe mobile defaults and inherited base styles.';
    if(branch.properties.children)branch.properties.children.items={$ref:'#/$defs/compactNode'};
    branch.required=Object.keys(branch.properties);return branch;

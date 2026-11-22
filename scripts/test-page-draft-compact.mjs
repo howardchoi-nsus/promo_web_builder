@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';import {createRequire} from 'node:module';
 import {fixture,context} from './fixtures/page-schema.mjs';
 const require=createRequire(import.meta.url),Ajv=require('ajv/dist/2020').default;
+const {assertStructuredSchemaReferences}=require('../api/_promo-section-design-provider');
 const {compactRegion,hydrateRegion}=require('../api/_page-draft-compact'),{regionSchema}=require('../api/_page-draft-units'),{walk,assertValid,normalize}=require('../shared/page-schema/contract.cjs');
 let bytesBefore=0,bytesAfter=0;
 for(const name of ['example-editorial','example-split-nested']){
@@ -12,7 +13,8 @@ for(const name of ['example-editorial','example-split-nested']){
   assert.equal(check(compact),true,JSON.stringify(check.errors));assert.deepEqual(hydrateRegion(compact),canonical);
   bytesBefore+=Buffer.byteLength(JSON.stringify(canonical));bytesAfter+=Buffer.byteLength(JSON.stringify(compact));
   const malicious=structuredClone(compact);malicious.node.children[0].onclick='alert(1)';assert.equal(check(malicious),false);
-  const refs=value=>{if(!value||typeof value!=='object')return;if(value.$ref){assert.match(value.$ref,/^#\/\$defs\//);assert.ok(schema.$defs[value.$ref.slice(8)]);}for(const child of Object.values(value))refs(child);};refs(schema);
+  assertStructuredSchemaReferences(schema,'promo_page_region_builder');
+  const refs=value=>{if(!value||typeof value!=='object')return;if(value.$ref){assert.deepEqual(Object.keys(value),['$ref']);assert.match(value.$ref,/^#\/\$defs\//);assert.ok(schema.$defs[value.$ref.slice(8)]);}for(const child of Object.values(value))refs(child);};refs(schema);
  }
  assert.deepEqual(page,original);assertValid(normalize(page).page,context);
 }
