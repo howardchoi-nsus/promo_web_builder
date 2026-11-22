@@ -55,6 +55,13 @@ function runtimeSchema(context={}){
   return definition;
  }
  for(const type of TYPES)if(type!=='container')schema.$defs[type]=specialize(type,{type});
+ // Provider schema must express the same role/heading-level invariant as validation.
+ const textDefinition=schema.$defs.text;
+ schema.$defs.text={anyOf:textDefinition.properties.role.enum.map(role=>{
+  const branch=clone(textDefinition);branch.properties.role={type:'string',const:role};
+  branch.properties.headingLevel=role==='heading'?{type:'integer',minimum:1,maximum:6}:{type:'integer',const:0};
+  return branch;
+ })};
  const container=specialize('container',{type:'container',role:'page'});
  const group=specialize('container',{type:'container',role:'group'});
  container.properties.role.enum=container.properties.role.enum.filter(role=>role!=='group');

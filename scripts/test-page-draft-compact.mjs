@@ -26,3 +26,21 @@ walk(responsive,({node})=>{node.styles.spacing={base:{gap:null,padding:null,marg
 const title=responsive.children.find(n=>n.type==='text');title.layout.tablet={...title.layout.desktop,align:'center'};title.layout.mobile={...title.layout.desktop,align:'end'};title.styles.tablet=[...title.styles.base];title.styles.mobile=[...title.styles.base];title.styles.spacing.mobile={gap:null,padding:'--spacing-8',margin:null};
 const explicit={node:responsive,sourceAssignments:[],mediaRequests:[]},wire=compactRegion(explicit),region={shell:{...structuredClone(responsive),children:[]},sourceIds:Object.keys(context.contentSources)};
 assert.equal(new Ajv({strict:false}).compile(regionSchema(context,region))(wire),true);assert.deepEqual(hydrateRegion(wire),explicit);
+
+// Role/level pairs must be rejected by the provider schema, before draft save.
+const textBranches=regionSchema(context,region).$defs.compact_text.anyOf;
+for(const role of ['heading','body','label','caption']){
+ const definition=textBranches.find(b=>b.properties.role.const===role);
+ assert.ok(definition,role);
+ const checkLevel=new Ajv({strict:false}).compile(definition.properties.headingLevel);
+ for(let level=0;level<=6;level++)assert.equal(checkLevel(level),role==='heading'?level>0:level===0,`${role}/${level}`);
+}
+const pairSchema=regionSchema(context,region),pairCheck=new Ajv({strict:false}).compile(pairSchema);
+function firstText(node){return node.type==='text'?node:(node.children||[]).map(firstText).find(Boolean);}
+for(const role of ['heading','body','label','caption']){
+ for(let level=0;level<=6;level++){
+  const candidate=structuredClone(wire),text=firstText(candidate.node);assert.ok(text);
+  text.role=role;text.headingLevel=level;
+  assert.equal(pairCheck(candidate),role==='heading'?level>0:level===0,`full region ${role}/${level}`);
+ }
+}
