@@ -44,3 +44,20 @@ for(const role of ['heading','body','label','caption']){
   assert.equal(pairCheck(candidate),role==='heading'?level>0:level===0,`full region ${role}/${level}`);
  }
 }
+
+// A varied registered library must not multiply enums by text role and viewport.
+const rich=structuredClone(context);rich.styleChoicesVersion=1;
+for(const property of ['color','font-size','font-family','font-weight','line-height','letter-spacing','background-color','border-color','border-width','border-style','min-height','height'])for(let i=0;i<12;i++){
+ const name=`--sample-${property}-${i}`,value=property.includes('color')?`#${String(i+100000)}`:property==='border-style'?['solid','dashed','dotted'][i%3]:property==='font-family'?`Font${i}`:`${i+1}px`;
+ rich.tokenValues[name]=value;rich.tokenCatalog.push({name,tokenKey:name,value,state:'active',cssProperties:[property]});
+}
+const {runtimeSchema}=require('../shared/page-schema/contract.cjs'),{pageGenerationStyleRoles,pageStyleToken}=require('../shared/token-usage-policy.cjs');
+const richBefore=structuredClone(rich),richSchema=runtimeSchema(rich),richRegion=regionSchema(rich,region);
+const enumCount=value=>!value||typeof value!=='object'?0:(Array.isArray(value.enum)?value.enum.length:0)+Object.values(value).reduce((n,v)=>n+enumCount(v),0);
+assert.ok(enumCount(richSchema)<1000);assert.ok(enumCount(richRegion)<1000);
+assertStructuredSchemaReferences(richSchema,'rich');assertStructuredSchemaReferences(richRegion,'rich-region');
+for(const role of pageGenerationStyleRoles(rich).filter(r=>r.target==='text'&&rich.tokenValues[pageStyleToken(rich,r)]))assert.ok(richSchema.$defs.policyRole_text.enum.includes(role.key));
+const allowed=new Ajv({strict:false}).compile(richSchema.$defs.policyRole_text);
+assert.equal(allowed('button.background'),false);assert.equal(allowed('invented.role'),false);
+assert.deepEqual(rich,richBefore);
+console.log(`Rich registered catalog: shared enum references, preserved text candidates/target restrictions, runtime ${enumCount(richSchema)} and compact ${enumCount(richRegion)} enum values passed.`);

@@ -39,9 +39,11 @@ function runtimeSchema(context={}){
   const definition=clone(schema.$defs[name]),styles=clone(schema.$defs.responsiveStyles);
   const targets=nodeTargets(node);
   const roles=styleRoles.filter(rule=>approvedRoles.includes(rule.key)&&targets.includes(rule.target)).map(rule=>rule.key);
+  const roleDefinition=`policyRole_${targets.join('_')}`;
+  schema.$defs[roleDefinition]={type:'string',enum:roles.length?roles:['__unavailable__']};
   function replace(value){
    if(!value||typeof value!=='object')return;
-   if(value.$ref==='#/$defs/policyRole'){delete value.$ref;value.type='string';value.enum=roles.length?roles:['__unavailable__'];return;}
+   if(value.$ref==='#/$defs/policyRole'){value.$ref=`#/$defs/${roleDefinition}`;return;}
    for(const child of Object.values(value))replace(child);
   }
   replace(styles);

@@ -13,7 +13,7 @@ for(const type of TYPES){
   const targets=nodeTargets({type,role});
   const expected=TOKEN_USAGE_RULES.filter(rule=>targets.includes(rule.target)&&context.usagePolicy.bindings[rule.key]&&context.tokenValues[context.usagePolicy.bindings[rule.key]]).map(rule=>rule.key);
   const styles=definition.properties.styles.properties;
-  for(const items of [styles.base.items,styles.tablet.anyOf[0].items,styles.mobile.anyOf[0].items])assert.deepEqual(items.enum,expected.length?expected:['__unavailable__']);
+  for(const items of [styles.base.items,styles.tablet.anyOf[0].items,styles.mobile.anyOf[0].items]){assert.deepEqual(Object.keys(items),['$ref']);assert.deepEqual(schema.$defs[items.$ref.slice('#/$defs/'.length)].enum,expected.length?expected:['__unavailable__']);}
  }
 }
 const check=new Ajv({strict:false}).compile(schema);
