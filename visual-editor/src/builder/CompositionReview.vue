@@ -76,11 +76,6 @@ defineExpose({ buildAutoRepairSnapshot, inspectQualityAcrossViewports });
 <template>
   <section class="ai-builder-result">
     <header class="ai-builder-result__toolbar">
-      <div>
-        <p class="ai-builder-eyebrow">{{ wireframe ? '페이지 제작 · 구성 확인' : '페이지 제작 · 디자인' }}</p>
-        <strong>{{ snapshot.generationMeta?.draftActivity ? '전체 스켈레톤 · 콘텐츠 구성 중' : wireframe ? '와이어프레임 · 채팅에서 구성 승인' : '현재 디자인' }} · Revision {{ documentRevision }}</strong>
-        <span v-if="!wireframe" class="ai-builder-readonly-badge">발행 결과와 동일한 렌더러</span>
-      </div>
       <div class="ai-builder-actions">
         <div class="ai-builder-preview-viewport" role="group" aria-label="미리보기 화면 크기">
           <button type="button" :aria-pressed="previewViewport === 'desktop'" @click="selectPreviewViewport('desktop')">데스크톱</button>
@@ -89,6 +84,7 @@ defineExpose({ buildAutoRepairSnapshot, inspectQualityAcrossViewports });
         </div>
         <Teleport :to="controlsTarget || 'body'" :disabled="!controlsTarget">
           <div v-if="!wireframe" class="ai-builder-actions" aria-label="디자인 작업">
+        <button v-if="!qualityPassed && qualityState!=='checking'" type="button" class="ai-builder-secondary" :disabled="busy" @click="emit('check-quality')">다시 검사</button>
         <button type="button" class="ai-builder-secondary" :aria-pressed="effectsPaused" @click="effectsPaused=!effectsPaused">{{effectsPaused?'효과 다시 재생':'효과만 일시정지'}}</button>
         <button type="button" class="ai-builder-secondary" @click="emit('rollback')">이전 버전</button>
         <button type="button" class="ai-builder-secondary" @click="emit('edit-natural-language')">채팅으로 수정</button>
@@ -105,23 +101,6 @@ defineExpose({ buildAutoRepairSnapshot, inspectQualityAcrossViewports });
         </Teleport>
       </div>
     </header>
-    <p v-if="snapshot.generationMeta?.draftActivity?.skeletonFirst" class="ai-builder-preview-note" role="status">AI 계획의 전체 배치를 먼저 표시합니다. 콘텐츠 완료 {{snapshot.generationMeta.draftActivity.completedRegions||0}} / {{snapshot.generationMeta.draftActivity.totalRegions||0}}개 영역 · 스켈레톤 표시는 생성 완료를 뜻하지 않습니다.</p>
-    <p v-if="desktopFirst" class="ai-builder-preview-note">데스크톱을 먼저 구성합니다. 반응형 기본 배치는 유지하며 디자인 준비 후 태블릿·모바일을 자동 검사하고 필요한 부분을 보정합니다.</p>
-    <p class="ai-builder-preview-note">이 화면은 실제 발행에 사용하는 데이터와 렌더러로 표시됩니다. <span v-if="previewReferenceWidth">현재 미리보기 기준 {{ previewReferenceWidth }}px · 패널에 맞춰 축소 표시합니다.</span> 화면 크기를 전환해 확인하세요.</p>
-    <div v-if="!wireframe" class="ai-builder-quality-gate" :class="`is-${qualityState}`" role="status" aria-live="polite">
-      <span aria-hidden="true"></span>
-      <strong>{{ qualityLabel }}</strong>
-      <Teleport :to="controlsTarget || 'body'" :disabled="!controlsTarget">
-      <button
-        v-if="!qualityPassed && qualityState !== 'checking'"
-        type="button"
-        class="ai-builder-secondary"
-        :disabled="busy"
-        @click="emit('check-quality')"
-      >다시 검사</button>
-      </Teleport>
-    </div>
-    <TokenUsageReport v-if="!wireframe" :snapshot="snapshot" />
     <CompositionPreviewCanvas ref="previewCanvasRef" :snapshot="snapshot" :viewport="previewViewport" :document-id="documentId" :wireframe="wireframe" :live-generation="Boolean(snapshot.content?.pageSchema)" :generation-activity="generationActivity" :effects-paused="effectsPaused" />
   </section>
 </template>

@@ -91,6 +91,7 @@ function assertPassedQualityGate(snapshot, documentRevision) {
   if (Number(snapshot?.contractVersion || 0) !== 3) return true;
   if(snapshot?.content?.pageSchema){
     require("../shared/page-schema/contract.cjs").assertValid(snapshot.content.pageSchema,snapshot.content.pageContext,{final:true});
+    require("./_page-image-requirements").assertImageCoverage(snapshot.content.pageSchema,snapshot.content.pageContext);
     for(const view of ["desktop","tablet","mobile"])normalizedViewport(snapshot.qualityGate?.results?.[view],view);
   }
   const gate = snapshot?.qualityGate;

@@ -1483,6 +1483,7 @@ async function analyze(instruction = store.naturalLanguage, recovery = {}) {
       },
       onRetry(retry) {
         overviewRetry.value = retry;
+        updateStatusMessage(operationId,`AI 응답 오류로 재시도하고 있습니다. (${retry.attempt}/${retry.maxAttempts})`,"in_progress");
         if (retry.executionDisplay) store.executionDisplays.promo_overview_parser = retry.executionDisplay;
         recordBuilderEvent({
           eventName: "ai_overview_retrying",
@@ -1584,6 +1585,9 @@ async function submitChat() {
       attachmentIds: attachments.value.map((item) => item.id),
     });
     messagePersisted = true;
+    if(finalQualityPassed.value&&store.snapshot?.content?.pageSchema&&/(모바일|mobile)/i.test(input)&&/(구성|배치|수정|만들|디자인|layout|design|adapt|change)/i.test(input)){
+      await editNaturalLanguage({instruction:input,viewportScope:'mobile'});return;
+    }
     markPendingClarificationsAnswered();
     expireRequirementActionMessages();
     const referenceSummary = await analyzeAttachments();
@@ -2114,9 +2118,9 @@ async function retryAssets() {
   }
 }
 
-function pageRequestPayload(instruction=''){
+function pageRequestPayload(instruction='',viewportScope=''){
  if(!instruction&&store.snapshot?.content?.pageSchema)instruction='Apply the latest user request and updated overview to the current page. Infer the requested changes from the conversation. Preserve unrelated structure, IDs, media and actions.';
- const key=JSON.stringify({documentId:store.documentId,overview:store.overviewDraft,requirementsRevision:requirementsRevision.value,instruction,generationRequest:store.naturalLanguage},(_key,value)=>value&&typeof value==='object'&&!Array.isArray(value)?Object.fromEntries(Object.keys(value).sort().map(k=>[k,value[k]])):value);
+ const key=JSON.stringify({documentId:store.documentId,overview:store.overviewDraft,requirementsRevision:requirementsRevision.value,instruction,...(viewportScope?{viewportScope}:{}),generationRequest:store.naturalLanguage},(_key,value)=>value&&typeof value==='object'&&!Array.isArray(value)?Object.fromEntries(Object.keys(value).sort().map(k=>[k,value[k]])):value);
  if(pageGenerationRequest.value?.key!==key)pageGenerationRequest.value={key,requestId:crypto.randomUUID(),baseDocumentRevision:store.documentRevision};
  persistWorkspace();
  return {documentId:store.documentId,baseDocumentRevision:pageGenerationRequest.value.baseDocumentRevision,overview:store.overviewDraft,requirementsRevision:requirementsRevision.value,generationRequest:store.naturalLanguage,requestId:pageGenerationRequest.value.requestId,...(instruction?{instruction}:{})};
@@ -2609,8 +2613,9 @@ async function editNaturalLanguage(input) {
     if(store.snapshot?.content?.pageSchema){
       await flushOverviewChanges();
       store.stage="processing";operationOpen.value=false;
-      const saved=await generatePageSchema(pageRequestPayload(instruction));
-      pageGenerationRequest.value=null;store.documentRevision=Number(saved.revision);store.snapshot=saved.snapshot;transientQualityGate.value=null;store.stage="review_required";activeResultTab.value="wireframe";return;
+      if(input?.viewportScope==='mobile')updateStatusMessage('mobile-layout-'+store.documentId,'모바일 전용 배치를 구성하고 있습니다. 데스크톱 콘텐츠와 디자인은 유지합니다.','in_progress');
+      const saved=await generatePageSchema({...pageRequestPayload(instruction,input?.viewportScope||''),...(input?.viewportScope?{viewportScope:input.viewportScope}:{})});
+      pageGenerationRequest.value=null;store.documentRevision=Number(saved.revision);store.snapshot=saved.snapshot;transientQualityGate.value=null;store.stage="review_required";activeResultTab.value="wireframe";if(input?.viewportScope==='mobile'){wireframeViewport.value='mobile';updateStatusMessage('mobile-layout-'+store.documentId,'모바일 배치를 구성했습니다. 채팅에서 구성을 승인하면 자동 검사·보정을 진행합니다.','completed');}return;
     }
     const response = await submitCompositionOperation({
       action: "propose",
@@ -2631,7 +2636,8 @@ async function editNaturalLanguage(input) {
       await applyOperationProposal();
     }
   } catch (error) {
-    rememberFailedTask({kind:"page-layout-edit",label:"페이지 구성 수정",input:instruction},error);
+    if(input?.viewportScope==='mobile')updateStatusMessage('mobile-layout-'+store.documentId,error.message,'failed');
+    rememberFailedTask({kind:"page-layout-edit",label:"페이지 구성 수정",input:input?.viewportScope?input:instruction},error);
     setBuilderError(store, error);
   }
 }
@@ -3453,10 +3459,7 @@ onBeforeUnmount(() => {
                 </button>
               </li>
             </ol>
-            <div class="ai-process-status" role="status" aria-live="polite">
-              <small>{{ currentStatus.label }}</small>
-              <span class="ai-chat-status" :data-state="currentStatus.state">{{ currentStatus.state }}</span>
-            </div>
+
           </header>
 
           <div class="ai-result-content">

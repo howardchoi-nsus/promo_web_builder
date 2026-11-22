@@ -461,7 +461,7 @@ try {
     sendButton.click({ force: true }),
     sendButton.click({ force: true }),
   ]);
-  await page.getByText("프로모션 개요를 분석하고 있습니다.").waitFor();
+  await page.locator(".ai-chat-pane").getByText("요구사항을 분석하고 있습니다.").waitFor();
   await page.waitForTimeout(750);
   const chatTurnScroll = await page.locator(".ai-chat-messages").evaluate((container) => {
     const target = container.querySelector(".ai-chat-message.is-user.is-turn-anchor");
@@ -530,7 +530,7 @@ try {
   await page.setViewportSize({width:1280,height:720});
   assert.equal(await page.getByText("진행 상황 및 결과", { exact: true }).count(), 0);
   assert.equal(await page.getByText("AI가 이해한 요청", { exact: true }).count(), 0);
-  assert.equal(await page.locator(".ai-result-progress .ai-process-status").count(), 1);
+  assert.equal(await page.locator(".ai-result-progress .ai-process-status").count(), 0);
   if (process.env.AI_BUILDER_DESIGN_QA_SCREENSHOT) {
     await page.setViewportSize({ width: 1802, height: 844 });
     await page.locator(".ai-result-pane").screenshot({
@@ -573,7 +573,7 @@ try {
     confirmedWireframeRevision,
     recentMessages: chatMessages.slice(-4).map((message) => ({ role: message.role, type: message.type, text: message.text })),
   })}`);
-  await page.getByText("AI 이미지를 생성하고 있습니다.").waitFor();
+  await page.locator(".ai-chat-pane").getByText("최종 디자인과 이미지를 생성하고 있습니다.").waitFor();
   // This legacy fixture intentionally contains no registered grid/token policy.
   // It must stop at readiness instead of rendering the old arbitrary 96px/free-position CSS.
   // Successful final rendering is covered by the registered PageSchema/Hallmark suites.

@@ -37,3 +37,8 @@ const older={...planResult(plan,context),context};older.page.root.children.pop()
 // A lightweight manifest cannot repeat large style lists / descriptions.
 const oversized=structuredClone(plan);oversized.regions[0].shell.styles.base=Array(7).fill(oversized.regions[0].shell.styles.base[0]);assert.throws(()=>planResult(oversized,context),{code:'PAGE_DRAFT_INVALID'});
 const verbose=structuredClone(plan);verbose.regions[0].intent='a'.repeat(161);assert.throws(()=>planResult(verbose,context),{code:'PAGE_DRAFT_INVALID'});
+// An explicit image requirement cannot disappear through an empty media list.
+const imageState={...planResult(plan,context),context:{...context,imageRequirements:[{id:'section.visual',sourceIds:[plan.regions[0].sourceIds[0]],intent:'Key visual'}]}};
+const imageStateBefore=structuredClone(imageState);
+assert.throws(()=>applyRegion(imageState,results[0]),{code:'PAGE_IMAGE_PLAN_INCOMPLETE'});
+assert.deepEqual(imageState,imageStateBefore,'Rejected unit must preserve completed draft and cursor');

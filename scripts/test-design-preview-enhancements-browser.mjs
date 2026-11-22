@@ -84,7 +84,7 @@ try{
  await page.locator('.ai-chat-pane').getByRole('button',{name:/^(?:실패한 단계부터 다시 시도|다시 시도)$/}).first().waitFor();assert.equal(mediaCalls,1);
  await page.locator('.ai-chat-pane').getByRole('button',{name:/^(?:실패한 단계부터 다시 시도|다시 시도)$/}).first().click();
  await page.frameLocator('iframe').first().locator('[data-ps-node=design_image][data-live-state=generating]').waitFor();
- await page.waitForFunction(()=>document.body.textContent.includes('품질 검사 통과'));
+ await page.waitForFunction(()=>document.body.textContent.includes('품질 검사를 통과했습니다.'));
  assert.equal(mediaCalls,2);assert.equal(approved,1);assert.ok(savedGate);
  assert.equal(await page.locator('.ai-chat-pane form').count(),1);assert.equal(await page.locator('.ai-chat-pane textarea').count(),1);
  await page.getByRole('button',{name:'데스크톱',exact:true}).click();

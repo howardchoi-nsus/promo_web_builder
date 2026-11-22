@@ -48,6 +48,7 @@ const sql=async()=>[];
 async function media(body,overrides={}){let status=200,payload;const res={status(s){status=s;return this;},json(p){payload=p;return this;}};await processPageMedia({req:{method:'POST'},res,sql,owner:{ownerSubject:'owner'},body:{documentId:'document',baseDocumentRevision:revision,nodeId:'design_image',requestId:'design_request',...body}},{...deps,...overrides});return {status,payload};}
 const before=structuredClone(page);
 const saved=await media({});assert.equal(saved.status,200);assert.equal(providers,1);assert.equal(claims,1);assert.equal(saves,1);assert.equal(cleanups,0);assert.equal(snapshot.content.pageSchema.mediaRequests.length,0);
+const generatedNode=snapshot.content.pageSchema.root.children.at(-1);assert.deepEqual(snapshot.content.pageContext.assets[generatedNode.assetId].sourceIds,[...new Set([...(before.root.children.at(-1).sourceIds||[]),...before.mediaRequests[0].sourceIds])]);
 assert.equal(snapshot.content.pageSchema.root.children.at(-1).presentation,'background');assert.equal(snapshot.generationMeta.review.state,'approved');
 const reused=structuredClone(before);reusePreparedMedia(reused,snapshot.content.pageContext,snapshot);assert.equal(reused.mediaRequests.length,0);assert.ok(reused.root.children.at(-1).assetId);
 const forceNew=structuredClone(before);forceNew.mediaRequests[0].regenerate=true;reusePreparedMedia(forceNew,snapshot.content.pageContext,snapshot);assert.equal(forceNew.mediaRequests.length,1);

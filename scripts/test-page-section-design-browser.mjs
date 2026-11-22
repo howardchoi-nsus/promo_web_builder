@@ -76,7 +76,7 @@ try{
  await page.reload();await page.locator('.ai-chat-pane').getByRole('button',{name:'실패한 단계부터 다시 시도',exact:true}).waitFor();
  assert.equal(await page.frameLocator('iframe').first().locator(`[data-ps-node="${rootTextId}"]`).evaluate(el=>getComputedStyle(el).color),'rgb(255, 119, 119)');
  await page.getByRole('button',{name:'실패한 단계부터 다시 시도',exact:true}).click();
- await page.waitForFunction(()=>document.body.textContent.includes('품질 검사 통과'));
+ await page.waitForFunction(()=>document.body.textContent.includes('품질 검사를 통과했습니다.'));
  assert.equal(attempts[completedRootId],1);assert.equal(mediaCalls,2);assert.equal(snapshot.generationMeta.sectionDesign.state,'complete');assert.equal(savedGate.state,'passed');
  await page.locator('.ai-final-review').screenshot({path:'/tmp/section-design-complete.png'});
  assert.deepEqual(errors,[]);console.log('Section design browser: approved wireframe → real per-region model result → durable styles/media → partial failure/reload/retry without repeating finished regions → final quality passed');

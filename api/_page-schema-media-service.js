@@ -95,7 +95,7 @@ async function processPageMedia({req,res,sql,owner,body},dependencies={}){
     walk(page.root,entry=>{if(entry.node.id===originalNodeId)node=entry.node;});
    }
    const assetId=`image_${id.replaceAll('-','')}`;
-   context.assets[assetId]={kind:'image',label:node.alt||originalRequestData?.intent||node.id,url:`/api/promo-page-schema-image?id=${id}&token=${viewToken}`,width:image.width,height:image.height,displayAspectRatio:page.mediaRequests.find(r=>r.id===node.requestId)?.aspectRatio};
+   context.assets[assetId]={kind:'image',sourceIds:[...new Set([...(node.sourceIds||[]),...((originalRequestData||page.mediaRequests.find(r=>r.id===node.requestId))?.sourceIds||[])])],label:node.alt||originalRequestData?.intent||node.id,url:`/api/promo-page-schema-image?id=${id}&token=${viewToken}`,width:image.width,height:image.height,displayAspectRatio:page.mediaRequests.find(r=>r.id===node.requestId)?.aspectRatio};
    const oldRequest=node.requestId;
    snapshot.generationMeta={...snapshot.generationMeta,mediaBindings:{...snapshot.generationMeta?.mediaBindings,[node.id]:{requestId:oldRequest,assetId,request:originalRequestData,execution:imageExecution?{...imageExecution,providerResult:image.provider,usage:image.usage}:undefined,contentKey:originalRequestData?reusableMediaKey(originalRequestData,context):null}}};
    node.assetId=assetId;node.requestId=null;page.mediaRequests=page.mediaRequests.filter(r=>r.id!==oldRequest);

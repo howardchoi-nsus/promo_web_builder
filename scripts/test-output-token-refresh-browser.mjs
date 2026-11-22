@@ -53,7 +53,7 @@ try{
  await page.locator('.ai-builder-error').getByText('LAYOUT_TOKEN_POLICY_INVALID',{exact:true}).waitFor();assert.equal(revision,1);assert.equal(JSON.stringify(snapshot.content.pageSchema),originalPage);
  activeReady=true;
  await page.getByRole('button',{name:'활성 등록 토큰 다시 연결',exact:true}).first().click();
- await page.waitForFunction(()=>document.body.textContent.includes('품질 검사 통과'));
+ await page.waitForFunction(()=>document.body.textContent.includes('품질 검사를 통과했습니다.'));
  assert.equal(reconnects,2);assert.equal(revision,3);assert.equal(snapshot.qualityGate.state,'passed');assert.equal(JSON.stringify(snapshot.content.pageSchema),originalPage);assert.deepEqual(errors,[]);
  console.log('Token reconnect browser: missing-token cause, vertical mobile errors, registration-required rejection, explicit refresh, unchanged content and quality recovery passed.');
 }finally{await browser.close();await new Promise(r=>server.close(r));}

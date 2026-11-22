@@ -8,7 +8,7 @@ import {fixture,context} from './fixtures/page-schema.mjs';
 const require=createRequire(import.meta.url);
 const {snapshotForPage}=require('../api/_page-schema-service');
 const {normalize}=require('../shared/page-schema/contract.cjs');
-let revision=0,snapshot,generated=0,edited=0,approved=0,savedGate;
+let revision=0,snapshot,generated=0,edited=0,approved=0,savedGate,mobileRequest;
 const errors=[],requests=[];
 const overview={title:'동적 페이지 테스트',leadText:'혜택 안내',promotionPurpose:'기타',promotionPurposeOther:'프로모션',market:'한국',audience:'일반고객',campaignTone:'친근함',mainOffer:'',_review:{missingCriticalInputs:['mainOffer']},contentSections:[],additionalInformation:[{label:'기간',value:'미정',confirmationRequired:true}],notices:[],legalInformation:[]};
 const root=resolve(new URL('..',import.meta.url).pathname);
@@ -23,7 +23,7 @@ const server=createServer(async(req,res)=>{try{
   if(pathname==='/api/promo-overview-parse')payload={ok:true,overview,overviewFingerprint:'fixture',missingCriticalInputs:['mainOffer'],warnings:[]};
   if(pathname==='/api/promo-page-schema'){
    assert.equal(body.documentId,'browser-doc');assert.equal(body.baseDocumentRevision,revision);
-   if(body.operation==='approve-structure'){approved++;snapshot.generationMeta.review={state:'approved'};}else if(req.method==='POST'){generated++;snapshot=snapshotForPage(normalize(fixture('example-editorial')).page,context);snapshot.generationMeta.review={state:'pending'};}else{edited++;snapshot.content.pageSchema=body.page;snapshot.generationMeta.review={state:'pending'};}
+   if(body.viewportScope==='mobile'){mobileRequest=body;snapshot.generationMeta.review={state:'pending'};}else if(body.operation==='approve-structure'){approved++;snapshot.generationMeta.review={state:'approved'};}else if(req.method==='POST'){generated++;snapshot=snapshotForPage(normalize(fixture('example-editorial')).page,context);snapshot.generationMeta.review={state:'pending'};}else{edited++;snapshot.content.pageSchema=body.page;snapshot.generationMeta.review={state:'pending'};}
    payload={ok:true,warnings:[{code:'UNCONFIRMED_OPTIONAL_CONTENT_OMITTED',message:'additionalInformation.0: 미정인 사실 정보는 출력에서 제외했습니다.'}],revision:++revision,snapshot:{...snapshot,documentRevision:revision,qualityGate:{state:'pending',documentRevision:revision}}};snapshot=payload.snapshot;
   }
   if(pathname==='/api/promo-builder-documents'&&req.method==='PATCH'){savedGate=body.snapshot.qualityGate;snapshot={...body.snapshot,documentRevision:++revision,qualityGate:{...savedGate,documentRevision:revision}};payload={ok:true,revision,snapshot};}
@@ -97,8 +97,14 @@ try{
  await page.getByRole('button',{name:'전송',exact:true}).click();
  await page.getByRole('button',{name:/^(?:AI가 구성하고 미리보기 생성|페이지 미리보기 생성)$/}).click().catch(async e=>{console.error(JSON.stringify({requests,errors,body:await page.locator('body').innerText()}));throw e;});
  await page.locator('.ai-chat-pane').getByRole('button',{name:'페이지 구성 승인',exact:true}).click();
- await page.waitForFunction(()=>document.body.textContent.includes('품질 검사 통과'));
+ await page.waitForFunction(()=>document.body.textContent.includes('품질 검사를 통과했습니다.'));
  assert.equal(generated,2);assert.equal(edited,0);
  assert.equal(approved,2);assert.deepEqual(Object.keys(savedGate.results),['desktop','tablet','mobile']);assert.deepEqual(errors,[]);
+ const parseCount=requests.filter(path=>path==='/api/promo-overview-parse').length;
+ await composer.fill('모바일 배치를 구성해줘');await page.getByRole('button',{name:'전송',exact:true}).click();
+ await page.getByText('모바일 배치를 구성했습니다. 채팅에서 구성을 승인하면 자동 검사·보정을 진행합니다.',{exact:true}).waitFor();
+ assert.equal(mobileRequest.viewportScope,'mobile');assert.equal(mobileRequest.instruction,'모바일 배치를 구성해줘');assert.equal(requests.filter(path=>path==='/api/promo-overview-parse').length,parseCount);
+ assert.equal(await page.locator('.ai-result-pane .ai-builder-quality-gate,.ai-result-pane .ai-builder-preview-note,.ai-result-pane .ai-builder-readonly-badge').count(),0);
+ assert.equal(await page.locator('.ai-process-steps li').count(),2);
  console.log('PageSchema Builder browser: natural request → dynamic API → recursive preview → responsive views → conversational follow-up without extra forms → three viewport quality save passed.');
 }finally{await browser.close();await new Promise(r=>server.close(r));}

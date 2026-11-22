@@ -30,12 +30,13 @@ function contentContext(overview,{usagePolicy,tokenCatalog,tokenValues,tokenVers
  for(const key of ['contentSections','additionalInformation','notices','legalInformation'])visit(overview[key],key,true);
  const required=Object.values(contentSources).filter(source=>source.required);
  if(required.length>=LIMITS.nodes||Object.values(contentSources).reduce((sum,source)=>sum+source.text.length,0)>LIMITS.text)throw Object.assign(new Error('콘텐츠가 페이지 예산을 초과합니다. 요청을 나누거나 필수 콘텐츠를 줄여 주세요.'),{code:'PAGE_SCHEMA_LIMIT_EXCEEDED',statusCode:422});
- return {usagePolicy,tokenCatalog,tokenValues,tokenVersionId,styleChoicesVersion,contentSources,actions,assets,formFields:{},icons:icons||{icon_check:{glyph:'check'},icon_arrow:{glyph:'arrow'},icon_star:{glyph:'star'},icon_info:{glyph:'info'}}};
+ return {imageRequirements:require('./_page-image-requirements').imageRequirements(overview,{contentSources}),usagePolicy,tokenCatalog,tokenValues,tokenVersionId,styleChoicesVersion,contentSources,actions,assets,formFields:{},icons:icons||{icon_check:{glyph:'check'},icon_arrow:{glyph:'arrow'},icon_star:{glyph:'star'},icon_info:{glyph:'info'}}};
 }
 async function generatePage({overview,context,instruction='',currentPage=null,promptConfig,generate}){
  const response=await generate({type:'promo_page_schema_planner',schemaName:'promo_page_schema',schema:runtimeSchema(context),promptConfig});
  const repaired=repairApprovedSourceBindings(response.result,context);
  const raw=repaired.page;
+ require('./_page-image-requirements').assertImageCoverage(raw,context);
  assertValid(raw,context);
  const normalized=normalize(raw);const validation=assertValid(normalized.page,context);
  return {page:normalized.page,validation,adjustments:[...repaired.adjustments,...normalized.adjustments],provider:response.provider,usage:response.usage};
@@ -76,5 +77,5 @@ function plannerContext(context){const {contentSources,actions,formFields}=conte
  }));
  const generatedRoles=pageGenerationStyleRoles(context),allRoles=pageStyleRoles(context);
  const styleSelectionDiagnostics=(context.designBrief?.tokenPreferences?.values||[]).map(value=>{const matching=allRoles.filter(role=>String(context.tokenValues[pageStyleToken(context,role)]).toLowerCase()===value.toLowerCase()),selected=generatedRoles.filter(role=>matching.some(item=>item.key===role.key));return {value,status:selected.length?'available':matching.length?'candidate-budget-excluded':Object.values(context.tokenValues).some(v=>typeof v==='string'&&v.toLowerCase()===value.toLowerCase())?'registered-but-incompatible':'not-registered',roles:selected.map(role=>role.key)};});
- return {styleSelectionDiagnostics,layoutGeometry,layoutTokens:layoutPolicy,spacingTokens:layoutPolicy.spacing,primitives:runtimeSchema(context).$defs.node.anyOf.map(option=>option.$ref.split('/').at(-1)),omittedContent:context.omittedContent||[],unresolvedInputs:context.unresolvedInputs||[],contentSources,assets,actions,icons,formFields,styleWarnings:pageStyleWarnings(context),policyRoles:pageGenerationStyleRoles(context).filter(r=>pageStyleToken(context,r)).map(r=>({...r,token:pageStyleToken(context,r),value:context.tokenValues[pageStyleToken(context,r)]}))};}
+ return {imageRequirements:context.imageRequirements||[],styleSelectionDiagnostics,layoutGeometry,layoutTokens:layoutPolicy,spacingTokens:layoutPolicy.spacing,primitives:runtimeSchema(context).$defs.node.anyOf.map(option=>option.$ref.split('/').at(-1)),omittedContent:context.omittedContent||[],unresolvedInputs:context.unresolvedInputs||[],contentSources,assets,actions,icons,formFields,styleWarnings:pageStyleWarnings(context),policyRoles:pageGenerationStyleRoles(context).filter(r=>pageStyleToken(context,r)).map(r=>({...r,token:pageStyleToken(context,r),value:context.tokenValues[pageStyleToken(context,r)]}))};}
 module.exports={reusePreparedMedia,reusableMediaKey,structureFingerprint,plannerContext,contentContext,generatePage,snapshotForPage,TYPES,LIMITS,assertValid,normalize};

@@ -53,7 +53,7 @@ try{
  await frame.locator('[data-live-skeleton]').first().waitFor({state:'attached'});assert.equal(await frame.locator('[data-live-skeleton]').count(),2);
  assert.equal(await page.getByRole('button',{name:'태블릿',exact:true}).isDisabled(),true);
  assert.equal(await page.getByRole('button',{name:'모바일',exact:true}).isDisabled(),true);
- assert.ok(await page.getByText('스켈레톤 표시는 생성 완료를 뜻하지 않습니다.',{exact:false}).isVisible());
+ assert.equal(await page.locator('.ai-result-pane .ai-builder-preview-note').count(),0);assert.equal(await page.locator('.ai-result-pane .ai-process-status').count(),0);
  harness.release();harness.holdSecond();
  {const deadline=Date.now()+15000;while(!harness.waiting){assert.ok(Date.now()<deadline,'Second provider did not start');await new Promise(r=>setTimeout(r,10));}}
  // The actual service/SQL driver has saved region one while its provider call
@@ -80,7 +80,7 @@ try{
  assert.ok(harness.events.some(event=>event.completed===2&&!event.complete),'last region must be saved before final assembly');
  assert.equal(harness.events.at(-1).complete,true);
  await page.getByRole('button',{name:'페이지 구성 승인',exact:true}).click();
- await page.getByText('품질 검사 통과',{exact:true}).first().waitFor();
+ await page.waitForFunction(()=>[...document.querySelectorAll('button')].some(b=>b.textContent.trim()==='새 창에서 확인'&&!b.disabled));
  assert.deepEqual(Object.keys(savedGate.results),['desktop','tablet','mobile']);
  for(const label of ['데스크톱','태블릿','모바일'])assert.ok(await page.getByText(`자동 품질 검사 · ${label} 검사 완료`,{exact:true}).count()>0);
  assert.equal(await page.getByRole('button',{name:'태블릿',exact:true}).isEnabled(),true);
