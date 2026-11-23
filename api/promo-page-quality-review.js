@@ -7,3 +7,6 @@ module.exports=async function handler(req,res){
  try{requireBuilderFlag('pageSchemaV1');requireBuilderFlag('qualityReviewAgent');const owner=resolveBuilderOwner(req,res);return await require('./_page-quality-agent').processQualityReview({sql:getSql(),owner,body:parseBody(req.body),res});}
  catch(e){return res.status(e.statusCode||500).json({error:e.message,code:e.code||'QUALITY_AGENT_FAILED',errors:e.errors||[],retryable:e.retryable===true});}
 };
+
+// Persist server-side lifecycle even when the browser disconnects or hides errors.
+module.exports=require('./_work-log').withWorkLog('promo-page-quality-review',module.exports);

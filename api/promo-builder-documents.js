@@ -382,3 +382,6 @@ module.exports = async function handler(req, res) {
 
 module.exports.normalizeEditorSnapshot = normalizeEditorSnapshot;
 module.exports.normalizeSectionSnapshot = normalizeSectionSnapshot;
+
+// Persist server-side lifecycle even when the browser disconnects or hides errors.
+module.exports=require('./_work-log').withWorkLog('promo-builder-documents',module.exports);

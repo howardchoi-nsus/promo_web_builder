@@ -16,6 +16,8 @@ const EVENT_NAMES = new Set([
 // Public client event names evolve independently of the historical DB enum.
 // Normalize on the server so already deployed/cached clients remain compatible.
 const EVENT_ALIASES = Object.freeze({
+  automatic_step_retry: {name:'composition_requested', phase:'automatic_retry'},
+  builder_client_error: {name:'composition_apply_failed', phase:'client_error'},
   ai_overview_retrying: {name:'ai_overview_requested', phase:'retry'},
   builder_quality_gate_passed: {name:'composition_validated', phase:'quality_gate_passed'},
   builder_quality_gate_blocked: {name:'composition_review_required', phase:'quality_gate_blocked'},
@@ -59,6 +61,7 @@ module.exports = async function handler(req, res) {
       const document = await fetchDocument(sql, documentId, owner.ownerSubject, { includeSnapshot: false });
       if (!document) return res.status(404).json({ error: "Builder document not found" });
     }
+    await require('./_work-log').logEvent({event:receivedEventName==='builder_client_error'?'client_error':'checkpoint',status:receivedEventName==='builder_client_error'?'failed':'running',errorCode:metadata.code,message:metadata.message,metadata:{sourceEventName:receivedEventName,eventPhase:metadata.eventPhase,retryable:metadata.retryable,sourceRequestId:body.requestId,platformRequestId:metadata.platformRequestId}});
     await sql`
       insert into promo_builder_events (
         document_id, owner_subject_hash, event_name,
@@ -88,3 +91,6 @@ module.exports.safeMetadata = safeMetadata;
 
 module.exports.EVENT_ALIASES = EVENT_ALIASES;
 module.exports.normalizeEvent = normalizeEvent;
+
+// Persist server-side lifecycle even when the browser disconnects or hides errors.
+module.exports=require('./_work-log').withWorkLog('promo-builder-events',module.exports);

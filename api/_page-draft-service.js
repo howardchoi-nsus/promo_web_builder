@@ -63,6 +63,7 @@ async function processPageDraft({sql,owner,body,found,res},deps={}){
    let response=await use.generate({type,schemaName:state.plan?'page_draft_region_v2':'page_draft_plan_v2',schema:state.plan?regionSchema(context,region):planSchema(context),promptConfig:execution.promptConfig});endPhase('validation');
    try{if(state.plan){state.page=applyRegion(state,response.result);state.cursor++;}else Object.assign(state,planResult(response.result,context));}
    catch(validationError){
+    await require('./_work-log').logEvent({event:'checkpoint',status:'failed',errorCode:validationError.code,message:validationError.message,metadata:{unitId:region?.shell?.id,attempt:1,errors:validationError.errors,timings:timing}});
     if(!builderFlags().automaticPageFlow||!['PAGE_DRAFT_INVALID','PAGE_IMAGE_PLAN_INCOMPLETE','PAGE_SCHEMA_INVALID'].includes(validationError.code))throw validationError;
     const renewed=await sql`update promo_page_drafts set lease_expires_at=now()+interval '6 minutes' where id=${runId}::uuid and lease_token=${lease}::uuid and lease_expires_at>now() returning id`;if(!renewed.length)throw error('PAGE_DRAFT_LEASE_CHANGED','작업 소유권이 변경되었습니다.');
     timing.repairCalls=1;timing.validationFailure={code:validationError.code,model:execution.promptConfig.model,usage:response.usage||{}};
@@ -74,6 +75,7 @@ async function processPageDraft({sql,owner,body,found,res},deps={}){
     state.executions.push({type,promptId:repairExecution.promptConfig.promptId,promptVersion:repairExecution.promptConfig.promptVersion,model:repairExecution.promptConfig.model,renderedPromptHash:repairExecution.promptConfig.renderedPromptHash,skills:repairExecution.promptConfig.skillSnapshots||[],repair:true,usage:response.usage||{}});
    }
    if(!timing.repairCalls)state.executions.push({type,promptId:execution.promptConfig.promptId,promptVersion:execution.promptConfig.promptVersion,model:execution.promptConfig.model,renderedPromptHash:execution.promptConfig.renderedPromptHash,skills:execution.promptConfig.skillSnapshots||[],usage:response.usage||{}});
+   await require('./_work-log').logEvent({event:'checkpoint',status:'running',metadata:{unitId:region?.shell?.id,sequence:row.sequence,repairCalls:timing.repairCalls,timings:timing}});
    endPhase('save');state.timings||=[];state.timings.push({...timing});
    const updated=await sql`update promo_page_drafts set state=${JSON.stringify(state)}::jsonb,sequence=sequence+1,lease_token=null,lease_expires_at=null,updated_at=now() where id=${runId}::uuid and lease_token=${lease}::uuid and lease_expires_at>now() returning sequence`;
    if(!updated.length)throw error('PAGE_DRAFT_LEASE_CHANGED','작업 소유권이 변경되었습니다. 저장된 초안을 다시 불러와 주세요.');

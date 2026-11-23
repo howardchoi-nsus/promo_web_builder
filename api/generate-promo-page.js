@@ -24,3 +24,6 @@ function createHandler({ env = process.env } = {}) {
 const handler = createHandler();
 module.exports = handler;
 module.exports.createHandler = createHandler;
+
+// Persist server-side lifecycle even when the browser disconnects or hides errors.
+module.exports=require('./_work-log').withWorkLog('generate-promo-page',module.exports);

@@ -1,4 +1,5 @@
 <script setup>
+import {startWorkTask} from "./services/work-log-context.mjs";
 import {generateProgressivePage,waitForDraftPaint} from './services/page-draft.mjs';
 import { sectionDesignPending } from "../../../shared/page-schema/section-design.mjs";
 import { prepareSectionDesign } from "./services/page-section-design.mjs";
@@ -1579,6 +1580,7 @@ async function submitChat() {
   const input = chatInput.value.trim();
   const hasPendingAttachment = attachments.value.some((item) => item.dataUrl && !item.analysis);
   if (chatSubmitting.value || interactionLocked.value || (!input && !hasPendingAttachment)) return;
+  startWorkTask(store.documentId,chatSessionId.value);
   clearFailedTask();
   chatSubmitting.value = true;
   chatInput.value = "";

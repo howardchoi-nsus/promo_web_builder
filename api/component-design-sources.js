@@ -94,3 +94,5 @@ function toSource(row) {
 }
 
 module.exports.toSource = toSource;
+
+module.exports=require('./_work-log').withWorkLog('component-design-sources',module.exports);

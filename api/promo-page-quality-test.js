@@ -402,3 +402,6 @@ module.exports.buildFixture = buildFixture;
 module.exports.buildLivePayload = buildLivePayload;
 module.exports.createHandler = createHandler;
 module.exports.normalizeInput = normalizeInput;
+
+// Persist server-side lifecycle even when the browser disconnects or hides errors.
+module.exports=require('./_work-log').withWorkLog('promo-page-quality-test',module.exports);

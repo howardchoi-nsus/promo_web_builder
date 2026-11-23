@@ -1044,7 +1044,7 @@ const { createApp } = Vue;
 const initialSearchParams = new URLSearchParams(window.location.search);
 const initialView = initialSearchParams.get("view") === "admin" ? "prompts" : "builder";
 const requestedAdminTab = initialSearchParams.get("tab");
-const initialAdminTab = ["webhook", "llm-models", "llm", "agent-skills", "prompt-variables", "layout-references", "component-generation", "components", "section-presets", "promo-form", "design-tokens", "i18n", "integrations", "audit"].includes(requestedAdminTab)
+const initialAdminTab = ["webhook", "llm-models", "llm", "agent-skills", "work-logs", "prompt-variables", "layout-references", "component-generation", "components", "section-presets", "promo-form", "design-tokens", "i18n", "integrations", "audit"].includes(requestedAdminTab)
   ? requestedAdminTab
   : "promo-form";
 
@@ -2385,7 +2385,7 @@ const adminApp = createApp({
     },
 
     selectAdminTab(tab) {
-      if (!["webhook", "llm-models", "llm", "agent-skills", "prompt-variables", "layout-references", "component-generation", "components", "section-presets", "promo-form", "design-tokens", "i18n", "integrations", "audit"].includes(tab)) return;
+      if (!["webhook", "llm-models", "llm", "agent-skills", "work-logs", "prompt-variables", "layout-references", "component-generation", "components", "section-presets", "promo-form", "design-tokens", "i18n", "integrations", "audit"].includes(tab)) return;
       if (tab === "promo-form" && !this.templateLayoutManagementEnabled) {
         this.setStatus("템플릿·페이지 레이아웃 관리는 비활성화되었습니다.");
         return;
@@ -7420,6 +7420,7 @@ adminApp.component("template-layout-manager", window.PromoAdminTemplateLayout.co
 adminApp.component("section-layout-preset-manager", window.PromoAdminSectionLayouts.component);
 adminApp.component("design-token-manager", window.PromoAdminDesignTokens.component);
 adminApp.component("llm-model-manager", window.PromoAdminLlmModels.component);
+adminApp.component("work-log-manager", window.PromoAdminWorkLogs.component);
 adminApp.component("agent-skill-manager", window.PromoAdminSkills.manager);
 adminApp.component("prompt-skill-bindings", window.PromoAdminSkills.bindings);
 adminApp.component("prompt-variable-manager", window.PromoAdminPromptVariables.component);

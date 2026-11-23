@@ -3278,7 +3278,7 @@
       "id": "doc-0425",
       "title": "공통 디자인 방향 계약 — 정책·스킬·프롬프트 구분",
       "category": "기술 문서",
-      "updatedAt": "2026-11-19",
+      "updatedAt": "2026-11-23",
       "sourcePath": "docs/mouse-swarm-builder/design-direction.md",
       "contentUrl": "/document/content/doc-0425.md"
     },
@@ -3286,7 +3286,7 @@
       "id": "doc-0426",
       "title": "개발 반영 및 운영 준비 상태",
       "category": "구현 문서",
-      "updatedAt": "2026-11-22",
+      "updatedAt": "2026-11-23",
       "sourcePath": "docs/mouse-swarm-builder/implementation-status.md",
       "contentUrl": "/document/content/doc-0426.md"
     },
@@ -3294,7 +3294,7 @@
       "id": "doc-0427",
       "title": "Mouse Swarm Builder 표시 정책과 구현 계약",
       "category": "정책",
-      "updatedAt": "2026-11-22",
+      "updatedAt": "2026-11-23",
       "sourcePath": "docs/mouse-swarm-builder/policy.md",
       "contentUrl": "/document/content/doc-0427.md"
     },

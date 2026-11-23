@@ -1,12 +1,16 @@
+import {workTaskId,bindWorkContext} from './work-log-context.mjs';
 import { requireChatWorkspace } from "./chat-workspace-response.mjs";
 import { upload } from "@vercel/blob/client";
 
 async function request(path, options = {}) {
+  let workBody={};try{workBody=JSON.parse(options.body||'{}');}catch{}
+  const workQuery=new URL(path,'http://work-log.local').searchParams;for(const name of ['documentId','sessionId'])if(!workBody[name]&&workQuery.get(name))workBody[name]=workQuery.get(name);
+  const taskId=workTaskId(workBody);
   const response = await fetch(path, {
     credentials: "same-origin",
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
     cache: "no-store",
     ...options,
+    headers: { "Content-Type": "application/json", "X-Builder-Task-Id":taskId, ...(options.headers || {}) },
   });
   const parsed = await response.json().catch(() => ({}));
   const payload = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
@@ -15,6 +19,7 @@ async function request(path, options = {}) {
     const error = new Error(payload.message || payload.error || (response.status >= 500
       ? `서버 실행 중 오류가 발생했습니다 (HTTP ${response.status}${platformCode ? ` · ${platformCode}` : ""}).`
       : `Request failed (${response.status})`));
+    error.workRequestId=response.headers?.get?.('x-work-request-id')||'';error.taskId=taskId;
     error.code = payload.code || platformCode || `HTTP_${response.status}`;
     error.status = response.status;
     error.details = payload.details || payload.validation || payload.errors || null;
@@ -25,6 +30,7 @@ async function request(path, options = {}) {
     error.executionDisplay = payload.executionDisplay || null;
     throw error;
   }
+  bindWorkContext(taskId,workBody,payload);
   return payload;
 }
 

@@ -38,3 +38,6 @@ function createHandler(deps = {}) {
 
 module.exports = createHandler();
 module.exports.createHandler = createHandler;
+
+// Persist server-side lifecycle even when the browser disconnects or hides errors.
+module.exports=require('./_work-log').withWorkLog('promo-builder-wireframes-confirm',module.exports);

@@ -231,3 +231,5 @@ module.exports = {
   generateValidatedRegistryComposition,
   processCompositionProposal,
 };
+
+module.exports.processCompositionProposal=require('./_work-log').withBackgroundLog('composition-background',module.exports.processCompositionProposal);

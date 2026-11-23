@@ -710,3 +710,5 @@ module.exports = {
   normalizedImageAspectRatio,
   geminiImageDimensions,
 };
+
+for(const name of ['generateStructuredPlannerResult','generateStructuredVisionResult','generateSectionImage','generateSectionDesignPlan','generateMultiComponentLayoutPlan','generateSectionCompositionPlan'])if(typeof module.exports[name]==='function')module.exports[name]=require('./_work-log').withModelLog(module.exports[name]);

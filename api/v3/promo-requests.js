@@ -97,3 +97,5 @@ function createHandler(dependencies = {}) {
 
 module.exports = createHandler();
 module.exports.createHandler = createHandler;
+
+module.exports=require('../_work-log.js').withWorkLog('v3/promo-requests.js',module.exports);

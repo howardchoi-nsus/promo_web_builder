@@ -1,3 +1,4 @@
+import {recordBuilderEvent} from '../services/composition-client.mjs';
 import { reactive } from "vue";
 import { createAiBuilderState } from "../../shared/composition/composition-state.mjs";
 
@@ -13,6 +14,7 @@ export function setBuilderError(store, error) {
         message: detail?.message ? String(detail.message) : "",
       }))
     : [];
+  if(typeof window!=='undefined')void recordBuilderEvent({eventName:'builder_client_error',documentId:store.documentId||undefined,documentRevision:store.documentRevision,requestId:error?.workRequestId||error?.requestId||'',metadata:{platformRequestId:error?.requestId||'',code:String(error?.code||'BUILDER_REQUEST_FAILED'),message:String(error?.message||'Client operation failed'),retryable:error?.retryable!==false}});
   store.stage = "failed";
   store.error = {
     code: String(error?.code || "BUILDER_REQUEST_FAILED"),

@@ -191,3 +191,6 @@ module.exports = async function handler(req, res) {
     });
   }
 };
+
+// Persist server-side lifecycle even when the browser disconnects or hides errors.
+module.exports=require('./_work-log').withWorkLog('promo-page-composition-apply',module.exports);

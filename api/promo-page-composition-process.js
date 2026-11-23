@@ -26,3 +26,6 @@ module.exports = async function handler(req, res) {
 };
 
 module.exports.validWorkerToken = validWorkerToken;
+
+// Persist server-side lifecycle even when the browser disconnects or hides errors.
+module.exports=require('./_work-log').withWorkLog('promo-page-composition-process',module.exports);

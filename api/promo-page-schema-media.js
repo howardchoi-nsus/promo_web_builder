@@ -13,3 +13,6 @@ module.exports=async function handler(req,res){
   return await processPageMedia({req,res,sql,owner,body});
  }catch(error){return res.status(error.statusCode||500).json({error:error.message,code:error.code||'PAGE_SCHEMA_MEDIA_FAILED',retryable:error.retryable??[409,429,500,502,503,504].includes(error.statusCode||500),errors:error.errors||[]});}
 };
+
+// Persist server-side lifecycle even when the browser disconnects or hides errors.
+module.exports=require('./_work-log').withWorkLog('promo-page-schema-media',module.exports);

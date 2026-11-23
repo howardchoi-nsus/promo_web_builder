@@ -86,3 +86,5 @@ function localizedMessage(error) {
 
 module.exports.fetchRun = fetchRun;
 module.exports.localizedMessage = localizedMessage;
+
+module.exports=require('./_work-log').withWorkLog('component-generation-runs',module.exports);
