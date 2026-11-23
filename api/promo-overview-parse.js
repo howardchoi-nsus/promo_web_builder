@@ -57,18 +57,17 @@ module.exports = async function handler(req, res) {
       generationMode: "new-draft",
       ...promptContexts,
     }));
-    const generation = await generateStructuredPlannerResult({
-      type: "promo_overview_parser",
-      schemaName: "promo_overview_parse",
-      schema: OVERVIEW_PARSE_SCHEMA,
-      promptConfig: promptSnapshot.promptConfig,
-    });
+    const generate=()=>generateStructuredPlannerResult({type:'promo_overview_parser',schemaName:'promo_overview_parse',schema:OVERVIEW_PARSE_SCHEMA,promptConfig:promptSnapshot.promptConfig});
+    const reuse=require('./_promo-builder-flags').builderFlags().overviewResultReuse;
+    const generation=reuse?await require('./_overview-result-reuse').reuseOverview({sql,owner:require('./_promo-builder-auth').resolveBuilderOwner(req,res).ownerSubject,taskId:require('./_work-log').uuid(req.headers['x-builder-task-id'])||randomUUID(),config:promptSnapshot.promptConfig,generate,validate:value=>normalizeParsedOverview({result:value.result,instruction})}):await generate();
+    if(generation.pending)return res.status(202).json({ok:true,pending:true,retryAfterMs:1000});
     const parsed = measureSync('overviewValidation',()=>normalizeParsedOverview({
       result: generation.result,
       instruction,
     }));
     return res.status(200).json({
       ok: true,
+      reused:generation.reused===true,
       draftId: randomUUID(),
       createdAt: new Date().toISOString(),
       ...parsed,

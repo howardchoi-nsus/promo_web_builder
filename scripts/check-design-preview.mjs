@@ -2,6 +2,10 @@ import {spawnSync} from 'node:child_process';
 const root=new URL('..',import.meta.url);
 if(!process.env.PGLITE_TEST_MODULE)throw new Error('PGLITE_TEST_MODULE must point to a PGlite installation for the SQL storage check. See the design preview rollout guide.');
 const checks=[
+ 'test-prompt-benchmark-browser.mjs',
+ 'test-work-capacity-sql.mjs','test-parallel-page-browser.mjs',
+ 'test-sql-instrumentation.mjs',
+ 'test-parallel-page-work.mjs','test-parallel-design-sql.mjs','test-overview-reuse-benchmark.mjs','test-parallel-orchestration.mjs',
  'test-page-performance.mjs',
  'test-work-logs.mjs','test-work-logs-browser.mjs','test-work-log-client.mjs',
  'test-page-automatic-sql.mjs','test-design-task-contract.mjs',

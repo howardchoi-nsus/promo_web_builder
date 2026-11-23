@@ -6,7 +6,7 @@ const {plannerContext,structureFingerprint}=require('./_page-schema-service');
 const {treeNodes,designGroups}=require('../shared/page-schema/section-design.cjs');
 const {sectionDesignSchema,applySectionDesign}=require('./_page-section-design-contract');
 const error=(code,message,statusCode=409)=>Object.assign(new Error(message),{code,statusCode,retryable:false});
-function newSectionDesign(page){return {version:1,id:require('node:crypto').randomUUID(),structureFingerprint:structureFingerprint(page),state:'pending',groups:designGroups(page),completed:[],promptIdentity:null};}
+function newSectionDesign(page){return {version:1,parallelV1:require('./_promo-builder-flags').builderFlags().parallelPageWork,id:require('node:crypto').randomUUID(),structureFingerprint:structureFingerprint(page),state:'pending',groups:designGroups(page),completed:[],promptIdentity:null};}
 async function processSectionDesign({sql,owner,body,res},dependencies={}){
  const use={fetchDocument,createDocumentRevision,createPromptExecutionSnapshot,generate:generateStructuredPlannerResult,acquireGeneration,failGeneration,...dependencies};let job;
  try{

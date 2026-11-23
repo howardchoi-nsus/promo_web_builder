@@ -234,7 +234,7 @@ function getSql() {
     error.statusCode = 500;
     throw error;
   }
-  return neon(databaseUrl);
+  return require('./_work-performance').instrumentSql(neon(databaseUrl));
 }
 
 async function ensureDefaultPromptTemplates(sql) {

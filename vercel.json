@@ -3,7 +3,9 @@
   "cleanUrls": true,
   "trailingSlash": false,
   "functions": {
-    "api/promo-page-section-design.js": { "maxDuration": 300 },
+    "api/promo-page-section-design.js": {
+      "maxDuration": 300
+    },
     "api/promo-page-quality-test.js": {
       "maxDuration": 300
     },
@@ -41,6 +43,12 @@
       "maxDuration": 300
     },
     "api/promo-page-schema-media.js": {
+      "maxDuration": 300
+    },
+    "api/promo-page-work.js": {
+      "maxDuration": 300
+    },
+    "api/admin-prompt-benchmarks.js": {
       "maxDuration": 300
     }
   }

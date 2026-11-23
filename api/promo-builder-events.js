@@ -61,7 +61,7 @@ module.exports = async function handler(req, res) {
       const document = await fetchDocument(sql, documentId, owner.ownerSubject, { includeSnapshot: false });
       if (!document) return res.status(404).json({ error: "Builder document not found" });
     }
-    await require('./_work-log').logEvent({event:receivedEventName==='builder_client_error'?'client_error':'checkpoint',status:receivedEventName==='builder_client_error'?'failed':'running',errorCode:metadata.code,message:metadata.message,metadata:{sourceEventName:receivedEventName,eventPhase:metadata.eventPhase,retryable:metadata.retryable,sourceRequestId:body.requestId,platformRequestId:metadata.platformRequestId}});
+    await require('./_work-log').logEvent({event:receivedEventName==='builder_client_error'?'client_error':'checkpoint',status:receivedEventName==='builder_client_error'||receivedEventName==='builder_quality_gate_blocked'?'failed':receivedEventName==='builder_quality_gate_passed'?'succeeded':'running',durationMs:Number.isFinite(Number(body.durationMs))?Number(body.durationMs):null,errorCode:metadata.code,message:metadata.message,metadata:{sourceEventName:receivedEventName,eventPhase:metadata.eventPhase,retryable:metadata.retryable,sourceRequestId:body.requestId,platformRequestId:metadata.platformRequestId,timings:{qualityElapsedMs:metadata.qualityElapsedMs,journeyElapsedMs:metadata.journeyElapsedMs}}});
     await sql`
       insert into promo_builder_events (
         document_id, owner_subject_hash, event_name,

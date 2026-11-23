@@ -259,10 +259,10 @@ function retryDelayMs(policy, completedAttempts) {
 
 export async function analyzeOverviewWithRetry(naturalLanguage, options = {}) {
   const wait = options.wait || ((delayMs) => new Promise((resolve) => setTimeout(resolve, delayMs)));
-  let attempt = 1;
+  let attempt = 1,pendingPolls=0;
   while (true) {
     try {
-      return await analyzeOverview(naturalLanguage, options.context || {});
+      const result=await analyzeOverview(naturalLanguage, options.context || {});if(result.pending){if(++pendingPolls>180)throw Object.assign(Error('요약 생성이 진행 중입니다.'),{code:'OVERVIEW_PENDING'});await wait(1000);continue;}return result;
     } catch (error) {
       const policy = normalizedRetryPolicy(error.retryPolicy || {});
       if (!error.retryable || attempt >= policy.maxAttempts) throw error;
@@ -327,3 +327,5 @@ export function savePageSchema(payload) {return request('/api/promo-page-schema'
 export function updatePageSchemaMedia({method,...payload}) {return request('/api/promo-page-schema-media',{method,body:JSON.stringify(payload)});}
 
 export function designPageSection(payload) { return request("/api/promo-page-section-design", {method:"POST",body:JSON.stringify(payload)}); }
+
+export function runParallelPageWork(payload){return request('/api/promo-page-work',{method:'POST',body:JSON.stringify(payload)});}

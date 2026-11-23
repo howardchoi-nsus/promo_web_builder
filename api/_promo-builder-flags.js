@@ -1,4 +1,6 @@
 const FLAG_NAMES = Object.freeze({
+  parallelPageWork: "PAGE_PARALLEL_WORK_ENABLED",
+  overviewResultReuse: "PAGE_OVERVIEW_REUSE_ENABLED",
   automaticPageFlow: "PAGE_SCHEMA_AUTO_FLOW_ENABLED",
   pageDraftV1: "PAGE_SCHEMA_DRAFT_ENABLED",
   sectionDesignV1: "PAGE_SCHEMA_SECTION_DESIGN_ENABLED",
@@ -35,6 +37,8 @@ const FLAG_NAMES = Object.freeze({
 // New AI pages use recursive PageSchema generation. Explicit false is the
 // rollback switch; existing documents retain their own renderer.
 const FLAG_DEFAULTS = Object.freeze({
+  parallelPageWork: false,
+  overviewResultReuse: false,
   automaticPageFlow: true,
   // Requires migration 093 and an active registered section designer.
   pageDraftV1: false,

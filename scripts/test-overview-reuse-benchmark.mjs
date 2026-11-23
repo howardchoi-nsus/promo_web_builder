@@ -1,0 +1,26 @@
+import assert from 'node:assert/strict';import fs from 'node:fs';import {createRequire} from 'node:module';import {randomUUID} from 'node:crypto';
+const require=createRequire(import.meta.url),{PGlite}=await import(process.env.PGLITE_TEST_MODULE||'@electric-sql/pglite'),db=new PGlite();
+const sql=async(strings,...values)=>(await db.query(strings.reduce((q,s,i)=>q+(i?'$'+i:'')+s,''),values)).rows;
+try{
+ await db.exec('create table promo_page_schema_generation_jobs(document_id uuid,status text,lease_expires_at timestamptz);create table prompt_templates(id uuid primary key,type text,status text);');
+ const migration=fs.readFileSync(new URL('../db/migrations/101_generation_reuse_benchmarks.sql',import.meta.url),'utf8');await db.exec(migration);await db.exec(migration);
+ const {reuseOverview}=require('../api/_overview-result-reuse'),taskId=randomUUID(),config={promptId:'registered',model:'model',renderedPrompt:'same-input',modelOptions:{}};let calls=0,release,started;const held=new Promise(resolve=>release=resolve),began=new Promise(resolve=>started=resolve);
+ const invoke=extra=>reuseOverview({sql,owner:'owner',taskId,config,validate:()=>{},generate:async()=>{calls++;started();await held;return {result:{safe:'approved'},usage:{output_tokens:10}};},...extra});
+ const first=invoke();await began;assert.equal((await invoke()).pending,true);assert.equal(calls,1);release();await first;const replay=await invoke();assert.equal(replay.reused,true);assert.equal(calls,1);assert.equal(replay.result.safe,'approved');await assert.rejects(invoke({config:{...config,renderedPrompt:'changed'}}),{code:'OVERVIEW_REQUEST_CHANGED'});assert.equal(calls,1);
+ const baselineId=randomUUID(),candidateId=randomUUID(),benchmarkId=randomUUID();await sql`insert into prompt_templates values(${baselineId}::uuid,'promo_overview_parser','active'),(${candidateId}::uuid,'promo_overview_parser','validated')`;
+ const {processBenchmark}=require('../api/_prompt-benchmark-service');let benchmarkCalls=0;const cfg=id=>({promptId:id,promptVersion:1,provider:'openai',model:'registered-model',modelOptions:{},renderedPrompt:'same-registered-input'});
+ const schema=require('../api/_promo-overview-contract').OVERVIEW_PARSE_SCHEMA;
+ const specimen=s=>s.enum?s.enum[0]:s.type==='object'?Object.fromEntries(s.required.map(key=>[key,specimen(s.properties[key])])):s.type==='array'?[]:s.type==='boolean'?false:s.type==='number'||s.type==='integer'?(s.minimum||0):'';
+ const validOverview=specimen(schema);validOverview.overview.title='브랜드 소개';
+ const dependencies={active:async()=>({promptConfig:cfg(baselineId)}),candidate:async()=>({promptConfig:cfg(candidateId)}),generate:async()=>{benchmarkCalls++;return {result:benchmarkCalls===1?validOverview:{},usage:{output_tokens:5}};}};
+ async function call(body){let payload,status;await processBenchmark({sql,owner:'admin',body:{benchmarkId,...body},res:{status(n){status=n;return this;},json(p){payload=p;return this;}}},dependencies);return {...payload,status};}
+ const input={variables:{naturalLanguage:'브랜드 소개'}};const start=await call({operation:'start',baselineId,candidateId,input});assert.equal(start.benchmark.status,'running');assert.equal(benchmarkCalls,0);
+ await call({operation:'start',baselineId,candidateId,input});assert.equal(benchmarkCalls,0);
+ let result=await call({operation:'advance'});assert.equal(benchmarkCalls,1);assert.equal(result.benchmark.results.length,1);result=await call({operation:'advance'});assert.equal(benchmarkCalls,2);assert.equal(result.benchmark.status,'completed');assert.equal(result.benchmark.results.length,2);assert.equal(result.benchmark.results[0].ok,true);assert.equal(result.benchmark.results[1].errorCode,'BENCHMARK_SCHEMA_INVALID');await call({operation:'advance'});assert.equal(benchmarkCalls,2);assert.equal((await sql`select status from prompt_templates where id=${candidateId}::uuid`)[0].status,'validated');
+ await assert.rejects(call({operation:'start',baselineId,candidateId,input:{variables:{naturalLanguage:'different'}}}),{code:'BENCHMARK_INPUT_CHANGED'});
+ // Admin endpoint rejects unauthenticated users and forbids paid comparison in Production.
+ const auth=require('../api/_promo-admin-auth');auth.resolveAdminOwner=req=>{if(!req.headers?.testAdmin)throw Object.assign(Error('Unauthorized'),{statusCode:401});return {ownerSubject:'admin'};};require('../api/_prompt-template-store').getSql=()=>sql;
+ const endpoint=require('../api/admin-prompt-benchmarks');async function api(allowed,body){const res={setHeader(){},statusCode:200,status(n){this.statusCode=n;return this;},json(p){this.payload=p;return this;}};await endpoint({method:'POST',headers:allowed?{testAdmin:true}:{},body},res);return res;}
+ assert.equal((await api(false,{operation:'start'})).statusCode,401);process.env.VERCEL_ENV='production';process.env.PROMO_ADMIN_BENCHMARKS_ENABLED='true';assert.equal((await api(true,{operation:'advance',benchmarkId})).statusCode,403);assert.equal((await api(true,{operation:'read',benchmarkId})).statusCode,200);
+ console.log('Overview/benchmark SQL: idempotent 101, concurrent summary reuse with one paid call, changed-input rejection, comparison two durable steps/replay, same inputs and no active config mutation passed.');
+}finally{await db.close();}

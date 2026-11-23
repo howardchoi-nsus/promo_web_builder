@@ -1,7 +1,9 @@
 <script setup>
-import {startWorkTask} from "./services/work-log-context.mjs";
+import {startWorkTask,workElapsedMs} from "./services/work-log-context.mjs";
 import {generateProgressivePage,waitForDraftPaint} from './services/page-draft.mjs';
 import { sectionDesignPending } from "../../../shared/page-schema/section-design.mjs";
+import {prepareParallelSectionDesign} from "./services/page-parallel-design.mjs";
+import {runParallelPageWork} from "./services/composition-client.mjs";
 import { prepareSectionDesign } from "./services/page-section-design.mjs";
 import { designPageSection } from "./services/composition-client.mjs";
 import { chatNotice } from "./services/chat-notice.mjs";
@@ -116,7 +118,7 @@ const wireframeFingerprint = ref("");
 const wireframeViewport = ref("desktop");
 const draftPreview=ref(null);
 function setDraftPreview(draft,failed=false){
- draftPreview.value={contractVersion:3,content:{pageSchema:draft.page,pageContext:draft.context},generationMeta:{review:{state:'pending'},draftActivity:{skeletonFirst:draft.previewMode==='skeleton-first',pendingNodeIds:draft.pendingNodeIds||[],completedRegions:draft.completedRegions,totalRegions:draft.totalRegions,runId:draft.runId,nodeIds:failed?[]:draft.nextGroup?.nodeIds||[],failedNodeIds:failed?draft.nextGroup?.nodeIds||[]:[],completedNodeIds:draft.completedGroup?.nodeIds||[],label:draft.nextGroup?.label||'구성 준비'}}};
+ draftPreview.value={contractVersion:3,content:{pageSchema:draft.page,pageContext:draft.context},generationMeta:{review:{state:'pending'},draftActivity:{skeletonFirst:draft.previewMode==='skeleton-first',pendingNodeIds:draft.pendingNodeIds||[],completedRegions:draft.completedRegions,totalRegions:draft.totalRegions,runId:draft.runId,nodeIds:failed?[]:draft.activeGroups?.flatMap(g=>g.nodeIds)||draft.nextGroup?.nodeIds||[],failedNodeIds:failed?draft.nextGroup?.nodeIds||[]:[],completedNodeIds:draft.completedGroup?.nodeIds||[],label:draft.nextGroup?.label||'구성 준비'}}};
 }
 const productionSnapshot=computed(()=>draftPreview.value||store.snapshot);
 const activeResultTab = ref("requirements");
@@ -2163,7 +2165,7 @@ async function buildWireframe(existingOperationId = "", sourceAction = null) {
       store.stage="processing";
       const payload={...pageRequestPayload(),actionId:sourceAction?.id};
       const docId=store.documentId;wireframeViewport.value='desktop';activeResultTab.value='wireframe';
-      const saved=capabilities.value.pageDraftV1&&!payload.instruction?await generateProgressivePage(payload,{request:automaticSchemaRequest,isCurrent:()=>store.documentId===docId,onDraft:async draft=>{setDraftPreview(draft);const done=draft.completedRegions??draft.nextGroup?.index;
+      const saved=capabilities.value.pageDraftV1&&!payload.instruction?await generateProgressivePage(payload,{request:automaticSchemaRequest,isCurrent:()=>store.documentId===docId&&pageGenerationRequest.value?.requestId===payload.requestId,onDraft:async draft=>{setDraftPreview(draft);const done=draft.completedRegions??draft.nextGroup?.index;
        const label=done===0?'AI 계획의 전체 스켈레톤을 준비했습니다. 데스크톱 콘텐츠를 구성합니다.':done!=null?`${done}개 영역을 저장했습니다. ${draft.nextGroup?.label?draft.nextGroup.label+' 구성 중':'전체 구성 검증 중'}`:`${draft.sequence}개 작업 결과를 반영했습니다.`;
        updateStatusMessage(operationId,`페이지 제작 · ${label}`,'in_progress');
        // Acknowledge an actual DOM paint before requesting the next unit.
@@ -2293,6 +2295,7 @@ async function runFinalQualityGate({ autoRepair = true, force = false } = {}) {
   if (!store.snapshot || !store.documentId || !store.documentRevision || finalQualityChecking.value || designPending.value || designPreparing.value) return false;
   if (!force && finalQualityPassed.value) return true;
   finalQualityChecking.value = true;
+  const qualityStartedAt=performance.now();
   const qualityOperationId=`page-quality-${store.documentId}`;
   updateStatusMessage(qualityOperationId,'화면 크기별 배치·가독성·이미지·CTA를 자동 검사하고 있습니다.','in_progress');
   transientQualityGate.value = {
@@ -2369,7 +2372,8 @@ async function runFinalQualityGate({ autoRepair = true, force = false } = {}) {
           eventName: "builder_quality_gate_passed",
           documentId: store.documentId,
           documentRevision: store.documentRevision,
-          metadata: { attempt, warningCount: Number(result.warningCount || 0) },
+          durationMs:performance.now()-qualityStartedAt,
+          metadata: { attempt, warningCount: Number(result.warningCount || 0),qualityElapsedMs:performance.now()-qualityStartedAt,journeyElapsedMs:workElapsedMs(store.documentId) },
         });
         return true;
       }
@@ -2419,7 +2423,8 @@ async function runFinalQualityGate({ autoRepair = true, force = false } = {}) {
       eventName: "builder_quality_gate_blocked",
       documentId: store.documentId,
       documentRevision: store.documentRevision,
-      metadata: { blockingCount: transientQualityGate.value.blockingCount },
+      durationMs:performance.now()-qualityStartedAt,
+      metadata: { blockingCount: transientQualityGate.value.blockingCount,qualityElapsedMs:performance.now()-qualityStartedAt,journeyElapsedMs:workElapsedMs(store.documentId) },
     });
     updateStatusMessage(qualityOperationId,'자동 보정으로 해결하지 못한 항목이 있습니다. 채팅의 검사 내역에 원인과 필요한 설정을 표시했습니다. 완료된 이미지와 콘텐츠는 보존했습니다.','failed');
     return false;
@@ -2457,12 +2462,15 @@ async function prepareDynamicDesign(){
  const readCurrent=()=>({documentId:store.documentId,revision:store.documentRevision,snapshot:store.snapshot});
  const onUpdate=saved=>{store.documentRevision=Number(saved.revision);store.snapshot=saved.snapshot;transientQualityGate.value=null;};
  try{
-  await prepareSectionDesign({readCurrent,request:automaticDesignRequest,onUpdate,onProgress:progress=>{phase=progress.phase;activeDesignId.value=progress.group.id;store.stage=phase==='media'?'generating_assets':'designing_sections';updateStatusMessage(operationId,`${progress.index+1}/${progress.total} · ${progress.group.label} 영역의 ${phase==='media'?'이미지를 준비':'등록 토큰 디자인을 생성'}하고 있습니다.`,'in_progress');},prepareMedia:async group=>{
+  if(capabilities.value.parallelPageWork&&!store.snapshot.generationMeta.sectionDesign.parallelV1)onUpdate(await automaticRequest(runParallelPageWork,{documentId:store.documentId,runId:store.snapshot.generationMeta.sectionDesign.id,kind:'prepare'},automaticOptions()));
+  const parallel=Boolean(store.snapshot.generationMeta.sectionDesign.parallelV1);
+  const designRunner=parallel?prepareParallelSectionDesign:prepareSectionDesign;
+  await designRunner({readCurrent,maxConcurrent:capabilities.value.parallelPageWork?2:1,request:parallel?payload=>automaticRequest(runParallelPageWork,payload,automaticOptions()):automaticDesignRequest,onUpdate,onProgress:progress=>{phase=progress.phase;if(progress.nodeId)activeMediaNodeId.value=progress.nodeId;activeDesignId.value=progress.group.id;store.stage=phase==='media'?'generating_assets':'designing_sections';updateStatusMessage(operationId,`${progress.index+1}/${progress.total} · ${progress.group.label} 영역의 ${phase==='media'?'이미지를 준비':'등록 토큰 디자인을 생성'}하고 있습니다.`,'in_progress');},prepareMedia:async group=>{
    mediaPreparing.value=true;
    try{await preparePageMedia({readCurrent,request:automaticMediaRequest,onUpdate,nodeIds:group.nodeIds,onProgress:(_,job)=>{activeMediaNodeId.value=job.nodeId;}});}finally{mediaPreparing.value=false;}
   }});
   store.stage='render_ready';updateStatusMessage(operationId,'영역별 디자인과 이미지를 연결했습니다. 자동 품질검사를 진행합니다.','completed');
- }catch(error){if(store.documentId!==designDocumentId)return;store.stage='render_ready';rememberFailedTask({kind:phase==='media'?'page-media':'page-design',nodeId:phase==='media'?activeMediaNodeId.value:null,groupId:activeDesignId.value,label:'영역 디자인 준비',operationId},error);setBuilderError(store,error);updateStatusMessage(operationId,error.message,'failed');}
+ }catch(error){if(store.documentId!==designDocumentId)return;if(error.workKind)phase=error.workKind;if(error.nodeId)activeMediaNodeId.value=error.nodeId;if(error.groupId)activeDesignId.value=error.groupId;store.stage='render_ready';rememberFailedTask({kind:phase==='media'?'page-media':'page-design',nodeId:phase==='media'?activeMediaNodeId.value:null,groupId:activeDesignId.value,label:'영역 디자인 준비',operationId},error);setBuilderError(store,error);updateStatusMessage(operationId,error.message,'failed');}
  finally{designPreparing.value=false;}
 }
 async function prepareDynamicMedia(){

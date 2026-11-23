@@ -21,6 +21,7 @@ async function processPageDraft({sql,owner,body,found,res},deps={}){
  }
  if(body.operation==='read-draft'&&!row)throw error('PAGE_DRAFT_REQUIRED','저장된 초안이 없습니다.');
  // In-flight V1 drafts retain their original contracts and saved work.
+ if(row?.state.parallelV1&&row.state.plan&&body.operation!=='read-draft'&&(row.state.completedIndices||[]).length<row.state.plan.regions.length)return require('./_page-parallel-draft').processParallelDraft({sql,owner,body,found,res,row,use});
  if(row&&row.state?.contractVersion!==2)return require('./_page-draft-legacy-service').processPageDraft({sql,owner,body,found,res},deps);
  if(found.snapshot?.generationMeta?.draftRunId===runId&&row?.status!=='complete'){await sql`update promo_page_drafts set status='complete',final_revision=${found.document.currentDocumentRevision},lease_token=null,lease_expires_at=null where id=${runId}::uuid and owner_subject=${owner.ownerSubject}`;return res.status(200).json({ok:true,complete:true,revision:found.document.currentDocumentRevision,snapshot:found.snapshot});}
  if(row?.status==='complete'){
@@ -32,11 +33,12 @@ async function processPageDraft({sql,owner,body,found,res},deps={}){
  const base=Number(body.baseDocumentRevision);
  if(base!==found.document.currentDocumentRevision||row&&Number(row.base_revision)!==base)throw error('DOCUMENT_REVISION_MISMATCH','문서가 변경되었습니다. 초안은 보존했습니다.');
  if(!row){
+  if(builderFlags().parallelPageWork)await require('./_page-work-unit-store').assertWorkReady(sql);
   if(body.operation!=='start-draft')throw error('PAGE_DRAFT_REQUIRED','먼저 페이지 구성 생성을 시작해 주세요.');
   const requirement=builderFlags().chatWorkspaceV1?await pinPageRequirements(sql,{documentId:found.document.id,ownerSubject:owner.ownerSubject,revision:body.requirementsRevision,overview:body.overview}):null;
   const prepared=prepareOverviewForPreview(requirement?.overview||normalizeOverview(body.overview||{}));const overview=prepared.overview;
   const context=contentContext(overview,await use.loadPageSchemaLibrary(sql));context.omittedContent=prepared.omittedItems;context.designBrief=designBrief(overview,{requestText:body.generationRequest,requestId:runId});
-  const state={createdAt:receivedAt,timings:[],contractVersion:2,plan:null,overview,context,requirements:requirement?{revision:requirement.revision,fingerprint:requirement.fingerprint}:null,page:null,cursor:0,executions:[]};
+  const state={parallelV1:builderFlags().parallelPageWork,completedIndices:[],createdAt:receivedAt,timings:[],contractVersion:2,plan:null,overview,context,requirements:requirement?{revision:requirement.revision,fingerprint:requirement.fingerprint}:null,page:null,cursor:0,executions:[]};
   const hash=inputHash({overview,request:body.generationRequest,base});
   await sql`update promo_page_drafts set status='abandoned',updated_at=now() where document_id=${found.document.id}::uuid and owner_subject=${owner.ownerSubject} and status='working' and id<>${runId}::uuid and (lease_token is null or lease_expires_at<now())`;
   await sql`insert into promo_page_drafts(id,document_id,owner_subject,base_revision,request_hash,state) values(${runId}::uuid,${found.document.id}::uuid,${owner.ownerSubject},${base},${hash},${JSON.stringify(state)}::jsonb) on conflict(id) do nothing`;
@@ -58,10 +60,10 @@ async function processPageDraft({sql,owner,body,found,res},deps={}){
   if(!state.plan||region){
    endPhase('prompt');
    const type=state.plan?'promo_page_region_builder':'promo_page_manifest_planner';
-   const variables={overviewJson:JSON.stringify(state.overview),candidateSnapshotJson:require('./_page-planning-cache').planningContextJson(context,{scope:owner.ownerSubject+':'+found.document.id+':'+runId}),constraintsJson:JSON.stringify({contractVersion:2,designTask:require('./_page-design-task').designTask(state.plan?'region':'manifest'),phase:state.plan?'region':'plan',previewContract:{skeletonFirst:true,initialViewport:'desktop',responsiveDefaults:true,placeholders:'planned-shells-only',granularity:'major-sections-and-layout-groups',compactManifest:true,maxShellStyleRoles:6,manifestIntentMaxLength:160,regionTransport:'compact-desktop-v1',maxRegionNodes:48,maxRegionStyleRoles:8},designBrief:context.designBrief,imageRequirements:state.plan?require('./_page-image-requirements').unitImageRequirements(context.imageRequirements||[],state.plan,state.cursor):(context.imageRequirements||[]),imagePolicy:'Fulfill each imageRequirement with a distinct image node bound to its approved sourceIds and a registered asset or matching mediaRequest. Do not omit requested visuals.',region:region||null,plan:state.plan,page:state.page,policy:'Return only the supplied schema. Plan empty shells only. Build only the current region. Facts use assigned existing sources. No HTML/CSS or numeric editorial claims.'})};
+   const variables=require('./_page-draft-request').draftVariables(state,region,owner.ownerSubject+':'+found.document.id+':'+runId);
    const execution=await use.createPromptExecutionSnapshot(sql,type,variables);assertV2(execution.promptConfig);endPhase('model');
    let response=await use.generate({type,schemaName:state.plan?'page_draft_region_v2':'page_draft_plan_v2',schema:state.plan?regionSchema(context,region):planSchema(context),promptConfig:execution.promptConfig});endPhase('validation');
-   try{if(state.plan){state.page=applyRegion(state,response.result);state.cursor++;}else Object.assign(state,planResult(response.result,context));}
+   try{if(state.plan){state.page=applyRegion(state,response.result);state.cursor++;}else Object.assign(state,planResult(response.result,context,{parallel:state.parallelV1===true}));}
    catch(validationError){
     await require('./_work-log').logEvent({event:'checkpoint',status:'failed',errorCode:validationError.code,message:validationError.message,metadata:{unitId:region?.shell?.id,attempt:1,errors:validationError.errors,timings:timing}});
     if(!builderFlags().automaticPageFlow||!['PAGE_DRAFT_INVALID','PAGE_IMAGE_PLAN_INCOMPLETE','PAGE_SCHEMA_INVALID'].includes(validationError.code))throw validationError;
@@ -71,7 +73,7 @@ async function processPageDraft({sql,owner,body,found,res},deps={}){
     const repairVariables={...variables,constraintsJson:JSON.stringify({...JSON.parse(variables.constraintsJson),repairFeedback:{attempt:1,maxRepairs:1,code:validationError.code,message:validationError.message,errors:(validationError.errors||[]).slice(0,12).map(e=>({path:e.path||e.instancePath||'',code:e.code||e.keyword||'',message:e.message||''}))}})};
     endPhase('repairModel');const repairExecution=await use.createPromptExecutionSnapshot(sql,type,repairVariables);assertV2(repairExecution.promptConfig);
     response=await use.generate({type,schemaName:state.plan?'page_draft_region_v2':'page_draft_plan_v2',schema:state.plan?regionSchema(context,region):planSchema(context),promptConfig:repairExecution.promptConfig});endPhase('validation');
-    if(state.plan){state.page=applyRegion(state,response.result);state.cursor++;}else Object.assign(state,planResult(response.result,context));
+    if(state.plan){state.page=applyRegion(state,response.result);state.cursor++;}else Object.assign(state,planResult(response.result,context,{parallel:state.parallelV1===true}));
     state.executions.push({type,promptId:repairExecution.promptConfig.promptId,promptVersion:repairExecution.promptConfig.promptVersion,model:repairExecution.promptConfig.model,renderedPromptHash:repairExecution.promptConfig.renderedPromptHash,skills:repairExecution.promptConfig.skillSnapshots||[],repair:true,usage:response.usage||{}});
    }
    if(!timing.repairCalls)state.executions.push({type,promptId:execution.promptConfig.promptId,promptVersion:execution.promptConfig.promptVersion,model:execution.promptConfig.model,renderedPromptHash:execution.promptConfig.renderedPromptHash,skills:execution.promptConfig.skillSnapshots||[],usage:response.usage||{}});

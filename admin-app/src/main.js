@@ -1,3 +1,4 @@
+import PromptBenchmarkManager from "./components/PromptBenchmarkManager.vue";
 import WorkLogManager from "./components/WorkLogManager.vue";
 import * as VueRuntime from "vue/dist/vue.esm-bundler.js";
 import { resolveAdminShell } from "./shell-contract.mjs";
@@ -23,6 +24,7 @@ import AgentSkillManager from "./components/AgentSkillManager.vue";
 import PromptSkillBindings from "./components/PromptSkillBindings.vue";
 
 resolveAdminShell(document);
+globalThis.PromoAdminBenchmarks=Object.freeze({component:PromptBenchmarkManager});
 globalThis.PromoAdminWorkLogs=Object.freeze({component:WorkLogManager});
 globalThis.PromoAdminSkills=Object.freeze({manager:AgentSkillManager,bindings:PromptSkillBindings});
 globalThis.Vue = VueRuntime;

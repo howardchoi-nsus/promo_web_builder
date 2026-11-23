@@ -763,6 +763,7 @@
                 :aria-selected="adminTab === 'prompt-variables'"
                 @click="selectAdminTab('prompt-variables')"
               >프롬프트 변수 관리</button>
+              <button class="admin-tab" :class="{active:adminTab==='prompt-benchmarks'}" type="button" role="tab" :aria-selected="adminTab==='prompt-benchmarks'" @click="selectAdminTab('prompt-benchmarks')">모델·프롬프트 비교</button>
               <button class="admin-tab" :class="{active:adminTab==='work-logs'}" type="button" role="tab" :aria-selected="adminTab==='work-logs'" @click="selectAdminTab('work-logs')">작업 로그</button>
               <button class="admin-tab" :class="{active:adminTab==='agent-skills'}" type="button" role="tab" :aria-selected="adminTab==='agent-skills'" @click="selectAdminTab('agent-skills')">스킬 관리</button>
               <button
@@ -845,6 +846,7 @@
               <llm-model-manager @status="setStatus"></llm-model-manager>
             </section>
 
+            <section v-if="adminTab === 'prompt-benchmarks'" class="admin-panel"><prompt-benchmark-manager></prompt-benchmark-manager></section>
             <section v-if="adminTab === 'work-logs'" class="admin-panel"><work-log-manager></work-log-manager></section>
             <section v-show="adminTab === 'agent-skills'" class="admin-panel"><agent-skill-manager></agent-skill-manager></section>
             <section v-show="adminTab === 'prompt-variables'" class="admin-panel">
@@ -2701,6 +2703,6 @@
       <button class="shell-overlay" type="button" data-shell-overlay aria-label="메뉴 닫기"></button>
     </div>
 
-    <script type="module" src="/prototype/admin-assets/admin-app.js?v=admin-vite-v15-work-logs"></script>
+    <script type="module" src="/prototype/admin-assets/admin-app.js?v=admin-vite-v16-parallel-benchmarks"></script>
   </body>
 </html>
