@@ -33,6 +33,7 @@ module.exports = async function handler(req, res) {
     `;
     if (!rows.length) return res.status(404).json({ error: "Prompt template not found" });
     const current = rows[0];
+    require('./_prompt-admin-preflight').assertEditToken(body,current);
     if (current.status !== "draft") {
       return res.status(409).json({
         error: "Only draft prompt templates can be validated",
@@ -57,7 +58,8 @@ module.exports = async function handler(req, res) {
       modelOptions: current.model_options,
     });
 
-    await require('./_agent-skill-store').resolvePromptSkills(sql,(current.model_options||{}).skillBindings);
+    const resolvedSkills=await require('./_agent-skill-store').resolvePromptSkills(sql,(current.model_options||{}).skillBindings,current.type);
+    const assembledPreview=require('./_prompt-admin-preflight').preflightPrompt(current,resolvedSkills);
     const updatedRows = await sql`
       with updated as (
         update prompt_templates
@@ -68,6 +70,7 @@ module.exports = async function handler(req, res) {
           updated_at = now()
         where id = ${id}::uuid
           and status = 'draft'
+          and updated_at = ${current.updated_at}
         returning *
       ),
       history as (
@@ -138,7 +141,7 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    return res.status(200).json({ ok: true, prompt: toPromptTemplate(updatedRows[0]) });
+    return res.status(200).json({ ok: true, prompt: toPromptTemplate(updatedRows[0]), assembledPreview });
   } catch (error) {
     res.setHeader("Cache-Control", "private, no-store");
     return res.status(error.statusCode || 500).json({

@@ -22,3 +22,12 @@ await assert.rejects(()=>generatePage({overview:{},context:{...context,imageRequ
 for(const intent of ['none','없음','text-only','미정',''])assert.deepEqual(imageRequirements({contentSections:[{media:{imageIntent:intent}}]},ctx),[]);
 
 for(const node of page.root.children){ctx.assets[node.assetId].sourceIds=[...node.sourceIds];node.sourceIds=[];}assertImageCoverage(page,ctx,requirements);
+
+// A shared-source image must not starve another requirement (augmenting match).
+const overlapping={root:{type:'container',children:[{type:'image',id:'shared',assetId:'shared'},{type:'image',id:'only_a',assetId:'only_a'}]},mediaRequests:[]};
+assertImageCoverage(overlapping,{assets:{shared:{kind:'image',sourceIds:['a','b']},only_a:{kind:'image',sourceIds:['a']}}},[{id:'a',sourceIds:['a']},{id:'b',sourceIds:['b']}]);
+assert.throws(()=>assertImageCoverage({...overlapping,root:{type:'container',children:overlapping.root.children.slice(0,1)}},{assets:{shared:{kind:'image',sourceIds:['a','b']}}},[{id:'a',sourceIds:['a']},{id:'b',sourceIds:['b']}]),{code:'PAGE_IMAGE_PLAN_INCOMPLETE'});
+const {isMobileLayoutRequest}=await import('../visual-editor/src/builder/services/mobile-layout-intent.mjs');
+for(const text of ['모바일 배치를 구성해줘','모바일도 만들어줘','mobile layout please'])assert.equal(isMobileLayoutRequest(text),true,text);
+for(const text of ['모바일 게임 혜택으로 구성해줘','모바일 제목 문구를 수정해줘','모바일 배치와 이미지를 바꿔줘'])assert.equal(isMobileLayoutRequest(text),false,text);
+assert.equal(isMobileLayoutRequest('모바일 배치를 구성해줘',{hasPendingAttachment:true}),false);

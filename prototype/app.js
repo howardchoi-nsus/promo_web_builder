@@ -1138,6 +1138,7 @@ const adminApp = createApp({
       ],
       promptArchivedVisibilityByLineage: {},
       promptSaving: false,
+      promptValidationPreview:null,
       promptEditorBaseline: "",
       promptHistories: [],
       promptBodyTranslationKo: "",
@@ -3568,6 +3569,7 @@ const adminApp = createApp({
 
     promptEditorSavePayload(prompt) {
       return {
+        editToken:prompt.editToken,
         name: this.promptEditor.name,
         body: this.promptEditor.body,
         requiredVariables: this.variableTextToList(this.promptEditor.requiredVariablesText),
@@ -3625,6 +3627,7 @@ const adminApp = createApp({
         const changeNote = this.promptEditor.changeNote || `관리자 페이지에서 v${prompt.version} 프롬프트를 변경했습니다.`;
         let draftId = prompt.id;
         let draftVersion = prompt.version;
+        let draftEditToken=prompt.editToken;
         if (prompt.status !== "draft") {
           try {
             const draftResult = await this.requestPromptLifecycle("/api/prompt-template-draft", {
@@ -3633,33 +3636,27 @@ const adminApp = createApp({
             }, "프롬프트 신규 버전 생성 오류");
             draftId = draftResult.prompt?.id || "";
             draftVersion = draftResult.prompt?.version || draftVersion;
+            draftEditToken=draftResult.prompt?.editToken;
           } catch (error) {
             const existing = error.result;
             if (existing?.code !== "PROMPT_CANDIDATE_EXISTS" || existing.status !== "draft" || !existing.promptId) {
               throw error;
             }
-            draftId = existing.promptId;
+            this.selectedPromptTemplateId=existing.promptId;await this.loadPromptTemplates({fresh:true});throw new Error("기존 Draft를 불러왔습니다. 내용을 확인한 후 다시 저장해 주세요.");
           }
           if (!draftId) throw new Error("생성된 프롬프트 버전 ID를 확인할 수 없습니다.");
         }
         const savedResult = await this.requestPromptLifecycle("/api/prompt-template", {
           id: draftId,
           ...editorPayload,
+          editToken:draftEditToken,
           changeNote,
         }, "프롬프트 저장 오류");
         const savedId = savedResult.prompt?.id || draftId;
-        const validatedResult = await this.requestPromptLifecycle("/api/prompt-template-validate", {
-          id: savedId,
-          changeNote: `${changeNote} · 자동 검증`,
-        }, "프롬프트 자동 검증 오류");
-        const validatedId = validatedResult.prompt?.id || savedId;
-        const activatedResult = await this.requestPromptLifecycle("/api/prompt-template-activate", {
-          id: validatedId,
-          changeNote: `${changeNote} · 저장 후 자동 활성화`,
-        }, "프롬프트 자동 활성화 오류");
-        this.selectedPromptTemplateId = activatedResult.prompt?.id || validatedId;
-        await this.loadPromptTemplates({ fresh: true });
-        this.setStatus(`프롬프트 v${activatedResult.prompt?.version || draftVersion}을 생성하고 활성화했습니다.`);
+        this.selectedPromptTemplateId=savedId;
+        this.promptValidationPreview=null;
+        await this.loadPromptTemplates({fresh:true});
+        this.setStatus(`프롬프트 v${savedResult.prompt?.version||draftVersion} Draft를 저장했습니다. 조립 검증 후 별도로 활성화해 주세요.`);
       } catch (error) {
         this.setStatus(`프롬프트 저장 실패: ${error.message}`);
       } finally {
@@ -3708,11 +3705,13 @@ const adminApp = createApp({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             id: prompt.id,
+            editToken:prompt.editToken,
             changeNote: "관리자 페이지에서 프롬프트 변수와 모델 계약을 검증했습니다.",
           }),
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `프롬프트 검증 오류(${response.status})`);
+        this.promptValidationPreview=result.assembledPreview?{...result.assembledPreview,promptId:result.prompt?.id}:null;
         this.selectedPromptTemplateId = result.prompt?.id || prompt.id;
         await this.loadPromptTemplates({ fresh: true });
         this.setStatus("프롬프트 검증을 완료했습니다. 활성화할 수 있습니다.");
@@ -3733,11 +3732,13 @@ const adminApp = createApp({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             id: prompt.id,
+            editToken:prompt.editToken,
             changeNote: "관리자 페이지에서 활성 프롬프트로 지정했습니다.",
           }),
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(result.message || result.error || `프롬프트 활성화 오류(${response.status})`);
+        this.promptValidationPreview=result.assembledPreview?{...result.assembledPreview,promptId:result.prompt?.id}:null;
         this.selectedPromptTemplateId = result.prompt?.id || prompt.id;
         await this.loadPromptTemplates({ fresh: true });
         this.setStatus("활성 프롬프트로 지정했습니다");

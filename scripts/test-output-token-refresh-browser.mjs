@@ -11,6 +11,8 @@ const {refreshOutputTokens}=require('../api/_promo-output-token-refresh');
 const {normalizeEditorSnapshot}=require('../api/promo-builder-documents');
 let snapshot=snapshotForPage(fixture('example-editorial'),structuredClone(context)),revision=1,activeReady=false,reconnects=0;
 for(const key of Object.keys(snapshot.content.pageContext.tokenValues))if(/^--grid-|^--breakpoint-/.test(key))delete snapshot.content.pageContext.tokenValues[key];
+// This fixture restores an already reviewed legacy document; token refresh does not approve a new structure.
+snapshot.generationMeta.review={state:'approved'};
 snapshot.qualityGate={state:'pending',documentRevision:1};
 const originalPage=JSON.stringify(snapshot.content.pageSchema);
 const version={id:'active-library',status:'active',values:context.tokenCatalog.map(token=>({...token,tokenKey:token.name}))};

@@ -12778,7 +12778,7 @@ function Ex(e, t, n, r = {}) {
 			...s,
 			"data-ps-action-state": e.actionId ? void 0 : "unbound"
 		}, e.label);
-		let n = t.actions?.[e.actionId], r = n?.kind === "navigate" ? gx(n.href) : "", a = n?.kind === "submit" && gx(n.href).startsWitdescriptor("/");
+		let n = t.actions?.[e.actionId], r = n?.kind === "navigate" ? gx(n.href) : "", a = n?.kind === "submit" && gx(n.href).startsWith("/");
 		return Tx(r ? "a" : "button", {
 			...s,
 			...r ? {
@@ -21020,7 +21020,10 @@ async function bF(e = "", t = {}) {
 			...t.headers
 		}
 	}), r = await n.json().catch(() => ({}));
-	if (!n.ok) throw Object.assign(Error(r.error || "스킬 요청을 처리하지 못했습니다."), { code: r.code });
+	if (!n.ok) throw Object.assign(Error(r.error || "스킬 요청을 처리하지 못했습니다."), {
+		code: r.code,
+		dependents: r.dependents || []
+	});
 	return r;
 }
 var xF = {
@@ -21047,20 +21050,20 @@ var CF = {
 }, wF = ["disabled"], TF = ["disabled"], EF = {
 	key: 0,
 	role: "alert"
-}, DF = {
-	key: 1,
+}, DF = { key: 1 }, OF = {
+	key: 2,
 	role: "status"
-}, OF = { class: "skill-workspace" }, kF = { "aria-label": "등록된 스킬 목록" }, AF = {
+}, kF = { class: "skill-workspace" }, AF = { "aria-label": "등록된 스킬 목록" }, jF = {
 	key: 0,
 	role: "status"
-}, jF = { key: 1 }, MF = ["disabled", "onClick"], NF = [
+}, MF = { key: 1 }, NF = ["disabled", "onClick"], PF = [
 	"disabled",
 	"aria-pressed",
 	"onClick"
-], PF = ["disabled"], FF = ["readonly"], IF = { key: 0 }, LF = { type: "submit" }, RF = /*#__PURE__*/ Jh({
+], FF = ["disabled"], IF = ["readonly"], LF = { key: 0 }, RF = ["value"], zF = { key: 1 }, BF = { key: 2 }, VF = { type: "submit" }, HF = /*#__PURE__*/ Jh({
 	__name: "AgentSkillManager",
 	setup(e) {
-		let t = /* @__PURE__ */ R([]), n = /* @__PURE__ */ R(!1), r = /* @__PURE__ */ R(!1), i = /* @__PURE__ */ R(""), a = /* @__PURE__ */ R(""), o = /* @__PURE__ */ R(null), s = () => ({
+		let t = /* @__PURE__ */ R([]), n = /* @__PURE__ */ R(!1), r = /* @__PURE__ */ R(!1), i = /* @__PURE__ */ R(""), a = /* @__PURE__ */ R(""), o = /* @__PURE__ */ R(null), s = /* @__PURE__ */ R(!1), c = /* @__PURE__ */ R([]), l = /* @__PURE__ */ R([]), u = () => ({
 			id: "",
 			baseVersion: 0,
 			key: "",
@@ -21069,27 +21072,28 @@ var CF = {
 			sourceUrl: "",
 			markdown: "",
 			changeNote: "",
-			active: !0
-		}), c = /* @__PURE__ */ It(s());
-		async function l() {
+			active: !0,
+			allowedPromptTypes: []
+		}), d = /* @__PURE__ */ It(u());
+		async function f() {
 			n.value = !0, i.value = "";
 			try {
 				let e = await xF.list();
-				t.value = Array.isArray(e.skills) ? e.skills : [];
+				t.value = Array.isArray(e.skills) ? e.skills : [], s.value = e.scopeSchemaReady === !0, c.value = e.promptTypes || [];
 			} catch (e) {
 				i.value = e.message;
 			} finally {
 				n.value = !1;
 			}
 		}
-		function u() {
-			Object.assign(c, s()), o.value = null, a.value = "", i.value = "";
+		function p() {
+			Object.assign(d, u()), o.value = null, a.value = "", i.value = "";
 		}
-		async function d(e) {
+		async function m(e) {
 			i.value = "", n.value = !0;
 			try {
 				let { version: t } = await xF.read(e);
-				o.value = t, Object.assign(c, {
+				o.value = t, Object.assign(d, {
 					...t,
 					id: t.skillId,
 					baseVersion: Number(t.latestVersion),
@@ -21101,13 +21105,13 @@ var CF = {
 				n.value = !1;
 			}
 		}
-		async function f(e) {
+		async function h(e) {
 			let t = e.target.files?.[0];
 			if (t) {
 				i.value = "";
 				try {
 					if (!/\.md$/i.test(t.name) || t.size > 6e4) throw Error("60KB 이하의 UTF-8 .md 파일을 선택해 주세요.");
-					c.markdown = await t.text(), a.value = "MD 내용을 불러왔습니다. 검토 후 새 버전으로 저장해 주세요.";
+					d.markdown = await t.text(), a.value = "MD 내용을 불러왔습니다. 검토 후 새 버전으로 저장해 주세요.";
 				} catch (e) {
 					i.value = e.message;
 				} finally {
@@ -21115,151 +21119,170 @@ var CF = {
 				}
 			}
 		}
-		async function p() {
+		async function g() {
 			r.value = !0, i.value = "", a.value = "";
 			try {
-				let { version: e } = await xF.save({ ...c });
-				await l(), await d(e.id), SF(), a.value = `v${e.version}을 저장했습니다. 프롬프트에서 이 버전을 연결해야 적용됩니다.`;
+				let e = { ...d };
+				s.value || delete e.allowedPromptTypes;
+				let { version: t } = await xF.save(e);
+				await f(), await m(t.id), SF(), a.value = `v${t.version}을 저장했습니다. 프롬프트에서 이 버전을 연결해야 적용됩니다.`;
 			} catch (e) {
-				i.value = e.message;
+				i.value = e.message, l.value = e.dependents || [];
 			} finally {
 				r.value = !1;
 			}
 		}
-		async function m(e) {
+		async function _(e) {
 			r.value = !0, i.value = "";
 			try {
 				await xF.setActive({
 					id: e.id,
 					baseVersion: Number(e.latestVersion),
 					active: !e.active
-				}), await l(), c.id === e.id && (c.active = !e.active), SF(), a.value = e.active ? "스킬을 비활성화했습니다. 연결된 프롬프트의 새 실행은 연결 해제 또는 재활성화 전까지 차단됩니다." : "스킬을 활성화했습니다. 등록만으로 프롬프트에 자동 연결되지 않습니다.";
+				}), await f(), d.id === e.id && (d.active = !e.active), SF(), a.value = e.active ? "스킬을 비활성화했습니다. 연결된 프롬프트의 새 실행은 연결 해제 또는 재활성화 전까지 차단됩니다." : "스킬을 활성화했습니다. 등록만으로 프롬프트에 자동 연결되지 않습니다.";
 			} catch (e) {
-				i.value = e.message;
+				i.value = e.message, l.value = e.dependents || [];
 			} finally {
 				r.value = !1;
 			}
 		}
-		function h() {
+		function v() {
 			if (!o.value) return;
 			let e = new Blob([o.value.markdown], { type: "text/markdown;charset=utf-8" }), t = URL.createObjectURL(e), n = document.createElement("a");
 			n.href = t, n.download = `${o.value.key}-v${o.value.version}.md`, n.click(), setTimeout(() => URL.revokeObjectURL(t), 0);
 		}
-		return ws(l), (e, s) => (V(), H("section", CF, [
+		return ws(f), (e, u) => (V(), H("section", CF, [
 			U("header", null, [
-				s[7] ||= U("div", null, [U("h2", { id: "agent-skill-title" }, "스킬 관리"), U("p", null, "공통 MD 지침을 등록하고 프롬프트별로 버전을 연결합니다.")], -1),
+				u[8] ||= U("div", null, [U("h2", { id: "agent-skill-title" }, "스킬 관리"), U("p", null, "공통 MD 지침을 등록하고 프롬프트별로 버전을 연결합니다.")], -1),
 				U("button", {
 					type: "button",
 					disabled: r.value || n.value,
-					onClick: u
+					onClick: p
 				}, "새 스킬", 8, wF),
 				U("button", {
 					type: "button",
 					disabled: r.value || n.value,
-					onClick: l
+					onClick: f
 				}, "새로고침", 8, TF)
 			]),
-			s[17] ||= U("p", null, "MD 텍스트만 LLM에 전달합니다. 스크립트·외부 링크·추가 참고 파일은 자동 실행하거나 가져오지 않습니다. 기본 정책·등록 토큰·출력 계약이 스킬보다 우선합니다.", -1),
+			u[19] ||= U("p", null, "MD 텍스트만 LLM에 전달합니다. 스크립트·외부 링크·추가 참고 파일은 자동 실행하거나 가져오지 않습니다. 기본 정책·등록 토큰·출력 계약이 스킬보다 우선합니다.", -1),
 			i.value ? (V(), H("p", EF, L(i.value), 1)) : G("", !0),
-			a.value ? (V(), H("p", DF, L(a.value), 1)) : G("", !0),
-			U("div", OF, [U("aside", kF, [
-				n.value ? (V(), H("p", AF, "불러오는 중…")) : G("", !0),
-				!n.value && !t.value.length ? (V(), H("p", jF, "등록된 스킬이 없습니다.")) : G("", !0),
+			l.value.length ? (V(), H("ul", DF, [(V(!0), H(K, null, B(l.value, (e) => (V(), H("li", { key: e.id }, L(e.name) + " · " + L(e.type) + " · v" + L(e.version), 1))), 128))])) : G("", !0),
+			a.value ? (V(), H("p", OF, L(a.value), 1)) : G("", !0),
+			U("div", kF, [U("aside", AF, [
+				n.value ? (V(), H("p", jF, "불러오는 중…")) : G("", !0),
+				!n.value && !t.value.length ? (V(), H("p", MF, "등록된 스킬이 없습니다.")) : G("", !0),
 				(V(!0), H(K, null, B(t.value, (e) => (V(), H("article", { key: e.id }, [
 					U("strong", null, L(e.name), 1),
-					s[8] ||= W(),
+					u[9] ||= W(),
 					U("span", null, L(e.active ? "활성" : "비활성") + " · v" + L(e.latestVersion), 1),
 					U("p", null, L(e.description), 1),
 					U("button", {
 						type: "button",
 						disabled: r.value || n.value,
-						onClick: (t) => m(e)
-					}, L(e.active ? "비활성화" : "활성화"), 9, MF),
+						onClick: (t) => _(e)
+					}, L(e.active ? "비활성화" : "활성화"), 9, NF),
 					(V(!0), H(K, null, B(e.versions, (e) => (V(), H("button", {
 						key: e.id,
 						type: "button",
 						disabled: r.value || n.value,
 						"aria-pressed": o.value?.id === e.id,
-						onClick: (t) => d(e.id)
-					}, "v" + L(e.version) + " 열기", 9, NF))), 128))
+						onClick: (t) => m(e.id)
+					}, "v" + L(e.version) + " 열기", 9, PF))), 128))
 				]))), 128))
-			]), U("form", { onSubmit: Lu(p, ["prevent"]) }, [U("fieldset", { disabled: r.value || n.value }, [
-				U("legend", null, L(c.id ? "새 버전 저장" : "스킬 등록"), 1),
-				U("label", null, [s[9] ||= W("스킬 키", -1), z(U("input", {
-					"onUpdate:modelValue": s[0] ||= (e) => c.key = e,
+			]), U("form", { onSubmit: Lu(g, ["prevent"]) }, [U("fieldset", { disabled: r.value || n.value }, [
+				U("legend", null, L(d.id ? "새 버전 저장" : "스킬 등록"), 1),
+				U("label", null, [u[10] ||= W("스킬 키", -1), z(U("input", {
+					"onUpdate:modelValue": u[0] ||= (e) => d.key = e,
 					required: "",
 					pattern: "[a-z][a-z0-9-]{1,79}",
 					maxlength: "80",
-					readonly: !!c.id,
+					readonly: !!d.id,
 					placeholder: "design-taste"
-				}, null, 8, FF), [[J, c.key]])]),
-				U("label", null, [s[10] ||= W("스킬 이름", -1), z(U("input", {
-					"onUpdate:modelValue": s[1] ||= (e) => c.name = e,
+				}, null, 8, IF), [[J, d.key]])]),
+				U("label", null, [u[11] ||= W("스킬 이름", -1), z(U("input", {
+					"onUpdate:modelValue": u[1] ||= (e) => d.name = e,
 					required: "",
 					maxlength: "160"
-				}, null, 512), [[J, c.name]])]),
-				U("label", null, [s[11] ||= W("설명", -1), z(U("textarea", {
-					"onUpdate:modelValue": s[2] ||= (e) => c.description = e,
+				}, null, 512), [[J, d.name]])]),
+				U("label", null, [u[12] ||= W("설명", -1), z(U("textarea", {
+					"onUpdate:modelValue": u[2] ||= (e) => d.description = e,
 					rows: "2",
 					maxlength: "2000"
-				}, null, 512), [[J, c.description]])]),
-				U("label", null, [s[12] ||= W("출처 URL", -1), z(U("input", {
-					"onUpdate:modelValue": s[3] ||= (e) => c.sourceUrl = e,
+				}, null, 512), [[J, d.description]])]),
+				U("label", null, [u[13] ||= W("출처 URL", -1), z(U("input", {
+					"onUpdate:modelValue": u[3] ||= (e) => d.sourceUrl = e,
 					type: "url",
 					maxlength: "2000",
 					placeholder: "https://github.com/..."
-				}, null, 512), [[J, c.sourceUrl]])]),
+				}, null, 512), [[J, d.sourceUrl]])]),
 				U("label", null, [z(U("input", {
-					"onUpdate:modelValue": s[4] ||= (e) => c.active = e,
+					"onUpdate:modelValue": u[4] ||= (e) => d.active = e,
 					type: "checkbox"
-				}, null, 512), [[Mu, c.active]]), s[13] ||= W("프롬프트에서 사용 가능", -1)]),
-				U("label", null, [s[14] ||= W("MD 파일 불러오기", -1), U("input", {
+				}, null, 512), [[Mu, d.active]]), u[14] ||= W("프롬프트에서 사용 가능", -1)]),
+				s.value ? (V(), H("label", LF, [u[15] ||= W("적용 가능한 프롬프트", -1), z(U("select", {
+					"aria-label": "적용 가능한 프롬프트",
+					"onUpdate:modelValue": u[5] ||= (e) => d.allowedPromptTypes = e,
+					multiple: "",
+					required: "",
+					size: "6"
+				}, [(V(!0), H(K, null, B(c.value, (e) => (V(), H("option", {
+					key: e,
+					value: e
+				}, L(e), 9, RF))), 128))], 512), [[Y, d.allowedPromptTypes]])])) : (V(), H("p", zF, "적용 범위 등록에는 migration 097이 필요합니다. 기존 연결 버전은 유지됩니다.")),
+				U("label", null, [u[16] ||= W("MD 파일 불러오기", -1), U("input", {
 					type: "file",
 					accept: ".md,text/markdown",
-					onChange: f
+					onChange: h
 				}, null, 32)]),
-				U("label", null, [s[15] ||= W("MD 지침", -1), z(U("textarea", {
-					"onUpdate:modelValue": s[5] ||= (e) => c.markdown = e,
+				U("label", null, [u[17] ||= W("MD 지침", -1), z(U("textarea", {
+					"onUpdate:modelValue": u[6] ||= (e) => d.markdown = e,
 					required: "",
 					rows: "20",
 					spellcheck: "false"
-				}, null, 512), [[J, c.markdown]])]),
-				U("label", null, [s[16] ||= W("변경 기록", -1), z(U("input", {
-					"onUpdate:modelValue": s[6] ||= (e) => c.changeNote = e,
+				}, null, 512), [[J, d.markdown]])]),
+				U("label", null, [u[18] ||= W("변경 기록", -1), z(U("input", {
+					"onUpdate:modelValue": u[7] ||= (e) => d.changeNote = e,
 					maxlength: "2000"
-				}, null, 512), [[J, c.changeNote]])]),
-				o.value ? (V(), H("p", IF, "열어 본 버전: v" + L(o.value.version) + " · SHA-256 " + L(o.value.contentHash) + ". 수정 저장은 기존 버전을 덮어쓰지 않습니다.", 1)) : G("", !0),
-				U("button", LF, L(r.value ? "저장 중…" : c.id ? "새 버전 저장" : "스킬 등록"), 1),
+				}, null, 512), [[J, d.changeNote]])]),
+				o.value ? (V(), H("p", BF, "열어 본 버전: v" + L(o.value.version) + " · SHA-256 " + L(o.value.contentHash) + ". 수정 저장은 기존 버전을 덮어쓰지 않습니다.", 1)) : G("", !0),
+				U("button", VF, L(r.value ? "저장 중…" : d.id ? "새 버전 저장" : "스킬 등록"), 1),
 				o.value ? (V(), H("button", {
-					key: 1,
+					key: 3,
 					type: "button",
-					onClick: h
+					onClick: v
 				}, "현재 저장 버전 MD 다운로드")) : G("", !0)
-			], 8, PF)], 32)])
+			], 8, FF)], 32)])
 		]));
 	}
-}, [["__scopeId", "data-v-31269fff"]]);
+}, [["__scopeId", "data-v-046d1175"]]);
 //#endregion
 //#region admin-app/src/components/PromptSkillBindings.vue
 qh();
-var zF = {
+var UF = {
 	class: "prompt-skill-bindings",
 	"aria-label": "연결된 스킬"
-}, BF = {
+}, WF = {
 	key: 0,
 	role: "alert"
-}, VF = {
+}, GF = {
 	key: 1,
 	role: "status"
-}, HF = ["value", "disabled"], UF = ["disabled"], WF = ["onClick"], GF = ["disabled", "onClick"], KF = ["disabled", "onClick"], qF = ["onClick"], JF = { key: 2 }, YF = {
+}, KF = ["value", "disabled"], qF = ["disabled"], JF = ["onClick"], YF = ["disabled", "onClick"], XF = ["disabled", "onClick"], ZF = ["onClick"], QF = { key: 2 }, $F = {
 	key: 3,
 	open: ""
-}, XF = /*#__PURE__*/ Jh({
+}, eI = /*#__PURE__*/ Jh({
 	__name: "PromptSkillBindings",
-	props: { modelValue: {
-		type: Array,
-		default: () => []
-	} },
+	props: {
+		modelValue: {
+			type: Array,
+			default: () => []
+		},
+		promptType: {
+			type: String,
+			default: ""
+		}
+	},
 	emits: ["update:modelValue"],
 	setup(e, { emit: t }) {
 		let n = e, r = t, i = /* @__PURE__ */ R([]), a = /* @__PURE__ */ R(""), o = /* @__PURE__ */ R(""), s = /* @__PURE__ */ R(null), c = /* @__PURE__ */ R(!1), l = q(() => i.value.flatMap((e) => (e.versions || []).map((t) => ({
@@ -21279,21 +21302,24 @@ var zF = {
 				c.value = !1;
 			}
 		}
-		function d() {
-			!o.value || n.modelValue.length >= 4 || n.modelValue.some((e) => e.skillVersionId === o.value) || (r("update:modelValue", [...n.modelValue, { skillVersionId: o.value }]), o.value = "");
+		function d(e) {
+			return !e.allowedPromptTypes?.length || !n.promptType || e.allowedPromptTypes.includes(n.promptType);
 		}
-		function f(e) {
+		function f() {
+			l.value.some((e) => e.id === o.value && d(e)) && (!o.value || n.modelValue.length >= 4 || n.modelValue.some((e) => e.skillVersionId === o.value) || (r("update:modelValue", [...n.modelValue, { skillVersionId: o.value }]), o.value = ""));
+		}
+		function p(e) {
 			r("update:modelValue", n.modelValue.filter((t, n) => n !== e));
 		}
-		function p(e, t) {
+		function m(e, t) {
 			let i = [...n.modelValue], a = e + t;
 			a < 0 || a >= i.length || ([i[e], i[a]] = [i[a], i[e]], r("update:modelValue", i));
 		}
-		function m(e) {
+		function h(e) {
 			let t = l.value.find((t) => t.id === e);
 			return t ? `${t.skillName} · v${t.version}${t.active ? "" : " · 비활성"}` : e;
 		}
-		async function h(e) {
+		async function g(e) {
 			a.value = "";
 			try {
 				s.value = (await xF.read(e)).version;
@@ -21303,58 +21329,58 @@ var zF = {
 		}
 		return ws(() => {
 			u(), window.addEventListener("promo-agent-skills-changed", u);
-		}), Ds(() => window.removeEventListener("promo-agent-skills-changed", u)), (t, n) => (V(), H("section", zF, [
+		}), Ds(() => window.removeEventListener("promo-agent-skills-changed", u)), (t, n) => (V(), H("section", UF, [
 			n[4] ||= U("p", null, "스킬 관리에서 등록한 버전을 선택하세요. 새 스킬 버전을 저장해도 이 연결은 자동으로 바뀌지 않습니다. 프롬프트의 기존 저장·검증·활성화 절차로 반영됩니다.", -1),
-			a.value ? (V(), H("p", BF, L(a.value), 1)) : G("", !0),
-			c.value ? (V(), H("p", VF, "스킬 목록을 불러오는 중…")) : G("", !0),
+			a.value ? (V(), H("p", WF, L(a.value), 1)) : G("", !0),
+			c.value ? (V(), H("p", GF, "스킬 목록을 불러오는 중…")) : G("", !0),
 			U("label", null, [n[2] ||= W("추가할 스킬 버전", -1), z(U("select", {
 				"onUpdate:modelValue": n[0] ||= (e) => o.value = e,
 				"aria-label": "추가할 스킬 버전"
 			}, [n[1] ||= U("option", { value: "" }, "선택", -1), (V(!0), H(K, null, B(l.value, (t) => (V(), H("option", {
 				key: t.id,
 				value: t.id,
-				disabled: !t.active || e.modelValue.some((e) => e.skillVersionId === t.id)
-			}, L(t.skillName) + " · v" + L(t.version) + L(t.active ? "" : " · 비활성"), 9, HF))), 128))], 512), [[Y, o.value]])]),
+				disabled: !t.active || !d(t) || e.modelValue.some((e) => e.skillVersionId === t.id)
+			}, L(t.skillName) + " · v" + L(t.version) + L(t.active ? "" : " · 비활성") + L(d(t) ? "" : " · 적용 단계 불일치") + L(t.allowedPromptTypes?.length ? "" : " · 구버전 범위 미지정"), 9, KF))), 128))], 512), [[Y, o.value]])]),
 			U("button", {
 				type: "button",
 				disabled: !o.value || e.modelValue.length >= 4,
-				onClick: d
-			}, "스킬 연결", 8, UF),
+				onClick: f
+			}, "스킬 연결", 8, qF),
 			U("button", {
 				type: "button",
 				onClick: u
 			}, "스킬 목록 새로고침"),
 			U("ol", null, [(V(!0), H(K, null, B(e.modelValue, (t, r) => (V(), H("li", { key: t.skillVersionId }, [
-				U("span", null, L(m(t.skillVersionId)), 1),
+				U("span", null, L(h(t.skillVersionId)), 1),
 				n[3] ||= W(),
 				U("button", {
 					type: "button",
-					onClick: (e) => h(t.skillVersionId)
-				}, "내용 보기", 8, WF),
+					onClick: (e) => g(t.skillVersionId)
+				}, "내용 보기", 8, JF),
 				U("button", {
 					type: "button",
 					disabled: r === 0,
-					onClick: (e) => p(r, -1)
-				}, "위로", 8, GF),
+					onClick: (e) => m(r, -1)
+				}, "위로", 8, YF),
 				U("button", {
 					type: "button",
 					disabled: r === e.modelValue.length - 1,
-					onClick: (e) => p(r, 1)
-				}, "아래로", 8, KF),
+					onClick: (e) => m(r, 1)
+				}, "아래로", 8, XF),
 				U("button", {
 					type: "button",
-					onClick: (e) => f(r)
-				}, "연결 해제", 8, qF)
+					onClick: (e) => p(r)
+				}, "연결 해제", 8, ZF)
 			]))), 128))]),
-			e.modelValue.length ? G("", !0) : (V(), H("p", JF, "연결된 스킬 없음 · 기존 프롬프트만 사용합니다.")),
-			s.value ? (V(), H("details", YF, [
+			e.modelValue.length ? G("", !0) : (V(), H("p", QF, "연결된 스킬 없음 · 기존 프롬프트만 사용합니다.")),
+			s.value ? (V(), H("details", $F, [
 				U("summary", null, L(s.value.name) + " · v" + L(s.value.version) + " · 저장된 MD", 1),
 				U("pre", null, L(s.value.markdown), 1),
 				U("p", null, "SHA-256 " + L(s.value.contentHash), 1)
 			])) : G("", !0)
 		]));
 	}
-}, [["__scopeId", "data-v-6202f7f1"]]), ZF = /* @__PURE__ */ s((() => {
+}, [["__scopeId", "data-v-fe27ff09"]]), tI = /* @__PURE__ */ s((() => {
 	var e = {
 		documents: "promoPrototype.documents.abc",
 		generatedPages: "promoPrototype.generatedPages.abc",
@@ -22415,6 +22441,7 @@ var zF = {
 				],
 				promptArchivedVisibilityByLineage: {},
 				promptSaving: !1,
+				promptValidationPreview: null,
 				promptEditorBaseline: "",
 				promptHistories: [],
 				promptBodyTranslationKo: "",
@@ -24629,6 +24656,7 @@ var zF = {
 			},
 			promptEditorSavePayload(e) {
 				return {
+					editToken: e.editToken,
 					name: this.promptEditor.name,
 					body: this.promptEditor.body,
 					requiredVariables: this.variableTextToList(this.promptEditor.requiredVariablesText),
@@ -24678,33 +24706,27 @@ var zF = {
 				}
 				this.promptSaving = !0;
 				try {
-					let n = this.promptEditor.changeNote || `관리자 페이지에서 v${e.version} 프롬프트를 변경했습니다.`, r = e.id, i = e.version;
+					let n = this.promptEditor.changeNote || `관리자 페이지에서 v${e.version} 프롬프트를 변경했습니다.`, r = e.id, i = e.version, a = e.editToken;
 					if (e.status !== "draft") {
 						try {
 							let t = await this.requestPromptLifecycle("/api/prompt-template-draft", {
 								id: e.id,
 								changeNote: n
 							}, "프롬프트 신규 버전 생성 오류");
-							r = t.prompt?.id || "", i = t.prompt?.version || i;
+							r = t.prompt?.id || "", i = t.prompt?.version || i, a = t.prompt?.editToken;
 						} catch (e) {
 							let t = e.result;
-							if (t?.code !== "PROMPT_CANDIDATE_EXISTS" || t.status !== "draft" || !t.promptId) throw e;
-							r = t.promptId;
+							throw t?.code !== "PROMPT_CANDIDATE_EXISTS" || t.status !== "draft" || !t.promptId ? e : (this.selectedPromptTemplateId = t.promptId, await this.loadPromptTemplates({ fresh: !0 }), Error("기존 Draft를 불러왔습니다. 내용을 확인한 후 다시 저장해 주세요."));
 						}
 						if (!r) throw Error("생성된 프롬프트 버전 ID를 확인할 수 없습니다.");
 					}
-					let a = (await this.requestPromptLifecycle("/api/prompt-template", {
+					let o = await this.requestPromptLifecycle("/api/prompt-template", {
 						id: r,
 						...t,
+						editToken: a,
 						changeNote: n
-					}, "프롬프트 저장 오류")).prompt?.id || r, o = (await this.requestPromptLifecycle("/api/prompt-template-validate", {
-						id: a,
-						changeNote: `${n} · 자동 검증`
-					}, "프롬프트 자동 검증 오류")).prompt?.id || a, s = await this.requestPromptLifecycle("/api/prompt-template-activate", {
-						id: o,
-						changeNote: `${n} · 저장 후 자동 활성화`
-					}, "프롬프트 자동 활성화 오류");
-					this.selectedPromptTemplateId = s.prompt?.id || o, await this.loadPromptTemplates({ fresh: !0 }), this.setStatus(`프롬프트 v${s.prompt?.version || i}을 생성하고 활성화했습니다.`);
+					}, "프롬프트 저장 오류"), s = o.prompt?.id || r;
+					this.selectedPromptTemplateId = s, this.promptValidationPreview = null, await this.loadPromptTemplates({ fresh: !0 }), this.setStatus(`프롬프트 v${o.prompt?.version || i} Draft를 저장했습니다. 조립 검증 후 별도로 활성화해 주세요.`);
 				} catch (e) {
 					this.setStatus(`프롬프트 저장 실패: ${e.message}`);
 				} finally {
@@ -24743,11 +24765,15 @@ var zF = {
 							headers: { "Content-Type": "application/json" },
 							body: JSON.stringify({
 								id: e.id,
+								editToken: e.editToken,
 								changeNote: "관리자 페이지에서 프롬프트 변수와 모델 계약을 검증했습니다."
 							})
 						}), n = await t.json().catch(() => ({}));
 						if (!t.ok) throw Error(n.message || n.error || `프롬프트 검증 오류(${t.status})`);
-						this.selectedPromptTemplateId = n.prompt?.id || e.id, await this.loadPromptTemplates({ fresh: !0 }), this.setStatus("프롬프트 검증을 완료했습니다. 활성화할 수 있습니다.");
+						this.promptValidationPreview = n.assembledPreview ? {
+							...n.assembledPreview,
+							promptId: n.prompt?.id
+						} : null, this.selectedPromptTemplateId = n.prompt?.id || e.id, await this.loadPromptTemplates({ fresh: !0 }), this.setStatus("프롬프트 검증을 완료했습니다. 활성화할 수 있습니다.");
 					} catch (e) {
 						this.setStatus(`프롬프트 검증 실패: ${e.message}`);
 					} finally {
@@ -24765,11 +24791,15 @@ var zF = {
 							headers: { "Content-Type": "application/json" },
 							body: JSON.stringify({
 								id: e.id,
+								editToken: e.editToken,
 								changeNote: "관리자 페이지에서 활성 프롬프트로 지정했습니다."
 							})
 						}), n = await t.json().catch(() => ({}));
 						if (!t.ok) throw Error(n.message || n.error || `프롬프트 활성화 오류(${t.status})`);
-						this.selectedPromptTemplateId = n.prompt?.id || e.id, await this.loadPromptTemplates({ fresh: !0 }), this.setStatus("활성 프롬프트로 지정했습니다");
+						this.promptValidationPreview = n.assembledPreview ? {
+							...n.assembledPreview,
+							promptId: n.prompt?.id
+						} : null, this.selectedPromptTemplateId = n.prompt?.id || e.id, await this.loadPromptTemplates({ fresh: !0 }), this.setStatus("활성 프롬프트로 지정했습니다");
 					} catch (e) {
 						this.setStatus(`활성 프롬프트 지정 실패: ${e.message}`);
 					} finally {
@@ -27574,8 +27604,8 @@ var zF = {
 	le.component("template-layout-manager", window.PromoAdminTemplateLayout.component), le.component("section-layout-preset-manager", window.PromoAdminSectionLayouts.component), le.component("design-token-manager", window.PromoAdminDesignTokens.component), le.component("llm-model-manager", window.PromoAdminLlmModels.component), le.component("agent-skill-manager", window.PromoAdminSkills.manager), le.component("prompt-skill-bindings", window.PromoAdminSkills.bindings), le.component("prompt-variable-manager", window.PromoAdminPromptVariables.component), le.component("component-generation-workspace", window.PromoAdminComponentGeneration.component), le.component("render-spec-editor", window.PromoAdminComponentGeneration.renderSpecEditor), le.component("directus-integration-settings", window.PromoAdminIntegrations.directusSettings), le.component("layout-reference-manager", window.PromoAdminLayoutReferences.component), (window.PromoI18n?.init?.() || Promise.resolve()).finally(() => le.mount("#app"));
 }));
 Bh(document), globalThis.PromoAdminSkills = Object.freeze({
-	manager: RF,
-	bindings: XF
+	manager: HF,
+	bindings: eI
 }), globalThis.Vue = Lh, globalThis.PromoAdminTemplateLayout = Object.freeze({
 	service: Kh,
 	component: fg
@@ -27597,5 +27627,5 @@ Bh(document), globalThis.PromoAdminSkills = Object.freeze({
 }), globalThis.PromoAdminIntegrations = Object.freeze({ directusSettings: wD }), globalThis.PromoAdminLayoutReferences = Object.freeze({
 	service: CP,
 	component: yF
-}), await Promise.resolve().then(() => /* @__PURE__ */ u(ZF()));
+}), await Promise.resolve().then(() => /* @__PURE__ */ u(tI()));
 //#endregion

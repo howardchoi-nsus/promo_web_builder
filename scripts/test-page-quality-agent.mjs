@@ -1,3 +1,5 @@
+// Preserve explicit legacy approval-path regression coverage. New automatic flow is tested separately.
+process.env.PAGE_SCHEMA_AUTO_FLOW_ENABLED='false';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import {designFixture} from './fixtures/design-preview-enhancements.mjs';
@@ -42,6 +44,19 @@ output={summary:'Separate image',issues:[],patches:[patch({nodeId:'design_image'
 const structural=await call({force:true});assert.equal(structural.payload.requiresApproval,true);assert.equal(snapshot.generationMeta.review.state,'pending');assert.equal(snapshot.content.pageSchema.root.overlayRole,null);assert.equal(snapshot.generationMeta.qualityAgentHistory.length,2);
 snapshot.generationMeta.review={state:'approved'};snapshot.content.pageSchema.summary+=' changed';
 await assert.rejects(call(),{code:'QUALITY_AGENT_LIMIT_REACHED'});
+// Automatic structural repair revalidates internally, preserves media, and invalidates browser QA.
+process.env.PAGE_SCHEMA_AUTO_FLOW_ENABLED='true';
+snapshot=snapshotForPage(structuredClone(page),context);
+require('../api/_page-structure-state').prepareAutomaticSnapshot(snapshot,revision);
+const automaticRepair=await call({force:true});
+assert.equal(automaticRepair.payload.requiresApproval,false);
+assert.equal(automaticRepair.payload.structureRevalidated,true);
+assert.equal(snapshot.generationMeta.review.state,'ready');
+assert.equal(snapshot.generationMeta.review.approvedAt,undefined);
+assert.equal(snapshot.qualityGate.state,'pending');
+assert.equal(snapshot.content.pageSchema.root.children.find(node=>node.id==='design_image').assetId,'image_ready');
+require('../api/_page-structure-state').assertStructureReady(snapshot);
+process.env.PAGE_SCHEMA_AUTO_FLOW_ENABLED='false';
 // Waiting clients resume a durable result, and cannot overwrite another local edit.
 let client={documentId:'owned',revision:1},requests=0;
 await reviewPageUntilReady({readCurrent:()=>client,report:{},wait:async()=>{},request:async()=>({pending:++requests===1,revision:requests===1?1:2,snapshot:{content:{pageSchema:{}},generationMeta:{qualityAgentReview:{}}}}),onUpdate:r=>client={...client,revision:r.revision}});assert.equal(requests,2);

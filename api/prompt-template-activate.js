@@ -54,6 +54,7 @@ module.exports = async function handler(req, res) {
     `;
     if (!rows.length) return res.status(404).json({ error: "Prompt template not found" });
     const target = rows[0];
+    require('./_prompt-admin-preflight').assertEditToken(body,target);
     if (target.status === "active") {
       return res.status(200).json({ ok: true, prompt: toPromptTemplate(target) });
     }
@@ -80,7 +81,8 @@ module.exports = async function handler(req, res) {
       modelOptions: target.model_options,
     });
 
-    await require('./_agent-skill-store').resolvePromptSkills(sql,(target.model_options||{}).skillBindings);
+    const resolvedSkills=await require('./_agent-skill-store').resolvePromptSkills(sql,(target.model_options||{}).skillBindings,target.type);
+    const assembledPreview=require('./_prompt-admin-preflight').preflightPrompt(target,resolvedSkills);
     const updatedRows = await sql`
       with deactivated as (
         update prompt_templates
@@ -88,6 +90,7 @@ module.exports = async function handler(req, res) {
         where type = ${target.type}
           and status = 'active'
           and id <> ${id}::uuid
+          and exists(select 1 from prompt_templates candidate where candidate.id=${id}::uuid and candidate.status='validated' and candidate.updated_at=${target.updated_at})
         returning *
       ),
       deactivated_history as (
@@ -132,6 +135,7 @@ module.exports = async function handler(req, res) {
         set status = 'active', change_note = ${changeNote}, updated_at = now()
         where id = ${id}::uuid
           and status = 'validated'
+          and updated_at = ${target.updated_at}
           and not exists (
             select 1
             from prompt_templates active_prompt
@@ -210,7 +214,7 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    return res.status(200).json({ ok: true, prompt: toPromptTemplate(updatedRows[0]) });
+    return res.status(200).json({ ok: true, prompt: toPromptTemplate(updatedRows[0]), assembledPreview });
   } catch (error) {
     res.setHeader("Cache-Control", "private, no-store");
     return res.status(error.statusCode || 500).json({

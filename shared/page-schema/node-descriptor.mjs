@@ -17,7 +17,7 @@ export function pageNodeDescriptor(n,context,page,options={}){
    }
    if(['grid','stack','card'].includes(n.type))return descriptor(n.type==='card'?'article':'div',{...attrs,'aria-label':n.label||undefined},children());
    if(n.type==='text')return descriptor(n.role==='heading'?`h${n.headingLevel}`:n.role==='body'?'p':'span',attrs,textContent(n,context));
-   if(n.type==='button'){if(wireframe||!n.actionId)return descriptor('span',{...attrs,'data-ps-action-state':!n.actionId?'unbound':undefined},n.label);const action=context.actions?.[n.actionId],href=action?.kind==='navigate'?safeUrl(action.href):'',submit=action?.kind==='submit'&&safeUrl(action.href).startsWitdescriptor('/');return descriptor(href?'a':'button',{...attrs,...(href?{href,rel:'noopener noreferrer'}:{type:submit?'submit':'button',disabled:!submit})},n.label);}
+   if(n.type==='button'){if(wireframe||!n.actionId)return descriptor('span',{...attrs,'data-ps-action-state':!n.actionId?'unbound':undefined},n.label);const action=context.actions?.[n.actionId],href=action?.kind==='navigate'?safeUrl(action.href):'',submit=action?.kind==='submit'&&safeUrl(action.href).startsWith('/');return descriptor(href?'a':'button',{...attrs,...(href?{href,rel:'noopener noreferrer'}:{type:submit?'submit':'button',disabled:!submit})},n.label);}
    if(n.type==='image'){
     const asset=context.assets?.[n.assetId],src=safeUrl(asset?.url);
     const request=page.mediaRequests.find(request=>request.id===n.requestId);

@@ -159,6 +159,7 @@ async function updatePrompt(req, res) {
   if (!rows.length) return res.status(404).json({ error: "Prompt template not found" });
 
   const current = rows[0];
+  require('./_prompt-admin-preflight').assertEditToken(body,current);
   if (current.status !== "draft") {
     return res.status(409).json({
       error: "Only draft prompt templates can be updated",
@@ -203,7 +204,7 @@ async function updatePrompt(req, res) {
     requiredVariables,
     optionalVariables,
   });
-  await require('./_agent-skill-store').resolvePromptSkills(sql,(modelOptions||{}).skillBindings);
+  await require('./_agent-skill-store').resolvePromptSkills(sql,(modelOptions||{}).skillBindings,current.type);
   await requireActiveRegisteredModel(sql, { provider, model, promptType: current.type });
   // Updating the prompt and appending its audit history must succeed or fail
   // together. A partial write would make production behavior impossible to
@@ -227,6 +228,7 @@ async function updatePrompt(req, res) {
         updated_at = now()
       where id = ${id}::uuid
         and status = 'draft'
+        and updated_at = ${current.updated_at}
       returning *
     ),
     history as (

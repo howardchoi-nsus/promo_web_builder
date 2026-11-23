@@ -1,3 +1,5 @@
+// Preserve explicit legacy approval-path regression coverage. New automatic flow is tested separately.
+process.env.PAGE_SCHEMA_AUTO_FLOW_ENABLED='false';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {createRequire} from 'node:module';

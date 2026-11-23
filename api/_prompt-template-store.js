@@ -437,6 +437,10 @@ function sha256(value) {
   return createHash("sha256").update(String(value || "")).digest("hex");
 }
 
+function promptEditToken(row){
+ const stable=value=>Array.isArray(value)?value.map(stable):value&&typeof value==='object'&&!(value instanceof Date)?Object.fromEntries(Object.keys(value).sort().map(k=>[k,stable(value[k])])):value;
+ return sha256(JSON.stringify(stable({id:row.id,updatedAt:row.updated_at?new Date(row.updated_at).toISOString():null,status:row.status,version:row.version,name:row.name,body:row.body,provider:row.provider,model:row.model,modelOptions:row.model_options,temperature:row.temperature,maxTokens:row.max_tokens,responseFormat:row.response_format})));
+}
 function toPromptTemplate(row) {
   const modelOptions = normalizePromptControlPlaneOptions(row.type, row.model_options, {
     includeDefaults: false,
@@ -444,6 +448,7 @@ function toPromptTemplate(row) {
   const storedOptions = normalizeModelOptions(row.model_options);
   return {
     id: row.id,
+    editToken:promptEditToken(row),
     type: row.type,
     name: row.name,
     body: row.body || "",
@@ -491,6 +496,7 @@ module.exports = {
   CONTROLLED_PROMPT_TYPES,
   DEFAULT_IMAGE_HARNESS_CONFIG,
   PROMPT_TYPES,
+  promptEditToken,
   defaultPromptControlPlane,
   ensureDefaultPromptTemplates,
   extractPromptVariables,

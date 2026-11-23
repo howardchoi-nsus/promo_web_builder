@@ -1,3 +1,4 @@
+process.env.PAGE_SCHEMA_AUTO_FLOW_ENABLED='false';
 import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
 import {readFile} from 'node:fs/promises';

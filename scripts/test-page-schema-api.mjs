@@ -1,3 +1,5 @@
+// Preserve explicit legacy approval-path regression coverage. New automatic flow is tested separately.
+process.env.PAGE_SCHEMA_AUTO_FLOW_ENABLED='false';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
 import {fixture,context} from './fixtures/page-schema.mjs';
@@ -13,7 +15,8 @@ assert.notEqual(structuralHash(example),structuralHash(changed));
 const auth=require('../api/_promo-builder-auth');
 const session=auth.createSessionToken();const owner=auth.ownerSubjectForSession(session.sessionId);
 let revision=0,snapshot=null,calls=0,qualityVerified,schemaReady=true,promptReady=true;
-const sql=async()=>[{schema_ready:schemaReady,prompt_ready:promptReady,generation_ready:true}];
+let recoveryJob=null;
+const sql=async(strings)=>strings?.join('').includes('select status,result_revision,error_code,lease_expires_at')?(recoveryJob?[recoveryJob]:[]):[{schema_ready:schemaReady,prompt_ready:promptReady,generation_ready:true}];
 const realTokenMap=require('../api/_design-token-store').toRuntimeTokenMap;
 const mock=(name,exports)=>{const id=require.resolve(`../api/${name}`);require.cache[id]={id,filename:id,loaded:true,exports};};
 mock('_promo-builder-document-store',{fetchRecentDocumentSnapshots:async()=>[],getSql:()=>sql,fetchDocument:async(_,id,subject)=>subject===owner&&id==='owned'?{document:{id,mode:'ai',currentDocumentRevision:revision},snapshot}:null,createDocumentRevision:async(_,arg)=>{qualityVerified=arg.qualityGateVerified;assert.equal(arg.ownerSubject,owner);assert.equal(arg.baseDocumentRevision,revision);assert.equal(validate(arg.snapshot.content.pageSchema,arg.snapshot.content.pageContext).ok,true);snapshot=reorder({...arg.snapshot,documentRevision:++revision});return {revision,snapshot};}});
@@ -37,6 +40,18 @@ overview.additionalInformation=[{label:'쿠폰 사용 조건',value:'',confirmat
 overview.contentSections.push({cta:{label:'지금 가입하고 혜택 받기',url:'',confirmationRequired:true}});
 const generated=await call('POST',{documentId:'owned',baseDocumentRevision:0,overview,generationRequest:'제목과 혜택을 좌우로 분할해줘'});assert.equal(generated.status,200,JSON.stringify(generated));assert.equal(revision,1);assert.equal(calls,1);assert.equal(generated.payload.warnings.filter(warning=>warning.code==='UNCONFIRMED_OPTIONAL_CONTENT_OMITTED').length,3);assert.equal(snapshot.content.pageContext.omittedContent.length,3);assert.equal(snapshot.generationMeta.generationPath,'page-schema');assert.equal(snapshot.generationMeta.prompt.id,'active-prompt');assert.equal(snapshot.generationMeta.prompt.version,7);assert.equal(snapshot.layoutIdentity.rendererKey,'page-schema-renderer');
 const replay=await call('POST',{documentId:'owned',baseDocumentRevision:0,overview,generationRequest:'제목과 혜택을 좌우로 분할해줘',requestId:snapshot.generationMeta.requestId});assert.equal(replay.status,200);assert.equal(replay.payload.replayed,true);assert.equal(calls,1);assert.equal(revision,1);
+const recoveryRequestId=snapshot.generationMeta.requestId;
+assert.equal((await call('POST',{operation:'read-generation',documentId:'someone-else',requestId:recoveryRequestId})).status,404);
+assert.equal((await call('POST',{operation:'read-generation',documentId:'owned',requestId:'bad'})).status,400);
+assert.equal((await call('POST',{operation:'read-generation',documentId:'owned',requestId:recoveryRequestId})).status,404);
+recoveryJob={status:'running',lease_expires_at:new Date(Date.now()+60000).toISOString()};
+assert.equal((await call('POST',{operation:'read-generation',documentId:'owned',requestId:recoveryRequestId})).status,202);
+recoveryJob.status='completed';
+assert.equal((await call('POST',{operation:'read-generation',documentId:'owned',requestId:recoveryRequestId})).payload.complete,true);
+assert.equal((await call('POST',{operation:'read-generation',documentId:'owned',requestId:'11111111-1111-4111-8111-111111111111'})).payload.code,'GENERATION_RESULT_SUPERSEDED');
+recoveryJob.status='failed';recoveryJob.error_code='GENERATION_FAILED';
+assert.equal((await call('POST',{operation:'read-generation',documentId:'owned',requestId:recoveryRequestId})).payload.retryable,true);
+assert.equal(calls,1);recoveryJob=null;
 const changedReplay=await call('POST',{documentId:'owned',baseDocumentRevision:0,overview:{...overview,title:'다른 입력'},generationRequest:'제목과 혜택을 좌우로 분할해줘',requestId:snapshot.generationMeta.requestId});assert.equal(changedReplay.status,409);assert.equal(changedReplay.payload.retryable,false);
 assert.equal((await call('POST',{documentId:'owned',baseDocumentRevision:0,overview})).status,409);assert.equal(calls,1);
 const bad=structuredClone(snapshot.content.pageSchema);bad.root.html='<script/>';

@@ -5,7 +5,7 @@ export async function preparePageMedia({readCurrent,request,onUpdate,onProgress,
   const current=readCurrent();
   if(current.documentId!==documentId)throw Object.assign(new Error('페이지가 변경되어 이미지 준비를 중단했습니다.'),{code:'MEDIA_DOCUMENT_CHANGED',retryable:false});
   const page=current.snapshot?.content?.pageSchema;
-  if(current.snapshot?.generationMeta?.review?.state!=='approved')throw Object.assign(new Error('최신 페이지 구성을 승인해 주세요.'),{code:'PAGE_SCHEMA_APPROVAL_REQUIRED',retryable:false});
+  if(!['ready','approved'].includes(current.snapshot?.generationMeta?.review?.state))throw Object.assign(new Error('페이지 구조 검증이 필요합니다.'),{code:'PAGE_SCHEMA_APPROVAL_REQUIRED',retryable:false});
   const pending=(page?.mediaRequests||[]).filter(request=>!nodeIds||nodeIds.includes(request.nodeId));
   if(!pending.length)return current;
   const next=pending[0];onProgress?.(pending.length,{nodeId:next.nodeId,requestId:next.id});

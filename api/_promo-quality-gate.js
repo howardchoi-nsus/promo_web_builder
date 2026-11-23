@@ -77,7 +77,7 @@ function assertPassedQualityGate(snapshot, documentRevision) {
     const review=snapshot.generationMeta.qualityAgentReview;
     if(!review||review.blockingCount>0||!require('./_page-quality-agent-contract').isCurrentReview(snapshot))throw Object.assign(new Error('현재 페이지의 AI 품질 검토·수정과 재검사가 필요합니다.'),{code:'QUALITY_AGENT_REVIEW_REQUIRED',statusCode:409});
   }
-  if(snapshot?.content?.pageSchema&&snapshot.generationMeta?.review?.state==='pending')throw Object.assign(new Error('페이지 구성 미리보기를 확인하고 승인해 주세요.'),{code:'PAGE_SCHEMA_APPROVAL_REQUIRED',statusCode:409});
+  if(snapshot?.content?.pageSchema)require('./_page-structure-state').assertStructureReady(snapshot);
   const library=snapshot?.content?.runtimeTheme?.designTokens||snapshot?.content?.formTemplate?.designTokens||{};
   const context=snapshot?.content?.pageContext||{tokenValues:library.values||{},tokenCatalog:library.catalog||[],usagePolicy:library.usagePolicy};
   require('../shared/layout-token-policy.cjs').assertLayoutTokens(context);

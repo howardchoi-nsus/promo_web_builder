@@ -1058,7 +1058,9 @@
                         </div>
                       </div>
                       <div class="subsection-actions">
-                        <button class="tiny-button primary" type="button" :disabled="promptSaving || promptEditorReadOnly" @click="savePromptTemplate">변경 저장 및 활성화</button>
+                        <button class="tiny-button primary" type="button" :disabled="promptSaving || promptEditorReadOnly" @click="savePromptTemplate">Draft 저장</button>
+                        <button class="tiny-button" type="button" v-if="selectedPromptTemplate.status==='draft'" :disabled="promptSaving" @click="validatePromptTemplate">조립 검증</button>
+                        <button class="tiny-button primary" type="button" v-if="selectedPromptTemplate.status==='validated'" :disabled="promptSaving" @click="activatePromptTemplate">검증 버전 활성화</button>
                         <button class="tiny-button" type="button" v-if="['inactive', 'archived'].includes(selectedPromptTemplate.status)" :disabled="promptSaving || promptDetailLoading" @click="rollbackPromptTemplate">이 버전으로 롤백</button>
                         <button class="tiny-button danger" type="button" :disabled="promptSaving || promptDetailLoading || selectedPromptTemplate.status === 'active' || selectedPromptTemplate.status === 'archived'" @click="archivePromptTemplate">{{ t('common.action.archive') }}</button>
                       </div>
@@ -1066,11 +1068,12 @@
 
                 <div class="empty-state compact" v-if="promptDetailLoading" role="status">프롬프트 상세를 불러오는 중...</div>
                 <div class="empty-state compact" v-else>
-                  내용을 수정하고 저장하면 변경된 경우에만 신규 버전을 생성·검증한 뒤 활성 프롬프트로 지정합니다.
+                  Draft 저장은 운영에 반영되지 않습니다. 조립 검증 결과를 확인한 뒤 별도로 활성화하세요.
                 </div>
 
+                <details v-if="promptValidationPreview && promptValidationPreview.promptId===selectedPromptTemplate.id" class="prompt-editor-group" open><summary>최종 조립 지시문 · 샘플 입력 검증</summary><p>실제 고객 데이터 길이·외부 모델 품질 검증과는 별개입니다.</p><pre style="white-space:pre-wrap;max-height:480px;overflow:auto">{{promptValidationPreview.renderedPrompt}}</pre><p>SHA-256 {{promptValidationPreview.renderedPromptHash}} · {{promptValidationPreview.bytes}} bytes</p></details>
                 <fieldset v-if="!promptDetailLoading" class="prompt-editor-fields" :disabled="promptEditorReadOnly">
-                <details class="prompt-editor-group" open><summary><span><strong>연결된 스킬</strong><small>공통 MD 지침 · 버전 고정</small></span></summary><div class="prompt-editor-group__content"><prompt-skill-bindings v-model="promptEditor.skillBindings"></prompt-skill-bindings></div></details>
+                <details class="prompt-editor-group" open><summary><span><strong>연결된 스킬</strong><small>공통 MD 지침 · 버전 고정</small></span></summary><div class="prompt-editor-group__content"><prompt-skill-bindings v-model="promptEditor.skillBindings" :prompt-type="selectedPromptTemplate.type"></prompt-skill-bindings></div></details>
                 <details class="prompt-editor-group" open>
                   <summary>
                     <span><strong>기본 정보</strong><small>이름, 유형과 실행 변수 계약</small></span>

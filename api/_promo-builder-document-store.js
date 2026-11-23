@@ -431,11 +431,11 @@ async function createDocumentRevision(sql, {
         select create_promo_builder_document_revision(${documentId}::uuid,${ownerSubject},${baseDocumentRevision},${JSON.stringify(nextSnapshot)}::jsonb,${snapshotHash(nextSnapshot)},${source},${changeNote||''}) as revision
         from guard
       ), transitioned as (
-        update promo_builder_chat_sessions s set stage='wireframe_review',updated_at=now()
+        update promo_builder_chat_sessions s set stage=${nextSnapshot.generationMeta?.automaticFlowVersion===1?'finalizing':'wireframe_review'},updated_at=now()
         from saved,guard where s.id=guard.id returning s.id
       ), picked as (
         select a.id from promo_builder_chat_actions a join transitioned s on s.id=a.session_id
-        where a.status='proposed' and a.action_key='confirm_requirements'
+        where a.status='proposed' and a.action_key='confirm_requirements' and ${nextSnapshot.generationMeta?.automaticFlowVersion!==1}
         order by a.created_at desc limit 1
       ), handled as (
         update promo_builder_chat_actions a set status=case when a.id in(select id from picked) then 'executed' else 'expired' end,

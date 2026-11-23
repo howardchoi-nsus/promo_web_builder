@@ -46,7 +46,7 @@ async function processPageMedia({req,res,sql,owner,body},dependencies={}){
    await use.assertReady(sql);
    let image;
    if(req.method==='POST'){
-    if(snapshot.generationMeta?.review?.state!=='approved')throw Object.assign(new Error('페이지 구성을 승인한 후 이미지를 준비할 수 있습니다.'),{code:'PAGE_SCHEMA_APPROVAL_REQUIRED',statusCode:409});
+    require('./_page-structure-state').assertStructureReady(snapshot);
     await use.assertRequirements(sql,found,owner);
     const request=page.mediaRequests.find(r=>r.id===node.requestId&&r.nodeId===node.id);
     if(body.requestId&&body.requestId!==node.requestId)throw Object.assign(new Error('이미지 요청이 변경되었습니다.'),{code:'MEDIA_REQUEST_SUPERSEDED',statusCode:409,retryable:false});
@@ -54,9 +54,10 @@ async function processPageMedia({req,res,sql,owner,body},dependencies={}){
     const backgroundColor=context.tokenValues[context.usagePolicy.bindings['page.background']];
     const isBackground=node.presentation==='background';
     const promptType=isBackground&&/^#[0-9a-f]{6}$/i.test(backgroundColor||'')?'section_background_image':'component_image';
-    const variables={sectionName:page.summary,contentJson:JSON.stringify({designBrief:require('./_page-design-direction').savedDesignBrief(snapshot),intent:request.intent,sourceIds:request.sourceIds,contentSources:context.contentSources,backgroundColor}),adminGuidance:''};
+    const target=require('./_page-design-task').imageTarget(page,node,context);
+    const variables={sectionName:target.sectionName,contentJson:JSON.stringify({target,aspectRatio:request.aspectRatio,designBrief:require('./_page-design-direction').savedDesignBrief(snapshot),intent:request.intent,sourceIds:request.sourceIds,contentSources:context.contentSources,backgroundColor}),adminGuidance:''};
     if(promptType==='section_background_image')Object.assign(variables,{backgroundColor,aspectRatio:request.aspectRatio,fadeMode:'none',brandPalette:JSON.stringify(Object.fromEntries(['page.background','text.primary','button.background'].map(role=>[role,context.tokenValues[context.usagePolicy.bindings[role]]])))});
-    else Object.assign(variables,{componentName:isBackground?'PageSchema key visual':'PageSchema image',fieldName:node.id});
+    else Object.assign(variables,{componentName:isBackground?'Background key visual':target.sectionName,fieldName:node.id});
     const pinned=await use.createPromptExecutionSnapshot(sql,promptType,variables);
     const cfg=pinned.promptConfig;
     imageExecution={promptType,promptId:cfg.promptId,promptVersion:cfg.promptVersion,provider:cfg.provider,model:cfg.model,skillSnapshots:cfg.skillSnapshots||[]};
@@ -90,7 +91,7 @@ async function processPageMedia({req,res,sql,owner,body},dependencies={}){
     const latest=found?.snapshot;
     let target;walk(latest?.content?.pageSchema?.root,entry=>{if(entry.node?.id===originalNodeId)target=entry.node;});
     const currentRequest=latest?.content?.pageSchema?.mediaRequests?.find(r=>r.id===originalRequestId&&r.nodeId===originalNodeId);
-    if(!latest||latest.generationMeta?.review?.state!=='approved'||inputHash(latest.generationMeta.sourceRequirements||null)!==originalRequirements||structureFingerprint(latest.content.pageSchema)!==originalStructure||!target||target.requestId!==originalRequestId||inputHash(currentRequest||null)!==originalRequest)throw Object.assign(new Error('이미지 준비 중 페이지 요청이 변경되었습니다. 최신 구성을 확인해 주세요.'),{code:'MEDIA_REQUEST_SUPERSEDED',statusCode:409,retryable:false});
+    if(!latest||!['ready','approved'].includes(latest.generationMeta?.review?.state)||inputHash(latest.generationMeta.sourceRequirements||null)!==originalRequirements||structureFingerprint(latest.content.pageSchema)!==originalStructure||!target||target.requestId!==originalRequestId||inputHash(currentRequest||null)!==originalRequest)throw Object.assign(new Error('이미지 준비 중 페이지 요청이 변경되었습니다. 최신 구성을 확인해 주세요.'),{code:'MEDIA_REQUEST_SUPERSEDED',statusCode:409,retryable:false});
     snapshot=JSON.parse(JSON.stringify(latest));page=snapshot.content.pageSchema;context=snapshot.content.pageContext;
     walk(page.root,entry=>{if(entry.node.id===originalNodeId)node=entry.node;});
    }

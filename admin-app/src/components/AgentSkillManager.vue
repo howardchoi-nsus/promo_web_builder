@@ -1,15 +1,15 @@
 <script setup>
 import {onMounted,reactive,ref} from 'vue';
 import {agentSkillService,announceSkillChange} from '../services/agent-skill-service.mjs';
-const skills=ref([]),loading=ref(false),saving=ref(false),error=ref(''),notice=ref(''),openedVersion=ref(null);
-const blank=()=>({id:'',baseVersion:0,key:'',name:'',description:'',sourceUrl:'',markdown:'',changeNote:'',active:true});
+const skills=ref([]),loading=ref(false),saving=ref(false),error=ref(''),notice=ref(''),openedVersion=ref(null),scopeReady=ref(false),promptTypes=ref([]),dependents=ref([]);
+const blank=()=>({id:'',baseVersion:0,key:'',name:'',description:'',sourceUrl:'',markdown:'',changeNote:'',active:true,allowedPromptTypes:[]});
 const editor=reactive(blank());
-async function load(){loading.value=true;error.value='';try{const result=await agentSkillService.list();skills.value=Array.isArray(result.skills)?result.skills:[];}catch(e){error.value=e.message;}finally{loading.value=false;}}
+async function load(){loading.value=true;error.value='';try{const result=await agentSkillService.list();skills.value=Array.isArray(result.skills)?result.skills:[];scopeReady.value=result.scopeSchemaReady===true;promptTypes.value=result.promptTypes||[];}catch(e){error.value=e.message;}finally{loading.value=false;}}
 function create(){Object.assign(editor,blank());openedVersion.value=null;notice.value='';error.value='';}
 async function select(id){error.value='';loading.value=true;try{const {version}=await agentSkillService.read(id);openedVersion.value=version;Object.assign(editor,{...version,id:version.skillId,baseVersion:Number(version.latestVersion),changeNote:''});}catch(e){error.value=e.message;}finally{loading.value=false;}}
 async function fileChanged(event){const file=event.target.files?.[0];if(!file)return;error.value='';try{if(!/\.md$/i.test(file.name)||file.size>60000)throw new Error('60KB 이하의 UTF-8 .md 파일을 선택해 주세요.');editor.markdown=await file.text();notice.value='MD 내용을 불러왔습니다. 검토 후 새 버전으로 저장해 주세요.';}catch(e){error.value=e.message;}finally{event.target.value='';}}
-async function save(){saving.value=true;error.value='';notice.value='';try{const {version}=await agentSkillService.save({...editor});await load();await select(version.id);announceSkillChange();notice.value=`v${version.version}을 저장했습니다. 프롬프트에서 이 버전을 연결해야 적용됩니다.`;}catch(e){error.value=e.message;}finally{saving.value=false;}}
-async function toggle(skill){saving.value=true;error.value='';try{await agentSkillService.setActive({id:skill.id,baseVersion:Number(skill.latestVersion),active:!skill.active});await load();if(editor.id===skill.id)editor.active=!skill.active;announceSkillChange();notice.value=skill.active?'스킬을 비활성화했습니다. 연결된 프롬프트의 새 실행은 연결 해제 또는 재활성화 전까지 차단됩니다.':'스킬을 활성화했습니다. 등록만으로 프롬프트에 자동 연결되지 않습니다.';}catch(e){error.value=e.message;}finally{saving.value=false;}}
+async function save(){saving.value=true;error.value='';notice.value='';try{const payload={...editor};if(!scopeReady.value)delete payload.allowedPromptTypes;const {version}=await agentSkillService.save(payload);await load();await select(version.id);announceSkillChange();notice.value=`v${version.version}을 저장했습니다. 프롬프트에서 이 버전을 연결해야 적용됩니다.`;}catch(e){error.value=e.message;dependents.value=e.dependents||[];}finally{saving.value=false;}}
+async function toggle(skill){saving.value=true;error.value='';try{await agentSkillService.setActive({id:skill.id,baseVersion:Number(skill.latestVersion),active:!skill.active});await load();if(editor.id===skill.id)editor.active=!skill.active;announceSkillChange();notice.value=skill.active?'스킬을 비활성화했습니다. 연결된 프롬프트의 새 실행은 연결 해제 또는 재활성화 전까지 차단됩니다.':'스킬을 활성화했습니다. 등록만으로 프롬프트에 자동 연결되지 않습니다.';}catch(e){error.value=e.message;dependents.value=e.dependents||[];}finally{saving.value=false;}}
 function download(){if(!openedVersion.value)return;const blob=new Blob([openedVersion.value.markdown],{type:'text/markdown;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`${openedVersion.value.key}-v${openedVersion.value.version}.md`;a.click();setTimeout(()=>URL.revokeObjectURL(url),0);}
 onMounted(load);
 </script>
@@ -17,7 +17,7 @@ onMounted(load);
  <section class="skill-manager" aria-labelledby="agent-skill-title">
   <header><div><h2 id="agent-skill-title">스킬 관리</h2><p>공통 MD 지침을 등록하고 프롬프트별로 버전을 연결합니다.</p></div><button type="button" :disabled="saving||loading" @click="create">새 스킬</button><button type="button" :disabled="saving||loading" @click="load">새로고침</button></header>
   <p>MD 텍스트만 LLM에 전달합니다. 스크립트·외부 링크·추가 참고 파일은 자동 실행하거나 가져오지 않습니다. 기본 정책·등록 토큰·출력 계약이 스킬보다 우선합니다.</p>
-  <p v-if="error" role="alert">{{ error }}</p><p v-if="notice" role="status">{{ notice }}</p>
+  <p v-if="error" role="alert">{{ error }}</p><ul v-if="dependents.length"><li v-for="item in dependents" :key="item.id">{{item.name}} · {{item.type}} · v{{item.version}}</li></ul><p v-if="notice" role="status">{{ notice }}</p>
   <div class="skill-workspace">
    <aside aria-label="등록된 스킬 목록"><p v-if="loading" role="status">불러오는 중…</p><p v-if="!loading&&!skills.length">등록된 스킬이 없습니다.</p>
     <article v-for="skill in skills" :key="skill.id"><strong>{{ skill.name }}</strong> <span>{{ skill.active?'활성':'비활성' }} · v{{ skill.latestVersion }}</span><p>{{ skill.description }}</p>
@@ -32,6 +32,8 @@ onMounted(load);
     <label>설명<textarea v-model="editor.description" rows="2" maxlength="2000"></textarea></label>
     <label>출처 URL<input v-model="editor.sourceUrl" type="url" maxlength="2000" placeholder="https://github.com/..."></label>
     <label><input v-model="editor.active" type="checkbox">프롬프트에서 사용 가능</label>
+    <label v-if="scopeReady">적용 가능한 프롬프트<select aria-label="적용 가능한 프롬프트" v-model="editor.allowedPromptTypes" multiple required size="6"><option v-for="type in promptTypes" :key="type" :value="type">{{type}}</option></select></label>
+    <p v-else>적용 범위 등록에는 migration 097이 필요합니다. 기존 연결 버전은 유지됩니다.</p>
     <label>MD 파일 불러오기<input type="file" accept=".md,text/markdown" @change="fileChanged"></label>
     <label>MD 지침<textarea v-model="editor.markdown" required rows="20" spellcheck="false"></textarea></label>
     <label>변경 기록<input v-model="editor.changeNote" maxlength="2000"></label>

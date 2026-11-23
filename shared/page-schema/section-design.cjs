@@ -11,7 +11,7 @@ function designGroups(page){
 }
 function sectionDesignPending(snapshot){const plan=snapshot?.generationMeta?.sectionDesign;if(!plan)return false;return plan.state!=='complete'||!plan.groups?.length||plan.groups.some(group=>!plan.completed?.some(item=>item.id===group.id));}
 function designNodeStates(snapshot,activeId,failedId){
- const plan=snapshot?.generationMeta?.sectionDesign;if(!plan||!Array.isArray(plan.groups)||!Array.isArray(plan.completed)||snapshot.generationMeta.review?.state!=='approved')return [];
+ const plan=snapshot?.generationMeta?.sectionDesign;if(!plan||!Array.isArray(plan.groups)||!Array.isArray(plan.completed)||!['ready','approved'].includes(snapshot.generationMeta.review?.state))return [];
  return plan.groups.flatMap(group=>group.nodeIds.map(nodeId=>({nodeId,groupId:group.id,state:plan.completed.some(item=>item.id===group.id)?'ready':group.id===failedId?'failed':group.id===activeId?'generating':'waiting'})));
 }
 module.exports={treeNodes,designGroups,sectionDesignPending,designNodeStates};

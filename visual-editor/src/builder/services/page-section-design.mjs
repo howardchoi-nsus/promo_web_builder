@@ -4,7 +4,7 @@ export async function prepareSectionDesign({readCurrent,request,onUpdate,onProgr
  if(!runId)throw Object.assign(new Error('영역 디자인 요청 정보가 없습니다.'),{code:'SECTION_DESIGN_REQUIRED',retryable:false});
  while(true){
   const current=readCurrent(),plan=current.snapshot?.generationMeta?.sectionDesign;
-  if(current.documentId!==documentId||plan?.id!==runId||current.snapshot.generationMeta.review?.state!=='approved')throw Object.assign(new Error('페이지가 변경되어 디자인 작업을 중단했습니다.'),{code:'SECTION_DESIGN_DOCUMENT_CHANGED',retryable:false});
+  if(current.documentId!==documentId||plan?.id!==runId||!['ready','approved'].includes(current.snapshot.generationMeta.review?.state))throw Object.assign(new Error('페이지가 변경되어 디자인 작업을 중단했습니다.'),{code:'SECTION_DESIGN_DOCUMENT_CHANGED',retryable:false});
   let advanced=false;
   for(let index=0;index<plan.groups.length;index++){
    const group=plan.groups[index];

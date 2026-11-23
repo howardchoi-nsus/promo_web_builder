@@ -1,0 +1,5 @@
+import assert from 'node:assert/strict';import {createRequire} from 'node:module';import {designFixture} from './fixtures/design-preview-enhancements.mjs';
+const require=createRequire(import.meta.url),{imageTarget,designTask}=require('../api/_page-design-task'),{treeNodes}=require('../shared/page-schema/section-design.cjs');
+const {page,context}=designFixture();const image=treeNodes(page).find(n=>n.type==='image');const before=structuredClone(page),target=imageTarget(page,image,context);
+assert.equal(target.nodeId,image.id);assert.equal(target.purpose,'background-key-visual');assert.ok(target.containerLayout.desktop);assert.ok(target.textLayout.length);assert.match(target.evidence,/not supplied/);assert.deepEqual(page,before);assert.equal(designTask('region-style').styleOnly,true);assert.equal(designTask('manifest').styleOnly,false);assert.match(designTask('manifest').rules.join(' '),/do not force background hero/);
+console.log('Design task contract: content-led layout responsibilities, actual image ancestor/copy/layout context and no invented pixel measurements passed.');

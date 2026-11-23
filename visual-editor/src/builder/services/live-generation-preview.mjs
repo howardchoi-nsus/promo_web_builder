@@ -3,7 +3,7 @@ import {designNodeStates} from '../../../../shared/page-schema/section-design.mj
 import {nodes,safeUrl} from '../../../../shared/page-schema/runtime.mjs';
 
 export function generationRegions(snapshot, activity = {}) {
-  if (snapshot?.generationMeta?.review?.state !== 'approved') return [];
+  if (!['ready','approved'].includes(snapshot?.generationMeta?.review?.state)) return [];
   const page=snapshot.content?.pageSchema, context=snapshot.content?.pageContext;
   if (!page || !context) return [];
   return nodes(page).filter(node=>node.type==='image'||node.type==='icon'&&context.icons?.[node.iconId]?.url).map(node=>{

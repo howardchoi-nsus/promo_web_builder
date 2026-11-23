@@ -1,3 +1,5 @@
+// Preserve explicit legacy approval-path regression coverage. New automatic flow is tested separately.
+process.env.PAGE_SCHEMA_AUTO_FLOW_ENABLED='false';
 import assert from 'node:assert/strict';import {createUnitHarness} from './fixtures/page-draft-units-harness.mjs';
 const h=await createUnitHarness(),requestId='cccccccc-cccc-4ccc-8ccc-cccccccccccc';let result;
 const invoke=body=>h.invoke({requestId,...body});

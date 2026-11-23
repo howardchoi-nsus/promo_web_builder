@@ -6,13 +6,14 @@ import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
 const require=createRequire(import.meta.url),{PGlite}=await import(process.env.PGLITE_TEST_MODULE||'@electric-sql/pglite'),db=new PGlite();
 await db.exec(readFileSync(new URL('../db/migrations/091_admin_agent_skills.sql',import.meta.url),'utf8'));
+await db.exec(readFileSync(new URL('../db/migrations/097_skill_prompt_scopes.sql',import.meta.url),'utf8'));
 const sql=async(strings,...values)=>(await db.query(strings.reduce((q,s,i)=>q+(i?'$'+i:'')+s,''),values)).rows;
 require('../api/_prompt-template-store').getSql=()=>sql;
 process.env.PROMO_ADMIN_SESSION_SECRET='browser-test-agent-skill-secret-long-enough';process.env.VERCEL='1';
 const auth=require('../api/_promo-admin-auth'),token=auth.createAdminSessionToken({subject:'browser-test'}),handler=require('../api/agent-skills');
 const server=await createServer({configFile:false,root:process.cwd(),plugins:[vue(),{
  name:'skill-test',resolveId(id){if(id==='/__skill-entry.js')return '\0skill-entry';},
- load(id){if(id==='\0skill-entry')return `import{createApp,ref}from'vue';import Manager from '/admin-app/src/components/AgentSkillManager.vue';import Bindings from '/admin-app/src/components/PromptSkillBindings.vue';createApp({components:{Manager,Bindings},setup(){return{bindings:ref([])}},template:'<Manager/><fieldset><legend>프롬프트 연결 테스트</legend><Bindings v-model="bindings"/><output id="binding-result">{{JSON.stringify(bindings)}}</output></fieldset>'}).mount('#app');`;},
+ load(id){if(id==='\0skill-entry')return `import{createApp,ref}from'vue';import Manager from '/admin-app/src/components/AgentSkillManager.vue';import Bindings from '/admin-app/src/components/PromptSkillBindings.vue';createApp({components:{Manager,Bindings},setup(){return{bindings:ref([])}},template:'<Manager/><fieldset><legend>프롬프트 연결 테스트</legend><Bindings v-model="bindings" prompt-type="promo_page_region_builder"/><output id="binding-result">{{JSON.stringify(bindings)}}</output></fieldset>'}).mount('#app');`;},
  configureServer(server){server.middlewares.use(async(req,res,next)=>{
   if(req.url==='/__skill-test'){res.setHeader('Content-Type','text/html');return res.end('<style>*{box-sizing:border-box}body{font-family:Arial}input,textarea,select{max-width:100%}</style><div id="app"></div><script type="module" src="/__skill-entry.js"></script>');}
   if(!req.url.startsWith('/api/agent-skills'))return next();
@@ -33,6 +34,7 @@ try{
  const markdown='# Guidance\nUse registered tokens.\n<script>window.skillExecuted=true</script>\n{{literal_reference}}';
  await page.getByLabel('MD 파일 불러오기',{exact:true}).setInputFiles({name:'SKILL.md',mimeType:'text/markdown',buffer:Buffer.from(markdown)});
  assert.equal(await page.getByLabel('MD 지침',{exact:true}).inputValue(),markdown);
+ await page.getByLabel('적용 가능한 프롬프트',{exact:true}).selectOption(['promo_page_region_builder']);
  await page.getByRole('button',{name:'스킬 등록',exact:true}).click();await page.getByRole('status').getByText(/v1을 저장/).waitFor();
  const [{id:firstId}]=(await sql`select id::text from promo_agent_skill_versions order by version`);
  await page.getByLabel('추가할 스킬 버전',{exact:true}).selectOption(firstId);await page.getByRole('button',{name:'스킬 연결',exact:true}).click();

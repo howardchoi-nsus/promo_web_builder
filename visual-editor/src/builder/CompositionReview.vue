@@ -6,6 +6,7 @@ import CompositionPreviewCanvas from "./CompositionPreviewCanvas.vue";
 import {previewReference} from '../../../shared/layout-token-policy.mjs';
 
 const props = defineProps({
+  minimal:{type:Boolean,default:false},
   wireframe: {type:Boolean,default:false},
   desktopFirst:{type:Boolean,default:false},
   snapshot: { type: Object, required: true },
@@ -84,17 +85,17 @@ defineExpose({ buildAutoRepairSnapshot, inspectQualityAcrossViewports });
         </div>
         <Teleport :to="controlsTarget || 'body'" :disabled="!controlsTarget">
           <div v-if="!wireframe" class="ai-builder-actions" aria-label="디자인 작업">
-        <button v-if="!qualityPassed && qualityState!=='checking'" type="button" class="ai-builder-secondary" :disabled="busy" @click="emit('check-quality')">다시 검사</button>
-        <button type="button" class="ai-builder-secondary" :aria-pressed="effectsPaused" @click="effectsPaused=!effectsPaused">{{effectsPaused?'효과 다시 재생':'효과만 일시정지'}}</button>
-        <button type="button" class="ai-builder-secondary" @click="emit('rollback')">이전 버전</button>
-        <button type="button" class="ai-builder-secondary" @click="emit('edit-natural-language')">채팅으로 수정</button>
+        <button v-if="!minimal && !qualityPassed && qualityState!=='checking'" type="button" class="ai-builder-secondary" :disabled="busy" @click="emit('check-quality')">다시 검사</button>
+        <button v-if="!minimal" type="button" class="ai-builder-secondary" :aria-pressed="effectsPaused" @click="effectsPaused=!effectsPaused">{{effectsPaused?'효과 다시 재생':'효과만 일시정지'}}</button>
+        <button type="button" class="ai-builder-secondary" v-if="!minimal" @click="emit('rollback')">이전 버전</button>
+        <button type="button" class="ai-builder-secondary" v-if="!minimal" @click="emit('edit-natural-language')">채팅으로 수정</button>
         <button type="button" class="ai-builder-primary" :disabled="busy || !qualityPassed" @click="emit('open-editor')">에디터에서 수정</button>
 
         <button type="button" class="ai-builder-primary" :disabled="busy || !qualityPassed" :title="outputDisabledReason||'검사한 페이지를 새 창에서 확인합니다.'" @click="emit('open-output')">새 창에서 확인</button>
         <button v-if="exportEnabled" type="button" class="ai-builder-primary" :disabled="busy || !qualityPassed" @click="emit('export-document')">HTML 다운로드</button>
-        <p v-if="outputDisabledReason" role="status">{{ outputDisabledReason }}</p>
-        <p v-if="snapshot.generationMeta?.qualityAgentReview">AI 검토: {{ snapshot.generationMeta.qualityAgentReview.summary }} · {{ snapshot.generationMeta.qualityAgentReview.execution?.model }}</p>
-        <ul v-if="diagnostics.length" aria-label="자동 품질 검사 내역">
+        <p v-if="!minimal && outputDisabledReason" role="status">{{ outputDisabledReason }}</p>
+        <p v-if="!minimal && snapshot.generationMeta?.qualityAgentReview">AI 검토: {{ snapshot.generationMeta.qualityAgentReview.summary }} · {{ snapshot.generationMeta.qualityAgentReview.execution?.model }}</p>
+        <ul v-if="!minimal && diagnostics.length" aria-label="자동 품질 검사 내역">
           <li v-for="(item,index) in diagnostics" :key="index">{{ item.viewport }} · {{ item.path || '페이지' }} · {{ item.message }}</li>
         </ul>
           </div>

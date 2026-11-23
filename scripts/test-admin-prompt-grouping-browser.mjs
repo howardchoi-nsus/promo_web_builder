@@ -360,8 +360,11 @@ try {
   await page.getByText("영문 원문에는 한글을 입력할 수 없습니다.", { exact: true }).waitFor();
   await englishPromptEditor.fill(originalPromptBody);
   assert.equal(await page.getByText("영문 원문에는 한글을 입력할 수 없습니다.", { exact: true }).count(), 0);
-  await page.getByRole("button", { name: "변경 저장 및 활성화", exact: true }).click();
-  await page.getByText("프롬프트 v15을 생성하고 활성화했습니다.", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Draft 저장", exact: true }).click();
+  await page.getByText("프롬프트 v15 Draft를 저장했습니다. 조립 검증 후 별도로 활성화해 주세요.", { exact: true }).waitFor();
+  assert.equal(prompts.find(item=>item.version===14&&item.type==="section_background_image")?.status,"active");
+  await page.getByRole("button",{name:"조립 검증",exact:true}).click();
+  await page.getByRole("button",{name:"검증 버전 활성화",exact:true}).click();
   await backgroundGroup.getByText("활성 v15", { exact: true }).waitFor();
   assert.equal(
     await backgroundGroup.locator(".prompt-version-item.selected").getAttribute("aria-current"),
@@ -376,12 +379,14 @@ try {
 
   await page.locator('select[aria-label="프롬프트 유형 필터"]').selectOption("component_image");
   await page.locator(".prompt-version-item").filter({ hasText: "v2" }).click();
-  await page.getByRole("button", { name: "변경 저장 및 활성화", exact: true }).click();
+  await page.getByRole("button", { name: "Draft 저장", exact: true }).click();
   await page.getByText("변경된 내용이 없어 새 버전을 생성하지 않았습니다.", { exact: true }).waitFor();
   assert.equal(prompts.filter((item) => item.lineageId === "component-lineage").length, 1);
   await page.locator("label.field").filter({ hasText: "프롬프트 이름" }).locator("input").fill("Component Image Updated");
-  await page.getByRole("button", { name: "변경 저장 및 활성화", exact: true }).click();
-  await page.getByText("프롬프트 v3을 생성하고 활성화했습니다.", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Draft 저장", exact: true }).click();
+  await page.getByText("프롬프트 v3 Draft를 저장했습니다. 조립 검증 후 별도로 활성화해 주세요.", { exact: true }).waitFor();
+  await page.getByRole("button",{name:"조립 검증",exact:true}).click();
+  await page.getByRole("button",{name:"검증 버전 활성화",exact:true}).click();
   await page.locator(".prompt-group").getByText("활성 v3", { exact: true }).waitFor();
   assert.equal(prompts.find((item) => item.id === "component-lineage-v3")?.name, "Component Image Updated");
 
@@ -399,7 +404,7 @@ try {
   await page.getByLabel("추가할 스킬 버전",{exact:true}).selectOption("55555555-5555-4555-8555-555555555555");
   await page.getByRole("button",{name:"스킬 연결",exact:true}).click();
   await page.locator(".prompt-editor-header .tiny-button.primary").click();
-  await page.getByText("프롬프트 v2을 생성하고 활성화했습니다.", { exact: true }).waitFor();
+  await page.getByText("프롬프트 v2 Draft를 저장했습니다. 조립 검증 후 별도로 활성화해 주세요.", { exact: true }).waitFor();
   assert.equal(savedPromptPatch.modelOptions.executionSnapshotVersion, 2);
   assert.deepEqual(savedPromptPatch.modelOptions.runtimeConfig, {
     timeoutMs: 90000,

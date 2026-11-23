@@ -1,0 +1,45 @@
+{
+  "status": "draft-only",
+  "activationRequired": true,
+  "requiredMigrations": [
+    "097_skill_prompt_scopes.sql",
+    "098_automatic_design_pack.sql"
+  ],
+  "prompts": [
+    {
+      "type": "promo_page_manifest_planner",
+      "promptFile": "prompts/page-unit-plan.md",
+      "skillFile": "skills/work-manifest.md"
+    },
+    {
+      "type": "promo_page_region_builder",
+      "promptFile": "prompts/page-unit-region.md",
+      "skillFile": "skills/region-structure.md"
+    },
+    {
+      "type": "promo_page_schema_planner",
+      "promptFile": "prompts/page-schema-planner.md",
+      "skillFile": "skills/page-structure-auto.md"
+    },
+    {
+      "type": "promo_page_section_designer",
+      "promptFile": "prompts/section-designer.md",
+      "skillFile": "skills/region-design-auto.md"
+    },
+    {
+      "type": "section_background_image",
+      "promptFile": "prompts/section-background-image.md",
+      "skillFile": "skills/image-art-direction-auto.md"
+    },
+    {
+      "type": "component_image",
+      "promptFile": "prompts/component-image.md",
+      "skillFile": "skills/image-art-direction-auto.md"
+    },
+    {
+      "type": "promo_page_quality_reviewer",
+      "promptFile": "prompts/quality-reviewer.md",
+      "skillFile": "skills/quality-review-auto.md"
+    }
+  ]
+}

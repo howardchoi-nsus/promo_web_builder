@@ -1,6 +1,6 @@
 {
   "generatedAt": "2026-11-30T00:00:00.000Z",
-  "count": 384,
+  "count": 443,
   "documents": [
     {
       "id": "doc-0001",
@@ -100,11 +100,19 @@
     },
     {
       "id": "doc-0013",
-      "title": "Design QA — AI Full-workspace Progress State",
+      "title": "AI Builder Result Header Design QA",
       "category": "기술 문서",
-      "updatedAt": "2026-08-18",
+      "updatedAt": "2026-11-09",
       "sourcePath": "design-qa.md",
       "contentUrl": "/document/content/doc-0013.md"
+    },
+    {
+      "id": "doc-0385",
+      "title": "Admin 공통 스킬 등록과 프롬프트별 연결",
+      "category": "계획서",
+      "updatedAt": "2026-11-12",
+      "sourcePath": "docs/계획/admin-agent-skills-2026-11-12.md",
+      "contentUrl": "/document/content/doc-0385.md"
     },
     {
       "id": "doc-0014",
@@ -211,6 +219,14 @@
       "contentUrl": "/document/content/doc-0025.md"
     },
     {
+      "id": "doc-0386",
+      "title": "AI 자동 품질 검토·수정 에이전트",
+      "category": "계획서",
+      "updatedAt": "2026-11-12",
+      "sourcePath": "docs/계획/ai-page-quality-review-agent-2026-11-12.md",
+      "contentUrl": "/document/content/doc-0386.md"
+    },
+    {
       "id": "doc-0026",
       "title": "AI 섹션 조합형 프로모션 페이지 생성 엔진 개발계획서",
       "category": "계획서",
@@ -235,6 +251,14 @@
       "contentUrl": "/document/content/doc-0028.md"
     },
     {
+      "id": "doc-0387",
+      "title": "AI 품질 검토·수정 테스트 결과",
+      "category": "계획서",
+      "updatedAt": "2026-11-12",
+      "sourcePath": "docs/계획/ai-quality-review-test-report-2026-11-12.md",
+      "contentUrl": "/document/content/doc-0387.md"
+    },
+    {
       "id": "doc-0029",
       "title": "Registry 기반 AI 프로모션 Composition Mode 보완 개발계획서",
       "category": "계획서",
@@ -249,6 +273,38 @@
       "updatedAt": "2026-07-23",
       "sourcePath": "docs/계획/ai-section-auto-design-development-plan-2026-07-23.md",
       "contentUrl": "/document/content/doc-0030.md"
+    },
+    {
+      "id": "doc-0388",
+      "title": "채팅 디버깅 결과",
+      "category": "계획서",
+      "updatedAt": "2026-11-16",
+      "sourcePath": "docs/계획/chat-debugging-2026-11-16.md",
+      "contentUrl": "/document/content/doc-0388.md"
+    },
+    {
+      "id": "doc-0389",
+      "title": "채팅 경험 개선 계획",
+      "category": "계획서",
+      "updatedAt": "2026-11-12",
+      "sourcePath": "docs/계획/chat-experience-improvements-2026-11-12.md",
+      "contentUrl": "/document/content/doc-0389.md"
+    },
+    {
+      "id": "doc-0390",
+      "title": "채팅·요약·미리보기 개선 개발 결과",
+      "category": "계획서",
+      "updatedAt": "2026-11-16",
+      "sourcePath": "docs/계획/chat-summary-preview-implementation-2026-11-16.md",
+      "contentUrl": "/document/content/doc-0390.md"
+    },
+    {
+      "id": "doc-0391",
+      "title": "채팅·요청 요약·페이지 미리보기·디자인 미리보기 개선 계획",
+      "category": "계획서",
+      "updatedAt": "2026-11-15",
+      "sourcePath": "docs/계획/chat-summary-preview-improvement-plan-2026-11-15.md",
+      "contentUrl": "/document/content/doc-0391.md"
     },
     {
       "id": "doc-0031",
@@ -355,6 +411,22 @@
       "contentUrl": "/document/content/doc-0043.md"
     },
     {
+      "id": "doc-0392",
+      "title": "디자인 미리보기 이미지·보더·아이콘 안정화 계획",
+      "category": "계획서",
+      "updatedAt": "2026-11-12",
+      "sourcePath": "docs/계획/design-preview-assets-borders-icons-stabilization-plan-2026-11-12.md",
+      "contentUrl": "/document/content/doc-0392.md"
+    },
+    {
+      "id": "doc-0393",
+      "title": "디자인 미리보기 안정화 구현·검증·배포 기록",
+      "category": "계획서",
+      "updatedAt": "2026-11-12",
+      "sourcePath": "docs/계획/design-preview-stabilization-rollout-2026-11-12.md",
+      "contentUrl": "/document/content/doc-0393.md"
+    },
+    {
       "id": "doc-0044",
       "title": "디자인 토큰 테이블 편집기 및 원클릭 적용 개발계획서",
       "category": "계획서",
@@ -411,6 +483,38 @@
       "contentUrl": "/document/content/doc-0050.md"
     },
     {
+      "id": "doc-0394",
+      "title": "실시간 생성 미리보기 1차 구현 결과",
+      "category": "계획서",
+      "updatedAt": "2026-11-16",
+      "sourcePath": "docs/계획/live-generation-preview-implementation-2026-11-16.md",
+      "contentUrl": "/document/content/doc-0394.md"
+    },
+    {
+      "id": "doc-0395",
+      "title": "실시간 생성 미리보기 구현 계획",
+      "category": "계획서",
+      "updatedAt": "2026-11-16",
+      "sourcePath": "docs/계획/live-generation-preview-plan-2026-11-16.md",
+      "contentUrl": "/document/content/doc-0395.md"
+    },
+    {
+      "id": "doc-0396",
+      "title": "실시간 생성 미리보기 단계별 검증 기록",
+      "category": "계획서",
+      "updatedAt": "2026-11-16",
+      "sourcePath": "docs/계획/live-generation-preview-stage-verification-2026-11-16.md",
+      "contentUrl": "/document/content/doc-0396.md"
+    },
+    {
+      "id": "doc-0397",
+      "title": "실시간 생성 미리보기 보정 — 실제 영역 디자인 생성",
+      "category": "계획서",
+      "updatedAt": "2026-11-19",
+      "sourcePath": "docs/계획/live-generation-preview-v2-section-design.md",
+      "contentUrl": "/document/content/doc-0397.md"
+    },
+    {
       "id": "doc-0051",
       "title": "Live Preview 컴포넌트 선택·이동·Resize 안정화 디버깅 계획서",
       "category": "계획서",
@@ -465,6 +569,22 @@
       "updatedAt": "2026-11-08",
       "sourcePath": "docs/계획/page-preview-progressive-reveal-and-reference-component-publishing-development-plan-2026-11-08.md",
       "contentUrl": "/document/content/doc-0384.md"
+    },
+    {
+      "id": "doc-0398",
+      "title": "페이지 폭·가독성·자동 품질 보정",
+      "category": "계획서",
+      "updatedAt": "2026-11-12",
+      "sourcePath": "docs/계획/page-preview-quality-repair-2026-11-12.md",
+      "contentUrl": "/document/content/doc-0398.md"
+    },
+    {
+      "id": "doc-0399",
+      "title": "프로모 웹빌더 정책·스킬·프롬프트 통합 정리 — 1차 검토본",
+      "category": "프롬프트",
+      "updatedAt": "2026-11-23",
+      "sourcePath": "docs/계획/policy-skills-prompts-consolidated-review-2026-11-23.md",
+      "contentUrl": "/document/content/doc-0399.md"
     },
     {
       "id": "doc-0055",
@@ -611,6 +731,22 @@
       "contentUrl": "/document/content/doc-0072.md"
     },
     {
+      "id": "doc-0400",
+      "title": "페이지 제작 통합·웹빌더 에디터 개발 계획",
+      "category": "계획서",
+      "updatedAt": "2026-11-19",
+      "sourcePath": "docs/계획/unified-page-builder-editor-plan-2026-11-19.md",
+      "contentUrl": "/document/content/doc-0400.md"
+    },
+    {
+      "id": "doc-0401",
+      "title": "V3 프롬프트별 역할·구성·업무 경계 검토",
+      "category": "프롬프트",
+      "updatedAt": "2026-11-23",
+      "sourcePath": "docs/계획/v3-prompt-responsibilities-review-2026-11-23.md",
+      "contentUrl": "/document/content/doc-0401.md"
+    },
+    {
       "id": "doc-0073",
       "title": "Visual Editor 선택 컴포넌트 컨텍스트 속성 팝업 개발계획서",
       "category": "계획서",
@@ -657,6 +793,14 @@
       "updatedAt": "2026-09-20",
       "sourcePath": "docs/구현/nuxt-runtime-directus-tunnel-implementation-2026-09-20.md",
       "contentUrl": "/document/content/doc-0078.md"
+    },
+    {
+      "id": "doc-0402",
+      "title": "단일 디자인 토큰 라이브러리",
+      "category": "구현 문서",
+      "updatedAt": "2026-11-10",
+      "sourcePath": "docs/구현/single-design-token-library.md",
+      "contentUrl": "/document/content/doc-0402.md"
     },
     {
       "id": "doc-0079",
@@ -715,6 +859,14 @@
       "contentUrl": "/document/content/doc-0085.md"
     },
     {
+      "id": "doc-0403",
+      "title": "중앙 디자인 토큰 사용 정책",
+      "category": "설계서",
+      "updatedAt": "2026-11-10",
+      "sourcePath": "docs/설계/central-token-usage-policy.md",
+      "contentUrl": "/document/content/doc-0403.md"
+    },
+    {
       "id": "doc-0086",
       "title": "현재 AI Agent 구성 확인",
       "category": "설계서",
@@ -747,6 +899,38 @@
       "contentUrl": "/document/content/doc-0089.md"
     },
     {
+      "id": "doc-0404",
+      "title": "Hallmark 지침 1차 적용",
+      "category": "설계서",
+      "updatedAt": "2026-11-11",
+      "sourcePath": "docs/설계/dynamic-page-schema/hallmark-adoption.md",
+      "contentUrl": "/document/content/doc-0404.md"
+    },
+    {
+      "id": "doc-0405",
+      "title": "동적 PageSchema 구현 및 활성화",
+      "category": "설계서",
+      "updatedAt": "2026-11-11",
+      "sourcePath": "docs/설계/dynamic-page-schema/implementation.md",
+      "contentUrl": "/document/content/doc-0405.md"
+    },
+    {
+      "id": "doc-0406",
+      "title": "ROLE",
+      "category": "프롬프트",
+      "updatedAt": "2026-11-10",
+      "sourcePath": "docs/설계/dynamic-page-schema/planner-prompt.txt",
+      "contentUrl": "/document/content/doc-0406.txt"
+    },
+    {
+      "id": "doc-0407",
+      "title": "동적 PageSchema 기반 페이지 생성 솔루션",
+      "category": "설계서",
+      "updatedAt": "2026-11-10",
+      "sourcePath": "docs/설계/dynamic-page-schema/solution.md",
+      "contentUrl": "/document/content/doc-0407.md"
+    },
+    {
       "id": "doc-0090",
       "title": "GGPoker 톤앤매너 · 이미지 생성 프롬프트 · 프로모션 빌더 디자인 토큰",
       "category": "프롬프트",
@@ -769,6 +953,14 @@
       "updatedAt": "2026-09-04",
       "sourcePath": "docs/설계/promo-builder-directus-as-is-to-be-summary-2026-09-04.md",
       "contentUrl": "/document/content/doc-0092.md"
+    },
+    {
+      "id": "doc-0408",
+      "title": "레퍼런스 컴포넌트 등록과 디자인 미리보기 및 웹출력 여백 검토 보고서",
+      "category": "설계서",
+      "updatedAt": "2026-11-09",
+      "sourcePath": "docs/설계/promo-reference-component-preview-output-spacing-review-2026-11-09.md",
+      "contentUrl": "/document/content/doc-0408.md"
     },
     {
       "id": "doc-0093",
@@ -801,6 +993,22 @@
       "updatedAt": "2026-11-03",
       "sourcePath": "docs/설계/promo-web-builder-user-cms-web-output-domain-separation-review-2026-11-03.md",
       "contentUrl": "/document/content/doc-0096.md"
+    },
+    {
+      "id": "doc-0409",
+      "title": "등록 컴포넌트·디자인 토큰 기반 구성",
+      "category": "설계서",
+      "updatedAt": "2026-11-10",
+      "sourcePath": "docs/설계/registered-library-composition-policy.md",
+      "contentUrl": "/document/content/doc-0409.md"
+    },
+    {
+      "id": "doc-0410",
+      "title": "V3 생성 브리지 제거",
+      "category": "설계서",
+      "updatedAt": "2026-11-10",
+      "sourcePath": "docs/설계/v3-generation-bridge-removal.md",
+      "contentUrl": "/document/content/doc-0410.md"
     },
     {
       "id": "doc-0097",
@@ -2953,6 +3161,270 @@
       "updatedAt": "2026-11-03",
       "sourcePath": "docs/handoff/promo-service-contract-v3-rollout-handoff-2026-11-03.md",
       "contentUrl": "/document/content/doc-0365.md"
+    },
+    {
+      "id": "doc-0411",
+      "title": "AUTOMATIC EXECUTION AND QUALITY",
+      "category": "프롬프트",
+      "updatedAt": "2026-11-23",
+      "sourcePath": "docs/mouse-swarm-builder/automatic-design-pack/prompts/component-image.md",
+      "contentUrl": "/document/content/doc-0411.md"
+    },
+    {
+      "id": "doc-0412",
+      "title": "ROLE",
+      "category": "프롬프트",
+      "updatedAt": "2026-11-23",
+      "sourcePath": "docs/mouse-swarm-builder/automatic-design-pack/prompts/page-schema-planner.md",
+      "contentUrl": "/document/content/doc-0412.md"
+    },
+    {
+      "id": "doc-0413",
+      "title": "AUTOMATIC EXECUTION AND QUALITY",
+      "category": "프롬프트",
+      "updatedAt": "2026-11-23",
+      "sourcePath": "docs/mouse-swarm-builder/automatic-design-pack/prompts/page-unit-plan.md",
+      "contentUrl": "/document/content/doc-0413.md"
+    },
+    {
+      "id": "doc-0414",
+      "title": "AUTOMATIC EXECUTION AND QUALITY",
+      "category": "프롬프트",
+      "updatedAt": "2026-11-23",
+      "sourcePath": "docs/mouse-swarm-builder/automatic-design-pack/prompts/page-unit-region.md",
+      "contentUrl": "/document/content/doc-0414.md"
+    },
+    {
+      "id": "doc-0415",
+      "title": "ROLE",
+      "category": "프롬프트",
+      "updatedAt": "2026-11-23",
+      "sourcePath": "docs/mouse-swarm-builder/automatic-design-pack/prompts/quality-reviewer.md",
+      "contentUrl": "/document/content/doc-0415.md"
+    },
+    {
+      "id": "doc-0416",
+      "title": "AUTOMATIC EXECUTION AND QUALITY",
+      "category": "프롬프트",
+      "updatedAt": "2026-11-23",
+      "sourcePath": "docs/mouse-swarm-builder/automatic-design-pack/prompts/section-background-image.md",
+      "contentUrl": "/document/content/doc-0416.md"
+    },
+    {
+      "id": "doc-0417",
+      "title": "ROLE",
+      "category": "프롬프트",
+      "updatedAt": "2026-11-23",
+      "sourcePath": "docs/mouse-swarm-builder/automatic-design-pack/prompts/section-designer.md",
+      "contentUrl": "/document/content/doc-0417.md"
+    },
+    {
+      "id": "doc-0418",
+      "title": "Automatic design responsibilities pack",
+      "category": "안내서",
+      "updatedAt": "2026-11-23",
+      "sourcePath": "docs/mouse-swarm-builder/automatic-design-pack/README.md",
+      "contentUrl": "/document/content/doc-0418.md"
+    },
+    {
+      "id": "doc-0419",
+      "title": "Shared image art direction · v2",
+      "category": "기술 문서",
+      "updatedAt": "2026-11-23",
+      "sourcePath": "docs/mouse-swarm-builder/automatic-design-pack/skills/image-art-direction-auto.md",
+      "contentUrl": "/document/content/doc-0419.md"
+    },
+    {
+      "id": "doc-0420",
+      "title": "Page Structure for Progressive Preview · v2",
+      "category": "기술 문서",
+      "updatedAt": "2026-11-23",
+      "sourcePath": "docs/mouse-swarm-builder/automatic-design-pack/skills/page-structure-auto.md",
+      "contentUrl": "/document/content/doc-0420.md"
+    },
+    {
+      "id": "doc-0421",
+      "title": "Live Preview Quality Review · v2",
+      "category": "QA 보고서",
+      "updatedAt": "2026-11-23",
+      "sourcePath": "docs/mouse-swarm-builder/automatic-design-pack/skills/quality-review-auto.md",
+      "contentUrl": "/document/content/doc-0421.md"
+    },
+    {
+      "id": "doc-0422",
+      "title": "Registered Region Design for Live Preview · v2",
+      "category": "기술 문서",
+      "updatedAt": "2026-11-23",
+      "sourcePath": "docs/mouse-swarm-builder/automatic-design-pack/skills/region-design-auto.md",
+      "contentUrl": "/document/content/doc-0422.md"
+    },
+    {
+      "id": "doc-0423",
+      "title": "Content-led region structure",
+      "category": "기술 문서",
+      "updatedAt": "2026-11-23",
+      "sourcePath": "docs/mouse-swarm-builder/automatic-design-pack/skills/region-structure.md",
+      "contentUrl": "/document/content/doc-0423.md"
+    },
+    {
+      "id": "doc-0424",
+      "title": "Content-led work planning",
+      "category": "기술 문서",
+      "updatedAt": "2026-11-23",
+      "sourcePath": "docs/mouse-swarm-builder/automatic-design-pack/skills/work-manifest.md",
+      "contentUrl": "/document/content/doc-0424.md"
+    },
+    {
+      "id": "doc-0425",
+      "title": "공통 디자인 방향 계약 — 정책·스킬·프롬프트 구분",
+      "category": "기술 문서",
+      "updatedAt": "2026-11-19",
+      "sourcePath": "docs/mouse-swarm-builder/design-direction.md",
+      "contentUrl": "/document/content/doc-0425.md"
+    },
+    {
+      "id": "doc-0426",
+      "title": "개발 반영 및 운영 준비 상태",
+      "category": "구현 문서",
+      "updatedAt": "2026-11-22",
+      "sourcePath": "docs/mouse-swarm-builder/implementation-status.md",
+      "contentUrl": "/document/content/doc-0426.md"
+    },
+    {
+      "id": "doc-0427",
+      "title": "Mouse Swarm Builder 표시 정책과 구현 계약",
+      "category": "정책",
+      "updatedAt": "2026-11-22",
+      "sourcePath": "docs/mouse-swarm-builder/policy.md",
+      "contentUrl": "/document/content/doc-0427.md"
+    },
+    {
+      "id": "doc-0428",
+      "title": "component image",
+      "category": "프롬프트",
+      "updatedAt": "2026-11-19",
+      "sourcePath": "docs/mouse-swarm-builder/prompts/component-image.md",
+      "contentUrl": "/document/content/doc-0428.md"
+    },
+    {
+      "id": "doc-0429",
+      "title": "ROLE",
+      "category": "프롬프트",
+      "updatedAt": "2026-11-19",
+      "sourcePath": "docs/mouse-swarm-builder/prompts/page-schema-planner.md",
+      "contentUrl": "/document/content/doc-0429.md"
+    },
+    {
+      "id": "doc-0430",
+      "title": "page unit plan",
+      "category": "프롬프트",
+      "updatedAt": "2026-11-21",
+      "sourcePath": "docs/mouse-swarm-builder/prompts/page-unit-plan.md",
+      "contentUrl": "/document/content/doc-0430.md"
+    },
+    {
+      "id": "doc-0431",
+      "title": "page unit region",
+      "category": "프롬프트",
+      "updatedAt": "2026-11-21",
+      "sourcePath": "docs/mouse-swarm-builder/prompts/page-unit-region.md",
+      "contentUrl": "/document/content/doc-0431.md"
+    },
+    {
+      "id": "doc-0432",
+      "title": "ROLE",
+      "category": "프롬프트",
+      "updatedAt": "2026-11-19",
+      "sourcePath": "docs/mouse-swarm-builder/prompts/quality-reviewer.md",
+      "contentUrl": "/document/content/doc-0432.md"
+    },
+    {
+      "id": "doc-0433",
+      "title": "section background image",
+      "category": "프롬프트",
+      "updatedAt": "2026-11-19",
+      "sourcePath": "docs/mouse-swarm-builder/prompts/section-background-image.md",
+      "contentUrl": "/document/content/doc-0433.md"
+    },
+    {
+      "id": "doc-0434",
+      "title": "ROLE",
+      "category": "프롬프트",
+      "updatedAt": "2026-11-19",
+      "sourcePath": "docs/mouse-swarm-builder/prompts/section-designer.md",
+      "contentUrl": "/document/content/doc-0434.md"
+    },
+    {
+      "id": "doc-0435",
+      "title": "Mouse Swarm Builder 적용 패키지",
+      "category": "안내서",
+      "updatedAt": "2026-11-22",
+      "sourcePath": "docs/mouse-swarm-builder/README.md",
+      "contentUrl": "/document/content/doc-0435.md"
+    },
+    {
+      "id": "doc-0436",
+      "title": "실제 영역별 와이어프레임 생성 V2 적용 순서",
+      "category": "기술 문서",
+      "updatedAt": "2026-11-22",
+      "sourcePath": "docs/mouse-swarm-builder/rollout-units-v2.md",
+      "contentUrl": "/document/content/doc-0436.md"
+    },
+    {
+      "id": "doc-0437",
+      "title": "Mouse Swarm Builder — frontend implementation instructions",
+      "category": "기술 문서",
+      "updatedAt": "2026-11-22",
+      "sourcePath": "docs/mouse-swarm-builder/skills/frontend-rendering.md",
+      "contentUrl": "/document/content/doc-0437.md"
+    },
+    {
+      "id": "doc-0438",
+      "title": "Shared image art direction · v2",
+      "category": "기술 문서",
+      "updatedAt": "2026-11-19",
+      "sourcePath": "docs/mouse-swarm-builder/skills/image-art-direction.md",
+      "contentUrl": "/document/content/doc-0438.md"
+    },
+    {
+      "id": "doc-0439",
+      "title": "Page Structure for Progressive Preview · v2",
+      "category": "기술 문서",
+      "updatedAt": "2026-11-19",
+      "sourcePath": "docs/mouse-swarm-builder/skills/page-structure.md",
+      "contentUrl": "/document/content/doc-0439.md"
+    },
+    {
+      "id": "doc-0440",
+      "title": "Live Preview Quality Review · v2",
+      "category": "QA 보고서",
+      "updatedAt": "2026-11-19",
+      "sourcePath": "docs/mouse-swarm-builder/skills/quality-review.md",
+      "contentUrl": "/document/content/doc-0440.md"
+    },
+    {
+      "id": "doc-0441",
+      "title": "Registered Region Design for Live Preview · v2",
+      "category": "기술 문서",
+      "updatedAt": "2026-11-19",
+      "sourcePath": "docs/mouse-swarm-builder/skills/region-design.md",
+      "contentUrl": "/document/content/doc-0441.md"
+    },
+    {
+      "id": "doc-0443",
+      "title": "ROLE",
+      "category": "프롬프트",
+      "updatedAt": "2026-11-10",
+      "sourcePath": "docs/prompts/design-token-update/promo-page-composer.txt",
+      "contentUrl": "/document/content/doc-0443.txt"
+    },
+    {
+      "id": "doc-0444",
+      "title": "디자인 토큰 프롬프트 보정안",
+      "category": "프롬프트",
+      "updatedAt": "2026-11-10",
+      "sourcePath": "docs/prompts/design-token-update/README.md",
+      "contentUrl": "/document/content/doc-0444.md"
     },
     {
       "id": "doc-0366",
