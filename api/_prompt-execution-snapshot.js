@@ -1,3 +1,4 @@
+const {measure}=require('./_work-performance');
 const {
   ensureDefaultPromptTemplates,
   renderPrompt,
@@ -37,8 +38,8 @@ function completeDeclaredPromptVariables(prompt, variables = {}) {
 }
 
 async function createPromptExecutionSnapshot(sql, type, variables = {}) {
-  await ensureDefaultPromptTemplates(sql);
-  const rows = await sql`
+  await measure('promptReadiness',()=>ensureDefaultPromptTemplates(sql));
+  const rows = await measure('promptLookup',()=>sql`
     select
       id::text,
       type,
@@ -62,14 +63,14 @@ async function createPromptExecutionSnapshot(sql, type, variables = {}) {
     where type = ${type}
       and status = 'active'
     limit 1
-  `;
+  `);
   if (!rows.length) {
     const error = new Error(`Active ${type} prompt template not found`);
     error.statusCode = 409;
     throw error;
   }
 
-  return buildPromptExecutionSnapshot(sql, toPromptTemplate(rows[0]), variables);
+  return measure('promptBuild',()=>buildPromptExecutionSnapshot(sql, toPromptTemplate(rows[0]), variables));
 }
 
 async function createValidatedPromptExecutionSnapshot(sql, promptId, variables = {}, { expectedType = "" } = {}) {
@@ -81,8 +82,8 @@ async function createValidatedPromptExecutionSnapshot(sql, promptId, variables =
     throw error;
   }
 
-  await ensureDefaultPromptTemplates(sql);
-  const rows = await sql`
+  await measure('promptReadiness',()=>ensureDefaultPromptTemplates(sql));
+  const rows = await measure('promptLookup',()=>sql`
     select
       id::text,
       type,
@@ -108,7 +109,7 @@ async function createValidatedPromptExecutionSnapshot(sql, promptId, variables =
     from prompt_templates
     where id = ${id}::uuid
     limit 1
-  `;
+  `);
   if (!rows.length) {
     const error = new Error("Prompt template not found");
     error.statusCode = 404;
@@ -149,11 +150,11 @@ async function createValidatedPromptExecutionSnapshot(sql, promptId, variables =
 
 async function buildPromptExecutionSnapshot(sql, prompt, variables = {}) {
   const type = prompt.type;
-  await requireActiveRegisteredModel(sql, {
+  await measure('modelRegistry',()=>requireActiveRegisteredModel(sql, {
     provider: prompt.provider,
     model: prompt.model,
     promptType: prompt.type,
-  });
+  }));
   validatePromptTemplateContract(prompt.type, prompt);
   const completedVariables = completeDeclaredPromptVariables(prompt, variables);
   validatePromptExecutionVariables(type, completedVariables);
@@ -186,7 +187,7 @@ async function buildPromptExecutionSnapshot(sql, prompt, variables = {}) {
     && !Array.isArray(snapshotModelOptions.promptLayers)
     ? snapshotModelOptions.promptLayers
     : {};
-  const skills=await require('./_agent-skill-store').resolvePromptSkills(sql,snapshotModelOptions.skillBindings,type);
+  const skills=await measure('skillResolution',()=>require('./_agent-skill-store').resolvePromptSkills(sql,snapshotModelOptions.skillBindings,type));
   const assembled = assembleEffectivePrompt({
     type,
     renderedBody: fitted.renderedPrompt,

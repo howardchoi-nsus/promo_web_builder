@@ -2,7 +2,9 @@ export async function generateProgressivePage(payload,{request,onDraft,wait=ms=>
  let sequence=0,operation='start-draft';
  for(let step=0;step<maxSteps;step++){
   if(!isCurrent())throw Object.assign(Error('문서가 변경되어 초안 생성을 중단했습니다.'),{code:'PAGE_DRAFT_DOCUMENT_CHANGED'});
-  const result=await request({...payload,operation,sequence});
+  // Follow-up units use the already persisted overview and context; keep identity/CAS fields.
+  const transport=operation==='start-draft'?payload:{documentId:payload.documentId,baseDocumentRevision:payload.baseDocumentRevision,requestId:payload.requestId,requirementsRevision:payload.requirementsRevision};
+  const result=await request({...transport,operation,sequence});
   if(!isCurrent())throw Object.assign(Error('이전 문서의 응답은 적용하지 않았습니다.'),{code:'PAGE_DRAFT_DOCUMENT_CHANGED'});
   if(result.complete)return result;
   if(result.pending){await wait(Math.min(3000,Math.max(500,Number(result.retryAfterMs)||1500)));continue;}

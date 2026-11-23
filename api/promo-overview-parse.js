@@ -1,3 +1,4 @@
+const {measure,measureSync}=require('./_work-performance');
 const { getSql, parseBody } = require("./_promo-section-design-store");
 const { randomUUID } = require("node:crypto");
 const { createPromptExecutionSnapshot } = require("./_prompt-execution-snapshot");
@@ -49,23 +50,23 @@ module.exports = async function handler(req, res) {
       currentOverview,
     });
     const sql = getSql();
-    promptSnapshot = await createPromptExecutionSnapshot(sql, "promo_overview_parser", {
+    promptSnapshot = await measure('overviewPrompt',()=>createPromptExecutionSnapshot(sql, "promo_overview_parser", {
       naturalLanguage: instruction,
       currentOverviewJson: JSON.stringify(currentOverview),
       allowedValuesJson: JSON.stringify(allowedValues),
       generationMode: "new-draft",
       ...promptContexts,
-    });
+    }));
     const generation = await generateStructuredPlannerResult({
       type: "promo_overview_parser",
       schemaName: "promo_overview_parse",
       schema: OVERVIEW_PARSE_SCHEMA,
       promptConfig: promptSnapshot.promptConfig,
     });
-    const parsed = normalizeParsedOverview({
+    const parsed = measureSync('overviewValidation',()=>normalizeParsedOverview({
       result: generation.result,
       instruction,
-    });
+    }));
     return res.status(200).json({
       ok: true,
       draftId: randomUUID(),
