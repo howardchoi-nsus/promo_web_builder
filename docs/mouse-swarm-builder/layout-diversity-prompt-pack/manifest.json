@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "status": "proposal-not-activated",
+  "runtimeChanges": false,
+  "newModelCalls": false,
+  "preserveExistingSkills": true,
+  "prompts": [
+    {
+      "type": "promo_page_manifest_planner",
+      "promptFile": "prompts/page-unit-plan.md",
+      "baselineFile": "../automatic-design-pack/prompts/page-unit-plan.md"
+    },
+    {
+      "type": "promo_page_region_builder",
+      "promptFile": "prompts/page-unit-region.md",
+      "baselineFile": "../automatic-design-pack/prompts/page-unit-region.md"
+    },
+    {
+      "type": "promo_page_schema_planner",
+      "promptFile": "prompts/page-schema-planner.md",
+      "baselineFile": "../automatic-design-pack/prompts/page-schema-planner.md"
+    },
+    {
+      "type": "promo_page_section_designer",
+      "promptFile": "prompts/section-designer.md",
+      "baselineFile": "../automatic-design-pack/prompts/section-designer.md"
+    },
+    {
+      "type": "promo_page_quality_reviewer",
+      "promptFile": "prompts/quality-reviewer.md",
+      "baselineFile": "../automatic-design-pack/prompts/quality-reviewer.md"
+    }
+  ]
+}
