@@ -184,7 +184,7 @@ function isProviderBillingError(error) {
   const code = String(error?.code || "").trim().toLowerCase();
   const type = String(error?.providerErrorType || "").trim().toLowerCase();
   const message = String(error?.providerMessage || error?.message || "").trim().toLowerCase();
-  return [
+  return Number(error?.statusCode)===402 || [
     "provider_billing_required",
     "insufficient_quota",
     "billing_hard_limit_reached",
@@ -211,25 +211,31 @@ async function requestJson(url, body, headers, signal, timeoutMs) {
       const providerMessage = payload.error?.message || `Model provider failed with ${response.status}`;
       const error = new Error(providerMessage);
       error.code = payload.error?.code || `PROVIDER_${response.status}`;
+      error.providerCode = error.code;
       error.statusCode = response.status;
       error.providerErrorType = payload.error?.type || "";
       error.requestId = response.headers.get("x-request-id") || response.headers.get("x-goog-request-id") || "";
       error.providerMessage = providerMessage;
       if (isProviderBillingError(error)) {
         error.code = "PROVIDER_BILLING_REQUIRED";
+        error.retryable = false;
         error.message = PROVIDER_BILLING_MESSAGE;
       }
       throw error;
     }
     return { payload, requestId: response.headers.get("x-request-id") || response.headers.get("x-goog-request-id") || "" };
   } catch (error) {
+    const provider=url.startsWith('https://api.openai.com/')?'openai':url.startsWith('https://generativelanguage.googleapis.com/')?'gemini':undefined;
+    const modelExecution=require('./_work-log').safeMeta({provider,model:body?.model});error.modelExecution=modelExecution;
+    const work=require('./_work-log').context.getStore();if(work)work.lastFailedModel={...modelExecution,modelFailureObserved:true,providerCode:error.providerCode,providerRequestId:error.requestId};
+
     if (error.name === "AbortError") {
-      throw Object.assign(new Error(`Model provider timed out after ${timeoutMs}ms`), { code: "PROVIDER_TIMEOUT", statusCode: 504 });
+      throw Object.assign(new Error(`Model provider timed out after ${timeoutMs}ms`), { code: "PROVIDER_TIMEOUT", statusCode: 504, modelExecution });
     }
     if (error instanceof TypeError && !error.statusCode) {
       throw Object.assign(new Error(`Model provider network request failed: ${error.message}`), {
         code: "PROVIDER_NETWORK_ERROR",
-        statusCode: 503,
+        statusCode: 503,modelExecution,
       });
     }
     throw error;

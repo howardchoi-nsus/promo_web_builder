@@ -2,7 +2,7 @@ const Ajv = require('ajv/dist/2020').default;
 const baseSchema = require('./page-schema.schema.json');
 const {layoutTokenPolicy}=require('../layout-token-policy.cjs');
 const {TOKEN_USAGE_RULES,pageStyleRoles,pageGenerationStyleRoles,pageStyleToken,pageNodeStyleRules,validateTokenUsagePolicy} = require('../token-usage-policy.cjs');
-const LIMITS=Object.freeze({nodes:200,depth:8,bytes:262144,mediaRequests:8,text:60000});
+const LIMITS=Object.freeze({nodes:200,depth:8,bytes:262144,text:60000});
 const TYPES=Object.freeze(['container','grid','stack','text','image','button','card','input','divider','icon','video']);
 const clone=value=>JSON.parse(JSON.stringify(value));
 const ajv=new Ajv({allErrors:true,strict:false,ownProperties:true,discriminator:true});

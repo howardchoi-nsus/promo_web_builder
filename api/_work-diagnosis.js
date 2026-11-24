@@ -1,5 +1,6 @@
 const {key,scrub,safeMeta}=require('./_work-log');
 function recovery(code){
+ if(/BILLING|PROVIDER_402|PAYMENT/i.test(code))return '해당 API 공급자 계정의 크레딧·결제 설정·프로젝트 사용 한도를 확인하고 정상화 후 기존 제작 화면에서 이어가세요. API 사용료는 ChatGPT 등 앱 구독과 별도입니다.';
  if(/TOKEN|LIBRARY|PROMPT|MIGRATION|SNAPSHOT/.test(code))return '관리자에서 해당 토큰·프롬프트·사용 정책 또는 마이그레이션을 확인한 후 원래 제작 화면에서 이어가세요.';
  if(/SCHEMA|DRAFT_INVALID|CONTENT|IMAGE_PLAN/.test(code))return '아래 검증 경로와 오류를 확인해 생성 계약·등록 설정을 보정한 후 원래 제작 화면에서 실패 단계부터 다시 시도하세요.';
  if(/429|RATE|CAPACITY/.test(code))return '공급자 호출 한도와 실행 중인 작업을 확인한 후 원래 제작 화면에서 다시 시도하세요.';
@@ -25,6 +26,6 @@ async function workDiagnosis(sql,taskId){
  const safeFailures=failures.map(f=>({...f,code:key(f.code)||'UNSPECIFIED_FAILURE',message:scrub(f.message),metadata:safeMeta(f.metadata),recovery:recovery(key(f.code))}));
  const unfinished=persisted.filter(r=>!['completed','complete','abandoned','cancelled'].includes(r.state));
  const state=!counts.total?'no_records':completed?'completion_verified':unfinished.some(r=>r.expired||r.state==='failed'||r.code)?'attention_required':unfinished.some(r=>r.active)?'lease_active':safeFailures.length?'attention_required':'completion_unconfirmed';
- return {taskId,state,total:counts.total,lastObservedAt:counts.lastObservedAt,failures:safeFailures,openRequests:open.map(r=>({...r,metadata:safeMeta(r.metadata)})),persisted,unavailable,recovery:recovery(unfinished.find(r=>r.code)?.code||safeFailures[0]?.code||''),limitations:['요청·조회 성공은 전체 제작 완료가 아닙니다. 품질 통과 이벤트와 현재 저장 Revision이 일치할 때만 완료 확인으로 표시합니다.','저장 작업 상태는 연결 문서 기준이며 다른 실행의 상태가 포함될 수 있습니다. runId를 대조하세요.','유효한 리스는 예약 상태이며 실제 공급자가 계속 실행 중임을 증명하지 않습니다. 종료 미확인은 실패로 단정하지 않습니다.','과거 실패는 이력입니다. 자동 복구 후에도 보존되며 운영 콘솔에만 남은 저장 장애·강제 종료 원인은 여기서 복원할 수 없습니다.']};
+ return {taskId,state,executionPolicy:{pageDraftFlagEnabled:require('./_promo-builder-flags').builderFlags().pageDraftV1,parallelFlagEnabled:require('./_promo-builder-flags').builderFlags().parallelPageWork,unitStorageAvailable:tables.units,sectionDesignConcurrency:1,description:'와이어프레임은 누적 초안·병렬 설정 ON 및 병렬 실행 문서에서 최대 2개. 기존 순차 초안은 설정 변경만으로 전환되지 않음. 디자인끼리는 직렬이며 준비된 이미지 1개와 디자인 1개만 중첩 지원.'},total:counts.total,lastObservedAt:counts.lastObservedAt,failures:safeFailures,openRequests:open.map(r=>({...r,metadata:safeMeta(r.metadata)})),persisted,unavailable,recovery:recovery(unfinished.find(r=>r.code)?.code||safeFailures[0]?.code||''),limitations:['요청·조회 성공은 전체 제작 완료가 아닙니다. 품질 통과 이벤트와 현재 저장 Revision이 일치할 때만 완료 확인으로 표시합니다.','저장 작업 상태는 연결 문서 기준이며 다른 실행의 상태가 포함될 수 있습니다. runId를 대조하세요.','유효한 리스는 예약 상태이며 실제 공급자가 계속 실행 중임을 증명하지 않습니다. 종료 미확인은 실패로 단정하지 않습니다.','과거 실패는 이력입니다. 자동 복구 후에도 보존되며 운영 콘솔에만 남은 저장 장애·강제 종료 원인은 여기서 복원할 수 없습니다.']};
 }
 module.exports={workDiagnosis,recovery};

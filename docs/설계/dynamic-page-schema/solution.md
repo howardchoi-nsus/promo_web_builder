@@ -162,7 +162,7 @@ source/asset/action ID는 JSONPath나 URL이 아니라 요청별 승인 registry
 |---|---|
 | 요청 | 인증, 문서 소유권, 리비전, 활성 프롬프트/모델, 활성 토큰 정책 |
 | 구조 | 허용 요소/키/값, 모든 object의 additionalProperties=false, 순환 불가 |
-| 예산 | 최대 200 nodes, 깊이 8, 자식 100, 이미지 요청 8, 입력 JSON/AI 출력 256 KiB 제안 |
+| 예산 | 최대 200 nodes, 깊이 8, 자식 100, 입력 JSON/AI 출력 256 KiB 제안. 이미지 요청 8개 제한은 2026-11-24 해제; 고유 노드/문서 예산 및 별도 실행 동시성 적용 |
 | 식별자 | node/request ID 중복 금지, 참조 해석, nodeId ↔ 요청 대상 일치 |
 | 토큰 | 역할 존재, 대상/속성/상태, 토큰 등록·참조 유효성, 버전 고정 |
 | 콘텐츠 | critical source 직접 참조, 필수 정보 누락/금지된 반복 방지, 근거 없는 주장 차단 |

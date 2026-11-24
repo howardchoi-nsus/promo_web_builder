@@ -21,7 +21,7 @@ const auth=require('../api/_promo-admin-auth');const originalAuth=auth.resolveAd
 async function read(query={},allowed=true){const res=response();await admin({method:'GET',query,headers:allowed?{authorization:'test-admin'}:{}},res);return res;}
 assert.equal((await read({},false)).statusCode,401);assert.equal((await read({search:'not-uuid'})).statusCode,400);assert.equal((await read({limit:101})).statusCode,400);assert.equal((await read({cursor:'bad'})).statusCode,400);
 const failures=await read({search:task,status:'failed'});assert.equal(failures.payload.logs.length,2);assert.ok(failures.payload.logs.every(l=>l.taskId===task));
-assert.equal((await read({reference:'provider-42'})).payload.logs.length,1);
+const linkedProviderLogs=(await read({reference:'provider-42'})).payload.logs;assert.equal(linkedProviderLogs.length,2);assert.deepEqual(new Set(linkedProviderLogs.map(row=>row.event)),new Set(['model_finished','request_finished']));assert.equal(linkedProviderLogs.find(row=>row.event==='request_finished').metadata.model,'registered-model');
 const first=await read({search:task,limit:2});assert.equal(first.payload.logs.length,2);assert.ok(first.payload.nextCursor);const next=await read({search:task,limit:2,cursor:first.payload.nextCursor});assert.equal(new Set([...first.payload.logs,...next.payload.logs].map(r=>r.id)).size,4);
 // A successful model and a pending API are distinct lifecycle events.
 const success=withWorkLog('pending-operation',async(req,res)=>{const value=await withModelLog(async()=>({usage:{input_tokens:5,output_tokens:8}}))({promptConfig:{model:'model'}});return res.status(202).json({pending:true,usage:value.usage});});await success({method:'POST',headers:{'x-builder-task-id':task},body:{documentId}},response());

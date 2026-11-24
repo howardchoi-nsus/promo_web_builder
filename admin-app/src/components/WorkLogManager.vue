@@ -1,6 +1,7 @@
 <script setup>
 import {ref,onMounted,onBeforeUnmount} from 'vue';
-const performance=ref(null),diagnosis=ref(null);
+const performance=ref(null),diagnosis=ref(null),execution=ref(null),executionLoading=ref(false),executionError=ref('');
+let executionSerial=0;
 const diagnosisLabels={no_records:"작업 기록 없음",completion_verified:"현재 Revision 완료 확인",attention_required:"실패·만료 기록 확인 필요",lease_active:"유효한 작업 리스 있음",completion_unconfirmed:"전체 완료 미확인"};
 const logs=ref([]),loading=ref(false),error=ref(''),cursor=ref(null),selected=ref(null),live=ref(true),limitations=ref([]);
 const openOnly=ref(false),reference=ref('');
@@ -33,13 +34,20 @@ async function inspectDiagnosis(id,refresh=false){
  try{const res=await fetch('/api/admin-work-logs?'+new URLSearchParams({mode:'diagnosis',search:id}),{credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(15000)}),body=await res.json();if(!res.ok)throw Error(body.error||'작업 진단 실패');if(run===performanceSerial)diagnosis.value=body.diagnosis;}
  catch(e){if(run===performanceSerial)error.value=e.message;}finally{if(run===performanceSerial)performanceLoading.value=false;}
 }
-function inspectRow(row){performanceSerial++;performanceLoading.value=false;performance.value=null;diagnosis.value=null;selected.value=row;}
+async function inspectRow(row){
+ performanceSerial++;performanceLoading.value=false;performance.value=null;diagnosis.value=null;selected.value=row;
+ const token=++executionSerial;execution.value=null;executionError.value='';executionLoading.value=true;
+ const origin=row.metadata?.sourceRequestId;const requestId=/^[a-f0-9-]{36}$/i.test(origin||'')?origin:row.requestId;
+ try{const res=await fetch('/api/admin-work-logs?'+new URLSearchParams({mode:'execution',search:row.taskId,requestId}),{credentials:'same-origin',cache:'no-store',signal:AbortSignal.timeout(15000)}),body=await res.json();if(!res.ok||!body.execution)throw Error(body.error||'실행 모델 조회 응답을 확인할 수 없습니다.');if(token===executionSerial&&selected.value?.id===row.id)execution.value=body.execution;}
+ catch(e){if(token===executionSerial&&selected.value?.id===row.id)executionError.value=e.message;}
+ finally{if(token===executionSerial)executionLoading.value=false;}
+}
 function follow(id){search.value=id;reference.value='';openOnly.value=false;status.value='';event.value='';stage.value='';errorCode.value='';load();}
 function polling(){clearInterval(timer);if(live.value)timer=setInterval(()=>{if(!loading.value){const id=diagnosis.value?.taskId;load(false,true).then(()=>{if(id&&diagnosis.value?.taskId===id&&!performanceLoading.value)inspectDiagnosis(id,true);});}},10000);}
 function date(value){return new Date(value).toLocaleString('ko-KR',{timeZone:'Asia/Seoul',hour12:false});}
 const labels={request_started:'요청 시작',request_finished:'요청 종료',model_started:'AI 호출 시작',model_finished:'AI 호출 종료',checkpoint:'진행 기록',client_error:'브라우저 오류'};
 const states={running:'시작 기록',succeeded:'성공',failed:'실패',pending:'대기',cancelled:'취소'};
-onMounted(()=>{load();polling();});onBeforeUnmount(()=>{serial++;performanceSerial++;clearInterval(timer);});
+onMounted(()=>{load();polling();});onBeforeUnmount(()=>{serial++;performanceSerial++;executionSerial++;clearInterval(timer);});
 </script>
 <template>
 <section class="work-log-manager" aria-labelledby="work-log-title">
@@ -69,6 +77,7 @@ onMounted(()=>{load();polling();});onBeforeUnmount(()=>{serial++;performanceSeri
  <section v-if="diagnosis" class="log-detail" aria-label="작업 중단 진단">
  <button type="button" @click="performanceSerial++;diagnosis=null">진단 닫기</button><h3>작업 중단 진단</h3>
  <p><strong>{{diagnosisLabels[diagnosis.state]||diagnosis.state}}</strong></p><p>작업 ID: {{diagnosis.taskId}}</p><p>작업 기록 {{diagnosis.total}}개 · 마지막 기록 {{diagnosis.lastObservedAt?date(diagnosis.lastObservedAt):'없음'}}</p>
+ <p v-if="diagnosis.executionPolicy">누적 초안 설정: {{diagnosis.executionPolicy.pageDraftFlagEnabled?'켜짐':'꺼짐'}} · 서버 병렬 설정: {{diagnosis.executionPolicy.parallelFlagEnabled?'켜짐':'꺼짐'}} · 작업 저장 테이블: {{diagnosis.executionPolicy.unitStorageAvailable?'준비됨':'미준비'}} · 섹션 디자인 동시 실행: {{diagnosis.executionPolicy.sectionDesignConcurrency}}개</p><p v-if="diagnosis.executionPolicy">{{diagnosis.executionPolicy.description}}</p>
  <h4>다음 조치</h4><p>{{diagnosis.recovery}}</p>
  <h4>최근 실패 이력 · 최신 50개 제한과 무관</h4><p v-if="!diagnosis.failures.length">저장된 실패 기록이 없습니다. 오류가 없었다는 뜻은 아닙니다. 아래 종료 미확인 요청과 저장 상태를 확인하세요.</p>
  <article v-for="failure in diagnosis.failures" :key="failure.requestId+failure.event+failure.createdAt"><h5>{{failure.code}} · {{labels[failure.event]||failure.event}} · {{date(failure.createdAt)}}</h5><p>{{failure.stage}} / {{failure.operation}} · 요청 {{failure.requestId}}</p><p>{{failure.message}}</p><pre>{{JSON.stringify(failure.metadata,null,2)}}</pre><p>{{failure.recovery}}</p></article>
@@ -78,7 +87,9 @@ onMounted(()=>{load();polling();});onBeforeUnmount(()=>{serial++;performanceSeri
  </section>
  <section v-if="performance" class="log-detail" aria-label="작업 성능 요약"><button type="button" @click="performance=null">성능 닫기</button><h3>작업 성능 요약</h3><p>{{performance.taskId}}</p><p>AI 호출 {{performance.summary.modelCalls}}회 · AI 실패 {{performance.summary.modelFailures}}회 · 요청 실패 {{performance.summary.failedRequests}}회 · 자동 재시도 {{performance.summary.automaticRetries}}회 · 종료 미확인 {{performance.summary.requestsWithoutEnd}}회 · 계획 캐시 재사용 {{performance.summary.planningCacheHits}}회</p><div class="log-table"><table><thead><tr><th>단계</th><th>구분</th><th>표본</th><th>평균</th><th>p50</th><th>p95</th><th>최대</th></tr></thead><tbody><tr v-for="item in performance.stages" :key="item.stage+item.event"><td>{{item.stage}}</td><td>{{item.event==='model_finished'?'AI 호출':'서버 요청'}}</td><td>{{item.samples}}</td><td>{{item.averageMs}}ms</td><td>{{item.p50Ms}}ms</td><td>{{item.p95Ms}}ms</td><td>{{item.maxMs}}ms</td></tr></tbody></table></div><ul><li v-for="item in performance.limitations" :key="item">{{item}}</li></ul></section>
  <p v-if="selected&&!logs.some(row=>row.id===selected.id)">선택 상세는 이전 조회에서 보존된 기록입니다. 현재 목록 범위에는 포함되지 않습니다.</p>
- <section v-if="selected" class="log-detail" aria-label="로그 상세"><button type="button" @click="selected=null">상세 닫기</button><h3>요청 상세</h3><dl><dt>작업 ID</dt><dd>{{selected.taskId}}</dd><dt>요청 ID</dt><dd>{{selected.requestId}}</dd><dt>문서 ID</dt><dd>{{selected.documentId||'문서 생성 전'}}</dd><dt>HTTP 상태</dt><dd>{{selected.httpStatus||'—'}}</dd></dl><pre>{{JSON.stringify(selected,null,2)}}</pre></section>
+ <section v-if="selected" class="log-detail" aria-label="로그 상세"><button type="button" @click="selected=null">상세 닫기</button><h3>요청 상세</h3><dl><dt>작업 ID</dt><dd>{{selected.taskId}}</dd><dt>요청 ID</dt><dd>{{selected.requestId}}</dd><dt>문서 ID</dt><dd>{{selected.documentId||'문서 생성 전'}}</dd><dt>HTTP 상태</dt><dd>{{selected.httpStatus||'—'}}</dd></dl><h4>원래 요청의 실행 모델</h4><p v-if="executionLoading" role="status">실행 모델을 조회하고 있습니다.</p><p v-if="executionError" role="alert">{{executionError}}</p>
+ <template v-if="execution"><p>조회 요청 ID: {{execution.requestId}}</p><p v-if="!execution.models.length">이 요청의 저장 기록에 공급자·모델 정보가 없습니다. 과거 모델을 현재 설정으로 추정하지 않습니다.</p><dl v-for="model in execution.models" :key="model.evidence"><dt>공급자 / 모델</dt><dd>{{model.provider||'확인 불가'}} / {{model.model||'확인 불가'}}</dd><dt>호출 기록</dt><dd>{{labels[model.event]||model.event}} · {{states[model.status]||model.status}} · HTTP {{model.httpStatus||'—'}} · {{model.code||'—'}}</dd><dt>프롬프트</dt><dd>{{model.promptType||'—'}} · {{model.promptId||'—'}} · v{{model.promptVersion??'—'}}</dd></dl><p v-if="execution.request">원래 요청: {{execution.request.stage}} / {{execution.request.operation}} · HTTP {{execution.request.httpStatus||'—'}} · {{execution.request.code}}</p><ul><li v-for="text in execution.limitations" :key="text">{{text}}</li></ul></template>
+ <pre>{{JSON.stringify(selected,null,2)}}</pre></section>
  </aside>
  </div>
  <ul class="log-limitations"><li v-for="item in limitations" :key="item">{{item}}</li><li>원문 프롬프트·입력/응답 본문·쿠키·API 키·이미지 바이너리는 저장하지 않습니다. 오류 메시지도 민감 값을 제거합니다.</li></ul>
