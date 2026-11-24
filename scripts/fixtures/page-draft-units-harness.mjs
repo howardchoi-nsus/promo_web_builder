@@ -35,7 +35,7 @@ export async function createUnitHarness({chat=true,parallel=false}={}){
   if(failNext){failNext=false;throw Error('unit provider test failure');}
   const index=staged.plan.regions.findIndex(r=>r.shell.id===constraints.region.shell.id);if(invalidNext){invalidNext--;const wrong=structuredClone(staged.results[index]);wrong.node.label='invalid shell';return {result:wrong};}const output=structuredClone(staged.results[index]);if(constraints.unitNodeIdPrefix){const ids=new Map();const visit=node=>{if(node!==output.node){const previous=node.id;node.id=constraints.unitNodeIdPrefix+previous;ids.set(previous,node.id);}for(const child of node.children||[])visit(child);};visit(output.node);for(const item of output.sourceAssignments)item.nodeId=ids.get(item.nodeId)||item.nodeId;}return {result:output};
  }};
- return {db,sql,doc,owner,overview,read,modelCalls,events,
+ return {db,sql,doc,owner,overview,read,modelCalls,events,dependencies:deps,
   invalidNext(count=1){invalidNext=count;},setContractVersion(v){contractVersion=v;},failNext(){failNext=true;},holdFirst(){held=true;heldIndex=0;},holdSecond(){held=true;heldIndex=1;},get waiting(){return Boolean(release);},release(){held=false;release?.();release=null;},
   async invoke(body){let response,status;const res={status(code){status=code;return this;},json(data){response=data;return this;}};
    await require('../../api/_page-draft-service').processPageDraft({sql,owner:{ownerSubject:owner},found:await read(),body:{documentId:doc,baseDocumentRevision:0,requirementsRevision:1,...body},res},deps);

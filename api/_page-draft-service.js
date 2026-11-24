@@ -69,14 +69,21 @@ async function processPageDraft({sql,owner,body,found,res},deps={}){
     if(!builderFlags().automaticPageFlow||!['PAGE_DRAFT_INVALID','PAGE_IMAGE_PLAN_INCOMPLETE','PAGE_SCHEMA_INVALID'].includes(validationError.code))throw validationError;
     const renewed=await sql`update promo_page_drafts set lease_expires_at=now()+interval '6 minutes' where id=${runId}::uuid and lease_token=${lease}::uuid and lease_expires_at>now() returning id`;if(!renewed.length)throw error('PAGE_DRAFT_LEASE_CHANGED','작업 소유권이 변경되었습니다.');
     timing.repairCalls=1;timing.validationFailure={code:validationError.code,model:execution.promptConfig.model,usage:response.usage||{}};
-    state.executions.push({type,promptId:execution.promptConfig.promptId,promptVersion:execution.promptConfig.promptVersion,model:execution.promptConfig.model,failedValidation:validationError.code,usage:response.usage||{}});
+    state.executions.push({type,promptId:execution.promptConfig.promptId,promptVersion:execution.promptConfig.promptVersion,configHash:require('./_page-work-unit-store').configHash(execution.promptConfig),model:execution.promptConfig.model,failedValidation:validationError.code,usage:response.usage||{}});
+    if(validationError.code==='PAGE_IMAGE_PLAN_INCOMPLETE'&&state.plan){
+     const repaired=await require('./_page-image-plan-repair').repairRegionImages({state,result:response.result,variables,use,sql,originalConfig:execution.promptConfig});
+     state.page=applyRegion(state,repaired.result);state.cursor++;
+     state.executions.push({type,promptId:repaired.execution.promptId,promptVersion:repaired.execution.promptVersion,configHash:require('./_page-work-unit-store').configHash(repaired.execution),model:repaired.execution.model,repair:true,imageRepair:true,usage:repaired.usage||{}});
+    }else{
     const repairVariables={...variables,constraintsJson:JSON.stringify({...JSON.parse(variables.constraintsJson),repairFeedback:{attempt:1,maxRepairs:1,code:validationError.code,message:validationError.message,errors:(validationError.errors||[]).slice(0,12).map(e=>({path:e.path||e.instancePath||'',code:e.code||e.keyword||'',message:e.message||''}))}})};
     endPhase('repairModel');const repairExecution=await use.createPromptExecutionSnapshot(sql,type,repairVariables);assertV2(repairExecution.promptConfig);
     response=await use.generate({type,schemaName:state.plan?'page_draft_region_v2':'page_draft_plan_v2',schema:state.plan?regionSchema(context,region):planSchema(context),promptConfig:repairExecution.promptConfig});endPhase('validation');
     if(state.plan){state.page=applyRegion(state,response.result);state.cursor++;}else Object.assign(state,planResult(response.result,context,{parallel:state.parallelV1===true}));
-    state.executions.push({type,promptId:repairExecution.promptConfig.promptId,promptVersion:repairExecution.promptConfig.promptVersion,model:repairExecution.promptConfig.model,renderedPromptHash:repairExecution.promptConfig.renderedPromptHash,skills:repairExecution.promptConfig.skillSnapshots||[],repair:true,usage:response.usage||{}});
+    state.executions.push({type,promptId:repairExecution.promptConfig.promptId,promptVersion:repairExecution.promptConfig.promptVersion,configHash:require('./_page-work-unit-store').configHash(repairExecution.promptConfig),model:repairExecution.promptConfig.model,renderedPromptHash:repairExecution.promptConfig.renderedPromptHash,skills:repairExecution.promptConfig.skillSnapshots||[],repair:true,usage:response.usage||{}});
+
+    }
    }
-   if(!timing.repairCalls)state.executions.push({type,promptId:execution.promptConfig.promptId,promptVersion:execution.promptConfig.promptVersion,model:execution.promptConfig.model,renderedPromptHash:execution.promptConfig.renderedPromptHash,skills:execution.promptConfig.skillSnapshots||[],usage:response.usage||{}});
+   if(!timing.repairCalls)state.executions.push({type,promptId:execution.promptConfig.promptId,promptVersion:execution.promptConfig.promptVersion,configHash:require('./_page-work-unit-store').configHash(execution.promptConfig),model:execution.promptConfig.model,renderedPromptHash:execution.promptConfig.renderedPromptHash,skills:execution.promptConfig.skillSnapshots||[],usage:response.usage||{}});
    await require('./_work-log').logEvent({event:'checkpoint',status:'running',metadata:{unitId:region?.shell?.id,sequence:row.sequence,repairCalls:timing.repairCalls,timings:timing}});
    endPhase('save');state.timings||=[];state.timings.push({...timing});
    const updated=await sql`update promo_page_drafts set state=${JSON.stringify(state)}::jsonb,sequence=sequence+1,lease_token=null,lease_expires_at=null,updated_at=now() where id=${runId}::uuid and lease_token=${lease}::uuid and lease_expires_at>now() returning sequence`;
@@ -87,7 +94,21 @@ async function processPageDraft({sql,owner,body,found,res},deps={}){
   const alive=await sql`update promo_page_drafts set lease_expires_at=now()+interval '6 minutes' where id=${runId}::uuid and lease_token=${lease}::uuid and lease_expires_at>now() returning id`;if(!alive.length)throw error('PAGE_DRAFT_LEASE_CHANGED','생성 작업이 변경되었습니다. 저장된 초안에서 이어가 주세요.');
   if(state.plan&&state.cursor>=state.plan.regions.length){
    endPhase('validation');
-   state.page=normalize(state.page).page;assertValid(state.page,context);require('./_page-image-requirements').assertImageCoverage(state.page,context);const latest=await use.fetchDocument(sql,found.document.id,owner.ownerSubject,{includeSnapshot:true});
+   assertValid(state.page,context);
+   const missingImages=require('./_page-image-requirements').missingImageRequirements(state.page,context);
+   if(missingImages.length&&builderFlags().automaticPageFlow){
+    const index=require('./_page-image-requirements').imageOwner(missingImages[0],state.plan),repairState={...state,cursor:index};
+    const helper=require('./_page-image-plan-repair'),region=state.plan.regions[index];
+    const variables=require('./_page-draft-request').draftVariables(repairState,region,owner.ownerSubject+':'+found.document.id+':'+runId);
+    const repaired=await helper.repairRegionImages({state:repairState,result:helper.existingRegionResult(state,index),variables,use,sql});
+    state.page=applyRegion(repairState,repaired.result);state.executions.push({type:'promo_page_region_builder',promptId:repaired.execution.promptId,promptVersion:repaired.execution.promptVersion,configHash:require('./_page-work-unit-store').configHash(repaired.execution),model:repaired.execution.model,repair:true,imageRepair:true,usage:repaired.usage||{}});
+    if(state.requirements)await pinPageRequirements(sql,{documentId:found.document.id,ownerSubject:owner.ownerSubject,revision:state.requirements.revision});
+    const current=await use.fetchDocument(sql,found.document.id,owner.ownerSubject,{includeSnapshot:true});if(current.document.currentDocumentRevision!==base)throw error('DOCUMENT_REVISION_MISMATCH','이미지 보정 중 문서가 변경되었습니다.');
+    const updated=await sql`update promo_page_drafts set state=${JSON.stringify(state)}::jsonb,sequence=sequence+1,lease_token=null,lease_expires_at=null,updated_at=now() where id=${runId}::uuid and lease_token=${lease}::uuid and lease_expires_at>now() returning sequence`;
+    if(!updated.length)throw error('PAGE_DRAFT_LEASE_CHANGED','이미지 보정 결과 저장 전에 작업 소유권이 변경되었습니다.');
+    return res.status(200).json({ok:true,draft:true,runId,sequence:updated[0].sequence,baseDocumentRevision:base,page:state.page,context,nextGroup:nextGroup(state),...draftProgress(state),completedGroup:{nodeIds:[region.shell.id]},imagePlanRepaired:true});
+   }
+   require('./_page-image-requirements').assertImageCoverage(state.page,context);state.page=normalize(state.page).page;assertValid(state.page,context);const latest=await use.fetchDocument(sql,found.document.id,owner.ownerSubject,{includeSnapshot:true});
    if(latest.document.currentDocumentRevision!==base)throw error('DOCUMENT_REVISION_MISMATCH','구성 생성 중 문서가 변경되었습니다.');
    if(state.requirements)await pinPageRequirements(sql,{documentId:found.document.id,ownerSubject:owner.ownerSubject,revision:state.requirements.revision});
    endPhase('save');state.timings||=[];state.timings.push({...timing});

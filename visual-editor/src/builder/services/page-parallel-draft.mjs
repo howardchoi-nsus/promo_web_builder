@@ -5,7 +5,13 @@ export async function generateParallelDraft(payload,initial,{request,onDraft,wai
  try{
   while(++steps<maxSteps){
    if(!isCurrent())throw Object.assign(Error('문서가 변경되었습니다.'),{code:'PAGE_DRAFT_DOCUMENT_CHANGED'});
-   if(latest.completedRegions===latest.totalRegions&&!running.size)return request({...transport,operation:'advance-draft',sequence:latest.sequence});
+   if(latest.completedRegions===latest.totalRegions&&!running.size){
+    const assembled=await request({...transport,operation:'advance-draft',sequence:latest.sequence});
+    if(assembled.complete)return assembled;
+    if(assembled.pending){await wait(1000);await accept(await request({...transport,operation:'read-draft'}));continue;}
+    if(assembled.draft){await accept(assembled);continue;}
+    throw Object.assign(Error('전체 조립 응답을 확인할 수 없습니다.'),{code:'PAGE_DRAFT_RESPONSE_INVALID'});
+   }
    for(const group of latest.nextGroups||[]){if(running.size>=Math.min(2,latest.maxConcurrency||2))break;if(running.has(group.unitId))continue;const id=group.unitId;running.set(id,Promise.resolve().then(()=>request({...transport,operation:'advance-unit',unitId:id})).then(result=>({id,result}),error=>({id,error})));}
    if(!running.size){await wait(1000);await accept(await request({...transport,operation:'read-draft'}));continue;}
    const settled=await Promise.race(running.values());running.delete(settled.id);if(settled.error){failure=settled.error;break;}

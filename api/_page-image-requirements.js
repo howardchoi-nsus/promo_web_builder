@@ -5,8 +5,9 @@ function imageRequirements(overview={},context={}){
  (overview.contentSections||[]).forEach((section,i)=>{const path=`contentSections.${i}`;add(path,section.media?.imageIntent||section.imageIntent);(section.items||[]).forEach((item,j)=>add(`${path}.items.${j}`,item.imageIntent));});
  return result;
 }
-function unitImageRequirements(requirements,plan,index){return requirements.filter(requirement=>{const target=plan.regions.findIndex(region=>region.sourceIds.some(id=>requirement.sourceIds.includes(id)));return (target<0?0:target)===index;});}
-function assertImageCoverage(page,context,requirements=context.imageRequirements||[]){
+function imageOwner(requirement,plan){const target=plan.regions.findIndex(region=>region.sourceIds.some(id=>requirement.sourceIds.includes(id)));return target<0?0:target;}
+function unitImageRequirements(requirements,plan,index){return requirements.filter(r=>imageOwner(r,plan)===index).map(r=>({...r,ownerRegionId:plan.regions[index].shell?.id,sourceIds:r.sourceIds.filter(id=>plan.regions[index].sourceIds.includes(id))}));}
+function missingImageRequirements(page,context,requirements=context.imageRequirements||[]){
  const images=[];walk(page.root,({node})=>{if(node.type==='image')images.push(node);});
  // Find a complete one-to-one assignment, rather than greedily consuming a
  // shared-source image that may be the only candidate for another requirement.
@@ -19,7 +20,12 @@ function assertImageCoverage(page,context,requirements=context.imageRequirements
  const owners=new Map();
  const assign=(index,visited)=>{for(const image of matches[index]){if(visited.has(image))continue;visited.add(image);if(!owners.has(image)||assign(owners.get(image),visited)){owners.set(image,index);return true;}}return false;};
  const missing=[];
- requirements.forEach((requirement,index)=>{if(!assign(index,new Set()))missing.push({code:'IMAGE_INTENT_UNFULFILLED',path:requirement.id,message:'요청한 이미지의 노드와 생성 요청 또는 등록 에셋 연결이 누락되었습니다.'});});
- if(missing.length)throw Object.assign(new Error('요청한 이미지가 페이지 구성에서 누락되어 해당 영역을 다시 구성해야 합니다.'),{code:'PAGE_IMAGE_PLAN_INCOMPLETE',statusCode:422,retryable:true,errors:missing});
+ requirements.forEach((requirement,index)=>{if(!assign(index,new Set()))missing.push(requirement);});
+ return missing;
 }
-module.exports={imageRequirements,unitImageRequirements,assertImageCoverage};
+function assertImageCoverage(page,context,requirements=context.imageRequirements||[]){
+ const missing=missingImageRequirements(page,context,requirements);
+ if(missing.length)throw Object.assign(new Error('요청한 이미지가 페이지 구성에서 누락되어 해당 영역을 다시 구성해야 합니다.'),{code:'PAGE_IMAGE_PLAN_INCOMPLETE',statusCode:422,retryable:true,errors:missing.map(r=>({code:'IMAGE_INTENT_UNFULFILLED',path:r.id,message:'요청한 이미지의 노드와 생성 요청 또는 등록 에셋 연결이 누락되었습니다.'}))});
+}
+
+module.exports={imageRequirements,imageOwner,unitImageRequirements,missingImageRequirements,assertImageCoverage};

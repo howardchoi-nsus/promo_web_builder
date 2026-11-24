@@ -27,11 +27,15 @@ async function processParallelDraft({sql,owner,body,found,res,row,use}){
     try{applyRegion({...row.state,cursor:selected},generated.result);}catch(error){
      await require('./_work-log').logEvent({event:'checkpoint',status:'failed',errorCode:error.code,message:error.message,metadata:{unitId:region.shell.id,attempt:1,errors:error.errors}});
      if(!['PAGE_DRAFT_INVALID','PAGE_IMAGE_PLAN_INCOMPLETE','PAGE_SCHEMA_INVALID'].includes(error.code))throw error;
+     if(error.code==='PAGE_IMAGE_PLAN_INCOMPLETE'){
+      const repaired=await require('./_page-image-plan-repair').repairRegionImages({state:{...row.state,cursor:selected},result:generated.result,variables,use,sql,originalConfig:execution.promptConfig});generated={result:repaired.result,usage:repaired.usage};
+     }else{
      const repaired={...variables,constraintsJson:JSON.stringify({...JSON.parse(variables.constraintsJson),repairFeedback:{attempt:1,maxRepairs:1,code:error.code,errors:error.errors?.slice(0,12)}})};
      const correction=await use.createPromptExecutionSnapshot(sql,'promo_page_region_builder',repaired);if(units.configHash(correction.promptConfig)!==units.configHash(execution.promptConfig))throw units.error('WORK_CONFIG_CHANGED');
      generated=await use.generate({type:'promo_page_region_builder',schemaName:'page_parallel_region_v2',schema:regionSchema(row.state.context,region,{parallel:true}),promptConfig:correction.promptConfig});applyRegion({...row.state,cursor:selected},generated.result);
+     }
     }
-    job=await units.prepareUnit(sql,job,{result:generated.result,usage:generated.usage||{},execution:{type:'promo_page_region_builder',promptId:execution.promptConfig.promptId,promptVersion:execution.promptConfig.promptVersion,model:execution.promptConfig.model,skills:execution.promptConfig.skillSnapshots||[]}});
+    job=await units.prepareUnit(sql,job,{result:generated.result,usage:generated.usage||{},execution:{type:'promo_page_region_builder',promptId:execution.promptConfig.promptId,promptVersion:execution.promptConfig.promptVersion,configHash:units.configHash(execution.promptConfig),model:execution.promptConfig.model,skills:execution.promptConfig.skillSnapshots||[]}});
    }
   }
   for(let attempt=0;attempt<8;attempt++){
