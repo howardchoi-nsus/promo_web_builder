@@ -1,0 +1,30 @@
+const {key,scrub,safeMeta}=require('./_work-log');
+function recovery(code){
+ if(/TOKEN|LIBRARY|PROMPT|MIGRATION|SNAPSHOT/.test(code))return '관리자에서 해당 토큰·프롬프트·사용 정책 또는 마이그레이션을 확인한 후 원래 제작 화면에서 이어가세요.';
+ if(/SCHEMA|DRAFT_INVALID|CONTENT|IMAGE_PLAN/.test(code))return '아래 검증 경로와 오류를 확인해 생성 계약·등록 설정을 보정한 후 원래 제작 화면에서 실패 단계부터 다시 시도하세요.';
+ if(/429|RATE|CAPACITY/.test(code))return '공급자 호출 한도와 실행 중인 작업을 확인한 후 원래 제작 화면에서 다시 시도하세요.';
+ if(/LEASE|TIMEOUT|PROVIDER|NETWORK/.test(code))return '진행 중인 리스와 공급자 상태를 확인하세요. 리스가 유효하면 중복 실행하지 말고, 종료·만료 후 원래 제작 화면에서 이어가세요.';
+ if(/CHANGED|MISMATCH|REVISION/.test(code))return '원래 제작 화면에서 최신 문서·요약을 불러온 후 이어가세요. 과거 요청 ID를 강제로 재실행하지 마세요.';
+ return '원래 제작 화면의 저장된 결과와 다시 시도 안내를 확인하세요. 아래 요청 ID·실행 버전으로 Vercel 로그를 대조하세요. 종료 기록이 없다는 이유로 강제 잠금 해제하지 마세요.';
+}
+async function workDiagnosis(sql,taskId){
+ const [counts]=await sql`select count(*)::integer as total,max(created_at)::text as "lastObservedAt" from promo_work_logs where task_id=${taskId}::uuid`;
+ const failures=await sql`select request_id::text as "requestId",document_id::text as "documentId",created_at::text as "createdAt",stage,operation,event,error_code as code,message,metadata from promo_work_logs where task_id=${taskId}::uuid and status='failed' order by sequence desc limit 12`;
+ const open=await sql`select l.request_id::text as "requestId",l.created_at::text as "createdAt",l.stage,l.operation,l.event,l.metadata from promo_work_logs l where l.task_id=${taskId}::uuid and l.event in('request_started','model_started') and not exists(select 1 from promo_work_logs f where f.request_id=l.request_id and f.event=case when l.event='request_started' then 'request_finished' else 'model_finished' end) order by l.sequence desc limit 20`;
+ const docIds=await sql`select distinct document_id::text as id from promo_work_logs where task_id=${taskId}::uuid and document_id is not null limit 5`;
+ const [tables]=await sql`select to_regclass('public.promo_page_work_units') is not null as units,to_regclass('public.promo_page_drafts') is not null as drafts,to_regclass('public.promo_page_schema_generation_jobs') is not null as jobs,to_regclass('public.promo_builder_document_versions') is not null as documents`;
+ const persisted=[],unavailable=[];for(const [name,ready] of Object.entries(tables))if(!ready)unavailable.push(name);
+ for(const doc of docIds){
+  if(tables.units)persisted.push(...await sql`select document_id::text as "documentId",run_id::text as "runId",unit_key as "unitId",kind,state,attempts,error_code as code,lease_expires_at::text as "leaseExpiresAt",updated_at::text as "updatedAt",(state='running' and lease_expires_at>clock_timestamp()) as active,(state='running' and lease_expires_at<=clock_timestamp()) as expired from promo_page_work_units where document_id=${doc.id}::uuid order by updated_at desc limit 24`);
+  if(tables.jobs)persisted.push(...await sql`select document_id::text as "documentId",request_id::text as "runId",'generation' as kind,status as state,attempts,error_code as code,lease_expires_at::text as "leaseExpiresAt",updated_at::text as "updatedAt",(status='running' and lease_expires_at>clock_timestamp()) as active,(status='running' and lease_expires_at<=clock_timestamp()) as expired from promo_page_schema_generation_jobs where document_id=${doc.id}::uuid order by updated_at desc limit 8`);
+  if(tables.drafts)persisted.push(...await sql`select document_id::text as "documentId",id::text as "runId",'wireframe' as kind,status as state,sequence,lease_expires_at::text as "leaseExpiresAt",updated_at::text as "updatedAt",(status='working' and lease_expires_at>clock_timestamp()) as active,(status='working' and lease_token is not null and lease_expires_at<=clock_timestamp()) as expired from promo_page_drafts where document_id=${doc.id}::uuid order by updated_at desc limit 4`);
+ }
+ const completions=await sql`select document_id::text as "documentId",metadata->>'revision' as revision,created_at::text as "createdAt" from promo_work_logs where task_id=${taskId}::uuid and status='succeeded' and metadata->>'sourceEventName'='builder_quality_gate_passed' order by sequence desc limit 5`;
+ // A client completion report is evidence only when the saved current revision agrees.
+ let completed=false;if(tables.documents)for(const event of completions){const [row]=await sql`select d.current_document_revision as revision,v.snapshot_json->'qualityGate' as gate from promo_builder_documents d join promo_builder_document_versions v on v.document_id=d.id and v.revision=d.current_document_revision where d.id=${event.documentId}::uuid`;if(row&&Number(event.revision)===Number(row.revision)&&row.gate?.state==='passed'&&Number(row.gate.documentRevision)===Number(row.revision))completed=true;}
+ const safeFailures=failures.map(f=>({...f,code:key(f.code)||'UNSPECIFIED_FAILURE',message:scrub(f.message),metadata:safeMeta(f.metadata),recovery:recovery(key(f.code))}));
+ const unfinished=persisted.filter(r=>!['completed','complete','abandoned','cancelled'].includes(r.state));
+ const state=!counts.total?'no_records':completed?'completion_verified':unfinished.some(r=>r.expired||r.state==='failed'||r.code)?'attention_required':unfinished.some(r=>r.active)?'lease_active':safeFailures.length?'attention_required':'completion_unconfirmed';
+ return {taskId,state,total:counts.total,lastObservedAt:counts.lastObservedAt,failures:safeFailures,openRequests:open.map(r=>({...r,metadata:safeMeta(r.metadata)})),persisted,unavailable,recovery:recovery(unfinished.find(r=>r.code)?.code||safeFailures[0]?.code||''),limitations:['요청·조회 성공은 전체 제작 완료가 아닙니다. 품질 통과 이벤트와 현재 저장 Revision이 일치할 때만 완료 확인으로 표시합니다.','저장 작업 상태는 연결 문서 기준이며 다른 실행의 상태가 포함될 수 있습니다. runId를 대조하세요.','유효한 리스는 예약 상태이며 실제 공급자가 계속 실행 중임을 증명하지 않습니다. 종료 미확인은 실패로 단정하지 않습니다.','과거 실패는 이력입니다. 자동 복구 후에도 보존되며 운영 콘솔에만 남은 저장 장애·강제 종료 원인은 여기서 복원할 수 없습니다.']};
+}
+module.exports={workDiagnosis,recovery};

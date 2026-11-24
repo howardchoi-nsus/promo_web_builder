@@ -7,6 +7,7 @@ const checks=[
  'test-sql-instrumentation.mjs',
  'test-parallel-page-work.mjs','test-parallel-design-sql.mjs','test-overview-reuse-benchmark.mjs','test-parallel-orchestration.mjs',
  'test-page-performance.mjs',
+ 'test-work-diagnosis.mjs',
  'test-work-logs.mjs','test-work-logs-browser.mjs','test-work-log-client.mjs',
  'test-page-automatic-sql.mjs','test-design-task-contract.mjs',
  'test-prompt-admin-safety.mjs',
