@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "status": "draft-only",
+  "migration": "db/migrations/102_layout_and_image_prompt_guidance.sql",
+  "runtimeScope": "PageSchema image prompt context only; no renderer/schema/editor changes",
+  "tokenPolicy": "registered-only",
+  "imageReferenceMode": "written-art-direction",
+  "actualReferenceImagesSupplied": false,
+  "prompts": [
+    {
+      "type": "promo_page_manifest_planner",
+      "file": "../layout-diversity-prompt-pack/prompts/page-unit-plan.md",
+      "guidanceHeading": "# CONTENT-LED COMPOSITION DECISIONS"
+    },
+    {
+      "type": "promo_page_region_builder",
+      "file": "../layout-diversity-prompt-pack/prompts/page-unit-region.md",
+      "guidanceHeading": "# EXPLICIT GEOMETRY WITHIN THE LOCKED SHELL"
+    },
+    {
+      "type": "promo_page_schema_planner",
+      "file": "../layout-diversity-prompt-pack/prompts/page-schema-planner.md",
+      "guidanceHeading": "# COMPOSITION SELECTION WITHIN THE EXISTING CONTRACT"
+    },
+    {
+      "type": "section_background_image",
+      "file": "prompts/section-background-image.md",
+      "guidanceHeading": "# GGPOKER-INSPIRED VISUAL CRAFT"
+    },
+    {
+      "type": "component_image",
+      "file": "prompts/component-image.md",
+      "guidanceHeading": "# GGPOKER-INSPIRED VISUAL CRAFT"
+    }
+  ]
+}

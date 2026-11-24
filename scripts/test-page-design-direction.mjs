@@ -11,7 +11,12 @@ const ctx=structuredClone(context);ctx.styleChoicesVersion=1;ctx.designBrief=ori
 for(let i=0;i<30;i++){const name=`--text-colour-${String(i).padStart(2,'0')}`,value=i===29?'#aa1122':`#${String(i).padStart(6,'0')}`;ctx.tokenCatalog.push({name,tokenKey:name,type:'color',value,state:'active',cssProperties:['color']});ctx.tokenValues[name]=value;}
 const selected=pageGenerationStyleRoles(ctx);assert.ok(selected.some(role=>ctx.tokenValues[role.token]==='#aa1122'));
 assert.ok(selected.filter(role=>role.target==='text'&&role.property==='color'&&role.registeredVariant).length<=6);
-for(const file of ['_page-section-design.js','_page-quality-agent.js','_page-schema-media-service.js'])assert.ok(readFileSync(new URL('../api/'+file,import.meta.url),'utf8').includes('savedDesignBrief'));
+for(const file of ['_page-section-design.js','_page-quality-agent.js'])assert.ok(readFileSync(new URL('../api/'+file,import.meta.url),'utf8').includes('savedDesignBrief'));
+// Media context is now assembled by a helper; verify the actual carried brief,
+// including old documents whose brief only exists in generationMeta.
+const {pageImagePromptContext}=require('../api/_page-image-prompt-context');
+const carried=pageImagePromptContext({content:{pageContext:context},generationMeta:{design:original}},{intent:'Approved image intent',aspectRatio:'16:9',sourceIds:[]},{purpose:'component-image'});
+assert.equal(carried.designBrief,original);assert.equal(carried.visualReference.referenceImageCount,0);
 console.log('Design direction: provenance/hash/revision continuity, bounded request-aware token choice and all downstream carriers passed.');
 
 const next=designDirection({previous:original,request:original.requestText,instruction:'본문 문구를 짧게 해줘'});assert.equal(next.artDirection.composition.hero,'center');assert.deepEqual(next.tokenPreferences.values,original.tokenPreferences.values);

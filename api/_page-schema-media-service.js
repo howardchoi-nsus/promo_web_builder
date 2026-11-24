@@ -55,12 +55,13 @@ async function processPageMedia({req,res,sql,owner,body},dependencies={}){
     const isBackground=node.presentation==='background';
     const promptType=isBackground&&/^#[0-9a-f]{6}$/i.test(backgroundColor||'')?'section_background_image':'component_image';
     const target=require('./_page-design-task').imageTarget(page,node,context);
-    const variables={sectionName:target.sectionName,contentJson:JSON.stringify({target,aspectRatio:request.aspectRatio,designBrief:require('./_page-design-direction').savedDesignBrief(snapshot),intent:request.intent,sourceIds:request.sourceIds,contentSources:context.contentSources,backgroundColor}),adminGuidance:''};
+    const imageContext=require('./_page-image-prompt-context').pageImagePromptContext(snapshot,request,target);
+    const variables={sectionName:target.sectionName,contentJson:JSON.stringify(imageContext),adminGuidance:''};
     if(promptType==='section_background_image')Object.assign(variables,{backgroundColor,aspectRatio:request.aspectRatio,fadeMode:'none',brandPalette:JSON.stringify(Object.fromEntries(['page.background','text.primary','button.background'].map(role=>[role,context.tokenValues[context.usagePolicy.bindings[role]]])))});
     else Object.assign(variables,{componentName:isBackground?'Background key visual':target.sectionName,fieldName:node.id});
     const pinned=await use.createPromptExecutionSnapshot(sql,promptType,variables);
     const cfg=pinned.promptConfig;
-    imageExecution={promptType,promptId:cfg.promptId,promptVersion:cfg.promptVersion,provider:cfg.provider,model:cfg.model,skillSnapshots:cfg.skillSnapshots||[]};
+    imageExecution={promptType,promptId:cfg.promptId,promptVersion:cfg.promptVersion,provider:cfg.provider,model:cfg.model,skillSnapshots:cfg.skillSnapshots||[],referenceInput:imageContext.visualReference};
     const hash=inputHash({generationRequestId:snapshot.generationMeta.requestId,documentId:found.document.id,nodeId:node.id,request,prompt:cfg.renderedPrompt,model:cfg.model,sourceRequirements:snapshot.generationMeta.sourceRequirements});
     const hex=hash.slice(0,32),requestId=`${hex.slice(0,8)}-${hex.slice(8,12)}-5${hex.slice(13,16)}-8${hex.slice(17,20)}-${hex.slice(20)}`;
     job=await use.acquireGeneration(sql,{documentId:found.document.id,ownerSubject:owner.ownerSubject,requestId,hash});
