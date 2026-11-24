@@ -1,9 +1,24 @@
 import assert from 'node:assert/strict';import {createRequire} from 'node:module';import {fixture,context} from './fixtures/page-schema.mjs';
 const require=createRequire(import.meta.url),auth=require('../api/_promo-builder-auth'),session=auth.createSessionToken(),owner=auth.ownerSubjectForSession(session.sessionId);
 const {snapshotForPage,normalize}=require('../api/_page-schema-service');let snapshot=snapshotForPage(normalize(fixture('example-editorial')).page,context);snapshot.generationMeta.review={state:'approved'};snapshot.qualityGate={state:'passed',documentRevision:1,blockingCount:0,results:Object.fromEntries(['desktop','tablet','mobile'].map(v=>[v,{blockingCount:0}]))};
-const id=require.resolve('../api/_promo-builder-document-store');require.cache[id]={id,filename:id,loaded:true,exports:{getSql:()=>async()=>[],fetchDocument:async(_,doc,subject)=>doc==='owned'&&subject===owner?{document:{id:'owned',currentDocumentRevision:1,title:'Example'},snapshot}:null}};
+let assetQueries=0;
+const id=require.resolve('../api/_promo-builder-document-store');require.cache[id]={id,filename:id,loaded:true,exports:{getSql:()=>async()=>{assetQueries++;throw Error('Online output must not fetch and inline private Blob bytes');},fetchDocument:async(_,doc,subject)=>doc==='owned'&&subject===owner?{document:{id:'owned',currentDocumentRevision:1,title:'Example'},snapshot}:null}};
 const handler=require('../api/promo-page-output');async function call(query={},cookie=`${auth.COOKIE_NAME}=${session.token}`){let status=200,payload;const headers={};const res={setHeader(k,v){headers[k]=v;},status(s){status=s;return this;},json(v){payload=v;return this;},send(v){payload=v;return this;}};await handler({method:'GET',query:{documentId:'owned',revision:1,...query},headers:{cookie,host:'sample.example'}},res);return {status,payload,headers};}
 assert.equal((await call({},'')).status,401);assert.equal((await call({documentId:'foreign'})).status,404);assert.equal((await call({revision:0})).status,409);
 const result=await call();assert.equal(result.status,200);assert.ok(result.headers['Content-Type'].includes('text/html'));assert.ok(!result.payload.includes('<script'));assert.ok(!result.payload.includes('workFeedback'));assert.ok(result.payload.includes('https://sample.example/offer'));
 snapshot.qualityGate.state='pending';assert.ok((await call()).status>=400);
-console.log('Static output API: ownership/auth/revision/current-quality gate, independent HTML without app runtime and absolute navigation passed.');
+const imagePage=fixture('example-split-nested'),imageContext=structuredClone(context);
+const imageUrl='/api/promo-page-schema-image?id=11111111-1111-4111-8111-111111111111&token='+'T'.repeat(43);
+require('../shared/page-schema/contract.cjs').walk(imagePage.root,({node})=>{if(node.type==='image'){node.assetId='online_asset';node.requestId=null;}});
+imagePage.mediaRequests=[];imageContext.assets.online_asset={kind:'image',url:imageUrl,width:1440,height:900};
+const gate={...snapshot.qualityGate,state:'passed'};
+snapshot=snapshotForPage(normalize(imagePage).page,imageContext);snapshot.generationMeta.review={state:'approved'};snapshot.qualityGate=gate;
+const online=await call();assert.equal(online.status,200);assert.equal(assetQueries,0);
+assert.ok(online.payload.includes('https://sample.example/api/promo-page-schema-image?id='));
+assert.ok(!online.payload.includes('data:image/'));assert.ok(Buffer.byteLength(online.payload)<4*1024*1024);
+assert.equal(online.headers['Referrer-Policy'],'no-referrer');assert.equal(online.headers['Cache-Control'],'private, no-store');
+const {staticPageHtml}=require('../api/_page-schema-static-export');
+await assert.rejects(staticPageHtml(snapshot,{assetOverrides:{[imageUrl]:'data:image/png;base64,'+'A'.repeat(4*1024*1024)}}),{code:'EXPORT_HTML_TOO_LARGE'});
+assert.equal((await call({},'')).status,401);assert.equal((await call({documentId:'foreign'})).status,404);assert.equal((await call({revision:0})).status,409);
+snapshot.qualityGate.state='pending';assert.ok((await call()).status>=400);
+console.log('Static output API: ownership/auth/revision/current-quality gate, runtime-free HTML, absolute image references without Blob inlining, response budget and portable-download limit passed.');

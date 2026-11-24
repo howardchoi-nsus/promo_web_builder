@@ -22,7 +22,7 @@ const checks=[
  'test-page-draft-units.mjs','test-page-draft-units-postgres.mjs','test-page-draft-units-browser.mjs',
  'test-page-draft-outline-schema.mjs',
  'test-admin-snapshot-save.mjs',
- 'test-work-feedback-browser.mjs','test-page-static-api.mjs','test-progressive-page-builder-browser.mjs','test-page-design-direction.mjs','test-page-drafts-postgres.mjs','test-page-editor-export.mjs','test-page-editor-browser.mjs','test-static-page-export-browser.mjs',
+ 'test-work-feedback-browser.mjs','test-page-static-api.mjs','test-page-online-output-browser.mjs','test-progressive-page-builder-browser.mjs','test-page-design-direction.mjs','test-page-drafts-postgres.mjs','test-page-editor-export.mjs','test-page-editor-browser.mjs','test-static-page-export-browser.mjs',
  'test-page-section-design.mjs','test-page-section-design-postgres.mjs','test-page-section-design-browser.mjs',
  'test-live-generation-preview.mjs','test-live-generation-preview-browser.mjs',
  'test-chat-experience.mjs','test-chat-notice.mjs','test-chat-workspace-response.mjs','test-promo-overview-contract.js','test-ai-builder-browser.mjs','test-requirement-narrative.mjs','test-wireframe-display.mjs','test-page-schema-output-diagnostics.mjs',
