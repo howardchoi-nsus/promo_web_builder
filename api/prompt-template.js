@@ -62,7 +62,8 @@ async function getPrompt(req, res) {
       change_note,
       archived_at,
       created_at,
-      updated_at
+      updated_at,
+      updated_at::text as edit_updated_at
     from prompt_templates
     where id = ${id}::uuid
     limit 1
@@ -151,13 +152,16 @@ async function updatePrompt(req, res) {
       change_note,
       archived_at,
       created_at,
-      updated_at
+      updated_at,
+      updated_at::text as edit_updated_at
     from prompt_templates
     where id = ${id}::uuid
     limit 1
   `;
   if (!rows.length) return res.status(404).json({ error: "Prompt template not found" });
 
+  // Compare the database's exact timestamp text below: JS Date parsing loses
+  // PostgreSQL microseconds and otherwise rejects an unchanged Draft.
   const current = rows[0];
   require('./_prompt-admin-preflight').assertEditToken(body,current);
   if (current.status !== "draft") {
@@ -228,7 +232,7 @@ async function updatePrompt(req, res) {
         updated_at = now()
       where id = ${id}::uuid
         and status = 'draft'
-        and updated_at = ${current.updated_at}
+        and updated_at = ${current.edit_updated_at}::timestamptz
       returning *
     ),
     history as (
@@ -294,8 +298,8 @@ async function updatePrompt(req, res) {
   `;
   if (!updatedRows.length) {
     return res.status(409).json({
-      error: "Prompt draft status changed before the update completed",
-      code: "PROMPT_DRAFT_REQUIRED",
+      error: "프롬프트가 저장 중 변경되었습니다. 입력 내용을 보존하고 최신 버전을 다시 불러와 주세요.",
+      code: "PROMPT_EDIT_CONFLICT",
     });
   }
 

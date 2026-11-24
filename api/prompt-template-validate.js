@@ -26,7 +26,7 @@ module.exports = async function handler(req, res) {
     const sql = getSql();
     await ensureDefaultPromptTemplates(sql);
     const rows = await sql`
-      select *
+      select *, updated_at::text as edit_updated_at
       from prompt_templates
       where id = ${id}::uuid
       limit 1
@@ -70,7 +70,7 @@ module.exports = async function handler(req, res) {
           updated_at = now()
         where id = ${id}::uuid
           and status = 'draft'
-          and updated_at = ${current.updated_at}
+          and updated_at = ${current.edit_updated_at}::timestamptz
         returning *
       ),
       history as (
@@ -136,8 +136,8 @@ module.exports = async function handler(req, res) {
     `;
     if (!updatedRows.length) {
       return res.status(409).json({
-        error: "Prompt draft status changed before validation completed",
-        code: "PROMPT_DRAFT_REQUIRED",
+        error: "프롬프트가 검증 중 변경되었습니다. 최신 버전을 다시 불러와 주세요.",
+        code: "PROMPT_EDIT_CONFLICT",
       });
     }
 

@@ -47,7 +47,8 @@ module.exports = async function handler(req, res) {
         change_note,
         archived_at,
         created_at,
-        updated_at
+        updated_at,
+        updated_at::text as edit_updated_at
       from prompt_templates
       where id = ${id}::uuid
       limit 1
@@ -90,7 +91,7 @@ module.exports = async function handler(req, res) {
         where type = ${target.type}
           and status = 'active'
           and id <> ${id}::uuid
-          and exists(select 1 from prompt_templates candidate where candidate.id=${id}::uuid and candidate.status='validated' and candidate.updated_at=${target.updated_at})
+          and exists(select 1 from prompt_templates candidate where candidate.id=${id}::uuid and candidate.status='validated' and candidate.updated_at=${target.edit_updated_at}::timestamptz)
         returning *
       ),
       deactivated_history as (
@@ -135,7 +136,7 @@ module.exports = async function handler(req, res) {
         set status = 'active', change_note = ${changeNote}, updated_at = now()
         where id = ${id}::uuid
           and status = 'validated'
-          and updated_at = ${target.updated_at}
+          and updated_at = ${target.edit_updated_at}::timestamptz
           and not exists (
             select 1
             from prompt_templates active_prompt
@@ -209,8 +210,8 @@ module.exports = async function handler(req, res) {
     `;
     if (!updatedRows.length) {
       return res.status(409).json({
-        error: "Prompt status changed before activation completed",
-        code: "PROMPT_VALIDATION_REQUIRED",
+        error: "프롬프트가 활성화 중 변경되었습니다. 최신 버전을 다시 불러와 주세요.",
+        code: "PROMPT_EDIT_CONFLICT",
       });
     }
 
