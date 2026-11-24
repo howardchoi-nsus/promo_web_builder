@@ -11,6 +11,7 @@ const props = defineProps({
   desktopFirst:{type:Boolean,default:false},
   snapshot: { type: Object, required: true },
   controlsTarget: { type: String, default: "" },
+  viewportControlsTarget: {type:String,default:""},
   documentId:{type:String,default:""},
   documentRevision: { type: Number, required: true },
   busy: { type: Boolean, default: false },
@@ -76,13 +77,13 @@ defineExpose({ buildAutoRepairSnapshot, inspectQualityAcrossViewports });
 
 <template>
   <section class="ai-builder-result">
-    <header class="ai-builder-result__toolbar">
-      <div class="ai-builder-actions">
+    <Teleport :to="viewportControlsTarget || 'body'" :disabled="!viewportControlsTarget">
         <div class="ai-builder-preview-viewport" role="group" aria-label="미리보기 화면 크기">
           <button type="button" :aria-pressed="previewViewport === 'desktop'" @click="selectPreviewViewport('desktop')">데스크톱</button>
           <button v-if="snapshot.content?.pageSchema" type="button" :disabled="desktopFirst||busy" :aria-pressed="previewViewport === 'tablet'" @click="selectPreviewViewport('tablet')">태블릿</button>
           <button type="button" :disabled="desktopFirst||busy" :aria-pressed="previewViewport === 'mobile'" @click="selectPreviewViewport('mobile')">모바일</button>
         </div>
+    </Teleport>
         <Teleport :to="controlsTarget || 'body'" :disabled="!controlsTarget">
           <div v-if="!wireframe" class="ai-builder-actions" aria-label="디자인 작업">
         <button v-if="!minimal && !qualityPassed && qualityState!=='checking'" type="button" class="ai-builder-secondary" :disabled="busy" @click="emit('check-quality')">다시 검사</button>
@@ -100,8 +101,6 @@ defineExpose({ buildAutoRepairSnapshot, inspectQualityAcrossViewports });
         </ul>
           </div>
         </Teleport>
-      </div>
-    </header>
     <CompositionPreviewCanvas ref="previewCanvasRef" :snapshot="snapshot" :viewport="previewViewport" :document-id="documentId" :wireframe="wireframe" :live-generation="Boolean(snapshot.content?.pageSchema)" :generation-activity="generationActivity" :effects-paused="effectsPaused" />
   </section>
 </template>

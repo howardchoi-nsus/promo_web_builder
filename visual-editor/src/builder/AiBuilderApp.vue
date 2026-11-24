@@ -3503,7 +3503,7 @@ onBeforeUnmount(() => {
                 </button>
               </li>
             </ol>
-
+            <div id="ai-page-viewport-controls" class="ai-page-viewport-controls"></div>
           </header>
 
           <div class="ai-result-content">
@@ -3545,6 +3545,7 @@ onBeforeUnmount(() => {
                 :minimal="automaticFlow"
                 ref="compositionReviewRef"
                 controls-target="#ai-chat-design-actions"
+                viewport-controls-target="#ai-page-viewport-controls"
                 v-model:viewport="wireframeViewport"
                 :desktop-first="Boolean(draftPreview||designPending||designPreparing||mediaPending||mediaPreparing)"
                 :snapshot="productionSnapshot"
@@ -3682,6 +3683,7 @@ onBeforeUnmount(() => {
                 :minimal="automaticFlow"
                 ref="compositionReviewRef"
                 controls-target="#ai-chat-design-actions"
+                viewport-controls-target="#ai-page-viewport-controls"
                 v-model:viewport="wireframeViewport"
                 :snapshot="store.snapshot"
                 :document-revision="store.documentRevision"

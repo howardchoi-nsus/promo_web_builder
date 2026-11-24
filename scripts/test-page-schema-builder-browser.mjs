@@ -89,6 +89,11 @@ try{
  await page.getByRole('button',{name:'페이지 구성 승인',exact:true}).click();
  await page.getByRole('button',{name:'채팅으로 수정',exact:true}).waitFor();
  assert.equal(await page.frameLocator('iframe').first().locator('[data-wireframe-node]').count(),0);
+ assert.equal(await page.locator('.ai-builder-result__toolbar').count(),0);assert.equal(await page.locator('#ai-page-viewport-controls').getByRole('group',{name:'미리보기 화면 크기'}).count(),1);
+ await page.waitForFunction(()=>document.body.textContent.includes('품질 검사를 통과했습니다.'));
+ await page.getByRole('button',{name:'데스크톱',exact:true}).click();
+ await page.waitForFunction(()=>parseFloat(document.querySelector('.ai-builder-preview-canvas')?.style.width)===1440);
+ const frameMetrics=await page.locator('.ai-builder-preview-stage').evaluate(stage=>{const css=getComputedStyle(stage),canvas=stage.querySelector('.ai-builder-preview-canvas');return {padding:parseFloat(css.paddingLeft)+parseFloat(css.paddingRight),background:css.backgroundColor,stageWidth:stage.clientWidth,rawWidth:parseFloat(canvas.style.width),scaledWidth:canvas.getBoundingClientRect().width,toolbar:document.querySelectorAll('.ai-builder-result__toolbar').length};});assert.equal(frameMetrics.padding,0);assert.equal(frameMetrics.background,'rgba(0, 0, 0, 0)');assert.equal(frameMetrics.rawWidth,1440);assert.ok(Math.abs(frameMetrics.scaledWidth-Math.min(frameMetrics.stageWidth,1440))<2,JSON.stringify(frameMetrics));
  await page.getByRole('button',{name:'태블릿',exact:true}).click();await page.getByRole('button',{name:'모바일',exact:true}).click();
  await page.getByRole('button',{name:'채팅으로 수정',exact:true}).click();
  assert.equal(await page.locator('.ai-chat-pane form').count(),1);

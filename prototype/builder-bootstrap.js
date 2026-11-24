@@ -51,8 +51,8 @@
   document.querySelector("[data-shell-sidebar]")?.remove();
   document.querySelector("[data-shell-overlay]")?.remove();
   document.querySelector("header.shell-utility-bar")?.remove();
-  loadStylesheet("visual-editor-assets/ai-builder.css?v=ai-builder-v14-image-plan-repair")
-    .then(() => loadScript("visual-editor-assets/ai-builder.js?v=ai-builder-v14-image-plan-repair", "module"))
+  loadStylesheet("visual-editor-assets/ai-builder.css?v=ai-builder-v15-preview-space")
+    .then(() => loadScript("visual-editor-assets/ai-builder.js?v=ai-builder-v15-preview-space", "module"))
     .catch(() => {
       if (aiRoot) {
         aiRoot.innerHTML = '<p role="alert">AI 빌더를 불러오지 못했습니다. 템플릿 모드로 이동해 주세요.</p>';

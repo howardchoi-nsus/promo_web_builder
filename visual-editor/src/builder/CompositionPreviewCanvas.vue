@@ -42,7 +42,9 @@ function syncPreviewFrame() {
   previewFrame = requestAnimationFrame(() => {
     previewFrame = 0;
     livePreview?.refresh();
-    const availableWidth = Math.max(280, Number(previewStage.value?.clientWidth || previewWidth.value) - 32);
+    const stage=previewStage.value,style=stage?getComputedStyle(stage):null;
+    const padding=(parseFloat(style?.paddingLeft)||0)+(parseFloat(style?.paddingRight)||0);
+    const availableWidth = Math.max(1, Number(stage?.clientWidth || previewWidth.value) - padding);
     previewScale.value = Math.min(1, availableWidth / previewWidth.value);
     previewHeight.value = Math.max(480, Number(previewCanvas.value?.scrollHeight || 720));
   });
