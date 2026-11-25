@@ -11,7 +11,7 @@ import { createProgressEvent, progressStage, isHistoricalAction } from "./servic
 import { requirementNarrative } from "./services/requirement-narrative.mjs";
 import {reviewPageUntilReady} from "./services/page-quality-review.mjs";
 import {automaticRequest} from "./services/automatic-request.mjs";
-import {customerProgress,customerError} from "./services/customer-progress.mjs";
+import {customerProgress,customerError,customerProgressHeading,customerProgressTurn,nextCustomerSequence} from "./services/customer-progress.mjs";
 import {isMobileLayoutRequest} from "./services/mobile-layout-intent.mjs";
 import {preparePageMedia} from "./services/page-media-preparation.mjs";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
@@ -94,6 +94,7 @@ async function saveDynamicPage(page){
 }
 const assetRetrying = ref(false);
 const capabilities = ref({ aiMode: true });
+const capabilitiesReady = ref(false);
 const automaticFlow=computed(()=>capabilities.value.automaticPageFlow===true&&capabilities.value.pageSchemaV1===true);
 const activeShell = ref(null);
 const designReferenceId = new URLSearchParams(window.location.search).get("designReferenceId") || "";
@@ -104,7 +105,8 @@ const overviewRetry = ref(null);
 const ACTIVE_CHAT_STORAGE_KEY = "promoAiBuilder.activeChat.v2";
 const LEGACY_CHAT_STORAGE_KEY = "promoAiBuilder.chatWorkspace.v1";
 const messages = ref([]);
-const visibleMessages = computed(() => automaticFlow.value?customerProgress(messages.value):messages.value.filter((message) => message.type !== "internal"));
+const visibleMessages = computed(() => automaticFlow.value ? customerProgress(messages.value)
+  : messages.value.filter(message => message.type !== 'internal' && (capabilitiesReady.value || message.type !== 'status')));
 const attachments = ref([]);
 const chatInput = ref("");
 const chatInputElement = ref(null);
@@ -457,7 +459,10 @@ function setProgrammaticChatScroll(callback) {
 
 function scrollChatMessageIntoView(messageId, behavior = "auto") {
   const container = chatList.value;
-  const target = container?.querySelector(`[data-message-id="${messageId}"]`);
+  const displayedId = automaticFlow.value
+    ? visibleMessages.value.find(message => message.metadata?.customerProgress?.lastEventId === messageId)?.id || messageId
+    : messageId;
+  const target = container?.querySelector(`[data-message-id="${displayedId}"]`);
   if (!container || !target || !chatFollowOutput.value) return;
   const targetTop = container.scrollTop
     + target.getBoundingClientRect().top
@@ -496,7 +501,7 @@ function jumpToLatestMessage() {
   if (!container) return;
   chatFollowOutput.value = true;
   showLatestMessageButton.value = false;
-  const latest = [...messages.value].reverse().find((message) => message.text);
+  const latest = [...visibleMessages.value].reverse().find((message) => message.text);
   if (latest) {
     nextTick(() => scrollChatMessageIntoView(latest.id, "smooth"));
     return;
@@ -684,10 +689,13 @@ async function appendPersistedMessage(role, text, extra = {}) {
 }
 
 const progressDurations = new Map();
-function updateStatusMessage(operationId, text, status = "in_progress") {
-  const previous = messages.value.filter(message => message.operationId === operationId).at(-1);
-  const event = createProgressEvent({ operationId, text, status, previous, durations: progressDurations });
+function updateStatusMessage(operationId, text, status = "in_progress", customerWork) {
+  const turnStart = messages.value.findLastIndex(message => message.role === 'user');
+  const previous = messages.value.slice(turnStart + 1).filter(message => message.operationId === operationId).at(-1);
+  const event = createProgressEvent({ operationId, text, status, previous, durations: progressDurations, customerWork });
   if (!event) return previous;
+  event.metadata.customerTurnId = customerProgressTurn(messages.value, activeChatTurnMessageId.value || 'initial');
+  event.metadata.customerSequence = nextCustomerSequence(messages.value, event.metadata.customerTurnId);
   const message = appendMessage("system", text, event);
   // Saving history must not block generation. Failed saves remain in the local workspace.
   persistMessage(message).catch(() => { message.metadata = { ...message.metadata, persistenceFailed: true }; });
@@ -700,6 +708,7 @@ watch(() => store.warning, warning => {
   persistMessage(message).catch(() => { message.metadata.persistenceFailed = true; });
 });
 function isCurrentProgress(message) {
+  if (automaticFlow.value) return message.metadata?.customerProgress?.active === true;
   return message.status === "in_progress"
     && messages.value.filter(other => other.operationId === message.operationId).at(-1)?.id === message.id;
 }
@@ -1171,7 +1180,7 @@ async function analyzeAttachments() {
   if (!pending.length) return "";
   attachmentBusy.value = true;
   const operationId = `reference-${Date.now()}`;
-  updateStatusMessage(operationId, `참고 이미지 ${pending.length}장을 업로드하고 있습니다.`, "in_progress");
+  updateStatusMessage(operationId, `참고 이미지 ${pending.length}장을 업로드하고 있습니다.`, "in_progress", {kind:'references',scope:'task'});
   const summaries = [];
   const summaryItemBudget = referenceItemCharacterBudget(pending.length);
   try {
@@ -1185,7 +1194,7 @@ async function analyzeAttachments() {
       attachment.sourceId = uploaded.source.id;
       attachment.imageUrl = uploaded.source.imageUrl;
       attachment.status = "analyzing";
-      updateStatusMessage(operationId, `참고 이미지 ${index + 1}/${pending.length}의 텍스트와 화면 구조를 분석하고 있습니다.`, "in_progress");
+      updateStatusMessage(operationId, `참고 이미지 ${index + 1}/${pending.length}의 텍스트와 화면 구조를 분석하고 있습니다.`, "in_progress", {kind:'references',scope:'task'});
       const analyzed = await analyzeReferenceImage({
         sourceId: attachment.sourceId,
         componentIntent: "프로모션 페이지 스크린샷에서 제목, 혜택, 기간, CTA, 섹션 구조, 이미지 역할과 확인이 필요한 조건을 분석",
@@ -1205,7 +1214,7 @@ async function analyzeAttachments() {
         }));
       }
     }
-    updateStatusMessage(operationId, "참고 이미지 분석을 완료했습니다.", "completed");
+    updateStatusMessage(operationId, "참고 이미지 분석을 완료했습니다.", "completed", {kind:'references',scope:'task'});
     return summaries.join("\n");
   } catch (error) {
     updateStatusMessage(operationId, `참고 이미지 분석에 실패했습니다. ${error.message}`, "failed");
@@ -1492,7 +1501,7 @@ async function analyze(instruction = store.naturalLanguage, recovery = {}) {
       },
       onRetry(retry) {
         overviewRetry.value = retry;
-        updateStatusMessage(operationId,`AI 응답 오류로 재시도하고 있습니다. (${retry.attempt}/${retry.maxAttempts})`,"in_progress");
+        updateStatusMessage(operationId,`AI 응답 오류로 재시도하고 있습니다. (${retry.attempt}/${retry.maxAttempts})`,"in_progress",{kind:'retry'});
         if (retry.executionDisplay) store.executionDisplays.promo_overview_parser = retry.executionDisplay;
         recordBuilderEvent({
           eventName: "ai_overview_retrying",
@@ -2167,7 +2176,7 @@ async function buildWireframe(existingOperationId = "", sourceAction = null) {
       const docId=store.documentId;wireframeViewport.value='desktop';activeResultTab.value='wireframe';
       const saved=capabilities.value.pageDraftV1&&!payload.instruction?await generateProgressivePage(payload,{request:automaticSchemaRequest,isCurrent:()=>store.documentId===docId&&pageGenerationRequest.value?.requestId===payload.requestId,onDraft:async draft=>{setDraftPreview(draft);const done=draft.completedRegions??draft.nextGroup?.index;
        const label=done===0?'AI 계획의 전체 스켈레톤을 준비했습니다. 데스크톱 콘텐츠를 구성합니다.':done!=null?`${done}개 영역을 저장했습니다. ${draft.nextGroup?.label?draft.nextGroup.label+' 구성 중':'전체 구성 검증 중'}`:`${draft.sequence}개 작업 결과를 반영했습니다.`;
-       updateStatusMessage(operationId,`페이지 제작 · ${label}`,'in_progress');
+       updateStatusMessage(operationId,`페이지 제작 · ${label}`,'in_progress',{kind:done===0?'outline':draft.nextGroup?.label?'region':'assemble',label:draft.nextGroup?.label});
        // Acknowledge an actual DOM paint before requesting the next unit.
        // This is not a timed reveal of already generated content.
        await nextTick();await waitForDraftPaint();}}):await automaticSchemaRequest(payload);
@@ -2297,7 +2306,7 @@ async function runFinalQualityGate({ autoRepair = true, force = false } = {}) {
   finalQualityChecking.value = true;
   const qualityStartedAt=performance.now();
   const qualityOperationId=`page-quality-${store.documentId}`;
-  updateStatusMessage(qualityOperationId,'화면 크기별 배치·가독성·이미지·CTA를 자동 검사하고 있습니다.','in_progress');
+  updateStatusMessage(qualityOperationId,'화면 크기별 배치·가독성·이미지·CTA를 자동 검사하고 있습니다.','in_progress',{kind:'check',restart:true});
   transientQualityGate.value = {
     contractVersion: 1,
     state: "checking",
@@ -2314,7 +2323,7 @@ async function runFinalQualityGate({ autoRepair = true, force = false } = {}) {
     for (let attempt = 0; attempt <= (agentEnabled?6:2); attempt += 1) {
       const result = await compositionReviewRef.value?.inspectQualityAcrossViewports?.({onViewport:event=>{
         const label={desktop:'데스크톱',tablet:'태블릿',mobile:'모바일'}[event.viewport]||event.viewport;
-        updateStatusMessage(`${qualityOperationId}-${attempt}-${event.viewport}`,`자동 품질 검사 · ${label} ${event.state==='completed'?'검사 완료':'배치·가독성 검사 중'}`,event.state==='completed'?'completed':'in_progress');
+        updateStatusMessage(`${qualityOperationId}-${attempt}-${event.viewport}`,`자동 품질 검사 · ${label} ${event.state==='completed'?'검사 완료':'배치·가독성 검사 중'}`,event.state==='completed'?'completed':'in_progress',{kind:'viewport',viewport:event.viewport,state:event.state,scope:'task'});
       }});
       if (!result) {
         throw Object.assign(new Error("디자인 Preview Renderer가 준비되지 않았습니다."), {
@@ -2332,7 +2341,7 @@ async function runFinalQualityGate({ autoRepair = true, force = false } = {}) {
             await nextTick();continue;
           }
         }
-        updateStatusMessage(qualityOperationId,'AI가 페이지 구조·가독성·반응형 구성을 검토하고 필요한 수정안을 적용하고 있습니다.','in_progress');
+        updateStatusMessage(qualityOperationId,'AI가 페이지 구조·가독성·반응형 구성을 검토하고 필요한 수정안을 적용하고 있습니다.','in_progress',{kind:'review'});
         const beforeRevision=store.documentRevision;
         const reviewed=await reviewPageUntilReady({readCurrent:()=>({documentId:store.documentId,revision:store.documentRevision}),request:reviewPageQuality,report:result,force:Number(result.blockingCount||0)>0&&Boolean(store.snapshot.generationMeta?.qualityAgentReview?.patches?.length),onUpdate:saved=>{store.snapshot=saved.snapshot;store.documentRevision=Number(saved.revision);transientQualityGate.value={state:'checking',documentRevision:store.documentRevision};}});
         if(reviewed.requiresApproval){store.stage='review_required';activeResultTab.value='wireframe';updateStatusMessage(qualityOperationId,'AI가 배치를 수정했습니다. 문구와 이미지는 보존했습니다. 새 페이지 미리보기의 구성을 승인하면 자동 재검사를 진행합니다.','completed');return false;}
@@ -2367,7 +2376,7 @@ async function runFinalQualityGate({ autoRepair = true, force = false } = {}) {
         store.documentRevision = Number(saved.revision);
         store.snapshot = saved.snapshot;
         transientQualityGate.value = null;
-        updateStatusMessage(qualityOperationId,`품질 검사를 통과했습니다. 새 창 보기와 출력을 사용할 수 있습니다.${Number(result.warningCount||0)?' 이동 경로 미정 등 안내 항목은 채팅의 검사 내역에서 확인할 수 있습니다.':''}`,'completed');
+        updateStatusMessage(qualityOperationId,`품질 검사를 통과했습니다. 새 창 보기와 출력을 사용할 수 있습니다.${Number(result.warningCount||0)?' 이동 경로 미정 등 안내 항목은 채팅의 검사 내역에서 확인할 수 있습니다.':''}`,'completed',{kind:'quality-passed'});
         recordBuilderEvent({
           eventName: "builder_quality_gate_passed",
           documentId: store.documentId,
@@ -2382,7 +2391,7 @@ async function runFinalQualityGate({ autoRepair = true, force = false } = {}) {
       // not a structural rewrite measured on an invalid preview canvas.
       if((result.diagnostics||[]).some(item=>/^(LAYOUT_TOKEN|LAYOUT_BREAKPOINT|TOKEN_USAGE_POLICY|OUTPUT_TOKEN)/.test(item.code||'')))break;
       if(store.snapshot.content?.pageSchema){
-        updateStatusMessage(qualityOperationId,`검사 결과를 등록 토큰 범위에서 자동 보정합니다. (${attempt+1}/2)`,'in_progress');
+        updateStatusMessage(qualityOperationId,`검사 결과를 등록 토큰 범위에서 자동 보정합니다. (${attempt+1}/2)`,'in_progress',{kind:'repair'});
         const repaired=await generatePageSchema({operation:'repair-quality',documentId:store.documentId,baseDocumentRevision:store.documentRevision,diagnostics:result.diagnostics||[]});
         if(!repaired.changed)break;
         store.snapshot=repaired.snapshot;store.documentRevision=Number(repaired.revision);transientQualityGate.value=null;
@@ -2465,7 +2474,7 @@ async function prepareDynamicDesign(){
   if(capabilities.value.parallelPageWork&&!store.snapshot.generationMeta.sectionDesign.parallelV1)onUpdate(await automaticRequest(runParallelPageWork,{documentId:store.documentId,runId:store.snapshot.generationMeta.sectionDesign.id,kind:'prepare'},automaticOptions()));
   const parallel=Boolean(store.snapshot.generationMeta.sectionDesign.parallelV1);
   const designRunner=parallel?prepareParallelSectionDesign:prepareSectionDesign;
-  await designRunner({readCurrent,maxConcurrent:capabilities.value.parallelPageWork?2:1,request:parallel?payload=>automaticRequest(runParallelPageWork,payload,automaticOptions()):automaticDesignRequest,onUpdate,onProgress:progress=>{phase=progress.phase;if(progress.nodeId)activeMediaNodeId.value=progress.nodeId;activeDesignId.value=progress.group.id;store.stage=phase==='media'?'generating_assets':'designing_sections';updateStatusMessage(operationId,`${progress.index+1}/${progress.total} · ${progress.group.label} 영역의 ${phase==='media'?'이미지를 준비':'등록 토큰 디자인을 생성'}하고 있습니다.`,'in_progress');},prepareMedia:async group=>{
+  await designRunner({readCurrent,maxConcurrent:capabilities.value.parallelPageWork?2:1,request:parallel?payload=>automaticRequest(runParallelPageWork,payload,automaticOptions()):automaticDesignRequest,onUpdate,onProgress:progress=>{phase=progress.phase;if(progress.nodeId)activeMediaNodeId.value=progress.nodeId;activeDesignId.value=progress.group.id;store.stage=phase==='media'?'generating_assets':'designing_sections';updateStatusMessage(operationId,`${progress.index+1}/${progress.total} · ${progress.group.label} 영역의 ${phase==='media'?'이미지를 준비':'등록 토큰 디자인을 생성'}하고 있습니다.`,'in_progress',{kind:phase==='media'?'image':'design',label:progress.group.label});},prepareMedia:async group=>{
    mediaPreparing.value=true;
    try{await preparePageMedia({readCurrent,request:automaticMediaRequest,onUpdate,nodeIds:group.nodeIds,onProgress:(_,job)=>{activeMediaNodeId.value=job.nodeId;}});}finally{mediaPreparing.value=false;}
   }});
@@ -2480,7 +2489,7 @@ async function prepareDynamicMedia(){
  mediaPreparing.value=true;store.stage='generating_assets';
  const operationId='page-media-'+store.documentId;
  try{
-  await preparePageMedia({readCurrent:()=>({documentId:store.documentId,revision:store.documentRevision,snapshot:store.snapshot}),request:automaticMediaRequest,onUpdate:saved=>{store.documentRevision=Number(saved.revision);store.snapshot=saved.snapshot;transientQualityGate.value=null;},onProgress:(count,job)=>{activeMediaNodeId.value=job.nodeId;updateStatusMessage(operationId,`디자인 이미지 ${count}개를 준비하고 있습니다.`,'in_progress');}});
+  await preparePageMedia({readCurrent:()=>({documentId:store.documentId,revision:store.documentRevision,snapshot:store.snapshot}),request:automaticMediaRequest,onUpdate:saved=>{store.documentRevision=Number(saved.revision);store.snapshot=saved.snapshot;transientQualityGate.value=null;},onProgress:(count,job)=>{activeMediaNodeId.value=job.nodeId;updateStatusMessage(operationId,`디자인 이미지 ${count}개를 준비하고 있습니다.`,'in_progress',{kind:'image'});}});
   store.stage='render_ready';activeResultTab.value='final';
   updateStatusMessage(operationId,'디자인 이미지를 연결했습니다. 품질을 확인합니다.','completed');
  }catch(error){
@@ -3148,6 +3157,7 @@ onMounted(async () => {
     });
     const result = await loadBuilderCapabilities();
     capabilities.value = result.capabilities || capabilities.value;
+    capabilitiesReady.value = true;
     if (capabilities.value.compositionV3 && !capabilities.value.pageSchemaV1) {
       const shells = await loadCompositionShells();
       activeShell.value = shells.versions?.find((shell) => shell.config?.isDefault) || shells.versions?.[0] || null;
@@ -3319,7 +3329,7 @@ onBeforeUnmount(() => {
                     <span v-if="isCurrentProgress(message)" class="ai-chat-thinking" aria-hidden="true">
                       <i></i><i></i><i></i>
                     </span>
-                    {{ message.status === 'in_progress' ? (isCurrentProgress(message) ? '진행 중' : '진행 기록') : message.status === 'completed' ? '완료' : '실패' }}
+                    {{ message.status === 'in_progress' ? (isCurrentProgress(message) ? '진행 중' : '진행 기록') : message.status === 'completed' ? (message.metadata?.customerProgress?.step === 4 ? '완성' : '완료') : '실패' }}
                   </span>
                 </div>
                 <p v-if="message.isStreaming" class="ai-chat-streaming-copy" :aria-label="message.text">
@@ -3336,6 +3346,10 @@ onBeforeUnmount(() => {
                     </span>
                   </span>
                 </p>
+                <div v-else-if="message.metadata?.customerProgress" class="ai-chat-customer-progress" :data-progress-step="message.metadata.customerProgress.step">
+                  <p class="ai-chat-progress-title">{{ customerProgressHeading(message) }}</p>
+                  <p class="ai-chat-progress-copy" :class="{ 'ai-chat-mask-reveal': isCurrentProgress(message) }">{{ message.metadata.customerProgress.detail }}</p>
+                </div>
                 <p v-else :class="{ 'ai-chat-mask-reveal': message.type === 'status' && isCurrentProgress(message) }">{{ messageDisplayText(message) }}</p>
                 <small v-if="!automaticFlow && message.type === 'status'" class="ai-chat-progress-detail">{{ message.metadata?.stage || message.stage || progressStage(message.operationId) }} · {{ message.metadata?.eta || message.eta || (message.status === 'in_progress' ? '예상 시간 계산 중' : '단계 종료') }}</small>
                 <div v-if="!automaticFlow && isFailedTaskMessage(message)" class="ai-chat-recovery" role="group" aria-label="실패한 작업 복구">

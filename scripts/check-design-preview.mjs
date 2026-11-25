@@ -27,7 +27,7 @@ const checks=[
  'test-work-feedback-browser.mjs','test-page-static-api.mjs','test-page-online-output-browser.mjs','test-progressive-page-builder-browser.mjs','test-page-design-direction.mjs','test-page-drafts-postgres.mjs','test-page-editor-export.mjs','test-page-editor-browser.mjs','test-static-page-export-browser.mjs',
  'test-page-section-design.mjs','test-page-section-design-postgres.mjs','test-page-section-design-browser.mjs',
  'test-live-generation-preview.mjs','test-live-generation-preview-browser.mjs',
- 'test-chat-experience.mjs','test-chat-notice.mjs','test-chat-workspace-response.mjs','test-promo-overview-contract.js','test-ai-builder-browser.mjs','test-requirement-narrative.mjs','test-wireframe-display.mjs','test-page-schema-output-diagnostics.mjs',
+ 'test-chat-experience.mjs','test-customer-progress-postgres.mjs','test-chat-notice.mjs','test-chat-workspace-response.mjs','test-promo-overview-contract.js','test-ai-builder-browser.mjs','test-requirement-narrative.mjs','test-wireframe-display.mjs','test-page-schema-output-diagnostics.mjs',
  'test-page-quality-agent.mjs','test-page-quality-agent-postgres.mjs','test-agent-skills.mjs','test-agent-skills-browser.mjs','test-design-token-library.mjs','test-token-usage-policy.mjs','test-token-usage-policy-api.mjs','test-token-policy-cold-start.mjs',
  'test-page-schema.mjs','test-page-schema-style-targets.mjs','test-page-schema-api.mjs','test-page-schema-readiness.mjs',
  'test-design-preview-enhancements.mjs','test-page-quality-repair.mjs','test-registered-token-save-roundtrip.mjs','test-promo-quality-gate.js','test-nuxt-runtime-contract.mjs',

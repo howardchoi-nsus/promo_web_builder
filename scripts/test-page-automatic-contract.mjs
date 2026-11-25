@@ -9,7 +9,7 @@ const changed=structuredClone(snapshot);changed.content.pageSchema.root.layout.d
 const invalid=structuredClone(snapshot);invalid.content.pageSchema.root.styles.base.push('button.background');assert.throws(()=>prepareAutomaticSnapshot(invalid,1));
 const {customerProgress}=await import('../visual-editor/src/builder/services/customer-progress.mjs');
 const logs=[{id:'u',role:'user',text:'make'},...Array.from({length:12},(_,i)=>({id:'s'+i,type:'status',operationId:'wireframe-1',text:i+' saved',status:'in_progress'})),{id:'d',type:'status',operationId:'page-design-1',text:'details',status:'completed'},{id:'q',type:'status',operationId:'page-quality-1',text:'품질 검사를 통과했습니다. 출력을 사용할 수 있습니다.',status:'completed'}];
-assert.deepEqual(customerProgress(logs).filter(m=>m.type==='status').map(m=>m.text),['구성 중','디자인·이미지 적용 중','완성']);assert.equal(logs.length,15);
+assert.deepEqual(customerProgress(logs).filter(m=>m.type==='status').map(m=>m.text),['페이지 구성','디자인·이미지 적용','완성']);assert.equal(logs.length,15);
 const {pageNodeDescriptor}=await import('../shared/page-schema/node-descriptor.mjs');const submit=pageNodeDescriptor({type:'button',id:'submit',label:'Submit',actionId:'submit'},{...context,actions:{submit:{kind:'submit',href:'/submit'}}},{mediaRequests:[]});assert.equal(submit.attrs.type,'submit');
 console.log('Automatic flow: validated ready provenance, no fake approvals, stale/invalid structure rejection, compact customer progress with intact logs, submit renderer passed.');
 

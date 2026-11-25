@@ -810,6 +810,9 @@
 .ai-chat-composer textarea { max-height: 180px; overflow-y: hidden; }
 .ai-chat-composer__surface { align-items: end; }
 .ai-chat-progress-detail { display: block; margin-top: 6px; font-size: 11px; color: #586760; }
+.ai-chat-customer-progress { display: grid; gap: 6px; min-width: 0; }
+.ai-chat-customer-progress .ai-chat-progress-title { margin: 0; font-weight: 650; overflow-wrap: anywhere; }
+.ai-chat-customer-progress .ai-chat-progress-copy { margin: 0; color: #586760; overflow-wrap: anywhere; }
 .ai-chat-mask-reveal {
   mask-image: linear-gradient(to right, #000 0%, #000 45%, transparent 55%);
   mask-size: 240% 100%;

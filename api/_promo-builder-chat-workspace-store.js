@@ -111,7 +111,11 @@ async function fetchSession(sql, { sessionId, ownerSubject }) {
   `;
   if (!rows[0]) return null;
   const [messageRows, actionRows, requirementRows, wireframeRows] = await Promise.all([
-    sql`select * from promo_builder_chat_messages where session_id = ${sessionId}::uuid order by created_at, id limit 500`,
+    sql`select * from (
+      select * from promo_builder_chat_messages
+      where session_id = ${sessionId}::uuid
+      order by created_at desc, id desc limit 500
+    ) recent_messages order by created_at, id`,
     sql`select * from promo_builder_chat_actions where session_id = ${sessionId}::uuid order by created_at, id`,
     sql`select * from promo_builder_requirements_revisions where session_id = ${sessionId}::uuid order by revision desc limit 1`,
     sql`select * from promo_builder_wireframe_revisions where session_id = ${sessionId}::uuid order by revision desc limit 1`,

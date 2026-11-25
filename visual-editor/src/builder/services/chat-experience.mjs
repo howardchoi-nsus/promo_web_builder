@@ -6,8 +6,9 @@ export function progressStage(operationId = '') {
   if (/attachment|reference/.test(operationId)) return '요청 요약 · 참고 자료 분석';
   return '요청 요약 · 요청 처리';
 }
-export function createProgressEvent({ operationId, text, status, previous, durations, now = Date.now() }) {
-  if (previous?.text === text && previous?.status === status) return null;
+export function createProgressEvent({ operationId, text, status, previous, durations, customerWork, now = Date.now() }) {
+  if (previous?.text === text && previous?.status === status
+    && JSON.stringify(previous?.metadata?.customerWork || previous?.customerWork || null) === JSON.stringify(customerWork || null)) return null;
   const stage = progressStage(operationId);
   const startedAt = previous?.metadata?.startedAt || previous?.startedAt || now;
   const measured = durations.get(stage);
@@ -15,7 +16,7 @@ export function createProgressEvent({ operationId, text, status, previous, durat
   if (status === 'completed' && elapsed > 0) durations.set(stage, elapsed);
   const eta = status !== 'in_progress' ? '단계 종료' : measured > elapsed
     ? `이전 실행 기준 약 ${Math.ceil((measured - elapsed) / 1000)}초 남음` : '예상 시간 계산 중';
-  return { type: 'status', operationId, status, createdAt: new Date(now).toISOString(), metadata: { stage, startedAt, eta } };
+  return { type: 'status', operationId, status, createdAt: new Date(now).toISOString(), metadata: { stage, startedAt, eta, ...(customerWork ? { customerWork } : {}) } };
 }
 export function isHistoricalAction(action, message, messages) {
   if (action.status && action.status !== 'proposed') return true;

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {createProgressEvent,isHistoricalAction} from '../visual-editor/src/builder/services/chat-experience.mjs';
+import {customerProgress,customerProgressHeading,customerProgressTurn,nextCustomerSequence} from '../visual-editor/src/builder/services/customer-progress.mjs';
 const durations=new Map();
 const start=createProgressEvent({operationId:'quality-1',text:'검사 중',status:'in_progress',durations,now:1000});
 assert.equal(start.metadata.eta,'예상 시간 계산 중');
@@ -13,3 +14,100 @@ assert.equal(isHistoricalAction({key:'approve_wireframe',status:'executed'},mess
 assert.equal(isHistoricalAction({key:'approve_wireframe'},message,[message,{role:'user'}]),true);
 assert.equal(isHistoricalAction({key:'approve_wireframe'},message,[message,{actions:[{key:'approve_wireframe'}]}]),true);
 console.log('chat experience contracts passed');
+
+// Customer rows must remain stable while raw persisted events remain intact.
+const user={id:'request-1',role:'user',text:'Create a page'};
+let sequence=0;
+const event=(operationId,status='in_progress',customerWork={},text='INTERNAL_PROVIDER_DIAGNOSTIC')=>({
+  id:'event-'+(++sequence),role:'system',type:'status',operationId,status,text,
+  createdAt:new Date(sequence*1000).toISOString(),metadata:{customerTurnId:user.id,customerWork},
+});
+const history=[user,event('overview-1'),event('overview-1','completed'),event('wireframe-1','in_progress',{kind:'outline'})];
+const statusRows=logs=>customerProgress(logs).filter(row=>row.type==='status');
+const initialRows=statusRows(history),initialId=initialRows[1].id;
+assert.equal(initialRows.length,2);assert.equal(initialRows[0].status,'completed');
+assert.equal(customerProgressHeading(initialRows[1]),'총 4단계 중 2단계 진행 중 · 페이지 구성');
+history.push(event('wireframe-1','in_progress',{kind:'region',label:'주요 혜택'}));
+let rows=statusRows(history);
+assert.equal(rows.length,2);assert.equal(rows[1].id,initialId);
+assert.equal(rows[1].metadata.customerProgress.detail,'주요 혜택 영역의 문구와 배치를 구성하고 있어요.');
+assert.equal(rows[1].metadata.customerProgress.active,true);
+history.push(event('wireframe-1','in_progress',{kind:'retry'}));
+rows=statusRows(history);assert.equal(rows.length,2);assert.equal(rows[1].id,initialId);
+assert.ok(rows[1].metadata.customerProgress.detail.includes('다시 확인'));
+history.push(event('wireframe-1','completed'),event('page-design-doc','in_progress',{kind:'design',label:'히어로'}));
+rows=statusRows(history);assert.equal(rows.length,3);assert.equal(rows[1].id,initialId);
+assert.equal(rows[1].status,'completed');assert.equal(rows[1].metadata.customerProgress.active,false);
+const designId=rows[2].id,finishedLayout=structuredClone(rows[1]);
+history.push(event('page-design-doc','in_progress',{kind:'image',label:'히어로'}));
+rows=statusRows(history);assert.equal(rows[2].id,designId);assert.deepEqual(rows[1],finishedLayout);
+assert.equal(rows[2].metadata.customerProgress.detail,'히어로 영역의 이미지를 준비하고 있어요.');
+history.push(event('page-design-doc','completed'),event('page-quality-doc'));
+const qualityId=statusRows(history)[3].id;
+for(const viewport of ['desktop','tablet','mobile']){
+  history.push(event('page-quality-doc-0-'+viewport,'completed',{kind:'viewport',viewport,state:'completed',scope:'task'}));
+  rows=statusRows(history);assert.equal(rows.length,4);assert.equal(rows[3].id,qualityId);
+  assert.equal(rows[3].status,'in_progress','A viewport completion cannot mark all QA complete');
+  assert.equal(rows[3].metadata.customerProgress.active,true);
+}
+history.push(event('page-design-doc','completed'));
+assert.equal(statusRows(history)[3].metadata.customerProgress.active,true,'Late earlier completion cannot stop current QA');
+history.push(event('page-quality-doc','in_progress',{kind:'review'}),event('page-quality-doc','in_progress',{kind:'repair'}));
+assert.equal(statusRows(history).length,4);
+history.push(event('page-quality-doc','completed',{kind:'quality-passed'}));
+const complete=statusRows(history);
+assert.equal(complete[3].id,qualityId);assert.equal(complete[3].text,'완성');
+assert.equal(complete.filter(row=>row.metadata.customerProgress.active).length,0);
+history.push(event('page-quality-doc'),event('page-quality-doc-0-mobile','in_progress',{kind:'viewport',scope:'task'}));
+assert.deepEqual(statusRows(history),complete,'Stale main/task polling cannot reopen passed quality');
+const rawCopy=structuredClone(history);
+assert.deepEqual(statusRows(JSON.parse(JSON.stringify(history))),complete,'Restored rows preserve identity/status/details');
+// Match toMessage in the existing API: DB metadata is returned as top-level fields.
+const wire=history.map(({metadata,...message})=>({...metadata,...message}));
+const display=logs=>statusRows(logs).map(({id,text,status,metadata})=>({id,text,status,progress:metadata.customerProgress}));
+assert.deepEqual(display(wire),display(history),'Server metadata flattening must preserve the same customer rows');
+assert.equal(statusRows(wire.slice(4))[0].id,initialId,'Bounded server history retains request+stage identity');
+assert.deepEqual(history,rawCopy,'Customer projection must not mutate raw persisted events');
+assert.equal(JSON.stringify(complete).includes('INTERNAL_PROVIDER_DIAGNOSTIC'),false);
+assert.equal(statusRows([...history,history.at(-1)]).length,4,'Duplicate event IDs cannot create rows');
+// The start event may leave the bounded local cache; request+step identity survives.
+assert.equal(statusRows(history.slice(4))[0].id,initialId);
+assert.equal(customerProgressTurn(history.slice(4)),user.id);
+assert.equal(customerProgressTurn(wire.slice(4)),user.id);
+const failed=[user,event('wireframe-2','in_progress',{kind:'region',label:'참여 방법'}),event('wireframe-2','failed',{},'PROVIDER_402 private error')];
+rows=statusRows(failed);assert.equal(rows.length,1);assert.equal(rows[0].status,'failed');
+assert.equal(rows[0].metadata.customerProgress.active,false);
+assert.equal(JSON.stringify(rows).includes('PROVIDER_402'),false);
+const firstFailureId=rows[0].id;
+failed.push(event('wireframe-3','in_progress',{kind:'retry'}));
+assert.equal(statusRows(failed)[0].id,firstFailureId);assert.equal(statusRows(failed)[0].metadata.customerProgress.active,true);
+const secondUser={id:'request-2',role:'user',text:'Change the layout'};
+assert.equal(customerProgressTurn([...history,secondUser]),secondUser.id);
+const follow=[...history,secondUser,{...event('wireframe-4'),metadata:{customerTurnId:secondUser.id}}];
+assert.equal(statusRows(follow).length,5);assert.equal(statusRows(follow).at(-1).metadata.customerProgress.active,true);
+follow.push(event('page-quality-doc','completed',{kind:'quality-passed'}));
+assert.equal(statusRows(follow).at(-1).metadata.customerProgress.active,true,'Late prior-request completion must not stop new request');
+const unknown=[user,event('wireframe-old','in_progress',{},'TOKEN_LIBRARY_REQUIRED')];
+assert.equal(statusRows(unknown)[0].metadata.customerProgress.detail,'페이지의 섹션과 콘텐츠 배치를 구성하고 있어요.');
+const checkedAgain=statusRows([...history,event('page-quality-doc','in_progress',{kind:'check',restart:true})]);
+assert.equal(checkedAgain.length,4);assert.equal(checkedAgain[3].id,qualityId);
+assert.equal(checkedAgain[3].metadata.customerProgress.active,true,'Explicit quality recheck must reopen the same row');
+const workStart=createProgressEvent({operationId:'wireframe-dedupe',text:'working',status:'in_progress',durations,customerWork:{kind:'outline'},now:13000});
+assert.equal(createProgressEvent({operationId:'wireframe-dedupe',text:'working',status:'in_progress',durations,customerWork:{kind:'outline'},previous:{...workStart,text:'working'},now:14000}),null);
+assert.ok(createProgressEvent({operationId:'wireframe-dedupe',text:'working',status:'in_progress',durations,customerWork:{kind:'region',label:'혜택'},previous:{...workStart,text:'working'},now:15000}),'A changed actual activity must not be discarded when internal text stays the same');
+const timestamp='2026-11-25T01:02:03.456Z';
+const tiedStart={...event('page-quality-tie','in_progress',{kind:'check',restart:true}),createdAt:timestamp};
+tiedStart.metadata.customerSequence=1;
+const tiedDone={...event('page-quality-tie','completed',{kind:'quality-passed'}),createdAt:timestamp};
+tiedDone.metadata.customerSequence=2;
+const reversed=[user,tiedDone,tiedStart],unchanged=structuredClone(reversed);
+assert.equal(statusRows(reversed)[0].status,'completed','Same-ms start/completion restore in emission order');
+assert.deepEqual(reversed,unchanged,'Sorting display events cannot modify persisted order');
+assert.equal(nextCustomerSequence(reversed,user.id),3);
+assert.equal(nextCustomerSequence(reversed.map(({metadata,...message})=>({...metadata,...message})),user.id),3);
+assert.equal(nextCustomerSequence(reversed,'another-request'),1);
+const checkedLater={...tiedStart,id:'explicit-recheck',metadata:{...tiedStart.metadata,customerSequence:3}};
+assert.equal(statusRows([...reversed,checkedLater])[0].status,'in_progress','Real new check after completion remains supported even in the same ms');
+const invalidOrder={...tiedStart,metadata:{...tiedStart.metadata,customerSequence:'999'}};
+assert.equal(nextCustomerSequence([invalidOrder],user.id),1,'Untrusted non-integer order is ignored');
+console.log('Customer progress: four fixed stages, stable in-place rows, actual work descriptions, retries, viewport/main completion separation, late-event guards, preserved history, cache/server replay and request isolation passed.');
