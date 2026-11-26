@@ -125,6 +125,36 @@ async function fetchDocument(sql, documentId, ownerSubject, { includeSnapshot = 
   };
 }
 
+// Public output/export endpoints intentionally resolve a document by its
+// unguessable UUID without requiring the builder session that created it.
+// Mutating builder APIs must continue to use fetchDocument with ownerSubject.
+async function fetchPublicDocument(sql, documentId, { includeSnapshot = true } = {}) {
+  const rows = await sql`
+    select * from promo_builder_documents
+    where id = ${documentId}::uuid
+    limit 1
+  `;
+  if (!rows.length) return null;
+  const document = toDocument(rows[0]);
+  if (!includeSnapshot || document.currentDocumentRevision === 0) {
+    return { document, version: null, snapshot: null };
+  }
+  const versions = await sql`
+    select id::text, revision, contract_version, snapshot_json, snapshot_hash,
+      change_note, source, applied_at, created_at
+    from promo_builder_document_versions
+    where document_id = ${documentId}::uuid
+      and revision = ${document.currentDocumentRevision}
+    limit 1
+  `;
+  let snapshot = versions[0]?.snapshot_json || null;
+  if (snapshot?.assets?.requests?.length) {
+    const { hydrateBuilderAssetResults } = require("./_promo-builder-assets");
+    snapshot = await hydrateBuilderAssetResults(sql, documentId, snapshot);
+  }
+  return { document, version: versions[0] || null, snapshot };
+}
+
 async function fetchRecentDocumentSnapshots(sql, ownerSubject, { limit = 12 } = {}) {
   const safeLimit = Math.max(1, Math.min(50, Number(limit || 12)));
   const rows = await sql`
@@ -545,6 +575,7 @@ module.exports = {
   toProposal,
   createDocument,
   fetchDocument,
+  fetchPublicDocument,
   fetchRecentDocumentSnapshots,
   fetchProposal,
   createProposal,

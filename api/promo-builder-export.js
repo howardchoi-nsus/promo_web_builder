@@ -1,7 +1,5 @@
-const { resolveBuilderOwner } = require("./_promo-builder-auth");
 const { requireBuilderFlag } = require("./_promo-builder-flags");
-const { requireBuilderRollout } = require("./_promo-builder-rollout");
-const { getSql, fetchDocument } = require("./_promo-builder-document-store");
+const { getSql, fetchPublicDocument } = require("./_promo-builder-document-store");
 const {
   publicExportSnapshot,
   dependencyManifest,
@@ -20,13 +18,11 @@ module.exports = async function handler(req, res) {
   }
   try {
     requireBuilderFlag("export");
-    const owner = resolveBuilderOwner(req, res);
-    requireBuilderRollout(owner.ownerSubject);
     const documentId = String(req.query?.documentId || "").trim();
     const format = String(req.query?.format || "html").trim().toLowerCase();
     if (!documentId) return res.status(400).json({ error: "documentId is required" });
     if (!FORMATS.has(format)) return res.status(400).json({ error: "Unsupported export format" });
-    const result = await fetchDocument(getSql(), documentId, owner.ownerSubject);
+    const result = await fetchPublicDocument(getSql(), documentId);
     if (!result?.snapshot) return res.status(404).json({ error: "Builder document snapshot not found" });
     const revision = Number(result.document.currentDocumentRevision || 0);
     const requestedRevision = Number(req.query?.revision || revision);
@@ -39,12 +35,11 @@ module.exports = async function handler(req, res) {
     }
     assertPassedQualityGate(result.snapshot, revision);
     const options = { documentId, revision, title: result.document.title || "Promotion" };
-    res.setHeader("Cache-Control", "private, no-store");
+    res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
     res.setHeader("X-Content-Type-Options", "nosniff");
     if (format === "manifest") return res.status(200).json(dependencyManifest(result.snapshot, options));
     if (format === "snapshot") return res.status(200).json(publicExportSnapshot(result.snapshot));
     const staticOptions={...options,origin:require('./_page-schema-static-export').exportOrigin(req)};
-    if(format==='html'&&result.snapshot.content?.pageSchema)staticOptions.assetOverrides=await require('./_page-schema-static-export').resolveExportAssets(result.snapshot,{documentId,sql:getSql(),blobGet:async(...args)=>(await import('@vercel/blob')).get(...args)});
     let body = format === 'html' && result.snapshot.content?.pageSchema
       ? await require('./_page-schema-static-export').staticPageHtml(result.snapshot,staticOptions)
       : format === "html"
