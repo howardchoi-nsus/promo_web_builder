@@ -5,9 +5,11 @@ import {layoutTokenPolicy} from '../../../shared/layout-token-policy.mjs';
 import {nodes,effectiveLayout,nodeTargets} from '../../../shared/page-schema/runtime.mjs';
 import {pageGenerationStyleRoles,pageStyleRoles} from '../../../shared/token-usage-policy.mjs';
 import {findNode,moveSibling,editNode,nodeLabel,createEditorHistory,removeNode,addSection,mergeEditorChanges} from './services/page-editor-commands.mjs';
+import {editorHtmlSource,applyEditorHtmlSource} from './services/page-editor-html.mjs';
 const props=defineProps({snapshot:{type:Object,required:true},documentId:{type:String,required:true},revision:{type:Number,required:true}});
 const current=ref(structuredClone(toRaw(props.snapshot))),revision=ref(props.revision),page=ref(structuredClone(toRaw(props.snapshot.content.pageSchema))),selected=ref(page.value.root.id),viewport=ref('desktop'),error=ref(''),busy=ref(false),dirty=ref(false),request=ref(''),preview=ref(null),undoable=ref(false),redoable=ref(false);
 const conflicted=ref(false),storedDraft=ref(null);
+const editorMode=ref('visual'),htmlSource=ref('');
 const backupKey='promoPageEditorDraft:'+props.documentId;
 try{storedDraft.value=JSON.parse(sessionStorage.getItem(backupKey)||'null');}catch{}
 function stash(){try{if(dirty.value)sessionStorage.setItem(backupKey,JSON.stringify({baseline:toRaw(current.value.content.pageSchema),page:toRaw(page.value),revision:revision.value}));else sessionStorage.removeItem(backupKey);}catch{}}
@@ -21,6 +23,8 @@ function changeSpacing(property,value){change(n=>{const view=viewport.value==='d
 function insertSection(){apply(addSection(toRaw(page.value),'section_'+crypto.randomUUID().replaceAll('-','').slice(0,12)));}
 function flags(){undoable.value=history.canUndo;redoable.value=history.canRedo;dirty.value=JSON.stringify(page.value)!==JSON.stringify(current.value.content.pageSchema);stash();}
 function apply(next){page.value=history.push(next);flags();}
+function openHtmlEditor(){htmlSource.value=editorHtmlSource(toRaw(page.value),context.value);editorMode.value='html';error.value='';}
+function applyHtml(){try{error.value='';apply(applyEditorHtmlSource(toRaw(page.value),context.value,htmlSource.value));htmlSource.value=editorHtmlSource(toRaw(page.value),context.value);editorMode.value='visual';}catch(e){error.value=e.message;}}
 function change(fn){try{error.value='';apply(editNode(toRaw(page.value),selected.value,fn));}catch(e){error.value=e.message;}}
 function chooseRole(key){const role=roles.value.find(r=>r.key===key);if(!role)return;change(n=>{const conflicts=new Set(pageStyleRoles(context.value).filter(r=>r.property===role.property&&r.state===role.state).map(r=>r.key));const view=viewport.value==='desktop'?'base':viewport.value;n.styles[view]=[...(n.styles[view]||n.styles.base).filter(k=>!conflicts.has(k)),key];});}
 function returnToBuilder(){if(dirty.value&&!confirm('저장하지 않은 변경이 있습니다. 저장하지 않고 나가시겠습니까?'))return;location.assign('/prototype/create-promo?mode=ai&builderDocumentId='+encodeURIComponent(props.documentId));}
@@ -35,9 +39,14 @@ onMounted(()=>{timer=setInterval(bind,250);window.addEventListener('beforeunload
 </script>
 <template>
 <main class="schema-document-editor">
- <header><strong>웹빌더 에디터 · Revision {{revision}}</strong><button @click="returnToBuilder">페이지 제작으로</button><button :disabled="busy||!undoable" @click="page=history.undo();flags()">되돌리기</button><button :disabled="busy||!redoable" @click="page=history.redo();flags()">다시 적용</button><button :disabled="busy||!dirty" @click="save">저장 후 자동 검사</button></header>
+ <header><strong>웹빌더 에디터 · Revision {{revision}}</strong><button @click="returnToBuilder">페이지 제작으로</button><button :aria-pressed="editorMode==='visual'" @click="editorMode='visual'">화면 수정</button><button :aria-pressed="editorMode==='html'" @click="openHtmlEditor">HTML 수정</button><button :disabled="busy||!undoable" @click="page=history.undo();flags()">되돌리기</button><button :disabled="busy||!redoable" @click="page=history.redo();flags()">다시 적용</button><button :disabled="busy||!dirty" @click="save">저장 후 자동 검사</button></header>
 <p v-if="error" role="alert">{{error}}</p><button v-if="conflicted" :disabled="busy" @click="mergeLatest">최신 문서에 안전하게 합치기</button><button v-if="storedDraft" :disabled="busy" @click="restoreDraft">보관한 수정 불러오기</button><p>등록된 디자인 토큰과 동일한 페이지 원본을 편집합니다. 저장 후 페이지 제작에서 자동 검사하며, 구조 변경은 구성 재승인으로 이어집니다.</p>
- <div class="schema-editor-workspace"><aside>
+ <section v-if="editorMode==='html'" class="schema-html-editor" aria-label="HTML 소스 수정">
+  <div><strong>HTML 소스 수정</strong><p>일반 문구와 이미지 alt만 수정할 수 있습니다. 구조, data-page-node-* 속성, 스타일과 스크립트는 안전을 위해 변경할 수 없습니다.</p></div>
+  <textarea v-model="htmlSource" :disabled="busy" spellcheck="false" aria-label="페이지 HTML 소스"/>
+  <div class="schema-html-editor__actions"><button :disabled="busy" @click="openHtmlEditor">현재 내용으로 초기화</button><button :disabled="busy||!htmlSource.trim()" @click="applyHtml">HTML 변경 적용</button></div>
+ </section>
+ <div v-else class="schema-editor-workspace"><aside>
   <label>선택 요소<select v-model="selected"><option v-for="item in list" :key="item.id" :value="item.id">{{nodeLabel(item,context)}}</option></select></label>
   <template v-if="node">
    <label v-if="node.type==='text'&&node.contentMode==='editorial'">문구<textarea :value="node.text" :disabled="busy" @change="change(n=>n.text=$event.target.value)"/></label>
@@ -57,5 +66,5 @@ onMounted(()=>{timer=setInterval(bind,250);window.addEventListener('beforeunload
 </main>
 </template>
 <style scoped>
-.schema-document-editor{font:14px/1.6 sans-serif;background:#f6f7f9;min-height:100vh;padding:20px;color:#182028}.schema-document-editor header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.schema-document-editor header strong{margin-right:auto}.schema-document-editor button{padding:8px 12px;cursor:pointer}.schema-editor-workspace{display:grid;grid-template-columns:280px minmax(0,1fr);gap:20px}.schema-editor-workspace aside{background:white;padding:16px}.schema-editor-workspace label{display:block;margin-bottom:16px}.schema-editor-workspace select,.schema-editor-workspace textarea{width:100%;padding:8px;box-sizing:border-box}.schema-editor-workspace textarea{min-height:100px}.schema-editor-workspace section{min-width:0}[role=alert]{color:#a11}@media(max-width:700px){.schema-editor-workspace{grid-template-columns:1fr}}
+.schema-document-editor{font:14px/1.6 sans-serif;background:#f6f7f9;min-height:100vh;padding:20px;color:#182028}.schema-document-editor header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.schema-document-editor header strong{margin-right:auto}.schema-document-editor button{padding:8px 12px;cursor:pointer}.schema-document-editor button[aria-pressed="true"]{background:#182028;color:white}.schema-editor-workspace{display:grid;grid-template-columns:280px minmax(0,1fr);gap:20px}.schema-editor-workspace aside{background:white;padding:16px}.schema-editor-workspace label{display:block;margin-bottom:16px}.schema-editor-workspace select,.schema-editor-workspace textarea{width:100%;padding:8px;box-sizing:border-box}.schema-editor-workspace textarea{min-height:100px}.schema-editor-workspace section{min-width:0}.schema-html-editor{display:grid;gap:12px;background:white;padding:16px}.schema-html-editor textarea{width:100%;min-height:68vh;resize:vertical;padding:16px;box-sizing:border-box;background:#101318;color:#e9edf2;font:13px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;tab-size:2}.schema-html-editor__actions{display:flex;justify-content:flex-end;gap:8px}[role=alert]{color:#a11}@media(max-width:700px){.schema-editor-workspace{grid-template-columns:1fr}.schema-html-editor textarea{min-height:58vh}}
 </style>
