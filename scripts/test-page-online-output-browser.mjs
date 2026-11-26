@@ -5,12 +5,9 @@ import { chromium } from 'playwright';
 import { fixture, context } from './fixtures/page-schema.mjs';
 
 const require = createRequire(import.meta.url);
-const auth = require('../api/_promo-builder-auth');
 const { snapshotForPage, normalize } = require('../api/_page-schema-service');
 const { walk } = require('../shared/page-schema/contract.cjs');
 const { staticPageHtml } = require('../api/_page-schema-static-export');
-const session = auth.createSessionToken();
-const owner = auth.ownerSubjectForSession(session.sessionId);
 const documentId = '11111111-1111-4111-8111-111111111111';
 const assetId = '22222222-2222-4222-8222-222222222222';
 const viewToken = 'T'.repeat(43);
@@ -44,7 +41,7 @@ const storeId = require.resolve('../api/_promo-builder-document-store');
 require.cache[storeId] = {
   id: storeId, filename: storeId, loaded: true, exports: {
     getSql: () => async () => { throw Error('Online HTML must not read and embed Blob bytes'); },
-    fetchDocument: async (_, id, subject) => id === documentId && subject === owner
+    fetchPublicDocument: async (_, id) => id === documentId
       ? { document: { id, currentDocumentRevision: 1, title: 'Online image regression' }, snapshot } : null,
   },
 };
@@ -78,7 +75,6 @@ const browser = await chromium.launch({
 });
 try {
   const browserContext = await browser.newContext();
-  await browserContext.addCookies([{ name: auth.COOKIE_NAME, value: session.token, url: origin }]);
   const page = await browserContext.newPage();
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));

@@ -1,11 +1,10 @@
-const { resolveBuilderOwner } = require('./_promo-builder-auth');
 const { requireBuilderFlag } = require('./_promo-builder-flags');
-const { getSql, fetchDocument } = require('./_promo-builder-document-store');
+const { getSql, fetchPublicDocument } = require('./_promo-builder-document-store');
 const { assertPassedQualityGate } = require('./_promo-quality-gate');
 const { staticPageHtml, exportOrigin } = require('./_page-schema-static-export');
 
 module.exports = async (req, res) => {
-  res.setHeader('Cache-Control', 'private, no-store');
+  res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'no-referrer');
   try {
@@ -14,10 +13,9 @@ module.exports = async (req, res) => {
       return res.status(405).json({ error: 'Method not allowed' });
     }
     requireBuilderFlag('pageSchemaV1');
-    const owner = resolveBuilderOwner(req, res);
     const sql = getSql();
     const documentId = String(req.query?.documentId || '');
-    const found = await fetchDocument(sql, documentId, owner.ownerSubject, { includeSnapshot: true });
+    const found = await fetchPublicDocument(sql, documentId, { includeSnapshot: true });
     if (!found?.snapshot?.content?.pageSchema) return res.status(404).json({ error: 'Page not found' });
     const revision = Number(found.document.currentDocumentRevision);
     if (Number(req.query?.revision) !== revision) {
